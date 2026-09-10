@@ -62,6 +62,226 @@
    "defects": 0,
    "offenders": 0,
    "top": null
+  },
+  {
+   "at": "2026-08-30T17:07:21Z",
+   "backlog": 3133002,
+   "defects": 40,
+   "offenders": 195,
+   "top": {
+    "path": "imported/project_nanoclaw_pr874_webhook_route_approver.md",
+    "class": "OVERSIZE",
+    "size": 342367
+   }
+  },
+  {
+   "at": "2026-08-30T17:51:49Z",
+   "backlog": 2788096,
+   "defects": 41,
+   "offenders": 192,
+   "top": {
+    "path": "imported/index-feedback.md",
+    "class": "OVERSIZE",
+    "size": 213887
+   }
+  },
+  {
+   "at": "2026-08-31T04:20:08Z",
+   "backlog": 2432743,
+   "defects": 40,
+   "offenders": 189,
+   "top": {
+    "path": "imported/project_12371_spirv_prelink_validation_buffer.md",
+    "class": "OVERSIZE",
+    "size": 149555
+   }
+  },
+  {
+   "at": "2026-08-31T04:20:17Z",
+   "backlog": 2432743,
+   "defects": 40,
+   "offenders": 189,
+   "top": {
+    "path": "imported/project_12371_spirv_prelink_validation_buffer.md",
+    "class": "OVERSIZE",
+    "size": 149555
+   }
+  },
+  {
+   "at": "2026-08-31T05:02:38Z",
+   "backlog": 2020759,
+   "defects": 40,
+   "offenders": 185,
+   "top": {
+    "path": "imported/project_9401_hpp_export_docs_mismatch.md",
+    "class": "OVERSIZE",
+    "size": 79486
+   }
+  },
+  {
+   "at": "2026-09-01T04:14:35Z",
+   "backlog": 1788504,
+   "defects": 36,
+   "offenders": 181,
+   "top": {
+    "path": "imported/feedback_a_status_set_broader_than_its_docstring_livelocks_the_throttle.md",
+    "class": "OVERSIZE",
+    "size": 69088
+   }
+  },
+  {
+   "at": "2026-09-01T04:54:11Z",
+   "backlog": 1583232,
+   "defects": 35,
+   "offenders": 177,
+   "top": {
+    "path": "imported/feedback_control_the_instrument_not_the_reasoning.md",
+    "class": "OVERSIZE",
+    "size": 61438
+   }
+  },
+  {
+   "at": "2026-09-02T04:18:53Z",
+   "backlog": 1416941,
+   "defects": 34,
+   "offenders": 173,
+   "top": {
+    "path": "imported/feedback_a_size_figure_names_a_file_check_which_one.md",
+    "class": "OVERSIZE",
+    "size": 52381
+   }
+  },
+  {
+   "at": "2026-09-03T04:12:20Z",
+   "backlog": 1284931,
+   "defects": 34,
+   "offenders": 169,
+   "top": {
+    "path": "imported/feedback_the_compaction_bound_targets_the_wrong_file.md",
+    "class": "OVERSIZE",
+    "size": 49873
+   }
+  },
+  {
+   "at": "2026-09-03T04:12:40Z",
+   "backlog": 1284931,
+   "defects": 34,
+   "offenders": 169,
+   "top": {
+    "path": "imported/feedback_the_compaction_bound_targets_the_wrong_file.md",
+    "class": "OVERSIZE",
+    "size": 49873
+   }
+  },
+  {
+   "at": "2026-09-04T04:10:13Z",
+   "backlog": 1158552,
+   "defects": 34,
+   "offenders": 165,
+   "top": {
+    "path": "imported/project_12364_cts_storage_image_minnonuniform.md",
+    "class": "OVERSIZE",
+    "size": 45261
+   }
+  },
+  {
+   "at": "2026-09-04T04:10:25Z",
+   "backlog": 1158552,
+   "defects": 34,
+   "offenders": 165,
+   "top": {
+    "path": "imported/project_12364_cts_storage_image_minnonuniform.md",
+    "class": "OVERSIZE",
+    "size": 45261
+   }
+  },
+  {
+   "at": "2026-09-05T04:16:22Z",
+   "backlog": 1047359,
+   "defects": 30,
+   "offenders": 162,
+   "top": {
+    "path": "imported/project_11999_gpu_printing_reenable_parked.md",
+    "class": "OVERSIZE",
+    "size": 43399
+   }
+  },
+  {
+   "at": "2026-09-06T04:15:13Z",
+   "backlog": 941779,
+   "defects": 30,
+   "offenders": 158,
+   "top": {
+    "path": "imported/project_slang_rhi_598_optix_coopvec_capability.md",
+    "class": "OVERSIZE",
+    "size": 39795
+   }
+  },
+  {
+   "at": "2026-09-06T04:15:21Z",
+   "backlog": 941779,
+   "defects": 30,
+   "offenders": 158,
+   "top": {
+    "path": "imported/project_slang_rhi_598_optix_coopvec_capability.md",
+    "class": "OVERSIZE",
+    "size": 39795
+   }
+  },
+  {
+   "at": "2026-09-07T04:17:16Z",
+   "backlog": 851760,
+   "defects": 27,
+   "offenders": 155,
+   "top": {
+    "path": "imported/project_12074_sgl_tests_teardown_exitcode_flake.md",
+    "class": "OVERSIZE",
+    "size": 37304
+   }
+  },
+  {
+   "at": "2026-09-07T04:17:24Z",
+   "backlog": 851760,
+   "defects": 27,
+   "offenders": 155,
+   "top": {
+    "path": "imported/project_12074_sgl_tests_teardown_exitcode_flake.md",
+    "class": "OVERSIZE",
+    "size": 37304
+   }
+  },
+  {
+   "at": "2026-09-08T04:14:22Z",
+   "backlog": 768756,
+   "defects": 27,
+   "offenders": 151,
+   "top": {
+    "path": "imported/feedback_shallow_clone_makes_your_head_the_graft_root.md",
+    "class": "OVERSIZE",
+    "size": 36083
+   }
+  },
+  {
+   "at": "2026-09-08T04:14:36Z",
+   "backlog": 768756,
+   "defects": 27,
+   "offenders": 151,
+   "top": {
+    "path": "imported/feedback_shallow_clone_makes_your_head_the_graft_root.md",
+    "class": "OVERSIZE",
+    "size": 36083
+   }
+  },
+  {
+   "at": "2026-09-09T04:18:25Z",
+   "backlog": 696913,
+   "defects": 27,
+   "offenders": 147,
+   "top": {
+    "path": "imported/project_11528_gapc_pending.md",
+    "class": "OVERSIZE",
+    "size": 31909
+   }
   }
  ]
 }

@@ -4063,6 +4063,7 @@
 - [resolved aarch64 ifloat neg 0 0 was a signed unsig](ag-1776713211742-1w6l4e/1788888872953-resolved-aarch64-ifloat-neg-0-0-was-a-signed-unsig.md) — _ag-1776713211742-1w6l4e_
 - [wired triager fixer don t double dispatch claim th](ag-1776713211742-1w6l4e/1788903865197-wired-triager-fixer-don-t-double-dispatch-claim-th.md) — _ag-1776713211742-1w6l4e_
 - [triager memo sent up to the orchestrator is fyi no](ag-1776713211742-1w6l4e/1788910357132-triager-memo-sent-up-to-the-orchestrator-is-fyi-no.md) — _ag-1776713211742-1w6l4e_
+- [no reviewer assignee re requests on bot authored s](ag-1776713211742-1w6l4e/1788988960370-no-reviewer-assignee-re-requests-on-bot-authored-s.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -5697,6 +5698,20 @@
 - [approver challenger calibration on docs prs devin ](ag-1783611156430-vvj8oi/1788947298987-approver-challenger-calibration-on-docs-prs-devin-.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement large vendoring test o](ag-1783611156430-vvj8oi/1788948128585-approver-human-disagreement-large-vendoring-test-o.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain ci green on sha unevaluable](ag-1783611156430-vvj8oi/1788949627703-approver-infra-abstain-ci-green-on-sha-unevaluable.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement website content out of](ag-1783611156430-vvj8oi/1788957891077-approver-human-disagreement-website-content-out-of.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger probe language reference conve](ag-1783611156430-vvj8oi/1788960523826-approver-challenger-probe-language-reference-conve.md) — _ag-1783611156430-vvj8oi_
+- [approver false safe near miss caught by the decisi](ag-1783611156430-vvj8oi/1788965496996-approver-false-safe-near-miss-caught-by-the-decisi.md) — _ag-1783611156430-vvj8oi_
+- [approver revision chain a synchronize webhook can ](ag-1783611156430-vvj8oi/1788966903392-approver-revision-chain-a-synchronize-webhook-can-.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger probe disallow the construct p](ag-1783611156430-vvj8oi/1788969947010-approver-challenger-probe-disallow-the-construct-p.md) — _ag-1783611156430-vvj8oi_
+- [approver human disagreement merged after abstain l](ag-1783611156430-vvj8oi/1788973325106-approver-human-disagreement-merged-after-abstain-l.md) — _ag-1783611156430-vvj8oi_
+- [approver critique mustfix never call record decisi](ag-1783611156430-vvj8oi/1788977923557-approver-critique-mustfix-never-call-record-decisi.md) — _ag-1783611156430-vvj8oi_
+- [approver critique mustfix on a shallow clone prove](ag-1783611156430-vvj8oi/1788979080856-approver-critique-mustfix-on-a-shallow-clone-prove.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger miss slang cmake options matri](ag-1783611156430-vvj8oi/1788979868955-approver-challenger-miss-slang-cmake-options-matri.md) — _ag-1783611156430-vvj8oi_
+- [approver calibration github workflow file prs unde](ag-1783611156430-vvj8oi/1788979996344-approver-calibration-github-workflow-file-prs-unde.md) — _ag-1783611156430-vvj8oi_
+- [approver clause gap reason code precedence a polic](ag-1783611156430-vvj8oi/1788980480210-approver-clause-gap-reason-code-precedence-a-polic.md) — _ag-1783611156430-vvj8oi_
+- [approver infra abstain collect reviews sh exit 20 ](ag-1783611156430-vvj8oi/1788983436175-approver-infra-abstain-collect-reviews-sh-exit-20-.md) — _ag-1783611156430-vvj8oi_
+- [approver critique mustfix codex comment hygiene ru](ag-1783611156430-vvj8oi/1788983445996-approver-critique-mustfix-codex-comment-hygiene-ru.md) — _ag-1783611156430-vvj8oi_
+- [approver infra abstain synthesize review doc md be](ag-1783611156430-vvj8oi/1788989335559-approver-infra-abstain-synthesize-review-doc-md-be.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_
@@ -5840,6 +5855,7 @@
 - [approver human disagreement nv sync pr merged join](ag-1783611156448-d49n0a/1788880961965-approver-human-disagreement-nv-sync-pr-merged-join.md) — _ag-1783611156448-d49n0a_
 - [approver calibration ci workflow that merges build](ag-1783611156448-d49n0a/1788905666798-approver-calibration-ci-workflow-that-merges-build.md) — _ag-1783611156448-d49n0a_
 - [approver clause gap reason code precedence when a ](ag-1783611156448-d49n0a/1788941427259-approver-clause-gap-reason-code-precedence-when-a-.md) — _ag-1783611156448-d49n0a_
+- [approver confirmed faithful bash github script ci ](ag-1783611156448-d49n0a/1788969888394-approver-confirmed-faithful-bash-github-script-ci-.md) — _ag-1783611156448-d49n0a_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_
@@ -5858,3 +5874,4 @@
 - [legoop project_session_may14](legoop-project_session_may14.md) — _unattributed_
 - [legoop project_slang_mcp_gateway_lazy](legoop-project_slang_mcp_gateway_lazy.md) — _unattributed_
 - [legoop reference_show_transcript_skill](legoop-reference_show_transcript_skill.md) — _unattributed_
+- [correction dev opened and core team tracking issues are in scope](operator/1788958700000-correction-dev-opened-and-core-team-tracking-issues-are-in-scope.md) — _operator_

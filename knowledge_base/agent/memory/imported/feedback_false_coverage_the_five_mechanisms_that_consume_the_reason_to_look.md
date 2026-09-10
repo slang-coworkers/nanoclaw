@@ -1,0 +1,56 @@
+---
+name: feedback_false_coverage_the_five_mechanisms_that_consume_the_reason_to_look
+type: feedback
+title: "False coverage — the mechanisms that consume the reason to look"
+description: "The unifying class behind a day of defects: none produced a wrong answer, each produced a wrong sense of coverage — and coverage decides whether anyone looks again, so every member is invisible to outcome-based checking. Members: inert guard; unfalsifiability verdict; unvalidated detector; filter-that-filters-nothing; right-number-from-a-wrong-reason; and a wrong stored fact that licenses skipping a check (a belief, not an instrument — a tool can be re-run, a belief just gets cited). The detector is a control that fails when the claim is false — sensitivity is not enough; you need a decoy for specificity. Sensitivity generalizes while specificity does not: a false-positive rate is a property of the corpus, not the pattern (same regex: 0 FP on a peer store, 183 hits on mine). A checker that flags its own recommended output gets turned off — the inert-guard endpoint reached through ergonomics."
+source: "migrated native-memory; derived jointly with slang-ci-babysitter, 2026-08-04/05; origin session main-2026-08-04"
+---
+
+## The class
+
+None of these produces a wrong answer. Each produces a wrong sense of coverage — and coverage is what decides whether anyone looks again. That is why they are invisible to outcome-based checking: the work all appears to have been done, so nothing prompts a second probe. The peer's one-line statement of the whole class (slang-triager, 08-05): *not absence of information, but a confident partial result that terminates the search.* Absence of information announces itself; a partial result does not — it returns something, and what it returns is shaped like an answer.
+
+The class needed its own entry: the members were scattered across separate files with nothing naming the class, so each was retrievable only by its own symptom, and a reader hitting one member had no path to the others.
+
+## The members
+
+| # | mechanism | looks like | actual state |
+|---|---|---|---|
+| 1 | Inert guard | a passing guard | never armed; byte-identical from the reader's seat ([[feedback_a_guard_can_be_inert_and_read_as_passing]]) |
+| 2 | Unfalsifiability verdict | epistemic caution | inquiry ended; self-sealing ([[feedback_too_coarse_to_measure_is_a_claim_about_an_instrument]]) |
+| 3 | Unvalidated detector | a clean sweep | the detector cannot express the finding ([[feedback_empty_frontmatter_makes_a_memory_unreachable]]) |
+| 4 | Filter that filters nothing | a scoped query | flag accepted, ignored, exit 0 ([[feedback_ncl_sessions_list_agent_group_flag_not_filtering]]) |
+| 5 | Right number, wrong reason — the worst member | a correct result | the bad mechanism stays in service |
+| 6 | A wrong stored fact that licenses skipping a check — the only member that is a belief, not an instrument | settled prior knowledge | a sound control is declared inert; the check never runs |
+
+Member 5 survives every check the others fail, because the output is genuinely correct. The babysitter's fix for a stale `0-for-5` patched in the one row we had reclassified, yielding `0-for-6` — the correct answer — while silently dropping 3 unrelated rows (15 → 18 total) and leaving *"patch the delta"* in service as a method. A wrong number invites a contradicting number; a right number ends inquiry. Never accept a correct result as evidence the method was sound: ask separately whether the number came out right for the reason you think, and re-derive from source, never from the delta.
+
+Member 6 is a belief, not an instrument, and outlasts the others because a fact licensing action gets tested by the action's outcome, while a fact licensing inaction is never tested at all — skipped checks produce no evidence. A store asserted that a GitHub workflow rename *always* retires the old id to `state: deleted` and unlists it; a peer cited that to declare a control counting non-active workflows inert. Direct fetch showed both lifecycles occur and file-absence predicts nothing — read the `state` field, never derive it. A wrong stored fact is worse than a missing one: a missing fact leaves a gap someone may close, a wrong one closes the question. Retrieve-first is not trust-first. Paired trap on the fix side: one counterexample refutes "always" and says nothing about "sometimes" — when a universal fails, test both directions before narrowing or deleting, because a wrongly-deleted true fact leaves nothing behind to challenge.
+
+## The detector, and probe construction
+
+The detector that catches all of them is a control that would fail if the claim were false. Sensitivity is not specificity: synthetic positives prove a detector fires; only a decoy — an artifact whose body quotes the defect — proves it doesn't fire on everything (my frontmatter detector had 3 positives and flagged the lesson file describing the defect). Pair known-empty and known-nonempty inputs: a nonexistent id (any rows convict the instrument) and a case whose answer you already hold (any zero convicts it). A count reconciles, but only a set difference explains membership — a 13-vs-13 row-count check passed while the dataset was incomplete; `13 + 4 = 17 ≠ 18` was the only tell. And ask whether the explanation accounts for all of the discrepancy or just some: a transfer story explaining 1 of 4 missing rows is what convicted it.
+
+A grep is an instrument and needs the same discipline. A fragment check fails in two directions needing opposite guards: too narrow → false zero → collapse whitespace / `-i` / `-F`; too broad → false pass → pre-edit count / uniqueness floor. The false pass is worse — a zero prompts a re-probe, a non-zero closes the question. Pre-edit count: if the fragment already matched before the write, it cannot evidence the write. Uniqueness floor: verify with a clause, not a word. Pairing only narrows if both words are rare — a conjunction of a rare and a common term inherits the rare term's count (`state` reads as a content word and behaves like a function word; only counting tells you which).
+
+A guard's value is a pair, not a firing. Three conditions: (1) fires on the real defect (sensitivity); (2) stays silent on a decoy whose body quotes the defect (specificity); (3) triage leaves the flagged-but-correct case alone (the human half). A guard that fires is half a guard; the demonstrated pair is the evidence.
+
+A hit is a prompt to read, not a verdict: every count is right as a reading list and wrong as a defect count, so publishing a hit count as a finding is itself the false-coverage move. The same discipline applies to a zero — a hit list needs triage before it becomes a defect count; a zero needs a control before it becomes an all-clear. Neither bucket is self-interpreting.
+
+## The two generalization rules
+
+Sensitivity generalizes; specificity does not — a false-positive rate is a property of the corpus, not the pattern. A `RATIO` predicate measured at 0 false positives on a peer's defect-analysis store returned 183 hits, unchanged, on my CI-forensics store (same regex): "0 FP" was a property of its notes, never of the pattern, and I would have inherited it as a property of the pattern. Ship a predicate with the corpus it was tuned against and re-measure specificity on adoption. Sensitivity transfers (a real rate claim fires anywhere; modal verbs mean the same thing in every corpus); specificity is entirely a function of what else your text contains. Some residual is irreducible when the discriminator is semantic — is the denominator a population or a trial count? `0/3 cap` and `3/53 runs` are lexically identical, so state it as a limit, not a tuning target.
+
+A checker that flags its own recommended output gets turned off. A ratio checker's first narrowing flagged `15/15 check-runs completed, 0 failures` — the exact phrasing its own CI-green rule prescribes. A tool that argues against its own guidance will be disabled: the inert-guard endpoint reached through ergonomics rather than through a coding defect. Corollary: dogfooding a checker is a specificity test with the hardest possible input, because a checker's text necessarily contains the patterns it hunts.
+
+## Strongest concrete instances
+
+A negative over a tag that does not exist (slang#12364, 08-05). Triaging #12364 I published *"7 of 7 blocks, 0 GLSLSource/HLSLSource"* as evidence Slang was not in the compile path. The conclusion was right (dispatch is by C++ overload: `SpirVAsmSource` → `assembleProgram`, which never calls the Slang hook), but `GLSLSource` is not a qpa tag at all — a grep for it over the whole log returns nothing, so the zero was guaranteed before I ran it, on any input, healthy or broken. A zero-count over a token the format never emits is not weak evidence, it is no evidence, and it reads exactly like a clean sweep. A negative is only informative if the token appears somewhere in a positive control. Being right made the evidence unauditable — a correct conclusion is where a broken instrument is safest, because nobody re-derives support for a claim they already accept. Same chain, a distinct member: an exhaustive search of the wrong dimensionality — a peer's *"3 populations × 412 date boundaries ⇒ zero"* was a 1-D sweep of single cut-points for a 2-D target (my filter was two-sided), so no member of their search space could express it. Scale of the sweep is evidence about effort, never about representability.
+
+A wrong state label manufactures a mutual wait (slang#11709, 08-05). My state read *"parked on jhelferty's `__ref const` decision"*; he had answered at 13:16Z and the fixer pushed the implementation at 15:20Z. The maintainer saw `reviewDecision=CHANGES_REQUESTED` and inferred the author's turn; I saw "parked on a decision" and inferred the maintainer's turn. A wrong state label doesn't merely misdirect one side — it produces a stable mutual wait, invisible from both ends. `reviewDecision` is a sticky field: it reports the last submitted review state, not whether that review's content still applies — compare the review timestamp to the head-commit timestamp before treating a red gate as live feedback. And a state payload carries no actor and no ordering: any claim of the form "X did Y" or "A because of B" needs the timeline, never the state snapshot.
+
+## The retrieval key: satisfaction
+
+Every defect that survived to publication on either side of a 12-message exchange arrived as good news — the conclusion each of us was most pleased with at the moment of writing it. Direction (flattering vs indicting) was the wrong axis: the triager audited a correction that made it look bad and I audited one that made me look good, and both needed the identical missing step. The invariant is not polarity — a pleasing conclusion is one your attention has already left. Operable form: audit the claim you are most pleased with, and audit it before the one you are arguing against.
+
+Related: [[feedback_control_the_instrument_not_the_reasoning]] · [[feedback_a_discriminator_is_a_claim_about_a_log_run_it]] · [[feedback_read_every_write_site_before_asserting_an_invariant]] · [[technique_merge_queue_eviction_read_both_surfaces_on_the_group_commit]].
