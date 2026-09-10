@@ -13,11 +13,19 @@
  * exist (`main.md:234`), so this is a retarget to the section that was always meant,
  * not a de-link.
  *
- * One later content change is bounded the same way: `base-common` gained the
+ * Two later content changes are bounded the same way. `base-common` gained the
  * `explain-diff-html` skill, which adds exactly one `## Skills` line to every
- * non-`main` composed document (`main` is flat and lists no skills). The pre-change
- * fixtures stay immutable; stripping that one line from the shipped golden must
- * reproduce them byte for byte.
+ * non-`main` composed document (`main` is flat and lists no skills). Then the
+ * group-scope `ncl` table gained its `tasks` and `pr-mappings` rows — two
+ * resources a group-scoped agent could already reach and was never told about.
+ *
+ * And every type carries `## Resident Skill Instructions`, the resident half of a
+ * skill dir's contract, which the fixtures predate.
+ *
+ * The pre-change fixtures stay immutable; stripping those additions from the
+ * shipped golden must reproduce them byte for byte. Each strip asserts exact
+ * cardinality first, so a transform applied twice, or a second edit that happened
+ * to cancel out, still fails.
  */
 import fs from 'fs';
 import path from 'path';
@@ -41,6 +49,44 @@ const SKILL_LINE_ONLY = ['base-common', 'base-common.persona', 'default', 'defau
 const SKILL_LINE_KEY = '`/explain-diff-html`';
 const SKILL_LINE_RE = /^- `\/explain-diff-html` — [^\n]*\n/m;
 
+/** The two group-scope `ncl` rows added after the pre-change fixtures were taken. */
+const NCL_ROWS: readonly { key: string; re: RegExp }[] = [
+  { key: '| `tasks`  ', re: /^\| `tasks` +\|[^\n]*\n/m },
+  { key: '| `pr-mappings`', re: /^\| `pr-mappings` +\|[^\n]*\n/m },
+];
+
+const RESIDENT_HEADING = '## Resident Skill Instructions';
+
+/**
+ * The exact bytes the resident section adds, rebuilt from the skill's own
+ * `instructions.md` rather than from the composer.
+ *
+ * Deriving it from the source file is what makes the strip a real bound: a
+ * transform that merely deleted everything between two headings would also absorb
+ * an edit made INSIDE the section, which is the one thing this file exists to rule
+ * out. The `####` leveling is spelled out here on purpose — reusing the composer's
+ * `normalizeFragment` would make the assertion agree with itself.
+ *
+ * Only `onecli-gateway` ships an `instructions.md` today; a second one turns the
+ * cardinality assertion red, which is the intended prompt to update this.
+ */
+function residentSectionBytes(): string {
+  const body = fs
+    .readFileSync(path.join(process.cwd(), 'container', 'skills', 'onecli-gateway', 'instructions.md'), 'utf-8')
+    .trim()
+    .replace(/^# /m, '#### ');
+  return `\n${RESIDENT_HEADING}\n\n### \`/onecli-gateway\`\n\n${body}\n`;
+}
+
+/** Remove that exact block, leaving the document as it stood before. */
+function stripResidentSection(doc: string): string {
+  const block = residentSectionBytes();
+  // Byte for byte, exactly once: a changed prohibition, a changed heading level, or
+  // a second shipped instructions.md all fail here rather than passing through.
+  expect(doc.split(block).length - 1).toBe(1);
+  return doc.replace(block, '');
+}
+
 function golden(dir: string, name: string): string {
   return fs.readFileSync(path.join(dir, `${name}.md`), 'utf-8');
 }
@@ -57,7 +103,9 @@ describe('the anchor retarget is the only content change', () => {
 
       const transformed = before.replaceAll(OLD_ANCHOR, NEW_ANCHOR);
 
-      expect(transformed).toBe(golden(GOLDEN_DIR, name));
+      expect(before).not.toContain(RESIDENT_HEADING);
+
+      expect(transformed).toBe(stripResidentSection(golden(GOLDEN_DIR, name)));
       // Byte delta is the length difference of the two anchor strings, nothing more.
       expect(Buffer.byteLength(transformed) - Buffer.byteLength(before)).toBe(
         Buffer.byteLength(NEW_ANCHOR) - Buffer.byteLength(OLD_ANCHOR),
@@ -66,14 +114,25 @@ describe('the anchor retarget is the only content change', () => {
   }
 
   for (const name of SKILL_LINE_ONLY) {
-    it(`${name}: differs from the pre-change golden by the explain-diff-html skill line only`, () => {
+    it(`${name}: differs from the pre-change golden by the skill line, ncl rows and resident section only`, () => {
       const shipped = golden(GOLDEN_DIR, name);
+      const before = golden(PRE_DIR, name);
 
-      // Exactly one occurrence, asserted before stripping — same reasoning as above.
+      // Exactly one occurrence of each, asserted before stripping — same reasoning
+      // as above, and it is why each addition is listed individually rather than
+      // stripped by one permissive pattern.
       expect(shipped.split(SKILL_LINE_KEY).length - 1).toBe(1);
-      expect(golden(PRE_DIR, name)).not.toContain(SKILL_LINE_KEY);
+      expect(before).not.toContain(SKILL_LINE_KEY);
+      for (const row of NCL_ROWS) {
+        expect(shipped.split(row.key).length - 1, `${row.key} must appear once in the shipped golden`).toBe(1);
+        expect(before, `${row.key} must be absent from the immutable fixture`).not.toContain(row.key);
+      }
 
-      expect(shipped.replace(SKILL_LINE_RE, '')).toBe(golden(PRE_DIR, name));
+      expect(before).not.toContain(RESIDENT_HEADING);
+
+      let stripped = stripResidentSection(shipped).replace(SKILL_LINE_RE, '');
+      for (const row of NCL_ROWS) stripped = stripped.replace(row.re, '');
+      expect(stripped).toBe(before);
     });
   }
 
