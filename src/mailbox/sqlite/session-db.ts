@@ -7,7 +7,7 @@
  */
 import Database from 'better-sqlite3';
 
-import { createInboundRecord } from '../model.js';
+import { createInboundRecord, failureClassOf, isFailedAck } from '../model.js';
 import type { InboundWrite } from '../model.js';
 import { INBOUND_SCHEMA, OUTBOUND_SCHEMA } from './schema.js';
 
@@ -250,18 +250,22 @@ export function syncProcessingAcks(inDb: Database.Database, outDb: Database.Data
 
   if (completed.length === 0) return;
 
-  // `script-skip:error` (pre-task script crashed) lands as a FAILED run —
-  // semantically true, and it lets recurrence derive the trailing failed
-  // streak from the occurrence rows themselves (no stored counter).
+  // `script-skip:error` (pre-task script crashed) and a plain `failed` both land
+  // as a FAILED run — semantically true, and it lets recurrence derive the
+  // trailing failed streak from the occurrence rows themselves (no stored
+  // counter). The SELECT above has always fetched `failed`; mapping it to
+  // `completed` threw away the runner's own verdict.
   const completeStmt = inDb.prepare(
     "UPDATE messages_in SET status = 'completed' WHERE id = ? AND status NOT IN ('completed', 'failed')",
   );
   const failStmt = inDb.prepare(
-    "UPDATE messages_in SET status = 'failed' WHERE id = ? AND status NOT IN ('completed', 'failed')",
+    `UPDATE messages_in SET status = 'failed', failure_class = ?
+       WHERE id = ? AND status NOT IN ('completed', 'failed')`,
   );
   inDb.transaction(() => {
     for (const { message_id, status } of completed) {
-      (status === 'script-skip:error' ? failStmt : completeStmt).run(message_id);
+      if (isFailedAck(status)) failStmt.run(failureClassOf(status), message_id);
+      else completeStmt.run(message_id);
     }
   })();
 }
@@ -499,6 +503,14 @@ export function migrateMessagesInTable(db: Database.Database): void {
     // 1 = only deliver on the container's first poll (fresh start).
     // All existing rows are normal messages, so default 0.
     db.prepare('ALTER TABLE messages_in ADD COLUMN on_wake INTEGER NOT NULL DEFAULT 0').run();
+  }
+  if (!cols.has('failure_class')) {
+    // Why a failed occurrence failed: 'script' (pre-task script crashed) or
+    // 'turn' (the agent turn itself errored). Only 'script' may auto-pause a
+    // series, so the two cannot share one status. NULL on existing rows — a
+    // historical failure was necessarily a script failure, but leaving it NULL
+    // means an old streak cannot resurrect a pause; see trailingFailedRuns.
+    db.prepare('ALTER TABLE messages_in ADD COLUMN failure_class TEXT').run();
   }
 }
 
