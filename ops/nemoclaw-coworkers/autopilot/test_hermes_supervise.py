@@ -522,3 +522,39 @@ class Cli(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class NudgeTargetSessionTest(unittest.TestCase):
+    """A nudge must land in the role's EXISTING session on the row (one live session per role per row)."""
+
+    def test_pick_prefers_active_running_then_active_then_newest(self):
+        rows = [
+            {"role": "hermes-builder", "session_id": "sess-old", "status": "active", "container_status": "stopped", "last_active": "2026-09-10T07:40:00Z"},
+            {"role": "hermes-builder", "session_id": "sess-live", "status": "active", "container_status": "running", "last_active": "2026-09-10T06:00:00Z"},
+            {"role": "hermes-tester", "session_id": "sess-tester", "status": "active", "container_status": "running", "last_active": "2026-09-10T11:00:00Z"},
+        ]
+        self.assertEqual(hs.pick_target_session(rows, "hermes-builder")["session_id"], "sess-live")
+        rows[1]["container_status"] = "stopped"
+        self.assertEqual(hs.pick_target_session(rows, "hermes-builder")["session_id"], "sess-old")  # newest last_active
+        rows[0]["status"] = "closed"
+        self.assertEqual(hs.pick_target_session(rows, "hermes-builder")["session_id"], "sess-live")  # only active one
+        self.assertIsNone(hs.pick_target_session(rows, "hermes-reviewer"))
+        self.assertIsNone(hs.pick_target_session(None, "hermes-builder"))
+
+    def test_nudge_action_carries_target_session_id(self):
+        st = state([{"id": "LOOP-F35", "spec": stamp(11)}])
+        threads = {"hermes-LOOP-F35": [spec_handoff("LOOP-F35", 11), builder_start("LOOP-F35", 10)]}
+        sessions = {"hermes-LOOP-F35": [
+            {"role": "hermes-builder", "session_id": "sess-nudge-twin", "cost_status": "unknown", "container_status": "stopped", "status": "active", "last_active": "2026-09-10T07:40:00Z"},
+            {"role": "hermes-builder", "session_id": "sess-architect-created", "cost_status": "unknown", "container_status": "running", "status": "active", "last_active": "2026-09-10T06:00:00Z"},
+        ]}
+        out = run(st, threads, sessions=sessions)
+        nudges = [a for a in out["actions"] if a["kind"] == "nudge" and a["row"] == "LOOP-F35"]
+        self.assertEqual(len(nudges), 1, out["actions"])
+        self.assertEqual(nudges[0]["target_session_id"], "sess-architect-created")
+        self.assertIn("pin: existing hermes-builder session", nudges[0]["target_session_note"])
+        self.assertEqual(out["rows"]["LOOP-F35"]["target_session_id"], "sess-architect-created")
+        # No known session -> null pin, and the note says the send is unpinned.
+        n2 = next(a for a in run(st, threads, sessions={})["actions"] if a["kind"] == "nudge")
+        self.assertIsNone(n2["target_session_id"])
+        self.assertIn("unpinned", n2["target_session_note"])

@@ -21,7 +21,8 @@ Inputs:
   --prs      gh pr list --repo slang-coworkers/hermes-agent --state all --json
              number,title,state,isDraft,createdAt,updatedAt,headRefName,body[,headRefOid]
   --nudges   {"<ID>": "<ISO>"} or {"<ID>": {"last_nudge", "state", "count", "alerts": {"<key>": "<ISO>"}}}
-  --sessions optional {"hermes-<ID>": [{"role", "session_id", "cost_status", "container_status"}]}
+  --sessions optional {"hermes-<ID>": [{"role", "session_id", "cost_status", "container_status", "status", "last_active"}]}
+             (nudge actions pin the role's live session as target_session_id — one live session per role per row)
              for cost_hold (`escalated` / `stopped`); absent means no signal
   --config   optional config.json (paused_rows, core_change_ok, authorize_round, release_tag,
              card_check, card_grace_minutes, card_missing_since)
@@ -616,11 +617,39 @@ def card_check(tick: _Tick, rec: dict, thread_msgs: list[dict] | None, cfg: dict
 
 # --------------------------------------------------------------------------- main
 
+def pick_target_session(rows: list[dict] | None, role: str | None) -> dict | None:
+    """The one session a nudge to `role` on this row must land in, or None when unknown.
+
+    NanoClaw keys agent-to-agent sessions on (recipient, sender->recipient messaging group,
+    thread), so a nudge sent WITHOUT a pin opens a second session for the role on the same row
+    next to the one the chain hand-off created (seen on LOOP-F35: an architect-created builder
+    session doing the work and an Orchestrator-created "Supervisor nudge" twin). Pinning the
+    existing session with send_message(target_session_id=...) keeps one live session per role
+    per row. Preference: an active session with a running container, then any active session,
+    then the most recently active one; ties break on the newest last_active.
+    """
+    if not rows or not role:
+        return None
+    want = str(role).strip().lower()
+    mine = [r for r in rows if str(r.get("role") or "").strip().lower() == want and r.get("session_id")]
+    if not mine:
+        return None
+
+    def rank(r: dict) -> tuple:
+        active = (r.get("status") or "active").lower() == "active"
+        running = (r.get("container_status") or "").lower() == "running"
+        return (1 if active and running else 0, 1 if active else 0, r.get("last_active") or "")
+
+    best = max(mine, key=rank)
+    return best
+
+
 class _Tick:
     """Per-tick sinks (alerts, actions, summary) plus the 24 h alert bound."""
 
-    def __init__(self, now_dt: datetime) -> None:
+    def __init__(self, now_dt: datetime, sessions: dict | None = None) -> None:
         self.now = now_dt
+        self.sessions = sessions or {}
         self.actions: list[dict] = []
         self.alerts: list[dict] = []
         self.summary = {"in_flight": 0, "must_nudge": 0, "escalate": 0, "hold": 0, "cost_hold": 0, "blocked": 0, "gate": 0, "card_missing": 0}
@@ -642,7 +671,21 @@ class _Tick:
 
     def nudge(self, rec: dict, role: str, text: str) -> None:
         rec.update(action="nudge", message=text)
-        self.actions.append({"kind": "nudge", "row": rec["id"], "target_role": role, "thread_id": rec["thread_id"], "text": text})
+        target = pick_target_session(self.sessions.get(rec["thread_id"]), role)
+        sid = target.get("session_id") if target else None
+        rec["target_session_id"] = sid
+        self.actions.append({
+            "kind": "nudge", "row": rec["id"], "target_role": role, "thread_id": rec["thread_id"], "text": text,
+            # Pin the role's existing session on this row: without it the send opens a second
+            # session for the role (see pick_target_session). null = no known session; the
+            # Orchestrator then sends unpinned and the routing fallback applies.
+            "target_session_id": sid,
+            "target_session_note": (
+                f"pin: existing {role} session on this thread"
+                f" ({(target.get('container_status') or 'unknown')} container, {(target.get('status') or 'active')})"
+                if sid else "no known session for this role on the thread; unpinned send"
+            ),
+        })
         self.summary["must_nudge"] += 1
 
 
@@ -804,7 +847,7 @@ def supervise(
     sessions: dict | None = None,
     config: dict | None = None,
 ) -> dict:
-    tick = _Tick(parse_iso(now))
+    tick = _Tick(parse_iso(now), sessions)
     cfg = config or {}
     gating = state.get("gating") or {}
     rows_in = state.get("rows") or {}

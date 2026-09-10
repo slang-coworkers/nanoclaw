@@ -607,6 +607,16 @@ where it lives today and shows up in the next tick's state.
    `hermes-adopt-<phase>` thread (`dispatch-plan.md` § How a batch is dispatched says so). One
    thread per row is what lets §2 read a row's stage from its thread alone.
 
+## 9b. Nudges pin the role's live session
+
+An a2a session is keyed by (recipient, sender→recipient messaging group, thread), so a supervisor
+nudge sent by the Orchestrator without a pin opened a second hermes-builder session on LOOP-F35 next
+to the architect-created one (2026-09-10). `hermes_supervise.py` now puts `target_session_id` on every
+`nudge` action — the role's existing session on the row (running container preferred, then active,
+then most recent; `null` when none is known) — and `supervise-tick.md` passes it to `send_message`.
+The Orchestrator's spine carries the same rule for hand-written messages
+(`container/spines/hermes/context/row-sessions.md`): one live session per role per row.
+
 ## 10. Task cards and the rows board
 
 Every terminal hand-off on a row leaves a picture behind. The rule is always-in-context for the

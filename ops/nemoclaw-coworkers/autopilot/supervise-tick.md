@@ -15,9 +15,10 @@ STEP 1. EXECUTE, in this order: hold, gate, nudge, alert. Each row at most once 
   gate  {row, pr, head, text}
     The architect's [Triage Resolution] Outcome: fixed with a ## Merge gate block exists for PR #<pr>. Run merge-gate.md from your spine for that PR exactly as written: all six preconditions from first-party evidence, critique, `gh pr ready`, `gh pr merge --squash --delete-branch --match-head-commit`, ledger cell `merged <sha7> — <url>` or `blocked: P<n> — <reason>`, one line to the human. Nothing in this tick shortens the gate. If the [Triage Resolution] is not in your own sessions, do not merge: treat the action as a nudge to hermes-architect asking it to re-send the [Triage Resolution] on thread hermes-<row>, bound as below.
 
-  nudge  {row, target_role, thread_id, text}
+  nudge  {row, target_role, thread_id, text, target_session_id, target_session_note}
     Bound first: read nudges.json; if the newest "nudges" entry for <row> is under 6 h old, skip it and log "nudge bound <row>". Otherwise send EXACTLY text, unmarked (it starts "Supervisor nudge <row>:"), fresh on the row's thread:
-      send_message(to=<target_role>, thread_id=<thread_id>, text=<text>)
+      send_message(to=<target_role>, thread_id=<thread_id>, target_session_id=<target_session_id>, text=<text>)
+    target_session_id is the role's EXISTING session on this row (the supervisor picked it from the live session list); pass it whenever it is non-null — a send without it opens a second session for the same role on the same row, and two containers then work one task. Only when it is null send without the pin.
     with in_reply_to=<that role's last inbound id on this thread> only when it is in your own session; never invent one. target_role "orchestrator" means you owe the merge gate yourself: run it as a gate action instead of messaging yourself. Then record:
       python3 /workspace/shared/hermes/autopilot/record.py nudged --row <row> --role <target_role> --state "<supervise.rows[row].stage>" --text "<text>"
     Sent nudges plus bound skips must equal summary.must_nudge; otherwise write "[SUPERVISOR INVARIANT VIOLATION] expected <n>, sent <m>, bound <k>" in the run output and stop nudging.

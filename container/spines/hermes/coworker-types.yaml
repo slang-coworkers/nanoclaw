@@ -406,6 +406,7 @@ main:
     # Same trade the dashboard-base precedent makes. If a hermes-free install
     # ever needs the bytes back, delete container/spines/hermes/ — nothing else
     # in the tree depends on it.
+    - container/spines/hermes/context/row-sessions.md
     - container/spines/hermes/context/merge-gate.md
     # Awareness of the daily HTML status report: that `/hermes-status-report`
     # exists, where its output lands, how it is delivered, and that a recurring
