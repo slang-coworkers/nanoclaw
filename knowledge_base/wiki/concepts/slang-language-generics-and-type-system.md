@@ -8,7 +8,7 @@ source_count: 17
 
 # Slang Generics & Type System
 
-Slang specializes generics from argument types via the IR pipeline, solving type parameters from call/index arguments and enforcing interface conformance at compile time. This page covers generic specialization, inference, and overload resolution; the type-system representation topics (witness tables, extensions, coercion, visibility, codegen) live in [[wiki/concepts/slang-language-generics-and-type-system-2.md]].
+Slang specializes generics from argument types via the IR pipeline, solving type parameters from call/index arguments and enforcing interface conformance at compile time. This page covers generic specialization, inference, and overload resolution; the type-system representation topics (witness tables, extensions, coercion, visibility, codegen) live in [[wiki/concepts/slang-language-witness-and-conformance.md]].
 
 ## TL;DR
 

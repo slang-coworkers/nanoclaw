@@ -18,7 +18,7 @@ source_count: 55
 - `if constexpr` does NOT discard branches in a non-template function — both arms must compile.
 - Container build env: `/dev/shm` is only 64 MB in the coworker container.
 - Downstream-compiler version discovery, `IRTextureType` format operand, `VK_KHR_shader_abort`, and DescriptorHandle's two lowering models are documented below.
-- Companion page [[wiki/concepts/slang-misc-build-infrastructure-and-tooling-2.md]] covers packaging (WASM/CPack), `EXCLUDE_FROM_ALL` generators, the capability-generator, stale-PCH FIDDLE-state codegen errors, and binary-provenance traps (a stale prebuilt `slangc` embeds the OLD core module).
+- Companion page [[wiki/concepts/slang-build-cmake-packaging-and-generators.md]] covers packaging (WASM/CPack), `EXCLUDE_FROM_ALL` generators, the capability-generator, stale-PCH FIDDLE-state codegen errors, and binary-provenance traps (a stale prebuilt `slangc` embeds the OLD core module).
 
 This page covers build system mechanics (CMake, version tags, system dependencies), downstream compiler API surface, language server (slangd) configuration, MSVC quirks, container build environment, and SPIR-V extension implementation patterns.
 

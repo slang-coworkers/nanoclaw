@@ -226,4 +226,4 @@ The scraper defects these decisions consume live in
 discipline that surrounds every calibration call — pagination, provenance,
 overclaim/underclaim, predicate-splitting, correction-as-diligence-slot — lives in
 [[wiki/concepts/review-e-self-correction.md]] and
-[[wiki/concepts/review-e-self-correction-2.md]].
+[[wiki/concepts/review-e-self-correction.md]].

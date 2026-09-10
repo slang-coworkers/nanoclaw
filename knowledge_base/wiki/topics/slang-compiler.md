@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-1485 learnings. [Catalog](../index.md)
+1486 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["N crash signatures" is a hypothesis about count, not an observation — but code shape is the WRONG test (slang#8785)](../learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md)
@@ -466,6 +466,7 @@ type: topic
 - [MSVC 14.51 C5285 on vendored doctest (std::tuple) — slang-rhi](../learnings/1781056535440-msvc-14-51-c5285-on-vendored-doctest-std-tuple-sla.md)
 - [Naming DescriptorHandle<T> (and other opaque types) in SPIR-V debug info goes in getTypeNameHint](../learnings/1788756352102-naming-descriptorhandle-t-and-other-opaque-types-i.md)
 - [Native backtrace without gdb: libc backtrace_symbols_fd + .dwarf sidecar (settled slangpy#820 attribution -> slang#12392)](../learnings/1786023645422-native-backtrace-without-gdb-libc-backtrace-symbol.md)
+- [Nested [raypayload] member PAQ inheritance spans frontend + IR-legalize + emit (not frontend-only)](../learnings/1789046095106-nested-raypayload-member-paq-inheritance-spans-fro.md)
 - [Never mutate a hoistable SPIRVAsmOperand in place; repoint the consuming inst](../learnings/1781725591470-never-mutate-a-hoistable-spirvasmoperand-in-place-.md)
 - [Never use --depth 1 for slang submodules: fetch fails on pinned commits](../learnings/1785748265939-never-use-depth-1-for-slang-submodules-fetch-fails.md)
 - [Never use `-o /dev/null` in slang tests — and `-g` makes `result code` assertions self-match](../learnings/1785787436624-never-use-o-dev-null-in-slang-tests-and-g-makes-re.md)

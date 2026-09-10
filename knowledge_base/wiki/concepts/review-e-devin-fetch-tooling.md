@@ -201,5 +201,5 @@ of sample commands trips the matcher itself
 The correction/measurement discipline these tooling atoms exercised — pagination,
 correction-as-diligence-slot, provenance, predicate-splitting — lives in the
 self-correction pages ([[wiki/concepts/review-e-self-correction.md]],
-[[wiki/concepts/review-e-self-correction-2.md]]). The abstain-severity calls the
+[[wiki/concepts/review-e-self-correction.md]]). The abstain-severity calls the
 scraper feeds into live in [[wiki/concepts/review-e-abstain-calibration.md]].

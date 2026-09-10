@@ -32,7 +32,7 @@ Split out of [gh CLI Usage & PR/Issue Mechanics](../concepts/ci-gh-cli-usage.md)
 - **A proxy inverts when its precondition flips.** `comments==0` proxies "no public artifact" only for issues filed by *others*; on a bot-authored issue the **body** is the artifact.
 - **`gh api` has no `--arg`** — inline the value into `--jq`. `wc -m` returns **bytes** unless the locale says otherwise.
 
-Older folds on the same subject — the `--paginate` page-2 401, `total_count` scope, summarizing-tool negatives, path-classed 401s, and the 300-file patch cap — are in [part 2](../concepts/ci-github-instrument-limits-2.md).
+Older folds on the same subject — the `--paginate` page-2 401, `total_count` scope, summarizing-tool negatives, path-classed 401s, and the 300-file patch cap — are in [part 2](../concepts/ci-github-pagination-and-count-limits.md).
 
 ## The measured cap table (2026-08-05 fold)
 

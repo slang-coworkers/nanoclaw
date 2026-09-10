@@ -3,7 +3,7 @@ title: "Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics"
 type: concept
 group: slang-backends
 tags: [optix, cuda, ray-tracing, raypayload, paq, hlsl, dxc, payload-access-qualifiers]
-source_count: 6
+source_count: 9
 ---
 
 # Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics
@@ -14,6 +14,7 @@ Ray-tracing codegen in Slang spans the HLSL/DXC backend (payload access qualifie
 - Ray-payload access qualifiers (PAQ) are an HLSL/DXC-facing contract; emitting them wrongly silently changes payload lifetime rather than erroring.
 - OptiX loses payload on early ray termination — a payload read after termination is undefined, so the fix belongs at the termination site, not at the reader.
 - When a ray-tracing symptom appears in emitted code, trace it to the payload representation or an IR pass before changing the emitter.
+- A payload-typed member of a `[raypayload]` struct carries NO qualifier and inherits; fixing its false rejection means exempting it at the frontend check, the IR PAQ legalize default-fill, AND the emitter — a frontend-only relaxation emits HLSL that DXC rejects.
 - Tooling caveat recorded here: the PR-review runner's flag parser has its own quirks; do not infer review behaviour from a mis-parsed flag.
 
 ## Ray-Payload Access Qualifiers (PAQ) for HLSL/DXC
@@ -23,6 +24,8 @@ At SM 6.7+, DXC requires every field of a `[raypayload]` struct to carry payload
 **Asymmetric skip-gap:** The fix pass `legalizeRayPayloadAccessQualifiersForHLSL` skips fields that "already carry qualifiers" via two independent `continue` checks (one for read, one for write). This leaves a hole for explicit `[raypayload]` structs with one-sided qualifiers (e.g. `[read(caller)]` but no write): the field takes the first `continue` and is emitted with the missing complement, which DXC still rejects. The frontend only errors when BOTH read and write are missing. The fix replaces the `continue`-pair with two independent `if (!find) addDecoration` calls ([slang-raypayload-paq-pass-asymmetric-skip-gap](../learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md)).
 
 **Coverage gap on hit-shader-only compiles:** A competing fix (PR #11224) hooks into the `__forceVarIntoRayPayloadStructTemporarily` legalize path, which only fires around `TraceRay`/`HitObject::TraceRay`/`HitObject::Invoke` payload args — never around anyhit/closesthit/miss params. So a translation unit with no `TraceRay` call (typical for per-stage compiled shader libraries) leaves one-sided PAQ structs unfixed. The structurally-correct approach (PR #11218's `legalizeRayPayloadAccessQualifiersForHLSL`) walks every `IRStructType` carrying `IRRayPayloadDecoration`. When evaluating PAQ fixes, verify they run over all `IRRayPayloadDecoration` structs, not just call-site-reached ones ([slang-10267-pr-11224-coverage-gap-anyhit-only](../learnings/1779364869375-slang-10267-pr-11224-coverage-gap-anyhit-only.md)).
+
+**Nested payload members span three layers (frontend + legalize + emit), not frontend-only.** A `[raypayload]` struct whose member's TYPE is itself a `[raypayload]` struct (#12991) is wrongly rejected with `E40000` ("field must have 'read' OR 'write' access qualifiers"); per the DXR PAQ spec + DXC 1.8 such a member must carry NO qualifier and inherits the nested type's field-level PAQs. The tempting frontend-only fix — relaxing `checkRayPayloadStructFields` to skip the read/write requirement for a payload-typed field — is insufficient and emits HLSL that DXC rejects: the SM6.7+ pass `legalizeRayPayloadAccessQualifiersForHLSL` → `addDefaultPayloadAccessQualifiersToField/Struct` iterates ALL fields of every `IRRayPayloadDecoration` struct with no type check and injects default qualifiers, and `emitSemanticsImpl` then emits `read(...) : write(...)` on the struct-typed member. The correct fix exempts a payload-typed field at all THREE sites — the frontend check, the IR legalize default-fill, and (defensively) the emitter — because each payload struct is an independent `IRStructType`/`StructDecl` carrying its own decoration with no encoded outer/nested link, so the nested struct's own fields still validate and fill on their own. Reusable predicate to add (none exists today): AST — resolve the field type → `DeclRefType` → `StructDecl` → `findModifier<RayPayloadAttribute>()`; IR — `structType->findDecoration<IRRayPayloadDecoration>()`. General lesson: any "relax a frontend validation" fix on a target-specific feature must be threaded through the downstream legalize/emit passes, which frequently re-assert the very invariant the frontend was enforcing ([nested `[raypayload]` member PAQ inheritance spans frontend + IR-legalize + emit](../learnings/1789046095106-nested-raypayload-member-paq-inheritance-spans-fro.md)).
 
 ## OptiX Payload Loss on Early Ray Termination
 
@@ -51,7 +54,7 @@ Root cause: `emitPayloadWritebacks()` in `slang-ir-legalize-varying-params.cpp` 
 
 A callable/RT-payload null-rules crash spanning CUDA and Metal (#12273): a `[shader("callable")]` entry point with an OUTPUT (`out`/`inout` param or non-void return) crashes `slangc -target cuda`/`-target metal` with an access violation and **no diagnostic**. Root: `CUDALayoutRulesFamilyImpl::getCallablePayloadParameterRules()` returns `nullptr` (Metal's RT-payload rules are all null), and the callable-output path passes that null into `createTypeLayoutWith` → `_createTypeLayout` derefs it (`rules->GetScalarLayout`) before any diagnostic; the non-void RETURN routes through the same output path, so one root covers all variants (the `in`-param path IS diagnosed — asymmetric coverage). Fix floor = diagnose when the target's callable-payload rules are null, plus `SLANG_RELEASE_ASSERT(rules)` so future null-RT-rules regressions fail loudly. Reusable technique: a Windows `EXCEPTION_ACCESS_VIOLATION` compile crash reproduces as SIGSEGV on Linux Debug slangc with a `for tgt in cuda spirv hlsl glsl metal wgsl` differential + `-dump-ir` to see the last pass ([CUDA/Metal callable-shader output crash = null RT payload layout rules](../learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)).
 
-**Source learnings (8):**
+**Source learnings (9):**
 - [Implicit `IRRayPayloadDecoration` skips Slang's PAQ frontend validation](../learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md)
 - [Slang `legalizeRayPayloadAccessQualifiersForHLSL` — asymmetric `continue` leaves a user-reachable DXC-error hole](../learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md)
 - [PR #11224 for slang #10267 has a real coverage gap on hit-shader-only compiles](../learnings/1779364869375-slang-10267-pr-11224-coverage-gap-anyhit-only.md)
@@ -60,5 +63,6 @@ A callable/RT-payload null-rules crash spanning CUDA and Metal (#12273): a `[sha
 - [Slang CUDA/OptiX varying-param legalizer: terminate-intrinsic detection + pre-pass timing](../learnings/1781782798777-slang-cuda-optix-varying-param-legalizer-terminate.md)
 - [HitObject::TraceRay forces SPIR-V ≥1.5 (SER) regardless of -profile](../learnings/1784148153622-hitobject-traceray-forces-spir-v-1-5-ser-regardles.md)
 - [#12273 CUDA/Metal `[shader("callable")]` with an output null-derefs (getCallablePayloadParameterRules→nullptr passed to createTypeLayoutWith), no diagnostic; fix = diagnose + `SLANG_RELEASE_ASSERT(rules)`; AV↔SIGSEGV target differential repro](../learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)
+- [nested `[raypayload]` member PAQ inheritance spans frontend + IR-legalize + emit (not frontend-only)](../learnings/1789046095106-nested-raypayload-member-paq-inheritance-spans-fro.md)
 
 _Catalog: [[wiki/index.md]]_
