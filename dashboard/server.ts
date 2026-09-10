@@ -50,6 +50,7 @@ import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
 import { approverPolicyCheck, type ApproverPolicyCheck } from './approver-policy.js';
+import { rowLabelForThread } from './row-label.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
 import {
   priceUsage,
@@ -8204,6 +8205,8 @@ export async function handleRequest(
       type Parent = {
         nanoclaw_session_id: string | null;
         thread_id: string | null;
+        /** Bare hermes gap-matrix row id when thread_id is `hermes-<ROW>`, else null (row-label.ts). */
+        row_label: string | null;
         messaging_group_id: string | null;
         a2a_peer: string | null;
         display_title: string | null;
@@ -8251,6 +8254,7 @@ export async function handleRequest(
       const makeParent = (nano: NanoSess | null, folder: string): Parent => ({
         nanoclaw_session_id: nano ? nano.id : null,
         thread_id: nano ? nano.thread_id : null,
+        row_label: nano ? rowLabelForThread(nano.thread_id) : null,
         messaging_group_id: nano ? nano.messaging_group_id : null,
         a2a_peer: resolveA2aPeer(nano),
         display_title: nano ? nano.display_title : null,
@@ -8871,7 +8875,7 @@ export async function handleRequest(
               .prepare(
                 `SELECT DISTINCT ag.id, ag.folder, ag.name
                    FROM sessions s JOIN agent_groups ag ON ag.id = s.agent_group_id
-                  WHERE s.thread_id = ? AND s.status = 'active'`,
+                  WHERE s.thread_id = ? AND s.status IN ('active', 'closed')`,
               )
               .all(threadFilter) as any[])
           : [];
@@ -8928,9 +8932,13 @@ export async function handleRequest(
             // Slack/Discord thread_ids (thread_ts, platform-native ids) are
             // structurally distinct from NanoClaw's msg-* ids and won't collide
             // in practice within a single agent's thread namespace.
+            // Lane mode also reads closed sessions so an ended coworker's lane
+            // still shows its history (lanes[] below lists it with ended:true).
             sessions = db
               .prepare(
-                "SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND status = 'active' AND thread_id = ?",
+                `SELECT id, thread_id FROM sessions WHERE agent_group_id = ? AND status ${
+                  laneMode ? "IN ('active', 'closed')" : "= 'active'"
+                } AND thread_id = ?`,
               )
               .all(agRow.id, threadFilter) as { id: string; thread_id: string | null }[];
           } else {
@@ -9332,22 +9340,26 @@ export async function handleRequest(
     // empty lane for a participant whose rows fell outside the page). Ordered
     // by each coworker's earliest session on the thread — roughly the order
     // they joined the chain (orch first, then triager, fixer, reviewer…).
-    let lanes: Array<{ folder: string; name: string; sessionIds: string[] }> | undefined;
+    // Closed sessions stay in the lane (a finished role's history is the
+    // point of the swim-lane); `ended` is true when no session of that
+    // coworker on this thread is still active.
+    let lanes: Array<{ folder: string; name: string; sessionIds: string[]; ended: boolean }> | undefined;
     if (laneMode && db) {
       try {
         const rows = db
           .prepare(
-            `SELECT ag.folder AS folder, COALESCE(ag.name, ag.folder) AS name, s.id AS session_id,
+            `SELECT ag.folder AS folder, COALESCE(ag.name, ag.folder) AS name, s.id AS session_id, s.status AS status,
                     MIN(s.created_at) OVER (PARTITION BY ag.id) AS first_created
                FROM sessions s JOIN agent_groups ag ON ag.id = s.agent_group_id
-              WHERE s.thread_id = ? AND s.status = 'active'
+              WHERE s.thread_id = ? AND s.status IN ('active', 'closed')
               ORDER BY first_created ASC, ag.folder ASC, s.created_at ASC`,
           )
-          .all(threadFilter) as Array<{ folder: string; name: string; session_id: string }>;
-        const byFolder = new Map<string, { folder: string; name: string; sessionIds: string[] }>();
+          .all(threadFilter) as Array<{ folder: string; name: string; session_id: string; status: string }>;
+        const byFolder = new Map<string, { folder: string; name: string; sessionIds: string[]; ended: boolean }>();
         for (const r of rows) {
-          const e = byFolder.get(r.folder) ?? { folder: r.folder, name: r.name, sessionIds: [] };
+          const e = byFolder.get(r.folder) ?? { folder: r.folder, name: r.name, sessionIds: [], ended: true };
           e.sessionIds.push(r.session_id);
+          if (r.status === 'active') e.ended = false;
           byFolder.set(r.folder, e);
         }
         lanes = [...byFolder.values()];
@@ -10341,6 +10353,8 @@ export async function handleRequest(
     // loop; empty on installs without the archive → no trace link rendered.
     const traceBase = process.env.CLAUDE_TRACE_BASE_URL || readProjectEnvValue('CLAUDE_TRACE_BASE_URL') || '';
     for (const s of sessions) {
+      // Hermes gap-matrix row id (thread_id `hermes-<ROW>`), null otherwise.
+      s.row_label = rowLabelForThread(s.thread_id);
       const c = s.session_id ? costByNano.get(s.session_id) : undefined;
       s.cost = c ? c.cost : 0;
       // Provider split of the SAME number. `cost` stays the total (every existing
