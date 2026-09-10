@@ -9,6 +9,8 @@ set -u
 case $(hostname) in slang-cpu-coworkers*) ;; *) echo "WRONG_HOST=$(hostname)"; exit 1;; esac
 ROOT=${NANOCLAW_ROOT:-$HOME/haaggarwal/nemoclaw-coworkers}
 WWW=${NEMO_WWW_DIR:-$HOME/.local/share/nemo-www}
+# Dashboard base URL for the rows board's deep links (row lane + "Live sessions" → #/cw/<folder>/s/<session>).
+export DASHBOARD_URL=${DASHBOARD_URL:-https://nv-hermes-xrnpj0b3n.gobrev.dev}
 OUT=$WWW/explanations
 mkdir -p "$OUT" || exit 1
 
