@@ -20,20 +20,23 @@ import {
 
 const MODEL = 'azure/openai/gpt-5.6-sol';
 
-function tokenCountLine(
-  ts: string,
-  last: CodexTokenUsage,
-  total: CodexTokenUsage = last,
-): string {
+function tokenCountLine(ts: string, last: CodexTokenUsage, total: CodexTokenUsage = last): string {
   return JSON.stringify({
     timestamp: ts,
     type: 'event_msg',
-    payload: { type: 'token_count', info: { total_token_usage: total, last_token_usage: last, model_context_window: 258400 } },
+    payload: {
+      type: 'token_count',
+      info: { total_token_usage: total, last_token_usage: last, model_context_window: 258400 },
+    },
   });
 }
 
 function turnContextLine(ts: string, model = MODEL): string {
-  return JSON.stringify({ timestamp: ts, type: 'turn_context', payload: { type: 'turn_context', model, cwd: '/workspace/agent' } });
+  return JSON.stringify({
+    timestamp: ts,
+    type: 'turn_context',
+    payload: { type: 'turn_context', model, cwd: '/workspace/agent' },
+  });
 }
 
 describe('normalizeCodexModel', () => {
@@ -63,13 +66,13 @@ describe('normalizeCodexModel', () => {
   // proves the two normalizer COPIES agree byte-for-byte.
   it('resolves EVERY known model across bare / prefix / dated / -latest / mixed-case forms', () => {
     for (const base of Object.keys(CODEX_MODEL_PRICING)) {
-      expect(normalizeCodexModel(base)).toBe(base);                              // bare
-      expect(normalizeCodexModel(`azure/openai/${base}`)).toBe(base);           // provider prefix
-      expect(normalizeCodexModel(`openai/openai/${base}`)).toBe(base);          // doubled prefix
-      expect(normalizeCodexModel(`${base}-20260101`)).toBe(base);               // dated snapshot
-      expect(normalizeCodexModel(`azure/openai/${base}-20260101`)).toBe(base);  // prefix + dated
-      expect(normalizeCodexModel(`${base}-latest`)).toBe(base);                 // -latest alias
-      expect(normalizeCodexModel(`  ${base.toUpperCase()} `)).toBe(base);       // case + whitespace
+      expect(normalizeCodexModel(base)).toBe(base); // bare
+      expect(normalizeCodexModel(`azure/openai/${base}`)).toBe(base); // provider prefix
+      expect(normalizeCodexModel(`openai/openai/${base}`)).toBe(base); // doubled prefix
+      expect(normalizeCodexModel(`${base}-20260101`)).toBe(base); // dated snapshot
+      expect(normalizeCodexModel(`azure/openai/${base}-20260101`)).toBe(base); // prefix + dated
+      expect(normalizeCodexModel(`${base}-latest`)).toBe(base); // -latest alias
+      expect(normalizeCodexModel(`  ${base.toUpperCase()} `)).toBe(base); // case + whitespace
     }
   });
 
@@ -180,6 +183,7 @@ describe('parseCodexRollout', () => {
     const events = parseCodexRollout(content);
     expect(events).toHaveLength(2);
     expect(events[0]).toEqual({
+      timestamp: '2026-08-05T03:28:26.223Z',
       dayKey: '20260805',
       model: MODEL,
       usage: { input_tokens: 25418, cached_input_tokens: 0, output_tokens: 311 },
@@ -223,7 +227,7 @@ describe('parseCodexRollout', () => {
       type: 'event_msg',
       payload: { type: 'token_count', info: { last_token_usage: { input_tokens: 100, output_tokens: 10 } } },
     });
-    expect(parseCodexRollout(content)[0].dayKey).toBeNull();
+    expect(parseCodexRollout(content)[0]).toMatchObject({ timestamp: null, dayKey: null });
   });
 });
 
@@ -272,7 +276,10 @@ describe('codexUsageKey — the cross-file dedupe that keeps us reconciled with 
 
   it('the replayed turn is billed exactly once', () => {
     const replayed = priceCodexUsage(MODEL, { input_tokens: 25418, cached_input_tokens: 0, output_tokens: 311 });
-    expect(sessionCost([parent, fork]).cost).toBeCloseTo(sessionCost([parent]).cost + sessionCost([fork]).cost - replayed, 12);
+    expect(sessionCost([parent, fork]).cost).toBeCloseTo(
+      sessionCost([parent]).cost + sessionCost([fork]).cost - replayed,
+      12,
+    );
   });
 
   it('keys on the model too, so two models on identical counts stay distinct', () => {
@@ -406,19 +413,34 @@ describe('CODEX_MODEL_PRICING agrees with the agent-runner’s copy (no drift)',
     // drift this must catch; enumerating only dashboard keys would miss it.
     const bases = new Set<string>([...Object.keys(CODEX_MODEL_PRICING), ...runnerKeys]);
     const inputs: (string | undefined)[] = [
-      undefined, '', 'claude-opus-5', 'some-future-model', 'gpt-9-imaginary-20260101', 'totally-unknown-latest',
-      'constructor', 'constructor-20260101', '__proto__-latest', 'toString', // inherited Object.prototype keys
+      undefined,
+      '',
+      'claude-opus-5',
+      'some-future-model',
+      'gpt-9-imaginary-20260101',
+      'totally-unknown-latest',
+      'constructor',
+      'constructor-20260101',
+      '__proto__-latest',
+      'toString', // inherited Object.prototype keys
     ];
     for (const base of bases) {
       inputs.push(
-        base, `azure/openai/${base}`, `openai/openai/${base}`, `${base}-20260101`,
-        `azure/openai/${base}-20260101`, `${base}-latest`, `  ${base.toUpperCase()} `,
+        base,
+        `azure/openai/${base}`,
+        `openai/openai/${base}`,
+        `${base}-20260101`,
+        `azure/openai/${base}-20260101`,
+        `${base}-latest`,
+        `  ${base.toUpperCase()} `,
       );
     }
     // Every discovered normalizer must agree with the dashboard on every input.
     for (const { where, fn } of runnerNormalizers) {
       for (const input of inputs) {
-        expect(fn(input), `${where} vs dashboard disagree on ${JSON.stringify(input)}`).toBe(normalizeCodexModel(input));
+        expect(fn(input), `${where} vs dashboard disagree on ${JSON.stringify(input)}`).toBe(
+          normalizeCodexModel(input),
+        );
       }
     }
   });
