@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-632 learnings. [Catalog](../index.md)
+635 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -36,6 +36,7 @@ type: topic
 - [[approver/output-review] Volatile GitHub fields (mergeStateStatus) are not decision-relevant — drop the value, keep the durable gate](../learnings/1784421284355-approver-output-review-volatile-github-fields-merg.md)
 - [[approver/procedure] A reviewable-PR webhook can be stale — check live PR state before spending review budget](../learnings/1788437163060-approver-procedure-a-reviewable-pr-webhook-can-be-.md)
 - [[approver/procedure] A stale webhook dispatch on an already-joined PR is a no-op + report, never a re-decision — record_decision is idempotent and will clobber the join](../learnings/1785841360069-approver-procedure-a-stale-webhook-dispatch-on-an-.md)
+- [[approver/revision-chain] A synchronize webhook can fire with NO new head commit — verify headRefOid before re-deciding](../learnings/1788966903392-approver-revision-chain-a-synchronize-webhook-can-.md)
 - [[approver/scope] Decide PR scope by changed paths, not branch/repo branding — nv-* fork-syncs](../learnings/1787887327287-approver-scope-decide-pr-scope-by-changed-paths-no.md)
 - [[tooling] critique-gate hook blocks READ-ONLY `gh api .../pulls/...` GETs — use gh pr view/diff or graphql](../learnings/1786386194490-tooling-critique-gate-hook-blocks-read-only-gh-api.md)
 - [`ncl sessions messages` has NO sender column — `direction=in` proves arrival, never authorship](../learnings/1786083556955-ncl-sessions-messages-has-no-sender-column-directi.md)
@@ -232,6 +233,7 @@ type: topic
 - [Coop-matrix (and no-instance-field builtin aggregate) array zero-init: getDefaultVal emits a fieldless makeStruct instead of the type-aware splat](../learnings/1786776911052-coop-matrix-and-no-instance-field-builtin-aggregat.md)
 - [Core-team self-assigned "Dev Opened" issue → skip triage even when it looks juicy](../learnings/1788215669900-core-team-self-assigned-dev-opened-issue-skip-tria.md)
 - [Correct premises, wrong conclusion: verifying one member of a set is not verifying the set](../learnings/1785776642421-correct-premises-wrong-conclusion-verifying-one-me.md)
+- [Correction (operator, 2026-09-09): "Dev Opened" and core-team tracking issues ARE in scope for triage and fixer dispatch](../learnings/1788958700000-correction-dev-opened-and-core-team-tracking-issues-are-in-scope.md)
 - [correction the critique gate escalation defect is an ordering race not dead code](../learnings/1785821186056-correction-the-critique-gate-escalation-defect-is-.md)
 - [CORRECTION to "ncl tasks list cannot filter by group" — `--group` errors loudly at group scope; only the non-existent `--agent-group-id` fails silently](../learnings/1785982910662-correction-to-ncl-tasks-list-cannot-filter-by-grou.md)
 - [CORRECTION to my earlier formatting.sh learning — the VERSION GATE is LOUD (exit 1 + message); the silent false-green is the BARE invocation hitting show_help at :47-50](../learnings/1786034840431-correction-to-my-earlier-formatting-sh-learning-th.md)
@@ -363,6 +365,7 @@ type: topic
 - [git stash pop is a stack op on a SHARED stack — never pop bare in a multi-session checkout](../learnings/1785830243413-git-stash-pop-is-a-stack-op-on-a-shared-stack-neve.md)
 - [Git worktree: fetch updates FETCH_HEAD not origin/<branch> → force-with-lease fails "stale info"; codex-critique can't read /tmp](../learnings/1788475965703-git-worktree-fetch-updates-fetch-head-not-origin-b.md)
 - [GitHub Actions `waiting` ≠ queued — it's a human approval gate, and it can jam a fleet's CI retry mechanism indefinitely](../learnings/1786404029507-github-actions-waiting-queued-it-s-a-human-approva.md)
+- [GitHub Actions API: event=schedule returns stale page; use branch=master + name filter for nightly conclusions](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md)
 - [GitHub Actions conclusion=action_required is an approval GATE, not a failure — bucket it as a fifth state](../learnings/1786327920887-github-actions-conclusion-action-required-is-an-ap.md)
 - [GitHub auto-close keywords fire regardless of surrounding "not" context — never write "Closes #N" even to negate it](../learnings/1786773657574-github-auto-close-keywords-fire-regardless-of-surr.md)
 - [GitHub gateway 401 split: actions+GraphQL down, REST reads OK (diagnostic)](../learnings/1784216892956-github-gateway-401-split-actions-graphql-down-rest.md)

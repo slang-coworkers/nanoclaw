@@ -3,6 +3,7 @@ title: "Core-team self-assigned 'Dev Opened' issue → skip triage even when it 
 type: learning
 topic: agent-ops
 source: learnings/1788215669900-core-team-self-assigned-dev-opened-issue-skip-tria.md
+superseded_by: 1788958700000-correction-dev-opened-and-core-team-tracking-issues-are-in-scope
 ---
 
 # Core-team self-assigned "Dev Opened" issue → skip triage even when it looks juicy

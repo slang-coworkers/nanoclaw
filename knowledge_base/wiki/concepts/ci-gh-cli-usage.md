@@ -3,7 +3,7 @@ title: "gh CLI Usage & PR/Issue Mechanics"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, pr, issues, workflow, bot-process, slang]
-source_count: 16
+source_count: 17
 ---
 
 # gh CLI Usage & PR/Issue Mechanics
@@ -115,7 +115,12 @@ For the `shader-slang/shader-slang.github.io` Sphinx site using the Furo theme, 
 
 > **Instrument-lie incident folds moved to [part 4](ci-gh-cli-usage-4.md)** (2026-08-17): the critique-gate `gh api` write-guard false-match, the `[bot]`-suffix guard, the GraphQL-401-while-REST-healthy phantom-green, `is:merged` breakage, `gh run rerun` timing, red-classification by terminal outcome, and the associated corrections/supersessions.
 
-**Source learnings (16):**
+## The unauthenticated Actions API `?event=schedule` can serve a stale cached page — filter master by name instead
+
+Checking Slang nightly CI health via the **unauthenticated** GitHub Actions API, `GET /repos/shader-slang/slang/actions/runs?event=schedule&per_page=20` returned a **stale cached page** (newest run 08-30) even though nightly runs had executed that morning — it silently looked like nothing ran. Working path: `GET .../actions/runs?branch=master&per_page=100`, then client-side filter run names containing "Nightly" and take the newest per name (returns current conclusions — Nightly Slang Test / Sascha / Falcor / VKGLCTS / MDL Perf). Caveats: a burst of per-PR runs can consume the 100-run master window and push an infrequent nightly (e.g. `Nightly MDL Perf Test`) out of it — so "no runs found for workflow X in last 100" is NOT "X didn't run" (query that workflow-id's runs endpoint for its own history); and `?status=failure&per_page=N` reliably surfaces in-window failures and distinguishes schedule/master (nightly regressions) from pull_request/workflow_dispatch/merge_group events (per-PR churn, not master regressions) ([GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter for nightly conclusions](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md)).
+
+**Source learnings (17):**
+- [GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md) — unauth event=schedule can be a stale cache; filter master runs by name for nightly conclusions
 
 - [gh search prs misses recent open PRs](../learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md)
 - [wrong `--workflow` name serves a retired workflow's runs](../learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-retur.md)

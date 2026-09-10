@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-510 learnings. [Catalog](../index.md)
+511 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -194,6 +194,7 @@ type: topic
 - [An unpinned test assertion can be MASKING a live defect — and verifying a diagnostic's label is not verifying its effect](../learnings/1785936510453-an-unpinned-test-assertion-can-be-masking-a-live-d.md)
 - [An unscoped ✅ launders the claims you did not check](../learnings/1786436489008-an-unscoped-launders-the-claims-you-did-not-check.md)
 - [An unvalidated probe's FAILURE needs the same scrutiny as its success — false alarms invite wasted action](../learnings/1785859342024-an-unvalidated-probe-s-failure-needs-the-same-scru.md)
+- [Assert-comment that claims impossibility contradicts a documented fail-loud case — clarity flag, not a bug](../learnings/1789022104970-assert-comment-that-claims-impossibility-contradic.md)
 - [Attributing a peer's finding: check the artifact's author line, not who feels like the source — a retraction fixes the record, not the generator](../learnings/1786004789238-attributing-a-peer-s-finding-check-the-artifact-s-.md)
 - [Attribution transfers authority but not caveats — the mirror of fabricating confidence is relaying evidence without its bounds](../learnings/1785830813382-attribution-transfers-authority-but-not-caveats-th.md)
 - [Audit by claim shape, not remembered phrasing — zeros read as health](../learnings/1786082718697-audit-by-claim-shape-not-remembered-phrasing-zeros.md)

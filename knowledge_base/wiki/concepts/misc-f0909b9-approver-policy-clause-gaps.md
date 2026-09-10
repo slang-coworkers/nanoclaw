@@ -3,7 +3,7 @@ title: "Slang/SlangPy PR-approver: policy mount, clause gaps, and scope determin
 type: concept
 group: misc
 tags: [approver, v0-shadow, tier_eligible, protected_paths, out_of_scope, abstain_policy, clause-gap, ledger]
-source_count: 17
+source_count: 18
 ---
 
 ## TL;DR
@@ -140,6 +140,21 @@ wrong-decision source. And record AFTER the critique gate even for ABSTAIN, sinc
 the delivery gate can alter the reason_code post append-only write
 ([don't manufacture commit_match at a Step-1 short-circuit](../learnings/1788450370082-approver-clause-gap-at-a-step-1-short-circuit-don-.md)).
 
+This generalizes to a reason-code **precedence** rule when `clauses.json` carries BOTH
+a `fail` and an `unevaluable` — on slang#12981 (a 1-line CI-coordination pin touching
+only `.github/workflows/ci-slangpy-trigger-test.yml`) `eval-clauses.py` returned
+`no_protected_paths=FAIL` AND `ci_green_on_sha=UNEVALUABLE` (the combined-status API
+reports `state=pending` because slang is a check-runs-only repo). A definitive policy
+`CLAUSE_FAIL` (protected_paths / author_trust / tier_eligible) is categorical — it forces
+the abstain regardless of the unevaluable clause's value — so the reason_code is the
+policy FAIL, and the infra `CLAUSE_UNEVALUABLE` is moot (it would matter only as the
+*sole* blocker). Ask "does the FAIL alone force the abstain regardless of the unevaluable
+clause?"; if yes, record the FAIL. Recording the infra `CLAUSE_UNEVALUABLE` there is a
+**false infra-abstain** that corrupts the infra-abstain gate (the metric measured/alerted
+at ~0) — note the unevaluable clause in the evidence for transparency (and to feed the
+check-runs-only `ci_green` learning), but never elevate it to the reason_code
+([reason-code precedence: a policy CLAUSE_FAIL dominates a co-occurring infra CLAUSE_UNEVALUABLE](../learnings/1788980480210-approver-clause-gap-reason-code-precedence-a-polic.md)).
+
 ## Scope / OUT_OF_SCOPE is prior to the clause pipeline
 
 The mechanical clauses carry no repo-class predicate, so on a non-compiler repo
@@ -196,7 +211,7 @@ false-safe risk — the merges just accumulate evidence for a human-owned policy
 escalation (define trust for automated PRs; make tier_eligible risk-aware; gate
 fork heads on author_trust). The approver never self-widens the derivation.
 
-**Source learnings (17):**
+**Source learnings (18):**
 
 - [Approver policy mount source missing → all approvals fall back to bundled default](../learnings/1788380182368-approver-policy-mount-source-missing-all-approvals.md) — empty host mount silently swaps v0-shadow-wide for v0-shadow, spuriously failing author_trust fleet-wide.
 - [board-sync GITHUB_TOKEN write-grant PRs: protected-path ABSTAIN is correct](../learnings/1788382245268-approver-confirmed-board-sync-github-token-write-g.md) — no_protected_paths short-circuits `.github/**` grants; note whether the grant is inert-until-upstream (forward-provisioning).
@@ -215,3 +230,4 @@ fork heads on author_trust). The approver never self-widens the derivation.
 - [harvest pending_bot() checks only the pinned head — misses CodeRabbit still pending on the pre-synchronize head](../learnings/1788562907093-approver-clause-gap-harvest-pending-bot-checks-onl.md) — exit-20 during a synchronize race can discard an imminent review; read the parent head's status + the in-progress summary marker.
 - [A merge-only synchronize (PR diff unchanged) still needs a fresh ledger row](../learnings/1788780675857-approver-infra-a-merge-only-synchronize-pr-diff-un.md) — detect via identical `gh pr diff` + CodeRabbit `target_branch_merge_carry_forward`; re-verify challenger facts at the new ref.
 - [On a synchronize, diff the PR's OWNED files to tell a base-merge from a real revision](../learnings/1788391804224-approver-challenger-on-a-synchronize-diff-the-pr-s.md) — raw compare drowns the PR change in master's delta; neither base-merge nor human APPROVAL clears an open correctness flag or red downstream CI.
+- [Reason-code precedence: a policy CLAUSE_FAIL dominates a co-occurring infra CLAUSE_UNEVALUABLE (slang#12981)](../learnings/1788980480210-approver-clause-gap-reason-code-precedence-a-polic.md) — when clauses.json has both a fail and an unevaluable, a categorical policy FAIL (protected_paths/author_trust/tier_eligible) is the reason_code; the infra unevaluable is moot; recording it would be a false infra-abstain corrupting the ~0 gate.
