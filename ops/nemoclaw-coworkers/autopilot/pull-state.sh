@@ -261,7 +261,7 @@ fi
 
 # --- 6. Transcripts for the in-flight rows via collect_threads.py, then the flat views ---------
 #   raw/threads-flat.json         {"hermes-<ID>": [{ts, direction, text, sender, role}] | null}
-#   raw/sessions-by-thread.json   {"hermes-<ID>": [{role, session_id, cost_status, container_status}]}
+#   raw/sessions-by-thread.json   {"hermes-<ID>": [{role, session_id, cost_status, container_status, status, last_active}]}
 ROWS_ARGS=()
 if [ "$COLLECT_ROWS_FROM_QUEUE" = 1 ] && [ "$CORE_QUEUE" = ok ]; then
   IN_FLIGHT=$(python3 -c 'import json,sys; st=json.load(open(sys.argv[1])); print(",".join(st.get("in_flight") or []))' "$RAW/queue.json" 2>/dev/null || echo "")
@@ -326,7 +326,8 @@ for rid, t in (threads.get("threads") or {}).items():
     for s in t.get("sessions") or []:
         role = s.get("role")
         sess.append({"role": role, "session_id": s.get("id"), "cost_status": s.get("cost_status") or "unknown",
-                     "container_status": s.get("container_status"), "inferred": bool(s.get("inferred"))})
+                     "container_status": s.get("container_status"), "status": s.get("status"),
+                     "last_active": iso_z(s.get("last_active")), "inferred": bool(s.get("inferred"))})
         if s.get("messages_error"):
             missing.append(f"{s.get('id')}: {s['messages_error']}")
             continue
