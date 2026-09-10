@@ -21,7 +21,7 @@ source_count: 45
 - Capture BOTH `.id` and `.html_url` from ONE `gh api … comments POST` (a second POST duplicates); re-push after the LAST amend BEFORE `gh pr create` — PR/CI run the *remote*, not local HEAD.
 - For a codegen asymmetry, lift the BAD leg to the good — don't downgrade the good leg for a smaller diff (#12004).
 
-This page covers PR/issue-state verification, maintainer rotation, merge-queue mechanics, bot write access, regression discipline, and issue-lifecycle patterns. Companion: [[wiki/concepts/slang-misc-pr-process-and-maintainer-workflow-2.md]] (draft-PR footprint, maintainer-decision reversals).
+This page covers PR/issue-state verification, maintainer rotation, merge-queue mechanics, bot write access, regression discipline, and issue-lifecycle patterns. Companion: [[wiki/concepts/slang-pr-maintainer-scope-and-evidence.md]] (draft-PR footprint, maintainer-decision reversals).
 
 ## Maintainer Identity and Rotation
 

@@ -8,7 +8,7 @@ source_count: 12
 
 # Slang Autodiff & Differentiation: Internals and Design Rules
 
-Slang's automatic differentiation (autodiff) system is one of the most complex subsystems in the compiler. This page collects hard-won knowledge about its internal invariants and design rules — the transpose pass, derivative variant tracking, member-method handling, purity checks, capability propagation, operator design, and recursive witness-table walks. Performance regressions, target/conditional bugs, verification conventions, and the recent incident folds live in the companion page [[wiki/concepts/slang-autodiff-ir-autodiff-differentiation-2.md]].
+Slang's automatic differentiation (autodiff) system is one of the most complex subsystems in the compiler. This page collects hard-won knowledge about its internal invariants and design rules — the transpose pass, derivative variant tracking, member-method handling, purity checks, capability propagation, operator design, and recursive witness-table walks. Performance regressions, target/conditional bugs, verification conventions, and the recent incident folds live in the companion page [[wiki/concepts/slang-autodiff-performance-and-passes.md]].
 
 ## TL;DR
 
