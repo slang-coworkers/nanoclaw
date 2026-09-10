@@ -360,10 +360,10 @@ and records it in the ledger's `notes` cell and in `state.json`):
 
 | Decision | Trigger | Bound |
 |---|---|---|
-| one extra test round | the tester's latest report for the row is `ESCALATE` or its FAIL is marked environmental: `install_packages`, `desktop tier unavailable`, `pre-existing` / `cited-pre-existing` base failures, or infra (`mergeable UNKNOWN` after retries) | one per row, ever; ledger note `round 3/3 authorized by autopilot §5: environmental (<evidence line>)`; a second need is `blocked` |
+| one extra test round | the tester's latest report for the row is `ESCALATE` or its FAIL is marked environmental: `install_packages`, `desktop tier unavailable`, `pre-existing` / `cited-pre-existing` base failures, or infra (`mergeable UNKNOWN` after retries) | one per review cycle per row (`authorize_round["<ID>"]`, cleared when the cycle ends); ledger note `extra round authorized by autopilot §5: <why the next run will differ>`; the cost ceilings are the hard stop |
 | file an upstream ask | `[Spec handoff]` with `CORE-CHANGE` not `none`, or an ADR `## CORE-CHANGE` section | append to `/workspace/agent/reports/upstream-asks.md` (row, citation, the ask verbatim), one line on the row thread; posting to the upstream repo is the human's |
 | re-dispatch after a bounced container | a role holds the row's next step, its session is `stopped` or absent, it produced zero outbound since the hand-off, and the hand-off is 1 h old | max 2 per row per stage, same thread, same text, note `redispatch n/2`; a third need escalates |
-| stop a row at its round cap | test FAIL ×2, review REQUEST_CHANGES ×2, or a second gate red on the same head | ledger `merged/blocked = blocked: STOP cap - <what>`; one alert; nothing re-dispatches it |
+| stop a row at its round cap | two in-plugin test FAILs in the current review cycle (`FAIL (env)` and `ESCALATE` never count) with no authorization left, review REQUEST_CHANGES ×2, or a second gate red on the same head | decide first (delegated-decisions.md: extra round with a named reason / re-spec / stop), then ledger `merged/blocked = blocked: STOP cap - <what>`; one alert; nothing re-dispatches it |
 | action the tester's `install_packages` request | the report's `DESKTOP` row reads `SKIPPED` with an `install_packages: <pkgs>` request | the request is filed (self-mod approval is a human card by construction); ledger note |
 | run the merge gate, merge, hold | `[Triage Resolution] Outcome: fixed` with `## Merge gate`; holds per §4.3 | already the Orchestrator's; unchanged |
 | nudge | §3 | §3 bounds |
@@ -486,7 +486,8 @@ re-read on every fire; missing keys take the defaults shown:
 `paused: true` stops dispatch (supervision continues) without touching the crontab or the series;
 `paused_rows` removes those rows from nudging and escalation and holds their gate;
 `authorize_round` is `{"<ID>": "<reason>"}` and lifts that row's test cap by exactly one round
-(`FAIL ×3` still blocks). Changing `wip` takes effect on the next dispatch tick; lowering it
+in the current review cycle (a third counted FAIL in that cycle still blocks); a new review cycle
+starts with the base budget, so re-authorize per cycle when needed. Changing `wip` takes effect on the next dispatch tick; lowering it
 never kills anything, it only stops filling slots.
 
 ## 7. The human's 6-hourly check
@@ -581,9 +582,10 @@ where it lives today and shows up in the next tick's state.
   The two ticks never overlap: the cron fires at minute 17 and holds `.dispatch-cron.lock` (a
   directory, stale after 30 min) for its few seconds, the series fires at minute 47 and its gate
   runs under 30 s.
-- **Round caps count FAILs, not rounds.** `ESCALATE` reports and infra retries do not consume a
-  round (hermes-verify's `rounds.log` rule); the cap is `FAIL ×2` on the tester side and
-  `REQUEST_CHANGES ×2` on the reviewer side, per PR.
+- **Round caps count in-plugin FAILs per review cycle, not rounds.** `ESCALATE`, `FAIL (env)` (every
+  failing row outside plugin code) and infra retries do not consume a round (hermes-verify's
+  `rounds.log` rule); a `[Review Verdict] REQUEST_CHANGES` starts a new cycle with a fresh budget;
+  the cap is `FAIL ×2` per cycle on the tester side and `REQUEST_CHANGES ×2` per PR on the reviewer side.
 - **Nudges are unmarked and threaded.** First character never `[`; `thread_id="hermes-<ID>"`
   always; `in_reply_to` when the role has written on the thread. The text is the §3 template
   and nothing else, so a nudge can never be mistaken for a dispatch or a verdict.
