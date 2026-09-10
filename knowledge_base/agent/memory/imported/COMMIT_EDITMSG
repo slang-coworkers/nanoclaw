@@ -1,0 +1,10 @@
+Main: commit index pointers for the four slang#12355 lessons
+
+The four leaves were committed at 4323685 but every index shard was
+untracked, so the pointers into them existed only in the working tree --
+the exact 'leaves survive, pointers die' failure slang-fixer hit at 05:02.
+
+Scope: MEMORY.md + the three shards that hold my rows, by explicit path.
+Additive (these files were untracked, nothing overwritten). Not resharding
+or claiming other sessions' rows -- no on-disk discriminator for row
+ownership, and 8 peers are live.
