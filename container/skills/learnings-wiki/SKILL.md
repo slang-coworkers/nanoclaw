@@ -105,7 +105,9 @@ spawn a sub-agent (Task tool) that reads that group's source files and writes on
 - **stay under 40 KB.** A page above that is silently truncated by the `Read` tool, so its tail
   never reaches the agent. **The cap is the trigger, the theme is the boundary**: at the cap read the
   page, name the two or three subjects actually inside it, and write each out as its own
-  `<group>-<subtopic>.md` with its own TL;DR. Growth belongs in page *count*, never page *size*;
+  `<group>-<subtopic>.md` with its own TL;DR — or, when the page is one subject that has simply
+  accumulated, compress it (re-synthesize, retire superseded atoms, drop repeated evidence). Growth
+  belongs in page *count* or in *sharper prose*, never in page *size*, and never in a `-N` suffix;
 - **split the largest over-cap pages first**, not just the one you folded into. Each run,
   `ls -S wiki/concepts/*.md | head -5` and bring the biggest down, even if this run's learnings
   never touched them — otherwise the biggest and most-read pages stay over cap indefinitely;
@@ -183,15 +185,22 @@ the routine update is cheap:
    above: read both atoms, then either rewrite the single paragraph that states the current truth and
    `retire <old> <new>`, or leave both live because they only look alike. `CANDIDATE-CORRECTION` is
    an atom that says it corrects something, so find and retire *that* atom, never the correction.
-5. **Consolidate one numbered family per run, at most 4 of its pages.** Take the first
-   `NUMBERED-SPLIT` family (`X-1.md` … `X-k.md`) and rewrite up to four of its pages as pages named
-   for the subjects they hold, each with its own TL;DR and each under cap. Carry every citation
-   across with the paragraph that cites it, `retire` the duplicates the merge exposes rather than
-   keeping both rows, and delete a numbered page only once its content lives on a named one. Never
-   leave a page over cap. One family is the bound on scope, four pages the bound on cost: prod's
-   largest family is 13 pages at or near the 40 KB cap, so "read all of it" is half a megabyte
-   before a word is rewritten. Finish a bigger family over several runs, leaving the pages you did
-   not reach numbered, and spawn a bounded sub-agent for the rewrite when the pages are large.
+5. **Consolidate numbered families, largest first, until none are left.** `NUMBERED-SPLIT` lists pages
+   that were split by size (`X-2.md` … `X-k.md`) — a shape this wiki no longer produces, so every family
+   it lists is debt to pay down, not a steady state. Take the largest family first and rewrite its pages
+   as pages named for the subjects they hold (the base page `X.md` keeps the overview and links them),
+   each with its own TL;DR and each under cap. Fan out one bounded sub-agent per ~3 pages (at most 4 in
+   flight) when the pages are large: prod's largest family was 14 pages at the 40 KB cap, half a
+   megabyte before a word is rewritten. Carry every citation across with the paragraph that cites it,
+   `retire` the duplicates the merge exposes rather than keeping both rows, and delete a numbered page
+   only once its content lives on a named one. Finish as many families as the run can; report each as
+   *done* (pages created) or *not reached* — a family not reached is the next run's first job, and a
+   run that leaves a reachable family numbered has failed and must say so.
+   **Never create a `-N` page again.** When a page reaches the cap, either split it by meaning (the
+   rule above) or compress it: re-synthesize the affected sections so they state the current
+   understanding and the decisions, `retire` the atoms they supersede, and drop repeated evidence. A
+   wiki page is the current understanding, not an append log — folding new atoms into an existing page
+   means updating its sections, not appending one section per atom.
 6. **When `VOCAB` repeats, extend the vocabulary.** The same tokens across several `misc` atoms is a
    theme the config does not name. `VOCAB` measures an atom's **topic**, so the row goes in
    `"topics"` (key, label, keywords) in `<ROOT>/.wiki-config.json`; mirror it into `"groups"` plus
