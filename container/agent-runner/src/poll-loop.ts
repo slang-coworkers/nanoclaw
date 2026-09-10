@@ -75,6 +75,37 @@ const ACTIVE_POLL_INTERVAL_MS = 500;
 const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
   ? Math.max(60_000, parseInt(process.env.NANOCLAW_IDLE_END_MS, 10))
   : 1_200_000;
+// How long a query must have been quiet AFTER a completed turn (a `result` event
+// with no follow-up pushed since) before a pending fresh-session task may end it.
+// Shorter than IDLE_END_MS on purpose: with nothing in flight the only thing the
+// wait protects is an agent that is between turns waiting for subagent or system
+// notifications, and those arrive within minutes. Floor 60s.
+const FRESH_SESSION_IDLE_END_MS = process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS
+  ? Math.max(60_000, parseInt(process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS, 10))
+  : 300_000;
+// Idle-end limit while background subagents are in flight. The main agent emits
+// no SDK events while it waits on them (only task_progress heartbeats, which the
+// provider surfaces as activity), so the plain 20-min rule would end the query
+// and kill the subagents. Floor at IDLE_END_MS; default 90 min.
+const BG_TASK_IDLE_END_MS = process.env.NANOCLAW_BG_TASK_IDLE_END_MS
+  ? Math.max(IDLE_END_MS, parseInt(process.env.NANOCLAW_BG_TASK_IDLE_END_MS, 10))
+  : Math.max(IDLE_END_MS, 5_400_000);
+
+/** The idle-end limit that applies right now: the long one while subagents run. */
+export function idleEndLimit(
+  bgTasks: number,
+  base: number = IDLE_END_MS,
+  bgLimit: number = BG_TASK_IDLE_END_MS,
+): number {
+  return bgTasks > 0 ? Math.max(base, bgLimit) : base;
+}
+
+// A scheduled task run whose provider turn dies on a KNOWN transient error
+// (stream stall, gateway 5xx, connection reset) is bounced so the host reclaims
+// the claim and the row is polled again, instead of being acked complete with
+// the error text as its run log. Bounded per row for the life of this runner.
+const TASK_BOUNCE_MAX_TRIES = 3;
+const taskBounceCounts = new Map<string, number>();
 
 /**
  * Number of consecutive driver-classified read failures after which the
@@ -2276,13 +2307,22 @@ export function classifyThrownBounce(channelType: string | null, errMsg: string)
  * What the follow-up poller does when a fresh-session task (a `task` row without
  * `new_session: false`) arrives while a query is open. Ending the query closes the
  * SDK's input stream, and every tool call still in flight is auto-denied — the
- * active turn is aborted, not paused. That is only safe when nothing is in flight,
- * i.e. the query has been idle for `idleEndMs` (the same threshold as the plain
- * idle-end rule). Otherwise the task is deferred: its row stays `pending` and is
- * routed through the fresh-session path once the active turn ends on its own.
+ * active turn is aborted, not paused. That is only safe when nothing is in flight:
+ * either the query has been idle for `idleEndMs` (the plain idle-end rule), or the
+ * last turn already finished (`turnComplete`: a `result` event with no follow-up
+ * pushed since) and the query has been quiet for `afterResultIdleEndMs`. Otherwise
+ * the task is deferred: its row stays `pending` and is routed through the
+ * fresh-session path once the active turn ends on its own.
  */
-export function freshSessionArrivalAction(idleMs: number, idleEndMs: number = IDLE_END_MS): 'defer' | 'end' {
-  return idleMs > idleEndMs ? 'end' : 'defer';
+export function freshSessionArrivalAction(
+  idleMs: number,
+  turnComplete = false,
+  idleEndMs: number = IDLE_END_MS,
+  afterResultIdleEndMs: number = FRESH_SESSION_IDLE_END_MS,
+): 'defer' | 'end' {
+  if (idleMs > idleEndMs) return 'end';
+  if (turnComplete && idleMs > afterResultIdleEndMs) return 'end';
+  return 'defer';
 }
 
 /**
@@ -3083,6 +3123,11 @@ export async function processQuery(
   let pollInFlight = false;
   let endedForCommand = false;
   let freshSessionDeferLogged = false;
+  // True once the SDK has emitted a `result` for the current turn and nothing has
+  // been pushed since; cleared by the next push. Post-turn accounting events keep it.
+  let turnComplete = false;
+  // Background subagents spawned by the SDK and not yet reported finished.
+  let bgTasks = 0;
   let mailboxFailureStreak = 0;
   const onSignalAbort = () => query.abort();
   signal?.addEventListener('abort', onSignalAbort, { once: true });
@@ -3160,9 +3205,13 @@ export async function processQuery(
         }
 
         if (newMessages.length === 0) {
-          // End stream when agent is idle: no SDK events and no pending messages
-          if (Date.now() - lastEventTime > IDLE_END_MS) {
-            log(`No SDK events for ${IDLE_END_MS / 1000}s, ending query`);
+          // End stream when agent is idle: no SDK events and no pending messages.
+          // While background subagents run, the longer BG_TASK_IDLE_END_MS applies.
+          const idleLimit = idleEndLimit(bgTasks);
+          if (Date.now() - lastEventTime > idleLimit) {
+            log(
+              `No SDK events for ${idleLimit / 1000}s${bgTasks > 0 ? ` (${bgTasks} background task(s) still open)` : ''}, ending query`,
+            );
             query.end();
           }
           return;
@@ -3207,10 +3256,11 @@ export async function processQuery(
         const freshSessionTasks = newMessages.filter(wantsFreshSession);
         if (freshSessionTasks.length > 0) {
           const idleMs = Date.now() - lastEventTime;
-          if (freshSessionArrivalAction(idleMs) === 'end') {
+          // A completed turn with subagents still running is NOT a finished turn.
+          if (freshSessionArrivalAction(idleMs, turnComplete && bgTasks === 0, idleEndLimit(bgTasks)) === 'end') {
             log(
               `fresh-session task arrived (${freshSessionTasks.length} msg) while the query has been idle ` +
-                `${Math.round(idleMs / 1000)}s — ending it to route through fresh-session path`,
+                `${Math.round(idleMs / 1000)}s${turnComplete ? ' after a completed turn' : ''} — ending it to route through fresh-session path`,
             );
             query.end();
             done = true;
@@ -3308,6 +3358,7 @@ export async function processQuery(
         archivePrompts.push(prompt);
         markCompleted(keptIds);
         lastEventTime = Date.now(); // new input counts as activity
+        turnComplete = false; // a new turn starts
       } catch (err) {
         // Without this catch the rejection escapes the void IIFE and Node
         // terminates the container on unhandled-rejection.
@@ -3341,6 +3392,12 @@ export async function processQuery(
   try {
     for await (const event of query.events) {
       lastEventTime = Date.now();
+      // `result` closes a turn; usage events are post-turn accounting; anything
+      // else means the SDK is working again.
+      if (event.type === 'result') turnComplete = true;
+      else if (event.type !== 'usage' && event.type !== 'message_usage') turnComplete = false;
+      if (event.type === 'progress' && event.task === 'started') bgTasks += 1;
+      else if (event.type === 'progress' && event.task === 'finished') bgTasks = Math.max(0, bgTasks - 1);
       handleEvent(event, routing);
       touchHeartbeat();
 
@@ -3446,17 +3503,42 @@ export async function processQuery(
         // acks normally below) or it was silent again (and the branch at the
         // bottom finalizes it, because silentTurnNudged is already set).
         silentTurnOpen = false;
-        const bounceClass =
-          event.isError === true && event.text && routing.channelType === 'agent'
-            ? classifyTurnError(event.text)
-            : 'permanent';
-        if (event.isError === true && event.text && routing.channelType === 'agent' && bounceClass !== 'permanent') {
-          markBounced(initialBatchIds, bounceClass === 'transient' ? 'bounced-transient' : 'bounced-unknown');
+        const isTaskTurn = routing.taskRun === true;
+        const bounceEligible =
+          event.isError === true && !!event.text && (routing.channelType === 'agent' || isTaskTurn);
+        const bounceClass = bounceEligible && event.text ? classifyTurnError(event.text) : 'permanent';
+        // Task runs bounce only on KNOWN transient signatures (never 'unknown'),
+        // and at most TASK_BOUNCE_MAX_TRIES times per row while this runner lives;
+        // after that the error is logged as the run's result as before. Prod
+        // 2026-09-09: a stream stall ("The response stopped arriving") ended a
+        // wiki fold after 4 minutes and the fire was acked complete, no retry.
+        const taskTries = isTaskTurn ? Math.max(0, ...initialBatchIds.map((id) => taskBounceCounts.get(id) ?? 0)) : 0;
+        const taskBounce = isTaskTurn && bounceClass === 'transient' && taskTries < TASK_BOUNCE_MAX_TRIES;
+        if (
+          bounceEligible &&
+          event.text &&
+          bounceClass !== 'permanent' &&
+          (routing.channelType === 'agent' || taskBounce)
+        ) {
+          const status = bounceClass === 'transient' ? 'bounced-transient' : 'bounced-unknown';
+          markBounced(initialBatchIds, status);
           bouncedIds.push(...initialBatchIds);
           bounced = true;
-          log(
-            `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` + event.text.slice(0, 80),
-          );
+          if (isTaskTurn) {
+            for (const id of initialBatchIds) taskBounceCounts.set(id, taskTries + 1);
+            log(
+              `task-run transient bounce (try ${taskTries + 1}/${TASK_BOUNCE_MAX_TRIES}) — row left pending for retry: ` +
+                event.text.slice(0, 80),
+            );
+            await autoAppendTaskLog(
+              `[transient provider error, retry ${taskTries + 1}/${TASK_BOUNCE_MAX_TRIES}] ${event.text.slice(0, 200)}`,
+            );
+          } else {
+            log(
+              `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` +
+                event.text.slice(0, 80),
+            );
+          }
           notifyExchangeComplete(onExchangeComplete, {
             prompt: archivePrompts[0] ?? initialPrompt,
             result: event.text,

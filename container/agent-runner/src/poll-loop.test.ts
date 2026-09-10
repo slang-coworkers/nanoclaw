@@ -13,6 +13,7 @@ import {
   classifyThrownBounce,
   dispatchResultText,
   freshSessionArrivalAction,
+  idleEndLimit,
   isCorruptionError,
   isNewSessionBatch,
   processQuery,
@@ -1910,6 +1911,73 @@ describe('task-run turn wiring (real processQuery)', () => {
   }, 20_000);
 });
 
+describe('task-run transient bounce — a provider stall must not complete the fire', () => {
+  // Prod 2026-09-09 11:26Z: the wiki fold's fresh session died on Claude Code's
+  // "API Error: The response stopped arriving." after a 3-minute upstream stall;
+  // the runner appended that text as the run log and acked the batch complete.
+  // The container never edits messages_in.status; it acks into processing_ack
+  // (outbound.db) and the host syncs that back. Read the ack.
+  function rowStatus(id: string): string {
+    const row = getOutboundDb().prepare('SELECT status FROM processing_ack WHERE message_id = ?').get(id) as
+      | { status: string }
+      | undefined;
+    return row?.status ?? 'pending';
+  }
+
+  it('bounces a task run whose result is a known transient error (row stays pending, retry noted in the log)', async () => {
+    insertMessage('tb1', 'task', { prompt: 'fold' });
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 's1' };
+      yield {
+        type: 'result',
+        text: 'API Error: The response stopped arriving. The response above may be incomplete.',
+        isError: true,
+      };
+    }
+    const query: AgentQuery = { push: () => {}, end: () => {}, events: events(), abort: () => {} };
+    await processQuery(query, { ...TASK_ROUTING, inReplyTo: 'tb1' }, ['tb1'], 'claude', undefined, 'prompt', undefined);
+    expect(rowStatus('tb1')).toBe('bounced-transient');
+    const logs = taskLogRows().map((l) => l.text);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toContain('[transient provider error, retry 1/3]');
+  });
+
+  it('a permanent error result still completes the fire with the error as its log (unchanged behaviour)', async () => {
+    insertMessage('tb2', 'task', { prompt: 'fold' });
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 's1' };
+      yield { type: 'result', text: 'API Error: 403 billing_error: credit balance too low', isError: true };
+    }
+    const query: AgentQuery = { push: () => {}, end: () => {}, events: events(), abort: () => {} };
+    await processQuery(query, { ...TASK_ROUTING, inReplyTo: 'tb2' }, ['tb2'], 'claude', undefined, 'prompt', undefined);
+    expect(rowStatus('tb2')).toBe('completed');
+    expect(taskLogRows().map((l) => l.text)[0]).toContain('billing_error');
+  });
+
+  it('gives up after the per-row cap and completes with the error logged', async () => {
+    insertMessage('tb3', 'task', { prompt: 'fold' });
+    const stall = 'API Error: The response stopped arriving. The response above may be incomplete.';
+    for (let i = 0; i < 4; i++) {
+      async function* events(): AsyncGenerator<ProviderEvent> {
+        yield { type: 'init', continuation: 's1' };
+        yield { type: 'result', text: stall, isError: true };
+      }
+      const query: AgentQuery = { push: () => {}, end: () => {}, events: events(), abort: () => {} };
+      await processQuery(
+        query,
+        { ...TASK_ROUTING, inReplyTo: 'tb3' },
+        ['tb3'],
+        'claude',
+        undefined,
+        'prompt',
+        undefined,
+      );
+      if (i < 3) expect(rowStatus('tb3')).toBe('bounced-transient');
+    }
+    expect(rowStatus('tb3')).toBe('completed');
+  });
+});
+
 describe('silent turn — a result that delivers nothing is never acked completed', () => {
   // The Codex `last_agent_message: null` shape: turn/completed, zero output,
   // isError never set. Before this suite the batch was acked 'completed' and
@@ -2066,10 +2134,25 @@ describe('fresh-session task arriving mid-query — defer, never abort the activ
   // tool call was auto-denied and the run died. The task must wait instead.
 
   it('freshSessionArrivalAction — defer while active, end only once idle past the idle-end threshold', () => {
-    expect(freshSessionArrivalAction(0, 60_000)).toBe('defer');
-    expect(freshSessionArrivalAction(59_999, 60_000)).toBe('defer');
-    expect(freshSessionArrivalAction(60_000, 60_000)).toBe('defer');
-    expect(freshSessionArrivalAction(60_001, 60_000)).toBe('end');
+    expect(freshSessionArrivalAction(0, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(59_999, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_000, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_001, false, 60_000, 30_000)).toBe('end');
+  });
+
+  it('idleEndLimit — the long limit applies only while background subagents are open', () => {
+    expect(idleEndLimit(0, 1_200_000, 5_400_000)).toBe(1_200_000);
+    expect(idleEndLimit(1, 1_200_000, 5_400_000)).toBe(5_400_000);
+    expect(idleEndLimit(3, 1_200_000, 600_000)).toBe(1_200_000); // never below the base
+  });
+
+  it('freshSessionArrivalAction — after a completed turn the shorter quiet period is enough', () => {
+    // turn complete (result seen, nothing pushed since): end after the short quiet period
+    expect(freshSessionArrivalAction(30_001, true, 60_000, 30_000)).toBe('end');
+    expect(freshSessionArrivalAction(30_000, true, 60_000, 30_000)).toBe('defer');
+    // turn still open (no result yet): only the long idle-end applies
+    expect(freshSessionArrivalAction(30_001, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_001, true, 60_000, 30_000)).toBe('end');
   });
 
   it('leaves the task pending and does not end the query while the turn is still producing events', async () => {

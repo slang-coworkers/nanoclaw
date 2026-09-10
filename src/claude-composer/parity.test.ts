@@ -79,19 +79,27 @@ describe('composed-document byte parity', () => {
   // regression would let that test pass, and these constants would not.
   it('matches the recorded digests', () => {
     const digests: Record<string, string> = {
-      // Moved once after the refactor: base-common gained the `explain-diff-html`
-      // skill (one `## Skills` line in every composed doc). Goldens regenerated
-      // in the same commit, visibly.
-      'base-common': '8c22e760b30cd273',
-      'base-common.persona': '304a501f212b9765',
+      // Moved twice. First after the refactor: base-common gained the
+      // `explain-diff-html` skill (one `## Skills` line in every composed doc).
+      // Then when the group-scope `ncl` table gained its `tasks` and
+      // `pr-mappings` rows — two resources agents could already reach and were
+      // never told about. Goldens regenerated in the same commit, visibly, both
+      // times: that is the point of pinning the digests here as well as the
+      // bytes, since a golden edited alongside a regression would go unnoticed.
+      //
+      // They also include `## Resident Skill Instructions` — every shipped
+      // `instructions.md` a type can reach, held in context rather than fetched on
+      // demand. So a skill gaining or losing one moves them, deliberately.
+      'base-common': '3ee2d7f21f0d949a',
+      'base-common.persona': 'ed75f20e3b6920c0',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — abaecd63bd33b299 and
       // 8129ebe911b83bec, moved once by the `agents.md` anchor retarget — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: 'b4999b085c9fb123',
-      'default.persona': 'bc03859370d52166',
+      default: '4a8ba0bcabd5c6eb',
+      'default.persona': 'e61b98b8235b027e',
     };
 
     const actual: Record<string, string> = {};

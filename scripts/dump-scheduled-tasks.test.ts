@@ -352,6 +352,34 @@ describe('dump-scheduled-tasks.py — publication is all-or-nothing', () => {
     expect(real).toMatch(/^[0-9a-f]{64}$/);
   });
 
+  it('--check fails a mirror whose id line was repaired but whose body was not', () => {
+    // The natural repair after a torn publish, and the one an id comparison cannot
+    // see: the mirror's id is a token copied from the JSON, not a hash of the
+    // mirror's own bytes, so rewriting that single line restores agreement without
+    // restoring content. Both files then pass every id check while the mirror still
+    // describes the previous payload.
+    const repo = makeRepo({ ids: ['task-a'] });
+    expect(dump(repo).status).toBe(0);
+    const stale = ids(repo).json!;
+
+    fs.writeFileSync(
+      path.join(repo, 'fixtures', 'get-task-a.json'),
+      JSON.stringify({ ok: true, data: { series_id: 'task-a', prompt: 'CHANGED', agent_group_id: 'grp' } }),
+    );
+    dump(repo, [], { DUMP_TASKS_FAULT: 'crash:1' }); // JSON new, mirror old
+    const fresh = ids(repo).json!;
+    expect(fresh).not.toBe(stale);
+
+    const mdPath = path.join(repo, 'docs', 'snap.md');
+    fs.writeFileSync(mdPath, fs.readFileSync(mdPath, 'utf-8').replace(stale, fresh));
+    expect(ids(repo)).toEqual({ json: fresh, md: fresh });
+    expect(fs.readFileSync(mdPath, 'utf-8')).not.toContain('CHANGED');
+
+    const r = dump(repo, ['--check']);
+    expect(r.status).toBe(4);
+    expect(r.stderr).toContain('STALE MIRROR');
+  });
+
   it('never emits trailing whitespace, even when a prompt carries it', () => {
     // The committed snapshot picked this up from prompt bodies; it fails whitespace
     // lint and produces diff noise unrelated to any definition change.

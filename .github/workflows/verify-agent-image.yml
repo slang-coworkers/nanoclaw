@@ -36,13 +36,6 @@ permissions:
 jobs:
   verify:
     runs-on: ubuntu-latest
-    # Only the publishing line gates on the pin. A fork's nv-* branches carry
-    # this pin as a reference to a digest that was already verified on `main`
-    # — they have no OIDC role for the publisher's registry and no signer
-    # identity, so every step below would fail on a missing credential rather
-    # than on anything about the image. Trust is inherited from the verified
-    # `main` merge, not re-established without the keys to do it.
-    if: github.base_ref == 'main'
     permissions:
       contents: read
       id-token: write # OIDC for the pull-only ECR role
@@ -81,6 +74,30 @@ jobs:
           OLD="$(read_pin "${{ github.event.pull_request.base.sha }}")"
           echo "old=$OLD" >> "$GITHUB_OUTPUT"
           echo "new=$NEW" >> "$GITHUB_OUTPUT"
+
+          # A fork's nv-* branches carry this pin as a reference to a digest
+          # already verified on `main`; they have no OIDC role for the
+          # publisher's registry and no signer identity, so every step below
+          # would fail on a missing credential rather than on anything about the
+          # image. Trust is inherited from the verified `main` merge.
+          #
+          # Reported here rather than as a job-level `if:`. A skipped job is not
+          # a success to GitHub, so gating the job reintroduces exactly the
+          # never-reports hazard this file rejects for path filters — one
+          # spelling of it for the path, another for the base branch. Reporting
+          # the outcome is what keeps `verify` requirable on every branch.
+          if [ "${{ github.base_ref }}" != "main" ]; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            if [ "$NEW" = "$OLD" ]; then
+              echo "Base is '${{ github.base_ref }}', not main, and the pin is unchanged — nothing to verify."
+            else
+              # Not an error: an upstream sync legitimately carries a pin `main`
+              # already verified. But it must not read as though this job
+              # checked it, so it is annotated rather than merely logged.
+              echo "::warning::Pin moves ${OLD:-<none>} -> $NEW on base '${{ github.base_ref }}' — verification is INHERITED from main, not re-established here."
+            fi
+            exit 0
+          fi
 
           if [ "$NEW" = "$OLD" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
