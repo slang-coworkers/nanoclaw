@@ -195,3 +195,72 @@ class RowsBoardTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+FAKE_NCL = """#!/usr/bin/env python3
+import json, sys
+# fake `ncl sessions list --limit N --json`
+print(json.dumps({"ok": True, "data": [
+  {"id": "sess-arch", "agent_group_id": "ag-arch", "thread_id": "hermes-LOOP-F35", "status": "active", "container_status": "stopped", "last_active": "2026-09-10T11:30:00Z", "group_folder": "hermes-architect"},
+  {"id": "sess-build-live", "agent_group_id": "ag-build", "thread_id": "hermes-LOOP-F35", "status": "active", "container_status": "running", "last_active": "2026-09-10T11:55:00Z", "group_folder": "hermes-builder"},
+  {"id": "sess-build-twin", "agent_group_id": "ag-build", "thread_id": "hermes-LOOP-F35", "status": "active", "container_status": "stopped", "last_active": "2026-09-10T07:40:00Z", "group_folder": "hermes-builder"},
+  {"id": "sess-test", "agent_group_id": "ag-test", "thread_id": "hermes-LOOP-F35", "status": "active", "container_status": "stopped", "last_active": "2026-09-10T10:00:00Z", "group_folder": "hermes-tester"},
+  {"id": "sess-other", "agent_group_id": "ag-test", "thread_id": "gh-issue-x", "status": "active", "container_status": "running", "last_active": "2026-09-10T11:59:00Z", "group_folder": "hermes-tester"}
+]}))
+"""
+
+
+class LiveStatusTest(unittest.TestCase):
+    """Green/amber/red/grey dots from `ncl sessions list` + the supervisor's row state."""
+
+    def setUp(self):
+        RowsBoardTest.setUp(self)   # same fixture checkout, without inheriting (and re-running) its tests
+        self.ncl = Path(self.tmp.name) / "fake-ncl"
+        self.ncl.write_text(FAKE_NCL, encoding="utf-8")
+        os.chmod(self.ncl, 0o755)
+        ap = self.root / "data" / "shared" / "hermes" / "autopilot"
+        put(ap / "threads.json", json.dumps({
+            "generated_at": (NOW_DT - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "roles": {"hermes-architect": "ag-arch", "hermes-builder": "ag-build", "hermes-tester": "ag-test", "hermes-reviewer": "ag-rev", "orchestrator": "ag-orch"},
+            "threads": {},
+        }))
+        put(ap / "state.json", json.dumps({
+            "generated_at": (NOW_DT - timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "rows": {"LOOP-F35": {"state": "building"}},
+            "supervise": {"rows": {"LOOP-F35": {"stage": "building", "hold": None, "cost_hold": True, "target_role": "hermes-builder",
+                                                 "cost_hold_sessions": [{"role": "hermes-architect", "session_id": "sess-arch", "cost_status": "escalated"}]}}},
+        }))
+
+    def test_dots_per_role_and_row(self):
+        proc = board(self.root, self.www, "--ncl", str(self.ncl), env={"DASHBOARD_URL": "http://dash.example:8080"})
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("4 live sessions on 1 rows", proc.stdout)   # 4 on hermes-LOOP-F35; the gh-issue-x session is not a row
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn("live status unavailable", index)
+        # architect: on a cost card -> red; builder: running container -> green (the stopped twin does not matter);
+        # tester: session, no container -> amber; reviewer: nothing -> grey
+        self.assertIn('<span class="dot red"></span>needs input · cost card pending', index)
+        self.assertIn('<span class="dot green"></span>working · last active 5m ago', index)
+        self.assertIn('<span class="dot amber"></span>idle · last active 2.0h ago', index)
+        self.assertIn('<span class="dot grey"></span>no session', index)
+        # row dot is red because one role needs input; orchestrator line present
+        self.assertIn('<td><span class="dot red" title="needs input"></span><a href="LOOP-F35.html">', index)
+        self.assertIn("orchestrator: no session", index)
+        # a row with no sessions at all stays grey
+        self.assertIn('<span class="dot grey" title="no session"></span><a href="MEM-F44.html">', index)
+        page = (self.www / "rows" / "LOOP-F35.html").read_text(encoding="utf-8")
+        self.assertIn("Live sessions", page)
+        self.assertIn('href="http://dash.example:8080/#/cw/hermes-builder/s/sess-build-live"', page)
+        self.assertIn("running / active", page)
+
+    def test_missing_ncl_degrades_to_grey_with_banner(self):
+        proc = board(self.root, self.www, "--ncl", str(Path(self.tmp.name) / "nope"))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("live status unavailable", index)
+        self.assertIn('<span class="dot grey"></span>no session', index)
+        # supervisor state still paints red without ncl
+        self.assertIn("cost card pending", index)
+
+    def tearDown(self):
+        self.tmp.cleanup()

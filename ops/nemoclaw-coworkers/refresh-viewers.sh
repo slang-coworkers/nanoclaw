@@ -59,4 +59,4 @@ HTML
 mv -f "$OUT/index.html.tmp" "$OUT/index.html"
 
 # Rows board (/rows/): task cards per gap-matrix row from groups/*/reports/hermes-*/cards/. Never fatal.
-python3 "$ROOT/ops/nemoclaw-coworkers/rows-board.py" --root "$ROOT" --www "$WWW" || echo 'rows-board failed'
+python3 "$ROOT/ops/nemoclaw-coworkers/rows-board.py" --root "$ROOT" --www "$WWW" --ncl "$ROOT/bin/ncl" || echo 'rows-board failed'

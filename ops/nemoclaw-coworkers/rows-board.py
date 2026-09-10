@@ -9,6 +9,10 @@ Reads (every input optional; a missing or broken one becomes a banner, never a c
   <ROOT>/data/shared/hermes/autopilot/threads.json generated_at only (staleness banner)
   <ROOT>/groups/<group>/reports/hermes-<ROW>/cards/card-<role>-<outcome>-r<N>.{png,html,json}
                                                  plus the card-<role>-latest.{png,html} copies
+  `ncl sessions list --json` (--ncl, default <ROOT>/bin/ncl)  LIVE per-role status on every row:
+                                                 green = a container is running, amber = session idle,
+                                                 red = needs a human (cost card / hold / blocked / escalated),
+                                                 grey = no session. Roles come from threads.json `roles`.
 
 Writes under <WWW>/rows/ (tmp + rename):
 
@@ -30,6 +34,7 @@ import html
 import json
 import os
 import re
+import subprocess
 import sys
 from datetime import datetime, timezone
 
@@ -74,6 +79,10 @@ th{font-size:12px;color:#666;font-weight:600}td.cell{width:196px}
 .card img{display:block;width:100%;max-width:900px;border:3px solid #bbb;border-radius:4px}
 .card img.ok{border-color:#2e7d32}.card img.bad{border-color:#c62828}.card img.run{border-color:#f9a825}
 .links a{margin-right:12px}
+.live{font-size:11px;color:#444;margin-bottom:3px;white-space:nowrap}.dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:4px;vertical-align:middle;border:1px solid rgba(0,0,0,.15)}
+.dot.green{background:#2e7d32}.dot.red{background:#c62828}.dot.amber{background:#f9a825}.dot.grey{background:#bbb}
+.legend{font-size:12px;color:#555;margin:6px 0 12px}.legend .dot{margin-left:10px}
+table.live-sessions td{font-size:12px}
 """
 
 
@@ -237,6 +246,107 @@ def link_card_dirs(www_rows: str, cards: dict) -> None:
 
 # --------------------------------------------------------------------------- views
 
+
+# --------------------------------------------------------------------------- live status
+
+LIVE_LABEL = {"green": "working", "amber": "idle", "red": "needs input", "grey": "no session"}
+LIVE_RANK = {"red": 3, "green": 2, "amber": 1, "grey": 0}
+
+
+def roles_by_group(threads) -> dict:
+    """{agent_group_id: role} from threads.json's `roles` map ({role: agent_group_id}); {} when absent."""
+    roles = (threads or {}).get("roles") if isinstance(threads, dict) else None
+    if not isinstance(roles, dict):
+        return {}
+    return {str(v): str(k) for k, v in roles.items() if v}
+
+
+def load_live_sessions(ncl_bin: str | None, group_role: dict, timeout_s: float = 25.0) -> tuple:
+    """({row: {role: [session]}}, error). One `ncl sessions list --json` call; never raises."""
+    if not ncl_bin:
+        return {}, "no ncl binary (pass --ncl or set NANOCLAW_NCL)"
+    if not group_role:
+        return {}, "threads.json has no roles map; cannot attribute sessions to roles"
+    try:
+        r = subprocess.run([ncl_bin, "sessions", "list", "--limit", "2000", "--json"], capture_output=True, text=True, timeout=timeout_s, check=False)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        return {}, f"ncl sessions list: {exc}"
+    if r.returncode != 0:
+        return {}, f"ncl sessions list rc={r.returncode}: {(r.stderr or '').strip()[:160]}"
+    try:
+        data = json.loads(r.stdout)
+    except ValueError as exc:
+        return {}, f"ncl sessions list: bad JSON ({exc})"
+    rows = data.get("data") if isinstance(data, dict) else data
+    if not isinstance(rows, list):
+        return {}, "ncl sessions list: unexpected JSON shape"
+    out: dict = {}
+    for sess in rows:
+        if not isinstance(sess, dict):
+            continue
+        m = THREAD_RE.match(str(sess.get("thread_id") or ""))
+        role = group_role.get(str(sess.get("agent_group_id") or ""))
+        if not m or not role:
+            continue
+        out.setdefault(m.group("row"), {}).setdefault(role, []).append({
+            "id": sess.get("id"), "status": sess.get("status"), "container_status": sess.get("container_status"),
+            "last_active": sess.get("last_active"), "group_folder": sess.get("group_folder"),
+        })
+    return out, None
+
+
+def role_live(sessions: list | None, sup: dict | None, role: str, now: datetime) -> tuple:
+    """(colour, label) for one role on one row.
+
+    red   a human is needed: this role's session sits on a cost card, the row is on hold / blocked /
+          escalated with this role as the target, or the row is blocked (orchestrator column)
+    green a container of this role is running on the row right now
+    amber the role has an active session but no running container (idle, waiting for its turn)
+    grey  no session for this role on the row
+    """
+    sup = sup or {}
+    sessions = sessions or []
+    why = []
+    if role in {str(x.get("role")) for x in (sup.get("cost_hold_sessions") or []) if isinstance(x, dict)}:
+        why.append("cost card pending")
+    if sup.get("hold") and sup.get("target_role") in (None, role):
+        why.append(f"hold: {sup['hold']}")
+    if sup.get("stage") == "blocked" and role in ("orchestrator", sup.get("target_role")):
+        why.append("blocked — human decision")
+    if sup.get("action") == "escalate" and sup.get("target_role") == role:
+        why.append("escalated")
+    if why:
+        return "red", "needs input · " + "; ".join(why)
+    running = [x for x in sessions if str(x.get("container_status") or "").lower() == "running"]
+    if running:
+        return "green", "working" + _since(running, now)
+    active = [x for x in sessions if str(x.get("status") or "active").lower() == "active"]
+    if active:
+        return "amber", "idle" + _since(active, now)
+    return "grey", "no session"
+
+
+def _since(sessions: list, now: datetime) -> str:
+    stamps = [parse_iso(x.get("last_active")) for x in sessions]
+    stamps = [t for t in stamps if t]
+    if not stamps:
+        return ""
+    return f" · last active {fmt_age((now - max(stamps)).total_seconds())} ago"
+
+
+def row_live(role_dots: dict) -> str:
+    """The row's own dot: red if any role needs input, else green if any works, else amber, else grey."""
+    best = "grey"
+    for colour, _ in role_dots.values():
+        if LIVE_RANK.get(colour, 0) > LIVE_RANK[best]:
+            best = colour
+    return best
+
+
+def live_cell(colour: str, label: str) -> str:
+    return f'<div class="live" title="{esc(label)}"><span class="dot {colour}"></span>{esc(label)}</div>'
+
+
 def row_stage(state: dict | None, rid: str) -> str:
     if not isinstance(state, dict):
         return ""
@@ -262,10 +372,11 @@ def latest_for_role(groups: dict, role: str):
     return best if best else (None, None)
 
 
-def thumb_cell(groups: dict, role: str, rid: str, now_ts: float, link: bool = True) -> str:
+def thumb_cell(groups: dict, role: str, rid: str, now_ts: float, link: bool = True, live: tuple | None = None) -> str:
+    head = live_cell(*live) if live else ""
     card, entry = latest_for_role(groups or {}, role)
     if card is None:
-        return '<td class="cell"><div class="v none">·</div></td>'
+        return f'<td class="cell">{head}<div class="v none">·</div></td>'
     latest_png = (entry["latest"].get(role) or {}).get("png")
     src = f"cards/{card['group']}/{card['thread']}/{latest_png or card['png'] or card['html']}"
     label = f"{card['outcome'].upper()} r{card['round']} · {fmt_age(now_ts - card['mtime'])}"
@@ -273,7 +384,7 @@ def thumb_cell(groups: dict, role: str, rid: str, now_ts: float, link: bool = Tr
            if (latest_png or card["png"]) else f'<div class="thumb {card["cls"]}">html only</div>')
     if link:
         img = f'<a href="{esc(rid)}.html" title="{esc(card["file"])}">{img}</a>'
-    return f'<td class="cell">{img}<div class="v {card["cls"]}">{esc(label)}</div></td>'
+    return f'<td class="cell">{head}{img}<div class="v {card["cls"]}">{esc(label)}</div></td>'
 
 
 def page(title: str, body: str, generated: str, crumbs: str = "") -> str:
@@ -285,11 +396,18 @@ def page(title: str, body: str, generated: str, crumbs: str = "") -> str:
     )
 
 
-def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetime) -> str:
+def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetime, live: dict | None = None, live_err: str | None = None) -> str:
     now_ts = now.timestamp()
+    live = live or {}
+    sup_rows = ((state or {}).get("supervise") or {}).get("rows") or {} if isinstance(state, dict) else {}
     out = []
     for b in banners:
         out.append(f'<div class="banner">{esc(b)}</div>')
+    if live_err:
+        out.append(f'<div class="banner">live status unavailable — {esc(live_err)}; dots show grey</div>')
+    out.append('<p class="legend">live status per role (from <code>ncl sessions list</code> at generation time): '
+               '<span class="dot green"></span>working (container running) <span class="dot amber"></span>idle (session, no container) '
+               '<span class="dot red"></span>needs input (cost card / hold / blocked / escalated) <span class="dot grey"></span>no session</p>')
     if plan_err:
         out.append(f'<div class="banner bad">plan unreadable — {esc(plan_err)}; showing only threads that have cards</div>')
     out.append('<p class="muted">One 900×600 card per finished role task (a architect · b builder · t tester · r reviewer), '
@@ -322,10 +440,15 @@ def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetim
             disp = rows.get(rid, {}).get("plan_disposition") or ""
             meta = " · ".join(x for x in (disp, f"wave {rows[rid]['wave']}" if rows.get(rid, {}).get("wave") else "", rows.get(rid, {}).get("attaches_to") or "") if x)
             safe = bool(SAFE_RID_RE.match(rid))   # run() writes no page for an unsafe id: no link to it
-            cells = "".join(thumb_cell(groups, role, rid, now_ts, link=safe) for _, role in ROLE_COLUMNS)
+            sup = sup_rows.get(rid) or {}
+            dots = {role: role_live((live.get(rid) or {}).get(role), sup, role, now) for role in ROLE_ORDER}
+            cells = "".join(thumb_cell(groups, role, rid, now_ts, link=safe, live=dots[role]) for _, role in ROLE_COLUMNS)
+            row_dot = row_live(dots)
+            orch = dots["orchestrator"]
             id_cell = f'<a href="{esc(rid)}.html"><b>{esc(rid)}</b></a>' if safe else f'<b>{esc(rid)}</b>'
             out.append(
-                f'<tr><td>{id_cell}<br><code>hermes-{esc(rid)}</code></td>'
+                f'<tr><td><span class="dot {row_dot}" title="{esc(LIVE_LABEL[row_dot])}"></span>{id_cell}<br><code>hermes-{esc(rid)}</code>'
+                f'<br><span class="live" title="orchestrator"><span class="dot {orch[0]}"></span>orchestrator: {esc(orch[1])}</span></td>'
                 f'<td>{esc(name)}<br><small>{esc(meta)}</small></td><td class="stage">{esc(row_stage(state, rid)) or "·"}</td>{cells}</tr>'
             )
         out.append("</table>")
@@ -333,7 +456,7 @@ def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetim
     return page("Hermes port · rows board", "".join(out), now.strftime("%Y-%m-%d %H:%M UTC"))
 
 
-def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url: str | None) -> str:
+def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url: str | None, live: dict | None = None, live_err: str | None = None) -> str:
     now_ts = now.timestamp()
     thread = f"hermes-{rid}"
     row = ((plan or {}).get("rows") or {}).get(rid) or {}
@@ -346,6 +469,25 @@ def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url
     body.append(f'<p>{esc(row.get("name") or "")}<br><small>{esc(meta)}</small></p>')
     stage = row_stage(state, rid)
     body.append(f'<p class="stage">stage: <b>{esc(stage) or "unknown"}</b> · thread <code>{esc(thread)}</code></p>')
+
+    sup = (((state or {}).get("supervise") or {}).get("rows") or {}).get(rid) or {} if isinstance(state, dict) else {}
+    body.append("<h2>Live sessions</h2>")
+    if live_err:
+        body.append(f'<div class="banner">live status unavailable — {esc(live_err)}</div>')
+    body.append('<table class="live-sessions"><tr><th></th><th>role</th><th>status</th><th>session</th><th>container</th><th>last active</th></tr>')
+    for role in ROLE_ORDER:
+        sessions = (live or {}).get(rid, {}).get(role) or []
+        colour, label = role_live(sessions, sup, role, now)
+        if not sessions:
+            body.append(f'<tr><td><span class="dot {colour}"></span></td><td>{esc(role)}</td><td>{esc(label)}</td><td colspan="3" class="muted">—</td></tr>')
+            continue
+        for x in sorted(sessions, key=lambda y: str(y.get("last_active") or ""), reverse=True):
+            sid = str(x.get("id") or "")
+            link = (f'<a href="{esc(dashboard_url.rstrip("/"))}/#/cw/{esc(x.get("group_folder") or role)}/s/{esc(sid)}">{esc(sid)}</a>'
+                    if dashboard_url and sid else esc(sid))
+            body.append(f'<tr><td><span class="dot {colour}"></span></td><td>{esc(role)}</td><td>{esc(label)}</td><td><code>{link}</code></td>'
+                        f'<td>{esc(x.get("container_status") or "?")} / {esc(x.get("status") or "?")}</td><td>{esc(x.get("last_active") or "")}</td></tr>')
+    body.append("</table>")
 
     all_cards = sorted((c for e in groups.values() for c in e["cards"]), key=lambda c: (-c["mtime"], -c["round"], c["file"]))
     if not all_cards:
@@ -367,7 +509,7 @@ def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url
 
 # --------------------------------------------------------------------------- main
 
-def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, threads_path: str, dashboard_url: str | None) -> int:
+def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, threads_path: str, dashboard_url: str | None, ncl_bin: str | None = None) -> int:
     www_rows = os.path.join(www, "rows")
     os.makedirs(www_rows, exist_ok=True)
 
@@ -382,8 +524,11 @@ def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, t
         cards = {}
         banners.append(f"card scan failed: {exc}")
     link_card_dirs(www_rows, cards)
+    live, live_err = load_live_sessions(ncl_bin, roles_by_group(threads))
+    if live_err:
+        log(f"live status: {live_err}")
 
-    write_atomic(os.path.join(www_rows, "index.html"), render_index(plan, plan_err, state, cards, banners, now))
+    write_atomic(os.path.join(www_rows, "index.html"), render_index(plan, plan_err, state, cards, banners, now, live, live_err))
     rids = set((plan or {}).get("rows") or {}) | {THREAD_RE.match(t).group("row") for t in cards}
     written = 0
     for rid in sorted(rids):
@@ -391,13 +536,14 @@ def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, t
             log(f"skipping row id {rid!r} (not a safe filename)")
             continue
         try:
-            write_atomic(os.path.join(www_rows, f"{rid}.html"), render_row(rid, plan, state, cards.get(f"hermes-{rid}") or {}, now, dashboard_url))
+            write_atomic(os.path.join(www_rows, f"{rid}.html"), render_row(rid, plan, state, cards.get(f"hermes-{rid}") or {}, now, dashboard_url, live, live_err))
             written += 1
         except Exception as exc:  # noqa: BLE001 - one bad row must not take the board down
             log(f"row page {rid}: {type(exc).__name__}: {exc}")
     n_cards = sum(len(e["cards"]) for g in cards.values() for e in g.values())
-    print(f"rows-board: wrote {www_rows}/index.html + {written} row pages ({n_cards} cards, {len(cards)} threads)"
-          + (f"; plan: {plan_err}" if plan_err else "") + (f"; {'; '.join(banners)}" if banners else ""))
+    n_live = sum(len(v) for r in live.values() for v in r.values())
+    print(f"rows-board: wrote {www_rows}/index.html + {written} row pages ({n_cards} cards, {len(cards)} threads, {n_live} live sessions on {len(live)} rows)"
+          + (f"; plan: {plan_err}" if plan_err else "") + (f"; live: {live_err}" if live_err else "") + (f"; {'; '.join(banners)}" if banners else ""))
     return 0
 
 
@@ -409,6 +555,7 @@ def main(argv=None) -> int:
     ap.add_argument("--state", default=None, help="state.json (default: <root>/data/shared/hermes/autopilot/state.json)")
     ap.add_argument("--threads", default=None, help="threads.json (default: next to state.json)")
     ap.add_argument("--dashboard-url", default=os.environ.get("DASHBOARD_URL"), help="dashboard base URL for the lane deep link (default: $DASHBOARD_URL)")
+    ap.add_argument("--ncl", default=os.environ.get("NANOCLAW_NCL"), help="ncl binary for live session status (default: <root>/bin/ncl when present; '' disables)")
     ap.add_argument("--now", default=None, help="ISO timestamp (tests)")
     try:
         args = ap.parse_args(argv)
@@ -419,11 +566,16 @@ def main(argv=None) -> int:
             os.path.join(root, "docs", "hermes-port", "dispatch-plan.md"),
             os.path.join(root, "data", "shared", "hermes", "dispatch-plan.md"),
         ]
+        ncl_bin = args.ncl
+        if ncl_bin is None:
+            cand = os.path.join(root, "bin", "ncl")
+            ncl_bin = cand if os.path.exists(cand) else None
         return run(
             root, os.path.abspath(args.www), now, plan_paths,
             args.state or os.path.join(ap_dir, "state.json"),
             args.threads or os.path.join(ap_dir, "threads.json"),
             args.dashboard_url or None,
+            ncl_bin or None,
         )
     except SystemExit:
         raise
