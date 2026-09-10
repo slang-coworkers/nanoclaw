@@ -80,6 +80,12 @@ When a webhook hits the canonical router, here's what happens in order:
 ```
 GITHUB_WEBHOOK_SECRET=<App webhook secret>
 GITHUB_WEBHOOK_PORT=3841
+# Optional owner filter: only route deliveries whose repository.full_name owner is
+# allowlisted (empty = all owners); denylisted owners are always dropped. Applies to
+# GitHub-signed and peer-forwarded deliveries alike; a filtered delivery is answered
+# 202 {dropped:true} and logged, never routed or forwarded.
+GITHUB_WEBHOOK_OWNER_ALLOWLIST=shader-slang
+GITHUB_WEBHOOK_OWNER_DENYLIST=slang-coworkers
 
 INSTANCE_SLUG=prod
 INTERNAL_REGISTER_SECRET=<shared with peers, distinct from webhook secret>
