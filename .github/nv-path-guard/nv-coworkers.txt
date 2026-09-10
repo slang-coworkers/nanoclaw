@@ -1,0 +1,33 @@
+# nv-coworkers — the base of the tree setup ships. `compose_fork` merges nv-main
+# onto this branch and `setup/merge-train.sh` adds each project overlay, so this
+# branch sits UNDER the other overlays rather than beside them.
+#
+# Its own content is the coworker knowledge base and nothing else. Measured
+# against origin/nv-main at the time this list was written: of 20,362 differing
+# files, 20,359 are `knowledge_base/**` plus `CHANGELOG-NV.md`, and ZERO are
+# source. Everything under src/, container/, dashboard/, scripts/ and setup/ is
+# a copy of nv-main's, reconciled by each sync — which is exactly why they are
+# absent here: a real edit to one of those belongs in a PR to nv-main.
+
+knowledge_base/**
+
+# The fork's own changelog, spliced on this branch by the daily changelog job.
+CHANGELOG-NV.md
+
+# NOT listed, deliberately:
+#
+#   .github/workflows/ci.yml — shows as differing only while this branch lags
+#   nv-main (4 commits when written). A sync PR carrying it is forgiven by
+#   check.py's sync-branch exemption, which passes any unowned file whose blob
+#   matches origin/nv-main exactly. Listing `.github/**` would instead hand this
+#   branch standing permission to edit the workflows nv-main owns.
+#
+#   knowledge_base/agent/docs/{AGENTS,CLAUDE}.md — `knowledge_base/**` above
+#   covers them, and check.py only asks whether a changed file is inside THIS
+#   branch's list, so the overlap is harmless here. Worth knowing though: they
+#   also resolve as nv-main-owned, because nv-main.txt carries bare `CLAUDE.md`
+#   (line 74) and `AGENTS.md` (line 217) patterns and gitwildmatch matches an
+#   unanchored name at ANY depth. That makes the merge sweeps and
+#   check-nv-owned-drift.sh treat two knowledge-base docs as nv-main's. Fixing
+#   it means anchoring those patterns to `/CLAUDE.md` and `/AGENTS.md`, which
+#   changes ownership repo-wide — a separate change, not a drive-by here.
