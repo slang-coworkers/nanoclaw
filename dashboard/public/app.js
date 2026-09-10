@@ -426,8 +426,14 @@ async function loadFunnel() {
   const stamp = document.getElementById('funnel-stamp');
   if (board) board.innerHTML = 'Loading…';
   let snap;
+  // The approver-policy check (/api/approver-policy) rides alongside the funnel
+  // fetch: it tells the Verity panel WHICH policy the latest decision ran under,
+  // so a fallback to the bundled v0-shadow is named next to the agreement chart
+  // instead of reading as a model regression. Best-effort: a failure here only
+  // blanks that one line.
+  let approverPolicy = null;
   try {
-    const res = await fetch('/api/funnel');
+    const [res, pol] = await Promise.all([fetch('/api/funnel'), fetch('/api/approver-policy').catch(() => null)]);
     if (!res.ok) {
       const j = await res.json().catch(() => ({}));
       if (board)
@@ -436,6 +442,7 @@ async function loadFunnel() {
       return;
     }
     snap = await res.json();
+    if (pol && pol.ok) approverPolicy = await pol.json().catch(() => null);
     if (stale()) return;
   } catch (e) {
     if (board) board.innerHTML = 'Failed to load funnel.';
@@ -470,6 +477,7 @@ async function loadFunnel() {
         snap.approverLedger,
         snap.approverWeekly || [],
         snap.approverWeeklyLegacy || [],
+        approverPolicy,
       );
 
   // nv-slang-bot contribution table (separate snapshot: /api/bot-contributions).
@@ -558,10 +566,12 @@ async function loadFunnel() {
         '<div style="color:var(--text-muted);font-size:11px;margin-top:20px">Unit cost: failed to load.</div>';
     }
 
-    // Review rounds — human CHANGES_REQUESTED rounds per PR, bot vs human, by
-    // merge week (/api/review-rounds, its own host cron). Own container + own
-    // try/catch, same reasoning as the panels above: an unrelated network error
-    // must not blank this one. Renders nothing when the snapshot is absent.
+    // Review cycles: human review rounds + comments per PR, bot vs human
+    // (/api/review-rounds, its own host cron). Own container + own try/catch,
+    // same reasoning as the panels above: an unrelated network error must not
+    // blank this one. Renders nothing when the snapshot is absent. A schema>=3
+    // snapshot also pulls the LLM mining companion (/api/review-cycles-why) for
+    // the ">5 rounds" table; 404 there is normal and means an empty "why" slot.
     if (stale()) return;
     const rrBox = document.createElement('div');
     detail.appendChild(rrBox);
@@ -569,7 +579,20 @@ async function loadFunnel() {
       const rr = await fetch('/api/review-rounds');
       if (stale()) return;
       if (rr.ok) {
-        rrBox.innerHTML = reviewRoundsHtml(await rr.json());
+        const rrSnap = await rr.json();
+        let why = new Map();
+        if (Number(rrSnap && rrSnap.schema) >= 3) {
+          try {
+            const w = await fetch('/api/review-cycles-why');
+            if (w.ok) why = reviewWhyIndex(await w.json());
+          } catch (e) {
+            /* no mining snapshot: the why slot stays empty */
+          }
+        }
+        if (stale()) return;
+        reviewCyclesV2Why = why;
+        rrBox.innerHTML = reviewRoundsHtml(rrSnap);
+        reviewCyclesV2Wire(rrBox, rrSnap);
       } else {
         const jr = await rr.json().catch(() => ({}));
         rrBox.innerHTML =
@@ -603,7 +626,8 @@ function unitCostHtml(uc) {
   const head =
     '<div style="margin-top:22px;font-size:12px;font-weight:600">Unit cost</div>' +
     '<div style="color:var(--text-muted);font-size:11px;margin-bottom:8px">' +
-    'cost per PR opened, by week &middot; triager + fixer + reviewer &middot; prod</div>';
+    'cost per PR opened, by week &middot; triager + fixer + reviewer &middot; prod &middot; ' +
+    'columns: $/PR &middot; weekly spend &middot; PRs opened</div>';
 
   if (uc.unavailable) {
     // Words, never a number. An unavailable metric that renders "$0" is worse
@@ -634,6 +658,11 @@ function unitCostHtml(uc) {
         dim = false;
       }
       const denom = w.hasCost ? esc(String(w.prs)) + ' PR' + (w.prs === 1 ? '' : 's') : '&mdash;';
+      // The spend is shown beside the quotient so $261/PR over 19 PRs and
+      // $178/PR over 46 PRs read as the different weeks they are. A week with
+      // spend but no PR still shows its spend: the money was real even though
+      // no quotient exists. A week without coverage shows a dash, never $0.
+      const spend = w.hasCost && typeof w.cost === 'number' ? money(w.cost) : '&mdash;';
       return (
         '<div style="display:flex;align-items:center;gap:8px;margin:3px 0;font-size:11px">' +
         '<div style="width:82px;color:var(--text-muted)">' +
@@ -650,6 +679,9 @@ function unitCostHtml(uc) {
         '">' +
         esc(label) +
         '</div>' +
+        '<div style="width:72px;text-align:right;color:var(--text-muted)" title="weekly spend, triager + fixer + reviewer">' +
+        spend +
+        '</div>' +
         '<div style="width:56px;text-align:right;color:var(--text-muted)">' +
         denom +
         '</div>' +
@@ -657,6 +689,21 @@ function unitCostHtml(uc) {
       );
     })
     .join('');
+
+  // Total spend over the weeks that have coverage, so the panel answers "what
+  // did this cost" as well as "what did each PR cost".
+  const covered = weeks.filter((w) => w.hasCost && typeof w.cost === 'number');
+  const spendTotal = covered.length
+    ? '<div style="font-size:11px;margin-top:6px;color:var(--text-muted)">Spend ' +
+      money(covered.reduce((a, w) => a + w.cost, 0)) +
+      ' over ' +
+      covered.length +
+      ' week' +
+      (covered.length === 1 ? '' : 's') +
+      ' with cost data &middot; ' +
+      covered.reduce((a, w) => a + (w.prs || 0), 0) +
+      ' PRs opened</div>'
+    : '';
 
   // Trend only across weeks that actually have a quotient — comparing against a
   // "no data" week would manufacture a delta out of missing coverage.
@@ -692,7 +739,7 @@ function unitCostHtml(uc) {
       ' — numerator is understated.</div>';
   }
 
-  return head + bars + trend + gaps;
+  return head + bars + spendTotal + trend + gaps;
 }
 
 // KB doctor — the `doctor` block of /api/kb-health (scripts/kb-doctor.py writes
@@ -792,7 +839,91 @@ function kbDoctorHtml(kbh) {
 // this shows EVERY decision Verity recorded, including the human-authored PRs it
 // reviewed in shadow mode. `decisions` is snap.approverDecisions (newest first,
 // one row per PR). Counts by decision are shown as a header summary.
-function funnelApproverPanel(decisions, ledger, weekly, weeklyLegacy) {
+// Week annotations for the Verity agreement chart. The 2026-08-31 collapse
+// (36% to 3%) was not the model: the host move lost /ephemeral/approver-policy,
+// the approver groups' mount was rejected at every spawn, and eval-clauses.py
+// fell back to the bundled narrow v0-shadow, which abstains on fork heads and
+// CONTRIBUTOR authors. Fixed 2026-09-09 with v0-shadow-wide-r2, which also
+// requires CI green (operator decision), so it abstains where the original
+// wide policy would have evaluated. Both facts belong next to the chart.
+const VERITY_WEEK_ANNOTATIONS = [
+  {
+    week: '2026-08-31',
+    note: 'policy fallback: bundled v0-shadow after the host move lost /ephemeral/approver-policy; v0-shadow-wide-r2 from 2026-09-09 requires CI green',
+  },
+  {
+    week: '2026-09-07',
+    note: 'policy fallback: bundled v0-shadow after the host move lost /ephemeral/approver-policy; v0-shadow-wide-r2 from 2026-09-09 requires CI green',
+  },
+];
+
+// One line under the Verity chart naming the policy the LATEST ledger row ran
+// under (/api/approver-policy). `status` comes from the server-side check
+// (dashboard/approver-policy.ts): warn = bundled v0-shadow, a mismatch against
+// the policy of record, or mount rejections in the last 24 h; unknown = no row
+// to judge. Rendered in words with the reasons, never as a silent green.
+function verityPolicyLineHtml(policy) {
+  if (!policy || typeof policy !== 'object') return '';
+  const color =
+    policy.status === 'ok' ? '#3fb950' : policy.status === 'warn' ? 'var(--warn,#d29922)' : 'var(--text-muted)';
+  const label = policy.status === 'ok' ? 'OK' : policy.status === 'warn' ? 'WARN' : 'UNKNOWN';
+  const d = policy.latestDecision;
+  const current = d
+    ? '<b>' +
+      esc(d.policyVersion || '(none)') +
+      '</b> <span style="color:var(--text-muted)">(latest decision ' +
+      (d.decidedAt ? esc(formatTime(d.decidedAt)) : '') +
+      ', ' +
+      esc(
+        String(d.repo || '')
+          .split('/')
+          .pop() || '',
+      ) +
+      ' #' +
+      esc(String(d.prNumber || '')) +
+      ')</span>'
+    : '<span style="color:var(--text-muted)">no decision recorded</span>';
+  const expected = policy.expectedVersion
+    ? 'policy of record <b>' + esc(policy.expectedVersion) + '</b>'
+    : '<span style="color:var(--text-muted)">no policy of record in this checkout</span>';
+  const mr = policy.mountRejections || {};
+  const rejected =
+    typeof mr.count === 'number'
+      ? '<span style="color:' +
+        (mr.count > 0 ? 'var(--warn,#d29922)' : 'var(--text-muted)') +
+        '">' +
+        mr.count +
+        ' mount rejection' +
+        (mr.count === 1 ? '' : 's') +
+        ' in ' +
+        (mr.windowHours || 24) +
+        ' h</span>'
+      : '';
+  const reasons =
+    Array.isArray(policy.reasons) && policy.reasons.length && policy.status !== 'ok'
+      ? '<div style="font-size:10px;color:' +
+        color +
+        ';margin-top:1px">' +
+        policy.reasons.map(esc).join(' · ') +
+        '</div>'
+      : '';
+  return (
+    '<div style="font-size:11px;margin:0 0 8px">' +
+    '<span style="font-weight:700;color:' +
+    color +
+    '">Approver policy ' +
+    label +
+    '</span> · in effect: ' +
+    current +
+    ' · ' +
+    expected +
+    (rejected ? ' · ' + rejected : '') +
+    '</div>' +
+    reasons
+  );
+}
+
+function funnelApproverPanel(decisions, ledger, weekly, weeklyLegacy, policy) {
   if (!Array.isArray(decisions)) decisions = [];
   // Approve = green, block = red, abstain = muted. Matches the funnel row cell
   // (funnelIssueTableHtml's approverColor); literal hex here since the palette
@@ -885,7 +1016,8 @@ function funnelApproverPanel(decisions, ledger, weekly, weeklyLegacy) {
         <tbody>${rows}</tbody>
       </table>`;
   return `<div style="margin-top:20px">
-      ${funnelApproverWeeklySvg(weekly, weeklyLegacy)}
+      ${funnelApproverWeeklySvg(weekly, weeklyLegacy, VERITY_WEEK_ANNOTATIONS)}
+      ${verityPolicyLineHtml(policy)}
       <details>
         <summary style="cursor:pointer;list-style:revert">
           <span style="display:inline-flex;align-items:baseline;gap:10px;flex-wrap:wrap">
@@ -920,9 +1052,13 @@ function funnelApproverPanel(decisions, ledger, weekly, weeklyLegacy) {
 // verified-only chart. Style deliberately mirrors funnelWeeklyTrendSvg /
 // funnelWeeklyConversionSvg (same W/H, count-left / %-right dual axis, rolling-
 // point labels), so it reads as one family of charts.
-function funnelApproverWeeklySvg(weekly, weeklyLegacy) {
+function funnelApproverWeeklySvg(weekly, weeklyLegacy, annotations) {
   const verified = Array.isArray(weekly) ? weekly : [];
   const legacy = Array.isArray(weeklyLegacy) ? weeklyLegacy : [];
+  // Optional [{week, note}] markers (see VERITY_WEEK_ANNOTATIONS): an amber flag
+  // above the week's bar with the note as tooltip, and the note spelled out
+  // under the chart. Only weeks present in the series are marked.
+  const notes = Array.isArray(annotations) ? annotations.filter((a) => a && a.week && a.note) : [];
   if (verified.length === 0 && legacy.length === 0) return '';
   const W = 560,
     H = 156,
@@ -1125,6 +1261,26 @@ function funnelApproverWeeklySvg(weekly, weeklyLegacy) {
     trend = delta > 0 ? `▲ +${delta}pp agreement` : delta < 0 ? `▼ ${delta}pp agreement` : '→ flat';
     trendColor = delta > 0 ? COL.agreeLine : delta < 0 ? '#f85149' : 'var(--text-muted)';
   }
+  // Annotation flags: one amber flag per annotated week that exists in the
+  // series, tooltip = the note; plus the notes spelled out below the chart,
+  // grouped so two weeks sharing one explanation read as one sentence.
+  const ANNOT = '#d29922';
+  const annotHits = notes
+    .map((a) => ({ a, i: series.findIndex((s) => s.w.weekStart === a.week) }))
+    .filter((h) => h.i >= 0);
+  const annotMarks = annotHits
+    .map(
+      ({ a, i }) =>
+        `<text x="${cx(i).toFixed(1)}" y="${(padT + 8).toFixed(1)}" text-anchor="middle" font-size="10" font-weight="700" fill="${ANNOT}">⚑<title>${esc(a.week)}: ${esc(a.note)}</title></text>`,
+    )
+    .join('');
+  const annotByNote = new Map();
+  for (const { a } of annotHits) annotByNote.set(a.note, [...(annotByNote.get(a.note) || []), a.week]);
+  const annotNote = annotByNote.size
+    ? `<div style="font-size:10px;color:${ANNOT};margin-top:3px">${[...annotByNote.entries()]
+        .map(([note, weeks]) => `⚑ ${weeks.map(esc).join(', ')}: ${esc(note)}`)
+        .join('<br>')}</div>`
+    : '';
   const totalFalse = verified.reduce((a, w) => a + num(w.falseApprove), 0);
   const legacyWeeks = series.filter((s) => s.isLegacy).length;
   const rangeStart = n ? esc(series[0].w.weekStart) : '';
@@ -1153,13 +1309,13 @@ function funnelApproverWeeklySvg(weekly, weeklyLegacy) {
         ${divider}
         ${falseLine}${falseDots}
         ${agreeLines}${agreeDots}${agreeLabels}
-        ${xlabels}
+        ${xlabels}${annotMarks}
       </svg>
       <div style="font-size:10px;color:var(--text-muted);margin-top:2px">Go-live signals: <b>agreement ↑</b> · <b>abstain ↓</b> · <b style="color:${COL.falseApprove}">false-approve → 0</b> (a false-approve is Verity waving through a PR a human wanted changed — the one error that must reach zero before Verity leaves shadow mode). ${totalFalse} false-approve${totalFalse === 1 ? '' : 's'} across the trusted window.${
         hasLegacy
           ? ` <span style="color:var(--text-muted)">Extended back to ${rangeStart} with ${legacyWeeks} pre-ledger week${legacyWeeks === 1 ? '' : 's'} (hatched bars · dashed grey line) — unverified pre-enforcement decisions shown for historical context only, excluded from the trend and go-live signals above.</span>`
           : ''
-      }</div>
+      }</div>${annotNote}
     </div>`;
 }
 
@@ -1719,6 +1875,14 @@ function reviewRoundsHtml(rr) {
     );
   }
 
+  // Schema >= 3 is the review-cycles v2 shape (rounds + comments, medians, min-N
+  // guard, activity-week axis, repo selector, per-PR rows). The v1 "cycles"
+  // rendering below stays for older snapshots, and as the fallback if a v2 file
+  // somehow lacks its primary series.
+  if (Number(rr.schema) >= 3 && Array.isArray(rr.weeklyByActivity)) {
+    return reviewCyclesV2Html(rr, reviewCyclesV2State, reviewCyclesV2Why, freshness);
+  }
+
   // Prefer the slang-only view (matches the published slide's scope); fall back
   // to the combined all-repo weekly for older snapshots that lack perRepo.
   const SLANG = 'shader-slang/slang';
@@ -1856,6 +2020,547 @@ function reviewRoundsTrendSvg(weekly) {
     </svg>`;
 }
 
+// ─── Review cycles v2 (review-rounds.json schema >= 3) ──────────────────────
+//
+// The v1 chart above plotted the MEAN of "cycles" (threads + conversation
+// comments) on merged PRs by merge week, with no minimum-N guard and no look at
+// comment bodies. That produced a "spike to 7" that was one PR, and an August
+// floor a third of which was a GitHub Actions workflow posting board-sync
+// notices from a user PAT. The v2 producer (scripts/review-rounds.py) filters
+// that automation with auditable counters and publishes two indices:
+//
+//   ROUNDS    human review sessions: a published review in any state counts
+//             once; the same reviewer's submissions within 30 min collapse.
+//   COMMENTS  valid human comments: inline across whole threads + conversation.
+//
+// Each is {n, total, mean, median, p90, zeroPct} per class per week. This panel
+// plots the MEDIAN, puts mean / p90 / N in the hover, prints N on every point,
+// draws prs < minN as a hollow marker with an "n=<k>" label (never a solid
+// point), and lets the reader switch the axis between activity week (default:
+// when the review happened, across merged AND open PRs) and merge week (the
+// legacy population), and the scope between all seven repos and each one. The
+// ">5 rounds" table lists the PRs behind a slow week with their classification
+// counts and, when the mining task has run, a one-line "why".
+const REVIEW_CYCLES_MIN_N = 5;
+const REVIEW_CYCLES_LONG_ROUNDS = 5;
+const reviewCyclesV2State = { axis: 'activity', repo: 'all' };
+// repo#number -> "why" text from /api/review-cycles-why; empty until the miner runs.
+let reviewCyclesV2Why = new Map();
+
+// Normalise the mining JSON into a Map keyed "repo#number". The miner is a
+// separate task, so accept the obvious shapes: a list of {repo, number, why}
+// (top-level, or under items / prs / perPR), an object keyed "repo#number", or
+// a nested {repo: {number: why}}; the value may be a string or an object with
+// why / summary / reason / text. Anything else yields an empty index, which
+// renders as "no mining summary yet", never as an error.
+function reviewWhyIndex(json) {
+  const idx = new Map();
+  if (!json || typeof json !== 'object') return idx;
+  const put = (repo, number, val) => {
+    if (!repo || !number) return;
+    const text =
+      typeof val === 'string'
+        ? val
+        : val && typeof val === 'object'
+          ? val.why || val.summary || val.reason || val.text || ''
+          : '';
+    if (text) idx.set(repo + '#' + number, String(text));
+  };
+  const list = Array.isArray(json)
+    ? json
+    : Array.isArray(json.items)
+      ? json.items
+      : Array.isArray(json.prs)
+        ? json.prs
+        : Array.isArray(json.perPR)
+          ? json.perPR
+          : null;
+  if (list) {
+    for (const it of list) if (it && typeof it === 'object') put(it.repo, it.number || it.pr || it.prNumber, it);
+    return idx;
+  }
+  const map =
+    json.byPR && typeof json.byPR === 'object' ? json.byPR : json.why && typeof json.why === 'object' ? json.why : json;
+  for (const [k, v] of Object.entries(map)) {
+    const m = /^(.+?)#(\d+)$/.exec(k);
+    if (m) put(m[1], Number(m[2]), v);
+    else if (v && typeof v === 'object' && !Array.isArray(v)) {
+      for (const [n, vv] of Object.entries(v)) if (/^\d+$/.test(n)) put(k, Number(n), vv);
+    }
+  }
+  return idx;
+}
+
+function reviewCyclesV2Html(rr, state, whyIndex, freshness) {
+  state = state || { axis: 'activity', repo: 'all' };
+  const why = whyIndex || new Map();
+  const fmt = (v) => (v === null || v === undefined ? '—' : Number.isInteger(v) ? String(v) : Number(v).toFixed(1));
+  const repos =
+    rr.window && Array.isArray(rr.window.repos) && rr.window.repos.length
+      ? rr.window.repos
+      : Object.keys(rr.perRepo || {});
+  const repoSel = state.repo !== 'all' && repos.includes(state.repo) ? state.repo : 'all';
+  const view = repoSel === 'all' ? rr : (rr.perRepo || {})[repoSel] || {};
+  const axis = state.axis === 'merge' ? 'merge' : 'activity';
+  const rows = axis === 'merge' ? view.weeklyByMerge : view.weeklyByActivity;
+  const weekly = Array.isArray(rows) ? rows : [];
+  const def = rr.definition || {};
+  const minN = typeof def.minN === 'number' ? def.minN : REVIEW_CYCLES_MIN_N;
+
+  const title =
+    '<div style="font-weight:600;margin-bottom:4px">Human review rounds and comments per PR ' +
+    '<span style="font-weight:400;color:var(--text-muted)">· bot vs human authored · ' +
+    esc(repoSel === 'all' ? 'all ' + repos.length + ' repos' : repoSel) +
+    (rr.since ? ' · since ' + esc(rr.since) : '') +
+    (freshness || '') +
+    '</span></div>';
+
+  // Controls: axis toggle + repo selector. Wired by reviewCyclesV2Wire after the
+  // HTML lands; the state lives in reviewCyclesV2State so a re-render keeps it.
+  const axisBtn = (key, label, tip) =>
+    '<button type="button" data-rc-axis="' +
+    key +
+    '" title="' +
+    esc(tip) +
+    '" style="font-size:10px;padding:1px 8px;border-radius:10px;cursor:pointer;border:1px solid ' +
+    (axis === key ? 'var(--accent,#76b900)' : 'var(--border)') +
+    ';background:' +
+    (axis === key ? 'var(--accent,#76b900)' : 'transparent') +
+    ';color:' +
+    (axis === key ? '#0d1117' : 'var(--text-muted)') +
+    '">' +
+    label +
+    '</button>';
+  const repoOpts = [
+    '<option value="all"' + (repoSel === 'all' ? ' selected' : '') + '>all ' + repos.length + ' repos</option>',
+  ]
+    .concat(
+      repos.map(
+        (r) =>
+          '<option value="' +
+          esc(r) +
+          '"' +
+          (r === repoSel ? ' selected' : '') +
+          '>' +
+          esc(String(r).replace(/^shader-slang\//, '')) +
+          '</option>',
+      ),
+    )
+    .join('');
+  const controls =
+    '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;font-size:11px;margin:4px 0 6px">' +
+    '<span style="color:var(--text-muted)">axis:</span>' +
+    axisBtn(
+      'activity',
+      'activity week',
+      'bucket each round/comment into the week it happened; merged, open and closed PRs; N = PRs touched that week',
+    ) +
+    axisBtn('merge', 'merge week', 'legacy population: merged PRs bucketed by merge week, whole-PR totals') +
+    '<span style="color:var(--text-muted);margin-left:6px">repo:</span>' +
+    '<select data-rc-repo style="font-size:10px;padding:1px 4px;background:var(--bg-card);color:var(--text);border:1px solid var(--border);border-radius:4px">' +
+    repoOpts +
+    '</select></div>';
+
+  // Headline: MEDIANS. Mean and p90 are one hover away, never the headline.
+  const t = view.totals || {};
+  const cls = (c, color, name) => {
+    c = c || {};
+    const r = c.rounds || {};
+    const m = c.comments || {};
+    const tip =
+      name +
+      ' PRs (whole-PR, all states): rounds mean ' +
+      fmt(r.mean) +
+      ', p90 ' +
+      fmt(r.p90) +
+      ', ' +
+      fmt(r.zeroPct) +
+      '% with zero · comments mean ' +
+      fmt(m.mean) +
+      ', p90 ' +
+      fmt(m.p90) +
+      ', ' +
+      fmt(m.zeroPct) +
+      '% with zero';
+    return (
+      '<span title="' +
+      esc(tip) +
+      '"><b style="color:' +
+      color +
+      '">' +
+      name +
+      '</b> median <b>' +
+      fmt(r.median) +
+      '</b> rounds / <b>' +
+      fmt(m.median) +
+      '</b> comments per PR (n=' +
+      (c.prs || 0) +
+      (c.lowN ? ', low N' : '') +
+      ')</span>'
+    );
+  };
+  const headline =
+    '<div style="font-size:11px;margin:2px 0 4px">' +
+    cls(t.botAuthored, '#d29922', 'bot') +
+    ' &nbsp;vs&nbsp; ' +
+    cls(t.humanAuthored, '#58a6ff', 'human') +
+    '<span style="color:var(--text-muted)"> · ' +
+    (t.prs || 0) +
+    ' PRs (' +
+    (t.mergedPrs || 0) +
+    ' merged, ' +
+    (t.openPrs || 0) +
+    ' open, ' +
+    (t.closedPrs || 0) +
+    ' closed) · hover for mean and p90</span></div>';
+
+  const charts =
+    weekly.length === 0
+      ? '<div style="font-size:11px;color:var(--text-muted);margin:6px 0">No weeks to plot for this scope.</div>'
+      : reviewCyclesV2TrendSvg(weekly, 'rounds', { axis, minN }) +
+        reviewCyclesV2TrendSvg(weekly, 'comments', { axis, minN });
+
+  const axisNote =
+    axis === 'merge'
+      ? 'Merge week (legacy population): merged PRs only, bucketed by merge week, whole-PR totals; a July design review merging in September lands entirely on one week.'
+      : 'Activity week: each round is bucketed by its first submission and each comment by its createdAt, across merged, open and closed PRs. N = PRs touched that week (created, merged or closed in it, or with a valid round/comment in it); a touched PR with no review contributes zeros.';
+
+  // Auditable filter counters (fleet-wide: the producer publishes them once, not
+  // per repo). These are the automation the v1 metric counted as human review.
+  const f = rr.filters || {};
+  const byReason = f.removedAutomationByReason || {};
+  const topLogins = Object.entries(f.removedByLogin || {})
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([login, n]) => esc(login) + ' ' + n)
+    .join(', ');
+  const filtersLine =
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:6px;max-width:720px;line-height:1.45">' +
+    'Filtered out (all repos): <b>' +
+    (f.removedAutomation || 0) +
+    '</b> automation comments (' +
+    (byReason.boardSyncNotice || 0) +
+    ' board-sync notices posted from a user PAT, ' +
+    (byReason.botLogin || 0) +
+    ' bot logins, ' +
+    (byReason.ghost || 0) +
+    ' ghost), <b>' +
+    (f.removedCommands || 0) +
+    '</b> dispatch commands, <b>' +
+    (f.dedupedDuplicates || 0) +
+    '</b> duplicates within ' +
+    (def.dedupeWindowSeconds || 60) +
+    ' s, <b>' +
+    (f.removedSelf || 0) +
+    '</b> self-comments, ' +
+    ((f.reviewSubmissionsRemoved || {}).automation || 0) +
+    ' automation review submissions' +
+    (topLogins ? ' (top removed logins: ' + topLogins + ')' : '') +
+    '. ' +
+    (t.automationAuthoredPrs || 0) +
+    ' automation-authored PRs excluded from both classes' +
+    (t.unknownAuthoredPrs ? ' (and ' + t.unknownAuthoredPrs + ' with an unknown, deleted author)' : '') +
+    (t.reviewTruncatedPrs
+      ? '; <b>' +
+        t.reviewTruncatedPrs +
+        ' PRs still truncated</b> after the follow-up pages, so their counts are a floor'
+      : '') +
+    '.</div>' +
+    // Behaves like a definition change on the legacy series: from 2026-08-06 the
+    // shader-slang/slang pr-board-sync workflow posts notices from a user PAT
+    // (doubled from about 2026-08-13), and v1 counted each as a human cycle.
+    '<div style="font-size:10px;color:var(--text-muted);margin-top:4px;max-width:720px;line-height:1.45">' +
+    'Note: from <b>2026-08-06</b> the pr-board-sync workflow posts notices from a user account (about two per bot PR, doubled from mid-August). ' +
+    'They are filtered here; the legacy series counted them as human cycles from that date on.</div>';
+
+  const defLine =
+    '<div style="color:var(--text-muted);font-size:10px;margin-top:4px;max-width:720px;line-height:1.45">' +
+    '<b>Round</b>: ' +
+    esc(
+      def.rounds ||
+        'a human review session; a published review in any state is one round, and the same reviewer within ' +
+          (def.roundCollapseMinutes || 30) +
+          ' min collapses into it.',
+    ) +
+    ' <b>Comment</b>: ' +
+    esc(def.comments || 'a valid human comment after the filter (inline across whole threads + conversation).') +
+    ' Hollow markers are weeks with fewer than ' +
+    minN +
+    ' PRs in a class, or partial weeks (the window opens mid-week, or the week is still in progress). ' +
+    esc(axisNote) +
+    '</div>';
+
+  return (
+    '<div style="margin-top:20px" data-review-cycles-v2>' +
+    title +
+    controls +
+    headline +
+    charts +
+    reviewCyclesV2LongTable(rr.perPR, repoSel, why, REVIEW_CYCLES_LONG_ROUNDS) +
+    filtersLine +
+    defLine +
+    '</div>'
+  );
+}
+
+// One two-line chart (bot amber, human blue) of the weekly MEDIAN of `metric`
+// ('rounds' | 'comments'). Every plotted point carries its N; a class-week with
+// prs < minN is a hollow marker labelled "n=<k>" and the line segments touching
+// it are dashed, so a one-PR week can never masquerade as a trend. A partial
+// week (the producer's `partial` flag: the window opens mid-week, or the week
+// is still in progress) is hollow too but keeps its plain N label, so three
+// days of activity never read as a full week. A class with no PRs in a week
+// has a null median and is skipped (the line bridges the gap).
+function reviewCyclesV2TrendSvg(weekly, metric, opts) {
+  if (!Array.isArray(weekly) || weekly.length === 0) return '';
+  const o = opts || {};
+  const minN = typeof o.minN === 'number' ? o.minN : REVIEW_CYCLES_MIN_N;
+  const W = 520,
+    H = 150,
+    padL = 30,
+    padR = 10,
+    padT = 18,
+    padB = 30;
+  const innerW = W - padL - padR,
+    innerH = H - padT - padB;
+  const n = weekly.length;
+  const COLOR = { botAuthored: '#d29922', humanAuthored: '#58a6ff' };
+  const fmt = (v) => (v === null || v === undefined ? '—' : Number.isInteger(v) ? String(v) : Number(v).toFixed(1));
+  const stat = (w, k) => {
+    const c = w && w[k];
+    if (!c || !(c.prs > 0)) return null;
+    const s = c[metric];
+    if (!s || typeof s.median !== 'number') return null;
+    return { c, s, v: s.median };
+  };
+  const observed = [];
+  for (const w of weekly) {
+    for (const k of ['botAuthored', 'humanAuthored']) {
+      const p = stat(w, k);
+      if (p) observed.push(p.v);
+    }
+  }
+  if (observed.length === 0) {
+    return (
+      '<div style="font-size:11px;color:var(--text-muted);margin:6px 0">' +
+      esc(metric) +
+      ': no PRs in this scope on this axis.</div>'
+    );
+  }
+  const maxY = Math.max(1, ...observed);
+  const x = (i) => padL + (n === 1 ? innerW / 2 : (i / (n - 1)) * innerW);
+  const y = (v) => padT + innerH - (v / maxY) * innerH;
+  const grid = [0, maxY / 2, maxY]
+    .map(
+      (v) =>
+        `<line x1="${padL}" y1="${y(v).toFixed(1)}" x2="${W - padR}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/>` +
+        `<text x="${padL - 5}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="var(--text-muted)">${v % 1 === 0 ? v : v.toFixed(1)}</text>`,
+    )
+    .join('');
+  const series = (k) => {
+    const color = COLOR[k];
+    const label = k === 'botAuthored' ? 'bot' : 'human';
+    const pts = [];
+    weekly.forEach((w, i) => {
+      const p = stat(w, k);
+      if (!p) return;
+      const lowN = p.c.lowN === true || (p.c.prs || 0) < minN;
+      const partial = w.partial === true;
+      const reasons =
+        Array.isArray(w.partialReasons) && w.partialReasons.length
+          ? w.partialReasons.join(', ')
+          : 'window start or still in progress';
+      pts.push({ i, week: w.week, v: p.v, lowN, partial, hollow: lowN || partial, reasons, c: p.c, s: p.s });
+    });
+    let segs = '';
+    for (let j = 1; j < pts.length; j++) {
+      const a = pts[j - 1],
+        b = pts[j];
+      const dashed = a.hollow || b.hollow;
+      segs += `<line x1="${x(a.i).toFixed(1)}" y1="${y(a.v).toFixed(1)}" x2="${x(b.i).toFixed(1)}" y2="${y(b.v).toFixed(1)}" stroke="${color}" stroke-width="${dashed ? 1.2 : 2}"${dashed ? ' stroke-dasharray="3 3" opacity="0.7"' : ''}/>`;
+    }
+    let marks = '';
+    for (const p of pts) {
+      const act =
+        typeof p.c.prsWithActivity === 'number' ? `, ${p.c.prsWithActivity} with review activity that week` : '';
+      const tip = `${p.week} · ${label}: median ${fmt(p.v)} ${metric}/PR · mean ${fmt(p.s.mean)} · p90 ${fmt(p.s.p90)} · ${fmt(p.s.zeroPct)}% zero · n=${p.c.prs} PRs${act}${p.lowN ? ` · LOW N (fewer than ${minN} PRs): hollow marker, not a solid point` : ''}${p.partial ? ` · PARTIAL WEEK (${p.reasons}): hollow marker, not a full week` : ''}`;
+      const flags = (p.lowN ? ` data-low-n="${p.c.prs}"` : '') + (p.partial ? ' data-partial="1"' : '');
+      marks += p.hollow
+        ? `<circle cx="${x(p.i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3.2" fill="var(--bg-card,#0d1117)" stroke="${color}" stroke-width="1.6"${flags}><title>${esc(tip)}</title></circle>`
+        : `<circle cx="${x(p.i).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="3" fill="${color}"><title>${esc(tip)}</title></circle>`;
+      // N on every point: bot above the marker, human below, so the two series'
+      // labels do not sit on top of each other at shared values.
+      const ly = k === 'botAuthored' ? y(p.v) - 6 : y(p.v) + 11;
+      marks += `<text x="${x(p.i).toFixed(1)}" y="${ly.toFixed(1)}" text-anchor="middle" font-size="${p.lowN ? 8 : 7}" font-weight="${p.lowN ? 700 : 400}" fill="${color}">${p.lowN ? 'n=' + p.c.prs : p.c.prs}</text>`;
+    }
+    return segs + marks;
+  };
+  const xlabels = weekly
+    .map((w, i) =>
+      i % Math.ceil(n / 6 || 1) === 0
+        ? `<text x="${x(i).toFixed(1)}" y="${H - 8}" text-anchor="middle" font-size="8" fill="var(--text-muted)">${esc(String(w.week).slice(5))}</text>`
+        : '',
+    )
+    .join('');
+  return `<div style="margin:6px 0 2px;display:flex;align-items:baseline;gap:10px">
+      <span style="font-weight:600">Median human review ${esc(metric)} / PR</span>
+      <span style="font-size:10px;color:var(--text-muted)"><span style="color:#d29922">●</span> bot &nbsp;<span style="color:#58a6ff">●</span> human &nbsp;·&nbsp; ○ n &lt; ${minN} or partial week (hollow, never solid) &nbsp;·&nbsp; small numbers = N PRs${o.axis === 'merge' ? ' merged' : ' touched'} that week</span>
+    </div>
+    <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
+      ${grid}
+      ${series('botAuthored')}
+      ${series('humanAuthored')}
+      ${xlabels}
+    </svg>`;
+}
+
+// The PRs behind a slow week: perPR rows with rounds > threshold (in the
+// selected repo), most rounds first, with reviewers, the heuristic
+// classification counts, and the mining "why" when one exists for that PR.
+function reviewCyclesV2LongTable(perPR, repo, whyIndex, threshold) {
+  const thr = typeof threshold === 'number' ? threshold : REVIEW_CYCLES_LONG_ROUNDS;
+  const why = whyIndex || new Map();
+  const list = (Array.isArray(perPR) ? perPR : [])
+    .filter((p) => p && (p.rounds || 0) > thr && (repo === 'all' || p.repo === repo))
+    .sort((a, b) => (b.rounds || 0) - (a.rounds || 0) || (b.comments || 0) - (a.comments || 0));
+  const CL = [
+    ['question', 'Q'],
+    ['change_request', 'CR'],
+    ['nit', 'nit'],
+    ['ack', 'ack'],
+    ['process', 'proc'],
+    ['other', 'other'],
+  ];
+  const stateColor = { merged: '#3fb950', open: '#1f6feb', closed: '#6e7681' };
+  const td = 'padding:3px 8px;vertical-align:top;border-top:1px solid var(--border)';
+  const rows = list
+    .map((p) => {
+      const short = String(p.repo || '')
+        .split('/')
+        .pop();
+      const c = p.classification || {};
+      const cls = CL.map(([k, l]) => l + ' ' + (c[k] || 0)).join(' · ');
+      const w = why.get(p.repo + '#' + p.number);
+      const whyCell = w
+        ? '<span data-rc-why>' + esc(w) + '</span>'
+        : '<span style="color:var(--text-muted)" data-rc-why-empty>no mining summary yet</span>';
+      const dur = typeof p.reviewDurationDays === 'number' ? ' · ' + p.reviewDurationDays + 'd' : '';
+      return (
+        '<tr>' +
+        '<td style="' +
+        td +
+        '"><a href="' +
+        esc(p.url || '') +
+        '" target="_blank" rel="noopener" style="color:var(--accent)">' +
+        esc(short) +
+        ' #' +
+        esc(String(p.number)) +
+        '</a><div style="color:var(--text-muted);font-size:10px;max-width:260px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' +
+        esc(p.title || '') +
+        '">' +
+        esc(p.title || '') +
+        '</div></td>' +
+        '<td style="' +
+        td +
+        '"><span style="color:' +
+        (stateColor[p.state] || 'var(--text-muted)') +
+        '">' +
+        esc(p.state || '') +
+        '</span><span style="color:var(--text-muted);font-size:10px"> · ' +
+        esc(p.authorClass || '') +
+        dur +
+        '</span></td>' +
+        '<td style="' +
+        td +
+        ';text-align:right"><b>' +
+        (p.rounds || 0) +
+        '</b></td>' +
+        '<td style="' +
+        td +
+        ';text-align:right">' +
+        (p.comments || 0) +
+        '</td>' +
+        '<td style="' +
+        td +
+        ';font-size:10px">' +
+        esc((p.reviewers || []).join(', ') || '—') +
+        '</td>' +
+        '<td style="' +
+        td +
+        ';font-size:10px;color:var(--text-muted);white-space:nowrap">' +
+        esc(cls) +
+        '</td>' +
+        '<td style="' +
+        td +
+        ';font-size:10px;max-width:340px">' +
+        whyCell +
+        '</td>' +
+        '</tr>'
+      );
+    })
+    .join('');
+  const th = (l, r) =>
+    '<th style="text-align:' +
+    (r ? 'right' : 'left') +
+    ';padding:3px 8px;font-size:10px;text-transform:uppercase">' +
+    l +
+    '</th>';
+  const body =
+    list.length === 0
+      ? '<div style="font-size:11px;color:var(--text-muted);margin:4px 0 0 18px">No PR' +
+        (repo === 'all' ? '' : ' in ' + esc(repo)) +
+        ' drew more than ' +
+        thr +
+        ' rounds in the window.</div>'
+      : '<table style="border-collapse:collapse;font-size:11px;width:100%;max-width:980px;margin-top:6px">' +
+        '<thead><tr style="color:var(--text-muted)">' +
+        th('PR') +
+        th('state') +
+        th('rounds', 1) +
+        th('comments', 1) +
+        th('reviewers') +
+        th('classification') +
+        th('why it took this long') +
+        '</tr></thead><tbody>' +
+        rows +
+        '</tbody></table>';
+  return (
+    '<details style="margin-top:10px" data-rc-long>' +
+    '<summary style="cursor:pointer;list-style:revert;font-size:12px;font-weight:600">PRs with &gt; ' +
+    thr +
+    ' rounds <span style="font-weight:400;color:var(--text-muted)">(' +
+    list.length +
+    (repo === 'all' ? '' : ' · ' + esc(repo)) +
+    ')</span></summary>' +
+    body +
+    '</details>'
+  );
+}
+
+// Attach the axis-toggle and repo-selector handlers to a rendered v2 panel. Each
+// change updates reviewCyclesV2State, re-renders from the same snapshot and
+// re-wires; no refetch, so the controls stay instant. No-op for v1 snapshots.
+function reviewCyclesV2Wire(box, rr) {
+  if (!box || !rr || Number(rr.schema) < 3) return;
+  const rerender = () => {
+    box.innerHTML = reviewRoundsHtml(rr);
+    reviewCyclesV2Wire(box, rr);
+  };
+  box.querySelectorAll('[data-rc-axis]').forEach((b) =>
+    b.addEventListener('click', () => {
+      reviewCyclesV2State.axis = b.getAttribute('data-rc-axis') === 'merge' ? 'merge' : 'activity';
+      rerender();
+    }),
+  );
+  const sel = box.querySelector('[data-rc-repo]');
+  if (sel) {
+    sel.addEventListener('change', () => {
+      reviewCyclesV2State.repo = sel.value || 'all';
+      rerender();
+    });
+  }
+}
+
 // Inline-SVG line chart of the weekly WIN trend (issuePartition.weekly).
 // Two series: per-week win-rate (faint dots) and the trailing-4wk rolling
 // win-rate (solid line) so you can read "are we doing better or worse" at a
@@ -1884,16 +2589,21 @@ function funnelWeeklyTrendSvg(weekly) {
     )
     .join('');
   const rollPts = weekly.map((w, i) => `${x(i).toFixed(1)},${y(w.rollingWinRate || 0).toFixed(1)}`).join(' ');
+  // The producer (scripts/funnel.ts) computes winRate = merged / botPr, so the
+  // tooltip denominator is bot PRs authored, not actionable issues. Older
+  // snapshots without `botPr` fall back to the actionable count with a label.
+  const denom = (w) =>
+    typeof w.botPr === 'number' ? `${w.merged}/${w.botPr} bot PRs` : `${w.merged}/${w.actionable} actionable`;
   const rawDots = weekly
     .map(
       (w, i) =>
-        `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${w.merged}/${w.actionable})</title></circle>`,
+        `<circle cx="${x(i).toFixed(1)}" cy="${y(w.winRate || 0).toFixed(1)}" r="2.5" fill="#8b949e"><title>${esc(w.week)}: ${Math.round((w.winRate || 0) * 100)}% (${esc(denom(w))})</title></circle>`,
     )
     .join('');
   const rollDots = weekly
     .map(
       (w, i) =>
-        `<circle cx="${x(i).toFixed(1)}" cy="${y(w.rollingWinRate || 0).toFixed(1)}" r="3" fill="#3fb950"><title>${esc(w.week)} rolling: ${Math.round((w.rollingWinRate || 0) * 100)}%</title></circle>`,
+        `<circle cx="${x(i).toFixed(1)}" cy="${y(w.rollingWinRate || 0).toFixed(1)}" r="3" fill="#3fb950"><title>${esc(w.week)} rolling: ${Math.round((w.rollingWinRate || 0) * 100)}% (merged ÷ bot PRs authored, trailing 4 weeks)</title></circle>`,
     )
     .join('');
   // Value labels on each rolling point (the win-rates are small, so the line
@@ -1920,7 +2630,7 @@ function funnelWeeklyTrendSvg(weekly) {
   const trendColor = delta > 0 ? '#3fb950' : delta < 0 ? '#f85149' : 'var(--text-muted)';
   return `<div style="margin:6px 0 2px;display:flex;align-items:baseline;gap:10px">
       <span style="font-weight:600">Weekly WIN trend</span>
-      <span style="font-size:10px;color:var(--text-muted)">merged ÷ actionable &nbsp;● raw &nbsp;<span style="color:#3fb950">●</span> rolling 4wk</span>
+      <span style="font-size:10px;color:var(--text-muted)">merged ÷ bot PRs authored (issues cohorted by file week) &nbsp;● raw &nbsp;<span style="color:#3fb950">●</span> rolling 4wk</span>
       <span style="margin-left:auto;font-size:12px;color:${trendColor}">${trend}</span>
     </div>
     <svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:${W}px;background:transparent">
@@ -10917,6 +11627,13 @@ function renderAdminInfra() {
       })
       .join('') || '<tr><td colspan="4" style="color:var(--text-muted)">No disk data</td></tr>';
 
+  // Approver policy (checks.approverPolicy, dashboard/approver-policy.ts). The
+  // 2026-08-31 host move lost the policy mount and every Verity decision fell
+  // back to the bundled v0-shadow for nine days with nothing red anywhere. This
+  // table is the red: warn on the bundled version, on a mismatch against the
+  // policy of record, or on "Additional mount REJECTED" lines in the last 24 h.
+  const approverPolicyRows = approverPolicyInfraRows(d.approverPolicy);
+
   el.innerHTML = `
     <div class="admin-stat-grid">
       <div class="admin-stat-card"><div class="num">${dot(mcpOk)} ${mcpOk ? 'Up' : 'Down'}</div><div class="label">MCP Auth Proxy</div></div>
@@ -10973,6 +11690,12 @@ function renderAdminInfra() {
       ${diskRows}
     </table>
 
+    <h4 style="font-size:11px;margin:14px 0 6px">Approver Policy (Verity)</h4>
+    <table class="admin-table">
+      <tr><th>Check</th><th>Status</th><th>Details</th></tr>
+      ${approverPolicyRows}
+    </table>
+
     <h4 style="font-size:11px;margin:14px 0 6px">Security Layers</h4>
     <table class="admin-table">
       <tr><th>Layer</th><th>Status</th><th>Details</th></tr>
@@ -10982,6 +11705,46 @@ function renderAdminInfra() {
       <tr><td>Credential Isolation</td><td><span class="admin-chip active">Enforcing</span></td><td>.env shadowed, tokens on host only</td></tr>
     </table>
   `;
+}
+
+// Rows for the "Approver Policy (Verity)" infra table. `p` is the
+// approverPolicy block of /api/infrastructure (see dashboard/approver-policy.ts);
+// an older server without it renders one muted "not reported" row rather than
+// an empty table, so the absence of the check is itself visible.
+function approverPolicyInfraRows(p) {
+  if (!p || typeof p !== 'object') {
+    return '<tr><td>Approver policy</td><td><span class="admin-chip stopped">n/a</span></td><td style="color:var(--text-muted)">not reported by this server</td></tr>';
+  }
+  const chip = (status, label) =>
+    `<span class="admin-chip ${status === 'ok' ? 'active' : status === 'warn' ? 'stopped' : ''}"${status === 'warn' ? ' style="background:var(--yellow,#d29922);color:#0d1117"' : ''}>${esc(label)}</span>`;
+  const d = p.latestDecision;
+  const inEffect = d
+    ? `<code>${esc(d.policyVersion || '(none)')}</code> <span style="color:var(--text-muted)">latest decision ${d.decidedAt ? esc(formatTime(d.decidedAt)) : ''} on ${esc(
+        String(d.repo || '')
+          .split('/')
+          .pop() || '',
+      )} #${esc(String(d.prNumber || ''))}</span>`
+    : '<span style="color:var(--text-muted)">no approval_decisions row</span>';
+  const bundled = d && d.policyVersion && p.bundledVersion && d.policyVersion === p.bundledVersion;
+  const expected = p.expectedVersion
+    ? `<code>${esc(p.expectedVersion)}</code> <span style="color:var(--text-muted)">${esc(p.expectedSource || '')}</span>`
+    : `<span style="color:var(--text-muted)">not in this checkout${p.expectedError ? ' (' + esc(p.expectedError) + ')' : ''}</span>`;
+  const mismatch = !!(d && d.policyVersion && p.expectedVersion && d.policyVersion !== p.expectedVersion);
+  const mr = p.mountRejections || {};
+  const files = Array.isArray(mr.files)
+    ? mr.files.map((f) => `${esc(f.file)} ${f.scanned ? f.count : 'unread'}${f.truncated ? ' (tail)' : ''}`).join(', ')
+    : '';
+  const reasons =
+    Array.isArray(p.reasons) && p.reasons.length
+      ? `<tr><td colspan="3" style="font-size:10px;color:${p.status === 'ok' ? 'var(--text-muted)' : 'var(--yellow,#d29922)'}">${p.reasons.map(esc).join('<br>')}</td></tr>`
+      : '';
+  return (
+    `<tr><td>Policy in effect</td><td>${chip(bundled ? 'warn' : d && d.policyVersion ? (mismatch ? 'warn' : 'ok') : 'unknown', bundled ? 'bundled fallback' : d && d.policyVersion ? (mismatch ? 'mismatch' : 'OK') : 'unknown')}</td><td>${inEffect}</td></tr>` +
+    `<tr><td>Policy of record</td><td>${chip(p.expectedVersion ? 'ok' : 'unknown', p.expectedVersion ? 'found' : 'absent')}</td><td>${expected}</td></tr>` +
+    `<tr><td>Mount rejections (${mr.windowHours || 24} h)</td><td>${chip(typeof mr.count !== 'number' ? 'unknown' : mr.count > 0 ? 'warn' : 'ok', typeof mr.count !== 'number' ? 'unknown' : String(mr.count))}</td><td style="color:var(--text-muted)">"Additional mount REJECTED" in the host logs${files ? ': ' + files : ''}</td></tr>` +
+    `<tr><td>Overall</td><td>${chip(p.status, p.status === 'ok' ? 'OK' : p.status === 'warn' ? 'WARN' : 'UNKNOWN')}</td><td style="color:var(--text-muted)">checked ${p.checkedAt ? esc(formatTime(p.checkedAt)) : ''}</td></tr>` +
+    reasons
+  );
 }
 
 // --- Infra panel actions ---

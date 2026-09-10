@@ -1,0 +1,4333 @@
+{
+ "schema": 3,
+ "generatedAt": "2026-09-09T14:33:39Z",
+ "since": "2026-04-10",
+ "metric": "review-cycles",
+ "definition": {
+  "rounds": "A human review session. A published review by a valid human in any state (COMMENTED, CHANGES_REQUESTED, APPROVED, DISMISSED) is one round; the same reviewer's submissions within 30 minutes of the previous one collapse into a single round. A review with five inline comments is one round. PENDING reviews are ignored (unpublished, visible only to their author); DISMISSED reviews count because they were published. changesRequested stays strict: a dismissed review is a round but never a CR.",
+  "publishedReviewStates": [
+   "APPROVED",
+   "CHANGES_REQUESTED",
+   "COMMENTED",
+   "DISMISSED"
+  ],
+  "comments": "Valid human comments after the filter: every inline review comment across whole threads (pullRequest.reviewThreads) plus every conversation comment (pullRequest.comments). Review summary bodies are not comments.",
+  "filters": "Applied in this order: board-sync notice, self, automation, dispatch command. Removed as automation: pr-board-sync notices posted from a user PAT (body contains '<!-- pr-board-sync-assignment -->' or starts with '**PR board sync:**', case-insensitive, quoted lines dropped first so a human quote-replying the notice is kept), logins ending in [bot], actors typed Bot, ghost or deleted actors, the logins in filters.botLogins and logins matching filters.botLoginPatterns. Removed as self: the PR author's own comments and reviews (on a bot PR, the bot's own replies). Removed as commands: bodies of at most 120 chars matching ^@(coderabbitai|coderabbit|nv-slang-bot)\\b.*(?<![\\w-])(?:review|rebase)\\b (the lookbehind keeps 're-review'). Deduplicated: the same author posting an identical body within 60 s. Counters under filters{} (fleet) and perPR[].removed (per PR).",
+  "attribution": "weeklyByActivity (primary): each round is bucketed into the Monday-UTC week of its first submission and each comment into the week of its createdAt, across merged, open and closed PRs. N for a week is the PRs touched that week: created, merged or closed in it, or with at least one valid round or comment in it; a touched PR with no review that week contributes zeros. Only events at or after --since are bucketed. weeklyByMerge (legacy population): merged PRs bucketed by merge week with whole-PR totals; `weekly` is the same series in the v1 shape. A week row carries partial:true (with partialReasons) when its Monday is before --since (window-start) or it contains generatedAt (in-progress); render those hollow like low-N weeks.",
+  "authorClass": "bot = PR author normalises to nv-slang-bot ([bot] stripped, lower-cased). human = any other non-automation account. automation = other bot accounts authoring PRs (dependabot, slangbot, [bot] logins). unknown = null author (deleted account or hidden from the token). automation and unknown are listed in perPR and excluded from both series.",
+  "classification": {
+   "question": "cleaned body ends with '?' or starts with why/how/what/which/where/when/could/does/did/is it/is this/is there/are there/do you/can you/would you/should we",
+   "change_request": "contains an imperative marker: please/should/must/need to/fix/remove/add/rename/use/revert/don't/do not/instead/change/replace/move/drop/avoid/update/missing/wrong/incorrect",
+   "nit": "starts with nit/nits/nitpick/minor/typo/style/optional",
+   "ack": "at most 200 chars and contains lgtm/looks good/thanks/thank you/approved/approving/merging/nice work/great work/good catch/+1",
+   "process": "contains rebase/update the description or title/CI/rerun/retrigger/retry/merge conflict/resolve conflicts",
+   "other": "none of the above (dispatch commands are removed before classification)",
+   "order": "nit, ack, process, question, change_request, other (first match wins)"
+  },
+  "roundCollapseMinutes": 30,
+  "dedupeWindowSeconds": 60,
+  "minN": 5,
+  "weekBucket": "monday-utc",
+  "states": [
+   "MERGED",
+   "OPEN",
+   "CLOSED"
+  ],
+  "truncation": "First page per sub-resource: 100 reviews, 50 threads x 30 comments, 100 conversation comments. A PR in the window that runs past any of them is completed with follow-up node() queries before it is counted (perPR[].pagesFetched is the audit trail: pages per connection, including the first). truncated means still short after the follow-ups and should be false on a live run; a fixture without node ids can still trip it."
+ },
+ "window": {
+  "since": "2026-04-10",
+  "states": [
+   "MERGED",
+   "OPEN",
+   "CLOSED"
+  ],
+  "repos": [
+   "shader-slang/slang",
+   "shader-slang/slangpy",
+   "shader-slang/slang-rhi",
+   "shader-slang/shader-slang.github.io",
+   "shader-slang/slangpy-samples",
+   "shader-slang/slang-playground",
+   "shader-slang/slang-vscode-extension"
+  ],
+  "weekBucket": "monday-utc",
+  "activityEventsSince": "2026-04-10T00:00:00Z"
+ },
+ "complete": true,
+ "errors": [],
+ "warnings": [],
+ "totals": {
+  "prs": 30,
+  "mergedPrs": 28,
+  "openPrs": 1,
+  "closedPrs": 1,
+  "automationAuthoredPrs": 1,
+  "unknownAuthoredPrs": 0,
+  "botAuthored": {
+   "prs": 21,
+   "lowN": false,
+   "rounds": {
+    "n": 21,
+    "total": 26,
+    "mean": 1.24,
+    "median": 1,
+    "p90": 1,
+    "zeroPct": 4.8
+   },
+   "comments": {
+    "n": 21,
+    "total": 11,
+    "mean": 0.52,
+    "median": 0,
+    "p90": 1,
+    "zeroPct": 81.0
+   },
+   "legacy": {
+    "prs": 21,
+    "avgCycles": 0.48,
+    "medianCycles": 0,
+    "p90Cycles": 1,
+    "avgRounds": 0.05,
+    "medianRounds": 0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 95.2,
+    "avgSubmissions": 1.29,
+    "avgThreads": 0.19,
+    "avgIssueComments": 0.29
+   },
+   "avgCycles": 0.48,
+   "medianCycles": 0,
+   "p90Cycles": 1,
+   "avgRounds": 0.05,
+   "medianRounds": 0,
+   "p90Rounds": 0,
+   "zeroRoundPct": 95.2,
+   "avgSubmissions": 1.29,
+   "avgThreads": 0.19,
+   "avgIssueComments": 0.29
+  },
+  "humanAuthored": {
+   "prs": 8,
+   "lowN": false,
+   "rounds": {
+    "n": 8,
+    "total": 8,
+    "mean": 1.0,
+    "median": 1.0,
+    "p90": 1,
+    "zeroPct": 0.0
+   },
+   "comments": {
+    "n": 8,
+    "total": 0,
+    "mean": 0.0,
+    "median": 0.0,
+    "p90": 0,
+    "zeroPct": 100.0
+   },
+   "legacy": {
+    "prs": 8,
+    "avgCycles": 0.0,
+    "medianCycles": 0.0,
+    "p90Cycles": 0,
+    "avgRounds": 0.0,
+    "medianRounds": 0.0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 100.0,
+    "avgSubmissions": 1.0,
+    "avgThreads": 0.0,
+    "avgIssueComments": 0.0
+   },
+   "avgCycles": 0.0,
+   "medianCycles": 0.0,
+   "p90Cycles": 0,
+   "avgRounds": 0.0,
+   "medianRounds": 0.0,
+   "p90Rounds": 0,
+   "zeroRoundPct": 100.0,
+   "avgSubmissions": 1.0,
+   "avgThreads": 0.0,
+   "avgIssueComments": 0.0
+  },
+  "reviewTruncatedPrs": 0
+ },
+ "weeklyByActivity": [
+  {
+   "week": "2026-07-06",
+   "partial": false,
+   "botAuthored": {
+    "prs": 1,
+    "lowN": true,
+    "prsWithActivity": 0,
+    "rounds": {
+     "n": 1,
+     "total": 0,
+     "mean": 0.0,
+     "median": 0,
+     "p90": 0,
+     "zeroPct": 100.0
+    },
+    "comments": {
+     "n": 1,
+     "total": 0,
+     "mean": 0.0,
+     "median": 0,
+     "p90": 0,
+     "zeroPct": 100.0
+    }
+   },
+   "humanAuthored": {
+    "prs": 0,
+    "lowN": true,
+    "prsWithActivity": 0,
+    "rounds": {
+     "n": 0,
+     "total": 0,
+     "mean": null,
+     "median": null,
+     "p90": null,
+     "zeroPct": null
+    },
+    "comments": {
+     "n": 0,
+     "total": 0,
+     "mean": null,
+     "median": null,
+     "p90": null,
+     "zeroPct": null
+    }
+   }
+  },
+  {
+   "week": "2026-07-20",
+   "partial": false,
+   "botAuthored": {
+    "prs": 1,
+    "lowN": true,
+    "prsWithActivity": 1,
+    "rounds": {
+     "n": 1,
+     "total": 2,
+     "mean": 2.0,
+     "median": 2,
+     "p90": 2,
+     "zeroPct": 0.0
+    },
+    "comments": {
+     "n": 1,
+     "total": 5,
+     "mean": 5.0,
+     "median": 5,
+     "p90": 5,
+     "zeroPct": 0.0
+    }
+   },
+   "humanAuthored": {
+    "prs": 0,
+    "lowN": true,
+    "prsWithActivity": 0,
+    "rounds": {
+     "n": 0,
+     "total": 0,
+     "mean": null,
+     "median": null,
+     "p90": null,
+     "zeroPct": null
+    },
+    "comments": {
+     "n": 0,
+     "total": 0,
+     "mean": null,
+     "median": null,
+     "p90": null,
+     "zeroPct": null
+    }
+   }
+  },
+  {
+   "week": "2026-08-17",
+   "partial": false,
+   "botAuthored": {
+    "prs": 12,
+    "lowN": false,
+    "prsWithActivity": 11,
+    "rounds": {
+     "n": 12,
+     "total": 11,
+     "mean": 0.92,
+     "median": 1.0,
+     "p90": 1,
+     "zeroPct": 8.3
+    },
+    "comments": {
+     "n": 12,
+     "total": 0,
+     "mean": 0.0,
+     "median": 0.0,
+     "p90": 0,
+     "zeroPct": 100.0
+    }
+   },
+   "humanAuthored": {
+    "prs": 7,
+    "lowN": false,
+    "prsWithActivity": 7,
+    "rounds": {
+     "n": 7,
+     "total": 7,
+     "mean": 1.0,
+     "median": 1,
+     "p90": 1,
+     "zeroPct": 0.0
+    },
+    "comments": {
+     "n": 7,
+     "total": 0,
+     "mean": 0.0,
+     "median": 0,
+     "p90": 0,
+     "zeroPct": 100.0
+    }
+   }
+  },
+  {
+   "week": "2026-08-24",
+   "partial": false,
+   "botAuthored": {
+    "prs": 10,
+    "lowN": false,
+    "prsWithActivity": 7,
+    "rounds": {
+     "n": 10,
+     "total": 10,
+     "mean": 1.0,
+     "median": 1.0,
+     "p90": 1,
+     "zeroPct": 30.0
+    },
+    "comments": {
+     "n": 10,
+     "total": 3,
+     "mean": 0.3,
+     "median": 0.0,
+     "p90": 0,
+     "zeroPct": 90.0
+    }
+   },
+   "humanAuthored": {
+    "prs": 2,
+    "lowN": true,
+    "prsWithActivity": 1,
+    "rounds": {
+     "n": 2,
+     "total": 1,
+     "mean": 0.5,
+     "median": 0.5,
+     "p90": 1,
+     "zeroPct": 50.0
+    },
+    "comments": {
+     "n": 2,
+     "total": 0,
+     "mean": 0.0,
+     "median": 0.0,
+     "p90": 0,
+     "zeroPct": 100.0
+    }
+   }
+  },
+  {
+   "week": "2026-08-31",
+   "partial": false,
+   "botAuthored": {
+    "prs": 4,
+    "lowN": true,
+    "prsWithActivity": 4,
+    "rounds": {
+     "n": 4,
+     "total": 3,
+     "mean": 0.75,
+     "median": 1.0,
+     "p90": 1,
+     "zeroPct": 25.0
+    },
+    "comments": {
+     "n": 4,
+     "total": 3,
+     "mean": 0.75,
+     "median": 1.0,
+     "p90": 1,
+     "zeroPct": 25.0
+    }
+   },
+   "humanAuthored": {
+    "prs": 0,
+    "lowN": true,
+    "prsWithActivity": 0,
+    "rounds": {
+     "n": 0,
+     "total": 0,
+     "mean": null,
+     "median": null,
+     "p90": null,
+     "zeroPct": null
+    },
+    "comments": {
+     "n": 0,
+     "total": 0,
+     "mean": null,
+     "median": null,
+     "p90": null,
+     "zeroPct": null
+    }
+   }
+  }
+ ],
+ "weeklyByMerge": [
+  {
+   "week": "2026-08-17",
+   "partial": false,
+   "botAuthored": {
+    "prs": 9,
+    "lowN": false,
+    "rounds": {
+     "n": 9,
+     "total": 9,
+     "mean": 1.0,
+     "median": 1,
+     "p90": 1,
+     "zeroPct": 0.0
+    },
+    "comments": {
+     "n": 9,
+     "total": 0,
+     "mean": 0.0,
+     "median": 0,
+     "p90": 0,
+     "zeroPct": 100.0
+    },
+    "legacy": {
+     "prs": 9,
+     "avgCycles": 0.0,
+     "medianCycles": 0,
+     "p90Cycles": 0,
+     "avgRounds": 0.0,
+     "medianRounds": 0,
+     "p90Rounds": 0,
+     "zeroRoundPct": 100.0,
+     "avgSubmissions": 1.0,
+     "avgThreads": 0.0,
+     "avgIssueComments": 0.0
+    },
+    "avgCycles": 0.0,
+    "medianCycles": 0,
+    "p90Cycles": 0,
+    "avgRounds": 0.0,
+    "medianRounds": 0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 100.0,
+    "avgSubmissions": 1.0,
+    "avgThreads": 0.0,
+    "avgIssueComments": 0.0
+   },
+   "humanAuthored": {
+    "prs": 6,
+    "lowN": false,
+    "rounds": {
+     "n": 6,
+     "total": 6,
+     "mean": 1.0,
+     "median": 1.0,
+     "p90": 1,
+     "zeroPct": 0.0
+    },
+    "comments": {
+     "n": 6,
+     "total": 0,
+     "mean": 0.0,
+     "median": 0.0,
+     "p90": 0,
+     "zeroPct": 100.0
+    },
+    "legacy": {
+     "prs": 6,
+     "avgCycles": 0.0,
+     "medianCycles": 0.0,
+     "p90Cycles": 0,
+     "avgRounds": 0.0,
+     "medianRounds": 0.0,
+     "p90Rounds": 0,
+     "zeroRoundPct": 100.0,
+     "avgSubmissions": 1.0,
+     "avgThreads": 0.0,
+     "avgIssueComments": 0.0
+    },
+    "avgCycles": 0.0,
+    "medianCycles": 0.0,
+    "p90Cycles": 0,
+    "avgRounds": 0.0,
+    "medianRounds": 0.0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 100.0,
+    "avgSubmissions": 1.0,
+    "avgThreads": 0.0,
+    "avgIssueComments": 0.0
+   }
+  },
+  {
+   "week": "2026-08-24",
+   "partial": false,
+   "botAuthored": {
+    "prs": 8,
+    "lowN": false,
+    "rounds": {
+     "n": 8,
+     "total": 8,
+     "mean": 1.0,
+     "median": 1.0,
+     "p90": 1,
+     "zeroPct": 0.0
+    },
+    "comments": {
+     "n": 8,
+     "total": 0,
+     "mean": 0.0,
+     "median": 0.0,
+     "p90": 0,
+     "zeroPct": 100.0
+    },
+    "legacy": {
+     "prs": 8,
+     "avgCycles": 0.0,
+     "medianCycles": 0.0,
+     "p90Cycles": 0,
+     "avgRounds": 0.0,
+     "medianRounds": 0.0,
+     "p90Rounds": 0,
+     "zeroRoundPct": 100.0,
+     "avgSubmissions": 1.0,
+     "avgThreads": 0.0,
+     "avgIssueComments": 0.0
+    },
+    "avgCycles": 0.0,
+    "medianCycles": 0.0,
+    "p90Cycles": 0,
+    "avgRounds": 0.0,
+    "medianRounds": 0.0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 100.0,
+    "avgSubmissions": 1.0,
+    "avgThreads": 0.0,
+    "avgIssueComments": 0.0
+   },
+   "humanAuthored": {
+    "prs": 2,
+    "lowN": true,
+    "rounds": {
+     "n": 2,
+     "total": 2,
+     "mean": 1.0,
+     "median": 1.0,
+     "p90": 1,
+     "zeroPct": 0.0
+    },
+    "comments": {
+     "n": 2,
+     "total": 0,
+     "mean": 0.0,
+     "median": 0.0,
+     "p90": 0,
+     "zeroPct": 100.0
+    },
+    "legacy": {
+     "prs": 2,
+     "avgCycles": 0.0,
+     "medianCycles": 0.0,
+     "p90Cycles": 0,
+     "avgRounds": 0.0,
+     "medianRounds": 0.0,
+     "p90Rounds": 0,
+     "zeroRoundPct": 100.0,
+     "avgSubmissions": 1.0,
+     "avgThreads": 0.0,
+     "avgIssueComments": 0.0
+    },
+    "avgCycles": 0.0,
+    "medianCycles": 0.0,
+    "p90Cycles": 0,
+    "avgRounds": 0.0,
+    "medianRounds": 0.0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 100.0,
+    "avgSubmissions": 1.0,
+    "avgThreads": 0.0,
+    "avgIssueComments": 0.0
+   }
+  },
+  {
+   "week": "2026-08-31",
+   "partial": false,
+   "botAuthored": {
+    "prs": 2,
+    "lowN": true,
+    "rounds": {
+     "n": 2,
+     "total": 8,
+     "mean": 4.0,
+     "median": 4.0,
+     "p90": 5,
+     "zeroPct": 0.0
+    },
+    "comments": {
+     "n": 2,
+     "total": 9,
+     "mean": 4.5,
+     "median": 4.5,
+     "p90": 6,
+     "zeroPct": 0.0
+    },
+    "legacy": {
+     "prs": 2,
+     "avgCycles": 4.0,
+     "medianCycles": 4.0,
+     "p90Cycles": 5,
+     "avgRounds": 0.5,
+     "medianRounds": 0.5,
+     "p90Rounds": 1,
+     "zeroRoundPct": 50.0,
+     "avgSubmissions": 4.5,
+     "avgThreads": 1.5,
+     "avgIssueComments": 2.5
+    },
+    "avgCycles": 4.0,
+    "medianCycles": 4.0,
+    "p90Cycles": 5,
+    "avgRounds": 0.5,
+    "medianRounds": 0.5,
+    "p90Rounds": 1,
+    "zeroRoundPct": 50.0,
+    "avgSubmissions": 4.5,
+    "avgThreads": 1.5,
+    "avgIssueComments": 2.5
+   },
+   "humanAuthored": {
+    "prs": 0,
+    "lowN": true,
+    "rounds": {
+     "n": 0,
+     "total": 0,
+     "mean": null,
+     "median": null,
+     "p90": null,
+     "zeroPct": null
+    },
+    "comments": {
+     "n": 0,
+     "total": 0,
+     "mean": null,
+     "median": null,
+     "p90": null,
+     "zeroPct": null
+    },
+    "legacy": {
+     "prs": 0,
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "avgCycles": null,
+    "medianCycles": null,
+    "p90Cycles": null,
+    "avgRounds": null,
+    "medianRounds": null,
+    "p90Rounds": null,
+    "zeroRoundPct": null,
+    "avgSubmissions": null,
+    "avgThreads": null,
+    "avgIssueComments": null
+   }
+  }
+ ],
+ "weekly": [
+  {
+   "week": "2026-08-17",
+   "botAuthored": {
+    "prs": 9,
+    "avgCycles": 0.0,
+    "medianCycles": 0,
+    "p90Cycles": 0,
+    "avgRounds": 0.0,
+    "medianRounds": 0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 100.0,
+    "avgSubmissions": 1.0,
+    "avgThreads": 0.0,
+    "avgIssueComments": 0.0
+   },
+   "humanAuthored": {
+    "prs": 6,
+    "avgCycles": 0.0,
+    "medianCycles": 0.0,
+    "p90Cycles": 0,
+    "avgRounds": 0.0,
+    "medianRounds": 0.0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 100.0,
+    "avgSubmissions": 1.0,
+    "avgThreads": 0.0,
+    "avgIssueComments": 0.0
+   }
+  },
+  {
+   "week": "2026-08-24",
+   "botAuthored": {
+    "prs": 8,
+    "avgCycles": 0.0,
+    "medianCycles": 0.0,
+    "p90Cycles": 0,
+    "avgRounds": 0.0,
+    "medianRounds": 0.0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 100.0,
+    "avgSubmissions": 1.0,
+    "avgThreads": 0.0,
+    "avgIssueComments": 0.0
+   },
+   "humanAuthored": {
+    "prs": 2,
+    "avgCycles": 0.0,
+    "medianCycles": 0.0,
+    "p90Cycles": 0,
+    "avgRounds": 0.0,
+    "medianRounds": 0.0,
+    "p90Rounds": 0,
+    "zeroRoundPct": 100.0,
+    "avgSubmissions": 1.0,
+    "avgThreads": 0.0,
+    "avgIssueComments": 0.0
+   }
+  },
+  {
+   "week": "2026-08-31",
+   "botAuthored": {
+    "prs": 2,
+    "avgCycles": 4.0,
+    "medianCycles": 4.0,
+    "p90Cycles": 5,
+    "avgRounds": 0.5,
+    "medianRounds": 0.5,
+    "p90Rounds": 1,
+    "zeroRoundPct": 50.0,
+    "avgSubmissions": 4.5,
+    "avgThreads": 1.5,
+    "avgIssueComments": 2.5
+   },
+   "humanAuthored": {
+    "prs": 0,
+    "avgCycles": null,
+    "medianCycles": null,
+    "p90Cycles": null,
+    "avgRounds": null,
+    "medianRounds": null,
+    "p90Rounds": null,
+    "zeroRoundPct": null,
+    "avgSubmissions": null,
+    "avgThreads": null,
+    "avgIssueComments": null
+   }
+  }
+ ],
+ "filters": {
+  "removedAutomation": 18,
+  "removedCommands": 1,
+  "dedupedDuplicates": 0,
+  "removedSelf": 1,
+  "removedAutomationByReason": {
+   "botLogin": 0,
+   "boardSyncNotice": 18,
+   "ghost": 0
+  },
+  "removedByLogin": {
+   "jhelferty-nv": 18
+  },
+  "reviewSubmissionsRemoved": {
+   "automation": 0,
+   "self": 0
+  },
+  "botLogins": [
+   "claassistant",
+   "coderabbit",
+   "coderabbitai",
+   "copilot",
+   "copilot-pull-request-reviewer",
+   "dependabot",
+   "devin-ai-integration",
+   "github-actions",
+   "nv-slang-bot",
+   "slangbot"
+  ],
+  "botLoginPatterns": [
+   "\\[bot\\]$",
+   "^qodo",
+   "^coderabbit"
+  ],
+  "boardSyncMarkers": [
+   "<!-- pr-board-sync-assignment -->",
+   "**PR board sync:**"
+  ],
+  "dispatchCommandPattern": "^@(?:coderabbitai|coderabbit|nv-slang-bot)\\b.*(?<![\\w-])(?:review|rebase)\\b"
+ },
+ "perRepo": {
+  "shader-slang/slang": {
+   "totals": {
+    "prs": 27,
+    "mergedPrs": 25,
+    "openPrs": 1,
+    "closedPrs": 1,
+    "automationAuthoredPrs": 1,
+    "unknownAuthoredPrs": 0,
+    "botAuthored": {
+     "prs": 18,
+     "lowN": false,
+     "rounds": {
+      "n": 18,
+      "total": 23,
+      "mean": 1.28,
+      "median": 1.0,
+      "p90": 1,
+      "zeroPct": 5.6
+     },
+     "comments": {
+      "n": 18,
+      "total": 11,
+      "mean": 0.61,
+      "median": 0.0,
+      "p90": 1,
+      "zeroPct": 77.8
+     },
+     "legacy": {
+      "prs": 18,
+      "avgCycles": 0.56,
+      "medianCycles": 0.0,
+      "p90Cycles": 1,
+      "avgRounds": 0.06,
+      "medianRounds": 0.0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 94.4,
+      "avgSubmissions": 1.33,
+      "avgThreads": 0.22,
+      "avgIssueComments": 0.33
+     },
+     "avgCycles": 0.56,
+     "medianCycles": 0.0,
+     "p90Cycles": 1,
+     "avgRounds": 0.06,
+     "medianRounds": 0.0,
+     "p90Rounds": 0,
+     "zeroRoundPct": 94.4,
+     "avgSubmissions": 1.33,
+     "avgThreads": 0.22,
+     "avgIssueComments": 0.33
+    },
+    "humanAuthored": {
+     "prs": 8,
+     "lowN": false,
+     "rounds": {
+      "n": 8,
+      "total": 8,
+      "mean": 1.0,
+      "median": 1.0,
+      "p90": 1,
+      "zeroPct": 0.0
+     },
+     "comments": {
+      "n": 8,
+      "total": 0,
+      "mean": 0.0,
+      "median": 0.0,
+      "p90": 0,
+      "zeroPct": 100.0
+     },
+     "legacy": {
+      "prs": 8,
+      "avgCycles": 0.0,
+      "medianCycles": 0.0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0.0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "avgCycles": 0.0,
+     "medianCycles": 0.0,
+     "p90Cycles": 0,
+     "avgRounds": 0.0,
+     "medianRounds": 0.0,
+     "p90Rounds": 0,
+     "zeroRoundPct": 100.0,
+     "avgSubmissions": 1.0,
+     "avgThreads": 0.0,
+     "avgIssueComments": 0.0
+    },
+    "reviewTruncatedPrs": 0
+   },
+   "weeklyByActivity": [
+    {
+     "week": "2026-07-06",
+     "partial": false,
+     "botAuthored": {
+      "prs": 1,
+      "lowN": true,
+      "prsWithActivity": 0,
+      "rounds": {
+       "n": 1,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      },
+      "comments": {
+       "n": 1,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      }
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "lowN": true,
+      "prsWithActivity": 0,
+      "rounds": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "comments": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      }
+     }
+    },
+    {
+     "week": "2026-07-20",
+     "partial": false,
+     "botAuthored": {
+      "prs": 1,
+      "lowN": true,
+      "prsWithActivity": 1,
+      "rounds": {
+       "n": 1,
+       "total": 2,
+       "mean": 2.0,
+       "median": 2,
+       "p90": 2,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 1,
+       "total": 5,
+       "mean": 5.0,
+       "median": 5,
+       "p90": 5,
+       "zeroPct": 0.0
+      }
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "lowN": true,
+      "prsWithActivity": 0,
+      "rounds": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "comments": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      }
+     }
+    },
+    {
+     "week": "2026-08-17",
+     "partial": false,
+     "botAuthored": {
+      "prs": 9,
+      "lowN": false,
+      "prsWithActivity": 8,
+      "rounds": {
+       "n": 9,
+       "total": 8,
+       "mean": 0.89,
+       "median": 1,
+       "p90": 1,
+       "zeroPct": 11.1
+      },
+      "comments": {
+       "n": 9,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      }
+     },
+     "humanAuthored": {
+      "prs": 7,
+      "lowN": false,
+      "prsWithActivity": 7,
+      "rounds": {
+       "n": 7,
+       "total": 7,
+       "mean": 1.0,
+       "median": 1,
+       "p90": 1,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 7,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      }
+     }
+    },
+    {
+     "week": "2026-08-24",
+     "partial": false,
+     "botAuthored": {
+      "prs": 9,
+      "lowN": false,
+      "prsWithActivity": 7,
+      "rounds": {
+       "n": 9,
+       "total": 10,
+       "mean": 1.11,
+       "median": 1,
+       "p90": 1,
+       "zeroPct": 22.2
+      },
+      "comments": {
+       "n": 9,
+       "total": 3,
+       "mean": 0.33,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 88.9
+      }
+     },
+     "humanAuthored": {
+      "prs": 2,
+      "lowN": true,
+      "prsWithActivity": 1,
+      "rounds": {
+       "n": 2,
+       "total": 1,
+       "mean": 0.5,
+       "median": 0.5,
+       "p90": 1,
+       "zeroPct": 50.0
+      },
+      "comments": {
+       "n": 2,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0.0,
+       "p90": 0,
+       "zeroPct": 100.0
+      }
+     }
+    },
+    {
+     "week": "2026-08-31",
+     "partial": false,
+     "botAuthored": {
+      "prs": 4,
+      "lowN": true,
+      "prsWithActivity": 4,
+      "rounds": {
+       "n": 4,
+       "total": 3,
+       "mean": 0.75,
+       "median": 1.0,
+       "p90": 1,
+       "zeroPct": 25.0
+      },
+      "comments": {
+       "n": 4,
+       "total": 3,
+       "mean": 0.75,
+       "median": 1.0,
+       "p90": 1,
+       "zeroPct": 25.0
+      }
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "lowN": true,
+      "prsWithActivity": 0,
+      "rounds": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "comments": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      }
+     }
+    }
+   ],
+   "weeklyByMerge": [
+    {
+     "week": "2026-08-17",
+     "partial": false,
+     "botAuthored": {
+      "prs": 7,
+      "lowN": false,
+      "rounds": {
+       "n": 7,
+       "total": 7,
+       "mean": 1.0,
+       "median": 1,
+       "p90": 1,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 7,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      },
+      "legacy": {
+       "prs": 7,
+       "avgCycles": 0.0,
+       "medianCycles": 0,
+       "p90Cycles": 0,
+       "avgRounds": 0.0,
+       "medianRounds": 0,
+       "p90Rounds": 0,
+       "zeroRoundPct": 100.0,
+       "avgSubmissions": 1.0,
+       "avgThreads": 0.0,
+       "avgIssueComments": 0.0
+      },
+      "avgCycles": 0.0,
+      "medianCycles": 0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "humanAuthored": {
+      "prs": 6,
+      "lowN": false,
+      "rounds": {
+       "n": 6,
+       "total": 6,
+       "mean": 1.0,
+       "median": 1.0,
+       "p90": 1,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 6,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0.0,
+       "p90": 0,
+       "zeroPct": 100.0
+      },
+      "legacy": {
+       "prs": 6,
+       "avgCycles": 0.0,
+       "medianCycles": 0.0,
+       "p90Cycles": 0,
+       "avgRounds": 0.0,
+       "medianRounds": 0.0,
+       "p90Rounds": 0,
+       "zeroRoundPct": 100.0,
+       "avgSubmissions": 1.0,
+       "avgThreads": 0.0,
+       "avgIssueComments": 0.0
+      },
+      "avgCycles": 0.0,
+      "medianCycles": 0.0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0.0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     }
+    },
+    {
+     "week": "2026-08-24",
+     "partial": false,
+     "botAuthored": {
+      "prs": 7,
+      "lowN": false,
+      "rounds": {
+       "n": 7,
+       "total": 7,
+       "mean": 1.0,
+       "median": 1,
+       "p90": 1,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 7,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      },
+      "legacy": {
+       "prs": 7,
+       "avgCycles": 0.0,
+       "medianCycles": 0,
+       "p90Cycles": 0,
+       "avgRounds": 0.0,
+       "medianRounds": 0,
+       "p90Rounds": 0,
+       "zeroRoundPct": 100.0,
+       "avgSubmissions": 1.0,
+       "avgThreads": 0.0,
+       "avgIssueComments": 0.0
+      },
+      "avgCycles": 0.0,
+      "medianCycles": 0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "humanAuthored": {
+      "prs": 2,
+      "lowN": true,
+      "rounds": {
+       "n": 2,
+       "total": 2,
+       "mean": 1.0,
+       "median": 1.0,
+       "p90": 1,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 2,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0.0,
+       "p90": 0,
+       "zeroPct": 100.0
+      },
+      "legacy": {
+       "prs": 2,
+       "avgCycles": 0.0,
+       "medianCycles": 0.0,
+       "p90Cycles": 0,
+       "avgRounds": 0.0,
+       "medianRounds": 0.0,
+       "p90Rounds": 0,
+       "zeroRoundPct": 100.0,
+       "avgSubmissions": 1.0,
+       "avgThreads": 0.0,
+       "avgIssueComments": 0.0
+      },
+      "avgCycles": 0.0,
+      "medianCycles": 0.0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0.0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     }
+    },
+    {
+     "week": "2026-08-31",
+     "partial": false,
+     "botAuthored": {
+      "prs": 2,
+      "lowN": true,
+      "rounds": {
+       "n": 2,
+       "total": 8,
+       "mean": 4.0,
+       "median": 4.0,
+       "p90": 5,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 2,
+       "total": 9,
+       "mean": 4.5,
+       "median": 4.5,
+       "p90": 6,
+       "zeroPct": 0.0
+      },
+      "legacy": {
+       "prs": 2,
+       "avgCycles": 4.0,
+       "medianCycles": 4.0,
+       "p90Cycles": 5,
+       "avgRounds": 0.5,
+       "medianRounds": 0.5,
+       "p90Rounds": 1,
+       "zeroRoundPct": 50.0,
+       "avgSubmissions": 4.5,
+       "avgThreads": 1.5,
+       "avgIssueComments": 2.5
+      },
+      "avgCycles": 4.0,
+      "medianCycles": 4.0,
+      "p90Cycles": 5,
+      "avgRounds": 0.5,
+      "medianRounds": 0.5,
+      "p90Rounds": 1,
+      "zeroRoundPct": 50.0,
+      "avgSubmissions": 4.5,
+      "avgThreads": 1.5,
+      "avgIssueComments": 2.5
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "lowN": true,
+      "rounds": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "comments": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "legacy": {
+       "prs": 0,
+       "avgCycles": null,
+       "medianCycles": null,
+       "p90Cycles": null,
+       "avgRounds": null,
+       "medianRounds": null,
+       "p90Rounds": null,
+       "zeroRoundPct": null,
+       "avgSubmissions": null,
+       "avgThreads": null,
+       "avgIssueComments": null
+      },
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     }
+    }
+   ],
+   "weekly": [
+    {
+     "week": "2026-08-17",
+     "botAuthored": {
+      "prs": 7,
+      "avgCycles": 0.0,
+      "medianCycles": 0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "humanAuthored": {
+      "prs": 6,
+      "avgCycles": 0.0,
+      "medianCycles": 0.0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0.0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     }
+    },
+    {
+     "week": "2026-08-24",
+     "botAuthored": {
+      "prs": 7,
+      "avgCycles": 0.0,
+      "medianCycles": 0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "humanAuthored": {
+      "prs": 2,
+      "avgCycles": 0.0,
+      "medianCycles": 0.0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0.0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     }
+    },
+    {
+     "week": "2026-08-31",
+     "botAuthored": {
+      "prs": 2,
+      "avgCycles": 4.0,
+      "medianCycles": 4.0,
+      "p90Cycles": 5,
+      "avgRounds": 0.5,
+      "medianRounds": 0.5,
+      "p90Rounds": 1,
+      "zeroRoundPct": 50.0,
+      "avgSubmissions": 4.5,
+      "avgThreads": 1.5,
+      "avgIssueComments": 2.5
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     }
+    }
+   ]
+  },
+  "shader-slang/slangpy": {
+   "totals": {
+    "prs": 3,
+    "mergedPrs": 3,
+    "openPrs": 0,
+    "closedPrs": 0,
+    "automationAuthoredPrs": 0,
+    "unknownAuthoredPrs": 0,
+    "botAuthored": {
+     "prs": 3,
+     "lowN": true,
+     "rounds": {
+      "n": 3,
+      "total": 3,
+      "mean": 1.0,
+      "median": 1,
+      "p90": 1,
+      "zeroPct": 0.0
+     },
+     "comments": {
+      "n": 3,
+      "total": 0,
+      "mean": 0.0,
+      "median": 0,
+      "p90": 0,
+      "zeroPct": 100.0
+     },
+     "legacy": {
+      "prs": 3,
+      "avgCycles": 0.0,
+      "medianCycles": 0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "avgCycles": 0.0,
+     "medianCycles": 0,
+     "p90Cycles": 0,
+     "avgRounds": 0.0,
+     "medianRounds": 0,
+     "p90Rounds": 0,
+     "zeroRoundPct": 100.0,
+     "avgSubmissions": 1.0,
+     "avgThreads": 0.0,
+     "avgIssueComments": 0.0
+    },
+    "humanAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "reviewTruncatedPrs": 0
+   },
+   "weeklyByActivity": [
+    {
+     "week": "2026-08-17",
+     "partial": false,
+     "botAuthored": {
+      "prs": 3,
+      "lowN": true,
+      "prsWithActivity": 3,
+      "rounds": {
+       "n": 3,
+       "total": 3,
+       "mean": 1.0,
+       "median": 1,
+       "p90": 1,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 3,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      }
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "lowN": true,
+      "prsWithActivity": 0,
+      "rounds": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "comments": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      }
+     }
+    },
+    {
+     "week": "2026-08-24",
+     "partial": false,
+     "botAuthored": {
+      "prs": 1,
+      "lowN": true,
+      "prsWithActivity": 0,
+      "rounds": {
+       "n": 1,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      },
+      "comments": {
+       "n": 1,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      }
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "lowN": true,
+      "prsWithActivity": 0,
+      "rounds": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "comments": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      }
+     }
+    }
+   ],
+   "weeklyByMerge": [
+    {
+     "week": "2026-08-17",
+     "partial": false,
+     "botAuthored": {
+      "prs": 2,
+      "lowN": true,
+      "rounds": {
+       "n": 2,
+       "total": 2,
+       "mean": 1.0,
+       "median": 1.0,
+       "p90": 1,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 2,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0.0,
+       "p90": 0,
+       "zeroPct": 100.0
+      },
+      "legacy": {
+       "prs": 2,
+       "avgCycles": 0.0,
+       "medianCycles": 0.0,
+       "p90Cycles": 0,
+       "avgRounds": 0.0,
+       "medianRounds": 0.0,
+       "p90Rounds": 0,
+       "zeroRoundPct": 100.0,
+       "avgSubmissions": 1.0,
+       "avgThreads": 0.0,
+       "avgIssueComments": 0.0
+      },
+      "avgCycles": 0.0,
+      "medianCycles": 0.0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0.0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "lowN": true,
+      "rounds": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "comments": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "legacy": {
+       "prs": 0,
+       "avgCycles": null,
+       "medianCycles": null,
+       "p90Cycles": null,
+       "avgRounds": null,
+       "medianRounds": null,
+       "p90Rounds": null,
+       "zeroRoundPct": null,
+       "avgSubmissions": null,
+       "avgThreads": null,
+       "avgIssueComments": null
+      },
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     }
+    },
+    {
+     "week": "2026-08-24",
+     "partial": false,
+     "botAuthored": {
+      "prs": 1,
+      "lowN": true,
+      "rounds": {
+       "n": 1,
+       "total": 1,
+       "mean": 1.0,
+       "median": 1,
+       "p90": 1,
+       "zeroPct": 0.0
+      },
+      "comments": {
+       "n": 1,
+       "total": 0,
+       "mean": 0.0,
+       "median": 0,
+       "p90": 0,
+       "zeroPct": 100.0
+      },
+      "legacy": {
+       "prs": 1,
+       "avgCycles": 0.0,
+       "medianCycles": 0,
+       "p90Cycles": 0,
+       "avgRounds": 0.0,
+       "medianRounds": 0,
+       "p90Rounds": 0,
+       "zeroRoundPct": 100.0,
+       "avgSubmissions": 1.0,
+       "avgThreads": 0.0,
+       "avgIssueComments": 0.0
+      },
+      "avgCycles": 0.0,
+      "medianCycles": 0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "lowN": true,
+      "rounds": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "comments": {
+       "n": 0,
+       "total": 0,
+       "mean": null,
+       "median": null,
+       "p90": null,
+       "zeroPct": null
+      },
+      "legacy": {
+       "prs": 0,
+       "avgCycles": null,
+       "medianCycles": null,
+       "p90Cycles": null,
+       "avgRounds": null,
+       "medianRounds": null,
+       "p90Rounds": null,
+       "zeroRoundPct": null,
+       "avgSubmissions": null,
+       "avgThreads": null,
+       "avgIssueComments": null
+      },
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     }
+    }
+   ],
+   "weekly": [
+    {
+     "week": "2026-08-17",
+     "botAuthored": {
+      "prs": 2,
+      "avgCycles": 0.0,
+      "medianCycles": 0.0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0.0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     }
+    },
+    {
+     "week": "2026-08-24",
+     "botAuthored": {
+      "prs": 1,
+      "avgCycles": 0.0,
+      "medianCycles": 0,
+      "p90Cycles": 0,
+      "avgRounds": 0.0,
+      "medianRounds": 0,
+      "p90Rounds": 0,
+      "zeroRoundPct": 100.0,
+      "avgSubmissions": 1.0,
+      "avgThreads": 0.0,
+      "avgIssueComments": 0.0
+     },
+     "humanAuthored": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     }
+    }
+   ]
+  },
+  "shader-slang/slang-rhi": {
+   "totals": {
+    "prs": 0,
+    "mergedPrs": 0,
+    "openPrs": 0,
+    "closedPrs": 0,
+    "automationAuthoredPrs": 0,
+    "unknownAuthoredPrs": 0,
+    "botAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "humanAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "reviewTruncatedPrs": 0
+   },
+   "weeklyByActivity": [],
+   "weeklyByMerge": [],
+   "weekly": []
+  },
+  "shader-slang/shader-slang.github.io": {
+   "totals": {
+    "prs": 0,
+    "mergedPrs": 0,
+    "openPrs": 0,
+    "closedPrs": 0,
+    "automationAuthoredPrs": 0,
+    "unknownAuthoredPrs": 0,
+    "botAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "humanAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "reviewTruncatedPrs": 0
+   },
+   "weeklyByActivity": [],
+   "weeklyByMerge": [],
+   "weekly": []
+  },
+  "shader-slang/slangpy-samples": {
+   "totals": {
+    "prs": 0,
+    "mergedPrs": 0,
+    "openPrs": 0,
+    "closedPrs": 0,
+    "automationAuthoredPrs": 0,
+    "unknownAuthoredPrs": 0,
+    "botAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "humanAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "reviewTruncatedPrs": 0
+   },
+   "weeklyByActivity": [],
+   "weeklyByMerge": [],
+   "weekly": []
+  },
+  "shader-slang/slang-playground": {
+   "totals": {
+    "prs": 0,
+    "mergedPrs": 0,
+    "openPrs": 0,
+    "closedPrs": 0,
+    "automationAuthoredPrs": 0,
+    "unknownAuthoredPrs": 0,
+    "botAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "humanAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "reviewTruncatedPrs": 0
+   },
+   "weeklyByActivity": [],
+   "weeklyByMerge": [],
+   "weekly": []
+  },
+  "shader-slang/slang-vscode-extension": {
+   "totals": {
+    "prs": 0,
+    "mergedPrs": 0,
+    "openPrs": 0,
+    "closedPrs": 0,
+    "automationAuthoredPrs": 0,
+    "unknownAuthoredPrs": 0,
+    "botAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "humanAuthored": {
+     "prs": 0,
+     "lowN": true,
+     "rounds": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "comments": {
+      "n": 0,
+      "total": 0,
+      "mean": null,
+      "median": null,
+      "p90": null,
+      "zeroPct": null
+     },
+     "legacy": {
+      "prs": 0,
+      "avgCycles": null,
+      "medianCycles": null,
+      "p90Cycles": null,
+      "avgRounds": null,
+      "medianRounds": null,
+      "p90Rounds": null,
+      "zeroRoundPct": null,
+      "avgSubmissions": null,
+      "avgThreads": null,
+      "avgIssueComments": null
+     },
+     "avgCycles": null,
+     "medianCycles": null,
+     "p90Cycles": null,
+     "avgRounds": null,
+     "medianRounds": null,
+     "p90Rounds": null,
+     "zeroRoundPct": null,
+     "avgSubmissions": null,
+     "avgThreads": null,
+     "avgIssueComments": null
+    },
+    "reviewTruncatedPrs": 0
+   },
+   "weeklyByActivity": [],
+   "weeklyByMerge": [],
+   "weekly": []
+  }
+ },
+ "perPR": [
+  {
+   "repo": "shader-slang/slang",
+   "number": 12186,
+   "url": "https://github.com/shader-slang/slang/pull/12186",
+   "title": "Fix #12185: make the DescriptorHandle SPIR-V representation kind-dependent",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-07-06T10:00:00Z",
+   "mergedAt": "2026-09-02T16:50:00Z",
+   "closedAt": "2026-09-02T16:50:00Z",
+   "rounds": 3,
+   "comments": 6,
+   "inlineComments": 4,
+   "conversationComments": 2,
+   "threads": 3,
+   "changesRequested": 1,
+   "submissions": 4,
+   "reviewers": [
+    "csyonghe",
+    "jkwak-work",
+    "pdeayton-nv"
+   ],
+   "classification": {
+    "question": 1,
+    "change_request": 4,
+    "nit": 0,
+    "ack": 1,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 2,
+   "removed": {
+    "automation": 2,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 1
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [
+    {
+     "author": "jkwak-work",
+     "date": "2026-07-22T15:48:56Z",
+     "kind": "inline",
+     "chars": 194,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-07-22T15:48:56Z",
+     "text": "I am having a trouble understanding how this condition translates to finding out NV specific extensions. @nv-slang-bot , please give us more information of how this function is supposed to work."
+    },
+    {
+     "author": "pdeayton-nv",
+     "date": "2026-07-24T16:29:03Z",
+     "kind": "inline",
+     "chars": 158,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-07-24T16:29:03Z",
+     "text": "There is a latent bug here: kIROp_TextureType covers both ordinary images and combined image/sampler types. Could you select the opcode based on isCombined()?"
+    },
+    {
+     "author": "jkwak-work",
+     "date": "2026-07-23T22:18:52Z",
+     "kind": "conversation",
+     "chars": 95,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-07-23T22:18:52Z",
+     "text": "Reassigning to @pdeayton-nv. Please make changes as discussed in the code review meeting today."
+    },
+    {
+     "author": "jkwak-work",
+     "date": "2026-07-22T15:40:49Z",
+     "kind": "inline",
+     "chars": 66,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-07-22T15:40:49Z",
+     "text": "Replace this with assert SLANG_ASSERT(sink->getErrorCount() == 0);"
+    },
+    {
+     "author": "csyonghe",
+     "date": "2026-09-02T15:01:00Z",
+     "kind": "conversation",
+     "chars": 21,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-09-02T15:01:00Z",
+     "text": "Approved and merging."
+    }
+   ],
+   "activityByWeek": {
+    "2026-07-20": {
+     "rounds": 2,
+     "comments": 5
+    },
+    "2026-08-31": {
+     "rounds": 1,
+     "comments": 1
+    }
+   },
+   "activityWeeks": [
+    "2026-07-20",
+    "2026-08-31"
+   ],
+   "firstActivityAt": "2026-07-22T15:36:00Z",
+   "lastActivityAt": "2026-09-02T15:01:00Z",
+   "reviewDurationDays": 58.3,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12600,
+   "url": "https://github.com/shader-slang/slang/pull/12600",
+   "title": "Fix #12500: quiet fix 0",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-17T09:00:00Z",
+   "mergedAt": "2026-08-19T09:00:00Z",
+   "closedAt": "2026-08-19T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-18T09:00:00Z",
+   "lastActivityAt": "2026-08-18T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12601,
+   "url": "https://github.com/shader-slang/slang/pull/12601",
+   "title": "Fix #12501: quiet fix 1",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-18T09:00:00Z",
+   "mergedAt": "2026-08-20T09:00:00Z",
+   "closedAt": "2026-08-20T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-19T09:00:00Z",
+   "lastActivityAt": "2026-08-19T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12602,
+   "url": "https://github.com/shader-slang/slang/pull/12602",
+   "title": "Fix #12502: quiet fix 2",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-19T09:00:00Z",
+   "mergedAt": "2026-08-21T09:00:00Z",
+   "closedAt": "2026-08-21T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-20T09:00:00Z",
+   "lastActivityAt": "2026-08-20T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12603,
+   "url": "https://github.com/shader-slang/slang/pull/12603",
+   "title": "Fix #12503: quiet fix 3",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-20T09:00:00Z",
+   "mergedAt": "2026-08-22T09:00:00Z",
+   "closedAt": "2026-08-22T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-21T09:00:00Z",
+   "lastActivityAt": "2026-08-21T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12604,
+   "url": "https://github.com/shader-slang/slang/pull/12604",
+   "title": "Fix #12504: quiet fix 4",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-21T09:00:00Z",
+   "mergedAt": "2026-08-23T09:00:00Z",
+   "closedAt": "2026-08-23T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-22T09:00:00Z",
+   "lastActivityAt": "2026-08-22T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12605,
+   "url": "https://github.com/shader-slang/slang/pull/12605",
+   "title": "Fix #12505: quiet fix 5",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-22T09:00:00Z",
+   "mergedAt": "2026-08-24T09:00:00Z",
+   "closedAt": "2026-08-24T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-23T09:00:00Z",
+   "lastActivityAt": "2026-08-23T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12606,
+   "url": "https://github.com/shader-slang/slang/pull/12606",
+   "title": "Fix #12506: quiet fix 6",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-23T09:00:00Z",
+   "mergedAt": "2026-08-25T09:00:00Z",
+   "closedAt": "2026-08-25T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-24": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-24"
+   ],
+   "firstActivityAt": "2026-08-24T09:00:00Z",
+   "lastActivityAt": "2026-08-24T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12607,
+   "url": "https://github.com/shader-slang/slang/pull/12607",
+   "title": "Fix #12507: quiet fix 7",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-24T09:00:00Z",
+   "mergedAt": "2026-08-26T09:00:00Z",
+   "closedAt": "2026-08-26T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-24": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-24"
+   ],
+   "firstActivityAt": "2026-08-25T09:00:00Z",
+   "lastActivityAt": "2026-08-25T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12608,
+   "url": "https://github.com/shader-slang/slang/pull/12608",
+   "title": "Fix #12508: quiet fix 8",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-25T09:00:00Z",
+   "mergedAt": "2026-08-27T09:00:00Z",
+   "closedAt": "2026-08-27T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-24": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-24"
+   ],
+   "firstActivityAt": "2026-08-26T09:00:00Z",
+   "lastActivityAt": "2026-08-26T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12609,
+   "url": "https://github.com/shader-slang/slang/pull/12609",
+   "title": "Fix #12509: quiet fix 9",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-26T09:00:00Z",
+   "mergedAt": "2026-08-28T09:00:00Z",
+   "closedAt": "2026-08-28T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-24": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-24"
+   ],
+   "firstActivityAt": "2026-08-27T09:00:00Z",
+   "lastActivityAt": "2026-08-27T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12610,
+   "url": "https://github.com/shader-slang/slang/pull/12610",
+   "title": "Fix #12510: quiet fix 10",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-27T09:00:00Z",
+   "mergedAt": "2026-08-29T09:00:00Z",
+   "closedAt": "2026-08-29T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-24": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-24"
+   ],
+   "firstActivityAt": "2026-08-28T09:00:00Z",
+   "lastActivityAt": "2026-08-28T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12611,
+   "url": "https://github.com/shader-slang/slang/pull/12611",
+   "title": "Fix #12511: quiet fix 11",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-28T09:00:00Z",
+   "mergedAt": "2026-08-30T09:00:00Z",
+   "closedAt": "2026-08-30T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-24": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-24"
+   ],
+   "firstActivityAt": "2026-08-29T09:00:00Z",
+   "lastActivityAt": "2026-08-29T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12612,
+   "url": "https://github.com/shader-slang/slang/pull/12612",
+   "title": "Fix #12512: quiet fix 12",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-17T09:00:00Z",
+   "mergedAt": "2026-08-19T09:00:00Z",
+   "closedAt": "2026-08-19T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-18T09:00:00Z",
+   "lastActivityAt": "2026-08-18T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12613,
+   "url": "https://github.com/shader-slang/slang/pull/12613",
+   "title": "Fix #12513: quiet fix 13",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-18T09:00:00Z",
+   "mergedAt": "2026-08-20T09:00:00Z",
+   "closedAt": "2026-08-20T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jvepsalainen-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 1,
+   "removed": {
+    "automation": 1,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-19T09:00:00Z",
+   "lastActivityAt": "2026-08-19T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12700,
+   "url": "https://github.com/shader-slang/slang/pull/12700",
+   "title": "Human change 0",
+   "author": "alice",
+   "authorClass": "human",
+   "state": "merged",
+   "createdAt": "2026-08-17T09:00:00Z",
+   "mergedAt": "2026-08-18T09:00:00Z",
+   "closedAt": "2026-08-18T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "csyonghe"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-17T12:00:00Z",
+   "lastActivityAt": "2026-08-17T12:00:00Z",
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12701,
+   "url": "https://github.com/shader-slang/slang/pull/12701",
+   "title": "Human change 1",
+   "author": "alice",
+   "authorClass": "human",
+   "state": "merged",
+   "createdAt": "2026-08-18T09:00:00Z",
+   "mergedAt": "2026-08-19T09:00:00Z",
+   "closedAt": "2026-08-19T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "csyonghe"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-18T12:00:00Z",
+   "lastActivityAt": "2026-08-18T12:00:00Z",
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12702,
+   "url": "https://github.com/shader-slang/slang/pull/12702",
+   "title": "Human change 2",
+   "author": "alice",
+   "authorClass": "human",
+   "state": "merged",
+   "createdAt": "2026-08-19T09:00:00Z",
+   "mergedAt": "2026-08-20T09:00:00Z",
+   "closedAt": "2026-08-20T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "csyonghe"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-19T12:00:00Z",
+   "lastActivityAt": "2026-08-19T12:00:00Z",
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12703,
+   "url": "https://github.com/shader-slang/slang/pull/12703",
+   "title": "Human change 3",
+   "author": "alice",
+   "authorClass": "human",
+   "state": "merged",
+   "createdAt": "2026-08-20T09:00:00Z",
+   "mergedAt": "2026-08-21T09:00:00Z",
+   "closedAt": "2026-08-21T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "csyonghe"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-20T12:00:00Z",
+   "lastActivityAt": "2026-08-20T12:00:00Z",
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12704,
+   "url": "https://github.com/shader-slang/slang/pull/12704",
+   "title": "Human change 4",
+   "author": "alice",
+   "authorClass": "human",
+   "state": "merged",
+   "createdAt": "2026-08-21T09:00:00Z",
+   "mergedAt": "2026-08-22T09:00:00Z",
+   "closedAt": "2026-08-22T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "csyonghe"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-21T12:00:00Z",
+   "lastActivityAt": "2026-08-21T12:00:00Z",
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12705,
+   "url": "https://github.com/shader-slang/slang/pull/12705",
+   "title": "Human change 5",
+   "author": "alice",
+   "authorClass": "human",
+   "state": "merged",
+   "createdAt": "2026-08-22T09:00:00Z",
+   "mergedAt": "2026-08-23T09:00:00Z",
+   "closedAt": "2026-08-23T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "csyonghe"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-22T12:00:00Z",
+   "lastActivityAt": "2026-08-22T12:00:00Z",
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12706,
+   "url": "https://github.com/shader-slang/slang/pull/12706",
+   "title": "Human change 6",
+   "author": "alice",
+   "authorClass": "human",
+   "state": "merged",
+   "createdAt": "2026-08-23T09:00:00Z",
+   "mergedAt": "2026-08-24T09:00:00Z",
+   "closedAt": "2026-08-24T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "csyonghe"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-23T12:00:00Z",
+   "lastActivityAt": "2026-08-23T12:00:00Z",
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12707,
+   "url": "https://github.com/shader-slang/slang/pull/12707",
+   "title": "Human change 7",
+   "author": "alice",
+   "authorClass": "human",
+   "state": "merged",
+   "createdAt": "2026-08-24T09:00:00Z",
+   "mergedAt": "2026-08-25T09:00:00Z",
+   "closedAt": "2026-08-25T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "csyonghe"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-24": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-24"
+   ],
+   "firstActivityAt": "2026-08-24T12:00:00Z",
+   "lastActivityAt": "2026-08-24T12:00:00Z",
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12841,
+   "url": "https://github.com/shader-slang/slang/pull/12841",
+   "title": "Replace IGlobalSession::getDownstreamCompilerVersion",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-28T10:00:00Z",
+   "mergedAt": "2026-09-02T21:33:00Z",
+   "closedAt": "2026-09-02T21:33:00Z",
+   "rounds": 5,
+   "comments": 3,
+   "inlineComments": 0,
+   "conversationComments": 3,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 5,
+   "reviewers": [
+    "jvepsalainen-nv",
+    "kaizhangnv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 3,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 2,
+   "removed": {
+    "automation": 2,
+    "commands": 1,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [
+    {
+     "author": "kaizhangnv",
+     "date": "2026-08-29T10:05:00Z",
+     "kind": "conversation",
+     "chars": 228,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-08-29T10:05:00Z",
+     "text": "@nv-slang-bot can you fix the build issues? Also, we need to also revert this PR: https://github.com/shader-slang/slang/pull/11556. This PR implements getDownstreamCompilerVersion which is useless whe"
+    },
+    {
+     "author": "kaizhangnv",
+     "date": "2026-08-29T11:05:00Z",
+     "kind": "conversation",
+     "chars": 76,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-08-29T11:05:00Z",
+     "text": "Please also expose the API on the slangc CLI and add record/replay coverage."
+    },
+    {
+     "author": "kaizhangnv",
+     "date": "2026-08-29T12:05:00Z",
+     "kind": "conversation",
+     "chars": 24,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-08-29T12:05:00Z",
+     "text": "Docs need an update too."
+    }
+   ],
+   "activityByWeek": {
+    "2026-08-24": {
+     "rounds": 4,
+     "comments": 3
+    },
+    "2026-08-31": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-24",
+    "2026-08-31"
+   ],
+   "firstActivityAt": "2026-08-29T10:00:00Z",
+   "lastActivityAt": "2026-09-02T20:00:00Z",
+   "reviewDurationDays": 5.5,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12900,
+   "url": "https://github.com/shader-slang/slang/pull/12900",
+   "title": "Fix #12861: forward args",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "open",
+   "createdAt": "2026-09-03T09:00:00Z",
+   "mergedAt": null,
+   "closedAt": null,
+   "rounds": 1,
+   "comments": 1,
+   "inlineComments": 1,
+   "conversationComments": 0,
+   "threads": 1,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "jkwak-work"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 1,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [
+    {
+     "author": "jkwak-work",
+     "date": "2026-09-04T09:00:00Z",
+     "kind": "inline",
+     "chars": 29,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-09-04T09:00:00Z",
+     "text": "nit: rename to forwardAllArgs"
+    }
+   ],
+   "activityByWeek": {
+    "2026-08-31": {
+     "rounds": 1,
+     "comments": 1
+    }
+   },
+   "activityWeeks": [
+    "2026-08-31"
+   ],
+   "firstActivityAt": "2026-09-04T09:00:00Z",
+   "lastActivityAt": "2026-09-04T09:00:00Z",
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12901,
+   "url": "https://github.com/shader-slang/slang/pull/12901",
+   "title": "Superseded attempt",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "closed",
+   "createdAt": "2026-08-26T09:00:00Z",
+   "mergedAt": null,
+   "closedAt": "2026-09-01T09:00:00Z",
+   "rounds": 0,
+   "comments": 1,
+   "inlineComments": 0,
+   "conversationComments": 1,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 0,
+   "reviewers": [
+    "pdeayton-nv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 1
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [
+    {
+     "author": "pdeayton-nv",
+     "date": "2026-09-01T08:00:00Z",
+     "kind": "conversation",
+     "chars": 30,
+     "url": "https://github.com/shader-slang/slang/pull/1#c-2026-09-01T08:00:00Z",
+     "text": "Superseded by #12902, closing."
+    }
+   ],
+   "activityByWeek": {
+    "2026-08-31": {
+     "rounds": 0,
+     "comments": 1
+    }
+   },
+   "activityWeeks": [
+    "2026-08-31"
+   ],
+   "firstActivityAt": "2026-09-01T08:00:00Z",
+   "lastActivityAt": "2026-09-01T08:00:00Z",
+   "reviewDurationDays": 6.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slang",
+   "number": 12902,
+   "url": "https://github.com/shader-slang/slang/pull/12902",
+   "title": "Bump lodash",
+   "author": "dependabot",
+   "authorClass": "automation",
+   "state": "merged",
+   "createdAt": "2026-08-26T09:00:00Z",
+   "mergedAt": "2026-08-27T09:00:00Z",
+   "closedAt": "2026-08-27T09:00:00Z",
+   "rounds": 0,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 0,
+   "reviewers": [],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {},
+   "activityWeeks": [],
+   "firstActivityAt": null,
+   "lastActivityAt": null,
+   "reviewDurationDays": 1.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slangpy",
+   "number": 500,
+   "url": "https://github.com/shader-slang/slang/pull/500",
+   "title": "slangpy fix 0",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-20T09:00:00Z",
+   "mergedAt": "2026-08-22T09:00:00Z",
+   "closedAt": "2026-08-22T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "skallweitnv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-21T09:00:00Z",
+   "lastActivityAt": "2026-08-21T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slangpy",
+   "number": 501,
+   "url": "https://github.com/shader-slang/slang/pull/501",
+   "title": "slangpy fix 1",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-21T09:00:00Z",
+   "mergedAt": "2026-08-23T09:00:00Z",
+   "closedAt": "2026-08-23T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "skallweitnv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-22T09:00:00Z",
+   "lastActivityAt": "2026-08-22T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  },
+  {
+   "repo": "shader-slang/slangpy",
+   "number": 502,
+   "url": "https://github.com/shader-slang/slang/pull/502",
+   "title": "slangpy fix 2",
+   "author": "nv-slang-bot",
+   "authorClass": "bot",
+   "state": "merged",
+   "createdAt": "2026-08-22T09:00:00Z",
+   "mergedAt": "2026-08-24T09:00:00Z",
+   "closedAt": "2026-08-24T09:00:00Z",
+   "rounds": 1,
+   "comments": 0,
+   "inlineComments": 0,
+   "conversationComments": 0,
+   "threads": 0,
+   "changesRequested": 0,
+   "submissions": 1,
+   "reviewers": [
+    "skallweitnv"
+   ],
+   "classification": {
+    "question": 0,
+    "change_request": 0,
+    "nit": 0,
+    "ack": 0,
+    "process": 0,
+    "other": 0
+   },
+   "removedAutomation": 0,
+   "removed": {
+    "automation": 0,
+    "commands": 0,
+    "duplicates": 0,
+    "self": 0
+   },
+   "reviewsRemoved": {
+    "automation": 0,
+    "self": 0
+   },
+   "longestComments": [],
+   "activityByWeek": {
+    "2026-08-17": {
+     "rounds": 1,
+     "comments": 0
+    }
+   },
+   "activityWeeks": [
+    "2026-08-17"
+   ],
+   "firstActivityAt": "2026-08-23T09:00:00Z",
+   "lastActivityAt": "2026-08-23T09:00:00Z",
+   "reviewDurationDays": 2.0,
+   "truncated": false,
+   "pagesFetched": {
+    "reviews": 1,
+    "comments": 1,
+    "reviewThreads": 1,
+    "threadComments": 0
+   }
+  }
+ ]
+}
