@@ -21,6 +21,8 @@ const envConfig = readEnvFile([
   'GITHUB_WEBHOOK_SECRET',
   'GITHUB_WEBHOOK_PORT',
   'GITHUB_WEBHOOK_BOT_MENTION',
+  'GITHUB_WEBHOOK_OWNER_ALLOWLIST',
+  'GITHUB_WEBHOOK_OWNER_DENYLIST',
   'INSTANCE_SLUG',
   'PR_MAPPINGS_LOCAL',
   'INTERNAL_REGISTER_URL',
@@ -223,6 +225,25 @@ export const GITHUB_WEBHOOK_PORT = parseInt(
 );
 export const GITHUB_WEBHOOK_BOT_MENTION =
   process.env.GITHUB_WEBHOOK_BOT_MENTION || envConfig.GITHUB_WEBHOOK_BOT_MENTION || '@nv-slang-bot';
+
+// Repo-owner filter for inbound GitHub deliveries. Comma-separated owner
+// (org/user) names, matched case-insensitively against repository.full_name's
+// owner segment. Empty allowlist = accept every owner (the default, so an
+// install that never sets these is unchanged); the denylist always wins.
+// Prod sets ALLOWLIST=shader-slang DENYLIST=slang-coworkers so the canonical
+// router stops landing (and forwarding) deliveries for repos it never serves.
+function parseOwnerList(raw: string | undefined): string[] {
+  return (raw || '')
+    .split(',')
+    .map((s) => s.trim().toLowerCase())
+    .filter((s) => s.length > 0);
+}
+export const GITHUB_WEBHOOK_OWNER_ALLOWLIST: string[] = parseOwnerList(
+  process.env.GITHUB_WEBHOOK_OWNER_ALLOWLIST || envConfig.GITHUB_WEBHOOK_OWNER_ALLOWLIST,
+);
+export const GITHUB_WEBHOOK_OWNER_DENYLIST: string[] = parseOwnerList(
+  process.env.GITHUB_WEBHOOK_OWNER_DENYLIST || envConfig.GITHUB_WEBHOOK_OWNER_DENYLIST,
+);
 
 // Cross-instance PR routing identifiers.
 //
