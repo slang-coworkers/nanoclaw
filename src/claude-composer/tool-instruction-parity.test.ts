@@ -319,6 +319,49 @@ function declaredToolBlocks(): number {
   return moduleSources().reduce((total, text) => total + [...text.matchAll(/^\s*tool: \{$/gm)].length, 0);
 }
 
+/**
+ * Tool names some OTHER MCP server owns, collected from every fully-qualified
+ * `mcp__<server>__<tool>` reference in the tree.
+ *
+ * Prose writes an external tool both ways — `mcp__slang-mcp__discord_read_messages`
+ * in one place and a bare `discord_read_messages(...)` in another — and a bare
+ * name is indistinguishable from one of ours by shape alone. Subtracting the
+ * names another server is known to own is what keeps the bare-call check from
+ * reporting a real tool as a phantom; without it the check produces false
+ * positives, and a check that cries wolf gets disabled rather than fixed.
+ */
+function externallyOwnedToolNames(): Set<string> {
+  const owned = new Set<string>();
+  const roots = [path.join(ROOT, 'container'), path.join(ROOT, 'src')];
+  const walk = (dir: string): void => {
+    let entries: fs.Dirent[];
+    try {
+      entries = fs.readdirSync(dir, { withFileTypes: true });
+    } catch {
+      return;
+    }
+    for (const entry of entries) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) {
+        if (entry.name === 'node_modules' || entry.name === '.git') continue;
+        walk(full);
+      } else if (/\.(md|ts|py|sh|ya?ml|json)$/.test(entry.name)) {
+        let text: string;
+        try {
+          text = fs.readFileSync(full, 'utf-8');
+        } catch {
+          continue;
+        }
+        for (const match of text.matchAll(/mcp__([a-z0-9][a-z0-9-]*)__([a-z][a-z0-9_]*)/g)) {
+          if (match[1] !== 'nanoclaw') owned.add(match[2]);
+        }
+      }
+    }
+  };
+  roots.forEach(walk);
+  return owned;
+}
+
 function moduleSources(): string[] {
   return fs
     .readdirSync(MCP_DIR)
@@ -391,6 +434,7 @@ describe('registered tools vs taught tools', () => {
   });
 
   it('names no tool it does not register, on any surface', () => {
+    const externallyOwned = externallyOwnedToolNames();
     // Two unambiguous shapes: the fully-qualified `mcp__nanoclaw__*` reference,
     // and snake_case call syntax. Bare prose words are deliberately not matched —
     // this trades recall for precision, since a false positive here would make
@@ -405,7 +449,10 @@ describe('registered tools vs taught tools', () => {
       // before comparing — otherwise `mcp__nanoclaw__send_message(` reads as a tool
       // named after the prefix. A residual `mcp__` means another server's tool.
       for (const match of doc.text.matchAll(/`(?:mcp__nanoclaw__)?([a-z][a-z0-9_]*_[a-z0-9_]*)\(/g)) {
-        if (!match[1].startsWith('mcp__')) cited.add(match[1]);
+        // A residual `mcp__` means another server's tool written in full.
+        if (match[1].startsWith('mcp__')) continue;
+        if (externallyOwned.has(match[1])) continue;
+        cited.add(match[1]);
       }
       for (const tool of cited) {
         expect(
