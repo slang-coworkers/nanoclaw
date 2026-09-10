@@ -262,12 +262,13 @@ recurring task once.
 > Regenerate that snapshot with `scripts/dump-scheduled-tasks.py` after any change, so the
 > live definition and the committed one stay in sync.
 
+```bash
+ncl tasks create --name "wiki fold" \
+  --prompt "<the canonical fold prompt — see docs/scheduled-tasks.*.json>" \
+  --recurrence "0 6 * * *" \
+  --script '<gate: print wakeAgent:false unless learnings/ changed since last build>'
 ```
-schedule_task(prompt="<the canonical fold prompt — see docs/scheduled-tasks.*.json>",
-              recurrence="0 6 * * *",            # daily; the fold is incremental and cheap
-              script="<gate: exit wakeAgent:false unless learnings/ changed since last build>")
-```
-The pre-task `script` gate (bash, 30s) should `echo '{\"wakeAgent\": false}'` when no learnings
+The pre-task `script` gate (bash, 30s) should `echo '{"wakeAgent": false}'` when no learnings
 are newer than `wiki/index.md`, so idle days cost nothing. On a burst of new learnings, trigger
 sooner.
 
