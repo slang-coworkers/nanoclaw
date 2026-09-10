@@ -347,6 +347,84 @@ class TestCausalWindow(unittest.TestCase):
         self.assertEqual(rq.causal_refs(""), set())
 
 
+class TestShaCulprits(Harness):
+    """A culprit named only by commit SHA resolves to its PR (prod #12803)."""
+
+    BODY_12803 = ("## Summary\n\nSlang commit [`de679fdc3857974c8cc817ba0735142e2434a001`]"
+                  "(https://github.com/shader-slang/slang/commit/de679fdc3857974c8cc817ba0735142e2434a001) "
+                  "regresses CUDA/OptiX ray tracing when a ray payload contains a public empty struct.\n")
+
+    def routes(self, sha_route):
+        return {
+            LABELS: [{"name": "regression"}],
+            ISSUES: [issue(12803, "2026-08-25T00:00:00Z", body=self.BODY_12803,
+                           title="Regression in de679fd: CUDA/OptiX illegal address with a public empty struct")],
+            f"repos/{REPO}/commits/de679fd/pulls": sha_route,
+            MERGED: [pr(12304, "nv-slang-bot[bot]", "2026-08-20T00:00:00Z")]
+                    + [pr(12400 + i, "nv-slang-bot[bot]", "2026-08-21T00:00:00Z") for i in range(9)],
+        }
+
+    def test_a_bare_sha_in_the_causal_block_resolves_to_its_pr(self):
+        code, doc, _, fake = self.run_main(self.routes([pr(12304, "nv-slang-bot[bot]", "2026-08-20T00:00:00Z")]))
+        self.assertEqual(code, 0)
+        self.assertEqual(doc["cohort_bot"], {"2026-08": 1})
+        self.assertEqual(doc["rate_bot_per_100"]["2026-08"], 10.0)
+        row = doc["rows"][0]
+        self.assertEqual(row["attribution"], "bot")
+        self.assertEqual(row["source"], "title")
+        self.assertEqual(row["shas"], {"de679fd": [12304]})
+        self.assertEqual([c["pr"] for c in row["culprits"]], [12304])
+        # The pulls payload carries author + merged_at; no second lookup per PR.
+        self.assertNotIn(f"repos/{REPO}/pulls/12304", fake.calls)
+
+    def test_a_sha_that_resolves_to_no_pr_is_unattributed_not_an_outage(self):
+        code, doc, _, _ = self.run_main(self.routes([]))
+        self.assertEqual(code, 0)
+        self.assertTrue(doc["complete"])
+        self.assertEqual(doc["unattributed"], 1)
+        self.assertEqual(doc["rows"][0]["shas"], {"de679fd": []})
+
+    def test_an_unknown_commit_422_is_data_not_an_outage(self):
+        code, doc, _, _ = self.run_main(
+            self.routes(Fail("gh: No commit found for SHA: de679fd (HTTP 422)")))
+        self.assertEqual(code, 0)
+        self.assertTrue(doc["complete"])
+        self.assertEqual(doc["unattributed"], 1)
+
+    def test_a_failed_sha_lookup_fails_closed(self):
+        code, doc, _, _ = self.run_main(self.routes(Fail()))
+        self.assertEqual(code, 1)
+        self.assertFalse(doc["complete"])
+        self.assertEqual(doc["partial"]["attributionFailed"], 1)
+        self.assertNotIn("cohort_bot", doc)
+
+    def test_a_sha_culprit_that_merged_after_the_filing_is_rejected(self):
+        code, doc, _, _ = self.run_main(self.routes([pr(12304, "nv-slang-bot[bot]", "2026-09-01T00:00:00Z")]))
+        self.assertEqual(code, 0)
+        self.assertEqual(doc["cohort_bot"], {})
+        self.assertEqual(doc["unattributed"], 1)
+
+    def test_only_plausible_shas_are_looked_up(self):
+        self.assertEqual(rq.causal_shas("Regression in de679fd: crash"), {"de679fd"})
+        self.assertEqual(rq.causal_shas(
+            "Bisected to https://github.com/o/r/commit/de679fdc3857974c8cc817ba0735142e2434a001."),
+            {"de679fdc3857974c8cc817ba0735142e2434a001"})
+        # plain numbers, hex-only English words, upper-case, and tokens glued to
+        # other characters are not SHAs
+        self.assertEqual(rq.causal_shas("Caused by 1234567 and the defaced accede path."), set())
+        self.assertEqual(rq.causal_shas("Caused by DE679FD."), set())
+        self.assertEqual(rq.causal_shas("Caused by xde679fd1."), set())
+        # no causal wording, no lookup
+        self.assertEqual(rq.causal_shas("See de679fd for the current behaviour."), set())
+        self.assertEqual(rq.causal_shas(None), set())
+
+    def test_regression_in_is_causal_wording_for_refs_too(self):
+        self.assertEqual(rq.causal_refs("Regression in #12345: output differs"), {12345})
+        self.assertEqual(rq.causal_refs("Regression after #12345"), {12345})
+        # the label word alone is not a marker
+        self.assertEqual(rq.causal_refs("regression: see #12345"), set())
+
+
 class TestAtomicWrite(unittest.TestCase):
     def test_it_creates_the_output_directory(self):
         d = tempfile.mkdtemp()

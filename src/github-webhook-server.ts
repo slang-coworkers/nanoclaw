@@ -13,6 +13,8 @@ import {
   CI_GATE_REQUIRED_SUITE,
   CI_GATE_REQUIRED_CHECK_RUN,
   GITHUB_WEBHOOK_BOT_MENTION,
+  GITHUB_WEBHOOK_OWNER_ALLOWLIST,
+  GITHUB_WEBHOOK_OWNER_DENYLIST,
   GITHUB_WEBHOOK_PORT,
   GITHUB_WEBHOOK_SECRET,
   INSTANCE_FORWARD_TARGETS,
@@ -186,6 +188,26 @@ export async function postEyesReaction(repo: string, eventType: string, commentI
   }
 }
 
+/**
+ * Decide whether a delivery for `repoFullName` ("owner/repo") passes the
+ * owner filter. Pure, so the policy is unit-testable without a server:
+ *   - denylist match          → 'denied'   (always wins)
+ *   - allowlist set, no match → 'not allowlisted'
+ *   - missing/odd full_name with an allowlist set → 'not allowlisted'
+ *     (fail-closed: an allowlisted install never routes an ownerless payload)
+ *   - otherwise               → 'allowed'  (empty lists = accept everything)
+ */
+export function ownerFilterVerdict(
+  repoFullName: string,
+  allowlist: readonly string[],
+  denylist: readonly string[],
+): 'allowed' | 'denied' | 'not allowlisted' {
+  const owner = repoFullName.includes('/') ? repoFullName.split('/')[0].trim().toLowerCase() : '';
+  if (owner && denylist.includes(owner)) return 'denied';
+  if (allowlist.length > 0 && (!owner || !allowlist.includes(owner))) return 'not allowlisted';
+  return 'allowed';
+}
+
 export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
   if (!GITHUB_WEBHOOK_SECRET) {
     log.warn('GITHUB_WEBHOOK_SECRET not set — webhook server will reject all requests');
@@ -260,6 +282,23 @@ export function startGitHubWebhookServer(): GitHubWebhookServerHandle {
 
     const repository = payload.repository as Record<string, unknown> | undefined;
     const repoFullName = typeof repository?.full_name === 'string' ? repository.full_name : '';
+
+    // Owner filter (both trust paths): a delivery for a repo owner this
+    // install does not serve is acknowledged and dropped here, before any
+    // routing, mapping lookup, forwarding, or reaction can happen.
+    const ownerVerdict = ownerFilterVerdict(
+      repoFullName,
+      GITHUB_WEBHOOK_OWNER_ALLOWLIST,
+      GITHUB_WEBHOOK_OWNER_DENYLIST,
+    );
+    if (ownerVerdict !== 'allowed') {
+      log.info(
+        `github-webhook: dropped ${eventType} for ${repoFullName || '<no repository>'} — owner ${ownerVerdict}` +
+          ` (delivery ${String(req.headers['x-github-delivery'] ?? 'unknown')})`,
+      );
+      writeJson(res, 202, { ok: true, dropped: true, reason: `owner ${ownerVerdict}` });
+      return;
+    }
 
     // Issues: action must be 'opened'; no mention check (a fresh issue
     // can't tag the bot — the bot is the audience here, not the actor).
