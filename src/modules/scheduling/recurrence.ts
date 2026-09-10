@@ -65,7 +65,12 @@ export async function handleRecurrence(inDb: InboundMailbox, session: Session): 
       const cronNext = interval.next().toDate();
       const newId = `task-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 
-      const scriptFails = inDb.trailingFailedRuns(msg.seriesId);
+      // Only a repeatedly-crashing pre-task SCRIPT auto-pauses: that needs a
+      // human. A turn that errored (spend ceiling, provider outage) recovers by
+      // itself, so it backs off but never pauses — otherwise a shared-key outage
+      // silently parks every series until someone resumes each one by hand.
+      const scriptFails = inDb.trailingFailedRuns(msg.seriesId, 'script');
+      const failedRuns = inDb.trailingFailedRuns(msg.seriesId);
 
       if (scriptFails >= SCRIPT_FAIL_PAUSE_CAP) {
         // Re-arm PAUSED at the cron time so `ncl tasks resume` revives the
@@ -91,7 +96,7 @@ export async function handleRecurrence(inDb: InboundMailbox, session: Session): 
         continue;
       }
 
-      const backoffAt = scriptFails > 0 ? Date.now() + scriptBackoffMinutes(scriptFails) * 60_000 : 0;
+      const backoffAt = failedRuns > 0 ? Date.now() + scriptBackoffMinutes(failedRuns) * 60_000 : 0;
       const nextRun = new Date(Math.max(cronNext.getTime(), backoffAt)).toISOString();
 
       await inDb.armNextTask(msg.id, {

@@ -144,6 +144,36 @@ describe('syncProcessingAcks — script-skip counter', () => {
     expect(status(inDb, 't1')).toBe('failed');
   });
 
+  const failureClass = (inDb: InstanceType<typeof Database>, id: string) =>
+    (inDb.prepare('SELECT failure_class AS c FROM messages_in WHERE id = ?').get(id) as { c: string | null }).c;
+
+  // The SELECT in syncProcessingAcks has always fetched 'failed'; the mapping then
+  // sent it to `completed`, so the runner's own verdict — written by the
+  // silent-turn finalizer, the cost-ceiling withhold and a failed task fire — was
+  // discarded. `failed_runs` therefore read 0 through a six-day outage.
+  it('a plain failed ack lands the row as a FAILED run, classed turn', () => {
+    const { inDb, outDb } = freshPair();
+    seedTask(inDb, 't1', { prompt: 'p' });
+    ack(outDb, 't1', 'failed');
+
+    syncProcessingAcks(inDb, outDb);
+
+    expect(status(inDb, 't1')).toBe('failed');
+    expect(failureClass(inDb, 't1')).toBe('turn');
+  });
+
+  // The two failure kinds must stay distinguishable: only 'script' may auto-pause
+  // a series, so collapsing them would make a provider outage park every cron.
+  it('script-skip:error is classed script, not turn', () => {
+    const { inDb, outDb } = freshPair();
+    seedTask(inDb, 't1', { prompt: 'p', script: 'x' });
+    ack(outDb, 't1', 'script-skip:error');
+
+    syncProcessingAcks(inDb, outDb);
+
+    expect(failureClass(inDb, 't1')).toBe('script');
+  });
+
   it('plain completed ack completes the row as before', () => {
     const { inDb, outDb } = freshPair();
     seedTask(inDb, 't1', { prompt: 'p', script: 'x' });
