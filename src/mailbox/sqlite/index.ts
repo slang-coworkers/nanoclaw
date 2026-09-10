@@ -2,6 +2,7 @@ import fs from 'fs';
 import type Database from 'better-sqlite3';
 
 import { log } from '../../log.js';
+import { failureClassOf, isFailedAck } from '../model.js';
 import { sessionMailboxDir, sessionMailboxPath } from './paths.js';
 export { inboundDbPath, outboundDbPath, sessionMailboxDir, sessionMailboxPath } from './paths.js';
 import {
@@ -77,10 +78,18 @@ function applyProcessingAcks(db: Database.Database, acks: ProcessingAck[]): void
     "UPDATE messages_in SET status = 'completed' WHERE id = ? AND status NOT IN ('completed', 'failed')",
   );
   const fail = db.prepare(
-    "UPDATE messages_in SET status = 'failed' WHERE id = ? AND status NOT IN ('completed', 'failed')",
+    `UPDATE messages_in SET status = 'failed', failure_class = ?
+       WHERE id = ? AND status NOT IN ('completed', 'failed')`,
   );
   db.transaction(() => {
-    for (const ack of acks) (ack.status === 'script-skip:error' ? fail : complete).run(ack.messageId);
+    // A `failed` ack means the turn ran and did not succeed — the runner writes it
+    // from the silent-turn finalizer and the cost-ceiling withhold. Mapping it to
+    // `completed` (as this did) discarded the only signal those guards produce, so
+    // a fire that never ran still counted as a run.
+    for (const ack of acks) {
+      if (isFailedAck(ack.status)) fail.run(failureClassOf(ack.status), ack.messageId);
+      else complete.run(ack.messageId);
+    }
   })();
 }
 
@@ -240,7 +249,7 @@ export function wrapSqliteInbound(db: Database.Database, nextSequence = () => ne
         recurrence: row.recurrence,
         seriesId: row.series_id,
       })),
-    trailingFailedRuns: (seriesId) => trailingFailedRuns(db, seriesId),
+    trailingFailedRuns: (seriesId, onlyClass) => trailingFailedRuns(db, seriesId, onlyClass),
     clearRecurrence: (messageId) => clearRecurrence(db, messageId),
     countLiveTasks: () =>
       (
