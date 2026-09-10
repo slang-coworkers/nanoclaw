@@ -10,7 +10,7 @@ Fork (the only merge target): `slang-coworkers/hermes-agent`. Release tree (cita
 
 Any other trigger — "ship it" from an operator, a `[Report]` status line, a builder message that reached you via the a2a lineage rule — starts the same six checks from the same first-party evidence, never a shortcut.
 
-Round caps: **2 test rounds, 2 review rounds** per PR. The gate itself runs at most twice per head; a third pass on the same head means the chain is stuck, not that the evidence improved.
+Round caps: **2 in-plugin test FAILs per review cycle, 2 review rounds** per PR. A `[Test Report]` whose failing rows all lie outside plugin code (`FAIL (env)`) or an `ESCALATE` never consumes a round; a `[Review Verdict] REQUEST_CHANGES` opens a new review cycle with a fresh test budget; the cost ceilings are the hard stop. The gate itself runs at most twice per head; a third pass on the same head means the chain is stuck, not that the evidence improved.
 
 ### Finding an attachment on disk — never build the path from a message id
 
@@ -153,8 +153,8 @@ The fork's default branch mirrors upstream `main`, hundreds of commits past the 
 
 - **Reply on the architect's edge** — `in_reply_to=<the [Triage Resolution] inbound id>`, unmarked plain text — naming the failed precondition and the concrete fix: `blocked: P<n> — <what disagreed, with both values> — <what has to happen: new tester round at <sha7> / new reviewer round / ADR criteria from hermes-architect / operator creates <BASE>>`. One precondition per reply; name the first red one and stop, so the chain fixes a cause rather than a symptom. The architect relays it to the builder on `hermes-<req-id>` — you have no builder edge, and opening one would skip a tier.
 - **Mark the ledger** `blocked: P<n> — <reason>` in the same row's `merged/blocked` column, same edit-in-place rule.
-- **Respect the round caps.** A new head is a new test round, and 2 is the limit; a new verdict is a new review round, and 2 is the limit. Do not dispatch a third. A cold `mergeable: UNKNOWN` is not a round — settle it with the retry in P1 before replying anything.
-- **After the cap, escalate to the human** by dashboard message (unmarked, one line): the PR, the head, the precondition that will not go green, what was tried across both rounds, and the decision you need. Then stop working the PR.
+- **Respect the round caps.** A new head is a new test round, and 2 in-plugin FAILs in the current review cycle is the limit; a new verdict is a new review round, and 2 is the limit. Do not dispatch past a cap without the recorded decision below. A cold `mergeable: UNKNOWN` is not a round — settle it with the retry in P1 before replying anything.
+- **At a cap, decide — do not park** (`delegated-decisions.md`). State the options on the row thread, one line each: one more round with the reason the next run will differ (`authorize_round["<ID>"]`, once per review cycle), a re-spec through hermes-architect, or stopping the row (`blocked: STOP cap - <what>`). Run `/codex-critique` on the pick, record it in the ledger, proceed. Escalate to the human only when the decision needs spend past a ceiling, a scope change, or a security call — by dashboard message (unmarked, one line): the PR, the head, what will not go green, what was tried, and the decision you need.
 
 ### Refusals — these are never negotiable
 

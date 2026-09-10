@@ -558,3 +558,58 @@ class NudgeTargetSessionTest(unittest.TestCase):
         n2 = next(a for a in run(st, threads, sessions={})["actions"] if a["kind"] == "nudge")
         self.assertIsNone(n2["target_session_id"])
         self.assertIn("unpinned", n2["target_session_note"])
+
+
+class RoundCapsV2(unittest.TestCase):
+    """Round caps count in-plugin FAILs per review cycle (autopilot.md §5 / merge-gate.md): a
+    `FAIL (env)` never counts, a `[Review Verdict] REQUEST_CHANGES` restarts the tester's budget,
+    and `authorize_round` lifts only the current cycle by one."""
+
+    HEAD_C = "c3d4e5f60718293a4b5c6d7e8f9012345678a1b2"
+    HEAD_D = "d4e5f60718293a4b5c6d7e8f9012345678a1b2c3"
+
+    def setUp(self):
+        self.st = state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2 (draft)"}])
+        self.base = [spec_handoff("LOOP-F35", 30), builder_start("LOOP-F35", 29)]
+
+    def test_env_fail_is_not_a_counted_round(self):
+        threads = {"hermes-LOOP-F35": self.base + [
+            handoff(2, HEAD_A, 20), test_report(2, HEAD_A, 1, "FAIL", 18),
+            handoff(2, HEAD_B, 10, round_no=2),
+            test_report(2, HEAD_B, 2, "FAIL (env) — recipient provider environment, outside plugin code", 3),
+        ]}
+        r = run(self.st, threads, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
+        self.assertEqual((r["stage"], r["fail_count"], r["cycle_fail_count"]), ("testing", 1, 1))
+        self.assertTrue(r["env_fail"])
+        self.assertIn("FAIL (env)", r["reason"])
+
+    def test_request_changes_restarts_the_test_budget(self):
+        threads = {"hermes-LOOP-F35": self.base + [
+            handoff(2, HEAD_A, 26), test_report(2, HEAD_A, 1, "FAIL", 24),
+            handoff(2, HEAD_B, 22, round_no=2), test_report(2, HEAD_B, 2, "PASS", 20),
+            review_verdict(2, HEAD_B, 1, "REQUEST_CHANGES", 18),
+            handoff(2, self.HEAD_C, 16, round_no=2), test_report(2, self.HEAD_C, 1, "FAIL", 14),
+        ]}
+        r = run(self.st, threads, prs=[pr(2, "LOOP-F35", self.HEAD_C, created_h=27)])["rows"]["LOOP-F35"]
+        # two FAILs on the PR, but only one in review cycle 1: the row keeps building
+        self.assertEqual((r["stage"], r["fail_count"], r["cycle_fail_count"], r["review_cycle"]), ("building", 2, 1, 1))
+        threads["hermes-LOOP-F35"] += [handoff(2, self.HEAD_D, 10, round_no=2), test_report(2, self.HEAD_D, 2, "FAIL", 8)]
+        r = run(self.st, threads, prs=[pr(2, "LOOP-F35", self.HEAD_D, created_h=27)])["rows"]["LOOP-F35"]
+        self.assertEqual(r["stage"], "blocked")
+        self.assertIn("cap: test FAIL x2 in review cycle 1", r["reason"])
+
+    def test_authorization_lifts_only_the_current_cycle(self):
+        threads = {"hermes-LOOP-F35": self.base + [
+            handoff(2, HEAD_A, 26), test_report(2, HEAD_A, 1, "PASS", 24),
+            review_verdict(2, HEAD_A, 1, "REQUEST_CHANGES", 22),
+            handoff(2, HEAD_B, 20, round_no=2), test_report(2, HEAD_B, 1, "FAIL", 18),
+            handoff(2, self.HEAD_C, 16, round_no=2), test_report(2, self.HEAD_C, 2, "FAIL", 14),
+        ]}
+        prs = [pr(2, "LOOP-F35", self.HEAD_C, created_h=27)]
+        self.assertEqual(run(self.st, threads, prs=prs)["rows"]["LOOP-F35"]["stage"], "blocked")
+        cfg = {"authorize_round": {"LOOP-F35": "fixture fix named"}}
+        self.assertEqual(run(self.st, threads, prs=prs, config=cfg)["rows"]["LOOP-F35"]["stage"], "building")
+        threads["hermes-LOOP-F35"] += [handoff(2, self.HEAD_D, 10, round_no=2), test_report(2, self.HEAD_D, 3, "FAIL", 8)]
+        r = run(self.st, threads, prs=[pr(2, "LOOP-F35", self.HEAD_D, created_h=27)], config=cfg)["rows"]["LOOP-F35"]
+        self.assertEqual(r["stage"], "blocked")
+        self.assertIn("round 3 used", r["reason"])

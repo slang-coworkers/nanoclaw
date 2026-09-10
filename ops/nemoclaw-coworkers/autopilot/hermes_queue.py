@@ -656,7 +656,7 @@ def dispatch_text(rid: str, row: dict, cfg: dict) -> str:
             "Deliver the ADR + acceptance test (kinds pytest: / ui: / desktop: / live:) as the gated "
             "[Spec handoff] on this thread, then forward to hermes-builder. Draft PR on "
             f"slang-coworkers/hermes-agent, base release/{cfg['release_tag']}-e2e-fixed, title suffix [{rid}]. "
-            "Round caps 2 test / 2 review."
+            "Round caps: 2 in-plugin test FAILs per review cycle, 2 review rounds per PR; FAIL (env) and ESCALATE never count."
         )
     if row.get("upstream_ask") and row["disposition"] == "ADOPT":
         text += (

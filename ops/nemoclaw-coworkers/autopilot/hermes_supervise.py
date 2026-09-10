@@ -56,8 +56,8 @@ FORK = "slang-coworkers/hermes-agent"
 NUDGE_BOUND_H = 6.0
 ALERT_BOUND_H = 24.0
 HOLD_TOO_LONG_H = 48.0
-TEST_FAIL_CAP = 2
-REVIEW_RC_CAP = 2
+TEST_FAIL_CAP = 2  # in-plugin FAILs per review cycle (a REQUEST_CHANGES starts a new cycle); FAIL (env)/ESCALATE never count
+REVIEW_RC_CAP = 2  # REQUEST_CHANGES per PR
 ORCHESTRATOR = "orchestrator"
 DUP_WINDOW_S = 900  # a2a copies of one send (sender `out`, receiver `in`) land within seconds of each other
 PR_EVENT_KINDS = ("handoff", "test_report", "review_verdict", "merged", "pr_opened")
@@ -196,14 +196,17 @@ def classify_message(msg: dict, rid: str) -> dict | None:
         vm = re.search(r"\*\*Verdict:\*\*\s*([^\n]*)", text)
         vtext = (vm.group(1) if vm else first).upper()
         cap_form = re.search(r"FAIL\s*[×X]\s*2", vtext) is not None
+        env_form = re.search(r"FAIL\s*\(\s*(ENV|ENVIRONMENTAL|OUTSIDE[- ]PLUGIN)", vtext) is not None
         ev["escalated_up"] = "ESCALATE" in vtext or "ESCALATE" in first.upper()
-        if cap_form or ("FAIL" in vtext and "ESCALATE" not in vtext):
-            ev["verdict"] = "FAIL"  # counted toward the 2-round cap; the ×2 form is the cap being hit
+        if env_form and not cap_form:
+            ev["verdict"] = "FAIL_ENV"  # every failing row outside plugin code: a FAIL to read, never a counted round
+        elif cap_form or ("FAIL" in vtext and "ESCALATE" not in vtext):
+            ev["verdict"] = "FAIL"  # counted toward the per-cycle cap; the ×2 form is the cap being hit
         elif ev["escalated_up"]:
             ev["verdict"] = "ESCALATE"  # environmental: not a round (hermes-verify rounds.log rule)
         elif "PASS" in vtext:
             ev["verdict"] = "PASS"
-        ev["env_fail"] = bool(
+        ev["env_fail"] = env_form or bool(
             re.search(r"install_packages|desktop tier unavailable|pre-existing|mergeable UNKNOWN", text, re.IGNORECASE)
         )
         ev["install_packages"] = (
@@ -303,6 +306,12 @@ def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gati
     verdicts = [e for e in events if e["kind"] == "review_verdict"]
     fails = [e for e in reports if e["verdict"] == "FAIL"]
     rcs = [e for e in verdicts if e["verdict"] == "REQUEST_CHANGES"]
+    # The tester's FAIL budget is per review cycle: only counted FAILs after the last
+    # REQUEST_CHANGES draw on it. FAIL_ENV / ESCALATE reports are not in `fails` at all.
+    last_rc_ts = rcs[-1]["ts"] if rcs else ""
+    cycle_fails = [e for e in fails if e["ts"] > last_rc_ts]
+    res["review_cycle"] = len(rcs)
+    res["cycle_fail_count"] = len(cycle_fails)
     res["test_rounds"] = [{"round": e["round"], "head": (e["head"] or "")[:7] or None, "verdict": e["verdict"], "ts": e["ts"]} for e in reports]
     res["review_rounds"] = [{"round": e["round"], "head": (e["head"] or "")[:7] or None, "verdict": e["verdict"], "ts": e["ts"]} for e in verdicts]
     res["fail_count"] = len(fails)
@@ -327,10 +336,10 @@ def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gati
     if any(e["kind"] == "stop" for e in events):
         res.update(stage="blocked", clock=None, reason="Orchestrator wrote blocked: STOP on the thread")
         return res
-    fail_cap = TEST_FAIL_CAP + (1 if round3_ok else 0)  # an authorized round 3 lifts the cap by exactly one
-    if len(fails) >= fail_cap:
+    fail_cap = TEST_FAIL_CAP + (1 if round3_ok else 0)  # an authorized extra round lifts this cycle's cap by exactly one
+    if len(cycle_fails) >= fail_cap:
         why = "round 3 used" if round3_ok else "no round 3 authorized"
-        res.update(stage="blocked", clock=None, reason=f"cap: test FAIL x{len(fails)}, {why}")
+        res.update(stage="blocked", clock=None, reason=f"cap: test FAIL x{len(cycle_fails)} in review cycle {len(rcs)}, {why}")
         return res
     if len(rcs) >= REVIEW_RC_CAP:
         res.update(stage="blocked", clock=None, reason=f"cap: review REQUEST_CHANGES x{len(rcs)}")
@@ -359,24 +368,25 @@ def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gati
         if last["verdict"] == "PASS":
             res.update(stage="review", clock=last["ts"], round=last["round"], reason=f"[Test Report] PASS round {last['round']}")
             return res
-        if last["verdict"] == "ESCALATE":
+        if last["verdict"] in ("ESCALATE", "FAIL_ENV"):
             res.update(
                 stage="testing", clock=last["ts"], round=last["round"], env_fail=True,
-                install_packages=last.get("install_packages"), reason="[Test Report] ESCALATE (environmental)",
+                install_packages=last.get("install_packages"),
+                reason="[Test Report] ESCALATE (environmental)" if last["verdict"] == "ESCALATE" else "[Test Report] FAIL (env): outside plugin code, not a counted round",
             )
             return res
         res.update(stage="building", clock=last["ts"], round=last["round"], fix_after=f"FAIL round {last['round']}", reason="tester FAIL, new head due")
         return res
     cur_handoffs = [e for e in handoffs if same_head(e)]
     if cur_handoffs:
-        k = len(fails) + 1
+        k = len(cycle_fails) + 1
         res.update(stage="testing", clock=cur_handoffs[-1]["ts"], round=k, reason=f"hand-off round {k} head {head7 or '?'}")
         return res
     if pr is not None and pr_state == "OPEN":
         clock = pr.get("createdAt")
         if reports and pr.get("updatedAt"):
             clock = max(pr["updatedAt"], reports[-1]["ts"])  # new head after a FAIL: the push
-        res.update(stage="pr_open", clock=clock, round=len(fails) + 1, reason=f"PR #{pr.get('number')} open, head {head7 or '?'} unhanded")
+        res.update(stage="pr_open", clock=clock, round=len(cycle_fails) + 1, reason=f"PR #{pr.get('number')} open, head {head7 or '?'} unhanded")
         return res
     pr_opened = [e for e in events if e["kind"] == "pr_opened"]
     if pr_opened:
@@ -385,7 +395,7 @@ def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gati
         return res
     if pr is None and ledger.get("pr"):
         clock = ledger.get("spec_accepted_at") or ledger.get("dispatched_at")
-        res.update(stage="pr_open", clock=clock, round=len(fails) + 1, reason=f"ledger PR #{ledger['pr']}; not on the fork list and no hand-off on the thread (degraded)")
+        res.update(stage="pr_open", clock=clock, round=len(cycle_fails) + 1, reason=f"ledger PR #{ledger['pr']}; not on the fork list and no hand-off on the thread (degraded)")
         return res
     starts = [e for e in events if e["kind"] == "builder_start"]
     if starts:
@@ -440,6 +450,8 @@ def expected_artifact(stage: str, res: dict, rid: str, cfg: dict) -> tuple[str, 
         return "forward to hermes-builder", "the unmarked forward to hermes-builder with memo, ADR and acceptance test"
     if stage == "building":
         if res.get("fix_after"):
+            if str(res["fix_after"]).startswith("REQUEST_CHANGES"):
+                return f"new head on PR #{pr}", f"a new head on PR #{pr} addressing the review ({res['fix_after']}), re-entering hermes-tester as review cycle {res.get('review_cycle') or 1} round 1/2"
             return f"new head on PR #{pr}", f"a new head on PR #{pr} fixing the named rows ({res['fix_after']}), re-entering hermes-tester as round {k + 1}/2"
         return "draft PR", f"a draft PR on {FORK}, base release/{tag}-e2e-fixed, titled [{rid}], then the round-1 hand-off to hermes-tester"
     if stage == "pr_open":
@@ -719,6 +731,8 @@ def _new_record(rid: str, res: dict, last_activity: str | None, book: dict) -> d
         "test_rounds": res.get("test_rounds", []),
         "review_rounds": res.get("review_rounds", []),
         "fail_count": res.get("fail_count", 0),
+        "cycle_fail_count": res.get("cycle_fail_count", 0),
+        "review_cycle": res.get("review_cycle", 0),
         "rc_count": res.get("rc_count", 0),
         "nudges": {"last": book["last"], "count": book["count"], "in_state": False},
         "action": "none",
@@ -809,7 +823,7 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
         tick.escalate(
             rec, book, "env-fail", rec["stage_label"], age_h,
             f"[Test Report] ESCALATE round {res.get('round')}: environmental failure ({pkgs})",
-            "already authorized: wait for the re-run" if authorized else "authorize one extra test round (autopilot §5, once per row) or file install_packages",
+            "already authorized: wait for the re-run" if authorized else "authorize one extra test round (autopilot §5, once per review cycle) or file install_packages",
         )
         return rec
 
