@@ -15,6 +15,7 @@ import type Database from 'better-sqlite3';
 import { nextEvenSeq } from './session-db.js';
 import { createTaskInboundRecord } from '../model.js';
 import type { TaskWrite } from '../model.js';
+import type { FailureClass } from '../model.js';
 
 /**
  * Insert one pending task occurrence. `seriesId` is the series join key — equal
@@ -174,17 +175,27 @@ export function getCompletedRecurring(db: Database.Database): RecurringMessage[]
  * failures from host-sweep's MAX_TRIES path): a series failing for either
  * reason should throttle, not spin.
  */
-export function trailingFailedRuns(db: Database.Database, seriesKey: string): number {
+/**
+ * Consecutive failed occurrences, newest first.
+ *
+ * `onlyClass` narrows the streak to one failure class, and a failure of any
+ * OTHER class breaks it rather than being skipped: a mixed history is not
+ * evidence that one cause is stuck, and the caller that passes `onlyClass` is
+ * the auto-pause, which must not fire on ambiguity. Pre-migration rows carry a
+ * NULL class and so break a narrowed streak too.
+ */
+export function trailingFailedRuns(db: Database.Database, seriesKey: string, onlyClass?: FailureClass): number {
   const rows = db
     .prepare(
-      `SELECT status FROM messages_in
+      `SELECT status, failure_class AS failureClass FROM messages_in
         WHERE (series_id = ? OR id = ?) AND kind = 'task' AND status IN ('completed', 'failed')
         ORDER BY seq DESC`,
     )
-    .all(seriesKey, seriesKey) as Array<{ status: string }>;
+    .all(seriesKey, seriesKey) as Array<{ status: string; failureClass: string | null }>;
   let streak = 0;
   for (const r of rows) {
     if (r.status !== 'failed') break;
+    if (onlyClass && r.failureClass !== onlyClass) break;
     streak++;
   }
   return streak;

@@ -79,13 +79,15 @@ describe('composed-document byte parity', () => {
   // regression would let that test pass, and these constants would not.
   it('matches the recorded digests', () => {
     const digests: Record<string, string> = {
-      // Moved twice. First after the refactor: base-common gained the
+      // Moved three times. First after the refactor: base-common gained the
       // `explain-diff-html` skill (one `## Skills` line in every composed doc).
       // Then when the group-scope `ncl` table gained its `tasks` and
       // `pr-mappings` rows — two resources agents could already reach and were
-      // never told about. Goldens regenerated in the same commit, visibly, both
-      // times: that is the point of pinning the digests here as well as the
-      // bytes, since a golden edited alongside a regression would go unnoticed.
+      // never told about. Then when `explain-diff-html`'s description grew the
+      // collapsed-PR-comment contract (that one `## Skills` line changed).
+      // Goldens regenerated in the same commit, visibly, every time: that is
+      // the point of pinning the digests here as well as the bytes, since a
+      // golden edited alongside a regression would go unnoticed.
       //
       // They also include `## Resident Skill Instructions` — every shipped
       // `instructions.md` a type can reach, held in context rather than fetched on
@@ -93,16 +95,16 @@ describe('composed-document byte parity', () => {
       //
       // Scheduling prose is part of them too, and it names `ncl tasks` because no
       // scheduling MCP module is registered.
-      'base-common': 'a7b05c8f754e830f',
-      'base-common.persona': 'f8a82719d2773300',
+      'base-common': '7d09d800d40deb23',
+      'base-common.persona': '4e09ccb512ada501',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — abaecd63bd33b299 and
       // 8129ebe911b83bec, moved once by the `agents.md` anchor retarget — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: '61425453d60dda91',
-      'default.persona': 'b758397ed24c5c9f',
+      default: '95ff9291f2aca189',
+      'default.persona': '2ed9a9df004df344',
     };
 
     const actual: Record<string, string> = {};
