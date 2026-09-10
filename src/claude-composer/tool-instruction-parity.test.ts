@@ -29,6 +29,7 @@ import path from 'path';
 import { describe, expect, it } from 'vitest';
 
 import { composeCoworkerSpine } from '../claude-composer.js';
+import { readCoworkerTypes } from './registry.js';
 
 const ROOT = process.cwd();
 const UPSTREAM_DIR = path.join(ROOT, 'container', 'agent-runner', 'src', 'mcp-tools');
@@ -255,6 +256,164 @@ describe('upstream tool-instruction surface', () => {
       expect(enabled.includes('## Task scheduling'), `${coworkerType} at cli_scope=global`).toBe(
         coworkerType === 'main',
       );
+    }
+  });
+});
+
+/**
+ * Registered tools vs taught tools — the inventory comes from the REGISTRY, not
+ * from a list in this file.
+ *
+ * The assertions above pin our fragments against upstream's prose files, which
+ * catches a doc that drifted or a doc that appeared. It cannot catch either
+ * direction of the tool surface itself, because nothing above is derived from
+ * the set of tools the agent-runner actually registers:
+ *
+ *   - A tool is registered and NO shipped composition mentions it. Every check
+ *     stays green while no coworker is ever told the tool exists, so it is never
+ *     called. This is how a whole feature lands inert.
+ *   - A surface names a tool that is not registered. `teaches no MCP tool the
+ *     barrel does not register` covers exactly the six names of the incident
+ *     that prompted it; a seventh passes silently.
+ *
+ * Both are the same omission, so both are asserted here against
+ * `registeredToolNames()`. A tool may be deliberately untaught — some are for a
+ * single caller and prose would be noise — but that has to be a decision with a
+ * name attached, which is what `UNTAUGHT` is. It ratchets: entries may be
+ * removed, never added, the same discipline as the typecheck baseline.
+ */
+const MCP_DIR = path.join(ROOT, 'container', 'agent-runner', 'src', 'mcp-tools');
+const SCOPES = ['disabled', 'group', 'global'] as const;
+
+const UNTAUGHT: Record<string, string> = {
+  record_decision:
+    'Capability-gated to the approver groups named in APPROVAL_LEDGER_WRITERS, and its own schema ' +
+    'description carries the whole contract (append-only, first-write-wins, critique-gated). Spine prose ' +
+    'would be noise for the other coworker types, none of which can call it.',
+};
+
+/**
+ * Tool names as the registry states them. Each definition is an
+ * `McpToolDefinition` whose `tool.name` sits alone on its line; nested
+ * inputSchema properties are object KEYS (`to:`, `text:`), never `name: '...'`,
+ * so the anchored pattern cannot pick them up.
+ */
+function registeredToolNames(): string[] {
+  const names = new Set<string>();
+  for (const text of moduleSources()) {
+    for (const match of text.matchAll(/^\s+name: '([a-z][a-z0-9_]*)',$/gm)) names.add(match[1]);
+  }
+  return [...names].sort();
+}
+
+/**
+ * Independent count of definitions: every `McpToolDefinition` opens exactly one
+ * `tool: {` block, and that holds however the object is formatted.
+ *
+ * The name pattern above is line-anchored, which is precise but blind to a
+ * definition written on one line. Comparing the two counts is what makes a tool
+ * this parser cannot read a red check instead of a tool that silently drops out
+ * of the inventory — the same omission the assertions below exist to catch.
+ */
+function declaredToolBlocks(): number {
+  return moduleSources().reduce((total, text) => total + [...text.matchAll(/^\s*tool: \{$/gm)].length, 0);
+}
+
+function moduleSources(): string[] {
+  return fs
+    .readdirSync(MCP_DIR)
+    .filter((file) => file.endsWith('.ts') && !file.endsWith('.test.ts'))
+    .map((file) => fs.readFileSync(path.join(MCP_DIR, file), 'utf-8'));
+}
+
+/** Types that only exist to be `extends:`'d never compose on their own. */
+function concreteCoworkerTypes(): string[] {
+  const types = readCoworkerTypes(ROOT);
+  const abstract = new Set(
+    Object.values(types)
+      .map((entry) => (entry as { extends?: string }).extends)
+      .filter((name): name is string => typeof name === 'string'),
+  );
+  return Object.keys(types)
+    .filter((name) => !abstract.has(name))
+    .sort();
+}
+
+/** Every document a shipped group can actually read, across all scopes. */
+function shippedCompositions(): Array<{ label: string; text: string }> {
+  const docs: Array<{ label: string; text: string }> = [];
+  for (const coworkerType of concreteCoworkerTypes()) {
+    for (const cliScope of SCOPES) {
+      let text: string;
+      try {
+        text = composeCoworkerSpine({ coworkerType, cliScope, projectRoot: ROOT });
+      } catch {
+        // Composition failures are validate-templates' job to report, not this
+        // file's; skipping keeps one broken type from masking a parity gap.
+        continue;
+      }
+      docs.push({ label: `${coworkerType}@${cliScope}`, text });
+    }
+  }
+  return docs;
+}
+
+describe('registered tools vs taught tools', () => {
+  const registered = registeredToolNames();
+  const docs = shippedCompositions();
+
+  it('reads a plausible registry — a broken parse must not pass vacuously', () => {
+    // Both numbers are floors, not counts: they may grow freely and only a
+    // collapse (a moved directory, a changed declaration idiom) trips them.
+    expect(registered.length, `parsed only ${registered.length} tool(s) from ${MCP_DIR}`).toBeGreaterThan(9);
+    expect(docs.length, 'no coworker type composed').toBeGreaterThan(3);
+    expect(
+      registered.length,
+      `${declaredToolBlocks()} tool definition(s) on disk but ${registered.length} name(s) parsed — a ` +
+        `definition is formatted in a way registeredToolNames() cannot read, so it would drop out of ` +
+        `every assertion below unnoticed.`,
+    ).toBe(declaredToolBlocks());
+  });
+
+  it('teaches every tool it registers', () => {
+    for (const tool of registered) {
+      if (UNTAUGHT[tool]) {
+        expect(UNTAUGHT[tool].length, `${tool} needs a reason it is untaught`).toBeGreaterThan(20);
+        continue;
+      }
+      const taught = docs.some((doc) => doc.text.includes(tool));
+      expect(
+        taught,
+        `\`${tool}\` is registered but no shipped composition mentions it — every coworker has the tool ` +
+          `and none is told it exists. Teach it in a bound fragment, or add it to UNTAUGHT with a reason.`,
+      ).toBe(true);
+    }
+  });
+
+  it('names no tool it does not register, on any surface', () => {
+    // Two unambiguous shapes: the fully-qualified `mcp__nanoclaw__*` reference,
+    // and snake_case call syntax. Bare prose words are deliberately not matched —
+    // this trades recall for precision, since a false positive here would make
+    // the check something people disable rather than fix.
+    const known = new Set(registered);
+    for (const doc of docs) {
+      const cited = new Set<string>();
+      // Only the `nanoclaw` server: tools from external servers (codex, deepwiki)
+      // are not in this registry and are governed by the MCP allow-list instead.
+      for (const match of doc.text.matchAll(/mcp__nanoclaw__([a-z][a-z0-9_]*)/g)) cited.add(match[1]);
+      // Call syntax appears both bare and fully-qualified, so strip our own prefix
+      // before comparing — otherwise `mcp__nanoclaw__send_message(` reads as a tool
+      // named after the prefix. A residual `mcp__` means another server's tool.
+      for (const match of doc.text.matchAll(/`(?:mcp__nanoclaw__)?([a-z][a-z0-9_]*_[a-z0-9_]*)\(/g)) {
+        if (!match[1].startsWith('mcp__')) cited.add(match[1]);
+      }
+      for (const tool of cited) {
+        expect(
+          known.has(tool),
+          `${doc.label} names \`${tool}\` as a tool, which no MCP module registers — an agent that reads ` +
+            `this will go after something it cannot call.`,
+        ).toBe(true);
+      }
     }
   });
 });
