@@ -6,15 +6,48 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 569 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 239 |
-| `nv-slang` | slang project spine, skills, workflows | 147 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 78 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 57 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 587 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 244 |
+| `nv-slang` | slang project spine, skills, workflows | 149 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 80 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 59 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-10
+
+### nv-main (18 PRs)
+- **#1533** `test(composer): assert tool↔prose parity from the registry, both directions`
+- **#1537** `fix(tasks): a scheduled fire that never ran is a failed run, and never auto-pauses`
+- **#1540** `explain-diff-html: collapsed PR comment, updated in place on every push`
+- **#1541** `fix(ci): make the compose check green — Node 22 and a symlink guard that can read the deploy tree`
+- **#1542** `docs: stop naming tools and files that do not exist`
+- **#1544** `Sync nv-main with upstream/main`
+- **#1551** `ci: give PRs to nv-coworkers the composed-state test run`
+- **#1553** `test(portal): wait for the cleared journal, not a fixed 200 ms`
+- **#1554** `ci(path-guard): give nv-coworkers an allowlist and run the guard on it`
+_+9 more: #1531, #1523, #1522, #1521, #1517, #1516, #1514, #1513, #1509_
+
+### nv-dashboard (5 PRs)
+- **#1515** `feat(dashboard): review-cycles v2 panel, >5-rounds table with mining why, approver-policy infra check, Verity annotations, funnel label, spend beside $/PR`
+- **#1520** `feat(dashboard): row labels for hermes-<ROW> sessions; finished roles stay in the swim lane as 'ended'`
+- **#1530** `fix(dashboard): keep the full event timestamp on parsed Codex rollout rows (prod follow-up)`
+- **#1526** `Sync nv-dashboard with upstream/main`
+- **#1546** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#1527** `Sync nv-slang with upstream/main`
+- **#1547** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (2 PRs)
+- **#1528** `Sync nv-slangpy with upstream/main`
+- **#1548** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#1529** `Sync nv-nanoclaw with upstream/main`
+- **#1549** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-09-09
 
