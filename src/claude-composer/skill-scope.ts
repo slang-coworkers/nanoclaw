@@ -29,8 +29,9 @@ import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js'
  * without its type declaring them: the NanoClaw tool surface (`base-nanoclaw`),
  * the critique + buddy protocols wired by overlays (`codex-critique`, `buddy`),
  * first-run onboarding (`welcome`), self-modification (`self-customize`),
- * browsing (`agent-browser`), and the two memory/wiki synthesis skills that
- * scheduled tasks invoke by name (`learnings-wiki`, `okf-synthesis`).
+ * browsing (`agent-browser`), and the skills that scheduled tasks invoke by
+ * name: the two memory/wiki synthesis skills (`learnings-wiki`, `okf-synthesis`)
+ * and the Orchestrator's daily review-cycle miner (`review-cycle-mining`).
  *
  * Names are matched against BOTH the skill's declared `name:` frontmatter and
  * its on-disk directory name, so a floor entry keeps working if the two ever
@@ -51,6 +52,7 @@ export const MIRROR_FLOOR_SKILLS: readonly string[] = [
   'agent-browser',
   'learnings-wiki',
   'okf-synthesis',
+  'review-cycle-mining',
 ];
 
 /**
@@ -275,4 +277,58 @@ export function resolveMirroredSkillScope(
     reason: `scoped to coworker type "${type}"`,
     degraded: false,
   };
+}
+
+/**
+ * The prose a coworker's in-scope skills need RESIDENT rather than slash-loaded.
+ *
+ * Upstream's contract for a skill dir is two files with different lifetimes:
+ * `SKILL.md` is fetched once the agent decides it needs the skill, while an
+ * `instructions.md` beside it must already be in context. The asymmetry is the
+ * point: what an `instructions.md` states is typically a prohibition ("never ask
+ * the user for a token"), and an agent cannot know to load the rule it is about to
+ * break. `project-doc-compose.ts` emits both halves and so does this.
+ *
+ * Scope is `allowedNamesFor`, the same set `mirrorDirsFor` resolves, matched by the
+ * same declared-name-or-directory predicate. Sharing it is what keeps the resident
+ * prose from naming a skill this coworker cannot reach, or missing one it can —
+ * including the dynamic `unclaimedSkillNames` tier, which is how `onecli-gateway`
+ * is reached.
+ *
+ * A flat type has no manifest allow-list to scope against and `group-init` mirrors
+ * every skill dir for it, so every mirrored capability counts as reachable.
+ */
+export function residentSkillInstructions(
+  types: Record<string, CoworkerTypeEntry>,
+  catalog: Record<string, SkillMeta>,
+  manifest: CoworkerManifest,
+): { name: string; body: string }[] {
+  const allowed = manifest.flat ? null : allowedNamesFor(types, catalog, manifest);
+
+  const capabilities = Object.values(catalog)
+    .filter((m) => m.type === 'capability')
+    .sort((a, b) => a.name.localeCompare(b.name));
+
+  const out: { name: string; body: string }[] = [];
+  for (const meta of capabilities) {
+    const dir = path.dirname(meta.path);
+    // Declared name OR directory basename, exactly as `mirrorDirsFor` matches: a
+    // floor entry naming a dir whose frontmatter `name:` differs is still mirrored,
+    // so its prose must still be resident.
+    if (allowed !== null && !allowed.has(meta.name) && !allowed.has(path.basename(dir))) continue;
+    const file = path.join(dir, 'instructions.md');
+    let body: string;
+    try {
+      body = fs.readFileSync(file, 'utf-8').trim();
+    } catch (e) {
+      // Absent is the normal case — the file is optional. Anything else (a
+      // permission or I/O error) must NOT degrade into a document published
+      // without prose it was supposed to carry, so it propagates and the caller's
+      // retain-the-previous-document path takes over.
+      if ((e as NodeJS.ErrnoException).code === 'ENOENT') continue;
+      throw e;
+    }
+    if (body) out.push({ name: meta.name, body });
+  }
+  return out;
 }

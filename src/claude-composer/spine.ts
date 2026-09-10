@@ -9,6 +9,7 @@ import path from 'path';
 
 import { type ComposedSectionInput, renderProjectDoc } from './project-doc.js';
 import { readCoworkerTypes, readSkillCatalog } from './registry.js';
+import { residentSkillInstructions } from './skill-scope.js';
 import { injectOverlays, resolveCoworkerManifest } from './resolve.js';
 import { RUNTIME_CONTRACT_SECTION, renderRuntimeContract } from './runtime-contract.js';
 import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js';
@@ -670,6 +671,12 @@ export function renderCoworkerSections(
       const projectsBlock = emitDiscoveredProjectFragments(types, projectRoot);
       if (projectsBlock) bodies.push(projectsBlock);
     }
+    // A flat type has no manifest skill list to scope against, and `group-init`
+    // mirrors every skill for it, so its resident set is everything mirrored.
+    const flatResident = residentSkillInstructions(types, catalog, manifest);
+    if (flatResident.length > 0) {
+      bodies.push(`## ${RESIDENT_INSTRUCTIONS_SECTION}\n\n${renderResidentInstructions(flatResident)}`);
+    }
     // Same section, same reason, on this path too: `main` is the only flat type,
     // and an admin orchestrator with wired MCP servers needs their usage prose as
     // much as a typed coworker does.
@@ -1013,6 +1020,16 @@ export function renderCoworkerSections(
       ),
     );
   }
+  // --- Resident skill instructions ---
+  // The other half of a skill dir's contract: `SKILL.md` loads on demand, an
+  // `instructions.md` beside it must be resident. Placed right after the Skills
+  // index because it is about the same skills — and before MCP guidance, which is
+  // the same kind of "how to use what you have" prose.
+  const resident = residentSkillInstructions(types, catalog, manifest);
+  if (resident.length > 0) {
+    sections.push(section(RESIDENT_INSTRUCTIONS_SECTION, renderResidentInstructions(resident)));
+  }
+
   // Footer dropped — `container/spines/base/context/invocation.md` already
   // covers the "skills are slash commands / workflows are embedded" split.
 
@@ -1078,6 +1095,16 @@ export function renderCoworkerSections(
  */
 export function composedDocHeader(): string {
   return `${COMPOSED_DOC_MARKER} — do not edit; edit instructions.prepend.md -->`;
+}
+
+const RESIDENT_INSTRUCTIONS_SECTION = 'Resident Skill Instructions';
+
+/**
+ * Headed per skill so a prohibition is attributable: an agent reading "never ask
+ * for tokens" needs to know which capability it constrains.
+ */
+function renderResidentInstructions(entries: { name: string; body: string }[]): string {
+  return entries.map((e) => `### \`/${e.name}\`\n\n${normalizeFragment(e.body, 4)}`).join('\n\n');
 }
 
 /** An ordinary non-droppable `##` section — the shape most producers want. */

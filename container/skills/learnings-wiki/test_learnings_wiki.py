@@ -22,6 +22,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 
@@ -460,6 +461,301 @@ class TestBuildStillWorks(Fold):
         atom(self.kb, "1754300000004-routed", "Routed thing", topic="ci-tooling")
         self.build()
         self.assertIn("topic: ci-tooling", self.wiki_page("1754300000004-routed"))
+
+
+class TestDiscoveryCoversAuthorSubdirs(Fold):
+    """Since PR #1171 (2026-08-10) the host writes atoms to learnings/<agent-group-id>/; the
+    builder used a non-recursive glob and silently dropped every one of them (1,823 of 5,801
+    on prod by 2026-09-08) while `finalize` reported "0 uncovered"."""
+
+    def nested(self, stem, title, body="Nested content.", **frontmatter):
+        d = Path(self.kb, "learnings", "ag-1234-author")
+        d.mkdir(exist_ok=True)
+        fm = "".join(f"{k}: {v}\n" for k, v in frontmatter.items())
+        head = f"---\n{fm}---\n" if fm else ""
+        (d / f"{stem}.md").write_text(f"{head}# {title}\n\n{body}\n", encoding="utf-8")
+
+    def test_an_atom_in_a_per_author_subdir_is_built(self):
+        self.nested(THIRD, "Third rule")
+        self.build()
+        self.assertTrue(Path(self.kb, "wiki", "learnings", f"{THIRD}.md").exists())
+        self.assertTrue(Path(self.kb, "sources", "learnings", f"{THIRD}.md").exists())
+        self.assertIn(THIRD, self.lw.l1_stems())
+
+    def test_index_md_is_never_an_atom_at_any_depth(self):
+        Path(self.kb, "learnings", "INDEX.md").write_text("# index\n", encoding="utf-8")
+        Path(self.kb, "learnings", "ag-1234-author").mkdir()
+        Path(self.kb, "learnings", "ag-1234-author", "INDEX.md").write_text("# index\n", encoding="utf-8")
+        self.build()
+        self.assertFalse(Path(self.kb, "wiki", "learnings", "INDEX.md").exists())
+        self.assertNotIn("INDEX", {s.upper() for s in self.lw.l1_stems()})
+
+    def test_a_marker_written_on_a_nested_atom_is_honoured(self):
+        self.nested(THIRD, "Third rule", superseded_by=NEW)
+        self.build()
+        self.concept_citing(NEW)
+        out = self.finalize()
+        self.assertNotIn(f"UNCOVERED wiki/learnings/{THIRD}.md", out)
+        self.assertIn("1 superseded, excluded", out)
+
+    def test_a_nested_live_atom_is_reported_as_uncovered(self):
+        # Guards the guard: the nested atom must be SEEN to be reported.
+        self.nested(THIRD, "Third rule")
+        self.build()
+        self.concept_citing(OLD, NEW)
+        out = self.finalize()
+        self.assertIn(f"UNCOVERED wiki/learnings/{THIRD}.md", out)
+
+    def test_duplicate_stems_across_dirs_keep_the_first_and_say_so(self):
+        # Same stem in the flat dir and an author dir: basename order ties, path order decides;
+        # the shadowed copy is reported instead of silently overwriting the L3 page.
+        self.nested(OLD, "Old SPIRV rule (author copy)", body="Different body.")
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.lw.build()
+        self.assertIn(f"DUPLICATE-STEM {OLD}", out.getvalue())
+        page = self.wiki_page(OLD)
+        self.assertIn("Some content about spirv codegen.", page)   # the flat copy (sorts first) won
+        self.assertNotIn("Different body.", page)
+
+    def test_gate_wakes_on_a_fresh_kb_and_sleeps_after_a_build_with_nothing_new(self):
+        r = self.run_cli("gate")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertTrue(json.loads(r.stdout)["wakeAgent"])          # no wiki yet → every atom is new
+        old = time.time() - 3600
+        for p in Path(self.kb, "learnings").rglob("*.md"):
+            os.utime(p, (old, old))
+        self.build()                                                 # index.md is now newer than every atom
+        r = self.run_cli("gate")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertFalse(json.loads(r.stdout)["wakeAgent"])         # 2 uncovered ≤ 60, nothing new
+        self.nested(THIRD, "Third rule")                             # a NEW nested atom must wake it
+        r = self.run_cli("gate")
+        payload = json.loads(r.stdout)
+        self.assertTrue(payload["wakeAgent"])
+        self.assertEqual(payload["data"]["new_learnings"], 1)
+
+
+# --------------------------------------------------------------------------- wiki v2
+# Synthesis by MEANING: a vocabulary this KB owns rather than one baked into the script,
+# pages named after a subtopic rather than after a split point, and the four measurements a
+# size-driven fold cannot make about itself.
+
+PR_A = "1754300000010-pr-head-binding"
+PR_B = "1754300000011-pr-head-binding-sha"
+KANBAN = "1754300000013-kanban-dispatch"
+CORRECTION = "1754300000014-correction-cache-path"
+
+
+class WikiV2(Fold):
+    """Fold, plus a config file, concept pages written by NAME, and the index."""
+
+    def write_config(self, **cfg):
+        """Write <ROOT>/.wiki-config.json and re-import the builder against it.
+
+        Re-import rather than poke the loaded module: the fold runs the script as a fresh
+        process every time, so import-time binding is the path that has to work.
+        """
+        Path(self.kb, ".wiki-config.json").write_text(
+            json.dumps(cfg, ensure_ascii=False), encoding="utf-8")
+        self.lw = load_builder(self.kb)
+
+    def concept(self, name, group="slang-backends", *stems):
+        d = Path(self.kb, "wiki", "concepts")
+        d.mkdir(parents=True, exist_ok=True)
+        rows = "\n".join(f"- [x](wiki/learnings/{s}.md)" for s in stems)
+        (d / f"{name}.md").write_text(
+            f'---\ntitle: "{name}"\ntype: concept\ngroup: {group}\n---\n\n'
+            f"## TL;DR\n\nRules.\n\n**Source learnings ({len(stems)}):**\n{rows}\n",
+            encoding="utf-8")
+
+    def index(self):
+        return Path(self.kb, "wiki", "index.md").read_text(encoding="utf-8")
+
+    def ingest(self, group):
+        return Path(self.kb, ".ingest", f"{group}.txt").read_text(encoding="utf-8")
+
+    def build_output(self):
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            self.lw.build()
+        return out.getvalue()
+
+
+class TestVocabularyIsConfigurable(WikiV2):
+    """The buckets and the index title used to be Slang literals in the script, so a second
+    corpus (Hermes: plugin, gateway, podman, kanban, a2a) landed wholesale in misc. They now
+    come from <ROOT>/.wiki-config.json -- and a KB that ships no such file must be unchanged,
+    because prod is exactly that KB."""
+
+    def test_no_config_keeps_the_slang_index_and_classification(self):
+        self.build()
+        self.assertIn('title: "Slang-Coworkers Learnings — Index"', self.index())
+        self.assertIn("# Slang-Coworkers Learnings Wiki", self.index())
+        self.assertIn("topic: slang-compiler", self.frontmatter(OLD))
+        self.assertIn(OLD, self.ingest("slang-backends"))
+
+    def test_a_configured_title_description_topic_and_group_are_used(self):
+        self.write_config(
+            title="nemoclaw-coworkers Learnings — Index",
+            description="Hermes coworker learnings, folded nightly.",
+            topics=[["hermes-runtime", "Hermes runtime", ["kanban", "gateway"]]],
+            groups=[["hermes-runtime", ["kanban", "gateway"]]],
+            group_labels={"hermes-runtime": "Hermes runtime"})
+        atom(self.kb, KANBAN, "Kanban dispatch keeps the gateway warm")
+        self.build()
+        self.finalize()
+        self.assertIn('title: "nemoclaw-coworkers Learnings — Index"', self.index())
+        self.assertIn("# nemoclaw-coworkers Learnings Wiki", self.index())
+        self.assertIn("Hermes coworker learnings, folded nightly.", self.index())
+        self.assertIn("topic: hermes-runtime", self.frontmatter(KANBAN))
+        self.assertIn(KANBAN, self.ingest("hermes-runtime"))
+        # Replaced, not merged: the Slang keywords are not this KB's vocabulary.
+        self.assertIn("topic: misc", self.frontmatter(OLD))
+
+    def test_an_unknown_group_still_gets_its_own_index_heading(self):
+        # The fold may extend the vocabulary mid-run by filing a page under a new group. A
+        # page whose group the builder has never heard of must still be reachable from the
+        # index, or the fold's own extension silently hides it.
+        self.build()
+        self.concept("hermes-plugin-doctor", "hermes-plugins", NEW)
+        self.finalize()
+        self.assertIn("### hermes-plugins", self.index())
+        self.assertIn("(wiki/concepts/hermes-plugin-doctor.md)", self.index())
+
+    def test_a_malformed_config_falls_back_to_the_defaults(self):
+        # Unlike .lineage.json the config holds no unique state -- every value in it is in
+        # the file itself -- so a typo must cost one run's bucketing, not the whole fold.
+        Path(self.kb, ".wiki-config.json").write_text("{not json", encoding="utf-8")
+        self.lw = load_builder(self.kb)
+        self.assertIn("WIKI-CONFIG-ERROR", self.build_output())
+        self.assertIn('title: "Slang-Coworkers Learnings — Index"', self.index())
+
+
+class TestShapeReports(WikiV2):
+    """Prod had 66 numbered pages, 3 lineage edges against 251 self-declared corrections, and
+    ~1.5 KB of concept text per live atom -- and finalize reported none of it, so the fold had
+    no way to see that it was inventorying rather than synthesizing."""
+
+    def test_numbered_pages_are_flagged_and_named_pages_are_not(self):
+        self.build()
+        self.concept("review-pr-head-binding", "review-process", NEW)
+        self.concept("review-pr-practices-1", "review-process", OLD)
+        self.concept("review-pr-practices-2", "review-process", OLD)
+        # A trailing number is not a split: this one is named for the glibc it is about, has
+        # no sibling, and renaming it would dangle every inbound concept link. The list is
+        # sorted and the fold takes the FIRST family, so a false positive here eats the whole
+        # per-run consolidation budget.
+        self.concept("ci-tooling-glibc-2-34", "ci-tooling", NEW)
+        out = self.finalize()
+        self.assertIn("NUMBERED-SPLIT wiki/concepts/review-pr-practices-1.md", out)
+        self.assertIn("NUMBERED-SPLIT wiki/concepts/review-pr-practices-2.md", out)
+        self.assertNotIn("NUMBERED-SPLIT wiki/concepts/review-pr-head-binding.md", out)
+        self.assertNotIn("NUMBERED-SPLIT wiki/concepts/ci-tooling-glibc-2-34.md", out)
+
+    def test_the_lists_are_bounded_and_say_what_was_cut(self):
+        # A report that prints 900 lines is a report nobody reads; one that silently prints
+        # 40 of 900 is worse, because the fold then believes it saw the whole family.
+        self.build()
+        for i in range(1, 46):
+            self.concept(f"review-pr-practices-{i}", "review-process")
+        out = self.finalize()
+        self.assertEqual(out.count("  NUMBERED-SPLIT "), 40, out)
+        self.assertIn("… and 5 more", out)
+
+    def test_near_identical_titles_surface_as_a_supersession_candidate(self):
+        atom(self.kb, PR_A, "Bind review comments to the PR head commit")
+        atom(self.kb, PR_B, "Bind review comments to the PR head commit sha")
+        atom(self.kb, KANBAN, "Kanban dispatch keeps the gateway warm")
+        self.build()
+        out = self.finalize()
+        self.assertIn(f"CANDIDATE-SUPERSESSION {PR_A} ~ {PR_B} (jaccard=", out)
+        # Guards the guard: an unrelated title must pair with nothing, or every run buries
+        # the real candidates under noise the fold then learns to ignore.
+        self.assertNotIn(f"{KANBAN} ~", out)
+        self.assertNotIn(f"~ {KANBAN}", out)
+
+    def test_a_correction_title_surfaces_as_a_candidate(self):
+        atom(self.kb, CORRECTION, "Correction: the runner cache path was wrong")
+        self.build()
+        out = self.finalize()
+        self.assertIn(f"CANDIDATE-CORRECTION {CORRECTION}", out)
+        self.assertNotIn(f"CANDIDATE-CORRECTION {NEW}", out)
+
+    def test_shape_counts_live_atoms_not_all_of_them(self):
+        # bytes_per_atom is the trend line the task posts: it stays flat while the fold
+        # synthesizes and climbs while it inventories. Counting retired atoms in the
+        # denominator would flatter it for free.
+        self.build()
+        self.assertIn("SHAPE live_atoms=2 concept_bytes=0 bytes_per_atom=0 "
+                      "numbered_pages=0 over_cap=0", self.finalize())
+        self.retire(OLD, NEW)
+        self.build()
+        self.concept("slang-backends-spirv", "slang-backends", NEW)
+        self.assertRegex(self.finalize(),
+                         r"SHAPE live_atoms=1 concept_bytes=[1-9]\d* bytes_per_atom=[1-9]\d* "
+                         r"numbered_pages=0 over_cap=0")
+
+    def test_a_dominant_token_does_not_deflate_the_similarity_score(self):
+        # The inverted index BLOCKS, it does not score. Tokens above df_cap are skipped as
+        # index entries; counting one in the union but never in the intersection pushed real
+        # pairs under the threshold, and the tokens that get pruned on prod are exactly the
+        # corpus's dominant themes (approver, review, session) — so the queue went blind
+        # precisely where the duplicates are. df_cap is injected because the fixtures are
+        # tens of atoms and the real cap floors at 50, so the pruning branch never runs.
+        toks = self.lw._title_tokens
+        items = [("1754300000101-rulebook", toks("Approver calibration drift rulebook")),
+                 ("1754300000102-rulebook-policy",
+                  toks("Approver calibration drift rulebook policy"))]
+        items += [(f"17543000002{i:02d}-filler", toks(f"Approver note number {i} on widgets"))
+                  for i in range(4)]
+        pairs, truncated = self.lw._supersession_candidates(items, df_cap=2)
+        self.assertFalse(truncated)
+        self.assertIn((0.8, "1754300000101-rulebook", "1754300000102-rulebook-policy"), pairs)
+
+
+class TestKeysCannotEscapeTheKb(WikiV2):
+    """Topic and group keys become filenames (wiki/topics/<key>.md, .ingest/<key>.txt) and
+    both arrive from data an agent writes: an atom's frontmatter and the KB's config."""
+
+    def test_a_topic_line_in_an_atom_cannot_overwrite_a_concept_page(self):
+        # `fm()` searches the whole atom, not just its frontmatter, so a learning ABOUT the
+        # wiki is enough. Concept pages are the one class of file build()'s delete sweep
+        # preserves, so overwriting one destroys synthesis that nothing else holds.
+        self.build()
+        self.concept("slang-backends-spirv", "slang-backends", NEW)
+        page = Path(self.kb, "wiki", "concepts", "slang-backends-spirv.md")
+        before = page.read_bytes()
+        atom(self.kb, "1754300000020-about-the-wiki", "How topic frontmatter works",
+             body="An atom may quote a line like\ntopic: ../concepts/slang-backends-spirv\n"
+                  "while explaining it.")
+        out = self.build_output()
+        self.assertIn("BAD-TOPIC 1754300000020-about-the-wiki", out)
+        self.assertEqual(page.read_bytes(), before)
+        self.assertIn("topic: misc", self.frontmatter("1754300000020-about-the-wiki"))
+
+    def escapee(self, kind):
+        """A sentinel outside the KB, named after this KB so the assertion cannot be
+        satisfied (or defeated) by a file another run left in the shared temp dir."""
+        return Path(self.kb).parent / f"{kind}-{os.path.basename(self.kb)}.md"
+
+    def test_a_topic_cannot_write_outside_the_kb_root(self):
+        # wiki/topics/<topic>.md, so three levels up lands beside the KB root.
+        target = self.escapee("PWNED")
+        atom(self.kb, "1754300000021-escape", "Escape", topic=f"../../../{target.stem}")
+        self.build_output()
+        self.assertFalse(target.exists())
+        self.assertNotIn(target.stem, self.index())
+
+    def test_a_config_key_that_is_not_a_page_name_is_refused(self):
+        # The config is agent-writable by design (the fold is told to extend the vocabulary),
+        # so it is the same door reached through the mechanism the feature advertises.
+        target = self.escapee("CFGGROUP").with_suffix(".txt")
+        self.write_config(groups=[[f"../../{target.stem}", ["spirv"]]])
+        out = self.build_output()
+        self.assertIn("WIKI-CONFIG-ERROR", out)
+        self.assertFalse(target.exists())
+        self.assertIn(OLD, self.ingest("slang-backends"))   # default vocabulary, unchanged
 
 
 if __name__ == "__main__":

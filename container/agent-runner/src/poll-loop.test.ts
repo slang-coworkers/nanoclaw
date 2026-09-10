@@ -12,6 +12,8 @@ import {
   checkRoutingGate,
   classifyThrownBounce,
   dispatchResultText,
+  freshSessionArrivalAction,
+  idleEndLimit,
   isCorruptionError,
   isNewSessionBatch,
   processQuery,
@@ -870,6 +872,22 @@ describe('new_session predicate (default-on: opt-out via new_session:false)', ()
   it('isNewSessionBatch — FALSE on mixed batches (chat present preserves history)', () => {
     expect(isNewSessionBatch([chat({ text: 'hi' }), task({ prompt: 'a' })])).toBe(false);
     expect(isNewSessionBatch([chat({ text: 'hi' }), task({ prompt: 'a', new_session: true })])).toBe(false);
+    // An explicitly addressed chat (trigger=1) vetoes just the same.
+    expect(isNewSessionBatch([{ ...chat({ text: 'hi' }), trigger: 1 }, task({ prompt: 'a' })])).toBe(false);
+  });
+
+  it('isNewSessionBatch — accumulated trigger=0 context rows ride along without vetoing (prod 2026-09-09)', () => {
+    const echo = (text: string) => ({ ...chat({ text }), trigger: 0 });
+    // A scheduled task plus three session echoes is still a fresh-session batch.
+    expect(isNewSessionBatch([echo('e1'), echo('e2'), echo('e3'), { ...task({ prompt: 'fold' }), trigger: 1 }])).toBe(
+      true,
+    );
+    // The opt-out still wins when the task itself asks for continuity.
+    expect(isNewSessionBatch([echo('e1'), { ...task({ prompt: 'fold', new_session: false }), trigger: 1 }])).toBe(
+      false,
+    );
+    // Context rows alone never make a fresh session (they are never a batch on their own anyway).
+    expect(isNewSessionBatch([echo('e1'), echo('e2')])).toBe(false);
   });
 
   it('isNewSessionBatch — FALSE on empty batch (defensive: no spurious fresh sessions)', () => {
@@ -1893,6 +1911,73 @@ describe('task-run turn wiring (real processQuery)', () => {
   }, 20_000);
 });
 
+describe('task-run transient bounce — a provider stall must not complete the fire', () => {
+  // Prod 2026-09-09 11:26Z: the wiki fold's fresh session died on Claude Code's
+  // "API Error: The response stopped arriving." after a 3-minute upstream stall;
+  // the runner appended that text as the run log and acked the batch complete.
+  // The container never edits messages_in.status; it acks into processing_ack
+  // (outbound.db) and the host syncs that back. Read the ack.
+  function rowStatus(id: string): string {
+    const row = getOutboundDb().prepare('SELECT status FROM processing_ack WHERE message_id = ?').get(id) as
+      | { status: string }
+      | undefined;
+    return row?.status ?? 'pending';
+  }
+
+  it('bounces a task run whose result is a known transient error (row stays pending, retry noted in the log)', async () => {
+    insertMessage('tb1', 'task', { prompt: 'fold' });
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 's1' };
+      yield {
+        type: 'result',
+        text: 'API Error: The response stopped arriving. The response above may be incomplete.',
+        isError: true,
+      };
+    }
+    const query: AgentQuery = { push: () => {}, end: () => {}, events: events(), abort: () => {} };
+    await processQuery(query, { ...TASK_ROUTING, inReplyTo: 'tb1' }, ['tb1'], 'claude', undefined, 'prompt', undefined);
+    expect(rowStatus('tb1')).toBe('bounced-transient');
+    const logs = taskLogRows().map((l) => l.text);
+    expect(logs).toHaveLength(1);
+    expect(logs[0]).toContain('[transient provider error, retry 1/3]');
+  });
+
+  it('a permanent error result still completes the fire with the error as its log (unchanged behaviour)', async () => {
+    insertMessage('tb2', 'task', { prompt: 'fold' });
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 's1' };
+      yield { type: 'result', text: 'API Error: 403 billing_error: credit balance too low', isError: true };
+    }
+    const query: AgentQuery = { push: () => {}, end: () => {}, events: events(), abort: () => {} };
+    await processQuery(query, { ...TASK_ROUTING, inReplyTo: 'tb2' }, ['tb2'], 'claude', undefined, 'prompt', undefined);
+    expect(rowStatus('tb2')).toBe('completed');
+    expect(taskLogRows().map((l) => l.text)[0]).toContain('billing_error');
+  });
+
+  it('gives up after the per-row cap and completes with the error logged', async () => {
+    insertMessage('tb3', 'task', { prompt: 'fold' });
+    const stall = 'API Error: The response stopped arriving. The response above may be incomplete.';
+    for (let i = 0; i < 4; i++) {
+      async function* events(): AsyncGenerator<ProviderEvent> {
+        yield { type: 'init', continuation: 's1' };
+        yield { type: 'result', text: stall, isError: true };
+      }
+      const query: AgentQuery = { push: () => {}, end: () => {}, events: events(), abort: () => {} };
+      await processQuery(
+        query,
+        { ...TASK_ROUTING, inReplyTo: 'tb3' },
+        ['tb3'],
+        'claude',
+        undefined,
+        'prompt',
+        undefined,
+      );
+      if (i < 3) expect(rowStatus('tb3')).toBe('bounced-transient');
+    }
+    expect(rowStatus('tb3')).toBe('completed');
+  });
+});
+
 describe('silent turn — a result that delivers nothing is never acked completed', () => {
   // The Codex `last_agent_message: null` shape: turn/completed, zero output,
   // isError never set. Before this suite the batch was acked 'completed' and
@@ -2040,4 +2125,112 @@ describe('silent turn — a result that delivers nothing is never acked complete
     expect(pushes).toHaveLength(0); // re-asking a failed turn just re-hammers it
     expect(getUndeliveredMessages()).toHaveLength(1);
   });
+});
+
+describe('fresh-session task arriving mid-query — defer, never abort the active turn', () => {
+  // Prod 2026-09-09: a 06:00 scheduled fire landed while the same series' manual
+  // run was mid fan-out. The poller ended the query to route the task through
+  // the fresh-session path; end() closes the SDK input stream, so every in-flight
+  // tool call was auto-denied and the run died. The task must wait instead.
+
+  it('freshSessionArrivalAction — defer while active, end only once idle past the idle-end threshold', () => {
+    expect(freshSessionArrivalAction(0, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(59_999, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_000, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_001, false, 60_000, 30_000)).toBe('end');
+  });
+
+  it('idleEndLimit — the long limit applies only while background subagents are open', () => {
+    expect(idleEndLimit(0, 1_200_000, 5_400_000)).toBe(1_200_000);
+    expect(idleEndLimit(1, 1_200_000, 5_400_000)).toBe(5_400_000);
+    expect(idleEndLimit(3, 1_200_000, 600_000)).toBe(1_200_000); // never below the base
+  });
+
+  it('freshSessionArrivalAction — after a completed turn the shorter quiet period is enough', () => {
+    // turn complete (result seen, nothing pushed since): end after the short quiet period
+    expect(freshSessionArrivalAction(30_001, true, 60_000, 30_000)).toBe('end');
+    expect(freshSessionArrivalAction(30_000, true, 60_000, 30_000)).toBe('defer');
+    // turn still open (no result yet): only the long idle-end applies
+    expect(freshSessionArrivalAction(30_001, false, 60_000, 30_000)).toBe('defer');
+    expect(freshSessionArrivalAction(60_001, true, 60_000, 30_000)).toBe('end');
+  });
+
+  it('leaves the task pending and does not end the query while the turn is still producing events', async () => {
+    const pushes: string[] = [];
+    let endCalls = 0;
+    let endCallsSeenMidTurn = -1;
+    let pushedMidTurn = false;
+
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 's1' };
+      yield { type: 'result', text: 'fold batch 1 done' };
+      // The scheduled fire: a task WITHOUT new_session:false, i.e. fresh-session by default.
+      insertMessage('t2', 'task', { prompt: 'scheduled fire' });
+      // The follow-up poller ticks every 500ms — give it several looks.
+      await new Promise((r) => setTimeout(r, 1_700));
+      endCallsSeenMidTurn = endCalls;
+      pushedMidTurn = pushes.some((p) => p.includes('scheduled fire'));
+      yield { type: 'result', text: 'fold batch 2 done' };
+    }
+
+    const query: AgentQuery = {
+      push: (m: string) => {
+        pushes.push(m);
+      },
+      end: () => {
+        endCalls += 1;
+      },
+      events: events(),
+      abort: () => {},
+    };
+
+    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, 'prompt', undefined);
+
+    expect(endCallsSeenMidTurn).toBe(0); // the active turn was NOT aborted
+    expect(pushedMidTurn).toBe(false); // and the task was NOT pushed into the open query either
+    expect(endCalls).toBe(0);
+    // Both results of the uninterrupted turn landed.
+    expect(taskLogRows().map((l) => l.text)).toEqual(['fold batch 1 done', 'fold batch 2 done']);
+    // The task is still pending, and reads as a fresh-session batch for the outer loop.
+    const pendingT2 = getPendingMessages().filter((m) => m.id === 't2');
+    expect(pendingT2).toHaveLength(1);
+    expect(isNewSessionBatch(pendingT2)).toBe(true);
+  }, 20_000);
+
+  it('still pushes an opted-out follow-up that arrives alongside the deferred task', async () => {
+    const pushes: string[] = [];
+    let endCalls = 0;
+
+    async function* events(): AsyncGenerator<ProviderEvent> {
+      yield { type: 'init', continuation: 's1' };
+      yield { type: 'result', text: 'first' };
+      insertMessage('t2', 'task', { prompt: 'scheduled fire' }); // deferred
+      insertMessage('t3', 'task', { prompt: 'fire three', new_session: false }); // pushed
+      const deadline = Date.now() + 15_000;
+      while (!pushes.some((p) => p.includes('fire three')) && Date.now() < deadline) {
+        await new Promise((r) => setTimeout(r, 50));
+      }
+      if (!pushes.some((p) => p.includes('fire three'))) {
+        throw new Error(`follow-up poller never pushed the opted-out task; pushes: ${JSON.stringify(pushes)}`);
+      }
+      yield { type: 'result', text: 'second' };
+    }
+
+    const query: AgentQuery = {
+      push: (m: string) => {
+        pushes.push(m);
+      },
+      end: () => {
+        endCalls += 1;
+      },
+      events: events(),
+      abort: () => {},
+    };
+
+    await processQuery(query, TASK_ROUTING, ['t1'], 'claude', undefined, 'prompt', undefined);
+
+    expect(endCalls).toBe(0);
+    expect(pushes.some((p) => p.includes('scheduled fire'))).toBe(false);
+    expect(getPendingMessages().map((m) => m.id)).toEqual(['t2']);
+  }, 20_000);
 });

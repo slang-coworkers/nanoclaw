@@ -17,8 +17,8 @@ import {
   type MessageInRow,
 } from '../db/messages-in.js';
 import { getMessageIdBySeq, getRoutingBySeq, hasOutboundToThread, writeMessageOut } from '../db/messages-out.js';
-import { getCurrentInReplyTo } from '../db/session-state.js';
-import { getSessionRouting } from '../db/session-routing.js';
+import { getCurrentInReplyTo, getCurrentReplyRoute } from '../db/session-state.js';
+import { getSessionRouting, resolveDestinationThread } from '../db/session-routing.js';
 import { auditCompletionMarkers, auditMetaAck } from './gate-audit.js';
 import { registerTools } from './server.js';
 import type { McpToolDefinition } from './types.js';
@@ -48,20 +48,23 @@ function destinationList(): string {
 /**
  * Resolve a destination name to routing fields.
  *
- * Look up the explicitly named destination. If it resolves to
- * the same channel the session is bound to, the session's thread_id is
- * preserved so replies land in the correct thread.
+ * A channel destination is threaded like the poll loop's explicit deliveries:
+ * the thread of the message being answered (the published reply stamp) when it
+ * came from that channel, else that channel's latest inbound thread. The
+ * session's own `thread_id` is deliberately NOT consulted here — it is null for
+ * every session that is not per-thread (shared, agent-shared, DM sub-threads),
+ * which is what sent threaded replies to the channel root.
  *
- * For cross-channel sends and agent-to-agent (a2a) destinations, the
- * sender's current `thread_id` auto-propagates so parallel delegations
- * don't collapse into one shared recipient session ("I'm working on
- * PR-A in my thread, reviewer gets a PR-A-scoped session; I delegate
- * PR-B in a different thread, reviewer gets a PR-B-scoped session").
+ * For agent-to-agent (a2a) destinations the sender's current `thread_id`
+ * auto-propagates so parallel delegations don't collapse into one shared
+ * recipient session ("I'm working on PR-A in my thread, reviewer gets a
+ * PR-A-scoped session; I delegate PR-B in a different thread, reviewer gets a
+ * PR-B-scoped session").
  *
- * `explicitThreadId`, if provided by the caller, always wins — enables
- * fan-out (sender sends N distinct sub-delegations from one thread) and
- * fan-in (two sender-threads collapse into one recipient session).
- * Pass `null` or `undefined` to fall through to the auto-propagation
+ * `explicitThreadId`, if provided by the caller, always wins — for both channel
+ * and agent destinations. It enables fan-out (sender sends N distinct
+ * sub-delegations from one thread) and fan-in (two sender-threads collapse into
+ * one recipient session). Pass `null` or `undefined` to fall through to the
  * rules above.
  */
 function resolveRouting(
@@ -96,15 +99,15 @@ function resolveRouting(
   const dest = findByName(to);
   if (!dest) return { error: `Unknown destination "${to}". Known: ${destinationList()}` };
   if (dest.type === 'channel') {
-    // If the destination is the same channel the session is bound to,
-    // preserve the thread_id so replies land in the correct thread.
-    const session = getSessionRouting();
-    const sameChannel = session.channel_type === dest.channelType && session.platform_id === dest.platformId;
-    const threadId = explicitThreadId ?? (sameChannel ? session.thread_id : null);
     return {
       channel_type: dest.channelType!,
       platform_id: dest.platformId!,
-      thread_id: threadId,
+      // Explicit override first; otherwise the route of the message being
+      // answered, then this channel's latest inbound thread.
+      thread_id:
+        explicitThreadId ??
+        resolveDestinationThread(dest.channelType!, dest.platformId!, getCurrentReplyRoute())?.threadId ??
+        null,
       resolvedName: to,
     };
   }
