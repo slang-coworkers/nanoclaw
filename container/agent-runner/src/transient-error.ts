@@ -49,6 +49,11 @@ const PERMANENT_SIGNATURES = [
 // clean structured result — so they must be classified transient here for the
 // outer-catch bounce to redrive them instead of silently completing the handoff.
 const TRANSIENT_SIGNATURES = [
+  // Claude Code's stream-idle watchdog: the upstream stopped sending bytes
+  // mid-response (prod 2026-09-09: a 3-minute stall at the model gateway).
+  'the response stopped arriving',
+  'response stopped arriving',
+  'stream idle timeout',
   'not logged in',
   'please run /login',
   'econnrefused',

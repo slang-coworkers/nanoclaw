@@ -4,6 +4,7 @@
  */
 import { log } from '../src/log.js';
 import { emitStatus } from './status.js';
+import { withSetupLock, launchSlackJob } from '../src/community-portal/slack-job.js';
 
 /**
  * Every entry here must name a module that exists ON TRUNK. The import is
@@ -35,6 +36,7 @@ const STEPS: Record<
   'cli-agent': () => import('./cli-agent.js'),
   'project-integrations': () => import('./project-integrations.js'),
   registry: () => import('./registry.js'),
+  portal: () => import('./portal.js'),
   'registry-reconcile': () => import('./registry-reconcile.js'),
   // >>> nanoclaw:setup-steps
   // <<< nanoclaw:setup-steps
@@ -73,4 +75,4 @@ async function main(): Promise<void> {
   }
 }
 
-main();
+withSetupLock(async () => { await launchSlackJob(); await main(); }).catch(() => { process.exitCode = 1; });

@@ -3,6 +3,25 @@ name: CI
 on:
   pull_request:
     branches: [main, nv-main, nv-dashboard, nv-slang, nv-slangpy, nv-nanoclaw]
+  # Upstream also runs this workflow on `push` to its trunk. Not adopted here.
+  # Upstream can: its `test` job is checkout → setup with no merge step, so its
+  # own note that nothing reads the pull_request payload is true of its file.
+  # The composed-state merge below is fork-added and PR-shaped, in two steps:
+  #
+  #   - The merge step's `if: github.base_ref != 'main'` is TRUE on a push
+  #     (`'' != 'main'`), so it does not skip; it runs with an empty BASE, which
+  #     also defeats the loop's own `[ "$branch" = "$BASE" ] && continue`, and
+  #     the branch under test gets merged into itself. Harmless on nv-main
+  #     (already up to date) but the guard's semantics do not survive the event.
+  #   - The ruff step's HEAD_SHA is `github.event.pull_request.head.sha`, empty
+  #     on a push. `git ls-tree ""` then fails inside a process substitution, so
+  #     `set -e` never sees it, `files` stays empty and the step exits 0 having
+  #     linted nothing. A green check that verified nothing is worse than a red.
+  #
+  # Adopting the trigger is not a token substitution: `base_ref` answers "what
+  # am I merging into", whose push analogue is `github.ref_name`, and someone
+  # must decide whether a push to `main` skips the composed merge the way a PR
+  # to `main` does.
 
 jobs:
   test:
@@ -343,3 +362,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - run: test "${{ needs.test.result }}" = success
+
+  # The single check the main ruleset will require, in every repo under the same
+  # name. It needs `ci` as well as `test` so the older required context and the
+  # new one cannot disagree. if: always() because a skipped required check is
+  # not a failed one.
+  gate:
+    name: gate
+    if: always()
+    needs: [test, ci]
+    permissions: {}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: every needed job succeeded
+        run: |
+          test "${{ needs.test.result }}" = success
+          test "${{ needs.ci.result }}" = success
