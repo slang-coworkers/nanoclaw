@@ -274,7 +274,9 @@ One-shot and recurring tasks use the same tables — no separate scheduler.
 
 **Active container poll** (~1s) checks the same conditions but only for sessions with running containers.
 
-**Agent-runner creates schedules** by emitting a `messages_out` row with `kind: 'system'` and an `action` (`schedule_task`, `cancel_task`, …) — it cannot write host-owned `inbound.db` directly. The host applies the action during delivery (`src/modules/scheduling/actions.ts`), inserting/updating the `kind: 'task'` `messages_in` row with `process_after` and optionally `recurrence`.
+**Agent-runner cannot write host-owned `inbound.db` directly.** Privileged work leaves as a `messages_out` row with `kind: 'system'` and an `action` (`create_agent`, `install_packages`, `record_decision`, …), which the host applies during delivery through the handler registered with `registerDeliveryAction` (`src/delivery.ts`).
+
+Scheduling is no longer one of those actions. Tasks are created through `ncl tasks create`, which reaches `createScheduledTask` (`src/modules/scheduling/create.ts`) and writes the `kind: 'task'` `messages_in` row with `process_after` and optionally `recurrence`; `src/host-sweep.ts` wakes it when due and inserts the next occurrence.
 
 ### messages_in content by kind
 
