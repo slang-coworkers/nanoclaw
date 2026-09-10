@@ -50,7 +50,7 @@ PR_NUM=$(echo "$PR_URL" | grep -oP '/pull/\K\d+')
 jq -nc --arg repo "$REPO" --arg pr "$PR_NUM" '{
   hookSpecificOutput: {
     hookEventName: "PostToolUse",
-    additionalContext: ("PR created: " + $repo + "#" + $pr + ". IMPORTANT: Call report_pr_created(repo=\"" + $repo + "\", pr_number=" + $pr + ") now so webhook events for this PR route to your session. Then run /explain-diff-html for " + $repo + "#" + $pr + ": write the self-contained HTML under /workspace/agent/reports/pr-explanations/, deliver it with send_file to the thread that asked for this PR, and list its path in the review request or report that follows. Do not post it to GitHub.")
+    additionalContext: ("PR created: " + $repo + "#" + $pr + ". IMPORTANT: Call report_pr_created(repo=\"" + $repo + "\", pr_number=" + $pr + ") now so webhook events for this PR route to your session. Then run /explain-diff-html for " + $repo + "#" + $pr + ": write the self-contained HTML under /workspace/agent/reports/pr-explanations/, deliver it with send_file to the thread that asked for this PR, post the same content on the PR as ONE collapsed <details> comment (GitHub-safe Markdown, updated in place on later pushes), and list the file path in the review request or report that follows. Never post the file path or internal URLs to GitHub.")
   }
 }'
 

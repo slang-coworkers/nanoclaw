@@ -2,6 +2,7 @@ import type {
   ContainerRecord,
   DestinationRecord,
   DirectOutboundWrite,
+  FailureClass,
   InboundWrite,
   OutboundDelivery,
   ProcessingAckRecord,
@@ -120,7 +121,7 @@ export interface InboundMailbox {
   getTask(taskId: string): TaskRecord | undefined;
   getTaskStats(seriesId: string): TaskStats;
   getCompletedRecurring(): RecurringMessage[];
-  trailingFailedRuns(seriesId: string): number;
+  trailingFailedRuns(seriesId: string, onlyClass?: FailureClass): number;
   clearRecurrence(messageId: string): void;
   /**
    * Atomically insert a series' next occurrence and clear the recurrence on

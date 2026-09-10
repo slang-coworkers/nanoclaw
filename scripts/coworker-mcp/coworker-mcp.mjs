@@ -270,6 +270,7 @@ const TOOLS = [
         from: { type: 'string', description: 'by_coworker date-range start YYYY-MM-DD (inclusive)' },
         to: { type: 'string', description: 'by_coworker date-range end YYYY-MM-DD (inclusive, default today)' },
         by: { type: 'string', description: 'by_coworker date-range bucket: day|week|total (default week)' },
+        timezone: { type: 'string', description: 'by_coworker transcript date range: IANA timezone (default UTC)' },
         group: { type: 'string', description: 'coworker folder/name/id filter' },
         session_id: { type: 'string', description: "required for view='session'" },
         state: { type: 'string', description: 'escalations filter: pending|continued|stopped|expired|superseded|observed' },
@@ -309,6 +310,7 @@ const TOOLS = [
           qs.set('from', reqStr(a.from, 'from'));
           if (str(a.to)) qs.set('to', reqStr(a.to, 'to'));
           if (str(a.by)) qs.set('by', reqStr(a.by, 'by'));
+          if (str(a.timezone)) qs.set('timezone', reqStr(a.timezone, 'timezone'));
           if (str(a.group)) qs.set('group', reqStr(a.group, 'group'));
           try {
             return okText(await dash('GET', `/api/cost-history?${qs.toString()}`));
