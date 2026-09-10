@@ -313,7 +313,11 @@ WorkingDirectory=${projectRoot}
 EnvironmentFile=-${projectRoot}/.env
 Restart=always
 RestartSec=10
-KillMode=control-group
+# process, not control-group: the host's docker-run children ARE the coworker
+# containers. Only the node host gets SIGTERM on stop/restart; survivors are
+# re-adopted at the next start (adoptRunningSessions) instead of being killed
+# with the service, so a host upgrade no longer destroys work in flight.
+KillMode=process
 TimeoutStopSec=10
 Environment=HOME=${homeDir}
 Environment=PATH=/usr/local/bin:/usr/bin:/bin:${homeDir}/.local/bin
@@ -441,9 +445,7 @@ function installLogRotateTimer(
   }
 
   const timerUnitName = `${mainUnitName}-logrotate`;
-  const unitDir = runningAsRoot
-    ? '/etc/systemd/system'
-    : path.join(homeDir, '.config', 'systemd', 'user');
+  const unitDir = runningAsRoot ? '/etc/systemd/system' : path.join(homeDir, '.config', 'systemd', 'user');
 
   const serviceUnit = `[Unit]
 Description=NanoClaw log rotation (copytruncate; preserves systemd fd)

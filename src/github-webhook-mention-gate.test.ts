@@ -105,6 +105,8 @@ async function startServer(
   deliverGitHubPrEvent: ReturnType<typeof vi.fn>;
 }> {
   vi.doMock('./config.js', () => ({
+    GITHUB_WEBHOOK_OWNER_ALLOWLIST: [],
+    GITHUB_WEBHOOK_OWNER_DENYLIST: [],
     GITHUB_WEBHOOK_SECRET: SECRET,
     GITHUB_WEBHOOK_PORT: 0,
     GITHUB_WEBHOOK_BOT_MENTION: BOT_MENTION,

@@ -1,14 +1,14 @@
 ---
 name: supervise-issues
 license: MIT
-description: Periodic supervisor for in-flight GitHub issue chains. Lists active issue sessions, computes stuck-time, nudges silent chains, checks each PR's CI and nudges the fixer to rebase master when a run is stale or behind, verifies a resumable GitHub artifact exists for every chain, and escalates blockers to the operator. Self-scheduled on a 12-hour cron via schedule_task.
+description: Periodic supervisor for in-flight GitHub issue chains. Lists active issue sessions, computes stuck-time, nudges silent chains, checks each PR's CI and nudges the fixer to rebase master when a run is stale or behind, verifies a resumable GitHub artifact exists for every chain, and escalates blockers to the operator. Self-scheduled on a 12-hour cron via `ncl tasks`.
 ---
 
 # /supervise-issues — Issue chain supervisor
 
 You are the orchestrator (or a coworker it delegated supervision to). Every tick, walk all
 in-flight issue chains, find the stuck ones, and nudge or escalate. Designed to run on a recurring
-`schedule_task` (suggested cron `0 */12 * * *`, fresh session each tick).
+`ncl tasks create` (suggested recurrence `0 */12 * * *`; each tick is a fresh session).
 
 Lookup tables, command snippets, and the rationale behind each rule live in
 [reference.md](./reference.md). This file is the rules and the procedure.
@@ -70,9 +70,9 @@ These hold across every step below; the steps reference them by number rather th
   `fix/issue-<num>` branch**, not the PR's auto checks. The only remedy you dispatch is
   **rebase/merge master** (re-runs CI on a stable base); you never call `gh run rerun` yourself.
   See reference.md → *CI status + rebase nudge*.
-- **R10 — Never `schedule_task` a `cron` for a single issue/PR.** R1's scan and GitHub webhooks
+- **R10 — Never schedule a recurring task for a single issue/PR.** R1's scan and GitHub webhooks
   already cover state changes, and a per-issue cron never self-cancels — it wakes a fresh container
-  forever. For a one-time future check use `process_after` (no `cron`); for a human blocker,
+  forever. For a one-time future check use `--process-after` (no `--recurrence`); for a human blocker,
   escalate (R7). The only recurrence you schedule is this skill's own 12h cron (below).
 
 ## Procedure
@@ -287,7 +287,7 @@ dispatch body, and the docker-escalation wording are in reference.md → *Worktr
 ## Scheduling
 
 On first run, schedule yourself. Three cost levers keep ticks cheap: the **12-hour cadence** (issue
-chains move on the scale of hours), **`new_session: true`** (each tick starts clean — all durable
+chains move on the scale of hours), the **fresh session per tick** (each tick starts clean — all durable
 state is in `supervisor-state.json`, which is exactly why live rediscovery per R1 is mandatory),
 and the **wake gate** (a tick with nothing stuck is a no-op). A tick that does wake reports only
 the delta (Step 1).
@@ -299,19 +299,27 @@ fetch `http://…:3000/api/sessions/in-flight`: that endpoint does not exist and
 dashboard port (it varies per instance via `DASHBOARD_PORT`), so the old fetch always failed → the
 gate degraded to "wake every tick" (no saving). `ncl sessions list --json` needs no port and no auth.
 
-```js
-schedule_task({
-  prompt: '/supervise-issues',
-  cron: '0 */12 * * *',
-  new_session: true,
-  script: `
+```bash
+# Each tick is a fresh session by default — nothing to opt into.
+ncl tasks create --name "supervise issues" \
+  --prompt '/supervise-issues' \
+  --recurrence '0 */12 * * *' \
+  --script "$(cat <<'GATE'
     # Wake only when a gh-issue chain has been silent (by us) for >60 min.
     # ncl is in-container; --json returns {id,ok,data:[...]}. ncl ignores unknown
     # flags silently — there is NO --thread-prefix; filter client-side.
-    ncl sessions list --json 2>/dev/null | python3 -c "
+    # --limit: the generic list default is 200 rows, so without it a supervisor
+    # silently stops seeing the chains it is meant to supervise. 10000 per R-limit
+    # above.
+    ncl sessions list --limit 10000 --json 2>/dev/null | python3 -c "
 import json, sys, datetime
 now = datetime.datetime.now(datetime.timezone.utc)
-data = json.load(sys.stdin).get('data', [])
+payload = json.load(sys.stdin)
+# A failed call must not read as 'nothing is stale' — that would suppress
+# supervision indefinitely and look identical to a quiet fleet.
+if payload.get('ok') is not True or not isinstance(payload.get('data'), list):
+    sys.exit(1)
+data = payload['data']
 def stale(s):
     la = s.get('last_active')
     if not la: return True
@@ -320,8 +328,9 @@ def stale(s):
 gh = [s for s in data if (s.get('thread_id') or '').startswith('gh-issue-')]
 st = [s for s in gh if stale(s)]
 print(json.dumps({'wakeAgent': len(st) > 0, 'data': {'gh_chains': len(gh), 'stale': len(st)}}))
-"`,
-});
+"
+GATE
+)"
 ```
 
 (On a `ncl`/`python3` error the script exits non-zero → the agent-runner fail-closes and skips the

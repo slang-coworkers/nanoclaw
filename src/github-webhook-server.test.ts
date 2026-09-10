@@ -4,6 +4,8 @@ vi.mock('./config.js', () => ({
   GITHUB_WEBHOOK_SECRET: 'test-secret',
   GITHUB_WEBHOOK_PORT: 0,
   GITHUB_WEBHOOK_BOT_MENTION: '@bot',
+  GITHUB_WEBHOOK_OWNER_ALLOWLIST: [],
+  GITHUB_WEBHOOK_OWNER_DENYLIST: [],
   INSTANCE_FORWARD_TARGETS: { lego: 'http://127.0.0.1:1/webhook' },
   INSTANCE_SLUG: 'prod',
   ROUTE_ISSUES_TO: 'lego',

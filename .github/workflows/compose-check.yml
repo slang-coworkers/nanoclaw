@@ -39,7 +39,11 @@ jobs:
           # the working tree is clean for the first merge.
           git fetch origin nv-main
           git checkout origin/nv-main -- setup/merge-train.sh
-          git commit -qm "compose-check: use nv-main's merge-train resolver" -- setup/merge-train.sh
+          # `git checkout <ref> -- <path>` stages, so an identical copy stages
+          # nothing and `git commit` exits 1 — fatal under `set -e`. The guard is
+          # `--cached`, not `|| true`, which would also swallow a real failure.
+          git diff --cached --quiet ||
+            git commit -qm "compose-check: use nv-main's merge-train resolver" -- setup/merge-train.sh
           # MERGE_TRAIN_NO_INSTALL: merge + canonicalize every branch, then run a
           # single install/build/validate below (faster than per-branch, and the
           # explicit build is the oracle for a non-building compose).
