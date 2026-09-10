@@ -35,6 +35,12 @@ interface TokenEntry {
   groupFolder: string;
   /** Scoped MCP tool names: <server>__<tool> (not raw tool names). */
   allowedTools: Set<string>;
+  /**
+   * Runtime container name the token was minted for (`nc-<slug>-<folder>-…`).
+   * Lets `retainContainerTokens` drop tokens of containers that died while no
+   * host was running. Undefined for tokens minted by older hosts.
+   */
+  containerName?: string;
 }
 
 // ── Management token (host-only, never given to containers) ────────────────
@@ -47,11 +53,106 @@ export function getMcpManagementToken(): string {
 
 const tokens = new Map<string, TokenEntry>();
 
+// ── Container-token persistence ─────────────────────────────────────────────
+//
+// The registry used to live only in this Map. That was fine while a host
+// restart killed every container (KillMode=control-group): each respawn minted
+// a fresh token. With KillMode=process + `adoptRunningSessions`, a container
+// SURVIVES the restart and keeps presenting the token it was spawned with —
+// which the new host had never seen, so every proxied external-MCP call from a
+// survivor answered 401 until its natural respawn. The Map is therefore
+// mirrored to a 0600 file under data/ and reloaded on first use; adoption then
+// prunes the tokens of containers that did not survive (`retainContainerTokens`).
+//
+// Persistence is OFF until `configureContainerTokenStore` names a file — unit
+// tests and ad-hoc callers keep the pure in-memory behaviour.
+let containerTokensPath: string | null = null;
+let containerTokensLoaded = false;
+
+interface PersistedTokenFile {
+  version: 1;
+  tokens: Record<string, { groupFolder: string; allowedTools: string[]; containerName?: string }>;
+}
+
+/**
+ * Enable (path) or disable (null) mirroring of the container-token registry to
+ * disk. Call once at host startup, BEFORE `adoptRunningSessions`, so adopted
+ * containers' tokens are back in the registry when their first call arrives.
+ */
+export function configureContainerTokenStore(opts: { path: string | null }): void {
+  containerTokensPath = opts.path;
+  containerTokensLoaded = false;
+}
+
+function ensureContainerTokensLoaded(): void {
+  if (containerTokensLoaded || !containerTokensPath) return;
+  containerTokensLoaded = true;
+  let raw: string;
+  try {
+    raw = fs.readFileSync(containerTokensPath, 'utf8');
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') {
+      log.warn('Failed to read persisted MCP container tokens — starting empty', { err });
+    }
+    return;
+  }
+  try {
+    const parsed = JSON.parse(raw) as Partial<PersistedTokenFile>;
+    if (parsed.version !== 1 || !parsed.tokens || typeof parsed.tokens !== 'object') {
+      log.warn('Persisted MCP container tokens have an unknown shape — starting empty');
+      return;
+    }
+    let n = 0;
+    for (const [token, entry] of Object.entries(parsed.tokens)) {
+      if (typeof token !== 'string' || token.length < 32 || !entry || typeof entry.groupFolder !== 'string') continue;
+      tokens.set(token, {
+        groupFolder: entry.groupFolder,
+        allowedTools: new Set(
+          Array.isArray(entry.allowedTools) ? entry.allowedTools.filter((t) => typeof t === 'string') : [],
+        ),
+        containerName: typeof entry.containerName === 'string' ? entry.containerName : undefined,
+      });
+      n++;
+    }
+    if (n > 0) log.info('Restored MCP container tokens from disk', { count: n });
+  } catch (err) {
+    log.warn('Failed to parse persisted MCP container tokens — starting empty', { err });
+  }
+}
+
+function persistContainerTokens(): void {
+  if (!containerTokensPath) return;
+  const out: PersistedTokenFile = { version: 1, tokens: {} };
+  for (const [token, entry] of tokens) {
+    out.tokens[token] = {
+      groupFolder: entry.groupFolder,
+      allowedTools: [...entry.allowedTools],
+      ...(entry.containerName ? { containerName: entry.containerName } : {}),
+    };
+  }
+  const tmp = `${containerTokensPath}.${process.pid}.tmp`;
+  try {
+    fs.mkdirSync(path.dirname(containerTokensPath), { recursive: true });
+    fs.writeFileSync(tmp, JSON.stringify(out), { mode: 0o600 });
+    fs.renameSync(tmp, containerTokensPath);
+  } catch (err) {
+    log.warn('Failed to persist MCP container tokens', { err });
+    try {
+      fs.unlinkSync(tmp);
+    } catch {
+      /* ignore */
+    }
+  }
+}
+
 /**
  * Register a per-container token.  Called from container-runner before spawn.
- * Returns the generated bearer token.
+ * Returns the generated bearer token. `containerName` ties the token to the
+ * runtime container so a later `retainContainerTokens` can prune it once that
+ * container is known to be gone.
  */
-export function registerContainerToken(groupFolder: string, allowedMcpTools: string[]): string {
+export function registerContainerToken(groupFolder: string, allowedMcpTools: string[], containerName?: string): string {
+  ensureContainerTokensLoaded();
   const token = crypto.randomBytes(32).toString('hex');
   // Keep server-scoped names: mcp__<server>__<tool> → <server>__<tool>
   const scopedNames = allowedMcpTools
@@ -60,13 +161,47 @@ export function registerContainerToken(groupFolder: string, allowedMcpTools: str
       const parts = t.split('__');
       return parts.slice(1).join('__');
     });
-  tokens.set(token, { groupFolder, allowedTools: new Set(scopedNames) });
+  tokens.set(token, { groupFolder, allowedTools: new Set(scopedNames), ...(containerName ? { containerName } : {}) });
+  persistContainerTokens();
   return token;
 }
 
 /** Remove a token when the container exits. */
 export function revokeContainerToken(token: string): void {
-  tokens.delete(token);
+  ensureContainerTokensLoaded();
+  if (tokens.delete(token)) persistContainerTokens();
+}
+
+/**
+ * Drop every token whose container is not in `liveContainerNames`. Called from
+ * `adoptRunningSessions` once the set of survivors is known: at that point no
+ * container has been spawned by this host yet, so anything not adopted is
+ * dead and its token must not stay valid. Tokens without a container name
+ * (minted by an older host) are left alone. Returns the number pruned.
+ */
+export function retainContainerTokens(liveContainerNames: ReadonlySet<string>): number {
+  ensureContainerTokensLoaded();
+  let pruned = 0;
+  for (const [token, entry] of tokens) {
+    if (entry.containerName && !liveContainerNames.has(entry.containerName)) {
+      tokens.delete(token);
+      pruned++;
+    }
+  }
+  if (pruned > 0) persistContainerTokens();
+  return pruned;
+}
+
+/** True when `token` is a live container token (diagnostics + tests). */
+export function hasContainerToken(token: string): boolean {
+  ensureContainerTokensLoaded();
+  return tokens.has(token);
+}
+
+/** Test hook: forget the in-memory registry so the next call reloads from disk. */
+export function _resetContainerTokenRegistryForTests(): void {
+  tokens.clear();
+  containerTokensLoaded = false;
 }
 
 /**
@@ -83,6 +218,7 @@ export function updateContainerTokenScope(groupFolder: string, allowedMcpTools: 
   const scopedNames = allowedMcpTools
     .filter((t) => t.startsWith('mcp__') && !t.startsWith('mcp__nanoclaw__'))
     .map((t) => t.split('__').slice(1).join('__'));
+  ensureContainerTokensLoaded();
   let n = 0;
   for (const entry of tokens.values()) {
     if (entry.groupFolder !== groupFolder) continue;
@@ -91,6 +227,7 @@ export function updateContainerTokenScope(groupFolder: string, allowedMcpTools: 
     entry.allowedTools = new Set(scopedNames);
     n++;
   }
+  if (n > 0) persistContainerTokens();
   return n;
 }
 
@@ -397,6 +534,7 @@ export function startMcpAuthProxy(
     }
 
     const bearerToken = authHeader.slice(7);
+    ensureContainerTokensLoaded();
     const entry = tokens.get(bearerToken);
     if (!entry) {
       res.writeHead(401, { 'Content-Type': 'application/json' });

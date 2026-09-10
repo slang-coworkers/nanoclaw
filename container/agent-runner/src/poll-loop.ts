@@ -22,15 +22,16 @@ import {
 import { classifyTurnError } from './transient-error.js';
 import { getUndeliveredMessages, hasIdenticalSend, outboundWatermark, writeMessageOut } from './db/messages-out.js';
 import { clearStaleProcessingAcks } from './db/container-state.js';
+import { resolveDestinationThread } from './db/session-routing.js';
 import { touchHeartbeat } from './heartbeat.js';
 import { getAgentMailbox } from './mailbox/index.js';
 import {
   clearContinuation,
   getContinuationAgeMs,
-  clearCurrentInReplyTo,
+  clearCurrentReplyRoute,
   migrateLegacyContinuation,
   setContinuation,
-  setCurrentInReplyTo,
+  setCurrentReplyRoute,
   getCostCap,
   setCostCap,
   setCostControlProtocol,
@@ -75,6 +76,37 @@ const ACTIVE_POLL_INTERVAL_MS = 500;
 const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
   ? Math.max(60_000, parseInt(process.env.NANOCLAW_IDLE_END_MS, 10))
   : 1_200_000;
+// How long a query must have been quiet AFTER a completed turn (a `result` event
+// with no follow-up pushed since) before a pending fresh-session task may end it.
+// Shorter than IDLE_END_MS on purpose: with nothing in flight the only thing the
+// wait protects is an agent that is between turns waiting for subagent or system
+// notifications, and those arrive within minutes. Floor 60s.
+const FRESH_SESSION_IDLE_END_MS = process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS
+  ? Math.max(60_000, parseInt(process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS, 10))
+  : 300_000;
+// Idle-end limit while background subagents are in flight. The main agent emits
+// no SDK events while it waits on them (only task_progress heartbeats, which the
+// provider surfaces as activity), so the plain 20-min rule would end the query
+// and kill the subagents. Floor at IDLE_END_MS; default 90 min.
+const BG_TASK_IDLE_END_MS = process.env.NANOCLAW_BG_TASK_IDLE_END_MS
+  ? Math.max(IDLE_END_MS, parseInt(process.env.NANOCLAW_BG_TASK_IDLE_END_MS, 10))
+  : Math.max(IDLE_END_MS, 5_400_000);
+
+/** The idle-end limit that applies right now: the long one while subagents run. */
+export function idleEndLimit(
+  bgTasks: number,
+  base: number = IDLE_END_MS,
+  bgLimit: number = BG_TASK_IDLE_END_MS,
+): number {
+  return bgTasks > 0 ? Math.max(base, bgLimit) : base;
+}
+
+// A scheduled task run whose provider turn dies on a KNOWN transient error
+// (stream stall, gateway 5xx, connection reset) is bounced so the host reclaims
+// the claim and the row is polled again, instead of being acked complete with
+// the error text as its run log. Bounded per row for the life of this runner.
+const TASK_BOUNCE_MAX_TRIES = 3;
+const taskBounceCounts = new Map<string, number>();
 
 /**
  * Number of consecutive driver-classified read failures after which the
@@ -2273,9 +2305,37 @@ export function classifyThrownBounce(channelType: string | null, errMsg: string)
 }
 
 /**
+ * What the follow-up poller does when a fresh-session task (a `task` row without
+ * `new_session: false`) arrives while a query is open. Ending the query closes the
+ * SDK's input stream, and every tool call still in flight is auto-denied — the
+ * active turn is aborted, not paused. That is only safe when nothing is in flight:
+ * either the query has been idle for `idleEndMs` (the plain idle-end rule), or the
+ * last turn already finished (`turnComplete`: a `result` event with no follow-up
+ * pushed since) and the query has been quiet for `afterResultIdleEndMs`. Otherwise
+ * the task is deferred: its row stays `pending` and is routed through the
+ * fresh-session path once the active turn ends on its own.
+ */
+export function freshSessionArrivalAction(
+  idleMs: number,
+  turnComplete = false,
+  idleEndMs: number = IDLE_END_MS,
+  afterResultIdleEndMs: number = FRESH_SESSION_IDLE_END_MS,
+): 'defer' | 'end' {
+  if (idleMs > idleEndMs) return 'end';
+  if (turnComplete && idleMs > afterResultIdleEndMs) return 'end';
+  return 'defer';
+}
+
+/**
  * Default-on fresh-session policy for recurring task batches:
  *   - Empty batch: false (defensive — no spurious fresh sessions).
- *   - Any chat in the batch: false (mixed batches preserve chat history).
+ *   - Any ADDRESSED chat in the batch (trigger=1): false (mixed batches preserve
+ *     chat history). Accumulated trigger=0 context rows (session echoes, ambient
+ *     channel traffic the router stored for context) ride along with whatever
+ *     batch picks them up and do NOT veto: on prod 2026-09-09 three such echoes
+ *     turned a scheduled task's batch into "task,chat", so the fold ran inside
+ *     the immortal Orchestrator's 1M-context continuation instead of a fresh
+ *     session, and the run was wasted.
  *   - All-tasks AND at least one opts out via `new_session: false`: false
  *     (safer to preserve continuity than drop it when any task asks).
  *   - All-tasks AND none opts out: true (the common heartbeat/cron case,
@@ -2286,8 +2346,10 @@ export function classifyThrownBounce(channelType: string | null, errMsg: string)
  * support: $0.57 after flip vs $1.00 before, on 11 turns vs 3) confirmed
  * the delta is real enough to make opt-out the sane default.
  */
-export function isNewSessionBatch(keep: Array<{ kind: string; content: string }>): boolean {
-  return keep.length > 0 && keep.every((m) => m.kind === 'task') && !keep.some(taskOptsOutOfNewSession);
+export function isNewSessionBatch(keep: Array<{ kind: string; content: string; trigger?: number }>): boolean {
+  // Rows without a trigger column (older callers, tests) count as addressed.
+  const addressed = keep.filter((m) => m.trigger !== 0);
+  return addressed.length > 0 && addressed.every((m) => m.kind === 'task') && !addressed.some(taskOptsOutOfNewSession);
 }
 
 /**
@@ -2455,6 +2517,8 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // Clear leftover 'processing' acks from a previous crashed container.
   // This lets the new container re-process those messages.
   clearStaleProcessingAcks();
+  // Same for the reply stamp a killed container left behind (see session-state.ts).
+  clearCurrentReplyRoute();
 
   // Runner-instance readiness handshake (NanoClaw #1, "set ceiling v2") —
   // publish before anything else so the host's post-wake readiness poll finds
@@ -2685,9 +2749,11 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // Process the query while concurrently polling for new messages
     const skippedSet = new Set(skipped.map((s) => s.id));
     const processingIds = ids.filter((id) => !commandIds.includes(id) && !skippedSet.has(id));
-    // Publish the batch's in_reply_to so MCP tools (send_message, send_file)
-    // can stamp it on outbound rows — needed for a2a return-path routing.
-    setCurrentInReplyTo(routing.inReplyTo);
+    // Publish the batch's route so MCP tools (send_message, send_file) thread
+    // replies into the conversation being answered and stamp in_reply_to for
+    // a2a return-path routing. Re-published at every turn boundary inside
+    // processQuery as later messages are answered.
+    publishReplyRoute(routing);
     let queryResult: QueryResult | undefined;
     // Trigger ids bounced via the THROWN-error path (outer catch) this turn.
     // Kept separate from queryResult.bouncedIds because a throw means
@@ -2775,7 +2841,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         log(`Errored batch will be acked completed — ${processingIds.length} message(s), no redelivery`);
       }
     } finally {
-      clearCurrentInReplyTo();
+      clearCurrentReplyRoute();
       config.signal?.removeEventListener('abort', abortActiveQuery);
     }
 
@@ -2944,6 +3010,9 @@ export async function processQuery(
   skipPersistContinuation = false,
   refreshDestinations: () => string | null = () => null,
 ): Promise<QueryResult> {
+  // adoptTurn mutates routing in place; copy so the caller's batch routing
+  // (used for the query error notice) stays the first message's.
+  routing = { ...routing };
   let queryContinuation: string | undefined;
   let done = false;
   let lastEventTime = Date.now();
@@ -3011,10 +3080,37 @@ export async function processQuery(
   // closes anywhere is the wrap-nudge's job, not the buffer's.
   let midTurnTail = '';
   // Prompt queue for the exchange hook — each result event consumes the
-  // oldest unanswered prompt, except a wrapping-retry result, which answers
-  // the same prompt again. Unused (and unmaintained) when the provider
-  // doesn't implement `onExchangeComplete`.
-  const archivePrompts: string[] = [initialPrompt];
+  // oldest unanswered prompt. Retries append the original user prompt at
+  // their position in the provider input queue.
+  const archivePrompts: string[] = initialPrompt ? [initialPrompt] : [];
+  // Where replies go is a property of the TURN, not the query. The query
+  // stays open across turns (below), so a message pushed after the previous
+  // answer finished is a new turn and replies go to ITS thread; a message
+  // pushed while an answer is still streaming waits its turn — the in-flight
+  // answer keeps the destination it started with. Pushed routes queue in
+  // push order (including retries) and advance at every result, mirroring
+  // archivePrompts. An empty initial prompt (a pre-warmed query) starts idle.
+  let answering = initialPrompt !== '';
+  type QueuedTurn = {
+    routing: RoutingContext;
+    unwrappedNudged: boolean;
+    taskBlockNudged: boolean;
+  };
+  const queuedTurns: QueuedTurn[] = [];
+  const adoptTurn = (next: QueuedTurn): void => {
+    Object.assign(routing, next.routing);
+    unwrappedNudged = next.unwrappedNudged;
+    taskBlockNudged = next.taskBlockNudged;
+    publishReplyRoute(routing);
+    answering = true;
+  };
+  // A retry is another provider input, behind any follow-ups already pushed.
+  // Preserve its original route, prompt and retry guards until it is answered.
+  const pushRetry = (prompt: string, archiveAgainst?: string): void => {
+    query.push(prompt);
+    queuedTurns.push({ routing: { ...routing }, unwrappedNudged, taskBlockNudged });
+    archivePrompts.push(archiveAgainst ?? archivePrompts[0] ?? initialPrompt);
+  };
 
   /**
    * Close out a turn that delivered nothing by any path: emit a durable,
@@ -3061,6 +3157,12 @@ export async function processQuery(
   // will kill the container and messages get reset to pending.
   let pollInFlight = false;
   let endedForCommand = false;
+  let freshSessionDeferLogged = false;
+  // True once the SDK has emitted a `result` for the current turn and nothing has
+  // been pushed since; cleared by the next push. Post-turn accounting events keep it.
+  let turnComplete = false;
+  // Background subagents spawned by the SDK and not yet reported finished.
+  let bgTasks = 0;
   let mailboxFailureStreak = 0;
   const onSignalAbort = () => query.abort();
   signal?.addEventListener('abort', onSignalAbort, { once: true });
@@ -3138,9 +3240,13 @@ export async function processQuery(
         }
 
         if (newMessages.length === 0) {
-          // End stream when agent is idle: no SDK events and no pending messages
-          if (Date.now() - lastEventTime > IDLE_END_MS) {
-            log(`No SDK events for ${IDLE_END_MS / 1000}s, ending query`);
+          // End stream when agent is idle: no SDK events and no pending messages.
+          // While background subagents run, the longer BG_TASK_IDLE_END_MS applies.
+          const idleLimit = idleEndLimit(bgTasks);
+          if (Date.now() - lastEventTime > idleLimit) {
+            log(
+              `No SDK events for ${idleLimit / 1000}s${bgTasks > 0 ? ` (${bgTasks} background task(s) still open)` : ''}, ending query`,
+            );
             query.end();
           }
           return;
@@ -3170,26 +3276,60 @@ export async function processQuery(
         // continuation and defeat the default. End the active query instead;
         // the next poll iteration's initial-batch path will pick up the
         // pending rows via the fresh-session path. Leave rows as 'pending'.
+        //
+        // But NEVER end a query that is still working. `query.end()` closes the
+        // SDK's input stream, and every tool call still in flight is then
+        // auto-denied ("The user doesn't want to take this action right now") —
+        // the active turn is aborted, not paused. Seen on prod 2026-09-09: a
+        // scheduled fire landed while the same series' manual run was mid
+        // fan-out and killed it. So the task rows stay `pending` (spliced out
+        // of this tick's push) until the active turn ends on its own, and the
+        // query is ended here only when it has already been idle for as long as
+        // the plain idle-end rule tolerates (`freshSessionArrivalAction`).
         const wantsFreshSession = (m: { kind: string; content: string }) =>
           m.kind === 'task' && !taskOptsOutOfNewSession(m);
-        if (newMessages.some(wantsFreshSession)) {
-          log(
-            `fresh-session task arrived mid-query (${newMessages.length} msg) — ending active query to route through fresh-session path`,
-          );
-          query.end();
-          done = true;
-          return;
-        }
-
-        // Update the shared routing when a follow-up brings richer routing
-        // than the initial batch had.
-        const followUpRouting = extractRouting(newMessages);
-        if (followUpRouting.channelType && followUpRouting.platformId) {
-          if (!routing.channelType || !routing.platformId) {
+        const freshSessionTasks = newMessages.filter(wantsFreshSession);
+        if (freshSessionTasks.length > 0) {
+          const idleMs = Date.now() - lastEventTime;
+          // A completed turn with subagents still running is NOT a finished turn.
+          if (freshSessionArrivalAction(idleMs, turnComplete && bgTasks === 0, idleEndLimit(bgTasks)) === 'end') {
             log(
-              `Promoting routing from follow-up (${followUpRouting.channelType}:${followUpRouting.platformId}); initial routing was null`,
+              `fresh-session task arrived (${freshSessionTasks.length} msg) while the query has been idle ` +
+                `${Math.round(idleMs / 1000)}s${turnComplete ? ' after a completed turn' : ''} — ending it to route through fresh-session path`,
+            );
+            query.end();
+            done = true;
+            return;
+          }
+          if (!freshSessionDeferLogged) {
+            freshSessionDeferLogged = true;
+            log(
+              `fresh-session task arrived mid-query (${freshSessionTasks.length} msg) — leaving it pending until ` +
+                `the active turn ends; ending the query now would deny its in-flight tool calls`,
             );
           }
+          for (const t of freshSessionTasks) {
+            const idx = newMessages.indexOf(t);
+            if (idx >= 0) newMessages.splice(idx, 1);
+          }
+          if (newMessages.length === 0) return;
+        }
+
+        // Promote the shared routing ONLY when the initial batch had none (e.g. a
+        // task run with no channel). When the active turn already has a route it
+        // KEEPS it: the follow-up's route travels in its QueuedTurn and is adopted
+        // at the next result boundary. Replacing `routing` here unconditionally
+        // redirected the in-flight answer into the newly-arrived message's thread —
+        // the mid-turn race upstream #3738 fixes.
+        const followUpRouting = extractRouting(newMessages);
+        if (
+          followUpRouting.channelType &&
+          followUpRouting.platformId &&
+          (!routing.channelType || !routing.platformId)
+        ) {
+          log(
+            `Promoting routing from follow-up (${followUpRouting.channelType}:${followUpRouting.platformId}); initial routing was null`,
+          );
           routing = followUpRouting;
         }
 
@@ -3253,12 +3393,18 @@ export async function processQuery(
         const destNote = refreshDestinations();
         if (destNote) routedPrompt = destNote + routedPrompt;
         log(`Pushing ${keep.length} follow-up message(s) into active query`);
-        unwrappedNudged = false;
-        taskBlockNudged = false;
         query.push(routedPrompt);
         archivePrompts.push(prompt);
+        const next: QueuedTurn = {
+          routing: extractRouting(keep),
+          unwrappedNudged: false,
+          taskBlockNudged: false,
+        };
+        if (answering) queuedTurns.push(next);
+        else adoptTurn(next);
         markCompleted(keptIds);
         lastEventTime = Date.now(); // new input counts as activity
+        turnComplete = false; // a new turn starts
       } catch (err) {
         // Without this catch the rejection escapes the void IIFE and Node
         // terminates the container on unhandled-rejection.
@@ -3292,6 +3438,12 @@ export async function processQuery(
   try {
     for await (const event of query.events) {
       lastEventTime = Date.now();
+      // `result` closes a turn; usage events are post-turn accounting; anything
+      // else means the SDK is working again.
+      if (event.type === 'result') turnComplete = true;
+      else if (event.type !== 'usage' && event.type !== 'message_usage') turnComplete = false;
+      if (event.type === 'progress' && event.task === 'started') bgTasks += 1;
+      else if (event.type === 'progress' && event.task === 'finished') bgTasks = Math.max(0, bgTasks - 1);
       handleEvent(event, routing);
       touchHeartbeat();
 
@@ -3390,24 +3542,55 @@ export async function processQuery(
         // `costStopRequested` blocks NEW external work meanwhile. Inert for Claude
         // (its hard-stop is the separate `usage`-branch check).
         const corrections: string[] = [];
+        // The coalesced push below runs AFTER this result's archivePrompts.shift(),
+        // so capture the user prompt the correction answers while it is still at
+        // the head of the queue. Without this the retry archives against the NEXT
+        // prompt (or nothing) instead of the one it is correcting.
+        let correctionArchivePrompt: string | undefined;
         const pushCorrection = (message: string): void => {
+          if (corrections.length === 0) correctionArchivePrompt = archivePrompts[0] ?? initialPrompt;
           corrections.push(message);
         };
         // Any result closes out an open silent turn: either it delivered (and
         // acks normally below) or it was silent again (and the branch at the
         // bottom finalizes it, because silentTurnNudged is already set).
         silentTurnOpen = false;
-        const bounceClass =
-          event.isError === true && event.text && routing.channelType === 'agent'
-            ? classifyTurnError(event.text)
-            : 'permanent';
-        if (event.isError === true && event.text && routing.channelType === 'agent' && bounceClass !== 'permanent') {
-          markBounced(initialBatchIds, bounceClass === 'transient' ? 'bounced-transient' : 'bounced-unknown');
+        const isTaskTurn = routing.taskRun === true;
+        const bounceEligible =
+          event.isError === true && !!event.text && (routing.channelType === 'agent' || isTaskTurn);
+        const bounceClass = bounceEligible && event.text ? classifyTurnError(event.text) : 'permanent';
+        // Task runs bounce only on KNOWN transient signatures (never 'unknown'),
+        // and at most TASK_BOUNCE_MAX_TRIES times per row while this runner lives;
+        // after that the error is logged as the run's result as before. Prod
+        // 2026-09-09: a stream stall ("The response stopped arriving") ended a
+        // wiki fold after 4 minutes and the fire was acked complete, no retry.
+        const taskTries = isTaskTurn ? Math.max(0, ...initialBatchIds.map((id) => taskBounceCounts.get(id) ?? 0)) : 0;
+        const taskBounce = isTaskTurn && bounceClass === 'transient' && taskTries < TASK_BOUNCE_MAX_TRIES;
+        if (
+          bounceEligible &&
+          event.text &&
+          bounceClass !== 'permanent' &&
+          (routing.channelType === 'agent' || taskBounce)
+        ) {
+          const status = bounceClass === 'transient' ? 'bounced-transient' : 'bounced-unknown';
+          markBounced(initialBatchIds, status);
           bouncedIds.push(...initialBatchIds);
           bounced = true;
-          log(
-            `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` + event.text.slice(0, 80),
-          );
+          if (isTaskTurn) {
+            for (const id of initialBatchIds) taskBounceCounts.set(id, taskTries + 1);
+            log(
+              `task-run transient bounce (try ${taskTries + 1}/${TASK_BOUNCE_MAX_TRIES}) — row left pending for retry: ` +
+                event.text.slice(0, 80),
+            );
+            await autoAppendTaskLog(
+              `[transient provider error, retry ${taskTries + 1}/${TASK_BOUNCE_MAX_TRIES}] ${event.text.slice(0, 200)}`,
+            );
+          } else {
+            log(
+              `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` +
+                event.text.slice(0, 80),
+            );
+          }
           notifyExchangeComplete(onExchangeComplete, {
             prompt: archivePrompts[0] ?? initialPrompt,
             result: event.text,
@@ -3516,10 +3699,9 @@ export async function processQuery(
                 .join(', ');
               pushCorrection(buildTaskBlockNudge(taskBlocks, names));
             }
-            // A retry result (wrapping or task-block nudge) answers the SAME
-            // user prompt — keep it queued so the retry archives against it,
-            // not the nudge text.
-            if (!willRetryWrapping && !willRetryTaskBlocks) archivePrompts.shift();
+            // Each result consumes one input; retries carry their original
+            // user prompt at their own position in the FIFO queue.
+            archivePrompts.shift();
           }
         } else {
           // SILENT TURN — the result carried no usable text (`null`, or blank).
@@ -3585,7 +3767,11 @@ export async function processQuery(
         // `corrections` note above), so the codex hard-stop can never strand a
         // second queued correction mid-turn — EXCEPT on the terminal stop, where
         // the correction can't run at all and is handled below instead.
-        if (queuedCorrection && !terminalCeilingStop) query.push(corrections.join('\n\n'));
+        // Route it like any other retry: one queued turn, behind any follow-ups
+        // already pushed, carrying THIS turn's route so the correction is answered
+        // into the same conversation it is correcting.
+        if (queuedCorrection && !terminalCeilingStop)
+          pushRetry(corrections.join('\n\n'), correctionArchivePrompt);
         if (terminalCeilingStop) {
           // Surface the withheld answer durably (same delivery mechanism as
           // finalizeSilentTurn), then ack the batch FAILED — NOT completed — so
@@ -3674,6 +3860,12 @@ export async function processQuery(
             }
           }
         }
+        // Advance the turn route only AFTER this result's delivery, ack and
+        // cost settle above have completed — otherwise the next turn's route is
+        // published while the finished turn is still being settled.
+        const next = queuedTurns.shift();
+        if (next) adoptTurn(next);
+        else answering = false;
       }
     }
   } catch (err) {
@@ -5001,15 +5193,16 @@ async function sendToDestination(
     log(`Dropping turn-final echo of an already-sent task message to ${dest.name}`);
     return;
   }
-  // Resolve thread_id per-destination from the most recent inbound message
-  // that came from this same channel+platform. In agent-shared sessions,
-  // different destinations have different thread contexts — using a single
-  // routing.threadId would stamp one channel's thread onto another.
+  // Thread per destination: the batch's own thread when the destination is the
+  // channel being answered, else that channel's latest inbound thread. In
+  // agent-shared sessions different destinations have different thread
+  // contexts — stamping routing.threadId on every send would put one channel's
+  // thread onto another.
   // Agent-supplied overrides win: a `<message to="X" thread_id="...">` is
   // explicit branching intent (e.g. starting a new chain on a destination
   // we've never received from), and inbound-history resolution can't
   // produce a thread we've never seen.
-  const destRouting = resolveDestinationThread(channelType, platformId);
+  const destRouting = resolveDestinationThread(channelType, platformId, routing);
   const threadId = overrides?.threadIdOverride ?? destRouting?.threadId ?? null;
   // An agent-supplied `in_reply_to` override is the integer id shown on an
   // inbound message (the formatter renders id="<seq>"). Resolve it to the
@@ -5030,20 +5223,18 @@ async function sendToDestination(
   });
 }
 
-/**
- * Find the thread_id and message id from the most recent inbound message
- * matching the given channel+platform. Returns null if no match found.
- */
-function resolveDestinationThread(
-  channelType: string,
-  platformId: string,
-): { threadId: string | null; inReplyTo: string | null } | null {
-  try {
-    return getAgentMailbox().operations.getLatestInboundRoute(channelType, platformId);
-  } catch (err) {
-    log(`resolveDestinationThread error: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  return null;
+/** Publish `routing` as the reply stamp the MCP tools read (null route clears it). */
+function publishReplyRoute(routing: RoutingContext): void {
+  setCurrentReplyRoute(
+    routing.inReplyTo
+      ? {
+          inReplyTo: routing.inReplyTo,
+          channelType: routing.channelType,
+          platformId: routing.platformId,
+          threadId: routing.threadId,
+        }
+      : null,
+  );
 }
 
 function sleep(ms: number): Promise<void> {

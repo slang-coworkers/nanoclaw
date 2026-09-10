@@ -24,6 +24,7 @@ vi.mock('./log.js', () => ({
 // leaves the registry empty cannot observe a contract-gated mirror.
 import './provider-contracts/index.js';
 import { resolveMirroredSkillScope } from './claude-composer.js';
+import { getProviderHostContract } from './provider-contracts/registry.js';
 import { closeDb, createAgentGroup, initTestDb, runMigrations } from './db/index.js';
 import { initGroupFilesystem } from './group-init.js';
 import type { AgentGroup } from './types.js';
@@ -238,6 +239,14 @@ describe('initGroupFilesystem skills mirror', () => {
 // assertions are on the resulting tree — .claude-shared/skills and
 // .claude-shared/agents — not on how the branch is selected.
 describe('initGroupFilesystem surfaces for a contract-declaring provider', () => {
+  // Without a registered contract the branch these tests exist to cover is
+  // unreachable, so the whole block would pass for the wrong reason. The
+  // registry is populated by the side-effect import above, which nothing else
+  // in this file references — assert it took effect.
+  it('has claude registered as a contract-declaring provider', () => {
+    expect(getProviderHostContract('claude')).toBeDefined();
+  });
+
   it('mirrors the type-scoped skills, their agents, and overlay agents', async () => {
     const ag = makeGroup('ag-claude-typed', 'proj-a-reader');
     await initGroupFilesystem(ag, { provider: 'claude' });

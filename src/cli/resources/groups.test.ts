@@ -372,6 +372,35 @@ describe('groups config (host-only)', () => {
       expect(await speedOf()).toBe('fast');
     });
 
+    // The group tier wins the resolution chain, so it is what --speed must be
+    // checked against. Ignoring it validated every such group against claude —
+    // and since claude is the only provider declaring speedTiers at all, that
+    // was a wrong ACCEPT: claude's vocabulary allowed for a group that is not
+    // claude, and the group's own tier rejected as undeclared.
+    it("validates against the group's own agent_provider, not the config tier", async () => {
+      const gid = 'ag-speed-group-tier';
+      await createAgentGroup({
+        id: gid,
+        name: 'g',
+        folder: 'g',
+        agent_provider: TURBO_PROVIDER,
+        created_at: now(),
+      });
+      await ensureContainerConfig(gid);
+      const set = (speed: string) =>
+        dispatch({ id: `gt-${speed}`, command: 'groups-config-update', args: { id: gid, speed } }, { caller: 'host' });
+
+      const wrongAccept = await set('fast');
+      expect(wrongAccept.ok).toBe(false);
+      expect(errorMessage(wrongAccept)).toBe(
+        `--speed "fast" is not a speed tier of provider "${TURBO_PROVIDER}" (declared: turbo)`,
+      );
+      expect((await getContainerConfig(gid))!.speed).toBeNull();
+
+      expect((await set('turbo')).ok).toBe(true);
+      expect((await getContainerConfig(gid))!.speed).toBe('turbo');
+    });
+
     it('clears to NULL on "" for any provider', async () => {
       await setSpeed('fast');
       expect((await setSpeed('')).ok).toBe(true);

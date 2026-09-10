@@ -597,10 +597,13 @@ registerResource({
         if (!row) throw new Error(`No container config for group: ${id}`);
         const presented = presentConfig(row);
 
-        // Enrich with agent_provider from agent_groups (the runtime provider:
-        // claude/codex/opencode), distinct from container_configs.provider
-        // (the model provider, e.g. "nvinference"). Default is "claude"
-        // when no explicit override is set on the group.
+        // Enrich with agent_provider from agent_groups — the tier that wins the
+        // resolution chain (session → agent_group → container_config → claude),
+        // so it is what the group actually runs on. Reported as "claude" when
+        // the column is null, matching the chain's default rather than implying
+        // the column is set. (`container_configs.provider` is the next tier
+        // down, NOT a model provider: the Codex model provider comes from
+        // CODEX_MODEL_PROVIDER in the config.toml template, not from this row.)
         const agentGroup = await getAgentGroup(id);
         const agentProvider = agentGroup?.agent_provider ?? 'claude';
 
@@ -655,15 +658,28 @@ registerResource({
         if (args.effort !== undefined) updates.effort = args.effort as string;
         if (args.speed !== undefined) {
           const speed = args.speed as string;
-          // Validate against the provider the group will actually run on —
-          // the same rule spawn applies, with a `--provider` in this command
-          // taking precedence over the stored one.
-          // NOTE: the group's own `agent_provider` tier is deliberately not consulted
-          // here — this preserves the pre-sync behaviour of this command exactly. A
-          // group whose provider lives only in `agent_groups.agent_provider` therefore
-          // validates `--speed` against Claude. Surfaced, not fixed, in the sync.
-          if (speed !== '')
-            assertDeclaredSpeedTier(speed, resolveProviderName(updates.provider, undefined, row.provider));
+          // Validate against the provider the group will actually run on — the
+          // same rule spawn applies, with a `--provider` in this command taking
+          // precedence over the stored one. All three tiers: a group whose
+          // provider lives only in `agent_groups.agent_provider` would otherwise
+          // validate against claude, and since claude is the only provider that
+          // declares `inference.speedTiers` at all, that is a wrong *accept* —
+          // claude's vocabulary allowed for a group that is not claude.
+          if (speed !== '') {
+            const agentGroup = await getAgentGroup(id);
+            assertDeclaredSpeedTier(
+              speed,
+              // `--provider` in this same command is the `override` tier: it
+              // outranks both stored tiers without being one. There is no
+              // session in a CLI validation.
+              resolveProviderName({
+                override: updates.provider,
+                session: undefined,
+                group: agentGroup?.agent_provider,
+                config: row.provider,
+              }),
+            );
+          }
           updates.speed = speed || null;
         }
         if (args.image_tag !== undefined) updates.image_tag = args.image_tag as string;

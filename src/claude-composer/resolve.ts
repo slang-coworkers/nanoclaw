@@ -300,9 +300,20 @@ export function resolveCoworkerManifest(
   // cliScope filter for ncl-* fragments. The YAML lists both ncl-group.md
   // and ncl-global.md when an agent might use either; the runtime cli_scope
   // setting decides which one (or neither) actually renders into CLAUDE.md.
+  //
+  // `scheduling.md` obeys the same setting because scheduling IS the CLI: `ncl
+  // tasks` is the whole surface and no MCP tool stands behind it. At `disabled` the
+  // dispatcher rejects every request, so the section would describe an operation
+  // the agent cannot perform.
+  // Exactly these files, resolved against projectRoot: a project spine may ship its
+  // own `scheduling.md` describing something other than `ncl`.
+  const cliOnlyFragments = new Set(
+    ['container/spines/base/tool-instructions/scheduling.md'].map((f) => path.resolve(projectRoot, f)),
+  );
   const filterByCliScope = (paths: string[]): string[] =>
     paths.filter((p) => {
       const base = p.split('/').pop() ?? '';
+      if (cliOnlyFragments.has(path.resolve(projectRoot, p))) return cliScope !== 'disabled';
       if (base !== 'ncl-group.md' && base !== 'ncl-global.md') return true;
       if (cliScope === 'disabled') return false;
       if (cliScope === 'group') return base === 'ncl-group.md';
