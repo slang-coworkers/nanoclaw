@@ -175,6 +175,7 @@ container/skills/costliest-session-digest/**
 # explain-diff-html — base skill: every PR a coworker opens ships a self-contained
 # HTML explanation; asked for by the PR-created hook. Common infra for every spine.
 container/skills/explain-diff-html/**
+container/skills/review-cycle-mining/**
 
 # Upstream-tracking shared skills — allowlisted so upstream-sync PRs can update
 # them on nv-main (same pattern as whatsapp-formatting above). DO NOT hand-edit

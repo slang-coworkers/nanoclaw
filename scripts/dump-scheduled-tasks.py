@@ -115,9 +115,15 @@ def snapshot_id(payload):
     """Content hash of the snapshot, excluding the hash field itself.
 
     Deterministic and timestamp-free, so a run that changes nothing produces the same
-    id and `git diff` stays a drift alarm. Both artifacts carry it, which is what makes
-    a torn publish — JSON replaced, Markdown not — detectable after the fact by a
-    reader, including after a crash that ran no rollback."""
+    id and `git diff` stays a drift alarm. Both artifacts carry it, which makes a torn
+    publish — JSON replaced, Markdown not — visible after the fact, including after a
+    crash that ran no rollback.
+
+    What the shared id does NOT witness is that the two bodies agree. The Markdown's
+    copy is a token this function's output is written into, not a hash of the Markdown
+    itself, so any edit to that one line restores agreement without restoring content.
+    Only re-rendering the payload proves the mirror current; `check_published` does
+    that, and this id is the cheaper alarm rather than the whole check."""
     body = {k: v for k, v in payload.items() if k != "snapshot_id"}
     return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
@@ -165,6 +171,26 @@ def check_published(out, md):
                 f"TORN PUBLISH: {out} is snapshot {stored[:12]}… but {md} is {published[:12]}… — "
                 "the two were written by different runs, so one of them is stale"
             )
+        elif stored:
+            # Agreeing ids do not witness agreeing content: the mirror's id is a token
+            # copied from the JSON, not a hash of the mirror's own bytes, so rewriting
+            # that one line satisfies the comparison above while the body still
+            # describes the previous payload. Rendering the payload through the publish
+            # path's own function is exact by construction — same function, same
+            # inputs — so this cannot report a difference the publisher would not have
+            # written differently.
+            try:
+                with open(md) as f:
+                    actual = f.read()
+                expected = render_md(payload.get("instance"), payload.get("tasks") or [], stored)
+            except OSError as e:
+                problems.append(f"{md}: unreadable ({e})")
+            else:
+                if actual != expected:
+                    problems.append(
+                        f"STALE MIRROR: {md} carries snapshot {stored[:12]}… but its body is not what "
+                        f"that payload renders to — an id line was updated without regenerating the file"
+                    )
     return not problems, problems
 
 

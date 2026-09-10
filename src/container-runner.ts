@@ -92,6 +92,7 @@ import { log } from './log.js';
 import {
   registerContainerToken,
   revokeContainerToken,
+  retainContainerTokens,
   getDiscoveredToolInventory,
   getDiscoveredToolAnnotations,
 } from './mcp-auth-proxy.js';
@@ -110,7 +111,7 @@ import './provider-contracts/index.js';
 // `defaultSurfaces` branch in buildMounts.
 import { composeGroupProjectDoc } from './project-doc-compose.js';
 import { getProviderHostContract } from './provider-contracts/registry.js';
-import { resolveProviderName } from './providers/provider-name.js';
+import { resolveProviderName, resolveSpawnProvider } from './providers/provider-name.js';
 import {
   providerStateVolumePath,
   realizeProviderSpawnSurfaces,
@@ -1106,7 +1107,9 @@ async function spawnContainer(session: Session): Promise<void> {
   // and buildContainerArgs so we don't re-read.
   const containerConfig = await materializeContainerJson(agentGroup.id);
 
-  const providerName = resolveProviderName(session.agent_provider, containerConfig.provider);
+  // initGroupFilesystem must scaffold for the provider the container will
+  // actually run, so this resolves through the same call as the contribution.
+  const providerName = resolveSpawnProvider({ session, agentGroup, containerConfig });
   await initGroupFilesystem(agentGroup, { provider: providerName });
 
   // Resolve the effective provider + any host-side contribution it declares
@@ -1130,7 +1133,7 @@ async function spawnContainer(session: Session): Promise<void> {
   // The token carries the resolved list; an empty one authorises nothing,
   // which is what an explicit `[]` (or an unresolvable policy) must mean.
   const mcpPolicy = resolveMcpPolicy(agentGroup);
-  const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.externalTools);
+  const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.externalTools, containerName);
 
   // A fresh random nonce for THIS spawn (NanoClaw #1 "set ceiling v2" readiness
   // handshake — see getActiveContainerInstanceId's doc comment above).
@@ -1499,6 +1502,7 @@ export async function adoptRunningSessions(): Promise<{ adopted: number; stopped
 
   let adopted = 0;
   let stopped = 0;
+  const adoptedNames = new Set<string>();
   for (const { handle, phase } of snapshots) {
     const session = handle.key.sessionId ? await getSession(handle.key.sessionId) : undefined;
     // The snapshot's phase is the listing's own truth: a corpse arrives as
@@ -1542,8 +1546,17 @@ export async function adoptRunningSessions(): Promise<{ adopted: number; stopped
       void finishAndResolve(session.id, runtime, failure);
     });
     await markContainerRunning(session.id);
+    adoptedNames.add(handle.name);
     adopted += 1;
   }
+
+  // An adopted container keeps presenting the MCP proxy token it was spawned
+  // with; the registry restored it from disk. Everything else in that file
+  // belongs to a container that did not survive — nothing has been spawned by
+  // this host yet — so those tokens must stop authorising anything.
+  const prunedTokens = retainContainerTokens(adoptedNames);
+  if (prunedTokens > 0)
+    log.info('Pruned MCP proxy tokens of containers that did not survive the restart', { prunedTokens });
 
   await driver.reapResidue?.(INSTALL_SLUG).catch?.(() => {});
   // Reconcile terminals the watch stream missed while no host was listening —
@@ -1622,7 +1635,7 @@ export async function honorPendingStopIntents(
  *
  * Pure so the precedence can be unit-tested without a DB or filesystem.
  */
-export { resolveProviderName };
+export { resolveProviderName, resolveSpawnProvider };
 
 /**
  * What the sweep learned. It publishes nothing, so it cannot report a publication
@@ -1769,16 +1782,9 @@ export async function resolveProviderContribution(
   agentGroup: AgentGroup,
   containerConfig: import('./container-config.js').ContainerConfig,
 ): Promise<{ provider: string; contribution: ProviderContainerContribution; surfaces?: ProviderSpawnRealization }> {
-  // Precedence: session provider > agent_group provider > container.json > default.
-  // `agentGroup.agent_provider` is a real tier on this fork — upstream's call
-  // passes only two arguments, which would make a group-level provider pick
-  // silently lose to container.json. The config is now threaded in by the
-  // caller (already materialized once per spawn) rather than re-read here.
-  const provider = resolveProviderName(
-    session.agent_provider,
-    agentGroup.agent_provider,
-    containerConfig.provider ?? null,
-  );
+  // The config is threaded in by the caller (already materialized once per
+  // spawn) rather than re-read here.
+  const provider = resolveSpawnProvider({ session, agentGroup, containerConfig });
   const fn = getProviderContainerConfig(provider);
   const contract = getProviderHostContract(provider);
   if (!contract && !fn) {

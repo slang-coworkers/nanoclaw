@@ -238,7 +238,10 @@ export type ProviderEvent =
    */
   | { type: 'text'; text: string }
   | { type: 'error'; message: string; retryable: boolean; classification?: string }
-  | { type: 'progress'; message: string }
+  // `task` marks background-subagent lifecycle: 'started' when the SDK spawned one,
+  // 'finished' when its task_notification arrived. The poll loop counts them so an
+  // idle main agent waiting on subagents is not mistaken for a dead query.
+  | { type: 'progress'; message: string; task?: 'started' | 'finished' }
   | { type: 'file'; path: string }
   /**
    * Per-turn usage accounting. Emitted once after a turn completes when the
