@@ -230,6 +230,8 @@ export function codexUsageKey(model: string | undefined, u: CodexTokenUsage): st
 
 /** One priced call extracted from a rollout file. */
 export interface CodexRolloutEvent {
+  /** Full event timestamp retained so callers can assign spend in a non-UTC timezone. */
+  timestamp: string | null;
   /** ISO day key `YYYYMMDD` from the event's own timestamp (matches ccusage's day attribution). */
   dayKey: string | null;
   model: string;
@@ -272,8 +274,10 @@ export function parseCodexRollout(content: string): CodexRolloutEvent[] {
     const usage = p.info?.last_token_usage;
     if (!usage || typeof usage !== 'object') continue;
     if (!usage.input_tokens && !usage.cached_input_tokens && !usage.output_tokens) continue;
+    const timestamp = typeof r.timestamp === 'string' ? r.timestamp : null;
     out.push({
-      dayKey: typeof r.timestamp === 'string' && r.timestamp.length >= 10 ? r.timestamp.slice(0, 10).replace(/-/g, '') : null,
+      timestamp,
+      dayKey: timestamp && timestamp.length >= 10 ? timestamp.slice(0, 10).replace(/-/g, '') : null,
       model,
       usage,
     });
