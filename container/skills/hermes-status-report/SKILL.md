@@ -35,6 +35,10 @@ is why `/hermes-status-report` exists as a command for you, and why the generato
 /home/node/.claude/skills/hermes-status-report/render_status.py
 ```
 
+(That path is a thin shim: the renderer itself is vendored at
+`/home/node/.claude/skills/hermes-task-card/render_status.py` and shared with the per-task
+cards. Same CLI, same payload — call whichever path you like.)
+
 ---
 
 ## 0. Budget and guards — read before you run anything
@@ -483,7 +487,8 @@ schedule a second series.
   also appends a second `history.jsonl` line; that is intentional (the diff reads only the
   last line) but do not re-run casually — each run costs the daily budget again.
 - **The generator is the layout's source of truth.** Change the palette or the card grid in
-  `render_status.py`, not in a payload; `test_render_status.py` pins the contract
+  `/home/node/.claude/skills/hermes-task-card/render_status.py` (this skill's own
+  `render_status.py` is a runpy shim that forwards to it), not in a payload; `test_render_status.py` pins the contract
   (escaping, unknown-kind skip, missing-field tolerance) and must stay green:
   `python3 -m unittest discover -s container/skills/hermes-status-report -p 'test_*.py' -v`.
 - **Fallbacks are visible, not silent.** The rule this skill exists to enforce: a briefing

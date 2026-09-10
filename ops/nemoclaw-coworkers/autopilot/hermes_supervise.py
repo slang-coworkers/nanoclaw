@@ -23,13 +23,23 @@ Inputs:
   --nudges   {"<ID>": "<ISO>"} or {"<ID>": {"last_nudge", "state", "count", "alerts": {"<key>": "<ISO>"}}}
   --sessions optional {"hermes-<ID>": [{"role", "session_id", "cost_status", "container_status"}]}
              for cost_hold (`escalated` / `stopped`); absent means no signal
-  --config   optional config.json (paused_rows, core_change_ok, authorize_round, release_tag)
+  --config   optional config.json (paused_rows, core_change_ok, authorize_round, release_tag,
+             card_check, card_grace_minutes, card_missing_since)
   --now      ISO timestamp
 
 Output: {"now", "rows": {ID: {...}}, "actions": [...], "alerts": [...], "summary": {...}}.
 Per row: stage, stage_label, clock_start, last_activity, age_hours, slo_breach,
 escalation_due, hold, cost_hold, action (none | nudge | escalate), target_role, message
-(the nudge text or the alerts.md line), alert_line, status_line, pr, head, rounds.
+(the nudge text or the alerts.md line), alert_line, status_line, pr, head, rounds, cards.
+
+card_missing (hermes-task-card): every terminal role marker on the thread ([Spec handoff],
+[Triage Resolution], [Fix Report], [Fix Review Request], [Test Report], [Review Verdict]) owes
+one LATER outbound line starting "card · " or "card(html) · " (the send_file caption). A marker
+older than `card_grace_minutes` (default 20) with no such line draws one nudge to the role that
+sent it, through the ordinary nudge machinery (one nudge per row per tick, the 6 h row bound,
+SLO nudges first). "Once per marker": the nudge names the marker and its timestamp, so the next
+tick reads its own nudge back from the thread and does not repeat it. `card_missing_since`
+(ISO, optional) ignores markers older than that, for threads that predate the card skill.
 """
 
 from __future__ import annotations
@@ -67,6 +77,25 @@ NUDGE_TEMPLATE = (
     "Supervisor nudge {id}: {state} for {h}h, no {short}. Expected next: {expected} on thread "
     "hermes-{id}. Reply on this thread: status, blocker, ETA. If your container restarted, "
     "re-read your task memory and resume."
+)
+
+# hermes-task-card: marker line prefix -> the role that owes the card for it
+CARD_MARKERS = {
+    "[Spec handoff]": "hermes-architect",
+    "[Triage Resolution]": "hermes-architect",
+    "[Fix Report]": "hermes-builder",
+    "[Fix Review Request]": "hermes-builder",
+    "[Test Report]": "hermes-tester",
+    "[Review Verdict]": "hermes-reviewer",
+}
+CARD_PREFIXES = ("card · ", "card(html) · ")
+CARD_GRACE_MINUTES = 20
+CARD_ROLE_RE = re.compile(r"^card(?:\(html\))? · \S+ · ([a-z][a-z-]*) ·")
+CARD_NUDGE_MARK = "no task card"
+CARD_NUDGE_TEMPLATE = (
+    "Supervisor nudge {id}: {mark} after your {marker} at {ts} ({m} min ago). Run /hermes-task-card "
+    "for {id} and send_file the PNG as a reply to the same intake id, caption "
+    "\"card · {id} · {role} · <OUTCOME> — <headline>\" (prefix \"card(html) · \" with the .html if the PNG failed)."
 )
 
 
@@ -469,6 +498,122 @@ def alerted_recently(book: dict, key: str, now: datetime) -> bool:
         return False
 
 
+# --------------------------------------------------------------------------- task cards
+
+def _safe_ts(s) -> datetime | None:
+    try:
+        return parse_iso(s) if isinstance(s, str) and s else None
+    except ValueError:
+        return None
+
+
+def card_audit(messages: list[dict], rid: str, now: datetime, grace_minutes: float = CARD_GRACE_MINUTES, since: str | None = None) -> dict:
+    """Pair every terminal role marker on the thread with the card caption that followed it.
+
+    Outbound lines only (`direction` != "in": the receiver's copy of a send is the same event), except
+    the supervisor's own card nudge, which is read back in either direction (it reaches the thread
+    only as the role's inbound copy);
+    copies of one marker within DUP_WINDOW_S collapse. A card line ("card · " / "card(html) · ")
+    is attributed by the role named in its caption (else its sender) to the latest preceding
+    marker of that role that has no card yet, so two [Fix Report]s need two cards. A marker with
+    no card is `pending` inside the grace window, `missing` after it, and `nudged` once a later
+    "Supervisor nudge <ID>: no task card after your <marker> at <ts>" line sits on the thread."""
+    since_dt = _safe_ts(since)
+    markers: list[dict] = []
+    cards: list[dict] = []
+    nudges: list[dict] = []
+    esc = re.escape(rid)
+    for m in sorted(messages or [], key=lambda x: x.get("ts") or ""):
+        text = m.get("text") or ""
+        first = _first_line(text)
+        ts = _safe_ts(m.get("ts"))
+        if ts is None:
+            continue
+        # Nudge read-back must run BEFORE the inbound skip: the supervise tick sends from the
+        # Orchestrator's task session (thread system:tasks:*), which collect_threads never reads,
+        # so on a collected hermes-<ROW> thread our own card nudge exists only as the role's "in" copy.
+        if re.match(rf"^Supervisor nudge\s+{esc}\b", first) and CARD_NUDGE_MARK in text:
+            nudges.append({"ts": ts, "text": text})
+            continue
+        if m.get("direction") == "in":
+            continue
+        if text.startswith(CARD_PREFIXES):
+            rm = CARD_ROLE_RE.match(first)
+            cards.append({"ts": ts, "iso": m.get("ts"), "text": first, "role": rm.group(1) if rm else (m.get("sender") or m.get("role"))})
+            continue
+        for label, role in CARD_MARKERS.items():
+            if not first.startswith(label):
+                continue
+            if since_dt is not None and ts < since_dt:
+                break
+            key = " ".join(first.split()).lower()[:160]
+            if any(x["label"] == label and x["key"] == key and abs((ts - x["ts"]).total_seconds()) <= DUP_WINDOW_S for x in markers):
+                break
+            markers.append({"label": label, "role": role, "ts": ts, "iso": m.get("ts"), "first": first[:160], "key": key, "card": None})
+            break
+
+    for c in cards:
+        pool = [x for x in markers if x["ts"] <= c["ts"] and x["card"] is None and (c["role"] is None or x["role"] == c["role"])]
+        if not pool:
+            pool = [x for x in markers if x["ts"] <= c["ts"] and (c["role"] is None or x["role"] == c["role"])]
+        if pool:
+            pool[-1]["card"] = pool[-1]["card"] or c["iso"]
+
+    out = {"markers": len(markers), "carded": 0, "pending": [], "missing": [], "nudged": []}
+    for i, x in enumerate(markers):
+        entry = {"marker": x["label"], "role": x["role"], "ts": x["iso"], "first": x["first"]}
+        if x["card"]:
+            out["carded"] += 1
+            continue
+        age_min = (now - x["ts"]).total_seconds() / 60.0
+        entry["age_minutes"] = round(age_min, 1)
+        if age_min < grace_minutes:
+            out["pending"].append(entry)
+            continue
+        later_same = [y["ts"] for y in markers[i + 1:] if y["label"] == x["label"]]
+        nudged = any(
+            n["ts"] >= x["ts"] and x["label"] in n["text"]
+            and ((x["iso"] and x["iso"] in n["text"]) or not any(t < n["ts"] for t in later_same))
+            for n in nudges
+        )
+        out["nudged" if nudged else "missing"].append(entry)
+    return out
+
+
+def card_check(tick: _Tick, rec: dict, thread_msgs: list[dict] | None, cfg: dict) -> None:
+    """card_missing: at most one card nudge per row per tick, only when the row drew no other
+    nudge or escalation this tick and its 6 h nudge bound has lapsed. Merged, blocked, cost-held
+    and unreadable rows are left to the ordinary path (they are never nudged). `card_check: false`
+    in config.json switches the check off (a fleet whose roles do not carry hermes-task-card yet)."""
+    if not cfg.get("card_check", True):
+        return
+    if not isinstance(thread_msgs, list) or rec.get("stage") in ("merged", "blocked") or rec.get("cost_hold"):
+        return
+    try:
+        grace = float(cfg.get("card_grace_minutes", CARD_GRACE_MINUTES))
+    except (TypeError, ValueError):
+        grace = float(CARD_GRACE_MINUTES)
+    audit = card_audit(thread_msgs, rec["id"], tick.now, grace, cfg.get("card_missing_since"))
+    rec["cards"] = audit
+    if not audit["missing"]:
+        return
+    tick.summary["card_missing"] += len(audit["missing"])
+    if rec.get("action") != "none":
+        return
+    last = (rec.get("nudges") or {}).get("last")
+    last_dt = _safe_ts(last)
+    if last_dt is not None and hours_between(last_dt, tick.now) < NUDGE_BOUND_H:
+        rec["reason"] = (rec.get("reason") or "") + f"; card nudge bound: last nudge {round(hours_between(last_dt, tick.now), 1)}h ago"
+        return
+    m = audit["missing"][0]
+    text = CARD_NUDGE_TEMPLATE.format(
+        id=rec["id"], mark=CARD_NUDGE_MARK, marker=m["marker"], ts=m["ts"], m=int(m.get("age_minutes") or 0), role=m["role"],
+    )
+    rec["target_role"] = m["role"]
+    tick.nudge(rec, m["role"], text)
+    tick.actions[-1].update(check="card_missing", marker=m["marker"], marker_ts=m["ts"])
+
+
 # --------------------------------------------------------------------------- main
 
 class _Tick:
@@ -478,7 +623,7 @@ class _Tick:
         self.now = now_dt
         self.actions: list[dict] = []
         self.alerts: list[dict] = []
-        self.summary = {"in_flight": 0, "must_nudge": 0, "escalate": 0, "hold": 0, "cost_hold": 0, "blocked": 0, "gate": 0}
+        self.summary = {"in_flight": 0, "must_nudge": 0, "escalate": 0, "hold": 0, "cost_hold": 0, "blocked": 0, "gate": 0, "card_missing": 0}
 
     def escalate(self, rec: dict, book: dict, kind: str, label: str, age_h: float, what: str, decision: str) -> None:
         key = f"{kind}:{label}"
@@ -539,10 +684,17 @@ def _new_record(rid: str, res: dict, last_activity: str | None, book: dict) -> d
         "alert_line": None,
         "status_line": None,
         "alert_kind": None,
+        "cards": None,
     }
 
 
 def supervise_row(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict] | None, prs: list[dict], gating: dict, cfg: dict, nudges: dict | None, sessions: dict | None) -> dict:
+    rec = _supervise_row_core(tick, rid, row, thread_msgs, prs, gating, cfg, nudges, sessions)
+    card_check(tick, rec, thread_msgs, cfg)
+    return rec
+
+
+def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict] | None, prs: list[dict], gating: dict, cfg: dict, nudges: dict | None, sessions: dict | None) -> dict:
     thread = f"hermes-{rid}"
     thread_ok = isinstance(thread_msgs, list)
     events = extract_events(thread_msgs if thread_ok else [], rid)

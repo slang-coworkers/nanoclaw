@@ -129,7 +129,15 @@ class CellsTest(unittest.TestCase):
 
     def test_header_counts(self):
         head = self.md.splitlines()[0]
-        self.assertEqual(head, "Hermes autopilot · 2026-09-09T20:47:00Z · in flight 6/4 · merged 1 · blocked 1 · queued 2 · alerts 6h 1")
+        self.assertEqual(head, "Hermes autopilot · 09-09 20:47Z · in flight 6/4 · merged 1 · blocked 1 · queued 2 · alerts 6h 1 · cards 24h ?")
+        self.assertLessEqual(len(head), abtr.MAX_LINE)
+
+    def test_header_cards_token(self):
+        head = render(cards_24h=3).splitlines()[0]
+        self.assertTrue(head.endswith(" · alerts 6h 1 · cards 24h 3"), head)
+        self.assertLessEqual(len(head), abtr.MAX_LINE)
+        self.assertIn(" · cards 24h 0", render(cards_24h=0).splitlines()[0])
+        self.assertIn(" · cards 24h ?", render(cards_24h=None).splitlines()[0])   # no card dir reachable: unknown, not zero
 
     def test_building_row_a_done_b_active(self):
         _, batch, a, b, t, r, gate, note = self.rows["LOOP-F35"]
@@ -182,7 +190,7 @@ class DegradedInputsTest(unittest.TestCase):
         md = abtr.render_abtr_markdown({}, parsed_ledger(), NOW, prs=PRS, alerts=[], dispatchable=30)
         rows = table_rows(md)
         head = md.splitlines()[0]
-        self.assertTrue(head.startswith(f"Hermes autopilot · {NOW_ISO} · in flight 6/3 · merged 1 · blocked 1 · queued 22 · alerts 6h 0"), head)
+        self.assertTrue(head.startswith(f"Hermes autopilot · {abtr.fmt_tick(NOW_ISO, NOW)} · in flight 6/3 · merged 1 · blocked 1 · queued 22 · alerts 6h 0 · cards 24h ?"), head)
         self.assertEqual(rows["MEM-F44"][2:7], ["✓ 09:00Z", "▶ 12.0h", "✗ FAIL r2", "·", "·"])   # verdict cell: round 2/2 FAIL -> building
         self.assertEqual(rows["GOV-F24"][2:7], ["✓ 09-08 10:00Z", "✓ 09-08 11:00Z", "✓", "✓", "▶ 35.0h"])   # APPROVE -> gate
         self.assertEqual(rows["COST-F29"][2:7], ["✓ 09-08 10:00Z", "✓ 09-08 12:30Z", "✓", "▶ 35.0h", "·"])   # PASS -> review

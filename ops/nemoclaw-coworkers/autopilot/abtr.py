@@ -390,12 +390,24 @@ def queued_summary(state: dict, ledger_rows: dict, dispatchable=None) -> tuple[i
     return n, [x for x in nxt if x][:3], [x for x in waiting if x][:3]
 
 
-def header_line(state: dict, rows: list, now: datetime, alerts=(), config: dict | None = None, dispatchable=None, ledger_rows=None) -> str:
+def fmt_tick(iso, now: datetime) -> str:
+    """The header's tick stamp as `MM-DD HH:MMZ` (the cells' dated form) so the header, with
+    its `cards 24h` token, stays inside MAX_LINE; an unparsable stamp is shown as given."""
+    dt = parse_iso(iso) if isinstance(iso, str) else None
+    if dt is None:
+        return iso if isinstance(iso, str) and iso else now.strftime("%m-%d %H:%MZ")
+    return dt.astimezone(timezone.utc).strftime("%m-%d %H:%MZ")
+
+
+def header_line(state: dict, rows: list, now: datetime, alerts=(), config: dict | None = None, dispatchable=None, ledger_rows=None,
+                cards_24h=None) -> str:
+    """`cards_24h`: count of task-card PNGs written in the last 24 h (scorecard.count_recent_cards);
+    None renders `?` (the caller had no card directory to count)."""
     state = state if isinstance(state, dict) else {}
     cfg = config if isinstance(config, dict) else (state.get("config") if isinstance(state.get("config"), dict) else {})
     wip = state.get("wip")
     limit = cfg.get("wip") or (wip.get("limit") if isinstance(wip, dict) else wip) or 3
-    tick = state.get("generated_at") or now.strftime("%Y-%m-%dT%H:%M:%SZ")
+    tick = fmt_tick(state.get("generated_at"), now)
     n_if = sum(1 for v in rows if v["group"] == "in_flight")
     n_m = sum(1 for v in rows if v["group"] == "merged")
     n_b = sum(1 for v in rows if v["group"] == "blocked")
@@ -405,9 +417,10 @@ def header_line(state: dict, rows: list, now: datetime, alerts=(), config: dict 
         h = hours_since(now, a.get("at"))
         if h is not None and h <= ALERT_WINDOW_H:
             recent += 1
+    cards = cards_24h if isinstance(cards_24h, int) and not isinstance(cards_24h, bool) else "?"
     line = (
         f"{HEADER_PREFIX} · {tick} · in flight {n_if}/{limit} · merged {n_m} · blocked {n_b}"
-        f" · queued {queued} · alerts 6h {recent}"
+        f" · queued {queued} · alerts 6h {recent} · cards 24h {cards}"
     )
     if cfg.get("paused") or state.get("paused"):
         line += " · DISPATCH PAUSED"
@@ -421,9 +434,10 @@ def table_line(v: dict) -> str:
     return prefix + trunc(v["note"], budget) + " |"
 
 
-def render_abtr_markdown(state: dict, ledger_rows: dict, now: datetime, prs=(), alerts=(), config: dict | None = None, dispatchable=None) -> str:
+def render_abtr_markdown(state: dict, ledger_rows: dict, now: datetime, prs=(), alerts=(), config: dict | None = None, dispatchable=None,
+                         cards_24h=None) -> str:
     rows = derive_rows(state, ledger_rows, now, prs, alerts, config)
-    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows), *LEGEND, "", TABLE_HEADER, TABLE_RULE]
+    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h), *LEGEND, "", TABLE_HEADER, TABLE_RULE]
     out.extend(table_line(v) for v in rows)
     if not rows:
         out.append("| · | · | · | · | · | · | · | no rows in the ledger or the state |")
@@ -440,10 +454,10 @@ def render_abtr_markdown(state: dict, ledger_rows: dict, now: datetime, prs=(), 
 
 
 def render_abtr_brief(state: dict, ledger_rows: dict, now: datetime, prs=(), alerts=(), config: dict | None = None, dispatchable=None,
-                      link: str = "/status/autopilot.md") -> str:
+                      link: str = "/status/autopilot.md", cards_24h=None) -> str:
     """The tick's report: the header, one `<row> | a | b | t | r` line per in-flight row, the link."""
     rows = derive_rows(state, ledger_rows, now, prs, alerts, config)
-    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows)]
+    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h)]
     for v in rows:
         if v["group"] != "in_flight":
             continue

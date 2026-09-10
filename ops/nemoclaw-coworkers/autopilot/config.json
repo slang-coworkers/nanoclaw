@@ -1,4 +1,5 @@
 {
   "wip": 3,
-  "paused": false
+  "paused": false,
+  "card_grace_minutes": 20
 }

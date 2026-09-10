@@ -107,11 +107,21 @@ hermes-common:
     # uv recipe, HERMES_HOME=/workspace/agent/.hermes-testbed, run_tests.sh
     # under env -i, doctor --ci, worktree-per-target, apt gaps, chunked runs.
     - container/spines/hermes/context/testbed.md
+    # One 900x600 PNG card per terminal marker send, produced in the SAME turn
+    # right AFTER the gated send is accepted (the critique gate must never see
+    # the card writes), attached with the `card · <ROW> · <role> · <OUTCOME> —
+    # <headline>` caption the autopilot supervisor's card_missing check keys on.
+    # Context, not a workflow overlay: overlays multi-fire on hermes-verify.
+    - container/spines/hermes/context/task-card.md
   skills:
     - hermes-build
     - hermes-code-reader
     - hermes-github
     - codex-critique
+    # card.sh render/selftest + render_card.py (vendors hermes-status-report's
+    # renderer). Every role type inherits it; hermes-status-report itself stays
+    # Orchestrator-only and is deliberately NOT listed here.
+    - hermes-task-card
   mcpServers:
     # Advisory only — the release tree is the citation source (plugin-first.md);
     # a DeepWiki claim that disagrees with the tree is flagged, not trusted.
@@ -413,6 +423,11 @@ main:
     # The Orchestrator dispatches rows and judges CORE-CHANGE asks against the
     # same fleet baseline the roles design to.
     - container/spines/hermes/context/topology.md
+    # The same task-card fragment the roles carry: the Orchestrator emits one
+    # ROW-LEVEL card at DISPATCHED / MERGED / BLOCKED under the identical caption
+    # contract. Context again (flat type — a skill entry would be discarded; the
+    # hermes-task-card body still reaches it via the mirror-all branch).
+    - container/spines/hermes/context/task-card.md
   # Route the merge/ready commands through the critique gate's Bash matcher, so
   # the merge decision itself gets one OUTPUT_REVIEW round before it executes.
   # Additive to the gate's built-in floor (`gh pr create`, `gh api …/pulls`,

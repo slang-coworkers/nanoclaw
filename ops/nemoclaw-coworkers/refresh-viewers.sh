@@ -2,6 +2,8 @@
 # Publish coworker artifacts under the 8091 viewer root (~/.local/share/nemo-www):
 #   /explanations/<group>/<file>.html  — every coworker's reports/pr-explanations/ (+ newest-first index)
 #   /status/latest.html                — the Orchestrator's daily port status report (dated copies alongside)
+#   /rows/index.html                   — the rows board: batch → row → a|b|t|r latest task cards (rows-board.py;
+#                                        /rows/<ROW>.html per row, card dirs symlinked under /rows/cards/<group>/<thread>/)
 # Idempotent; cron every 15 min. Errors are handled explicitly (no set -e: an empty listing is not a failure).
 set -u
 case $(hostname) in slang-cpu-coworkers*) ;; *) echo "WRONG_HOST=$(hostname)"; exit 1;; esac
@@ -55,3 +57,6 @@ HTML
   echo "</ul><p><small>generated $(date '+%Y-%m-%d %H:%M %Z') · source groups/*/reports/pr-explanations/</small></p></body></html>"
 } > "$OUT/index.html.tmp" || exit 1
 mv -f "$OUT/index.html.tmp" "$OUT/index.html"
+
+# Rows board (/rows/): task cards per gap-matrix row from groups/*/reports/hermes-*/cards/. Never fatal.
+python3 "$ROOT/ops/nemoclaw-coworkers/rows-board.py" --root "$ROOT" --www "$WWW" || echo 'rows-board failed'

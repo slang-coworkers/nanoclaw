@@ -1,0 +1,28 @@
+{
+  "row": "LOOP-F35",
+  "role": "hermes-tester",
+  "outcome": "FAIL",
+  "round": 2,
+  "headline": "T7 loop-detection row fails: the plugin re-dispatches after the third identical tool call.",
+  "what": [
+    "Ran T1–T12 + AC-LOOP-F35-1..3 against PR head e117c1c in the hermetic testbed",
+    "T7 and AC-LOOP-F35-2 FAIL; 11 rows PASS; desktop e2e tier skipped (phase gate)",
+    "Loop guard fires on the 4th repeat, ADR says 3rd — off-by-one in loop_guard.py:88"
+  ],
+  "evidence": [
+    "reports/hermes-LOOP-F35/test-report-e117c1c.md §Results rows T7, AC-LOOP-F35-2",
+    "artifacts/T7-stdout.log lines 41–58 show the 4th dispatch before the guard trips",
+    "slang-coworkers/hermes-agent#212 (PR head e117c1c)"
+  ],
+  "next": [
+    "builder: threshold >= 3 not > 3 in loop_guard.py:88; re-run T7 locally before [Fix Report]",
+    "tester: re-verify AC-LOOP-F35-2 on the new head; round 3"
+  ],
+  "meta": {
+    "elapsed": "2h04m",
+    "cost": "n/a",
+    "pr_url": "https://github.com/slang-coworkers/hermes-agent/pull/212",
+    "report": "reports/hermes-LOOP-F35/test-report-e117c1c.md",
+    "sha": "e117c1c"
+  }
+}
