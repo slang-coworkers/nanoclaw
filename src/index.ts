@@ -33,7 +33,12 @@ import { registerCostApproval } from './modules/cost-approval/index.js';
 import { routeInbound } from './router.js';
 import { log } from './log.js';
 import { startMcpServers, getRunningServerNames, getServerUpstreamPort } from './mcp-registry.js';
-import { startMcpAuthProxy, setUpstreamPortResolver, discoverTools } from './mcp-auth-proxy.js';
+import {
+  startMcpAuthProxy,
+  setUpstreamPortResolver,
+  discoverTools,
+  configureContainerTokenStore,
+} from './mcp-auth-proxy.js';
 import { startDashboardIngress } from './dashboard-ingress.js';
 import { startGitHubWebhookServer, type GitHubWebhookServerHandle } from './github-webhook-server.js';
 import { enforceUpgradeTripwire } from './upgrade-state.js';
@@ -231,6 +236,11 @@ async function main(): Promise<void> {
   // restart. Adoption replaces the old reap-everything cleanup — a session that
   // is still running keeps running, and only true orphans are stopped.
   await getSessionDriver().ensureReady?.();
+  // Container MCP-proxy tokens outlive the host process (KillMode=process keeps
+  // coworker containers alive across a restart); restore them before adoption
+  // so a survivor's first proxied call is authorised, and let adoption prune
+  // the tokens of containers that are gone.
+  configureContainerTokenStore({ path: path.join(process.cwd(), 'data', '.mcp-container-tokens.json') });
   await adoptRunningSessions();
   // Reset stale container_status from previous host runs. Kept AFTER adoption so
   // it only clears rows adoption did not claim; repeated from the pre-reconcile

@@ -48,6 +48,18 @@ const MEMORY_NOTE_PLACEHOLDER = '{{provider-memory-note}}';
  */
 export const EMITTED_CONTRACT_SECTIONS = ['Received attachments', 'Memory', 'Conversation history'] as const;
 
+/**
+ * Base-document sections deliberately NOT carried, each because the spine states
+ * the same thing in its own voice: `Communication` duplicates the destination and
+ * message-shape rules, `Workspace` duplicates the paths fragment.
+ *
+ * Declared rather than left implicit so that the emitted set and this set
+ * together account for EVERY `##` in the base document. `section-completeness.test.ts`
+ * asserts that; without it an upstream-added section is silently dropped, because
+ * the render loop iterates this file's list and never the document's headings.
+ */
+export const DROPPED_CONTRACT_SECTIONS = ['Communication', 'Workspace'] as const;
+
 interface ContractSection {
   heading: string;
   body: string;

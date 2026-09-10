@@ -34,7 +34,7 @@ ncl policies set --from <ag> --to <ag> --approver <uid>  # gate a2a messages —
 ncl pr-mappings remap --repo <owner/name> --pr <n> --session <sid>  # reassign a PR — admin-approval-gated
 ```
 
-`ncl <resource> help` / `ncl help` print the full surface. Mutating verbs trigger admin approval, like the MCP self-mod tools.
+`ncl <resource> help` / `ncl help` print the full surface. Mutating verbs trigger admin approval, like the MCP self-mod tools — except `tasks`, whose verbs are all open, so scheduling never waits on a human.
 
 ### Tuning the cost cap
 

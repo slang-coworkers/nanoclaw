@@ -84,16 +84,29 @@ run_step bot-contributions pnpm exec tsx scripts/bot-contributions.ts || FAILURE
 
 # Review-rounds snapshot for the panel beside the funnel (dashboard
 # /api/review-rounds serves reports/review-rounds.json cached and never
-# recomputes). How many human CHANGES_REQUESTED rounds a PR drew before it
-# merged, bot-authored vs human-authored, bucketed by merge week. Distinct from
-# reviewCycles (which prices feedback SESSIONS inside funnel.json) — this is a
-# simpler per-submission census over the GitHub GraphQL API. python3 on the HOST
-# (same reason as regression-quality above); same proxy-stripped env; direct
-# curl to api.github.com/graphql with the shader-slang App-installation token.
+# recomputes). review-cycles v2: valid human review ROUNDS (sessions) and
+# COMMENTS per PR, bot-authored vs human-authored, across all seven shader-slang
+# repos, bucketed by activity week (primary) and merge week (legacy), with the
+# automation-filter counters and a per-PR detail list. The default --since and
+# --repos live in the script; the whole history is recomputed every run.
+# Distinct from reviewCycles (which prices feedback SESSIONS on Verity-decided
+# PRs inside funnel.json). python3 on the HOST (same reason as regression-quality
+# above); same proxy-stripped env; direct curl to api.github.com/graphql with the
+# shader-slang App-installation token (GraphQL point budget, not core REST).
 # Its fail-closed exit code (nonzero when collection was incomplete, so an outage
 # cannot publish a clean zero) is what the rc capture surfaces in the log.
 run_step review-rounds /usr/bin/python3 scripts/review-rounds.py --json reports/review-rounds.json ||
   FAILURES=$((FAILURES + 1))
+
+# The review-mining task runs inside a coworker container and reads the snapshot
+# from /workspace/shared/reports/, which is data/shared/reports/ on the host.
+# Copy whatever was written: an incomplete snapshot says so in its own
+# complete:false, and the reader must see that rather than a stale complete one.
+if [ -f "$REPO/reports/review-rounds.json" ]; then
+  mkdir -p "$REPO/data/shared/reports"
+  cp -f "$REPO/reports/review-rounds.json" "$REPO/data/shared/reports/review-rounds.json" ||
+    echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] review-rounds shared copy FAILED" >> "$LOG"
+fi
 
 # Keep the log bounded.
 tail -200 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"
