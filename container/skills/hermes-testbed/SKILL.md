@@ -312,6 +312,23 @@ grep -Ei '(api[_-]?key|token|secret|password)[=:]' $TB/harness.live.env | grep -
 cp $TB/harness.live.env $ART/harness.live.env           # published with the report — placeholders and host:port only
 ```
 
+**Live-tier pre-flight — the delivery subprocess must find `hermes` and a provider (every live round, before the first model call).** Core's same-machine `message_agent` delivery spawns the RECIPIENT bot as `bash -lic '… hermes -p <bot> chat …'` with a bare `hermes` argv[0] (`tools/bot_mode_dm.py`, ledger UA-1 — worked around here, not filed upstream): `/etc/profile` in that login shell resets PATH, dropping the sanitizer's `$WT/.venv/bin` prepend, and `/usr/local/bin` is read-only in the image. The child also runs with `_sanitize_subprocess_env` (no inherited provider vars) and `HOME=/home/node`, so the recipient's provider must live in its profile config. Both are testbed provisioning, never plugin code:
+
+```bash
+mkdir -p ~/.local/bin && ln -sfn "$WT/.venv/bin/hermes" ~/.local/bin/hermes      # ~/.profile re-prepends ~/.local/bin after /etc/profile
+for bot in $LIVE_BOTS; do                                                        # every profile a live scenario names
+  resolved=$(HOME="$TB/home/profiles/$bot/home" bash -lic 'command -v hermes' 2>/dev/null)
+  test "$(readlink -f "$resolved")" = "$(readlink -f "$WT/.venv/bin/hermes")" || { echo "PRE-FLIGHT FAIL: $bot resolves hermes to '$resolved'"; exit 1; }
+done
+# recipient profiles: a NON-secret provider block in the profile config — base_url = the wire this container serves
+# (the loopback LiteLLM proxy probed in r2, HTTP 200 for the model) + a dummy api_key; OneCLI injects the real credential
+# at egress. Never a real key on disk. A profile whose provider comes only from env vars will fail with
+# "No inference provider configured" inside the sanitized child (LOOP-F35 r2).
+```
+
+A pre-flight failure is `PRE-FLIGHT FAIL` in the report and stops the live tier before it spends any of the 40 calls; it is an environment defect, never an AC verdict.
+
+
 and the guard keeps its shape: add one env-gated branch to `_ok` in `$TB/pyguard/sitecustomize.py` (inert under `harness.env`, which never sets the variables), **before** the loopback check, so the allow-list is one named endpoint and every allowed connect is counted:
 
 ```python
