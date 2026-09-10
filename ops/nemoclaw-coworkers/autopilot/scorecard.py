@@ -10,6 +10,8 @@ Inputs in --dir (each optional; a missing one is reported, never fatal):
   state.json   data/shared/hermes/autopilot/state.json (last tick)
   config.json  data/shared/hermes/autopilot/config.json (wip, paused, plan_sha256)
   prs.json     gh pr list --repo slang-coworkers/hermes-agent --state all --json ...
+  threads.json data/shared/hermes/autopilot/threads.json (collect_threads.py): the `cards 24h`
+               fallback where no groups/ card dir is reachable (inside the Orchestrator container)
 Each has a path override (--ledger, --alerts, --state, --config, --prs) for the container,
 where the three live in different directories.
 
@@ -30,6 +32,7 @@ ledger read is the fallback and the cross-check.
 from __future__ import annotations
 
 import argparse
+import glob
 import json
 import os
 import re
@@ -54,6 +57,89 @@ DEFAULT_DISPATCHABLE = 30
 TICK_STALE_H = 3.0
 ALERT_WINDOW_H = 6.0
 TZ_OFFSETS = {"IST": timedelta(hours=5, minutes=30), "UTC": timedelta(0), "Z": timedelta(0)}
+CARD_WINDOW_H = 24.0
+# hermes-task-card files: card-<role>-<outcome>-r<round>.png; the card-<role>-latest.png copies are not counted
+CARD_PNG_RE = re.compile(r"^card-.+-r\d+\.png$")
+# The send_file caption a card travels under (container/spines/hermes/context/task-card.md)
+CARD_CAPTION_PREFIXES = ("card · ", "card(html) · ")
+# The only root the Orchestrator container can resolve; it holds that group's own cards alone
+CONTAINER_OWN_ROOT = "/workspace/agent"
+
+
+def default_card_roots(dirpath: str) -> list:
+    """Where the task cards live: $HERMES_CARDS_ROOT (colon-separated), else <ROOT>/groups when the
+    autopilot dir is data/shared/hermes/autopilot under a checkout, else the container's own
+    /workspace/agent (the Orchestrator sees only its row-level cards there)."""
+    env = os.environ.get("HERMES_CARDS_ROOT")
+    if env:
+        return [p for p in env.split(":") if p]
+    # <ROOT>/data/shared/hermes/autopilot -> <ROOT>/groups
+    candidates = [os.path.normpath(os.path.join(dirpath, "..", "..", "..", "..", "groups")), "/workspace/agent"]
+    return [c for c in candidates if os.path.isdir(c)]
+
+
+def count_recent_cards(roots, now, hours: float = CARD_WINDOW_H):
+    """Task-card PNGs written in the last `hours` under <root>/*/reports/hermes-*/cards/ (a groups
+    dir) or <root>/reports/hermes-*/cards/ (one group). None when no root exists (unknown)."""
+    seen = False
+    n = 0
+    try:
+        cutoff = now.timestamp() - hours * 3600.0
+    except (AttributeError, OverflowError, OSError, ValueError):
+        return None
+    for root in roots or ():
+        if not root or not os.path.isdir(root):
+            continue
+        seen = True
+        for pattern in (
+            os.path.join(root, "*", "reports", "hermes-*", "cards", "card-*.png"),
+            os.path.join(root, "reports", "hermes-*", "cards", "card-*.png"),
+        ):
+            for path in glob.glob(pattern):
+                if not CARD_PNG_RE.match(os.path.basename(path)):
+                    continue
+                try:
+                    if os.path.getmtime(path) >= cutoff:
+                        n += 1
+                except OSError:
+                    continue
+    return n if seen else None
+
+
+def resolvable_roots(roots) -> list:
+    """The card roots that exist on this filesystem, normalised (what count_recent_cards searched)."""
+    return [os.path.normpath(r) for r in roots or () if r and os.path.isdir(r)]
+
+
+def count_recent_cards_from_threads(threads, now, hours: float = CARD_WINDOW_H):
+    """Fallback for count_recent_cards where no groups/ card dir is reachable: pull-state.sh runs the
+    scorecard inside the Orchestrator container with --dir /workspace/shared/hermes/autopilot, where
+    the only root is /workspace/agent (the Orchestrator's own cards). The roles' cards reach it only
+    as their captions on the collected threads, so count those: an outbound message whose text starts
+    "card · " / "card(html) · " (the receiver's `in` copy is the same event) with a timestamp inside
+    the window is one card. None when threads.json is absent, not an object, or the collector could
+    not list sessions (`sessions_checked: false`)."""
+    if not isinstance(threads, dict) or not isinstance(threads.get("threads"), dict):
+        return None
+    if threads.get("sessions_checked") is False:
+        return None
+    n = 0
+    for t in threads["threads"].values():
+        sessions = t.get("sessions") if isinstance(t, dict) else None
+        for s in sessions or ():
+            messages = s.get("messages") if isinstance(s, dict) else None
+            for m in messages or ():
+                if not isinstance(m, dict) or m.get("direction") != "out":
+                    continue
+                text = m.get("text")
+                if not isinstance(text, str) or not text.startswith(CARD_CAPTION_PREFIXES):
+                    continue
+                ts = parse_iso(m.get("timestamp") or m.get("ts"))
+                if ts is None:
+                    continue
+                if (now - ts).total_seconds() <= hours * 3600.0:
+                    n += 1
+    return n
 
 
 def parse_iso(value):
@@ -262,8 +348,9 @@ def fmt_h(h):
     return "?" if h is None else f"{h:g}h"
 
 
-def build(dirpath: str, now, plan_sha_local, plan_path, default_offset, paths: dict | None = None) -> dict:
-    """`paths` overrides the per-file location (name -> path); anything else is read from `dirpath`."""
+def build(dirpath: str, now, plan_sha_local, plan_path, default_offset, paths: dict | None = None, card_roots=None) -> dict:
+    """`paths` overrides the per-file location (name -> path); anything else is read from `dirpath`.
+    `card_roots`: directories searched for task-card PNGs (None: default_card_roots(dirpath))."""
     notes = []
     overrides = {k: v for k, v in (paths or {}).items() if v}
 
@@ -385,13 +472,29 @@ def build(dirpath: str, now, plan_sha_local, plan_path, default_offset, paths: d
     eligible = state.get("eligible_next") or []
     eligible_ids = [(e.get("id") or e.get("row")) if isinstance(e, dict) else str(e) for e in eligible][:5]
 
+    # Task cards written in the last 24 h (the header's `cards 24h N`); None when no card dir is reachable.
+    roots = default_card_roots(dirpath) if card_roots is None else [r for r in (card_roots or ()) if r]
+    try:
+        cards_24h = count_recent_cards(roots, now)
+    except Exception as exc:  # noqa: BLE001 - a filesystem oddity must not sink the scorecard
+        cards_24h = None
+        notes.append(f"card count failed: {type(exc).__name__}: {exc}")
+    # No card dir at all, or only the container's own /workspace/agent (the Orchestrator's cards alone,
+    # where pull-state.sh runs this): count the `card · ` captions on the collected threads instead.
+    if cards_24h is None or resolvable_roots(roots) == [CONTAINER_OWN_ROOT]:
+        threads, _ = load_json(where("threads.json"))
+        from_threads = count_recent_cards_from_threads(threads, now)
+        if from_threads is not None:
+            cards_24h = from_threads
+            notes.append("cards 24h counted from threads.json captions (no groups/ card dir reachable)")
+
     # The a | b | t | r report (abtr.py) from the same inputs; a render bug must not sink the scorecard.
     abtr_markdown = abtr_brief = None
     if abtr is None:
         notes.append("abtr.py missing next to scorecard.py: a|b|t|r markdown not rendered")
     else:
         try:
-            kw = {"prs": prs, "alerts": alerts, "config": config, "dispatchable": dispatchable}
+            kw = {"prs": prs, "alerts": alerts, "config": config, "dispatchable": dispatchable, "cards_24h": cards_24h}
             abtr_markdown = abtr.render_abtr_markdown(state, ledger["rows"], now, **kw)
             abtr_brief = abtr.render_abtr_brief(state, ledger["rows"], now, **kw)
         except Exception as exc:  # noqa: BLE001 - any render bug degrades to the text card and is named in notes
@@ -400,6 +503,7 @@ def build(dirpath: str, now, plan_sha_local, plan_path, default_offset, paths: d
     return {
         "abtr_markdown": abtr_markdown,
         "abtr_brief": abtr_brief,
+        "cards_24h": cards_24h,
         "now": now.strftime("%Y-%m-%dT%H:%M:%SZ"),
         "notes": notes,
         "tick_at": state.get("generated_at"),
@@ -489,19 +593,22 @@ def main() -> int:
     ap.add_argument("--plan", default=None, help="path to the git copy of dispatch-plan.md (dispatchable count)")
     ap.add_argument("--ledger-tz-offset", default="+05:30", help="zone for ledger stamps without a named zone")
     ap.add_argument("--json", action="store_true", help="emit the scorecard as JSON instead of text")
-    for name in ("ledger", "alerts", "state", "config", "prs"):
+    for name in ("ledger", "alerts", "state", "config", "prs", "threads"):
         ap.add_argument(f"--{name}", default=None, help=f"path of {name}.{'md' if name in ('ledger', 'alerts') else 'json'} (default: <dir>/)")
     ap.add_argument("--markdown", nargs="?", const="-", default=None, metavar="PATH",
                     help="print the a|b|t|r markdown report instead of the text card; write it to PATH (atomic) when given")
     ap.add_argument("--brief", nargs="?", const="-", default=None, metavar="PATH",
                     help="print the tick's brief (header + one line per in-flight row); write it to PATH when given")
+    ap.add_argument("--cards-root", action="append", default=None, metavar="DIR",
+                    help="directory searched for task-card PNGs (groups/ or one group); repeatable. Default: $HERMES_CARDS_ROOT, <dir>/../../../../groups, /workspace/agent")
     args = ap.parse_args()
     now = parse_iso(args.now) or datetime.now(timezone.utc)
     sign = -1 if args.ledger_tz_offset.startswith("-") else 1
     hh, mm = args.ledger_tz_offset.lstrip("+-").split(":")
     offset = sign * timedelta(hours=int(hh), minutes=int(mm))
-    paths = {"ledger.md": args.ledger, "alerts.md": args.alerts, "state.json": args.state, "config.json": args.config, "prs.json": args.prs}
-    card = build(args.dir, now, args.plan_sha256, args.plan, offset, paths)
+    paths = {"ledger.md": args.ledger, "alerts.md": args.alerts, "state.json": args.state, "config.json": args.config, "prs.json": args.prs,
+             "threads.json": args.threads}
+    card = build(args.dir, now, args.plan_sha256, args.plan, offset, paths, card_roots=args.cards_root)
     if args.json:
         json.dump(card, sys.stdout, indent=2, default=str)
         sys.stdout.write("\n")

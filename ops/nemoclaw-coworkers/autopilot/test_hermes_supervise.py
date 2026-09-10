@@ -111,7 +111,8 @@ HEAD_B = "b2c3d4e5f60718293a4b5c6d7e8f9012345678a1"
 
 
 def run(st: dict, threads: dict, prs: list | None = None, nudges: dict | None = None, sessions: dict | None = None, config: dict | None = None) -> dict:
-    return hs.supervise(st, threads, prs or [], nudges or {}, NOW, sessions=sessions, config=config)
+    # These threads predate hermes-task-card (no "card · " captions); the card_missing check is exercised in test_card_missing.py.
+    return hs.supervise(st, threads, prs or [], nudges or {}, NOW, sessions=sessions, config={"card_check": False, **(config or {})})
 
 
 class FreshAndStale(unittest.TestCase):

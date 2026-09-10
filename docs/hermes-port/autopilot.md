@@ -511,7 +511,7 @@ change) is what the human's Claude session keys on; `--json` gives the same card
 
 Before the scorecard, the check prints the box's `groups/orchestrator/reports/status/autopilot.md`
 verbatim: the a | b | t | r report every supervise tick refreshes (viewer `/status/autopilot.md`).
-Header `Hermes autopilot · <tick> · in flight n/wip · merged m · blocked k · queued q · alerts 6h a`,
+Header `Hermes autopilot · MM-DD HH:MMZ · in flight n/wip · merged m · blocked k · queued q · alerts 6h a · cards 24h c`,
 then one line per row, in-flight first by age, with the four roles and the gate as cells: `✓ 09:57Z`
 done at that time, `▶ 3.6h` active for that long, `✗ FAIL r2` a tester FAIL round 2 (or reviewer
 `✗ RC r1`), `⏸` paused or cost hold, `·` not started, gate `✓ <sha7>` / `✗ <reason>`; the note is
@@ -606,3 +606,47 @@ where it lives today and shows up in the next tick's state.
 2. **One thread per adopt row.** Adopt rows get their own `hermes-<ID>` thread, not a shared
    `hermes-adopt-<phase>` thread (`dispatch-plan.md` § How a batch is dispatched says so). One
    thread per row is what lets §2 read a row's stage from its thread alone.
+
+## 10. Task cards and the rows board
+
+Every terminal hand-off on a row leaves a picture behind. The rule is always-in-context for the
+roles and the Orchestrator (`container/spines/hermes/context/task-card.md`); the procedure is the
+`hermes-task-card` skill (`card.sh render <payload.json>`). The autopilot only reads the result.
+
+**Card contract.** One 900x600 PNG (scale 1) plus its HTML and JSON per finished role task,
+produced in the **same turn, right after** the gated marker send is accepted, never before it
+(the card is a receipt for a send that already happened, never a precondition: it can neither delay nor displace the gated hand-off, and its `in_reply_to` points at an already-answered intake),
+then attached with `send_file(in_reply_to=<the same intake id the marker answered>)`. Outcomes:
+architect `HANDOFF | RESOLVED | BLOCKED`, builder `SHIPPED | FIXED | BLOCKED`, tester
+`PASS | FAIL | ESCALATE`, reviewer `APPROVE | REQUEST_CHANGES`, Orchestrator (row-level, after the
+dispatch forward, the merge notice or the `blocked:` reply) `DISPATCHED | MERGED | BLOCKED`. Files:
+`groups/<role>/reports/hermes-<ID>/cards/card-<role>-<outcome-lower>-r<round>.{json,html,png}` + `card-<role>-latest.*`.
+
+**Caption contract.** The attachment's `text` is exactly `card · <ROW> · <role> · <OUTCOME> — <headline>`;
+a PNG that failed to render travels as the `.html` under `card(html) · …`. That prefix is the only
+thing the supervisor can see (attachment filenames never appear in transcripts), so any other
+caption counts as missing. Roles write `cost: n/a` (`cli_scope=group` denies `ncl cost-cap status`);
+inbound `card-*.png` from peers are ignored, never re-rendered.
+
+**`card_missing`** (`hermes_supervise.py`). A role transcript on an in-flight thread showing a
+marker line (`[Spec handoff]`, `[Triage Resolution]`, `[Fix Report]`, `[Fix Review Request]`,
+`[Test Report]`, `[Review Verdict]`) with no **later** outbound line starting `card · ` or
+`card(html) · ` within `config.card_grace_minutes` (default 20) earns one nudge per marker through
+the §3 machinery: `run /hermes-task-card for <ID> and send_file the PNG as a reply to the same
+intake id`. The §3 bound (one nudge per row per 6 h) and §8's unmarked-and-threaded rule apply
+unchanged; a missing card never escalates by itself and never changes the row's state.
+`config.card_missing_since` (ISO) is the cut-off: markers sent before it are never chased, and
+`install.sh` stamps it with the install time once, only when the key is absent, so the first tick
+after rollout does not nudge every in-flight row for the markers that predate the card skill.
+
+**Rows board** (`ops/nemoclaw-coworkers/rows-board.py`: stdlib, hostname-guard-free, never raises;
+`refresh-viewers.sh` runs it after the explanations index):
+
+- `/rows/` — batch → rows → `a | b | t | r`, the latest card per role as a 180 px thumbnail in its
+  verdict colour, read from `groups/*/reports/hermes-*/cards/card-*-latest.png`.
+- `/rows/<ROW>.html` — every card for the row newest-first with HTML/JSON links, plus `/adr/`,
+  `/test-reports/<thread>/` and, when `DASHBOARD_URL` is set, the lane deep link
+  `$DASHBOARD_URL/#/cw/orchestrator/l/hermes-<ROW>`. Card dirs are symlinked under `/rows/cards/<group>/<thread>/`.
+- Missing inputs degrade, never crash: `dispatch-plan.md` via `hermes_queue.parse_plan` ("plan
+  unreadable" banner), `state.json` / `threads.json` (stale banner from `generated_at`). The a | b | t | r
+  header (§7) gains `cards 24h N` (`card-*.png` written in the last 24 h), so a stalled fleet shows in the brief.

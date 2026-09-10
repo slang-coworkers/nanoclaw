@@ -5,7 +5,8 @@
 #    dispatch-cron.sh) into data/shared/hermes/autopilot/, which the Orchestrator container mounts at
 #    /workspace/shared/hermes/autopilot/ and the host cron runs from. config.json is copied only when
 #    absent: the human edits the live copy (wip, paused, paused_rows, authorize_round, plan_sha256)
-#    and a reinstall must not reset it. Tests are not mirrored.
+#    and a reinstall must not reset it; card_missing_since is stamped into it once, only when the key
+#    is absent (see below). Tests are not mirrored.
 # 2. Creates or updates the supervise series (hermes-ap-supervise, 47 */2 * * *) with its --script
 #    gate (12 fires/day is above the ungated MAX_DAILY_FIRES = 4; the gate is what makes a quiet tick
 #    free) and the prompt file's content. An existing series is found by its name slug
@@ -46,6 +47,25 @@ else
   cp "$SRC/config.json" "$DST/"
   echo "  installed default config.json"
 fi
+# card_missing (hermes_supervise.py) never chases a marker older than config.card_missing_since. Stamp
+# it once, at the first install that carries the card skill, so the first tick after rollout does not
+# nudge every in-flight row for the terminal markers it sent before cards existed. Never overwritten.
+python3 - "$DST/config.json" <<'PY'
+import json
+import sys
+from datetime import datetime, timezone
+path = sys.argv[1]
+with open(path, encoding="utf-8") as fh:
+    cfg = json.load(fh)
+if "card_missing_since" in cfg:
+    print("  keeping card_missing_since = %s" % cfg["card_missing_since"])
+else:
+    cfg["card_missing_since"] = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    with open(path, "w", encoding="utf-8") as fh:
+        json.dump(cfg, fh, indent=2)
+        fh.write("\n")
+    print("  set card_missing_since = %s (markers before it are never chased for a card)" % cfg["card_missing_since"])
+PY
 bash -n "$DST/pull-state.sh" "$DST/gate-supervise.sh" "$DST/dispatch-cron.sh"
 chmod +x "$DST/dispatch-cron.sh"   # cron runs it directly
 # Retired files from the task-series design: a stale mirror copy must not look live.

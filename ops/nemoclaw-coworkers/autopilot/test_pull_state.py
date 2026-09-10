@@ -135,7 +135,9 @@ class PullStateTest(unittest.TestCase):
     def test_abtr_markdown_and_brief_written_next_to_alerts_and_state(self):
         st = self.run_pull()
         md = (self.alerts.parent / "autopilot.md").read_text()  # STATUS_DIR defaults next to alerts.md
-        self.assertTrue(md.startswith(f"Hermes autopilot · {NOW} · in flight 2/3 · "), md.splitlines()[0])
+        # the header's tick is `MM-DD HH:MMZ` (abtr.fmt_tick) and ends with the task-card count
+        self.assertTrue(md.startswith(f"Hermes autopilot · {NOW[5:10]} {NOW[11:16]}Z · in flight 2/3 · "), md.splitlines()[0])
+        self.assertIn(" · cards 24h ", md.splitlines()[0])
         self.assertIn("| LOOP-F35 | 1a | ✓ ", md)   # spec accepted 15:27 IST, builder holds the row
         self.assertIn("| ▶ 9.0h | · | · | · |", md)
         self.assertIn("| MEM-F44 | 1b | ▶ 1.0h | · | · | · | · |", md)   # the hand dispatch, no ledger row
