@@ -64,7 +64,7 @@ For ad-hoc central queries from skills or scripts, use the in-tree wrapper rathe
 | `src/db/container-configs.ts` | CRUD for `container_configs` table (per-group container runtime config) |
 | `src/backfill-container-configs.ts` | Migrates legacy `container.json` files into the DB on startup |
 | `src/container-restart.ts` | Kill + on-wake respawn for agent group containers |
-| `src/task-scheduler.ts` | Runs scheduled tasks |
+| `src/modules/scheduling/` | Task creation, recurrence and run log — what `ncl tasks` writes; `src/host-sweep.ts` fires them |
 | `src/db/` | DB layer — agent_groups, messaging_groups, sessions, container_configs, user_roles, user_dms, pending_*, migrations |
 | `src/channels/` | Channel adapter infra (registry, Chat SDK bridge); specific channel adapters are skill-installed from the `channels` branch |
 | `src/channels/channel-defaults.ts` | Wiring-creation helpers over adapter-declared channel defaults (`resolveWiringDefaults`, `resolveThreadPolicy`, engage validation) |
