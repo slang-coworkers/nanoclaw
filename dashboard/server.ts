@@ -49,6 +49,7 @@ import { CONTAINER_INSTALL_LABEL } from '../src/config.js';
 import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/write-destinations.js';
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
+import { approverPolicyCheck, type ApproverPolicyCheck } from './approver-policy.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
 import {
   priceUsage,
@@ -2437,7 +2438,10 @@ function computeCostHistoryByGroup(
   fromKey: string,
   toKey: string,
 ): Map<string, { folder: string; name: string; claude: Map<string, number>; codex: Map<string, number> }> {
-  const out = new Map<string, { folder: string; name: string; claude: Map<string, number>; codex: Map<string, number> }>();
+  const out = new Map<
+    string,
+    { folder: string; name: string; claude: Map<string, number>; codex: Map<string, number> }
+  >();
   if (!db) return out;
   const inRange = (k: string) => k !== MISSING_TS_KEY && k >= fromKey && k <= toKey;
   const sessionsDir = join(getDataDir(), 'v2-sessions');
@@ -5673,6 +5677,7 @@ export function resetTransientDashboardStateForTests(): void {
   db = null;
   writeDb = null;
   hookEventsDb = null;
+  approverPolicyMemo = null;
   ccusageCache = {
     '1d': { ...emptyCcusagePeriod },
     '7d': { ...emptyCcusagePeriod },
@@ -5681,6 +5686,23 @@ export function resetTransientDashboardStateForTests(): void {
     lastRefresh: 0,
   };
   activityDataCache = null;
+}
+
+// Approver-policy check (dashboard/approver-policy.ts): latest ledger
+// policy_version vs the policy of record, plus "Additional mount REJECTED" log
+// lines in the last 24 h. Served by /api/approver-policy (Verity panel) and
+// inside /api/infrastructure. The log tail read is bounded but not free, and the
+// Verity panel refetches on every funnel load, so one result is held briefly.
+const APPROVER_POLICY_MEMO_MS = 30_000;
+let approverPolicyMemo: { at: number; value: ApproverPolicyCheck } | null = null;
+
+function getApproverPolicyCheck(): ApproverPolicyCheck {
+  const now = Date.now();
+  if (approverPolicyMemo && now - approverPolicyMemo.at < APPROVER_POLICY_MEMO_MS) return approverPolicyMemo.value;
+  if (!db) db = openDb();
+  const value = approverPolicyCheck({ db, projectRoot: getProjectRoot(), logsDir: getLogsDir(), now });
+  approverPolicyMemo = { at: now, value };
+  return value;
 }
 
 /** Force-open the readonly DB handle for tests (avoids waiting on broadcast timer). */
@@ -7354,6 +7376,50 @@ export async function handleRequest(
     } catch {
       res.writeHead(500, { 'Content-Type': 'application/json' });
       res.end(JSON.stringify({ error: 'snapshot unreadable' }));
+    }
+    return;
+  }
+
+  // API: the LLM mining companion to /api/review-rounds, a per-PR "why did this
+  // take so many rounds" summary, written by the review-cycles mining task to
+  // data/shared/reports/review-cycles-why.json (the container sees it as
+  // /workspace/shared/reports/). Pass-through like the snapshot routes above. A
+  // 404 here is the normal state until the miner has run; the client renders an
+  // empty "why" slot, never an error.
+  if (url.pathname === '/api/review-cycles-why') {
+    if (!requireAuth(req, res)) return;
+    const p = join(getDataDir(), 'shared', 'reports', 'review-cycles-why.json');
+    if (!existsSync(p)) {
+      res.writeHead(404, { 'Content-Type': 'application/json' });
+      res.end(
+        JSON.stringify({ error: 'no mining snapshot', hint: 'the review-cycles mining task has not written it yet' }),
+      );
+      return;
+    }
+    try {
+      const snap = JSON.parse(readFileSync(p, 'utf-8'));
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(snap));
+    } catch {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'mining snapshot unreadable' }));
+    }
+    return;
+  }
+
+  // API: which approver policy Verity is actually deciding under. Rendered in
+  // the Verity panel next to the weekly agreement chart, and repeated inside
+  // /api/infrastructure as the `approverPolicy` check. See
+  // dashboard/approver-policy.ts for why a quiet fallback here cost a week of
+  // misread metrics.
+  if (req.method === 'GET' && url.pathname === '/api/approver-policy') {
+    if (!requireAuth(req, res)) return;
+    try {
+      res.writeHead(200, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify(getApproverPolicyCheck()));
+    } catch (err) {
+      res.writeHead(500, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: String((err as Error)?.message || err) }));
     }
     return;
   }
@@ -10086,7 +10152,12 @@ export async function handleRequest(
     }
     const fromKey = fromRaw.replace(/-/g, '');
     const toKey = toRaw.replace(/-/g, '');
-    const bucketOf = (dayKey: string) => (by === 'total' ? 'all' : by === 'week' ? weekKeyFromDayKey(dayKey) : `${dayKey.slice(0, 4)}-${dayKey.slice(4, 6)}-${dayKey.slice(6, 8)}`);
+    const bucketOf = (dayKey: string) =>
+      by === 'total'
+        ? 'all'
+        : by === 'week'
+          ? weekKeyFromDayKey(dayKey)
+          : `${dayKey.slice(0, 4)}-${dayKey.slice(4, 6)}-${dayKey.slice(6, 8)}`;
     const byGroup = computeCostHistoryByGroup(fromKey, toKey);
     const groups: any[] = [];
     let grand = 0;
@@ -13347,6 +13418,16 @@ export async function handleRequest(
                 return [];
               }
             });
+
+            // Approver policy: is Verity deciding under the policy of record?
+            // A missing host directory silently downgraded every decision to the
+            // bundled v0-shadow for nine days after the 2026-08-31 host move;
+            // this is the check that would have caught it on day one.
+            try {
+              checks.approverPolicy = getApproverPolicyCheck();
+            } catch (err) {
+              checks.approverPolicy = { status: 'unknown', reasons: [String((err as Error)?.message || err)] };
+            }
 
             res.writeHead(200, { 'Content-Type': 'application/json' });
             res.end(JSON.stringify(checks, null, 2));
