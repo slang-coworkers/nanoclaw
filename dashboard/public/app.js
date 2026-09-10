@@ -2870,9 +2870,15 @@ function sessionKindPrefix(nanoSess) {
 function sessionDisplayTitle(nanoSess) {
   const title = nanoSess?.display_title || '';
   const peer = nanoSess?.a2a_peer;
-  if (peer && title) return `${peer}: ${title}`;
-  if (peer) return peer;
-  return title;
+  let out = title;
+  if (peer && title) out = `${peer}: ${title}`;
+  else if (peer) out = peer;
+  // Hermes gap-matrix row (server-derived from thread_id `hermes-<ROW>`):
+  // lead with the row id so the list, filter haystack and lane header read by
+  // row. Skipped when the title already starts with it (manual rename).
+  const row = nanoSess?.row_label;
+  if (row && !out.startsWith(row)) return out ? `${row} · ${out}` : row;
+  return out;
 }
 
 function sessionKeyLabel(nanoSess) {
@@ -9463,11 +9469,20 @@ function renderCwThread() {
   // thread_id from the already-loaded session list. gh-issue/pr chains are the
   // common multi-coworker case, but worktree-cleanup / reinforcement / dashboard
   // a2a threads fan out across coworkers too and benefit identically.
+  // Active-or-closed: a role that finished its task still counts as a lane
+  // participant (the server's lanes[] lists it with ended:true).
   const laneEligible =
     typeof anchorThreadId === 'string' &&
     anchorThreadId.length > 0 &&
     new Set(
-      (cachedSessions || []).filter((s) => s.thread_id === anchorThreadId && s.group_folder).map((s) => s.group_folder),
+      (cachedSessions || [])
+        .filter(
+          (s) =>
+            s.thread_id === anchorThreadId &&
+            s.group_folder &&
+            (!s.status || s.status === 'active' || s.status === 'closed'),
+        )
+        .map((s) => s.group_folder),
     ).size > 1;
   if (parentLabel) {
     const labelText = t.lane ? anchorThreadId : sessionLabelWithTitle(sessionIdForSlug, anchorThreadId || t.parentId);
@@ -9688,10 +9703,12 @@ function renderCwThread() {
     // Folders the server listed first (joined-order), then any stragglers.
     const folders = [...new Set([...order, ...byFolder.keys()])];
     const laneNameByFolder = new Map((t.lanes || []).map((l) => [l.folder, l.name]));
+    const laneEndedByFolder = new Map((t.lanes || []).map((l) => [l.folder, !!l.ended]));
     html = folders
       .map((f) => {
         const msgs = byFolder.get(f) || [];
-        const laneLabel = esc(laneNameByFolder.get(f) || f);
+        // " · ended" when none of this coworker's sessions on the thread is active.
+        const laneLabel = esc(laneNameByFolder.get(f) || f) + (laneEndedByFolder.get(f) ? ' · ended' : '');
         const body = msgs.length
           ? msgs.map(renderThreadMsg).join('')
           : '<div class="cw-empty" style="padding:6px 10px;color:var(--text-muted);font-size:10px">(no messages on this page)</div>';

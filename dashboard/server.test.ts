@@ -3423,10 +3423,12 @@ describe('matchContainerName', () => {
 // ── /api/messages: session scoping + swim-lane (thread-vs-session work) ──
 
 describe('/api/messages session scoping + swim-lane', () => {
-  // Seed a session row + its inbound.db with one chat message.
+  // Seed a session row + its inbound.db with one chat message. `status`
+  // defaults to 'active'; pass 'closed' for a coworker whose role on the
+  // thread is finished (lane mode still reads it).
   function seedSession(
     db: Database.Database,
-    s: { id: string; ag: string; folder: string; mg: string | null; thread: string | null },
+    s: { id: string; ag: string; folder: string; mg: string | null; thread: string | null; status?: string },
     msg: { id: string; text: string; ts: string },
   ) {
     const now = new Date().toISOString();
@@ -3441,7 +3443,7 @@ describe('/api/messages session scoping + swim-lane', () => {
     }
     db.prepare(
       'INSERT INTO sessions (id, agent_group_id, messaging_group_id, thread_id, status, created_at) VALUES (?, ?, ?, ?, ?, ?)',
-    ).run(s.id, s.ag, s.mg, s.thread, 'active', msg.ts);
+    ).run(s.id, s.ag, s.mg, s.thread, s.status ?? 'active', msg.ts);
     const sessDir = path.join(DATA_DIR, 'v2-sessions', s.ag, s.id);
     mkdirSync(sessDir, { recursive: true });
     const inDb = new Database(path.join(sessDir, 'inbound.db'));
@@ -3540,6 +3542,45 @@ describe('/api/messages session scoping + swim-lane', () => {
     expect(laneFolders).toContain('triager');
     expect(laneFolders).toContain('fixer');
     expect(laneFolders[0]).toBe('orch');
+  });
+
+  it('lane mode keeps a closed coworker in lanes[] (ended:true) and /api/sessions labels hermes rows', async () => {
+    const db = createTestDbWithSessions();
+    const thread = 'hermes-LOOP-F35';
+    // The orchestrator is still on the row; the tester finished its round and its session closed.
+    seedSession(
+      db,
+      { id: 'sess-h-orch', ag: 'ag-h-orch', folder: 'orchestrator', mg: null, thread },
+      { id: 'm-h-orch', text: 'dispatch', ts: '2026-06-20T00:00:00.000Z' },
+    );
+    seedSession(
+      db,
+      { id: 'sess-h-tester', ag: 'ag-h-tester', folder: 'hermes-tester', mg: 'mg-a2a-h', thread, status: 'closed' },
+      { id: 'm-h-tester', text: '[Test Report] PASS', ts: '2026-06-20T00:01:00.000Z' },
+    );
+    // A non-hermes thread on another coworker: no row label.
+    seedSession(
+      db,
+      { id: 'sess-h-other', ag: 'ag-h-other', folder: 'other', mg: null, thread: 'gh-issue-r/repo-505' },
+      { id: 'm-h-other', text: 'x', ts: '2026-06-20T00:02:00.000Z' },
+    );
+    db.close();
+    forceOpenDbForTests();
+
+    const res = await fetch(`${baseUrl}/api/messages?thread_id=${encodeURIComponent(thread)}&lane=1&limit=50`);
+    expect(res.status).toBe(200);
+    const data = await res.json();
+    // The closed tester's history is still part of the swim-lane.
+    expect(data.messages.map((m: any) => m.id)).toContain('m-h-tester');
+    const lanes = new Map<string, any>(data.lanes.map((l: any) => [l.folder, l]));
+    expect([...lanes.keys()]).toEqual(expect.arrayContaining(['orchestrator', 'hermes-tester']));
+    expect(lanes.get('hermes-tester').ended).toBe(true);
+    expect(lanes.get('orchestrator').ended).toBe(false);
+
+    // The sessions payload exposes the bare hermes row id; other threads get null.
+    const { sessions } = await (await fetch(`${baseUrl}/api/sessions`)).json();
+    expect(sessions.find((s: any) => s.session_id === 'sess-h-orch').row_label).toBe('LOOP-F35');
+    expect(sessions.find((s: any) => s.session_id === 'sess-h-other').row_label).toBeNull();
   });
 
   it('non-lane request omits the lanes key', async () => {
