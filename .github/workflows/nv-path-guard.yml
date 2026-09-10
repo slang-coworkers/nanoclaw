@@ -11,6 +11,7 @@ on:
     types: [opened, synchronize, reopened]
     branches:
       - nv-main
+      - nv-coworkers
       - nv-dashboard
       - nv-slang
       - nv-slangpy
