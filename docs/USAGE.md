@@ -203,7 +203,7 @@ The `supervise-issues` container skill provides automated oversight of in-flight
 
 ### Scheduling
 
-Designed for `schedule_task` with a 6-hour cron (`0 */6 * * *`). Each tick runs in a fresh session (`new_session: true`) and is gated by a delta check — if nothing changed since the last tick, it's a no-op.
+Scheduled with `ncl tasks create --recurrence '0 */12 * * *'` — the interval the skill itself suggests. Each series gets its own task session (`taskThreadId`, `src/db/sessions.ts`), so every tick runs fresh, and the tick is gated by a delta check — if nothing changed since the last tick, it's a no-op.
 
 ### State
 
@@ -388,7 +388,7 @@ Skills loaded inside agent containers at runtime:
 | `base-nanoclaw` | Core NanoClaw container primitives |
 | `buddy` | Pair-programming assistant |
 | `codex-critique` | Critique stage gates (PLAN_REVIEW, CODE_REVIEW, etc.) |
-| `explain-diff-html` | Self-contained HTML explanation (background, intuition, code walkthrough, quiz) of every PR a coworker opens; asked for by the PR-created hook |
+| `explain-diff-html` | Self-contained HTML explanation (background, intuition, code walkthrough, quiz) of every PR a coworker opens, also posted on the PR as one collapsed `<details>` comment that is updated in place on every push; asked for by the PR-created hook |
 | `self-customize` | Agent self-modification tools |
 | `agent-browser` | In-container web browsing |
 | `slack-formatting` | Slack message formatting |

@@ -5,8 +5,8 @@
  * barrel (`index.ts`) imports every tool module for side effects, then
  * calls `startMcpServer()` which uses whatever was registered.
  *
- * Default when only `core.ts` is imported: the core `send_message` /
- * `send_file` / `edit_message` / `add_reaction` tools are available.
+ * Default when only `core.ts` is imported: `send_message`, `send_file`,
+ * `add_reaction`, `report_pr_created` and `record_decision` are available.
  *
  * Installed feature modules can additively extend an already-registered
  * tool via `extendTool()` instead of editing the base tool's source —

@@ -3802,7 +3802,19 @@ export async function processQuery(
           // acked 'failed' by finalizeSilentTurn, or a silent turn is still
           // awaiting its re-send retry. This replaces the former unconditional
           // markCompleted at the top of the branch.
-          markCompleted(initialBatchIds);
+          //
+          // A task fire whose turn ENDED IN AN ERROR is the exception: it did not
+          // run. The provider refused it (spend ceiling, auth, quota) or the turn
+          // died, and acking that `completed` is what let `failed_runs` read 0
+          // through a six-day outage while the series re-fired on full cadence.
+          // Recorded as a failed run so the counter is true and recurrence backs
+          // off; classed 'turn', so it never auto-pauses the series.
+          if (isTaskTurn && event.isError === true) {
+            for (const id of initialBatchIds) markFailed(id);
+            log('Task fire ended in an error result — acked failed, not completed');
+          } else {
+            markCompleted(initialBatchIds);
+          }
         }
         // A turn that delivered through the content door (not just the silent
         // branch above, which only runs for empty results) also answers the
