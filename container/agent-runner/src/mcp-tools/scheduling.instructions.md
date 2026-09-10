@@ -7,7 +7,7 @@ Pass `--name "<short label>"` on create to get a readable task id (e.g. `--name 
 Common commands:
 
 ```bash
-ncl tasks create --name "ping" --prompt "Remind the user to call Dana" --process-after "tomorrow 18:00"
+ncl tasks create --name "ping" --prompt "Remind the user to call Dana" --process-after "<future-ISO-8601-timestamp>"  # substitute a real timestamp; relative wording is rejected
 ncl tasks list
 ncl tasks get ping-a25c        # includes run count, failures, and recent run-log lines
 ncl tasks run ping-a25c         # fire once now without changing the schedule (testing)
