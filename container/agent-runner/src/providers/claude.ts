@@ -270,49 +270,49 @@ export function detectIssueClose(command: string | undefined): string | null {
  */
 function createPreToolUseHook(policy: McpPolicy): HookCallback {
   return async (input) => {
-  const i = input as { tool_name?: string; tool_input?: Record<string, unknown> };
-  const toolName = i.tool_name ?? '';
-  if (SDK_DISALLOWED_TOOLS.includes(toolName)) {
-    return {
-      decision: 'block',
-      stopReason: `Tool '${toolName}' is not available in this environment — use the nanoclaw equivalent.`,
-    } as unknown as ReturnType<HookCallback>;
-  }
-  // MCP allow-list, default-deny. Placed first among the policy checks because
-  // it is the broadest: it covers direct servers the host proxy never sees
-  // (the built-in `nanoclaw` server, the `codex` stdio child) as well as
-  // proxied ones, and it does not care whether the SDK honoured the
-  // allowedTools/disallowedTools it was handed.
-  const mcpDenial = mcpPolicyPreToolUseDecision(policy, toolName);
-  if (mcpDenial) {
-    log(`PreToolUse: denied ${toolName} — not in the explicit external allow-list`);
-    return { decision: 'block', stopReason: mcpDenial } as unknown as ReturnType<HookCallback>;
-  }
-  // Backstop: no coworker closes GitHub issues. Block the close at the tool
-  // boundary regardless of what the model was told or authorized. Opt-out is a
-  // per-group env flag (unset everywhere today) so a future maintainer-grade
-  // group can be granted the capability via container config, not a code change.
-  if (toolName === 'Bash' && process.env.NANOCLAW_ALLOW_ISSUE_CLOSE !== '1') {
-    const match = detectIssueClose(i.tool_input?.command as string | undefined);
-    if (match) {
+    const i = input as { tool_name?: string; tool_input?: Record<string, unknown> };
+    const toolName = i.tool_name ?? '';
+    if (SDK_DISALLOWED_TOOLS.includes(toolName)) {
       return {
         decision: 'block',
-        stopReason:
-          `Closing a GitHub issue (${match}) is a maintainer-only action — coworkers triage and comment, they do not close. ` +
-          `Post your duplicate/wontfix verdict as an issue comment and leave the close to a human maintainer.`,
+        stopReason: `Tool '${toolName}' is not available in this environment — use the nanoclaw equivalent.`,
       } as unknown as ReturnType<HookCallback>;
     }
-  }
-  // Bash exposes its timeout via the tool_input.timeout field (ms). Any other
-  // tool: no declared timeout.
-  const declaredTimeoutMs =
-    toolName === 'Bash' && typeof i.tool_input?.timeout === 'number' ? (i.tool_input.timeout as number) : null;
-  try {
-    setContainerToolInFlight(toolName, declaredTimeoutMs);
-  } catch (err) {
-    log(`PreToolUse: failed to record container_state: ${err instanceof Error ? err.message : String(err)}`);
-  }
-  return { continue: true };
+    // MCP allow-list, default-deny. Placed first among the policy checks because
+    // it is the broadest: it covers direct servers the host proxy never sees
+    // (the built-in `nanoclaw` server, the `codex` stdio child) as well as
+    // proxied ones, and it does not care whether the SDK honoured the
+    // allowedTools/disallowedTools it was handed.
+    const mcpDenial = mcpPolicyPreToolUseDecision(policy, toolName);
+    if (mcpDenial) {
+      log(`PreToolUse: denied ${toolName} — not in the explicit external allow-list`);
+      return { decision: 'block', stopReason: mcpDenial } as unknown as ReturnType<HookCallback>;
+    }
+    // Backstop: no coworker closes GitHub issues. Block the close at the tool
+    // boundary regardless of what the model was told or authorized. Opt-out is a
+    // per-group env flag (unset everywhere today) so a future maintainer-grade
+    // group can be granted the capability via container config, not a code change.
+    if (toolName === 'Bash' && process.env.NANOCLAW_ALLOW_ISSUE_CLOSE !== '1') {
+      const match = detectIssueClose(i.tool_input?.command as string | undefined);
+      if (match) {
+        return {
+          decision: 'block',
+          stopReason:
+            `Closing a GitHub issue (${match}) is a maintainer-only action — coworkers triage and comment, they do not close. ` +
+            `Post your duplicate/wontfix verdict as an issue comment and leave the close to a human maintainer.`,
+        } as unknown as ReturnType<HookCallback>;
+      }
+    }
+    // Bash exposes its timeout via the tool_input.timeout field (ms). Any other
+    // tool: no declared timeout.
+    const declaredTimeoutMs =
+      toolName === 'Bash' && typeof i.tool_input?.timeout === 'number' ? (i.tool_input.timeout as number) : null;
+    try {
+      setContainerToolInFlight(toolName, declaredTimeoutMs);
+    } catch (err) {
+      log(`PreToolUse: failed to record container_state: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return { continue: true };
   };
 }
 
@@ -750,8 +750,31 @@ export class ClaudeProvider implements AgentProvider {
           log(`Context compacted${detail}.`);
           yield { type: 'activity' };
         } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'task_notification') {
-          const tn = message as { summary?: string };
-          yield { type: 'progress', message: tn.summary || 'Task notification' };
+          const tn = message as { summary?: string; status?: string };
+          yield {
+            type: 'progress',
+            message: tn.summary || (tn.status ? `Task ${tn.status}` : 'Task notification'),
+            task: 'finished',
+          };
+        } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'task_started') {
+          // A background subagent was spawned. Surface it (and count it in the poll
+          // loop): while it runs the main agent emits nothing, and on prod
+          // 2026-09-09 the 20-min idle-end ended a wiki fold under four live
+          // subagents, killing them with the query.
+          const ts = message as { description?: string; summary?: string; task_id?: string; task_type?: string };
+          yield {
+            type: 'progress',
+            message: `Task started: ${ts.description || ts.summary || ts.task_type || ts.task_id || 'background task'}`,
+            task: 'started',
+          };
+        } else if (
+          message.type === 'system' &&
+          ((message as { subtype?: string }).subtype === 'task_progress' ||
+            (message as { subtype?: string }).subtype === 'task_updated')
+        ) {
+          // Subagent heartbeat: activity only (keeps the idle timer and the
+          // container heartbeat fresh without a log line per tool call).
+          yield { type: 'activity' };
         }
       }
       log(`Query completed after ${messageCount} SDK messages`);
