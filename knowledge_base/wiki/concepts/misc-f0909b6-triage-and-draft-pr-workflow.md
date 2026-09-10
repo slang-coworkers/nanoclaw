@@ -20,7 +20,7 @@ member's own active draft PR and is already fixed on-branch.
   variant that silently dropped/hard-coded parameters. Test the EXACT restructure, not an easier
   lookalike; retract a wrong workaround in a fresh @mention (GitHub edits don't notify).
 - **A `Dev Opened` tracking issue on a core-team member's own draft PR is almost always already fixed
-  on that PR's branch** — often within minutes of filing. Verify-and-bounce; never open a competing
+  on that PR's branch** (Operator correction 2026-09-09: this is the narrow "a human PR already carries the fix" case, not a general `Dev Opened` skip; every other `Dev Opened` issue is triaged and dispatched normally, see [Correction (operator 2026-09-09): Dev Opened and core-team tracking issues ARE in scope](../learnings/1788958700000-correction-dev-opened-and-core-team-tracking-issues-are-in-scope.md)) — often within minutes of filing. Verify-and-bounce; never open a competing
   master PR. The feature doesn't exist on master, so `reproduced`/`regression` labels don't apply.
 - **Fetch a fork-based WIP PR checkpoint via `refs/pull/N/head`**, not the branch name; check the
   branch head hasn't been rewritten (`merge-base --is-ancestor`) and grep for an existing `Fix #N`

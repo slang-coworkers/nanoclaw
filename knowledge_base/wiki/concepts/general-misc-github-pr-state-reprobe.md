@@ -1,0 +1,63 @@
+---
+title: "Re-probing GitHub PR State Before Asserting It"
+type: concept
+group: general-misc
+tags: [github, pr-state, gh-cli, graphql, review-approval, merge-state, worktree-gc]
+source_count: 0
+---
+
+# Re-probing GitHub PR State Before Asserting It
+
+## TL;DR
+
+- **PR state is mutable between turns.** `isDraft`, `state`, `reviewDecision`, `mergeable`, `mergeStateStatus`, `headRefOid`, and auto-merge can all change out-of-band (maintainer readies a draft, updates the branch, approves, merges). Re-pull live before writing any of them in a report.
+- **Read structured state from the API, never from a WebFetch page scrape.** WebFetch is an LLM interpretation of rendered text, not an authoritative field. Use `gh pr view <n> --json ...` or REST for `autoMergeRequest`, `mergeStateStatus`, `reviewDecision`, `headRefOid`, and approval-on-head. WebFetch is fine for comment text or which diff line a comment anchors — never for PR STATE.
+- **`gh --json` 401 is an outage facet, not a dead token.** `gh pr view/issue view --json` route through `api.github.com/graphql`; that facet can return `HTTP 401: Bad credentials` while REST with the *same* token succeeds. Never read a 401 as "my token is dead, skip verification."
+- **Probe the facet, then choose the recipe.** Run `gh api graphql -f query='{viewer{login}}'` (with a REST control so "facet down" is distinguishable from "credentials broken" — the fixes differ). If GraphQL answers, `--json` works and REST is just a fallback. If it 401s, fall back to REST.
+- **REST is snake_case.** Use `.draft` / `.mergeable_state`, NOT `.isDraft` / `.mergeStateStatus`. Pull `gh api repos/<owner>/<repo>/pulls/<n>`, `pulls/<n>/files`, `issues/<n>`, `issues/<n>/comments`.
+- **`reviewDecision: APPROVED` does NOT prove the approval covers the current head.** Bind it: each REST review carries `commit_id`; the approval holds iff `commit_id == .head.sha` (from `pulls/<n>/reviews`). This is the better check even when GraphQL is healthy — it should replace, not merely accompany, `reviewDecision`.
+- **"Update branch" and body edits do NOT dismiss an approval.** `reviewDecision` stays APPROVED on the new merge-commit head; editing a body after approval is safe. Re-confirm anyway before asserting.
+- **A child/fixer's PR-state claim is a snapshot of its own actions.** It can be blind to maintainer moves. Re-pull `gh pr view <n> --json isDraft,headRefOid,reviewDecision,state,mergeable` + the timeline before rolling a state-dependent decision upstream. A maintainer flipping/merging their own assigned PR is legitimate — distinguish *who acted*.
+- **Verify open-PR status before reaping a worktree/branch as "abandoned."** A `fix/issue-<n>*` branch that looks dead can be the live head of an OPEN PR. Check `gh pr list -R <repo> --state open --head <branch>` first. A squash merge makes `git merge-base --is-ancestor` return FALSE (expected) — confirm merged via tip-SHA + squash-commit subject. Don't manufacture a sweep from mild disk pressure.
+
+## The gh `--json` 401 is an outage facet, not a dead token
+
+⚠️ `gh pr view --json` (and `gh issue view --json`) route through `api.github.com/graphql`, and on the `nv-slang-bot` token they can return `HTTP 401: Bad credentials` **only while the GraphQL facet is down** — plain REST with the *same* token keeps succeeding (observed repeatedly: slang-rhi#805, slang#12313, slang#12317). ⛔ This was once written as a standing property of the bot token, which is FALSE: refuted 2026-08-04 when `gh pr view <n> --json isDraft,state,reviewDecision,mergeStateStatus,headRefOid` returned full JSON, exit 0. The 401 is a property of the outage, not of your credentials, so it must never be read as "my token is dead, skip verification."
+
+**Probe the facet directly** with `gh api graphql -f query='{viewer{login}}'` — pair it with a REST control so "facet down" is distinguishable from "my credentials are broken," because the remediations differ completely. If GraphQL answers, `--json` works and the REST recipe is a fallback, not a requirement. If it 401s, re-pull mutable PR/issue state via REST: `gh api repos/<owner>/<repo>/pulls/<n> --jq '{draft,state,mergeable,mergeable_state}'`, `pulls/<n>/files`, `issues/<n>`, `issues/<n>/comments`. Note that **REST is snake_case** — `.draft` / `.mergeable_state`, **not** `.isDraft` / `.mergeStateStatus` — and derive approval-on-head from `pulls/<n>/reviews` where `commit_id == .head.sha`, since `reviewDecision` never establishes that an approval covers the current head ([when gh GraphQL 401s, verify PR state and review-approval binding via REST](../learnings/1785752119095-when-gh-graphql-401s-verify-pr-state-and-review-ap.md)).
+
+## Re-pull mutable PR state before asserting it
+
+A PR's `isDraft`, `state`, `reviewDecision`, `mergeable`, and `mergeStateStatus` can change between turns due to maintainer or external activity. Before asserting any of these in a status report or `[Report]`, re-pull live with `gh pr view <n> --repo <owner/repo> --json isDraft,state,reviewDecision,mergeable,mergeStateStatus`. A maintainer flipped one PR from draft to ready-for-review within nine minutes of the bot opening it, yet the bot kept reporting it as a "parked draft" for two hours. Body edits do NOT dismiss an existing approval, so editing after approval is safe — but re-confirm `reviewDecision` before asserting it ([Re-pull mutable PR state from GitHub before asserting it in a status report](../learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md)).
+
+As a corollary specific to draft/ready reporting: before writing "draft" / "ready" / "merged" in a `[Fix Report]`, run `gh pr view <n> -R <repo> --json isDraft,state,reviewDecision,mergeStateStatus` and report those live values, not the last state you set. A maintainer readying the bot's draft is the expected positive path toward merge — approval alone does not mean the PR is still a draft ([Verify live PR draft/ready state before reporting it — maintainers can flip it](../learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md)).
+
+## Never read merge-queue / auto-merge state from a WebFetch page summary
+
+The source of PR state must be the API `--json` field, NOT a WebFetch page summary. A WebFetch is an LLM interpretation of rendered page text, not an authoritative field. Reporting "queued for merge with auto-merge enabled" from a page scrape (slang#12178) was wrong — `gh pr view <n> --json autoMergeRequest` was `null` (auto-merge was not armed, the PR was merely approved and awaiting a manual merge), which caused a false stand-down. WebFetch on a public repo is fine for comment text or which diff line a comment anchors, but never for structured PR STATE: read `autoMergeRequest`, `mergeStateStatus`, `reviewDecision`, `headRefOid`, and approval-on-head (`pulls/<n>/reviews --jq '.[]|select(.state=="APPROVED")|.commit_id'` must equal head) from the API ([Never read merge-queue / auto-merge state from a WebFetch page summary — use gh --json](../learnings/1784817132922-never-read-merge-queue-auto-merge-state-from-a-web.md)).
+
+## reviewDecision is weaker than approval-on-head — bind the approval to the head SHA
+
+`reviewDecision: APPROVED` alone never establishes that an approval covers the *current* head. Each REST review carries a `commit_id`, so the approval **binds iff `commit_id == .head.sha`** (from `pulls/<n>/reviews`). This is a strictly better check that should *replace*, not merely accompany, the `reviewDecision` advice, and it is the better check even when GraphQL is healthy ([approval binds iff commit_id == head.sha, via REST](../learnings/1785752119095-when-gh-graphql-401s-verify-pr-state-and-review-ap.md)). Note that GitHub's "Update branch" merge does NOT dismiss an existing approval — `reviewDecision` stays APPROVED on the new merge-commit head — so the SHA-binding check is what actually tells you whether the approved review still covers what you are about to act on.
+
+## Verify a child's PR-state claim before rolling it upstream
+
+A fixer/child's report of a PR's state (draft/ready, head SHA, review verdict, "held pending X") is a snapshot of *its own actions* and can be blind to maintainer-side moves that happen out-of-band. Before surfacing a state-dependent decision to the operator/parent, re-pull `gh pr view <n> --json isDraft,headRefOid,reviewDecision,state,mergeable` plus the timeline. On issue #11881 / PR #11883, the fixer accurately reported "did NOT flip ready" and teed up an operator ready-flip decision — but the maintainer (jkwak-work) had, ~2 minutes earlier, driven the PR himself (Update branch → `ready_for_review` → APPROVE → MERGE). Relaying the fixer's framing verbatim would have asked the operator to authorize a flip that was already done and would have mis-stated the head SHA.
+
+Three notes from that incident: (1) GitHub's "Update branch" merge does NOT dismiss an existing approval — `reviewDecision` stays APPROVED on the new merge-commit head; (2) a maintainer flipping/merging their OWN assigned PR is legitimate, not a bot-guardrail breach — distinguish *who acted*; and (3) once a maintainer merges an APPROVED + MERGEABLE bot PR, a "wait for priority-yielded CI" hold becomes moot ([Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast](../learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md)).
+
+## Verify open-PR status before reaping a worktree/branch (the worktree-GC trap)
+
+Before proposing to reap any `fix/issue-<n>*` worktree or branch as "abandoned / exploratory," check for an OPEN PR whose head is that exact branch: `gh pr list -R shader-slang/slang --state open --head <branch>` (or `gh api repos/shader-slang/slang/pulls?head=<owner>:<branch>`). A local branch that looks like a dead earlier approach can be the live head of an open PR, and its worktree dir is that PR's working tree.
+
+Incident (2026-07-14): while reaping the merged `fix/issue-11917-matrix` (PR #11987), a sibling `fix/issue-11917-asafe-c` branch and its `wt-slang-11917-c` worktree were flagged as "an abandoned earlier approach" and offered for sweep — but that branch is the head of OPEN PR #12088 (draft=false); reaping it would have destroyed open-PR work. This is the classic worktree-GC trap: multiple `fix/issue-<n>{-suffix}` branches (`-asafe`, `-asafe-c`, `-pass2`, `-c`) from staged approaches to one issue, most merged/dead but ≥1 still backing an open PR.
+
+✅ Only propose reaping after confirming NO open PR points at the branch. A squash merge makes `git merge-base --is-ancestor <branch> origin/master` return FALSE (expected, not "unmerged") — confirm merged instead via tip-SHA match plus the squash commit subject. Never bundle a "want me to sweep the siblings too?" offer without running the open-PR check first, and don't manufacture a sweep from mild disk pressure (82% / 44G free is not pressure) — reap only the specific merged artifact you were dispatched for ([Verify open-PR status before calling a worktree/branch abandoned (worktree-GC trap)](../learnings/1784064164068-verify-open-pr-status-before-calling-a-worktree-br.md)).
+
+**Source learnings (6):**
+- [Re-pull mutable PR state before asserting it in a status report](../learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md) — draft/state/review/mergeable change between turns; re-pull live before reporting
+- [Verify live PR draft/ready state before reporting — maintainers can flip it](../learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md) — read live isDraft/state/reviewDecision before writing "draft"/"ready"/"merged"
+- [Verify a PR's live state before rolling a fixer's PR-state claim upstream](../learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md) — maintainer-side moves go stale fast; re-pull before rolling a child's claim up
+- [Verify open-PR status before calling a worktree/branch abandoned (worktree-GC trap)](../learnings/1784064164068-verify-open-pr-status-before-calling-a-worktree-br.md) — a dead-looking fix branch can be an open PR's head; check before reaping
+- [Never read merge-queue / auto-merge state from a WebFetch page summary — use gh --json](../learnings/1784817132922-never-read-merge-queue-auto-merge-state-from-a-web.md) — WebFetch is not authoritative for PR STATE; read autoMergeRequest/mergeStateStatus from the API
+- [When gh GraphQL 401s, verify PR state and review-approval binding via REST](../learnings/1785752119095-when-gh-graphql-401s-verify-pr-state-and-review-ap.md) — GraphQL 401 is an outage facet, not a dead token; fall back to REST and bind approval via commit_id == head.sha

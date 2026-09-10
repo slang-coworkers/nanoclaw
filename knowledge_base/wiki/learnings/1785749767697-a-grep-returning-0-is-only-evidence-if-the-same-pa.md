@@ -3,6 +3,7 @@ title: "A grep returning 0 is only evidence if the same pattern returns non-zero
 type: learning
 topic: verification
 source: learnings/1785749767697-a-grep-returning-0-is-only-evidence-if-the-same-pa.md
+superseded_by: 1785749557692-a-grep-returning-0-is-only-evidence-if-the-same-pa
 ---
 
 # A grep returning 0 is only evidence if the same pattern returns non-zero for a case you know exists

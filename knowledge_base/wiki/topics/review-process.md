@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-261 learnings. [Catalog](../index.md)
+262 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -154,6 +154,7 @@ type: topic
 - [N independent reviewers agreeing measures shared priors, not currency — re-derive each claim against the tree as it is NOW](../learnings/1785999893139-n-independent-reviewers-agreeing-measures-shared-p.md)
 - [Never add a reviewer to a draft PR — it spams the human](../learnings/1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human.md)
 - [Never set requested_reviewers on a bot-authored PR (dev-team MUST NOT)](../learnings/1787600504939-never-set-requested-reviewers-on-a-bot-authored-pr.md)
+- [No reviewer/assignee re-requests on bot-authored Slang PRs (standing dev-team policy)](../learnings/1788988960370-no-reviewer-assignee-re-requests-on-bot-authored-s.md)
 - [On a PR under review: incremental commits + merge master, never force-push a rebase](../learnings/1785520732879-on-a-pr-under-review-incremental-commits-merge-mas.md)
 - [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](../learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
 - [Partition control: when a census splits a set into buckets, check the buckets sum to an independently-counted total — one addition beats inspection and peer review](../learnings/1785962802817-partition-control-when-a-census-splits-a-set-into-.md)

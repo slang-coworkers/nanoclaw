@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **5858 agent learnings**, synthesized into **398 concept pages**.
+Standalone wiki built from **5884 agent learnings**, synthesized into **407 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -175,26 +175,35 @@ Standalone wiki built from **5858 agent learnings**, synthesized into **398 conc
 - [Verifying Code Claims: Reachability, Vacuous Tests, and Reading the Construct](concepts/general-misc-d-code-verification-and-tests.md)
 
 ### general-misc
+- [A Verified Negative Has a Shelf Life](concepts/general-misc-verified-negative-shelf-life.md)
 - [Agent and Subagent Control Discipline](concepts/general-misc-agent-subagent-control.md)
 - [Bot Operational Protocols and Maintainer Interactions](concepts/general-misc-bot-operational-protocols.md)
+- [CI Conclusion Verification and Terminal-Chain Discipline](concepts/general-misc-ci-conclusion-and-terminal-chains.md)
+- [Claim vs Observed State](concepts/general-misc-claim-vs-observed-state.md)
+- [Corrections and Retractions](concepts/general-misc-corrections-and-retractions.md)
+- [Detector Asymmetry and Controls](concepts/general-misc-detector-asymmetry-and-controls.md)
+- [Falsifiability and Claim Scope](concepts/general-misc-falsifiability-and-claim-scope.md)
 - [Figure & Claim Discipline: Referent, Provenance, and Elapsed Time](concepts/general-misc-figure-claim-discipline.md)
 - [GitHub PR and Bot Operations](concepts/general-misc-github-pr-and-bot-operations.md)
 - [GitHub State Verification and Bot-Comment Hygiene](concepts/general-misc-github-state-verification-and-bot-hygiene.md)
+- [Grep Scope and Counting: What a Search Actually Measures](concepts/general-misc-grep-scope-and-published-counts.md)
+- [Instrument and Guard Trust — a check is a claim about itself](concepts/general-misc-instrument-and-guard-trust.md)
+- [Instrument Blindness and Coverage Traps](concepts/general-misc-instrument-blindness-and-coverage-traps.md)
+- [Instrument Discrimination — a signal that cannot separate states carries zero bits](concepts/general-misc-instrument-discrimination.md)
+- [Mechanism vs Outcome Reasoning](concepts/general-misc-mechanism-vs-outcome-reasoning.md)
+- [Negative Controls and Guard Sabotage](concepts/general-misc-negative-controls-and-guard-sabotage.md)
+- [Ownership and Mention Identity](concepts/general-misc-ownership-and-mention-identity.md)
+- [Published Counts as Claims](concepts/general-misc-published-counts-as-claims.md)
+- [Re-probing GitHub PR State Before Asserting It](concepts/general-misc-github-pr-state-reprobe.md)
+- [Reading vs Running, and Trusting the Test](concepts/general-misc-reading-vs-running-and-test-trust.md)
+- [Reasoning Traps and Evidence Fidelity](concepts/general-misc-reasoning-traps-and-evidence-fidelity.md)
+- [Regression Test Fixture Design](concepts/general-misc-regression-test-fixture-design.md)
+- [Reproducing a Cause, Not a Story](concepts/general-misc-reproducing-a-cause.md)
+- [Resume and Compaction Drift: Re-Ground on Live State Before Acting](concepts/general-misc-resume-and-compaction-drift.md)
 - [Slang Compiler Technical Findings](concepts/general-misc-slang-compiler-technical.md)
-- [State Verification Discipline](concepts/general-misc-state-verification-discipline.md)
-- [State Verification Discipline (part 13) — controls, instruments, and enforcement](concepts/general-misc-state-verification-discipline-13.md)
-- [State Verification Discipline (part 2)](concepts/general-misc-state-verification-discipline-2.md)
-- [State Verification Discipline (part 3)](concepts/general-misc-state-verification-discipline-3.md)
-- [State Verification Discipline (part 3) (part 2)](concepts/general-misc-state-verification-discipline-11.md)
-- [State Verification Discipline (part 3, continued)](concepts/general-misc-state-verification-discipline-14.md)
-- [State Verification Discipline (part 4)](concepts/general-misc-state-verification-discipline-4.md)
-- [State Verification Discipline (part 5)](concepts/general-misc-state-verification-discipline-5.md)
-- [State Verification Discipline (part 5) (part 2)](concepts/general-misc-state-verification-discipline-12.md)
-- [State Verification Discipline (part 6)](concepts/general-misc-state-verification-discipline-6.md)
-- [State Verification Discipline (part 7)](concepts/general-misc-state-verification-discipline-7.md)
-- [State Verification Discipline (part 7) (part 2)](concepts/general-misc-state-verification-discipline-10.md)
-- [State Verification Discipline (part 8)](concepts/general-misc-state-verification-discipline-8.md)
-- [State Verification Discipline (part 9)](concepts/general-misc-state-verification-discipline-9.md)
+- [Stale Pointers and Regression Checks](concepts/general-misc-stale-pointer-and-regression-checks.md)
+- [Tracker and Scheduler Hygiene](concepts/general-misc-tracker-and-scheduler-hygiene.md)
+- [Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Revision](concepts/general-misc-version-and-timestamp-reads.md)
 
 ### General / misc
 - [aarch64-only wrong results and slangi VM operand-width/cast bugs (slang#12871 family)](concepts/misc-f0909b9-aarch64-slangi-vm-cast-bugs.md)
@@ -454,10 +463,10 @@ Standalone wiki built from **5858 agent learnings**, synthesized into **398 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1483)
-- [NanoClaw / agent operations](topics/agent-ops.md) (632)
+- [Slang compiler & language](topics/slang-compiler.md) (1485)
+- [NanoClaw / agent operations](topics/agent-ops.md) (635)
 - [CI, build & tooling](topics/ci-tooling.md) (447)
-- [Review & process](topics/review-process.md) (261)
-- [PR review, approval & calibration](topics/review-approval.md) (1356)
-- [Verification & evidence discipline](topics/verification.md) (510)
+- [Review & process](topics/review-process.md) (262)
+- [PR review, approval & calibration](topics/review-approval.md) (1375)
+- [Verification & evidence discipline](topics/verification.md) (511)
 - [Uncategorized](topics/misc.md) (1169)

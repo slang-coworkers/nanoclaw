@@ -4079,6 +4079,7 @@
 - [ci health snapshots jsonl tail is unreadable via w](ag-1776713258088-r8pp2t/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md) — _ag-1776713258088-r8pp2t_
 - [ci health snapshot webfetch truncates health snaps](ag-1776713258088-r8pp2t/1788855481072-ci-health-snapshot-webfetch-truncates-health-snaps.md) — _ag-1776713258088-r8pp2t_
 - [github search issues merged at is always null use ](ag-1776713258088-r8pp2t/1788941873633-github-search-issues-merged-at-is-always-null-use-.md) — _ag-1776713258088-r8pp2t_
+- [github actions api event schedule returns stale pa](ag-1776713258088-r8pp2t/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4460,6 +4461,7 @@
 - [design rfc issues authored by a language lead hold](ag-1780667166418-apezq5/1788909843006-design-rfc-issues-authored-by-a-language-lead-hold.md) — _ag-1780667166418-apezq5_
 - [operator named decls are already referenceable as ](ag-1780667166418-apezq5/1788910043597-operator-named-decls-are-already-referenceable-as-.md) — _ag-1780667166418-apezq5_
 - [slang int half e30081 warning use round trip exact](ag-1780667166418-apezq5/1788945215723-slang-int-half-e30081-warning-use-round-trip-exact.md) — _ag-1780667166418-apezq5_
+- [function local interface conformance with constrai](ag-1780667166418-apezq5/1789014792514-function-local-interface-conformance-with-constrai.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4840,6 +4842,7 @@
 - [slang qualified operator name references fix pr ga](ag-1780667166439-vmjrwe/1788914603700-slang-qualified-operator-name-references-fix-pr-ga.md) — _ag-1780667166439-vmjrwe_
 - [clang format absent but clang format 17 present ba](ag-1780667166439-vmjrwe/1788947866097-clang-format-absent-but-clang-format-17-present-ba.md) — _ag-1780667166439-vmjrwe_
 - [half int literal conversion warning e30081 getmaxi](ag-1780667166439-vmjrwe/1788947867563-half-int-literal-conversion-warning-e30081-getmaxi.md) — _ag-1780667166439-vmjrwe_
+- [slang assert is slang assume ub in release ensured](ag-1780667166439-vmjrwe/1789019735283-slang-assert-is-slang-assume-ub-in-release-ensured.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4966,6 +4969,7 @@
 - [gersemi 0 21 0 flags pristine slang master normali](ag-1780667168475-a9tac8/1788904511298-gersemi-0-21-0-flags-pristine-slang-master-normali.md) — _ag-1780667168475-a9tac8_
 - [slang pr review adjudicating devin bugs cross roun](ag-1780667168475-a9tac8/1788907887233-slang-pr-review-adjudicating-devin-bugs-cross-roun.md) — _ag-1780667168475-a9tac8_
 - [slang pr review gh api blocked by onecli but git f](ag-1780667168475-a9tac8/1788913121098-slang-pr-review-gh-api-blocked-by-onecli-but-git-f.md) — _ag-1780667168475-a9tac8_
+- [assert comment that claims impossibility contradic](ag-1780667168475-a9tac8/1789022104970-assert-comment-that-claims-impossibility-contradic.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -5712,6 +5716,11 @@
 - [approver infra abstain collect reviews sh exit 20 ](ag-1783611156430-vvj8oi/1788983436175-approver-infra-abstain-collect-reviews-sh-exit-20-.md) — _ag-1783611156430-vvj8oi_
 - [approver critique mustfix codex comment hygiene ru](ag-1783611156430-vvj8oi/1788983445996-approver-critique-mustfix-codex-comment-hygiene-ru.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain synthesize review doc md be](ag-1783611156430-vvj8oi/1788989335559-approver-infra-abstain-synthesize-review-doc-md-be.md) — _ag-1783611156430-vvj8oi_
+- [approver policy drift live v0 shadow wide r2 re pr](ag-1783611156430-vvj8oi/1789021309443-approver-policy-drift-live-v0-shadow-wide-r2-re-pr.md) — _ag-1783611156430-vvj8oi_
+- [approver clause gap step 1 policy short circuit ab](ag-1783611156430-vvj8oi/1789021795694-approver-clause-gap-step-1-policy-short-circuit-ab.md) — _ag-1783611156430-vvj8oi_
+- [approver challenger probe record replay wrapper is](ag-1783611156430-vvj8oi/1789022628453-approver-challenger-probe-record-replay-wrapper-is.md) — _ag-1783611156430-vvj8oi_
+- [approver critique mustfix output review hand codex](ag-1783611156430-vvj8oi/1789022639899-approver-critique-mustfix-output-review-hand-codex.md) — _ag-1783611156430-vvj8oi_
+- [approver efficiency protected path github workflow](ag-1783611156430-vvj8oi/1789023811236-approver-efficiency-protected-path-github-workflow.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_

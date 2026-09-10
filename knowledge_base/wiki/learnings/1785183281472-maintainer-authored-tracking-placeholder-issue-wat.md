@@ -3,6 +3,7 @@ title: "Maintainer-authored tracking/placeholder issue = watch-only, no GitHub p
 type: learning
 topic: agent-ops
 source: learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md
+superseded_by: 1788958700000-correction-dev-opened-and-core-team-tracking-issues-are-in-scope
 ---
 
 # Maintainer-authored tracking/placeholder issue = watch-only, no GitHub post, no fixer

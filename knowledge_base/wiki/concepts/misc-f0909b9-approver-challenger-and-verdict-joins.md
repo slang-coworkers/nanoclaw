@@ -3,7 +3,7 @@ title: "Slang/SlangPy PR-approver: challenger probes, coverage bar, and human-ve
 type: concept
 group: misc
 tags: [approver, challenger, open_gap, coverage, positive-control, feature-mapping, human-verdict, calibration, bot-self-merge]
-source_count: 17
+source_count: 18
 ---
 
 ## TL;DR
@@ -145,6 +145,18 @@ automated cases. Discriminate by pulling `mergedBy`, `author`, `reviews`, and th
   self-merge; time-sensitive announcement posts have a benign post-window withdrawal
   mode
   ([author self-close of a content PR is "neither" and vindicates an OUT_OF_SCOPE abstain](../learnings/1788458283027-approver-human-agreement-author-self-close-of-a-co.md)).
+- **Author self-merge (`mergedBy == author`, a human author)** is the twin of author
+  self-close: *neither agreement nor disagreement*, so it neither vindicates nor
+  refutes the abstain. Website blog PR #213 (a Jekyll `_posts/*.md` SIGGRAPH roundup,
+  +54/-0) self-merged by author swoods-nv after a MEMBER left two `COMMENTED` "looks
+  good, a couple little things" reviews and the author pushed ~6 wording revisions —
+  contrast #207, where a *different* actor approved+merged (a genuine positive
+  verdict). Check `mergedBy` vs `author` before treating any merge as an
+  APPROVED-equivalent, and treat a `COMMENTED` review as non-joinable (it is not
+  `APPROVED`/`CHANGES_REQUESTED`). This is the second confirmation that `*.github.io`
+  `_posts/*.md` changes are correctly `OUT_OF_SCOPE:website-content` — decided by a
+  human editorial loop, not by a compiler-approver
+  ([website-content OUT_OF_SCOPE abstain #213 confirmed by outcome, but the terminal was an author self-merge](../learnings/1788957891077-approver-human-disagreement-website-content-out-of.md)).
 
 When a genuine human DOES merge/approve at your exact ABSTAIN commit with no
 follow-up commits, the code shipped as reviewed — abstains are excluded from
@@ -169,7 +181,7 @@ Throughout, the discipline is that the human verdict is host-joined for scoring 
 never used to *derive* the call — else the approver launders the human decision and
 yields no signal.
 
-**Source learnings (17):**
+**Source learnings (18):**
 
 - [CUDA mip/LOD texture-query args have a GPU-free positive control](../learnings/1788380290256-approver-calibration-cuda-mip-lod-texture-query-ar.md) — the emitted PTX must bind the mip arg as an input operand; a byte-identical asm means the arg is still dead.
 - [Mirror-a-sibling-callback PRs — a pre-existing cross-cutting gap does not clear, but it is not new risk](../learnings/1788416787180-approver-challenger-calibration-mirror-a-sibling-c.md) — read the whole file; document the pre-existing pattern in the OPEN_GAP challenger field.
@@ -188,3 +200,4 @@ yields no signal.
 - [closed-unmerged on a bot branch-sync is often a supersede, not a content rejection](../learnings/1788879697628-approver-human-disagreement-closed-unmerged-on-a-b.md) — a `Superseded by #N` close is dedup; the identical diff re-routes under #N.
 - [Bot self-CLOSE (not just self-merge) ≠ human verdict — do not join](../learnings/1788879724766-approver-human-disagreement-bot-self-close-not-jus.md) — bot/automation actor + zero reviews ⇒ not a joinable verdict.
 - [nv-* sync PR "merged" join is a bot auto-merge, not a human approval](../learnings/1788880961965-approver-human-disagreement-nv-sync-pr-merged-join.md) — check mergedBy==author==bot and reviews==0 before scoring an ABSTAIN-vs-merged join as over-strictness.
+- [website-content OUT_OF_SCOPE abstain #213 confirmed by outcome, but the terminal was an author self-merge](../learnings/1788957891077-approver-human-disagreement-website-content-out-of.md) — a human author self-merging after only COMMENTED reviews is "neither"; check mergedBy vs author; `*.github.io` `_posts/*.md` is OUT_OF_SCOPE:website-content (2nd confirmation after #207).

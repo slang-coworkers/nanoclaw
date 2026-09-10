@@ -3,6 +3,7 @@ title: "Fixers must not self-flip PRs to ready — enforce drafts-only"
 type: learning
 topic: agent-ops
 source: learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md
+superseded_by: 1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra
 ---
 
 # Fixers must not self-flip PRs to ready — enforce drafts-only

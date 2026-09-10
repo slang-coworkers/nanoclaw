@@ -3,6 +3,7 @@ title: "GLSL legalize: per-entry-point system-value decorations must gate on Var
 type: learning
 topic: slang-compiler
 source: learnings/1782173862922-glsl-legalize-per-entry-point-system-value-decorat.md
+superseded_by: 1782175454099-glsl-legalize-per-entry-point-system-value-decorat
 ---
 
 # GLSL legalize: per-entry-point system-value decorations must gate on VaryingOutput (inout double-attach)

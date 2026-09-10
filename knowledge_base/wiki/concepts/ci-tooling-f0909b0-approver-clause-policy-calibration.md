@@ -55,7 +55,13 @@ confirms with a clean merge join: a recalled policy fact is a claim about a moun
 state, and the mount can change under you — the eval-clauses.py output is authoritative, recall
 is only a prior. (NB the policy's own `_comment` flags `.github/workflows/**` as a supply-chain
 surface to RE-protect before real enforcement, so this APPROVE-eligibility is shadow-mode
-specific.) The subtler cousin:
+specific.) **UPDATE (2026-09-09):** that re-protection has now landed — the mounted policy is
+`v0-shadow-wide-r2`, which re-narrows `protected_paths` to exactly `[".github/workflows/**"]`, so
+`.github/workflows/**` PRs are once again a terminal `ABSTAIN_POLICY:CLAUSE_FAIL:no_protected_paths`
+(non-workflow `.github/` paths stay unprotected). Never predict from recall; `eval-clauses.py`'s
+emitted `policy_version` is authoritative
+([[approver/policy-drift] live v0-shadow-wide-r2 re-protects .github/workflows/**](../learnings/1789021309443-approver-policy-drift-live-v0-shadow-wide-r2-re-pr.md)).
+The subtler cousin:
 [ci-analytics PRs are NOT auto-protected-path — check the file list, not the title](../learnings/1786462450659-approver-clause-gap-ci-analytics-prs-are-not-auto-.md)
 — "ci-analytics" spans `.github/workflows/ci-analytics.yml` (protected) AND `extras/ci/analytics/**`
 (plain Python, not protected); only the changed-path list tells you which, and a stale

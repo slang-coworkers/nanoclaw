@@ -3,7 +3,7 @@ title: "Approver Harness Infra: OneCLI Proxy, Review Harvest, and Policy-Mount D
 type: concept
 group: agent-infra
 tags: [approver, onecli-proxy, gh-paginate, abstain-infra, policy-mount, eval-clauses, harvest]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -97,6 +97,26 @@ from `gh pr view --json additions,deletions,changedFiles` (the trustworthy sourc
 arrays truncate), evaluate the globs/caps yourself, and patch `clauses.json` to `pass` with
 an evidence note stating the compare-404-is-universal control.
 
+A fourth harvest false-negative is subtler because the exit code looks benign:
+`collect-reviews.sh --commit <head>` returns **exit 20** (`harvest.json={"found":false}`
+→ "no bot review AND none pending → Devin-only") while a **head-current CodeRabbit review
+actually exists**, embedded in CodeRabbit's *summary issue comment* rather than the formal
+`/reviews` array. The harvester keys "found" on `/reviews` (empty here) and judges staleness
+by the comment's `createdAt` (its original creation time) — but CodeRabbit EDITS that summary
+comment in place on each `synchronize`, so a body re-generated for the new head still shows an
+old `createdAt`, and its embedded `coveredCommitId`/`change_assessment_commit` markers are
+never inspected. When harvest returns 10/20/22, cross-check cheaply before falling to
+Devin-only: `gh pr view <pr> --json comments --jq '.comments[]|select(.author.login=="coderabbitai")|.body'`
+and grep for `coveredCommitId`/`change_assessment_commit`/`final_review_risk_coverage`; if any
+equals the pinned head SHA, CodeRabbit reviewed the head — incorporate it
+(`reviewers_complete=true`) instead of treating it as absent, and judge CodeRabbit staleness by
+those embedded markers, never by `createdAt`. Not decision-changing on slang#12968 (Devin also
+ran clean), but on a PR where Devin ALSO fails/times-out this same miss yields a spurious
+`NO_REVIEW_SIGNAL` ABSTAIN — the exact slang#12064 `harvest_used=0` class the infra gate exists
+to burn down. The real fix is in `harvest-reviews.py`: parse the summary-comment body's
+covered-commit markers and treat a head-matching value as a harvested secondary review
+([collect-reviews.sh exit 20 misses a head-current CodeRabbit summary-comment review](../learnings/1788983436175-approver-infra-abstain-collect-reviews-sh-exit-20-.md)).
+
 ### Policy-mount drift flips the same PR across sessions
 
 `eval-clauses.py` resolves the policy in order: `--policy` → per-PR
@@ -158,7 +178,7 @@ threshold ([sweep result: zero flips, and the mechanism is timing](../learnings/
 "No flips" and "my query missed them" are indistinguishable outputs; the timestamp
 comparison (harvest time vs the 100th review's `submitted_at`) is what separates them.
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [Every harvest failing with `unknown flag: --slurp` (gh 2.46 < 2.47) → spurious ABSTAIN_INFRA](../learnings/1786361776945-approver-infra-abstain-every-harvest-on-this-conta.md) — a tool-version failure is not infra; read the stderr text; a wrapper reporting success on a failed child is worse than the bug.
 - [collect-reviews.sh returns spurious ABSTAIN_INFRA on any PR with >100 reviews (gh --paginate)](../learnings/1786398105522-approver-infra-abstain-collect-reviews-sh-returns-.md) — `Link: rel=next` rewrites to the unruled `repositories/<id>` prefix; hand-page on the `repos/` route.
 - [The OneCLI GitHub proxy is an ALLOW-LIST of path prefixes](../learnings/1786398787755-approver-infra-the-onecli-github-proxy-is-an-allow.md) — `repositories/`, `orgs/`, `user/`, `rate_limit` all uncredentialed; three distinct failure bodies with three fixes.
@@ -169,3 +189,4 @@ comparison (harvest time vs the 100th review's `submitted_at`) is what separates
 - [Check the policy SOURCE (mounted overlay vs bundled default), not just the version string](../learnings/1788222845246-approver-infra-abstain-check-the-policy-source-mou.md) — confirm which of the 4 resolution paths won; flag the overlay disappearance as possible config drift.
 - [Policy mount can vanish across container re-creation → silently uses bundled v0-shadow](../learnings/1788232681411-approver-infra-abstain-policy-mount-can-vanish-acr.md) — restore v0-shadow-wide into the per-PR slot from a prior policy_note; escalate to re-populate the mount; canonical wide-policy contents recorded.
 - [gh/OneCLI GitHub connection dropping mid-session → HARNESS_FAIL](../learnings/1788506787387-approver-infra-abstain-gh-onecli-github-connection.md) — distinct from rate-limiting; record_decision still lands but locks the head; escalate the connect URL, push a new head after reconnect.
+- [collect-reviews.sh exit 20 misses a head-current CodeRabbit summary-comment review (slang#12968)](../learnings/1788983436175-approver-infra-abstain-collect-reviews-sh-exit-20-.md) — harvest keys "found" on /reviews and staleness on createdAt, but CodeRabbit edits its summary ISSUE comment in place on synchronize; cross-check the body's coveredCommitId/change_assessment_commit markers vs the pinned head before Devin-only.

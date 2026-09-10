@@ -3,7 +3,7 @@ title: PR-approver CI clauses and calibration — the ci_green_on_sha check-runs
 type: concept
 group: ci-tooling
 tags: [pr-approver, ci-green-on-sha, check-runs, status-api, calibration, abstain, clause-gap]
-source_count: 11
+source_count: 13
 ---
 
 ## TL;DR
@@ -120,6 +120,25 @@ Class widening: this deterministic abstain is not limited to `.github/**` CI-onl
 standard-module/feature PR
 ([class widening: CMakeLists + size caps](../learnings/1788480227101-approver-stale-draft-build-caveats-all-ci-skipped-.md)).
 
+**Faithful workflow-file language ports abstain on the protected-path clause too — but classify
+them by failure direction.** A PR that only *ports* an existing CI step to another language
+(slangpy#1145 replaced a `shell: bash` `run:` block with `actions/github-script@v8` in
+`ci-latest-slang.yml` so self-hosted Windows runners with no `bash` on PATH can run it)
+surface-resembles "a conditional CI change" that tempts an OPEN_GAP abstain for a missing positive
+control — but a faithful port (`trim` → `.trim()`, digit-check → `/^[0-9]+$/`, `set -e` →
+`exec.exec` rejecting on non-zero, empty → no-op) with an **unchanged `if:` gate** fails *loudly*
+when triggered, never silently-wrong, so the "inject-the-hazard positive control" probe is N/A and
+demanding it would false-abstain (a narrowing/port is not a new-flag+new-gate). Two by-design facts
+that also defuse a CI-matrix "gap" here: the workflow has no `pull_request` trigger (schedule /
+`workflow_dispatch` / `repository_dispatch` only), so the ported step is *never* exercised by the
+PR's own CI ("never-triggered", not "pending"); and a bot "add macOS matrix" finding is outside-diff
++ pre-existing + by-design (macOS is covered by the nightly `build` job). Moot for the ledger
+regardless: any `.github/workflows/**` edit resolves at Step 1 to
+`ABSTAIN_POLICY:CLAUSE_FAIL:no_protected_paths` (early return, no challenger/critique) — the policy
+routing the *semantic* review of workflow YAML to a human — and the subsequent clean human merge is
+the expected APPROVED-equivalent join, not a miss
+([faithful bash→github-script CI-step port is loud-failure-direction; workflow-file PRs policy-abstain](../learnings/1788969888394-approver-confirmed-faithful-bash-github-script-ci-.md)).
+
 ## New CI lint-guard PRs: a safe, low-risk shape
 
 A **new CI lint-guard PR** (e.g. slang#12793, a `git grep` guard rejecting `${CMAKE_BINARY_DIR}`)
@@ -137,6 +156,27 @@ initially STALE/draft-era — verifying **review-signal head-currency** was what
 WOULD_APPROVE sound. Spend the challenger budget on (a) the positive control and (b) head-currency,
 not on diff size. Outcome: MERGED unchanged at the exact decision commit — call confirmed correct
 ([confirmed-safe CI lint-guard PR](../learnings/1788162629504-approver-calibration-confirmed-safe-new-ci-lint-gu.md)).
+
+**A CI-matrix entry is NOT automatically that positive control — confirm the consuming workflow
+fired on THIS head.** When a PR adds a new build-config flag + gate and an entry in
+`.github/cmake-options-matrix.json` (e.g. `SLANG_ENABLE_TSAN`, slang#12709), it is tempting to treat
+the matrix entry as the trigger-present positive control (probe #4 of the gate/flag standing probe)
+and WOULD_APPROVE on all-green CI. But `cmake-options-matrix.json` is consumed *only* by
+`cmake-options.yml`, which triggers on `workflow_dispatch` + a weekly Saturday `schedule` (cron
+`0 8 * * 6`) — the `merge_group` trigger was removed (10-job matrix ate half the runner budget) and
+it **never ran on `pull_request`** — so adding a matrix entry runs no build with the new flag ON on
+the PR head or on merge, and the green PR CI carries **zero bits** about whether the flag produces a
+working build. Rule: when a positive control depends on a CI matrix, verify the CONSUMING workflow's
+`on:` triggers actually fired for THIS head (`gh api repos/<r>/actions/runs?head_sha=<sha>` — absent
+from the list ⇒ the control did not run), and name-match lanes before crediting them (a green
+`sanitizer-linux-clang-x86_64` lane is the EXISTING ASan build from `ci-slang-sanitizer.yml`, not a
+TSan build). Distinguish the gate being **LIVE** (enabling the flag emits the flag — verify by
+inspection, e.g. `-fsanitize=thread` in `set_default_compile_options`) from the flag producing a
+**WORKING build** (needs a trigger-present control that actually ran); a faithful mirror of a
+CI-proven sibling branch de-risks but does not substitute for the control. Build-config flags fail
+LOUD (link error) and default-off, so an unproven-build gap is OPEN_GAP (policy), not BLOCK — hand
+to a human to confirm the build or accept a documented CI deferral ⇒ ABSTAIN_POLICY:OPEN_GAP
+([cmake-options-matrix.json entries are not a positive control on a PR head — verify the consuming workflow's triggers fired](../learnings/1788979868955-approver-challenger-miss-slang-cmake-options-matri.md)).
 
 ## Stale draft caveats and all-SKIPPED CI on large feature PRs
 
@@ -163,7 +203,7 @@ Two more transferable lessons from slang#12859 (experimental numeric-interface m
   material regardless of the clause outcome
   ([all-CI-SKIPPED gives no build signal](../learnings/1788480227101-approver-stale-draft-build-caveats-all-ci-skipped-.md)).
 
-**Source learnings (11):**
+**Source learnings (13):**
 
 - [Confirmed-safe: new CI lint-guard PR, positive-control verified, merged unchanged](../learnings/1788162629504-approver-calibration-confirmed-safe-new-ci-lint-gu.md) — the 4-point safe-guard checklist; spend challenger budget on positive control + review-signal head-currency.
 - [Protected-path ABSTAIN vindicated — .github CI-gating PR merged with bot Major findings unaddressed](../learnings/1788280113952-approver-calibration-protected-path-abstain-vindic.md) — clean merge ≠ over-conservative; docs-only CI-skip is itself a CI-integrity attack surface.
@@ -176,3 +216,5 @@ Two more transferable lessons from slang#12859 (experimental numeric-interface m
 - [ci_green_on_sha reads the Status API, blind to in-progress check-runs (slangpy#1144)](../learnings/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md) — passed while 12 build runs in_progress; APPROVER_CI_GATE normally covers it; treat non-completed check-runs as pending.
 - [ci_green_on_sha=fail from an external "SlangPy Tests" repository_dispatch status, not a check-run — expected-red on SlangPy-coordination PRs (slang#12975)](../learnings/1788945529133-approver-clause-gap-ci-green-on-sha-failure-from-t.md) — the inverse of the false-green: split combined `/statuses` vs `/check-runs`; an external red + all-green check-runs is a cross-repo coordination state, reported as "external coordinated check red," not a diff regression.
 - [`CLAUSE_UNEVALUABLE:ci_green_on_sha` structurally unevaluable on check-runs-only repos — combined-status total_count=0 (nanoclaw#1500)](../learnings/1788949627703-approver-infra-abstain-ci-green-on-sha-unevaluable.md) — combined-status returns `total_count=0` regardless of green check-runs, so with `require_ci_green:true` fleet-wide the clause permanently infra-abstains on green PRs; cross-check `/check-runs`, fix by unioning check-runs into the clause.
+- [Faithful bash→github-script CI-step port is loud-failure-direction; workflow-file PRs policy-abstain (slangpy#1145)](../learnings/1788969888394-approver-confirmed-faithful-bash-github-script-ci-.md) — classify a faithful port by failure direction (unchanged `if:` gate + `exec.exec` rejects on non-zero ⇒ loud, not silently-wrong), so demanding an inject-the-hazard positive control false-abstains; `.github/workflows/**` abstains on `no_protected_paths` regardless.
+- [cmake-options-matrix.json entries are NOT a positive control on a PR head (slang#12709)](../learnings/1788979868955-approver-challenger-miss-slang-cmake-options-matri.md) — `cmake-options.yml` runs only on `workflow_dispatch`/weekly `schedule`, never `pull_request`, so a matrix entry builds nothing on the head; verify the consuming workflow's triggers fired via `actions/runs?head_sha=`, name-match lanes, and separate gate-LIVE from build-WORKS ⇒ ABSTAIN_POLICY:OPEN_GAP.

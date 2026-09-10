@@ -3,7 +3,7 @@ title: "Approver merge-outcome calibration: agreement, disagreement, false-safe,
 type: concept
 group: misc
 tags: [slang-pr-approver, calibration, merge-join, false-abstain, false-safe, WOULD_APPROVE, ABSTAIN_POLICY, OPEN_GAP, process-label, doc-sync, test-gap]
-source_count: 17
+source_count: 18
 ---
 
 ## TL;DR
@@ -116,6 +116,23 @@ and #12517 where R1 WOULD_APPROVE was vindicated while R2's abstain was a
 lost-mount false-abstain
 [R1 vindicated, R2 lost-mount false-abstain](../learnings/1788266083934-approver-human-agreement-slang-12517-merged-r1-wou.md).
 
+Two checks keep "merged ⇒ APPROVED-equivalent" from misleading you when the
+`pr_merged` join lands on a large MEMBER/OWNER-authored feature PR that abstained.
+First, verify whether an INDEPENDENT (non-author, non-bot) human actually reviewed —
+filter `reviews[]` of the author and bots; on #12859 (experimental numeric interface
+modules, ABSTAIN'd on all 5 heads for `no_protected_paths` (a `**/CMakeLists.txt`
+edit) + `tier_eligible` (~9k lines / 41–43 files)) that set was `[]`, so the merge
+was the author-maintainer self-merging a green-CI feature on their own confidence,
+NOT a second human validating the code. Second, the delta between your last-decided
+head and the merged head can be a routine `Merge branch 'master'` (spvdb vendoring,
+unrelated fixes), not review churn — separate feature-substantive commits from master
+merges before drawing any "what humans changed" lesson (the numerics feature itself
+was stable across all 5 revisions). This class is a standing routing cost (rows
+excluded from scoring), not a false-safe; a tiered mount that raised the caps and
+exempted standard-module `CMakeLists.txt` for trusted authors with green CI would make
+it *decidable* instead of contributing only excluded-from-scoring abstains
+[merged-after-abstain: what the merge join actually means on a large maintainer feature PR](../learnings/1788973325106-approver-human-disagreement-merged-after-abstain-l.md).
+
 ## Confirmed safe shapes and mechanical-migration risk
 
 Several atoms record *confirmed-safe* PR shapes and where to spend review budget. A
@@ -135,7 +152,7 @@ distinct low-risk class where the `tier_eligible` abstain is correct routing but
 the outcome is near-certainly APPROVE
 [large bot sync merged unchanged, size cap conservative](../learnings/1788149356054-approver-human-agreement-large-bot-upstream-sync-m.md).
 
-**Source learnings (17):**
+**Source learnings (18):**
 
 - [Large bot upstream-sync merged unchanged after tier_eligible abstain](../learnings/1788149356054-approver-human-agreement-large-bot-upstream-sync-m.md) — nanoclaw#1391 (8588 churn) merged clean; sync-bot strict-descendant PRs are their own low-risk class; the 8000 line cap is conservative for it.
 - [Bulk mechanical test-idiom migration merged as-is](../learnings/1788162629546-approver-human-agreement-bulk-mechanical-test-idio.md) — #12846 (972-file `-o /dev/null`→`-o -`); risk lives in the one stream premise, not the repetitions; a residual stale-prose nit that merges confirms a low-severity call.
@@ -154,3 +171,4 @@ the outcome is near-certainly APPROVE
 - [FALSE-ABSTAIN: abstained OPEN_GAP on a missing test for correct code](../learnings/1788281996872-approver-human-disagreement-false-abstain-i-abstai.md) — #12574 merged over the abstain; discriminator: silently-wrong-now (abstain) vs future-regression-of-a-correct-guard (advisory-clear).
 - [CONFIRMED-CORRECT abstain: one-arm emit fix closed & replaced by all-arms fix](../learnings/1788285548503-approver-human-disagreement-confirmed-correct-abst.md) — #12733 (one BitCast arm) closed unmerged, replaced by #12741 (all 3 arms); treat "siblings unguarded, title claims general fix" as OPEN_GAP unless every sibling is proven unreachable.
 - [Verified 🔴 ICE on a niche/already-broken trigger: severity-grade before BLOCK](../learnings/1788368010791-approver-human-disagreement-verified-ice-on-a-nich.md) — #12186 shipped the ICE; establish trigger support status + test-without-the-change; recommend a tracking issue since an untracked shipped ICE has no breadcrumb.
+- [Merged-after-abstain on a large maintainer feature PR: what the merge join actually means](../learnings/1788973325106-approver-human-disagreement-merged-after-abstain-l.md) — #12859 (numeric interface modules) self-merged with zero independent review; verify (a) independent-human-review vs author self-merge and (b) feature churn vs a routine master-merge before reading a merge as code validation.

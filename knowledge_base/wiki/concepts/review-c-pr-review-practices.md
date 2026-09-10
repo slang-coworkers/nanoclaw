@@ -217,6 +217,10 @@ delete the branch/worktree or reopen** — closed-on-design ≠ wrong work, the 
 stayed open, so preserve the patch and let maintainers own the reopen decision
 [A technically-correct PR can die on language-design disagreement — don't read "closed" as "wrong code"](../learnings/1786008473137-a-technically-correct-pr-can-die-on-language-desig.md).
 
+## Assert-comment that claims impossibility contradicts a documented fail-loud case — flag as clarity
+
+When a PR adds a fail-loud `SLANG_RELEASE_ASSERT` whose comment says the guarded value "cannot be null / is guaranteed populated," check the PR's own **known-limitations** section: if a documented residual case can make the assert fire *by design*, the comment is internally inconsistent and invites a future maintainer to weaken or remove the assert as "dead defensive code." Flag it as a **clarity** finding (reword the comment to state the assert is a deliberate fail-loud for the unsupported case), NOT a correctness bug. On shader-slang/slang#12988 (fix for #12987: function-local struct + constrained generic method crash in `doesGenericSignatureMatchRequirement`), the fix correctly took the producer/ordering route — advance the satisfying generic's constraint decls to `DeclCheckState::SignatureChecked` at function entry + a `SLANG_RELEASE_ASSERT` on the satisfying-side types — but a documented self-referential-local case hits `ensureDecl`'s cyclic-reference early-return, leaving the sub-type null so the assert fires as intended; the comment claiming it "cannot be null" was the clarity gap. It surfaced independently as Reviewer A's clarity note and Reviewer C's high-confidence finding — cross-reviewer agreement is a strong keep signal. (`Val::equals` derefs a null receiver but tolerates a null argument, so asserting only the satisfying/receiver side is correct.) ([Assert-comment that claims impossibility contradicts a documented fail-loud case — clarity flag, not a bug](../learnings/1789022104970-assert-comment-that-claims-impossibility-contradic.md)).
+
 ## See also
 
 Instrument controls (false zeros, census, guards, markdown-grep) underpinning these practices:

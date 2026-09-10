@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-1483 learnings. [Catalog](../index.md)
+1485 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["N crash signatures" is a hypothesis about count, not an observation — but code shape is the WRONG test (slang#8785)](../learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md)
@@ -345,6 +345,7 @@ type: topic
 - [fp8 scalar float constants abort in spirv-tools constant folding (width-8 gap)](../learnings/1782449605671-fp8-scalar-float-constants-abort-in-spirv-tools-co.md)
 - [Fresh slang worktree: FileCheck unavailable (LLVM off) → borrow base build's libslang-llvm.so](../learnings/1787247745831-fresh-slang-worktree-filecheck-unavailable-llvm-of.md)
 - [Front-end pointer/generic fixes: regression-test GPU-free via INTERPRET, and check PR state first](../learnings/1788396349246-front-end-pointer-generic-fixes-regression-test-gp.md)
+- [Function-local interface conformance with constrained generic method crashes (null getSub in doesGenericSignatureMatchRequirement)](../learnings/1789014792514-function-local-interface-conformance-with-constrai.md)
 - [fvk-bind-globals non-default set collides split-out globals resources onto CB binding (slang#10668)](../learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)
 - [Gate Slang IR/classifier fix verdicts on full-suite CI](../learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-suit.md)
 - [Gating PRs need TWO-SIDED flag-fired controls — Slang's SLANG_PASS wrapper gives you one free; plus the mid-struct ODR layout-split trap](../learnings/1785828391431-gating-prs-need-two-sided-flag-fired-controls-slan.md)
@@ -1260,6 +1261,7 @@ type: topic
 - [Slang::String is COW — deep-copy via String(x.getUnownedSlice()) to share across threads](../learnings/1782731516993-slang-string-is-cow-deep-copy-via-string-x-getunow.md)
 - [SLANG_ASSERT becomes __builtin_assume in release — never assert a precondition you also guard on](../learnings/1785335639560-slang-assert-becomes-builtin-assume-in-release-nev.md)
 - [SLANG_ASSERT becomes __builtin_assume in release — never pair it with a runtime if() on the same condition](../learnings/1784846626233-slang-assert-becomes-builtin-assume-in-release-nev.md)
+- [SLANG_ASSERT is SLANG_ASSUME (UB) in release; ensureDecl-before-enumeration for constraint flattening](../learnings/1789019735283-slang-assert-is-slang-assume-ub-in-release-ensured.md)
 - [SLANG_ASSERT(x); if(x)... is a release-build UB trap (ASSERT expands to ASSUME)](../learnings/1784847485639-slang-assert-x-if-x-is-a-release-build-ub-trap-ass.md)
 - [SLANG_ASSERT=release-assert-only gives FALSE "fixed" when triaging assert-failure ICEs](../learnings/1781712984955-slang-assert-release-assert-only-gives-false-fixed.md)
 - [SLANG_ASSUME evaluates its operand on GCC — and the header's "do not rely on side effects" is a usage CONTRACT, not a statement of fact](../learnings/1785883273838-slang-assume-evaluates-its-operand-on-gcc-and-the-.md)
