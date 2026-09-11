@@ -14,7 +14,7 @@ name: Compose Check
 
 on:
   push:
-    branches: [nv-main, nv-coworkers, nv-slang, nv-slangpy, nv-nanoclaw, nv-dashboard]
+    branches: [nv-main, nv-coworkers, nv-slang, nv-slangpy, nv-nanoclaw, nv-dashboard, nv-hermes]
 
 jobs:
   compose:
@@ -48,7 +48,7 @@ jobs:
           # single install/build/validate below (faster than per-branch, and the
           # explicit build is the oracle for a non-building compose).
           MERGE_TRAIN_NO_INSTALL=1 bash setup/merge-train.sh \
-            nv-main nv-slang nv-slangpy nv-nanoclaw nv-dashboard
+            nv-main nv-slang nv-slangpy nv-nanoclaw nv-dashboard nv-hermes
           echo "composed HEAD: $(git log --oneline -1)"
 
       - uses: pnpm/action-setup@b906affcce14559ad1aafd4ab0e942779e9f58b1 # v4
