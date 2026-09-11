@@ -110,13 +110,25 @@ DEFAULT_BOT_LOGINS = ["nv-slang-bot[bot]", "nv-slang-bot"]
 
 
 def parse_ts(value):
-    """ISO-8601 (with trailing Z) -> aware datetime, or None."""
+    """ISO-8601 -> aware (UTC) datetime, or None.
+
+    Inputs funnel here from two producers with different shapes: gh emits
+    offset-aware ISO ("...Z"), while `ncl` emits a naive local-ISO ("2026-09-10
+    00:00", no Z/offset). `datetime.fromisoformat` preserves that distinction,
+    so a naive value would slip through and later blow up any max()/comparison
+    against an aware one (the offset-naive vs offset-aware TypeError). Normalize
+    at this single boundary — a bare naive value is treated as UTC — so every
+    caller can rely on the "aware" contract the name promises.
+    """
     if not value or not isinstance(value, str):
         return None
     try:
-        return datetime.fromisoformat(value.replace("Z", "+00:00"))
+        ts = datetime.fromisoformat(value.replace("Z", "+00:00"))
     except ValueError:
         return None
+    if ts.tzinfo is None:
+        ts = ts.replace(tzinfo=timezone.utc)
+    return ts
 
 
 def age_seconds(now, value):
@@ -402,6 +414,24 @@ def classify(now, chain, sessions_by_id, bot_logins):
     # carries that decision to the human.
     if any_session_cost_stopped(chain, sessions_by_id):
         return ("cost_stopped", ball, last_by_us, False, "")
+
+    # human-owned park — a prior tick recorded a disposition whose token says a
+    # human (maintainer/contributor) owns the next step ("maintainer-driving /
+    # human-debate / stood-down / awaiting-pickup / external-pr / advisory /
+    # closed-by-us"). Such a chain is deliberately parked: it is NOT ours to nudge
+    # no matter who spoke last or how long it's been quiet. we_owe_next_step
+    # already honors these exact tokens on the bot-last branch (slang#12002); this
+    # top-level check is the single source of truth so ALL three ball directions
+    # treat a human-owned park identically — previously ball=='ours' (human spoke
+    # last) and ball=='none' (silence clock) skipped the check and re-flagged
+    # months-old parked chains (measured 2026-09-10: e.g. slang-6970 parked
+    # "advisory:maintainer-driving — no action" since June, and slang-11612
+    # "advisory:maintainer-driving" idle 7wk, both wrongly nudged). A chain with
+    # NO disposition, or an active-work disposition ("fixing"/"in_progress"),
+    # falls through unchanged and is still classified by ball/silence below.
+    disp = (chain.get("disposition") or "").lower()
+    if any(tok in disp for tok in HUMAN_OWNED_DISPOSITION):
+        return ("awaiting_human", ball, last_by_us, False, "")
 
     # awaiting_us — ball is in our court, our session is not actively closing it.
     # STUCK regardless of how recent the human comment is (SKILL.md §2 [MUST]).
