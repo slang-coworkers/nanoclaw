@@ -362,6 +362,73 @@ function externallyOwnedToolNames(): Set<string> {
   return owned;
 }
 
+/**
+ * Call-syntax names a PROJECT spine uses for its own project's code.
+ *
+ * `some_name(` is how 8 of the registered tools are really cited, so that shape
+ * carries coverage and cannot be dropped. It is equally how a project spine cites
+ * the project it works on — hermes alone contributes 13 (`get_hermes_home`,
+ * `plugin_db`, `register_tool`, `discover_plugins`, `invoke_hook`, `read_source`
+ * …), none of them MCP tools, and each project onboarded adds more. Subtracting
+ * them by name would be the hand-maintained list this file refuses elsewhere, so
+ * they are derived from the project spines themselves.
+ *
+ * Only `container/spines/<project>/` is read, never `base/`: a phantom in
+ * nanoclaw's own prose must still fail. What this gives up is a phantom written
+ * bare in project prose that names no server — the fully-qualified
+ * `mcp__nanoclaw__*` read still covers every surface.
+ */
+function projectSpineSymbols(): Set<string> {
+  const spines = path.join(ROOT, 'container', 'spines');
+  const symbols = new Set<string>();
+  let projects: fs.Dirent[];
+  try {
+    projects = fs.readdirSync(spines, { withFileTypes: true });
+  } catch {
+    return symbols;
+  }
+  const walk = (dir: string): void => {
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else if (/\.(md|ya?ml)$/.test(entry.name)) {
+        let text: string;
+        try {
+          text = fs.readFileSync(full, 'utf-8');
+        } catch {
+          continue;
+        }
+        for (const m of text.matchAll(/`(?:mcp__[a-z0-9-]+__)?([a-z][a-z0-9_]*_[a-z0-9_]*)\(/g)) {
+          symbols.add(m[1]);
+        }
+      }
+    }
+  };
+  for (const project of projects) {
+    if (!project.isDirectory() || project.name === 'base') continue;
+    walk(path.join(spines, project.name));
+    // Its skills and workflows too. A project cites its own functions in both
+    // places — `get_hermes_home()` appears in container/spines/hermes/** AND in
+    // container/skills/hermes-code-{reader,writer}/SKILL.md. The prefix comes
+    // from the spine directory name, so onboarding a project needs no edit here.
+    for (const dir of ['skills', 'workflows']) {
+      const parent = path.join(ROOT, 'container', dir);
+      let entries: fs.Dirent[];
+      try {
+        entries = fs.readdirSync(parent, { withFileTypes: true });
+      } catch {
+        continue;
+      }
+      for (const entry of entries) {
+        if (entry.isDirectory() && entry.name.startsWith(`${project.name}-`)) {
+          walk(path.join(parent, entry.name));
+        }
+      }
+    }
+  }
+  return symbols;
+}
+
 function moduleSources(): string[] {
   return fs
     .readdirSync(MCP_DIR)
@@ -435,6 +502,7 @@ describe('registered tools vs taught tools', () => {
 
   it('names no tool it does not register, on any surface', () => {
     const externallyOwned = externallyOwnedToolNames();
+    const projectSymbols = projectSpineSymbols();
     // Two unambiguous shapes: the fully-qualified `mcp__nanoclaw__*` reference,
     // and snake_case call syntax. Bare prose words are deliberately not matched —
     // this trades recall for precision, since a false positive here would make
@@ -452,6 +520,8 @@ describe('registered tools vs taught tools', () => {
         // A residual `mcp__` means another server's tool written in full.
         if (match[1].startsWith('mcp__')) continue;
         if (externallyOwned.has(match[1])) continue;
+        // A project spine documenting its own project's function, not a tool.
+        if (projectSymbols.has(match[1])) continue;
         cited.add(match[1]);
       }
       for (const tool of cited) {
