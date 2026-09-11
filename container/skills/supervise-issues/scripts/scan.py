@@ -322,6 +322,76 @@ HUMAN_OWNED_DISPOSITION = (
     "awaiting-pickup", "closed-by-us", "stood-down", "advisory",
 )
 
+# EXACT agent-group folders whose coworker renders its verdict as an approval-ledger
+# decision — NEVER a GitHub comment. `slang-pr-approver` / `slangpy-pr-approver` are
+# shadow reviewers: they read a PR and write a decision row, they do not post. So on
+# a chain held ONLY by such a role "a human/bot-reviewer commented last, unanswered
+# by us" (ball=='ours') is ALWAYS true — a STRUCTURAL artifact, not a stalled turn.
+# An EXACT allowlist, NOT a substring test: a hypothetical writable role like
+# "slang-pr-approver-fixer" or "slang-pr-disapprover" must NOT be mistaken for it.
+READ_ONLY_ROLE_FOLDERS = frozenset({"slang-pr-approver", "slangpy-pr-approver"})
+
+
+def is_read_only_role_only(chain, sessions_by_id):
+    """True iff the chain references ≥1 session AND *every* referenced session is a
+    positively-identified read-only role (an exact READ_ONLY_ROLE_FOLDERS match).
+
+    FAILS CLOSED: if ANY referenced session is missing from sessions_by_id, or has an
+    empty/unrecognized `group_folder`, we cannot prove the chain is read-only-only,
+    so we return False and it keeps its normal (possibly nudged) classification. That
+    is what keeps a genuine fixer/triager on the chain — even one whose session row
+    is absent or unstamped (`group_folder` is optional in the input) — from being
+    silently parked. Measured 2026-09-11: of 95 awaiting_us chains only 21 are
+    approver-only; this suppresses exactly those (#12389/#12836/#12968) and leaves
+    the other 74 fixer/triager-owned awaiting_us chains nudging as before.
+    """
+    sids = chain.get("sessions", [])
+    if not sids:
+        return False
+    saw_read_only = False
+    for sid in sids:
+        folder = ((sessions_by_id.get(sid) or {}).get("group_folder") or "").lower()
+        if folder in READ_ONLY_ROLE_FOLDERS:
+            saw_read_only = True
+        else:
+            return False  # missing / empty / unknown / writable -> not read-only-only
+    return saw_read_only
+
+
+def recorded_marker_ts(value):
+    """Parse an LLM-recorded action marker (`nudgedAt` / `escalatedAt`) to the newest
+    valid datetime it represents, or None.
+
+    Accepts an ISO-8601 string, or a non-empty list of them (older ticks stored a
+    history list). Returns None for None / "" / [] / malformed input — so the
+    cooldown never accepts an empty or garbage marker as proof that we already acted
+    (which would silence a chain that was, in fact, never nudged)."""
+    if isinstance(value, list):
+        times = [parse_ts(v) for v in value]
+        times = [t for t in times if t is not None]
+        return max(times) if times else None
+    return parse_ts(value)
+
+
+def acted_and_quiet(marker_ts, newest_material_ts):
+    """True iff we recorded an action (marker_ts) AND no externally-material event has
+    happened since — i.e. the newest external event on the chain is not newer than the
+    marker.
+
+    `newest_material_ts` is the max observation time of the events a human could be
+    waiting on: a fresh non-bot comment/review, a coarse PR-state transition, or a
+    cost-cap episode (see run()). It is a DURABLE, level comparison against the marker
+    — not an edge comparison to the previous tick — so a re-arm survives ticks on
+    which the LLM took no action (the round-3 permanent-suppression bug). It
+    deliberately excludes the classified `state` and last_activity_by_us: both are
+    functions of our own clock (a nudge advances our_last_outbound, and `state` is
+    derived from silent_age), so keying re-arm on either lets a sent nudge re-trigger
+    itself with no external change — the self-rearm bug. None of the three material
+    events is advanced by our own action, so a marker set after them stays quiet."""
+    if marker_ts is None:
+        return False
+    return newest_material_ts is None or newest_material_ts <= marker_ts
+
 
 def we_owe_next_step(chain, sessions_by_id, silent_age):
     """Bot-last, but WE own the next step (root cause of slang#12002).
@@ -366,6 +436,8 @@ def compute_non_nudge_reason(chain, sessions_by_id, ball, state, needs_nudge):
     Tokens:
       cost-stopped        a session hit its cost ceiling; awaiting human decision
       human-owned:<disp>  human-owned disposition genuinely owns the next step
+      read-only-role      chain held only by a read-only role (approver); verdict
+                          is a ledger decision, not a GitHub post — nothing to nudge
       pr-open             a PR/owed artifact exists; CI/Step-2b owns the nudge
       running             a live container acted within the working window
       awaiting-human      we spoke last, no fixer-owed promise outstanding
@@ -380,6 +452,8 @@ def compute_non_nudge_reason(chain, sessions_by_id, ball, state, needs_nudge):
     for tok in HUMAN_OWNED_DISPOSITION:
         if tok in disp:
             return f"human-owned:{tok}"
+    if is_read_only_role_only(chain, sessions_by_id):
+        return "read-only-role"
     if chain.get("pr"):
         return "pr-open"
     if state in ("fixing", "pr_open") and any_session_running(chain, sessions_by_id):
@@ -431,6 +505,22 @@ def classify(now, chain, sessions_by_id, bot_logins):
     # falls through unchanged and is still classified by ball/silence below.
     disp = (chain.get("disposition") or "").lower()
     if any(tok in disp for tok in HUMAN_OWNED_DISPOSITION):
+        return ("awaiting_human", ball, last_by_us, False, "")
+
+    # read-only-role park — a chain held EXCLUSIVELY by a read-only role
+    # (slang-pr-approver / slangpy-pr-approver) records its verdict in the approval
+    # ledger, never as a GitHub comment. So ball=='ours' ("a human/CodeRabbit-style
+    # reviewer commented last, unanswered by us") is a STRUCTURAL artifact, not a
+    # stalled turn — the role already acted and a nudge cannot make it post a reply
+    # it never emits. Park it as awaiting_human: the human now owns merge/close on
+    # the recorded decision. Same "single source of truth before the ball branches"
+    # placement as the human-owned park above, so ball=='none' (an approver chain
+    # with no comments yet) is covered too. Strictly guarded to read-only-ONLY
+    # chains (is_read_only_role_only): a fixer/triager also on the chain still owes
+    # a GitHub reply and keeps its awaiting_us nudge. Root of ~21 of the 95
+    # awaiting_us false-positives that inflated must_nudge and drove the supervisor
+    # report-only (measured 2026-09-11; #12389/#12836/#12968 are the canonical shape).
+    if is_read_only_role_only(chain, sessions_by_id):
         return ("awaiting_human", ball, last_by_us, False, "")
 
     # awaiting_us — ball is in our court, our session is not actively closing it.
@@ -546,6 +636,11 @@ def run(payload):
         # cost_stopped = chains currently in the cost_stopped state this tick
         # (regardless of whether needs_cost_notice fired — see that field).
         "cost_stopped": 0,
+        # nudge_cooldown = chains that classify()'d as needs_nudge this tick but
+        # were parked because we already nudged them and nothing changed since
+        # (see the action-cooldown block below). Surfaced so the board can show
+        # "already-nudged, unchanged" chains distinctly from never-actionable ones.
+        "nudge_cooldown": 0,
     }
 
     for thread in sorted(live_keys):
@@ -632,6 +727,62 @@ def run(payload):
             eff_age = (now - dts).total_seconds() if dts is not None else None
         escalate = state == "silent" and (eff_age or 0) >= ESCALATE_S
 
+        # --- action cooldown (SKILL.md §3: do NOT re-fire the same action on a chain
+        # we already acted on when nothing a human is waiting on has changed since).
+        # Root cause of the report-only drift: scan re-emitted needs_nudge for the
+        # same long-parked chains every 12h — measured 2026-09-11 must_nudge≈122 vs
+        # ~5 actually sent — because the flag never cleared once raised, so real fresh
+        # chains drowned in the noise. `nudgedAt` / `escalatedAt` are the authoritative
+        # "already acted" markers the LLM records when it actually sends (SKILL §3);
+        # `snap = dict(prior)` below carries them forward untouched.
+        #
+        # We suppress only while the newest EXTERNAL, human-observable event on the
+        # chain is not newer than the marker. Three such events, each recorded with a
+        # DURABLE observation timestamp (carried forward in the snapshot, so a re-arm
+        # survives ticks the LLM skipped — the round-3 permanent-suppression fix):
+        #   * a fresh non-bot comment/review        (newest_inbound_ts, from the payload)
+        #   * a coarse PR-state transition           (pr_state_changed_at)
+        #   * a cost-cap episode (stop/resume)       (cost_stopped_at)
+        # None is advanced by our own nudge (unlike last_activity_by_us / the
+        # silent_age-derived `state`), so a sent nudge cannot re-arm itself. A genuine
+        # ball-flip arrives WITH a new comment, so it re-arms via newest_inbound. A
+        # never-acted chain (no valid marker) is untouched — its first action fires.
+        now_iso = now.isoformat().replace("+00:00", "Z")
+        newest_inbound = latest(
+            chain.get("comments", []), lambda c: not is_bot_author(c, bot_logins)
+        )
+        newest_inbound_ts = parse_ts(newest_inbound.get("at")) if newest_inbound else None
+
+        pr_state = (chain.get("pr") or {}).get("state")
+        # Record the PR-transition time on the tick we first OBSERVE a change (skip a
+        # brand-new chain's first sighting), then carry it forward. Durable: it keeps
+        # re-arming until a later marker post-dates it.
+        pr_state_changed_at = prior.get("prStateChangedAt")
+        if thread not in new_keys and prior.get("lastPrState") != pr_state:
+            pr_state_changed_at = now_iso
+        # Record/refresh the cost-episode time every tick the chain is cost_stopped; a
+        # later resume-then-stall then post-dates the old marker and re-arms.
+        cost_stopped_at = prior.get("costStoppedAt")
+        if state == "cost_stopped":
+            cost_stopped_at = now_iso
+
+        newest_material_ts = max(
+            (t for t in (newest_inbound_ts, parse_ts(pr_state_changed_at),
+                         parse_ts(cost_stopped_at)) if t is not None),
+            default=None,
+        )
+
+        nudge_cooldown = needs_nudge and acted_and_quiet(
+            recorded_marker_ts(prior.get("nudgedAt")), newest_material_ts,
+        )
+        if nudge_cooldown:
+            needs_nudge = False
+            reason = ""
+        if escalate and acted_and_quiet(
+            recorded_marker_ts(prior.get("escalatedAt")), newest_material_ts,
+        ):
+            escalate = False
+
         # Action plan — the mechanical enforcement surface (SKILL.md §3).
         # `action` is a strict 1:1 function of `needs_nudge`: True -> 'nudge',
         # False -> 'none'. There is DELIBERATELY no 'suppress' action — a nudge
@@ -641,8 +792,9 @@ def run(payload):
         # 'human-owned:<disp>' non_nudge_reason. This closes the prose-override
         # hole that stranded #12097 (PR #901's wording alone was insufficient).
         action = "nudge" if needs_nudge else "none"
-        non_nudge_reason = compute_non_nudge_reason(
-            chain, sessions_by_id, ball, state, needs_nudge
+        non_nudge_reason = (
+            "nudge-cooldown" if nudge_cooldown
+            else compute_non_nudge_reason(chain, sessions_by_id, ball, state, needs_nudge)
         )
 
         rows.append({
@@ -676,7 +828,13 @@ def run(payload):
         snap["lastState"] = state
         snap["lastActivityAt"] = last_by_us
         snap["lastPrState"] = (chain.get("pr") or {}).get("state")
-        snap["lastObservedActivity"] = now.isoformat().replace("+00:00", "Z")
+        snap["lastObservedActivity"] = now_iso
+        # Durable external-event clocks for the action cooldown (carried forward so a
+        # re-arm survives ticks the LLM skipped). Only stored once observed.
+        if pr_state_changed_at is not None:
+            snap["prStateChangedAt"] = pr_state_changed_at
+        if cost_stopped_at is not None:
+            snap["costStoppedAt"] = cost_stopped_at
         if chain.get("disposition"):
             snap["disposition"] = chain["disposition"]
         art = github_artifact(chain)
@@ -695,6 +853,8 @@ def run(payload):
         if needs_nudge:
             counts["needs_nudge"] += 1
             counts["must_nudge"] += 1
+        if nudge_cooldown:
+            counts["nudge_cooldown"] += 1
         if escalate:
             counts["escalate"] += 1
 
