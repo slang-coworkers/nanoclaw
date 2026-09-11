@@ -198,8 +198,11 @@ def classify_message(msg: dict, rid: str) -> dict | None:
         cap_form = re.search(r"FAIL\s*[×X]\s*2", vtext) is not None
         env_form = re.search(r"FAIL\s*\(\s*(ENV|ENVIRONMENTAL|OUTSIDE[- ]PLUGIN)", vtext) is not None
         ev["escalated_up"] = "ESCALATE" in vtext or "ESCALATE" in first.upper()
-        if env_form and not cap_form:
-            ev["verdict"] = "FAIL_ENV"  # every failing row outside plugin code: a FAIL to read, never a counted round
+        env_proof = re.search(r"\*\*Env cause:\*\*", text) is not None
+        if env_form and not cap_form and env_proof:
+            ev["verdict"] = "FAIL_ENV"  # every failing row outside plugin code, WITH the Env cause proof: never a counted round
+        elif env_form and not cap_form:
+            ev["verdict"] = "FAIL"  # 'FAIL (env)' without an Env cause line is not exempt (hermes-verify verdict rule): it counts
         elif cap_form or ("FAIL" in vtext and "ESCALATE" not in vtext):
             ev["verdict"] = "FAIL"  # counted toward the per-cycle cap; the ×2 form is the cap being hit
         elif ev["escalated_up"]:

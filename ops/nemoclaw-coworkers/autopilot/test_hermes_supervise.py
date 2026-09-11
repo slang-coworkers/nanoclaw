@@ -576,7 +576,8 @@ class RoundCapsV2(unittest.TestCase):
         threads = {"hermes-LOOP-F35": self.base + [
             handoff(2, HEAD_A, 20), test_report(2, HEAD_A, 1, "FAIL", 18),
             handoff(2, HEAD_B, 10, round_no=2),
-            test_report(2, HEAD_B, 2, "FAIL (env) — recipient provider environment, outside plugin code", 3),
+            test_report(2, HEAD_B, 2, "FAIL (env) — recipient provider environment, outside plugin code", 3,
+                        extra="- **Env cause:** _sanitize_subprocess_env strips the provider — tools/bot_mode_dm.py:364, r2-postonboard-probe.log"),
         ]}
         r = run(self.st, threads, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
         self.assertEqual((r["stage"], r["fail_count"], r["cycle_fail_count"]), ("testing", 1, 1))
@@ -613,3 +614,31 @@ class RoundCapsV2(unittest.TestCase):
         r = run(self.st, threads, prs=[pr(2, "LOOP-F35", self.HEAD_D, created_h=27)], config=cfg)["rows"]["LOOP-F35"]
         self.assertEqual(r["stage"], "blocked")
         self.assertIn("round 3 used", r["reason"])
+
+
+class EnvFailProof(unittest.TestCase):
+    """A 'FAIL (env)' report is exempt from the cycle cap only with an '**Env cause:**' proof line
+    (hermes-verify verdict rule); without it the supervisor counts it like any FAIL."""
+
+    def setUp(self):
+        self.st = state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2 (draft)"}])
+        self.base = [spec_handoff("LOOP-F35", 30), builder_start("LOOP-F35", 29)]
+
+    def test_env_fail_without_proof_counts(self):
+        threads = {"hermes-LOOP-F35": self.base + [
+            handoff(2, HEAD_A, 20), test_report(2, HEAD_A, 1, "FAIL", 18),
+            handoff(2, HEAD_B, 10, round_no=2), test_report(2, HEAD_B, 2, "FAIL (env) — provider environment", 3),
+        ]}
+        r = run(self.st, threads, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
+        self.assertEqual((r["stage"], r["cycle_fail_count"]), ("blocked", 2))
+        self.assertIn("cap: test FAIL x2", r["reason"])
+
+    def test_env_fail_with_proof_is_exempt(self):
+        proof = "- **Env cause:** tools/bot_mode_dm.py:316 spawns bare `hermes` — FileNotFoundError in r3-postonboard-probe.log"
+        threads = {"hermes-LOOP-F35": self.base + [
+            handoff(2, HEAD_A, 20), test_report(2, HEAD_A, 1, "FAIL", 18),
+            handoff(2, HEAD_B, 10, round_no=2), test_report(2, HEAD_B, 2, "FAIL (env) — provider environment", 3, extra=proof),
+        ]}
+        r = run(self.st, threads, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
+        self.assertEqual((r["stage"], r["cycle_fail_count"]), ("testing", 1))
+        self.assertTrue(r["env_fail"])

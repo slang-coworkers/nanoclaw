@@ -586,6 +586,9 @@ where it lives today and shows up in the next tick's state.
   failing row outside plugin code) and infra retries do not consume a round (hermes-verify's
   `rounds.log` rule); a `[Review Verdict] REQUEST_CHANGES` starts a new cycle with a fresh budget;
   the cap is `FAIL ×2` per cycle on the tester side and `REQUEST_CHANGES ×2` per PR on the reviewer side.
+  A `FAIL (env)` is exempt only when the report carries an `- **Env cause:**` line (proof outside
+  `plugins/**`); the supervisor counts it as a plain FAIL otherwise. `ESCALATE (pre-flight)` (hermes-testbed
+  §4b-0, mandatory every round) is never a round.
 - **Nudges are unmarked and threaded.** First character never `[`; `thread_id="hermes-<ID>"`
   always; `in_reply_to` when the role has written on the thread. The text is the §3 template
   and nothing else, so a nudge can never be mistaken for a dispatch or a verdict.

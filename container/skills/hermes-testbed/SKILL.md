@@ -293,6 +293,8 @@ EOF
 
 A scenario whose steps expect the bot in a Bot-Mode roster also needs the `ui_meta.hermes-bots` block T3's row writes (no CLI writes it, `profile_distribution.py:88-95`); run that same `python3 -c` step here. Fixtures are per scenario, but the home is shared for the round: install once per bot name, and a fixture that collides with a T3 bot name is a scenario defect, not a name you rewrite. The builder is told to name every fixture dir `<req-id-lowercase>-<role>` (`p0-loop-bot-a`) precisely so the collision cannot happen; a bare `bot-a` that does collide comes back as a `FAIL` for the id with the two names quoted.
 
+**Reuse across rounds — the provisioned testbed is warm state, not scratch.** `$TB` lives per thread and survives rounds. Before re-provisioning (profile installs, onboard, dashboard dist, desktop preflight), compute `sha256sum $SCN/fixtures/** $SCN/spec/** $SCN/*.md $TB/harness.env | sha256sum` and compare with `$TB/provision.sha`. Equal hash **and** §4b-0 passes on the existing `$TB/home` → reuse: skip the installs and the dist build, record `testbed: reused (sha <8>)` in `state.md` and in the report's `## Network` section. Hash moved, pre-flight failed, or the ADR's fixture list changed → re-provision, write the new hash, record `testbed: rebuilt (<reason>)`. The network allowlist, the live bounds and the per-round `live-calls.log` reset are unchanged by reuse; only the provisioning work is skipped. Teardown (`rm -rf $TB`) happens when the row ends (merged or blocked) or on an explicit orchestrator instruction, never between rounds. On LOOP-F35 the provisioning (two profile installs, onboard, dashboard dist, desktop build) cost 30–40 min of every round.
+
 **`model: stub`.** One §3a stub serves every stub scenario of the round: `$TB/bin/model-stub.py` on `127.0.0.1:0` plus the provider block in `$TB/home/config.yaml` and `$TB/home/.env`. Its canned completion is the string the scenario waits on (`agent-browser wait --text "<canned reply>"`), so keep it stable across rounds and quote it in the report when a step waits for it.
 
 **`model: live` on the OneCLI live tier, bounded.** Written once per round, from your MAIN shell (the container's own OneCLI proxy values are still in the environment there; inside the harness they are not):
@@ -312,7 +314,25 @@ grep -Ei '(api[_-]?key|token|secret|password)[=:]' $TB/harness.live.env | grep -
 cp $TB/harness.live.env $ART/harness.live.env           # published with the report — placeholders and host:port only
 ```
 
-**Live-tier pre-flight — the delivery subprocess must find `hermes` and a provider (every live round, before the first model call).** Core's same-machine `message_agent` delivery spawns the RECIPIENT bot as `bash -lic '… hermes -p <bot> chat …'` with a bare `hermes` argv[0] (`tools/bot_mode_dm.py`, ledger UA-1 — worked around here, not filed upstream): `/etc/profile` in that login shell resets PATH, dropping the sanitizer's `$WT/.venv/bin` prepend, and `/usr/local/bin` is read-only in the image. The child also runs with `_sanitize_subprocess_env` (no inherited provider vars) and `HOME=/home/node`, so the recipient's provider must live in its profile config. Both are testbed provisioning, never plugin code:
+**§4b-0 Pre-flight — MANDATORY, every round, before any `AC-` row runs.** Every LOOP-F35 tester round that was lost (r1 bare `hermes` off the delivery PATH, r2 provider block stripped in the sanitized child, r3 `onboard` re-rendering the profile from `spec/spines/live-base.yaml` and clobbering the fixture's provider block, plus a hard-coded loopback proxy port that moved with a container restart) would have failed this list in under two minutes instead of after a full round. Run it twice: the **generic** checks right after `$TB/harness.env` exists (§2), the **scenario** checks after the frontmatter `fixtures:` are installed and before the first `## Setup` line. Write one line per check to `/workspace/agent/reports/<thread-id>/preflight.md` — `<check> PASS|FAIL — <evidence> — <remediation>` — and copy the file into `$ART/`.
+
+| # | check | how | remediation named on FAIL |
+|---|---|---|---|
+| G1 | harness env loads | `( source $TB/harness.env && env \| grep -c HERMES_HOME )` = 1; `HERMES_HOME` dir writable (`touch $TB/home/.preflight && rm`) | rebuild §2 harness |
+| G2 | network allowlist loaded | `$TB/pyguard/sitecustomize.py` present and `python3 -c 'import socket; socket.create_connection(("1.1.1.1",80),1)'` under the harness **fails** | rebuild guard (§2) |
+| G3 | live wire reachable (rows with `live:` only) | from the MAIN shell, `curl -s -o /dev/null -w %{http_code} "$ANTHROPIC_BASE_URL/v1/models"` (or the container's OneCLI proxy) is 200/401, never 000 | container proxy down → `ESCALATE (pre-flight)`, infra |
+| G4 | ports free | every fixed loopback port the round binds (dashboard, stub, api_server peer) is free: `ss -ltn` has no listener | kill the leftover from THIS container (§ one-container-per-thread) |
+| G5 | desktop gate (rows with `desktop:` only) | §5 gate: node version, `xvfb-run xauth npm`, apt set | the existing `DESKTOP=SKIPPED — install_packages: <pkgs>` path |
+| G6 | worktree clean before the live tier | `git -C $WT status --porcelain` is empty | a dirty worktree is a run defect: `git -C $WT checkout -- . && git clean -fd`, note it |
+| S1 | `hermes` resolves per bot through the login shell | the block below (symlink + `bash -lic 'command -v hermes'` for every `LIVE_BOTS` profile) | the symlink line below |
+| S2 | recipient provider block present | `grep -c 'providers:' $TB/home/profiles/<bot>/config.yaml` ≥ 1 for every recipient bot, with a base_url and a dummy key | builder ships the block in the fixture (LOOP-F35 r2) |
+| S3 | provider block SURVIVES onboard | `cp config.yaml config.pre; hermes onboard … (the scenario's own onboard line); diff config.pre config.yaml` shows the `providers:` block intact | builder mirrors the block into the spine the onboard renders from (LOOP-F35 r3: `spec/spines/live-base.yaml`) |
+| S4 | no hard-coded loopback ports in fixtures | `grep -rnE '127\.0\.0\.1:[0-9]{2,5}' $SCN/fixtures $SCN/spec` is empty; the base_url must come from the harness env (`$ANTHROPIC_BASE_URL` / `HERMES_TESTBED_LIVE_PROXY`) | builder reads the port from the env (LOOP-F35 r3: `38403` died on a container restart) |
+| S5 | frontmatter/ADR agreement | the existing frontmatter checks above (ac, kind, model) | builder |
+
+Any `FAIL` in this table → the round stops **before any AC row**: rounds.log gets `round <k> ESCALATE <sha7> <utc> preflight:<check>`, the message is `[Test Report] ESCALATE (pre-flight)` naming the check, its evidence line and the remediation, sent as an `ESCALATE` report (step 8 shape) — it is never a counted round and never a `FAIL` on an `AC-` row. A check that cannot be executed (tool missing) is a `FAIL` of that check, not a skip. After every `live:` scenario, re-run G6: a worktree the live bot modified (the LOOP-F35 r2 SAFETY finding: a real-model bot edited `tools/bot_mode_dm.py` in the verification worktree) makes that criterion `FAIL` with `evidence = git status --porcelain output`, restores the tree, and adds a `## Safety` line to the report.
+
+**Live-tier pre-flight detail (S1/S2) — the delivery subprocess must find `hermes` and a provider (every live round, before the first model call).** Core's same-machine `message_agent` delivery spawns the RECIPIENT bot as `bash -lic '… hermes -p <bot> chat …'` with a bare `hermes` argv[0] (`tools/bot_mode_dm.py`, ledger UA-1 — worked around here, not filed upstream): `/etc/profile` in that login shell resets PATH, dropping the sanitizer's `$WT/.venv/bin` prepend, and `/usr/local/bin` is read-only in the image. The child also runs with `_sanitize_subprocess_env` (no inherited provider vars) and `HOME=/home/node`, so the recipient's provider must live in its profile config. Both are testbed provisioning, never plugin code:
 
 ```bash
 mkdir -p ~/.local/bin && ln -sfn "$WT/.venv/bin/hermes" ~/.local/bin/hermes      # ~/.profile re-prepends ~/.local/bin after /etc/profile
@@ -326,7 +346,7 @@ done
 # "No inference provider configured" inside the sanitized child (LOOP-F35 r2).
 ```
 
-A pre-flight failure is `PRE-FLIGHT FAIL` in the report and stops the live tier before it spends any of the 40 calls; it is an environment defect, never an AC verdict.
+A pre-flight failure is `PRE-FLIGHT FAIL` in `preflight.md` and stops the round before it spends any of the 40 calls — reported as `[Test Report] ESCALATE (pre-flight)` (§4b-0), an environment defect that is never an AC verdict and never a counted round.
 
 
 and the guard keeps its shape: add one env-gated branch to `_ok` in `$TB/pyguard/sitecustomize.py` (inert under `harness.env`, which never sets the variables), **before** the loopback check, so the allow-list is one named endpoint and every allowed connect is counted:
@@ -487,6 +507,8 @@ then `## Network` — the §2 enforcement table with the line count of `net-deni
 followed by `send_file(in_reply_to=<intake-id>, path="/workspace/agent/reports/<thread-id>/test-report-<sha7>.md")` — the file MUST travel as an attachment; the builder forwards it with its review request and the reviewer rejects a pasted or summarised report.
 
 ## 7. Cost rules
+
+- **Warm testbed.** Reuse `$TB` across rounds within a row (§4b reuse rule): provisioning was 30–40 min of each LOOP-F35 round; a reused testbed re-runs only §4b-0 pre-flight (< 2 min) plus the failing ids.
 
 - **One `/codex-critique` per run, `STAGE: OUTPUT_REVIEW`, on `test-report-<sha7>.md` (attested) + the exact `[Test Report]` text, at the very end.** No per-row, per-tier, or per-step critique; never on logs or on the diff. Must-fix → edit the report → `codex-reply` on the same thread (3 rounds max). Write nothing under `reports/<thread-id>/` between the approve and the send — the gate re-hashes the attested file.
 - **Never clone or copy the release tree.** Cite from `/workspace/extra/hermes-release`; build/test only in `wt-verify-<N>`. Never `uv python install`; never a second `uv sync` when `.venv` already imports `hermes_cli`; the negative control reuses the PR venv via symlink.
