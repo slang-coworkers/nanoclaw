@@ -41,6 +41,12 @@ sent it, through the ordinary nudge machinery (one nudge per row per tick, the 6
 SLO nudges first). "Once per marker": the nudge names the marker and its timestamp, so the next
 tick reads its own nudge back from the thread and does not repeat it. `card_missing_since`
 (ISO, optional) ignores markers older than that, for threads that predate the card skill.
+
+Carried criteria (ledger.md § Carried criteria, read by hermes_queue into each row's
+`carries_criteria`): a row at `gate` with open criteria carried onto it gets them appended to the
+gate action text ("carried criteria to verify in the ADR/Test Report: AC-..."), and a row that is
+`merged` while a criterion carried TO it is still open draws one `carried-open` alert ("merged
+with open carried criterion AC-... — mark covered or re-carry"), 24 h bound like every alert.
 """
 
 from __future__ import annotations
@@ -745,7 +751,13 @@ def _new_record(rid: str, res: dict, last_activity: str | None, book: dict) -> d
         "status_line": None,
         "alert_kind": None,
         "cards": None,
+        "carries_criteria": [],
     }
+
+
+def _open_carried(row: dict) -> list[str]:
+    """The AC ids other rows deferred onto this one that are still open (hermes_queue's reading)."""
+    return [c.get("criterion") for c in (row.get("carries_criteria") or []) if isinstance(c, dict) and c.get("criterion")]
 
 
 def supervise_row(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict] | None, prs: list[dict], gating: dict, cfg: dict, nudges: dict | None, sessions: dict | None) -> dict:
@@ -765,6 +777,7 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
     stamps = [e["ts"] for e in events] + [t for t in ((pr or {}).get("updatedAt"), (pr or {}).get("createdAt")) if t]
     rec = _new_record(rid, res, max(stamps) if stamps else None, book)
     rec["thread_ok"] = thread_ok
+    rec["carries_criteria"] = _open_carried(row)
     if res.get("drift"):
         tick.alerts.append({"kind": "ledger-drift", "row": rid, "detail": res["drift"]})
 
@@ -818,7 +831,14 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
 
     if stage == "gate" and res.get("triage_present"):
         tick.summary["gate"] += 1
-        tick.actions.append({"kind": "gate", "row": rid, "pr": rec["pr"], "head": rec["head"], "text": f"run merge-gate.md for {FORK}#{rec['pr']} head {rec['head'] or '?'} ({rid})"})
+        text = f"run merge-gate.md for {FORK}#{rec['pr']} head {rec['head'] or '?'} ({rid})"
+        action = {"kind": "gate", "row": rid, "pr": rec["pr"], "head": rec["head"]}
+        if rec["carries_criteria"]:
+            # P5 must see each carried id as a PASS row too; the Orchestrator's gate run is where that is checked.
+            text += f"; carried criteria to verify in the ADR/Test Report: {', '.join(rec['carries_criteria'])}"
+            action["carried_criteria"] = list(rec["carries_criteria"])
+        action["text"] = text
+        tick.actions.append(action)
 
     if rec["env_fail"]:
         pkgs = res.get("install_packages") or "see the tester's report"
@@ -855,6 +875,36 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
     return rec
 
 
+def carried_after_merge(tick: _Tick, rows_in: dict, out_rows: dict, nudges: dict | None) -> None:
+    """A row that is merged (ledger, or the fork this tick) while a criterion carried TO it is
+    still `open` in ledger.md § Carried criteria: the merge gate either verified it (then the
+    Orchestrator marks it `covered (<PR or head>)`) or it slipped through — either way the open
+    row is wrong and would be dispatched nowhere, so one alert per row, 24 h bound. A merged row
+    is otherwise not supervised at all, so its record is added here only when it has open ids."""
+    for rid in sorted(rows_in):
+        row = rows_in[rid]
+        open_ids = _open_carried(row)
+        if not open_ids:
+            continue
+        rec = out_rows.get(rid)
+        merged = rec["stage"] == "merged" if rec is not None else row.get("state") == "merged"
+        if not merged:
+            continue
+        book = nudge_book(nudges, rid, [])
+        if rec is None:
+            ledger = row.get("ledger") or {}
+            res = {"stage": "merged", "reason": row.get("state_reason") or "ledger says merged", "pr": ledger.get("pr")}
+            rec = _new_record(rid, res, None, book)
+            rec["thread_ok"] = True
+            rec["carries_criteria"] = open_ids
+            out_rows[rid] = rec
+        tick.escalate(
+            rec, book, "carried-open", "merged", 0.0,
+            f"merged with open carried criterion {', '.join(open_ids)} — mark covered or re-carry",
+            "in ledger.md § Carried criteria set status `covered (<PR or head>)` if this PR delivered it, else re-carry it (to row = a row still to be dispatched)",
+        )
+
+
 def supervise(
     state: dict,
     threads: dict,
@@ -877,6 +927,7 @@ def supervise(
         rid: supervise_row(tick, rid, rows_in[rid], threads.get(f"hermes-{rid}", []), prs, gating, cfg, nudges, sessions)
         for rid in sorted(candidates)
     }
+    carried_after_merge(tick, rows_in, out_rows, nudges)
     order = {"hold": 0, "gate": 1, "nudge": 2, "alert": 3}
     tick.actions.sort(key=lambda a: (order.get(a["kind"], 9), a.get("row") or ""))
     return {"now": iso_utc(tick.now), "rows": out_rows, "actions": tick.actions, "alerts": tick.alerts, "summary": tick.summary}

@@ -642,3 +642,78 @@ class EnvFailProof(unittest.TestCase):
         r = run(self.st, threads, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
         self.assertEqual((r["stage"], r["cycle_fail_count"]), ("testing", 1))
         self.assertTrue(r["env_fail"])
+
+
+# ledger.md § Carried criteria: LOOP-F35's fifth criterion, deferred onto MEM-F44 (hermes_queue reads it into `carries_criteria`).
+CARRIED = (
+    "\n## Carried criteria\n\n"
+    "| criterion | from row | to row | reason | decided | status |\n"
+    "| --- | --- | --- | --- | --- | --- |\n"
+    "| AC-LOOP-F35-5 | LOOP-F35 | MEM-F44 | the retention key is proven where it is rendered | operator 2026-09-10 | open |\n"
+)
+
+
+def state_carried(rows: list[dict], carried: str = CARRIED, config: dict | None = None) -> dict:
+    return hq.build_state(PLAN, MATRIX, ledger(rows) + carried, config=config, now=NOW)
+
+
+class CarriedCriteria(unittest.TestCase):
+    """The gate reminder names the ids the merge gate must see as PASS rows (P5), and a row merged
+    while a criterion carried TO it is still open draws one alert (24 h bound)."""
+
+    def setUp(self):
+        self.rows = [merged_row("LOOP-F35", 2), {"id": "MEM-F44", "spec": stamp(28), "pr": "#3"}]
+        self.chain = [spec_handoff("MEM-F44", 28), builder_start("MEM-F44", 27), handoff(3, HEAD_A, 20), test_report(3, HEAD_A, 1, "PASS", 15), review_verdict(3, HEAD_A, 1, "APPROVE", 5)]
+        self.prs = [pr(3, "MEM-F44", HEAD_A, created_h=21)]
+
+    def test_gate_action_names_the_carried_criteria(self):
+        st = state_carried(self.rows)
+        self.assertEqual([c["criterion"] for c in st["rows"]["MEM-F44"]["carries_criteria"]], ["AC-LOOP-F35-5"])
+        threads = {"hermes-MEM-F44": self.chain + [triage("MEM-F44", 4.5)]}
+        out = run(st, threads, prs=self.prs)
+        r = out["rows"]["MEM-F44"]
+        self.assertEqual((r["stage"], r["hold"], r["carries_criteria"]), ("gate", None, ["AC-LOOP-F35-5"]))
+        gate = next(a for a in out["actions"] if a["kind"] == "gate")
+        self.assertTrue(gate["text"].endswith("(MEM-F44); carried criteria to verify in the ADR/Test Report: AC-LOOP-F35-5"), gate["text"])
+        self.assertEqual(gate["carried_criteria"], ["AC-LOOP-F35-5"])
+        self.assertFalse(any(a["kind"] == "alert" for a in out["actions"]))  # not merged: no carried-open alert
+        # without the table the gate text is what it was
+        plain = run(state(self.rows), threads, prs=self.prs)
+        g = next(a for a in plain["actions"] if a["kind"] == "gate")
+        self.assertTrue(g["text"].endswith("(MEM-F44)"))
+        self.assertNotIn("carried_criteria", g)
+        self.assertEqual(plain["rows"]["MEM-F44"]["carries_criteria"], [])
+
+    def test_gate_without_triage_still_carries_the_ids_on_the_record(self):
+        r = run(state_carried(self.rows), {"hermes-MEM-F44": self.chain}, prs=self.prs)["rows"]["MEM-F44"]
+        self.assertEqual((r["stage"], r["carries_criteria"]), ("gate", ["AC-LOOP-F35-5"]))
+
+    def test_merged_with_open_carried_criterion_alerts_once(self):
+        st = state_carried([merged_row("LOOP-F35", 2), merged_row("MEM-F44", 3)])
+        out = run(st, {})
+        r = out["rows"]["MEM-F44"]
+        self.assertEqual((r["stage"], r["action"], r["alert_kind"]), ("merged", "escalate", "carried-open"))
+        self.assertIn("merged with open carried criterion AC-LOOP-F35-5 — mark covered or re-carry", r["alert_line"])
+        self.assertIn("MEM-F44 · merged 0h ·", r["alert_line"])
+        self.assertIn("PR #3", r["alert_line"])
+        self.assertIn("covered (<PR or head>)", r["alert_line"])
+        alert = next(a for a in out["actions"] if a["kind"] == "alert")
+        self.assertEqual((alert["row"], alert["alert_key"], alert["thread_id"]), ("MEM-F44", "carried-open:merged", "hermes-status"))
+        self.assertNotIn("LOOP-F35", out["rows"])  # the from-row merging with a deferred criterion is the point, not a fault
+        self.assertEqual((out["summary"]["escalate"], out["summary"]["in_flight"]), (1, 0))
+        again = run(st, {}, nudges={"MEM-F44": {"alerts": {"carried-open:merged": ago(2)}}})
+        self.assertEqual((again["rows"]["MEM-F44"]["action"], again["rows"]["MEM-F44"]["slo_status"]), ("none", "escalated"))
+        self.assertEqual(again["alerts"], [])
+
+    def test_fork_merged_this_tick_also_alerts(self):
+        out = run(state_carried(self.rows), {"hermes-MEM-F44": self.chain}, prs=[pr(3, "MEM-F44", HEAD_A, "MERGED", created_h=21)])
+        r = out["rows"]["MEM-F44"]
+        self.assertEqual((r["stage"], r["action"], r["alert_kind"]), ("merged", "escalate", "carried-open"))
+        self.assertEqual(len([a for a in out["actions"] if a["kind"] == "alert"]), 1)
+
+    def test_covered_or_dropped_criterion_is_quiet(self):
+        for status in ("covered (#3)", "dropped (superseded)"):
+            st = state_carried([merged_row("LOOP-F35", 2), merged_row("MEM-F44", 3)], CARRIED.replace("| open |", f"| {status} |"))
+            out = run(st, {})
+            self.assertNotIn("MEM-F44", out["rows"])
+            self.assertEqual(out["actions"], [])
