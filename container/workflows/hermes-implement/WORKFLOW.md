@@ -127,7 +127,8 @@ overrides:
        ```bash
        cd /workspace/agent/wt-{{target_slug}}
        git push -u origin plugin/{{target_slug}}                                  # origin = the fork; never `upstream`
-       FORK_SLUG=$(gh repo view --json nameWithOwner -q .nameWithOwner)           # must NOT print {{vars.repo}}
+       FORK_SLUG=$(git remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##'); [ -n "$FORK_SLUG" ] && [ "$FORK_SLUG" != "{{vars.repo}}" ] || { echo "refusing: fork slug resolved to '$FORK_SLUG' (upstream or empty)"; exit 1; }; gh repo set-default "$FORK_SLUG" >/dev/null 2>&1 || true           # must NOT print {{vars.repo}}
+       `gh repo view` is NOT used for the slug: in a fork clone with no `gh repo set-default`, it resolves to the PARENT (upstream) — on 2026-09-11 that posted an internal tester report onto NousResearch/hermes-agent#2. The slug comes from the `origin` remote URL, is refused when it equals `{{vars.repo}}`, and the gh default is pinned to the fork so every later `gh pr comment`/`gh pr view` without `--repo` also lands on the fork.
        # re-derive the base — shell state does not survive between Bash calls (Setup step 2)
        TAG=$(python3 -c 'import json;print(json.load(open("{{vars.release_tree}}/RELEASE_MANIFEST.json"))["tag"])' 2>/dev/null)
        [ -n "$TAG" ] || TAG={{vars.release_tag}}
@@ -168,7 +169,7 @@ overrides:
          then post it:
          ```bash
          cd /workspace/agent/wt-{{target_slug}}
-         FORK_SLUG=$(gh repo view --json nameWithOwner -q .nameWithOwner)      # the fork; never {{vars.repo}}
+         FORK_SLUG=$(git remote get-url origin | sed -E 's#^.*github\.com[:/]##; s#\.git$##'); [ -n "$FORK_SLUG" ] && [ "$FORK_SLUG" != "{{vars.repo}}" ] || { echo "refusing: fork slug resolved to '$FORK_SLUG' (upstream or empty)"; exit 1; }; gh repo set-default "$FORK_SLUG" >/dev/null 2>&1 || true      # the fork; never {{vars.repo}}
          gh pr comment <N> --repo "$FORK_SLUG" --body-file /workspace/agent/reports/hermes-<req-id>-test-report-<sha7>-comment.md
          ```
          One body file per head SHA, never overwritten: the PR carries one comment per report and each comment must stay reproducible from the file that produced it (and a `Write` over an existing file needs a Read first anyway).
