@@ -6,15 +6,42 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 587 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 244 |
-| `nv-slang` | slang project spine, skills, workflows | 149 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 80 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 59 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 594 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 246 |
+| `nv-slang` | slang project spine, skills, workflows | 151 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 82 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 61 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-11
+
+### nv-main (7 PRs)
+- **#1564** `ci(ruff): lint the Python that runs, not the agent memory tree`
+- **#1566** `ci: bring nv-hermes under the sync and PR-path guards`
+- **#1567** `test(composer): don't read a project's own functions as phantom tools`
+- **#1577** `ci(compose-check): compose nv-hermes into the deploy tree`
+- **#1582** `fix(group-init): refreshMirror leaves symlinked skill mirrors alone`
+- **#1581** `fix(supervise-issues): park approver-only chains + durable nudge/escalate cooldown`
+- **#1583** `fix(slack-agent-flow): hermetic create_agent flow test on nv-main trunk (unblocks the companion skill install)`
+
+### nv-dashboard (2 PRs)
+- **#1557** `Sync nv-dashboard with upstream/main`
+- **#1571** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#1558** `Sync nv-slang with upstream/main`
+- **#1572** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (2 PRs)
+- **#1559** `Sync nv-slangpy with upstream/main`
+- **#1573** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#1560** `Sync nv-nanoclaw with upstream/main`
+- **#1574** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-09-10
 
