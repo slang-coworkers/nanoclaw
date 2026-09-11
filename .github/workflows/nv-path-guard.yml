@@ -16,6 +16,7 @@ on:
       - nv-slang
       - nv-slangpy
       - nv-nanoclaw
+      - nv-hermes
 
 jobs:
   check:
