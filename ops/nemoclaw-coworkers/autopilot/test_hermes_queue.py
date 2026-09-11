@@ -13,6 +13,7 @@ import json
 import re
 import subprocess
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -33,6 +34,27 @@ HEADER = (
     "| --- | --- | --- | --- | --- | --- | --- |\n"
 )
 BATCH2 = ("LOOP-F37", "GOV-F24", "GOV-F25", "COST-F29", "COST-F30", "LOOP-F40")
+
+# ledger.md's second table: criteria one row deferred onto another (the LOOP-F35 "AC-5 to P4" gap, done right).
+CARRIED = (
+    "\n## Carried criteria\n\n"
+    "| criterion | from row | to row | reason | decided | status |\n"
+    "| --- | --- | --- | --- | --- | --- |\n"
+    "| AC-LOOP-F35-5 | LOOP-F35 | LOOP-F37 | the veto half needs the gates plugin; compose only renders the key | operator 2026-09-10 | open |\n"
+    "| AC-LOOP-F35-6 | LOOP-F35 | ISO-F13 | mount set is ISO-F13's deliverable \\| rendered, not policed | msg 4242 2026-09-10 | covered (#12) |\n"
+    "| AC-LOOP-F35-7 | LOOP-F35 | MEM-F44 | superseded by the compose render | operator 2026-09-09 | dropped (superseded) |\n"
+)
+
+# upstream-asks.md: core-change candidates the plugin surface cannot absorb (UA-1 is the real bare-`hermes` argv[0] case).
+UPSTREAM_ASKS = (
+    "# Upstream asks\n\nCore-change candidates the plugin surface cannot absorb.\n\n"
+    "## Upstream asks\n\n"
+    "| id | source row | citation | ask | disposition | owner | updated |\n"
+    "| --- | --- | --- | --- | --- | --- | --- |\n"
+    "| UA-1 | LOOP-F35 | /workspace/extra/hermes-release/tools/bot_mode_dm.py:316 | `bot_mode_dm.py` spawns bare `hermes` as argv[0]; a venv install has no `hermes` on PATH | bypassed (wrapper on PATH in the fixture, not filed) | orchestrator | 2026-09-10 |\n"
+    "| UA-2 | LOOP-F37 | /workspace/extra/hermes-release/hermes_cli/plugins.py:12 | plugin load hook must see `name|alias` pairs | open | — | 2026-09-10 |\n"
+    "| UA-3 | GOV-F27 | /workspace/extra/hermes-release/gateway/veto.py:40 | veto set must be enumerable | filed (https://github.com/NousResearch/hermes-agent/issues/999) | human | 2026-09-11 |\n"
+)
 
 
 def ledger(rows: list[dict]) -> str:
@@ -508,7 +530,186 @@ class QueueRules(unittest.TestCase):
         self.assertEqual(st["eligible_next"], [])
 
 
+class CarriedCriteria(unittest.TestCase):
+    """ledger.md § Carried criteria: a criterion deferred off one row rides on its to-row, which must
+    be a plan row — never a phase name (the LOOP-F35 "AC-5 to P4" gap: prose only, nothing carried it)."""
+
+    def test_second_table_does_not_disturb_the_work_list(self):
+        led = hq.parse_ledger(LEDGER + CARRIED)
+        base = hq.parse_ledger(LEDGER)
+        self.assertEqual(list(led["rows"]), ["LOOP-F35"])
+        self.assertEqual(led["rows"], base["rows"])
+        self.assertEqual(sorted(led["other_rows"]), sorted(base["other_rows"]))
+        self.assertEqual((led["duplicates"], led["spelling"]), ([], []))
+        self.assertEqual((base["carried_criteria"], base["carried_problems"]), ([], []))
+
+    def test_parse_carried_table(self):
+        led = hq.parse_ledger(LEDGER + CARRIED)
+        self.assertEqual(led["carried_problems"], [])
+        crit = {c["criterion"]: c for c in led["carried_criteria"]}
+        self.assertEqual(list(crit), ["AC-LOOP-F35-5", "AC-LOOP-F35-6", "AC-LOOP-F35-7"])
+        c5 = crit["AC-LOOP-F35-5"]
+        self.assertEqual((c5["from_row"], c5["to_row"], c5["n"], c5["status"], c5["status_detail"]), ("LOOP-F35", "LOOP-F37", 5, "open", None))
+        self.assertEqual(c5["decided"], "operator 2026-09-10")
+        self.assertTrue(c5["reason"].startswith("the veto half"))
+        c6 = crit["AC-LOOP-F35-6"]
+        self.assertEqual((c6["status"], c6["status_detail"], c6["to_row"]), ("covered", "#12", "ISO-F13"))
+        self.assertEqual(c6["reason"], "mount set is ISO-F13's deliverable | rendered, not policed")  # escaped pipe kept
+        self.assertEqual((crit["AC-LOOP-F35-7"]["status"], crit["AC-LOOP-F35-7"]["status_detail"]), ("dropped", "superseded"))
+        # a raw pipe in `reason` folds back into `reason`, the status column stays the status
+        raw = CARRIED.replace("compose only renders the key", "compose only renders the key | the sandbox proves it")
+        c = {x["criterion"]: x for x in hq.parse_ledger(LEDGER + raw)["carried_criteria"]}["AC-LOOP-F35-5"]
+        self.assertEqual((c["status"], c["decided"]), ("open", "operator 2026-09-10"))
+        self.assertTrue(c["reason"].endswith("renders the key|the sandbox proves it"), c["reason"])  # cells stripped, re-joined on the pipe
+
+    def test_rows_gain_carries_and_deferred_criteria(self):
+        st = state(LEDGER + CARRIED)
+        self.assertEqual([c["criterion"] for c in st["rows"]["LOOP-F37"]["carries_criteria"]], ["AC-LOOP-F35-5"])
+        self.assertEqual(st["rows"]["LOOP-F37"]["carries_criteria"][0]["from_row"], "LOOP-F35")
+        self.assertEqual(st["rows"]["ISO-F13"]["carries_criteria"], [])  # covered: no longer open
+        self.assertEqual(st["rows"]["MEM-F44"]["carries_criteria"], [])  # dropped
+        deferred = st["rows"]["LOOP-F35"]["deferred_criteria"]
+        self.assertEqual(
+            [(d["criterion"], d["to_row"], d["status"]) for d in deferred],
+            [("AC-LOOP-F35-5", "LOOP-F37", "open"), ("AC-LOOP-F35-6", "ISO-F13", "covered"), ("AC-LOOP-F35-7", "MEM-F44", "dropped")],
+        )
+        self.assertEqual(st["rows"]["LOOP-F37"]["deferred_criteria"], [])
+        self.assertEqual(len(st["carried_criteria"]), 3)
+        self.assertEqual(st["sources"]["ledger"]["carried_criteria"], 3)
+        self.assertEqual(st["alerts"], [])
+        self.assertTrue(st["plan_ok"])
+        self.assertEqual(st["rows"]["LOOP-F35"]["state"], "spec_handoff")  # the work-item table still reads as before
+
+    def test_coverage_reports_open_carried_criteria(self):
+        cov = state(LEDGER + CARRIED)["coverage"]
+        self.assertTrue(cov["ok"], cov["problems"])
+        self.assertEqual((cov["carried_total"], cov["open_carried_criteria"]), (3, 1))
+        self.assertEqual(cov["open_carried_ids"], ["AC-LOOP-F35-5"])
+        self.assertEqual(cov["carried_line"], "open carried criteria: 1 (rows: LOOP-F37)")
+        self.assertEqual(state(LEDGER)["coverage"]["carried_line"], "open carried criteria: 0")
+        # coverage_check without a ledger keeps its old contract
+        cov0 = hq.coverage_check(hq.parse_plan(PLAN), hq.parse_matrix(MATRIX))
+        self.assertEqual((cov0["ok"], cov0["open_carried_criteria"], cov0["carried_total"]), (True, 0, 0))
+
+    def test_merged_from_row_keeps_the_open_criterion_visible(self):
+        st = state(ledger([merged_row("LOOP-F35", 2)]) + CARRIED)
+        self.assertEqual(st["rows"]["LOOP-F35"]["state"], "merged")
+        self.assertEqual(st["coverage"]["carried_line"], "open carried criteria: 1 (rows: LOOP-F37)")
+        self.assertEqual([c["criterion"] for c in st["rows"]["LOOP-F37"]["carries_criteria"]], ["AC-LOOP-F35-5"])
+        self.assertFalse(any(a["kind"].startswith("carried") for a in st["alerts"]))  # merging the from-row is the point
+
+    def test_unknown_to_row_is_a_problem_and_an_alert(self):
+        for bad in ("P4", "P4-sandbox", "LOOP-F99"):
+            st = state(LEDGER + CARRIED.replace("| LOOP-F37 |", f"| {bad} |"))
+            self.assertIn(f"carried criterion AC-LOOP-F35-5 names unknown row {bad}", st["coverage"]["problems"])
+            self.assertFalse(st["coverage"]["ok"])
+            self.assertEqual(st["dispatch_paused"], "plan-changed: hashes or coverage check")
+            alert = next(a for a in st["alerts"] if a["kind"] == "carried-criterion-unknown-row")
+            self.assertEqual(alert["row"], "LOOP-F35")
+            self.assertIn(f"names unknown row {bad}", alert["detail"])
+            self.assertNotIn(bad, st["rows"])
+            self.assertEqual(st["coverage"]["carried_line"], f"open carried criteria: 1 (rows: {bad})")  # still counted, never hidden
+
+    def test_defer_to_row_is_a_problem_too(self):
+        st = state(LEDGER + CARRIED.replace("| LOOP-F37 |", "| RT-F04 |"))
+        self.assertTrue(any("names DEFER row RT-F04" in p for p in st["coverage"]["problems"]), st["coverage"]["problems"])
+        self.assertTrue(any(a["kind"] == "carried-criterion-unknown-row" for a in st["alerts"]))
+
+    def test_malformed_status_or_id_reads_open_and_alerts(self):
+        st = state(LEDGER + CARRIED.replace("| open |", "| maybe |"))
+        self.assertEqual([c["criterion"] for c in st["rows"]["LOOP-F37"]["carries_criteria"]], ["AC-LOOP-F35-5"])  # fail-safe: open
+        self.assertTrue(any("status 'maybe'" in p for p in st["sources"]["ledger"]["carried_problems"]))
+        self.assertTrue(any(a["kind"] == "carried-criterion-malformed" for a in st["alerts"]))
+        self.assertFalse(st["coverage"]["ok"])
+        led = hq.parse_ledger(LEDGER + CARRIED.replace("| AC-LOOP-F35-5 |", "| LOOP-F35-5 |"))
+        self.assertTrue(any("is not AC-<row>-<n>" in p for p in led["carried_problems"]), led["carried_problems"])
+        led = hq.parse_ledger(LEDGER + CARRIED.replace("| AC-LOOP-F35-5 | LOOP-F35 |", "| AC-LOOP-F35-5 | LOOP-F36 |"))
+        self.assertEqual(led["carried_criteria"][0]["from_row"], "LOOP-F35")  # the id is authoritative
+        self.assertTrue(any("from row LOOP-F36" in p for p in led["carried_problems"]))
+        led = hq.parse_ledger(LEDGER + CARRIED.replace("| AC-LOOP-F35-5 |", "| AC‑LOOP‑F35‑5 |"))  # U+2011 hyphens
+        self.assertEqual(led["carried_criteria"][0]["criterion"], "AC-LOOP-F35-5")
+
+    def test_dispatch_text_names_the_carried_criteria(self):
+        st = state(ledger([merged_row("LOOP-F35", 2)]) + CARRIED)
+        by_id = {e["id"]: e for e in st["eligible_next"]}
+        t = by_id["LOOP-F37"]["dispatch_text"]
+        self.assertIn(
+            "Carried criteria this row MUST cover (deferred from other rows; the merge gate checks them): "
+            "AC-LOOP-F35-5 (from LOOP-F35: the veto half needs the gates plugin; compose only renders the key)",
+            t,
+        )
+        self.assertIn("never renumbered", t)
+        self.assertLess(t.index("every id it carries"), t.index("Carried criteria this row MUST cover"))
+        self.assertLess(t.index("Carried criteria this row MUST cover"), t.index("Upstream ask:"))
+        self.assertNotIn("Carried criteria", by_id["MEM-F44"]["dispatch_text"])
+        self.assertIn("carries none |", by_id["MEM-F44"]["orchestrator_text"])
+        self.assertIn("; carried criteria AC-LOOP-F35-5 |", by_id["LOOP-F37"]["orchestrator_text"])
+        adopt_row = dict(st["rows"]["OBS-F45"], carries_criteria=[{"criterion": "AC-LOOP-F35-9", "from_row": "LOOP-F35", "reason": "r"}])
+        adopt = hq.dispatch_text("OBS-F45", adopt_row, hq.load_config(None))
+        self.assertIn("Carried criteria this row MUST cover", adopt)
+        self.assertIn("AC-LOOP-F35-9 (from LOOP-F35: r)", adopt)
+
+
+class UpstreamAsks(unittest.TestCase):
+    """upstream-asks.md § Upstream asks: every core-change candidate is a UA row on its source row."""
+
+    def test_parse_upstream_asks(self):
+        asks = hq.parse_upstream_asks(UPSTREAM_ASKS)
+        self.assertEqual([a["id"] for a in asks], ["UA-1", "UA-2", "UA-3"])
+        a1, a2, a3 = asks
+        self.assertEqual((a1["source_row"], a1["disposition"], a1["owner"], a1["updated"]), ("LOOP-F35", "bypassed", "orchestrator", "2026-09-10"))
+        self.assertEqual(a1["disposition_detail"], "wrapper on PATH in the fixture, not filed")
+        self.assertTrue(a1["citation"].endswith("tools/bot_mode_dm.py:316"))
+        self.assertEqual(a2["ask"], "plugin load hook must see `name|alias` pairs")  # raw pipe folded back into `ask`
+        self.assertEqual((a2["disposition"], a2["disposition_detail"], a2["owner"]), ("open", None, "—"))
+        self.assertEqual((a3["disposition"], a3["disposition_detail"]), ("filed", "https://github.com/NousResearch/hermes-agent/issues/999"))
+        self.assertTrue(all(a["id_ok"] and a["disposition_ok"] for a in asks))
+        self.assertEqual(hq.parse_upstream_asks(""), [])
+        self.assertEqual(hq.parse_upstream_asks("# Upstream asks\n\n(none yet)\n"), [])
+
+    def test_rows_gain_upstream_asks(self):
+        st = hq.build_state(PLAN, MATRIX, LEDGER, now=NOW, upstream_asks_text=UPSTREAM_ASKS)
+        self.assertEqual(st["rows"]["LOOP-F35"]["upstream_asks"], ["UA-1"])
+        self.assertEqual(st["rows"]["LOOP-F37"]["upstream_asks"], ["UA-2"])
+        self.assertEqual(st["rows"]["GOV-F27"]["upstream_asks"], ["UA-3"])
+        self.assertEqual(st["rows"]["MEM-F44"]["upstream_asks"], [])
+        self.assertEqual(len(st["upstream_asks"]), 3)
+        self.assertEqual(st["sources"]["upstream_asks"], {"provided": True, "rows": 3})
+        self.assertEqual(st["alerts"], [])
+        # existing callers pass nothing: no asks, nothing provided, everything else identical
+        st0 = state(LEDGER)
+        self.assertEqual(st0["rows"]["LOOP-F35"]["upstream_asks"], [])
+        self.assertEqual(st0["sources"]["upstream_asks"], {"provided": False, "rows": 0})
+        self.assertEqual(st0["upstream_asks"], [])
+
+    def test_malformed_or_unknown_row_alerts_but_never_pauses(self):
+        text = UPSTREAM_ASKS + "| U-4 | LOOP-F35 | c | a | parked | — | 2026-09-11 |\n| UA-5 | FOO-F99 | c | a | open | — | 2026-09-11 |\n"
+        st = hq.build_state(PLAN, MATRIX, LEDGER, now=NOW, upstream_asks_text=text)
+        kinds = [(a["kind"], a["row"]) for a in st["alerts"]]
+        self.assertIn(("upstream-ask-malformed", "LOOP-F35"), kinds)
+        self.assertIn(("upstream-ask-unknown-row", None), kinds)
+        detail = next(a["detail"] for a in st["alerts"] if a["kind"] == "upstream-ask-malformed")
+        self.assertIn("'U-4' is not UA-<n>", detail)
+        self.assertIn("'parked' is not open", detail)
+        self.assertEqual(st["rows"]["LOOP-F35"]["upstream_asks"], ["UA-1", "U-4"])  # kept visible either way
+        self.assertTrue(st["plan_ok"])
+        self.assertIsNone(st["dispatch_paused"])
+
+
 class Cli(unittest.TestCase):
+    def test_upstream_asks_flag_is_optional_and_a_missing_file_is_an_empty_table(self):
+        base = [sys.executable, str(HERE / "hermes_queue.py"), "--plan", str(DOCS / "dispatch-plan.md"), "--matrix", str(DOCS / "gap-matrix.md"),
+                "--ledger", str(HERE / "fixtures" / "ledger.md"), "--now", NOW, "--json"]
+        with tempfile.TemporaryDirectory() as d:
+            asks = Path(d) / "upstream-asks.md"
+            asks.write_text(UPSTREAM_ASKS, encoding="utf-8")
+            p = subprocess.run(base + ["--upstream-asks", str(asks)], capture_output=True, text=True, check=False)
+            self.assertEqual(p.returncode, 0, p.stderr)
+            self.assertEqual(json.loads(p.stdout)["rows"]["LOOP-F35"]["upstream_asks"], ["UA-1"])
+            p = subprocess.run(base + ["--upstream-asks", str(Path(d) / "missing.md")], capture_output=True, text=True, check=False)
+            self.assertEqual((p.returncode, p.stderr), (0, ""))
+            self.assertEqual(json.loads(p.stdout)["sources"]["upstream_asks"], {"provided": True, "rows": 0})
+
     def test_json_flag_and_exit_code(self):
         p = subprocess.run(
             [sys.executable, str(HERE / "hermes_queue.py"), "--plan", str(DOCS / "dispatch-plan.md"), "--matrix", str(DOCS / "gap-matrix.md"),

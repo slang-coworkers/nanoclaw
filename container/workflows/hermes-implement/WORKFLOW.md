@@ -18,6 +18,7 @@ overrides:
        cp /workspace/inbox/<msg-id>/<slug>-acceptance_test.py    /workspace/agent/reports/{{target_slug}}-acceptance_test.py
        ```
        No ADR arrived and the task is non-trivial → run the **hermes-plan** workflow (mode = plan) yourself first; never improvise a plugin design from the chat text. Extract from the ADR: requirement id, plugin name/key, `## Plugin surface`, `## CORE-CHANGE` (`none` or a cited `{{vars.release_tree}}/<file>:<line>`), and `## Acceptance test` target path.
+    1b. **Recall — wiki first, before any code.** Spawn one `Agent`: "Check if `/workspace/shared/wiki/index.md` exists. IF YES read it, open at most 2 concept pages about <the plugin kind, the hooks and CLI verbs it registers, the fixture/testbed terms in the ADR, and prior FAIL causes on this row> with `limit=60`. IF NO `wiki/`: Grep `/workspace/shared/learnings/` for the same keywords, at most 3 hits. Return at most 5 bullets (title, one line, path) or `no prior hits`." Fold the hits into the plan you critique in step 4 (a hit that changes the design is named there); a known clobber, PATH or provider-block trap is handled in the fixture up front, not rediscovered by the tester. Never read `learnings/INDEX.md` inline.
     2. **Fork checkout + one worktree per target, branched off the pinned e2e baseline — never the main checkout, never the fork default branch, never upstream:**
        ```bash
        FORK=https://github.com/{{vars.fork}}   # the FORK ({{vars.fork}}), never https://github.com/{{vars.repo}}

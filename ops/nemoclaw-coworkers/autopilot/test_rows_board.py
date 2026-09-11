@@ -1,12 +1,14 @@
 #!/usr/bin/env python3
 """Fixture-driven tests for ops/nemoclaw-coworkers/rows-board.py: a temp checkout with a small
-dispatch-plan.md, one fake card set on hermes-LOOP-F35 and a state.json; the board must render
-index.html and <ROW>.html, symlink the card dir, and exit 0 on an empty root too.
+dispatch-plan.md, one fake card set on hermes-LOOP-F35, a state.json, and the Orchestrator's two
+tables (ledger.md § Carried criteria, upstream-asks.md); the board must render index.html and
+<ROW>.html, symlink the card dir, show both tables, and exit 0 on an empty root too.
 Run: python3 -m unittest ops/nemoclaw-coworkers/autopilot/test_rows_board.py
 """
 
 from __future__ import annotations
 
+import html
 import json
 import os
 import subprocess
@@ -43,6 +45,34 @@ PLAN = """# Hermes port — dispatch plan (fixture)
 | Row | Name | What Hermes already provides | AC |
 |---|---|---|---|
 | ISO-F17 | Sandbox proof | sandbox | doc |
+"""
+# The Orchestrator's ledger: the work-item table plus the `## Carried criteria` table. The covered
+# row is written BEFORE the open one on purpose: the board must list open criteria first.
+LEDGER = """# Hermes PORT — work-item ledger
+
+| row-id | dispatched | spec accepted | PR | verdict | merged/blocked | notes |
+| --- | --- | --- | --- | --- | --- | --- |
+| LOOP-F35 | 2026-09-09 10:00 IST (to hermes-architect, thread `hermes-LOOP-F35`) | 2026-09-09 12:00 IST | #7 | PASS | — | autopilot dispatch, batch 1a, BUILD; carried criteria AC-LOOP-F35-5 |
+
+## Carried criteria
+
+| criterion | from row | to row | reason | decided | status |
+| --- | --- | --- | --- | --- | --- |
+| AC-LOOP-F35-6 | LOOP-F35 | ISO-F17 | mount set is ISO-F17's deliverable | msg 4242 2026-09-10 | covered (#12) |
+| AC-LOOP-F35-5 | LOOP-F35 | MEM-F44 | the veto half needs the gates plugin; compose only renders the key | operator 2026-09-10 | open |
+"""
+LONG_ASK = ("`bot_mode_dm.py` spawns bare `hermes` as argv[0]; a venv install has no `hermes` on PATH, so the DM bot dies "
+            "at start-up under the fixture's install layout and every downstream row inherits the failure")
+UPSTREAM_ASKS = f"""# Upstream asks
+
+Core-change candidates the plugin surface cannot absorb.
+
+## Upstream asks
+
+| id | source row | citation | ask | disposition | owner | updated |
+| --- | --- | --- | --- | --- | --- | --- |
+| UA-1 | LOOP-F35 | /workspace/extra/hermes-release/tools/bot_mode_dm.py:316 | {LONG_ASK} | bypassed (wrapper on PATH in the fixture, not filed) | orchestrator | 2026-09-10 |
+| UA-2 | MEM-F44 | /workspace/extra/hermes-release/hermes_cli/plugins.py:12 | plugin load hook must see name and alias pairs | open | — | 2026-09-10 |
 """
 
 
@@ -88,6 +118,9 @@ class RowsBoardTest(unittest.TestCase):
             "supervise": {"rows": {"LOOP-F35": {"stage": "building", "hold": None, "cost_hold": False}}},
         }))
         put(ap / "threads.json", json.dumps({"generated_at": (NOW_DT - timedelta(hours=5)).strftime("%Y-%m-%dT%H:%M:%SZ"), "threads": {}}))
+        self.reports = self.root / "groups" / "orchestrator" / "reports"
+        put(self.reports / "ledger.md", LEDGER)
+        put(self.reports / "upstream-asks.md", UPSTREAM_ASKS)
 
     def tearDown(self):
         self.tmp.cleanup()
@@ -161,6 +194,8 @@ class RowsBoardTest(unittest.TestCase):
         self.assertIn("no state.json yet", index)
         self.assertIn("no threads.json yet", index)
         self.assertIn("no rows: no readable plan and no cards yet", index)
+        self.assertIn("carried criteria unavailable — ledger.md not found", index)
+        self.assertIn("upstream asks unavailable — upstream-asks.md not found", index)
 
     def test_broken_state_and_stale_state_are_banners_not_crashes(self):
         ap = self.root / "data" / "shared" / "hermes" / "autopilot"
@@ -264,3 +299,133 @@ class LiveStatusTest(unittest.TestCase):
 
     def tearDown(self):
         self.tmp.cleanup()
+
+
+class CarriedTablesTest(unittest.TestCase):
+    """ledger.md § Carried criteria and upstream-asks.md on the board: index sections (open first, a
+    phase-name target flagged), the `carries N` badge, the row pages' Carries / Deferred-from blocks,
+    and banners instead of crashes when a table is missing, unreadable or malformed."""
+
+    def setUp(self):
+        RowsBoardTest.setUp(self)   # the same fixture checkout (ledger + upstream-asks included)
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def render(self, *extra: str) -> tuple:
+        proc = board(self.root, self.www, *extra)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return proc, (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+
+    def page(self, rid: str) -> str:
+        return (self.www / "rows" / f"{rid}.html").read_text(encoding="utf-8")
+
+    def test_index_sections_open_first_and_badge_on_the_target_row(self):
+        proc, index = self.render()
+        self.assertIn("1/2 carried criteria open, 2 upstream asks", proc.stdout)
+        self.assertIn("<h2>Carried criteria <small>1 open · 2 total</small></h2>", index)
+        # open first, whatever the file order (the fixture writes the covered row first)
+        self.assertLess(index.index("<code>AC-LOOP-F35-5</code>"), index.index("<code>AC-LOOP-F35-6</code>"))
+        self.assertIn('<a href="LOOP-F35.html">LOOP-F35</a> → <a href="MEM-F44.html">MEM-F44</a>', index)
+        self.assertIn('<span class="st open">open</span>', index)
+        self.assertIn('<span class="st ok">covered (#12)</span>', index)
+        self.assertIn("the veto half needs the gates plugin; compose only renders the key", index)
+        self.assertIn("<small>operator 2026-09-10</small>", index)
+        # the badge sits on the target row only
+        self.assertIn('<a href="MEM-F44.html"><b>MEM-F44</b></a><span class="badge" title="carries open criteria: AC-LOOP-F35-5">carries 1</span>', index)
+        self.assertEqual(index.count('class="badge"'), 1)
+        self.assertIn("· 1 open carried criteria · 1 open upstream asks</p>", index)
+        # upstream asks: open first, disposition detail kept, the long ask truncated with the full text in title
+        self.assertIn("<h2>Upstream asks <small>1 open · 2 total</small></h2>", index)
+        self.assertLess(index.index("<b>UA-2</b>"), index.index("<b>UA-1</b>"))
+        self.assertIn('<span class="st off">bypassed (wrapper on PATH in the fixture, not filed)</span>', index)
+        self.assertIn(f'<span title="{html.escape(LONG_ASK, quote=True)}">', index)
+        self.assertIn('inherits the failure">', index)      # the full text rides in the title attribute...
+        self.assertIn("start-u…</span>", index)             # ...the cell is truncated at 120 chars
+        self.assertNotIn("inherits the failure</span>", index)
+        self.assertIn("<code>/workspace/extra/hermes-release/tools/bot_mode_dm.py:316</code>", index)
+        self.assertIn('<td>{}</td>'.format('<a href="MEM-F44.html">MEM-F44</a>'), index)
+        self.assertNotIn("not a plan row", index)
+
+    def test_phase_name_target_is_flagged_never_a_plan_row(self):
+        # the LOOP-F35 gap as written: "deferred to P4" — a phase, which no row carries
+        put(self.reports / "ledger.md", LEDGER + "| AC-LOOP-F35-7 | LOOP-F35 | P4 | sandbox proof | operator 2026-09-10 | open |\n")
+        proc, index = self.render()
+        self.assertIn("2/3 carried criteria open", proc.stdout)
+        self.assertIn('<span class="st bad" title="not a plan row: a deferral names a target ROW, never a phase">P4 · not a plan row</span>', index)
+        self.assertEqual(index.count('class="badge"'), 1)   # P4 is not a row: nothing to badge
+        self.assertIn("· 2 open carried criteria ·", index)
+        self.assertIn("P4 · not a plan row", self.page("LOOP-F35"))
+        # a DEFER-batch target is flagged the same way
+        put(self.root / "docs" / "hermes-port" / "dispatch-plan.md", PLAN + "\n## Defer\n\n| Row | Name | Why |\n|---|---|---|\n| CH-F53 | WeChat | later |\n")
+        put(self.reports / "ledger.md", LEDGER + "| AC-LOOP-F35-7 | LOOP-F35 | CH-F53 | sandbox proof | operator 2026-09-10 | open |\n")
+        _, index = self.render()
+        self.assertIn("CH-F53 · DEFER row", index)
+
+    def test_row_pages_carry_and_deferred_blocks(self):
+        self.render()
+        mem = self.page("MEM-F44")
+        self.assertIn("<h2>Carries <small>1 open · 1 total</small></h2>", mem)
+        self.assertIn("<code>AC-LOOP-F35-5</code>", mem)
+        self.assertIn('<td><a href="LOOP-F35.html">LOOP-F35</a></td>', mem)
+        self.assertIn("merge gate (P5) is red otherwise", mem)
+        self.assertIn("nothing deferred from this row", mem)
+        self.assertIn("<h2>Upstream asks from this row <small>1</small></h2>", mem)
+        self.assertIn("<b>UA-2</b>", mem)
+        self.assertNotIn("<b>UA-1</b>", mem)
+        self.assertIn('thread <code>hermes-MEM-F44</code><span class="badge" title="carries open criteria: AC-LOOP-F35-5">carries 1</span>', mem)
+        loop = self.page("LOOP-F35")
+        self.assertIn("carries no criteria from other rows", loop)
+        self.assertIn("<h2>Deferred from this row <small>1 open · 2 total</small></h2>", loop)
+        self.assertLess(loop.index("<code>AC-LOOP-F35-5</code>"), loop.index("<code>AC-LOOP-F35-6</code>"))
+        self.assertIn('<td><a href="MEM-F44.html">MEM-F44</a></td>', loop)
+        self.assertIn('<td><a href="ISO-F17.html">ISO-F17</a></td>', loop)
+        self.assertIn("<b>UA-1</b>", loop)
+        self.assertNotIn('class="badge"', loop)
+        iso = self.page("ISO-F17")
+        self.assertIn("<h2>Carries <small>0 open · 1 total</small></h2>", iso)
+        self.assertIn('<span class="st ok">covered (#12)</span>', iso)
+        self.assertNotIn("Upstream asks from this row", iso)
+
+    def test_missing_unreadable_or_malformed_tables_are_banners(self):
+        (self.reports / "ledger.md").unlink()
+        (self.reports / "upstream-asks.md").unlink()
+        proc, index = self.render()
+        self.assertIn("carried criteria unavailable — ledger.md not found", index)
+        self.assertIn("upstream asks unavailable — upstream-asks.md not found", index)
+        self.assertIn("ledger.md not found", proc.stderr)
+        self.assertIn('<a href="LOOP-F35.html"><b>LOOP-F35</b></a>', index)
+        self.assertIn("ledger.md not found", self.page("MEM-F44"))
+        # not UTF-8: unreadable, still exit 0 and the rest of the board renders
+        put(self.reports / "ledger.md", b"\xff\xfe\x00 not text")
+        put(self.reports / "upstream-asks.md", b"\xff\xfe")
+        _, index = self.render()
+        self.assertIn("ledger.md unreadable: UnicodeDecodeError", index)
+        self.assertIn("upstream-asks.md unreadable: UnicodeDecodeError", index)
+        self.assertIn("4 cards on disk", index)
+        # a malformed status reads as open (the parser's fail-safe), shown in red with the raw text, and is counted
+        put(self.reports / "ledger.md", LEDGER + "| AC-LOOP-F35-8 | LOOP-F35 | MEM-F44 | dup | operator | later |\n")
+        put(self.reports / "upstream-asks.md", "")   # the box today: the file exists and is empty
+        proc, index = self.render()
+        self.assertIn("ledger.md § Carried criteria: carried criterion AC-LOOP-F35-8: status &#x27;later&#x27; is not open", index)
+        self.assertIn("open · unparsed later</span>", index)
+        self.assertIn('title="carries open criteria: AC-LOOP-F35-5, AC-LOOP-F35-8">carries 2</span>', index)
+        self.assertIn("no upstream asks recorded", index)
+        self.assertIn("<h2>Upstream asks <small>0 open · 0 total</small></h2>", index)
+        # a ledger without the section: no carried criteria, no banner
+        put(self.reports / "ledger.md", LEDGER.split("## Carried criteria")[0])
+        _, index = self.render()
+        self.assertIn("no carried criteria recorded", index)
+        self.assertNotIn("carried criteria unavailable", index)
+        self.assertEqual(index.count('class="badge"'), 0)
+
+    def test_ledger_and_upstream_asks_flags_override_the_root_paths(self):
+        other = Path(self.tmp.name) / "elsewhere"
+        put(other / "led.md", LEDGER.replace("| MEM-F44 |", "| ISO-F17 |"))
+        put(other / "ua.md", UPSTREAM_ASKS.replace("UA-2", "UA-9"))
+        (self.reports / "ledger.md").unlink()
+        _, index = self.render("--ledger", str(other / "led.md"), "--upstream-asks", str(other / "ua.md"))
+        self.assertNotIn("ledger.md not found", index)
+        self.assertIn('<a href="ISO-F17.html"><b>ISO-F17</b></a><span class="badge" title="carries open criteria: AC-LOOP-F35-5">carries 1</span>', index)
+        self.assertIn("<b>UA-9</b>", index)
+        self.assertNotIn("<b>UA-2</b>", index)

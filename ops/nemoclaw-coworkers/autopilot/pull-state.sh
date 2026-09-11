@@ -44,7 +44,7 @@
 # config, paused, sources (checked flags + sha256 per input, fork, sessions, core status),
 # ledger_rows (a header-located ledger read independent of the core), collector_errors, generated_at.
 #
-# Env knobs (container defaults shown): AUTOPILOT_DIR LEDGER PLAN MATRIX ALERTS FORK NCL GH
+# Env knobs (container defaults shown): AUTOPILOT_DIR LEDGER UPSTREAM_ASKS PLAN MATRIX ALERTS FORK NCL GH
 # PROBE_TIMEOUT=25 COLLECT_LIMIT=200 COLLECT_MAX_SESSIONS=80 COLLECT_DEADLINE_S=0 (the gates set 10)
 # COLLECT_ROWS_FROM_QUEUE=1 (0 reads every row thread) NOW_OVERRIDE. Every path has an override so
 # the script runs offline against fixtures with a fake `ncl` and `gh` on PATH (test_pull_state.py).
@@ -52,6 +52,8 @@ set -euo pipefail
 
 AP=${AUTOPILOT_DIR:-/workspace/shared/hermes/autopilot}
 LEDGER=${LEDGER:-/workspace/agent/reports/ledger.md}
+# The Orchestrator's core-change asks; optional (absent or empty = no asks filed yet, not an error).
+UPSTREAM_ASKS=${UPSTREAM_ASKS:-/workspace/agent/reports/upstream-asks.md}
 PLAN=${PLAN:-/workspace/shared/hermes/dispatch-plan.md}
 MATRIX=${MATRIX:-/workspace/shared/hermes/gap-matrix.md}
 ALERTS=${ALERTS:-/workspace/agent/reports/status/alerts.md}
@@ -250,8 +252,8 @@ if [ -z "$Q" ]; then
 elif [ ! -s "$PLAN" ] || [ ! -s "$MATRIX" ]; then
   CORE_QUEUE=skipped
   record_error "hermes_queue.py" "skipped: plan or matrix missing"
-elif python3 "$Q" --plan "$PLAN" --matrix "$MATRIX" --ledger "$LEDGER" --config "$AP/config.json" \
-       --state "$RAW/prior-state.json" --now "$NOW" > "$RAW/queue.json" 2> "$RAW/queue.err"; then
+elif python3 "$Q" --plan "$PLAN" --matrix "$MATRIX" --ledger "$LEDGER" --upstream-asks "$UPSTREAM_ASKS" \
+       --config "$AP/config.json" --state "$RAW/prior-state.json" --now "$NOW" > "$RAW/queue.json" 2> "$RAW/queue.err"; then
   CORE_QUEUE=ok
 else
   CORE_QUEUE=failed
@@ -374,7 +376,7 @@ fi
 
 # --- 8. Merge into state.json (tmp + rename) --------------------------------------------------
 AP="$AP" RAW="$RAW" NOW="$NOW" HERE="$HERE" ERRORS="$ERRORS" CORE_QUEUE="$CORE_QUEUE" CORE_SUP="$CORE_SUP" \
-LEDGER="$LEDGER" PLAN="$PLAN" MATRIX="$MATRIX" ALERTS="$ALERTS" FORK="$FORK" FORK_CHECKED="$FORK_CHECKED" python3 - <<'PY'
+LEDGER="$LEDGER" UPSTREAM_ASKS="$UPSTREAM_ASKS" PLAN="$PLAN" MATRIX="$MATRIX" ALERTS="$ALERTS" FORK="$FORK" FORK_CHECKED="$FORK_CHECKED" python3 - <<'PY'
 import hashlib, json, os, sys
 from datetime import timedelta
 
@@ -444,6 +446,7 @@ sources = dict(queue.get("sources") or {})
 sources["ledger"] = {**(sources.get("ledger") or {}), "checked": os.path.exists(os.environ["LEDGER"]), "path": os.environ["LEDGER"], "sha256": sha_file(os.environ["LEDGER"])}
 sources["plan"] = {**(sources.get("plan") or {}), "checked": os.path.exists(os.environ["PLAN"]), "path": os.environ["PLAN"], "sha256": sha_file(os.environ["PLAN"])}
 sources["matrix"] = {**(sources.get("matrix") or {}), "checked": os.path.exists(os.environ["MATRIX"]), "path": os.environ["MATRIX"], "sha256": sha_file(os.environ["MATRIX"])}
+sources["upstream_asks"] = {**(sources.get("upstream_asks") or {}), "checked": os.path.exists(os.environ["UPSTREAM_ASKS"]), "path": os.environ["UPSTREAM_ASKS"], "sha256": sha_file(os.environ["UPSTREAM_ASKS"])}
 sources["fork"] = {"checked": os.environ["FORK_CHECKED"] == "true", "slug": os.environ["FORK"], "count": len(prs),
                    "stale": os.environ["FORK_CHECKED"] != "true" and bool(prs)}
 sources["sessions"] = {"checked": bool(threads.get("sessions_checked")), **(threads.get("counts") or {}),
@@ -454,8 +457,8 @@ state["sources"] = sources
 state["plan"] = {"sha256": queue.get("plan_sha256") or sources["plan"]["sha256"],
                  "matrix_sha256": queue.get("matrix_sha256") or sources["matrix"]["sha256"],
                  "ok": queue.get("plan_ok"), "pinned": config.get("plan_sha256")}
-state["paths"] = {"autopilot_dir": ap, "ledger": os.environ["LEDGER"], "plan": os.environ["PLAN"], "matrix": os.environ["MATRIX"],
-                  "alerts": os.environ["ALERTS"], "nudges": os.path.join(ap, "nudges.json")}
+state["paths"] = {"autopilot_dir": ap, "ledger": os.environ["LEDGER"], "upstream_asks": os.environ["UPSTREAM_ASKS"], "plan": os.environ["PLAN"],
+                  "matrix": os.environ["MATRIX"], "alerts": os.environ["ALERTS"], "nudges": os.path.join(ap, "nudges.json")}
 
 # A header-located ledger read, independent of the core (scorecard.py sits next to this file).
 sys.path.insert(0, os.environ["HERE"])
@@ -494,6 +497,7 @@ summary = {
     "free": wip.get("free"),
     "eligible_next": [e.get("id") for e in state.get("eligible_next") or [] if isinstance(e, dict)][:5],
     "dispatch_paused": state.get("dispatch_paused"),
+    "open_carried": (state.get("coverage") or {}).get("carried_line"),
     "actions": len(state["actions"]),
     "alerts": len(alerts),
     "errors": len(errors),

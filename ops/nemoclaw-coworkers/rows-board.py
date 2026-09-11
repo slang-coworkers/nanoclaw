@@ -7,6 +7,10 @@ Reads (every input optional; a missing or broken one becomes a banner, never a c
                                                  back to data/shared/hermes/dispatch-plan.md)
   <ROOT>/data/shared/hermes/autopilot/state.json  per-row stage (supervise.rows / rows) + generated_at
   <ROOT>/data/shared/hermes/autopilot/threads.json generated_at only (staleness banner)
+  <ROOT>/groups/orchestrator/reports/ledger.md   its `## Carried criteria` table (hermes_queue.parse_ledger):
+                                                 the criteria one row deferred onto another
+  <ROOT>/groups/orchestrator/reports/upstream-asks.md  the `## Upstream asks` table (hermes_queue.parse_upstream_asks):
+                                                 core-change candidates the plugin surface cannot absorb
   <ROOT>/groups/<group>/reports/hermes-<ROW>/cards/card-<role>-<outcome>-r<N>.{png,html,json}
                                                  plus the card-<role>-latest.{png,html} copies
   `ncl sessions list --json` (--ncl, default <ROOT>/bin/ncl)  LIVE per-role status on every row:
@@ -17,9 +21,15 @@ Reads (every input optional; a missing or broken one becomes a banner, never a c
 Writes under <WWW>/rows/ (tmp + rename):
 
   index.html      batch → rows → a | b | t | r: the latest card per role as a 180 px thumbnail,
-                  bordered in the verdict colour (ok / bad / run), linking to the row page
+                  bordered in the verdict colour (ok / bad / run), linking to the row page; a row
+                  that carries open criteria wears a `carries N` badge. Then two sections:
+                  "Carried criteria" (criterion · from → to · status · reason, open first; a to-row
+                  that is not a plan row — a phase name such as P4 — is flagged) and "Upstream asks"
+                  (UA id · source row · disposition · ask, truncated)
   <ROW>.html      every card on the row newest-first with its .html / .json, links to /adr/,
-                  /test-reports/<thread>/ and the dashboard lane ($DASHBOARD_URL/#/cw/orchestrator/l/hermes-<ROW>)
+                  /test-reports/<thread>/ and the dashboard lane ($DASHBOARD_URL/#/cw/orchestrator/l/hermes-<ROW>);
+                  a "Carries" block (criteria this row must cover — each must be a PASS row under its
+                  own id at the merge gate), a "Deferred from this row" block, and the row's upstream asks
   cards/<group>/<thread>  a symlink to that group's card dir, so the PNGs are served as-is
 
 Stdlib only, no hostname guard, exit 0 on every handled failure (the caller is refresh-viewers.sh,
@@ -83,6 +93,9 @@ th{font-size:12px;color:#666;font-weight:600}td.cell{width:196px}
 .dot.green{background:#2e7d32}.dot.red{background:#c62828}.dot.amber{background:#f9a825}.dot.grey{background:#bbb}
 .legend{font-size:12px;color:#555;margin:6px 0 12px}.legend .dot{margin-left:10px}
 table.live-sessions td{font-size:12px}
+.badge{display:inline-block;font-size:10px;font-weight:600;padding:0 6px;border-radius:9px;margin-left:6px;vertical-align:middle;background:#fff3cd;border:1px solid #f0d58c;color:#664d03;white-space:nowrap}
+.st{font-weight:600;white-space:nowrap}.st.open{color:#b07d00}.st.ok{color:#2e7d32}.st.off{color:#777;font-weight:400}.st.bad{color:#c62828}
+table.tbl td{font-size:13px}table.tbl td.ask{max-width:520px}
 """
 
 
@@ -92,6 +105,11 @@ def log(msg: str) -> None:
 
 def esc(s) -> str:
     return html.escape(str(s if s is not None else ""), quote=True)
+
+
+def truncate(s, n: int = 120) -> str:
+    s = str(s if s is not None else "").strip()
+    return s if len(s) <= n else s[: n - 1].rstrip() + "\u2026"
 
 
 def parse_iso(value):
@@ -131,14 +149,20 @@ def write_atomic(path: str, text: str) -> None:
 
 # --------------------------------------------------------------------------- inputs
 
+def _hermes_queue():
+    """The autopilot's parsers, imported late: their absence is a banner, not a crash."""
+    sys.path.insert(0, os.path.join(HERE, "autopilot"))
+    import hermes_queue
+    return hermes_queue
+
+
 def load_plan(paths: list) -> tuple:
     """(plan dict from hermes_queue.parse_plan | None, error string | None)."""
     path = next((p for p in paths if p and os.path.isfile(p)), None)
     if path is None:
         return None, "dispatch-plan.md not found (" + ", ".join(p for p in paths if p) + ")"
     try:
-        sys.path.insert(0, os.path.join(HERE, "autopilot"))
-        import hermes_queue  # deliberately late: its absence is a banner, not a crash
+        hermes_queue = _hermes_queue()
         with open(path, encoding="utf-8") as fh:
             plan = hermes_queue.parse_plan(fh.read())
         if not isinstance(plan, dict) or not isinstance(plan.get("rows"), dict):
@@ -147,6 +171,41 @@ def load_plan(paths: list) -> tuple:
         return plan, None
     except Exception as exc:  # noqa: BLE001 - any failure renders as "plan unreadable"
         return None, f"plan unreadable: {type(exc).__name__}: {exc}"
+
+
+def load_tables(ledger_path: str, asks_path: str) -> dict:
+    """The Orchestrator's two tables, read through hermes_queue's parsers (the same code the queue,
+    the supervisor and the coverage check run), so the board shows exactly what they act on.
+
+    {"carried": [criterion dicts], "carried_problems": [str], "carried_err": str | None,
+     "asks": [ask dicts], "asks_err": str | None}. A missing or unreadable file is an *_err
+    string (rendered as a banner) with an empty list; an empty upstream-asks.md (the box's state
+    until the first ask is surfaced) is simply no asks."""
+    out = {"carried": [], "carried_problems": [], "carried_err": None, "asks": [], "asks_err": None}
+    try:
+        hermes_queue = _hermes_queue()
+    except Exception as exc:  # noqa: BLE001
+        out["carried_err"] = out["asks_err"] = f"hermes_queue unavailable: {type(exc).__name__}: {exc}"
+        return out
+    if not os.path.isfile(ledger_path):
+        out["carried_err"] = f"ledger.md not found ({ledger_path})"
+    else:
+        try:
+            with open(ledger_path, encoding="utf-8") as fh:
+                led = hermes_queue.parse_ledger(fh.read())
+            out["carried"] = [c for c in (led.get("carried_criteria") or []) if isinstance(c, dict)]
+            out["carried_problems"] = [str(p) for p in (led.get("carried_problems") or [])]
+        except Exception as exc:  # noqa: BLE001 - a broken ledger is a banner, never a crash
+            out["carried_err"] = f"ledger.md unreadable: {type(exc).__name__}: {exc}"
+    if not os.path.isfile(asks_path):
+        out["asks_err"] = f"upstream-asks.md not found ({asks_path})"
+    else:
+        try:
+            with open(asks_path, encoding="utf-8") as fh:
+                out["asks"] = [a for a in hermes_queue.parse_upstream_asks(fh.read()) if isinstance(a, dict)]
+        except Exception as exc:  # noqa: BLE001
+            out["asks_err"] = f"upstream-asks.md unreadable: {type(exc).__name__}: {exc}"
+    return out
 
 
 def load_json(path: str) -> tuple:
@@ -387,6 +446,183 @@ def thumb_cell(groups: dict, role: str, rid: str, now_ts: float, link: bool = Tr
     return f'<td class="cell">{head}{img}<div class="v {card["cls"]}">{esc(label)}</div></td>'
 
 
+# --------------------------------------------------------------------------- carried criteria + upstream asks
+
+CARRIED_RANK = {"open": 0, "covered": 1, "dropped": 2}
+CARRIED_CLASS = {"open": "open", "covered": "ok", "dropped": "off"}
+UA_RANK = {"open": 0, "filed": 1, "adopted": 2, "bypassed": 3, "declined": 4}
+UA_CLASS = {"open": "open", "filed": "ok", "adopted": "ok", "bypassed": "off", "declined": "off"}
+
+
+def carried_status_cell(c: dict) -> str:
+    """`open` / `covered (#12)` / `dropped (why)`; a status cell the parser could not read is shown
+    as open (the parser's fail-safe reading) together with the raw text, in red."""
+    status = str(c.get("status") or "open")
+    detail = c.get("status_detail")
+    raw = str(c.get("status_raw") or "").strip()
+    label = f"{status} ({detail})" if detail else status
+    if raw and not raw.lower().startswith(status):
+        return f'<span class="st bad" title="status cell {esc(raw)} is not open | covered (…) | dropped (…); read as open">open · unparsed {esc(raw)}</span>'
+    return f'<span class="st {CARRIED_CLASS.get(status, "bad")}">{esc(label)}</span>'
+
+
+def row_ref(rid, plan_rows: dict | None, current: str | None = None) -> str:
+    """A row id as a link to its page when it is a plan row with a safe id; flagged when the plan is
+    readable and does not know it (a phase name such as `P4`, a typo) or when it is a DEFER row —
+    the to-row of a carried criterion must be a dispatched plan row, never a phase."""
+    rid = str(rid or "").strip()
+    if not rid:
+        return '<span class="st bad">no row</span>'
+    if plan_rows is not None and rid not in plan_rows:
+        return f'<span class="st bad" title="not a plan row: a deferral names a target ROW, never a phase">{esc(rid)} · not a plan row</span>'
+    if plan_rows is not None and (plan_rows.get(rid) or {}).get("batch") == "defer":
+        return f'<span class="st bad" title="DEFER rows are never dispatched">{esc(rid)} · DEFER row</span>'
+    if rid == current:
+        return f"<b>{esc(rid)}</b>"
+    if SAFE_RID_RE.match(rid):
+        return f'<a href="{esc(rid)}.html">{esc(rid)}</a>'
+    return esc(rid)
+
+
+def sort_carried(items: list) -> list:
+    return sorted(enumerate(items), key=lambda t: (CARRIED_RANK.get(str(t[1].get("status") or "open"), 0), t[0]))
+
+
+def carried_for(tables: dict | None, rid: str, key: str) -> list:
+    """The carried criteria whose `key` (`to_row` / `from_row`) is `rid`, open first, file order within a status."""
+    items = [c for c in ((tables or {}).get("carried") or []) if str(c.get(key) or "") == rid]
+    return [c for _, c in sort_carried(items)]
+
+
+def open_carried_for(tables: dict | None, rid: str) -> list:
+    return [c for c in carried_for(tables, rid, "to_row") if str(c.get("status") or "open") == "open"]
+
+
+def carried_badge(tables: dict | None, rid: str) -> str:
+    ids = [str(c.get("criterion")) for c in open_carried_for(tables, rid)]
+    if not ids:
+        return ""
+    return f'<span class="badge" title="carries open criteria: {esc(", ".join(ids))}">carries {len(ids)}</span>'
+
+
+def table_banners(tables: dict | None) -> list:
+    """Banner lines for the two tables: a missing or unreadable file, and malformed carried rows."""
+    t = tables or {}
+    out = []
+    if t.get("carried_err"):
+        out.append(f"carried criteria unavailable — {t['carried_err']}")
+    for p in t.get("carried_problems") or []:
+        out.append(f"ledger.md § Carried criteria: {p}")
+    if t.get("asks_err"):
+        out.append(f"upstream asks unavailable — {t['asks_err']}")
+    return out
+
+
+def carried_table(items: list, plan_rows: dict | None, current: str | None, direction: str) -> str:
+    """One table of carried criteria. `direction` is "both" (criterion · from → to), "from" (the
+    from-row column only: the row page's Carries block) or "to" (the Deferred-from block)."""
+    head = {"both": "from → to", "from": "from", "to": "to"}[direction]
+    out = [f'<table class="tbl"><tr><th>criterion</th><th>{head}</th><th>status</th><th>reason</th><th>decided</th></tr>']
+    for c in items:
+        frm, to = row_ref(c.get("from_row"), None, current), row_ref(c.get("to_row"), plan_rows, current)
+        where = {"both": f"{frm} → {to}", "from": frm, "to": to}[direction]
+        out.append(f'<tr><td><code>{esc(c.get("criterion"))}</code></td><td>{where}</td><td>{carried_status_cell(c)}</td>'
+                   f'<td>{esc(c.get("reason") or "")}</td><td><small>{esc(c.get("decided") or "")}</small></td></tr>')
+    out.append("</table>")
+    return "".join(out)
+
+
+def ua_disposition_cell(a: dict) -> str:
+    disp = str(a.get("disposition") or "open")
+    detail = a.get("disposition_detail")
+    label = f"{disp} ({detail})" if detail else disp
+    if not a.get("disposition_ok", True):
+        raw = str(a.get("disposition_raw") or "").strip()
+        return f'<span class="st bad" title="disposition {esc(raw)} is not open | filed (…) | bypassed (…) | declined (…) | adopted (…)">open · unparsed {esc(raw)}</span>'
+    return f'<span class="st {UA_CLASS.get(disp, "bad")}">{esc(label)}</span>'
+
+
+def sort_asks(items: list) -> list:
+    return [a for _, a in sorted(enumerate(items), key=lambda t: (UA_RANK.get(str(t[1].get("disposition") or "open"), 0), t[0]))]
+
+
+def asks_table(items: list, plan_rows: dict | None, current: str | None = None, with_source: bool = True) -> str:
+    cols = "<th>id</th>" + ("<th>source row</th>" if with_source else "") + "<th>disposition</th><th>ask</th>"
+    out = [f'<table class="tbl"><tr>{cols}</tr>']
+    for a in items:
+        uid = esc(a.get("id"))
+        if not a.get("id_ok", True):
+            uid = f'<span class="st bad" title="id is not UA-&lt;n&gt;">{uid}</span>'
+        ask = str(a.get("ask") or "")
+        cite = str(a.get("citation") or "").strip()
+        ask_cell = f'<span title="{esc(ask)}">{esc(truncate(ask))}</span>' + (f'<br><small><code>{esc(cite)}</code></small>' if cite else "")
+        src = f"<td>{row_ref(a.get('source_row'), None, current)}</td>" if with_source else ""
+        out.append(f"<tr><td><b>{uid}</b></td>{src}<td>{ua_disposition_cell(a)}</td><td class=\"ask\">{ask_cell}</td></tr>")
+    out.append("</table>")
+    return "".join(out)
+
+
+def render_tables_index(tables: dict | None, plan_rows: dict | None) -> str:
+    """The index page's two sections. Every input optional: an unavailable table says so in place."""
+    t = tables or {}
+    out = []
+    carried = [c for _, c in sort_carried(list(t.get("carried") or []))]
+    n_open = sum(1 for c in carried if str(c.get("status") or "open") == "open")
+    out.append(f'<h2>Carried criteria <small>{n_open} open · {len(carried)} total</small></h2>')
+    out.append('<p class="muted">Criteria one row deferred onto another (ledger.md § Carried criteria, written by the Orchestrator the moment '
+               'a criterion leaves a PR). An open criterion is dispatched with its target row and checked at that row\'s merge gate; '
+               'the target is always a plan ROW, never a phase.</p>')
+    if t.get("carried_err"):
+        out.append(f'<div class="banner">{esc(t["carried_err"])}</div>')
+    elif not carried:
+        out.append("<p><em>no carried criteria recorded</em></p>")
+    else:
+        out.append(carried_table(carried, plan_rows, None, "both"))
+    asks = sort_asks(list(t.get("asks") or []))
+    n_open_asks = sum(1 for a in asks if str(a.get("disposition") or "open") == "open")
+    out.append(f'<h2>Upstream asks <small>{n_open_asks} open · {len(asks)} total</small></h2>')
+    out.append('<p class="muted">Core-change candidates the plugin surface cannot absorb (upstream-asks.md § Upstream asks, written by the '
+               'Orchestrator the moment one is surfaced, disposition updated when filed / bypassed / declined / adopted).</p>')
+    if t.get("asks_err"):
+        out.append(f'<div class="banner">{esc(t["asks_err"])}</div>')
+    elif not asks:
+        out.append("<p><em>no upstream asks recorded</em></p>")
+    else:
+        out.append(asks_table(asks, plan_rows))
+    return "".join(out)
+
+
+def render_tables_row(tables: dict | None, rid: str, plan_rows: dict | None) -> str:
+    """The row page's Carries / Deferred-from blocks (+ the row's upstream asks, when any)."""
+    t = tables or {}
+    out = []
+    carries = carried_for(t, rid, "to_row")
+    n_open = sum(1 for c in carries if str(c.get("status") or "open") == "open")
+    out.append(f'<h2>Carries <small>{n_open} open · {len(carries)} total</small></h2>')
+    out.append('<p class="muted">Criteria other rows deferred onto this row. Each open one must appear verbatim, under its own id, in this '
+               'row\'s ADR § Acceptance criteria and be a PASS row in the Test Report — the merge gate (P5) is red otherwise.</p>')
+    if t.get("carried_err"):
+        out.append(f'<div class="banner">{esc(t["carried_err"])}</div>')
+    elif not carries:
+        out.append("<p><em>carries no criteria from other rows</em></p>")
+    else:
+        out.append(carried_table(carries, plan_rows, rid, "from"))
+    deferred = carried_for(t, rid, "from_row")
+    n_open_d = sum(1 for c in deferred if str(c.get("status") or "open") == "open")
+    out.append(f'<h2>Deferred from this row <small>{n_open_d} open · {len(deferred)} total</small></h2>')
+    if t.get("carried_err"):
+        out.append(f'<div class="banner">{esc(t["carried_err"])}</div>')
+    elif not deferred:
+        out.append("<p><em>nothing deferred from this row</em></p>")
+    else:
+        out.append(carried_table(deferred, plan_rows, rid, "to"))
+    asks = sort_asks([a for a in (t.get("asks") or []) if str(a.get("source_row") or "") == rid])
+    if asks:
+        out.append(f'<h2>Upstream asks from this row <small>{len(asks)}</small></h2>')
+        out.append(asks_table(asks, plan_rows, rid, with_source=False))
+    return "".join(out)
+
+
 def page(title: str, body: str, generated: str, crumbs: str = "") -> str:
     return (
         f'<!doctype html><html><head><meta charset="utf-8"><title>{esc(title)}</title><style>{CSS}</style></head><body>'
@@ -396,12 +632,13 @@ def page(title: str, body: str, generated: str, crumbs: str = "") -> str:
     )
 
 
-def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetime, live: dict | None = None, live_err: str | None = None) -> str:
+def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetime, live: dict | None = None, live_err: str | None = None,
+                 tables: dict | None = None) -> str:
     now_ts = now.timestamp()
     live = live or {}
     sup_rows = ((state or {}).get("supervise") or {}).get("rows") or {} if isinstance(state, dict) else {}
     out = []
-    for b in banners:
+    for b in list(banners) + table_banners(tables):
         out.append(f'<div class="banner">{esc(b)}</div>')
     if live_err:
         out.append(f'<div class="banner">live status unavailable — {esc(live_err)}; dots show grey</div>')
@@ -445,18 +682,22 @@ def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetim
             cells = "".join(thumb_cell(groups, role, rid, now_ts, link=safe, live=dots[role]) for _, role in ROLE_COLUMNS)
             row_dot = row_live(dots)
             orch = dots["orchestrator"]
-            id_cell = f'<a href="{esc(rid)}.html"><b>{esc(rid)}</b></a>' if safe else f'<b>{esc(rid)}</b>'
+            id_cell = (f'<a href="{esc(rid)}.html"><b>{esc(rid)}</b></a>' if safe else f'<b>{esc(rid)}</b>') + carried_badge(tables, rid)
             out.append(
                 f'<tr><td><span class="dot {row_dot}" title="{esc(LIVE_LABEL[row_dot])}"></span>{id_cell}<br><code>hermes-{esc(rid)}</code>'
                 f'<br><span class="live" title="orchestrator"><span class="dot {orch[0]}"></span>orchestrator: {esc(orch[1])}</span></td>'
                 f'<td>{esc(name)}<br><small>{esc(meta)}</small></td><td class="stage">{esc(row_stage(state, rid)) or "·"}</td>{cells}</tr>'
             )
         out.append("</table>")
-    out.insert(0, f'<p class="muted">{total} cards on disk · {len(cards)} threads with cards</p>')
+    out.append(render_tables_index(tables, rows if plan else None))
+    n_open = sum(1 for c in ((tables or {}).get("carried") or []) if str(c.get("status") or "open") == "open")
+    n_asks = sum(1 for a in ((tables or {}).get("asks") or []) if str(a.get("disposition") or "open") == "open")
+    out.insert(0, f'<p class="muted">{total} cards on disk · {len(cards)} threads with cards · {n_open} open carried criteria · {n_asks} open upstream asks</p>')
     return page("Hermes port · rows board", "".join(out), now.strftime("%Y-%m-%d %H:%M UTC"))
 
 
-def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url: str | None, live: dict | None = None, live_err: str | None = None) -> str:
+def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url: str | None, live: dict | None = None, live_err: str | None = None,
+               tables: dict | None = None) -> str:
     now_ts = now.timestamp()
     thread = f"hermes-{rid}"
     row = ((plan or {}).get("rows") or {}).get(rid) or {}
@@ -468,7 +709,8 @@ def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url
                                   f"wave {row['wave']}" if row.get("wave") else "", row.get("attaches_to") or "") if x)
     body.append(f'<p>{esc(row.get("name") or "")}<br><small>{esc(meta)}</small></p>')
     stage = row_stage(state, rid)
-    body.append(f'<p class="stage">stage: <b>{esc(stage) or "unknown"}</b> · thread <code>{esc(thread)}</code></p>')
+    body.append(f'<p class="stage">stage: <b>{esc(stage) or "unknown"}</b> · thread <code>{esc(thread)}</code>{carried_badge(tables, rid)}</p>')
+    body.append(render_tables_row(tables, rid, ((plan or {}).get("rows") or None) if plan else None))
 
     sup = (((state or {}).get("supervise") or {}).get("rows") or {}).get(rid) or {} if isinstance(state, dict) else {}
     body.append("<h2>Live sessions</h2>")
@@ -509,13 +751,18 @@ def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url
 
 # --------------------------------------------------------------------------- main
 
-def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, threads_path: str, dashboard_url: str | None, ncl_bin: str | None = None) -> int:
+def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, threads_path: str, dashboard_url: str | None, ncl_bin: str | None = None,
+        ledger_path: str | None = None, asks_path: str | None = None) -> int:
     www_rows = os.path.join(www, "rows")
     os.makedirs(www_rows, exist_ok=True)
 
+    reports = os.path.join(root, "groups", "orchestrator", "reports")
     plan, plan_err = load_plan(plan_paths)
     state, state_err = load_json(state_path)
     threads, threads_err = load_json(threads_path)
+    tables = load_tables(ledger_path or os.path.join(reports, "ledger.md"), asks_path or os.path.join(reports, "upstream-asks.md"))
+    for b in table_banners(tables):
+        log(b)
     banners = [b for b in (staleness(state, state_err, "state.json", now), staleness(threads, threads_err, "threads.json", now)) if b]
     try:
         cards = scan_cards(root)
@@ -528,7 +775,7 @@ def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, t
     if live_err:
         log(f"live status: {live_err}")
 
-    write_atomic(os.path.join(www_rows, "index.html"), render_index(plan, plan_err, state, cards, banners, now, live, live_err))
+    write_atomic(os.path.join(www_rows, "index.html"), render_index(plan, plan_err, state, cards, banners, now, live, live_err, tables))
     rids = set((plan or {}).get("rows") or {}) | {THREAD_RE.match(t).group("row") for t in cards}
     written = 0
     for rid in sorted(rids):
@@ -536,14 +783,17 @@ def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, t
             log(f"skipping row id {rid!r} (not a safe filename)")
             continue
         try:
-            write_atomic(os.path.join(www_rows, f"{rid}.html"), render_row(rid, plan, state, cards.get(f"hermes-{rid}") or {}, now, dashboard_url, live, live_err))
+            write_atomic(os.path.join(www_rows, f"{rid}.html"), render_row(rid, plan, state, cards.get(f"hermes-{rid}") or {}, now, dashboard_url, live, live_err, tables))
             written += 1
         except Exception as exc:  # noqa: BLE001 - one bad row must not take the board down
             log(f"row page {rid}: {type(exc).__name__}: {exc}")
     n_cards = sum(len(e["cards"]) for g in cards.values() for e in g.values())
     n_live = sum(len(v) for r in live.values() for v in r.values())
-    print(f"rows-board: wrote {www_rows}/index.html + {written} row pages ({n_cards} cards, {len(cards)} threads, {n_live} live sessions on {len(live)} rows)"
-          + (f"; plan: {plan_err}" if plan_err else "") + (f"; live: {live_err}" if live_err else "") + (f"; {'; '.join(banners)}" if banners else ""))
+    n_open = sum(1 for c in tables["carried"] if str(c.get("status") or "open") == "open")
+    print(f"rows-board: wrote {www_rows}/index.html + {written} row pages ({n_cards} cards, {len(cards)} threads, {n_live} live sessions on {len(live)} rows, "
+          f"{n_open}/{len(tables['carried'])} carried criteria open, {len(tables['asks'])} upstream asks)"
+          + (f"; plan: {plan_err}" if plan_err else "") + (f"; live: {live_err}" if live_err else "")
+          + (f"; {'; '.join(banners + table_banners(tables))}" if banners or table_banners(tables) else ""))
     return 0
 
 
@@ -554,6 +804,8 @@ def main(argv=None) -> int:
     ap.add_argument("--plan", default=None, help="dispatch-plan.md (default: <root>/docs/hermes-port/, then <root>/data/shared/hermes/)")
     ap.add_argument("--state", default=None, help="state.json (default: <root>/data/shared/hermes/autopilot/state.json)")
     ap.add_argument("--threads", default=None, help="threads.json (default: next to state.json)")
+    ap.add_argument("--ledger", default=None, help="the Orchestrator's ledger.md, for its ## Carried criteria table (default: <root>/groups/orchestrator/reports/ledger.md)")
+    ap.add_argument("--upstream-asks", default=None, help="the Orchestrator's upstream-asks.md (default: <root>/groups/orchestrator/reports/upstream-asks.md)")
     ap.add_argument("--dashboard-url", default=os.environ.get("DASHBOARD_URL"), help="dashboard base URL for the lane deep link (default: $DASHBOARD_URL)")
     ap.add_argument("--ncl", default=os.environ.get("NANOCLAW_NCL"), help="ncl binary for live session status (default: <root>/bin/ncl when present; '' disables)")
     ap.add_argument("--now", default=None, help="ISO timestamp (tests)")
@@ -576,6 +828,8 @@ def main(argv=None) -> int:
             args.threads or os.path.join(ap_dir, "threads.json"),
             args.dashboard_url or None,
             ncl_bin or None,
+            args.ledger or None,
+            args.upstream_asks or None,
         )
     except SystemExit:
         raise

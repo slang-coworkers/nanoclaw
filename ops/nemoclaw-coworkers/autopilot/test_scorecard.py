@@ -129,6 +129,22 @@ class LedgerParseTest(unittest.TestCase):
         parsed = scorecard.parse_ledger(text, IST)
         self.assertEqual(parsed["rows"]["LOOP-F35"]["outcome"], "in_flight")
 
+    def test_carried_criteria_table_is_not_the_work_list(self):
+        # ledger.md's second table (hermes_queue.parse_carried_criteria). Its row `| AC-LOOP-F35-5 | LOOP-F35 | ... |`
+        # names exactly one id token and would otherwise read as a decorated LOOP-F35 row: a duplicate with garbage cells.
+        text = LEDGER + (
+            "\n## Carried criteria\n\n"
+            "| criterion | from row | to row | reason | decided | status |\n"
+            "| --- | --- | --- | --- | --- | --- |\n"
+            "| AC-LOOP-F35-5 | LOOP-F35 | CRED-F28 | needs the podman box | operator 2026-09-10 | open |\n"
+        )
+        parsed = scorecard.parse_ledger(text, IST)
+        self.assertEqual(set(parsed["rows"]), {"LOOP-F35", "MEM-F44", "OPS-F58.a", "OPS-F58"})
+        self.assertEqual((parsed["duplicates"], parsed["spelling"]), ([], []))
+        self.assertEqual(sorted(parsed["other_rows"]), ["P0-LOOP", "P2-PREFLIGHT"])
+        self.assertEqual(parsed["rows"]["LOOP-F35"]["stage"], "spec_handoff")
+        self.assertEqual(parsed["rows"]["LOOP-F35"]["dispatched_at"], "2026-09-09T06:50:00Z")
+
 
 class AlertsTest(unittest.TestCase):
     def test_parse_alerts(self):

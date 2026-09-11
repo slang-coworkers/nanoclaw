@@ -15,7 +15,12 @@ Inputs (read, never edited):
   --matrix  gap-matrix.md     disposition / esc / outcomes / design_note per row
   --ledger  ledger.md         the Orchestrator's work list
                               (row-id | dispatched | spec accepted | PR | verdict |
-                               merged/blocked | notes), columns located by header
+                               merged/blocked | notes), columns located by header;
+                              plus, under `## Carried criteria`, the criteria one row
+                              deferred onto another (criterion | from row | to row |
+                              reason | decided | status)
+  --upstream-asks upstream-asks.md  the Orchestrator's core-change asks (id | source row |
+                              citation | ask | disposition | owner | updated); optional
   --config  config.json       wip, paused, paused_rows, waive, podman_box, plan_sha256,
                               matrix_sha256, authorize_round, install_tz_offset_minutes,
                               release_tag  (missing keys take DEFAULT_CONFIG)
@@ -47,6 +52,15 @@ Rules pinned here (each has a test in test_hermes_queue.py):
     state, or a `paused_rows` entry is not eligible.
   * A DEFER or MERGE-> id found in the ledger keeps its ledger state (it holds containers)
     and raises `plan-violation`; the human decides.
+  * Carried criteria: a criterion deferred off one row (`AC-<row>-<n>`, status `open`) rides
+    on its `to row` — `carries_criteria` on that row, `deferred_criteria` on the row it came
+    from; the dispatch text names it and the supervisor's gate reminder repeats it. The
+    to-row must be a plan row id (dotted sub-rows allowed), never a phase name: an unknown
+    or DEFER to-row is a coverage problem (dispatch pauses) plus an alert, and the coverage
+    result always carries `open carried criteria: N (rows: ...)` so a "complete" plan can
+    never hide one. `covered (...)` / `dropped (...)` criteria stay visible on the from-row.
+  * Upstream asks (`UA-<n>`, disposition open | filed (<url>) | bypassed (<how>) |
+    declined (<reason>) | adopted (<row>)) attach to their source row as `upstream_asks`.
 
 Output shape: see build_state().
 """
@@ -86,6 +100,13 @@ FAIL_ROUND2_RES = (
     re.compile(r"(?i)round\s+2/2\s*(?:=|:|—|–|-)+\s*\**FAIL\b"),
     re.compile(r"FAIL\s*[×x]\s*2"),
 )
+# ledger.md § Carried criteria and upstream-asks.md § Upstream asks (both Orchestrator-owned tables)
+CARRIED_HEADING_RE = re.compile(r"(?i)^##+\s+carried criteria\b")
+CRITERION_RE = re.compile(r"^AC-([A-Z0-9]+-F[0-9]+(?:\.[a-z])?)-(\d+)$")
+CARRIED_STATUS_RE = re.compile(r"(?i)^(open|covered|dropped)\b\s*(?:\((.*)\))?\s*$")
+UA_ID_RE = re.compile(r"^UA-\d+$")
+UA_DISP_RE = re.compile(r"(?i)^(open|filed|bypassed|declined|adopted)\b\s*(?:\((.*)\))?\s*$")
+ANY_DASH_RE = re.compile("[‐‑‒–−]")  # every look-alike dash in an id cell -> `-`
 
 ZONES = {
     "Z": 0, "UTC": 0, "GMT": 0, "IST": 330, "CET": 60, "CEST": 120, "BST": 60,
@@ -400,9 +421,162 @@ def parse_outcome_cell(cell: str) -> dict:
     return {"outcome": "blocked", "reason": reason, "gate_red": None, "merge_sha": None, "pr_url": None}
 
 
+def _split_ledger_sections(text: str) -> tuple[str, str]:
+    """ledger.md is the work-item table plus, optionally, `## Carried criteria` with a table of
+    its own. Lines under that heading (up to the next `##` heading) are the carried text; every
+    other line is the work-item text, read exactly as before the second table existed. Without
+    the split a carried row `| AC-LOOP-F35-5 | LOOP-F35 | ... |` reads as a decorated LOOP-F35
+    ledger row (one id token) and overwrites the real one."""
+    main: list[str] = []
+    carried: list[str] = []
+    in_carried = False
+    for line in text.splitlines():
+        if re.match(r"^##+\s", line):
+            in_carried = CARRIED_HEADING_RE.match(line) is not None
+        (carried if in_carried else main).append(line)
+    return "\n".join(main), "\n".join(carried)
+
+
+def _kind_and_detail(cell: str, pattern: re.Pattern) -> tuple[str | None, str | None]:
+    """`covered (#12)` -> ("covered", "#12"); `open` -> ("open", None); anything else -> (None, None)."""
+    m = pattern.match(clean_id(cell))
+    if not m:
+        return None, None
+    detail = (m.group(2) or "").strip()
+    return m.group(1).lower(), detail or None
+
+
+def _fold_surplus(cells: list[str], header: list[str], into: str, col: dict[str, int]) -> list[str]:
+    """A raw pipe inside the free-text column adds cells; fold them back into that column."""
+    if len(cells) <= len(header) or into not in col:
+        return cells
+    i = col[into]
+    extra = len(cells) - len(header)
+    return cells[:i] + ["|".join(cells[i : i + extra + 1])] + cells[i + extra + 1 :]
+
+
+def parse_carried_criteria(text: str) -> tuple[list[dict], list[str]]:
+    """The ledger's `## Carried criteria` table -> ([criterion dicts in file order], [problems]).
+
+    Header `criterion | from row | to row | reason | decided | status`, columns located by name.
+    `criterion` is the AC id verbatim (`AC-<row>-<n>`, the row inside it is authoritative for
+    `from_row`); `to row` is read as written — whether it is a plan row is build_state's check;
+    `status` is `open` | `covered (<PR or head>)` | `dropped (<reason>)`. A criterion id or status
+    that does not parse is a problem AND reads as open: a typo can never hide a criterion."""
+    criteria: dict[str, dict] = {}
+    problems: list[str] = []
+    header: list[str] | None = None
+    col: dict[str, int] = {}
+
+    def cell(cells: list[str], name: str) -> str:
+        i = col.get(name)
+        return cells[i] if i is not None and i < len(cells) else ""
+
+    for line in text.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = split_cells(line)
+        if not cells or is_separator(cells):
+            continue
+        low = [c.lower() for c in cells]
+        if "criterion" in low and "to row" in low:
+            header = low
+            col = {name: i for i, name in enumerate(header)}
+            continue
+        if header is None:
+            continue
+        cells = _fold_surplus(cells, header, "reason", col)
+        crit = ANY_DASH_RE.sub("-", clean_id(cell(cells, "criterion")))
+        if not crit:
+            continue
+        m = CRITERION_RE.match(crit)
+        crit_row = m.group(1) if m else None
+        if not m:
+            problems.append(f"carried criterion {crit!r} is not AC-<row>-<n>")
+        from_row = ANY_DASH_RE.sub("-", clean_id(cell(cells, "from row")))
+        if crit_row and from_row and from_row != crit_row:
+            problems.append(f"carried criterion {crit}: from row {from_row} is not the criterion's row {crit_row}; using {crit_row}")
+        to_row = ANY_DASH_RE.sub("-", clean_id(cell(cells, "to row")))
+        if is_empty_cell(to_row):
+            problems.append(f"carried criterion {crit} has no to row")
+            to_row = ""
+        status_raw = cell(cells, "status")
+        status, detail = _kind_and_detail(status_raw, CARRIED_STATUS_RE)
+        if status is None:
+            problems.append(f"carried criterion {crit}: status {status_raw!r} is not open | covered (<PR or head>) | dropped (<reason>); read as open")
+            status = "open"
+        if crit in criteria:
+            problems.append(f"carried criterion {crit} listed twice; last wins")
+        criteria[crit] = {
+            "criterion": crit,
+            "row": crit_row,
+            "n": int(m.group(2)) if m else None,
+            "from_row": crit_row or from_row,
+            "to_row": to_row,
+            "reason": cell(cells, "reason"),
+            "decided": cell(cells, "decided"),
+            "status": status,
+            "status_detail": detail,
+            "status_raw": status_raw,
+        }
+    return list(criteria.values()), problems
+
+
+def parse_upstream_asks(text: str) -> list[dict]:
+    """upstream-asks.md § Upstream asks -> [ask dicts in file order]. Header
+    `id | source row | citation | ask | disposition | owner | updated`, located by name (a
+    repeated header re-anchors the columns); surplus cells fold into `ask`. `disposition` is
+    open | filed (<url>) | bypassed (<how>) | declined (<reason>) | adopted (<row>); anything
+    else reads as open with `disposition_ok` false, and an id that is not `UA-<n>` sets
+    `id_ok` false — build_state alerts on both, the row keeps the ask either way."""
+    asks: list[dict] = []
+    header: list[str] | None = None
+    col: dict[str, int] = {}
+
+    def cell(cells: list[str], name: str) -> str:
+        i = col.get(name)
+        return cells[i] if i is not None and i < len(cells) else ""
+
+    for line in (text or "").splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = split_cells(line)
+        if not cells or is_separator(cells):
+            continue
+        low = [c.lower() for c in cells]
+        if "id" in low and "disposition" in low:
+            header = low
+            col = {name: i for i, name in enumerate(header)}
+            continue
+        if header is None:
+            continue
+        cells = _fold_surplus(cells, header, "ask", col)
+        uid = ANY_DASH_RE.sub("-", clean_id(cell(cells, "id")))
+        if not uid:
+            continue
+        disp_raw = cell(cells, "disposition")
+        disp, detail = _kind_and_detail(disp_raw, UA_DISP_RE)
+        asks.append({
+            "id": uid,
+            "id_ok": UA_ID_RE.match(uid) is not None,
+            "source_row": ANY_DASH_RE.sub("-", clean_id(cell(cells, "source row"))),
+            "citation": cell(cells, "citation"),
+            "ask": cell(cells, "ask"),
+            "disposition": disp or "open",
+            "disposition_detail": detail,
+            "disposition_raw": disp_raw,
+            "disposition_ok": disp is not None,
+            "owner": cell(cells, "owner"),
+            "updated": cell(cells, "updated"),
+        })
+    return asks
+
+
 def parse_ledger(text: str, tz_offset_minutes: int = 330) -> dict:
     """The Orchestrator's work list. Columns are located from the header row, never by
-    position; surplus cells (a raw pipe in `notes`) fold into the last column."""
+    position; surplus cells (a raw pipe in `notes`) fold into the last column. The
+    `## Carried criteria` section is split off first and parsed by parse_carried_criteria
+    into `carried_criteria` / `carried_problems`; the work-item table reads as it always did."""
     header = None
     col: dict[str, int] = {}
     rows: dict[str, dict] = {}
@@ -410,12 +584,14 @@ def parse_ledger(text: str, tz_offset_minutes: int = 330) -> dict:
     order: list[str] = []
     duplicates: list[str] = []
     spelling: list[dict] = []
+    main_text, carried_text = _split_ledger_sections(text)
+    carried_criteria, carried_problems = parse_carried_criteria(carried_text)
 
     def cell(cells: list[str], name: str) -> str:
         i = col.get(name)
         return cells[i] if i is not None and i < len(cells) else ""
 
-    for line in text.splitlines():
+    for line in main_text.splitlines():
         if not line.startswith("|"):
             continue
         cells = split_cells(line)
@@ -469,6 +645,8 @@ def parse_ledger(text: str, tz_offset_minutes: int = 330) -> dict:
         "other_rows": other,
         "duplicates": duplicates,
         "spelling": spelling,
+        "carried_criteria": carried_criteria,
+        "carried_problems": carried_problems,
     }
 
 
@@ -500,10 +678,31 @@ def ledger_state(entry: dict, round3_authorized: bool = False) -> tuple[str, str
 
 # --------------------------------------------------------------------------- coverage
 
-def coverage_check(plan: dict, matrix: dict) -> dict:
+def coverage_check(plan: dict, matrix: dict, ledger: dict | None = None) -> dict:
     """§4: the parse must reproduce the plan's coverage (every matrix id exactly once
-    across batches / adopt / defer / merge, dispositions agreeing) or dispatch pauses."""
+    across batches / adopt / defer / merge, dispositions agreeing) or dispatch pauses.
+
+    With the ledger, the `## Carried criteria` table joins the check: a criterion whose to-row
+    is not a plan row (a phase name such as `P4`, a typo) or is a DEFER row has nowhere to land,
+    which is the same hole as a matrix row missing from the plan — a problem, so dispatch pauses
+    until the cell is fixed. The result always states `open carried criteria: N (rows: ...)`
+    (`carried_line`), so a plan that reads complete never hides an open one."""
     problems = list(plan["problems"]) + list(matrix["problems"])
+    carried = list((ledger or {}).get("carried_criteria") or [])
+    problems += list((ledger or {}).get("carried_problems") or [])
+    open_carried: list[dict] = []
+    for c in carried:
+        to = c.get("to_row") or ""
+        if not to:
+            pass  # already a carried_problem from the parse
+        elif to not in plan["rows"]:
+            problems.append(f"carried criterion {c['criterion']} names unknown row {to}")
+        elif plan["rows"][to]["batch"] == "defer":
+            problems.append(f"carried criterion {c['criterion']} names DEFER row {to}, which is never dispatched")
+        if c.get("status", "open") == "open":
+            open_carried.append(c)
+    open_rows = sorted({c.get("to_row") or "?" for c in open_carried})
+    carried_line = f"open carried criteria: {len(open_carried)}" + (f" (rows: {', '.join(open_rows)})" if open_rows else "")
     counts = {b: 0 for b in DISPATCH_BATCHES}
     counts.update({"adopt": 0, "defer": 0, "merge": 0})
     seen = set()
@@ -551,6 +750,11 @@ def coverage_check(plan: dict, matrix: dict) -> dict:
         "defer": counts["defer"],
         "total": total,
         "matrix_rows": len(matrix["rows"]),
+        "carried_total": len(carried),
+        "open_carried_criteria": len(open_carried),
+        "open_carried_ids": [c["criterion"] for c in open_carried],
+        "open_carried_rows": open_rows,
+        "carried_line": carried_line,
     }
 
 
@@ -629,6 +833,19 @@ def dispatch_order(plan: dict, matrix: dict) -> list[tuple[str, tuple[str, ...]]
     return order
 
 
+def carried_paragraph(row: dict) -> str:
+    """The dispatch-text paragraph for the criteria other rows deferred onto this one, or ""."""
+    items = row.get("carries_criteria") or []
+    if not items:
+        return ""
+    listed = "; ".join(f"{c['criterion']} (from {c.get('from_row') or '?'}: {c.get('reason') or 'no reason recorded'})" for c in items)
+    return (
+        "\n\nCarried criteria this row MUST cover (deferred from other rows; the merge gate checks them): "
+        f"{listed}. List each verbatim in the ADR's ## Acceptance criteria table under its original id "
+        "(never renumbered) with its own test row, so P5 requires a PASS for it."
+    )
+
+
 def dispatch_text(rid: str, row: dict, cfg: dict) -> str:
     """§4.4 templates, filled for one row."""
     name = row["name"]
@@ -658,6 +875,7 @@ def dispatch_text(rid: str, row: dict, cfg: dict) -> str:
             f"slang-coworkers/hermes-agent, base release/{cfg['release_tag']}-e2e-fixed, title suffix [{rid}]. "
             "Round caps: 2 in-plugin test FAILs per review cycle, 2 review rounds per PR; FAIL (env) and ESCALATE never count."
         )
+    text += carried_paragraph(row)
     if row.get("upstream_ask") and row["disposition"] == "ADOPT":
         text += (
             "\n\nUpstream ask: this row also owns a P8 ask (plan § P8, or esc = Y in the matrix). Record what "
@@ -684,6 +902,8 @@ def orchestrator_text(rid: str, row: dict, architect_text: str) -> str:
     the old dispatch prompt gave it, with the architect text to forward verbatim underneath.
     """
     carries = ", ".join(f"AC-{c}" for c in row.get("carries") or []) or "none"
+    carried_ids = [c["criterion"] for c in row.get("carries_criteria") or []]
+    carried_note = f"; carried criteria {', '.join(carried_ids)}" if carried_ids else ""
     return (
         f"Autopilot dispatch {rid} ({row['disposition']}, batch {row['batch']}): {row['name']}.\n\n"
         "You are the Orchestrator; this thread is the row's dashboard thread. Do, in this order:\n"
@@ -692,7 +912,7 @@ def orchestrator_text(rid: str, row: dict, architect_text: str) -> str:
         "2. Append the ledger row (columns row-id | dispatched | spec accepted | PR | verdict | merged/blocked | "
         "notes; the lone dash for the empty cells; never a second row for an id; edit nothing else):\n"
         f"   | {rid} | <stamp> (to hermes-architect, thread `hermes-{rid}`) | \u2014 | \u2014 | \u2014 | \u2014 | "
-        f"autopilot dispatch, batch {row['batch']}, {row['disposition']}; {row['name']}; carries {carries} |\n"
+        f"autopilot dispatch, batch {row['batch']}, {row['disposition']}; {row['name']}; carries {carries}{carried_note} |\n"
         "   <stamp> = date '+%Y-%m-%d %H:%M %Z'.\n"
         "3. Send the text below the dashed line VERBATIM to hermes-architect as an unmarked fresh message on "
         f"this thread: send_message(to=\"hermes-architect\", thread_id=\"hermes-{rid}\", text=<that text>). "
@@ -710,6 +930,7 @@ def build_state(
     config: dict | None = None,
     prior_state: dict | None = None,
     now: str | None = None,
+    upstream_asks_text: str | None = None,
 ) -> dict:
     cfg = load_config(config)
     prior = prior_state or {}
@@ -719,7 +940,9 @@ def build_state(
     plan = parse_plan(plan_text)
     matrix = parse_matrix(matrix_text)
     ledger = parse_ledger(ledger_text, cfg["install_tz_offset_minutes"])
-    coverage = coverage_check(plan, matrix)
+    carried = ledger["carried_criteria"]
+    asks = parse_upstream_asks(upstream_asks_text or "")
+    coverage = coverage_check(plan, matrix, ledger)
     alerts: list[dict] = []
 
     plan_sha = sha256_text(plan_text)
@@ -742,6 +965,44 @@ def build_state(
             alerts.append({"kind": "ledger-id-spelling", "row": None, "detail": f"row-id cell {s['cell']!r} names {len(s['ids'])} ids ({', '.join(s['ids'])}); row not counted; make the cell one bare id"})
         else:
             alerts.append({"kind": "ledger-id-spelling", "row": s["row"], "detail": f"row-id cell {s['cell']!r} read as {s['row']}; make the cell the bare id"})
+    for p in ledger["carried_problems"]:
+        alerts.append({"kind": "carried-criterion-malformed", "row": None, "detail": p + " — fix the ## Carried criteria table in ledger.md"})
+    for c in carried:
+        to = c["to_row"]
+        if to and to not in plan["rows"]:
+            alerts.append({
+                "kind": "carried-criterion-unknown-row", "row": c["from_row"] or None,
+                "detail": f"carried criterion {c['criterion']} names unknown row {to}; the to-row must be a plan row id (never a phase) — fix the ## Carried criteria table",
+            })
+        elif to and plan["rows"][to]["batch"] == "defer":
+            alerts.append({
+                "kind": "carried-criterion-unknown-row", "row": c["from_row"] or None,
+                "detail": f"carried criterion {c['criterion']} names DEFER row {to}, which is never dispatched; re-carry it to a dispatched row",
+            })
+    for a in asks:
+        if not a["id_ok"] or not a["disposition_ok"]:
+            what = [] if a["id_ok"] else [f"id {a['id']!r} is not UA-<n>"]
+            if not a["disposition_ok"]:
+                what.append(f"disposition {a['disposition_raw']!r} is not open | filed (<url>) | bypassed (<how>) | declined (<reason>) | adopted (<row>)")
+            alerts.append({"kind": "upstream-ask-malformed", "row": a["source_row"] or None, "detail": f"upstream ask {a['id']}: " + "; ".join(what) + " — fix upstream-asks.md"})
+        elif a["source_row"] and a["source_row"] not in matrix["rows"]:
+            alerts.append({"kind": "upstream-ask-unknown-row", "row": None, "detail": f"upstream ask {a['id']} names source row {a['source_row']}, which is not in the matrix"})
+
+    carries_to: dict[str, list[dict]] = {}
+    deferred_from: dict[str, list[dict]] = {}
+    for c in carried:
+        if c["status"] == "open" and c["to_row"]:
+            carries_to.setdefault(c["to_row"], []).append(
+                {"criterion": c["criterion"], "from_row": c["from_row"], "reason": c["reason"], "decided": c["decided"]}
+            )
+        if c["from_row"]:
+            deferred_from.setdefault(c["from_row"], []).append(
+                {"criterion": c["criterion"], "to_row": c["to_row"], "status": c["status"], "status_detail": c["status_detail"], "reason": c["reason"]}
+            )
+    asks_by_row: dict[str, list[str]] = {}
+    for a in asks:
+        if a["source_row"]:
+            asks_by_row.setdefault(a["source_row"], []).append(a["id"])
 
     prior_rows = prior.get("rows") or {}
     carried_by = {cid: carrier for carrier, ids in plan["carries"].items() for cid in ids}
@@ -760,6 +1021,9 @@ def build_state(
             "outcomes": mrow["outcomes"],
             "design_note": mrow["design_note"],
             "carries": plan["carries"].get(rid, []),
+            "carries_criteria": carries_to.get(rid, []),
+            "deferred_criteria": deferred_from.get(rid, []),
+            "upstream_asks": asks_by_row.get(rid, []),
             "state": "queued",
             "state_reason": None,
             "ledger": None,
@@ -881,6 +1145,8 @@ def build_state(
         "next_queue": (eligible + waiting)[:3],
         "queue": {"eligible": [e["id"] for e in eligible], "waiting": waiting},
         "alerts": alerts,
+        "carried_criteria": carried,
+        "upstream_asks": asks,
         "sources": {
             "ledger": {
                 "rows": len(ledger["rows"]),
@@ -888,9 +1154,12 @@ def build_state(
                 "duplicates": ledger["duplicates"],
                 "id_spelling": ledger["spelling"],
                 "header_ok": ledger["header_ok"],
+                "carried_criteria": len(carried),
+                "carried_problems": ledger["carried_problems"],
             },
             "plan": {"rows": len(plan["rows"]), "upstream_owners": plan["upstream_owners"], "problems": plan["problems"]},
             "matrix": {"rows": len(matrix["rows"]), "problems": matrix["problems"]},
+            "upstream_asks": {"provided": upstream_asks_text is not None, "rows": len(asks)},
         },
     }
 
@@ -918,6 +1187,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--plan", required=True, help="dispatch-plan.md")
     ap.add_argument("--matrix", required=True, help="gap-matrix.md")
     ap.add_argument("--ledger", required=True, help="the Orchestrator's ledger.md")
+    ap.add_argument("--upstream-asks", help="the Orchestrator's upstream-asks.md (optional; an absent file is an empty table)")
     ap.add_argument("--config", help="config.json (wip, paused, paused_rows, waive, podman_box, hashes)")
     ap.add_argument("--state", help="previous state.json (dispatched bookkeeping, supervise signals)")
     ap.add_argument("--now", help="ISO timestamp for generated_at (tests)")
@@ -929,6 +1199,12 @@ def main(argv: list[str] | None = None) -> int:
     except OSError as e:
         ledger_text = ""
         print(f"ledger unreadable: {e}", file=sys.stderr)
+    asks_text = None
+    if args.upstream_asks:
+        try:
+            asks_text = _read(args.upstream_asks)
+        except OSError:
+            asks_text = ""  # the file is optional: none filed yet is an empty table, not an error
     state = build_state(
         _read(args.plan),
         _read(args.matrix),
@@ -936,6 +1212,7 @@ def main(argv: list[str] | None = None) -> int:
         config=_read_json(args.config),
         prior_state=_read_json(args.state),
         now=args.now,
+        upstream_asks_text=asks_text,
     )
     if args.json:
         print(json.dumps(state, separators=(",", ":"), sort_keys=True))

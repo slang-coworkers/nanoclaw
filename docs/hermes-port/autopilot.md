@@ -7,8 +7,9 @@ tick) and one Mac-side check script, with every decision that needs a human land
 the human reads every 6 hours.
 
 Inputs it reads (never edits): `dispatch-plan.md`, `gap-matrix.md`, the ledger
-`groups/orchestrator/reports/ledger.md` (= `/workspace/agent/reports/ledger.md`), the role
-sessions on each row's thread, and the fork `slang-coworkers/hermes-agent`. Outputs it owns:
+`groups/orchestrator/reports/ledger.md` (= `/workspace/agent/reports/ledger.md`) — its work-item
+table and its `## Carried criteria` table — the Orchestrator's `upstream-asks.md` next to it (§2.4),
+the role sessions on each row's thread, and the fork `slang-coworkers/hermes-agent`. Outputs it owns:
 `data/shared/hermes/autopilot/state.json` (container: `/workspace/shared/hermes/autopilot/state.json`),
 `groups/orchestrator/reports/status/alerts.md`, the nudges and one-line notes it sends, and the
 dispatches it makes. The ledger stays the
@@ -22,7 +23,7 @@ at `/workspace/shared/hermes/autopilot/` and the host cron runs from):
 
 | Path | What |
 |---|---|
-| `hermes_queue.py` | the dispatch core (stdlib, py3.11, `--now` for tests): plan + matrix + ledger + config + prior state → `wip`, `in_flight`, `eligible_next` with the §4.4 text per row (`dispatch_text` for the architect, `orchestrator_text` = the same wrapped in the ledger-row + forward steps the cron POSTs), `gating`, `alerts` |
+| `hermes_queue.py` | the dispatch core (stdlib, py3.11, `--now` for tests): plan + matrix + ledger (both tables) + `--upstream-asks` + config + prior state → `wip`, `in_flight`, `eligible_next` with the §4.4 text per row (`dispatch_text` for the architect, `orchestrator_text` = the same wrapped in the ledger-row + forward steps the cron POSTs), `gating`, `coverage` (with `carried_line`), `carried_criteria` / `upstream_asks` per row and whole (§2.4), `alerts` |
 | `hermes_supervise.py` | the supervise core: that state + the row threads + the fork PRs + the nudge book → stage per row, SLO check, bounded `hold` / `gate` / `nudge` / `alert` actions (§2, §3, §5) |
 | `collect_threads.py` | inside the container: the role sessions on each `hermes-<ID>` thread via `ncl sessions list/messages` + `ncl cost-cap status`, bounded by `--rows` (the in-flight rows) and `--deadline-s` |
 | `pull-state.sh` | inside the container: the `gh` and `ncl` probes, then queue → collector → supervisor; writes `state.json`, `threads.json`, `prs.json` (tmp + rename). A failed probe is a `collector_errors` entry, never a silent gap |
@@ -201,6 +202,82 @@ unhanded) → `building` (FAIL / RC on an older head, or builder started and no 
 before anything else; a DEFER or MERGE→ id that shows up in the ledger as dispatched is the
 `plan-violation` alert.
 
+### 2.4 Carried criteria and upstream asks: two Orchestrator-owned tables
+
+Two kinds of decision used to exist only as prose — "AC-LOOP-F35-5 deferred to P4" in an ADR and a
+ledger cell, "UA-1 bypassed locally, not filed" on a thread. No row carried the criterion, the
+coverage check counted LOOP-F35 as fully done, the rows board showed nothing, and the queue would
+never have dispatched it. Both are now tables the Orchestrator writes and the deterministic core
+reads (`hermes_queue.parse_ledger` → `carried_criteria` / `carried_problems`;
+`hermes_queue.parse_upstream_asks`).
+
+**Carried criteria** — a second table in `ledger.md`, under the heading `## Carried criteria`. The
+parser splits that section off before reading the work-item table, so the work list reads exactly
+as before (without the split, `| AC-LOOP-F35-5 | LOOP-F35 | …` is one id token and overwrites the
+real LOOP-F35 row).
+
+| criterion | from row | to row | reason | decided | status |
+|---|---|---|---|---|---|
+| `AC-LOOP-F35-5` | `LOOP-F35` | `LOOP-F37` | the veto half needs the gates plugin; compose only renders the key | operator 2026-09-10 | `open` |
+
+`criterion` is the `AC-<row>-<n>` id verbatim (the row inside it is authoritative for `from row`);
+`to row` is a **plan row id** — dotted sub-rows allowed; a phase name (`P4`) or a DEFER row never;
+`reason` is why it left the PR; `decided` names who ruled and when (operator, a message id, a
+`/codex-critique` verdict); `status` is `open` | `covered (<PR or head>)` | `dropped (<reason>)`.
+**Who writes it: the Orchestrator, in the same turn a criterion leaves the current PR** — a
+`FAIL (env)` or `ESCALATE` that cannot be fixed within the row's approved scope, an operator ruling,
+an ADR amendment — with the target row and the reason, plus a mention in the from-row's ledger
+`notes` (`delegated-decisions.md`, §5). **Status changes are the Orchestrator's too:** the target
+row's merge gate verifies the id (P5 in `merge-gate.md`) and the merge step sets `covered (#<N>)`;
+an operator ruling that the criterion no longer applies sets `dropped (<why>)`. Rows are never
+deleted — a `covered` or `dropped` row stays visible on the from-row (`deferred_criteria`).
+
+**Upstream asks** — `groups/orchestrator/reports/upstream-asks.md`
+(= `/workspace/agent/reports/upstream-asks.md`), under the heading `## Upstream asks`:
+
+| id | source row | citation | ask | disposition | owner | updated |
+|---|---|---|---|---|---|---|
+| `UA-1` | `LOOP-F35` | `/workspace/extra/hermes-release/tools/bot_mode_dm.py:316` | `bot_mode_dm.py` spawns bare `hermes` as argv[0]; a venv install has no `hermes` on PATH | `bypassed (wrapper on PATH in the fixture, not filed)` | orchestrator | 2026-09-10 |
+
+`id` is `UA-<n>`, never reused; `citation` is the release-tree path + line the ADR's `## CORE-CHANGE`
+cites; `ask` is the request verbatim (a raw `|` inside it folds back into the column);
+`disposition` is `open` | `filed (<url>)` | `bypassed (<how>)` | `declined (<reason>)` |
+`adopted (<row>)`. **Who writes it: the Orchestrator, the moment a core-change candidate is
+surfaced** — a `[Spec handoff]` whose `CORE-CHANGE` is not `none`, an ADR `## CORE-CHANGE` section,
+a builder finding that the plugin surface cannot absorb — as `open`, before any ruling; the same
+row's disposition is then edited in place when it is filed, bypassed, declined or adopted. Posting
+to the upstream repo stays the human's (§5).
+
+**The rule: a deferral names a target ROW, never a phase.** "Deferred to P4" is not a deferral, it
+is the gap above. `to row` must be a row the queue will dispatch: a value that is not in the plan,
+or is a DEFER row, is a coverage problem (§4) — dispatch pauses until the cell is fixed — plus the
+`carried-criterion-unknown-row` alert. A criterion id or status that does not parse is
+`carried-criterion-malformed` and reads as `open` (a typo can never hide a criterion); a malformed
+ask is `upstream-ask-malformed`; a source row not in the matrix is `upstream-ask-unknown-row`.
+
+**What the core does with them:**
+
+- `state.json` — every row carries `carries_criteria` (the open criteria whose `to row` is this row:
+  `criterion`, `from_row`, `reason`, `decided`), `deferred_criteria` (every criterion this row
+  deferred: `criterion`, `to_row`, `status`, `status_detail`, `reason`) and `upstream_asks` (the
+  `UA-` ids whose source row is this row). The whole tables sit at `state.carried_criteria` and
+  `state.upstream_asks`; `sources.ledger.carried_criteria` / `carried_problems`,
+  `sources.upstream_asks` (`provided`, `rows`) and `paths.upstream_asks` say what was read.
+  `pull-state.sh` passes `UPSTREAM_ASKS` (default `/workspace/agent/reports/upstream-asks.md`) to
+  the queue as `--upstream-asks`; an absent file is an empty table, not an error.
+- The coverage line — `coverage.carried_line` always reads `open carried criteria: N (rows: …)`
+  (`summary.open_carried` in the pull summary), so a plan that reads 61/61 never hides an open
+  criterion. A merged from-row with an open deferred criterion is fine; that is the point.
+- The dispatch paragraph (§4.4) — the target row's architect is told the ids it carries, verbatim,
+  and the Orchestrator's ledger-row `notes` name them.
+- The gate reminder — a `gate` action for a row with open carried criteria appends
+  `; carried criteria to verify in the ADR/Test Report: AC-…` (and `carried_criteria` on the
+  action); a row that is `merged` while a criterion carried to it is still `open` draws the
+  `carried-open` alert (`merged with open carried criterion AC-… — mark covered or re-carry`),
+  24 h bound like every alert.
+- The rows board (§10) — both tables as sections on `/rows/`, a `carries N` badge on the rows
+  that carry open criteria, and per-row Carries / Deferred-from blocks.
+
 ## 3. SLOs, nudges, escalation
 
 Hours are wall-clock from the state's clock (§2.1), with `hold` and `cost_hold` time excluded.
@@ -258,7 +335,9 @@ destination resolved with `ncl destinations list --json` (the `channel` row, as
 re-arms it. Alert reasons that are not row states: `cost-card`, `core-change`, `plan-changed`,
 `blocked-twice`, `ledger-drift`, `ledger-duplicate`, `ledger-id-spelling`, `ledger-unknown-id`,
 `ledger-unreadable`, `plan-violation`, `fork-unreachable`, `sessions-unreachable`, `tick-stale`,
-`nudge-unconfirmed`, `hold-too-long`, `podman-box-needed`.
+`nudge-unconfirmed`, `hold-too-long`, `podman-box-needed`, and for the two tables of §2.4
+`carried-criterion-malformed`, `carried-criterion-unknown-row`, `carried-open`,
+`upstream-ask-malformed`, `upstream-ask-unknown-row`.
 
 ## 4. Queue, WIP and gating rules (from `dispatch-plan.md`)
 
@@ -268,7 +347,10 @@ source. The parse is structural: `## Batch 1a`, `## Batch 1b` (its `**Wave n**` 
 paragraphs), `## Defer`; a row is the first table cell in those sections matching the id regex,
 with `**` stripped. `gap-matrix.md` supplies `disposition` and `esc`. The parse must reproduce
 the plan's coverage check (30 dispatched = 1 + 18 + 6 + 4 + 1, 16 adopt, 11 merge, 4 defer = 61)
-or the tick refuses to dispatch and raises `plan-changed`.
+or the tick refuses to dispatch and raises `plan-changed`. The ledger's `## Carried criteria` table
+joins that check (§2.4): a carried criterion whose `to row` is not a plan row or is a DEFER row has
+nowhere to land — the same hole as a matrix row missing from the plan — so dispatch pauses until
+the cell is fixed, and the result always states `open carried criteria: N (rows: …)`.
 
 ### 4.1 WIP
 
@@ -314,7 +396,7 @@ The dispatch cron POSTs `{group: "orchestrator", thread_id: "hermes-<ID>", conte
 orchestrator_text}` to the dashboard chat API. `orchestrator_text` tells the Orchestrator, in
 order: re-check the ledger for the id; add the ledger row (`row-id = <ID>`, `dispatched = <local
 stamp> (to hermes-architect, thread \`hermes-<ID>\`)`, other cells the lone dash, notes
-`autopilot dispatch, batch <b>, <disposition>; <name>; carries <AC list or none>`); send the
+`autopilot dispatch, batch <b>, <disposition>; <name>; carries <AC list or none>[; carried criteria <AC list>]`); send the
 architect the text under the dashed line verbatim as an unmarked fresh message on
 `thread_id="hermes-<ID>"`; reply on the thread only with the outcome line. Because the POST
 itself lands on `hermes-<ID>`, the row has its dashboard thread by construction; no separate
@@ -329,6 +411,13 @@ Requirement row: /workspace/shared/hermes/gap-matrix.md (row <ID>; disposition <
 The ADR must cover this row AND every id it carries: <AC-<id> list from the plan's "carries" bullets, or "none">.
 
 Deliver the ADR + acceptance test (kinds pytest: / ui: / desktop: / live:) as the gated [Spec handoff] on this thread, then forward to hermes-builder. Draft PR on slang-coworkers/hermes-agent, base release/<tag>-e2e-fixed, title suffix [<ID>]. Round caps 2 test / 2 review.
+```
+
+Appended when other rows deferred criteria onto this row (`ledger.md` § Carried criteria, status
+`open`, `to row` = this row; §2.4) — the same paragraph on the adopt template:
+
+```
+Carried criteria this row MUST cover (deferred from other rows; the merge gate checks them): AC-LOOP-F35-5 (from LOOP-F35: <reason>). List each verbatim in the ADR's ## Acceptance criteria table under its original id (never renumbered) with its own test row, so P5 requires a PASS for it.
 ```
 
 Appended when the row carries an upstream ask (`esc = Y` in the matrix, or the row is named in
@@ -361,7 +450,8 @@ and records it in the ledger's `notes` cell and in `state.json`):
 | Decision | Trigger | Bound |
 |---|---|---|
 | one extra test round | the tester's latest report for the row is `ESCALATE` or its FAIL is marked environmental: `install_packages`, `desktop tier unavailable`, `pre-existing` / `cited-pre-existing` base failures, or infra (`mergeable UNKNOWN` after retries) | one per review cycle per row (`authorize_round["<ID>"]`, cleared when the cycle ends); ledger note `extra round authorized by autopilot §5: <why the next run will differ>`; the cost ceilings are the hard stop |
-| file an upstream ask | `[Spec handoff]` with `CORE-CHANGE` not `none`, or an ADR `## CORE-CHANGE` section | append to `/workspace/agent/reports/upstream-asks.md` (row, citation, the ask verbatim), one line on the row thread; posting to the upstream repo is the human's |
+| defer a criterion | a `FAIL (env)` / `ESCALATE` that cannot be fixed within the row's approved scope, or an operator ruling, removes a criterion from the current PR | in the same turn: write the `## Carried criteria` row in `ledger.md` — the `AC-` id verbatim, a **target row id** from the plan, the reason, who decided, `status = open` — and name it in the from-row's ledger `notes` (§2.4); the criterion is then dispatched with the target row (§4.4) and checked at that row's gate (`merge-gate.md` P5). **Never "to P4"**: a phase name is not a target, and the coverage check pauses dispatch on it. Dropping a criterion outright is a scope change: the operator's |
+| file an upstream ask | `[Spec handoff]` with `CORE-CHANGE` not `none`, or an ADR `## CORE-CHANGE` section, or a builder finding the plugin surface cannot absorb | **the moment it is surfaced**, append a `UA-<n>` row to `/workspace/agent/reports/upstream-asks.md` § Upstream asks (source row, citation, the ask verbatim, disposition `open`, owner, date; §2.4) and one line on the row thread; when it is ruled on, edit that row's disposition in place — `filed (<url>)`, `bypassed (<how>)`, `declined (<reason>)`, `adopted (<row>)` — a ruling that lives only on a thread is not recorded; posting to the upstream repo is the human's |
 | re-dispatch after a bounced container | a role holds the row's next step, its session is `stopped` or absent, it produced zero outbound since the hand-off, and the hand-off is 1 h old | max 2 per row per stage, same thread, same text, note `redispatch n/2`; a third need escalates |
 | stop a row at its round cap | two in-plugin test FAILs in the current review cycle (`FAIL (env)` and `ESCALATE` never count) with no authorization left, review REQUEST_CHANGES ×2, or a second gate red on the same head | decide first (delegated-decisions.md: extra round with a named reason / re-spec / stop), then ledger `merged/blocked = blocked: STOP cap - <what>`; one alert; nothing re-dispatches it |
 | action the tester's `install_packages` request | the report's `DESKTOP` row reads `SKIPPED` with an `install_packages: <pkgs>` request | the request is filed (self-mod approval is a human card by construction); ledger note |
@@ -567,6 +657,12 @@ where it lives today and shows up in the next tick's state.
   `/workspace/shared` raises `ledger-duplicate`. Duplicate rows for one id: last wins, alert.
 - **Terminal means terminal.** `merged`, `blocked`, `deferred`, `carried` rows never receive a
   nudge or a dispatch. A `blocked` row is re-entered only by a human, and only once (§5).
+- **A deferral names a row, never a phase.** A criterion leaves a PR only by a `## Carried criteria`
+  row whose `to row` is a plan row (§2.4); the coverage check treats a phase name or a DEFER row
+  there as a hole and pauses dispatch, the coverage line always counts the open ones, the target
+  row's dispatch text names them and its merge gate demands a PASS row for each. A merged row with
+  an open criterion carried to it is the `carried-open` alert. Prose in an ADR or a ledger cell
+  carries nothing.
 - **Holds pause clocks.** `hold` and `cost_hold` time is excluded from every SLO; a held row
   cannot breach, but `hold-too-long` (48 h) and the cost card alert still reach the human.
 - **Degrade, never guess.** `gh` or `ncl` failures set `sources.*.checked=false`; no `merged`
@@ -662,6 +758,19 @@ after rollout does not nudge every in-flight row for the markers that predate th
 - `/rows/<ROW>.html` — every card for the row newest-first with HTML/JSON links, plus `/adr/`,
   `/test-reports/<thread>/` and, when `DASHBOARD_URL` is set, the lane deep link
   `$DASHBOARD_URL/#/cw/orchestrator/l/hermes-<ROW>`. Card dirs are symlinked under `/rows/cards/<group>/<thread>/`.
+- `/rows/` also renders the two tables of §2.4, read through `hermes_queue`'s own parsers from
+  `groups/orchestrator/reports/ledger.md` and `upstream-asks.md` (`--ledger` / `--upstream-asks`
+  override the `--root`-derived paths): a **Carried criteria** section (criterion · from → to ·
+  status · reason · decided, open ones first; a `to row` that is not a plan row — `P4` — or is a
+  DEFER row is flagged in red, a status the parser could not read shows as `open · unparsed <raw>`)
+  and an **Upstream asks** section (id · source row · disposition · ask truncated to 120 chars with
+  the full text as the tooltip, citation beneath). A row in the batch tables that carries open
+  criteria wears a `carries N` badge next to its id. Each `/rows/<ROW>.html` gets a **Carries**
+  block (what this row must cover, with the P5 reminder), a **Deferred from this row** block and,
+  when any, the row's upstream asks.
 - Missing inputs degrade, never crash: `dispatch-plan.md` via `hermes_queue.parse_plan` ("plan
-  unreadable" banner), `state.json` / `threads.json` (stale banner from `generated_at`). The a | b | t | r
+  unreadable" banner), `state.json` / `threads.json` (stale banner from `generated_at`), a missing
+  or unreadable `ledger.md` / `upstream-asks.md` (a banner in place of the section; an empty
+  `upstream-asks.md` is simply "no upstream asks recorded"), malformed carried rows (the parser's
+  problems as banners). The a | b | t | r
   header (§7) gains `cards 24h N` (`card-*.png` written in the last 24 h), so a stalled fleet shows in the brief.

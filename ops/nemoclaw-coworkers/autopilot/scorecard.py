@@ -47,6 +47,7 @@ except ImportError:  # the mirror on the box may lag one file; the text scorecar
 ROW_ID_RE = re.compile(r"^[A-Z0-9]+-F[0-9]+(\.[a-z])?$")
 ID_TOKEN_RE = re.compile(r"\b[A-Z0-9]+-F[0-9]+(?:\.[a-z])?\b")
 ID_DASH_RE = re.compile("(?<=[A-Z0-9])[\u2010\u2011\u2012\u2013\u2212](?=F[0-9])")  # hyphen look-alikes
+CARRIED_HEADING_RE = re.compile(r"(?i)^##+\s+carried criteria\b")  # ledger.md's second table (hermes_queue.parse_carried_criteria)
 MERGED_RE = re.compile(r"merged.{0,60}?(?:\b[0-9a-f]{7,40}\b|/pull/\d+)", re.IGNORECASE | re.DOTALL)
 BLOCKED_RE = re.compile(r"blocked:", re.IGNORECASE)
 STAMP_RE = re.compile(r"(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})")
@@ -199,8 +200,12 @@ def parse_ledger(text: str, default_offset: timedelta) -> dict:
     spelling: list = []
     cols: dict = {}
     header_found = False
+    skip = False  # lines under `## Carried criteria` are the criteria table: `| AC-LOOP-F35-5 | LOOP-F35 | ... |` is not a LOOP-F35 row
     for line in text.splitlines():
-        if not line.lstrip().startswith("|"):
+        if re.match(r"^##+\s", line):
+            skip = CARRIED_HEADING_RE.match(line) is not None
+            continue
+        if skip or not line.lstrip().startswith("|"):
             continue
         cells = split_row(line)
         if not header_found:
