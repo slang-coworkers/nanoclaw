@@ -795,14 +795,26 @@ posts, at most `--max-posts` (12) API calls per run:
   (`files.getUploadURLExternal` → bytes → `files.completeUploadExternal`), caption
   `<ROW> · <role> · <OUTCOME> — <headline>` from the sibling `.json`;
 - once the row's cards are all up, one closing line from the ledger's `merged/blocked` cell:
-  `✅ <ROW> merged <sha> — …` or `⛔ <ROW> blocked — <reason>`.
+  `✅ <ROW> merged <sha> — …` or `⛔ <ROW> blocked — <reason>` — the ⛔ line covers both a terminal
+  `blocked: STOP …` and a red merge gate (`blocked: P<n> — …`, `parse_outcome_cell`'s `gate_red`),
+  once per row; a later merge still posts its ✅ line.
+
+A card younger than 60 s (`CARD_SETTLE_S`) is left for the next run — `card.sh` screenshots the PNG in
+place, so a fresh file may be mid-write — and a PNG without its signature + `IEND` tail is logged as
+`slack error read: incomplete png` and retried, never recorded. Everything Slack renders as mrkdwn
+(message text, `initial_comment`) is escaped (`& < >` → entities): an agent-written headline or ledger
+cell cannot ping `<!channel>` or smuggle a link.
 
 **State file:** `data/shared/hermes/slack-threads.json` (container
 `/workspace/shared/hermes/slack-threads.json`, read-only for the Orchestrator):
 `{"channel", "rows": {"<ROW>": {"thread_ts", "root_posted_at", "cards": {"<png>": {"file_id",
 "posted_at"}}, "merged_posted" | "blocked_posted"}}}`, written tmp + rename after every successful
 post, so a rerun posts only what is new. It is also how the Orchestrator maps an inbound Slack thread
-back to its row. Delete a row's entry to have its lane re-posted; do not edit it by hand otherwise.
+back to its row. Delete a row's entry to have its lane re-posted; do not edit it by hand otherwise — a
+file whose `rows` is not an object is fatal (exit 1, nothing posted) rather than a silent re-post of
+every lane. One run at a time: an exclusive `flock` on `slack-threads.json.lock` for the run's
+lifetime; an overlapping run (a stalled Slack egress can push one past the next cron tick) logs
+`another run holds the lock` and exits 0.
 
 **Token:** `$SLACK_BOT_TOKEN`, else the `SLACK_BOT_TOKEN=` line of the checkout's `.env` — host-side
 only, never printed or logged, never mounted into a container.
@@ -810,9 +822,15 @@ only, never printed or logged, never mounted into a container.
 **Exit codes:** `0` success. `2` = `not_in_channel`: the bot user (`@orchestrator`) is not a member
 of the channel — `/invite @orchestrator` in `#hermes-port` (the app has no `channels:join` scope, so
 it cannot join by itself); nothing was posted and the state file is unchanged. `1` = any other fatal
-error (no token, no channel). A single failed card is logged as `slack error <method>: <error>` and
-retried next run; HTTP 429 honours `Retry-After` once. `--dry-run` prints what would be posted and
-calls nothing. Tests: `python3 -m unittest ops/nemoclaw-coworkers/test_slack_rows.py`.
+error: no token, no channel, a corrupt state file, or a run-wide Slack error (`invalid_auth`,
+`token_revoked`, `token_expired`, `missing_scope`, `channel_not_found`, `is_archived`, …) — the run
+stops at the first one instead of burning the budget on calls that cannot succeed; what was posted
+before it stays recorded. A single failed card — a Slack error, a truncated response, an unreadable
+or torn PNG — is logged as `slack error <method>: <error> (<card path>)` and retried next run; HTTP
+429 honours `Retry-After` once. `refresh-viewers.sh` echoes a one-liner for exit 2 (`/invite`) and for
+exit 1 (`see logs/slack-rows.log`); the refresh itself never fails on it. `--dry-run` prints what
+would be posted, calls nothing and takes no lock. Tests: `python3 -m unittest
+ops/nemoclaw-coworkers/test_slack_rows.py`.
 
 **Changing the channel:** `refresh-viewers.sh` passes `--channel "${SLACK_ROWS_CHANNEL:-C0C14PWDUMC}"`;
 export `SLACK_ROWS_CHANNEL=<channel id>` in the cron's environment (the

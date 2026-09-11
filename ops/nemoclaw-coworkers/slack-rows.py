@@ -22,17 +22,34 @@ Writes <ROOT>/data/shared/hermes/slack-threads.json (tmp + rename), one entry pe
                                        "cards": {"<png path relative to ROOT>": {"file_id": "F…", "posted_at": "…"}},
                                        "merged_posted": "…", "blocked_posted": "…"}}}
 
+A state file whose `rows` is not an object is fatal (exit 1, nothing posted): posting again into threads
+we cannot remember would duplicate every lane. Delete one row's entry to re-post that lane.
+
 Rows mirrored: every id the ledger lists as dispatched (its work-item table) plus every `hermes-<ROW>`
 card directory. Posting order per run: missing roots (plan order), then cards oldest-first across
 all rows, then merge / blocked lines for rows whose cards are all up — at most --max-posts API
-posts per run (rate limits; the rest lands on the next run).
+posts per run (rate limits; the rest lands on the next run). A card younger than CARD_SETTLE_S is
+left for the next run (card.sh writes the PNG in place, so a fresh file may still be mid-write), and
+a PNG without the signature + IEND tail is logged as `incomplete png` and retried, never recorded.
+The closing line: `✅ <ROW> merged <sha> — <cell>` for a merged row; `⛔ <ROW> blocked — <reason>`
+for a `blocked: STOP …` row AND for a red merge gate (`blocked: P<n> — …`, hermes_queue's
+`gate_red`) — once per row; a later merge still posts its ✅ line.
 
 Slack: a tiny urllib client. chat.postMessage for text; the current three-step upload for files
 (files.getUploadURLExternal → POST bytes → files.completeUploadExternal with channel_id, thread_ts,
-initial_comment). ok:false is printed as `slack error <method>: <error>` and the run goes on;
-`not_in_channel` stops the run (the bot must be /invite'd) with exit 2 and no state change;
-HTTP 429 honours Retry-After once. Exit 0 on success, 2 when the bot is not in the channel, 1 on
-other fatal errors. A single failed card never aborts the run.
+initial_comment). Every text that reaches Slack mrkdwn (message text, initial_comment) is escaped
+(`& < >` → entities) so an agent-written headline cannot ping @channel or smuggle a link.
+ok:false is printed as `slack error <method>: <error>` and the run goes on — except the run-wide
+ones: `not_in_channel` stops the run (the bot must be /invite'd) with exit 2, and a token / channel
+problem (FATAL_ERRORS: invalid_auth, token_revoked, missing_scope, channel_not_found, …) stops it
+with exit 1 — both without burning the rest of the budget on calls that cannot succeed. HTTP 429
+honours Retry-After once. Exit 0 on success, 2 when the bot is not in the channel, 1 on other fatal
+errors. A single failed card — a Slack error, a truncated response, an unreadable or torn PNG —
+never aborts the run.
+
+One run at a time: an exclusive flock on <state>.lock for the run's lifetime; a second run logs
+`another run holds the lock` and exits 0 (a stalled Slack egress can push one run past the next
+cron tick, and two runs would each post the missing roots).
 
 Stdlib only, no hostname guard. `--dry-run` prints what would be posted and calls nothing.
 """
@@ -40,6 +57,8 @@ Stdlib only, no hostname guard. `--dry-run` prints what would be posted and call
 from __future__ import annotations
 
 import argparse
+import fcntl
+import http.client
 import importlib.util
 import json
 import os
@@ -57,7 +76,15 @@ DEFAULT_MAX_POSTS = 12
 DEFAULT_TOKEN_ENV = "SLACK_BOT_TOKEN"  # the variable NAME, not a secret
 HTTP_TIMEOUT_S = 30
 MERGED_CELL_MAX = 200
+CARD_SETTLE_S = 60  # a PNG younger than this may still be mid-write (card.sh screenshots in place)
+PNG_HEAD = b"\x89PNG\r\n\x1a\n"
+PNG_TAIL = b"IEND\xaeB`\x82"
 THREAD_RE = re.compile(r"^hermes-(?P<row>.+)$")
+# Slack errors that no later call in this run can get past: a token or channel problem.
+FATAL_ERRORS = frozenset({
+    "invalid_auth", "not_authed", "account_inactive", "token_revoked", "token_expired",
+    "missing_scope", "channel_not_found", "invalid_channel", "is_archived",
+})
 
 
 def log(msg: str) -> None:
@@ -71,6 +98,13 @@ def now_iso() -> str:
 def squash(s, n: int = MERGED_CELL_MAX) -> str:
     s = re.sub(r"\s+", " ", str(s if s is not None else "")).strip()
     return s if len(s) <= n else s[: n - 1].rstrip() + "…"
+
+
+def mrkdwn_escape(s: str) -> str:
+    """Slack's three control characters, per its formatting rules: `<…>` is link / mention syntax
+    (`<!channel>` pings everyone), `&` starts an entity. Applied to every string that Slack renders
+    as mrkdwn; the row id and emoji are unaffected."""
+    return s.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
 
 
 # --------------------------------------------------------------------------- siblings
@@ -97,8 +131,8 @@ def _rows_board():
 # --------------------------------------------------------------------------- slack client
 
 class SlackError(Exception):
-    """One failed Slack call: `method` and Slack's `error` token (or `http <code>` / `network: …`).
-    Never carries a request body or header, so it is safe to print."""
+    """One failed Slack call: `method` and Slack's `error` token (or `http <code>` / `network: …` /
+    a local read problem). Never carries a request body, header, URL or path, so it is safe to print."""
 
     def __init__(self, method: str, error: str):
         super().__init__(f"slack error {method}: {error}")
@@ -106,7 +140,11 @@ class SlackError(Exception):
         self.error = error
 
 
-class NotInChannel(SlackError):
+class SlackFatal(SlackError):
+    """A run-wide failure: no later call in this run can succeed (token or channel problem)."""
+
+
+class NotInChannel(SlackFatal):
     """The bot is not a member of the channel: nothing can be posted until it is /invite'd."""
 
 
@@ -126,10 +164,12 @@ class SlackClient:
         self._sleep = sleep or time.sleep
 
     def _post(self, method: str, url: str, data: bytes, headers: dict) -> bytes:
-        """POST once, retrying a single time on HTTP 429 (Retry-After). Returns the response body."""
+        """POST once, retrying a single time on HTTP 429 (Retry-After). Returns the response body.
+        Every failure is a SlackError naming only the method and the failure class — never the URL
+        (the upload URL is a pre-signed capability)."""
         for attempt in (0, 1):
-            req = urllib.request.Request(url, data=data, headers=headers, method="POST")
             try:
+                req = urllib.request.Request(url, data=data, headers=headers, method="POST")
                 with self._open(req, timeout=HTTP_TIMEOUT_S) as resp:
                     return resp.read()
             except urllib.error.HTTPError as exc:
@@ -141,6 +181,10 @@ class SlackClient:
                 raise SlackError(method, f"network: {exc.reason}") from None
             except (OSError, TimeoutError) as exc:
                 raise SlackError(method, f"network: {type(exc).__name__}") from None
+            except http.client.HTTPException as exc:  # IncompleteRead, BadStatusLine, …: not OSErrors
+                raise SlackError(method, f"network: {type(exc).__name__}") from None
+            except ValueError:  # Request(): malformed url
+                raise SlackError(method, "bad url") from None
         raise SlackError(method, "http 429 (after retry)")
 
     def call(self, method: str, params: dict, as_json: bool = False) -> dict:
@@ -160,11 +204,13 @@ class SlackClient:
             err = str((out or {}).get("error") or "unknown") if isinstance(out, dict) else "non-object response"
             if err == "not_in_channel":
                 raise NotInChannel(method, err)
+            if err in FATAL_ERRORS:
+                raise SlackFatal(method, err)
             raise SlackError(method, err)
         return out
 
     def post_message(self, channel: str, text: str, thread_ts: str | None = None) -> str:
-        params: dict = {"channel": channel, "text": text, "unfurl_links": False, "unfurl_media": False}
+        params: dict = {"channel": channel, "text": mrkdwn_escape(text), "unfurl_links": False, "unfurl_media": False}
         if thread_ts:
             params["thread_ts"] = thread_ts
         out = self.call("chat.postMessage", params, as_json=True)
@@ -174,20 +220,28 @@ class SlackClient:
         return str(ts)
 
     def upload_file(self, channel: str, thread_ts: str, path: str, title: str, initial_comment: str) -> str:
-        """files.getUploadURLExternal → POST the bytes to upload_url → files.completeUploadExternal. Returns the file id."""
-        with open(path, "rb") as fh:
-            data = fh.read()
+        """files.getUploadURLExternal → POST the bytes to upload_url → files.completeUploadExternal. Returns the file id.
+        A file that cannot be read, or a .png without the PNG signature + IEND tail (still being written),
+        is a SlackError('read', …) like any other failed card — logged, skipped, retried next run."""
+        try:
+            with open(path, "rb") as fh:
+                data = fh.read()
+        except OSError as exc:
+            raise SlackError("read", type(exc).__name__) from None
+        if path.lower().endswith(".png") and not (data.startswith(PNG_HEAD) and data.rstrip().endswith(PNG_TAIL)):
+            raise SlackError("read", "incomplete png")
         got = self.call("files.getUploadURLExternal", {"filename": os.path.basename(path), "length": len(data)})
         upload_url, file_id = got.get("upload_url"), got.get("file_id")
         if not upload_url or not file_id:
             raise SlackError("files.getUploadURLExternal", "no upload_url / file_id in response")
         # The upload URL is pre-signed: the bytes go as the raw body, no token.
         self._post("upload", str(upload_url), data, {"Content-Type": "application/octet-stream"})
+        # `title` is plain text in the file card (not mrkdwn); `initial_comment` is a message and is escaped.
         self.call("files.completeUploadExternal", {
             "files": [{"id": file_id, "title": title}],
             "channel_id": channel,
             "thread_ts": thread_ts,
-            "initial_comment": initial_comment,
+            "initial_comment": mrkdwn_escape(initial_comment),
         }, as_json=True)
         return str(file_id)
 
@@ -221,17 +275,31 @@ def read_token(root: str, name: str) -> str | None:
 
 
 def load_state(path: str) -> dict:
-    """{"channel": …, "rows": {…}}; a missing file is an empty state, an unreadable one is fatal
-    (posting again into threads we cannot remember would duplicate everything)."""
+    """{"channel": …, "rows": {…}}; a missing file is an empty state, an unreadable one — or one whose
+    `rows` is not an object (a bad hand edit) — is fatal: posting again into threads we cannot
+    remember would duplicate everything."""
     rows_board = _rows_board()
     obj, err = rows_board.load_json(path)
     if err:
         raise RuntimeError(f"state {err}")
     if obj is None:
         return {"rows": {}}
-    if not isinstance(obj.get("rows"), dict):
-        obj["rows"] = {}
-    return obj
+    if isinstance(obj.get("rows"), dict):
+        return obj
+    raise RuntimeError(f"state {os.path.basename(path)}: 'rows' is not an object — fix or move the file aside")
+
+
+def acquire_lock(path: str):
+    """An exclusive, non-blocking flock on `path`; the returned handle holds it until closed (flock is
+    per open file description, so it must stay open for the whole run). None when another run holds it."""
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    fh = open(path, "w")  # noqa: SIM115 - the handle IS the lock; main() closes it when the run ends
+    try:
+        fcntl.flock(fh, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        fh.close()
+        return None
+    return fh
 
 
 def load_ledger(path: str) -> tuple[dict, dict, str | None]:
@@ -400,7 +468,7 @@ def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_pos
         else:
             try:
                 ts = client.post_message(channel, text)
-            except NotInChannel:
+            except SlackFatal:
                 raise
             except SlackError as exc:
                 log(str(exc))
@@ -409,9 +477,15 @@ def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_pos
         save()
         print(f"{verb} root {rid}: {text}")
 
-    # Pass B — cards, oldest first across every row that has a root.
-    pending = [c for rid, cs in cards.items() if srows.get(rid, {}).get("thread_ts")
-               for c in cs if c["rel"] not in (srows[rid].get("cards") or {})]
+    # Pass B — cards, oldest first across every row that has a root. A card younger than CARD_SETTLE_S
+    # stays pending (it may still be mid-write) and lands on the next run.
+    now = time.time()
+    unposted = [c for rid, cs in cards.items() if srows.get(rid, {}).get("thread_ts")
+                for c in cs if c["rel"] not in (srows[rid].get("cards") or {})]
+    settling = sum(1 for c in unposted if now - c["mtime"] < CARD_SETTLE_S)
+    if settling:
+        log(f"{settling} card(s) younger than {CARD_SETTLE_S}s left to settle")
+    pending = [c for c in unposted if now - c["mtime"] >= CARD_SETTLE_S]
     pending.sort(key=lambda c: (c["mtime"], c["round"], c["rel"]))
     for card in pending:
         if not budget.take():
@@ -425,7 +499,7 @@ def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_pos
             try:
                 file_id = client.upload_file(entry.get("channel") or channel, entry["thread_ts"],
                                              os.path.join(card["dir"], card["png"]), title, caption)
-            except NotInChannel:
+            except SlackFatal:
                 raise
             except SlackError as exc:
                 log(f"{exc} ({card['rel']})")
@@ -434,8 +508,8 @@ def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_pos
         save()
         print(f"{verb} card {card['rel']}: {caption}")
 
-    # Pass C — the closing line, once, after the row's cards are all up.
-    still_pending = {c["rel"] for c in pending if c["rel"] not in (srows[c["row"]].get("cards") or {})}
+    # Pass C — the closing line, once, after the row's cards are all up (settling ones included).
+    still_pending = {c["rel"] for c in unposted if c["rel"] not in (srows[c["row"]].get("cards") or {})}
     for rid in rows:
         entry = srows.get(rid)
         led = (ledger.get("rows") or {}).get(rid) or {}
@@ -448,7 +522,8 @@ def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_pos
             sha = led.get("merge_sha")
             text = f"✅ {rid} merged" + (f" {sha}" if sha else "") + f" — {squash(raw_cells.get(rid))}"
             key = "merged_posted"
-        elif outcome == "blocked" and not entry.get("blocked_posted"):
+        elif outcome in ("blocked", "gate_red") and not entry.get("blocked_posted"):
+            # gate_red = `blocked: P<n> — …` (merge-gate.md's red-gate shape); `reason` carries `P<n> — …`.
             text = f"⛔ {rid} blocked — {squash(led.get('reason') or raw_cells.get(rid))}"
             key = "blocked_posted"
         else:
@@ -458,7 +533,7 @@ def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_pos
         if not dry_run:
             try:
                 client.post_message(entry.get("channel") or channel, text, thread_ts=entry["thread_ts"])
-            except NotInChannel:
+            except SlackFatal:
                 raise
             except SlackError as exc:
                 log(str(exc))
@@ -484,6 +559,7 @@ def main(argv=None, client_factory=None) -> int:
     ap.add_argument("--max-posts", type=int, default=DEFAULT_MAX_POSTS, help=f"API posts per run, roots + cards + lines (default {DEFAULT_MAX_POSTS})")
     args = ap.parse_args(argv)
     root = os.path.abspath(args.root)
+    lock_fh = None
     try:
         channel = (args.channel or "").strip()
         if not channel:
@@ -502,18 +578,29 @@ def main(argv=None, client_factory=None) -> int:
             os.path.join(root, "docs", "hermes-port", "dispatch-plan.md"),
             os.path.join(root, "data", "shared", "hermes", "dispatch-plan.md"),
         ]
+        state_path = args.state or os.path.join(root, "data", "shared", "hermes", "slack-threads.json")
+        if not args.dry_run:
+            # One posting run at a time (held until this function returns); a dry run touches nothing.
+            lock_fh = acquire_lock(state_path + ".lock")
+            if lock_fh is None:
+                log("another run holds the lock; exiting")
+                return 0
         return run(
-            root, channel,
-            args.state or os.path.join(root, "data", "shared", "hermes", "slack-threads.json"),
-            client, args.dry_run, args.max_posts, plan_paths,
+            root, channel, state_path, client, args.dry_run, args.max_posts, plan_paths,
             args.ledger or os.path.join(root, "groups", "orchestrator", "reports", "ledger.md"),
         )
     except NotInChannel as exc:
         log(f"{exc} — the bot is not a member of {channel}: /invite it there (channels:join is not granted), then rerun")
         return 2
+    except SlackFatal as exc:
+        log(f"{exc} — token/channel problem, nothing more will post until it is fixed")
+        return 1
     except Exception as exc:  # noqa: BLE001 - one line on stderr, exit 1; never a traceback with request details
         log(f"failed: {type(exc).__name__}: {exc}")
         return 1
+    finally:
+        if lock_fh is not None:
+            lock_fh.close()
 
 
 if __name__ == "__main__":

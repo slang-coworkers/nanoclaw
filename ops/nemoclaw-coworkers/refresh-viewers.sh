@@ -69,9 +69,16 @@ python3 "$ROOT/ops/nemoclaw-coworkers/rows-board.py" --root "$ROOT" --www "$WWW"
 
 # Slack mirror: one #hermes-port thread per row (root · role cards · merge line) from the same cards + ledger
 # (slack-rows.py; token from $SLACK_BOT_TOKEN or the checkout's .env, host-side only). Idempotent, rate-limited
-# to --max-posts per run, logs to logs/slack-rows.log. Never fatal to the viewer refresh.
+# to --max-posts per run, one run at a time (its own flock on the state file), logs to logs/slack-rows.log.
+# Never fatal to the viewer refresh, but the exit code is surfaced: 2 = the bot is not in the channel,
+# 1 = no token / token or channel problem / corrupt state — the log has the one-line reason.
 mkdir -p "$ROOT/logs"
-python3 "$ROOT/ops/nemoclaw-coworkers/slack-rows.py" --root "$ROOT" --channel "${SLACK_ROWS_CHANNEL:-C0C14PWDUMC}" >> "$ROOT/logs/slack-rows.log" 2>&1 || true
+python3 "$ROOT/ops/nemoclaw-coworkers/slack-rows.py" --root "$ROOT" --channel "${SLACK_ROWS_CHANNEL:-C0C14PWDUMC}" >> "$ROOT/logs/slack-rows.log" 2>&1
+case $? in
+  0) ;;
+  2) echo 'slack-rows: bot not in #hermes-port (exit 2) — /invite @orchestrator; see logs/slack-rows.log' ;;
+  *) echo 'slack-rows failed — see logs/slack-rows.log' ;;
+esac
 
 # Viewer root (/index.html): the landing page. Generated last so every surface published above is linked.
 {

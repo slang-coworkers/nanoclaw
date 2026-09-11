@@ -1,21 +1,27 @@
 #!/usr/bin/env python3
 """Tests for ops/nemoclaw-coworkers/slack-rows.py: a temp checkout with a small dispatch-plan.md, a
-ledger and synthetic PNG cards, driven through main() with a fake Slack client. Covers: root posted
-once, cards oldest-first and recorded, a second run posts nothing, the merge / blocked line once,
-not_in_channel → exit 2 with the state untouched, dry-run makes no calls, --max-posts, a single card
-failure never aborts, the token never reaches stdout/stderr, and the urllib client's three-step
-upload + 429 retry against a fake urlopen.
+ledger and synthetic PNG cards, driven through main() with a fake Slack client (or the real urllib
+client over a fake urlopen). Covers: root posted once, cards oldest-first and recorded, a second run
+posts nothing, the merge / blocked / gate-red line once, not_in_channel → exit 2 with the state
+untouched, a fatal token/channel error → exit 1 after one call, dry-run makes no calls, --max-posts,
+a single card failure (Slack error, truncated response, unreadable or torn PNG) never aborts, a fresh
+card waits to settle, the run lock, a corrupt state file is fatal, mrkdwn escaping end to end, the
+token never reaches stdout/stderr, and the urllib client's three-step upload + 429 retry.
 Run: python3 -m unittest ops/nemoclaw-coworkers/test_slack_rows.py
 """
 
 from __future__ import annotations
 
 import contextlib
+import fcntl
+import http.client
 import importlib.util
 import io
 import json
 import os
+import stat
 import tempfile
+import time
 import unittest
 import urllib.error
 from pathlib import Path
@@ -24,6 +30,14 @@ from typing import ClassVar
 HERE = Path(__file__).resolve().parent
 TOKEN = "xoxb-TEST-SECRET-TOKEN-4242"  # a fixture value the tests assert is never printed
 CHANNEL = "C0TESTCHAN"
+PNG_HEAD = b"\x89PNG\r\n\x1a\n"
+PNG_TAIL = b"\x00\x00\x00\x00IEND\xaeB`\x82"
+
+
+def png(tag: str) -> bytes:
+    """A byte string shaped like a PNG (signature … IEND) — what the client's sanity check wants."""
+    return PNG_HEAD + tag.encode() + PNG_TAIL
+
 
 PLAN = """# Hermes port — dispatch plan (fixture)
 
@@ -58,6 +72,12 @@ LEDGER_MERGED = LEDGER_HEAD + (
     "MERGED `0f12e89` (squash) into `release/v2026.8.31-e2e-fixed` — 2026-09-10 06:35Z — 4/4 AC | batch 1a |\n"
     "| MEM-F44 | 2026-09-10 09:00 IST (to hermes-architect) | — | — | test round 2/2 = FAIL | blocked: STOP — cap: FAIL x2, no round 3 | batch 1b |\n"
 )
+# The merge-gate's red-gate shape: hermes_queue.parse_outcome_cell → outcome 'gate_red', reason 'P3 — …'.
+LEDGER_GATE_RED = LEDGER_HEAD + (
+    "| LOOP-F35 | 2026-09-09 12:20 IST (to hermes-architect) | 2026-09-09 15:27 IST | #7 | PASS · APPROVE | "
+    "blocked: P3 — creds expired, <!here> retry after rotation | batch 1a |\n"
+    "| MEM-F44 | 2026-09-10 09:00 IST (to hermes-architect) | — | — | — | — | batch 1b |\n"
+)
 
 
 def load_module():
@@ -68,7 +88,8 @@ def load_module():
 
 
 class FakeClient:
-    """Records every call; `fail` maps a (kind, key) to an exception to raise on that call."""
+    """Records every call; `fail` maps a (kind, key) to an exception to raise on that call.
+    `attempts` counts calls including the failed ones."""
 
     instances: ClassVar[list] = []
 
@@ -76,10 +97,12 @@ class FakeClient:
         self.token = token
         self.calls: list = []
         self.fail: dict = {}
+        self.attempts = 0
         self.ts = 1000
         FakeClient.instances.append(self)
 
     def post_message(self, channel, text, thread_ts=None):
+        self.attempts += 1
         exc = self.fail.get(("post", text.split(" · ")[0].split(" ")[0]))
         if exc:
             raise exc
@@ -88,11 +111,67 @@ class FakeClient:
         return f"{self.ts}.000100"
 
     def upload_file(self, channel, thread_ts, path, title, initial_comment):
+        self.attempts += 1
         exc = self.fail.get(("upload", os.path.basename(path)))
         if exc:
             raise exc
         self.calls.append(("upload", channel, thread_ts, os.path.basename(path), title, initial_comment))
         return f"F{len(self.calls):04d}"
+
+
+class FakeResponse:
+    def __init__(self, body: bytes):
+        self.body = body
+
+    def read(self):
+        return self.body
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *exc):
+        return False
+
+
+class FakeSlackHTTP:
+    """A urlopen stand-in that answers the Web API by URL, so the REAL SlackClient can drive a run:
+    chat.postMessage → ok + ts, files.getUploadURLExternal → ok + upload_url + file_id, the pre-signed
+    upload URL → OK, files.completeUploadExternal → ok. `fail_once` is a list of (predicate(req), exc):
+    the first request a predicate matches raises exc and the pair is consumed."""
+
+    def __init__(self):
+        self.requests: list = []
+        self.fail_once: list = []
+        self.ts = 2000
+
+    def __call__(self, req, timeout=None):
+        self.requests.append(req)
+        for i, (pred, exc) in enumerate(self.fail_once):
+            if pred(req):
+                del self.fail_once[i]
+                raise exc
+        url = req.full_url
+        if url.endswith("chat.postMessage"):
+            self.ts += 1
+            body: dict = {"ok": True, "ts": f"{self.ts}.000100"}
+        elif url.endswith("files.getUploadURLExternal"):
+            n = len(self.requests)
+            body = {"ok": True, "upload_url": f"https://files.slack.com/upload/v1/u{n}", "file_id": f"F{n:04d}"}
+        elif "files.slack.com/upload/" in url:
+            return FakeResponse(b"OK - uploaded")
+        elif url.endswith("files.completeUploadExternal"):
+            body = {"ok": True, "files": [{"id": "x"}]}
+        else:
+            body = {"ok": False, "error": "unknown_method"}
+        return FakeResponse(json.dumps(body).encode())
+
+    def bodies(self, suffix: str) -> list:
+        """Decoded JSON bodies of every request to the Web API method `suffix`."""
+        return [json.loads(r.data.decode()) for r in self.requests if r.full_url.endswith(suffix)]
+
+    def uploaded(self) -> list:
+        """The raw bytes POSTed to the pre-signed upload URLs, in order."""
+        return [r.data for r in self.requests if "files.slack.com/upload/" in r.full_url]
 
 
 def put(path: Path, data, mtime: float) -> None:
@@ -102,6 +181,15 @@ def put(path: Path, data, mtime: float) -> None:
     else:
         path.write_text(data, encoding="utf-8")
     os.utime(path, (mtime, mtime))
+
+
+def make_unreadable(path: Path) -> None:
+    """chmod 000; when that does not bite (root), swap the file for a directory of the same name
+    (IsADirectoryError on open) — either way open(path, 'rb') raises an OSError."""
+    path.chmod(0)
+    if os.access(path, os.R_OK):
+        path.unlink()
+        path.mkdir()
 
 
 class SlackRowsTest(unittest.TestCase):
@@ -119,22 +207,25 @@ class SlackRowsTest(unittest.TestCase):
         tester = self.root / "groups" / "hermes-tester" / "reports" / "hermes-LOOP-F35" / "cards"
         builder = self.root / "groups" / "hermes-builder" / "reports" / "hermes-LOOP-F35" / "cards"
         arch = self.root / "groups" / "hermes-architect" / "reports" / "hermes-LOOP-F35" / "cards"
+        self.builder_png = builder / "card-hermes-builder-shipped-r1.png"
         # Three cards on LOOP-F35 written out of role order: architect (oldest), builder, tester (newest).
-        put(arch / "card-hermes-architect-handoff-r1.png", b"\x89PNG arch", base + 10)
+        put(arch / "card-hermes-architect-handoff-r1.png", png("arch"), base + 10)
         put(arch / "card-hermes-architect-handoff-r1.json",
             json.dumps({"row": "LOOP-F35", "role": "hermes-architect", "outcome": "HANDOFF", "round": 1,
                         "headline": "ADR + 4 AC (pytest 3 / live 1)", "meta": {"cost": "n/a"}}), base + 10)
-        put(builder / "card-hermes-builder-shipped-r1.png", b"\x89PNG build", base + 20)
+        put(self.builder_png, png("build"), base + 20)
         put(builder / "card-hermes-builder-shipped-r1.json",
             json.dumps({"row": "LOOP-F35", "role": "hermes-builder", "outcome": "SHIPPED", "round": 1,
                         "headline": "hermes-agent#7 draft, head e117c1c", "meta": {}}), base + 20)
-        put(tester / "card-hermes-tester-pass-r2.png", b"\x89PNG test", base + 30)  # no .json: caption from the filename
-        put(tester / "card-hermes-tester-latest.png", b"\x89PNG test", base + 30)  # the latest copy is not a card
+        put(tester / "card-hermes-tester-pass-r2.png", png("test"), base + 30)  # no .json: caption from the filename
+        put(tester / "card-hermes-tester-latest.png", png("test"), base + 30)  # the latest copy is not a card
         put(tester / "card-hermes-tester-fail-r1.html", "<html>fallback</html>", base + 5)  # html-only: not uploaded
         self.env_backup = {k: os.environ.pop(k) for k in ("SLACK_BOT_TOKEN", "SLACK_ROWS_CHANNEL") if k in os.environ}
 
     def tearDown(self):
         os.environ.update(self.env_backup)
+        if self.builder_png.exists() and not self.builder_png.is_dir():
+            self.builder_png.chmod(stat.S_IRUSR | stat.S_IWUSR)
         self.tmp.cleanup()
 
     def run_main(self, *extra: str, factory=FakeClient) -> tuple[int, str, str]:
@@ -142,6 +233,10 @@ class SlackRowsTest(unittest.TestCase):
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
             code = self.mod.main(["--root", str(self.root), "--channel", CHANNEL, *extra], client_factory=factory)
         return code, out.getvalue(), err.getvalue()
+
+    def real_client(self, http_fake: FakeSlackHTTP):
+        """A factory building the real SlackClient over the fake urlopen (no sleeping on 429)."""
+        return lambda token: self.mod.SlackClient(token, opener=http_fake, sleep=lambda _s: None)
 
     def read_state(self) -> dict:
         return json.loads(self.state.read_text(encoding="utf-8"))
@@ -195,7 +290,7 @@ class SlackRowsTest(unittest.TestCase):
 
         # A new card appears → exactly one upload, into the existing thread; no second root.
         put(self.root / "groups" / "hermes-reviewer" / "reports" / "hermes-LOOP-F35" / "cards" / "card-hermes-reviewer-approve-r1.png",
-            b"\x89PNG rev", 1.7e9 + 40)
+            png("rev"), 1.7e9 + 40)
         code, out, err = self.run_main()
         self.assertEqual(code, 0, err)
         calls = FakeClient.instances[2].calls
@@ -227,6 +322,28 @@ class SlackRowsTest(unittest.TestCase):
         self.assertEqual(code, 0, err)
         self.assertEqual(FakeClient.instances[2].calls, [])
 
+    def test_gate_red_posts_the_blocked_line_once_and_a_later_merge_still_posts(self):
+        self.run_main()  # roots + cards
+        put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER_GATE_RED, 1.0e9)
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        calls = FakeClient.instances[1].calls
+        self.assertEqual(len(calls), 1, calls)
+        self.assertEqual(calls[0][2], "⛔ LOOP-F35 blocked — P3 — creds expired, <!here> retry after rotation")
+        self.assertEqual(calls[0][3], self.read_state()["rows"]["LOOP-F35"]["thread_ts"])
+        self.assertIn("blocked_posted", self.read_state()["rows"]["LOOP-F35"])
+        # Same red gate again: nothing. Then the row merges: the ✅ line still posts.
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(FakeClient.instances[2].calls, [])
+        put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER_MERGED, 1.0e9)
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        texts = [c[2] for c in FakeClient.instances[3].calls]
+        self.assertEqual(len(texts), 2, texts)
+        self.assertTrue(texts[0].startswith("✅ LOOP-F35 merged 0f12e89"), texts)
+        self.assertTrue(texts[1].startswith("⛔ MEM-F44 blocked — STOP"), texts)
+
     def test_merge_line_waits_for_the_rows_pending_cards(self):
         put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER_MERGED, 1.0e9)
         code, _out, err = self.run_main("--max-posts", "3")  # 2 roots + 1 card: LOOP-F35 still has cards pending
@@ -241,6 +358,30 @@ class SlackRowsTest(unittest.TestCase):
         self.assertEqual([c[0] for c in calls], ["upload", "upload", "post", "post"])
         self.assertTrue(calls[2][2].startswith("✅ LOOP-F35 merged 0f12e89"))
         self.assertTrue(calls[3][2].startswith("⛔ MEM-F44 blocked"))
+
+    def test_fresh_card_waits_to_settle_and_holds_the_closing_line(self):
+        put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER_MERGED, 1.0e9)
+        fresh = self.root / "groups" / "hermes-reviewer" / "reports" / "hermes-LOOP-F35" / "cards" / "card-hermes-reviewer-approve-r1.png"
+        put(fresh, png("rev"), time.time())  # just written: may still be mid-write
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        calls = FakeClient.instances[0].calls
+        uploads = [c[3] for c in calls if c[0] == "upload"]
+        self.assertEqual(len(uploads), 3)
+        self.assertNotIn("card-hermes-reviewer-approve-r1.png", uploads)
+        self.assertIn("1 card(s) younger than", err)
+        self.assertIn("1 left for the next run", err)
+        texts = [c[2] for c in calls if c[0] == "post"]
+        self.assertFalse(any(t.startswith("✅") for t in texts), "the merge line waits for the settling card")
+        self.assertTrue(any(t.startswith("⛔ MEM-F44") for t in texts))
+        # Settled: uploaded, then the merge line.
+        os.utime(fresh, (1.7e9 + 50, 1.7e9 + 50))
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        calls = FakeClient.instances[1].calls
+        self.assertEqual([c[0] for c in calls], ["upload", "post"])
+        self.assertEqual(calls[0][3], "card-hermes-reviewer-approve-r1.png")
+        self.assertTrue(calls[1][2].startswith("✅ LOOP-F35 merged"))
 
     # ------------------------------------------------------------------ limits and failures
 
@@ -273,6 +414,33 @@ class SlackRowsTest(unittest.TestCase):
         self.assertIn("/invite", err)
         self.assertEqual(out, "")
 
+    def test_fatal_slack_error_exits_1_after_exactly_one_call(self):
+        mod = self.mod
+
+        class Revoked(FakeClient):
+            def __init__(self, token):
+                super().__init__(token)
+                self.fail[("post", "LOOP-F35")] = mod.SlackFatal("chat.postMessage", "invalid_auth")
+
+        code, out, err = self.run_main(factory=Revoked)
+        self.assertEqual(code, 1)
+        self.assertEqual(Revoked.instances[0].attempts, 1, "no budget is burnt after a token/channel error")
+        self.assertEqual(Revoked.instances[0].calls, [])
+        self.assertIn("slack error chat.postMessage: invalid_auth", err)
+        self.assertIn("token/channel problem", err)
+        self.assertFalse(self.state.exists())
+        self.assertEqual(out, "")
+        # Mid-run: what was posted before the fatal call stays recorded.
+        class RevokedLater(FakeClient):
+            def __init__(self, token):
+                super().__init__(token)
+                self.fail[("upload", "card-hermes-builder-shipped-r1.png")] = mod.SlackFatal("files.completeUploadExternal", "token_revoked")
+
+        code, _out, err = self.run_main(factory=RevokedLater)
+        self.assertEqual(code, 1)
+        self.assertEqual([c[0] for c in RevokedLater.instances[1].calls], ["post", "post", "upload"])
+        self.assertEqual(len(self.read_state()["rows"]["LOOP-F35"]["cards"]), 1)
+
     def test_one_failed_card_does_not_abort_the_run(self):
         mod = self.mod
 
@@ -293,11 +461,120 @@ class SlackRowsTest(unittest.TestCase):
         _code, _out, _err = self.run_main()
         self.assertEqual([c[3] for c in FakeClient.instances[1].calls], ["card-hermes-builder-shipped-r1.png"])
 
+    def test_unreadable_card_is_skipped_not_fatal(self):
+        """The real client + fake urlopen: a PNG the host cannot read (chmod 000 — cards are written by
+        containers) is one `slack error read: …` line; the other cards post, the run exits 0."""
+        make_unreadable(self.builder_png)
+        http_fake = FakeSlackHTTP()
+        code, out, err = self.run_main(factory=self.real_client(http_fake))
+        self.assertEqual(code, 0, err)
+        self.assertIn("slack error read: ", err)
+        self.assertTrue("PermissionError" in err or "IsADirectoryError" in err, err)
+        self.assertIn("(groups/hermes-builder/reports/hermes-LOOP-F35/cards/card-hermes-builder-shipped-r1.png)", err)
+        self.assertEqual(http_fake.uploaded(), [png("arch"), png("test")])
+        cards = self.read_state()["rows"]["LOOP-F35"]["cards"]
+        self.assertEqual(len(cards), 2)
+        self.assertFalse(any("builder" in k for k in cards))
+        self.assertIn("posted card groups/hermes-tester/", out)
+        self.assertNotIn(str(self.root), err, "no absolute path leaks into the log")
+
+    def test_truncated_response_on_one_card_does_not_abort(self):
+        """http.client.IncompleteRead is not an OSError: it must still be one failed card, not a dead run."""
+        http_fake = FakeSlackHTTP()
+        http_fake.fail_once.append((lambda req: req.data == png("build"), http.client.IncompleteRead(b"")))
+        code, _out, err = self.run_main(factory=self.real_client(http_fake))
+        self.assertEqual(code, 0, err)
+        self.assertIn("slack error upload: network: IncompleteRead (groups/hermes-builder/", err)
+        self.assertEqual(http_fake.uploaded(), [png("arch"), png("build"), png("test")], "the builder bytes were sent once (and lost)")
+        self.assertEqual(len(http_fake.bodies("files.completeUploadExternal")), 2)
+        cards = self.read_state()["rows"]["LOOP-F35"]["cards"]
+        self.assertEqual(len(cards), 2)
+        self.assertFalse(any("builder" in k for k in cards))
+        # Next run: only the lost card, through the real three-step flow.
+        http_fake = FakeSlackHTTP()
+        code, _out, err = self.run_main(factory=self.real_client(http_fake))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(http_fake.uploaded(), [png("build")])
+        self.assertEqual(len(self.read_state()["rows"]["LOOP-F35"]["cards"]), 3)
+
+    def test_torn_png_is_retried_not_frozen_in(self):
+        """A PNG without its IEND tail (card.sh screenshots in place) is skipped this run and uploaded
+        once the file is whole — never recorded as posted while truncated."""
+        self.builder_png.write_bytes(PNG_HEAD + b"only half the ima")
+        os.utime(self.builder_png, (1.7e9 + 20, 1.7e9 + 20))
+        http_fake = FakeSlackHTTP()
+        code, _out, err = self.run_main(factory=self.real_client(http_fake))
+        self.assertEqual(code, 0, err)
+        self.assertIn("slack error read: incomplete png (groups/hermes-builder/", err)
+        self.assertEqual(http_fake.uploaded(), [png("arch"), png("test")])
+        self.assertFalse(any("builder" in k for k in self.read_state()["rows"]["LOOP-F35"]["cards"]))
+        self.builder_png.write_bytes(png("build"))
+        os.utime(self.builder_png, (1.7e9 + 20, 1.7e9 + 20))
+        http_fake = FakeSlackHTTP()
+        code, _out, err = self.run_main(factory=self.real_client(http_fake))
+        self.assertEqual(code, 0, err)
+        self.assertEqual(http_fake.uploaded(), [png("build")])
+        self.assertEqual(len(self.read_state()["rows"]["LOOP-F35"]["cards"]), 3)
+
+    def test_mrkdwn_control_characters_are_escaped_end_to_end(self):
+        """Agent-written headlines and ledger cells reach Slack escaped: no @channel ping, no smuggled link."""
+        put(self.root / "groups" / "hermes-builder" / "reports" / "hermes-LOOP-F35" / "cards" / "card-hermes-builder-shipped-r1.json",
+            json.dumps({"row": "LOOP-F35", "role": "hermes-builder", "outcome": "SHIPPED", "round": 1,
+                        "headline": "<!channel> all green & <https://evil.example|click>"}), 1.7e9 + 20)
+        put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER_GATE_RED, 1.0e9)
+        http_fake = FakeSlackHTTP()
+        code, _out, err = self.run_main(factory=self.real_client(http_fake))
+        self.assertEqual(code, 0, err)
+        completes = http_fake.bodies("files.completeUploadExternal")
+        builder = next(c for c in completes if "hermes-builder" in c["initial_comment"])
+        self.assertEqual(builder["initial_comment"],
+                         "LOOP-F35 · hermes-builder · SHIPPED — &lt;!channel&gt; all green &amp; &lt;https://evil.example|click&gt;")
+        self.assertEqual(builder["files"][0]["title"], "LOOP-F35 · hermes-builder · SHIPPED · r1")
+        posts = [b["text"] for b in http_fake.bodies("chat.postMessage")]
+        self.assertIn("⛔ LOOP-F35 blocked — P3 — creds expired, &lt;!here&gt; retry after rotation", posts)
+        all_sent = b"".join(r.data for r in http_fake.requests if r.full_url.startswith("https://slack.com/api/"))
+        self.assertNotIn(b"<!channel>", all_sent)
+        self.assertNotIn(b"<!here>", all_sent)
+
+    def test_another_run_holding_the_lock_exits_0_without_calls(self):
+        lock_path = Path(str(self.state) + ".lock")
+        lock_path.parent.mkdir(parents=True, exist_ok=True)
+        with open(lock_path, "w") as held:
+            fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            code, out, err = self.run_main()
+            self.assertEqual(code, 0)
+            self.assertEqual(FakeClient.instances[0].calls, [], "the second run must not post")
+            self.assertIn("another run holds the lock", err)
+            self.assertEqual(out, "")
+            self.assertFalse(self.state.exists())
+        # Lock released: the next run proceeds normally, and the lock is free again afterwards.
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(len(FakeClient.instances[1].calls), 5)
+        with open(lock_path, "w") as probe:
+            fcntl.flock(probe, fcntl.LOCK_EX | fcntl.LOCK_NB)  # would raise if main() leaked its handle
+        # A dry run never takes the lock.
+        with open(lock_path, "w") as held:
+            fcntl.flock(held, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            code, out, _err = self.run_main("--dry-run")
+            self.assertEqual(code, 0)
+            self.assertEqual(out.count("would post"), 0, "everything is already posted")
+
+    def test_corrupt_state_rows_is_fatal_and_posts_nothing(self):
+        put(self.state, json.dumps({"channel": CHANNEL, "rows": ["LOOP-F35"]}), 1.0e9)
+        code, out, err = self.run_main()
+        self.assertEqual(code, 1)
+        self.assertEqual(FakeClient.instances[0].calls, [])
+        self.assertIn("'rows' is not an object", err)
+        self.assertEqual(out, "")
+        self.assertEqual(json.loads(self.state.read_text())["rows"], ["LOOP-F35"], "the file is left for the operator")
+
     def test_dry_run_makes_no_calls_and_writes_no_state(self):
         code, out, err = self.run_main("--dry-run")
         self.assertEqual(code, 0, err)
         self.assertEqual(FakeClient.instances, [], "dry-run never builds a client")
         self.assertFalse(self.state.exists())
+        self.assertFalse(Path(str(self.state) + ".lock").exists(), "dry-run touches nothing under data/")
         self.assertIn("would post root LOOP-F35: LOOP-F35 · Lego coworker composition · batch 1a · dispatched 2026-09-09", out)
         self.assertIn("would post card groups/hermes-architect/reports/hermes-LOOP-F35/cards/card-hermes-architect-handoff-r1.png", out)
         self.assertEqual(out.count("would post"), 5)  # 2 roots + 3 cards
@@ -348,22 +625,9 @@ class SlackRowsTest(unittest.TestCase):
         self.assertIsNone(self.mod.read_token(str(self.root), "NOPE"))
 
 
-class FakeResponse:
-    def __init__(self, body: bytes):
-        self.body = body
-
-    def read(self):
-        return self.body
-
-    def __enter__(self):
-        return self
-
-    def __exit__(self, *exc):
-        return False
-
-
 class SlackClientTest(unittest.TestCase):
-    """The urllib client against a fake urlopen: the upload flow, form vs JSON bodies, 429 and ok:false."""
+    """The urllib client against a fake urlopen: the upload flow, form vs JSON bodies, escaping, 429,
+    ok:false, fatal errors, non-OSError transport failures, a malformed upload url."""
 
     def setUp(self):
         self.mod = load_module()
@@ -383,14 +647,15 @@ class SlackClientTest(unittest.TestCase):
 
     def test_upload_flow(self):
         with tempfile.TemporaryDirectory() as d:
-            png = Path(d) / "card-hermes-tester-pass-r2.png"
-            png.write_bytes(b"\x89PNG bytes")
+            card = Path(d) / "card-hermes-tester-pass-r2.png"
+            card.write_bytes(png("bytes"))
             self.script = [
                 json.dumps({"ok": True, "upload_url": "https://files.slack.com/upload/v1/abc", "file_id": "F123"}).encode(),
                 b"OK - 10 bytes uploaded",
                 json.dumps({"ok": True, "files": [{"id": "F123"}]}).encode(),
             ]
-            fid = self.client().upload_file(CHANNEL, "1700.0001", str(png), "title", "LOOP-F35 · hermes-tester · PASS")
+            fid = self.client().upload_file(CHANNEL, "1700.0001", str(card), "title <r2>",
+                                            "LOOP-F35 · hermes-tester · PASS — <!channel> a & b")
         self.assertEqual(fid, "F123")
         urls = [r.full_url for r in self.requests]
         self.assertEqual(urls, [
@@ -399,14 +664,31 @@ class SlackClientTest(unittest.TestCase):
             "https://slack.com/api/files.completeUploadExternal",
         ])
         step1 = dict(urllib.parse.parse_qsl(self.requests[0].data.decode()))
-        self.assertEqual(step1, {"filename": "card-hermes-tester-pass-r2.png", "length": "10"})
+        self.assertEqual(step1, {"filename": "card-hermes-tester-pass-r2.png", "length": str(len(png("bytes")))})
         self.assertEqual(self.requests[0].get_header("Authorization"), f"Bearer {TOKEN}")
-        self.assertEqual(self.requests[1].data, b"\x89PNG bytes")
+        self.assertEqual(self.requests[1].data, png("bytes"))
         self.assertFalse(self.requests[1].has_header("Authorization"), "the pre-signed upload URL gets no token")
         step3 = json.loads(self.requests[2].data.decode())
-        self.assertEqual(step3, {"files": [{"id": "F123", "title": "title"}], "channel_id": CHANNEL,
-                                 "thread_ts": "1700.0001", "initial_comment": "LOOP-F35 · hermes-tester · PASS"})
+        self.assertEqual(step3, {"files": [{"id": "F123", "title": "title <r2>"}], "channel_id": CHANNEL, "thread_ts": "1700.0001",
+                                 "initial_comment": "LOOP-F35 · hermes-tester · PASS — &lt;!channel&gt; a &amp; b"})
         self.assertTrue(self.requests[2].get_header("Content-type").startswith("application/json"))
+
+    def test_unreadable_or_torn_file_is_a_read_error_before_any_call(self):
+        with tempfile.TemporaryDirectory() as d:
+            with self.assertRaises(self.mod.SlackError) as ctx:
+                self.client().upload_file(CHANNEL, "1700.0001", os.path.join(d, "missing.png"), "t", "c")
+            self.assertEqual((ctx.exception.method, ctx.exception.error), ("read", "FileNotFoundError"))
+            self.assertNotIn(d, str(ctx.exception), "no path in the error")
+            torn = Path(d) / "card-x-pass-r1.png"
+            torn.write_bytes(PNG_HEAD + b"half")
+            with self.assertRaises(self.mod.SlackError) as ctx:
+                self.client().upload_file(CHANNEL, "1700.0001", str(torn), "t", "c")
+            self.assertEqual(ctx.exception.error, "incomplete png")
+            (Path(d) / "card-x-pass-r1.png").write_bytes(b"not a png at all")
+            with self.assertRaises(self.mod.SlackError) as ctx:
+                self.client().upload_file(CHANNEL, "1700.0001", str(torn), "t", "c")
+            self.assertEqual(ctx.exception.error, "incomplete png")
+        self.assertEqual(self.requests, [], "nothing goes to Slack for a file that cannot be read")
 
     def test_post_message_and_429_retry(self):
         err = urllib.error.HTTPError("https://slack.com/api/chat.postMessage", 429, "Too Many Requests",
@@ -419,21 +701,58 @@ class SlackClientTest(unittest.TestCase):
         self.assertEqual(json.loads(self.requests[1].data.decode()), {
             "channel": CHANNEL, "text": "hello", "unfurl_links": False, "unfurl_media": False, "thread_ts": "1700.0001"})
 
-    def test_ok_false_and_not_in_channel(self):
+    def test_post_message_escapes_mrkdwn(self):
+        self.script = [json.dumps({"ok": True, "ts": "1700.43"}).encode()]
+        self.client().post_message(CHANNEL, "⛔ LOOP-F35 blocked — <!channel> a & b <https://x|y>")
+        sent = json.loads(self.requests[0].data.decode())["text"]
+        self.assertEqual(sent, "⛔ LOOP-F35 blocked — &lt;!channel&gt; a &amp; b &lt;https://x|y&gt;")
+        self.assertEqual(self.mod.mrkdwn_escape("plain · text"), "plain · text")
+
+    def test_ok_false_not_in_channel_and_fatal_errors(self):
+        mod = self.mod
         self.script = [json.dumps({"ok": False, "error": "not_in_channel"}).encode()]
-        with self.assertRaises(self.mod.NotInChannel) as ctx:
+        with self.assertRaises(mod.NotInChannel) as ctx:
             self.client().post_message(CHANNEL, "x")
         self.assertEqual(str(ctx.exception), "slack error chat.postMessage: not_in_channel")
-        self.script = [json.dumps({"ok": False, "error": "invalid_auth"}).encode()]
-        with self.assertRaises(self.mod.SlackError) as ctx:
-            self.client().call("auth.test", {})
-        self.assertEqual(ctx.exception.error, "invalid_auth")
-        self.assertNotIn(TOKEN, str(ctx.exception))
+        self.assertIsInstance(ctx.exception, mod.SlackFatal, "not_in_channel is run-wide too")
+        for err in ("invalid_auth", "token_revoked", "missing_scope", "channel_not_found", "is_archived"):
+            self.script = [json.dumps({"ok": False, "error": err}).encode()]
+            with self.assertRaises(mod.SlackFatal) as ctx:
+                self.client().call("auth.test", {})
+            self.assertEqual(ctx.exception.error, err)
+            self.assertNotIsInstance(ctx.exception, mod.NotInChannel)
+            self.assertNotIn(TOKEN, str(ctx.exception))
+        # A per-call error is a plain SlackError, not fatal.
+        self.script = [json.dumps({"ok": False, "error": "invalid_arguments"}).encode()]
+        with self.assertRaises(mod.SlackError) as ctx:
+            self.client().call("files.completeUploadExternal", {})
+        self.assertNotIsInstance(ctx.exception, mod.SlackFatal)
         self.script = [urllib.error.HTTPError("u", 500, "boom", {}, None)]
-        with self.assertRaises(self.mod.SlackError) as ctx:
+        with self.assertRaises(mod.SlackError) as ctx:
             self.client().call("auth.test", {})
         self.assertEqual(ctx.exception.error, "http 500")
         self.assertEqual(self.sleeps, [], "only 429 sleeps")
+
+    def test_incomplete_read_and_other_http_exceptions_are_slack_errors(self):
+        for exc, name in ((http.client.IncompleteRead(b""), "IncompleteRead"),
+                          (http.client.BadStatusLine("garbage"), "BadStatusLine"),
+                          (http.client.RemoteDisconnected("gone"), "RemoteDisconnected")):
+            self.script = [exc]
+            with self.assertRaises(self.mod.SlackError) as ctx:
+                self.client().call("chat.postMessage", {"text": "x"})
+            self.assertEqual(ctx.exception.error, f"network: {name}")
+            self.assertNotIsInstance(ctx.exception, self.mod.SlackFatal)
+
+    def test_malformed_upload_url_is_a_slack_error_without_the_url(self):
+        with tempfile.TemporaryDirectory() as d:
+            card = Path(d) / "card-hermes-tester-pass-r2.png"
+            card.write_bytes(png("bytes"))
+            self.script = [json.dumps({"ok": True, "upload_url": "bogus-capability-url", "file_id": "F1"}).encode()]
+            with self.assertRaises(self.mod.SlackError) as ctx:
+                self.client().upload_file(CHANNEL, "1700.0001", str(card), "t", "c")
+        self.assertEqual((ctx.exception.method, ctx.exception.error), ("upload", "bad url"))
+        self.assertNotIn("bogus", str(ctx.exception))
+        self.assertEqual(len(self.requests), 1, "Request() failed before anything was sent")
 
 
 if __name__ == "__main__":
