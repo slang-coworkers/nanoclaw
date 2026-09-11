@@ -13,6 +13,7 @@ import sys
 import unittest
 from datetime import datetime
 from pathlib import Path
+from typing import ClassVar
 
 SCAN = str(Path(__file__).resolve().parent / "scan.py")
 NOW = "2026-06-26T12:00:00Z"
@@ -794,6 +795,332 @@ class ClosedIssueArchival(unittest.TestCase):
             out["state"]["_archived"]["gh-issue-o/r-200"]["archivedAt"],
             "2026-06-26T12:00:00Z",  # preserved, not overwritten with the new tick
         )
+
+
+class ReadOnlyRolePark(unittest.TestCase):
+    """A chain held ONLY by a read-only role (slang-pr-approver) records its verdict
+    in the approval ledger, never on GitHub, so ball=='ours' ('human commented last,
+    unanswered by us') is a STRUCTURAL false-positive — it must NOT nudge. But a
+    fixer/triager also on the chain genuinely owes a GitHub reply, so its awaiting_us
+    nudge must be preserved. Measured 2026-09-11: 21 of 95 awaiting_us were
+    approver-only false-positives inflating must_nudge (#12389/#12836/#12968)."""
+
+    def _human_last_pr_chain(self, issue, folders, disp=None):
+        """A chain where a human commented last on an open PR, its session(s) held
+        by `folders` (list of group_folder strings). container_status='stopped' so
+        the running+fresh short-circuit never applies."""
+        sessions = [
+            {"id": f"s{i}", "thread_id": f"gh-issue-o/r-{issue}",
+             "container_status": "stopped", "group_folder": f}
+            for i, f in enumerate(folders)
+        ]
+        chain = {
+            "repo": "o/r", "issue": issue, "sessions": [s["id"] for s in sessions],
+            "our_last_outbound": "2026-06-26T09:00:00Z",
+            "pr": {"number": 900 + issue % 100, "state": "OPEN", "isDraft": True,
+                   "fixes_issue": issue, "body_has_fixes": True},
+            "comments": [{"author": "somehuman", "at": "2026-06-26T10:00:00Z", "is_bot": False}],
+        }
+        if disp is not None:
+            chain["disposition"] = disp
+        return {"sessions": sessions,
+                "chains": {f"gh-issue-o/r-{issue}": chain}}
+
+    def test_approver_only_chain_is_parked_not_nudged(self):
+        out = run_scan(self._human_last_pr_chain(301, ["slang-pr-approver"]))
+        r = row_for(out, "gh-issue-o/r-301")
+        self.assertEqual(r["ball"], "ours")             # human still spoke last
+        self.assertEqual(r["state"], "awaiting_human")  # but parked, not awaiting_us
+        self.assertFalse(r["needs_nudge"])
+        self.assertEqual(r["action"], "none")
+        self.assertEqual(r["non_nudge_reason"], "read-only-role")
+        self.assertEqual(out["summary"]["must_nudge"], 0)
+        self.assertEqual(out["summary"]["awaiting_us"], 0)
+
+    def test_slangpy_approver_only_also_parked(self):
+        out = run_scan(self._human_last_pr_chain(302, ["slangpy-pr-approver"]))
+        r = row_for(out, "gh-issue-o/r-302")
+        self.assertFalse(r["needs_nudge"])
+        self.assertEqual(r["non_nudge_reason"], "read-only-role")
+
+    def test_approver_plus_fixer_still_nudges(self):
+        # A fixer also holds the chain -> it genuinely owes a GitHub reply; the
+        # awaiting_us nudge must survive (guard is read-only-ONLY).
+        out = run_scan(self._human_last_pr_chain(303, ["slang-pr-approver", "slang-fixer"]))
+        r = row_for(out, "gh-issue-o/r-303")
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertTrue(r["needs_nudge"])
+        self.assertEqual(out["summary"]["must_nudge"], 1)
+
+    def test_approver_plus_triager_still_nudges(self):
+        out = run_scan(self._human_last_pr_chain(304, ["slang-pr-approver", "slang-triager"]))
+        r = row_for(out, "gh-issue-o/r-304")
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertTrue(r["needs_nudge"])
+
+    def test_unknown_or_empty_role_is_not_suppressed(self):
+        # A session with no group_folder -> roles set is empty -> NOT read-only-only;
+        # an under-populated payload can never silence a real awaiting_us chain.
+        payload = self._human_last_pr_chain(305, ["slang-fixer"])
+        for s in payload["sessions"]:
+            s.pop("group_folder", None)
+        out = run_scan(payload)
+        r = row_for(out, "gh-issue-o/r-305")
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertTrue(r["needs_nudge"])
+
+    def test_pure_fixer_chain_unchanged(self):
+        # Regression guard: a non-approver chain classifies exactly as before.
+        out = run_scan(self._human_last_pr_chain(306, ["slang-fixer"]))
+        r = row_for(out, "gh-issue-o/r-306")
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertTrue(r["needs_nudge"])
+
+    def test_human_owned_disposition_takes_precedence(self):
+        # An approver-only chain that ALSO carries a human-owned disposition still
+        # parks (as human-owned:<disp>), not read-only-role — the disposition check
+        # runs first in both classify() and compute_non_nudge_reason().
+        out = run_scan(self._human_last_pr_chain(307, ["slang-pr-approver"],
+                                                 disp="advisory:maintainer-driving"))
+        r = row_for(out, "gh-issue-o/r-307")
+        self.assertFalse(r["needs_nudge"])
+        self.assertTrue(r["non_nudge_reason"].startswith("human-owned:"))
+
+    def test_approver_plus_missing_folder_session_not_suppressed(self):
+        # Approver session + a genuine session whose group_folder is MISSING. The
+        # guard must FAIL CLOSED — an unidentified session could be a fixer, so the
+        # nudge survives (regression guard for the "missing role hides fixer" bug).
+        payload = self._human_last_pr_chain(308, ["slang-pr-approver", "slang-fixer"])
+        for s in payload["sessions"]:
+            if s["group_folder"] == "slang-fixer":
+                del s["group_folder"]
+        r = row_for(run_scan(payload), "gh-issue-o/r-308")
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertTrue(r["needs_nudge"])
+
+    def test_approver_plus_session_absent_from_sessions_list_not_suppressed(self):
+        # chain.sessions references an id with NO row in the top-level sessions list
+        # (sessions_by_id miss) -> unidentified -> must not suppress.
+        payload = self._human_last_pr_chain(309, ["slang-pr-approver"])
+        payload["chains"]["gh-issue-o/r-309"]["sessions"].append("ghost")
+        r = row_for(run_scan(payload), "gh-issue-o/r-309")
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertTrue(r["needs_nudge"])
+
+    def test_substring_lookalike_role_not_suppressed(self):
+        # Exact allowlist, not substring: "slang-pr-disapprover" contains "approver"
+        # but is NOT a shadow approver -> must NOT be parked.
+        r = row_for(run_scan(self._human_last_pr_chain(310, ["slang-pr-disapprover"])),
+                    "gh-issue-o/r-310")
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertTrue(r["needs_nudge"])
+
+
+class NudgeCooldown(unittest.TestCase):
+    """SKILL.md §3: don't re-fire the same action on a chain we already acted on when
+    nothing a human is waiting on has changed since (root of the report-only drift:
+    must_nudge≈122 re-flagged the same parked chains every 12h vs ~5 actually sent).
+    Re-arm is driven only by EXTERNAL material events — a fresh non-bot comment, a
+    coarse PR-state transition, or a cost-cap episode — each compared by its DURABLE
+    observation timestamp against the marker (survives ticks the LLM skipped), NEVER
+    by our own activity clock (a sent nudge must not re-arm itself). A never-acted
+    chain still fires once."""
+
+    def _awaiting_us(self, issue, prior=None, comment_at="2026-06-21T00:00:00Z",
+                     our_out="2026-06-20T00:00:00Z"):
+        # fixer session, human commented last, container stopped -> awaiting_us.
+        chain = {
+            "repo": "o/r", "issue": issue, "sessions": ["s1"],
+            "our_last_outbound": our_out,
+            "comments": [{"author": "human", "at": comment_at, "is_bot": False}],
+        }
+        state = {}
+        if prior is not None:
+            state[f"gh-issue-o/r-{issue}"] = prior
+        return {
+            "state": state,
+            "sessions": [{"id": "s1", "thread_id": f"gh-issue-o/r-{issue}",
+                          "container_status": "stopped", "group_folder": "slang-fixer"}],
+            "chains": {f"gh-issue-o/r-{issue}": chain},
+        }
+
+    # Prior snapshot with the chain already classified awaiting_us (no state/PR change).
+    _QUIET: ClassVar[dict] = {"lastState": "awaiting_us",
+                              "lastActivityAt": "2026-06-20T00:00:00Z",
+                              "lastPrState": None}
+
+    def test_acted_and_quiet_is_cooled_down(self):
+        # Nudged 06-22, newest human comment 06-21 (before), nothing changed -> park.
+        prior = dict(self._QUIET, nudgedAt="2026-06-22T00:00:00Z")
+        out = run_scan(self._awaiting_us(410, prior))
+        r = row_for(out, "gh-issue-o/r-410")
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertFalse(r["needs_nudge"])
+        self.assertEqual(r["action"], "none")
+        self.assertEqual(r["non_nudge_reason"], "nudge-cooldown")
+        self.assertEqual(out["summary"]["must_nudge"], 0)
+        self.assertEqual(out["summary"]["nudge_cooldown"], 1)
+
+    def test_new_inbound_comment_after_nudge_rearms(self):
+        # BLOCKER 1: a maintainer comments AFTER we nudged -> re-engage, do not park.
+        prior = dict(self._QUIET, nudgedAt="2026-06-22T00:00:00Z")
+        out = run_scan(self._awaiting_us(411, prior, comment_at="2026-06-25T00:00:00Z"))
+        r = row_for(out, "gh-issue-o/r-411")
+        self.assertTrue(r["needs_nudge"])
+        self.assertEqual(out["summary"]["nudge_cooldown"], 0)
+
+    def test_own_outbound_advance_does_not_rearm(self):
+        # BLOCKER 2: our_last_outbound advances PAST nudgedAt (as a sent nudge would)
+        # but no new inbound and no state/PR change -> still parked. delta is
+        # 'updated' (our clock moved), proving the cooldown is decoupled from delta.
+        prior = dict(self._QUIET, nudgedAt="2026-06-22T00:00:00Z")
+        out = run_scan(self._awaiting_us(412, prior, comment_at="2026-06-21T00:00:00Z",
+                                         our_out="2026-06-25T00:00:00Z"))
+        r = row_for(out, "gh-issue-o/r-412")
+        self.assertEqual(r["delta"], "updated")
+        self.assertFalse(r["needs_nudge"])
+        self.assertEqual(r["non_nudge_reason"], "nudge-cooldown")
+
+    def test_never_nudged_still_fires_first_nudge(self):
+        out = run_scan(self._awaiting_us(413, dict(self._QUIET)))
+        r = row_for(out, "gh-issue-o/r-413")
+        self.assertTrue(r["needs_nudge"])
+        self.assertEqual(out["summary"]["must_nudge"], 1)
+        self.assertEqual(out["summary"]["nudge_cooldown"], 0)
+
+    def test_clock_driven_state_flip_does_not_rearm(self):
+        # BLOCKER 2 (indirect): `state` is derived from silent_age, so a chain flips
+        # working<->silent by the passage of time alone (a sent nudge advanced our
+        # clock). A prior lastState that differs ONLY through this clock-driven flip,
+        # with no PR change and no new inbound, must NOT re-arm the nudge.
+        sid = _sid_at("2026-06-26T06:00:00Z")   # dispatched 6h before NOW -> silent now
+        payload = {
+            "state": {"gh-issue-o/r-414": {"lastState": "working", "lastActivityAt": None,
+                                           "lastPrState": None,
+                                           "nudgedAt": "2026-06-26T05:00:00Z"}},
+            "sessions": [{"id": sid, "thread_id": "gh-issue-o/r-414",
+                          "container_status": "stopped", "group_folder": "slang-triager"}],
+            "chains": {"gh-issue-o/r-414": {"repo": "o/r", "issue": 414,
+                                            "sessions": [sid], "comments": []}},
+        }
+        r = row_for(run_scan(payload), "gh-issue-o/r-414")
+        self.assertEqual(r["state"], "silent")        # clock moved working -> silent
+        self.assertFalse(r["needs_nudge"])            # but no external change -> stay cooled
+        self.assertEqual(r["non_nudge_reason"], "nudge-cooldown")
+
+    def test_malformed_marker_not_trusted(self):
+        # MINOR 5: '' / [] are NOT proof we nudged -> first nudge still fires.
+        for bad in ("", []):
+            prior = dict(self._QUIET, nudgedAt=bad)
+            r = row_for(run_scan(self._awaiting_us(415, prior)), "gh-issue-o/r-415")
+            self.assertTrue(r["needs_nudge"], f"nudgedAt={bad!r} should not cool down")
+
+    def test_list_marker_newest_entry_cools_down(self):
+        # A history LIST of timestamps is honored (newest entry is the marker).
+        prior = dict(self._QUIET,
+                     nudgedAt=["2026-05-01T00:00:00Z", "2026-06-22T00:00:00Z"])
+        r = row_for(run_scan(self._awaiting_us(416, prior)), "gh-issue-o/r-416")
+        self.assertFalse(r["needs_nudge"])
+        self.assertEqual(r["non_nudge_reason"], "nudge-cooldown")
+
+    def _pr_chain(self, issue, prior, pr_state="OPEN"):
+        # awaiting_us chain WITH an open PR (human commented last, container stopped).
+        return {
+            "state": {f"gh-issue-o/r-{issue}": prior},
+            "sessions": [{"id": "s1", "thread_id": f"gh-issue-o/r-{issue}",
+                          "container_status": "stopped", "group_folder": "slang-fixer"}],
+            "chains": {f"gh-issue-o/r-{issue}": {
+                "repo": "o/r", "issue": issue, "sessions": ["s1"],
+                "our_last_outbound": "2026-06-20T00:00:00Z",
+                "pr": {"number": 900, "state": pr_state, "fixes_issue": issue},
+                "comments": [{"author": "human", "at": "2026-06-21T00:00:00Z", "is_bot": False}],
+            }},
+        }
+
+    def test_pr_state_change_rearms_and_is_durable(self):
+        # BLOCKER (round 3): a PR-state transition must re-arm, and DURABLY — it must
+        # keep re-arming on later ticks even though the raw prior.lastPrState no longer
+        # differs. Tick 1: CLOSED->OPEN observed. Tick 2: OPEN==OPEN (no raw change)
+        # but the recorded prStateChangedAt still post-dates the marker -> still armed.
+        prior1 = {"lastState": "awaiting_us", "lastActivityAt": "2026-06-20T00:00:00Z",
+                  "lastPrState": "CLOSED", "nudgedAt": "2026-06-19T00:00:00Z"}
+        out1 = run_scan(self._pr_chain(430, prior1, pr_state="OPEN"))
+        r1 = row_for(out1, "gh-issue-o/r-430")
+        self.assertTrue(r1["needs_nudge"])                       # transition re-arms
+        snap = out1["state"]["gh-issue-o/r-430"]
+        self.assertEqual(snap["prStateChangedAt"], NOW)          # observation recorded
+        # Tick 2: feed the produced snapshot back; PR now stable OPEN, no new comment.
+        out2 = run_scan(self._pr_chain(430, snap, pr_state="OPEN"))
+        r2 = row_for(out2, "gh-issue-o/r-430")
+        self.assertTrue(r2["needs_nudge"], "PR re-arm must survive a skipped tick")
+
+    def test_cost_episode_rearms_after_nudge(self):
+        # A cost-cap episode recorded AFTER the marker re-arms a resumed-then-silent
+        # chain (durable: costStoppedAt post-dates nudgedAt).
+        prior = {"lastState": "silent", "lastActivityAt": None, "lastPrState": None,
+                 "nudgedAt": "2026-06-20T00:00:00Z", "costStoppedAt": "2026-06-24T00:00:00Z"}
+        r = row_for(run_scan(self._silent_escalating(431, prior)), "gh-issue-o/r-431")
+        self.assertTrue(r["needs_nudge"])
+
+    def test_cost_stopped_records_timestamp(self):
+        # A chain whose session is cost-stopped -> state cost_stopped, no nudge, and
+        # costStoppedAt stamped so a later resume re-arms.
+        payload = {
+            "state": {},
+            "sessions": [{"id": "s1", "thread_id": "gh-issue-o/r-432",
+                          "container_status": "running", "group_folder": "slang-fixer",
+                          "cost_status": "stopped"}],
+            "chains": {"gh-issue-o/r-432": {"repo": "o/r", "issue": 432,
+                                            "sessions": ["s1"], "comments": []}},
+        }
+        out = run_scan(payload)
+        r = row_for(out, "gh-issue-o/r-432")
+        self.assertEqual(r["state"], "cost_stopped")
+        self.assertFalse(r["needs_nudge"])
+        self.assertEqual(out["state"]["gh-issue-o/r-432"]["costStoppedAt"], NOW)
+
+    def _silent_escalating(self, issue, prior=None):
+        # No comments, no PR, no activity-by-us; dispatched 6h before NOW -> silent + escalate.
+        sid = _sid_at("2026-06-26T06:00:00Z")
+        state = {}
+        if prior is not None:
+            state[f"gh-issue-o/r-{issue}"] = prior
+        return {
+            "state": state,
+            "sessions": [{"id": sid, "thread_id": f"gh-issue-o/r-{issue}",
+                          "container_status": "stopped", "group_folder": "slang-triager"}],
+            "chains": {f"gh-issue-o/r-{issue}": {"repo": "o/r", "issue": issue,
+                                                 "sessions": [sid], "comments": []}},
+        }
+
+    def test_already_escalated_unchanged_is_not_re_escalated(self):
+        # escalatedAt recorded + delta='same' -> escalate suppressed. No nudgedAt, so
+        # the needs_nudge path is untouched (isolates the escalate dedup).
+        prior = {"lastState": "silent", "lastActivityAt": None, "lastPrState": None,
+                 "escalatedAt": "2026-06-25T00:00:00Z"}
+        out = run_scan(self._silent_escalating(420, prior))
+        r = row_for(out, "gh-issue-o/r-420")
+        self.assertEqual(r["state"], "silent")
+        self.assertFalse(r["escalate"])               # already escalated, nothing new
+        self.assertTrue(r["needs_nudge"])             # nudge path independent (no nudgedAt)
+        self.assertEqual(out["summary"]["escalate"], 0)
+
+    def test_never_escalated_silent_still_escalates(self):
+        out = run_scan(self._silent_escalating(421, {"lastState": "silent",
+                       "lastActivityAt": None, "lastPrState": None}))
+        r = row_for(out, "gh-issue-o/r-421")
+        self.assertTrue(r["escalate"])
+        self.assertEqual(out["summary"]["escalate"], 1)
+
+    def test_already_nudged_silent_still_first_escalates(self):
+        # Ladder: an already-NUDGED silent chain (nudgedAt set) that has NEVER been
+        # escalated (escalatedAt absent) must still fire its FIRST escalation, while
+        # its nudge stays cooled. The two markers are independent.
+        prior = {"lastState": "silent", "lastActivityAt": None, "lastPrState": None,
+                 "nudgedAt": "2026-06-25T00:00:00Z"}
+        r = row_for(run_scan(self._silent_escalating(422, prior)), "gh-issue-o/r-422")
+        self.assertFalse(r["needs_nudge"])   # nudge cooled (already nudged, nothing new)
+        self.assertTrue(r["escalate"])       # ...but first escalation still fires
 
 
 if __name__ == "__main__":
