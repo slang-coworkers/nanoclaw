@@ -119,6 +119,17 @@ Req-ids are the gap-matrix ids (`LOOP-F35`, `GOV-F22`, `P0-LOOP`) as well as `FR
 
 Green needs **all** of: both files non-empty; `N >= 1`; `N == $DECLARED` — the same `<n>` the architect's `[Spec handoff]` bullet and the tester's `**Acceptance criteria:** <n>/<n> PASS` line and the reviewer's `## Acceptance criteria` row count all declare; `M == N`; both `comm` outputs empty. `grep` exiting non-zero (no match) is red on its own — it is the empty-set case wearing a green mask.
 
+**Carried criteria belong to this id set.** Other rows may have deferred criteria onto `<req-id>` — the rows of `/workspace/agent/reports/ledger.md` § Carried criteria with `to row = <req-id>` and `status = open` (the supervise tick's `gate` action lists them too; the ledger is authoritative) — and every such id must appear in `/tmp/adr-ids` under its **original** id, hence as a `PASS` row in the report. An open carried criterion the ADR does not list is red: `blocked: P5 — carried criterion AC-<row>-<n> (deferred from <row>, ledger § Carried criteria) missing from the ADR — hermes-architect adds it verbatim under its own id`.
+```bash
+[ -s /workspace/agent/reports/ledger.md ] || echo 'P5 RED: ledger missing'
+python3 - <<'PY' | sort -u > /tmp/carried-ids
+import sys; sys.path.insert(0, "/workspace/shared/hermes/autopilot"); import hermes_queue as hq
+led = hq.parse_ledger(open("/workspace/agent/reports/ledger.md", encoding="utf-8").read())
+for cid in sorted(c["criterion"] for c in led["carried_criteria"] if c["to_row"] == "<req-id>" and c["status"] == "open"): print(cid)
+PY
+comm -23 /tmp/carried-ids /tmp/adr-ids    # open carried ids the ADR never lists — MUST be empty
+```
+
 Then read each id's `## Results` row: `result` must be literally `PASS`, and `evidence` must be the pointer that row's `kind` requires and never empty (a pytest node id `tests/plugins/test_<plugin>_acceptance.py::test_ac_<req_id>_<n>` for `pytest`; a Playwright spec node for `desktop`; a screenshot path `scenario-<AC-id>/step-<n>.png` for `ui` and `live`) — never `no test — criterion unimplemented`, never `SKIPPED`, never a collapsed range (`AC-FR-3-1..3 PASS` is not a row). The reviewer's `## Acceptance criteria` cross-walk must carry the same id set with the same PASS/FAIL. **A missing id is a FAIL, never an omission** — it means the report was built against a different ADR revision.
 *Special case, not a merge:* the ADR has **no** `## Acceptance criteria` table, or its criteria carry no ids (`N == 0` on a readable ADR) → `blocked: P5 — ADR has no enumerated ## Acceptance criteria table`, sent back to `hermes-architect` on the `[Triage Resolution]` edge. Never invent, infer or renumber ids to close the gap yourself.
 
@@ -146,7 +157,7 @@ The fork's default branch mirrors upstream `main`, hundreds of commits past the 
    gh pr view <N> --repo "$FORK" --json state,url,mergeCommit --jq '{state:.state,url:.url,sha:.mergeCommit.oid}'
    ```
    A failed merge (branch protection flipping `mergeStateStatus` to `BLOCKED` after ready, squash disabled, 403, head moved) → the `--undo` runs and you report `blocked: P<n> — merge refused by GitHub (<stderr>), PR restored to draft`. Leaving it non-draft strands the PR.
-4. **Record it in the ledger.** There is exactly one ledger: `/workspace/agent/reports/ledger.md`, the work-item table you keep (`groups/orchestrator/reports/ledger.md` on the host; `/hermes-status-report` reads it). Columns, in this order: `row-id | dispatched | spec accepted | PR | verdict | merged/blocked | notes`. `row-id` is the gap-matrix id (`GOV-F22`, `LOOP-F37`, …) — you add that row the moment you dispatch the requirement to the architect, and every later step edits **that row** in place; a second row for the same id is a ledger bug. Here, set `merged/blocked` to `merged <merge-sha7> — <PR url>`. Do not create a second ledger under `/workspace/shared`.
+4. **Record it in the ledger.** There is exactly one ledger: `/workspace/agent/reports/ledger.md`, the work-item table you keep (`groups/orchestrator/reports/ledger.md` on the host; `/hermes-status-report` reads it). Columns, in this order: `row-id | dispatched | spec accepted | PR | verdict | merged/blocked | notes`. `row-id` is the gap-matrix id (`GOV-F22`, `LOOP-F37`, …) — you add that row the moment you dispatch the requirement to the architect, and every later step edits **that row** in place; a second row for the same id is a ledger bug. Here, set `merged/blocked` to `merged <merge-sha7> — <PR url>`. In the same edit, for every carried criterion this PR delivered (the § Carried criteria rows with `to row = <req-id>`, verified under P5), set `status` to `covered (#<N>)` — left `open`, the supervise tick raises `carried-open` against the merged row. Do not create a second ledger under `/workspace/shared`.
 5. **One line to the human, on the dashboard chat.** UNMARKED plain text (this is a fresh send with no inbound to answer, and the always-on chain-routing gate denies a marker-prefixed send without `in_reply_to`): `Merged <fork-slug>#<N> <title> — squash <merge-sha7> into <BASE>; reviewer APPROVE r<k> + tester PASS r<k> @ <head-sha7>; <n>/<n> acceptance criteria` plus, when it applies, `DESKTOP=SKIPPED — install_packages <pkgs> requested`. One line. No play-by-play.
 
 ### Any red → do not merge
