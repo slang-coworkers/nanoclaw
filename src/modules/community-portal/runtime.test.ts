@@ -1,3 +1,4 @@
+import { readFileSync } from 'node:fs';
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises';
 import { createServer, type IncomingMessage, type Server, type ServerResponse } from 'node:http';
 import os from 'node:os';
@@ -200,8 +201,22 @@ it('reports sign_in_required and clears local credentials when the portal refuse
   ticketStatus = 401;
   const runtime = startPortalRuntime({ root, homeDir: home, log, intervalMs: 50, Socket: FakeSocket });
   await until(() => log.mock.calls.some(([event]) => event.event === 'sign_in_required'));
-  await sleep(200);
-  const journal = JSON.parse(await readFile(journalFile(), 'utf8')) as { credentials: object; operations: object };
+  // The 401 makes the ticket path call rejectIdentity(), which logs
+  // `sign_in_required` immediately; the journal is only cleared on a LATER
+  // check() iteration, by the `if (rejected)` branch that reaches
+  // `await client.save()`. So the event does not imply the write landed, and
+  // waiting a fixed 200 ms lost that race on a loaded machine — it failed in CI
+  // as `expected { echo: {...} } to deeply equal {}`. Poll the post-condition
+  // itself; a partial read just fails the parse and retries.
+  let journal!: { credentials: object; operations: object };
+  await until(() => {
+    try {
+      journal = JSON.parse(readFileSync(journalFile(), 'utf8'));
+    } catch {
+      return false;
+    }
+    return Object.keys(journal.credentials).length === 0 && Object.keys(journal.operations).length === 0;
+  });
   expect(journal.credentials).toEqual({});
   expect(journal.operations).toEqual({});
   expect(FakeSocket.instances).toEqual([]);
