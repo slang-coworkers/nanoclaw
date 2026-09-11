@@ -37,6 +37,7 @@ at `/workspace/shared/hermes/autopilot/` and the host cron runs from):
 | `config.json` | the human's knobs (§6); the live copy on the box is never overwritten by a deploy |
 | `test_*.py` | unittest: every rule in §2 to §8 that names a regex or a threshold has a test; `test_pull_state.py` runs `pull-state.sh` and the supervise gate offline against a fake `ncl` and `gh`; `test_dispatch_cron.py` runs `dispatch-cron.sh` against a fake `hostname`, `curl` and `ncl` |
 | `ops/nemoclaw-coworkers/hermes-check.sh` | Mac-side, refuses to run on a box: the 6-hourly human check (pull, scorecard, paste-ready interventions) |
+| `ops/nemoclaw-coworkers/slack-rows.py` | host-side Slack mirror: one `#hermes-port` thread per row (root · role cards · merged/blocked line) from the same cards, plan and ledger the rows board reads; state `data/shared/hermes/slack-threads.json` (§10.1) |
 
 Fixtures for the tests: `fixtures/ledger.md` (the box's ledger: P0-LOOP merged, LOOP-F35 at spec
 handoff) plus the git copies of `dispatch-plan.md` and `gap-matrix.md`.
@@ -609,6 +610,9 @@ done at that time, `▶ 3.6h` active for that long, `✗ FAIL r2` a tester FAIL 
 the row's latest SLO breach or alert, else the ledger note. The same header plus one `<row> | a | b |
 t | r` line per in-flight row is the supervise tick's run output (`tick-report.txt`), so a Telegram
 reader sees the fleet in one message and follows the link for the table.
+That 6-hourly summary lands in the operator's Slack DM first — destination `harsh-slack-dm`, the
+primary surface (`container/spines/hermes/context/slack-surface.md`, §10.1) — and the row threads it
+names are the `#hermes-port` swim lanes; Telegram is the backup copy, not a second one.
 
 The three interventions and how they land:
 
@@ -774,3 +778,62 @@ after rollout does not nudge every in-flight row for the markers that predate th
   `upstream-asks.md` is simply "no upstream asks recorded"), malformed carried rows (the parser's
   problems as banners). The a | b | t | r
   header (§7) gains `cards 24h N` (`card-*.png` written in the last 24 h), so a stalled fleet shows in the brief.
+
+### 10.1 Slack surface
+
+Slack is the operator's primary surface (`container/spines/hermes/context/slack-surface.md`): the
+Orchestrator's operator-facing one-liners go to the DM destination `harsh-slack-dm` first, and
+`#hermes-port` (`C0C14PWDUMC`) holds one thread per row — the swim lane — written by the **host**,
+never by an agent. `ops/nemoclaw-coworkers/slack-rows.py` (stdlib; `refresh-viewers.sh` runs it after
+the rows board every 15 min, `>> logs/slack-rows.log`, never fatal to the refresh) reads the same cards
+(`rows-board.scan_cards`), plan (`parse_plan`) and ledger (`parse_ledger`) as the rows board and
+posts, at most `--max-posts` (12) API calls per run:
+
+- the row's **root**, once: `<ROW> · <plan name> · batch <b> · dispatched <date>` (rows = the
+  ledger's dispatched ids ∪ `groups/*/reports/hermes-<ROW>/cards/` dirs, in plan order);
+- every **role card** PNG not yet posted, oldest first, as a threaded upload
+  (`files.getUploadURLExternal` → bytes → `files.completeUploadExternal`), caption
+  `<ROW> · <role> · <OUTCOME> — <headline>` from the sibling `.json`;
+- once the row's cards are all up, one closing line from the ledger's `merged/blocked` cell:
+  `✅ <ROW> merged <sha> — …` or `⛔ <ROW> blocked — <reason>` — the ⛔ line covers both a terminal
+  `blocked: STOP …` and a red merge gate (`blocked: P<n> — …`, `parse_outcome_cell`'s `gate_red`),
+  once per row; a later merge still posts its ✅ line.
+
+A card younger than 60 s (`CARD_SETTLE_S`) is left for the next run — `card.sh` screenshots the PNG in
+place, so a fresh file may be mid-write — and a PNG without its signature + `IEND` tail is logged as
+`slack error read: incomplete png` and retried, never recorded. Everything Slack renders as mrkdwn
+(message text, `initial_comment`) is escaped (`& < >` → entities): an agent-written headline or ledger
+cell cannot ping `<!channel>` or smuggle a link.
+
+**State file:** `data/shared/hermes/slack-threads.json` (container
+`/workspace/shared/hermes/slack-threads.json`, read-only for the Orchestrator):
+`{"channel", "rows": {"<ROW>": {"thread_ts", "root_posted_at", "cards": {"<png>": {"file_id",
+"posted_at"}}, "merged_posted" | "blocked_posted"}}}`, written tmp + rename after every successful
+post, so a rerun posts only what is new. It is also how the Orchestrator maps an inbound Slack thread
+back to its row. Delete a row's entry to have its lane re-posted; do not edit it by hand otherwise — a
+file whose `rows` is not an object is fatal (exit 1, nothing posted) rather than a silent re-post of
+every lane. One run at a time: an exclusive `flock` on `slack-threads.json.lock` for the run's
+lifetime; an overlapping run (a stalled Slack egress can push one past the next cron tick) logs
+`another run holds the lock` and exits 0.
+
+**Token:** `$SLACK_BOT_TOKEN`, else the `SLACK_BOT_TOKEN=` line of the checkout's `.env` — host-side
+only, never printed or logged, never mounted into a container.
+
+**Exit codes:** `0` success. `2` = `not_in_channel`: the bot user (`@orchestrator`) is not a member
+of the channel — `/invite @orchestrator` in `#hermes-port` (the app has no `channels:join` scope, so
+it cannot join by itself); nothing was posted and the state file is unchanged. `1` = any other fatal
+error: no token, no channel, a corrupt state file, or a run-wide Slack error (`invalid_auth`,
+`token_revoked`, `token_expired`, `missing_scope`, `channel_not_found`, `is_archived`, …) — the run
+stops at the first one instead of burning the budget on calls that cannot succeed; what was posted
+before it stays recorded. A single failed card — a Slack error, a truncated response, an unreadable
+or torn PNG — is logged as `slack error <method>: <error> (<card path>)` and retried next run; HTTP
+429 honours `Retry-After` once. `refresh-viewers.sh` echoes a one-liner for exit 2 (`/invite`) and for
+exit 1 (`see logs/slack-rows.log`); the refresh itself never fails on it. `--dry-run` prints what
+would be posted, calls nothing and takes no lock. Tests: `python3 -m unittest
+ops/nemoclaw-coworkers/test_slack_rows.py`.
+
+**Changing the channel:** `refresh-viewers.sh` passes `--channel "${SLACK_ROWS_CHANNEL:-C0C14PWDUMC}"`;
+export `SLACK_ROWS_CHANNEL=<channel id>` in the cron's environment (the
+`~/.config/nanoclaw/refresh-nemo-explanations.sh` wrapper) to move the lanes, invite the bot there,
+and start from a fresh state file (`--state <path>`, or move the old one aside) — a `thread_ts`
+belongs to one channel, so an old state file against a new channel would thread replies into nothing.

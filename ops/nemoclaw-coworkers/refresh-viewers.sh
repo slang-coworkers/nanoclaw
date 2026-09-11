@@ -6,6 +6,8 @@
 #                                        /rows/<ROW>.html per row, card dirs symlinked under /rows/cards/<group>/<thread>/)
 #   /index.html                        — the viewer root: one link per surface above (generated here, so a new
 #                                        surface is never missing from the landing page)
+#   Slack #hermes-port                 — one thread per row: root, role cards, merge line (slack-rows.py; state in
+#                                        data/shared/hermes/slack-threads.json; log in logs/slack-rows.log)
 # Idempotent; cron every 15 min. Errors are handled explicitly (no set -e: an empty listing is not a failure).
 set -u
 case $(hostname) in slang-cpu-coworkers*) ;; *) echo "WRONG_HOST=$(hostname)"; exit 1;; esac
@@ -64,6 +66,19 @@ mv -f "$OUT/index.html.tmp" "$OUT/index.html"
 
 # Rows board (/rows/): task cards per gap-matrix row from groups/*/reports/hermes-*/cards/. Never fatal.
 python3 "$ROOT/ops/nemoclaw-coworkers/rows-board.py" --root "$ROOT" --www "$WWW" --ncl "$ROOT/bin/ncl" || echo 'rows-board failed'
+
+# Slack mirror: one #hermes-port thread per row (root · role cards · merge line) from the same cards + ledger
+# (slack-rows.py; token from $SLACK_BOT_TOKEN or the checkout's .env, host-side only). Idempotent, rate-limited
+# to --max-posts per run, one run at a time (its own flock on the state file), logs to logs/slack-rows.log.
+# Never fatal to the viewer refresh, but the exit code is surfaced: 2 = the bot is not in the channel,
+# 1 = no token / token or channel problem / corrupt state — the log has the one-line reason.
+mkdir -p "$ROOT/logs"
+python3 "$ROOT/ops/nemoclaw-coworkers/slack-rows.py" --root "$ROOT" --channel "${SLACK_ROWS_CHANNEL:-C0C14PWDUMC}" >> "$ROOT/logs/slack-rows.log" 2>&1
+case $? in
+  0) ;;
+  2) echo 'slack-rows: bot not in #hermes-port (exit 2) — /invite @orchestrator; see logs/slack-rows.log' ;;
+  *) echo 'slack-rows failed — see logs/slack-rows.log' ;;
+esac
 
 # Viewer root (/index.html): the landing page. Generated last so every surface published above is linked.
 {
