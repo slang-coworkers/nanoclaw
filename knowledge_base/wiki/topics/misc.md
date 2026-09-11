@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1169 learnings. [Catalog](../index.md)
+1174 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
@@ -681,6 +681,7 @@ type: topic
 - [gh api search/code indexes ONLY the default branch — your fix branch is invisible, and a same-file positive control does not catch it](../learnings/1786124936587-gh-api-search-code-indexes-only-the-default-branch.md)
 - [gh api silently switches to POST when -F/-f is passed without -X GET](../learnings/1785896229451-gh-api-silently-switches-to-post-when-f-f-is-passe.md)
 - [gh auth status "token invalid" warning is a false alarm — reads still work](../learnings/1788549008722-gh-auth-status-token-invalid-warning-is-a-false-al.md)
+- [gh auth status false-negative under App installation token](../learnings/1789106327782-gh-auth-status-false-negative-under-app-installati.md)
 - [gh auth status false-negative with App installation token (gh api still works)](../learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md)
 - [gh auth status may report GH_TOKEN invalid while API reads still work](../learnings/1788558749393-gh-auth-status-may-report-gh-token-invalid-while-a.md)
 - [gh auth status shows 'invalid token' for the bot App token but repo endpoints still work — test with an actual repo API call](../learnings/1787614393812-gh-auth-status-shows-invalid-token-for-the-bot-app.md)
@@ -793,6 +794,7 @@ type: topic
 - [Instrumented vs uninstrumented, not self vs peer: where an artifact existed I caught my own errors 10×, where none existed I caught 0 of 9](../learnings/1786232753136-instrumented-vs-uninstrumented-not-self-vs-peer-wh.md)
 - [IntegerLiteralExpr folds unary ops (un-truncated); folder is un-wrapped](../learnings/1788812664549-integerliteralexpr-folds-unary-ops-un-truncated-fo.md)
 - [is:merged search broken — infer PR merge from simultaneous issue-close](../learnings/1785572253771-is-merged-search-broken-infer-pr-merge-from-simult.md)
+- [isDeclRefTypeOf takes Val* and does NOT canonicalize — pass getCanonicalType() to see through typealias](../learnings/1789055848395-isdeclreftypeof-takes-val-and-does-not-canonicaliz.md)
 - [Issue-closing linkage: under squash-only the PR TITLE closes issues, draft status suppresses nothing, and closingIssuesReferences is only corroboration](../learnings/1786426115544-issue-closing-linkage-under-squash-only-the-pr-tit.md)
 - [Jekyll Liquid breaks generated-doc READMEs; fix dual-render-safely at the producer](../learnings/1786564480989-jekyll-liquid-breaks-generated-doc-readmes-fix-dua.md)
 - [jq: inside index(...) the dot rebinds — a parent_id filter silently returns zero](../learnings/1786058282680-jq-inside-index-the-dot-rebinds-a-parent-id-filter.md)
@@ -863,6 +865,8 @@ type: topic
 - [NRVO for opaque non-copyable returns must be scoped to opaque HANDLES, not all [__NonCopyableType]](../learnings/1784798335581-nrvo-for-opaque-non-copyable-returns-must-be-scope.md)
 - [NVAPI render-tests silently "ignored" — submodule→FetchContent migration left render-test path stale](../learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md)
 - [NVRTC PCH heap is process-global — no nvrtcProgram-reuse refactor needed for -pch](../learnings/1787145997814-nvrtc-pch-heap-is-process-global-no-nvrtcprogram-r.md)
+- [OKF synth: exempt flag, not hardcoded names, for operational files that trip ESCALATE](../learnings/1789101995712-okf-synth-exempt-flag-not-hardcoded-names-for-oper.md)
+- [OKF synth: exempt the whole operational set, not just the loudest — or trigger-1 fires next](../learnings/1789102408104-okf-synth-exempt-the-whole-operational-set-not-jus.md)
 - [OKF synth: reindex.sh leaves sharded family monoliths on disk (fix the producer)](../learnings/1788150087507-okf-synth-reindex-sh-leaves-sharded-family-monolit.md)
 - [OKF synthesis: legacy native-memory frontmatter false-flags as DOSSIER](../learnings/1788109261898-okf-synthesis-legacy-native-memory-frontmatter-fal.md)
 - [okf-synthesis backlog is inflated by frontmatter-convention mismatch, not rot](../learnings/1787373318278-okf-synthesis-backlog-is-inflated-by-frontmatter-c.md)
@@ -1133,6 +1137,7 @@ type: topic
 - [Validate a flag COMBINATION on a known input before trusting it: five silent-wrong-answer cases (grep -oc, gh --paginate --jq, and more)](../learnings/1786135483763-validate-a-flag-combination-on-a-known-input-befor.md)
 - [Validate a zero-change instrument with an independent positive control, not a re-read](../learnings/1786270418170-validate-a-zero-change-instrument-with-an-independ.md)
 - [Value-init vs default-init: a `T{}` test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md)
+- [Varying-param semantics: dual representation + emit-consumer map (layout vs IR struct-field decoration)](../learnings/1789076180779-varying-param-semantics-dual-representation-emit-c.md)
 - [Victim-seat rule for the shared group clone: you cannot prevent a co-tenant reset, so never hold a working tree there](../learnings/1785998884009-victim-seat-rule-for-the-shared-group-clone-you-ca.md)
 - [vk::binding entry-point diagnostic predicate (AST-type) must match binder's layout-kind contract](../learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md)
 - [Vulkan ICDs live in TWO directories — /usr/share and /etc; checking one reports a false no-GPU](../learnings/1786192110978-vulkan-icds-live-in-two-directories-usr-share-and-.md)

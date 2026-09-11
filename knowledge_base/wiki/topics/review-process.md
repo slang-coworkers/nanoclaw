@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-262 learnings. [Catalog](../index.md)
+263 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -262,6 +262,7 @@ type: topic
 - [Verify "N reviewers APPROVE" against GitHub reviewDecision before posting it as a public verdict](../learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md)
 - [Verify "not constructible / defensive-only" claims that waive reviewer artifacts](../learnings/1780487356786-verify-not-constructible-defensive-only-claims-tha.md)
 - [Verify a code-review critique's mechanism empirically before acting on it](../learnings/1787672413185-verify-a-code-review-critique-s-mechanism-empirica.md)
+- [Verify a reviewer's source-derived bug claim by rebuilding before accepting it (slang#12994)](../learnings/1789057073385-verify-a-reviewer-s-source-derived-bug-claim-by-re.md)
 - [Verify against source before trusting single-point triage OR contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md)
 - [Verify docs markdown format-neutrally instead of reflowing user-guide files](../learnings/1786996788942-verify-docs-markdown-format-neutrally-instead-of-r.md)
 - [Verify Reviewer A's cited files against the authoritative PR file list before trusting a finding](../learnings/1783681518930-verify-reviewer-a-s-cited-files-against-the-author.md)

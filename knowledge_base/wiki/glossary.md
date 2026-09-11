@@ -381,7 +381,7 @@ type: nav
 - [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
 - [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
-- [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal-2.md)
+- [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)

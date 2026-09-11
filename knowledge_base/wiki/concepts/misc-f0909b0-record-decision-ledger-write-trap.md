@@ -3,7 +3,7 @@ title: "record_decision Ledger-Write Trap: Success String vs Denied Append"
 type: concept
 group: misc
 tags: [approver, record_decision, approval-ledger, infra-abstain, mcp-tools, verification, two-channel]
-source_count: 13
+source_count: 12
 ---
 
 ## TL;DR
@@ -60,8 +60,8 @@ committed row
 The refusal comes back through the host's notification channel with different timing; the
 optimistic message answers first and sits in the tool-result slot a careful reader treats as
 authoritative
-[slang-rhi#821 instance](../learnings/1786367859537-approver-infra-abstain-record-decision-returns-dec.md),
-[slang-rhi#825, 4th+ occurrence, install-wide and permanent](../learnings/1786378436661-approver-infra-abstain-record-decision-returns-a-s.md).
+[slangpy#1097 instance](../learnings/1786381662397-approver-infra-abstain-record-decision-returns-dec.md),
+[slangpy#1100, install-wide when APPROVAL_LEDGER_WRITERS is unset](../learnings/1786463030860-approver-infra-abstain-record-decision-returns-a-s.md).
 
 By the third and fourth confirmations the class was understood as steady-state, not a flake:
 both revisions of slang-rhi#823 reported success and were both denied
@@ -90,7 +90,7 @@ half instead
 `env | grep APPROVAL_LEDGER` inside the container shows nothing either way (the var is
 host-side), so a local check cannot pre-empt this
 [env grep is not evidence](../learnings/1786384635280-approver-infra-abstain-record-decision-returns-a-s.md),
-[slang#12448 recurrence](../learnings/1786386217083-approver-infra-abstain-record-decision-returned-de.md).
+[slang#12450 recurrence](../learnings/1786388048797-approver-infra-abstain-record-decision-returned-de.md).
 What you *can* verify is emission at your own outbox boundary: query `messages_out` for a
 row whose content contains `record_decision`, the PR number, SHA, decision, and
 `policy_version` — proving the *content* left intact. Trap: `processing_ack` is INBOUND-only,
@@ -117,18 +117,17 @@ to check: it tells you your work is done. A write is not done until something th
 writer confirms it; a capability-gated write needs confirmation from the *enforcing* side, or
 an inline copy of the payload that survives the denial.
 
-**Source learnings (13):**
+**Source learnings (12):**
 
 - [record_decision returns "recorded" while the host denies the append (slangpy#1096)](../learnings/1786364518139-approver-infra-abstain-record-decision-returns-dec.md) — first filing of the success-string-vs-write trap; "requested ≠ recorded."
 - [BLOCK on slangpy#925 recorded-then-denied; record_human_verdict absent; retroactively explains the 1-of-57 payload retention](../learnings/1786367856109-approver-infra-abstain-record-decision-returned-de.md) — the trap firing live plus downgrade of two Aug-5 human-verdict stamps.
-- [record_decision returns success even when the host denies (slang-rhi#821)](../learnings/1786367859537-approver-infra-abstain-record-decision-returns-dec.md) — "the instrument congratulating me" is the least-suspected direction.
 - [A tool returning "Decision recorded" can still have had its write DENIED (slang-rhi#823)](../learnings/1786369667069-approver-infra-abstain-a-tool-that-returns-decisio.md) — both revisions denied ⇒ steady state; capability.ts:33 empty-allowlist branch.
 - [False success string, host denies separately — 3rd consecutive confirmation (slang-rhi#824)](../learnings/1786371728382-approver-infra-abstain-record-decision-returns-a-f.md) — write decision.md before the call, unconditionally.
 - [Success string while host denies — APPROVAL_LEDGER_WRITERS unset drops every row (slang#12451)](../learnings/1786374558104-approver-infra-abstain-record-decision-returns-a-s.md) — distinguishes host-wide unset from a group-capability denial.
 - [record_decision returns a success string even when the host denies (slangpy#1050)](../learnings/1786376591107-approver-infra-abstain-record-decision-returns-a-s.md) — silent and total when unset; read-the-artifact-not-the-framing, framing emitted by the tool itself.
 - [The deny string discriminates host-wide config from wrong-group; record_human_verdict is unregistered](../learnings/1786377128231-approver-infra-abstain-the-record-decision-deny-st.md) — caller verified at core.ts:604; stale SKILL.md instruction to call record_human_verdict.
-- [Success STRING while host denies (slang-rhi#825) — 4th+ occurrence, install-wide and permanent](../learnings/1786378436661-approver-infra-abstain-record-decision-returns-a-s.md) — state the full verdict INLINE upstream; reply is advertising, not evidence.
+- [Success STRING while host denies (slangpy#1100) — install-wide when APPROVAL_LEDGER_WRITERS unset](../learnings/1786463030860-approver-infra-abstain-record-decision-returns-a-s.md) — state the full verdict INLINE upstream; reply is advertising, not evidence.
 - [Returns "Decision recorded" while host denies (slangpy#1097) — read the notification, verify emission](../learnings/1786381662397-approver-infra-abstain-record-decision-returns-dec.md) — verify the outbox row; processing_ack is inbound-only; never downgrade the verdict over the append.
 - [Success string while host denies — APPROVAL_LEDGER_WRITERS unset (slang#12437)](../learnings/1786384635280-approver-infra-abstain-record-decision-returns-a-s.md) — an over-claim can originate in my TOOLS, not just my prose.
 - [Returning "Decision recorded" is NOT proof the row exists (slangpy#1098)](../learnings/1786386167554-approver-infra-abstain-record-decision-returning-d.md) — state ledger persistence as its own report bullet; confirmation must come from the host.
-- [Returned "Decision recorded" while host DENIED the write (slang#12448)](../learnings/1786386217083-approver-infra-abstain-record-decision-returned-de.md) — a write is not done until something other than the writer confirms it.
+- [Returned "Decision recorded" while host DENIED the write (slang#12450)](../learnings/1786388048797-approver-infra-abstain-record-decision-returned-de.md) — a write is not done until something other than the writer confirms it.

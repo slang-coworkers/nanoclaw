@@ -3,7 +3,7 @@ title: "PR-Approver: Repo Class, Scope & Durable-Record Discipline"
 type: concept
 group: review-process
 tags: [approver, out-of-scope, class-determination, ledger, record-decision, infra-abstain, lab-container, evidence-discipline, correction, compaction, contradictions]
-source_count: 18
+source_count: 19
 ---
 
 # PR-Approver: Repo Class, Scope & Durable-Record Discipline
@@ -35,6 +35,8 @@ source_count: 18
 ## Class determination first: own-harness / non-compiler-repo PRs are OUT_OF_SCOPE
 
 A PR-approve dispatch landed for `slang-coworkers/nanoclaw#982` — a PR in the infra fork that *modifies the approver's OWN decision harness* (including relaxing its ABSTAIN critique gate). The mechanical pipeline produced ABSTAIN_INFRA-looking signals (`harvest-reviews.py` exit 21, all 6 clauses UNEVALUABLE) whose real cause is the GitHub App token being scoped to shader-slang → HTTP 401 on `slang-coworkers/*`. But that token-401 is a *symptom* of out-of-domain, not the cause of an infra abstain. The correct call is a **class determination made FIRST in the skill, before and overriding the clause→INFRA mapping**: if the repo isn't shader-slang/slang compiler code, or the changed paths are the approver's own harness (`container/skills/slang-pr-approver/**`, `container/workflows/slang-pr-approve/**`), it's OUT_OF_SCOPE — and an own-rules PR is additionally a conflict of interest (self-endorsement never permitted; a human must look). Record `ABSTAIN_POLICY` with `reason_code=OUT_OF_SCOPE:<class>` (closed enum, free-form suffix — new suffix `approver-harness`), stamp it explicitly into `_approver_result` so it doesn't drift to INFRA, and skip Devin (a class determination isn't informed by a review signal) ([approver-own-harness PR = ABSTAIN_POLICY:OUT_OF_SCOPE + conflict-of-interest](../learnings/1784443235968-approver-clause-gap-approver-own-harness-pr-abstai.md)).
+
+**Workflow-file cherry-pick-step PRs are a recurring Devin-only + protected-path-ABSTAIN class.** A PR whose only change is the "Cherry-pick SlangPy PR" step in `.github/workflows/ci-latest-slang.yml` (e.g. slangpy#1145/#1147 adding `--no-recurse-submodules` to the fetch calls) harvests **exit 20 (Devin-only)** — production `github-actions[bot]` posts no review and CodeRabbit posts only a commit status — so synthesize the Devin-only doc rather than treating exit 20 as a defect. The decision is fixed at Step 1 independent of any verdict: under a policy with `protected_paths: [".github/workflows/**"]`, `no_protected_paths` FAILs → `ABSTAIN_POLICY:CLAUSE_FAIL:no_protected_paths` (a clean human-must-look POLICY abstain, not infra — doesn't burn the infra gate). And narrowing an existing step (`--no-recurse-submodules`, `--unshallow` preserved) is "port/narrow existing behavior," so the both-directions positive-control challenger probe is N/A — demanding it would false-abstain ([cherry-pick-step workflow PRs: Devin-only (exit 20) + policy-abstain on protected path](../learnings/1789057905920-approver-confirmed-slangpy-ci-latest-slang-yml-che.md)).
 
 ## Ledger mechanics: `record_decision` replaces, and emission is the furthest you can see
 
@@ -76,7 +78,8 @@ The recorded row and the memory store outlive the decision, so a correction that
 - *"11 of 18 harvests exposed ⇒ 17 findings were missed ⇒ slang-rhi#797 is a probable false-safe"* is **withdrawn at the decision level**: the review docs carry the findings verbatim with severities. The artifact-level defect is real; the decision-level harm claim was not confirmed ([[approver/critique-mustfix] an artifact-level defect is not a decision-level harm](../learnings/1785780014953-approver-critique-mustfix-an-artifact-level-defect.md)).
 - The resume predicate for a held chain went wrong in **both** directions: *"a non-bot review with an actionable state lands"* can never fire (the blocker has no review object), and its widening to *"actionable non-bot feedback in ANY of the three endpoints"* **always** fires (already satisfied). The working form requires all three of non-bot · addressed to the decision, not the PR author · changes a load-bearing input ([[approver/clause-gap] widening a never-fires predicate produced an always-fires one](../learnings/1785821476819-approver-clause-gap-widening-a-never-fires-predica.md)).
 
-**Source learnings (18):**
+**Source learnings (19):**
+- [workflow-file cherry-pick-step PRs: harvest exit 20 (Devin-only, no bot review) + fixed Step-1 `ABSTAIN_POLICY:CLAUSE_FAIL:no_protected_paths`; narrowing an existing step makes the positive-control probe N/A.](../learnings/1789057905920-approver-confirmed-slangpy-ci-latest-slang-yml-che.md)
 
 - [approver-own-harness / non-compiler-repo PR = ABSTAIN_POLICY:OUT_OF_SCOPE (class determination BEFORE clause→INFRA mapping); own-rules PR is a conflict of interest, never self-approve](../learnings/1784443235968-approver-clause-gap-approver-own-harness-pr-abstai.md)
 - [a Step-1 clause FAIL short-circuits to ABSTAIN_POLICY before the challenger; don't invent a BLOCK-overrides exception](../learnings/1784271165403-approver-clause-gap-a-step-1-clause-fail-short-cir.md)

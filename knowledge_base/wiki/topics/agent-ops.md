@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-635 learnings. [Catalog](../index.md)
+640 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -29,6 +29,7 @@ type: topic
 - [[approver/infra-abstain] The critique-gate Bash hook false-positives on read-only `gh api .../pulls` GETs — route PR/issue reads through MCP tools, never Bash gh api](../learnings/1787083477695-approver-infra-abstain-the-critique-gate-bash-hook.md)
 - [[approver/infra-abstain] The deliver-gate critique hook is separate from the skill's "abstain isn't critique-gated" relaxation — an armed gate still demands DECISION_REVIEW+OUTPUT_REVIEW even for ABSTAIN_POLICY; a bypass request can be admin-rejected, so just run /codex-critique](../learnings/1788865668481-approver-infra-abstain-the-deliver-gate-critique-h.md)
 - [[approver/infra] A "duplicate webhook" claim is a claim about state — the payload carries no head sha; plus the settle signal is the review ARTIFACT, not the check](../learnings/1785863652001-approver-infra-a-duplicate-webhook-claim-is-a-clai.md)
+- [[approver/infra] A synchronize webhook can fire with an UNCHANGED head — verify head.sha before re-running the full procedure](../learnings/1789091958980-approver-infra-a-synchronize-webhook-can-fire-with.md)
 - [[approver/infra] cold container: the critique gate denies forever AND never escalates — the denial counter cannot persist](../learnings/1786397614230-approver-infra-cold-container-the-critique-gate-de.md)
 - [[approver/infra] recall subagent overran its task and ran the whole decision pipeline — scope subagents tightly, never adopt an out-of-skill decision](../learnings/1787049658061-approver-infra-recall-subagent-overran-its-task-an.md)
 - [[approver/infra] Terminal PR webhooks route to gh-issue-* threads, not gh-pr-* — and the router RESOLVES to an existing session, never mints one (measured from the session store)](../learnings/1785865141443-approver-infra-terminal-pr-webhooks-route-to-gh-is.md)
@@ -333,6 +334,7 @@ type: topic
 - [Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)
 - [Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)
 - [Fixing a moved skill-script path in a scheduled task: discover the path, don't switch to slash-name if the script keeps cwd-relative state](../learnings/1787548728235-fixing-a-moved-skill-script-path-in-a-scheduled-ta.md)
+- [Fork subagents can silently over-execute beyond their prompt's scope](../learnings/1789061283909-fork-subagents-can-silently-over-execute-beyond-th.md)
 - [Fork-PR CI approval gate is keyed on origin-of-head, not PR author — and our bot fixer skips it](../learnings/1785530290363-fork-pr-ci-approval-gate-is-keyed-on-origin-of-hea.md)
 - [Fork-PR CI rows: /commits/{sha}/pulls returns 0, and /branches/{name} upstream is a NAME COLLISION](../learnings/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md)
 - [Forks launched before a stand-down keep running on stale context](../learnings/1781366516939-forks-launched-before-a-stand-down-keep-running-on.md)
@@ -354,6 +356,7 @@ type: topic
 - [gh auth status shows GH_TOKEN invalid but gh api succeeds via onecli-gateway proxy](../learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md)
 - [gh CLI auth broken even when OneCLI proxy curl works — GH_TOKEN is a literal sentinel](../learnings/1788204882348-gh-cli-auth-broken-even-when-onecli-proxy-curl-wor.md)
 - [gh CLI refuses job logs on gate-wedged runs — bypass via raw REST API curl](../learnings/1788848145158-gh-cli-refuses-job-logs-on-gate-wedged-runs-bypass.md)
+- [gh CLI works for repo-scoped writes despite "invalid token" — GH_TOKEN is a OneCLI routing sentinel](../learnings/1789099182120-gh-cli-works-for-repo-scoped-writes-despite-invali.md)
 - [gh GH_TOKEN can be stale while gateway curl still posts to GitHub](../learnings/1788089811545-gh-gh-token-can-be-stale-while-gateway-curl-still-.md)
 - [gh pulls?head=owner:branch is blind to fork PRs; index head.ref over the full open-PR list instead](../learnings/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md)
 - [gh run rerun blocked while parent run status=waiting on pending approval gate](../learnings/1787596929089-gh-run-rerun-blocked-while-parent-run-status-waiti.md)
@@ -398,6 +401,7 @@ type: topic
 - [Investigation-only deliverables stay in the analysis tier — don't add a fixer handoff for a read-only comment](../learnings/1788542147628-investigation-only-deliverables-stay-in-the-analys.md)
 - [Issue webhooks route to triager only, never also fixer](../learnings/1784637054346-issue-webhooks-route-to-triager-only-never-also-fi.md)
 - [Judge coworker output by real engineering quality, not proxy metrics](../learnings/legoop-feedback_ab_evaluation_criteria.md)
+- [learnings-wiki fold: single-source→single-page is the failure-robust unit; citation-superset gate makes deletes safe](../learnings/1789053488629-learnings-wiki-fold-single-source-single-page-is-t.md)
 - [Legoop project buddy not using codex](../learnings/legoop-project_buddy_not_using_codex.md)
 - [Lexer escape-validation must be deferred to the decode layer, not the scan pass (#include paths opt out)](../learnings/1782799753646-lexer-escape-validation-must-be-deferred-to-the-de.md)
 - [Looping self-edge peer session: flag up once, then ignore — ncl mutating verbs blocked without a wired approver](../learnings/1781091162121-looping-self-edge-peer-session-flag-up-once-then-i.md)
@@ -559,6 +563,7 @@ type: topic
 - [supervise-issues scan.py: stored disposition must outrank per-tick reclassification](../learnings/1786498066587-supervise-issues-scan-py-stored-disposition-must-o.md)
 - [supervise-issues worktree GC bare-number resolver ignores repo binding in .git gitdir](../learnings/1787490790849-supervise-issues-worktree-gc-bare-number-resolver-.md)
 - [supervise-issues: bare numeric transient signatures (502/503/504) false-positive on GitHub comment IDs](../learnings/1785802540595-supervise-issues-bare-numeric-transient-signatures.md)
+- [supervise-issues: persist no-post dispositions to state; read-only roles are awaiting_us false-positives](../learnings/1789058323075-supervise-issues-persist-no-post-dispositions-to-s.md)
 - [Supervisor "human spoke last" nudge can misread a do-not-reply bot comment — verify authorship before replying](../learnings/1786798085259-supervisor-human-spoke-last-nudge-can-misread-a-do.md)
 - [Supervisor artifact-check misses issue-comment artifacts for no-PR chains](../learnings/1783950814878-supervisor-artifact-check-misses-issue-comment-art.md)
 - [supervisor artifact-enforcement nudge yields to the operator comment-gate (no-PR blocked chains)](../learnings/1780986083496-supervisor-artifact-enforcement-nudge-yields-to-th.md)

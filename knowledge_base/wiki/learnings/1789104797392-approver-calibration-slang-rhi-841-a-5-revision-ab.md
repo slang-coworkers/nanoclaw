@@ -1,0 +1,25 @@
+---
+title: "[approver/calibration] slang-rhi#841 — a 5-revision ABSTAIN:OPEN_GAP streak was VINDICATED by a maintainer CHANGES_REQUESTED; and require_ci_green is defeated by the #711 combined-status trap"
+type: learning
+topic: review-approval
+source: learnings/1789104797392-approver-calibration-slang-rhi-841-a-5-revision-ab.md
+---
+
+# [approver/calibration] slang-rhi#841 — a 5-revision ABSTAIN:OPEN_GAP streak was VINDICATED by a maintainer CHANGES_REQUESTED; and require_ci_green is defeated by the #711 combined-status trap
+
+---
+author_agent_group: ag-1783611156430-vvj8oi
+author_session: sess-1786801515391-3iic2t
+written_at: 2026-09-11T05:33:17.392Z
+---
+
+# [approver/calibration] slang-rhi#841 — a 5-revision ABSTAIN:OPEN_GAP streak was VINDICATED by a maintainer CHANGES_REQUESTED; and require_ci_green is defeated by the #711 combined-status trap
+
+**Calibration win (the join).** On slang-rhi#841 I recorded ABSTAIN_POLICY:OPEN_GAP across R1–R5 (a new cross-backend ResourceHeap/aliasing public API from a fork CONTRIBUTOR) on the falsifiable reading "material enough not to merge as-is": unverified D3D12 functional reds (placed-buffer COPY_DEST, upload/readback, alloc-guard) I couldn't confirm without a GPU, an unresolved human design thread (Feature::MemoryAliasing tier gating), zero real execution coverage (fork CI never ran), and no human approval. At R5's head a maintainer (skallweitNV, MEMBER) then submitted a **detailed 12-item CHANGES_REQUESTED** — "tighten the public contract before this API becomes public" — that independently named the exact D3D12 placed-buffer-COPY_DEST red and the capability-split concern I'd been flagging, plus API-extensibility/ownership/sync-contract items. So the abstain streak was the correct call, joined as AGREEMENT. Lesson reinforced: on a large NEW cross-backend PUBLIC API with zero execution coverage and unresolved design threads, OPEN_GAP is well-calibrated even when each individual functional red is unverifiable — the aggregate "not mergeable as public API yet" is what the maintainer confirmed. Do not let a long abstain streak pressure you to round up; join-at-terminal-state is what scores it, and here it scored a win.
+
+**Handling an outstanding maintainer CHANGES_REQUESTED under active revision.** When a maintainer has a formal CHANGES_REQUESTED and the author is pushing commits that partially address it but the maintainer has NOT re-reviewed/dismissed it: that's ABSTAIN_POLICY:OPEN_GAP (human must complete the loop), not BLOCK (no need to pile on — a maintainer is already driving it; and there's usually no single verified crash you can stand behind) and obviously not WOULD_APPROVE (no re-approval). Record the maintainer's review as the dominant head-relevant signal; a lagging Devin capture is not decision-moving next to it.
+
+**Infra: `require_ci_green` is defeated by the #711 combined-status trap on fork PRs.** slang-rhi's approver policy was restored (mount `/workspace/extra/approver-policy/APPROVAL_POLICY.json` came back as `v0-shadow-wide-r2`, operator 2026-09-09) and now sets `require_ci_green: true` (operator's stated intent: stop every push re-triggering a full eval / cost). BUT `eval-clauses.py`'s `ci_green_on_sha` reads the **combined `/status`** endpoint, which on these fork PRs is `success` from CodeRabbit/board-sync/CLA statuses ALONE — while the real build workflows (`ci`, `pre-commit`, `REUSE`) sit at `action_required` (never run without maintainer approval) and are **check-runs, not statuses**, so they don't lower the combined status. Result: `ci_green_on_sha` PASSES on a false-green, and `require_ci_green` does NOT actually gate on builds for fork PRs whose CI needs approval — nor does it stop the re-eval churn it was added to prevent. If real CI-green gating is wanted, the clause must also inspect required check-runs (conclusion != success/action_required), not just the combined status. Flagged to the operator. (Root cause of the earlier mount loss: the group mount `/ephemeral/approver-policy` → `/workspace/extra/...` pointed at a directory that no longer existed after the 2026-08 host move, so R4–R5 fell back to bundled strict v0-shadow.)
+
+---
+_Topic: [PR review, approval & calibration](../topics/review-approval.md) · [catalog](../index.md) · source: `sources/learnings/1789104797392-approver-calibration-slang-rhi-841-a-5-revision-ab.md`_

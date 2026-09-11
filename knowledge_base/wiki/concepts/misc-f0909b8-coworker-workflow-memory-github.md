@@ -3,7 +3,7 @@ title: "Coworker workflow: memory/KB operations, GitHub PR process, and dedup di
 type: concept
 group: misc
 tags: [okf-synthesis, memory, kb-sync, github, pr-body, dedup, triage, dead-code, subagent, discord, revert, abi, closing-keywords]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
@@ -64,6 +64,8 @@ verify each source is *healthy* and compare against the tracked count before the
 destructive step
 [KB nightly sync held on two source corruptions](../learnings/1788146298994-kb-nightly-sync-two-source-corruptions-during-in-f.md).
 
+The shared `/learnings-wiki` daily fold has its own robustness discipline. The failure-robust unit is **one numbered source page → one (or two) named output page(s) per subagent**, with "write page 1, `wc -c` it, then page 2" so no single turn emits a huge stream — a 3-source/3-output subagent is the one that dies mid-write when provider streaming is flaky, and splitting the family into single-source units clears it (`≤4 subagents in flight` still holds). Failures cost nothing because the subagent contract is **verify-then-delete**: write the new page(s), require `comm -23 <(citations in sources) <(citations in new pages)` to print NOTHING (every source citation carried), and only THEN `rm` the source — so a mid-write crash leaves the source intact and re-dispatch is a clean redo. Two gotchas: the multi-file citation check MUST use `grep -hoE` (GNU grep prefixes `filename:` when scanning >1 file, so bare `-oE` reports every stem as a false "missing"); and coverage — recomputed by `finalize` directly from the concept pages — is the real safety net, not the subagent's self-report (a silently-dropped citation surfaces as UNCOVERED, telling you which wave to inspect). Keep the family **base** page (the link anchor other concepts point to) and dissolve only the `-N` siblings, then repoint concept→concept links to deleted `-N` pages (finalize's DANGLING count, minus builder boilerplate, counts what remains); expect `bytes_per_atom` to tick up ~1%/run as splitting oversized pages multiplies per-page TL;DR+footer overhead — endorsed growth in page COUNT, not inventorying, as long as each atom is cited exactly once ([single-source→single-page is the failure-robust fold unit; citation-superset gate makes deletes safe](../learnings/1789053488629-learnings-wiki-fold-single-source-single-page-is-t.md)).
+
 ## GitHub PR process: dedup, live head, closing keywords, revert hygiene
 
 The dedup discipline is central. Before fixing a core-team-authored issue tied to an
@@ -120,7 +122,7 @@ wake); `tools:` frontmatter is a complete no-inheritance allowlist, but an in-pr
 separate container, not tool names
 [provisioning a per-coworker Claude Code subagent type](../learnings/1788288563386-provisioning-a-per-coworker-claude-code-subagent-t.md).
 
-**Source learnings (15):**
+**Source learnings (16):**
 
 - [Check for author-opened fix PR before fixing a core-team-authored issue](../learnings/1788102480379-check-for-author-opened-fix-pr-before-fixing-a-cor.md) — #12751/#12752 (author fixed in 3 min); run gh pr list first; convergent-confirmation comment, not a competing bot PR; triggers: assignee=core-team, `Dev Opened` label, named parent PR.
 - [OKF synthesis: legacy native-memory frontmatter false-flags as DOSSIER](../learnings/1788109261898-okf-synthesis-legacy-native-memory-frontmatter-fal.md) — _has_type() only checks top-level type:; check H2 count (<8 → frontmatter conversion, not split); verify fabricated claims in index.md against the filesystem.
@@ -137,3 +139,4 @@ separate container, not tool names
 - [Provisioning a per-coworker Claude Code subagent type (.claude/agents) in NanoClaw](../learnings/1788288563386-provisioning-a-per-coworker-claude-code-subagent-t.md) — group-folder /workspace/agent/.claude/agents/ is the only per-group stable location; tools: is a complete no-inheritance allowlist; in-process subagents share the parent's GH_TOKEN (credential-scoping needs a separate container).
 - [Folding a revert of a merged PR into an in-flight PR (git checkout --ours + ABI hygiene)](../learnings/1788295990868-folding-a-revert-of-a-merged-pr-into-an-in-flight-.md) — git checkout --ours to restore then surgically remove the target surface; break only sanctioned ABI, tombstone enum (REMOVED_<Name>), sweep for danglers; do bookkeeping edits before the final codex OUTPUT_REVIEW.
 - [Implementation gap in WIP draft-PR code is not a Bug — don't set Issue Type=Bug](../learnings/1788367478397-implementation-gap-in-wip-draft-pr-code-is-not-a-b.md) — #12744; a gap in never-shipped code isn't a defect against released behavior; clear rather than guess; the bot App can't read the org's issueTypes list; POST a fresh delta comment on reclassification.
+- [`/learnings-wiki` fold: single-source→single-page is the flaky-streaming-robust unit; verify-then-delete (citation-superset gate) makes deletes safe; `grep -hoE` for multi-file checks; coverage/finalize is the real safety net; keep base pages, dissolve `-N` siblings.](../learnings/1789053488629-learnings-wiki-fold-single-source-single-page-is-t.md)

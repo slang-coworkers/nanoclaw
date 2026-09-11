@@ -3,7 +3,7 @@ title: SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-rep
 type: concept
 group: slangpy
 tags: [slangpy, build, ci, sanitizers, asan, lsan, toolchain, slang-version, cross-repo, breaking-change]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -214,6 +214,8 @@ pre-merge validation is a local `SGL_LOCAL_SLANG` build. Post a "red as expected
 order" comment so the shepherd isn't misled
 [companion PR for a breaking slang change: CI merge-order](../learnings/1788461805098-slangpy-companion-pr-for-a-slang-breaking-change-c.md).
 
+**Production update — the `SLANGPY_CHERRY_PICK_PR` mechanism (how slang#12840→#12986 ↔ slangpy#1135 actually resolved).** In production the break is coordinated automatically, not by "merge the slang PR past its red SlangPy Tests" — a cherry-pick driven from the slang side keeps that check GREEN. A **fork** Slang PR can't run the secret-gated cherry-pick CI (`SLANGPY_DISPATCH_TOKEN`/`SLANG_STATUS_TOKEN`), so a breaking change is **recreated as a same-repo Slang PR** (12840 fork → 12986 same-repo) — don't assume a closed slang PR was rejected; check `gh pr view <n> --json state,mergedAt` for a same-repo successor (`mergedAt:null` + `state:CLOSED` = closed unmerged). A maintainer then sets `SLANGPY_CHERRY_PICK_PR: "1135"` in slang `master`'s `.github/workflows/ci-slangpy-trigger-test.yml`, so every slang PR's "SlangPy Tests" dispatch passes `slangpy_cherry_pick_pr` and slangpy's `ci-latest-slang.yml` merges the companion PR into slangpy *before* building against master-Slang — keeping all slang PR CI green through the breaking window AND continuously proving the companion green (that IS the execution proof: verify the slang PR's own "SlangPy Tests" status = success). Consequences: (a) the slang-side breaking PR can **merge to master BEFORE** the slangpy companion merges (the enum/type then lives on slang master but in no release yet); (b) the companion just waits on the **release gate** — slangpy `ci.yml` builds against the pinned `SGL_SLANG_VERSION` release tarball, so the companion's own CI stays red until a Slang release containing the change is cut AND the companion bumps `SGL_SLANG_VERSION` to it, then merge; (c) **post-merge cleanup, easy to forget:** revert `SLANGPY_CHERRY_PICK_PR` back to `""` on slang master (the workflow carries an in-file "REVERT … AS SOON AS #<pr> HAS MERGED" comment), else slang CI keeps cherry-picking a merged PR. Validation shortcut once the change is on slang master: run slangpy `ci-latest-slang` `workflow_dispatch` from the companion branch with the default `slang_branch=master` (branch checkout reaches master once merged — the fork-only-branch limitation is gone) ([the SLANGPY_CHERRY_PICK_PR production pattern](../learnings/1789073598653-slang-slangpy-coordinated-breaking-change-the-slan.md)).
+
 Reviewing the downstream `.slang` retypes for such a change (slangpy#1135 ↔ slang#12840) took
 ~5 tool calls. Completeness scan: `git grep -n 'matrix<' -- '*.slang'` — distinguish the
 4-param form `matrix<T,R,C,L>` (binds the layout param → affected) from the 3-param
@@ -229,7 +231,7 @@ pytest feasible). The merge-gate trap is the same coordination gate: such a PR c
 coordination gate not a code defect
 [reviewing SlangPy .slang downstream retypes for a breaking change](../learnings/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md).
 
-**Source learnings (14):**
+**Source learnings (15):**
 
 - [Building SlangPy headless on a rootless Linux box (#827 repro)](../learnings/1787079385346-building-slangpy-headless-on-a-rootless-linux-box-.md) — uv Python for headers, dpkg-deb X11 -dev debs, build slangpy_ext directly, create_device not raw Device.
 - [Resuming a stale slangpy worktree: rebuild slangpy_ext AND the torch bridge together](../learnings/1787101717889-resuming-a-stale-slangpy-worktree-rebuild-slangpy-.md) — the torch bridge is a version-hash check; skipping it gives a false-green fallback run.
@@ -245,3 +247,4 @@ coordination gate not a code defect
 - [slangpy/sgl GPU device tests abort under ASan on NVIDIA driver (RTLD_DEEPBIND)](../learnings/1788168405905-slangpy-sgl-gpu-device-tests-abort-under-asan-on-n.md) — SIGABRT at device creation makes "0 project roots" vacuous; use the CPU backend to exercise the same cycle.
 - [SlangPy companion PR for a Slang breaking change: CI merge-order & checkout-mode gotcha](../learnings/1788461805098-slangpy-companion-pr-for-a-slang-breaking-change-c.md) — circular cross-repo CI dependency; validate via SGL_LOCAL_SLANG; pin-bump-last merge order.
 - [Reviewing SlangPy .slang downstream retypes for a breaking Slang core-module change](../learnings/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — distinguish 4-param vs 3-param matrix sites; declaration-time E30019 unify failure; pin-bump-last coordination gate.
+- [the `SLANGPY_CHERRY_PICK_PR` production pattern: fork→same-repo recreation, maintainer sets the cherry-pick var so slang CI stays green while the breaking PR merges before the companion; companion waits on the release gate; revert the var post-merge.](../learnings/1789073598653-slang-slangpy-coordinated-breaking-change-the-slan.md)
