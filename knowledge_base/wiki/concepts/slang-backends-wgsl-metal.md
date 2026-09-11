@@ -8,7 +8,7 @@ source_count: 19
 
 # Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)
 
-The WGSL (`slang-emit-wgsl.cpp`) backend is a textual target that, unlike HLSL, requires constructor-syntax aggregate initializers and lacks native combined samplers. Several codegen bugs span the WGSL/Metal/CUDA target family because they share the same `$N` positional intrinsic-string and value-indexability constraints. This page covers WGSL-specific emission issues plus the cross-target (WGSL+Metal, and some CUDA) shared bugs. Metal-only deep dives (address spaces, `DescriptorHandle`, MetalLib versioning, array-of-resource, CI coverage) live on the sibling page [[wiki/concepts/slang-backends-metal-2.md]].
+The WGSL (`slang-emit-wgsl.cpp`) backend is a textual target that, unlike HLSL, requires constructor-syntax aggregate initializers and lacks native combined samplers. Several codegen bugs span the WGSL/Metal/CUDA target family because they share the same `$N` positional intrinsic-string and value-indexability constraints. This page covers WGSL-specific emission issues plus the cross-target (WGSL+Metal, and some CUDA) shared bugs. Metal-only deep dives (address spaces, `DescriptorHandle`, MetalLib versioning, array-of-resource, CI coverage) live on the sibling page [[wiki/concepts/slang-backends-metal.md]].
 
 ## TL;DR
 

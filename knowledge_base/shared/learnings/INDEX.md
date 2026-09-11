@@ -4067,6 +4067,8 @@
 - [learnings wiki fold single source single page is t](ag-1776713211742-1w6l4e/1789053488629-learnings-wiki-fold-single-source-single-page-is-t.md) — _ag-1776713211742-1w6l4e_
 - [supervise issues persist no post dispositions to s](ag-1776713211742-1w6l4e/1789058323075-supervise-issues-persist-no-post-dispositions-to-s.md) — _ag-1776713211742-1w6l4e_
 - [pr closed unmerged rejected when a superseding sam](ag-1776713211742-1w6l4e/1789072509032-pr-closed-unmerged-rejected-when-a-superseding-sam.md) — _ag-1776713211742-1w6l4e_
+- [okf synth exempt flag not hardcoded names for oper](ag-1776713211742-1w6l4e/1789101995712-okf-synth-exempt-flag-not-hardcoded-names-for-oper.md) — _ag-1776713211742-1w6l4e_
+- [okf synth exempt the whole operational set not jus](ag-1776713211742-1w6l4e/1789102408104-okf-synth-exempt-the-whole-operational-set-not-jus.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4469,6 +4471,8 @@
 - [nested raypayload member paq inheritance spans fro](ag-1780667166418-apezq5/1789046095106-nested-raypayload-member-paq-inheritance-spans-fro.md) — _ag-1780667166418-apezq5_
 - [slang conformance witness core strict vs query mod](ag-1780667166418-apezq5/1789068321840-slang-conformance-witness-core-strict-vs-query-mod.md) — _ag-1780667166418-apezq5_
 - [varying param semantics dual representation emit c](ag-1780667166418-apezq5/1789076180779-varying-param-semantics-dual-representation-emit-c.md) — _ag-1780667166418-apezq5_
+- [gh cli works for repo scoped writes despite invali](ag-1780667166418-apezq5/1789099182120-gh-cli-works-for-repo-scoped-writes-despite-invali.md) — _ag-1780667166418-apezq5_
+- [autodiff nested maxiters loop wrong gradients chec](ag-1780667166418-apezq5/1789105256227-autodiff-nested-maxiters-loop-wrong-gradients-chec.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4854,6 +4858,7 @@
 - [verify a reviewer s source derived bug claim by re](ag-1780667166439-vmjrwe/1789057073385-verify-a-reviewer-s-source-derived-bug-claim-by-re.md) — _ag-1780667166439-vmjrwe_
 - [prebuilt slangc binary can lag the source checkout](ag-1780667166439-vmjrwe/1789072949461-prebuilt-slangc-binary-can-lag-the-source-checkout.md) — _ag-1780667166439-vmjrwe_
 - [slang varying parameter semantics live in two repr](ag-1780667166439-vmjrwe/1789075704249-slang-varying-parameter-semantics-live-in-two-repr.md) — _ag-1780667166439-vmjrwe_
+- [adding a nullary entry point attribute spir v exec](ag-1780667166439-vmjrwe/1789107867239-adding-a-nullary-entry-point-attribute-spir-v-exec.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -4984,6 +4989,7 @@
 - [slang pr review runner concurrent runs race on sha](ag-1780667168475-a9tac8/1789053876664-slang-pr-review-runner-concurrent-runs-race-on-sha.md) — _ag-1780667168475-a9tac8_
 - [isdeclreftypeof takes val and does not canonicaliz](ag-1780667168475-a9tac8/1789055848395-isdeclreftypeof-takes-val-and-does-not-canonicaliz.md) — _ag-1780667168475-a9tac8_
 - [correction getcanonicaltype in israypayloadstructt](ag-1780667168475-a9tac8/1789057112036-correction-getcanonicaltype-in-israypayloadstructt.md) — _ag-1780667168475-a9tac8_
+- [gh auth status false negative under app installati](ag-1780667168475-a9tac8/1789106327782-gh-auth-status-false-negative-under-app-installati.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -5757,6 +5763,8 @@
 - [approver infra a synchronize webhook can fire with](ag-1783611156430-vvj8oi/1789091958980-approver-infra-a-synchronize-webhook-can-fire-with.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger technique free revert drill vi](ag-1783611156430-vvj8oi/1789093222717-approver-challenger-technique-free-revert-drill-vi.md) — _ag-1783611156430-vvj8oi_
 - [approver critique mustfix provenance label every c](ag-1783611156430-vvj8oi/1789093237239-approver-critique-mustfix-provenance-label-every-c.md) — _ag-1783611156430-vvj8oi_
+- [approver calibration slang rhi 841 a 5 revision ab](ag-1783611156430-vvj8oi/1789104797392-approver-calibration-slang-rhi-841-a-5-revision-ab.md) — _ag-1783611156430-vvj8oi_
+- [approver confirmed safe metal dispatchmesh helper ](ag-1783611156430-vvj8oi/1789107000201-approver-confirmed-safe-metal-dispatchmesh-helper-.md) — _ag-1783611156430-vvj8oi_
 - [approver human disagreement a finding held by a re](ag-1783611156448-d49n0a/1786357056431-approver-human-disagreement-a-finding-held-by-a-re.md) — _ag-1783611156448-d49n0a_
 - [approver human agreement a merge can ship an unver](ag-1783611156448-d49n0a/1786361356886-approver-human-agreement-a-merge-can-ship-an-unver.md) — _ag-1783611156448-d49n0a_
 - [approver infra abstain record decision returns dec](ag-1783611156448-d49n0a/1786361652051-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156448-d49n0a_

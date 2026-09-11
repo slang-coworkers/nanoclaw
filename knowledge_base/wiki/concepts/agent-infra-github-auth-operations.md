@@ -3,7 +3,7 @@ title: "GitHub Auth and Operations in Agent Containers"
 type: concept
 group: agent-infra
 tags: [github, onecli, gh-cli, nv-slang-bot, workflows, pr-mapping, auth, proxy, credentials]
-source_count: 27
+source_count: 29
 ---
 
 # GitHub Auth and Operations in Agent Containers
@@ -35,6 +35,8 @@ GitHub traffic routes through a OneCLI HTTPS proxy that injects credentials by U
 Concretely reconfirmed on the slang-reviewer container: `gh auth status` reports "The token in GH_TOKEN is invalid" and `slang-pr-review-runner`'s install.sh prints "gh auth not configured", yet `gh api repos/shader-slang/slang/pulls/<N>` and `gh pr diff <N> -R shader-slang/slang` BOTH succeed with that same token — GH_TOKEN is a GitHub App installation token that does not resolve to a user account (so the `auth status` user-lookup endpoint fails) but authorizes API calls fine. Unsetting GH_TOKEN to force a stored-cred fallback fails hard: there are no stored creds; the env token is the only auth. Before aborting a run over apparent auth failure, test the actual read you need ([gh auth status false-negative with App installation token (gh api still works)](../learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md)).
 
 The **write** side has the same trap and a costlier failure mode: the App token has no `/user` identity, so every identity/user probe returns 401 "token invalid" even while comment/reply/reaction/PR-comment writes succeed — an `app_not_connected` from a `gh` identity check is likewise not a verdict on the write path. To check whether writes work, **attempt the actual write** (e.g. `gh api --method POST repos/<o>/<r>/pulls/<PR>/comments/<CID>/replies -f body=... --jq '.html_url'` returns the posted URL on HTTP 201) and escalate "write path down" only on a real 4xx from *that* write endpoint. When authorized to post, post autonomously — routing a fully-drafted correct answer *up to parent* on a false auth-probe 401 wasted a round-trip and, worse, produced two byte-identical replies on a maintainer's thread when the parent both directed a retry and posted itself (the parallel-success race). Only merge-queue enqueue and `workflows`-scoped pushes are actually blocked for this identity; a repo-local PreToolUse hook (`gate-critique-on-deliver.sh`) can also false-positive on any `gh api .../pulls/...` command by substring-matching "pulls" as PR-creation — that's a gate misfire, not a GitHub failure ([gh auth status 401 is a FALSE NEGATIVE for nv-slang-bot App token — verify via a real write, never a probe](../learnings/1783388957871-gh-auth-status-401-is-a-false-negative-for-nv-slan.md)).
+
+Reconfirmed 2026-09-11 across two more containers, with two added specifics: (1) `GH_TOKEN` is a literal ~23-char sentinel string `ROUTED_VIA_ONECLI_PR…` — the real `nv-slang-bot[bot]` App installation token is injected by the OneCLI proxy on the outbound HTTPS call, so a local "invalid token" reading is inspecting the sentinel, not the credential (`gh auth status` uses `GET /user`, which an App *installation* token cannot call). (2) Prefer `gh api` (REST) / `gh api graphql` over the porcelain `gh issue`/`gh pr` subcommands: `gh issue view <n>` returned EMPTY output under the App token while `gh api repos/.../issues/N` worked, and `gh pr view/diff -R <owner>/<repo>` returns exit 0 for reads. The `slang-pr-review-runner` install.sh's "gh auth not configured" print is the same false negative — harmless for pr/branch read modes; only posting (`pull_requests:write`) genuinely needs write scope. The `mcp__slang-mcp__github_*` tools work for reads (get_issue, search_issues) but expose NO comment/label/type WRITE endpoint — writes must go through `gh api` ([gh CLI works for repo-scoped writes despite "invalid token" — GH_TOKEN is a OneCLI routing sentinel](../learnings/1789099182120-gh-cli-works-for-repo-scoped-writes-despite-invali.md), [gh auth status false-negative under App installation token — verify with a real read](../learnings/1789106327782-gh-auth-status-false-negative-under-app-installati.md)).
 
 ## What Works and What Does Not
 
@@ -118,7 +120,7 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 
 > **Later incremental folds moved to [part 2](agent-infra-github-auth-operations-2.md)** (2026-08-17): the resolved 07-16/07-17 auth-outage diagnostics, the empty-list-looks-like-success trap + unauth REST fallback, the Discussions write-block, reviewing/triaging under an invalid token, PR takeover from a contributor's personal fork, human-cred-merge ≠ bot-write-recovery, and the third `.github/workflows/*` push boundary.
 
-**Source learnings (27):**
+**Source learnings (29):**
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work; remove the read-only local-git gh shim before posting](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)
 - [Fork-PR CI approval gate is keyed on origin-of-head (fork vs same-repo branch), not PR author — the bot fixer's same-repo-branch PRs skip it](../learnings/1785530290363-fork-pr-ci-approval-gate-is-keyed-on-origin-of-hea.md)
 - [CONSOLIDATED: GitHub auth & ops in agent containers](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)
@@ -146,4 +148,6 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 - [Bot App token lacks 'workflows' permission → workflow-file PRs must go cross-fork via slang-coworkers](../learnings/1783522205653-bot-app-token-lacks-workflows-permission-workflow-.md)
 - [gh auth status shows GH_TOKEN invalid but gh api succeeds via onecli-gateway proxy](../learnings/1783636613641-gh-auth-status-shows-gh-token-invalid-but-gh-api-s.md)
 - [gh via OneCLI can be down while direct curl to GitHub API still works](../learnings/1783873229538-gh-via-onecli-can-be-down-while-direct-curl-to-git.md)
+- [GH_TOKEN is a ~23-char `ROUTED_VIA_ONECLI_PR…` sentinel; repo-scoped `gh api` reads/writes + graphql work; prefer `gh api` REST over porcelain `gh issue`/`gh pr` (which can return empty); mcp github tools are read-only.](../learnings/1789099182120-gh-cli-works-for-repo-scoped-writes-despite-invali.md)
+- [`gh auth status` uses GET /user (App installation tokens can't call it); `gh pr view/diff -R` exit 0; verify with a real read, don't skip a PR-review dispatch over the warning.](../learnings/1789106327782-gh-auth-status-false-negative-under-app-installati.md)
 _Catalog: [[wiki/index.md]]_

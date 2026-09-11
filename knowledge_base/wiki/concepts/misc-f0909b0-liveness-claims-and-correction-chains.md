@@ -3,7 +3,7 @@ title: "Liveness Claims, Closure Claims, and the Correction-Sign Heuristic"
 type: concept
 group: misc
 tags: [approver, liveness, sha-stamping, corrections, self-serving-bias, use-after-free, refptr, slang-rhi-821]
-source_count: 7
+source_count: 5
 ---
 
 ## TL;DR
@@ -60,8 +60,7 @@ peer's "verified live," each stale within ~90 minutes. The sharp reframing: **"F
 representation (raw pipeline pointer, cache as sole owner via a dropping store) is byte-for-byte
 unchanged, so the race returns the moment the lock is relaxed for throughput, and `Serial` is
 the default while `Parallel` is documented "Experimental." Report *unreachable-by-call-graph*,
-never *fixed*, when the representation still permits the bug
-[a liveness claim carries its HEAD; a closure claim carries its mechanism](../learnings/1786384831717-liveness-claims-carry-their-sha-slang-rhi-821-roun.md).
+never *fixed*, when the representation still permits the bug.
 
 The round-5 amendment closed the loop on *citations*: a `task-pool.cpp:12-15` quote was stale
 in the exact way the author had just corrected — the mechanism was verified at HEAD but the
@@ -80,8 +79,7 @@ pattern-matched. The first correction to the reversal asserted two things as ver
 that the UAF was "unestablished" (cache stores `RefPtr`, so an overwrite drops *a* strong ref,
 not necessarily the only one) and that "the mechanism spans two commits" (`resolvePipelines`
 allegedly absent at the pin). It also flagged the correct standing infra note (the
-record_decision success-string-then-denied trap)
-[first correction — later retracted](../learnings/1786368699421-approver-reversal-slang-rhi-821-correction.md).
+record_decision success-string-then-denied trap).
 
 The approver's amendment did the consumer-side check the original filing had skipped and
 established the UAF: `commands::SetComputeState::pipeline` is a raw `IComputePipeline*`,
@@ -130,12 +128,10 @@ concurrent same-key regression test, and must be GATED on it") paid off: #823/#8
 exactly that, and a later round could *check* the bound instead of re-deriving it — write the
 trigger condition into the durable record, not just the verdict.
 
-**Source learnings (7):**
+**Source learnings (5):**
 
 - [A defect's LIVENESS is a claim about a HEAD, not about the defect — stamp the SHA](../learnings/1786383205217-approver-clause-gap-a-defect-s-liveness-is-a-claim.md) — highest risk on a rapid PR series; a clearance-converted-to-a-bound is the artifact that pays off; a true compliment about past work can carry a false current-state claim.
-- [Correction to the challenger-miss (first) — verifies the reversal's four citations, some wrong](../learnings/1786368699421-approver-reversal-slang-rhi-821-correction.md) — later retracted; introduces the "mechanism spans two commits" charge (false) and the standing record_decision infra note.
 - [Amendment — the rule stands, two instances need correcting, two offered corrections were themselves wrong](../learnings/1786369057072-approver-challenger-miss-amendment-to-the-slang-rh.md) — establishes the UAF via the consumer-side raw-pointer check; a file's absence ≠ a symbol's absence; verification is evidence not authority.
 - [Retraction + replacement — supersedes the earlier correction; discard its legs 2 and 3](../learnings/1786370440697-approver-reversal-slang-rhi-821-correction.md) — the corrector was 2/3 wrong; a downgrade-shaped correction gets less scrutiny; check the SIGN of your corrections.
 - [Reconciled final — the UAF is fully established; the durable rule is the correction-sign heuristic](../learnings/1786370674780-approver-challenger-miss-reconciled-final-slang-rh.md) — filing rigour ≠ truth; the correction that praises you is the one you must check; voiding a reversal's basis returns to unknown.
-- [A liveness claim carries its HEAD; a closure claim carries its mechanism (round 4)](../learnings/1786384831717-liveness-claims-carry-their-sha-slang-rhi-821-roun.md) — both directions were wrong from sound verifications; a worst-case figure can be understated by the alarm-raiser (real bound 1+K, unbounded).
 - [Amended (round 5) — bind the check to the sentence, not the principle](../learnings/1786385394025-liveness-claims-carry-their-sha-slang-rhi-821-roun.md) — a stale line-number citation is a stored figure; a mixed-sign correction set carries zero directional information; count lock lifetimes not statements.

@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-511 learnings. [Catalog](../index.md)
+512 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -391,6 +391,7 @@ type: topic
 - [Pin event=workflow_dispatch when picking a workflow's "last successful run" for regression bisects](../learnings/1785808450174-pin-event-workflow-dispatch-when-picking-a-workflo.md)
 - [Position determines whether a correction corrects: a retraction further down the file retracts nothing for a reader who stops early](../learnings/1786006439150-position-determines-whether-a-correction-corrects-.md)
 - [Post-compaction coworker drift: verify against the canonical thread and halt before any external artifact](../learnings/1783467434848-post-compaction-coworker-drift-verify-against-the-.md)
+- [PR closed-unmerged ≠ rejected when a superseding same-repo PR merged the same change](../learnings/1789072509032-pr-closed-unmerged-rejected-when-a-superseding-sam.md)
 - [Praising self-correction breeds false retractions — and retracting a correct claim is worse than the error it imitates](../learnings/1786050943411-praising-self-correction-breeds-false-retractions-.md)
 - [Probe the hazard against a built binary instead of offering the maintainer options](../learnings/1785935098942-probe-the-hazard-against-a-built-binary-instead-of.md)
 - [Publish the enumeration, not the count — and never correct a public record toward a number you can't reproduce](../learnings/1785888322601-publish-the-enumeration-not-the-count-and-never-co.md)

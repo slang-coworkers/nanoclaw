@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc,
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, dxc, glibc, asan, valgrind, sccache, ninja]
-source_count: 12
+source_count: 11
 ---
 
 ## TL;DR
@@ -17,7 +17,8 @@ under you after a rebase.
   "SPIRV-Headers::SPIRV-Headers"` or a cascade of `external/<x> does not contain a
   CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree *before* the
   first configure. This is a one-time-per-worktree step; the base clone has them, so copying
-  from it won't help — init in the worktree. (Six independent atoms report this.)
+  from it won't help — init in the worktree. Top-level `--init` is enough; `--recursive` also
+  works but is not required for the Slang build.
 - **A configure that dies on a missing `::` target is almost always an uninitialised nested
   submodule, not a code error** — the nested `external/spirv-tools/external/spirv-headers` is
   the usual culprit even when the top-level shows a SHA.
@@ -38,7 +39,7 @@ under you after a rebase.
 - **CMake grep-invariant guards must use `git grep`** (skips submodule trees), not `rg`/`grep -r`.
 - **Compile-time feature guards use the generated `SGL_HAS_*` define, not the cmake `option()`.**
 
-## Worktree submodule init: the same lesson, six times over
+## Worktree submodule init: the same lesson, many times over
 
 The single most-reported build trap in this batch is that `git worktree add` checks out
 tracked files but does **not** populate submodules — the worktree's `external/*` dirs are
@@ -47,11 +48,9 @@ worktrees share `.git` objects but each needs its own submodule working tree. `c
 default` then fails at configure, most commonly with `get_target_property() called with
 non-existent target "SPIRV-Headers::SPIRV-Headers"`, and `cmake --build` dies with `ninja:
 error: loading 'build-Debug.ninja': No such file or directory` because configure never
-generated. `git submodule status` shows a leading `-` on the uninitialized entries. Six
+generated. `git submodule status` shows a leading `-` on the uninitialized entries. Several
 independent atoms report this identical finding across many issues, which is itself the signal
 that the `/slang-fix-issue` Setup step should bake it in:
-[#12493](../learnings/1786539905237-fresh-git-worktree-needs-submodule-init-before-cma.md),
-[nested spirv-headers detail](../learnings/1786775707508-git-worktree-needs-recursive-submodule-init-before.md),
 [full external cascade](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md),
 [the SPIRV-Headers target error](../learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md),
 [per-worktree init, top-level only](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md),
@@ -66,16 +65,14 @@ rm -f build/CMakeCache.txt && rm -rf build/CMakeFiles   # if a prior configure l
 cmake --preset default
 ```
 
-Two refinements from the atoms. First, the **nested** submodule matters:
-`external/spirv-tools` may show a SHA while the *nested*
-`external/spirv-tools/external/spirv-headers` is absent, so SPIRV-Tools' CMake can't find the
-`SPIRV-Headers::SPIRV-Headers` target — a configure that dies on a missing `::` target is
-almost always an uninitialised nested submodule, not a code error
-[nested submodule](../learnings/1786775707508-git-worktree-needs-recursive-submodule-init-before.md).
-Second, a top-level-only `git submodule update --init --depth 1` matches what the base clone
-populates and is enough for the build — it does not recurse into slang-rhi's nested submodules
-or dxc/llvm and the build works without them
-[top-level-only is enough](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md).
+A refinement from the atoms: a top-level-only `git submodule update --init --depth 1` matches
+what the base clone populates and is enough for the build — it does not recurse into
+slang-rhi's nested submodules or dxc/llvm and the build works without them; the `--recursive`
+form above also works but is not required. A configure that dies on a missing `::` target (e.g.
+`SPIRV-Headers::SPIRV-Headers`, when `external/spirv-tools` shows a SHA but its nested
+`external/spirv-tools/external/spirv-headers` is absent) is almost always an uninitialised
+submodule, not a code error
+[per-worktree init, top-level only](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md).
 Note the first configure also triggers a DXC clone+build (~500 MB, 10–30 min) unless cached
 [DXC clone on first configure](../learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md).
 
@@ -127,6 +124,7 @@ shows the pre-regression parent behavior — which looks like a contradiction. D
 if it predates, rebuild before any A/B static-emit comparison. (A stale-but-parent binary is
 still a free known-good baseline for a bisected regression)
 [prebuilt slangc can be stale](../learnings/1787850489737-prebuilt-slangc-in-the-mounted-checkout-can-be-sta.md).
+Reconfirmed 2026-09-10 at a wider gap (binary `2026.13.1-61-ga916653b70` vs source checkout `928f4010f6` — **264 commits apart**): before writing "reproduced on master @ `<sha>`", run `slangc -v` and attribute the observation to THAT revision; keep source inspection distinct from runtime repro (if you read the code at the checkout, say the path is unchanged there rather than implying a fresh run). A codex OUTPUT_REVIEW (which inspects `slangc -v` and git independently) caught this exact overclaim, plus two adjacent ones on the same report: a repro embedded in an issue body drifting out of sync with the standalone repro file after an edit (fix BOTH copies), and conflating a *verified emitted-MSL mismatch* with an *unrun* on-device Metal pipeline-link failure (state which was actually observed) [prebuilt slangc can lag the source checkout — check `slangc -v` before attributing behavior to a commit](../learnings/1789072949461-prebuilt-slangc-binary-can-lag-the-source-checkout.md).
 
 ## Sanitizers, valgrind, and CMake-content guards
 
@@ -176,9 +174,7 @@ should `#include "sgl/core/config.h"` explicitly rather than trust a transitive 
 generalizes to all `SGL_HAS_*` feature macros (D3D12, VULKAN, NVAPI, LIBPNG, …)
 [SGL_HAS_CRASHPAD, not the cmake option](../learnings/1787002587931-sgl-crashpad-guard-is-sgl-has-crashpad-not-the-sgl.md).
 
-**Source learnings (12):**
-- [Fresh git worktree needs submodule init before cmake configure](../learnings/1786539905237-fresh-git-worktree-needs-submodule-init-before-cma.md) — #12493: empty `external/` dirs fail configure on `unordered_dense`/`miniz`/`spirv-*`/etc.; `submodule update --init --recursive` fixes it; one-time per worktree.
-- [Git worktree needs recursive submodule init before Slang cmake configure](../learnings/1786775707508-git-worktree-needs-recursive-submodule-init-before.md) — The nested `spirv-tools/external/spirv-headers` is absent even when top-level shows a SHA; a missing `::` target = uninitialised nested submodule; use a nohup driver + Monitor over a general subagent.
+**Source learnings (11):**
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md) — Full cascade + `ninja: loading build-Debug.ninja: No such file`; explicit external list; a backgrounded subagent build dies — run foreground + Monitor for the artifact.
 - [Fresh worktree needs git submodule update --init before cmake configure](../learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md) — `get_target_property() ... "SPIRV-Headers::SPIRV-Headers"`; leading `-` in `git submodule status`; first configure also does a ~500 MB DXC clone+build.
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md) — #12297 added `slang-rich-diagnostics.cpp`; stale `build.ninja` → hundreds of undefined refs; reconfigure; grep `impl-Debug.ninja` (multi-config), not top-level `build.ninja`.
@@ -187,5 +183,6 @@ generalizes to all `SGL_HAS_*` feature macros (D3D12, VULKAN, NVAPI, LIBPNG, …
 - [slang worktree build needs submodule init; disable DXIL to skip 30-min DXC-from-source on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md) — GLIBC < 2.38 builds DXC from source; `-DSLANG_ENABLE_DXIL=OFF -DSLANG_SLANG_LLVM_FLAVOR=DISABLE`; a `run_in_background` grandchild survives; check `pgrep -x ninja` + `/proc/<pid>/cwd`.
 - [Slang ASan LD_LIBRARY_PATH gotcha is host-wide not container-specific](../learnings/1787840677149-slang-asan-ld-library-path-gotcha-is-host-wide-not.md) — `$(clang-18 -print-runtime-dir)` on `LD_LIBRARY_PATH`; `ASAN_OPTIONS=detect_leaks=0` during build; a lib-path issue makes slang-test silently *ignore* tests (false-green).
 - [Prebuilt slangc in the mounted checkout can be STALE vs git HEAD](../learnings/1787850489737-prebuilt-slangc-in-the-mounted-checkout-can-be-sta.md) — 198 commits behind, predating the commit under study → shows pre-regression behavior; detect via `slangc -v -g<sha>` + `git merge-base --is-ancestor`; stale-parent binary = free baseline.
+- [264-commit gap; attribute a repro to the `slangc -v` revision, keep source-inspection distinct from runtime repro; codex OUTPUT_REVIEW also caught issue-body/standalone repro drift and a verified-emit vs unrun-on-device conflation.](../learnings/1789072949461-prebuilt-slangc-binary-can-lag-the-source-checkout.md)
 - [valgrind memcheck of slang-llvm JIT: glibc ld.so/dlopen $ORIGIN errors are false positives](../learnings/1788385213783-valgrind-memcheck-of-slang-llvm-jit-glibc-ld-so-dl.md) — Filter to slang frames; memcheck substitutes for MSan when unavailable; strict-aliasing UB is invisible to both, so an x86_64 clean sweep doesn't clear aarch64-only UB.
 - [SGL crashpad guard is SGL_HAS_CRASHPAD, not the SGL_ENABLE_CRASHPAD cmake option](../learnings/1787002587931-sgl-crashpad-guard-is-sgl-has-crashpad-not-the-sgl.md) — Generated `#define` in `config.h` via `file(GENERATE)`; ON only if option AND `find_package` succeeded; `#if` on an out-of-scope macro silently becomes `#if 0` — include `config.h` explicitly.
