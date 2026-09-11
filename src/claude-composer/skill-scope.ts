@@ -29,8 +29,9 @@ import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js'
  * without its type declaring them: the NanoClaw tool surface (`base-nanoclaw`),
  * the critique + buddy protocols wired by overlays (`codex-critique`, `buddy`),
  * first-run onboarding (`welcome`), self-modification (`self-customize`),
- * browsing (`agent-browser`), and the two memory/wiki synthesis skills that
- * scheduled tasks invoke by name (`learnings-wiki`, `okf-synthesis`).
+ * browsing (`agent-browser`), and the skills that scheduled tasks invoke by
+ * name: the two memory/wiki synthesis skills (`learnings-wiki`, `okf-synthesis`)
+ * and the Orchestrator's daily review-cycle miner (`review-cycle-mining`).
  *
  * Names are matched against BOTH the skill's declared `name:` frontmatter and
  * its on-disk directory name, so a floor entry keeps working if the two ever
@@ -51,6 +52,7 @@ export const MIRROR_FLOOR_SKILLS: readonly string[] = [
   'agent-browser',
   'learnings-wiki',
   'okf-synthesis',
+  'review-cycle-mining',
 ];
 
 /**

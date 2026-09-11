@@ -38,6 +38,31 @@ export type ProcessingStatus =
   | 'script-skip:error'
   | 'bounced-transient'
   | 'bounced-unknown';
+/**
+ * Ack statuses that make the occurrence row a FAILED run rather than a completed
+ * one. Both host sync paths (`applyProcessingAcks`, `syncProcessingAcks`) read
+ * this so they cannot drift apart — they had, and the drift meant a turn the
+ * runner explicitly failed was still counted as a run.
+ *
+ * The `bounced-*` statuses are deliberately absent: those leave the trigger row
+ * `pending` for the redrive sweep to re-arm, so they are neither outcome yet.
+ */
+export function isFailedAck(status: string): boolean {
+  return status === 'failed' || status === 'script-skip:error';
+}
+
+/**
+ * Which kind of failure a failed occurrence records. Only 'script' may
+ * auto-pause a series: a pre-task script that keeps crashing is broken and a
+ * human must fix it, whereas a turn that errored (spend ceiling, provider
+ * outage) recovers on its own and must never need a manual `ncl tasks resume`.
+ */
+export type FailureClass = 'script' | 'turn';
+
+export function failureClassOf(ackStatus: string): FailureClass {
+  return ackStatus === 'script-skip:error' ? 'script' : 'turn';
+}
+
 export type TaskStatus = 'pending' | 'paused' | 'completed' | 'failed' | 'cancelled';
 export type InboundStatus = TaskStatus | 'processing';
 

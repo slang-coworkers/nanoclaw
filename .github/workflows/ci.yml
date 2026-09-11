@@ -2,7 +2,23 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, nv-main, nv-dashboard, nv-slang, nv-slangpy, nv-nanoclaw]
+    branches: [main, nv-main, nv-coworkers, nv-dashboard, nv-slang, nv-slangpy, nv-nanoclaw, nv-hermes]
+  # `nv-coworkers` is in the FILTER but deliberately not in the merge loop
+  # below. It is the base of the tree setup ships, not a sibling overlay: the
+  # deploy compose starts there and merges nv-main plus each project onto it.
+  # So a PR to it needs the loop to merge the other five INTO it (which the
+  # loop does — none of them equals BASE, so none is skipped), and that is
+  # exactly the shipped shape. Adding it to the loop would instead pull its
+  # ~20k knowledge_base files into every OTHER branch's composed state, for a
+  # combination compose-check.yml already covers post-merge.
+  #
+  # Without the filter entry, a PR to nv-coworkers ran only verify/area/label/
+  # guard: no build, no tests, no gate. 108 files under src/,
+  # container/agent-runner/src/, dashboard/, scripts/ and setup/ differ from
+  # nv-main and were checked by nothing until the push-triggered compose-check
+  # fired after the merge — which is how that job sat red for four commits
+  # while being the only coverage the tree had.
+
   # Upstream also runs this workflow on `push` to its trunk. Not adopted here.
   # Upstream can: its `test` job is checkout → setup with no merge step, so its
   # own note that nothing reads the pull_request payload is true of its file.
@@ -246,6 +262,19 @@ jobs:
           files=()
           while IFS= read -r -d '' f; do
             case "$f" in
+              # knowledge_base/** is the agent memory tree, not product: one-shot
+              # analysis scratch (analyze.py, board_gen.py, sweep-cjk.py, the
+              # imported/*check.py trio). Narrowing here rather than in ruff.toml
+              # is the mechanism that file prescribes — "SCOPE IS SET BY THE
+              # CALLER, NOT BY AN EXCLUDE LIST HERE" — and it keeps the gate on
+              # what ruff.toml exists for: the Python that runs, including the
+              # nv-path-guard matcher and the KB observability producers a
+              # production cron trusts. nv-coworkers is the only branch carrying
+              # this tree, and it is where the whole cost landed: when this branch
+              # first gained CI coverage its 9 knowledge_base scripts produced all
+              # 63 findings while its 23 shipped .py files were clean. Blocking a
+              # branch on percent-formatting in agent memory buys nothing.
+              knowledge_base/*) continue ;;
               *.py) if [ -f "$f" ]; then files+=("$f"); fi ;;
             esac
           done < <(git ls-tree -r --name-only -z "$HEAD_SHA")

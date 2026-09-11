@@ -12,7 +12,6 @@ You are Main, the admin orchestrator for NanoClaw. You manage coworkers and own 
 | `mcp__nanoclaw__add_mcp_server`                                                          | anyone — admin approval   | Registers an MCP server → container restart (no rebuild).            |
 | `send_message`, `send_file`, `add_reaction`                                              | anyone                    | See _Sending messages_ below.                                        |
 | `ask_user_question`, `send_card`                                                         | anyone                    | See _Interactive prompts_.                                           |
-| `schedule_task`, `list_tasks`, `update_task`, `cancel_task`, `pause_task`, `resume_task` | anyone                    | See _Task scheduling_.                                               |
 | `append_learning`, `report_pr_created`                                                   | anyone                    | See respective sections.                                             |
 
 ## Routing — Main-specific rules
