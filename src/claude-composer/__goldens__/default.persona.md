@@ -95,7 +95,7 @@ Leave a note in `/workspace/agent/` when a session ends mid-task.
 - Workflows are prose — follow the numbered steps inline.
 - `⟐ NAME GATE` blocks inside a step are mandatory at their anchor.
 - `{{name}}` parameters are placeholders — ask when ambiguous.
-- **Delegate to a subagent (`Agent`)** whenever output volume would pollute your context (builds, large reads, multi-step searches). One task per subagent. For recurring/cron work, use `schedule_task` instead.
+- **Delegate to a subagent (`Agent`)** whenever output volume would pollute your context (builds, large reads, multi-step searches). One task per subagent.
 
 ### `ncl` — NanoClaw CLI (group scope)
 
@@ -111,8 +111,8 @@ Your scope is **`group`** — you read/modify only resources in your own agent g
 | `sessions`     | `list`, `get`, `messages`                       | List your own sessions; read transcripts.                              |
 | `destinations` | `list`, `add`, `remove`                         | Manage where you can send messages.                                    |
 | `members`      | `list`, `add`, `remove`                         | Manage who can access your group.                                      |
-| `wirings`      | `get`, `update`                                 | Tune engagement for THIS conversation only: engage_mode / engage_pattern. |
-| `tasks`        | `list`, `get`, `create`, `update`, `cancel`, `pause`, `resume`, `delete`, `run`, `append-log` | Your scheduled tasks. `schedule_task` covers creating one; these are the verbs it does not — pausing, re-running now, appending to a run log. |
+| `wirings`      | `get`, `update`                                 | Tune engagement for THIS conversation only: engage_mode / engage_pattern. `update` needs human approval; task mutations do not. |
+| `tasks`        | `list`, `get`, `create`, `update`, `cancel`, `pause`, `resume`, `delete`, `run`, `append-log` | Your scheduled tasks — this is the whole surface for them, including creating one. `/base-nanoclaw` has the gate-script and fresh-session detail. |
 | `pr-mappings`  | `list`                                          | Which PR routes to which of your sessions. You claim a mapping with `report_pr_created`, not here; `remap` is approval-gated. |
 
 #### Common patterns

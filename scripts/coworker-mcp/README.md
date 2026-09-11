@@ -87,3 +87,5 @@ WantedBy=default.target
 ## Security
 
 Loopback + no token by default (SSO/tunnel is the boundary). Hardening built in: fail-closed when bound non-loopback without a token, `Origin` rejection (CSRF/DNS-rebinding), `application/json`-only, 1 MiB body cap, constant-time token compare, per-IP rate limits (stricter for mutating tools), and sanitized errors.
+
+`cost` (view=by_coworker) accepts `timezone` (IANA, default UTC) so a date range is bucketed in the install timezone.

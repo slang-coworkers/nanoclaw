@@ -92,6 +92,7 @@ import { log } from './log.js';
 import {
   registerContainerToken,
   revokeContainerToken,
+  retainContainerTokens,
   getDiscoveredToolInventory,
   getDiscoveredToolAnnotations,
 } from './mcp-auth-proxy.js';
@@ -1132,7 +1133,7 @@ async function spawnContainer(session: Session): Promise<void> {
   // The token carries the resolved list; an empty one authorises nothing,
   // which is what an explicit `[]` (or an unresolvable policy) must mean.
   const mcpPolicy = resolveMcpPolicy(agentGroup);
-  const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.externalTools);
+  const proxyToken = registerContainerToken(agentGroup.folder, mcpPolicy.externalTools, containerName);
 
   // A fresh random nonce for THIS spawn (NanoClaw #1 "set ceiling v2" readiness
   // handshake — see getActiveContainerInstanceId's doc comment above).
@@ -1501,6 +1502,7 @@ export async function adoptRunningSessions(): Promise<{ adopted: number; stopped
 
   let adopted = 0;
   let stopped = 0;
+  const adoptedNames = new Set<string>();
   for (const { handle, phase } of snapshots) {
     const session = handle.key.sessionId ? await getSession(handle.key.sessionId) : undefined;
     // The snapshot's phase is the listing's own truth: a corpse arrives as
@@ -1544,8 +1546,17 @@ export async function adoptRunningSessions(): Promise<{ adopted: number; stopped
       void finishAndResolve(session.id, runtime, failure);
     });
     await markContainerRunning(session.id);
+    adoptedNames.add(handle.name);
     adopted += 1;
   }
+
+  // An adopted container keeps presenting the MCP proxy token it was spawned
+  // with; the registry restored it from disk. Everything else in that file
+  // belongs to a container that did not survive — nothing has been spawned by
+  // this host yet — so those tokens must stop authorising anything.
+  const prunedTokens = retainContainerTokens(adoptedNames);
+  if (prunedTokens > 0)
+    log.info('Pruned MCP proxy tokens of containers that did not survive the restart', { prunedTokens });
 
   await driver.reapResidue?.(INSTALL_SLUG).catch?.(() => {});
   // Reconcile terminals the watch stream missed while no host was listening —

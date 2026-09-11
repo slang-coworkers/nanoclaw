@@ -164,7 +164,7 @@ describe('handleRecurrence — script-failure backoff (streak derived from faile
   // runs, as synced by syncProcessingAcks). Only the newest row keeps recurrence —
   // older occurrences had theirs cleared when they were re-armed. fails=0 seeds one
   // healthy completed run.
-  function seedFailedStreak(db: ReturnType<typeof freshDb>, fails: number) {
+  function seedFailedStreak(db: ReturnType<typeof freshDb>, fails: number, failureClass: 'script' | 'turn' = 'script') {
     const rows = Math.max(fails, 1);
     for (let i = 0; i < rows; i++) {
       insertTaskRow(db, {
@@ -174,8 +174,9 @@ describe('handleRecurrence — script-failure backoff (streak derived from faile
         recurrence: i === rows - 1 ? '* * * * *' : null, // every minute — raw cron next is ~+1min
         content: JSON.stringify({ prompt: 'monitor', script: 'exit 1' }),
       });
-      db.prepare(`UPDATE messages_in SET status = ? WHERE id = ?`).run(
+      db.prepare(`UPDATE messages_in SET status = ?, failure_class = ? WHERE id = ?`).run(
         fails === 0 ? 'completed' : 'failed',
+        fails === 0 ? null : failureClass,
         `task-s-${i}`,
       );
     }
@@ -227,6 +228,39 @@ describe('handleRecurrence — script-failure backoff (streak derived from faile
       recurrence: string | null;
     };
     expect(original.recurrence).toBeNull(); // not re-cloned next sweep
+  });
+
+  // The guarantee that makes a shared-key outage survivable: a turn that errored
+  // (spend ceiling, provider outage) recovers on its own, so the series must back
+  // off and keep going. Auto-pausing it would park every cron behind a manual
+  // `ncl tasks resume` for something that fixes itself.
+  it('never auto-pauses on a TURN-failure streak, however long', async () => {
+    const db = freshDb();
+    seedFailedStreak(db, 20, 'turn');
+    await handleRecurrence(wrapSqliteInbound(db), fakeSession());
+
+    expect(clone(db).status).toBe('pending');
+  });
+
+  it('still backs a turn-failure streak off past raw cron cadence', async () => {
+    const db = freshDb();
+    seedFailedStreak(db, 3, 'turn');
+    await handleRecurrence(wrapSqliteInbound(db), fakeSession());
+
+    // 3 trailing failures → 8-minute backoff, well past the every-minute cron.
+    const next = clone(db);
+    expect(new Date(next.process_after!).getTime()).toBeGreaterThan(Date.now() + 5 * 60_000);
+  });
+
+  // A mixed history is not evidence that the script is stuck, so it must not
+  // accumulate toward the cap across unrelated failures.
+  it('a turn failure breaks the script streak', async () => {
+    const db = freshDb();
+    seedFailedStreak(db, 8, 'script');
+    db.prepare(`UPDATE messages_in SET failure_class = 'turn' WHERE id = ?`).run('task-s-7');
+    await handleRecurrence(wrapSqliteInbound(db), fakeSession());
+
+    expect(clone(db).status).toBe('pending');
   });
 
   it('writes the auto-pause note into the series run log via the shared appendRunLog', async () => {

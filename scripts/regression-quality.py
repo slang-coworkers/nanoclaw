@@ -28,6 +28,14 @@ counted as culprits, and only when the referenced PR actually merged BEFORE the
 regression was filed. Measured against the real repo this is the difference
 between a defensible number and a misleading one.
 
+SHAS RESOLVE TO PRS. Maintainers also blame a bare commit ("Regression in
+de679fd:", or a github.com/.../commit/<sha> link) rather than a PR number. A
+7-40 hex token inside the same causal block is resolved through
+repos/{repo}/commits/{sha}/pulls to the PR(s) that carried it, and those PRs then
+go through the same merged-before-filed check. A SHA that resolves to no PR is
+unattributed (data), a failed lookup is unknown (fails closed). Prod issue #12803
+was a bot regression the panel called unattributed for exactly this reason.
+
 FAIL CLOSED. Every fetch runs through Collection; the first failure marks the run
 INCOMPLETE, and an incomplete run publishes null metrics with an `errors` list and
 exits nonzero. It never prints a zero or a "-" that an outage could have produced
@@ -81,9 +89,14 @@ def is_bot(login):
 # So: find the causal marker, then take EVERY reference in the block after it, newlines
 # included.
 CAUSAL_MARKER = re.compile(
-    r"(?:since|caused\s+by|introduced\s+(?:in|by)|regressed\s+(?:in|by)|bisect(?:ed)?\s*(?:to|on)?|"
+    r"(?:since|caused\s+by|introduced\s+(?:in|by)|regress(?:ed|ion)\s+(?:in|by|at|after)|"
+    r"bisect(?:ed)?\s*(?:to|on)?|"
     r"culprit|blame[sd]?\s+(?:on|to)|#{1,4}\s*cause|root\s+cause)\b", re.IGNORECASE)
 REF = re.compile(r"#(\d{3,6})\b")
+# A bare commit SHA (7-40 hex) in the causal block: "Regression in de679fd:" or a
+# .../commit/<sha> link. Lower-case only (GitHub's spelling), bounded so a token
+# inside a longer word or number is not sliced out of it.
+SHA = re.compile(r"(?<![0-9a-zA-Z])([0-9a-f]{7,40})(?![0-9a-zA-Z])")
 # The window now ends at the end of the causal BLOCK — a blank line or the next
 # heading — instead of at a fixed character count. A flat 240-char window erred
 # in both directions: it ran past the causal statement into unrelated prose, and
@@ -113,6 +126,24 @@ def causal_refs(text):
     return out
 
 
+def looks_like_sha(tok):
+    """A full 40-char SHA is always one. A short one must carry both a digit and
+    a letter, so English words that happen to be hex ("defaced", "accede") and
+    plain numbers (issue ids, timestamps) are not sent to the API."""
+    if len(tok) == 40:
+        return True
+    return any(c.isdigit() for c in tok) and any(c.isalpha() for c in tok)
+
+
+def causal_shas(text):
+    """Commit SHAs named in a causal block, lower-cased."""
+    out = set()
+    body = text or ""
+    for m in CAUSAL_MARKER.finditer(body):
+        out |= {t.lower() for t in SHA.findall(causal_window(body, m.end())) if looks_like_sha(t)}
+    return out
+
+
 class Collection:
     """Records every fetch failure so no caller can launder one into a zero.
 
@@ -130,7 +161,9 @@ class Collection:
 
 
 MISSING = object()  # a 404: a real ANSWER ("no such PR"), not a collection failure
-NOT_FOUND = re.compile(r"HTTP 404|Not Found", re.IGNORECASE)
+# 404 on pulls/N = "not a PR"; 422 "No commit found for SHA" on commits/<sha>/pulls
+# = "not a commit of this repo". Both are answers about the reference, not outages.
+NOT_FOUND = re.compile(r"HTTP 404|Not Found|No commit found|HTTP 422", re.IGNORECASE)
 # A 403/429 whose body carries one of these is the shared App budget momentarily
 # exhausted — transient, not an outage. Anything else on a 403 (e.g. "Resource not
 # accessible by integration") is a real permission failure and still fails closed.
@@ -223,21 +256,52 @@ def pr_info(col, repo, num, cache):
     return cache[num]
 
 
-def culprits_for(col, repo, issue, cache):
+def sha_prs(col, repo, sha, sha_cache, pr_cache):
+    """PR numbers that carried commit `sha` (repos/{repo}/commits/{sha}/pulls).
+
+    None = the lookup FAILED (unknown). [] = the SHA resolves to no PR (data: an
+    unknown commit, or one pushed straight to a branch). The payload carries each
+    PR's user and merged_at, so the PR cache is seeded from it and no pulls/N call
+    follows.
+    """
+    if sha not in sha_cache:
+        d = gh(col, f"repos/{repo}/commits/{sha}/pulls", what=f"commits/{sha}/pulls",
+               allow_missing=True, timeout=120)
+        if d is None:
+            sha_cache[sha] = None
+        elif d is MISSING:
+            sha_cache[sha] = []
+        else:
+            nums = []
+            for p in d if isinstance(d, list) else []:
+                if not isinstance(p, dict) or not p.get("number"):
+                    continue
+                nums.append(int(p["number"]))
+                pr_cache.setdefault(int(p["number"]),
+                                    ((p.get("user") or {}).get("login"), p.get("merged_at")))
+            sha_cache[sha] = nums
+    return sha_cache[sha]
+
+
+def culprits_for(col, repo, issue, cache, sha_cache=None):
     """Culprit PRs for one issue, plus where the attribution came from.
 
-    Returns (culprits, source, failed). `failed` marks an issue whose attribution
-    depended on a lookup that did not answer — UNKNOWN, which is not the same as
-    "no culprit found" and must not be counted as one.
+    Returns (culprits, source, failed, shas). `failed` marks an issue whose
+    attribution depended on a lookup that did not answer: UNKNOWN, which is not
+    the same as "no culprit found" and must not be counted as one. `shas` maps
+    each causal SHA to the PR numbers it resolved to (None = lookup failed).
     """
+    sha_cache = {} if sha_cache is None else sha_cache
     filed = issue.get("created_at") or ""
-    refs, source = set(), None
+    refs, shas, source = set(), set(), None
     for name in ("body", "title"):
-        found = causal_refs(issue.get(name))
-        if found:
+        text = issue.get(name)
+        found, found_shas = causal_refs(text), causal_shas(text)
+        if found or found_shas:
             refs |= found
+            shas |= found_shas
             source = name if source is None else f"{source}+{name}"
-    if not refs:
+    if not refs and not shas:
         # Widen only when the structured fields yielded nothing: maintainers very
         # often write "bisected to #N" in a COMMENT rather than in the body, and
         # scanning the body alone dropped those issues entirely. Gated on the
@@ -245,14 +309,24 @@ def culprits_for(col, repo, issue, cache):
         comments = gh(col, f"repos/{repo}/issues/{issue['number']}/comments?per_page=100",
                       paginate=True, what=f"issues/{issue['number']}/comments")
         if comments is None:
-            return [], None, True
+            return [], None, True, {}
         for c in comments if isinstance(comments, list) else []:
-            found = causal_refs((c or {}).get("body"))
-            if found:
+            text = (c or {}).get("body")
+            found, found_shas = causal_refs(text), causal_shas(text)
+            if found or found_shas:
                 refs |= found
+                shas |= found_shas
                 source = "comment"
 
     culprits, failed = [], False
+    sha_map = {}
+    for sha in sorted(shas):
+        nums = sha_prs(col, repo, sha, sha_cache, cache)
+        sha_map[sha] = nums
+        if nums is None:
+            failed = True  # unresolved: do NOT silently drop the candidate
+            continue
+        refs |= set(nums)
     for num in sorted(refs):
         info = pr_info(col, repo, num, cache)
         if info is None:
@@ -268,7 +342,7 @@ def culprits_for(col, repo, issue, cache):
         if filed and merged_at >= filed:
             continue
         culprits.append({"pr": num, "author": login, "bot": is_bot(login), "mergedAt": merged_at})
-    return culprits, source, failed
+    return culprits, source, failed, sha_map
 
 
 def classify(culprits):
@@ -357,14 +431,14 @@ def main():
         print("no issues found", file=sys.stderr)
         return publish(2)
 
-    cache = {}
+    cache, sha_cache = {}, {}
     filed_month = collections.Counter()
     cohort = {"bot": collections.Counter(), "human": collections.Counter(), "mixed": collections.Counter()}
     rows, unattributed, attribution_failed = [], 0, 0
 
     for i in issues:
         filed_month[i["created_at"][:7]] += 1
-        culprits, source, failed = culprits_for(col, a.repo, i, cache)
+        culprits, source, failed, sha_map = culprits_for(col, a.repo, i, cache, sha_cache)
         if culprits:
             kind = classify(culprits)
             # Cohort = the LATEST-merged culprit's month: of the candidates, the
@@ -380,7 +454,7 @@ def main():
             unattributed += 1
         rows.append({"issue": i["number"], "filedMonth": i["created_at"][:7], "cohortMonth": month,
                      "attribution": kind, "source": source, "title": i["title"][:90],
-                     "culprits": culprits})
+                     "culprits": culprits, "shas": sha_map})
 
     # Denominator: merged PRs per month per class, so the metric is a RATE.
     merged_raw = gh(col, f"repos/{a.repo}/pulls?state=closed&per_page=100&sort=updated&direction=desc",

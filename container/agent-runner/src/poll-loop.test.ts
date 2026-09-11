@@ -1942,7 +1942,12 @@ describe('task-run transient bounce — a provider stall must not complete the f
     expect(logs[0]).toContain('[transient provider error, retry 1/3]');
   });
 
-  it('a permanent error result still completes the fire with the error as its log (unchanged behaviour)', async () => {
+  // BEHAVIOUR CHANGE. This asserted `completed`, and that is the defect: a fire
+  // the provider refused never ran, so counting it as a run is what let
+  // `failed_runs` read 0 while 11 fires died over six days (2026-08-13..18) and
+  // the series re-armed at full cadence with no backoff. The error text still
+  // becomes the run log; only the ack changes.
+  it('a permanent error result FAILS the fire, with the error as its log', async () => {
     insertMessage('tb2', 'task', { prompt: 'fold' });
     async function* events(): AsyncGenerator<ProviderEvent> {
       yield { type: 'init', continuation: 's1' };
@@ -1950,11 +1955,13 @@ describe('task-run transient bounce — a provider stall must not complete the f
     }
     const query: AgentQuery = { push: () => {}, end: () => {}, events: events(), abort: () => {} };
     await processQuery(query, { ...TASK_ROUTING, inReplyTo: 'tb2' }, ['tb2'], 'claude', undefined, 'prompt', undefined);
-    expect(rowStatus('tb2')).toBe('completed');
+    expect(rowStatus('tb2')).toBe('failed');
     expect(taskLogRows().map((l) => l.text)[0]).toContain('billing_error');
   });
 
-  it('gives up after the per-row cap and completes with the error logged', async () => {
+  // BEHAVIOUR CHANGE, same reason: exhausting the bounce budget means the fire
+  // never ran, so it is a failed run rather than a completed one.
+  it('gives up after the per-row cap and FAILS with the error logged', async () => {
     insertMessage('tb3', 'task', { prompt: 'fold' });
     const stall = 'API Error: The response stopped arriving. The response above may be incomplete.';
     for (let i = 0; i < 4; i++) {
@@ -1974,7 +1981,7 @@ describe('task-run transient bounce — a provider stall must not complete the f
       );
       if (i < 3) expect(rowStatus('tb3')).toBe('bounced-transient');
     }
-    expect(rowStatus('tb3')).toBe('completed');
+    expect(rowStatus('tb3')).toBe('failed');
   });
 });
 

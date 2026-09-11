@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS messages_in (
   thread_id      TEXT,
   content        TEXT NOT NULL,
   source_session_id TEXT,
-  on_wake        INTEGER NOT NULL DEFAULT 0
+  on_wake        INTEGER NOT NULL DEFAULT 0,
+  failure_class  TEXT
 );
 CREATE INDEX IF NOT EXISTS idx_messages_in_series ON messages_in(series_id);
 

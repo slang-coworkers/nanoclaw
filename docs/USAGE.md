@@ -203,7 +203,7 @@ The `supervise-issues` container skill provides automated oversight of in-flight
 
 ### Scheduling
 
-Designed for `schedule_task` with a 6-hour cron (`0 */6 * * *`). Each tick runs in a fresh session (`new_session: true`) and is gated by a delta check — if nothing changed since the last tick, it's a no-op.
+Scheduled with `ncl tasks create --recurrence '0 */12 * * *'` — the interval the skill itself suggests. Each series gets its own task session (`taskThreadId`, `src/db/sessions.ts`), so every tick runs fresh, and the tick is gated by a delta check — if nothing changed since the last tick, it's a no-op.
 
 ### State
 
