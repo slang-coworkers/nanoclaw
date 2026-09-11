@@ -1,0 +1,49 @@
+# nv-hermes — the Hermes Agent (NousResearch/hermes-agent) coworker overlay, and
+# the nemoclaw deployment that runs it.
+#
+# Derived, not guessed: of the 98 files this branch changed since its merge-base
+# with nv-main, 89 sit in the hermes/nemoclaw namespaces below and 9 touch files
+# nv-main also ships. Only 5 of those 9 are listed — see the end of this file.
+
+ops/nemoclaw-coworkers/**
+docs/hermes-port/**
+
+# Coworker composition: the hermes spine, its skills and its workflows.
+container/spines/hermes/**
+container/skills/hermes-*/**
+container/workflows/hermes-*/**
+
+# The release-pin script and its test.
+scripts/hermes-pin.sh
+scripts/hermes-pin.test.ts
+
+# Hermes-specific docs at the docs/ root.
+docs/hermes-*.md
+
+# Composed-document snapshots and the assertion over them.
+#
+# These are nv-main's files, listed here on purpose. They are goldens of the
+# COMPOSED coworker set, so any overlay that adds coworker types must update them
+# in the same PR or the composer tests fail — the edit is mechanically forced, not
+# a choice. Same shape as nv-dashboard's `src/db/db-v2.test.ts` entry: the branch
+# that adds the thing owns the assertion about it.
+src/claude-composer/__goldens__/base-common.md
+src/claude-composer/__goldens__/base-common.persona.md
+src/claude-composer/__goldens__/default.md
+src/claude-composer/__goldens__/default.persona.md
+src/claude-composer/parity.test.ts
+
+# DELIBERATELY NOT LISTED — this branch currently diverges from nv-main on four
+# more shared files, and none of them is mechanically forced:
+#
+#   container/hooks/pr-auto-map.sh
+#   container/skills/explain-diff-html/SKILL.md
+#   container/skills/learnings-wiki/test_learnings_wiki.py
+#   docs/USAGE.md
+#
+# Granting standing permission would let this overlay keep editing shared surfaces
+# no one reviews on nv-main. Leaving them out costs nothing today — check.py's
+# sync-branch exemption already passes any unowned file whose blob matches
+# origin/nv-main exactly, so a sync PR carrying nv-main's version is fine. The
+# guard only speaks up when someone edits one of them again on this branch, which
+# is exactly the moment a human should decide whether it belongs on nv-main.
