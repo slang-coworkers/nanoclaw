@@ -152,7 +152,7 @@ Carried by **GOV-F25**:
 
 - **carries AC-OBS-F48** — fleet metrics: the `outcomes(artifact, terminal_outcome, cost_usd, profile)` table plus `hermes outcomes winrate|funnel|cost-per-merge`, fed by the kanban observers and `on_session_end` with cost rolled up from `session_model_usage` and attributed through the ownership row. **Not** published over Hermes's OTLP exporter (closed event set + attribute allow-list); a drop-in dashboard extension page reads the same ledger.
 
-## Batch 3 — phase P4-sandbox (needs the podman-capable box)
+## Batch 3 — phase P4-sandbox (podman-capable box = THIS box since 2026-09-11: rootless podman as user `hermes-sandbox`, API socket mounted into hermes-tester — hermes-testbed §4c)
 
 Merging this batch is what flips `nv-fleet-gates` `enforce_sandbox` from `false` to `true` and makes `AC-ISO-F10` live.
 
