@@ -2,7 +2,7 @@ name: CI
 
 on:
   pull_request:
-    branches: [main, nv-main, nv-coworkers, nv-dashboard, nv-slang, nv-slangpy, nv-nanoclaw]
+    branches: [main, nv-main, nv-coworkers, nv-dashboard, nv-slang, nv-slangpy, nv-nanoclaw, nv-hermes]
   # `nv-coworkers` is in the FILTER but deliberately not in the merge loop
   # below. It is the base of the tree setup ships, not a sibling overlay: the
   # deploy compose starts there and merges nv-main plus each project onto it.
