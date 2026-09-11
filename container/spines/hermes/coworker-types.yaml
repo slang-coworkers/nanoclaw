@@ -430,6 +430,17 @@ main:
     # contract. Context again (flat type — a skill entry would be discarded; the
     # hermes-task-card body still reaches it via the mirror-all branch).
     - container/spines/hermes/context/task-card.md
+    # Slack is the operator's PRIMARY surface: every operator-facing one-liner
+    # (merge notice, `blocked: P<n>`, alerts/escalations, decision-needed lines,
+    # the 6-hourly summary) goes to the `harsh-slack-dm` destination first, then
+    # the dashboard chat; Telegram is the backup. #hermes-port (`hermes-port`)
+    # holds one thread per row, written by the HOST-side mirror
+    # (ops/nemoclaw-coworkers/slack-rows.py, every 5 min) — the Orchestrator
+    # never posts cards, roots or chain messages there, and a human message
+    # inside a row thread is an instruction about that row (map:
+    # /workspace/shared/hermes/slack-threads.json, read-only). Context, not a
+    # skill, for the same flat-type reason as the rest of this list.
+    - container/spines/hermes/context/slack-surface.md
   # Route the merge/ready commands through the critique gate's Bash matcher, so
   # the merge decision itself gets one OUTPUT_REVIEW round before it executes.
   # Additive to the gate's built-in floor (`gh pr create`, `gh api …/pulls`,
