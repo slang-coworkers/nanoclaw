@@ -329,6 +329,7 @@ cp $TB/harness.live.env $ART/harness.live.env           # published with the rep
 | S3 | provider block SURVIVES onboard | `cp config.yaml config.pre; hermes onboard … (the scenario's own onboard line); diff config.pre config.yaml` shows the `providers:` block intact | builder mirrors the block into the spine the onboard renders from (LOOP-F35 r3: `spec/spines/live-base.yaml`) |
 | S4 | no hard-coded loopback ports in fixtures | `grep -rnE '127\.0\.0\.1:[0-9]{2,5}' $SCN/fixtures $SCN/spec` is empty; the base_url must come from the harness env (`$ANTHROPIC_BASE_URL` / `HERMES_TESTBED_LIVE_PROXY`) | builder reads the port from the env (LOOP-F35 r3: `38403` died on a container restart) |
 | S5 | frontmatter/ADR agreement | the existing frontmatter checks above (ac, kind, model) | builder |
+| S6 | sandbox tier reachable (rows with a `sandbox:` criterion or batch P4-sandbox only) | `$PODMAN info --format '{{.Host.Security.Rootless}} {{.Version.Version}}'` prints `true 3.4.4` through `CONTAINER_HOST`; a hello-world sandbox exits 0; `curl -sk` through `https_proxy=$HERMES_TESTBED_LIVE_PROXY` from inside a sandbox returns 200 (§4c) | host podman socket down → `ESCALATE (pre-flight)`, infra; never install anything |
 
 Any `FAIL` in this table → the round stops **before any AC row**: rounds.log gets `round <k> ESCALATE <sha7> <utc> preflight:<check>`, the message is `[Test Report] ESCALATE (pre-flight)` naming the check, its evidence line and the remediation, sent as an `ESCALATE` report (step 8 shape) — it is never a counted round and never a `FAIL` on an `AC-` row. A check that cannot be executed (tool missing) is a `FAIL` of that check, not a skip. After every `live:` scenario, re-run G6: a worktree the live bot modified (the LOOP-F35 r2 SAFETY finding: a real-model bot edited `tools/bot_mode_dm.py` in the verification worktree) makes that criterion `FAIL` with `evidence = git status --porcelain output`, restores the tree, and adds a `## Safety` line to the report.
 
@@ -393,6 +394,24 @@ Screenshot naming is the step number, not a slug, because the row's evidence cel
 | absent | scenario file present in the PR | — | no row; `## Skipped / advisory` as `orphan scenario <path>` |
 
 The kind changes the evidence, never the vocabulary: `PASS` or `FAIL` only, no `SKIPPED`, no `ADVISORY-FAIL`, one row per ADR id in ADR order, ids verbatim (§6). And the evidence must be openable: **a `ui`/`desktop`/`live` PASS whose evidence names no artifact path is an invalid report**, so the path is written or the row is a `FAIL`.
+
+## 4c. Sandbox tier (`sandbox:` criteria — P4 rows CRED-F28, ISO-F13, ISO-F14, ISO-F15)
+
+Option A (operator decision 2026-09-11): sandboxes are **rootless podman on the host**, run by the dedicated unprivileged user `hermes-sandbox` (uid 1001, its own subuid/subgid range), reached from this container through its API socket. Nothing here is privileged and nothing runs as the host user: a sandbox cannot read the checkout, the coworker data or OneCLI files, and a runaway sandbox can only exhaust `hermes-sandbox`'s own quota.
+
+```bash
+export CONTAINER_HOST=unix:///workspace/extra/podman/podman.sock            # tester-only mount of /run/user/1001/podman (rw: a socket must be connectable)
+export PODMAN=/workspace/extra/podman-bin/podman-remote-static                 # official v3.4.4 client, sha256-verified from the containers/podman release, read-only mount
+$PODMAN info --format '{{.Host.Security.Rootless}} {{.Version.Version}} {{.Store.GraphDriverName}}'   # true 3.4.4 overlay — the S6 pre-flight
+```
+
+Rules:
+- **Client and server versions match on purpose** (3.4.4 ↔ 3.4.4). Debian's `podman` package (4.3.1) refuses the older server; never `apt install podman` in this image. Hermes' podman wrapper is pointed at `$PODMAN` (or a `podman` symlink to it on the harness `PATH`), never at a system binary.
+- **Egress only through the live proxy.** A sandbox gets `https_proxy=$HERMES_TESTBED_LIVE_PROXY` (§4b live env) and the CA read-only; the slirp network reaches the proxy at `172.17.0.1:10255` (verified 200) and nothing else is allow-listed. Direct egress from a sandbox is a `FAIL` on the ISO-F14 row, not a convenience.
+- **Mounts into a sandbox:** the verification worktree read-only and a per-scenario scratch dir under `$TB`; never `$HOME`, never `/workspace/agent`, never the socket itself.
+- **Bounds:** at most 3 sandboxes alive per round; `--memory 1g --pids-limit 256` on every `run`; `$PODMAN ps -a` is empty at the end of the round (`$PODMAN rm -af`); images stay cached in the sandbox user's store (30 MB alpine today) and are pruned only at row end.
+- **Evidence:** `artifacts/scenario-<AC-id>/sandbox.log` (the exact `$PODMAN run` line, exit code, `/proc/1/uid_map` from inside — `0 1001 1` proves rootless mapping), plus the proxy egress code. A `sandbox:` criterion PASSes only with that file.
+- **Reuse:** the sandbox user's image store is warm across rounds (§4b reuse rule); the socket mount and the client are part of the tester's container config, not of the round.
 
 ## 5. Desktop / Electron tier (phase-gated; never fails the run on missing deps)
 
