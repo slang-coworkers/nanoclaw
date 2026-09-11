@@ -435,7 +435,7 @@ main:
     # the 6-hourly summary) goes to the `harsh-slack-dm` destination first, then
     # the dashboard chat; Telegram is the backup. #hermes-port (`hermes-port`)
     # holds one thread per row, written by the HOST-side mirror
-    # (ops/nemoclaw-coworkers/slack-rows.py, every 5 min) — the Orchestrator
+    # (ops/nemoclaw-coworkers/slack-rows.py, cron every 15 min) — the Orchestrator
     # never posts cards, roots or chain messages there, and a human message
     # inside a row thread is an instruction about that row (map:
     # /workspace/shared/hermes/slack-threads.json, read-only). Context, not a

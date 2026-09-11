@@ -103,7 +103,8 @@ class FakeClient:
 
     def post_message(self, channel, text, thread_ts=None):
         self.attempts += 1
-        exc = self.fail.get(("post", text.split(" · ")[0].split(" ")[0]))
+        # roots read `hermes-<ROW> · …`; closing lines `✅ <ROW> …` — key failures by the bare row id
+        exc = self.fail.get(("post", text.split(" · ")[0].split(" ")[0].removeprefix("hermes-")))
         if exc:
             raise exc
         self.ts += 1
@@ -252,8 +253,8 @@ class SlackRowsTest(unittest.TestCase):
         uploads = [c for c in client.calls if c[0] == "upload"]
         # Two dispatched rows → two roots, plan order; GOV-F24 (not dispatched, no cards) gets none.
         self.assertEqual([p[2] for p in posts], [
-            "LOOP-F35 · Lego coworker composition · batch 1a · dispatched 2026-09-09",
-            "MEM-F44 · Memory retention · batch 1b · dispatched 2026-09-10",
+            "hermes-LOOP-F35 · Lego coworker composition · batch 1a · dispatched 2026-09-09",
+            "hermes-MEM-F44 · Memory retention · batch 1b · dispatched 2026-09-10",
         ])
         self.assertTrue(all(p[3] is None for p in posts), "roots are not thread replies")
         # Cards oldest-first, all in LOOP-F35's thread, PNG only, the -latest copy skipped.
@@ -575,7 +576,7 @@ class SlackRowsTest(unittest.TestCase):
         self.assertEqual(FakeClient.instances, [], "dry-run never builds a client")
         self.assertFalse(self.state.exists())
         self.assertFalse(Path(str(self.state) + ".lock").exists(), "dry-run touches nothing under data/")
-        self.assertIn("would post root LOOP-F35: LOOP-F35 · Lego coworker composition · batch 1a · dispatched 2026-09-09", out)
+        self.assertIn("would post root LOOP-F35: hermes-LOOP-F35 · Lego coworker composition · batch 1a · dispatched 2026-09-09", out)
         self.assertIn("would post card groups/hermes-architect/reports/hermes-LOOP-F35/cards/card-hermes-architect-handoff-r1.png", out)
         self.assertEqual(out.count("would post"), 5)  # 2 roots + 3 cards
 

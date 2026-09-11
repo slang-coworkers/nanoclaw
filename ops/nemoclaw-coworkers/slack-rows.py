@@ -3,7 +3,7 @@
 
 One ROOT message per row, then every role card as a threaded file upload, then one closing line
 when the ledger says the row merged (or is blocked). Idempotent: what was posted is recorded in a
-state file, so running it every 5 minutes (refresh-viewers.sh) only posts what is new.
+state file, so running it every 15 minutes (refresh-viewers.sh cron) only posts what is new.
 
 Reads (every input optional except the token and the channel):
 
@@ -352,10 +352,15 @@ def clean_name(s) -> str:
 
 
 def root_text(rid: str, plan: dict | None, ledger_entry: dict | None) -> str:
-    """`<ROW> · <plan name> · batch <b> · dispatched <date>`; segments without data are dropped,
-    the name falls back to the row id."""
+    """`hermes-<ROW> · <plan name> · batch <b> · dispatched <date>`; segments without data are
+    dropped. The first segment is the row's chain thread id verbatim (`hermes-<ROW>` — the
+    thread every role session for the row lives in, and the dashboard lane title), so a human
+    reading the Slack thread and the Orchestrator acting on a reply in it use the same handle."""
     prow = plan_row(plan, rid)
-    parts = [rid, clean_name(prow.get("name")) or rid]
+    parts = [f"hermes-{rid}"]
+    name = clean_name(prow.get("name"))
+    if name and name != rid:
+        parts.append(name)
     if prow.get("batch"):
         parts.append(f"batch {prow['batch']}")
     at = (ledger_entry or {}).get("dispatched_at")

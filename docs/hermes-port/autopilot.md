@@ -785,7 +785,7 @@ Slack is the operator's primary surface (`container/spines/hermes/context/slack-
 Orchestrator's operator-facing one-liners go to the DM destination `harsh-slack-dm` first, and
 `#hermes-port` (`C0C14PWDUMC`) holds one thread per row — the swim lane — written by the **host**,
 never by an agent. `ops/nemoclaw-coworkers/slack-rows.py` (stdlib; `refresh-viewers.sh` runs it after
-the rows board every 5 min, `>> logs/slack-rows.log`, never fatal to the refresh) reads the same cards
+the rows board every 15 min, `>> logs/slack-rows.log`, never fatal to the refresh) reads the same cards
 (`rows-board.scan_cards`), plan (`parse_plan`) and ledger (`parse_ledger`) as the rows board and
 posts, at most `--max-posts` (12) API calls per run:
 
