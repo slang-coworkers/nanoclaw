@@ -99,6 +99,72 @@ the whole per-issue gate fleet — confirmed by explicit `--group` query, not a 
 Re-armed as **`i12463-disposition-gate-4a1c`** with comment-id dedup seeded to 5271300475
 (`/workspace/agent/gates/i12463-seen-nonbot.id`), so it won't re-route jhelferty's comment.
 
+## DECISION 2026-08-12 — skiminki-nv chose B and is implementing it himself
+
+`skiminki-nv` (assignee) answered ([comment **5619930667**]): *"Slangc does not support inheriting a
+struct from another struct … `A : B` means A **conforms to** B (not inherits) … I'd agree the correct
+course of action would be to **diagnose 'struct : struct' and restrict conformance declarations to
+'struct : interface'**. **I'll follow up.**"*
+
+⇒ **Disposition B is decided** (make it a diagnostic, not fix the layout), and the maintainer said
+**"I'll follow up"** = he is taking the implementation. ⭐ **We therefore do NOT dispatch slang-fixer** —
+duplicating a maintainer's claimed work is the anti-pattern (same rule as "reporter has a branch =>
+route reviewer, don't duplicate"). Bonus framing from skiminki worth keeping: this isn't really
+"inheritance" — `A : B` is *conformance*; allowing `struct : struct` would change data layouts, which
+is why restricting to `struct : interface` is the principled fix, not merely a deprecation. Note this
+means the eventual fix is NOT the varying-layout base-walk (Approach A) at all — the whole layout gap
+becomes unreachable once `struct : struct` is rejected at check time.
+
+**Our posture now: STAND BY TO REVIEW.** When skiminki's PR lands, the gate's `CROSS_REFERENCED` leg
+fires → route **slang-reviewer** (NOT a fixer). No bot comment (maintainer driving, mentioned our bot
+0 times, claimed the follow-up). seen-id advanced to 5619930667.
+
+## ⭐ CORRECTION 2026-09-10 — skiminki REVISED the plan to a HYBRID; "A is a dead end" was WRONG for legacy
+
+`skiminki-nv` ([comment **5621026641**], 0 bot mentions): *"After looking into this a bit, I think my
+plan is: remove struct-struct inheritance from Slang 202c onwards; **apply band-aid to struct-struct
+inheritance for previous Slang versions where necessary (like this issue). I feel a bit uneasy in
+retrospectively removing the feature. I think it's too likely that this would break existing
+applications.**"*
+
+This **supersedes** the 08-12 "pure B" reading and the DECISION section above. The plan is now:
+- **Future (Slang "202c" onward):** remove struct-struct inheritance → hard error (the B half).
+- **Legacy versions (the default crash path, THIS issue):** a **band-aid to keep it WORKING**, NOT a
+  retroactive error — because erroring retroactively would break existing apps.
+
+⇒ **I MUST retract my earlier claim that "Approach A (the varying-layout base-walk) was never the right
+fix / becomes unreachable."** For the legacy band-aid, a *correct* Approach A is exactly what skiminki
+now wants. And the triager's **measured `location=0` residual is RE-RELEVANT**: the naive base-walk
+takes the crash 139→0 but leaves `i_base_a_0`/`i_b_0` both at `location=0`; a correct band-aid must
+advance the varying-slot/semantic state. That residual (already in our published comment 5248002132)
+is the one thing we measured that skiminki is about to rediscover.
+
+Still NO fixer dispatch — skiminki is doing the work ("my plan is…"). Posture unchanged:
+**stand by to review** his PR(s). Corrected the dashboard roll-up (the earlier "A is moot / fix is a
+check-time diagnostic" statement was wrong for the legacy path). Routed to slang-triager to decide
+whether a brief pointer to the `location=0` residual now adds signal for his band-aid.
+
+## UPDATE 2026-09-10b — plan refined to "diagnose legacy too"; our heads-up steered it; #7419 verified
+
+`skiminki-nv` ([comment **5621284811**], replying to the triager's posted heads-up 5621084161):
+- **Future-version half already shipped:** PR **#7419** "Diagnose on use of struct inheritance"
+  — **verified merged 2025-06-12 by csyonghe** (not skiminki's — his say-so, my receipt). It diagnoses
+  struct-struct inheritance from 2026 onwards. **Doc gap:** not recorded in
+  `docs/user-guide/11-language-version.md` L46 (skiminki flagged it; a real, minor docs follow-up).
+- **Legacy half — refined AGAIN, in reaction to our residual:** *"A reasonable way would be to simply
+  detect the unsupported use of derived structs and diagnose those. They crash the compiler today
+  anyway, so we know that no one is using them. I don't think we need to necessarily do anything more
+  complicated here."* ⇒ he will **DIAGNOSE on legacy too**, NOT do the correct-layout band-aid. Our
+  measured `location=0` residual **steered him away from the complicated correct-A path** — a good
+  outcome, and exactly the value the triager's post added.
+
+⭐ **This corrects my 09-10 "legacy stays working / only the future removal is breaking" statement.**
+Legacy will now get a diagnostic too. skiminki's compat argument: it is **not a real source-compat
+break because the diagnosed cases crash today** (so nothing depends on them). ⇒ when his PR lands, the
+review must weigh THAT justification ("crashing ⇒ unused ⇒ safe to reject"), NOT expect "legacy
+unchanged." He is scoping targets / unsupported cases himself. Still NO fixer; stand by to review.
+seen-id → 5621284811.
+
 ## RESUME — gate `i12463-disposition-gate-4a1c` (was `-e238`, swept)
 
 `0 */6 * * *`, script `/workspace/agent/gates/i12463-disposition-gate.sh`. Fires on
