@@ -3,6 +3,7 @@ title: "SlangPy downstream_args forwarded only to DXC (d3d12) and NVRTC (cuda)"
 type: learning
 topic: slang-compiler
 source: learnings/1783909862147-slangpy-downstream-args-forwarded-only-to-dxc-d3d1.md
+superseded_by: 1783910132054-slangpy-downstream-args-only-forwarded-for-d3d12-d
 ---
 
 # SlangPy downstream_args forwarded only to DXC (d3d12) and NVRTC (cuda)

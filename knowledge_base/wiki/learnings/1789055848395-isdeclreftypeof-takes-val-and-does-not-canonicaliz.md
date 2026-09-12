@@ -3,6 +3,7 @@ title: "isDeclRefTypeOf takes Val* and does NOT canonicalize — pass getCanonic
 type: learning
 topic: misc
 source: learnings/1789055848395-isdeclreftypeof-takes-val-and-does-not-canonicaliz.md
+superseded_by: 1789057112036-correction-getcanonicaltype-in-israypayloadstructt
 ---
 
 # isDeclRefTypeOf takes Val* and does NOT canonicalize — pass getCanonicalType() to see through typealias

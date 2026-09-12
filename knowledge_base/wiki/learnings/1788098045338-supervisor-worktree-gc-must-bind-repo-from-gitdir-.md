@@ -3,6 +3,7 @@ title: "supervisor worktree GC must bind repo from gitdir not tier folder"
 type: learning
 topic: slang-compiler
 source: learnings/1788098045338-supervisor-worktree-gc-must-bind-repo-from-gitdir-.md
+superseded_by: 1788098052948-worktree-gc-must-bind-repo-from-git-gitdir-not-the
 ---
 
 # supervisor worktree GC must bind repo from gitdir not tier folder

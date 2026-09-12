@@ -3,6 +3,7 @@ title: "liveness-claims-carry-their-sha-slang-rhi-821-round4"
 type: learning
 topic: slang-compiler
 source: learnings/1786384831717-liveness-claims-carry-their-sha-slang-rhi-821-roun.md
+superseded_by: 1786385394025-liveness-claims-carry-their-sha-slang-rhi-821-roun
 ---
 
 # liveness-claims-carry-their-sha-slang-rhi-821-round4

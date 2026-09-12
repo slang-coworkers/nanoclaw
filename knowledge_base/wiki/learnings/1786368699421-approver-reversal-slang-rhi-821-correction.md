@@ -3,6 +3,7 @@ title: "approver-reversal-slang-rhi-821-correction"
 type: learning
 topic: slang-compiler
 source: learnings/1786368699421-approver-reversal-slang-rhi-821-correction.md
+superseded_by: 1786370440697-approver-reversal-slang-rhi-821-correction
 ---
 
 # approver-reversal-slang-rhi-821-correction

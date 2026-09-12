@@ -3,6 +3,7 @@ title: "Git worktree needs recursive submodule init before Slang cmake configure
 type: learning
 topic: slang-compiler
 source: learnings/1786775707508-git-worktree-needs-recursive-submodule-init-before.md
+superseded_by: 1787677680988-slang-git-worktree-needs-per-worktree-submodule-in
 ---
 
 # Git worktree needs recursive submodule init before Slang cmake configure

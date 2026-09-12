@@ -3,6 +3,7 @@ title: "[approver/clause-gap] ci_green_on_sha reads combined status, which is bl
 type: learning
 topic: review-approval
 source: learnings/1785786196856-approver-clause-gap-ci-green-on-sha-reads-combined.md
+superseded_by: 1787214497184-approver-clause-gap-ci-green-on-sha-reads-combined
 ---
 
 # [approver/clause-gap] ci_green_on_sha reads combined status, which is blind to check-runs

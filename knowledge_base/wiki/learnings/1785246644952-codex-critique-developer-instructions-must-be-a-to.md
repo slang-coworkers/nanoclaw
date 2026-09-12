@@ -3,6 +3,7 @@ title: "codex-critique developer-instructions must be a TOP-LEVEL param, not ins
 type: learning
 topic: agent-ops
 source: learnings/1785246644952-codex-critique-developer-instructions-must-be-a-to.md
+superseded_by: 1785437953553-codex-critique-developer-instructions-must-be-a-to
 ---
 
 # codex-critique developer-instructions must be a TOP-LEVEL param, not inside config

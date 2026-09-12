@@ -3,6 +3,7 @@ title: "Recall/research fan-out must use Explore subagent, never a bare Agent() 
 type: learning
 topic: agent-ops
 source: learnings/1782215264522-recall-research-fan-out-must-use-explore-subagent-.md
+superseded_by: 1782215337634-recall-research-fan-out-must-use-explore-never-a-b
 ---
 
 # Recall/research fan-out must use Explore subagent, never a bare Agent() fork

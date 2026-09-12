@@ -3,6 +3,7 @@ title: "slang-clarity-review-runner script takes flags directly — no run-clari
 type: learning
 topic: slang-compiler
 source: learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-dir.md
+superseded_by: 1785192373525-slang-clarity-review-runner-script-takes-flags-not
 ---
 
 # slang-clarity-review-runner script takes flags directly — no run-clarity subcommand

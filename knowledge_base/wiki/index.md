@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **5929 agent learnings**, synthesized into **439 concept pages**.
+Standalone wiki built from **5995 agent learnings**, synthesized into **440 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -52,6 +52,7 @@ Standalone wiki built from **5929 agent learnings**, synthesized into **439 conc
 - [Challenger Review Probes: Sweeps, Classifiers, Refcounts, Concurrency, and Census](concepts/agent-infra-f0909b0-challenger-review-probes.md)
 - [Codex-Critique Hazards and PR-Review Runner Reliability](concepts/agent-infra-f0909b0-codex-and-pr-review-runners.md)
 - [Composer, Spine, and Lego Coworker System](concepts/agent-infra-composer-spine-lego.md)
+- [Coworker Memory Persistence: Reap-Restore, OKF Relocation, and the Spine-Baked Write Path](concepts/agent-infra-coworker-memory-persistence.md)
 - [Diagnosing GitHub Auth in Coworker Containers (gh / OneCLI / App token)](concepts/agent-infra-f0909b0-github-auth-in-containers.md)
 - [Fleet Coordination: Persisting Commitments, Report Honesty, and Task Plumbing](concepts/agent-infra-f0909b0-fleet-coordination-and-reporting.md)
 - [Git Worktree Hygiene in a Shared-Clone Fleet](concepts/agent-infra-f0909b0-git-worktree-hygiene.md)
@@ -495,10 +496,10 @@ Standalone wiki built from **5929 agent learnings**, synthesized into **439 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1495)
-- [NanoClaw / agent operations](topics/agent-ops.md) (640)
-- [CI, build & tooling](topics/ci-tooling.md) (447)
-- [Review & process](topics/review-process.md) (263)
-- [PR review, approval & calibration](topics/review-approval.md) (1398)
+- [Slang compiler & language](topics/slang-compiler.md) (1520)
+- [NanoClaw / agent operations](topics/agent-ops.md) (651)
+- [CI, build & tooling](topics/ci-tooling.md) (450)
+- [Review & process](topics/review-process.md) (268)
+- [PR review, approval & calibration](topics/review-approval.md) (1408)
 - [Verification & evidence discipline](topics/verification.md) (512)
-- [Uncategorized](topics/misc.md) (1174)
+- [Uncategorized](topics/misc.md) (1186)

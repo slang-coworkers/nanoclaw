@@ -3,7 +3,7 @@ title: "Slang SPIR-V Backend: Emission, Capabilities, and Validation"
 type: concept
 group: slang-backends
 tags: [spirv, vulkan, codegen, capabilities, descriptor-heap, debug-info, atomics, spirv-opt, spirv-tools, optimization-level]
-source_count: 160
+source_count: 26
 ---
 
 # Slang SPIR-V Backend: Emission, Capabilities, and Validation
@@ -52,6 +52,8 @@ Slang's default SPIR-V behavior renames every entry point to `"main"` (a legacy 
 
 The `[require(spirv_1_x)]` decoration that controls the emitted SPIR-V version must reach the **codegen IR module** (not only the layout/reflection module) via `addEntryPointRequireCapabilityDecorations()`. A secondary fix is also required: `determineSpirvVersion()` must match on internal `_spirv_1_x` atoms, not the public alias. Without both changes, `[require(spirv_1_5)]` leaves the SPIR-V at version 1.0 ([CORRECTION to #11631 version root cause: require atom stamped only on layout IR module, not the codegen module determineSpirvVersion runs on](../learnings/1781643037138-correction-to-11631-version-root-cause-require-ato.md)).
 
+**Adding a nullary entry-point attribute that maps to a SPIR-V execution mode** (e.g. `[postdepthcoverage]` → PostDepthCoverage, #12999/PR #13001): mirror `[earlydepthstencil]` end-to-end across 9 sites — AST node (`slang-ast-modifier.h`), `attribute_syntax` in `core.meta.slang`, IR op (`slang-ir-insts.lua`), stable name (`slang-ir-insts-stable-names.lua`), `isSimpleDecoration` (`slang-ir.cpp`), lowering `addSimpleDecoration<IR...>` (`slang-lower-to-ir.cpp`), the SPIR-V `Stage::Fragment` funnel (`slang-emit-spirv.cpp`), and the GLSL `Stage::Pixel` chain (`slang-emit-glsl.cpp`). Three non-obvious rules: (1) **`ASTNodeType` is NOT append-only** — it is FIDDLE-regenerated from declaration order each build, so group the new attribute by category next to its sibling (codex flags insertion as a "renumbering blocker" — a false positive; cross-version module compat is the module-version gate, not AST declaration order). (2) A **new IR instruction DOES require bumping `k_maxSupportedModuleVersion`** (`slang-ir.h`, per its in-header comment) — separate from the stable-name table, and it forces a wide rebuild (batch it). (3) **`requireSPIRVCapability`/`requireSPIRVExecutionMode` are pure emission funnels** (add `OpCapability`/execution-mode words, dedup built in, no capdef-atom lookup) — you do NOT need `slang-capabilities.capdef` atoms just to emit a capability+extension+mode (`[earlydepthstencil]` uses none); adding capdef atoms drags in doc regeneration + capgen internal/external-pair validation, so skip unless you actually need front-end capability gating. Spec-conformance note: PostDepthCoverage requires EarlyFragmentTests, so auto-emit both (the funnel dedups), even though the bundled spirv-val only checks the Fragment model. Test with `//TEST:SIMPLE(filecheck=CHECK): -target spirv`; to assert "emitted exactly once" use `COUNT-1:` **plus** a following `-NOT:` of the same pattern (COUNT-1 alone does not catch a duplicate) ([adding a nullary entry-point attribute + SPIR-V execution mode: mirror earlydepthstencil across 9 sites](../learnings/1789107867239-adding-a-nullary-entry-point-attribute-spir-v-exec.md)).
+
 ## Builtin Variables and Memory-Access Masks
 
 `IRSPIRVAsmOperandBuiltinVar` is `hoistable=true` — cross-stage uses of the same builtin (e.g. compute + raygen sharing `SubgroupLocalInvocationId`) always collapse to a single inst via `_findOrEmitHoistableInst`. Adding a cache-key axis to `BuiltinSpvVarKey` for cross-stage differentiation is dead code under today's IR ([slang-spirv-asm-operand-builtinvar-is-hoistable-collapses-cross-stage](../learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md)).
@@ -86,7 +88,8 @@ The SPIR-V atomic emit has FOUR cross-layer gates keyed on address space. When a
 
 **groupshared-by-reference regression:** Lowering a `groupshared T arr[N]` parameter by-reference (to fix D3D TGSM loss) creates a `Workgroup` pointer that cannot cross a SPIR-V function boundary without `VariablePointers`. Fix: extend `GLSLResourceReturnFunctionInliningPass::shouldInline` (Khronos-gated) to also inline callees with a `groupshared`-rate parameter, keyed on `as<IRGroupSharedRate>(param->getRate())` not the value type ([groupshared by-reference param regresses Khronos SPIR-V; fix is Khronos-gated inlining keyed on param RATE](../learnings/1782237919713-groupshared-by-reference-param-regresses-khronos-s.md)).
 
-**Source learnings (25):**
+**Source learnings (26):**
+- [adding a nullary entry-point attribute + SPIR-V execution mode (`[postdepthcoverage]`): mirror `[earlydepthstencil]` across 9 sites; `ASTNodeType` is FIDDLE-regenerated (not append-only); a new IR op bumps `k_maxSupportedModuleVersion`; `requireSPIRVCapability`/`requireSPIRVExecutionMode` are pure emission funnels (no capdef atoms needed)](../learnings/1789107867239-adding-a-nullary-entry-point-attribute-spir-v-exec.md)
 - [slang-emit-spirv builtin-var cache and the volatile-set cache-hit trap](../learnings/1779612967874-slang-emit-spirv-builtin-var-cache-and-the-volatil.md)
 - [IRSPIRVAsmOperandBuiltinVar is hoistable — cross-stage builtin refs always collapse to one inst](../learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md)
 - [emitOperand(extraMask) after a user-supplied MemoryAccess word emits invalid SPIR-V](../learnings/1779617068760-slang-emit-spirv-extra-memoryaccess-word-grammar-b.md)

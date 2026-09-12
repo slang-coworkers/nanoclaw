@@ -41,6 +41,7 @@ type: nav
 - [Challenger Review Probes: Sweeps, Classifiers, Refcounts, Concurrency, and Census](concepts/agent-infra-f0909b0-challenger-review-probes.md)
 - [Codex-Critique Hazards and PR-Review Runner Reliability](concepts/agent-infra-f0909b0-codex-and-pr-review-runners.md)
 - [Composer, Spine, and Lego Coworker System](concepts/agent-infra-composer-spine-lego.md)
+- [Coworker Memory Persistence: Reap-Restore, OKF Relocation, and the Spine-Baked Write Path](concepts/agent-infra-coworker-memory-persistence.md)
 - [Diagnosing GitHub Auth in Coworker Containers (gh / OneCLI / App token)](concepts/agent-infra-f0909b0-github-auth-in-containers.md)
 - [Fleet Coordination: Persisting Commitments, Report Honesty, and Task Plumbing](concepts/agent-infra-f0909b0-fleet-coordination-and-reporting.md)
 - [Git Worktree Hygiene in a Shared-Clone Fleet](concepts/agent-infra-f0909b0-git-worktree-hygiene.md)

@@ -3,7 +3,7 @@ title: "Slang Autodiff & Differentiation: Internals and Design Rules"
 type: concept
 group: slang-autodiff-ir
 tags: [autodiff, differentiation, transpose, derivative-variants, purity, capability, member-methods, witness-tables]
-source_count: 12
+source_count: 13
 ---
 
 # Slang Autodiff & Differentiation: Internals and Design Rules
@@ -31,6 +31,12 @@ When `transposeLoad` extracts the differential field of a pair-typed loaded valu
 Three-site narrowing (transposeMakePair ~line 1700, materializeDifferentialPairGetElementGradients ~line 2660, transposeLoad ~line 1611) is **necessary but not sufficient**: even with all three guards, if `aggPrimalType` still carries the pair type, the `emitDAddOfDiffInstType` dispatch still picks `DiffPair.dadd` and reinstates the malformed IR one layer up. A fourth narrowing of `aggregatePrimalType` to `loadPairType->getValueType()` at the transposeLoad site is required ([slang autodiff transpose: narrowing the gradient at construction is not enough — the aggregation type drives dadd dispatch, and even all four narrowings may be insufficient](../learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md)). Even then, when the malformed pattern is `MakeDiffPair(<add>, <add>)` with `GetPrimal/GetDifferential` of `get_field(..., %differential)` chains, the synthesizer is the inlined `dadd` of a `DiffPair` arriving from a dispatch site outside the three patched locations — all `emitDAddOfDiffInstType` call sites need parallel narrowing.
 
 The best diagnostic shortcut: a one-shot `fprintf` in `emitFieldAccessor`'s `else { SLANG_UNEXPECTED(...) }` branch dumping `baseInst` and the parent function pinpoints the exact moment the malformed IR appears, far faster than `-dump-ir-before/-after`. The regression source for #11160 was commit `45ccce9a3` (2026-04-01) — the autodiff transpose/`dadd` dispatch refactor.
+
+## Checkpointing (primal-hoist): array dimension order must match addressing
+
+`bwd_diff` through two NESTED non-unrolled `[MaxIters]` loops with **unequal** iteration counts returned wrong input gradients (silent on CPU/Vulkan, `CUDA_ERROR_ILLEGAL_ADDRESS` on CUDA — slang#13000, a long-standing bug, not a regression). Root cause in `source/slang/slang-ir-autodiff-primal-hoist.cpp`: the per-iteration reverse-mode checkpoint array was **sized in the opposite dimension order from how it is addressed**. `getTypeForLocalStorage` folded `defBlockIndices` FORWARD with `getArrayType(elem, n)`, which wraps a new **outermost** dimension each step, so the outermost dim ended up sized by the OUTER loop's bound; but `emitIndexedStore/LoadAddressForVar` peel with `emitElementAddress`, which removes the **outermost** dim FIRST using `defBlockIndices[0]` = the INNER loop's counter (`getAllAncestorRegions` returns regions innermost-first). Result: outermost dim (sized by outer bound) indexed by inner counter → transposition; `inner>outer` overruns (OOB), `outer>inner` aliases (silent wrong), equal bounds happen to be correct — which is why the only pre-existing nested `[MaxIters]` test used equal bounds (17,17) and masked the bug. Fix (one site, PR #13002): reverse the fold in `getTypeForLocalStorage` so each dimension is sized by the same index that peels it; store/load stay consistent by construction. Invariant to document: **dimension `i` is both sized by AND indexed by `defBlockIndices[i]`**. Trigger nuance: the bug appears only when the per-iteration weight is CHECKPOINTED — read a differentiable input array through a `[Differentiable]` accessor; an inline-constant weight is recomputed in reverse (never stored → no bug), and a `no_diff` buffer load gives all-zero dx (unusable as a demonstration) ([nested-loop autodiff checkpoint transposition: primal-hoist array dim order must match the addressing order (#13000)](../learnings/1789109752943-nested-loop-autodiff-checkpoint-transposition-1300.md)).
+
+A reusable technique from the same work: a slang-test `.slang` file is consumed at RUNTIME (not compiled into the binary), so you can confirm an authored regression test FAILS at HEAD for the right reason using the already-built base-clone binary — zero build time — before spending ~20-30 min building your worktree with the fix. Run it with `-v verbose` (prints the actual computed `type: float` buffer) against a `[ForceUnroll]`/ground-truth control in the same kernel to read the wrong values, then build the worktree ONCE with the fix and confirm PASS.
 
 ## Derivative Variant Tracking: Use the Association API
 
@@ -76,7 +82,8 @@ Any recursive walk over witness-table-valued entries in Slang IR must carry a vi
 
 A second trap: recursing into arbitrary witness-table-valued entries also descends into associated-type conformance tables, not just base-interface inheritance entries — correctness rests on global key-uniqueness (one `IRStructKey` per requirement decl), which should be stated explicitly wherever the walk is defined.
 
-**Source learnings (12):**
+**Source learnings (13):**
+- [nested-loop autodiff checkpoint transposition (#13000/PR #13002): primal-hoist `getTypeForLocalStorage` sized the checkpoint array in the opposite dim order from `emitElementAddress` peeling; unequal `[MaxIters]` bounds OOB (CUDA) or silently alias; invariant = dim `i` sized by AND indexed by `defBlockIndices[i]`; confirm a repro fails at HEAD via the base binary + `-v verbose`, no build](../learnings/1789109752943-nested-loop-autodiff-checkpoint-transposition-1300.md)
 - [slang autodiff transpose: bare-diff gradient with DiffPair aggPrimalType causes crash](../learnings/1779432739908-slang-autodiff-transpose-bare-diff-gradient-with-d.md)
 - [slang autodiff transpose: aggregation type vs gradient narrowing — not enough with three sites](../learnings/1779432820940-slang-autodiff-transpose-aggregation-type-vs-gradi.md)
 - [slang propagateConstExpr's paramCount==callArgCount asserts BEFORE the autodiff pass](../learnings/1779369269598-slang-propagateconstexpr-s-paramcount-callargcount.md)

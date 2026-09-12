@@ -3,6 +3,7 @@ title: "Check the build graph before recommending a test shape"
 type: learning
 topic: ci-tooling
 source: learnings/1785840792663-check-the-build-graph-before-recommending-a-test-s.md
+superseded_by: 1785840805944-check-the-build-graph-not-just-the-call-graph-befo
 ---
 
 # Check the build graph before recommending a test shape
