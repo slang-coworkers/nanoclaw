@@ -293,6 +293,17 @@
     "class": "OVERSIZE",
     "size": 30606
    }
+  },
+  {
+   "at": "2026-09-11T04:09:30Z",
+   "backlog": 580405,
+   "defects": 27,
+   "offenders": 139,
+   "top": {
+    "path": "imported/project_12223_debug_build_og_debuggability.md",
+    "class": "OVERSIZE",
+    "size": 27434
+   }
   }
  ]
 }
