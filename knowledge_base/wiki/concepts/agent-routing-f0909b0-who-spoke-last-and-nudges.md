@@ -3,7 +3,7 @@ title: "Who spoke last?" and supervisor nudges — untrusted state claims, bot/h
 type: concept
 group: agent-routing
 tags: [supervisor, nudge, bot-detection, github-identity, scan-py, stale-state, watchdog-gate, false-positive, approval-authority]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -38,7 +38,11 @@ Two failures share a direction: a check whose FAILURE is indistinguishable from 
 
 The mirror of a false-positive nudge is an invented gate. One chain stalled a green, mergeable PR for two days by deciding a verification comment was "operator-gated," calling `ask_user_question`, timing out, and reporting the chain "blocked on an operator approval gap" — when its own memory held a superseding directive that comments post freely on the bot's own authority ([before reporting blocked-on-approval, GREP the policy store](../learnings/1786451909191-before-reporting-an-action-blocked-on-approval-gre.md)). An over-cautious decline has no failure signature (no command errors, no test goes red), so it escapes the audit loop that the opposite error would trigger within minutes. Before writing "blocked on operator approval": grep the policy store for that action's authority and quote the row; if no row exists say "authority unverified," not "blocked pending approval"; prefer attempting a revertable action (GitHub's own auth error is the real arbiter); and a permission-ask timeout is no information. A second nudge on the same stated blocker is a prompt to re-derive it from primary sources, not restate it.
 
-**Source learnings (9):**
+## A bot-PR re-approval unblock routes to the operator, not the fixer
+
+The opposite of an invented gate is a real structural limit that the fixer cannot route around itself. When a bot-authored (nv-slang-bot) Slang PR stalls one approving review short of merge — a maintainer's approval auto-dismissed by a later push (`reviewDecision=REVIEW_REQUIRED`, `mergeStateStatus=BLOCKED`) — the obvious unblock "ping the maintainer to re-approve" is one the fixer/bot **cannot** perform ([a bot-PR "nudge the maintainer to re-approve" unblock routes to the OPERATOR, not the fixer](../learnings/1789181517895-a-bot-pr-nudge-the-maintainer-to-re-approve-unbloc.md)). Two hard constraints (slang#12833, Sep 2026): the dev team has explicitly forbidden a maintainer @-mention or `--add-reviewer` on a bot-authored PR as spam, and user-facing GitHub writes (PR comments, status refresh) are operator-gated for the fixer. So the correct routing is **escalate to the operator (via parent)** with operator-actionable options: (a) the operator nudges the maintainer human-to-human (no spam concern), or (b) authorizes a no-ping status refresh (a comment with no @-mention). Do NOT expect the fixer to nudge or refresh — it is structurally unable. Reviewer corollary: the reviewer also doesn't post without the `<github-post-authorized />` marker, so it satisfies the system-of-record rule by reporting the diagnosis UP; the most useful thing it can supply is the behavior-preserving-delta reassurance (the delta since the maintainer's approved commit is comment+doc+test+refactor, no API/behavior change) — the rationale that makes the operator's re-approval ask trivial.
+
+**Source learnings (10):**
 
 - [a supervisor "non-bot spoke last" nudge is a CLAIM about state — verify with count-matched instruments](../learnings/1786452240492-approver-dispatch-a-supervisor-a-non-bot-spoke-las.md) — query `author{__typename}` on the union; enumerate fetched vs totalCount at both levels; invariants override routing context.
 - ["Did a human speak last?" — __typename alone is not enough](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md) — nv-slang-bot posts under two accounts (one is type=User); two-part test on numeric ids, not logins.
@@ -49,3 +53,4 @@ The mirror of a false-positive nudge is an invented gate. One chain stalled a gr
 - [a gate arm written as a negation reads a failed probe as the event](../learnings/1786363841744-a-gate-arm-written-as-a-negation-reads-a-failed-pr.md) — give a broken probe its own outcome; require identity non-empty; every trigger tightening needs a same-session positive control.
 - [a supervisor artifact check with an unpopulated input reports "no artifact" for 100% of chains](../learnings/1786409083102-a-supervisor-artifact-check-with-an-unpopulated-in.md) — a false "no artifact" manufactures duplicate work; distinguish failure from negative result; a never-written field is a silent 100% false rate.
 - [before reporting an action blocked-on-approval, GREP the policy store for that action's authority](../learnings/1786451909191-before-reporting-an-action-blocked-on-approval-gre.md) — an over-cautious decline has no failure signature; a timeout is no information; prefer attempting a revertable action.
+- [a bot-PR "nudge the maintainer to re-approve" unblock routes to the OPERATOR, not the fixer](../learnings/1789181517895-a-bot-pr-nudge-the-maintainer-to-re-approve-unbloc.md) — @-mention/--add-reviewer on a bot PR is forbidden spam and fixer writes are operator-gated; escalate to the operator; reviewer supplies the behavior-preserving-delta.

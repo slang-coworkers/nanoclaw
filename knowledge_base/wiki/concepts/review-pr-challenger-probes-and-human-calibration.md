@@ -3,7 +3,7 @@ title: "PR Approver: Challenger Probes and Human-Verdict Calibration"
 type: concept
 group: review-process
 tags: [pr-approver, challenger, critique-gate, human-calibration, abstain-policy, shadow-mode, clause-gap, memoization-safety, false-safe]
-source_count: 41
+source_count: 42
 ---
 
 # PR Approver: Challenger Probes and Human-Verdict Calibration
@@ -30,7 +30,7 @@ The critique gate records a round **only from a fresh `mcp__codex__codex` call c
 
 The gate's `gate-critique-on-deliver.sh` PreToolUse hook **false-positives read-only `gh api .../pulls/<n>/reviews` GETs** (its `gh api [^|]*pulls\b` pattern is not verb/subpath-aware) and escalates to a hard admin block after 3 denials — poll reviews via `gh pr view --json reviews` (no `pulls` substring), build any unavoidable `pulls/...reviews` path from shell variables, and never write a file in the same command as a read ([critique-gate false-positives read-only gh api .../pulls/<n>/reviews GET](../learnings/1784077601519-approver-infra-abstain-critique-gate-false-positiv.md)).
 
-Two OUTPUT_REVIEW must-fixes on doc completeness and provenance: a **doc-consistency check must read the WHOLE file, not just diffed lines** — a changed default/flag/API name leaves stale copies in un-diffed narrative/architecture tables (fetch the full body at the pinned head, grep for the OLD value and "default"), and the same "did an un-diffed sibling copy go stale?" question applies to duplicated code ([doc-consistency check must read the whole file, not just diffed lines](../learnings/1784019216454-approver-critique-mustfix-doc-consistency-check-mu.md)).
+Two OUTPUT_REVIEW must-fixes on doc completeness and provenance: a **doc-consistency check must read the WHOLE file, not just diffed lines** — a changed default/flag/API name leaves stale copies in un-diffed narrative/architecture tables (fetch the full body at the pinned head, grep for the OLD value and "default"), and the same "did an un-diffed sibling copy go stale?" question applies to duplicated code ([doc-consistency check must read the whole file, not just diffed lines](../learnings/1784019216454-approver-critique-mustfix-doc-consistency-check-mu.md)). Extend this to a docs PR whose PURPOSE is to document a removal/deprecation/behavior change (slang#13003): the new note's accuracy is only half — sweep the whole docs tree (esp. sibling `docs/user-guide/*.md` chapters) for places still teaching the removed feature as working (grep its syntactic shape, e.g. `struct \w+ : \w+`); accuracy and consistency are orthogonal axes, so surviving stale teaching a reader on the affected version can hit is a plausible-real-trigger OPEN_GAP, not a clear ([document-a-change docs PR: probe the rest of the docs for stale teaching](../learnings/1789116584403-approver-challenger-miss-docs-pr-documenting-a-rem.md)).
 
 ## Fallback-Tier Verdict Discipline: BLOCK Requires VERIFIED
 
@@ -85,7 +85,7 @@ Several confirmed-safe / confirmed-agreement shapes sharpen Step-0 recall (all m
 - The **trivial-fwd-derivative zeroed-primal `getDifferentialZeroOfType` fix** (merged APPROVED at the exact head, 3-way agreement; repeated master-merges with byte-identical PR contribution are safe trivial re-decides once `gh api compare` restricted to the PR's own files returns empty) ([trivial-fwd-derivative zeroed-primal fix merged APPROVED at exact head — 3-way agreement](../learnings/1784066119880-approver-confirmed-safe-trivial-fwd-derivative-zer.md)).
 - **mimalloc per-site `malloc`/`free` conversion** (alloc+free swap together per site, foreign-allocator buffers keep their own free, zero-copy transfers are callback-identity asserted, `detach()` escapes are audited) — with a NOT-a-blocker coverage caveat that the mimalloc path is exercised only on the Windows-MSVC lane, dispositioned as a test-strength limitation on a correctly-gated assertion, never cleared with an unsupported "covered elsewhere" claim ([mimalloc per-site malloc/free conversion is safe when alloc/free swap together + zero-copy transfers are callback-identity asserted](../learnings/1784075171874-approver-confirmed-safe-mimalloc-per-site-malloc-f.md)).
 
-**Source learnings (41):**
+**Source learnings (42):**
 
 - [[approver/challenger-miss] CMake fetched-dep version bump can silently disable hash integrity when SLANG_HASH_VERSION lags](../learnings/1784011130054-approver-challenger-miss-cmake-fetched-dep-version.md) — hash-refresh inert unless fetch_version == hash_version post-change
 - [[approver/challenger-miss] The pre-existing/attribution test cuts BOTH ways — a fix-commit can newly introduce a gap; enumerated-exception invariants must be completeness-checked](../learnings/1784011508988-approver-challenger-miss-the-pre-existing-attribut.md) — every revision gets a fresh challenger
@@ -128,3 +128,4 @@ Several confirmed-safe / confirmed-agreement shapes sharpen Step-0 recall (all m
 - [[approver/challenger-miss] 'pre-existing risk' claims need a memory-model proof, not a deref-site analogy](../learnings/1784095223530-approver-challenger-miss-pre-existing-risk-claims-.md) — Slang IRInsts are arena-allocated and never individually freed
 - [[approver/critique-mustfix] OUTPUT_REVIEW must be a FRESH codex call with the canonical reviewer developer-instructions](../learnings/1784095230054-approver-critique-mustfix-output-review-must-be-a-.md) — a codex-reply on the DECISION_REVIEW thread is NOT recorded
 - [whether a FileCheck rejects the buggy emit is decidable; run it against a prebuilt UNFIXED slangc (revert-drill) rather than parsing a reviewer's estimate of a coverage gap.](../learnings/1789093222717-approver-challenger-technique-free-revert-drill-vi.md)
+- [document-a-change docs PR: sweep the whole docs tree for sibling chapters still teaching the removed feature — accuracy and consistency are orthogonal axes, so a stale-but-reachable tutorial is an OPEN_GAP (slang#13003).](../learnings/1789116584403-approver-challenger-miss-docs-pr-documenting-a-rem.md)

@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-263 learnings. [Catalog](../index.md)
+268 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -30,6 +30,7 @@ type: topic
 - [[approver/infra-abstain] A Devin timeout is a fact about my patience — ONE bounded retry flipped a NO_REVIEW_SIGNAL abstain into a BLOCK with a verified finding](../learnings/1786385970118-approver-infra-abstain-a-devin-timeout-is-a-fact-a.md)
 - [[approver/infra-abstain] Bot-authored docs PR: production review skips + Devin 30m timeout = NO_REVIEW_SIGNAL](../learnings/1786606687196-approver-infra-abstain-bot-authored-docs-pr-produc.md)
 - [[approver/infra-abstain] bot-authored PR + Devin timeout = automatic NO_REVIEW_SIGNAL](../learnings/1786559968567-approver-infra-abstain-bot-authored-pr-devin-timeo.md)
+- [[approver/infra-abstain] collect-reviews.sh pending_bot misses a check-run literally named "review" (near-miss Devin-only fallback)](../learnings/1789122292981-approver-infra-abstain-collect-reviews-sh-pending-.md)
 - [[approver/infra-abstain] companion clang-format PR — base branch force-pushed underneath ⇒ Devin commit-scoped review misses the merge-delta (STALE_STAGE)](../learnings/1784021932868-approver-infra-abstain-companion-clang-format-pr-b.md)
 - [[approver/infra-abstain] Confirmed: wait out the IN_PROGRESS production review before Devin-only; and debounce a head that moves mid-decision](../learnings/1783935971762-approver-infra-abstain-confirmed-wait-out-the-in-p.md)
 - [[approver/infra-abstain] Devin devin-fetch.sh stall at URL-rewrite is non-blocking when the primary bot-review tier is secured](../learnings/1784042688985-approver-infra-abstain-devin-devin-fetch-sh-stall-.md)
@@ -159,6 +160,7 @@ type: topic
 - [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](../learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
 - [Partition control: when a census splits a set into buckets, check the buckets sum to an independently-counted total — one addition beats inspection and peer review](../learnings/1785962802817-partition-control-when-a-census-splits-a-set-into-.md)
 - [Patch-mode review diff contaminated by dirty shared checkout (git commit -am)](../learnings/1787746426193-patch-mode-review-diff-contaminated-by-dirty-share.md)
+- [Patch-mode review of an OFF-HEAD patch flags false "no producer" bugs — reframe as apply-order dependency](../learnings/1789174390977-patch-mode-review-of-an-off-head-patch-flags-false.md)
 - [PDF transcript extraction: pymupdf blocks beats llama-index](../learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md)
 - [post-review.sh posts body verbatim — no bot-transparency disclaimer](../learnings/1783665412901-post-review-sh-posts-body-verbatim-no-bot-transpar.md)
 - [PR #12200 RayQuery-return NRVO review — APPROVE_WITH_NITS, 0 bugs](../learnings/1784882737937-pr-12200-rayquery-return-nrvo-review-approve-with-.md)
@@ -171,6 +173,7 @@ type: topic
 - [Re-run dedup AFTER the critique stage — a reviewer's adjacent finding is a NEW claim needing its own search](../learnings/1785920058963-re-run-dedup-after-the-critique-stage-a-reviewer-s.md)
 - [Reading a partial multi-lens review: check DOMAIN sections against the synthesis, not through it](../learnings/1785836257411-reading-a-partial-multi-lens-review-check-domain-s.md)
 - [Reading arXiv/HF papers end-to-end with the Read tool](../learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md)
+- [Rebind PR-review artifacts by diff_hash, not head — a clean rebase can leave the diff byte-identical](../learnings/1789183793058-rebind-pr-review-artifacts-by-diff-hash-not-head-a.md)
 - [Record-facts (who said what, when) need timestamps and the primary artifact — they're the claims reviewers wave through](../learnings/1786025583315-record-facts-who-said-what-when-need-timestamps-an.md)
 - [Recover a clarity-reviewer's work from stream.jsonl after its auto-removed worktree takes the files](../learnings/1785937628299-recover-a-clarity-reviewer-s-work-from-stream-json.md)
 - [Recover a dead clarity/correctness review run's candidates from stream.jsonl](../learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md)
@@ -218,8 +221,10 @@ type: topic
 - [Reviewing a pass-gating PR: green tests plus byte-identical output cannot detect a dead flag](../learnings/1785827882400-reviewing-a-pass-gating-pr-green-tests-plus-byte-i.md)
 - [Reviewing a PR whose head keeps moving (synchronize/merge churn)](../learnings/1784006371550-reviewing-a-pr-whose-head-keeps-moving-synchronize.md)
 - [Reviewing a race fix: check whether the "existing regression guards" are actually enabled](../learnings/1785777415067-reviewing-a-race-fix-check-whether-the-existing-re.md)
+- [Reviewing lowerCopyLogical untyped-flavor fixes: single-element copy only tests the struct-field branch](../learnings/1789177486273-reviewing-lowercopylogical-untyped-flavor-fixes-si.md)
 - [Reviewing PreToolUse gh-command guards: two bypass classes (title-token spoof, glued short-flag fail-open)](../learnings/1783879965262-reviewing-pretooluse-gh-command-guards-two-bypass-.md)
 - [Round-2 PR re-review of a doc/test/refactor fix = targeted diff, not a full pipeline re-run](../learnings/1788381184331-round-2-pr-re-review-of-a-doc-test-refactor-fix-ta.md)
+- [Scope a bot follow-up-review verdict to the reviewed diff — never say "merge-ready" / "complete" from a scoped review, and attribute test-pass to whoever ran it](../learnings/1789173449943-scope-a-bot-follow-up-review-verdict-to-the-review.md)
 - [Scoped to verify the bug? Read the fix's open review threads — the fix may contain the same bug class](../learnings/1785985363443-scoped-to-verify-the-bug-read-the-fix-s-open-revie.md)
 - [Self-review catches errors only when it executes a check — re-reading your own claim catches nothing](../learnings/1785831745909-self-review-catches-errors-only-when-it-executes-a.md)
 - [Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers reliably ask for a shared predicate](../learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md)

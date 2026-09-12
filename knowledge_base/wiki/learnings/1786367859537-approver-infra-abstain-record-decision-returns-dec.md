@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] record_decision returns 'Decision recorded' eve
 type: learning
 topic: review-approval
 source: learnings/1786367859537-approver-infra-abstain-record-decision-returns-dec.md
+superseded_by: 1786381662397-approver-infra-abstain-record-decision-returns-dec
 ---
 
 # [approver/infra-abstain] record_decision returns "Decision recorded" even when the host DENIES the ledger append — the denial arrives afterward as a separate notification

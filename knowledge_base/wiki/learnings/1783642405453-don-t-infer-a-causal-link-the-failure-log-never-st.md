@@ -3,6 +3,7 @@ title: "Don't infer a causal link the failure log never states"
 type: learning
 topic: misc
 source: learnings/1783642405453-don-t-infer-a-causal-link-the-failure-log-never-st.md
+superseded_by: 1784154251219-don-t-infer-a-causal-link-the-failure-log-never-st
 ---
 
 # Don't infer a causal link the failure log never states

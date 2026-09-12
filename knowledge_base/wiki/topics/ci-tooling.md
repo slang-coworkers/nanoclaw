@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-447 learnings. [Catalog](../index.md)
+450 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -222,6 +222,7 @@ type: topic
 - [Coworker bots may not modify .github/workflows — flag before building](../learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md)
 - [cp -p is right for a backup and WRONG for a restore — it makes the rebuild a silent no-op](../learnings/1786065965506-cp-p-is-right-for-a-backup-and-wrong-for-a-restore.md)
 - [Cross-check your CI red set against statusCheckRollup — it found 2 more holes in my already-fixed filter](../learnings/1786028676488-cross-check-your-ci-red-set-against-statuscheckrol.md)
+- [Cross-repo integration CI red on a bot PR is usually version skew, not a code bug](../learnings/1789151785364-cross-repo-integration-ci-red-on-a-bot-pr-is-usual.md)
 - [CUDA diagnostic tests: use -target cuda not -target ptx (ptx needs nvrtc, absent on CPU CI runners)](../learnings/1787351942939-cuda-diagnostic-tests-use-target-cuda-not-target-p.md)
 - [D3D12 device-removal cascade can masquerade as CI infra flake — trace the FIRST failure, not a spot-check](../learnings/1785359117251-d3d12-device-removal-cascade-can-masquerade-as-ci-.md)
 - [Daily-report CI: health_snapshots.jsonl last line can be badly stale — cross-check with Actions API](../learnings/1784017364046-daily-report-ci-health-snapshots-jsonl-last-line-c.md)
@@ -300,6 +301,7 @@ type: topic
 - [If an action returns a receipt, cite the receipt — never let prose stand where a message id belongs](../learnings/1785863490260-if-an-action-returns-a-receipt-cite-the-receipt-ne.md)
 - [Implicit CountOf sentinel aliases an option when a concurrent-PR renumber breaks textual value-order](../learnings/1782853815255-implicit-countof-sentinel-aliases-an-option-when-a.md)
 - [INDEX.md is a build output derived from leaf openings — a retraction banner must be IN the leaf, and EROFS means you must get it right on first write](../learnings/1786172024659-index-md-is-a-build-output-derived-from-leaf-openi.md)
+- [Inline-buffer over-read: validate copy length vs capacity, NOT offset+length](../learnings/1789179069634-inline-buffer-over-read-validate-copy-length-vs-ca.md)
 - [Internal a2a review ≠ GitHub reviewDecision](../learnings/1782148692608-internal-a2a-review-github-reviewdecision.md)
 - [Keying a CI flake cost tally on the RUNNER HOST over-counts when two defects share the box](../learnings/1785917535341-keying-a-ci-flake-cost-tally-on-the-runner-host-ov.md)
 - [LeakSanitizer regression verification blocked by unrelated infra flake](../learnings/1787071797412-leaksanitizer-regression-verification-blocked-by-u.md)
@@ -309,6 +311,7 @@ type: topic
 - [Look for a sibling run at the SAME commit before reasoning about a CI failure's cause — and a rerun only informs if the step under test actually ran](../learnings/1786041527710-look-for-a-sibling-run-at-the-same-commit-before-r.md)
 - [MakeVectorFromScalar getScalarValue() reads getOperand(2) but builder emits 1 operand](../learnings/1785334765218-makevectorfromscalar-getscalarvalue-reads-getopera.md)
 - [MakeVectorFromScalar scalar is getOperand(0), NOT getScalarValue() — Lua schema (3 ops) diverges from the 1-operand builder](../learnings/1785335653192-makevectorfromscalar-scalar-is-getoperand-0-not-ge.md)
+- [Manually dispatching ci.yml on a DRAFT slang PR produces a spurious test-falcor failure (missing build artifact)](../learnings/1789147576274-manually-dispatching-ci-yml-on-a-draft-slang-pr-pr.md)
 - [Measure a Slang perf regression with official release binaries, not a local build — plus the three-platform trap](../learnings/1785930383942-measure-a-slang-perf-regression-with-official-rele.md)
 - [Measure CI freshness by failing-check started_at, not just head commit date](../learnings/1785809336773-measure-ci-freshness-by-failing-check-started-at-n.md)
 - [Merge-group build break with green head = merge-time collision, legitimate not flake](../learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)

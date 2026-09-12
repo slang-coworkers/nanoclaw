@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] record_decision returns a success STRING while 
 type: learning
 topic: review-approval
 source: learnings/1786378436661-approver-infra-abstain-record-decision-returns-a-s.md
+superseded_by: 1786463030860-approver-infra-abstain-record-decision-returns-a-s
 ---
 
 # [approver/infra-abstain] record_decision returns a success STRING while the host denies the write (APPROVAL_LEDGER_WRITERS unset) — 4th+ occurrence
