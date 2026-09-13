@@ -3,7 +3,7 @@ title: Devin review-signal reliability — freshness, false positives, and low-i
 type: concept
 group: review-process
 tags: [approver, challenger, devin, staleness, head-currency, commit-match, devin-fetch, fallback-tier, false-positive, positive-control, reachability, coverage]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -143,6 +143,20 @@ bindless-heap regression coverage for #9870. A clean Devin verdict on a test tha
 a dereference/Sample/Load/assertion is byte-identical to a safe one — apply the revert
 drill: would the test still FAIL on the pre-fix state?
 [Devin rubber-stamps coverage-reducing bot test PRs](../learnings/1788207835532-approver-challenger-miss-devin-rubber-stamps-cover.md).
+This echo dynamic also governs how to read an apparent Reviewer-A↔Reviewer-B *disagreement*
+at the merge step: Devin's `## AI Analysis` section frequently reproduces the PR author's
+Motivation/Change-summary prose almost verbatim, so when its `## Bugs`/`## Flags`/`## Informational`
+lists are all empty, the narrative above them is NOT an independent audit — it can restate
+an incorrect PR claim as if verified. On slang#13036 the PR's file-header comment claimed
+builtin `dot` "lowers through a `GenericAsm` terminator"; Reviewer A source-verified against
+the subsystem's own existing test that `dot` in fact dispatches through a witness table and is
+unresolved before `specializeModule` (the opposite), while Devin's narrative repeated the PR's
+wording and flagged nothing. Rule: when A and B appear to disagree on a *factual* claim and B's
+position is only an echo in its narrative with no corresponding Bug/Flag, trust A's source-verified
+finding and surface it as "1 disagreement — A source-verified, B narrative echoes PR wording," not
+a genuine two-sided contradiction the human must adjudicate blind; B's real signal is its
+Bugs/Flags/Informational lists, never the AI-analysis paraphrase
+[Devin (Reviewer B) narrative often echoes the PR description — don't treat it as independent verification](../learnings/1789227249869-devin-reviewer-b-narrative-often-echoes-the-pr-des.md).
 
 ## Devin false-positive 🔴s: rules, pre-existing code, and capability facts
 
@@ -205,7 +219,7 @@ Real execution leaves logs/durations/exit codes; the only build control that cou
 own conclusion or a binary you can point at
 [Don't launder an AI-review 'Testing' block into an executed positive control](../learnings/1787953818152-approver-critique-mustfix-don-t-launder-an-ai-revi.md).
 
-**Source learnings (19):**
+**Source learnings (20):**
 - [Verify Devin head-currency on dependency-ordered draft→ready PRs](../learnings/1787906963169-approver-critique-mustfix-verify-devin-head-curren.md) — draft-era Devin analysis stamped head-current; re-run pinned + read freshness widget + prose tells + live cross-check.
 - [master-merge head + Devin commit-status unknown ⇒ head-current unverifiable](../learnings/1787914554673-approver-infra-abstain-master-merge-head-devin-com.md) — Devin bound to pre-merge commit; content byte-identity is not the head-current review check; ABSTAIN NO_REVIEW_SIGNAL.
 - [Devin lags rapid force-pushes; cross-check shown diff vs your head read](../learnings/1788154569520-approver-infra-abstain-devin-lags-rapid-force-push.md) — Devin cached superseded push; immaterial doc-only delta must not burn STALE_STAGE; rate-limit wait + re-resolve head.
@@ -225,3 +239,4 @@ own conclusion or a binary you can point at
 - [Calibration: Devin 'device-creation breaks' on coop-mat2 #852 was likely FP](../learnings/1788465294331-approver-challenger-miss-calibration-devin-device-.md) — human silent on it + Devin self-resolved; don't anchor a durable prior on one unverified Devin 🔴.
 - [Devin false-positive 'broken tests bypass nightly failures' on expected-failures.txt](../learnings/1788872770328-approver-challenger-calibration-devin-false-positi.md) — adding keys is the safe direction; per-run non-determinism; BLOCK needs a deleted test / removed CHECK.
 - [Don't launder an AI-review 'Testing' block into an executed positive control](../learnings/1787953818152-approver-critique-mustfix-don-t-launder-an-ai-revi.md) — Devin "Testing" section echoed the PR body; only CI's conclusion or a real build counts as a control.
+- [Devin (Reviewer B) narrative often echoes the PR description — don't treat it as independent verification](../learnings/1789227249869-devin-reviewer-b-narrative-often-echoes-the-pr-des.md) — slang#13036 A source-verified the PR's `dot`/`GenericAsm` claim false while B's AI-analysis repeated it; an A↔B "disagreement" with no B Bug/Flag is a B blind spot, not a two-sided contradiction.

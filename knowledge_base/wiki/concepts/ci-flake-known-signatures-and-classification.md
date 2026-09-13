@@ -3,7 +3,7 @@ title: "CI Flake Triage — Classification and Known Signatures"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, classification, known-signatures, xpass, check-cmdline-ref, merge-group, falcor, slang-rhi, json-rpc, priority-yield, metal4, gpu-printing, aarch64, slang]
-source_count: 24
+source_count: 25
 ---
 
 # CI Flake Triage — Classification and Known Signatures
@@ -21,6 +21,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - **Do-NOT-rerun / escalate signatures:** Falcor "Unknown VCS root" (systemic infra); cooperative-vector hlsl-codegen DXC mismatch; `.slang-module` gen with `E99997`/SIGABRT (real assert); base-branch WASM `LanguageServerCore`/`WorkspaceVersion` link regression.
 - **Bot-CI `ci_failed` with everything `skipped` + only `wait-for-human-priority`/`check-ci` failing is a priority-yield** — `retry-yielded-bot-ci.yml` self-heals it (narrowly: `--lookback-hours 16`, `--max-attempts 30` age-independent, skips superseded dispatches, reruns `--max-reruns 1` chosen oldest by `run_number`). Do NOT rerun.
 - **A JSON-RPC (`waitForResult()`/`hasMessage()`) failure is a test-server child crash symptom, not an RPC-infra bug** — dedup by run id and separate the genuine harness flake from a PR's own crashing test and from GPU device-loss before counting.
+- **The nightly `agentic-tests` job is advisory doc-bundle drift, never a compiler regression** — it runs the doc-anchored `docs/generated/tests` corpus (not `tests/`), is non-blocking, and reds are golden-snapshot drift from breaking-change PRs; the fix is periodic bundle regeneration, not a new tracking issue per drift instance.
 
 ## Classifying Failures: Flake vs. Legitimate
 
@@ -41,6 +42,8 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 **check-cmdline-ref failures are always deterministic** — a rerun will never clear them. They are almost always caused by the PR itself (changes to `slang-options.cpp` without regenerating docs, or an incorrect doc edit) rather than master-wide staleness ([Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)).
 
 **An aarch64-ONLY deterministic test-slang CHECK failure — all aarch64 jobs (macOS + linux, debug + release) red while x86_64 is fully green — is very likely an env-dependent SPIR-V disassembly token, not an arch emit bug or golden-shift.** The aarch64 `test-slang` jobs export `SLANG_USE_SPV_SOURCE_LANGUAGE_UNKNOWN=1` (a swiftshader workaround) so `OpSource` disassembles as `OpSource Unknown 1 …` there vs `OpSource Slang 1 …` on x86_64; a FileCheck hardcoding `OpSource Slang` fails aarch64-only. It is still author-owned (the fix is a test-only CHECK relax to a regex alternation like `OpSource {{Slang|Unknown}} 1 …`) and NOT rerun-clearable — do not classify it as a golden-shift on the PR's own tests, since the emit is correct and only the disasm token varies by env ([aarch64-only test-slang CHECK failure = env-dependent SPIR-V disasm token, not an arch bug or golden-shift](../learnings/1784830954472-aarch64-only-test-slang-check-fails-env-token-not-.md)).
+
+**The nightly `agentic-tests` job is advisory doc-bundle drift, not a compiler regression.** When shader-slang/slang's "Nightly Slang Test" workflow fails on master, its sole job is `agentic-tests`, which runs `slang-test -test-dir docs/generated/tests` — an LLM-generated, doc-anchored regression corpus that is **advisory-only and never blocks PRs**. It is NOT the real compiler suite (`tests/`), and its reds do not imply a compiler regression: the corpus drifts out of sync every time an intentional/breaking-change PR lands without regenerating the bundle's golden snapshots (IR-dump text, codegen output). Diagnose by confirming the failing job is `agentic-tests` (`gh api …/runs/<run>/jobs`), pulling `--log-failed` for the `N failing tests:` block, and diffing each failure's `// CHECK:` expected line vs the "possible intended match here" actual line — usually a one-token golden diff (e.g. `0 : Int` vs `0 : Enum(Int)`). Map each token diff to a specific breaking-change PR via `gh api …/compare/<last-green-sha>...<red-sha>`. If every failure maps to a disclosed, reviewed PR and the diffs are golden-snapshot-shaped (not crashes/asserts/wrong-output for unrelated reasons), classify as bundle drift — the durable fix is periodic bundle regeneration, **not** filing a new tracking issue per drift instance (precedent: issue #12351) ([nightly agentic-tests failures are advisory doc-bundle drift, not compiler regressions](../learnings/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md)).
 
 ## Known Flake Signatures
 
@@ -70,7 +73,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **`static-const-matrix-array.slang.3 syn (llvm)` RPC drop / SIGSEGV — env-specific + intermittent, harness-retry is not a fix.** The `.3 syn (llvm)` synthesized LLVM-JIT variant crashes the test-server child (surfacing as a `waitForResult()`/`hasMessage()` JSON-RPC drop on GPU jobs, or a direct SIGSEGV core-dump on the CPU job) — a child-crash symptom, not an RPC-layer bug. Adding retry/reconnect is a dead end: nothing to reconnect to after a crashed child, and in merge_group runs the test drops on both the initial pass AND the harness retry, ending as a hard FAILED that evicts the queue (unrecoverable by rerun) while a head-check run that never triggers the crash stays green — that's why it "clears on rerun" yet still evicts. The shader is trivial/stable (not a compiler regression); root-causing needs a Windows-debug + server-count-8 repro not reproducible GPU-free. Apply NEITHER `reproduced` nor `not reproduced` for an env-specific intermittent flake; note the limitation ([static-const-matrix-array .3 syn(llvm) RPC drop: harness-retry is NOT a fix; #11951 is the Signature-B tracking issue](../learnings/1783340384337-static-const-matrix-array-3-syn-llvm-rpc-drop-harn.md)). Two *separately tracked* buckets — #11951 Sig-B (GPU RPC drop) and #11955 (CPU SIGSEGV) — converge on this same test+variant, and the GPU "IPC drop" is the classic signature of the test-server process crashing; they *may* be one bug seen in two process topologies, but keep them tracked SEPARATELY until a maintainer confirms via backtrace (CI uploads no symbolic core dump, so evidence proves the crash is *at* this test, not the fault frame) ([#11951 Sig-B and #11955 CPU SIGSEGV converge on static-const-matrix-array.slang.3 syn (llvm)](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)).
 
-**Source learnings (24):**
+**Source learnings (25):**
 - [CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [WASM build failures are usually real linker errors](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
 - [a benign DWARF ld-note can mask the real undefined-reference cause; don't classify a link failure off the first "error" line](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
@@ -95,4 +98,5 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - [slang#11999 gpu-printing macOS flake — verify CI signature, don't trust bot conflation](../learnings/1783548983571-slang-11999-gpu-printing-macos-flake-verify-ci-sig.md)
 - [static-const-matrix-array .3 syn(llvm) RPC drop: harness-retry is NOT a fix; #11951 is the Signature-B tracking issue](../learnings/1783340384337-static-const-matrix-array-3-syn-llvm-rpc-drop-harn.md)
 - [#11951 Sig-B and #11955 CPU SIGSEGV converge on static-const-matrix-array.slang.3 syn (llvm)](../learnings/1783527380806-11951-sig-b-and-11955-cpu-sigsegv-converge-on-stat.md)
+- [Slang nightly agentic-tests failures are advisory doc-bundle drift, not compiler regressions](../learnings/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md)
 _Catalog: [[wiki/index.md]]_

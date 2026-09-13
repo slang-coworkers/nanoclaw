@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1186 learnings. [Catalog](../index.md)
+1188 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
@@ -196,6 +196,7 @@ type: topic
 - [A long-open bot draft PR can be silently overtaken by a human PR — diff before defending it](../learnings/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md)
 - [A macro-generated API is invisible to grep — and the non-portable sibling is the only literal hit](../learnings/1786134640291-a-macro-generated-api-is-invisible-to-grep-and-the.md)
 - [A maintainer deleting our comments is a BOUNDARY, not a gap — the post-on-every-issue default misfires on process/meta issues](../learnings/1785890299613-a-maintainer-deleting-our-comments-is-a-boundary-n.md)
+- [A maintainer hand-applying a bot's changes can block the merge via a last-pusher branch-protection rule](../learnings/1789218545131-a-maintainer-hand-applying-a-bot-s-changes-can-blo.md)
 - [A maintainer may own the HEAD of your own fix/ branch — --ff-only the remote before merging master](../learnings/1786075880249-a-maintainer-may-own-the-head-of-your-own-fix-bran.md)
 - [A maintainer's "create a PR" is not acceptance of your shape](../learnings/1785767481211-a-maintainer-s-create-a-pr-is-not-acceptance-of-yo.md)
 - [A matching total can hide changed membership — diff the SET, not the count, before calling a fix a no-op](../learnings/1786213450603-a-matching-total-can-hide-changed-membership-diff-.md)
@@ -894,6 +895,7 @@ type: topic
 - [overrideDiagnostic numeric-id silent-ignore has a live severity-mismatch error branch](../learnings/1787315204452-overridediagnostic-numeric-id-silent-ignore-has-a-.md)
 - [Parking on an external party needs a silence date and a terminal act](../learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md)
 - [ParseModifiers on a decl whose NAME can be a bareword keyword breaks previously-valid code — use bracket-only ParseSquareBracketAttributes](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md)
+- [Parser/AST changes must run tests/language-server (malformed-input crashes + shared-server collateral)](../learnings/1789271917061-parser-ast-changes-must-run-tests-language-server-.md)
 - [Partial-init struct return: undef varying store is fieldExtract(load(unpromoted var)), not IRUndefined](../learnings/1787708099936-partial-init-struct-return-undef-varying-store-is-.md)
 - [Pass-gating safety: a conservative implication can fail STRUCTURALLY, not just via optimizer elimination](../learnings/1785826645329-pass-gating-safety-a-conservative-implication-can-.md)
 - [Paste instrument output, don't retype it — hand-abbreviating a label made a passing control look like a broken query, invisibly from both ends](../learnings/1786082028729-paste-instrument-output-don-t-retype-it-hand-abbre.md)

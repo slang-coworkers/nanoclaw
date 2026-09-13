@@ -4083,6 +4083,7 @@
 - [supervise issues suppress nudges on maintainer own](ag-1776713211742-1w6l4e/1789252641916-supervise-issues-suppress-nudges-on-maintainer-own.md) — _ag-1776713211742-1w6l4e_
 - [supervise issues pull universe sh step 1b cost cap](ag-1776713211742-1w6l4e/1789265266088-supervise-issues-pull-universe-sh-step-1b-cost-cap.md) — _ag-1776713211742-1w6l4e_
 - [supervise issues scan py over flags awaiting us fr](ag-1776713211742-1w6l4e/1789265524383-supervise-issues-scan-py-over-flags-awaiting-us-fr.md) — _ag-1776713211742-1w6l4e_
+- [critique gate bypass is a human dashboard approval](ag-1776713211742-1w6l4e/1789272925575-critique-gate-bypass-is-a-human-dashboard-approval.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4171,6 +4172,7 @@
 - [spvdb unique id assertion on macos debug aarch64 r](ag-1776713259045-nax3cr/1789179963682-spvdb-unique-id-assertion-on-macos-debug-aarch64-r.md) — _ag-1776713259045-nax3cr_
 - [github check run names for slang test jobs carry a](ag-1776713259045-nax3cr/1789250441329-github-check-run-names-for-slang-test-jobs-carry-a.md) — _ag-1776713259045-nax3cr_
 - [ci babysitter parent handles fix dispatch i only d](ag-1776713259045-nax3cr/1789251734550-ci-babysitter-parent-handles-fix-dispatch-i-only-d.md) — _ag-1776713259045-nax3cr_
+- [ci babysitter terse sweep log can omit a second co](ag-1776713259045-nax3cr/1789280676488-ci-babysitter-terse-sweep-log-can-omit-a-second-co.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4511,6 +4513,7 @@
 - [slang third party bsd mit license notice complianc](ag-1780667166418-apezq5/1789218594018-slang-third-party-bsd-mit-license-notice-complianc.md) — _ag-1780667166418-apezq5_
 - [gh cli invalid gh token post github comments via t](ag-1780667166418-apezq5/1789225036565-gh-cli-invalid-gh-token-post-github-comments-via-t.md) — _ag-1780667166418-apezq5_
 - [verify documented compiler version sh exit 4 on wi](ag-1780667166418-apezq5/1789252710427-verify-documented-compiler-version-sh-exit-4-on-wi.md) — _ag-1780667166418-apezq5_
+- [nvrtc pch for cuda prelude shipped pr 12880 findin](ag-1780667166418-apezq5/1789272870056-nvrtc-pch-for-cuda-prelude-shipped-pr-12880-findin.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4930,6 +4933,9 @@
 - [draft bot pr ci stays in github actions waiting pr](ag-1780667166439-vmjrwe/1789265530355-draft-bot-pr-ci-stays-in-github-actions-waiting-pr.md) — _ag-1780667166439-vmjrwe_
 - [gh run rerun failed is blocked while a bot pr ci r](ag-1780667166439-vmjrwe/1789265883183-gh-run-rerun-failed-is-blocked-while-a-bot-pr-ci-r.md) — _ag-1780667166439-vmjrwe_
 - [rebuild after a git checkout revert drill before q](ag-1780667166439-vmjrwe/1789266604298-rebuild-after-a-git-checkout-revert-drill-before-q.md) — _ag-1780667166439-vmjrwe_
+- [parser ast changes must run tests language server ](ag-1780667166439-vmjrwe/1789271917061-parser-ast-changes-must-run-tests-language-server-.md) — _ag-1780667166439-vmjrwe_
+- [nv slang bot github app cannot push github workflo](ag-1780667166439-vmjrwe/1789272278255-nv-slang-bot-github-app-cannot-push-github-workflo.md) — _ag-1780667166439-vmjrwe_
+- [gh run rerun failed on an aged ci run fails on exp](ag-1780667166439-vmjrwe/1789274038560-gh-run-rerun-failed-on-an-aged-ci-run-fails-on-exp.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5081,6 +5087,7 @@
 - [slang spir v test vacuity a validation failure dis](ag-1780667168475-a9tac8/1789244351461-slang-spir-v-test-vacuity-a-validation-failure-dis.md) — _ag-1780667168475-a9tac8_
 - [slang cmake slang build mimalloc is unreachable at](ag-1780667168475-a9tac8/1789247912043-slang-cmake-slang-build-mimalloc-is-unreachable-at.md) — _ag-1780667168475-a9tac8_
 - [reviewing true ci tolerance shell prs check every ](ag-1780667168475-a9tac8/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md) — _ag-1780667168475-a9tac8_
+- [nvrtc pch review slang 12880 empty diagnostics nul](ag-1780667168475-a9tac8/1789272763883-nvrtc-pch-review-slang-12880-empty-diagnostics-nul.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

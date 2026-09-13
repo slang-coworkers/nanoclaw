@@ -3,7 +3,7 @@ title: "Slang Compiler Frontend and Semantic Checking"
 type: concept
 group: slang-grab-bag
 tags: [capability, require, memory-scope, lexer, escape-validation, synthesized-member, initExpr, AST, DeclRefExpr, MemberExpr, modifier-list, numthreads, semantic-checking, front-end]
-source_count: 9
+source_count: 10
 ---
 
 # Slang Compiler Frontend and Semantic Checking
@@ -48,9 +48,12 @@ In `source/slang/slang-ast-expr.h`, `VarExpr`, `MemberExpr`, and `StaticMemberEx
 
 `findModifier<T>()` (`slang-ast-base.h:737`) returns the *first* element of the decl's modifier linked list, but Slang builds that list in **reverse declaration order** — so first-in-list is the **last-written** source attribute. Empirically, three stacked `[numthreads(...)]` attributes emit the LAST one's `LocalSize`, so any "which duplicate/conflicting modifier wins" reasoning must be verified empirically, not assumed from source order ([Slang stores modifiers in reverse-declaration order; findModifier returns the last-written attribute](../learnings/1782905768996-slang-stores-modifiers-in-reverse-declaration-orde.md)). Related (issue #11881): duplicate `[numthreads]` is genuinely undiagnosed because `NumThreadsAttribute` is absent from `getModifierConflictGroupKind()` (falls to `default: NodeBase`), so the duplicate-modifier loop never fires; adding a `case ASTNodeType::NumThreadsAttribute` reuses the existing error E31202 — but watch the layout-synthesized `NumThreadsAttribute` added after the conflict loop.
 
+Fixing the producer applies to the parser too, and it decides which test suite must run. Changing the parser or AST (especially building new `Expr`/AST nodes) requires running `tests/language-server/` locally, not just `tests/diagnostics` + `tests/compute`: the language-server robustness tests feed malformed/partial source (e.g. `robustness-4.slang` is literally `[]`) and require the server to survive without crashing — a change clean on well-formed input can still crash on malformed input (#12674 was green locally on diagnostics+compute but failed 13 language-server tests in CI). The producer fix: `Parser::ReadToken(TokenType::Identifier)` on a mismatch returns the *mismatched* token WITHOUT advancing, so building a node from it (`varExpr->name = tok.getName()`) yields a null-named node that later crashes `CheckTerm`/lookup — guard construction on `tok.type == TokenType::Identifier` and leave the node null so downstream takes its null-safe path (similarly guard `parser->currentModule` before `->ownedScope` on the reflection/string-parse path, which `parseTermFromSourceFile` never sets). And know the harness: `slang-test -use-test-server` reuses server processes across tests, so ONE crashing test fails every other test on that server — a broad, non-deterministic, cross-platform failure set usually traces to a single crash; isolate by running suspects one at a time and find the one that fails *deterministically in isolation* ([parser/AST changes must run tests/language-server — malformed-input crashes + shared-server collateral](../learnings/1789271917061-parser-ast-changes-must-run-tests-language-server-.md)).
+
 ---
 
-**Source learnings (9):**
+**Source learnings (10):**
+- [Parser/AST changes must run tests/language-server (malformed-input crashes + shared test-server collateral)](../learnings/1789271917061-parser-ast-changes-must-run-tests-language-server-.md)
 - [capability flag vs [require]](../learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md)
 - [[require]-drop is silent runtime-divergence](../learnings/1781686744418-slang-11631-severity-require-drop-is-a-silent-runt.md)
 - [CORRECTION — both-arms-inert was scoped to the COOKED capability set only; five files read `getArray(CompilerOptionName::Capability)` directly, and `maybePromoteDescriptorHandleCapability` flips `descriptor_handle` promotion on metal/cuda/wgpu/cpu (promotion affects accept/reject, NOT sizing)](../learnings/1785751609559-correction-both-arms-inert-was-scoped-to-the-cooke.md)

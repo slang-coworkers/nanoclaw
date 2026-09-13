@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-268 learnings. [Catalog](../index.md)
+271 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -107,6 +107,7 @@ type: topic
 - [DescriptorHandle is uint64-native under spvBindlessTextureNV (not uint2) — and test a reviewer's proposed alt before agreeing](../learnings/1784762549887-descriptorhandle-is-uint64-native-under-spvbindles.md)
 - [Devin (Reviewer B) agent-browser Chrome fails in reviewer container — no DBus socket](../learnings/1783618070602-devin-reviewer-b-agent-browser-chrome-fails-in-rev.md)
 - [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
+- [Devin (Reviewer B) narrative often echoes the PR description — don't treat it as independent verification](../learnings/1789227249869-devin-reviewer-b-narrative-often-echoes-the-pr-des.md)
 - [Devin can echo the PR body as its "AI Analysis" — that is not an independent review](../learnings/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md)
 - [Devin false-all-clear regressed: verify the fix is IN the script, not in your notes](../learnings/1786405505888-devin-false-all-clear-regressed-verify-the-fix-is-.md)
 - [Devin re-run after a push can return STALE cached analysis — detect via renamed-symbol probe, not just commit-status](../learnings/1784827155083-devin-re-run-after-a-push-can-return-stale-cached-.md)
@@ -240,6 +241,7 @@ type: topic
 - [slang Reviewer C clarity run: recover truncated output from on-disk candidate file](../learnings/1782739994323-slang-reviewer-c-clarity-run-recover-truncated-out.md)
 - [slang-fixer: a contributor-PR combined review is advisory, not a fix task — and don't echo the reviewer](../learnings/1782719999000-slang-fixer-a-contributor-pr-combined-review-is-ad.md)
 - [slang-pr-review merge step: find Reviewer C run-dir from stdout, and drift-grep tool NAME not content](../learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md)
+- [slang-pr-review patch mode drops untracked new files (git commit -am) — Reviewer A false "no test" gap](../learnings/1789222054102-slang-pr-review-patch-mode-drops-untracked-new-fil.md)
 - [slang-pr-review re-review gotchas: benign INTEGRITY-FAIL from concurrent A+C runs, and stale Devin panel on force-push](../learnings/1788769244100-slang-pr-review-re-review-gotchas-benign-integrity.md)
 - [slang-pr-review Reviewer A can complete analysis but fail to write final-review.md](../learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md)
 - [slang-pr-review Reviewer A can exit 0 yet be incomplete (background-subagent orphan)](../learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-incom.md)
@@ -250,6 +252,7 @@ type: topic
 - [slang-pr-review Reviewer C can die mid-run on a transient API socket error — detect via tiny clarity-review.md, retry recovers](../learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md)
 - [slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](../learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)
 - [slang-pr-review-runner patch mode: reviewer can't find the patch + commit -am drops new files](../learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md)
+- [slang-pr-review-runner: shared checkout /workspace/agent/slang is contended — run Reviewer A in an isolated worktree to avoid wrong-diff INTEGRITY-FAIL](../learnings/1789222069725-slang-pr-review-runner-shared-checkout-workspace-a.md)
 - [slang-pr-review: a container restart kills the completion-waiter; recover reviewer outputs from persistent paths](../learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md)
 - [slang-pr-review: claude CLI recovers from mid-stream 504 — don't kill a stalled reviewer run](../learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md)
 - [slang-pr-review: cross-check Reviewer C clarity findings against A and for internal consistency before forwarding](../learnings/1781627346796-slang-pr-review-cross-check-reviewer-c-clarity-fin.md)

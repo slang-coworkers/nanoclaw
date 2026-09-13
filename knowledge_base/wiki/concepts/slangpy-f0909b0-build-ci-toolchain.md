@@ -3,7 +3,7 @@ title: SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-rep
 type: concept
 group: slangpy
 tags: [slangpy, build, ci, sanitizers, asan, lsan, toolchain, slang-version, cross-repo, breaking-change]
-source_count: 15
+source_count: 17
 ---
 
 ## TL;DR
@@ -24,6 +24,14 @@ coordinating breaking changes with slang. Recurring facts:
   CMakeLists.
 - **Re-run any "separate finding" on the SAME toolchain as the PR head before reporting
   it live** — a crash on a stale checkout's older slang is a toolchain artifact.
+- **After a rebase/pin bump, a bare `cmake --build` reuses the OLD cached slang** —
+  `SGL_SLANG_VERSION` is frozen into `build/<preset>/CMakeCache.txt` at *configure* time and
+  the download is cached under `build/<preset>/_deps/slang*`, so an incremental rebuild never
+  re-fetches. Reconfigure `cmake --preset <p> --fresh` (or delete `build/**/_deps/slang*`)
+  first, then confirm the EFFECTIVE version from `CMakeCache.txt`'s `SGL_SLANG_VERSION:STRING`
+  (not a source grep, not slang-rhi's var). A green CI + a red local `undefined identifier`
+  for a symbol that exists in the pinned release (e.g. `MatrixLayoutMode`, added slang#12986,
+  first in v2026.17.1) is the stale-cache signature — not a defect.
 - **The CI `unit-test-python` lane is UNSCOPED** — device-parametrized tests (incl.
   `[cpu]`) run there, they are not skipped. Skip logic only fires when
   `SELECTED_DEVICE_TYPES` is a non-empty set excluding the test's type.
@@ -92,6 +100,34 @@ crash CAUSE (a full-suite-only crash implicates test-state/teardown, not the iso
 path — always ask isolated-vs-suite, deterministic-vs-flaky, which toolchain); and
 confirm before cross-repo escalation
 [verify a separate finding on the PR-head toolchain (stale-slang ghost)](../learnings/1788483820552-verify-a-separate-finding-on-the-pr-head-toolchain.md).
+
+A close follow-on to that stale-toolchain trap, and the more mechanical reason it keeps
+recurring: **the build tree caches the slang version and `cmake --build` does NOT re-fetch
+it.** `cmake --preset <p>` freezes `SGL_SLANG_VERSION` into `build/<preset>/CMakeCache.txt` at
+*configure* time and FetchContent caches the downloaded slang under `build/<preset>/_deps/slang*`;
+a subsequent `cmake --build` never re-runs configure, so after a `git rebase`/`git pull` that
+moves the pin an incremental rebuild silently keeps downloading/linking the **old** cached
+slang. This bit the same reused build tree twice (slangpy#1136/#1137 and the #1138/#1137 "CPU
+regression") — each time a CPU (or any) module compile failed with `error[E30015]: undefined
+identifier 'MatrixLayoutMode'` for a symbol that provably exists in the *pinned* slang (the enum
+was added in slang#12986, first released in v2026.17.1), which read as a fresh regression or a
+CPU-target compiler gap and nearly got routed upstream — but was purely a stale cache: CI, which
+builds fresh at the pin, was green, and a `--fresh` reconfigure made the E30015 and the failing
+test disappear. Rules: (1) after any pin bump or rebase, reconfigure with `cmake --preset <p>
+--fresh` (or delete the cached slang under `build/**/_deps/`), never a bare incremental `cmake
+--build`; (2) confirm the EFFECTIVE version from `CMakeCache.txt`'s `SGL_SLANG_VERSION:STRING=...`
+after a fresh configure — not a source grep, and NOT slang-rhi's `SLANG_RHI_FETCH_SLANG_VERSION`
+(slangpy overrides slang-rhi's fetch with `SLANG_RHI_FETCH_SLANG OFF` +
+`SLANG_RHI_SLANG_BINARY_DIR=${SLANG_DIR}`; `SGL_LOCAL_SLANG=ON` overrides again with a local
+build's header version); (3) an `undefined identifier` for a symbol that exists in the pinned
+release ⇒ your build is on stale slang, not a defect — a green CI + a red local build is the
+stale-cache signature, and the crash SITE (`staticarray.slang`, `core.meta.slang`, the CPU
+target) is not the CAUSE. To confirm a release actually contains a change, verify the symbol at
+the release tag (`enum X` in `source/slang/core.meta.slang?ref=v<version>`) and/or that the PR's
+merge commit is contained in the tag (`compare/v<version>...<merge_sha>` behind/identical ⇒
+contained)
+[reused build tree keeps a STALE slang across a rebase — reconfigure `--fresh`, read the right version var](../learnings/1789220844035-slangpy-reused-build-tree-keeps-a-stale-slang-sgl-.md),
+[stale CMakeCache `SGL_SLANG_VERSION` → two false regressions on the same reused build tree](../learnings/1789220982301-stale-cmakecache-sgl-slang-version-incremental-sla.md).
 
 ## CI structure: what actually runs, retries, crash capture, and the ASCII hook
 
@@ -231,7 +267,7 @@ pytest feasible). The merge-gate trap is the same coordination gate: such a PR c
 coordination gate not a code defect
 [reviewing SlangPy .slang downstream retypes for a breaking change](../learnings/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md).
 
-**Source learnings (15):**
+**Source learnings (17):**
 
 - [Building SlangPy headless on a rootless Linux box (#827 repro)](../learnings/1787079385346-building-slangpy-headless-on-a-rootless-linux-box-.md) — uv Python for headers, dpkg-deb X11 -dev debs, build slangpy_ext directly, create_device not raw Device.
 - [Resuming a stale slangpy worktree: rebuild slangpy_ext AND the torch bridge together](../learnings/1787101717889-resuming-a-stale-slangpy-worktree-rebuild-slangpy-.md) — the torch bridge is a version-hash check; skipping it gives a false-green fallback run.
@@ -248,3 +284,5 @@ coordination gate not a code defect
 - [SlangPy companion PR for a Slang breaking change: CI merge-order & checkout-mode gotcha](../learnings/1788461805098-slangpy-companion-pr-for-a-slang-breaking-change-c.md) — circular cross-repo CI dependency; validate via SGL_LOCAL_SLANG; pin-bump-last merge order.
 - [Reviewing SlangPy .slang downstream retypes for a breaking Slang core-module change](../learnings/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — distinguish 4-param vs 3-param matrix sites; declaration-time E30019 unify failure; pin-bump-last coordination gate.
 - [the `SLANGPY_CHERRY_PICK_PR` production pattern: fork→same-repo recreation, maintainer sets the cherry-pick var so slang CI stays green while the breaking PR merges before the companion; companion waits on the release gate; revert the var post-merge.](../learnings/1789073598653-slang-slangpy-coordinated-breaking-change-the-slan.md)
+- [SlangPy reused build tree keeps a STALE slang across a rebase — reconfigure `--fresh`, read SGL_SLANG_VERSION](../learnings/1789220844035-slangpy-reused-build-tree-keeps-a-stale-slang-sgl-.md) — `cmake --build` never re-fetches the cached slang; confirm the effective version from CMakeCache, not slang-rhi's `SLANG_RHI_FETCH_SLANG_VERSION`.
+- [Stale CMakeCache SGL_SLANG_VERSION: incremental builds keep the OLD slang after a pin bump/rebase (two false regressions)](../learnings/1789220982301-stale-cmakecache-sgl-slang-version-incremental-sla.md) — a green CI + a red local `undefined identifier` (e.g. MatrixLayoutMode) for a released symbol is the stale-cache signature, not a defect.

@@ -3,7 +3,7 @@ title: "Supervisor Nudge Classifier: Bot Detection, Ball-Direction, and Disposit
 type: concept
 group: agent-infra
 tags: [supervise-issues, scan.py, nudge, bot-detection, ball-direction, disposition, false-positive]
-source_count: 12
+source_count: 14
 ---
 
 ## TL;DR
@@ -25,7 +25,11 @@ live GitHub before acting, and never let a nudge alone authorize a GitHub write.
   bots and any `<!-- ... -->` automated notice.
 - **Recency ≠ obligation.** An approval, a maintainer park/deferral, a maintainer↔maintainer
   @-mention, a "do not reply" notice, and any non-utterance EVENT (`review_requested`,
-  `labeled`, `AssignedEvent`, a commit push, PR open) are not asks directed at us.
+  `labeled`, `subscribed`, `mentioned`, `AssignedEvent`, a commit push, PR open) — plus the
+  PR/issue `updated_at` (a bot's own push bumps it) — are not asks directed at us. Ball-direction
+  must key ONLY on real `IssueComment`/`PullRequestReview`/review-thread comments by a non-bot;
+  an auto-assigned PR-board shepherd who is subscribed/mentioned but never commented is not a
+  human speaking.
 - **Our own GitHub bot comment must count as `last_activity_by_us`** — scan reads only
   `ncl` outbound (session messages), not comments we posted on GitHub, so a chain we
   already answered on GitHub reads as "unanswered."
@@ -64,6 +68,18 @@ and pure EVENTS with a `User` actor and no text — `review_requested`, `labeled
 `AssignedEvent`, a commit push, and PR-open itself — which make the predicate fire on
 *every PR ever opened* ([supervisor "non-bot spoke last" nudge can be false](../learnings/1786452477308-approver-false-safe-a-supervisor-a-non-bot-spoke-l.md),
 [human spoke last nudge fires on an approval](../learnings/1786582901413-approver-human-agreement-an-abstain-is-vindicated-.md) [context]).
+
+The same modeling error resurfaces from a *different* input than comments: `scan.py`'s
+ball-direction also counts GitHub **timeline events** (`subscribed`, `mentioned`, `assigned`,
+`labeled`, board-sync) and the PR/issue `updated_at` as "a non-bot spoke last." An auto-assigned
+PR-board **shepherd** who is `mentioned`/`subscribed` but *never commented* (e.g. `jhelferty-nv`
+at 16:28Z), combined with the fixer's own push bumping `updated_at` (16:51Z), fabricated a phantom
+"16:53Z human comment / awaiting_us" on a draft bot PR whose every actual comment was a bot
+(coderabbit / CLAassistant / PR-board-sync). Ball-direction must key ONLY on real `IssueComment` /
+`PullRequestReview` / review-thread comments authored by a non-bot — ignoring timeline events and
+`updated_at` — and treat an auto-assigned shepherd/board login as non-speaking unless it actually
+commented; a draft bot PR with only bot comments plus a subscribed shepherd is `awaiting_human`,
+not `awaiting_us` ([scan.py over-flags awaiting_us from non-bot timeline events](../learnings/1789265524383-supervise-issues-scan-py-over-flags-awaiting-us-fr.md)).
 
 The bot-detection leg has a **must-be-a-disjunction** structure that is easy to get wrong.
 Our own bot runs as TWO concurrent accounts: the App `nv-slang-bot[bot]` (`__typename: Bot`,
@@ -148,6 +164,18 @@ comment on a closed chain is the fixer's stated re-open trigger. Underlying all 
 **a stored per-chain disposition must OUTRANK a fresh per-tick classification** — the same
 shape as a stored `ballOverride` losing to a recomputed `ball`.
 
+A concrete disposition class the gate must recognize and persist is a **maintainer-owned,
+actively-driven** or **explicitly-deferred/parked** chain: one whose newest issue event is the
+human assignee's *own* comment (assignee == commenter, human) or a milestone-push/defer, with the
+coworker's last action being a posted verdict plus a "do not dispatch fixer" decision. That chain
+is *intentionally* quiet, not stuck — a "gone silent — are you blocked?" nudge just makes the
+coworker re-conclude "not blocked; the maintainer owns the fix." Measured on slang#8957 (assigned
+to jkwak-work, who was actively root-causing it and had explicitly deferred it to Q4), the 12h
+supervisor fired that nudge anyway, and the resulting a2a handoff **dead-lettered** on the old
+(June-created) triager session's provider-wake — making a benign false nudge indistinguishable
+from a real dropped handoff. Suppress such chains and keep them out of the nudge set on subsequent
+ticks rather than nudging ([suppress nudges on maintainer-owned / explicitly-deferred chains](../learnings/1789252641916-supervise-issues-suppress-nudges-on-maintainer-own.md)).
+
 Fixing the classifier is only real once the disposition is **persisted**. pull-universe
 rehydrates `disposition` (not `github_artifact_url`) each tick, and `we_owe_next_step`
 honors it — so writing a HUMAN_OWNED token into `supervisor-state.json` suppresses via the
@@ -181,7 +209,7 @@ the first clean scan produced a 115-nudge recovery backlog (~0 genuine) — the 
 oversized/lost transcripts (`API Error 400 unexpected end of data`) need operator/transcript
 intervention, not a plain wake ([naive-datetime crash](../learnings/1787059894213-supervise-issues-scan-py-naive-datetime-crash-froz.md)).
 
-**Source learnings (12):**
+**Source learnings (14):**
 - [A supervisor "non-bot spoke last" nudge can be false: last event was a BOT review](../learnings/1786452477308-approver-false-safe-a-supervisor-a-non-bot-spoke-l.md) — filter by `author.__typename` before taking newest event; a nudge is a claim about state, not state; never let it authorize a write.
 - [supervisor nudge: "who spoke last" is not "a human is unanswered"](../learnings/1786453196243-supervisor-nudge-who-spoke-last-is-not-a-human-is-.md) — the definitive postmortem: bot test is a DISJUNCTION (type OR id), two concurrent bot accounts, recency≠obligation, three ordered filters.
 - [scan.py: stored disposition must outrank per-tick reclassification](../learnings/1786498066587-supervise-issues-scan-py-stored-disposition-must-o.md) — human-owned/terminal gate must cover both ball branches; N coworkers reporting a re-nudge is the trigger to fix the classifier.
@@ -194,3 +222,5 @@ intervention, not a plain wake ([naive-datetime crash](../learnings/178705989421
 - [scan.py ignores human-owned disposition on ball==ours](../learnings/1787490423993-supervise-issues-scan-py-ignores-human-owned-dispo.md) — the guard is only in the ball==human branch; move it above the ball branch and widen the token set.
 - [scan.py counts bots as humans and disposition-posted as owed](../learnings/1787748905685-supervise-issues-scan-py-counts-bots-as-humans-and.md) — 228 flagged → 0 genuine; recompute ball yourself with the full bot set, drop posted-disposition and 2+-nudged chains.
 - [scan.py over-flag is 3 concrete classifier defects, not noise](../learnings/1788008486909-supervise-issues-scan-py-over-flag-is-3-concrete-c.md) — bot set, PR-reviews-in-ball, disposition-on-ball==ours; persist the disposition or it recurs; a real owed-PR backlog hides inside the refrain.
+- [scan.py over-flags awaiting_us from non-bot timeline events (shepherd subscribe/mention)](../learnings/1789265524383-supervise-issues-scan-py-over-flags-awaiting-us-fr.md) — ball-direction counts timeline events (subscribed/mentioned/assigned/labeled/board-sync) and `updated_at` as human-last; key only on real IssueComment/PullRequestReview by a non-bot; a subscribed auto-assigned shepherd is not speaking.
+- [supervise-issues: suppress nudges on maintainer-owned / explicitly-deferred chains](../learnings/1789252641916-supervise-issues-suppress-nudges-on-maintainer-own.md) — a chain whose newest event is the assignee's own comment or a defer, with a posted "do not dispatch" verdict, is intentionally quiet; nudging it dead-lettered on an old triager session (slang#8957).

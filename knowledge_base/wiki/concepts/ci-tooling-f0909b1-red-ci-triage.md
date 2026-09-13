@@ -3,7 +3,7 @@ title: Classifying red Slang CI — infra/flake vs. real regression
 type: concept
 group: ci-tooling
 tags: [slang-ci, test-falcor, flake, infra, rerun, ci-triage, gpu-jobs, regression]
-source_count: 10
+source_count: 14
 ---
 
 ## TL;DR
@@ -13,7 +13,8 @@ source_count: 10
 - Falcor has **≥2 distinct infra modes** (403 auth wall, expired artifact). Don't propagate "artifact-TTL is THE Falcor cause" — re-read the log each time. A `--failed` rerun does NOT regenerate an expired artifact; a full `gh run rerun <id>` does. A 403 wall is not rerun-fixable — stop after ~2 attempts.
 - GPU jobs (`test-windows-*-gpu-vk / test-slang`) flake/timeout: a step stuck `in_progress` at completion with an empty `--log-failed` is a timeout/cancellation, not an assertion failure. React to the current head only (a new push auto-cancels prior runs).
 - **Uniform** failure across *every* `test-slang` job (all OSes/arches, incl. CPU) ⇒ a deterministic `.slang` failure. Separate three causes: the PR's own new test, a PR-introduced regression of a pre-existing test, or inherited master-side breakage.
-- Known flaky/benign reds: `##[error]slang-test left generated or modified files` (leftover `moduleG####.slang` from a module test) when `100% of tests passed`; and the `windows-11-vs2026-arm64` runner-image drawing an MSVC version not in `docs/building.md`'s allowlist.
+- Known flaky/benign reds: `##[error]slang-test left generated or modified files` (leftover `moduleG####.slang` from a module test) when `100% of tests passed`; and the `build-windows-debug-cl-aarch64` job's `verify-documented-compiler-version.sh` **exit 4** — a `set -e`/`pipefail` command-substitution trip in that best-effort script (fix: `|| true`), NOT a `docs/building.md` allowlist gap.
+- A **manual `ci.yml` dispatch on a DRAFT PR** makes `test-falcor` fail fast (~15s, `failed_steps: []`) because the draft-gated *build* jobs that produce its artifact are skipped — it is not a code failure and clears on `gh pr ready`, not on a rerun.
 - **`gh run rerun` has hard age limits**: >30 days = "created over a month ago"; ~>1 week = "cannot be retried". Classification is moot for stale PRs — the only recovery is a fresh commit / `/ci`.
 - `gh run view --log-failed --job <id>` is the reliable log fetch; the `/actions/jobs/<id>/logs` REST endpoint often returns empty. `check-ci` failing is just the aggregate — find the real failing job.
 
@@ -81,6 +82,20 @@ check-ci=failure`, all builds skipped). Once flipped to ready-for-review, real `
 runs and its failures are meaningful (modulo infra jobs)
 ([draft priority-yield vs real CI](../learnings/1788220633639-test-falcor-ci-failure-with-external-ci-trigger-40.md)).
 
+A second draft-dispatch artifact hits Falcor specifically: `/slang-fix-issue` Step 7 tells you to
+`gh workflow run ci.yml --ref fix/issue-N` after opening a **draft** PR, but that manual dispatch
+runs the downstream `test-falcor / Test (Falcor)` job while the **draft-gated build jobs** that
+produce the artifact it consumes (`slang-tests-windows-x86_64-cl-release-falcor`) are skipped — so
+Falcor bails in ~15s with `run-external-ci: Slang artifact '…-falcor' … is unavailable (expired,
+still building, or the token cannot see it); not triggering Falcor`. The tell of this false
+positive is a failed check-run with `failed_steps: []` (no test-step assertion). It is NOT a code
+failure and `gh run rerun --failed` will NOT clear it — the artifact stays absent until `gh pr
+ready` runs the real build jobs, so it self-resolves on ready. Don't rerun or touch code; report
+the Falcor red up as a draft-artifact sequencing artifact, and consider skipping the manual
+`ci.yml` dispatch on drafts entirely (it mostly yields this confusing red X while the build/test
+jobs are skipped anyway)
+([draft ci.yml dispatch → spurious test-falcor missing-artifact red](../learnings/1789147576274-manually-dispatching-ci-yml-on-a-draft-slang-pr-pr.md)).
+
 ## GPU-job flake/timeout and the leftover-file check
 
 `test-windows-*-gpu-vk / test-slang` and other GPU jobs flake or time out. Tell a timeout from a
@@ -114,6 +129,32 @@ and bounce identically); log it `action:"left"` and advise a human to update `do
 (or pin CI off the vs2026-arm64 image). Watch for the signature spreading across windows-aarch64
 jobs — if it hits >1 PR it graduates to a systemic advice-line item like the falcor 403
 ([vs2026-arm64 image not in allowlist](../learnings/1788242807926-slang-ci-windows-11-vs2026-arm64-runner-image-not-.md)).
+
+**Correction — the `verify-documented-compiler-version.sh` *exit 4* is a shell bug, not a
+docs-allowlist failure.** Reading the script and reproducing GPU-free (shader-slang/slang
+#13041/#13042) shows it has **no exit-non-zero path of its own** — every branch ends `exit 0`, and
+a version *mismatch* only emits a `::warning::` and exits 0. So exit 4 can only be `set -euo
+pipefail` aborting on a failed command: `COMPILER_VERSION=$("$COMPILER_PATH" 2>&1 | grep … | head
+-1)` invokes `cl.exe` with no source files, which prints its banner but **exits 4**; under
+`pipefail` that becomes the pipeline status, and the plain `VAR=$(…)` assignment under `set -e`
+kills the script *before* it reaches its graceful empty-version guard. `14.51` is `VCToolsVersion`;
+the script only compares the `cl.exe` banner's *compiler* major (`19`), which `docs/building.md`
+already matches — so a docs edit would not touch the crash. The fix is `|| true` on the
+best-effort command substitutions (use `|| true`, NOT `|| VAR=""`, since `cl.exe` prints a
+parseable banner while exiting non-zero). Two general rules follow. (1) For any best-effort script
+under `set -euo pipefail`, a `VAR=$(cmd | …)` where `cmd` can exit non-zero aborts before its own
+empty-value guard — the guard is dead code until you append `|| true`; a never-fail
+(all-branches-`exit 0`) script that nonetheless exits non-zero is the diagnostic tell of a
+command-substitution trip, not business logic. (2) When reviewing such a `|| true` fix, enumerate
+**every** structurally-identical `VAR=$(pipeline)` at the same errexit scope and confirm the fix is
+applied symmetrically (three unguarded `DOC_LINE=$(grep … | head -1)` siblings would abort on a
+routine `docs/building.md` reword) — but note `errexit` is **off inside `$(...)`
+command-substitution subshells** unless `shopt -s inherit_errexit` is set, so greps nested in
+another `$(...)` whose last statement is `echo` are already safe and flagging them is a false
+positive
+([exit-4 is a set-e/pipefail trip, not a docs allowlist](../learnings/1789252710427-verify-documented-compiler-version-sh-exit-4-on-wi.md),
+[same, reproduced + fixed in #13042](../learnings/1789254176751-slang-ci-verify-documented-compiler-version-sh-exi.md),
+[reviewing `|| true` CI-tolerance shell PRs](../learnings/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md)).
 
 ## gh run rerun has hard age limits
 
@@ -171,7 +212,7 @@ first failed line, so later CHECK directives were never exercised on the failing
 pass there is predicted, not proven; confirm via a CI re-run
 ([reviewing a descope CI fix](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)).
 
-**Source learnings (10):**
+**Source learnings (14):**
 
 - [gh run rerun has hard age limits — old CI failures on stale PRs cannot be rerun](../learnings/1788199935009-gh-run-rerun-has-hard-age-limits-old-ci-failures-o.md) — >30d "over a month ago", >~1wk "cannot be retried", "already running"; classification moot for stale PRs.
 - [test-falcor CI failures are usually external-bridge infra (403), not your code — and it's non-required](../learnings/1788206678107-test-falcor-ci-failures-are-usually-external-bridg.md) — Falcor consumes Slang as a library; 403 at trigger step = infra; verify required-status membership.
@@ -183,3 +224,7 @@ pass there is predicted, not proven; confirm via a CI re-run
 - [Slang CI red "slang-test left generated or modified files" is a flaky leftover-file check](../learnings/1788402606374-slang-ci-red-slang-test-left-generated-or-modified.md) — 100% tests pass but worktree-clean check trips on untracked moduleG####.slang; rerun ≤3×.
 - [Triaging uniform CI test failures: new-test vs PR-regression vs inherited master breakage](../learnings/1788474162476-triaging-uniform-ci-test-failures-new-test-vs-pr-r.md) — uniform red = deterministic .slang failure; separate three causes; overload-ambiguous-2.slang canary.
 - [test-falcor CI failures have multiple infra modes — re-read the fresh log each time](../learnings/1788545708307-test-falcor-ci-failures-have-multiple-infra-modes-.md) — expired artifact vs 403; --failed rerun won't regenerate; full rerun does; no shader diag = infra.
+- [Manually dispatching ci.yml on a DRAFT slang PR yields a spurious test-falcor missing-artifact red](../learnings/1789147576274-manually-dispatching-ci-yml-on-a-draft-slang-pr-pr.md) — draft-gated build jobs skipped, Falcor bails ~15s with artifact-unavailable; failed_steps:[]; clears on gh pr ready, not on rerun.
+- [verify-documented-compiler-version.sh exit-4 on windows-aarch64 is a set-e/pipefail trip, NOT a stale docs allowlist](../learnings/1789252710427-verify-documented-compiler-version-sh-exit-4-on-wi.md) — cl.exe exits 4 with no sources; VAR=$(pipeline) under set -e aborts before the empty-version guard; fix with || true.
+- [Slang CI verify-documented-compiler-version.sh exit 4 is a set -e/pipefail shell bug (reproduced, fixed #13042)](../learnings/1789254176751-slang-ci-verify-documented-compiler-version-sh-exi.md) — all branches exit 0; a never-fail script exiting non-zero = command-substitution trip, not business logic.
+- [Reviewing `|| true` CI-tolerance shell PRs: check every same-scope VAR=$(pipeline); errexit is OFF in command-substitution subshells](../learnings/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md) — enumerate structurally-identical substitutions; $(...) subshells safe unless inherit_errexit.
