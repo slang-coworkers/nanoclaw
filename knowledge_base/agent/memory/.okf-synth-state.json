@@ -304,6 +304,17 @@
     "class": "OVERSIZE",
     "size": 27434
    }
+  },
+  {
+   "at": "2026-09-12T04:13:10Z",
+   "backlog": 540032,
+   "defects": 27,
+   "offenders": 135,
+   "top": {
+    "path": "imported/project_12284_cross_module_overload_silent_break_warning.md",
+    "class": "OVERSIZE",
+    "size": 26507
+   }
   }
  ]
 }
