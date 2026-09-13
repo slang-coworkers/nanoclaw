@@ -3,7 +3,7 @@ title: "slang-test Runtime Shims, DX12 Lanes, Generated Bundles, and the slangi 
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, dx12, filecheck, docs-generated-tests, shared-library-loader, slangi, vm, bytecode]
-source_count: 4
+source_count: 6
 ---
 
 # slang-test Runtime Shims, DX12 Lanes, Generated Bundles, and the slangi VM
@@ -33,9 +33,13 @@ When writing a test shim for `ISlangSharedLibraryLoader`, match against the **ba
 
 When a VM opcode validator special-cases an operand's section (e.g. treating `kSlangByteCodeSectionStrings` as `sizeof(const char*)`), the executor for that opcode must mirror the same convention. Asymmetry causes validation to pass but execution to crash (e.g. printf with `%s` and string literals) ([Slangi VM validator and executor must agree on operand-section size convention](../learnings/1780413778599-slangi-vm-validator-and-executor-must-agree-on-ope.md)).
 
+This VM-vs-literal size gap has a concrete failure mode worth spelling out. On slangi (the HostVM bytecode interpreter) `kIROp_StringType` has NO configured size, so a *runtime* `String` value passed to `printf`'s `%s` segfaults. `slang-type-layout.cpp` defaults `stringSize=0` and its per-target switch has no `HostVM` case (`isCPUTargetViaLLVM` returns false for HostVM), so `slang-ir-layout.cpp` gives `kIROp_StringType` a size only `if (stringSize != 0)` — a runtime `String` lands in a 0-byte working-set slot and `%s` dereferences garbage as `const char*` → SIGSEGV. String *literals* work only because they route through the strings-section operand (`addStringLiteral`), and `kIROp_NativeStringType` is pointer-sized. The true axis is **runtime-value vs. constant-foldable-literal**, NOT inline-vs-local: a reporter's `(1<2)`-conditioned local const-folds to a literal and masquerades as a codegen distinction, so reproduce the full isolation matrix yourself before repeating an inline-vs-local hypothesis. DeepWiki is wrong here — it claims `String` is pointer-sized on HostVM, conflating it with the **CPU-via-LLVM** path (where `slang-llvm.cpp` genuinely sets `stringSize = genericPointerSize`); verify at the per-target switch and `isCPUTargetViaLLVM`, not DeepWiki. Prior fix #11399/#11415 covered only the literal path; the runtime-`String` sub-case (#13017) survived ([slangi printf %s 'works in a String local' can be a constant-fold artifact](../learnings/1789157865424-slangi-printf-s-a-works-when-stored-in-a-string-lo.md), [DeepWiki conflates slangi HostVM with CPU-via-LLVM for String sizing](../learnings/1789158419753-deepwiki-conflates-slangi-hostvm-with-cpu-via-llvm.md)).
+
 ---
 
-**Source learnings (4):**
+**Source learnings (6):**
+- [slangi printf %s: 'works when stored in a String local' can be a constant-fold artifact, not inline-vs-local](../learnings/1789157865424-slangi-printf-s-a-works-when-stored-in-a-string-lo.md)
+- [DeepWiki conflates slangi HostVM with CPU-via-LLVM for String sizing — verify at the per-target switch](../learnings/1789158419753-deepwiki-conflates-slangi-hostvm-with-cpu-via-llvm.md)
 - [dx12 lane empty-output FileCheck fail is often a bad test flag, not codegen](../learnings/1782252899885-slang-test-dx12-lane-empty-output-filecheck-fail-i.md)
 - [agentic test bundle staleness is often compiler-driven; list-stale won't catch it](../learnings/1782217764152-agentic-test-bundle-staleness-is-often-compiler-dr.md)
 - [shared library loader test shims match the bare logical name cross-platform](../learnings/1780324906216-slang-loads-downstream-libs-by-logical-name-test-s.md)

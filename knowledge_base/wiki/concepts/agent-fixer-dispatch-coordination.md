@@ -3,7 +3,7 @@ title: "Fixer Dispatch & Coordination Failure Modes"
 type: concept
 group: agent-fixer-codex-skills
 tags: [fixer, dispatch, coordination, subagent-typing, echo-loop, fixer-silence, hallucination-vs-invisible-edge, artifact-verification, slang]
-source_count: 7
+source_count: 8
 ---
 
 # Fixer Dispatch & Coordination Failure Modes
@@ -16,6 +16,7 @@ The hardest coordination failure modes in the slang triage→fixer→reviewer au
 - **A contributor-PR combined review is advisory, not a fix task.** No code change, no GitHub post without operator authorization on the parent edge. The reviewer's `send_file` fan-out mints an `engage_mode=always` wiring that wakes a taskless fixer repeatedly; **don't reply** (perpetuates the loop) — the root fix is `ncl wirings delete <id>` (a restart alone is insufficient; `destinations remove` severs only outbound).
 - **Fixer silence ≠ dropped chain — but "usually not dropped" is a prior, not a finding.** Nudge the dispatch-owner (triager) before any restart (restart WIPES intact unpushed WIP). Then **settle it with the artifact**: `gh api repos/O/R/git/matching-refs/heads/<prefix>` + `gh pr list --search "<n> in:title" --state all`. Characterize a ref by commit DATE, not name. A peer that is "not addressable" can be a logged-out session (`/login`) — operator-scoped blocker, don't re-dispatch.
 - **An invisible dispatch edge is indistinguishable from hallucination.** When a coworker cites an authorization you have no record of, "it invented this" and "someone authorized it on an edge I can't see" look identical. Halt before the artifact (cheap under either hypothesis), then verify against external ground truth (`gh api` on the PR) before calling it invented. Escalate to *reconcile*, not to accuse.
+- **A sweep/babysitter role that finds a systemic infra bug diagnoses + reports it in the Advice section and stops** — the parent verifies the diagnosis against `master` and owns routing the fix; babysitter-side dispatch to the fixer is a double-dispatch risk. Holding a diagnosis is not holding the dispatch edge.
 
 ## Subagent Typing for Read-Only Steps
 
@@ -35,11 +36,15 @@ A fixer chain going silent for many hours with an active-but-`stopped` container
 
 **Correction to the post-compaction-drift diagnosis** (slang#11917): a fixer post-868k-compaction prepped a draft PR citing an authorization ("parent said proceed", "#1/#2 worklist") that matched NOTHING in the triager's dispatch record — it looked exactly like hallucination and the triager hard-STOPPED it. On verification the authorization was REAL: the orchestrator had dispatched that follow-up directly on the Main↔fixer edge, bypassing the triager, on the issue author's explicit GitHub request. The lesson: when a coworker cites an authorization you have no record of, "it invented this" and "someone authorized it on an edge I can't see" look identical from your seat — do NOT resolve the ambiguity by presuming invention. Halt before the artifact always (cheap, correct under either hypothesis), THEN verify against external ground truth (one `gh api` on the PR would have shown the author's comment) before calling it invented; reference work by explicit name never "#1/#2" shorthand; escalate to *reconcile* ("did you authorize this on another edge?") not to accuse. Structural fix: single-source dispatch — all authorizations for a chain route through the one coworker holding its dispatch edge; a parallel direct channel keeps manufacturing phantom-hallucination incidents ([CORRECTION to 'post-compaction coworker drift' — it was a real authorization on an invisible edge, not drift](../learnings/1783468031032-correction-to-post-compaction-coworker-drift-it-wa.md)).
 
+## Sweep/Babysitter Findings: Diagnose + Report, Not Dispatch
+
+The single-source-dispatch rule has a reporting-side corollary for periodic sweep/babysitter roles: finding a diagnosis does not make you the tier that dispatches its fix. When a CI-babysitter sweep surfaces a *systemic* infra/script bug (not a routine flaky-test rerun candidate) — e.g. the 2026-09-12 finding that `extras/verify-documented-compiler-version.sh` crashes with exit 4 on the new VS18/aarch64 runner image instead of hitting its intended `::warning::; exit 0` guard — put it in the sweep report's **Advice** section and stop there. The parent orchestrator independently verifies the diagnosis against `master` and routes the actual fix to `slang-fixer` itself; the parent explicitly flagged babysitter-side dispatch of this class of finding as a **double-dispatch risk**. The babysitter's job for a systemic finding ends at "diagnose + report + flag in Advice" — fix routing is the parent's ([CI babysitter: parent handles fix dispatch, I only diagnose + report](../learnings/1789251734550-ci-babysitter-parent-handles-fix-dispatch-i-only-d.md)).
+
 ## Contradictions / Supersessions
 
 - The "fixer silence usually is NOT a dropped chain" framing ([Fixer silence from teardown-killed background build ≠ dropped chain](../learnings/1783471609043-fixer-silence-from-teardown-killed-background-buil.md)) is QUALIFIED: it remains the right default for a *nudge-before-restart* decision, but it is not a licence to relay the fixer's last message as status. Dispatches do silently die — slang#11917 batch-2 produced no branch and no PR across 7 days while a later dispatch completed in 2h — so the artifact check (`git/matching-refs/heads/<prefix>` + `gh pr list --search`) is mandatory before any downstream "in progress" claim ([a dispatched handoff can silently die](../learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-artif.md)).
 
-**Source learnings (7):**
+**Source learnings (8):**
 - [Don't fork (omit subagent_type) for read-only recall/scan steps](../learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)
 - [slang-fixer: contributor PR combined review is advisory](../learnings/1782719999000-slang-fixer-a-contributor-pr-combined-review-is-ad.md)
 - [Reviewer combined-review fan-out can trigger a taskless-fixer echo loop](../learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md)
@@ -47,4 +52,5 @@ A fixer chain going silent for many hours with an active-but-`stopped` container
 - [a dispatched handoff can silently die — verify the artifact (branch/PR, by commit DATE not name) before relaying "in progress"; a repeat human ask means your last answer didn't hold; draft-flip audits key on the timeline ACTOR](../learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-artif.md) — dispatch has no delivery receipt; verify-then-reuse a "stale" trace
 - [Peer 'not addressable / blocked' can mean session logged-out](../learnings/1783565846208-peer-not-addressable-blocked-can-mean-session-logg.md)
 - [CORRECTION to 'post-compaction coworker drift' — it was a real authorization on an invisible edge](../learnings/1783468031032-correction-to-post-compaction-coworker-drift-it-wa.md)
+- [CI babysitter: parent handles fix dispatch, I only diagnose + report](../learnings/1789251734550-ci-babysitter-parent-handles-fix-dispatch-i-only-d.md) — a sweep/babysitter surfacing a systemic infra bug flags it in the Advice section; the parent verifies against master and owns fix routing (babysitter-side dispatch is a double-dispatch risk)
 _Catalog: [[wiki/index.md]]_

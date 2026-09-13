@@ -3,7 +3,7 @@ title: "PR Review Workflow and Issue Hygiene"
 type: concept
 group: review-process
 tags: [pr-review, github, draft-pr, a2a-review, slang-reviewer, fleet-contention, repo-root-isolation, reviewer-a, reviewer-b, reviewer-c, head-pinning, markdown-links, community-fix, sibling-stack]
-source_count: 35
+source_count: 37
 ---
 
 # PR Review Workflow and Issue Hygiene
@@ -46,12 +46,18 @@ Before posting "N reviewers APPROVE" on a public issue, verify with `gh pr view 
 
 When listing or referencing GitHub issues, PRs, or review URLs in any user-facing reply, always render them as markdown links — `[short-label](url)` — not bare URLs or plain references. The dashboard renders markdown; clickable labels like `[slang#10747](url)` let the user jump directly to the source. Link the issue/PR cell using `[<repo>#<num>](url)` in tables; link the title or a short anchor for PR reviews. Bare URLs are fine in tool-call payloads or scratchpad [Always use markdown links for issues and reviews](../learnings/1779362752977-always-use-markdown-links-for-issues-and-reviews.md).
 
+## Auto-Close Keywords Fire Even Inside a Negation
+
+GitHub's closing-keyword parser is purely lexical: a `<close-verb> #<num>` adjacency (close/fix/resolve + tenses) registers `closingIssuesReferences` **even inside a negation** — "this PR does **not** close #N" still auto-closes #N on merge and drops any follow-up tracking. Mitigation/partial-fix PRs bite here because "does not close #N" is exactly the trigger. Phrase without the adjacency — "tracking issue: #N", "partial mitigation of #N", "part of #N" — and verify `gh pr view --json closingIssuesReferences` is empty ([GitHub parses close/fixes keyword even inside a negation in PR bodies](../learnings/1789173822407-github-parses-close-fixes-keyword-even-inside-a-ne.md)).
+
 ## Triaging Issues with an Existing Community Fix PR
 
 When a GitHub issue is a tracking issue for an already-open community fix PR, two mistakes are easy to make [Triaging an issue that already has a community fix PR — review, don't duplicate](../learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md):
 
 1. Skip the triage 5-bullet on the issue. Wrong — post it anyway (verdict = "triaged → PR #X already fixes this, pending review"), because the PR predates the issue and carries no `Fixes #N` link.
 2. Tell the fixer to write a competing PR. Wrong — the handoff should be "review and land" the existing one. Make this loud: a complete, tested PR already exists; duplicating wastes work and steps on a contributor.
+
+The same "don't pre-empt" discipline covers a **member who will fix it themselves**: when a triaged issue's reporter is a repo MEMBER who self-assigned AND posted a precise self-diagnosis (root cause pinned to a function/inst), a bot fixer PR pre-empts the assignee as spam. Confirm the root cause read-only to *stage* a briefing, but HOLD the PR and route a parent go/no-go before any push; re-release only if the author asks for help, signals they won't take it, or the issue goes stale (NO-GO on slang#13030; same pattern as #13010/#13016/#13028) ([Defer a bot fixer PR when a MEMBER self-assigned + self-diagnosed the issue](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md)).
 
 ## Stack on a Sibling PR Instead of Duplicating Its Fix
 
@@ -95,7 +101,7 @@ When a PR branch iterates *during* a review run and Reviewer A finishes against 
 
 In `/slangpy-pr-review`, the COMMENT-state GitHub post (step 5) is gated on the **literal `<github-post-authorized />` marker** appearing in the dispatch text — not on a prose "go ahead, post it." If the parent authorizes posting in words but omits the marker, the reviewer correctly does NOT post (step 5 is a no-op; the verdict already went out via `send_file` in step 4). This is working as designed: the marker is machine-checkable proof that a human tagged `@nv-slang-bot` (an explicit GitHub-reply invitation), and prose from a coworker/orchestrator is not that proof — it keeps the bot's GitHub footprint tied to explicit human invitation. Unblock by re-sending the instruction *with* the marker. Observed on slangpy-samples#52 (Jul 2026): prose-only authorization gated the post OFF; re-send with the marker → posted as `event=COMMENT` (verified `COMMENTED`). Bonus on that PR: for a Git-LFS-tracked asset, the diff shows only a `+2/−2` pointer change (oid + size) — to verify actual image content, fetch the object via the LFS batch API (`POST https://github.com/<owner>/<repo>.git/info/lfs/objects/batch`, `operation:download`) with `gh auth token` and check sha256 == pointer oid; `gh api .../contents/<path>` returns the 131-byte pointer, not the image ([slangpy-pr-review GitHub post gates on literal marker, not prose](../learnings/1783639327701-slangpy-pr-review-github-post-gates-on-literal-mar.md)).
 
-**Source learnings (35):**
+**Source learnings (37):**
 
 - [Don't conflate internal a2a review with GitHub reviewDecision](../learnings/1780509591502-don-t-conflate-internal-a2a-review-with-github-rev.md) — an internal APPROVE leaves the PR `REVIEW_REQUIRED`; report from live GitHub state.
 - [Internal a2a review ≠ GitHub reviewDecision](../learnings/1782148692608-internal-a2a-review-github-reviewdecision.md)
@@ -132,3 +138,5 @@ In `/slangpy-pr-review`, the COMMENT-state GitHub post (step 5) is gated on the 
 - [combined-review RESULT_JSON: reviewers_complete=false when ANY dispatched reviewer is skipped](../learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md)
 - [Mid-iteration PR: combined-review diff_hash mismatches pinned HEAD → approver Step-2 flag](../learnings/1783631632879-mid-iteration-pr-combined-review-diff-hash-reviewe.md)
 - [slangpy-pr-review GitHub post gates on literal marker, not prose](../learnings/1783639327701-slangpy-pr-review-github-post-gates-on-literal-mar.md)
+- [GitHub parses close/fixes keyword even inside a negation in PR bodies](../learnings/1789173822407-github-parses-close-fixes-keyword-even-inside-a-ne.md) — "does not close #N" still auto-closes on merge; verify `closingIssuesReferences` is empty.
+- [Defer a bot fixer PR when a MEMBER self-assigned + self-diagnosed the issue](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md) — HOLD the PR, route a parent go/no-go; re-release only if the author asks or the issue goes stale.

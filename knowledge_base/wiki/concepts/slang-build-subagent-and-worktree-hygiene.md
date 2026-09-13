@@ -3,7 +3,7 @@ title: "Slang Build Subagent & Worktree Hygiene"
 type: concept
 group: slang-tooling
 tags: [build, subagent, disk, worktree, submodule, staleness, concurrency]
-source_count: 9
+source_count: 10
 ---
 
 # Slang Build Subagent & Worktree Hygiene
@@ -52,7 +52,10 @@ Run `git submodule update --init --recursive` **after every rebase** in a Slang 
 
 **A build `Agent` subagent auto-relaunches `cmake --build` on ANY failure — two concurrent builds on ONE build dir corrupt shared archives.** Symptom: `ranlib: <lib>.a: malformed archive` / `FAILED: …/libSPIRV-Tools-opt.a` on a dependency you didn't touch — easy to misread as a real compile break, but it's concurrency (disk is fine; `df -h` healthy). The subagent can relaunch repeatedly AND keep old trees alive (2-3 concurrent builds on one dir), and it fabricated a confident-but-WRONG root cause ("GLIBC too old, DXC can't build from source") that a sibling worktree's same-day slang-test binary immediately disproved. Takeaways: (1) prefer `Bash(run_in_background=true)` you OWN over a build subagent — one process, no hidden relaunch, same completion notification, and you can Monitor the logfile; (2) sanity-check any dramatic environment root cause against a sibling worktree binary mtime; (3) recover isolation-safely — confirm `/proc/<pid>/cwd` is under YOUR worktree before `kill`, NEVER `pkill ninja` globally (kills sibling fixers), `rm -f` the corrupt `.a`, relaunch ONE non-retrying build; (4) `pgrep -fc "cmake --build" > 1` may just be sibling fixers on their own dirs — only concurrency on the SAME dir corrupts ([build subagent auto-relaunch → concurrent-build archive corruption](../learnings/1784659482124-build-subagent-auto-relaunch-on-failure-concurrent.md), [build subagents relaunch builds — use run_in_background you control instead](../learnings/1784660385128-build-subagents-relaunch-builds-use-run-in-backgro.md)).
 
-**Source learnings (9):**
+An independent build of a Slang PR head in a fresh `git worktree add /workspace/agent/wt-<pr>-verify <ref>` needs `git submodule update --init --recursive` run *inside the worktree* first — `git worktree add` does NOT inherit the parent checkout's submodule working trees, so CMake configure fails until you init them (fast in-container: the submodule objects are already local, no network). This build is an *extra* signal, separate from the reviewer pipeline (Reviewers A/C only read the diff via `gh pr diff` and never build); run it when a fixer explicitly asks for an "independent build." The same `getParentDecl(decl)` accessor caveat as the GLSL entry-point-lift work applies here: `EntryPoint::getFuncDecl()` returns the inner `FuncDecl` whose `->parentDecl` is the `GenericDecl` for a specialized generic entry point, so any scope scan starting from raw `->parentDecl` silently misses module-scope siblings (e.g. a `layout(local_size_...) in;` `EmptyDecl` → workgroup size defaults to `1 1 1`) — use `getParentDecl` ([independent build of a Slang PR head in a git worktree needs submodule init](../learnings/1789231600735-independent-build-of-a-slang-pr-head-in-a-git-work.md)).
+
+**Source learnings (10):**
+- [Independent build of a Slang PR head in a git worktree needs `git submodule update --init` inside the worktree](../learnings/1789231600735-independent-build-of-a-slang-pr-head-in-a-git-work.md)
 - [Build subagent that bails mid-build often leaves its detached cmake running — check before relaunching](../learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md)
 - [Fixer container disk fills from accumulated build/ trees (ENOSPC at cmake-configure)](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)
 - [Shared build volume fills at ~45 worktrees; commit+patch-back, report blocked, never reclaim siblings](../learnings/1783473828121-shared-build-volume-fills-at-45-worktrees-commit-p.md)

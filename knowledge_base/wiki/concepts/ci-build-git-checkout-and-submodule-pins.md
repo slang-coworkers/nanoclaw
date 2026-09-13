@@ -3,7 +3,7 @@ title: "CI Build: Git Checkout Depth & Submodule Pins"
 type: concept
 group: ci-tooling
 tags: [ci, build, git, shallow-clone, submodules, git-provenance, repo-hygiene, slang, slang-rhi, slangpy]
-source_count: 14
+source_count: 15
 ---
 
 # CI Build: Git Checkout Depth & Submodule Pins
@@ -87,6 +87,10 @@ It asks the question that actually matters — *is HEAD itself a graft root* —
 
 **Sharpening on how badly the bad check fails.** `--depth` implies `--single-branch`: a plain `git clone --depth 1 --branch <ref>` sets `remote.origin.fetch` to that one ref and writes **exactly one** shallow entry, so HEAD is trivially line 1 and the bad check **agrees ~always** — reaching a multi-entry shallow file requires `--no-single-branch` explicitly, or a later `git fetch --depth 1 origin <other-ref>` (which appends an entry without moving HEAD, flipping the verdict on a coin toss). Since the modal real-world shape is precisely `clone --depth 1 --branch <pr-head>`, anyone reading a measured "false-agreement rate" would conclude they'd have caught this by testing; in the configuration that actually hits them they would **not** have. Two structural smells, both readable without running anything: **a check that reads ONE element of an unordered or arbitrarily-ordered set carries no information when it passes** (`| head -1` on unsorted output, SHA-sorted files, hash-map order, `[0]` on an unordered collection), and **a check whose result an unrelated later operation can flip was never measuring its subject.**
 
+### A fourth hazard — shallow clone breaks `git rebase` on a resumed branch
+
+The three modes above corrupt history *reads*; a shallow clone also breaks a *write* operation. The `/slang-fix-issue` recipe clones with `git clone --depth 50`; when you resume a committed branch weeks later and run `git rebase origin/master`, the shallow boundary makes `git merge-base <your-base> origin/master` return **empty** (no common ancestor visible past the graft), so rebase treats nearly every file as an add/add conflict and tries to replay dozens of *unrelated* upstream commits — hundreds of `AA` conflicts plus submodule merge errors, and you will see it applying commits that aren't yours (e.g. "Update generated design docs"). Symptom check: `git rev-parse --is-shallow-repository` → `true`, `git merge-base <base> origin/master` → empty, `.git/shallow` exists. Fix: `git rebase --abort`, then `git fetch --unshallow origin` (~16s for shader-slang/slang), then rebase — `merge-base` now resolves to the true fork point and rebase replays only YOUR commit(s) with just the real conflicts; confirm with `git merge-base --is-ancestor <base> origin/master && echo YES`. After rebasing onto newer master, re-run `git submodule update --init --recursive` (master may have bumped submodule pointers — they show as ` M` unstaged; do NOT stage them into your commit) ([shallow clone silently breaks git rebase on resumed branches — fetch --unshallow first](../learnings/1789147590776-shallow-clone-depth-silently-breaks-git-rebase-on-.md)).
+
 ### Working rules
 
 1. **Check depth before trusting any local history or diff answer:** `git rev-parse --is-shallow-repository`, `cat .git/shallow`, empty `%P` on a non-root commit.
@@ -139,7 +143,7 @@ gh api "repos/shader-slang/slang-rhi/compare/<sha1>...<sha2>" \
 
 On slangpy#1089 the pin **did** move across 0.36.0→0.37.0 (`96fef6f9`→`af6a1168`, 15 commits / 78 files) — yet all 15 commits were adapter/CUDA/WebGPU/test work, and the suspect functions (`getPipelineCacheKey`, `createPipelineWithCache`) were **byte-identical at both pins**; the rhi pipeline-cache code had landed months earlier (slang-rhi#379, 2025-06-02), well before the *older* pin. The real regression was slangpy newly **entering** a latent rhi path: v0.37.0 added `src/sgl/device/persistent_cache.{h,cpp}` (REST 404 at v0.36.0) and began setting `.persistentPipelineCache` in the rhi `DeviceDesc` for the first time. So **always intersect the commit range with the specific functions in the backtrace** before concluding ownership — a non-empty range only bounds the window. Grep the suspect symbols at *both* pins (`gh api .../contents/<path>?ref=<sha> --jq .content | base64 -d | grep -n …`); if they are identical, the regression is a caller-side activation and the fix may still land in rhi while the *cause* is in slangpy. Checking whether a file existed at the older tag (404 vs 200) is a cheap, decisive boundary probe ([a moved slang-rhi pin across a release boundary is not evidence the regression is in rhi](../learnings/1785774865515-a-moved-slang-rhi-submodule-pin-across-a-release-b.md)).
 
-**Source learnings (14):**
+**Source learnings (15):**
 
 - [shallow clones fail THREE ways — history search, --stat inflation, and object-not-found (which manufactures a false negative); audit per clone](../learnings/1785768394345-shallow-clones-fail-three-ways-history-search-stat.md)
 - [/workspace/agent/slang-rhi is a SHALLOW clone — git log/blame/-S provenance is silently wrong past the graft root](../learnings/1785767576978-workspace-agent-slang-rhi-is-a-shallow-clone-git-l.md)
@@ -155,3 +159,4 @@ On slangpy#1089 the pin **did** move across 0.36.0→0.37.0 (`96fef6f9`→`af6a1
 - [`git submodule update --depth 1` silently checks out WRONG commits with empty worktrees; `grep -c '^-'` doesn't catch it](../learnings/1785747759562-git-submodule-update-depth-1-silently-checks-out-w.md)
 - [a moved slang-rhi submodule pin across a release boundary is not evidence the regression is in rhi — intersect the range with the backtrace's functions](../learnings/1785774865515-a-moved-slang-rhi-submodule-pin-across-a-release-b.md)
 - [untracking a checked-in build binary is safe only if no deploy script/CI/Makefile consumes the tracked copy; untracking stops future bloat only, not history](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
+- [shallow clone (--depth) silently breaks git rebase on resumed branches — merge-base returns empty; fetch --unshallow first](../learnings/1789147590776-shallow-clone-depth-silently-breaks-git-rebase-on-.md)

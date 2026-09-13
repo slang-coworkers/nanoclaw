@@ -3,7 +3,7 @@ title: "Reading a CI Run — Census, Roll-Ups & the Retry Layers"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, ci-health, check-runs, retry, merge-queue, roll-up, slang]
-source_count: 11
+source_count: 12
 ---
 
 # Reading a CI Run — Census, Roll-Ups & the Retry Layers
@@ -17,7 +17,7 @@ Reading a run's verdict is not one measurement — it is a census over jobs, tak
 - **"Retried" is ambiguous across three distinct retry layers** in slang CI, and `PendingRetry` means a first-pass failure is never counted — the word alone cannot support a claim.
 - **Layer-C retry (`retry-on-gpu-failure`) is merge_group-ONLY** and its GPU-health trigger has not fired in ~6 weeks — **existence is not firing**; don't credit a retry mechanism you never saw run.
 - **A `cancelled` job tested nothing** — it is neither evidence for nor against, so it cannot corroborate "retried and still failed", and folding it into a failure streak inflates the strongest number in a report.
-- **Job names are not safe selectors** — one name can be a strict prefix of a sibling's, so a prefix match silently reports the wrong job. Anchor the match; audit credit as hard as blame.
+- **Job names are not safe selectors** — one name can be a strict prefix of a sibling's, so a prefix match silently reports the wrong job; and the real check-run `name` carries a ` / test-slang` (or `/ test-slang-rhi`, `/ build`, `/ static-unit-test`) suffix the workflow-file job id lacks, so source exact names from a live `check-runs` call, not the YAML. Anchor the match; audit credit as hard as blame.
 - **Workflow identity is keyed to file path** — a rename mints a new id and retires the old one; pin the id but cross-check via the path endpoint, which 404s loudly.
 - **Excluding an aggregator check from a DASHBOARD and from a TALLY are two different actions** — doing only the first still double-counts.
 - **Rule:** bound every census (`rows == total_count`), take the newest row per job name within a naming family, and treat any non-terminal `conclusion` as unknown rather than as a value.
@@ -36,6 +36,22 @@ reports the wrong job ([A CI job name can be a strict prefix of a sibling's — 
 **file path**, so a rename mints a new id and retires the old one.
 **Rule: bound every census (`rows == total_count`), take the newest row per job name within a naming
 family, and treat any non-terminal `conclusion` as unknown rather than as a value.**
+
+**The check-run `name` for slang test jobs carries a ` / test-slang` suffix — source the exact
+string from live data, never the workflow YAML.** GitHub's actual check-run `name` for slang's
+matrix jobs is always `"<matrix-name> / test-slang"` (e.g. `"test-macos-debug-clang-aarch64 /
+test-slang"`, `"test-linux-release-gcc-x86_64-sm80 / test-slang"`), with sibling suffixes `/
+test-slang-rhi`, `/ build`, `/ static-unit-test`. An exact-string match table (exclusion list,
+classifier, dedup key) keyed on the bare workflow-file *job id* (`test-macos-debug-clang-aarch64`)
+silently matches **nothing** — no error, just an empty result forever (`excludedChecks: []`). So
+build any name-matching table from a live `gh api repos/.../commits/<sha>/check-runs` call for a
+real recent run, never from the workflow YAML's job id or from memory, and verify the match
+**end-to-end against live data** with a case you independently confirmed is currently failing — not
+a synthetic unit-test fixture. A bare-name exclusion list read `prsWithExcludedChecks: 0` while the
+tracked job was actively failing on a real PR; fixing the stored name to include the suffix made the
+same live run correctly find 8 open PRs + 1 evicted merge-group carrying that failure — an 8×
+blast-radius gap between "the mechanism looks deployed" and "the mechanism actually works"
+([check-run names carry a ' / test-slang' suffix — exact-match lists must include it](../learnings/1789250441329-github-check-run-names-for-slang-test-jobs-carry-a.md)).
 
 ## The retry layers in detail: three layers, PendingRetry, and "existence is not firing"
 
@@ -64,7 +80,7 @@ excluded from a failure streak rather than counted toward it. Folding a cancelle
 inflates the strongest number in a report, and the strongest number is the one an upstream reader is
 most likely to act on ([A cancelled job tested nothing — so it cannot corroborate \"retried and still failed\"](../learnings/1786136609115-a-cancelled-job-tested-nothing-so-it-cannot-corrob.md)).
 
-**Source learnings (11):**
+**Source learnings (12):**
 
 - [Excluding an aggregator check from a DASHBOARD and from a TALLY are two different actions — doing only the first still double-counts](../learnings/1786164627761-excluding-an-aggregator-check-from-a-dashboard-and.md)
 - [Two correct CI scans can disagree on failure count — reconcile the UNIT (current vs completed) before conceding or disputing](../learnings/1786164106546-two-correct-ci-scans-can-disagree-on-failure-count.md)
@@ -77,5 +93,6 @@ most likely to act on ([A cancelled job tested nothing — so it cannot corrobor
 - [A check-run census taken while a rerun is in flight is not the run's verdict — poll until conclusion != null before writing "N failures" or "all green](../learnings/1786137761743-a-check-run-census-taken-while-a-rerun-is-in-fligh.md)
 - ["Retried" is ambiguous across THREE retry layers in slang CI — and PendingRetry means a first-pass failure is never counted](../learnings/1786137292183-retried-is-ambiguous-across-three-retry-layers-in-.md)
 - [A cancelled job tested nothing — so it cannot corroborate "retried and still failed"](../learnings/1786136609115-a-cancelled-job-tested-nothing-so-it-cannot-corrob.md)
+- [GitHub check-run names for slang test jobs carry a ' / test-slang' suffix — exact-match exclusion lists must include it](../learnings/1789250441329-github-check-run-names-for-slang-test-jobs-carry-a.md)
 
 _Catalog: [index](../index.md)_

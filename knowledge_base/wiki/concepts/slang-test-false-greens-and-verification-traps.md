@@ -3,7 +3,7 @@ title: "slang-test False Greens and Verification Discipline"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, test-server, false-green, verification, positive-control, negative-control, stale-binary, unit-test, verbosity, replay-collision, CI]
-source_count: 24
+source_count: 25
 ---
 
 # slang-test False Greens and Verification Discipline
@@ -93,9 +93,12 @@ Two authoring gotchas for the slang-test **DIAGNOSTIC_TEST** matcher (distinct f
 
 The through-line across the whole family — skipped test, stale binary, vacuous assertion, inert `CHECK-NOT` — is one bug in different disguises: **present but not exercising.** The general check: name the defect, then name the assertion that fails when *only* that defect is reintroduced, and negative-control both directions (flip each positive to a nonexistent name, expect RED; restore and confirm green).
 
+A SPIR-V FileCheck test is a common vehicle for this vacuity. A `//TEST:SIMPLE(filecheck=CHECK): -target spirv` test that only asserts a positive shape line plus `//CHECK-NOT: error:` can be fully vacuous — passing whether or not the fix is present (found on #12592) — for two compounding reasons: (1) the rejected SPIR-V is disassembled into the output even on validation failure (`slang-emit.cpp` calls `disassemble(...)` regardless, and `SIMPLE` FileCheck does not gate on the compiler result code), so a positive `OpTypePointer StorageBuffer` line still matches in the *failed* output; and (2) `CHECK-NOT: error:` cannot catch a SPIRV validation failure, because diagnostics render as `<severity> <id>:` and a validation failure prints `internal error 99999:` — no `error:` substring, so `-NOT` never fires. An extra value-vs-slot trap: a positive `OpTypePointer StorageBuffer` matches in BOTH buggy and fixed modules when only the pointer *slot's pointee* is wrong. Fix pattern: assert the *buggy artifact is ABSENT* (`//CHECK-NOT: PhysicalStorageBuffer`), or that the slot `OpVariable`/`OpStore` operand types agree — and, subsuming this, run every new SPIRV test against the pre-fix binary and confirm it FAILS, or it proves nothing ([SPIR-V test vacuity: a validation-failure disassembly + `internal error` defeats `CHECK-NOT: error:`](../learnings/1789244351461-slang-spir-v-test-vacuity-a-validation-failure-dis.md)).
+
 ---
 
-**Source learnings (24):**
+**Source learnings (25):**
+- [SPIR-V test vacuity: a validation-failure disassembly + `internal error` defeats `CHECK-NOT: error:` and positive OpType checks](../learnings/1789244351461-slang-spir-v-test-vacuity-a-validation-failure-dis.md)
 - [RPC failure reporting PR #11753](../learnings/1782397269166-slang-test-rpc-failure-reporting-11753-fails-after.md)
 - [false green: test-server crash reported as Pass (#11751)](../learnings/1782398466162-slang-test-false-green-a-unit-test-that-crashes-th.md)
 - [postmortem: flaky test workload vs concurrency (#11759/#11761)](../learnings/1782519024579-postmortem-slang-11759-superseded-by-pr-11761-stre.md)

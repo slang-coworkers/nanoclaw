@@ -3,7 +3,7 @@ title: "Slang SPIR-V Backend: Emission, Capabilities, and Validation"
 type: concept
 group: slang-backends
 tags: [spirv, vulkan, codegen, capabilities, descriptor-heap, debug-info, atomics, spirv-opt, spirv-tools, optimization-level]
-source_count: 26
+source_count: 28
 ---
 
 # Slang SPIR-V Backend: Emission, Capabilities, and Validation
@@ -88,7 +88,11 @@ The SPIR-V atomic emit has FOUR cross-layer gates keyed on address space. When a
 
 **groupshared-by-reference regression:** Lowering a `groupshared T arr[N]` parameter by-reference (to fix D3D TGSM loss) creates a `Workgroup` pointer that cannot cross a SPIR-V function boundary without `VariablePointers`. Fix: extend `GLSLResourceReturnFunctionInliningPass::shouldInline` (Khronos-gated) to also inline callees with a `groupshared`-rate parameter, keyed on `as<IRGroupSharedRate>(param->getRate())` not the value type ([groupshared by-reference param regresses Khronos SPIR-V; fix is Khronos-gated inlining keyed on param RATE](../learnings/1782237919713-groupshared-by-reference-param-regresses-khronos-s.md)).
 
-**Source learnings (26):**
+**spvdb `-g2` debug-info opt bug (default opt is O1):** Slang's default optimization level is `OptimizationLevel::Default` (O1), not `None`/`-O0` (`slang-compiler-options.cpp:459-460`), so a plain `slangc -target spirv -g2` DOES run the SPIRV-Tools optimizer (`glslang_optimizeSPIRV` early-returns only on explicit None with no `-Xspirv-opt`; default vs `-O0` produce different SPIR-V, 5344B vs 5620B). Consequently the intermittent `SPVDB_DEBUGGER` debuginfo failure — SPIRV-Tools `assert(unique_id_ != 0)` at `opt/instruction.h:251` on macOS-aarch64 Debug (#13024) — is a **latent slangc `-g2` SPIR-V debug-info emit/opt bug, NOT a slang-test/spvdb integration or stale-vendored-state problem**: `libspvdb` has its own IR and never links SPIRV-Tools, and `runSpvdbDebuggerTest` compiles Step-1 SPIR-V in a *fresh isolated `UseExe` subprocess* (exempt from the long-lived test-server global-state class), so the assert fires inside that single `-g2` compile (ADCE/DebugInfoManager reading `unique_id()` on an unregistered inst). It classifies as a real bug with a non-deterministic trigger (introduced by #12896; ~6-fail/4-pass across identical `merge_group` requeues; Debug-only because the assert compiles out under `NDEBUG`) — already tracked (#13024, quarantine draft #13026), so cross-reference rather than re-file, and grep your own `memory/` for the assertion text before spawning a fresh CI-history investigation ([SPVDB_DEBUGGER failure is a slangc -g2 SPIR-V opt bug, not a spvdb-integration bug](../learnings/1789170739377-a-spvdb-debugger-debuginfo-slang-test-failure-is-a.md), [spvdb unique_id_ assertion is a real bug with a flaky trigger — tracked #13024](../learnings/1789179963682-spvdb-unique-id-assertion-on-macos-debug-aarch64-r.md)).
+
+**Source learnings (28):**
+- [A SPVDB_DEBUGGER/debuginfo slang-test failure is a slangc -g2 SPIR-V opt bug (default opt is O1, not None), not a spvdb integration bug](../learnings/1789170739377-a-spvdb-debugger-debuginfo-slang-test-failure-is-a.md)
+- [spvdb unique_id_ assertion on macos-debug-aarch64 — real bug, flaky trigger, tracked #13024 (don't re-file)](../learnings/1789179963682-spvdb-unique-id-assertion-on-macos-debug-aarch64-r.md)
 - [adding a nullary entry-point attribute + SPIR-V execution mode (`[postdepthcoverage]`): mirror `[earlydepthstencil]` across 9 sites; `ASTNodeType` is FIDDLE-regenerated (not append-only); a new IR op bumps `k_maxSupportedModuleVersion`; `requireSPIRVCapability`/`requireSPIRVExecutionMode` are pure emission funnels (no capdef atoms needed)](../learnings/1789107867239-adding-a-nullary-entry-point-attribute-spir-v-exec.md)
 - [slang-emit-spirv builtin-var cache and the volatile-set cache-hit trap](../learnings/1779612967874-slang-emit-spirv-builtin-var-cache-and-the-volatil.md)
 - [IRSPIRVAsmOperandBuiltinVar is hoistable — cross-stage builtin refs always collapse to one inst](../learnings/1779617050641-slang-spirv-asm-operand-builtinvar-is-hoistable-co.md)
