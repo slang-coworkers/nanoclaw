@@ -2,17 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-08-18T07:52:58Z",
-   "backlog": 74980,
-   "defects": 70,
-   "offenders": 73,
-   "top": {
-    "path": "tracker-tick.md",
-    "class": "DOSSIER",
-    "size": 72521
-   }
-  },
-  {
    "at": "2026-08-20T04:08:41Z",
    "backlog": 6500,
    "defects": 13,
@@ -314,6 +303,28 @@
     "path": "imported/project_12284_cross_module_overload_silent_break_warning.md",
     "class": "OVERSIZE",
     "size": 26507
+   }
+  },
+  {
+   "at": "2026-09-13T04:09:56Z",
+   "backlog": 499077,
+   "defects": 26,
+   "offenders": 132,
+   "top": {
+    "path": "imported/project_12260_enum_bool_switch_e39999.md",
+    "class": "OVERSIZE",
+    "size": 26009
+   }
+  },
+  {
+   "at": "2026-09-13T04:10:10Z",
+   "backlog": 499077,
+   "defects": 26,
+   "offenders": 132,
+   "top": {
+    "path": "imported/project_12260_enum_bool_switch_e39999.md",
+    "class": "OVERSIZE",
+    "size": 26009
    }
   }
  ]

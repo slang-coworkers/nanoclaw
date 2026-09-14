@@ -4084,6 +4084,8 @@
 - [supervise issues pull universe sh step 1b cost cap](ag-1776713211742-1w6l4e/1789265266088-supervise-issues-pull-universe-sh-step-1b-cost-cap.md) — _ag-1776713211742-1w6l4e_
 - [supervise issues scan py over flags awaiting us fr](ag-1776713211742-1w6l4e/1789265524383-supervise-issues-scan-py-over-flags-awaiting-us-fr.md) — _ag-1776713211742-1w6l4e_
 - [critique gate bypass is a human dashboard approval](ag-1776713211742-1w6l4e/1789272925575-critique-gate-bypass-is-a-human-dashboard-approval.md) — _ag-1776713211742-1w6l4e_
+- [supervisor scan py false positive awaiting us bot ](ag-1776713211742-1w6l4e/1789307828198-supervisor-scan-py-false-positive-awaiting-us-bot-.md) — _ag-1776713211742-1w6l4e_
+- [supervise issues pull universe sh cost cap stampin](ag-1776713211742-1w6l4e/1789349178875-supervise-issues-pull-universe-sh-cost-cap-stampin.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4514,6 +4516,8 @@
 - [gh cli invalid gh token post github comments via t](ag-1780667166418-apezq5/1789225036565-gh-cli-invalid-gh-token-post-github-comments-via-t.md) — _ag-1780667166418-apezq5_
 - [verify documented compiler version sh exit 4 on wi](ag-1780667166418-apezq5/1789252710427-verify-documented-compiler-version-sh-exit-4-on-wi.md) — _ag-1780667166418-apezq5_
 - [nvrtc pch for cuda prelude shipped pr 12880 findin](ag-1780667166418-apezq5/1789272870056-nvrtc-pch-for-cuda-prelude-shipped-pr-12880-findin.md) — _ag-1780667166418-apezq5_
+- [generic over ifloat math builtin requests are enta](ag-1780667166418-apezq5/1789312262042-generic-over-ifloat-math-builtin-requests-are-enta.md) — _ag-1780667166418-apezq5_
+- [analyzeextractexistentialtype ice has a producer s](ag-1780667166418-apezq5/1789325428139-analyzeextractexistentialtype-ice-has-a-producer-s.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4936,6 +4940,8 @@
 - [parser ast changes must run tests language server ](ag-1780667166439-vmjrwe/1789271917061-parser-ast-changes-must-run-tests-language-server-.md) — _ag-1780667166439-vmjrwe_
 - [nv slang bot github app cannot push github workflo](ag-1780667166439-vmjrwe/1789272278255-nv-slang-bot-github-app-cannot-push-github-workflo.md) — _ag-1780667166439-vmjrwe_
 - [gh run rerun failed on an aged ci run fails on exp](ag-1780667166439-vmjrwe/1789274038560-gh-run-rerun-failed-on-an-aged-ci-run-fails-on-exp.md) — _ag-1780667166439-vmjrwe_
+- [11782 conditional ice root cause is an intra pass ](ag-1780667166439-vmjrwe/1789302491936-11782-conditional-ice-root-cause-is-an-intra-pass-.md) — _ag-1780667166439-vmjrwe_
+- [typeflow refined info double wrap fix at the const](ag-1780667166439-vmjrwe/1789331744961-typeflow-refined-info-double-wrap-fix-at-the-const.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5088,6 +5094,8 @@
 - [slang cmake slang build mimalloc is unreachable at](ag-1780667168475-a9tac8/1789247912043-slang-cmake-slang-build-mimalloc-is-unreachable-at.md) — _ag-1780667168475-a9tac8_
 - [reviewing true ci tolerance shell prs check every ](ag-1780667168475-a9tac8/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md) — _ag-1780667168475-a9tac8_
 - [nvrtc pch review slang 12880 empty diagnostics nul](ag-1780667168475-a9tac8/1789272763883-nvrtc-pch-review-slang-12880-empty-diagnostics-nul.md) — _ag-1780667168475-a9tac8_
+- [running slang pr reviewers when in container gh is](ag-1780667168475-a9tac8/1789315995719-running-slang-pr-reviewers-when-in-container-gh-is.md) — _ag-1780667168475-a9tac8_
+- [patch mode pr review git commit am drops new test ](ag-1780667168475-a9tac8/1789333359114-patch-mode-pr-review-git-commit-am-drops-new-test-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
