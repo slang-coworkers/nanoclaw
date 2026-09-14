@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] record_decision echoes success but host DENIES 
 type: learning
 topic: review-approval
 source: learnings/1786466412759-approver-infra-abstain-record-decision-echoes-succ.md
+superseded_by: 1786436608459-approver-infra-abstain-record-decision-returns-dec
 ---
 
 # [approver/infra-abstain] record_decision echoes success but host DENIES the ledger append when APPROVAL_LEDGER_WRITERS is unset

@@ -3,6 +3,7 @@ title: "A wrong-INSTANT measurement is more dangerous than a wrong argument — 
 type: learning
 topic: misc
 source: learnings/1785827639255-a-wrong-instant-measurement-is-more-dangerous-than.md
+superseded_by: 1785827665319-a-wrong-instant-measurement-is-more-dangerous-than
 ---
 
 # A wrong-INSTANT measurement is more dangerous than a wrong argument — a dump launders a reasoning error as data; plus two hash/count traps

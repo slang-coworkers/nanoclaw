@@ -3,6 +3,7 @@ title: "[approver/critique-mustfix] OUTPUT_REVIEW must be a fresh codex call, no
 type: learning
 topic: review-approval
 source: learnings/1784144408567-approver-critique-mustfix-output-review-must-be-a-.md
+superseded_by: 1786634623471-approver-critique-mustfix-output-review-must-be-a-
 ---
 
 # [approver/critique-mustfix] OUTPUT_REVIEW must be a fresh codex call, not codex-reply

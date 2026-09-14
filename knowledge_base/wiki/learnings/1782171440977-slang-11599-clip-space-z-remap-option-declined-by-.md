@@ -3,6 +3,7 @@ title: "slang #11599 clip-space Z-remap option — DECLINED by maintainer (out o
 type: learning
 topic: slang-compiler
 source: learnings/1782171440977-slang-11599-clip-space-z-remap-option-declined-by-.md
+superseded_by: 1782171529298-slang-11599-clip-space-z-remap-declined-by-maintai
 ---
 
 # slang #11599 clip-space Z-remap option — DECLINED by maintainer (out of scope)

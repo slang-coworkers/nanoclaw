@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] record_decision returns 'Decision recorded' whi
 type: learning
 topic: review-approval
 source: learnings/1786428994507-approver-infra-abstain-record-decision-returns-dec.md
+superseded_by: 1786436608459-approver-infra-abstain-record-decision-returns-dec
 ---
 
 # [approver/infra-abstain] record_decision returns "Decision recorded" while the host denies it — verify APPROVAL_LEDGER_WRITERS, not the return string

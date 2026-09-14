@@ -3,6 +3,7 @@ title: "float3/vec3 CUDA slowdown is swizzle-base re-evaluation, not float3 layo
 type: learning
 topic: misc
 source: learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md
+superseded_by: 1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base
 ---
 
 # float3/vec3 CUDA slowdown is swizzle-base re-evaluation, not float3 layout

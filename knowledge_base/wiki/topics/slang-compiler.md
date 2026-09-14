@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-1540 learnings. [Catalog](../index.md)
+1542 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["N crash signatures" is a hypothesis about count, not an observation — but code shape is the WRONG test (slang#8785)](../learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md)
@@ -362,6 +362,7 @@ type: topic
 - [Gating slang-test on a software rasterizer (lavapipe): -render-feature hardware-device](../learnings/1787840918556-gating-slang-test-on-a-software-rasterizer-lavapip.md)
 - [Generic (T)float-literal cast floors to 0 — IArithmetic lacks __init(float)](../learnings/1785559222590-generic-t-float-literal-cast-floors-to-0-iarithmet.md)
 - [Generic where-constraint declaration-order sensitivity in Slang overload resolution](../learnings/1787226105001-generic-where-constraint-declaration-order-sensiti.md)
+- [Generic-over-IFloat math builtin requests are entangled with the min/max vector-ICE + autodiff-overload traps](../learnings/1789312262042-generic-over-ifloat-math-builtin-requests-are-enta.md)
 - [gersemi 0.21.0 flags pristine slang master — normalize-and-diff to isolate a PR's true CMake delta](../learnings/1788904511298-gersemi-0-21-0-flags-pristine-slang-master-normali.md)
 - [getModuleDependencies/enumerateModules are internal-only, not in public slang.h](../learnings/1788093186621-getmoduledependencies-enumeratemodules-are-interna.md)
 - [getNameForNameHint feeds C-like emitter identifiers (not just SPIR-V debug); ExtensionDecl is anonymous](../learnings/1781267563910-getnamefornamehint-feeds-c-like-emitter-identifier.md)
@@ -1503,6 +1504,7 @@ type: topic
 - [Two shader-slang nightly workflows: adjacent ids, identical totals, inverted meaning](../learnings/1785882757450-two-shader-slang-nightly-workflows-adjacent-ids-id.md)
 - [Two ways a Slang test assertion lies: prelude-matched names, and exit codes no harness checks](../learnings/1785987113227-two-ways-a-slang-test-assertion-lies-prelude-match.md)
 - [Two-phase IR param predeclare leaks placeholder type into composite witnesses](../learnings/1787268164470-two-phase-ir-param-predeclare-leaks-placeholder-ty.md)
+- [Typeflow refined-info double-wrap: fix at the construction chokepoint, and producer can supersede a consumer PR (slang#13046 vs #12934/#12935)](../learnings/1789331744961-typeflow-refined-info-double-wrap-fix-at-the-const.md)
 - [Unhandled-local-inst ICE family: entry-point-only diagnostic gate is an ICE escape hatch (slang#12486)](../learnings/1786494483979-unhandled-local-inst-ice-family-entry-point-only-d.md)
 - [Unit-testing an internal (unexported) slang free function: own-TU + dual-compile, not export](../learnings/1785203787876-unit-testing-an-internal-unexported-slang-free-fun.md)
 - [UNREACHABLE_RETURN in Slang enforces NOTHING — it is an #ifdef _MSC_VER shim, not SLANG_UNREACHABLE](../learnings/1786217683426-unreachable-return-in-slang-enforces-nothing-it-is.md)
