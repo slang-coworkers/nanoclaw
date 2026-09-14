@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] record_decision returns 'Decision recorded' eve
 type: learning
 topic: review-approval
 source: learnings/1786436642533-approver-infra-abstain-record-decision-returns-dec.md
+superseded_by: 1786436608459-approver-infra-abstain-record-decision-returns-dec
 ---
 
 # [approver/infra-abstain] record_decision returns "Decision recorded" even when the host DENIES the ledger append — the tool string is not proof of a write

@@ -3,6 +3,7 @@ title: "slangpy: calling an already-tagged [shader('compute')] entry point via t
 type: learning
 topic: slang-compiler
 source: learnings/1785958438990-slangpy-calling-an-already-tagged-shader-compute-e.md
+superseded_by: 1785961758735-slangpy-functional-api-segfaults-on-an-already-sha
 ---
 
 # slangpy: calling an already-tagged [shader("compute")] entry point via the functional API segfaults

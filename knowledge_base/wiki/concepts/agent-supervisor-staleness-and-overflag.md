@@ -3,7 +3,7 @@ title: "Supervisor CI-Cell Staleness and scan.py Over-Flag Root Causes"
 type: concept
 group: agent-infra
 tags: [supervisor, scan, ci-health, staleness, over-flag, draft-flip, transient-signature, skill-re-sync]
-source_count: 3
+source_count: 4
 ---
 
 # Supervisor CI-Cell Staleness and scan.py Over-Flag Root Causes
@@ -27,9 +27,12 @@ The supervisor's `supervise-issues/scripts/scan.py` over-flagged ~70 chains as `
 
 **A fourth input bug in the same feeder: bare numeric transient signatures (502/503/504) false-positive on GitHub comment IDs.** `scripts/pull-universe.sh::classify_error_text` lists bare `"502"`, `"503"`, `"504"` in `_TRANSIENT_SIGNATURES`, and the `is_errorish` guard is **or**-ed with the signature scan, so any outbound text containing those three digits *anywhere* (including inside a URL or comment id) is classified `transient`. Observed at tick 87: `gh-issue-shader-slang/slang-12219` was flagged `transient` on the match `504` inside comment id `5150492632` — while the outbound was a normal `[Loop closed]` report on a **terminal** chain. `last_outbound_error_class ∈ (transient|unknown)` is the **bounce limb** of `scan.py`, so a false positive manufactures a phantom nudge row on a finished chain; since GitHub comment ids are 10 digits, ~a third of all links contain one of these substrings by chance. Fix: require numeric signatures to co-occur with an errorish marker (`and`, not `or`), or match `\b(HTTP|status)\s*50[234]\b`. **A substring signature for an error class must be anchored to error syntax, never bare digits** — when a classifier's cheapest signature is also the most common accidental substring, it will mostly report accidents ([supervise-issues: bare numeric transient signatures (502/503/504) false-positive on GitHub comment IDs](../learnings/1785802540595-supervise-issues-bare-numeric-transient-signatures.md)).
 
-**Source learnings (3):**
+**A distinct `awaiting_us` false-positive: automation posted under a HUMAN GitHub login.** `scan.py::is_bot_author` keys on the login (`nv-slang-bot`, `coderabbitai[bot]`, …), so it correctly discounts bot-login comments but does NOT catch *automated* posts authored under a genuinely-human account. Measured Tick 222 (2026-09-13, slang#12821 / PR #12823): the chain was classified `awaiting_us` (human-spoke-last, `action=nudge`) but the "last human comment" was a `jhelferty-nv` PR-board-sync marker explicitly labeled *"do not reply to this comment"* (plus a `coderabbitai[bot]` "review skipped" notice), not a real human ask — so a BEHIND-but-mergeable draft correctly `awaiting_human` read as human-last → false `awaiting_us` → a wasted nudge. This is separate from the incomplete-bot-list case (github-actions/coderabbitai read as human because they're not in `is_bot`): here the login IS human, only the *body* is automation. Durable fix for the scan maintainer: extend the filter to ignore comments whose body carries an automation marker (`"do not reply to this comment"`, a PR-board-sync signature) even from a human login, OR maintain an `AUTOMATION_LOGINS` set (add `jhelferty-nv` board-sync). Until then, a tick that nudges a lone `awaiting_us` PR chain should expect the fixer may correctly report a bot-from-human-account false-positive — net-useful (it forces a verify) but it inflates `must_nudge` ([Supervisor scan.py false-positive awaiting_us: bot posts from human GitHub accounts](../learnings/1789307828198-supervisor-scan-py-false-positive-awaiting-us-bot-.md)).
+
+**Source learnings (4):**
 - [supervisor §2b CI cell goes stale on draft→non-draft flip — a non-draft PR's authoritative run is the pull_request run on HEAD, not the stale workflow_dispatch one (#12120/#12195)](../learnings/1784982853601-supervisor-ci-cell-goes-stale-when-pr-flips-draft-.md)
 - [supervise scan.py chronic 70+ over-flag: two roots — parse_ts naive-tz crash (dead tick) + HUMAN_OWNED gate too deep; both revert on skill re-sync, needs upstream PR](../learnings/1785112718566-supervise-scan-py-durable-fix-for-chronic-70-over-.md)
 - [supervise-issues: bare numeric transient signatures (502/503/504) match GitHub comment ids and forge `transient` on terminal chains via the bounce limb](../learnings/1785802540595-supervise-issues-bare-numeric-transient-signatures.md)
+- [`awaiting_us` false-positive from automation posted under a human login (jhelferty-nv board-sync / "do not reply"); filter by body-marker or an AUTOMATION_LOGINS set, not just login](../learnings/1789307828198-supervisor-scan-py-false-positive-awaiting-us-bot-.md)
 
 _Catalog: [[wiki/index.md]]_

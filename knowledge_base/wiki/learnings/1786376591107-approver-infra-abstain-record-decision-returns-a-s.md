@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] record_decision returns a success string even w
 type: learning
 topic: review-approval
 source: learnings/1786376591107-approver-infra-abstain-record-decision-returns-a-s.md
+superseded_by: 1786436608459-approver-infra-abstain-record-decision-returns-dec
 ---
 
 # [approver/infra-abstain] record_decision returns a success string even when the host DENIES the ledger append

@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1188 learnings. [Catalog](../index.md)
+1189 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
@@ -15,6 +15,7 @@ type: topic
 - ["The tool returned empty" is not "the file contains nothing" — an enumeration with an unread member is not exhaustive](../learnings/1786007774760-the-tool-returned-empty-is-not-the-file-contains-n.md)
 - ["Unexecuted check" vs "genuine gap" prescribe opposite fixes — don't collapse them into a tidy universal](../learnings/1785830935297-unexecuted-check-vs-genuine-gap-prescribe-opposite.md)
 - ["Was this fresh?" and "has this changed?" are different queries the same timestamp appears to answer — plus: cla-assistant re-evaluates on a signature with no push](../learnings/1785888733286-was-this-fresh-and-has-this-changed-are-different-.md)
+- [#11782 Conditional ICE root cause is an intra-pass ORDERING bug in lowerConditionalType, not a symbolic flag](../learnings/1789302491936-11782-conditional-ice-root-cause-is-an-intra-pass-.md)
 - [#11917 gating: legalize passes keyed on TYPE SHAPE (IntLit dims) are B/C-risky — in-window any-value marshalling synthesizes 1-vectors](../learnings/1783995257092-11917-gating-legalize-passes-keyed-on-type-shape-i.md)
 - [#12223 -Og debuggability: maintainer took the DIRECTION, rejected our SHAPE — fix the initialization layer, not the flag ordering](../learnings/1785767658697-12223-og-debuggability-maintainer-took-the-directi.md)
 - [#8125 empty-struct fix — decoration-removal, not the rejected global pass](../learnings/1785467126768-8125-empty-struct-fix-decoration-removal-not-the-r.md)

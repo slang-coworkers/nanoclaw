@@ -3,7 +3,7 @@ title: "Diagnosing GitHub Auth in Coworker Containers (gh / OneCLI / App token)"
 type: concept
 group: agent-infra
 tags: [gh, onecli, github-app-token, auth, app_not_connected, spec-repo, read-vs-write]
-source_count: 4
+source_count: 5
 ---
 
 ## TL;DR
@@ -62,6 +62,30 @@ failure does NOT block Reviewer A or C — verify by actually running `gh pr dif
 head`. Posting back WOULD be blocked by the same OneCLI wall, but that only matters when
 `<github-post-authorized />` is present.
 
+The harder variant is when GitHub is **fully unconnected in OneCLI**: `gh api` returns
+`app_not_connected`, `GH_TOKEN` is a `ROUT…` gateway *routing* token (not a GitHub token), and
+there is no `~/.config/gh/hosts.yml` fallback — so even `gh pr view`/`gh pr diff` fail and the
+`/slang-pr-review` runners' **pr mode** dies (`compose-and-run.sh` calls `gh pr view` for HEAD/BASE
+SHA and `exit 1`s as "phantom PR"). The diff is still fully recoverable via **anonymous public git
+read** (the origin remote is `https://x-access-token:placeholder@github.com/…`), so replicate what
+production pre-stages and skip the runner's gh path: `git worktree add --detach wt-<pr>-revA
+origin/master` (the `wt-` prefix ⇒ supervisor GC reaps it), then `git diff origin/master...<head_sha>
+> tmp/pr-diff.patch` (3-dot = `gh pr diff` equivalent), `git diff --name-only … > tmp/pr-files.txt`,
+write `tmp/context.json={repo,pr,base_sha,head_sha,diff_sha256}` with the REAL pr number, and call
+`repro.sh` directly with `MODE=pr REPO PR_NUMBER REPO_ROOT=<worktree> RUN_DIR SKILL_DIR HERE
+MAX_BUDGET_USD` exported — REVIEW.md Step 1 makes the inner model use `tmp/pr-diff.patch` as-is when
+`context.json.pr` matches, so no `gh` is needed (gh is tried only for optional metadata, failing
+harmlessly). Then apply compose-and-run's post-run guards by hand (final-review.md ≥500 bytes, a
+Task/Agent tool_use present, no `API Error|socket|rate limit`, `summarize.py` drift==0). Reviewer C
+(clarity) needs the **writable** `/home/node/.claude/skills/slang-clarity-review-runner` copy (the
+`/app/skills/...` copy can't `mkdir transcripts/` on the read-only FS → instant exit 0, no output)
+and its gh-free `--mode branch --branch <ref> --repo <o/r>` path (git checkout only; Opus recovers
+from the static "read via gh pr diff" prompt by reading the checked-out files). Reviewer B (Devin) is
+unaffected — `devin-fetch.sh --url <PR url>` scrapes anonymously. Escalate the outage up (operator
+reconnects GitHub at the gateway's `connect=github` URL); any authorized write (`post-back.sh`) fails
+until then, but an unauthorized review posts nothing anyway, so delivery via `send_file` is
+unblocked ([Running slang PR reviewers when in-container gh is unauthenticated (OneCLI GitHub not connected)](../learnings/1789315995719-running-slang-pr-reviewers-when-in-container-gh-is.md)).
+
 ### Distinguishing dead-connection from under-scoped, and the spec-repo dead end
 
 When `gh` genuinely fails, distinguish a *dead credential connection* from a merely *under-scoped
@@ -92,8 +116,9 @@ to open the PR or provision a writable route. (Proposal conventions: copy `propo
 keep number `000` until a maintainer assigns one, conform to the template sections exactly, Status
 = "Design Review".)
 
-**Source learnings (4):**
+**Source learnings (5):**
 - [Diagnosing a gh 403/invalid-token in the coworker container (OneCLI app_not_connected)](../learnings/1787673998635-diagnosing-a-gh-403-invalid-token-in-the-coworker-.md) — two cheap reads (`rate_limit`, `.permissions`) tell dead-connection from under-scoped; both dead ⇒ every authenticated path fails, reconnect is operator-side.
 - [shader-slang/spec has no writable path from the slang-fixer container](../learnings/1787678701018-shader-slang-spec-has-no-writable-path-from-the-sl.md) — no push, no fork, invalid GH_TOKEN, /user 403; draft locally and report the blocker up, don't hunt a workaround.
 - [slang PR review: gh pr diff works even when gh auth status shows invalid GH_TOKEN](../learnings/1788581852750-slang-pr-review-gh-pr-diff-works-even-when-gh-auth.md) — OneCLI intercepts only `gh api`/`gh api graphql`; `gh pr diff`/`gh pr view` read via raw token, so preflight status failure doesn't block the runner.
 - [gh api REST works with the App installation token even when gh auth status says "invalid"](../learnings/1788776005130-gh-api-rest-works-with-the-app-installation-token-.md) — App tokens have no user context (so /user 403s); probe `gh api /repos/.../issues/<n> --jq .state`; GraphQL-backed `gh` subcommands can return empty output.
+- [when gh is FULLY unauthenticated (`app_not_connected`, ROUT routing token), pr-mode runners die but the diff is recoverable via `git diff origin/master...<head>` + `repro.sh` directly; Reviewer C uses the writable `~/.claude/skills` copy with `--mode branch`; Devin unaffected.](../learnings/1789315995719-running-slang-pr-reviewers-when-in-container-gh-is.md)

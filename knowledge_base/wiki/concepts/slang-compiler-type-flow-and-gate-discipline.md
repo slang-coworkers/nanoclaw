@@ -3,7 +3,7 @@ title: "Slang Compiler: Type-Flow ExtractExistential, Gate-Relaxation Discipline
 type: concept
 group: slang-grab-bag
 tags: [type-flow, ExtractExistential, untagged-union, singleton, gate-discipline, entry-point-reachability, E50100, SLANG_RELEASE_ASSERT, capdef, meta-slang, revert-drill, peel-walker, approver]
-source_count: 12
+source_count: 14
 ---
 
 # Slang Compiler: Type-Flow ExtractExistential, Gate-Relaxation Discipline, and 2026-07-17 Operational Fold
@@ -11,7 +11,8 @@ source_count: 12
 This page covers the dynamic-dispatch type-flow specialization pass (`slang-ir-typeflow-specialize.cpp`), the discipline for relaxing a compiler diagnostic gate, and a fold of dated operational learnings (approver false-safe/challenger notes, capdef, meta.slang splice, revert-drill, analyzeMakeStruct, createGlobalSession RSS).
 
 ## TL;DR
-- **Type-flow `ExtractExistential` analyzers must tolerate coarsened untagged-union info, but only the *singleton* case may refine to a concrete type.** A blanket mirror of the Value sibling relocates the ICE — the Type analyzer must guard `untaggedUnion->getSet()->isSingleton()` before refining to `makeElementOfSetType`; WitnessTable returns `none()` for any untagged union; keep `SLANG_UNEXPECTED` for all other shapes. This is the correct (consumer, not producer) layer.
+- **Type-flow `ExtractExistential` analyzers must tolerate coarsened untagged-union info, but only the *singleton* case may refine to a concrete type.** A blanket mirror of the Value sibling relocates the ICE — the Type analyzer must guard `untaggedUnion->getSet()->isSingleton()` before refining to `makeElementOfSetType`; WitnessTable returns `none()` for any untagged union; keep `SLANG_UNEXPECTED` for all other shapes. This is the correct layer for #12934's consumer PR #12935.
+- **But the same crash family has a PRODUCER-side root (#13046):** `isConcreteType` lacks a tagged/untagged-union case → `makeInfoForConcreteType` re-wraps an already-lowered union into `UntaggedUnion(TypeSet(TaggedUnion(...)))`. Fix at the construction chokepoint with `if (isRefinedInfoType(type)) return type;` at the TOP of `makeInfoForConcreteType` (covers nested cases; NOT an entry assert, which hard-aborts on `IAccessor[1]`-style nesting). A producer fix can SUPERSEDE the consumer PR for the whole family — verify by running the sibling issue's own regression on your build before recommending a companion PR.
 - **Before relaxing a compiler diagnostic gate, git-blame it AND grep the tests for a case that PINS the exact behaviour you are relaxing** — a "just delete the gate" fix a triage recommends can be provably wrong against an existing regression test. Gate on entry-point reachability (a valid proxy for "reaches codegen" since `eliminateDeadCode` runs before the diagnostic pass).
 - **`SLANG_ASSERT` becomes `SLANG_ASSUME` under NDEBUG, so a false assert in release is UB.** Before citing an internals behaviour, read it at a named ref — several folded entries here record a premise that was false.
 - **capdef `def` inheritance accepts a top-level `|` disjunction but NOT a parenthesized `(b|c)` inside a conjunction.**
@@ -24,6 +25,40 @@ This page covers the dynamic-dispatch type-flow specialization pass (`slang-ir-t
 ## Type-flow ExtractExistential analyzers: tolerate untagged-union info, but guard the singleton case (#12934/#12935)
 
 `source/slang/slang-ir-typeflow-specialize.cpp` (the dynamic-dispatch type-flow specialization pass, PR #7968) has three sibling analyzers that extract components from an existential's propagated "info": `analyzeExtractExistentialType` (~:3781) and `analyzeExtractExistentialWitnessTable` (~:3746) handle only COM-interface and `IRTaggedUnionType` info and `SLANG_UNEXPECTED` on anything else, while `analyzeExtractExistentialValue` (~:3817) already `return none()`s on the non-tagged-union fall-through. On *valid* code that reaches an existential-returning helper through a real dynamic dispatch over ≥2 registered conformances (`createDynamicObject` + two `-conformance`), especially threaded through the autodiff `IRDifferentialPairType` union, the merge (`unionPropagationInfo`/`flatUnionPropagationInfo`/`analyzeSpecialize`) coarsens the operand info to `UntaggedUnionType` or a non-singleton `ElementOfSetType` — not a `TaggedUnionType` — so the Type/WitnessTable analyzers throw `E99997 Unhandled info type in analyzeExtractExistentialType` (issue #12934, reduced from a Falcor2 `scene_test`; either conformance alone stays concrete and compiles) [slang type-flow ExtractExistential Type/WitnessTable analyzers crash where the Value sibling tolerates non-tagged-union info](../learnings/1788817368144-slang-type-flow-extractexistential-type-witnesstab.md). The fix is NOT a blanket mirror of the Value sibling: the Type analyzer must guard `untaggedUnion->getSet()->isSingleton()` and only then refine to `makeElementOfSetType(getSet())` (a statically-known concrete type); accepting *every* untagged union unconditionally lets a multi-element union flow into `specializeExtractExistentialType`'s multi-element path (~:6109), which calls `emitGetTypeTagFromTaggedUnion` on a tagless operand and merely RELOCATES the ICE to the tag-extraction path. WitnessTable returns `none()` for any untagged union (no witness-table-set to recover); keep `SLANG_UNEXPECTED` for all other shapes. This is the correct layer (consumer, not producer): `makeInfoForConcreteType()` (~:704) intentionally wraps a concrete value at a non-structural merge point as a singleton `UntaggedUnionType` (tag dropped — a concrete value has no runtime witness-table tag). Gate per the #12873 discipline — a temporary `fprintf(stderr, "...op=%s", ...)` in the fall-through pins the arriving op + `isSingleton()`/`getOperandCount()`, and `SLANG_RUN_SPIRV_VALIDATION=1` confirms downstream lowering accepts the coarser shape rather than just moving the crash. `-dump-ir` writes to **stderr**; the pass just before is `specializeModule`. Fixed in PR #12935 [slang typeflow ExtractExistential singleton guard: mirroring Value sibling naively relocates the crash](../learnings/1788821533041-slang-typeflow-extractexistential-singleton-guard-.md).
+
+## Same crash family has a PRODUCER-side root (#13046): fix the double-wrap at the construction chokepoint
+
+The consumer-side singleton guard above (PR #12935) fixes #12934, but the `E99997 Unhandled info
+type in analyzeExtractExistentialType` family also has a **distinct producer-side trigger**
+(#13046, autodiff-free, no nested hit-info) that the consumer guard merely *relocates*. Mechanism,
+all in `slang-ir-typeflow-specialize.cpp` (@ a90dfa311): `isConcreteType` (~:585-602) has NO case
+for `kIROp_TaggedUnionType`/`kIROp_UntaggedUnionType` → falls through `default: return true`, so an
+already-lowered `IRTaggedUnionType` return is mis-classified "concrete"; `propagateInterproceduralEdge`'s
+FuncToCall fallback (~:2158-2176) passes it to `makeInfoForConcreteType`, whose entry
+`SLANG_ASSERT(isConcreteType(type))` wrongly passes (same misclassification) and whose bottom
+fallthrough (~:704-706) RE-WRAPS it into the malformed `UntaggedUnion(TypeSet(TaggedUnion(...)))`;
+`analyzeExtractExistentialType`'s happy path (~:3778) only matches a BARE `IRTaggedUnionType`, so the
+doubly-wrapped shape hits `SLANG_UNEXPECTED` at ~:3781 ([analyzeExtractExistentialType ICE has a producer-side root (isConcreteType lacks a union case), not just the consumer gate](../learnings/1789325428139-analyzeextractexistentialtype-ice-has-a-producer-s.md)).
+Two transferable lessons: **(1) put the "don't re-wrap an already-refined X" guard at the single
+CONSTRUCTION CHOKEPOINT, not the caller — and NOT as an assert.** Guarding only the
+`propagateInterproceduralEdge` fallback + `SLANG_ASSERT(!isRefinedInfoType(type))` at
+`makeInfoForConcreteType`'s entry is INCOMPLETE: a structurally-nested refined return (`IAccessor[1]`,
+tuple, `DifferentialPair<...>`) passes `isConcreteType` at the top level, enters the function, and the
+structural recursion hits the refined element → the assert HARD-ABORTS. Correct fix:
+`if (isRefinedInfoType(type)) return type;` at the TOP of `makeInfoForConcreteType` — because the
+structural cases recurse back through it, one chokepoint guard covers top-level AND arbitrarily-nested
+cases, matching the existing `tryGetInfo` "refinement occurred in a previous phase; reuse directly"
+rule (`isRefinedInfoType` = {TaggedUnionType, UntaggedUnionType, ElementOfSetType}, the op set
+`tryGetInfo`/`isSingletonInfo` already use — consolidate to one predicate). **(2) A producer-side fix
+can SUPERSEDE a consumer-side PR for a whole crash family — verify by running the sibling issue's own
+regression on your fix.** #12935's consumer guard relocates #13046 (its singleton branch fires on the
+malformed singleton and re-asserts at `slang-ir-specialize-function-call.cpp:246`), whereas the
+producer fix compiles+passes #12934's OWN regression test with NO consumer guard present → it fixes
+both at the root. Before recommending a "companion PR", run the related issue's test on your build; if
+it passes, recommend supersede and carry that test forward (no path collision — only one PR lands).
+Both the incomplete-assert gap and the supersede opportunity were caught by the codex CODE/PLAN
+critique before delivery, so run the critique gate on IR-pass fixes even when local tests are green — a
+top-level-only repro misses the structural-nesting variant ([Typeflow refined-info double-wrap: fix at the construction chokepoint, and producer can supersede a consumer PR (slang#13046 vs #12934/#12935)](../learnings/1789331744961-typeflow-refined-info-double-wrap-fix-at-the-const.md)).
 
 ## Before relaxing a compiler gate, grep the tests that PIN it (#12486)
 
@@ -50,9 +85,11 @@ Fixing "empty existential passed to a helper ICEs instead of a clean E50100" (#1
 **[approver/critique-mustfix] failure-direction proof must check the FALLTHROUGH type, not assume miss=safe** — **Symptom:** On slang#12119 R3 (OptiX SBT __ldg exclusion, the vindicated successor to the #11152 false-safe), the production review flagged that the SBT peel-walker `isAddressIntoOptiXShaderBindingTable` omits `kIROp_PtrCast`. [[approver/critique-mustfix] failure-direction proof must check the FALLTHROUGH type, not assume miss=safe](../learnings/1784180537337-approver-critique-mustfix-failure-direction-proof-.md)
 
 
-**Source learnings (12):**
+**Source learnings (14):**
 - [type-flow ExtractExistential Type/WitnessTable analyzers crash on non-tagged-union info where the Value sibling tolerates it (#12934)](../learnings/1788817368144-slang-type-flow-extractexistential-type-witnesstab.md)
 - [typeflow ExtractExistential singleton guard: mirroring the Value sibling naively relocates the crash; guard `isSingleton()` before refining (PR #12935)](../learnings/1788821533041-slang-typeflow-extractexistential-singleton-guard-.md)
+- [producer-side root (#13046): `isConcreteType` lacks a union case → `makeInfoForConcreteType` re-wraps an already-lowered `IRTaggedUnionType`; `[__unsafeForceInlineEarly]` is a user-side workaround](../learnings/1789325428139-analyzeextractexistentialtype-ice-has-a-producer-s.md)
+- [fix the double-wrap with one `isRefinedInfoType` guard at the `makeInfoForConcreteType` chokepoint (not an entry assert); producer fix supersedes consumer PR #12935 — verify by running #12934's regression](../learnings/1789331744961-typeflow-refined-info-double-wrap-fix-at-the-const.md)
 - [#12486 the E50100 entry-point gate is pinned by an existing test — a zero-conformance-only fix regresses it; gate on entry-point reachability instead](../learnings/1786495950035-slang-12486-the-e50100-entry-point-gate-is-pinned-.md)
 - [Slang createGlobalSession RSS ≈ g_coreModule blob size; measure it via nm on libslang](../learnings/1784096601212-slang-createglobalsession-rss-g-coremodule-blob-si.md)
 - [[approver/false-safe] Guard keyed on getRootAddr's op-set misses legalization-inserted BitCast/GetOffsetPtr — probe the peel-set against ALL later passes, not the test shapes](../learnings/1784120041393-approver-false-safe-guard-keyed-on-getrootaddr-s-o.md)

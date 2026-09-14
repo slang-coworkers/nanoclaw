@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] record_decision returns a success string but th
 type: learning
 topic: review-approval
 source: learnings/1786463030860-approver-infra-abstain-record-decision-returns-a-s.md
+superseded_by: 1786436608459-approver-infra-abstain-record-decision-returns-dec
 ---
 
 # [approver/infra-abstain] record_decision returns a success string but the host denies the ledger write when APPROVAL_LEDGER_WRITERS is unset — no row is persisted

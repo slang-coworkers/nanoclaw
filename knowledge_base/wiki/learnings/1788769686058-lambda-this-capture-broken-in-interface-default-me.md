@@ -3,6 +3,7 @@ title: "Lambda this-capture broken in interface default methods (visitThisExpr g
 type: learning
 topic: misc
 source: learnings/1788769686058-lambda-this-capture-broken-in-interface-default-me.md
+superseded_by: 1788770320317-lambda-this-capture-broken-in-interface-default-me
 ---
 
 # Lambda this-capture broken in interface default methods (visitThisExpr gap)

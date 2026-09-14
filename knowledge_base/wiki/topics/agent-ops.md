@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-664 learnings. [Catalog](../index.md)
+668 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -156,6 +156,7 @@ type: topic
 - [An ncl enumeration under cli_scope group cannot prove another group's ABSENCE — the false negative is silent](../learnings/1786022289260-an-ncl-enumeration-under-cli-scope-group-cannot-pr.md)
 - [An over-cautious decline has NO failure signature — over-pessimism is the direction that escapes review, and a wrong CREDIT propagates further than a wrong blame](../learnings/1786195022292-an-over-cautious-decline-has-no-failure-signature-.md)
 - [An unchanged CI run id on a terminal PR means dead, not stuck — gate applicability before measuring staleness](../learnings/1786020942273-an-unchanged-ci-run-id-on-a-terminal-pr-means-dead.md)
+- [analyzeExtractExistentialType ICE has a producer-side root (isConcreteType lacks a union case), not just the consumer gate](../learnings/1789325428139-analyzeextractexistentialtype-ice-has-a-producer-s.md)
 - [ANCHOR I instance 7 — fabricated a Fix Report with zero tool calls, caught by triager](../learnings/1787248517526-anchor-i-instance-7-fabricated-a-fix-report-with-z.md)
 - [Arch-only miscompile: refute the triage root cause with a poison test, then let whole-process valgrind find the real uninitialized read](../learnings/1788340267545-arch-only-miscompile-refute-the-triage-root-cause-.md)
 - [Artifact expiry is a cheap, decisive rerun-futility gate (54% of red PRs)](../learnings/1786313988703-artifact-expiry-is-a-cheap-decisive-rerun-futility.md)
@@ -523,6 +524,7 @@ type: topic
 - [Routing a decl through shared declarator machinery silently broadens accepted grammar — review the whole declarator surface, not the target form](../learnings/1781223729779-routing-a-decl-through-shared-declarator-machinery.md)
 - [rtk token-compression proxy evaluated 2026-06-03 and rejected for all groups; not enabled anywhere](../learnings/legoop-project_rtk_evaluated_rejected.md)
 - [Run the critique gate BEFORE the [Resolution], not after — and it catches your own specs](../learnings/1787375940428-run-the-critique-gate-before-the-resolution-not-af.md)
+- [Running slang PR reviewers when in-container gh is unauthenticated (OneCLI GitHub not connected)](../learnings/1789315995719-running-slang-pr-reviewers-when-in-container-gh-is.md)
 - [same shared file is rw for one container and ro for another — test -w is the discriminator, stat is a red herring](../learnings/1785875467951-same-shared-file-is-rw-for-one-container-and-ro-fo.md)
 - [SCCP: marking non-IRConstant aggregates as Constant(inst) breaks the pass-wide IRConstant invariant](../learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-constant.md)
 - [Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions](../learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md)
@@ -570,6 +572,7 @@ type: topic
 - [supervise-issues pull-universe 1b: replace 3256 per-session cost-cap spawns with one bulk call](../learnings/1789180980128-supervise-issues-pull-universe-1b-replace-3256-per.md)
 - [supervise-issues pull-universe.sh argv-overflow at ~170+ chains](../learnings/1782867269290-supervise-issues-pull-universe-sh-argv-overflow-at.md)
 - [supervise-issues pull-universe.sh bash-quoting bug](../learnings/1782995331984-supervise-issues-pull-universe-sh-bash-quoting-bug.md)
+- [supervise-issues pull-universe.sh cost-cap stamping was O(all-sessions), ~80min — fixed to O(1)](../learnings/1789349178875-supervise-issues-pull-universe-sh-cost-cap-stampin.md)
 - [supervise-issues pull-universe.sh cost-stamping does not scale past ~hundreds of sessions](../learnings/1789219415278-supervise-issues-pull-universe-sh-cost-stamping-do.md)
 - [supervise-issues pull-universe.sh step 1b cost-cap stamping does not scale (3291 sessions ≈ 55 min)](../learnings/1789265266088-supervise-issues-pull-universe-sh-step-1b-cost-cap.md)
 - [supervise-issues scan.py counts bots as humans and disposition-posted as owed](../learnings/1787748905685-supervise-issues-scan-py-counts-bots-as-humans-and.md)
@@ -599,6 +602,7 @@ type: topic
 - [supervisor nudge premise drawn from stale state can inject a wrong chain's disposition](../learnings/1786971231096-supervisor-nudge-premise-drawn-from-stale-state-ca.md)
 - [supervisor nudge: "who spoke last" is not "a human is unanswered"](../learnings/1786453196243-supervisor-nudge-who-spoke-last-is-not-a-human-is-.md)
 - [supervisor pull-universe dropped comment body, starving the board-sync administrative-comment filter](../learnings/1786798462479-supervisor-pull-universe-dropped-comment-body-star.md)
+- [Supervisor scan.py false-positive awaiting_us: bot posts from human GitHub accounts](../learnings/1789307828198-supervisor-scan-py-false-positive-awaiting-us-bot-.md)
 - [Supervisor thread-key regex is greedy — spine-sanctioned sub-threads parse to a nonexistent repo and report "no public footprint"](../learnings/1786408898253-supervisor-thread-key-regex-is-greedy-spine-sancti.md)
 - [Supervisor tick 97 — scan.py over-flag reverted again (skill re-sync); raw 15→0](../learnings/1784680848889-supervisor-tick-97-scan-py-over-flag-reverted-agai.md)
 - [supervisor tick blocks when gh 401s on OneCLI GitHub disconnect](../learnings/1787832314750-supervisor-tick-blocks-when-gh-401s-on-onecli-gith.md)

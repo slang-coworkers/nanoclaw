@@ -3,6 +3,7 @@ title: "gh auth status false-negative with App installation token (gh api still 
 type: learning
 topic: misc
 source: learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md
+superseded_by: 1789106327782-gh-auth-status-false-negative-under-app-installati
 ---
 
 # gh auth status false-negative with App installation token (gh api still works)

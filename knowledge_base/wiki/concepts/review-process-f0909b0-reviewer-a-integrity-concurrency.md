@@ -3,7 +3,7 @@ title: Reviewer-A wrapper integrity & concurrency — INTEGRITY-FAIL, shared tmp
 type: concept
 group: review-process
 tags: [reviewer-a, integrity-fail, shared-tmp, concurrent-review, stream-jsonl, wrapper-success, in-thread-reply, delivery, slang-pr-review]
-source_count: 7
+source_count: 8
 ---
 
 ## TL;DR
@@ -104,6 +104,25 @@ state; (4) wrapper process gone via `/proc/<pid>/cmdline` (NOT `pgrep -f`, which
 the monitor's own command line) AND none of 1-3 → genuine crash. Give a generous
 5+ min static-timeout as a backstop only [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md).
 
+## Patch-mode `git commit -am` drops NEW files → false "no test in patch" gap
+
+A second harness artifact that makes Reviewer A raise a false finding — this time a false
+**test-coverage gap**, not INTEGRITY-FAIL. In `compose-and-run.sh`'s *patch mode*, the sequence
+`git checkout -b patch-review-<ts> origin/master` → `git apply --whitespace=nowarn "$PATCH_FILE"` →
+`git -c ... commit -q -am "patch under review (temporary)"` drops every NEW file: `git apply`
+creates new files as **untracked**, and `git commit -am` stages only **modified/deleted tracked**
+files, so the reviewed target (`git diff`/`git show` of the temp branch) omits every `new file`
+hunk. Reviewer A then sees only the modified `.cpp` and correctly-but-misleadingly reports 🟡 "patch
+carries no regression test; tests exist in the tree but are untracked (`??`)" — even when the patch
+file plainly contains the test files as `new file` diff hunks. **Tell:** the finding says the tests
+show as `??` in `git status` — the fingerprint of this artifact. **Cross-check that disambiguates:**
+Reviewer C (`slang-clarity-review-runner`) uses a worktree and commits the patch so new files ARE
+included, so C reviews all the test files fine — when A says "no test" but C reviews the tests, it's
+the `-am` artifact, not a missing test. **Reviewer action:** discount the "missing test" gap; verify
+the tests exist in the patch file / on the fixer's branch instead. Until the runner is fixed to
+`git add -A` before commit, A's test-coverage findings in patch mode are blind to any newly-added
+file ([Patch-mode PR review: git commit -am drops NEW test files → false "no test in patch" gap](../learnings/1789333359114-patch-mode-pr-review-git-commit-am-drops-new-test-.md)).
+
 ## Process delivery: not real until pushed, and reply in-thread
 
 Two maintainer-flagged process failures on slang#12519: **an `Edit` to a source file is
@@ -119,7 +138,7 @@ leaves review threads empty/unresolvable in the Files Changed view". Note the cr
 gate re-fires on ANY GitHub write once N edits have happened since the last OUTPUT_REVIEW
 — budget a fresh review round before the push+reply [a code Edit is not delivered until built+committed+pushed; and reply IN-THREAD on PR review comments](../learnings/1786616755173-a-code-edit-is-not-delivered-until-built-committed.md).
 
-**Source learnings (7):**
+**Source learnings (8):**
 
 - [a reviewer wrapper can report success with a 96-byte error-string artifact](../learnings/1786388990762-a-reviewer-wrapper-can-report-success-with-a-96-by.md) — gate at merge on size floor + content sniff; recover from `stream.jsonl` Write/Edit payloads (apply later Edits); report `reviewers_complete:false`; guard `isinstance(x, dict)`.
 - [Reviewer-A INTEGRITY-FAIL can be a false positive from a clobbered SHARED tmp/pr-files.txt](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — adjudicate by content (sha256 `pr-diff.reference` vs live diff, footer head, per-PR symbol hits), not the model's self-report or the guard headline.
@@ -128,3 +147,4 @@ gate re-fires on ANY GitHub write once N edits have happened since the last OUTP
 - [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md) — terminal test priority: `final-review.md` ≥500 B, INTEGRITY-FAIL.txt, the `{"type":"result"}` record, then `/proc/<pid>/cmdline` (not `pgrep -f`); 5+ min static-timeout backstop only.
 - [Shared slang checkout tmp/ is a cross-review race — a concurrent PR clobbers your staging](../learnings/1786670089193-shared-slang-checkout-tmp-is-a-cross-review-race-a.md) — clear the shared `tmp/{pr-diff.patch,pr-files.txt,context.json}` before launch; a transient 400 JSON-payload error is not deterministic if a sibling reviewer succeeded on the same model.
 - [slang-pr-review INTEGRITY-FAIL false-positive from shared tmp across concurrent cross-PR runs](../learnings/1786670426510-slang-pr-review-integrity-fail-false-positive-from.md) — four-step adjudication checklist; give each A-run its own worktree like Reviewer C's `wt-clarity-<run_key>`, or key the tmp path on the run.
+- [patch-mode `git apply` + `git commit -am` drops untracked NEW files from the reviewed diff → false Reviewer-A "no test" gap (tell: tests show `??`); Reviewer C's worktree sees them, so discount the gap; runner should `git add -A` before commit.](../learnings/1789333359114-patch-mode-pr-review-git-commit-am-drops-new-test-.md)
