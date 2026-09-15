@@ -7,6 +7,18 @@ import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ensureCleanupPeriodDays, refreshMirror } from './group-init.js';
 
 describe('refreshMirror', () => {
+  it('leaves a symlinked destination alone (a link into /app/skills is a live mirror)', () => {
+    const root = fs.mkdtempSync(path.join(os.tmpdir(), 'ncl-mirror-'));
+    const src = path.join(root, 'src');
+    fs.mkdirSync(src);
+    fs.writeFileSync(path.join(src, 'SKILL.md'), 'new');
+    const dst = path.join(root, 'dst');
+    fs.symlinkSync('/app/skills/example', dst); // dangling on the host by design
+    expect(refreshMirror(src, dst)).toBe(false);
+    expect(fs.lstatSync(dst).isSymbolicLink()).toBe(true);
+    expect(fs.readlinkSync(dst)).toBe('/app/skills/example');
+  });
+
   let tmp: string;
 
   beforeEach(() => {
