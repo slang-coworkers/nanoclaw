@@ -428,6 +428,15 @@ ls $WT/node_modules/electron/dist/electron $WT/apps/desktop/node_modules/electro
 
 The coworker image has chromium's share (`libgtk-3-0 libnss3 libdrm2 libgbm1 libasound2 libatk-bridge2.0-0`, nanoclaw `container/Dockerfile`) and **no `xvfb`**, so a fresh group's first run is expected to be SKIPPED.
 
+**N/A rule — decide BEFORE the preflight, from the diff, never from judgement.** The tier is owed whenever the PR can touch what the desktop shows:
+
+```bash
+git -C $WT diff --name-only "origin/$BASE...HEAD" > $ART/changed-files.txt
+grep -E '^(apps/desktop|apps/shared|web|tui_gateway)/|^hermes_cli/desktop' $ART/changed-files.txt > $ART/desktop-ui-paths.txt; echo ui_paths=$(wc -l < $ART/desktop-ui-paths.txt) files=$(wc -l < $ART/changed-files.txt)
+```
+
+`ui_paths=0` **and** the ADR carries no `desktop:` criterion **and** this is not `mode=nightly` → the `DESKTOP` row reads exactly `SKIPPED — N/A: no UI paths in diff (<files> files checked)`, evidence `artifacts/changed-files.txt`. Anything else — one UI path, one `desktop:` criterion, or the nightly — makes the tier **mandatory**: run the preflight below, then at least the smoke chunk (`boot`, `mock-backend-setup`, `chat`); the only `SKIPPED` left is the `install_packages` form. Never write `SKIPPED — non-blocking`, `deps present` or `reserved for nightly`: the merge gate reads every wording but the four green forms (`PASS`, `SKIPPED — install_packages: …`, `SKIPPED — N/A: no UI paths in diff (…)`, cited advisory `FAIL`) as red and sends the same head back for a smoke.
+
 **DESKTOP=SKIPPED rule.** Any preflight miss → the `DESKTOP` row reads `SKIPPED — install_packages: <only the missing apt names>`, the `## Skipped / advisory` section carries the request below verbatim, the run continues, and the verdict is decided by §3/§4 alone. You do not `apt-get`, do not `npm install -g electron`, do not patch `playwright.config.ts`, do not add `--no-sandbox` anywhere (the fixtures already pass it, fixtures.ts:316-320 — a code change is the builder's). The operator applies the request (`ncl groups config add-package`) or the orchestrator issues it as the agent tool call:
 
 ```

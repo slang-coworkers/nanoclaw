@@ -222,6 +222,8 @@ Ground rules that hold for every step:
 
 5. **Desktop / Electron e2e — phase-gated** {#desktop} — "Check desktop/electron works, then write the tests." The desktop suite is the release tree's own Playwright e2e (`apps/desktop/playwright.config.ts`: `testDir ./e2e`, 90 s per test, serial, screenshots + traces on, HTML report to `apps/desktop/playwright-report/`); its `mockBackend` fixture launches `electron .` against `apps/desktop/dist/` → `hermes serve` → a mock inference server (`apps/desktop/e2e/fixtures.ts:6-20`). CI runs it under xvfb (`.github/workflows/e2e-desktop.yml`).
 
+   **Owed or N/A — decide from `changed-files.txt` first (skill §5 N/A rule).** `grep -E '^(apps/desktop|apps/shared|web|tui_gateway)/|^hermes_cli/desktop' $ART/changed-files.txt > $ART/desktop-ui-paths.txt`. Empty, no `desktop:` criterion in the ADR, and not `mode=nightly` → the `DESKTOP` row is exactly `SKIPPED — N/A: no UI paths in diff (<n> files checked)` with evidence `artifacts/changed-files.txt`, and you skip the rest of this step. Otherwise the tier is mandatory (the smoke chunk at minimum; the full set for `mode=nightly` and for `desktop:` criteria), and `SKIPPED` may only ever be the `install_packages` form below. `SKIPPED — non-blocking` / `deps present` are not green forms: the gate blocks at P3 and asks for a same-head smoke.
+
    **Gate first — cheap, no installs:**
    ```bash
    node --version            # apps/desktop/package.json engines: ^22.22.0 || ^24.11.0 || >=26.0.0
