@@ -5,6 +5,8 @@ import path from 'path';
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
+import { allocateFreePort } from './test-utils/free-port.js';
+
 // Use real .env files, as in #2977, and exercise the shared listener as well
 // as #3148's configuration lookup. Each test owns its cwd and environment.
 describe('WEBHOOK_PORT configuration (#2901)', () => {
@@ -73,7 +75,7 @@ describe('WEBHOOK_PORT configuration (#2901)', () => {
         }),
       ).toThrow(/Invalid WEBHOOK_PORT/);
 
-      const port = 21000 + Math.floor(Math.random() * 20000);
+      const port = await allocateFreePort();
       vi.stubEnv('WEBHOOK_PORT', String(port));
       webhook.registerWebhookHandler('recovered-port', (_req, res) => {
         res.end('ready');
@@ -103,7 +105,7 @@ describe('WEBHOOK_PORT configuration (#2901)', () => {
       res.end('busy');
     });
 
-    const recoveryPort = 21000 + Math.floor(Math.random() * 20000);
+    const recoveryPort = await allocateFreePort();
     vi.stubEnv('WEBHOOK_PORT', String(recoveryPort));
     try {
       await vi.waitFor(
@@ -124,7 +126,7 @@ describe('WEBHOOK_PORT configuration (#2901)', () => {
   });
 
   it.each(['.env', 'late process override'])('serves HTTP on the port selected by %s', async (source) => {
-    const port = 21000 + Math.floor(Math.random() * 20000);
+    const port = await allocateFreePort();
     fs.writeFileSync(path.join(directory, '.env'), `WEBHOOK_PORT=${source === '.env' ? port : 3097}\n`);
     const { getWebhookPort } = await import('./config.js');
     if (source === 'late process override') vi.stubEnv('WEBHOOK_PORT', String(port));
