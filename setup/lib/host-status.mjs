@@ -48,7 +48,19 @@ export function queryHost(root, timeoutMs = 1000) {
   });
 }
 
-/** Wait for an identified host; optionally demand a new instance or channel. */
+/**
+ * Wait for an identified host; optionally demand a new instance or channel.
+ *
+ * The options are annotated deliberately. TypeScript infers a destructured JS
+ * parameter's type from the bindings that carry DEFAULTS only, so `pid`,
+ * `startedAfter`, `channel` and `alive` are otherwise absent from the inferred
+ * type and every caller passing one fails `tsc`. Upstream ships this file
+ * unannotated and never notices, because its CI does not typecheck `setup/` —
+ * the fork's `scripts/typecheck-gate.mjs` does.
+ *
+ * @param {string} root
+ * @param {{ previous?: string, pid?: number, startedAfter?: number, channel?: string, alive?: () => boolean, timeoutMs?: number }} [options]
+ */
 export async function waitForHost(root, { previous = '', pid, startedAfter, channel, alive, timeoutMs = 30000 } = {}) {
   const deadline = Date.now() + timeoutMs;
   let reason = 'Host did not respond';
