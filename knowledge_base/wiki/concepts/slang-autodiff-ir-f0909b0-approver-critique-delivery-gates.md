@@ -3,7 +3,7 @@ title: PR-approver ABSTAIN delivery — the critique-gate token trap and transpo
 type: concept
 group: slang-autodiff-ir
 tags: [approver, abstain, critique-gate, gate-critique-on-deliver, gate-chain-routing, send-message, record-decision, matcher-vs-intent, in-reply-to]
-source_count: 11
+source_count: 10
 ---
 
 ## TL;DR
@@ -51,8 +51,6 @@ sessions: "a maintainer policy call, not BLOCK" and "either artifact yields a cl
 ([defeated by literal tokens anywhere](../learnings/1786479724589-approver-critique-mustfix-abstain-fast-path-is-def.md)),
 "my first draft was WOULD_APPROVE" / "so not BLOCK" in the reasoning tail
 ([delivery refused if body contains the tokens](../learnings/1787079264586-approver-infra-abstain-approval-decision-delivery-.md)),
-"the code-level result would have been WOULD_APPROVE"
-([message must not contain the tokens](../learnings/1787317437543-approver-infra-abstain-approval-decision-message-m.md)),
 "Approving for merge would be unsound…" using `WOULD_APPROVE` in the Next-action bullet
 ([must not contain the tokens even in prose](../learnings/1787568646622-approver-infra-abstain-abstain-approval-decision-m.md)),
 "Not WOULD_APPROVE … and not a clean BLOCK"
@@ -145,14 +143,13 @@ under-specific matcher. The corrective posture is the same throughout: *a guard 
 is not thereby a broken guard — read the predicate before reporting on it, then word your message
 so the state-token test the hook actually runs reads it as the abstain it is.*
 
-**Source learnings (11):**
+**Source learnings (10):**
 
 - [The critique gate's ABSTAIN fast-path is defeated by your own message text](../learnings/1786442329725-approver-critique-mustfix-the-critique-gate-s-abst.md) — Conjunction predicate over delivered text; "not BLOCK"/"clean WOULD_APPROVE" prose re-arms it; also corrects a mis-diagnosis (the send_message denial was the author's wording, not a broken hook).
 - [ABSTAIN fast-path is defeated by the literal tokens WOULD_APPROVE/BLOCK anywhere](../learnings/1786479724589-approver-critique-mustfix-abstain-fast-path-is-def.md) — Unanchored negative guard; describe states without the token; don't run a ceremonial critique; verified by reading the hook.
 - [ABSTAIN [Approval Decision] must be delivered via the send_message TOOL](../learnings/1786633049888-approver-infra-abstain-approval-decision-must-be-d.md) — Fast-path lives only in the PreToolUse tool hook; a final-response `<message>` block bypasses it; transport-vs-content distinction.
 - [ABSTAIN decisions bypass the ledger critique-gate but NOT the delivery-message gate; never let codex attest volatile trace files](../learnings/1787049679140-approver-infra-abstain-decisions-bypass-the-ledger.md) — record_decision relaxed for abstain rows but the send is separately gated; exact STAGE format + danger-full-access; delivery re-hashes the Attested list.
 - [ABSTAIN delivery is refused if the message contains WOULD_APPROVE or BLOCK anywhere](../learnings/1787079264586-approver-infra-abstain-approval-decision-delivery-.md) — Unanchored guard trips on "my first draft was WOULD_APPROVE"/"so not BLOCK"; strip tokens and resend; MATCHER-vs-LEVEL over-block.
-- [ABSTAIN message must not contain the tokens WOULD_APPROVE or BLOCK](../learnings/1787317437543-approver-infra-abstain-approval-decision-message-m.md) — "would have been WOULD_APPROVE" tripped it; also chain-routing then required `in_reply_to=<parent inbound id>`.
 - [ABSTAIN message must not contain the tokens — even in prose](../learnings/1787568646622-approver-infra-abstain-abstain-approval-decision-m.md) — `WOULD_APPROVE` in a Next-action bullet flipped the guard; keep the abstain token; send the dashboard line without the `[Approval Decision]` prefix.
 - [Critique-gate ABSTAIN fast-path is defeated by the literal words WOULD_APPROVE or BLOCK](../learnings/1787769476913-approver-infra-critique-gate-abstain-fast-path-is-.md) — Dumb text matcher can't tell prose from a verdict token; plus the second `gate-chain-routing.sh` `in_reply_to` requirement on any chain-marker message.
 - [The critique-on-deliver ABSTAIN fast-path is defeated by BLOCK/WOULD_APPROVE anywhere — reword, don't run a ceremonial critique](../learnings/1787848138413-approver-infra-abstain-the-critique-on-deliver-abs.md) — R1 phrased differently and passed, R2 said "so not a BLOCK" and failed; standing rule never to run a critique just to satisfy a matcher.

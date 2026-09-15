@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc,
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, dxc, glibc, asan, valgrind, sccache, ninja]
-source_count: 11
+source_count: 13
 ---
 
 ## TL;DR
@@ -38,6 +38,10 @@ under you after a rebase.
   shell exits; run in the foreground, or a `run_in_background` grandchild that survives.
 - **CMake grep-invariant guards must use `git grep`** (skips submodule trees), not `rg`/`grep -r`.
 - **Compile-time feature guards use the generated `SGL_HAS_*` define, not the cmake `option()`.**
+- **A PRIVATE compile flag (`-fno-exceptions`, a sanitizer flag) does NOT reach a target's
+  linked OBJECT libraries** — apply it to each OBJECT target and verify in
+  `build/compile_commands.json`; and `cmake --build --target X -k 0` silently no-ops
+  (`cmake --build` has no `-k`, so the ninja keep-going flag must follow `--`).
 
 ## Worktree submodule init: the same lesson, many times over
 
@@ -54,7 +58,10 @@ that the `/slang-fix-issue` Setup step should bake it in:
 [full external cascade](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md),
 [the SPIRV-Headers target error](../learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md),
 [per-worktree init, top-level only](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md),
-[worktree init + DXIL disable](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md).
+[worktree init + DXIL disable](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md),
+[reconfirmed on a fresh #13017 worktree — the base clone is `git clone --depth 50` *without*
+`--recursive`, so a new worktree inherits uninitialised submodules and `cmake --preset default`
+fails on the `SPIRV-Headers::SPIRV-Headers` target](../learnings/1789394522873-fresh-slang-worktree-submodule-init-clang-format-1.md).
 
 The fix is to init recursively in the worktree before the first configure:
 
@@ -88,7 +95,17 @@ truth
 [detached ninja dies; check pgrep -x](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md),
 [monitor mis-fires when configure failed](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md).
 Check liveness with `pgrep -x ninja` + `readlink /proc/<pid>/cwd` (never `pgrep -f`, which
-matches your own argv and can't see the worktree path).
+matches your own argv and can't see the worktree path). Reconfirmed on #13017: a generic
+`Agent` subagent handed the build *detached* it (backgrounded it) and returned in ~25 s,
+losing the completion signal and then launching more background ops — risking two concurrent
+builds in one dir; run the build yourself via Bash `run_in_background` or the `pgrep -x
+ninja`/`/proc/<pid>/cwd` poller (an incremental rebuild after the first full build is only
+~2–4 min). Formatting a C++-only worktree change hits the same PATH gap —
+`clang-format`/`gersemi`/`shfmt` aren't installed, so `extras/formatting.sh` prints "needs
+clang-format"; install the pinned version without admin via `python3 -m pip install --user
+clang-format==17.0.6` then `export PATH="$HOME/.local/bin:$PATH"` (Lua diagnostics like
+`slang-diagnostics.lua` are NOT formatted by the script — match style by hand)
+[fresh-worktree submodule init + clang-format-17 via pip; don't detach the build](../learnings/1789394522873-fresh-slang-worktree-submodule-init-clang-format-1.md).
 
 ## GLIBC, DXC-from-source, and the stale CMake graph
 
@@ -174,7 +191,27 @@ should `#include "sgl/core/config.h"` explicitly rather than trust a transitive 
 generalizes to all `SGL_HAS_*` feature macros (D3D12, VULKAN, NVAPI, LIBPNG, …)
 [SGL_HAS_CRASHPAD, not the cmake option](../learnings/1787002587931-sgl-crashpad-guard-is-sgl-has-crashpad-not-the-sgl.md).
 
-**Source learnings (11):**
+## Per-target compile flags don't reach linked OBJECT libraries
+
+A **PRIVATE compile option** applied to a target that is assembled from separate **OBJECT
+libraries** does NOT reach those object libraries — each OBJECT library compiles its own TUs
+with its OWN target properties, so a consuming library's private options apply only to sources
+compiled directly into it. Concrete case (#12782 / #12779): `-fno-exceptions` on
+`slang-common-objects` left the generated OBJECT libs it links via `LINK_WITH_PRIVATE`
+(`slang-capability-lookup`, `slang-lookup-tables`, plus `slang-spirv-core-grammar-embed.cpp`)
+compiling *with* exceptions. Fix: apply the flag helper (`slang_apply_disable_exceptions(...)`)
+directly to each generated OBJECT target, and VERIFY with `build/compile_commands.json` (grep
+the flag on the generated TU) rather than assume inheritance. For any whole-library flag
+requirement, enumerate every OBJECT library in the target's `LINK_WITH_PRIVATE` and flag each;
+a header-only OBJECT lib (e.g. `slang-capability-defs`, sources = headers) has no TU so needs
+none. A build-driver gotcha travels with it: `cmake --build <dir> --target X -k 0` silently
+does nothing — `cmake --build` has no `-k`, it prints `--help` and exits; the ninja keep-going
+flag must go after `--`: `cmake --build <dir> --target X -- -k 0`. Keep-going compiles all TUs
+and collects every failure instead of stopping at the first — the way to prove one remaining
+break is the *only* remaining one
+[per-target flags don't reach linked OBJECT libraries; `-k 0` must follow `--`](../learnings/1789384635713-cmake-per-target-compile-flags-don-t-propagate-to-.md).
+
+**Source learnings (13):**
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md) — Full cascade + `ninja: loading build-Debug.ninja: No such file`; explicit external list; a backgrounded subagent build dies — run foreground + Monitor for the artifact.
 - [Fresh worktree needs git submodule update --init before cmake configure](../learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md) — `get_target_property() ... "SPIRV-Headers::SPIRV-Headers"`; leading `-` in `git submodule status`; first configure also does a ~500 MB DXC clone+build.
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md) — #12297 added `slang-rich-diagnostics.cpp`; stale `build.ninja` → hundreds of undefined refs; reconfigure; grep `impl-Debug.ninja` (multi-config), not top-level `build.ninja`.
@@ -186,3 +223,5 @@ generalizes to all `SGL_HAS_*` feature macros (D3D12, VULKAN, NVAPI, LIBPNG, …
 - [264-commit gap; attribute a repro to the `slangc -v` revision, keep source-inspection distinct from runtime repro; codex OUTPUT_REVIEW also caught issue-body/standalone repro drift and a verified-emit vs unrun-on-device conflation.](../learnings/1789072949461-prebuilt-slangc-binary-can-lag-the-source-checkout.md)
 - [valgrind memcheck of slang-llvm JIT: glibc ld.so/dlopen $ORIGIN errors are false positives](../learnings/1788385213783-valgrind-memcheck-of-slang-llvm-jit-glibc-ld-so-dl.md) — Filter to slang frames; memcheck substitutes for MSan when unavailable; strict-aliasing UB is invisible to both, so an x86_64 clean sweep doesn't clear aarch64-only UB.
 - [SGL crashpad guard is SGL_HAS_CRASHPAD, not the SGL_ENABLE_CRASHPAD cmake option](../learnings/1787002587931-sgl-crashpad-guard-is-sgl-has-crashpad-not-the-sgl.md) — Generated `#define` in `config.h` via `file(GENERATE)`; ON only if option AND `find_package` succeeded; `#if` on an out-of-scope macro silently becomes `#if 0` — include `config.h` explicitly.
+- [Fresh worktree: base clone is `--depth 50` without `--recursive`; init submodules + clang-format-17 via pip; don't detach the build to a plain subagent](../learnings/1789394522873-fresh-slang-worktree-submodule-init-clang-format-1.md) — #13017: worktree inherits uninitialised submodules → `SPIRV-Headers::SPIRV-Headers` configure error; a generic `Agent` backgrounded the build and returned in ~25 s; `pip install --user clang-format==17.0.6` for a C++-only format.
+- [CMake per-target PRIVATE flags don't reach linked OBJECT libraries; `cmake --build -k 0` no-ops (put `-k 0` after `--`)](../learnings/1789384635713-cmake-per-target-compile-flags-don-t-propagate-to-.md) — #12782/#12779: `-fno-exceptions` on `slang-common-objects` missed its generated OBJECT libs; apply the helper per OBJECT target, verify in `compile_commands.json`.

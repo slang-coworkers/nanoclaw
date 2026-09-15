@@ -3,7 +3,7 @@ title: Webhook payloads, SHAs, and dispatches are snapshots — read live state 
 type: concept
 group: agent-routing
 tags: [webhook, github, snapshot, staleness, head-sha, dispatch, routing-receipt, verification, auto-close]
-source_count: 9
+source_count: 12
 ---
 
 ## TL;DR
@@ -20,6 +20,7 @@ source_count: 9
 - A claim framed as "your own prior action" ("the trigger you armed fired") is disarming — grep your durable logs for it before agreeing OR disagreeing with the recommendation. Separate "is the premise about my past action real" from "is the recommended action correct."
 - A peer confirming an ADJACENT fact is not a check on your CLAIM. A verifier reduces error only on the propositions it actually tested; on everything else it raises confidence without raising accuracy. Split observation from mechanism when handing off for verification, and say what you did NOT test.
 - Auto-close keywords (`close[sd]`/`fix(e[sd])`/`resolve[sd]` + `#N`) fire regardless of surrounding "not" context. Never put a closing keyword adjacent to an issue number in a PR body — not even to negate it. Use "relates to #N" / "issue #N".
+- A **state-change** webhook (`pr_closed`) can be a transient mis-click: a close+reopen ~50s apart fires `pr_closed` but the matching `pr_reopened` may never route to you. Before any destructive/decision action (abandon, worktree cleanup, "maintainer killed our PR" alarm), re-verify `state,closed,updatedAt` + the `closed`/`reopened` timeline. The same holds for relaying an **aged chain status** — the gap between the last status and now is itself a signal; require the closest-to-state tier to re-derive live state first.
 
 ## The payload is a snapshot; read live before you act
 
@@ -39,7 +40,13 @@ Two verification-epistemics rules round this out. A claim framed as "your own pr
 
 Finally, a mechanical GitHub trap that bites PR bodies: auto-close keywords match `close/fix/resolve` + `#N` **anywhere**, ignoring surrounding language, so "Closes #12430 is intentionally NOT asserted" still arms the auto-close — never put a closing keyword adjacent to an issue number, not even to negate it; write "relates to #N" or "issue #N", and grep the body before opening ([auto-close keywords fire regardless of surrounding "not" context](../learnings/1786773657574-github-auto-close-keywords-fire-regardless-of-surr.md)).
 
-**Source learnings (9):**
+## State-change webhooks arrive out of order or drop; re-verify before destructive action
+
+The snapshot discipline is sharpest for a state-*change* webhook, because a single one can be a transient artifact. On a bot draft PR (slang#13079) a `github.pr_closed` (merged:false, no comment) arrived and was acted on as a real closure — reported "abandoned?" up the chain — but the shepherd had closed at 21:22:38 and **reopened ~50s later** (21:23:28, same human, no comment), an accidental close that self-corrected, and **no `pr_reopened` webhook ever reached the session**, so the closed state looked final ([a lone pr_closed can be a transient mis-click](../learnings/1789421368163-a-lone-pr-closed-webhook-can-be-a-transient-mis-cl.md), [verify live PR state before acting on a lone pr_closed](../learnings/1789421394369-verify-live-github-pr-state-before-acting-on-a-lon.md)). A lone `pr_closed` is therefore not durable proof the PR is dead. Before reporting abandonment, aborting a peer reviewer, cleaning up a worktree, or raising a "maintainer killed our PR / systemic bot-CLA block" alarm, re-verify LIVE state and pull the timeline — `gh pr view <n> -R <repo> --json state,closed,updatedAt` plus `gh api repos/<repo>/issues/<n>/timeline --jq '.[]|select(.event=="closed" or .event=="reopened")|{event,actor:.actor.login,created_at}'`; if `updatedAt` is at/after the reported close time or a `reopened` event exists, the close was reversed. Hold worktree/branch cleanup until the closure is confirmed durable, never reopen a maintainer-closed PR unprompted, and note that the CLA-assistant `not_signed` flag (bots can't sign) and CodeRabbit skipping bot users are normal for `nv-slang-bot` PRs and are NOT the close reason. The orchestrator caught this by fetching the PR directly before acting — a `pr_closed`-derived claim is a snapshot, confirm via API before relaying it upward or authorizing a reaction.
+
+The same "a stale snapshot is not current state" discipline governs relaying an **aged chain status**. When a fresh inbound (a GitHub mention) lands on a chain whose last coworker status is days or weeks old, do NOT relay that old status as current — the timestamp gap is itself a signal. On slang#12785 a fixer reported "draft PR incoming" then went dark ~2.5 weeks; when a maintainer re-pinged, routing the Aug-27 "PR imminent" as if current would have told the maintainer a PR existed when origin had no `fix/issue-12785` branch and no PR. Flag the staleness in the dispatch and require the closest-to-state tier to re-derive live state (branch exists? PR open? issue open?) before posting anything public. Treat the silent 2.5-week stall as its own failure too: an in-flight handoff needs a bounded-window tripwire so a dark recipient is chased, not discovered by a maintainer ([re-derive live state before relaying a weeks-old chain status](../learnings/1789415383343-re-derive-live-state-before-relaying-a-weeks-old-c.md)).
+
+**Source learnings (12):**
 
 - [a webhook payload is a snapshot: read state before triaging, recover a replaced body via GraphQL userContentEdits](../learnings/1786393129422-a-webhook-payload-is-a-snapshot-read-state-before-.md) — a 44s created→updated delta is not freshness; the receiving tier owns the live read.
 - [never forward webhook payload labels/assignees/milestone — delete the slot](../learnings/1786442851025-never-forward-webhook-payload-labels-assignees-mil.md) — the field decays in 1–8s; omission is the only remedy; a menu defaults to the weakest option.
@@ -50,3 +57,6 @@ Finally, a mechanical GitHub trap that bites PR bodies: auto-close keywords matc
 - [the receipt for "I routed X" is a session row on X's edge, not a memory note](../learnings/1787068230691-the-receipt-for-i-routed-x-is-a-session-row-on-x-s.md) — a dispatch is a physical event; a designed-but-unbuilt remedy reads as done.
 - [verify a peer's claim about your own past actions before accepting it](../learnings/1786781870665-verify-a-peer-s-claim-about-your-own-past-actions-.md) — a "you did X" premise is disarming; grep your logs; separate premise-truth from recommendation-correctness.
 - [a peer confirming the adjacent fact is not a check on your claim](../learnings/1786372808713-a-peer-confirming-the-adjacent-fact-is-not-a-check.md) — the verifying-pair blind spot; split observation from mechanism; say what you did NOT test.
+- [a lone pr_closed webhook can be a transient mis-click — re-verify live PR state](../learnings/1789421368163-a-lone-pr-closed-webhook-can-be-a-transient-mis-cl.md) — a close+reopen ~50s apart fires only `pr_closed`; pull the timeline before destructive action; hold worktree cleanup until durable.
+- [verify live GitHub PR state before acting on a lone pr_closed — state events drop/reorder](../learnings/1789421394369-verify-live-github-pr-state-before-acting-on-a-lon.md) — `closed_at` null vs the reported close time disambiguates; the bot CLA `not_signed` flag isn't the close reason.
+- [re-derive live state before relaying a weeks-old chain status](../learnings/1789415383343-re-derive-live-state-before-relaying-a-weeks-old-c.md) — a large last-status→now gap means UNVERIFIED; the closest-to-state tier confirms branch/PR/issue live before any public post; a dark handoff needs a tripwire.

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-458 learnings. [Catalog](../index.md)
+463 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -174,6 +174,7 @@ type: topic
 - [CI babysitter: author-owned red disposition and clean-sweep silence, now persisted](../learnings/1786918293889-ci-babysitter-author-owned-red-disposition-and-cle.md)
 - [CI babysitter: classify-only subagent scope violation recurred (2nd time) — needs a structural fix, not just prose instructions](../learnings/1788287467646-ci-babysitter-classify-only-subagent-scope-violati.md)
 - [CI babysitter: CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
+- [CI babysitter: double-check PR numbers before naming which PR has which failure in reports](../learnings/1789424667165-ci-babysitter-double-check-pr-numbers-before-namin.md)
 - [CI babysitter: headline the dominant root-cause when maintainers rerun into a deterministic wall](../learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)
 - [CI babysitter: identical build error across unrelated PRs = base-branch break, not flake](../learnings/1780790667002-ci-babysitter-identical-build-error-across-unrelat.md)
 - [CI babysitter: parent handles fix dispatch, I only diagnose+report](../learnings/1789251734550-ci-babysitter-parent-handles-fix-dispatch-i-only-d.md)
@@ -313,6 +314,7 @@ type: topic
 - [learnings-wiki obsidian-link gap is nav-only, not broken citations — characterize before scoping a fix](../learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md)
 - [Local Slang Debug preset builds CMAKE_BUILD_TYPE=Release → SLANG_ASSERT is inert (compiles to __builtin_assume); test assert logic in _DEBUG or by reasoning](../learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md)
 - [Look for a sibling run at the SAME commit before reasoning about a CI failure's cause — and a rerun only informs if the step under test actually ran](../learnings/1786041527710-look-for-a-sibling-run-at-the-same-commit-before-r.md)
+- [macOS DXC-from-source Bad-CPU-type: pin CMAKE_OSX_ARCHITECTURES; NATIVE sub-build doesn't inherit it](../learnings/1789420445233-macos-dxc-from-source-bad-cpu-type-pin-cmake-osx-a.md)
 - [MakeVectorFromScalar getScalarValue() reads getOperand(2) but builder emits 1 operand](../learnings/1785334765218-makevectorfromscalar-getscalarvalue-reads-getopera.md)
 - [MakeVectorFromScalar scalar is getOperand(0), NOT getScalarValue() — Lua schema (3 ops) diverges from the 1-operand builder](../learnings/1785335653192-makevectorfromscalar-scalar-is-getoperand-0-not-ge.md)
 - [Manually dispatching ci.yml on a DRAFT slang PR produces a spurious test-falcor failure (missing build artifact)](../learnings/1789147576274-manually-dispatching-ci-yml-on-a-draft-slang-pr-pr.md)
@@ -335,6 +337,7 @@ type: topic
 - [Numbers copied from build/test output are BRANCH-relative — converting them is a required step, not a nicety](../learnings/1785942255479-numbers-copied-from-build-test-output-are-branch-r.md)
 - [On an active draft PR, the reported bug is often already fixed on-branch — verify before building](../learnings/1787671408861-on-an-active-draft-pr-the-reported-bug-is-often-al.md)
 - [On resume, git-gh state beats replayed transcript (stale-replay reconciliation)](../learnings/1784765800190-on-resume-git-gh-state-beats-replayed-transcript-s.md)
+- [Orchestrator: make the reversible default call when an operator decision goes dark and an external party is blocked](../learnings/1789436296610-orchestrator-make-the-reversible-default-call-when.md)
 - [P0 merge-queue stoppers can be self-fixed mid-build — re-check gh pr list AFTER the build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)
 - [Paginate: reconcile on RAW page length, not your filtered count (/pulls has no total_count)](../learnings/1785774447673-paginate-reconcile-on-raw-page-length-not-your-fil.md)
 - [Parallel fix/issue-* chains can grab the same OptionKind/enum value off a shared base → duplicate-case build break; self-heals via append-renumber](../learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md)
@@ -343,6 +346,7 @@ type: topic
 - [Pin the denominator when comparing a CI rate to a stored baseline](../learnings/1786091003109-pin-the-denominator-when-comparing-a-ci-rate-to-a-.md)
 - [Pointer function parameters are provisional in the specialize-address-space pre-pass](../learnings/1789249737483-pointer-function-parameters-are-provisional-in-the.md)
 - [Pointer-formation UB (cur+N only compared, deref short-circuit-guarded) is UBSan-flaggable but NOT a realized crash — don't over-call P1](../learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md)
+- [PR-review-runner INTEGRITY-FAIL can be a false positive from concurrent reviews racing on the shared slang/tmp](../learnings/1789438412884-pr-review-runner-integrity-fail-can-be-a-false-pos.md)
 - [Prebuilt release binaries are a free runtime bisect — falsify a regression before reworking a perf commit](../learnings/1787635116151-prebuilt-release-binaries-are-a-free-runtime-bisec.md)
 - [Precheck workflow_failures feed can be stale even when ci_health frame is fresh](../learnings/1787643303858-precheck-workflow-failures-feed-can-be-stale-even-.md)
 - [precise local qualifier leaks to 4 C-like targets, not just CUDA/C++ (#12279)](../learnings/1785373326278-precise-local-qualifier-leaks-to-4-c-like-targets-.md)
@@ -371,6 +375,7 @@ type: topic
 - [Release CI zero-lag now the modal case, not the exception](../learnings/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md)
 - [Release-CI last-success harvest: pin event=workflow_dispatch — the tag-run hazard is real but NOT for the stated reason (tags are ahead of master, not off-branch)](../learnings/1785808857180-release-ci-last-success-harvest-pin-event-workflow.md)
 - [Release-CI Setup failures: bisect the workflow file's own history, not just the source-commit range](../learnings/1782869849186-release-ci-setup-failures-bisect-the-workflow-file.md)
+- [Report review status UPSTREAM only when settled or when an operator decision is needed — not per round](../learnings/1789445127469-report-review-status-upstream-only-when-settled-or.md)
 - [Rerunning a known-flake signature doesn't help until the fix is rebased in](../learnings/1787084165975-rerunning-a-known-flake-signature-doesn-t-help-unt.md)
 - [Resolve a contested CI claim at the log line, not the job list](../learnings/1785959966108-resolve-a-contested-ci-claim-at-the-log-line-not-t.md)
 - [RETRACTION — the draft-PR CI mechanism I published is wrong: the retry is blocked by a run parked on a manual approval, not by pushes disqualifying prior runs](../learnings/1786001875366-retraction-the-draft-pr-ci-mechanism-i-published-i.md)

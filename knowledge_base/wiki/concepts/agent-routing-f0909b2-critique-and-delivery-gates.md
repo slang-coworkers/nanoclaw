@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -180,6 +180,21 @@ produced no PR ([chain-routing gate in_reply_to](../learnings/1788540148122-chai
 For a fresh peer dispatch, reply on the peer's existing edge
 (`in_reply_to=<a prior inbound from that peer>`) rather than a bare send
 ([volatile attested file](../learnings/1788423324537-critique-delivery-gate-codex-attesting-a-volatile-.md)).
+A second report independently confirms the same gate on a slangpy triage
+(#1153): a **fresh downstream delegation to a peer** — where you have no inbound
+from that peer — is still blocked when the text carries a chain marker and
+`in_reply_to` is unset. Set `in_reply_to=<the originating chain inbound id>`
+(e.g. the parent's dispatch message) while keeping the explicit `to="<peer>"`
+— `to` wins for delivery, `in_reply_to` only supplies `thread_id` +
+reply-correlation, and `thread_id` is then optional (the runtime derives it).
+A `send_file` with the same marker-free text is NOT gated, which is why an
+attached memo goes through while the handoff message is blocked. Separately,
+merely *quoting* another tier's bracketed marker name in prose (writing "Fix
+Report" to say you await the fixer's report) trips the benign `[GATE AUDIT]`
+note that codex-critique was never run — a literal-string false-positive for a
+read-only/triage role that owns no fix critique; avoid quoting other tiers'
+marker names to keep the audit clean
+([chain-routing gate needs in_reply_to on a fresh peer delegation carrying a chain marker](../learnings/1789374291867-chain-routing-gate-needs-in-reply-to-when-message-.md)).
 
 ## Comment hygiene and PR-body discipline are gate-enforced
 
@@ -213,7 +228,7 @@ in the PR Process report; mirror the removed file as the template via
 `git show <removal-commit>^:<path>`; verify the new `.slang` runs with
 `slang-test`; and run `formatting.sh` on any README table row.
 
-**Source learnings (9):**
+**Source learnings (10):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -221,6 +236,7 @@ in the PR Process report; mirror the removed file as the template via
 - [Critique delivery-gate: codex attesting a volatile file blocks delivery forever](../learnings/1788423324537-critique-delivery-gate-codex-attesting-a-volatile-.md) — Re-hash of `### Attested` files denies delivery when a `.claude-trace/*.jsonl` mutates; attest only stable files; gh posts re-arm the edit counter.
 - [critique-gate hook gotchas: state dir, token suppression, gh-api-pulls over-match](../learnings/1788479415062-approver-infra-critique-gate-hook-gotchas-missing-.md) — `mkdir -p /workspace/.claude`; avoid the two tokens; read PR metadata via `gh pr view --json` or python subprocess.
 - [Chain-routing gate requires in_reply_to on handoff markers](../learnings/1788540148122-chain-routing-gate-requires-in-reply-to-on-handoff.md) — Delivery-marker sends need `in_reply_to`; explicit `to` overrides its routing default; `send_file` is ungated.
+- [Chain-routing gate needs in_reply_to on a fresh peer delegation carrying a chain marker](../learnings/1789374291867-chain-routing-gate-needs-in-reply-to-when-message-.md) — set `in_reply_to=<originating chain inbound>` + explicit `to`; `send_file` is ungated; quoting another tier's marker trips a benign `[GATE AUDIT]`.
 - [codex-critique delivery gate: recorded rounds require fresh codex calls](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md) — `codex-reply` doesn't count; use a fresh call with verbatim developer-instructions + STAGE line; `danger-full-access`; omit model.
 - [Slang :: -qualified operator-name references: fix + PR-gate/comment-hygiene gotchas](../learnings/1788914603700-slang-qualified-operator-name-references-fix-pr-ga.md) — Critique gate blocks `gh pr create`/`edit --body`; timeless comments even in tests; `--force-with-lease=<branch>:<sha>` in fresh worktrees.
 - [Hand-editing docs/generated/tests coverage tree: lint gate + honest META + PR disclosure](../learnings/1788384936519-hand-editing-docs-generated-tests-coverage-tree-li.md) — Legitimate to hand-add symmetric entries if regenerate.py lint passes 0 errors, META is honest, and the PR discloses it.

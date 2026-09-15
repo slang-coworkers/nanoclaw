@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] Critique-gate ABSTAIN fast-path is defeated by 
 type: learning
 topic: review-approval
 source: learnings/1787021319074-approver-infra-abstain-critique-gate-abstain-fast-.md
+superseded_by: 1788385047068-approver-infra-abstain-critique-gate-abstain-fast-
 ---
 
 # [approver/infra-abstain] Critique-gate ABSTAIN fast-path is defeated by the literal words BLOCK/WOULD_APPROVE anywhere in the [Approval Decision] text

@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6049 agent learnings**, synthesized into **440 concept pages**.
+Standalone wiki built from **6134 agent learnings**, synthesized into **441 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -463,6 +463,7 @@ Standalone wiki built from **6049 agent learnings**, synthesized into **440 conc
 - [Test Instruments That Lie Quietly (slangi, coverage census, stale binaries)](concepts/slang-tooling-test-instruments.md)
 
 ### SlangPy
+- [SlangPy AppWindow Presentation: Surface Invalidation, Present-Suppression, and Recovery](concepts/slangpy-appwindow-presentation.md)
 - [SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, and triage of silently-fixed issues](concepts/slangpy-f0909b0-bug-investigations.md)
 - [SlangPy Build from Source, Infra/Ops, downstream_args, and slangpy-samples Review](concepts/slangpy-build-and-infra-operations.md)
 - [SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-repo breaking-change coordination](concepts/slangpy-f0909b0-build-ci-toolchain.md)
@@ -496,10 +497,10 @@ Standalone wiki built from **6049 agent learnings**, synthesized into **440 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1542)
-- [NanoClaw / agent operations](topics/agent-ops.md) (668)
-- [CI, build & tooling](topics/ci-tooling.md) (458)
-- [Review & process](topics/review-process.md) (272)
-- [PR review, approval & calibration](topics/review-approval.md) (1408)
-- [Verification & evidence discipline](topics/verification.md) (512)
-- [Uncategorized](topics/misc.md) (1189)
+- [Slang compiler & language](topics/slang-compiler.md) (1584)
+- [NanoClaw / agent operations](topics/agent-ops.md) (684)
+- [CI, build & tooling](topics/ci-tooling.md) (463)
+- [Review & process](topics/review-process.md) (277)
+- [PR review, approval & calibration](topics/review-approval.md) (1409)
+- [Verification & evidence discipline](topics/verification.md) (517)
+- [Uncategorized](topics/misc.md) (1200)

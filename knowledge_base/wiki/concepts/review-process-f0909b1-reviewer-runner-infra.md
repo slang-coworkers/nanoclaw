@@ -3,7 +3,7 @@ title: Reviewer-runner infrastructure — API-400 payloads, integrity-fail, stat
 type: concept
 group: review-process
 tags: [reviewer-a, reviewer-c, clarity, slang-pr-review-runner, api-400, integrity-fail, monitor, patch-mode, shared-checkout, artifacts]
-source_count: 11
+source_count: 14
 ---
 
 ## TL;DR
@@ -77,6 +77,20 @@ build it yourself. (Second gotcha: a passing spirv-asm FileCheck test with
 `SLANG_RUN_SPIRV_VALIDATION=0` confirms emit-SHAPE only, not Vulkan validity — say so explicitly)
 ([Reviewer A can silently do a static-only review — verify the build actually ran](../learnings/1787323074074-reviewer-a-can-silently-do-a-static-only-review-ve.md)).
 
+The inverse hazard is a reviewer that CANNOT build at all. Asked to independently BUILD an
+SGL/AppWindow slangpy PR (`src/sgl/*`), the slangpy-reviewer container could not configure CMake out
+of the box: `build/linux-gcc` held only a stale `CMakeCache.txt` (no `build.ninja` → `ninja: error:
+loading 'build-Debug.ninja'`), and re-configuring failed on missing system dev headers in order —
+`python3-dev` (`Python.h`), then GLFW's `libxinerama-dev`/`libxcursor-dev`/`libxi-dev` X11 extension
+headers — which the non-root (uid 1000, no sudo) container cannot `apt-get`. The trap: do NOT reach
+for `install_packages` mid-review — its admin-approval → image rebuild → **container restart** would
+destroy the in-progress review session. Instead do the source-level correctness review (which needs
+no build) and report the build step as an explicit ENVIRONMENT BLOCKER — "builds clean" then rests on
+the fixer's/codex's compile, not your own; if a real build is required, ask the operator to install
+`python3-dev libxinerama-dev libxcursor-dev libxi-dev` first (an `sgl`-target build with
+`-DSGL_BUILD_PYTHON=OFF` skips python3-dev but still needs the X11 headers)
+([SlangPy sgl build needs system dev headers not present in the reviewer container](../learnings/1789382093432-slangpy-sgl-build-needs-system-dev-headers-not-pre.md)).
+
 The diff-integrity NET in `compose-and-run.sh` (~lines 185-195) compares `tmp/pr-diff.patch`'s
 `+++ b/` paths to `gh pr view --json files` at A's exit and writes `INTEGRITY-FAIL.txt` on mismatch —
 but `/workspace/agent/slang` is a SHARED mutable checkout, so concurrent reviews clobber that file and
@@ -88,6 +102,30 @@ independently-named run dir — then positive-control one finding's file:line ag
 PR 12647 all four agreed on `7bd29ae…` despite an INTEGRITY-FAIL listing a third PR's files — a valid
 review
 ([Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md)).
+
+Two fresh 2026-09-15 instances confirm this shared-checkout race is live and add the transcripts-dir
+half. On slang-rhi#867 Reviewer A tripped `INTEGRITY-FAIL` with a `tmp/context.json` recording
+`pr:868`'s Vulkan file list — a concurrent slang-rhi#868 review clobbered the shared
+`slang/tmp/{pr-diff.patch,context.json}` mid-run; the trip was a FALSE positive (A's
+`pr-diff.reference` sha256 was byte-identical to a fresh `gh pr diff 867` and to Reviewer C's
+independent hash) but it "passed by luck, not by construction" — absent that manual sha256 cross-check
+a concurrent collision could surface as a wrong-PR review reported valid, so until `compose-and-run.sh`
+isolates its scratch per-run, always confirm the reviewed `diff_hash` matches `gh pr diff <n>` before
+trusting the verdict ([slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md)).
+The second (slang#13083 amid sibling reviews of #13081/#869/#868) names the operational rule and a
+SECOND shared path: (1) the `tmp/pr-diff.patch` clobber yields a false-positive `INTEGRITY-FAIL`
+(exit 1) — do NOT discard Reviewer A on exit-1 alone; the inner model usually detects the sha256
+mismatch, re-stages to an isolated path, and re-runs, stamping the correct `reviewed: <sha> · diff
+sha256 <hash>` in `final-review.md`, so verify head==`gh pr view <PR> --json headRefOid`, `summarize.py`
+run-state success + drift==0, and that the body cites the target PR's real symbols; and (2) both
+`slang-pr-review-runner` and `slang-clarity-review-runner` write `transcripts/<key>-<TS>/`, so
+`ls -1dt transcripts/*/ | head -1` picks whichever CONCURRENT run finished most recently, not yours —
+pin the run dir from the exact path the runner prints at launch (`>>> output → <dir>`; clarity dirs
+embed `pr-pr<N>-<headsha>-<diffhash>` for matching), and before merging grep each reviewer section for
+the target PR's unique symbols asserting 0 hits for the other PR's. The durable upstream fixes: stage
+each run's diff in an isolated per-run tmp, and have the runners print a machine-readable `RUN_DIR=`
+line the workflow captures instead of newest-dir discovery
+([concurrent slang PR reviews contaminate shared tmp/ and transcripts/ — pin run dirs, don't trust exit-1](../learnings/1789443118244-concurrent-slang-pr-reviews-contaminate-shared-tmp.md)).
 
 The related PATCH-MODE contamination is the same shared-checkout hazard but with a wrong-binding that
 IS real damage: patch mode does `git -c ... commit -q -am` on a temp branch, and `commit -am` stages
@@ -137,7 +175,7 @@ and the reviewer never starts (silent if backgrounded). Both self-assign a run d
 for `output →`. Only `devin-fetch.sh` (Reviewer B) takes `--out`
 ([slang-pr-review runners manage their own transcripts dir — no --out flag](../learnings/1787049654930-slang-pr-review-runners-manage-their-own-transcrip.md)).
 
-**Source learnings (11):**
+**Source learnings (14):**
 
 - [slang-pr-review runners manage their own transcripts dir — no --out flag](../learnings/1787049654930-slang-pr-review-runners-manage-their-own-transcrip.md) — A/C self-assign `transcripts/<mode>-<ts>`; grep the launch log for `output →`; only devin-fetch.sh takes `--out`.
 - [Reviewer A (slang-pr-review-runner) can die on transient API-400 payload truncation](../learnings/1787266138406-reviewer-a-slang-pr-review-runner-can-die-on-trans.md) — PR #12650; 3 identical deaths after reading the large PR body; discriminator is request size; report A-absent and merge on B+C + own checks.
@@ -150,3 +188,6 @@ for `output →`. Only `devin-fetch.sh` (Reviewer B) takes `--out`
 - [Monitor grep for reviewer failure must not match streamed PR-body content](../learnings/1787605976090-monitor-grep-for-reviewer-failure-must-not-match-s.md) — match content-immune sentinels (`!!!`, artifact presence, `devin-error.txt`), never the word "error" in the stream.
 - [Monitor for a claude-CLI reviewer run must not grep the stream for generic failure words](../learnings/1787869224351-monitor-for-a-claude-cli-reviewer-run-must-not-gre.md) — PR #12806; generic tokens appear in tool_result content; watch the artifact + the line-start `^{"type":"result"`; a monitor event is a trigger to re-verify.
 - [Patch-mode review diff contaminated by dirty shared checkout (git commit -am)](../learnings/1787746426193-patch-mode-review-diff-contaminated-by-dirty-share.md) — PR #12771; verify the temp commit's FILE SET, not just the diff sha256; ensure the checkout is clean before dispatch (`git -C` matters); Reviewer C's isolated worktree is immune.
+- [SlangPy sgl build needs system dev headers not present in the reviewer container](../learnings/1789382093432-slangpy-sgl-build-needs-system-dev-headers-not-pre.md) — the inverse of static-only: the reviewer CAN'T build (missing `python3-dev` + X11 headers, non-root/no-sudo); don't `install_packages` mid-review (it restarts you); do source-level review and report the build as an env blocker.
+- [slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md) — slang-rhi#867/#868; shared `slang/tmp/{pr-diff.patch,context.json}` clobbered → false INTEGRITY-FAIL that passed by luck; confirm the reviewed `diff_hash` == `gh pr diff <n>` before trusting the verdict.
+- [Concurrent slang PR reviews contaminate shared tmp/ and transcripts/ — pin run dirs, don't trust exit-1](../learnings/1789443118244-concurrent-slang-pr-reviews-contaminate-shared-tmp.md) — slang#13083; don't discard A on exit-1 (verify head/hash + summarize.py drift==0 + symbols); pin `run_dir` from the launch `output →` line, never newest-dir; propose per-run tmp + a `RUN_DIR=` line upstream.

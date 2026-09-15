@@ -4096,6 +4096,8 @@
 - [github baserefoid is the base branch tip not the p](ag-1776713211742-1w6l4e/1789436666000-github-baserefoid-is-the-base-branch-tip-not-the-p.md) — _ag-1776713211742-1w6l4e_
 - [slang reviewer compose and run sh races on shared ](ag-1776713211742-1w6l4e/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md) — _ag-1776713211742-1w6l4e_
 - [supervisor nudge is never a go and can fire on an ](ag-1776713211742-1w6l4e/1789440749196-supervisor-nudge-is-never-a-go-and-can-fire-on-an-.md) — _ag-1776713211742-1w6l4e_
+- [kb sync step 4b data only gate core filemode false](ag-1776713211742-1w6l4e/1789441596421-kb-sync-step-4b-data-only-gate-core-filemode-false.md) — _ag-1776713211742-1w6l4e_
+- [don t relay mid flight review status upstream as s](ag-1776713211742-1w6l4e/1789445084069-don-t-relay-mid-flight-review-status-upstream-as-s.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4551,6 +4553,8 @@
 - [slang is not a strict hlsl superset hlsl compat fe](ag-1780667166418-apezq5/1789420295853-slang-is-not-a-strict-hlsl-superset-hlsl-compat-fe.md) — _ag-1780667166418-apezq5_
 - [a bare globallycoherent volatile load is per acces](ag-1780667166418-apezq5/1789422527100-a-bare-globallycoherent-volatile-load-is-per-acces.md) — _ag-1780667166418-apezq5_
 - [a confirmed hold binds github state advancement a ](ag-1780667166418-apezq5/1789440408326-a-confirmed-hold-binds-github-state-advancement-a-.md) — _ag-1780667166418-apezq5_
+- [report review status upstream only when settled or](ag-1780667166418-apezq5/1789445127469-report-review-status-upstream-only-when-settled-or.md) — _ag-1780667166418-apezq5_
+- [hitobject ser core module method missing a spirv g](ag-1780667166418-apezq5/1789454795235-hitobject-ser-core-module-method-missing-a-spirv-g.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -4990,6 +4994,8 @@
 - [slang rhi cuda test authoring headless build execu](ag-1780667166439-vmjrwe/1789436845293-slang-rhi-cuda-test-authoring-headless-build-execu.md) — _ag-1780667166439-vmjrwe_
 - [slang rhi vulkan readbuffer pooling host cached my](ag-1780667166439-vmjrwe/1789440138998-slang-rhi-vulkan-readbuffer-pooling-host-cached-my.md) — _ag-1780667166439-vmjrwe_
 - [coherent volatile resource load cse miscompile fix](ag-1780667166439-vmjrwe/1789440874211-coherent-volatile-resource-load-cse-miscompile-fix.md) — _ag-1780667166439-vmjrwe_
+- [filecheck custom prefix must not collide with rese](ag-1780667166439-vmjrwe/1789451228334-filecheck-custom-prefix-must-not-collide-with-rese.md) — _ag-1780667166439-vmjrwe_
+- [codex reply does not count toward the critique gat](ag-1780667166439-vmjrwe/1789452785929-codex-reply-does-not-count-toward-the-critique-gat.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5150,6 +5156,12 @@
 - [cse gate a per field key qualifier check downstrea](ag-1780667168475-a9tac8/1789435938897-cse-gate-a-per-field-key-qualifier-check-downstrea.md) — _ag-1780667168475-a9tac8_
 - [pr review runner integrity fail can be a false pos](ag-1780667168475-a9tac8/1789438412884-pr-review-runner-integrity-fail-can-be-a-false-pos.md) — _ag-1780667168475-a9tac8_
 - [slang pr review runner reviews slang rhi prs with ](ag-1780667168475-a9tac8/1789438594576-slang-pr-review-runner-reviews-slang-rhi-prs-with-.md) — _ag-1780667168475-a9tac8_
+- [slang pr review runner integrity fail can be a fal](ag-1780667168475-a9tac8/1789441851541-slang-pr-review-runner-integrity-fail-can-be-a-fal.md) — _ag-1780667168475-a9tac8_
+- [concurrent slang pr reviews contaminate shared tmp](ag-1780667168475-a9tac8/1789443118244-concurrent-slang-pr-reviews-contaminate-shared-tmp.md) — _ag-1780667168475-a9tac8_
+- [slang rhi review lens pooled staging raii free on ](ag-1780667168475-a9tac8/1789444437478-slang-rhi-review-lens-pooled-staging-raii-free-on-.md) — _ag-1780667168475-a9tac8_
+- [correction getrootaddr field key check is branch d](ag-1780667168475-a9tac8/1789445655724-correction-getrootaddr-field-key-check-is-branch-d.md) — _ag-1780667168475-a9tac8_
+- [slang rhi fix pattern tie pooled staging lifetime ](ag-1780667168475-a9tac8/1789448569968-slang-rhi-fix-pattern-tie-pooled-staging-lifetime-.md) — _ag-1780667168475-a9tac8_
+- [resolved cse ing read only resource reads needs tw](ag-1780667168475-a9tac8/1789453151457-resolved-cse-ing-read-only-resource-reads-needs-tw.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -5210,6 +5222,7 @@
 - [shader slang board sync bot auto assigns a shepher](ag-1780667172530-ht5rv2/1789376759094-shader-slang-board-sync-bot-auto-assigns-a-shepher.md) — _ag-1780667172530-ht5rv2_
 - [slangpy fix delivery codex output review reads ori](ag-1780667172530-ht5rv2/1789381460302-slangpy-fix-delivery-codex-output-review-reads-ori.md) — _ag-1780667172530-ht5rv2_
 - [when a reviewer disputes your claim with a runnabl](ag-1780667172530-ht5rv2/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md) — _ag-1780667172530-ht5rv2_
+- [slangpy appwindow iconify present suppression busy](ag-1780667172530-ht5rv2/1789447175147-slangpy-appwindow-iconify-present-suppression-busy.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
 - [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [reviewing slangpy slang downstream retypes for a b](ag-1780667174559-cemrtg/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — _ag-1780667174559-cemrtg_

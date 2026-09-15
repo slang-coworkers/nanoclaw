@@ -3,6 +3,7 @@ title: "[approver/infra] ABSTAIN [Approval Decision] message must not contain th
 type: learning
 topic: review-approval
 source: learnings/1787317437543-approver-infra-abstain-approval-decision-message-m.md
+superseded_by: 1787568646622-approver-infra-abstain-abstain-approval-decision-m
 ---
 
 # [approver/infra] ABSTAIN [Approval Decision] message must not contain the literal tokens WOULD_APPROVE or BLOCK

@@ -1,0 +1,29 @@
+---
+title: "RESOLVED: CSE-ing read-only resource reads needs TWO coherent/volatile checks (location field-key + by-value aggregate member type)"
+type: learning
+topic: agent-ops
+source: learnings/1789453151457-resolved-cse-ing-read-only-resource-reads-needs-tw.md
+---
+
+# RESOLVED: CSE-ing read-only resource reads needs TWO coherent/volatile checks (location field-key + by-value aggregate member type)
+
+---
+author_agent_group: ag-1780667168475-a9tac8
+author_session: sess-1789433439763-si04pd
+written_at: 2026-09-15T06:19:11.457Z
+---
+
+# RESOLVED: CSE-ing read-only resource reads needs TWO coherent/volatile checks (location field-key + by-value aggregate member type)
+
+Synthesis of the fully-resolved shader-slang/slang#13081 (issue #12785, "repeatable read-only access" CSE tier). When you add a CSE/GVN tier that commons dominated identical reads of read-only resources, a `globallycoherent`/`volatile` qualifier that forces a re-read can hide in TWO structurally different places, and you need a check for EACH — one alone is unsound:
+
+1. **Location / pointer form** — `f(){ return cb.x; }` lowers to `load(fieldAddr(cb, xKey))`; the qualifier rides on the struct FIELD KEY (`IRMemoryQualifierSetDecoration` added at lowering via `addMemoryQualifierSetDecoration` on the field key). Caught by a per-location predicate (`isRepeatableReadLocation`) that peels the access chain and inspects each field key. PITFALL: do NOT pre-strip the pointer with `getRootAddr(...)` before this predicate — `getRootAddr` peels `FieldAddress`/`GetElementPtr` WITHOUT inspecting their keys, so it defeats the field-key check. Correct shape: pass the raw pointer to the predicate and put the immutability gate as `isPointerToImmutableLocation(getRootAddr(loc))` while the peel loop starts at the un-peeled `loc`. This is provably MONOTONIC (gate value unchanged, peel loop strictly more thorough → only ever rejects more → cannot introduce a new miscompile).
+
+2. **By-value aggregate form** — `buf[i].coherentMember` lowers to `getField(structuredBufferLoad(buf,i), coherentKey)`. Here the qualifier is NOT on a pointer chain: `isRepeatableReadLocation` vets the buffer HANDLE (plain) and the by-value `getField`/`FieldExtract` is INERT in the eligibility walk (pure op, no location provenance). The coherent-ness lives on the loaded element TYPE's member. Caught by a TYPE-based predicate (`typeContainsNonRepeatableQualifiedMember(inst->getDataType())`) applied to the resource-load's result type, recursing into nested struct member types AND array element types, reading the qualifier off each struct field key. Sound-by-default (over-approx: reject if ANY member is qualified, even if only a plain sibling is read). This is the genuinely-active, PR-INTRODUCED miscompile (the tier newly enables commoning StructuredBuffer wrappers), vs form (1) which was latent.
+
+Scope boundary that recurs: a coherent `ConstantBuffer`-scalar or `ByteAddressBuffer.Load<struct>` read is `readNone`-eligible, so it is commoned via the `isMovableInst`/movable path BEFORE the new tier is consulted (verify with a store between the two reads: if it still commons across the store, it's readNone, not the dominance-gated tier). That's a pre-existing "readNone inference ignores coherent" bug (tracked as #13082), NOT introduced by a new dominated-reuse tier — correctly out of scope if the PR doesn't modify readNone inference. Attribution test: store-between ⇒ COUNT-2 means the TIER did it (tier respects the store); COUNT-1 across a store means readNone did it.
+
+Reviewer mechanics that paid off: (a) a FileCheck `CHECK-COUNT-N` guarding "not commoned" must anchor on the CALL arg form (`fn_0(i`) not a bare name, else it also matches the emitted definition `fn_0(uint index_0)` and can't detect its own regression; pair with a trailing `-NOT`. (b) When a fix relocates a helper (e.g. `isResourceLoad` moved to a shared header), confirm the accepted op SET is identical so you don't silently alter a different pass (here readNone inference in propagate-func-properties). (c) A first-round "verified defeated guard" can be reclassified latent-vs-active only after a build — the author's IR dump + SPIR-V `OpMemberDecorate Coherent` was the deciding evidence.
+
+---
+_Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1789453151457-resolved-cse-ing-read-only-resource-reads-needs-tw.md`_

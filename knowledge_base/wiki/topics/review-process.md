@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-272 learnings. [Catalog](../index.md)
+277 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -128,6 +128,7 @@ type: topic
 - [Don't add bare LICENSES/ SPDX texts in a REUSE repo — reuse lint fails on unused licenses (empirically verified)](../learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md)
 - [Don't assert an absence you didn't run the probe for — truncated grep preview and skipped nvidia-smi both produced false negatives in one PR](../learnings/1787049086568-don-t-assert-an-absence-you-didn-t-run-the-probe-f.md)
 - [Don't instruct coworkers to mark PRs ready-for-review (drafts-only is admin-set)](../learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md)
+- [Don't relay mid-flight review status upstream as settled — wait for it to stabilize](../learnings/1789445084069-don-t-relay-mid-flight-review-status-upstream-as-s.md)
 - [Empirical "I tested it" probes can miss the wrong sub-case — Devin's persistent flags deserve scrutiny even when initial reading says misread](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
 - [Enumerate every write site before asserting an invariant — grep beats mutual review](../learnings/1785928854026-enumerate-every-write-site-before-asserting-an-inv.md)
 - [formatting.sh: markdown stage omits run_all — bare and --modified runs silently skip all .md](../learnings/1785936156369-formatting-sh-markdown-stage-omits-run-all-bare-an.md)
@@ -220,12 +221,14 @@ type: topic
 - [Reviewer-disagreement: "match canonical precedent" vs "precedent is itself wrong"](../learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md)
 - [Reviewer: a self-recommended comment addition does not reset the PR review pipeline](../learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md)
 - [Reviewer: gate the verdict on full-suite CI for broad-blast-radius changes, not static review alone](../learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md)
+- [Reviewing "reject unrepresentable input" fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md)
 - [Reviewing a pass-gating PR: green tests plus byte-identical output cannot detect a dead flag](../learnings/1785827882400-reviewing-a-pass-gating-pr-green-tests-plus-byte-i.md)
 - [Reviewing a PR whose head keeps moving (synchronize/merge churn)](../learnings/1784006371550-reviewing-a-pr-whose-head-keeps-moving-synchronize.md)
 - [Reviewing a race fix: check whether the "existing regression guards" are actually enabled](../learnings/1785777415067-reviewing-a-race-fix-check-whether-the-existing-re.md)
 - [Reviewing lowerCopyLogical untyped-flavor fixes: single-element copy only tests the struct-field branch](../learnings/1789177486273-reviewing-lowercopylogical-untyped-flavor-fixes-si.md)
 - [Reviewing PreToolUse gh-command guards: two bypass classes (title-token spoof, glued short-flag fail-open)](../learnings/1783879965262-reviewing-pretooluse-gh-command-guards-two-bypass-.md)
 - [Round-2 PR re-review of a doc/test/refactor fix = targeted diff, not a full pipeline re-run](../learnings/1788381184331-round-2-pr-re-review-of-a-doc-test-refactor-fix-ta.md)
+- [Round-2 review of a "factored guard into shared helper" fix: check doc-overstatement + defensive guards](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md)
 - [Scope a bot follow-up-review verdict to the reviewed diff — never say "merge-ready" / "complete" from a scoped review, and attribute test-pass to whoever ran it](../learnings/1789173449943-scope-a-bot-follow-up-review-verdict-to-the-review.md)
 - [Scoped to verify the bug? Read the fix's open review threads — the fix may contain the same bug class](../learnings/1785985363443-scoped-to-verify-the-bug-read-the-fix-s-open-revie.md)
 - [Self-review catches errors only when it executes a check — re-reading your own claim catches nothing](../learnings/1785831745909-self-review-catches-errors-only-when-it-executes-a.md)
@@ -262,6 +265,7 @@ type: topic
 - [slang-pr-review: Reviewer A budget-cap mid-analysis hypotheses are NOT findings — re-run + independently verify](../learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md)
 - [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md)
 - [slang-pr-review: verify reviewer runs survived + cleared the guard before trusting output](../learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md)
+- [slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent PR reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md)
 - [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md)
 - [Stamp maintainer self-merge as NO_HUMAN_REVIEW, not APPROVED](../learnings/1783726677874-stamp-maintainer-self-merge-as-no-human-review-not.md)
 - [Stop polishing wording; keep recording mechanics — the boundary that ends a productive review thread](../learnings/1785905725952-stop-polishing-wording-keep-recording-mechanics-th.md)
@@ -277,5 +281,6 @@ type: topic
 - [Verify Reviewer A's cited files against the authoritative PR file list before trusting a finding](../learnings/1783681518930-verify-reviewer-a-s-cited-files-against-the-author.md)
 - [Verifying detached background PR-reviewer completion (Monitor + pgrep gotchas)](../learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md)
 - [Vetting must scale with stakes, not with source — an artifact that corrects you deserves the same review as your own draft](../learnings/1786052601402-vetting-must-scale-with-stakes-not-with-source-an-.md)
+- [When a reviewer disputes your claim with a runnable check, run it before defending — stale memory of a fast-moving sibling loses to fresh source](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md)
 - [When gh GraphQL 401s, verify PR state and review-approval binding via REST](../learnings/1785752119095-when-gh-graphql-401s-verify-pr-state-and-review-ap.md)
 - [When push cadence beats review turnaround, widen the quiescence window — don't chase per-push](../learnings/1783709416771-when-push-cadence-beats-review-turnaround-widen-th.md)
