@@ -6,7 +6,10 @@ posts nothing, the merge / blocked / gate-red line once, not_in_channel → exit
 untouched, a fatal token/channel error → exit 1 after one call, dry-run makes no calls, --max-posts,
 a single card failure (Slack error, truncated response, unreadable or torn PNG) never aborts, a fresh
 card waits to settle, the run lock, a corrupt state file is fatal, mrkdwn escaping end to end, the
-token never reaches stdout/stderr, and the urllib client's three-step upload + 429 retry.
+token never reaches stdout/stderr, and the urllib client's three-step upload + 429 retry. DemoPathMessageTest
+covers the one edited-in-place `*Demo path*` message: posted once and remembered, unchanged text makes no
+call, changed text is one chat.update, a failed update is logged and retried, the update is not budgeted,
+no state.json means no first post, dry-run prints and writes nothing, escaping end to end.
 Run: python3 -m unittest ops/nemoclaw-coworkers/test_slack_rows.py
 """
 
@@ -111,6 +114,14 @@ class FakeClient:
         self.calls.append(("post", channel, text, thread_ts))
         return f"{self.ts}.000100"
 
+    def update_message(self, channel, ts, text):
+        self.attempts += 1
+        exc = self.fail.get(("update", ts))
+        if exc:
+            raise exc
+        self.calls.append(("update", channel, ts, text))
+        return ts
+
     def upload_file(self, channel, thread_ts, path, title, initial_comment):
         self.attempts += 1
         exc = self.fail.get(("upload", os.path.basename(path)))
@@ -162,6 +173,8 @@ class FakeSlackHTTP:
             return FakeResponse(b"OK - uploaded")
         elif url.endswith("files.completeUploadExternal"):
             body = {"ok": True, "files": [{"id": "x"}]}
+        elif url.endswith("chat.update"):
+            body = {"ok": True, "ts": json.loads(req.data.decode()).get("ts")}
         else:
             body = {"ok": False, "error": "unknown_method"}
         return FakeResponse(json.dumps(body).encode())
@@ -702,6 +715,25 @@ class SlackClientTest(unittest.TestCase):
         self.assertEqual(json.loads(self.requests[1].data.decode()), {
             "channel": CHANNEL, "text": "hello", "unfurl_links": False, "unfurl_media": False, "thread_ts": "1700.0001"})
 
+    def test_update_message_hits_chat_update_and_escapes(self):
+        self.script = [json.dumps({"ok": True, "ts": "1700000000.000100"}).encode()]
+        ts = self.client().update_message("C1", "1700000000.000100", "*Demo path* <!channel> a & b")
+        self.assertEqual(ts, "1700000000.000100")
+        self.assertEqual(len(self.requests), 1)
+        req = self.requests[0]
+        self.assertTrue(req.full_url.endswith("/chat.update"))
+        self.assertEqual(req.get_header("Content-type"), "application/json; charset=utf-8")
+        self.assertEqual(json.loads(req.data.decode()), {"channel": "C1", "ts": "1700000000.000100", "text": "*Demo path* &lt;!channel&gt; a &amp; b"})
+        self.script = [urllib.error.HTTPError("u", 500, "boom", {}, None)]
+        with self.assertRaises(self.mod.SlackError) as cm:
+            self.client().update_message("C1", "1.2", "x")
+        self.assertEqual((cm.exception.method, cm.exception.error), ("chat.update", "http 500"))
+        self.script = [json.dumps({"ok": False, "error": "message_not_found"}).encode()]
+        with self.assertRaises(self.mod.SlackError) as cm:
+            self.client().update_message("C1", "1.2", "x")
+        self.assertEqual(cm.exception.error, "message_not_found")
+        self.assertNotIsInstance(cm.exception, self.mod.SlackFatal)
+
     def test_post_message_escapes_mrkdwn(self):
         self.script = [json.dumps({"ok": True, "ts": "1700.43"}).encode()]
         self.client().post_message(CHANNEL, "⛔ LOOP-F35 blocked — <!channel> a & b <https://x|y>")
@@ -758,3 +790,231 @@ class SlackClientTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+DEMO_ROWS = {
+    "LOOP-F35": ("BUILD", "1a"), "LOOP-F37": ("BUILD", "2"), "GOV-F24": ("BUILD", "2"), "GOV-F25": ("BUILD", "2"),
+    "GOV-F23": ("CONFIGURE", "1b"), "GOV-F27": ("CONFIGURE", "1b"), "RT-F01": ("CONFIGURE", "1b"), "RT-F02": ("CONFIGURE", "1b"),
+    "RT-F03": ("CONFIGURE", "1b"), "COST-F29": ("BUILD", "2"), "CRED-F28": ("BUILD", "3"), "ISO-F13": ("CONFIGURE", "3"),
+    "ISO-F14": ("CONFIGURE", "3"), "ISO-F15": ("CONFIGURE", "3"), "A2A-F21": ("CONFIGURE", "4"), "ISO-F17": ("ADOPT", "adopt"),
+    "MEM-F44": ("CONFIGURE", "1b"),
+}
+
+
+def demo_state(states: dict, reason: str | None = None) -> str:
+    rows = {rid: {"state": states.get(rid, "queued"), "disposition": d, "batch": b} for rid, (d, b) in DEMO_ROWS.items()}
+    for rid, st in states.items():
+        if st == "blocked":
+            rows[rid]["state_reason"] = reason or "cap: FAIL x2"
+    return json.dumps({"generated_at": "2026-09-15T09:50:00Z", "rows": rows, "wip": {"limit": 3},
+                       "gating": {"1a_first_pass": True, "batch2_merged": False, "batch3_merged": False, "batch4_merged": False, "podman_box": True}})
+
+
+class DemoPathMessageTest(unittest.TestCase):
+    """The `*Demo path*` message: a checkout with the plan, an open ledger, one card and a state.json, driven
+    through main() with FakeClient (or the real client over FakeSlackHTTP)."""
+
+    def setUp(self):
+        self.mod = load_module()
+        FakeClient.instances = []
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name) / "checkout"
+        self.state = self.root / "data" / "shared" / "hermes" / "slack-threads.json"
+        self.ap_state = self.root / "data" / "shared" / "hermes" / "autopilot" / "state.json"
+        put(self.root / "docs" / "hermes-port" / "dispatch-plan.md", PLAN, 1.0e9)
+        put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER_OPEN, 1.0e9)
+        put(self.root / ".env", f"SLACK_BOT_TOKEN={TOKEN}\n", 1.0e9)
+        self.cards = self.root / "groups" / "hermes-tester" / "reports" / "hermes-LOOP-F35" / "cards"
+        put(self.cards / "card-hermes-tester-pass-r1.png", png("t1"), 1.7e9)
+        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "building"}), 1.7e9)
+        self.env_backup = {k: os.environ.pop(k) for k in ("SLACK_BOT_TOKEN", "SLACK_ROWS_CHANNEL", "DEMO_PATH_SPEC") if k in os.environ}
+
+    def tearDown(self):
+        os.environ.update(self.env_backup)
+        self.tmp.cleanup()
+
+    def run_main(self, *extra: str, factory=FakeClient) -> tuple[int, str, str]:
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = self.mod.main(["--root", str(self.root), "--channel", CHANNEL, *extra], client_factory=factory)
+        return code, out.getvalue(), err.getvalue()
+
+    def read_state(self) -> dict:
+        return json.loads(self.state.read_text(encoding="utf-8"))
+
+    @staticmethod
+    def demo_calls(client) -> list:
+        return [c for c in client.calls if (c[0] == "post" and c[2].startswith("*Demo path*")) or c[0] == "update"]
+
+    def test_first_run_posts_once_after_the_rows_and_stores_ts_then_nothing(self):
+        code, out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        client = FakeClient.instances[0]
+        kinds = [c[0] for c in client.calls]
+        self.assertEqual(kinds, ["post", "post", "upload", "post"], "roots, the card, then the demo path last")
+        demo = self.demo_calls(client)
+        self.assertEqual(len(demo), 1)
+        _kind, channel, text, thread_ts = demo[0]
+        self.assertEqual(channel, CHANNEL)
+        self.assertIsNone(thread_ts, "a root message, not a thread reply")
+        self.assertTrue(text.startswith("*Demo path*"))
+        self.assertLessEqual(len(text.split("\n")), 25)
+        for rid in ("*R1*", "*R2*", "*R3*", "*R4*", "*R5*", "LOOP-F35 merged", "LOOP-F37 building"):
+            self.assertIn(rid, text)
+        self.assertIn("posted demo path", out)
+        entry = self.read_state()["demo_path"]
+        self.assertEqual(entry["channel"], CHANNEL)
+        self.assertEqual(entry["ts"], "1003.000100", "the third chat.postMessage of the run")
+        self.assertEqual(entry["text_hash"], self.mod.text_hash(text))
+        self.assertIn("posted_at", entry)
+        self.assertIn("posted 4 on 2 rows", err)
+        # Second run, nothing changed: no call at all.
+        code, out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(FakeClient.instances[1].calls, [])
+        self.assertEqual(FakeClient.instances[1].attempts, 0)
+        self.assertNotIn("demo path", out)
+        self.assertEqual(self.read_state()["demo_path"], entry, "the state entry is untouched")
+
+    def test_changed_text_is_one_chat_update_never_a_second_post(self):
+        self.run_main()
+        entry = self.read_state()["demo_path"]
+        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "review"}), 1.7e9 + 10)
+        code, out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        client = FakeClient.instances[1]
+        self.assertEqual([c[0] for c in client.calls], ["update"])
+        _kind, channel, ts, text = client.calls[0]
+        self.assertEqual((channel, ts), (CHANNEL, entry["ts"]))
+        self.assertIn("LOOP-F37 review", text)
+        self.assertIn("updated demo path", out)
+        new = self.read_state()["demo_path"]
+        self.assertEqual(new["ts"], entry["ts"], "the same message, edited in place")
+        self.assertNotEqual(new["text_hash"], entry["text_hash"])
+        self.assertEqual(new["text_hash"], self.mod.text_hash(text))
+        self.assertEqual(new["posted_at"], entry["posted_at"])
+        # Third run, unchanged again: nothing.
+        self.run_main()
+        self.assertEqual(FakeClient.instances[2].calls, [])
+
+    def test_failed_update_is_logged_hash_kept_and_the_run_is_not_aborted(self):
+        self.run_main()
+        entry = self.read_state()["demo_path"]
+        mod = self.mod
+        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "review"}), 1.7e9 + 10)
+        put(self.cards / "card-hermes-tester-fail-r2.png", png("t2"), 1.7e9 + 20)  # new lane work on the same run
+
+        class Flaky(FakeClient):
+            def __init__(self, token):
+                super().__init__(token)
+                self.fail[("update", entry["ts"])] = mod.SlackError("chat.update", "message_not_found")
+
+        code, _out, err = self.run_main(factory=Flaky)
+        self.assertEqual(code, 0, "a failed update is never fatal")
+        client = FakeClient.instances[-1]  # the Flaky one (instances is shared with the base class)
+        self.assertEqual([c[0] for c in client.calls], ["upload"], "the card still posted; no repost of the demo path")
+        self.assertEqual(client.attempts, 2)
+        self.assertIn("slack error chat.update: message_not_found (demo path update; retried next run)", err)
+        self.assertIn("posted 1 on 2 rows", err, "the run's summary line still prints")
+        self.assertEqual(self.read_state()["demo_path"]["text_hash"], entry["text_hash"], "the hash is kept so the next run retries")
+        # Next run: the update goes through.
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c[0] for c in FakeClient.instances[-1].calls], ["update"])
+        self.assertNotEqual(self.read_state()["demo_path"]["text_hash"], entry["text_hash"])
+        # A fatal error on the update is still fatal (token / channel problem), like everywhere else.
+        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "gate"}), 1.7e9 + 30)
+        ts = self.read_state()["demo_path"]["ts"]
+
+        class Revoked(FakeClient):
+            def __init__(self, token):
+                super().__init__(token)
+                self.fail[("update", ts)] = mod.SlackFatal("chat.update", "token_revoked")
+
+        code, _out, err = self.run_main(factory=Revoked)
+        self.assertEqual(code, 1)
+        self.assertIn("token/channel problem", err)
+
+    def test_update_does_not_count_against_max_posts_but_the_first_post_does(self):
+        # Budget 3 on the first run: two roots + the card use it up, so the demo path waits.
+        code, _out, err = self.run_main("--max-posts", "3")
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c[0] for c in FakeClient.instances[0].calls], ["post", "post", "upload"])
+        self.assertNotIn("demo_path", self.read_state())
+        self.assertIn("demo path: no budget left this run; posted next run", err)
+        # Next run: only the demo path is left; it takes one unit.
+        code, _out, err = self.run_main("--max-posts", "1")
+        self.assertEqual([c[0] for c in FakeClient.instances[1].calls], ["post"])
+        self.assertIn("demo_path", self.read_state())
+        # Now a changed tracker + two new cards on a budget of 1: one card (budget) AND the update (free).
+        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "review"}), 1.7e9 + 10)
+        put(self.cards / "card-hermes-tester-fail-r2.png", png("t2"), 1.7e9 + 20)
+        put(self.cards / "card-hermes-tester-pass-r3.png", png("t3"), 1.7e9 + 30)
+        code, _out, err = self.run_main("--max-posts", "1")
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c[0] for c in FakeClient.instances[2].calls], ["upload", "update"])
+        self.assertIn("posted 1 on 2 rows", err, "the update is not in the budget count")
+
+    def test_no_state_json_means_no_first_post_but_an_existing_message_is_updated_to_unknown(self):
+        self.ap_state.unlink()
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c[0] for c in FakeClient.instances[0].calls], ["post", "post", "upload"])
+        self.assertNotIn("demo_path", self.read_state())
+        self.assertIn("demo path: no live state.json yet; the first message waits for it", err)
+        # An earlier message exists (state.json vanished later): it is edited to say unknown.
+        st = self.read_state()
+        st["demo_path"] = {"channel": CHANNEL, "ts": "999.000001", "text_hash": "stale", "posted_at": "2026-09-14T00:00:00Z"}
+        put(self.state, json.dumps(st), 1.7e9)
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        calls = FakeClient.instances[1].calls
+        self.assertEqual([c[0] for c in calls], ["update"])
+        self.assertEqual(calls[0][2], "999.000001")
+        self.assertIn("ETA unknown", calls[0][3])
+        self.assertIn("state.json not found", calls[0][3])
+
+    def test_broken_spec_is_one_log_line_and_the_lanes_still_post(self):
+        bad = Path(self.tmp.name) / "bad.json"
+        bad.write_text("{not json")
+        code, _out, err = self.run_main("--demo-spec", str(bad))
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c[0] for c in FakeClient.instances[0].calls], ["post", "post", "upload"])
+        self.assertIn("demo path unavailable: JSONDecodeError", err)
+        self.assertNotIn("demo_path", self.read_state())
+
+    def test_dry_run_prints_would_post_or_update_and_writes_nothing(self):
+        code, out, err = self.run_main("--dry-run")
+        self.assertEqual(code, 0, err)
+        self.assertIn("would post demo path (", out)
+        self.assertFalse(self.state.exists())
+        self.assertEqual(FakeClient.instances, [])
+        self.run_main()
+        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "review"}), 1.7e9 + 10)
+        before = self.read_state()
+        code, out, _err = self.run_main("--dry-run")
+        self.assertEqual(code, 0)
+        self.assertIn("would update demo path (", out)
+        self.assertEqual(self.read_state(), before)
+
+    def test_text_is_escaped_end_to_end_with_the_real_client(self):
+        put(self.ap_state, demo_state({"LOOP-F35": "merged", "GOV-F24": "blocked"}, reason="<!channel> pay & <http://x|link>"), 1.7e9)
+        http_fake = FakeSlackHTTP()
+        code, _out, err = self.run_main(factory=lambda token: self.mod.SlackClient(token, opener=http_fake, sleep=lambda _s: None))
+        self.assertEqual(code, 0, err)
+        posts = http_fake.bodies("chat.postMessage")
+        demo = [b for b in posts if b["text"].startswith("*Demo path*")]
+        self.assertEqual(len(demo), 1)
+        self.assertIn("GOV-F24 blocked", demo[0]["text"])
+        self.assertIn("&lt;!channel&gt; pay &amp; &lt;http://x|link&gt;", demo[0]["text"])
+        self.assertNotIn("<!channel>", demo[0]["text"])
+        self.assertTrue(self.read_state()["demo_path"]["ts"])
+        # And the update path too.
+        put(self.ap_state, demo_state({"LOOP-F35": "merged", "GOV-F24": "blocked", "LOOP-F37": "review"}, reason="<!here> & co"), 1.7e9 + 10)
+        code, _out, err = self.run_main(factory=lambda token: self.mod.SlackClient(token, opener=http_fake, sleep=lambda _s: None))
+        self.assertEqual(code, 0, err)
+        ups = http_fake.bodies("chat.update")
+        self.assertEqual(len(ups), 1)
+        self.assertEqual(ups[0]["ts"], self.read_state()["demo_path"]["ts"])
+        self.assertIn("&lt;!here&gt; &amp; co", ups[0]["text"])
+        self.assertNotIn("<!here>", ups[0]["text"])

@@ -837,3 +837,63 @@ export `SLACK_ROWS_CHANNEL=<channel id>` in the cron's environment (the
 `~/.config/nanoclaw/refresh-nemo-explanations.sh` wrapper) to move the lanes, invite the bot there,
 and start from a fresh state file (`--state <path>`, or move the old one aside) — a `thread_ts`
 belongs to one channel, so an old state file against a new channel would thread replies into nothing.
+
+### 10.2 Demo path tracker
+
+The path to the demo is five rungs, each needing specific matrix rows; the tracker shows, per rung,
+those rows with their live state, a status and an ETA. It is rendered twice from one module,
+`ops/nemoclaw-coworkers/demo_path.py` (stdlib; pure `load_spec` / `load_live` / `compute` /
+`render_html` / `render_slack`; `python3 demo_path.py --root <ROOT> --slack|--html|--json [--now …]`
+to debug), every 15 min from `refresh-viewers.sh`:
+
+- **`/rows/index.html`** — a "Demo path" section at the top of the board (before the batch tables):
+  rung · status · ETA (UTC) · required rows as chips in their live state · manual steps, flags and
+  blockers, plus the model as a collapsed "ETA model" footnote. `rows-board.demo_section` wraps the
+  tracker so a failure there is one banner (`demo path unavailable — …`), never a broken board.
+- **`#hermes-port`** — ONE message `*Demo path*` (mrkdwn, ≤ 25 lines: one line per rung with its
+  status and ETA, one with its rows' states, one with flags/blockers). `slack-rows.py` posts it once,
+  after the row passes, the first time the tracker has a live `state.json` (one `--max-posts` unit),
+  remembers it under `slack-threads.json` → `"demo_path": {"ts", "channel", "text_hash", …}` and
+  from then on **edits it in place with `chat.update` whenever the text changes** (not budgeted,
+  never re-posted; unchanged text makes no call). A failed update is one log line and the hash is
+  kept, so the next run retries; delete the `demo_path` key to post a fresh message.
+
+**Rungs** (`ops/nemoclaw-coworkers/demo-path.json`, the single spec both renderers load):
+R1 governed 5-bot fleet on one stock gateway, no sandbox — LOOP-F35, LOOP-F37, GOV-F24, GOV-F25,
+GOV-F23, GOV-F27, RT-F01, RT-F02, RT-F03, COST-F29. R2 every bot's tools in its own rootless podman
+sandbox, veto live — CRED-F28, ISO-F13, ISO-F14, ISO-F15. R3 wired bot-to-bot inside the gateway —
+A2A-F21 + the manual step "rooms provisioned by the operator" (8 h, after A2A-F21). R4 fleet as a
+service — requires R2 + R3, the manual "P6-FLEET assembly" (48 h, after R2 and R3) and ISO-F17
+(ADOPT, after P6-FLEET). R5 the same fleet inside one OpenShell container with APF egress — requires
+R4 plus the manual W0–W12 (504–840 h), so it reads as R4 + 21..35 days.
+
+**Status** per rung: `done` (every required row merged or in `config.waive`, every manual item with a
+`done_at`, every required rung done) · `in progress` (a required row merged or in flight) · `blocked by
+gate` (nothing started; the rows wait for a false gate or a required rung) · `not started` (rows queued
+and eligible) · `unknown` (no `state.json`). Flags: `blocked by pause: <row>` for a paused row the rung
+needs, directly or inside a gate it waits for; a ledger-blocked row is a blocker with its reason.
+
+**ETA model** (deterministic; the same text is the footnote): a row's remaining hours =
+`planning_hours[disposition]` (BUILD 48 h · CONFIGURE 15 h · ADOPT 10 h, the measured medians / p80)
+× `stage_factors[state]` (queued 1.0 · dispatched, spec_handoff 0.85 · building 0.6 · pr_open, testing
+0.35 · review 0.2 · gate 0.1 · merged 0), the state being the supervisor's stage when it names one,
+else the queue's row state. Open rows are list-scheduled in `hermes_queue.dispatch_order` (the order
+the autopilot dispatches; `demo-path.json` order is the fallback when the plan or matrix is unreadable)
+onto `config.wip` slots from now: in-flight rows hold a slot for their remaining hours, a BUILD row waits
+for the BUILD lane (one BUILD in flight), and a row behind a false gate starts when the rows that gate
+requires finish (`1a_first_pass` ← batch 1a, `batch2_merged` ← batch 2, `batch3_merged` ← batch 3,
+`batch4_merged` ← batch 4; `podman_box` is a config flag, so a false one makes the rows behind it
+`unknown` with the reason). Paused and ledger-blocked rows are excluded from every finish time and
+flagged. A manual item starts when everything in its `after` list (rows, manual items, rungs) has
+finished; a row with an `after` list starts no earlier than those items finish (its slot is not
+re-planned). Rung ETA = the latest finish over its rows, manual items and required rungs; a done rung
+shows `done <date>` from the ledger's merge stamps (`merged/blocked` cell), else `state.json`'s
+`generated_at`. Every input is optional: a missing or unreadable `state.json`, `config.json`, plan,
+matrix or ledger renders as `unknown` for that piece with a banner, and both scripts exit 0.
+
+**Editing the path.** Change `demo-path.json`: `rungs[].rows` (`{"id", "kind", "after"?}`),
+`rungs[].manual` (`{"id", "title", "hours", "hours_max"?, "after", "done_at"?}` — set `done_at` when the
+operator has done the step), `rungs[].requires`, `planning_hours`, `stage_factors`, `notes`. Both
+renderers read the file on every run; `DEMO_PATH_SPEC=<path>` (or `--demo-spec`) points them at another
+copy. Tests: `python3 -m unittest ops/nemoclaw-coworkers/test_demo_path.py` (+ the demo cases in
+`test_slack_rows.py` and `autopilot/test_rows_board.py`).
