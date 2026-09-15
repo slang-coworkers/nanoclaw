@@ -3,7 +3,7 @@ title: "Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics"
 type: concept
 group: slang-backends
 tags: [optix, cuda, ray-tracing, raypayload, paq, hlsl, dxc, payload-access-qualifiers]
-source_count: 10
+source_count: 11
 ---
 
 # Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics
@@ -16,6 +16,7 @@ Ray-tracing codegen in Slang spans the HLSL/DXC backend (payload access qualifie
 - When a ray-tracing symptom appears in emitted code, trace it to the payload representation or an IR pass before changing the emitter.
 - A payload-typed member of a `[raypayload]` struct carries NO qualifier and inherits; fixing its false rejection means exempting it at the frontend check, the IR PAQ legalize default-fill, AND the emitter — a frontend-only relaxation emits HLSL that DXC rejects.
 - Tooling caveat recorded here: the PR-review runner's flag parser has its own quirks; do not infer review behaviour from a mis-parsed flag.
+- An oversized OptiX hit-attribute struct (>8 32-bit attribute registers) is mis-diagnosed as internal `E99999` instead of a user `err`; the register count is per scalar leaf and width-unaware, so verify a reporter's minimal repro empirically before trusting its byte-size reasoning.
 
 ## Ray-Payload Access Qualifiers (PAQ) for HLSL/DXC
 
@@ -41,6 +42,12 @@ Root cause: `emitPayloadWritebacks()` in `slang-ir-legalize-varying-params.cpp` 
 
 **Triage lesson — search for the predecessor fix:** When a codegen bug looks like "works in the simple case, breaks in the nested case," grep closed issues — you're often looking at a scan/visitor that only covers the entry-point scope ([slang OptiX payload lost when terminate-intrinsic is in a callee (entrypoint-local writeback scan gap)](../learnings/1781777421724-slang-optix-payload-lost-when-terminate-intrinsic-.md)).
 
+## OptiX Hit-Attribute Register-Limit Diagnostic (E99999 miscategorized)
+
+An OptiX hit-attribute struct exceeding the 8 32-bit attribute-register budget is diagnosed as an `internal error[E99999]` (`Diagnostics::Unexpected`) rather than a user-facing `err` (#13048, HEAD a90dfa311). The check lives in the HitAttributes case of `createLegalUserVaryingValImpl` in `slang-ir-legalize-varying-params.cpp` (`if (ioBaseAttributeIndex > 8)` → `m_sink->diagnose(Diagnostics::Unexpected{..., .location = m_param->sourceLoc})`). Only the diagnostic *category* is wrong — the source loc already puts the caret at the param — so the principled fix is a new `err(...)` in `slang-diagnostics.lua`, modelled on `shader-terminating-intrinsic-in-noninlinable-callee` (55214, an RT-legalization err already emitted from this same file), reusing the existing loc and keeping `SLANG_RELEASE_ASSERT(m_param)`.
+
+**Triage lesson — verify a reporter's minimal repro empirically before trusting it.** The issue's stated repro `struct { double values[5]; }` does NOT reproduce at HEAD: the attribute register count is per scalar *leaf* and width-unaware (`emitOptiXAttributeFetch` adds +1 per `IRBasicType` leaf regardless of byte width — the sibling bug #13047), so 5 doubles = 5 registers ≤ 8 and compiles (each double truncated to 32 bits). The reporter's byte-size intuition (5×8 = 40 bytes > 32) does not match the compiler's leaf count. A struct with >8 scalar leaves — e.g. `float values[9]` — reproduces E99999 now and is the stable regression case; `double values[5]` only reaches the >8 path once #13047 makes counting width-aware (10 registers). This is a GPU-free compile-time diagnostic (`slangc -target cuda -stage closesthit`), so it is locally reproducible despite being an OptiX issue ([OptiX oversized hit-attribute E99999 is category-only, and its own repro may not fire](../learnings/1789370295979-optix-oversized-hit-attribute-e99999-is-a-category.md)).
+
 ## Tooling Note: PR-Review Runner Flag Parser
 
 `devin-fetch.sh` (used in the slang PR-review runner) can return an empty `## Flags` section in `devin-flags.md` even when `devin-page.txt` clearly contains "N Flags" with per-flag titles + file:line locations. The parser expects a structured DOM region but Devin's compact view emits flags as a flat sequence. Always grep `devin-page.txt` for `\bN Flags\b` (N>0) and parse manually if the markdown is empty — don't skip findings just because `devin-flags.md` is empty ([slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](../learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)).
@@ -54,7 +61,7 @@ Root cause: `emitPayloadWritebacks()` in `slang-ir-legalize-varying-params.cpp` 
 
 A callable/RT-payload null-rules crash spanning CUDA and Metal (#12273): a `[shader("callable")]` entry point with an OUTPUT (`out`/`inout` param or non-void return) crashes `slangc -target cuda`/`-target metal` with an access violation and **no diagnostic**. Root: `CUDALayoutRulesFamilyImpl::getCallablePayloadParameterRules()` returns `nullptr` (Metal's RT-payload rules are all null), and the callable-output path passes that null into `createTypeLayoutWith` → `_createTypeLayout` derefs it (`rules->GetScalarLayout`) before any diagnostic; the non-void RETURN routes through the same output path, so one root covers all variants (the `in`-param path IS diagnosed — asymmetric coverage). Fix floor = diagnose when the target's callable-payload rules are null, plus `SLANG_RELEASE_ASSERT(rules)` so future null-RT-rules regressions fail loudly. Reusable technique: a Windows `EXCEPTION_ACCESS_VIOLATION` compile crash reproduces as SIGSEGV on Linux Debug slangc with a `for tgt in cuda spirv hlsl glsl metal wgsl` differential + `-dump-ir` to see the last pass ([CUDA/Metal callable-shader output crash = null RT payload layout rules](../learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)).
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [Implicit `IRRayPayloadDecoration` skips Slang's PAQ frontend validation](../learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md)
 - [Slang `legalizeRayPayloadAccessQualifiersForHLSL` — asymmetric `continue` leaves a user-reachable DXC-error hole](../learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md)
 - [PR #11224 for slang #10267 has a real coverage gap on hit-shader-only compiles](../learnings/1779364869375-slang-10267-pr-11224-coverage-gap-anyhit-only.md)
@@ -65,5 +72,6 @@ A callable/RT-payload null-rules crash spanning CUDA and Metal (#12273): a `[sha
 - [#12273 CUDA/Metal `[shader("callable")]` with an output null-derefs (getCallablePayloadParameterRules→nullptr passed to createTypeLayoutWith), no diagnostic; fix = diagnose + `SLANG_RELEASE_ASSERT(rules)`; AV↔SIGSEGV target differential repro](../learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)
 - [nested `[raypayload]` member PAQ inheritance spans frontend + IR-legalize + emit (not frontend-only)](../learnings/1789046095106-nested-raypayload-member-paq-inheritance-spans-fro.md)
 - [#12991 3-layer PAQ fix (build+critique-confirmed): emit needs NO change, diagnose the explicit-qualifier error case (E40022), report only that error; diagnostic-code and DIAGNOSTIC_TEST caret gotchas](../learnings/1789053013255-slang-nested-raypayload-member-paq-inheritance-3-l.md)
+- [OptiX oversized hit-attribute E99999 is a category-only bug (Diagnostics::Unexpected → should be a user err), and its own `double values[5]` repro may not fire — register count is per scalar leaf, width-unaware](../learnings/1789370295979-optix-oversized-hit-attribute-e99999-is-a-category.md)
 
 _Catalog: [[wiki/index.md]]_

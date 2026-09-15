@@ -3,7 +3,7 @@ title: /slang-pr-review pipeline operations (dispatch, run-dir, budget, env, int
 type: concept
 group: review-process
 tags: [slang-pr-review, reviewer-a, reviewer-b, reviewer-c, background-dispatch, monitor, run-dir, integrity-fail, max-budget-usd, onecli, drift-check, slang-rhi]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -108,14 +108,31 @@ App installation token authorizes reads even when `gh auth status` warns "token 
 for read-only), and slang-rhi specifics differ (clang-format v20.1.7, base branch `main`,
 CPU-device tests harness-skipped on Linux)
 [/slang-pr-review runs cleanly against slang-rhi in pr mode](../learnings/1788477201526-slang-pr-review-runs-cleanly-against-slang-rhi-and.md).
+Operating that cross-repo run in practice adds four caveats. (1) It's diff-based, so `--repo
+shader-slang/slang-rhi` is enough — `compose-and-run.sh`/`run-clarity.sh` keep `REPO_ROOT` at the
+compiler checkout as CWD but fetch the target via `gh pr diff -R` and write the right repo into
+`tmp/context.json`, and REVIEW.md is diff-first. (2) But local `Read src/...` of slang-rhi files FAILS
+(CWD is the compiler), so Reviewer A compensates via `gh api`/WebFetch of the PR-head source
+(`raw.githubusercontent.com/.../<head_sha>/...`); to make the merge solid, ground the key correctness
+claims yourself against the mounted `/workspace/agent/slang-rhi` checkout via a subagent — but that
+mount can be on a STALE branch, so verify against the fetched PR head (`git fetch origin pull/<n>/head`),
+not the working tree. (3) slang-rhi Devin (B) returns a clean pass FAST (0 bugs/flags, exit 0); the
+genuine signal is the Bugs/Flags/Informational sections — its "AI Analysis" block often just echoes the
+PR description. (4) Budget: cap A and C for a two-reviewer slang-rhi peer-review (the author used $10
+each; a ~3-file diff cost A ≈ $3.6), though heed the ≥$20 finish-headroom floor above — a low cap risks
+the pre-`final-review.md` abort on a larger diff. And on a fixer PEER-REVIEW handoff with no
+`<github-post-authorized />`, return `combined-review.md` via `send_file` only (no GitHub post) —
+slang-rhi is also typically App-write-limited, so `post-back.sh` would 403→exit 3
+[running /slang-pr-review on a non-compiler repo (slang-rhi)](../learnings/1789377211919-running-slang-pr-review-on-a-non-compiler-repo-sla.md).
 
-**Source learnings (9):**
+**Source learnings (10):**
 - [Reviewer run-dir selection: never pick by mtime when reviews share transcripts](../learnings/1788160503888-reviewer-run-dir-selection-never-pick-by-mtime-whe.md) — pick by RUN_DIR from task .output or PR/head-SHA in dir name; INTEGRITY-FAIL.txt is a hard stop.
 - [Dispatching background reviewers: nohup & inside run_in_background double-backgrounds](../learnings/1788203787495-dispatching-background-reviewers-nohup-inside-run-.md) — run scripts directly or arm a Monitor kill-0 waiter; guard hook blocks pgrep -f.
 - [Devin Review is static-only; and don't double-background reviewer dispatch](../learnings/1788341384825-devin-review-is-static-only-and-don-t-double-backg.md) — Devin never builds/runs; CI is the only oracle for arch-dependent runtime bugs; PID-wait monitor.
 - [Dispatching /slang-pr-review reviewers in background: two gotchas](../learnings/1788446192623-dispatching-slang-pr-review-reviewers-in-backgroun.md) — run-clarity.sh lacks exec bit (use `bash`); keep waiter grep patterns in a script file.
 - [gh via OneCLI app_not_connected blocks Reviewers A & C (curl still works)](../learnings/1788378606664-slang-pr-review-pipeline-gh-via-onecli-app-not-con.md) — escalate the env blocker, run B best-effort, deliver a PARTIAL review + RESUME.md; don't fake A/C.
 - [/slang-pr-review runs cleanly against slang-rhi in pr mode](../learnings/1788477201526-slang-pr-review-runs-cleanly-against-slang-rhi-and.md) — A/C take --repo and fetch that repo's diff; App token authorizes reads despite the auth-status warning.
+- [Running /slang-pr-review on a non-compiler repo (slang-rhi)](../learnings/1789377211919-running-slang-pr-review-on-a-non-compiler-repo-sla.md) — diff-based (`--repo` enough); local Reads fail so ground claims against the fetched PR head, not the stale mount; Devin passes fast (read Bugs/Flags, not "AI Analysis"); cap A/C for budget but mind the ≥$20 floor; no `<github-post-authorized />` → `send_file` only.
 - [Reviewer A --max-budget-usd must be ≥20 or it cuts off before final-review.md](../learnings/1788751025464-slang-pr-review-reviewer-a-max-budget-usd-must-be-.md) — cap covers whole run (~$14); a low cap yields a 0-byte review; inner CLI billed separately from harness.
 - [re-review gotchas: benign INTEGRITY-FAIL from concurrent A+C, stale Devin panel](../learnings/1788769244100-slang-pr-review-re-review-gotchas-benign-integrity.md) — trust pr-diff.reference sha + review body over the file-list; cross-check Devin line numbers on force-push.
 - [Reviewer C drift check: a Read of slang-review-post-github/SKILL.md is NOT drift](../learnings/1788810108542-reviewer-c-drift-check-a-read-of-slang-review-post.md) — a Read of the post skill is benign; tighten the drift grep to Bash command bodies only.

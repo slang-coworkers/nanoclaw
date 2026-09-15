@@ -3,7 +3,7 @@ title: Operational and epistemic discipline around the review loop — claims, p
 type: concept
 group: review-process
 tags: [epistemic-discipline, claim-about-a-state, provenance, dark-turn, supervisor-scan, requested-reviewers, maintainer-reframe, absence-probe]
-source_count: 6
+source_count: 8
 ---
 
 ## TL;DR
@@ -63,6 +63,24 @@ explanation (the hypothesis-proposer forgot their prior message) beat the elabor
 theory
 ([verify a "confabulation" hypothesis against the actual transcript before accepting it](../learnings/1786782250406-verify-a-confabulation-hypothesis-against-the-actu.md)).
 
+A review status relayed UPSTREAM (to a parent, orchestrator, or operator) is a claim about a VOLATILE
+state, and the same "make it true before publishing" discipline governs its TIMING. Review verdicts are
+not stable — a reviewer can reclassify a "question" or a "kept-by-design" item into a should-fix defect
+on re-read, or reopen a "closed" review — so do NOT relay round-by-round review status ("round-1 clean",
+"formally closed", "fully green") upstream as settled fact. Report up only when the review is GENUINELY
+settled or when an operator/maintainer decision is actually needed, and frame any interim status
+explicitly as provisional ("round 1 clean, not yet closed"); keep the review churn between coworkers
+(triager↔fixer) until it stabilizes, so the parent can relay a SINGLE clean status. Why: each flip
+whipsaws the operator and burns credibility, and if the operator acts on a stale "green" (e.g. "advance
+to ready") the decision rests on a false premise. On slang-rhi#869/#862 a reviewer forwarded "0 bugs /
+clean" → "formally closed / fully green" → **retract** (the RAII free-on-scope-exit item reclassified
+as a real error-path defect), forcing the parent to retract a "green" it had already relayed toward the
+operator TWICE. This EXTENDS the anti-oscillation discipline (keeping the GitHub issue-comment
+review-status wording stable — "held pending review" rather than pinning approve→reopen→approve) to
+upstream parent reporting: once you have told the parent "green/closed", treat it as a load-bearing
+claim, and prefer not to make it until it is actually stable rather than making it early and retracting
+([don't relay mid-flight review status upstream as settled](../learnings/1789445084069-don-t-relay-mid-flight-review-status-upstream-as-s.md), [report review status upstream only when settled or a decision is needed](../learnings/1789445127469-report-review-status-upstream-only-when-settled-or.md)).
+
 ## Diagnosing a dark turn and filtering supervisor false-flags
 
 When the host posts "The agent finished its turn without producing any output… please re-send it,"
@@ -102,7 +120,7 @@ until ready-for-review). Don't preemptively escalate for a waiver just because a
 @-mention satisfies intent; escalate only if they insist on the formal field after seeing the PR
 ([never set requested_reviewers on a bot-authored PR (dev-team MUST NOT)](../learnings/1787600504939-never-set-requested-reviewers-on-a-bot-authored-pr.md)).
 
-**Source learnings (6):**
+**Source learnings (8):**
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md) — edit the target before the pointer; a reframe is a checkable claim to reconcile across every shape, not an order to accept.
 - [Verify a "confabulation" hypothesis against the actual transcript before accepting it](../learnings/1786782250406-verify-a-confabulation-hypothesis-against-the-actu.md) — the #12489 idle-trigger was the parent's own proposal; trace provenance to the originating message; the accuser forgetting beats an elaborate confabulation theory.
@@ -110,3 +128,5 @@ until ready-for-review). Don't preemptively escalate for a waiver just because a
 - [Diagnosing a dark turn (agent emitted nothing) from host logs + transcripts](../learnings/1787273633815-diagnosing-a-dark-turn-agent-emitted-nothing-from-.md) — the host fallback fires only on zero assistant content blocks; distinguish scratchpad-only and tag-leak; JSONL is keyed by harness UUID, not sess-id.
 - [Supervisor scan awaiting_us false-flags: board-sync notices and bot reviewers](../learnings/1787532196124-supervisor-scan-awaiting-us-false-flags-board-sync.md) — filter human-login board-sync notices, bot tails missing bot_logins, and closed/deleted issues; the survivor is an APPROVED-but-BEHIND PR needing a rebase nudge.
 - [Never set requested_reviewers on a bot-authored PR (dev-team MUST NOT)](../learnings/1787600504939-never-set-requested-reviewers-on-a-bot-authored-pr.md) — a peer ruling can't waive an operator MUST NOT; @-mention in the PR body instead (more reliable on drafts anyway).
+- [Don't relay mid-flight review status upstream as settled — wait for it to stabilize](../learnings/1789445084069-don-t-relay-mid-flight-review-status-upstream-as-s.md) — slang-rhi#869; verdicts are volatile (a "closed" review reopened, the RAII item reclassified to a defect); relay only settled status or a decision-needed, frame interim as provisional.
+- [Report review status upstream only when settled or a decision is needed — not per round](../learnings/1789445127469-report-review-status-upstream-only-when-settled-or.md) — slang-rhi#862; three interim forwards forced two upstream retractions; keep round-by-round churn at the triager↔fixer layer; a "green/closed" told to the parent is load-bearing.

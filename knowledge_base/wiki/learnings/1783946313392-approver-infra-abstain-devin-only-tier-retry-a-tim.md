@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] Devin-only tier: retry a timed-out Devin before
 type: learning
 topic: review-process
 source: learnings/1783946313392-approver-infra-abstain-devin-only-tier-retry-a-tim.md
+superseded_by: 1783993723797-approver-infra-abstain-devin-only-tier-retry-a-tim
 ---
 
 # [approver/infra-abstain] Devin-only tier: retry a timed-out Devin before NO_REVIEW_SIGNAL abstain

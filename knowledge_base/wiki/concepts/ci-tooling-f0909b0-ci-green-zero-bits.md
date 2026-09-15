@@ -3,7 +3,7 @@ title: Green CI carries zero bits — positive controls, check-runs vs status, c
 type: concept
 group: ci-tooling
 tags: [approver, ci-green, positive-control, check-runs, ci_green_on_sha, coverage, could-it-come-out-otherwise]
-source_count: 19
+source_count: 17
 ---
 
 ## TL;DR
@@ -66,13 +66,11 @@ because "same construct elsewhere" is evidence only if "elsewhere" shares the ex
 
 ## `ci_green_on_sha` is doubly broken: wrong endpoint + vacuous pass
 
-Four atoms document the same clause failing across slang, slangpy, and nanoclaw. The clause
+Multiple atoms document the same clause failing across slang, slangpy, and nanoclaw. The clause
 reads `commits/{sha}/status` — the legacy combined-status endpoint — which aggregates only
 old-style commit *statuses* (`CodeRabbit`, `license/cla`, `SlangPy Tests`), never GitHub
 Actions **check-runs**, which are where every compiled build lives
 ([ci_green_on_sha folds commits/SHA/status — green over the wrong object set](../learnings/1786437258677-approver-clause-gap-ci-green-on-sha-folds-commits-.md),
-[reads combined-status, misses check-runs-only repos](../learnings/1786970473949-approver-clause-gap-ci-green-on-sha-reads-combined.md),
-[combined-status blind to the real build matrix](../learnings/1787045208678-approver-clause-gap-ci-green-on-sha-reads-combined.md),
 [combined status blind to build check-runs](../learnings/1787214497184-approver-clause-gap-ci-green-on-sha-reads-combined.md)).
 So the clause reports GREEN over a head with a red Windows build, or UNEVALUABLE
 ("combined status=pending") on check-runs-only repos where CI is actually green, or PASS while
@@ -147,7 +145,7 @@ names both over- and under-abstain: for a behavioral dep bump, line up what the 
 the consumer usually does NOT build the dependency's own regression test, so the trigger-present
 control for the changed behavior can be absent even when basic integration is green.
 
-**Source learnings (19):**
+**Source learnings (17):**
 
 - [A changed .github/workflows/*.yml can be 100% unexercised by PR CI](../learnings/1786378582184-approver-challenger-miss-a-changed-ci-config-is-un.md) — a workflow_call-only workflow behind a cron caller is green by construction; enumerate the caller's triggers and check the head's check-runs by name.
 - [Green CI does not prove a new conditional path ran — grep the job log for the test NAME](../learnings/1786381632620-approver-challenger-green-ci-does-not-prove-a-new-.md) — a check-run success aggregates a job; a silently-skipped test leaves it green; cite the PASSED log line as the positive control.
@@ -159,10 +157,8 @@ control for the changed behavior can be absent even when basic integration is gr
 - [ci_green_on_sha passes vacuously — a Devin-only approve can ship over 4 RED test-slang jobs](../learnings/1786607817941-approver-clause-gap-ci-green-on-sha-passes-vacuous.md) — under require_ci_green:false the clause passes carrying zero bits; enumerate head check-runs every decision; a red head is at minimum an ABSTAIN.
 - [CI check-run count: single-page jq undercounts skips; use --paginate + name every non-success](../learnings/1786707862561-approver-infra-abstain-ci-check-run-count-single-p.md) — "48 success + 1 skipped" was really 48+2; name skipped/failed/cancelled explicitly; a targeted status beats a raw green count for over-reach.
 - [test-infra PR with a dedicated CI lane that builds+runs the new target = discriminating control](../learnings/1786711832544-approver-test-infra-pr-with-a-dedicated-ci-lane-th.md) — a green build+run lane answers link/run by construction (harness exits nonzero on testCount==0); gate/flag probe is for compiler flags not CMake guards; read the emitted policy_version.
-- [ci_green_on_sha reads combined-status, misses check-runs-only repos](../learnings/1786970473949-approver-clause-gap-ci-green-on-sha-reads-combined.md) — UNEVALUABLE "combined status=pending" on Actions-only repos (nanoclaw) is an instrument artifact; cross-check statusCheckRollup before treating CI as unknown.
 - [CI-green + all-bots-stale-on-head hides an untested new branch](../learnings/1786991039156-approver-challenger-miss-ci-green-all-bots-stale-o.md) — a failed production review + stale/paused CodeRabbit leave the head unreviewed while looking reviewed; grep the suite for a test that reaches the branch's trigger.
 - [Report CI to the ledger via gh pr checks (current rollup), NOT raw check-runs](../learnings/1786993469118-approver-infra-abstain-report-ci-to-the-ledger-via.md) — raw REST lists superseded runs; de-dup by name or use gh pr checks; a red production `review` check is the expected Devin-only fallback trigger, not a PR defect.
-- [ci_green_on_sha reads combined-status only — blind to GitHub Actions check-runs](../learnings/1787045208678-approver-clause-gap-ci-green-on-sha-reads-combined.md) — on slangpy the clause passes while the entire C++ build matrix is queued; require every non-skipped check-run SUCCESS then fold in combined status.
 - [submodule/dep bump: green CI is a positive control only for the behavior the enabled tests exercise](../learnings/1787049650737-approver-challenger-submodule-dep-bump-green-ci-is.md) — name what the bump changes vs which enabled test triggers it; the consumer usually doesn't build the dep's own regression test; say "the subset called is signature-stable," not "no API changes."
 - [Instrumentation PRs: "can't reproduce the flake" ≠ "can't test the change"](../learnings/1787158647458-approver-critique-mustfix-instrumentation-prs-can-.md) — a deliberate-fault subprocess can exercise a capture path; green CI on pull_request doesn't count when the modified upload path never ran on the head; missing control = OPEN_GAP.
 - [ci_green_on_sha reads combined status, blind to build check-runs](../learnings/1787214497184-approver-clause-gap-ci-green-on-sha-reads-combined.md) — on a vcpkg bump the clause passed while both Windows MSVC builds failed; the build check-runs ARE the blast radius; attribute via base-branch same-name check-runs.

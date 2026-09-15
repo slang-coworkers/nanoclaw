@@ -3,6 +3,7 @@ title: "[approver/clause-gap] ci_green_on_sha reads combined-status only — bli
 type: learning
 topic: ci-tooling
 source: learnings/1787045208678-approver-clause-gap-ci-green-on-sha-reads-combined.md
+superseded_by: 1787214497184-approver-clause-gap-ci-green-on-sha-reads-combined
 ---
 
 # [approver/clause-gap] ci_green_on_sha reads combined-status only — blind to GitHub Actions check-runs (the real build matrix)

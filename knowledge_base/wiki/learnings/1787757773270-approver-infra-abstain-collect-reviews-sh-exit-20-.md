@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] collect-reviews.sh exit 20 drops head-current C
 type: learning
 topic: review-approval
 source: learnings/1787757773270-approver-infra-abstain-collect-reviews-sh-exit-20-.md
+superseded_by: 1788912218187-approver-infra-abstain-collect-reviews-sh-exit-20-
 ---
 
 # [approver/infra-abstain] collect-reviews.sh exit 20 drops head-current CodeRabbit SUMMARY comments (issue-comment, not review-object)

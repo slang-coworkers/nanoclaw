@@ -3,7 +3,7 @@ title: Critique-gate mechanics, delivery gates, and GitHub posting authorization
 type: concept
 group: review-process
 tags: [approver, critique-gate, codex, decision-review, output-review, comment-hygiene, delivery-gate, posting-gate, github-authorized, timeline-actor]
-source_count: 6
+source_count: 7
 ---
 
 ## TL;DR
@@ -102,11 +102,24 @@ because the event is on a PR you own (via `pr_session_mappings`), not because th
 @-mentioned — read the `body` for the actual `@target` and don't post a bot reply into a
 human-to-human process discussion
 [A bot-authored PR with human reviewers requested — check the timeline actor](../learnings/1788186584286-a-bot-authored-pr-with-human-reviewers-requested-d.md).
+A second provenance instance sharpens "who populated it" into "don't UNDO org automation." On PR #1158
+the org's PR-board-sync bot (`github-actions[bot]`) posts an "Automated notice (PR board sync)" and
+auto-assigns a shepherd that shows up as BOTH an assignee AND a `review_requested` (verified on the
+timeline: actor=`github-actions[bot]`, events `assigned` + `review_requested`); and because CODEOWNERS
+is a TEAM (`* @shader-slang/dev`), an INDIVIDUAL reviewer request did not come from CODEOWNERS either.
+The `[MUST NOT] request reviewers/assignees` rule binds the bot AUTHOR's own action (no
+`--reviewer`/`--add-assignee`/`requested_reviewers` API call) — it does NOT require undoing the org's
+automation. Do NOT remove the board-sync-assigned shepherd/reviewer: that is an outward-facing action
+fighting the org's deliberate process (and it may just re-add it). If a critique flags the requested
+reviewer as a violation, RECONCILE with the timeline facts (org-bot added it, author-clean) rather than
+removing
+[board-sync bot auto-assigns a shepherd+reviewer on bot PRs — don't remove it](../learnings/1789376759094-shader-slang-board-sync-bot-auto-assigns-a-shepher.md).
 
-**Source learnings (6):**
+**Source learnings (7):**
 - [Critique comment-hygiene rule can DEADLOCK an approval on the PR's own source](../learnings/1787963434624-approver-critique-mustfix-critique-comment-hygiene.md) — scope comment-hygiene to the approver's own deliverable; slang-rhi#846 stalled a sound WOULD_APPROVE to a terminal timeout.
 - [Don't record a 'clean / would-approve' claim before ALL review inputs land](../learnings/1788290996343-approver-critique-mustfix-don-t-record-a-clean-wou.md) — reconcile bot ✅ vs late Devin 🔴 even on a short-circuited abstain; correct append-only claims in artifacts + report up.
 - [Critique-gate mechanics: STAGE-token pitfall + commented-attribute must-fix](../learnings/1788576785263-approver-critique-mustfix-critique-gate-mechanics-.md) — no literal "STAGE:" in codex-reply; grep sibling count to refute a convention-consistent `// [ForceInline]` must-fix.
 - [ABSTAIN still needs both critique stages to pass the message-delivery gate](../learnings/1788850479837-approver-procedure-abstain-still-needs-both-critiq.md) — record gate ≠ delivery gate; run both /codex-critique rounds even for a clean abstain; synthesize doc before clauses.
 - [Answering a formal human review is pre-authorized; discretionary chatter is held](../learnings/1788247484430-gating-answering-a-formal-human-review-verdict-is-.md) — post substantive replies to REQUEST_CHANGES directly; hold acks/status for `<github-post-authorized />`.
 - [A bot-authored PR with human reviewers requested — check the timeline actor](../learnings/1788186584286-a-bot-authored-pr-with-human-reviewers-requested-d.md) — read actor-stamped `review_requested`; a pr_mention webhook ≠ an @-mention; don't reply into a human process thread.
+- [Board-sync bot auto-assigns a shepherd+reviewer on bot PRs — don't remove it](../learnings/1789376759094-shader-slang-board-sync-bot-auto-assigns-a-shepher.md) — PR #1158; org `github-actions[bot]` board-sync sets the assignee + `review_requested` (timeline actor proves it); the MUST-NOT binds the author's action, not undoing org automation; reconcile a critique flag with the timeline, don't remove.

@@ -3,7 +3,7 @@ title: PR-approver verdict calibration — joining WOULD_APPROVE / ABSTAIN / BLO
 type: concept
 group: agent-routing
 tags: [pr-approver, calibration, would-approve, abstain, block, human-disagreement, false-abstain, severity, ci-gate]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -30,6 +30,8 @@ Several distinct low-risk PR classes shipped unchanged at the exact decided head
 
 The [main-merge synchronize case](../learnings/1787586621701-approver-confirmed-main-merge-synchronize-re-valid.md) adds a discipline: a 2-parent merge commit looks alarming (the merged-in main delta) but the review surface is the diff-vs-base; still re-run the full procedure (fresh clauses/harvest/Devin/challenger/ledger row) because the changed merge base makes CI re-run the whole suite — a test green on the old base can go red on the new one — and never record WOULD_APPROVE on pending CI. The [R1 OPEN_GAP closed by a falsifiable test](../learnings/1787596830824-approver-confirmed-r1-open-gap-untested-reachable-.md) shows the abstain→fix→approve arc as the loop working: the first re-gate question on a prior abstain is "did the interval commits close MY gap with a test that reaches the branch AND is falsifiable?"
 
+A reviewer-facing calibration nuance completes the safe-shape set: an **add-only standard `#include`** (adding a header the TU already pulls in transitively — e.g. `<sstream>`/`<iterator>` for `std::istringstream` on SlangPy #1156) is **one-sided-safe**, because adding a standard header that is already present is idempotent (worst case redundant) and cannot break a TU that already compiles on any toolchain. Prior shared learnings rightly demand full cross-toolchain rigor (`-E -H`/`-fsyntax-only`, reconstruct the compile from `build/compile_commands.json`) for include **removal/omission**, where a green Linux/libstdc++ build is NOT proof of macOS/libc++ or MSVC-`/W4 /WX` portability — but that rigor is asymmetric. For an add-only hygiene fix a fixer's inability to run the full local build is **non-blocking**; CI's cross-toolchain legs + Devin are authoritative confirmation, so APPROVE rather than gate on "you didn't run the full build." Still confirm the added header is genuinely *needed* (the symbol is used and the current include block doesn't standard-guarantee it) so it isn't dead noise ([add-only standard include is one-sided-safe — don't over-gate the trivial hygiene PR](../learnings/1789374177459-adding-a-standard-include-is-one-sided-safe-don-t-.md)).
+
 ## Human-disagreement and the over-caution skew
 
 A cluster of atoms records abstains/blocks that a maintainer *overruled by merging at the decided head* — the dominant calibration error is over-caution, and the corrective is a decision-time rule, not deference:
@@ -47,7 +49,7 @@ Three CI-gate atoms sharpen when a real finding is BLOCK-worthy versus merely ab
 - The [CI-infra `workflow_dispatch` privilege gap](../learnings/1787932390227-approver-human-disagreement-ci-infra-workflow-disp.md) merged with the gap unaddressed: when the residual risk reduces to "a *write-access* user could do X" (fork/external vector already excluded), that is a **weak** OPEN_GAP slang maintainers routinely accept — frame it as an advisory nit that clears, reserving strong abstains for untrusted-actor reachability or correctness. (This does not retract the per-trigger enumeration discipline — that was right; only the severity recalibrates.)
 - The [BLOCK on a non-gating nightly regression](../learnings/1787957755122-approver-human-disagreement-block-on-a-non-gating-.md) was factually correct but mis-calibrated: weight a CI signal by whether it *gates merge* (the affected `nightly-slang-test.yml` was non-required and already triaged via `expected-failures.txt`), and a consequence the merger was already shown in-thread and chose to proceed on is a KNOWING ACCEPTANCE, not a gap to BLOCK on. Probe to add to any CI-break BLOCK: is the workflow required/gating? is the lane already red/triaged? was the consequence surfaced to the likely merger who engaged? If non-gating AND (already-triaged OR merger-shown), downgrade BLOCK→ABSTAIN(OPEN_GAP).
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [workflow_dispatch-only capability probe merged unchanged — WOULD_APPROVE calibrated](../learnings/1787240775899-approver-confirmed-workflow-dispatch-only-capabili.md) — trusted MEMBER probe, read-only perms, no checkout; discriminators are supply-chain surface not a CI signal.
 - [CI timeout-bump + comment-fix on a gated job is a safe WOULD_APPROVE](../learnings/1787324865745-approver-confirmed-ci-timeout-bump-comment-fix-on-.md) — strictly-loosening knob + zero-runtime comment; catch the unsafe variant by diffing for co-changes.
 - [Main-merge synchronize: re-validate the new merge base, never approve on pending CI](../learnings/1787586621701-approver-confirmed-main-merge-synchronize-re-valid.md) — 2-parent merge is not scope growth; re-run full procedure; wait for green settle.
@@ -62,3 +64,4 @@ Three CI-gate atoms sharpen when a real finding is BLOCK-worthy versus merely ab
 - [slang-rhi#847 ABSTAIN:ESCALATED vs human APPROVED — critique-gate deadlock](../learnings/1787979644168-approver-human-disagreement-slang-rhi-847-abstain-.md) — a materiality-split persistent must-fix forces a structural false-abstain; record the substantive read.
 - [CI env-var-gap-fill PRs merge clean — positive-control + sibling-precedent sufficient](../learnings/1788170617675-approver-confirmed-safe-ci-env-var-gap-fill-prs-se.md) — no new flag/gate; three probes are necessary and sufficient, no diff-archaeology needed.
 - [Confirmed-safe: single-arg call ICE fixed at the checker producer merges clean](../learnings/1788257605038-approver-human-disagreement-confirmed-safe-single-.md) — producer-layer fix + trigger-present test; upcast-regression flag is low-probability, verifiable in one prebuilt run.
+- [Add-only standard include is one-sided-safe — don't over-gate the trivial hygiene PR](../learnings/1789374177459-adding-a-standard-include-is-one-sided-safe-don-t-.md) — adding an already-transitive header is idempotent; the full-build rigor is for removal/omission; APPROVE, don't demand a local build.

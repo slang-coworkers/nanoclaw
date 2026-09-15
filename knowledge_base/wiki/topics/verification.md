@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-512 learnings. [Catalog](../index.md)
+517 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -55,6 +55,7 @@ type: topic
 - [A claim escapes review through its AFFECT, not its evidence — an alarm gets forwarded, and checking it looks like complacency](../learnings/1786197742235-a-claim-escapes-review-through-its-affect-not-its-.md)
 - [A claim from your own bot identity is not a verified claim](../learnings/1786084004877-a-claim-from-your-own-bot-identity-is-not-a-verifi.md)
 - [A commit has TWO status object classes — enumerate both before any "X is not the blocker" claim](../learnings/1785849575805-a-commit-has-two-status-object-classes-enumerate-b.md)
+- [A confirmed HOLD binds GitHub-state advancement — a draft PR counts; flag out-of-band releases](../learnings/1789440408326-a-confirmed-hold-binds-github-state-advancement-a-.md)
 - [A consequence of a claim is not evidence for it — restatements inherit the open dependency, and "impossible" must be a search's conclusion, never its premise](../learnings/1785826510128-a-consequence-of-a-claim-is-not-evidence-for-it-re.md)
 - [A control must produce a value only a working probe could produce — non-null is not enough, and both-arms-fail is a void matrix](../learnings/1786043504376-a-control-must-produce-a-value-only-a-working-prob.md)
 - [A control that agrees with the claim can still be testing the wrong mechanism](../learnings/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md)
@@ -70,6 +71,7 @@ type: topic
 - [A correction to a published artifact needs the full ladder before you send it](../learnings/1785857410377-a-correction-to-a-published-artifact-needs-the-ful.md)
 - [A correction turn is where an unverified number hides: issuing one pre-asserts your own figures were checked](../learnings/1786125624148-a-correction-turn-is-where-an-unverified-number-hi.md)
 - [A count cannot settle a claim about CONTENT or POLARITY — three claim-types, three commands](../learnings/1785904562390-a-count-cannot-settle-a-claim-about-content-or-pol.md)
+- [A coworker resuming a long-parked task must re-verify current external state before acting — a decision may have superseded its task](../learnings/1789369717732-a-coworker-resuming-a-long-parked-task-must-re-ver.md)
 - [A dedup scope drawn for claim A does not cover a hypothesis B you fenced later — and the cross-ref may REFUTE the merge you were avoiding](../learnings/1785839198875-a-dedup-scope-drawn-for-claim-a-does-not-cover-a-h.md)
 - [A DERIVED FIGURE OUTLIVES THE CORRECTION OF ITS INPUTS — three instances in one session; compute at render, or drop the number and keep the qualitative claim](../learnings/1786042159569-a-derived-figure-outlives-the-correction-of-its-in.md)
 - [A description field is a POINTER, not a store - trimming mine orphaned two claims, and the check that caught it exposed a normalizer gap](../learnings/1785967184129-a-description-field-is-a-pointer-not-a-store-trimm.md)
@@ -179,6 +181,7 @@ type: topic
 - [A wedged run is evidence of a wedged run, not a wedged outcome — verify the consequence at its own surface](../learnings/1786264741786-a-wedged-run-is-evidence-of-a-wedged-run-not-a-wed.md)
 - [A wrong repro shape yields a false negative indistinguishable from refutation](../learnings/1786080292080-a-wrong-repro-shape-yields-a-false-negative-indist.md)
 - [a2a-redrive "bounced 2×/NOT delivered" is a send-side signal — verify inbound before re-driving or restarting](../learnings/1787048754843-a2a-redrive-bounced-2-not-delivered-is-a-send-side.md)
+- [Across multi-day gaps, re-verify the live GitHub conversation timeline, not just source](../learnings/1789382575482-across-multi-day-gaps-re-verify-the-live-github-co.md)
 - [ADDENDUM to the --full correction: the JSON envelope is {id, ok, data} — and a constant across rows is a signature of a limit, never of content](../learnings/1786046868135-addendum-to-the-full-correction-the-json-envelope-.md)
 - [Adjudicate "false-positive warning?" disputes by diffing emitted target code across divergent cases](../learnings/1783019615446-adjudicate-false-positive-warning-disputes-by-diff.md)
 - [Adopting a peer's retraction: grep the belief's variants, not their wording — and grade the join](../learnings/1786114836916-adopting-a-peer-s-retraction-grep-the-belief-s-var.md)
@@ -293,6 +296,7 @@ type: topic
 - [Correction: FALCOR_LOCAL_SLANG usage details (verified in PR #11602)](../learnings/1781368939396-correction-falcor-local-slang-usage-details-verifi.md)
 - [CORRECTION: file(DOWNLOAD ... EXPECTED_HASH) is DEFERRED-fatal — the fallback runs but configure still fails (supersedes my earlier DXC-500 note)](../learnings/1785759571154-correction-file-download-expected-hash-is-deferred.md)
 - [Correction: formatting.sh --md is not mutually exclusive with other selectors (--md --cpp runs both)](../learnings/1786083647383-correction-formatting-sh-md-is-not-mutually-exclus.md)
+- [CORRECTION: getRootAddr + field-key check is branch-dependent (live on resource-load path, dead on plain-Load path)](../learnings/1789445655724-correction-getrootaddr-field-key-check-is-branch-d.md)
 - [CORRECTION: gh search date filters fail three different ways — pre-encoding %3E%3D is the WRONG fix for -f, and a missing colon silently returns a plausible wrong number](../learnings/1786137952135-correction-gh-search-date-filters-fail-three-diffe.md)
 - [CORRECTION: maintainer-authored tracking issue still gets the 5-bullet — the no-post exception is process/meta ONLY](../learnings/1786366151304-correction-maintainer-authored-tracking-issue-stil.md)
 - [CORRECTION: mutation testing does catch a wrong-reason pass — if you mutate what your CLAIM names, not what your ASSERTION names](../learnings/1786216749315-correction-mutation-testing-does-catch-a-wrong-rea.md)
@@ -445,6 +449,7 @@ type: topic
 - [Synthesize a stub .so to reproduce "DLL loads but symbol absent" — and beware your own stub becoming the confound](../learnings/1785857572379-synthesize-a-stub-so-to-reproduce-dll-loads-but-sy.md)
 - [Test a claimed capability gap before carrying it into a second run](../learnings/1786350645999-test-a-claimed-capability-gap-before-carrying-it-i.md)
 - [Test a DOCUMENT by the operation that will be performed on it — a "superseded" banner protects top-down readers, not the searcher who lands on the stale line](../learnings/1786047812489-test-a-document-by-the-operation-that-will-be-perf.md)
+- [Test assertions outrank prose docs for format claims; verify corrections too](../learnings/1789423699535-test-assertions-outrank-prose-docs-for-format-clai.md)
 - [The residual bucket: an unmatched per-item probe is an UNRESOLVED item, never a confirming one](../learnings/1785876371265-the-residual-bucket-an-unmatched-per-item-probe-is.md)
 - [The unfalsifiable claim gets furthest — a spliced number has no source to disagree with it](../learnings/1786220899628-the-unfalsifiable-claim-gets-furthest-a-spliced-nu.md)
 - [Three axes to check on any negative claim: phenomenon-vs-probe, shape-vs-target, moment-vs-state](../learnings/1786041709541-three-axes-to-check-on-any-negative-claim-phenomen.md)

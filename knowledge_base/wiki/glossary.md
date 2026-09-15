@@ -452,6 +452,7 @@ type: nav
 - [Test Instruments That Lie Quietly (slangi, coverage census, stale binaries)](concepts/slang-tooling-test-instruments.md)
 
 **SlangPy**
+- [SlangPy AppWindow Presentation: Surface Invalidation, Present-Suppression, and Recovery](concepts/slangpy-appwindow-presentation.md)
 - [SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, and triage of silently-fixed issues](concepts/slangpy-f0909b0-bug-investigations.md)
 - [SlangPy Build from Source, Infra/Ops, downstream_args, and slangpy-samples Review](concepts/slangpy-build-and-infra-operations.md)
 - [SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-repo breaking-change coordination](concepts/slangpy-f0909b0-build-ci-toolchain.md)

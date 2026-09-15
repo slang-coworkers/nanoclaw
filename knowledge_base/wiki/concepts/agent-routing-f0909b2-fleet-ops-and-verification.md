@@ -3,7 +3,7 @@ title: Fleet operations — CI/GitHub infra, dispatch routing & verify-before-yo
 type: concept
 group: agent-routing
 tags: [gh-auth, onecli, falcor-gate, ci-rerun, dispatch, wired-coworkers, stale-toolchain, verification, revert-drill, skill-drift]
-source_count: 17
+source_count: 18
 ---
 
 ## TL;DR
@@ -163,6 +163,27 @@ AND a bogus/unreachable target; if the bogus one doesn't wake, the gate fails
 toward silence. This is the task-gate analogue of the Monitor "silence is not
 success" rule ([script-gated deferral tasks](../learnings/1788432587694-script-gated-deferral-tasks-must-distinguish-condi.md)).
 
+## The KB-sync data-only gate: core.fileMode=false defeats the chmod control
+
+The nightly `knowledge_base` sync into the `nanoclaw-kb` clone carries a STEP-4b
+DATA-ONLY GATE whose *control* — `touch probe && chmod +x probe && git add -f
+probe`, then expect the gate to print `EXEC:` — **cannot fire in that clone**,
+because the clone has `core.fileMode = false`, so git ignores the working-tree
+exec bit and stages a freshly-chmod'd new file as `100644`. "Control did not
+print EXEC" is therefore **expected here, not a broken gate** — do NOT abort on
+it. To actually prove the gate logic AND the tree are clean: (1) exercise the
+gate on a real `100755` via the index, not the working tree — `BLOB=$(git
+hash-object -w /dev/null); git update-index --add --cacheinfo
+100755,$BLOB,knowledge_base/.probe` makes the case-match print `EXEC`, then
+`git rm --cached knowledge_base/.probe` (the task gate's leading `test -e ||
+exit 0` correctly skips a cacheinfo probe with no on-disk file — real staged
+files exist on disk); (2) scan the whole staged index for stragglers, not just
+the diff — `git ls-files -s knowledge_base | awk '$1=="100755"{print "EXEC",$4}
+$1=="160000"{print "GITLINK",$4}'`, empty = data-only. On 2026-09-15 both passed
+(0 execs / 0 gitlinks across ~20.9k staged files). Operator follow-up: swap the
+STEP-4b control for the cacheinfo form so it stops being a perpetual false alarm
+([KB-sync data-only gate: core.fileMode=false defeats the chmod control; prove via cacheinfo](../learnings/1789441596421-kb-sync-step-4b-data-only-gate-core-filemode-false.md)).
+
 ## Verify before you claim: stale toolchains and false premises
 
 A cluster of reports share one meta-lesson: **a premise, claim, or "separate
@@ -260,7 +281,7 @@ review:
   cause is skill-copy drift, flagged to the operator to reconcile once
   ([okf-synth exempt mechanism retracted; skill-copy drift](../learnings/1788842883204-okf-synth-escalate-on-a-load-bearing-top-offender-.md)).
 
-**Source learnings (17):**
+**Source learnings (18):**
 
 - [`gh auth status` says "GH_TOKEN invalid" — red herring for the app installation token](../learnings/1788374386518-gh-auth-status-says-gh-token-invalid-red-herring-f.md) — App tokens can't hit `/user`; repo-scoped reads/writes still work — test the actual call before escalating.
 - [gh auth status falsely reports nv-slang-bot token invalid; gh api still works](../learnings/1788881883720-gh-auth-status-falsely-reports-nv-slang-bot-token-.md) — Use `gh api` (REST) for everything; GraphQL-backed `gh` subcommands break; never `env -u GH_TOKEN`.
@@ -279,3 +300,4 @@ review:
 - [slangi VM operand .size is an aggregate/storage size, not the scalar width](../learnings/1788900537665-slangi-vm-operand-size-is-an-aggregate-storage-siz.md) — Extracted sub-objects keep the container's `.size`; a size-based double/float heuristic misreads; pin width producer-side.
 - [printf width-from-operand-size: an UNPINNED half can be misread as double](../learnings/1788904081233-printf-width-from-operand-size-fixes-an-unpinned-f.md) — A width-from-size rule interacts with EVERY unpinned type via the aliased operand; run codex before a `[Resolution]` close-out.
 - [okf-synth has NO `okf_synth: exempt`; a load-bearing top offender is a known false positive](../learnings/1788842883204-okf-synth-escalate-on-a-load-bearing-top-offender-.md) — Verify a skill's version (md5 + `git log -S`) before citing its mechanism; runtime copies drift from canonical.
+- [KB-sync STEP-4b data-only gate: core.fileMode=false defeats the chmod control — prove via cacheinfo](../learnings/1789441596421-kb-sync-step-4b-data-only-gate-core-filemode-false.md) — a fresh chmod stages as `100644` under `fileMode=false`; exercise the gate with `update-index --cacheinfo 100755` and scan the whole staged index (`git ls-files -s`), don't abort on the false alarm.

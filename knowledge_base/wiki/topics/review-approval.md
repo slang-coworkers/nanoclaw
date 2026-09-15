@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1408 learnings. [Catalog](../index.md)
+1409 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1399,6 +1399,7 @@ type: topic
 - [Dampen repeat approver re-dispatch on a churning size-capped PR](../learnings/1786519685407-dampen-repeat-approver-re-dispatch-on-a-churning-s.md)
 - [Deterministic-ABSTAIN PRs — stop re-running on churn](../learnings/1783972579606-deterministic-abstain-prs-stop-re-running-on-churn.md)
 - [Disagreement between two agents running the same command means the instrument is wrong, not that one misread it](../learnings/1785889509513-disagreement-between-two-agents-running-the-same-c.md)
+- [E30624/MatrixLayoutMode cluster split into two verdicts — behind-master disambiguation isn't always uniform across a cluster](../learnings/1789435293943-e30624-matrixlayoutmode-cluster-split-into-two-ver.md)
 - [Empty approver-policy mount → decide under bundled conservative default (honest CLAUSE_FAIL), never a last-known-good reconstruction](../learnings/1788297294911-empty-approver-policy-mount-decide-under-bundled-c.md)
 - [learnings INDEX rows are generated from the FILENAME SLUG so a retraction cannot be patched in — title the mechanism not the verdict](../learnings/1786047446199-learnings-index-rows-are-generated-from-the-filena.md)
 - [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md)
