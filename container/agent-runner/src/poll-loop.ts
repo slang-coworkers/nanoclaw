@@ -2825,16 +2825,12 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
           `a2a thrown-error bounce (${thrownBounce}) — trigger left pending for host redrive: ` + errMsg.slice(0, 80),
         );
       } else {
-        // Write error response so the user knows something went wrong
-        await writeMessageOut({
-          id: generateId(),
-          kind: 'chat',
-          platform_id: routing.platformId,
-          channel_type: routing.channelType,
-          thread_id: routing.threadId,
-          content: JSON.stringify({ text: `Error: ${errMsg}` }),
-        });
-
+        // NO notice is written here: processQuery owns them now. It knows which
+        // active and queued turns the failure actually abandoned (the opening
+        // batch may already be done) and notices each abandoned route exactly
+        // once. Writing one here too produced a second, wrongly-routed notice —
+        // what poll-loop.thrown-followup.test.ts pins.
+        //
         // The batch is still acked completed below (no redelivery). Without
         // this line the only log trace of the errored turn is "Query error"
         // followed by a "Completed" line that reads like success.
@@ -3010,8 +3006,7 @@ export async function processQuery(
   skipPersistContinuation = false,
   refreshDestinations: () => string | null = () => null,
 ): Promise<QueryResult> {
-  // adoptTurn mutates routing in place; copy so the caller's batch routing
-  // (used for the query error notice) stays the first message's.
+  // adoptTurn mutates routing in place; keep the caller's batch route intact.
   routing = { ...routing };
   let queryContinuation: string | undefined;
   let done = false;
@@ -3556,9 +3551,13 @@ export async function processQuery(
         // bottom finalizes it, because silentTurnNudged is already set).
         silentTurnOpen = false;
         const isTaskTurn = routing.taskRun === true;
+        // The provider yields a failure notice in `event.error`, not folded into
+        // `text` (see providers/claude.ts) — an error subtype carries NO text at
+        // all, so classifying on `text` alone would silently stop bouncing.
+        const errorNotice = event.error ?? event.text;
         const bounceEligible =
-          event.isError === true && !!event.text && (routing.channelType === 'agent' || isTaskTurn);
-        const bounceClass = bounceEligible && event.text ? classifyTurnError(event.text) : 'permanent';
+          event.isError === true && !!errorNotice && (routing.channelType === 'agent' || isTaskTurn);
+        const bounceClass = bounceEligible && errorNotice ? classifyTurnError(errorNotice) : 'permanent';
         // Task runs bounce only on KNOWN transient signatures (never 'unknown'),
         // and at most TASK_BOUNCE_MAX_TRIES times per row while this runner lives;
         // after that the error is logged as the run's result as before. Prod
@@ -3598,9 +3597,13 @@ export async function processQuery(
             status: 'error',
           });
           archivePrompts.shift();
-        } else if (event.text?.trim()) {
+          // A FAILED turn enters here even with no text: the provider now carries
+          // its notice in `event.error`, so an error subtype yields empty text and
+          // would otherwise fall through to the silent-turn path and deliver
+          // "finished without producing any output" instead of the real error.
+        } else if (event.text?.trim() || event.isError === true) {
           const { sent, hasUnwrapped, danglingOpen, gateRefusals, taskBlocks, resultBlocks } = await dispatchResultText(
-            event.text,
+            event.text ?? '',
             routing,
             {
               midTurnSent,
@@ -3633,7 +3636,8 @@ export async function processQuery(
           // Errors included: a failed run's text belongs in its log, not chat.
           // A corrective retry handles delivery only; its result is not a
           // second run summary.
-          if (routing.taskRun && !taskBlockNudged) await autoAppendTaskLog(event.text);
+          if (routing.taskRun && !taskBlockNudged)
+            await autoAppendTaskLog([event.text, event.error].filter(Boolean).join('\n'));
           if (resultBlocks === 0 && event.isError === true && !routing.taskRun) {
             // Non-retryable error turn (e.g. a 403 billing_error) with no
             // <message> envelope: deliver the notice instead of dropping it as
@@ -3647,10 +3651,10 @@ export async function processQuery(
             // stays shut and the gated body is never pushed to the channel.
             // The fork previously had to drop this call entirely for want of
             // exactly this counter.
-            await deliverErrorResult(event.text, routing);
+            await deliverErrorResult(routing, event.error ?? 'The agent run failed. Check the logs for details.');
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
-              result: event.text,
+              result: [event.text, event.error].filter(Boolean).join('\n'),
               continuation: queryContinuation ?? initialContinuation,
               status: 'error',
             });
@@ -3673,7 +3677,8 @@ export async function processQuery(
                 prompt: archivePrompts[0] ?? initialPrompt,
                 result: event.text,
                 continuation: queryContinuation ?? initialContinuation,
-                status: hasUnwrapped || willRetryTaskBlocks ? 'undelivered' : 'completed',
+                status:
+                  event.isError === true ? 'error' : hasUnwrapped || willRetryTaskBlocks ? 'undelivered' : 'completed',
               },
               routing,
             );
@@ -3722,7 +3727,9 @@ export async function processQuery(
           if (producedOutput) batchDelivered = true;
           if (producedOutput || batchDelivered || routing.taskRun) {
             archivePrompts.shift();
-          } else if (!silentTurnNudged && event.isError !== true) {
+            // A failed turn is admitted by the dispatch branch above, so this one
+            // only ever sees a non-failed turn — no isError check needed here.
+          } else if (!silentTurnNudged) {
             // Recovery attempt #1, owned by the poll loop (not by an optional
             // provider hook no production provider implements): ask for the
             // answer again on the SAME open query. Nothing is acked yet, and
@@ -3809,7 +3816,7 @@ export async function processQuery(
           // through a six-day outage while the series re-fired on full cadence.
           // Recorded as a failed run so the counter is true and recurrence backs
           // off; classed 'turn', so it never auto-pauses the series.
-          if (isTaskTurn && event.isError === true) {
+          if ((isTaskTurn || !event.text?.trim()) && event.isError === true) {
             for (const id of initialBatchIds) markFailed(id);
             log('Task fire ended in an error result — acked failed, not completed');
           } else {
@@ -3881,6 +3888,10 @@ export async function processQuery(
       }
     }
   } catch (err) {
+    // Freeze the queue before awaiting notices. Follow-ups have already been
+    // acknowledged, so an abandoned queued turn cannot rely on redelivery.
+    done = true;
+    const cancelled = endedForCommand || signal?.aborted;
     const errMsg = err instanceof Error ? err.message : String(err);
     notifyExchangeComplete(onExchangeComplete, {
       prompt: archivePrompts[0] ?? initialPrompt,
@@ -3888,6 +3899,36 @@ export async function processQuery(
       continuation: queryContinuation ?? initialContinuation,
       status: 'error',
     });
+    if (!cancelled) {
+      // Completed turns are no longer answering or queued. Preserve partial
+      // output from unfinished turns and report that the run did not finish.
+      // Retrying the same route or several queued turns in one thread needs
+      // only one notice. Task and agent wakes have no human chat endpoint.
+      const failedRoutes = [...(answering ? [routing] : []), ...queuedTurns.map((turn) => turn.routing)];
+      const noticed: RoutingContext[] = [];
+      for (const target of failedRoutes) {
+        if (target.taskRun || !target.platformId || !target.channelType || target.channelType === 'agent') continue;
+        if (
+          noticed.some(
+            (prior) =>
+              prior.platformId === target.platformId &&
+              prior.channelType === target.channelType &&
+              prior.threadId === target.threadId,
+          )
+        )
+          continue;
+        noticed.push(target);
+        try {
+          await deliverErrorResult(target, 'The agent run failed. Check the logs for details.');
+        } catch (noticeError) {
+          log(
+            `Failed to deliver query error notice: ${noticeError instanceof Error ? noticeError.message : String(noticeError)}`,
+          );
+        }
+      }
+    }
+    // Continuation recovery receives the original error; diagnostics remain
+    // in the exchange archive and runner log, never in the channel notice.
     throw err;
   } finally {
     done = true;
@@ -4534,7 +4575,7 @@ export function checkCritiqueGate(
  * This is the same user-facing write the outer catch block does, minus the
  * `Error:` prefix — the provider's text is already a user-facing message.
  */
-async function deliverErrorResult(text: string, routing: RoutingContext): Promise<void> {
+async function deliverErrorResult(routing: RoutingContext, text: string): Promise<void> {
   log('Error result with no <message> envelope — delivering to channel');
   await writeMessageOut({
     id: generateId(),
@@ -4916,7 +4957,6 @@ export async function dispatchResultText(
     const attrsStr = match[2] ?? '';
     const body = stripHarnessTagArtifacts(match[3].trim());
     lastIndex = MESSAGE_RE.lastIndex;
-    resultBlocks++;
 
     // One-door delivery in task sessions: only the send_message tool delivers.
     // A final-text <message to> block here is either an echo of a tool send the
