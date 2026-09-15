@@ -46,6 +46,15 @@ function latestMtimeMs(p: string): number {
  * files deleted upstream are not left behind. Returns true if a copy ran.
  */
 export function refreshMirror(src: string, dst: string): boolean {
+  // A symlinked destination is already a live mirror (the Claude plane links
+  // shared skills to /app/skills/<name>, a path that resolves only inside the
+  // container). Copying over it throws ERR_FS_CP_NON_DIR_TO_DIR host-side and
+  // took every spawn down on nemoclaw (2026-09-11); leave links alone.
+  try {
+    if (fs.lstatSync(dst).isSymbolicLink()) return false;
+  } catch {
+    // dst absent — fall through to the mtime comparison and copy
+  }
   const srcMtime = latestMtimeMs(src);
   const dstMtime = latestMtimeMs(dst);
   if (dstMtime >= srcMtime) return false;
