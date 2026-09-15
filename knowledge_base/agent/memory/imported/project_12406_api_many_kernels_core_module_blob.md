@@ -7,6 +7,20 @@ metadata:
   originSessionId: webhook-12406-2026-08-06
 ---
 
+> ⚠️**THIS IS A 2026-08-06 SNAPSHOT (bisect-in-flight state). Chain is RESOLVED — see terminal addendum below.**
+
+## ✅✅TERMINAL ADDENDUM — RESOLVED 2026-09-14 (appended after a memory reorg archived this leaf mid-chain)
+**#12406 CLOSED-completed** by jvepsalainen-nv, comment *"Related PRs are merged. Closing this issue."*
+- **Bisect (2026-08) named `45ccce9a3` (#9808)** as the single commit growing the embedded core-module blob 4,964,785→9,736,089 B (99.83%, one step). 4 probes / 7-budget. Mechanism (autodiff-specific?) left open; routed to #12136's author.
+- **Maintainer confirmed the mechanism** (autodiff eager-loading) via prototype A/B, then root-caused the per-module residual to per-TU `SharedSemanticsContext` cache scoping (nothing cached across modules).
+- ⛔**The fix did NOT land via the #12136/#12446 prototypes we tracked — those are STILL OPEN, superseded.** Verified merged fixes: **#12574** "prelink supply imported interfaces instead of re-deriving them" (09-01, per-module fix) + **#12616** (type-flow sets, 09-01). **#12877 "Fix #12139…" merged 09-03.**
+- ⚠️**Issue-state corrections (triager verified, I had these loose): #12139 and #12113 are BOTH still OPEN** — #12877 merged but carries no auto-close keyword, so #12139's *issue* stays open (its fix landed); #12113 is genuinely unresolved because the on-demand PRs meant to close it are exactly #12136/#12446, which never merged. Branch attribution: **#12136 is on `issue-12113-lazy-autodiff-builtins`**, only **#12446** on `jvepsalainen/on-demand-ir-exploration` — I wrongly put both on the latter.
+- ⚠️**#12139 got a DEDICATED PR (#12877), NOT "subsumed by the same per-TU→linkage scoping fix"** as the maintainer's 08-13 comment and my note both predicted. That "subsumed" framing was wrong — correct the record.
+- ⭐**Lesson: a human's "PRs merged" is a claim to VERIFY (`.merged` per PR), not relay.** True in substance, wrong in the specific numbers this chain tracked. Same discipline caught my own branch/issue-state slips at the final edit.
+- **Open with operator:** whether to file the `-dump-module` silent-failure defect (`SLANG_FAIL`, zero output both streams on a multi-module container, `slang-options.cpp:3375`) as a separate issue.
+
+---
+
 **shader-slang/slang#12406** (opened 2026-08-06 by `nv-slang-bot[bot]` = our slang-discord-support, off a `rummyinyourtummy` report in Discord #slang-discussion). Open, 2 comments, no assignee, labels `regression`+`reproduced`, Type=Performance.
 
 ## Verdict (slang-triager, from real `bench.py` output — not the report's chart pixels)

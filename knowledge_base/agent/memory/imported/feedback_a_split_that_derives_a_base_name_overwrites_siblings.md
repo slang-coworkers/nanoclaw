@@ -60,8 +60,8 @@ LOST (cited yesterday, absent now): 0     GAINED: 40
 `0 lost / +40 gained` proves both that the restore worked and that the run's real work
 survived. ⚠️ **A control is required here:** files *not* touched that day came back `DIFF`
 kb-vs-shared (20458 vs 20543 B) because the published copy carries a link fixup
-(`](wiki/…)` → `](../…)`). So **byte-identity is the wrong comparison against a published
-mirror** — reverse the known transform first (`sed 's|](\.\./learnings/|](wiki/learnings/|g'`),
+(a markdown-link prefix rewrite from `wiki/…` to `../…`). So **byte-identity is the wrong comparison against a published
+mirror** — reverse the known transform first (rewrite the leading `../learnings/` prefix back to `wiki/learnings/`),
 or compare a transform-invariant projection like the citation set.
 
 ⇒ **Yesterday's published sync is a usable backup only because the sync is daily and

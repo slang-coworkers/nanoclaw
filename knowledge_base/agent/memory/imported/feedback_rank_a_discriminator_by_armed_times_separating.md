@@ -61,7 +61,7 @@ instrument's ordinary clean output.
 
 ⚠️ **My own arming defect, found by the denominator rule mid-test:** my first run reported
 **1 of 61 rows testable** and `100%` correct. My `tg()` extracted only `[[wikilink]]` while my archive
-rows are written `](path.md)` — 97% arming misread as a clean pass on a denominator of one. **The rule
+rows are written `](path)` (markdown-link notation, target elided) — 97% arming misread as a clean pass on a denominator of one. **The rule
 under test caught its own test.** `reindex.sh:86-88` already handles both notations with a comment
 saying a single-notation parser misreports; I reimplemented the defect it warns about.
 

@@ -61,7 +61,7 @@ Every claim in the description checked out. One is **stronger** than stated.
   corpus: `URL` finds **13,577** edges where `LINK` finds **12,005** — **1,572 links** that
   link-validation was blind to, concentrated exactly where the docstring predicts (`index.md`
   1,792→2,260 = +468; `review-process.md` 73→147; `slang-compiler.md` +107). Mechanism confirmed
-  directly: `- [[require] atom…](wiki/learnings/x.md)` is invisible to `\[[^\]]*\]` and visible to
+  directly: a `- [[require] atom…](…)` row (nested-bracket link to a `wiki/learnings/x.md` target) is invisible to `\[[^\]]*\]` and visible to
   `](url)`.
 - **Ordering is correct.** `_normalize_concept_footers()` runs *after* `_convert_obsidian_links()`,
   which it depends on — dedup keys on `wiki/learnings/<stem>.md` targets that only exist
@@ -82,7 +82,7 @@ Every claim in the description checked out. One is **stronger** than stated.
    - (a) Everything after `**Source learnings (N):**` is treated as footer rows. Measured
      **0/47** pages have a heading after the footer, **0/47** have a second footer header, and
      **0** link-bearing rows are missed by the `^- \[` pattern. If a page ever gains a section
-     below the footer, its `- [...](wiki/...)` rows would be counted and deduped.
+     below the footer, its `- [...](…)` footer-link rows (`wiki/...` targets) would be counted and deduped.
    - (b) `^source_count:\s*\d+\s*$` under `re.M` **swallows a following blank line** (demonstrated
      on a synthetic fixture). **0/47** pages currently have one.
 

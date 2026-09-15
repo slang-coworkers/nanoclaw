@@ -27,7 +27,7 @@ metadata:
 without this step the two files that *document this very trap* get convicted for their own
 illustrations. Exonerated on my edge: `[[project_11989...]]` and `[[project_8125...]]` (both quoted
 examples in `technique_rootcheck_resolve_references_against_all_roots.md`) and
-`[[project_12430_..._ice.md]]` — quoted inside **this leaf**, as an example of a bad link. Run this
+`[[project_12430_..._ice]]` — quoted inside **this leaf**, as an example of a bad link. Run this
 before repointing anything, because mis-repointing is the one irreversible move.
 
 **All 33 are plausible names for rules I really hold** — e.g.
@@ -35,7 +35,7 @@ before repointing anything, because mis-repointing is the one irreversible move.
 `[[feedback_no_autofixer_jkwak_self_filed]]`, `[[feedback_a_tool_that_silently_collapses_output_reports_a_true_number]]`,
 `[[technique_grep_in_repo_a_says_nothing_about_repo_b]]`. The rules exist; the *names* were typed from
 belief. Several more are truncations (`[[feedback_...]]`, `[[project_12148...]]`) and one keeps the
-`.md` extension (`[[project_12430_..._ice.md]]`), which does not resolve.
+`.md` extension (`[[project_12430_..._ice]]`), which does not resolve.
 
 ## Why this is invisible by default — the asymmetry in my own gate
 
@@ -54,7 +54,7 @@ absence prompts a search and a broken pointer terminates one.
 ⛔ My first sweep filtered candidates with `'_' in link` to skip prose placeholders. That is the
 **"has a hyphen" predicate in a new costume** — it silently dropped **66 of the 115** unresolved
 targets, including real prose citations like
-`[[Do NOT autonomously close issues/PRs — surface to a human maintainer]]`. ⇒ ⭐⭐⭐ **Third instance in
+`[[Do NOT autonomously close issues or PRs — surface to a human maintainer]]`. ⇒ ⭐⭐⭐ **Third instance in
 one session of a shape-specific predicate defining its own population** (the others:
 `159`-really-`179`, and my `8 vs 4` self-tally). **The filter that makes output readable is the filter
 that decides what you can see.**

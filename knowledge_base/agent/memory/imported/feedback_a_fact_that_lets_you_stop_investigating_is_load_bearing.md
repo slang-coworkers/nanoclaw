@@ -87,6 +87,58 @@ was **under-inclusion of our own best prior analysis**, and it was mine as much 
 dispatch said "both branches"). Fix carried forward: when a maintainer next engages, anchor on comment
 3's A/B/C/Close checklist, not the re-derived binary.
 
+## The umbrella pattern — 3 instances, one chain: I prescribe CLOSER-OWNED mechanics from a stale/simplified vantage
+
+**2026-09-14, decision arrives.** `kaizhangNV` picked Option B and authorized the fix. In my dispatch
+I told the triager "edit-if-self, last poster is us at comment 6, so PATCH likely." Wrong: two
+*maintainer* comments had landed across the 3.5-week park, so last-poster was `kaizhangNV` and the
+correct action was a **fresh** comment. My "last poster is X" was a point-in-time fact that had
+**expired**; the triager re-checked the live comment list at dispatch and inverted it. That is the
+third time this one chain I over-specified a detail the closer owns:
+
+1. **P2 label** — "set the priority label" — repo has no P0–P3 labels; unexecutable (closer read `gh label list`).
+2. **Binary framing** — "price both branches" — discarded our own four-option analysis (above).
+3. **PATCH-vs-fresh** — a posting mechanic keyed to a comment list that had drifted two comments.
+
+Common failure: **I hand down execution-level specifics that depend on live state the closer reads at
+execution time** — labels that may not exist, a framing that discards richer analysis, a posting
+mechanic keyed to a list that drifts. My vantage is a snapshot; theirs is the moment of action.
+
+⇒ **Rule: give the DECISION and the REQUIREMENT; let the closer determine the MECHANICS against live
+state.** "Reject rank>64 with an explicit error in both paths" is mine (the decision). "PATCH or
+fresh," "which label," "which option to foreground" are the closer's to read and choose. When I *do*
+relay a state-dependent fact ("last poster is X"), **stamp it as a snapshot and say re-verify** — not
+as a standing instruction. All three were caught cheaply by a rigorous closer; a less rigorous one
+executes the stale version.
+
+### 4th instance + the sharpest sub-lesson — calibration inversion (2026-09-14)
+
+Flagging the API_VERSION-9 collision between #1162 and #1054 (both bump 8→9; second-merger must go to
+**10**) was a **correct and valuable** hazard — that ask stood. But two facts I bundled with it were
+**wrong**, and how they were wrong is the lesson:
+
+1. **I asserted "#1162 and #1054 barely touch the same files, so merge-cleanliness stays silent" —
+   invoking [[conflict-set ≠ dependency-set]].** False: they overlap in **4** files incl. the shared
+   `TENSOR_BRIDGE_API_VERSION` line and the native emitter. So there's a **loud** textual conflict and
+   the invariant is conflict-*protected* — the opposite of what I said. **I reached for a resonant
+   lesson without checking its precondition.** conflict-set≠dependency-set applies *only* when the
+   dependency lives in a file the conflict set does NOT flag; here it lives in one it DOES. A favorite
+   lesson applied to a case that fails its precondition produces a confident assertion of the
+   opposite truth. ⇒ **before invoking a lesson, verify its precondition against live state (here: the
+   files API), not the lesson's resonance with the situation's shape.**
+2. **Stale format order** — I relayed `[Dn,Sm,V...,Gk]`; #1054 rewrote its emitter since 08-05 to
+   `[Dn,Sm,Gk,V...]`. A state-dependent fact gone stale over a park.
+
+**The calibration inversion — this is the sharp one.** In the *same message* I explicitly hedged the
+version-target fact (*"stamp this as a snapshot and re-confirm; don't take my read as standing
+truth"*) — and that one was **fine** (#1054 does bump to 9). The two I asserted **flatly** (files
+overlap, format order) were the **wrong** ones. **My felt-certainty was anti-correlated with
+accuracy: I hedged the fact I noticed I was unsure of and asserted the ones that merely *felt*
+settled.** ⇒ **attach the snapshot-hedge to EVERY state-dependent fact in a relay, uniformly — never
+selectively by felt-confidence, because felt-confidence is not tracking staleness.** The closer
+verified all three at source and caught both errors; the hazard survived because its *core* (bump to
+10) was checkable independent of my wrong reasoning about *why* it was dangerous.
+
 Related: [[feedback_a_guard_can_be_inert_and_read_as_passing]] ·
 [[feedback_correction_unapplied_until_every_restatement_fixed]] ·
 [[feedback_a_true_claim_that_widens_past_its_evidence]]

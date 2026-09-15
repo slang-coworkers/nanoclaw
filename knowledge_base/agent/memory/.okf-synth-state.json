@@ -2,28 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-08-20T04:08:41Z",
-   "backlog": 6500,
-   "defects": 13,
-   "offenders": 13,
-   "top": {
-    "path": "full-abcd-comparison.md",
-    "class": "NO-FRONTMATTER",
-    "size": 6468
-   }
-  },
-  {
-   "at": "2026-08-20T04:08:59Z",
-   "backlog": 5500,
-   "defects": 11,
-   "offenders": 11,
-   "top": {
-    "path": "full-abcd-comparison.md",
-    "class": "NO-FRONTMATTER",
-    "size": 6468
-   }
-  },
-  {
    "at": "2026-08-21T04:08:33Z",
    "backlog": 3500,
    "defects": 7,
@@ -325,6 +303,28 @@
     "path": "imported/project_12260_enum_bool_switch_e39999.md",
     "class": "OVERSIZE",
     "size": 26009
+   }
+  },
+  {
+   "at": "2026-09-14T04:18:17Z",
+   "backlog": 447620,
+   "defects": 0,
+   "offenders": 108,
+   "top": {
+    "path": "imported/feedback_a_relay_names_an_inbound_that_must_exist_in_the_thread.md",
+    "class": "OVERSIZE",
+    "size": 25242
+   }
+  },
+  {
+   "at": "2026-09-14T04:18:30Z",
+   "backlog": 447620,
+   "defects": 0,
+   "offenders": 108,
+   "top": {
+    "path": "imported/feedback_a_relay_names_an_inbound_that_must_exist_in_the_thread.md",
+    "class": "OVERSIZE",
+    "size": 25242
    }
   }
  ]
