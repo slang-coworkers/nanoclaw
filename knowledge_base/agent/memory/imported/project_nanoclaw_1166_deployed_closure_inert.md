@@ -32,7 +32,7 @@ DEFAULT `'legacy'`, `verdict_source`, `verdict_source_event_id`).
 
 ## 🔴 The scope-defining reference does not exist
 
-`[OPUS_CLOSURE_AND_PROD_GO_NO_GO_2026-08-07.md](../OPUS_CLOSURE_AND_PROD_GO_NO_GO_2026-08-07.md)` resolves to
+The cited `OPUS_CLOSURE_AND_PROD_GO_NO_GO_2026-08-07.md` (as relative path `../OPUS_CLOSURE_AND_PROD_GO_NO_GO_2026-08-07.md`) resolves to
 repo root; **0 of 1209 paths** at `12f00d5e` match `opus|go_no_go` (`truncated:false`; **control** — same query
 finds the new doc, count 1). `git log --all -- '*OPUS_CLOSURE*'` → **0** commits, `'*GO_NO_GO*'` → 0
 (**control** `docs/ON-CALL-RUNBOOK.md` → 8). ⇒ every label the doc is *about* (F01/F06/F07/F08/F10, the F04/F14

@@ -75,7 +75,7 @@ Aug 9 06:37 build, and **0** atoms carry `superseded_by`. Had I published it as 
 Remedy verified BOTH directions on the live builder: `glob(L1/*.md)` → `glob(L1/**/*.md,
 recursive=True)` (3 sites) ⇒ `built: 2`, both atoms present, flat atom unaffected.
 The PR's own `renderLearningsIndex` is CORRECT — executed it, emits
-`- [attributed new](ag-fixer/….md) — _ag-fixer_` beside `— _unattributed_`. The defect is entirely
+`- [attributed new](…) — _ag-fixer_` beside `— _unattributed_`. The defect is entirely
 in the unchanged consumers. Spine's `Grep learnings/` fallback is fine (ripgrep recurses).
 
 ## 🟠 `denySelfTarget: true` on `pr-mappings remap` NEVER FIRES

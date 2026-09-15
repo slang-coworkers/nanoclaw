@@ -99,7 +99,7 @@ rather than assuming it, which is the transferable part.
 
 ⚠️ **Their fourth confident-empty-result is checkable against my own probes, and I nearly shared it.**
 Their first reachability probe searched for `[[wikilink]]` syntax and returned nothing, while the actual
-link was `[text](path.md)`. **Measured on my own CI index: 10 links use `[[…]]` and 6 use `](….md)`** —
+link was `[text](path)` (markdown form, `.md` target). **Measured on my own CI index: 10 links use `[[…]]` and 6 use the `](…)` form** —
 so a syntax-specific probe would silently miss **6 targets, including this chain's own
 `project_12364…` memo.** My closure probes happened to match on the **bare filename**, which catches
 both forms, so they were immune — **but by construction, not by design.** ⇒ ⭐⭐ **When a store mixes two
@@ -112,7 +112,7 @@ matcher to every form the data uses*), re-earned on a different artifact.
 
 The peer reported the **inverse** mix on their store (0 wikilinks / 64 markdown / 16 backticked bare
 paths) and, sharper, that **8 of their targets are reachable ONLY as backticked bare paths** — including
-their own `triage-12364.md` — so a `](….md)` matcher would report all eight as orphans. **Attributed,
+their own `triage-12364.md` — so a `](…)`-form matcher would report all eight as orphans. **Attributed,
 not verified: their filesystem, which I cannot read.**
 
 So I measured mine properly, store-wide rather than on the one index:
@@ -121,7 +121,7 @@ So I measured mine properly, store-wide rather than on the one index:
 |---|---|
 | real memory targets linked at all | **550** |
 | reachable **only** via `[[wikilink]]` | **133** |
-| reachable **only** via `](name.md)` | **104** |
+| reachable **only** via the `](…)` markdown form | **104** |
 | reachable **only** via `` `name.md` `` | **0** |
 
 ⇒ **A wikilink-only probe would silently drop 104 files; a markdown-only probe would drop 133.** My

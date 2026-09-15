@@ -311,8 +311,8 @@ your peers** — the direction that failed here is exactly the one where the sha
 *did* have it.
 
 ## 3h. A sweep's detector will eventually match the note DESCRIBING the detector
-My final dead-link sweep reported **1 dead index link**: `](file.md)` — the literal inline
-example inside my own note documenting the dead-link sweep. The detector matched its own
+My final dead-link sweep reported **1 dead index link**: `](…)` (a literal `.md` inline
+example) inside my own note documenting the dead-link sweep. The detector matched its own
 documentation.
 
 ⛔ **Confirming beats "fixing":** creating `file.md` would have been
@@ -338,7 +338,7 @@ an index line is the ONLY copy of a fact, "move detail to the child and shorten"
 (`slang-fixer` found **23 dead index links**, 22 genuinely absent, and was one edit away from
 trimming 4 lessons into nothing.)
 
-My result: **0 dead `](file.md)` index links**, and **49 dead `[[wiki-links]]` out of 1309**
+My result: **0 dead `](…)` markdown-form index links**, and **49 dead `[[wiki-links]]` out of 1309**
 across children. Triaged rather than counted:
 
 | class | n | disposition |

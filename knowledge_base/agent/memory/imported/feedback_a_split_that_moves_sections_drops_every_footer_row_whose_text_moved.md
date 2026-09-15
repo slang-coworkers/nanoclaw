@@ -17,7 +17,7 @@ metadata:
 
 ## ⛔ AND THE FIX INTRODUCED A SECOND DEFECT: I lifted rows from the POST-PROCESSED copy
 
-Restoring the 29 rows from the kb clone imported **kb-form links** — `](../learnings/…)` — because the sync pipeline rewrites `](wiki/learnings/…)` to relative form for GitHub rendering. `finalize` counts only the source form, so **coverage went DOWN by 7** (2317 → 2310) even though I had just restored 29 rows. The rows were present, correctly worded, and **invisible to the coverage counter.**
+Restoring the 29 rows from the kb clone imported **kb-form links** (the `../learnings/…` relative markdown-link form) — because the sync pipeline rewrites the `wiki/learnings/…` form to relative for GitHub rendering. `finalize` counts only the source form, so **coverage went DOWN by 7** (2317 → 2310) even though I had just restored 29 rows. The rows were present, correctly worded, and **invisible to the coverage counter.**
 
 ⇒ ⭐⭐⭐ **WRONG CORPUS, ONE STEP FURTHER: the baseline was right for AUDITING and wrong for COPYING.** The kb clone is the correct source of truth for *"what did yesterday cite?"* and the wrong source for *"what text should this file contain?"* — because a build step has transformed it. **When a pipeline post-processes a copy, that copy is an audit reference, never a restore source.** Same command, same file, valid for question A and invalid for question B — the third instance of that exact shape in two days.
 

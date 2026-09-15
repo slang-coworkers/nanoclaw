@@ -7,9 +7,9 @@ metadata:
   originSessionId: 24ba7a33-9ff1-4b89-b9ce-7abc69b209cb
 ---
 
-The daily learnings-wiki task prompt says: "finalize only prints the first 40; compute the true UNCOVERED set manually (a learning is uncovered unless a concept links it via `[[wiki/learnings/<file>.md]]` or `[text](wiki/learnings/<file>.md)`)."
+The daily learnings-wiki task prompt says: "finalize only prints the first 40; compute the true UNCOVERED set manually (a learning is uncovered unless a concept links it to a `wiki/learnings/<file>.md` target in either the `[[…]]` wikilink or the `[text](…)` markdown form)."
 
-**That recipe is stale against the current on-disk `/workspace/shared/.learnings_wiki.py` (dated Jul 6).** The embedded skill version used `LINK = re.compile(r"\[(?:[^\]]*)\]\((wiki/[^)]+\.md)\)")`, which does NOT match the nested-bracket citation form the concept pages actually use: `[[approver/clause-gap] text](wiki/learnings/…md)`. The on-disk `finalize()` was FIXED (line ~237) to `URL = re.compile(r"\]\((wiki/[^)]+\.md)\)")` — matching on `](url)` alone — precisely to count those honestly (see its inline comment: "Matching on `](url)` alone keeps coverage honest").
+**That recipe is stale against the current on-disk `/workspace/shared/.learnings_wiki.py` (dated Jul 6).** The embedded skill version used `LINK = re.compile(r"\[(?:[^\]]*)\]\((wiki/[^)]+\.md)\)")`, which does NOT match the nested-bracket citation form the concept pages actually use — a `[[approver/clause-gap] text](…)` link pointing at a `wiki/learnings/…md` target. The on-disk `finalize()` was FIXED (line ~237) to `URL = re.compile(r"\]\((wiki/[^)]+\.md)\)")` — matching on `](url)` alone — precisely to count those honestly (see its inline comment: "Matching on `](url)` alone keeps coverage honest").
 
 **Consequence:** a hand-recount using the OLD `LINK`/`[[…]]` rule over-counts uncovered (observed 2026-08-03: recipe→135, real finalize→2). The finalize `coverage N/N` line and its printed UNCOVERED list ARE the truth; the "40-print truncation" caveat only matters when >40 are actually uncovered.
 
