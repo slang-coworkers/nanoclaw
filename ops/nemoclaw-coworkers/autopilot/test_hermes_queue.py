@@ -667,6 +667,28 @@ class UpstreamAsks(unittest.TestCase):
         self.assertEqual(hq.parse_upstream_asks(""), [])
         self.assertEqual(hq.parse_upstream_asks("# Upstream asks\n\n(none yet)\n"), [])
 
+    def test_parse_upstream_asks_prose_dispositions(self):
+        """The Orchestrator writes the disposition as prose after the vocabulary word; the word decides."""
+        text = (
+            "## Upstream asks\n\n| id | source row | citation | ask | disposition | owner | updated |\n| --- | --- | --- | --- | --- | --- | --- |\n"
+            "| UA-5 | RT-F03 | x.py:1 | ask a | open — deferred to P8 by orchestrator ruling 2026-09-12 (Option A) | P8 | 2026-09-12 |\n"
+            "| UA-6 | GOV-F25 | x.py:2 | ask b | **DELIVERED (#13, merge b838db13, 2026-09-14; formerly adopted → GOV-F25 PR)** — OPERATOR GO 2026-09-13 | orch | 2026-09-14 |\n"
+            "| UA-9 | GOV-F25 | x.py:3 | ask c | **documented residual — NOT built** (orchestrator ruling 2026-09-13) | orch | 2026-09-13 |\n"
+            "| UA-10 | GOV-F27 | x.py:4 | ask d | `tracked` — not filed | P8 | 2026-09-14 |\n"
+            "| UA-11 | GOV-F27 | x.py:5 | ask e | someday maybe | P8 | 2026-09-14 |\n"
+        )
+        asks = {a["id"]: a for a in hq.parse_upstream_asks(text)}
+        self.assertEqual(asks["UA-5"]["disposition"], "open")
+        self.assertTrue(asks["UA-5"]["disposition_ok"])
+        self.assertTrue(asks["UA-5"]["disposition_detail"].startswith("deferred to P8"))
+        self.assertEqual(asks["UA-6"]["disposition"], "delivered")
+        self.assertTrue(asks["UA-6"]["disposition_ok"])
+        self.assertIn("#13, merge b838db13", asks["UA-6"]["disposition_detail"])
+        self.assertIn("OPERATOR GO 2026-09-13", asks["UA-6"]["disposition_detail"])
+        self.assertEqual((asks["UA-9"]["disposition"], asks["UA-9"]["disposition_ok"]), ("documented", True))
+        self.assertEqual((asks["UA-10"]["disposition"], asks["UA-10"]["disposition_ok"]), ("tracked", True))
+        self.assertEqual((asks["UA-11"]["disposition"], asks["UA-11"]["disposition_ok"]), ("open", False))
+
     def test_rows_gain_upstream_asks(self):
         st = hq.build_state(PLAN, MATRIX, LEDGER, now=NOW, upstream_asks_text=UPSTREAM_ASKS)
         self.assertEqual(st["rows"]["LOOP-F35"]["upstream_asks"], ["UA-1"])

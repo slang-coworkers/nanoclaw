@@ -105,7 +105,11 @@ CARRIED_HEADING_RE = re.compile(r"(?i)^##+\s+carried criteria\b")
 CRITERION_RE = re.compile(r"^AC-([A-Z0-9]+-F[0-9]+(?:\.[a-z])?)-(\d+)$")
 CARRIED_STATUS_RE = re.compile(r"(?i)^(open|covered|dropped)\b\s*(?:\((.*)\))?\s*$")
 UA_ID_RE = re.compile(r"^UA-\d+$")
-UA_DISP_RE = re.compile(r"(?i)^(open|filed|bypassed|declined|adopted)\b\s*(?:\((.*)\))?\s*$")
+# The Orchestrator writes dispositions as prose ("open — deferred to P8 …", "**DELIVERED (#13, …)** — …",
+# "**documented residual — NOT built** (…)"). The first vocabulary word decides the kind; everything
+# after it (parenthesised or dash-separated) is the detail. Unknown first words still read as open with
+# disposition_ok false so build_state alerts on them.
+UA_DISP_RE = re.compile(r"(?is)^(open|filed|bypassed|declined|adopted|delivered|documented|tracked)\b\s*(.*)$")
 ANY_DASH_RE = re.compile("[‐‑‒–−]")  # every look-alike dash in an id cell -> `-`
 
 ZONES = {
@@ -438,12 +442,20 @@ def _split_ledger_sections(text: str) -> tuple[str, str]:
 
 
 def _kind_and_detail(cell: str, pattern: re.Pattern) -> tuple[str | None, str | None]:
-    """`covered (#12)` -> ("covered", "#12"); `open` -> ("open", None); anything else -> (None, None)."""
-    m = pattern.match(clean_id(cell))
+    """`covered (#12)` -> ("covered", "#12"); `open` -> ("open", None);
+    `**DELIVERED (#13, …)** — OPERATOR GO` -> ("delivered", "#13, … — OPERATOR GO");
+    `documented residual — NOT built (ruling)` -> ("documented", "residual — NOT built (ruling)");
+    anything whose first word is not in the vocabulary -> (None, None). Markdown emphasis and
+    backticks never change the reading."""
+    m = pattern.match(clean_id(re.sub(r"[*_`]+", "", cell)))
     if not m:
         return None, None
-    detail = (m.group(2) or "").strip()
-    return m.group(1).lower(), detail or None
+    rest = " — ".join(x for x in ((m.group(i) or "").strip() for i in range(2, (m.re.groups or 1) + 1)) if x)
+    rest = re.sub(r"^[—–:-]+\s*", "", rest)
+    if rest.startswith("(") and ")" in rest:
+        rest = rest[1:].replace(")", "", 1).strip()
+        rest = re.sub(r"^[—–:-]+\s*", "", rest)
+    return m.group(1).lower(), rest or None
 
 
 def _fold_surplus(cells: list[str], header: list[str], into: str, col: dict[str, int]) -> list[str]:
@@ -983,7 +995,7 @@ def build_state(
         if not a["id_ok"] or not a["disposition_ok"]:
             what = [] if a["id_ok"] else [f"id {a['id']!r} is not UA-<n>"]
             if not a["disposition_ok"]:
-                what.append(f"disposition {a['disposition_raw']!r} is not open | filed (<url>) | bypassed (<how>) | declined (<reason>) | adopted (<row>)")
+                what.append(f"disposition {a['disposition_raw']!r} is not open | filed (<url>) | bypassed (<how>) | declined (<reason>) | adopted (<row>) | delivered (<pr>) | documented (<what>) | tracked")
             alerts.append({"kind": "upstream-ask-malformed", "row": a["source_row"] or None, "detail": f"upstream ask {a['id']}: " + "; ".join(what) + " — fix upstream-asks.md"})
         elif a["source_row"] and a["source_row"] not in matrix["rows"]:
             alerts.append({"kind": "upstream-ask-unknown-row", "row": None, "detail": f"upstream ask {a['id']} names source row {a['source_row']}, which is not in the matrix"})
