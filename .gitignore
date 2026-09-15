@@ -66,6 +66,7 @@ AGENTS.md
 docs/maintainer-guide.md
 docs/drafts/
 forks.md
+.worktrees/
 
 # Local knowledge/scratch corpora, archives, runtime pidfiles — never tracked.
 # slang_kb/ is a large raw-export corpus that must never be `git add`-ed.
