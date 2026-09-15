@@ -277,7 +277,10 @@ async function drainSession(session: Session): Promise<void> {
       if (msg.kind !== 'system' && msg.channelType !== 'agent') {
         pauseTypingRefreshAfterDelivery(session.id);
         if (msg.kind !== 'task_log') {
-          await fanOutboundMessage(
+          // Cross-session context: echo the delivered reply into the
+          // conversation's recently active sibling sessions. Unawaited — the
+          // next part of a multi-part reply must not wait on ambient writes.
+          void fanOutboundMessage(
             {
               id: msg.id,
               kind: msg.kind,
