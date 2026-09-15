@@ -473,7 +473,11 @@ async function* runOneTurn(
       // ceiling, instead of leaving costStopRequested false and admitting another
       // turn. `retryable` is dropped: it was always false here, and an a2a edge
       // now gets its retry/bounce decision from classifyTurnError on the result.
-      yield { type: 'result', text: turnState.error.message, isError: true };
+      // The notice goes in `error`, not `text`: chat delivery now takes ONLY the
+      // provider's dedicated error field, so unwrapped model output and raw
+      // diagnostics stay private (same contract claude.ts follows). Folding it
+      // into `text` would leave a codex failure with no deliverable notice.
+      yield { type: 'result', text: null, isError: true, error: turnState.error.message };
       return;
     }
 

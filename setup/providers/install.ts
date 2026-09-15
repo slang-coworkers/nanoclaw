@@ -27,49 +27,18 @@
  * engine couldn't apply deterministically (agentTasks / deferred → install
  * failed: a provider install is fully deterministic with no prompts).
  */
-import { execSync } from 'node:child_process';
+import { execFileSync, execSync } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 
 import { applySkill, type ApplyResult } from '../../scripts/skill-apply.js';
 import {
   verifyProviderContracts,
+  isPinnedBunVersion,
   type ProviderContractVerification,
 } from '../../scripts/provider-contract-verifier.js';
 import { parseProviderDescriptor } from './skill-descriptor.js';
-
-/** Commands the directive engine emits that the surrounding setup flow owns. */
-function isFlowOwnedCommand(cmd: string): boolean {
-  return (
-    /\bpnpm\s+run\s+build\b/.test(cmd) ||
-    /\btsc\b/.test(cmd) ||
-    /container\/build\.sh/.test(cmd) ||
-    /\bvitest\b/.test(cmd) ||
-    /\bbun\s+test\b/.test(cmd) ||
-    /provider-contract-verifier/.test(cmd) ||
-    // The skill's auth step re-invokes `--step provider-auth` — running it from
-    // inside the install would recurse. The flow runs runAuth itself.
-    /provider-auth/.test(cmd)
-  );
-}
-
-/**
- * Did this apply actually mutate the tree? The caller rebuilds the container
- * image when it did, so a false positive costs a multi-minute no-op rebuild and
- * fails hard wherever the build can't run.
- *
- * Read the journal, not `applied`: the engine counts a `run` directive as applied
- * even when `exec` above no-ops it, and every provider SKILL.md ends with
- * build/test/auth runs — so `applied` is non-empty on every apply.
- *
- * A journal entry counts as a mutation unless it is a `ran` we no-oped. An `undo`
- * settles that structurally: only `nc:dep` installs and `effect:external` runs
- * carry one, and both really ran. Checked before the command patterns so a dep on
- * a package whose name collides with one of them (`vitest`, `tsc`) still counts.
- */
-function didMutate(result: ApplyResult): boolean {
-  return result.journal.some((e) => e.op !== 'ran' || e.undo !== undefined || !isFlowOwnedCommand(e.cmd));
-}
+import { portableDependencyCommand } from '../../scripts/update-skills.js';
 
 export interface ProviderInstallResult {
   apply: ApplyResult;
@@ -80,15 +49,26 @@ export interface ProviderInstallResult {
   verification: ProviderContractVerification;
 }
 
-export async function applyProviderSkill(skillDir: string, projectRoot: string): Promise<ProviderInstallResult> {
+export async function applyProviderSkill(
+  skillDir: string,
+  projectRoot: string,
+  options: { mode?: 'install' | 'refresh' } = {},
+): Promise<ProviderInstallResult> {
+  let bunOnHost = false;
+  try {
+    const version = execFileSync('bun', ['--version'], { cwd: projectRoot, stdio: 'pipe', encoding: 'utf8' }).trim();
+    bunOnHost = isPinnedBunVersion(projectRoot, version);
+  } catch {
+    /* Use the container's pinned Bun through pnpm below. */
+  }
   // A provider SKILL.md has no prompt directives (vault-only auth runs
   // separately). No resolveInput is passed: absent ⇒ any prompt defers, which
   // is exactly the old defer-all stub's semantics with no stub to maintain.
   const result = await applySkill(skillDir, projectRoot, {
-    exec: (cmd) => {
-      if (isFlowOwnedCommand(cmd)) return; // build/test/auth are the flow's job
-      execSync(cmd, { cwd: projectRoot, stdio: 'pipe' });
-    },
+    mode: options.mode ?? 'install',
+    skipEffects: ['build', 'test', 'external'],
+    resolveDependencyCommand: (request) => portableDependencyCommand(projectRoot, bunOnHost, request),
+    exec: (cmd) => execSync(cmd, { cwd: projectRoot, stdio: 'pipe', encoding: 'utf8' }),
     // Fork-aware: reuse the existing resolver (handles upstream/fork remotes and
     // the auto-add-upstream fallback) instead of assuming `origin` — same call
     // setup/channels/slack.ts makes for the `channels` branch.
@@ -115,7 +95,9 @@ export async function applyProviderSkill(skillDir: string, projectRoot: string):
   if (verification.status === 'failed') blockers.push(verification.error ?? 'Provider contract verification failed');
   return {
     apply: result,
-    changed: didMutate(result),
+    // Captured compatibility predicates run on every apply, but do not alter
+    // the image. Only file mutations and dependency commands warrant a build.
+    changed: result.journal.some((entry) => entry.op !== 'ran' || entry.undo !== undefined),
     blockers,
     verification,
   };
