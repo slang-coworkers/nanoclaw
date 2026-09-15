@@ -79,8 +79,33 @@ vi.mock('../../container-runner.js', () => ({
 vi.mock('../../group-init.js', () => ({
   initGroupFilesystem: (...a: unknown[]) => mockInitGroupFilesystem(...a),
 }));
+// performCreateAgent writes `instructions.prepend.md` straight under
+// GROUPS_DIR/<folder> (trunk create-agent.ts, since ea121d124) and its
+// folder-dedupe loop is disk-aware, so GROUPS_DIR has to point into this test's
+// tmpdir — otherwise the persona write targets the checkout's real `groups/`
+// (ENOENT on a fresh install, pollution on a live one). Lazy getters read tmpDir
+// at call time; the original module is spread first so every other export keeps
+// its real value. Mirrors src/modules/agent-to-agent/create-agent.test.ts.
+vi.mock('../../config.js', async (importOriginal) => ({
+  ...(await importOriginal<typeof import('../../config.js')>()),
+  get GROUPS_DIR() {
+    return path.join(tmpDir, 'groups');
+  },
+  get DATA_DIR() {
+    return path.join(tmpDir, 'data');
+  },
+}));
 vi.mock('../agent-to-agent/write-destinations.js', () => ({
   writeDestinations: (...a: unknown[]) => mockWriteDestinations(...a),
+}));
+// nv-main's createAgent ends with `await import('../../index.js')` to refresh
+// adapter conversations. Loading the host entry point here would drag in
+// src/modules/index.ts, whose a2a barrel re-registers `create_agent` with the
+// plain upstream handler — overwriting this wrapper for every later test in
+// the file (production imports the barrel first and this module last, so the
+// wrapper wins there). Stub the one export the flow reaches for.
+vi.mock('../../index.js', () => ({
+  refreshAdapterConversations: vi.fn(),
 }));
 // The approvals barrel drags in the response handler + OneCLI bridge; the
 // wrapper only needs these three. notifyAgent stays REAL (from primitive.js)
@@ -275,6 +300,12 @@ beforeEach(async () => {
 
   tmpDir = fs.mkdtempSync(path.join(os.tmpdir(), 'slack-agent-flow-'));
   process.chdir(tmpDir);
+  // The real initGroupFilesystem creates GROUPS_DIR/<folder>; the persona write
+  // that follows it in performCreateAgent needs that directory to exist.
+  fs.mkdirSync(path.join(tmpDir, 'groups'), { recursive: true });
+  mockInitGroupFilesystem.mockImplementation(async (group: { folder: string }) => {
+    fs.mkdirSync(path.join(tmpDir, 'groups', group.folder), { recursive: true });
+  });
   fs.writeFileSync(path.join(tmpDir, '.env'), `SLACK_BOT_TOKEN=${ORIGIN_BOT_TOKEN}\n`);
   process.env.NANOCLAW_REGISTRY_TOKEN = REGISTRY_TOKEN; // broker mode, no account.json / .env lookup
 
@@ -652,7 +683,11 @@ describe('slack-aware create_agent — non-Slack parity', () => {
     const tgSession: Session = { ...SLACK_SESSION, id: 'sess-tg', messaging_group_id: 'mg-tg' };
     await createSession(tgSession);
     const envBefore = fs.readFileSync(path.join(tmpDir, '.env'), 'utf-8');
-    const mgCountBefore = (await getAllMessagingGroups()).length;
+    // Count Slack rows only: nv-main's upstream leg legitimately adds the new
+    // coworker's own dashboard channel (channel_type 'dashboard'), which is
+    // not a Slack side effect.
+    const slackMgCount = async () => (await getAllMessagingGroups()).filter((m) => m.channel_type === 'slack').length;
+    const mgCountBefore = await slackMgCount();
 
     await runCreateAgent({ name: 'Helper' }, tgSession);
 
@@ -660,7 +695,7 @@ describe('slack-aware create_agent — non-Slack parity', () => {
     expect(fetchCalls).toHaveLength(0);
     expect(fakeDeps.startChannelAdapter).not.toHaveBeenCalled();
     expect(fs.readFileSync(path.join(tmpDir, '.env'), 'utf-8')).toBe(envBefore);
-    expect((await getAllMessagingGroups()).length).toBe(mgCountBefore);
+    expect(await slackMgCount()).toBe(mgCountBefore);
   });
 
   it('null messaging_group_id (task/a2a session): skips the Slack leg', async () => {
