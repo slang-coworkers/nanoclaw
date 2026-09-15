@@ -336,7 +336,7 @@ jobs:
 
       - name: Container tests
         working-directory: container/agent-runner
-        run: bun test
+        run: bun run test
 
       # The learnings-wiki builder is Python embedded in a Markdown document, so no
       # compiler or typechecker ever sees it and its suite ran nowhere. It guards the
