@@ -5,7 +5,29 @@ import { join } from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import { pathToFileURL } from 'node:url';
 
-/** Query the live host, with a deadline even for an unresponsive socket. */
+/**
+ * @typedef {object} HostStatus
+ * @property {number} pid
+ * @property {string} started_at
+ * @property {string} instance_id
+ * @property {string} project_root
+ * @property {{ id: string, port: number, paths: string[] } | null} webhook
+ * @property {Array<{ instance: string, type: string, connected: boolean }>} channels
+ */
+
+/**
+ * Query the live host, with a deadline even for an unresponsive socket.
+ *
+ * The return shape is annotated for the same reason `waitForHost`'s options are
+ * (see below): unannotated, it infers as `any`, and a TS consumer that narrows
+ * the result then trips `noImplicitAny` — `.channels.some((channel) => ...)` in
+ * the add-mattermost verifier does exactly that. `HostStatus` mirrors the
+ * `status` command handler in `src/cli/commands/status.ts`, which produces it.
+ *
+ * @param {string} root
+ * @param {number} [timeoutMs]
+ * @returns {Promise<HostStatus>}
+ */
 export function queryHost(root, timeoutMs = 1000) {
   return new Promise((resolve, reject) => {
     const id = randomUUID();
