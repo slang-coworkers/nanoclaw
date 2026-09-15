@@ -3624,7 +3624,10 @@ export async function processQuery(
               isErrorResult: event.isError === true,
             },
           );
-          const willRetryTaskBlocks = shouldNudgeTaskBlocks(routing.taskRun, taskBlocks, taskBlockNudged);
+          // Completed partial output remains deliverable, but an explicit
+          // provider failure must keep its status and never trigger a retry.
+          const willRetryTaskBlocks =
+            event.isError !== true && shouldNudgeTaskBlocks(routing.taskRun, taskBlocks, taskBlockNudged);
           // Gate refusals are sender feedback — push them back to the emitting
           // agent so it re-sends correctly (parity with the bash-hook gates).
           // The gates' own 3-denial soft-cap bounds the re-send loop.
@@ -3818,6 +3821,9 @@ export async function processQuery(
           // off; classed 'turn', so it never auto-pauses the series.
           if ((isTaskTurn || !event.text?.trim()) && event.isError === true) {
             for (const id of initialBatchIds) markFailed(id);
+            // A chat turn that failed with no text delivered nothing, so the caller
+            // must see it as undelivered — the silent-turn path used to report it.
+            if (!isTaskTurn) undeliveredIds.push(...initialBatchIds);
             log('Task fire ended in an error result — acked failed, not completed');
           } else {
             markCompleted(initialBatchIds);

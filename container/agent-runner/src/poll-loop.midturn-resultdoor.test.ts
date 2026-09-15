@@ -688,7 +688,7 @@ describe('#1360 — native-codex cost settle + one-shot hard-stop deferral at th
     async function* events(): AsyncGenerator<ProviderEvent> {
       pulled++;
       // What codex.ts now yields on turn/failed.
-      yield { type: 'result', text: 'Turn timed out after 300000ms', isError: true };
+      yield { type: 'result', text: null, isError: true, error: 'Turn timed out after 300000ms' };
       // A second turn must NOT be admitted after the ceiling hard-stop — pulling
       // it is exactly the "admit another turn past the ceiling" regression #3 fixes.
       pulled++;
