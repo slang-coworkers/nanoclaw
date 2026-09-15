@@ -51,6 +51,15 @@ One run at a time: an exclusive flock on <state>.lock for the run's lifetime; a 
 `another run holds the lock` and exits 0 (a stalled Slack egress can push one run past the next
 cron tick, and two runs would each post the missing roots).
 
+Demo path (after the row passes): ONE root message `*Demo path*` — demo_path.render_slack over
+demo-path.json + the autopilot's live state — posted the first time the tracker has live state
+(it takes one --max-posts unit) and recorded under the state file's `demo_path` key
+({"ts", "channel", "text_hash", "posted_at", "updated_at"}). Every later run re-renders; when the
+text changed it is edited in place with chat.update (never re-posted, not counted against
+--max-posts); unchanged text makes no call. A failed chat.update is one log line and the hash stays,
+so the next run retries. Delete the `demo_path` key to post a fresh message. The tracker failing
+(no demo-path.json, an import error) is one log line; the lanes are unaffected.
+
 Stdlib only, no hostname guard. `--dry-run` prints what would be posted and calls nothing.
 """
 
@@ -58,6 +67,7 @@ from __future__ import annotations
 
 import argparse
 import fcntl
+import hashlib
 import http.client
 import importlib.util
 import json
@@ -80,6 +90,7 @@ CARD_SETTLE_S = 60  # a PNG younger than this may still be mid-write (card.sh sc
 PNG_HEAD = b"\x89PNG\r\n\x1a\n"
 PNG_TAIL = b"IEND\xaeB`\x82"
 THREAD_RE = re.compile(r"^hermes-(?P<row>.+)$")
+DEMO_KEY = "demo_path"  # the state-file key of the one edited-in-place demo-path message
 # Slack errors that no later call in this run can get past: a token or channel problem.
 FATAL_ERRORS = frozenset({
     "invalid_auth", "not_authed", "account_inactive", "token_revoked", "token_expired",
@@ -126,6 +137,23 @@ def _rows_board():
         spec.loader.exec_module(mod)
         _ROWS_BOARD = mod
     return _ROWS_BOARD
+
+
+_DEMO_PATH = None
+
+
+def _demo_path():
+    """demo_path.py (a sibling; importlib like rows-board so a hyphen-free name is not assumed on sys.path)."""
+    global _DEMO_PATH
+    if _DEMO_PATH is None:
+        path = os.path.join(HERE, "demo_path.py")
+        spec = importlib.util.spec_from_file_location("demo_path", path)
+        if spec is None or spec.loader is None:
+            raise RuntimeError(f"cannot load {path}")
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _DEMO_PATH = mod
+    return _DEMO_PATH
 
 
 # --------------------------------------------------------------------------- slack client
@@ -218,6 +246,11 @@ class SlackClient:
         if not ts:
             raise SlackError("chat.postMessage", "no ts in response")
         return str(ts)
+
+    def update_message(self, channel: str, ts: str, text: str) -> str:
+        """chat.update: edit the message `ts` in `channel` in place. Same escaping as post_message."""
+        out = self.call("chat.update", {"channel": channel, "ts": ts, "text": mrkdwn_escape(text)}, as_json=True)
+        return str(out.get("ts") or ts)
 
     def upload_file(self, channel: str, thread_ts: str, path: str, title: str, initial_comment: str) -> str:
         """files.getUploadURLExternal → POST the bytes to upload_url → files.completeUploadExternal. Returns the file id.
@@ -421,6 +454,75 @@ def row_order(plan: dict | None, ledger: dict, cards: dict) -> list[str]:
     return order
 
 
+# --------------------------------------------------------------------------- demo path
+
+def demo_text(root: str, spec_path: str | None = None) -> tuple:
+    """(render_slack text | None, state_ok, error | None): the tracker rendered for Slack. Any failure in the
+    tracker is (None, False, <reason>) — one log line for the caller, never a crash of the run."""
+    try:
+        dp = _demo_path()
+        spec = dp.load_spec(spec_path or dp.SPEC_PATH)
+        live = dp.load_live(root)
+        result = dp.compute(spec, live, datetime.now(timezone.utc))
+        return dp.render_slack(result), bool(result.get("state_ok")), None
+    except Exception as exc:  # noqa: BLE001 - the tracker must never take the lanes down
+        return None, False, f"demo path unavailable: {type(exc).__name__}: {exc}"
+
+
+def text_hash(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
+
+
+def post_demo_path(root: str, channel: str, state: dict, client, dry_run: bool, budget, save, spec_path: str | None = None) -> None:
+    """The one `*Demo path*` message: posted once (when the tracker has live state; one budget unit), then
+    edited in place with chat.update whenever its text changes (no budget). Never re-posted; a failed
+    update is logged and retried next run because the hash is only stored after success."""
+    text, state_ok, err = demo_text(root, spec_path)
+    if err:
+        log(err)
+    if text is None:
+        return
+    h = text_hash(text)
+    entry = state.get(DEMO_KEY) if isinstance(state.get(DEMO_KEY), dict) else None
+    if entry and entry.get("ts"):
+        if entry.get("text_hash") == h:
+            return
+        if dry_run:
+            print(f"would update demo path ({len(text.splitlines())} lines)")
+            return
+        try:
+            client.update_message(entry.get("channel") or channel, str(entry["ts"]), text)
+        except SlackFatal:
+            raise
+        except SlackError as exc:
+            log(f"{exc} (demo path update; retried next run)")
+            return
+        entry["text_hash"] = h
+        entry["updated_at"] = now_iso()
+        save()
+        print("updated demo path")
+        return
+    if not state_ok:
+        log("demo path: no live state.json yet; the first message waits for it")
+        return
+    if not budget.take():
+        log("demo path: no budget left this run; posted next run")
+        return
+    if dry_run:
+        print(f"would post demo path ({len(text.splitlines())} lines)")
+        return
+    try:
+        ts = client.post_message(channel, text)
+    except SlackFatal:
+        raise
+    except SlackError as exc:
+        log(f"{exc} (demo path)")
+        return
+    state[DEMO_KEY] = {"channel": channel, "ts": ts, "text_hash": h, "posted_at": now_iso(), "updated_at": now_iso()}
+    save()
+    print("posted demo path")
+
+
 # --------------------------------------------------------------------------- the run
 
 class Budget:
@@ -437,7 +539,7 @@ class Budget:
 
 
 def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_posts: int,
-        plan_paths: list, ledger_path: str) -> int:
+        plan_paths: list, ledger_path: str, demo_spec: str | None = None) -> int:
     rows_board = _rows_board()
     plan, plan_err = rows_board.load_plan(plan_paths)
     if plan_err:
@@ -547,6 +649,9 @@ def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_pos
         save()
         print(f"{verb} {key[:-7]} line {rid}: {text}")
 
+    # Pass D — the demo path: one message, edited in place (post_demo_path; a tracker failure is a log line).
+    post_demo_path(root, channel, state, client, dry_run, budget, save, demo_spec)
+
     left = sum(1 for rid in rows if not srows.get(rid, {}).get("thread_ts")) + len(still_pending)
     log(f"{verb} {budget.posted} on {len(rows)} rows ({len(srows)} threads); {left} left for the next run")
     return 0
@@ -562,6 +667,7 @@ def main(argv=None, client_factory=None) -> int:
     ap.add_argument("--ledger", default=None, help="the Orchestrator's ledger.md (default: <root>/groups/orchestrator/reports/ledger.md)")
     ap.add_argument("--dry-run", action="store_true", help="print what would be posted; no API calls, no state change")
     ap.add_argument("--max-posts", type=int, default=DEFAULT_MAX_POSTS, help=f"API posts per run, roots + cards + lines (default {DEFAULT_MAX_POSTS})")
+    ap.add_argument("--demo-spec", default=os.environ.get("DEMO_PATH_SPEC"), help="demo-path.json for the demo-path message (default: next to this script)")
     args = ap.parse_args(argv)
     root = os.path.abspath(args.root)
     lock_fh = None
@@ -593,6 +699,7 @@ def main(argv=None, client_factory=None) -> int:
         return run(
             root, channel, state_path, client, args.dry_run, args.max_posts, plan_paths,
             args.ledger or os.path.join(root, "groups", "orchestrator", "reports", "ledger.md"),
+            args.demo_spec or None,
         )
     except NotInChannel as exc:
         log(f"{exc} — the bot is not a member of {channel}: /invite it there (channels:join is not granted), then rerun")

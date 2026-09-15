@@ -2,11 +2,14 @@
 # Publish coworker artifacts under the 8091 viewer root (~/.local/share/nemo-www):
 #   /explanations/<group>/<file>.html  — every coworker's reports/pr-explanations/ (+ newest-first index)
 #   /status/latest.html                — the Orchestrator's daily port status report (dated copies alongside)
-#   /rows/index.html                   — the rows board: batch → row → a|b|t|r latest task cards (rows-board.py;
-#                                        /rows/<ROW>.html per row, card dirs symlinked under /rows/cards/<group>/<thread>/)
+#   /rows/index.html                   — the rows board: the "Demo path" tracker on top (demo_path.py + demo-path.json:
+#                                        rung status + ETA from autopilot/state.json), then batch → row → a|b|t|r latest
+#                                        task cards (rows-board.py; /rows/<ROW>.html per row, card dirs symlinked under
+#                                        /rows/cards/<group>/<thread>/)
 #   /index.html                        — the viewer root: one link per surface above (generated here, so a new
 #                                        surface is never missing from the landing page)
-#   Slack #hermes-port                 — one thread per row: root, role cards, merge line (slack-rows.py; state in
+#   Slack #hermes-port                 — one thread per row: root, role cards, merge line, plus ONE "*Demo path*" message
+#                                        edited in place with chat.update (slack-rows.py; state in
 #                                        data/shared/hermes/slack-threads.json; log in logs/slack-rows.log)
 # Idempotent; cron every 15 min. Errors are handled explicitly (no set -e: an empty listing is not a failure).
 set -u

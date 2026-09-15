@@ -8,7 +8,9 @@ Run: python3 -m unittest ops/nemoclaw-coworkers/autopilot/test_rows_board.py
 
 from __future__ import annotations
 
+import contextlib
 import html
+import io
 import json
 import os
 import subprocess
@@ -429,3 +431,82 @@ class CarriedTablesTest(unittest.TestCase):
         self.assertIn('<a href="ISO-F17.html"><b>ISO-F17</b></a><span class="badge" title="carries open criteria: AC-LOOP-F35-5">carries 1</span>', index)
         self.assertIn("<b>UA-9</b>", index)
         self.assertNotIn("<b>UA-2</b>", index)
+
+
+class DemoPathSectionTest(unittest.TestCase):
+    """The board's "Demo path" section (demo_path.render_html via rows-board.demo_section): rendered at the
+    top from state.json, and a broken or missing demo-path.json is a banner, never a broken board."""
+
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name) / "checkout"
+        self.www = Path(self.tmp.name) / "www"
+        put(self.root / "docs" / "hermes-port" / "dispatch-plan.md", PLAN)
+        rows = {"LOOP-F35": {"state": "testing", "disposition": "BUILD", "batch": "1a"},
+                "MEM-F44": {"state": "queued", "disposition": "CONFIGURE", "batch": "1b"},
+                "ISO-F17": {"state": "queued", "disposition": "ADOPT", "batch": "adopt"}}
+        put(self.root / "data" / "shared" / "hermes" / "autopilot" / "state.json", json.dumps({
+            "generated_at": (NOW_DT - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ"), "rows": rows,
+            "gating": {"1a_first_pass": False}, "wip": {"limit": 3},
+        }))
+        put(self.root / "data" / "shared" / "hermes" / "autopilot" / "config.json", json.dumps({"wip": 3, "paused_rows": ["MEM-F44"]}))
+
+    def tearDown(self):
+        self.tmp.cleanup()
+
+    def test_section_renders_at_the_top_from_state_json(self):
+        r = board(self.root, self.www, "--ncl", "")
+        self.assertEqual(r.returncode, 0, r.stderr)
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        i = index.find("<h2>Demo path")
+        self.assertGreater(i, 0)
+        self.assertLess(i, index.find("<h2>Batch 1a"), "the demo path comes before the first batch table")
+        self.assertLess(index.find("<h1>"), i)
+        for rid in ("<b>R1</b>", "<b>R2</b>", "<b>R3</b>", "<b>R4</b>", "<b>R5</b>"):
+            self.assertIn(rid, index)
+        self.assertIn("LOOP-F35 · testing", index)
+        self.assertIn("in progress", index)
+        self.assertIn("ISO-F17 · queued", index)
+        self.assertIn("ETA model", index)
+        # Rows the fixture state does not know are unknown, collapsed into one line per reason.
+        self.assertIn("not in state.json: LOOP-F37, GOV-F24", index)
+        # Everything else on the board is still there.
+        self.assertIn("<h2>Batch 1a", index)
+        self.assertIn("<h2>Carried criteria", index)
+        self.assertIn("<h2>Upstream asks", index)
+
+    def test_missing_or_broken_spec_is_a_banner_and_the_board_still_renders(self):
+        r = board(self.root, self.www, "--ncl", "", "--demo-spec", str(self.root / "nope.json"))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("demo path unavailable — FileNotFoundError", index)
+        self.assertIn("rows-board: demo path: FileNotFoundError", r.stderr)
+        self.assertIn("<h2>Batch 1a", index)
+        bad = self.root / "bad.json"
+        bad.write_text('{"rungs": []}', encoding="utf-8")
+        r = board(self.root, self.www, "--ncl", "", "--demo-spec", str(bad))
+        self.assertEqual(r.returncode, 0, r.stderr)
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("demo path unavailable — ValueError: demo-path.json has no rungs", index)
+        # The env var is the same override.
+        r = board(self.root, self.www, "--ncl", "", env={"DEMO_PATH_SPEC": str(bad)})
+        self.assertIn("demo path unavailable", (self.www / "rows" / "index.html").read_text(encoding="utf-8"))
+
+    def test_demo_section_helper_honours_the_ledger_override_and_never_raises(self):
+        sys.path.insert(0, str(HERE.parent))
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("rows_board_for_demo", BOARD)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        ledger = self.root / "elsewhere" / "ledger.md"
+        put(ledger, LEDGER)
+        frag = mod.demo_section(str(self.root), NOW_DT, ledger_path=str(ledger))
+        self.assertIn("<h2>Demo path", frag)
+        self.assertNotIn("ledger.md not found", frag)
+        frag = mod.demo_section(str(self.root), NOW_DT)
+        self.assertIn("ledger.md not found", frag, "the root-derived ledger is missing in this fixture")
+        err = io.StringIO()
+        with contextlib.redirect_stderr(err):
+            frag = mod.demo_section(str(self.root), NOW_DT, spec_path=str(self.root / "missing.json"))
+        self.assertIn("demo path unavailable", frag)
+        self.assertIn("rows-board: demo path: FileNotFoundError", err.getvalue())

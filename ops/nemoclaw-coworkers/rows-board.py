@@ -20,7 +20,10 @@ Reads (every input optional; a missing or broken one becomes a banner, never a c
 
 Writes under <WWW>/rows/ (tmp + rename):
 
-  index.html      batch → rows → a | b | t | r: the latest card per role as a 180 px thumbnail,
+  index.html      first the "Demo path" section (demo_path.py: five rungs, the rows each needs with
+                  live state, status + ETA from the autopilot's queue state; a failure there is one
+                  banner, never a broken board), then
+                  batch → rows → a | b | t | r: the latest card per role as a 180 px thumbnail,
                   bordered in the verdict colour (ok / bad / run), linking to the row page; a row
                   that carries open criteria wears a `carries N` badge. Then two sections:
                   "Carried criteria" (criterion · from → to · status · reason, open first; a to-row
@@ -303,7 +306,28 @@ def link_card_dirs(www_rows: str, cards: dict) -> None:
                 log(f"symlink {link}: {exc}")
 
 
-# --------------------------------------------------------------------------- views
+# --------------------------------------------------------------------------- demo path
+
+def _demo_path():
+    """demo_path.py (a sibling), imported late: its absence is a banner, not a crash."""
+    sys.path.insert(0, HERE)
+    import demo_path
+    return demo_path
+
+
+def demo_section(root: str, now: datetime, state_path: str | None = None, config_path: str | None = None,
+                 spec_path: str | None = None, plan_paths: list | None = None, ledger_path: str | None = None) -> str:
+    """The index page's "Demo path" section (demo_path.render_html over load_spec + load_live + compute).
+    Any failure — a missing or broken demo-path.json, an import error, a bug — is one banner and a log
+    line; the rest of the board renders as before."""
+    try:
+        dp = _demo_path()
+        spec = dp.load_spec(spec_path or dp.SPEC_PATH)
+        live = dp.load_live(root, state_path=state_path, config_path=config_path, plan_paths=plan_paths, ledger_path=ledger_path)
+        return dp.render_html(dp.compute(spec, live, now))
+    except Exception as exc:  # noqa: BLE001 - the tracker must never take the board down
+        log(f"demo path: {type(exc).__name__}: {exc}")
+        return f'<h2>Demo path</h2><div class="banner">demo path unavailable — {esc(f"{type(exc).__name__}: {exc}")}</div>'
 
 
 # --------------------------------------------------------------------------- live status
@@ -633,13 +657,15 @@ def page(title: str, body: str, generated: str, crumbs: str = "") -> str:
 
 
 def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetime, live: dict | None = None, live_err: str | None = None,
-                 tables: dict | None = None) -> str:
+                 tables: dict | None = None, demo_html: str = "") -> str:
     now_ts = now.timestamp()
     live = live or {}
     sup_rows = ((state or {}).get("supervise") or {}).get("rows") or {} if isinstance(state, dict) else {}
     out = []
     for b in list(banners) + table_banners(tables):
         out.append(f'<div class="banner">{esc(b)}</div>')
+    if demo_html:
+        out.append(demo_html)  # the demo path sits at the top, before the batch tables
     if live_err:
         out.append(f'<div class="banner">live status unavailable — {esc(live_err)}; dots show grey</div>')
     out.append('<p class="legend">live status per role (from <code>ncl sessions list</code> at generation time): '
@@ -752,7 +778,7 @@ def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url
 # --------------------------------------------------------------------------- main
 
 def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, threads_path: str, dashboard_url: str | None, ncl_bin: str | None = None,
-        ledger_path: str | None = None, asks_path: str | None = None) -> int:
+        ledger_path: str | None = None, asks_path: str | None = None, demo_spec: str | None = None) -> int:
     www_rows = os.path.join(www, "rows")
     os.makedirs(www_rows, exist_ok=True)
 
@@ -775,7 +801,9 @@ def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, t
     if live_err:
         log(f"live status: {live_err}")
 
-    write_atomic(os.path.join(www_rows, "index.html"), render_index(plan, plan_err, state, cards, banners, now, live, live_err, tables))
+    demo_html = demo_section(root, now, state_path=state_path, spec_path=demo_spec, plan_paths=plan_paths,
+                             ledger_path=ledger_path or os.path.join(reports, "ledger.md"))
+    write_atomic(os.path.join(www_rows, "index.html"), render_index(plan, plan_err, state, cards, banners, now, live, live_err, tables, demo_html))
     rids = set((plan or {}).get("rows") or {}) | {THREAD_RE.match(t).group("row") for t in cards}
     written = 0
     for rid in sorted(rids):
@@ -808,6 +836,7 @@ def main(argv=None) -> int:
     ap.add_argument("--upstream-asks", default=None, help="the Orchestrator's upstream-asks.md (default: <root>/groups/orchestrator/reports/upstream-asks.md)")
     ap.add_argument("--dashboard-url", default=os.environ.get("DASHBOARD_URL"), help="dashboard base URL for the lane deep link (default: $DASHBOARD_URL)")
     ap.add_argument("--ncl", default=os.environ.get("NANOCLAW_NCL"), help="ncl binary for live session status (default: <root>/bin/ncl when present; '' disables)")
+    ap.add_argument("--demo-spec", default=os.environ.get("DEMO_PATH_SPEC"), help="demo-path.json for the Demo path section (default: next to this script)")
     ap.add_argument("--now", default=None, help="ISO timestamp (tests)")
     try:
         args = ap.parse_args(argv)
@@ -830,6 +859,7 @@ def main(argv=None) -> int:
             ncl_bin or None,
             args.ledger or None,
             args.upstream_asks or None,
+            args.demo_spec or None,
         )
     except SystemExit:
         raise

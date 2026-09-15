@@ -1,0 +1,111 @@
+{
+  "version": 1,
+  "title": "Demo path",
+  "planning_hours": {
+    "BUILD": 48,
+    "CONFIGURE": 15,
+    "ADOPT": 10
+  },
+  "stage_factors": {
+    "queued": 1.0,
+    "dispatched": 0.85,
+    "spec_handoff": 0.85,
+    "building": 0.6,
+    "pr_open": 0.35,
+    "testing": 0.35,
+    "review": 0.2,
+    "gate": 0.1,
+    "merged": 0.0
+  },
+  "rungs": [
+    {
+      "id": "R1",
+      "title": "Governed 5-bot fleet on one stock gateway, no sandbox",
+      "rows": [
+        {"id": "LOOP-F35", "kind": "BUILD"},
+        {"id": "LOOP-F37", "kind": "BUILD"},
+        {"id": "GOV-F24", "kind": "BUILD"},
+        {"id": "GOV-F25", "kind": "BUILD"},
+        {"id": "GOV-F23", "kind": "CONFIGURE"},
+        {"id": "GOV-F27", "kind": "CONFIGURE"},
+        {"id": "RT-F01", "kind": "CONFIGURE"},
+        {"id": "RT-F02", "kind": "CONFIGURE"},
+        {"id": "RT-F03", "kind": "CONFIGURE"},
+        {"id": "COST-F29", "kind": "BUILD"}
+      ],
+      "manual": [],
+      "requires": []
+    },
+    {
+      "id": "R2",
+      "title": "Every bot's tools run in its own rootless podman sandbox, veto live",
+      "rows": [
+        {"id": "CRED-F28", "kind": "BUILD"},
+        {"id": "ISO-F13", "kind": "CONFIGURE"},
+        {"id": "ISO-F14", "kind": "CONFIGURE"},
+        {"id": "ISO-F15", "kind": "CONFIGURE"}
+      ],
+      "manual": [],
+      "requires": []
+    },
+    {
+      "id": "R3",
+      "title": "Wired bot-to-bot inside the gateway: rooms, gated edges, refusals, runaway guard",
+      "rows": [
+        {"id": "A2A-F21", "kind": "CONFIGURE"}
+      ],
+      "manual": [
+        {
+          "id": "ROOMS",
+          "kind": "manual",
+          "title": "rooms provisioned by the operator (desktop-only groups JSON-RPC)",
+          "hours": 8,
+          "after": ["A2A-F21"]
+        }
+      ],
+      "requires": []
+    },
+    {
+      "id": "R4",
+      "title": "Fleet as a service: one gateway container, N profiles, N sandboxes, real 5-bot workflow",
+      "rows": [
+        {"id": "ISO-F17", "kind": "ADOPT", "after": ["P6-FLEET"]}
+      ],
+      "manual": [
+        {
+          "id": "P6-FLEET",
+          "kind": "manual",
+          "title": "P6-FLEET assembly (hand-dispatched, ~48h)",
+          "hours": 48,
+          "after": ["R2", "R3"]
+        }
+      ],
+      "requires": ["R2", "R3"]
+    },
+    {
+      "id": "R5",
+      "title": "Same fleet inside ONE OpenShell container with APF egress (P7)",
+      "rows": [],
+      "manual": [
+        {
+          "id": "W0-W12",
+          "kind": "manual",
+          "title": "work items W0-W12 (17-24 coworker-days, 3-5 calendar weeks)",
+          "hours": 504,
+          "hours_max": 840,
+          "after": ["R4"]
+        }
+      ],
+      "requires": ["R4"]
+    }
+  ],
+  "notes": [
+    "A rung is done when every required row is merged (or listed in autopilot config.waive) and every manual item carries a done_at.",
+    "Row remaining hours = planning_hours[disposition] x stage_factors[state]; the disposition comes from state.json (the row's `kind` here is the fallback), the state from the supervisor's stage when it names one, else the queue's row state.",
+    "Rows still open are list-scheduled in hermes_queue.dispatch_order (the order the autopilot dispatches; this file's order is the fallback) onto config.wip slots from now: rows already in flight hold a slot until their remaining hours elapse, a BUILD row waits for the BUILD lane (one BUILD in flight at a time), a row behind a false gate starts when the rows that gate requires finish (1a_first_pass <- batch 1a, batch2_merged <- batch 2, batch3_merged <- batch 3, batch4_merged <- batch 4; podman_box is a config flag, never a row).",
+    "Paused rows (config.paused_rows) and rows the ledger blocked are excluded from every finish time and flagged on each rung that needs them; a row with an `after` list starts no earlier than those items finish (its slot is not re-planned).",
+    "A manual item starts when everything in its `after` list (rows, manual items or rungs) has finished and lasts `hours` (`hours_max` gives the upper end of a range); R5 therefore reads as R4 + 21..35 days.",
+    "Rung ETA = the latest finish over its rows, manual items and required rungs; `done <date>` uses the ledger's merge timestamps when present, else state.json's generated_at. Anything unreadable renders as unknown, never as a crash.",
+    "Edit this file to change the rungs, the rows they need, planning hours or stage factors; both rows-board.py and slack-rows.py read it on every run."
+  ]
+}
