@@ -311,6 +311,7 @@ The host forwards these `.env` variables into agent containers via Docker `-e` f
 | `ANTHROPIC_DEFAULT_{OPUS,SONNET,HAIKU}_MODEL` | Model overrides |
 | `ENABLE_PROMPT_CACHING_1H` | 1-hour prompt cache TTL (non-Bedrock path only) |
 | `ENABLE_PROMPT_CACHING_1H_BEDROCK` | 1-hour prompt cache TTL when using an `aws/anthropic/bedrock-*` model (the path most NVIDIA inference-api setups are on). Set one or the other depending on provider. |
+| `ANTHROPIC_BETAS` | Extra `anthropic-beta` values the SDK appends to every request, comma-separated. `fine-grained-tool-streaming-2025-05-14` makes large tool calls stream incrementally; without it the API buffers the tool JSON and a 50 KB `Write` stalls the stream past the SDK's 180 s watchdog. Works with `CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1`. |
 | `FORCE_PROMPT_CACHING_5M` | Override back to the 5-minute default, e.g. for comparative testing |
 | `CLAUDE_CODE_EFFORT_LEVEL` | Reasoning effort |
 | `CODEX_MODEL`, `CODEX_MODEL_PROVIDER` | Codex model config |
