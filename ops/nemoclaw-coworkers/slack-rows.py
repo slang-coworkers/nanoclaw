@@ -15,6 +15,8 @@ Reads (every input optional except the token and the channel):
                                                    row / role / outcome / headline for the caption
   SLACK_BOT_TOKEN                                  from the environment, else the `SLACK_BOT_TOKEN=` line of
                                                    <ROOT>/.env. Host-side only; never printed, never logged.
+  <WWW>/rows/demo-path.json                        the demo-path tracker rows-board.py computed and its `slack_text`
+                                                   (--demo-json; WWW derived exactly as rows-board.py derives --www)
 
 Writes <ROOT>/data/shared/hermes/slack-threads.json (tmp + rename), one entry per row:
 
@@ -51,14 +53,17 @@ One run at a time: an exclusive flock on <state>.lock for the run's lifetime; a 
 `another run holds the lock` and exits 0 (a stalled Slack egress can push one run past the next
 cron tick, and two runs would each post the missing roots).
 
-Demo path (after the row passes): ONE root message `*Demo path*` — demo_path.render_slack over
-demo-path.json + the autopilot's live state — posted the first time the tracker has live state
-(it takes one --max-posts unit) and recorded under the state file's `demo_path` key
-({"ts", "channel", "text_hash", "posted_at", "updated_at"}). Every later run re-renders; when the
-text changed it is edited in place with chat.update (never re-posted, not counted against
---max-posts); unchanged text makes no call. A failed chat.update is one log line and the hash stays,
-so the next run retries. Delete the `demo_path` key to post a fresh message. The tracker failing
-(no demo-path.json, an import error) is one log line; the lanes are unaffected.
+Demo path (after the row passes): ONE root message `*Demo path*` — the `slack_text` rows-board.py wrote
+into <WWW>/rows/demo-path.json (the tracker, computed ONCE over the board's per-row records; this script
+never computes it and imports nothing from demo_path.py) — posted the first time that JSON says the
+tracker has live state (`state_ok`; it takes one --max-posts unit) and recorded under the state file's
+`demo_path` key ({"ts", "channel", "text_hash", "posted_at", "updated_at"}). Every later run re-reads
+the JSON; when the text changed it is edited in place with chat.update (never re-posted, not counted
+against --max-posts); unchanged text makes no call. A failed chat.update is one log line and the hash
+stays, so the next run retries. Delete the `demo_path` key to post a fresh message. A JSON that is
+missing, unreadable, without `slack_text`, or older than 45 min (its generated_at, else the file's
+mtime; rows-board.py rewrites it every 15 min) is one log line and the message is left exactly as it
+is — never recomputed, never a crash; the lanes are unaffected.
 
 Stdlib only, no hostname guard. `--dry-run` prints what would be posted and calls nothing.
 """
@@ -91,6 +96,7 @@ PNG_HEAD = b"\x89PNG\r\n\x1a\n"
 PNG_TAIL = b"IEND\xaeB`\x82"
 THREAD_RE = re.compile(r"^hermes-(?P<row>.+)$")
 DEMO_KEY = "demo_path"  # the state-file key of the one edited-in-place demo-path message
+DEMO_JSON_MAX_AGE_S = 45 * 60  # rows-board.py rewrites demo-path.json every 15 min; older means it stopped — leave the message alone
 # Slack errors that no later call in this run can get past: a token or channel problem.
 FATAL_ERRORS = frozenset({
     "invalid_auth", "not_authed", "account_inactive", "token_revoked", "token_expired",
@@ -137,23 +143,6 @@ def _rows_board():
         spec.loader.exec_module(mod)
         _ROWS_BOARD = mod
     return _ROWS_BOARD
-
-
-_DEMO_PATH = None
-
-
-def _demo_path():
-    """demo_path.py (a sibling; importlib like rows-board so a hyphen-free name is not assumed on sys.path)."""
-    global _DEMO_PATH
-    if _DEMO_PATH is None:
-        path = os.path.join(HERE, "demo_path.py")
-        spec = importlib.util.spec_from_file_location("demo_path", path)
-        if spec is None or spec.loader is None:
-            raise RuntimeError(f"cannot load {path}")
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        _DEMO_PATH = mod
-    return _DEMO_PATH
 
 
 # --------------------------------------------------------------------------- slack client
@@ -456,28 +445,66 @@ def row_order(plan: dict | None, ledger: dict, cards: dict) -> list[str]:
 
 # --------------------------------------------------------------------------- demo path
 
-def demo_text(root: str, spec_path: str | None = None) -> tuple:
-    """(render_slack text | None, state_ok, error | None): the tracker rendered for Slack. Any failure in the
-    tracker is (None, False, <reason>) — one log line for the caller, never a crash of the run."""
+def default_demo_json() -> str:
+    """<WWW>/rows/demo-path.json, WWW derived exactly as rows-board.py derives --www."""
+    www = os.environ.get("NEMO_WWW_DIR") or os.path.expanduser("~/.local/share/nemo-www")
+    return os.path.join(www, "rows", "demo-path.json")
+
+
+def parse_iso_ts(value) -> float | None:
+    """ISO-8601 (Z or offset, optional fraction) → epoch seconds; None when unparseable."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    v = value.strip()
+    if v.endswith(("Z", "z")):
+        v = v[:-1] + "+00:00"
+    v = re.sub(r"(\.\d{6})\d+", r"\1", v)
     try:
-        dp = _demo_path()
-        spec = dp.load_spec(spec_path or dp.SPEC_PATH)
-        live = dp.load_live(root)
-        result = dp.compute(spec, live, datetime.now(timezone.utc))
-        return dp.render_slack(result), bool(result.get("state_ok")), None
-    except Exception as exc:  # noqa: BLE001 - the tracker must never take the lanes down
-        return None, False, f"demo path unavailable: {type(exc).__name__}: {exc}"
+        dt = datetime.fromisoformat(v)
+    except ValueError:
+        return None
+    return (dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)).timestamp()
+
+
+def load_demo_json(path: str, now: float | None = None, max_age_s: float = DEMO_JSON_MAX_AGE_S) -> tuple:
+    """(slack text | None, state_ok, error | None) from rows-board.py's <WWW>/rows/demo-path.json — the
+    tracker's computed result with `slack_text`, the message already rendered. Nothing is computed here:
+    a missing, unreadable or shapeless file, or a STALE one (generated_at — else the file's mtime — older
+    than max_age_s) is (None, False, <one line>) and the caller leaves the message exactly as it is."""
+    now = time.time() if now is None else now
+    try:
+        with open(path, encoding="utf-8") as fh:
+            data = json.load(fh)
+    except FileNotFoundError:
+        return None, False, f"demo path: {path} missing (rows-board.py writes it); message left untouched"
+    except (OSError, ValueError) as exc:
+        return None, False, f"demo path: {path} unreadable ({type(exc).__name__}: {exc}); message left untouched"
+    text = data.get("slack_text") if isinstance(data, dict) else None
+    if not isinstance(text, str) or not text.strip():
+        return None, False, f"demo path: {path} has no slack_text; message left untouched"
+    gen = parse_iso_ts(data.get("generated_at"))
+    if gen is None:
+        try:
+            gen = os.path.getmtime(path)
+        except OSError:
+            gen = None
+    if gen is None or now - gen > max_age_s:
+        age = f"{(now - gen) / 60:.0f} min old" if gen is not None else "no generated_at and no mtime"
+        return None, False, (f"demo path: {path} is stale ({age}, limit {max_age_s / 60:.0f} min — rows-board.py stopped refreshing it?); "
+                             "message left untouched")
+    return text, bool(data.get("state_ok")), None
 
 
 def text_hash(text: str) -> str:
     return hashlib.sha256(text.encode("utf-8")).hexdigest()[:16]
 
 
-def post_demo_path(root: str, channel: str, state: dict, client, dry_run: bool, budget, save, spec_path: str | None = None) -> None:
-    """The one `*Demo path*` message: posted once (when the tracker has live state; one budget unit), then
-    edited in place with chat.update whenever its text changes (no budget). Never re-posted; a failed
-    update is logged and retried next run because the hash is only stored after success."""
-    text, state_ok, err = demo_text(root, spec_path)
+def post_demo_path(demo_json: str, channel: str, state: dict, client, dry_run: bool, budget, save) -> None:
+    """The one `*Demo path*` message from rows-board's demo-path.json: posted once (when the tracker has
+    live state; one budget unit), then edited in place with chat.update whenever its text changes (no
+    budget). Never re-posted; a failed update is logged and retried next run because the hash is only
+    stored after success. A missing / stale JSON is one log line and nothing is touched."""
+    text, state_ok, err = load_demo_json(demo_json)
     if err:
         log(err)
     if text is None:
@@ -539,7 +566,7 @@ class Budget:
 
 
 def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_posts: int,
-        plan_paths: list, ledger_path: str, demo_spec: str | None = None) -> int:
+        plan_paths: list, ledger_path: str, demo_json: str | None = None) -> int:
     rows_board = _rows_board()
     plan, plan_err = rows_board.load_plan(plan_paths)
     if plan_err:
@@ -649,8 +676,9 @@ def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_pos
         save()
         print(f"{verb} {key[:-7]} line {rid}: {text}")
 
-    # Pass D — the demo path: one message, edited in place (post_demo_path; a tracker failure is a log line).
-    post_demo_path(root, channel, state, client, dry_run, budget, save, demo_spec)
+    # Pass D — the demo path: one message, edited in place, from rows-board's demo-path.json (post_demo_path;
+    # a missing or stale JSON is a log line and the message is left as it is).
+    post_demo_path(demo_json or default_demo_json(), channel, state, client, dry_run, budget, save)
 
     left = sum(1 for rid in rows if not srows.get(rid, {}).get("thread_ts")) + len(still_pending)
     log(f"{verb} {budget.posted} on {len(rows)} rows ({len(srows)} threads); {left} left for the next run")
@@ -667,7 +695,8 @@ def main(argv=None, client_factory=None) -> int:
     ap.add_argument("--ledger", default=None, help="the Orchestrator's ledger.md (default: <root>/groups/orchestrator/reports/ledger.md)")
     ap.add_argument("--dry-run", action="store_true", help="print what would be posted; no API calls, no state change")
     ap.add_argument("--max-posts", type=int, default=DEFAULT_MAX_POSTS, help=f"API posts per run, roots + cards + lines (default {DEFAULT_MAX_POSTS})")
-    ap.add_argument("--demo-spec", default=os.environ.get("DEMO_PATH_SPEC"), help="demo-path.json for the demo-path message (default: next to this script)")
+    ap.add_argument("--demo-json", default=None,
+                    help="rows-board's computed tracker for the demo-path message (default: <$NEMO_WWW_DIR or ~/.local/share/nemo-www>/rows/demo-path.json)")
     args = ap.parse_args(argv)
     root = os.path.abspath(args.root)
     lock_fh = None
@@ -699,7 +728,7 @@ def main(argv=None, client_factory=None) -> int:
         return run(
             root, channel, state_path, client, args.dry_run, args.max_posts, plan_paths,
             args.ledger or os.path.join(root, "groups", "orchestrator", "reports", "ledger.md"),
-            args.demo_spec or None,
+            args.demo_json or default_demo_json(),
         )
     except NotInChannel as exc:
         log(f"{exc} — the bot is not a member of {channel}: /invite it there (channels:join is not granted), then rerun")

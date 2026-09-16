@@ -2,15 +2,18 @@
 # Publish coworker artifacts under the 8091 viewer root (~/.local/share/nemo-www):
 #   /explanations/<group>/<file>.html  — every coworker's reports/pr-explanations/ (+ newest-first index)
 #   /status/latest.html                — the Orchestrator's daily port status report (dated copies alongside)
-#   /rows/index.html                   — the rows board: the "Demo path" tracker on top (demo_path.py + demo-path.json:
-#                                        rung status + ETA from autopilot/state.json), then batch → row → a|b|t|r latest
-#                                        task cards (rows-board.py; /rows/<ROW>.html per row, card dirs symlinked under
-#                                        /rows/cards/<group>/<thread>/)
+#   /rows/index.html                   — the rows board: batch → row → a|b|t|r latest task cards (rows-board.py;
+#                                        /rows/<ROW>.html per row, card dirs symlinked under /rows/cards/<group>/<thread>/),
+#                                        one header link to the tracker's own page
+#   /rows/demo-path.html + .json       — the "Demo path" tracker (demo_path.py + demo-path.json spec) computed by rows-board.py
+#                                        over the SAME per-row records as the board; the JSON (result + slack_text) is what
+#                                        slack-rows.py posts — so rows-board.py MUST run before slack-rows.py
 #   /index.html                        — the viewer root: one link per surface above (generated here, so a new
 #                                        surface is never missing from the landing page)
 #   Slack #hermes-port                 — one thread per row: root, role cards, merge line, plus ONE "*Demo path*" message
-#                                        edited in place with chat.update (slack-rows.py; state in
-#                                        data/shared/hermes/slack-threads.json; log in logs/slack-rows.log)
+#                                        edited in place with chat.update from /rows/demo-path.json (slack-rows.py; state in
+#                                        data/shared/hermes/slack-threads.json; log in logs/slack-rows.log; a JSON older
+#                                        than 45 min leaves the message untouched)
 # Idempotent; cron every 15 min. Errors are handled explicitly (no set -e: an empty listing is not a failure).
 set -u
 case $(hostname) in slang-cpu-coworkers*) ;; *) echo "WRONG_HOST=$(hostname)"; exit 1;; esac
@@ -67,16 +70,20 @@ HTML
 } > "$OUT/index.html.tmp" || exit 1
 mv -f "$OUT/index.html.tmp" "$OUT/index.html"
 
-# Rows board (/rows/): task cards per gap-matrix row from groups/*/reports/hermes-*/cards/. Never fatal.
+# Rows board (/rows/): task cards per gap-matrix row from groups/*/reports/hermes-*/cards/, plus the demo-path
+# tracker page + JSON computed from the same per-row records. Never fatal. Runs BEFORE slack-rows.py, which
+# reads the JSON it writes.
 python3 "$ROOT/ops/nemoclaw-coworkers/rows-board.py" --root "$ROOT" --www "$WWW" --ncl "$ROOT/bin/ncl" || echo 'rows-board failed'
 
-# Slack mirror: one #hermes-port thread per row (root · role cards · merge line) from the same cards + ledger
-# (slack-rows.py; token from $SLACK_BOT_TOKEN or the checkout's .env, host-side only). Idempotent, rate-limited
-# to --max-posts per run, one run at a time (its own flock on the state file), logs to logs/slack-rows.log.
+# Slack mirror: one #hermes-port thread per row (root · role cards · merge line) from the same cards + ledger,
+# plus the one "*Demo path*" message from $WWW/rows/demo-path.json (slack-rows.py; token from $SLACK_BOT_TOKEN
+# or the checkout's .env, host-side only). Idempotent, rate-limited to --max-posts per run, one run at a time
+# (its own flock on the state file), logs to logs/slack-rows.log.
 # Never fatal to the viewer refresh, but the exit code is surfaced: 2 = the bot is not in the channel,
 # 1 = no token / token or channel problem / corrupt state — the log has the one-line reason.
 mkdir -p "$ROOT/logs"
-python3 "$ROOT/ops/nemoclaw-coworkers/slack-rows.py" --root "$ROOT" --channel "${SLACK_ROWS_CHANNEL:-C0C14PWDUMC}" >> "$ROOT/logs/slack-rows.log" 2>&1
+python3 "$ROOT/ops/nemoclaw-coworkers/slack-rows.py" --root "$ROOT" --channel "${SLACK_ROWS_CHANNEL:-C0C14PWDUMC}" \
+  --demo-json "$WWW/rows/demo-path.json" >> "$ROOT/logs/slack-rows.log" 2>&1
 case $? in
   0) ;;
   2) echo 'slack-rows: bot not in #hermes-port (exit 2) — /invite @orchestrator; see logs/slack-rows.log' ;;

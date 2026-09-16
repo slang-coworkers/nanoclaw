@@ -2,7 +2,9 @@
 """Fixture-driven tests for ops/nemoclaw-coworkers/rows-board.py: a temp checkout with a small
 dispatch-plan.md, one fake card set on hermes-LOOP-F35, a state.json, and the Orchestrator's two
 tables (ledger.md § Carried criteria, upstream-asks.md); the board must render index.html and
-<ROW>.html, symlink the card dir, show both tables, and exit 0 on an empty root too.
+<ROW>.html, symlink the card dir, show both tables, and exit 0 on an empty root too. DemoPathPageTest:
+the tracker lives on its own /rows/demo-path.html (+ demo-path.json for slack-rows.py), computed from the
+same per-row records as the board; the index carries one link to it and nothing else of it.
 Run: python3 -m unittest ops/nemoclaw-coworkers/autopilot/test_rows_board.py
 """
 
@@ -13,6 +15,7 @@ import html
 import io
 import json
 import os
+import re
 import subprocess
 import sys
 import tempfile
@@ -433,9 +436,21 @@ class CarriedTablesTest(unittest.TestCase):
         self.assertNotIn("<b>UA-2</b>", index)
 
 
-class DemoPathSectionTest(unittest.TestCase):
-    """The board's "Demo path" section (demo_path.render_html via rows-board.demo_section): rendered at the
-    top from state.json, and a broken or missing demo-path.json is a banner, never a broken board."""
+AGREEMENT_SPEC = {
+    "planning_hours": {"BUILD": 48, "CONFIGURE": 15, "ADOPT": 10},
+    "stage_factors": {"queued": 1.0, "dispatched": 0.85, "spec_handoff": 0.85, "building": 0.6, "pr_open": 0.35,
+                      "testing": 0.35, "review": 0.2, "gate": 0.1, "merged": 0},
+    "rungs": [{"id": "R1", "title": "the three fixture rows", "rows": ["LOOP-F35", "MEM-F44", "ISO-F17"]}],
+}
+
+
+class DemoPathPageTest(unittest.TestCase):
+    """The demo-path tracker on its own page: /rows/demo-path.html + /rows/demo-path.json, both from the board's
+    per-row records (rows-board.load_board → demo_path.rows_from_board); the index has ONE header link to it and
+    nothing else changes; every row shows ONE state — the index cell, the row page and the tracker chip agree
+    (modulo the cell's `· hold` / `· cost hold` / `· waived` / gate decorations); a broken or missing spec, or a
+    failed write, is a banner / log line on the tracker side, the board still writes, the JSON is left as it was,
+    exit 0."""
 
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -445,68 +460,260 @@ class DemoPathSectionTest(unittest.TestCase):
         rows = {"LOOP-F35": {"state": "testing", "disposition": "BUILD", "batch": "1a"},
                 "MEM-F44": {"state": "queued", "disposition": "CONFIGURE", "batch": "1b"},
                 "ISO-F17": {"state": "queued", "disposition": "ADOPT", "batch": "adopt"}}
-        put(self.root / "data" / "shared" / "hermes" / "autopilot" / "state.json", json.dumps({
+        self.ap = self.root / "data" / "shared" / "hermes" / "autopilot"
+        put(self.ap / "state.json", json.dumps({
             "generated_at": (NOW_DT - timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%SZ"), "rows": rows,
             "gating": {"1a_first_pass": False}, "wip": {"limit": 3},
+            "supervise": {"rows": {"LOOP-F35": {"stage": "building", "hold": None, "cost_hold": False}}},
+            "queue": {"eligible": [], "waiting": [{"id": "MEM-F44", "batch": "1b", "blocked_by": ["1a_first_pass"]},
+                                                  {"id": "ISO-F17", "batch": "adopt", "blocked_by": ["batch3_merged", "batch4_merged"]}]},
         }))
-        put(self.root / "data" / "shared" / "hermes" / "autopilot" / "config.json", json.dumps({"wip": 3, "paused_rows": ["MEM-F44"]}))
+        put(self.ap / "config.json", json.dumps({"wip": 3, "paused_rows": ["MEM-F44"]}))
+        cards = self.root / "groups" / "hermes-tester" / "reports" / "hermes-LOOP-F35" / "cards"
+        put(cards / "card-hermes-tester-pass-r1.png", b"\x89PNG r1", hours_ago=5.0)
 
     def tearDown(self):
         self.tmp.cleanup()
 
-    def test_section_renders_at_the_top_from_state_json(self):
-        r = board(self.root, self.www, "--ncl", "")
-        self.assertEqual(r.returncode, 0, r.stderr)
-        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
-        i = index.find("<h2>Demo path")
-        self.assertGreater(i, 0)
-        self.assertLess(i, index.find("<h2>Batch 1a"), "the demo path comes before the first batch table")
-        self.assertLess(index.find("<h1>"), i)
-        for rid in ("<b>R1</b>", "<b>R2</b>", "<b>R3</b>", "<b>R4</b>", "<b>R5</b>"):
-            self.assertIn(rid, index)
-        self.assertIn("LOOP-F35 · testing", index)
-        self.assertIn("in progress", index)
-        self.assertIn("ISO-F17 · queued", index)
-        self.assertIn("ETA model", index)
-        # Rows the fixture state does not know are unknown, collapsed into one line per reason.
-        self.assertIn("not in state.json: LOOP-F37, GOV-F24", index)
-        # Everything else on the board is still there.
-        self.assertIn("<h2>Batch 1a", index)
+    def render(self, *extra: str, env: dict | None = None) -> subprocess.CompletedProcess:
+        proc = board(self.root, self.www, "--ncl", "", *extra, env=env)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return proc
+
+    def read(self, name: str) -> str:
+        return (self.www / "rows" / name).read_text(encoding="utf-8")
+
+    def board_cells(self) -> dict:
+        """{row id: stage cell text} parsed from index.html — what every reader of the board sees for the row."""
+        index = self.read("index.html")
+        return {m.group(1): html.unescape(m.group(2))
+                for m in re.finditer(r'<b>([A-Za-z0-9._-]+)</b>(?:</a>)?(?:<span class="badge"[^>]*>[^<]*</span>)?<br>.*?<td class="stage">(.*?)</td>', index)}
+
+    def test_index_has_only_the_link_and_the_tracker_has_its_own_page(self):
+        proc = self.render()
+        self.assertIn("+ demo-path.html + demo-path.json", proc.stdout)
+        index = self.read("index.html")
+        self.assertEqual(index.count('<a href="demo-path.html">Demo path →</a>'), 1)
+        self.assertLess(index.index("<h1>"), index.index('href="demo-path.html"'))
+        self.assertLess(index.index('href="demo-path.html"'), index.index("<h2>Batch 1a"), "the link sits in the header, above the batch tables")
+        for needle in ("<h2>Demo path", "dp-row", "ETA model", "<b>R1</b>", "demo path unavailable"):
+            self.assertNotIn(needle, index, needle)
+        # Nothing else of the board changed: the same sections, stage cell, thumbnail and tables as before.
+        self.assertIn('<td class="stage">building</td>', index)
+        self.assertIn('<img class="thumb ok" src="cards/hermes-tester/hermes-LOOP-F35/card-hermes-tester-pass-r1.png" width="180"', index)
         self.assertIn("<h2>Carried criteria", index)
         self.assertIn("<h2>Upstream asks", index)
+        self.assertIn("1 cards on disk · 1 threads with cards", index)
+        # The row pages are untouched by the tracker.
+        row = self.read("LOOP-F35.html")
+        self.assertIn("stage: <b>building</b>", row)
+        self.assertNotIn("Demo path", row)
+        # The tracker page: full page, the board's CSS, a link back, the rungs.
+        page = self.read("demo-path.html")
+        self.assertIn("<title>Demo path</title>", page)
+        self.assertIn("<h1>Demo path</h1>", page)
+        self.assertIn('<a href="index.html">← rows board</a>', page)
+        self.assertLess(page.index("← rows board"), page.index("<h1>"))
+        self.assertIn(".thumb{display:block;width:180px", page, "the same stylesheet as the board")
+        self.assertIn("<h2>Demo path", page)
+        for rid in ("<b>R1</b>", "<b>R2</b>", "<b>R3</b>", "<b>R4</b>", "<b>R5</b>"):
+            self.assertIn(rid, page)
+        self.assertIn("ETA model", page)
+        self.assertIn("in progress", page)
+        self.assertIn("LOOP-F35 · building", page)
+        self.assertIn("ISO-F17 · waiting", page)
+        # Rows the plan does not list are unknown on the tracker, collapsed into one line per reason.
+        self.assertIn("not on the rows board (not a plan row): LOOP-F37, GOV-F24", page)
 
-    def test_missing_or_broken_spec_is_a_banner_and_the_board_still_renders(self):
-        r = board(self.root, self.www, "--ncl", "", "--demo-spec", str(self.root / "nope.json"))
-        self.assertEqual(r.returncode, 0, r.stderr)
-        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
-        self.assertIn("demo path unavailable — FileNotFoundError", index)
+    def test_tracker_uses_the_board_records_not_state_json_rows(self):
+        # state.json says LOOP-F35 is `testing`; the supervisor says `building`: the board shows building on the index
+        # and the row page, and so does the tracker (the same record). Then the ledger says MERGED while state.json
+        # still says testing / building (the supervise tick is 2-hourly, the Orchestrator writes the ledger at merge
+        # time): the ONE derivation (rows-board.row_state) reads the ledger first, so the index cell, the row page
+        # and the tracker all say merged in the same render, the tracker with the ledger's date.
+        self.render()
+        self.assertIn("LOOP-F35 · building", self.read("demo-path.html"))
+        self.assertIn('<td class="stage">building</td>', self.read("index.html"))
+        self.assertIn("stage: <b>building</b>", self.read("LOOP-F35.html"))
+        put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER.replace(
+            "| PASS | — | autopilot dispatch", "| PASS · APPROVE | MERGED `1e3e63f` (squash) — 2026-09-10 06:35Z — 4/4 AC | autopilot dispatch"))
+        self.render()
+        page = self.read("demo-path.html")
+        self.assertIn("LOOP-F35 · merged", page)
+        self.assertIn("merged 2026-09-10", page)
+        self.assertIn('<td class="stage">merged</td>', self.read("index.html"), "the board cell follows the ledger too")
+        self.assertNotIn('<td class="stage">building</td>', self.read("index.html"))
+        self.assertIn("stage: <b>merged</b>", self.read("LOOP-F35.html"))
+        data = json.loads(self.read("demo-path.json"))
+        r1 = {r["id"]: r for r in data["rungs"]}["R1"]
+        f35 = {x["id"]: x for x in r1["rows"]}["LOOP-F35"]
+        self.assertEqual((f35["state"], f35["done_at"]), ("merged", "2026-09-10T06:35:00Z"))
+        self.assertEqual(data["order_source"], "state.json queue (eligible, then waiting)")
+
+    def test_one_state_per_row_on_the_index_the_row_page_and_the_tracker(self):
+        """For every board row, in one render: index stage cell == row-page stage == tracker chip label, modulo
+        the cell's decorations — through the cases where the two surfaces used to disagree."""
+        spec = self.root / "spec.json"
+        put(spec, json.dumps(AGREEMENT_SPEC))
+        state = json.loads((self.ap / "state.json").read_text(encoding="utf-8"))
+        ledger_dir = self.root / "groups" / "orchestrator" / "reports"
+
+        def check(expect: dict, why: str) -> None:
+            self.render("--demo-spec", str(spec))
+            cells = self.board_cells()
+            data = json.loads(self.read("demo-path.json"))
+            rows = {r["id"]: r for r in data["rungs"][0]["rows"]}
+            page = self.read("demo-path.html")
+            for rid, (cell, label) in expect.items():
+                self.assertEqual(cells.get(rid), cell, f"{why}: index cell of {rid}")
+                self.assertIn(f"stage: <b>{html.escape(cell)}</b>", self.read(f"{rid}.html"), f"{why}: row page of {rid}")
+                self.assertEqual(rows[rid]["label"], label, f"{why}: tracker label of {rid}")
+                self.assertIn(f"{rid} · {html.escape(label)}", page, f"{why}: tracker chip of {rid}")
+                self.assertIn(f"{rid} {label}", data["slack_text"], f"{why}: Slack line of {rid}")
+                self.assertTrue(cell.split(" · ")[0] == label or (label == "waived" and cell.endswith("· waived")), (why, rid, cell, label))
+
+        # As set up: queue testing + supervisor building → building; MEM-F44 paused via config (queued behind 1a on
+        # the queue, which the pause outranks); ISO-F17 queued behind two gates → waiting, the gates decorate the cell.
+        check({"LOOP-F35": ("building", "building"), "MEM-F44": ("paused", "paused"),
+               "ISO-F17": ("waiting · batch3_merged, batch4_merged", "waiting")}, "baseline")
+        # (B) the ledger says MERGED while state.json (a tick behind) still says testing / building.
+        put(ledger_dir / "ledger.md", LEDGER.replace("| PASS | — | autopilot dispatch", "| PASS · APPROVE | MERGED `1e3e63f` — 2026-09-10 06:35Z | autopilot dispatch"))
+        check({"LOOP-F35": ("merged", "merged")}, "ledger merged, state.json stale")
+        # (G) + (E) the operator pauses LOOP-F35 and un-pauses / waives MEM-F44 after the tick: config.json is the truth.
+        put(ledger_dir / "ledger.md", LEDGER)
+        put(self.ap / "config.json", json.dumps({"wip": 3, "paused_rows": ["LOOP-F35"], "waive": ["MEM-F44"]}))
+        check({"LOOP-F35": ("paused", "paused"), "MEM-F44": ("waiting · 1a_first_pass · waived", "waived")}, "paused + waived via config")
+        # (F) a row parked at gate on a 1a merge hold with a cost card pending: the cell decorates, the label is the state,
+        # and the tracker treats it as held (no ETA, flagged) instead of 4.8 h from done.
+        put(self.ap / "config.json", json.dumps({"wip": 3}))
+        state["supervise"]["rows"]["LOOP-F35"] = {"stage": "gate", "hold": "1a", "cost_hold": True, "target_role": "hermes-architect"}
+        state["rows"]["LOOP-F35"]["state"] = "gate"
+        # (C) only the queue sees ISO-F17 in flight (dispatch bookkeeping); (D) only the supervisor sees MEM-F44 in flight.
+        state["rows"]["ISO-F17"]["state"] = "dispatched"
+        state["supervise"]["rows"]["ISO-F17"] = {"stage": "queued"}
+        state["supervise"]["rows"]["MEM-F44"] = {"stage": "building"}
+        put(self.ap / "state.json", json.dumps(state))
+        check({"LOOP-F35": ("gate · hold 1a · cost hold", "gate"), "ISO-F17": ("dispatched", "dispatched"), "MEM-F44": ("building", "building")},
+              "holds and one-sided in-flight")
+        data = json.loads(self.read("demo-path.json"))
+        f35 = {r["id"]: r for r in data["rungs"][0]["rows"]}["LOOP-F35"]
+        self.assertEqual((f35["stalled"], f35["eta"], f35["blockers"]), ("held", None, ["held — cost card pending"]))
+        self.assertIn("LOOP-F35 held — cost card pending", data["rungs"][0]["blockers"])
+        self.assertIn('<span class="dot red"></span>needs input · hold: 1a', self.read("index.html"), "the board's red dot (role_live), untouched")
+
+    def test_demo_json_agrees_with_the_page_and_carries_the_slack_text(self):
+        self.render()
+        data = json.loads(self.read("demo-path.json"))
+        page = self.read("demo-path.html")
+        self.assertEqual([r["id"] for r in data["rungs"]], ["R1", "R2", "R3", "R4", "R5"])
+        self.assertEqual(data["generated_at"], NOW)
+        self.assertTrue(data["state_ok"])
+        self.assertEqual(data["wip_limit"], 3)
+        self.assertEqual(data["paused_rows"], ["MEM-F44"])
+        cells = self.board_cells()
+        self.assertEqual(set(cells), {"LOOP-F35", "MEM-F44", "ISO-F17"})
+        for rung in data["rungs"]:
+            self.assertIn(f'<b>{rung["id"]}</b>', page)
+            self.assertIn(html.escape(rung["status_label"]), page)
+            for row in rung["rows"]:
+                self.assertIn(f'{row["id"]} · {row["label"]}', page, "every row chip on the page is a row in the JSON, same state")
+                if row["id"] in cells:   # tracker vs board: the same state as the index cell, minus its decorations
+                    self.assertEqual(cells[row["id"]].split(" · ")[0], row["label"], row["id"])
+                else:
+                    self.assertEqual(row["label"], "unknown", f"{row['id']} has no board record, so no state")
+            if rung["eta_date"]:
+                self.assertIn(f"<b>{rung['eta_date']}</b>", page)
+        self.assertTrue(data["slack_text"].startswith("*Demo path*"))
+        self.assertLessEqual(len(data["slack_text"].split("\n")), 25)
+        for rid in ("*R1*", "*R5*", "LOOP-F35 building", "ISO-F17 waiting"):
+            self.assertIn(rid, data["slack_text"])
+        self.assertIn("model_notes", data)
+        # Atomic + idempotent: a second run rewrites both, no .tmp left behind.
+        self.render()
+        self.assertEqual(sorted(p.name for p in (self.www / "rows").glob("demo-path.*")), ["demo-path.html", "demo-path.json"])
+
+    def test_missing_or_broken_spec_is_a_banner_on_the_tracker_page_and_the_json_is_left_alone(self):
+        r = self.render("--demo-spec", str(self.root / "nope.json"))
+        self.assertIn("(tracker failed; demo-path.json untouched)", r.stdout)
         self.assertIn("rows-board: demo path: FileNotFoundError", r.stderr)
+        page = self.read("demo-path.html")
+        self.assertIn("demo path unavailable — FileNotFoundError", page)
+        self.assertIn("<title>Demo path</title>", page)
+        self.assertIn('<a href="index.html">← rows board</a>', page)
+        self.assertNotIn("<b>R1</b>", page)
+        self.assertFalse((self.www / "rows" / "demo-path.json").exists(), "never written on a failed first run")
+        index = self.read("index.html")
         self.assertIn("<h2>Batch 1a", index)
+        self.assertIn('<a href="demo-path.html">Demo path →</a>', index)
+        self.assertNotIn("demo path unavailable", index, "the failure is on the tracker page, not the board")
+        # A good run writes the JSON; a later broken run leaves it exactly as it was (slack-rows sees it age out).
+        self.render()
+        before = self.read("demo-path.json")
         bad = self.root / "bad.json"
         bad.write_text('{"rungs": []}', encoding="utf-8")
-        r = board(self.root, self.www, "--ncl", "", "--demo-spec", str(bad))
-        self.assertEqual(r.returncode, 0, r.stderr)
-        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
-        self.assertIn("demo path unavailable — ValueError: demo-path.json has no rungs", index)
+        self.render("--demo-spec", str(bad))
+        self.assertIn("demo path unavailable — ValueError: demo-path.json has no rungs", self.read("demo-path.html"))
+        self.assertEqual(self.read("demo-path.json"), before)
         # The env var is the same override.
-        r = board(self.root, self.www, "--ncl", "", env={"DEMO_PATH_SPEC": str(bad)})
-        self.assertIn("demo path unavailable", (self.www / "rows" / "index.html").read_text(encoding="utf-8"))
+        self.render(env={"DEMO_PATH_SPEC": str(bad)})
+        self.assertIn("demo path unavailable", self.read("demo-path.html"))
+        self.assertEqual(self.read("demo-path.json"), before)
 
-    def test_demo_section_helper_honours_the_ledger_override_and_never_raises(self):
-        sys.path.insert(0, str(HERE.parent))
+    def test_a_failed_tracker_write_is_logged_and_the_board_still_writes(self):
+        # write_atomic opens <path>.tmp for writing: a directory in its place fails the tracker's write, and nothing
+        # else — the index and the row pages are written, no "rows-board failed" page, exit 0.
+        (self.www / "rows" / "demo-path.html.tmp").mkdir(parents=True)
+        r = self.render()
+        self.assertIn("rows-board: demo path: write failed: IsADirectoryError", r.stderr)
+        self.assertIn("(tracker failed; demo-path.json untouched)", r.stdout)
+        self.assertNotIn("rows-board: failed", r.stderr)
+        index = self.read("index.html")
+        self.assertIn("<h2>Batch 1a", index)
+        self.assertNotIn("rows-board failed", index)
+        self.assertIn("stage: <b>building</b>", self.read("LOOP-F35.html"))
+        self.assertFalse((self.www / "rows" / "demo-path.json").exists())
+
+    def test_load_board_records_and_demo_tracker_helpers(self):
         import importlib.util
         spec = importlib.util.spec_from_file_location("rows_board_for_demo", BOARD)
         mod = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(mod)
-        ledger = self.root / "elsewhere" / "ledger.md"
-        put(ledger, LEDGER)
-        frag = mod.demo_section(str(self.root), NOW_DT, ledger_path=str(ledger))
-        self.assertIn("<h2>Demo path", frag)
-        self.assertNotIn("ledger.md not found", frag)
-        frag = mod.demo_section(str(self.root), NOW_DT)
-        self.assertIn("ledger.md not found", frag, "the root-derived ledger is missing in this fixture")
+        put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER)
+        b = mod.load_board(str(self.root), NOW_DT)
+        recs = b["records"]
+        self.assertEqual(list(recs), ["LOOP-F35", "MEM-F44", "ISO-F17"], "plan order; the card thread is a plan row")
+        f35 = recs["LOOP-F35"]
+        self.assertEqual((f35["queue_state"], f35["sup_stage"], f35["stage"]), ("testing", "building", "building"))
+        # the canonical fields (row_state): the one state every surface renders, its reason, holds, waived, gates
+        self.assertEqual((f35["state"], f35["state_reason"], f35["holds"], f35["waived"], f35["paused"], f35["gates"]),
+                         ("building", None, [], False, False, ()))
+        self.assertEqual((f35["disposition"], f35["batch"], f35["merged_at"]), ("BUILD", "1a", None))
+        self.assertEqual(f35["ledger"]["pr"], 7)
+        self.assertIsNone(f35["ledger"]["outcome"])
+        self.assertIsNone(f35["ledger"]["merged_at"])
+        self.assertEqual(f35["latest"]["hermes-tester"]["outcome"], "pass")
+        self.assertEqual(set(f35["dots"]), {"hermes-architect", "hermes-builder", "hermes-tester", "hermes-reviewer", "orchestrator"})
+        self.assertEqual(f35["row_dot"], "grey")
+        mem = recs["MEM-F44"]
+        self.assertEqual((mem["state"], mem["state_reason"], mem["stage"]), ("paused", "config.paused_rows", "paused"))
+        self.assertEqual(mem["carries_open"], ["AC-LOOP-F35-5"])
+        self.assertIsNone(mem["ledger"], "no ledger row")
+        iso17 = recs["ISO-F17"]
+        self.assertEqual((iso17["state"], iso17["gates"], iso17["stage"]), ("waiting", ("batch3_merged", "batch4_merged"), "waiting · batch3_merged, batch4_merged"))
+        self.assertEqual(mod.row_stage(iso17), iso17["stage"], "row_stage is a formatter over the record")
+        self.assertEqual(b["config"], {"wip": 3, "paused_rows": ["MEM-F44"]})
+        self.assertFalse((self.www / "rows").exists(), "load_board writes nothing")
+        # demo_tracker: (result, body, json text) over the board; a broken spec is (None, banner, None) + one log line, never a raise.
+        result, body, json_text = mod.demo_tracker(b, NOW_DT)
+        self.assertEqual([r["id"] for r in result["rungs"]], ["R1", "R2", "R3", "R4", "R5"])
+        self.assertIn("<h2>Demo path", body)
+        self.assertIn("slack_text", result)
+        self.assertEqual(json.loads(json_text)["slack_text"], result["slack_text"])
         err = io.StringIO()
         with contextlib.redirect_stderr(err):
-            frag = mod.demo_section(str(self.root), NOW_DT, spec_path=str(self.root / "missing.json"))
-        self.assertIn("demo path unavailable", frag)
+            result, body, json_text = mod.demo_tracker(b, NOW_DT, spec_path=str(self.root / "missing.json"))
+        self.assertIsNone(result)
+        self.assertIsNone(json_text)
+        self.assertIn("demo path unavailable — FileNotFoundError", body)
         self.assertIn("rows-board: demo path: FileNotFoundError", err.getvalue())
+        self.assertIn("<title>Demo path</title>", mod.render_demo_page(body, NOW_DT))

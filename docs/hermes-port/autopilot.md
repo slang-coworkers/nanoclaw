@@ -965,22 +965,63 @@ belongs to one channel, so an old state file against a new channel would thread 
 ### 10.2 Demo path tracker
 
 The path to the demo is five rungs, each needing specific matrix rows; the tracker shows, per rung,
-those rows with their live state, a status and an ETA. It is rendered twice from one module,
-`ops/nemoclaw-coworkers/demo_path.py` (stdlib; pure `load_spec` / `load_live` / `compute` /
-`render_html` / `render_slack`; `python3 demo_path.py --root <ROOT> --slack|--html|--json [--now …]`
-to debug), every 15 min from `refresh-viewers.sh`:
+those rows in their board state, a status and an ETA. **One computation, one row state.**
+`rows-board.py` reads every input once (`load_board`: dispatch-plan.md, `state.json`, `config.json`,
+`threads.json`, the ledger, the cards, `ncl sessions list`) and builds one per-row RECORD per plan row /
+card thread (`build_records`: plan row, queue row + supervisor row, the live dots, the cards, the
+ledger's work-item row + merge stamp). On that record it derives THE row's state exactly once —
+`row_state`, first match wins: no `state.json` → unknown; ledger `merged` | queue `merged` | supervisor
+`merged` → `merged` (the ledger cell is the merge fact; `state.json` lags it by a tick); the queue row
+paused | `config.paused_rows` → `paused`; ledger / queue / supervisor `blocked` → `blocked` with the
+reason (supervisor's, else the queue's, else the ledger's); `deferred`; both sides in flight → the
+supervisor's finer stage (`dispatched` · `spec_handoff` · `building` · `pr_open` · `testing` · `review`
+· `gate`); exactly one side in flight → that one (the supervisor's thread evidence, or the queue's
+dispatch bookkeeping the supervisor has not seen yet); `queued` and listed in `state.queue.waiting` →
+`waiting` with its gates; else the queue state as is. Alongside: `waived` (`config.waive`) and the
+supervisor's `holds` — a §4.3 merge hold (`1a` / `batch2` / `batch3+4`), any other hold
+(`core-change`), a pending cost card, an SLO / env-fail / blocked-twice escalation. **Every surface
+renders that one field.** The index cell and `/rows/<ROW>.html` show `row_stage(record)`: the state
+plus its decorations (`waiting · <gates>`, `· hold X`, `· cost hold`, `· waived`). The tracker,
+`ops/nemoclaw-coworkers/demo_path.py` (stdlib; pure `load_spec` / `live_gating` / `rows_from_board` /
+`compute` / `render_html` / `render_slack`), never derives a row's state from `state.json` itself: its
+adapter `rows_from_board(records, live_gating)` is a pure map over `record.state` / `state_reason` /
+`holds` / `waived` (it does not read the record's raw queue / supervisor / ledger inputs — a test strips
+them and gets the same row) — so its chip label IS the board's cell text minus the decorations, the one
+label of its own being `waived` for a non-merged waived row. A gate hold becomes a wait for that batch
+(`1a` → `1a_merged`, `batch2` → `batch2_merged`, `batch3+4` → both); a cost card, a core-change hold or
+an escalation becomes `held — <reason>`: no ETA, flagged like blocked. `live_gating(state, config)` takes
+only what a record does not carry, from the objects the board already loaded: the gate flags, `config.wip`
+(else `state.wip.limit`), the queue's `eligible` / `waiting` order, `generated_at` (plus the `waive` /
+`paused_rows` lists for display). `autopilot/test_rows_board.py` renders a fixture through the cases where
+the two surfaces used to disagree (ledger merged while `state.json` is stale, paused / waived via
+`config.json` after the tick, a held gate row, one side in flight) and asserts, for every row, index
+cell == row page == tracker label.
 
-- **`/rows/index.html`** — a "Demo path" section at the top of the board (before the batch tables):
-  rung · status · ETA (UTC) · required rows as chips in their live state · manual steps, flags and
-  blockers, plus the model as a collapsed "ETA model" footnote. `rows-board.demo_section` wraps the
-  tracker so a failure there is one banner (`demo path unavailable — …`), never a broken board.
+Every 15 min from `refresh-viewers.sh` — rows-board.py first, then slack-rows.py, in that order:
+
+- **`/rows/demo-path.html`** — the tracker's OWN page (the board's CSS, a `← rows board` link back):
+  rung · status · ETA (UTC) · required rows as chips in their board state · manual steps, flags and
+  blockers, plus the model as a collapsed "ETA model" footnote. `/rows/index.html` carries exactly one
+  link to it in its header, "Demo path →", and nothing else of the tracker; the per-row pages are
+  untouched. A tracker failure (missing / broken spec, an import error, a bug) is one banner on this
+  page (`demo path unavailable — …`, `rows-board.demo_tracker`); the board still writes; exit 0.
+- **`/rows/demo-path.json`** — the computed result (`compute()`: `generated_at`, `state_ok`,
+  `wip_limit`, `order_source`, `rungs[]` with rows / manual / blockers / flags / ETAs, `source_errors`,
+  `model_notes`) plus `slack_text`, the rendered Slack message. Written atomically next to the page on
+  every successful run; left exactly as it was when the tracker fails.
 - **`#hermes-port`** — ONE message `*Demo path*` (mrkdwn, ≤ 25 lines: one line per rung with its
-  status and ETA, one with its rows' states, one with flags/blockers). `slack-rows.py` posts it once,
-  after the row passes, the first time the tracker has a live `state.json` (one `--max-posts` unit),
-  remembers it under `slack-threads.json` → `"demo_path": {"ts", "channel", "text_hash", …}` and
-  from then on **edits it in place with `chat.update` whenever the text changes** (not budgeted,
-  never re-posted; unchanged text makes no call). A failed update is one log line and the hash is
-  kept, so the next run retries; delete the `demo_path` key to post a fresh message.
+  status and ETA, one with its rows' states, one with flags/blockers). `slack-rows.py` READS
+  `/rows/demo-path.json` (`--demo-json`; default `<$NEMO_WWW_DIR or ~/.local/share/nemo-www>/rows/demo-path.json`,
+  the same derivation as rows-board's `--www`; `refresh-viewers.sh` passes `$WWW/rows/demo-path.json`)
+  and posts its `slack_text` — it computes nothing and imports nothing from `demo_path.py`. Posted once,
+  after the row passes, the first time the JSON says `state_ok` (one `--max-posts` unit), remembered
+  under `slack-threads.json` → `"demo_path": {"ts", "channel", "text_hash", …}`, then **edited in place
+  with `chat.update` whenever the text changes** (not budgeted, never re-posted; unchanged text makes no
+  call). A failed update is one log line and the hash is kept, so the next run retries; delete the
+  `demo_path` key to post a fresh message. A JSON that is missing, unreadable, without `slack_text`, or
+  **older than 45 min** (its `generated_at`, else the file's mtime; the board rewrites it every 15 min)
+  is one log line (`demo path: … message left untouched`) and the message is left exactly as it is —
+  a stalled board never turns the Slack message into a recomputed or blank one.
 
 **Rungs** (`ops/nemoclaw-coworkers/demo-path.json`, the single spec both renderers load):
 R1 governed 5-bot fleet on one stock gateway, no sandbox — LOOP-F35, LOOP-F37, GOV-F24, GOV-F25,
@@ -992,32 +1033,44 @@ service — requires R2 + R3, the manual "P6-FLEET assembly" (48 h, after R2 and
 R4 plus the manual W0–W12 (504–840 h), so it reads as R4 + 21..35 days.
 
 **Status** per rung: `done` (every required row merged or in `config.waive`, every manual item with a
-`done_at`, every required rung done) · `in progress` (a required row merged or in flight) · `blocked by
-gate` (nothing started; the rows wait for a false gate or a required rung) · `not started` (rows queued
-and eligible) · `unknown` (no `state.json`). Flags: `blocked by pause: <row>` for a paused row the rung
-needs, directly or inside a gate it waits for; a ledger-blocked row is a blocker with its reason.
+`done_at`, every required rung done) · `in progress` (a required row merged or in flight — a held row
+counts) · `blocked by gate` (nothing started; the rows wait for a false gate or a required rung) · `not
+started` (rows queued and eligible) · `unknown` (no `state.json`). Flags: `blocked by pause: <row>` for a
+paused row the rung needs, directly or inside a gate it waits for; a blocked or held row is a blocker with
+its reason (`<row> blocked — <reason>`, `<row> held — cost card pending`), directly or through a gate. A
+demo-path row that is not a plan row (so has no board record) renders `unknown` — `not on the rows board`.
 
 **ETA model** (deterministic; the same text is the footnote): a row's remaining hours =
 `planning_hours[disposition]` (BUILD 48 h · CONFIGURE 15 h · ADOPT 10 h, the measured medians / p80)
-× `stage_factors[state]` (queued 1.0 · dispatched, spec_handoff 0.85 · building 0.6 · pr_open, testing
-0.35 · review 0.2 · gate 0.1 · merged 0), the state being the supervisor's stage when it names one,
-else the queue's row state. Open rows are list-scheduled in `hermes_queue.dispatch_order` (the order
-the autopilot dispatches; `demo-path.json` order is the fallback when the plan or matrix is unreadable)
-onto `config.wip` slots from now: in-flight rows hold a slot for their remaining hours, a BUILD row waits
-for the BUILD lane (one BUILD in flight), and a row behind a false gate starts when the rows that gate
-requires finish (`1a_first_pass` ← batch 1a, `batch2_merged` ← batch 2, `batch3_merged` ← batch 3,
-`batch4_merged` ← batch 4; `podman_box` is a config flag, so a false one makes the rows behind it
-`unknown` with the reason). Paused and ledger-blocked rows are excluded from every finish time and
-flagged. A manual item starts when everything in its `after` list (rows, manual items, rungs) has
-finished; a row with an `after` list starts no earlier than those items finish (its slot is not
-re-planned). Rung ETA = the latest finish over its rows, manual items and required rungs; a done rung
-shows `done <date>` from the ledger's merge stamps (`merged/blocked` cell), else `state.json`'s
-`generated_at`. Every input is optional: a missing or unreadable `state.json`, `config.json`, plan,
-matrix or ledger renders as `unknown` for that piece with a banner, and both scripts exit 0.
+× `stage_factors[state]` (queued, waiting 1.0 · dispatched, spec_handoff 0.85 · building 0.6 · pr_open,
+testing 0.35 · review 0.2 · gate 0.1 · merged 0), the state being the board record's mapped stage
+above; the disposition the queue row's, else the plan's Disp column, else the spec's `kind`. Open rows
+are list-scheduled in the autopilot's own queue order — `state.json` `queue.eligible`, then
+`queue.waiting` with its `blocked_by` gates: exactly the order the dispatch tick sends rows, BUILD-lane
+move included (fallback when `state.json` has no queue block: board order without gate waits, noted as a
+source error; the spec's order when there is no board at all) — onto `config.wip` slots from now:
+in-flight rows hold a slot for their remaining hours, a BUILD row waits for the BUILD lane (one BUILD in
+flight), and a row behind a false gate starts when the rows that gate requires finish (`1a_first_pass`,
+`1a_merged` ← batch 1a, `batch2_merged` ← batch 2, `batch3_merged` ← batch 3, `batch4_merged` ← batch 4;
+`podman_box` is a config flag, so a false one makes the rows behind it `unknown` with the reason). A row
+parked at `gate` on a merge hold keeps its slot and the lane until the batch it holds for has finished,
+then takes its last 0.1 slice (placed right away when that batch's rows are merged or in flight, else
+after the queued rows, once they have finish times). Paused, blocked and held rows are excluded from every
+finish time and flagged. A manual item starts when everything in its
+`after` list (rows, manual items, rungs) has finished; a row with an `after` list starts no earlier than
+those items finish (its slot is not re-planned). Rung ETA = the latest finish over its rows, manual items
+and required rungs; a done rung shows `done <date>` from the record's ledger merge stamp (`merged/blocked`
+cell), else `state.json`'s `generated_at`. Every input is optional: a missing or unreadable `state.json`,
+`config.json`, plan or ledger renders as `unknown` for that piece with a banner, and both scripts exit 0.
 
 **Editing the path.** Change `demo-path.json`: `rungs[].rows` (`{"id", "kind", "after"?}`),
 `rungs[].manual` (`{"id", "title", "hours", "hours_max"?, "after", "done_at"?}` — set `done_at` when the
-operator has done the step), `rungs[].requires`, `planning_hours`, `stage_factors`, `notes`. Both
-renderers read the file on every run; `DEMO_PATH_SPEC=<path>` (or `--demo-spec`) points them at another
-copy. Tests: `python3 -m unittest ops/nemoclaw-coworkers/test_demo_path.py` (+ the demo cases in
-`test_slack_rows.py` and `autopilot/test_rows_board.py`).
+operator has done the step), `rungs[].requires`, `planning_hours`, `stage_factors`, `notes`.
+`rows-board.py` reads the file on every run (`DEMO_PATH_SPEC=<path>` or `--demo-spec` points it at
+another copy); `slack-rows.py` does not read it at all — it only ever reads `/rows/demo-path.json`.
+Debug: `python3 demo_path.py --root <ROOT> --slack|--html|--json [--now …] [--state …] [--config …]`
+builds the very same records through `rows-board.load_board`. Tests:
+`python3 -m unittest ops/nemoclaw-coworkers/test_demo_path.py` (the adapter mapping, the ETA model,
+the board integration, the CLI) + the demo cases in `test_slack_rows.py` (JSON-driven message: present /
+changed / stale / missing, rows-board → slack-rows end to end) and `autopilot/test_rows_board.py` (the
+index has only the link; page + JSON agree; a broken spec is a banner and the JSON is left alone).
