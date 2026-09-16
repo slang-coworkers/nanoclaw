@@ -2,28 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-08-21T04:08:33Z",
-   "backlog": 3500,
-   "defects": 7,
-   "offenders": 7,
-   "top": {
-    "path": "supervise-report-2026-06-02T0631Z.md",
-    "class": "NO-FRONTMATTER",
-    "size": 3442
-   }
-  },
-  {
-   "at": "2026-08-22T04:07:42Z",
-   "backlog": 1500,
-   "defects": 3,
-   "offenders": 3,
-   "top": {
-    "path": "claude-vs-codex-triage-943.md",
-    "class": "NO-FRONTMATTER",
-    "size": 2730
-   }
-  },
-  {
    "at": "2026-08-23T04:08:47Z",
    "backlog": 0,
    "defects": 0,
@@ -325,6 +303,28 @@
     "path": "imported/feedback_a_relay_names_an_inbound_that_must_exist_in_the_thread.md",
     "class": "OVERSIZE",
     "size": 25242
+   }
+  },
+  {
+   "at": "2026-09-15T04:09:08Z",
+   "backlog": 413467,
+   "defects": 0,
+   "offenders": 104,
+   "top": {
+    "path": "imported/project_10027_vector4_import_abort_pending.md",
+    "class": "OVERSIZE",
+    "size": 24987
+   }
+  },
+  {
+   "at": "2026-09-15T04:09:16Z",
+   "backlog": 413467,
+   "defects": 0,
+   "offenders": 104,
+   "top": {
+    "path": "imported/project_10027_vector4_import_abort_pending.md",
+    "class": "OVERSIZE",
+    "size": 24987
    }
   }
  ]
