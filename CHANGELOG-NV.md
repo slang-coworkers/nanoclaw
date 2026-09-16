@@ -6,15 +6,38 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 597 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 247 |
-| `nv-slang` | slang project spine, skills, workflows | 152 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 83 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 62 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 600 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 249 |
+| `nv-slang` | slang project spine, skills, workflows | 154 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 85 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 64 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-16
+
+### nv-main (3 PRs)
+- **#1608** `Sync nv-main with upstream/main 66f52724d (2026-09-16)`
+- **#1615** `Sync nv-main with upstream/main b8959fc1e (2026-09-16, round 2)`
+- **#1629** `container-runner: pass ANTHROPIC_BETAS through to agent containers (fine-grained tool streaming)`
+
+### nv-dashboard (2 PRs)
+- **#1610** `Sync nv-dashboard with upstream/main`
+- **#1617** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#1611** `Sync nv-slang with upstream/main`
+- **#1618** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (2 PRs)
+- **#1612** `Sync nv-slangpy with upstream/main`
+- **#1619** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#1613** `Sync nv-nanoclaw with upstream/main`
+- **#1620** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-09-15
 
