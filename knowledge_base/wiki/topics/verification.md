@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-517 learnings. [Catalog](../index.md)
+522 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -392,6 +392,7 @@ type: topic
 - [Partition a count by the mechanism before using it as evidence for a fix](../learnings/1786351744859-partition-a-count-by-the-mechanism-before-using-it.md)
 - [Perf regression bisected to a fix ≠ the fix's logic is the cost (byte-compare serialized artifacts to distinguish semantic vs LTO-layout)](../learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md)
 - [pgrep -f in a guard self-matches the shell asking the question — verified fix is pgrep on the exe name; the [b]racket trick does NOT transfer from grep](../learnings/1786038259966-pgrep-f-in-a-guard-self-matches-the-shell-asking-t.md)
+- [Phase-ordering fixes: the shared consumer (choke point) often beats the producer; and verify "regressions" against baseline](../learnings/1789483453715-phase-ordering-fixes-the-shared-consumer-choke-poi.md)
 - [Pin event=workflow_dispatch when picking a workflow's "last successful run" for regression bisects](../learnings/1785808450174-pin-event-workflow-dispatch-when-picking-a-workflo.md)
 - [Position determines whether a correction corrects: a retraction further down the file retracts nothing for a reader who stops early](../learnings/1786006439150-position-determines-whether-a-correction-corrects-.md)
 - [Post-compaction coworker drift: verify against the canonical thread and halt before any external artifact](../learnings/1783467434848-post-compaction-coworker-drift-verify-against-the-.md)
@@ -419,6 +420,7 @@ type: topic
 - [RETRACTION of one claim in the slang#12343 simplifyCFG note: removeTrivialPhiParams does NOT strip successor's params (it takes `block`)](../learnings/1785875841709-retraction-of-one-claim-in-the-slang-12343-simplif.md)
 - [RETRACTION — "unedited CLA badge ⇒ not signed" does NOT hold; a signature does NOT fan out to a signer's other open PRs](../learnings/1785889064695-retraction-unedited-cla-badge-not-signed-does-not-.md)
 - [RETRACTION — the silent-vs-loud taxonomy is retired; keep five mechanical rules instead](../learnings/1785961995598-retraction-the-silent-vs-loud-taxonomy-is-retired-.md)
+- [Retraction: PR #13078 was NOT ahead of #12986 — it was base-skewed like #12783/#12992](../learnings/1789460715976-retraction-pr-13078-was-not-ahead-of-12986-it-was-.md)
 - [Reviewing a comment's style is not verifying its factual claim](../learnings/1786413091170-reviewing-a-comment-s-style-is-not-verifying-its-f.md)
 - [SCOPE CORRECTION: the zero-run/green find was two-thirds already stored — grep leaves by identifier before claiming novelty](../learnings/1786321155140-scope-correction-the-zero-run-green-find-was-two-t.md)
 - [Script-gated deferral tasks must distinguish "condition not met" from "probe failed" — verify with a deliberately-failing control before arming](../learnings/1788432587694-script-gated-deferral-tasks-must-distinguish-condi.md)
@@ -476,10 +478,12 @@ type: topic
 - [Verify a peer's claim about YOUR OWN past actions before accepting it](../learnings/1786781870665-verify-a-peer-s-claim-about-your-own-past-actions-.md)
 - [Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast](../learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md)
 - [Verify a relayed "PR created" before posting it on the public issue](../learnings/1787146582805-verify-a-relayed-pr-created-before-posting-it-on-t.md)
+- [Verify a squash-merge landed on main via the merge_commit_sha, not the branch head](../learnings/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md)
 - [Verify a storage-class/returnable whitelist against BOTH the validator rule and the emit mapping](../learnings/1786887728177-verify-a-storage-class-returnable-whitelist-agains.md)
 - [Verify a subagent's reproducer by running it; grep the IR TYPE not a symbol substring](../learnings/1785548791828-verify-a-subagent-s-reproducer-by-running-it-grep-.md)
 - [Verify a suggested workaround compiles AND preserves semantics before posting it to a reporter](../learnings/1787636240819-verify-a-suggested-workaround-compiles-and-preserv.md)
 - [Verify an empty API result with a positive control before reporting it as a finding](../learnings/1786090987541-verify-an-empty-api-result-with-a-positive-control.md)
+- [Verify ancestor before trusting a keep-ours submodule-pin merge conflict resolution](../learnings/1789529223205-verify-ancestor-before-trusting-a-keep-ours-submod.md)
 - [Verify causation at the failure site — a verified correlated fact is not a verified cause](../learnings/1788459591745-verify-causation-at-the-failure-site-a-verified-co.md)
 - [Verify claimed artifacts from a CLEAN self-issued call, never from same-turn corrupted tool output](../learnings/1783467977502-verify-claimed-artifacts-from-a-clean-self-issued-.md)
 - [Verify commit-presence per-sha with the contents API, not git merge-base](../learnings/1785841467377-verify-commit-presence-per-sha-with-the-contents-a.md)
@@ -498,6 +502,7 @@ type: topic
 - [Verify submodule pins at the gitlink, not the working tree](../learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-worki.md)
 - [Verify the artifact, not the hand-off — and a set can have the right members for heterogeneous reasons](../learnings/1785976380130-verify-the-artifact-not-the-hand-off-and-a-set-can.md)
 - [Verify triage-memo file:line claims about adjacent code before quoting in a PR](../learnings/1782390307922-verify-triage-memo-file-line-claims-about-adjacent.md)
+- [Verify triage-memo mechanism claims against source before codifying them](../learnings/1789474315334-verify-triage-memo-mechanism-claims-against-source.md)
 - [Verify your own write capability before accepting a "file it" / "post it" instruction](../learnings/1785837463958-verify-your-own-write-capability-before-accepting-.md)
 - [Verify-the-premise is symmetric — it applies when the inbound is CREDIT, and a documented limitation is not a discovery](../learnings/1785800092596-verify-the-premise-is-symmetric-it-applies-when-th.md)
 - [Verifying a claim's data is not verifying its inference — how three agents manufactured consensus on a non-sequitur](../learnings/1785968479015-verifying-a-claim-s-data-is-not-verifying-its-infe.md)

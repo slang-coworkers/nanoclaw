@@ -3,7 +3,7 @@ title: Re-review scope decisions, cross-round adjudication, and reviewer session
 type: concept
 group: review-process
 tags: [slang-pr-review, re-review, round-2, spot-check, diff-hash, cross-round, a2a-redrive, thread-id, synchronize, canonical-thread, overlap-analysis]
-source_count: 7
+source_count: 8
 ---
 
 ## TL;DR
@@ -56,6 +56,21 @@ For a doc/test/refactor round-2 the mechanical recipe is: fetch the new head,
 leaked — if the survivors are a behavior-preserving refactor plus comments/docs/tests, the
 runtime behavior is identical to what was approved and re-review is trivial
 [Round-2 re-review of a doc/test/refactor fix = targeted diff, not a full re-run](../learnings/1788381184331-round-2-pr-re-review-of-a-doc-test-refactor-fix-ta.md).
+When the round-2 diff shows the **fix logic itself is unchanged** (only tests/comments moved) but
+you still want runtime assurance beyond a source read, a delta-verification is higher-signal than a
+full ~$8 A/C re-run: (1) confirm HEAD (`headRefOid`) and verify the fix hunk is byte-identical to
+round 1; (2) verify any diagnostic codes against SOURCE, not the fixer's summary — Slang diagnostics
+live in generated `source/slang/slang-diagnostics.lua`, keyed by numeric id (`err("...", 38100, ...)`
+→ E38100), so grep the id; (3) run the new test shaders through the standing
+`build/Release/bin/slangc` (usually detached master, i.e. UNFIXED — grep for the fix to confirm) as
+a negative control: a crash-fix regression test should reproduce the crash (exit 139) unfixed,
+proving the tests are genuine guards and parse up to the crash point; (4) if
+`git merge-base <built-master-sha> <PR-head>` == the built master sha, the branch is master+diff, so
+an incremental rebuild recompiles only the changed TUs — checkout the head, build slangc/slang-test,
+run via `slang-test` from repo root, then restore master; (5) re-fetch Devin (cheap, auto-re-analyzes
+each commit — though its `devin-commit-status` often returns "unknown" via anonymous scrape, a
+freshness caveat not a failure). Be transparent in the verdict that round-2 was a delta-verification,
+not a fresh full pipeline run, and offer the full run if the requester prefers ([round-2 delta-verify instead of a full pipeline re-run when the fix logic is unchanged](../learnings/1789491455857-round-2-pr-review-delta-verify-instead-of-full-pip.md)).
 Distinct from a re-review entirely: a maintainer tagging the bot to "analyze overlap /
 redundancy between PR #A and #B" is a comparative *investigation* (fits `/slang-plan`
 research mode), NOT the three-reviewer code-review pipeline — answer with each PR's
@@ -109,9 +124,10 @@ than manufacturing a rev N+1 (still re-check live clause state — CI can flip o
 and a red downstream check may be a cross-repo release-ordering gate, not a defect)
 [A 'synchronize' re-wake can be metadata-only — verify the head moved before deciding](../learnings/1788556078923-approver-ops-a-synchronize-re-wake-can-be-metadata.md).
 
-**Source learnings (7):**
+**Source learnings (8):**
 - [spot-check (not full re-run) for additive nit-fixes; diff_hash goes stale](../learnings/1788198210854-slang-pr-review-spot-check-not-full-re-run-for-add.md) — read-only source spot-check of load-bearing touch points; never hand-fabricate an exact-head diff_hash.
 - [Round-2 re-review of a doc/test/refactor fix = targeted diff, not a full re-run](../learnings/1788381184331-round-2-pr-re-review-of-a-doc-test-refactor-fix-ta.md) — git diff r1..r2 (both objects fetchable); grep the code delta to prove no functional leak.
+- [round-2 delta-verify instead of a full pipeline re-run when the fix logic is unchanged](../learnings/1789491455857-round-2-pr-review-delta-verify-instead-of-full-pip.md) — confirm HEAD + byte-identical fix hunk, verify diag codes in `slang-diagnostics.lua`, negative-control on the unfixed master build (crash exit 139), incremental rebuild when merge-base allows, re-fetch Devin; disclose it as a delta-verification.
 - [Maintainer 'analyze overlap between two PRs' ask ≠ /slang-pr-review pipeline](../learnings/1788213763620-maintainer-analyze-overlap-between-two-prs-ask-sla.md) — comparative investigation with file/+-/issue/call-site evidence; post a plain issue comment, not post-review.sh.
 - [adjudicating Devin bugs + cross-round context (Reviewer A can't see the PR body)](../learnings/1788907887233-slang-pr-review-adjudicating-devin-bugs-cross-roun.md) — A reviews the diff not the body; Devin scrape lacks reasoning; surface converged FPs with contradicting evidence.
 - [a2a-redrive bounce citing a reused reviewer session's stale thread](../learnings/1788468189401-a2a-redrive-bounce-citing-a-reused-reviewer-sessio.md) — reused session frozen to first PR's thread; re-drive on the canonical gh-issue thread, don't reuse the stale one.

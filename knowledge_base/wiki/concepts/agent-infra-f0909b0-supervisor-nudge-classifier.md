@@ -3,7 +3,7 @@ title: "Supervisor Nudge Classifier: Bot Detection, Ball-Direction, and Disposit
 type: concept
 group: agent-infra
 tags: [supervise-issues, scan.py, nudge, bot-detection, ball-direction, disposition, false-positive]
-source_count: 14
+source_count: 18
 ---
 
 ## TL;DR
@@ -47,9 +47,14 @@ live GitHub before acting, and never let a nudge alone authorize a GitHub write.
   limbs against live GitHub receipts, send only verified nudges, escalate the defect. Never
   mass-fire; never silence a nudge by narrating it away — fix the CLASSIFIER so the row
   emits `action='none'` with an auditable reason.
-- **Fixing the classifier is only real once the disposition is PERSISTED to
+- **A mandatory-draft bot PR reads as `no PR`, and an empty maintainer APPROVE reads as
+  `awaiting_us`** — both false. Resolve PRs by `closingIssuesReferences`/`Fixes #N`/
+  `pr_session_mappings`, not the `fix/issue-` branch convention; treat an approve with no open
+  threads as closed-pending-merge; a draft PR is resolved-pending-human, not a stall.
+- **Fixing the classifier is only real once the disposition is PERSISTED to the Orchestrator's
   `supervisor-state.json`** (rehydrated each tick via `we_owe_next_step`). Auditing false
-  positives off without persisting is why they recur.
+  positives off without persisting is why they recur — and a coworker's own copy of that file
+  is inert, so a coworker must report its disposition UP for the orchestrator to record.
 
 ## Synthesis
 
@@ -96,6 +101,13 @@ Independently, third-party review bots — `github-actions`, `coderabbitai`,
 review as the newest actor flips the ball to "ours" ([scan.py counts bots as humans](../learnings/1787748905685-supervise-issues-scan-py-counts-bots-as-humans-and.md),
 [over-flag is 3 concrete defects](../learnings/1788008486909-supervise-issues-scan-py-over-flag-is-3-concrete-c.md),
 [scan.py over-flags nudges](../learnings/1787402461318-supervise-issues-scan-py-over-flags-nudges-bots-ta.md)).
+`CLAassistant` is the sharpest of these: it posts with `user.type == "User"` (not `"Bot"`), so
+any "human spoke last" heuristic keyed on `type != Bot` false-alarms whenever its "not signed"
+notice is the trailing comment — yet that notice carries a real signal, so do not merely suppress
+it. The CLA-not-signed status is a genuine MERGE blocker (read the body: it lists which committers
+signed), and if our own bot identity `nv-slang-bot` is an unsigned committer, that is an
+operator/org identity decision (how bot commits are CLA-covered), not a fixer/reviewer action —
+escalate it UP rather than trying to "answer" CLAassistant on GitHub ([CLAassistant is typed User, not Bot — it trips the unanswered-human nudge](../learnings/1789521176741-claassistant-is-typed-user-not-bot-it-trips-superv.md)).
 
 ### The board-sync notice is the single largest false-positive source
 
@@ -145,6 +157,27 @@ or @-mentioned. If all no → report up "not actionable" and do NOT post (a firs
 comment on a human's actively-managed PR is pure noise; for a read-only/no-role tier,
 invariant 4 is satisfied by reporting up, not a GitHub write).
 
+A tick-226 audit of 12 `action='nudge'` chains found only ONE real catch (a substantive reply
+that had gone out as a comment *edit*, which GitHub doesn't notify, so the maintainer was
+genuinely un-pinged) — the other eleven were the same handful of classifier gaps re-firing at a
+~90% false-positive rate, each burning a fixer wake per chain per tick. Two of those classes go
+beyond the bot/timeline defects above. First, **an empty maintainer APPROVE with no open threads
+or questions is not `awaiting_us`** — it closes a loop, and under the standing silence-on-success
+hold (a clean approval is deliberately never replied to on GitHub) it needs no reply; treat a
+maintainer APPROVE with no open threads/questions as `awaiting_human` / closed-pending-merge, even
+on an already-MERGED PR. Second, **a mandatory-draft bot PR reads as "no PR"** and trips the
+fixer-owned-no-PR nudge: the PR-resolution heuristic keys on the `fix/issue-<n>` head-branch
+convention, but slangpy fixers use `dev/slangpy-fixer/<n>`, so a complete, green, linked draft PR
+(with `report_pr_created` done) resolves to `pr=None`. Resolve PRs by the `Fixes #<n>` body /
+`pr_session_mappings` / the GraphQL `closingIssuesReferences` link (a bare `Fixes #N` and a
+fully-qualified `Fixes owner/repo#N` both populate it), not only the branch convention — and note
+a draft PR is resolved-pending-human, NOT a stall you can clear, because policy forbids
+`gh pr ready`/`gh pr merge` (a human decision). A prose "it's done / not blocked" reply does NOT
+stop the automated re-nudge; persist the resolved disposition (below), and where the detector is
+wrong reconcile it to treat "open draft + green + closingIssuesReferences + report_pr_created" as
+resolved-pending-human ([four false-positive classes inflate awaiting_us](../learnings/1789477984124-supervisor-scan-py-four-false-positive-classes-inf.md),
+[issue-supervisor nudges completed bot work — mandatory-draft PRs read as "no PR"](../learnings/1789521755042-issue-supervisor-nudges-completed-bot-work-because.md)).
+
 ### Disposition gating: both branches, wider vocabulary, and persistence
 
 Even with correct bot labels, the disposition gate has a structural hole: the
@@ -182,6 +215,17 @@ honors it — so writing a HUMAN_OWNED token into `supervisor-state.json` suppre
 tested path. The reason the over-flag recurred for eight consecutive ticks: prior ticks
 audited the false positives off but never persisted the disposition
 ([over-flag is 3 concrete defects](../learnings/1788008486909-supervise-issues-scan-py-over-flag-is-3-concrete-c.md)).
+Critically, that `supervisor-state.json` is the **Orchestrator's** — the cron runs from the
+orchestrator's workspace and rehydrates each chain's disposition from the orchestrator's
+prior-tick file (`scan.py`'s `prior.get("disposition")`); live GitHub carries no disposition. A
+coworker (triager/fixer) writing `advisory:maintainer-driving` (or any disposition) into its OWN
+workspace's `memory/supervisor-state.json` is **inert** — that file is never read by the cron, so
+a coworker cannot self-suppress its own re-wake. It must report the disposition UP to the
+orchestrator, whose action it is to record it in the authoritative file. The suppressing tokens
+(`HUMAN_OWNED_DISPOSITION`, substring-matched on the lowercased disposition) are
+`maintainer-driving`, `advisory`, `stood-down`, `human-debate`, `external-pr`, `awaiting-pickup`,
+`closed-by-us`; the canonical value is `advisory:maintainer-driving — <who> driving; bot stood
+down, no PR` ([coworkers can't self-suppress the re-wake — disposition lives in the Orchestrator's state file](../learnings/1789416255279-coworkers-can-t-self-suppress-the-supervisor-re-wa.md)).
 
 ### The safety valve: a surge is an instrument fault, and mass-firing is destructive
 
@@ -209,7 +253,7 @@ the first clean scan produced a 115-nudge recovery backlog (~0 genuine) — the 
 oversized/lost transcripts (`API Error 400 unexpected end of data`) need operator/transcript
 intervention, not a plain wake ([naive-datetime crash](../learnings/1787059894213-supervise-issues-scan-py-naive-datetime-crash-froz.md)).
 
-**Source learnings (14):**
+**Source learnings (18):**
 - [A supervisor "non-bot spoke last" nudge can be false: last event was a BOT review](../learnings/1786452477308-approver-false-safe-a-supervisor-a-non-bot-spoke-l.md) — filter by `author.__typename` before taking newest event; a nudge is a claim about state, not state; never let it authorize a write.
 - [supervisor nudge: "who spoke last" is not "a human is unanswered"](../learnings/1786453196243-supervisor-nudge-who-spoke-last-is-not-a-human-is-.md) — the definitive postmortem: bot test is a DISJUNCTION (type OR id), two concurrent bot accounts, recency≠obligation, three ordered filters.
 - [scan.py: stored disposition must outrank per-tick reclassification](../learnings/1786498066587-supervise-issues-scan-py-stored-disposition-must-o.md) — human-owned/terminal gate must cover both ball branches; N coworkers reporting a re-nudge is the trigger to fix the classifier.
@@ -224,3 +268,7 @@ intervention, not a plain wake ([naive-datetime crash](../learnings/178705989421
 - [scan.py over-flag is 3 concrete classifier defects, not noise](../learnings/1788008486909-supervise-issues-scan-py-over-flag-is-3-concrete-c.md) — bot set, PR-reviews-in-ball, disposition-on-ball==ours; persist the disposition or it recurs; a real owed-PR backlog hides inside the refrain.
 - [scan.py over-flags awaiting_us from non-bot timeline events (shepherd subscribe/mention)](../learnings/1789265524383-supervise-issues-scan-py-over-flags-awaiting-us-fr.md) — ball-direction counts timeline events (subscribed/mentioned/assigned/labeled/board-sync) and `updated_at` as human-last; key only on real IssueComment/PullRequestReview by a non-bot; a subscribed auto-assigned shepherd is not speaking.
 - [supervise-issues: suppress nudges on maintainer-owned / explicitly-deferred chains](../learnings/1789252641916-supervise-issues-suppress-nudges-on-maintainer-own.md) — a chain whose newest event is the assignee's own comment or a defer, with a posted "do not dispatch" verdict, is intentionally quiet; nudging it dead-lettered on an old triager session (slang#8957).
+- [scan.py: four false-positive classes inflate awaiting_us](../learnings/1789477984124-supervisor-scan-py-four-false-positive-classes-inf.md) — empty maintainer APPROVE, bot-only comments, CODEOWNERS auto-assign, and slangpy draft PRs (`dev/slangpy-fixer/<n>` branch) all misread as awaiting_us; ~90% false-positive rate; one real catch was a comment-edit reply GitHub didn't notify.
+- [CLAassistant is typed User, not Bot — it trips the "unanswered human comment" nudge](../learnings/1789521176741-claassistant-is-typed-user-not-bot-it-trips-superv.md) — `user.type=="User"` false-alarms a `type != Bot` heuristic; don't reply, but surface the CLA-not-signed MERGE blocker and escalate the bot-identity CLA decision to the operator.
+- [issue-supervisor nudges completed bot work — mandatory-draft PRs read as "no PR"](../learnings/1789521755042-issue-supervisor-nudges-completed-bot-work-because.md) — verify `closingIssuesReferences` + `report_pr_created` + cross-referenced; a draft PR is resolved-pending-human, not a stall (can't un-draft — policy); a prose "it's done" doesn't stop the re-nudge.
+- [coworkers can't self-suppress the re-wake — disposition lives in the Orchestrator's state file](../learnings/1789416255279-coworkers-can-t-self-suppress-the-supervisor-re-wa.md) — the cron reads the orchestrator's `supervisor-state.json`, not a coworker's copy; report the disposition up; suppressing tokens listed.
