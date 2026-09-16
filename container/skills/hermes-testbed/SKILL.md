@@ -175,7 +175,7 @@ The desktop e2e ships the reference: a mock OpenAI-compatible inference server o
 # NEGATIVE-CONTROL — the acceptance test must FAIL on the base tree (hermes-verify step 2h owns the exact recipe):
 #   worktree wt-verify-<N>-base at origin/<BASE>, `.venv` SYMLINKED from $WT (runner probes <worktree>/.venv, run_tests.sh:54-75),
 #   copy the acceptance test in, run it there → EXPECT non-zero. Exit 0 = the test does not test the plugin → row FAIL.
-# FOCUSED-PYTEST — `scripts/run_tests.sh tests/plugins/ tests/hermes_cli/` in an `Agent` with explicit timeout; `⚠ FLAKY` = FAIL for that file.
+# FOCUSED-PYTEST — scoped by changed-files.txt (hermes-verify step 2g): `tests/plugins/` for a plugin+docs+tests diff, add `tests/hermes_cli/` only when hermes_cli paths / CLI-registering plugin code changed or mode=nightly; the row names the scope. In an `Agent` with explicit timeout; `⚠ FLAKY` = FAIL for that file.
 #   BASE-REPRODUCING FAILURES ARE NOT THE PR'S: re-run every failing node once on wt-verify-<N>-base (origin/<BASE>, the
 #   NEGATIVE-CONTROL worktree). A node that fails there too is recorded `ADVISORY-FAIL(base)` with the node id and never
 #   flips the verdict; only nodes green at base and red at head are FAIL. (P0-LOOP round 3 was a 3/3-PASS PR reported FAIL
