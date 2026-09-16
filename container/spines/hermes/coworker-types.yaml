@@ -92,6 +92,9 @@ hermes-common:
     live_inference_key_env: ANTHROPIC_API_KEY
   identity: container/spines/hermes/identity/engineer.md
   invariants:
+    # Tool-call input size ceiling: one oversized Write/Edit/message stalls the
+    # stream and the runtime aborts the turn (ISO-F14 architect, 2026-09-16).
+    - container/spines/hermes/invariants/tool-call-size.md
     # Stable plugin/CLI/config surfaces + additive-compat + test-contract rules.
     - container/spines/hermes/invariants/public-api.md
     # Every capability is a plugin; diffs outside plugins/** website/docs/**
@@ -167,6 +170,9 @@ hermes-architect:
   project: hermes
   extends: hermes-reader
   invariants:
+    # Tool-call input size ceiling: one oversized Write/Edit/message stalls the
+    # stream and the runtime aborts the turn (ISO-F14 architect, 2026-09-16).
+    - container/spines/hermes/invariants/tool-call-size.md
     # Always-in-context so it survives compaction: no git push, no PR, no
     # GitHub write endpoint; results travel as messages + send_file.
     - container/spines/hermes/invariants/no-push.md
@@ -205,6 +211,9 @@ hermes-builder:
   project: hermes
   extends: hermes-writer
   invariants:
+    # Tool-call input size ceiling: one oversized Write/Edit/message stalls the
+    # stream and the runtime aborts the turn (ISO-F14 architect, 2026-09-16).
+    - container/spines/hermes/invariants/tool-call-size.md
     # Always-in-context so it survives compaction (unlike the workflow step):
     # hermes-tester first (round 1 unmarked `Fix report — …`, round 2 a
     # [Fix Report] reply to its [Test Report] FAIL; max 2 FAILs, then the
@@ -242,6 +251,9 @@ hermes-tester:
   project: hermes
   extends: hermes-common
   invariants:
+    # Tool-call input size ceiling: one oversized Write/Edit/message stalls the
+    # stream and the runtime aborts the turn (ISO-F14 architect, 2026-09-16).
+    - container/spines/hermes/invariants/tool-call-size.md
     # plugin-first.md + public-api.md are inherited from hermes-common (the
     # composer appends + dedups); re-listed so this role's contract reads
     # complete — the tester judges the PR head against the same plugin
@@ -304,6 +316,9 @@ hermes-reviewer:
   project: hermes
   extends: hermes-reader
   invariants:
+    # Tool-call input size ceiling: one oversized Write/Edit/message stalls the
+    # stream and the runtime aborts the turn (ISO-F14 architect, 2026-09-16).
+    - container/spines/hermes/invariants/tool-call-size.md
     - container/spines/hermes/invariants/no-push.md
     # Hermes-local code-change rules the reviewer enforces (this spine has no
     # nanoclaw/ or slang/ sibling to borrow from on this branch).
