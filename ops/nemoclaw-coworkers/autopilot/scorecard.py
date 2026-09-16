@@ -54,7 +54,7 @@ STAMP_RE = re.compile(r"(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})")
 PR_RE = re.compile(r"#(\d+)")
 ALERT_RE = re.compile(r"^- (\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(?::\d{2})?Z?)\s+·\s+(\S+)\s+·\s+(.*)$")
 LONE_DASH = {"", "-", "—", "–", "n/a", "na", "none"}
-DEFAULT_DISPATCHABLE = 30
+DEFAULT_DISPATCHABLE = 31  # the plan's coverage line (dispatched rows) when the plan file is unreadable; 31 since FLEET-F62 (2026-09-16)
 TICK_STALE_H = 3.0
 ALERT_WINDOW_H = 6.0
 TZ_OFFSETS = {"IST": timedelta(hours=5, minutes=30), "UTC": timedelta(0), "Z": timedelta(0)}

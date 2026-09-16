@@ -69,14 +69,15 @@
       "id": "R4",
       "title": "Fleet as a service: one gateway container, N profiles, N sandboxes, real 5-bot workflow",
       "rows": [
-        {"id": "ISO-F17", "kind": "ADOPT", "after": ["P6-FLEET"]}
+        {"id": "FLEET-F62", "kind": "BUILD"},
+        {"id": "ISO-F17", "kind": "ADOPT", "after": ["FLEET-F62"]}
       ],
       "manual": [
         {
-          "id": "P6-FLEET",
+          "id": "P6-OPERATOR",
           "kind": "manual",
-          "title": "P6-FLEET assembly (hand-dispatched, ~48h)",
-          "hours": 48,
+          "title": "P6 operator steps (podman socket + wrapper mounts into hermes-tester, /opt/onecli/ca.crt, hermes-sandbox:pinned, uid-1001 egress rule, OneCLI agents per profile in selective mode)",
+          "hours": 8,
           "after": ["R2", "R3"]
         }
       ],
@@ -102,7 +103,7 @@
   "notes": [
     "A rung is done when every required row is merged (or listed in autopilot config.waive) and every manual item carries a done_at.",
     "Row remaining hours = planning_hours[disposition] x stage_factors[state]; the disposition comes from state.json (the row's `kind` here is the fallback), the state from the supervisor's stage when it names one, else the queue's row state.",
-    "Rows still open are list-scheduled in hermes_queue.dispatch_order (the order the autopilot dispatches; this file's order is the fallback) onto config.wip slots from now: rows already in flight hold a slot until their remaining hours elapse, a BUILD row waits for the BUILD lane (one BUILD in flight at a time), a row behind a false gate starts when the rows that gate requires finish (1a_first_pass <- batch 1a, batch2_merged <- batch 2, batch3_merged <- batch 3, batch4_merged <- batch 4; podman_box is a config flag, never a row).",
+    "Rows still open are list-scheduled in hermes_queue.dispatch_order (the order the autopilot dispatches; this file's order is the fallback) onto config.wip slots from now: rows already in flight hold a slot until their remaining hours elapse, a BUILD row waits for the BUILD lane (one BUILD in flight at a time), a row behind a false gate starts when the rows that gate requires finish (1a_first_pass <- batch 1a, batch2_merged <- batch 2, batch3_merged <- batch 3, batch4_merged <- batch 4; podman_box is a config flag, never a row). FLEET-F62 (batch 5, BUILD) waits on batch3_merged and batch4_merged like ISO-F17 and is ordered before it; there is no batch5_merged gate.",
     "Paused rows (config.paused_rows) and rows the ledger blocked are excluded from every finish time and flagged on each rung that needs them; a row with an `after` list starts no earlier than those items finish (its slot is not re-planned).",
     "A manual item starts when everything in its `after` list (rows, manual items or rungs) has finished and lasts `hours` (`hours_max` gives the upper end of a range); R5 therefore reads as R4 + 21..35 days.",
     "Rung ETA = the latest finish over its rows, manual items and required rungs; `done <date>` uses the ledger's merge timestamps when present, else state.json's generated_at. Anything unreadable renders as unknown, never as a crash.",

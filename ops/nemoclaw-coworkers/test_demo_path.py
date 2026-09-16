@@ -38,7 +38,7 @@ H = timedelta(hours=1)
 IN_FLIGHT = ("dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate")
 
 # The demo-path rows plus the other batch-2 rows the batch2_merged gate counts (COST-F30, LOOP-F40), in the
-# autopilot's dispatch order (hermes_queue.dispatch_order: 1a, 1b by wave, 2, 3, 4, adopt).
+# autopilot's dispatch order (hermes_queue.dispatch_order: 1a, 1b by wave, 2, 3, 4, 5, adopt).
 ROW_META = {
     "LOOP-F35": ("BUILD", "1a"),
     "RT-F01": ("CONFIGURE", "1b"), "RT-F02": ("CONFIGURE", "1b"), "RT-F03": ("CONFIGURE", "1b"),
@@ -47,10 +47,11 @@ ROW_META = {
     "COST-F30": ("BUILD", "2"), "LOOP-F40": ("CONFIGURE", "2"),
     "CRED-F28": ("BUILD", "3"), "ISO-F13": ("CONFIGURE", "3"), "ISO-F14": ("CONFIGURE", "3"), "ISO-F15": ("CONFIGURE", "3"),
     "A2A-F21": ("CONFIGURE", "4"),
+    "FLEET-F62": ("BUILD", "5"),
     "ISO-F17": ("ADOPT", "adopt"),
 }
 GATES = {"1a": (), "1b": ("1a_first_pass",), "2": ("1a_first_pass",), "3": ("batch2_merged", "podman_box"),
-         "4": ("batch2_merged",), "adopt": ("batch3_merged", "batch4_merged")}
+         "4": ("batch2_merged",), "5": ("batch3_merged", "batch4_merged"), "adopt": ("batch3_merged", "batch4_merged")}
 
 
 def load_module():
@@ -405,7 +406,11 @@ class ComputeTest(unittest.TestCase):
         self.assertEqual(self.spec["stage_factors"]["building"], 0.6)
         r4 = by_id(self.spec["rungs"])["R4"]
         self.assertEqual(r4["requires"], ["R2", "R3"])
-        self.assertEqual(r4["rows"][0]["after"], ["P6-FLEET"], "ISO-F17's proof runs against the P6 boot")
+        # FLEET-F62 is a plan row (batch 5, BUILD) since 2026-09-16 — no longer a manual step; ISO-F17's proof runs against its boot
+        self.assertEqual([(x["id"], x["kind"], x["after"]) for x in r4["rows"]], [("FLEET-F62", "BUILD", []), ("ISO-F17", "ADOPT", ["FLEET-F62"])])
+        self.assertEqual([(m["id"], m["hours"], m["after"]) for m in r4["manual"]], [("P6-OPERATOR", 8.0, ["R2", "R3"])],
+                         "the operator's box-side steps (mounts, egress rule, OneCLI agents) stay as ONE manual item")
+        self.assertNotIn("P6-FLEET", json.dumps(self.spec))
         r5 = by_id(self.spec["rungs"])["R5"]
         self.assertEqual((r5["manual"][0]["hours"], r5["manual"][0]["hours_max"]), (504.0, 840.0))
         self.assertIn("planning_hours", self.spec["notes"])
@@ -494,14 +499,22 @@ class ComputeTest(unittest.TestCase):
         self.assertEqual(rooms["eta"], iso(datetime.fromisoformat(a2a["eta"].replace("Z", "+00:00")) + 8 * H),
                          "the manual rooms step starts when A2A-F21 finishes")
         self.assertEqual(r3["eta_utc"], rooms["eta"])
-        # R4: P6-FLEET starts when R2 and R3 are done, ISO-F17 (after P6-FLEET) ends 10 h later; R5 = R4 + 21..35 d.
+        # R4: FLEET-F62 (batch 5, BUILD 48 h) waits for batch3_merged + batch4_merged, i.e. CRED-F28's finish (= R2's ETA,
+        # later than R3's), and takes the BUILD lane right then; ISO-F17 (after FLEET-F62) ends 10 h later; the operator's
+        # 8 h manual step runs after R2 + R3 in parallel and never extends the rung; R5 = R4 + 21..35 d.
         r4, r5 = rungs["R4"], rungs["R5"]
         self.assertEqual(r4["status"], "blocked_by_gate")
-        p6 = r4["manual"][0]
         r2r3 = max(datetime.fromisoformat(r2["eta_utc"].replace("Z", "+00:00")), datetime.fromisoformat(r3["eta_utc"].replace("Z", "+00:00")))
-        self.assertEqual(p6["eta"], iso(r2r3 + 48 * H))
+        fleet = by_id(r4["rows"])["FLEET-F62"]
+        self.assertEqual((fleet["state"], fleet["kind"], fleet["remaining_hours"]), ("waiting", "BUILD", 48.0))
+        self.assertIn("waits for batch3_merged, batch4_merged", fleet["blockers"])
+        self.assertEqual(fleet["start_utc"], iso(r2r3), "the gate opens when CRED-F28, the last batch-3 row, finishes")
+        self.assertEqual(fleet["eta"], iso(r2r3 + 48 * H))
         self.assertEqual(by_id(r4["rows"])["ISO-F17"]["eta"], iso(r2r3 + 58 * H))
+        ops = r4["manual"][0]
+        self.assertEqual((ops["id"], ops["eta"]), ("P6-OPERATOR", iso(r2r3 + 8 * H)))
         self.assertEqual(r4["eta_utc"], by_id(r4["rows"])["ISO-F17"]["eta"])
+        self.assertGreater(r4["eta_utc"], fleet["eta"])
         r4_eta = datetime.fromisoformat(r4["eta_utc"].replace("Z", "+00:00"))
         self.assertEqual(r5["eta_utc"], iso(r4_eta + timedelta(days=21)))
         self.assertEqual(r5["eta_max_utc"], iso(r4_eta + timedelta(days=35)))

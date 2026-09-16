@@ -268,7 +268,7 @@ ask is `upstream-ask-malformed`; a source row not in the matrix is `upstream-ask
   `pull-state.sh` passes `UPSTREAM_ASKS` (default `/workspace/agent/reports/upstream-asks.md`) to
   the queue as `--upstream-asks`; an absent file is an empty table, not an error.
 - The coverage line — `coverage.carried_line` always reads `open carried criteria: N (rows: …)`
-  (`summary.open_carried` in the pull summary), so a plan that reads 61/61 never hides an open
+  (`summary.open_carried` in the pull summary), so a plan that reads 62/62 never hides an open
   criterion. A merged from-row with an open deferred criterion is fine; that is the point.
 - The dispatch paragraph (§4.4) — the target row's architect is told the ids it carries, verbatim,
   and the Orchestrator's ledger-row `notes` name them.
@@ -452,10 +452,10 @@ re-arms it. Alert reasons that are not row states: `cost-card`, `core-change`, `
 
 `hermes_queue.py` parses the plan file, not a hand-kept list, so the plan stays the single
 source. The parse is structural: `## Batch 1a`, `## Batch 1b` (its `**Wave n**` paragraphs),
-`## Batch 2`, `## Batch 3`, `## Batch 4`, `## Adopt` (its `**Attaches to <phase>**`
+`## Batch 2`, `## Batch 3`, `## Batch 4`, `## Batch 5`, `## Adopt` (its `**Attaches to <phase>**`
 paragraphs), `## Defer`; a row is the first table cell in those sections matching the id regex,
 with `**` stripped. `gap-matrix.md` supplies `disposition` and `esc`. The parse must reproduce
-the plan's coverage check (30 dispatched = 1 + 18 + 6 + 4 + 1, 16 adopt, 11 merge, 4 defer = 61)
+the plan's coverage check (31 dispatched = 1 + 18 + 6 + 4 + 1 + 1, 16 adopt, 11 merge, 4 defer = 62)
 or the tick refuses to dispatch and raises `plan-changed`. The ledger's `## Carried criteria` table
 joins that check (§2.4): a carried criterion whose `to row` is not a plan row or is a DEFER row has
 nowhere to land — the same hole as a matrix row missing from the plan — so dispatch pauses until
@@ -486,7 +486,9 @@ first eligible undispatched rows fill the free slots:
    P5 adopt rows: eligible once every batch 2 row is `merged` (or listed in `config.waive`).
    Batch 3 additionally needs `config.podman_box == true`; while false, the rows sit in `queued`
    without SLO clocks and the `podman-box-needed` alert fires once when they become otherwise eligible.
-4. **P6 adopt row** (`ISO-F17`): eligible once batches 3 and 4 are merged. Batch 5 has no rows.
+4. **Batch 5** (`FLEET-F62`, the fleet-assembly BUILD row) and then the **P6 adopt row** (`ISO-F17`): both
+   eligible once every batch 3 and batch 4 row is merged (or waived); `FLEET-F62` is ordered before
+   `ISO-F17` and takes the BUILD lane. Nothing waits on batch 5 — there is no `batch5_merged` gate.
 5. **DEFER rows** (`CH-F53`, `SELF-F57.a`, `RT-F04`, `RT-F06`) are never dispatched.
    **MERGE→ rows** (11) are never dispatched; their `AC-<id>` criteria ride the target's ADR.
 
@@ -497,7 +499,8 @@ No 1b, batch 2 or adopt row may merge before `LOOP-F35` merges. A row reaching `
 the gate (no `gh pr ready`, no merge), the row's SLO clock pauses, and `hold-too-long` fires if
 the hold exceeds 48 hours. If `LOOP-F35` becomes `blocked`, every held row alerts under
 `blocked-twice` semantics for the human (the port cannot proceed). Batch 3 and 4 rows hold the
-same way on `gates.batch2_merged`.
+same way on `gates.batch2_merged`; batch 5 (`FLEET-F62`) and the P6 adopt row (`ISO-F17`) hold on
+`gates.batch3_merged` **and** `gates.batch4_merged` (`hold: batch3+4`).
 
 ### 4.4 Dispatch texts
 
@@ -771,7 +774,7 @@ where it lives today and shows up in the next tick's state.
   never more than `wip.free` of them, skipping a row whose ledger row appeared since the queue ran.
 - **Plan hash pinned.** `state.plan.sha256` and `state.plan.matrix_sha256` are recorded every
   tick and compared with `config.json`; a mismatch pauses dispatch, keeps supervision, and
-  alerts `plan-changed` once. A plan whose parse fails the 61-row coverage check is treated the
+  alerts `plan-changed` once. A plan whose parse fails the 62-row coverage check is treated the
   same way. Silent edits to the shared copy therefore stop new work, never redirect it.
 - **One ledger.** Only `/workspace/agent/reports/ledger.md` is read; a second ledger under
   `/workspace/shared` raises `ledger-duplicate`. Duplicate rows for one id: last wins, alert.
@@ -1028,8 +1031,10 @@ R1 governed 5-bot fleet on one stock gateway, no sandbox — LOOP-F35, LOOP-F37,
 GOV-F23, GOV-F27, RT-F01, RT-F02, RT-F03, COST-F29. R2 every bot's tools in its own rootless podman
 sandbox, veto live — CRED-F28, ISO-F13, ISO-F14, ISO-F15. R3 wired bot-to-bot inside the gateway —
 A2A-F21 + the manual step "rooms provisioned by the operator" (8 h, after A2A-F21). R4 fleet as a
-service — requires R2 + R3, the manual "P6-FLEET assembly" (48 h, after R2 and R3) and ISO-F17
-(ADOPT, after P6-FLEET). R5 the same fleet inside one OpenShell container with APF egress — requires
+service — requires R2 + R3, the row FLEET-F62 (BUILD, batch 5, gated on batches 3 + 4 like ISO-F17 and
+ordered before it), ISO-F17 (ADOPT, after FLEET-F62) and the manual "P6 operator steps" (8 h, after R2
+and R3: podman socket + wrapper mounts into hermes-tester, `/opt/onecli/ca.crt`, `hermes-sandbox:pinned`,
+the uid-1001 egress rule, one OneCLI agent per profile). R5 the same fleet inside one OpenShell container with APF egress — requires
 R4 plus the manual W0–W12 (504–840 h), so it reads as R4 + 21..35 days.
 
 **Status** per rung: `done` (every required row merged or in `config.waive`, every manual item with a

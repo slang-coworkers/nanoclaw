@@ -31,7 +31,8 @@ NOTE_MIN = 12
 GATE_REASON_MAX = 26
 ALERT_WINDOW_H = 6.0
 NOTE_ALERT_WINDOW_H = 24.0
-DEFAULT_DISPATCHABLE = 30
+DEFAULT_DISPATCHABLE = 31  # dispatched rows on the plan's coverage line when no count is passed; 31 since FLEET-F62 (2026-09-16)
+# keep in step with scorecard.DEFAULT_DISPATCHABLE (scorecard imports this module, so it cannot be imported from there)
 STAGES = ("queued", "dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate", "merged")
 IN_FLIGHT = ("dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate")
 VERDICT_TOKEN_RE = re.compile(r"\b(PASS|FAIL|APPROVE|REQUEST_CHANGES)\b")

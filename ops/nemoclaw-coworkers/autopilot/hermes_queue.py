@@ -10,7 +10,7 @@ no subprocess, no clock surprises (`--now` for tests).
 
 Inputs (read, never edited):
 
-  --plan    dispatch-plan.md  batch sections, 1b waves, adopt attachments, defer,
+  --plan    dispatch-plan.md  batch sections (1a, 1b, 2, 3, 4, 5), 1b waves, adopt attachments, defer,
                               the `carries AC-<id>` bullets, the P8 owner table
   --matrix  gap-matrix.md     disposition / esc / outcomes / design_note per row
   --ledger  ledger.md         the Orchestrator's work list
@@ -46,8 +46,10 @@ Rules pinned here (each has a test in test_hermes_queue.py):
   * WIP: in_flight = ledger rows that are neither merged nor blocked; free = wip - in_flight.
   * Order: 1a; then 1b (wave order), batch 2, adopt@P2, adopt@P3-waveA once 1a has a
     tester PASS; then batch 3 (needs podman_box), batch 4, adopt@P5 once batch 2 merged;
-    then adopt@P6 once batches 3 and 4 merged. BUILD lane: a BUILD row jumps the queue
-    when no BUILD row is in flight. DEFER and MERGE-> rows are never dispatched.
+    then batch 5 (FLEET-F62, the fleet-assembly BUILD row) and adopt@P6 once batches 3
+    and 4 merged — no batch5_merged gate exists; nothing waits on batch 5. BUILD lane: a
+    BUILD row jumps the queue when no BUILD row is in flight. DEFER and MERGE-> rows are
+    never dispatched.
   * Never dispatch twice: a row with a ledger row, a `dispatched_at` in the previous
     state, or a `paused_rows` entry is not eligible.
   * A DEFER or MERGE-> id found in the ledger keeps its ledger state (it holds containers)
@@ -131,7 +133,7 @@ DEFAULT_CONFIG = {
     "release_tag": "v2026.8.31",
 }
 
-DISPATCH_BATCHES = ("1a", "1b", "2", "3", "4")
+DISPATCH_BATCHES = ("1a", "1b", "2", "3", "4", "5")
 IN_FLIGHT_STATES = ("dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate")
 TERMINAL_STATES = ("merged", "blocked", "deferred", "carried")
 ADOPT_PHASE_ORDER = ("P2", "P3-waveA", "P5-rooms-veto", "P6-fleet")
@@ -841,6 +843,7 @@ def dispatch_order(plan: dict, matrix: dict) -> list[tuple[str, tuple[str, ...]]
     order += [(r, ("1a_first_pass",)) for r in tier2]
     order += [(r, ("batch2_merged", "podman_box")) for r in by_batch.get("3", [])]
     order += [(r, ("batch2_merged",)) for r in by_batch.get("4", []) + adopt_at("P5-rooms-veto")]
+    order += [(r, ("batch3_merged", "batch4_merged")) for r in by_batch.get("5", [])]
     order += [(r, ("batch3_merged", "batch4_merged")) for r in adopt_at("P6-fleet")]
     return order
 

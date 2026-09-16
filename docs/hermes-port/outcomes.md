@@ -1,54 +1,54 @@
-# Outcome coverage of the re-baselined 61 rows
+# Outcome coverage of the 62 rows (61 re-baselined + FLEET-F62, 2026-09-16)
 
-Source: `rebaseline/rows-final.json` (dispositions + outcomes), rendered alongside `rebaseline/gap-matrix-rebaselined.md`. Rows are listed in matrix order. A `MERGE→<id>` row carries its outcome as a criterion inside the target row's ADR, so the work behind it is the target's disposition (given in brackets).
+Source: `rebaseline/rows-final.json` (dispositions + outcomes), rendered alongside `rebaseline/gap-matrix-rebaselined.md`. Rows are listed in matrix order. A `MERGE→<id>` row carries its outcome as a criterion inside the target row's ADR, so the work behind it is the target's disposition (given in brackets). FLEET-F62 (BUILD, batch 5 — the fleet assembly, added 2026-09-16) is not in `rows-final.json`; its outcomes O1–O8 come from `gap-matrix.md` and it closes every list below (last in matrix order).
 
 ## O1 — Slang GitHub issues are triaged, fixed (PR), reviewed and maintained by the coworker team running on Hermes, on schedule and on webhook events.
 
-14 rows (BUILD 1, CONFIGURE 7, ADOPT 3, MERGE 3).
+15 rows (BUILD 2, CONFIGURE 7, ADOPT 3, MERGE 3).
 
-RT-F03 (CONFIGURE), ISO-F11 (ADOPT), GOV-F25 (BUILD), SCHED-F32 (ADOPT), SCHED-F33 (CONFIGURE), SCHED-F34 (CONFIGURE), LOOP-F36 (MERGE→LOOP-F35 [BUILD]), LOOP-F39 (CONFIGURE), LOOP-F40 (CONFIGURE), MEM-F43 (CONFIGURE), OBS-F48 (MERGE→GOV-F25 [BUILD]), CH-F49 (ADOPT), CH-F52 (CONFIGURE), SELF-F56 (MERGE→LOOP-F35 [BUILD])
+RT-F03 (CONFIGURE), ISO-F11 (ADOPT), GOV-F25 (BUILD), SCHED-F32 (ADOPT), SCHED-F33 (CONFIGURE), SCHED-F34 (CONFIGURE), LOOP-F36 (MERGE→LOOP-F35 [BUILD]), LOOP-F39 (CONFIGURE), LOOP-F40 (CONFIGURE), MEM-F43 (CONFIGURE), OBS-F48 (MERGE→GOV-F25 [BUILD]), CH-F49 (ADOPT), CH-F52 (CONFIGURE), SELF-F56 (MERGE→LOOP-F35 [BUILD]), FLEET-F62 (BUILD)
 
 ## O2 — Coworker roles are defined once (spines, skills, workflows, gates) and rendered into Hermes profiles so they appear in the Bots list.
 
-10 rows (BUILD 1, CONFIGURE 5, ADOPT 1, MERGE 3).
+11 rows (BUILD 2, CONFIGURE 5, ADOPT 1, MERGE 3).
 
-RT-F01 (CONFIGURE), ISO-F16 (CONFIGURE), LOOP-F35 (BUILD), LOOP-F36 (MERGE→LOOP-F35 [BUILD]), MEM-F41 (CONFIGURE), SELF-F54 (MERGE→LOOP-F35 [BUILD]), SELF-F55 (CONFIGURE), SELF-F56 (MERGE→LOOP-F35 [BUILD]), SELF-F57 (ADOPT), SELF-F57.b (CONFIGURE)
+RT-F01 (CONFIGURE), ISO-F16 (CONFIGURE), LOOP-F35 (BUILD), LOOP-F36 (MERGE→LOOP-F35 [BUILD]), MEM-F41 (CONFIGURE), SELF-F54 (MERGE→LOOP-F35 [BUILD]), SELF-F55 (CONFIGURE), SELF-F56 (MERGE→LOOP-F35 [BUILD]), SELF-F57 (ADOPT), SELF-F57.b (CONFIGURE), FLEET-F62 (BUILD)
 
 ## O3 — Bots collaborate inside one gateway (rooms, kanban) under explicit wiring, with an elevated orchestrator; wiring violations are refused, not merely discouraged.
 
-17 rows (BUILD 3, CONFIGURE 4, ADOPT 5, MERGE 5).
+18 rows (BUILD 4, CONFIGURE 4, ADOPT 5, MERGE 5).
 
-RT-F01 (CONFIGURE), RT-F02 (CONFIGURE), RT-F03 (CONFIGURE), RT-F05 (ADOPT), RT-F08 (ADOPT), RT-F09 (ADOPT), A2A-F18 (MERGE→LOOP-F37 [BUILD]), A2A-F19 (MERGE→LOOP-F37 [BUILD]), A2A-F20 (ADOPT), GOV-F22 (MERGE→LOOP-F37 [BUILD]), GOV-F25 (BUILD), GOV-F26 (MERGE→LOOP-F37 [BUILD]), LOOP-F35 (BUILD), LOOP-F37 (BUILD), LOOP-F39 (CONFIGURE), CH-F51 (MERGE→LOOP-F37 [BUILD]), OPS-F58 (ADOPT)
+RT-F01 (CONFIGURE), RT-F02 (CONFIGURE), RT-F03 (CONFIGURE), RT-F05 (ADOPT), RT-F08 (ADOPT), RT-F09 (ADOPT), A2A-F18 (MERGE→LOOP-F37 [BUILD]), A2A-F19 (MERGE→LOOP-F37 [BUILD]), A2A-F20 (ADOPT), GOV-F22 (MERGE→LOOP-F37 [BUILD]), GOV-F25 (BUILD), GOV-F26 (MERGE→LOOP-F37 [BUILD]), LOOP-F35 (BUILD), LOOP-F37 (BUILD), LOOP-F39 (CONFIGURE), CH-F51 (MERGE→LOOP-F37 [BUILD]), OPS-F58 (ADOPT), FLEET-F62 (BUILD)
 
 ## O4 — Every coworker's tools run in its own sandbox; credentials are injected per profile via OneCLI; no raw secrets anywhere.
 
-12 rows (BUILD 2, CONFIGURE 5, ADOPT 1, MERGE 4).
+13 rows (BUILD 3, CONFIGURE 5, ADOPT 1, MERGE 4).
 
-RT-F09 (ADOPT), ISO-F10 (MERGE→LOOP-F37 [BUILD]), ISO-F13 (CONFIGURE), ISO-F14 (CONFIGURE), ISO-F15 (CONFIGURE), ISO-F16 (CONFIGURE), GOV-F26 (MERGE→LOOP-F37 [BUILD]), GOV-F27 (CONFIGURE), CRED-F28 (BUILD), LOOP-F35 (BUILD), CH-F51 (MERGE→LOOP-F37 [BUILD]), SELF-F54 (MERGE→LOOP-F35 [BUILD])
+RT-F09 (ADOPT), ISO-F10 (MERGE→LOOP-F37 [BUILD]), ISO-F13 (CONFIGURE), ISO-F14 (CONFIGURE), ISO-F15 (CONFIGURE), ISO-F16 (CONFIGURE), GOV-F26 (MERGE→LOOP-F37 [BUILD]), GOV-F27 (CONFIGURE), CRED-F28 (BUILD), LOOP-F35 (BUILD), CH-F51 (MERGE→LOOP-F37 [BUILD]), SELF-F54 (MERGE→LOOP-F35 [BUILD]), FLEET-F62 (BUILD)
 
 ## O5 — Quality gates (critique, plan gate, PR review and the approval-decision ledger) hold before anything reaches GitHub.
 
-10 rows (BUILD 2, CONFIGURE 3, ADOPT 2, MERGE 3).
+11 rows (BUILD 3, CONFIGURE 3, ADOPT 2, MERGE 3).
 
-RT-F07 (ADOPT), ISO-F13 (CONFIGURE), A2A-F19 (MERGE→LOOP-F37 [BUILD]), GOV-F22 (MERGE→LOOP-F37 [BUILD]), GOV-F23 (CONFIGURE), GOV-F24 (BUILD), LOOP-F37 (BUILD), LOOP-F38 (MERGE→LOOP-F37 [BUILD]), LOOP-F40 (CONFIGURE), CH-F50 (ADOPT)
+RT-F07 (ADOPT), ISO-F13 (CONFIGURE), A2A-F19 (MERGE→LOOP-F37 [BUILD]), GOV-F22 (MERGE→LOOP-F37 [BUILD]), GOV-F23 (CONFIGURE), GOV-F24 (BUILD), LOOP-F37 (BUILD), LOOP-F38 (MERGE→LOOP-F37 [BUILD]), LOOP-F40 (CONFIGURE), CH-F50 (ADOPT), FLEET-F62 (BUILD)
 
 ## O6 — Cost is bounded per session and per day, with human decision cards when a ceiling is hit.
 
-7 rows (BUILD 2, CONFIGURE 2, ADOPT 2, MERGE 1).
+8 rows (BUILD 3, CONFIGURE 2, ADOPT 2, MERGE 1).
 
-ISO-F12 (ADOPT), ISO-F16 (CONFIGURE), A2A-F21 (CONFIGURE), COST-F29 (BUILD), COST-F30 (BUILD), COST-F31 (ADOPT), OBS-F48 (MERGE→GOV-F25 [BUILD])
+ISO-F12 (ADOPT), ISO-F16 (CONFIGURE), A2A-F21 (CONFIGURE), COST-F29 (BUILD), COST-F30 (BUILD), COST-F31 (ADOPT), OBS-F48 (MERGE→GOV-F25 [BUILD]), FLEET-F62 (BUILD)
 
 ## O7 — Humans see and control the fleet from one panel: sessions, bots, rooms, cron, approvals, cost.
 
-13 rows (BUILD 1, CONFIGURE 5, ADOPT 6, MERGE 1).
+14 rows (BUILD 2, CONFIGURE 5, ADOPT 6, MERGE 1).
 
-RT-F01 (CONFIGURE), RT-F02 (CONFIGURE), RT-F05 (ADOPT), RT-F07 (ADOPT), GOV-F23 (CONFIGURE), GOV-F26 (MERGE→LOOP-F37 [BUILD]), COST-F30 (BUILD), SCHED-F34 (CONFIGURE), OBS-F45 (ADOPT), CH-F49 (ADOPT), CH-F50 (ADOPT), OPS-F58 (ADOPT), OPS-F58.a (CONFIGURE)
+RT-F01 (CONFIGURE), RT-F02 (CONFIGURE), RT-F05 (ADOPT), RT-F07 (ADOPT), GOV-F23 (CONFIGURE), GOV-F26 (MERGE→LOOP-F37 [BUILD]), COST-F30 (BUILD), SCHED-F34 (CONFIGURE), OBS-F45 (ADOPT), CH-F49 (ADOPT), CH-F50 (ADOPT), OPS-F58 (ADOPT), OPS-F58.a (CONFIGURE), FLEET-F62 (BUILD)
 
 ## O8 — Observability and durability: transcripts and traces, fleet metrics, restart recovery, learnings carried forward.
 
-23 rows (BUILD 1, CONFIGURE 10, ADOPT 10, MERGE 2).
+24 rows (BUILD 2, CONFIGURE 10, ADOPT 10, MERGE 2).
 
-RT-F08 (ADOPT), ISO-F10 (MERGE→LOOP-F37 [BUILD]), ISO-F11 (ADOPT), ISO-F12 (ADOPT), ISO-F17 (ADOPT), A2A-F20 (ADOPT), A2A-F21 (CONFIGURE), GOV-F24 (BUILD), COST-F31 (ADOPT), SCHED-F32 (ADOPT), SCHED-F33 (CONFIGURE), LOOP-F39 (CONFIGURE), MEM-F41 (CONFIGURE), MEM-F42 (CONFIGURE), MEM-F43 (CONFIGURE), MEM-F44 (CONFIGURE), OBS-F45 (ADOPT), OBS-F46 (CONFIGURE), OBS-F47 (ADOPT), OBS-F48 (MERGE→GOV-F25 [BUILD]), SELF-F57 (ADOPT), SELF-F57.b (CONFIGURE), OPS-F58.a (CONFIGURE)
+RT-F08 (ADOPT), ISO-F10 (MERGE→LOOP-F37 [BUILD]), ISO-F11 (ADOPT), ISO-F12 (ADOPT), ISO-F17 (ADOPT), A2A-F20 (ADOPT), A2A-F21 (CONFIGURE), GOV-F24 (BUILD), COST-F31 (ADOPT), SCHED-F32 (ADOPT), SCHED-F33 (CONFIGURE), LOOP-F39 (CONFIGURE), MEM-F41 (CONFIGURE), MEM-F42 (CONFIGURE), MEM-F43 (CONFIGURE), MEM-F44 (CONFIGURE), OBS-F45 (ADOPT), OBS-F46 (CONFIGURE), OBS-F47 (ADOPT), OBS-F48 (MERGE→GOV-F25 [BUILD]), SELF-F57 (ADOPT), SELF-F57.b (CONFIGURE), OPS-F58.a (CONFIGURE), FLEET-F62 (BUILD)
 
 ## Carrying no outcome
 
@@ -68,8 +68,9 @@ Test applied: an outcome is thin if no `BUILD` row — and no `CONFIGURE` row, a
 - O6 — COST-F29 and COST-F30 (BUILD `nv-cost-cap`: per-session/per-day windows and the decision card).
 - O7 — COST-F30 (BUILD) plus OPS-F58.a, RT-F01, RT-F02, GOV-F23, SCHED-F34 (CONFIGURE).
 - O8 — GOV-F24 (BUILD) and OBS-F48 (MERGE→GOV-F25 [BUILD]: the outcomes ledger, NF-4) plus ten CONFIGURE rows, of which MEM-F44 / OBS-F46 / OPS-F58.a (`sessions.auto_prune: false`, request dumps, restart supervision) carry most of the durability weight.
+- FLEET-F62 (BUILD, 2026-09-16) stands behind all eight as the assembly the live proofs above run against — one gateway, five sandboxed profiles, supervised — but it composes the batch 1–4 plugins unchanged, so it is counted here and is not what makes any outcome non-thin.
 
 Two qualifications the dispatch plan should carry anyway:
 
-- **O7 is the thinnest in substance.** Six of its thirteen rows are ADOPT and the panel itself is native (OBS-F45, OPS-F58, CH-F49, CH-F50); the only thing built for O7 is the cost decision card. That is the intended shape under rule 6 — but it means O7's acceptance evidence is almost entirely "the native panel already shows this", so its acceptance tests must be run live on the one gateway rather than assumed.
+- **O7 is the thinnest in substance.** Six of its fourteen rows are ADOPT and the panel itself is native (OBS-F45, OPS-F58, CH-F49, CH-F50); the only things built for O7 are the cost decision card and, since 2026-09-16, FLEET-F62's proof that the one panel shows the assembled fleet (its `ui` / `desktop` criteria over the one gateway). That is the intended shape under rule 6 — but it means O7's acceptance evidence is almost entirely "the native panel already shows this", so its acceptance tests must be run live on the one gateway rather than assumed.
 - **Residual capabilities Hermes lacks with no row behind them** (each filed as a P8 upstream ask or an operator step, none dispatched): room creation and local membership have no `hermes` CLI verb and no local HTTP surface — desktop-only `groups.*` JSON-RPC, a one-time bring-up step (O3, O7; recorded in RT-F01, OBS-F45, OPS-F58, CH-F51); clarify entries are an in-memory dict, so a gateway restart drops a parked question (O5, O7; CH-F50); `hermes profile install` has no `--ref`, so pinning rests on source immutability (O2, O8; SELF-F55, SELF-F57); the OTLP exporter's event set is closed, so fleet outcome gauges cannot be published through it and Grafana parity is a script-only cron textfile (O8; OBS-F48); cron has no automatic backoff or auto-pause after N failures (O1, O8; SCHED-F33); enforcement on the codex app-server path is the `pre_tool_call` belt plus ESTOP only (O6; COST-F29); per-profile managed secret scope (O4; GOV-F27); and a turn-end hold for a turn that edited no files (O3, O5; LOOP-F37).

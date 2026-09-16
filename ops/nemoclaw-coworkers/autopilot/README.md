@@ -43,14 +43,16 @@ Rules pinned by the tests (`test_hermes_queue.py`, `test_hermes_supervise.py`):
 - ledger stamps without a zone are install time (`install_tz_offset_minutes`, default IST)
 - WIP counts every ledger row that is not merged or blocked; `blocked` rows free their slot
 - order: 1a, then 1b waves / batch 2 / adopt@P2 / adopt@P3-waveA on 1a's first tester PASS,
-  then batch 3 (`podman_box`) / batch 4 / adopt@P5 on batch 2 merged, then adopt@P6; a BUILD
-  row jumps the queue when no BUILD row is in flight; DEFER and MERGE-> rows never dispatch
+  then batch 3 (`podman_box`) / batch 4 / adopt@P5 on batch 2 merged, then batch 5 (`FLEET-F62`,
+  the fleet-assembly BUILD row) and adopt@P6 on batches 3 and 4 merged (no `batch5_merged` gate:
+  nothing waits on batch 5); a BUILD row jumps the queue when no BUILD row is in flight; DEFER and
+  MERGE-> rows never dispatch
 - never twice: a ledger row, a `dispatched_at` in the previous state, or `paused_rows` excludes a row
 - nudge at most once per row per 6 h across states; escalation needs a nudge in the current
   state first (`blocked`, cost cards and environmental `ESCALATE` reports escalate at once)
 - `FAIL ×2` is the cap (two counted FAILs); a plain `ESCALATE` report is environmental and
   not a round; `authorize_round` in `config.json` lifts the cap once
-- holds (`1a`, `batch2`, `batch3+4`, `core-change`, `paused`) pause the SLO; `hold-too-long`
+- holds (`1a`, `batch2`, `batch3+4` — batch 5 and the P6 adopt row —, `core-change`, `paused`) pause the SLO; `hold-too-long`
   after 48 h; a cost-held row is never nudged
 - one event per send: every role's session on a thread is read, so a send appears as the
   sender's `out` and the receiver's `in`; copies within 15 minutes collapse to one event, and
