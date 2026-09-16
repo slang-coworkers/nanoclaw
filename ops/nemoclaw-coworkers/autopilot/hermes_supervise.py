@@ -594,7 +594,7 @@ def merge_hold(rid: str, row: dict, gating: dict, res: dict, cfg: dict) -> str |
     attaches = row.get("attaches_to") or ""
     waits_1a = batch in ("1b", "2") or (batch == "adopt" and attaches in ("P2", "P3-waveA"))
     waits_b2 = batch in ("3", "4") or (batch == "adopt" and attaches == "P5-rooms-veto")
-    waits_b34 = batch == "adopt" and attaches == "P6-fleet"
+    waits_b34 = batch == "5" or (batch == "adopt" and attaches == "P6-fleet")
     if waits_1a and not gating.get("1a_merged"):
         return "1a"
     if waits_b2 and not gating.get("batch2_merged"):

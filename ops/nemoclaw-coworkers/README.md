@@ -24,7 +24,7 @@ never grep-pick "the first nanoclaw unit".
 
 ## Autopilot
 
-The 61-row port runs unattended through a host cron (dispatch), one recurring Orchestrator task
+The 62-row port runs unattended through a host cron (dispatch), one recurring Orchestrator task
 (supervise) and one Mac-side check. The dispatch tick is deliberately not a task: a dispatch sent from a
 task session homes the chain's replies in that session instead of the row's dashboard thread `hermes-<ID>`.
 Design, state machine, SLOs, delegated authority and the human's decisions: `docs/hermes-port/autopilot.md`.

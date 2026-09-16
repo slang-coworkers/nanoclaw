@@ -34,6 +34,17 @@ HEADER = (
     "| --- | --- | --- | --- | --- | --- | --- |\n"
 )
 BATCH2 = ("LOOP-F37", "GOV-F24", "GOV-F25", "COST-F29", "COST-F30", "LOOP-F40")
+BATCH3 = ("CRED-F28", "ISO-F13", "ISO-F14", "ISO-F15")
+BATCH4 = ("A2A-F21",)
+
+# ledger.md § Carried criteria after the operator's 2026-09-16 ruling: CRED-F28's live identity proof rides on the
+# fleet-assembly row FLEET-F62 (batch 5) — a plan row, where the phase name P6-FLEET never was one.
+CARRIED_FLEET = (
+    "\n## Carried criteria\n\n"
+    "| criterion | from row | to row | reason | decided | status |\n"
+    "| --- | --- | --- | --- | --- | --- |\n"
+    "| AC-CRED-F28-2 | CRED-F28 | FLEET-F62 | per-profile identity through the OneCLI hop needs the fleet boot | operator 2026-09-16 10:21Z | open |\n"
+)
 
 # ledger.md's second table: criteria one row deferred onto another (the LOOP-F35 "AC-5 to P4" gap, done right).
 CARRIED = (
@@ -90,12 +101,27 @@ class PlanParse(unittest.TestCase):
         self.matrix = hq.parse_matrix(MATRIX)
         self.cov = hq.coverage_check(self.plan, self.matrix)
 
-    def test_coverage_30_16_11_4_equals_61(self):
+    def test_coverage_31_16_11_4_equals_62(self):
         self.assertTrue(self.cov["ok"], self.cov["problems"])
-        self.assertEqual(self.cov["by_batch"], {"1a": 1, "1b": 18, "2": 6, "3": 4, "4": 1})
-        self.assertEqual((self.cov["dispatched"], self.cov["adopt"], self.cov["merge"], self.cov["defer"]), (30, 16, 11, 4))
-        self.assertEqual(self.cov["total"], 61)
-        self.assertEqual(self.cov["matrix_rows"], 61)
+        self.assertEqual(self.cov["by_batch"], {"1a": 1, "1b": 18, "2": 6, "3": 4, "4": 1, "5": 1})
+        self.assertEqual((self.cov["dispatched"], self.cov["adopt"], self.cov["merge"], self.cov["defer"]), (31, 16, 11, 4))
+        self.assertEqual(self.cov["total"], 62)
+        self.assertEqual(self.cov["matrix_rows"], 62)
+        self.assertEqual(sum(1 for r in self.matrix["rows"].values() if r["disposition"] == "BUILD"), 8)
+
+    def test_batch5_fleet_row_is_parsed(self):
+        """dispatch-plan.md § Batch 5 is a real batch since 2026-09-16: FLEET-F62 (BUILD) is picked up with batch "5"
+        right after the batch-4 row, and the matrix row anchors its columns on the BUILD cell."""
+        row = self.plan["rows"]["FLEET-F62"]
+        self.assertEqual((row["batch"], row["plan_disposition"]), ("5", "BUILD"))
+        self.assertTrue(row["name"].startswith("Fleet assembly (P6)"))
+        self.assertEqual(self.plan["order"].index("FLEET-F62"), self.plan["order"].index("A2A-F21") + 1)
+        m = self.matrix["rows"]["FLEET-F62"]
+        self.assertEqual((m["status"], m["feas"], m["esc"], m["disposition"], m["merge_into"]), ("MISSING", "PLUGIN_PLUS_HOOK", False, "BUILD", None))
+        self.assertEqual(m["outcomes"], ["O1", "O2", "O3", "O4", "O5", "O6", "O7", "O8"])
+        self.assertIn("landing row", m["design_note"])
+        self.assertEqual(self.matrix["order"][-1], "FLEET-F62")
+        self.assertIn("5", hq.DISPATCH_BATCHES)
 
     def test_waves_and_attachments(self):
         rows = self.plan["rows"]
@@ -470,6 +496,64 @@ class QueueRules(unittest.TestCase):
         self.assertEqual(st["eligible_next"][0]["id"], "CRED-F28")  # BUILD lane, no BUILD in flight
         self.assertNotIn("podman-box-needed", [a["kind"] for a in st["alerts"]])
 
+    def test_batch5_fleet_row_waits_on_batches_3_and_4(self):
+        """FLEET-F62 (batch 5) waits on batch3_merged AND batch4_merged — the ISO-F17 gate — while either is unmerged;
+        podman_box gates batch 3 only, and there is no batch5_merged gate (nothing waits on batch 5)."""
+        base = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(BATCH2)]
+        st = state(ledger(base), config={"podman_box": True})
+        waiting = {w["id"]: w["blocked_by"] for w in st["queue"]["waiting"]}
+        self.assertEqual(waiting["FLEET-F62"], ["batch3_merged", "batch4_merged"])
+        self.assertEqual(waiting["FLEET-F62"], waiting["ISO-F17"])
+        self.assertNotIn("batch5_merged", st["gating"])
+        fleet = st["rows"]["FLEET-F62"]
+        self.assertEqual((fleet["state"], fleet["batch"], fleet["disposition"]), ("queued", "5", "BUILD"))
+        self.assertNotIn("FLEET-F62", [e["id"] for e in st["eligible_next"]])
+        # batch 3 merged, batch 4 open
+        st = state(ledger(base + [merged_row(r, i + 20) for i, r in enumerate(BATCH3)]), config={"podman_box": True})
+        self.assertEqual((st["gating"]["batch3_merged"], st["gating"]["batch4_merged"]), (True, False))
+        waiting = {w["id"]: w["blocked_by"] for w in st["queue"]["waiting"]}
+        self.assertEqual(waiting["FLEET-F62"], ["batch4_merged"])
+        self.assertIn("batch 5: waits for batch4_merged", [w["reason"] for w in st["queue"]["waiting"] if w["id"] == "FLEET-F62"])
+        # batch 4 merged, batch 3 open
+        st = state(ledger(base + [merged_row(r, i + 30) for i, r in enumerate(BATCH4)]), config={"podman_box": True})
+        self.assertEqual((st["gating"]["batch3_merged"], st["gating"]["batch4_merged"]), (False, True))
+        waiting = {w["id"]: w["blocked_by"] for w in st["queue"]["waiting"]}
+        self.assertEqual(waiting["FLEET-F62"], ["batch3_merged"])
+
+    def test_batch5_fleet_row_eligible_on_the_build_lane_before_iso_f17(self):
+        """Batches 3 and 4 merged (+ podman_box): FLEET-F62 is eligible, sits immediately before ISO-F17 in the order and,
+        as the only BUILD row left, takes the BUILD lane; its dispatch text names batch 5 and disposition BUILD."""
+        rows = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(BATCH2 + BATCH3 + BATCH4)]
+        st = state(ledger(rows), config={"podman_box": True})
+        self.assertTrue(st["gating"]["batch3_merged"] and st["gating"]["batch4_merged"])
+        self.assertIn("FLEET-F62", st["queue"]["eligible"])
+        self.assertIn("ISO-F17", st["queue"]["eligible"])
+        self.assertEqual([w["id"] for w in st["queue"]["waiting"]], [])
+        order = [r for r, _ in hq.dispatch_order(hq.parse_plan(PLAN), hq.parse_matrix(MATRIX))]
+        self.assertEqual(order.index("ISO-F17"), order.index("FLEET-F62") + 1)
+        self.assertGreater(order.index("FLEET-F62"), order.index("A2A-F21"))
+        gates = dict(hq.dispatch_order(hq.parse_plan(PLAN), hq.parse_matrix(MATRIX)))
+        self.assertEqual(gates["FLEET-F62"], ("batch3_merged", "batch4_merged"))
+        self.assertEqual(gates["FLEET-F62"], gates["ISO-F17"])
+        first = st["eligible_next"][0]
+        self.assertEqual((first["id"], first["disposition"], first["batch"], first["thread_id"]), ("FLEET-F62", "BUILD", "5", "hermes-FLEET-F62"))
+        self.assertIn("batch 5: eligible (batch3_merged, batch4_merged satisfied)", first["reason"])
+        self.assertIn("BUILD lane: no BUILD row in flight", first["reason"])
+        self.assertIn("Dispatch FLEET-F62: Fleet assembly (P6)", first["dispatch_text"])
+        self.assertIn("disposition BUILD", first["dispatch_text"])
+        self.assertIn("dispatch-plan.md (batch 5)", first["dispatch_text"])
+        self.assertIn("(section FLEET-F62)", first["dispatch_text"])
+        # a BUILD row in flight closes the lane: CRED-F28 still in flight but waived (so batch3_merged holds) —
+        # FLEET-F62 is eligible yet keeps its queue position behind the adopt rows, still ahead of ISO-F17
+        rows = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(BATCH2 + BATCH3[1:] + BATCH4)]
+        rows += [{"id": "CRED-F28", "spec": "2026-09-09 11:00Z", "pr": "#40 (draft)"}]
+        st = state(ledger(rows), config={"podman_box": True, "waive": ["CRED-F28"]})
+        self.assertEqual(st["in_flight"], ["CRED-F28"])
+        self.assertTrue(st["gating"]["batch3_merged"])
+        self.assertIn("FLEET-F62", st["queue"]["eligible"])
+        self.assertNotEqual(st["eligible_next"][0]["id"], "FLEET-F62")
+        self.assertLess(st["queue"]["eligible"].index("FLEET-F62"), st["queue"]["eligible"].index("ISO-F17"))
+
     def test_waive_counts_as_merged_for_gating(self):
         st = state(ledger([merged_row("LOOP-F35", 2)]), config={"waive": list(BATCH2)})
         self.assertTrue(st["gating"]["batch2_merged"])
@@ -610,6 +694,31 @@ class CarriedCriteria(unittest.TestCase):
             self.assertNotIn(bad, st["rows"])
             self.assertEqual(st["coverage"]["carried_line"], f"open carried criteria: 1 (rows: {bad})")  # still counted, never hidden
 
+    def test_fleet_row_is_a_plan_row_the_phase_name_is_not(self):
+        """The 2026-09-16 ruling: AC-CRED-F28-2 rides on FLEET-F62. As a batch-5 plan row it passes coverage (open
+        carried 1, dispatch running); the phase name P6-FLEET is still an unknown row and pauses dispatch."""
+        st = state(LEDGER + CARRIED_FLEET)
+        self.assertTrue(st["coverage"]["ok"], st["coverage"]["problems"])
+        self.assertIsNone(st["dispatch_paused"])
+        self.assertEqual((st["coverage"]["carried_total"], st["coverage"]["open_carried_criteria"]), (1, 1))
+        self.assertEqual(st["coverage"]["carried_line"], "open carried criteria: 1 (rows: FLEET-F62)")
+        self.assertEqual([c["criterion"] for c in st["rows"]["FLEET-F62"]["carries_criteria"]], ["AC-CRED-F28-2"])
+        self.assertEqual([(d["criterion"], d["to_row"], d["status"]) for d in st["rows"]["CRED-F28"]["deferred_criteria"]],
+                         [("AC-CRED-F28-2", "FLEET-F62", "open")])
+        self.assertFalse(any(a["kind"].startswith("carried") for a in st["alerts"]), st["alerts"])
+        bad = state(LEDGER + CARRIED_FLEET.replace("| FLEET-F62 |", "| P6-FLEET |"))
+        self.assertIn("carried criterion AC-CRED-F28-2 names unknown row P6-FLEET", bad["coverage"]["problems"])
+        self.assertFalse(bad["coverage"]["ok"])
+        self.assertEqual(bad["dispatch_paused"], "plan-changed: hashes or coverage check")
+        self.assertTrue(any(a["kind"] == "carried-criterion-unknown-row" for a in bad["alerts"]))
+        self.assertEqual(bad["coverage"]["carried_line"], "open carried criteria: 1 (rows: P6-FLEET)")
+        # once batches 3 and 4 are merged the fleet row's dispatch text names the carried criterion
+        rows = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(BATCH2 + BATCH3 + BATCH4)]
+        st = state(ledger(rows) + CARRIED_FLEET, config={"podman_box": True})
+        fleet = {e["id"]: e for e in st["eligible_next"]}["FLEET-F62"]
+        self.assertIn("AC-CRED-F28-2 (from CRED-F28: per-profile identity through the OneCLI hop needs the fleet boot)", fleet["dispatch_text"])
+        self.assertIn("; carried criteria AC-CRED-F28-2 |", fleet["orchestrator_text"])
+
     def test_defer_to_row_is_a_problem_too(self):
         st = state(LEDGER + CARRIED.replace("| LOOP-F37 |", "| RT-F04 |"))
         self.assertTrue(any("names DEFER row RT-F04" in p for p in st["coverage"]["problems"]), st["coverage"]["problems"])
@@ -742,7 +851,7 @@ class Cli(unittest.TestCase):
         out = json.loads(p.stdout)
         self.assertEqual(out["in_flight"], ["LOOP-F35"])
         self.assertEqual(out["generated_at"], NOW)
-        self.assertEqual(len(out["rows"]), 61)
+        self.assertEqual(len(out["rows"]), 62)
 
     def test_help(self):
         p = subprocess.run([sys.executable, str(HERE / "hermes_queue.py"), "--help"], capture_output=True, text=True, check=False)

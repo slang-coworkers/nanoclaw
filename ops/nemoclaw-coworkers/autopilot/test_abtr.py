@@ -199,7 +199,9 @@ class DegradedInputsTest(unittest.TestCase):
 
     def test_empty_everything(self):
         md = abtr.render_abtr_markdown({}, {}, NOW)
-        self.assertIn("in flight 0/3 · merged 0 · blocked 0 · queued 30 · alerts 6h 0", md.splitlines()[0])
+        # queued falls back to abtr.DEFAULT_DISPATCHABLE (the plan's dispatched-row count) when neither the state nor the
+        # caller supplies one: 31 since FLEET-F62 joined the plan as batch 5 (2026-09-16), in step with scorecard.py
+        self.assertIn("in flight 0/3 · merged 0 · blocked 0 · queued 31 · alerts 6h 0", md.splitlines()[0])
         self.assertIn("no rows in the ledger or the state", md)
         self.assertLessEqual(max(len(line) for line in md.splitlines()), 120)
 

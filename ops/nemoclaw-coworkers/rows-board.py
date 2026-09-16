@@ -69,13 +69,14 @@ from datetime import datetime, timezone
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROLE_COLUMNS = (("a", "hermes-architect"), ("b", "hermes-builder"), ("t", "hermes-tester"), ("r", "hermes-reviewer"))
 ROLE_ORDER = [r for _, r in ROLE_COLUMNS] + ["orchestrator"]
-BATCH_ORDER = ("1a", "1b", "2", "3", "4", "adopt", "defer")
+BATCH_ORDER = ("1a", "1b", "2", "3", "4", "5", "adopt", "defer")
 BATCH_TITLES = {
     "1a": "Batch 1a · P2 · the compose plugin",
     "1b": "Batch 1b · P2 · CONFIGURE rows the render must emit",
     "2": "Batch 2 · P3-waveA · gates, ledgers, the cap",
     "3": "Batch 3 · P4-sandbox",
     "4": "Batch 4 · P5-rooms-veto",
+    "5": "Batch 5 · P6-fleet · fleet assembly",
     "adopt": "Adopt track · doc page + hermetic acceptance test",
     "defer": "Deferred rows",
 }

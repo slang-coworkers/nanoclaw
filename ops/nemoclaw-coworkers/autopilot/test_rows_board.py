@@ -158,6 +158,32 @@ class RowsBoardTest(unittest.TestCase):
         self.assertNotIn("plan unreadable", index)
         self.assertIn("4 cards on disk · 2 threads with cards", index)
 
+    def test_batch5_row_renders_under_its_own_title_between_batch_4_and_the_adopt_track(self):
+        """A `## Batch 5` plan section (FLEET-F62, the fleet assembly) renders as its own board section, titled from
+        BATCH_TITLES["5"], in BATCH_ORDER position: after batch 4, before the adopt track."""
+        plan = PLAN.replace(
+            "## Adopt: doc page + hermetic acceptance test only",
+            "## Batch 4 — phase P5-rooms-veto\n\n| Row | Name | Disp | Deliverable | AC |\n|---|---|---|---|---|\n"
+            "| A2A-F21 | Runaway protection | CONFIGURE | keys | live |\n\n"
+            "## Batch 5 — phase P6-fleet\n\n| Row | Name | Disp | Deliverable | AC |\n|---|---|---|---|---|\n"
+            "| FLEET-F62 | Fleet assembly (P6): five sandboxed profiles on ONE gateway | BUILD | one gateway, five sandboxes | pytest |\n\n"
+            "## Adopt: doc page + hermetic acceptance test only")
+        put(self.root / "docs" / "hermes-port" / "dispatch-plan.md", plan)
+        proc = board(self.root, self.www)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        title = "Batch 5 · P6-fleet · fleet assembly"
+        self.assertIn(title, index)
+        self.assertLess(index.index("Batch 1b"), index.index("Batch 4 · P5-rooms-veto"))
+        self.assertLess(index.index("Batch 4 · P5-rooms-veto"), index.index(title))
+        self.assertLess(index.index(title), index.index("Adopt track"))
+        section = index[index.index(title):index.index("Adopt track")]
+        self.assertIn('<a href="FLEET-F62.html"><b>FLEET-F62</b></a>', section)
+        self.assertIn("1 rows", section)
+        self.assertNotIn("A2A-F21", section)
+        self.assertIn("BUILD", section)
+        self.assertTrue((self.www / "rows" / "FLEET-F62.html").is_file())
+
     def test_row_page_lists_every_card_newest_first_with_links(self):
         proc = board(self.root, self.www, env={"DASHBOARD_URL": "http://dash.example:8080/"})
         self.assertEqual(proc.returncode, 0, proc.stderr)

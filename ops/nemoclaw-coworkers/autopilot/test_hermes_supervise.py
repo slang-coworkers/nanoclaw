@@ -455,6 +455,38 @@ class CrossSessionCopies(unittest.TestCase):
 
 
 class HoldsAndCost(unittest.TestCase):
+    def test_batch5_fleet_row_at_gate_holds_on_batches_3_and_4_like_the_p6_adopt_row(self):
+        """FLEET-F62 (batch 5, BUILD) at `gate` while batch 3 is unmerged: `hold: batch3+4`, exactly the hold the ISO-F17
+        adopt row (attaches to P6-fleet) gets; once batch 3 merges too the hold lifts."""
+        batch2 = ("LOOP-F37", "GOV-F24", "GOV-F25", "COST-F29", "COST-F30", "LOOP-F40")
+        batch3 = ("CRED-F28", "ISO-F13", "ISO-F14", "ISO-F15")
+        merged = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(batch2)] + [merged_row("A2A-F21", 30)]
+        st = state(merged + [{"id": "FLEET-F62", "spec": stamp(28), "pr": "#40"}, {"id": "ISO-F17", "spec": stamp(28), "pr": "#41"}])
+        self.assertEqual((st["gating"]["batch3_merged"], st["gating"]["batch4_merged"]), (False, True))
+        self.assertEqual((st["rows"]["FLEET-F62"]["batch"], st["rows"]["ISO-F17"]["batch"]), ("5", "adopt"))
+
+        def chain(rid: str, n: int) -> list[dict]:
+            return [spec_handoff(rid, 28), builder_start(rid, 27), handoff(n, HEAD_A, 20), test_report(n, HEAD_A, 1, "PASS", 15),
+                    review_verdict(n, HEAD_A, 1, "APPROVE", 10), triage(rid, 9)]
+
+        threads = {"hermes-FLEET-F62": chain("FLEET-F62", 40), "hermes-ISO-F17": chain("ISO-F17", 41)}
+        out = run(st, threads, prs=[pr(40, "FLEET-F62", HEAD_A, created_h=21), pr(41, "ISO-F17", HEAD_A, created_h=21)])
+        for rid in ("FLEET-F62", "ISO-F17"):
+            r = out["rows"][rid]
+            self.assertEqual((r["stage"], r["hold"], r["action"]), ("gate", "batch3+4", "none"), rid)
+            self.assertFalse(r["slo_breach"], rid)
+            self.assertEqual([a["kind"] for a in out["actions"] if a["row"] == rid], ["hold"], rid)
+        self.assertEqual(out["summary"]["hold"], 2)
+        # batch 3 merged as well: no hold, the gate action asks for the merge-gate run
+        st2 = state(merged + [merged_row(r, i + 20) for i, r in enumerate(batch3)] + [{"id": "FLEET-F62", "spec": stamp(28), "pr": "#40"}])
+        self.assertTrue(st2["gating"]["batch3_merged"] and st2["gating"]["batch4_merged"])
+        out2 = run(st2, {"hermes-FLEET-F62": chain("FLEET-F62", 40)}, prs=[pr(40, "FLEET-F62", HEAD_A, created_h=21)])
+        r = out2["rows"]["FLEET-F62"]
+        self.assertEqual((r["stage"], r["hold"]), ("gate", None))
+        kinds = [a["kind"] for a in out2["actions"] if a["row"] == "FLEET-F62"]
+        self.assertIn("gate", kinds)
+        self.assertNotIn("hold", kinds)  # the SLO clock runs again (a nudge may ride along); no hold
+
     def test_1b_row_at_gate_holds_while_1a_unmerged(self):
         st = state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2", "verdict": "round 1/2 = PASS"}, {"id": "MEM-F44", "spec": stamp(28), "pr": "#3"}])
         threads = {"hermes-MEM-F44": [spec_handoff("MEM-F44", 28), builder_start("MEM-F44", 27), handoff(3, HEAD_A, 20), test_report(3, HEAD_A, 1, "PASS", 15), review_verdict(3, HEAD_A, 1, "APPROVE", 10), triage("MEM-F44", 9)]}

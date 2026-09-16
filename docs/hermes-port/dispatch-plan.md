@@ -1,6 +1,6 @@
-# Hermes port — dispatch plan v3 for the 61 gap-matrix rows (Bot-Mode re-baseline)
+# Hermes port — dispatch plan v3 for the 62 gap-matrix rows (Bot-Mode re-baseline)
 
-Written 2026-09-09. Supersedes `reports/hermes-dispatch-plan-2026-09-08.md`. Same structure, new content: every one of the 61 rows now carries a re-baseline **disposition** (`rows-final.json`), so only `BUILD` and `CONFIGURE` rows are dispatched to the build chain. Copies: Mac `~/brev/nanoclaw/reports/hermes-dispatch-plan-v3.md`, box `~/haaggarwal/nemoclaw-coworkers/data/shared/hermes/dispatch-plan.md` (= `/workspace/shared/hermes/dispatch-plan.md` inside the Orchestrator's container).
+Written 2026-09-09. Supersedes `reports/hermes-dispatch-plan-2026-09-08.md`. Same structure, new content: every one of the 61 re-baselined rows carries a re-baseline **disposition** (`rows-final.json`), plus the fleet-assembly row **FLEET-F62** added 2026-09-16 (62 rows), so only `BUILD` and `CONFIGURE` rows are dispatched to the build chain. Copies: Mac `~/brev/nanoclaw/reports/hermes-dispatch-plan-v3.md`, box `~/haaggarwal/nemoclaw-coworkers/data/shared/hermes/dispatch-plan.md` (= `/workspace/shared/hermes/dispatch-plan.md` inside the Orchestrator's container).
 
 Three different "P" scales are in play; do not mix them:
 
@@ -35,7 +35,7 @@ flowchart TD
   B1b --> B2
   B2 --> B3["Batch 3 · phase P4-sandbox · 4 rows<br/>BUILD CRED-F28 · CONFIGURE ISO-F13 · ISO-F14 · ISO-F15<br/>flips nv-fleet-gates enforce_sandbox → true"]
   B2 --> B4["Batch 4 · phase P5-rooms-veto · 1 row<br/>CONFIGURE A2A-F21<br/>LOOP-F37's wiring criteria go live here"]
-  B3 --> B5["Batch 5 · phase P6-fleet · 0 rows<br/>one gateway, N profiles, N sandboxes<br/>deployment shape; ISO-F17's adopt proof runs here"]
+  B3 --> B5["Batch 5 · phase P6-fleet · 1 BUILD row<br/>FLEET-F62 fleet assembly: one gateway, five profiles, five sandboxes<br/>gate: batches 3 + 4 merged; ISO-F17's adopt proof runs against this boot"]
   B4 --> B5
   B2 -. parallel .-> P8["P8 upstream track · 0 rows of its own<br/>8 named asks + 1 parked + 2 operator core-change calls"]
   B1a -. never through the build chain .-> AD["Adopt track · 16 rows<br/>doc page + one hermetic acceptance test each"]
@@ -50,7 +50,7 @@ flowchart TD
 Rules that make the order executable:
 
 1. **Batch 0 is history.** The `plugin/hello` loop dry run (row id `P0-LOOP`, criteria `AC-P0-LOOP-1` pytest, `-2` ui, `-3` live) has run builder → tester → reviewer → Orchestrator merge gate; it is **DONE pending merge**. Nothing else waits on it. Do not re-dispatch it.
-2. **Only `BUILD` and `CONFIGURE` rows are dispatched.** 30 of the 61. `ADOPT` (16) is a doc page plus one hermetic acceptance test, run on the adopt track, never through architect → builder → tester → reviewer. `MERGE→` (11) is never dispatched at all: the id becomes a named criterion `AC-<id>` in the target row's ADR and the target's PR cannot merge without it. `DEFER` (4) is recorded with its reason and not dispatched.
+2. **Only `BUILD` and `CONFIGURE` rows are dispatched.** 31 of the 62. `ADOPT` (16) is a doc page plus one hermetic acceptance test, run on the adopt track, never through architect → builder → tester → reviewer. `MERGE→` (11) is never dispatched at all: the id becomes a named criterion `AC-<id>` in the target row's ADR and the target's PR cannot merge without it. `DEFER` (4) is recorded with its reason and not dispatched.
 3. **Batch 1a blocks everything.** Every other batch's deliverable is either config the compose plugin renders or a plugin whose settings that render emits. 1b and 2 may *start* when 1a's first PR has a tester PASS at its head; neither may *merge* before 1a merges.
 4. **In flight: 3 rows at once.** Each row is up to four containers (architect, builder, tester, reviewer) at 3 GB each on the CPU box.
 5. **Escalations.** A tester FAIL loops back to the builder (max 2 rounds); a reviewer REQUEST_CHANGES likewise (max 2). After the caps the Orchestrator posts one line to the human and stops that row; the ledger cell reads `blocked: P<n> — …`. Nobody re-dispatches a capped row silently.
@@ -64,7 +64,7 @@ Rules that make the order executable:
 
 | Row | What it proved | State |
 |---|---|---|
-| `P0-LOOP` (not one of the 61) | `plugin/hello` travelled builder → fork draft PR → tester `[Test Report]` → reviewer verdict → Orchestrator merge gate, with all three criterion kinds exercised (`pytest:` / `ui:` / `live:`) | **DONE**, merge pending |
+| `P0-LOOP` (not one of the 62) | `plugin/hello` travelled builder → fork draft PR → tester `[Test Report]` → reviewer verdict → Orchestrator merge gate, with all three criterion kinds exercised (`pytest:` / `ui:` / `live:`) | **DONE**, merge pending |
 
 ## Batch 1a — phase P2 — the compose plugin (`nv-coworker-compose`)
 
@@ -173,7 +173,13 @@ Also going live in this batch (no new dispatch): **AC-A2A-F18 / AC-A2A-F19 / AC-
 
 ## Batch 5 — phase P6-fleet
 
-**Zero BUILD/CONFIGURE rows.** P6 is the deployment shape, not a matrix row: one gateway container, N profiles, N podman sandboxes, `gateway.multiplex_profiles: true` + `multiplex_profile_allowlist`, supervised by systemd `Type=notify` + WatchdogSec (launchd KeepAlive on macOS) plus `shutdown_watchdog.py`. `hermes gateway install` lands here (OPS-F58.a's deferred half). The adopt-track proof for **ISO-F17** runs against this boot.
+**One BUILD row.** P6 is the deployment shape (a plan paragraph only until 2026-09-16, now also matrix row **FLEET-F62**): one gateway container, N profiles, N podman sandboxes, `gateway.multiplex_profiles: true` + `multiplex_profile_allowlist`, supervised by systemd `Type=notify` + WatchdogSec (launchd KeepAlive on macOS) plus `shutdown_watchdog.py`. `hermes gateway install` lands here (OPS-F58.a's deferred half). The adopt-track proof for **ISO-F17** runs against this boot.
+
+Since 2026-09-16 that shape is a row of its own — **FLEET-F62** — so it is specified, built, tested and reviewed like every other row and can carry criteria other rows defer to the fleet boot (today `AC-CRED-F28-2`, ledger § Carried criteria). Dispatch gate: every batch 3 and batch 4 row merged (or in `config.waive`) — the same gate as ISO-F17's adopt row, and FLEET-F62 is ordered before it. No later batch waits on batch 5 (there is no `batch5_merged` gate).
+
+| Row | Name | Disp | Deliverable | AC |
+|---|---|---|---|---|
+| FLEET-F62 | Fleet assembly (P6): five sandboxed profiles on ONE gateway | BUILD | One gateway container serving `default` + orchestrator, architect, builder, tester, reviewer through `gateway.multiplex_profiles: true` + `multiplex_profile_allowlist`; each profile's tools run in its own rootless podman sandbox behind the OneCLI hop (`HERMES_DOCKER_BINARY` → the podman wrapper, CA mounted `:ro`, proxy env inside, no real credential inside); supervised by systemd `Type=notify` + WatchdogSec (launchd KeepAlive on macOS) plus `shutdown_watchdog.py`; rooms + gated edges wired; runbook `website/docs/user-guide/fleet-deployment.md`. `hermes gateway install` lands here (OPS-F58.a's deferred half). Composes the batch 1–4 plugins unchanged: no core change, no second gateway, no a2a between gateways. | Exactly ten `AC-FLEET-F62-1..10`: 1–4 pytest (render byte-equal to the committed fixtures; per-profile docker backend + pinned image + policed mounts; exactly one `pre_tool_call` hook per profile with the fleet-admin veto live; hermetic systemd unit shape), 5–6 sandbox (one sandboxed call per profile as that profile's own process; `env` inside shows the proxy vars + CA `:ro` and no real credential), 7–8 live (one gateway boots serving the five; onboard + two-bot delivery through the sandboxes with nonce markers; bounded LIVE budget), 9 ui (dashboard: profile switcher, Bots, Rooms, Sessions), 10 desktop (Playwright `apps/desktop/e2e/fleet-f62-ac10.spec.ts`); plus the carried `AC-CRED-F28-2` live proof (ledger § Carried criteria). |
 
 ## P8 — upstream track (parallel from batch 2, 0 rows of its own)
 
@@ -248,14 +254,14 @@ Withdrawn by the re-baseline: `authorize_source` (RT-F09 — authorization stays
 
 ## Coverage check
 
-30 dispatched (batch 1a **1** + 1b **18** + 2 **6** + 3 **4** + 4 **1** + 5 **0**) + 16 adopt + 11 merge + 4 defer = **61**. Every one of the 61 ids appears exactly once across batches / adopt / defer / merge. Batch 0's `P0-LOOP` is not one of the 61.
+31 dispatched (batch 1a **1** + 1b **18** + 2 **6** + 3 **4** + 4 **1** + 5 **1**) + 16 adopt + 11 merge + 4 defer = **62**. Every one of the 62 ids appears exactly once across batches / adopt / defer / merge. Batch 0's `P0-LOOP` is not one of the 62.
 
-By disposition: BUILD 7 · CONFIGURE 23 · ADOPT 16 · MERGE 11 · DEFER 4 = 61.
-By phase (dispatched only): P2 19 · P3-waveA 6 · P4-sandbox 4 · P5-rooms-veto 1 · P6-fleet 0 · P8-upstream 0 = 30.
+By disposition: BUILD 8 · CONFIGURE 23 · ADOPT 16 · MERGE 11 · DEFER 4 = 62.
+By phase (dispatched only): P2 19 · P3-waveA 6 · P4-sandbox 4 · P5-rooms-veto 1 · P6-fleet 1 · P8-upstream 0 = 31.
 
 ## What changed vs the 2026-09-08 plan
 
-**Counts.** Dispatched rows drop **61 → 30**. Plugins to be written drop **11 → 6** (`nv-coworker-compose`, `nv-fleet-gates`, `nv-approval-ledger`, `nv-artifact`, `nv-cost-cap`, `podman-onecli`). Upstream asks drop **17 esc=Y rows → 8 named asks + 1 parked + 2 operator core-change calls**.
+**Counts.** Dispatched rows drop **61 → 30** (31 since 2026-09-16, when FLEET-F62 made the batch-5 assembly a row). Plugins to be written drop **11 → 6** (`nv-coworker-compose`, `nv-fleet-gates`, `nv-approval-ledger`, `nv-artifact`, `nv-cost-cap`, `podman-onecli`). Upstream asks drop **17 esc=Y rows → 8 named asks + 1 parked + 2 operator core-change calls**.
 
 **Plugins that dissolve.** `nv-policy-core`, `nv-critique-gates`, `nv-a2a-wiring` and the veto half of `nv-sandbox` collapse into the **single** `nv-fleet-gates` `pre_tool_call` callback (rule 9). `nv-routing` disappears entirely — RT-F01/02/03 are per-platform profile config and RT-F05/07/08/09 are adopts. `nv-memory-okf` disappears — MEM-F41…F44 are rendered config keys. `nv-telemetry` disappears — OBS-F45/F47 adopt the native panel and exporters, OBS-F46 is one process-level env var, and OBS-F48 survives as a table inside `nv-artifact`. `nv-sandbox` keeps only its credential half as `podman-onecli`; **no `TerminalEnvironmentProvider` subclass ships**. `nv-fleet` becomes the deployment shape, not code.
 
@@ -266,7 +272,7 @@ By phase (dispatched only): P2 19 · P3-waveA 6 · P4-sandbox 4 · P5-rooms-veto
 - **CRED-F28 moves down, old batch 2 → batch 3.** It is the credential half of the sandbox and belongs with P4.
 - **Old batch 3 (P4: ISO-F10, F13, F14, F11, F17) → CRED-F28 + ISO-F13/F14/F15.** ISO-F10 becomes a criterion on LOOP-F37, rendered inert until this batch flips `enforce_sandbox`; ISO-F11 and ISO-F17 become ADOPT (ISO-F17's proof rides P6); ISO-F15 moves in from old batch 2.
 - **Old batch 4 (A2A-F18…F21) → one dispatched row.** F18 and F19 become the wiring predicate and the gated-edge `action: approve` on LOOP-F37; F20 becomes ADOPT; only A2A-F21 stays, and as CONFIGURE, not BUILD.
-- **Old batch 5 keeps its shape but loses its rows.** P6 has zero matrix rows; P7 (OpenShell/NemoClaw + APF) is unchanged and out of this file's scope.
+- **Old batch 5 keeps its shape but loses its rows.** P6 had zero matrix rows after the re-baseline; on 2026-09-16 it regained exactly one, **FLEET-F62** — the fleet assembly itself, so the deployment shape is specified, built, tested and reviewed like every other row (and is the to-row for `AC-CRED-F28-2`). P7 (OpenShell/NemoClaw + APF) is unchanged and out of this file's scope.
 - **A new hard invariant that was not in the 2026-09-08 plan:** rules 9 and 10 — exactly one `pre_tool_call` registrant, and fail-closed as each plugin's own obligation because core swallows a raising callback. Both were discovered during the re-baseline and both are merge-gate checks.
 - **The guard catalog is gone.** GOV-F22 no longer asks for one; the equivalent safety property is "the veto's restricted tool-name set is asserted against the running registry at plugin load", so a rename fails the load instead of failing open.
 
@@ -296,7 +302,7 @@ The Orchestrator adds the ledger row, dispatches to `hermes-architect` (ADR + ac
 
 ## Where progress shows
 
-- `groups/orchestrator/reports/ledger.md` — the work list, one row per dispatched id (`merged/blocked` is the outcome). 30 rows now, not 61; the 31 non-dispatched ids appear as `adopt` / `merged-into:<id>` / `deferred` lines so the coverage check stays checkable from the ledger alone.
+- `groups/orchestrator/reports/ledger.md` — the work list, one row per dispatched id (`merged/blocked` is the outcome). 31 rows now, not 62; the 31 non-dispatched ids appear as `adopt` / `merged-into:<id>` / `deferred` lines so the coverage check stays checkable from the ledger alone.
 - `https://nv-hermes-transcript-xrnpj0b3n.gobrev.dev/status/latest.html` — daily status card (08:30 IST)
 - `https://nv-hermes-transcript-xrnpj0b3n.gobrev.dev/explanations/` — the HTML explanation of every PR the builder opens
 - `/trace/` and `/transcripts/` on the same host for the raw sessions; `gh pr list --repo slang-coworkers/hermes-agent --state all` for the fork
