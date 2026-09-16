@@ -11,6 +11,8 @@ never nudge. Run: python3 -m unittest ops/nemoclaw-coworkers/autopilot/test_herm
 from __future__ import annotations
 
 import json
+import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -110,9 +112,9 @@ HEAD_A = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
 HEAD_B = "b2c3d4e5f60718293a4b5c6d7e8f9012345678a1"
 
 
-def run(st: dict, threads: dict, prs: list | None = None, nudges: dict | None = None, sessions: dict | None = None, config: dict | None = None) -> dict:
+def run(st: dict, threads: dict, prs: list | None = None, nudges: dict | None = None, sessions: dict | None = None, config: dict | None = None, acks: dict | None = None) -> dict:
     # These threads predate hermes-task-card (no "card · " captions); the card_missing check is exercised in test_card_missing.py.
-    return hs.supervise(st, threads, prs or [], nudges or {}, NOW, sessions=sessions, config={"card_check": False, **(config or {})})
+    return hs.supervise(st, threads, prs or [], nudges or {}, NOW, sessions=sessions, config={"card_check": False, **(config or {})}, acks=acks)
 
 
 class FreshAndStale(unittest.TestCase):
@@ -735,3 +737,599 @@ class CarriedCriteria(unittest.TestCase):
             out = run(st, {})
             self.assertNotIn("MEM-F44", out["rows"])
             self.assertEqual(out["actions"], [])
+
+
+# --- §2.5: the stall shapes the chain markers do not show (the 2026-09-15/16 stalls) -----------------------
+
+HOLD_ARCH = (
+    "HOLD on CRED-F28 — please PAUSE the builder dispatch: the orchestrator is holding my [Spec handoff] "
+    "pending an **operator ruling** on the credential seam."
+)
+HOLD_TESTER = (
+    "Hold (NOT a verdict — the gated [Test Report] is withheld): the codex OUTPUT_REVIEW endpoint has been "
+    "failing for 30+ min — AzureException BadRequestError: Unknown parameter 'client_metadata'"
+)
+HOLD_BUILDER = "blocked (infra, not a defect): the chain is stalled on a fleet-wide codex fault — please relay to the orchestrator/operator."
+ACKS_OFF = "acks stale/missing — bounce and idle detection off"
+
+
+def acks(*entries: tuple, generated_h: float = 0.1) -> dict:
+    """acks.json as collect-acks.sh writes it: (session_id, status, changed_hours_ago, role, thread_id[, extra])."""
+    sessions = {}
+    for e in entries:
+        sessions[e[0]] = {"status": e[1], "changed": ago(e[2]), "role": e[3], "thread_id": e[4], **(e[5] if len(e) > 5 else {})}
+    return {"generated_at": ago(generated_h), "sessions": sessions}
+
+
+def dispatched_row(rid: str, hours: float) -> tuple[dict, list[dict]]:
+    st = state([{"id": rid, "dispatched": stamp(hours) + " (to hermes-architect)"}])
+    return st, [msg(hours, f"Dispatch {rid}: title.", "in")]
+
+
+class InfraHold(unittest.TestCase):
+    """CRED-F28 / A2A-F21, 2026-09-15/16: a role wrote a hold instead of its marker. The stage is unchanged;
+    the operator is alerted at once; the Orchestrator is asked (once per hold) to re-arm the role."""
+
+    def test_architect_operator_ruling_alerts_and_asks_orchestrator(self):
+        st, base = dispatched_row("CRED-F28", 4)
+        out = run(st, {"hermes-CRED-F28": base + [msg(3, HOLD_ARCH, sender="hermes-architect")]})
+        r = out["rows"]["CRED-F28"]
+        self.assertEqual((r["stage"], r["age_hours"]), ("dispatched", 4.0))  # the stage and its clock are untouched
+        self.assertEqual((r["alert_kind"], r["slo_status"]), ("operator-ruling", "infra-hold"))
+        ih = r["infra_hold"]
+        self.assertEqual((ih["role"], ih["operator_ruling"], ih["cause"], ih["ts"]), ("hermes-architect", True, None, ago(3)))
+        self.assertTrue(ih["text"].startswith("HOLD on CRED-F28 — please PAUSE"))
+        self.assertNotIn("**", ih["text"])
+        self.assertIn("hermes-architect wrote: HOLD on CRED-F28", r["alert_line"])
+        self.assertIn("· decision: post the ruling on hermes-CRED-F28 ·", r["alert_line"])
+        alert = next(a for a in out["actions"] if a["kind"] == "alert")
+        self.assertEqual((alert["alert_kind"], alert["alert_key"], alert["thread_id"]), ("operator-ruling", "operator-ruling:dispatched", "hermes-status"))
+        nudge = next(a for a in out["actions"] if a["kind"] == "nudge")
+        self.assertEqual((nudge["target_role"], nudge["check"], nudge["rearm_role"], nudge["alert_kind"]), ("orchestrator", "infra_hold", "hermes-architect", "operator-ruling"))
+        # both texts name the ROLE in their prefix (an architect re-arm is never read as the builder's) and carry the
+        # hold KEY — the normalised first line, ≤ 80 chars — which is what bounds the re-arm, not the hold's timestamp
+        key = hs._hold_key("hermes-architect", ih["text"])
+        self.assertEqual(key, 'hold "HOLD on CRED-F28 — please PAUSE the builder dispatch: the orchestrator is holdin"')  # 80 chars, normalised
+        self.assertEqual(nudge["hold_key"], key)
+        self.assertTrue(nudge["text"].startswith(f"Supervisor re-arm CRED-F28 · hermes-architect: operator ruling — hermes-architect wrote {key} at {ago(3)}"), nudge["text"])
+        self.assertIn("re-arm hermes-architect there with 'resume, no new round'", nudge["text"])
+        self.assertTrue(nudge["rearm_text"].startswith("Supervisor re-arm CRED-F28 · hermes-architect: resume, no new round"), nudge["rearm_text"])
+        self.assertIn(f"your {key} (at {ago(3)}) is lifted", nudge["rearm_text"])
+        self.assertEqual((out["summary"]["infra_hold"], out["summary"]["escalate"], out["summary"]["must_nudge"]), (1, 1, 1))
+
+    def test_tester_and_builder_infra_phrases_name_the_codex_cause(self):
+        st, base = dispatched_row("A2A-F21", 4)
+        threads = {"hermes-A2A-F21": base + [msg(3, HOLD_TESTER, sender="hermes-tester"), msg(2.5, HOLD_BUILDER, sender="hermes-builder")]}
+        out = run(st, threads)
+        r = out["rows"]["A2A-F21"]
+        self.assertEqual((r["stage"], r["alert_kind"]), ("dispatched", "infra-hold"))
+        ih = r["infra_hold"]
+        self.assertEqual((ih["role"], ih["count"], ih["roles"], ih["operator_ruling"]), ("hermes-builder", 2, ["hermes-builder", "hermes-tester"], False))
+        self.assertTrue(ih["text"].startswith("blocked (infra, not a defect)"), ih["text"])
+        # two holds stand: the most descriptive `codex …` phrase names the dependency
+        self.assertTrue(ih["cause"].startswith("OUTPUT_REVIEW endpoint has been failing for 30+ min"), ih["cause"])
+        self.assertIn("decision: check the named dependency (codex: OUTPUT_REVIEW endpoint", r["alert_line"])
+        self.assertIn("re-arm hermes-builder on hermes-A2A-F21 with 'resume, no new round'", r["alert_line"])
+        nudge = next(a for a in out["actions"] if a["kind"] == "nudge")
+        self.assertEqual((nudge["target_role"], nudge["check"], nudge["rearm_role"], nudge["alert_kind"]), ("orchestrator", "infra_hold", "hermes-builder", "infra-hold"))
+        self.assertIn("codex OUTPUT_REVIEW endpoint", nudge["text"])
+        self.assertIn("once it is healthy re-arm hermes-builder on hermes-A2A-F21", nudge["text"])
+        # each phrase alone is a hold by the role that wrote it
+        for text, role in ((HOLD_TESTER, "hermes-tester"), (HOLD_BUILDER, "hermes-builder"), (HOLD_ARCH.replace("CRED-F28", "A2A-F21"), "hermes-architect")):
+            rr = run(st, {"hermes-A2A-F21": base + [msg(2, text, sender=role)]})["rows"]["A2A-F21"]
+            self.assertEqual(rr["infra_hold"]["role"], role, text)
+            self.assertEqual(rr["alert_kind"], "operator-ruling" if role == "hermes-architect" else "infra-hold", text)
+        # case-insensitive, and the operator phrase anywhere in the first three lines counts
+        rr = run(st, {"hermes-A2A-F21": base + [msg(2, "Status update\nwork parked\nawaiting an operator decision on the seam", sender="hermes-builder")]})["rows"]["A2A-F21"]
+        self.assertEqual(rr["infra_hold"]["role"], "hermes-builder")
+        rr = run(st, {"hermes-A2A-F21": base + [msg(2, "BLOCKED (INFRA): proxy down", sender="hermes-builder")]})["rows"]["A2A-F21"]
+        self.assertEqual(rr["alert_kind"], "infra-hold")
+
+    def test_inbound_copies_and_ordinary_lines_are_not_holds(self):
+        st, base = dispatched_row("A2A-F21", 4)
+        threads = {"hermes-A2A-F21": base + [
+            msg(3, HOLD_TESTER, "in", sender="hermes-tester"),  # the receiver's copy of a send is not this role's hold
+            msg(2, "holding pattern: still running scenarios, ETA 1 h", sender="hermes-tester"),
+            msg(1.5, "Status\n\nscenario 3 of 6 green\n\nlogs attached\nfourth non-empty line: awaiting operator input", sender="hermes-tester"),  # beyond the first three non-empty lines
+        ]}
+        r = run(st, threads)["rows"]["A2A-F21"]
+        self.assertIsNone(r["infra_hold"])
+        self.assertIsNone(r["alert_kind"])
+        self.assertEqual(r["action"], "none")
+
+    def test_later_marker_clears_the_hold(self):
+        st, base = dispatched_row("CRED-F28", 5)
+        threads = {"hermes-CRED-F28": base + [msg(4, HOLD_ARCH, sender="hermes-architect"), spec_handoff("CRED-F28", 1)]}
+        out = run(st, threads)
+        r = out["rows"]["CRED-F28"]
+        self.assertIsNone(r["infra_hold"])
+        self.assertEqual((r["stage"], r["action"]), ("spec_handoff", "none"))
+        self.assertEqual(out["actions"], [])
+        self.assertEqual(out["summary"]["infra_hold"], 0)
+        # a hold AFTER the marker stands again
+        threads["hermes-CRED-F28"].append(msg(0.5, HOLD_ARCH, sender="hermes-architect"))
+        out2 = run(st, threads)
+        self.assertEqual(out2["rows"]["CRED-F28"]["infra_hold"]["ts"], ago(0.5))
+        self.assertEqual(out2["rows"]["CRED-F28"]["stage"], "spec_handoff")
+
+    def test_bounded_once_per_hold_event_and_24h_per_alert(self):
+        st, base = dispatched_row("CRED-F28", 4)
+        hold = msg(3, HOLD_ARCH, sender="hermes-architect")
+        first = run(st, {"hermes-CRED-F28": base + [hold]})
+        rearm = next(a for a in first["actions"] if a["kind"] == "nudge")
+        # next tick: the alert is in the book and the re-arm text was recorded (record.py nudged) -> quiet
+        book = {"CRED-F28": {"alerts": {"operator-ruling:dispatched": ago(1)}, "texts": [rearm["rearm_text"]]}}
+        again = run(st, {"hermes-CRED-F28": base + [hold]}, nudges=book)
+        self.assertEqual(again["actions"], [])
+        self.assertEqual((again["rows"]["CRED-F28"]["slo_status"], again["summary"]["must_nudge"], again["summary"]["escalate"]), ("infra-hold", 0, 0))
+        self.assertIsNotNone(again["rows"]["CRED-F28"]["infra_hold"])  # still on the status table
+        # the re-arm read back from the thread (the role's inbound copy) bounds it too; so does the Orchestrator-facing text
+        for line in (rearm["rearm_text"], rearm["text"]):
+            seen = run(st, {"hermes-CRED-F28": base + [hold, msg(0.5, line, "in", sender="orchestrator")]},
+                       nudges={"CRED-F28": {"alerts": {"operator-ruling:dispatched": ago(1)}}})
+            self.assertEqual(seen["actions"], [], line)
+        # a RESTATEMENT of the same hold (later ts, same first line) is the same hold: nothing new, however often the
+        # role repeats it during a long outage; the newest restatement is still what the status table shows
+        restated = run(st, {"hermes-CRED-F28": base + [hold, msg(0.5, HOLD_ARCH, sender="hermes-architect")]}, nudges=book)
+        self.assertEqual(restated["actions"], [])
+        self.assertEqual(restated["rows"]["CRED-F28"]["infra_hold"]["ts"], ago(0.5))
+        # a differently WORDED hold is a new hold text -> a new re-arm (the alert stays bound for 24 h) ...
+        reworded = HOLD_ARCH.replace("please PAUSE the builder dispatch", "still parked, codex 401s since 09:00")
+        newer = run(st, {"hermes-CRED-F28": base + [hold, msg(0.5, reworded, sender="hermes-architect")]}, nudges=book)
+        self.assertEqual([a["kind"] for a in newer["actions"]], ["nudge"])
+        self.assertIn(f"{hs._hold_key('hermes-architect', hs._strip_md(reworded))} at {ago(0.5)}", newer["actions"][0]["text"])
+        # ... unless a re-arm to this role was SENT inside the last 6 h: the per-(row, role) cap, read from the recorded
+        # `rearms` (with their `at`) or from the role's `in` copy on the thread (its ts). It lifts after 6 h.
+        timed = {"CRED-F28": {**book["CRED-F28"], "rearms": [{"at": ago(1), "text": rearm["rearm_text"]}]}}
+        capped = run(st, {"hermes-CRED-F28": base + [hold, msg(0.5, reworded, sender="hermes-architect")]}, nudges=timed)
+        self.assertEqual(capped["actions"], [])
+        self.assertIn("re-arm cap: hermes-architect re-armed 1.0h ago (< 6h)", capped["rows"]["CRED-F28"]["reason"])
+        on_thread = run(st, {"hermes-CRED-F28": base + [hold, msg(1, rearm["rearm_text"], "in", sender="orchestrator"), msg(0.5, reworded, sender="hermes-architect")]}, nudges=book)
+        self.assertEqual(on_thread["actions"], [])
+        timed["CRED-F28"]["rearms"] = [{"at": ago(7), "text": rearm["rearm_text"]}]
+        lifted = run(st, {"hermes-CRED-F28": base + [hold, msg(0.5, reworded, sender="hermes-architect")]}, nudges=timed)
+        self.assertEqual([a["kind"] for a in lifted["actions"]], ["nudge"])
+        # the alert re-arms after 24 h
+        old = run(st, {"hermes-CRED-F28": base + [hold]}, nudges={"CRED-F28": {"alerts": {"operator-ruling:dispatched": ago(25)}, "texts": [rearm["rearm_text"]]}})
+        self.assertEqual([a["kind"] for a in old["actions"]], ["alert"])
+        # a re-arm is not a 6 h-bound nudge: a regular nudge 1 h ago does not block it
+        recent = run(st, {"hermes-CRED-F28": base + [hold]}, nudges={"CRED-F28": {"last_nudge": ago(1), "state": "dispatched", "count": 1}})
+        self.assertEqual([a["kind"] for a in recent["actions"] if a["kind"] == "nudge"], ["nudge"])
+        # and the re-arm line on the thread is not classified as a nudge (the row's 6 h bound is untouched)
+        r = run(st, {"hermes-CRED-F28": base + [hold, msg(0.5, rearm["rearm_text"], "in", sender="orchestrator")]})["rows"]["CRED-F28"]
+        self.assertEqual((r["nudges"]["count"], r["nudges"]["last"]), (0, None))
+
+    def test_hold_on_a_merge_held_or_cost_held_row(self):
+        # cost hold wins (the container cannot take a turn); an infra hold on a merge-held gate row still alerts
+        st, base = dispatched_row("CRED-F28", 4)
+        sessions = {"hermes-CRED-F28": [{"role": "hermes-architect", "session_id": "s-1", "cost_status": "stopped", "container_status": "stopped"}]}
+        r = run(st, {"hermes-CRED-F28": base + [msg(3, HOLD_ARCH, sender="hermes-architect")]}, sessions=sessions)["rows"]["CRED-F28"]
+        self.assertEqual(r["alert_kind"], "cost-card")
+        self.assertIsNone(r["infra_hold"])
+
+    def test_paused_row_with_a_hold_is_silent(self):
+        # the operator paused the row: a stale `HOLD on CRED-F28` line must not alert or re-arm anything
+        st, base = dispatched_row("CRED-F28", 4)
+        out = run(st, {"hermes-CRED-F28": base + [msg(3, HOLD_ARCH, sender="hermes-architect")]}, config={"paused_rows": ["CRED-F28"]})
+        r = out["rows"]["CRED-F28"]
+        self.assertEqual((r["hold"], r["action"], r["alert_kind"], r["infra_hold"]), ("paused", "none", None, None))
+        self.assertEqual([a["kind"] for a in out["actions"]], ["hold"])
+        self.assertEqual((out["summary"]["infra_hold"], out["summary"]["escalate"], out["summary"]["must_nudge"], out["summary"]["hold"]), (0, 0, 0, 1))
+
+    def test_later_plain_line_by_the_holding_role_clears_the_hold(self):
+        # the builder wrote the hold, then `codex is back — resuming`: it moved on; re-arming it would interrupt live work
+        st, base = dispatched_row("A2A-F21", 6)
+        hold = msg(5, HOLD_BUILDER, sender="hermes-builder")
+        resumed = run(st, {"hermes-A2A-F21": base + [hold, msg(4, "codex is back — resuming the build, ETA 2h", sender="hermes-builder")]})
+        r = resumed["rows"]["A2A-F21"]
+        self.assertEqual((r["infra_hold"], r["alert_kind"], r["stage"]), (None, None, "dispatched"))
+        self.assertEqual([a["kind"] for a in resumed["actions"]], ["nudge"])  # 6 h on `dispatched`: the ORDINARY SLO nudge, nothing else
+        self.assertNotIn("check", resumed["actions"][0])
+        self.assertEqual(resumed["summary"]["infra_hold"], 0)
+        # a `PR opened` line clears it too (pr_opened is a progress kind now), and the stage advances
+        opened = run(st, {"hermes-A2A-F21": base + [hold, msg(4, f"PR opened {SLUG}#7 (draft)", sender="hermes-builder")]})
+        self.assertEqual((opened["rows"]["A2A-F21"]["infra_hold"], opened["rows"]["A2A-F21"]["stage"]), (None, "pr_open"))
+        # what does NOT clear it: another role's line, the receiver's `in` copy, a supervisor line, or a restatement of the hold
+        for later in (
+            msg(4, "tester here: still waiting on the builder", sender="hermes-tester"),
+            msg(4, "codex is back — resuming", "in", sender="hermes-builder"),
+            msg(4, "Supervisor nudge A2A-F21: dispatched for 5h, no [Spec handoff]. Expected next: x", "in", sender="orchestrator"),
+            msg(4, HOLD_BUILDER, sender="hermes-builder"),
+        ):
+            rr = run(st, {"hermes-A2A-F21": base + [hold, later]})["rows"]["A2A-F21"]
+            self.assertIsNotNone(rr["infra_hold"], later["text"])
+            self.assertEqual(rr["alert_kind"], "infra-hold", later["text"])
+
+    def test_a_standing_hold_does_not_hide_the_slo_check(self):
+        # the re-arm was sent hours ago and the row is past its escalation SLO: the `slo` alert still fires
+        st, base = dispatched_row("CRED-F28", 13)  # dispatched: nudge 6 h, escalate 12 h
+        hold = msg(12, HOLD_ARCH, sender="hermes-architect")
+        rearm = next(a for a in run(st, {"hermes-CRED-F28": base + [hold]})["actions"] if a["kind"] == "nudge")["rearm_text"]
+        book = {"CRED-F28": {"last_nudge": ago(6.5), "state": "dispatched", "count": 1, "alerts": {"operator-ruling:dispatched": ago(12)},
+                             "texts": [rearm], "rearms": [{"at": ago(11), "text": rearm}]}}
+        out = run(st, {"hermes-CRED-F28": base + [hold, msg(11, rearm, "in", sender="orchestrator"), msg(9.5, "resuming per the ruling", sender="hermes-architect")]}, nudges=book)
+        r = out["rows"]["CRED-F28"]
+        self.assertIsNone(r["infra_hold"])  # the architect wrote after the hold: it is history ...
+        self.assertEqual((r["slo_breach"], r["escalation_due"], r["alert_kind"], r["slo_status"]), (True, True, "slo", "escalated"))
+        self.assertEqual([a["alert_kind"] for a in out["actions"] if a["kind"] == "alert"], ["slo"])
+        # ... and with the hold still standing (nothing written since) the SLO check runs all the same
+        standing = run(st, {"hermes-CRED-F28": base + [hold, msg(11, rearm, "in", sender="orchestrator")]}, nudges=book)
+        r2 = standing["rows"]["CRED-F28"]
+        self.assertIsNotNone(r2["infra_hold"])
+        self.assertEqual((r2["slo_breach"], r2["escalation_due"], r2["alert_kind"]), (True, True, "slo"))
+        self.assertEqual([a["alert_kind"] for a in standing["actions"] if a["kind"] == "alert"], ["slo"])
+        self.assertEqual(standing["summary"]["must_nudge"], 0)  # the re-arm is bounded (same hold text); no ordinary nudge inside 6 h
+        # no prior nudge, 7 h in, re-arm already sent: the ORDINARY SLO nudge to the architect fires (not a second re-arm)
+        st7, base7 = dispatched_row("CRED-F28", 7)
+        seven = run(st7, {"hermes-CRED-F28": base7 + [msg(6.5, HOLD_ARCH, sender="hermes-architect"), msg(6, rearm, "in", sender="orchestrator")]},
+                    nudges={"CRED-F28": {"alerts": {"operator-ruling:dispatched": ago(6.5)}, "texts": [rearm], "rearms": [{"at": ago(6.4), "text": rearm}]}})
+        nudges = [a for a in seven["actions"] if a["kind"] == "nudge"]
+        self.assertEqual([(n["target_role"], n.get("check")) for n in nudges], [("hermes-architect", None)])
+        self.assertEqual((seven["rows"]["CRED-F28"]["slo_breach"], seven["rows"]["CRED-F28"]["slo_status"]), (True, "breached"))
+        self.assertIsNotNone(seven["rows"]["CRED-F28"]["infra_hold"])  # the standing hold stays on the status table
+
+
+class BouncedTurn(unittest.TestCase):
+    """ISO-F14, 2026-09-15: the architect acked the operator addendum, its turn ended `bounced-transient` with
+    no output, and nothing re-armed it for 19 h. The ack, not the thread, is the only evidence."""
+
+    def setUp(self):
+        self.st, base = dispatched_row("ISO-F14", 4)
+        self.threads = {"hermes-ISO-F14": base + [msg(3.5, "ack — addendum noted, resuming", sender="hermes-architect")]}
+        self.sessions = {"hermes-ISO-F14": [
+            {"role": "hermes-architect", "session_id": "s-a14", "cost_status": "ok", "container_status": "stopped", "status": "active"},
+            {"role": "orchestrator", "session_id": "s-o14", "cost_status": "ok", "container_status": "stopped", "status": "active"},
+        ]}
+        self.bounce = ("s-a14", "bounced-transient", 3.0, "hermes-architect", "hermes-ISO-F14")
+
+    def test_bounced_ack_newer_than_the_roles_last_line_nudges_the_orchestrator_at_once(self):
+        out = run(self.st, self.threads, sessions=self.sessions, acks=acks(self.bounce))
+        r = out["rows"]["ISO-F14"]
+        self.assertEqual((r["stage"], r["age_hours"], r["slo_breach"]), ("dispatched", 4.0, False))  # 4 h < 6 h: no ordinary nudge yet
+        self.assertEqual(r["bounced"], {"role": "hermes-architect", "session_id": "s-a14", "status": "bounced-transient", "changed": ago(3.0), "repeat": False, "after_rearm_for": None})
+        self.assertEqual((r["slo_status"], r["alert_kind"]), ("bounced", None))
+        n = next(a for a in out["actions"] if a["kind"] == "nudge")
+        self.assertEqual((n["target_role"], n["check"], n["rearm_role"], n["rearm_session_id"], n["repeat"]), ("orchestrator", "bounced", "hermes-architect", "s-a14", False))
+        self.assertEqual(n["target_session_id"], "s-o14")  # the Orchestrator's own row session is the pin
+        # bounced-transient is the provider-outage signature: the Orchestrator probes first and never spawns fresh for it
+        self.assertTrue(n["text"].startswith(
+            f"Supervisor re-arm ISO-F14 · hermes-architect: re-arm hermes-architect on hermes-ISO-F14: its last turn at {ago(3.0)} ended "
+            "bounced-transient with no output; this is the provider-outage signature: probe the provider first"), n["text"])
+        self.assertIn("Never spawn a fresh session for a transient bounce; reply on this thread.", n["text"])
+        self.assertEqual((n["transient"], n["ack_status"]), (True, "bounced-transient"))
+        self.assertTrue(n["rearm_text"].startswith("Supervisor re-arm ISO-F14 · hermes-architect: resume, no new round"), n["rearm_text"])
+        self.assertIn(f"turn at {ago(3.0)} ended bounced-transient", n["rearm_text"])
+        self.assertEqual((out["summary"]["bounced"], out["summary"]["must_nudge"], out["summary"]["escalate"]), (1, 1, 0))
+        self.assertFalse(any(a["kind"] == "alert" for a in out["actions"]))
+        # `bounced-unknown` is a bounce too — the one kind that may fall back to a fresh session; a fractional-second ack timestamp is normalised
+        ak = acks(("s-a14", "bounced-unknown", 3.0, "hermes-architect", "hermes-ISO-F14"))
+        ak["sessions"]["s-a14"]["changed"] = ago(3.0).replace("Z", ".123Z")
+        out2 = run(self.st, self.threads, sessions=self.sessions, acks=ak)
+        r2 = out2["rows"]["ISO-F14"]
+        self.assertEqual((r2["bounced"]["status"], r2["bounced"]["changed"]), ("bounced-unknown", ago(3.0)))
+        n2 = next(a for a in out2["actions"] if a["kind"] == "nudge")
+        self.assertIn("resume the warm session if it accepts a message, else spawn fresh; reply on this thread.", n2["text"])
+        self.assertEqual((n2["transient"], n2["ack_status"]), (False, "bounced-unknown"))
+
+    def test_same_acks_next_tick_is_quiet_then_a_later_bounce_is_bounce_repeat(self):
+        first = run(self.st, self.threads, sessions=self.sessions, acks=acks(self.bounce))
+        rearm = next(a for a in first["actions"] if a["kind"] == "nudge")["rearm_text"]
+        # the re-arm landed in the architect's session (its `in` copy): same acks, no second nudge
+        threads = {"hermes-ISO-F14": self.threads["hermes-ISO-F14"] + [msg(2.5, rearm, "in", sender="orchestrator")]}
+        again = run(self.st, threads, sessions=self.sessions, acks=acks(self.bounce))
+        self.assertEqual(again["actions"], [])
+        self.assertEqual(again["rows"]["ISO-F14"]["bounced"]["changed"], ago(3.0))  # still reported
+        # the recorded text alone (nudges.json -> book texts) bounds it as well
+        booked = run(self.st, self.threads, sessions=self.sessions, acks=acks(self.bounce), nudges={"ISO-F14": {"texts": [rearm]}})
+        self.assertEqual(booked["actions"], [])
+        # a later bounce after the re-arm was SENT: the bounce-repeat ALERT and nothing else — no second re-arm. Every
+        # redrive during an outage mints a new bounced-* ack; re-arming per ack would open a fresh session per tick.
+        later = ("s-a14", "bounced-transient", 1.0, "hermes-architect", "hermes-ISO-F14")
+        rep = run(self.st, threads, sessions=self.sessions, acks=acks(later))
+        r = rep["rows"]["ISO-F14"]
+        self.assertEqual((r["bounced"]["repeat"], r["bounced"]["after_rearm_for"], r["bounced"]["changed"]), (True, ago(3.0), ago(1.0)))
+        self.assertEqual((r["alert_kind"], r["action"], r["slo_status"]), ("bounce-repeat", "escalate", "escalated"))
+        self.assertIn(f"after the re-arm for its bounce at {ago(3.0)}; no further re-arm from the supervisor", r["alert_line"])
+        # transient: the decision is to wait for the provider, then spawn fresh BY HAND
+        self.assertIn(f"decision: the provider outage (bounced-transient) is still on: check the host error log around {ago(1.0)}, "
+                      "and when the provider is back spawn a fresh hermes-architect session by hand", r["alert_line"])
+        self.assertEqual([a["kind"] for a in rep["actions"]], ["alert"])
+        self.assertEqual((rep["summary"]["escalate"], rep["summary"]["must_nudge"], rep["summary"]["bounced"]), (1, 0, 1))
+        # bounced-unknown repeat: spawn fresh by hand, the host error log has the provider/proxy error
+        unk = run(self.st, threads, sessions=self.sessions, acks=acks(("s-a14", "bounced-unknown", 1.0, "hermes-architect", "hermes-ISO-F14")))
+        self.assertIn(f"decision: spawn a fresh hermes-architect session by hand; check the host error log around {ago(1.0)} for the provider/proxy error",
+                      unk["rows"]["ISO-F14"]["alert_line"])
+        self.assertEqual([a["kind"] for a in unk["actions"]], ["alert"])
+        # the repeat alert is 24 h bound like every alert: the third tick of the outage is quiet, the row still says bounced
+        quiet = run(self.st, threads, sessions=self.sessions, acks=acks(later), nudges={"ISO-F14": {"alerts": {"bounce-repeat:dispatched": ago(0.4)}}})
+        self.assertEqual(quiet["actions"], [])
+        self.assertEqual((quiet["rows"]["ISO-F14"]["bounced"]["repeat"], quiet["rows"]["ISO-F14"]["slo_status"]), (True, "escalated"))
+        # yet another bounce (the outage goes on): still no re-arm, whatever the ack timestamp
+        third = run(self.st, threads, sessions=self.sessions, acks=acks(("s-a14", "bounced-transient", 0.2, "hermes-architect", "hermes-ISO-F14")),
+                    nudges={"ISO-F14": {"alerts": {"bounce-repeat:dispatched": ago(0.4)}}})
+        self.assertEqual(third["actions"], [])
+
+    def test_another_roles_rearm_is_not_this_roles_repeat(self):
+        # a BUILDER re-arm on the thread (its bounce at 4 h ago) must not make the architect's FIRST bounce a repeat
+        builder_rearm = (
+            f"Supervisor re-arm ISO-F14 · hermes-builder: resume, no new round — your last turn at {ago(4.0)} ended bounced-transient "
+            "with no output on thread hermes-ISO-F14. Re-read your task memory, pick up where that turn stopped, and reply on this thread: status, blocker, ETA."
+        )
+        threads = {"hermes-ISO-F14": self.threads["hermes-ISO-F14"] + [msg(3.9, builder_rearm, "in", sender="orchestrator")]}
+        out = run(self.st, threads, sessions=self.sessions, acks=acks(self.bounce), nudges={"ISO-F14": {"texts": [builder_rearm], "rearms": [{"at": ago(3.9), "text": builder_rearm}]}})
+        r = out["rows"]["ISO-F14"]
+        self.assertEqual((r["bounced"]["repeat"], r["bounced"]["after_rearm_for"], r["alert_kind"]), (False, None, None))
+        self.assertEqual([(a["kind"], a.get("rearm_role")) for a in out["actions"]], [("nudge", "hermes-architect")])
+        # and the builder's re-arm inside 6 h is not the architect's cap either
+        self.assertNotIn("re-arm cap", r["reason"] or "")
+
+    def test_one_sent_rearm_per_row_and_role_per_6h(self):
+        # an infra-hold re-arm to the architect was sent 1 h ago; now its turn bounces: no second re-arm inside the window
+        infra_rearm = (
+            f"Supervisor re-arm ISO-F14 · hermes-architect: resume, no new round — your hold \"HOLD on ISO-F14 — parked\" (at {ago(2)}) is lifted: "
+            "the dependency is back. Pick up where you stopped and reply on this thread: status, blocker, ETA."
+        )
+        book = {"ISO-F14": {"texts": [infra_rearm], "rearms": [{"at": ago(1), "text": infra_rearm}]}}
+        out = run(self.st, self.threads, sessions=self.sessions, acks=acks(self.bounce), nudges=book)
+        r = out["rows"]["ISO-F14"]
+        self.assertEqual((r["bounced"]["status"], r["bounced"]["repeat"], r["action"]), ("bounced-transient", False, "none"))
+        self.assertIn("re-arm cap: hermes-architect re-armed 1.0h ago (< 6h)", r["reason"])
+        self.assertEqual((out["actions"], out["summary"]["bounced"], out["summary"]["must_nudge"]), ([], 1, 0))
+        # the role's `in` copy on the thread (with its ts) is the same evidence; untimed `texts` alone are not
+        on_thread = run(self.st, {"hermes-ISO-F14": self.threads["hermes-ISO-F14"] + [msg(1, infra_rearm, "in", sender="orchestrator")]}, sessions=self.sessions, acks=acks(self.bounce))
+        self.assertEqual(on_thread["actions"], [])
+        untimed = run(self.st, self.threads, sessions=self.sessions, acks=acks(self.bounce), nudges={"ISO-F14": {"texts": [infra_rearm]}})
+        self.assertEqual([a["kind"] for a in untimed["actions"]], ["nudge"])
+        # the cap lifts after 6 h
+        book["ISO-F14"]["rearms"] = [{"at": ago(6.5), "text": infra_rearm}]
+        lifted = run(self.st, self.threads, sessions=self.sessions, acks=acks(self.bounce), nudges=book)
+        self.assertEqual([a.get("check") for a in lifted["actions"]], ["bounced"])
+
+    def test_bounce_older_than_the_roles_last_line_is_not_a_bounce(self):
+        # the architect wrote after the bounce: it recovered on its own
+        ak = acks(("s-a14", "bounced-transient", 3.8, "hermes-architect", "hermes-ISO-F14"))
+        out = run(self.st, self.threads, sessions=self.sessions, acks=ak)
+        self.assertIsNone(out["rows"]["ISO-F14"]["bounced"])
+        self.assertEqual(out["actions"], [])
+        self.assertEqual(out["summary"]["bounced"], 0)
+
+    def test_bounces_of_other_roles_or_threads_and_older_sessions_are_ignored(self):
+        ak = acks(("s-b14", "bounced-unknown", 1.0, "hermes-builder", "hermes-ISO-F14"),
+                  ("s-a13", "bounced-transient", 1.0, "hermes-architect", "hermes-ISO-F13"))
+        out = run(self.st, self.threads, sessions=self.sessions, acks=ak)
+        self.assertIsNone(out["rows"]["ISO-F14"]["bounced"])
+        self.assertEqual(out["actions"], [])
+        # two architect sessions on the thread: the NEWEST ack decides (a completed newer one hides the old bounce)
+        ak2 = acks(("s-a14-old", "bounced-transient", 3.0, "hermes-architect", "hermes-ISO-F14"),
+                   ("s-a14", "completed", 2.0, "hermes-architect", "hermes-ISO-F14"))
+        r = run(self.st, self.threads, sessions=self.sessions, acks=ak2)["rows"]["ISO-F14"]
+        self.assertIsNone(r["bounced"])
+
+
+class IdleTurn(unittest.TestCase):
+    """ISO-F13, 2026-09-15: the architect's turn ended right after "research done" with no [Spec handoff];
+    the container was gone; the row read as progressing for the whole 6 h SLO."""
+
+    def setUp(self):
+        self.st, base = dispatched_row("ISO-F13", 4)
+        self.threads = {"hermes-ISO-F13": base + [msg(3.6, "ISO-F13 research done — writing the ADR next", sender="hermes-architect")]}
+        self.done = ("s-a13", "completed", 3.5, "hermes-architect", "hermes-ISO-F13")
+
+    @staticmethod
+    def sessions(container: str) -> dict:
+        return {"hermes-ISO-F13": [{"role": "hermes-architect", "session_id": "s-a13", "cost_status": "ok", "container_status": container, "status": "active"}]}
+
+    def test_completed_turn_stopped_container_no_marker_nudges_early_once(self):
+        out = run(self.st, self.threads, sessions=self.sessions("stopped"), acks=acks(self.done))
+        r = out["rows"]["ISO-F13"]
+        self.assertFalse(r["slo_breach"])  # 4 h < 6 h: the ordinary nudge would wait two more hours
+        self.assertEqual(r["idle_turn"], {"role": "hermes-architect", "session_id": "s-a13", "ended": ago(3.5), "age_hours": 3.5, "container_status": "stopped"})
+        self.assertEqual((r["action"], r["target_role"], r["slo_status"]), ("nudge", "hermes-architect", "idle-turn"))
+        n = out["actions"][0]
+        self.assertEqual((n["kind"], n["check"], n["target_role"], n["target_session_id"], n["turn_ended"], n["marker"]), ("nudge", "idle_turn", "hermes-architect", "s-a13", ago(3.5), "[Spec handoff]"))
+        self.assertTrue(n["text"].startswith("Supervisor nudge ISO-F13: dispatched for 4h, no [Spec handoff]. Expected next: [Spec handoff]"), n["text"])
+        self.assertTrue(n["text"].endswith(f"Your turn at {ago(3.5)} ended without the [Spec handoff]; if the work is done, send the marker now."), n["text"])
+        self.assertEqual((out["summary"]["idle_turn"], out["summary"]["must_nudge"]), (1, 1))
+        # once per T: the recorded text bounds it (and, being a "Supervisor nudge", so does the 6 h row bound once it is on the thread)
+        booked = run(self.st, self.threads, sessions=self.sessions("stopped"), acks=acks(self.done), nudges={"ISO-F13": {"texts": [n["text"]]}})
+        self.assertEqual(booked["actions"], [])
+        self.assertIn(f"idle-turn nudge already sent for the turn at {ago(3.5)}", booked["rows"]["ISO-F13"]["reason"])
+        on_thread = run(self.st, {"hermes-ISO-F13": self.threads["hermes-ISO-F13"] + [msg(0.5, n["text"], "in", sender="orchestrator")]}, sessions=self.sessions("stopped"), acks=acks(self.done))
+        self.assertEqual(on_thread["actions"], [])
+        self.assertEqual(on_thread["rows"]["ISO-F13"]["nudges"]["count"], 1)
+
+    def test_running_container_unknown_status_young_turn_or_marker_after_turn_is_not_idle(self):
+        r = run(self.st, self.threads, sessions=self.sessions("running"), acks=acks(self.done))["rows"]["ISO-F13"]
+        self.assertEqual((r["idle_turn"], r["action"]), (None, "none"))
+        # unknown container status: no signal (never guess) ...
+        self.assertIsNone(run(self.st, self.threads, sessions={}, acks=acks(self.done))["rows"]["ISO-F13"]["idle_turn"])
+        # ... unless the ack itself carries it
+        with_cs = acks(("s-a13", "completed", 3.5, "hermes-architect", "hermes-ISO-F13", {"container_status": "stopped"}))
+        self.assertIsNotNone(run(self.st, self.threads, sessions={}, acks=with_cs)["rows"]["ISO-F13"]["idle_turn"])
+        # younger than half the 6 h SLO
+        young = acks(("s-a13", "completed", 2.0, "hermes-architect", "hermes-ISO-F13"))
+        self.assertIsNone(run(self.st, self.threads, sessions=self.sessions("stopped"), acks=young)["rows"]["ISO-F13"]["idle_turn"])
+        # a turn that predates the stage clock: the role has not taken its turn yet, the SLO applies
+        st = state([{"id": "ISO-F13", "spec": stamp(1)}])
+        old_turn = acks(("s-a13", "completed", 3.0, "hermes-architect", "hermes-ISO-F13"))
+        r = run(st, {"hermes-ISO-F13": [spec_handoff("ISO-F13", 1)]}, sessions=self.sessions("stopped"), acks=old_turn)["rows"]["ISO-F13"]
+        self.assertEqual((r["stage"], r["idle_turn"], r["action"]), ("spec_handoff", None, "none"))
+
+    def test_a_turn_that_ended_with_a_blocker_or_hold_is_not_idle(self):
+        # The `completed` ack is stamped AFTER the turn's outputs, so the turn's own [Blocker] is always BEFORE T
+        # (poll-loop markCompleted runs once processQuery returns). It is the alternative artifact the nudge names.
+        base = self.threads["hermes-ISO-F13"]
+        blocker = msg(3.55, "[Blocker] ISO-F13: the credential fixture is missing", sender="hermes-architect")
+        out = run(self.st, {"hermes-ISO-F13": base + [blocker]}, sessions=self.sessions("stopped"), acks=acks(self.done))
+        self.assertEqual((out["rows"]["ISO-F13"]["idle_turn"], out["rows"]["ISO-F13"]["blocker_open"], out["actions"]), (None, True, []))
+        # a hold as the turn's last line: same (and the hold path owns the row: infra-hold alert + re-arm, no idle nudge)
+        held = run(self.st, {"hermes-ISO-F13": base + [msg(3.55, HOLD_BUILDER, sender="hermes-architect")]}, sessions=self.sessions("stopped"), acks=acks(self.done))
+        self.assertIsNone(held["rows"]["ISO-F13"]["idle_turn"])
+        self.assertEqual([a.get("check") for a in held["actions"] if a["kind"] == "nudge"], ["infra_hold"])
+        # the blocker followed by chatter in the SAME turn (turn start = the role's newest inbound before T): still not idle
+        dispatch = msg(4, "Dispatch ISO-F13: title.", "in", role="hermes-architect")
+        same_turn = [dispatch, msg(3.8, "[Blocker] ISO-F13: fixture missing", sender="hermes-architect", role="hermes-architect"),
+                     msg(3.6, "waiting for the fixture; parking", sender="hermes-architect", role="hermes-architect")]
+        self.assertIsNone(run(self.st, {"hermes-ISO-F13": same_turn}, sessions=self.sessions("stopped"), acks=acks(self.done))["rows"]["ISO-F13"]["idle_turn"])
+        # a blocker from a PREVIOUS turn (an operator addendum started a new one) does not excuse this turn's silence
+        new_turn = [dispatch, msg(3.8, "[Blocker] ISO-F13: fixture missing", sender="hermes-architect", role="hermes-architect"),
+                    msg(3.7, "addendum: the fixture is at /shared/fixtures; proceed", "in", role="hermes-architect"),
+                    msg(3.6, "ISO-F13 research done — writing the ADR next", sender="hermes-architect", role="hermes-architect")]
+        r = run(self.st, {"hermes-ISO-F13": new_turn}, sessions=self.sessions("stopped"), acks=acks(self.done))["rows"]["ISO-F13"]
+        self.assertEqual((r["idle_turn"]["ended"], r["action"]), (ago(3.5), "nudge"))
+
+    def test_half_slo_floor_is_one_hour_and_the_slo_nudge_takes_precedence(self):
+        # spec_handoff nudges after 2 h -> the early nudge at 1 h
+        st = state([{"id": "ISO-F13", "spec": stamp(1.5)}])
+        threads = {"hermes-ISO-F13": [spec_handoff("ISO-F13", 1.5)]}
+        r = run(st, threads, sessions=self.sessions("stopped"), acks=acks(("s-a13", "completed", 1.2, "hermes-architect", "hermes-ISO-F13")))["rows"]["ISO-F13"]
+        self.assertEqual((r["stage"], r["action"], r["idle_turn"]["age_hours"]), ("spec_handoff", "nudge", 1.2))
+        self.assertIn("no forward to hermes-builder", r["message"])
+        # past the ordinary SLO the regular nudge fires alone: never two nudges for one row in one tick
+        st2, base2 = dispatched_row("ISO-F13", 7)
+        out = run(st2, {"hermes-ISO-F13": base2}, sessions=self.sessions("stopped"), acks=acks(("s-a13", "completed", 6.5, "hermes-architect", "hermes-ISO-F13")))
+        nudges = [a for a in out["actions"] if a["kind"] == "nudge"]
+        self.assertEqual(len(nudges), 1)
+        self.assertNotIn("check", nudges[0])
+        self.assertIsNotNone(out["rows"]["ISO-F13"]["idle_turn"])  # still on the status table
+        # an SLO nudge already sent in this state: no early nudge on top of it
+        out2 = run(self.st, self.threads, sessions=self.sessions("stopped"), acks=acks(self.done), nudges={"ISO-F13": {"last_nudge": ago(6.5), "state": "dispatched", "count": 1}})
+        self.assertEqual(out2["actions"], [])
+        # inside the 6 h row bound (a nudge 2 h ago, other state): no early nudge either
+        out3 = run(self.st, self.threads, sessions=self.sessions("stopped"), acks=acks(self.done), nudges={"ISO-F13": {"last_nudge": ago(2), "state": "queued", "count": 1}})
+        self.assertEqual(out3["actions"], [])
+        self.assertIsNotNone(out3["rows"]["ISO-F13"]["idle_turn"])
+
+
+class AcksOff(unittest.TestCase):
+    """No acks.json, a malformed one, or one older than 2 h: both ack-based detections are off, nothing
+    crashes, and the output says so (`acks.status`, `summary.acks`)."""
+
+    def setUp(self):
+        self.st, base = dispatched_row("ISO-F14", 4)
+        self.threads = {"hermes-ISO-F14": base}
+        self.sessions = {"hermes-ISO-F14": [{"role": "hermes-architect", "session_id": "s-a14", "cost_status": "ok", "container_status": "stopped", "status": "active"}]}
+        self.bounce = ("s-a14", "bounced-transient", 3.0, "hermes-architect", "hermes-ISO-F14")
+
+    def test_missing_stale_or_malformed_acks_switch_both_detections_off(self):
+        cases = [
+            ("missing", None), ("missing", {}), ("missing", {"sessions": "nope"}), ("missing", {"generated_at": "garbage", "sessions": {}}),
+            ("missing", {"sessions": acks(self.bounce)["sessions"]}),  # no generated_at: age unknown, so off
+            ("stale", acks(self.bounce, generated_h=2.5)),
+        ]
+        for label, ak in cases:
+            out = run(self.st, self.threads, sessions=self.sessions, acks=ak)
+            self.assertEqual(out["acks"]["status"], label, ak)
+            self.assertEqual(out["acks"]["note"], ACKS_OFF)
+            self.assertEqual(out["summary"]["acks"], label)
+            self.assertEqual((out["summary"]["bounced"], out["summary"]["idle_turn"]), (0, 0))
+            self.assertIsNone(out["rows"]["ISO-F14"]["bounced"])
+            self.assertIsNone(out["rows"]["ISO-F14"]["idle_turn"])
+            self.assertEqual(out["actions"], [])
+        stale = run(self.st, self.threads, sessions=self.sessions, acks=acks(self.bounce, generated_h=2.5))["acks"]
+        self.assertEqual((stale["age_hours"], stale["sessions"], stale["generated_at"]), (2.5, 1, ago(2.5)))
+        fresh = run(self.st, self.threads, sessions=self.sessions, acks=acks(self.bounce, generated_h=1.9))
+        self.assertEqual((fresh["acks"]["status"], fresh["acks"]["note"], fresh["acks"]["sessions"], fresh["summary"]["bounced"]), ("ok", None, 1, 1))
+        # the infra-hold detection reads the thread, not acks: it stays on regardless
+        held = run(self.st, {"hermes-ISO-F14": self.threads["hermes-ISO-F14"] + [msg(1, HOLD_BUILDER, sender="hermes-builder")]}, acks=None)
+        self.assertEqual(held["rows"]["ISO-F14"]["alert_kind"], "infra-hold")
+
+    def test_cli_accepts_acks_and_reports_a_missing_file(self):
+        with tempfile.TemporaryDirectory() as d:
+            paths = {}
+            for name, obj in (("state", self.st), ("threads", self.threads), ("prs", []), ("nudges", {}), ("acks", acks(self.bounce))):
+                paths[name] = Path(d) / f"{name}.json"
+                paths[name].write_text(json.dumps(obj))
+            argv = [sys.executable, str(HERE / "hermes_supervise.py"), "--state", str(paths["state"]), "--threads", str(paths["threads"]),
+                    "--prs", str(paths["prs"]), "--nudges", str(paths["nudges"]), "--now", NOW, "--json"]
+            with_acks = json.loads(subprocess.run(argv + ["--acks", str(paths["acks"])], capture_output=True, text=True, check=False).stdout)
+            self.assertEqual((with_acks["acks"]["status"], with_acks["summary"]["bounced"]), ("ok", 1))
+            absent = json.loads(subprocess.run(argv + ["--acks", str(Path(d) / "absent.json")], capture_output=True, text=True, check=False).stdout)
+            self.assertEqual((absent["acks"]["status"], absent["summary"]["bounced"]), ("missing", 0))
+            p = subprocess.run([sys.executable, str(HERE / "hermes_supervise.py"), "--help"], capture_output=True, text=True, check=False)
+            self.assertIn("--acks", p.stdout)
+
+
+@unittest.skipUnless(shutil.which("bash"), "bash not available")
+class CollectAcksScript(unittest.TestCase):
+    """collect-acks.sh, the host-side acks.json writer, run offline: a fake `hostname` on PATH and the two probe
+    outputs (q.ts rows, bun probe JSON) recorded as fixtures. Pins the hostname guard, the hermes-<ROW> filter,
+    the JSON shape hermes_supervise --acks reads, the atomic write, and "no source -> nothing written"."""
+
+    SCRIPT = HERE / "collect-acks.sh"
+
+    def run_script(self, tmp: str, hostname: str = "slang-cpu-coworkers", **env_extra: str) -> subprocess.CompletedProcess:
+        b = Path(tmp) / "bin"
+        b.mkdir(exist_ok=True)
+        (b / "hostname").write_text("#!/usr/bin/env bash\necho \"${FAKE_HOSTNAME:-" + hostname + "}\"\n")
+        os.chmod(b / "hostname", 0o755)
+        env = {**os.environ, "PATH": f"{b}:{os.environ.get('PATH', '')}", "ROOT": tmp, "NOW_OVERRIDE": NOW, **env_extra}
+        return subprocess.run(["bash", str(self.SCRIPT)], capture_output=True, text=True, env=env, check=False)
+
+    def test_syntax(self):
+        p = subprocess.run(["bash", "-n", str(self.SCRIPT)], capture_output=True, text=True, check=False)
+        self.assertEqual(p.returncode, 0, p.stderr)
+
+    def test_refuses_to_run_off_the_box(self):
+        with tempfile.TemporaryDirectory() as d:
+            p = self.run_script(d, hostname="harshs-mac")
+            self.assertEqual(p.returncode, 9)
+            self.assertIn("WRONG_HOST=harshs-mac", p.stdout)
+            self.assertFalse((Path(d) / "data").exists())
+
+    def test_json_shape_from_recorded_probes(self):
+        with tempfile.TemporaryDirectory() as d:
+            tsv = Path(d) / "sessions.tsv"
+            # id|folder|name|thread_id|container_status|status|agent_group_id — what the q.ts select (or the ncl fallback) emits
+            tsv.write_text(
+                "s-a14|hermes-architect|Hermes Architect|hermes-ISO-F14|stopped|active|ag-arch\n"
+                "s-o14|orchestrator|Orchestrator|hermes-ISO-F14|running|active|ag-orch\n"
+                "s-t13|hermes-tester|hermes-tester|hermes-ISO-F13|stopped|active|ag-test\n"
+                "s-b58|hermes-builder|Builder|hermes-OPS-F58.a|stopped|active|ag-build\n"
+                "s-r21|hermes-reviewer-v2|hermes-reviewer|hermes-A2A-F21|stopped|active|ag-rev2\n"  # folder is not a role, NAME is
+                "s-z21|hermes-scribe|Scribe|hermes-A2A-F21|stopped|active|ag-scribe\n"  # neither is: flagged, never a silent miss
+                "s-x|orchestrator|Orchestrator|hermes-status|stopped|active|ag-orch\n"  # not a matrix row
+                "s-y|hermes-builder|Builder|hermes-P0-LOOP|stopped|active|ag-build\n"  # not a matrix row
+            )
+            probe = Path(d) / "probe.json"
+            probe.write_text(json.dumps([
+                {"path": f"{d}/data/v2-sessions/ag-arch/s-a14/outbound.db", "message_id": "m1", "status": "bounced-transient", "changed": "2026-09-15T17:00:00.123Z"},
+                {"path": f"{d}/data/v2-sessions/ag-orch/s-o14/outbound.db", "message_id": "m2", "status": "completed", "changed": "2026-09-15T18:00:00.000Z"},
+                {"path": f"{d}/data/v2-sessions/ag-test/s-t13/outbound.db", "error": "SQLiteError: database is locked"},
+                {"path": f"{d}/data/v2-sessions/ag-build/s-b58/outbound.db", "empty": True},
+                {"path": f"{d}/data/v2-sessions/ag-rev2/s-r21/outbound.db", "message_id": "m4", "status": "completed", "changed": "2026-09-15T18:30:00Z"},
+                {"path": f"{d}/data/v2-sessions/ag-scribe/s-z21/outbound.db", "message_id": "m5", "status": "completed", "changed": "2026-09-15T18:30:00Z"},
+                {"path": f"{d}/data/v2-sessions/ag-orch/s-x/outbound.db", "message_id": "m3", "status": "completed", "changed": "2026-09-15T18:00:00Z"},
+            ]))
+            out = Path(d) / "shared" / "acks.json"
+            p = self.run_script(d, ACKS_SESSIONS_TSV=str(tsv), ACKS_PROBE_JSON=str(probe), OUT=str(out))
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            doc = json.loads(out.read_text())
+            self.assertEqual((doc["generated_at"], doc["source"]), (NOW, "fixture"))
+            self.assertEqual(set(doc["sessions"]), {"s-a14", "s-o14", "s-r21", "s-z21"})
+            self.assertEqual(doc["sessions"]["s-a14"], {
+                "status": "bounced-transient", "changed": "2026-09-15T17:00:00.123Z", "message_id": "m1",
+                "role": "hermes-architect", "thread_id": "hermes-ISO-F14", "container_status": "stopped",
+            })
+            # role resolution follows collect_threads.role_groups: folder, else name; neither -> folder + role_unmatched
+            self.assertEqual((doc["sessions"]["s-r21"]["role"], "role_unmatched" in doc["sessions"]["s-r21"]), ("hermes-reviewer", False))
+            self.assertEqual((doc["sessions"]["s-z21"]["role"], doc["sessions"]["s-z21"]["role_unmatched"]), ("hermes-scribe", True))
+            self.assertEqual(doc["counts"]["sessions_total"], 8)
+            self.assertEqual(doc["counts"]["hermes_sessions"], 6)  # the dotted sub-row counts, hermes-status / P0-LOOP do not
+            self.assertEqual((doc["counts"]["probed"], doc["counts"]["with_ack"], doc["counts"]["bounced"], doc["counts"]["completed"], doc["counts"]["empty"], doc["counts"]["errors"], doc["counts"]["role_unmatched"]), (6, 4, 1, 3, 1, 1, 1))
+            self.assertEqual(doc["errors"], [{"session_id": "s-t13", "error": "SQLiteError: database is locked"}])
+            self.assertIn("role unmatched 1", p.stdout)
+            self.assertIn(f"-> {out} in ", p.stdout)
+            self.assertFalse(Path(str(out) + ".tmp").exists())
+            # the file is exactly what hermes_supervise --acks consumes
+            self.assertEqual(hs.acks_status(doc, parse_ts(NOW))["status"], "ok")
+            self.assertEqual(hs.role_ack(doc["sessions"], "hermes-ISO-F14", "hermes-architect")["session_id"], "s-a14")
+            self.assertEqual(hs.role_ack(doc["sessions"], "hermes-ISO-F14", "hermes-architect")["changed"], "2026-09-15T17:00:00Z")
+
+    def test_no_session_source_writes_nothing(self):
+        with tempfile.TemporaryDirectory() as d:
+            out = Path(d) / "acks.json"
+            p = self.run_script(d, OUT=str(out), NCL=str(Path(d) / "no-such-ncl"))
+            self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
+            self.assertIn("no session source", p.stdout)
+            self.assertFalse(out.exists())

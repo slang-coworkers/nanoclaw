@@ -20,18 +20,63 @@ Inputs:
              is honoured when present, otherwise the first line of `text` is classified
   --prs      gh pr list --repo slang-coworkers/hermes-agent --state all --json
              number,title,state,isDraft,createdAt,updatedAt,headRefName,body[,headRefOid]
-  --nudges   {"<ID>": "<ISO>"} or {"<ID>": {"last_nudge", "state", "count", "alerts": {"<key>": "<ISO>"}}}
+  --nudges   {"<ID>": "<ISO>"} or {"<ID>": {"last_nudge", "state", "count", "alerts": {"<key>": "<ISO>"},
+             "texts": [recorded nudge/re-arm texts], "rearms": [{"at": ISO, "text"}] (the sent re-arms, timed)}}
   --sessions optional {"hermes-<ID>": [{"role", "session_id", "cost_status", "container_status", "status", "last_active"}]}
              (nudge actions pin the role's live session as target_session_id — one live session per role per row)
              for cost_hold (`escalated` / `stopped`); absent means no signal
+  --acks     optional acks.json from collect-acks.sh (host-side, every 15 min):
+             {"generated_at": ISO, "sessions": {"<session_id>": {"status": "completed|processing|bounced-transient|...",
+             "changed": ISO, "role": "hermes-architect", "thread_id": "hermes-<ID>"[, "container_status"]}}}
+             — the newest processing_ack row per session. Missing, malformed or older than ACKS_STALE_H (2 h):
+             the bounce and idle-turn detections below are OFF for the tick (`acks.status`, never a guess)
   --config   optional config.json (paused_rows, core_change_ok, authorize_round, release_tag,
              card_check, card_grace_minutes, card_missing_since)
   --now      ISO timestamp
 
-Output: {"now", "rows": {ID: {...}}, "actions": [...], "alerts": [...], "summary": {...}}.
+Output: {"now", "rows": {ID: {...}}, "actions": [...], "alerts": [...], "summary": {...}, "acks": {...}}.
 Per row: stage, stage_label, clock_start, last_activity, age_hours, slo_breach,
-escalation_due, hold, cost_hold, action (none | nudge | escalate), target_role, message
-(the nudge text or the alerts.md line), alert_line, status_line, pr, head, rounds, cards.
+escalation_due, hold, cost_hold, infra_hold, bounced, idle_turn, action (none | nudge | escalate),
+target_role, message (the nudge text or the alerts.md line), alert_line, status_line, pr, head, rounds, cards.
+
+Three stall shapes the chain markers do not show (autopilot.md §2.5; the 2026-09-15/16 stalls):
+
+  infra_hold  a role's OUTBOUND line whose first line is `blocked (infra`, `Hold (NOT a verdict` or
+              `HOLD on <ID>` (case-insensitive), or whose first three lines say "pending an operator
+              ruling" / "awaiting (an) operator". The hold STANDS while nothing came after it: no progress
+              marker (PROGRESS_KINDS) and no later outbound line by the same role that is not itself a
+              hold — a role that wrote `codex is back — resuming` or `PR opened #7` has moved on. While
+              standing: the stage is unchanged, `infra_hold` is set, one `infra-hold` (or `operator-ruling`,
+              when the text names an operator ruling) alert fires at once (24 h bound), the Orchestrator gets
+              one re-arm nudge per hold TEXT (key: role + the normalised first line, so hourly restatements
+              of the same hold draw nothing new), and the row's ordinary SLO check still runs (a re-armed
+              role that stalls again is caught by the `slo` nudge/alert, not hidden behind the hold).
+              A paused row (config `paused_rows`) stays silent, like every other paused-row action.
+  bounced     the owing role's newest session on the thread has an ack `bounced-*` newer than the role's
+              last outbound line: no turn happened. The Orchestrator gets one re-arm nudge per ack
+              timestamp, at once. `bounced-transient` is a recognised provider-outage signature: the prompt
+              probes the dependency before sending and never spawns a fresh session for it; only
+              `bounced-unknown` may fall back to a fresh session when the warm one refuses the send.
+              A later bounce after a re-arm was SENT is the `bounce-repeat` alert and NOTHING ELSE: no
+              second re-arm while the newest ack is still `bounced-*` — the supervisor is the only
+              redriver here (host-sweep skips a session whose container is up), and one re-arm per
+              outage is the whole budget; the operator spawns fresh by hand (the alert's decision).
+  idle_turn   the owing role's newest session acked `completed` at T, its container is not running, no
+              marker followed T, and T is ≥ half the stage's nudge SLO (min 1 h) old: the role's turn
+              ended without the hand-off. The `completed` ack is stamped AFTER the turn's outputs, so a
+              turn that ended with the alternative artifact — a `[Blocker]` or a hold by that role as its
+              newest line, or any blocker/hold it wrote since the inbound that started the turn — is not
+              idle. The role is nudged EARLY (the §3 template plus the sentence "Your turn at T ended
+              without the <marker>"), once per T, never on top of the SLO nudge for the same marker,
+              inside the 6 h row bound.
+
+Re-arm nudges (`check` infra_hold / bounced) target the ORCHESTRATOR: it owns the row and re-arms the
+role itself (`rearm_role`, `rearm_text`, `rearm_session_id` on the action). Their text starts
+"Supervisor re-arm <ID> · <role>:" — read back from the thread or the recorded texts for the
+once-per-event bound, never classified as a `nudge`, so they neither consume nor honour the 6 h row
+bound. One more cap on top of the per-event keys: at most one SENT re-arm per (row, role) per
+NUDGE_BOUND_H (the role's `in` copy on the thread, or the recorded `rearms` with their `at`), so two
+detections firing on one role inside the window still open at most one extra turn for it.
 
 card_missing (hermes-task-card): every terminal role marker on the thread ([Spec handoff],
 [Triage Resolution], [Fix Report], [Fix Review Request], [Test Report], [Review Verdict]) owes
@@ -67,6 +112,15 @@ REVIEW_RC_CAP = 2  # REQUEST_CHANGES per PR
 ORCHESTRATOR = "orchestrator"
 DUP_WINDOW_S = 900  # a2a copies of one send (sender `out`, receiver `in`) land within seconds of each other
 PR_EVENT_KINDS = ("handoff", "test_report", "review_verdict", "merged", "pr_opened")
+# A later one of these clears an infra hold: the chain markers plus every "the role is working again" line
+# (builder_start, pr_opened, review_request) and the alternative artifact ([Blocker]). So does any later plain
+# outbound line by the holding role (detect_infra_hold).
+PROGRESS_KINDS = ("spec_handoff", "handoff", "test_report", "review_verdict", "triage", "merged", "pr_opened", "builder_start", "review_request", "blocker")
+BOUNCE_TRANSIENT = "bounced-transient"  # host-sweep's provider-outage signature: probe before re-arming, never spawn fresh for it
+ACKS_STALE_H = 2.0  # acks.json older than this: bounce and idle-turn detection are off for the tick (never guess)
+REARM_PREFIX = "Supervisor re-arm"  # the re-arm line (Orchestrator-facing and role-facing); read back like a card nudge, never a 6 h-bound nudge
+OPERATOR_PHRASES = ("pending an operator ruling", "awaiting operator", "awaiting an operator")
+ACKS_OFF_NOTE = "acks stale/missing — bounce and idle detection off"
 
 # state -> (nudge after h, role owing the next artifact, escalate after h)
 SLO = {
@@ -137,6 +191,42 @@ def _first_line(text: str) -> str:
 
 # --------------------------------------------------------------------------- events
 
+def _strip_md(s: str) -> str:
+    """Drop bold/italic asterisks and backticks, so `**operator ruling**` reads as `operator ruling`."""
+    return re.sub(r"[*`]", "", s or "")
+
+
+def _head_lines(text: str, n: int) -> list[str]:
+    out: list[str] = []
+    for line in (text or "").splitlines():
+        if line.strip():
+            out.append(line.strip())
+            if len(out) >= n:
+                break
+    return out
+
+
+def _infra_hold_line(first: str, text: str, rid: str) -> bool:
+    """§2.5 infra/operator hold: the three real first-line shapes of 2026-09-15/16, or an operator
+    phrase in the first three lines. Case-insensitive; markdown emphasis is ignored."""
+    f = _strip_md(first)
+    if re.match(r"^blocked \(infra", f, re.IGNORECASE) or re.match(r"^hold \(not a verdict", f, re.IGNORECASE):
+        return True
+    if re.match(rf"^hold on {re.escape(rid)}\b", f, re.IGNORECASE):
+        return True
+    head = " ".join(_strip_md(line).lower() for line in _head_lines(text, 3))
+    return any(p in head for p in OPERATOR_PHRASES)
+
+
+def _codex_cause(text: str) -> str | None:
+    """The phrase after the first `codex` up to the end of its line (the failing dependency), or None."""
+    for line in (text or "").splitlines():
+        m = re.search(r"\bcodex\b[:\s]*(.+)$", _strip_md(line), re.IGNORECASE)
+        if m and m.group(1).strip():
+            return m.group(1).strip()[:200]
+    return None
+
+
 def classify_message(msg: dict, rid: str) -> dict | None:
     """One thread message -> one chain event, or None for progress chatter."""
     text = msg.get("text") or ""
@@ -198,10 +288,18 @@ def classify_message(msg: dict, rid: str) -> dict | None:
             kind = "dispatch"
         elif re.match(r"^(Draft )?PR opened\b", first, re.IGNORECASE) and pr_m:
             kind = "pr_opened"
+        elif msg.get("direction") != "in" and _infra_hold_line(first, text, rid):
+            # Outbound only: the receiver's `in` copy of the same hold is the same event, and an operator's
+            # own inbound hold is not a role stalling. Last in the chain: a marker line is never a hold.
+            kind = "infra_hold"
         else:
             return None
     ev["kind"] = kind
-    if kind == "spec_handoff":
+    if kind == "infra_hold":
+        ev["hold_text"] = _strip_md(first)[:200]
+        ev["infra_cause"] = _codex_cause(text)
+        ev["operator_ruling"] = "operator ruling" in _strip_md(text).lower()
+    elif kind == "spec_handoff":
         cc = re.search(r"\*\*CORE-CHANGE:\*\*\s*([^\n]*)", text)
         ev["core_change"] = bool(cc and not cc.group(1).strip().lower().startswith("none"))
     elif kind == "triage":
@@ -287,7 +385,58 @@ def find_pr(prs: list[dict], rid: str, ledger_pr: int | None) -> dict | None:
 
 # --------------------------------------------------------------------------- resolution
 
-def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gating: dict, cfg: dict) -> dict:
+def _role_plain_out_after(thread_msgs: list[dict] | None, role: str | None, after_ts: str, rid: str) -> bool:
+    """Did `role` write any OUTBOUND line after `after_ts` that is not itself a hold? (`codex is back — resuming`,
+    a status update, a PR line: the role moved on, whatever the stage says.) Supervisor lines are never the role's."""
+    if not role:
+        return False
+    want = str(role).lower()
+    for m in thread_msgs or []:
+        if m.get("direction") == "in" or not m.get("ts") or m["ts"] <= after_ts:
+            continue
+        if str(m.get("role") or m.get("sender") or "").lower() != want:
+            continue
+        text = m.get("text") or ""
+        first = _first_line(text)
+        if re.match(r"^Supervisor (?:nudge|re-arm)\b", first) or _infra_hold_line(first, text, rid):
+            continue
+        return True
+    return False
+
+
+def detect_infra_hold(events: list[dict], thread_msgs: list[dict] | None = None, rid: str = "") -> dict | None:
+    """§2.5: the newest infra/operator hold still STANDING on the thread, or None. A hold stands until either a
+    progress marker (PROGRESS_KINDS: the chain markers, `PR opened`, the builder start, a review request, a
+    [Blocker]) is as new or newer, or the holding role itself wrote a later plain outbound line — then the
+    role moved on (resumed, restated progress, opened the PR) and re-arming it would interrupt live work.
+    Never changes the stage."""
+    holds = [e for e in events if e["kind"] == "infra_hold" and e.get("ts")]
+    if not holds:
+        return None
+    progress = [e["ts"] for e in events if e["kind"] in PROGRESS_KINDS and e.get("ts")]
+    floor = max(progress) if progress else ""
+    standing = [
+        e for e in holds
+        if e["ts"] > floor and not _role_plain_out_after(thread_msgs, e.get("sender"), e["ts"], rid)
+    ]
+    if not standing:
+        return None
+    newest = max(standing, key=lambda e: e["ts"])
+    # Every standing hold names the same outage from its own side; the most descriptive `codex …` phrase
+    # among them is the dependency the operator should check.
+    causes = [e.get("infra_cause") for e in standing if e.get("infra_cause")]
+    return {
+        "ts": newest["ts"],
+        "text": newest.get("hold_text"),
+        "cause": max(causes, key=len) if causes else None,
+        "role": newest.get("sender"),
+        "roles": sorted({e.get("sender") for e in standing if e.get("sender")}),
+        "operator_ruling": any(e.get("operator_ruling") for e in standing),
+        "count": len(standing),
+    }
+
+
+def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gating: dict, cfg: dict, thread_msgs: list[dict] | None = None) -> dict:
     """§2.3: terminal states first, then walk the chain backwards to the first evidence."""
     ledger = row.get("ledger") or {}
     res: dict = {
@@ -296,6 +445,7 @@ def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gati
         "round": None,
         "core_change": any(e.get("core_change") for e in events if e["kind"] == "spec_handoff"),
         "blocker_open": any(e["kind"] == "blocker" for e in events),
+        "infra_hold": detect_infra_hold(events, thread_msgs, rid),
         "env_fail": False,
         "install_packages": None,
         "gate_red": ledger.get("gate_red"),
@@ -504,6 +654,8 @@ def nudge_book(raw: dict | None, rid: str, events: list[dict]) -> dict:
     count = 0
     state = None
     alerts: dict = {}
+    texts: list[str] = []
+    rearms: list[dict] = []
     if isinstance(v, str):
         last, count = v, 1
     elif isinstance(v, dict):
@@ -511,13 +663,17 @@ def nudge_book(raw: dict | None, rid: str, events: list[dict]) -> dict:
         count = int(v.get("count") or (1 if last else 0))
         state = v.get("state")
         alerts = dict(v.get("alerts") or {})
+        # recorded nudge / re-arm texts (pull-state.sh): the once-per-event bound reads its keys back from them
+        texts = [t for t in (v.get("texts") or []) if isinstance(t, str)]
+        # the SENT re-arms with their record time: the per-(row, role) re-arm cap needs the `at`, not just the text
+        rearms = [r for r in (v.get("rearms") or []) if isinstance(r, dict) and isinstance(r.get("text"), str) and r.get("at")]
     seen = [e["ts"] for e in events if e["kind"] == "nudge"]
     if seen:
         newest = max(seen)
         if last is None or newest > last:
             last = newest
         count = max(count, len(seen))
-    return {"last": last, "count": count, "state": state, "alerts": alerts}
+    return {"last": last, "count": count, "state": state, "alerts": alerts, "texts": texts, "rearms": rearms}
 
 
 def alerted_recently(book: dict, key: str, now: datetime) -> bool:
@@ -675,15 +831,144 @@ def pick_target_session(rows: list[dict] | None, role: str | None) -> dict | Non
     return best
 
 
+def acks_status(acks, now_dt: datetime) -> dict:
+    """What --acks gave us: `ok`, `stale` (generated_at older than ACKS_STALE_H) or `missing` (absent or
+    malformed). Anything but `ok` switches the bounce and idle-turn detections off for the tick."""
+    if not isinstance(acks, dict) or not isinstance(acks.get("sessions"), dict):
+        return {"status": "missing", "generated_at": None, "age_hours": None, "sessions": 0, "note": ACKS_OFF_NOTE}
+    n = len(acks["sessions"])
+    gen = _safe_ts(acks.get("generated_at"))
+    if gen is None:
+        return {"status": "missing", "generated_at": acks.get("generated_at"), "age_hours": None, "sessions": n, "note": ACKS_OFF_NOTE}
+    age = hours_between(gen, now_dt)
+    if age > ACKS_STALE_H:
+        return {"status": "stale", "generated_at": iso_utc(gen), "age_hours": age, "sessions": n, "note": ACKS_OFF_NOTE}
+    return {"status": "ok", "generated_at": iso_utc(gen), "age_hours": age, "sessions": n, "note": None}
+
+
+def role_ack(acks: dict | None, thread: str, role: str | None) -> dict | None:
+    """The newest ack across `role`'s sessions on `thread` (max `changed`), or None."""
+    if not acks or not role:
+        return None
+    want = str(role).strip().lower()
+    best: dict | None = None
+    for sid, a in acks.items():
+        if not isinstance(a, dict) or a.get("thread_id") != thread or str(a.get("role") or "").strip().lower() != want:
+            continue
+        dt = _safe_ts(a.get("changed"))
+        if dt is None:
+            continue
+        if best is None or dt > best["changed_dt"]:
+            best = {
+                "session_id": sid, "status": str(a.get("status") or ""), "changed_dt": dt, "changed": iso_utc(dt),
+                "container_status": a.get("container_status"),
+            }
+    return best
+
+
+def _role_last_out(thread_msgs: list[dict] | None, role: str) -> datetime | None:
+    """When the role last wrote on the thread (its `out` lines; `role` is the session owner, `sender` the fallback)."""
+    want = role.lower()
+    best: datetime | None = None
+    for m in thread_msgs or []:
+        if m.get("direction") == "in":
+            continue
+        if str(m.get("role") or m.get("sender") or "").lower() != want:
+            continue
+        ts = _safe_ts(m.get("ts"))
+        if ts is not None and (best is None or ts > best):
+            best = ts
+    return best
+
+
+def _container_status(sessions: dict | None, thread: str, ack: dict) -> str | None:
+    """The acked session's container status from --sessions (the live list), else from the ack itself, else unknown."""
+    for s in (sessions or {}).get(thread) or []:
+        if s.get("session_id") == ack["session_id"] and s.get("container_status"):
+            return str(s["container_status"])
+    cs = ack.get("container_status")
+    return str(cs) if cs else None
+
+
+_SUPERVISOR_LINE = r"^Supervisor (?:nudge|re-arm)\s+{esc}\b"
+
+
+def _rearm_pat(rid: str, role: str | None) -> re.Pattern:
+    """The first line of a re-arm for this row — and, when `role` is given, for this role: the texts carry
+    it as `Supervisor re-arm <ID> · <role>:`, so an architect re-arm is never read as the builder's."""
+    if role:
+        return re.compile(rf"^{re.escape(REARM_PREFIX)}\s+{re.escape(rid)}\s+·\s+{re.escape(role)}:")
+    return re.compile(rf"^{re.escape(REARM_PREFIX)}\s+{re.escape(rid)}\b")
+
+
+def _marked_nudge_seen(thread_msgs: list[dict] | None, rid: str, book: dict, key: str, role: str | None = None) -> bool:
+    """The once-per-event bound: a supervisor line for this row carrying `key` already exists — on the
+    thread (either direction: the tick sends from the task session, so on a collected row thread its own
+    line is the role's `in` copy) or among the recorded nudge texts. Same idea as the card nudge's marker ts.
+    With `role`, only a re-arm line addressed to that role counts."""
+    pat = _rearm_pat(rid, role) if role else re.compile(_SUPERVISOR_LINE.format(esc=re.escape(rid)))
+    for m in thread_msgs or []:
+        text = m.get("text") or ""
+        if key in text and pat.match(_first_line(text)):
+            return True
+    return any(key in t and pat.match(_first_line(t)) for t in (book.get("texts") or []))
+
+
+def _rearm_bounce_before(thread_msgs: list[dict] | None, book: dict, rid: str, role: str, changed_dt: datetime) -> str | None:
+    """A re-arm already sent to `role` for an EARLIER bounce of this row (the ts it named), or None. The role
+    is required: an architect re-arm on the thread must not make the builder's first bounce a repeat."""
+    pat = _rearm_pat(rid, role)
+    found: list[str] = []
+    for text in [m.get("text") or "" for m in (thread_msgs or [])] + list(book.get("texts") or []):
+        if not pat.match(_first_line(text)):
+            continue
+        for m in re.finditer(r"turn at (\S+) ended bounced", text):
+            dt = _safe_ts(m.group(1))
+            if dt is not None and dt < changed_dt:
+                found.append(iso_utc(dt))
+    return max(found) if found else None
+
+
+def _recent_rearm(thread_msgs: list[dict] | None, book: dict, rid: str, role: str, now: datetime) -> float | None:
+    """Hours since the newest re-arm SENT to `role` on this row inside NUDGE_BOUND_H, or None. Read from the
+    role's `in` copy on the thread (its ts) and from the recorded `rearms` (their `at`); the untimed `texts`
+    cannot say when, so they do not count here. This is the per-(row, role) cap: two detections on one role
+    inside the window open at most one extra turn for it."""
+    pat = _rearm_pat(rid, role)
+    best: datetime | None = None
+    for m in thread_msgs or []:
+        ts = _safe_ts(m.get("ts"))
+        if ts is not None and pat.match(_first_line(m.get("text") or "")) and (best is None or ts > best):
+            best = ts
+    for r in book.get("rearms") or []:
+        at = _safe_ts(r.get("at"))
+        if at is not None and pat.match(_first_line(r["text"])) and (best is None or at > best):
+            best = at
+    if best is None:
+        return None
+    h = hours_between(best, now)
+    return h if 0 <= h < NUDGE_BOUND_H else None
+
+
 class _Tick:
     """Per-tick sinks (alerts, actions, summary) plus the 24 h alert bound."""
 
-    def __init__(self, now_dt: datetime, sessions: dict | None = None) -> None:
+    def __init__(self, now_dt: datetime, sessions: dict | None = None, acks: dict | None = None) -> None:
         self.now = now_dt
         self.sessions = sessions or {}
+        self.acks_info = acks_status(acks, now_dt)
+        self.acks_ok = self.acks_info["status"] == "ok"
+        self.acks: dict = (acks or {}).get("sessions") if self.acks_ok else {}
         self.actions: list[dict] = []
         self.alerts: list[dict] = []
-        self.summary = {"in_flight": 0, "must_nudge": 0, "escalate": 0, "hold": 0, "cost_hold": 0, "blocked": 0, "gate": 0, "card_missing": 0}
+        self.summary = {
+            "in_flight": 0, "must_nudge": 0, "escalate": 0, "hold": 0, "cost_hold": 0, "blocked": 0, "gate": 0, "card_missing": 0,
+            "infra_hold": 0, "bounced": 0, "idle_turn": 0, "acks": self.acks_info["status"],
+        }
+
+    def session_pin(self, rec: dict, role: str | None) -> str | None:
+        target = pick_target_session(self.sessions.get(rec["thread_id"]), role)
+        return target.get("session_id") if target else None
 
     def escalate(self, rec: dict, book: dict, kind: str, label: str, age_h: float, what: str, decision: str) -> None:
         key = f"{kind}:{label}"
@@ -740,6 +1025,9 @@ def _new_record(rid: str, res: dict, last_activity: str | None, book: dict) -> d
         "hold": None,
         "cost_hold": False,
         "cost_hold_sessions": [],
+        "infra_hold": None,
+        "bounced": None,
+        "idle_turn": None,
         "env_fail": res.get("env_fail", False),
         "blocker_open": res.get("blocker_open", False),
         "core_change": res.get("core_change", False),
@@ -770,6 +1058,180 @@ def _open_carried(row: dict) -> list[str]:
     return [c.get("criterion") for c in (row.get("carries_criteria") or []) if isinstance(c, dict) and c.get("criterion")]
 
 
+def _hold_action(tick: _Tick, rec: dict, book: dict, gating: dict, rid: str, hold: str, stage: str, age_h: float) -> None:
+    """§4.3 / §5 merge hold (or `paused`): a note for the ledger, never a nudge; two alerts when the hold itself is the problem."""
+    rec["hold"] = hold
+    tick.summary["hold"] += 1
+    tick.actions.append({"kind": "hold", "row": rid, "hold": hold, "pr": rec["pr"], "text": f"hold: {hold} — do not gh pr ready or merge PR #{rec['pr']} for {rid} yet"})
+    if hold in ("1a", "batch2", "batch3+4") and gating.get("1a_blocked"):
+        tick.escalate(rec, book, "blocked-twice", stage, age_h, f"held on {hold} and LOOP-F35 is blocked; the port cannot proceed", "unblock or re-dispatch LOOP-F35 by hand")
+    elif age_h >= HOLD_TOO_LONG_H:
+        tick.escalate(rec, book, "hold-too-long", stage, age_h, f"merge held on {hold} for {int(age_h)}h", f"merge the {hold} dependency (or waive it in config.json) so held rows can merge")
+
+
+def _hold_key(hold_role: str, hold_text: str) -> str:
+    """The once-per-hold bound key: the role plus the normalised first line (≤ 80 chars), quoted exactly as both
+    re-arm texts carry it. An hourly restatement of the same hold is the same key; a differently worded one is
+    a new hold and falls under the per-(row, role) re-arm cap instead."""
+    return f"hold \"{' '.join(hold_text.split())[:80]}\""
+
+
+def _infra_hold_action(tick: _Tick, rec: dict, book: dict, thread_msgs: list[dict] | None, ih: dict, stage: str, age_h: float, slo_role: str | None) -> bool:
+    """§2.5 infra/operator hold: alert at once (24 h bound) and ask the Orchestrator, once per hold text and at
+    most once per (row, role) per NUDGE_BOUND_H, to re-arm the role when the dependency is back. The stage and
+    its SLO clock are untouched. Returns True only when the re-arm nudge was emitted this tick — the caller
+    then stops; otherwise it falls through to the ordinary SLO check, so a re-armed role that stalls again is
+    still nudged/escalated on the row's clock instead of hiding behind the hold."""
+    rid = rec["id"]
+    rec["infra_hold"] = ih
+    tick.summary["infra_hold"] += 1
+    hold_role = ih.get("role") or slo_role or "the owing role"
+    kind = "operator-ruling" if ih.get("operator_ruling") else "infra-hold"
+    hold_text = ih.get("text") or "hold"
+    what = f"{hold_role} wrote: {hold_text}"
+    if kind == "operator-ruling":
+        decision = f"post the ruling on hermes-{rid}"
+    else:
+        dep = f"codex: {ih['cause']}" if ih.get("cause") else "codex/OneCLI/proxy"
+        decision = f"check the named dependency ({dep}); when healthy tell the Orchestrator to re-arm {hold_role} on hermes-{rid} with 'resume, no new round'"
+    tick.escalate(rec, book, kind, stage, age_h, what, decision)
+    rec["slo_status"] = "infra-hold"  # after escalate, which labels the row `escalated`; the hold is the more useful word on the table
+    key = _hold_key(hold_role, hold_text)
+    if _marked_nudge_seen(thread_msgs, rid, book, key, hold_role):
+        return False
+    capped = _recent_rearm(thread_msgs, book, rid, hold_role, tick.now)
+    if capped is not None:
+        rec["reason"] = (rec.get("reason") or "") + f"; re-arm cap: {hold_role} re-armed {round(capped, 1)}h ago (< {int(NUDGE_BOUND_H)}h)"
+        return False
+    cause = f"; codex {ih['cause']}" if ih.get("cause") else ""
+    if kind == "operator-ruling":
+        ask = f"Wait for the operator's ruling on hermes-{rid}; when it lands, re-arm {hold_role} there with 'resume, no new round' and relay the ruling."
+    else:
+        ask = f"Check that dependency; once it is healthy re-arm {hold_role} on hermes-{rid} with 'resume, no new round' (pin its session), else send nothing and retry next tick."
+    text = f"{REARM_PREFIX} {rid} · {hold_role}: {kind.replace('-', ' ')} — {hold_role} wrote {key} at {ih['ts']}{cause}. {ask}"
+    rearm_text = (
+        f"{REARM_PREFIX} {rid} · {hold_role}: resume, no new round — your {key} (at {ih['ts']}) is lifted: the dependency is back"
+        f"{' / the ruling is on this thread' if kind == 'operator-ruling' else ''}. Pick up where you stopped and reply on this thread: status, blocker, ETA."
+    )
+    tick.nudge(rec, ORCHESTRATOR, text)
+    tick.actions[-1].update(
+        check="infra_hold", alert_kind=kind, hold_ts=ih["ts"], hold_role=hold_role, hold_key=key, rearm_role=hold_role,
+        rearm_text=rearm_text, rearm_session_id=tick.session_pin(rec, hold_role),
+    )
+    return True
+
+
+def _bounced(tick: _Tick, rec: dict, book: dict, thread_msgs: list[dict] | None, role: str, stage: str, age_h: float, ack: dict) -> None:
+    """§2.5 bounced turn: the owing role's newest turn ended `bounced-*` with no output. One re-arm nudge
+    to the Orchestrator per ack timestamp, at once, capped at one SENT re-arm per (row, role) per
+    NUDGE_BOUND_H. A later bounce after a re-arm was sent is the `bounce-repeat` ALERT and nothing else:
+    every redrive during an outage mints a new `bounced-*` ack, so re-arming per ack would open one fresh
+    session per tick until the provider recovered, all of them waking on the same row (the LOOP-F35 twin
+    hazard, multiplied). One re-arm per outage is the budget; the operator spawns fresh by hand."""
+    rid = rec["id"]
+    changed, status = ack["changed"], ack["status"]
+    key = f"turn at {changed} ended"
+    earlier = _rearm_bounce_before(thread_msgs, book, rid, role, ack["changed_dt"])
+    transient = status == BOUNCE_TRANSIENT
+    rec["bounced"] = {"role": role, "session_id": ack["session_id"], "status": status, "changed": changed, "repeat": bool(earlier), "after_rearm_for": earlier}
+    tick.summary["bounced"] += 1
+    rec["slo_status"] = "bounced"
+    if earlier:
+        fresh = (
+            f"the provider outage ({status}) is still on: check the host error log around {changed}, and when the provider is back spawn a fresh {role} session by hand"
+            if transient else f"spawn a fresh {role} session by hand; check the host error log around {changed} for the provider/proxy error"
+        )
+        tick.escalate(
+            rec, book, "bounce-repeat", stage, age_h,
+            f"{role} bounced again: turn at {changed} ended {status} with no output, after the re-arm for its bounce at {earlier}; no further re-arm from the supervisor",
+            fresh,
+        )
+        return
+    if _marked_nudge_seen(thread_msgs, rid, book, key, role):
+        return
+    capped = _recent_rearm(thread_msgs, book, rid, role, tick.now)
+    if capped is not None:
+        rec["reason"] = (rec.get("reason") or "") + f"; re-arm cap: {role} re-armed {round(capped, 1)}h ago (< {int(NUDGE_BOUND_H)}h)"
+        return
+    if transient:
+        how = (
+            "this is the provider-outage signature: probe the provider first (one cheap call through the proxy); healthy → resume the warm "
+            "session pinned; still down → send nothing and retry next tick. Never spawn a fresh session for a transient bounce"
+        )
+    else:
+        how = "resume the warm session if it accepts a message, else spawn fresh"
+    text = f"{REARM_PREFIX} {rid} · {role}: re-arm {role} on hermes-{rid}: its last {key} {status} with no output; {how}; reply on this thread."
+    rearm_text = (
+        f"{REARM_PREFIX} {rid} · {role}: resume, no new round — your last {key} {status} with no output on thread hermes-{rid}. "
+        "Re-read your task memory, pick up where that turn stopped, and reply on this thread: status, blocker, ETA."
+    )
+    tick.nudge(rec, ORCHESTRATOR, text)
+    tick.actions[-1].update(
+        check="bounced", ack_status=status, ack_changed=changed, transient=transient, repeat=False, rearm_role=role,
+        rearm_text=rearm_text, rearm_session_id=ack["session_id"],
+    )
+
+
+def _turn_ended_with_alternative(thread_msgs: list[dict] | None, events: list[dict], role: str, ended: datetime, rid: str) -> bool:
+    """Did the turn that acked `completed` at `ended` end with the alternative artifact instead of the marker?
+    The ack is stamped AFTER the turn's outputs (poll-loop markCompleted runs once processQuery returns), so
+    nothing the turn wrote is ever later than T. Two readings, either suffices: the role's newest outbound line
+    on the thread is a [Blocker] or a hold; or the role wrote a [Blocker] / hold at or after the inbound that
+    started the turn (its newest `in` line before T)."""
+    want = role.lower()
+    mine_out: list[dict] = []
+    turn_start: datetime | None = None
+    for m in thread_msgs or []:
+        if str(m.get("role") or m.get("sender") or "").lower() != want:
+            continue
+        ts = _safe_ts(m.get("ts"))
+        if ts is None:
+            continue
+        if m.get("direction") == "in":
+            if ts <= ended and (turn_start is None or ts > turn_start):
+                turn_start = ts
+            continue
+        mine_out.append({**m, "_ts": ts})
+    if mine_out:
+        newest = max(mine_out, key=lambda m: m["_ts"])
+        first, text = _first_line(newest.get("text") or ""), newest.get("text") or ""
+        if first.startswith("[Blocker]") or _infra_hold_line(first, text, rid):
+            return True
+    if turn_start is not None:
+        for e in events:
+            if e["kind"] not in ("blocker", "infra_hold") or str(e.get("sender") or "").lower() != want:
+                continue
+            ts = _safe_ts(e.get("ts"))
+            if ts is not None and turn_start <= ts <= ended:
+                return True
+    return False
+
+
+def _idle_turn(tick: _Tick, rec: dict, events: list[dict], thread_msgs: list[dict] | None, role: str, ack: dict, clock: str | None, nudge_h: float | None, sessions: dict | None) -> dict | None:
+    """§2.5 turn ended without hand-off: `completed` at T, container not running, no marker after T, the turn did
+    not end with a [Blocker] / hold (the alternative artifact the nudge text itself names), and T at least half
+    the stage's nudge SLO (min 1 h) old. Unknown container status is no signal."""
+    ended = ack["changed_dt"]
+    cstatus = _container_status(sessions, rec["thread_id"], ack)
+    if cstatus is None or cstatus.lower() == "running":
+        return None
+    clock_dt = _safe_ts(clock)
+    if clock_dt is not None and ended < clock_dt:
+        return None  # the turn predates this stage: the role has not taken its turn yet; the SLO clock applies
+    for e in events:
+        if e["kind"] == "nudge":
+            continue
+        ts = _safe_ts(e.get("ts"))
+        if ts is not None and ts > ended:
+            return None  # a marker (or a [Blocker], a hold) came after the turn: not idle
+    if _turn_ended_with_alternative(thread_msgs, events, role, ended, rec["id"]):
+        return None  # the turn's own [Blocker] / hold is the alternative artifact; the SLO path owns what follows
+    age = hours_between(ended, tick.now)
+    if age < max(1.0, (nudge_h or 0.0) / 2.0):
+        return None
+    return {"role": role, "session_id": ack["session_id"], "ended": ack["changed"], "age_hours": age, "container_status": cstatus}
+
+
 def supervise_row(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict] | None, prs: list[dict], gating: dict, cfg: dict, nudges: dict | None, sessions: dict | None) -> dict:
     rec = _supervise_row_core(tick, rid, row, thread_msgs, prs, gating, cfg, nudges, sessions)
     card_check(tick, rec, thread_msgs, cfg)
@@ -781,7 +1243,7 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
     thread_ok = isinstance(thread_msgs, list)
     events = extract_events(thread_msgs if thread_ok else [], rid)
     pr = find_pr(prs, rid, (row.get("ledger") or {}).get("pr"))
-    res = resolve_stage(rid, row, events, pr, gating, cfg)
+    res = resolve_stage(rid, row, events, pr, gating, cfg, thread_msgs if thread_ok else None)
     stage = res["stage"]
     book = nudge_book(nudges, rid, events)
     stamps = [e["ts"] for e in events] + [t for t in ((pr or {}).get("updatedAt"), (pr or {}).get("createdAt")) if t]
@@ -828,15 +1290,21 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
         )
         return rec
 
+    # A paused row is silent, whatever the roles wrote on it: the operator asked for exactly that. It is
+    # checked BEFORE the infra hold so a stale `HOLD on <ID>` line cannot alert or re-arm a paused row.
     hold = merge_hold(rid, row, gating, res, cfg)
+    if hold == "paused":
+        _hold_action(tick, rec, book, gating, rid, hold, stage, age_h)
+        return rec
+
+    # infra / operator hold (§2.5): the role said it cannot proceed; alert now, re-arm through the Orchestrator.
+    # Only a re-arm SENT this tick ends the row's turn here; otherwise the ordinary SLO check below still runs
+    # (a re-armed role that stalls again must not hide behind its old hold).
+    if res.get("infra_hold") and _infra_hold_action(tick, rec, book, thread_msgs, res["infra_hold"], stage, age_h, role):
+        return rec
+
     if hold:
-        rec["hold"] = hold
-        tick.summary["hold"] += 1
-        tick.actions.append({"kind": "hold", "row": rid, "hold": hold, "pr": rec["pr"], "text": f"hold: {hold} — do not gh pr ready or merge PR #{rec['pr']} for {rid} yet"})
-        if hold in ("1a", "batch2", "batch3+4") and gating.get("1a_blocked"):
-            tick.escalate(rec, book, "blocked-twice", stage, age_h, f"held on {hold} and LOOP-F35 is blocked; the port cannot proceed", "unblock or re-dispatch LOOP-F35 by hand")
-        elif age_h >= HOLD_TOO_LONG_H:
-            tick.escalate(rec, book, "hold-too-long", stage, age_h, f"merge held on {hold} for {int(age_h)}h", f"merge the {hold} dependency (or waive it in config.json) so held rows can merge")
+        _hold_action(tick, rec, book, gating, rid, hold, stage, age_h)
         return rec
 
     if stage == "gate" and res.get("triage_present"):
@@ -862,6 +1330,20 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
 
     if nudge_h is None:
         return rec
+
+    # acks (§2.5): the owing chain role's newest turn on the thread, when acks.json is fresh. Off = no signal.
+    ack = role_ack(tick.acks, thread, role) if tick.acks_ok and role and role != ORCHESTRATOR else None
+    if ack and ack["status"].startswith("bounced"):
+        last_out = _role_last_out(thread_msgs, role)
+        if last_out is None or ack["changed_dt"] > last_out:
+            _bounced(tick, rec, book, thread_msgs, role, stage, age_h, ack)
+            return rec
+    if ack and ack["status"] == "completed":
+        rec["idle_turn"] = _idle_turn(tick, rec, events, thread_msgs, role, ack, clock, nudge_h, sessions)
+        if rec["idle_turn"]:
+            tick.summary["idle_turn"] += 1
+
+    actions_before_slo = len(tick.actions)
     if book["state"]:
         in_state = bool(book["last"]) and book["state"] == stage
     else:
@@ -882,6 +1364,21 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
         tick.nudge(rec, role, NUDGE_TEMPLATE.format(id=rid, state=rec["stage_label"], h=int(age_h), short=short, expected=expected))
     elif rec["slo_breach"]:
         rec["reason"] = (rec["reason"] or "") + f"; nudge bound: last nudge {round(since_nudge_h or 0, 1)}h ago (< {int(NUDGE_BOUND_H)}h)"
+
+    # idle turn (§2.5): nudge the role EARLY, once per turn end, never on top of the SLO nudge for the same marker.
+    idle = rec.get("idle_turn")
+    if idle and rec["action"] == "none" and role and not in_state and (since_nudge_h is None or since_nudge_h >= NUDGE_BOUND_H):
+        key = f"Your turn at {idle['ended']}"
+        if _marked_nudge_seen(thread_msgs, rid, book, key):
+            rec["reason"] = (rec["reason"] or "") + f"; idle-turn nudge already sent for the turn at {idle['ended']}"
+        else:
+            text = NUDGE_TEMPLATE.format(id=rid, state=rec["stage_label"], h=int(age_h), short=short, expected=expected)
+            text += f" {key} ended without the {short}; if the work is done, send the marker now."
+            rec["slo_status"] = "idle-turn"
+            tick.nudge(rec, role, text)
+            tick.actions[-1].update(check="idle_turn", turn_ended=idle["ended"], marker=short, session_id=idle["session_id"])
+    if rec["infra_hold"] and len(tick.actions) == actions_before_slo:
+        rec["slo_status"] = "infra-hold"  # the SLO check ran and fired nothing: the standing hold is the row's word on the table
     return rec
 
 
@@ -923,8 +1420,9 @@ def supervise(
     now: str,
     sessions: dict | None = None,
     config: dict | None = None,
+    acks: dict | None = None,
 ) -> dict:
-    tick = _Tick(parse_iso(now), sessions)
+    tick = _Tick(parse_iso(now), sessions, acks)
     cfg = config or {}
     gating = state.get("gating") or {}
     rows_in = state.get("rows") or {}
@@ -940,7 +1438,7 @@ def supervise(
     carried_after_merge(tick, rows_in, out_rows, nudges)
     order = {"hold": 0, "gate": 1, "nudge": 2, "alert": 3}
     tick.actions.sort(key=lambda a: (order.get(a["kind"], 9), a.get("row") or ""))
-    return {"now": iso_utc(tick.now), "rows": out_rows, "actions": tick.actions, "alerts": tick.alerts, "summary": tick.summary}
+    return {"now": iso_utc(tick.now), "rows": out_rows, "actions": tick.actions, "alerts": tick.alerts, "summary": tick.summary, "acks": tick.acks_info}
 
 
 def _read_json(path: str | None, default):
@@ -962,6 +1460,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--prs", required=True, help="gh pr list --json ... output for the fork")
     ap.add_argument("--nudges", help="nudge ledger JSON (row -> last nudge ts, or row -> {last_nudge, state, count, alerts})")
     ap.add_argument("--sessions", help='optional {"hermes-<ID>": [{role, session_id, cost_status, container_status}]}')
+    ap.add_argument("--acks", help='optional acks.json (collect-acks.sh): {"generated_at", "sessions": {<id>: {status, changed, role, thread_id}}}; missing or > 2 h old = bounce/idle detection off')
     ap.add_argument("--config", help="optional config.json (paused_rows, core_change_ok, authorize_round, release_tag)")
     ap.add_argument("--now", required=True, help="ISO timestamp, e.g. 2026-09-09T12:00:00Z")
     ap.add_argument("--json", action="store_true", help="compact JSON on one line (default: indented)")
@@ -975,6 +1474,7 @@ def main(argv: list[str] | None = None) -> int:
         args.now,
         sessions=_read_json(args.sessions, {}),
         config=_read_json(args.config, {}),
+        acks=_read_json(args.acks, None),
     )
     if args.json:
         print(json.dumps(out, separators=(",", ":"), sort_keys=True))

@@ -24,8 +24,9 @@ at `/workspace/shared/hermes/autopilot/` and the host cron runs from):
 | Path | What |
 |---|---|
 | `hermes_queue.py` | the dispatch core (stdlib, py3.11, `--now` for tests): plan + matrix + ledger (both tables) + `--upstream-asks` + config + prior state → `wip`, `in_flight`, `eligible_next` with the §4.4 text per row (`dispatch_text` for the architect, `orchestrator_text` = the same wrapped in the ledger-row + forward steps the cron POSTs), `gating`, `coverage` (with `carried_line`), `carried_criteria` / `upstream_asks` per row and whole (§2.4), `alerts` |
-| `hermes_supervise.py` | the supervise core: that state + the row threads + the fork PRs + the nudge book → stage per row, SLO check, bounded `hold` / `gate` / `nudge` / `alert` actions (§2, §3, §5) |
+| `hermes_supervise.py` | the supervise core: that state + the row threads + the fork PRs + the nudge book (+ `--acks`) → stage per row, SLO check, bounded `hold` / `gate` / `nudge` / `alert` actions (§2, §3, §5), plus the three marker-less stall shapes of §2.5 (`infra_hold`, `bounced`, `idle_turn`) |
 | `collect_threads.py` | inside the container: the role sessions on each `hermes-<ID>` thread via `ncl sessions list/messages` + `ncl cost-cap status`, bounded by `--rows` (the in-flight rows) and `--deadline-s` |
+| `collect-acks.sh` | on the HOST, from `refresh-viewers.sh` every 15 min, hostname-guarded: the newest `processing_ack` row of every active `hermes-<ROW>` session (one `bun:sqlite` readonly pass over their `outbound.db` files; role + thread joined from the central DB through `scripts/q.ts`, `./bin/ncl` as fallback) → `data/shared/hermes/autopilot/acks.json`, tmp + rename. `pull-state.sh` passes it to the supervisor as `--acks`; older than 2 h it is treated as absent (§2.5) |
 | `pull-state.sh` | inside the container: the `gh` and `ncl` probes, then queue → collector → supervisor; writes `state.json`, `threads.json`, `prs.json` (tmp + rename). A failed probe is a `collector_errors` entry, never a silent gap |
 | `record.py` | the bookkeeping after each send (`nudged`, `alerted`, `dispatched`, `redispatched`, `round3`), atomic; the Orchestrator calls it from the supervise tick, the cron from the dispatch tick; `alerted` also inserts the line newest-first into `alerts.md` |
 | `dispatch-cron.sh` | on the HOST, from the box's crontab (`17 */2 * * *`), hostname-guarded: runs the queue on host paths, raises its alerts, POSTs each eligible row's `orchestrator_text` to the dashboard chat API on `thread_id = hermes-<ID>` (the shape of `dispatch-rows.sh`), records every HTTP 200 with `record.py dispatched`; `--dry-run` prints the bodies and writes nothing (§6) |
@@ -279,6 +280,112 @@ ask is `upstream-ask-malformed`; a source row not in the matrix is `upstream-ask
 - The rows board (§10) — both tables as sections on `/rows/`, a `carries N` badge on the rows
   that carry open criteria, and per-row Carries / Deferred-from blocks.
 
+### 2.5 Stall shapes the markers do not show
+
+§2.2 reads progress from marker lines and the fork. Three stalls on 2026-09-15/16 produced no marker
+and no fork change, so each row read as "progressing" for 15–20 h until the operator read the
+transcripts. Each is now its own detection with its own alert kind, bounded like every other action:
+one alert per `(kind, state)` per row per 24 h, one nudge per event (keyed by the event's timestamp,
+the way card nudges are keyed by their marker). None of them changes the row's stage or its SLO
+clock; all three leave a field on the row record (`infra_hold`, `bounced`, `idle_turn`) for the
+status table and a count in `summary`.
+
+**Infra / operator hold** (`infra_hold`; alert `infra-hold`, or `operator-ruling` when the text names
+an operator ruling). CRED-F28: the architect wrote `HOLD on CRED-F28 — please PAUSE … the orchestrator
+is holding my [Spec handoff] pending an **operator ruling** …`; on A2A-F21 the tester wrote `Hold (NOT a
+verdict — the gated [Test Report] is withheld): … codex OUTPUT_REVIEW endpoint has been failing for
+30+ min — AzureException BadRequestError …` and the builder `blocked (infra, not a defect): … chain is
+stalled on a fleet-wide codex fault — please relay to the orchestrator/operator.` None produced an
+alert: they are not markers, and the roles had done exactly what their spines say (stop, say why, ask
+for a relay). Detection: an **outbound** line whose first line matches `^blocked \(infra`, `^Hold \(NOT
+a verdict` or `^HOLD on <ID>` (case-insensitive, markdown emphasis ignored), or whose first three
+lines contain "pending an operator ruling" / "awaiting operator" / "awaiting an operator". The event
+keeps the first line (≤ 200 chars) and, when present, the phrase after `codex` to the end of its line
+as the cause (with several holds standing, the most descriptive one). The hold **stands** while nothing
+came after it: no progress marker on the thread (`[Spec handoff]`, hand-off, `[Test Report]`, `[Review
+Verdict]`, `[Triage Resolution]`, merge, `PR opened`, the builder start, a review request, a
+`[Blocker]`) and no later plain outbound line by the holding role itself — a builder that wrote `codex
+is back — resuming the build, ETA 2h` or `PR opened …#7` has moved on, and re-arming it would interrupt
+live work; another role's line, the receiver's `in` copy, a supervisor line or a restatement of the hold
+clear nothing. While standing: the row alerts at once (`what` = the hold line; decision `post the ruling
+on hermes-<ID>` for an operator ruling, else `check the named dependency (codex/OneCLI/proxy); when
+healthy tell the Orchestrator to re-arm <role> on hermes-<ID> with 'resume, no new round'`), and the
+Orchestrator gets one re-arm nudge per hold **text** — the key is the role plus the normalised first
+line (≤ 80 chars), so an hourly `still holding, codex still down` restatement draws nothing new, and a
+differently worded hold falls under the per-(row, role) re-arm cap below. The hold never ends the row's
+turn on its own: unless the re-arm nudge itself went out this tick, the ordinary §3 SLO check still runs,
+so a re-armed role that stalls again is caught by the `slo` nudge/alert on the row's clock instead of
+hiding behind its old hold (`slo_status` reads `infra-hold` only when that check fired nothing). Cost
+holds still win (a stopped container cannot be re-armed); a **paused** row is silent, as for every other
+action; other merge holds do not hide it.
+
+**Bounced turn** (`bounced`; alert `bounce-repeat` on the second bounce). ISO-F14: the architect acked
+the operator's addendum and its next turn ended with `processing_ack.status = 'bounced-transient'` and
+no output; the host redrive did not re-arm it and nothing else could see it for 19 h. The thread
+cannot show this — there is no line — so the supervisor reads the acks: for the role that owes the
+stage's next artifact (the §3 SLO role), when that role's newest session on the thread has an ack
+whose status starts with `bounced` and whose `changed` is newer than the role's last outbound line, the
+row is `bounced` and the Orchestrator is nudged **at once** (no SLO wait), once per ack timestamp: `re-arm
+<role> on hermes-<ID>: its last turn at <changed> ended <status> with no output; …`. The rest of the
+text depends on the status: `bounced-transient` is the host's recognised provider-outage signature, so
+the prompt **probes the provider first** (one cheap call), re-arms the warm session pinned only when it is
+healthy, and **never spawns a fresh session** for it; only another status (`bounced-unknown`) may fall
+back to an unpinned send when the warm session refuses. A later bounced ack after that re-arm was sent is
+the `bounce-repeat` **alert and nothing else** — no second re-arm while the newest ack is still
+`bounced-*`. This is deliberate: every redrive during an outage mints a new `bounced-*` row with a new
+`status_changed`, and the host sweep will not redrive a session whose container is up, so the supervisor
+is the only redriver here; re-arming per ack would open one fresh session per tick until the provider
+recovered, all of them waking on the same row (the LOOP-F35 twin hazard, multiplied). One re-arm per
+outage is the budget; the alert's decision is `check the host error log around <changed>` and, once the
+provider is back, `spawn a fresh <role> session by hand`.
+
+**Turn ended without hand-off** (`idle_turn`; no alert — an early nudge). ISO-F13: the architect's
+turn ended right after "ISO-F13 research done …" with no `[Spec handoff]`; the container was gone; the
+tick saw `dispatched` with an active-looking clock and waited out the 6 h SLO. Detection: the owing
+role's newest session acked `completed` at T, its container is not `running` (from the live session
+list, else from the ack; unknown is no signal), no marker of any kind followed T, and T is at least half
+the stage's nudge SLO old (minimum 1 h). The `completed` ack is stamped **after** the turn's outputs
+(the poll loop marks it once the query returns), so nothing a turn wrote is ever later than T; a turn
+that ended with the alternative artifact the nudge itself names — the role's newest outbound line is a
+`[Blocker]` or a hold, or it wrote one since the inbound that started the turn — is not idle, and the
+SLO path owns what follows. Otherwise the role is nudged early with the §3 template plus one sentence —
+`Your turn at <T> ended without the <marker>; if the work is done, send the marker now.` — once per T,
+inside the 6 h row bound, and never when the SLO nudge for the same marker already fired (or fires this
+tick).
+
+**Where the acks come from.** `processing_ack` lives in each session's `outbound.db` under
+`data/v2-sessions/`, which the Orchestrator container cannot read. `collect-acks.sh` runs on the host
+from `refresh-viewers.sh` every 15 min (hostname-guarded): one `scripts/q.ts` query for the active
+sessions on `hermes-*` threads (role = group folder; `./bin/ncl sessions list` + `groups list` is the
+fallback), one `bun:sqlite` readonly pass over the matching `outbound.db` files (newest row by
+`status_changed`), and an atomic write of `data/shared/hermes/autopilot/acks.json`:
+`{"generated_at", "sessions": {"<id>": {"status", "changed", "role", "thread_id", "container_status",
+"message_id"}}, "counts", "errors"}`. `pull-state.sh` passes the container path
+`/workspace/shared/hermes/autopilot/acks.json` as `--acks`. Missing, malformed or older than 2 h, the
+supervisor reports `acks.status` (`ok | stale | missing`, also `summary.acks` and `state.sources.acks`),
+the pull log says `acks stale/missing — bounce and idle detection off`, and the two ack-based checks are
+skipped for that tick — never a guess. The hold detection reads the thread and stays on.
+
+**Re-arm nudges.** The infra-hold and bounce nudges target the **Orchestrator**: it owns the row, and
+the role has no turn to be nudged into. The action carries `check` (`infra_hold` | `bounced`),
+`rearm_role`, `rearm_text` (the unmarked line the Orchestrator sends the role: `Supervisor re-arm <ID> ·
+<role>: resume, no new round — …`), `rearm_session_id` (the role's warm session; the bounced one for a
+bounce) and, for a bounce, `ack_status` / `transient`. The prompt (`supervise-tick.md`) sends
+`rearm_text` to `rearm_role` pinned to that session — for a `bounced-unknown` right away; for a
+`bounced-transient` or an infra hold only after a cheap probe shows the provider / dependency healthy;
+for an operator ruling only once the ruling is on the row thread — and records it with `record.py nudged
+--role <rearm_role>`. Both texts start `Supervisor re-arm <ID> · <role>:` and carry the event's key (the
+hold text, or the bounce's timestamp): the next tick reads the line back from the thread (the role's
+`in` copy) or from the recorded texts (`nudge-book.json` `texts`) and does not repeat it, and the role
+in the prefix keeps an architect re-arm from ever being read as the builder's. On top of the per-event
+keys there is one cap: at most one **sent** re-arm per (row, role) per 6 h, read from the role's `in`
+copy (its timestamp) or from the book's timed `rearms` (`pull-state.sh` keeps every recorded
+`Supervisor re-arm` entry with its `at`), so two detections firing on one role inside the window open
+at most one extra turn for it; a capped re-arm leaves `re-arm cap: <role> re-armed <h>h ago` in the
+row's `reason`. A re-arm is never classified as a `nudge`, so it neither consumes nor honours the 6 h
+row bound — the prompt ignores `Supervisor re-arm` entries when it reads that bound — while the
+idle-turn nudge is an ordinary `Supervisor nudge` and does both.
+
 ## 3. SLOs, nudges, escalation
 
 Hours are wall-clock from the state's clock (§2.1), with `hold` and `cost_hold` time excluded.
@@ -336,9 +443,10 @@ destination resolved with `ncl destinations list --json` (the `channel` row, as
 re-arms it. Alert reasons that are not row states: `cost-card`, `core-change`, `plan-changed`,
 `blocked-twice`, `ledger-drift`, `ledger-duplicate`, `ledger-id-spelling`, `ledger-unknown-id`,
 `ledger-unreadable`, `plan-violation`, `fork-unreachable`, `sessions-unreachable`, `tick-stale`,
-`nudge-unconfirmed`, `hold-too-long`, `podman-box-needed`, and for the two tables of §2.4
+`nudge-unconfirmed`, `hold-too-long`, `podman-box-needed`, for the two tables of §2.4
 `carried-criterion-malformed`, `carried-criterion-unknown-row`, `carried-open`,
-`upstream-ask-malformed`, `upstream-ask-unknown-row`.
+`upstream-ask-malformed`, `upstream-ask-unknown-row`, and for the marker-less stalls of §2.5
+`infra-hold`, `operator-ruling`, `bounce-repeat`.
 
 ## 4. Queue, WIP and gating rules (from `dispatch-plan.md`)
 
@@ -537,11 +645,19 @@ writes `state.json` atomically (tmp + rename) every fire, so a quiet tick still 
 
 **Supervise prompt responsibilities** (`supervise-tick.md`): execute exactly `actions`, in this
 order: `hold` (ledger note only), `gate` (run `merge-gate.md` for the named PR), `nudge` (§3
-template, verbatim), `alert` (alerts.md line + status thread). After each send call
+template, verbatim, bounded by the newest `nudges.json` entry for the row that is under 6 h old —
+ignoring entries whose text starts `Supervisor re-arm`, which never move that bound; a nudge with
+`check: infra_hold | bounced` is a re-arm addressed to the Orchestrator itself, §2.5 — send
+`rearm_text` to `rearm_role` pinned to `rearm_session_id`, after the dependency probe for an infra
+hold or a `bounced-transient`, never a fresh session for a transient bounce, and skip the 6 h bound
+for it), `alert` (alerts.md line + status thread). After each send call
 `record.py nudged --row <ID> --role <role> --state <stage> --text <text>` (or
 `alerted --reason <alert_key> --line <text>`). The status thread carries alerts only, never a
-tick summary. Sent nudges plus bound skips must equal `summary.must_nudge`; a mismatch is a
-`[SUPERVISOR INVARIANT VIOLATION]` line in the run output. Re-dispatch after a bounced container
+tick summary. Sent nudges plus bound skips (a withheld re-arm counts as one) must equal
+`summary.must_nudge`; a mismatch is a `[SUPERVISOR INVARIANT VIOLATION]` line in the run output.
+`pull-state.sh` also passes `--acks /workspace/shared/hermes/autopilot/acks.json` when the file exists
+(the host's `collect-acks.sh`, every 15 min); when it is missing or older than 2 h the pull log says
+`acks stale/missing — bounce and idle detection off` and `state.sources.acks` records it. Re-dispatch after a bounced container
 and the authorized third round (§5) are decided by the same evidence but executed by hand today:
 the supervisor reports `env_fail` and the `env-fail` alert; the human sets `authorize_round`.
 
@@ -695,6 +811,14 @@ where it lives today and shows up in the next tick's state.
 - **Cost is a stop, not a stall.** A `cost_hold` row is never nudged (the container cannot take
   a turn); the alert points at the dashboard card and the session id, as `supervise-issues`'s
   `cost_stopped` rows do.
+- **A hold, a bounce or an idle turn is a stall, not progress.** A role's `blocked (infra` / `Hold (NOT
+  a verdict` / `HOLD on <ID>` line, a `bounced-*` ack newer than the role's last line, or a `completed`
+  ack with a stopped container and no marker after it (§2.5) each reach the operator or the role
+  within one tick — an alert at once for the first two shapes, an early nudge for the third — instead
+  of waiting out a stage SLO that measures the wrong thing. Re-arms are bounded once per event (the
+  event's timestamp in the text, read back from the thread or the recorded texts) and never count as
+  the row's 6 h nudge; alerts keep the 24 h `(kind, state)` bound. When `acks.json` is missing or older
+  than 2 h the two ack-based shapes are off for the tick and `sources.acks` says so.
 - **The autopilot never merges by itself.** `gate` actions wake the Orchestrator to run
   `merge-gate.md` with its six preconditions; nothing in this document shortens that gate.
 
