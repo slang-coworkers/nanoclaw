@@ -3,7 +3,7 @@ title: "Codex-Critique Hazards and PR-Review Runner Reliability"
 type: concept
 group: agent-infra
 tags: [codex, danger-full-access, pr-review-runner, clarity-runner, integrity-fail, worktree, restart]
-source_count: 5
+source_count: 7
 ---
 
 ## TL;DR
@@ -37,6 +37,13 @@ appearances.
 - **Verify a PR fix on a build FROM the PR head, with master as control** — the pre-existing
   `build/.../slangc` is master; an ICE there is a false "fix doesn't work." Calibrate first;
   run every probe on both builds.
+- **Stage anything codex must read under `/workspace/agent`, never `/tmp`** — codex runs in a
+  separate sandbox that CAN read `/workspace/agent` (incl. worktrees) but NOT `/tmp`; a
+  PR-body/report at `/tmp/foo.md` returns `must-fix: file does not exist` and burns a round.
+- **A codex-gateway outage (`client_metadata` 400 on the default model group) has no agent-side
+  fix** — a model override 403s, so you cannot record OUTPUT_REVIEW=approve; keep moving on the
+  ungated paths (git push, `gh workflow run`, a2a messages), defer the gated `gh pr edit`,
+  substitute a subagent build+test + self-review, and escalate the outage to the operator.
 
 ## Synthesis
 
@@ -69,6 +76,27 @@ files" but is the harness syncing to origin. The pushed origin commit is the sou
 write a `RESUME.md` naming the verified, PUSHED sha, and always use `--force-with-lease` (never
 bare `--force`) — its "stale info" rejection correctly protected the shipped PR from being
 overwritten by unverified codex contamination when origin had moved.
+
+Two more codex-critique hazards are about the sandbox and the gateway rather than the worktree.
+Because codex runs in a **separate process/sandbox**, `/workspace/agent` (including git worktrees
+under it) IS shared and readable by codex, but `/tmp` is NOT — so a PR-body or deliverable written
+to `/tmp/foo.md` and pointed at codex's OUTPUT_REVIEW returns `must-fix: file does not exist` and
+burns a critique round recreating it; always stage artifacts codex must read (PR body, plan,
+reports) under `/workspace/agent/...` (e.g. `/workspace/agent/reports/pr_body_<n>.md`) before the
+critique ([codex-critique sandbox cannot read /tmp — put review artifacts under /workspace/agent](../learnings/1789374218965-codex-critique-sandbox-cannot-read-tmp-put-review-.md)).
+And the gateway itself can go down in a way no agent can work around: the `mcp__codex__codex`
+server injects a `client_metadata` param that the current default model group (`gpt-5.6-sol`)
+rejects with `litellm.BadRequestError … Unknown parameter: 'client_metadata'` (a persistent 400,
+not transient), while a model override (`gpt-5.2`/`gpt-5.2-codex`) returns `403 Forbidden: key not
+allowed to access model` — so you are stuck on the erroring default group. During such an outage
+the critique-gate overlay blocks user-facing delivery (`gh pr create/edit`, PR/issue comments)
+because you cannot record OUTPUT_REVIEW=approve, but the ungated paths still work: `git push` of
+verified commits ("pushing is not a user-facing write"), `gh workflow run ci.yml`, and
+agent-to-agent messages. So push verified code, re-trigger CI, report up/across via messages,
+DEFER the gate-blocked `gh pr edit` while stating the infra blocker, substitute the codex review
+with a thorough subagent build+test + self-review (and say so), and escalate the gateway outage to
+the operator — it is an infra fix, not something an agent can resolve
+([codex-critique gateway outage: gpt-5.6-sol rejects client_metadata (400), overrides 403](../learnings/1789519260446-codex-critique-gateway-outage-gpt-5-6-sol-rejects-.md)).
 
 ### PR-review runner reliability in a shared, restart-prone container
 
@@ -112,9 +140,11 @@ BOTH the fix build and the master control — a probe "clean on fix" only proves
 upstream IR-legalization fix; and the clarity runner is invoked `bash run-clarity.sh --mode pr ...`
 (passing a leading `run-clarity` positional errors "unknown flag").
 
-**Source learnings (5):**
+**Source learnings (7):**
 - [codex danger-full-access can mutate your worktree and amend your commit](../learnings/1788103140445-codex-danger-full-access-can-mutate-your-worktree-.md) — codex re-injects deferred advisories and amends HEAD, then flags the mismatch as must-fix; `git reset --hard <verified-sha>` from reflog, a naive `git restore` keeps the creep.
 - [codex danger-full-access can amend your branch + worktree resyncs to origin on restart](../learnings/1788103619006-codex-danger-full-access-can-amend-your-branch-wor.md) — restart re-syncs to pushed origin (local amends vanish); write a RESUME.md with the pushed sha; `--force-with-lease`'s "stale info" rejection is a feature.
 - [Detached nohup PR-review runs are killed by container restart with no artifacts](../learnings/1788159236458-detached-nohup-pr-review-runs-are-killed-by-contai.md) — check for `final-review.md`≥500B, not the run dir; A/C are disposable across a likely restart; on slang-rhi the subagent tree is the compiler, degraded.
 - [slang-pr-review: shared-container stale pre-staged diff → INTEGRITY-FAIL, verify before trusting counts](../learnings/1788161056956-slang-pr-review-shared-container-stale-pre-staged-.md) — verify reviewed-diff sha256 == live `gh pr diff` sha256; capture your run dir from the driver log, never `ls -dt`.
 - [Verify a PR fix on a build FROM the PR head, with master as control — worktree needs submodule init](../learnings/1787626975022-verify-a-pr-fix-on-a-build-from-the-pr-head-with-m.md) — the base binary is master; calibrate and run every probe on both builds; worktree slangc lacks SPIR-V libs but HLSL codegen is decisive.
+- [codex-critique sandbox cannot read /tmp — put review artifacts under /workspace/agent](../learnings/1789374218965-codex-critique-sandbox-cannot-read-tmp-put-review-.md) — codex's separate sandbox reads `/workspace/agent` (incl. worktrees) but not `/tmp`; a `/tmp/foo.md` OUTPUT_REVIEW target returns must-fix and burns a round.
+- [codex-critique gateway outage: gpt-5.6-sol rejects client_metadata (400), overrides 403](../learnings/1789519260446-codex-critique-gateway-outage-gpt-5-6-sol-rejects-.md) — no agent-side fix; keep moving on git push / `gh workflow run` / a2a messages, defer the gated `gh pr edit`, substitute subagent build+test, escalate the outage to the operator.

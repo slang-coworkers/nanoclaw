@@ -3,7 +3,7 @@ title: Reviewer-A wrapper integrity & concurrency — INTEGRITY-FAIL, shared tmp
 type: concept
 group: review-process
 tags: [reviewer-a, integrity-fail, shared-tmp, concurrent-review, stream-jsonl, wrapper-success, in-thread-reply, delivery, slang-pr-review]
-source_count: 8
+source_count: 9
 ---
 
 ## TL;DR
@@ -78,6 +78,22 @@ Invalid JSON payload` can kill Reviewer A mid-run (twice on #12479), but it is t
 — "don't call it deterministic after 1-2 failures if a sibling reviewer on the same
 model succeeded" [Shared slang checkout tmp/ is a cross-review race — a concurrent PR clobbers your staging](../learnings/1786670089193-shared-slang-checkout-tmp-is-a-cross-review-race-a.md).
 
+**Confirmed prevention + a head-advance caveat.** A re-review run with
+`REPO_ROOT=/workspace/agent/wt-867-revA-r2` (a dedicated `git worktree add --detach <slang-checkout>
+origin/master`, which carries `REVIEW.md` + `.claude/agents` since they are tracked at origin/master)
+produced NO INTEGRITY-FAIL even with other reviews running concurrently — the isolated worktree gives
+compose-and-run its own `tmp/context.json` + `tmp/pr-diff.patch` that no sibling run can clobber.
+Reviewer C's `run-clarity.sh` already self-isolates via its own `wt-*` worktree, so only Reviewer A
+needs the explicit `REPO_ROOT` override; do it whenever a re-review might overlap another. Second,
+the PR head can advance mid-review: a fixer pushed a new commit during a ~20-min pass, so the
+reviewers reviewed the dispatched head while the current head moved on. After the reviewers finish,
+re-read `gh pr view <pr> --json headRefOid` and compare it to `final-review.md`'s footer
+`reviewed: <sha>`; if they differ, `git diff <reviewed>..<current>` and judge the delta — a
+comments/rename-only delta means the review still covers the new head (disclose it), a logic delta
+needs a re-run. Note `gh pr diff`'s sha is unstable when the base `main` moves (the merge-base shifts,
+so the diff text changes for the same head), so confirm the right PR was reviewed with the integrity
+FILE-list check, not the sha ([isolated REPO_ROOT worktree prevents the shared-tmp race; verify reviewed-commit vs current head](../learnings/1789479957663-isolated-repo-root-worktree-prevents-the-pr-review.md)).
+
 ## Wrapper success with a dead review, and the liveness test
 
 A dead run is not necessarily a lost run. Reviewer C on slang#12454 exited `subtype:
@@ -138,7 +154,7 @@ leaves review threads empty/unresolvable in the Files Changed view". Note the cr
 gate re-fires on ANY GitHub write once N edits have happened since the last OUTPUT_REVIEW
 — budget a fresh review round before the push+reply [a code Edit is not delivered until built+committed+pushed; and reply IN-THREAD on PR review comments](../learnings/1786616755173-a-code-edit-is-not-delivered-until-built-committed.md).
 
-**Source learnings (8):**
+**Source learnings (9):**
 
 - [a reviewer wrapper can report success with a 96-byte error-string artifact](../learnings/1786388990762-a-reviewer-wrapper-can-report-success-with-a-96-by.md) — gate at merge on size floor + content sniff; recover from `stream.jsonl` Write/Edit payloads (apply later Edits); report `reviewers_complete:false`; guard `isinstance(x, dict)`.
 - [Reviewer-A INTEGRITY-FAIL can be a false positive from a clobbered SHARED tmp/pr-files.txt](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — adjudicate by content (sha256 `pr-diff.reference` vs live diff, footer head, per-PR symbol hits), not the model's self-report or the guard headline.
@@ -148,3 +164,4 @@ gate re-fires on ANY GitHub write once N edits have happened since the last OUTP
 - [Shared slang checkout tmp/ is a cross-review race — a concurrent PR clobbers your staging](../learnings/1786670089193-shared-slang-checkout-tmp-is-a-cross-review-race-a.md) — clear the shared `tmp/{pr-diff.patch,pr-files.txt,context.json}` before launch; a transient 400 JSON-payload error is not deterministic if a sibling reviewer succeeded on the same model.
 - [slang-pr-review INTEGRITY-FAIL false-positive from shared tmp across concurrent cross-PR runs](../learnings/1786670426510-slang-pr-review-integrity-fail-false-positive-from.md) — four-step adjudication checklist; give each A-run its own worktree like Reviewer C's `wt-clarity-<run_key>`, or key the tmp path on the run.
 - [patch-mode `git apply` + `git commit -am` drops untracked NEW files from the reviewed diff → false Reviewer-A "no test" gap (tell: tests show `??`); Reviewer C's worktree sees them, so discount the gap; runner should `git add -A` before commit.](../learnings/1789333359114-patch-mode-pr-review-git-commit-am-drops-new-test-.md)
+- [isolated REPO_ROOT worktree prevents the PR-review shared-tmp race; verify reviewed-commit vs current head](../learnings/1789479957663-isolated-repo-root-worktree-prevents-the-pr-review.md) — a `wt-<pr>-revA` worktree of origin/master (with REVIEW.md + `.claude/agents`) gives Reviewer A its own `tmp/`; also re-read `headRefOid` after the pass and judge any mid-review delta.

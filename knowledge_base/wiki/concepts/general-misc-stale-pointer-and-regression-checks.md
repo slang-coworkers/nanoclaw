@@ -3,7 +3,7 @@ title: "Stale Pointers and Regression Checks"
 type: concept
 group: general-misc
 tags: [staleness, verification, regression, triage, citations, byte-compare, source-of-truth, git-blame]
-source_count: 0
+source_count: 20
 ---
 
 # Stale Pointers and Regression Checks
@@ -78,11 +78,11 @@ When a triage verdict asserts "accessor X yields spelling/behavior Y," verify it
 
 ## PR↔issue relationships and agent-filed reports
 
-An open PR that mentions an issue number is NOT automatically its fix — sanitizer-burndown work is often split into accept-now/fix-later PRs (#11938 vs #11937), so verify the actual relationship before calling a duplicate ([Verify PR-issue relationship before assuming duplicate](../learnings/1783078003012-verify-pr-issue-relationship-before-assuming-dupli.md)). Likewise, a follow-up/tracking issue whose premise is "the prerequisite was already made" can outrun reality — verify the prerequisite PR is actually MERGED ([Follow-up/tracking issue premise can outrun its prerequisite PR](../learnings/1783029023011-follow-up-tracking-issue-premise-can-outrun-its-pr.md)).
+An open PR that mentions an issue number is NOT automatically its fix — sanitizer-burndown work is often split into accept-now/fix-later PRs (#11938 vs #11937), so verify the actual relationship before calling a duplicate ([Verify PR-issue relationship before assuming duplicate](../learnings/1783078003012-verify-pr-issue-relationship-before-assuming-dupli.md)). Likewise, a follow-up/tracking issue whose premise is "the prerequisite was already made" can outrun reality — verify the prerequisite PR is actually MERGED ([Follow-up/tracking issue premise can outrun its prerequisite PR](../learnings/1783029023011-follow-up-tracking-issue-premise-can-outrun-its-pr.md)). And **"merged" is not "on main":** a squash merge creates a brand-new commit on the base branch, so the branch or squash-preview head a fixer reports as "merged head `abc123`" is not itself on main — a `git compare <reported-head>...main` reads "diverged," which looks alarming but is expected. Get the true merge commit with `gh pr view N --json mergeCommit` (or `gh api .../pulls/N --jq .merge_commit_sha`), then `gh api compare/<merge_sha>...main --jq .status` should be `identical`/`ahead`; stronger and SHA-agnostic, read the changed symbols directly on `ref=main` via the contents API (confirm the new constant/enum value/guard is present). Don't take "merged" as "on main," and don't take a reported head SHA as the merge commit — slangpy#1162's fixer reported head `2b960f12` (diverged from main), while the real squash commit `97f0f21a` was `identical` to main HEAD ([verify a squash-merge landed on main via the merge_commit_sha, not the branch head](../learnings/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md)).
 
 When triaging issues filed by an **agentic test-generation pipeline**, do not trust the reporter's framing of the trigger. Always strip the repro to its minimum by commenting out lines one at a time to find the exact line that, when removed, makes compilation succeed. Also verify the "other targets work" claim independently — agentic reporters cite sibling tests they did not actually re-run. If the IR op in the error message is more generic than the narrow construct in the title (e.g. `castToVoid` vs. "enum-to-int cast"), the IR op is the real story ([Test-Agent-Filed Issues Need Trigger Verification](../learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md)).
 
-**Source learnings (19):**
+**Source learnings (20):**
 - [Test-agent-filed issues need trigger verification](../learnings/1779958336217-test-agent-filed-issues-need-trigger-verification.md) — strip the repro to minimum; the generic IR op in the error is the real story
 - [A PR's changed-file list does not prove 'not a regression'](../learnings/1780541174316-a-pr-s-changed-file-list-does-not-prove-not-a-regr.md) — file list proves what was modified, not causation; trace the control path
 - [Stale PR fix-requests: verify base vs current main, and issue-vs-PR](../learnings/1782211781469-stale-pr-fix-requests-verify-base-vs-current-main-.md) — an aging PR's patched code may be refactored away on main
@@ -102,3 +102,4 @@ When triaging issues filed by an **agentic test-generation pipeline**, do not tr
 - [A right coordinate with a wrong verb survives a coordinate audit](../learnings/1786309524875-a-right-coordinate-with-a-wrong-verb-survives-a-co.md) — audit the predicate attached to each cite, not just that the line resolves; grep all files
 - [Fixing a coordinate inside a clause implicitly certifies the clause](../learnings/1786310241945-fixing-a-coordinate-inside-a-clause-implicitly-cer.md) — re-run the claim against the repro, not just the citation
 - [A file/line count is not a behavior claim](../learnings/1786312369827-a-file-line-count-is-not-a-behavior-claim-the-one-.md) — verify against patch bodies before overturning a behavior claim with a count
+- [Verify a squash-merge landed on main via the merge_commit_sha, not the branch head](../learnings/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md) — a squash merge makes a new base-branch commit, so the reported head "diverges" from main; compare `merge_sha...main` (== identical/ahead) or read the changed symbols at `ref=main`

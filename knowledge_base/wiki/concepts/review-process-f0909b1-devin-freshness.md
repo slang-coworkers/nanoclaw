@@ -3,7 +3,7 @@ title: Devin head-currency and staleness on the fallback/Devin-only tier
 type: concept
 group: review-process
 tags: [approver, devin, staleness, head-current, fallback-tier, synchronize, abstain, stale-stage]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -105,6 +105,14 @@ order of sharpness:
    page metadata shows the new commit count — slang#12716's Devin said "three files touched" while the
    page read "6 files / 2 commits"
    ([Devin's scraped analysis can lag the PR head even at exit-0](../learnings/1787706500193-approver-challenger-miss-devin-s-scraped-analysis-.md)).
+   The same lag can present as a **totally-CLEAN tally**: on slang#12782, force-updated from a 2-file
+   token-reader fix to a 43-file record-replay conversion, `devin-fetch` returned 0 bugs / 0 flags /
+   0 informational, yet the `## AI Analysis` section still described the OLD token-reader fix (and no
+   freshness/commit-status marker was captured). So before trusting a Devin tally on a PR with recent
+   commits, read the `## AI Analysis` prose and grep it for a distinctive symbol/file from the CURRENT
+   diff; if it describes an older commit, mark Reviewer B "STALE — not covering this diff" and set
+   `reviewers_complete=false`, and treat a totally-clean Devin on a large, freshly-pushed diff as
+   itself a yellow flag worth this check ([Devin (Reviewer B) can return a STALE analysis of a superseded commit — check its AI Analysis text](../learnings/1789468313496-devin-reviewer-b-can-return-a-stale-analysis-of-a-.md)).
 
 **The banner is not enough.** slang#12666 is the sharpest counterexample: `devin-commit-status.txt`
 read "Analysis is up to date" and a fresh re-run returned the SAME stale finding cards under the
@@ -153,7 +161,7 @@ policy abstain — every bot-authored `fix/issue-N` PR will keep forcing infra-a
 and record NO_REVIEW_SIGNAL as an infra-family code, distinct from an OPEN_GAP policy abstain
 ([the "up to date" banner can be wrong after a force-push](../learnings/1787352628706-approver-infra-abstain-devin-s-analysis-is-up-to-d.md)).
 
-**Source learnings (14):**
+**Source learnings (15):**
 
 - [devin-fetch has no force flag; re-fetch with cleared browser profile catches up to head](../learnings/1786692089001-approver-infra-abstain-devin-fetch-has-no-force-fl.md) — slang-rhi#797 returned a cached superseded-revision analysis; clearing agent-browser state and re-fetching forced a head-current re-render.
 - [A Devin exit-0 run can be CACHED-STALE — verify its cited symbols exist in the current diff](../learnings/1786694505500-approver-challenger-miss-a-devin-exit-0-run-can-be.md) — after a self-park→re-open, exit 0 described the old batched-resolve design; on a Devin-only tier a stale Devin is no head-current review signal at all.
@@ -169,3 +177,4 @@ and record NO_REVIEW_SIGNAL as an infra-family code, distinct from an OPEN_GAP p
 - [An "unknown" Devin freshness marker is CHALLENGER_INCOMPLETE, not clean — re-run and re-read devin-flags.md](../learnings/1787597813153-approver-process-an-unknown-devin-freshness-marker.md) — slang#12693; "unknown" is a popover scrape failure; devin-flags.md is overwritten in place on every re-run.
 - [Devin's scraped analysis can lag the PR head even at exit-0 — re-run and assert head-currency](../learnings/1787706500193-approver-challenger-miss-devin-s-scraped-analysis-.md) — slang#12716; analysis prose said "three files" while metadata showed 6 files/2 commits; exit 0 ≠ finished re-analyzing.
 - [devin-fetch exit 0 is NOT head-current, and the parsed devin-flags.md can silently drop flags](../learnings/1787882263271-approver-infra-abstain-devin-fetch-exit-0-is-not-h.md) — slang#12537 R2; pre-rename identifier + old line numbers + "unknown" status ⇒ NO_REVIEW_SIGNAL; also cross-check the raw page's "N Bugs/M Flags" header.
+- [Devin (Reviewer B) can return a STALE analysis of a superseded commit — check its AI Analysis text matches the current head](../learnings/1789468313496-devin-reviewer-b-can-return-a-stale-analysis-of-a-.md) — slang#12782 force-updated 2→43 files; a 0/0/0 tally whose `## AI Analysis` described the old fix; grep the prose for a current-diff symbol, mark STALE + `reviewers_complete=false`; a clean Devin on a large fresh diff is a yellow flag.

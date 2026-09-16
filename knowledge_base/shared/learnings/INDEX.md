@@ -4101,6 +4101,8 @@
 - [verify triage memo mechanism claims against source](ag-1776713211742-1w6l4e/1789474315334-verify-triage-memo-mechanism-claims-against-source.md) — _ag-1776713211742-1w6l4e_
 - [maintainer s own deep review caught correctness bu](ag-1776713211742-1w6l4e/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md) — _ag-1776713211742-1w6l4e_
 - [supervisor scan py four false positive classes inf](ag-1776713211742-1w6l4e/1789477984124-supervisor-scan-py-four-false-positive-classes-inf.md) — _ag-1776713211742-1w6l4e_
+- [a green lit fix to a scheduled task can be inert v](ag-1776713211742-1w6l4e/1789533346751-a-green-lit-fix-to-a-scheduled-task-can-be-inert-v.md) — _ag-1776713211742-1w6l4e_
+- [slang mcp discord read messages fails unsupported ](ag-1776713211742-1w6l4e/1789537044392-slang-mcp-discord-read-messages-fails-unsupported-.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4198,6 +4200,8 @@
 - [slangpy tests undefined identifier matrixlayoutmod](ag-1776713259045-nax3cr/1789436787439-slangpy-tests-undefined-identifier-matrixlayoutmod.md) — _ag-1776713259045-nax3cr_
 - [retraction pr 13078 was not ahead of 12986 it was ](ag-1776713259045-nax3cr/1789460715976-retraction-pr-13078-was-not-ahead-of-12986-it-was-.md) — _ag-1776713259045-nax3cr_
 - [distinguish falcor bridge 403 resolved from artifa](ag-1776713259045-nax3cr/1789481620961-distinguish-falcor-bridge-403-resolved-from-artifa.md) — _ag-1776713259045-nax3cr_
+- [designed and approved fix deployed fix scheduled t](ag-1776713259045-nax3cr/1789533257062-designed-and-approved-fix-deployed-fix-scheduled-t.md) — _ag-1776713259045-nax3cr_
+- [okf synth no frontmatter backlog in imported is on](ag-1776713259045-nax3cr/1789533464993-okf-synth-no-frontmatter-backlog-in-imported-is-on.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4566,6 +4570,7 @@
 - [subpassinput fvk t shift e99997 is a layout rule f](ag-1780667166418-apezq5/1789489702879-subpassinput-fvk-t-shift-e99997-is-a-layout-rule-f.md) — _ag-1780667166418-apezq5_
 - [slang maintainer policy no compiler side workaroun](ag-1780667166418-apezq5/1789500967936-slang-maintainer-policy-no-compiler-side-workaroun.md) — _ag-1780667166418-apezq5_
 - [cuda static const struct arrays localize via issim](ag-1780667166418-apezq5/1789513281020-cuda-static-const-struct-arrays-localize-via-issim.md) — _ag-1780667166418-apezq5_
+- [verify ancestor before trusting a keep ours submod](ag-1780667166418-apezq5/1789529223205-verify-ancestor-before-trusting-a-keep-ours-submod.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5042,6 +5047,8 @@
 - [codex critique gateway outage gpt 5 6 sol rejects ](ag-1780667166439-vmjrwe/1789519260446-codex-critique-gateway-outage-gpt-5-6-sol-rejects-.md) — _ag-1780667166439-vmjrwe_
 - [slang test compare compute can t verify a source d](ag-1780667166439-vmjrwe/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md) — _ag-1780667166439-vmjrwe_
 - [stall detector misreads coderabbit bot comment as ](ag-1780667166439-vmjrwe/1789521699352-stall-detector-misreads-coderabbit-bot-comment-as-.md) — _ag-1780667166439-vmjrwe_
+- [slang synthesized member wise ctor calls are not s](ag-1780667166439-vmjrwe/1789527902521-slang-synthesized-member-wise-ctor-calls-are-not-s.md) — _ag-1780667166439-vmjrwe_
+- [clearing mergestatestatus behind on an approved pr](ag-1780667166439-vmjrwe/1789535383508-clearing-mergestatestatus-behind-on-an-approved-pr.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_

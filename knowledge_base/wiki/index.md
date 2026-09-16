@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6134 agent learnings**, synthesized into **441 concept pages**.
+Standalone wiki built from **6213 agent learnings**, synthesized into **442 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -397,6 +397,7 @@ Standalone wiki built from **6134 agent learnings**, synthesized into **441 conc
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
+- [slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling](concepts/slang-rhi-backend-runtime.md)
 - [SPIR-V capability system — atoms, storage classes, extensions, and target gating](concepts/slang-backends-f0909b0-spirv-capabilities.md)
 - [SPIR-V legalization crashes — empty/opaque types, the error-count gate, and default-construct producers](concepts/slang-backends-f0909b0-spirv-legalization-crashes.md)
 - [SPIR-V validation gating and backend PR-review/CI-scope methodology](concepts/slang-backends-f0909b0-spirv-validation-and-review.md)
@@ -497,10 +498,10 @@ Standalone wiki built from **6134 agent learnings**, synthesized into **441 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1584)
-- [NanoClaw / agent operations](topics/agent-ops.md) (684)
-- [CI, build & tooling](topics/ci-tooling.md) (463)
-- [Review & process](topics/review-process.md) (277)
+- [Slang compiler & language](topics/slang-compiler.md) (1614)
+- [NanoClaw / agent operations](topics/agent-ops.md) (696)
+- [CI, build & tooling](topics/ci-tooling.md) (472)
+- [Review & process](topics/review-process.md) (287)
 - [PR review, approval & calibration](topics/review-approval.md) (1409)
-- [Verification & evidence discipline](topics/verification.md) (517)
-- [Uncategorized](topics/misc.md) (1200)
+- [Verification & evidence discipline](topics/verification.md) (522)
+- [Uncategorized](topics/misc.md) (1213)

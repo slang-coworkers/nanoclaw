@@ -386,6 +386,7 @@ type: nav
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
+- [slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling](concepts/slang-rhi-backend-runtime.md)
 - [SPIR-V capability system — atoms, storage classes, extensions, and target gating](concepts/slang-backends-f0909b0-spirv-capabilities.md)
 - [SPIR-V legalization crashes — empty/opaque types, the error-count gate, and default-construct producers](concepts/slang-backends-f0909b0-spirv-legalization-crashes.md)
 - [SPIR-V validation gating and backend PR-review/CI-scope methodology](concepts/slang-backends-f0909b0-spirv-validation-and-review.md)
