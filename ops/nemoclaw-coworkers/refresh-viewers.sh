@@ -83,6 +83,12 @@ case $? in
   *) echo 'slack-rows failed — see logs/slack-rows.log' ;;
 esac
 
+# processing_ack snapshot for the supervise tick's bounce / idle-turn detection (autopilot.md §2.5): one bun read
+# over the hermes-<ROW> sessions' outbound.db files → data/shared/hermes/autopilot/acks.json (the container reads it
+# as /workspace/shared/hermes/autopilot/acks.json). The supervisor ignores a file older than 2 h, hence every 15 min.
+# Never fatal to the viewer refresh; the one-line reason is in logs/collect-acks.log.
+ROOT="$ROOT" bash "$ROOT/ops/nemoclaw-coworkers/autopilot/collect-acks.sh" >> "$ROOT/logs/collect-acks.log" 2>&1 || echo 'collect-acks failed — see logs/collect-acks.log'
+
 # Viewer root (/index.html): the landing page. Generated last so every surface published above is linked.
 {
   cat <<'HTML'

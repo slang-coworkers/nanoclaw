@@ -8,7 +8,8 @@ prompts (and the Mac-side check) act on their output; nothing in here sends a me
 | Script | Spec | Reads | Writes |
 |---|---|---|---|
 | `hermes_queue.py` | §2.2 source A, §4 | `dispatch-plan.md`, `gap-matrix.md`, `ledger.md`, `config.json`, previous `state.json` | the state JSON: rows, `in_flight`, `merged`, `blocked`, `eligible_next` (with the §4.4 dispatch text per row), `wip`, `gating`, `alerts`, `plan_sha256` |
-| `hermes_supervise.py` | §2.3, §3, §5 | that state, the row threads, `gh pr list --json`, the nudge ledger, optional sessions/cost | per in-flight row: `stage`, `age_hours`, `slo_breach`, `action` (`none` / `nudge` / `escalate`), `target_role`, `message`; plus `actions` (hold, gate, nudge, alert) and the `alerts.md` lines |
+| `hermes_supervise.py` | §2.3, §2.5, §3, §5 | that state, the row threads, `gh pr list --json`, the nudge ledger, optional sessions/cost, optional `--acks` (`acks.json`) | per in-flight row: `stage`, `age_hours`, `slo_breach`, `action` (`none` / `nudge` / `escalate`), `target_role`, `message`, `infra_hold` / `bounced` / `idle_turn`; plus `actions` (hold, gate, nudge, alert — re-arm nudges carry `check`, `rearm_role`, `rearm_text`, `rearm_session_id`), the `alerts.md` lines and `acks.status` |
+| `collect-acks.sh` (bash, HOST-side, hostname-guarded) | §2.5 | the central DB via `scripts/q.ts` (`./bin/ncl` fallback) for active `hermes-<ROW>` sessions, then ONE `bun:sqlite` readonly pass over their `outbound.db` files | `data/shared/hermes/autopilot/acks.json` (tmp + rename): the newest `processing_ack` per session with role, thread, container status. Run every 15 min by `refresh-viewers.sh` (`logs/collect-acks.log`); the supervisor ignores a copy older than 2 h |
 | `abtr.py` (CLI: `scorecard.py --markdown [PATH]`, `--brief [PATH]`) | §7 | `state.json`, `ledger.md`, `alerts.md`, `prs.json`, `config.json` | the a \| b \| t \| r report: one markdown line per row with architect, builder, tester, reviewer and the gate as cells (`✓ HH:MMZ` done, `▶ 3.6h` active, `✗ FAIL r2`, `⏸`, `·`), in-flight rows first by age, then blocked, then merged, then the queued count |
 
 `pull-state.sh` writes the report every tick to `groups/orchestrator/reports/status/autopilot.md` (container `/workspace/agent/reports/status/autopilot.md`, viewer `/status/autopilot.md`) and its brief (header + one `<row> | a | b | t | r` line per in-flight row) to `data/shared/hermes/autopilot/tick-report.txt`, which the supervise tick ends its turn with and `hermes-check.sh` prints first.
@@ -17,8 +18,14 @@ prompts (and the Mac-side check) act on their output; nothing in here sends a me
 python3 hermes_queue.py --plan dispatch-plan.md --matrix gap-matrix.md --ledger ledger.md \
   [--config config.json] [--state state.json] [--now ISO] [--json] > state.json
 python3 hermes_supervise.py --state state.json --threads threads.json --prs prs.json \
-  --nudges nudges.json [--sessions sessions.json] [--config config.json] --now ISO [--json]
+  --nudges nudges.json [--sessions sessions.json] [--acks acks.json] [--config config.json] --now ISO [--json]
+ROOT=~/haaggarwal/nemoclaw-coworkers bash collect-acks.sh   # box only: writes data/shared/hermes/autopilot/acks.json
 ```
+
+`acks.json` is `{"generated_at": ISO, "sessions": {"<session-id>": {"status", "changed", "role", "thread_id",
+"container_status", "message_id"}}}` — the newest `processing_ack` row per active `hermes-<ROW>` session, read on
+the host because the container cannot see other sessions' `outbound.db`. Missing or older than 2 h, the
+supervisor reports `acks.status` `missing` / `stale` and skips the bounce and idle-turn detections (§2.5).
 
 `threads.json` is `{"hermes-<ID>": [{"ts", "direction", "text", "sender"?, "kind"?}]}`, the
 collector's flattening of the role sessions on each row thread. A row whose value is not a
@@ -53,6 +60,18 @@ Rules pinned by the tests (`test_hermes_queue.py`, `test_hermes_supervise.py`):
   `COLLECT_DEADLINE_S` (`--deadline-s`, 10 s under the gates)
 - an architect or orchestrator session already on `hermes-<ID>` marks the row dispatched for the
   queue (never dispatch twice), even before the ledger row or the `record.py` entry exists
+- three stalls the markers do not show (§2.5, the 2026-09-15/16 incidents): an outbound `blocked (infra` /
+  `Hold (NOT a verdict` / `HOLD on <ID>` line (or "pending an operator ruling" in its first three lines)
+  that nothing followed — no marker, no later plain line by the same role — alerts `infra-hold` /
+  `operator-ruling` at once and asks the Orchestrator, once per hold text, to re-arm the role, while the
+  row's SLO check keeps running; a `bounced-*` ack newer than the role's last line is a re-arm nudge at
+  once, once per ack (`bounced-transient`: probe the provider first, never spawn fresh), and the next
+  bounce after a sent re-arm is the `bounce-repeat` alert only (no second re-arm — one per outage); a
+  `completed` ack with a stopped container, no marker after it, no `[Blocker]`/hold as the turn's last
+  word and ≥ ½ the stage's nudge SLO (min 1 h) is an early nudge, once per turn end. Re-arm lines start
+  `Supervisor re-arm <ID> · <role>:`, are never the row's 6 h nudge, and are capped at one sent per row
+  and role per 6 h (the book's timed `rearms`); a paused row is silent; with `acks.json` missing or
+  > 2 h old the two ack-based checks are off and `acks.status` says so
 
 Two deliberate readings of the spec: a DEFER or MERGE-> id found in the ledger keeps its
 ledger state (it is holding containers) and raises `plan-violation` instead of being hidden

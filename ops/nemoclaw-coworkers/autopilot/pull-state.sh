@@ -25,9 +25,14 @@
 #                          disposition, dispatch_text, thread_id, ...}], rows, gating, alerts
 #   collect_threads.py  --groups --sessions --ncl --rows <in_flight> --deadline-s --now
 #                       -> threads.json (sessions per row thread, transcripts, cost status)
-#   hermes_supervise.py --state <queue output> --threads --prs --nudges --sessions --config --now
-#                       -> rows {ID: {stage, clock_start, age_hours, slo_status, hold, cost_hold, ...}},
-#                          actions [{kind: hold|gate|nudge|alert, row, ...}], alerts, summary
+#   hermes_supervise.py --state <queue output> --threads --prs --nudges --sessions [--acks] --config --now
+#                       -> rows {ID: {stage, clock_start, age_hours, slo_status, hold, cost_hold, infra_hold,
+#                          bounced, idle_turn, ...}}, actions [{kind: hold|gate|nudge|alert, row, ...}],
+#                          alerts, summary, acks {status: ok|stale|missing}
+#   --acks is $AUTOPILOT_DIR/acks.json, written on the HOST every 15 min by collect-acks.sh (the newest
+#   processing_ack per hermes-<ROW> session; the container cannot read other sessions' outbound.db). It
+#   feeds the §2.5 bounce and idle-turn detections; missing or older than 2 h switches them off for the
+#   tick, with one log line here and `sources.acks` in state.json — never a guess.
 #
 # Three adaptations happen in between (autopilot.md §8):
 #   * prior-state.json: the previous state.json plus two dispatch overlays the ledger may not show
@@ -45,7 +50,7 @@
 # ledger_rows (a header-located ledger read independent of the core), collector_errors, generated_at.
 #
 # Env knobs (container defaults shown): AUTOPILOT_DIR LEDGER UPSTREAM_ASKS PLAN MATRIX ALERTS FORK NCL GH
-# PROBE_TIMEOUT=25 COLLECT_LIMIT=200 COLLECT_MAX_SESSIONS=80 COLLECT_DEADLINE_S=0 (the gates set 10)
+# ACKS=$AUTOPILOT_DIR/acks.json PROBE_TIMEOUT=25 COLLECT_LIMIT=200 COLLECT_MAX_SESSIONS=80 COLLECT_DEADLINE_S=0 (the gates set 10)
 # COLLECT_ROWS_FROM_QUEUE=1 (0 reads every row thread) NOW_OVERRIDE. Every path has an override so
 # the script runs offline against fixtures with a fake `ncl` and `gh` on PATH (test_pull_state.py).
 set -euo pipefail
@@ -57,6 +62,7 @@ UPSTREAM_ASKS=${UPSTREAM_ASKS:-/workspace/agent/reports/upstream-asks.md}
 PLAN=${PLAN:-/workspace/shared/hermes/dispatch-plan.md}
 MATRIX=${MATRIX:-/workspace/shared/hermes/gap-matrix.md}
 ALERTS=${ALERTS:-/workspace/agent/reports/status/alerts.md}
+ACKS=${ACKS:-${AUTOPILOT_DIR:-/workspace/shared/hermes/autopilot}/acks.json}
 FORK=${FORK:-slang-coworkers/hermes-agent}
 NCL=${NCL:-ncl}
 GH=${GH:-gh}
@@ -221,12 +227,21 @@ for s in sessions:
         mark_dispatched(m.group(1), at, f"session {s.get('id')} on thread {s.get('thread_id')}")
 write_json("prior-state.json", prior)
 
+REARM = "Supervisor re-arm"  # hermes_supervise.REARM_PREFIX: bounded per hold / per bounce, never by the 6 h row bound
 book = {}
 for n in sorted(nudges.get("nudges") or [], key=lambda x: x.get("at") or ""):
     rid = n.get("row")
     if not rid:
         continue
-    b = book.setdefault(rid, {"last_nudge": None, "state": None, "count": 0, "alerts": {}})
+    b = book.setdefault(rid, {"last_nudge": None, "state": None, "count": 0, "alerts": {}, "texts": [], "rearms": []})
+    text = n.get("text")
+    if isinstance(text, str) and text:
+        b["texts"] = (b["texts"] + [text])[-40:]  # the supervisor reads its once-per-event keys back from these
+        if text.startswith(REARM):
+            # a SENT re-arm with its record time: the supervisor's per-(row, role) re-arm cap needs the `at`
+            if n.get("at"):
+                b["rearms"] = (b["rearms"] + [{"at": n["at"], "text": text}])[-20:]
+            continue
     b["count"] += 1
     if n.get("at") and (b["last_nudge"] is None or n["at"] > b["last_nudge"]):
         b["last_nudge"], b["state"] = n["at"], n.get("state")
@@ -234,7 +249,7 @@ for a in nudges.get("alerts") or []:
     rid, key, at = a.get("row"), a.get("reason") or "alert", a.get("at")
     if not rid or not at:
         continue
-    b = book.setdefault(rid, {"last_nudge": None, "state": None, "count": 0, "alerts": {}})
+    b = book.setdefault(rid, {"last_nudge": None, "state": None, "count": 0, "alerts": {}, "texts": [], "rearms": []})
     if at > (b["alerts"].get(key) or ""):
         b["alerts"][key] = at
 write_json("nudge-book.json", book)
@@ -357,6 +372,33 @@ with open(os.environ["ERRORS"], "a", encoding="utf-8") as fh:
 PY
 
 # --- 7. The supervisor ------------------------------------------------------------------------
+#   acks.json (collect-acks.sh on the host, every 15 min) feeds the §2.5 bounce / idle-turn detections. Missing,
+#   malformed or older than 2 h: both are off for this tick — one log line here, `sources.acks` in state.json.
+ACKS_ARGS=()
+ACKS_STATUS=missing
+if [ -s "$ACKS" ]; then
+  ACKS_ARGS=(--acks "$ACKS")
+  ACKS="$ACKS" NOW="$NOW" python3 - > "$RAW/acks-status.txt" 2>/dev/null <<'PY' || echo malformed > "$RAW/acks-status.txt"
+import json, os, re
+from datetime import datetime, timezone
+def iso(v):
+    v = str(v).strip().replace("Z", "+00:00")
+    v = re.sub(r"(\.\d{3})\d+", r"\1", v)
+    dt = datetime.fromisoformat(v)
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
+doc = json.load(open(os.environ["ACKS"], encoding="utf-8"))
+assert isinstance(doc.get("sessions"), dict)
+age_h = (iso(os.environ["NOW"]) - iso(doc["generated_at"])).total_seconds() / 3600.0
+print("stale" if age_h > 2.0 else "ok")
+PY
+  ACKS_STATUS=$(tr -d '[:space:]' < "$RAW/acks-status.txt")
+  ACKS_STATUS=${ACKS_STATUS:-malformed}
+fi
+if [ "$ACKS_STATUS" = ok ]; then
+  log "acks $ACKS fresh; bounce and idle detection on"
+else
+  log "acks stale/missing — bounce and idle detection off ($ACKS_STATUS: $ACKS)"
+fi
 CORE_SUP=missing
 S=$(find_core hermes_supervise.py)
 if [ -z "$S" ]; then
@@ -366,7 +408,7 @@ elif [ "$CORE_QUEUE" != ok ]; then
   record_error "hermes_supervise.py" "skipped: no queue output to supervise"
 elif python3 "$S" --state "$RAW/queue.json" --threads "$RAW/threads-flat.json" --prs "$AP/prs.json" \
        --nudges "$RAW/nudge-book.json" --sessions "$RAW/sessions-by-thread.json" --config "$AP/config.json" \
-       --now "$NOW" > "$RAW/supervise.json" 2> "$RAW/supervise.err"; then
+       ${ACKS_ARGS[@]+"${ACKS_ARGS[@]}"} --now "$NOW" > "$RAW/supervise.json" 2> "$RAW/supervise.err"; then
   CORE_SUP=ok
 else
   CORE_SUP=failed
@@ -375,7 +417,7 @@ fi
 [ "$CORE_SUP" = ok ] || echo '{}' > "$RAW/supervise.json"
 
 # --- 8. Merge into state.json (tmp + rename) --------------------------------------------------
-AP="$AP" RAW="$RAW" NOW="$NOW" HERE="$HERE" ERRORS="$ERRORS" CORE_QUEUE="$CORE_QUEUE" CORE_SUP="$CORE_SUP" \
+AP="$AP" RAW="$RAW" NOW="$NOW" HERE="$HERE" ERRORS="$ERRORS" CORE_QUEUE="$CORE_QUEUE" CORE_SUP="$CORE_SUP" ACKS="$ACKS" ACKS_STATUS="$ACKS_STATUS" \
 LEDGER="$LEDGER" UPSTREAM_ASKS="$UPSTREAM_ASKS" PLAN="$PLAN" MATRIX="$MATRIX" ALERTS="$ALERTS" FORK="$FORK" FORK_CHECKED="$FORK_CHECKED" python3 - <<'PY'
 import hashlib, json, os, sys
 from datetime import timedelta
@@ -453,6 +495,9 @@ sources["sessions"] = {"checked": bool(threads.get("sessions_checked")), **(thre
                        "roles": threads.get("roles") or {}, "filter": threads.get("filter") or {},
                        "unreadable_threads": sorted(unreadable)}
 sources["core"] = {"queue": os.environ["CORE_QUEUE"], "supervise": os.environ["CORE_SUP"]}
+# acks.json (collect-acks.sh, host): the supervisor's own reading when it ran, else what the shell saw.
+acks_info = sup.get("acks") if isinstance(sup.get("acks"), dict) else {"status": os.environ["ACKS_STATUS"], "note": "acks stale/missing — bounce and idle detection off"}
+sources["acks"] = {**acks_info, "path": os.environ["ACKS"], "checked": acks_info.get("status") == "ok"}
 state["sources"] = sources
 state["plan"] = {"sha256": queue.get("plan_sha256") or sources["plan"]["sha256"],
                  "matrix_sha256": queue.get("matrix_sha256") or sources["matrix"]["sha256"],
@@ -503,6 +548,7 @@ summary = {
     "errors": len(errors),
     "unreadable_threads": sorted(unreadable),
     "core": sources["core"],
+    "acks": sources["acks"].get("status"),
 }
 print("pull-state: state.json written " + json.dumps(summary))
 PY

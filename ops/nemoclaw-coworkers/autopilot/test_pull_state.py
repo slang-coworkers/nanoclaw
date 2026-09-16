@@ -193,6 +193,46 @@ class PullStateTest(unittest.TestCase):
         self.assertIn("hermes-LOOP-F35", st["threads_unreadable"])
         self.assertTrue(any(e["source"] == "ncl sessions messages s-build-f35" for e in st["collector_errors"]))
 
+    def test_acks_json_feeds_the_supervisor_and_is_reported(self):
+        """acks.json (collect-acks.sh, host) next to state.json: a bounced ack on LOOP-F35's builder (the ISO-F14
+        shape) is detected and reported under sources.acks; without the file the detection is off and the
+        ordinary SLO nudge is back. A recorded `Supervisor re-arm` text never becomes the row's 6 h bound."""
+        acks = {"generated_at": NOW, "sessions": {"s-build-f35": {
+            "status": "bounced-transient", "changed": "2026-09-09T20:30:00.000Z", "role": "hermes-builder", "thread_id": "hermes-LOOP-F35"}}}
+        (self.ap / "acks.json").write_text(json.dumps(acks))
+        st = self.run_pull()
+        self.assertEqual((st["sources"]["acks"]["status"], st["sources"]["acks"]["checked"]), ("ok", True))
+        self.assertEqual(st["sources"]["acks"]["path"], str(self.ap / "acks.json"))
+        row = st["supervise"]["rows"]["LOOP-F35"]
+        self.assertEqual((row["stage"], row["bounced"]["status"], row["bounced"]["changed"]), ("building", "bounced-transient", "2026-09-09T20:30:00Z"))
+        nudge = next(a for a in st["actions"] if a["kind"] == "nudge" and a["row"] == "LOOP-F35")
+        self.assertEqual((nudge["target_role"], nudge["check"], nudge["rearm_role"], nudge["rearm_session_id"]), ("orchestrator", "bounced", "hermes-builder", "s-build-f35"))
+        self.assertEqual(st["summary"]["bounced"], 1)
+        # the Orchestrator recorded the re-arm: texts reach the book, the 6 h bound does not move
+        (self.ap / "nudges.json").write_text(json.dumps({"nudges": [
+            {"row": "LOOP-F35", "at": "2026-09-09T20:40:00Z", "role": "hermes-builder", "state": "building", "text": nudge["rearm_text"]}],
+            "alerts": [], "dispatched": [], "redispatched": [], "round3": []}))
+        st2 = self.run_pull()
+        book = json.loads((self.ap / "raw" / "nudge-book.json").read_text())["LOOP-F35"]
+        self.assertEqual((book["count"], book["last_nudge"], book["texts"]), (0, None, [nudge["rearm_text"]]))
+        self.assertEqual(book["rearms"], [{"at": "2026-09-09T20:40:00Z", "text": nudge["rearm_text"]}])  # timed: the per-(row, role) re-arm cap reads `at`
+        # same bounce, re-arm already sent: no second re-arm. (The one nudge left is the pre-existing card_missing
+        # check on the architect's card-less [Spec handoff] — the live config.json has card_check on.)
+        self.assertEqual([a.get("check") for a in st2["actions"] if a["kind"] == "nudge"], ["card_missing"])
+        self.assertEqual(st2["supervise"]["rows"]["LOOP-F35"]["bounced"]["changed"], "2026-09-09T20:30:00Z")
+        # a stale file (older than 2 h) or none at all: detection off, reported, the ordinary nudge is back
+        acks["generated_at"] = "2026-09-09T18:30:00Z"
+        (self.ap / "acks.json").write_text(json.dumps(acks))
+        st3 = self.run_pull()
+        self.assertEqual((st3["sources"]["acks"]["status"], st3["sources"]["acks"]["checked"], st3["summary"]["acks"]), ("stale", False, "stale"))
+        self.assertIsNone(st3["supervise"]["rows"]["LOOP-F35"]["bounced"])
+        (self.ap / "acks.json").unlink()
+        st4 = self.run_pull()
+        self.assertEqual(st4["sources"]["acks"]["status"], "missing")
+        self.assertIn("bounce and idle detection off", st4["sources"]["acks"]["note"])
+        plain = next(a for a in st4["actions"] if a["kind"] == "nudge")
+        self.assertEqual((plain["target_role"], plain.get("check")), ("hermes-builder", None))
+
     def test_deadline_zero_reads_everything_and_rows_filter_can_be_disabled(self):
         st = self.run_pull(COLLECT_ROWS_FROM_QUEUE="0")
         self.assertIsNone(st["sources"]["sessions"]["filter"]["rows"])
