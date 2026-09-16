@@ -51,8 +51,9 @@ Output, one JSON object on stdout:
       }
     },
     "other_threads": ["hermes-P0-LOOP", ...],   # hermes-* threads that are not matrix rows
+    "thread_case": [{"row", "session_id", "role", "thread_id_raw"}],  # sessions on a mis-cased row thread
     "sessions_checked": true,                     # false when the session list itself failed
-    "counts": {"sessions_seen": n, "sessions_read": n, "cost_status_read": n, "sessions_unread": n},
+    "counts": {"sessions_seen": n, "sessions_read": n, "cost_status_read": n, "sessions_unread": n, "thread_case": n},
     "filter": {"rows": [...] | null, "deadline_s": 0},
     "collector_errors": [{"source": "ncl sessions messages <sid>", "error": "..."}]
   }
@@ -62,6 +63,14 @@ marks the whole thread unreadable for the supervisor (no action on partial
 evidence). Message timestamps are passed through as ncl returns them (inbound
 ISO 8601, outbound SQL `YYYY-MM-DD HH:MM:SS`); `cost_status` is `unknown` when
 the cost-cap read fails, which the core treats as no signal.
+
+Thread ids are canonicalised at ingestion (rowid.canon_thread): a session a role
+opened on `hermes-iso-f13` is attributed to row ISO-F13 (the thread record's
+`thread_id` is the canonical `hermes-ISO-F13`), while the session record keeps
+its REAL `thread_id` and is flagged `thread_case: true`; the top-level
+`thread_case` list names every such session. The 2026-09-16 ISO-F13 incident:
+the tester's PASS and the reviewer's REQUEST_CHANGES sat on the lower-case
+thread and were invisible to the supervisor.
 """
 
 from __future__ import annotations
@@ -74,10 +83,27 @@ import sys
 import time
 from datetime import datetime, timezone
 
+try:
+    from rowid import canon_row, canon_thread
+    ROWID_ERROR: str | None = None
+except ImportError:  # a mirror that predates rowid.py: still collect, say so in collector_errors, never canonicalise by guess
+    ROWID_ERROR = "rowid.py not found next to collect_threads.py; thread ids not canonicalised (mis-cased row threads are dropped)"
+
+    def canon_thread(thread):
+        return thread
+
+    def canon_row(row):
+        return row
+
+
 ROLES = ("orchestrator", "hermes-architect", "hermes-builder", "hermes-tester", "hermes-reviewer")
 ROW_ID = r"[A-Z0-9]+-F[0-9]+(?:\.[a-z])?"
+ROW_ID_LOOSE = r"[A-Za-z0-9]+-[Ff][0-9]+(?:\.[A-Za-z])?"  # the same grammar in any casing; canon_row (rowid.py) folds it
 THREAD_RE = re.compile(rf"^hermes-({ROW_ID})$")
-MENTION_RE = re.compile(rf"(?:hermes-({ROW_ID})\b|\[({ROW_ID})\]|\b({ROW_ID}):)")
+# Free-text row mentions for the pass-2 scan (a role with no per-thread session). The `hermes-<ROW>` and `[<ROW>]`
+# forms are deliberate tags and match in any casing (`hermes-iso-f13`, `[iso-f13]`, the 2026-09-16 thread case); the
+# bare `<ROW>:` form stays strict — a lower-case `x-f1:` is ordinary prose.
+MENTION_RE = re.compile(rf"(?:hermes-({ROW_ID_LOOSE})\b|\[({ROW_ID_LOOSE})\]|\b({ROW_ID}):)")
 SUBPROCESS_TIMEOUT_S = 25
 
 
@@ -167,10 +193,14 @@ def session_record(s: dict, role: str, inferred: bool = False) -> dict:
 
 
 def mentioned_rows(messages: list) -> set:
+    """Canonical row ids mentioned in the messages' text (`[loop-f35]` -> LOOP-F35). Only a canonically spelled id is
+    ever returned: without rowid.py (identity canon_row) a lower-case tag is dropped rather than minted as a new row."""
     rows: set = set()
     for m in messages:
         for match in MENTION_RE.finditer(m.get("text") or ""):
-            rows.add(next(g for g in match.groups() if g))
+            row = canon_row(next(g for g in match.groups() if g))
+            if re.fullmatch(ROW_ID, row):
+                rows.add(row)
     return rows
 
 
@@ -188,6 +218,8 @@ def collect(
     clock=time.monotonic,
 ) -> dict:
     errors: list = []
+    if ROWID_ERROR:
+        errors.append({"source": "collect_threads", "error": ROWID_ERROR})
     t0 = clock()
     deadline_hits = 0
     unread = 0
@@ -199,6 +231,7 @@ def collect(
 
     threads: dict = {}
     other_threads: set = set()
+    thread_case: list = []
     per_role_threaded: dict = {role: 0 for role in ROLES}
     reads = 0
     cost_reads = 0
@@ -241,18 +274,22 @@ def collect(
         role = group_role.get(s.get("agent_group_id"))
         if role is None:
             continue
-        tid = s.get("thread_id") or ""
+        tid_raw = s.get("thread_id") or ""
+        tid = canon_thread(tid_raw)  # hermes-iso-f13 -> hermes-ISO-F13; non-row threads unchanged
         if not tid.startswith("hermes-"):
             continue
         m = THREAD_RE.match(tid)
         if not m:
-            other_threads.add(tid)
+            other_threads.add(tid_raw)
             continue
         if s.get("status") == "closed":
             continue
         row = m.group(1)
         per_role_threaded[role] += 1
-        rec = session_record(s, role)
+        rec = session_record(s, role)  # thread_id stays the REAL one: a send into hermes-ISO-F13 does not reach hermes-iso-f13
+        if tid != tid_raw:
+            rec["thread_case"] = True
+            thread_case.append({"row": row, "session_id": s.get("id"), "role": role, "thread_id_raw": tid_raw})
         if rows is not None and row not in rows:
             # Listed, not read: the dispatch tick still sees the thread exists (never dispatch
             # twice), the supervisor treats the thread as unreadable, and no budget is spent.
@@ -288,8 +325,10 @@ def collect(
         "roles": roles,
         "threads": threads,
         "other_threads": sorted(other_threads),
+        "thread_case": thread_case,
         "sessions_checked": True,
-        "counts": {"sessions_seen": len(sessions), "sessions_read": reads, "cost_status_read": cost_reads, "sessions_unread": unread},
+        "counts": {"sessions_seen": len(sessions), "sessions_read": reads, "cost_status_read": cost_reads, "sessions_unread": unread,
+                   "thread_case": len(thread_case)},
         "filter": {"rows": sorted(rows) if rows is not None else None, "deadline_s": deadline_s},
         "collector_errors": errors,
     }
@@ -324,8 +363,9 @@ def main() -> int:
             "roles": role_groups(groups),
             "threads": {},
             "other_threads": [],
+            "thread_case": [],
             "sessions_checked": False,
-            "counts": {"sessions_seen": 0, "sessions_read": 0, "cost_status_read": 0, "sessions_unread": 0},
+            "counts": {"sessions_seen": 0, "sessions_read": 0, "cost_status_read": 0, "sessions_unread": 0, "thread_case": 0},
             "filter": {"rows": sorted(rows) if rows is not None else None, "deadline_s": args.deadline_s},
             "collector_errors": errors + [{"source": "ncl sessions list", "error": str(exc)}],
         }

@@ -412,11 +412,13 @@ def card_caption(card: dict, rid: str, root: str) -> tuple[str, str]:
 
 def collect_cards(root: str) -> dict:
     """{row: [card]} from rows-board.scan_cards, PNGs only, oldest first (mtime, round, name).
-    Each card gains "dir", "rel" (path relative to root, the state key) and "row"."""
+    Each card gains "dir" (its own card dir), "rel" (path relative to root, the state key) and "row". The row is the
+    CANONICAL one (rows-board.canon_thread — autopilot/rowid.py): a card a role wrote under `hermes-iso-f13` is
+    mirrored into ISO-F13's Slack thread, its state key keeping the real path."""
     rows_board = _rows_board()
     out: dict = {}
     for thread, groups in rows_board.scan_cards(root).items():
-        m = THREAD_RE.match(thread)
+        m = THREAD_RE.match(rows_board.canon_thread(thread))
         if not m:
             continue
         rid = m.group("row")
@@ -425,9 +427,9 @@ def collect_cards(root: str) -> dict:
                 if not card.get("png"):
                     continue
                 c = dict(card)
-                c["dir"] = entry["dir"]
+                c["dir"] = card.get("dir") or entry["dir"]
                 c["row"] = rid
-                c["rel"] = os.path.relpath(os.path.join(entry["dir"], card["png"]), root).replace(os.sep, "/")
+                c["rel"] = os.path.relpath(os.path.join(c["dir"], card["png"]), root).replace(os.sep, "/")
                 out.setdefault(rid, []).append(c)
     for cards in out.values():
         cards.sort(key=lambda c: (c["mtime"], c["round"], c["rel"]))

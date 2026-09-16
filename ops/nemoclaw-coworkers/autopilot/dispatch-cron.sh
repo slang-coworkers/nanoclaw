@@ -140,6 +140,14 @@ ap, raw = os.environ["AP"], os.environ["RAW"]
 ROW_ID = r"[A-Z0-9]+-F[0-9]+(?:\.[a-z])?"
 THREAD_RE = re.compile(rf"^hermes-({ROW_ID})$")
 DISPATCHERS = ("hermes-architect", "orchestrator")
+# Inline copy of rowid.canon_thread (autopilot/rowid.py is the canonical copy; a heredoc cannot import it):
+# hermes-iso-f13 -> hermes-ISO-F13, hermes-Iso-F10.A -> hermes-ISO-F10.a; non-row threads, None, "" unchanged.
+_LOOSE_RE = re.compile(r"^hermes-([A-Za-z0-9]+-[Ff][0-9]+)(\.[A-Za-z])?$")
+def canon_thread(thread):
+    if not isinstance(thread, str) or not thread:
+        return thread
+    m = _LOOSE_RE.match(thread)
+    return thread if not m else "hermes-" + m.group(1).upper() + (m.group(2).lower() if m.group(2) else "")
 
 def read_json(path, default):
     try:
@@ -196,7 +204,7 @@ if os.environ["SESSIONS_OK"] == "1":
     for s in sessions:
         if s.get("agent_group_id") not in dispatch_groups:
             continue
-        m = THREAD_RE.match(s.get("thread_id") or "")
+        m = THREAD_RE.match(canon_thread(s.get("thread_id") or ""))  # a mis-cased thread still marks the row dispatched
         if not m:
             continue
         at = iso_z(s.get("created_at")) or iso_z(s.get("last_active"))

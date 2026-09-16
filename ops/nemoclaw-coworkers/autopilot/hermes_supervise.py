@@ -22,21 +22,26 @@ Inputs:
              number,title,state,isDraft,createdAt,updatedAt,headRefName,body[,headRefOid]
   --nudges   {"<ID>": "<ISO>"} or {"<ID>": {"last_nudge", "state", "count", "alerts": {"<key>": "<ISO>"},
              "texts": [recorded nudge/re-arm texts], "rearms": [{"at": ISO, "text"}] (the sent re-arms, timed)}}
-  --sessions optional {"hermes-<ID>": [{"role", "session_id", "cost_status", "container_status", "status", "last_active"}]}
-             (nudge actions pin the role's live session as target_session_id — one live session per role per row)
-             for cost_hold (`escalated` / `stopped`); absent means no signal
+  --sessions optional {"hermes-<ID>": [{"role", "session_id", "cost_status", "container_status", "status", "last_active"
+             [, "thread_id_raw"]}]} (nudge actions pin the role's live session as target_session_id — one live session
+             per role per row) for cost_hold (`escalated` / `stopped`); absent means no signal. Keys are the CANONICAL
+             row thread (rowid.canon_thread); `thread_id_raw` is the thread the session really lives on when a role
+             opened it mis-cased (`hermes-iso-f13`) — a pinned nudge / re-arm then carries THAT thread
   --acks     optional acks.json from collect-acks.sh (host-side, every 15 min):
              {"generated_at": ISO, "sessions": {"<session_id>": {"status": "completed|processing|bounced-transient|...",
-             "changed": ISO, "role": "hermes-architect", "thread_id": "hermes-<ID>"[, "container_status"]}}}
-             — the newest processing_ack row per session. Missing, malformed or older than ACKS_STALE_H (2 h):
-             the bounce and idle-turn detections below are OFF for the tick (`acks.status`, never a guess)
+             "changed": ISO, "role": "hermes-architect", "thread_id": "hermes-<ID>"[, "thread_id_raw", "container_status",
+             "bounces_24h": n, "last_bounce_at": ISO|null]}}}
+             — the newest processing_ack row per session, plus (when the host log was readable) the count of host
+             re-arms of that session in the last 24 h. Missing, malformed or older than ACKS_STALE_H (2 h):
+             the bounce and idle-turn detections below are OFF for the tick (`acks.status`, never a guess).
+             A session entry without `bounces_24h` gets exactly the pre-history behaviour.
   --config   optional config.json (paused_rows, core_change_ok, authorize_round, release_tag,
              card_check, card_grace_minutes, card_missing_since)
   --now      ISO timestamp
 
 Output: {"now", "rows": {ID: {...}}, "actions": [...], "alerts": [...], "summary": {...}, "acks": {...}}.
 Per row: stage, stage_label, clock_start, last_activity, age_hours, slo_breach,
-escalation_due, hold, cost_hold, infra_hold, bounced, idle_turn, action (none | nudge | escalate),
+escalation_due, hold, cost_hold, infra_hold, bounced, idle_turn, thread_case, action (none | nudge | escalate),
 target_role, message (the nudge text or the alerts.md line), alert_line, status_line, pr, head, rounds, cards.
 
 Three stall shapes the chain markers do not show (autopilot.md §2.5; the 2026-09-15/16 stalls):
@@ -61,6 +66,20 @@ Three stall shapes the chain markers do not show (autopilot.md §2.5; the 2026-0
               second re-arm while the newest ack is still `bounced-*` — the supervisor is the only
               redriver here (host-sweep skips a session whose container is up), and one re-arm per
               outage is the whole budget; the operator spawns fresh by hand (the alert's decision).
+              Bounce HISTORY (ISO-F14, 2026-09-16: three bounces in 66 min, never seen): the host sweep
+              clears the bounced ack when it re-arms, so the newest ack alone hides a repeat. collect-acks.sh
+              counts the host's "Re-armed bounced a2a handoff" log lines per session (`bounces_24h`); a
+              role session with >= 2 in the window raises `bounce-repeat` (the fresh-session ask) even when
+              its newest ack is `completed` / `processing`, and a CURRENT bounce with >= 2 behind it is a
+              repeat, not a re-arm. Same 24 h key as the existing alert; the SLO check still runs after it.
+              A session without the field behaves exactly as before — never a guess.
+  thread_case a role opened its session on a mis-cased row thread (`hermes-iso-f13` for ISO-F13; the
+              2026-09-16 tester/reviewer incident). The collectors attribute it to the row by the canonical
+              thread and keep the real one as `thread_id_raw` (sessions and acks). Here: one `thread-case`
+              alert per (row, raw thread), 24 h bound, riding beside the row's ordinary action (never
+              replacing it); and every pinned nudge / re-arm whose target session lives on such a thread
+              carries THAT thread in `thread_id` (`row_thread_id` = the canonical one) — a message sent into
+              hermes-ISO-F13 does not reach a session on hermes-iso-f13. The durable prevention is the spine.
   idle_turn   the owing role's newest session acked `completed` at T, its container is not running, no
               marker followed T, and T is ≥ half the stage's nudge SLO (min 1 h) old: the role's turn
               ended without the hand-off. The `completed` ack is stamped AFTER the turn's outputs, so a
@@ -862,6 +881,40 @@ def role_ack(acks: dict | None, thread: str, role: str | None) -> dict | None:
             best = {
                 "session_id": sid, "status": str(a.get("status") or ""), "changed_dt": dt, "changed": iso_utc(dt),
                 "container_status": a.get("container_status"),
+                # the thread the session really lives on (collect-acks.sh keeps it when the role mis-cased it)
+                "thread_id_raw": a.get("thread_id_raw") if isinstance(a.get("thread_id_raw"), str) else None,
+                # host re-arms of this session in the last 24 h (collect-acks.sh step 3b); None = unknown, never 0
+                "bounces_24h": _count(a.get("bounces_24h")),
+                "last_bounce_at": a.get("last_bounce_at") if isinstance(a.get("last_bounce_at"), str) else None,
+            }
+    return best
+
+
+def _count(v) -> int | None:
+    """An int count from JSON, or None for anything else (a bool, a string, absent): the field is optional."""
+    return v if isinstance(v, int) and not isinstance(v, bool) and v >= 0 else None
+
+
+def role_bounce_history(acks: dict | None, thread: str, role: str | None) -> dict | None:
+    """The role's session on `thread` with the most host re-arms in the last 24 h (`bounces_24h`, from the host log
+    via collect-acks.sh), or None when no session of the role carries the field — an older acks.json or an
+    unreadable host log: the pre-history behaviour, never a guess."""
+    if not acks or not role:
+        return None
+    want = str(role).strip().lower()
+    best: dict | None = None
+    for sid, a in acks.items():
+        if not isinstance(a, dict) or a.get("thread_id") != thread or str(a.get("role") or "").strip().lower() != want:
+            continue
+        n = _count(a.get("bounces_24h"))
+        if n is None:
+            continue
+        if best is None or n > best["bounces_24h"]:
+            dt = _safe_ts(a.get("changed"))
+            best = {
+                "session_id": sid, "bounces_24h": n, "status": str(a.get("status") or ""), "changed": iso_utc(dt) if dt else None,
+                "last_bounce_at": a.get("last_bounce_at") if isinstance(a.get("last_bounce_at"), str) else None,
+                "thread_id_raw": a.get("thread_id_raw") if isinstance(a.get("thread_id_raw"), str) else None,
             }
     return best
 
@@ -950,6 +1003,17 @@ def _recent_rearm(thread_msgs: list[dict] | None, book: dict, rid: str, role: st
     return h if 0 <= h < NUDGE_BOUND_H else None
 
 
+def _variant_thread(raw, thread) -> str | None:
+    """`raw` when it is a mis-cased spelling of the row thread `thread` (`hermes-iso-f13` for `hermes-ISO-F13`), else
+    None. The row grammar's canonical form is a case fold (rowid.canon_thread), so a variant differs in case only.
+    Anything else on a record's `thread_id_raw` — an INFERRED session's real thread (collect_threads pass 2: a DM,
+    `hermes-P0-LOOP`), an older mirror's stray value — is NOT this row's thread and must never re-route a send: a pin
+    the host rejects falls back to thread routing, and that would spawn the role in the unrelated thread."""
+    if not isinstance(raw, str) or not raw or not isinstance(thread, str) or raw == thread:
+        return None
+    return raw if raw.lower() == thread.lower() else None
+
+
 class _Tick:
     """Per-tick sinks (alerts, actions, summary) plus the 24 h alert bound."""
 
@@ -963,12 +1027,62 @@ class _Tick:
         self.alerts: list[dict] = []
         self.summary = {
             "in_flight": 0, "must_nudge": 0, "escalate": 0, "hold": 0, "cost_hold": 0, "blocked": 0, "gate": 0, "card_missing": 0,
-            "infra_hold": 0, "bounced": 0, "idle_turn": 0, "acks": self.acks_info["status"],
+            "infra_hold": 0, "bounced": 0, "idle_turn": 0, "thread_case": 0, "acks": self.acks_info["status"],
         }
 
     def session_pin(self, rec: dict, role: str | None) -> str | None:
         target = pick_target_session(self.sessions.get(rec["thread_id"]), role)
         return target.get("session_id") if target else None
+
+    def session_thread(self, rec: dict, role: str | None, session_id: str | None = None) -> str:
+        """The thread a send to `role` on this row must name: the pinned session's REAL thread when it lives on a
+        mis-cased one (`thread_id_raw` from --sessions or --acks), else the row's canonical thread."""
+        thread = rec["thread_id"]
+        rows = self.sessions.get(thread) or []
+        if session_id:
+            for r in rows:
+                if not isinstance(r, dict) or r.get("session_id") != session_id:
+                    continue
+                if r.get("inferred"):
+                    return thread  # a pass-2 record: its real thread is not a spelling of this row's
+                raw = r.get("thread_id_raw")
+                if isinstance(raw, str) and raw:
+                    return _variant_thread(raw, thread) or thread
+                break  # no field (a sessions-by-thread.json from an older pull-state.sh): the ack may still carry it
+            a = (self.acks or {}).get(session_id)
+            raw = _variant_thread(a.get("thread_id_raw"), thread) if isinstance(a, dict) else None
+            return raw or thread
+        target = pick_target_session(rows, role)
+        raw = _variant_thread(target.get("thread_id_raw"), thread) if target and not target.get("inferred") else None
+        return raw or thread
+
+    def rearm(self, rec: dict, role: str, session_id: str | None, **fields) -> None:
+        """Decorate the re-arm nudge just emitted (actions[-1]) with the role's REAL session and thread: the
+        Orchestrator sends `rearm_text` with thread_id=<thread_id>, target_session_id=<rearm_session_id>, and a
+        pin the host rejects falls back to thread routing — so the thread must be the one the session lives on."""
+        action = self.actions[-1]
+        thread = self.session_thread(rec, role, session_id)
+        action.update(rearm_role=role, rearm_session_id=session_id, rearm_thread_id=thread, **fields)
+        if thread != rec["thread_id"]:
+            action["thread_id"] = thread
+            action["row_thread_id"] = rec["thread_id"]
+            action["target_session_note"] = (action.get("target_session_note") or "") + f"; {role}'s session lives on mis-cased thread {thread}: send the re-arm there"
+
+    def side_alert(self, rec: dict, book: dict, kind: str, label: str, age_h: float, what: str, decision: str) -> bool:
+        """An alert that rides BESIDE the row's action — the record's action / slo_status are left to the ordinary
+        checks (unlike escalate). One per (kind, label) per row per ALERT_BOUND_H. Returns True when emitted."""
+        key = f"{kind}:{label}"
+        if alerted_recently(book, key, self.now):
+            return False
+        rid = rec["id"]
+        line, status = alert_texts(self.now, rid, label, age_h, what, book, decision, rec["pr"])
+        self.alerts.append({"kind": kind, "row": rid, "state": label, "line": line, "status_line": status, "alert_key": key})
+        self.actions.append({
+            "kind": "alert", "row": rid, "alert_kind": kind, "alert_key": key,
+            "text": line, "status_text": status, "thread_id": "hermes-status",
+        })
+        self.summary["escalate"] += 1
+        return True
 
     def escalate(self, rec: dict, book: dict, kind: str, label: str, age_h: float, what: str, decision: str) -> None:
         key = f"{kind}:{label}"
@@ -990,8 +1104,14 @@ class _Tick:
         target = pick_target_session(self.sessions.get(rec["thread_id"]), role)
         sid = target.get("session_id") if target else None
         rec["target_session_id"] = sid
-        self.actions.append({
-            "kind": "nudge", "row": rec["id"], "target_role": role, "thread_id": rec["thread_id"], "text": text,
+        # The pinned session's REAL thread: a role that opened its session on `hermes-iso-f13` is only reached there
+        # (a rejected pin falls back to thread routing), so the action names that thread and keeps the row's as
+        # row_thread_id. Only a mis-cased SPELLING of the row thread re-routes (_variant_thread): an inferred session's
+        # own thread never does. Unpinned sends stay on the canonical row thread.
+        raw = _variant_thread(target.get("thread_id_raw"), rec["thread_id"]) if sid and not target.get("inferred") else None
+        thread = raw or rec["thread_id"]
+        action = {
+            "kind": "nudge", "row": rec["id"], "target_role": role, "thread_id": thread, "text": text,
             # Pin the role's existing session on this row: without it the send opens a second
             # session for the role (see pick_target_session). null = no known session; the
             # Orchestrator then sends unpinned and the routing fallback applies.
@@ -1001,7 +1121,11 @@ class _Tick:
                 f" ({(target.get('container_status') or 'unknown')} container, {(target.get('status') or 'active')})"
                 if sid else "no known session for this role on the thread; unpinned send"
             ),
-        })
+        }
+        if thread != rec["thread_id"]:
+            action["row_thread_id"] = rec["thread_id"]
+            action["target_session_note"] += f"; it lives on mis-cased thread {thread}: thread_id carries that thread"
+        self.actions.append(action)
         self.summary["must_nudge"] += 1
 
 
@@ -1028,6 +1152,7 @@ def _new_record(rid: str, res: dict, last_activity: str | None, book: dict) -> d
         "infra_hold": None,
         "bounced": None,
         "idle_turn": None,
+        "thread_case": None,
         "env_fail": res.get("env_fail", False),
         "blocker_open": res.get("blocker_open", False),
         "core_change": res.get("core_change", False),
@@ -1114,10 +1239,8 @@ def _infra_hold_action(tick: _Tick, rec: dict, book: dict, thread_msgs: list[dic
         f"{' / the ruling is on this thread' if kind == 'operator-ruling' else ''}. Pick up where you stopped and reply on this thread: status, blocker, ETA."
     )
     tick.nudge(rec, ORCHESTRATOR, text)
-    tick.actions[-1].update(
-        check="infra_hold", alert_kind=kind, hold_ts=ih["ts"], hold_role=hold_role, hold_key=key, rearm_role=hold_role,
-        rearm_text=rearm_text, rearm_session_id=tick.session_pin(rec, hold_role),
-    )
+    tick.rearm(rec, hold_role, tick.session_pin(rec, hold_role), check="infra_hold", alert_kind=kind, hold_ts=ih["ts"],
+               hold_role=hold_role, hold_key=key, rearm_text=rearm_text)
     return True
 
 
@@ -1133,19 +1256,30 @@ def _bounced(tick: _Tick, rec: dict, book: dict, thread_msgs: list[dict] | None,
     key = f"turn at {changed} ended"
     earlier = _rearm_bounce_before(thread_msgs, book, rid, role, ack["changed_dt"])
     transient = status == BOUNCE_TRANSIENT
+    # the role's real thread: a mis-cased session is only reached there (the texts and the action name it)
+    role_thread = _variant_thread(ack.get("thread_id_raw"), rec["thread_id"]) or f"hermes-{rid}"
+    history = ack.get("bounces_24h")  # host re-arms of this session in 24 h (collect-acks.sh); None = unknown
     rec["bounced"] = {"role": role, "session_id": ack["session_id"], "status": status, "changed": changed, "repeat": bool(earlier), "after_rearm_for": earlier}
+    if history is not None:
+        rec["bounced"].update(bounces_24h=history, last_bounce_at=ack.get("last_bounce_at"))
+    if role_thread != f"hermes-{rid}":
+        rec["bounced"]["thread_id_raw"] = role_thread
     tick.summary["bounced"] += 1
     rec["slo_status"] = "bounced"
-    if earlier:
+    if earlier or (history is not None and history >= 2):
+        # a repeat: after the supervisor's own re-arm, or after >= 2 host re-arms in the window (each of which cleared the
+        # bounced ack it retried — the log is the only record). No re-arm either way: one per outage is the budget.
+        rec["bounced"]["repeat"] = True
         fresh = (
             f"the provider outage ({status}) is still on: check the host error log around {changed}, and when the provider is back spawn a fresh {role} session by hand"
             if transient else f"spawn a fresh {role} session by hand; check the host error log around {changed} for the provider/proxy error"
         )
-        tick.escalate(
-            rec, book, "bounce-repeat", stage, age_h,
-            f"{role} bounced again: turn at {changed} ended {status} with no output, after the re-arm for its bounce at {earlier}; no further re-arm from the supervisor",
-            fresh,
-        )
+        if earlier:
+            what = f"{role} bounced again: turn at {changed} ended {status} with no output, after the re-arm for its bounce at {earlier}; no further re-arm from the supervisor"
+        else:
+            what = (f"{role} bounced again: turn at {changed} ended {status} with no output, after {history} host re-arms of session "
+                    f"{ack['session_id']} in 24h (last {ack.get('last_bounce_at') or 'time unknown'}); no re-arm from the supervisor")
+        tick.escalate(rec, book, "bounce-repeat", stage, age_h, what, fresh)
         return
     if _marked_nudge_seen(thread_msgs, rid, book, key, role):
         return
@@ -1160,16 +1294,78 @@ def _bounced(tick: _Tick, rec: dict, book: dict, thread_msgs: list[dict] | None,
         )
     else:
         how = "resume the warm session if it accepts a message, else spawn fresh"
-    text = f"{REARM_PREFIX} {rid} · {role}: re-arm {role} on hermes-{rid}: its last {key} {status} with no output; {how}; reply on this thread."
+    text = f"{REARM_PREFIX} {rid} · {role}: re-arm {role} on {role_thread}: its last {key} {status} with no output; {how}; reply on this thread."
     rearm_text = (
-        f"{REARM_PREFIX} {rid} · {role}: resume, no new round — your last {key} {status} with no output on thread hermes-{rid}. "
+        f"{REARM_PREFIX} {rid} · {role}: resume, no new round — your last {key} {status} with no output on thread {role_thread}. "
         "Re-read your task memory, pick up where that turn stopped, and reply on this thread: status, blocker, ETA."
     )
     tick.nudge(rec, ORCHESTRATOR, text)
-    tick.actions[-1].update(
-        check="bounced", ack_status=status, ack_changed=changed, transient=transient, repeat=False, rearm_role=role,
-        rearm_text=rearm_text, rearm_session_id=ack["session_id"],
+    tick.rearm(rec, role, ack["session_id"], check="bounced", ack_status=status, ack_changed=changed, transient=transient, repeat=False,
+               rearm_text=rearm_text)
+
+
+def _bounce_history_alert(tick: _Tick, rec: dict, book: dict, role: str, stage: str, age_h: float, hist: dict) -> None:
+    """§2.5 bounce repeat read from the HOST LOG: the role's session was re-armed by the host >= 2 times in 24 h
+    (ISO-F14, 2026-09-16: three bounces in 66 min) while its newest ack reads `completed` / `processing` — the sweep
+    clears the bounced ack it retries, so only the log shows the repeat. The existing `bounce-repeat` alert (the
+    fresh-session ask), same 24 h key per (row, state); the row's ordinary checks still run after it."""
+    n, sid = hist["bounces_24h"], hist["session_id"]
+    last = hist.get("last_bounce_at") or "time unknown (see collect-acks bounce_log)"
+    rec["bounced"] = {
+        "role": role, "session_id": sid, "status": hist.get("status"), "changed": hist.get("changed"), "repeat": True, "after_rearm_for": None,
+        "bounces_24h": n, "last_bounce_at": hist.get("last_bounce_at"), "source": "host-log",
+    }
+    raw = _variant_thread(hist.get("thread_id_raw"), rec["thread_id"])
+    if raw:
+        rec["bounced"]["thread_id_raw"] = raw
+    tick.summary["bounced"] += 1
+    tick.escalate(
+        rec, book, "bounce-repeat", stage, age_h,
+        f"{role} session {sid} bounced {n}× in 24h (host re-armed it each time, last {last}; newest ack "
+        f"{hist.get('status') or 'none — no processing_ack row, the sweep deleted the bounced claim'} at {hist.get('changed') or '?'}); no re-arm from the supervisor",
+        f"check the host error log around {last} for the provider/proxy error; if it bounces again, spawn a fresh {role} session by hand",
     )
+
+
+def _thread_case(tick: _Tick, rec: dict, book: dict, age_h: float) -> None:
+    """§2.5 mis-cased row thread (ISO-F13, 2026-09-16): a role opened its session on `hermes-iso-f13`; the collectors
+    attribute it to the row and keep the real thread as `thread_id_raw` (--sessions and --acks). One `thread-case`
+    alert per (row, raw thread), 24 h bound, beside the row's ordinary action — it changes no stage, no clock, no
+    nudge. The durable prevention lives in the spine; this only makes the stray thread visible."""
+    thread, rid = rec["thread_id"], rec["id"]
+    found: dict[str, dict] = {}
+    for s in tick.sessions.get(thread) or []:
+        if not isinstance(s, dict) or s.get("inferred"):
+            continue  # a pass-2 record's real thread (a DM, hermes-P0-LOOP) is not a spelling of this row's
+        raw = _variant_thread(s.get("thread_id_raw"), thread)
+        if raw:
+            e = found.setdefault(raw, {"thread_id_raw": raw, "roles": [], "session_ids": []})
+            if s.get("role") and s["role"] not in e["roles"]:
+                e["roles"].append(s["role"])
+            if s.get("session_id") and s["session_id"] not in e["session_ids"]:
+                e["session_ids"].append(s["session_id"])
+    for sid, a in (tick.acks or {}).items():
+        if not isinstance(a, dict) or a.get("thread_id") != thread:
+            continue  # acks_status checks the map, not each entry: a malformed one must not kill the tick
+        raw = _variant_thread(a.get("thread_id_raw"), thread)
+        if raw:
+            e = found.setdefault(raw, {"thread_id_raw": raw, "roles": [], "session_ids": []})
+            if a.get("role") and a["role"] not in e["roles"]:
+                e["roles"].append(a["role"])
+            if sid not in e["session_ids"]:
+                e["session_ids"].append(sid)
+    if not found:
+        return
+    rec["thread_case"] = [found[k] for k in sorted(found)]
+    tick.summary["thread_case"] += 1
+    for e in rec["thread_case"]:
+        roles = ", ".join(e["roles"]) or "a role"
+        tick.side_alert(
+            rec, book, "thread-case", e["thread_id_raw"], age_h,
+            f"{roles} opened session(s) {', '.join(e['session_ids'])} on mis-cased thread {e['thread_id_raw']} (row thread {thread}); "
+            "attributed to the row here, nudges/re-arms to them carry the raw thread",
+            f"have the sender address hermes-{rid} exactly (the spine's thread-id rule is the durable fix); once the row is done, close the stray session(s)",
+        )
 
 
 def _turn_ended_with_alternative(thread_msgs: list[dict] | None, events: list[dict], role: str, ended: datetime, rid: str) -> bool:
@@ -1297,6 +1493,9 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
         _hold_action(tick, rec, book, gating, rid, hold, stage, age_h)
         return rec
 
+    # mis-cased row thread (§2.5): informational, beside whatever the row's ordinary action turns out to be.
+    _thread_case(tick, rec, book, age_h)
+
     # infra / operator hold (§2.5): the role said it cannot proceed; alert now, re-arm through the Orchestrator.
     # Only a re-arm SENT this tick ends the row's turn here; otherwise the ordinary SLO check below still runs
     # (a re-armed role that stalls again must not hide behind its old hold).
@@ -1338,6 +1537,11 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
         if last_out is None or ack["changed_dt"] > last_out:
             _bounced(tick, rec, book, thread_msgs, role, stage, age_h, ack)
             return rec
+    # bounce history (§2.5): >= 2 host re-arms of a role session in 24 h is the repeat alert even when the newest ack is
+    # not bounced (the sweep cleared the ones it retried). Missing field = nothing; the ordinary checks continue.
+    hist = role_bounce_history(tick.acks, thread, role) if tick.acks_ok and role and role != ORCHESTRATOR else None
+    if hist and hist["bounces_24h"] >= 2 and rec["bounced"] is None:
+        _bounce_history_alert(tick, rec, book, role, stage, age_h, hist)
     if ack and ack["status"] == "completed":
         rec["idle_turn"] = _idle_turn(tick, rec, events, thread_msgs, role, ack, clock, nudge_h, sessions)
         if rec["idle_turn"]:

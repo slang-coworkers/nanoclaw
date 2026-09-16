@@ -1138,6 +1138,248 @@ class BouncedTurn(unittest.TestCase):
         self.assertIsNone(r["bounced"])
 
 
+class BounceHistory(unittest.TestCase):
+    """ISO-F14, 2026-09-16: the architect bounced three times in 66 min; the host sweep re-armed it each time and
+    cleared the bounced ack it retried, so acks.json read `completed` / `processing` at every tick and the repeat was
+    never raised. collect-acks.sh now counts the host's re-arm log lines per session (`bounces_24h`)."""
+
+    def setUp(self):
+        self.st, base = dispatched_row("ISO-F14", 4)
+        self.threads = {"hermes-ISO-F14": base + [msg(3.5, "ack — addendum noted, resuming", sender="hermes-architect")]}
+        self.sessions = {"hermes-ISO-F14": [
+            {"role": "hermes-architect", "session_id": "s-a14", "cost_status": "ok", "container_status": "stopped", "status": "active"},
+            {"role": "orchestrator", "session_id": "s-o14", "cost_status": "ok", "container_status": "stopped", "status": "active"},
+        ]}
+
+    def hist(self, status: str, changed_h: float, n, last_h: float | None = 1.0) -> dict:
+        extra = {"bounces_24h": n, "last_bounce_at": ago(last_h) if last_h is not None else None}
+        return acks(("s-a14", status, changed_h, "hermes-architect", "hermes-ISO-F14", extra))
+
+    def test_two_host_rearms_with_a_completed_ack_is_bounce_repeat_once(self):
+        out = run(self.st, self.threads, sessions=self.sessions, acks=self.hist("completed", 2.0, 2))
+        r = out["rows"]["ISO-F14"]
+        self.assertEqual(r["bounced"], {"role": "hermes-architect", "session_id": "s-a14", "status": "completed", "changed": ago(2.0), "repeat": True,
+                                        "after_rearm_for": None, "bounces_24h": 2, "last_bounce_at": ago(1.0), "source": "host-log"})
+        self.assertEqual([(a["kind"], a["alert_kind"], a["alert_key"]) for a in out["actions"]], [("alert", "bounce-repeat", "bounce-repeat:dispatched")])
+        self.assertIn(f"hermes-architect session s-a14 bounced 2× in 24h (host re-armed it each time, last {ago(1.0)}; newest ack completed at {ago(2.0)}); "
+                      "no re-arm from the supervisor", r["alert_line"])
+        self.assertIn(f"decision: check the host error log around {ago(1.0)} for the provider/proxy error; if it bounces again, spawn a fresh hermes-architect session by hand",
+                      r["alert_line"])
+        self.assertEqual((out["summary"]["bounced"], out["summary"]["escalate"], out["summary"]["must_nudge"]), (1, 1, 0))
+        # once: the same 24 h key as the ack-based repeat
+        quiet = run(self.st, self.threads, sessions=self.sessions, acks=self.hist("completed", 2.0, 2), nudges={"ISO-F14": {"alerts": {"bounce-repeat:dispatched": ago(0.5)}}})
+        self.assertEqual(quiet["actions"], [])
+        self.assertEqual(quiet["rows"]["ISO-F14"]["bounced"]["repeat"], True)  # still reported on the row
+        # a `processing` ack (the redrive is running now) with 3 behind it: the alert, and no timestamp is invented
+        proc = run(self.st, self.threads, sessions=self.sessions, acks=self.hist("processing", 0.2, 3, last_h=None))
+        self.assertEqual([a["alert_kind"] for a in proc["actions"]], ["bounce-repeat"])
+        self.assertIn("bounced 3× in 24h (host re-armed it each time, last time unknown (see collect-acks bounce_log)", proc["rows"]["ISO-F14"]["alert_line"])
+        # the ordinary checks still run beside it: a 7 h old dispatch also draws its SLO nudge
+        st7, base7 = dispatched_row("ISO-F14", 7)
+        both = run(st7, {"hermes-ISO-F14": base7}, sessions=self.sessions, acks=self.hist("completed", 2.0, 2))
+        self.assertEqual([(a["kind"], a.get("target_role"), a.get("alert_kind")) for a in both["actions"]], [("nudge", "hermes-architect", None), ("alert", None, "bounce-repeat")])
+        self.assertEqual(both["rows"]["ISO-F14"]["slo_status"], "breached")
+
+    def test_one_host_rearm_or_no_field_is_nothing(self):
+        one = run(self.st, self.threads, sessions=self.sessions, acks=self.hist("completed", 2.0, 1))
+        self.assertEqual((one["actions"], one["rows"]["ISO-F14"]["bounced"], one["summary"]["bounced"]), ([], None, 0))
+        plain = run(self.st, self.threads, sessions=self.sessions, acks=acks(("s-a14", "completed", 2.0, "hermes-architect", "hermes-ISO-F14")))
+        self.assertEqual((plain["actions"], plain["rows"]["ISO-F14"]["bounced"]), ([], None))
+        # a count that is not an int is not a count (never guess); another role's or thread's history is not this row's
+        for bad in ("2", 2.0, True, None, -1):
+            with self.subTest(bad=bad):
+                out = run(self.st, self.threads, sessions=self.sessions, acks=self.hist("completed", 2.0, bad))
+                self.assertEqual((out["actions"], out["rows"]["ISO-F14"]["bounced"]), ([], None))
+        other = acks(("s-b14", "completed", 1.0, "hermes-builder", "hermes-ISO-F14", {"bounces_24h": 5}),
+                     ("s-a13", "completed", 1.0, "hermes-architect", "hermes-ISO-F13", {"bounces_24h": 5}))
+        out = run(self.st, self.threads, sessions=self.sessions, acks=other)
+        self.assertEqual((out["actions"], out["rows"]["ISO-F14"]["bounced"]), ([], None))
+        # stale acks: off, as for every ack-based check
+        stale = self.hist("completed", 2.0, 3)
+        stale["generated_at"] = ago(3.0)
+        out = run(self.st, self.threads, sessions=self.sessions, acks=stale)
+        self.assertEqual((out["actions"], out["acks"]["status"]), ([], "stale"))
+
+    def test_ack_less_session_with_host_rearms_is_a_repeat_too(self):
+        """A first-turn session whose only ack row was the bounced one the sweep deleted: collect-acks.sh writes an
+        ack-less entry (status / changed null, ack_empty) carrying the log's count. role_ack reads no current ack from
+        it; the repeat alert still fires, and no timestamp or status is invented in its text."""
+        entry = {"status": None, "changed": None, "message_id": None, "ack_empty": True, "role": "hermes-architect", "thread_id": "hermes-ISO-F14",
+                 "thread_id_raw": "hermes-ISO-F14", "container_status": "stopped", "bounces_24h": 3, "last_bounce_at": ago(0.3)}
+        ak = {"generated_at": ago(0.1), "sessions": {"s-a14": entry}}
+        self.assertIsNone(hs.role_ack(ak["sessions"], "hermes-ISO-F14", "hermes-architect"))
+        out = run(self.st, self.threads, sessions=self.sessions, acks=ak)
+        r = out["rows"]["ISO-F14"]
+        self.assertEqual((r["bounced"]["bounces_24h"], r["bounced"]["status"], r["bounced"]["changed"], r["bounced"]["source"]), (3, "", None, "host-log"))
+        self.assertEqual([a["alert_kind"] for a in out["actions"]], ["bounce-repeat"])
+        self.assertIn(f"bounced 3× in 24h (host re-armed it each time, last {ago(0.3)}; newest ack none — no processing_ack row, "
+                      "the sweep deleted the bounced claim at ?)", r["alert_line"])
+        self.assertIsNone(r["idle_turn"])
+        # one re-arm behind it: nothing, as for any session
+        one = {"generated_at": ago(0.1), "sessions": {"s-a14": dict(entry, bounces_24h=1)}}
+        self.assertEqual(run(self.st, self.threads, sessions=self.sessions, acks=one)["actions"], [])
+
+    def test_current_bounce_with_two_host_rearms_is_a_repeat_not_a_rearm(self):
+        out = run(self.st, self.threads, sessions=self.sessions, acks=self.hist("bounced-transient", 3.0, 2, last_h=3.2))
+        r = out["rows"]["ISO-F14"]
+        self.assertEqual((r["bounced"]["repeat"], r["bounced"]["after_rearm_for"], r["bounced"]["bounces_24h"], r["bounced"]["last_bounce_at"]), (True, None, 2, ago(3.2)))
+        self.assertEqual([a["kind"] for a in out["actions"]], ["alert"])
+        self.assertIn(f"after 2 host re-arms of session s-a14 in 24h (last {ago(3.2)}); no re-arm from the supervisor", r["alert_line"])
+        self.assertIn(f"decision: the provider outage (bounced-transient) is still on: check the host error log around {ago(3.0)}", r["alert_line"])
+        self.assertEqual((r["slo_status"], r["alert_kind"]), ("escalated", "bounce-repeat"))
+        # one host re-arm behind it: the ordinary first re-arm, the count reported on the row
+        one = run(self.st, self.threads, sessions=self.sessions, acks=self.hist("bounced-transient", 3.0, 1))
+        n = next(a for a in one["actions"] if a["kind"] == "nudge")
+        self.assertEqual((n["check"], n["rearm_session_id"], n["rearm_thread_id"], n["thread_id"]), ("bounced", "s-a14", "hermes-ISO-F14", "hermes-ISO-F14"))
+        self.assertNotIn("row_thread_id", n)
+        self.assertEqual((one["rows"]["ISO-F14"]["bounced"]["bounces_24h"], one["rows"]["ISO-F14"]["bounced"]["repeat"]), (1, False))
+
+
+class ThreadCase(unittest.TestCase):
+    """ISO-F13, 2026-09-16: the builder addressed tester and reviewer with thread `hermes-iso-f13`; NanoClaw keyed
+    their sessions on that string. The collectors now attribute such sessions to the row (canonical thread) and keep
+    the real thread as `thread_id_raw`; the supervisor alerts once per (row, raw thread) and sends every pinned nudge /
+    re-arm into the thread the session really lives on."""
+
+    def setUp(self):
+        self.st, base = dispatched_row("ISO-F13", 4)
+        self.threads = {"hermes-ISO-F13": base + [msg(3.5, "ISO-F13 research done — spec next", sender="hermes-architect")]}
+        self.canon = {"role": "hermes-architect", "session_id": "s-a13", "cost_status": "ok", "container_status": "stopped", "status": "active", "thread_id_raw": "hermes-ISO-F13"}
+        self.stray = {"role": "hermes-tester", "session_id": "s-t13", "cost_status": "ok", "container_status": "stopped", "status": "active", "thread_id_raw": "hermes-iso-f13"}
+        self.orch = {"role": "orchestrator", "session_id": "s-o13", "cost_status": "ok", "container_status": "stopped", "status": "active"}
+
+    def test_alert_once_per_row_and_raw_thread_beside_the_ordinary_action(self):
+        sessions = {"hermes-ISO-F13": [self.canon, self.stray, self.orch]}
+        out = run(self.st, self.threads, sessions=sessions)
+        r = out["rows"]["ISO-F13"]
+        self.assertEqual(r["thread_case"], [{"thread_id_raw": "hermes-iso-f13", "roles": ["hermes-tester"], "session_ids": ["s-t13"]}])
+        self.assertEqual([(a["kind"], a["alert_kind"], a["alert_key"], a["thread_id"]) for a in out["actions"]],
+                         [("alert", "thread-case", "thread-case:hermes-iso-f13", "hermes-status")])
+        line = out["actions"][0]["text"]
+        self.assertIn("ISO-F13 · hermes-iso-f13 4h · hermes-tester opened session(s) s-t13 on mis-cased thread hermes-iso-f13 (row thread hermes-ISO-F13)", line)
+        self.assertIn("decision: have the sender address hermes-ISO-F13 exactly", line)
+        # informational: the row's own state and action are untouched (4 h dispatched: nothing due)
+        self.assertEqual((r["stage"], r["action"], r["slo_status"], r["alert_kind"]), ("dispatched", "none", "ok", None))
+        self.assertEqual((out["summary"]["thread_case"], out["summary"]["escalate"]), (1, 1))
+        # 24 h bound per (row, raw thread)
+        quiet = run(self.st, self.threads, sessions=sessions, nudges={"ISO-F13": {"alerts": {"thread-case:hermes-iso-f13": ago(2.0)}}})
+        self.assertEqual(quiet["actions"], [])
+        self.assertEqual(quiet["rows"]["ISO-F13"]["thread_case"][0]["thread_id_raw"], "hermes-iso-f13")  # still on the row
+        # a second stray spelling is a second alert; the same one from the acks adds its role, not a duplicate
+        rev = dict(self.stray, role="hermes-reviewer", session_id="s-r13", thread_id_raw="hermes-Iso-F13")
+        ak = acks(("s-t13", "completed", 1.0, "hermes-tester", "hermes-ISO-F13", {"thread_id_raw": "hermes-iso-f13"}),
+                  ("s-b13", "completed", 1.0, "hermes-builder", "hermes-ISO-F13", {"thread_id_raw": "hermes-iso-f13"}))
+        two = run(self.st, self.threads, sessions={"hermes-ISO-F13": [self.canon, self.stray, rev, self.orch]}, acks=ak)
+        self.assertEqual(two["rows"]["ISO-F13"]["thread_case"], [
+            {"thread_id_raw": "hermes-Iso-F13", "roles": ["hermes-reviewer"], "session_ids": ["s-r13"]},
+            {"thread_id_raw": "hermes-iso-f13", "roles": ["hermes-tester", "hermes-builder"], "session_ids": ["s-t13", "s-b13"]},
+        ])
+        self.assertEqual(sorted(a["alert_key"] for a in two["actions"]), ["thread-case:hermes-Iso-F13", "thread-case:hermes-iso-f13"])
+        # acks alone (no sessions file) are evidence too; canonical threads everywhere draw nothing
+        only_acks = run(self.st, self.threads, acks=ak)
+        self.assertEqual([a["alert_key"] for a in only_acks["actions"]], ["thread-case:hermes-iso-f13"])
+        none = run(self.st, self.threads, sessions={"hermes-ISO-F13": [self.canon, self.orch]})
+        self.assertEqual((none["actions"], none["rows"]["ISO-F13"]["thread_case"], none["summary"]["thread_case"]), ([], None, 0))
+        # a paused row is silent, as for every other action
+        paused = run(self.st, self.threads, sessions=sessions, config={"paused_rows": ["ISO-F13"]})
+        self.assertEqual([a["kind"] for a in paused["actions"]], ["hold"])
+
+    def test_pinned_nudges_and_rearms_carry_the_sessions_real_thread(self):
+        # the ARCHITECT itself sits on the mis-cased thread: its SLO nudge is pinned to that session and names that thread
+        arch = dict(self.canon, thread_id_raw="hermes-iso-f13")
+        st7, base7 = dispatched_row("ISO-F13", 7)
+        out = run(st7, {"hermes-ISO-F13": base7}, sessions={"hermes-ISO-F13": [arch, self.orch]})
+        n = next(a for a in out["actions"] if a["kind"] == "nudge")
+        self.assertEqual((n["target_role"], n["target_session_id"], n["thread_id"], n["row_thread_id"]), ("hermes-architect", "s-a13", "hermes-iso-f13", "hermes-ISO-F13"))
+        self.assertIn("it lives on mis-cased thread hermes-iso-f13: thread_id carries that thread", n["target_session_note"])
+        self.assertTrue(n["text"].startswith("Supervisor nudge ISO-F13:"), n["text"])
+        self.assertEqual([a["alert_key"] for a in out["actions"] if a["kind"] == "alert"], ["thread-case:hermes-iso-f13"])
+        # a bounce of that session: the re-arm is addressed to the Orchestrator's row session, but the send it asks for
+        # goes into the REAL thread, pinned to the REAL session — the texts name it, the action's thread_id carries it
+        ak = acks(("s-a13", "bounced-transient", 3.0, "hermes-architect", "hermes-ISO-F13", {"thread_id_raw": "hermes-iso-f13"}))
+        b = run(self.st, self.threads, sessions={"hermes-ISO-F13": [arch, self.orch]}, acks=ak)
+        n = next(a for a in b["actions"] if a["kind"] == "nudge")
+        self.assertEqual((n["check"], n["target_role"], n["target_session_id"]), ("bounced", "orchestrator", "s-o13"))
+        self.assertEqual((n["rearm_role"], n["rearm_session_id"], n["rearm_thread_id"], n["thread_id"], n["row_thread_id"]),
+                         ("hermes-architect", "s-a13", "hermes-iso-f13", "hermes-iso-f13", "hermes-ISO-F13"))
+        self.assertIn("re-arm hermes-architect on hermes-iso-f13:", n["text"])
+        self.assertIn("with no output on thread hermes-iso-f13.", n["rearm_text"])
+        self.assertEqual(b["rows"]["ISO-F13"]["bounced"]["thread_id_raw"], "hermes-iso-f13")
+        self.assertIn("; hermes-architect's session lives on mis-cased thread hermes-iso-f13: send the re-arm there", n["target_session_note"])
+        # the ack alone knows the raw thread (no sessions file): the re-arm still carries it
+        b2 = run(self.st, self.threads, acks=ak)
+        n2 = next(a for a in b2["actions"] if a["kind"] == "nudge")
+        self.assertEqual((n2["rearm_thread_id"], n2["thread_id"], n2["target_session_id"]), ("hermes-iso-f13", "hermes-iso-f13", None))
+        # an infra-hold re-arm pins the hold role's session and its real thread the same way
+        hold_threads = {"hermes-ISO-F13": self.threads["hermes-ISO-F13"] + [msg(3, "HOLD on ISO-F13 — codex is down, parking", sender="hermes-architect")]}
+        h = run(self.st, hold_threads, sessions={"hermes-ISO-F13": [arch, self.orch]})
+        n3 = next(a for a in h["actions"] if a["kind"] == "nudge")
+        self.assertEqual((n3["check"], n3["rearm_session_id"], n3["rearm_thread_id"], n3["thread_id"]), ("infra_hold", "s-a13", "hermes-iso-f13", "hermes-iso-f13"))
+        # a canonical session: thread_id is the row thread and no row_thread_id is added (the pre-incident shape)
+        c = run(st7, {"hermes-ISO-F13": base7}, sessions={"hermes-ISO-F13": [self.canon, self.orch]})
+        n4 = next(a for a in c["actions"] if a["kind"] == "nudge")
+        self.assertEqual(n4["thread_id"], "hermes-ISO-F13")
+        self.assertNotIn("row_thread_id", n4)
+
+
+    def test_inferred_or_unrelated_thread_is_not_a_thread_case_and_never_reroutes(self):
+        """collect_threads pass 2 attaches a role's session that only MENTIONS the row: it lives on a DM / `hermes-P0-LOOP`,
+        which is not a spelling of the row thread. No thread-case alert, and the row's nudge stays pinned to it on the
+        CANONICAL thread — re-routing would spawn the role in that unrelated thread once the host rejected the pin."""
+        st7, base7 = dispatched_row("ISO-F13", 7)
+        inferred = dict(self.canon, inferred=True, thread_id_raw="hermes-P0-LOOP")
+        out = run(st7, {"hermes-ISO-F13": base7}, sessions={"hermes-ISO-F13": [inferred, self.orch]})
+        self.assertEqual([a["kind"] for a in out["actions"]], ["nudge"])
+        n = out["actions"][0]
+        self.assertEqual((n["target_role"], n["target_session_id"], n["thread_id"]), ("hermes-architect", "s-a13", "hermes-ISO-F13"))
+        self.assertNotIn("row_thread_id", n)
+        self.assertNotIn("mis-cased", n["target_session_note"])
+        self.assertEqual((out["rows"]["ISO-F13"]["thread_case"], out["summary"]["thread_case"]), (None, 0))
+        # a non-inferred record whose thread_id_raw is some OTHER thread (an older mirror's stray value): not a spelling either
+        stray = dict(self.canon, thread_id_raw="hermes-P0-LOOP")
+        out2 = run(st7, {"hermes-ISO-F13": base7}, sessions={"hermes-ISO-F13": [stray, self.orch]})
+        self.assertEqual([(a["kind"], a["thread_id"]) for a in out2["actions"]], [("nudge", "hermes-ISO-F13")])
+        self.assertIsNone(out2["rows"]["ISO-F13"]["thread_case"])
+        # a bounce of the inferred pinned session: the re-arm goes to the canonical thread too
+        ak = acks(("s-a13", "bounced-transient", 3.0, "hermes-architect", "hermes-ISO-F13"))
+        b = run(self.st, self.threads, sessions={"hermes-ISO-F13": [inferred, self.orch]}, acks=ak)
+        n = next(a for a in b["actions"] if a["kind"] == "nudge")
+        self.assertEqual((n["check"], n["rearm_session_id"], n["rearm_thread_id"], n["thread_id"]), ("bounced", "s-a13", "hermes-ISO-F13", "hermes-ISO-F13"))
+        self.assertNotIn("row_thread_id", n)
+        # the rule itself: a variant differs in case only
+        self.assertEqual(hs._variant_thread("hermes-iso-f13", "hermes-ISO-F13"), "hermes-iso-f13")
+        self.assertEqual(hs._variant_thread("hermes-Iso-F13", "hermes-ISO-F13"), "hermes-Iso-F13")
+        for not_variant in ("hermes-ISO-F13", "hermes-P0-LOOP", "hermes-ISO-F14", "hermes-status", "", None, 7):
+            self.assertIsNone(hs._variant_thread(not_variant, "hermes-ISO-F13"), not_variant)
+
+    def test_malformed_acks_entries_do_not_kill_the_tick(self):
+        """acks_status validates the `sessions` map, not each entry: a None / str / int / list value beside a good one must
+        not raise in the thread-case scan, which runs for every in-flight row on every tick."""
+        good = acks(("s-t13", "completed", 1.0, "hermes-tester", "hermes-ISO-F13", {"thread_id_raw": "hermes-iso-f13"}))
+        for bad in (None, "garbage", 7, ["list"]):
+            with self.subTest(bad=bad):
+                ak = json.loads(json.dumps(good))
+                ak["sessions"]["s-bad"] = bad
+                out = run(self.st, self.threads, sessions={"hermes-ISO-F13": [self.canon, self.orch]}, acks=ak)
+                self.assertEqual(out["rows"]["ISO-F13"]["thread_case"], [{"thread_id_raw": "hermes-iso-f13", "roles": ["hermes-tester"], "session_ids": ["s-t13"]}])
+                self.assertEqual([a["alert_key"] for a in out["actions"]], ["thread-case:hermes-iso-f13"])
+
+    def test_acks_raw_thread_wins_over_a_sessions_record_without_the_field(self):
+        """A sessions-by-thread.json from a pull-state.sh mirror that predates thread_id_raw, beside an acks.json that
+        carries it: the re-arm is addressed to the thread the host says the session lives on, not the canonical one."""
+        old = {k: v for k, v in self.canon.items() if k != "thread_id_raw"}
+        ak = acks(("s-a13", "bounced-transient", 3.0, "hermes-architect", "hermes-ISO-F13", {"thread_id_raw": "hermes-iso-f13"}))
+        out = run(self.st, self.threads, sessions={"hermes-ISO-F13": [old, self.orch]}, acks=ak)
+        n = next(a for a in out["actions"] if a["kind"] == "nudge")
+        self.assertEqual((n["rearm_session_id"], n["rearm_thread_id"], n["thread_id"], n["row_thread_id"]), ("s-a13", "hermes-iso-f13", "hermes-iso-f13", "hermes-ISO-F13"))
+        rec = {"thread_id": "hermes-ISO-F13"}
+        self.assertEqual(hs._Tick(NOW_DT, sessions={"hermes-ISO-F13": [old]}, acks=ak).session_thread(rec, "hermes-architect", "s-a13"), "hermes-iso-f13")
+        # a record that does carry the field is read as written (fresher than the 15-min acks file)
+        self.assertEqual(hs._Tick(NOW_DT, sessions={"hermes-ISO-F13": [self.canon]}, acks=ak).session_thread(rec, "hermes-architect", "s-a13"), "hermes-ISO-F13")
+        # neither knows the session: the canonical thread
+        self.assertEqual(hs._Tick(NOW_DT, sessions={}, acks=None).session_thread(rec, "hermes-architect", "s-zzz"), "hermes-ISO-F13")
+
+
 class IdleTurn(unittest.TestCase):
     """ISO-F13, 2026-09-15: the architect's turn ended right after "research done" with no [Spec handoff];
     the container was gone; the row read as progressing for the whole 6 h SLO."""
@@ -1320,6 +1562,7 @@ class CollectAcksScript(unittest.TestCase):
                 "s-b58|hermes-builder|Builder|hermes-OPS-F58.a|stopped|active|ag-build\n"
                 "s-r21|hermes-reviewer-v2|hermes-reviewer|hermes-A2A-F21|stopped|active|ag-rev2\n"  # folder is not a role, NAME is
                 "s-z21|hermes-scribe|Scribe|hermes-A2A-F21|stopped|active|ag-scribe\n"  # neither is: flagged, never a silent miss
+                "s-r13|hermes-reviewer|hermes-reviewer|hermes-iso-f13|stopped|active|ag-rev\n"  # the 2026-09-16 mis-cased thread: attributed to ISO-F13
                 "s-x|orchestrator|Orchestrator|hermes-status|stopped|active|ag-orch\n"  # not a matrix row
                 "s-y|hermes-builder|Builder|hermes-P0-LOOP|stopped|active|ag-build\n"  # not a matrix row
             )
@@ -1331,6 +1574,7 @@ class CollectAcksScript(unittest.TestCase):
                 {"path": f"{d}/data/v2-sessions/ag-build/s-b58/outbound.db", "empty": True},
                 {"path": f"{d}/data/v2-sessions/ag-rev2/s-r21/outbound.db", "message_id": "m4", "status": "completed", "changed": "2026-09-15T18:30:00Z"},
                 {"path": f"{d}/data/v2-sessions/ag-scribe/s-z21/outbound.db", "message_id": "m5", "status": "completed", "changed": "2026-09-15T18:30:00Z"},
+                {"path": f"{d}/data/v2-sessions/ag-rev/s-r13/outbound.db", "message_id": "m6", "status": "completed", "changed": "2026-09-15T18:40:00Z"},
                 {"path": f"{d}/data/v2-sessions/ag-orch/s-x/outbound.db", "message_id": "m3", "status": "completed", "changed": "2026-09-15T18:00:00Z"},
             ]))
             out = Path(d) / "shared" / "acks.json"
@@ -1338,17 +1582,30 @@ class CollectAcksScript(unittest.TestCase):
             self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
             doc = json.loads(out.read_text())
             self.assertEqual((doc["generated_at"], doc["source"]), (NOW, "fixture"))
-            self.assertEqual(set(doc["sessions"]), {"s-a14", "s-o14", "s-r21", "s-z21"})
+            self.assertEqual(set(doc["sessions"]), {"s-a14", "s-o14", "s-r21", "s-z21", "s-r13"})
+            # no host log under this ROOT: the two bounce-history fields are OMITTED (the supervisor then behaves as before)
             self.assertEqual(doc["sessions"]["s-a14"], {
                 "status": "bounced-transient", "changed": "2026-09-15T17:00:00.123Z", "message_id": "m1",
-                "role": "hermes-architect", "thread_id": "hermes-ISO-F14", "container_status": "stopped",
+                "role": "hermes-architect", "thread_id": "hermes-ISO-F14", "thread_id_raw": "hermes-ISO-F14", "container_status": "stopped",
             })
+            self.assertEqual(doc["bounce_log"]["status"], "missing")
+            self.assertIn("bounce history off (host log unreadable", p.stdout)
+            # the mis-cased thread: attributed to ISO-F13 by the canonical thread_id, the real thread kept, flagged and listed
+            r13 = doc["sessions"]["s-r13"]
+            self.assertEqual((r13["thread_id"], r13["thread_id_raw"], r13["thread_case"], r13["role"]), ("hermes-ISO-F13", "hermes-iso-f13", True, "hermes-reviewer"))
+            self.assertEqual(doc["thread_case"], [{"session_id": "s-r13", "role": "hermes-reviewer", "thread_id": "hermes-ISO-F13", "thread_id_raw": "hermes-iso-f13"}])
+            self.assertEqual(doc["counts"]["thread_case"], 1)
+            self.assertIn("THREAD-CASE: session s-r13 (hermes-reviewer) lives on thread 'hermes-iso-f13', row thread is 'hermes-ISO-F13'", p.stdout)
+            self.assertIn("thread case 1", p.stdout)
+            self.assertNotIn("thread_case", doc["sessions"]["s-a14"])
+            self.assertEqual(hs.role_ack(doc["sessions"], "hermes-ISO-F13", "hermes-reviewer")["session_id"], "s-r13")
+            self.assertEqual(hs.role_ack(doc["sessions"], "hermes-ISO-F13", "hermes-reviewer")["thread_id_raw"], "hermes-iso-f13")
             # role resolution follows collect_threads.role_groups: folder, else name; neither -> folder + role_unmatched
             self.assertEqual((doc["sessions"]["s-r21"]["role"], "role_unmatched" in doc["sessions"]["s-r21"]), ("hermes-reviewer", False))
             self.assertEqual((doc["sessions"]["s-z21"]["role"], doc["sessions"]["s-z21"]["role_unmatched"]), ("hermes-scribe", True))
-            self.assertEqual(doc["counts"]["sessions_total"], 8)
-            self.assertEqual(doc["counts"]["hermes_sessions"], 6)  # the dotted sub-row counts, hermes-status / P0-LOOP do not
-            self.assertEqual((doc["counts"]["probed"], doc["counts"]["with_ack"], doc["counts"]["bounced"], doc["counts"]["completed"], doc["counts"]["empty"], doc["counts"]["errors"], doc["counts"]["role_unmatched"]), (6, 4, 1, 3, 1, 1, 1))
+            self.assertEqual(doc["counts"]["sessions_total"], 9)
+            self.assertEqual(doc["counts"]["hermes_sessions"], 7)  # the dotted sub-row and the mis-cased thread count, hermes-status / P0-LOOP do not
+            self.assertEqual((doc["counts"]["probed"], doc["counts"]["with_ack"], doc["counts"]["bounced"], doc["counts"]["completed"], doc["counts"]["empty"], doc["counts"]["errors"], doc["counts"]["role_unmatched"]), (7, 5, 1, 4, 1, 1, 1))
             self.assertEqual(doc["errors"], [{"session_id": "s-t13", "error": "SQLiteError: database is locked"}])
             self.assertIn("role unmatched 1", p.stdout)
             self.assertIn(f"-> {out} in ", p.stdout)
@@ -1357,6 +1614,231 @@ class CollectAcksScript(unittest.TestCase):
             self.assertEqual(hs.acks_status(doc, parse_ts(NOW))["status"], "ok")
             self.assertEqual(hs.role_ack(doc["sessions"], "hermes-ISO-F14", "hermes-architect")["session_id"], "s-a14")
             self.assertEqual(hs.role_ack(doc["sessions"], "hermes-ISO-F14", "hermes-architect")["changed"], "2026-09-15T17:00:00Z")
+
+    @staticmethod
+    def host_log_line(clock: str, msg: str, **data) -> str:
+        """One logs/nanoclaw.log line as src/log.ts writes it: `[HH:MM:SS.mmm]` local clock (NO date), ANSI-coloured
+        level and message, `key=<JSON>` pairs with coloured keys."""
+        kv = " ".join(f"\x1b[35m{k}\x1b[39m={json.dumps(v)}" for k, v in data.items())
+        return f"[{clock}] \x1b[32mINFO\x1b[39m \x1b[36m{msg}\x1b[39m" + (" " + kv if kv else "")
+
+    def rearm_line(self, clock: str, sid: str, tries: int, status: str = "bounced-transient") -> str:
+        return self.host_log_line(clock, "Re-armed bounced a2a handoff", sessionId=sid, messageId=f"m-{tries}", status=status, tries=tries, backoffMs=60000)
+
+    def bounce_fixture(self, d: str, lines: list[str], probe_rows: list[dict] | None = None, tsv_rows: str | None = None, mtime_h: float = 0.0) -> tuple:
+        """sessions.tsv + probe.json (architect s-a14 completed, orchestrator s-o14 processing by default) and a host log
+        of `lines` (oldest first) whose mtime is NOW - mtime_h. Returns (tsv, probe, log, out)."""
+        tsv = Path(d) / "sessions.tsv"
+        tsv.write_text(tsv_rows or "s-a14|hermes-architect|Hermes Architect|hermes-ISO-F14|stopped|active|ag-arch\n"
+                                   "s-o14|orchestrator|Orchestrator|hermes-ISO-F14|running|active|ag-orch\n")
+        probe = Path(d) / "probe.json"
+        probe.write_text(json.dumps(probe_rows if probe_rows is not None else [
+            {"path": f"{d}/data/v2-sessions/ag-arch/s-a14/outbound.db", "message_id": "m1", "status": "completed", "changed": "2026-09-10T11:40:00Z"},
+            {"path": f"{d}/data/v2-sessions/ag-orch/s-o14/outbound.db", "message_id": "m2", "status": "processing", "changed": "2026-09-10T11:50:00Z"},
+        ]))
+        log = Path(d) / "logs" / "nanoclaw.log"
+        log.parent.mkdir(exist_ok=True)
+        log.write_text("\n".join(lines) + "\n")
+        t = parse_ts(NOW).timestamp() - mtime_h * 3600
+        os.utime(log, (t, t))
+        return tsv, probe, log, Path(d) / "acks.json"
+
+    def run_bounce(self, d: str, tsv: Path, probe: Path, log: Path, out: Path, **env: str) -> tuple:
+        p = self.run_script(d, ACKS_SESSIONS_TSV=str(tsv), ACKS_PROBE_JSON=str(probe), OUT=str(out), ACKS_HOST_LOG=str(log), **env)
+        self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+        return p, json.loads(out.read_text())
+
+    def test_bounce_history_from_the_host_log(self):
+        """ISO-F14, 2026-09-16: three bounces in 66 min, each re-armed by the host sweep, which then cleared the bounced
+        ack — acks.json read `completed` at every tick. The sweep's "Re-armed bounced a2a handoff" lines are the durable
+        record; they carry a clock but NO date, so lines are dated relative to the file's last write (mtime), a clock
+        that runs forward while walking back being a midnight crossing."""
+        with tempfile.TemporaryDirectory() as d:
+            tsv = Path(d) / "sessions.tsv"
+            tsv.write_text(
+                "s-a14|hermes-architect|Hermes Architect|hermes-ISO-F14|stopped|active|ag-arch\n"
+                "s-o14|orchestrator|Orchestrator|hermes-ISO-F14|running|active|ag-orch\n"
+                "s-t13|hermes-tester|hermes-tester|hermes-iso-f13|stopped|active|ag-test\n"
+            )
+            probe = Path(d) / "probe.json"
+            probe.write_text(json.dumps([
+                {"path": f"{d}/data/v2-sessions/ag-arch/s-a14/outbound.db", "message_id": "m1", "status": "completed", "changed": "2026-09-10T11:40:00Z"},
+                {"path": f"{d}/data/v2-sessions/ag-orch/s-o14/outbound.db", "message_id": "m2", "status": "processing", "changed": "2026-09-10T11:50:00Z"},
+                {"path": f"{d}/data/v2-sessions/ag-test/s-t13/outbound.db", "message_id": "m3", "status": "completed", "changed": "2026-09-10T11:00:00Z"},
+            ]))
+            # The log, oldest first. The last stamped line is the anchor (= the file's mtime = NOW here); every earlier line
+            # is dated by its clock distance to the next one. 23:50 -> 00:10 is a midnight crossing (20 min, not -23.7 h).
+            log = Path(d) / "logs" / "nanoclaw.log"
+            log.parent.mkdir()
+            lines = [
+                self.rearm_line("17:00:00.000", "s-a14", 0),                                   # NOW - 24.5 h: outside the window
+                self.host_log_line("20:00:00.000", "Sweep tick", sessions=3),                  # NOW - 21.5 h
+                self.rearm_line("23:50:00.000", "s-a14", 0),                                   # NOW - 17.67 h: counts
+                self.host_log_line("00:10:00.000", "Sweep tick", sessions=3),                  # NOW - 17.33 h (after midnight)
+                self.host_log_line("00:10:00.500", "Reclaimed non-a2a bounced claim", sessionId="s-a14", messageId="x", status="bounced-unknown", tries=1),  # not a re-arm
+                # the 60 s host sweep keeps adjacent stamped lines minutes apart in a real log; here a few ticks stand for it
+                self.host_log_line("04:00:00.000", "Sweep tick", sessions=3),
+                self.host_log_line("08:00:00.000", "Sweep tick", sessions=3),
+                self.host_log_line("12:00:00.000", "Sweep tick", sessions=3),
+                self.rearm_line("14:00:00.000", "s-a14", 1),                                   # NOW - 3.5 h
+                self.rearm_line("14:30:00.000", "s-zzz", 1),                                   # a session not listed: ignored
+                self.rearm_line("15:00:00.000", "s-o14", 1, status="bounced-unknown"),         # NOW - 2.5 h
+                self.rearm_line("16:39:00.000", "s-a14", 2),                                   # NOW - 0.85 h
+                self.host_log_line("16:40:00.000", "Cleared bounced a2a markers", sessionId="s-a14", cleared=1),
+                self.rearm_line("17:00:00.000", "s-a14", 3),                                   # NOW - 0.5 h: the last one
+                "  at Object.<anonymous> (unstamped continuation line)",
+                self.host_log_line("17:30:00.000", "Sweep tick", sessions=3),                  # the anchor
+            ]
+            log.write_text("\n".join(lines) + "\n")
+            now_epoch = parse_ts(NOW).timestamp()
+            os.utime(log, (now_epoch, now_epoch))
+            out = Path(d) / "acks.json"
+            p = self.run_script(d, ACKS_SESSIONS_TSV=str(tsv), ACKS_PROBE_JSON=str(probe), OUT=str(out), ACKS_HOST_LOG=str(log))
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            doc = json.loads(out.read_text())
+            a14, o14, t13 = doc["sessions"]["s-a14"], doc["sessions"]["s-o14"], doc["sessions"]["s-t13"]
+            self.assertEqual((a14["status"], a14["bounces_24h"], a14["last_bounce_at"]), ("completed", 4, ago(0.5)))
+            self.assertEqual((o14["bounces_24h"], o14["last_bounce_at"]), (1, ago(2.5)))
+            self.assertEqual((t13["bounces_24h"], t13["last_bounce_at"], t13["thread_id"], t13["thread_id_raw"]), (0, None, "hermes-ISO-F13", "hermes-iso-f13"))
+            bl = doc["bounce_log"]
+            self.assertEqual((bl["status"], bl["rearms_24h"], bl["anchor"], bl["note"], bl["window_partial"]), ("ok", 5, NOW, None, False))
+            self.assertGreaterEqual(bl["covers_h"], 24.0)
+            self.assertEqual((doc["counts"]["bounce_history"], doc["counts"]["rearms_24h"]), (2, 5))
+            self.assertIn("bounce history 2 sessions / 5 re-arms 24h (log covers", p.stdout)
+            # what hermes_supervise reads from it
+            hist = hs.role_bounce_history(doc["sessions"], "hermes-ISO-F14", "hermes-architect")
+            self.assertEqual((hist["session_id"], hist["bounces_24h"], hist["last_bounce_at"], hist["status"]), ("s-a14", 4, ago(0.5), "completed"))
+            self.assertEqual(hs.role_ack(doc["sessions"], "hermes-ISO-F14", "hermes-architect")["bounces_24h"], 4)
+
+            # A quiet stretch the clock cannot vouch for (the host logs only on events; a quiet night is one): the walk
+            # stops at the first > LOG_MAX_GAP_H (6 h) between stamped lines; re-arms beyond it are counted as undated,
+            # never as bounces_24h, the note says so, and the window is reported partial.
+            log.write_text("\n".join([
+                self.rearm_line("08:00:00.000", "s-a14", 0),                                   # beyond a 7 h gap: not counted
+                self.rearm_line("15:00:00.000", "s-a14", 1),                                   # NOW - 2.5 h
+                self.rearm_line("17:00:00.000", "s-a14", 2),                                   # NOW - 0.5 h
+                self.host_log_line("17:30:00.000", "Sweep tick", sessions=3),
+            ]) + "\n")
+            os.utime(log, (now_epoch, now_epoch))
+            p = self.run_script(d, ACKS_SESSIONS_TSV=str(tsv), ACKS_PROBE_JSON=str(probe), OUT=str(out), ACKS_HOST_LOG=str(log))
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            doc = json.loads(out.read_text())
+            self.assertEqual((doc["sessions"]["s-a14"]["bounces_24h"], doc["sessions"]["s-a14"]["last_bounce_at"], doc["sessions"]["s-a14"]["bounces_undated"]), (2, ago(0.5), 1))
+            self.assertNotIn("bounces_undated", doc["sessions"]["s-o14"])  # only when > 0
+            bl = doc["bounce_log"]
+            self.assertTrue(bl["note"].startswith("stopped at a 7.0h quiet stretch between stamped lines (08:00:00)"), bl["note"])
+            self.assertEqual((bl["window_partial"], bl["covers_h"], bl["rearms_24h"], bl["rearms_undated"], bl["max_gap_h"]), (True, 2.5, 2, 1, 6.0))
+            self.assertEqual(doc["counts"]["rearms_undated"], 1)
+            self.assertIn("bounce history: stopped at a 7.0h quiet stretch", p.stdout)
+            self.assertIn("bounce history 1 sessions / 2 re-arms 24h, 1 undated (log covers 2.5h, partial)", p.stdout)
+            # the guard is a knob: LOG_MAX_GAP_H=8 lets the walk cross that stretch and date the 08:00 line (NOW - 9.5 h)
+            p = self.run_script(d, ACKS_SESSIONS_TSV=str(tsv), ACKS_PROBE_JSON=str(probe), OUT=str(out), ACKS_HOST_LOG=str(log), LOG_MAX_GAP_H="8")
+            self.assertEqual(p.returncode, 0, p.stdout + p.stderr)
+            doc = json.loads(out.read_text())
+            self.assertEqual((doc["sessions"]["s-a14"]["bounces_24h"], doc["sessions"]["s-a14"]["last_bounce_at"], doc["bounce_log"]["note"], doc["bounce_log"]["max_gap_h"]),
+                             (3, ago(0.5), None, 8.0))
+            self.assertNotIn("bounces_undated", doc["sessions"]["s-a14"])
+            self.assertNotIn("undated", p.stdout)
+
+            # An anchor older than NOW (the host stopped writing 3 h ago): ages are relative to the file's last write.
+            old = now_epoch - 3 * 3600
+            os.utime(log, (old, old))
+            p = self.run_script(d, ACKS_SESSIONS_TSV=str(tsv), ACKS_PROBE_JSON=str(probe), OUT=str(out), ACKS_HOST_LOG=str(log))
+            doc = json.loads(out.read_text())
+            self.assertEqual((doc["sessions"]["s-a14"]["bounces_24h"], doc["sessions"]["s-a14"]["last_bounce_at"]), (2, ago(3.5)))
+            self.assertEqual(doc["bounce_log"]["anchor"], ago(3.0))
+
+    def test_host_start_is_a_dating_boundary(self):
+        """A host down ~24.3 h: on the clock the pre-outage re-arms look 0.3 h old and would pass the quiet-stretch guard.
+        `NanoClaw starting` (src/index.ts, on every start) marks the gap the clock cannot show, so the walk stops there:
+        the earlier re-arms are counted as undated, never as bounces_24h, and no last_bounce_at is made up."""
+        with tempfile.TemporaryDirectory() as d:
+            # re-arms at 16:00 / 16:10 (really the day before), a host start at 16:30, the anchor at 17:00 (= NOW)
+            p, doc = self.run_bounce(d, *self.bounce_fixture(d, [
+                self.rearm_line("16:00:00.000", "s-a14", 1),
+                self.rearm_line("16:10:00.000", "s-a14", 2),
+                self.host_log_line("16:30:00.000", "NanoClaw starting"),
+                self.host_log_line("17:00:00.000", "Sweep tick", sessions=2),
+            ]))
+            a14 = doc["sessions"]["s-a14"]
+            self.assertEqual((a14["bounces_24h"], a14["last_bounce_at"], a14["bounces_undated"]), (0, None, 2))
+            bl = doc["bounce_log"]
+            self.assertTrue(bl["note"].startswith(f"stopped at a host start (16:30:00, {ago(0.5)}); the downtime before it has no clock"), bl["note"])
+            self.assertEqual((bl["rearms_24h"], bl["rearms_undated"], bl["window_partial"], bl["covers_h"]), (0, 2, True, 0.5))
+            self.assertEqual((doc["counts"]["bounce_history"], doc["counts"]["rearms_undated"]), (0, 2))
+            self.assertIn("bounce history 0 sessions / 0 re-arms 24h, 2 undated (log covers 0.5h, partial)", p.stdout)
+            self.assertIn("bounce history: stopped at a host start (16:30:00", p.stdout)
+            self.assertEqual(hs.role_bounce_history(doc["sessions"], "hermes-ISO-F14", "hermes-architect")["bounces_24h"], 0)  # no repeat from it
+            # a restart INSIDE the window: only the re-arms after it are dated and counted
+            p, doc = self.run_bounce(d, *self.bounce_fixture(d, [
+                self.rearm_line("14:00:00.000", "s-a14", 1),                        # before the start: undated
+                self.host_log_line("15:00:00.000", "NanoClaw starting"),            # NOW - 2 h
+                self.rearm_line("16:00:00.000", "s-a14", 2),                        # NOW - 1 h
+                self.rearm_line("16:30:00.000", "s-a14", 3),                        # NOW - 0.5 h
+                self.host_log_line("17:00:00.000", "Sweep tick", sessions=2),
+            ]))
+            a14 = doc["sessions"]["s-a14"]
+            self.assertEqual((a14["bounces_24h"], a14["last_bounce_at"], a14["bounces_undated"]), (2, ago(0.5), 1))
+            self.assertEqual((doc["bounce_log"]["covers_h"], doc["bounce_log"]["window_partial"]), (2.0, True))
+            self.assertIn(f"host start (15:00:00, {ago(2.0)})", doc["bounce_log"]["note"])
+            # a host start OLDER than the window is no boundary: the window is complete, nothing is undated
+            p, doc = self.run_bounce(d, *self.bounce_fixture(d, [
+                self.rearm_line("15:00:00.000", "s-a14", 1),                        # NOW - 26 h
+                self.host_log_line("16:00:00.000", "NanoClaw starting"),            # NOW - 25 h
+                self.host_log_line("20:00:00.000", "Sweep tick"), self.host_log_line("00:00:00.000", "Sweep tick"),
+                self.host_log_line("04:00:00.000", "Sweep tick"), self.host_log_line("08:00:00.000", "Sweep tick"),
+                self.host_log_line("12:00:00.000", "Sweep tick"), self.rearm_line("16:00:00.000", "s-a14", 2),  # NOW - 1 h
+                self.host_log_line("17:00:00.000", "Sweep tick"),
+            ]))
+            self.assertEqual((doc["sessions"]["s-a14"]["bounces_24h"], doc["sessions"]["s-a14"]["last_bounce_at"]), (1, ago(1.0)))
+            self.assertEqual((doc["bounce_log"]["note"], doc["bounce_log"]["window_partial"], doc["bounce_log"]["rearms_undated"]), (None, False, 0))
+            self.assertNotIn("bounces_undated", doc["sessions"]["s-a14"])
+
+    def test_small_backward_clock_step_is_jitter_not_a_day(self):
+        """Two adjacent stamps 100 ms out of order (an NTP slew after a VM resume, a reordered write) must not read as a
+        midnight crossing: +24 h would exceed the quiet-stretch guard and silently truncate the window."""
+        with tempfile.TemporaryDirectory() as d:
+            _, doc = self.run_bounce(d, *self.bounce_fixture(d, [
+                self.rearm_line("14:00:00.000", "s-a14", 1),
+                self.rearm_line("15:00:00.000", "s-a14", 2),
+                self.host_log_line("16:00:00.500", "Sweep tick"),
+                self.host_log_line("16:00:00.400", "Sweep tick"),  # the inversion
+                self.rearm_line("16:30:00.000", "s-a14", 3),
+                self.host_log_line("17:00:00.000", "Sweep tick"),
+            ]))
+            self.assertEqual((doc["sessions"]["s-a14"]["bounces_24h"], doc["sessions"]["s-a14"]["last_bounce_at"]), (3, ago(0.5)))
+            self.assertEqual((doc["bounce_log"]["note"], doc["bounce_log"]["covers_h"], doc["bounce_log"]["rearms_undated"]), (None, 3.0, 0))
+            # a real midnight crossing is still one (23:50 -> 00:10 is 20 min, dated 17.67 h back in the main fixture)
+
+    def test_ack_less_session_with_host_rearms_is_surfaced(self):
+        """A first-turn tester whose only ack row was the bounced one the sweep DELETED (deleteBouncedClaims, then a backoff
+        before the retry is claimed): the probe says `empty`, the log shows three re-arms. It gets an ack-less entry the
+        supervisor's bounce-repeat can see; role_ack reads no current ack from it; an empty session without re-arms stays out."""
+        with tempfile.TemporaryDirectory() as d:
+            tsv_rows = ("s-a14|hermes-architect|Hermes Architect|hermes-ISO-F14|stopped|active|ag-arch\n"
+                        "s-t1|hermes-tester|hermes-tester|hermes-ISO-F14|stopped|active|ag-test\n")
+            probe_rows = [
+                {"path": f"{d}/data/v2-sessions/ag-arch/s-a14/outbound.db", "message_id": "m1", "status": "completed", "changed": "2026-09-10T11:40:00Z"},
+                {"path": f"{d}/data/v2-sessions/ag-test/s-t1/outbound.db", "empty": True},
+            ]
+            p, doc = self.run_bounce(d, *self.bounce_fixture(d, [
+                self.rearm_line("15:30:00.000", "s-t1", 1), self.rearm_line("16:00:00.000", "s-t1", 2), self.rearm_line("16:30:00.000", "s-t1", 3),
+                self.host_log_line("17:00:00.000", "Sweep tick"),
+            ], probe_rows=probe_rows, tsv_rows=tsv_rows))
+            self.assertEqual(doc["sessions"]["s-t1"], {
+                "status": None, "changed": None, "message_id": None, "ack_empty": True, "role": "hermes-tester", "thread_id": "hermes-ISO-F14",
+                "thread_id_raw": "hermes-ISO-F14", "container_status": "stopped", "bounces_24h": 3, "last_bounce_at": ago(0.5),
+            })
+            self.assertEqual((doc["counts"]["empty"], doc["counts"]["with_ack"], doc["counts"]["bounce_history"], doc["counts"]["rearms_24h"]), (1, 1, 1, 3))
+            self.assertIn("acks 1 (bounced 0, completed 1, processing 0)", p.stdout)
+            self.assertIn("bounce history 1 sessions / 3 re-arms 24h (log covers 1.5h, partial)", p.stdout)
+            self.assertIsNone(hs.role_ack(doc["sessions"], "hermes-ISO-F14", "hermes-tester"))
+            self.assertEqual(hs.role_bounce_history(doc["sessions"], "hermes-ISO-F14", "hermes-tester")["bounces_24h"], 3)
+            self.assertEqual(hs.acks_status(doc, parse_ts(NOW))["status"], "ok")
+            # the same session with no re-arms in the log: not listed, as before
+            p, doc = self.run_bounce(d, *self.bounce_fixture(d, [self.host_log_line("17:00:00.000", "Sweep tick")], probe_rows=probe_rows, tsv_rows=tsv_rows))
+            self.assertNotIn("s-t1", doc["sessions"])
+            self.assertEqual((doc["counts"]["empty"], doc["counts"]["bounce_history"]), (1, 0))
 
     def test_no_session_source_writes_nothing(self):
         with tempfile.TemporaryDirectory() as d:

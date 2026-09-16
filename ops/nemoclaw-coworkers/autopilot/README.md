@@ -9,7 +9,8 @@ prompts (and the Mac-side check) act on their output; nothing in here sends a me
 |---|---|---|---|
 | `hermes_queue.py` | §2.2 source A, §4 | `dispatch-plan.md`, `gap-matrix.md`, `ledger.md`, `config.json`, previous `state.json` | the state JSON: rows, `in_flight`, `merged`, `blocked`, `eligible_next` (with the §4.4 dispatch text per row), `wip`, `gating`, `alerts`, `plan_sha256` |
 | `hermes_supervise.py` | §2.3, §2.5, §3, §5 | that state, the row threads, `gh pr list --json`, the nudge ledger, optional sessions/cost, optional `--acks` (`acks.json`) | per in-flight row: `stage`, `age_hours`, `slo_breach`, `action` (`none` / `nudge` / `escalate`), `target_role`, `message`, `infra_hold` / `bounced` / `idle_turn`; plus `actions` (hold, gate, nudge, alert — re-arm nudges carry `check`, `rearm_role`, `rearm_text`, `rearm_session_id`), the `alerts.md` lines and `acks.status` |
-| `collect-acks.sh` (bash, HOST-side, hostname-guarded) | §2.5 | the central DB via `scripts/q.ts` (`./bin/ncl` fallback) for active `hermes-<ROW>` sessions, then ONE `bun:sqlite` readonly pass over their `outbound.db` files | `data/shared/hermes/autopilot/acks.json` (tmp + rename): the newest `processing_ack` per session with role, thread, container status. Run every 15 min by `refresh-viewers.sh` (`logs/collect-acks.log`); the supervisor ignores a copy older than 2 h |
+| `collect-acks.sh` (bash, HOST-side, hostname-guarded) | §2.5 | the central DB via `scripts/q.ts` (`./bin/ncl` fallback) for active `hermes-<ROW>` sessions, then ONE `bun:sqlite` readonly pass over their `outbound.db` files, then the tail of `logs/nanoclaw.log` | `data/shared/hermes/autopilot/acks.json` (tmp + rename): the newest `processing_ack` per session with role, canonical thread + `thread_id_raw`, container status, and the host's re-arm count per session over 24 h (`bounces_24h`, `last_bounce_at`). Run every 15 min by `refresh-viewers.sh` (`logs/collect-acks.log`); the supervisor ignores a copy older than 2 h |
+| `rowid.py` | §2.5 | — | the one canonical spelling of a `hermes-<ROW>` thread: `canon_thread("hermes-iso-f13") == "hermes-ISO-F13"`, `hermes-Iso-F10.A` → `hermes-ISO-F10.a`, non-row threads / None / "" unchanged. Imported by `collect_threads.py`, `rows-board.py` (and through it `slack-rows.py`); the two heredoc scripts (`collect-acks.sh`, `pull-state.sh`) carry an inline copy that `test_rowid.py` checks against it |
 | `abtr.py` (CLI: `scorecard.py --markdown [PATH]`, `--brief [PATH]`) | §7 | `state.json`, `ledger.md`, `alerts.md`, `prs.json`, `config.json` | the a \| b \| t \| r report: one markdown line per row with architect, builder, tester, reviewer and the gate as cells (`✓ HH:MMZ` done, `▶ 3.6h` active, `✗ FAIL r2`, `⏸`, `·`), in-flight rows first by age, then blocked, then merged, then the queued count |
 
 `pull-state.sh` writes the report every tick to `groups/orchestrator/reports/status/autopilot.md` (container `/workspace/agent/reports/status/autopilot.md`, viewer `/status/autopilot.md`) and its brief (header + one `<row> | a | b | t | r` line per in-flight row) to `data/shared/hermes/autopilot/tick-report.txt`, which the supervise tick ends its turn with and `hermes-check.sh` prints first.
@@ -23,9 +24,18 @@ ROOT=~/haaggarwal/nemoclaw-coworkers bash collect-acks.sh   # box only: writes d
 ```
 
 `acks.json` is `{"generated_at": ISO, "sessions": {"<session-id>": {"status", "changed", "role", "thread_id",
-"container_status", "message_id"}}}` — the newest `processing_ack` row per active `hermes-<ROW>` session, read on
-the host because the container cannot see other sessions' `outbound.db`. Missing or older than 2 h, the
-supervisor reports `acks.status` `missing` / `stale` and skips the bounce and idle-turn detections (§2.5).
+"thread_id_raw", "container_status", "message_id"[, "thread_case": true][, "bounces_24h", "last_bounce_at"[, "bounces_undated"]]
+[, "ack_empty": true]}}, "thread_case": [...], "bounce_log": {...}}` — the newest `processing_ack` row per active
+`hermes-<ROW>` session, read on the host because the container cannot see other sessions' `outbound.db`. `thread_id` is
+the canonical row thread (`rowid.canon_thread`), `thread_id_raw` the thread the session really lives on; `bounces_24h`
+counts the host sweep's "Re-armed bounced a2a handoff" log lines for the session (the sweep clears the bounced ack it
+retries, so the log is the only record of a repeat) over the counted window — the last 24 h, or since the newest
+`NanoClaw starting` line / a quiet stretch longer than `LOG_MAX_GAP_H` (6 h), whichever is shorter, because the clock-only
+stamps cannot date a line across a silence; re-arms beyond that boundary are `bounces_undated` (present only when > 0,
+never dated, never a repeat). Both are omitted when `logs/nanoclaw.log` is unreadable. A session whose only ack row was
+the bounced one the sweep deleted is listed ack-less (`status`/`changed` null, `ack_empty`) when the log shows re-arms
+for it. Missing or older than 2 h, the supervisor reports `acks.status` `missing` / `stale` and skips the bounce and
+idle-turn detections (§2.5).
 
 `threads.json` is `{"hermes-<ID>": [{"ts", "direction", "text", "sender"?, "kind"?}]}`, the
 collector's flattening of the role sessions on each row thread. A row whose value is not a
@@ -74,6 +84,20 @@ Rules pinned by the tests (`test_hermes_queue.py`, `test_hermes_supervise.py`):
   `Supervisor re-arm <ID> · <role>:`, are never the row's 6 h nudge, and are capped at one sent per row
   and role per 6 h (the book's timed `rearms`); a paused row is silent; with `acks.json` missing or
   > 2 h old the two ack-based checks are off and `acks.status` says so
+- bounce history (the 2026-09-16 ISO-F14 incident): a role session with `bounces_24h` ≥ 2 in `acks.json` is the
+  `bounce-repeat` alert even while its newest ack is `completed` / `processing` (or it has no ack row at all —
+  `ack_empty`), and a current bounce with ≥ 2 behind it is a repeat, not a re-arm; same 24 h key per (row, state);
+  the SLO check still runs; a session without the field behaves exactly as before; `bounces_undated` is never read
+- thread case (the 2026-09-16 ISO-F13 incident): every place a thread names a row reads it through
+  `rowid.canon_thread` (`collect_threads.py`, `collect-acks.sh`, `pull-state.sh`, `dispatch-cron.sh`, `rows-board.py`,
+  `slack-rows.py`; free-text `hermes-<ROW>` / `[<ROW>]` mentions in any casing too), so a session or card dir on
+  `hermes-iso-f13` belongs to ISO-F13 in `threads.json`, `acks.json`, the rows board and the Slack mirror; the record
+  keeps the real thread (`thread_id_raw`), every pinned nudge / re-arm to such a session carries it in `thread_id`
+  (`row_thread_id` = the canonical one), and one `thread-case` alert per (row, raw thread) per 24 h rides beside the
+  row's ordinary action. Only a SPELLING of the row thread counts: a session attached by mention alone (`inferred`,
+  living on a DM such as `hermes-P0-LOOP`) is neither a thread case nor re-routed. If a role has sessions on both
+  spellings, nudges / re-arms pin `pick_target_session`'s choice (running > active > newest) and carry that
+  session's real thread; the board lists both; two card dirs merge, the newest `latest` per role wins
 
 Two deliberate readings of the spec: a DEFER or MERGE-> id found in the ledger keeps its
 ledger state (it is holding containers) and raises `plan-violation` instead of being hidden

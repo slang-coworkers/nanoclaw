@@ -316,6 +316,34 @@ class SlackRowsTest(unittest.TestCase):
         self.assertEqual(calls[0][5], "LOOP-F35 · hermes-reviewer · APPROVE")
         self.assertEqual(len(self.read_state()["rows"]["LOOP-F35"]["cards"]), 4)
 
+    def test_card_under_a_miscased_thread_dir_is_mirrored_into_the_rows_thread(self):
+        """ISO-F13, 2026-09-16: a reviewer addressed with `hermes-loop-f35` writes its card under that dir. The mirror
+        files it under LOOP-F35 (the canonical row) — same Slack thread, `LOOP-F35 · hermes-reviewer · REQUEST_CHANGES`
+        caption — while the state key keeps the card's real path, so nothing is re-posted on the next run."""
+        put(self.root / "groups" / "hermes-reviewer" / "reports" / "hermes-loop-f35" / "cards" / "card-hermes-reviewer-request_changes-r1.png",
+            png("rc"), 1.7e9 + 40)
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        client = FakeClient.instances[0]
+        posts = [c for c in client.calls if c[0] == "post"]
+        uploads = [c for c in client.calls if c[0] == "upload"]
+        self.assertEqual([p[2].split(" · ")[0] for p in posts], ["hermes-LOOP-F35", "hermes-MEM-F44"])  # no `hermes-loop-f35` root
+        self.assertEqual([u[3] for u in uploads][-1], "card-hermes-reviewer-request_changes-r1.png")
+        root_ts = self.read_state()["rows"]["LOOP-F35"]["thread_ts"]
+        self.assertTrue(all(u[2] == root_ts for u in uploads))
+        self.assertEqual(uploads[-1][5], "LOOP-F35 · hermes-reviewer · REQUEST_CHANGES")
+        st = self.read_state()
+        self.assertEqual(set(st["rows"]), {"LOOP-F35", "MEM-F44"})
+        self.assertIn("groups/hermes-reviewer/reports/hermes-loop-f35/cards/card-hermes-reviewer-request_changes-r1.png", st["rows"]["LOOP-F35"]["cards"])
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(FakeClient.instances[1].calls, [])
+        cards = self.mod.collect_cards(str(self.root))
+        self.assertEqual(sorted(cards), ["LOOP-F35"])
+        rc = next(c for c in cards["LOOP-F35"] if c["file"] == "card-hermes-reviewer-request_changes-r1.png")
+        self.assertTrue(rc["dir"].endswith("/reports/hermes-loop-f35/cards"))
+        self.assertEqual(rc["thread"], "hermes-loop-f35")
+
     def test_merged_and_blocked_lines_posted_once(self):
         self.run_main()  # roots + cards
         put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER_MERGED, 1.0e9)
