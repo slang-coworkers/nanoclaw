@@ -12,11 +12,16 @@ Reads (every input optional; a missing or broken one becomes a banner, never a c
   <ROOT>/groups/orchestrator/reports/upstream-asks.md  the `## Upstream asks` table (hermes_queue.parse_upstream_asks):
                                                  core-change candidates the plugin surface cannot absorb
   <ROOT>/groups/<group>/reports/hermes-<ROW>/cards/card-<role>-<outcome>-r<N>.{png,html,json}
-                                                 plus the card-<role>-latest.{png,html} copies
+                                                 plus the card-<role>-latest.{png,html} copies. The dir's thread is read
+                                                 through rowid.canon_thread: a `hermes-iso-f13` card dir (a role addressed
+                                                 with a mis-cased thread, 2026-09-16) is ISO-F13's; URLs and the symlink
+                                                 keep the real dir name
   `ncl sessions list --json` (--ncl, default <ROOT>/bin/ncl)  LIVE per-role status on every row:
                                                  green = a container is running, amber = session idle,
                                                  red = needs a human (cost card / hold / blocked / escalated),
-                                                 grey = no session. Roles come from threads.json `roles`.
+                                                 grey = no session. Roles come from threads.json `roles`. A session
+                                                 on a mis-cased row thread counts for its row (canon_thread) and the
+                                                 row page names the thread it really lives on.
 
   <ROOT>/data/shared/hermes/autopilot/config.json  the human's knobs (wip, waive, paused_rows): paused / waived rows
 
@@ -67,6 +72,20 @@ import sys
 from datetime import datetime, timezone
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+# rowid.canon_thread (autopilot/rowid.py, the one canonical copy): `hermes-iso-f13` -> `hermes-ISO-F13`, non-row threads
+# unchanged. Applied wherever a thread string names a row (card dirs, live sessions) so a role that opened its session or
+# wrote its cards on a mis-cased thread still lands on its row. Its absence is one banner; spellings then stay as found.
+sys.path.insert(0, os.path.join(HERE, "autopilot"))
+try:
+    from rowid import canon_thread
+    ROWID_ERR = None
+except ImportError:
+    ROWID_ERR = "autopilot/rowid.py not found: thread ids are not canonicalised (a mis-cased hermes-<row> thread shows as its own row)"
+
+    def canon_thread(thread):
+        return thread
+
+
 ROLE_COLUMNS = (("a", "hermes-architect"), ("b", "hermes-builder"), ("t", "hermes-tester"), ("r", "hermes-reviewer"))
 ROLE_ORDER = [r for _, r in ROLE_COLUMNS] + ["orchestrator"]
 BATCH_ORDER = ("1a", "1b", "2", "3", "4", "5", "adopt", "defer")
@@ -302,10 +321,13 @@ def staleness(obj, err, name: str, now: datetime) -> str | None:
 
 
 def scan_cards(root: str) -> dict:
-    """{thread: {group: {"dir": path, "cards": [card], "latest": {role: {ext: filename}}}}}.
+    """{thread: {group: {"dir": path, "thread": dir thread, "dirs": [paths], "cards": [card], "latest": {role: {ext: filename, "thread"}}}}}.
 
-    A card is {"file", "role", "outcome", "round", "ext", "mtime", "cls"}; the PNG is the unit,
-    its .html / .json siblings are attached as "html" / "json" when present."""
+    The outer key is the CANONICAL thread (canon_thread): a `hermes-iso-f13` card dir is filed under `hermes-ISO-F13`.
+    A card is {"file", "role", "outcome", "round", "ext", "mtime", "cls", "group", "thread", "dir"}; `thread` and `dir`
+    are the card's real dir (the URL base cards/<group>/<thread>/ and the symlink use them); the PNG is the unit, its
+    .html / .json siblings are attached as "html" / "json" when present. Two dirs of one group that spell the same row
+    differently merge into one entry (`dirs` lists both; `latest` keeps the newest per role)."""
     out: dict = {}
     for d in sorted(glob.glob(os.path.join(root, "groups", "*", "reports", "hermes-*", "cards"))):
         if not os.path.isdir(d):
@@ -319,12 +341,17 @@ def scan_cards(root: str) -> dict:
         except OSError as exc:
             log(f"cannot list {d}: {exc}")
             continue
-        entry = {"dir": d, "cards": [], "latest": {}}
+        entry = {"dir": d, "thread": thread, "dirs": [d], "cards": [], "latest": {}}
         by_stem: dict = {}
         for name in names:
             m = LATEST_RE.match(name)
             if m:
-                entry["latest"].setdefault(m.group("role"), {})[m.group("ext")] = name
+                lat = entry["latest"].setdefault(m.group("role"), {"thread": thread})
+                lat[m.group("ext")] = name
+                try:
+                    lat["mtime"] = max(lat.get("mtime", 0.0), os.path.getmtime(os.path.join(d, name)))
+                except OSError:
+                    pass
                 continue
             m = CARD_RE.match(name)
             if not m:
@@ -344,30 +371,42 @@ def scan_cards(root: str) -> dict:
             entry["cards"].append({
                 "file": main, "png": files.get("png"), "html": files.get("html"), "json": files.get("json"),
                 "role": m.group("role"), "outcome": outcome, "round": int(m.group("round")), "mtime": mtime,
-                "cls": OUTCOME_CLASS.get(outcome, "run"), "group": group, "thread": thread,
+                "cls": OUTCOME_CLASS.get(outcome, "run"), "group": group, "thread": thread, "dir": d,
             })
         entry["cards"].sort(key=lambda c: (-c["mtime"], -c["round"], c["file"]))
-        out.setdefault(thread, {})[group] = entry
+        canon = canon_thread(thread)
+        have = out.setdefault(canon, {}).get(group)
+        if have is None:
+            out[canon][group] = entry
+        else:
+            # the same group wrote cards under two spellings of one row: one entry, every card kept with its own dir
+            have["dirs"].append(d)
+            have["cards"] = sorted(have["cards"] + entry["cards"], key=lambda c: (-c["mtime"], -c["round"], c["file"]))
+            for role, lat in entry["latest"].items():
+                if role not in have["latest"] or lat.get("mtime", 0.0) > have["latest"][role].get("mtime", 0.0):
+                    have["latest"][role] = lat
     return out
 
 
 def link_card_dirs(www_rows: str, cards: dict) -> None:
-    """<WWW>/rows/cards/<group>/<thread> -> the group's card dir (ln -sfn semantics)."""
-    for thread, groups in cards.items():
+    """<WWW>/rows/cards/<group>/<thread> -> the group's card dir (ln -sfn semantics), one link per real dir under
+    its own spelling (a merged entry has several), so every card's URL resolves."""
+    for groups in cards.values():
         for group, entry in groups.items():
-            link = os.path.join(www_rows, "cards", group, thread)
-            try:
-                os.makedirs(os.path.dirname(link), exist_ok=True)
-                if os.path.islink(link):
-                    if os.readlink(link) == entry["dir"]:
+            for d in entry.get("dirs") or [entry["dir"]]:
+                link = os.path.join(www_rows, "cards", group, d.split(os.sep)[-2])
+                try:
+                    os.makedirs(os.path.dirname(link), exist_ok=True)
+                    if os.path.islink(link):
+                        if os.readlink(link) == d:
+                            continue
+                        os.unlink(link)
+                    elif os.path.isdir(link):
+                        log(f"{link} is a real directory, not replacing it")
                         continue
-                    os.unlink(link)
-                elif os.path.isdir(link):
-                    log(f"{link} is a real directory, not replacing it")
-                    continue
-                os.symlink(entry["dir"], link)
-            except OSError as exc:
-                log(f"symlink {link}: {exc}")
+                    os.symlink(d, link)
+                except OSError as exc:
+                    log(f"symlink {link}: {exc}")
 
 
 # --------------------------------------------------------------------------- demo path
@@ -460,15 +499,28 @@ def load_live_sessions(ncl_bin: str | None, group_role: dict, timeout_s: float =
     for sess in rows:
         if not isinstance(sess, dict):
             continue
-        m = THREAD_RE.match(str(sess.get("thread_id") or ""))
+        raw = str(sess.get("thread_id") or "")
+        m = THREAD_RE.match(canon_thread(raw))  # hermes-iso-f13 counts for ISO-F13; the real thread stays on the session
         role = group_role.get(str(sess.get("agent_group_id") or ""))
         if not m or not role:
             continue
         out.setdefault(m.group("row"), {}).setdefault(role, []).append({
             "id": sess.get("id"), "status": sess.get("status"), "container_status": sess.get("container_status"),
-            "last_active": sess.get("last_active"), "group_folder": sess.get("group_folder"),
+            "last_active": sess.get("last_active"), "group_folder": sess.get("group_folder"), "thread_id": raw,
         })
     return out, None
+
+
+def miscased_sessions(live: dict) -> list:
+    """[(row, role, session id, real thread)] for every live session whose thread is not the row's canonical one."""
+    out = []
+    for rid, roles in (live or {}).items():
+        for role, sessions in roles.items():
+            for x in sessions:
+                t = x.get("thread_id")
+                if t and t != f"hermes-{rid}":
+                    out.append((rid, role, str(x.get("id") or ""), t))
+    return out
 
 
 def role_live(sessions: list | None, sup: dict | None, role: str, now: datetime) -> tuple:
@@ -633,8 +685,10 @@ def thumb_cell(groups: dict, role: str, rid: str, now_ts: float, link: bool = Tr
     card, entry = latest_for_role(groups or {}, role)
     if card is None:
         return f'<td class="cell">{head}<div class="v none">·</div></td>'
-    latest_png = (entry["latest"].get(role) or {}).get("png")
-    src = f"cards/{card['group']}/{card['thread']}/{latest_png or card['png'] or card['html']}"
+    lat = entry["latest"].get(role) or {}
+    latest_png = lat.get("png")
+    thread_dir = (lat.get("thread") if latest_png else None) or card["thread"]
+    src = f"cards/{card['group']}/{thread_dir}/{latest_png or card['png'] or card['html']}"
     label = f"{card['outcome'].upper()} r{card['round']} · {fmt_age(now_ts - card['mtime'])}"
     img = (f'<img class="thumb {card["cls"]}" src="{esc(src)}" width="180" alt="{esc(label)}" loading="lazy">'
            if (latest_png or card["png"]) else f'<div class="thumb {card["cls"]}">html only</div>')
@@ -926,7 +980,9 @@ def render_row(rec: dict, plan, now: datetime, dashboard_url: str | None, live_e
             sid = str(x.get("id") or "")
             link = (f'<a href="{esc(dashboard_url.rstrip("/"))}/#/cw/{esc(x.get("group_folder") or role)}/s/{esc(sid)}">{esc(sid)}</a>'
                     if dashboard_url and sid else esc(sid))
-            body.append(f'<tr><td><span class="dot {colour}"></span></td><td>{esc(role)}</td><td>{esc(label)}</td><td><code>{link}</code></td>'
+            stray = x.get("thread_id") if x.get("thread_id") and x.get("thread_id") != thread else None
+            note = f' <span class="badge" title="this session lives on a mis-cased thread; messages to it must name that thread">thread {esc(stray)}</span>' if stray else ""
+            body.append(f'<tr><td><span class="dot {colour}"></span></td><td>{esc(role)}</td><td>{esc(label)}</td><td><code>{link}</code>{note}</td>'
                         f'<td>{esc(x.get("container_status") or "?")} / {esc(x.get("status") or "?")}</td><td>{esc(x.get("last_active") or "")}</td></tr>')
     body.append("</table>")
 
@@ -1040,6 +1096,8 @@ def load_board(root: str, now: datetime, plan_paths: list | None = None, state_p
     for b in table_banners(tables):
         log(b)
     banners = [b for b in (staleness(state, state_err, "state.json", now), staleness(threads, threads_err, "threads.json", now)) if b]
+    if ROWID_ERR:
+        banners.append(ROWID_ERR)
     try:
         cards = scan_cards(root)
     except Exception as exc:  # noqa: BLE001
@@ -1089,11 +1147,18 @@ def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, t
     n_cards = sum(len(e["cards"]) for g in cards.values() for e in g.values())
     n_live = sum(len(v) for r in live.values() for v in r.values())
     n_open = sum(1 for c in tables["carried"] if str(c.get("status") or "open") == "open")
+    stray = miscased_sessions(live)
+    stray_dirs = sorted({c["thread"] for g in cards.values() for e in g.values() for c in e["cards"] if c["thread"] != canon_thread(c["thread"])})
+    thread_case = ""
+    if stray or stray_dirs:
+        # a role opened its session / wrote its cards on a mis-cased row thread (attributed to the row above; the spine owns the fix)
+        thread_case = "; thread-case: " + ", ".join(
+            [f"{rid} {role} {sid} on {t}" for rid, role, sid, t in stray] + [f"card dir {t}" for t in stray_dirs])
     print(f"rows-board: wrote {www_rows}/index.html + {written} row pages + demo-path.html{' + demo-path.json' if demo_ok else ' (tracker failed; demo-path.json untouched)'} "
           f"({n_cards} cards, {len(cards)} threads, {n_live} live sessions on {len(live)} rows, "
           f"{n_open}/{len(tables['carried'])} carried criteria open, {len(tables['asks'])} upstream asks)"
           + (f"; plan: {plan_err}" if plan_err else "") + (f"; live: {live_err}" if live_err else "")
-          + (f"; {'; '.join(banners + table_banners(tables))}" if banners or table_banners(tables) else ""))
+          + (f"; {'; '.join(banners + table_banners(tables))}" if banners or table_banners(tables) else "") + thread_case)
     return 0
 
 

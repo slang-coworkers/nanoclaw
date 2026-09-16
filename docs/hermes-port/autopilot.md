@@ -26,7 +26,8 @@ at `/workspace/shared/hermes/autopilot/` and the host cron runs from):
 | `hermes_queue.py` | the dispatch core (stdlib, py3.11, `--now` for tests): plan + matrix + ledger (both tables) + `--upstream-asks` + config + prior state → `wip`, `in_flight`, `eligible_next` with the §4.4 text per row (`dispatch_text` for the architect, `orchestrator_text` = the same wrapped in the ledger-row + forward steps the cron POSTs), `gating`, `coverage` (with `carried_line`), `carried_criteria` / `upstream_asks` per row and whole (§2.4), `alerts` |
 | `hermes_supervise.py` | the supervise core: that state + the row threads + the fork PRs + the nudge book (+ `--acks`) → stage per row, SLO check, bounded `hold` / `gate` / `nudge` / `alert` actions (§2, §3, §5), plus the three marker-less stall shapes of §2.5 (`infra_hold`, `bounced`, `idle_turn`) |
 | `collect_threads.py` | inside the container: the role sessions on each `hermes-<ID>` thread via `ncl sessions list/messages` + `ncl cost-cap status`, bounded by `--rows` (the in-flight rows) and `--deadline-s` |
-| `collect-acks.sh` | on the HOST, from `refresh-viewers.sh` every 15 min, hostname-guarded: the newest `processing_ack` row of every active `hermes-<ROW>` session (one `bun:sqlite` readonly pass over their `outbound.db` files; role + thread joined from the central DB through `scripts/q.ts`, `./bin/ncl` as fallback) → `data/shared/hermes/autopilot/acks.json`, tmp + rename. `pull-state.sh` passes it to the supervisor as `--acks`; older than 2 h it is treated as absent (§2.5) |
+| `collect-acks.sh` | on the HOST, from `refresh-viewers.sh` every 15 min, hostname-guarded: the newest `processing_ack` row of every active `hermes-<ROW>` session (one `bun:sqlite` readonly pass over their `outbound.db` files; role + thread joined from the central DB through `scripts/q.ts`, `./bin/ncl` as fallback), plus each session's host re-arm count over 24 h from the tail of `logs/nanoclaw.log` (`bounces_24h`, `last_bounce_at`) → `data/shared/hermes/autopilot/acks.json`, tmp + rename. `pull-state.sh` passes it to the supervisor as `--acks`; older than 2 h it is treated as absent (§2.5) |
+| `rowid.py` | the one canonical spelling of a `hermes-<ROW>` thread (`canon_thread`): `hermes-iso-f13` → `hermes-ISO-F13`; every collector and viewer reads thread ids through it (§2.5, the thread case) |
 | `pull-state.sh` | inside the container: the `gh` and `ncl` probes, then queue → collector → supervisor; writes `state.json`, `threads.json`, `prs.json` (tmp + rename). A failed probe is a `collector_errors` entry, never a silent gap |
 | `record.py` | the bookkeeping after each send (`nudged`, `alerted`, `dispatched`, `redispatched`, `round3`), atomic; the Orchestrator calls it from the supervise tick, the cron from the dispatch tick; `alerted` also inserts the line newest-first into `alerts.md` |
 | `dispatch-cron.sh` | on the HOST, from the box's crontab (`17 */2 * * *`), hostname-guarded: runs the queue on host paths, raises its alerts, POSTs each eligible row's `orchestrator_text` to the dashboard chat API on `thread_id = hermes-<ID>` (the shape of `dispatch-rows.sh`), records every HTTP 200 with `record.py dispatched`; `--dry-run` prints the bodies and writes nothing (§6) |
@@ -365,6 +366,57 @@ fallback), one `bun:sqlite` readonly pass over the matching `outbound.db` files 
 supervisor reports `acks.status` (`ok | stale | missing`, also `summary.acks` and `state.sources.acks`),
 the pull log says `acks stale/missing — bounce and idle detection off`, and the two ack-based checks are
 skipped for that tick — never a guess. The hold detection reads the thread and stays on.
+
+**Bounce history.** ISO-F14 again, 2026-09-16: the architect bounced three times in 66 min (a Claude
+`server_error` on a ~232k-token context). The host's own redrive sweep re-armed it each time — `Re-armed bounced
+a2a handoff sessionId=… status=bounced-transient tries=N` in `logs/nanoclaw.log` — and, by design, **cleared the
+bounced `processing_ack` row it retried**, so at every collection `acks.json` read `completed` / `processing`
+and the bounce detection above saw nothing; the repeat became visible only when a failure happened to be
+present at collection time. The log is the durable record, so `collect-acks.sh` now reads its tail and counts
+those lines per listed session over the last 24 h: `bounces_24h` and `last_bounce_at` on the session entry,
+`bounce_log` at the top level. The stamps are `[HH:MM:SS.mmm]` in the host's local clock with no date, so lines
+are dated **relative to the file's last write** (its mtime is the last stamped line): each earlier line by its
+clock distance to the next, a clock that runs forward while walking back being a midnight crossing (a backward step
+under 1 h is clock jitter, not a day). What the clock cannot show is silence, so the walk stops at a **dating
+boundary**: the newest `NanoClaw starting` line (every host start logs it; the downtime before it may be 10 s or
+30 h — a 24.3 h outage reads as 0.3 h on a clock) or a quiet stretch longer than `LOG_MAX_GAP_H` (default 6 h — the
+host logs only on events, so a quiet night can be one). The counted window is therefore "the last 24 h or since that
+boundary, whichever is shorter" (`bounce_log.covers_h`, `window_partial`, `note`); re-arms beyond the boundary are
+counted per session as `bounces_undated` — visible, never dated, never read by the supervisor — and no timestamp is
+ever invented. A first-turn session whose only ack row was the bounced one the sweep deleted gets an ack-less entry
+(`ack_empty`, `status`/`changed` null) when the log shows re-arms for it, so the repeat is not hidden by the missing
+row. Both fields are omitted when the log is unreadable, and the supervisor then behaves exactly as before. With
+them: a role session with `bounces_24h` ≥ 2 raises `bounce-repeat` (the fresh-session ask) even while its newest ack
+is `completed` / `processing` or absent, a current bounce with ≥ 2 behind it is a repeat rather than a re-arm, the
+key stays `bounce-repeat:<state>` per row per 24 h, and the row's ordinary SLO / idle checks still run after the
+alert (`ACKS_STALE_H` unchanged: a stale file turns this off too).
+
+**The thread case.** ISO-F13, 2026-09-16: the builder addressed its tester and reviewer with
+`message_agent thread "hermes-iso-f13"`. NanoClaw keys a2a sessions on the exact thread string, so those two
+sessions lived on the lower-case thread while the Orchestrator, architect and builder sat on `hermes-ISO-F13`, and
+every tool that recognises a row by its thread id — `collect_threads.py`, `collect-acks.sh`, `pull-state.sh`,
+`dispatch-cron.sh`, `rows-board.py`, `slack-rows.py` — matched the upper-case grammar only and dropped them: the tester's PASS and the
+reviewer's REQUEST_CHANGES were invisible to the supervisor, to `acks.json` and to the board, and the row simply
+looked stuck at builder/PR. Now every one of those sites reads the thread through **`rowid.canon_thread`** at
+ingestion (`hermes-iso-f13` → `hermes-ISO-F13`, `hermes-Iso-F10.A` → `hermes-ISO-F10.a`; `hermes-status`,
+`hermes-p6-fleet`, None, "" unchanged; the heredoc scripts carry an inline copy `test_rowid.py` checks; free-text
+`hermes-<ROW>` / `[<ROW>]` mentions fold the same way), so the session, its ack, its cards and its dot land on the
+right row — while the record keeps the thread the session **really** lives on (`thread_id_raw` in `acks.json` and
+`sessions-by-thread.json`, the session's own `thread_id` in `threads.json`, the card's own dir on the board). That
+matters for routing: a message sent into `hermes-ISO-F13` does not reach a session on `hermes-iso-f13`, and a
+`target_session_id` pin the host rejects falls back to thread routing, so the supervisor puts the pinned session's
+real thread in every nudge's and re-arm's `thread_id` (`rearm_thread_id`; `row_thread_id` = the canonical one) and
+the prompt sends exactly that. Only a **spelling** of the row thread is treated so: a session attached to the row by
+mention alone (`inferred`, pass 2 of the collector — it lives on a DM such as `hermes-P0-LOOP`) is neither a thread
+case nor re-routed, since a rejected pin would then spawn the role in that unrelated thread. If a role has sessions
+on both spellings (an Orchestrator-created twin beside the builder-created one), nudges and re-arms pin
+`pick_target_session`'s choice (running > active > newest `last_active`) and carry that session's real thread; the
+board lists both with a badge; two card dirs of one group merge into one entry, the newest `latest` per role wins.
+Visibility: the row's
+`thread_case` field, `summary.thread_case`, a `THREAD-CASE:` line in `collect-acks.sh`'s output, a `thread-case`
+list in `threads.json` / `state.json` `sources.sessions`, a badge on the board's row page, and one `thread-case`
+**alert** per (row, raw thread) per 24 h beside the row's ordinary action — the durable prevention (the sender
+spelling `hermes-<ROW>` exactly) lives in the spine and is out of scope here.
 
 **Re-arm nudges.** The infra-hold and bounce nudges target the **Orchestrator**: it owns the row, and
 the role has no turn to be nudged into. The action carries `check` (`infra_hold` | `bounced`),

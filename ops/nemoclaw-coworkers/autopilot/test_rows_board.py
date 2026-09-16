@@ -319,6 +319,137 @@ class LiveStatusTest(unittest.TestCase):
         self.assertIn('href="http://dash.example:8080/#/cw/hermes-builder/s/sess-build-live"', page)
         self.assertIn("running / active", page)
 
+    def test_miscased_thread_sessions_and_cards_attach_to_the_row(self):
+        """ISO-F13, 2026-09-16: the reviewer was addressed with `hermes-loop-f35`; its session and its card dir spell the
+        row lower-case. Both belong to LOOP-F35 on the board (dot, thumbnail, row page), the card URL and the symlink keep
+        the real dir name, no "unplanned" row appears, the row page names the real thread, the summary line says so."""
+        ncl = Path(self.tmp.name) / "fake-ncl-lower"
+        ncl.write_text(FAKE_NCL.replace(
+            '{"id": "sess-test",',
+            '{"id": "sess-rev-lower", "agent_group_id": "ag-rev", "thread_id": "hermes-loop-f35", "status": "active", "container_status": "stopped", '
+            '"last_active": "2026-09-10T11:00:00Z", "group_folder": "hermes-reviewer"},\n  {"id": "sess-test",'), encoding="utf-8")
+        os.chmod(ncl, 0o755)
+        lower = self.root / "groups" / "hermes-reviewer" / "reports" / "hermes-loop-f35" / "cards"
+        put(lower / "card-hermes-reviewer-request_changes-r1.png", b"\x89PNG rc", hours_ago=1.0)
+        put(lower / "card-hermes-reviewer-latest.png", b"\x89PNG rc", hours_ago=1.0)
+        proc = board(self.root, self.www, "--ncl", str(ncl))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("5 live sessions on 1 rows", proc.stdout)
+        self.assertIn("thread-case: LOOP-F35 hermes-reviewer sess-rev-lower on hermes-loop-f35, card dir hermes-loop-f35", proc.stdout)
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        self.assertNotIn("loop-f35.html", index)  # no row of its own (P0-LOOP is the fixture's one legitimately unplanned thread)
+        self.assertNotIn("<b>loop-f35</b>", index)
+        # the reviewer's thumbnail sits in LOOP-F35's `r` cell and its URL keeps the real dir
+        self.assertIn('src="cards/hermes-reviewer/hermes-loop-f35/card-hermes-reviewer-latest.png"', index)
+        self.assertIn("REQUEST_CHANGES r1", index)
+        self.assertIn('<span class="dot amber"></span>idle · last active 1.0h ago', index)  # the reviewer: a session, no container
+        link = self.www / "rows" / "cards" / "hermes-reviewer" / "hermes-loop-f35"
+        self.assertTrue(link.is_symlink())
+        self.assertEqual(os.readlink(link), str(lower))
+        page = (self.www / "rows" / "LOOP-F35.html").read_text(encoding="utf-8")
+        self.assertIn("sess-rev-lower", page)
+        self.assertIn(">thread hermes-loop-f35</span>", page)
+        self.assertIn('href="cards/hermes-reviewer/hermes-loop-f35/card-hermes-reviewer-request_changes-r1.png"', page)
+        self.assertNotIn("loop-f35.html", os.listdir(self.www / "rows"))  # by listing: the Mac's filesystem is case-insensitive
+
+    def test_same_group_under_both_spellings_merges_into_one_entry(self):
+        """A group that wrote cards under `hermes-loop-f35` AND `hermes-LOOP-F35`: one board entry, every card kept with
+        its own dir (URLs resolve), both dirs symlinked, the newest `latest` per role wins — end to end through the script.
+        Two case-variant dirs need a case-sensitive filesystem (the box; CI runs no Python suites), so on a Mac's APFS this
+        one is skipped and test_two_spellings_of_one_card_dir_merge_on_any_filesystem covers the merge in-process."""
+        probe = Path(self.tmp.name) / "CaseProbe"
+        probe.write_text("x")
+        if (Path(self.tmp.name) / "caseprobe").exists():
+            self.skipTest("case-insensitive filesystem: hermes-LOOP-F35 and hermes-loop-f35 are one directory here")
+        ncl = Path(self.tmp.name) / "fake-ncl-lower"
+        ncl.write_text(FAKE_NCL, encoding="utf-8")
+        os.chmod(ncl, 0o755)
+        lower = self.root / "groups" / "hermes-reviewer" / "reports" / "hermes-loop-f35" / "cards"
+        put(lower / "card-hermes-reviewer-request_changes-r1.png", b"\x89PNG rc", hours_ago=1.0)
+        put(lower / "card-hermes-reviewer-latest.png", b"\x89PNG rc", hours_ago=1.0)
+        upper = self.root / "groups" / "hermes-reviewer" / "reports" / "hermes-LOOP-F35" / "cards"
+        put(upper / "card-hermes-reviewer-approve-r2.png", b"\x89PNG ok", hours_ago=0.5)
+        put(upper / "card-hermes-reviewer-latest.png", b"\x89PNG ok", hours_ago=0.5)
+        proc = board(self.root, self.www, "--ncl", str(ncl))
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        self.assertIn('src="cards/hermes-reviewer/hermes-LOOP-F35/card-hermes-reviewer-latest.png"', index)  # the newer latest wins
+        self.assertIn("APPROVE r2", index)
+        self.assertIn("thread-case: card dir hermes-loop-f35", proc.stdout)
+        page = (self.www / "rows" / "LOOP-F35.html").read_text(encoding="utf-8")
+        self.assertIn('href="cards/hermes-reviewer/hermes-loop-f35/card-hermes-reviewer-request_changes-r1.png"', page)
+        self.assertIn('href="cards/hermes-reviewer/hermes-LOOP-F35/card-hermes-reviewer-approve-r2.png"', page)
+        self.assertTrue((self.www / "rows" / "cards" / "hermes-reviewer" / "hermes-LOOP-F35").is_symlink())
+        self.assertTrue((self.www / "rows" / "cards" / "hermes-reviewer" / "hermes-loop-f35").is_symlink())
+        sys.path.insert(0, str(HERE.parent))
+        import importlib.util
+        spec = importlib.util.spec_from_file_location("rows_board_t", BOARD)
+        rb = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rb)
+        cards = rb.scan_cards(str(self.root))
+        self.assertNotIn("hermes-loop-f35", cards)
+        entry = cards["hermes-LOOP-F35"]["hermes-reviewer"]
+        self.assertEqual(sorted(os.path.basename(os.path.dirname(d)) for d in entry["dirs"]), ["hermes-LOOP-F35", "hermes-loop-f35"])
+        self.assertEqual([c["file"] for c in entry["cards"]], ["card-hermes-reviewer-approve-r2.png", "card-hermes-reviewer-request_changes-r1.png"])
+        self.assertEqual(entry["latest"]["hermes-reviewer"]["thread"], "hermes-LOOP-F35")
+
+    def test_two_spellings_of_one_card_dir_merge_on_any_filesystem(self):
+        """scan_cards' merge branch and link_card_dirs' multi-dir loop, in-process: glob / isdir / listdir / getmtime are
+        pointed at two REAL directories standing for `hermes-LOOP-F35/cards` and `hermes-loop-f35/cards`, so the case runs
+        on a case-folding filesystem too."""
+        import glob as _glob
+        import importlib.util
+        from unittest import mock
+
+        real_upper = Path(self.tmp.name) / "real-upper" / "cards"
+        real_lower = Path(self.tmp.name) / "real-lower" / "cards"
+        put(real_lower / "card-hermes-reviewer-request_changes-r1.png", b"\x89PNG rc", hours_ago=1.0)
+        put(real_lower / "card-hermes-reviewer-latest.png", b"\x89PNG rc", hours_ago=1.0)
+        put(real_upper / "card-hermes-reviewer-approve-r2.png", b"\x89PNG ok", hours_ago=0.5)
+        put(real_upper / "card-hermes-reviewer-latest.png", b"\x89PNG ok", hours_ago=0.5)
+        fake_upper = str(self.root / "groups" / "hermes-reviewer" / "reports" / "hermes-LOOP-F35" / "cards")
+        fake_lower = str(self.root / "groups" / "hermes-reviewer" / "reports" / "hermes-loop-f35" / "cards")
+        alias = {fake_upper: str(real_upper), fake_lower: str(real_lower)}
+
+        def remap(p):
+            for fake, real in alias.items():
+                if p == fake or p.startswith(fake + os.sep):
+                    return real + p[len(fake):]
+            return p
+
+        sys.path.insert(0, str(HERE.parent))
+        spec = importlib.util.spec_from_file_location("rows_board_fs", BOARD)
+        rb = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(rb)
+        real_isdir, real_listdir, real_getmtime = os.path.isdir, os.listdir, os.path.getmtime
+        with mock.patch.object(_glob, "glob", return_value=[fake_lower, fake_upper]), \
+             mock.patch.object(os.path, "isdir", lambda p: real_isdir(remap(p))), \
+             mock.patch.object(os, "listdir", lambda p: real_listdir(remap(p))), \
+             mock.patch.object(os.path, "getmtime", lambda p: real_getmtime(remap(p))):
+            cards = rb.scan_cards(str(self.root))
+        self.assertEqual(list(cards), ["hermes-LOOP-F35"])  # one key, the canonical spelling
+        entry = cards["hermes-LOOP-F35"]["hermes-reviewer"]
+        self.assertEqual(entry["dirs"], [fake_upper, fake_lower])  # sorted(glob): the upper-case dir first
+        self.assertEqual([(c["file"], c["thread"], c["dir"]) for c in entry["cards"]], [
+            ("card-hermes-reviewer-approve-r2.png", "hermes-LOOP-F35", fake_upper),
+            ("card-hermes-reviewer-request_changes-r1.png", "hermes-loop-f35", fake_lower),
+        ])
+        lat = entry["latest"]["hermes-reviewer"]
+        self.assertEqual((lat["thread"], lat["png"]), ("hermes-LOOP-F35", "card-hermes-reviewer-latest.png"))  # the newer latest wins
+        # the older `latest` winning when IT is newer: swap the mtimes
+        put(real_lower / "card-hermes-reviewer-latest.png", b"\x89PNG rc", hours_ago=0.1)
+        with mock.patch.object(_glob, "glob", return_value=[fake_lower, fake_upper]), \
+             mock.patch.object(os.path, "isdir", lambda p: real_isdir(remap(p))), \
+             mock.patch.object(os, "listdir", lambda p: real_listdir(remap(p))), \
+             mock.patch.object(os.path, "getmtime", lambda p: real_getmtime(remap(p))):
+            self.assertEqual(rb.scan_cards(str(self.root))["hermes-LOOP-F35"]["hermes-reviewer"]["latest"]["hermes-reviewer"]["thread"], "hermes-loop-f35")
+        # link_card_dirs links every dir of a merged entry under its own name (names that differ on any filesystem here)
+        www_rows = Path(self.tmp.name) / "www-rows"
+        merged = {"dir": str(real_upper), "thread": "real-upper", "dirs": [str(real_upper), str(real_lower)], "cards": [], "latest": {}}
+        rb.link_card_dirs(str(www_rows), {"hermes-LOOP-F35": {"hermes-reviewer": merged}})
+        self.assertEqual(os.readlink(www_rows / "cards" / "hermes-reviewer" / "real-upper"), str(real_upper))
+        self.assertEqual(os.readlink(www_rows / "cards" / "hermes-reviewer" / "real-lower"), str(real_lower))
+
     def test_missing_ncl_degrades_to_grey_with_banner(self):
         proc = board(self.root, self.www, "--ncl", str(Path(self.tmp.name) / "nope"))
         self.assertEqual(proc.returncode, 0, proc.stderr)

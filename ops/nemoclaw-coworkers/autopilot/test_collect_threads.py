@@ -41,6 +41,13 @@ SESSIONS = [
     {"id": "s-foreign", "agent_group_id": "ag-other", "thread_id": "hermes-LOOP-F35", "status": "active",
      "container_status": "running", "last_active": "2026-09-09T11:00:00Z"},
 ]
+# 2026-09-16: a role addressed with a mis-cased thread — its session lives on `hermes-loop-f35` (one test adds it)
+STRAY_SESSION = {"id": "s-rev-lower", "agent_group_id": "ag-rev", "thread_id": "hermes-loop-f35", "status": "active",
+                 "container_status": "stopped", "last_active": "2026-09-09T11:40:00Z"}
+STRAY_MESSAGES = [
+    {"seq": 7, "direction": "out", "kind": "chat", "timestamp": "2026-09-09 11:40:00", "sender": "hermes-reviewer",
+     "text": "[Review Verdict] slang-coworkers/hermes-agent#7 (round 1, head a1b2c3d)\n\n- **Verdict:** REQUEST_CHANGES"},
+]
 
 MESSAGES = {
     "s-arch-f35": [
@@ -126,6 +133,28 @@ class CollectThreadsTest(unittest.TestCase):
         self.assertIn("hermes-P0-LOOP", out["other_threads"])
         self.assertNotIn("P0-LOOP", out["threads"])
 
+    def test_miscased_thread_session_is_attributed_to_the_row_and_keeps_its_real_thread(self):
+        """ISO-F13, 2026-09-16: the reviewer's REQUEST_CHANGES sat on `hermes-iso-f13` and was invisible. The session is
+        read as part of the row (canonical thread), its record keeps the thread it really lives on, and the top-level
+        `thread_case` list names it — `other_threads` does not."""
+        (self.dir / "sessions.json").write_text(json.dumps(SESSIONS + [STRAY_SESSION]))
+        self.fixtures["messages"] = {**MESSAGES, "s-rev-lower": STRAY_MESSAGES}
+        out = self.run_collect()
+        f35 = out["threads"]["LOOP-F35"]
+        self.assertEqual(f35["thread_id"], "hermes-LOOP-F35")
+        rev = next(s for s in f35["sessions"] if s["id"] == "s-rev-lower")
+        self.assertEqual((rev["role"], rev["thread_id"], rev["thread_case"]), ("hermes-reviewer", "hermes-loop-f35", True))
+        self.assertEqual(rev["messages"][0]["text"].split("\n")[0], "[Review Verdict] slang-coworkers/hermes-agent#7 (round 1, head a1b2c3d)")
+        self.assertNotIn("thread_case", next(s for s in f35["sessions"] if s["id"] == "s-arch-f35"))
+        self.assertEqual(out["thread_case"], [{"row": "LOOP-F35", "session_id": "s-rev-lower", "role": "hermes-reviewer", "thread_id_raw": "hermes-loop-f35"}])
+        self.assertEqual(out["counts"]["thread_case"], 1)
+        self.assertNotIn("hermes-loop-f35", out["other_threads"])
+        self.assertNotIn("loop-f35", out["threads"])
+        # the --rows filter matches the canonical id, so the stray session is read with the row (not left unread)
+        filtered = self.run_collect("--rows", "LOOP-F35")
+        rev = next(s for s in filtered["threads"]["LOOP-F35"]["sessions"] if s["id"] == "s-rev-lower")
+        self.assertNotIn("messages_error", rev)
+
     def test_messages_and_cost_status_stamped(self):
         out = self.run_collect()
         arch = next(s for s in out["threads"]["LOOP-F35"]["sessions"] if s["id"] == "s-arch-f35")
@@ -140,6 +169,23 @@ class CollectThreadsTest(unittest.TestCase):
         self.assertEqual(len(build), 1)
         self.assertTrue(build[0]["inferred"])
         self.assertEqual(build[0]["cost_status"], "stopped")
+
+    def test_mentions_in_any_casing_of_the_tag_forms_land_on_the_canonical_row(self):
+        """Pass 2 (a role with no per-thread session) attributes by free-text mention. The `hermes-<ROW>` and `[<ROW>]`
+        tags match in any casing and fold to the canonical id (rowid.canon_row); the bare `<ROW>:` form stays strict —
+        a lower-case `x-f1:` is prose. Only canonical ids are ever minted as rows."""
+        sys.path.insert(0, str(HERE))
+        import collect_threads as ct
+        self.assertEqual(ct.mentioned_rows([{"text": "please test on thread hermes-iso-f13 now"}]), {"ISO-F13"})
+        self.assertEqual(ct.mentioned_rows([{"text": "[iso-f13] round 2; also [Ops-F58.A] and hermes-LOOP-F35"}]), {"ISO-F13", "OPS-F58.a", "LOOP-F35"})
+        self.assertEqual(ct.mentioned_rows([{"text": "iso-f13: the lower-case bare form is prose"}, {"text": "ISO-F13: the strict bare form"}]), {"ISO-F13"})
+        self.assertEqual(ct.mentioned_rows([{"text": "hermes-status hermes-p6-fleet [Blocker] x-f1: nothing here"}, {}]), set())
+        # through the collector: the builder's session (no thread) mentions the row as [loop-f35]
+        self.fixtures["messages"] = {**MESSAGES, "s-build-nothread": [dict(MESSAGES["s-build-nothread"][0], text="Spec handoff [loop-f35]: Lego coworker composition")]}
+        out = self.run_collect()
+        build = [s for s in out["threads"]["LOOP-F35"]["sessions"] if s["role"] == "hermes-builder"]
+        self.assertEqual((len(build), build[0]["inferred"], build[0]["id"]), (1, True, "s-build-nothread"))
+        self.assertNotIn("loop-f35", out["threads"])
 
     def test_fallback_scan_disabled(self):
         out = self.run_collect("--scan-fallback", "0")

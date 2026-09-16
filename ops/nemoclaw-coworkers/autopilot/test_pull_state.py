@@ -41,6 +41,23 @@ SESSIONS = [
     {"id": "s-arch-f44", "agent_group_id": "ag-arch", "thread_id": "hermes-MEM-F44", "status": "active",
      "container_status": "running", "last_active": "2026-09-09T20:30:00Z", "created_at": "2026-09-09T20:00:00Z"},
 ]
+# 2026-09-16: roles addressed with a mis-cased thread (one test adds them): the tester lives on `hermes-loop-f35`,
+# an architect on `hermes-ops-f58.a`
+STRAY_SESSIONS = [
+    {"id": "s-test-lower", "agent_group_id": "ag-test", "thread_id": "hermes-loop-f35", "status": "active",
+     "container_status": "stopped", "last_active": "2026-09-09T13:00:00Z", "created_at": "2026-09-09T12:30:00Z"},
+    {"id": "s-arch-lower-58", "agent_group_id": "ag-arch", "thread_id": "hermes-ops-f58.a", "status": "active",
+     "container_status": "running", "last_active": "2026-09-09T20:45:00Z", "created_at": "2026-09-09T20:40:00Z"},
+]
+STRAY_MESSAGES = {
+    "s-test-lower": [
+        {"seq": 1, "direction": "in", "kind": "chat", "timestamp": "2026-09-09T12:30:00Z", "sender": "hermes-builder",
+         "text": "heads-up: PR coming on LOOP-F35, test round 1 soon"},
+    ],
+    "s-arch-lower-58": [
+        {"seq": 1, "direction": "in", "kind": "chat", "timestamp": "2026-09-09T20:40:00Z", "sender": "orchestrator", "text": "Dispatch OPS-F58.a: doctor."},
+    ],
+}
 
 MESSAGES = {
     "s-arch-f35": [
@@ -238,6 +255,57 @@ class PullStateTest(unittest.TestCase):
         self.assertIsNone(st["sources"]["sessions"]["filter"]["rows"])
         self.assertEqual(st["sources"]["sessions"]["sessions_read"], 3)
 
+    def test_miscased_thread_flows_through_the_flat_views_and_the_dispatch_overlay(self):
+        """2026-09-16: a session on `hermes-loop-f35` is LOOP-F35's for every view pull-state.sh builds — the flat thread
+        (its line is read with the row), sessions-by-thread (with the thread it really lives on as thread_id_raw, which the
+        supervisor puts on pinned sends), the state's thread_case list — and an architect session on a mis-cased thread
+        still marks its row dispatched (never dispatch twice)."""
+        self.fixtures["sessions"] = SESSIONS + STRAY_SESSIONS
+        self.fixtures["messages"] = {**MESSAGES, **STRAY_MESSAGES}
+        st = self.run_pull()
+        flat = json.loads((self.ap / "raw" / "threads-flat.json").read_text())
+        self.assertTrue(any(m["text"].startswith("heads-up: PR coming on LOOP-F35") for m in flat["hermes-LOOP-F35"]))
+        self.assertNotIn("hermes-loop-f35", flat)
+        by_thread = json.loads((self.ap / "raw" / "sessions-by-thread.json").read_text())
+        tester = next(s for s in by_thread["hermes-LOOP-F35"] if s["session_id"] == "s-test-lower")
+        self.assertEqual((tester["role"], tester["thread_id_raw"]), ("hermes-tester", "hermes-loop-f35"))
+        builder = next(s for s in by_thread["hermes-LOOP-F35"] if s["session_id"] == "s-build-f35")
+        self.assertEqual(builder["thread_id_raw"], "hermes-LOOP-F35")
+        self.assertEqual(sorted(st["sources"]["sessions"]["thread_case"], key=lambda t: t["row"]), [
+            {"row": "LOOP-F35", "session_id": "s-test-lower", "role": "hermes-tester", "thread_id_raw": "hermes-loop-f35"},
+            {"row": "OPS-F58.a", "session_id": "s-arch-lower-58", "role": "hermes-architect", "thread_id_raw": "hermes-ops-f58.a"},
+        ])
+        # the supervisor's thread-case alert rides beside the row's ordinary nudge
+        row = st["supervise"]["rows"]["LOOP-F35"]
+        self.assertEqual(row["thread_case"], [{"thread_id_raw": "hermes-loop-f35", "roles": ["hermes-tester"], "session_ids": ["s-test-lower"]}])
+        self.assertEqual((row["action"], row["target_role"]), ("nudge", "hermes-builder"))
+        self.assertIn(("alert", "thread-case:hermes-loop-f35"), [(a["kind"], a.get("alert_key")) for a in st["actions"]])
+        # the mis-cased architect session is a dispatch overlay for OPS-F58.a, spelled canonically
+        self.assertEqual(st["rows"]["OPS-F58.a"]["state"], "dispatched")
+        self.assertEqual(st["rows"]["OPS-F58.a"]["dispatched_at"], "2026-09-09T20:40:00Z")
+        self.assertEqual(st["dispatch_overlays"]["OPS-F58.a"], "session s-arch-lower-58 on thread hermes-ops-f58.a")
+        self.assertIn("OPS-F58.a", st["in_flight"])
+
+    def test_inferred_session_reads_as_the_row_thread_never_its_own(self):
+        """collect_threads pass 2: a reviewer with no per-thread session, whose DM (`hermes-P0-LOOP`) mentions LOOP-F35, is
+        attached to the row as inferred. sessions-by-thread must NOT carry its real thread as thread_id_raw — the
+        supervisor would raise a false thread-case and re-route the row's pinned nudge into hermes-P0-LOOP."""
+        inferred = {"id": "s-rev-dm", "agent_group_id": "ag-rev", "thread_id": "hermes-P0-LOOP", "status": "active",
+                    "container_status": "stopped", "last_active": "2026-09-09T13:00:00Z", "created_at": "2026-09-09T12:30:00Z"}
+        self.fixtures["sessions"] = SESSIONS + [inferred]
+        self.fixtures["messages"] = {**MESSAGES, "s-rev-dm": [
+            {"seq": 1, "direction": "in", "kind": "chat", "timestamp": "2026-09-09T12:30:00Z", "sender": "orchestrator",
+             "text": "FYI the review for LOOP-F35: round 1 coming"}]}
+        st = self.run_pull()
+        by_thread = json.loads((self.ap / "raw" / "sessions-by-thread.json").read_text())
+        rev = next(s for s in by_thread["hermes-LOOP-F35"] if s["session_id"] == "s-rev-dm")
+        self.assertEqual((rev["role"], rev["inferred"], rev["thread_id_raw"]), ("hermes-reviewer", True, "hermes-LOOP-F35"))
+        self.assertIsNone(st["supervise"]["rows"]["LOOP-F35"]["thread_case"])
+        self.assertNotIn("thread-case", [a.get("alert_kind") for a in st["actions"]])
+        self.assertEqual(st["sources"]["sessions"]["thread_case"], [])
+        nudge = next(a for a in st["actions"] if a["kind"] == "nudge" and a["row"] == "LOOP-F35")
+        self.assertEqual((nudge["thread_id"], "row_thread_id" in nudge), ("hermes-LOOP-F35", False))
+
     def test_gate_supervise_prints_json_last_and_wakes_on_a_nudge(self):
         """The one remaining task gate (the dispatch tick is dispatch-cron.sh on the host; test_dispatch_cron.py)."""
         (self.bin / "ncl.fixtures.json").write_text(json.dumps(self.fixtures))
@@ -249,7 +317,7 @@ class PullStateTest(unittest.TestCase):
             "GH": str(self.bin / "gh"), "NOW_OVERRIDE": NOW, "PATH": f"{self.bin}:{os.environ.get('PATH', '')}",
         }
         shutil.copy(HERE / "pull-state.sh", self.ap / "pull-state.sh")
-        for f in ("hermes_queue.py", "hermes_supervise.py", "collect_threads.py", "scorecard.py", "abtr.py"):
+        for f in ("hermes_queue.py", "hermes_supervise.py", "collect_threads.py", "rowid.py", "scorecard.py", "abtr.py"):
             shutil.copy(HERE / f, self.ap / f)
         proc = subprocess.run(["bash", str(HERE / "gate-supervise.sh")], capture_output=True, text=True, env=env, check=False)
         self.assertEqual(proc.returncode, 0, proc.stderr)

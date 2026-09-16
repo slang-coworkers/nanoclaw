@@ -237,6 +237,21 @@ class DispatchCronTest(unittest.TestCase):
         self.assertEqual(st["rows"]["MEM-F44"]["state"], "dispatched")
         self.assertEqual(st["wip"], {"limit": 3, "in_flight": 2, "free": 1, "build_in_flight": True})
 
+    def test_miscased_architect_session_still_counts_the_row_in_flight(self):
+        """2026-09-16: a hand dispatch that addressed the architect with `hermes-mem-f44`. The overlay reads the thread
+        through canon_thread (the same inline copy pull-state.sh carries; test_rowid pins them), so MEM-F44 is in flight
+        and is not dispatched a second time."""
+        (self.bin / "ncl.fixtures.json").write_text(json.dumps({"groups": GROUPS, "sessions": [dict(SESSIONS[0], thread_id="hermes-mem-f44")]}))
+        proc = self.run_cron(NCL=str(self.bin / "ncl"))
+        self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
+        self.assertEqual([p["body"]["thread_id"] for p in self.posts()], ["hermes-OPS-F58.a"])
+        st = json.loads((self.ap / "dispatch-state.json").read_text(encoding="utf-8"))
+        self.assertEqual(st["rows"]["MEM-F44"]["state"], "dispatched")
+        self.assertEqual(st["wip"], {"limit": 3, "in_flight": 2, "free": 1, "build_in_flight": True})
+        prior = json.loads((self.ap / "raw" / "dispatch-prior.json").read_text(encoding="utf-8"))
+        self.assertEqual(prior["rows"]["MEM-F44"]["dispatched_by"], "session s-arch-f44 on thread hermes-mem-f44")  # the real thread is named
+        self.assertNotIn("mem-f44", prior["rows"])
+
     def test_missing_ncl_is_a_log_line_not_a_failure(self):
         proc = self.run_cron(NCL=str(self.root / "bin" / "ncl"))
         self.assertEqual(proc.returncode, 0, proc.stdout + proc.stderr)
