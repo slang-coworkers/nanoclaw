@@ -248,6 +248,24 @@ class Terminal(unittest.TestCase):
         self.assertEqual((r["stage"], r["action"]), ("merged", "none"))
         self.assertEqual(out["summary"]["in_flight"], 0)
 
+    def test_other_rows_merge_notice_fanned_in_is_not_this_rows_merge(self):
+        """The dashboard 'Merged …#25 … [ISO-F15]' line reaches every hermes-<ROW> thread as an "in"
+        copy; CRED-F28 must stay at its real stage, and an outbound notice naming another row is noise."""
+        st = state([{"id": "CRED-F28", "spec": stamp(30), "pr": "-"}])
+        threads = {"hermes-CRED-F28": [
+            builder_start("CRED-F28", 30),
+            msg(2, f"Merged {SLUG}#25 feat(plugins): enforce fleet session-driver seam [ISO-F15] — squash 1bb3b8a", direction="in"),
+            msg(1.5, f"Merged {SLUG}#22 feat(plugins): render declared cron jobs [SCHED-F33] — squash f8d79a1"),
+        ]}
+        out = run(st, threads)
+        r = out["rows"]["CRED-F28"]
+        self.assertNotEqual(r["stage"], "merged")
+        self.assertEqual(out["summary"]["in_flight"], 1)
+        # the row's OWN notice, written on its thread, still counts
+        threads["hermes-CRED-F28"].append(msg(1, f"Merged {SLUG}#27 feat(plugins): podman-onecli credential half [CRED-F28] — squash 0d97eee"))
+        out2 = run(st, threads)
+        self.assertEqual(out2["rows"]["CRED-F28"]["stage"], "merged")
+
     def test_blocked_row_escalates_once_never_nudges(self):
         st = state([merged_row("LOOP-F35", 2), {"id": "MEM-F44", "outcome": "blocked: STOP cap - test FAIL x2"}])
         out = run(st, {})

@@ -98,6 +98,7 @@ CARD_MARKERS = {
 CARD_PREFIXES = ("card · ", "card(html) · ")
 CARD_GRACE_MINUTES = 20
 CARD_ROLE_RE = re.compile(r"^card(?:\(html\))? · \S+ · ([a-z][a-z-]*) ·")
+ROW_ID_RE = re.compile(r"\b([A-Z][A-Z0-9]{1,4}-F\d+(?:\.[a-z])?)\b")  # matrix row ids named in a message line
 CARD_NUDGE_MARK = "no task card"
 CARD_NUDGE_TEMPLATE = (
     "Supervisor nudge {id}: {mark} after your {marker} at {ts} ({m} min ago). Run /hermes-task-card "
@@ -177,6 +178,15 @@ def classify_message(msg: dict, rid: str) -> dict | None:
         elif re.match(r"^Fix review request", first):
             kind = "review_request"
         elif re.match(r"^Merged\s+\S*#\d+", first):
+            # A merge notice is this row's only when the Orchestrator wrote it on THIS thread and it
+            # names no other row. The dashboard merge line for one row fans into every hermes-<ROW>
+            # thread as an "in" copy (cross-session context), which read as "merged" for CRED-F28 and
+            # ISO-F14 on 2026-09-15 while both were stalled at the architect — hiding a 20 h stall.
+            if msg.get("direction") == "in":
+                return None
+            named = set(ROW_ID_RE.findall(first))
+            if named and rid not in named:
+                return None
             kind = "merged"
         elif re.match(r"^blocked:\s*STOP", first):
             kind = "stop"
