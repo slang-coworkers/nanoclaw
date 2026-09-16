@@ -18,21 +18,36 @@ Reads (every input optional; a missing or broken one becomes a banner, never a c
                                                  red = needs a human (cost card / hold / blocked / escalated),
                                                  grey = no session. Roles come from threads.json `roles`.
 
+  <ROOT>/data/shared/hermes/autopilot/config.json  the human's knobs (wip, waive, paused_rows): paused / waived rows
+
+ONE computation, ONE row state. load_board() reads every input once and builds one per-row RECORD per
+plan row / card thread (build_records: plan row, queue row + supervisor row, live sessions and their
+dots, cards, the ledger's work-item row). row_state() derives THE row's state from those inputs exactly
+once — ledger merged > paused > blocked > deferred > in flight > waiting > queued, plus the supervisor's
+holds and config.waive — and every surface renders that: the index cell and the row page show
+row_stage(record) (the state plus `· hold X` / `· cost hold` / `· waived` decorations), the demo-path
+tracker maps the same record["state"] onto its vocabulary. Neither re-reads state.json's rows.
+
 Writes under <WWW>/rows/ (tmp + rename):
 
-  index.html      first the "Demo path" section (demo_path.py: five rungs, the rows each needs with
-                  live state, status + ETA from the autopilot's queue state; a failure there is one
-                  banner, never a broken board), then
-                  batch → rows → a | b | t | r: the latest card per role as a 180 px thumbnail,
+  index.html      batch → rows → a | b | t | r: the latest card per role as a 180 px thumbnail,
                   bordered in the verdict colour (ok / bad / run), linking to the row page; a row
                   that carries open criteria wears a `carries N` badge. Then two sections:
                   "Carried criteria" (criterion · from → to · status · reason, open first; a to-row
                   that is not a plan row — a phase name such as P4 — is flagged) and "Upstream asks"
-                  (UA id · source row · disposition · ask, truncated)
+                  (UA id · source row · disposition · ask, truncated). The header carries ONE link,
+                  "Demo path →", to the tracker's own page; nothing else of the tracker is on the index.
   <ROW>.html      every card on the row newest-first with its .html / .json, links to /adr/,
                   /test-reports/<thread>/ and the dashboard lane ($DASHBOARD_URL/#/cw/orchestrator/l/hermes-<ROW>);
                   a "Carries" block (criteria this row must cover — each must be a PASS row under its
                   own id at the merge gate), a "Deferred from this row" block, and the row's upstream asks
+  demo-path.html  the demo-path tracker (demo_path.py over the SAME per-row records: five rungs, the
+                  rows each needs in their board state, status + ETA), full page, same CSS, a link back
+                  to the index. A tracker failure is one banner on this page; the board still writes.
+  demo-path.json  the tracker's computed result (demo_path.compute output + `slack_text`, the rendered
+                  Slack message) — slack-rows.py reads THIS for its `*Demo path*` message and never
+                  computes anything itself. Left untouched when the tracker fails (slack-rows then sees
+                  a stale file and leaves the message alone).
   cards/<group>/<thread>  a symlink to that group's card dir, so the PNGs are served as-is
 
 Stdlib only, no hostname guard, exit 0 on every handled failure (the caller is refresh-viewers.sh,
@@ -76,6 +91,12 @@ THREAD_RE = re.compile(r"^hermes-(?P<row>.+)$")
 # A row id usable as a page filename (<ROW>.html) and a link target; anything else renders as plain text.
 SAFE_RID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]*$")
 STALE_H = 2.0
+# hermes_queue.IN_FLIGHT_STATES / hermes_supervise.IN_FLIGHT (kept local: the board must render without them).
+IN_FLIGHT_STATES = ("dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate")
+# hermes_supervise.merge_hold's §4.3 holds: the PR is ready and merges the moment that batch has merged.
+GATE_HOLDS = ("1a", "batch2", "batch3+4")
+# Supervisor escalations another record field already carries (cost_hold / state blocked / a gate hold).
+ESCALATIONS_CARRIED = ("cost-card", "blocked", "hold-too-long")
 CSS = """
 body{font:14px/1.5 -apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;margin:24px;max-width:1280px;color:#222;background:#fafafa}
 h1{font-size:20px;margin:0 0 4px}h2{font-size:16px;margin:28px 0 8px;border-bottom:1px solid #ddd;padding-bottom:4px}
@@ -176,15 +197,54 @@ def load_plan(paths: list) -> tuple:
         return None, f"plan unreadable: {type(exc).__name__}: {exc}"
 
 
+def ledger_merge_stamps(ledger_text: str, hq) -> dict:
+    """{row-id: ISO merge time} from the ledger's `merged/blocked` cell (first timestamp in it), for
+    merged rows only — parse_ledger keeps the parsed outcome but not the cell's timestamp, so the
+    same table is re-read with the same cell splitter and header-located columns."""
+    out: dict = {}
+    main_text, _ = hq._split_ledger_sections(ledger_text)
+    tz = hq.DEFAULT_CONFIG.get("install_tz_offset_minutes", 330)
+    header = None
+    col: dict = {}
+    for line in main_text.splitlines():
+        if not line.startswith("|"):
+            continue
+        cells = hq.split_cells(line)
+        if not cells or hq.is_separator(cells):
+            continue
+        if header is None:
+            low = [c.lower() for c in cells]
+            if any(h in low for h in ("row-id", "req-id", "id")):
+                header = low
+                col = {name: i for i, name in enumerate(header)}
+            continue
+        if len(cells) > len(header):
+            cells = cells[: len(header) - 1] + ["|".join(cells[len(header) - 1:])]
+        id_col = next((col[h] for h in ("row-id", "req-id", "id") if h in col), 0)
+        rid, _tokens = hq.ledger_row_id(hq.clean_id(cells[id_col]) if id_col < len(cells) else "")
+        i = col.get("merged/blocked")
+        if not rid or i is None or i >= len(cells):
+            continue
+        if hq.parse_outcome_cell(cells[i]).get("outcome") == "merged":
+            stamp = hq.first_timestamp(cells[i], tz)
+            if stamp:
+                out[rid] = stamp
+    return out
+
+
 def load_tables(ledger_path: str, asks_path: str) -> dict:
     """The Orchestrator's two tables, read through hermes_queue's parsers (the same code the queue,
     the supervisor and the coverage check run), so the board shows exactly what they act on.
 
     {"carried": [criterion dicts], "carried_problems": [str], "carried_err": str | None,
-     "asks": [ask dicts], "asks_err": str | None}. A missing or unreadable file is an *_err
-    string (rendered as a banner) with an empty list; an empty upstream-asks.md (the box's state
-    until the first ask is surfaced) is simply no asks."""
-    out = {"carried": [], "carried_problems": [], "carried_err": None, "asks": [], "asks_err": None}
+     "asks": [ask dicts], "asks_err": str | None,
+     "ledger_rows": {row-id: parse_ledger entry}, "merged_at": {row-id: ISO merge stamp}}.
+    The last two come from the same ledger read (the work-item table: dispatched / PR / verdict /
+    merged/blocked outcome + merge sha, and the merge timestamp for merged rows) and feed the
+    per-row records. A missing or unreadable file is an *_err string (rendered as a banner) with an
+    empty list; an empty upstream-asks.md (the box's state until the first ask is surfaced) is simply
+    no asks."""
+    out = {"carried": [], "carried_problems": [], "carried_err": None, "asks": [], "asks_err": None, "ledger_rows": {}, "merged_at": {}}
     try:
         hermes_queue = _hermes_queue()
     except Exception as exc:  # noqa: BLE001
@@ -195,9 +255,12 @@ def load_tables(ledger_path: str, asks_path: str) -> dict:
     else:
         try:
             with open(ledger_path, encoding="utf-8") as fh:
-                led = hermes_queue.parse_ledger(fh.read())
+                text = fh.read()
+            led = hermes_queue.parse_ledger(text)
             out["carried"] = [c for c in (led.get("carried_criteria") or []) if isinstance(c, dict)]
             out["carried_problems"] = [str(p) for p in (led.get("carried_problems") or [])]
+            out["ledger_rows"] = {str(k): v for k, v in (led.get("rows") or {}).items() if isinstance(v, dict)}
+            out["merged_at"] = ledger_merge_stamps(text, hermes_queue)
         except Exception as exc:  # noqa: BLE001 - a broken ledger is a banner, never a crash
             out["carried_err"] = f"ledger.md unreadable: {type(exc).__name__}: {exc}"
     if not os.path.isfile(asks_path):
@@ -315,19 +378,48 @@ def _demo_path():
     return demo_path
 
 
-def demo_section(root: str, now: datetime, state_path: str | None = None, config_path: str | None = None,
-                 spec_path: str | None = None, plan_paths: list | None = None, ledger_path: str | None = None) -> str:
-    """The index page's "Demo path" section (demo_path.render_html over load_spec + load_live + compute).
-    Any failure — a missing or broken demo-path.json, an import error, a bug — is one banner and a log
-    line; the rest of the board renders as before."""
+DEMO_NAV = '<p class="links"><a href="demo-path.html">Demo path →</a></p>'
+
+
+def demo_tracker(board: dict, now: datetime, spec_path: str | None = None) -> tuple:
+    """(result | None, body html, json text | None) — the demo-path tracker computed ONCE over the board's
+    per-row records (demo_path.rows_from_board maps each record's canonical `state` → compute), never over
+    state.json's rows again; state.json and config.json contribute only what the records do not carry
+    (gating flags, WIP, the queue order — demo_path.live_gating over the objects load_board already read).
+    `result` carries `slack_text` (render_slack) so slack-rows.py can post it without computing; the JSON
+    text is the serialised result for <WWW>/rows/demo-path.json, produced here so a serialisation error is
+    a tracker failure too. Any failure — a missing or broken demo-path.json spec, an import error, a bug —
+    is (None, one banner, None) and a log line."""
     try:
         dp = _demo_path()
         spec = dp.load_spec(spec_path or dp.SPEC_PATH)
-        live = dp.load_live(root, state_path=state_path, config_path=config_path, plan_paths=plan_paths, ledger_path=ledger_path)
-        return dp.render_html(dp.compute(spec, live, now))
+        gating = dp.live_gating(board.get("state"), board.get("config"), state_err=board.get("state_err"),
+                                config_err=board.get("config_err"), ledger_err=(board.get("tables") or {}).get("carried_err"))
+        result = dp.compute(spec, dp.rows_from_board(board.get("records") or {}, gating), now)
+        result["slack_text"] = dp.render_slack(result)
+        return result, dp.render_html(result), json.dumps(result, indent=2, sort_keys=True, ensure_ascii=False) + "\n"
     except Exception as exc:  # noqa: BLE001 - the tracker must never take the board down
         log(f"demo path: {type(exc).__name__}: {exc}")
-        return f'<h2>Demo path</h2><div class="banner">demo path unavailable — {esc(f"{type(exc).__name__}: {exc}")}</div>'
+        return None, f'<div class="banner">demo path unavailable — {esc(f"{type(exc).__name__}: {exc}")}</div>', None
+
+
+def write_demo_path(www_rows: str, body: str, json_text: str | None, now: datetime) -> bool:
+    """demo-path.html (+ demo-path.json when the tracker succeeded) under <WWW>/rows/. A write failure is one
+    log line and False — never an exception (main()'s catch-all would replace the whole board with a failure
+    page, and the tracker must never take the board down)."""
+    try:
+        write_atomic(os.path.join(www_rows, "demo-path.html"), render_demo_page(body, now))
+        if json_text is not None:
+            write_atomic(os.path.join(www_rows, "demo-path.json"), json_text)
+        return json_text is not None
+    except Exception as exc:  # noqa: BLE001
+        log(f"demo path: write failed: {type(exc).__name__}: {exc}")
+        return False
+
+
+def render_demo_page(body: str, now: datetime) -> str:
+    """/rows/demo-path.html: the tracker on its own page (same CSS as the board, link back to the index)."""
+    return page("Demo path", body, now.strftime("%Y-%m-%d %H:%M UTC"), crumbs='<p class="links"><a href="index.html">← rows board</a></p>')
 
 
 # --------------------------------------------------------------------------- live status
@@ -430,19 +522,99 @@ def live_cell(colour: str, label: str) -> str:
     return f'<div class="live" title="{esc(label)}"><span class="dot {colour}"></span>{esc(label)}</div>'
 
 
-def row_stage(state: dict | None, rid: str) -> str:
+def row_state(rid: str, qrow: dict, sup: dict, ledger: dict | None, config: dict | None, state: dict | None) -> dict:
+    """THE row's state, derived here once from the loaded objects and rendered everywhere alike (the index
+    cell and the row page through row_stage(record), the demo-path tracker through demo_path.rows_from_board).
+    First matching line wins:
+
+      no state.json                                           → None      (state_reason "state.json unavailable")
+      no queue row, no supervisor row, no ledger verdict      → None      ("not in state.json")
+      ledger merged | queue merged | supervisor merged        → merged    (the ledger's merged/blocked cell is the
+                                                                           merge fact; state.json lags it by a tick)
+      queue.paused | config.paused_rows                       → paused    (state_reason names the source)
+      ledger blocked | queue blocked | supervisor blocked     → blocked   (state_reason: the supervisor's reason,
+                                                                           else the queue's, else the ledger's)
+      queue deferred                                          → deferred
+      supervisor in flight AND queue in flight                → the supervisor's finer stage (dispatched ·
+                                                                spec_handoff · building · pr_open · testing · review · gate)
+      exactly one of them in flight                           → that one (the supervisor's thread evidence, or the
+                                                                queue's dispatch bookkeeping the supervisor has not seen)
+      queue queued AND listed in state.queue.waiting          → waiting   (gates = its blocked_by)
+      anything else                                           → the queue state as is (queued, carried …)
+
+    Alongside the state:
+      waived   the row is in config.waive (counted as done by the gates and the tracker; shown as `· waived`)
+      paused   the row is in config.paused_rows or the queue row says paused
+      gates    the unmet gate flags of a waiting row (state.queue.waiting[].blocked_by)
+      holds    the supervisor's human-needed signals on the row, each {"kind", "label"}:
+                 gate       a §4.3 merge hold (label 1a | batch2 | batch3+4): the PR merges when that batch has
+                 hold       any other hold (core-change, …): a human decision
+                 cost       a cost card is pending on one of the row's sessions
+                 escalated  an SLO / env-fail / blocked-twice escalation (label = the alert kind); cost-card,
+                            blocked and hold-too-long escalations are already carried by the fields above
+    """
     if not isinstance(state, dict):
+        return {"state": None, "state_reason": "state.json unavailable", "waived": False, "paused": False, "gates": (), "holds": []}
+    qrow = qrow if isinstance(qrow, dict) else {}
+    sup = sup if isinstance(sup, dict) else {}
+    led = ledger if isinstance(ledger, dict) else {}
+    cfg = config if isinstance(config, dict) else {}
+    qs = str(qrow.get("state") or "") or None
+    ss = str(sup.get("stage") or "") or None
+    outcome = str(led.get("outcome") or "") or None
+    waived = rid in {str(x) for x in (cfg.get("waive") or [])}
+    in_paused_rows = rid in {str(x) for x in (cfg.get("paused_rows") or [])}
+    paused = bool(qrow.get("paused")) or in_paused_rows
+    holds = []
+    if sup.get("hold"):
+        hold = str(sup["hold"])
+        holds.append({"kind": "gate" if hold in GATE_HOLDS else "hold", "label": hold})
+    if sup.get("cost_hold"):
+        holds.append({"kind": "cost", "label": "cost hold"})
+    if sup.get("action") == "escalate" and str(sup.get("alert_kind") or "") not in ESCALATIONS_CARRIED:
+        holds.append({"kind": "escalated", "label": str(sup.get("alert_kind") or "escalated")})
+    out = {"state": None, "state_reason": None, "waived": waived, "paused": paused, "gates": (), "holds": holds}
+    if not qrow and not sup and outcome not in ("merged", "blocked"):
+        return dict(out, state_reason="not in state.json")
+    if outcome == "merged" or qs == "merged" or ss == "merged":
+        return dict(out, state="merged")
+    if paused:
+        return dict(out, state="paused", state_reason="config.paused_rows" if in_paused_rows else "queue row paused")
+    if outcome == "blocked" or qs == "blocked" or ss == "blocked":
+        reason = (sup.get("reason") if ss == "blocked" else None) or qrow.get("state_reason") or led.get("reason")
+        return dict(out, state="blocked", state_reason=reason)
+    if qs == "deferred":
+        return dict(out, state="deferred")
+    if ss in IN_FLIGHT_STATES and qs in IN_FLIGHT_STATES:
+        return dict(out, state=ss)
+    if ss in IN_FLIGHT_STATES:
+        return dict(out, state=ss)
+    if qs in IN_FLIGHT_STATES:
+        return dict(out, state=qs)
+    if qs == "queued":
+        queue = state.get("queue") if isinstance(state.get("queue"), dict) else {}
+        for w in queue.get("waiting") or []:
+            if isinstance(w, dict) and str(w.get("id")) == rid:
+                return dict(out, state="waiting", gates=tuple(str(g) for g in (w.get("blocked_by") or [])))
+    return dict(out, state=qs or "queued")
+
+
+def row_stage(rec: dict) -> str:
+    """The stage text the index cell and the row page show: record["state"] plus its decorations — the
+    unmet gates of a waiting row, `· hold X`, `· cost hold`, `· waived`. "" when the state is unknown."""
+    s = rec.get("state")
+    if not s:
         return ""
-    sup = ((state.get("supervise") or {}).get("rows") or {}).get(rid) or {}
-    if sup.get("stage"):
-        s = sup["stage"]
-        if sup.get("hold"):
-            s += f" · hold {sup['hold']}"
-        if sup.get("cost_hold"):
+    if s == "waiting" and rec.get("gates"):
+        s += " · " + ", ".join(rec["gates"])
+    for h in rec.get("holds") or []:
+        if h.get("kind") in ("gate", "hold"):
+            s += f" · hold {h['label']}"
+        elif h.get("kind") == "cost":
             s += " · cost hold"
-        return s
-    row = (state.get("rows") or {}).get(rid) or {}
-    return row.get("state") or ""
+    if rec.get("waived"):
+        s += " · waived"
+    return s
 
 
 def latest_for_role(groups: dict, role: str):
@@ -647,25 +819,24 @@ def render_tables_row(tables: dict | None, rid: str, plan_rows: dict | None) -> 
     return "".join(out)
 
 
-def page(title: str, body: str, generated: str, crumbs: str = "") -> str:
+def page(title: str, body: str, generated: str, crumbs: str = "", nav: str = "") -> str:
+    """`crumbs` sits above the <h1>, `nav` right under it (the index's one "Demo path →" link)."""
     return (
         f'<!doctype html><html><head><meta charset="utf-8"><title>{esc(title)}</title><style>{CSS}</style></head><body>'
-        f'{crumbs}<h1>{esc(title)}</h1>{body}'
+        f'{crumbs}<h1>{esc(title)}</h1>{nav}{body}'
         f'<p><small>generated {esc(generated)} · source groups/*/reports/hermes-*/cards/ · '
         f'<a href="../status/autopilot.md">status/autopilot.md</a> · <a href="../explanations/">explanations</a></small></p></body></html>\n'
     )
 
 
-def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetime, live: dict | None = None, live_err: str | None = None,
-                 tables: dict | None = None, demo_html: str = "") -> str:
+def render_index(plan, plan_err, cards: dict, banners: list, now: datetime, records: dict, live_err: str | None = None,
+                 tables: dict | None = None) -> str:
+    """The board's index over the per-row records (build_records): the same objects the row pages and
+    the demo-path tracker render from."""
     now_ts = now.timestamp()
-    live = live or {}
-    sup_rows = ((state or {}).get("supervise") or {}).get("rows") or {} if isinstance(state, dict) else {}
     out = []
     for b in list(banners) + table_banners(tables):
         out.append(f'<div class="banner">{esc(b)}</div>')
-    if demo_html:
-        out.append(demo_html)  # the demo path sits at the top, before the batch tables
     if live_err:
         out.append(f'<div class="banner">live status unavailable — {esc(live_err)}; dots show grey</div>')
     out.append('<p class="legend">live status per role (from <code>ncl sessions list</code> at generation time): '
@@ -698,35 +869,38 @@ def render_index(plan, plan_err, state, cards: dict, banners: list, now: datetim
         out.append(f'<h2>{esc(title)} <small>{len(ids)} rows · {n_cards} cards</small></h2>')
         out.append('<table><tr><th>row</th><th>name</th><th>stage</th><th>a</th><th>b</th><th>t</th><th>r</th></tr>')
         for rid in ids:
-            groups = cards.get(f"hermes-{rid}") or {}
-            name = rows.get(rid, {}).get("name") or ""
-            disp = rows.get(rid, {}).get("plan_disposition") or ""
-            meta = " · ".join(x for x in (disp, f"wave {rows[rid]['wave']}" if rows.get(rid, {}).get("wave") else "", rows.get(rid, {}).get("attaches_to") or "") if x)
-            safe = bool(SAFE_RID_RE.match(rid))   # run() writes no page for an unsafe id: no link to it
-            sup = sup_rows.get(rid) or {}
-            dots = {role: role_live((live.get(rid) or {}).get(role), sup, role, now) for role in ROLE_ORDER}
+            rec = records[rid]
+            groups = rec["cards"]
+            prow = rec["plan"]
+            name = rec["name"]
+            disp = prow.get("plan_disposition") or ""
+            meta = " · ".join(x for x in (disp, f"wave {prow['wave']}" if prow.get("wave") else "", prow.get("attaches_to") or "") if x)
+            safe = rec["safe"]   # run() writes no page for an unsafe id: no link to it
+            dots = rec["dots"]
             cells = "".join(thumb_cell(groups, role, rid, now_ts, link=safe, live=dots[role]) for _, role in ROLE_COLUMNS)
-            row_dot = row_live(dots)
+            row_dot = rec["row_dot"]
             orch = dots["orchestrator"]
             id_cell = (f'<a href="{esc(rid)}.html"><b>{esc(rid)}</b></a>' if safe else f'<b>{esc(rid)}</b>') + carried_badge(tables, rid)
             out.append(
                 f'<tr><td><span class="dot {row_dot}" title="{esc(LIVE_LABEL[row_dot])}"></span>{id_cell}<br><code>hermes-{esc(rid)}</code>'
                 f'<br><span class="live" title="orchestrator"><span class="dot {orch[0]}"></span>orchestrator: {esc(orch[1])}</span></td>'
-                f'<td>{esc(name)}<br><small>{esc(meta)}</small></td><td class="stage">{esc(row_stage(state, rid)) or "·"}</td>{cells}</tr>'
+                f'<td>{esc(name)}<br><small>{esc(meta)}</small></td><td class="stage">{esc(rec["stage"]) or "·"}</td>{cells}</tr>'
             )
         out.append("</table>")
     out.append(render_tables_index(tables, rows if plan else None))
     n_open = sum(1 for c in ((tables or {}).get("carried") or []) if str(c.get("status") or "open") == "open")
     n_asks = sum(1 for a in ((tables or {}).get("asks") or []) if str(a.get("disposition") or "open") == "open")
     out.insert(0, f'<p class="muted">{total} cards on disk · {len(cards)} threads with cards · {n_open} open carried criteria · {n_asks} open upstream asks</p>')
-    return page("Hermes port · rows board", "".join(out), now.strftime("%Y-%m-%d %H:%M UTC"))
+    return page("Hermes port · rows board", "".join(out), now.strftime("%Y-%m-%d %H:%M UTC"), nav=DEMO_NAV)
 
 
-def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url: str | None, live: dict | None = None, live_err: str | None = None,
-               tables: dict | None = None) -> str:
+def render_row(rec: dict, plan, now: datetime, dashboard_url: str | None, live_err: str | None = None, tables: dict | None = None) -> str:
+    """One row page from its record (build_records) — the same object the index and the tracker use."""
     now_ts = now.timestamp()
-    thread = f"hermes-{rid}"
-    row = ((plan or {}).get("rows") or {}).get(rid) or {}
+    rid = rec["id"]
+    thread = rec["thread"]
+    row = rec["plan"]
+    groups = rec["cards"]
     links = ['<a href="index.html">← rows board</a>', '<a href="../adr/">/adr/</a>', f'<a href="../test-reports/{esc(thread)}/">/test-reports/{esc(thread)}/</a>']
     if dashboard_url:
         links.append(f'<a href="{esc(dashboard_url.rstrip("/"))}/#/cw/orchestrator/l/{esc(thread)}">dashboard lane</a>')
@@ -734,18 +908,16 @@ def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url
     meta = " · ".join(x for x in (f"batch {row.get('batch')}" if row.get("batch") else "", row.get("plan_disposition") or "",
                                   f"wave {row['wave']}" if row.get("wave") else "", row.get("attaches_to") or "") if x)
     body.append(f'<p>{esc(row.get("name") or "")}<br><small>{esc(meta)}</small></p>')
-    stage = row_stage(state, rid)
-    body.append(f'<p class="stage">stage: <b>{esc(stage) or "unknown"}</b> · thread <code>{esc(thread)}</code>{carried_badge(tables, rid)}</p>')
+    body.append(f'<p class="stage">stage: <b>{esc(rec["stage"]) or "unknown"}</b> · thread <code>{esc(thread)}</code>{carried_badge(tables, rid)}</p>')
     body.append(render_tables_row(tables, rid, ((plan or {}).get("rows") or None) if plan else None))
 
-    sup = (((state or {}).get("supervise") or {}).get("rows") or {}).get(rid) or {} if isinstance(state, dict) else {}
     body.append("<h2>Live sessions</h2>")
     if live_err:
         body.append(f'<div class="banner">live status unavailable — {esc(live_err)}</div>')
     body.append('<table class="live-sessions"><tr><th></th><th>role</th><th>status</th><th>session</th><th>container</th><th>last active</th></tr>')
     for role in ROLE_ORDER:
-        sessions = (live or {}).get(rid, {}).get(role) or []
-        colour, label = role_live(sessions, sup, role, now)
+        sessions = rec["sessions"][role]
+        colour, label = rec["dots"][role]
         if not sessions:
             body.append(f'<tr><td><span class="dot {colour}"></span></td><td>{esc(role)}</td><td>{esc(label)}</td><td colspan="3" class="muted">—</td></tr>')
             continue
@@ -775,18 +947,95 @@ def render_row(rid: str, plan, state, groups: dict, now: datetime, dashboard_url
     return page(f"{rid} · {row.get('name') or thread}", "".join(body), now.strftime("%Y-%m-%d %H:%M UTC"))
 
 
-# --------------------------------------------------------------------------- main
+# --------------------------------------------------------------------------- per-row records (the one computation)
 
-def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, threads_path: str, dashboard_url: str | None, ncl_bin: str | None = None,
-        ledger_path: str | None = None, asks_path: str | None = None, demo_spec: str | None = None) -> int:
-    www_rows = os.path.join(www, "rows")
-    os.makedirs(www_rows, exist_ok=True)
+def build_record(rid: str, plan, state, groups: dict, live: dict, now: datetime, tables: dict | None, config: dict | None = None) -> dict:
+    """One row's record — everything the index cell, the row page and the demo-path tracker show about it:
 
+      id, thread, safe          `hermes-<ROW>`; safe = usable as a page filename / link target
+      in_plan, plan, name       the dispatch-plan row ({} when the plan does not list it): batch, name,
+                                plan_disposition, wave, attaches_to
+      batch, disposition        the queue row's, else the plan's (Disp column, upper-cased); None when neither knows
+      queue, queue_state        state.json rows[rid] (hermes_queue.build_state: state, state_reason,
+                                disposition, batch, paused, dispatched_at, ledger …) and its `state` — raw inputs
+      sup, sup_stage            state.json supervise.rows[rid] (hermes_supervise: stage, reason, hold,
+                                cost_hold, action, alert_kind, target_role, pr, head …) and its `stage` — raw inputs
+      state, state_reason,      THE row state (row_state — the one derivation every surface renders): merged |
+      waived, paused, gates,    paused | blocked | deferred | an in-flight stage | waiting | queued | carried …,
+      holds                     None when unknown (state_reason says why); config.waive / paused; a waiting row's
+                                unmet gates; the supervisor's holds ({"kind": gate | hold | cost | escalated, "label"})
+      stage                     the text the index cell and the row page show: row_stage(record) — the state plus
+                                its decorations (`· hold X` · `· cost hold` · `· waived`), "" when unknown
+      sessions, dots, row_dot   {role: [ncl session]} on the thread, {role: (colour, label)} (role_live)
+                                and the row's own dot (row_live)
+      cards, latest             scan_cards' {group: entry} for the thread; {role: newest card}
+      ledger, merged_at         the ledger's work-item row (parse_ledger entry: dispatched, pr, verdict,
+                                outcome merged | blocked | gate_red, merge_sha, reason, gate_red) plus
+                                merged_at (ISO, merged rows only); None when the ledger has no row
+      carries_open              ids of the open criteria other rows deferred onto this one
+    """
+    rows = (plan or {}).get("rows") or {}
+    prow = rows.get(rid) if isinstance(rows.get(rid), dict) else {}
+    st = state if isinstance(state, dict) else {}
+    qrows = st.get("rows") if isinstance(st.get("rows"), dict) else {}
+    qrow = qrows.get(rid) if isinstance(qrows.get(rid), dict) else {}
+    sup_rows = (st.get("supervise") or {}).get("rows") if isinstance(st.get("supervise"), dict) else None
+    sup = sup_rows.get(rid) if isinstance(sup_rows, dict) and isinstance(sup_rows.get(rid), dict) else {}
+    sessions = {role: list((live.get(rid) or {}).get(role) or []) for role in ROLE_ORDER}
+    dots = {role: role_live(sessions[role], sup, role, now) for role in ROLE_ORDER}
+    t = tables or {}
+    led = (t.get("ledger_rows") or {}).get(rid)
+    ledger = dict(led, merged_at=(t.get("merged_at") or {}).get(rid)) if isinstance(led, dict) else None
+    rec = {
+        "id": rid, "thread": f"hermes-{rid}", "safe": bool(SAFE_RID_RE.match(rid)),
+        "in_plan": rid in rows, "plan": prow, "name": prow.get("name") or "",
+        "batch": qrow.get("batch") or prow.get("batch"),
+        "disposition": (str(qrow.get("disposition") or prow.get("plan_disposition") or "").upper() or None),
+        "queue": qrow, "queue_state": qrow.get("state"),
+        "sup": sup, "sup_stage": sup.get("stage"),
+        "sessions": sessions, "dots": dots, "row_dot": row_live(dots),
+        "cards": groups, "latest": {role: latest_for_role(groups, role)[0] for _, role in ROLE_COLUMNS},
+        "ledger": ledger, "merged_at": ledger.get("merged_at") if ledger else None,
+        "carries_open": [str(c.get("criterion")) for c in open_carried_for(tables, rid)],
+    }
+    rec.update(row_state(rid, qrow, sup, ledger, config, state))
+    rec["stage"] = row_stage(rec)
+    return rec
+
+
+def build_records(plan, state, cards: dict, live: dict | None, now: datetime, tables: dict | None = None, config: dict | None = None) -> dict:
+    """{rid: record} for every plan row and every `hermes-<ROW>` card thread — the rows the board writes
+    pages for — in plan order, unplanned card threads after, sorted."""
+    rows = (plan or {}).get("rows") or {}
+    order = list((plan or {}).get("order") or sorted(rows))
+    order += sorted(rid for rid in (THREAD_RE.match(t).group("row") for t in cards) if rid not in rows)
+    live = live or {}
+    return {rid: build_record(rid, plan, state, cards.get(f"hermes-{rid}") or {}, live, now, tables, config) for rid in order}
+
+
+def load_board(root: str, now: datetime, plan_paths: list | None = None, state_path: str | None = None, threads_path: str | None = None,
+               ncl_bin: str | None = None, ledger_path: str | None = None, asks_path: str | None = None, config_path: str | None = None) -> dict:
+    """Read every input once and build the per-row records. Pure reads (no write under <WWW>): run()
+    renders and writes, demo_path.py's CLI calls this too. Never raises on a bad input — each becomes
+    an error string / banner and the records still build.
+
+    {"plan", "plan_err", "state", "state_err", "config", "config_err", "threads", "threads_err", "tables",
+     "cards", "live", "live_err", "banners", "records", "paths": {...}}"""
+    ap_dir = os.path.join(root, "data", "shared", "hermes", "autopilot")
     reports = os.path.join(root, "groups", "orchestrator", "reports")
-    plan, plan_err = load_plan(plan_paths)
-    state, state_err = load_json(state_path)
-    threads, threads_err = load_json(threads_path)
-    tables = load_tables(ledger_path or os.path.join(reports, "ledger.md"), asks_path or os.path.join(reports, "upstream-asks.md"))
+    paths = {
+        "plan": plan_paths or [os.path.join(root, "docs", "hermes-port", "dispatch-plan.md"), os.path.join(root, "data", "shared", "hermes", "dispatch-plan.md")],
+        "state": state_path or os.path.join(ap_dir, "state.json"),
+        "threads": threads_path or os.path.join(ap_dir, "threads.json"),
+        "config": config_path or os.path.join(ap_dir, "config.json"),
+        "ledger": ledger_path or os.path.join(reports, "ledger.md"),
+        "asks": asks_path or os.path.join(reports, "upstream-asks.md"),
+    }
+    plan, plan_err = load_plan(paths["plan"])
+    state, state_err = load_json(paths["state"])
+    config, config_err = load_json(paths["config"])
+    threads, threads_err = load_json(paths["threads"])
+    tables = load_tables(paths["ledger"], paths["asks"])
     for b in table_banners(tables):
         log(b)
     banners = [b for b in (staleness(state, state_err, "state.json", now), staleness(threads, threads_err, "threads.json", now)) if b]
@@ -796,29 +1045,51 @@ def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, t
         log(f"card scan failed: {type(exc).__name__}: {exc}")
         cards = {}
         banners.append(f"card scan failed: {exc}")
-    link_card_dirs(www_rows, cards)
     live, live_err = load_live_sessions(ncl_bin, roles_by_group(threads))
     if live_err:
         log(f"live status: {live_err}")
+    return {
+        "plan": plan, "plan_err": plan_err, "state": state, "state_err": state_err, "config": config, "config_err": config_err,
+        "threads": threads, "threads_err": threads_err, "tables": tables, "cards": cards, "live": live, "live_err": live_err,
+        "banners": banners, "records": build_records(plan, state, cards, live, now, tables, config), "paths": paths,
+    }
 
-    demo_html = demo_section(root, now, state_path=state_path, spec_path=demo_spec, plan_paths=plan_paths,
-                             ledger_path=ledger_path or os.path.join(reports, "ledger.md"))
-    write_atomic(os.path.join(www_rows, "index.html"), render_index(plan, plan_err, state, cards, banners, now, live, live_err, tables, demo_html))
-    rids = set((plan or {}).get("rows") or {}) | {THREAD_RE.match(t).group("row") for t in cards}
+
+# --------------------------------------------------------------------------- main
+
+def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, threads_path: str, dashboard_url: str | None, ncl_bin: str | None = None,
+        ledger_path: str | None = None, asks_path: str | None = None, demo_spec: str | None = None, config_path: str | None = None) -> int:
+    www_rows = os.path.join(www, "rows")
+    os.makedirs(www_rows, exist_ok=True)
+
+    board = load_board(root, now, plan_paths, state_path, threads_path, ncl_bin, ledger_path, asks_path, config_path)
+    plan, plan_err, cards, tables = board["plan"], board["plan_err"], board["cards"], board["tables"]
+    live, live_err, banners, records = board["live"], board["live_err"], board["banners"], board["records"]
+    link_card_dirs(www_rows, cards)
+
+    # The demo path: computed once over the records; its own page + the JSON slack-rows.py reads. A failure
+    # (compute, serialise or write) is one banner on demo-path.html and the JSON is left as it was (slack-rows
+    # sees it age out); the board below writes regardless.
+    _result, demo_body, demo_json = demo_tracker(board, now, demo_spec)
+    demo_ok = write_demo_path(www_rows, demo_body, demo_json, now)
+
+    write_atomic(os.path.join(www_rows, "index.html"), render_index(plan, plan_err, cards, banners, now, records, live_err, tables))
     written = 0
-    for rid in sorted(rids):
-        if not SAFE_RID_RE.match(rid):
+    for rid in sorted(records):
+        rec = records[rid]
+        if not rec["safe"]:
             log(f"skipping row id {rid!r} (not a safe filename)")
             continue
         try:
-            write_atomic(os.path.join(www_rows, f"{rid}.html"), render_row(rid, plan, state, cards.get(f"hermes-{rid}") or {}, now, dashboard_url, live, live_err, tables))
+            write_atomic(os.path.join(www_rows, f"{rid}.html"), render_row(rec, plan, now, dashboard_url, live_err, tables))
             written += 1
         except Exception as exc:  # noqa: BLE001 - one bad row must not take the board down
             log(f"row page {rid}: {type(exc).__name__}: {exc}")
     n_cards = sum(len(e["cards"]) for g in cards.values() for e in g.values())
     n_live = sum(len(v) for r in live.values() for v in r.values())
     n_open = sum(1 for c in tables["carried"] if str(c.get("status") or "open") == "open")
-    print(f"rows-board: wrote {www_rows}/index.html + {written} row pages ({n_cards} cards, {len(cards)} threads, {n_live} live sessions on {len(live)} rows, "
+    print(f"rows-board: wrote {www_rows}/index.html + {written} row pages + demo-path.html{' + demo-path.json' if demo_ok else ' (tracker failed; demo-path.json untouched)'} "
+          f"({n_cards} cards, {len(cards)} threads, {n_live} live sessions on {len(live)} rows, "
           f"{n_open}/{len(tables['carried'])} carried criteria open, {len(tables['asks'])} upstream asks)"
           + (f"; plan: {plan_err}" if plan_err else "") + (f"; live: {live_err}" if live_err else "")
           + (f"; {'; '.join(banners + table_banners(tables))}" if banners or table_banners(tables) else ""))
@@ -826,17 +1097,18 @@ def run(root: str, www: str, now: datetime, plan_paths: list, state_path: str, t
 
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Hermes port rows board: task cards per gap-matrix row under <WWW>/rows/")
+    ap = argparse.ArgumentParser(description="Hermes port rows board: task cards per gap-matrix row under <WWW>/rows/ (+ the demo-path tracker page)")
     ap.add_argument("--root", default=os.environ.get("NANOCLAW_ROOT") or os.getcwd(), help="nanoclaw checkout (groups/, data/, docs/)")
     ap.add_argument("--www", default=os.environ.get("NEMO_WWW_DIR") or os.path.expanduser("~/.local/share/nemo-www"), help="viewer root (8091)")
     ap.add_argument("--plan", default=None, help="dispatch-plan.md (default: <root>/docs/hermes-port/, then <root>/data/shared/hermes/)")
     ap.add_argument("--state", default=None, help="state.json (default: <root>/data/shared/hermes/autopilot/state.json)")
     ap.add_argument("--threads", default=None, help="threads.json (default: next to state.json)")
+    ap.add_argument("--config", default=None, help="autopilot config.json, for the demo path's wip / waive / paused_rows (default: next to state.json)")
     ap.add_argument("--ledger", default=None, help="the Orchestrator's ledger.md, for its ## Carried criteria table (default: <root>/groups/orchestrator/reports/ledger.md)")
     ap.add_argument("--upstream-asks", default=None, help="the Orchestrator's upstream-asks.md (default: <root>/groups/orchestrator/reports/upstream-asks.md)")
     ap.add_argument("--dashboard-url", default=os.environ.get("DASHBOARD_URL"), help="dashboard base URL for the lane deep link (default: $DASHBOARD_URL)")
     ap.add_argument("--ncl", default=os.environ.get("NANOCLAW_NCL"), help="ncl binary for live session status (default: <root>/bin/ncl when present; '' disables)")
-    ap.add_argument("--demo-spec", default=os.environ.get("DEMO_PATH_SPEC"), help="demo-path.json for the Demo path section (default: next to this script)")
+    ap.add_argument("--demo-spec", default=os.environ.get("DEMO_PATH_SPEC"), help="demo-path.json spec for the Demo path page (default: next to this script)")
     ap.add_argument("--now", default=None, help="ISO timestamp (tests)")
     try:
         args = ap.parse_args(argv)
@@ -860,6 +1132,7 @@ def main(argv=None) -> int:
             args.ledger or None,
             args.upstream_asks or None,
             args.demo_spec or None,
+            args.config or None,
         )
     except SystemExit:
         raise

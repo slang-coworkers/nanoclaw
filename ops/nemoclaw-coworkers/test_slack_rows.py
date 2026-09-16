@@ -7,9 +7,12 @@ untouched, a fatal token/channel error → exit 1 after one call, dry-run makes 
 a single card failure (Slack error, truncated response, unreadable or torn PNG) never aborts, a fresh
 card waits to settle, the run lock, a corrupt state file is fatal, mrkdwn escaping end to end, the
 token never reaches stdout/stderr, and the urllib client's three-step upload + 429 retry. DemoPathMessageTest
-covers the one edited-in-place `*Demo path*` message: posted once and remembered, unchanged text makes no
-call, changed text is one chat.update, a failed update is logged and retried, the update is not budgeted,
-no state.json means no first post, dry-run prints and writes nothing, escaping end to end.
+covers the one edited-in-place `*Demo path*` message, driven ONLY by rows-board's <www>/rows/demo-path.json
+(`slack_text`, never computed here): posted once and remembered, unchanged text makes no call, changed text is
+one chat.update, a failed update is logged and retried, the update is not budgeted, state_ok false means no
+first post, a missing / unreadable / stale (> 45 min) JSON is one log line and the message is left untouched,
+the default path derives from NEMO_WWW_DIR like rows-board's --www, dry-run prints and writes nothing, escaping
+end to end, and rows-board.py → slack-rows.py agree end to end.
 Run: python3 -m unittest ops/nemoclaw-coworkers/test_slack_rows.py
 """
 
@@ -792,51 +795,68 @@ if __name__ == "__main__":
     unittest.main()
 
 
-DEMO_ROWS = {
-    "LOOP-F35": ("BUILD", "1a"), "LOOP-F37": ("BUILD", "2"), "GOV-F24": ("BUILD", "2"), "GOV-F25": ("BUILD", "2"),
-    "GOV-F23": ("CONFIGURE", "1b"), "GOV-F27": ("CONFIGURE", "1b"), "RT-F01": ("CONFIGURE", "1b"), "RT-F02": ("CONFIGURE", "1b"),
-    "RT-F03": ("CONFIGURE", "1b"), "COST-F29": ("BUILD", "2"), "CRED-F28": ("BUILD", "3"), "ISO-F13": ("CONFIGURE", "3"),
-    "ISO-F14": ("CONFIGURE", "3"), "ISO-F15": ("CONFIGURE", "3"), "A2A-F21": ("CONFIGURE", "4"), "ISO-F17": ("ADOPT", "adopt"),
-    "MEM-F44": ("CONFIGURE", "1b"),
-}
+DEMO_GEN = "2026-09-15T10:00:00Z"
 
 
-def demo_state(states: dict, reason: str | None = None) -> str:
-    rows = {rid: {"state": states.get(rid, "queued"), "disposition": d, "batch": b} for rid, (d, b) in DEMO_ROWS.items()}
-    for rid, st in states.items():
-        if st == "blocked":
-            rows[rid]["state_reason"] = reason or "cap: FAIL x2"
-    return json.dumps({"generated_at": "2026-09-15T09:50:00Z", "rows": rows, "wip": {"limit": 3},
-                       "gating": {"1a_first_pass": True, "batch2_merged": False, "batch3_merged": False, "batch4_merged": False, "podman_box": True}})
+def demo_text(*rows: str, state_note: str | None = None) -> str:
+    """A `slack_text` the way demo_path.render_slack shapes it (the content is opaque to slack-rows)."""
+    lines = [f"*Demo path* · updated 2026-09-15 10:00Z · WIP 3 · state {state_note or '2026-09-15 09:50'}"]
+    if state_note == "unknown":
+        lines.append("_state.json not found (the first autopilot tick writes it)_")
+    lines.append("🔨 *R1* Governed 5-bot fleet — *in progress* · ETA 2026-09-22 (≈7.2d left)")
+    lines.append("    • " + " · ".join(rows or ("LOOP-F35 merged", "LOOP-F37 building")))
+    lines.append("_model: planning hours × stage factor; details on the rows board_")
+    return "\n".join(lines)
+
+
+def demo_json(text: str, state_ok: bool = True, generated_at: str | None = DEMO_GEN, **extra) -> str:
+    """rows-board's <www>/rows/demo-path.json: the compute() result (abridged) + slack_text."""
+    data = {"rungs": [{"id": "R1", "status": "in_progress"}], "state_ok": state_ok, "slack_text": text, "wip_limit": 3}
+    if generated_at is not None:
+        data["generated_at"] = generated_at
+    data.update(extra)
+    return json.dumps(data)
 
 
 class DemoPathMessageTest(unittest.TestCase):
-    """The `*Demo path*` message: a checkout with the plan, an open ledger, one card and a state.json, driven
-    through main() with FakeClient (or the real client over FakeSlackHTTP)."""
+    """The `*Demo path*` message: a checkout with the plan, an open ledger, one card and rows-board's demo-path.json
+    under a www dir, driven through main() with FakeClient (or the real client over FakeSlackHTTP)."""
 
     def setUp(self):
         self.mod = load_module()
         FakeClient.instances = []
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name) / "checkout"
+        self.www = Path(self.tmp.name) / "www"
         self.state = self.root / "data" / "shared" / "hermes" / "slack-threads.json"
-        self.ap_state = self.root / "data" / "shared" / "hermes" / "autopilot" / "state.json"
+        self.demo = self.www / "rows" / "demo-path.json"
         put(self.root / "docs" / "hermes-port" / "dispatch-plan.md", PLAN, 1.0e9)
         put(self.root / "groups" / "orchestrator" / "reports" / "ledger.md", LEDGER_OPEN, 1.0e9)
         put(self.root / ".env", f"SLACK_BOT_TOKEN={TOKEN}\n", 1.0e9)
         self.cards = self.root / "groups" / "hermes-tester" / "reports" / "hermes-LOOP-F35" / "cards"
         put(self.cards / "card-hermes-tester-pass-r1.png", png("t1"), 1.7e9)
-        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "building"}), 1.7e9)
-        self.env_backup = {k: os.environ.pop(k) for k in ("SLACK_BOT_TOKEN", "SLACK_ROWS_CHANNEL", "DEMO_PATH_SPEC") if k in os.environ}
+        self.now = time.time()
+        self.write_demo(demo_text())
+        self.env_backup = {k: os.environ.pop(k) for k in ("SLACK_BOT_TOKEN", "SLACK_ROWS_CHANNEL", "NEMO_WWW_DIR") if k in os.environ}
 
     def tearDown(self):
         os.environ.update(self.env_backup)
         self.tmp.cleanup()
 
-    def run_main(self, *extra: str, factory=FakeClient) -> tuple[int, str, str]:
+    def write_demo(self, text: str, state_ok: bool = True, age_s: float = 0.0, generated_at: str | None = "now", mtime: float | None = None) -> None:
+        """demo-path.json generated `age_s` seconds ago (generated_at="now" derives it; None omits the field)."""
+        gen = generated_at
+        if gen == "now":
+            gen = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime(self.now - age_s))
+        put(self.demo, demo_json(text, state_ok=state_ok, generated_at=gen), self.now - age_s if mtime is None else mtime)
+
+    def run_main(self, *extra: str, factory=FakeClient, demo_flag: bool = True) -> tuple[int, str, str]:
         out, err = io.StringIO(), io.StringIO()
+        args = ["--root", str(self.root), "--channel", CHANNEL, *extra]
+        if demo_flag:
+            args += ["--demo-json", str(self.demo)]
         with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
-            code = self.mod.main(["--root", str(self.root), "--channel", CHANNEL, *extra], client_factory=factory)
+            code = self.mod.main(args, client_factory=factory)
         return code, out.getvalue(), err.getvalue()
 
     def read_state(self) -> dict:
@@ -846,7 +866,7 @@ class DemoPathMessageTest(unittest.TestCase):
     def demo_calls(client) -> list:
         return [c for c in client.calls if (c[0] == "post" and c[2].startswith("*Demo path*")) or c[0] == "update"]
 
-    def test_first_run_posts_once_after_the_rows_and_stores_ts_then_nothing(self):
+    def test_first_run_posts_the_json_text_once_after_the_rows_then_nothing(self):
         code, out, err = self.run_main()
         self.assertEqual(code, 0, err)
         client = FakeClient.instances[0]
@@ -857,10 +877,7 @@ class DemoPathMessageTest(unittest.TestCase):
         _kind, channel, text, thread_ts = demo[0]
         self.assertEqual(channel, CHANNEL)
         self.assertIsNone(thread_ts, "a root message, not a thread reply")
-        self.assertTrue(text.startswith("*Demo path*"))
-        self.assertLessEqual(len(text.split("\n")), 25)
-        for rid in ("*R1*", "*R2*", "*R3*", "*R4*", "*R5*", "LOOP-F35 merged", "LOOP-F37 building"):
-            self.assertIn(rid, text)
+        self.assertEqual(text, demo_text(), "exactly the JSON's slack_text — nothing computed here")
         self.assertIn("posted demo path", out)
         entry = self.read_state()["demo_path"]
         self.assertEqual(entry["channel"], CHANNEL)
@@ -868,6 +885,7 @@ class DemoPathMessageTest(unittest.TestCase):
         self.assertEqual(entry["text_hash"], self.mod.text_hash(text))
         self.assertIn("posted_at", entry)
         self.assertIn("posted 4 on 2 rows", err)
+        self.assertNotIn("demo path:", err, "no complaint about the JSON")
         # Second run, nothing changed: no call at all.
         code, out, err = self.run_main()
         self.assertEqual(code, 0, err)
@@ -876,10 +894,10 @@ class DemoPathMessageTest(unittest.TestCase):
         self.assertNotIn("demo path", out)
         self.assertEqual(self.read_state()["demo_path"], entry, "the state entry is untouched")
 
-    def test_changed_text_is_one_chat_update_never_a_second_post(self):
+    def test_changed_json_text_is_one_chat_update_never_a_second_post(self):
         self.run_main()
         entry = self.read_state()["demo_path"]
-        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "review"}), 1.7e9 + 10)
+        self.write_demo(demo_text("LOOP-F35 merged", "LOOP-F37 review"))
         code, out, err = self.run_main()
         self.assertEqual(code, 0, err)
         client = FakeClient.instances[1]
@@ -901,7 +919,7 @@ class DemoPathMessageTest(unittest.TestCase):
         self.run_main()
         entry = self.read_state()["demo_path"]
         mod = self.mod
-        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "review"}), 1.7e9 + 10)
+        self.write_demo(demo_text("LOOP-F35 merged", "LOOP-F37 review"))
         put(self.cards / "card-hermes-tester-fail-r2.png", png("t2"), 1.7e9 + 20)  # new lane work on the same run
 
         class Flaky(FakeClient):
@@ -923,7 +941,7 @@ class DemoPathMessageTest(unittest.TestCase):
         self.assertEqual([c[0] for c in FakeClient.instances[-1].calls], ["update"])
         self.assertNotEqual(self.read_state()["demo_path"]["text_hash"], entry["text_hash"])
         # A fatal error on the update is still fatal (token / channel problem), like everywhere else.
-        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "gate"}), 1.7e9 + 30)
+        self.write_demo(demo_text("LOOP-F35 merged", "LOOP-F37 gate"))
         ts = self.read_state()["demo_path"]["ts"]
 
         class Revoked(FakeClient):
@@ -947,7 +965,7 @@ class DemoPathMessageTest(unittest.TestCase):
         self.assertEqual([c[0] for c in FakeClient.instances[1].calls], ["post"])
         self.assertIn("demo_path", self.read_state())
         # Now a changed tracker + two new cards on a budget of 1: one card (budget) AND the update (free).
-        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "review"}), 1.7e9 + 10)
+        self.write_demo(demo_text("LOOP-F35 merged", "LOOP-F37 review"))
         put(self.cards / "card-hermes-tester-fail-r2.png", png("t2"), 1.7e9 + 20)
         put(self.cards / "card-hermes-tester-pass-r3.png", png("t3"), 1.7e9 + 30)
         code, _out, err = self.run_main("--max-posts", "1")
@@ -955,14 +973,14 @@ class DemoPathMessageTest(unittest.TestCase):
         self.assertEqual([c[0] for c in FakeClient.instances[2].calls], ["upload", "update"])
         self.assertIn("posted 1 on 2 rows", err, "the update is not in the budget count")
 
-    def test_no_state_json_means_no_first_post_but_an_existing_message_is_updated_to_unknown(self):
-        self.ap_state.unlink()
+    def test_state_ok_false_means_no_first_post_but_an_existing_message_is_updated(self):
+        self.write_demo(demo_text(state_note="unknown"), state_ok=False)
         code, _out, err = self.run_main()
         self.assertEqual(code, 0, err)
         self.assertEqual([c[0] for c in FakeClient.instances[0].calls], ["post", "post", "upload"])
         self.assertNotIn("demo_path", self.read_state())
         self.assertIn("demo path: no live state.json yet; the first message waits for it", err)
-        # An earlier message exists (state.json vanished later): it is edited to say unknown.
+        # An earlier message exists (state.json vanished later): it is edited to the JSON's text.
         st = self.read_state()
         st["demo_path"] = {"channel": CHANNEL, "ts": "999.000001", "text_hash": "stale", "posted_at": "2026-09-14T00:00:00Z"}
         put(self.state, json.dumps(st), 1.7e9)
@@ -971,17 +989,95 @@ class DemoPathMessageTest(unittest.TestCase):
         calls = FakeClient.instances[1].calls
         self.assertEqual([c[0] for c in calls], ["update"])
         self.assertEqual(calls[0][2], "999.000001")
-        self.assertIn("ETA unknown", calls[0][3])
         self.assertIn("state.json not found", calls[0][3])
 
-    def test_broken_spec_is_one_log_line_and_the_lanes_still_post(self):
-        bad = Path(self.tmp.name) / "bad.json"
-        bad.write_text("{not json")
-        code, _out, err = self.run_main("--demo-spec", str(bad))
+    def test_missing_json_is_one_log_line_and_the_message_is_left_untouched(self):
+        self.demo.unlink()
+        code, out, err = self.run_main()
         self.assertEqual(code, 0, err)
-        self.assertEqual([c[0] for c in FakeClient.instances[0].calls], ["post", "post", "upload"])
-        self.assertIn("demo path unavailable: JSONDecodeError", err)
+        self.assertEqual([c[0] for c in FakeClient.instances[0].calls], ["post", "post", "upload"], "the lanes are unaffected")
         self.assertNotIn("demo_path", self.read_state())
+        self.assertEqual(err.count("demo path:"), 1)
+        self.assertIn(f"demo path: {self.demo} missing (rows-board.py writes it); message left untouched", err)
+        self.assertNotIn("demo path", out)
+        # An existing message: no update either — the message is exactly as it was.
+        self.write_demo(demo_text())
+        self.run_main()
+        entry = self.read_state()["demo_path"]
+        self.demo.unlink()
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(FakeClient.instances[-1].calls, [])
+        self.assertEqual(FakeClient.instances[-1].attempts, 0)
+        self.assertEqual(self.read_state()["demo_path"], entry)
+        self.assertIn("message left untouched", err)
+
+    def test_stale_json_older_than_45_min_is_one_log_line_and_the_message_is_left_untouched(self):
+        self.run_main()
+        entry = self.read_state()["demo_path"]
+        # 46 min old by generated_at, with a changed text: untouched.
+        self.write_demo(demo_text("LOOP-F35 merged", "LOOP-F37 review"), age_s=46 * 60)
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual(FakeClient.instances[-1].calls, [])
+        self.assertEqual(err.count("demo path:"), 1)
+        self.assertIn("is stale (46 min old, limit 45 min", err)
+        self.assertIn("message left untouched", err)
+        self.assertEqual(self.read_state()["demo_path"], entry)
+        # 44 min old: fresh enough, the update goes through.
+        self.write_demo(demo_text("LOOP-F35 merged", "LOOP-F37 review"), age_s=44 * 60)
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c[0] for c in FakeClient.instances[-1].calls], ["update"])
+        self.assertNotIn("demo path:", err)
+        # No generated_at: the file's mtime decides — fresh mtime updates, an old mtime is stale.
+        self.write_demo(demo_text("LOOP-F35 merged", "LOOP-F37 gate"), generated_at=None, mtime=self.now - 60)
+        self.run_main()
+        self.assertEqual([c[0] for c in FakeClient.instances[-1].calls], ["update"])
+        self.write_demo(demo_text("LOOP-F35 merged", "LOOP-F37 merged"), generated_at=None, mtime=self.now - 50 * 60)
+        code, _out, err = self.run_main()
+        self.assertEqual(FakeClient.instances[-1].calls, [])
+        self.assertIn("is stale (50 min old", err)
+        # Stale on the very first run: no first post either.
+        self.state.unlink()
+        self.write_demo(demo_text(), age_s=3 * 3600)
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        self.assertEqual([c[0] for c in FakeClient.instances[-1].calls], ["post", "post", "upload"])
+        self.assertNotIn("demo_path", self.read_state())
+        self.assertIn("is stale (180 min old", err)
+
+    def test_unreadable_or_shapeless_json_is_one_log_line_never_a_crash(self):
+        self.run_main()
+        entry = self.read_state()["demo_path"]
+        for body, needle in (("{not json", "unreadable (JSONDecodeError"), ("[]", "has no slack_text"), (json.dumps({"slack_text": "  ", "generated_at": DEMO_GEN}), "has no slack_text")):
+            put(self.demo, body, self.now)
+            code, _out, err = self.run_main()
+            self.assertEqual(code, 0, err)
+            self.assertEqual(FakeClient.instances[-1].calls, [], body)
+            self.assertIn(needle, err)
+            self.assertIn("message left untouched", err)
+            self.assertEqual(self.read_state()["demo_path"], entry)
+        # load_demo_json directly: the contract in one place.
+        text, ok, err = self.mod.load_demo_json(str(self.demo), now=self.now)
+        self.assertEqual((text, ok), (None, False))
+        self.assertIn("has no slack_text", err)
+        self.write_demo(demo_text(), state_ok=False, generated_at=DEMO_GEN)
+        t0 = self.mod.parse_iso_ts(DEMO_GEN)
+        self.assertEqual(self.mod.load_demo_json(str(self.demo), now=t0), (demo_text(), False, None))
+        self.assertEqual(self.mod.load_demo_json(str(self.demo), now=t0 + 45 * 60)[2], None, "exactly 45 min is not stale")
+        self.assertIn("is stale", self.mod.load_demo_json(str(self.demo), now=t0 + 45 * 60 + 1)[2])
+        self.assertEqual(self.mod.DEMO_JSON_MAX_AGE_S, 45 * 60)
+
+    def test_default_json_path_derives_from_nemo_www_dir_like_rows_board(self):
+        os.environ["NEMO_WWW_DIR"] = str(self.www)
+        self.assertEqual(self.mod.default_demo_json(), str(self.www / "rows" / "demo-path.json"))
+        code, out, err = self.run_main(demo_flag=False)
+        self.assertEqual(code, 0, err)
+        self.assertIn("posted demo path", out)
+        self.assertTrue(self.read_state()["demo_path"]["ts"])
+        del os.environ["NEMO_WWW_DIR"]
+        self.assertEqual(self.mod.default_demo_json(), os.path.expanduser("~/.local/share/nemo-www/rows/demo-path.json"))
 
     def test_dry_run_prints_would_post_or_update_and_writes_nothing(self):
         code, out, err = self.run_main("--dry-run")
@@ -990,7 +1086,7 @@ class DemoPathMessageTest(unittest.TestCase):
         self.assertFalse(self.state.exists())
         self.assertEqual(FakeClient.instances, [])
         self.run_main()
-        put(self.ap_state, demo_state({"LOOP-F35": "merged", "LOOP-F37": "review"}), 1.7e9 + 10)
+        self.write_demo(demo_text("LOOP-F35 merged", "LOOP-F37 review"))
         before = self.read_state()
         code, out, _err = self.run_main("--dry-run")
         self.assertEqual(code, 0)
@@ -998,7 +1094,7 @@ class DemoPathMessageTest(unittest.TestCase):
         self.assertEqual(self.read_state(), before)
 
     def test_text_is_escaped_end_to_end_with_the_real_client(self):
-        put(self.ap_state, demo_state({"LOOP-F35": "merged", "GOV-F24": "blocked"}, reason="<!channel> pay & <http://x|link>"), 1.7e9)
+        self.write_demo(demo_text("LOOP-F35 merged", "GOV-F24 blocked — <!channel> pay & <http://x|link>"))
         http_fake = FakeSlackHTTP()
         code, _out, err = self.run_main(factory=lambda token: self.mod.SlackClient(token, opener=http_fake, sleep=lambda _s: None))
         self.assertEqual(code, 0, err)
@@ -1010,7 +1106,7 @@ class DemoPathMessageTest(unittest.TestCase):
         self.assertNotIn("<!channel>", demo[0]["text"])
         self.assertTrue(self.read_state()["demo_path"]["ts"])
         # And the update path too.
-        put(self.ap_state, demo_state({"LOOP-F35": "merged", "GOV-F24": "blocked", "LOOP-F37": "review"}, reason="<!here> & co"), 1.7e9 + 10)
+        self.write_demo(demo_text("LOOP-F35 merged", "GOV-F24 blocked — <!here> & co", "LOOP-F37 review"))
         code, _out, err = self.run_main(factory=lambda token: self.mod.SlackClient(token, opener=http_fake, sleep=lambda _s: None))
         self.assertEqual(code, 0, err)
         ups = http_fake.bodies("chat.update")
@@ -1018,3 +1114,47 @@ class DemoPathMessageTest(unittest.TestCase):
         self.assertEqual(ups[0]["ts"], self.read_state()["demo_path"]["ts"])
         self.assertIn("&lt;!here&gt; &amp; co", ups[0]["text"])
         self.assertNotIn("<!here>", ups[0]["text"])
+
+    def test_rows_board_then_slack_rows_agree_end_to_end(self):
+        """refresh-viewers.sh's order: rows-board.py writes <www>/rows/demo-path.json from the board's records,
+        slack-rows.py posts exactly its slack_text; a second board run with new state → one update with the new text."""
+        import subprocess
+        import sys
+        self.demo.unlink()
+        ap = self.root / "data" / "shared" / "hermes" / "autopilot"
+        rows = {"LOOP-F35": {"state": "merged", "disposition": "BUILD", "batch": "1a"},
+                "MEM-F44": {"state": "building", "disposition": "CONFIGURE", "batch": "1b"},
+                "GOV-F24": {"state": "queued", "disposition": "BUILD", "batch": "1b"}}
+        state = {"generated_at": DEMO_GEN, "rows": rows, "gating": {"1a_first_pass": True}, "wip": {"limit": 3},
+                 "queue": {"eligible": ["GOV-F24"], "waiting": []}}
+        put(ap / "state.json", json.dumps(state), 1.7e9)
+        board = Path(__file__).resolve().parent / "rows-board.py"
+
+        def run_board() -> None:
+            r = subprocess.run([sys.executable, str(board), "--root", str(self.root), "--www", str(self.www), "--ncl", ""], capture_output=True, text=True, check=False)
+            self.assertEqual(r.returncode, 0, r.stderr)
+
+        run_board()
+        data = json.loads(self.demo.read_text(encoding="utf-8"))
+        self.assertTrue(data["state_ok"])
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        demo = self.demo_calls(FakeClient.instances[0])
+        self.assertEqual(len(demo), 1)
+        self.assertEqual(demo[0][2], data["slack_text"])
+        self.assertIn("LOOP-F35 merged", demo[0][2])
+        self.assertIn("GOV-F24 queued", demo[0][2])
+        self.assertIn("LOOP-F37 unknown", demo[0][2], "not a row of this fixture's plan: unknown on the tracker")
+        # The board runs again on a new state: the JSON changes, slack-rows edits the message once.
+        rows["GOV-F24"]["state"] = "review"
+        state["queue"] = {"eligible": [], "waiting": []}
+        put(ap / "state.json", json.dumps(state), 1.7e9 + 10)
+        run_board()
+        data2 = json.loads(self.demo.read_text(encoding="utf-8"))
+        self.assertNotEqual(data2["slack_text"], data["slack_text"])
+        code, _out, err = self.run_main()
+        self.assertEqual(code, 0, err)
+        calls = FakeClient.instances[1].calls
+        self.assertEqual([c[0] for c in calls], ["update"])
+        self.assertEqual(calls[0][3], data2["slack_text"])
+        self.assertIn("GOV-F24 review", calls[0][3])

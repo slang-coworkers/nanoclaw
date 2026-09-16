@@ -1,42 +1,60 @@
 #!/usr/bin/env python3
 """demo_path.py: the demo-path tracker — five rungs, the matrix rows each one needs, and an ETA per
-rung computed from the autopilot's live queue state with a deterministic model.
+rung computed with a deterministic model over the rows board's per-row records.
 
 Spec (which rows a rung needs, planning hours, stage factors, manual steps): demo-path.json next to
-this file, loaded by load_spec(). Live inputs, all under --root and every one optional (a missing or
-broken one renders as "unknown" and the run goes on):
+this file, loaded by load_spec(). Live input is NOT read here: rows-board.py reads every source once
+(plan, state.json, config.json, ledger, cards, `ncl sessions list`), builds one record per row and
+derives THE row's state on it exactly once (rows-board.row_state → record["state"], state_reason, holds,
+waived, paused, gates — the text its index cell and /rows/<ROW>.html show is that state plus decorations).
+The tracker consumes those records:
 
-  <ROOT>/data/shared/hermes/autopilot/state.json   hermes_queue.build_state's output: rows[rid].state /
-                                                    disposition / batch / paused, gating, wip, supervise.rows[rid].stage
-  <ROOT>/data/shared/hermes/autopilot/config.json  the human's knobs: wip, waive, paused_rows, podman_box
-  <ROOT>/docs/hermes-port/dispatch-plan.md + gap-matrix.md (fallback data/shared/hermes/) — for
-                                                    hermes_queue.dispatch_order, the order rows are dispatched in
-  <ROOT>/groups/orchestrator/reports/ledger.md     merge timestamps (the `merged/blocked` cell) for "done <date>"
+  rows_from_board(records, live_gating)  the ADAPTER: record["state"] + state_reason + holds + waived →
+                                          the tracker's row vocabulary; a pure map, it never looks at the
+                                          record's raw queue / supervisor / ledger inputs; its docstring is
+                                          the mapping
+  live_gating(state, config, …)           the few queue-level facts a per-row record does not carry, read
+                                          from the already-loaded state.json / config.json objects: gate
+                                          flags, WIP limit, config.waive / paused_rows (for display), the
+                                          queue's eligible / waiting order, generated_at
+
+so a row's state is derived in exactly one place (the board) and the tracker's chip label is the board's
+stage text minus its decorations (`· hold X`, `· cost hold`, `· waived`, a waiting row's gates); the one
+label of its own is `waived` for a non-merged row in config.waive (the board shows `<state> · waived`).
+Every input is optional: a missing or broken one renders as "unknown" / a banner and the run goes on.
 
 THE ETA MODEL (deterministic; the same text is rendered as the footnote):
 
   remaining hours of a row = planning_hours[disposition] × stage_factor[state]
       BUILD 48 h · CONFIGURE 15 h · ADOPT 10 h (measured medians / p80)
-      queued 1.0 · dispatched, spec_handoff 0.85 · building 0.6 · pr_open, testing 0.35 · review 0.2 · gate 0.1 · merged 0
+      queued, waiting 1.0 · dispatched, spec_handoff 0.85 · building 0.6 · pr_open, testing 0.35 · review 0.2 · gate 0.1 · merged 0
   A row is done when merged, or listed in config.waive ("waived": done for the rung, shown as such).
-  Open rows are list-scheduled, in hermes_queue.dispatch_order (fallback: the order in demo-path.json),
-  onto wip.limit slots starting now: in-flight rows hold their slot for their remaining hours; a BUILD
-  row cannot start while another BUILD row runs (the BUILD lane); a row behind a false gate starts when
-  the rows that gate requires finish (1a_first_pass ← batch 1a, batch2_merged ← batch 2, batch3_merged
-  ← batch 3, batch4_merged ← batch 4); podman_box is a config flag, so a false one makes the rows behind
-  it "unknown" with the reason. Paused rows (config.paused_rows) and ledger-blocked rows are excluded
-  from every finish time and the rungs that need them are flagged ("blocked by pause" / "blocked").
-  A manual item starts when everything in its `after` list (rows, manual items or rungs) has finished
-  and lasts `hours` (`hours_max` for the upper end of a range). A row with an `after` list starts no
-  earlier than those items finish (its slot is not re-planned). Rung ETA = latest finish over its rows,
-  manual items and required rungs; a done rung shows "done <date>" from the ledger's merge stamps
-  (else state.json's generated_at).
+  Open rows are list-scheduled onto wip.limit slots starting now, in the autopilot's own queue order
+  (state.json queue.eligible, then queue.waiting — the order the dispatch tick sends them; fallback:
+  board order, then the order in demo-path.json): in-flight rows hold their slot for their remaining
+  hours; a BUILD row cannot start while another BUILD row runs (the BUILD lane); a row behind a false
+  gate starts when the rows that gate requires finish (1a_first_pass, 1a_merged ← batch 1a, batch2_merged
+  ← batch 2, batch3_merged ← batch 3, batch4_merged ← batch 4); podman_box is a config flag, so a false
+  one makes the rows behind it "unknown" with the reason. The supervisor's holds: a row parked at `gate`
+  on a §4.3 merge hold (1a → 1a_merged, batch2 → batch2_merged, batch3+4 → batch3_merged + batch4_merged)
+  is the in-flight equivalent of waiting — its remaining 0.1 slice starts no earlier than that gate's rows
+  finish ("waits for <gate>"; it is scheduled after the queued rows so those finishes are known, and its
+  parked WIP slot is not modelled as busy); a cost hold, a core-change (or any other) hold and an SLO /
+  env-fail / blocked-twice escalation are a human-needed stall ("held — <reason>"), excluded from every
+  finish time and flagged like blocked. Paused rows (config.paused_rows) and ledger-blocked rows are
+  excluded from every finish time and the rungs that need them are flagged ("blocked by pause" /
+  "blocked"). A manual item starts when everything in its `after` list (rows, manual items or rungs) has
+  finished and lasts `hours` (`hours_max` for the upper end of a range). A row with an `after` list
+  starts no earlier than those items finish (its slot is not re-planned). Rung ETA = latest finish over
+  its rows, manual items and required rungs; a done rung shows "done <date>" from the ledger's merge
+  stamps (else state.json's generated_at).
 
-Public surface (pure functions, no I/O except the two loaders):
-  load_spec(path) → dict            load_live(root, …) → dict         compute(spec, live, now_utc) → dict
-  render_html(result) → str fragment (rows board)                      render_slack(result) → str (mrkdwn, ≤ 25 lines)
-CLI for debugging: python3 demo_path.py --root <ROOT> [--json | --slack | --html] [--now ISO]. Exit 0 always.
-Stdlib only; hermes_queue is imported the way rows-board.py imports it (never copied).
+Public surface (pure functions; the only I/O is load_spec):
+  load_spec(path) → dict                          live_gating(state, config, …) → dict
+  rows_from_board(records, live_gating) → live    compute(spec, live, now_utc) → dict
+  render_html(result) → str fragment (the demo-path page)   render_slack(result) → str (mrkdwn, ≤ 25 lines)
+CLI for debugging: python3 demo_path.py --root <ROOT> [--json | --slack | --html] [--now ISO] — loads the
+records through rows-board.load_board. Exit 0 always. Stdlib only.
 """
 
 from __future__ import annotations
@@ -56,8 +74,10 @@ DEFAULT_WIP = 3
 SLACK_MAX_LINES = 25
 # hermes_queue's vocabulary (kept here as the fallback when the module is unavailable).
 IN_FLIGHT_STATES = ("dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate")
-GATE_BATCH = {"1a_first_pass": "1a", "batch2_merged": "2", "batch3_merged": "3", "batch4_merged": "4"}
+GATE_BATCH = {"1a_first_pass": "1a", "1a_merged": "1a", "batch2_merged": "2", "batch3_merged": "3", "batch4_merged": "4"}
 CONFIG_GATES = ("podman_box",)
+# hermes_supervise.merge_hold's §4.3 holds → the gate flag(s) whose rows must finish before the held PR merges.
+HOLD_GATES = {"1a": ("1a_merged",), "batch2": ("batch2_merged",), "batch3+4": ("batch3_merged", "batch4_merged")}
 STATUS_LABEL = {
     "done": "done", "in_progress": "in progress", "blocked_by_gate": "blocked by gate",
     "not_started": "not started", "unknown": "unknown",
@@ -66,8 +86,9 @@ STATUS_CLASS = {"done": "ok", "in_progress": "run", "blocked_by_gate": "open", "
 STATUS_EMOJI = {"done": "✅", "in_progress": "🔨", "blocked_by_gate": "⏳", "not_started": "▫️", "unknown": "❔"}
 ROW_CLASS = {
     "merged": "merged", "waived": "merged", "paused": "stalled", "blocked": "stalled", "unknown": "unknown",
-    "queued": "queued", "deferred": "stalled", "carried": "queued",
+    "queued": "queued", "waiting": "queued", "deferred": "stalled", "carried": "queued",
 }
+HOLD_TEXT = {"cost": "cost card pending", "hold": "hold {label}", "escalated": "escalated ({label})"}
 CSS = """
 <style>
 .dp-row{display:inline-block;font-size:11px;padding:1px 6px;margin:1px 4px 1px 0;border-radius:9px;border:1px solid #ccc;background:#f4f4f4;color:#333;white-space:nowrap}
@@ -123,11 +144,10 @@ def hours_between(later: datetime, earlier: datetime) -> float:
 # --------------------------------------------------------------------------- siblings
 
 _ROWS_BOARD = None
-_HQ = None
 
 
 def _rows_board():
-    """rows-board.py (a hyphenated filename, so importlib): load_json / load_plan and its hermes_queue import."""
+    """rows-board.py (a hyphenated filename, so importlib), for the CLI only: load_board builds the records."""
     global _ROWS_BOARD
     if _ROWS_BOARD is None:
         path = os.path.join(HERE, "rows-board.py")
@@ -138,26 +158,6 @@ def _rows_board():
         spec.loader.exec_module(mod)
         _ROWS_BOARD = mod
     return _ROWS_BOARD
-
-
-def _hermes_queue():
-    """The autopilot's parsers and dispatch_order, through rows-board's own import (one code path)."""
-    global _HQ
-    if _HQ is None:
-        _HQ = _rows_board()._hermes_queue()
-    return _HQ
-
-
-def _load_json(path: str) -> tuple:
-    """(dict | None, error | None): a missing file is (None, None), like rows-board.load_json."""
-    try:
-        with open(path, encoding="utf-8") as fh:
-            v = json.load(fh)
-        return (v, None) if isinstance(v, dict) else (None, f"{os.path.basename(path)} is not an object")
-    except FileNotFoundError:
-        return None, None
-    except (OSError, ValueError) as exc:
-        return None, f"{os.path.basename(path)} unreadable: {exc}"
 
 
 # --------------------------------------------------------------------------- spec
@@ -213,145 +213,201 @@ def load_spec(path: str = SPEC_PATH) -> dict:
     return spec
 
 
-# --------------------------------------------------------------------------- live inputs
+# --------------------------------------------------------------------------- live inputs: the board's records + the queue's gating
 
-def _first(paths: list) -> str | None:
-    return next((p for p in paths if p and os.path.isfile(p)), None)
-
-
-def _merge_stamps(ledger_text: str, hq) -> dict:
-    """{row-id: ISO merge time} from the ledger's `merged/blocked` cell (first timestamp in it), for
-    merged rows only. Header-located columns and the same cell splitter as parse_ledger."""
-    out: dict = {}
-    main_text, _ = hq._split_ledger_sections(ledger_text)
-    tz = hq.DEFAULT_CONFIG.get("install_tz_offset_minutes", 330)
-    header = None
-    col: dict = {}
-    for line in main_text.splitlines():
-        if not line.startswith("|"):
-            continue
-        cells = hq.split_cells(line)
-        if not cells or hq.is_separator(cells):
-            continue
-        if header is None:
-            low = [c.lower() for c in cells]
-            if any(h in low for h in ("row-id", "req-id", "id")):
-                header = low
-                col = {name: i for i, name in enumerate(header)}
-            continue
-        if len(cells) > len(header):
-            cells = cells[: len(header) - 1] + ["|".join(cells[len(header) - 1:])]
-        id_col = next((col[h] for h in ("row-id", "req-id", "id") if h in col), 0)
-        rid, _tokens = hq.ledger_row_id(hq.clean_id(cells[id_col]) if id_col < len(cells) else "")
-        i = col.get("merged/blocked")
-        if not rid or i is None or i >= len(cells):
-            continue
-        outcome = hq.parse_outcome_cell(cells[i])
-        if outcome.get("outcome") == "merged":
-            stamp = hq.first_timestamp(cells[i], tz)
-            if stamp:
-                out[rid] = stamp
-    return out
+ORDER_SOURCE_QUEUE = "state.json queue (eligible, then waiting)"
+ORDER_SOURCE_BOARD = "board order (state.json has no queue block; gate waits unknown)"
+ORDER_SOURCE_SPEC = "demo-path.json"
 
 
-def load_live(root: str, state_path: str | None = None, config_path: str | None = None, plan_paths: list | None = None,
-              matrix_paths: list | None = None, ledger_path: str | None = None) -> dict:
-    """Everything compute() needs from the box, each piece independently optional:
+def live_gating(state, config, state_err: str | None = None, config_err: str | None = None, ledger_err: str | None = None) -> dict:
+    """The queue-level facts the per-row board records do NOT carry, taken once from the autopilot's
+    state.json + config.json objects that rows-board.load_board already read (no I/O here; a missing
+    file arrives as None, a broken one as None + its *_err string):
 
-    {"state": dict | None, "state_err", "config": dict, "config_err", "order": [(rid, gates)] | None,
-     "order_err", "merged_at": {rid: ISO}, "ledger_err", "generated_at": str | None}. Never raises."""
-    ap_dir = os.path.join(root, "data", "shared", "hermes", "autopilot")
-    out: dict = {"state": None, "state_err": None, "config": {}, "config_err": None, "order": None, "order_err": None,
-                 "merged_at": {}, "ledger_err": None, "generated_at": None}
-    state, err = _load_json(state_path or os.path.join(ap_dir, "state.json"))
-    out["state"], out["state_err"] = state, err
-    if state is None and not err:
-        out["state_err"] = "state.json not found (the first autopilot tick writes it)"
-    if isinstance(state, dict):
-        out["generated_at"] = state.get("generated_at")
-    cfg, err = _load_json(config_path or os.path.join(ap_dir, "config.json"))
-    out["config"], out["config_err"] = (cfg or {}), err
-    if cfg is None and not err:
-        out["config_err"] = "config.json not found; defaults (wip 3, nothing waived or paused)"
-
-    hq = None
+      gating        state.gating — the gate flags (1a_first_pass, 1a_merged, batch2_merged, batch3_merged, batch4_merged, podman_box)
+      wip_limit     config.wip, else state.wip.limit, else 3
+      waive         config.waive (else state.gating.waived) — for the result's `waived` list only; whether a
+      paused_rows   config.paused_rows                       — ROW is waived / paused is the record's own field
+      eligible      state.queue.eligible — queued rows dispatchable now, in the autopilot's dispatch order
+      waiting       state.queue.waiting → [(row, unmet gates)] — queued rows behind a gate, same order
+      queue_ok      whether state.json carried a queue block at all
+      state_ok, generated_at, errors (banner lines: state.json / config.json missing or unreadable, the ledger)
+    """
+    st = state if isinstance(state, dict) else None
+    cfg = config if isinstance(config, dict) else {}
+    gating = st.get("gating") if st is not None and isinstance(st.get("gating"), dict) else {}
+    errors = []
+    if state_err:
+        errors.append(state_err)
+    elif st is None:
+        errors.append("state.json not found (the first autopilot tick writes it)")
+    if config_err:
+        errors.append(config_err)
+    elif not isinstance(config, dict):
+        errors.append("config.json not found; defaults (wip 3, nothing waived or paused)")
+    if ledger_err:
+        errors.append(f"{ledger_err}; done dates fall back to state.json")
     try:
-        hq = _hermes_queue()
-    except Exception as exc:  # noqa: BLE001 - the queue module missing is a degraded tracker, not a crash
-        out["order_err"] = out["ledger_err"] = f"hermes_queue unavailable: {type(exc).__name__}: {exc}"
-        return out
+        wip = cfg.get("wip") if cfg.get("wip") is not None else ((st or {}).get("wip") or {}).get("limit")
+        wip_limit = max(1, int(wip if wip is not None else DEFAULT_WIP))
+    except (TypeError, ValueError):
+        wip_limit = DEFAULT_WIP
+    queue = st.get("queue") if st is not None and isinstance(st.get("queue"), dict) else None
+    eligible = [str(x) for x in (queue.get("eligible") or []) if x] if queue else []
+    waiting = []
+    for w in (queue.get("waiting") or []) if queue else []:
+        if isinstance(w, dict) and w.get("id"):
+            waiting.append((str(w["id"]), tuple(str(g) for g in (w.get("blocked_by") or []))))
+        elif isinstance(w, str):
+            waiting.append((w, ()))
+    return {
+        "state_ok": st is not None,
+        "generated_at": st.get("generated_at") if st is not None else None,
+        "gating": gating,
+        "wip_limit": wip_limit,
+        "waive": sorted({str(x) for x in (cfg.get("waive") or gating.get("waived") or [])}),
+        "paused_rows": sorted({str(x) for x in (cfg.get("paused_rows") or [])}),
+        "eligible": eligible,
+        "waiting": waiting,
+        "queue_ok": queue is not None,
+        "errors": errors,
+    }
 
-    plan_paths = plan_paths or [os.path.join(root, "docs", "hermes-port", "dispatch-plan.md"),
-                                os.path.join(root, "data", "shared", "hermes", "dispatch-plan.md")]
-    matrix_paths = matrix_paths or [os.path.join(root, "docs", "hermes-port", "gap-matrix.md"),
-                                    os.path.join(root, "data", "shared", "hermes", "gap-matrix.md")]
-    plan_file, matrix_file = _first(plan_paths), _first(matrix_paths)
-    if not plan_file or not matrix_file:
-        out["order_err"] = "dispatch-plan.md / gap-matrix.md not found; using demo-path.json order"
-    else:
-        try:
-            with open(plan_file, encoding="utf-8") as fh:
-                plan = hq.parse_plan(fh.read())
-            with open(matrix_file, encoding="utf-8") as fh:
-                matrix = hq.parse_matrix(fh.read())
-            out["order"] = [(str(rid), tuple(gates)) for rid, gates in hq.dispatch_order(plan, matrix)]
-            out["plan_rows"] = {rid: {"batch": r.get("batch"), "name": r.get("name")} for rid, r in plan["rows"].items()}
-            out["matrix_disposition"] = {rid: r.get("disposition") for rid, r in matrix["rows"].items()}
-        except Exception as exc:  # noqa: BLE001
-            out["order"] = None
-            out["order_err"] = f"dispatch order unavailable ({type(exc).__name__}: {exc}); using demo-path.json order"
 
-    ledger = ledger_path or os.path.join(root, "groups", "orchestrator", "reports", "ledger.md")
-    if not os.path.isfile(ledger):
-        out["ledger_err"] = f"ledger.md not found ({ledger}); done dates fall back to state.json"
+def _hold_text(h: dict) -> str:
+    return HOLD_TEXT.get(str(h.get("kind")), "{label}").format(label=h.get("label") or "?")
+
+
+def _board_row(rec: dict) -> dict:
+    """One record → one tracker row: a pure map over the record's canonical fields (rows-board.row_state:
+    state, state_reason, holds, waived, paused) plus its disposition / batch — see rows_from_board."""
+    holds = [h for h in (rec.get("holds") or []) if isinstance(h, dict)]
+    state = str(rec.get("state") or "") or None
+    stalls = [h for h in holds if h.get("kind") != "gate"]
+    return {
+        "state": state or "unknown",
+        "state_reason": rec.get("state_reason") or (None if state else "unknown"),
+        "disposition": (str(rec.get("disposition") or "").upper() or None),
+        "batch": rec.get("batch"),
+        "paused": bool(rec.get("paused")),
+        "waived": bool(rec.get("waived")),
+        "held": "; ".join(_hold_text(h) for h in stalls) or None,
+        "hold_gates": tuple(g for h in holds if h.get("kind") == "gate" for g in HOLD_GATES.get(str(h.get("label")), ())),
+    }
+
+
+def rows_from_board(records: dict, gating: dict) -> dict:
+    """THE ADAPTER: rows-board's per-row records (rows-board.build_records — the objects it renders
+    /rows/<ROW>.html from) → the live input compute() consumes. A row's state is derived ONCE on the board
+    (rows-board.row_state: ledger merged > paused > blocked > deferred > in flight > waiting > queued) and
+    only MAPPED here — this function reads record["state"], state_reason, holds, waived, paused, disposition,
+    batch and merged_at, never the record's raw queue / supervisor / ledger inputs:
+
+      record                                        → tracker row
+      state None (no state.json / not in it)        → state unknown, reason = record.state_reason
+      state merged                                  → merged                 (done)
+      waived (config.waive), not merged             → label waived           (done; the board shows `<state> · waived`)
+      state paused                                  → paused                 (stalled: excluded from ETAs, rung flagged)
+      state blocked                                 → blocked + state_reason (stalled: a rung blocker)
+      state deferred                                → deferred               (stalled)
+      holds with kind cost | hold | escalated       → held — <reason>        (stalled: a human must act; label = state)
+      holds with kind gate (1a | batch2 | batch3+4) → hold_gates (1a_merged | batch2_merged | batch3_merged +
+                                                      batch4_merged): in flight, scheduled after that gate's rows finish
+      any other state (in flight, waiting, queued …) → as is; waiting is scheduled like queued behind its gates
+
+    Schedule order: rows already placed (merged / in flight / stalled) in board order, then gating.eligible,
+    then gating.waiting with their unmet gates — the order the dispatch tick sends rows; a queued row the
+    queue block does not list is appended with no gates; rows on a gate hold come last (their gate's rows
+    must be scheduled first). Without a queue block: board order, no gates (noted in source_errors).
+    merged_at: each record's ledger merge stamp, merged rows only.
+
+    Returns {"rows": {rid: {"state", "state_reason", "disposition", "batch", "paused", "waived", "held", "hold_gates"}},
+             "state_ok", "generated_at", "gating", "wip_limit", "waive", "paused_rows",
+             "order": [(rid, gates)], "order_source", "merged_at": {rid: ISO}, "source_errors": [str]}."""
+    rows = {str(rid): _board_row(rec) for rid, rec in (records or {}).items() if isinstance(rec, dict)}
+    errors = list(gating.get("errors") or [])
+    known = [rid for rid, r in rows.items() if r["state"] != "unknown"]
+    held_last = [rid for rid in known if rows[rid]["hold_gates"]]
+    if gating.get("queue_ok"):
+        placed = [rid for rid in known if rows[rid]["state"] not in ("queued", "waiting") and rid not in held_last]
+        listed = set(placed) | set(held_last)
+        order = [(rid, ()) for rid in placed]
+        for rid in gating.get("eligible") or []:
+            if rid in rows and rid not in listed:
+                order.append((rid, ()))
+                listed.add(rid)
+        for rid, gates in gating.get("waiting") or []:
+            if rid in rows and rid not in listed:
+                order.append((rid, tuple(gates)))
+                listed.add(rid)
+        order += [(rid, ()) for rid in known if rid not in listed]
+        order_source = ORDER_SOURCE_QUEUE
     else:
-        try:
-            with open(ledger, encoding="utf-8") as fh:
-                out["merged_at"] = _merge_stamps(fh.read(), hq)
-        except Exception as exc:  # noqa: BLE001
-            out["ledger_err"] = f"ledger.md unreadable: {type(exc).__name__}: {exc}"
-    return out
+        order = [(rid, ()) for rid in known if rid not in held_last]
+        order_source = ORDER_SOURCE_BOARD
+        if gating.get("state_ok"):
+            errors.append("state.json has no queue block; rows scheduled in board order without gate waits")
+    order += [(rid, rows[rid]["hold_gates"]) for rid in held_last]
+    merged_at = {}
+    for rid, rec in (records or {}).items():
+        if isinstance(rec, dict) and rec.get("merged_at") and rows.get(str(rid), {}).get("state") == "merged":
+            merged_at[str(rid)] = str(rec["merged_at"])
+    return {
+        "rows": rows,
+        "state_ok": bool(gating.get("state_ok")),
+        "generated_at": gating.get("generated_at"),
+        "gating": gating.get("gating") if isinstance(gating.get("gating"), dict) else {},
+        "wip_limit": gating.get("wip_limit") or DEFAULT_WIP,
+        "waive": list(gating.get("waive") or []),
+        "paused_rows": list(gating.get("paused_rows") or []),
+        "order": order,
+        "order_source": order_source,
+        "merged_at": merged_at,
+        "source_errors": errors,
+    }
 
 
 # --------------------------------------------------------------------------- compute
 
-def _row_info(rid: str, spec_kind: str | None, live: dict, spec: dict, waive: set, paused: set) -> dict:
-    """One row's live facts: effective state, disposition, batch, remaining hours, done / stalled / in_flight."""
-    state = live.get("state") if isinstance(live.get("state"), dict) else None
-    rows = (state or {}).get("rows") if isinstance((state or {}).get("rows"), dict) else {}
-    sup = ((state or {}).get("supervise") or {}).get("rows") if isinstance(state, dict) else None
-    sup_row = (sup or {}).get(rid) if isinstance(sup, dict) else None
+def _row_info(rid: str, spec_kind: str | None, live: dict, spec: dict) -> dict:
+    """One row's facts for the model, from the adapter's row (rows_from_board): effective state,
+    disposition, batch, remaining hours, done / stalled / in_flight / hold_gates."""
+    rows = live.get("rows") if isinstance(live.get("rows"), dict) else {}
     row = rows.get(rid) if isinstance(rows.get(rid), dict) else None
     factors = spec["stage_factors"]
     info: dict = {"id": rid, "state": "unknown", "disposition": None, "batch": None, "remaining": None,
-                  "done": False, "stalled": None, "in_flight": False, "label": "unknown", "reason": None}
-    if state is None:
+                  "done": False, "stalled": None, "in_flight": False, "hold_gates": (), "label": "unknown", "reason": None}
+    if not live.get("state_ok"):
         info["reason"] = "state.json unavailable"
         return info
     if row is None:
-        info["reason"] = "not in state.json"
+        info["reason"] = "not on the rows board (not a plan row)"
         return info
     st = str(row.get("state") or "queued")
-    stage = str((sup_row or {}).get("stage") or "") if isinstance(sup_row, dict) else ""
-    if stage in factors and st in IN_FLIGHT_STATES and stage in IN_FLIGHT_STATES:
-        st = stage  # the supervisor's finer stage wins while the row is in flight
-    disp = str(row.get("disposition") or (live.get("matrix_disposition") or {}).get(rid) or spec_kind or "").upper() or None
-    info.update({"state": st, "disposition": disp, "batch": row.get("batch") or (live.get("plan_rows") or {}).get(rid, {}).get("batch")})
+    if st == "unknown":
+        info["reason"] = row.get("state_reason") or "unknown"
+        return info
+    disp = str(row.get("disposition") or spec_kind or "").upper() or None
+    info.update({"state": st, "disposition": disp, "batch": row.get("batch")})
     if st == "merged":
         info.update({"done": True, "remaining": 0.0, "label": "merged"})
-    elif rid in waive:
+    elif row.get("waived"):
         info.update({"done": True, "remaining": 0.0, "label": "waived", "state": "waived"})
-    elif rid in paused or row.get("paused"):
-        info.update({"stalled": "paused", "label": "paused", "state": "paused"})
+    elif st == "paused":
+        info.update({"stalled": "paused", "label": "paused"})
     elif st == "blocked":
         info.update({"stalled": "blocked", "label": "blocked", "reason": row.get("state_reason")})
     elif st == "deferred":
         info.update({"stalled": "deferred", "label": "deferred"})
+    elif row.get("held"):
+        info.update({"stalled": "held", "label": st, "reason": row["held"]})
     else:
         base = spec["planning_hours"].get(disp or "")
-        factor = factors.get(st, 1.0)
+        factor = factors.get("queued" if st == "waiting" else st, 1.0)  # waiting = queued behind a gate: same hours
         info["remaining"] = None if base is None else round(base * factor, 2)
         info["in_flight"] = st in IN_FLIGHT_STATES
+        info["hold_gates"] = tuple(row.get("hold_gates") or ()) if info["in_flight"] else ()
         info["label"] = st
         if base is None:
             info["reason"] = f"no planning hours for disposition {disp or '?'}"
@@ -375,21 +431,19 @@ def _simulate(order: list, infos: dict, wip_limit: int, gating: dict, now: datet
         return timedelta(hours=float(h or 0))
 
     busy: list = []
-    build_free = now
+    lane = {"free": now}  # the BUILD lane: when the next BUILD row may start
     for rid, _ in order:
         info = infos[rid]
         if info["done"]:
             finish[rid] = now  # already merged: the floor for any gate that depends on it
+        elif info["stalled"] or info["hold_gates"]:
+            continue  # stalled: no finish time (a blocker below); held at gate: placed once its gate's rows have one
         elif info["in_flight"] and info["remaining"] is not None:
             start[rid] = now
             finish[rid] = now + hours(info["remaining"])
             busy.append(finish[rid])
             if info["disposition"] == "BUILD":
-                build_free = max(build_free, finish[rid])
-    busy.sort()
-    if len(busy) > wip_limit:  # more in flight than the limit: new rows start only once running < limit
-        busy = busy[len(busy) - wip_limit:]
-    slots = busy + [now] * (wip_limit - len(busy))
+                lane["free"] = max(lane["free"], finish[rid])
 
     def gate_ready(gate: str) -> tuple:
         """(datetime | None, reason | None): when the gate's rows are all finished; None = unknowable."""
@@ -410,6 +464,56 @@ def _simulate(order: list, infos: dict, wip_limit: int, gating: dict, now: datet
             t = max(t, f)
         return t, None
 
+    def gates_open(rid: str, gates: tuple, note: bool) -> tuple:
+        """(ready datetime | None, unknowable reason | None) over a row's gates; with `note`, records the row's
+        "waits for …" blocker and the stalled rows inside those gates."""
+        ready = now
+        waits = []
+        for g in gates:
+            t, why = gate_ready(g)
+            if t is None:
+                return None, f"gate {g}: {why}"
+            if t > now:
+                waits.append(g)
+            ready = max(ready, t)
+        if note:
+            if waits:
+                blockers[rid].append("waits for " + ", ".join(waits))
+            for g in gates:
+                if gating.get(g):
+                    continue
+                for r in by_batch.get(GATE_BATCH.get(g, ""), []):
+                    if infos[r]["stalled"]:
+                        gate_stalled[rid].append((r, infos[r]["stalled"], g))
+                        blockers[rid].append(f"{r} {infos[r]['stalled']} in gate {g}")
+        return ready, None
+
+    def place_held(rid: str, gates: tuple) -> str | None:
+        """A row parked at `gate` on a merge hold keeps its WIP slot and the BUILD lane until the batch it holds for
+        has merged, then needs its last slice: start = that batch's finish, no new slot taken. Returns the unknowable
+        reason when the gate's rows have no finish time yet (called again after the queued rows are placed)."""
+        info = infos[rid]
+        ready, unknowable = gates_open(rid, gates, note=False)
+        if ready is None:
+            return unknowable
+        gates_open(rid, gates, note=True)
+        s = max(now, ready)
+        f = s + hours(info["remaining"])
+        start[rid], finish[rid] = s, f
+        busy.append(f)  # its slot stays taken until then (only counts when placed before the slots are laid out)
+        if info["disposition"] == "BUILD":
+            lane["free"] = max(lane["free"], f)
+        return None
+
+    held = [(rid, g) for rid, g in order if infos[rid]["hold_gates"] and not infos[rid]["stalled"] and not infos[rid]["done"]
+            and infos[rid]["remaining"] is not None]
+    for rid, g in held:
+        place_held(rid, g)  # placed now when the gate's rows are merged / in flight; otherwise retried in order below
+    busy.sort()
+    if len(busy) > wip_limit:  # more in flight than the limit: new rows start only once running < limit
+        busy = busy[len(busy) - wip_limit:]
+    slots = busy + [now] * (wip_limit - len(busy))
+
     for rid, gates in order:
         info = infos[rid]
         if rid in finish:
@@ -420,56 +524,44 @@ def _simulate(order: list, infos: dict, wip_limit: int, gating: dict, now: datet
         if info["remaining"] is None:
             blockers[rid].append(info.get("reason") or "no remaining-hours estimate")
             continue
-        ready = now
-        waits = []
-        unknowable = None
-        for g in gates:
-            t, why = gate_ready(g)
-            if t is None:
-                unknowable = f"gate {g}: {why}"
-                break
-            if t > now:
-                waits.append(g)
-            ready = max(ready, t)
-        if unknowable:
+        if info["hold_gates"]:
+            unknowable = place_held(rid, gates)
+            if unknowable:
+                blockers[rid].append(unknowable)
+            continue
+        ready, unknowable = gates_open(rid, gates, note=True)
+        if ready is None:
             blockers[rid].append(unknowable)
             continue
-        if waits:
-            blockers[rid].append("waits for " + ", ".join(waits))
-        for g in gates:
-            if gating.get(g):
-                continue
-            for r in by_batch.get(GATE_BATCH.get(g, ""), []):
-                if infos[r]["stalled"]:
-                    gate_stalled[rid].append((r, infos[r]["stalled"], g))
-                    blockers[rid].append(f"{r} {infos[r]['stalled']} in gate {g}")
         i = min(range(len(slots)), key=lambda k: slots[k])
         s = max(slots[i], ready)
         if info["disposition"] == "BUILD":
-            s = max(s, build_free)
+            s = max(s, lane["free"])
         f = s + hours(info["remaining"])
         slots[i] = f
         if info["disposition"] == "BUILD":
-            build_free = f
+            lane["free"] = f
         start[rid], finish[rid] = s, f
     return start, finish, blockers, gate_stalled
 
 
 def compute(spec: dict, live: dict, now_utc: datetime) -> dict:
-    """The tracker: {generated_at, source, wip_limit, order_source, rungs: [...], model_notes}. Pure; never raises
-    on missing live pieces (they become "unknown"), only on a structurally broken spec."""
+    """The tracker over the adapter's live input (rows_from_board): {generated_at, state_ok, wip_limit,
+    order_source, waived, paused_rows, source_errors, rungs: [...], model_notes}. Pure; never raises on
+    missing live pieces (they become "unknown"), only on a structurally broken spec."""
     now = now_utc.astimezone(timezone.utc) if now_utc.tzinfo else now_utc.replace(tzinfo=timezone.utc)
-    state = live.get("state") if isinstance(live.get("state"), dict) else None
-    cfg = live.get("config") if isinstance(live.get("config"), dict) else {}
-    gating = (state or {}).get("gating") if isinstance((state or {}).get("gating"), dict) else {}
-    waive = {str(x) for x in (cfg.get("waive") or gating.get("waived") or [])}
-    paused = {str(x) for x in (cfg.get("paused_rows") or [])}
+    state_ok = bool(live.get("state_ok"))
+    live_rows = live.get("rows") if isinstance(live.get("rows"), dict) else {}
+    gating = live.get("gating") if isinstance(live.get("gating"), dict) else {}
+    waive = {str(x) for x in (live.get("waive") or [])}
+    paused = {str(x) for x in (live.get("paused_rows") or [])}
     try:
-        wip_limit = max(1, int(cfg.get("wip") if cfg.get("wip") is not None else ((state or {}).get("wip") or {}).get("limit") or DEFAULT_WIP))
+        wip_limit = max(1, int(live.get("wip_limit") or DEFAULT_WIP))
     except (TypeError, ValueError):
         wip_limit = DEFAULT_WIP
     generated_at = parse_iso(live.get("generated_at"))
     merged_at = live.get("merged_at") if isinstance(live.get("merged_at"), dict) else {}
+    # waive / paused are the records' own fields (the board's one derivation); these two lists are for display only.
 
     spec_kind: dict = {}
     row_after: dict = {}
@@ -483,16 +575,16 @@ def compute(spec: dict, live: dict, now_utc: datetime) -> dict:
                 spec_row_ids.append(r["id"])
 
     order = live.get("order") if isinstance(live.get("order"), list) and live.get("order") else None
-    order_source = "hermes_queue.dispatch_order" if order else "demo-path.json"
+    order_source = str(live.get("order_source") or ORDER_SOURCE_SPEC) if order else ORDER_SOURCE_SPEC
     if not order:
         order = [(rid, ()) for rid in spec_row_ids]
-    live_rows = (state or {}).get("rows") if isinstance((state or {}).get("rows"), dict) else {}
-    # Every row the queue knows competes for slots; rows the state does not know cannot be scheduled.
-    sim_order = [(rid, tuple(g)) for rid, g in order if rid in live_rows] if state is not None else []
-    infos = {rid: _row_info(rid, spec_kind.get(rid), live, spec, waive, paused) for rid, _ in sim_order}
+    # Every row the board knows with a state competes for slots; unknown rows cannot be scheduled.
+    sim_order = ([(rid, tuple(g)) for rid, g in order if rid in live_rows and live_rows[rid].get("state") != "unknown"]
+                 if state_ok else [])
+    infos = {rid: _row_info(rid, spec_kind.get(rid), live, spec) for rid, _ in sim_order}
     for rid in spec_row_ids:
         if rid not in infos:
-            infos[rid] = _row_info(rid, spec_kind.get(rid), live, spec, waive, paused)
+            infos[rid] = _row_info(rid, spec_kind.get(rid), live, spec)
     start, finish, sim_blockers, gate_stalled = _simulate(sim_order, infos, wip_limit, gating, now) if sim_order else ({}, {}, {}, {})
 
     rung_by_id = {r["id"]: r for r in spec["rungs"]}
@@ -596,7 +688,7 @@ def compute(spec: dict, live: dict, now_utc: datetime) -> dict:
             eta = None if info["done"] else f
             rows_out.append({
                 "id": rid, "kind": info["disposition"] or r.get("kind"), "state": info["state"], "label": info["label"],
-                "batch": info.get("batch"), "done": info["done"], "in_flight": info["in_flight"],
+                "batch": info.get("batch"), "done": info["done"], "in_flight": info["in_flight"], "stalled": info["stalled"],
                 "remaining_hours": info["remaining"], "start_utc": iso(start[rid]) if rid in start else None,
                 "eta": iso(eta) if eta else None, "done_at": iso(done_dt(rid)) if info["done"] else None,
                 "blockers": row_blockers, "after": list(r.get("after") or []),
@@ -638,13 +730,15 @@ def compute(spec: dict, live: dict, now_utc: datetime) -> dict:
 
         f, f2 = finish_of(rung["id"], ())
         done = rung_done(rung)
-        if state is None:
+        if not state_ok:
             status = "unknown"
         elif done:
             status = "done"
         else:
-            started = any(x["done"] or x["in_flight"] for x in rows_out) or any(x["done"] for x in manual_out)
-            open_rows = [x for x in rows_out if not x["done"] and x["state"] not in ("unknown", "paused", "blocked", "deferred")]
+            # a held row (a cost card, a core-change hold, an escalation) is in flight for the rung's status even though it is stalled for the ETA
+            started = (any(x["done"] or x["in_flight"] or x["state"] in IN_FLIGHT_STATES for x in rows_out)
+                       or any(x["done"] for x in manual_out))
+            open_rows = [x for x in rows_out if not x["done"] and not x["stalled"] and x["state"] != "unknown"]
             gated = [x for x in open_rows if any(b.startswith(("waits for", "gate ")) for b in x["blockers"])]
             eligible_now = [x for x in open_rows if x not in gated]
             reqs_open = [q for q in rung["requires"] if q in rung_by_id and not rung_done(rung_by_id[q])]
@@ -672,11 +766,11 @@ def compute(spec: dict, live: dict, now_utc: datetime) -> dict:
             "gates": gate_names, "blockers": blockers, "flags": flags,
         })
 
-    source_errs = [live.get(k) for k in ("state_err", "config_err", "order_err", "ledger_err") if live.get(k)]
+    source_errs = [str(e) for e in (live.get("source_errors") or []) if e]
     return {
         "generated_at": iso(now),
         "state_generated_at": live.get("generated_at"),
-        "state_ok": state is not None,
+        "state_ok": state_ok,
         "wip_limit": wip_limit,
         "order_source": order_source,
         "waived": sorted(waive),
@@ -693,8 +787,10 @@ def model_notes(spec: dict, wip_limit: int, order_source: str) -> str:
     hours = " · ".join(f"{k} {v:g}h" for k, v in ph.items())
     factors = " · ".join(f"{k} {v:g}" for k, v in sf.items())
     return (f"remaining = planning hours ({hours}) × stage factor ({factors}); open rows list-scheduled in {order_source} "
-            f"onto {wip_limit} WIP slots from now, one BUILD in flight at a time, gated rows start when their gate's rows finish; "
-            f"paused / blocked rows excluded and flagged; manual items start when their prerequisites finish. "
+            f"onto {wip_limit} WIP slots from now, one BUILD in flight at a time, gated rows start when their gate's rows finish "
+            f"(a row parked at gate on a merge hold likewise, after the rows of the batch it holds for); "
+            f"paused / blocked / held (cost card, core-change hold, escalation) rows excluded and flagged; "
+            f"manual items start when their prerequisites finish. "
             + (spec.get("notes") or ""))
 
 
@@ -707,6 +803,8 @@ def _esc(s) -> str:
 def _row_class(row: dict) -> str:
     if row.get("done"):
         return "merged"
+    if row.get("stalled"):
+        return "stalled"
     if row.get("in_flight"):
         return "inflight"
     return ROW_CLASS.get(str(row.get("state")), "queued")
@@ -729,8 +827,9 @@ def render_html(result: dict) -> str:
     head = (f'<h2>Demo path <small>{len(result.get("rungs") or [])} rungs · WIP {_esc(result.get("wip_limit"))} · '
             f'state {_esc(result.get("state_generated_at") or "unknown")}</small></h2>')
     out = [CSS, head]
-    out.append('<p class="muted">Five rungs to the demo; each needs specific matrix rows. Status and ETA come from the autopilot\'s '
-               'live queue state through a deterministic model (footnote below). Dates are UTC.</p>')
+    out.append('<p class="muted">Five rungs to the demo; each needs specific matrix rows. Row states are the rows board\'s own '
+               '(the same records behind each <code>&lt;ROW&gt;.html</code>); status and ETA come from them through a deterministic '
+               'model (footnote below). Dates are UTC.</p>')
     for err in result.get("source_errors") or []:
         out.append(f'<div class="banner">{_esc(err)}</div>')
     out.append('<table class="tbl dp"><tr><th>rung</th><th>status</th><th>ETA (UTC)</th><th>required rows</th><th>manual steps · blockers</th></tr>')
@@ -797,7 +896,7 @@ def render_slack(result: dict) -> str:
         if notes:
             lines.append("    • " + _squash("; ".join(notes), 300))
     footer = ("_model: planning hours × stage factor, list-scheduled on WIP slots in autopilot order, one BUILD at a time; "
-              "paused/blocked rows excluded and flagged; details on the rows board_")
+              "paused/blocked/held rows excluded and flagged; details on the rows board_")
     lines = lines[: SLACK_MAX_LINES - 1]
     lines.append(footer)
     return "\n".join(lines)
@@ -811,22 +910,27 @@ def _squash(s, n: int) -> str:
 # --------------------------------------------------------------------------- cli
 
 def main(argv=None) -> int:
-    ap = argparse.ArgumentParser(description="Demo path tracker: rung status + ETA from the autopilot's live queue state.")
+    ap = argparse.ArgumentParser(description="Demo path tracker: rung status + ETA over the rows board's per-row records (rows-board.load_board).")
     ap.add_argument("--root", default=os.environ.get("NANOCLAW_ROOT") or os.getcwd(), help="nanoclaw checkout (data/, docs/, groups/)")
     ap.add_argument("--spec", default=os.environ.get("DEMO_PATH_SPEC") or SPEC_PATH, help="demo-path.json (default: next to this script)")
     ap.add_argument("--state", default=None, help="state.json override")
     ap.add_argument("--config", default=None, help="config.json override")
+    ap.add_argument("--ledger", default=None, help="ledger.md override")
+    ap.add_argument("--ncl", default=None, help="ncl binary for the board's live dots (default: none; the tracker does not need them)")
     ap.add_argument("--now", default=None, help="ISO timestamp (tests)")
     fmt = ap.add_mutually_exclusive_group()
     fmt.add_argument("--json", action="store_true", help="print compute() as JSON (default)")
     fmt.add_argument("--slack", action="store_true", help="print the Slack mrkdwn text")
-    fmt.add_argument("--html", action="store_true", help="print the rows-board HTML fragment")
+    fmt.add_argument("--html", action="store_true", help="print the demo-path HTML fragment")
     try:
         args = ap.parse_args(argv)
         now = parse_iso(args.now) or datetime.now(timezone.utc)
         spec = load_spec(args.spec)
-        live = load_live(os.path.abspath(args.root), state_path=args.state, config_path=args.config)
-        result = compute(spec, live, now)
+        board = _rows_board().load_board(os.path.abspath(args.root), now, state_path=args.state, config_path=args.config,
+                                         ledger_path=args.ledger, ncl_bin=args.ncl or None)
+        gating = live_gating(board["state"], board["config"], state_err=board["state_err"], config_err=board["config_err"],
+                             ledger_err=(board.get("tables") or {}).get("carried_err"))
+        result = compute(spec, rows_from_board(board["records"], gating), now)
         if args.slack:
             print(render_slack(result))
         elif args.html:
