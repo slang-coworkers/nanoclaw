@@ -2990,6 +2990,15 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'CLAUDE_CODE_AUTO_COMPACT_WINDOW',
     'CLAUDE_CODE_DISABLE_ADAPTIVE_THINKING',
     'CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS',
+    // Extra `anthropic-beta` values the Claude Code SDK appends to every request,
+    // comma-separated. Needed for `fine-grained-tool-streaming-2025-05-14`: without
+    // it the API buffers a tool call's JSON input until it is complete, so one
+    // large Write (a 50 KB file) means minutes of silence and the SDK's 180 s stream
+    // watchdog aborts the turn ("The response stopped arriving"). Keep
+    // CLAUDE_CODE_DISABLE_EXPERIMENTAL_BETAS=1 alongside it: dropping that flag adds
+    // context-management / advisor-tool / prompt-caching-scope betas instead and
+    // still does not enable fine-grained streaming (measured 2026-09-16).
+    'ANTHROPIC_BETAS',
     'CLAUDE_CODE_FORK_SUBAGENT',
     'CODEX_HOME',
     'CODEX_BASE_URL',
