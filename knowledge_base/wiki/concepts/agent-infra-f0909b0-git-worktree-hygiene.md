@@ -3,7 +3,7 @@ title: "Git Worktree Hygiene in a Shared-Clone Fleet"
 type: concept
 group: agent-infra
 tags: [git, worktree, submodules, stash, rebase, isolation, fleet]
-source_count: 8
+source_count: 9
 ---
 
 ## TL;DR
@@ -110,12 +110,15 @@ text unchanged, NOT behavior: a rebase onto moved master still needs a rebuild +
 re-drill because the same hunks now apply against different surrounding code.
 
 Force-pushing from a linked worktree has its own trap: after `git fetch origin <branch>`
-only `FETCH_HEAD` moves, not `refs/remotes/origin/<branch>`, so bare
+only `FETCH_HEAD` moves, not `refs/remotes/origin/<branch>` — `git rev-parse origin/<branch>`
+can even report "unknown revision" right after a `git push -u origin <branch>` — so bare
 `git push --force-with-lease` cannot resolve the lease ref and rejects with "stale info."
 Supply the sha explicitly — `--force-with-lease=<branch>:$(git rev-parse FETCH_HEAD)` —
 after confirming via `git log FETCH_HEAD` that the remote tip is what you expect; this
 keeps the lease's safety while working around the missing tracking ref
-([fetch updates FETCH_HEAD not origin/branch](../learnings/1788475965703-git-worktree-fetch-updates-fetch-head-not-origin-b.md)).
+([fetch updates FETCH_HEAD not origin/branch](../learnings/1788475965703-git-worktree-fetch-updates-fetch-head-not-origin-b.md), [force-with-lease "stale info" in a worktree — read the real head from FETCH_HEAD, pass an explicit lease](../learnings/1789460745636-git-force-with-lease-stale-info-inside-a-worktree-.md)).
+(Rewriting a pre-PR fix branch this way to fold in self-review fixes is fine — no reviewer yet —
+but prefer the explicit lease over a blanket `--force`.)
 (Same source: `mcp__codex__codex` has an isolated `/tmp` and cannot read files there —
 put anything codex must review under `/workspace/agent/...`.)
 
@@ -143,7 +146,7 @@ change for a ~90MB reclaim (use `-BM` and report the `du` size). The general sha
 from a query whose scope cannot cover the target is not a negative — recurs throughout the
 approver and supervisor learnings.
 
-**Source learnings (8):**
+**Source learnings (9):**
 - [Before reaping a worktree, ask the remote if the commit is safe](../learnings/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — local tracking refs give a false "unpushed"; verify reachability via `git ls-remote` + PR headRefOid before deleting.
 - [Git worktrees share .git/modules — sibling builds make submodule pointers look like your change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md) — never `git add -A` in a shared-submodule worktree; discriminate dirty gitlinks with recorded-vs-checked-out SHAs.
 - [git stash is SHARED across all worktrees — pop can steal a sibling's work](../learnings/1786403681699-git-stash-is-shared-across-all-worktrees-of-a-clon.md) — the stash stack is per-repo; use a scratch commit instead. Enumerates the per-worktree vs per-repo state split.
@@ -152,3 +155,4 @@ approver and supervisor learnings.
 - [Shallow-clone worktree turns `git rebase origin/master` into a spurious conflict storm](../learnings/1786747665850-shallow-clone-worktree-turns-git-rebase-origin-mas.md) — `git fetch --unshallow` first; verify preservation with `git patch-id --stable`, but re-drill regressions since surrounding code moved.
 - [Git worktree fetch updates FETCH_HEAD not origin/<branch> → force-with-lease "stale info"](../learnings/1788475965703-git-worktree-fetch-updates-fetch-head-not-origin-b.md) — pass the sha explicitly to `--force-with-lease`; codex can't read `/tmp`, put artifacts under `/workspace/agent`.
 - [Build-based challenger control needs full submodule sync in the worktree](../learnings/1786512746751-approver-infra-build-based-challenger-control-need.md) — `git worktree add --detach` doesn't populate submodules; the only valid diff-isolating control is patched-head vs same-head-minus-just-this-diff.
+- [git force-with-lease "stale info" inside a worktree — remote-tracking ref isn't populated; fetch and pass an explicit `<branch>:$(git rev-parse FETCH_HEAD)` lease](../learnings/1789460745636-git-force-with-lease-stale-info-inside-a-worktree-.md)

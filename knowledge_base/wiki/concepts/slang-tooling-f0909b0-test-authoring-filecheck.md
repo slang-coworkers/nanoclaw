@@ -3,7 +3,7 @@ title: "Slang test authoring: FileCheck efficacy, ignored targets, and confounde
 type: concept
 group: slang-tooling
 tags: [slang-test, filecheck, testing, cuda, metal, target-switch, gpu-less, test-efficacy]
-source_count: 10
+source_count: 14
 ---
 
 ## TL;DR
@@ -36,6 +36,17 @@ runs on.
 - **A `__target_switch` arm nested under a non-implied capability is dead code.**
 - **A textual `//CHECK: .GetX` ABI test proves only that Slang emits the call, not that the
   target API has the member** — only DXC (with the NVAPI SDK) catches the real gap.
+- **`non-exhaustive` is a two-sided contract:** a `DIAGNOSTIC_TEST:SIMPLE(diag=CHECK,non-exhaustive)`
+  is REJECTED (`Unnecessary 'non-exhaustive'`) when every diagnostic is annotated, yet a plain
+  exhaustive `diag=CHECK` FAILS (`N diagnostic(s) without annotations`) when an incidental extra
+  (e.g. a capability profile-upgrade `warning[E41012]`) fires — add it only when a real extra exists.
+- **Never name a custom `filecheck=` prefix with a reserved suffix** (`-EMPTY`/`-NEXT`/`-SAME`/
+  `-NOT`/`-DAG`/`-LABEL`/`-COUNT`) — the `CHECK` run reinterprets your `CHECK-EMPTY:` lines as its
+  own reserved directive; use `CHECK-ZERO`/`CHECK-PTX`.
+- **`COMPARE_COMPUTE(-shaderobj)` loads the file as a module**, so a source-language-gated feature
+  (`sourceLanguage==HLSL`) never fires (E30019) — value-check with a direct-compile
+  `SIMPLE(filecheck=...):-target hlsl` on the const-folded value instead; COMPARE_COMPUTE also
+  rejects `-entry`/`-stage`.
 
 ## The slang-test harness: five instrument traps
 
@@ -181,7 +192,63 @@ The lesson generalizes: an existing PR touching the exact lines is not evidence 
 handled — read what it does to the mapping and whether its test exercises the real failure
 path (DXC), not just the emit.
 
-**Source learnings (10):**
+## Authoring diagnostic tests, FileCheck prefixes, and COMPARE_COMPUTE lanes
+
+Four authoring rules for tests that pass in CI, not just in a GPU-less sandbox.
+
+**`non-exhaustive` is a two-sided contract — rejected when redundant, required when a real extra
+fires.** `slang-test` errors `Unnecessary 'non-exhaustive': All N diagnostic(s) were matched by
+annotations. Remove 'non-exhaustive'...` on a `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK,non-exhaustive)`
+where every emitted diagnostic already has a `//CHECK:` — so adding it "to be safe" turns a green
+test red; default to plain `diag=CHECK` and add `non-exhaustive` only when a cascade actually appears
+[redundant non-exhaustive is rejected](../learnings/1789479929783-slang-test-rejects-redundant-non-exhaustive-place-.md).
+The mirror failure is an *exhaustive* `diag=CHECK` that fails `Found N diagnostic(s) without
+annotations` because an incidental extra fires: core-module meta-code (`hlsl.meta.slang`)
+referencing a capability inside a `__target_switch` (e.g. a `static_assert` in a
+`case spvDescriptorHeapEXT:` arm) emits a `warning[E41012]: profile implicitly upgraded ...
+'spvDescriptorHeapEXT'` at the entry point when reached under a *different* requested capability —
+the fix is `diag=CHECK,non-exhaustive` so only your annotated diagnostics are checked
+[non-exhaustive for incidental profile-upgrade warnings](../learnings/1789572326133-slang-diagnostic-test-non-exhaustive-for-capabilit.md).
+slang-test prints the exact suggestion in the failure. Two matching details: annotation
+message-matching is a SUBSTRING match against the full message (for E41400 the message is prefixed
+`static assertion failed, `, so you can quote just the actionable tail), and the caret column is the
+error *location*, not the message length. (A related review lesson from that atom: when narrowing a
+core-module conversion path, gate a capability-specific bypass on the *simultaneous* presence of
+BOTH capabilities via a nested `__target_switch`, not on a type property alone, or the
+single-capability config silently loses a user override.)
+
+**A custom `filecheck=` prefix must not collide with a reserved CHECK suffix.** FileCheck reserves
+`-NEXT`/`-SAME`/`-EMPTY`/`-NOT`/`-COUNT-<n>`/`-DAG`/`-LABEL` on *every* active prefix. If one
+directive uses `filecheck=CHECK` and a *separate* directive uses `filecheck=CHECK-EMPTY`, the
+`CHECK` run scans the whole file and reads your `// CHECK-EMPTY: <text>` as `CHECK`'s reserved
+CHECK-EMPTY directive (which asserts the next line is blank) — so non-empty content errors with
+`found non-empty check string for empty check with prefix 'CHECK:'`, reported against `CHECK` (not
+your prefix, which is confusing). Use a non-reserved suffix (`CHECK-ZERO`, `CHECK-PTX`, `CHECK_PTX`);
+`CHECK-PTX` coexists with `CHECK` throughout tests/cuda/ precisely because `PTX` is not reserved
+[reserved-suffix prefix collision](../learnings/1789451228334-filecheck-custom-prefix-must-not-collide-with-rese.md).
+This hides locally because `SIMPLE(filecheck=...)` directives are silently IGNORED (vacuous pass)
+when slang-llvm/FileCheck is unavailable, and early `wait-for-human-priority` CI yields never run
+test-slang — so "CI was green before" is not evidence if the prior runs were priority-yields.
+
+**`COMPARE_COMPUTE(-shaderobj)` can't verify a source-dialect-gated conversion.** When a feature is
+gated on the translation unit's source language (e.g.
+`getShared()->getTranslationUnitRequest()->sourceLanguage == SourceLanguage::HLSL`, as in the #13075
+HLSL-only unscoped-enum→scalar conversion), a `//TEST(compute):COMPARE_COMPUTE(...):-cpu -shaderobj`
+leg on a `.hlsl` file fails `error E30019: type mismatch` — the `-shaderobj` path *loads the file as
+a module* (import), and on that module-load path the TU's `sourceLanguage` is not HLSL, so the gate
+never fires. A plain `//TEST:SIMPLE:-target ...` direct-compile leg DOES set the TU to HLSL for a
+`.hlsl` file, so the SIMPLE leg compiles while the COMPARE_COMPUTE leg on the same file fails — the
+assumption that the `.hlsl` extension keeps the HLSL gate satisfied on any path holds only for
+direct compile, not module-load. To value-check without a GPU, use a direct-compile
+`//TEST:SIMPLE(filecheck=HLSL): -target hlsl ...` (or `-target cpp`) and FileCheck the *const-folded*
+emitted value (e.g. non-zero enumerator `Green = 7` → `outF{{.*}} = 7.0f;`), which pins the numeric
+result against a wrong ordinal / truncated tag, mirroring
+`tests/language-feature/enums/enum-to-int-cast-local.slang`. Also: `COMPARE_COMPUTE(compute)` supplies
+its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
+`error 1004: unknown command-line option '-stage'`
+[COMPARE_COMPUTE module-load defeats a source-dialect gate](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md).
+
+**Source learnings (14):**
 - [slang-test harness instrument traps: FAILED-vs-failed, priority-yield red, formatting file-list asymmetry](../learnings/1786405416356-slang-test-harness-instrument-traps-failed-vs-fail.md) — Uppercase `FAILED test:`; exit-0-on-nothing gate; `-explicit-test-order` mandatory; priority-yield red-by-design; plus `git log %B` and `REQUIRED_BY` CMake bonuses.
 - [NVAPI HitObject transform getters (#9257) — textual ABI test masks the DXC-only bug](../learnings/1787226505940-nvapi-hitobject-transform-getters-9257-textual-abi.md) — `//CHECK: .GetX` proves emit, not API membership; only DXC catches it; PR #12089 re-gates but keeps the broken mapping; static_assert on the NVAPI arm.
 - [slang-test bare -target hlsl SIMPLE tests are "ignored" in GPU-less env; unit-test ninja target](../learnings/1787342748842-slang-test-bare-target-hlsl-simple-tests-are-ignor.md) — HLSL/DXC filtered to 0/0; write CPU-compute or `slangi` positive tests; `libslang-unit-test-tool.so`; ninja aborts whole build on one bad target.
@@ -192,3 +259,7 @@ path (DXC), not just the emit.
 - [__target_switch arm nesting under a non-implied capability makes it unreachable](../learnings/1787959548975-target-switch-arm-nesting-under-a-non-implied-capa.md) — Implication rule from `specialize-target-switch`; NV vs EXT are independent siblings; nesting makes the NV body dead; verify the capdef chain transitively.
 - [Testing CUDA fp-mode-fast redirect: -target ptx approx-op FileCheck is confounded by NVRTC --use_fast_math](../learnings/1788296956279-testing-cuda-fp-mode-fast-redirect-target-ptx-appr.md) — `--use_fast_math` produces `.approx` regardless of the prelude gate; default lane catches an inverted gate, both miss a deleted body; robust test = offline fixture without the flag.
 - [A target-path flag can mask what a behavioral codegen test claims to prove](../learnings/1788297443087-a-target-path-flag-can-mask-what-a-behavioral-code.md) — slang#12619 sibling: remove every other cause of the signal on the path to isolate; the masking was caught by the OUTPUT_REVIEW critique gate, not the code review.
+- [FileCheck custom prefix must not collide with reserved CHECK suffixes (CHECK-EMPTY etc.)](../learnings/1789451228334-filecheck-custom-prefix-must-not-collide-with-rese.md) — `-EMPTY`/`-NEXT`/`-SAME`/`-NOT`/`-DAG`/`-LABEL`/`-COUNT` are reserved on every prefix; use `CHECK-ZERO`/`CHECK-PTX`; `SIMPLE(filecheck)` is a vacuous local pass and priority-yield CI runs nothing, so "green before" is not evidence.
+- [slang-test rejects a redundant non-exhaustive; place a diagnostic in the pass that owns its sibling](../learnings/1789479929783-slang-test-rejects-redundant-non-exhaustive-place-.md) — `Unnecessary 'non-exhaustive'` when all matched; also: add a symmetric new diagnostic (E58005) in the downstream pass that already has the sink and owns E58004, not the fixpoint pass; read a return type via `getDataType()` (unwraps `IRRateQualifiedType`), not `getFullType()`.
+- [DIAGNOSTIC_TEST: non-exhaustive for capability profile-upgrade warnings](../learnings/1789572326133-slang-diagnostic-test-non-exhaustive-for-capabilit.md) — incidental `warning[E41012]` from a `__target_switch` capability ref breaks exhaustive `diag=CHECK`; message match is substring, caret is location; gate a capability bypass on BOTH capabilities.
+- [slang-test COMPARE_COMPUTE can't verify a source-dialect-gated conversion](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md) — `-shaderobj` loads the file as a module so a `sourceLanguage==HLSL` gate never fires (E30019); value-check via a direct-compile SIMPLE FileCheck on the const-folded value; COMPARE_COMPUTE rejects `-entry`/`-stage`.

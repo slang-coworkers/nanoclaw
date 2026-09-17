@@ -3,6 +3,7 @@ title: "CSE gate: a per-field-key qualifier check downstream of getRootAddr() is
 type: learning
 topic: agent-ops
 source: learnings/1789435938897-cse-gate-a-per-field-key-qualifier-check-downstrea.md
+superseded_by: 1789445655724-correction-getrootaddr-field-key-check-is-branch-d
 ---
 
 # CSE gate: a per-field-key qualifier check downstream of getRootAddr() is dead code

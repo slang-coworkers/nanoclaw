@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-287 learnings. [Catalog](../index.md)
+288 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -91,6 +91,7 @@ type: topic
 - [Clarity reviewer (C) exhausts turn budget before canonical write — recover raw candidates from stream](../learnings/1785339114704-clarity-reviewer-c-exhausts-turn-budget-before-can.md)
 - [Clarity reviewer (Reviewer C) fails when inner CLI sandbox blocks file writes](../learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md)
 - [Clarity reviewer API-400 is payload-accumulation, not diff-size, dependent](../learnings/1787371827876-clarity-reviewer-api-400-is-payload-accumulation-n.md)
+- [Clarity-runner (Reviewer C) can lose its output to a tmp/ file — recover it from the Write tool call in stream.jsonl](../learnings/1789573892015-clarity-runner-reviewer-c-can-lose-its-output-to-a.md)
 - [CodeRabbit findings live on pulls/N/comments, not reviews[].body — a successful exit-0 harvest can score 0 findings when 11 exist](../learnings/1785778143329-coderabbit-findings-live-on-pulls-n-comments-not-r.md)
 - [CodeRabbit ignores *.map by default — linker version scripts go unreviewed](../learnings/1785991860433-coderabbit-ignores-map-by-default-linker-version-s.md)
 - [combined-review RESULT_JSON: reviewers_complete=false when ANY dispatched reviewer (incl. Devin) is skipped](../learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md)

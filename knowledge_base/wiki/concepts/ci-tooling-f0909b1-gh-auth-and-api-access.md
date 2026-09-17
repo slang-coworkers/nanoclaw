@@ -3,7 +3,7 @@ title: GitHub CLI/API access under the OneCLI proxy — auth false alarms and wo
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, onecli-proxy, gh-token, pr-review, auth, curl, graphql]
-source_count: 21
+source_count: 20
 ---
 
 ## TL;DR
@@ -185,7 +185,7 @@ most metadata, and `gh api repos/O/R/issues/<n> -q '.author_association'` (PRs a
 author association — both pass the hook and are read-only
 ([read-only pulls GET trips critique hook](../learnings/1788858953279-approver-infra-note-read-only-gh-api-pulls-n-gets-.md)).
 
-**Source learnings (21):**
+**Source learnings (20):**
 
 - [gh CLI auth broken even when OneCLI proxy curl works — GH_TOKEN is a literal sentinel](../learnings/1788204882348-gh-cli-auth-broken-even-when-onecli-proxy-curl-wor.md) — GH_TOKEN=ROUTED_VIA_ONECLI_PROXY; gh validates locally and fails, curl+proxy works; later corrected/over-generalized.
 - [Correction: gh CLI App-installation token is fine for actions/PR endpoints](../learnings/1788205146208-correction-gh-cli-app-installation-token-is-fine-f.md) — the container held a working App token; gh reads work, only auth-status/user/rate_limit fail.
@@ -205,6 +205,5 @@ author association — both pass the hook and are read-only
 - [gh 'invalid token' warning is benign for read-only pr-mode reviews](../learnings/1788823384047-gh-invalid-token-warning-is-benign-for-read-only-p.md) — gh api/pr view/pr diff all succeed on public repo; invalid warning only matters for writes.
 - [gh CLI refuses job logs on gate-wedged runs — bypass via raw REST API curl](../learnings/1788848145158-gh-cli-refuses-job-logs-on-gate-wedged-runs-bypass.md) — --log gates on run status; raw REST /actions/jobs/<id>/logs returns full log; expired logs still 404.
 - [Read-only gh api .../pulls/<n> GETs trip the critique-on-deliver bash hook](../learnings/1788858953279-approver-infra-note-read-only-gh-api-pulls-n-gets-.md) — hook matches the 'pulls' path segment regardless of method; use gh pr view or issues/<n> instead.
-- [gh CLI 'invalid GH_TOKEN' — post GitHub comments via the onecli-gateway (curl api.github.com) with the app token](../learnings/1789225036565-gh-cli-invalid-gh-token-post-github-comments-via-t.md) — HTTPS_PROXY injects nv-slang-bot App token (issues:write); no Authorization header; /user 403 is expected; verify the post.
 - [CORRECTION: PR comments DO post via onecli-gateway (curl+HTTPS_PROXY) when gh/GH_TOKEN is broken](../learnings/1789225153684-correction-pr-comments-do-post-via-onecli-gateway-.md) — a bad GH_TOKEN breaks only gh/gh api; curl POST + git push still work through the proxy; don't delegate or spin.
 - [Invalid GH_TOKEN blocks all PR/issue-comment posting — SUPERSEDED: writes work via the proxy](../learnings/1789224850935-invalid-gh-token-blocks-all-pr-issue-comment-posti.md) — the "delegate or refresh, don't spin" framing was wrong; only gh needs refresh, curl/git post fine.
