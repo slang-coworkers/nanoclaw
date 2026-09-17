@@ -469,6 +469,9 @@ main:
     # (delegated-decisions.md § Standing defaults) applies with a
     # `DEFAULT APPLIED … veto within 12 h` DM. Context again (flat type).
     - container/spines/hermes/context/escalation.md
+    # Tool-call input size ceiling for the Orchestrator too (main composes identity+context only,
+    # so the invariants/ copy the four roles carry never reached this spine).
+    - container/spines/hermes/invariants/tool-call-size.md
   # Route the merge/ready commands through the critique gate's Bash matcher, so
   # the merge decision itself gets one OUTPUT_REVIEW round before it executes.
   # Additive to the gate's built-in floor (`gh pr create`, `gh api …/pulls`,
