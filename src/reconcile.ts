@@ -26,8 +26,22 @@ export type ReconcileFn = (sessionId: string) => Promise<void>;
 /**
  * Singleton work that today rides the global sweep tick rather than any one
  * session. Each becomes its own coalesced queue key.
+ *
+ * This tuple is the authoritative closed registry: `ReconcileQueueOptions`
+ * demands a handler for every key here, and `ReconcileKey` refuses to carry one
+ * that is absent. The last two are fork-only duties (cost-approval and
+ * cost-ceiling reconcilers); they are listed here rather than run beside the
+ * queue so they get the same coalescing, per-key backoff, and `idle()`
+ * accounting as the rest. Widening the type to `singleton:${string}` was
+ * considered and rejected — it degrades this Record to an index signature, so a
+ * misspelled key would compile and only fail at dispatch.
  */
-export const SINGLETON_KEYS = ['singleton:egress-reheal', 'singleton:approvals-scan'] as const;
+export const SINGLETON_KEYS = [
+  'singleton:egress-reheal',
+  'singleton:approvals-scan',
+  'singleton:cost-cards',
+  'singleton:cost-ceiling-adjustments',
+] as const;
 export type SingletonKey = (typeof SINGLETON_KEYS)[number];
 
 export type ReconcileKey = `session:${string}` | SingletonKey;
