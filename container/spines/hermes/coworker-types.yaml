@@ -116,6 +116,12 @@ hermes-common:
     # <headline>` caption the autopilot supervisor's card_missing check keys on.
     # Context, not a workflow overlay: overlays multi-fire on hermes-verify.
     - container/spines/hermes/context/task-card.md
+    # The operator is not a role's edge: report the blocker in your existing
+    # shape on the edge that dispatched you and hold (the 2026-09-16/17
+    # A2A-F21 + ISO-F14 incident: "HOLDING for the operator's go" on row
+    # threads, nothing on the operator DM, 14 h with nothing merged). The
+    # DECISION NEEDED shape itself is main-only (escalation.md).
+    - container/spines/hermes/context/escalation-roles.md
   skills:
     - hermes-build
     - hermes-code-reader
@@ -456,6 +462,13 @@ main:
     # /workspace/shared/hermes/slack-threads.json, read-only). Context, not a
     # skill, for the same flat-type reason as the rest of this list.
     - container/spines/hermes/context/slack-surface.md
+    # The escalation channel + delegated defaults (2026-09-16/17 incident: two
+    # rows parked 14 h behind "I will escalate" lines nobody DM'd): a decision is
+    # REQUESTED only as a `DECISION NEEDED` DM on the operator console, mirrored
+    # on the row thread; unanswered 2 h → the standing default
+    # (delegated-decisions.md § Standing defaults) applies with a
+    # `DEFAULT APPLIED … veto within 12 h` DM. Context again (flat type).
+    - container/spines/hermes/context/escalation.md
   # Route the merge/ready commands through the critique gate's Bash matcher, so
   # the merge decision itself gets one OUTPUT_REVIEW round before it executes.
   # Additive to the gate's built-in floor (`gh pr create`, `gh api …/pulls`,

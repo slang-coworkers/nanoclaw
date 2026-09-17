@@ -495,7 +495,7 @@ destination resolved with `ncl destinations list --json` (the `channel` row, as
 re-arms it. Alert reasons that are not row states: `cost-card`, `core-change`, `plan-changed`,
 `blocked-twice`, `ledger-drift`, `ledger-duplicate`, `ledger-id-spelling`, `ledger-unknown-id`,
 `ledger-unreadable`, `plan-violation`, `fork-unreachable`, `sessions-unreachable`, `tick-stale`,
-`nudge-unconfirmed`, `hold-too-long`, `podman-box-needed`, for the two tables of §2.4
+`nudge-unconfirmed`, `hold-too-long`, `podman-box-needed`, `idle-capacity` (§4.1), for the two tables of §2.4
 `carried-criterion-malformed`, `carried-criterion-unknown-row`, `carried-open`,
 `upstream-ask-malformed`, `upstream-ask-unknown-row`, and for the marker-less stalls of §2.5
 `infra-hold`, `operator-ruling`, `bounce-repeat`.
@@ -520,6 +520,11 @@ the cell is fixed, and the result always states `open carried criteria: N (rows:
 counted). The dispatch tick dispatches `max(0, wip - in_flight)` rows, never more, where `wip`
 comes from `config.json` (default 3, plan rule 4). `in_flight` is computed from the ledger and
 the threads, not from the previous `state.json`, so a hand dispatch between ticks is seen.
+Free slots ≥ 2 with nothing eligible while `config.paused_rows` holds rows whose gates are all met
+is the `idle-capacity` alert (`hermes_queue.py`; `row` null, so one alerts.md line per 24 h):
+`N free slots, 0 eligible; paused rows that could run: <ids>` — the 2026-09-17 shape, seven ticks
+of "nothing to do (free 3, eligible none)" over 13 paused ADOPT rows. Rows behind an unmet gate
+and a deliberate `paused: true` never raise it; the human unpauses the rows or lowers `wip`.
 
 ### 4.2 Eligibility and order
 
@@ -622,7 +627,7 @@ and records it in the ledger's `notes` cell and in `state.json`):
 | run the merge gate, merge, hold | `[Triage Resolution] Outcome: fixed` with `## Merge gate`; holds per §4.3 | already the Orchestrator's; unchanged |
 | nudge | §3 | §3 bounds |
 
-Escalates to the human (alert + status thread; the row waits):
+Escalates to the human (alert + status thread + the `DECISION NEEDED` DM of §5.1; the row waits — where a standing default exists, it applies at the Orchestrator's first turn ≥ 2 h after the stamp):
 
 | Decision | Trigger | What unblocks it |
 |---|---|---|
@@ -632,6 +637,50 @@ Escalates to the human (alert + status thread; the row waits):
 | a row blocked twice | a row that was `blocked` and then re-dispatched by hand blocks again, or a held chain's 1a dependency blocks | the human's call in the row thread; the autopilot never dispatches that id again |
 | a policy change | WIP, SLO hours, round caps, batch order, nudge cadence | edit `config.json` (WIP, paused, podman_box, waive) or this document |
 | baseline branch missing on the fork, `gh` or `ncl` down for two ticks | the merge gate's P6 condition; `sources.*.checked=false` twice | operator task |
+
+### 5.1 Operator decisions: `DECISION NEEDED` and `DEFAULT APPLIED`
+
+Nothing waits on the operator until the Orchestrator has posted, to the operator console
+(`harsh-slack-dm`, then the dashboard chat — §10.1) and mirrored verbatim on the row thread, exactly:
+
+```
+DECISION NEEDED — <ROW> — <question>
+1. <option> — <cost / consequence>
+2. <option> — <cost / consequence>  ← recommended
+default if unanswered by <ISO UTC = DM time + 2 h>: option N (rule C.x)
+```
+
+and, in the same turn, stamped the row's ledger `notes` cell `decision-needed:<C.x|none> <ROW> <ISO of the DM> — <question>`.
+The stamp is the durable anchor: the DM's own timestamp lives only in the sending session's `messages_out`, and both
+the supervise tick and the daily report run in fresh task sessions, so "pending operator decisions" is read from the
+ledger — stamps with neither a `delegated:` note nor an operator reply — never from remembered DMs. A role line such
+as "I will escalate", "your call" or "HOLDING for the operator's go" with no such DM + stamp in the same turn is the
+`promised-escalation-missing` alert (the supervisor flags it), not an escalation. Roles other than the Orchestrator
+never address the operator: they report the blocker in their existing shape on the edge that dispatched them
+(`[Test Report] ESCALATE`, `[Review Verdict] REQUEST_CHANGES`, `blocked: …`) and hold; the Orchestrator reads it from
+their session. This is the 2026-09-16/17 incident: A2A-F21 at its round cap and ISO-F14's sandbox tier both reached
+operator-only questions that lived on row threads for 14 h, while the digest read "pending operator decisions: none".
+
+**2 h unanswered → the standing default applies** (`container/spines/hermes/context/delegated-decisions.md`
+§ Standing defaults). 2 h is a floor, not a timer: the default is applied at the Orchestrator's first turn ≥ 2 h after
+the stamp (the supervise gate wakes only on a non-`hold` action, so a quiet row may wait for the next wake). An operator
+message about the row on ANY of `harsh-slack-dm`, the dashboard chat / `hermes-<ROW>`, or the row's `#hermes-port`
+thread (`slack-threads.json`) — even "wait" — stops the clock; only silence defaults. Then the Orchestrator acts,
+appends `delegated:<kind> <ROW> <ISO> — <one line>` to the same `notes` cell, and posts
+`DEFAULT APPLIED — <ROW> — <what> — veto within 12 h` to the console (mirrored on the row thread). The Orchestrator
+never edits `config.json`; `authorize_round` there stays the human's override (`hermes-check.sh` step 2). Only three
+defaults exist:
+
+| Rule | Trigger | Default | Conditions |
+|---|---|---|---|
+| C.1 | round cap reached | one exceptional final round — `round 3 authorized (delegated C.1 <ISO>)` appended to the row's ledger `verdict` cell (`hermes_queue.parse_verdict_cell` reads `round 3`; `hermes_supervise` honours `ledger.verdict.round3`) plus `record.py round3 --row <ROW> --reason "delegated C.1: …"`; the last counted round for that criterion | (a) the architect's own `[Triage Resolution]` / `DIAGNOSIS_REVIEW`, read from the architect's session (`ncl sessions messages`) — a builder quoting it does not count — rules the FAILs observation / drive-spec errors, not builder or product defects; (b) the Orchestrator's own `/codex-critique PLAN_REVIEW` transcript approves exactly one constrained option; (c) `tests/**` + `website/docs/**` only; (d) the tightened bar — sender-side completion evidence + retained UI for `live:` criteria, never a state.db-only pass; (e) the criterion keeps its id |
+| C.2 | `live:` / sandbox criteria blocked by infra prerequisites | defer-carry to `FLEET-F62` under their own ids; § Carried criteria rows with `status` exactly `open`; the `delegated:carry` note cites the prerequisite ids | hermetic floor green (every `pytest:` criterion, the suite, the negative control); each blocking prerequisite tracked by id — an `AC-FLEET-F62-<n>` in the plan, an `open` § Carried criteria row, or a `UA-<n>` in `upstream-asks.md` (`open` / `filed`) |
+| C.3 | nightly-regression `ADVISORY-FAIL(unattributed …)`, verdict PASS stands | no ruling, no DM, no 2 h wait: `delegated:advisory <ROW> <ISO> — <classification>` in `notes` at once, move on | — |
+
+A veto before the default completes cancels it (C.1: `blocked: STOP cap - operator veto`; C.2: delete the § Carried
+criteria rows and re-open the criteria on the source row); a veto after a fork merge means a revert PR on the fork —
+fork merges are reversible, which is why they can default. Never defaulted, however long the silence: CORE-CHANGE
+approvals, cost caps and ceilings, merges into upstream, credential or egress changes, anything touching production.
 
 ## 6. The two ticks: a host cron and one recurring task
 

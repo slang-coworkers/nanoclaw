@@ -52,6 +52,10 @@ Rules pinned here (each has a test in test_hermes_queue.py):
     never dispatched.
   * Never dispatch twice: a row with a ledger row, a `dispatched_at` in the previous
     state, or a `paused_rows` entry is not eligible.
+  * Idle capacity: free WIP slots >= 2, nothing eligible, and `paused_rows` holding rows whose
+    gates are all met -> one `idle-capacity` alert naming them (2026-09-17: 13 ADOPT rows paused
+    for capacity, seven ticks of "nothing to do (free 3, eligible none)"). Rows behind an unmet
+    gate, `config.paused`, or fewer than 2 free slots never raise it.
   * A DEFER or MERGE-> id found in the ledger keeps its ledger state (it holds containers)
     and raises `plan-violation`; the human decides.
   * Carried criteria: a criterion deferred off one row (`AC-<row>-<n>`, status `open`) rides
@@ -1135,6 +1139,24 @@ def build_state(
         dispatch_paused = "plan-changed: hashes or coverage check"
     elif not ledger["header_ok"]:
         dispatch_paused = "ledger unreadable"
+
+    # Idle capacity (2026-09-17: "nothing to do (free 3, eligible none)" for seven ticks while 13 ADOPT rows sat
+    # in config.paused_rows for capacity reasons): free slots, nothing eligible, and paused rows that would run but
+    # for the pause. A paused row behind an unmet gate is not capacity anyone could use; a deliberate config.paused
+    # is not idle. `row` is None, so downstream it is keyed (plan, idle-capacity): one alerts.md line per 24 h.
+    if free >= 2 and not eligible and dispatch_paused is None:
+        could_run = [
+            rid
+            for rid, gates in dispatch_order(plan, matrix)
+            if rows[rid]["state"] == "queued" and rows[rid].get("paused") and all(gating.get(g) for g in gates)
+        ]
+        if could_run:
+            alerts.append({
+                "kind": "idle-capacity",
+                "row": None,
+                "detail": f"{free} free slots, 0 eligible; paused rows that could run: {', '.join(could_run)}",
+            })
+
     eligible_next = [] if dispatch_paused else eligible[:free]
     for e in eligible_next:
         e["dispatch_text"] = dispatch_text(e["id"], rows[e["id"]], cfg)

@@ -614,6 +614,68 @@ class QueueRules(unittest.TestCase):
         self.assertEqual(st["eligible_next"], [])
 
 
+# The plan's 1b rows and the 13 adopt rows that attach to P2 / P3-waveA (eligible on 1a's first tester PASS), read
+# from dispatch-plan.md so the idle-capacity fixture follows the plan rather than a hand-typed list.
+_PLAN_ROWS = hq.parse_plan(PLAN)["rows"]
+ONE_B = tuple(r for r, p in _PLAN_ROWS.items() if p["batch"] == "1b")
+ADOPT_13 = tuple(r for r, p in _PLAN_ROWS.items() if p["batch"] == "adopt" and p.get("attaches_to") in ("P2", "P3-waveA"))
+
+
+class IdleCapacity(unittest.TestCase):
+    """The 2026-09-17 incident: the dispatcher said "nothing to do (free 3, eligible none)" for seven ticks
+    while 13 ADOPT rows sat in config.paused_rows for capacity reasons. `idle-capacity` names them."""
+
+    def ledger_two_in_flight(self) -> str:
+        # 1a, all of 1b and four batch-2 rows merged; COST-F30 and LOOP-F40 dispatched (in flight), so batch2_merged
+        # is false: batch 3/4/5 and the P5/P6 adopt rows wait, and only the 13 P2 / P3-waveA adopt rows could run.
+        rows = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(ONE_B)]
+        rows += [merged_row(r, i + 40) for i, r in enumerate(BATCH2[:4])]
+        rows += [{"id": "COST-F30"}, {"id": "LOOP-F40"}]
+        return ledger(rows)
+
+    def test_fixture_shape(self):
+        self.assertEqual(len(ADOPT_13), 13)
+        st = state(self.ledger_two_in_flight(), config={"wip": 5})
+        self.assertEqual(sorted(st["in_flight"]), ["COST-F30", "LOOP-F40"])
+        self.assertFalse(st["gating"]["batch2_merged"])
+
+    def test_paused_rows_that_could_run_raise_idle_capacity(self):
+        st = state(self.ledger_two_in_flight(), config={"wip": 5, "paused_rows": list(ADOPT_13)})
+        self.assertEqual(st["wip"]["free"], 3)
+        self.assertEqual(st["eligible_next"], [])
+        self.assertEqual(st["queue"]["eligible"], [])
+        alerts = [a for a in st["alerts"] if a["kind"] == "idle-capacity"]
+        self.assertEqual(len(alerts), 1)
+        self.assertIsNone(alerts[0]["row"])  # keyed (plan, idle-capacity) downstream: one alerts.md line per 24 h
+        self.assertTrue(alerts[0]["detail"].startswith("3 free slots, 0 eligible; paused rows that could run: "), alerts[0]["detail"])
+        named = alerts[0]["detail"].split(": ", 1)[1].split(", ")
+        self.assertEqual(sorted(named), sorted(ADOPT_13))
+        self.assertEqual(named[0], "OBS-F45")  # dispatch order: the P2 adopt rows first, then P3-waveA
+
+    def test_unpaused_rows_are_eligible_and_raise_nothing(self):
+        st = state(self.ledger_two_in_flight(), config={"wip": 5})
+        self.assertEqual([e["id"] for e in st["eligible_next"]], ["OBS-F45", "OBS-F47", "CH-F49"])
+        self.assertEqual(sorted(st["queue"]["eligible"]), sorted(ADOPT_13))
+        self.assertNotIn("idle-capacity", [a["kind"] for a in st["alerts"]])
+
+    def test_paused_rows_behind_unmet_gates_raise_nothing(self):
+        # LOOP-F35 at spec_handoff, no tester PASS: every other row waits on 1a_first_pass, so the paused rows are
+        # not capacity anyone could use.
+        st = state(ledger([{"id": "LOOP-F35", "spec": "2026-09-09 11:00Z"}]), config={"paused_rows": list(ADOPT_13)})
+        self.assertEqual(st["wip"]["free"], 2)
+        self.assertEqual(st["eligible_next"], [])
+        self.assertEqual(st["alerts"], [])
+
+    def test_one_free_slot_or_a_deliberate_pause_raise_nothing(self):
+        led = self.ledger_two_in_flight()
+        st = state(led, config={"wip": 3, "paused_rows": list(ADOPT_13)})  # free 1: under the bound
+        self.assertEqual(st["wip"]["free"], 1)
+        self.assertNotIn("idle-capacity", [a["kind"] for a in st["alerts"]])
+        st = state(led, config={"wip": 5, "paused": True, "paused_rows": list(ADOPT_13)})  # all dispatch paused on purpose
+        self.assertEqual(st["dispatch_paused"], "config.paused")
+        self.assertNotIn("idle-capacity", [a["kind"] for a in st["alerts"]])
+
+
 class CarriedCriteria(unittest.TestCase):
     """ledger.md § Carried criteria: a criterion deferred off one row rides on its to-row, which must
     be a plan row — never a phase name (the LOOP-F35 "AC-5 to P4" gap: prose only, nothing carried it)."""

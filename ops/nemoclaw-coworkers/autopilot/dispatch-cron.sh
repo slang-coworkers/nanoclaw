@@ -255,6 +255,7 @@ DECISION = {
     "ledger-unreadable": "restore the ledger header row (dispatch is paused meanwhile)",
     "plan-violation": "keep the row and change the plan, or stop the row",
     "podman-box-needed": "set podman_box: true in config.json when the podman box is ready",
+    "idle-capacity": "unpause the named rows in config.json paused_rows (or lower wip); nothing else is eligible",
     "ledger-drift": "reconcile the ledger with the fork",
 }
 with open(os.path.join(raw, "dispatch-alerts.tsv"), "w", encoding="utf-8") as fh:
