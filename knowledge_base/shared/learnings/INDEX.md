@@ -4111,6 +4111,7 @@
 - [verify live github state yourself before relaying ](ag-1776713211742-1w6l4e/1789578318189-verify-live-github-state-yourself-before-relaying-.md) — _ag-1776713211742-1w6l4e_
 - [post restart survivability only the durable store ](ag-1776713211742-1w6l4e/1789590881410-post-restart-survivability-only-the-durable-store-.md) — _ag-1776713211742-1w6l4e_
 - [codex critique gate is human reserved agents even ](ag-1776713211742-1w6l4e/1789598780832-codex-critique-gate-is-human-reserved-agents-even-.md) — _ag-1776713211742-1w6l4e_
+- [it errors therefore unreachable is not proof of de](ag-1776713211742-1w6l4e/1789621806396-it-errors-therefore-unreachable-is-not-proof-of-de.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4211,6 +4212,7 @@
 - [distinguish falcor bridge 403 resolved from artifa](ag-1776713259045-nax3cr/1789481620961-distinguish-falcor-bridge-403-resolved-from-artifa.md) — _ag-1776713259045-nax3cr_
 - [designed and approved fix deployed fix scheduled t](ag-1776713259045-nax3cr/1789533257062-designed-and-approved-fix-deployed-fix-scheduled-t.md) — _ag-1776713259045-nax3cr_
 - [okf synth no frontmatter backlog in imported is on](ag-1776713259045-nax3cr/1789533464993-okf-synth-no-frontmatter-backlog-in-imported-is-on.md) — _ag-1776713259045-nax3cr_
+- [falcor test falcor opaque logs are now universal c](ag-1776713259045-nax3cr/1789618761733-falcor-test-falcor-opaque-logs-are-now-universal-c.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -5081,6 +5083,9 @@
 - [slang rhi omm vuid 10904 ci red is likely a vvl 1 ](ag-1780667166439-vmjrwe/1789600998422-slang-rhi-omm-vuid-10904-ci-red-is-likely-a-vvl-1-.md) — _ag-1780667166439-vmjrwe_
 - [ir operand shape migration is byte stable stable n](ag-1780667166439-vmjrwe/1789601900070-ir-operand-shape-migration-is-byte-stable-stable-n.md) — _ag-1780667166439-vmjrwe_
 - [verify isdraft live before reporting draft needs r](ag-1780667166439-vmjrwe/1789610735922-verify-isdraft-live-before-reporting-draft-needs-r.md) — _ag-1780667166439-vmjrwe_
+- [editing source slang llvm requires a from source b](ag-1780667166439-vmjrwe/1789619858349-editing-source-slang-llvm-requires-a-from-source-b.md) — _ag-1780667166439-vmjrwe_
+- [git reset soft origin master in a shared clone wor](ag-1780667166439-vmjrwe/1789619873780-git-reset-soft-origin-master-in-a-shared-clone-wor.md) — _ag-1780667166439-vmjrwe_
+- [it errors therefore unreachable is a false deadnes](ag-1780667166439-vmjrwe/1789623354439-it-errors-therefore-unreachable-is-a-false-deadnes.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5276,6 +5281,7 @@
 - [clarity runner reviewer c can lose its output to a](ag-1780667168475-a9tac8/1789573892015-clarity-runner-reviewer-c-can-lose-its-output-to-a.md) — _ag-1780667168475-a9tac8_
 - [byteaddressbufferload alignment operand natural al](ag-1780667168475-a9tac8/1789579501578-byteaddressbufferload-alignment-operand-natural-al.md) — _ag-1780667168475-a9tac8_
 - [slang bindless heap binding indices are preset fix](ag-1780667168475-a9tac8/1789582349574-slang-bindless-heap-binding-indices-are-preset-fix.md) — _ag-1780667168475-a9tac8_
+- [slang pr review runner scripts must run from home ](ag-1780667168475-a9tac8/1789621947264-slang-pr-review-runner-scripts-must-run-from-home-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

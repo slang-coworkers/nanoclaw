@@ -3,7 +3,7 @@ title: "Agent GitHub Token Boundaries and Write-Blocks"
 type: concept
 group: agent-infra
 tags: [github, nv-slang-bot, gh-cli, workflows, discussions, auth, outage, write-block, token]
-source_count: 10
+source_count: 11
 ---
 
 # Agent GitHub Token Boundaries and Write-Blocks
@@ -19,6 +19,7 @@ source_count: 10
 - **An unauth 404 on `pulls/<n>` within ~1 min of PR creation is a replication-cache false alarm**, not proof the PR is absent — confirm with an authenticated query.
 - **A human-cred merge during a bot `actions:write` outage is NOT bot write recovery.** Re-probe with an actual bot write (`gh run rerun --failed`, exit 0); never infer recovery from a merge or queue movement.
 - **An empty list (`total_count:0`) is a successful-looking empty response, not an error.** On a repo that always has open issues it is a tool-malfunction signal, not "zero new issues" — cross-check via the unauthenticated GitHub REST API.
+- **The unauthenticated `.../actions/runs?status=failure` list can return only STALE entries** (rate-limited 60/hr, incomplete ordering/filtering) — an old newest-failure date is NOT "all-clear." Cross-check the `health_snapshots.jsonl` last line + the merge-group check runs.
 - **The 07-16/07-17 "GitHub auth outage" is RESOLVED** — do NOT carry forward any "auth / actions / GraphQL / git-push is down" or "hold read-only" assumption. Keep the REST-vs-actions-vs-GraphQL split and the empty-list trap as *diagnostic techniques* for a future problem; re-diagnose from scratch if a new 401 cluster appears.
 
 ## The Discussions Write-Block
@@ -45,11 +46,13 @@ During a bot `actions:write` outage (OneCLI GitHub disconnect / gateway 403), a 
 
 When a list/search tool (an MCP `github_list_issues` / `github_search_issues`, or `gh` returning empty via an invalid token) returns `{"issues": [], "total_count": 0}`, that is a *successful-looking empty response*, not an error — and on a repo that always has open issues (shader-slang/slang), `total_count:0` is a tool-malfunction signal, NOT "zero new issues." Never report "no new issues" off an empty list without cross-checking. The durable fallback is the **unauthenticated GitHub REST API**, which returns real data for issues/PRs/actions with no token: `curl -s "https://api.github.com/repos/shader-slang/slang/issues?state=open&sort=created&direction=desc&per_page=40"` (filter out entries with a `pull_request` key), `.../pulls?state=closed&sort=updated&...` for merged PRs, `.../actions/runs?status=failure&...` for CI failures, and `curl -s https://raw.githubusercontent.com/shader-slang/slang-ci-analytics/main/health_snapshots.jsonl | tail -1` for the CI-health snapshot. Its value is independence from a flaky MCP server — keep it as a general resilience technique ([slang-mcp degraded: use unauth GitHub REST fallback for daily report](../learnings/1784276460761-slang-mcp-degraded-use-unauth-github-rest-fallback.md)).
 
+Caveat on that same unauthenticated fallback for CI: `curl ".../actions/runs?status=failure&per_page=N"` **without a token can return only stale entries** — a 09-14 query returned failure runs dated ≤08-31, a partial/stale view, NOT "no CI failures since 08-31." The unauth API is rate-limited (60/hr) and can order/filter results incompletely, so treat its Actions-failure list as best-effort: never read an old newest-failure date as all-clear, and cross-check the authoritative signals — the `health_snapshots.jsonl` last line (`merge_queue`, `jobs_queued`, `runs_queued`, `hosted_runner_usage`) and the merge-group check runs ([unauthenticated GH actions/runs?status=failure can return only stale entries](../learnings/1789373900583-unauthenticated-gh-actions-runs-status-failure-can.md)).
+
 ## Contradiction Resolved — the 07-16/07-17 "auth outage" is fixed
 
 The 07-16/07-17 "GitHub gateway 401 split" diagnostic and the earlier `slang-mcp` degraded note were filed during a **transient migration credential regression on 2026-07-16/07-17 that is now FIXED** — do NOT carry forward any "GitHub auth / actions / GraphQL / git-push is down" or "hold read-only" assumption. Root cause (dashboard-admin, 07-17): the App-token refresh cron silently died because `gh` was not installed on the newly-migrated host, so with no `gh` the refresh step failed and the github.com App token expired hourly — every `actions` API and GraphQL call then 401'd `Bad credentials`, and the 07-17 write-path "Must-have-admin-rights" symptom was the same expired-token cause, not a privilege problem. Fix: `gh` 2.96 installed on the host, the refresh cron guarded so it won't silently no-op on a missing dependency, and git-push split into non-overlapping secrets (`/shader-slang/slang*` App token + `/slang-coworkers/<repo>*` USER PAT). Verified recovered 07-17 ~11:47Z: `gh api graphql '{viewer{login}}'` → `nv-slang-bot[bot]`, `actions/runs .total_count` → 40000, `gh run list` works, both git-push targets succeed. **Read-only hold is LIFTED** — resume full CI sweeps, reruns, and requeues; do not defer classification citing this outage. Keep the REST-vs-actions-vs-GraphQL split (and the empty-list trap above) as *diagnostic techniques* for characterizing a future cred/gateway problem, but treat them as probe methods, not a current state — and if a future 401 cluster appears, re-diagnose from scratch (which paths fail? is the refresh cron alive / is `gh` present?) rather than assuming this specific outage recurred ([CORRECTION: GitHub gateway actions/GraphQL 401 outage (07-16) is RESOLVED 07-17 — do NOT hold read-only](../learnings/1784288884629-correction-github-gateway-actions-graphql-401-outa.md), [CORRECTION: gh/token/gateway auth was NOT broken on 2026-07-17 (transient cred regression, now fixed)](../learnings/1784288847791-correction-gh-token-gateway-auth-was-not-broken-on.md)). A truly-flaky `slang-mcp` server is a *separate* problem to diagnose independently — an `Upstream MCP server unavailable` from `slang-mcp` tools is an MCP-server issue, unrelated to the (now-fixed) GitHub credential.
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [nv-slang-bot App lacks 'workflows' permission — cannot open PRs touching .github/workflows/*](../learnings/1784154056053-nv-slang-bot-app-lacks-workflows-permission-cannot.md)
 - [nv-slang-bot GitHub App CANNOT post to Discussions (addDiscussionComment → FORBIDDEN)](../learnings/1784185128581-nv-slang-bot-github-app-cannot-post-to-discussions.md)
 - [empty-list-looks-like-success trap + unauth GitHub REST fallback (outage attribution SUPERSEDED/retracted)](../learnings/1784276460761-slang-mcp-degraded-use-unauth-github-rest-fallback.md)
@@ -60,5 +63,6 @@ The 07-16/07-17 "GitHub gateway 401 split" diagnostic and the earlier `slang-mcp
 - [CORRECTION: unauth 404 on `pulls/<n>` right after PR creation is a replication-cache false alarm, not proof the PR is absent](../learnings/1784595649737-correction-unauth-github-404-right-after-pr-creati.md)
 - [a PR merging during a bot actions:write outage ≠ write recovery (a human merged); re-probe with a real bot write for exit 0 before un-deferring reruns](../learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-bo.md)
 - [nv-slang-bot App token CANNOT push .github/workflows/* (missing 'workflows' scope) — deliver the workflow as a patch in a comment for a human to commit](../learnings/1785048496087-bot-app-token-cannot-push-github-workflows-missing.md)
+- [Unauthenticated `actions/runs?status=failure` can return only stale entries (60/hr, partial ordering) — don't read an old newest-failure date as all-clear; cross-check health_snapshots.jsonl + merge-group checks](../learnings/1789373900583-unauthenticated-gh-actions-runs-status-failure-can.md)
 
 _Catalog: [[wiki/index.md]]_

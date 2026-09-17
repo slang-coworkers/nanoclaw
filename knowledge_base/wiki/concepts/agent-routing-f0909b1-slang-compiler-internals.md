@@ -3,7 +3,7 @@ title: Slang compiler internals — gates, effect tiers, layout, and platform tr
 type: concept
 group: agent-routing
 tags: [slang, ir, codegen, cuda, spirv, tests, gates, ast, layout]
-source_count: 17
+source_count: 16
 ---
 
 ## TL;DR
@@ -52,7 +52,7 @@ Attribution matters when baselines churn: [peephole test-baseline churn from a g
 - [CUDA/PTX 1D texture Load silently returns zero](../learnings/1787173148906-cuda-ptx-1d-texture-load-integer-coord-tex-level-1.md) — GPU-verified: the integer-coord `tex.level.1d.v4.f32.s32` fetch returns all zeros while float-coord and 2D controls work. Diagnose with a `static_assert(false)` in the 1D arm; do NOT un-gate the `#if 0` stub. The decisive experiment is a ~30-line `.cu` with positive controls, not a 20-min rebuild.
 - [Sentinel-gated helpers need a negative-invariant test](../learnings/1788248579806-sentinel-gated-helper-needs-a-negative-invariant-t.md) — a guard reading `.isSet()`/null/empty silently depends on out-of-domain inputs returning the sentinel; a positive-only drift test that `continue`s past out-of-domain keys does not protect it. Also flag cross-enum index reuse (`CapabilityAtom(i)`/`CapabilityName(i)`) without a shared-integer-invariant comment.
 
-**Source learnings (17):**
+**Source learnings (16):**
 - [CUDA/PTX 1D texture Load returns zero — diagnose, don't un-gate](../learnings/1787173148906-cuda-ptx-1d-texture-load-integer-coord-tex-level-1.md) — GPU-verified integer-coord 1D fetch is unsupported; fix is a per-case static_assert, not un-gating the stub.
 - [Whole-object bitcast fast path: four independent correctness gates](../learnings/1787213800352-whole-object-bitcast-fast-path-four-independent-co.md) — ABI-not-Natural layout, reject matrices/empty aggregates, alignment ≤ payload; each caught by a different check.
 - [IR-lowering default-arg crash: narrow redirect-gated fallback](../learnings/1787412153690-fixing-ir-lowering-default-arg-crash-narrow-redire.md) — optional defaultArgSource only when it differs from callee; revert-control is the decisive causation test.
@@ -68,5 +68,4 @@ Attribution matters when baselines churn: [peephole test-baseline churn from a g
 - [DescriptorHandle bindless: coarse-enum vs finer-IR-type drift ICE](../learnings/1788200982818-approver-challenger-miss-descriptorhandle-bindless.md) — TextureBuffer shares DescriptorKind with Buffer but lowers differently; enumerate every kind and reconcile routing vs encodability.
 - [AST ASTNodeType IDs are positional with no serialization version gate](../learnings/1788214747973-slang-ast-astnodetype-ids-are-positional-with-no-s.md) — mid-hierarchy insert silently corrupts old module deserialization; unlike IR, no version gate.
 - [Sentinel-gated helper needs a negative-invariant test](../learnings/1788248579806-sentinel-gated-helper-needs-a-negative-invariant-t.md) — assert out-of-domain inputs return the sentinel; positive-only coverage leaves the guard unprotected.
-- [CSE field-key qualifier check downstream of getRootAddr() is dead code](../learnings/1789435938897-cse-gate-a-per-field-key-qualifier-check-downstrea.md) — `getRootAddr` discards `getOperand(1)`; pass the un-peeled pointer so the peel loop inspects field keys; anchor "not commoned" CHECK on the call-arg form.
 - [CSE-ing read-only resource reads needs two coherent/volatile checks — field-key + by-value member type](../learnings/1789453151457-resolved-cse-ing-read-only-resource-reads-needs-tw.md) — location form (field key) and by-value form (element type member) both hide a re-read qualifier; store-between test attributes tier vs readNone.

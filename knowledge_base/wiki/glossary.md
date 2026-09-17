@@ -429,6 +429,7 @@ type: nav
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
+- [Slang struct-construction lowering: synthesized member-wise ctors and module-global constant legalization](concepts/slang-language-core-struct-construction-lowering.md)
 - [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)
 - [Slang Visibility, Layout & Codegen Surfaces](concepts/slang-language-visibility-and-layout.md)
 - [Slang Witness Tables, Conformance & Extensions](concepts/slang-language-witness-and-conformance.md)
@@ -436,6 +437,7 @@ type: nav
 
 **Slang tooling**
 - [Build System, Prebuilt Deps (DXC/LLVM) & CMake Options](concepts/slang-tooling-build-runtime-libs.md)
+- [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen)](concepts/slang-tooling-llvm-target-build.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
 - [Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc, sanitizers, stale binaries](concepts/slang-tooling-f0909b0-build-worktree-cmake.md)
@@ -451,6 +453,7 @@ type: nav
 - [slangc Target Output & Obfuscation](concepts/slangc-target-output-and-obfuscation.md)
 - [slangc Wave Intrinsics, VM Emitter & Inliner](concepts/slangc-wave-vm-and-inliner.md)
 - [Test Instruments That Lie Quietly (slangi, coverage census, stale binaries)](concepts/slang-tooling-test-instruments.md)
+- [Triaging slangd (language-server) crashes: version-triage, direct-LSP repro, and completion-mode modifier retention](concepts/slang-tooling-slangd-lsp.md)
 
 **SlangPy**
 - [SlangPy AppWindow Presentation: Surface Invalidation, Present-Suppression, and Recovery](concepts/slangpy-appwindow-presentation.md)

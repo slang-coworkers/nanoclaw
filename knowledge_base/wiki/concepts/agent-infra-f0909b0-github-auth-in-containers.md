@@ -3,7 +3,7 @@ title: "Diagnosing GitHub Auth in Coworker Containers (gh / OneCLI / App token)"
 type: concept
 group: agent-infra
 tags: [gh, onecli, github-app-token, auth, app_not_connected, spec-repo, read-vs-write]
-source_count: 5
+source_count: 8
 ---
 
 ## TL;DR
@@ -33,6 +33,11 @@ from public GETs (which succeed regardless). Probe the actual path you need.
 - **`shader-slang/spec` has NO writable route** from the slang container (no push, no fork,
   `/user` 403). This is different from `shader-slang/slang` which pushes fine. Draft locally,
   commit on a branch, report the blocker up with the doc — don't hunt a workaround.
+- **When a `gh` write fails on an "invalid token", POST via curl through the OneCLI gateway** —
+  no `Authorization` header, no inherited `GH_TOKEN`; the gateway injects the credential at the
+  HTTPS_PROXY boundary. `jq -Rs '{body:.}' memo.md > payload.json; curl -X POST
+  ".../issues/<n>/comments" --data @payload.json` → HTTP 201. The slang-mcp `github_*` tools have
+  no comment-write endpoint, so curl-through-gateway is the fallback — never report "can't post."
 
 ## Synthesis
 
@@ -61,6 +66,29 @@ Since the reviewer runner reads the PR via `gh pr diff`, a scary preflight `gh a
 failure does NOT block Reviewer A or C — verify by actually running `gh pr diff <N> -R <repo> |
 head`. Posting back WOULD be blocked by the same OneCLI wall, but that only matters when
 `<github-post-authorized />` is present.
+
+Reconfirmed on two more slang-reviewer containers: `gh auth status` "invalid" and
+`gh api /rate_limit` `app_not_connected` are the same App-token quirk, while `gh pr diff`,
+`gh pr view`/`checks`, `gh api repos/.../pulls/<N>`, and `git fetch origin pull/<N>/head` all
+succeed via the gateway ([gh auth status invalid is a false alarm — gh api/pr diff still work](../learnings/1789462002423-gh-auth-status-invalid-token-is-a-false-alarm-for-.md), [gh auth status is misleading in the reviewer container — run native pr mode](../learnings/1789463556885-gh-auth-status-is-misleading-in-the-reviewer-conta.md)).
+Do NOT fall back to branch/patch mode or build a `git diff origin/master...<head>` gh shim off the
+failure — just run native `pr` mode (`compose-and-run.sh` / `run-clarity.sh --mode pr`, which
+regenerates `tmp/pr-diff.patch` via `gh pr diff`) and verify with one real call
+(`gh pr diff <N> -R <repo> | wc -c`); a git-3-dot shim is wasted effort and slightly less faithful
+than the authoritative `gh pr diff` (byte counts differ: 5196B vs 5208B on one PR). Two budget
+asides from the same runs: the inner `claude --print` reviewer runs (Reviewer A ~$8, C ~$3) bill to
+a **separate** account, not the nanoclaw session budget; and read `final-review.md` /
+`clarity-review.md` with a targeted Read — never `tail` the whole ~1.6 MB `stream.jsonl` (one full
+tail cost ~$0.87 of session budget).
+
+The write path has the same false-alarm shape in the fixer container: when `gh`/`gh api` fail on an
+"invalid token", posting still works by **curl through the OneCLI gateway** — no `Authorization`
+header, don't let curl inherit the bad `GH_TOKEN`; the gateway injects the credential at the
+HTTPS_PROXY boundary and `curl -X POST ".../issues/<n>/comments" --data @payload.json` returns HTTP
+201. `jq -Rs '{body:.}' memo.md > payload.json` safely JSON-encodes markdown. The slang-mcp
+`github_*` toolset has only get/list/search + `create_or_update_file` — no issue-comment write — so
+curl-through-gateway is the write fallback; don't report "can't post to GitHub" on a gh-token
+failure ([post GitHub comments via the OneCLI gateway when the gh token is invalid](../learnings/1789496103678-post-github-comments-via-onecli-gateway-when-gh-to.md)).
 
 The harder variant is when GitHub is **fully unconnected in OneCLI**: `gh api` returns
 `app_not_connected`, `GH_TOKEN` is a `ROUT…` gateway *routing* token (not a GitHub token), and
@@ -116,9 +144,12 @@ to open the PR or provision a writable route. (Proposal conventions: copy `propo
 keep number `000` until a maintainer assigns one, conform to the template sections exactly, Status
 = "Design Review".)
 
-**Source learnings (5):**
+**Source learnings (8):**
 - [Diagnosing a gh 403/invalid-token in the coworker container (OneCLI app_not_connected)](../learnings/1787673998635-diagnosing-a-gh-403-invalid-token-in-the-coworker-.md) — two cheap reads (`rate_limit`, `.permissions`) tell dead-connection from under-scoped; both dead ⇒ every authenticated path fails, reconnect is operator-side.
 - [shader-slang/spec has no writable path from the slang-fixer container](../learnings/1787678701018-shader-slang-spec-has-no-writable-path-from-the-sl.md) — no push, no fork, invalid GH_TOKEN, /user 403; draft locally and report the blocker up, don't hunt a workaround.
 - [slang PR review: gh pr diff works even when gh auth status shows invalid GH_TOKEN](../learnings/1788581852750-slang-pr-review-gh-pr-diff-works-even-when-gh-auth.md) — OneCLI intercepts only `gh api`/`gh api graphql`; `gh pr diff`/`gh pr view` read via raw token, so preflight status failure doesn't block the runner.
 - [gh api REST works with the App installation token even when gh auth status says "invalid"](../learnings/1788776005130-gh-api-rest-works-with-the-app-installation-token-.md) — App tokens have no user context (so /user 403s); probe `gh api /repos/.../issues/<n> --jq .state`; GraphQL-backed `gh` subcommands can return empty output.
 - [when gh is FULLY unauthenticated (`app_not_connected`, ROUT routing token), pr-mode runners die but the diff is recoverable via `git diff origin/master...<head>` + `repro.sh` directly; Reviewer C uses the writable `~/.claude/skills` copy with `--mode branch`; Devin unaffected.](../learnings/1789315995719-running-slang-pr-reviewers-when-in-container-gh-is.md)
+- [gh auth status "invalid token" is a false alarm for the App token — gh api / gh pr diff still work; don't skip Reviewer A/B/C; inner reviewer runs bill to a separate account](../learnings/1789462002423-gh-auth-status-invalid-token-is-a-false-alarm-for-.md)
+- [gh auth status is misleading in the reviewer container — run native pr mode; don't build a git-3-dot gh shim; verify with a real gh pr diff call](../learnings/1789463556885-gh-auth-status-is-misleading-in-the-reviewer-conta.md)
+- [Post GitHub comments via curl through the OneCLI gateway (no Authorization header) when the gh token is invalid; slang-mcp has no comment-write tool](../learnings/1789496103678-post-github-comments-via-onecli-gateway-when-gh-to.md)

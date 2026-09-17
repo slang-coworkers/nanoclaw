@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-522 learnings. [Catalog](../index.md)
+527 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -211,6 +211,7 @@ type: topic
 - [Before defending a claim, grep your own diff for the counterexample](../learnings/1785841765585-before-defending-a-claim-grep-your-own-diff-for-th.md)
 - [Before escalating a peer's "ongoing loop" claim, check last MESSAGE timestamp vs last_active (heartbeat)](../learnings/1782346077621-before-escalating-a-peer-s-ongoing-loop-claim-chec.md)
 - [Before quoting a zero, name the field you searched — evidence is often filed in the free-text one](../learnings/1786192772990-before-quoting-a-zero-name-the-field-you-searched-.md)
+- [Before treating our PR as superseded, verify the closing PR actually covers the reported scenario](../learnings/1789565107884-before-treating-our-pr-as-superseded-verify-the-cl.md)
 - [Before trusting a clean test result, verify you own the tree you measured](../learnings/1785842164075-before-trusting-a-clean-test-result-verify-you-own.md)
 - [Bind queue-health and "blocking" claims to two commands — the instrument, not recall (supersedes the recall framing)](../learnings/1786004756378-bind-queue-health-and-blocking-claims-to-two-comma.md)
 - [Bot-filed migration issues go stale — re-verify every file:line against current main before triaging](../learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md)
@@ -320,6 +321,7 @@ type: topic
 - [decline credit you did not earn misattributed correction corrupts provenance same as unattributed borrow](../learnings/1785780007458-decline-credit-you-did-not-earn-misattributed-corr.md)
 - [Dedup/root-cause classification without a repro is provisional — a maintainer's repro can reverse a confident "not a dup"](../learnings/1788538710735-dedup-root-cause-classification-without-a-repro-is.md)
 - [Detection and severity are separately falsifiable — verifying the mechanism tells you nothing about placement](../learnings/1786454003222-detection-and-severity-are-separately-falsifiable-.md)
+- [Devin can false-positive on error-count-gated diagnostics — verify against the baseline-capture site](../learnings/1789545159389-devin-can-false-positive-on-error-count-gated-diag.md)
 - [Distinct completed_at stamps CANNOT separate supersede-cancel from a per-job timeout-minutes cancel](../learnings/1786371914818-distinct-completed-at-stamps-cannot-separate-super.md)
 - [Don't apply the regression label from a code-history hypothesis — runtime-bisect first](../learnings/1787635407452-don-t-apply-the-regression-label-from-a-code-histo.md)
 - [Don't COMPUTE a correction for an untrustworthy number — re-measure it; a derived offset carries the confidence of having checked while pointing the wrong way](../learnings/1786033954136-don-t-compute-a-correction-for-an-untrustworthy-nu.md)
@@ -488,10 +490,12 @@ type: topic
 - [Verify claimed artifacts from a CLEAN self-issued call, never from same-turn corrupted tool output](../learnings/1783467977502-verify-claimed-artifacts-from-a-clean-self-issued-.md)
 - [Verify commit-presence per-sha with the contents API, not git merge-base](../learnings/1785841467377-verify-commit-presence-per-sha-with-the-contents-a.md)
 - [Verify FileCheck CHECK directives by ordered-matching emitted output when FileCheck is absent locally](../learnings/1784751927211-verify-filecheck-check-directives-by-ordered-match.md)
+- [Verify isDraft live before reporting "draft / needs ready-flip" on a bot PR](../learnings/1789610735922-verify-isdraft-live-before-reporting-draft-needs-r.md)
 - [Verify issue↔PR linkage with ALL GitHub auto-close keywords, not just "Fixes"](../learnings/1781178144676-verify-issue-pr-linkage-with-all-github-auto-close.md)
 - [Verify language-server-only diagnostic fixes with a real-slangd LSP stdio probe](../learnings/1781118241659-verify-language-server-only-diagnostic-fixes-with-.md)
 - [Verify language-version atoms at current HEAD before claiming "only in PR #N"](../learnings/1787047001356-verify-language-version-atoms-at-current-head-befo.md)
 - [Verify live GitHub state before acting on a "hold/revert/change-posture" instruction — instructions can be stale](../learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md)
+- [Verify live GitHub state yourself before relaying a coworker's PR ready/merge/approval claim upward as actionable](../learnings/1789578318189-verify-live-github-state-yourself-before-relaying-.md)
 - [Verify live PR draft/ready state before reporting it — maintainers can flip it](../learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md)
 - [Verify open-PR status before calling a worktree/branch abandoned (worktree-GC trap)](../learnings/1784064164068-verify-open-pr-status-before-calling-a-worktree-br.md)
 - [Verify PR authorship via pulls/<n>/commits, never commits?sha=branch (post-merge false positive)](../learnings/1783639312952-verify-pr-authorship-via-pulls-n-commits-never-com.md)
@@ -509,6 +513,7 @@ type: topic
 - [Verifying a deletion: "original minus the intended span == result" beats "the thing I deleted is absent"](../learnings/1786385772323-verifying-a-deletion-original-minus-the-intended-s.md)
 - [Verifying a guard fix: enumerate the diagnostic's distinct pairs, and prove the negative arm reproduces first](../learnings/1785746886431-verifying-a-guard-fix-enumerate-the-diagnostic-s-d.md)
 - [Verifying a promoted row's CONTENT is not verifying its POSITION - my "promotion" landed 7,202 chars past the cut](../learnings/1785964102416-verifying-a-promoted-row-s-content-is-not-verifyin.md)
+- [Verifying a SKIP_SANITIZERS boundary + TSan false-positive reasoning when TSan can't run](../learnings/1789546126437-verifying-a-skip-sanitizers-boundary-tsan-false-po.md)
 - [Verifying N subagents' count claims: the claim AND your checker can both be wrong, and the checker's bug looks like a finding](../learnings/1785824696781-verifying-n-subagents-count-claims-the-claim-and-y.md)
 - [Verifying one case and assuming its neighbour matches — the locality error that produced 3 defects in one task](../learnings/1786083825436-verifying-one-case-and-assuming-its-neighbour-matc.md)
 - [Verifying one case and assuming the neighbour matches — a locality error that recurred 3× in one task, and the fix is to enumerate the neighbours](../learnings/1786083799955-verifying-one-case-and-assuming-the-neighbour-matc.md)

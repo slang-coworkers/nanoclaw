@@ -3,7 +3,7 @@ title: "Agent Routing: GitHub Bot & Webhooks"
 type: concept
 group: agent-routing
 tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
-source_count: 35
+source_count: 37
 ---
 
 # Agent Routing: GitHub Bot & Webhooks
@@ -18,7 +18,8 @@ The `nv-slang-bot` GitHub identity, webhook verification, consolidated posting p
 - **Webhook payloads are NOT authenticated** — no HMAC. Before acting: confirm the comment exists via `gh api` and matches body/author/`created_at`; drop self-triggered echoes; no-op if the bot already commented later than the target (delayed redelivery).
 - **`pr_closed` / `pr_synchronize` / `pr_ready_for_review` webhooks are claims, not ground truth** — verify against live GitHub before propagating.
 - **Posting is the default, not the exception.** A verified 5-bullet (status / link / verdict / next-action / blocker) is posted by the closest-to-the-state tier on every triaged issue, including un-mentioned `issue_opened` and maintainer-authored ones. Silence on an in-flight chain is the bug.
-- **The gated set is exactly two actions: `gh pr ready` and `gh pr merge`.** Comments, labels, replies, reactions post freely on the bot's authority. `<github-post-authorized />` gates only the *reviewer's* `/slang-pr-review` posting; it was never a general write gate.
+- **The gated set is exactly two actions: `gh pr ready` and `gh pr merge`.** Comments, labels, replies, reactions post freely on the bot's authority. `<github-post-authorized />` gates only the *reviewer's* `/slang-pr-review` posting; it was never a general write gate. A mention-response factual confirmation is **pre-authorized** (post directly); only a narrow class — pushback / contested design / correcting a published claim / *proactive* comment — warrants relay-for-sign-off.
+- **A comment PATCH notifies NO ONE** — for a reply a human must SEE or answer, POST a fresh @-mention comment; don't PATCH the "on it".
 - **The one remaining pre-post guard is "verified at HEAD"** — repro reproduced, or load-bearing claims checked against actual repo HEAD.
 - **`gh auth status` / `gh api user` are misleading probes** — they report an invalid token while comments, PR creation, pushes, and GraphQL mutations all succeed. Never decide writeability from the probe; attempt the write. The real degradation signal is a GraphQL *mutation* returning an error payload.
 - **When REST 403s "Must have admin rights", try GraphQL:** label add → `addLabelsToLabelable`; close as duplicate → `closeIssue` + `stateReason: DUPLICATE`; comment edit → `updateIssueComment`. Polarity isn't uniform — PR self-merge is the reverse.
@@ -106,6 +107,8 @@ A coworker cannot edit/delete a PEER coworker's GitHub comment even under the sa
 
 The `/slang-triage-issue` edit-if-last-poster-is-self snippet compares against `"nv-slang-bot[bot]"` but the API returns bare `nv-slang-bot` — the exact-match check always fails, falling through to POST a fresh comment every time. Use a loose match (see Bot Identity section above). After ANY edit-in-place post, verify the returned comment id equals the prior one — a PATCH returns the SAME id; a different id means you posted fresh. Keep a `.gh-comments/<repo>-<num>.id` file pointing at the surviving comment ([nv-slang-bot issue-comment login is 'nv-slang-bot' (no [bot]) — edit-in-place check must match loosely or it silently posts duplicates](../learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md)).
 
+But that dedup rule strands human-facing content: a comment **PATCH sends no notification** (not the @-mentioned user, not subscribers) while a fresh POST's @-mention *does* ping (a review-thread *reply* also notifies). POST a short "on it" @-mentioning a human, then PATCH it with your real answer + a question, and the human is pinged only for the "on it," never sees the reply — the thread reads unanswered to them and to a supervisor watching "human spoke last" (slang PR #12919). PATCH-in-place only for a live TODO the human needn't act on; when the reply must be SEEN or asks a question, POST a fresh self-contained comment ([GitHub comment EDITs don't notify — human questions get stranded by the PATCH-first flow](../learnings/1789477835098-github-comment-edits-don-t-notify-human-questions-.md)).
+
 
 ## Labels and REST/GraphQL Permissions
 
@@ -167,6 +170,8 @@ When deciding whether a shader-slang/slang PR is "ours" (bot-driven, route to a 
 
 Re-confirmed operator rule (superseding 2026-06-16, re-confirmed on #11898 2026-07-02): the operator-gated GitHub actions are **exactly two — `gh pr ready` and `gh pr merge`.** Comments, labels, replies, reactions post freely on the bot's authority (verify at HEAD first) ([1782986948807-gated-github-set-is-only-gh-pr-ready-m](../learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)).
 
+Refinement on *comment* writes (parent ruling, PR #12412, 2026-09-15): a **factual confirmation replying to a maintainer's @-mention actionable request** (e.g. "synced +36 clean, pushed") is **pre-authorized** — post directly with `gh pr comment`, no sign-off/relay. Keep the relay-for-sign-off reflex only for the narrow **gated class**: pushback on a maintainer, a contested design argument, correcting a previously-published claim, or any *proactive* (non-mention) comment. Still never `gh pr ready`/merge, never add reviewers/assignees; pushes to your own `fix/issue-*` branch were never gated ([GitHub reply auth: pre-authorized mention-response vs gated class](../learnings/1789490708871-github-reply-auth-pre-authorized-mention-response-.md)).
+
 
 
 ## Recent operational learnings (incremental fold 2026-07-17)
@@ -200,7 +205,7 @@ A distinct duplicate-footprint hazard from the held-no-PR race above: when our o
 
 <!-- fold-20260713 -->
 
-**Source learnings (35):**
+**Source learnings (37):**
 
 - [Verifying GitHub webhook payloads before acting](../learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md)
 - [Always post the PR review when explicitly requested via webhook](../learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md)
@@ -237,3 +242,5 @@ A distinct duplicate-footprint hazard from the held-no-PR race above: when our o
 - [GitHub pr_closed/pr_synchronize webhooks are claims, verify vs live GitHub before propagating](../learnings/1784114457146-github-pr-closed-pr-synchronize-webhooks-are-claim.md)
 - [Bot-authored PR reds already BLOCK'd by approver = owned/in-fix, don't re-surface](../learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md)
 - [Mermaid flowcharts for GitHub diagnosis comments: lint + render gotchas](../learnings/1784186351938-mermaid-flowcharts-for-github-diagnosis-comments-l.md)
+- [GitHub comment EDITs (PATCH) don't notify — a human question posed via a PATCHed "on it" gets stranded; POST a fresh @-mention comment when the reply must be seen](../learnings/1789477835098-github-comment-edits-don-t-notify-human-questions-.md)
+- [GitHub reply auth: a mention-response factual confirmation is pre-authorized; only pushback / contested design / correcting a published claim / proactive comments are the gated class](../learnings/1789490708871-github-reply-auth-pre-authorized-mention-response-.md)

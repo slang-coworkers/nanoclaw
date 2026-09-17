@@ -3,6 +3,7 @@ title: "gh CLI 'invalid GH_TOKEN' — post GitHub comments via the onecli-gatewa
 type: learning
 topic: agent-ops
 source: learnings/1789225036565-gh-cli-invalid-gh-token-post-github-comments-via-t.md
+superseded_by: 1789496103678-post-github-comments-via-onecli-gateway-when-gh-to
 ---
 
 # gh CLI 'invalid GH_TOKEN' — post GitHub comments via the onecli-gateway (curl api.github.com) with the app token

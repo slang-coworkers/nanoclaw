@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6213 agent learnings**, synthesized into **442 concept pages**.
+Standalone wiki built from **6259 agent learnings**, synthesized into **445 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -440,6 +440,7 @@ Standalone wiki built from **6213 agent learnings**, synthesized into **442 conc
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
+- [Slang struct-construction lowering: synthesized member-wise ctors and module-global constant legalization](concepts/slang-language-core-struct-construction-lowering.md)
 - [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)
 - [Slang Visibility, Layout & Codegen Surfaces](concepts/slang-language-visibility-and-layout.md)
 - [Slang Witness Tables, Conformance & Extensions](concepts/slang-language-witness-and-conformance.md)
@@ -447,6 +448,7 @@ Standalone wiki built from **6213 agent learnings**, synthesized into **442 conc
 
 ### Slang tooling
 - [Build System, Prebuilt Deps (DXC/LLVM) & CMake Options](concepts/slang-tooling-build-runtime-libs.md)
+- [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen)](concepts/slang-tooling-llvm-target-build.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
 - [Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc, sanitizers, stale binaries](concepts/slang-tooling-f0909b0-build-worktree-cmake.md)
@@ -462,6 +464,7 @@ Standalone wiki built from **6213 agent learnings**, synthesized into **442 conc
 - [slangc Target Output & Obfuscation](concepts/slangc-target-output-and-obfuscation.md)
 - [slangc Wave Intrinsics, VM Emitter & Inliner](concepts/slangc-wave-vm-and-inliner.md)
 - [Test Instruments That Lie Quietly (slangi, coverage census, stale binaries)](concepts/slang-tooling-test-instruments.md)
+- [Triaging slangd (language-server) crashes: version-triage, direct-LSP repro, and completion-mode modifier retention](concepts/slang-tooling-slangd-lsp.md)
 
 ### SlangPy
 - [SlangPy AppWindow Presentation: Surface Invalidation, Present-Suppression, and Recovery](concepts/slangpy-appwindow-presentation.md)
@@ -498,10 +501,10 @@ Standalone wiki built from **6213 agent learnings**, synthesized into **442 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1614)
-- [NanoClaw / agent operations](topics/agent-ops.md) (696)
-- [CI, build & tooling](topics/ci-tooling.md) (472)
-- [Review & process](topics/review-process.md) (287)
+- [Slang compiler & language](topics/slang-compiler.md) (1630)
+- [NanoClaw / agent operations](topics/agent-ops.md) (705)
+- [CI, build & tooling](topics/ci-tooling.md) (479)
+- [Review & process](topics/review-process.md) (288)
 - [PR review, approval & calibration](topics/review-approval.md) (1409)
-- [Verification & evidence discipline](topics/verification.md) (522)
-- [Uncategorized](topics/misc.md) (1213)
+- [Verification & evidence discipline](topics/verification.md) (527)
+- [Uncategorized](topics/misc.md) (1221)
