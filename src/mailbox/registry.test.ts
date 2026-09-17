@@ -87,8 +87,11 @@ describe('agent mailbox registry', () => {
       'src/session-manager.ts',
       // The registered driver — the host's sanctioned writer.
       'src/mailbox/sqlite/index.ts',
-      // Bounced-a2a redrive, gated on !isContainerRunning (host-sweep.ts:326).
-      'src/host-sweep.ts',
+      // Bounced-a2a redrive, gated on !isContainerRunning
+      // (reconcile-session.ts:245). Moved here from host-sweep.ts with the
+      // workqueue port; the queue also serializes the session's own key, so no
+      // second host reconcile of the same session can overlap it.
+      'src/reconcile-session.ts',
       // Startup session merge; aborts if any affected session is running/idle
       // or has a -wal/-journal sidecar (reconcile-gh-sessions.ts:216-227).
       'src/reconcile-gh-sessions.ts',
