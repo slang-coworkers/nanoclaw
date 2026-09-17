@@ -292,6 +292,7 @@ def _board_row(rec: dict) -> dict:
         "batch": rec.get("batch"),
         "paused": bool(rec.get("paused")),
         "waived": bool(rec.get("waived")),
+        "follow_up": bool(rec.get("follow_up")),  # a `<PARENT>.<letter>` row: never a WIP slot, never in the schedule
         "held": "; ".join(_hold_text(h) for h in stalls) or None,
         "hold_gates": tuple(g for h in holds if h.get("kind") == "gate" for g in HOLD_GATES.get(str(h.get("label")), ())),
     }
@@ -322,12 +323,17 @@ def rows_from_board(records: dict, gating: dict) -> dict:
     must be scheduled first). Without a queue block: board order, no gates (noted in source_errors).
     merged_at: each record's ledger merge stamp, merged rows only.
 
-    Returns {"rows": {rid: {"state", "state_reason", "disposition", "batch", "paused", "waived", "held", "hold_gates"}},
+    Follow-up rows (record `follow_up`, hermes_queue `follow_up_rows`) are mapped but never scheduled: no WIP slot in
+    the queue, none here.
+
+    Returns {"rows": {rid: {"state", "state_reason", "disposition", "batch", "paused", "waived", "follow_up", "held", "hold_gates"}},
              "state_ok", "generated_at", "gating", "wip_limit", "waive", "paused_rows",
              "order": [(rid, gates)], "order_source", "merged_at": {rid: ISO}, "source_errors": [str]}."""
     rows = {str(rid): _board_row(rec) for rid, rec in (records or {}).items() if isinstance(rec, dict)}
     errors = list(gating.get("errors") or [])
-    known = [rid for rid, r in rows.items() if r["state"] != "unknown"]
+    # a follow-up row (`<PARENT>.<letter>`, hermes_queue `follow_up_rows`) holds no WIP slot in the queue and takes
+    # none here: it is never placed, so it never delays a plan row's start (the board shows it in its own section)
+    known = [rid for rid, r in rows.items() if r["state"] != "unknown" and not r["follow_up"]]
     held_last = [rid for rid in known if rows[rid]["hold_gates"]]
     if gating.get("queue_ok"):
         placed = [rid for rid in known if rows[rid]["state"] not in ("queued", "waiting") and rid not in held_last]

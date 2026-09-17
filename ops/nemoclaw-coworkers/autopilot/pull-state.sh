@@ -5,7 +5,7 @@
 # ledger, the plan and the matrix from the shared mirror, the fork through `gh` (OneCLI injects
 # the credential), and the role sessions through `ncl` (the dashboard API is not reachable from
 # a container), then runs the deterministic core and writes, under $AUTOPILOT_DIR:
-#   threads.json   per-row session transcripts + cost status   (collect_threads.py)
+#   threads.json   per-row session transcripts + cost status, plus the Orchestrator's operator threads (collect_threads.py)
 #   prs.json       gh pr list --state all, raw
 #   state.json     the merged result the prompts act on
 # A source that is unavailable is written as what we have plus a "collector_errors" entry that
@@ -45,7 +45,11 @@
 #     thread (collect_threads.py folds `hermes-iso-f13` to `hermes-ISO-F13`, rowid.py); each entry of
 #     sessions-by-thread.json keeps the session's real thread as `thread_id_raw`, so the supervisor
 #     pins nudges and re-arms to the real session AND its real thread (a send into hermes-ISO-F13
-#     does not reach a session on hermes-iso-f13 — the 2026-09-16 ISO-F13 incident).
+#     does not reach a session on hermes-iso-f13 — the 2026-09-16 ISO-F13 incident). The same file
+#     carries one non-row key, "operator_threads": the collector's pass 3 (the Orchestrator's operator
+#     DM / main / system:tasks:* sessions, last 48 h, bounded) flattened the same way, which the
+#     supervisor scans for operator-facing asks (§2.5 operator_ask; the 2026-09-16/17 incident).
+#     The collector reads the queue's in-flight rows AND its in-flight follow-up rows (`<PARENT>.<letter>`).
 #   * nudge-book.json: per-row last nudge / state / count / alert times from nudges.json.
 #
 # state.json = the queue output, plus: supervise (the supervisor's full output), actions, alerts
@@ -74,6 +78,7 @@ PROBE_TIMEOUT=${PROBE_TIMEOUT:-25}
 COLLECT_LIMIT=${COLLECT_LIMIT:-200}
 COLLECT_MAX_SESSIONS=${COLLECT_MAX_SESSIONS:-80}
 COLLECT_DEADLINE_S=${COLLECT_DEADLINE_S:-0}
+COLLECT_OPERATOR_DEADLINE_S=${COLLECT_OPERATOR_DEADLINE_S:-3}   # pass 3's own reserve (operator threads), runs before the row reads
 COLLECT_ROWS_FROM_QUEUE=${COLLECT_ROWS_FROM_QUEUE:-1}
 NOW=${NOW_OVERRIDE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}
 HERE=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
@@ -293,21 +298,23 @@ fi
 #   raw/sessions-by-thread.json   {"hermes-<ID>": [{role, session_id, cost_status, container_status, status, last_active}]}
 ROWS_ARGS=()
 if [ "$COLLECT_ROWS_FROM_QUEUE" = 1 ] && [ "$CORE_QUEUE" = ok ]; then
-  IN_FLIGHT=$(python3 -c 'import json,sys; st=json.load(open(sys.argv[1])); print(",".join(st.get("in_flight") or []))' "$RAW/queue.json" 2>/dev/null || echo "")
+  # the in-flight plan rows plus the in-flight follow-up rows (`<PARENT>.<letter>`, supervised on their own thread)
+  IN_FLIGHT=$(python3 -c 'import json,sys; st=json.load(open(sys.argv[1])); print(",".join(list(st.get("in_flight") or []) + [r for r in (st.get("follow_up_in_flight") or []) if r not in (st.get("in_flight") or [])]))' "$RAW/queue.json" 2>/dev/null || echo "")
   ROWS_ARGS=(--rows "$IN_FLIGHT")
 fi
 COLLECT=$(find_core collect_threads.py)
 if [ -n "$COLLECT" ]; then
   run_probe "collect_threads.py" "$RAW/threads.json" python3 "$COLLECT" \
     --groups "$RAW/groups.json" --sessions "$RAW/sessions.json" --ncl "$NCL" --now "$NOW" \
-    --limit "$COLLECT_LIMIT" --max-sessions "$COLLECT_MAX_SESSIONS" --deadline-s "$COLLECT_DEADLINE_S" "${ROWS_ARGS[@]}"
+    --limit "$COLLECT_LIMIT" --max-sessions "$COLLECT_MAX_SESSIONS" --deadline-s "$COLLECT_DEADLINE_S" \
+    --operator-deadline-s "$COLLECT_OPERATOR_DEADLINE_S" "${ROWS_ARGS[@]}"
 else
   record_error "collect_threads.py" "not found next to pull-state.sh or in $AP"
 fi
 if [ -s "$RAW/threads.json" ]; then
   mv "$RAW/threads.json" "$AP/threads.json"
 else
-  printf '{"generated_at": "%s", "roles": {}, "threads": {}, "other_threads": [], "sessions_checked": false, "counts": {}, "collector_errors": []}\n' "$NOW" > "$AP/threads.json"
+  printf '{"generated_at": "%s", "roles": {}, "threads": {}, "other_threads": [], "operator_threads": [], "sessions_checked": false, "counts": {}, "collector_errors": []}\n' "$NOW" > "$AP/threads.json"
 fi
 
 AP="$AP" RAW="$RAW" ERRORS="$ERRORS" python3 - <<'PY'
@@ -388,6 +395,34 @@ for rid, t in (threads.get("threads") or {}).items():
     else:
         msgs.sort(key=lambda m: (m["ts"], m.get("seq") or 0))
         flat[tid] = msgs
+# the Orchestrator's operator threads (collector pass 3): flattened like a row thread, under one non-row key the
+# supervisor reads for operator-facing asks; an entry whose transcript was not read is listed without messages
+op_flat = []
+for e in threads.get("operator_threads") or []:
+    if not isinstance(e, dict):
+        continue
+    entry = {"session_id": e.get("session_id"), "thread_id": e.get("thread_id"), "role": e.get("role") or "orchestrator",
+             "last_active": iso_z(e.get("last_active")), "messages": []}
+    if e.get("messages_error"):
+        entry["messages_error"] = e["messages_error"]
+        op_flat.append(entry)
+        continue
+    for m in e.get("messages") or []:
+        ts = iso_z(m.get("timestamp"))
+        if ts is None:
+            continue
+        # an INBOUND line on the Orchestrator's operator thread is the operator's (or another agent's, then `sender` says
+        # so) — never given the Orchestrator's identity: the supervisor's DM-answer rule reads any non-role inbound as the
+        # operator's reply ("Open it", "defer-carry."), and a sender-less reply stamped `orchestrator` would never answer
+        inbound = m.get("direction") == "in"
+        text = m.get("text")
+        entry["messages"].append({"ts": ts, "direction": m.get("direction"),
+                                  "text": text if isinstance(text, str) else ("" if text is None else str(text)),
+                                  "sender": m.get("sender") or (None if inbound else entry["role"]),
+                                  "role": None if inbound else entry["role"], "seq": m.get("seq")})
+    entry["messages"].sort(key=lambda m: (m["ts"], m.get("seq") or 0))
+    op_flat.append(entry)
+flat["operator_threads"] = op_flat
 write_json("threads-flat.json", flat)
 write_json("sessions-by-thread.json", by_thread)
 write_json("threads-unreadable.json", unreadable)
@@ -481,6 +516,8 @@ for e in threads.get("collector_errors") or []:
 state = dict(queue)
 state["supervise"] = sup
 state["actions"] = list(sup.get("actions") or [])
+# standing operator asks (§2.5 operator_ask): the tick report's DECISION NEEDED lines read them from here
+state["operator_asks"] = list(sup.get("operator_asks") or [])
 alerts = []
 for a in list(queue.get("alerts") or []) + list(sup.get("alerts") or []):
     if a not in alerts:
@@ -573,6 +610,11 @@ summary = {
     "open_carried": (state.get("coverage") or {}).get("carried_line"),
     "actions": len(state["actions"]),
     "alerts": len(alerts),
+    "operator_asks": len(state["operator_asks"]),
+    # pass 3 sessions the collector listed but could not read (its own 3 s reserve hit, or a read failure): the DM
+    # asks of THOSE sessions were not seen this tick — visible here so a starved tick never reads as "no asks"
+    "operator_unread": sources["sessions"].get("operator_unread"),
+    "follow_ups": len(state.get("follow_up_rows") or {}),
     "errors": len(errors),
     "unreadable_threads": sorted(unreadable),
     "core": sources["core"],

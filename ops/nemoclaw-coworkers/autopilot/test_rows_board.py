@@ -241,6 +241,41 @@ class RowsBoardTest(unittest.TestCase):
         index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
         self.assertIn("state.json is stale: generated 2026-09-01T00:00:00Z (9d ago)", index)
 
+    def test_follow_up_row_gets_its_own_section_and_page_when_it_has_cards_or_sessions(self):
+        """A follow-up row (state.json `follow_up_rows`, `<PARENT>.<letter>`) is not a plan row and not an "unplanned" card
+        thread: it renders under its own section with its parent named, and gets a page when a card dir or a live session
+        exists on hermes-<ID>; a follow-up nothing has touched yet gets neither. Existing fixtures (no follow_up_rows) are
+        byte-identical: the index test above still passes."""
+        ap = self.root / "data" / "shared" / "hermes" / "autopilot"
+        put(self.root / "groups" / "hermes-architect" / "reports" / "hermes-LOOP-F35.a" / "cards" / "card-hermes-architect-handoff-r1.png", b"\x89PNG fa", hours_ago=1.0)
+        follow = {"follow_up": True, "parent": "LOOP-F35", "batch": "1a", "disposition": "BUILD", "name": "follow-up of LOOP-F35: Lego coworker composition",
+                  "state": "dispatched", "state_reason": None, "ledger": {"pr": None}}
+        put(ap / "state.json", json.dumps({
+            "generated_at": (NOW_DT - timedelta(minutes=30)).strftime("%Y-%m-%dT%H:%M:%SZ"),
+            "rows": {"LOOP-F35": {"state": "testing"}, "MEM-F44": {"state": "queued"}},
+            "follow_up_rows": {"LOOP-F35.a": follow, "MEM-F44.a": {**follow, "parent": "MEM-F44", "batch": "1b", "disposition": "CONFIGURE", "name": "follow-up of MEM-F44: Memory retention"}},
+            "supervise": {"rows": {"LOOP-F35": {"stage": "building", "hold": None, "cost_hold": False},
+                                   "LOOP-F35.a": {"stage": "dispatched", "hold": None, "cost_hold": False, "follow_up": {"parent": "LOOP-F35", "batch": "1a"}}}},
+        }))
+        proc = board(self.root, self.www)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        self.assertIn("Follow-up rows", index)
+        self.assertIn('<a href="LOOP-F35.a.html"><b>LOOP-F35.a</b></a>', index)
+        self.assertIn("follow-up of LOOP-F35 · BUILD", index)
+        self.assertLess(index.index("Adopt track"), index.index("Follow-up rows"))
+        self.assertLess(index.index("Follow-up rows"), index.index("not in the plan"))
+        self.assertIn('<td class="stage">dispatched</td>', index)
+        self.assertNotIn("MEM-F44.a", index)  # no cards, no sessions: not on the board yet
+        self.assertIn("P0-LOOP", index)  # the one legitimately unplanned card thread is still where it was
+        page = (self.www / "rows" / "LOOP-F35.a.html").read_text(encoding="utf-8")
+        self.assertIn("follow-up of LOOP-F35: Lego coworker composition", page)
+        self.assertIn('follow-up of <a href="LOOP-F35.html">LOOP-F35</a> · BUILD · batch 1a', page)
+        self.assertIn("stage: <b>dispatched</b>", page)
+        self.assertIn("card-hermes-architect-handoff-r1.png", page)
+        self.assertFalse((self.www / "rows" / "MEM-F44.a.html").exists())
+        self.assertIn("5 cards on disk · 3 threads with cards", index)
+
     def test_unsafe_row_id_renders_as_plain_text_without_a_page(self):
         # a thread dir whose row part is not a safe filename: listed, never linked, no <ROW>.html written
         put(self.root / "groups" / "orchestrator" / "reports" / "hermes-.." / "cards" / "card-orchestrator-blocked-r1.png", b"\x89PNG u", hours_ago=1.0)

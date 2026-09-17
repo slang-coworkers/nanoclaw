@@ -17,6 +17,13 @@ Cells, one token plus an optional time or age:
 
 Stage logic is the one scorecard.py already uses: the supervisor's row in state.json
 (`supervise.rows`) first, then the queue's row (`rows`), then the ledger columns alone.
+
+Standing operator asks (state.json `operator_asks`, from the supervisor's §2.5 operator_ask
+detection) render right under the header in both outputs, one line each, so the tick report
+and the human check lead with the decisions the operator owes:
+  DECISION NEEDED (14h): ISO-F14 — render COMPLETE & verified; sandbox tier blocked on 2 new …
+(the head is clipped to MAX_LINE here; the alert's status line on hermes-status carries the
+full 140 chars).
 """
 
 from __future__ import annotations
@@ -428,6 +435,24 @@ def header_line(state: dict, rows: list, now: datetime, alerts=(), config: dict 
     return line
 
 
+def decision_lines(state: dict) -> list:
+    """`DECISION NEEDED (<age>h): <row> — <head>` per standing operator ask (state.json `operator_asks`, or the
+    supervisor's own copy under `supervise`), newest first, clipped to MAX_LINE. [] when there are none."""
+    state = state if isinstance(state, dict) else {}
+    asks = state.get("operator_asks")
+    if not isinstance(asks, list):
+        sup = state.get("supervise") if isinstance(state.get("supervise"), dict) else {}
+        asks = sup.get("operator_asks") if isinstance(sup.get("operator_asks"), list) else []
+    out = []
+    for a in sorted((a for a in asks if isinstance(a, dict) and a.get("row")), key=lambda a: str(a.get("ts") or ""), reverse=True):
+        age = a.get("age_hours")
+        age_s = str(int(age)) if isinstance(age, (int, float)) and not isinstance(age, bool) else "?"
+        prefix = f"DECISION NEEDED ({age_s}h): {a['row']} — "
+        head = " ".join(str(a.get("head") or a.get("text") or "").split()).replace("**", "").replace("`", "")
+        out.append(prefix + trunc(head, max(NOTE_MIN, MAX_LINE - len(prefix))))
+    return out
+
+
 def table_line(v: dict) -> str:
     c = v["cells"]
     prefix = f"| {v['id']} | {v['batch']} | {c['a']} | {c['b']} | {c['t']} | {c['r']} | {c['gate']} | "
@@ -438,7 +463,7 @@ def table_line(v: dict) -> str:
 def render_abtr_markdown(state: dict, ledger_rows: dict, now: datetime, prs=(), alerts=(), config: dict | None = None, dispatchable=None,
                          cards_24h=None) -> str:
     rows = derive_rows(state, ledger_rows, now, prs, alerts, config)
-    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h), *LEGEND, "", TABLE_HEADER, TABLE_RULE]
+    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h), *decision_lines(state), *LEGEND, "", TABLE_HEADER, TABLE_RULE]
     out.extend(table_line(v) for v in rows)
     if not rows:
         out.append("| · | · | · | · | · | · | · | no rows in the ledger or the state |")
@@ -458,7 +483,7 @@ def render_abtr_brief(state: dict, ledger_rows: dict, now: datetime, prs=(), ale
                       link: str = "/status/autopilot.md", cards_24h=None) -> str:
     """The tick's report: the header, one `<row> | a | b | t | r` line per in-flight row, the link."""
     rows = derive_rows(state, ledger_rows, now, prs, alerts, config)
-    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h)]
+    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h), *decision_lines(state)]
     for v in rows:
         if v["group"] != "in_flight":
             continue
@@ -467,7 +492,7 @@ def render_abtr_brief(state: dict, ledger_rows: dict, now: datetime, prs=(), ale
         if c["gate"] != "·":
             line += f" | gate {c['gate']}"
         out.append(line)
-    if len(out) == 1:
+    if not any(v["group"] == "in_flight" for v in rows):
         out.append("no rows in flight")
     out.append(f"full table: {link}")
     return "\n".join(out) + "\n"

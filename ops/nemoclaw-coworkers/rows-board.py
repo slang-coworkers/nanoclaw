@@ -98,6 +98,7 @@ BATCH_TITLES = {
     "5": "Batch 5 · P6-fleet · fleet assembly",
     "adopt": "Adopt track · doc page + hermetic acceptance test",
     "defer": "Deferred rows",
+    "follow_up": "Follow-up rows · <PARENT>.<letter>, opened on operator instruction (not plan rows: no WIP slot, no dispatch)",
 }
 OUTCOME_CLASS = {
     "pass": "ok", "approve": "ok", "merged": "ok", "shipped": "ok", "fixed": "ok", "handoff": "ok", "resolved": "ok",
@@ -908,9 +909,12 @@ def render_index(plan, plan_err, cards: dict, banners: list, now: datetime, reco
     for rid in order:
         by_batch.setdefault(rows[rid].get("batch") or "other", []).append(rid)
     planned = set(rows)
-    extra = sorted(rid for rid in (THREAD_RE.match(t).group("row") for t in cards) if rid not in planned)
+    follow = sorted(rid for rid, rec in records.items() if rec.get("follow_up") and rid not in planned)
+    extra = sorted(rid for rid in (THREAD_RE.match(t).group("row") for t in cards) if rid not in planned and rid not in follow)
     sections = [(b, by_batch[b]) for b in BATCH_ORDER if b in by_batch]
     sections += [(b, ids) for b, ids in by_batch.items() if b not in BATCH_ORDER]
+    if follow:
+        sections.append(("follow_up", follow))
     if extra:
         sections.append(("unplanned", extra))
     if not sections:
@@ -930,6 +934,8 @@ def render_index(plan, plan_err, cards: dict, banners: list, now: datetime, reco
             name = rec["name"]
             disp = prow.get("plan_disposition") or ""
             meta = " · ".join(x for x in (disp, f"wave {prow['wave']}" if prow.get("wave") else "", prow.get("attaches_to") or "") if x)
+            if rec.get("follow_up"):
+                meta = " · ".join(x for x in (f"follow-up of {rec.get('parent') or '?'}", rec.get("disposition") or "") if x)
             safe = rec["safe"]   # run() writes no page for an unsafe id: no link to it
             dots = rec["dots"]
             cells = "".join(thumb_cell(groups, role, rid, now_ts, link=safe, live=dots[role]) for _, role in ROLE_COLUMNS)
@@ -962,7 +968,14 @@ def render_row(rec: dict, plan, now: datetime, dashboard_url: str | None, live_e
     body = [f'<p class="links">{" ".join(links)}</p>']
     meta = " · ".join(x for x in (f"batch {row.get('batch')}" if row.get("batch") else "", row.get("plan_disposition") or "",
                                   f"wave {row['wave']}" if row.get("wave") else "", row.get("attaches_to") or "") if x)
-    body.append(f'<p>{esc(row.get("name") or "")}<br><small>{esc(meta)}</small></p>')
+    if rec.get("follow_up"):
+        # a follow-up row: not a plan row; its parent is the row the plan knows (the page link goes there)
+        parent = str(rec.get("parent") or "?")
+        meta = " · ".join(x for x in (f"follow-up of {row_ref(parent, (plan or {}).get('rows') or None, rid) if SAFE_RID_RE.match(parent) else esc(parent)}",
+                                      esc(rec.get("disposition") or ""), f"batch {esc(rec.get('batch'))}" if rec.get("batch") else "") if x)
+        body.append(f'<p>{esc(rec.get("name") or "")}<br><small>{meta}</small></p>')
+    else:
+        body.append(f'<p>{esc(row.get("name") or "")}<br><small>{esc(meta)}</small></p>')
     body.append(f'<p class="stage">stage: <b>{esc(rec["stage"]) or "unknown"}</b> · thread <code>{esc(thread)}</code>{carried_badge(tables, rid)}</p>')
     body.append(render_tables_row(tables, rid, ((plan or {}).get("rows") or None) if plan else None))
 
@@ -1036,6 +1049,10 @@ def build_record(rid: str, plan, state, groups: dict, live: dict, now: datetime,
     st = state if isinstance(state, dict) else {}
     qrows = st.get("rows") if isinstance(st.get("rows"), dict) else {}
     qrow = qrows.get(rid) if isinstance(qrows.get(rid), dict) else {}
+    if not qrow:
+        # a follow-up row (`<PARENT>.<letter>`, hermes_queue `follow_up_rows`): its queue row lives there, parent recorded
+        frows = st.get("follow_up_rows") if isinstance(st.get("follow_up_rows"), dict) else {}
+        qrow = frows.get(rid) if isinstance(frows.get(rid), dict) else {}
     sup_rows = (st.get("supervise") or {}).get("rows") if isinstance(st.get("supervise"), dict) else None
     sup = sup_rows.get(rid) if isinstance(sup_rows, dict) and isinstance(sup_rows.get(rid), dict) else {}
     sessions = {role: list((live.get(rid) or {}).get(role) or []) for role in ROLE_ORDER}
@@ -1045,7 +1062,8 @@ def build_record(rid: str, plan, state, groups: dict, live: dict, now: datetime,
     ledger = dict(led, merged_at=(t.get("merged_at") or {}).get(rid)) if isinstance(led, dict) else None
     rec = {
         "id": rid, "thread": f"hermes-{rid}", "safe": bool(SAFE_RID_RE.match(rid)),
-        "in_plan": rid in rows, "plan": prow, "name": prow.get("name") or "",
+        "in_plan": rid in rows, "plan": prow, "name": prow.get("name") or (str(qrow.get("name") or "") if qrow.get("follow_up") else ""),
+        "follow_up": bool(qrow.get("follow_up")), "parent": qrow.get("parent") if qrow.get("follow_up") else None,
         "batch": qrow.get("batch") or prow.get("batch"),
         "disposition": (str(qrow.get("disposition") or prow.get("plan_disposition") or "").upper() or None),
         "queue": qrow, "queue_state": qrow.get("state"),
@@ -1067,7 +1085,22 @@ def build_records(plan, state, cards: dict, live: dict | None, now: datetime, ta
     order = list((plan or {}).get("order") or sorted(rows))
     order += sorted(rid for rid in (THREAD_RE.match(t).group("row") for t in cards) if rid not in rows)
     live = live or {}
+    order += follow_up_rows(state, cards, live, exclude=set(order))
     return {rid: build_record(rid, plan, state, cards.get(f"hermes-{rid}") or {}, live, now, tables, config) for rid in order}
+
+
+def follow_up_rows(state, cards: dict, live: dict | None, exclude: set | None = None) -> list:
+    """The follow-up rows (state.json `follow_up_rows`, hermes_queue) that have a card dir or a live session on
+    `hermes-<ID>`, sorted; a follow-up nothing has touched yet gets no page (the ledger row alone is the queue's business)."""
+    st = state if isinstance(state, dict) else {}
+    frows = st.get("follow_up_rows") if isinstance(st.get("follow_up_rows"), dict) else {}
+    out = []
+    for rid in sorted(frows):
+        if rid in (exclude or set()):
+            continue
+        if cards.get(f"hermes-{rid}") or any((live or {}).get(rid, {}).values()):
+            out.append(rid)
+    return out
 
 
 def load_board(root: str, now: datetime, plan_paths: list | None = None, state_path: str | None = None, threads_path: str | None = None,

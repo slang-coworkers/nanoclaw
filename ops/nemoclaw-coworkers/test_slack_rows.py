@@ -258,6 +258,21 @@ class SlackRowsTest(unittest.TestCase):
     def read_state(self) -> dict:
         return json.loads(self.state.read_text(encoding="utf-8"))
 
+    def test_follow_up_ledger_row_is_mirrored_like_any_dispatched_row(self):
+        """A `<PARENT>.<letter>` follow-up row (opened on operator instruction) is a dispatched ledger row to the mirror: it
+        joins row_order after the plan rows, with a root text of its own, whether or not the plan knows it."""
+        path = self.root / "groups" / "orchestrator" / "reports" / "ledger.md"
+        put(path, LEDGER_OPEN + "| SCHED-F34.a | 2026-09-09 10:00 IST (to hermes-architect, thread `hermes-SCHED-F34.a`) | — | — | — | — | follow-up (operator ruling B) |\n", 1.0e9)
+        ledger, _raw, err = self.mod.load_ledger(str(path))
+        self.assertIsNone(err)
+        self.assertTrue(ledger["rows"]["SCHED-F34.a"]["dispatched"])
+        self.assertNotIn("SCHED-F34.a", ledger["other_rows"])
+        plan, plan_err = self.mod._rows_board().load_plan([str(self.root / "docs" / "hermes-port" / "dispatch-plan.md")])
+        self.assertIsNone(plan_err)
+        self.assertEqual(self.mod.row_order(plan, ledger, {}), ["LOOP-F35", "MEM-F44", "SCHED-F34.a"])
+        self.assertEqual(self.mod.row_order(None, ledger, {}), ["LOOP-F35", "MEM-F44", "SCHED-F34.a"])
+        self.assertIn("SCHED-F34.a", self.mod.root_text("SCHED-F34.a", plan, ledger["rows"]["SCHED-F34.a"]))
+
     # ------------------------------------------------------------------ the happy path
 
     def test_roots_once_cards_oldest_first_then_nothing_new(self):

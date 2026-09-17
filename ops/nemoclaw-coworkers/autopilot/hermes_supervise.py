@@ -17,7 +17,12 @@ Inputs:
              the collector's normalised view of the row thread across the role sessions;
              `kind` (spec_handoff | builder_start | handoff | test_report | review_verdict |
              triage | merged | stop | gate_red | nudge | dispatch | pr_opened | blocker)
-             is honoured when present, otherwise the first line of `text` is classified
+             is honoured when present, otherwise the first line of `text` is classified.
+             An optional top-level key "operator_threads" (never a row thread name) carries the
+             Orchestrator's NON-row sessions — the operator DM / main thread, system:tasks:* —
+             as [{"session_id", "thread_id", "role", "messages": [{"ts", "direction", "text", "sender"}]}]
+             (pull-state.sh flattens collect_threads.py's `operator_threads`; --operator-threads
+             overrides it): the operator-ask detection below reads them
   --prs      gh pr list --repo slang-coworkers/hermes-agent --state all --json
              number,title,state,isDraft,createdAt,updatedAt,headRefName,body[,headRefOid]
   --nudges   {"<ID>": "<ISO>"} or {"<ID>": {"last_nudge", "state", "count", "alerts": {"<key>": "<ISO>"},
@@ -44,7 +49,7 @@ Per row: stage, stage_label, clock_start, last_activity, age_hours, slo_breach,
 escalation_due, hold, cost_hold, infra_hold, bounced, idle_turn, thread_case, action (none | nudge | escalate),
 target_role, message (the nudge text or the alerts.md line), alert_line, status_line, pr, head, rounds, cards.
 
-Three stall shapes the chain markers do not show (autopilot.md §2.5; the 2026-09-15/16 stalls):
+Four stall shapes the chain markers do not show (autopilot.md §2.5; the 2026-09-15/17 stalls):
 
   infra_hold  a role's OUTBOUND line whose first line is `blocked (infra`, `Hold (NOT a verdict` or
               `HOLD on <ID>` (case-insensitive), or whose first three lines say "pending an operator
@@ -88,6 +93,42 @@ Three stall shapes the chain markers do not show (autopilot.md §2.5; the 2026-0
               idle. The role is nudged EARLY (the §3 template plus the sentence "Your turn at T ended
               without the <marker>"), once per T, never on top of the SLO nudge for the same marker,
               inside the 6 h row bound.
+  operator_ask  (the 2026-09-16/17 incident: three asks unanswered for 11-14 h while the summary read
+              "hold 0, infra_hold 0") an OUTBOUND line by the Orchestrator or any role that ADDRESSES THE
+              OPERATOR. EXPLICIT (always an ask): "without operator authorization", "operator ruling/
+              decision/go/authorization needed|required|pending", "escalate|escalating … to the operator"
+              (never the past tense: "escalated …, answered …" is a recount), "HOLDING for the operator's go",
+              "operator rules …", "awaiting / waiting on the operator", "deploy-now vs defer-carry",
+              "One ruling: …". IMPLICIT ("Your call (again)", "needs your call/ruling/go", "please rule"):
+              an ask only when the text also says `operator`, or when the Orchestrator writes it on one of
+              its OPERATOR threads — on a row thread "your call" is chain traffic, and a first line that
+              addresses a role by name ("Orchestrator — your call: push or wait?") never carries one. All
+              case-insensitive, markdown stripped, with every tick-report / a|b|t|r line dropped first (the
+              supervise task's run output QUOTES the standing asks; ASK_SKIP_LINE_PREFIXES). What ANSWERS:
+              a later operator inbound on that thread — on a row thread or a system:tasks:* thread a line
+              starting "Operator" ("Operator ruling", "Operator addendum", "Operator —": how the operator
+              posts through the dashboard; any case), on the DM / main thread ANY later inbound that is not
+              a role's line or an ask copy ("Open it", "operator ruling B") —, an "Operator…" inbound on any
+              thread naming exactly that one row, a later resolution line ("ruling in", "operator ruled",
+              "per the operator's ruling", "Ack —", "relaying the ruling"; ASK_RESOLVED_RES), a later
+              progress marker (PROGRESS_KINDS) for a ROLE's ask only — the Orchestrator's stands while the
+              roles keep working (incident a) — or, on a ROW thread, a later plain line by the asking role
+              (the hold-clearing rule; a card caption, a supervisor line or a restatement is not one). A
+              marker, a hold (its own detection), a supervisor / autopilot / report line and the receiver's
+              `in` copy are never asks. Read on the row threads AND on the Orchestrator's operator threads
+              (`operator_threads`): an ask there is attributed to the one plan / follow-up row its 600-char
+              scan names (ROW_ID_RE, exactly one known id), else to the synthetic row OPERATOR so it still
+              surfaces; a named row nobody supervises this tick (a merged follow-up) falls to OPERATOR too.
+              One `operator-ruling` alert per row (the newest standing ask; per thread for OPERATOR), key
+              `operator-ruling:ask:<digest of the normalised text>` so the same ask alerts once per 24 h; a
+              mirrored copy on the DM collapses into the row's alert (same key, or the row's text under a
+              lead-in naming more rows); the status line is `DECISION NEEDED (<age>h): <row> — <first 140
+              chars>`. NO re-arm and no nudge (the role is waiting on us); the row's ordinary checks still
+              run; a paused row stays silent.
+  follow_up   `state["follow_up_rows"]` (hermes_queue): a ledger row `<PARENT>.<letter>` opened on operator
+              instruction. Supervised like any in-flight row on its own thread `hermes-<ID>` (stage, SLO,
+              holds by the parent's batch) ONLY while its ledger state is in flight; merged / blocked / absent
+              follow-ups are ignored here. Never counted in WIP, never dispatched.
 
 Re-arm nudges (`check` infra_hold / bounced) target the ORCHESTRATOR: it owns the row and re-arms the
 role itself (`rearm_role`, `rearm_text`, `rearm_session_id` on the action). Their text starts
@@ -116,6 +157,7 @@ with open carried criterion AC-... — mark covered or re-carry"), 24 h bound li
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import re
 import sys
@@ -140,6 +182,64 @@ ACKS_STALE_H = 2.0  # acks.json older than this: bounce and idle-turn detection 
 REARM_PREFIX = "Supervisor re-arm"  # the re-arm line (Orchestrator-facing and role-facing); read back like a card nudge, never a 6 h-bound nudge
 OPERATOR_PHRASES = ("pending an operator ruling", "awaiting operator", "awaiting an operator")
 ACKS_OFF_NOTE = "acks stale/missing — bounce and idle detection off"
+OPERATOR_ROW = "OPERATOR"  # the synthetic row an operator ask lands on when its text names no single known row
+ASK_HEAD_CHARS = 140  # `DECISION NEEDED (<age>h): <row> — <first 140 chars>`
+ASK_SCAN_CHARS = 600  # the collector keeps this much of an operator-thread line; the row threads are read the same way
+# An outbound line that addresses the operator (§2.5 operator_ask; the 2026-09-16/17 shapes). Two families, searched on
+# the markdown-stripped, whitespace-normalised, report-line-free head of the text (ask_text), case-insensitive:
+#   EXPLICIT  the text names the operator, or uses one of the two fixed forms — always an ask.
+#   IMPLICIT  "your call", "needs your …", "please rule" — an ask only when the text ALSO says `operator`, or when the
+#             Orchestrator writes it on an OPERATOR thread (the DM / main / task threads, where "you" is the operator).
+#             On a row thread "your call" is chain traffic (a builder asking the Orchestrator, the Orchestrator asking the
+#             architect) and never an ask by itself; a first line addressing a role by name ("Orchestrator — your call")
+#             never carries an implicit ask.
+OPERATOR_ASK_EXPLICIT_RES = tuple(re.compile(p, re.IGNORECASE) for p in (
+    r"\boperator(?:'s)? (?:decision|ruling|go|authori[sz]ation|approval|call)(?: is)? (?:needed|required|pending|requested)\b",
+    r"\bwithout (?:an? )?operator(?:'s)? (?:authori[sz]ation|approval|go|ruling)\b",  # "cannot … without operator authorization"
+    r"\bneeds? (?:the |an? )?operator(?:'s)? (?:call|ruling|go|decision|authori[sz]ation|approval)\b",
+    r"\bescalat(?:e|es|ing)\b[^.\n]{0,100}?\bto the operator\b",                 # present / future tense only: "escalated … to the operator" is a recount
+    r"\bholding for the operator\b",                                             # "HOLDING for the operator's go"
+    r"\boperator rules\b",                                                       # "(or the operator rules defer-carry)"
+    r"\bawaiting (?:the |an? )?operator\b",
+    r"\bwaiting (?:on|for) (?:the |an? )?operator\b",                            # "still waiting on the operator's ruling" restates the ask
+    r"\bdeploy-now vs\.? defer-carry\b",
+    r"\bone ruling\s*[:—–-]",                                                    # "One ruling: … please use this exact framing"
+))
+OPERATOR_ASK_IMPLICIT_RES = tuple(re.compile(p, re.IGNORECASE) for p in (
+    r"\byour call\b",                                                            # "Your call", "Your call again"
+    r"\bneeds? your (?:call|ruling|go|decision|authori[sz]ation|approval)\b",
+    r"\bruling (?:needed|required|requested)\b",
+    r"\bplease (?:rule|decide)\b",
+))
+OPERATOR_WORD_RE = re.compile(r"\boperator\b", re.IGNORECASE)
+# A resolution phrase AFTER the last ask phrase makes the text a recount of an answered ask, not an ask
+# ("escalating X to the operator …, answered defer-carry 20:02Z"). Deliberately narrow: "ruled" / "granted" / "resolved"
+# alone appear in live asks ("the extension you granted is spent — your call") and must not hide them.
+ASK_RECOUNT_RE = re.compile(r"\b(?:answered|ruling received|operator (?:ruled|decided)|per the operator(?:'s)? (?:ruling|decision))\b", re.IGNORECASE)
+# A first line that addresses a chain participant by name: "your call" there is theirs, never the operator's.
+ADDRESSES_ROLE_RE = re.compile(r"^(?:@?hermes-)?(?:architect|builder|tester|reviewer|orchestrator)\s*[—–:,-]", re.IGNORECASE)
+# A later OUTBOUND line that resolves an ask: the ruling arrived / was acted on (the Orchestrator's ack vocabulary included).
+ASK_RESOLVED_RES = tuple(re.compile(p, re.IGNORECASE) for p in (
+    r"\bruling (?:is )?in\b",
+    r"\boperator(?:'s)? (?:ruled|ruling received|decided|answered|approved|authori[sz]ed|go received)\b",
+    r"\bper (?:the )?operator(?:'s)? (?:ruling|decision|go|authori[sz]ation|addendum)\b",
+    r"\bgo received\b",
+    r"\bresuming per\b",
+    r"\bproceeding (?:per|with|on) (?:the )?(?:operator|ruling)\b",
+    r"^ack(?:nowledged)?\b\s*[—–:,-]",                                           # "Ack — carrying both items to ISO-F15"
+    r"\brelaying (?:the |your )?(?:ruling|decision|go)\b",
+    r"\bre-arming\b[^.\n]{0,80}?\bwith (?:the |your )?(?:ruling|decision|go)\b",
+))
+# How the operator posts through the dashboard: "Operator ruling: …", "Operator addendum …", "Operator — …" (any case).
+OPERATOR_ANSWER_RE = re.compile(r"^operator\b", re.IGNORECASE)
+NOT_AN_ASK_PREFIXES = ("Supervisor nudge", "Supervisor re-arm", "Autopilot alert", "DECISION NEEDED", "card · ", "card(html) · ",
+                       "Hermes autopilot")
+# The lines a tick report / a|b|t|r table is made of (abtr.py; supervise-tick.md STEP 2). The supervise task's run output
+# is an outbound Orchestrator line on `system:tasks:hermes-ap-supervise-*`, and it QUOTES the standing asks — so these
+# lines are dropped before any ask regex, key or head reads the text, wherever they appear in a message.
+ASK_SKIP_LINE_PREFIXES = NOT_AN_ASK_PREFIXES + ("supervise tick:", "full table:", "no rows in flight", "[SUPERVISOR INVARIANT VIOLATION]")
+ABTR_ROW_LINE_RE = re.compile(r"^\S+ \| [✓▶✗⏸·]")  # `<row> | ✓ 09:57Z | ▶ 9.0h | · | ·` (the brief's row line)
+TASK_THREAD_PREFIX = "system:tasks:"  # task threads receive their prompt as inbound every fire: only an `Operator…` inbound answers there
 
 # state -> (nudge after h, role owing the next artifact, escalate after h)
 SLO = {
@@ -201,8 +301,10 @@ def hours_between(a: datetime, b: datetime) -> float:
     return round((b - a).total_seconds() / 3600.0, 2)
 
 
-def _first_line(text: str) -> str:
-    for line in (text or "").splitlines():
+def _first_line(text) -> str:
+    """The first non-blank line of `text`; a non-string payload (None, a number from a malformed transcript row) is coerced."""
+    text = text if isinstance(text, str) else ("" if text is None else str(text))
+    for line in text.splitlines():
         if line.strip():
             return line.strip()
     return ""
@@ -248,7 +350,7 @@ def _codex_cause(text: str) -> str | None:
 
 def classify_message(msg: dict, rid: str) -> dict | None:
     """One thread message -> one chain event, or None for progress chatter."""
-    text = msg.get("text") or ""
+    text = _msg_text(msg)
     first = _first_line(text)
     pr_m = re.search(r"#(\d+)", first)
     head_m = re.search(r"\bhead\s+`?([0-9a-f]{7,40})\b", text, re.IGNORECASE) or re.search(
@@ -376,7 +478,7 @@ def extract_events(messages: list[dict], rid: str) -> list[dict]:
         ev = classify_message(m, rid)
         if not ev or not ev["ts"]:
             continue
-        key = _event_key(ev, _first_line(m.get("text") or ""))
+        key = _event_key(ev, _first_line(_msg_text(m)))
         try:
             ts = parse_iso(ev["ts"])
         except ValueError:
@@ -402,6 +504,232 @@ def find_pr(prs: list[dict], rid: str, ledger_pr: int | None) -> dict | None:
     return None
 
 
+# --------------------------------------------------------------------------- operator asks (§2.5)
+
+def _msg_text(m) -> str:
+    """A message's text as a string, whatever the transcript carried (None / a number never crash the scan)."""
+    t = m.get("text") if isinstance(m, dict) else None
+    return t if isinstance(t, str) else ("" if t is None else str(t))
+
+
+def _is_orchestrator(role) -> bool:
+    return str(role or "").lower() in ("orchestrator", "hermes-orchestrator")
+
+
+def _ask_lines(text: str) -> list[str]:
+    """The lines of a message that can carry an ask: markdown stripped, blank lines and the shapes that never are one
+    dropped — supervisor / autopilot / DECISION NEEDED lines, card captions, and every line of a tick report or a|b|t|r
+    table (`Hermes autopilot · …`, `<row> | ✓ … |`, `| … |`, `supervise tick:`, `full table:`). A quoted report never
+    reads as an ask: the supervise task's own run output is an outbound Orchestrator line on a `system:tasks:*` thread."""
+    out = []
+    for line in _strip_md(text or "").splitlines():
+        s = line.strip()
+        if not s or s.startswith((*ASK_SKIP_LINE_PREFIXES, "|")) or ABTR_ROW_LINE_RE.match(s):
+            continue
+        out.append(s)
+    return out
+
+
+def ask_text(text: str, n: int = ASK_SCAN_CHARS) -> str:
+    """Markdown stripped, report lines dropped, whitespace collapsed, clipped: the form every ask regex, key and head reads."""
+    return " ".join(" ".join(_ask_lines(text)).split())[:n]
+
+
+def _norm_text(text: str, n: int = ASK_SCAN_CHARS) -> str:
+    """Markdown stripped, whitespace collapsed, clipped (no line filtering) — the resolution scan reads this."""
+    return " ".join(_strip_md(text or "").split())[:n]
+
+
+def is_operator_ask(text, role: str | None = None, operator_thread: bool = False) -> bool:
+    """Does this OUTBOUND line address the operator? `role` is its author, `operator_thread` whether it sits on one of the
+    Orchestrator's non-row threads (the DM / main / task threads). EXPLICIT patterns (the operator named, or the two fixed
+    forms) always count; IMPLICIT ones ("your call", "needs your …", "please rule") count only when the text also says
+    `operator`, or when the Orchestrator writes them on an operator thread — and never when the first line addresses a
+    role by name ("Orchestrator — your call: push or wait?" is chain traffic). A supervisor / autopilot / tick-report
+    line, a card caption and a marker-prefixed message never are asks; a text whose last ask phrase is followed by a
+    resolution word ("…, answered defer-carry") is a recount, not an ask."""
+    text = text if isinstance(text, str) else ("" if text is None else str(text))
+    first = _first_line(_strip_md(text))
+    if not first or first.startswith(NOT_AN_ASK_PREFIXES) or first.startswith("["):
+        return False
+    head = ask_text(text)
+    if not head:
+        return False
+    hits = [m for m in (r.search(head) for r in OPERATOR_ASK_EXPLICIT_RES) if m]
+    if not ADDRESSES_ROLE_RE.match(first):
+        implicit = [m for m in (r.search(head) for r in OPERATOR_ASK_IMPLICIT_RES) if m]
+        if implicit and (OPERATOR_WORD_RE.search(head) or (operator_thread and _is_orchestrator(role))):
+            hits += implicit
+    if not hits:
+        return False
+    return not ASK_RECOUNT_RE.search(head, max(m.end() for m in hits))
+
+
+def _resolves_ask(text: str) -> bool:
+    return any(r.search(_norm_text(text)) for r in ASK_RESOLVED_RES)
+
+
+def _role_sender(msg: dict) -> bool:
+    """Is this line's sender a chain role (`hermes-<role>`, the Orchestrator)? The operator's own lines never are."""
+    s = str(msg.get("sender") or "").lower()
+    return s.startswith("hermes-") or s == "orchestrator"
+
+
+def is_operator_answer(msg: dict, strict: bool = True) -> bool:
+    """An INBOUND line the operator posted. `strict` (row threads, `system:tasks:*` threads — which receive their task
+    prompt as inbound every fire): its first line starts `Operator` (how the dashboard posts: "Operator ruling: …",
+    "Operator addendum …", "Operator — …", any case). Loose (the DM / main thread, where the only inbound author is the
+    operator): any inbound line that is not a role's (`hermes-*` sender) — "Open it", "operator ruling B", "defer-carry."
+    are answers too. Never an ask copy: a role's `in` copy of "Operator authorization needed: …" is the ask, not the answer."""
+    if not isinstance(msg, dict) or msg.get("direction") != "in":
+        return False
+    text = _msg_text(msg)
+    first = _first_line(_strip_md(text))
+    if not first or is_operator_ask(text):
+        return False
+    if OPERATOR_ANSWER_RE.match(first):
+        return True
+    return (not strict) and not _role_sender(msg) and not first.startswith(ASK_SKIP_LINE_PREFIXES)
+
+
+def ask_key(text: str) -> str:
+    """The once-per-ask bound: `operator-ruling:ask:<10 hex of the normalised head>` — a restatement in the same
+    words is the same ask (on the row thread or mirrored to the DM); a reworded one is a new ask."""
+    return "operator-ruling:ask:" + hashlib.sha1(ask_text(text, 160).lower().encode("utf-8")).hexdigest()[:10]
+
+
+def ask_head(text: str, n: int = ASK_HEAD_CHARS) -> str:
+    return ask_text(text, n)
+
+
+def named_rows(text: str, known: set[str]) -> list[str]:
+    """The KNOWN row ids (plan or follow-up) a text names, in first-mention order, deduplicated."""
+    return [r for r in dict.fromkeys(ROW_ID_RE.findall(_strip_md(text or ""))) if r in known]
+
+
+def _thread_role(m: dict) -> str:
+    return str(m.get("role") or m.get("sender") or "").lower()
+
+
+def _same_ask_text(a: str, b: str) -> bool:
+    """Two ask scans are the same ask when the shorter one's head (200 chars) is inside the longer: a mirrored copy
+    with a lead-in ("ISO-F14 vs A2A-F21 — <the row-thread ask>") is the row's ask, not a second decision."""
+    a, b = (a or "").lower(), (b or "").lower()
+    short, long_ = sorted((a, b), key=len)
+    return len(short) >= 40 and short[:200] in long_
+
+
+def _mirrors_row_ask(ask: dict, out_rows: dict) -> str | None:
+    """The row whose standing ask this OPERATOR-bound ask is a copy of (same text under a lead-in naming more rows), or None."""
+    scan = ask.get("scan") or ask.get("text") or ""
+    for r in ask.get("named_rows") or []:
+        for a in (((out_rows.get(r) or {}).get("operator_ask") or {}).get("asks") or []):
+            if _same_ask_text(scan, a.get("scan") or a.get("text") or ""):
+                return r
+    return None
+
+
+def detect_operator_asks(thread_msgs: list[dict] | None, thread_id: str, rid: str | None, events: list[dict] | None = None,
+                         row_answers: list[str] | None = None, loose_answers: bool = False) -> list[dict]:
+    """The STANDING operator asks on one thread, newest first (identical texts collapse to their newest copy). An ask
+    stands while nothing answered it: no operator inbound on this thread after it (`is_operator_answer`, strict unless
+    `loose_answers` — the DM / main thread; or, `row_answers`, on another thread naming this row), no later resolution
+    line by any role, no later progress marker (`events`) for a ROLE's ask — never for the Orchestrator's: the roles
+    keep working while its question to the operator stands (incident a) — and, on a ROW thread (`rid` given), no later
+    plain outbound line by the asking role (the hold-clearing rule: the role moved on). A hold line (its own
+    detection) and any marker / supervisor / autopilot / report line is never an ask. The callers decide what alerts:
+    the newest per row, every distinct one for OPERATOR."""
+    if not isinstance(thread_msgs, list):
+        return []
+    msgs = sorted((m for m in thread_msgs if isinstance(m, dict) and isinstance(m.get("ts"), str) and m["ts"]), key=lambda m: m["ts"])
+    answers = [m["ts"] for m in msgs if is_operator_answer(m, strict=not loose_answers)] + list(row_answers or [])
+    progress = [e["ts"] for e in (events or []) if e.get("kind") in PROGRESS_KINDS and e.get("ts")]
+    resolved = [m["ts"] for m in msgs if m.get("direction") != "in" and _resolves_ask(_msg_text(m))]
+    newest_by_key: dict[str, dict] = {}
+    for m in msgs:
+        if m.get("direction") == "in":
+            continue
+        text = _msg_text(m)
+        first = _first_line(text)
+        if rid and (_infra_hold_line(first, text, rid) or (classify_message(m, rid) or {}).get("kind")):
+            continue  # a hold has its own detection; a marker / nudge / dispatch line is progress, not an ask
+        role = m.get("role") or m.get("sender") or None
+        if not is_operator_ask(text, role, operator_thread=rid is None):
+            continue
+        key = ask_key(text)
+        newest_by_key[key] = {
+            "ts": m["ts"], "role": role, "thread_id": thread_id,
+            "text": ask_head(text, 200), "head": ask_head(text), "scan": ask_text(text), "key": key,
+        }
+    standing = []
+    for ask in newest_by_key.values():
+        ts = ask["ts"]
+        if any(a > ts for a in answers) or any(r > ts for r in resolved):
+            continue
+        if not _is_orchestrator(ask["role"]) and any(p > ts for p in progress):
+            continue
+        if rid and _role_moved_on(msgs, ask["role"], ts, rid):
+            continue
+        standing.append(ask)
+    return sorted(standing, key=lambda a: a["ts"], reverse=True)
+
+
+def _role_moved_on(msgs: list[dict], role: str | None, after_ts: str, rid: str) -> bool:
+    """The hold-clearing rule for a ROW thread, minus the asks: did `role` write a later OUTBOUND line that is neither an
+    ask (a restatement or a new ask keeps the row waiting on the operator), nor a hold, nor a supervisor / autopilot /
+    card-caption / report line (none of those is the role moving on)?"""
+    if not role:
+        return False
+    want = str(role).lower()
+    for m in msgs:
+        if m.get("direction") == "in" or m["ts"] <= after_ts or _thread_role(m) != want:
+            continue
+        text = _msg_text(m)
+        first = _first_line(_strip_md(text))
+        if not first or first.startswith(ASK_SKIP_LINE_PREFIXES) or _infra_hold_line(first, text, rid) or is_operator_ask(text, role, False):
+            continue
+        return True
+    return False
+
+
+def scan_operator_threads(op_threads, known: set[str]) -> tuple[dict[str, list[dict]], dict[str, list[str]]]:
+    """collect_threads' `operator_threads` (flattened) -> ({row | OPERATOR: [standing asks]}, {row: [operator answer ts]}).
+    An ask is attributed to the ONE known row its full scan text (600 chars) names, else to OPERATOR. Answers: on a
+    `system:tasks:*` thread only an `Operator…` inbound; on the DM / main thread any non-role inbound (loose). An
+    `Operator…` inbound that names exactly one known row answers that row's asks on every thread (`row_answers`)."""
+    by_row: dict[str, list[dict]] = {}
+    row_answers: dict[str, list[str]] = {}
+    entries: list[dict] = []
+    if isinstance(op_threads, dict):
+        entries = [{"thread_id": k, "messages": v} for k, v in op_threads.items()]
+    elif isinstance(op_threads, list):
+        entries = [e for e in op_threads if isinstance(e, dict)]
+    for e in entries:
+        msgs = e.get("messages")
+        if not isinstance(msgs, list):
+            continue
+        thread = str(e.get("thread_id") or e.get("session_id") or "operator")
+        loose = not thread.startswith(TASK_THREAD_PREFIX)
+        for m in msgs:
+            if isinstance(m, dict) and isinstance(m.get("ts"), str) and is_operator_answer(m):
+                named = named_rows(_msg_text(m), known)
+                if len(named) == 1:
+                    row_answers.setdefault(named[0], []).append(m["ts"])
+        for ask in detect_operator_asks(msgs, thread, None, loose_answers=loose):
+            named = named_rows(ask["scan"], known)
+            row = named[0] if len(named) == 1 else OPERATOR_ROW
+            ask["named_rows"] = named
+            by_row.setdefault(row, []).append(ask)
+    # an answer on another thread (naming the row) clears the row's asks older than it
+    for row, asks in list(by_row.items()):
+        if row == OPERATOR_ROW or row not in row_answers:
+            continue
+        by_row[row] = [a for a in asks if not any(t > a["ts"] for t in row_answers[row])]
+        if not by_row[row]:
+            del by_row[row]
+    return by_row, row_answers
+
+
 # --------------------------------------------------------------------------- resolution
 
 def _role_plain_out_after(thread_msgs: list[dict] | None, role: str | None, after_ts: str, rid: str) -> bool:
@@ -415,7 +743,7 @@ def _role_plain_out_after(thread_msgs: list[dict] | None, role: str | None, afte
             continue
         if str(m.get("role") or m.get("sender") or "").lower() != want:
             continue
-        text = m.get("text") or ""
+        text = _msg_text(m)
         first = _first_line(text)
         if re.match(r"^Supervisor (?:nudge|re-arm)\b", first) or _infra_hold_line(first, text, rid):
             continue
@@ -655,12 +983,13 @@ def expected_artifact(stage: str, res: dict, rid: str, cfg: dict) -> tuple[str, 
     return "dispatch", "a dispatch from the dispatch tick (WIP slot is free)"
 
 
-def alert_texts(now: datetime, rid: str, label: str, age_h: float, what: str, nudges: dict, decision: str, pr: int | None) -> tuple[str, str]:
+def alert_texts(now: datetime, rid: str, label: str, age_h: float, what: str, nudges: dict, decision: str, pr: int | None,
+                thread: str | None = None) -> tuple[str, str]:
     n = nudges.get("count") or 0
     last = nudges.get("last") or "never"
     body = (
         f"{rid} · {label} {int(age_h)}h · {what} · nudged {n}× (last {last}) · decision: {decision}"
-        f" · PR #{pr if pr is not None else '-'} · thread hermes-{rid}"
+        f" · PR #{pr if pr is not None else '-'} · thread {thread or f'hermes-{rid}'}"
     )
     return f"- {iso_utc(now)} · {body}", f"Autopilot alert {body}"
 
@@ -731,7 +1060,7 @@ def card_audit(messages: list[dict], rid: str, now: datetime, grace_minutes: flo
     nudges: list[dict] = []
     esc = re.escape(rid)
     for m in sorted(messages or [], key=lambda x: x.get("ts") or ""):
-        text = m.get("text") or ""
+        text = _msg_text(m)
         first = _first_line(text)
         ts = _safe_ts(m.get("ts"))
         if ts is None:
@@ -961,7 +1290,7 @@ def _marked_nudge_seen(thread_msgs: list[dict] | None, rid: str, book: dict, key
     With `role`, only a re-arm line addressed to that role counts."""
     pat = _rearm_pat(rid, role) if role else re.compile(_SUPERVISOR_LINE.format(esc=re.escape(rid)))
     for m in thread_msgs or []:
-        text = m.get("text") or ""
+        text = _msg_text(m)
         if key in text and pat.match(_first_line(text)):
             return True
     return any(key in t and pat.match(_first_line(t)) for t in (book.get("texts") or []))
@@ -972,7 +1301,7 @@ def _rearm_bounce_before(thread_msgs: list[dict] | None, book: dict, rid: str, r
     is required: an architect re-arm on the thread must not make the builder's first bounce a repeat."""
     pat = _rearm_pat(rid, role)
     found: list[str] = []
-    for text in [m.get("text") or "" for m in (thread_msgs or [])] + list(book.get("texts") or []):
+    for text in [_msg_text(m) for m in (thread_msgs or [])] + list(book.get("texts") or []):
         if not pat.match(_first_line(text)):
             continue
         for m in re.finditer(r"turn at (\S+) ended bounced", text):
@@ -991,7 +1320,7 @@ def _recent_rearm(thread_msgs: list[dict] | None, book: dict, rid: str, role: st
     best: datetime | None = None
     for m in thread_msgs or []:
         ts = _safe_ts(m.get("ts"))
-        if ts is not None and pat.match(_first_line(m.get("text") or "")) and (best is None or ts > best):
+        if ts is not None and pat.match(_first_line(_msg_text(m))) and (best is None or ts > best):
             best = ts
     for r in book.get("rearms") or []:
         at = _safe_ts(r.get("at"))
@@ -1027,8 +1356,13 @@ class _Tick:
         self.alerts: list[dict] = []
         self.summary = {
             "in_flight": 0, "must_nudge": 0, "escalate": 0, "hold": 0, "cost_hold": 0, "blocked": 0, "gate": 0, "card_missing": 0,
-            "infra_hold": 0, "bounced": 0, "idle_turn": 0, "thread_case": 0, "acks": self.acks_info["status"],
+            "infra_hold": 0, "bounced": 0, "idle_turn": 0, "thread_case": 0, "operator_ask": 0, "follow_ups": 0,
+            "acks": self.acks_info["status"],
         }
+        # operator asks read from the Orchestrator's non-row threads, attributed per row (scan_operator_threads)
+        self.op_asks: dict[str, list[dict]] = {}
+        self.op_answers: dict[str, list[str]] = {}
+        self.operator_asks: list[dict] = []  # every standing ask surfaced this tick, for the tick report
 
     def session_pin(self, rec: dict, role: str | None) -> str | None:
         target = pick_target_session(self.sessions.get(rec["thread_id"]), role)
@@ -1082,6 +1416,37 @@ class _Tick:
             "text": line, "status_text": status, "thread_id": "hermes-status",
         })
         self.summary["escalate"] += 1
+        return True
+
+    def ask_alert(self, rid: str, book: dict, ask: dict, label: str, pr: int | None, thread: str | None = None) -> bool:
+        """§2.5 operator ask: the `operator-ruling` alert for one standing ask, keyed by the ask's text (ask_key), 24 h
+        bound; the status line is `DECISION NEEDED (<age>h): <row> — <head>`. A side alert: no nudge, no re-arm, the
+        row's action / slo_status are left to the ordinary checks. Returns True when emitted."""
+        ask_dt = _safe_ts(ask.get("ts"))
+        age_h = max(0.0, hours_between(ask_dt, self.now)) if ask_dt else 0.0  # an unparsable stamp is age 0, never a crash
+        entry = {"row": rid, **{k: ask.get(k) for k in ("ts", "role", "thread_id", "text", "head", "key")}, "age_hours": age_h,
+                 "status_text": f"DECISION NEEDED ({int(age_h)}h): {rid} — {ask['head']}", "alerted": False}
+        if ask.get("named_rows") is not None:
+            entry["named_rows"] = ask["named_rows"]
+        self.operator_asks.append(entry)
+        self.summary["operator_ask"] += 1
+        if alerted_recently(book, ask["key"], self.now):
+            entry["bound"] = (book.get("alerts") or {}).get(ask["key"])
+            return False
+        where = f"on {ask['thread_id']}" if ask.get("thread_id") else "on the thread"
+        what = f"operator ask by {ask.get('role') or 'a role'} {where} at {ask['ts']}, unanswered: {ask['head']}"
+        answer_on = f"hermes-{rid}" if rid != OPERATOR_ROW else (ask.get("thread_id") or "that thread")
+        decision = f"answer it on {answer_on} (post the ruling as 'Operator ruling: …'; the ask is not a stall the supervisor can re-arm)"
+        line, _status = alert_texts(self.now, rid, label, age_h, what, book, decision, pr, thread)
+        self.alerts.append({"kind": "operator-ruling", "row": rid, "state": label, "line": line, "status_line": entry["status_text"],
+                            "alert_key": ask["key"], "ask": {k: ask[k] for k in ("ts", "role", "thread_id", "head")}})
+        self.actions.append({
+            "kind": "alert", "row": rid, "alert_kind": "operator-ruling", "alert_key": ask["key"],
+            "text": line, "status_text": entry["status_text"], "thread_id": "hermes-status",
+            "check": "operator_ask", "ask_thread_id": ask.get("thread_id"), "ask_ts": ask["ts"], "ask_role": ask.get("role"),
+        })
+        self.summary["escalate"] += 1
+        entry["alerted"] = True
         return True
 
     def escalate(self, rec: dict, book: dict, kind: str, label: str, age_h: float, what: str, decision: str) -> None:
@@ -1175,6 +1540,7 @@ def _new_record(rid: str, res: dict, last_activity: str | None, book: dict) -> d
         "alert_kind": None,
         "cards": None,
         "carries_criteria": [],
+        "operator_ask": None,
     }
 
 
@@ -1390,7 +1756,8 @@ def _turn_ended_with_alternative(thread_msgs: list[dict] | None, events: list[di
         mine_out.append({**m, "_ts": ts})
     if mine_out:
         newest = max(mine_out, key=lambda m: m["_ts"])
-        first, text = _first_line(newest.get("text") or ""), newest.get("text") or ""
+        text = _msg_text(newest)
+        first = _first_line(text)
         if first.startswith("[Blocker]") or _infra_hold_line(first, text, rid):
             return True
     if turn_start is not None:
@@ -1428,6 +1795,23 @@ def _idle_turn(tick: _Tick, rec: dict, events: list[dict], thread_msgs: list[dic
     return {"role": role, "session_id": ack["session_id"], "ended": ack["changed"], "age_hours": age, "container_status": cstatus}
 
 
+def _operator_ask_check(tick: _Tick, rec: dict, book: dict, thread_msgs: list[dict] | None, events: list[dict]) -> None:
+    """§2.5 operator ask on one row: the standing asks on its thread (detect_operator_asks) plus those attributed to it
+    from the operator threads (tick.op_asks), an operator answer on either side clearing both. The record keeps them
+    all (`operator_ask`); ONE alert per row per tick, for the newest, keyed by its text (24 h)."""
+    rid = rec["id"]
+    answers = list(tick.op_answers.get(rid) or [])
+    thread_asks = detect_operator_asks(thread_msgs, rec["thread_id"], rid, events, answers)
+    # an operator inbound on the row thread answers the row's DM copies too
+    row_thread_answers = [m["ts"] for m in (thread_msgs or []) if isinstance(m, dict) and isinstance(m.get("ts"), str) and is_operator_answer(m)]
+    op_asks = [a for a in (tick.op_asks.get(rid) or []) if not any(t > a["ts"] for t in row_thread_answers)]
+    asks = sorted(thread_asks + op_asks, key=lambda a: a["ts"], reverse=True)
+    if not asks:
+        return
+    rec["operator_ask"] = {"count": len(asks), "newest": asks[0], "asks": asks}
+    tick.ask_alert(rid, book, asks[0], rec.get("stage_label") or rec.get("stage") or "operator-ask", rec.get("pr"))
+
+
 def supervise_row(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict] | None, prs: list[dict], gating: dict, cfg: dict, nudges: dict | None, sessions: dict | None) -> dict:
     rec = _supervise_row_core(tick, rid, row, thread_msgs, prs, gating, cfg, nudges, sessions)
     card_check(tick, rec, thread_msgs, cfg)
@@ -1446,14 +1830,25 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
     rec = _new_record(rid, res, max(stamps) if stamps else None, book)
     rec["thread_ok"] = thread_ok
     rec["carries_criteria"] = _open_carried(row)
+    if row.get("follow_up"):
+        rec["follow_up"] = {"parent": row.get("parent"), "batch": row.get("batch")}
+        tick.summary["follow_ups"] += 1
     if res.get("drift"):
         tick.alerts.append({"kind": "ledger-drift", "row": rid, "detail": res["drift"]})
 
+    # operator ask (§2.5): a role or the Orchestrator addressed the operator and nothing answered. Checked for EVERY
+    # state but paused (a capped row is `blocked` and still asks for the cap authorization — the A2A-F21 shape), on
+    # the row thread and on the operator threads attributed to this row; a side alert, never a nudge or a re-arm.
+    if rid not in (cfg.get("paused_rows") or []):
+        _operator_ask_check(tick, rec, book, thread_msgs if thread_ok else None, events)
+
     if stage == "merged":
         return rec
+    # a follow-up row holds no WIP slot anywhere (queue `wip`, the demo tracker): counted under `follow_ups`, not `in_flight`
+    in_flight_slot = 0 if row.get("follow_up") else 1
     if not thread_ok and stage != "blocked":
         # Degrade, never guess: no nudge for a row whose sessions could not be read.
-        tick.summary["in_flight"] += 1
+        tick.summary["in_flight"] += in_flight_slot
         rec["reason"] = f"thread hermes-{rid} unreadable this tick; no action"
         rec["slo_status"] = "unknown"
         return rec
@@ -1462,7 +1857,7 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
         tick.escalate(rec, book, "blocked", "blocked", 0.0, res.get("reason") or "blocked", "re-dispatch by hand once (autopilot never will), or drop the row")
         return rec
 
-    tick.summary["in_flight"] += 1
+    tick.summary["in_flight"] += in_flight_slot
     clock = res.get("clock")
     age_h = max(0.0, hours_between(parse_iso(clock), tick.now)) if clock else 0.0
     rec["age_hours"] = age_h
@@ -1625,24 +2020,65 @@ def supervise(
     sessions: dict | None = None,
     config: dict | None = None,
     acks: dict | None = None,
+    operator_threads=None,
 ) -> dict:
     tick = _Tick(parse_iso(now), sessions, acks)
     cfg = config or {}
     gating = state.get("gating") or {}
-    rows_in = state.get("rows") or {}
+    rows_in = dict(state.get("rows") or {})
+    # follow-up rows (hermes_queue `follow_up_rows`): supervised on their own thread while their ledger state is in flight
+    for rid, row in (state.get("follow_up_rows") or {}).items():
+        if isinstance(row, dict) and row.get("state") in IN_FLIGHT and rid not in rows_in:
+            rows_in[rid] = row
     candidates = [r for r in rows_in if rows_in[r].get("state") in IN_FLIGHT or rows_in[r].get("state") == "blocked"]
     for r in state.get("in_flight") or []:
         if r not in candidates and r in rows_in:
             candidates.append(r)
+
+    # the Orchestrator's operator threads (DM / main / system:tasks:*): asks attributed per row, or to OPERATOR
+    op_source = operator_threads if operator_threads is not None else threads.get("operator_threads")
+    follow_ups = state.get("follow_up_rows") or {}
+    known = set(rows_in) | set(follow_ups)
+    tick.op_asks, tick.op_answers = scan_operator_threads(op_source, known)
+    paused = set(cfg.get("paused_rows") or [])
+    for r in list(tick.op_asks):
+        if r == OPERATOR_ROW:
+            continue
+        if r in rows_in:
+            # a row the operator thread names is supervised this tick too, whatever its state (a queued row's "your call")
+            if r not in candidates:
+                candidates.append(r)
+            continue
+        # a known row nobody supervises this tick (a merged / blocked follow-up): its asks fall to OPERATOR so they still
+        # surface — a paused one stays silent, like every paused row
+        asks = tick.op_asks.pop(r)
+        if r not in paused:
+            tick.op_asks.setdefault(OPERATOR_ROW, []).extend(asks)
 
     out_rows = {
         rid: supervise_row(tick, rid, rows_in[rid], threads.get(f"hermes-{rid}", []), prs, gating, cfg, nudges, sessions)
         for rid in sorted(candidates)
     }
     carried_after_merge(tick, rows_in, out_rows, nudges)
+    # asks that name no single row: the synthetic OPERATOR row — every distinct standing ask (they cannot be collapsed
+    # by row; a mirrored copy collapses by key), each bounded by its own key. A copy of a row's standing ask that names a
+    # second row ("ISO-F14 vs A2A-F21 — <the row-thread ask>") is that row's decision, already alerted: collapsed, listed.
+    seen_keys: set[str] = set()
+    book = nudge_book(nudges, OPERATOR_ROW, [])
+    for ask in sorted(tick.op_asks.get(OPERATOR_ROW) or [], key=lambda a: a["ts"], reverse=True):
+        if ask["key"] in seen_keys:
+            continue
+        seen_keys.add(ask["key"])
+        mirror_of = _mirrors_row_ask(ask, out_rows)
+        if mirror_of:
+            tick.operator_asks.append({"row": OPERATOR_ROW, **{k: ask.get(k) for k in ("ts", "role", "thread_id", "text", "head", "key", "named_rows")},
+                                       "alerted": False, "collapsed_into": mirror_of})
+            continue
+        tick.ask_alert(OPERATOR_ROW, book, ask, "operator-ask", None, ask.get("thread_id"))
     order = {"hold": 0, "gate": 1, "nudge": 2, "alert": 3}
     tick.actions.sort(key=lambda a: (order.get(a["kind"], 9), a.get("row") or ""))
-    return {"now": iso_utc(tick.now), "rows": out_rows, "actions": tick.actions, "alerts": tick.alerts, "summary": tick.summary, "acks": tick.acks_info}
+    return {"now": iso_utc(tick.now), "rows": out_rows, "actions": tick.actions, "alerts": tick.alerts, "summary": tick.summary,
+            "acks": tick.acks_info, "operator_asks": sorted(tick.operator_asks, key=lambda a: a["ts"], reverse=True)}
 
 
 def _read_json(path: str | None, default):
@@ -1666,6 +2102,7 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--sessions", help='optional {"hermes-<ID>": [{role, session_id, cost_status, container_status}]}')
     ap.add_argument("--acks", help='optional acks.json (collect-acks.sh): {"generated_at", "sessions": {<id>: {status, changed, role, thread_id}}}; missing or > 2 h old = bounce/idle detection off')
     ap.add_argument("--config", help="optional config.json (paused_rows, core_change_ok, authorize_round, release_tag)")
+    ap.add_argument("--operator-threads", help='optional: the Orchestrator\'s non-row threads, [{"session_id", "thread_id", "messages": [...]}] (default: the "operator_threads" key of --threads)')
     ap.add_argument("--now", required=True, help="ISO timestamp, e.g. 2026-09-09T12:00:00Z")
     ap.add_argument("--json", action="store_true", help="compact JSON on one line (default: indented)")
     args = ap.parse_args(argv)
@@ -1679,6 +2116,7 @@ def main(argv: list[str] | None = None) -> int:
         sessions=_read_json(args.sessions, {}),
         config=_read_json(args.config, {}),
         acks=_read_json(args.acks, None),
+        operator_threads=_read_json(args.operator_threads, None) if args.operator_threads else None,
     )
     if args.json:
         print(json.dumps(out, separators=(",", ":"), sort_keys=True))

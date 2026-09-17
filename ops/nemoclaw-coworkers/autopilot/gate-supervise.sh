@@ -34,10 +34,16 @@ for a in actions:
     kinds[a.get("kind", "?")] = kinds.get(a.get("kind", "?"), 0) + 1
 needs_turn = [a for a in actions if a.get("kind") != "hold"]
 wake = bool(needs_turn) or partial
+# operator_unread: the Orchestrator's operator DM / task sessions the collector listed but could not read this tick
+# (pass 3 runs FIRST on its own 3 s reserve, so this is a slow `ncl`, not the row budget). Reported, never a wake:
+# a rerun under the agent's budget faces the same reserve, and the asks resurface on the next tick that reads them.
+sessions = (st.get("sources") or {}).get("sessions") if isinstance(st.get("sources"), dict) else None
+operator_unread = (sessions or {}).get("operator_unread") if isinstance(sessions, dict) else None
 print(json.dumps({"wakeAgent": wake, "data": {
     "partial": partial, "pull_rc": rc, "actions": kinds,
     "rows": sorted({a.get("row") for a in needs_turn if a.get("row")})[:10],
     "in_flight": len(st.get("in_flight") or []), "generated_at": st.get("generated_at"),
     "errors": len(st.get("collector_errors") or []),
+    "operator_unread": operator_unread,
 }}))
 PY

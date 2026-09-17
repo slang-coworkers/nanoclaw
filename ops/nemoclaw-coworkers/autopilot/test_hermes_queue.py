@@ -923,3 +923,106 @@ class Cli(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FollowUpRowsTest(unittest.TestCase):
+    """A ledger row `<PARENT>.<letter>` whose parent is a matrix row (SCHED-F34.a, ISO-F10.a: the follow-ups the Orchestrator
+    opens on operator instruction) is a `follow_up` row, not `ledger-unknown-id`: parent recorded, counted in
+    coverage.follow_ups, OUT of the 62-row arithmetic, OUT of WIP / in_flight / dispatch gating."""
+
+    ROWS = (
+        {"id": "SCHED-F34.a", "notes": "follow-up: operator 'Open it' (msg 290)"},
+        {"id": "ISO-F10.a", "spec": "2026-09-09 11:00Z", "pr": "#31 (draft)", "notes": "operator ruling B (msg 384)"},
+    )
+    CARRIED_TO_FOLLOW_UP = (
+        "\n## Carried criteria\n\n"
+        "| criterion | from row | to row | reason | decided | status |\n"
+        "| --- | --- | --- | --- | --- | --- |\n"
+        "| AC-SCHED-F34-3 | SCHED-F34 | SCHED-F34.a | the TZ half rides on the follow-up | operator ruling B 2026-09-16 | open |\n"
+    )
+
+    def test_a_criterion_carried_onto_a_follow_up_lands_on_it(self):
+        """The follow-up the Orchestrator opened on operator instruction is the natural to-row for a carried criterion: the
+        coverage check accepts the dotted id when the ledger has the row (DEFER judged by the PARENT's batch), dispatch keeps
+        running, the follow-up carries it and the from-row records the deferral. A follow-up of an unknown parent, or of a
+        DEFER row, is still a hole that pauses dispatch."""
+        st = state(ledger(list(self.ROWS)) + self.CARRIED_TO_FOLLOW_UP)
+        self.assertTrue(st["coverage"]["ok"], st["coverage"]["problems"])
+        self.assertIsNone(st["dispatch_paused"])
+        self.assertEqual(st["coverage"]["carried_line"], "open carried criteria: 1 (rows: SCHED-F34.a)")
+        self.assertFalse(any(a["kind"].startswith("carried-criterion") for a in st["alerts"]), st["alerts"])
+        self.assertEqual([c["criterion"] for c in st["follow_up_rows"]["SCHED-F34.a"]["carries_criteria"]], ["AC-SCHED-F34-3"])
+        self.assertEqual([d["to_row"] for d in st["rows"]["SCHED-F34"]["deferred_criteria"]], ["SCHED-F34.a"])
+        plan = hq.parse_plan(PLAN)
+        self.assertEqual(hq.carried_to_row("SCHED-F34.a", plan, {"rows": {"SCHED-F34.a": {}}}), "SCHED-F34")
+        self.assertIsNone(hq.carried_to_row("SCHED-F34.a", plan, {"rows": {}}))  # dotted from a plan row, but no ledger row: unknown
+        for bad, problem in (
+            ("ZZZ-F99.a", "carried criterion AC-SCHED-F34-3 names unknown row ZZZ-F99.a"),
+            ("RT-F04.a", "carried criterion AC-SCHED-F34-3 names DEFER row RT-F04.a, which is never dispatched"),
+        ):
+            st_bad = state(ledger([*self.ROWS, {"id": bad}]) + self.CARRIED_TO_FOLLOW_UP.replace("| SCHED-F34.a |", f"| {bad} |"))
+            self.assertIn(problem, st_bad["coverage"]["problems"])
+            self.assertFalse(st_bad["coverage"]["ok"])
+            self.assertEqual(st_bad["dispatch_paused"], "plan-changed: hashes or coverage check")
+            alert = next(a for a in st_bad["alerts"] if a["kind"] == "carried-criterion-unknown-row")
+            self.assertIn(bad, alert["detail"])
+        # ZZZ-F99.a has no known parent: not a follow-up at all; RT-F04.a IS one (parent RT-F04, a DEFER row) — it carries the
+        # criterion like any follow-up, the coverage problem above is what stops dispatch
+        self.assertNotIn("ZZZ-F99.a", st_bad["follow_up_rows"])
+        rt = state(ledger([*self.ROWS, {"id": "RT-F04.a"}]) + self.CARRIED_TO_FOLLOW_UP.replace("| SCHED-F34.a |", "| RT-F04.a |"))["follow_up_rows"]["RT-F04.a"]
+        self.assertEqual((rt["parent"], rt["batch"], [c["criterion"] for c in rt["carries_criteria"]]), ("RT-F04", "defer", ["AC-SCHED-F34-3"]))
+
+    def test_follow_ups_are_classified_with_their_parent_and_never_alert(self):
+        st = state(ledger(list(self.ROWS)))
+        kinds = [(a["kind"], a["row"]) for a in st["alerts"]]
+        self.assertNotIn(("ledger-unknown-id", "SCHED-F34.a"), kinds)
+        self.assertNotIn(("ledger-unknown-id", "ISO-F10.a"), kinds)
+        self.assertEqual([a for a in st["alerts"] if a["kind"] == "ledger-unknown-id"], [])
+        f = st["follow_up_rows"]
+        self.assertEqual(sorted(f), ["ISO-F10.a", "SCHED-F34.a"])
+        self.assertEqual((f["SCHED-F34.a"]["parent"], f["SCHED-F34.a"]["follow_up"], f["SCHED-F34.a"]["state"]), ("SCHED-F34", True, "dispatched"))
+        self.assertEqual((f["SCHED-F34.a"]["batch"], f["SCHED-F34.a"]["disposition"]), (st["rows"]["SCHED-F34"]["batch"], "CONFIGURE"))
+        self.assertTrue(f["SCHED-F34.a"]["name"].startswith("follow-up of SCHED-F34: "))
+        self.assertEqual((f["ISO-F10.a"]["parent"], f["ISO-F10.a"]["state"], f["ISO-F10.a"]["ledger"]["pr"]), ("ISO-F10", "pr_open", 31))  # a MERGE-> parent is a matrix row too
+        self.assertEqual(f["ISO-F10.a"]["disposition"], "MERGE")
+        self.assertEqual(st["follow_up_in_flight"], ["SCHED-F34.a", "ISO-F10.a"])
+        self.assertEqual(st["sources"]["ledger"]["follow_ups"], {"ISO-F10.a": "ISO-F10", "SCHED-F34.a": "SCHED-F34"})
+        # not rows of the queue, not in flight, no WIP slot, nothing gated on them
+        self.assertNotIn("SCHED-F34.a", st["rows"])
+        self.assertEqual(st["in_flight"], [])
+        self.assertEqual(st["wip"], {"limit": 3, "in_flight": 0, "free": 3, "build_in_flight": False})
+        self.assertEqual(st["rows"]["SCHED-F34"]["state"], "queued")  # the parent is untouched
+
+    def test_coverage_totals_unchanged_and_follow_ups_counted_beside(self):
+        st = state(ledger(list(self.ROWS)))
+        cov = st["coverage"]
+        self.assertTrue(cov["ok"], cov["problems"])
+        self.assertEqual((cov["total"], cov["matrix_rows"], cov["dispatched"], cov["adopt"], cov["merge"], cov["defer"]), (62, 62, 31, 16, 11, 4))
+        self.assertEqual((cov["follow_ups"], cov["follow_up_rows"]), (2, ["ISO-F10.a", "SCHED-F34.a"]))
+        self.assertIsNone(st["dispatch_paused"])
+        none = state(LEDGER)["coverage"]
+        self.assertEqual((none["follow_ups"], none["follow_up_rows"]), (0, []))
+        # coverage_check alone keeps its contract (no follow-up keys without build_state)
+        self.assertNotIn("follow_ups", hq.coverage_check(hq.parse_plan(PLAN), hq.parse_matrix(MATRIX)))
+
+    def test_truly_unknown_ids_still_alert(self):
+        st = state(ledger([{"id": "ZZZ-F99"}, {"id": "ZZZ-F99.a"}, {"id": "SCHED-F34.a"}]))
+        kinds = [(a["kind"], a["row"]) for a in st["alerts"] if a["kind"] == "ledger-unknown-id"]
+        self.assertEqual(kinds, [("ledger-unknown-id", "ZZZ-F99"), ("ledger-unknown-id", "ZZZ-F99.a")])
+        self.assertEqual(list(st["follow_up_rows"]), ["SCHED-F34.a"])
+        # the matrix's own dotted rows are rows, never follow-ups
+        self.assertIsNone(hq.follow_up_parent("OPS-F58.a", st["rows"]))
+        self.assertIsNone(hq.follow_up_parent("SELF-F57.b", st["rows"]))
+        self.assertEqual(hq.follow_up_parent("SCHED-F34.a", st["rows"]), "SCHED-F34")
+        self.assertIsNone(hq.follow_up_parent("SCHED-F34.ab", st["rows"]))
+        self.assertIsNone(hq.follow_up_parent("SCHED-F34.A", st["rows"]))
+
+    def test_follow_up_states_and_pause(self):
+        st = state(
+            ledger([merged_row("SCHED-F34.a", 40), {"id": "ISO-F10.a", "spec": "2026-09-09 11:00Z", "pr": "#31", "verdict": "round 2/2 FAIL", "outcome": "blocked: STOP cap"}]),
+            config={"paused_rows": ["ISO-F10.a"]},
+        )
+        f = st["follow_up_rows"]
+        self.assertEqual((f["SCHED-F34.a"]["state"], f["ISO-F10.a"]["state"], f["ISO-F10.a"].get("paused")), ("merged", "blocked", True))
+        self.assertEqual(st["follow_up_in_flight"], [])
+        self.assertEqual((st["merged"], st["blocked"]), ([], []))  # the plan's lists stay about plan rows

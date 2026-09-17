@@ -32,6 +32,23 @@ frame `{"ok": true, "data": [...]}` or the bare `data` list):
   --deadline-s  wall-clock budget for transcript reads (0 = none). Once spent, the
               remaining sessions are listed unread (`messages_error: not read:
               deadline ...`) and one collector_errors entry says how many.
+  --operator-sessions N  pass 3 (0 disables; runs FIRST, before the row reads): the
+              Orchestrator's N newest non-row sessions active in the last --operator-since-h
+              hours (48) — the operator DM / main thread, system:tasks:*; never hermes-status,
+              never a row thread, never the autopilot's own `system:tasks:hermes-ap-*` series
+              (its run output quotes the asks) — are read too, NEWEST rows first (`--reverse`,
+              so a long-lived DM is read from its end), for the operator-ask detection
+              (autopilot.md §2.5, the 2026-09-16/17 asks the row threads alone never showed).
+              Default 6.
+  --operator-since-h H   window for those sessions and their messages (default 48)
+  --operator-tail N      the last N outbound messages kept per session (default 40), plus
+              every inbound line since the oldest kept (the operator's answers)
+  --operator-head N      text head kept per message (default 600 chars)
+  --operator-deadline-s S  pass 3's OWN wall-clock reserve (default 3; 0 = none), measured
+              from its start and independent of --deadline-s: the row reads can never starve
+              it, and it never eats into their budget (their clock starts after it). Sessions
+              it could not read are listed with `messages_error` and counted `operator_unread`,
+              with one collector_errors line.
   --now       ISO timestamp stamped into the output (default: utcnow)
 
 Output, one JSON object on stdout:
@@ -51,9 +68,15 @@ Output, one JSON object on stdout:
       }
     },
     "other_threads": ["hermes-P0-LOOP", ...],   # hermes-* threads that are not matrix rows
+    "operator_threads": [                         # pass 3: the Orchestrator's non-row sessions, bounded
+      {"session_id", "thread_id", "role": "orchestrator", "status", "container_status", "last_active",
+       "messages": [{"seq", "direction", "kind", "timestamp", "sender", "text"}]   # text head --operator-head
+       [, "messages_error"]}
+    ],
     "thread_case": [{"row", "session_id", "role", "thread_id_raw"}],  # sessions on a mis-cased row thread
     "sessions_checked": true,                     # false when the session list itself failed
-    "counts": {"sessions_seen": n, "sessions_read": n, "cost_status_read": n, "sessions_unread": n, "thread_case": n},
+    "counts": {"sessions_seen": n, "sessions_read": n, "cost_status_read": n, "sessions_unread": n, "thread_case": n,
+               "operator_sessions": n, "operator_read": n, "operator_unread": n, "operator_messages": n},
     "filter": {"rows": [...] | null, "deadline_s": 0},
     "collector_errors": [{"source": "ncl sessions messages <sid>", "error": "..."}]
   }
@@ -81,7 +104,7 @@ import re
 import subprocess
 import sys
 import time
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 try:
     from rowid import canon_row, canon_thread
@@ -105,10 +128,34 @@ THREAD_RE = re.compile(rf"^hermes-({ROW_ID})$")
 # bare `<ROW>:` form stays strict — a lower-case `x-f1:` is ordinary prose.
 MENTION_RE = re.compile(rf"(?:hermes-({ROW_ID_LOOSE})\b|\[({ROW_ID_LOOSE})\]|\b({ROW_ID}):)")
 SUBPROCESS_TIMEOUT_S = 25
+OPERATOR_ROLE = "orchestrator"
+STATUS_THREAD = "hermes-status"  # alerts only (posted by the Orchestrator): never an operator thread
+AUTOPILOT_TASK_PREFIX = "system:tasks:hermes-ap-"  # the autopilot's own task series (install.sh ensure_series): its run output quotes the asks
+OPERATOR_SESSIONS = 6
+OPERATOR_SINCE_H = 48.0
+OPERATOR_TAIL = 40
+OPERATOR_HEAD = 600
+OPERATOR_DEADLINE_S = 3.0  # pass 3's own wall-clock reserve (<= 6 reads), independent of --deadline-s for the row reads
 
 
 def utcnow_iso() -> str:
     return datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def parse_ts(value) -> datetime | None:
+    """ncl timestamps in either shape (inbound ISO 8601 with Z, outbound SQL `YYYY-MM-DD HH:MM:SS`, UTC) -> aware
+    datetime, or None. Only used to bound the operator-thread pass; message records keep the raw string."""
+    if not isinstance(value, str) or not value.strip():
+        return None
+    v = value.strip()
+    if v.endswith(("Z", "z")):
+        v = v[:-1] + "+00:00"
+    v = re.sub(r"(\.\d{1,6})\d+", r"\1", v)
+    try:
+        dt = datetime.fromisoformat(v)
+    except ValueError:
+        return None
+    return dt if dt.tzinfo else dt.replace(tzinfo=timezone.utc)
 
 
 def load_data(path: str) -> list:
@@ -166,14 +213,19 @@ def role_groups(groups: list) -> dict:
     return out
 
 
-def project_message(row: dict) -> dict:
+def project_message(row) -> dict | None:
+    """One `ncl sessions messages` row -> the collector's shape; None for a row that is not a dict (skipped, never a crash).
+    `text` is always a string (a non-string payload is coerced)."""
+    if not isinstance(row, dict):
+        return None
+    text = row.get("text")
     return {
         "seq": row.get("seq"),
         "direction": row.get("direction"),
         "kind": row.get("kind"),
         "timestamp": row.get("timestamp"),
         "sender": row.get("sender"),
-        "text": row.get("text") or "",
+        "text": text if isinstance(text, str) else ("" if text is None else str(text)),
     }
 
 
@@ -216,6 +268,11 @@ def collect(
     rows: set | None = None,
     deadline_s: float = 0.0,
     clock=time.monotonic,
+    operator_sessions: int = OPERATOR_SESSIONS,
+    operator_since_h: float = OPERATOR_SINCE_H,
+    operator_tail: int = OPERATOR_TAIL,
+    operator_head: int = OPERATOR_HEAD,
+    operator_deadline_s: float = OPERATOR_DEADLINE_S,
 ) -> dict:
     errors: list = []
     if ROWID_ERROR:
@@ -232,6 +289,8 @@ def collect(
     threads: dict = {}
     other_threads: set = set()
     thread_case: list = []
+    operator_threads: list = []
+    operator_messages = 0
     per_role_threaded: dict = {role: 0 for role in ROLES}
     reads = 0
     cost_reads = 0
@@ -251,7 +310,7 @@ def collect(
         reads += 1
         try:
             data = ncl.run("sessions", "messages", rec["id"], "--limit", str(limit), "--full")
-            rec["messages"] = [project_message(r) for r in (data or [])]
+            rec["messages"] = [m for m in (project_message(r) for r in (data or [])) if m is not None]
             return True
         except RuntimeError as exc:
             errors.append({"source": f"ncl sessions messages {rec['id']}", "error": str(exc)})
@@ -268,8 +327,71 @@ def collect(
         except RuntimeError as exc:
             errors.append({"source": f"ncl cost-cap status --session {rec['id']}", "error": str(exc)})
 
-    # Pass 1: sessions that sit on a hermes-<ID> thread.
     ordered = sorted(sessions, key=lambda s: s.get("last_active") or "", reverse=True)
+
+    # Pass 3 — run FIRST: the Orchestrator's NON-row sessions (the operator DM / main thread, system:tasks:*), bounded —
+    # the operator-facing asks it mirrors there are invisible on the row threads (2026-09-16/17). Newest first, the last
+    # `operator_since_h` hours only, the NEWEST `limit` rows of each transcript (`--reverse`: a plain --limit returns
+    # the OLDEST rows, and the DM session is long-lived — seq 384+ in the incident), then `operator_tail` outbound lines
+    # per session plus the inbound lines (the operator's answers) since the oldest kept, `operator_head` chars of text
+    # each. Never hermes-status (alerts only) and never the autopilot's own task series (`system:tasks:hermes-ap-*`: the
+    # supervise tick's run output quotes the standing asks and asks the operator nothing itself). Its reads are their own
+    # budget class with their OWN reserve (`operator_deadline_s`, measured from here) so the row reads can never starve
+    # them; the row deadline clock (`t0`) starts after it. Counted under `operator_read` / `operator_unread`, one
+    # collector_errors line when the reserve hit; `sessions_read` / `sessions_unread` stay about the ROW sessions.
+    now_dt = parse_ts(now) or datetime.now(timezone.utc)
+    since = now_dt - timedelta(hours=max(0.0, float(operator_since_h)))
+    orch_gid = roles.get(OPERATOR_ROLE)
+    operator_read = operator_unread = operator_deadline = 0
+    t_op = clock()
+    if operator_sessions > 0 and orch_gid:
+        for s in ordered:
+            if len(operator_threads) >= operator_sessions:
+                break
+            if not isinstance(s, dict) or s.get("agent_group_id") != orch_gid or s.get("status") == "closed":
+                continue
+            tid_raw = s.get("thread_id") or ""
+            tid = canon_thread(tid_raw)
+            if THREAD_RE.match(tid) or tid == STATUS_THREAD or str(tid_raw).startswith(AUTOPILOT_TASK_PREFIX):
+                continue
+            last = parse_ts(s.get("last_active"))
+            if last is None or last < since:
+                continue
+            rec = {"session_id": s.get("id"), "thread_id": tid_raw or None, "role": OPERATOR_ROLE, "status": s.get("status"),
+                   "container_status": s.get("container_status"), "last_active": s.get("last_active"), "messages": []}
+            if operator_deadline_s and clock() - t_op >= operator_deadline_s:
+                rec["messages_error"] = f"not read: operator deadline {operator_deadline_s:g}s reached"
+                operator_unread += 1
+                operator_deadline += 1
+                operator_threads.append(rec)
+                continue
+            try:
+                data = ncl.run("sessions", "messages", rec["session_id"], "--limit", str(limit), "--full", "--reverse")
+                msgs = [m for m in (project_message(r) for r in (data or [])) if m is not None]
+                recent = [m for m in msgs if (parse_ts(m.get("timestamp")) or since) >= since]
+                recent.sort(key=lambda m: (parse_ts(m.get("timestamp")) or since, m.get("seq") or 0))
+                outs = [m for m in recent if m.get("direction") != "in"][-max(0, operator_tail):]
+                floor = parse_ts(outs[0].get("timestamp")) if outs else None
+                ins = [m for m in recent if m.get("direction") == "in" and (floor is None or (parse_ts(m.get("timestamp")) or since) >= floor)]
+                kept = sorted(outs + ins, key=lambda m: (parse_ts(m.get("timestamp")) or since, m.get("seq") or 0))
+                for m in kept:
+                    m["text"] = m["text"][:max(0, operator_head)]
+            except (RuntimeError, TypeError, ValueError, AttributeError) as exc:
+                # a failed read OR a transcript row the projection cannot take: this session is listed unread, the tick goes on
+                errors.append({"source": f"ncl sessions messages {rec['session_id']}", "error": str(exc)})
+                rec["messages_error"] = str(exc)
+                operator_unread += 1
+                operator_threads.append(rec)
+                continue
+            operator_read += 1
+            rec["messages"] = kept
+            operator_messages += len(kept)
+            operator_threads.append(rec)
+    if operator_deadline:
+        errors.append({"source": "collect_threads", "error": f"operator threads: deadline {operator_deadline_s:g}s reached; {operator_deadline} sessions not read"})
+    t0 = clock()  # the row reads' budget starts now: pass 3 is bounded on its own and never eats into it
+
+    # Pass 1: sessions that sit on a hermes-<ID> thread.
     for s in ordered:
         role = group_role.get(s.get("agent_group_id"))
         if role is None:
@@ -326,9 +448,11 @@ def collect(
         "threads": threads,
         "other_threads": sorted(other_threads),
         "thread_case": thread_case,
+        "operator_threads": operator_threads,
         "sessions_checked": True,
         "counts": {"sessions_seen": len(sessions), "sessions_read": reads, "cost_status_read": cost_reads, "sessions_unread": unread,
-                   "thread_case": len(thread_case)},
+                   "thread_case": len(thread_case), "operator_sessions": len(operator_threads), "operator_read": operator_read,
+                   "operator_unread": operator_unread, "operator_messages": operator_messages},
         "filter": {"rows": sorted(rows) if rows is not None else None, "deadline_s": deadline_s},
         "collector_errors": errors,
     }
@@ -344,6 +468,11 @@ def main() -> int:
     ap.add_argument("--max-sessions", type=int, default=80)
     ap.add_argument("--rows", default=None, help="comma-separated row ids to read transcripts for (default: all)")
     ap.add_argument("--deadline-s", type=float, default=0.0, help="wall-clock budget for transcript reads (0 = none)")
+    ap.add_argument("--operator-sessions", type=int, default=OPERATOR_SESSIONS, help="pass 3: the Orchestrator's N newest non-row sessions to read (0 = off)")
+    ap.add_argument("--operator-since-h", type=float, default=OPERATOR_SINCE_H, help="pass 3: only sessions / messages active in the last H hours")
+    ap.add_argument("--operator-tail", type=int, default=OPERATOR_TAIL, help="pass 3: last N outbound messages per session")
+    ap.add_argument("--operator-head", type=int, default=OPERATOR_HEAD, help="pass 3: text head per message (chars)")
+    ap.add_argument("--operator-deadline-s", type=float, default=OPERATOR_DEADLINE_S, help="pass 3: its own wall-clock reserve, independent of --deadline-s (0 = none)")
     ap.add_argument("--now", default=None)
     args = ap.parse_args()
     now = args.now or utcnow_iso()
@@ -364,8 +493,10 @@ def main() -> int:
             "threads": {},
             "other_threads": [],
             "thread_case": [],
+            "operator_threads": [],
             "sessions_checked": False,
-            "counts": {"sessions_seen": 0, "sessions_read": 0, "cost_status_read": 0, "sessions_unread": 0, "thread_case": 0},
+            "counts": {"sessions_seen": 0, "sessions_read": 0, "cost_status_read": 0, "sessions_unread": 0, "thread_case": 0,
+                       "operator_sessions": 0, "operator_read": 0, "operator_unread": 0, "operator_messages": 0},
             "filter": {"rows": sorted(rows) if rows is not None else None, "deadline_s": args.deadline_s},
             "collector_errors": errors + [{"source": "ncl sessions list", "error": str(exc)}],
         }
@@ -382,6 +513,11 @@ def main() -> int:
         now=now,
         rows=rows,
         deadline_s=args.deadline_s,
+        operator_sessions=args.operator_sessions,
+        operator_since_h=args.operator_since_h,
+        operator_tail=args.operator_tail,
+        operator_head=args.operator_head,
+        operator_deadline_s=args.operator_deadline_s,
     )
     out["collector_errors"] = errors + out["collector_errors"]
     json.dump(out, sys.stdout, indent=2)

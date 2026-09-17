@@ -67,6 +67,16 @@ Rules pinned here (each has a test in test_hermes_queue.py):
     never hide one. `covered (...)` / `dropped (...)` criteria stay visible on the from-row.
   * Upstream asks (`UA-<n>`, disposition open | filed (<url>) | bypassed (<how>) |
     declined (<reason>) | adopted (<row>)) attach to their source row as `upstream_asks`.
+  * Follow-up rows: a ledger row `<PARENT>.<letter>` whose parent is a matrix row (SCHED-F34.a,
+    ISO-F10.a — the rows the Orchestrator opens on operator instruction) is not an unknown id.
+    It is classified `follow_up` (`state["follow_up_rows"][id]`, parent recorded, its ledger
+    state read like any row) and counted in `coverage["follow_ups"]`, but it stays OUT of the
+    62-row coverage arithmetic, out of `in_flight` / WIP and out of dispatch gating; the
+    supervisor reads `follow_up_in_flight` and supervises those on their own thread. A dotted id
+    whose parent is unknown (`ZZZ-F99.a`) is still `ledger-unknown-id`. A carried criterion may
+    name a ledger follow-up row as its to-row (`carried_to_row`): coverage accepts it, the DEFER
+    check reads the parent's batch, and the follow-up carries it (`carries_criteria`); a dotted id
+    the ledger has no row for is still an unknown to-row.
 
 Output shape: see build_state().
 """
@@ -185,6 +195,18 @@ def ledger_row_id(cell: str) -> tuple[str, list[str]]:
     if len(tokens) == 1:
         return tokens[0], tokens
     return rid, tokens
+
+
+def follow_up_parent(rid: str, known_rows) -> str | None:
+    """`SCHED-F34.a` -> `SCHED-F34` when that parent is a known (matrix) row and the dotted id itself is not one;
+    None otherwise. The `.<letter>` suffix is ROW_ID's own grammar (OPS-F58.a is a matrix row in its own right), so
+    only an id the matrix does NOT list can be a follow-up of the row it is dotted from."""
+    if rid in known_rows:
+        return None
+    m = re.match(r"^([A-Z0-9]+-F[0-9]+)\.[a-z]$", rid)
+    if not m or m.group(1) not in known_rows:
+        return None
+    return m.group(1)
 
 
 def is_empty_cell(cell: str) -> bool:
@@ -696,6 +718,20 @@ def ledger_state(entry: dict, round3_authorized: bool = False) -> tuple[str, str
 
 # --------------------------------------------------------------------------- coverage
 
+def carried_to_row(to: str, plan: dict, ledger: dict | None = None) -> str | None:
+    """Where a carried criterion's to-row lands for the coverage / DEFER checks: the plan row itself, or — for a
+    follow-up row `<PARENT>.<letter>` that the ledger lists (the row the Orchestrator opened on operator instruction,
+    §4.1) — its PARENT plan row (whose batch decides DEFER). None for anything else: a phase name, a typo, a dotted id
+    the ledger has no row for, a follow-up of an unknown parent."""
+    if not to:
+        return None
+    if to in plan["rows"]:
+        return to
+    if to not in ((ledger or {}).get("rows") or {}):
+        return None
+    return follow_up_parent(to, plan["rows"])
+
+
 def coverage_check(plan: dict, matrix: dict, ledger: dict | None = None) -> dict:
     """§4: the parse must reproduce the plan's coverage (every matrix id exactly once
     across batches / adopt / defer / merge, dispositions agreeing) or dispatch pauses.
@@ -711,11 +747,12 @@ def coverage_check(plan: dict, matrix: dict, ledger: dict | None = None) -> dict
     open_carried: list[dict] = []
     for c in carried:
         to = c.get("to_row") or ""
+        landing = carried_to_row(to, plan, ledger)
         if not to:
             pass  # already a carried_problem from the parse
-        elif to not in plan["rows"]:
+        elif landing is None:
             problems.append(f"carried criterion {c['criterion']} names unknown row {to}")
-        elif plan["rows"][to]["batch"] == "defer":
+        elif plan["rows"][landing]["batch"] == "defer":
             problems.append(f"carried criterion {c['criterion']} names DEFER row {to}, which is never dispatched")
         if c.get("status", "open") == "open":
             open_carried.append(c)
@@ -988,12 +1025,13 @@ def build_state(
         alerts.append({"kind": "carried-criterion-malformed", "row": None, "detail": p + " — fix the ## Carried criteria table in ledger.md"})
     for c in carried:
         to = c["to_row"]
-        if to and to not in plan["rows"]:
+        landing = carried_to_row(to, plan, ledger)  # a follow-up row lands on its parent for the DEFER check (§4.1)
+        if to and landing is None:
             alerts.append({
                 "kind": "carried-criterion-unknown-row", "row": c["from_row"] or None,
-                "detail": f"carried criterion {c['criterion']} names unknown row {to}; the to-row must be a plan row id (never a phase) — fix the ## Carried criteria table",
+                "detail": f"carried criterion {c['criterion']} names unknown row {to}; the to-row must be a plan row id or a ledger follow-up row `<PLAN-ROW>.<letter>` (never a phase) — fix the ## Carried criteria table",
             })
-        elif to and plan["rows"][to]["batch"] == "defer":
+        elif to and plan["rows"][landing]["batch"] == "defer":
             alerts.append({
                 "kind": "carried-criterion-unknown-row", "row": c["from_row"] or None,
                 "detail": f"carried criterion {c['criterion']} names DEFER row {to}, which is never dispatched; re-carry it to a dispatched row",
@@ -1084,9 +1122,43 @@ def build_state(
             row["paused"] = True
         rows[rid] = row
 
+    # Follow-up rows (`<PARENT>.<letter>`, parent a matrix row): legitimate work items the Orchestrator opens on operator
+    # instruction ("Open it"; "operator ruling B"). They keep their ledger state and are supervised on `hermes-<ID>`, but
+    # they are not plan rows: no coverage arithmetic, no WIP slot, no dispatch order. Anything else unknown still alerts.
+    follow_ups: dict[str, dict] = {}
     for rid in ledger["order"]:
-        if rid not in rows:
+        if rid in rows:
+            continue
+        parent = follow_up_parent(rid, rows)
+        if parent is None:
             alerts.append({"kind": "ledger-unknown-id", "row": rid, "detail": "ledger row id is not in the matrix"})
+            continue
+        entry = ledger["rows"][rid]
+        st, reason = ledger_state(entry, rid in cfg["authorize_round"])
+        prow = rows[parent]
+        follow_ups[rid] = {
+            "follow_up": True,
+            "parent": parent,
+            "batch": prow["batch"],
+            "disposition": prow["disposition"],
+            "name": f"follow-up of {parent}: {prow['name']}",
+            "esc": False,
+            "upstream_ask": False,
+            "outcomes": list(prow.get("outcomes") or []),
+            "design_note": "",
+            "carries": [],
+            "carries_criteria": carries_to.get(rid, []),
+            "deferred_criteria": deferred_from.get(rid, []),
+            "upstream_asks": asks_by_row.get(rid, []),
+            "state": st,
+            "state_reason": reason,
+            "ledger": entry,
+            "gate_red": entry["gate_red"],
+            **({"attaches_to": prow["attaches_to"]} if "attaches_to" in prow else {}),
+            **({"paused": True} if rid in cfg["paused_rows"] else {}),
+        }
+    coverage["follow_ups"] = len(follow_ups)
+    coverage["follow_up_rows"] = sorted(follow_ups)
 
     # MERGE-> rows are satisfied when their target merges.
     for rid, row in rows.items():
@@ -1178,6 +1250,9 @@ def build_state(
         "in_flight": in_flight,
         "merged": merged,
         "blocked": blocked,
+        # follow-up rows (`<PARENT>.<letter>`): supervised on their own thread, never counted in WIP or dispatched
+        "follow_up_rows": follow_ups,
+        "follow_up_in_flight": [r for r in ledger["order"] if r in follow_ups and follow_ups[r]["state"] in IN_FLIGHT_STATES],
         "eligible_next": eligible_next,
         "next_queue": (eligible + waiting)[:3],
         "queue": {"eligible": [e["id"] for e in eligible], "waiting": waiting},
@@ -1193,6 +1268,7 @@ def build_state(
                 "header_ok": ledger["header_ok"],
                 "carried_criteria": len(carried),
                 "carried_problems": ledger["carried_problems"],
+                "follow_ups": {rid: follow_ups[rid]["parent"] for rid in sorted(follow_ups)},
             },
             "plan": {"rows": len(plan["rows"]), "upstream_owners": plan["upstream_owners"], "problems": plan["problems"]},
             "matrix": {"rows": len(matrix["rows"]), "problems": matrix["problems"]},
