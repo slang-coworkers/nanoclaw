@@ -254,24 +254,39 @@ describe('paused agent-group kill switch (structural)', () => {
   });
 });
 
-describe('detectStaleContainers per-session compose guard (structural)', () => {
+describe('claudeMdStaleForSession compose guard (structural)', () => {
   // composeCoworkerSpine THROWS when a coworker type references a skill/workflow/
   // overlay that isn't resolvable on disk (e.g. an external `skill-source` skill
-  // not yet fetched into container/skills/). detectStaleContainers loops over
-  // ALL active containers and composes each; before the guard, one unresolvable
-  // type propagated its throw to the sweep's outer try/catch and skipped the
-  // entire CLAUDE.md-stale respawn loop — disabling instruction hot-reload
-  // fleet-wide for every healthy coworker. The compose must be wrapped
-  // per-session so a broken type is skipped (continue), not fatal to the scan.
-  // Driving the real loop needs a live activeContainers map, so guard the wiring
-  // structurally, matching the invariant test above.
-  it('wraps the per-session spine compose in try/catch and continues on failure', () => {
-    const body = fnBody('export async function detectStaleContainers', 'return stale;');
+  // not yet fetched into container/skills/). This check used to be a loop over
+  // ALL active containers; before the guard, one unresolvable type propagated its
+  // throw to the sweep's outer try/catch and skipped the entire CLAUDE.md-stale
+  // respawn loop — disabling instruction hot-reload fleet-wide for every healthy
+  // coworker. A broken type must be skipped, not fatal.
+  //
+  // The workqueue port made the duty per-session (it runs inside the session's own
+  // reconcile), so "skip this session" is now `return null` where it was
+  // `continue`. The guard is unchanged in strength — only its subject moved, and
+  // it must stay pinned to the function that actually composes.
+  it('wraps the per-session spine compose in try/catch and skips just this session on failure', () => {
+    const body = fnBody(
+      'export async function claudeMdStaleForSession',
+      'return { sessionId, agentGroupId: ag.id, folder: ag.folder };',
+    );
     // The render must sit inside a try whose catch skips just this session. The
     // compose call now lives behind `renderComposedDocument` (one seam shared with
     // spawn), so the guard is asserted on the call that can throw.
     expect(body).toMatch(/try\s*{[\s\S]*renderComposedDocument\(/);
-    expect(body).toMatch(/catch \(err\) {[\s\S]*Skipping stale-check[\s\S]*continue;/);
+    expect(body).toMatch(/catch \(err\) {[\s\S]*Skipping stale-check[\s\S]*return null;/);
+  });
+
+  // The global wrapper must stay a wrapper: if it ever regrows a compose of its
+  // own, the guard above would be checking a function that is no longer the only
+  // place a throw can originate.
+  it('detectStaleContainers stays a thin wrapper over the per-session check', () => {
+    const body = fnBody('export async function detectStaleContainers', 'return stale;');
+    expect(body).toContain('claudeMdStaleForSession(sessionId)');
+    expect(body).not.toMatch(/renderComposedDocument\(/);
+    expect(body).not.toMatch(/composeCoworkerSpine\(/);
   });
 
   // Both hash sites must resolve the persona the SAME way spawn does. They used
@@ -297,7 +312,10 @@ describe('detectStaleContainers per-session compose guard (structural)', () => {
     // make a `not.toMatch` easier to pass.
     const targets: Array<[string, string]> = [
       ['export async function recomposeAndUpdateHash', "return { kind: 'render-failed' };"],
-      ['export async function detectStaleContainers', 'return stale;'],
+      [
+        'export async function claudeMdStaleForSession',
+        'return { sessionId, agentGroupId: ag.id, folder: ag.folder };',
+      ],
     ];
     for (const [fn, tail] of targets) {
       const body = fnBody(fn, tail);

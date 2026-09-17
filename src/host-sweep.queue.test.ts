@@ -8,21 +8,33 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 vi.mock('./reconcile-session.js', () => ({
   reconcileSession: vi.fn(),
-  // Re-exported surface host-sweep.ts forwards — inert stubs.
+  // Re-exported surface host-sweep.ts forwards — inert stubs. The last two are
+  // fork-only (parseSqliteUtc, _redriveBouncedA2aForTesting); host-sweep.test.ts
+  // imports both from './host-sweep.js', so the forward must stay.
   ABSOLUTE_CEILING_MS: 0,
   CLAIM_STUCK_MS: 0,
+  _redriveBouncedA2aForTesting: vi.fn(),
   _resetStuckProcessingRowsForTesting: vi.fn(),
   decideStuckAction: vi.fn(),
+  parseSqliteUtc: vi.fn(),
   shouldCloseTaskSession: vi.fn(),
 }));
 vi.mock('./db/sessions.js', () => ({ getActiveSessions: vi.fn() }));
 vi.mock('./egress-lockdown.js', () => ({ ensureEgressNetwork: vi.fn() }));
 vi.mock('./modules/approvals/index.js', () => ({ sweepAwaitingReasonRejects: vi.fn() }));
+// Fork-only singleton duties. Unmocked they reach the real modules, whose central
+// queries throw here — the queue then backs the key off and the tick timing skews.
+vi.mock('./modules/cost-approval/index.js', () => ({ reconcileCostCards: vi.fn() }));
+vi.mock('./modules/cost-ceiling-adjustment/index.js', () => ({
+  reconcileCostCeilingAdjustments: vi.fn(),
+}));
 
 import { getActiveSessions } from './db/sessions.js';
 import { ensureEgressNetwork } from './egress-lockdown.js';
 import { RECONCILE_CONCURRENCY, startHostSweep, stopHostSweep } from './host-sweep.js';
 import { sweepAwaitingReasonRejects } from './modules/approvals/index.js';
+import { reconcileCostCards } from './modules/cost-approval/index.js';
+import { reconcileCostCeilingAdjustments } from './modules/cost-ceiling-adjustment/index.js';
 import { reconcileSession } from './reconcile-session.js';
 
 const SWEEP_INTERVAL_MS = 60_000;
@@ -58,6 +70,16 @@ beforeEach(() => {
     .mockImplementation(async () => {
       order.push('approvals');
     });
+  vi.mocked(reconcileCostCards)
+    .mockReset()
+    .mockImplementation(async () => {
+      order.push('cost-cards');
+    });
+  vi.mocked(reconcileCostCeilingAdjustments)
+    .mockReset()
+    .mockImplementation(async () => {
+      order.push('cost-ceiling');
+    });
   vi.mocked(getActiveSessions)
     .mockReset()
     .mockResolvedValue([{ id: 's-1' }, { id: 's-2' }] as Awaited<ReturnType<typeof getActiveSessions>>);
@@ -82,7 +104,7 @@ describe('sweep over the workqueue', () => {
     await runSweepTick();
 
     expect(reconcileSession).toHaveBeenCalledTimes(2);
-    expect(order).toEqual(['egress', 'session:s-1', 'session:s-2', 'approvals']);
+    expect(order).toEqual(['egress', 'session:s-1', 'session:s-2', 'approvals', 'cost-cards', 'cost-ceiling']);
 
     await runSweepTick();
     expect(reconcileSession).toHaveBeenCalledTimes(4);
@@ -95,6 +117,9 @@ describe('sweep over the workqueue', () => {
     expect(reconcileSession).not.toHaveBeenCalled();
     expect(ensureEgressNetwork).toHaveBeenCalledTimes(1);
     expect(sweepAwaitingReasonRejects).toHaveBeenCalledTimes(1);
+    // A listing failure must not cost the fork's own central scans either.
+    expect(reconcileCostCards).toHaveBeenCalledTimes(1);
+    expect(reconcileCostCeilingAdjustments).toHaveBeenCalledTimes(1);
 
     // Next tick recovers.
     await runSweepTick();
@@ -132,7 +157,7 @@ describe('sweep over the workqueue', () => {
     });
 
     await runSweepTick();
-    // s-2 and the closing singleton still ran; the tick completed and re-armed.
-    expect(order).toEqual(['egress', 'session:s-2', 'approvals']);
+    // s-2 and the closing singletons still ran; the tick completed and re-armed.
+    expect(order).toEqual(['egress', 'session:s-2', 'approvals', 'cost-cards', 'cost-ceiling']);
   });
 });
