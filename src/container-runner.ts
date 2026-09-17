@@ -1704,76 +1704,99 @@ export async function recomposeAndUpdateHash(sessionId: string): Promise<Recompo
 }
 
 /**
+ * Is THIS session's running container on a stale CLAUDE.md? The per-session half
+ * of the old global scan, split out so the duty can run inside the session's own
+ * reconcile instead of a global pass.
+ *
+ * That split is what makes it safe under the reconcile queue: the recompose →
+ * kill → notify triple is not idempotent (the notify would deliver twice), and
+ * as a global singleton it could interleave with the same session's SLA check
+ * killing the same container. Sharing the session's queue key serializes the two
+ * by construction rather than relying on `killContainer` tolerating a double.
+ *
+ * Returns null when the session is not stale, unknown, or has no live container.
+ */
+export async function claudeMdStaleForSession(
+  sessionId: string,
+): Promise<{ sessionId: string; agentGroupId: string; folder: string } | null> {
+  if (!activeContainers.has(sessionId)) return null;
+  const session = await getSession(sessionId);
+  if (!session) return null;
+  const ag = await getAgentGroup(session.agent_group_id);
+  if (!ag) return null;
+
+  const coworkerType = ag.coworker_type || 'default';
+  // Compose the current document through the same seam spawn uses, and compare
+  // against the running container's baseline. Sharing the seam is what keeps the
+  // two digests comparable: they read `.instructions.md` through
+  // `readStandingInstructions`, because spawn migrates the legacy file to the
+  // canonical name and composes WITH the persona — a direct legacy read composed
+  // WITHOUT it, and the digests could never agree.
+  //
+  // This can THROW when a coworker type references a skill/workflow/overlay that
+  // isn't resolvable on disk (e.g. an external `skill-source` skill not yet
+  // fetched into container/skills/). Guard it per-session: a single broken type
+  // must not abort the whole stale scan.
+  //
+  // Before this guard, one unresolvable type (any live slang/slangpy container
+  // while its external skills were absent) threw here, propagated to the sweep's
+  // outer try/catch, and skipped the entire CLAUDE.md-stale respawn loop —
+  // silently disabling instruction hot-reload FLEET-WIDE for every healthy
+  // coworker. Mirror resolveTypeManifest's tolerance: log and skip just this
+  // session. Its stale-check resumes once the type resolves.
+  let currentHash: string;
+  try {
+    currentHash = (await renderComposedDocument(ag)).hash;
+  } catch (err) {
+    log.warn('Skipping stale-check — spine compose failed', { folder: ag.folder, coworkerType, err });
+    return null;
+  }
+
+  // Resolve the baseline hash for the running container. The in-memory map
+  // is populated when this host process spawned the container, but it
+  // empties on host restart — without a fallback, every container that
+  // outlived a host restart becomes permanently invisible to stale
+  // detection (the bug that left slang-triage running with a 3-day-old
+  // CLAUDE.md after multiple /update-nanoclaw-instance cycles).
+  //
+  // The on-disk CLAUDE.md is what the running container actually started
+  // with (the container reads it at spawn time). Hashing it gives a
+  // reliable baseline that survives host restarts. Seed the map so the
+  // next sweep tick skips the disk read.
+  let spawnHash = spawnedClaudeMdHash.get(sessionId);
+  if (!spawnHash) {
+    try {
+      // Read as Buffer (no encoding) to match the spawn site at line ~404
+      // exactly — eliminates any theoretical encoding-roundtrip drift.
+      const onDisk = fs.readFileSync(path.join(GROUPS_DIR, ag.folder, 'CLAUDE.md'));
+      spawnHash = crypto.createHash('sha256').update(onDisk).digest('hex');
+      spawnedClaudeMdHash.set(sessionId, spawnHash);
+    } catch {
+      // No CLAUDE.md on disk — group hasn't been spawned by anyone yet.
+      // Skip; the next real spawn will populate the map.
+      return null;
+    }
+  }
+
+  if (currentHash === spawnHash) return null;
+  return { sessionId, agentGroupId: ag.id, folder: ag.folder };
+}
+
+/**
  * Detect containers whose CLAUDE.md has become stale (skills/overlays/
  * .instructions.md changed since spawn). Returns session IDs that need a
  * fresh context. Does NOT kill or send messages — the caller decides.
+ *
+ * Retained as the global view over `claudeMdStaleForSession` for callers that
+ * want a fleet answer. The sweep no longer uses it: the duty runs per session.
  */
 export async function detectStaleContainers(): Promise<
   Array<{ sessionId: string; agentGroupId: string; folder: string }>
 > {
   const stale: Array<{ sessionId: string; agentGroupId: string; folder: string }> = [];
   for (const [sessionId] of activeContainers) {
-    const session = await getSession(sessionId);
-    if (!session) continue;
-    const ag = await getAgentGroup(session.agent_group_id);
-    if (!ag) continue;
-
-    const coworkerType = ag.coworker_type || 'default';
-    // Compose the current document through the same seam spawn uses, and compare
-    // against the running container's baseline. Sharing the seam is what keeps the
-    // two digests comparable: they read `.instructions.md` through
-    // `readStandingInstructions`, because spawn migrates the legacy file to the
-    // canonical name and composes WITH the persona — a direct legacy read composed
-    // WITHOUT it, and the digests could never agree.
-    //
-    // This can THROW when a coworker type references a skill/workflow/overlay that
-    // isn't resolvable on disk (e.g. an external `skill-source` skill not yet
-    // fetched into container/skills/). Guard it per-session: a single broken type
-    // must not abort the whole stale scan.
-    //
-    // Before this guard, one unresolvable type (any live slang/slangpy container
-    // while its external skills were absent) threw here, propagated to the sweep's
-    // outer try/catch, and skipped the entire CLAUDE.md-stale respawn loop —
-    // silently disabling instruction hot-reload FLEET-WIDE for every healthy
-    // coworker. Mirror resolveTypeManifest's tolerance: log and skip just this
-    // session. Its stale-check resumes once the type resolves.
-    let currentHash: string;
-    try {
-      currentHash = (await renderComposedDocument(ag)).hash;
-    } catch (err) {
-      log.warn('Skipping stale-check — spine compose failed', { folder: ag.folder, coworkerType, err });
-      continue;
-    }
-
-    // Resolve the baseline hash for the running container. The in-memory map
-    // is populated when this host process spawned the container, but it
-    // empties on host restart — without a fallback, every container that
-    // outlived a host restart becomes permanently invisible to stale
-    // detection (the bug that left slang-triage running with a 3-day-old
-    // CLAUDE.md after multiple /update-nanoclaw-instance cycles).
-    //
-    // The on-disk CLAUDE.md is what the running container actually started
-    // with (the container reads it at spawn time). Hashing it gives a
-    // reliable baseline that survives host restarts. Seed the map so the
-    // next sweep tick skips the disk read.
-    let spawnHash = spawnedClaudeMdHash.get(sessionId);
-    if (!spawnHash) {
-      try {
-        // Read as Buffer (no encoding) to match the spawn site at line ~404
-        // exactly — eliminates any theoretical encoding-roundtrip drift.
-        const onDisk = fs.readFileSync(path.join(GROUPS_DIR, ag.folder, 'CLAUDE.md'));
-        spawnHash = crypto.createHash('sha256').update(onDisk).digest('hex');
-        spawnedClaudeMdHash.set(sessionId, spawnHash);
-      } catch {
-        // No CLAUDE.md on disk — group hasn't been spawned by anyone yet.
-        // Skip; the next real spawn will populate the map.
-        continue;
-      }
-    }
-
-    if (currentHash !== spawnHash) {
-      stale.push({ sessionId, agentGroupId: ag.id, folder: ag.folder });
-    }
+    const hit = await claudeMdStaleForSession(sessionId);
+    if (hit) stale.push(hit);
   }
   return stale;
 }

@@ -13,9 +13,13 @@ function deferred(): { promise: Promise<void>; resolve: () => void; reject: (err
   return { promise, resolve, reject };
 }
 
+// Every registered SINGLETON_KEYS entry needs a handler — that exhaustiveness is
+// the point of the closed tuple, so this fixture grows when the registry does.
 const noopSingletons: Record<SingletonKey, () => Promise<void>> = {
   'singleton:egress-reheal': async () => {},
   'singleton:approvals-scan': async () => {},
+  'singleton:cost-cards': async () => {},
+  'singleton:cost-ceiling-adjustments': async () => {},
 };
 
 beforeEach(() => {
@@ -183,6 +187,12 @@ describe('reconcile queue', () => {
         },
         'singleton:approvals-scan': async () => {
           calls.push('approvals');
+        },
+        'singleton:cost-cards': async () => {
+          calls.push('cost-cards');
+        },
+        'singleton:cost-ceiling-adjustments': async () => {
+          calls.push('cost-ceiling');
         },
       },
     });
