@@ -58,6 +58,9 @@ Rules pinned by the tests (`test_hermes_queue.py`, `test_hermes_supervise.py`):
   nothing waits on batch 5); a BUILD row jumps the queue when no BUILD row is in flight; DEFER and
   MERGE-> rows never dispatch
 - never twice: a ledger row, a `dispatched_at` in the previous state, or `paused_rows` excludes a row
+- `idle-capacity` (the 2026-09-17 seven-tick "nothing to do"): free WIP slots ≥ 2, nothing eligible, and `paused_rows`
+  holding rows whose gates are all met → one alert naming them (`row` null, so it is keyed `(plan, idle-capacity)`,
+  one line per 24 h); rows behind an unmet gate, `config.paused` or fewer than 2 free slots never raise it
 - nudge at most once per row per 6 h across states; escalation needs a nudge in the current
   state first (`blocked`, cost cards and environmental `ESCALATE` reports escalate at once)
 - `FAIL ×2` is the cap (two counted FAILs); a plain `ESCALATE` report is environmental and
