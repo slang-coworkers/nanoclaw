@@ -33,6 +33,12 @@ import { describe, expect, it } from 'vitest';
 
 const RUNNER = fs.readFileSync(new URL('./container-runner.ts', import.meta.url), 'utf-8');
 const SWEEP = fs.readFileSync(new URL('./host-sweep.ts', import.meta.url), 'utf-8');
+// The CLAUDE.md-stale duty moved out of the sweep tick and into the per-session
+// reconcile with the workqueue port, so the guards below read it there. It is
+// deliberately per-session: the recompose -> kill -> notify triple is not
+// idempotent, and as a global singleton it could interleave with the same
+// session's SLA check killing the same container and notifying twice.
+const RECONCILE_SESSION = fs.readFileSync(new URL('./reconcile-session.ts', import.meta.url), 'utf-8');
 
 function fnBody(source: string, decl: string): string {
   const start = source.indexOf(decl);
@@ -154,21 +160,30 @@ describe('spawn refuses to start on stale markers', () => {
   });
 });
 
-describe('the sweep gates its restart on the outcome', () => {
+describe('the per-session reconcile gates its restart on the outcome', () => {
+  // The duty must not drift back into the sweep tick: there it would be a global
+  // singleton again, able to run while the same session's own reconcile kills the
+  // same container, delivering the refresh notice twice.
+  it('lives in the per-session reconcile, not the sweep tick', () => {
+    expect(RECONCILE_SESSION).toContain("killContainer(session.id, 'claude-md-stale')");
+    expect(SWEEP).not.toMatch(/claude-md-stale/);
+    expect(SWEEP).not.toMatch(/claudemd-refresh-/);
+  });
+
   it('kills and notifies only when the recompose is restart-ready', () => {
-    const kill = SWEEP.indexOf("killContainer(sessionId, 'claude-md-stale')");
-    const gate = SWEEP.indexOf("outcome.kind !== 'restart-ready'");
+    const kill = RECONCILE_SESSION.indexOf("killContainer(session.id, 'claude-md-stale')");
+    const gate = RECONCILE_SESSION.indexOf("outcome.kind !== 'restart-ready'");
 
     expect(gate).toBeGreaterThan(-1);
     expect(kill).toBeGreaterThan(-1);
     expect(gate).toBeLessThan(kill);
     // The refresh message must be gated too: announcing "your instructions were
     // updated" for an update that did not happen is its own defect.
-    expect(gate).toBeLessThan(SWEEP.indexOf('claudemd-refresh-'));
+    expect(gate).toBeLessThan(RECONCILE_SESSION.indexOf('claudemd-refresh-'));
   });
 
   // Every non-ready outcome, not just the one that motivated the gate. A guard
-  // written as `if (outcome.kind === 'render-failed') continue` would pass the
+  // written as `if (outcome.kind === 'render-failed') return` would pass the
   // restart-ready test above while still killing on a vanished session.
   it.each(['render-failed', 'session-gone', 'group-gone'])(
     'treats %s as non-restartable via the single negated check',
@@ -178,8 +193,8 @@ describe('the sweep gates its restart on the outcome', () => {
       expect(outcomes).toContain(kind);
       // One negated comparison covers all of them by construction. Enumerating the
       // failure kinds instead would silently miss any kind added later.
-      expect(SWEEP.match(/outcome\.kind !== 'restart-ready'/g) ?? []).toHaveLength(1);
-      expect(SWEEP).not.toMatch(/outcome\.kind === '(render-failed|skipped)'/);
+      expect(RECONCILE_SESSION.match(/outcome\.kind !== 'restart-ready'/g) ?? []).toHaveLength(1);
+      expect(RECONCILE_SESSION).not.toMatch(/outcome\.kind === '(render-failed|skipped)'/);
     },
   );
 
@@ -187,20 +202,21 @@ describe('the sweep gates its restart on the outcome', () => {
   // unconditional body had: it killed the container and announced an update on
   // every tick, forever, for a recompose that never succeeded.
   it('does not kill on a repeated non-ready outcome', () => {
-    const loop = SWEEP.slice(SWEEP.indexOf('for (const { sessionId, agentGroupId, folder } of stale)'));
-    const beforeKill = loop.slice(0, loop.indexOf("killContainer(sessionId, 'claude-md-stale')"));
+    const fn = RECONCILE_SESSION.slice(RECONCILE_SESSION.indexOf('async function refreshStaleClaudeMd'));
+    const beforeKill = fn.slice(0, fn.indexOf("killContainer(session.id, 'claude-md-stale')"));
 
-    // `continue`, not a logged warning that falls through: the kill has to be
-    // unreachable for a non-ready outcome, on this tick and every later one.
-    expect(beforeKill).toMatch(/if \(outcome\.kind !== 'restart-ready'\) continue;/);
+    // An early `return`, not a logged warning that falls through: the kill has to
+    // be unreachable for a non-ready outcome, on this pass and every later one.
+    // `return` where the loop used to `continue` — same reachability, one session.
+    expect(beforeKill).toMatch(/if \(outcome\.kind !== 'restart-ready'\) return;/);
   });
 
-  it('wraps each stale session in its own try', () => {
-    // The outer try wraps the whole tick, so a throw on one session used to skip
-    // every remaining one — a single broken group silently disabling instruction
-    // refresh fleet-wide.
-    const loop = SWEEP.slice(SWEEP.indexOf('for (const { sessionId, agentGroupId, folder } of stale)'));
-    const body = loop.slice(0, loop.indexOf('\n    }\n'));
+  it('wraps the refresh in its own try so one broken group cannot spread', () => {
+    // The caller's try wraps the whole reconcile, so a throw here would skip the
+    // rest of it. As a global loop the same throw skipped every remaining session —
+    // a single broken group silently disabling instruction refresh fleet-wide.
+    const fn = RECONCILE_SESSION.slice(RECONCILE_SESSION.indexOf('async function refreshStaleClaudeMd'));
+    const body = fn.slice(0, fn.indexOf('\n}\n'));
 
     expect(body).toMatch(/try \{/);
     expect(body).toMatch(/CLAUDE\.md refresh failed for session/);
