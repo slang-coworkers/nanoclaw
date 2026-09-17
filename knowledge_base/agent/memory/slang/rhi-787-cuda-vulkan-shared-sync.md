@@ -1,16 +1,19 @@
 ---
 type: project
 title: slang-rhi#787 CUDA↔Vulkan shared-texture missing sync
-description: real missing cross-API ownership-release bug (not tolerance); draft PR #812 GPU-CI verified, APPROVE_WITH_NITS, awaiting human draft→ready + maintainer point-3 confirm
-tags: [slang-rhi, synchronization, cuda, vulkan, interop, draft-held]
+description: real missing cross-API ownership bug (not tolerance); maintainer REJECTED #812's create-time approach + gave a submit-path release/acquire + ping-pong policy; re-implementation dispatched
+tags: [slang-rhi, synchronization, cuda, vulkan, interop, reimplementing]
 resource: https://github.com/shader-slang/slang-rhi/issues/787
 ---
 
 # slang-rhi#787 — CUDA↔Vulkan shared-texture missing synchronization
 
-**State (2026-08-05): draft PR #812 open + held, GPU-CI runtime-verified,
-APPROVE_WITH_NITS, awaiting a human on draft→ready.** Bot will not flip and will
-not re-draft if someone else does. Canonical thread `gh-issue-shader-slang/slang-rhi-787`.
+**State (2026-08-05): PIVOT. Maintainer jhelferty-nv CONFIRMED the diagnosis but
+REJECTED #812's create-time approach (comment 5704482839) and gave a precise revised
+policy + an explicit request to open a PR implementing it. Re-implementation dispatched
+to slang-fixer.** The explicit maintainer PR request is the documented drafts-only lift
+condition (jkwak/slangpy#1083). Canonical thread `gh-issue-shader-slang/slang-rhi-787`.
+See "REVISED POLICY" below — it supersedes the earlier scope decision and #812's approach.
 
 ## The bug (triager verdict, GitHub comment 5049387926)
 
@@ -35,7 +38,86 @@ a shared helper; CUDA shared-fence import (a host-value stub today —
 The **triager's own earlier draft #791** (which widened tolerance) MASKS the bug ⇒
 CLOSED (comment 5051399073), triager stood down.
 
-## Fix in draft PR #812 (head `79453f8`, +116/−6, 7 files, Fixes #787)
+## ⭐ REVISED POLICY (comment 5704482839) — SUPERSEDES the scope decision above and #812's approach
+
+jhelferty-nv **confirmed** the diagnosis (shared images stay `VK_SHARING_MODE_EXCLUSIVE` on the graphics
+queue; `waitOnHost()` is only `vkQueueWaitIdle`; CUDA reads an image Vulkan still owns; **D3D12 already
+works** — no exclusive-family transfer) and **rejected #812**: create-time release gated on `Shared`+`initData`
+"makes Vulkan and D3D12 mean different things and only covers a one-shot initialized create." He asked
+@nv-slang-bot to open a PR implementing this policy (existing API only, NO new entry points):
+
+**Same contract on VK + D3D12:** one allocation, producer keeps it after `create*`; another API accesses only
+after the producer's `waitOnHost()` OR after waiting on a shared `IFence` the producer signaled; producer may
+reuse after the matching wait — **ping-pong REQUIRED.**
+- **Vulkan:** release to `VK_QUEUE_FAMILY_EXTERNAL` and **acquire back INSIDE submit / `waitOnHost` / fence
+  signal — NOT at create time.** Reuse the per-frame pattern in `src/cuda/cuda-surface.cpp`.
+- **D3D12:** NO behavior change ⇒ **REVERT #812's create-time COMMON transition.** Today's `Shared` +
+  `getSharedHandle` + CUDA import + continued producer use must keep working.
+- **Document** next to the `Shared` flags and `FenceDesc::isShared` in `include/slang-rhi.h`.
+- **Tests:** `texture-shared-cuda` — fix the impl, **DO NOT change the test** (revert #812's comment edit).
+  `buffer-shared-cuda` — **EXTEND to ping-pong**: after CUDA writes `{1,2,3,4}` and waits, read those values
+  back on the producer (host waits on both queues suffice); drop the producer-readback hack.
+- **OUT OF SCOPE:** `createFenceFromSharedHandle` for CUDA — CUDA `IFence` is a host counter; GPU-side CUDA
+  waits stay on the CUDA driver, as SlangPy does.
+
+**Fixer plan (2026-09-16, `/workspace/agent/reports/rhi-787-pingpong-plan.md`):** load-bearing design =
+**internal shared-resource registry on `DeviceImpl`** (private list of live shared Buffer/TextureImpl +
+`{OwnedByProducer, ReleasedToExternal}`, populated at create-time `Shared` checks) — this is what satisfies
+"no new entry points": release/acquire ride the app's existing `submit`/`waitOnHost`/shared-fence calls.
+Release producer→EXTERNAL before `vkQueueWaitIdle` in `waitOnHost` and before the shared-fence-signal submit;
+acquire-back EXTERNAL→producer prepended to the producer's next submit (mirrors `cuda-surface.cpp:1047-1069`).
+Coarse granularity accepted (touches ALL registered shared resources per wait — CBs don't expose which they
+touch; per-CB precision is a later optimization). Sequence: reverts → VK registry+release/acquire → buffer
+ping-pong + header docs → Linux build → push DRAFT → GPU-CI verify → flip on per-test PASSED.
+⭐**If the ping-pong readback fails on GPU CI, the fix is the MEMORY DEPENDENCY in the acquire barrier — NOT
+a semaphore.** The maintainer explicitly said "host waits on both queues are enough" (asserting the ordering
+model is sufficient) AND a CUDA shared semaphore is explicitly out of scope. So a failure = availability/
+visibility masks on the acquire QFOT, not missing sync. (Steered the fixer off the semaphore path pre-emptively.)
+
+### ✅ REWORK VERIFIED GREEN (2026-09-16) — head `6e040d1`, draft, held for jhelferty
+**All re-derived by me at source, not relayed:** #812 head **`6e040d1`**, draft, **24/24 check-runs +
+combined status success**. Title "Fix #787: ping-pong queue-family ownership for shared resources".
+Per-test (NOT tally): all four interop cases `PASSED` in **msvc Release** (job 104995889524) and **clang
+Debug** (104995889626). **Negative control holds:** `msvc Debug` (104995889491) shows the same four
+`SKIPPED (CUDA not available)` while tallying `1329 passed | 0 skipped`.
+⭐**The round-trip #812 declared UNSUPPORTED now works and is pinned:** `test-buffer-shared.cpp:75` =
+`compareComputeResult(srcDevice, srcBuffer, {1,2,3,4})` — producer reads back CUDA's writes after the
+ping-pong — and it PASSED on GPU. **Risk #1 did NOT materialize:** host-wait ordering + the acquire
+barrier's visibility masks suffice, no semaphore — exactly as jhelferty said "host waits on both queues
+are enough." 5-bullet on issue (issuecomment-5705380563); open-question also on the PR body + @jhelferty-nv.
+⚠️**Fresh false-zero trap, caught:** `gh api .../logs` returns **0 bytes** without `--allow-escape-sequences`
+(GH refuses terminal escapes) — an empty file greps as "tests absent." Same defect class as the doctest
+tally and `head -N`. Re-fetch with the flag + strip `\x1b[...m`.
+
+**FLIP AUTHORIZATION (pre-loaded for when jhelferty answers):** the drafts-only gate IS lifted here — his
+explicit "open a PR" request is the documented exception (jkwak/slangpy#1083). So once he answers the
+fence-hook fork with "land now," flipping to ready is authorized (unlike my earlier over-reach, a maintainer
+actually asked). `gh pr ready` is operator-gated so the fixer brings the flip to me; I confirm on his answer.
+If he wants the fence trigger first → fixer implements the fold-into-signal version (flagged unvalidated), then flip.
+
+### 🔴 OPEN — fence-signal release trigger DEFERRED, escalated to jhelferty with the PR (2026-09-16)
+Maintainer's policy listed 3 release triggers: "inside submit / waitOnHost / fence signal." Fixer implemented
+**waitOnHost (release) + submit (acquire-back)** — both tested paths — and **removed the fence-signal trigger**:
+as first written it ran the release as a SEPARATE submission AFTER the user submit that signals the shared
+fence, so on the same queue (FIFO) the fence signals before the release barrier executes ⇒ an external waiter
+ordering on the fence could see a still-Vulkan-owned resource (codex-confirmed ordering bug). Doing it
+correctly = fold the release barrier into the SAME `vkQueueSubmit` that signals the fence (signal orders after
+it) — feasible but risky (mixes an `m_deviceQueue` CB into the user submit lifecycle) and **NOT exercised by
+any current test** (both tests hand off via waitOnHost), so unvalidatable even in GPU CI.
+**Fixer recommends + I ENDORSE: land waitOnHost-only now; fence-signal trigger as a tested follow-up.**
+Do NOT ship the risky fold-into-signal version speculatively. Carried up to jhelferty IN the PR (explicit
+"deviation from your 3-trigger policy" open question + @mention, since he requested the PR). **Flip-to-ready
+gated on his answer.** codex CODE_REVIEW on the model caught 3 real issues (all fixed): readBuffer bypassed
+submit/reacquire; acquire `srcAccessMask` should be 0; and it cleared a false deadlock worry + blocked a
+use-after-free the fixer's own proposed lock fix would have introduced. Reverted #812 to clean baseline `d4d53a7`.
+
+**Delta vs #812:** #812 released at create time, one-shot, never acquired back, VK/D3D12 asymmetric. NEW =
+release+acquire in the submit/waitOnHost/fence path (per-frame, ping-pong, symmetric), modeled on
+cuda-surface.cpp; D3D12 reverted to no-change. **This resolves both my carried items:** the point-3 question
+(maintainer wants a REAL ping-pong readback ADDED, not just the hack removed) and #812's "creation-time only"
+limitation (the general case the ping-pong covers). Re-review required after the new PR (approach changed).
+
+## (SUPERSEDED) Fix in draft PR #812 (head `79453f8`, +116/−6, 7 files, Fixes #787)
 
 - **VK:** two `DeviceImpl` helpers release image/buffer `graphics →
   VK_QUEUE_FAMILY_EXTERNAL`, submit+wait; called from `createTexture`/`createBuffer`

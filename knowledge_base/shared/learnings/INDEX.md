@@ -4103,6 +4103,14 @@
 - [supervisor scan py four false positive classes inf](ag-1776713211742-1w6l4e/1789477984124-supervisor-scan-py-four-false-positive-classes-inf.md) — _ag-1776713211742-1w6l4e_
 - [a green lit fix to a scheduled task can be inert v](ag-1776713211742-1w6l4e/1789533346751-a-green-lit-fix-to-a-scheduled-task-can-be-inert-v.md) — _ag-1776713211742-1w6l4e_
 - [slang mcp discord read messages fails unsupported ](ag-1776713211742-1w6l4e/1789537044392-slang-mcp-discord-read-messages-fails-unsupported-.md) — _ag-1776713211742-1w6l4e_
+- [scope defer line a flagged correctness gap in the ](ag-1776713211742-1w6l4e/1789550935195-scope-defer-line-a-flagged-correctness-gap-in-the-.md) — _ag-1776713211742-1w6l4e_
+- [diff for substance before re routing the nth synch](ag-1776713211742-1w6l4e/1789554413155-diff-for-substance-before-re-routing-the-nth-synch.md) — _ag-1776713211742-1w6l4e_
+- [supervise issues persist no go deferred held dispo](ag-1776713211742-1w6l4e/1789565098418-supervise-issues-persist-no-go-deferred-held-dispo.md) — _ag-1776713211742-1w6l4e_
+- [before treating our pr as superseded verify the cl](ag-1776713211742-1w6l4e/1789565107884-before-treating-our-pr-as-superseded-verify-the-cl.md) — _ag-1776713211742-1w6l4e_
+- [front load the durable artifact open the draft pr ](ag-1776713211742-1w6l4e/1789568590855-front-load-the-durable-artifact-open-the-draft-pr-.md) — _ag-1776713211742-1w6l4e_
+- [verify live github state yourself before relaying ](ag-1776713211742-1w6l4e/1789578318189-verify-live-github-state-yourself-before-relaying-.md) — _ag-1776713211742-1w6l4e_
+- [post restart survivability only the durable store ](ag-1776713211742-1w6l4e/1789590881410-post-restart-survivability-only-the-durable-store-.md) — _ag-1776713211742-1w6l4e_
+- [codex critique gate is human reserved agents even ](ag-1776713211742-1w6l4e/1789598780832-codex-critique-gate-is-human-reserved-agents-even-.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4121,6 +4129,7 @@
 - [github actions api event schedule returns stale pa](ag-1776713258088-r8pp2t/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md) — _ag-1776713258088-r8pp2t_
 - [unauthenticated gh actions runs status failure can](ag-1776713258088-r8pp2t/1789373900583-unauthenticated-gh-actions-runs-status-failure-can.md) — _ag-1776713258088-r8pp2t_
 - [slang ci health data webfetch truncates the big js](ag-1776713258088-r8pp2t/1789460382516-slang-ci-health-data-webfetch-truncates-the-big-js.md) — _ag-1776713258088-r8pp2t_
+- [ci health snapshot use curl tail not webfetch on h](ag-1776713258088-r8pp2t/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4571,6 +4580,9 @@
 - [slang maintainer policy no compiler side workaroun](ag-1780667166418-apezq5/1789500967936-slang-maintainer-policy-no-compiler-side-workaroun.md) — _ag-1780667166418-apezq5_
 - [cuda static const struct arrays localize via issim](ag-1780667166418-apezq5/1789513281020-cuda-static-const-struct-arrays-localize-via-issim.md) — _ag-1780667166418-apezq5_
 - [verify ancestor before trusting a keep ours submod](ag-1780667166418-apezq5/1789529223205-verify-ancestor-before-trusting-a-keep-ours-submod.md) — _ag-1780667166418-apezq5_
+- [byteaddressbuffer load lt t gt method call arg cra](ag-1780667166418-apezq5/1789577999587-byteaddressbuffer-load-lt-t-gt-method-call-arg-cra.md) — _ag-1780667166418-apezq5_
+- [step 9 triage comment vs go no go the decision gat](ag-1780667166418-apezq5/1789599918617-step-9-triage-comment-vs-go-no-go-the-decision-gat.md) — _ag-1780667166418-apezq5_
+- [metal mul m v v m is by design and identical to sp](ag-1780667166418-apezq5/1789601090289-metal-mul-m-v-v-m-is-by-design-and-identical-to-sp.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5049,6 +5061,26 @@
 - [stall detector misreads coderabbit bot comment as ](ag-1780667166439-vmjrwe/1789521699352-stall-detector-misreads-coderabbit-bot-comment-as-.md) — _ag-1780667166439-vmjrwe_
 - [slang synthesized member wise ctor calls are not s](ag-1780667166439-vmjrwe/1789527902521-slang-synthesized-member-wise-ctor-calls-are-not-s.md) — _ag-1780667166439-vmjrwe_
 - [clearing mergestatestatus behind on an approved pr](ag-1780667166439-vmjrwe/1789535383508-clearing-mergestatestatus-behind-on-an-approved-pr.md) — _ag-1780667166439-vmjrwe_
+- [memory qualifier drop diagnostic destination type ](ag-1780667166439-vmjrwe/1789543242916-memory-qualifier-drop-diagnostic-destination-type-.md) — _ag-1780667166439-vmjrwe_
+- [gcc tsan builds cannot run in the coworker contain](ag-1780667166439-vmjrwe/1789544786329-gcc-tsan-builds-cannot-run-in-the-coworker-contain.md) — _ag-1780667166439-vmjrwe_
+- [verifying a skip sanitizers boundary tsan false po](ag-1780667166439-vmjrwe/1789546126437-verifying-a-skip-sanitizers-boundary-tsan-false-po.md) — _ag-1780667166439-vmjrwe_
+- [pointer address space is type level on metal wgsl ](ag-1780667166439-vmjrwe/1789546490977-pointer-address-space-is-type-level-on-metal-wgsl-.md) — _ag-1780667166439-vmjrwe_
+- [target scoped compile time rejection via static as](ag-1780667166439-vmjrwe/1789548428451-target-scoped-compile-time-rejection-via-static-as.md) — _ag-1780667166439-vmjrwe_
+- [delivery gate counts any file edit update memory n](ag-1780667166439-vmjrwe/1789554373150-delivery-gate-counts-any-file-edit-update-memory-n.md) — _ag-1780667166439-vmjrwe_
+- [descriptorkind is a coarse proxy for nv bindless u](ag-1780667166439-vmjrwe/1789559398644-descriptorkind-is-a-coarse-proxy-for-nv-bindless-u.md) — _ag-1780667166439-vmjrwe_
+- [codex critique attestation cascade batch source ed](ag-1780667166439-vmjrwe/1789563826008-codex-critique-attestation-cascade-batch-source-ed.md) — _ag-1780667166439-vmjrwe_
+- [slang diagnostic test non exhaustive for capabilit](ag-1780667166439-vmjrwe/1789572326133-slang-diagnostic-test-non-exhaustive-for-capabilit.md) — _ag-1780667166439-vmjrwe_
+- [a family specific capability case in target switch](ag-1780667166439-vmjrwe/1789575168359-a-family-specific-capability-case-in-target-switch.md) — _ag-1780667166439-vmjrwe_
+- [shallow clone git log s gives false regression att](ag-1780667166439-vmjrwe/1789577475326-shallow-clone-git-log-s-gives-false-regression-att.md) — _ag-1780667166439-vmjrwe_
+- [spirv opt won t cse opgroupnonuniform they re non ](ag-1780667166439-vmjrwe/1789578103315-spirv-opt-won-t-cse-opgroupnonuniform-they-re-non-.md) — _ag-1780667166439-vmjrwe_
+- [msvc wx rejects c4458 local hides class member tha](ag-1780667166439-vmjrwe/1789579281328-msvc-wx-rejects-c4458-local-hides-class-member-tha.md) — _ag-1780667166439-vmjrwe_
+- [natural alignment loadaligned s alignment is folde](ag-1780667166439-vmjrwe/1789580976960-natural-alignment-loadaligned-s-alignment-is-folde.md) — _ag-1780667166439-vmjrwe_
+- [spirv tools vulkansdk sep2026 bump breaks debug pr](ag-1780667166439-vmjrwe/1789590067913-spirv-tools-vulkansdk-sep2026-bump-breaks-debug-pr.md) — _ag-1780667166439-vmjrwe_
+- [correction debug printf slang failure was stale su](ag-1780667166439-vmjrwe/1789592891886-correction-debug-printf-slang-failure-was-stale-su.md) — _ag-1780667166439-vmjrwe_
+- [gh api actions jobs id logs returns rc 1 and 0 byt](ag-1780667166439-vmjrwe/1789597409221-gh-api-actions-jobs-id-logs-returns-rc-1-and-0-byt.md) — _ag-1780667166439-vmjrwe_
+- [slang rhi omm vuid 10904 ci red is likely a vvl 1 ](ag-1780667166439-vmjrwe/1789600998422-slang-rhi-omm-vuid-10904-ci-red-is-likely-a-vvl-1-.md) — _ag-1780667166439-vmjrwe_
+- [ir operand shape migration is byte stable stable n](ag-1780667166439-vmjrwe/1789601900070-ir-operand-shape-migration-is-byte-stable-stable-n.md) — _ag-1780667166439-vmjrwe_
+- [verify isdraft live before reporting draft needs r](ag-1780667166439-vmjrwe/1789610735922-verify-isdraft-live-before-reporting-draft-needs-r.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5238,6 +5270,12 @@
 - [concurrent slang pr review runner sessions collide](ag-1780667168475-a9tac8/1789518412257-concurrent-slang-pr-review-runner-sessions-collide.md) — _ag-1780667168475-a9tac8_
 - [claassistant is typed user not bot it trips superv](ag-1780667168475-a9tac8/1789521176741-claassistant-is-typed-user-not-bot-it-trips-superv.md) — _ag-1780667168475-a9tac8_
 - [slang 13107 13115 static const pod struct array gl](ag-1780667168475-a9tac8/1789525381949-slang-13107-13115-static-const-pod-struct-array-gl.md) — _ag-1780667168475-a9tac8_
+- [devin can false positive on error count gated diag](ag-1780667168475-a9tac8/1789545159389-devin-can-false-positive-on-error-count-gated-diag.md) — _ag-1780667168475-a9tac8_
+- [reviewing a new interface requirement with no defa](ag-1780667168475-a9tac8/1789560871840-reviewing-a-new-interface-requirement-with-no-defa.md) — _ag-1780667168475-a9tac8_
+- [vulkan vuid in slang examples left to ci is not a ](ag-1780667168475-a9tac8/1789564810840-vulkan-vuid-in-slang-examples-left-to-ci-is-not-a-.md) — _ag-1780667168475-a9tac8_
+- [clarity runner reviewer c can lose its output to a](ag-1780667168475-a9tac8/1789573892015-clarity-runner-reviewer-c-can-lose-its-output-to-a.md) — _ag-1780667168475-a9tac8_
+- [byteaddressbufferload alignment operand natural al](ag-1780667168475-a9tac8/1789579501578-byteaddressbufferload-alignment-operand-natural-al.md) — _ag-1780667168475-a9tac8_
+- [slang bindless heap binding indices are preset fix](ag-1780667168475-a9tac8/1789582349574-slang-bindless-heap-binding-indices-are-preset-fix.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -5272,6 +5310,7 @@
 - [sgl adding a device callbacklist requires clearing](ag-1780667169498-sqxdef/1789375354695-sgl-adding-a-device-callbacklist-requires-clearing.md) — _ag-1780667169498-sqxdef_
 - [test assertions outrank prose docs for format clai](ag-1780667169498-sqxdef/1789423699535-test-assertions-outrank-prose-docs-for-format-clai.md) — _ag-1780667169498-sqxdef_
 - [verify a squash merge landed on main via the merge](ag-1780667169498-sqxdef/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md) — _ag-1780667169498-sqxdef_
+- [slangpy single scalar uniform vulkan device loss o](ag-1780667169498-sqxdef/1789585750710-slangpy-single-scalar-uniform-vulkan-device-loss-o.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_
@@ -5301,6 +5340,7 @@
 - [when a reviewer disputes your claim with a runnabl](ag-1780667172530-ht5rv2/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md) — _ag-1780667172530-ht5rv2_
 - [slangpy appwindow iconify present suppression busy](ag-1780667172530-ht5rv2/1789447175147-slangpy-appwindow-iconify-present-suppression-busy.md) — _ag-1780667172530-ht5rv2_
 - [issue supervisor nudges completed bot work because](ag-1780667172530-ht5rv2/1789521755042-issue-supervisor-nudges-completed-bot-work-because.md) — _ag-1780667172530-ht5rv2_
+- [slangpy 1165 diagnosing vulkan push constant devic](ag-1780667172530-ht5rv2/1789585644506-slangpy-1165-diagnosing-vulkan-push-constant-devic.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
 - [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [reviewing slangpy slang downstream retypes for a b](ag-1780667174559-cemrtg/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — _ag-1780667174559-cemrtg_

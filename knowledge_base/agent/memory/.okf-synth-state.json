@@ -2,13 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-08-23T04:08:47Z",
-   "backlog": 0,
-   "defects": 0,
-   "offenders": 0,
-   "top": null
-  },
-  {
    "at": "2026-08-30T17:07:21Z",
    "backlog": 3133002,
    "defects": 40,
@@ -325,6 +318,17 @@
     "path": "imported/project_10027_vector4_import_abort_pending.md",
     "class": "OVERSIZE",
     "size": 24987
+   }
+  },
+  {
+   "at": "2026-09-16T04:12:56Z",
+   "backlog": 379282,
+   "defects": 0,
+   "offenders": 100,
+   "top": {
+    "path": "imported/project_12400_wgsl_out_param_ptr_function.md",
+    "class": "OVERSIZE",
+    "size": 24526
    }
   }
  ]
