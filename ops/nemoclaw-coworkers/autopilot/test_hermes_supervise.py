@@ -112,9 +112,11 @@ HEAD_A = "a1b2c3d4e5f60718293a4b5c6d7e8f9012345678"
 HEAD_B = "b2c3d4e5f60718293a4b5c6d7e8f9012345678a1"
 
 
-def run(st: dict, threads: dict, prs: list | None = None, nudges: dict | None = None, sessions: dict | None = None, config: dict | None = None, acks: dict | None = None) -> dict:
+def run(st: dict, threads: dict, prs: list | None = None, nudges: dict | None = None, sessions: dict | None = None, config: dict | None = None, acks: dict | None = None,
+        operator_threads=None) -> dict:
     # These threads predate hermes-task-card (no "card · " captions); the card_missing check is exercised in test_card_missing.py.
-    return hs.supervise(st, threads, prs or [], nudges or {}, NOW, sessions=sessions, config={"card_check": False, **(config or {})}, acks=acks)
+    return hs.supervise(st, threads, prs or [], nudges or {}, NOW, sessions=sessions, config={"card_check": False, **(config or {})}, acks=acks,
+                        operator_threads=operator_threads)
 
 
 class FreshAndStale(unittest.TestCase):
@@ -1847,3 +1849,461 @@ class CollectAcksScript(unittest.TestCase):
             self.assertEqual(p.returncode, 2, p.stdout + p.stderr)
             self.assertIn("no session source", p.stdout)
             self.assertFalse(out.exists())
+
+
+# The three real messages of the 2026-09-16/17 incident (11-14 h unanswered while the summary read "hold 0, infra_hold 0").
+ASK_A = (
+    "**ISO-F14 — render COMPLETE & verified; sandbox tier blocked on 2 new items. Your call again.** The render is done and "
+    "verified; the two new items are sandbox-tier only. I'm asking them deploy-now vs defer-carry. Hold — report up when the "
+    "sandbox tier runs (or the operator rules defer-carry)."
+)
+ASK_B = (
+    "Cap is reached (2nd counted FAIL); I cannot dispatch another counted round without operator authorization. The bar "
+    "question stays open too; then I escalate the cap-authorization + bar decision to the operator."
+)
+ASK_B_BUILDER = "HOLDING for the operator's go (no push). The fix is staged locally on plugin/a2a-f21, head 9f1e2d3."
+ASK_C = "One ruling: the nightly regression compares against the pinned tag, never main — please use this exact framing in the report."
+DM = "sess-1789461233002-7tpn00"
+TASK_THREAD = "system:tasks:hermes-nightly-regressio-8ee3"
+AP_TASK_THREAD = "system:tasks:hermes-ap-supervise-1a2b"  # the supervise tick's own task series: its run output QUOTES the asks
+# Chain traffic that says "your call" to a ROLE, never to the operator (the false positives of the first cut).
+S2_BUILDER = "Orchestrator — your call: push the fix now or wait for the tester's re-run?"
+S3_ORCH = "hermes-architect: your call on the seam — pick A or B and proceed, no need to report up."
+# A status recount of an escalation that was already answered: not an ask.
+S4_RECOUNT = ("Status 09:00Z — ISO-F14: escalated the deploy-now question to the operator at 19:15Z, answered defer-carry 20:02Z, "
+              "architect re-armed. CRED-F28: building.")
+
+
+def tick_report(hhmm: str, *decision_lines: str) -> str:
+    """The supervise tick's run output (supervise-tick.md STEP 2) as it lands on `system:tasks:hermes-ap-supervise-*`: the
+    brief's header (a new stamp every tick), the DECISION NEEDED lines it quotes, the a|b|t|r rows, the footer, the
+    accounting line."""
+    lines = [f"Hermes autopilot · 09-10 {hhmm}Z · in flight 3/3 · merged 2 · blocked 0 · queued 40 · alerts 6h 1 · cards 24h 3"]
+    lines += list(decision_lines)
+    lines += ["ISO-F14 | ✓ 09:57Z | ▶ 9.0h | · | ·", "A2A-F21 | ✓ 08:00Z | ✗ FAIL r2 | ⏸ | ·", "full table: /status/autopilot.md",
+              "supervise tick: 0 nudged, 1 alerted, 0 gates run, 0 holds noted (rows in flight 3)"]
+    return "\n".join(lines)
+
+
+def orch(hours: float, text: str, direction: str = "out") -> dict:
+    return msg(hours, text, direction, sender="orchestrator", role="orchestrator")
+
+
+def op_thread(thread_id: str, messages: list[dict], session_id: str = "s-orch-x") -> dict:
+    return {"session_id": session_id, "thread_id": thread_id, "role": "orchestrator", "messages": messages}
+
+
+def operator_in(hours: float, text: str, sender: str | None = "dashboard:operator") -> dict:
+    """An INBOUND line the operator posted (the dashboard's sender, or none at all — pull-state.sh never stamps an inbound
+    line with the Orchestrator's identity, so a sender-less reply is the operator's too)."""
+    return msg(hours, text, "in", **({"sender": sender} if sender else {}))
+
+
+class OperatorAsk(unittest.TestCase):
+    """§2.5 operator_ask: an outbound line that addresses the operator and nothing answered — on the row thread or on
+    the Orchestrator's operator threads — is the `operator-ruling` alert `DECISION NEEDED (<age>h): <row> — <head>`,
+    keyed by the ask's text, 24 h bound, never a nudge or a re-arm. Fixtures: the three real messages."""
+
+    def test_every_phrase_of_the_incident_is_an_ask_and_the_relays_are_not(self):
+        # EXPLICIT: the operator named, or one of the two fixed forms — an ask wherever it is written
+        for text in (
+            ASK_A, ASK_B, ASK_B_BUILDER, ASK_C,
+            "operator decision needed on the bar", "Operator authorization is pending", "operator ruling required",
+            "escalating the seam question to the operator", "awaiting the operator", "deploy-now vs defer-carry?",
+            "status: parked, awaiting an operator ruling on the mount set — nothing else moves",
+            "still waiting on the operator's ruling for ISO-F14", "the seam needs the operator's call before I dispatch",
+            "Orchestrator — I'm HOLDING for the operator's go: push the fix now or wait?",              # S2 with the operator named
+            "hermes-architect: the seam needs the operator's call — pick A or B once the operator rules.",  # S3 with the operator named
+            "the extension you granted is spent — your call, operator",                                  # implicit + the word
+        ):
+            self.assertTrue(hs.is_operator_ask(text), text)
+        # IMPLICIT: "your call" / "needs your …" alone is an ask only when the Orchestrator writes it on an OPERATOR thread
+        for text in ("Your call.", "this needs your ruling before I dispatch", "needs your go", "Your call again — deploy-now or defer-carry?"):
+            self.assertTrue(hs.is_operator_ask(text, "orchestrator", operator_thread=True), text)
+            self.assertFalse(hs.is_operator_ask(text), text)                                            # on a row thread: chain traffic
+            self.assertFalse(hs.is_operator_ask(text, "hermes-builder", operator_thread=True), text)     # a role's "you" is the Orchestrator
+        for text in (
+            S2_BUILDER, S3_ORCH, S4_RECOUNT, tick_report("10:00", f"DECISION NEEDED (14h): ISO-F14 — {hs.ask_head(ASK_A)}"),
+            "Operator ruling: defer-carry", "operator ruled deploy-now — re-arming the builder", "ruling in; resuming per the operator's go",
+            "PR opened slang-coworkers/hermes-agent#7 (draft)", "[Spec handoff] ISO-F14: render — your call on nothing", "card · ISO-F14 · hermes-architect · HANDOFF",
+            "Supervisor re-arm ISO-F14 · hermes-architect: operator ruling — wait for the operator's ruling on hermes-ISO-F14",
+            "Autopilot alert ISO-F14 · dispatched 3h · hermes-architect wrote: HOLD … pending an operator ruling · decision: post the ruling",
+            "DECISION NEEDED (3h): ISO-F14 — your call", "status: scenario 3 of 6 green, ETA 1 h", "I'll give the operator a summary at 18:00",
+            "Hermes autopilot · 09-10 10:00Z · in flight 3/3\nYour call again.",  # a report header carries nothing, whatever follows
+        ):
+            self.assertFalse(hs.is_operator_ask(text), text)
+            self.assertFalse(hs.is_operator_ask(text, "orchestrator", operator_thread=True), text)  # a first line addressing a role never does
+        self.assertTrue(hs.is_operator_answer({"direction": "in", "text": "Operator ruling: defer-carry"}))
+        self.assertTrue(hs.is_operator_answer({"direction": "in", "text": "**Operator addendum** — also carry AC-5"}))
+        self.assertTrue(hs.is_operator_answer({"direction": "in", "text": "Operator — go with deploy-now"}))
+        self.assertTrue(hs.is_operator_answer({"direction": "in", "text": "operator ruling B — open SCHED-F34.a"}))  # `^operator`, any case
+        self.assertFalse(hs.is_operator_answer({"direction": "in", "text": "Operator authorization needed: the cap is reached"}))  # a role's ask, copied in
+        self.assertFalse(hs.is_operator_answer({"direction": "out", "text": "Operator ruling: x"}))
+        # loose (the DM / main thread): any inbound that is not a role's line answers; strict (row / task threads): the prefix only
+        for text in ("Open it", "defer-carry. carry both items to ISO-F15.", "B"):
+            self.assertTrue(hs.is_operator_answer({"direction": "in", "text": text}, strict=False), text)
+            self.assertFalse(hs.is_operator_answer({"direction": "in", "text": text}), text)
+        self.assertFalse(hs.is_operator_answer({"direction": "in", "text": "Open it", "sender": "hermes-builder"}, strict=False))
+        self.assertFalse(hs.is_operator_answer({"direction": "in", "text": "Supervisor nudge ISO-F14: x"}, strict=False))
+        self.assertFalse(hs.is_operator_answer({"direction": "in", "text": ASK_B}, strict=False))  # an ask copy is never the answer
+        self.assertEqual(hs.ask_key(ASK_A), hs.ask_key("  " + ASK_A.replace("**", "").upper() + "\n"))  # markdown / case / whitespace: one key
+        self.assertNotEqual(hs.ask_key(ASK_A), hs.ask_key(ASK_B))
+        self.assertEqual(len(hs.ask_head(ASK_A)), 140)
+        self.assertTrue(hs.ask_head(ASK_A).startswith("ISO-F14 — render COMPLETE & verified; sandbox tier blocked on 2 new items. Your call again."))
+
+    def test_incident_a_on_the_row_thread_is_decision_needed_and_the_slo_check_still_runs(self):
+        st, base = dispatched_row("ISO-F14", 20)
+        out = run(st, {"hermes-ISO-F14": base + [orch(14, ASK_A)]})
+        r = out["rows"]["ISO-F14"]
+        self.assertEqual((r["stage"], r["operator_ask"]["count"]), ("dispatched", 1))
+        ask = r["operator_ask"]["newest"]
+        self.assertEqual((ask["role"], ask["thread_id"], ask["ts"], ask["key"]), ("orchestrator", "hermes-ISO-F14", ago(14), hs.ask_key(ASK_A)))
+        alerts = [a for a in out["actions"] if a["kind"] == "alert"]
+        self.assertEqual([(a["row"], a["alert_kind"], a["check"], a["ask_thread_id"]) for a in alerts], [("ISO-F14", "operator-ruling", "operator_ask", "hermes-ISO-F14")])
+        self.assertEqual(alerts[0]["alert_key"], hs.ask_key(ASK_A))
+        self.assertEqual(alerts[0]["status_text"], f"DECISION NEEDED (14h): ISO-F14 — {hs.ask_head(ASK_A)}")
+        self.assertIn("· ISO-F14 · dispatched 14h · operator ask by orchestrator on hermes-ISO-F14 at " + ago(14) + ", unanswered: ISO-F14 — render COMPLETE", alerts[0]["text"])
+        self.assertIn("decision: answer it on hermes-ISO-F14 (post the ruling as 'Operator ruling: …'", alerts[0]["text"])
+        self.assertTrue(alerts[0]["text"].endswith("· thread hermes-ISO-F14"))
+        # no re-arm, no nudge FOR the ask: the one nudge is the ordinary 6 h SLO nudge to the architect (the row's checks still run)
+        nudges = [a for a in out["actions"] if a["kind"] == "nudge"]
+        self.assertEqual([(n["target_role"], n.get("check")) for n in nudges], [("hermes-architect", None)])
+        self.assertEqual((out["summary"]["operator_ask"], out["summary"]["escalate"], out["summary"]["infra_hold"]), (1, 1, 0))
+        self.assertEqual([(a["row"], a["alerted"], a["age_hours"]) for a in out["operator_asks"]], [("ISO-F14", True, 14.0)])
+        self.assertNotIn("OPERATOR", out["rows"])
+
+    def test_incident_b_on_a_capped_row_the_builders_holding_line_and_the_orchestrators_cap_line_both_stand(self):
+        # A2A-F21 hit the cap: the row is `blocked` (its once-only alert), and the asks on it must still surface
+        st = state([{"id": "A2A-F21", "spec": stamp(30), "pr": "#7", "verdict": "round 1/2 = FAIL; round 2/2 = FAIL"}])
+        threads = {"hermes-A2A-F21": [orch(30, "Dispatch A2A-F21: rooms.", "in"), orch(10, ASK_B), msg(8.5, ASK_B_BUILDER, sender="hermes-builder", role="hermes-builder")]}
+        out = run(st, threads)
+        r = out["rows"]["A2A-F21"]
+        self.assertEqual(r["stage"], "blocked")
+        self.assertEqual(r["operator_ask"]["count"], 2)
+        self.assertEqual([a["role"] for a in r["operator_ask"]["asks"]], ["hermes-builder", "orchestrator"])  # newest first
+        kinds = sorted((a["alert_kind"], a["row"]) for a in out["actions"] if a["kind"] == "alert")
+        self.assertEqual(kinds, [("blocked", "A2A-F21"), ("operator-ruling", "A2A-F21")])
+        ask_alert = next(a for a in out["actions"] if a.get("check") == "operator_ask")
+        self.assertEqual(ask_alert["status_text"], f"DECISION NEEDED (8h): A2A-F21 — {hs.ask_head(ASK_B_BUILDER)}")  # the newest ask alerts
+        self.assertEqual(ask_alert["ask_role"], "hermes-builder")
+        self.assertIn("· A2A-F21 · blocked 8h ·", ask_alert["text"])
+        self.assertEqual([a["kind"] for a in out["actions"] if a["kind"] == "nudge"], [])  # a blocked row is never nudged, the ask adds none
+        self.assertEqual(out["summary"]["operator_ask"], 1)  # one row surfaced (its newest ask); the record lists both
+
+    def test_incident_c_on_the_nightly_task_thread_lands_on_the_synthetic_operator_row(self):
+        st = state([{"id": "LOOP-F35", "spec": stamp(3)}])
+        threads = {"hermes-LOOP-F35": [spec_handoff("LOOP-F35", 3), builder_start("LOOP-F35", 2.5)]}
+        out = run(st, threads, operator_threads=[op_thread(TASK_THREAD, [orch(11, ASK_C)], "s-orch-task")])
+        self.assertNotIn("OPERATOR", out["rows"])
+        self.assertIsNone(out["rows"]["LOOP-F35"]["operator_ask"])
+        alerts = [a for a in out["actions"] if a["kind"] == "alert"]
+        self.assertEqual([(a["row"], a["alert_kind"], a["alert_key"], a["ask_thread_id"]) for a in alerts], [("OPERATOR", "operator-ruling", hs.ask_key(ASK_C), TASK_THREAD)])
+        self.assertEqual(alerts[0]["status_text"], f"DECISION NEEDED (11h): OPERATOR — {hs.ask_head(ASK_C)}")
+        self.assertIn(f"· OPERATOR · operator-ask 11h · operator ask by orchestrator on {TASK_THREAD} at {ago(11)}, unanswered: One ruling:", alerts[0]["text"])
+        self.assertTrue(alerts[0]["text"].endswith(f"· PR #- · thread {TASK_THREAD}"))
+        self.assertIn(f"answer it on {TASK_THREAD}", alerts[0]["text"])
+        self.assertEqual(out["operator_asks"][0]["named_rows"], [])
+        self.assertEqual(out["summary"]["operator_ask"], 1)
+        # the same file shape pull-state.sh writes: the "operator_threads" key inside --threads
+        out2 = run(st, {**threads, "operator_threads": [op_thread(TASK_THREAD, [orch(11, ASK_C)])]})
+        self.assertEqual([a["row"] for a in out2["actions"] if a["kind"] == "alert"], ["OPERATOR"])
+
+    def test_an_answered_ask_does_not_alert(self):
+        st, base = dispatched_row("ISO-F14", 20)
+        ask = orch(14, ASK_A)
+        builder_ask = msg(14, ASK_B_BUILDER, sender="hermes-builder", role="hermes-builder")
+        unprefixed = operator_in(12, "defer-carry. carry both items to ISO-F15.")
+        ack = orch(11.5, "Ack — carrying both items to ISO-F15; re-arming the architect now.")
+        cases = {
+            "operator inbound on the row thread": ({"hermes-ISO-F14": base + [ask, orch(12, "Operator ruling: defer-carry. Carry the two items to ISO-F15.", "in")]}, None),
+            "lower-case operator inbound on the row thread": ({"hermes-ISO-F14": base + [ask, orch(12, "operator ruling B — defer-carry", "in")]}, None),
+            "resolution line by a role": ({"hermes-ISO-F14": base + [ask, orch(12, "operator ruled defer-carry — re-arming the architect with the ruling")]}, None),
+            "later marker clears a ROLE's ask (its hold semantics)": ({"hermes-ISO-F14": base + [builder_ask, spec_handoff("ISO-F14", 12)]}, None),
+            "later plain line by the asking role on the ROW thread": ({"hermes-ISO-F14": base + [ask, orch(12, "ledger updated; builder re-armed, ETA 2h")]}, None),
+            "DM copy answered on the DM": ({"hermes-ISO-F14": base}, [op_thread(DM, [orch(14, ASK_A), orch(12, "Operator — deploy-now; carry the sandbox items", "in")])]),
+            "DM copy answered by an unprefixed operator line ('Open it')": ({"hermes-ISO-F14": base}, [op_thread(DM, [orch(14, ASK_A), operator_in(12, "Open it")])]),
+            "DM copy answered by a sender-less unprefixed line": ({"hermes-ISO-F14": base}, [op_thread(DM, [orch(14, ASK_A), operator_in(12, "B", None)])]),
+            "DM copy answered by an unprefixed ruling": ({"hermes-ISO-F14": base}, [op_thread(DM, [orch(14, ASK_A), unprefixed])]),
+            "DM copy answered by the Orchestrator's own ack of the ruling": ({"hermes-ISO-F14": base}, [op_thread(DM, [orch(14, ASK_A), ack])]),
+            "incident (a): DM answer in the operator's words + the relay on the row thread (S5)": (
+                {"hermes-ISO-F14": base + [ask, orch(11.4, "Operator ruled defer-carry — carrying both items to ISO-F15; architect re-armed.")]},
+                [op_thread(DM, [orch(14, ASK_A), unprefixed, ack])]),
+            "DM copy answered on the ROW thread": ({"hermes-ISO-F14": base + [orch(12, "Operator ruling: deploy-now", "in")]}, [op_thread(DM, [orch(14, ASK_A)])]),
+            "row-thread ask answered on the DM naming the row": ({"hermes-ISO-F14": base + [ask]}, [op_thread(DM, [orch(12, "Operator ruling: ISO-F14 goes deploy-now", "in")])]),
+        }
+        for name, (threads, op) in cases.items():
+            out = run(st, threads, operator_threads=op)
+            self.assertIsNone(out["rows"]["ISO-F14"]["operator_ask"], name)
+            self.assertEqual([a for a in out["actions"] if a.get("check") == "operator_ask"], [], name)
+            self.assertEqual((out["summary"]["operator_ask"], out["operator_asks"]), (0, []), name)
+        # what does NOT answer: a later marker for the ORCHESTRATOR's ask (the roles keep working while its question stands —
+        # incident a: "report up when the sandbox tier runs"), a DM ruling naming ANOTHER row, a role's inbound copy of an
+        # ask, chatter on the DM, an unprefixed inbound on a system:tasks:* thread (the task prompt lands there as inbound
+        # every fire), and an unprefixed DM line for an ask that lives on the ROW thread (cross-thread answers stay strict)
+        for name, (threads, op) in {
+            "a later marker after the Orchestrator's ask": ({"hermes-ISO-F14": base + [ask, spec_handoff("ISO-F14", 12)]}, None),
+            "DM ruling for another row": ({"hermes-ISO-F14": base + [ask]}, [op_thread(DM, [orch(12, "Operator ruling: CRED-F28 goes deploy-now", "in")])]),
+            "an inbound copy of the ask": ({"hermes-ISO-F14": base + [ask, orch(12, "Operator authorization needed: " + ASK_B, "in")]}, None),
+            "DM chatter after the DM copy": ({"hermes-ISO-F14": base}, [op_thread(DM, [orch(14, ASK_A), orch(12, "hermes-status-report: 3 rows in flight, no merges")])]),
+            "unprefixed inbound on a system:tasks:* thread": ({"hermes-ISO-F14": base}, [op_thread(TASK_THREAD, [orch(14, ASK_A), operator_in(12, "defer-carry.")])]),
+            "unprefixed DM line for a ROW-thread ask": ({"hermes-ISO-F14": base + [ask]}, [op_thread(DM, [orch(13, "hermes-status-report: 3 rows"), operator_in(12, "ISO-F14: defer-carry")])]),
+            "a ROLE's a2a line landing inbound on the DM": ({"hermes-ISO-F14": base}, [op_thread(DM, [orch(14, ASK_A), msg(12, "ISO-F14 spec ready; pushing now.", "in", sender="hermes-architect")])]),
+        }.items():
+            out = run(st, threads, operator_threads=op)
+            self.assertEqual(out["rows"]["ISO-F14"]["operator_ask"]["count"], 1, name)
+            self.assertEqual(len([a for a in out["actions"] if a.get("check") == "operator_ask"]), 1, name)
+
+    def test_paused_row_is_silent(self):
+        st, base = dispatched_row("ISO-F14", 20)
+        out = run(st, {"hermes-ISO-F14": base + [orch(14, ASK_A)]}, operator_threads=[op_thread(DM, [orch(13, ASK_A)])], config={"paused_rows": ["ISO-F14"]})
+        r = out["rows"]["ISO-F14"]
+        self.assertEqual((r["hold"], r["operator_ask"], r["action"]), ("paused", None, "none"))
+        self.assertEqual([a["kind"] for a in out["actions"]], ["hold"])
+        self.assertEqual((out["summary"]["operator_ask"], out["operator_asks"]), (0, []))
+
+    def test_once_per_ask_text_24h_and_a_reworded_ask_is_a_new_key(self):
+        st, base = dispatched_row("ISO-F14", 4)
+        key = hs.ask_key(ASK_A)
+        bound = run(st, {"hermes-ISO-F14": base + [orch(3, ASK_A)]}, nudges={"ISO-F14": {"alerts": {key: ago(1)}}})
+        self.assertEqual([a for a in bound["actions"] if a["kind"] == "alert"], [])
+        self.assertEqual(bound["rows"]["ISO-F14"]["operator_ask"]["count"], 1)  # still on the status table
+        self.assertEqual((bound["summary"]["operator_ask"], bound["operator_asks"][0]["alerted"], bound["operator_asks"][0]["bound"]), (1, False, ago(1)))
+        lifted = run(st, {"hermes-ISO-F14": base + [orch(3, ASK_A)]}, nudges={"ISO-F14": {"alerts": {key: ago(25)}}})
+        self.assertEqual([a["alert_key"] for a in lifted["actions"] if a["kind"] == "alert"], [key])
+        # a restatement in the same words is the same ask (the newest copy is what the table shows) …
+        restated = run(st, {"hermes-ISO-F14": base + [orch(3, ASK_A), orch(1, ASK_A.replace("**", ""))]}, nudges={"ISO-F14": {"alerts": {key: ago(2)}}})
+        self.assertEqual([a for a in restated["actions"] if a["kind"] == "alert"], [])
+        self.assertEqual((restated["rows"]["ISO-F14"]["operator_ask"]["count"], restated["rows"]["ISO-F14"]["operator_ask"]["newest"]["ts"]), (1, ago(1)))
+        # … a reworded one is a new ask with its own key
+        reworded = ASK_A.replace("Your call again", "still your call — 4 h without a ruling")
+        again = run(st, {"hermes-ISO-F14": base + [orch(3, ASK_A), orch(1, reworded)]}, nudges={"ISO-F14": {"alerts": {key: ago(2)}}})
+        self.assertEqual([a["alert_key"] for a in again["actions"] if a["kind"] == "alert"], [hs.ask_key(reworded)])
+        self.assertEqual(again["rows"]["ISO-F14"]["operator_ask"]["count"], 2)
+        # the OPERATOR row keeps its own book entry
+        op = run(st, {"hermes-ISO-F14": base}, operator_threads=[op_thread(TASK_THREAD, [orch(3, ASK_C)])], nudges={"OPERATOR": {"alerts": {hs.ask_key(ASK_C): ago(1)}}})
+        self.assertEqual([a for a in op["actions"] if a["kind"] == "alert"], [])
+        self.assertEqual(op["summary"]["operator_ask"], 1)
+
+    def test_attribution_one_zero_two_or_unknown_row_ids(self):
+        st = state([{"id": "CRED-F28", "dispatched": stamp(6) + " (to hermes-architect)"}, {"id": "ISO-F14", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        threads = {"hermes-CRED-F28": [msg(6, "Dispatch CRED-F28: x", "in")], "hermes-ISO-F14": [msg(6, "Dispatch ISO-F14: y", "in")]}
+        one = "CRED-F28 — the OneCLI hop question. Your call: per-profile keys or gateway-side URLs?"
+        zero = ASK_C
+        two = "CRED-F28 and ISO-F14 both wait on the same seam decision. Your call on the order."
+        unknown = "ZZZ-F99 is not a row I know, but it needs your ruling anyway."
+        queued = "LOOP-F37: dispatch it now or wait for the ruling? Your call."  # a QUEUED plan row: alerted under its id all the same
+        out = run(st, threads, operator_threads=[op_thread(DM, [orch(5, one), orch(4, zero), orch(3, two), orch(2, unknown), orch(1, queued)])])
+        alerts = sorted((a["row"], a["ask_ts"]) for a in out["actions"] if a.get("check") == "operator_ask")
+        self.assertEqual(alerts, [("CRED-F28", ago(5)), ("LOOP-F37", ago(1)), ("OPERATOR", ago(4)), ("OPERATOR", ago(3)), ("OPERATOR", ago(2))])
+        self.assertEqual(out["rows"]["CRED-F28"]["operator_ask"]["newest"]["thread_id"], DM)
+        self.assertIsNone(out["rows"]["ISO-F14"]["operator_ask"])  # named together with another row: not attributed to either
+        self.assertEqual((out["rows"]["LOOP-F37"]["stage"], out["rows"]["LOOP-F37"]["action"]), ("queued", "none"))  # supervised for the ask only
+        by_row = {a["row"]: a for a in out["operator_asks"]}
+        self.assertEqual(by_row["CRED-F28"]["named_rows"], ["CRED-F28"])
+        self.assertEqual(sorted(a["named_rows"] for a in out["operator_asks"] if a["row"] == "OPERATOR"), [[], [], ["CRED-F28", "ISO-F14"]])
+        self.assertEqual(out["summary"]["operator_ask"], 5)
+
+    def test_mirrored_copy_on_the_dm_collapses_into_the_rows_alert_and_non_asks_never_count(self):
+        st, base = dispatched_row("ISO-F14", 20)
+        threads = {"hermes-ISO-F14": base + [
+            msg(15, "[Test Report] slang-coworkers/hermes-agent#9 (round 1/2, head abc1234)\n- **Verdict:** ESCALATE — needs your call on the desktop tier", sender="hermes-tester", role="hermes-tester"),
+            orch(14, ASK_A),
+            orch(13, "Supervisor nudge ISO-F14: dispatched for 13h, no [Spec handoff]. your call is not an ask here", "in"),
+            msg(11, ASK_B, "in", sender="orchestrator", role="hermes-builder"),  # the receiver's copy of a send is not the receiver's ask
+        ]}
+        out = run(st, threads, operator_threads=[op_thread(DM, [orch(13.9, ASK_A)])])
+        r = out["rows"]["ISO-F14"]
+        # the [Test Report] ESCALATE is the env-fail path, not an ask (and, as a marker, would clear an EARLIER ask);
+        # the DM mirror has the same key as the row-thread line
+        self.assertEqual(r["operator_ask"]["count"], 2)
+        self.assertEqual({a["key"] for a in r["operator_ask"]["asks"]}, {hs.ask_key(ASK_A)})
+        self.assertEqual(r["operator_ask"]["newest"]["thread_id"], DM)
+        ask_alerts = [a for a in out["actions"] if a.get("check") == "operator_ask"]
+        self.assertEqual([(a["row"], a["alert_key"], a["ask_thread_id"]) for a in ask_alerts], [("ISO-F14", hs.ask_key(ASK_A), DM)])
+        self.assertIn(f"operator ask by orchestrator on {DM} at {ago(13.9)}", ask_alerts[0]["text"])
+        self.assertTrue(ask_alerts[0]["text"].endswith("· thread hermes-ISO-F14"))  # the ruling belongs on the row thread
+
+    def test_hold_lines_keep_their_own_detection_and_unreadable_threads_still_take_dm_asks(self):
+        st, base = dispatched_row("CRED-F28", 4)
+        out = run(st, {"hermes-CRED-F28": base + [msg(3, HOLD_ARCH, sender="hermes-architect", role="hermes-architect")]})
+        r = out["rows"]["CRED-F28"]
+        self.assertIsNotNone(r["infra_hold"])
+        self.assertIsNone(r["operator_ask"])  # "pending an operator ruling" in a hold line is the hold, alerted once as operator-ruling:<stage>
+        self.assertEqual([a["alert_key"] for a in out["actions"] if a["kind"] == "alert"], ["operator-ruling:dispatched"])
+        # a thread the collector could not read draws no row action, but an ask about the row on the DM still surfaces
+        unread = run(st, {"hermes-CRED-F28": None}, operator_threads=[op_thread(DM, [orch(2, "CRED-F28: your call on the seam.")])])
+        r2 = unread["rows"]["CRED-F28"]
+        self.assertEqual((r2["slo_status"], r2["operator_ask"]["count"]), ("unknown", 1))
+        self.assertEqual([(a["row"], a.get("check")) for a in unread["actions"]], [("CRED-F28", "operator_ask")])
+
+    def test_the_tick_report_quoting_a_standing_ask_is_never_a_new_ask(self):
+        """The supervise task's run output is an outbound Orchestrator line on `system:tasks:hermes-ap-supervise-*` and QUOTES
+        the standing asks under a header stamped anew every tick. Read as an ask it would re-alert a bound ask every 2 h
+        under a fresh key and feed its own header into the next report. Every report / a|b|t|r line is dropped before the
+        regexes, the key and the head read a text — and the collector never reads that series at all (test_collect_threads)."""
+        quoted = f"DECISION NEEDED (14h): ISO-F14 — {hs.ask_head(ASK_A)}"
+        r1, r2 = tick_report("10:00", quoted), tick_report("11:00", quoted)
+        self.assertEqual(hs.ask_text(r1), "")  # nothing survives the line filter
+        self.assertFalse(hs.is_operator_ask(r1, "orchestrator", operator_thread=True))
+        st, base = dispatched_row("ISO-F14", 20)
+        key = hs.ask_key(ASK_A)
+        reports = op_thread(AP_TASK_THREAD, [orch(2, r1), orch(1, r2)], "s-orch-ap")
+        out = run(st, {"hermes-ISO-F14": base + [orch(14, ASK_A)]}, operator_threads=[reports], nudges={"ISO-F14": {"alerts": {key: ago(2)}}})
+        self.assertEqual([a for a in out["actions"] if a["kind"] == "alert"], [])
+        r = out["rows"]["ISO-F14"]["operator_ask"]
+        self.assertEqual((r["count"], r["newest"]["thread_id"], r["newest"]["key"]), (1, "hermes-ISO-F14", key))
+        self.assertEqual([(a["row"], a["alerted"], a["bound"]) for a in out["operator_asks"]], [("ISO-F14", False, ago(2))])
+        self.assertEqual(out["summary"]["operator_ask"], 1)
+        # a report line quoted INSIDE a longer Orchestrator message drops out of that message's key and head too
+        wrapped = "Relaying the tick's brief:\n" + r2 + "\nNo further action from me."
+        self.assertEqual(hs.ask_text(wrapped), "Relaying the tick's brief: No further action from me.")
+        self.assertFalse(hs.is_operator_ask(wrapped, "orchestrator", operator_thread=True))
+
+    def test_your_call_is_chain_traffic_on_a_row_thread_unless_the_operator_is_named(self):
+        """A builder asking the Orchestrator "your call", the Orchestrator telling the architect "your call": no operator, no
+        ask — there is nobody for the human to answer and no re-arm path. The same exchange with the operator named is two
+        asks (the newest alerts); the Orchestrator's bare "your call" on its OPERATOR thread is one (test_attribution…)."""
+        st, base = dispatched_row("ISO-F14", 20)
+        chain = base + [
+            msg(3, S2_BUILDER, sender="hermes-builder", role="hermes-builder"),
+            orch(2.8, S3_ORCH),
+            msg(2.5, "Going with A; spec by 14:00Z.", sender="hermes-architect", role="hermes-architect"),
+        ]
+        out = run(st, {"hermes-ISO-F14": chain})
+        self.assertIsNone(out["rows"]["ISO-F14"]["operator_ask"])
+        self.assertEqual([a for a in out["actions"] if a.get("check") == "operator_ask"], [])
+        self.assertEqual((out["summary"]["operator_ask"], out["operator_asks"]), (0, []))
+        # the builder never wrote again and the architect's reply is not the Orchestrator's: still nothing (no asker moved on needed)
+        self.assertIsNone(run(st, {"hermes-ISO-F14": base + [msg(3, S2_BUILDER, sender="hermes-builder", role="hermes-builder"), orch(2.8, S3_ORCH)]})["rows"]["ISO-F14"]["operator_ask"])
+        s2_op = "Orchestrator — I'm HOLDING for the operator's go: push the fix now or wait?"
+        s3_op = "hermes-architect: the seam needs the operator's call — pick A or B once the operator rules."
+        named = run(st, {"hermes-ISO-F14": base + [msg(3, s2_op, sender="hermes-builder", role="hermes-builder"), orch(2.8, s3_op)]})
+        r = named["rows"]["ISO-F14"]["operator_ask"]
+        self.assertEqual((r["count"], [a["role"] for a in r["asks"]]), (2, ["orchestrator", "hermes-builder"]))
+        self.assertEqual([(a["ask_role"], a["ask_ts"]) for a in named["actions"] if a.get("check") == "operator_ask"], [("orchestrator", ago(2.8))])
+
+    def test_a_recount_of_an_answered_escalation_is_not_an_ask(self):
+        """`escalated … to the operator at 19:15Z, answered defer-carry 20:02Z` recounts a decision already taken: the verb is
+        past tense and a resolution word follows the ask phrase. ASK_B's `then I escalate … to the operator` stands."""
+        self.assertFalse(hs.is_operator_ask(S4_RECOUNT))
+        self.assertTrue(hs.is_operator_ask(ASK_B))
+        self.assertTrue(hs.is_operator_ask("escalating the cap question to the operator now; the bar question too"))
+        self.assertFalse(hs.is_operator_ask("escalating the cap question to the operator — ruling received 20:02Z, resuming"))
+        st = state([{"id": "CRED-F28", "dispatched": stamp(6) + " (to hermes-architect)"}, {"id": "ISO-F14", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        threads = {"hermes-CRED-F28": [msg(6, "Dispatch CRED-F28: x", "in")], "hermes-ISO-F14": [msg(6, "Dispatch ISO-F14: y", "in")]}
+        out = run(st, threads, operator_threads=[op_thread(DM, [orch(3, S4_RECOUNT)])])
+        self.assertEqual((out["summary"]["operator_ask"], out["operator_asks"], [a for a in out["actions"] if a["kind"] == "alert"]), (0, [], []))
+        control = run(st, threads, operator_threads=[op_thread(DM, [orch(3, S4_RECOUNT), orch(2, ASK_B)])])
+        self.assertEqual([(a["row"], a["ask_ts"]) for a in control["actions"] if a.get("check") == "operator_ask"], [("OPERATOR", ago(2))])
+
+    def test_attribution_reads_the_full_600_char_scan_not_a_200_char_head(self):
+        st = state([{"id": "LOOP-F35", "dispatched": stamp(6) + " (to hermes-architect)"}, {"id": "ISO-F14", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        threads = {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")], "hermes-ISO-F14": [msg(6, "Dispatch ISO-F14: y", "in")]}
+        lead = (ASK_C + " The compare step must not fall back to the default branch when the tag is missing, and the report must "
+                "say which tag it compared against and why. ")
+        self.assertGreater(len(lead), 200)
+        late = lead + "This applies to LOOP-F35 only."
+        out = run(st, threads, operator_threads=[op_thread(DM, [orch(3, late)])])
+        self.assertEqual([(a["row"], a["ask_thread_id"]) for a in out["actions"] if a.get("check") == "operator_ask"], [("LOOP-F35", DM)])
+        self.assertEqual(out["rows"]["LOOP-F35"]["operator_ask"]["newest"]["scan"], hs.ask_text(late))
+        self.assertEqual(out["operator_asks"][0]["named_rows"], ["LOOP-F35"])
+        self.assertIsNone(out["rows"]["ISO-F14"]["operator_ask"])
+        two = lead + "This applies to LOOP-F35 and, once merged, to ISO-F14."
+        out2 = run(st, threads, operator_threads=[op_thread(DM, [orch(3, two)])])
+        self.assertEqual([a["row"] for a in out2["actions"] if a.get("check") == "operator_ask"], ["OPERATOR"])
+        self.assertEqual(out2["operator_asks"][0]["named_rows"], ["LOOP-F35", "ISO-F14"])
+        # past the 600-char scan the collector keeps, a name is not read: the head the collector sends IS the scan
+        far = lead + "x" * 500 + " LOOP-F35"
+        out3 = run(st, threads, operator_threads=[op_thread(DM, [orch(3, far)])])
+        self.assertEqual([(a["row"], a["named_rows"]) for a in out3["operator_asks"]], [("OPERATOR", [])])
+
+    def test_an_ask_naming_a_row_nobody_supervises_this_tick_falls_to_operator(self):
+        """`known` holds every follow-up id, but a merged / blocked follow-up is no candidate row: its asks must not vanish
+        between the two sets (the silent-loss class this change exists to close). A paused one stays silent, like every
+        paused row."""
+        st = state([merged_row("ISO-F10.a", 21), {"id": "LOOP-F35", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        self.assertEqual(st["follow_up_rows"]["ISO-F10.a"]["state"], "merged")
+        ask = "ISO-F10.a follow-up: needs your ruling on the carry — keep AC-3 on it or drop it?"
+        threads = {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]}
+        out = run(st, threads, operator_threads=[op_thread(DM, [orch(3, ask)])])
+        self.assertNotIn("ISO-F10.a", out["rows"])
+        self.assertEqual([(a["row"], a["ask_thread_id"]) for a in out["actions"] if a.get("check") == "operator_ask"], [("OPERATOR", DM)])
+        self.assertEqual([(a["row"], a["named_rows"]) for a in out["operator_asks"]], [("OPERATOR", ["ISO-F10.a"])])
+        self.assertEqual(out["summary"]["operator_ask"], 1)
+        paused = run(st, threads, operator_threads=[op_thread(DM, [orch(3, ask)])], config={"paused_rows": ["ISO-F10.a"]})
+        self.assertEqual(([a for a in paused["actions"] if a.get("check") == "operator_ask"], paused["summary"]["operator_ask"], paused["operator_asks"]), ([], 0, []))
+
+    def test_a_mirror_naming_a_second_row_collapses_into_the_rows_alert(self):
+        """The row-thread ask and its DM mirror under a two-row lead-in ("ISO-F14 vs A2A-F21 — …") are ONE decision: the mirror
+        is listed (`collapsed_into`), never alerted on OPERATOR. A different two-row question is its own decision."""
+        st = state([{"id": "ISO-F14", "dispatched": stamp(20) + " (to hermes-architect)"}, {"id": "A2A-F21", "dispatched": stamp(20) + " (to hermes-architect)"}])
+        threads = {"hermes-ISO-F14": [msg(20, "Dispatch ISO-F14: y", "in"), orch(14, ASK_A)], "hermes-A2A-F21": [msg(20, "Dispatch A2A-F21: z", "in")]}
+        out = run(st, threads, operator_threads=[op_thread(DM, [orch(13.9, "ISO-F14 vs A2A-F21 — " + ASK_A)])])
+        self.assertEqual([(a["row"], a["alert_key"]) for a in out["actions"] if a.get("check") == "operator_ask"], [("ISO-F14", hs.ask_key(ASK_A))])
+        self.assertIsNone(out["rows"]["A2A-F21"]["operator_ask"])
+        listed = [a for a in out["operator_asks"] if a["row"] == "OPERATOR"]
+        self.assertEqual([(a["collapsed_into"], a["alerted"], a["named_rows"]) for a in listed], [("ISO-F14", False, ["ISO-F14", "A2A-F21"])])
+        self.assertEqual(out["summary"]["operator_ask"], 1)
+        other = run(st, threads, operator_threads=[op_thread(DM, [orch(13.9, "ISO-F14 vs A2A-F21 — which merges first? Your call.")])])
+        self.assertEqual(sorted(a["row"] for a in other["actions"] if a.get("check") == "operator_ask"), ["ISO-F14", "OPERATOR"])
+
+    def test_malformed_operator_thread_messages_never_crash_the_tick(self):
+        """Hardening (real ncl emits dict rows with string text): a non-dict message, a None / numeric text, a missing or None
+        ts, a non-dict thread entry, a non-list `messages` — all skipped or coerced, the valid asks still surface."""
+        st, base = dispatched_row("ISO-F14", 20)
+        junk = ["not-a-dict", {"ts": ago(3), "direction": "out", "text": None}, {"ts": ago(2.5), "direction": "out", "text": 12345},
+                {"ts": None, "direction": "out", "text": ASK_C}, {"direction": "out", "text": ASK_C}, {"ts": ago(2), "direction": "in", "text": None}]
+        row_thread = base + [{"ts": ago(5), "direction": "out", "text": None, "sender": "orchestrator"}, {"ts": ago(4.5), "direction": "in", "text": 7}, orch(4, ASK_A)]
+        out = run(st, {"hermes-ISO-F14": row_thread},
+                  operator_threads=[op_thread(DM, junk + [orch(1, ASK_C)]), "not-a-dict", {"thread_id": "x", "messages": "nope"}])
+        self.assertEqual(sorted((a["row"], a["ask_ts"]) for a in out["actions"] if a.get("check") == "operator_ask"), [("ISO-F14", ago(4)), ("OPERATOR", ago(1))])
+        self.assertEqual(out["summary"]["operator_ask"], 2)
+
+    def test_a_card_caption_or_a_waiting_restatement_never_reads_as_the_asker_moving_on(self):
+        """On a row thread a later plain line by the asking role clears its ask (the hold-clearing rule). A card caption is a
+        send_file artifact, and "still waiting on the operator's ruling" is the ask again (its own key): neither is the
+        Orchestrator moving on. A status line that names no operator IS — unchanged, and documented."""
+        st, base = dispatched_row("ISO-F14", 20)
+        caption = run(st, {"hermes-ISO-F14": base + [orch(14, ASK_A), orch(13, "card · ISO-F14 · orchestrator · DISPATCHED — render complete, sandbox tier blocked")]})
+        r = caption["rows"]["ISO-F14"]["operator_ask"]
+        self.assertEqual((r["count"], r["newest"]["ts"]), (1, ago(14)))
+        self.assertEqual([a["ask_ts"] for a in caption["actions"] if a.get("check") == "operator_ask"], [ago(14)])
+        restated = "Still waiting on the operator's ruling for ISO-F14 (deploy-now vs defer-carry)."
+        waiting = run(st, {"hermes-ISO-F14": base + [orch(14, ASK_A), orch(13, restated)]})
+        r = waiting["rows"]["ISO-F14"]["operator_ask"]
+        self.assertEqual((r["count"], r["newest"]["ts"], r["newest"]["key"]), (2, ago(13), hs.ask_key(restated)))
+        self.assertEqual([a["ask_ts"] for a in waiting["actions"] if a.get("check") == "operator_ask"], [ago(13)])
+        moved = run(st, {"hermes-ISO-F14": base + [orch(14, ASK_A), orch(13, "Status: still waiting on the sandbox tier run; nothing else blocked.")]})
+        self.assertIsNone(moved["rows"]["ISO-F14"]["operator_ask"])
+
+
+class FollowUpRows(unittest.TestCase):
+    """hermes_queue `follow_up_rows` (`<PARENT>.<letter>`, opened on operator instruction): supervised like an in-flight row
+    on its own thread while the ledger says so; merged / blocked follow-ups are ignored; never a WIP slot."""
+
+    def test_dispatched_follow_up_is_supervised_on_its_own_thread(self):
+        st = state([{"id": "SCHED-F34.a", "dispatched": stamp(7) + " (to hermes-architect, thread `hermes-SCHED-F34.a`)"}])
+        self.assertEqual(st["follow_up_rows"]["SCHED-F34.a"]["parent"], "SCHED-F34")
+        self.assertEqual((st["in_flight"], st["follow_up_in_flight"]), ([], ["SCHED-F34.a"]))
+        out = run(st, {"hermes-SCHED-F34.a": [msg(7, "Dispatch SCHED-F34.a: TZ follow-up (operator ruling B).", "in")]})
+        r = out["rows"]["SCHED-F34.a"]
+        self.assertEqual((r["stage"], r["age_hours"], r["thread_id"], r["follow_up"]), ("dispatched", 7.0, "hermes-SCHED-F34.a", {"parent": "SCHED-F34", "batch": "1b"}))
+        nudge = next(a for a in out["actions"] if a["kind"] == "nudge")
+        self.assertEqual((nudge["row"], nudge["target_role"], nudge["thread_id"]), ("SCHED-F34.a", "hermes-architect", "hermes-SCHED-F34.a"))
+        self.assertTrue(nudge["text"].startswith("Supervisor nudge SCHED-F34.a: dispatched for 7h, no [Spec handoff]."))
+        # no WIP slot anywhere: counted under follow_ups, never in_flight (the queue's wip and the demo tracker agree)
+        self.assertEqual((out["summary"]["follow_ups"], out["summary"]["in_flight"], out["summary"]["must_nudge"]), (1, 0, 1))
+        # a plan row's record carries no follow_up field
+        st2 = state([{"id": "LOOP-F35", "dispatched": stamp(1) + " (to hermes-architect)"}])
+        self.assertNotIn("follow_up", run(st2, {"hermes-LOOP-F35": []})["rows"]["LOOP-F35"])
+
+    def test_merged_or_blocked_follow_up_is_ignored(self):
+        st = state([
+            merged_row("ISO-F10.a", 21),
+            {"id": "SCHED-F34.a", "spec": stamp(20), "pr": "#22", "verdict": "round 1/2 = FAIL; round 2/2 = FAIL"},
+        ])
+        self.assertEqual(st["follow_up_rows"]["ISO-F10.a"]["state"], "merged")
+        self.assertEqual(st["follow_up_rows"]["SCHED-F34.a"]["state"], "blocked")
+        self.assertEqual(st["follow_up_in_flight"], [])
+        out = run(st, {})
+        self.assertEqual((out["rows"], out["actions"], out["summary"]["follow_ups"]), ({}, [], 0))

@@ -289,3 +289,33 @@ class HelpersTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class DecisionLinesTest(unittest.TestCase):
+    """state.json `operator_asks` (the supervisor's §2.5 operator_ask detection) render as `DECISION NEEDED (<age>h):
+    <row> — <head>` lines right under the header, in the brief and the markdown; none when there are none."""
+
+    ASKS = (
+        {"row": "ISO-F14", "ts": "2026-09-09T05:15:00Z", "age_hours": 15.75, "head": "**ISO-F14 — render COMPLETE & verified; sandbox tier blocked on 2 new items. Your call again.** I'm asking them deploy-now vs defer-carry", "alerted": True},
+        {"row": "OPERATOR", "ts": "2026-09-09T10:04:00Z", "age_hours": 10.93, "head": "One ruling: the nightly regression compares against the pinned tag — please use this exact framing", "alerted": False},
+    )
+
+    def test_brief_and_markdown_lead_with_the_decisions(self):
+        st = {**STATE, "operator_asks": list(self.ASKS)}
+        brief = abtr.render_abtr_brief(st, parsed_ledger(), NOW, prs=PRS, alerts=scorecard.parse_alerts(ALERTS)).splitlines()
+        self.assertEqual(brief[0], render().splitlines()[0])
+        self.assertTrue(brief[1].startswith("DECISION NEEDED (10h): OPERATOR — One ruling: the nightly regression compares"), brief[1])  # newest first
+        self.assertTrue(brief[2].startswith("DECISION NEEDED (15h): ISO-F14 — ISO-F14 — render COMPLETE & verified; sandbox tier blocked"), brief[2])
+        self.assertNotIn("**", brief[2])
+        self.assertEqual(brief[3], "GOV-F25 | ✓ 09-08 10:00Z | ⏸ | · | ·")
+        self.assertLessEqual(max(len(line) for line in brief), abtr.MAX_LINE)
+        md = abtr.render_abtr_markdown(st, parsed_ledger(), NOW, prs=PRS, alerts=scorecard.parse_alerts(ALERTS)).splitlines()
+        self.assertTrue(md[1].startswith("DECISION NEEDED (10h): OPERATOR —"))
+        self.assertTrue(md[2].startswith("DECISION NEEDED (15h): ISO-F14 —"))
+        self.assertEqual(md[3], abtr.LEGEND[0])
+        self.assertLessEqual(max(len(line) for line in md), 120)
+        # the supervisor's own copy is read when the merged state has no top-level list; no asks = no line
+        nested = {**STATE, "supervise": {**STATE.get("supervise", {}), "operator_asks": list(self.ASKS[:1])}}
+        self.assertTrue(abtr.render_abtr_brief(nested, parsed_ledger(), NOW).splitlines()[1].startswith("DECISION NEEDED (15h): ISO-F14"))
+        self.assertEqual(abtr.decision_lines(STATE), [])
+        self.assertEqual(abtr.decision_lines({"operator_asks": [{"row": "X", "head": "y"}]}), ["DECISION NEEDED (?h): X — y"])

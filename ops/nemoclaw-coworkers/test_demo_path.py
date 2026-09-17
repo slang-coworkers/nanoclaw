@@ -396,6 +396,28 @@ class ComputeTest(unittest.TestCase):
     def rungs(self, live: dict, now: datetime = NOW) -> dict:
         return by_id(self.mod.compute(self.spec, live, now)["rungs"])
 
+    def test_a_follow_up_record_is_mapped_but_never_takes_a_simulated_slot(self):
+        """hermes_queue gives a `<PARENT>.<letter>` follow-up no WIP slot and the board shows it in its own section; the
+        tracker must not schedule it either, or every plan row behind it slips by a slot's worth of hours (RT-F01's start
+        moved +12.75 h when a dispatched SCHED-F34.a took a simulated slot)."""
+        state = make_state({"LOOP-F35": "testing"}, gating={"1a_first_pass": True}, wip=2)
+        recs = make_records(state)
+        fu = record("SCHED-F34.a", queue={"state": "dispatched", "disposition": "CONFIGURE", "batch": "1b"},
+                    plan={"batch": "1b", "name": "follow-up of SCHED-F34: TZ"}, state=state)
+        fu["follow_up"] = {"parent": "SCHED-F34"}
+        with_fu = self.live(state, records={**recs, "SCHED-F34.a": fu})
+        without = self.live(state, records=recs)
+        self.assertEqual((with_fu["rows"]["SCHED-F34.a"]["state"], with_fu["rows"]["SCHED-F34.a"]["follow_up"]), ("dispatched", True))
+        self.assertFalse(without["rows"]["LOOP-F35"]["follow_up"])
+        self.assertEqual(with_fu["order"], without["order"])
+        self.assertNotIn("SCHED-F34.a", [rid for rid, _ in with_fu["order"]])
+        a, b = self.rungs(with_fu), self.rungs(without)
+        rows_a, rows_b = by_id(a["R1"]["rows"]), by_id(b["R1"]["rows"])
+        self.assertEqual(rows_a["RT-F01"]["start_utc"], iso(NOW), "the one free slot (wip 2, LOOP-F35 testing) is RT-F01's now")
+        self.assertEqual({r: (v.get("start_utc"), v.get("eta")) for r, v in rows_a.items()},
+                         {r: (v.get("start_utc"), v.get("eta")) for r, v in rows_b.items()})
+        self.assertEqual((a["R1"]["eta_utc"], a["R1"]["status"]), (b["R1"]["eta_utc"], b["R1"]["status"]))
+
     def test_spec_loads_with_the_five_rungs_and_their_rows(self):
         ids = [r["id"] for r in self.spec["rungs"]]
         self.assertEqual(ids, ["R1", "R2", "R3", "R4", "R5"])

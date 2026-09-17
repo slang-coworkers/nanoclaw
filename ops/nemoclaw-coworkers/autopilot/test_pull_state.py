@@ -306,6 +306,82 @@ class PullStateTest(unittest.TestCase):
         nudge = next(a for a in st["actions"] if a["kind"] == "nudge" and a["row"] == "LOOP-F35")
         self.assertEqual((nudge["thread_id"], "row_thread_id" in nudge), ("hermes-LOOP-F35", False))
 
+    def test_operator_dm_ask_flows_through_the_flat_file_to_a_decision_needed_line(self):
+        """2026-09-16/17: the Orchestrator's ask on its operator DM (a non-row thread) reaches the supervisor through the
+        collector's pass 3 -> threads-flat.json "operator_threads" -> an `operator-ruling` alert attributed to the one row
+        it names, `state.operator_asks`, and the tick report's DECISION NEEDED line right under the header."""
+        ask = ("**LOOP-F35 — compose render COMPLETE & verified; sandbox tier blocked on 2 new items. Your call again.** "
+               "I'm asking them deploy-now vs defer-carry. Hold — report up when the sandbox tier runs (or the operator rules defer-carry).")
+        dm = {"id": "s-orch-dm", "agent_group_id": "ag-orch", "thread_id": "sess-1789461233002-7tpn00", "status": "active",
+              "container_status": "stopped", "last_active": "2026-09-09T20:50:00Z", "created_at": "2026-09-08T10:00:00Z"}
+        self.fixtures["sessions"] = SESSIONS + [dm]
+        self.fixtures["messages"] = {**MESSAGES, "s-orch-dm": [
+            {"seq": 1, "direction": "out", "kind": "chat", "timestamp": "2026-09-09 18:00:00", "sender": "orchestrator", "text": "hermes-status-report: 2 rows in flight"},
+            {"seq": 2, "direction": "out", "kind": "chat", "timestamp": "2026-09-09 19:15:00", "sender": "orchestrator", "text": ask},
+        ]}
+        st = self.run_pull()
+        flat = json.loads((self.ap / "raw" / "threads-flat.json").read_text())
+        self.assertEqual([(e["session_id"], e["thread_id"], e["role"]) for e in flat["operator_threads"]], [("s-orch-dm", "sess-1789461233002-7tpn00", "orchestrator")])
+        self.assertEqual([m["ts"] for m in flat["operator_threads"][0]["messages"]], ["2026-09-09T18:00:00Z", "2026-09-09T19:15:00Z"])
+        self.assertNotIn("sess-1789461233002-7tpn00", flat)  # never a row thread key
+        self.assertEqual(st["sources"]["sessions"]["operator_sessions"], 1)
+        row = st["supervise"]["rows"]["LOOP-F35"]
+        self.assertEqual((row["operator_ask"]["count"], row["operator_ask"]["newest"]["thread_id"]), (1, "sess-1789461233002-7tpn00"))
+        self.assertEqual([(a["row"], a["alerted"], a["age_hours"]) for a in st["operator_asks"]], [("LOOP-F35", True, 1.75)])
+        alert = next(a for a in st["actions"] if a["kind"] == "alert" and a.get("check") == "operator_ask")
+        self.assertEqual((alert["row"], alert["alert_kind"], alert["ask_thread_id"]), ("LOOP-F35", "operator-ruling", "sess-1789461233002-7tpn00"))
+        self.assertTrue(alert["alert_key"].startswith("operator-ruling:ask:"))
+        self.assertTrue(alert["status_text"].startswith("DECISION NEEDED (1h): LOOP-F35 — LOOP-F35 — compose render COMPLETE & verified"), alert["status_text"])
+        self.assertEqual(st["summary"]["operator_ask"], 1)
+        # the ordinary SLO nudge to the stale builder still runs beside it
+        self.assertEqual([(a["target_role"], a.get("check")) for a in st["actions"] if a["kind"] == "nudge"], [("hermes-builder", None)])
+        brief = (self.ap / "tick-report.txt").read_text().splitlines()
+        self.assertTrue(brief[1].startswith("DECISION NEEDED (1h): LOOP-F35 — LOOP-F35 — compose render COMPLETE"), brief[1])
+        self.assertEqual(brief[2], "LOOP-F35 | ✓ 09:57Z | ▶ 9.0h | · | ·")
+        md = (self.alerts.parent / "autopilot.md").read_text().splitlines()
+        self.assertTrue(md[1].startswith("DECISION NEEDED (1h): LOOP-F35"))
+        # recorded (record.py alerted --row LOOP-F35 --reason <alert_key>): the next tick is quiet, the ask stays on the table
+        (self.ap / "nudges.json").write_text(json.dumps({"nudges": [], "alerts": [{"row": "LOOP-F35", "reason": alert["alert_key"], "at": "2026-09-09T20:47:00Z", "line": alert["text"]}],
+                                                         "dispatched": [], "redispatched": [], "round3": []}))
+        st2 = self.run_pull()
+        self.assertEqual([a for a in st2["actions"] if a.get("check") == "operator_ask"], [])
+        self.assertEqual((st2["operator_asks"][0]["alerted"], st2["operator_asks"][0]["bound"]), (False, "2026-09-09T20:47:00Z"))
+        self.assertTrue((self.ap / "tick-report.txt").read_text().splitlines()[1].startswith("DECISION NEEDED (1h): LOOP-F35"))
+        # answered on the DM in the operator's own words (no "Operator" prefix, no sender on the transcript row): gone — the
+        # flat view never stamps an inbound line with the Orchestrator's identity, so the loose DM-answer rule sees it
+        self.fixtures["messages"]["s-orch-dm"].append({"seq": 3, "direction": "in", "kind": "chat", "timestamp": "2026-09-09T20:40:00Z", "text": "defer-carry; carry both items to the follow-up."})
+        st3 = self.run_pull()
+        flat3 = json.loads((self.ap / "raw" / "threads-flat.json").read_text())
+        reply = flat3["operator_threads"][0]["messages"][-1]
+        self.assertEqual((reply["direction"], reply["sender"], reply["role"]), ("in", None, None))
+        self.assertEqual((st3["operator_asks"], st3["summary"]["operator_ask"]), ([], 0))
+        self.assertIsNone(st3["supervise"]["rows"]["LOOP-F35"]["operator_ask"])
+        self.assertEqual(st3["sources"]["sessions"]["operator_unread"], 0)
+
+    def test_follow_up_ledger_row_is_collected_and_supervised_not_unknown(self):
+        """A `<PARENT>.<letter>` ledger row (SCHED-F34.a, opened on operator instruction) is a follow-up: no
+        `ledger-unknown-id`, its thread is read with the in-flight rows, the supervisor stages it, WIP is untouched."""
+        with open(self.ledger, "a", encoding="utf-8") as fh:
+            fh.write("| SCHED-F34.a | 2026-09-09 20:00Z (to hermes-architect, thread `hermes-SCHED-F34.a`) | — | — | — | — | follow-up: operator \"Open it\" (msg 290) |\n")
+        arch = {"id": "s-arch-f34a", "agent_group_id": "ag-arch", "thread_id": "hermes-SCHED-F34.a", "status": "active",
+                "container_status": "running", "last_active": "2026-09-09T20:30:00Z", "created_at": "2026-09-09T20:00:00Z"}
+        self.fixtures["sessions"] = SESSIONS + [arch]
+        self.fixtures["messages"] = {**MESSAGES, "s-arch-f34a": [
+            {"seq": 1, "direction": "in", "kind": "chat", "timestamp": "2026-09-09T20:00:00Z", "sender": "orchestrator", "text": "Dispatch SCHED-F34.a: TZ follow-up (operator ruling B)."}]}
+        st = self.run_pull()
+        self.assertEqual([a for a in st["alerts"] if a["kind"] == "ledger-unknown-id"], [])
+        self.assertEqual((st["follow_up_rows"]["SCHED-F34.a"]["parent"], st["follow_up_rows"]["SCHED-F34.a"]["state"]), ("SCHED-F34", "dispatched"))
+        self.assertEqual((st["follow_up_in_flight"], st["coverage"]["follow_ups"], st["coverage"]["total"]), (["SCHED-F34.a"], 1, 62))
+        self.assertEqual(sorted(st["in_flight"]), ["LOOP-F35", "MEM-F44"])
+        self.assertEqual(st["wip"]["in_flight"], 2)
+        self.assertEqual(st["sources"]["sessions"]["filter"]["rows"], ["LOOP-F35", "MEM-F44", "SCHED-F34.a"])
+        flat = json.loads((self.ap / "raw" / "threads-flat.json").read_text())
+        self.assertEqual(len(flat["hermes-SCHED-F34.a"]), 1)  # read, not "not in flight"
+        row = st["supervise"]["rows"]["SCHED-F34.a"]
+        self.assertEqual((row["stage"], row["age_hours"], row["action"], row["follow_up"]["parent"]), ("dispatched", 1.0, "none", "SCHED-F34"))
+        self.assertEqual(st["summary"]["follow_ups"], 1)
+        self.assertNotIn("SCHED-F34.a", [e["id"] for e in st["eligible_next"]])
+
     def test_gate_supervise_prints_json_last_and_wakes_on_a_nudge(self):
         """The one remaining task gate (the dispatch tick is dispatch-cron.sh on the host; test_dispatch_cron.py)."""
         (self.bin / "ncl.fixtures.json").write_text(json.dumps(self.fixtures))

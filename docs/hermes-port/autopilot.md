@@ -285,11 +285,13 @@ ask is `upstream-ask-malformed`; a source row not in the matrix is `upstream-ask
 
 §2.2 reads progress from marker lines and the fork. Three stalls on 2026-09-15/16 produced no marker
 and no fork change, so each row read as "progressing" for 15–20 h until the operator read the
-transcripts. Each is now its own detection with its own alert kind, bounded like every other action:
-one alert per `(kind, state)` per row per 24 h, one nudge per event (keyed by the event's timestamp,
-the way card nudges are keyed by their marker). None of them changes the row's stage or its SLO
-clock; all three leave a field on the row record (`infra_hold`, `bounced`, `idle_turn`) for the
-status table and a count in `summary`.
+transcripts; a fourth, on 2026-09-16/17, was the operator's own inbox (three asks unanswered for
+11–14 h while the summary read `hold 0, infra_hold 0`). Each is now its own detection with its own
+alert kind, bounded like every other action: one alert per `(kind, state)` per row per 24 h (per ask
+text for the operator ask), one nudge per event (keyed by the event's timestamp, the way card nudges
+are keyed by their marker). None of them changes the row's stage or its SLO clock; all four leave a
+field on the row record (`infra_hold`, `bounced`, `idle_turn`, `operator_ask`) for the status table
+and a count in `summary`.
 
 **Infra / operator hold** (`infra_hold`; alert `infra-hold`, or `operator-ruling` when the text names
 an operator ruling). CRED-F28: the architect wrote `HOLD on CRED-F28 — please PAUSE … the orchestrator
@@ -353,6 +355,72 @@ SLO path owns what follows. Otherwise the role is nudged early with the §3 temp
 `Your turn at <T> ended without the <marker>; if the work is done, send the marker now.` — once per T,
 inside the 6 h row bound, and never when the SLO nudge for the same marker already fired (or fires this
 tick).
+
+**Operator ask** (`operator_ask`; alert `operator-ruling`, key `operator-ruling:ask:<digest>`; no nudge, no
+re-arm). 2026-09-16/17: at 19:15Z the Orchestrator wrote on `hermes-ISO-F14` — and mirrored to the operator
+DM — `**ISO-F14 — render COMPLETE & verified; sandbox tier blocked on 2 new items. Your call again.** … I'm
+asking them deploy-now vs defer-carry … (or the operator rules defer-carry)`; at 14:28Z on `hermes-A2A-F21`
+`Cap is reached (2nd counted FAIL); I cannot dispatch another counted round without operator authorization …
+then I escalate the cap-authorization + bar decision to the operator`, and the builder at 15:53Z `HOLDING for
+the operator's go (no push)`; at 01:04Z on the nightly task thread (`system:tasks:hermes-nightly-regressio-8ee3`)
+`One ruling: … please use this exact framing`. None matched the hold shapes above (they are not `blocked (infra`
+/ `Hold (NOT a verdict` / `HOLD on <ID>` lines), the row threads were the only threads read, and the summary
+said nothing was waiting. Detection: an **outbound** line by the Orchestrator or any role whose text (markdown
+stripped, whitespace collapsed, case-insensitive, every tick-report / a|b|t|r line dropped first — below)
+**addresses the operator**. Two families: **explicit** (`OPERATOR_ASK_EXPLICIT_RES`; the operator named, or one
+of two fixed forms — always an ask) — `operator decision|ruling|go|authorization … needed|required|pending`,
+`without operator authorization`, `needs the operator's call|ruling|go`, `escalate|escalating … to the operator`
+(present tense only: `escalated … to the operator at 19:15Z, answered defer-carry` is a recount, and so is any
+text with a resolution word — `answered`, `ruling received`, `operator ruled` — after its last ask phrase),
+`HOLDING for the operator`, `operator rules …`, `awaiting / waiting on the operator`, `deploy-now vs
+defer-carry`, `One ruling:`; and **implicit** (`OPERATOR_ASK_IMPLICIT_RES`) — `your call`, `needs your
+call|ruling|go`, `ruling needed|required|requested`, `please rule|decide` — an ask **only** when the text also
+says `operator`, or when the **Orchestrator** writes it on one of its **operator threads** (there "you" is the
+operator). On a row thread "your call" is chain traffic (a builder asking the Orchestrator, the Orchestrator
+asking the architect), and a first line that addresses a role by name (`Orchestrator — your call: push or
+wait?`) never carries an implicit ask. **What answers** it: a later operator inbound on that thread — on a row
+thread or a `system:tasks:*` thread (which receive their task prompt as inbound every fire) a line starting
+`Operator` in any case (`Operator ruling`, `Operator addendum`, `Operator —`, `operator ruling B`: how the
+operator posts through the dashboard), on the DM / main thread **any** later inbound that is not a role's line
+or an ask copy (`Open it`, `defer-carry. carry both items to ISO-F15.`); an `Operator…` inbound on any thread
+naming exactly that one row (cross-thread answers stay strict); a later resolution line by any role (`ruling
+in`, `operator ruled|decided|authorized`, `per the operator's ruling`, `go received`, `resuming per`, the
+Orchestrator's `Ack —` / `relaying the ruling` / `re-arming … with the ruling`); a later progress marker (the
+`PROGRESS_KINDS` above) for a **role's** ask only — the Orchestrator's stands while the roles keep working
+(incident (a) said "report up when the sandbox tier runs", so the next `[Spec handoff]` is not the answer); and,
+on a **row** thread, a later plain line by the asking role (the hold-clearing rule — a restated or reworded
+ask, a card caption and a supervisor / autopilot / report line are not "moved on"; a status line that names no
+operator is). A marker line, a hold line (its own detection), a supervisor / autopilot line, a card caption,
+the receiver's `in` copy and the **supervise tick's own run output** are never asks: that output
+(`tick-report.txt` — the `Hermes autopilot · …` header, the `DECISION NEEDED` lines it quotes, the `<row> | a |
+b | t | r` rows, `full table:`, `supervise tick:`) is an outbound Orchestrator message on
+`system:tasks:hermes-ap-supervise-*`, so those lines are dropped from any message before the regexes, the key
+and the head read it (`ASK_SKIP_LINE_PREFIXES`), and the collector never reads that series at all. **Where it
+is read:** the row threads, and the Orchestrator's **operator threads** — its sessions whose thread is not
+`hermes-<ROW>` (the operator DM / main thread such as `sess-1789461233002-7tpn00`, `system:tasks:*` other than
+`hermes-ap-*`, `hermes-P0-LOOP`; never `hermes-status`, which carries alerts only). `collect_threads.py` pass 3
+runs **first**, on its own reserve (`--operator-deadline-s`, default 3 s: the row reads' 10 s gate budget can
+never starve it; `pull-state.sh`'s summary and the gate's payload report `operator_unread` when the reserve or a
+read failed — reported, never a wake), and reads the 6 newest of them active in the last 48 h **newest rows
+first** (`ncl sessions messages --limit 200 --full --reverse`: a plain `--limit` returns the OLDEST rows, and
+the incident DM was past seq 384), keeping the last 40 outbound lines each plus the inbound lines since the
+oldest kept — the operator's answers —, 600 chars of text per line (`--operator-sessions 0` turns it off;
+a malformed transcript row is skipped or coerced, never fatal). `pull-state.sh` flattens them under the one
+non-row key `operator_threads` of `threads-flat.json`, and the supervisor **attributes** each ask there to the
+one plan or follow-up row its full 600-char scan names (`ROW_ID_RE`, exactly one known id), else to the
+synthetic row **`OPERATOR`** so it still surfaces — a named row nobody supervises this tick (a merged
+follow-up) falls to `OPERATOR` too; a paused one stays silent. **What fires:** one alert per row per tick —
+the newest standing ask (the record's `operator_ask` keeps them all: `count`, `newest`, `asks`), keyed by the
+ask's normalised text, so the same words alert once per 24 h and a mirrored DM copy collapses into the row's
+alert (the same key — or the row's text under a lead-in naming more rows, listed with `collapsed_into`), while
+a reworded ask is a new key; for `OPERATOR`, every distinct standing ask. The alerts.md line is the §3 shape with `what` = `operator
+ask by <role> on <thread> at <ts>, unanswered: <head>` and `decision: answer it on hermes-<ID>` (the ask's own
+thread for `OPERATOR`); the **status line** is `DECISION NEEDED (<age>h): <row> — <first 140 chars>`, and
+the a|b|t|r brief (`tick-report.txt`, `/status/autopilot.md`) leads with the same lines (`state.operator_asks`).
+It is checked for every row state but `paused` (a capped row is `blocked` and still asks for the cap
+authorization) and for rows the thread names whatever their state (a queued row's "your call" is supervised
+for the ask alone); a paused row stays silent; the row's ordinary SLO check still runs — the ask is a decision
+we owe, not a stall the supervisor can re-arm, so it never emits a nudge or a re-arm.
 
 **Where the acks come from.** `processing_ack` lives in each session's `outbound.db` under
 `data/v2-sessions/`, which the Orchestrator container cannot read. `collect-acks.sh` runs on the host
@@ -498,7 +566,10 @@ re-arms it. Alert reasons that are not row states: `cost-card`, `core-change`, `
 `nudge-unconfirmed`, `hold-too-long`, `podman-box-needed`, `idle-capacity` (§4.1), for the two tables of §2.4
 `carried-criterion-malformed`, `carried-criterion-unknown-row`, `carried-open`,
 `upstream-ask-malformed`, `upstream-ask-unknown-row`, and for the marker-less stalls of §2.5
-`infra-hold`, `operator-ruling`, `bounce-repeat`.
+`infra-hold`, `operator-ruling` (a role's hold line naming an operator ruling, key `operator-ruling:<state>`;
+and an unanswered operator ask, key `operator-ruling:ask:<digest>`, status line `DECISION NEEDED (<age>h):
+<row> — <head>`, row `OPERATOR` when the ask names no single row), `bounce-repeat`, `thread-case`.
+`ledger-unknown-id` is never raised for a follow-up row (§4.1).
 
 ## 4. Queue, WIP and gating rules (from `dispatch-plan.md`)
 
@@ -525,6 +596,26 @@ is the `idle-capacity` alert (`hermes_queue.py`; `row` null, so one alerts.md li
 `N free slots, 0 eligible; paused rows that could run: <ids>` — the 2026-09-17 shape, seven ticks
 of "nothing to do (free 3, eligible none)" over 13 paused ADOPT rows. Rows behind an unmet gate
 and a deliberate `paused: true` never raise it; the human unpauses the rows or lowers `wip`.
+
+**Follow-up rows.** A ledger row whose id is `<PARENT>.<letter>` where `<PARENT>` is a matrix row and the
+dotted id itself is not one (`SCHED-F34.a`, `ISO-F10.a` — `OPS-F58.a` and `SELF-F57.b` are matrix rows in their
+own right) is a **follow-up** the Orchestrator opened on operator instruction ("Open it", msg 290; "operator
+ruling B", msg 384), not an unknown id: `hermes_queue.py` records it under `state.follow_up_rows[<id>]` with
+`parent`, the parent's batch / disposition / `attaches_to`, its own ledger state (`follow_up_in_flight` lists
+the in-flight ones) and `coverage.follow_ups` counts them; `ledger-unknown-id` is raised only for an id whose
+parent is unknown too (`ZZZ-F99`, `ZZZ-F99.a`). Follow-ups stay **out** of the 62-row coverage arithmetic, out
+of `in_flight` / WIP and out of the dispatch order (nothing gates on them, they are never dispatched by the
+cron) — and "no WIP slot" holds everywhere: the queue's `wip`, the supervisor's `summary.in_flight` (they are
+counted under `summary.follow_ups`) and the demo tracker's schedule (a follow-up record is mapped, never
+placed on a simulated slot). A criterion **carried onto a follow-up** (`## Carried criteria` to-row
+`SCHED-F34.a`) lands on it: the coverage check accepts the dotted id when the ledger has the row and judges
+DEFER by the parent's batch, the follow-up's `carries_criteria` carries it to the gate reminder, the from-row
+records the deferral; a follow-up of an unknown parent, or of a DEFER row, is still a hole that pauses
+dispatch. The supervisor treats an in-flight follow-up as an ordinary row on its own thread `hermes-<ID>` — stage,
+SLO, merge holds by the parent's batch, `follow_up: {parent}` on the record, `summary.follow_ups` — and ignores
+a merged / blocked one (an operator ask naming such a row falls to `OPERATOR`, §2.5); `pull-state.sh` reads
+their threads with the in-flight rows. The rows board gives a follow-up its own section and page once a card
+dir or a live session exists on its thread; the Slack mirror already treats a dispatched ledger row as a row.
 
 ### 4.2 Eligibility and order
 

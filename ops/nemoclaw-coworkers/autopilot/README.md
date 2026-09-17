@@ -7,8 +7,9 @@ prompts (and the Mac-side check) act on their output; nothing in here sends a me
 
 | Script | Spec | Reads | Writes |
 |---|---|---|---|
-| `hermes_queue.py` | §2.2 source A, §4 | `dispatch-plan.md`, `gap-matrix.md`, `ledger.md`, `config.json`, previous `state.json` | the state JSON: rows, `in_flight`, `merged`, `blocked`, `eligible_next` (with the §4.4 dispatch text per row), `wip`, `gating`, `alerts`, `plan_sha256` |
-| `hermes_supervise.py` | §2.3, §2.5, §3, §5 | that state, the row threads, `gh pr list --json`, the nudge ledger, optional sessions/cost, optional `--acks` (`acks.json`) | per in-flight row: `stage`, `age_hours`, `slo_breach`, `action` (`none` / `nudge` / `escalate`), `target_role`, `message`, `infra_hold` / `bounced` / `idle_turn`; plus `actions` (hold, gate, nudge, alert — re-arm nudges carry `check`, `rearm_role`, `rearm_text`, `rearm_session_id`), the `alerts.md` lines and `acks.status` |
+| `hermes_queue.py` | §2.2 source A, §4 | `dispatch-plan.md`, `gap-matrix.md`, `ledger.md`, `config.json`, previous `state.json` | the state JSON: rows, `in_flight`, `merged`, `blocked`, `eligible_next` (with the §4.4 dispatch text per row), `wip`, `gating`, `alerts`, `plan_sha256`, plus `follow_up_rows` / `follow_up_in_flight` (§4.1: `<PARENT>.<letter>` ledger rows, parent recorded, never a WIP slot) |
+| `hermes_supervise.py` | §2.3, §2.5, §3, §5 | that state, the row threads (+ the `operator_threads` key: the Orchestrator's DM / main / `system:tasks:*` sessions), `gh pr list --json`, the nudge ledger, optional sessions/cost, optional `--acks` (`acks.json`) | per in-flight row (follow-ups included): `stage`, `age_hours`, `slo_breach`, `action` (`none` / `nudge` / `escalate`), `target_role`, `message`, `infra_hold` / `bounced` / `idle_turn` / `operator_ask`; plus `actions` (hold, gate, nudge, alert — re-arm nudges carry `check`, `rearm_role`, `rearm_text`, `rearm_session_id`; operator-ask alerts carry `check: operator_ask` and the `DECISION NEEDED (<age>h): <row> — <head>` status line), `operator_asks`, the `alerts.md` lines and `acks.status` |
+| `collect_threads.py` | §2.5, §6 | `ncl groups list`, `ncl sessions list`, then per session `ncl sessions messages` / `ncl cost-cap status` | `threads.json`: the role sessions per row thread with transcripts (`--rows`: the in-flight rows only), `other_threads`, `thread_case`, and pass 3 `operator_threads` — the Orchestrator's 6 newest non-row sessions of the last 48 h (never `hermes-status`, never its own `system:tasks:hermes-ap-*` series), read FIRST on their own reserve (`--operator-deadline-s`, default 3 s) and newest rows first (`--reverse`), 40 outbound lines each (+ the inbound answers since the oldest kept), 600 chars per line; `counts.operator_unread` says how many it could not read; `--operator-sessions 0` turns it off |
 | `collect-acks.sh` (bash, HOST-side, hostname-guarded) | §2.5 | the central DB via `scripts/q.ts` (`./bin/ncl` fallback) for active `hermes-<ROW>` sessions, then ONE `bun:sqlite` readonly pass over their `outbound.db` files, then the tail of `logs/nanoclaw.log` | `data/shared/hermes/autopilot/acks.json` (tmp + rename): the newest `processing_ack` per session with role, canonical thread + `thread_id_raw`, container status, and the host's re-arm count per session over 24 h (`bounces_24h`, `last_bounce_at`). Run every 15 min by `refresh-viewers.sh` (`logs/collect-acks.log`); the supervisor ignores a copy older than 2 h |
 | `rowid.py` | §2.5 | — | the one canonical spelling of a `hermes-<ROW>` thread: `canon_thread("hermes-iso-f13") == "hermes-ISO-F13"`, `hermes-Iso-F10.A` → `hermes-ISO-F10.a`, non-row threads / None / "" unchanged. Imported by `collect_threads.py`, `rows-board.py` (and through it `slack-rows.py`); the two heredoc scripts (`collect-acks.sh`, `pull-state.sh`) carry an inline copy that `test_rowid.py` checks against it |
 | `abtr.py` (CLI: `scorecard.py --markdown [PATH]`, `--brief [PATH]`) | §7 | `state.json`, `ledger.md`, `alerts.md`, `prs.json`, `config.json` | the a \| b \| t \| r report: one markdown line per row with architect, builder, tester, reviewer and the gate as cells (`✓ HH:MMZ` done, `▶ 3.6h` active, `✗ FAIL r2`, `⏸`, `·`), in-flight rows first by age, then blocked, then merged, then the queued count |
@@ -38,7 +39,9 @@ for it. Missing or older than 2 h, the supervisor reports `acks.status` `missing
 idle-turn detections (§2.5).
 
 `threads.json` is `{"hermes-<ID>": [{"ts", "direction", "text", "sender"?, "kind"?}]}`, the
-collector's flattening of the role sessions on each row thread. A row whose value is not a
+collector's flattening of the role sessions on each row thread, plus the one non-row key
+`"operator_threads": [{"session_id", "thread_id", "role", "messages": [...]}]` (the Orchestrator's
+operator DM / main / `system:tasks:*` sessions, for the operator-ask detection). A row whose value is not a
 list (the collector could not read it) gets no action this tick. `nudges.json` is
 `{"<ID>": "<ISO>"}` or `{"<ID>": {"last_nudge", "state", "count", "alerts": {"<kind>:<state>": "<ISO>"}}}`;
 the `alerts` map is what bounds escalations to one per (row, state) per 24 h.
@@ -75,6 +78,33 @@ Rules pinned by the tests (`test_hermes_queue.py`, `test_hermes_supervise.py`):
   `COLLECT_DEADLINE_S` (`--deadline-s`, 10 s under the gates)
 - an architect or orchestrator session already on `hermes-<ID>` marks the row dispatched for the
   queue (never dispatch twice), even before the ledger row or the `record.py` entry exists
+- operator asks (§2.5, the 2026-09-16/17 incident — three asks unanswered 11–14 h behind `hold 0, infra_hold 0`):
+  an outbound line by the Orchestrator or any role that addresses the operator — EXPLICIT (always): `without
+  operator authorization`, `operator ruling/decision/go/authorization needed|required|pending`, `needs the
+  operator's call`, `escalate|escalating … to the operator` (never the past-tense recount `escalated …, answered
+  …`), `HOLDING for the operator's go`, `operator rules …`, `awaiting / waiting on the operator`, `deploy-now vs
+  defer-carry`, `One ruling:`; IMPLICIT (`your call (again)`, `needs your call/ruling/go`, `please rule`) only when
+  the text also says `operator` or the Orchestrator writes it on its own operator DM / task thread — on a row
+  thread "your call" is chain traffic, and a first line addressing a role by name never asks — that no later
+  operator inbound (`Operator …` in any case on a row / `system:tasks:*` thread; ANY non-role inbound on the DM,
+  `Open it`), resolution line (`ruling in`, `operator ruled`, `per the operator's ruling`, `Ack —`), progress
+  marker (a ROLE's ask only: the Orchestrator's stands while the roles keep working) or — on a row thread —
+  plain line by the asking role (a card caption or a restatement is not one) followed, is the `operator-ruling`
+  alert `DECISION NEEDED (<age>h): <row> — <first 140 chars>` (key `operator-ruling:ask:<digest of the text>`:
+  once per ask text per 24 h, a mirrored DM copy collapses into the row's alert — under a two-row lead-in too,
+  `collapsed_into` —, a reworded ask is new), the newest standing ask per row, no nudge and no re-arm (we are the
+  blocker), the row's SLO check still running; read on the row threads AND on the collector's `operator_threads`,
+  where an ask is attributed to the one plan / follow-up row its 600-char scan names, else to the synthetic row
+  `OPERATOR` (a named row nobody supervises this tick falls there too); the supervise tick's own run output
+  (`Hermes autopilot · …`, the quoted `DECISION NEEDED` lines, the a|b|t|r rows) is never an ask and its task
+  series is never read; a paused row is silent; `record.py alerted --row OPERATOR` books it like any row; the
+  brief leads with the DECISION NEEDED lines (`state.operator_asks`)
+- follow-up rows (§4.1): a ledger row `<PARENT>.<letter>` with a matrix-row parent (`SCHED-F34.a`, `ISO-F10.a`)
+  is `follow_up_rows[<id>]` (`parent`, ledger state, the parent's batch) and `coverage.follow_ups`, never
+  `ledger-unknown-id`, never in `in_flight` / WIP / the dispatch order (nor the supervisor's `summary.in_flight`
+  or the demo tracker's slots); a criterion carried onto it lands on it (DEFER judged by the parent's batch); the
+  supervisor runs it as an in-flight row on `hermes-<ID>` only while its ledger state is in flight
+  (`summary.follow_ups`); `ZZZ-F99` and `ZZZ-F99.a` (unknown parent) still alert
 - three stalls the markers do not show (§2.5, the 2026-09-15/16 incidents): an outbound `blocked (infra` /
   `Hold (NOT a verdict` / `HOLD on <ID>` line (or "pending an operator ruling" in its first three lines)
   that nothing followed — no marker, no later plain line by the same role — alerts `infra-hold` /
