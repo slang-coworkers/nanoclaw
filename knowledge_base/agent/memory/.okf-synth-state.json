@@ -2,17 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-08-30T17:07:21Z",
-   "backlog": 3133002,
-   "defects": 40,
-   "offenders": 195,
-   "top": {
-    "path": "imported/project_nanoclaw_pr874_webhook_route_approver.md",
-    "class": "OVERSIZE",
-    "size": 342367
-   }
-  },
-  {
    "at": "2026-08-30T17:51:49Z",
    "backlog": 2788096,
    "defects": 41,
@@ -329,6 +318,17 @@
     "path": "imported/project_12400_wgsl_out_param_ptr_function.md",
     "class": "OVERSIZE",
     "size": 24526
+   }
+  },
+  {
+   "at": "2026-09-17T04:14:16Z",
+   "backlog": 346338,
+   "defects": 0,
+   "offenders": 96,
+   "top": {
+    "path": "imported/feedback_correction_must_sweep_whole_file.md",
+    "class": "OVERSIZE",
+    "size": 23854
    }
   }
  ]
