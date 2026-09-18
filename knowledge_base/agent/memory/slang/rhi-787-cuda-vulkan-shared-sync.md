@@ -95,6 +95,65 @@ fence-hook fork with "land now," flipping to ready is authorized (unlike my earl
 actually asked). `gh pr ready` is operator-gated so the fixer brings the flip to me; I confirm on his answer.
 If he wants the fence trigger first → fixer implements the fold-into-signal version (flagged unvalidated), then flip.
 
+### 🔄 CHANGE-REQUEST from jhelferty (2026-09-17, review r4041473666) — precise acquire, NOT the fence answer
+He did NOT answer the fence-fork; instead requested **precise acquire granularity** (supersedes "land now"
+for now; flip stays held). Directive: `submit()` acquires only the Shared resources in the submitted CBs'
+`m_trackedObjects` (leave others on EXTERNAL); `readBuffer()` acquires only that buffer; `waitOnHost()`
+unchanged (still releases all owned). No API. This is the coarse-granularity follow-up he now wants inline.
+**His design Q:** can a Shared resource be used by a submit WITHOUT landing in `m_trackedObjects` (bindless /
+device-address)? If so an internal always-acquire fallback list is needed. Fixer acked (issuecomment-5721303709),
+did NOT assert the answer, investigating `m_trackedObjects` semantics + whether bindless bypasses it.
+⭐**Correctness asymmetry I steered on:** getting acquire "too precise" (skipping a resource that IS accessed)
+reintroduces THIS bug in reverse (producer touches CUDA-owned resource); "too coarse" (acquiring one that
+didn't need it) is only a redundant barrier. ⇒ resolve uncertainty toward acquiring/keeping the fallback,
+not skipping. Fence-fork remains open in PR body; re-surface after granularity lands.
+
+**Bindless finding (2026-09-17, msg 74) — landed PRECISE + FALLBACK with positive evidence:** bindless
+`setDescriptorHandle` memcpy's the 8-byte handle into uniform data / `allocBufferHandle` writes the global
+descriptor set with **no RefPtr, no CB touch** (`vk-bindless-descriptor-set.cpp:161-213`); `getDeviceAddress()`
+returns a bare uint64, never tracked (`vk-buffer.cpp:248-267`). Both let a Shared resource be used by a submit
+WITHOUT entering `m_trackedObjects` ⇒ fallback required (positive bypass, not unproven absence).
+Design: `waitOnHost()` releases all owned; `submit()` acquires tracked-set shared resources (unwrap
+`m_trackedObjects` via dynamic_cast: Buffer / TextureView→texture / Texture, intersect registry) **+ always-acquire
+fallback set** (marked when a Shared buffer's `getDeviceAddress()` is called or a bindless handle allocated);
+`readBuffer()` acquires only its buffer. Early-out for non-shared/all-owned. Internal-only.
+⚠️**My probe (msg to fixer): is "two untracked-use signals" STRUCTURAL (only two ways to FORM an untracked
+buffer reference) or ENUMERATED (two use-sites found)?** If enumerated, a third bypass path silently defeats
+the fallback — same unproven-absence shape. Asked fixer to make the structural argument (mark on handle-
+FORMATION covers all untracked use regardless of use-site count) or widen the fallback trigger; made it a
+specific codex CODE_REVIEW target.
+
+### ⭐ STRUCTURAL CLAIM FAILED → RECOMMEND REGISTER-ALL (2026-09-17, msg 76)
+Probe answer: `{getDeviceAddress, bindless-alloc}` is **NOT** complete. **Third path, evidenced:**
+`BufferImpl::getNativeHandle()` (`vk-buffer.cpp:192`) hands the app the raw `VkBuffer`, and `ExecuteCallback`
+(`vk-command.cpp:1624`) runs app-recorded commands inside RHI submit ⇒ a Shared buffer can be touched by a
+submit with its ref neither in `m_trackedObjects` nor formed via device-address/bindless. Textures too
+(bindless + native-handle). **The enumeration grew 2→3 under ONE probe — that IS the answer: precise mode's
+correctness is an exhaustiveness bet that keeps losing.**
+**REFRAME (load-bearing):** the committed, pushed, **GPU-CI-green `6e040d1` IS register-all** (registers every
+Shared resource, acquires all `ReleasedToExternal` at submit) — **total by construction, zero dependency on
+formation-path completeness.** jhelferty's "acquire only what the submit uses" is the *uncommitted in-flight
+refinement* that inherits the completeness burden. Its coarseness is near-free (early-out = zero cost when
+nothing released — the common case; redundant barriers only during active multi-resource cross-API sharing).
+Per the asymmetric-failure rule register-all has NO miss-a-path risk; precise is only as correct as the enum.
+**Recommendation (his call — his precision request): KEEP register-all.** Fixer HELD the incomplete 2-trigger
+precise subagent output (not committed). If he still wants precise → precise + 3-trigger fallback, raw-VkBuffer-
+outside-RHI documented as app-owned, exhaustiveness risk flagged. **Surfaced to jhelferty on the PR by the fixer**
+(precise-vs-register-all note + evidence + recommendation, next to the parked fence-fork). If he picks register-all,
+the PR is essentially DONE (green) modulo the fence-fork + flip. Flip still held.
+⭐ The recommendation does NOT depend on the third path being real — register-all needs no completeness proof at all;
+the third path just illustrates why precise's burden is a losing bet.
+
+**Correction (msg 78):** the in-flight precise build is a **3-trigger** fallback (device-address + bindless-buffer
++ bindless-**texture**; it independently found the texture bindless bypass), compiles clean, uncommitted. Its only
+known gap = `getNativeHandle()` path ⇒ "one trigger from covering all RHI-executed formations." **Decision UNCHANGED:**
+the enumeration grew 2→3→(3+native-handle) under two probes — the exhaustiveness track record IS the argument, and
+register-all makes no such bet. **This is jhelferty's call (he explicitly requested precision) — I do NOT preempt it,
+same principle as the drafts-only / force-push gates: don't reverse a maintainer's explicit request on my own
+authority even with strong reasons.** Route to him; fixer posts the sharpened fork + my register-all recommendation.
+If he picks precise → add native-handle trigger + codex gate with exhaustiveness as explicit target. Prior
+register-all message to fixer likely NOT delivered (malformed close tag); re-sent complete + self-contained.
+
 ### 🔴 OPEN — fence-signal release trigger DEFERRED, escalated to jhelferty with the PR (2026-09-16)
 Maintainer's policy listed 3 release triggers: "inside submit / waitOnHost / fence signal." Fixer implemented
 **waitOnHost (release) + submit (acquire-back)** — both tested paths — and **removed the fence-signal trigger**:
