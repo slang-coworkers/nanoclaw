@@ -3,7 +3,7 @@ title: Reviewer-runner infrastructure — API-400 payloads, integrity-fail, stat
 type: concept
 group: review-process
 tags: [reviewer-a, reviewer-c, clarity, slang-pr-review-runner, api-400, integrity-fail, monitor, patch-mode, shared-checkout, artifacts]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -175,9 +175,12 @@ and the reviewer never starts (silent if backgrounded). Both self-assign a run d
 for `output →`. Only `devin-fetch.sh` (Reviewer B) takes `--out`
 ([slang-pr-review runners manage their own transcripts dir — no --out flag](../learnings/1787049654930-slang-pr-review-runners-manage-their-own-transcrip.md)).
 
-**Source learnings (14):**
+**Reviewing a `shader-slang/slang-rhi` PR** works even though slang-rhi ships no `REVIEW.md`/`.claude/agents`: keep `REPO_ROOT` at its default `/workspace/agent/slang` (the slang checkout owns the pipeline) and pass `--repo shader-slang/slang-rhi --pr <N>`. The slang checkout **vendors slang-rhi at `external/slang-rhi/`**, so A's subagents and C get REAL source context, not diff-only — e.g. on #868 the correctness reviewer read `external/slang-rhi/src/vulkan/vk-buffer.cpp` and cited exact lines to confirm the fix. Caveat: that vendored copy is a pinned submodule and may lag PR head by a few commits — use it for surrounding source, verify changed hunks against `gh pr diff`. `gh` read ops on public slang-rhi succeed even when `gh auth status` says `GH_TOKEN invalid` (only writes need the token). A peer fix-review handoff (request straight from `slang-fixer`, no `<github-post-authorized />`) → GitHub post-back is a no-op; return `combined-review.md` on the peer edge only, don't multicast to the parent ([slang-pr-review-runner reviews slang-rhi PRs with real source via vendored external/slang-rhi](../learnings/1789438594576-slang-pr-review-runner-reviews-slang-rhi-prs-with-.md)).
+
+**Source learnings (15):**
 
 - [slang-pr-review runners manage their own transcripts dir — no --out flag](../learnings/1787049654930-slang-pr-review-runners-manage-their-own-transcrip.md) — A/C self-assign `transcripts/<mode>-<ts>`; grep the launch log for `output →`; only devin-fetch.sh takes `--out`.
+- [slang-pr-review-runner reviews slang-rhi PRs with real source via vendored external/slang-rhi](../learnings/1789438594576-slang-pr-review-runner-reviews-slang-rhi-prs-with-.md) — keep `REPO_ROOT=/workspace/agent/slang`, pass `--repo shader-slang/slang-rhi --pr <N>`; the vendored `external/slang-rhi/` submodule gives real source context (may lag head); peer fix-review handoffs return on the peer edge only.
 - [Reviewer A (slang-pr-review-runner) can die on transient API-400 payload truncation](../learnings/1787266138406-reviewer-a-slang-pr-review-runner-can-die-on-trans.md) — PR #12650; 3 identical deaths after reading the large PR body; discriminator is request size; report A-absent and merge on B+C + own checks.
 - [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md) — PR 12647; shared `tmp/pr-diff.patch` clobber; triangulate the diff sha256 across four sources + positive-control a finding; fix is per-run worktree/TMPDIR.
 - [Clarity reviewer (C) can hit reproducible API-400 payload-overflow; 3rd retry may under-produce](../learnings/1787322332417-clarity-reviewer-c-can-hit-reproducible-api-400-pa.md) — PR #12670; a `completed` terminal reason ≠ valid artifact; 96B = fake-clean; distinguish error-string vs verification-prose artifacts.

@@ -3,7 +3,7 @@ title: "CI Flake — Evidence Dedup, Reporting & Health-Claim Integrity"
 type: concept
 group: ci-tooling
 tags: [ci, flake, dedup, run-id, reporting, escalation, classification, health-dashboard, memoized-verdict, slang]
-source_count: 18
+source_count: 19
 ---
 
 # CI Flake — Evidence Dedup, Reporting & Health-Claim Integrity
@@ -35,6 +35,8 @@ When summarizing flake evidence from `memory/rerun-log.jsonl`, always deduplicat
 When the sweep is dominated by one deterministic operator-owned root cause, lead the report with that root cause as the loud headline — "reruns futile" + name the concrete operator fix — and put per-PR tallies after. A maintainer who tries their own rerun and re-fails needs to see the root cause immediately, not buried under per-PR detail ([CI babysitter: headline the dominant root-cause when maintainers rerun into a deterministic wall](../learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)).
 
 The record itself has to be trustworthy before any report over it is. A class of CI-integrity bug is a **detected failure that is logged but not recorded**: the failure is written to the log stream, but the tracked record's status was initialized to `Success` and the write path never flips it, so aggregates and dashboards under-report a real red. Audit that the failure-handling path actually updates the record, not merely the log line ([CI-integrity bug: a detected failure is logged but not recorded (stale init=Success)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)).
+
+The "read actual source, don't draft from memory" invariant applies to your **own** recently-produced findings, not just external code. In the 2026-09-14 sweep the report *body* (written early, close to verification) correctly said #13043 was the PR blocked by #13041, but the later advice-summary line — paraphrased from recall — named the wrong PR (#13042). When a summary/advice section asserts "PR #N is doing X", re-verify with `gh pr checks <N>` (or equivalent) **at write time**, even if you verified it minutes earlier in the same task; the gap opens between an early-verified body and a later-recalled summary ([CI babysitter: double-check PR numbers before naming which PR has which failure in reports](../learnings/1789424667165-ci-babysitter-double-check-pr-numbers-before-namin.md)).
 
 ## Recent operational learnings (incremental fold 2026-07-17)
 
@@ -68,7 +70,7 @@ A memoized CI verdict ("skip this PR, logs expired") voided only on **head-sha c
 
 Generalizing: **any memoized verdict needs an invalidation trigger for every input that can change the answer**, not just the most obvious one. The same shape recurs as *a durable record is not a due action* — an armed nightly-CI monitor with correct coverage still resolved silently because no sweep step read it; making a check *durable* (compaction-proof ledger note) does not make it *due* (on the sweep's own emit list). And *a guard's retirement condition is part of its design* — a figure protected by an armed check regressed a third time the moment the check correctly retired, because a **settled** measurement outlives the question that produced it and needs a permanent home (as-of stamp + population + reproduction basis + invalidation trigger, none optional) that the guard's lifetime doesn't bound ([a durable record is not a due action](../learnings/1786257122553-a-durable-record-is-not-a-due-action-armed-checks-.md), [a guard's retirement condition is part of its design](../learnings/1786264054032-a-guard-s-retirement-condition-is-part-of-its-desi.md)).
 
-**Source learnings (18):**
+**Source learnings (19):**
 - [Flaky-CI evidence: dedup by run id](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)
 - [Headline the dominant root-cause in babysitter reports](../learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)
 - [CI-integrity bug: detected failure logged but not recorded (stale init=Success)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
@@ -87,3 +89,4 @@ Generalizing: **any memoized verdict needs an invalidation trigger for every inp
 - [a sha-pinned skip mark has a freshness gap: a new run on an unchanged sha stays suppressed](../learnings/1786270442513-a-sha-pinned-skip-mark-has-a-freshness-gap-a-new-r.md)
 - [a durable record is not a due action — armed checks need a consumer on the report path](../learnings/1786257122553-a-durable-record-is-not-a-due-action-armed-checks-.md)
 - [a guard's retirement condition is part of its design — settled values need a home the guard's lifetime doesn't bound](../learnings/1786264054032-a-guard-s-retirement-condition-is-part-of-its-desi.md)
+- [CI babysitter: double-check PR numbers before naming which PR has which failure in reports — re-verify your own paraphrased facts at write time](../learnings/1789424667165-ci-babysitter-double-check-pr-numbers-before-namin.md)

@@ -3,6 +3,7 @@ title: "slang-pr-review-runner INTEGRITY-FAIL can be a false positive under conc
 type: learning
 topic: slang-compiler
 source: learnings/1789441851541-slang-pr-review-runner-integrity-fail-can-be-a-fal.md
+superseded_by: 1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal
 ---
 
 # slang-pr-review-runner INTEGRITY-FAIL can be a false positive under concurrent runs (shared tmp/pr-diff.patch)

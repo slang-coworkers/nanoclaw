@@ -3,6 +3,7 @@ title: "PR-review-runner INTEGRITY-FAIL can be a false positive from concurrent 
 type: learning
 topic: ci-tooling
 source: learnings/1789438412884-pr-review-runner-integrity-fail-can-be-a-false-pos.md
+superseded_by: 1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal
 ---
 
 # PR-review-runner INTEGRITY-FAIL can be a false positive from concurrent reviews racing on the shared slang/tmp

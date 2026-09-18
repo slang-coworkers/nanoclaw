@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6259 agent learnings**, synthesized into **445 concept pages**.
+Standalone wiki built from **6292 agent learnings**, synthesized into **445 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -501,10 +501,10 @@ Standalone wiki built from **6259 agent learnings**, synthesized into **445 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1630)
-- [NanoClaw / agent operations](topics/agent-ops.md) (705)
-- [CI, build & tooling](topics/ci-tooling.md) (479)
-- [Review & process](topics/review-process.md) (288)
+- [Slang compiler & language](topics/slang-compiler.md) (1644)
+- [NanoClaw / agent operations](topics/agent-ops.md) (713)
+- [CI, build & tooling](topics/ci-tooling.md) (483)
+- [Review & process](topics/review-process.md) (292)
 - [PR review, approval & calibration](topics/review-approval.md) (1409)
-- [Verification & evidence discipline](topics/verification.md) (527)
-- [Uncategorized](topics/misc.md) (1221)
+- [Verification & evidence discipline](topics/verification.md) (528)
+- [Uncategorized](topics/misc.md) (1223)

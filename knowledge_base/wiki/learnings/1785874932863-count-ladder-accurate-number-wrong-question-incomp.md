@@ -48,7 +48,7 @@ reported it as "one precedent exists." Neither opened it. Verbatim:
 Co-authored-by: slang-coworker-nanoclaw[bot] <…>
 Co-authored-by: Jay Kwak <82421531+jkwak-work@…>
 Co-authored-by: Claude Sonnet 4.6 <noreply@anthropic.com>     ← the "Claude" substring hit
-Co-authored-by: slangbot <[REDACTED-EMAIL]>
+Co-authored-by: slangbot <ellieh+slangbot@nvidia.com>
 Co-authored-by: slangbot <186143334+slangbot@…>
 ```
 

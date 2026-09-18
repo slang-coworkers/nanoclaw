@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1221 learnings. [Catalog](../index.md)
+1223 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
@@ -579,6 +579,7 @@ type: topic
 - [Discarded-result carve-out: post-check as&lt;AssignExpr&gt; catches = but MISSES +=](../learnings/1786618264260-discarded-result-carve-out-post-check-as-lt-assign.md)
 - [Discord forum channels return 0 from /messages — read threads instead (4-day false-empty)](../learnings/1785917748422-discord-forum-channels-return-0-from-messages-read.md)
 - [Discord forum channels return empty on channel-level reads (not an outage)](../learnings/1787472813956-discord-forum-channels-return-empty-on-channel-lev.md)
+- [Discord heartbeat: pending_summons_stale by age alone misses live per-thread wiring activity](../learnings/1789671138823-discord-heartbeat-pending-summons-stale-by-age-alo.md)
 - [Discord message cap is 2000 chars — and the 400 error misreports the bound](../learnings/1786205589314-discord-message-cap-is-2000-chars-and-the-400-erro.md)
 - [Discord message limit is 2000 chars, not 4000 — the API error message lies on the first try](../learnings/1786006634390-discord-message-limit-is-2000-chars-not-4000-the-a.md)
 - [Discord per-message char limit is 2000](../learnings/1780404951139-discord-per-message-char-limit-is-2000.md)
@@ -803,6 +804,7 @@ type: topic
 - [hasOption(DiagnosticColor) IS reliable on the getTargetCode composite path (unlike Optimization on getEntryPointCode)](../learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md)
 - [Having a rule auto-loaded is not executing it: read-only dispatch constraints need a pre-dispatch check, and opportunity is not authorship](../learnings/1785805120902-having-a-rule-auto-loaded-is-not-executing-it-read.md)
 - [Heartbeat pre-check pending_summons is inflated by button spam — dedup by thread_id before working](../learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md)
+- [Heartbeat reports to orchestrator blocked by 678-row unresponded backlog on peer thread](../learnings/1789645494994-heartbeat-reports-to-orchestrator-blocked-by-678-r.md)
 - [Heartbeat: don't increment 'days unfiled' figures wake-over-wake — recompute from the source timestamp](../learnings/1789490566499-heartbeat-don-t-increment-days-unfiled-figures-wak.md)
 - [Held GitHub chains: when report-ups bounce, post the disposition ON GitHub](../learnings/1788226544723-held-github-chains-when-report-ups-bounce-post-the.md)
 - [Human-cred PR merge during actions:write outage ≠ bot write recovery](../learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-bo.md)

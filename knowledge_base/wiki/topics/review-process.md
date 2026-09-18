@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-288 learnings. [Catalog](../index.md)
+292 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -54,6 +54,7 @@ type: topic
 - [[approver/infra] On the Devin-only tier, verify the fetched review is HEAD-CURRENT before trusting its 0-bugs signal — a synchronize can leave Devin one revision behind](../learnings/1787297274879-approver-infra-on-the-devin-only-tier-verify-the-f.md)
 - [[approver/infra] When the PRIMARY review check-run is stuck QUEUED (not the ~6-min posting race), fall to Devin — but only when byte-identical-to-a-reviewed-revision makes it false-safe-free](../learnings/1784366403034-approver-infra-when-the-primary-review-check-run-i.md)
 - [[approver/stale-secondary] Devin (secondary) reviews the pre-fix prefix state on a fresh-push revision — verify the flagged line against head source before trusting a bug flag](../learnings/1784343479716-approver-stale-secondary-devin-secondary-reviews-t.md)
+- [A bot reviewer's proposed FIX is lower-confidence than its FINDING — verify suggested remedies at source before relaying them as actionable](../learnings/1789652286088-a-bot-reviewer-s-proposed-fix-is-lower-confidence-.md)
 - [A bot-authored PR with human reviewers requested does NOT mean the bot requested them — check the timeline actor](../learnings/1788186584286-a-bot-authored-pr-with-human-reviewers-requested-d.md)
 - [A budget cap on a fan-out reviewer pipeline is structurally guaranteed to destroy the output it protects](../learnings/1785839403586-a-budget-cap-on-a-fan-out-reviewer-pipeline-is-str.md)
 - [A CI verdict belongs to a REVISION, not to an interval - check what a reviewer saw DURING the wait](../learnings/1786041756766-a-ci-verdict-belongs-to-a-revision-not-to-an-inter.md)
@@ -112,6 +113,7 @@ type: topic
 - [Devin (Reviewer B) can return a STALE analysis of a superseded commit — check its AI Analysis text matches the current head](../learnings/1789468313496-devin-reviewer-b-can-return-a-stale-analysis-of-a-.md)
 - [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
 - [Devin (Reviewer B) narrative often echoes the PR description — don't treat it as independent verification](../learnings/1789227249869-devin-reviewer-b-narrative-often-echoes-the-pr-des.md)
+- [Devin (Reviewer B) timeout on a fresh merge-commit head leaves stale devin-flags.md — don't cat it as fresh](../learnings/1789684201897-devin-reviewer-b-timeout-on-a-fresh-merge-commit-h.md)
 - [Devin can echo the PR body as its "AI Analysis" — that is not an independent review](../learnings/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md)
 - [Devin false-all-clear regressed: verify the fix is IN the script, not in your notes](../learnings/1786405505888-devin-false-all-clear-regressed-verify-the-fix-is-.md)
 - [Devin re-run after a push can return STALE cached analysis — detect via renamed-symbol probe, not just commit-status](../learnings/1784827155083-devin-re-run-after-a-push-can-return-stale-cached-.md)
@@ -201,6 +203,7 @@ type: topic
 - [Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
 - [Reviewer A (nv-slang-bot) can emit confident false-positive crash bugs whose repros do not compile — always compile the repro](../learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md)
 - [Reviewer A (slang-pr-review-runner) can die on transient API-400 payload truncation](../learnings/1787266138406-reviewer-a-slang-pr-review-runner-can-die-on-trans.md)
+- [Reviewer A (slang-pr-review-runner) can hit the claude CLI 600s background-wait ceiling → kills subagents → false 0/0/0 review](../learnings/1789695101887-reviewer-a-slang-pr-review-runner-can-hit-the-clau.md)
 - [Reviewer A (slang-pr-review-runner) needs isolated REPO_ROOT + higher budget under concurrent runs](../learnings/1783620361461-reviewer-a-slang-pr-review-runner-needs-isolated-r.md)
 - [Reviewer A (slang-pr-review-runner) premature-termination signature: exit-0 but incomplete](../learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md)
 - [Reviewer A + C parallel isolation: use /workspace/agent/slang-clarity as C's REPO_ROOT](../learnings/1782586901771-reviewer-a-c-parallel-isolation-use-workspace-agen.md)
@@ -228,6 +231,7 @@ type: topic
 - [Reviewer-A INTEGRITY-FAIL can be a false positive from a clobbered SHARED tmp/pr-files.txt](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer-A INTEGRITY-FAIL can be a false positive from a CONCURRENT PR review on the shared checkout](../learnings/1786584985080-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer-disagreement: "match canonical precedent" vs "precedent is itself wrong"](../learnings/1780733925284-reviewer-disagreement-match-canonical-precedent-vs.md)
+- [Reviewer-flagged "crash on valid input": verify reachability empirically (past upstream guards) before disclosing](../learnings/1789689508202-reviewer-flagged-crash-on-valid-input-verify-reach.md)
 - [Reviewer: a self-recommended comment addition does not reset the PR review pipeline](../learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md)
 - [Reviewer: gate the verdict on full-suite CI for broad-blast-radius changes, not static review alone](../learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md)
 - [Reviewing "reject unrepresentable input" fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md)

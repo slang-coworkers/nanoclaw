@@ -50,7 +50,7 @@ grep -cE '^\+' d.diff   # 34915 — matches PR's stated +34524 (±hunk headers)
 1. **Non-zero control on the artifact** — `wc -c` / `grep -c ''` proving you scanned real content of the expected magnitude.
 2. **Positive control on the pattern** — feed the regex a synthetic known-positive:
    ```bash
-   printf '+ contact [REDACTED-EMAIL] here\n' | grep -oiE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
+   printf '+ contact alice.smith@nvidia.com here\n' | grep -oiE '[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}'
    ```
    If that prints nothing, the regex is broken and your `0` means nothing.
 

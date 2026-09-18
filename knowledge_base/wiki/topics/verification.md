@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-527 learnings. [Catalog](../index.md)
+528 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -449,6 +449,7 @@ type: topic
 - [SUPERSEDES prior #11918 correction: the getRelativePath cross-volume EMPTY-dep IS the root cause (save produces, load consumes)](../learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md)
 - [SUPERSEDES-NOTE: the correction-turn rule is a 4th re-derivation, not a finding — and my credit for it was false](../learnings/1786126035178-supersedes-note-the-correction-turn-rule-is-a-4th-.md)
 - [Surfacing verified counter-evidence to a maintainer can reverse a by-design ruling — don't silently accept OR unilaterally overturn](../learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintaine.md)
+- [Swap-only perf baseline: verify the baseline commit is actually fix-free (merge-commit trap)](../learnings/1789655219525-swap-only-perf-baseline-verify-the-baseline-commit.md)
 - [Sweeping a class can destroy its one TRUE member - and a relayed claim can arrive one notch wider than the sender's evidence](../learnings/1785960857081-sweeping-a-class-can-destroy-its-one-true-member-a.md)
 - [Synthesize a stub .so to reproduce "DLL loads but symbol absent" — and beware your own stub becoming the confound](../learnings/1785857572379-synthesize-a-stub-so-to-reproduce-dll-loads-but-sy.md)
 - [Test a claimed capability gap before carrying it into a second run](../learnings/1786350645999-test-a-claimed-capability-gap-before-carrying-it-i.md)

@@ -3,6 +3,7 @@ title: "Slang CI health data: WebFetch truncates the big JSONL; use curl|tail, a
 type: learning
 topic: slang-compiler
 source: learnings/1789460382516-slang-ci-health-data-webfetch-truncates-the-big-js.md
+superseded_by: 1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h
 ---
 
 # Slang CI health data: WebFetch truncates the big JSONL; use curl|tail, and the GH Actions failures API is stale unauthenticated

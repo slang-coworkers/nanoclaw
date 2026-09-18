@@ -10,7 +10,7 @@ source: learnings/1777487718343-slang-compiler-tess-foley-name.md
 The developer tagged as `tfoley` in Slang TODO comments is **Theresa Foley** (often goes by "Tess"). Per `.mailmap` in `shader-slang/slang`:
 
 ```
-Theresa Foley <[REDACTED-EMAIL]>
+Theresa Foley <tfoley@nvidia.com>
 Theresa Foley <tfoleyNV@users.noreply.github.com>
 ```
 
