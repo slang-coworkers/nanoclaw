@@ -57,9 +57,14 @@ Rules pinned by the tests (`test_hermes_queue.py`, `test_hermes_supervise.py`):
 - WIP counts every ledger row that is not merged or blocked; `blocked` rows free their slot
 - order: 1a, then 1b waves / batch 2 / adopt@P2 / adopt@P3-waveA on 1a's first tester PASS,
   then batch 3 (`podman_box`) / batch 4 / adopt@P5 on batch 2 merged, then batch 5 (`FLEET-F62`,
-  the fleet-assembly BUILD row) and adopt@P6 on batches 3 and 4 merged (no `batch5_merged` gate:
-  nothing waits on batch 5); a BUILD row jumps the queue when no BUILD row is in flight; DEFER and
-  MERGE-> rows never dispatch
+  the fleet-assembly BUILD row) and adopt@P6 on batches 3 and 4 merged, then batch 6 (`OSH-F63`,
+  `OSH-F64` — the P7 OpenShell substrate and demo BUILD rows, 2026-09-17) on `batch5_merged` (every
+  batch 5 row merged or waived); inside batch 6 the lead row `OSH-F63` gates `OSH-F64` the way 1a
+  gates 1b (rule 3, machine-enforced 2026-09-18): `OSH-F64` also waits on `osh_f63_first_pass`
+  (OSH-F63 merged / waived or a tester PASS at its head) and its merge holds on `osh-f63` until
+  `osh_f63_merged`; the FIRST eligible BUILD row jumps the queue when no BUILD row is in flight (a
+  BUILD row already in front stays — two adjacent BUILD rows never swap); DEFER and MERGE-> rows
+  never dispatch
 - never twice: a ledger row, a `dispatched_at` in the previous state, or `paused_rows` excludes a row
 - `idle-capacity` (the 2026-09-17 seven-tick "nothing to do"): free WIP slots ≥ 2, nothing eligible, and `paused_rows`
   holding rows whose gates are all met → one alert naming them (`row` null, so it is keyed `(plan, idle-capacity)`,
@@ -68,7 +73,7 @@ Rules pinned by the tests (`test_hermes_queue.py`, `test_hermes_supervise.py`):
   state first (`blocked`, cost cards and environmental `ESCALATE` reports escalate at once)
 - `FAIL ×2` is the cap (two counted FAILs); a plain `ESCALATE` report is environmental and
   not a round; `authorize_round` in `config.json` lifts the cap once
-- holds (`1a`, `batch2`, `batch3+4` — batch 5 and the P6 adopt row —, `core-change`, `paused`) pause the SLO; `hold-too-long`
+- holds (`1a`, `batch2`, `batch3+4` — batch 5 and the P6 adopt row —, `batch5` — batch 6 —, `osh-f63` — OSH-F64 behind the batch-6 lead row —, `core-change`, `paused`) pause the SLO; `hold-too-long`
   after 48 h; a cost-held row is never nudged
 - one event per send: every role's session on a thread is read, so a send appears as the
   sender's `out` and the receiver's `in`; copies within 15 minutes collapse to one event, and

@@ -184,6 +184,35 @@ class RowsBoardTest(unittest.TestCase):
         self.assertIn("BUILD", section)
         self.assertTrue((self.www / "rows" / "FLEET-F62.html").is_file())
 
+    def test_batch6_rows_render_under_their_own_title_between_batch_5_and_the_adopt_track(self):
+        """A `## Batch 6 — phase P7-openshell` plan section (OSH-F63, OSH-F64: the OpenShell substrate + demo, 2026-09-17)
+        renders as its own board section, titled from BATCH_TITLES["6"], in BATCH_ORDER position: after batch 5, before the
+        adopt track, both rows in plan order."""
+        plan = PLAN.replace(
+            "## Adopt: doc page + hermetic acceptance test only",
+            "## Batch 5 — phase P6-fleet\n\n| Row | Name | Disp | Deliverable | AC |\n|---|---|---|---|---|\n"
+            "| FLEET-F62 | Fleet assembly (P6): five sandboxed profiles on ONE gateway | BUILD | one gateway, five sandboxes | pytest |\n\n"
+            "## Batch 6 — phase P7-openshell\n\n| Row | Name | Disp | Deliverable | AC |\n|---|---|---|---|---|\n"
+            "| OSH-F63 | OpenShell-native sandbox substrate (P7) | BUILD | ssh backend per profile, openshell policy | pytest |\n"
+            "| OSH-F64 | Fleet under OpenShell (P7 demo) | BUILD | worker image + install script | live |\n\n"
+            "## Adopt: doc page + hermetic acceptance test only")
+        put(self.root / "docs" / "hermes-port" / "dispatch-plan.md", plan)
+        proc = board(self.root, self.www)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        index = (self.www / "rows" / "index.html").read_text(encoding="utf-8")
+        title = "Batch 6 · P7-openshell · OpenShell-native sandboxes"
+        self.assertIn(title, index)
+        self.assertLess(index.index("Batch 5 · P6-fleet"), index.index(title))
+        self.assertLess(index.index(title), index.index("Adopt track"))
+        section = index[index.index(title):index.index("Adopt track")]
+        self.assertIn('<a href="OSH-F63.html"><b>OSH-F63</b></a>', section)
+        self.assertIn('<a href="OSH-F64.html"><b>OSH-F64</b></a>', section)
+        self.assertLess(section.index("OSH-F63"), section.index("OSH-F64"))
+        self.assertIn("2 rows", section)
+        self.assertNotIn("FLEET-F62", section)
+        self.assertTrue((self.www / "rows" / "OSH-F63.html").is_file())
+        self.assertTrue((self.www / "rows" / "OSH-F64.html").is_file())
+
     def test_row_page_lists_every_card_newest_first_with_links(self):
         proc = board(self.root, self.www, env={"DASHBOARD_URL": "http://dash.example:8080/"})
         self.assertEqual(proc.returncode, 0, proc.stderr)

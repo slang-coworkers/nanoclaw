@@ -88,7 +88,7 @@ except ImportError:
 
 ROLE_COLUMNS = (("a", "hermes-architect"), ("b", "hermes-builder"), ("t", "hermes-tester"), ("r", "hermes-reviewer"))
 ROLE_ORDER = [r for _, r in ROLE_COLUMNS] + ["orchestrator"]
-BATCH_ORDER = ("1a", "1b", "2", "3", "4", "5", "adopt", "defer")
+BATCH_ORDER = ("1a", "1b", "2", "3", "4", "5", "6", "adopt", "defer")
 BATCH_TITLES = {
     "1a": "Batch 1a · P2 · the compose plugin",
     "1b": "Batch 1b · P2 · CONFIGURE rows the render must emit",
@@ -96,6 +96,7 @@ BATCH_TITLES = {
     "3": "Batch 3 · P4-sandbox",
     "4": "Batch 4 · P5-rooms-veto",
     "5": "Batch 5 · P6-fleet · fleet assembly",
+    "6": "Batch 6 · P7-openshell · OpenShell-native sandboxes",
     "adopt": "Adopt track · doc page + hermetic acceptance test",
     "defer": "Deferred rows",
     "follow_up": "Follow-up rows · <PARENT>.<letter>, opened on operator instruction (not plan rows: no WIP slot, no dispatch)",
@@ -115,7 +116,7 @@ STALE_H = 2.0
 # hermes_queue.IN_FLIGHT_STATES / hermes_supervise.IN_FLIGHT (kept local: the board must render without them).
 IN_FLIGHT_STATES = ("dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate")
 # hermes_supervise.merge_hold's §4.3 holds: the PR is ready and merges the moment that batch has merged.
-GATE_HOLDS = ("1a", "batch2", "batch3+4")
+GATE_HOLDS = ("1a", "batch2", "batch3+4", "batch5", "osh-f63")
 # Supervisor escalations another record field already carries (cost_hold / state blocked / a gate hold).
 ESCALATIONS_CARRIED = ("cost-card", "blocked", "hold-too-long")
 CSS = """
@@ -601,7 +602,7 @@ def row_state(rid: str, qrow: dict, sup: dict, ledger: dict | None, config: dict
       paused   the row is in config.paused_rows or the queue row says paused
       gates    the unmet gate flags of a waiting row (state.queue.waiting[].blocked_by)
       holds    the supervisor's human-needed signals on the row, each {"kind", "label"}:
-                 gate       a §4.3 merge hold (label 1a | batch2 | batch3+4): the PR merges when that batch has
+                 gate       a §4.3 merge hold (label 1a | batch2 | batch3+4 | batch5 | osh-f63): the PR merges when that batch (or lead row) has
                  hold       any other hold (core-change, …): a human decision
                  cost       a cost card is pending on one of the row's sessions
                  escalated  an SLO / env-fail / blocked-twice escalation (label = the alert kind); cost-card,

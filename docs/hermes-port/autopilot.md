@@ -269,7 +269,7 @@ ask is `upstream-ask-malformed`; a source row not in the matrix is `upstream-ask
   `pull-state.sh` passes `UPSTREAM_ASKS` (default `/workspace/agent/reports/upstream-asks.md`) to
   the queue as `--upstream-asks`; an absent file is an empty table, not an error.
 - The coverage line — `coverage.carried_line` always reads `open carried criteria: N (rows: …)`
-  (`summary.open_carried` in the pull summary), so a plan that reads 62/62 never hides an open
+  (`summary.open_carried` in the pull summary), so a plan that reads 64/64 never hides an open
   criterion. A merged from-row with an open deferred criterion is fine; that is the point.
 - The dispatch paragraph (§4.4) — the target row's architect is told the ids it carries, verbatim,
   and the Orchestrator's ledger-row `notes` name them.
@@ -575,10 +575,10 @@ and an unanswered operator ask, key `operator-ruling:ask:<digest>`, status line 
 
 `hermes_queue.py` parses the plan file, not a hand-kept list, so the plan stays the single
 source. The parse is structural: `## Batch 1a`, `## Batch 1b` (its `**Wave n**` paragraphs),
-`## Batch 2`, `## Batch 3`, `## Batch 4`, `## Batch 5`, `## Adopt` (its `**Attaches to <phase>**`
+`## Batch 2`, `## Batch 3`, `## Batch 4`, `## Batch 5`, `## Batch 6`, `## Adopt` (its `**Attaches to <phase>**`
 paragraphs), `## Defer`; a row is the first table cell in those sections matching the id regex,
 with `**` stripped. `gap-matrix.md` supplies `disposition` and `esc`. The parse must reproduce
-the plan's coverage check (31 dispatched = 1 + 18 + 6 + 4 + 1 + 1, 16 adopt, 11 merge, 4 defer = 62)
+the plan's coverage check (33 dispatched = 1 + 18 + 6 + 4 + 1 + 1 + 2, 16 adopt, 11 merge, 4 defer = 64)
 or the tick refuses to dispatch and raises `plan-changed`. The ledger's `## Carried criteria` table
 joins that check (§2.4): a carried criterion whose `to row` is not a plan row or is a DEFER row has
 nowhere to land — the same hole as a matrix row missing from the plan — so dispatch pauses until
@@ -603,7 +603,7 @@ own right) is a **follow-up** the Orchestrator opened on operator instruction ("
 ruling B", msg 384), not an unknown id: `hermes_queue.py` records it under `state.follow_up_rows[<id>]` with
 `parent`, the parent's batch / disposition / `attaches_to`, its own ledger state (`follow_up_in_flight` lists
 the in-flight ones) and `coverage.follow_ups` counts them; `ledger-unknown-id` is raised only for an id whose
-parent is unknown too (`ZZZ-F99`, `ZZZ-F99.a`). Follow-ups stay **out** of the 62-row coverage arithmetic, out
+parent is unknown too (`ZZZ-F99`, `ZZZ-F99.a`). Follow-ups stay **out** of the 64-row coverage arithmetic, out
 of `in_flight` / WIP and out of the dispatch order (nothing gates on them, they are never dispatched by the
 cron) — and "no WIP slot" holds everywhere: the queue's `wip`, the supervisor's `summary.in_flight` (they are
 counted under `summary.follow_ups`) and the demo tracker's schedule (a follow-up record is mapped, never
@@ -628,16 +628,27 @@ first eligible undispatched rows fill the free slots:
    (`MEM-F44`, `OPS-F58.a`, `OBS-F46`: retention first), then 1b waves 2 to 5 in table order,
    then batch 2 in table order (`LOOP-F37`, `GOV-F24`, `GOV-F25`, `COST-F29`, `COST-F30`,
    `LOOP-F40`), then the P2 adopt rows, then the P3-waveA adopt rows. **BUILD lane:** when a BUILD
-   row is eligible and no BUILD row is in flight, it is dispatched before the next CONFIGURE row
-   regardless of queue position, so the 18 cheap config rows cannot starve `LOOP-F37`.
+   row is eligible and no BUILD row is in flight, the FIRST eligible BUILD row is dispatched before
+   the next CONFIGURE row regardless of queue position, so the 18 cheap config rows cannot starve
+   `LOOP-F37`; a BUILD row already at the front stays there (until 2026-09-18 the lane loop skipped
+   index 0 and fronted the NEXT BUILD row, swapping two adjacent BUILD rows — `GOV-F24` before
+   `LOOP-F37`, `OSH-F64` before `OSH-F63`).
 3. **Batch 3** (`CRED-F28`, `ISO-F13`, `ISO-F14`, `ISO-F15`) and **batch 4** (`A2A-F21`) plus the
    P5 adopt rows: eligible once every batch 2 row is `merged` (or listed in `config.waive`).
    Batch 3 additionally needs `config.podman_box == true`; while false, the rows sit in `queued`
    without SLO clocks and the `podman-box-needed` alert fires once when they become otherwise eligible.
 4. **Batch 5** (`FLEET-F62`, the fleet-assembly BUILD row) and then the **P6 adopt row** (`ISO-F17`): both
    eligible once every batch 3 and batch 4 row is merged (or waived); `FLEET-F62` is ordered before
-   `ISO-F17` and takes the BUILD lane. Nothing waits on batch 5 — there is no `batch5_merged` gate.
-5. **DEFER rows** (`CH-F53`, `SELF-F57.a`, `RT-F04`, `RT-F06`) are never dispatched.
+   `ISO-F17` and takes the BUILD lane.
+5. **Batch 6** (`OSH-F63`, `OSH-F64` — the P7 OpenShell substrate and demo BUILD rows, 2026-09-17): eligible
+   once every batch 5 row is merged (or waived) = `gates.batch5_merged`; ordered after the P6 adopt row, in
+   plan-table order (`OSH-F63` first, on the BUILD lane). Inside the batch rule 3 is machine-enforced
+   (2026-09-18) exactly as it is for 1b vs 1a: `OSH-F64` additionally waits on `gates.osh_f63_first_pass`
+   (`OSH-F63` merged, waived, or with a tester PASS at its head — the `1a_first_pass` reading), so it is never
+   co-dispatched with `OSH-F63` and sits in `queue.waiting` until then; its merge holds on `osh-f63` (§4.3).
+   No `paused_rows` entry is needed for the ordering, and a paused `OSH-F64` behind that unmet gate never
+   raises `idle-capacity`.
+6. **DEFER rows** (`CH-F53`, `SELF-F57.a`, `RT-F04`, `RT-F06`) are never dispatched.
    **MERGE→ rows** (11) are never dispatched; their `AC-<id>` criteria ride the target's ADR.
 
 ### 4.3 Merge holds
@@ -648,7 +659,10 @@ the gate (no `gh pr ready`, no merge), the row's SLO clock pauses, and `hold-too
 the hold exceeds 48 hours. If `LOOP-F35` becomes `blocked`, every held row alerts under
 `blocked-twice` semantics for the human (the port cannot proceed). Batch 3 and 4 rows hold the
 same way on `gates.batch2_merged`; batch 5 (`FLEET-F62`) and the P6 adopt row (`ISO-F17`) hold on
-`gates.batch3_merged` **and** `gates.batch4_merged` (`hold: batch3+4`).
+`gates.batch3_merged` **and** `gates.batch4_merged` (`hold: batch3+4`); batch 6 rows (`OSH-F63`, `OSH-F64`)
+hold on `gates.batch5_merged` (`hold: batch5`) — nothing in batch 6 merges before the fleet assembly — and
+`OSH-F64` then holds on `gates.osh_f63_merged` (`hold: osh-f63`, 2026-09-18): the lead row `OSH-F63` merges
+first, rule 3's `merge` half, the shape of `hold: 1a`.
 
 ### 4.4 Dispatch texts
 
@@ -772,6 +786,14 @@ A veto before the default completes cancels it (C.1: `blocked: STOP cap - operat
 criteria rows and re-open the criteria on the source row); a veto after a fork merge means a revert PR on the fork —
 fork merges are reversible, which is why they can default. Never defaulted, however long the silence: CORE-CHANGE
 approvals, cost caps and ceilings, merges into upstream, credential or egress changes, anything touching production.
+
+C.2 names one to-row, `FLEET-F62`, which is merged by the time batch 6 runs. The batch-6 rows (`OSH-F63`, `OSH-F64`,
+2026-09-17) therefore invoke it only **once the operator extends C.2's to-row to the row that boots the substrate** —
+`FLEET-F62` for P4/P6 prerequisites, `OSH-F64` for P7 (the OpenShell access path) — as OSH-F63 operator step 0 asks;
+until that ruling a batch-6 carry is a DECISION NEEDED on the DM, not a delegated default. The spine file is not edited
+by the plan change itself (deploying it respawns role containers; land it while roles are idle). OSH-F64's own live
+criteria carry onto an operator-opened follow-up row `OSH-F64.a` as `open` § Carried criteria rows (never a ledger
+note) so `coverage.carried_line` keeps showing them.
 
 ## 6. The two ticks: a host cron and one recurring task
 
@@ -966,7 +988,7 @@ where it lives today and shows up in the next tick's state.
   never more than `wip.free` of them, skipping a row whose ledger row appeared since the queue ran.
 - **Plan hash pinned.** `state.plan.sha256` and `state.plan.matrix_sha256` are recorded every
   tick and compared with `config.json`; a mismatch pauses dispatch, keeps supervision, and
-  alerts `plan-changed` once. A plan whose parse fails the 62-row coverage check is treated the
+  alerts `plan-changed` once. A plan whose parse fails the 64-row coverage check is treated the
   same way. Silent edits to the shared copy therefore stop new work, never redirect it.
 - **One ledger.** Only `/workspace/agent/reports/ledger.md` is read; a second ledger under
   `/workspace/shared` raises `ledger-duplicate`. Duplicate rows for one id: last wins, alert.
@@ -1226,8 +1248,11 @@ A2A-F21 + the manual step "rooms provisioned by the operator" (8 h, after A2A-F2
 service — requires R2 + R3, the row FLEET-F62 (BUILD, batch 5, gated on batches 3 + 4 like ISO-F17 and
 ordered before it), ISO-F17 (ADOPT, after FLEET-F62) and the manual "P6 operator steps" (8 h, after R2
 and R3: podman socket + wrapper mounts into hermes-tester, `/opt/onecli/ca.crt`, `hermes-sandbox:pinned`,
-the uid-1001 egress rule, one OneCLI agent per profile). R5 the same fleet inside one OpenShell container with APF egress — requires
-R4 plus the manual W0–W12 (504–840 h), so it reads as R4 + 21..35 days.
+the uid-1001 egress rule, one OneCLI agent per profile). R5 the same fleet under OpenShell — one OpenShell sandbox per profile over
+ssh (operator ruling 2026-09-17, Option 1; nested podman is blocked by the sandbox spec) — requires R4 plus the rows OSH-F63 (BUILD,
+batch 6, gated on `batch5_merged`) and OSH-F64 (BUILD, gated on `batch5_merged` + `osh_f63_first_pass`, `after` OSH-F63) and the manual "install into brev-hermes" step (8 h, after
+OSH-F64: create the five sandboxes, set policies, install plugins, attach hermes-desktop), so it reads as FLEET-F62's finish + 48 h +
+48 h + 8 h; the W0–W12 (504–840 h) placeholder and its date range are gone.
 
 **Status** per rung: `done` (every required row merged or in `config.waive`, every manual item with a
 `done_at`, every required rung done) · `in progress` (a required row merged or in flight — a held row
@@ -1248,8 +1273,9 @@ move included (fallback when `state.json` has no queue block: board order withou
 source error; the spec's order when there is no board at all) — onto `config.wip` slots from now:
 in-flight rows hold a slot for their remaining hours, a BUILD row waits for the BUILD lane (one BUILD in
 flight), and a row behind a false gate starts when the rows that gate requires finish (`1a_first_pass`,
-`1a_merged` ← batch 1a, `batch2_merged` ← batch 2, `batch3_merged` ← batch 3, `batch4_merged` ← batch 4;
-`podman_box` is a config flag, so a false one makes the rows behind it `unknown` with the reason). A row
+`1a_merged` ← batch 1a, `batch2_merged` ← batch 2, `batch3_merged` ← batch 3, `batch4_merged` ← batch 4, `batch5_merged` ← batch 5,
+`osh_f63_first_pass` / `osh_f63_merged` ← the one row OSH-F63; `podman_box` is a config flag, so a false one makes the rows behind it
+`unknown` with the reason). A row
 parked at `gate` on a merge hold keeps its slot and the lane until the batch it holds for has finished,
 then takes its last 0.1 slice (placed right away when that batch's rows are merged or in flight, else
 after the queued rows, once they have finish times). Paused, blocked and held rows are excluded from every

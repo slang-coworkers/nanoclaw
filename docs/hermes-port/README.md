@@ -7,17 +7,22 @@ Source of truth for the nemoclaw-coworkers Hermes port (git; the box copies thes
 |---|---|
 | `requirements-v0.3.md` | the FR/SR/PR/NF requirements, with the v0.4 topology addendum on top |
 | `nanoclaw-feature-inventory.md` | the NanoClaw features the 61 re-baselined rows were derived from |
-| `gap-matrix.md` | the 62 rows (61 re-baselined + FLEET-F62, the fleet assembly, added 2026-09-16): id, name, status, feas, esc, **disposition**, **outcomes**, design note (Hermes-shaped) |
+| `gap-matrix.md` | the 64 rows (61 re-baselined + FLEET-F62, the fleet assembly, added 2026-09-16 + OSH-F63 / OSH-F64, the P7 OpenShell substrate and demo, added 2026-09-17): id, name, status, feas, esc, **disposition**, **outcomes**, design note (Hermes-shaped) |
 | `gap-matrix-evidence.md` | per-row evidence with paired `tag:` (v2026.8.31) and `main:` cites |
 | `outcomes.md` | the eight outcomes the port exists for, and which rows carry each |
-| `dispatch-plan.md` | batches 0 to 5 under the fleet baseline, rules, decisions, where progress shows |
+| `dispatch-plan.md` | batches 0 to 6 under the fleet baseline, rules, decisions, where progress shows |
 | `drift-2026-09-07-CHANGELOG.md` | the upstream-drift correction pass (24 rewords, 2 trap fixes, dual cites) |
 | `rebaseline-2026-09-09-CHANGELOG.md` | the Bot-Mode re-baseline (assessor to final disposition per row, 53 verifier findings) |
 
 The fleet baseline every design is judged against is `container/spines/hermes/context/topology.md`
 (loaded into every hermes role and the Orchestrator). Disposition totals after the re-baseline:
-CONFIGURE 23, ADOPT 16, MERGE 11, BUILD 8, DEFER 4 (BUILD was 7 until FLEET-F62 — the fleet
-assembly, batch 5 — was added on 2026-09-16). Seven of the eight BUILD rows are six plugins:
-nv-coworker-compose (LOOP-F35), nv-fleet-gates (LOOP-F37), nv-artifact (GOV-F25),
-nv-approval-ledger (GOV-F24), nv-cost-cap (COST-F29 + COST-F30), podman-onecli (CRED-F28); the
-eighth, FLEET-F62, assembles them into the one-gateway fleet and ships no plugin of its own.
+CONFIGURE 23, ADOPT 16, MERGE 11, BUILD 10, DEFER 4 (BUILD was 7 until FLEET-F62 — the fleet
+assembly, batch 5 — was added on 2026-09-16, and 8 until OSH-F63 / OSH-F64 — the P7 OpenShell
+substrate and demo, batch 6 — were added on 2026-09-17 under the operator's Option 1 ruling).
+Seven of the ten BUILD rows are six plugins: nv-coworker-compose (LOOP-F35), nv-fleet-gates
+(LOOP-F37), nv-artifact (GOV-F25), nv-approval-ledger (GOV-F24), nv-cost-cap (COST-F29 +
+COST-F30), podman-onecli (CRED-F28); the eighth, FLEET-F62, assembles them into the one-gateway
+fleet and ships no plugin of its own; the ninth and tenth, OSH-F63 and OSH-F64, add the OpenShell
+substrate (compose gains `substrate: openshell` — `terminal.backend: ssh` per profile pointing at
+that profile's own OpenShell sandbox, one `openshell policy` per sandbox, a provisioning plan — and
+nv-fleet-gates' sandbox predicate accepts the ssh env) and the P7 demo, also without a new plugin.

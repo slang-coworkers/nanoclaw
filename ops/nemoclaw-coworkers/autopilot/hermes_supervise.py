@@ -942,12 +942,20 @@ def merge_hold(rid: str, row: dict, gating: dict, res: dict, cfg: dict) -> str |
     waits_1a = batch in ("1b", "2") or (batch == "adopt" and attaches in ("P2", "P3-waveA"))
     waits_b2 = batch in ("3", "4") or (batch == "adopt" and attaches == "P5-rooms-veto")
     waits_b34 = batch == "5" or (batch == "adopt" and attaches == "P6-fleet")
+    waits_b5 = batch == "6"  # OSH-F63 / OSH-F64 (P7-openshell, 2026-09-17): nothing in batch 6 merges before FLEET-F62
+    # inside batch 6 the lead row OSH-F63 (hermes_queue.BATCH6_LEAD) merges first: OSH-F64 holds on `osh-f63` until
+    # `gating.osh_f63_merged` (OSH-F63 merged or waived) — rule 3's `merge` half, the shape of the `1a` hold (2026-09-18)
+    waits_lead = batch == "6" and rid != "OSH-F63"
     if waits_1a and not gating.get("1a_merged"):
         return "1a"
     if waits_b2 and not gating.get("batch2_merged"):
         return "batch2"
     if waits_b34 and not (gating.get("batch3_merged") and gating.get("batch4_merged")):
         return "batch3+4"
+    if waits_b5 and not gating.get("batch5_merged"):
+        return "batch5"
+    if waits_lead and not gating.get("osh_f63_merged"):
+        return "osh-f63"
     if res.get("core_change") and rid not in (cfg.get("core_change_ok") or []):
         return "core-change"
     return None
@@ -1554,7 +1562,7 @@ def _hold_action(tick: _Tick, rec: dict, book: dict, gating: dict, rid: str, hol
     rec["hold"] = hold
     tick.summary["hold"] += 1
     tick.actions.append({"kind": "hold", "row": rid, "hold": hold, "pr": rec["pr"], "text": f"hold: {hold} — do not gh pr ready or merge PR #{rec['pr']} for {rid} yet"})
-    if hold in ("1a", "batch2", "batch3+4") and gating.get("1a_blocked"):
+    if hold in ("1a", "batch2", "batch3+4", "batch5", "osh-f63") and gating.get("1a_blocked"):
         tick.escalate(rec, book, "blocked-twice", stage, age_h, f"held on {hold} and LOOP-F35 is blocked; the port cannot proceed", "unblock or re-dispatch LOOP-F35 by hand")
     elif age_h >= HOLD_TOO_LONG_H:
         tick.escalate(rec, book, "hold-too-long", stage, age_h, f"merge held on {hold} for {int(age_h)}h", f"merge the {hold} dependency (or waive it in config.json) so held rows can merge")
