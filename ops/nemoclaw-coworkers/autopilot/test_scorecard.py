@@ -175,7 +175,7 @@ class BuildTest(unittest.TestCase):
         self.assertEqual(card["in_flight"], ["LOOP-F35", "MEM-F44", "OPS-F58"])
         self.assertEqual(card["blocked"], ["OPS-F58.a"])
         self.assertEqual(card["merged"], [])
-        self.assertEqual(card["queued"], 31 - 4)  # DEFAULT_DISPATCHABLE (no plan path): 31 dispatched rows since FLEET-F62
+        self.assertEqual(card["queued"], 33 - 4)  # DEFAULT_DISPATCHABLE (no plan path): 33 dispatched rows since OSH-F63 / OSH-F64 (batch 6, 2026-09-17)
         self.assertEqual(card["wip_limit"], 3)
 
     def test_decorated_id_cell_draws_attention_and_a_note(self):

@@ -372,7 +372,7 @@ class PullStateTest(unittest.TestCase):
         st = self.run_pull()
         self.assertEqual([a for a in st["alerts"] if a["kind"] == "ledger-unknown-id"], [])
         self.assertEqual((st["follow_up_rows"]["SCHED-F34.a"]["parent"], st["follow_up_rows"]["SCHED-F34.a"]["state"]), ("SCHED-F34", "dispatched"))
-        self.assertEqual((st["follow_up_in_flight"], st["coverage"]["follow_ups"], st["coverage"]["total"]), (["SCHED-F34.a"], 1, 62))
+        self.assertEqual((st["follow_up_in_flight"], st["coverage"]["follow_ups"], st["coverage"]["total"]), (["SCHED-F34.a"], 1, 64))
         self.assertEqual(sorted(st["in_flight"]), ["LOOP-F35", "MEM-F44"])
         self.assertEqual(st["wip"]["in_flight"], 2)
         self.assertEqual(st["sources"]["sessions"]["filter"]["rows"], ["LOOP-F35", "MEM-F44", "SCHED-F34.a"])

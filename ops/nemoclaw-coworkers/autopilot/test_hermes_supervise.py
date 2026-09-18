@@ -489,6 +489,97 @@ class HoldsAndCost(unittest.TestCase):
         self.assertIn("gate", kinds)
         self.assertNotIn("hold", kinds)  # the SLO clock runs again (a nudge may ride along); no hold
 
+    def test_batch6_openshell_rows_at_gate_hold_on_batch5_until_fleet_f62_merges(self):
+        """OSH-F63 / OSH-F64 (batch 6, P7-openshell, 2026-09-17) at `gate` while FLEET-F62 is unmerged: `hold: batch5` — nothing in
+        batch 6 merges before the fleet assembly; FLEET-F62 itself (batches 3 + 4 merged) gets no hold. Once FLEET-F62 merges, or
+        is waived, the hold lifts and the gate action runs."""
+        batch2 = ("LOOP-F37", "GOV-F24", "GOV-F25", "COST-F29", "COST-F30", "LOOP-F40")
+        batch3 = ("CRED-F28", "ISO-F13", "ISO-F14", "ISO-F15")
+        merged = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(batch2)]
+        merged += [merged_row(r, i + 20) for i, r in enumerate(batch3)] + [merged_row("A2A-F21", 30)]
+        open_rows = [{"id": "FLEET-F62", "spec": stamp(28), "pr": "#40"}, {"id": "OSH-F63", "spec": stamp(28), "pr": "#63"}, {"id": "OSH-F64", "spec": stamp(28), "pr": "#64"}]
+        st = state(merged + open_rows)
+        self.assertTrue(st["gating"]["batch3_merged"] and st["gating"]["batch4_merged"])
+        self.assertFalse(st["gating"]["batch5_merged"])
+        self.assertEqual((st["rows"]["OSH-F63"]["batch"], st["rows"]["OSH-F64"]["batch"]), ("6", "6"))
+
+        def chain(rid: str, n: int) -> list[dict]:
+            return [spec_handoff(rid, 28), builder_start(rid, 27), handoff(n, HEAD_A, 20), test_report(n, HEAD_A, 1, "PASS", 15),
+                    review_verdict(n, HEAD_A, 1, "APPROVE", 10), triage(rid, 9)]
+
+        threads = {"hermes-FLEET-F62": chain("FLEET-F62", 40), "hermes-OSH-F63": chain("OSH-F63", 63), "hermes-OSH-F64": chain("OSH-F64", 64)}
+        prs = [pr(40, "FLEET-F62", HEAD_A, created_h=21), pr(63, "OSH-F63", HEAD_A, created_h=21), pr(64, "OSH-F64", HEAD_A, created_h=21)]
+        out = run(st, threads, prs=prs)
+        for rid in ("OSH-F63", "OSH-F64"):
+            r = out["rows"][rid]
+            self.assertEqual((r["stage"], r["hold"], r["action"]), ("gate", "batch5", "none"), rid)
+            self.assertFalse(r["slo_breach"], rid)
+            self.assertEqual([a["kind"] for a in out["actions"] if a["row"] == rid], ["hold"], rid)
+            self.assertIn("hold: batch5", next(a["text"] for a in out["actions"] if a["row"] == rid))
+        self.assertEqual((out["rows"]["FLEET-F62"]["stage"], out["rows"]["FLEET-F62"]["hold"]), ("gate", None))
+        self.assertEqual(out["summary"]["hold"], 2)
+        # FLEET-F62 merged: batch5_merged, no hold on batch 6, the gate action asks for the merge-gate run
+        st2 = state(merged + [merged_row("FLEET-F62", 40), {"id": "OSH-F63", "spec": stamp(28), "pr": "#63"}])
+        self.assertTrue(st2["gating"]["batch5_merged"])
+        out2 = run(st2, {"hermes-OSH-F63": chain("OSH-F63", 63)}, prs=[pr(63, "OSH-F63", HEAD_A, created_h=21)])
+        r = out2["rows"]["OSH-F63"]
+        self.assertEqual((r["stage"], r["hold"]), ("gate", None))
+        kinds = [a["kind"] for a in out2["actions"] if a["row"] == "OSH-F63"]
+        self.assertIn("gate", kinds)
+        self.assertNotIn("hold", kinds)
+        # a waived FLEET-F62 counts as merged for the hold too
+        st3 = state(merged + [{"id": "FLEET-F62", "spec": stamp(28), "pr": "#40"}, {"id": "OSH-F63", "spec": stamp(28), "pr": "#63"}], config={"waive": ["FLEET-F62"]})
+        self.assertTrue(st3["gating"]["batch5_merged"])
+        out3 = run(st3, {"hermes-OSH-F63": chain("OSH-F63", 63)}, prs=[pr(63, "OSH-F63", HEAD_A, created_h=21)])
+        self.assertIsNone(out3["rows"]["OSH-F63"]["hold"])
+
+    def test_osh_f64_at_gate_holds_on_osh_f63_until_the_lead_row_merges(self):
+        """Rule 3's `merge` half inside batch 6 (2026-09-18): with FLEET-F62 merged, OSH-F64 at `gate` while OSH-F63 is unmerged
+        gets `hold: osh-f63` (the shape of the `1a` hold) — OSH-F63 itself, the lead row, gets no hold and its gate action runs.
+        Once OSH-F63 merges or is waived the hold lifts. A `batch5` hold still wins while FLEET-F62 is unmerged."""
+        batch2 = ("LOOP-F37", "GOV-F24", "GOV-F25", "COST-F29", "COST-F30", "LOOP-F40")
+        batch3 = ("CRED-F28", "ISO-F13", "ISO-F14", "ISO-F15")
+        merged = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(batch2)]
+        merged += [merged_row(r, i + 20) for i, r in enumerate(batch3)] + [merged_row("A2A-F21", 30), merged_row("FLEET-F62", 40)]
+
+        def chain(rid: str, n: int) -> list[dict]:
+            return [spec_handoff(rid, 28), builder_start(rid, 27), handoff(n, HEAD_A, 20), test_report(n, HEAD_A, 1, "PASS", 15),
+                    review_verdict(n, HEAD_A, 1, "APPROVE", 10), triage(rid, 9)]
+
+        open_rows = [{"id": "OSH-F63", "spec": stamp(28), "pr": "#63"}, {"id": "OSH-F64", "spec": stamp(28), "pr": "#64"}]
+        st = state(merged + open_rows)
+        self.assertTrue(st["gating"]["batch5_merged"])
+        self.assertFalse(st["gating"]["osh_f63_merged"])
+        threads = {"hermes-OSH-F63": chain("OSH-F63", 63), "hermes-OSH-F64": chain("OSH-F64", 64)}
+        out = run(st, threads, prs=[pr(63, "OSH-F63", HEAD_A, created_h=21), pr(64, "OSH-F64", HEAD_A, created_h=21)])
+        r64 = out["rows"]["OSH-F64"]
+        self.assertEqual((r64["stage"], r64["hold"], r64["action"]), ("gate", "osh-f63", "none"))
+        self.assertFalse(r64["slo_breach"])
+        self.assertEqual([a["kind"] for a in out["actions"] if a["row"] == "OSH-F64"], ["hold"])
+        self.assertIn("hold: osh-f63", next(a["text"] for a in out["actions"] if a["row"] == "OSH-F64"))
+        r63 = out["rows"]["OSH-F63"]
+        self.assertEqual((r63["stage"], r63["hold"]), ("gate", None))
+        self.assertIn("gate", [a["kind"] for a in out["actions"] if a["row"] == "OSH-F63"])
+        self.assertEqual(out["summary"]["hold"], 1)
+        # OSH-F63 merged: the hold lifts and OSH-F64's gate action runs
+        st2 = state(merged + [merged_row("OSH-F63", 63), {"id": "OSH-F64", "spec": stamp(28), "pr": "#64"}])
+        self.assertTrue(st2["gating"]["osh_f63_merged"])
+        out2 = run(st2, {"hermes-OSH-F64": chain("OSH-F64", 64)}, prs=[pr(64, "OSH-F64", HEAD_A, created_h=21)])
+        self.assertEqual((out2["rows"]["OSH-F64"]["stage"], out2["rows"]["OSH-F64"]["hold"]), ("gate", None))
+        kinds = [a["kind"] for a in out2["actions"] if a["row"] == "OSH-F64"]
+        self.assertIn("gate", kinds)
+        self.assertNotIn("hold", kinds)
+        # a waived OSH-F63 lifts it the same way
+        st3 = state(merged + open_rows, config={"waive": ["OSH-F63"]})
+        self.assertTrue(st3["gating"]["osh_f63_merged"])
+        out3 = run(st3, {"hermes-OSH-F64": chain("OSH-F64", 64)}, prs=[pr(64, "OSH-F64", HEAD_A, created_h=21)])
+        self.assertIsNone(out3["rows"]["OSH-F64"]["hold"])
+        # FLEET-F62 unmerged as well: batch5 is the hold named (it is checked first)
+        st4 = state(merged[:-1] + [{"id": "FLEET-F62", "spec": stamp(28), "pr": "#40"}] + open_rows)
+        self.assertFalse(st4["gating"]["batch5_merged"])
+        out4 = run(st4, {"hermes-OSH-F64": chain("OSH-F64", 64)}, prs=[pr(64, "OSH-F64", HEAD_A, created_h=21)])
+        self.assertEqual(out4["rows"]["OSH-F64"]["hold"], "batch5")
+
     def test_1b_row_at_gate_holds_while_1a_unmerged(self):
         st = state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2", "verdict": "round 1/2 = PASS"}, {"id": "MEM-F44", "spec": stamp(28), "pr": "#3"}])
         threads = {"hermes-MEM-F44": [spec_handoff("MEM-F44", 28), builder_start("MEM-F44", 27), handoff(3, HEAD_A, 20), test_report(3, HEAD_A, 1, "PASS", 15), review_verdict(3, HEAD_A, 1, "APPROVE", 10), triage("MEM-F44", 9)]}

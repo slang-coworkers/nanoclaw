@@ -85,16 +85,18 @@
     },
     {
       "id": "R5",
-      "title": "Same fleet inside ONE OpenShell container with APF egress (P7)",
-      "rows": [],
+      "title": "Same fleet under OpenShell: one OpenShell sandbox per profile over ssh, APF (openshell policy) per bot, desktop attached (P7, operator ruling 2026-09-17 Option 1)",
+      "rows": [
+        {"id": "OSH-F63", "kind": "BUILD"},
+        {"id": "OSH-F64", "kind": "BUILD", "after": ["OSH-F63"]}
+      ],
       "manual": [
         {
-          "id": "W0-W12",
+          "id": "P7-OPERATOR",
           "kind": "manual",
-          "title": "work items W0-W12 (17-24 coworker-days, 3-5 calendar weeks)",
-          "hours": 504,
-          "hours_max": 840,
-          "after": ["R4"]
+          "title": "install into brev-hermes: create the five sandboxes, set policies, install plugins, attach hermes-desktop",
+          "hours": 8,
+          "after": ["OSH-F64"]
         }
       ],
       "requires": ["R4"]
@@ -103,9 +105,9 @@
   "notes": [
     "A rung is done when every required row is merged (or listed in autopilot config.waive) and every manual item carries a done_at.",
     "Row remaining hours = planning_hours[disposition] x stage_factors[state]; the disposition comes from state.json (the row's `kind` here is the fallback), the state from the supervisor's stage when it names one, else the queue's row state.",
-    "Rows still open are list-scheduled in hermes_queue.dispatch_order (the order the autopilot dispatches; this file's order is the fallback) onto config.wip slots from now: rows already in flight hold a slot until their remaining hours elapse, a BUILD row waits for the BUILD lane (one BUILD in flight at a time), a row behind a false gate starts when the rows that gate requires finish (1a_first_pass <- batch 1a, batch2_merged <- batch 2, batch3_merged <- batch 3, batch4_merged <- batch 4; podman_box is a config flag, never a row). FLEET-F62 (batch 5, BUILD) waits on batch3_merged and batch4_merged like ISO-F17 and is ordered before it; there is no batch5_merged gate.",
+    "Rows still open are list-scheduled in hermes_queue.dispatch_order (the order the autopilot dispatches; this file's order is the fallback) onto config.wip slots from now: rows already in flight hold a slot until their remaining hours elapse, a BUILD row waits for the BUILD lane (one BUILD in flight at a time), a row behind a false gate starts when the rows that gate requires finish (1a_first_pass <- batch 1a, batch2_merged <- batch 2, batch3_merged <- batch 3, batch4_merged <- batch 4, batch5_merged <- batch 5, osh_f63_first_pass / osh_f63_merged <- the one row OSH-F63; podman_box is a config flag, never a row). FLEET-F62 (batch 5, BUILD) waits on batch3_merged and batch4_merged like ISO-F17 and is ordered before it; OSH-F63 and OSH-F64 (batch 6, BUILD, 2026-09-17) wait on batch5_merged, OSH-F64 also on osh_f63_first_pass (OSH-F63's tester PASS, modelled as its finish) and `after` OSH-F63.",
     "Paused rows (config.paused_rows) and rows the ledger blocked are excluded from every finish time and flagged on each rung that needs them; a row with an `after` list starts no earlier than those items finish (its slot is not re-planned).",
-    "A manual item starts when everything in its `after` list (rows, manual items or rungs) has finished and lasts `hours` (`hours_max` gives the upper end of a range); R5 therefore reads as R4 + 21..35 days.",
+    "A manual item starts when everything in its `after` list (rows, manual items or rungs) has finished and lasts `hours` (`hours_max`, when present, gives the upper end of a range; no item carries one since the W0-W12 placeholder was replaced on 2026-09-17); R5 therefore reads as FLEET-F62's finish + OSH-F63 (48 h, BUILD lane) + OSH-F64 (48 h, after OSH-F63) + the 8 h operator install step.",
     "Rung ETA = the latest finish over its rows, manual items and required rungs; `done <date>` uses the ledger's merge timestamps when present, else state.json's generated_at. Anything unreadable renders as unknown, never as a crash.",
     "Edit this file to change the rungs, the rows they need, planning hours or stage factors; both rows-board.py and slack-rows.py read it on every run."
   ]

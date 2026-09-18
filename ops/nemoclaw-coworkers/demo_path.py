@@ -34,9 +34,11 @@ THE ETA MODEL (deterministic; the same text is rendered as the footnote):
   board order, then the order in demo-path.json): in-flight rows hold their slot for their remaining
   hours; a BUILD row cannot start while another BUILD row runs (the BUILD lane); a row behind a false
   gate starts when the rows that gate requires finish (1a_first_pass, 1a_merged ← batch 1a, batch2_merged
-  ← batch 2, batch3_merged ← batch 3, batch4_merged ← batch 4); podman_box is a config flag, so a false
-  one makes the rows behind it "unknown" with the reason. The supervisor's holds: a row parked at `gate`
-  on a §4.3 merge hold (1a → 1a_merged, batch2 → batch2_merged, batch3+4 → batch3_merged + batch4_merged)
+  ← batch 2, batch3_merged ← batch 3, batch4_merged ← batch 4, batch5_merged ← batch 5, osh_f63_first_pass /
+  osh_f63_merged ← the one row OSH-F63); podman_box is a config flag, so a false one makes the rows behind it
+  "unknown" with the reason. The supervisor's holds: a row parked at `gate` on a §4.3 merge hold (1a →
+  1a_merged, batch2 → batch2_merged, batch3+4 → batch3_merged + batch4_merged, batch5 → batch5_merged,
+  osh-f63 → osh_f63_merged)
   is the in-flight equivalent of waiting — its remaining 0.1 slice starts no earlier than that gate's rows
   finish ("waits for <gate>"; it is scheduled after the queued rows so those finishes are known, and its
   parked WIP slot is not modelled as busy); a cost hold, a core-change (or any other) hold and an SLO /
@@ -74,10 +76,14 @@ DEFAULT_WIP = 3
 SLACK_MAX_LINES = 25
 # hermes_queue's vocabulary (kept here as the fallback when the module is unavailable).
 IN_FLIGHT_STATES = ("dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate")
-GATE_BATCH = {"1a_first_pass": "1a", "1a_merged": "1a", "batch2_merged": "2", "batch3_merged": "3", "batch4_merged": "4"}
+GATE_BATCH = {"1a_first_pass": "1a", "1a_merged": "1a", "batch2_merged": "2", "batch3_merged": "3", "batch4_merged": "4", "batch5_merged": "5"}
+# Gates a single lead row opens (not a whole batch — batch 6 contains the waiting row itself): OSH-F64 starts on
+# OSH-F63's tester PASS and merges after it (hermes_queue.BATCH6_LEAD, 2026-09-18); modelled as OSH-F63's finish.
+GATE_ROWS = {"osh_f63_first_pass": ("OSH-F63",), "osh_f63_merged": ("OSH-F63",)}
 CONFIG_GATES = ("podman_box",)
 # hermes_supervise.merge_hold's §4.3 holds → the gate flag(s) whose rows must finish before the held PR merges.
-HOLD_GATES = {"1a": ("1a_merged",), "batch2": ("batch2_merged",), "batch3+4": ("batch3_merged", "batch4_merged")}
+HOLD_GATES = {"1a": ("1a_merged",), "batch2": ("batch2_merged",), "batch3+4": ("batch3_merged", "batch4_merged"), "batch5": ("batch5_merged",),
+              "osh-f63": ("osh_f63_merged",)}
 STATUS_LABEL = {
     "done": "done", "in_progress": "in progress", "blocked_by_gate": "blocked by gate",
     "not_started": "not started", "unknown": "unknown",
@@ -225,7 +231,8 @@ def live_gating(state, config, state_err: str | None = None, config_err: str | N
     state.json + config.json objects that rows-board.load_board already read (no I/O here; a missing
     file arrives as None, a broken one as None + its *_err string):
 
-      gating        state.gating — the gate flags (1a_first_pass, 1a_merged, batch2_merged, batch3_merged, batch4_merged, podman_box)
+      gating        state.gating — the gate flags (1a_first_pass, 1a_merged, batch2_merged, batch3_merged, batch4_merged, batch5_merged,
+                    osh_f63_first_pass, osh_f63_merged, podman_box)
       wip_limit     config.wip, else state.wip.limit, else 3
       waive         config.waive (else state.gating.waived) — for the result's `waived` list only; whether a
       paused_rows   config.paused_rows                       — ROW is waived / paused is the record's own field
@@ -313,8 +320,8 @@ def rows_from_board(records: dict, gating: dict) -> dict:
       state blocked                                 → blocked + state_reason (stalled: a rung blocker)
       state deferred                                → deferred               (stalled)
       holds with kind cost | hold | escalated       → held — <reason>        (stalled: a human must act; label = state)
-      holds with kind gate (1a | batch2 | batch3+4) → hold_gates (1a_merged | batch2_merged | batch3_merged +
-                                                      batch4_merged): in flight, scheduled after that gate's rows finish
+      holds with kind gate (1a | batch2 | batch3+4 | batch5 | osh-f63) → hold_gates (1a_merged | batch2_merged | batch3_merged +
+                                                      batch4_merged | batch5_merged | osh_f63_merged): in flight, scheduled after that gate's rows finish
       any other state (in flight, waiting, queued …) → as is; waiting is scheduled like queued behind its gates
 
     Schedule order: rows already placed (merged / in flight / stalled) in board order, then gating.eligible,
@@ -451,17 +458,24 @@ def _simulate(order: list, infos: dict, wip_limit: int, gating: dict, now: datet
             if info["disposition"] == "BUILD":
                 lane["free"] = max(lane["free"], finish[rid])
 
+    def gate_rows(gate: str) -> list | None:
+        """The rows whose finish opens `gate`: a lead row (GATE_ROWS) or a whole batch (GATE_BATCH); None = unknown gate."""
+        if gate in GATE_ROWS:
+            return [r for r in GATE_ROWS[gate] if r in infos]
+        batch = GATE_BATCH.get(gate)
+        return None if batch is None else by_batch.get(batch, [])
+
     def gate_ready(gate: str) -> tuple:
         """(datetime | None, reason | None): when the gate's rows are all finished; None = unknowable."""
         if gating.get(gate):
             return now, None
         if gate in CONFIG_GATES:
             return None, f"config.{gate} is false"
-        batch = GATE_BATCH.get(gate)
-        if batch is None:
+        rows_of = gate_rows(gate)
+        if rows_of is None:
             return None, f"unknown gate {gate}"
         t = now
-        for r in by_batch.get(batch, []):
+        for r in rows_of:
             if infos[r]["done"] or infos[r]["stalled"]:
                 continue
             f = finish.get(r)
@@ -488,7 +502,7 @@ def _simulate(order: list, infos: dict, wip_limit: int, gating: dict, now: datet
             for g in gates:
                 if gating.get(g):
                     continue
-                for r in by_batch.get(GATE_BATCH.get(g, ""), []):
+                for r in gate_rows(g) or []:
                     if infos[r]["stalled"]:
                         gate_stalled[rid].append((r, infos[r]["stalled"], g))
                         blockers[rid].append(f"{r} {infos[r]['stalled']} in gate {g}")

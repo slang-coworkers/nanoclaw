@@ -36,6 +36,8 @@ HEADER = (
 BATCH2 = ("LOOP-F37", "GOV-F24", "GOV-F25", "COST-F29", "COST-F30", "LOOP-F40")
 BATCH3 = ("CRED-F28", "ISO-F13", "ISO-F14", "ISO-F15")
 BATCH4 = ("A2A-F21",)
+BATCH5 = ("FLEET-F62",)
+BATCH6 = ("OSH-F63", "OSH-F64")  # P7-openshell, added 2026-09-17; plan-table order = dispatch order inside the batch
 
 # ledger.md § Carried criteria after the operator's 2026-09-16 ruling: CRED-F28's live identity proof rides on the
 # fleet-assembly row FLEET-F62 (batch 5) — a plan row, where the phase name P6-FLEET never was one.
@@ -101,13 +103,13 @@ class PlanParse(unittest.TestCase):
         self.matrix = hq.parse_matrix(MATRIX)
         self.cov = hq.coverage_check(self.plan, self.matrix)
 
-    def test_coverage_31_16_11_4_equals_62(self):
+    def test_coverage_33_16_11_4_equals_64(self):
         self.assertTrue(self.cov["ok"], self.cov["problems"])
-        self.assertEqual(self.cov["by_batch"], {"1a": 1, "1b": 18, "2": 6, "3": 4, "4": 1, "5": 1})
-        self.assertEqual((self.cov["dispatched"], self.cov["adopt"], self.cov["merge"], self.cov["defer"]), (31, 16, 11, 4))
-        self.assertEqual(self.cov["total"], 62)
-        self.assertEqual(self.cov["matrix_rows"], 62)
-        self.assertEqual(sum(1 for r in self.matrix["rows"].values() if r["disposition"] == "BUILD"), 8)
+        self.assertEqual(self.cov["by_batch"], {"1a": 1, "1b": 18, "2": 6, "3": 4, "4": 1, "5": 1, "6": 2})
+        self.assertEqual((self.cov["dispatched"], self.cov["adopt"], self.cov["merge"], self.cov["defer"]), (33, 16, 11, 4))
+        self.assertEqual(self.cov["total"], 64)
+        self.assertEqual(self.cov["matrix_rows"], 64)
+        self.assertEqual(sum(1 for r in self.matrix["rows"].values() if r["disposition"] == "BUILD"), 10)
 
     def test_batch5_fleet_row_is_parsed(self):
         """dispatch-plan.md § Batch 5 is a real batch since 2026-09-16: FLEET-F62 (BUILD) is picked up with batch "5"
@@ -120,8 +122,28 @@ class PlanParse(unittest.TestCase):
         self.assertEqual((m["status"], m["feas"], m["esc"], m["disposition"], m["merge_into"]), ("MISSING", "PLUGIN_PLUS_HOOK", False, "BUILD", None))
         self.assertEqual(m["outcomes"], ["O1", "O2", "O3", "O4", "O5", "O6", "O7", "O8"])
         self.assertIn("landing row", m["design_note"])
-        self.assertEqual(self.matrix["order"][-1], "FLEET-F62")
+        self.assertEqual(self.matrix["order"].index("FLEET-F62"), len(self.matrix["order"]) - 3)  # rows 63/64 follow it since 2026-09-17
         self.assertIn("5", hq.DISPATCH_BATCHES)
+
+    def test_batch6_openshell_rows_are_parsed(self):
+        """dispatch-plan.md § Batch 6 — phase P7-openshell (2026-09-17): OSH-F63 then OSH-F64 (both BUILD) parse with batch "6"
+        right after FLEET-F62; the matrix rows anchor their columns on the BUILD cell, carry the P7 outcomes and close the
+        matrix order; classify_heading ignores the phase text after the batch token."""
+        for rid, outcomes in (("OSH-F63", ["O1", "O3", "O4", "O6"]), ("OSH-F64", ["O1", "O2", "O3", "O4", "O5", "O6", "O7", "O8"])):
+            row = self.plan["rows"][rid]
+            self.assertEqual((row["batch"], row["plan_disposition"]), ("6", "BUILD"), rid)
+            m = self.matrix["rows"][rid]
+            self.assertEqual((m["status"], m["feas"], m["esc"], m["disposition"], m["merge_into"]), ("MISSING", "PLUGIN_PLUS_HOOK", False, "BUILD", None), rid)
+            self.assertEqual(m["outcomes"], outcomes, rid)
+            self.assertIn("openshell", m["design_note"])
+        self.assertTrue(self.plan["rows"]["OSH-F63"]["name"].startswith("OpenShell-native sandbox substrate (P7)"))
+        self.assertTrue(self.plan["rows"]["OSH-F64"]["name"].startswith("Fleet under OpenShell (P7 demo)"))
+        self.assertEqual(self.plan["order"].index("OSH-F63"), self.plan["order"].index("FLEET-F62") + 1)
+        self.assertEqual(self.plan["order"].index("OSH-F64"), self.plan["order"].index("OSH-F63") + 1)
+        self.assertEqual(self.matrix["order"][-2:], ["OSH-F63", "OSH-F64"])
+        self.assertIn("terminal.backend: ssh", self.matrix["rows"]["OSH-F63"]["design_note"])
+        self.assertEqual(hq.classify_heading("Batch 6 — phase P7-openshell"), "6")
+        self.assertIn("6", hq.DISPATCH_BATCHES)
 
     def test_waves_and_attachments(self):
         rows = self.plan["rows"]
@@ -564,13 +586,14 @@ class QueueRules(unittest.TestCase):
 
     def test_batch5_fleet_row_waits_on_batches_3_and_4(self):
         """FLEET-F62 (batch 5) waits on batch3_merged AND batch4_merged — the ISO-F17 gate — while either is unmerged;
-        podman_box gates batch 3 only, and there is no batch5_merged gate (nothing waits on batch 5)."""
+        podman_box gates batch 3 only. Since 2026-09-17 a batch5_merged gate exists (batch 6 waits on it) and reads False here."""
         base = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(BATCH2)]
         st = state(ledger(base), config={"podman_box": True})
         waiting = {w["id"]: w["blocked_by"] for w in st["queue"]["waiting"]}
         self.assertEqual(waiting["FLEET-F62"], ["batch3_merged", "batch4_merged"])
         self.assertEqual(waiting["FLEET-F62"], waiting["ISO-F17"])
-        self.assertNotIn("batch5_merged", st["gating"])
+        self.assertIn("batch5_merged", st["gating"])
+        self.assertFalse(st["gating"]["batch5_merged"])
         fleet = st["rows"]["FLEET-F62"]
         self.assertEqual((fleet["state"], fleet["batch"], fleet["disposition"]), ("queued", "5", "BUILD"))
         self.assertNotIn("FLEET-F62", [e["id"] for e in st["eligible_next"]])
@@ -594,7 +617,7 @@ class QueueRules(unittest.TestCase):
         self.assertTrue(st["gating"]["batch3_merged"] and st["gating"]["batch4_merged"])
         self.assertIn("FLEET-F62", st["queue"]["eligible"])
         self.assertIn("ISO-F17", st["queue"]["eligible"])
-        self.assertEqual([w["id"] for w in st["queue"]["waiting"]], [])
+        self.assertEqual([w["id"] for w in st["queue"]["waiting"]], list(BATCH6))  # only batch 6 still waits (batch5_merged)
         order = [r for r, _ in hq.dispatch_order(hq.parse_plan(PLAN), hq.parse_matrix(MATRIX))]
         self.assertEqual(order.index("ISO-F17"), order.index("FLEET-F62") + 1)
         self.assertGreater(order.index("FLEET-F62"), order.index("A2A-F21"))
@@ -619,6 +642,149 @@ class QueueRules(unittest.TestCase):
         self.assertIn("FLEET-F62", st["queue"]["eligible"])
         self.assertNotEqual(st["eligible_next"][0]["id"], "FLEET-F62")
         self.assertLess(st["queue"]["eligible"].index("FLEET-F62"), st["queue"]["eligible"].index("ISO-F17"))
+
+    def test_batch6_openshell_rows_wait_on_batch5_merged(self):
+        """OSH-F63 / OSH-F64 (batch 6, P7-openshell, 2026-09-17) wait on `batch5_merged` — every batch 5 row merged or waived —
+        while FLEET-F62 is queued, eligible or in flight; the gate exists and reads False until then. OSH-F64 additionally waits
+        on `osh_f63_first_pass` (the lead row's tester PASS, 2026-09-18); podman_box does not apply to batch 6."""
+        base = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(BATCH2 + BATCH3 + BATCH4)]
+        st = state(ledger(base), config={"podman_box": True})
+        self.assertIn("batch5_merged", st["gating"])
+        self.assertFalse(st["gating"]["batch5_merged"])
+        self.assertFalse(st["gating"]["osh_f63_first_pass"])
+        self.assertFalse(st["gating"]["osh_f63_merged"])
+        self.assertEqual([w["id"] for w in st["queue"]["waiting"]], list(BATCH6))
+        waiting = {w["id"]: w for w in st["queue"]["waiting"]}
+        self.assertEqual(waiting["OSH-F63"]["blocked_by"], ["batch5_merged"])
+        self.assertEqual(waiting["OSH-F63"]["reason"], "batch 6: waits for batch5_merged")
+        self.assertEqual(waiting["OSH-F64"]["blocked_by"], ["batch5_merged", "osh_f63_first_pass"])
+        self.assertEqual(waiting["OSH-F64"]["reason"], "batch 6: waits for batch5_merged, osh_f63_first_pass")
+        for rid in BATCH6:
+            self.assertEqual((st["rows"][rid]["state"], st["rows"][rid]["batch"], st["rows"][rid]["disposition"]), ("queued", "6", "BUILD"), rid)
+            self.assertNotIn(rid, [e["id"] for e in st["eligible_next"]], rid)
+        self.assertNotIn("podman-box-needed", [a["kind"] for a in st["alerts"]])
+        # FLEET-F62 dispatched but not merged: still waiting, and the BUILD lane is closed by it
+        st = state(ledger(base + [{"id": "FLEET-F62", "spec": "2026-09-09 11:00Z", "pr": "#50 (draft)"}]), config={"podman_box": True})
+        self.assertEqual(st["in_flight"], ["FLEET-F62"])
+        self.assertFalse(st["gating"]["batch5_merged"])
+        self.assertEqual([w["id"] for w in st["queue"]["waiting"]], list(BATCH6))
+        self.assertTrue(st["wip"]["build_in_flight"])
+
+    def test_batch6_rows_eligible_once_fleet_f62_merged_or_waived_osh_f63_first_on_the_build_lane(self):
+        """FLEET-F62 merged (or in config.waive): batch5_merged flips and OSH-F63 — last in dispatch_order but the only
+        eligible BUILD row — takes the BUILD lane; its dispatch text names batch 6 and disposition BUILD. OSH-F64 is NOT
+        co-dispatched: it stays `waiting` on `osh_f63_first_pass` (its gate tuple is ("batch5_merged", "osh_f63_first_pass"))
+        until OSH-F63 has a tester PASS at its head, so no `paused_rows` entry is needed to keep it back."""
+        rows = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(BATCH2 + BATCH3 + BATCH4 + BATCH5)]
+        st = state(ledger(rows), config={"podman_box": True})
+        self.assertTrue(st["gating"]["batch5_merged"])
+        self.assertEqual([(w["id"], w["blocked_by"]) for w in st["queue"]["waiting"]], [("OSH-F64", ["osh_f63_first_pass"])])
+        self.assertIn("OSH-F63", st["queue"]["eligible"])
+        self.assertNotIn("OSH-F64", st["queue"]["eligible"])
+        order = [r for r, _ in hq.dispatch_order(hq.parse_plan(PLAN), hq.parse_matrix(MATRIX))]
+        self.assertEqual(order[-3:], ["ISO-F17", "OSH-F63", "OSH-F64"])
+        gates = dict(hq.dispatch_order(hq.parse_plan(PLAN), hq.parse_matrix(MATRIX)))
+        self.assertEqual((gates["OSH-F63"], gates["OSH-F64"]), (("batch5_merged",), ("batch5_merged", "osh_f63_first_pass")))
+        first = st["eligible_next"][0]
+        self.assertEqual((first["id"], first["disposition"], first["batch"], first["thread_id"]), ("OSH-F63", "BUILD", "6", "hermes-OSH-F63"))
+        self.assertIn("batch 6: eligible (batch5_merged satisfied)", first["reason"])
+        self.assertIn("BUILD lane: no BUILD row in flight", first["reason"])
+        self.assertIn("Dispatch OSH-F63: OpenShell-native sandbox substrate (P7)", first["dispatch_text"])
+        self.assertIn("disposition BUILD", first["dispatch_text"])
+        self.assertIn("dispatch-plan.md (batch 6)", first["dispatch_text"])
+        self.assertIn("(section OSH-F63)", first["dispatch_text"])
+        self.assertEqual(first["dashboard_line"], "Dispatched OSH-F63 to hermes-architect (autopilot, batch 6)")
+        # waive instead of merge: the same gate result (a waive dispatches before any fleet boot exists — the operator's call)
+        rows = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(BATCH2 + BATCH3 + BATCH4)]
+        st = state(ledger(rows), config={"podman_box": True, "waive": ["FLEET-F62"]})
+        self.assertTrue(st["gating"]["batch5_merged"])
+        self.assertEqual(st["gating"]["waived"], ["FLEET-F62"])
+        self.assertIn("OSH-F63", st["queue"]["eligible"])
+        self.assertEqual([w["id"] for w in st["queue"]["waiting"]], ["OSH-F64"])
+        # a waived row is still a queued, dispatchable BUILD row ahead of batch 6 in the order, so the lane fronts FLEET-F62
+        self.assertEqual(st["eligible_next"][0]["id"], "FLEET-F62")
+        self.assertLess(st["queue"]["eligible"].index("FLEET-F62"), st["queue"]["eligible"].index("OSH-F63"))
+        # OSH-F63 in flight without a tester PASS: OSH-F64 keeps waiting (not eligible, not dispatched) — and a paused OSH-F64
+        # behind that unmet gate never raises `idle-capacity` (it is not capacity anyone could use)
+        rows = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(BATCH2 + BATCH3 + BATCH4 + BATCH5)]
+        rows += [{"id": "OSH-F63", "spec": "2026-09-09 11:00Z", "pr": "#63 (draft)"}]
+        st = state(ledger(rows), config={"podman_box": True})
+        self.assertEqual(st["in_flight"], ["OSH-F63"])
+        self.assertFalse(st["gating"]["osh_f63_first_pass"])
+        self.assertEqual([(w["id"], w["blocked_by"]) for w in st["queue"]["waiting"]], [("OSH-F64", ["osh_f63_first_pass"])])
+        self.assertNotIn("OSH-F64", [e["id"] for e in st["eligible_next"]])
+        st = state(ledger(rows), config={"podman_box": True, "paused_rows": ["OSH-F64"]})
+        self.assertNotIn("OSH-F64", st["queue"]["eligible"])
+        self.assertTrue(st["rows"]["OSH-F64"].get("paused"))
+        self.assertNotIn("idle-capacity", [a["kind"] for a in st["alerts"]])
+
+    def test_osh_f63_first_pass_opens_osh_f64_like_1a_first_pass_opens_1b(self):
+        """Rule 3's `start` half inside batch 6 (2026-09-18): `osh_f63_first_pass` flips on OSH-F63's tester PASS — the ledger
+        verdict, the thread signal (`signals.tester_pass`), a ledger state past testing, a merge or a waive — and only then is
+        OSH-F64 eligible (behind the closed BUILD lane while OSH-F63 is still in flight). `osh_f63_merged` flips on merge or
+        waive alone, backing the supervisor's `osh-f63` merge hold."""
+        order = [r for r, _ in hq.dispatch_order(hq.parse_plan(PLAN), hq.parse_matrix(MATRIX))]
+        base = [merged_row(r, i + 10) for i, r in enumerate(r for r in order if r not in BATCH6)]  # everything outside batch 6
+        # ledger verdict PASS at the head: first_pass true, merged false, OSH-F64 eligible (and dispatched: the only row left)
+        # while OSH-F63 holds the BUILD lane
+        st = state(ledger(base + [{"id": "OSH-F63", "spec": "2026-09-09 11:00Z", "pr": "#63 (draft)", "verdict": "round 1/2 = PASS"}]), config={"podman_box": True})
+        self.assertEqual((st["gating"]["osh_f63_first_pass"], st["gating"]["osh_f63_merged"]), (True, False))
+        self.assertEqual(st["rows"]["OSH-F63"]["state"], "review")
+        self.assertEqual(st["queue"]["waiting"], [])
+        self.assertEqual(st["queue"]["eligible"], ["OSH-F64"])
+        self.assertTrue(st["wip"]["build_in_flight"])
+        nxt = {e["id"]: e for e in st["eligible_next"]}
+        self.assertEqual(list(nxt), ["OSH-F64"])
+        self.assertEqual(nxt["OSH-F64"]["reason"], "batch 6: eligible (batch5_merged, osh_f63_first_pass satisfied)")
+        self.assertIn("Dispatch OSH-F64: Fleet under OpenShell (P7 demo)", nxt["OSH-F64"]["dispatch_text"])
+        self.assertIn("dispatch-plan.md (batch 6)", nxt["OSH-F64"]["dispatch_text"])
+        self.assertEqual(nxt["OSH-F64"]["dashboard_line"], "Dispatched OSH-F64 to hermes-architect (autopilot, batch 6)")
+        # the thread signal alone (prior state.json `signals.tester_pass`) opens it too
+        st = state(ledger(base + [{"id": "OSH-F63", "spec": "2026-09-09 11:00Z", "pr": "#63 (draft)"}]), config={"podman_box": True},
+                   prior={"signals": {"tester_pass": ["OSH-F63"]}})
+        self.assertTrue(st["gating"]["osh_f63_first_pass"])
+        self.assertIn("OSH-F64", st["queue"]["eligible"])
+        # a FAIL at the head is not a PASS
+        st = state(ledger(base + [{"id": "OSH-F63", "spec": "2026-09-09 11:00Z", "pr": "#63 (draft)", "verdict": "round 1/2 = FAIL"}]), config={"podman_box": True})
+        self.assertFalse(st["gating"]["osh_f63_first_pass"])
+        self.assertEqual([w["id"] for w in st["queue"]["waiting"]], ["OSH-F64"])
+        # OSH-F63 merged: both flags true; OSH-F64 is the only queued BUILD row and takes the lane
+        st = state(ledger(base + [merged_row("OSH-F63", 63)]), config={"podman_box": True})
+        self.assertEqual((st["gating"]["osh_f63_first_pass"], st["gating"]["osh_f63_merged"]), (True, True))
+        self.assertEqual(st["eligible_next"][0]["id"], "OSH-F64")
+        self.assertIn("BUILD lane: no BUILD row in flight", st["eligible_next"][0]["reason"])
+        # a waived OSH-F63 counts for both, like every other waive
+        st = state(ledger(base), config={"podman_box": True, "waive": ["OSH-F63"]})
+        self.assertEqual((st["gating"]["osh_f63_first_pass"], st["gating"]["osh_f63_merged"]), (True, True))
+        self.assertIn("OSH-F64", st["queue"]["eligible"])
+
+    def test_build_lane_keeps_the_first_build_row_in_front_two_adjacent_build_rows_never_swap(self):
+        """The end state that matters (every row outside batch 6 merged): the tick FLEET-F62 merges must front OSH-F63, not
+        OSH-F64. Before 2026-09-18 the lane loop skipped index 0 (`and i > 0`), so a BUILD row already at the front was passed
+        over and the NEXT BUILD row was fronted — two adjacent eligible BUILD rows swapped. Pinned here on the batch-6 tail
+        (OSH-F64 now also waits on OSH-F63's PASS, so with OSH-F63 waived both are eligible and adjacent) and on its batch-2
+        twin (1a + every 1b row merged: LOOP-F37 must lead GOV-F24)."""
+        plan, matrix = hq.parse_plan(PLAN), hq.parse_matrix(MATRIX)
+        order = [r for r, _ in hq.dispatch_order(plan, matrix)]
+        everything_else = [merged_row(r, i + 10) for i, r in enumerate(r for r in order if r not in BATCH6)]
+        st = state(ledger(everything_else), config={"podman_box": True, "waive": ["OSH-F63"]})
+        self.assertTrue(st["gating"]["batch5_merged"] and st["gating"]["osh_f63_first_pass"])
+        self.assertEqual(st["queue"]["waiting"], [])
+        self.assertEqual(st["queue"]["eligible"], ["OSH-F63", "OSH-F64"])
+        self.assertEqual([e["id"] for e in st["eligible_next"]], ["OSH-F63", "OSH-F64"])
+        self.assertIn("BUILD lane: no BUILD row in flight", st["eligible_next"][0]["reason"])
+        self.assertNotIn("BUILD lane", st["eligible_next"][1]["reason"])
+        # without the waive the gate alone keeps OSH-F64 out of the tick: OSH-F63 is the only eligible row
+        st = state(ledger(everything_else), config={"podman_box": True})
+        self.assertEqual(st["queue"]["eligible"], ["OSH-F63"])
+        self.assertEqual([(w["id"], w["blocked_by"]) for w in st["queue"]["waiting"]], [("OSH-F64", ["osh_f63_first_pass"])])
+        self.assertEqual([e["id"] for e in st["eligible_next"]], ["OSH-F63"])
+        # batch-2 twin: 1a + all of 1b merged -> LOOP-F37 (BUILD, first in the batch-2 table) leads GOV-F24 (BUILD)
+        one_b = [r for r in order if plan["rows"][r]["batch"] == "1b"]
+        st = state(ledger([merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(one_b)]))
+        self.assertEqual(st["queue"]["eligible"][:2], ["LOOP-F37", "GOV-F24"])
+        self.assertEqual(st["eligible_next"][0]["id"], "LOOP-F37")
+        self.assertIn("BUILD lane: no BUILD row in flight", st["eligible_next"][0]["reason"])
 
     def test_waive_counts_as_merged_for_gating(self):
         st = state(ledger([merged_row("LOOP-F35", 2)]), config={"waive": list(BATCH2)})
@@ -693,7 +859,7 @@ class IdleCapacity(unittest.TestCase):
 
     def ledger_two_in_flight(self) -> str:
         # 1a, all of 1b and four batch-2 rows merged; COST-F30 and LOOP-F40 dispatched (in flight), so batch2_merged
-        # is false: batch 3/4/5 and the P5/P6 adopt rows wait, and only the 13 P2 / P3-waveA adopt rows could run.
+        # is false: batch 3/4/5/6 and the P5/P6 adopt rows wait, and only the 13 P2 / P3-waveA adopt rows could run.
         rows = [merged_row("LOOP-F35", 2)] + [merged_row(r, i + 10) for i, r in enumerate(ONE_B)]
         rows += [merged_row(r, i + 40) for i, r in enumerate(BATCH2[:4])]
         rows += [{"id": "COST-F30"}, {"id": "LOOP-F40"}]
@@ -979,7 +1145,7 @@ class Cli(unittest.TestCase):
         out = json.loads(p.stdout)
         self.assertEqual(out["in_flight"], ["LOOP-F35"])
         self.assertEqual(out["generated_at"], NOW)
-        self.assertEqual(len(out["rows"]), 62)
+        self.assertEqual(len(out["rows"]), 64)
 
     def test_help(self):
         p = subprocess.run([sys.executable, str(HERE / "hermes_queue.py"), "--help"], capture_output=True, text=True, check=False)
@@ -994,7 +1160,7 @@ if __name__ == "__main__":
 class FollowUpRowsTest(unittest.TestCase):
     """A ledger row `<PARENT>.<letter>` whose parent is a matrix row (SCHED-F34.a, ISO-F10.a: the follow-ups the Orchestrator
     opens on operator instruction) is a `follow_up` row, not `ledger-unknown-id`: parent recorded, counted in
-    coverage.follow_ups, OUT of the 62-row arithmetic, OUT of WIP / in_flight / dispatch gating."""
+    coverage.follow_ups, OUT of the 64-row arithmetic, OUT of WIP / in_flight / dispatch gating."""
 
     ROWS = (
         {"id": "SCHED-F34.a", "notes": "follow-up: operator 'Open it' (msg 290)"},
@@ -1063,7 +1229,7 @@ class FollowUpRowsTest(unittest.TestCase):
         st = state(ledger(list(self.ROWS)))
         cov = st["coverage"]
         self.assertTrue(cov["ok"], cov["problems"])
-        self.assertEqual((cov["total"], cov["matrix_rows"], cov["dispatched"], cov["adopt"], cov["merge"], cov["defer"]), (62, 62, 31, 16, 11, 4))
+        self.assertEqual((cov["total"], cov["matrix_rows"], cov["dispatched"], cov["adopt"], cov["merge"], cov["defer"]), (64, 64, 33, 16, 11, 4))
         self.assertEqual((cov["follow_ups"], cov["follow_up_rows"]), (2, ["ISO-F10.a", "SCHED-F34.a"]))
         self.assertIsNone(st["dispatch_paused"])
         none = state(LEDGER)["coverage"]

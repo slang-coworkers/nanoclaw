@@ -5,13 +5,15 @@ wins over a stale state.json, pause wins over blocked, the supervisor's finer st
 in flight is enough, queued-behind-a-gate is `waiting`, no state.json is unknown) and the ADAPTER
 rows_from_board is a pure map over the record's canonical fields (the same row comes out with the raw queue /
 supervisor / ledger inputs stripped): holds become gate waits (1a → 1a_merged …) or a `held` stall (cost card,
-core-change, escalation); the schedule order follows the queue's eligible / waiting lists with held rows last;
+core-change, escalation — `osh-f63` → osh_f63_merged, the batch-6 lead-row hold); the schedule order follows the
+queue's eligible / waiting lists with held rows last;
 live_gating reads only the queue-level facts. compute() gives the expected statuses and ETAs on hand-built
 boards (all merged → done with the ledger date; an in-flight BUILD → remaining hours from the stage factor;
 queued rows behind a false gate start when the gate's rows finish; a paused row flags the rung and drops out
 of the ETA; a blocked or held row inside a gate flags the rungs behind it; a row parked at gate on a merge hold
-starts its last slice when the batch it holds for finishes; the BUILD lane serialises BUILD rows; R5 is R4 +
-21..35 days); a missing state.json degrades to "unknown" without raising; the real dispatch-plan.md through
+starts its last slice when the batch it holds for finishes; the BUILD lane serialises BUILD rows; R5 = FLEET-F62's
+finish + OSH-F63 48 h + OSH-F64 48 h + the 8 h operator step, no date range since the W0-W12 placeholder went on
+2026-09-17); a missing state.json degrades to "unknown" without raising; the real dispatch-plan.md through
 rows-board.load_board gives records the tracker consumes, with the ledger's merge stamps; the CLI prints and
 exits 0; and the two renderers hold their contracts (Slack ≤ 25 lines with every rung id, HTML with one row
 per rung).
@@ -38,7 +40,7 @@ H = timedelta(hours=1)
 IN_FLIGHT = ("dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate")
 
 # The demo-path rows plus the other batch-2 rows the batch2_merged gate counts (COST-F30, LOOP-F40), in the
-# autopilot's dispatch order (hermes_queue.dispatch_order: 1a, 1b by wave, 2, 3, 4, 5, adopt).
+# autopilot's dispatch order (hermes_queue.dispatch_order: 1a, 1b by wave, 2, 3, 4, 5, adopt, 6).
 ROW_META = {
     "LOOP-F35": ("BUILD", "1a"),
     "RT-F01": ("CONFIGURE", "1b"), "RT-F02": ("CONFIGURE", "1b"), "RT-F03": ("CONFIGURE", "1b"),
@@ -49,9 +51,13 @@ ROW_META = {
     "A2A-F21": ("CONFIGURE", "4"),
     "FLEET-F62": ("BUILD", "5"),
     "ISO-F17": ("ADOPT", "adopt"),
+    "OSH-F63": ("BUILD", "6"), "OSH-F64": ("BUILD", "6"),  # P7-openshell (2026-09-17): after the P6 adopt row, gated on batch5_merged
 }
 GATES = {"1a": (), "1b": ("1a_first_pass",), "2": ("1a_first_pass",), "3": ("batch2_merged", "podman_box"),
-         "4": ("batch2_merged",), "5": ("batch3_merged", "batch4_merged"), "adopt": ("batch3_merged", "batch4_merged")}
+         "4": ("batch2_merged",), "5": ("batch3_merged", "batch4_merged"), "adopt": ("batch3_merged", "batch4_merged"),
+         "6": ("batch5_merged",)}
+# Row-level gates on top of the batch gate (hermes_queue.dispatch_order): OSH-F64 also waits on the lead row's tester PASS.
+ROW_GATES = {"OSH-F64": ("batch5_merged", "osh_f63_first_pass")}
 
 
 def load_module():
@@ -77,23 +83,24 @@ def load_board_module():
 def queue_block(rows: dict, gating: dict, paused: list) -> dict:
     """state.json's `queue` block the way hermes_queue.build_state writes it: queued, unpaused rows in dispatch
     order split into eligible (gates met) and waiting (unmet gates in `blocked_by`); with no BUILD row in flight
-    a BUILD row moves to the front (the BUILD lane). Mirrors build_state exactly, quirk included: the loop skips
-    index 0, so when the first eligible row is already a BUILD row the NEXT BUILD row is moved ahead of it."""
+    the FIRST eligible BUILD row moves to the front (the BUILD lane; a BUILD row already in front stays — since
+    2026-09-18 build_state stops at the first BUILD row instead of skipping index 0). Mirrors build_state exactly."""
     eligible, waiting = [], []
     build_in_flight = any(r["state"] in IN_FLIGHT and r["disposition"] == "BUILD" for r in rows.values())
     for rid, (_disp, batch) in ROW_META.items():
         row = rows[rid]
         if row["state"] != "queued" or rid in paused:
             continue
-        unmet = [g for g in GATES[batch] if not gating.get(g)]
+        unmet = [g for g in ROW_GATES.get(rid, GATES[batch]) if not gating.get(g)]
         if unmet:
             waiting.append({"id": rid, "batch": batch, "blocked_by": unmet, "reason": f"batch {batch}: waits for {', '.join(unmet)}"})
         else:
             eligible.append(rid)
     if not build_in_flight:
         for i, rid in enumerate(eligible):
-            if ROW_META[rid][0] == "BUILD" and i > 0:
-                eligible.insert(0, eligible.pop(i))
+            if ROW_META[rid][0] == "BUILD":
+                if i > 0:
+                    eligible.insert(0, eligible.pop(i))
                 break
     return {"eligible": eligible, "waiting": waiting}
 
@@ -109,7 +116,8 @@ def make_state(states: dict, gating: dict | None = None, wip: int = 3, supervise
             rows[rid]["paused"] = True
         if states.get(rid) == "blocked":
             rows[rid]["state_reason"] = "cap: test FAIL x2, no round 3 authorized"
-    g = {"1a_first_pass": False, "batch2_merged": False, "batch3_merged": False, "batch4_merged": False, "podman_box": True}
+    g = {"1a_first_pass": False, "batch2_merged": False, "batch3_merged": False, "batch4_merged": False, "batch5_merged": False,
+         "osh_f63_first_pass": False, "osh_f63_merged": False, "podman_box": True}
     g.update(gating or {})
     in_flight = [r for r, s in states.items() if s in IN_FLIGHT]
     state = {
@@ -253,6 +261,13 @@ class AdapterTest(unittest.TestCase):
         self.assertEqual((r["state"], r["hold_gates"], r["held"]), ("gate", ("batch2_merged",), None))
         both = record("ISO-F17", queue=dict(q, batch="adopt"), sup={"stage": "gate", "hold": "batch3+4"})
         self.assertEqual(self.row(both)["hold_gates"], ("batch3_merged", "batch4_merged"))
+        # batch 6: `batch5` waits for FLEET-F62; `osh-f63` (OSH-F64 merges after the lead row, 2026-09-18) waits for OSH-F63 alone
+        b5 = record("OSH-F63", queue={"disposition": "BUILD", "batch": "6", "state": "gate"}, sup={"stage": "gate", "hold": "batch5"})
+        self.assertEqual((b5["holds"], self.row(b5)["hold_gates"]), ([{"kind": "gate", "label": "batch5"}], ("batch5_merged",)))
+        lead = record("OSH-F64", queue={"disposition": "BUILD", "batch": "6", "state": "gate"}, sup={"stage": "gate", "hold": "osh-f63"})
+        self.assertEqual(lead["holds"], [{"kind": "gate", "label": "osh-f63"}], "a gate hold on the board, not a human-needed stall")
+        self.assertEqual((self.row(lead)["state"], self.row(lead)["hold_gates"], self.row(lead)["held"]), ("gate", ("osh_f63_merged",), None))
+        self.assertEqual(lead["stage"], "gate · hold osh-f63")
         core = record("ISO-F13", queue=q, sup={"stage": "gate", "hold": "core-change"})
         self.assertEqual(core["holds"], [{"kind": "hold", "label": "core-change"}])
         self.assertEqual((self.row(core)["held"], self.row(core)["hold_gates"]), ("hold core-change", ()))
@@ -434,7 +449,14 @@ class ComputeTest(unittest.TestCase):
                          "the operator's box-side steps (mounts, egress rule, OneCLI agents) stay as ONE manual item")
         self.assertNotIn("P6-FLEET", json.dumps(self.spec))
         r5 = by_id(self.spec["rungs"])["R5"]
-        self.assertEqual((r5["manual"][0]["hours"], r5["manual"][0]["hours_max"]), (504.0, 840.0))
+        # R5 = the fleet under OpenShell (operator ruling 2026-09-17, Option 1): two plan rows (batch 6, OSH-F64 after OSH-F63)
+        # plus ONE operator step after OSH-F64; the W0-W12 504–840 h placeholder and its range are gone.
+        self.assertEqual(r5["requires"], ["R4"])
+        self.assertEqual([(x["id"], x["kind"], x["after"]) for x in r5["rows"]], [("OSH-F63", "BUILD", []), ("OSH-F64", "BUILD", ["OSH-F63"])])
+        self.assertEqual([(m["id"], m["hours"], m.get("hours_max"), m["after"]) for m in r5["manual"]], [("P7-OPERATOR", 8.0, None, ["OSH-F64"])])
+        self.assertIn("install into brev-hermes", r5["manual"][0]["title"])
+        self.assertNotIn("W0-W12", [m["id"] for r in self.spec["rungs"] for m in r["manual"]], "the placeholder item is gone (the notes may still name it)")
+        self.assertTrue(all(m.get("hours_max") is None for r in self.spec["rungs"] for m in r["manual"]), "no manual item carries a range any more")
         self.assertIn("planning_hours", self.spec["notes"])
 
     def test_all_merged_is_done_with_the_ledger_merge_date(self):
@@ -523,7 +545,9 @@ class ComputeTest(unittest.TestCase):
         self.assertEqual(r3["eta_utc"], rooms["eta"])
         # R4: FLEET-F62 (batch 5, BUILD 48 h) waits for batch3_merged + batch4_merged, i.e. CRED-F28's finish (= R2's ETA,
         # later than R3's), and takes the BUILD lane right then; ISO-F17 (after FLEET-F62) ends 10 h later; the operator's
-        # 8 h manual step runs after R2 + R3 in parallel and never extends the rung; R5 = R4 + 21..35 d.
+        # 8 h manual step runs after R2 + R3 in parallel and never extends the rung. R5 (2026-09-17): OSH-F63 waits for
+        # batch5_merged = FLEET-F62's finish and takes the BUILD lane right then (48 h), OSH-F64 (`after` OSH-F63, BUILD
+        # lane) follows (48 h), the 8 h operator step after OSH-F64 closes the rung — no date range (no hours_max left).
         r4, r5 = rungs["R4"], rungs["R5"]
         self.assertEqual(r4["status"], "blocked_by_gate")
         r2r3 = max(datetime.fromisoformat(r2["eta_utc"].replace("Z", "+00:00")), datetime.fromisoformat(r3["eta_utc"].replace("Z", "+00:00")))
@@ -537,10 +561,22 @@ class ComputeTest(unittest.TestCase):
         self.assertEqual((ops["id"], ops["eta"]), ("P6-OPERATOR", iso(r2r3 + 8 * H)))
         self.assertEqual(r4["eta_utc"], by_id(r4["rows"])["ISO-F17"]["eta"])
         self.assertGreater(r4["eta_utc"], fleet["eta"])
-        r4_eta = datetime.fromisoformat(r4["eta_utc"].replace("Z", "+00:00"))
-        self.assertEqual(r5["eta_utc"], iso(r4_eta + timedelta(days=21)))
-        self.assertEqual(r5["eta_max_utc"], iso(r4_eta + timedelta(days=35)))
         self.assertEqual(r5["status"], "blocked_by_gate")
+        self.assertEqual(r5["gates"], ["batch5_merged", "osh_f63_first_pass"])
+        f63, f64 = by_id(r5["rows"])["OSH-F63"], by_id(r5["rows"])["OSH-F64"]
+        self.assertEqual((f63["state"], f63["kind"], f63["remaining_hours"]), ("waiting", "BUILD", 48.0))
+        self.assertIn("waits for batch5_merged", f63["blockers"])
+        self.assertEqual(f63["start_utc"], fleet["eta"], "batch5_merged opens when FLEET-F62, the only batch-5 row, finishes; the BUILD lane frees at the same moment")
+        self.assertEqual(f63["eta"], iso(r2r3 + 96 * H))
+        self.assertEqual((f64["state"], f64["kind"], f64["remaining_hours"]), ("waiting", "BUILD", 48.0))
+        self.assertIn("waits for batch5_merged, osh_f63_first_pass", f64["blockers"], "the lead-row gate resolves to OSH-F63 alone, never to batch 6 (which holds OSH-F64 itself)")
+        self.assertEqual(f64["start_utc"], f63["eta"], "`after` OSH-F63, the osh_f63_first_pass gate (modelled as OSH-F63's finish) and the BUILD lane all open at OSH-F63's finish")
+        self.assertEqual(f64["eta"], iso(r2r3 + 144 * H))
+        p7 = r5["manual"][0]
+        self.assertEqual((p7["id"], p7["hours"], p7["eta"]), ("P7-OPERATOR", 8.0, iso(r2r3 + 152 * H)), "the operator install step starts when OSH-F64 finishes")
+        self.assertEqual(r5["eta_utc"], p7["eta"])
+        self.assertGreater(r5["eta_utc"], r4["eta_utc"])
+        self.assertIsNone(r5["eta_max_utc"], "no hours_max anywhere since the W0-W12 placeholder was dropped: no date range")
 
     def test_podman_box_false_makes_batch3_unknown_with_the_reason(self):
         states = {rid: "merged" for rid, (_d, b) in ROW_META.items() if b in ("1a", "1b", "2")}
@@ -655,18 +691,19 @@ class ComputeTest(unittest.TestCase):
         # Five CONFIGURE rows in flight on a limit of 3: the first eligible row starts only when running drops below 3.
         states = {"LOOP-F35": "merged", "RT-F01": "dispatched", "RT-F02": "dispatched", "RT-F03": "dispatched", "GOV-F23": "dispatched", "GOV-F27": "dispatched"}
         state = make_state(states, gating={"1a_first_pass": True})
-        # build_state's BUILD-lane move skips index 0: LOOP-F37 already leads, so GOV-F24 (the next BUILD) is moved ahead of
-        # it — that is the order the dispatch tick sends, and the tracker follows the queue rather than re-deriving it.
-        self.assertEqual(state["queue"]["eligible"][:3], ["GOV-F24", "LOOP-F37", "GOV-F25"])
+        # build_state's BUILD-lane move keeps the FIRST eligible BUILD row in front (since 2026-09-18; before, the loop skipped
+        # index 0 and fronted GOV-F24 ahead of LOOP-F37) — that is the order the dispatch tick sends, and the tracker follows
+        # the queue rather than re-deriving it.
+        self.assertEqual(state["queue"]["eligible"][:3], ["LOOP-F37", "GOV-F24", "GOV-F25"])
         rows = by_id(self.rungs(self.live(state, config={"wip": 3}))["R1"]["rows"])
         inflight_end = NOW + 15 * 0.85 * H
-        self.assertEqual(rows["GOV-F24"]["start_utc"], iso(inflight_end))
-        self.assertEqual(rows["LOOP-F37"]["start_utc"], iso(inflight_end + 48 * H), "the BUILD lane: after GOV-F24")
+        self.assertEqual(rows["LOOP-F37"]["start_utc"], iso(inflight_end))
+        self.assertEqual(rows["GOV-F24"]["start_utc"], iso(inflight_end + 48 * H), "the BUILD lane: after LOOP-F37")
         # wip from config.json wins over state.json's limit; at 7, two slots are free beside the five in flight.
         res = self.mod.compute(self.spec, self.live(state, config={"wip": 7}), NOW)
         self.assertEqual(res["wip_limit"], 7)
         rows7 = by_id(by_id(res["rungs"])["R1"]["rows"])
-        self.assertEqual(rows7["GOV-F24"]["start_utc"], iso(NOW), "two free slots at limit 7")
+        self.assertEqual(rows7["LOOP-F37"]["start_utc"], iso(NOW), "two free slots at limit 7")
 
     def test_not_started_when_a_row_is_queued_and_eligible(self):
         # Nothing dispatched yet: LOOP-F35 is eligible now, so R1 is "not started" (the rest of its rows wait for
@@ -729,7 +766,12 @@ class ComputeTest(unittest.TestCase):
         self.assertIn("CRED-F28 waiting", text)
         self.assertIn("*in progress*", text)
         self.assertIn("ETA 2026-", text)
-        self.assertIn("to 2026-", text, "R5 renders as a date range")
+        self.assertNotIn(" to 2026-", text, "no manual item carries hours_max since W0-W12 went (2026-09-17): no rung renders as a date range")
+        # the range renderer itself still works when a manual item does carry hours_max
+        spec = json.loads(json.dumps(self.spec))
+        by_id(spec["rungs"])["R5"]["manual"][0]["hours_max"] = 80.0
+        text = self.mod.render_slack(self.mod.compute(spec, self.live(make_state({"LOOP-F35": "merged", "LOOP-F37": "building"}, gating={"1a_first_pass": True})), NOW))
+        self.assertIn(" to 2026-", text, "a manual item with hours_max renders its rung as a date range")
 
     def test_render_slack_caps_at_25_lines_with_many_flags(self):
         spec = json.loads(json.dumps(self.spec))
