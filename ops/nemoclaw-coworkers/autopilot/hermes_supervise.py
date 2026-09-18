@@ -282,7 +282,7 @@ NOT_AN_ASK_PREFIXES = ("Supervisor nudge", "Supervisor re-arm", "Autopilot alert
 # lines (plus the digest form, SUPERVISOR_DECISION_LINE_RE; see _skip_line) are dropped before any ask regex, key or head
 # reads the text, wherever they appear in a message.
 ASK_SKIP_LINE_PREFIXES = NOT_AN_ASK_PREFIXES + ("supervise tick:", "full table:", "no rows in flight", "[SUPERVISOR INVARIANT VIOLATION]")
-ABTR_ROW_LINE_RE = re.compile(r"^\S+ \| [✓▶✗⏸·]")  # `<row> | ✓ 09:57Z | ▶ 9.0h | · | ·` (the brief's row line)
+ABTR_ROW_LINE_RE = re.compile(r"^\S+( · [^|]{1,60}?)? \| [✓▶✗⏸·]")  # `<row>[ · <title>] | ✓ 09:57Z | ▶ 9.0h | · | ·` (the brief's row line)
 TASK_THREAD_PREFIX = "system:tasks:"  # task threads receive their prompt as inbound every fire: only an `Operator…` inbound answers there
 
 # state -> (nudge after h, role owing the next artifact, escalate after h)

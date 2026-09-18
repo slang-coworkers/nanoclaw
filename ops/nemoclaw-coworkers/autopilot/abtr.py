@@ -112,6 +112,23 @@ def trunc(text: str, width: int) -> str:
     return text[: max(0, width - 1)].rstrip() + "…"
 
 
+TITLE_WIDTH = 34
+_TITLE_CUT_RE = re.compile(r"\s*(?:\(|:| — | - |, |;| via | with ).*$")
+
+
+def short_title(name) -> str:
+    """The row's name as the brief prints it after the id: `RT-F09 · Pluggable router seams`. The matrix names
+    are sentences ("Pluggable router seams (interceptors, gates, session-created hooks)"); the operator asked for
+    something a human recognises in Slack, so the first clause (before a parenthesis, colon, dash or comma) is
+    kept, a follow-up's `follow-up of <ID>: ` prefix is dropped, and the result is clipped to TITLE_WIDTH."""
+    t = clean_text(name)
+    t = re.sub(r"^follow-up of [^:]+:\s*", "", t)
+    first = _TITLE_CUT_RE.sub("", t).strip()
+    if len(first) < 8:  # a first clause that is just a word or two: keep more of the sentence
+        first = t
+    return trunc(first, TITLE_WIDTH)
+
+
 def _num(v):
     return v if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
@@ -353,6 +370,7 @@ def row_view(rid: str, lr: dict | None, qrow: dict | None, srow: dict | None, no
         "cells": {"a": a, "b": b, "t": t, "r": r, "gate": gate},
         "note": note,
         "pr": pr_no,
+        "title": short_title(qrow.get("name")),
     }
 
 
@@ -481,14 +499,17 @@ def render_abtr_markdown(state: dict, ledger_rows: dict, now: datetime, prs=(), 
 
 def render_abtr_brief(state: dict, ledger_rows: dict, now: datetime, prs=(), alerts=(), config: dict | None = None, dispatchable=None,
                       link: str = "/status/autopilot.md", cards_24h=None) -> str:
-    """The tick's report: the header, one `<row> | a | b | t | r` line per in-flight row, the link."""
+    """The tick's report: the header, one `<row> · <title> | a | b | t | r` line per in-flight row, the link. The
+    title is the row's name clipped by short_title (2026-09-18, operator: the bare ids meant nothing in Slack); a row
+    the state does not name prints as before."""
     rows = derive_rows(state, ledger_rows, now, prs, alerts, config)
     out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h), *decision_lines(state)]
     for v in rows:
         if v["group"] != "in_flight":
             continue
         c = v["cells"]
-        line = f"{v['id']} | {c['a']} | {c['b']} | {c['t']} | {c['r']}"
+        head = f"{v['id']} · {v['title']}" if v.get("title") else v["id"]
+        line = f"{head} | {c['a']} | {c['b']} | {c['t']} | {c['r']}"
         if c["gate"] != "·":
             line += f" | gate {c['gate']}"
         out.append(line)

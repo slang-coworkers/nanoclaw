@@ -162,7 +162,8 @@ class PullStateTest(unittest.TestCase):
         self.assertLessEqual(max(len(line) for line in md.splitlines()), 120)
         brief = (self.ap / "tick-report.txt").read_text().splitlines()
         self.assertEqual(brief[0], md.splitlines()[0])
-        self.assertEqual(brief[1:3], ["LOOP-F35 | ✓ 09:57Z | ▶ 9.0h | · | ·", "MEM-F44 | ▶ 1.0h | · | · | ·"])
+        self.assertEqual(brief[1:3], ["LOOP-F35 · Lego coworker composition | ✓ 09:57Z | ▶ 9.0h | · | ·",
+                                      "MEM-F44 · Transcript retention / archiving | ▶ 1.0h | · | · | ·"])  # id · name since 2026-09-18
         self.assertEqual(brief[-1], "full table: /status/autopilot.md")
         self.assertEqual(st["sources"]["core"], {"queue": "ok", "supervise": "ok"})
 
@@ -337,7 +338,7 @@ class PullStateTest(unittest.TestCase):
         self.assertEqual([(a["target_role"], a.get("check")) for a in st["actions"] if a["kind"] == "nudge"], [("hermes-builder", None)])
         brief = (self.ap / "tick-report.txt").read_text().splitlines()
         self.assertTrue(brief[1].startswith("DECISION NEEDED (1h): LOOP-F35 — LOOP-F35 — compose render COMPLETE"), brief[1])
-        self.assertEqual(brief[2], "LOOP-F35 | ✓ 09:57Z | ▶ 9.0h | · | ·")
+        self.assertEqual(brief[2], "LOOP-F35 · Lego coworker composition | ✓ 09:57Z | ▶ 9.0h | · | ·")
         md = (self.alerts.parent / "autopilot.md").read_text().splitlines()
         self.assertTrue(md[1].startswith("DECISION NEEDED (1h): LOOP-F35"))
         # recorded (record.py alerted --row LOOP-F35 --reason <alert_key>): the next tick is quiet, the ask stays on the table

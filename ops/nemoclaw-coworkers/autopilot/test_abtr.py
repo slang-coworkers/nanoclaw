@@ -222,6 +222,30 @@ class DegradedInputsTest(unittest.TestCase):
         self.assertEqual(brief[-1], "full table: /status/autopilot.md")
         self.assertLessEqual(max(len(line) for line in brief), 120)
 
+    def test_brief_prints_the_row_name_after_the_id(self):
+        """2026-09-18: the operator reads the tick digest in Slack and the bare ids meant nothing. A named state row
+        prints `<id> · <short name> | …`; an unnamed one prints as before; the a|b|t|r shape (`| ✓`) is unchanged so
+        the supervisor still recognises the line as the tick's own."""
+        st = json.loads(json.dumps(STATE))
+        st["rows"]["LOOP-F35"]["name"] = "Lego coworker composition (spines, types, traits)"
+        st["rows"]["GOV-F25"]["name"] = "follow-up of GOV-F24: Approval-gated self-modification tiers via the card flow"
+        brief = abtr.render_abtr_brief(st, parsed_ledger(), NOW, prs=PRS, alerts=scorecard.parse_alerts(ALERTS)).splitlines()
+        self.assertEqual(brief[1], "GOV-F25 · Approval-gated self-modification… | ✓ 09-08 10:00Z | ⏸ | · | ·")
+        self.assertIn("LOOP-F35 · Lego coworker composition | ✓ 09:57Z | ▶ 9.0h | · | ·", brief)
+        self.assertIn("GOV-F24 | ✓ 09-08 10:00Z | ✓ 09-08 11:00Z | ✓ 13:00Z | ✓ 14:00Z | gate ⏸ 1a", brief)  # unnamed: unchanged
+        self.assertLessEqual(max(len(line) for line in brief), 120)
+
+    def test_short_title_keeps_the_first_clause(self):
+        self.assertEqual(abtr.short_title("Pluggable router seams (interceptors, gates, session-created hooks)"), "Pluggable router seams")
+        self.assertEqual(abtr.short_title("Fleet assembly (P6): five sandboxed profiles on ONE gateway"), "Fleet assembly")
+        self.assertEqual(abtr.short_title("Idempotent claim/ack lifecycle with host-side retry backoff"), "Idempotent claim/ack lifecycle")
+        self.assertEqual(abtr.short_title("Cold-DM cache (user_dms) via ensureUserDm two-class resolution"), "Cold-DM cache")
+        self.assertEqual(abtr.short_title("`ncl` admin CLI (socket + in-container transport)"), "ncl admin CLI")
+        self.assertEqual(abtr.short_title("Rooms: membership, wiring predicate, ACL"), "Rooms: membership, wiring predicate, ACL"[:33].rstrip() + "…")
+        self.assertEqual(abtr.short_title(""), "")
+        self.assertEqual(abtr.short_title(None), "")
+        self.assertLessEqual(len(abtr.short_title("x" * 200)), abtr.TITLE_WIDTH)
+
 
 class CliTest(unittest.TestCase):
     def setUp(self):
