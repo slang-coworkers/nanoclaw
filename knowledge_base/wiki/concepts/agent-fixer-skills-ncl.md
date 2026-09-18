@@ -3,7 +3,7 @@ title: "Skills, ncl CLI, and Slang-Specific Mechanics"
 type: concept
 group: agent-fixer-codex-skills
 tags: [ncl, cli, slang-rhi, ci, zero-initialize, include-cycle, coworker-lifecycle]
-source_count: 18
+source_count: 19
 ---
 
 # Skills, ncl CLI, and Slang-Specific Mechanics
@@ -55,6 +55,8 @@ A one-shot scheduled task has **two independently-live parts — the trigger and
 
 Two corollaries follow. First, the only writable layer on a completed row is the run log (`ncl tasks append-log --id <t> --msg "…"` — the flag is `--msg`; `--note` is rejected), and it is what a re-armed session actually reads, so a defusing note goes there and never through `delete`, which hard-deletes the series *and its history* along with the very record that says "already fired." Second, put the guard in the **re-arming mechanism**, not the task — and remember that a guard which has never had to fire has never been tested: a real watchdog's self-exclusion matched the substring `scheduler-watchdog` while the actual series ids were `task-<digits>-<suffix>`, so it was dead across all 126 runs and read as coverage the whole time.
 
+**A designed-and-approved scheduled-task fix ≠ a deployed one — the `prompt` and `script` are separate fields and both must be pushed.** An `ncl tasks` series has two independent fields: `prompt` (wake instructions) and `script` (the pre-task node/bash whose stdout becomes the wake JSON). A classifier fix coded into a local dev file and even dry-run-verified against live data does NOT take effect until pushed with `ncl tasks update --id <series-id> --script "$(cat file)"` (and separately `--prompt` if the wake text must change too). Four consecutive CI-babysitter sweeps re-derived the same wrong "systemic break" verdict because a green-lit classifier fix from 2026-09-15 was never deployed — each fresh session re-derived from scratch because the wake payload never carried the new field (not the LLM overriding a live signal — there was no signal). So after any classifier/script change, verify with `ncl tasks get --id <series-id>` that the live `script` actually contains the new function names (a byte-diff vs the dev copy is the cheap probe); "I tested it locally" ≠ "it's live." Notes: the update flag is `--id` (not `--series-id`, despite the `series_id` label in `get`/`list`); pass the body via `--script "$(cat file)"` (command substitution isn't re-scanned) and keep zero double-quotes in a `node -e` JS body to avoid two-layer escaping hazards; and if a durable fix needs the LLM to *defer* to a new deterministic field rather than re-derive, that instruction must also go into the `prompt` (a new numbered gate) — updating only `script` adds data but doesn't stop a fresh session second-guessing it ([designed-and-approved fix ≠ deployed fix — scheduled task script/prompt are separate fields, both must be pushed](../learnings/1789533257062-designed-and-approved-fix-deployed-fix-scheduled-t.md)).
+
 ## ncl Flag Handling: Silent Swallowing, Inert Scoping Flags, and the `--flag=value` Trap
 
 `ncl`'s flag parsing has a defect that surfaced in four presentations and produced six wrong mechanism labels across two agents before it settled — the synthesized truth below is what survives every probe. All of it reads as a *filtering* problem but is really a *parsing* one, so the operative test is never the output row count.
@@ -97,7 +99,7 @@ Fix: put `#include "slang.h"` **before** the new header's own `#ifndef` guard. T
 **[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL** — **Symptom:** On slang#12118 I copied the bundled `APPROVAL_POLICY.json` (`v0-shadow`, the conservative default next to `eval-clauses.py`) into the per-PR workspace `work/<pr>/policy/` during staging. [[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL](../learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md)
 
 ---
-**Source learnings (18):**
+**Source learnings (19):**
 - [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](../learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
 - [agent ncl restart can't target another group](../learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)
 - [slang-rhi runs full CI matrix (incl. tests) on draft PRs](../learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md)
@@ -117,4 +119,5 @@ Fix: put `#include "slang.h"` **before** the new header's own `#ifndef` guard. T
 - [RE-SCOPED HIGH SEVERITY: `ncl --flag=value` is silently ignored on every swallowing verb — full unfiltered data at exit 0](../learnings/1786243601219-re-scoped-high-severity-ncl-flag-value-is-silently.md)
 - [FOURTH presentation: swallowed `--id=` + auto-fill returns a valid record for the WRONG identity, exit 0](../learnings/1786243869582-fourth-presentation-of-the-ncl-equals-form-defect-.md)
 - [CORRECTION: the "assert returned id == passed id" guard is unsound under auto-fill — the remedy is the syntax rule, not a detector](../learnings/1786244050796-correction-my-assert-returned-id-passed-id-guard-i.md)
+- [designed-and-approved fix ≠ deployed fix — a scheduled task's `script` and `prompt` are separate fields, both must be pushed; verify with `ncl tasks get`](../learnings/1789533257062-designed-and-approved-fix-deployed-fix-scheduled-t.md)
 _Catalog: [[wiki/index.md]]_

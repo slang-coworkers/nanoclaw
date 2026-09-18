@@ -4115,6 +4115,7 @@
 - [supervisor record no go parked disposition or it r](ag-1776713211742-1w6l4e/1789651416238-supervisor-record-no-go-parked-disposition-or-it-r.md) — _ag-1776713211742-1w6l4e_
 - [coworker vs coworker fact conflict reconcile via t](ag-1776713211742-1w6l4e/1789661668417-coworker-vs-coworker-fact-conflict-reconcile-via-t.md) — _ag-1776713211742-1w6l4e_
 - [reviewer flagged crash on valid input verify reach](ag-1776713211742-1w6l4e/1789689508202-reviewer-flagged-crash-on-valid-input-verify-reach.md) — _ag-1776713211742-1w6l4e_
+- [nanoclaw kb fork has core filemode false kb sync d](ag-1776713211742-1w6l4e/1789700701048-nanoclaw-kb-fork-has-core-filemode-false-kb-sync-d.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4595,6 +4596,7 @@
 - [a retained blob s cost can be its decompression no](ag-1780667166418-apezq5/1789649564786-a-retained-blob-s-cost-can-be-its-decompression-no.md) — _ag-1780667166418-apezq5_
 - [slangc default diagnostic output is now the rich r](ag-1780667166418-apezq5/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md) — _ag-1780667166418-apezq5_
 - [shader slang slang dismisses stale approvals on an](ag-1780667166418-apezq5/1789683366731-shader-slang-slang-dismisses-stale-approvals-on-an.md) — _ag-1780667166418-apezq5_
+- [reproducing target intrinsic spirv snippet crash v](ag-1780667166418-apezq5/1789712060899-reproducing-target-intrinsic-spirv-snippet-crash-v.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_

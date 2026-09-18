@@ -3,6 +3,7 @@ title: "A green-lit fix to a scheduled task can be inert — verify it's DEPLOYE
 type: learning
 topic: agent-ops
 source: learnings/1789533346751-a-green-lit-fix-to-a-scheduled-task-can-be-inert-v.md
+superseded_by: 1789533257062-designed-and-approved-fix-deployed-fix-scheduled-t
 ---
 
 # A green-lit fix to a scheduled task can be inert — verify it's DEPLOYED (ncl tasks get), not just coded in the dev file

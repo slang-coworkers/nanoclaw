@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-479 learnings. [Catalog](../index.md)
+483 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -134,6 +134,7 @@ type: topic
 - [Absence claims need a positive control — Slang's ci.yml is a dispatcher with no build flags in it](../learnings/1785895484730-absence-claims-need-a-positive-control-slang-s-ci-.md)
 - [Adding a public capability alias requires regenerating TWO CI-checked docs, not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md)
 - [Address-space specialization: recursion under -disable-non-essential-validations, and keying cycle detection on the stable root](../learnings/1789475023606-address-space-specialization-recursion-under-disab.md)
+- [Advisory CI shell scripts: continue-on-error beats per-probe || true; and the bot can't edit .github/workflows](../learnings/1789654672103-advisory-ci-shell-scripts-continue-on-error-beats-.md)
 - [An A/B that rebuilds in place DESTROYS ITS OWN CONTROL — preserve the baseline artifacts (bin AND lib) before building the treatment, and verify the copy is genuinely control-like](../learnings/1786043422607-an-a-b-that-rebuilds-in-place-destroys-its-own-con.md)
 - [An answered-list and an outstanding-list must partition ONE enumerated set — building them separately hides members in neither](../learnings/1785962417090-an-answered-list-and-an-outstanding-list-must-part.md)
 - [An empty-body APPROVED is invisible to a comments endpoint — read approval STATE from pulls/N/reviews or GraphQL reviewDecision](../learnings/1785849572099-an-empty-body-approved-is-invisible-to-a-comments-.md)
@@ -229,6 +230,7 @@ type: topic
 - [Counting CI checks requires TWO GitHub API surfaces — check-runs alone undercounts](../learnings/1785968460789-counting-ci-checks-requires-two-github-api-surface.md)
 - [Counting merge_group CI health: tally the gating workflow by name, not event=merge_group](../learnings/1785899774910-counting-merge-group-ci-health-tally-the-gating-wo.md)
 - [Coworker bots may not modify .github/workflows — flag before building](../learnings/1783546220222-coworker-bots-may-not-modify-github-workflows-flag.md)
+- [Coworker-vs-coworker fact conflict: reconcile via the specific artifact + timestamp, don't pick a side](../learnings/1789661668417-coworker-vs-coworker-fact-conflict-reconcile-via-t.md)
 - [cp -p is right for a backup and WRONG for a restore — it makes the rebuild a silent no-op](../learnings/1786065965506-cp-p-is-right-for-a-backup-and-wrong-for-a-restore.md)
 - [Cross-check your CI red set against statusCheckRollup — it found 2 more holes in my already-fixed filter](../learnings/1786028676488-cross-check-your-ci-red-set-against-statuscheckrol.md)
 - [Cross-repo integration CI red on a bot PR is usually version skew, not a code bug](../learnings/1789151785364-cross-repo-integration-ci-red-on-a-bot-pr-is-usual.md)
@@ -384,6 +386,8 @@ type: topic
 - [Reconcile two instruments by diffing the SETS, never by comparing their COUNTS](../learnings/1785903713807-reconcile-two-instruments-by-diffing-the-sets-neve.md)
 - [Reconciling a diverged PR branch without force-push (remote had a Merge-master commit)](../learnings/1789505131994-reconciling-a-diverged-pr-branch-without-force-pus.md)
 - [Reconciling an environmental-cause retraction against a test-config fix (map symptom→code path)](../learnings/1780509076354-reconciling-an-environmental-cause-retraction-agai.md)
+- [Reconciling disagreeing CI reads: compare commit/blob SHAs across timestamps before assuming misattribution](../learnings/1789661556897-reconciling-disagreeing-ci-reads-compare-commit-bl.md)
+- [Reconciling two disagreeing CI reads is a TIMELINE problem — compare commit/blob SHAs across timestamps, and "can't find the run" ≠ "no run exists"](../learnings/1789661752326-reconciling-two-disagreeing-ci-reads-is-a-timeline.md)
 - [record_decision is write-only — the writer of an audit artifact cannot verify its own write](../learnings/1785786013003-record-decision-is-write-only-the-writer-of-an-aud.md)
 - [Reducing a PR to test-only after the source fix merged elsewhere: rebase mechanic + FileCheck whitespace trap](../learnings/1787552911744-reducing-a-pr-to-test-only-after-the-source-fix-me.md)
 - [Referential errors need a namespace check, not more scepticism — and naming a blocker is not building the path around it](../learnings/1786454756839-referential-errors-need-a-namespace-check-not-more.md)

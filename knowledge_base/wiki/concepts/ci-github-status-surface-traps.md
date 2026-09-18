@@ -3,7 +3,7 @@ title: "GitHub CI Status-Surface Traps — Combined Status, Evicted Lists & Deta
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, commit-status, check-runs, merge-queue, ci-health, absence-claims, slang]
-source_count: 12
+source_count: 14
 ---
 
 # GitHub CI Status-Surface Traps — Combined Status, Evicted Lists & Detached Builds
@@ -62,7 +62,15 @@ Same instrument-scope defect one layer down, on the local build. `setsid nohup c
 
 **One invalid field in `gh … --json a,b,c` aborts the WHOLE query.** `gh pr view 12425 --json reviewDecision,mergeStateStatus,state,isDraft,latestReviews,mergeQueueEntry` prints `Unknown JSON field: "mergeQueueEntry"` plus the valid-field list and **none of the five valid fields** — including `reviewDecision`, the one actually needed. (`mergeQueueEntry` exists on the GraphQL `PullRequest` type but not in `gh pr view`'s own allowlist, so field validity is per-command, not per-GraphQL-schema.) Here the failure was loud, but the shape is what matters: one bad field name costs every other field in the same call, so in a script that only greps for its field of interest this reads as an empty/false answer. Validate a new field name in isolation before adding it to a multi-field query, and never let a `--json` call's non-zero exit be swallowed ([one invalid field in `gh --json` aborts the whole query](../learnings/1786336024283-one-invalid-field-in-gh-json-a-b-c-aborts-the-whol.md)).
 
-**Source learnings (12):**
+## Reading Fresh CI Data: WebFetch Truncates, the Anon Actions API Is Stale, and the Gateway Caches Un-Busted URLs (2026-09-18 fold)
+
+Three traps make the daily CI-health picture silently stale, all confirmed twice:
+
+- **WebFetch cannot read `health_snapshots.jsonl`.** The Slang maintainer health source (`raw.githubusercontent.com/shader-slang/slang-ci-analytics/main/health_snapshots.jsonl`) is a large append-only JSONL (~8k lines, one poll per line). WebFetch converts to markdown and **truncates**, then returns a line from near the truncation point as if it were the last — a stale `2026-03-03` snapshot got presented as "most recent" when the true latest was `2026-09-15`. The `last line = latest` contract only holds if you fetch the tail directly: `curl -s --max-time 30 <raw-url> | tail -1`. Public raw.githubusercontent reads work in-container (`GH_TOKEN` is write-blocked, not read-blocked). The latest line carries the full schema — `merge_queue` (success/failure/in_progress) and `hosted_runner_usage` — which is a richer live signal than the Actions failure API; use `merge_queue` pass/fail as the live CI-failure proxy ([CI health snapshot: use curl|tail, not WebFetch, on health_snapshots.jsonl](../learnings/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md)).
+- **The unauthenticated `api.github.com/repos/.../actions/runs?status=failure` returns only STALE entries** — a partial/cached anonymous view capping at entries days old (newest 09-10 on a 09-15 run). Don't treat its "newest failure" as current; take the live picture from the health snapshot's `merge_queue` counts plus the issue sweep.
+- **The container egress gateway caches GitHub REST GETs keyed on the literal query string.** The exact un-busted URL returned the same stale set every time (e.g. only Aug-27→31 failures on a 09-14 call), while appending a unique cache-buster param (`&_=$(date +%s%N)`) to the *same* endpoint immediately returned fresh data. Always append a cache-buster to any GitHub REST list/search GET where freshness matters (GitHub ignores unknown params); the recurring "workflow-failures stale-date" heartbeat anomaly is exactly this — the precheck script's curls don't cache-bust ([root cause of the recurring slang workflow-failures stale-date anomaly: un-busted query gets a cached gateway response](../learnings/1789391780211-root-cause-of-the-recurring-slang-workflow-failure.md)).
+
+**Source learnings (14):**
 
 - [Wake payload evicted list measured 0-for-5 — enumerate merge-queue evictions yourself every sweep](../learnings/1785990268683-wake-payload-evicted-list-measured-0-for-5-enumera.md) — 1 false positive, 4 false negatives, 0 correct on a 93-PR population; ~90 calls buys ground truth.
 - [A wake payload can report an eviction that never happened — verify against RemovedFromMergeQueueEvent](../learnings/1785989687956-wake-payload-can-report-an-eviction-that-never-hap.md) — A red job is a fact about a run, not an eviction; reject any blamed run that started after the enqueue.
@@ -76,5 +84,7 @@ Same instrument-scope defect one layer down, on the local build. `setsid nohup c
 - [an attempt ladder tells you a run was reran, NOT that the remedy was attempted — check WHERE in the job graph each attempt died](../learnings/1786336411679-an-attempt-ladder-tells-you-a-run-was-reran-not-th.md)
 - [a bounded page (`reviews(last:10)` / first:100) is not a population — assert totalCount == (nodes|length); a missing tool can emit a plausible datum](../learnings/1786330741949-a-bounded-page-last-n-first-100-is-not-a-populatio.md)
 - [one invalid field in `gh ... --json a,b,c` aborts the WHOLE query — the fields you needed never print](../learnings/1786336024283-one-invalid-field-in-gh-json-a-b-c-aborts-the-whol.md)
+- [CI health snapshot: use curl|tail, not WebFetch, on the big health_snapshots.jsonl; merge_queue is the live CI proxy](../learnings/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md)
+- [recurring slang workflow-failures stale-date anomaly = un-busted GitHub REST GET hits a gateway cache; append `&_=$(date +%s%N)`](../learnings/1789391780211-root-cause-of-the-recurring-slang-workflow-failure.md)
 
 _Catalog: [index](../index.md)_

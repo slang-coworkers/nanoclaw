@@ -3,7 +3,7 @@ title: "gh CLI Write-Guard & Fan-Out Folds — Critique-Gate False-Matches, Bot-
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, critique-gate, write-guard, corrections, bot-process, subagents, slang]
-source_count: 5
+source_count: 6
 ---
 
 # gh CLI Write-Guard & Fan-Out Folds — Critique-Gate False-Matches, Bot-Comment Attribution
@@ -45,12 +45,18 @@ The `[bot]`-suffix guard (covered on [gh CLI CI Status & Merge Signals](ci-gh-cl
 
 **The other direction: the dispatcher's own unannounced write.** A comment on slang#12223 (id 5167783319) was reported as coming from "a different session under our shared `nv-slang-bot[bot]` identity," with a coordination rule proposed for concurrent sessions writing to one surface. There was **no concurrency incident** — the orchestrator posted it itself: it authorized the close-out (the worker's footprint), then four minutes later posted a separate finding on the same issue and told the *reviewer* tier but not the worker. The correct rule belongs to the dispatcher, not the workers: **whoever delegates a surface must announce any write it makes to that surface, with the comment id, on the same thread, in the same turn.** What survives in weaker form is ordinary hygiene — a shared bot identity genuinely isn't attributable to a tier from GitHub alone, so investigating an unannounced bot comment *by content* and re-reading the newest comment before posting are both right — but do not escalate "unattributable bot comment" to "concurrency incident" without evidence; ask the tier that could have written it first. The same episode yields a cheaper habit: **before re-running an experiment, re-read the evidence you already collected and ask what else it proves.** Three agents independently re-derived that `*_FLAGS_<CONFIG>_INIT` seeding fails to honor env `CXXFLAGS`, when the chain's own days-old probe output already showed the all-config slot (where env `CXXFLAGS` lands) preceding the per-config slot — the ordering *was* the finding. Probe when you have no evidence; re-read when you do ([CORRECTION: it was the dispatcher's unannounced write, not a rogue session](../learnings/1785770140397-correction-to-my-12223-concurrency-claim-it-was-th.md)).
 
+## The Babysitter Bot Lacks Merge-Queue Permission (2026-09-18 fold)
+
+`gh pr merge <n> --repo shader-slang/slang --merge-queue` fails for the CI-babysitter bot identity with GraphQL 403 `User is not authorized for this protected branch (enablePullRequestAutoMerge)`. This is **not** a per-PR classification issue — the bot's App/token simply lacks the branch-protection permission needed to enqueue merges, so every "requeue eligible" verdict dead-ends here (confirmed recurring across #12559 and #12910, 2026-09-13/14). Until an admin grants the permission (or a human requeues manually), the Merge Queue Recovery step can only reach "left: permission gap" — don't re-attempt the same PR once this error is seen for the day; note it and move on, and flag it to an admin as an actionable fix rather than re-diagnosing each sweep ([Slang CI babysitter bot lacks merge-queue permission (systemic, recurring)](../learnings/1789395858825-slang-ci-babysitter-bot-lacks-merge-queue-permissi.md)).
+
 ## Contradictions / supersessions
 
 - **"The critique/delivery gate blocks all bash, including read-only `gh api`"** and **"only composed multi-field interpolated `--jq` trips it"** — both retracted; the mine-verified trigger is the literal `state=` on an `issues` path (see the CORRECTION section). The separate `.state_reason`-before-`=` trigger is one-edge-only and must not be worked around fleet-wide.
 - **"Reproduced on 3 edges"** (as originally published for the `state=` trigger) — retracted as an inference dressed as a count; it became true only later, which does not retroactively justify writing it.
 
-**Source learnings (5):**
+**Source learnings (6):**
+
+- [Slang CI babysitter bot lacks merge-queue permission (systemic, recurring) — GraphQL 403 on protected branch; note and move on](../learnings/1789395858825-slang-ci-babysitter-bot-lacks-merge-queue-permissi.md)
 
 - [critique-gate hook false-matches read-only gh api .../pulls/... GETs as PR-creation — use gh pr view/diff --json instead](../learnings/1783806666221-approver-infra-critique-gate-hook-false-matches-re.md)
 - [CORRECTION: the critique gate does not block read-only gh api — probe variants before characterizing a tool](../learnings/1785781643460-correction-the-critique-gate-blocks-composed-multi.md)
