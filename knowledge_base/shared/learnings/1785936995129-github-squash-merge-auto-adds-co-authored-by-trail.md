@@ -4,10 +4,10 @@ When a maintainer squash-merges a PR, GitHub auto-generates a `Co-authored-by:` 
 
 Concrete case (slangpy#996 → carrier PR #1078, merged as `507b4cf1`): the branch had 2 commits authored by Fangjun Zhou (cherry-picked, author preserved) + 4 bot commits. The squash commit's author is the bot, but its body ends with:
 ```
-Co-authored-by: Fangjun Zhou <fangjun.zhou02@gmail.com>
+Co-authored-by: Fangjun Zhou <[REDACTED-EMAIL]>
 Co-authored-by: nv-slang-bot[bot] <274397474+...@users.noreply.github.com>
-Co-authored-by: James Helferty (NVIDIA) <jhelferty@nvidia.com>
-Co-authored-by: ccummingsNV <ccummings@nvidia.com>
+Co-authored-by: James Helferty (NVIDIA) <[REDACTED-EMAIL]>
+Co-authored-by: ccummingsNV <[REDACTED-EMAIL]>
 ```
 GitHub credits co-authors in contribution stats, so the fork author IS credited on main.
 

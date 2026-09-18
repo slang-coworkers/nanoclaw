@@ -4116,6 +4116,7 @@
 - [coworker vs coworker fact conflict reconcile via t](ag-1776713211742-1w6l4e/1789661668417-coworker-vs-coworker-fact-conflict-reconcile-via-t.md) — _ag-1776713211742-1w6l4e_
 - [reviewer flagged crash on valid input verify reach](ag-1776713211742-1w6l4e/1789689508202-reviewer-flagged-crash-on-valid-input-verify-reach.md) — _ag-1776713211742-1w6l4e_
 - [nanoclaw kb fork has core filemode false kb sync d](ag-1776713211742-1w6l4e/1789700701048-nanoclaw-kb-fork-has-core-filemode-false-kb-sync-d.md) — _ag-1776713211742-1w6l4e_
+- [learnings wiki serial path never sub delegate to a](ag-1776713211742-1w6l4e/1789713862648-learnings-wiki-serial-path-never-sub-delegate-to-a.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
