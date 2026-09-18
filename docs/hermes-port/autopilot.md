@@ -422,6 +422,52 @@ authorization) and for rows the thread names whatever their state (a queued row'
 for the ask alone); a paused row stays silent; the row's ordinary SLO check still runs — the ask is a decision
 we owe, not a stall the supervisor can re-arm, so it never emits a nudge or a re-arm.
 
+**The canonical shape and the ledger stamp** (§5.1; the 2026-09-17 CH-F49 miss — `DECISION NEEDED — CH-F49 —
+authorize one final reviewer round (r3) …` open for 52 min on the row thread and the DM while the 13:17Z tick read
+`operator_ask 0`, because the detector skipped every line starting "DECISION NEEDED" as its own report line).
+**Which lines are asks:** `DECISION NEEDED — <ROW> — <question>` as the **first line** of an outbound message (em
+dash, en dash or a plain hyphen between the parts; markdown stripped; any case for the phrase), written by the
+Orchestrator or any role on a row thread or an operator thread (`CANON_ASK_RE`, `canonical_ask`) — an **explicit**
+ask of the highest confidence, read before the hold / marker filters, **attributed to the named row** whatever ids
+the question mentions (a canonical DM naming `FLEET-F62` and `ISO-F14` in its question is still `CH-F49`'s; an
+unknown row in the header falls back to the ordinary attribution), keyed on the row + question (`decision_key`;
+the row-thread copy, the DM mirror and the ledger stamp are one ask) and headed by the question, so the digest
+reads `DECISION NEEDED (Nh): CH-F49 — authorize one final reviewer round …`. And, as a **second source**, the
+row's ledger `notes` stamps `decision-needed:<C.x|none> <ROW> <ISO> — <question>` (`hermes_queue.parse_decision_stamps`
+→ `ledger.decisions` on the row record; `open_decisions` = those with no later `delegated:` stamp of the pairing
+kind): a stamp with no later pairing `delegated:` note and no operator answer after its ISO is an ask (`source:
+ledger`, age from the ISO), so a DM the collectors missed still surfaces — and it is read on every known row that
+carries one, merged, queued or a finished follow-up included (a `none` decision about an upstream filing outlives the
+chain; a paused row stays silent); a stamp whose key a text-detected ask already carries collapses into it (its
+`rule` and `stamp` ride along). The stamp's question ends at the next `; key:` note (a `hold:` appended later never
+changes its key), an ISO with fractional seconds keeps its zone, markdown around the stamp is stepped over. The row
+id in the DM line tolerates a hand-typed look-alike dash (`CH‑F49`) and keeps a follow-up's `.a` lower-case, so
+`LOOP-F35.a`'s ask meets `LOOP-F35.a`'s stamp and `DEFAULT APPLIED`. A canonical ask for row X posted on row Y's
+thread (misfiled, or mirrored) is routed to X like a DM copy — one alert, never two rows under one `alert_key`.
+**Which lines are the tick's own:** `DECISION NEEDED (<age>h): <row> — <head>` (parenthesised age, colon —
+`SUPERVISOR_DECISION_LINE_RE`), the `Hermes autopilot · …` header, the `<row> | a | b | t | r` rows, `full table:`,
+`supervise tick:` — dropped before any regex, key or head reads a message, never asks, never answers. **What answers
+a canonical ask**, beyond the rules above: (1) the operator's first reply after the ask on the same operator thread
+— escalation.md's "the operator answers with the number": `2`, `Operator ruling: 2`, `wait`, loose on the DM,
+`Operator…` on a task thread — provided it names no OTHER known row; it is attributed to the ask's row and clears the
+row-thread mirror and the ledger stamp too, exactly like an `Operator…` reply naming the row (a reply naming another
+row, or one before any canonical ask, attributes nothing; one reply meets one ask, so later chatter is not a second
+ruling); (2) a later outbound `DEFAULT APPLIED — <ROW> —` line on any thread and (3) a later `delegated:<kind> <ROW>
+<ISO>` stamp of the **pairing kind** — `round`↔C.1, `carry`↔C.2, `advisory`↔C.3 only (C.3 is written "at once, no
+DM", so an advisory classification never closes a live C.1 / C.2 / `none` decision), `none` by no stamp, a rule-less
+text ask (no stamp) by any kind but `advisory`. (2) and (3) answer the canonical asks and the stamps only — a
+standing default rules on the decision it defaulted, never on a role's ordinary "awaiting operator" line (a cost cap
+is never defaulted, so a tester's cap ask outlives the Orchestrator's C.1 default). **Overdue:** a delegable stamp
+(`C.1`–`C.3`; never `none` or a rule the spine does not know) ≥ 2 h old (`DEFAULT_AFTER_H`, the § Standing defaults
+floor) with no pairing `delegated:` stamp and no answer adds `default C.x overdue` to the alert — `detail` on the
+action and the alerts.md line (`… · default C.1 overdue — apply the standing default … unless an operator message
+about the row exists …`) — so the Orchestrator applies it on its next turn; the digest line is unchanged and there
+is no new action kind. The overdue phase is bounded on `<key>:default-overdue`: an ask alerted fresh at its first
+sighting (< 2 h, the plain key) alerts exactly once more, with the detail, when its default falls due — under the
+plain key alone the cue would have stayed bound for 24 h and never reached an action (DM 12:25Z, ticks at :17: 13:17Z
+plain, 15:17Z overdue). No stamp means nothing is pending a default (the spine's rule), so a text-only canonical ask
+alerts without the detail.
+
 **Where the acks come from.** `processing_ack` lives in each session's `outbound.db` under
 `data/v2-sessions/`, which the Orchestrator container cannot read. `collect-acks.sh` runs on the host
 from `refresh-viewers.sh` every 15 min (hostname-guarded): one `scripts/q.ts` query for the active

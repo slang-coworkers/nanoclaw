@@ -240,6 +240,72 @@ class LedgerParse(unittest.TestCase):
         self.assertIsNone(e["outcome"])
         self.assertEqual(e["notes_len"], len("a|b|c"))  # cells are stripped, then re-joined on the pipe
 
+    def test_decision_stamps_in_notes_are_exposed_on_the_row_record(self):
+        """escalation.md / delegated-decisions.md: `decision-needed:<C.x|none> <ROW> <ISO> — <question>` and
+        `delegated:<kind> <ROW> <ISO> — <one line>` in the `notes` cell, read in text order; open_decisions = the
+        decision-needed stamps with no LATER delegated stamp (the supervisor's second source for operator asks)."""
+        notes = ("hold: batch3+4 (autopilot 2026-09-17T10:00Z); decision-needed:C.1 CH-F49 2026-09-17T12:25:00Z — authorize one final "
+                 "reviewer round (r3) to attest the corrected head `2f100634a7`, or not?; delegated:round CH‑F49 2026-09-17 14:30Z — "
+                 "round 3 authorized (delegated C.1)")  # a U+2011 hyphen in the second row id, as hand-edited cells carry
+        e = hq.parse_ledger(ledger([{"id": "CH-F49", "notes": notes}]))["rows"]["CH-F49"]
+        self.assertEqual(e["decisions"], [
+            {"kind": "decision-needed", "tag": "C.1", "row": "CH-F49", "at": "2026-09-17T12:25:00Z",
+             "text": "authorize one final reviewer round (r3) to attest the corrected head `2f100634a7`, or not?"},
+            {"kind": "delegated", "tag": "round", "row": "CH-F49", "at": "2026-09-17T14:30:00Z", "text": "round 3 authorized (delegated C.1)"},
+        ])
+        self.assertEqual(hq.open_decisions(e["decisions"]), [])  # the default was applied: nothing pending
+        # a stamp with no question and no delegated note is pending; `none` is a rule like any other
+        e2 = hq.parse_ledger(ledger([{"id": "CH-F49", "notes": "decision-needed:none CH-F49 2026-09-17T09:00Z"}]))["rows"]["CH-F49"]
+        self.assertEqual(e2["decisions"], [{"kind": "decision-needed", "tag": "none", "row": "CH-F49", "at": "2026-09-17T09:00:00Z", "text": ""}])
+        self.assertEqual(hq.open_decisions(e2["decisions"]), e2["decisions"])
+        # zone-less stamps read in the install zone like every ledger stamp; a delegated note OLDER than the stamp leaves it open
+        e3 = hq.parse_ledger(ledger([{"id": "ISO-F14", "notes": "delegated:advisory ISO-F14 2026-09-17 08:00 — ADVISORY-FAIL(unattributed); decision-needed:C.2 ISO-F14 2026-09-17 09:00 — carry the live criteria to FLEET-F62?"}]))["rows"]["ISO-F14"]
+        self.assertEqual([(d["kind"], d["at"]) for d in e3["decisions"]], [("delegated", "2026-09-17T02:30:00Z"), ("decision-needed", "2026-09-17T03:30:00Z")])
+        self.assertEqual([(d["tag"], d["text"]) for d in hq.open_decisions(e3["decisions"])], [("C.2", "carry the live criteria to FLEET-F62?")])
+        # no stamps (the real ledger, a plain note): []; the row record in build_state carries the list; None is tolerated
+        self.assertEqual(self.led["rows"]["LOOP-F35"]["decisions"], [])
+        self.assertEqual(hq.parse_decision_stamps("operator ruling B (msg 384)"), [])
+        self.assertEqual(hq.parse_decision_stamps(""), [])
+        self.assertEqual(hq.open_decisions(None), [])
+        st = state(ledger([{"id": "CH-F49", "notes": notes}]))
+        self.assertEqual([d["kind"] for d in st["rows"]["CH-F49"]["ledger"]["decisions"]], ["decision-needed", "delegated"])
+        # the cell is a running log: a `; hold: …` (or any `; key:` note) appended AFTER the stamp is not part of the question
+        tail = hq.parse_decision_stamps("decision-needed:C.1 CH-F49 2026-09-17T12:25:00Z — authorize r3, or not?; hold: batch3+4 (autopilot 2026-09-17T14:00:00Z); operator ruling B")
+        self.assertEqual([(d["text"], d["at"]) for d in tail], [("authorize r3, or not?", "2026-09-17T12:25:00Z")])
+        # an ISO copied from a nanoclaw message (fractional seconds) keeps its zone — not 5.5 h early in the install zone, no
+        # `.000Z` leaking into the question; `**bold**` around the stamp is stepped over
+        frac = hq.parse_decision_stamps("decision-needed:C.1 CH-F49 2026-09-17T12:25:00.000Z — authorize r3?")
+        self.assertEqual([(d["at"], d["text"]) for d in frac], [("2026-09-17T12:25:00Z", "authorize r3?")])
+        bold = hq.parse_decision_stamps("**decision-needed:C.1** CH-F49 2026-09-17T12:25:00Z — authorize r3?; **delegated:round** `CH-F49` 2026-09-17T14:30Z — r3")
+        self.assertEqual([(d["kind"], d["tag"], d["row"], d["at"]) for d in bold],
+                         [("decision-needed", "C.1", "CH-F49", "2026-09-17T12:25:00Z"), ("delegated", "round", "CH-F49", "2026-09-17T14:30:00Z")])
+        self.assertEqual(hq.parse_decision_stamps("the decision was delegated to the builder; decision-needed soon"), [])  # prose, no colon: no stamp
+
+    def test_a_delegated_stamp_closes_only_its_pairing_rule(self):
+        """delegated-decisions.md § Standing defaults: `round` is C.1's default, `carry` C.2's, `advisory` C.3's — written "at
+        once, no ruling, no DM" for a nightly classification, so it must never close a live C.1 / C.2 / `none` decision."""
+        self.assertEqual(hq.DELEGATED_KIND_FOR_RULE, {"c.1": "round", "c.2": "carry", "c.3": "advisory"})
+        for rule, kind, closes in (
+            ("C.1", "round", True), ("C.1", "carry", False), ("C.1", "advisory", False), ("c.1", "ROUND", True),
+            ("C.2", "carry", True), ("C.2", "round", False), ("C.3", "advisory", True), ("C.3", "round", False),
+            ("none", "round", False), ("none", "carry", False), ("none", "advisory", False),
+            (None, "round", True), (None, "carry", True), (None, "advisory", False), ("", "round", True),
+            ("C.9", "round", False), ("C.1", None, False), ("C.1", "", False),
+        ):
+            self.assertEqual(hq.delegated_closes(rule, kind), closes, (rule, kind))
+        c1 = "decision-needed:C.1 CH-F49 2026-09-17T12:25Z — authorize r3?"
+        pending = hq.parse_decision_stamps(c1 + "; delegated:advisory CH-F49 2026-09-17T13:25Z — ADVISORY-FAIL(unattributed nightly)")
+        self.assertEqual([(d["tag"], d["text"]) for d in hq.open_decisions(pending)], [("C.1", "authorize r3?")])
+        self.assertEqual([(d["tag"], d["text"]) for d in hq.open_decisions(hq.parse_decision_stamps(c1 + "; delegated:carry CH-F49 2026-09-17T13:25Z — carried"))], [("C.1", "authorize r3?")])
+        self.assertEqual(hq.open_decisions(hq.parse_decision_stamps(c1 + "; delegated:round CH-F49 2026-09-17T13:25Z — round 3 authorized")), [])
+        self.assertEqual(hq.open_decisions(hq.parse_decision_stamps(c1 + "; delegated:round CH-F49 2026-09-17T11:25Z — an older default")), hq.parse_decision_stamps(c1))
+        none = "decision-needed:none CH-F49 2026-09-17T09:00Z — file upstream?; delegated:round CH-F49 2026-09-17T13:25Z — r3"
+        self.assertEqual([d["tag"] for d in hq.open_decisions(hq.parse_decision_stamps(none))], ["none"])
+        # two decisions in one cell close independently: C.2's carry leaves C.1 open
+        two = ("decision-needed:C.1 CH-F49 2026-09-17T12:25Z — authorize r3?; decision-needed:C.2 CH-F49 2026-09-17T12:30Z — carry AC-3?; "
+               "delegated:carry CH-F49 2026-09-17T14:31Z — carried")
+        self.assertEqual([d["tag"] for d in hq.open_decisions(hq.parse_decision_stamps(two))], ["C.1"])
+
     def test_duplicate_rows_last_wins_and_flagged(self):
         text = ledger([{"id": "MEM-F44"}, {"id": "MEM-F44", "outcome": "blocked: STOP dup"}])
         led = hq.parse_ledger(text)
