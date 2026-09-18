@@ -1880,9 +1880,25 @@ def tick_report(hhmm: str, *decision_lines: str) -> str:
     accounting line."""
     lines = [f"Hermes autopilot · 09-10 {hhmm}Z · in flight 3/3 · merged 2 · blocked 0 · queued 40 · alerts 6h 1 · cards 24h 3"]
     lines += list(decision_lines)
-    lines += ["ISO-F14 | ✓ 09:57Z | ▶ 9.0h | · | ·", "A2A-F21 | ✓ 08:00Z | ✗ FAIL r2 | ⏸ | ·", "full table: /status/autopilot.md",
+    lines += ["ISO-F14 · Egress render for sandboxes | ✓ 09:57Z | ▶ 9.0h | · | ·", "A2A-F21 | ✓ 08:00Z | ✗ FAIL r2 | ⏸ | ·",
+              "full table: /status/autopilot.md",
               "supervise tick: 0 nudged, 1 alerted, 0 gates run, 0 holds noted (rows in flight 3)"]
     return "\n".join(lines)
+
+
+class TickRowLineShapeTest(unittest.TestCase):
+    """The brief prints `<row> · <title> | ✓ …` since 2026-09-18 (abtr.short_title); the tick's own row lines must still be
+    dropped before ask detection, titled or not, and a titled line must never read as an operator ask."""
+
+    def test_titled_and_bare_row_lines_are_the_ticks_own(self):
+        for line in ("RT-F09 · Pluggable router seams | ✓ 09-17 23:49Z | ✓ 00:51Z | ✓ 05:16Z | ▶ 0.0h",
+                     "ISO-F14 · Egress render for sandboxes | ✓ 09:57Z | ▶ 9.0h | · | ·",
+                     "GOV-F25 · Approval-gated self-modification… | ✓ 09-08 10:00Z | ⏸ | · | ·",
+                     "A2A-F21 | ✓ 08:00Z | ✗ FAIL r2 | ⏸ | ·"):
+            self.assertIsNotNone(hs.ABTR_ROW_LINE_RE.match(line), line)
+        self.assertIsNone(hs.ABTR_ROW_LINE_RE.match("DECISION NEEDED — RT-F09 — codify the carve-out, or not?"))
+        self.assertIsNone(hs.ABTR_ROW_LINE_RE.match("RT-F09 · your call | which option?"))
+        self.assertFalse(hs.is_operator_ask("RT-F09 · Pluggable router seams | ✓ 09-17 23:49Z | ✓ 00:51Z | ✓ 05:16Z | ▶ 0.0h"))
 
 
 def orch(hours: float, text: str, direction: str = "out") -> dict:
