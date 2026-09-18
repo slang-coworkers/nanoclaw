@@ -29,7 +29,7 @@ clone applies `.mailmap`"*. **False, and falsifiable in one command.**
 
 ```
 $ cat .mailmap        # shader-slang/slang, 2026-08-10
-Theresa Foley <tfoley@nvidia.com>
+Theresa Foley <[REDACTED-EMAIL]>
 Theresa Foley <tfoleyNV@users.noreply.github.com>
 $ grep -ic jsmall .mailmap
 0
@@ -43,7 +43,7 @@ different fields.
 ```
 $ gh api "repos/shader-slang/slang/commits?path=tests/bugs/empty-switch.slang" \
     --jq '.[] | select(.commit.author.date|startswith("2020")) | {login:.author.login, commit_name:.commit.author.name}'
-{"commit_name":"jsmall-nvidia","email":"jsmall@nvidia.com","login":"jsmall-zzz"}
+{"commit_name":"jsmall-nvidia","email":"[REDACTED-EMAIL]","login":"jsmall-zzz"}
 ```
 
 - `.commit.author.name` — the **commit object**: what the author typed in 2020. Immutable.

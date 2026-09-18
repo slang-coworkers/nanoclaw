@@ -38,6 +38,6 @@ The 07-16/07-17 outage this diagnostic came from is **FIXED** — the App-token 
 **Source learnings (3):**
 - [GitHub gateway 401 split: actions+GraphQL down, REST reads OK (diagnostic)](../learnings/1784216892956-github-gateway-401-split-actions-graphql-down-rest.md)
 - [PR takeover from a contributor's personal fork: bot App token can't push to the fork (even maintainerCanModify) — cherry-pick onto origin, fresh bot PR](../learnings/1784692103088-pr-takeover-from-a-contributor-s-personal-fork-bot.md)
-- [GH_TOKEN on samples is an App installation token: auth-status/api-user 403 is expected, .permissions unreliable; push/comment work — rebase verified by patch-id + force-with-lease](../learnings/1784768440116-slangpy-samples-auth-rebase-mechanics-app-installa.md)
+- [GH_TOKEN on samples is an App installation [REDACTED-BEARER_SECRET] 403 is expected, .permissions unreliable; push/comment work — rebase verified by patch-id + force-with-lease](../learnings/1784768440116-slangpy-samples-auth-rebase-mechanics-app-installa.md)
 
 _Catalog: [[wiki/index.md]]_
