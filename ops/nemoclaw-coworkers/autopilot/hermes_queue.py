@@ -77,6 +77,19 @@ Rules pinned here (each has a test in test_hermes_queue.py):
     name a ledger follow-up row as its to-row (`carried_to_row`): coverage accepts it, the DEFER
     check reads the parent's batch, and the follow-up carries it (`carries_criteria`); a dotted id
     the ledger has no row for is still an unknown to-row.
+  * Decision stamps (escalation.md / delegated-decisions.md § Standing defaults): a row's `notes`
+    cell carries `decision-needed:<C.x|none> <ROW> <ISO> — <question>` when the Orchestrator posts
+    a `DECISION NEEDED — <ROW> — …` DM, and `delegated:<kind> <ROW> <ISO> — <one line>` once the
+    standing default was applied. parse_decision_stamps reads every stamp in text order into the
+    entry's `decisions` (kind, tag, row, at = ISO UTC, text — the question up to the next `; key:`
+    note, so a `hold:` appended later never leaks into it; markdown around the stamp and an ISO
+    with fractional seconds are tolerated); open_decisions() is the pending set — the
+    `decision-needed` stamps with no LATER `delegated` stamp OF THE PAIRING KIND in the same cell
+    (delegated_closes: `round` closes C.1, `carry` closes C.2, `advisory` closes only C.3 — which
+    never has a DM — and `none` is never closed by a stamp; a rule-less ask is closed by any
+    non-advisory kind). The supervise tick reads them as a second source for its `operator_ask`
+    check (the DM may be missed by the collectors; the stamp is the durable anchor) and flags a
+    delegable one ≥ 2 h old as overdue.
 
 Output shape: see build_state().
 """
@@ -127,6 +140,36 @@ UA_ID_RE = re.compile(r"^UA-\d+$")
 # disposition_ok false so build_state alerts on them.
 UA_DISP_RE = re.compile(r"(?is)^(open|filed|bypassed|declined|adopted|delivered|documented|tracked)\b\s*(.*)$")
 ANY_DASH_RE = re.compile("[‐‑‒–−]")  # every look-alike dash in an id cell -> `-`
+# The two ledger `notes` stamps of an operator decision (escalation.md; delegated-decisions.md § Standing defaults):
+#   decision-needed:<C.x|none> <ROW> <ISO of the DM> — <question>      the DM was sent; the 2 h clock runs from <ISO>
+#   delegated:<round|carry|advisory> <ROW> <ISO> — <one line>          the standing default was applied
+# Kind and tag are read as written (the spine's lower-case forms, `C.1`..`C.3` / `none`, `round` / `carry` / `advisory`);
+# the row id may carry a look-alike dash; the timestamp is any TS_RE shape (`2026-09-17T12:25:00Z`, `2026-09-17 12:25Z`) plus
+# fractional seconds (`2026-09-17T12:25:00.000Z` — every nanoclaw message `ts`, which the Orchestrator may copy as "<ISO of
+# the DM>"); `*` / backticks around any part (`**decision-needed:C.1** CH-F49 …`) are stepped over.
+_MD = r"[*`]*"
+DECISION_STAMP_RE = re.compile(
+    rf"\b(decision-needed|delegated){_MD}\s*:\s*{_MD}([A-Za-z0-9.]+){_MD}\s+{_MD}([A-Z0-9]+[-‐‑‒–−]F[0-9]+(?:\.[a-z])?){_MD}\s+{_MD}"
+    rf"(\d{{4}}-\d{{2}}-\d{{2}}[ T]\d{{2}}:\d{{2}}(?::\d{{2}}(?:\.\d+)?)?\s*(?:Z|UTC|GMT|IST|CET|CEST|BST|EST|EDT|PST|PDT|[+-]\d{{2}}:?\d{{2}})?){_MD}"
+)
+FRACTION_RE = re.compile(r"(\d{2}:\d{2}:\d{2})\.\d+")  # `12:25:00.000` -> `12:25:00` before TS_RE reads the zone
+# The next ledger note after a stamp's question (`; hold: …`, `; delegated:…`, `; operator ruling B`): the question ends there.
+NEXT_NOTE_RE = re.compile(r";\s+(?=[a-z][a-z-]*:)")
+# delegated-decisions.md § Standing defaults: the `delegated:<kind>` that closes a `decision-needed:<rule>`. C.3 never has a DM
+# (written "at once, no ruling"), so `advisory` closes nothing else; `none` is the operator's alone and no stamp closes it.
+DELEGATED_KIND_FOR_RULE = {"c.1": "round", "c.2": "carry", "c.3": "advisory"}
+
+
+def delegated_closes(rule: str | None, kind: str | None) -> bool:
+    """Does a `delegated:<kind>` stamp close a decision under `rule` (`C.1`..`C.3`, `none`, or None for a rule-less text
+    ask)? Pairing kinds only; `none` never; a rule-less ask by any kind but `advisory`; an unknown rule by nothing."""
+    k = str(kind or "").strip().lower()
+    r = str(rule or "").strip().lower()
+    if not k or r == "none":
+        return False
+    if not r:
+        return k != "advisory"
+    return DELEGATED_KIND_FOR_RULE.get(r) == k
 
 ZONES = {
     "Z": 0, "UTC": 0, "GMT": 0, "IST": 330, "CET": 60, "CEST": 120, "BST": 60,
@@ -424,6 +467,42 @@ def parse_verdict_cell(cell: str) -> dict:
     }
 
 
+def parse_decision_stamps(notes: str, tz_offset_minutes: int = 330) -> list[dict]:
+    """Every `decision-needed:` / `delegated:` stamp in a `notes` cell, in text order. Each: `kind` (decision-needed |
+    delegated), `tag` (the rule `C.1`..`C.3` / `none`, or the delegated kind `round` / `carry` / `advisory`, as written),
+    `row` (look-alike dashes normalised), `at` (ISO UTC via first_timestamp — the install zone when the stamp names none;
+    fractional seconds dropped), `text` (what follows the timestamp's dash up to the next stamp, the next `; key:` note or
+    the end of the cell; a trailing `;` dropped — the cell is a running log the spine appends `hold:` notes to)."""
+    if not notes:
+        return []
+    matches = list(DECISION_STAMP_RE.finditer(notes))
+    out: list[dict] = []
+    for i, m in enumerate(matches):
+        kind, tag, row, ts = m.groups()
+        end = matches[i + 1].start() if i + 1 < len(matches) else len(notes)
+        rest = notes[m.end():end].strip()
+        rest = re.sub(r"^[\s—–:-]+", "", rest)
+        rest = NEXT_NOTE_RE.split(rest, maxsplit=1)[0].rstrip(" ;\t")
+        out.append({
+            "kind": kind,
+            "tag": tag,
+            "row": ANY_DASH_RE.sub("-", row),
+            "at": first_timestamp(FRACTION_RE.sub(r"\1", ts), tz_offset_minutes),
+            "text": " ".join(rest.split()),
+        })
+    return out
+
+
+def open_decisions(decisions: list[dict] | None) -> list[dict]:
+    """The pending operator decisions of one cell: its `decision-needed` stamps with no LATER `delegated` stamp of the
+    PAIRING kind (delegated_closes — `round` for C.1, `carry` for C.2, `advisory` for C.3 only; `none` stays open). An
+    operator reply is not read here — the supervisor adds that from the threads."""
+    items = [d for d in (decisions or []) if isinstance(d, dict) and d.get("at")]
+    delegated = [d for d in items if d.get("kind") == "delegated"]
+    return [d for d in items if d.get("kind") == "decision-needed"
+            and not any(x["at"] > d["at"] and delegated_closes(d.get("tag"), x.get("tag")) for x in delegated)]
+
+
 def parse_outcome_cell(cell: str) -> dict:
     """§2.2: token scan anywhere in the cell, last token in text order wins."""
     events: list[tuple[int, str, str]] = []
@@ -663,6 +742,7 @@ def parse_ledger(text: str, tz_offset_minutes: int = 330) -> dict:
             "pr_draft": "draft" in pr_cell.lower(),
             "verdict": parse_verdict_cell(cell(cells, "verdict")),
             "notes_len": len(cell(cells, "notes")),
+            "decisions": parse_decision_stamps(cell(cells, "notes"), tz_offset_minutes),
         }
         entry.update(parse_outcome_cell(cell(cells, "merged/blocked")))
         if not ID_RE.match(rid):

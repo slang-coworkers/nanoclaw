@@ -56,7 +56,7 @@ def ledger(rows: list[dict]) -> str:
     for r in rows:
         out += (
             f"| {r['id']} | {r.get('dispatched', stamp(24) + ' (to hermes-architect)')} | {r.get('spec', '—')} "
-            f"| {r.get('pr', '—')} | {r.get('verdict', '—')} | {r.get('outcome', '—')} | n |\n"
+            f"| {r.get('pr', '—')} | {r.get('verdict', '—')} | {r.get('outcome', '—')} | {r.get('notes', 'n')} |\n"
         )
     return out
 
@@ -2275,6 +2275,435 @@ class OperatorAsk(unittest.TestCase):
         self.assertEqual([a["ask_ts"] for a in waiting["actions"] if a.get("check") == "operator_ask"], [ago(13)])
         moved = run(st, {"hermes-ISO-F14": base + [orch(14, ASK_A), orch(13, "Status: still waiting on the sandbox tier run; nothing else blocked.")]})
         self.assertIsNone(moved["rows"]["ISO-F14"]["operator_ask"])
+
+
+# escalation.md's canonical ask as the Orchestrator posted it on 2026-09-17 12:25Z (row thread hermes-CH-F49 + the operator
+# DM), open 52 min while the 13:17Z tick reported `operator_ask 0`: the detector skipped every line starting "DECISION NEEDED".
+CH_F49_ASK = (
+    "DECISION NEEDED — CH-F49 — authorize one final reviewer round (r3) to attest the corrected head `2f100634a7`, or not?\n"
+    "1. authorize r3 — one more reviewer turn (~$40); the row merges on APPROVE\n"
+    "2. do not authorize — blocked: STOP cap - reviewer RC ×2; re-spec later  ← recommended\n"
+    "default if unanswered by 2026-09-17T14:25:00Z: option 1 (rule C.1)"
+)
+CH_F49_Q = "authorize one final reviewer round (r3) to attest the corrected head 2f100634a7, or not?"  # the question, markdown stripped
+CH_F49_KEY = hs.decision_key("CH-F49", CH_F49_Q)
+CH_F49_OVERDUE_KEY = CH_F49_KEY + ":default-overdue"  # the overdue phase of the same decision is bounded on its own key
+DEFAULT_APPLIED_CH = "DEFAULT APPLIED — CH-F49 — round 3 authorized (delegated C.1) — veto within 12 h"
+COST_CAP_ASK = "Operator authorization needed: CH-F49 is at the $400 cap — raise it or stop the row?"  # a tester's ordinary (non-canonical) ask
+
+
+def ch_stamp(hours: float, rule: str = "C.1") -> str:
+    """The ledger `notes` stamp the same turn writes: `decision-needed:<C.x|none> <ROW> <ISO of the DM> — <question>`."""
+    return f"decision-needed:{rule} CH-F49 {ago(hours)} — authorize one final reviewer round (r3) to attest the corrected head `2f100634a7`, or not?"
+
+
+CH_DISPATCH = [msg(6, "Dispatch CH-F49: adapter registry doc.", "in")]  # the row thread's dispatch line, as the collector reads it
+
+
+def ch_row(notes: str | None = None, hours: float = 6) -> dict:
+    return state([{"id": "CH-F49", "dispatched": stamp(hours) + " (to hermes-architect)", **({"notes": notes} if notes else {})}])
+
+
+class CanonicalDecisionAsk(unittest.TestCase):
+    """The canonical operator ask (`DECISION NEEDED — <ROW> — <question>`, escalation.md) and its ledger stamp
+    (`decision-needed:<C.x|none> <ROW> <ISO> — <question>`) are asks of the highest confidence — the 2026-09-17 CH-F49
+    miss. Only the tick's OWN digest line `DECISION NEEDED (<age>h): <row> — <head>` stays skipped. `DEFAULT APPLIED —
+    <ROW> —` and a later `delegated:` stamp answer them; a delegable stamp ≥ 2 h old adds `default C.x overdue`."""
+
+    def test_the_canonical_shape_is_an_ask_and_the_ticks_own_digest_line_is_not(self):
+        # the real text: an ask wherever it is written, whoever writes it — an EXPLICIT one, no `operator` word needed
+        self.assertTrue(hs.is_operator_ask(CH_F49_ASK))
+        self.assertTrue(hs.is_operator_ask(CH_F49_ASK, "orchestrator", operator_thread=True))
+        self.assertTrue(hs.is_operator_ask(CH_F49_ASK, "hermes-builder", operator_thread=False))
+        self.assertEqual(hs.canonical_ask(CH_F49_ASK), ("CH-F49", CH_F49_Q))
+        self.assertEqual((hs.ask_head(CH_F49_Q), len(hs.ask_head(CH_F49_Q)) <= 140), (CH_F49_Q, True))
+        # a plain hyphen, an en dash, markdown around it, the phrase in another case: the same ask, the same key
+        for variant in (
+            f"DECISION NEEDED - CH-F49 - {CH_F49_Q}", f"DECISION NEEDED – CH-F49 – {CH_F49_Q}", f"**DECISION NEEDED — CH-F49 — {CH_F49_Q}**",
+            f"Decision needed — CH-F49 — *{CH_F49_Q}*", f"DECISION NEEDED — ch-f49 — {CH_F49_Q}\n1. yes\n2. no",
+            f"DECISION NEEDED — CH‑F49 — {CH_F49_Q}", f"DECISION NEEDED – CH–F49 – {CH_F49_Q}",  # a hand-typed U+2011 / en dash inside the id
+        ):
+            self.assertEqual(hs.canonical_ask(variant), ("CH-F49", CH_F49_Q), variant)
+            self.assertEqual(hs.decision_key(*hs.canonical_ask(variant)), CH_F49_KEY, variant)
+            self.assertTrue(hs.is_operator_ask(variant), variant)
+        self.assertNotEqual(CH_F49_KEY, hs.decision_key("ISO-F14", CH_F49_Q))
+        self.assertNotEqual(CH_F49_KEY, hs.ask_key(CH_F49_ASK))  # keyed on row + question, not on the whole text
+        # the supervisor's OWN form — parenthesised age, colon — alone, with a fractional age, or quoted in a tick report: never
+        own = f"DECISION NEEDED (2h): CH-F49 — {CH_F49_Q}"
+        for text in (own, f"DECISION NEEDED (0.5h): CH-F49 — {CH_F49_Q}", "DECISION NEEDED (14h): OPERATOR — One ruling: x", tick_report("10:00", own)):
+            self.assertIsNone(hs.canonical_ask(text), text)
+            self.assertEqual(hs.ask_text(text), "", text)  # dropped before any regex, key or head reads it
+            self.assertFalse(hs.is_operator_ask(text), text)
+            self.assertFalse(hs.is_operator_ask(text, "orchestrator", operator_thread=True), text)
+        # DEFAULT APPLIED is the answer's shape, never an ask; an inbound copy of the canonical ask is never an answer
+        self.assertEqual(hs.default_applied_row(DEFAULT_APPLIED_CH), "CH-F49")
+        self.assertEqual(hs.default_applied_row("**DEFAULT APPLIED - ch-f49 - carry**"), "CH-F49")
+        self.assertEqual(hs.default_applied_row("DEFAULT APPLIED — CH–F49 — round 3 — veto within 12 h"), "CH-F49")  # en dash inside the id
+        self.assertEqual(hs.default_applied_row("DEFAULT APPLIED — CH‑F49 — carry"), "CH-F49")
+        # a follow-up row keeps its lower-case letter (hermes_queue's ID_RE) — `.A` would match no known row, no stamp, no answer
+        self.assertEqual(hs.canonical_ask("DECISION NEEDED — LOOP-F35.a — carry AC-3 to FLEET-F62?"), ("LOOP-F35.a", "carry AC-3 to FLEET-F62?"))
+        self.assertEqual(hs.canonical_ask("DECISION NEEDED — loop-f35.A — carry AC-3?"), ("LOOP-F35.a", "carry AC-3?"))
+        self.assertEqual(hs.default_applied_row("DEFAULT APPLIED — LOOP-F35.a — carried — veto within 12 h"), "LOOP-F35.a")
+        self.assertEqual(hs.decision_key("LOOP-F35.a", "q"), hs.decision_key(*hs.canonical_ask("DECISION NEEDED — LOOP-F35.a — q")))
+        # the two scripts pin one pairing rule (they share state.json, not code)
+        self.assertEqual(hs.DELEGATED_KIND_FOR_RULE, hq.DELEGATED_KIND_FOR_RULE)
+        for rule in ("C.1", "C.2", "C.3", "none", None, "C.9"):
+            for kind in ("round", "carry", "advisory", None):
+                self.assertEqual(hs._delegated_closes(rule, kind), hq.delegated_closes(rule, kind), (rule, kind))
+        self.assertIsNone(hs.default_applied_row("the default applied to CH-F49 was C.1"))
+        self.assertFalse(hs.is_operator_ask(DEFAULT_APPLIED_CH))
+        self.assertFalse(hs.is_operator_ask(DEFAULT_APPLIED_CH, "orchestrator", operator_thread=True))
+        self.assertFalse(hs.is_operator_answer({"direction": "in", "text": CH_F49_ASK}, strict=False))
+        self.assertFalse(hs.is_operator_answer({"direction": "in", "text": own}, strict=False))  # the digest quoted back is no answer either
+
+    def test_ch_f49_on_the_row_thread_fires_attributed_to_the_row_with_the_question_as_head(self):
+        out = run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]})
+        r = out["rows"]["CH-F49"]
+        self.assertEqual((r["stage"], r["operator_ask"]["count"]), ("dispatched", 1))
+        ask = r["operator_ask"]["newest"]
+        self.assertEqual((ask["role"], ask["thread_id"], ask["ts"], ask["key"], ask["canonical_row"], ask["head"]),
+                         ("orchestrator", "hermes-CH-F49", ago(3), CH_F49_KEY, "CH-F49", CH_F49_Q))
+        alerts = [a for a in out["actions"] if a["kind"] == "alert"]
+        self.assertEqual([(a["row"], a["alert_kind"], a["check"], a["alert_key"], a["ask_thread_id"]) for a in alerts],
+                         [("CH-F49", "operator-ruling", "operator_ask", CH_F49_KEY, "hermes-CH-F49")])
+        self.assertEqual(alerts[0]["status_text"], f"DECISION NEEDED (3h): CH-F49 — {CH_F49_Q}")
+        self.assertTrue(alerts[0]["status_text"].startswith("DECISION NEEDED (3h): CH-F49 — authorize one final reviewer round"))
+        self.assertIn(f"· CH-F49 · dispatched 3h · operator ask by orchestrator on hermes-CH-F49 at {ago(3)}, unanswered: {CH_F49_Q}", alerts[0]["text"])
+        self.assertNotIn("detail", alerts[0])  # no ledger stamp: nothing is pending a default (the spine: no stamp, nothing to default)
+        self.assertNotIn("overdue", alerts[0]["text"])
+        self.assertEqual([(a["row"], a["alerted"], a["age_hours"], a.get("source"), a["canonical_row"]) for a in out["operator_asks"]],
+                         [("CH-F49", True, 3.0, None, "CH-F49")])
+        self.assertEqual((out["summary"]["operator_ask"], out["summary"]["escalate"]), (1, 1))
+        # never a nudge or a re-arm FOR the ask; the row's ordinary SLO check still runs (dispatched 6 h: the architect's nudge)
+        self.assertEqual([(n["target_role"], n.get("check")) for n in out["actions"] if n["kind"] == "nudge"], [("hermes-architect", None)])
+        # the same 24 h bound as every ask: recorded under the key, it stays on the table and alerts nothing
+        bound = run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]}, nudges={"CH-F49": {"alerts": {CH_F49_KEY: ago(1)}}})
+        self.assertEqual([a for a in bound["actions"] if a["kind"] == "alert"], [])
+        self.assertEqual((bound["summary"]["operator_ask"], bound["operator_asks"][0]["alerted"], bound["operator_asks"][0]["bound"]), (1, False, ago(1)))
+
+    def test_dm_copy_is_attributed_to_the_named_row_whatever_ids_the_question_names(self):
+        st = state([{"id": "CH-F49", "dispatched": stamp(6) + " (to hermes-architect)"}, {"id": "ISO-F14", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        threads = {"hermes-CH-F49": CH_DISPATCH, "hermes-ISO-F14": [msg(6, "Dispatch ISO-F14: y", "in")]}
+        two_rows = ("DECISION NEEDED — CH-F49 — carry AC-CH-F49-3 to FLEET-F62 like ISO-F14's sandbox items, or hold the row?\n"
+                    "1. carry — FLEET-F62 verifies it at its gate\n2. hold — the row waits for podman  ← recommended\n"
+                    f"default if unanswered by {ago(1)}: option 1 (rule C.2)")
+        out = run(st, threads, operator_threads=[op_thread(DM, [orch(3, two_rows)])])
+        alerts = [a for a in out["actions"] if a.get("check") == "operator_ask"]
+        self.assertEqual([(a["row"], a["ask_thread_id"], a["alert_key"]) for a in alerts], [("CH-F49", DM, hs.decision_key("CH-F49", hs.canonical_ask(two_rows)[1]))])
+        self.assertEqual(alerts[0]["status_text"], "DECISION NEEDED (3h): CH-F49 — carry AC-CH-F49-3 to FLEET-F62 like ISO-F14's sandbox items, or hold the row?")
+        ask = out["rows"]["CH-F49"]["operator_ask"]["newest"]
+        self.assertGreater(len(ask["named_rows"]), 1)  # three known ids named: the ordinary rule would have sent it to OPERATOR
+        self.assertIsNone(out["rows"]["ISO-F14"]["operator_ask"])
+        self.assertNotIn("OPERATOR", {a["row"] for a in out["operator_asks"]})
+        # mirrored on the row thread AND the DM: one key, both listed, one alert (the newest copy's thread)
+        both = run(st, {**threads, "hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]}, operator_threads=[op_thread(DM, [orch(2.9, CH_F49_ASK)])])
+        r = both["rows"]["CH-F49"]["operator_ask"]
+        self.assertEqual((r["count"], {a["key"] for a in r["asks"]}, r["newest"]["thread_id"]), (2, {CH_F49_KEY}, DM))
+        self.assertEqual([(a["row"], a["ask_thread_id"]) for a in both["actions"] if a.get("check") == "operator_ask"], [("CH-F49", DM)])
+        self.assertEqual(both["summary"]["operator_ask"], 1)
+        # a row id nobody knows in the header: the ordinary attribution (its scan names no known row -> OPERATOR), still surfaced
+        unknown = run(st, threads, operator_threads=[op_thread(DM, [orch(2, "DECISION NEEDED — ZZZ-F99 — rename the row?\n1. yes\n2. no  ← recommended")])])
+        self.assertEqual([(a["row"], a["status_text"]) for a in unknown["actions"] if a.get("check") == "operator_ask"],
+                         [("OPERATOR", "DECISION NEEDED (2h): OPERATOR — rename the row?")])
+        # a role writing the shape on a row thread (the spine forbids it, the supervisor still reads it) is the row's ask
+        builder = run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [msg(2, CH_F49_ASK, sender="hermes-builder", role="hermes-builder")]})
+        self.assertEqual([(a["ask_role"], a["alert_key"]) for a in builder["actions"] if a.get("check") == "operator_ask"], [("hermes-builder", CH_F49_KEY)])
+
+    def test_default_applied_answers_the_ask_row_scoped_and_so_does_a_later_delegated_stamp(self):
+        def quiet(out, name):
+            self.assertIsNone(out["rows"]["CH-F49"]["operator_ask"], name)
+            self.assertEqual([a for a in out["actions"] if a.get("check") == "operator_ask"], [], name)
+            self.assertEqual((out["summary"]["operator_ask"], out["operator_asks"]), (0, []), name)
+
+        quiet(run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK), orch(0.5, DEFAULT_APPLIED_CH)]}), "DEFAULT APPLIED on the row thread")
+        quiet(run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]},
+                  operator_threads=[op_thread(DM, [orch(2.9, CH_F49_ASK), orch(0.5, DEFAULT_APPLIED_CH)])]), "DEFAULT APPLIED on the DM answers the DM copy and the row-thread ask")
+        quiet(run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK), orch(0.5, "**DEFAULT APPLIED - CH-F49 - round 3 authorized**")]}), "hyphens and markdown")
+        quiet(run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK), orch(1, "Operator ruling: 1 — authorize r3", "in")]}), "an operator inbound, as for every ask")
+        quiet(run(ch_row(f"delegated:round CH-F49 {ago(1)} — round 3 authorized (delegated C.1)"), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]}),
+              "a delegated: stamp newer than the ask")
+        quiet(run(ch_row(f"delegated:round CH-F49 {ago(1)} — round 3 authorized (delegated C.1)"), {"hermes-CH-F49": CH_DISPATCH},
+                  operator_threads=[op_thread(DM, [orch(3, CH_F49_ASK)])]), "a delegated: stamp newer than the DM copy")
+        # what does NOT answer: a DEFAULT APPLIED older than the ask, one for ANOTHER row, a delegated: stamp older than the ask
+        older = run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [orch(4, DEFAULT_APPLIED_CH), orch(3, CH_F49_ASK)]})
+        self.assertEqual(older["rows"]["CH-F49"]["operator_ask"]["count"], 1)
+        st2 = state([{"id": "CH-F49", "dispatched": stamp(6) + " (to hermes-architect)"}, {"id": "ISO-F14", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        other = run(st2, {"hermes-CH-F49": CH_DISPATCH, "hermes-ISO-F14": [msg(6, "Dispatch ISO-F14: y", "in")]},
+                    operator_threads=[op_thread(DM, [orch(3, CH_F49_ASK), orch(0.5, "DEFAULT APPLIED — ISO-F14 — carry to FLEET-F62 (delegated C.2) — veto within 12 h")])])
+        self.assertEqual([a["row"] for a in other["actions"] if a.get("check") == "operator_ask"], ["CH-F49"])
+        stale = run(ch_row(f"delegated:advisory CH-F49 {ago(5)} — ADVISORY-FAIL(unattributed)"), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]})
+        self.assertEqual(stale["rows"]["CH-F49"]["operator_ask"]["count"], 1)
+
+    def test_ledger_stamp_is_a_second_source_with_and_without_a_delegated_note(self):
+        st = ch_row(ch_stamp(3))
+        self.assertEqual(st["rows"]["CH-F49"]["ledger"]["decisions"],
+                         [{"kind": "decision-needed", "tag": "C.1", "row": "CH-F49", "at": ago(3),
+                           "text": "authorize one final reviewer round (r3) to attest the corrected head `2f100634a7`, or not?"}])
+        out = run(st, {"hermes-CH-F49": CH_DISPATCH})  # the DM never reached the collectors: the stamp alone carries the ask
+        r = out["rows"]["CH-F49"]["operator_ask"]
+        self.assertEqual(r["count"], 1)
+        ask = r["newest"]
+        self.assertEqual((ask["source"], ask["ts"], ask["role"], ask["thread_id"], ask["key"], ask["rule"], ask["default_overdue"], ask["head"]),
+                         ("ledger", ago(3), "orchestrator", None, CH_F49_KEY, "C.1", True, CH_F49_Q))
+        alerts = [a for a in out["actions"] if a.get("check") == "operator_ask"]
+        self.assertEqual([(a["row"], a["alert_key"], a["ask_source"], a["detail"], a["ask_thread_id"], a["thread_id"]) for a in alerts],
+                         [("CH-F49", CH_F49_OVERDUE_KEY, "ledger", "default C.1 overdue", None, "hermes-status")])  # already overdue at first sighting: the overdue key
+        self.assertEqual(alerts[0]["status_text"], f"DECISION NEEDED (3h): CH-F49 — {CH_F49_Q}")  # the digest line is unchanged
+        self.assertIn(f"operator ask by orchestrator in the ledger notes (decision-needed: stamp) at {ago(3)}, unanswered: {CH_F49_Q} · default C.1 overdue — apply the standing default", alerts[0]["text"])
+        self.assertTrue(alerts[0]["text"].endswith("· thread hermes-CH-F49"))
+        self.assertEqual([(a["row"], a["source"], a["rule"], a["default_overdue"], a["age_hours"], a["alerted"]) for a in out["operator_asks"]],
+                         [("CH-F49", "ledger", "C.1", True, 3.0, True)])
+        self.assertEqual(next(a for a in out["alerts"] if a["kind"] == "operator-ruling")["detail"], "default C.1 overdue")
+        self.assertEqual(out["summary"]["operator_ask"], 1)
+        # a later delegated: note — nothing pending, nothing alerted (the DEFAULT APPLIED path was walked)
+        done = ch_row(ch_stamp(3) + f"; delegated:round CH-F49 {ago(1)} — round 3 authorized (delegated C.1)")
+        self.assertEqual(hq.open_decisions(done["rows"]["CH-F49"]["ledger"]["decisions"]), [])
+        out2 = run(done, {"hermes-CH-F49": CH_DISPATCH})
+        self.assertEqual((out2["rows"]["CH-F49"]["operator_ask"], out2["summary"]["operator_ask"], out2["operator_asks"]), (None, 0, []))
+        # a delegated: note OLDER than the stamp (an earlier decision on the row) leaves it pending
+        earlier = ch_row(f"delegated:advisory CH-F49 {ago(5)} — ADVISORY-FAIL(unattributed); " + ch_stamp(3))
+        self.assertEqual([d["tag"] for d in hq.open_decisions(earlier["rows"]["CH-F49"]["ledger"]["decisions"])], ["C.1"])
+        self.assertEqual(run(earlier, {"hermes-CH-F49": CH_DISPATCH})["rows"]["CH-F49"]["operator_ask"]["count"], 1)
+        # an operator answer after the stamp clears it (row thread, or the DM naming the row, or a DEFAULT APPLIED anywhere); one before it does not
+        for name, threads, op in (
+            ("Operator inbound on the row thread", {"hermes-CH-F49": CH_DISPATCH + [orch(1, "Operator ruling: 1 — authorize r3", "in")]}, None),
+            ("Operator inbound on the DM naming the row", {"hermes-CH-F49": CH_DISPATCH}, [op_thread(DM, [orch(1, "Operator ruling: CH-F49 — option 1", "in")])]),
+            ("DEFAULT APPLIED on the DM", {"hermes-CH-F49": CH_DISPATCH}, [op_thread(DM, [orch(1, DEFAULT_APPLIED_CH)])]),
+            ("DEFAULT APPLIED on the row thread", {"hermes-CH-F49": CH_DISPATCH + [orch(1, DEFAULT_APPLIED_CH)]}, None),
+        ):
+            out3 = run(st, threads, operator_threads=op)
+            self.assertEqual((out3["rows"]["CH-F49"]["operator_ask"], out3["summary"]["operator_ask"]), (None, 0), name)
+        before = run(st, {"hermes-CH-F49": CH_DISPATCH + [orch(4, "Operator ruling: 1", "in")]})
+        self.assertEqual(before["rows"]["CH-F49"]["operator_ask"]["newest"]["source"], "ledger")
+        # an unreadable row thread still surfaces the stamp; a paused row stays silent; a state without the field is fine
+        unread = run(st, {"hermes-CH-F49": None})
+        self.assertEqual((unread["rows"]["CH-F49"]["slo_status"], unread["rows"]["CH-F49"]["operator_ask"]["newest"]["source"]), ("unknown", "ledger"))
+        paused = run(st, {"hermes-CH-F49": CH_DISPATCH}, config={"paused_rows": ["CH-F49"]})
+        self.assertEqual((paused["rows"]["CH-F49"]["operator_ask"], paused["summary"]["operator_ask"]), (None, 0))
+        legacy = ch_row(ch_stamp(3))
+        del legacy["rows"]["CH-F49"]["ledger"]["decisions"]
+        self.assertIsNone(run(legacy, {"hermes-CH-F49": CH_DISPATCH})["rows"]["CH-F49"]["operator_ask"])
+
+    def test_stamp_and_text_ask_collapse_into_one_and_overdue_needs_two_hours_and_a_delegable_rule(self):
+        # the DM on the row thread, its mirror on the operator DM and the stamp: ONE key, the stamp rides on the text asks
+        out = run(ch_row(ch_stamp(3)), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]}, operator_threads=[op_thread(DM, [orch(2.99, CH_F49_ASK)])])
+        r = out["rows"]["CH-F49"]["operator_ask"]
+        self.assertEqual((r["count"], {a["key"] for a in r["asks"]}, [a.get("source") for a in r["asks"]]), (2, {CH_F49_KEY}, [None, None]))
+        self.assertEqual([(a["thread_id"], a["stamp"], a["rule"], a["default_overdue"]) for a in r["asks"]], [(DM, ago(3), "C.1", True), ("hermes-CH-F49", ago(3), "C.1", True)])
+        alerts = [a for a in out["actions"] if a.get("check") == "operator_ask"]
+        self.assertEqual([(a["row"], a["alert_key"], a["ask_thread_id"], a["detail"], a.get("ask_source")) for a in alerts], [("CH-F49", CH_F49_OVERDUE_KEY, DM, "default C.1 overdue", None)])
+        self.assertEqual(alerts[0]["status_text"], f"DECISION NEEDED (2h): CH-F49 — {CH_F49_Q}")
+        self.assertIn(f"operator ask by orchestrator on {DM} at {ago(2.99)}, unanswered: {CH_F49_Q} · default C.1 overdue", alerts[0]["text"])
+        self.assertEqual([(a["row"], a["stamp"], a["rule"], a["default_overdue"]) for a in out["operator_asks"]], [("CH-F49", ago(3), "C.1", True)])
+        self.assertEqual(out["summary"]["operator_ask"], 1)
+        # a stamp whose question is worded differently from the DM is its own ask beside it (two keys); the newest alerts
+        reworded = ch_row(f"decision-needed:C.1 CH-F49 {ago(2.5)} — one final reviewer round for CH-F49?")
+        two = run(reworded, {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]})["rows"]["CH-F49"]["operator_ask"]
+        self.assertEqual((two["count"], two["newest"]["source"], two["newest"]["head"]), (2, "ledger", "one final reviewer round for CH-F49?"))
+        # 2 h is the floor: 1 h old stands without the detail; exactly 2 h is overdue
+        fresh = run(ch_row(ch_stamp(1)), {"hermes-CH-F49": CH_DISPATCH})
+        ask = fresh["rows"]["CH-F49"]["operator_ask"]["newest"]
+        self.assertEqual((ask["source"], ask["rule"], ask["default_overdue"]), ("ledger", "C.1", False))
+        fresh_alert = next(a for a in fresh["actions"] if a.get("check") == "operator_ask")
+        self.assertEqual(fresh_alert["status_text"], f"DECISION NEEDED (1h): CH-F49 — {CH_F49_Q}")
+        self.assertNotIn("detail", fresh_alert)
+        self.assertNotIn("overdue", fresh_alert["text"])
+        self.assertTrue(run(ch_row(ch_stamp(2)), {"hermes-CH-F49": CH_DISPATCH})["rows"]["CH-F49"]["operator_ask"]["newest"]["default_overdue"])
+        self.assertTrue(run(ch_row(ch_stamp(2, "C.2")), {"hermes-CH-F49": CH_DISPATCH})["operator_asks"][0]["default_overdue"])
+        # `none` — not delegable: it stands and alerts, however old, never overdue
+        none = run(ch_row(f"decision-needed:none CH-F49 {ago(9)} — merge the adapter doc into upstream, or keep it on the fork?"), {"hermes-CH-F49": CH_DISPATCH})
+        ask = none["rows"]["CH-F49"]["operator_ask"]["newest"]
+        self.assertEqual((ask["source"], ask["rule"], ask["default_overdue"]), ("ledger", "none", False))
+        none_alert = next(a for a in none["actions"] if a.get("check") == "operator_ask")
+        self.assertEqual(none_alert["status_text"], "DECISION NEEDED (9h): CH-F49 — merge the adapter doc into upstream, or keep it on the fork?")
+        self.assertNotIn("detail", none_alert)
+        # the realistic timeline (DM 12:25Z, ticks at :17): the 13:17Z tick alerts the fresh ask under the plain key; at 15:17Z the
+        # default is due — bounded on the plain key alone the cue would never reach an action, so the overdue phase has its own
+        # key: an ask alerted fresh alerts exactly once more, with the detail, when its default falls due …
+        transition = run(ch_row(ch_stamp(3)), {"hermes-CH-F49": CH_DISPATCH}, nudges={"CH-F49": {"alerts": {CH_F49_KEY: ago(1)}}})
+        self.assertEqual([(a["row"], a["alert_key"], a["detail"]) for a in transition["actions"] if a["kind"] == "alert"],
+                         [("CH-F49", CH_F49_OVERDUE_KEY, "default C.1 overdue")])
+        self.assertEqual([(a["row"], a["alerted"], a["default_overdue"]) for a in transition["operator_asks"]], [("CH-F49", True, True)])
+        self.assertIn("unless an operator message about the row exists", transition["actions"][-1]["text"])
+        # … and the overdue key, once recorded, silences it for 24 h like every alert (the ask stays on the table)
+        bound = run(ch_row(ch_stamp(3)), {"hermes-CH-F49": CH_DISPATCH}, nudges={"CH-F49": {"alerts": {CH_F49_KEY: ago(2.5), CH_F49_OVERDUE_KEY: ago(1)}}})
+        self.assertEqual([a for a in bound["actions"] if a["kind"] == "alert"], [])
+        self.assertEqual([(a["row"], a["alerted"], a["bound"], a["default_overdue"]) for a in bound["operator_asks"]], [("CH-F49", False, ago(1), True)])
+        # a fresh (not yet overdue) ask reads the plain key only: the overdue key on the book does not bind it
+        fresh_bound = run(ch_row(ch_stamp(1)), {"hermes-CH-F49": CH_DISPATCH}, nudges={"CH-F49": {"alerts": {CH_F49_OVERDUE_KEY: ago(0.5)}}})
+        self.assertEqual([a["alert_key"] for a in fresh_bound["actions"] if a["kind"] == "alert"], [CH_F49_KEY])
+
+    def test_the_operators_numbered_reply_on_the_dm_clears_the_row_mirror_and_the_stamp(self):
+        """escalation.md: "the operator answers with the number". The canonical DM at -3 h, its mirror on the row thread, the
+        ledger stamp; the operator replies on the DM. Before: the DM copy alone was cleared (loose), the mirror and the stamp
+        kept alerting and, past 2 h, told the Orchestrator to apply the default the operator had just overruled."""
+        st = ch_row(ch_stamp(3))
+        threads = {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK), orch(1, "Reviewer re-armed for r3 per the operator; ledger updated.")]}
+
+        def quiet(out, name):
+            self.assertIsNone(out["rows"]["CH-F49"]["operator_ask"], name)
+            self.assertEqual([a for a in out["actions"] if a.get("check") == "operator_ask"], [], name)
+            self.assertEqual((out["summary"]["operator_ask"], out["operator_asks"]), (0, []), name)
+
+        for reply in ("1", "2", "Operator ruling: 2", "Operator ruling: option 2, go", "wait — which head?", "option 1 please"):
+            quiet(run(st, threads, operator_threads=[op_thread(DM, [orch(2.9, CH_F49_ASK), operator_in(2.5, reply)])]), reply)
+            quiet(run(st, threads, operator_threads=[op_thread(DM, [orch(2.9, CH_F49_ASK), operator_in(2.5, reply, None)])]), reply + " (sender-less)")
+        # the reply may name the row itself; on a task thread only an `Operator…` reply counts (the prompt lands there as inbound)
+        quiet(run(st, threads, operator_threads=[op_thread(DM, [orch(2.9, CH_F49_ASK), operator_in(2.5, "CH-F49: 2")])]), "names the row")
+        quiet(run(st, threads, operator_threads=[op_thread(TASK_THREAD, [orch(2.9, CH_F49_ASK), operator_in(2.5, "Operator ruling: 2")])]), "task thread, prefixed")
+        # what does NOT clear the mirror / stamp: a reply naming ANOTHER known row, a reply BEFORE the canonical ask, an unprefixed
+        # line on a task thread, a role's a2a line landing inbound, and (unchanged) an unprefixed DM line for a row-thread ask
+        # that never had a canonical DM
+        st2 = state([{"id": "CH-F49", "dispatched": stamp(6) + " (to hermes-architect)", "notes": ch_stamp(3)}, {"id": "ISO-F14", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        threads2 = {**threads, "hermes-ISO-F14": [msg(6, "Dispatch ISO-F14: y", "in")]}
+        for name, op in {
+            "reply naming another row": [op_thread(DM, [orch(2.9, CH_F49_ASK), operator_in(2.5, "ISO-F14: deploy-now")])],
+            "reply before the ask": [op_thread(DM, [operator_in(3.5, "2"), orch(2.9, CH_F49_ASK)])],
+            "unprefixed reply on a task thread": [op_thread(TASK_THREAD, [orch(2.9, CH_F49_ASK), operator_in(2.5, "2")])],
+            "a role's line inbound on the DM": [op_thread(DM, [orch(2.9, CH_F49_ASK), msg(2.5, "2 rows ready; pushing.", "in", sender="hermes-architect")])],
+        }.items():
+            out = run(st2, threads2, operator_threads=op)
+            r = out["rows"]["CH-F49"]["operator_ask"]
+            self.assertEqual((r["count"], r["newest"]["key"], r["newest"]["default_overdue"]), (1, CH_F49_KEY, True), name)  # the stamp (and any standing copy) — one key
+            self.assertEqual([(a["row"], a["detail"]) for a in out["actions"] if a.get("check") == "operator_ask"], [("CH-F49", "default C.1 overdue")], name)
+            self.assertIsNone(out["rows"]["ISO-F14"]["operator_ask"], name)
+        # one reply meets one ask: chatter long after the answer is not a second ruling on the row's LATER asks
+        later = run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK), msg(1, COST_CAP_ASK, sender="hermes-tester", role="hermes-tester")]},
+                    operator_threads=[op_thread(DM, [orch(2.9, CH_F49_ASK), operator_in(2.5, "2"), orch(2, "Done; r3 running."), operator_in(0.5, "thanks")])])
+        self.assertEqual([(a["role"], a["key"]) for a in later["rows"]["CH-F49"]["operator_ask"]["asks"]], [("hermes-tester", hs.ask_key(COST_CAP_ASK))])
+        # a re-posted canonical ask re-arms the rule: the next number answers it
+        again = run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]},
+                    operator_threads=[op_thread(DM, [orch(2.9, CH_F49_ASK), operator_in(2.5, "which head?"), orch(2.4, CH_F49_ASK), operator_in(2.2, "2")])])
+        self.assertIsNone(again["rows"]["CH-F49"]["operator_ask"])
+        # a newer canonical ask of an unknown row supersedes: the number after it belongs to nobody the supervisor knows
+        unknown = run(st, threads, operator_threads=[op_thread(DM, [orch(2.9, CH_F49_ASK), orch(2.7, "DECISION NEEDED — ZZZ-F99 — rename?\n1. yes\n2. no"), operator_in(2.5, "2")])])
+        self.assertEqual((unknown["rows"]["CH-F49"]["operator_ask"]["count"], unknown["rows"]["CH-F49"]["operator_ask"]["newest"]["source"]), (1, "ledger"))  # the DM copies are met loosely; the stamp is not
+
+    def test_a_delegated_stamp_closes_only_the_decision_of_its_pairing_rule(self):
+        """delegated-decisions.md: C.1 → `delegated:round`, C.2 → `delegated:carry`, C.3 → `delegated:advisory` written "at once,
+        no DM". A later `delegated:advisory` (a nightly classification) must not vanish a live C.1 decision from the digest."""
+        advisory_later = ch_row(ch_stamp(3) + f"; delegated:advisory CH-F49 {ago(1)} — ADVISORY-FAIL(unattributed nightly)")
+        self.assertEqual([d["tag"] for d in hq.open_decisions(advisory_later["rows"]["CH-F49"]["ledger"]["decisions"])], ["C.1"])
+        out = run(advisory_later, {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]})
+        r = out["rows"]["CH-F49"]["operator_ask"]
+        self.assertEqual((r["count"], r["newest"]["rule"], r["newest"]["default_overdue"]), (1, "C.1", True))
+        self.assertEqual([(a["alert_key"], a["detail"]) for a in out["actions"] if a.get("check") == "operator_ask"], [(CH_F49_OVERDUE_KEY, "default C.1 overdue")])
+        # the wrong pairing kind does not close it either; the pairing kind does
+        carry_later = ch_row(ch_stamp(3) + f"; delegated:carry CH-F49 {ago(1)} — carried to FLEET-F62")
+        self.assertEqual(run(carry_later, {"hermes-CH-F49": CH_DISPATCH})["rows"]["CH-F49"]["operator_ask"]["count"], 1)
+        round_later = ch_row(ch_stamp(3) + f"; delegated:round CH-F49 {ago(1)} — round 3 authorized (delegated C.1)")
+        self.assertIsNone(run(round_later, {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]})["rows"]["CH-F49"]["operator_ask"])
+        c2 = ch_row(ch_stamp(3, "C.2") + f"; delegated:carry CH-F49 {ago(1)} — AC-CH-F49-3 carried to FLEET-F62")
+        self.assertIsNone(run(c2, {"hermes-CH-F49": CH_DISPATCH})["rows"]["CH-F49"]["operator_ask"])
+        c2_wrong = ch_row(ch_stamp(3, "C.2") + f"; delegated:round CH-F49 {ago(1)} — round 3")
+        self.assertEqual(run(c2_wrong, {"hermes-CH-F49": CH_DISPATCH})["rows"]["CH-F49"]["operator_ask"]["newest"]["rule"], "C.2")
+        # `none` is the operator's alone: no stamp closes it, and it is never overdue
+        none_row = ch_row(f"decision-needed:none CH-F49 {ago(9)} — file upstream?; delegated:round CH-F49 {ago(1)} — round 3")
+        ask = run(none_row, {"hermes-CH-F49": CH_DISPATCH})["rows"]["CH-F49"]["operator_ask"]["newest"]
+        self.assertEqual((ask["rule"], ask["default_overdue"]), ("none", False))
+        # a rule the spine does not know stands like `none` (never "default C.9 overdue"); a rule-less text ask (no stamp — a
+        # spine violation) is closed by any non-advisory kind, never by advisory
+        odd = run(ch_row(f"decision-needed:C.9 CH-F49 {ago(9)} — something?"), {"hermes-CH-F49": CH_DISPATCH})
+        self.assertEqual((odd["rows"]["CH-F49"]["operator_ask"]["newest"]["default_overdue"], "detail" in next(a for a in odd["actions"] if a.get("check") == "operator_ask")), (False, False))
+        self.assertIsNone(run(ch_row(f"delegated:carry CH-F49 {ago(1)} — carried"), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]})["rows"]["CH-F49"]["operator_ask"])
+        self.assertEqual(run(ch_row(f"delegated:advisory CH-F49 {ago(1)} — ADVISORY-FAIL"), {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]})["rows"]["CH-F49"]["operator_ask"]["count"], 1)
+
+    def test_default_applied_and_delegated_stamps_answer_only_the_canonical_asks(self):
+        """A standing default rules on the decision it defaulted (C.1 / C.2), never on a tester's "Operator authorization
+        needed: … cap" line — cost caps are NEVER defaulted (delegated-decisions.md), so that ask must outlive the default."""
+        tester_ask = msg(4, COST_CAP_ASK, sender="hermes-tester", role="hermes-tester")
+        for name, st, threads in (
+            ("DEFAULT APPLIED on the row thread", ch_row(), {"hermes-CH-F49": CH_DISPATCH + [tester_ask, orch(3, CH_F49_ASK), orch(0.5, DEFAULT_APPLIED_CH)]}),
+            ("a later pairing delegated: stamp", ch_row(f"delegated:round CH-F49 {ago(0.5)} — round 3 authorized (delegated C.1)"), {"hermes-CH-F49": CH_DISPATCH + [tester_ask, orch(3, CH_F49_ASK)]}),
+        ):
+            out = run(st, threads)
+            r = out["rows"]["CH-F49"]["operator_ask"]
+            self.assertEqual([(a["role"], a["key"]) for a in r["asks"]], [("hermes-tester", hs.ask_key(COST_CAP_ASK))], name)
+            self.assertEqual([(a["ask_role"], a["alert_key"]) for a in out["actions"] if a.get("check") == "operator_ask"], [("hermes-tester", hs.ask_key(COST_CAP_ASK))], name)
+        # an operator's reply stays row-scoped for every ask, as today (`Operator ruling: CH-F49 …` on the DM clears both)
+        both = run(ch_row(), {"hermes-CH-F49": CH_DISPATCH + [tester_ask, orch(3, CH_F49_ASK)]}, operator_threads=[op_thread(DM, [orch(1, "Operator ruling: CH-F49 — raise the cap; authorize r3", "in")])])
+        self.assertIsNone(both["rows"]["CH-F49"]["operator_ask"])
+
+    def test_an_open_stamp_on_a_row_nobody_would_supervise_is_still_read(self):
+        """The second source exists for the DM the collectors missed — so it must be read on a merged / queued row and on a
+        finished follow-up too (a `none` decision about an upstream filing outlives the chain); a paused row stays silent."""
+        merged = state([merged_row("CH-F49", 7) | {"notes": f"decision-needed:none CH-F49 {ago(3)} — file the adapter doc upstream, or keep it on the fork?"}])
+        out = run(merged, {"hermes-CH-F49": CH_DISPATCH})
+        self.assertEqual((out["rows"]["CH-F49"]["stage"], out["rows"]["CH-F49"]["operator_ask"]["newest"]["source"]), ("merged", "ledger"))
+        alerts = [a for a in out["actions"] if a.get("check") == "operator_ask"]
+        self.assertEqual([(a["row"], a["ask_source"], a["status_text"]) for a in alerts],
+                         [("CH-F49", "ledger", "DECISION NEEDED (3h): CH-F49 — file the adapter doc upstream, or keep it on the fork?")])
+        self.assertNotIn("detail", alerts[0])  # `none`: never overdue
+        self.assertEqual((out["summary"]["in_flight"], out["summary"]["operator_ask"]), (0, 1))
+        # answered (DEFAULT APPLIED / a delegated: pairing note / an operator reply naming the row) — not a candidate, not listed
+        self.assertNotIn("CH-F49", run(state([merged_row("CH-F49", 7) | {"notes": ch_stamp(3) + f"; delegated:round CH-F49 {ago(1)} — r3"}]), {"hermes-CH-F49": CH_DISPATCH})["rows"])
+        self.assertIsNone(run(merged, {"hermes-CH-F49": CH_DISPATCH}, operator_threads=[op_thread(DM, [operator_in(1, "Operator ruling: CH-F49 — keep it on the fork")])])["rows"]["CH-F49"]["operator_ask"])
+        # paused: silent; no thread at all: still read (the stamp needs no thread)
+        self.assertEqual(run(merged, {"hermes-CH-F49": CH_DISPATCH}, config={"paused_rows": ["CH-F49"]})["summary"]["operator_ask"], 0)
+        self.assertEqual(run(merged, {})["summary"]["operator_ask"], 1)
+        # a merged follow-up with an open stamp surfaces under its own id and never counts as a follow-up in flight
+        fu = state([merged_row("ISO-F10.a", 21) | {"notes": ch_stamp(3).replace("CH-F49", "ISO-F10.a")}, {"id": "LOOP-F35", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        self.assertEqual(fu["follow_up_rows"]["ISO-F10.a"]["state"], "merged")
+        out2 = run(fu, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]})
+        self.assertEqual([(a["row"], a["ask_source"], a["detail"]) for a in out2["actions"] if a.get("check") == "operator_ask"], [("ISO-F10.a", "ledger", "default C.1 overdue")])
+        self.assertEqual((out2["summary"]["follow_ups"], out2["summary"]["in_flight"], out2["rows"]["ISO-F10.a"]["stage"]), (0, 1, "merged"))
+        # the in-flight follow-up still counts (unchanged)
+        live = state([{"id": "SCHED-F34.a", "dispatched": stamp(7) + " (to hermes-architect)"}])
+        self.assertEqual(run(live, {"hermes-SCHED-F34.a": [msg(7, "Dispatch SCHED-F34.a: x", "in")]})["summary"]["follow_ups"], 1)
+
+    def test_a_follow_up_rows_canonical_ask_keeps_its_letter_and_is_attributed_and_answered(self):
+        """`DECISION NEEDED — SCHED-F34.a — …`: `.upper()` would have made it `SCHED-F34.A` — unknown to `known`, unmatched by
+        the stamp's key, unanswered by `DEFAULT APPLIED — SCHED-F34.a —` (the whole follow-up class silently lost)."""
+        st = state([{"id": "SCHED-F34.a", "dispatched": stamp(6) + " (to hermes-architect)"}, {"id": "FLEET-F62", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        threads = {"hermes-SCHED-F34.a": [msg(6, "Dispatch SCHED-F34.a: x", "in")], "hermes-FLEET-F62": [msg(6, "Dispatch FLEET-F62: y", "in")]}
+        ask = "DECISION NEEDED — SCHED-F34.a — carry AC-3 to FLEET-F62, or hold?\n1. carry\n2. hold  ← recommended\ndefault if unanswered by x: option 1 (rule C.2)"
+        out = run(st, threads, operator_threads=[op_thread(DM, [orch(3, ask)])])
+        alerts = [a for a in out["actions"] if a.get("check") == "operator_ask"]
+        self.assertEqual([(a["row"], a["status_text"]) for a in alerts], [("SCHED-F34.a", "DECISION NEEDED (3h): SCHED-F34.a — carry AC-3 to FLEET-F62, or hold?")])
+        self.assertEqual(out["rows"]["SCHED-F34.a"]["operator_ask"]["newest"]["canonical_row"], "SCHED-F34.a")
+        self.assertIsNone(out["rows"]["FLEET-F62"]["operator_ask"])
+        self.assertNotIn("OPERATOR", {a["row"] for a in out["operator_asks"]})
+        answered = run(st, threads, operator_threads=[op_thread(DM, [orch(3, ask), orch(0.5, "DEFAULT APPLIED — SCHED-F34.a — AC-3 carried to FLEET-F62 (delegated C.2) — veto within 12 h")])])
+        self.assertEqual((answered["summary"]["operator_ask"], answered["rows"]["SCHED-F34.a"]["operator_ask"]), (0, None))
+        # the stamp and the DM copy share the key; a later `delegated:carry` on the follow-up closes both
+        stamped = state([{"id": "SCHED-F34.a", "dispatched": stamp(6) + " (to hermes-architect)", "notes": f"decision-needed:C.2 SCHED-F34.a {ago(3)} — carry AC-3 to FLEET-F62, or hold?"}])
+        one = run(stamped, {"hermes-SCHED-F34.a": threads["hermes-SCHED-F34.a"]}, operator_threads=[op_thread(DM, [orch(2.9, ask)])])
+        r = one["rows"]["SCHED-F34.a"]["operator_ask"]
+        self.assertEqual((r["count"], r["newest"]["stamp"], r["newest"]["rule"]), (1, ago(3), "C.2"))
+        done = state([{"id": "SCHED-F34.a", "dispatched": stamp(6) + " (to hermes-architect)", "notes": f"decision-needed:C.2 SCHED-F34.a {ago(3)} — carry AC-3 to FLEET-F62, or hold?; delegated:carry SCHED-F34.a {ago(1)} — carried"}])
+        self.assertEqual(run(done, {"hermes-SCHED-F34.a": threads["hermes-SCHED-F34.a"]}, operator_threads=[op_thread(DM, [orch(2.9, ask)])])["summary"]["operator_ask"], 0)
+
+    def test_a_canonical_ask_posted_on_another_rows_thread_is_the_named_rows_decision(self):
+        """CH-F49's canonical text misfiled (or mirrored) on hermes-ISO-F14 plus CH-F49's stamp: one decision, one alert under
+        CH-F49 — never a second operator-ruling alert under ISO-F14 with the same alert_key in the same tick."""
+        st = state([{"id": "CH-F49", "dispatched": stamp(6) + " (to hermes-architect)", "notes": ch_stamp(3)}, {"id": "ISO-F14", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        threads = {"hermes-CH-F49": CH_DISPATCH, "hermes-ISO-F14": [msg(6, "Dispatch ISO-F14: y", "in"), orch(2.9, CH_F49_ASK)]}
+        out = run(st, threads)
+        alerts = [a for a in out["actions"] if a.get("check") == "operator_ask"]
+        self.assertEqual([(a["row"], a["alert_key"], a["ask_thread_id"]) for a in alerts], [("CH-F49", CH_F49_OVERDUE_KEY, "hermes-ISO-F14")])
+        r = out["rows"]["CH-F49"]["operator_ask"]
+        self.assertEqual((r["count"], {a["key"] for a in r["asks"]}, r["newest"]["thread_id"], r["newest"]["stamp"]), (1, {CH_F49_KEY}, "hermes-ISO-F14", ago(3)))
+        self.assertIsNone(out["rows"]["ISO-F14"]["operator_ask"])
+        self.assertEqual(out["summary"]["operator_ask"], 1)
+        # the misfiled copy is answered like a DM copy: an operator inbound on CH-F49's own thread, or DEFAULT APPLIED anywhere
+        self.assertEqual(run(st, {**threads, "hermes-CH-F49": CH_DISPATCH + [orch(1, "Operator ruling: 2", "in")]})["summary"]["operator_ask"], 0)
+        self.assertEqual(run(st, {**threads, "hermes-ISO-F14": threads["hermes-ISO-F14"] + [orch(1, DEFAULT_APPLIED_CH)]})["summary"]["operator_ask"], 0)
+        # a canonical ask for a row nobody knows on a row thread stays that thread's (the ordinary attribution)
+        zzz = run(st, {**threads, "hermes-ISO-F14": [msg(6, "Dispatch ISO-F14: y", "in"), orch(2, "DECISION NEEDED — ZZZ-F99 — rename?\n1. yes\n2. no")]})
+        self.assertEqual(zzz["rows"]["ISO-F14"]["operator_ask"]["newest"]["canonical_row"], "ZZZ-F99")
+
+    def test_a_note_appended_after_the_stamp_never_leaks_into_the_question(self):
+        """The notes cell is a running log: `; hold: …` appended after the stamp must not change the stamp's question (and so
+        its key) — else the stamp becomes a second ask beside the DM copy, with the junk tail as its head."""
+        st = ch_row(ch_stamp(3) + f"; hold: batch3+4 (autopilot {ago(2)})")
+        self.assertEqual(st["rows"]["CH-F49"]["ledger"]["decisions"][0]["text"], "authorize one final reviewer round (r3) to attest the corrected head `2f100634a7`, or not?")
+        out = run(st, {"hermes-CH-F49": CH_DISPATCH + [orch(3, CH_F49_ASK)]})
+        r = out["rows"]["CH-F49"]["operator_ask"]
+        self.assertEqual((r["count"], {a["key"] for a in r["asks"]}, r["newest"]["stamp"]), (1, {CH_F49_KEY}, ago(3)))
+        # the ISO copied from a nanoclaw message (fractional seconds) reads in UTC, not 5.5 h early in the install zone
+        iso = ago(1).replace("Z", ".000Z")
+        fresh = run(ch_row(f"decision-needed:C.1 CH-F49 {iso} — {CH_F49_Q}"), {"hermes-CH-F49": CH_DISPATCH})["rows"]["CH-F49"]["operator_ask"]["newest"]
+        self.assertEqual((fresh["ts"], fresh["default_overdue"], fresh["key"]), (ago(1), False, CH_F49_KEY))
 
 
 class FollowUpRows(unittest.TestCase):

@@ -125,6 +125,30 @@ Four stall shapes the chain markers do not show (autopilot.md §2.5; the 2026-09
               lead-in naming more rows); the status line is `DECISION NEEDED (<age>h): <row> — <first 140
               chars>`. NO re-arm and no nudge (the role is waiting on us); the row's ordinary checks still
               run; a paused row stays silent.
+              CANONICAL SHAPE (escalation.md; the 2026-09-17 CH-F49 miss: 52 min open while the tick read
+              `operator_ask 0`): `DECISION NEEDED — <ROW> — <question>` as the FIRST line (em dash, en dash or
+              hyphen; markdown stripped; the row id with any look-alike dash, a follow-up's `.a` kept lower)
+              written by the Orchestrator or any role on a row thread or an operator thread is an EXPLICIT ask of
+              the highest confidence — attributed to the NAMED row (not to the ids the question mentions; posted
+              on ANOTHER row's thread it is still the named row's), keyed on the row + question (`decision_key`),
+              head = the question. Only the tick's OWN digest form `DECISION NEEDED (<age>h): <row> — <head>`
+              (parenthesised age, colon) and the report lines stay skipped. ANSWERS: today's rules, plus the
+              operator's first reply after the ask on the same operator thread (`2`, `Operator ruling: 2`,
+              `wait` — escalation.md: "the operator answers with the number"), which clears the row-thread mirror
+              and the ledger stamp too (row_answers); a later `DEFAULT APPLIED — <ROW> —` outbound line (any
+              thread) and a later `delegated:<kind> <ROW> <ISO>` stamp OF THE PAIRING KIND (round↔C.1,
+              carry↔C.2, advisory↔C.3 only; `none` never; a rule-less text ask by any kind but advisory) — these
+              two answer only the canonical asks and the stamps, never a role's ordinary "awaiting operator"
+              line. SECOND SOURCE: the row's ledger `notes` stamps `decision-needed:<C.x|none> <ROW> <ISO> —
+              <question>` (hermes_queue `ledger.decisions`): one with no later pairing `delegated:` stamp and no
+              operator answer / DEFAULT APPLIED after its ISO is an ask too (age from the ISO; `source: ledger`),
+              so a DM the collectors missed still surfaces — read on every known row that carries one, merged,
+              queued or a finished follow-up included (never a paused one); the same key as the text-detected
+              ask collapses into it (the stamp's `rule` rides along). A delegable stamp (`C.1`–`C.3`, not `none`)
+              ≥ 2 h old with no pairing `delegated:` stamp adds `default C.x overdue` to the alert (`detail`) so
+              the Orchestrator applies the standing default on its next turn — the digest line is unchanged, no
+              new action kind; that overdue alert is bounded on `<key>:default-overdue`, so an ask alerted fresh
+              alerts exactly once more when its default falls due.
   follow_up   `state["follow_up_rows"]` (hermes_queue): a ledger row `<PARENT>.<letter>` opened on operator
               instruction. Supervised like any in-flight row on its own thread `hermes-<ID>` (stage, SLO,
               holds by the parent's batch) ONLY while its ledger state is in flight; merged / blocked / absent
@@ -183,6 +207,7 @@ REARM_PREFIX = "Supervisor re-arm"  # the re-arm line (Orchestrator-facing and r
 OPERATOR_PHRASES = ("pending an operator ruling", "awaiting operator", "awaiting an operator")
 ACKS_OFF_NOTE = "acks stale/missing — bounce and idle detection off"
 OPERATOR_ROW = "OPERATOR"  # the synthetic row an operator ask lands on when its text names no single known row
+DEFAULT_AFTER_H = 2.0  # delegated-decisions.md § Standing defaults: a delegable `decision-needed:` stamp this old is overdue
 ASK_HEAD_CHARS = 140  # `DECISION NEEDED (<age>h): <row> — <first 140 chars>`
 ASK_SCAN_CHARS = 600  # the collector keeps this much of an operator-thread line; the row threads are read the same way
 # An outbound line that addresses the operator (§2.5 operator_ask; the 2026-09-16/17 shapes). Two families, searched on
@@ -232,11 +257,30 @@ ASK_RESOLVED_RES = tuple(re.compile(p, re.IGNORECASE) for p in (
 ))
 # How the operator posts through the dashboard: "Operator ruling: …", "Operator addendum …", "Operator — …" (any case).
 OPERATOR_ANSWER_RE = re.compile(r"^operator\b", re.IGNORECASE)
-NOT_AN_ASK_PREFIXES = ("Supervisor nudge", "Supervisor re-arm", "Autopilot alert", "DECISION NEEDED", "card · ", "card(html) · ",
-                       "Hermes autopilot")
+# The canonical operator ask (escalation.md): `DECISION NEEDED — <ROW> — <question>` as the first line, markdown stripped.
+# Em dash, en dash or a plain hyphen between the three parts; the phrase itself in any case. The Orchestrator's shape —
+# distinct from the tick's OWN digest line `DECISION NEEDED (<age>h): <row> — <head>` (SUPERVISOR_DECISION_LINE_RE), which
+# quotes a standing ask and is never one. The 2026-09-17 CH-F49 miss: a bare "DECISION NEEDED" prefix skipped both.
+# The row id in both shapes tolerates the look-alike dashes a hand-typed DM carries (U+2010–U+2013, U+2212 — hermes_queue
+# normalises the same set in id cells and stamps), so the DM copy and the ledger stamp of one decision share a key.
+_ROW_IN_LINE = r"([A-Z][A-Z0-9]{1,4}[-‐‑‒–−]F\d+(?:\.[a-z])?)"
+CANON_ASK_RE = re.compile(rf"^DECISION NEEDED\s*[—–-]\s*{_ROW_IN_LINE}\s*[—–-]\s*(\S.*)$", re.IGNORECASE)
+SUPERVISOR_DECISION_LINE_RE = re.compile(r"^DECISION NEEDED\s*\(\d+(?:\.\d+)?h\)\s*:")
+# The Orchestrator's line once a standing default was applied (delegated-decisions.md): `DEFAULT APPLIED — <ROW> — <what> —
+# veto within 12 h`. Row-scoped: it answers that row's CANONICAL asks (the DM shape and the ledger stamp) older than it, on
+# every thread — never a role's ordinary "awaiting operator" line, which no default rules on; it is never an ask itself.
+DEFAULT_APPLIED_RE = re.compile(rf"^DEFAULT APPLIED\s*[—–-]\s*{_ROW_IN_LINE}\s*[—–-]", re.IGNORECASE)
+ROW_DASH_RE = re.compile("[‐‑‒–−]")
+# delegated-decisions.md § Standing defaults, mirrored from hermes_queue.DELEGATED_KIND_FOR_RULE / delegated_closes (the two
+# scripts share state.json, not code; test_hermes_supervise pins that the copies agree): the `delegated:<kind>` stamp that
+# closes a `decision-needed:<rule>`. `advisory` (C.3, written "at once, no DM") closes nothing else; `none` no stamp closes.
+DELEGATED_KIND_FOR_RULE = {"c.1": "round", "c.2": "carry", "c.3": "advisory"}
+DEFAULT_OVERDUE_SUFFIX = ":default-overdue"  # the overdue phase of a canonical ask is bounded on its own key (ask_alert)
+NOT_AN_ASK_PREFIXES = ("Supervisor nudge", "Supervisor re-arm", "Autopilot alert", "card · ", "card(html) · ", "Hermes autopilot")
 # The lines a tick report / a|b|t|r table is made of (abtr.py; supervise-tick.md STEP 2). The supervise task's run output
 # is an outbound Orchestrator line on `system:tasks:hermes-ap-supervise-*`, and it QUOTES the standing asks — so these
-# lines are dropped before any ask regex, key or head reads the text, wherever they appear in a message.
+# lines (plus the digest form, SUPERVISOR_DECISION_LINE_RE; see _skip_line) are dropped before any ask regex, key or head
+# reads the text, wherever they appear in a message.
 ASK_SKIP_LINE_PREFIXES = NOT_AN_ASK_PREFIXES + ("supervise tick:", "full table:", "no rows in flight", "[SUPERVISOR INVARIANT VIOLATION]")
 ABTR_ROW_LINE_RE = re.compile(r"^\S+ \| [✓▶✗⏸·]")  # `<row> | ✓ 09:57Z | ▶ 9.0h | · | ·` (the brief's row line)
 TASK_THREAD_PREFIX = "system:tasks:"  # task threads receive their prompt as inbound every fire: only an `Operator…` inbound answers there
@@ -516,18 +560,68 @@ def _is_orchestrator(role) -> bool:
     return str(role or "").lower() in ("orchestrator", "hermes-orchestrator")
 
 
+def _skip_line(s: str) -> bool:
+    """A supervisor / autopilot / report line — never an ask, never an answer, never a role "moving on": the fixed prefixes
+    plus the tick's own digest form `DECISION NEEDED (<age>h): <row> — <head>`. The Orchestrator's canonical ask
+    `DECISION NEEDED — <ROW> — <question>` is NOT one (canonical_ask reads it)."""
+    return s.startswith(ASK_SKIP_LINE_PREFIXES) or SUPERVISOR_DECISION_LINE_RE.match(s) is not None
+
+
 def _ask_lines(text: str) -> list[str]:
     """The lines of a message that can carry an ask: markdown stripped, blank lines and the shapes that never are one
-    dropped — supervisor / autopilot / DECISION NEEDED lines, card captions, and every line of a tick report or a|b|t|r
-    table (`Hermes autopilot · …`, `<row> | ✓ … |`, `| … |`, `supervise tick:`, `full table:`). A quoted report never
-    reads as an ask: the supervise task's own run output is an outbound Orchestrator line on a `system:tasks:*` thread."""
+    dropped — supervisor / autopilot lines, the tick's own `DECISION NEEDED (<age>h):` digest lines, card captions, and
+    every line of a tick report or a|b|t|r table (`Hermes autopilot · …`, `<row> | ✓ … |`, `| … |`, `supervise tick:`,
+    `full table:`). A quoted report never reads as an ask: the supervise task's own run output is an outbound Orchestrator
+    line on a `system:tasks:*` thread. The canonical `DECISION NEEDED — <ROW> — …` line survives: it IS the ask."""
     out = []
     for line in _strip_md(text or "").splitlines():
         s = line.strip()
-        if not s or s.startswith((*ASK_SKIP_LINE_PREFIXES, "|")) or ABTR_ROW_LINE_RE.match(s):
+        if not s or s.startswith("|") or _skip_line(s) or ABTR_ROW_LINE_RE.match(s):
             continue
         out.append(s)
     return out
+
+
+def _norm_row_id(row: str) -> str:
+    """A row id as a DM line spelled it -> the ledger's: look-alike dashes to `-`, the family upper-case, a follow-up's
+    `.<letter>` suffix LOWER-case (`loop-f35.A` -> `LOOP-F35.a`; hermes_queue's ID_RE wants the letter lower)."""
+    head, dot, suffix = ROW_DASH_RE.sub("-", row).partition(".")
+    return head.upper() + (dot + suffix.lower() if dot else "")
+
+
+def _delegated_closes(rule: str | None, kind: str | None) -> bool:
+    """hermes_queue.delegated_closes, mirrored: does a `delegated:<kind>` stamp close a decision under `rule`? Pairing kinds
+    only (round↔C.1, carry↔C.2, advisory↔C.3); `none` never; a rule-less text ask by any kind but `advisory`."""
+    k = str(kind or "").strip().lower()
+    r = str(rule or "").strip().lower()
+    if not k or r == "none":
+        return False
+    if not r:
+        return k != "advisory"
+    return DELEGATED_KIND_FOR_RULE.get(r) == k
+
+
+def canonical_ask(text) -> tuple[str, str] | None:
+    """escalation.md's fixed shape on the FIRST line (markdown stripped): `DECISION NEEDED — <ROW> — <question>` ->
+    (row, question), else None. The row (normalised: `_norm_row_id`) is the ask's attribution whatever ids the question
+    names; the question is its head and, with the row, its key (decision_key) — the same key the row's ledger
+    `decision-needed:` stamp produces."""
+    m = CANON_ASK_RE.match(_first_line(_strip_md(text if isinstance(text, str) else ("" if text is None else str(text)))))
+    return (_norm_row_id(m.group(1)), m.group(2).strip()) if m else None
+
+
+def default_applied_row(text) -> str | None:
+    """`DEFAULT APPLIED — <ROW> — …` as the first line (markdown stripped) -> that row (normalised), else None."""
+    m = DEFAULT_APPLIED_RE.match(_first_line(_strip_md(text if isinstance(text, str) else ("" if text is None else str(text)))))
+    return _norm_row_id(m.group(1)) if m else None
+
+
+def decision_key(row: str, question: str) -> str:
+    """The once-per-decision bound for the canonical shape and its ledger stamp alike: `operator-ruling:ask:<10 hex>` of
+    `decision-needed <ROW> <question, markdown stripped, whitespace collapsed, 160 chars>` — the DM on the row thread,
+    its mirror on the operator DM and the `decision-needed:` stamp in the ledger are ONE ask."""
+    q = " ".join(_strip_md(question or "").split())[:160]
+    return "operator-ruling:ask:" + hashlib.sha1(f"decision-needed {row} {q}".lower().encode("utf-8")).hexdigest()[:10]
 
 
 def ask_text(text: str, n: int = ASK_SCAN_CHARS) -> str:
@@ -545,12 +639,18 @@ def is_operator_ask(text, role: str | None = None, operator_thread: bool = False
     Orchestrator's non-row threads (the DM / main / task threads). EXPLICIT patterns (the operator named, or the two fixed
     forms) always count; IMPLICIT ones ("your call", "needs your …", "please rule") count only when the text also says
     `operator`, or when the Orchestrator writes them on an operator thread — and never when the first line addresses a
-    role by name ("Orchestrator — your call: push or wait?" is chain traffic). A supervisor / autopilot / tick-report
+    role by name ("Orchestrator — your call: push or wait?" is chain traffic). The CANONICAL shape `DECISION NEEDED —
+    <ROW> — <question>` (canonical_ask) is always an ask, whoever writes it, wherever. A supervisor / autopilot /
+    tick-report line (the tick's own `DECISION NEEDED (<age>h):` digest line included), a `DEFAULT APPLIED — <ROW> —`
     line, a card caption and a marker-prefixed message never are asks; a text whose last ask phrase is followed by a
     resolution word ("…, answered defer-carry") is a recount, not an ask."""
     text = text if isinstance(text, str) else ("" if text is None else str(text))
     first = _first_line(_strip_md(text))
-    if not first or first.startswith(NOT_AN_ASK_PREFIXES) or first.startswith("["):
+    if not first or first.startswith(NOT_AN_ASK_PREFIXES) or first.startswith("[") or SUPERVISOR_DECISION_LINE_RE.match(first):
+        return False
+    if CANON_ASK_RE.match(first):
+        return True
+    if DEFAULT_APPLIED_RE.match(first):
         return False
     head = ask_text(text)
     if not head:
@@ -589,7 +689,7 @@ def is_operator_answer(msg: dict, strict: bool = True) -> bool:
         return False
     if OPERATOR_ANSWER_RE.match(first):
         return True
-    return (not strict) and not _role_sender(msg) and not first.startswith(ASK_SKIP_LINE_PREFIXES)
+    return (not strict) and not _role_sender(msg) and not _skip_line(first)
 
 
 def ask_key(text: str) -> str:
@@ -651,9 +751,20 @@ def detect_operator_asks(thread_msgs: list[dict] | None, thread_id: str, rid: st
             continue
         text = _msg_text(m)
         first = _first_line(text)
+        role = m.get("role") or m.get("sender") or None
+        canon = canonical_ask(text)
+        if canon:
+            # escalation.md's shape: the highest-confidence ask, read before the hold / marker filters (an option line may
+            # quote a hold phrase); attributed to the NAMED row, keyed and headed on the question (its ledger stamp's key)
+            row, question = canon
+            key = decision_key(row, question)
+            newest_by_key[key] = {
+                "ts": m["ts"], "role": role, "thread_id": thread_id, "canonical_row": row,
+                "text": ask_head(question, 200), "head": ask_head(question), "scan": ask_text(text), "key": key,
+            }
+            continue
         if rid and (_infra_hold_line(first, text, rid) or (classify_message(m, rid) or {}).get("kind")):
             continue  # a hold has its own detection; a marker / nudge / dispatch line is progress, not an ask
-        role = m.get("role") or m.get("sender") or None
         if not is_operator_ask(text, role, operator_thread=rid is None):
             continue
         key = ask_key(text)
@@ -686,19 +797,38 @@ def _role_moved_on(msgs: list[dict], role: str | None, after_ts: str, rid: str) 
             continue
         text = _msg_text(m)
         first = _first_line(_strip_md(text))
-        if not first or first.startswith(ASK_SKIP_LINE_PREFIXES) or _infra_hold_line(first, text, rid) or is_operator_ask(text, role, False):
+        if not first or _skip_line(first) or _infra_hold_line(first, text, rid) or is_operator_ask(text, role, False):
             continue
         return True
     return False
 
 
-def scan_operator_threads(op_threads, known: set[str]) -> tuple[dict[str, list[dict]], dict[str, list[str]]]:
-    """collect_threads' `operator_threads` (flattened) -> ({row | OPERATOR: [standing asks]}, {row: [operator answer ts]}).
-    An ask is attributed to the ONE known row its full scan text (600 chars) names, else to OPERATOR. Answers: on a
-    `system:tasks:*` thread only an `Operator…` inbound; on the DM / main thread any non-role inbound (loose). An
-    `Operator…` inbound that names exactly one known row answers that row's asks on every thread (`row_answers`)."""
+def default_applied_ts(msgs: list[dict] | None, row: str) -> list[str]:
+    """The timestamps of the OUTBOUND `DEFAULT APPLIED — <row> —` lines on a thread: each answers that row's asks older
+    than it (delegated-decisions.md — the Orchestrator applied the standing default; nothing waits any more)."""
+    out = []
+    for m in msgs or []:
+        if isinstance(m, dict) and m.get("direction") != "in" and isinstance(m.get("ts"), str) and m["ts"] and default_applied_row(_msg_text(m)) == row:
+            out.append(m["ts"])
+    return out
+
+
+def scan_operator_threads(op_threads, known: set[str]) -> tuple[dict[str, list[dict]], dict[str, list[str]], dict[str, list[str]]]:
+    """collect_threads' `operator_threads` (flattened) -> ({row | OPERATOR: [standing asks]}, {row: [operator answer ts]},
+    {row: [DEFAULT APPLIED ts]}). A canonical `DECISION NEEDED — <ROW> — …` ask is attributed to its named row when that
+    row is known; any other ask to the ONE known row its full scan text (600 chars) names, else to OPERATOR. Answers: on a
+    `system:tasks:*` thread only an `Operator…` inbound; on the DM / main thread any non-role inbound (loose). Two
+    inbounds answer a row's asks on EVERY thread (`row_answers`): an `Operator…` line that names exactly one known row,
+    and — escalation.md: "the operator answers with the number" — the first operator reply (`1`, `2`, `Operator ruling:
+    2`, `wait`; loose on the DM, `Operator…` on a task thread) after a canonical ask on the same thread that names no
+    other known row, attributed to that ask's row (the 2026-09-17 shape: a bare `2` on the DM must clear the row-thread
+    mirror and the ledger stamp, or the supervisor would tell the Orchestrator to apply the default the operator just
+    overruled). One reply meets one ask; a reply that names ANOTHER row, or comes before any canonical ask, attributes
+    nothing. An outbound `DEFAULT APPLIED — <ROW> —` line is returned apart (`row_defaults`): it answers only the row's
+    canonical asks and stamps (the default ruled on that decision, not on a role's ordinary "awaiting operator" line)."""
     by_row: dict[str, list[dict]] = {}
     row_answers: dict[str, list[str]] = {}
+    row_defaults: dict[str, list[str]] = {}
     entries: list[dict] = []
     if isinstance(op_threads, dict):
         entries = [{"thread_id": k, "messages": v} for k, v in op_threads.items()]
@@ -710,24 +840,42 @@ def scan_operator_threads(op_threads, known: set[str]) -> tuple[dict[str, list[d
             continue
         thread = str(e.get("thread_id") or e.get("session_id") or "operator")
         loose = not thread.startswith(TASK_THREAD_PREFIX)
-        for m in msgs:
-            if isinstance(m, dict) and isinstance(m.get("ts"), str) and is_operator_answer(m):
-                named = named_rows(_msg_text(m), known)
+        last_canon: str | None = None  # the row of the newest canonical ask on this thread no operator word has met yet
+        ordered = sorted((m for m in msgs if isinstance(m, dict) and isinstance(m.get("ts"), str) and m["ts"]), key=lambda m: m["ts"])
+        for m in ordered:
+            text = _msg_text(m)
+            if m.get("direction") != "in":
+                canon = canonical_ask(text)
+                if canon:
+                    last_canon = canon[0] if canon[0] in known else None  # a newer ask (even of an unknown row) supersedes
+                    continue
+                applied = default_applied_row(text)
+                if applied:
+                    row_defaults.setdefault(applied, []).append(m["ts"])
+                continue
+            if is_operator_answer(m):
+                named = named_rows(text, known)
                 if len(named) == 1:
                     row_answers.setdefault(named[0], []).append(m["ts"])
+            if last_canon and is_operator_answer(m, strict=not loose):
+                named = named_rows(text, known)
+                if not named or named == [last_canon]:
+                    row_answers.setdefault(last_canon, []).append(m["ts"])
+                    last_canon = None
         for ask in detect_operator_asks(msgs, thread, None, loose_answers=loose):
             named = named_rows(ask["scan"], known)
-            row = named[0] if len(named) == 1 else OPERATOR_ROW
+            canon = ask.get("canonical_row")
+            row = canon if canon in known else (named[0] if len(named) == 1 else OPERATOR_ROW)
             ask["named_rows"] = named
             by_row.setdefault(row, []).append(ask)
-    # an answer on another thread (naming the row) clears the row's asks older than it
+    # an answer on another thread (naming the row, or meeting its canonical ask) clears the row's asks older than it
     for row, asks in list(by_row.items()):
         if row == OPERATOR_ROW or row not in row_answers:
             continue
         by_row[row] = [a for a in asks if not any(t > a["ts"] for t in row_answers[row])]
         if not by_row[row]:
             del by_row[row]
-    return by_row, row_answers
+    return by_row, row_answers, row_defaults
 
 
 # --------------------------------------------------------------------------- resolution
@@ -1359,9 +1507,12 @@ class _Tick:
             "infra_hold": 0, "bounced": 0, "idle_turn": 0, "thread_case": 0, "operator_ask": 0, "follow_ups": 0,
             "acks": self.acks_info["status"],
         }
-        # operator asks read from the Orchestrator's non-row threads, attributed per row (scan_operator_threads)
+        # operator asks read from the Orchestrator's non-row threads, attributed per row (scan_operator_threads); the
+        # `DEFAULT APPLIED — <ROW> —` lines found there (`op_defaults`, per row) answer that row's canonical asks / stamps
         self.op_asks: dict[str, list[dict]] = {}
         self.op_answers: dict[str, list[str]] = {}
+        self.op_defaults: dict[str, list[str]] = {}
+        self.known: set[str] = set()  # every plan / follow-up row id this tick (a canonical ask misfiled on another row's thread is routed by it)
         self.operator_asks: list[dict] = []  # every standing ask surfaced this tick, for the tick report
 
     def session_pin(self, rec: dict, role: str | None) -> str | None:
@@ -1421,29 +1572,45 @@ class _Tick:
     def ask_alert(self, rid: str, book: dict, ask: dict, label: str, pr: int | None, thread: str | None = None) -> bool:
         """§2.5 operator ask: the `operator-ruling` alert for one standing ask, keyed by the ask's text (ask_key), 24 h
         bound; the status line is `DECISION NEEDED (<age>h): <row> — <head>`. A side alert: no nudge, no re-arm, the
-        row's action / slo_status are left to the ordinary checks. Returns True when emitted."""
+        row's action / slo_status are left to the ordinary checks. A canonical ask whose standing default fell due
+        (`default_overdue`) is bounded on `<key>:default-overdue` instead: an ask that alerted fresh (< 2 h, plain key)
+        alerts exactly once more when the default falls due — under the plain key alone the overdue cue would stay bound
+        for 24 h and never reach an action (the 12:25Z / 13:17Z / 15:17Z shape). Returns True when emitted."""
         ask_dt = _safe_ts(ask.get("ts"))
         age_h = max(0.0, hours_between(ask_dt, self.now)) if ask_dt else 0.0  # an unparsable stamp is age 0, never a crash
         entry = {"row": rid, **{k: ask.get(k) for k in ("ts", "role", "thread_id", "text", "head", "key")}, "age_hours": age_h,
                  "status_text": f"DECISION NEEDED ({int(age_h)}h): {rid} — {ask['head']}", "alerted": False}
         if ask.get("named_rows") is not None:
             entry["named_rows"] = ask["named_rows"]
+        # the canonical shape / its ledger stamp: where it came from, the standing-default rule, and whether that is overdue
+        entry.update({k: ask[k] for k in ("source", "canonical_row", "rule", "stamp", "default_overdue") if k in ask})
+        overdue = f"default {ask.get('rule')} overdue" if ask.get("default_overdue") and ask.get("rule") else None
+        bound_key = ask["key"] + DEFAULT_OVERDUE_SUFFIX if overdue else ask["key"]
         self.operator_asks.append(entry)
         self.summary["operator_ask"] += 1
-        if alerted_recently(book, ask["key"], self.now):
-            entry["bound"] = (book.get("alerts") or {}).get(ask["key"])
+        if alerted_recently(book, bound_key, self.now):
+            entry["bound"] = (book.get("alerts") or {}).get(bound_key)
             return False
-        where = f"on {ask['thread_id']}" if ask.get("thread_id") else "on the thread"
+        if ask.get("source") == "ledger":
+            where = "in the ledger notes (decision-needed: stamp)"
+        else:
+            where = f"on {ask['thread_id']}" if ask.get("thread_id") else "on the thread"
         what = f"operator ask by {ask.get('role') or 'a role'} {where} at {ask['ts']}, unanswered: {ask['head']}"
+        if overdue:
+            what += (f" · {overdue} — apply the standing default (delegated-decisions.md) and stamp delegated: unless an operator"
+                     f" message about the row exists on the DM, the row thread or its #hermes-port thread")
         answer_on = f"hermes-{rid}" if rid != OPERATOR_ROW else (ask.get("thread_id") or "that thread")
         decision = f"answer it on {answer_on} (post the ruling as 'Operator ruling: …'; the ask is not a stall the supervisor can re-arm)"
         line, _status = alert_texts(self.now, rid, label, age_h, what, book, decision, pr, thread)
         self.alerts.append({"kind": "operator-ruling", "row": rid, "state": label, "line": line, "status_line": entry["status_text"],
-                            "alert_key": ask["key"], "ask": {k: ask[k] for k in ("ts", "role", "thread_id", "head")}})
+                            "alert_key": bound_key, "ask": {k: ask.get(k) for k in ("ts", "role", "thread_id", "head")},
+                            **({"detail": overdue} if overdue else {})})
         self.actions.append({
-            "kind": "alert", "row": rid, "alert_kind": "operator-ruling", "alert_key": ask["key"],
+            "kind": "alert", "row": rid, "alert_kind": "operator-ruling", "alert_key": bound_key,
             "text": line, "status_text": entry["status_text"], "thread_id": "hermes-status",
             "check": "operator_ask", "ask_thread_id": ask.get("thread_id"), "ask_ts": ask["ts"], "ask_role": ask.get("role"),
+            **({"ask_source": ask["source"]} if ask.get("source") else {}),
+            **({"detail": overdue} if overdue else {}),
         })
         self.summary["escalate"] += 1
         entry["alerted"] = True
@@ -1795,17 +1962,104 @@ def _idle_turn(tick: _Tick, rec: dict, events: list[dict], thread_msgs: list[dic
     return {"role": role, "session_id": ack["session_id"], "ended": ack["changed"], "age_hours": age, "container_status": cstatus}
 
 
-def _operator_ask_check(tick: _Tick, rec: dict, book: dict, thread_msgs: list[dict] | None, events: list[dict]) -> None:
+def _ledger_decisions(row: dict) -> list[dict]:
+    """The row's ledger `notes` stamps as hermes_queue parsed them (`ledger.decisions`: kind, tag, row, at, text); [] when the
+    state predates the field or the row has no ledger row."""
+    d = ((row or {}).get("ledger") or {}).get("decisions")
+    return [x for x in d if isinstance(x, dict) and isinstance(x.get("at"), str) and x["at"]] if isinstance(d, list) else []
+
+
+def _stamp_question(d: dict) -> str:
+    return str(d.get("text") or "").strip() or "(question not recorded in the stamp)"
+
+
+def _stamp_key(d: dict, rid: str) -> str:
+    return decision_key(str(d.get("row") or rid), _stamp_question(d))
+
+
+def _stamp_closed_by_delegation(d: dict, delegated: list[dict], rule: str | None) -> bool:
+    """A LATER `delegated:<kind>` stamp of the PAIRING kind for `rule` (delegated-decisions.md: round↔C.1, carry↔C.2,
+    advisory↔C.3 only; `none` never; a rule-less text ask by any kind but `advisory`) closes the decision stamped at `d`."""
+    return any(x["at"] > d["at"] and _delegated_closes(rule, x.get("tag")) for x in delegated)
+
+
+def _open_stamps(decisions: list[dict]) -> list[dict]:
+    """hermes_queue.open_decisions, mirrored: the `decision-needed` stamps with no later pairing `delegated` stamp."""
+    delegated = [d for d in decisions if d.get("kind") == "delegated"]
+    return [d for d in decisions if d.get("kind") == "decision-needed"
+            and not _stamp_closed_by_delegation(d, delegated, str(d.get("tag") or "").strip() or None)]
+
+
+def _stamp_asks(decisions: list[dict], rid: str, answers: list[str], now: datetime) -> list[dict]:
+    """§2.5 second source: the row's `decision-needed:<C.x|none> <ROW> <ISO> — <question>` stamps with no LATER
+    `delegated:` stamp OF THE PAIRING KIND (_delegated_closes — a `delegated:advisory` written for a C.3 classification
+    never closes a live C.1 / C.2 / `none` decision) and no operator answer / DEFAULT APPLIED after the ISO, as asks
+    (`source: ledger`, age from the ISO, key = decision_key so the text-detected canonical ask collapses into it).
+    `default_overdue`: a delegable rule (`C.1`–`C.3`; never `none` or a rule the spine does not know) whose stamp is
+    ≥ DEFAULT_AFTER_H old — the standing default is due and nothing applied it."""
+    delegated = [d for d in decisions if d.get("kind") == "delegated"]
+    out = []
+    for d in decisions:
+        if d.get("kind") != "decision-needed":
+            continue
+        rule = str(d.get("tag") or "").strip() or None
+        if _stamp_closed_by_delegation(d, delegated, rule) or any(a > d["at"] for a in answers):
+            continue
+        row = str(d.get("row") or rid)
+        question = _stamp_question(d)
+        at = _safe_ts(d["at"])
+        age_h = max(0.0, hours_between(at, now)) if at else 0.0
+        out.append({
+            "ts": d["at"], "role": ORCHESTRATOR, "thread_id": None, "source": "ledger", "canonical_row": row, "rule": rule,
+            "text": ask_head(question, 200), "head": ask_head(question), "scan": ask_text(question), "key": decision_key(row, question),
+            "default_overdue": bool(rule and rule.lower() in DELEGATED_KIND_FOR_RULE and age_h >= DEFAULT_AFTER_H),
+        })
+    return out
+
+
+def _operator_ask_check(tick: _Tick, rec: dict, book: dict, row: dict, thread_msgs: list[dict] | None, events: list[dict]) -> None:
     """§2.5 operator ask on one row: the standing asks on its thread (detect_operator_asks) plus those attributed to it
-    from the operator threads (tick.op_asks), an operator answer on either side clearing both. The record keeps them
-    all (`operator_ask`); ONE alert per row per tick, for the newest, keyed by its text (24 h)."""
+    from the operator threads (tick.op_asks — a DM copy, or a canonical ask misfiled on another row's thread) plus its
+    ledger `decision-needed:` stamps (_stamp_asks). Answers, row-scoped, for every ask: an operator inbound on the row
+    thread (`Operator…`) or on an operator thread naming the row / meeting its canonical ask (tick.op_answers — the DM
+    reply `2` reaches the row-thread mirror AND the stamp). Answers for the CANONICAL asks and the stamps only: a later
+    `DEFAULT APPLIED — <row> —` line (row thread or operator threads) and a later `delegated:` stamp of the pairing kind
+    — a default rules on the decision it defaulted, never on a role's ordinary "awaiting operator" line, which no
+    standing default covers. A stamp whose key a text-detected ask carries collapses into that ask (its `rule` /
+    `stamp` / `default_overdue` ride along). The record keeps them all (`operator_ask`); ONE alert per row per tick, for
+    the newest, keyed by its text."""
     rid = rec["id"]
-    answers = list(tick.op_answers.get(rid) or [])
-    thread_asks = detect_operator_asks(thread_msgs, rec["thread_id"], rid, events, answers)
+    decisions = _ledger_decisions(row)
+    delegated = [d for d in decisions if d.get("kind") == "delegated"]
+    stamp_by_key: dict[str, dict] = {}  # the newest decision-needed stamp per key: the rule a same-key text ask falls under
+    for d in sorted((d for d in decisions if d.get("kind") == "decision-needed"), key=lambda d: d["at"]):
+        stamp_by_key[_stamp_key(d, rid)] = d
+    defaults = default_applied_ts(thread_msgs, rid) + list(tick.op_defaults.get(rid) or [])
+    op_answers = list(tick.op_answers.get(rid) or [])
+    thread_asks = detect_operator_asks(thread_msgs, rec["thread_id"], rid, events, op_answers)
+    # a canonical ask for ANOTHER known row posted on this thread is that row's decision (supervise() routes it there)
+    thread_asks = [a for a in thread_asks if not (a.get("canonical_row") and a["canonical_row"] != rid and a["canonical_row"] in tick.known)]
     # an operator inbound on the row thread answers the row's DM copies too
     row_thread_answers = [m["ts"] for m in (thread_msgs or []) if isinstance(m, dict) and isinstance(m.get("ts"), str) and is_operator_answer(m)]
-    op_asks = [a for a in (tick.op_asks.get(rid) or []) if not any(t > a["ts"] for t in row_thread_answers)]
-    asks = sorted(thread_asks + op_asks, key=lambda a: a["ts"], reverse=True)
+    op_asks = [a for a in (tick.op_asks.get(rid) or []) if not any(t > a["ts"] for t in row_thread_answers + op_answers)]
+
+    def default_answered(a: dict) -> bool:
+        if not a.get("canonical_row"):
+            return False
+        if any(t > a["ts"] for t in defaults):
+            return True
+        rule = str((stamp_by_key.get(a["key"]) or {}).get("tag") or "").strip() or None
+        return any(x["at"] > a["ts"] and _delegated_closes(rule, x.get("tag")) for x in delegated)
+
+    asks = [a for a in thread_asks + op_asks if not default_answered(a)]
+    for s in _stamp_asks(decisions, rid, op_answers + row_thread_answers + defaults, tick.now):
+        same = [a for a in asks if a["key"] == s["key"]]
+        if same:
+            for a in same:
+                a.update(rule=s["rule"], stamp=s["ts"], default_overdue=s["default_overdue"])
+        else:
+            asks.append(s)
+    asks.sort(key=lambda a: a["ts"], reverse=True)
     if not asks:
         return
     rec["operator_ask"] = {"count": len(asks), "newest": asks[0], "asks": asks}
@@ -1832,7 +2086,8 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
     rec["carries_criteria"] = _open_carried(row)
     if row.get("follow_up"):
         rec["follow_up"] = {"parent": row.get("parent"), "batch": row.get("batch")}
-        tick.summary["follow_ups"] += 1
+        if row.get("state") in IN_FLIGHT:  # a merged / blocked follow-up supervised for its open decision stamp is not in flight
+            tick.summary["follow_ups"] += 1
     if res.get("drift"):
         tick.alerts.append({"kind": "ledger-drift", "row": rid, "detail": res["drift"]})
 
@@ -1840,7 +2095,7 @@ def _supervise_row_core(tick: _Tick, rid: str, row: dict, thread_msgs: list[dict
     # state but paused (a capped row is `blocked` and still asks for the cap authorization — the A2A-F21 shape), on
     # the row thread and on the operator threads attributed to this row; a side alert, never a nudge or a re-arm.
     if rid not in (cfg.get("paused_rows") or []):
-        _operator_ask_check(tick, rec, book, thread_msgs if thread_ok else None, events)
+        _operator_ask_check(tick, rec, book, row, thread_msgs if thread_ok else None, events)
 
     if stage == "merged":
         return rec
@@ -2039,8 +2294,35 @@ def supervise(
     op_source = operator_threads if operator_threads is not None else threads.get("operator_threads")
     follow_ups = state.get("follow_up_rows") or {}
     known = set(rows_in) | set(follow_ups)
-    tick.op_asks, tick.op_answers = scan_operator_threads(op_source, known)
+    tick.known = known
     paused = set(cfg.get("paused_rows") or [])
+    # a row whose ledger carries an open `decision-needed:` stamp is supervised for it whatever its state — merged, queued,
+    # deferred, a merged / blocked follow-up (a `none` decision about an upstream filing outlives the row's chain); the
+    # stamp is the second source precisely for the DM the collectors missed, so it must be read off-candidate too
+    for rid, row in [*rows_in.items(), *((r, w) for r, w in follow_ups.items() if r not in rows_in)]:
+        if rid in paused or not isinstance(row, dict) or not _open_stamps(_ledger_decisions(row)):
+            continue
+        rows_in.setdefault(rid, row)
+        if rid not in candidates:
+            candidates.append(rid)
+    tick.op_asks, tick.op_answers, tick.op_defaults = scan_operator_threads(op_source, known)
+    # a canonical `DECISION NEEDED — X — …` posted (misfiled, or mirrored) on row Y's thread is X's decision: routed to X
+    # like a DM copy, never alerted under Y (two rows would otherwise raise one alert_key in the same tick)
+    for rid in list(candidates):
+        msgs = threads.get(f"hermes-{rid}")
+        if not isinstance(msgs, list):
+            continue
+        for ask in detect_operator_asks(msgs, f"hermes-{rid}", None):
+            canon = ask.get("canonical_row")
+            if canon and canon != rid and canon in known:
+                ask["named_rows"] = named_rows(ask["scan"], known)
+                tick.op_asks.setdefault(canon, []).append(ask)
+        # a `DEFAULT APPLIED — X —` mirrored on another row's thread answers X's canonical asks all the same ("any thread")
+        for m in msgs:
+            if isinstance(m, dict) and m.get("direction") != "in" and isinstance(m.get("ts"), str) and m["ts"]:
+                applied = default_applied_row(_msg_text(m))
+                if applied and applied != rid:
+                    tick.op_defaults.setdefault(applied, []).append(m["ts"])
     for r in list(tick.op_asks):
         if r == OPERATOR_ROW:
             continue
