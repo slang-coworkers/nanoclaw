@@ -145,6 +145,31 @@ def _rows_board():
     return _ROWS_BOARD
 
 
+_ABTR = None
+
+
+def short_title(name) -> str:
+    """The row's short name for card captions — abtr.short_title (autopilot/) so Slack and the tick digest
+    agree; a plain clip when the autopilot tree is not next to this file. 2026-09-18: the operator read
+    `RT-F09 · hermes-tester · PASS` cards in #hermes-port and the bare id meant nothing."""
+    global _ABTR
+    if _ABTR is None:
+        try:
+            path = os.path.join(HERE, "autopilot", "abtr.py")
+            spec = importlib.util.spec_from_file_location("abtr", path)
+            if spec is None or spec.loader is None:
+                raise RuntimeError(path)
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)
+            _ABTR = mod
+        except Exception:  # noqa: BLE001 - captions degrade to a clipped name, never a crash
+            _ABTR = False
+    text = clean_name(name)
+    if _ABTR:
+        return _ABTR.short_title(text)
+    return text if len(text) <= 34 else text[:33].rstrip() + "…"
+
+
 # --------------------------------------------------------------------------- slack client
 
 class SlackError(Exception):
@@ -391,9 +416,11 @@ def root_text(rid: str, plan: dict | None, ledger_entry: dict | None) -> str:
     return " · ".join(parts)
 
 
-def card_caption(card: dict, rid: str, root: str) -> tuple[str, str]:
-    """(initial_comment, title) for one card: `<ROW> · <role> · <OUTCOME> — <headline>` from the
-    sibling .json when present, else from the filename."""
+def card_caption(card: dict, rid: str, root: str, title: str = "") -> tuple[str, str]:
+    """(initial_comment, file title) for one card: `<ROW> · <short name> · <role> · <OUTCOME> — <headline>`
+    from the sibling .json when present, else from the filename; `title` is the row's short name
+    (short_title of the plan name; omitted when the plan has none). The file title keeps its
+    `<ROW> · <role> · <OUTCOME> · r<N>` shape (the row id, role and outcome are what readers grep)."""
     rows_board = _rows_board()
     meta: dict = {}
     if card.get("json"):
@@ -404,7 +431,7 @@ def card_caption(card: dict, rid: str, root: str) -> tuple[str, str]:
     role = clean_name(meta.get("role")) or card["role"]
     outcome = (clean_name(meta.get("outcome")) or card["outcome"]).upper()
     headline = squash(meta.get("headline"), 200)
-    caption = f"{row} · {role} · {outcome}"
+    caption = f"{row} · {title} · {role} · {outcome}" if title else f"{row} · {role} · {outcome}"
     if headline:
         caption += f" — {headline}"
     return caption, f"{row} · {role} · {outcome} · r{card['round']}"
@@ -628,7 +655,7 @@ def run(root: str, channel: str, state_path: str, client, dry_run: bool, max_pos
             break
         rid = card["row"]
         entry = srows[rid]
-        caption, title = card_caption(card, rid, root)
+        caption, title = card_caption(card, rid, root, short_title(plan_row(plan, rid).get("name")))
         if dry_run:
             file_id = "dry-run"
         else:
