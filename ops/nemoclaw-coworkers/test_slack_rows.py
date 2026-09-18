@@ -294,8 +294,8 @@ class SlackRowsTest(unittest.TestCase):
         ])
         root_ts = posts[0][3] or self.read_state()["rows"]["LOOP-F35"]["thread_ts"]
         self.assertTrue(all(u[2] == root_ts for u in uploads))
-        self.assertEqual(uploads[0][5], "LOOP-F35 · hermes-architect · HANDOFF — ADR + 4 AC (pytest 3 / live 1)")
-        self.assertEqual(uploads[2][5], "LOOP-F35 · hermes-tester · PASS")
+        self.assertEqual(uploads[0][5], "LOOP-F35 · Lego coworker composition · hermes-architect · HANDOFF — ADR + 4 AC (pytest 3 / live 1)")
+        self.assertEqual(uploads[2][5], "LOOP-F35 · Lego coworker composition · hermes-tester · PASS")
         self.assertEqual(uploads[1][4], "LOOP-F35 · hermes-builder · SHIPPED · r1")
         st = self.read_state()
         self.assertEqual(st["channel"], CHANNEL)
@@ -328,7 +328,7 @@ class SlackRowsTest(unittest.TestCase):
         calls = FakeClient.instances[2].calls
         self.assertEqual([c[0] for c in calls], ["upload"])
         self.assertEqual(calls[0][2], root_ts)
-        self.assertEqual(calls[0][5], "LOOP-F35 · hermes-reviewer · APPROVE")
+        self.assertEqual(calls[0][5], "LOOP-F35 · Lego coworker composition · hermes-reviewer · APPROVE")
         self.assertEqual(len(self.read_state()["rows"]["LOOP-F35"]["cards"]), 4)
 
     def test_card_under_a_miscased_thread_dir_is_mirrored_into_the_rows_thread(self):
@@ -346,7 +346,7 @@ class SlackRowsTest(unittest.TestCase):
         self.assertEqual([u[3] for u in uploads][-1], "card-hermes-reviewer-request_changes-r1.png")
         root_ts = self.read_state()["rows"]["LOOP-F35"]["thread_ts"]
         self.assertTrue(all(u[2] == root_ts for u in uploads))
-        self.assertEqual(uploads[-1][5], "LOOP-F35 · hermes-reviewer · REQUEST_CHANGES")
+        self.assertEqual(uploads[-1][5], "LOOP-F35 · Lego coworker composition · hermes-reviewer · REQUEST_CHANGES")
         st = self.read_state()
         self.assertEqual(set(st["rows"]), {"LOOP-F35", "MEM-F44"})
         self.assertIn("groups/hermes-reviewer/reports/hermes-loop-f35/cards/card-hermes-reviewer-request_changes-r1.png", st["rows"]["LOOP-F35"]["cards"])
@@ -588,7 +588,7 @@ class SlackRowsTest(unittest.TestCase):
         completes = http_fake.bodies("files.completeUploadExternal")
         builder = next(c for c in completes if "hermes-builder" in c["initial_comment"])
         self.assertEqual(builder["initial_comment"],
-                         "LOOP-F35 · hermes-builder · SHIPPED — &lt;!channel&gt; all green &amp; &lt;https://evil.example|click&gt;")
+                         "LOOP-F35 · Lego coworker composition · hermes-builder · SHIPPED — &lt;!channel&gt; all green &amp; &lt;https://evil.example|click&gt;")
         self.assertEqual(builder["files"][0]["title"], "LOOP-F35 · hermes-builder · SHIPPED · r1")
         posts = [b["text"] for b in http_fake.bodies("chat.postMessage")]
         self.assertIn("⛔ LOOP-F35 blocked — P3 — creds expired, &lt;!here&gt; retry after rotation", posts)
