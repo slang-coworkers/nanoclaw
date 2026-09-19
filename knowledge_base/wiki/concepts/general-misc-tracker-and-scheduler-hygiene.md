@@ -3,7 +3,7 @@ title: "Tracker and Scheduler Hygiene"
 type: concept
 group: general-misc
 tags: [trackers, scheduler, recurrence, nudge-scanner, watch-list, maintainer-reports, cron]
-source_count: 9
+source_count: 10
 ---
 
 # Tracker and Scheduler Hygiene
@@ -22,6 +22,7 @@ source_count: 9
 - Validate the must-nudge **predicate against true disposition** before dispatching. Deriving "needs a nudge" from a proxy (e.g. an absent comment body read as bot activity) over-counts the population you act on (observed 146 vs 21).
 - A recurring task's liveness is its **own `last_run`/`next_run`/`runs`**, not the pinned session's `last_active` — a task pinned to the bare/default session routes output to child threads, so `last_active` reads stale while the task fires on-grid. Verify a task-field edit landed by sha256, not a self-reported byte-diff.
 - **Enforce hard safety carve-outs (do-not-rerun / do-not-touch) in the deterministic script gate, not memory/prompt** — a `new_session:false` sweep runs on stale context and never re-reads a carve-out written after its last compaction. Default cron/sweep tasks to `new_session:true`; keep cross-fire state in files.
+- **For a restart-proof recurring/one-shot task, use `ncl tasks create` — the `mcp__nanoclaw__schedule_task` tool is unwired here.** `ncl tasks create --prompt … --recurrence '<cron>'` (or `--process-after <ISO8601>` one-shot) with an optional `--script` guard runs from the group's system session and survives restarts; a `Monitor`/`run_in_background` watch is session-scoped and dies when the session is reaped.
 
 ## Trackers must carry disposition, not just items
 
@@ -45,6 +46,10 @@ Read a recurring task's liveness from the **task's own `last_run`/`next_run`/`ru
 
 A long-running scheduled sweep can act on **stale context**, so a safety carve-out (do-not-rerun / do-not-touch signature) placed in agent memory or the task prompt will silently fail to bind — memory reloads only at session start / compaction, and a task running `new_session:false` (one session reused across fires) never re-reads a carve-out written after its last compaction. Enforce every hard safety carve-out in the **deterministic pre-processing script gate**: a machine-readable exclusion file (job + test-signature + tracked issue#) the script reads on *every* fire and filters *before* any LLM classification, tied to the tracked-regression lifecycle (add when filed, remove when it closes). Default cron/sweep tasks to `new_session:true` (fresh memory each fire) and keep any cross-fire state in files, not in-session memory. This is robust by construction — immune to both stale-session memory and an LLM skipping a cross-check — and the fix is invariant to which stale mechanism actually bit ([enforce scheduled-sweep safety carve-outs in the deterministic script gate, not memory/prompt](../learnings/1789248262100-enforce-scheduled-sweep-safety-carve-outs-in-the-d.md)).
 
+## Durable scheduling: `ncl tasks create`, not `schedule_task` or a `Monitor`
+
+When you need a host-durable, restart-proof recurring or one-shot task (a guarded PR-state poll, a heartbeat, a periodic report), the `mcp__nanoclaw__schedule_task` MCP tool returns **"No such tool available"** in the slang-fixer group — and it is absent from the orchestrator's toolset too, i.e. genuinely unwired in this environment despite the base-nanoclaw skill and CLAUDE.md referencing it. The working route is the `ncl` CLI (available under group `cli_scope`, though older CLAUDE.md `ncl` resource tables omitted it): `ncl tasks` with verbs `list, get, create, append-log, update, cancel, run, pause, resume, delete`. Key `create` fields — `--prompt` (required, what the woken agent does), `--recurrence '<cron>'` for recurring or `--process-after <ISO8601>` for a one-shot, and an optional `--script` pre-task guard that prints `{"wakeAgent":true|false,"data":{…}}` so the agent wakes only on `true` and cheap polls stay silent. These tasks run from the agent-group **system session** and survive container restarts — unlike a `Monitor` / `run_in_background` watch, which is **session-scoped** and dies if the session is reaped. So use `Monitor persistent` for a watch that only needs to cover the current session (e.g. a 1–2h critical window), and `ncl tasks create --recurrence '<cron>' --script guard.sh --prompt '…'` when it must outlive restarts ([durable scheduling: mcp schedule_task is unwired, but `ncl tasks create` works with a `--script` guard](../learnings/1789682983550-durable-scheduling-mcp-schedule-task-is-unwired-bu.md)).
+
 ## Bi-weekly scheduling via a cron guard
 
 Express every-other-week (bi-weekly) recurrence with a cron guard that fires each week but **skips the off-weeks**, so the scheduler only wakes the agent on the intended alternating cadence rather than on every occurrence ([Bi-weekly (every-other-week) scheduling via cron guard](../learnings/1781574732054-bi-weekly-every-other-week-scheduling-via-cron-gua.md)).
@@ -55,7 +60,7 @@ Express every-other-week (bi-weekly) recurrence with a cron guard that fires eac
 
 ✅ The counting counterpart: `scan.py` read an absent comment body as automation activity and inflated the must-nudge set to **146 vs 21**. A scanner that derives "needs a nudge" from a proxy (an empty body read as a bot post) over-counts the population it will act on. Validate the must-nudge predicate against the **true disposition** before dispatching, or the tracker nudges dozens of chains that need nothing ([scan.py absent-body read as automation inflated must_nudge 146 vs 21](../learnings/1786149497107-scan-py-absent-body-read-as-automation-inflated-mu.md)).
 
-**Source learnings (9):**
+**Source learnings (10):**
 - [Recurring trackers must carry disposition + reasoning, not just items](../learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md) — structure each tracker entry with disposition, reasoning, and a "do NOT re-flag" section; human de-escalation overrides re-derived state
 - [Daily maintainer report must carry open ship-stoppers until merged](../learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-stopp.md) — carry open P0s forward from a persistent watch-list with fresh live state; fetch windows silently drop long-open items
 - [learnings-wiki coverage-checker miscounts + stalls freeze the whole recurrence](../learnings/1783327563514-learnings-wiki-coverage-checker-miscounts-bracket-.md) — one un-fired occurrence halts the series; raw-learnings sync and wiki-synth are independent pipelines
@@ -65,3 +70,4 @@ Express every-other-week (bi-weekly) recurrence with a cron guard that fires eac
 - [scan.py absent-body read as automation inflated must_nudge 146 vs 21](../learnings/1786149497107-scan-py-absent-body-read-as-automation-inflated-mu.md) — validate the must-nudge predicate against true disposition; proxies over-count the acted-on population
 - [a scheduled task's liveness is its own last_run, not the pinned session's last_active](../learnings/1789251566343-a-scheduled-task-s-liveness-is-its-own-last-run-no.md) — read task last_run/next_run/runs (monotonic) as authoritative; the bare pinned session's last_active goes stale while the task fires; verify a field edit by sha256
 - [enforce scheduled-sweep safety carve-outs in the deterministic script gate, not memory/prompt](../learnings/1789248262100-enforce-scheduled-sweep-safety-carve-outs-in-the-d.md) — a new_session:false sweep acts on stale context; put do-not-rerun exclusions in a script-read file filtered before LLM classification; default cron tasks to new_session:true
+- [durable scheduling: mcp schedule_task is unwired, but `ncl tasks create` works (with --script guard)](../learnings/1789682983550-durable-scheduling-mcp-schedule-task-is-unwired-bu.md) — use `ncl tasks create --recurrence/--process-after [--script]` for restart-proof tasks (system session); `Monitor`/`run_in_background` is session-scoped and dies on reap

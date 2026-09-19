@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1223 learnings. [Catalog](../index.md)
+1227 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
@@ -496,6 +496,7 @@ type: topic
 - [closingIssuesReferences ≠ a Closes-keyword in the PR body](../learnings/1787174946805-closingissuesreferences-a-closes-keyword-in-the-pr.md)
 - [Code comments must describe the code as-is — never change-history ("unchanged from before") or PR-pointers ("see linked issue")](../learnings/1784573605212-code-comments-must-describe-the-code-as-is-never-c.md)
 - [CoerceToProperType null-vs-ErrorType: fix the wrapper, not tryCoerce](../learnings/1787657808750-coercetopropertype-null-vs-errortype-fix-the-wrapp.md)
+- [Coherent/volatile read on a read-only SRV is not a CSE miscompile](../learnings/1789755315138-coherent-volatile-read-on-a-read-only-srv-is-not-a.md)
 - [Coherent/volatile resource-load CSE miscompile: fix at readNone inference, and the front-end silent-qualifier-drop](../learnings/1789440874211-coherent-volatile-resource-load-cse-miscompile-fix.md)
 - [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](../learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)
 - [COMPARE_COMPUTE test can pass VACUOUSLY when FileCheck is absent — cbuffer() never binds a module-scope uniform](../learnings/1786686310812-compare-compute-test-can-pass-vacuously-when-filec.md)
@@ -583,6 +584,7 @@ type: topic
 - [Discord message cap is 2000 chars — and the 400 error misreports the bound](../learnings/1786205589314-discord-message-cap-is-2000-chars-and-the-400-erro.md)
 - [Discord message limit is 2000 chars, not 4000 — the API error message lies on the first try](../learnings/1786006634390-discord-message-limit-is-2000-chars-not-4000-the-a.md)
 - [Discord per-message char limit is 2000](../learnings/1780404951139-discord-per-message-char-limit-is-2000.md)
+- [Discord per-thread bot pipeline can fail on follow-up replies, not just fresh summons](../learnings/1789714845243-discord-per-thread-bot-pipeline-can-fail-on-follow.md)
 - [Discord REST API 403s without a User-Agent header](../learnings/1788164170311-discord-rest-api-403s-without-a-user-agent-header.md)
 - [Discord send_message enforces a 2000-char hard limit](../learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md)
 - [Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)
@@ -719,6 +721,7 @@ type: topic
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)
 - [gh run list --workflow <wrong-filename> silently returns a RETIRED workflow's old runs instead of erroring](../learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-retur.md)
 - [gh run rerun --failed has no per-job filter for mixed intermittent+legitimate failures](../learnings/1787206386186-gh-run-rerun-failed-has-no-per-job-filter-for-mixe.md)
+- [gh run rerun --failed is a dead end once the test-binaries artifact expires (1-day retention)](../learnings/1789740363892-gh-run-rerun-failed-is-a-dead-end-once-the-test-bi.md)
 - [gh run rerun --failed reruns ALL failed jobs in a run, not a hand-picked subset](../learnings/1786985212126-gh-run-rerun-failed-reruns-all-failed-jobs-in-a-ru.md)
 - [gh run rerun returns rc=0 before run_attempt increments — the proof it took is a second call returning 403 "already running"](../learnings/1786077463765-gh-run-rerun-returns-rc-0-before-run-attempt-incre.md)
 - [gh run view --log outside a git repo writes zero-byte logs, and a same-source control also reads 0](../learnings/1786459337890-gh-run-view-log-outside-a-git-repo-writes-zero-byt.md)
@@ -827,6 +830,7 @@ type: topic
 - [jq: inside index(...) the dot rebinds — a parent_id filter silently returns zero](../learnings/1786058282680-jq-inside-index-the-dot-rebinds-a-parent-id-filter.md)
 - [Judging memoization in a fixpoint: count recurrence across rounds, not along one dataflow path](../learnings/1787071148542-judging-memoization-in-a-fixpoint-count-recurrence.md)
 - [KB nightly sync — two source corruptions during in-flight memory migration (2026-08-31)](../learnings/1788146298994-kb-nightly-sync-two-source-corruptions-during-in-f.md)
+- [KB sync PII scrub can silently no-op → real emails/secrets leak to the public mirror](../learnings/1789714635108-kb-sync-pii-scrub-can-silently-no-op-real-emails-s.md)
 - [Key a PR watcher to the PR NUMBER, not a captured SHA — a force-push orphans the target and the poller reports plausibly on a dead commit forever](../learnings/1786280351305-key-a-pr-watcher-to-the-pr-number-not-a-captured-s.md)
 - [Key a root-cause memory lookup on the ENTITY (PR/issue number), not the symptom's signature](../learnings/1785882088736-key-a-root-cause-memory-lookup-on-the-entity-pr-is.md)
 - [Lambda this-capture broken in interface default methods (visitThisExpr gap)](../learnings/1788769686058-lambda-this-capture-broken-in-interface-default-me.md)

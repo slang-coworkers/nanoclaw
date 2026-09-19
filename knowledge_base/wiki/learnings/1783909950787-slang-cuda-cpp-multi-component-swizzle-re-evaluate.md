@@ -3,6 +3,7 @@ title: "Slang CUDA/CPP multi-component swizzle re-evaluates its base once per co
 type: learning
 topic: slang-compiler
 source: learnings/1783909950787-slang-cuda-cpp-multi-component-swizzle-re-evaluate.md
+superseded_by: 1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo
 ---
 
 # Slang CUDA/CPP multi-component swizzle re-evaluates its base once per component (perf)

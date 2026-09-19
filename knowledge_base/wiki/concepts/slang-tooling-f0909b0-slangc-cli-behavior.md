@@ -3,7 +3,7 @@ title: "slangc CLI behavior: exit codes, crash semantics, output streams, and op
 type: concept
 group: slang-tooling
 tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf]
-source_count: 8
+source_count: 9
 ---
 
 ## TL;DR
@@ -168,7 +168,32 @@ also records that per-linkage loaded modules keep their IR in their own
 `IRModule::m_memoryArena` and register in `mapNameToLoadedModules` (only `Core` lands in
 `Session::coreModules`), so a walk summing only `coreModules` misses them.
 
-**Source learnings (8):**
+## Default diagnostic output is the rich Rust-style block, not the classic MSVC line
+
+When triaging anything about slangc's command-line diagnostic FORMAT (e.g. #13157 "VS-friendly
+`--diagnostic-format`"), do NOT assume the default is the classic MSVC single line. Empirically
+verified on top-of-tree (`slangc v2026.13.1-50-g3649fb982`), the *default* output is the **rich
+Rust-style block** (`error[E30015]: undefined identifier` / ` --> path:3:5` / a caret-underlined
+source line) even with NO `-enable-experimental-rich-diagnostics` flag — rich is selected when
+`options.shouldEmitRichDiagnostics()` sets `DiagnosticSink::Flag::AlwaysGenerateRichDiagnostics`
+(`slang-compiler-options.cpp:679-681`), dispatched by `diagnoseRichImpl`
+(`slang-diagnostic-sink.cpp:628-722`) vs the classic `diagnoseImpl` (`:596/:762`). The classic
+single-line formatter still exists as the non-rich path (`formatDiagnostic()`,
+`compiler-core/slang-diagnostic-sink.cpp:148`, layout `:156-176`, producing
+`path(line): error <id>: message`) with two quirks: the column is emitted only under
+`Flag::LanguageServer` (`:159-162`), and the error id is a **bare integer** (`error 30015:`)
+where the rich renderer shows bracketed `error[E30015]:`. Consequence for triage/impl: an
+MSVC/VS-parseable single line (`path(line, column): error E30015: message`) is a genuinely
+DISTINCT third style — closest to the classic path but needing column + an `E`-prefixed id +
+routing that BYPASSES the default rich renderer; it is NOT "flip the column flag on the default."
+A value-taking CLI option follows the `-diagnostic-color <always|never|auto>` precedent
+(`slang-options.cpp:1267`/handler `:2942`), and a new `CompilerOptionName` appends after
+`DiagnosticColor=144` in `include/slang.h` (ABI-safe); an opt-in flag means zero golden-file
+churn, whereas changing the default to emit column would touch hundreds of `tests/**/*.slang`
+expected-output blocks
+[slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md).
+
+**Source learnings (9):**
 - [slangc -o /dev/null fails in-container; and head -N on a compiler log hides the ICE](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md) — E00004 exit 255 looks like an ICE; byte-count as a second signal; warnings print first so grep outcome classes; don't publish from an unread `rc255` catch-all bucket.
 - [Slang debug build: SLANG_ASSERT does NOT always catch OOB — verify segfault claims empirically](../learnings/1786514794799-slang-debug-build-slang-assert-does-not-always-cat.md) — Null-deref before any List access segfaults (exit 139) in debug; the requested-index-vs-program-count guard; a locally-true mechanism need not be the one in play.
 - [slangc exit 255 is a normal error, not a crash — verify signals + the real null path](../learnings/1786873188157-slangc-exit-255-is-a-normal-error-not-a-crash-veri.md) — 134/139 are real crashes; `SLANG_ASSERT=system` forces SIGABRT; enumerate which producer yields null (multi-declarator, not EOF); shared-clone `git stash pop` hazard.
@@ -177,3 +202,4 @@ also records that per-linkage loaded modules keep their IR in their own
 - [slang-test -dump-ir + target: `-o -` does NOT mix streams (stderr=IR, stdout=target)](../learnings/1788160383724-slang-test-dump-ir-target-o-does-not-mix-streams-s.md) — Corrects `_common.md` lore; non-interleaved labeled blocks; `-o /dev/null`→`-o -` is a clean swap; only trailing-match CHECK-NOT/DAG/COUNT need review.
 - [DXC errors on duplicate semantics; Slang silently re-indexes them](../learnings/1788387854199-dxc-errors-on-duplicate-semantics-slang-silently-r.md) — `(base,index)` collision rules; DXIL/SPIR-V diagnose, Slang legalizes via `_returnNonOverlappingAttributeIndex`; a hard error would be breaking, warn first.
 - [slangc -warnings-as-errors needs an operand + module still written when it escalates](../learnings/1788913047747-slangc-warnings-as-errors-needs-an-operand-module-.md) — The operand requirement; the write-site escalation leaves the `.slang-module` on disk; `-no-codegen` returns SLANG_OK; argue scope-calls to codex with reasons.
+- [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md) — verified on top-of-tree; rich via `shouldEmitRichDiagnostics` with no flag; the classic path emits column only under LanguageServer + a bare-integer id; an MSVC-parseable single line is a distinct opt-in third style.

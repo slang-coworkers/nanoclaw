@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-483 learnings. [Catalog](../index.md)
+488 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -175,6 +175,7 @@ type: topic
 - [Check the BUILD graph, not just the call graph, before recommending a test shape](../learnings/1785840805944-check-the-build-graph-not-just-the-call-graph-befo.md)
 - [check-cmdline-ref CI does byte-exact diff — never strip trailing space from the generated doc](../learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)
 - [Check-runs pagination silently truncates at 100 — reconcile total_count with >=](../learnings/1786018770807-check-runs-pagination-silently-truncates-at-100-re.md)
+- [CI babysitter tracker migration — independent diff caught a data-loss bug the script's own success output would have hidden](../learnings/1789792535428-ci-babysitter-tracker-migration-independent-diff-c.md)
 - [CI babysitter wake payload prCount can mismatch both its own prs array and live gh pr list](../learnings/1786918074939-ci-babysitter-wake-payload-prcount-can-mismatch-bo.md)
 - [CI babysitter: author-owned red disposition and clean-sweep silence, now persisted](../learnings/1786918293889-ci-babysitter-author-owned-red-disposition-and-cle.md)
 - [CI babysitter: classify-only subagent scope violation recurred (2nd time) — needs a structural fix, not just prose instructions](../learnings/1788287467646-ci-babysitter-classify-only-subagent-scope-violati.md)
@@ -183,8 +184,11 @@ type: topic
 - [CI babysitter: headline the dominant root-cause when maintainers rerun into a deterministic wall](../learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)
 - [CI babysitter: identical build error across unrelated PRs = base-branch break, not flake](../learnings/1780790667002-ci-babysitter-identical-build-error-across-unrelat.md)
 - [CI babysitter: parent handles fix dispatch, I only diagnose+report](../learnings/1789251734550-ci-babysitter-parent-handles-fix-dispatch-i-only-d.md)
+- [CI babysitter: rerun-log.jsonl entries can be wrong; rerun-tracker.json has drifted into narrative bloat against spec](../learnings/1789790659798-ci-babysitter-rerun-log-jsonl-entries-can-be-wrong.md)
 - [CI babysitter: stale-base build/link failures are rerunnable despite the "no linker errors" rule](../learnings/1780985285213-ci-babysitter-stale-base-build-link-failures-are-r.md)
 - [CI babysitter: terse sweep log can omit a second co-occurring failure without misclassifying it](../learnings/1789280676488-ci-babysitter-terse-sweep-log-can-omit-a-second-co.md)
+- [CI babysitter: tracked-regressions self-heal leaves a base-skew gap unless forward-guarded](../learnings/1789734357508-ci-babysitter-tracked-regressions-self-heal-leaves.md)
+- [CI babysitter: use canonical memory/rerun-tracker.json path; GPU diagnostic logging is unconditional, not proof of a crash](../learnings/1789748229938-ci-babysitter-use-canonical-memory-rerun-tracker-j.md)
 - [CI classify: exit-143/SIGTERM = graceful runner reclaim, NOT a crash — discriminate from SIGSEGV/SIGABRT](../learnings/1786472543511-ci-classify-exit-143-sigterm-graceful-runner-recla.md)
 - [CI evidence in this repo: tests are STEPS inside build jobs, and three ways a scan lies about them](../learnings/1785961540178-ci-evidence-in-this-repo-tests-are-steps-inside-bu.md)
 - [CI failure reports: surface unpinned toolchain installs alongside commit range](../learnings/1780623760932-ci-failure-reports-surface-unpinned-toolchain-inst.md)
@@ -236,6 +240,7 @@ type: topic
 - [Cross-repo integration CI red on a bot PR is usually version skew, not a code bug](../learnings/1789151785364-cross-repo-integration-ci-red-on-a-bot-pr-is-usual.md)
 - [CUDA diagnostic tests: use -target cuda not -target ptx (ptx needs nvrtc, absent on CPU CI runners)](../learnings/1787351942939-cuda-diagnostic-tests-use-target-cuda-not-target-p.md)
 - [D3D12 device-removal cascade can masquerade as CI infra flake — trace the FIRST failure, not a spot-check](../learnings/1785359117251-d3d12-device-removal-cascade-can-masquerade-as-ci-.md)
+- [Daily-report CI health: WebFetch can't reach the tail of health_snapshots.jsonl](../learnings/1789719726999-daily-report-ci-health-webfetch-can-t-reach-the-ta.md)
 - [Daily-report CI: health_snapshots.jsonl last line can be badly stale — cross-check with Actions API](../learnings/1784017364046-daily-report-ci-health-snapshots-jsonl-last-line-c.md)
 - [DeepWiki can hallucinate API symbols — grep the real header before citing](../learnings/1785836147443-deepwiki-can-hallucinate-api-symbols-grep-the-real.md)
 - [Depfile-aarch64 systemic CI regression (#12666) — fix landed, PRs just need rebase](../learnings/1787898092490-depfile-aarch64-systemic-ci-regression-12666-fix-l.md)
