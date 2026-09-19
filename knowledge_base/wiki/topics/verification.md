@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-528 learnings. [Catalog](../index.md)
+530 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -299,6 +299,7 @@ type: topic
 - [Correction: formatting.sh --md is not mutually exclusive with other selectors (--md --cpp runs both)](../learnings/1786083647383-correction-formatting-sh-md-is-not-mutually-exclus.md)
 - [CORRECTION: getRootAddr + field-key check is branch-dependent (live on resource-load path, dead on plain-Load path)](../learnings/1789445655724-correction-getrootaddr-field-key-check-is-branch-d.md)
 - [CORRECTION: gh search date filters fail three different ways — pre-encoding %3E%3D is the WRONG fix for -f, and a missing colon silently returns a plausible wrong number](../learnings/1786137952135-correction-gh-search-date-filters-fail-three-diffe.md)
+- [Correction: globallycoherent/volatile on a read-only SRV is meaningless — CSE of repeated SRV reads is sound](../learnings/1789755138287-correction-globallycoherent-volatile-on-a-read-onl.md)
 - [CORRECTION: maintainer-authored tracking issue still gets the 5-bullet — the no-post exception is process/meta ONLY](../learnings/1786366151304-correction-maintainer-authored-tracking-issue-stil.md)
 - [CORRECTION: mutation testing does catch a wrong-reason pass — if you mutate what your CLAIM names, not what your ASSERTION names](../learnings/1786216749315-correction-mutation-testing-does-catch-a-wrong-rea.md)
 - [Correction: re-authoring commits changes every SHA — `--is-ancestor false` is not evidence of a discarded head](../learnings/1785968989554-correction-re-authoring-commits-changes-every-sha-.md)
@@ -347,6 +348,7 @@ type: topic
 - [For an error-handling / dispatch fix, "it compiles now" is the wrong success claim — a wrong-handler dispatch also compiles](../learnings/1785921261355-for-an-error-handling-dispatch-fix-it-compiles-now.md)
 - [Forward-reference memory rot: an index hook whose child predates the claim passes every structural check](../learnings/1785784698148-forward-reference-memory-rot-an-index-hook-whose-c.md)
 - [Four errors, one shape: we verified a proxy instead of the thing](../learnings/1785775797519-four-errors-one-shape-we-verified-a-proxy-instead-.md)
+- [gh 'token invalid' is usually cosmetic — verify before escalating a credential blocker to the operator](../learnings/1789716532319-gh-token-invalid-is-usually-cosmetic-verify-before.md)
 - [gh auth status 401 is a FALSE NEGATIVE for nv-slang-bot App token — verify via a real write, never a probe](../learnings/1783388957871-gh-auth-status-401-is-a-false-negative-for-nv-slan.md)
 - [git log -S on a shallow clone silently returns confident false positives](../learnings/1785889287172-git-log-s-on-a-shallow-clone-silently-returns-conf.md)
 - [git push --dry-run is a false-positive for the GitHub-App workflows-permission wall](../learnings/1780572980623-git-push-dry-run-is-a-false-positive-for-the-githu.md)

@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6292 agent learnings**, synthesized into **445 concept pages**.
+Standalone wiki built from **6325 agent learnings**, synthesized into **446 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -213,6 +213,7 @@ Standalone wiki built from **6292 agent learnings**, synthesized into **445 conc
 - [Reproducing a Cause, Not a Story](concepts/general-misc-reproducing-a-cause.md)
 - [Resume and Compaction Drift: Re-Ground on Live State Before Acting](concepts/general-misc-resume-and-compaction-drift.md)
 - [Slang Compiler Technical Findings](concepts/general-misc-slang-compiler-technical.md)
+- [SlangPy / SGL Runtime and GPU Device-Loss Triage](concepts/general-misc-slangpy-runtime-and-gpu-triage.md)
 - [Stale Pointers and Regression Checks](concepts/general-misc-stale-pointer-and-regression-checks.md)
 - [Tracker and Scheduler Hygiene](concepts/general-misc-tracker-and-scheduler-hygiene.md)
 - [Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Revision](concepts/general-misc-version-and-timestamp-reads.md)
@@ -501,10 +502,10 @@ Standalone wiki built from **6292 agent learnings**, synthesized into **445 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1644)
-- [NanoClaw / agent operations](topics/agent-ops.md) (713)
-- [CI, build & tooling](topics/ci-tooling.md) (483)
-- [Review & process](topics/review-process.md) (292)
+- [Slang compiler & language](topics/slang-compiler.md) (1658)
+- [NanoClaw / agent operations](topics/agent-ops.md) (720)
+- [CI, build & tooling](topics/ci-tooling.md) (488)
+- [Review & process](topics/review-process.md) (293)
 - [PR review, approval & calibration](topics/review-approval.md) (1409)
-- [Verification & evidence discipline](topics/verification.md) (528)
-- [Uncategorized](topics/misc.md) (1223)
+- [Verification & evidence discipline](topics/verification.md) (530)
+- [Uncategorized](topics/misc.md) (1227)

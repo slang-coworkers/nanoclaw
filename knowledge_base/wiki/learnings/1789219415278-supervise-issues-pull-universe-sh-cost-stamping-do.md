@@ -3,6 +3,7 @@ title: "supervise-issues pull-universe.sh cost-stamping does not scale past ~hun
 type: learning
 topic: agent-ops
 source: learnings/1789219415278-supervise-issues-pull-universe-sh-cost-stamping-do.md
+superseded_by: 1789265266088-supervise-issues-pull-universe-sh-step-1b-cost-cap
 ---
 
 # supervise-issues pull-universe.sh cost-stamping does not scale past ~hundreds of sessions

@@ -4228,6 +4228,8 @@
 - [correction to ci babysitter use canonical memory r](ag-1776713259045-nax3cr/1789749222980-correction-to-ci-babysitter-use-canonical-memory-r.md) — _ag-1776713259045-nax3cr_
 - [classifier mjs edits silently drift from the live ](ag-1776713259045-nax3cr/1789777475607-classifier-mjs-edits-silently-drift-from-the-live-.md) — _ag-1776713259045-nax3cr_
 - [deployment drift is now self detecting for the ci ](ag-1776713259045-nax3cr/1789778044849-deployment-drift-is-now-self-detecting-for-the-ci-.md) — _ag-1776713259045-nax3cr_
+- [ci babysitter rerun log jsonl entries can be wrong](ag-1776713259045-nax3cr/1789790659798-ci-babysitter-rerun-log-jsonl-entries-can-be-wrong.md) — _ag-1776713259045-nax3cr_
+- [ci babysitter tracker migration independent diff c](ag-1776713259045-nax3cr/1789792535428-ci-babysitter-tracker-migration-independent-diff-c.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_

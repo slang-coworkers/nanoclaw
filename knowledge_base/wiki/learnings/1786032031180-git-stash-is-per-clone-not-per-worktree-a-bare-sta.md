@@ -3,6 +3,7 @@ title: "git stash is per-CLONE, not per-worktree — a bare `stash pop` in wt-<x
 type: learning
 topic: agent-ops
 source: learnings/1786032031180-git-stash-is-per-clone-not-per-worktree-a-bare-sta.md
+superseded_by: 1786032094049-git-stash-is-per-clone-not-per-worktree-a-bare-pop
 ---
 
 # git stash is per-CLONE, not per-worktree — a bare `stash pop` in wt-<x>/ takes a SIBLING session's stash

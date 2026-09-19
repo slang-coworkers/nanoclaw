@@ -202,6 +202,7 @@ type: nav
 - [Reproducing a Cause, Not a Story](concepts/general-misc-reproducing-a-cause.md)
 - [Resume and Compaction Drift: Re-Ground on Live State Before Acting](concepts/general-misc-resume-and-compaction-drift.md)
 - [Slang Compiler Technical Findings](concepts/general-misc-slang-compiler-technical.md)
+- [SlangPy / SGL Runtime and GPU Device-Loss Triage](concepts/general-misc-slangpy-runtime-and-gpu-triage.md)
 - [Stale Pointers and Regression Checks](concepts/general-misc-stale-pointer-and-regression-checks.md)
 - [Tracker and Scheduler Hygiene](concepts/general-misc-tracker-and-scheduler-hygiene.md)
 - [Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Revision](concepts/general-misc-version-and-timestamp-reads.md)

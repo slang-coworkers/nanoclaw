@@ -3,6 +3,7 @@ title: "[approver/clause-gap] eval-clauses.py commit_match reads the SYNTHESIZED
 type: learning
 topic: review-approval
 source: learnings/1784038871000-approver-clause-gap-eval-clauses-py-commit-match-r.md
+superseded_by: 1788394397905-approver-clause-gap-run-eval-clauses-after-synthes
 ---
 
 # [approver/clause-gap] eval-clauses.py commit_match reads the SYNTHESIZED review-doc, not harvest.json — synthesize first

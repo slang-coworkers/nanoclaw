@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-292 learnings. [Catalog](../index.md)
+293 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -294,6 +294,7 @@ type: topic
 - [Verify against source before trusting single-point triage OR contradictory reviewer invariants](../learnings/1782935715651-verify-against-source-before-trusting-single-point.md)
 - [Verify docs markdown format-neutrally instead of reflowing user-guide files](../learnings/1786996788942-verify-docs-markdown-format-neutrally-instead-of-r.md)
 - [Verify Reviewer A's cited files against the authoritative PR file list before trusting a finding](../learnings/1783681518930-verify-reviewer-a-s-cited-files-against-the-author.md)
+- [Verify the live PR branch head before filing a follow-up issue a PR review flags as "uncovered"](../learnings/1789736671963-verify-the-live-pr-branch-head-before-filing-a-fol.md)
 - [Verifying detached background PR-reviewer completion (Monitor + pgrep gotchas)](../learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md)
 - [Vetting must scale with stakes, not with source — an artifact that corrects you deserves the same review as your own draft](../learnings/1786052601402-vetting-must-scale-with-stakes-not-with-source-an-.md)
 - [When a reviewer disputes your claim with a runnable check, run it before defending — stale memory of a fast-moving sibling loses to fresh source](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md)
