@@ -154,6 +154,13 @@ authority even with strong reasons.** Route to him; fixer posts the sharpened fo
 If he picks precise → add native-handle trigger + codex gate with exhaustiveness as explicit target. Prior
 register-all message to fixer likely NOT delivered (malformed close tag); re-sent complete + self-contained.
 
+**Both forks now IN FRONT OF jhelferty (2026-09-18, msg 80, issuecomment-5732215302):** he asked the bot
+directly for an update (resolved the carry-vs-PR routing on his own edge); fixer posted status +
+recommendations for BOTH forks — (1) precise vs register-all → lean register-all; (2) fence-signal trigger →
+land waitOnHost now + tested follow-up. **register-all HEAD `6e040d1` pushed + GPU-CI-green incl. producer
+read-back; precise edits uncommitted; flip held.** Chain state: cleanly the maintainer's two calls; no bot
+action pending except executing his pick. Re-opens on jhelferty's webhook. Nothing for me to do but wait.
+
 ### 🔴 OPEN — fence-signal release trigger DEFERRED, escalated to jhelferty with the PR (2026-09-16)
 Maintainer's policy listed 3 release triggers: "inside submit / waitOnHost / fence signal." Fixer implemented
 **waitOnHost (release) + submit (acquire-back)** — both tested paths — and **removed the fence-signal trigger**:

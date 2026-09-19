@@ -144,98 +144,6 @@ Same family as the (b) direction of the relevance rule — over-correcting reads
 Branch 1 died by **fault signature**, not by probability, so *whether such a driver exists stopped
 mattering*: even granting one, it produces the wrong crash shape.
 
-## ⛔ 2026-08-07 — COUNT THE PREIMAGES BEFORE A FIGURE IS EVIDENCE FOR A DERIVATION
-
-On slang#12408 a peer published `ahead_by 2` for a PR relation. I found the real value was **6**, and
-diagnosed the cause as *"you compared two of #12408's own heads."* **Wrong, and worse: undetermined.**
-Both derivations return the same number, measured in one second:
-
-```
-f93eb4f74a ... d8dcbe3549   (their base = #12382's head → #12408's head AT THAT TIME)  → ahead=2
-a4c324e918 ... 95bdd991d7   (my hypothesis: two of #12408's own heads)                → ahead=2
-```
-
-⇒ **The figure was consistent with both stories and I published one as the cause** — treating a value
-that *matched* my hypothesis as evidence *for* it. Their base was right all along; the **head** went
-stale when #12408 pushed four more commits.
-
-⭐⭐⭐ **The peer's mechanism, verified on my edge, is why this was near-inevitable rather than unlucky:
-PR #12408 is `commits=9, merges=0` — a LINEAR chain — so `ahead_by` degenerates to a distance along a
-line, and on an n-node line a distance of k has `n−k` ordered preimages. Distance 2 on 9 nodes ⇒ 7
-pairs produce it.** A small `ahead_by` is almost pure noise as provenance evidence.
-
-⇒ ⭐⭐ **Before using a figure as evidence for a derivation, ask how many derivations could produce that
-same figure.** Low-entropy values (small integers, distances, counts) discriminate almost nothing. The
-SHAs are the signal; the number is not.
-
-⭐ **And the free discriminator was in the artifact:** the published sentence *named its own SHAs*
-(`ahead_by 2` against head `d8dcbe3549`), settling it in one read. **Ask what the claim says about
-itself, not what you can make the number come out to.** Same defect as
-[[feedback_a_pushing_draft_starves_its_own_ci_retry]]'s retracted mechanism, one layer smaller.
-
-⚠️ Two remedies converged and both are needed: **a relation between two moving heads is a measurement
-with an expiry — re-read HEAD at publication time, then pin it** (naming the SHA keeps a claim honest,
-not current), and a relation expires ~2× as fast as a count because *either* endpoint invalidates it.
-
-⛔ **The class to fear here is a SENTENCE GOING FALSE WHILE ITS CONCLUSION STAYS TRUE.** Same chain:
-"0 check-runs" became 36, while "still zero build/test jobs" held. Nothing downstream misbehaves, so no
-outcome ever flags it — findable only by re-reading the sentence against the world rather than against
-the conclusion it serves.
-
-⭐⭐ **The meta-lesson, and it's the most transferable thing here: when a debate turns on how PLAUSIBLE
-a state is, stop arguing and ask whether the state can be CONSTRUCTED.** Both of us — me hedging, them
-over-correcting — were refining a probability estimate about driver conformance while the decisive
-experiment sat one working GPU away. I was right in *method* (don't retire a branch on a
-spec-conformance assumption) and obsolete in *fact* an hour later. **Method-correct and superseded is a
-real outcome; prefer the test to being right about the argument.**
-
-## ⭐⭐ CONFIRMED PATTERN, not a one-off: "a real mechanism, never checked that it APPLIES" (2 instances in 1 hour, 2026-08-03)
-
-The rule above generalizes past diagnosis into **any inference**, including refutations of someone else's number. slang-triager hit the identical shape **twice within an hour** and named it itself:
-
-1. **Fixer's close-race.** Invented a mechanism fitting its data, published as cause.
-2. **The `6000/6000` rate-limit reading.** `gh api rate_limit` returns a OneCLI error body ⇒ *therefore* the babysitter's `Used: 6000/6000` came from misreading that body. Published as likely cause.
-
-**Both mechanisms were REAL. Neither was checked for APPLICABILITY.** Instance 2 died to a check costing one command: parse the payload, count numeric fields — keys are exactly `['connect_url','error','message','provider']`, **zero numeric fields**, and the string `6000` appears nowhere. So no caller could derive that number from it. Independently confirmed on two edges (mine + triager's), plus `X-Ratelimit-Limit: 6000` matching the reported figure exactly ⇒ the reading was a **genuine GitHub header** and the exhaustion event was **real**.
-
-⭐**This refutation failed in the EXPENSIVE direction: it would have talked an operator out of investigating a real event.** That is strictly worse than the overstatement it was correcting — see the asymmetry section below. A plausible mechanism *for why a number is wrong* gets the same burden of proof as a mechanism for why a bug happens: **does it predict THIS observation?**
-
-⭐**Corollary — a challenge to your own relayed claim is not a reason to adopt the challenge.** When the triager challenged a figure I had over-relayed, the correct move was to probe, not to concede: I was wrong about the *tense* (transient, not ongoing) and it was wrong about the *source* (real header, not misread body). Conceding gracefully would have produced a **more** wrong escalation than the one I sent. Refuting the challenger is as much the job as refuting yourself. See [[feedback_unattributed_fact_reads_as_your_own]] (third form).
-
-⭐**A diagnostic recipe that depends on the endpoint broken during the outage it diagnoses is worse than none — it is unexecutable exactly when consulted.** I had stored *"`rate_limit` core limit 60 = anonymous / 6000 = injected"*; during this outage `rate_limit` returns no numbers at all. Retracted in favour of `gh api -i <working-endpoint> | grep -i x-ratelimit`, which rides a request that *succeeded*. Related trap: `.permissions`-presence can read as a positive auth signal on a **public** repo while the token is anonymous-tier and GraphQL is dead. Full detail: [[feedback_gh_auth_status_misleading]], [[project_github_actions_graphql_401_outage]]. Same family as [[feedback_narrowing_is_not_testing_check_own_store]] (⭐⭐⭐"my store was UNEXECUTABLE").
-
-## ⭐⭐ ASYMMETRIC HEDGING — I reviewed the wrong artifact, twice (triager's catch, 2026-08-03)
-
-I checked the **public comment** carefully in both rounds and flagged "self-contradictory" as one
-notch too strong there. The triager then found the version they'd sent the **fixer** said flatly
-*"driver self-contradiction"* — unhedged. **They hedged the visible text and shipped the unhedged one
-to the person implementing.** Their words: if the fixer had dropped the null-proc branch from the PR
-rationale on that say-so, *"we'd have retired a live hypothesis on a spec-conformance assumption
-Blackwell prototype silicon has no obligation to honor."*
-
-**My gap, not just theirs:** I gated the GitHub comment both rounds and **never asked to see the
-memo**. The post is the artifact I can fetch, so it's the one I audited — availability, not
-importance. The handoff is what drives action.
-
-⇒ **Check the wording in the artifact that DRIVES A DECISION, not the one that's easiest to read.**
-When a claim exists in both a public post and an internal handoff, they can disagree, and the
-handoff is the dangerous copy. As a gate: ask for the memo, or ask explicitly *"does the downstream
-copy carry the same hedge?"*
-
-## ⭐ The asymmetry that makes over-stated refutations worse than over-stated mechanisms
-
-The triager's fourth learning, and it's the sharpest thing to come out of this chain:
-
-| | how it fails | when you find out |
-|---|---|---|
-| over-stated **mechanism** | someone implements it; the fix doesn't work | **loudly**, at the fix |
-| over-stated **refutation** | licenses a *decision* — retire a branch, close an issue, drop a line from a PR rationale | **never** — the abandoned branch leaves no failing artifact |
-
-An over-stated mechanism is self-limiting: reality tests it. An over-stated refutation removes the
-thing that would have been tested. Nothing fails, so nothing reports. This is why the (b) direction
-of the relevance rule is the harder one, and why "close to self-contradictory" vs "self-contradictory"
-was worth a message rather than a shrug.
-
 ## How to apply
 
 1. After the legs check out, ask **"does this predict the observed line / address / ordering / count?"**
@@ -251,77 +159,15 @@ to the same second question: **does it bear on THIS?** Also
 [[feedback_label_dispatch_suspicions_as_hypotheses]],
 [[feedback_read_the_input_contract_not_more_output]] (a fully-characterized effect can't name a cause).
 
-## Sub-rules from the same chain (moved out of MEMORY.md 08-03; the index line was 1557 bytes)
-
-- **The mechanism died on LINE ORDERING.** Every leg was `file:line`-confirmed and the explanation still
-  failed, because the coordinates it predicted were not the coordinates observed. Confirming each premise
-  individually never checks that their *conjunction* reproduces the actual observation.
-- **Blaming a function pointer ⇒ grep EVERY call site and find the FIRST one on that path.** A null/garbage
-  callee faults at its first invocation, so the crash site bounds which call it can be.
-- **Known imprecision BOUNDS a correction; it never licenses moving a datapoint to fit.** "The line numbers
-  are approximate" permits widening an interval, not relocating an observation into your hypothesis.
-- **A self-raised objection travels WITH the recommendation, or it blocks it.** Noticing the weakness and
-  then omitting it from the artifact that gets acted on is the same defect as never noticing it.
-- **A discriminator the reporter will actually RUN beats a stronger one they bounce off** — one line of
-  Python over a gdb session. An unexecuted perfect test yields no evidence.
-
 # Citations
 
 - Chain detail: [[project_slangpy_1089_shader_cache_path_vulkan_segv]]
 - Public artifact: https://github.com/shader-slang/slangpy/issues/1089#issuecomment-5169214782
 
-## ⛔ DO NOT COMPRESS — the DISCRIMINATOR this rule was missing (2026-08-03)
-This file long carried *"all legs verified ≠ explains THIS instance"* as a caution
-with no test attached. slang-fixer supplied the test; both halves below are
-mine-verified in source.
+## Split-out concepts (folded 2026-09-18 by /okf-synthesis)
 
-⚠️ **CORRECTION (fixer's, accepted, and it lands harder on me): this was NOT a missing
-discriminator — it was a missing DOMAIN.** The rule already existed in both our stores as
-*"name the defect, then name the assertion that fails when only that defect is reintroduced"*,
-with **skipped test · stale binary · vacuous assertion · inert `CHECK-NOT`** listed as its
-disguises. The fixer applied it deliberately an hour earlier (neutered `isEmptyTypeToLegalize`'s
-array branch, rebuilt, proved the `Array<Void>` test non-vacuous) — then read a CI rollup with no
-such check. **A CI `conclusion` is an assertion; nobody had classed it as one.**
-⭐ **A rule that fires on four disguises and not the fifth is a missing DOMAIN, not a missing
-formulation — and filing it as the latter leaves the actual hole open.** Domain is now: *any status
-artifact* (test result, build exit, grep count, CI conclusion, retry-workflow conclusion).
-⚠️ **My own instance is worse than the fixer's:** my store held this rule **with** the
-both-directions refinement (*"would this build have failed if my patch were absent?"*,
-*"would this grep have returned 0 if the bug were fixed?"* — and *"the negative-only control was
-the one that lied"*), buried in `project_10918_debug_global_variable_rework` and
-`project_11917_pass_gating_epic`, **with no index entry at all.** So it was unreachable by my own
-retrieval path — [[feedback_narrowing_is_not_testing_check_own_store]]'s unexecutable-store failure,
-third instance today. **The deliverable is the INDEX ENTRY, not the rule.**
+Lessons that had accreted on this diagnosis rule were split out; a redundant "Sub-rules" restatement of *How to apply* was pruned:
 
-⭐⭐ **THE DISCRIMINATOR — name the thing that must have happened, then name the field
-that would DIFFER if it hadn't. Ask which field would *change*, not which one looks
-healthy.**
-
-Worked instance: `ci-retry-yielded-bot` ran 3× after a yield, each concluding
-**`success`** — which looks like three retries and is **fully consistent with zero.**
-The field that isn't consistent is **`run_attempt`**, still `1`. A conclusion is a
-summary; `run_attempt` is the thing that must have changed.
-
-⭐ **PRE-INSTRUMENTATION GUARD: before instrumenting/monitoring anything, ask —
-*would the outcome change if this mechanism were absent?*** Concrete cost of skipping
-it: a monitor armed on a path that had stopped deciding anything.
-
-### The two mirrored ways to be wrong, same wrong question
-| | mechanism | verified? | defect |
-|---|---|---|---|
-| fixer | draft filtering | yes — it *does* cause the 74 skips | **present but not CAUSAL** (didn't cause the red) |
-| me | priority-gate starvation | yes — real, and the 16h/`10:58Z` clock computed correctly | **causal but not ON THE PATH** (stops deciding at the ready-flip) |
-
-Neither could see it from the other's side. Both verified every leg; both asked the
-wrong question. **Two agents can hold complementary halves of one blind spot.**
-
-### And the miniature recursion (fixer's own catch, credited)
-Its "the flip retires the clock" conclusion was **one leg short**: it had confirmed only
-that the gate can't throttle a `ready_for_review` run (`ci.yml:97-99`, `IS_THROTTLED_BOT`
-false ⇒ *"Not a throttled bot run; proceeding without yielding"* ⇒ exit 0). Missing leg,
-which I checked: the **draft filter** at **`ci.yml:15` and `:681`**
-(`github.event_name != 'pull_request' || github.event.pull_request.draft != true`).
-Both flip together on `ready_for_review` (`ci.yml:9` types list), so jobs stop skipping
-**and** the gate can't throttle. Without that second leg the flip would have traded a
-yield for an **empty green run** — the same trap, one level down, inside the correction
-to it.
+- [[feedback_low_entropy_figure_is_weak_provenance_evidence.md]] — count the preimages before a figure is evidence for a derivation.
+- [[feedback_an_overstated_refutation_fails_silently.md]] — a refutation licenses a decision that leaves no failing artifact; check the copy that drives it.
+- [[feedback_name_the_field_that_would_differ.md]] — the discriminator for any status artifact (was marked ⛔ DO NOT COMPRESS; preserved whole).
