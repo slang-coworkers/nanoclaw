@@ -108,217 +108,68 @@ instead of inheriting it. Same rule this chain already recorded once
 ([[feedback_never_state_a_peers_filesystem_figure_as_measured]] measured the mirror case: *anchor the
 matcher to every form the data uses*), re-earned on a different artifact.
 
-### ✅ STORE-WIDE MEASUREMENT (mine, 08-05) — the exposure is 100× the single-index figure
+## A trigger goes stale when the resolution path changes — rewrite it, don't append
 
-The peer reported the **inverse** mix on their store (0 wikilinks / 64 markdown / 16 backticked bare
-paths) and, sharper, that **8 of their targets are reachable ONLY as backticked bare paths** — including
-their own `triage-12364.md` — so a `](…)`-form matcher would report all eight as orphans. **Attributed,
-not verified: their filesystem, which I cannot read.**
+*Folded in 2026-09-18 from the correction-sweep file (this is the canonical resume-trigger home; no rival keyed file). This is a fourth failure shape adjacent to the modes above: the predicate names an event that can no longer occur, so nothing looks wrong while the tripwire is dead.*
 
-So I measured mine properly, store-wide rather than on the one index:
+A 6th sweep class, found 2026-08-03 by slang-triager and confirmed in my own store the same turn.
 
-| form | my store |
-|---|---|
-| real memory targets linked at all | **550** |
-| reachable **only** via `[[wikilink]]` | **133** |
-| reachable **only** via the `](…)` markdown form | **104** |
-| reachable **only** via `` `name.md` `` | **0** |
+**The failure:** a chain's trigger was written *pre-resolution* ("await a substantive reply from
+skiminki-nv"). Then the resolution arrived from a different direction — his **#12324** carried the
+direction and our **#12234 closed unmerged**. The row still reads *"HELD, with a resume condition,"*
+so **nothing looks wrong** — but the named event can no longer occur, and a live tripwire attached to
+it (his `Fixes #12233` is a one-digit typo, so #12223 will not auto-close) would never fire.
 
-⇒ **A wikilink-only probe would silently drop 104 files; a markdown-only probe would drop 133.** My
-earlier single-index figure (10 / 6 / 1) understated the exposure by two orders of magnitude — ⭐⭐ **a
-syntax census on one file is not a census of the store, and the number that matters is
-reachable-only-by-form, not form-frequency.** The one backticked path on my CI index turned out to be
-`index.md` in prose — **not a memory target at all**, so unlike their store I have zero backtick-only
-targets. **Same check, opposite answers, which is exactly why it had to be run on both sides rather than
-shared as a figure.**
+✅**POSTSCRIPT 2026-08-04 — that example tripwire is DISCHARGED** (#12324 body corrected by the author
+08-03 15:29Z; `closingIssuesReferences` → #12223, so it auto-closes on merge).
 
-✅ **My bare-filename probes remain correct** — but the margin was 237 files, not 6, and it was still
-**immunity by construction rather than by design.**
+⚠️**I first wrote this postscript claiming "the author fixed it himself — a tripwire can be discharged
+by someone who NEVER SAW IT." I checked, and that mechanism is FALSE.** He was responding to a flag:
+`github-actions[bot]`'s PR review `4845259301` (08-03 14:38Z) listed *"1 wrong linked-issue reference"*,
+and his fix comment quotes its wording back verbatim. **Our own `nv-slang-bot` had also flagged it —
+on the issue, comment `5167730436` at 14:33Z.** ⇒ ⭐⭐⭐**I NEARLY PUBLISHED A TIDY CAUSAL STORY INSIDE
+A LESSON ABOUT VERIFICATION, IN THE CORRECTION SLOT — the exact place
+the *a fix inherits the burden of proof* rule ([[slang-evidence-lessons-measurement-rows]]) says scrutiny dies.** The plausible mechanism cost one
+API call to refute.
 
-#### ⛔ THE DISK CONTROL IS MANDATORY — their finding, and it reproduces on my store IN THE EXTREME
+⭐⭐**The REAL lesson is worse than a stale trigger: the stored instruction "flag the typo when #12324
+merges" was ALREADY REDUNDANT AT THE MOMENT IT WAS WRITTEN (~15:07Z) — we had posted that exact flag
+34 minutes earlier (14:33Z).** So the tripwire wasn't merely stale, it was armed to **duplicate our own
+public post** — and since issue-comment edits `403` for this token, the duplicate would have been
+**permanent**. ⇒ **Before storing a "flag X later" trigger, check whether the fleet ALREADY flagged X;
+a note that records an intent, written after the act, reads as un-acted-upon forever.** Same family as
+the standing rule *"read the thread tail before posting; surfacing a finding upward is NOT authorization
+to post it"* — here the hazard was one tier earlier, at ARMING time rather than firing time.
 
-They re-ran this store-wide on their side and flagged the control I had applied **silently**: of 113
-tick-only targets on their store, **only 33 exist on disk** — the other 80 are **prose mentions** (doc
-filenames, learning ids). Without `∩ exists-on-disk`, the exposure reads **3.4× worse than it is**.
+⇒ **Re-verify a tripwire's PREDICATE at fire time against the live artifact, not the note that armed
+it** ([[feedback_a_live_artifact_read_is_a_measurement_with_a_timestamp]]). Note the illustration is
+itself a restatement: discharging this required editing **4 files** (chain note ×3 positions, parked
+index, this lesson) — the whole-file-sweep rule applied to a **discharge**, not a correction.
 
-**Reproduced on mine, where the effect is total:**
+⇒ **When the resolution path changes, REWRITE the trigger; do not just append the new state.** Append
+the new one and the stale one still reads as current to the next reader. Mark the old explicitly:
+`⚠️SUPERSEDED trigger — do not act on it` + `✅CURRENT RESUME = …`.
 
-| | uncontrolled | ∩ on-disk |
-|---|---|---|
-| backtick-only | **89** | **0** |
-| wikilink-only | 158 | **130** |
-| markdown-only | 104 | **103** |
+**Same shape as** [[feedback_shared_index_is_generated_use_shared_root]]'s self-expiring note that
+does not expire itself: the condition names an event, and nobody re-checks whether the event is still
+reachable.
 
-⇒ **My published "0 backtick-only" was right, and right for a reason I never stated.** I applied
-`&files` in the query and reported the output; the uncontrolled figure was **89**. So my "0" read as a
-property of *my store* when it was a property of *my method* — and a peer re-deriving it without the
-control would have gotten 89 and concluded we disagreed. ⭐⭐⭐ **Publish the control, not just the
-controlled number: an unstated filter makes a correct figure irreproducible and turns a methodological
-difference into an apparent factual dispute.** Exactly the shape of this chain's earlier 69/7-vs-220
-episode, where an unpublished upper bound sent a peer's 70,125-window sweep hunting a target its search
-space could not express.
-⚠️ **And my published DENOMINATOR was genuinely uncontrolled:** I said *"550 linked targets."* Measured:
-**551 uncontrolled, 520 on disk** — 31 prose mentions inflating it. Small, but it is the same defect I
-was crediting them for catching.
-⇒ **Corrected rule: `reachable-only-by-form ∩ exists-on-disk`, and state both terms.** "Count
-reachable-only-by-form" alone still inflates — their sharpening of my own sharpening.
+### ⭐⭐ RECENCY OF EDIT beats any keyword probe as a defect predictor
 
-⚠️ **Their second point is the one that kills single-file sampling outright:** their index showed **0
-wikilinks** while their store has **34 wikilink-only targets** — so a one-file census is not merely
-imprecise, it **inverted**. ⇒ ⭐⭐ **The direction of a single-file sampling error is not predictable, so
-you cannot even use one file as a conservative bound.** That is stronger than my "not a census of the
-store," which left room for treating it as a floor.
-⚠️ **Their figures are attributed, not verified** (their filesystem). Mine are measured. **Fourth
-opposite answer from the same check** — their 33 tick-only vs my 0, their 34 wiki-only vs my 130 ⇒
-**run it per store, never inherit the figure.**
+Both of us swept for trigger-less rows; both sweeps misfired the same way (searching for the literal
+label `RESUME` instead of the *substance* — the marker-count proxy error, flagging rows whose triggers
+were spelled `AWAITING …`, `held-r`, `MAINTAINER-GO→fixer`). The signal that actually worked:
 
-⭐ **Their two-part-fix framing is sharper than mine and I have adopted it:** the predicate and the DoD
-are **each necessary** — *"a predicate alone re-opens a chain with nothing recorded to do; a DoD alone is
-never read because nothing wakes you."* I had recorded the pair as good practice; that states why neither
-half works without the other.
-✅ **They also declined to add an index row after finding the file reachable at depth 2** (via a parent at
-offset 16,551, above the cut) — correct, and the same discipline I applied this chain: **a correct
-observation does not oblige a write**, and on an index whose size is itself contested every edit has a
-cost.
+> **The one genuine gap was in a row that had just been edited; every false alarm was in a row nobody
+> had touched.**
 
-## ⛔⭐⭐⭐ 2026-08-05 — THEIR `unevaluable` RULE APPLIED TO MY OWN CLOSURE PROBE, AND IT FOUND A BOUND DEFECT
+⇒ After index surgery, **audit what you just changed first** — and specifically ask *"is this row's
+trigger still reachable?"*, not *"does this row contain the word RESUME?"* Cheap, ordered by
+likelihood, and it does not depend on guessing the vocabulary.
 
-They recorded the `unevaluable` remedy with a concrete instance: their closure sweep printed a depth-2 arm
-firing **0/21** and they read the run as clean — *"an arm with zero hits ABSTAINED, it didn't vote."*
-⇒ **print each arm's yield, or "no findings" is indistinguishable from "no measurement."**
+## Split-out concepts (folded 2026-09-18 by /okf-synthesis)
 
-**Ran that on my own probe, which I used ~12 times this chain.** Both arms fired (direct 63, depth-2 298),
-so mine were not abstaining. **But printing the yields exposed a different defect: the depth-2 BOUND
-itself.**
+The store-reachability probe measurement log that had accreted below the trigger taxonomy was split into its own concepts:
 
-| | measured |
-|---|---|
-| linked targets on disk | 520 |
-| reachable within **depth 2** | 322 |
-| "dark" by my depth-2 probe | **198** |
-| reachable at **any** depth (BFS to fixpoint) | **510** |
-| **genuinely unreachable** | **10** |
-
-Depth profile: `+259, +148, +29, +6, +3, +1, +1, 0` — the graph is **7 levels deep**, so a depth-2 cutoff
-misclassified **188 reachable files as dark**. ⇒ ⭐⭐⭐ **My probe reported a 20× inflated failure count and
-I never noticed, because I only ever asked it about the 2-3 specific children I had just touched — and for
-those, depth 2 was always enough.** A bound that is correct on every case you test is not a validated
-bound; it is an **untested bound with a lucky sample**. ⇒ **Run the closure to FIXPOINT, and print the
-depth profile — the profile is what reveals the cutoff was wrong.**
-⚠️ **This is the mirror of the enumeration lesson above, one level down:** modes 1-3 are clause defects,
-mode 4 is a set defect, and **this is a *parameter* defect — the arms were right, their cutoff wasn't.**
-Nothing about inspecting the arms reveals it.
-
-✅ **Consequence measured, not assumed — and it is benign:** all **10** genuinely-dark files are
-**terminal** (`SHIPPED` / `MERGED` / `CLOSED` / `TERMINAL`): `project_11859…`, `project_11957…`,
-`project_12048…`, `project_12108…`, `project_12153…`, `project_12211…`,
-`project_nanoclaw_pr875/876/877…`, `project_slangpy_1075…`. **No live chain is dark**, so no #11616
-recurrence and no urgent repair. ⇒ ⭐⭐ **Report the consequence (is a LIVE obligation unreachable?), never
-the proxy (how many nodes failed a bound)** — this store's standing rule, and the 198 would have read as
-an emergency.
-
-⭐ **Their report-level extension is the right generalization and I have adopted it:** the instrument fix is
-`unevaluable`; **the report fix is the same act — say which part you measured and which you could not.**
-Every human-facing failure in this chain was also a partial result wearing an answer's shape (a refuted
-premise inside a correct issue body; a retracted number surviving in a peer's later evidence).
-
-## ⭐⭐ 2026-08-05 — THEIR THREE PROBE BUGS, TESTED AGAINST MINE: 1 absent arm, 0 consequence, and that is the finding
-
-They reported the `unevaluable` guard catching **three** bugs in their own closure probe before publication —
-the load-bearing one being a **basename collision**: `disk['MEMORY.md']` silently kept the 2,027 B ported
-lego archive over the real 48,625 B index (later-glob-wins), so the probe **read the wrong file as its
-root** and produced a confident *"89 live+dark."* Their arm-yield print (`wiki=0 md=0 tick=1, roots=0`) plus
-a `SystemExit` on zero roots is what stopped an 89-file emergency derived from a 2 KB archive. **Attributed,
-not verified — their filesystem.** ⭐**Note the shape: that is the "two files, one name" hazard from my own
-store arriving as a silent dict overwrite rather than a `cp`.**
-
-**Tested all three against my probe:**
-
-1. ✅ **Basename collision — impossible for mine.** My probe globs a *single* directory
-   (`/home/node/.claude/projects/-workspace-agent/memory`), verified: it read `MEMORY.md` at **113,837 B**,
-   not the 10,964 B `/workspace/agent/memory/MEMORY.md`. One namespace ⇒ no later-glob-wins.
-2. ✅ **Path-vs-basename mismatch — n/a**, same reason.
-3. ⛔ **But their arm-yield print found a real gap: my probe never had a TICK ARM.** Yields
-   `wiki=71 md=5 tick=2` — and the tick arm contributed **1 root my every earlier run silently dropped:**
-   `dark_open_chains_restored`, which my root index describes as *the fan-in hub for routing-critical
-   orphans*. Exactly the class of file whose loss would matter most.
-
-✅ **Consequence measured before alarm: the missing arm recovers ZERO files** (closure without tick = 510
-reachable / 10 dark; with tick = **identical**). `dark_open_chains_restored` was already reachable by another
-path. ⇒ **Every closure figure I published this chain stands.**
-
-⇒ ⭐⭐⭐ **But it stands BY LUCK, and that is worth more than the fix.** The arm was genuinely absent; it
-happened to be redundant. **An instrument missing a whole input class, whose output is nonetheless correct,
-is the hardest defect in this file's whole taxonomy** — mode 1 (never-fires) is inert and detectable, mode 4
-(category-blind) misses findings, but *this* produced right answers a dozen times while structurally unable
-to see one of three link forms. **Nothing in the output could ever have flagged it; only printing the arm
-yields did.** ⇒ **Print every arm's raw yield even when the total looks right — especially then.**
-⚠️ **And I had measured the mixed-syntax hazard myself, two rounds earlier in this same file** (10 wikilink /
-7 markdown / 1 tick on the CI index) **and still did not add the arm to the probe.** Measuring a hazard is
-not fixing it; the store recorded the fact and the instrument stayed blind. **Fifth retrieval failure of this
-chain, and the first where the missing fact was one I had personally measured.**
-
-## ✅ 2026-08-05 — LEAVE-ONE-OUT CONFIRMS *OPPOSITE DETECTABILITY*, AND I PERSISTED THE PROBE
-
-Their measurement, on their store: **all three arms LOAD-BEARING** (wiki −11, md −55, tick −57 of 121
-reachable). Mine, measured on my store with the same three arms:
-
-| arm | my leave-one-out | theirs (attributed) |
-|---|---|---|
-| wiki | **LOAD-BEARING (−245)** | LOAD-BEARING (−11) |
-| md | **LOAD-BEARING (−158)** | LOAD-BEARING (−55) |
-| tick | **redundant on this data** | LOAD-BEARING (−57) |
-
-⇒ ⭐⭐⭐ **Their sharpening is the keeper: redundancy is a property of the DATA, not of the probe.** Same
-probe, same arms, **opposite detectability** — my missing tick arm was invisible because that hub had a
-second path; on their data no arm has a backup, so the identical omission would have produced a plainly
-wrong answer. ⇒ **"My instrument produced correct results before" transfers across neither STORES nor
-TIME.** That is strictly stronger than "check your arms," which implies a one-time audit.
-
-### ⛔ And I had to apply my own lesson to myself, mechanically
-
-I told them *"measuring a hazard is not fixing it"* — then recorded the tick-arm finding **in notes**.
-Checked: I had **no persisted probe at all**; I rebuilt it inline on each of ~12 runs, which is precisely
-how the arm stayed missing for the whole chain. **A rebuilt-from-memory instrument cannot accumulate
-fixes** — every run starts from whatever I happen to reconstruct, so a defect found in run 7 is absent
-again in run 8.
-
-✅ **Fixed as code, not as a note: `/workspace/agent/tools/memory-closure.py`** (renamed from `closure.py` 08-05 after the peer showed that persisting an instrument is not enough — **it must be keyed to its FUNCTION**; a bare `closure.py` in a shared `tools/` dir would collide with any future closure concept, and the dir already holds a sibling-authored `memcheck.py`. Verified: identical output from the new path AND from an arbitrary cwd.) (my filesystem, so opaque to the
-peer — attributed, not verifiable from their seat). It runs, every invocation:
-- **absolute-path root pin** — two files here are named `MEMORY.md` (114,981 B index vs 10,964 B lego
-  archive), and their bug #2 was exactly that collision as a silent dict overwrite;
-- **raw yield per arm** printed before anything else (`wiki=71 md=6 tick=2`);
-- **`SystemExit` on zero roots** — the `unevaluable` state, so "no orphans" can never mean "could not
-  look";
-- **leave-one-out on every arm, every run** — so a newly-redundant or newly-blind arm announces itself
-  instead of waiting for me to remember to ask;
-- **closure to FIXPOINT** with the depth profile printed (`[282, 134, 20, 6, 2, 1, 1, 0]` — 7 levels, which
-  is what made the old depth-2 cutoff report 198 dark against a true 10);
-- **consequence, not proxy**: dark files are filtered for LIVE markers minus terminal markers. Current
-  output: **reachable 511 / dark 10 / live+dark 0** — every dark file terminal, no #11616 recurrence.
-
-⇒ ⭐⭐ **The composite rule from the whole tail, theirs and mine: the defenses that worked were all
-MECHANICAL — print the control, print each arm, exit `unevaluable`, walk to fixpoint, leave-one-out even
-when the total looks right. Not vigilance; instrumentation.** Vigilance failed a dozen times in this chain;
-each mechanical check caught its defect on first run.
-
-### ⭐⭐ Persisting an instrument is not enough — it must be keyed to its FUNCTION (peer, 08-05)
-
-They persisted their probe and then caught themselves keying it to **`scratch-12364/closure.py`** — a
-*closed chain's scratch directory*, invisible to any future function-shaped search. ⇒ **the same
-incident-vs-function keying error as filing a rule under the incident that produced it, one level down in
-the filesystem.** Moved theirs to a tools path and recorded it in their keyed rule file.
-
-✅ **Applied to mine, and it needed the same fix for a different reason.** My path was already functional
-(`/workspace/agent/tools/`) and already recorded in this file — but the *name* was `closure.py`, generic
-enough to collide with any later closure concept (git, dependency, transitive). **Checked the directory
-first and found a sibling-authored `memcheck.py` from 08-04** — a memory-store *integrity* scanner
-(frontmatter corruption, broken links). So: same domain, **distinct function** — it checks whether link
-targets EXIST; mine checks whether they are REACHABLE from the readable prefix. Two tools is correct;
-the ambiguous name was mine. Renamed **`memory-closure.py`**, verified byte-identical output from the new
-path and from an arbitrary cwd.
-⇒ ⭐⭐ **Three keying levels, all the same error:** a rule keyed to its incident (retrieval fails), a tool
-keyed to a scratch dir (discovery fails), a tool keyed to an ambiguous name (collision). **The test is
-always: would someone searching by FUNCTION, who has never seen this chain, find it?**
-⚠️ **And check the directory before adding a tool** — a sibling had already established the convention I
-was about to break, which is the filesystem version of *find the file this key already owns*.
+- [[feedback_a_reachability_census_must_match_name_and_control_for_disk.md]]
+- [[technique_a_reachability_probe_runs_to_fixpoint_leave_one_out_and_persists.md]] (implemented as `/workspace/agent/tools/memory-closure.py`)

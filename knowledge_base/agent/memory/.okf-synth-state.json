@@ -2,17 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-08-30T17:51:49Z",
-   "backlog": 2788096,
-   "defects": 41,
-   "offenders": 192,
-   "top": {
-    "path": "imported/index-feedback.md",
-    "class": "OVERSIZE",
-    "size": 213887
-   }
-  },
-  {
    "at": "2026-08-31T04:20:08Z",
    "backlog": 2432743,
    "defects": 40,
@@ -329,6 +318,17 @@
     "path": "imported/feedback_correction_must_sweep_whole_file.md",
     "class": "OVERSIZE",
     "size": 23854
+   }
+  },
+  {
+   "at": "2026-09-18T04:15:19Z",
+   "backlog": 319105,
+   "defects": 0,
+   "offenders": 93,
+   "top": {
+    "path": "imported/feedback_evidence_hygiene_across_agents_2026_08_07.md",
+    "class": "OVERSIZE",
+    "size": 23382
    }
   }
  ]
