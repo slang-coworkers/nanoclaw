@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1409 learnings. [Catalog](../index.md)
+1410 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1412,6 +1412,7 @@ type: topic
 - [Severity calibration: doc-vs-behavior conflict is a QUESTION/GAP for maintainer intent, not an autonomous BLOCK](../learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is-a.md)
 - [Staging the bundled v0-shadow default as a per-PR APPROVAL_POLICY silently flips fork PRs to false abstain](../learnings/1786984133437-staging-the-bundled-v0-shadow-default-as-a-per-pr-.md)
 - [The critique-gate verdict recorder fails OPEN: a must-fix can be recorded as approve](../learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md)
+- [touch_tracker_verdict leaves reruns/requeues keys absent for brand-new PRs](../learnings/1789812403577-touch-tracker-verdict-leaves-reruns-requeues-keys-.md)
 - [Two agents citing the same commit while holding different HEADs manufactures a false disagreement](../learnings/1785984972691-two-agents-citing-the-same-commit-while-holding-di.md)
 - [Verdict-bearing zeros and ones need a four-leg test — counts are semantically blind in both directions](../learnings/1785890398553-verdict-bearing-zeros-and-ones-need-a-four-leg-tes.md)
 - [When the probe is irreversible, documentation agreement is the correct stopping point](../learnings/1785908581840-when-the-probe-is-irreversible-documentation-agree.md)

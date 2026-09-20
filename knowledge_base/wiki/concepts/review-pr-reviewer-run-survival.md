@@ -3,7 +3,7 @@ title: "Reviewer-Run Survival & Review-Tool Operational Infra"
 type: concept
 group: review-process
 tags: [pr-review, pr-approver, reviewer-a, devin, session-teardown, background-wait, critique-gate, runner-ops, infra-abstain]
-source_count: 36
+source_count: 37
 ---
 
 # Reviewer-Run Survival & Review-Tool Operational Infra
@@ -53,7 +53,10 @@ The gate only records a round when the codex call uses the exact `/codex-critiqu
 
 `/app/hooks/gate-critique-on-deliver.sh` matches `gh api [^|]*pulls\b`, intended for PR *creation* but firing on ANY `gh api` command containing `pulls` including read-only GETs of reviews/comments; the denial actually triggers only when this coincides with an unmet critique requirement (`edits_since_critique>0` or stale OUTPUT_REVIEW), and at 3 denials the gate escalates to admin + hard-blocks. Avoid: on a revision turn, answer "did the review materially change" from local artifacts (R2 vs R1 review-doc.md) rather than re-fetching; if you must read PR data, use `gh pr view <n> --json ...` (matches nothing) instead of `gh api .../pulls/...`; never write a file in the same command as a read (bumps `edits_since_critique`) ([critique gate false-positives on read-only gh api .../pulls GETs — don't burn denial strikes](../learnings/1783913716215-approver-critique-mustfix-critique-gate-false-posi.md)). Never optimistically pre-fill `reviewers_complete:true` before Devin reaches a terminal state — it is a harness-integrity assertion the critique gate checks against the artifact on disk, true only when `devin-flags.md` exists or a bot review was harvested ([never set reviewers_complete:true before Devin reaches a terminal state](../learnings/1784049951184-approver-critique-mustfix-never-set-reviewers-comp.md)).
 
-**Source learnings (36):**
+**Invoke the `/slang-pr-review` and clarity-review runner scripts from the WRITABLE skill copy at `/home/node/.claude/skills/<runner>/scripts/`, NOT `/app/skills/...`.** `/app/skills` is a read-only filesystem; `compose-and-run.sh` and `run-clarity.sh` both `mkdir -p "$SKILL_DIR/transcripts/..."` where `$SKILL_DIR` resolves to the script's own directory, so launched from `/app/skills` they die instantly with `mkdir: cannot create directory … Read-only file system` and exit 1 within seconds — which looks deceptively like a fast "exit 0" background completion (always check the log tail). The `/home/node/.claude/skills/*` copies are separate writable directories (not symlinks to /app). Also: despite `gh auth status` reporting "The token in GH_TOKEN is invalid", `gh pr view/diff` on a PUBLIC repo still works read-only — enough for Reviewer A's `gh pr diff` and clarity's `gh pr view` (writes would fail, but chat-triggered reviews don't post). Resolve run_dir with `ls -dt <skill>/transcripts/*/ | head -1`. ([slang-pr-review runner scripts must run from /home/node/.claude/skills (not /app/skills — read-only)](../learnings/1789621947264-slang-pr-review-runner-scripts-must-run-from-home-.md))
+
+**Source learnings (37):**
+- [slang-pr-review runner scripts must run from the writable /home/node/.claude/skills copy, not read-only /app/skills (mkdir transcripts fails, exits 1 fast)](../learnings/1789621947264-slang-pr-review-runner-scripts-must-run-from-home-.md)
 
 - [verify reviewer runs survived + cleared the guard before trusting output](../learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md) — background runs killed at teardown look identical to "0 findings."
 - [Reviewer A 600s bg-wait ceiling truncates final-review.md — recover from stream.jsonl](../learnings/1783983883017-slang-pr-review-reviewer-a-600s-bg-wait-ceiling-tr.md) — inner claude --print kills subagents before the doc is written.

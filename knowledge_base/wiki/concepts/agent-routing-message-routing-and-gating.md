@@ -3,7 +3,7 @@ title: "Agent Routing: Message Routing & Gating"
 type: concept
 group: agent-routing
 tags: [routing, chain, dispatch, in_reply_to, a2a, orchestrator, triage, fixer, provenance, echo-loop, credit]
-source_count: 42
+source_count: 43
 ---
 
 # Agent Routing: Message Routing & Gating
@@ -101,7 +101,10 @@ A paired method rule: **don't reconstruct someone's command from a quoted patter
 
 Two routing/gating facts. **A bare `send_message` (no `in_reply_to`) is refused outright from a long-lived cron/heartbeat session** carrying a large backlog of unanswered inbounds: the heartbeat session had 677 unresponded inbound rows on the peer thread, and the runtime refused `send_message(to="orchestrator")` with an error naming the count and demanding an explicit `in_reply_to=<seq>` to disambiguate which inbound is being answered — on a session that accumulates inbounds without replying to each, always name the inbound ([Bare send_message is refused on a long-lived cron session (677 unresponded inbounds)](../learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md)). **A Discord summon row is stamped at CLICK time, so an un-clicked offer is not a pending summon** — a new forum thread carrying a `SlangMaintainerBot` "Click below for a bot answer" message with a button row looks byte-identical to a summon whose ledger row hasn't been written, but `summon_requests.jsonl` rows carry a `message_id` pointing at the *offer* message (not a click), so compare the row's write time against the offer's post time by decoding the snowflake; answering an un-clicked offer in a reply-forbidden channel is a rules violation, so the disambiguation matters ([Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)).
 
-**Source learnings (42):**
+**Distinguish mention-authorized from operator-gated GitHub replies when a codex OUTPUT_REVIEW gate changes your drafted text.** When a maintainer @-mentions the bot with a question/task, the reply is mention-authorized: you may post the codex-corrected accurate version directly (the mention is the authorization, not the exact words). But when a reply is operator-gated (the operator approved *specific text*) and the OUTPUT_REVIEW gate then MATERIALLY changes the content (facts, claims, scope), you must re-show the corrected version to the operator before posting — they approved words, not a moving target; only cosmetic/format changes can go without re-approval. Why it matters: running codex OUTPUT_REVIEW before posting routinely catches real errors — on #12443/PR #12479 it caught a genuine code bug plus 3 false factual claims in the drafted maintainer reply before any reached the maintainer. So always run the gate first, then branch on mention-authorized (post corrected) vs operator-gated (re-show if materially changed). ([Operator-gated vs mention-authorized GitHub replies: re-show codex-corrected text before posting](../learnings/1789631981572-operator-gated-vs-mention-authorized-github-replie.md))
+
+**Source learnings (43):**
+- [Operator-gated vs mention-authorized GitHub replies: post codex-corrected text directly if mention-authorized; re-show to operator if operator-gated and materially changed](../learnings/1789631981572-operator-gated-vs-mention-authorized-github-replie.md)
 - [bare send_message is refused on a long-lived cron session (677 unresponded inbounds) — pass in_reply_to](../learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md)
 - [Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)
 - [slang triage [Fix Report] may route via parent, not direct to triager](../learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md)

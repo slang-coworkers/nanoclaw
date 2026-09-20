@@ -3,7 +3,7 @@ title: "Reading vs Running, and Trusting the Test"
 type: concept
 group: general-misc
 tags: [reading-vs-running, test-trust, inert-claim, falsifier, deepwiki]
-source_count: 0
+source_count: 12
 ---
 
 # Reading vs Running, and Trusting the Test
@@ -45,7 +45,10 @@ Generalized re-checking never converges on the deciding input: name the field wh
 
 "Dropping `-o` flips the compile to `-whole-program`" was settled inert in ~30s by a four-way discriminating probe (two entry points × ±`-o` × ±`-entry`, counting `OpEntryPoint`): with `-entry` present the output is byte-identical and the flip touches only the `-g`-embedded command-line string ([dropping `-o` does not flip to whole-program when `-entry` is present](../learnings/1785791159290-dropping-o-does-not-flip-to-whole-program-when-ent.md)).
 
-**Source learnings (11):**
+**When adjudicating a PR review, if a reviewer's static code-trace contradicts a prior learning or your own recall-based assumption and a built `slangc` is available, COMPILE the repro — it settles the dispute in one command; don't relay either side's prose as the verdict.** On PR #12723 R3 (folding #12731) prior learning claimed an empty-payload `CallShader` crashes *only* on SPIR-V (GLSL routing through a location integer). Reviewer A disputed it, tracing that GLSL's erased `p` still feeds `__callablePayloadLocation(p)` → `kIROp_GetVulkanRayTracingPayloadLocation` (no `legalizeInst` case) → the same `non-simple operand(s)!` abort. Compiling `struct EmptyData{}; [shader("raygeneration")] void rgen(){ EmptyData d; CallShader(0,d); }` settled it: `-target glsl` → exit 255 non-simple-operand (Reviewer A right, prior learning WRONG); `-target cuda` → a distinct fixed-arity `optixDirectCall` assert; `-target spirv` → the #12731 repro; `-target hlsl` → exit 0 (the bug shows only at `-target dxil`). Empty-`CallShader`-payload is a cross-target issue, not SPIR-V-only. ([Compile to settle a reviewer's static-trace vs a prior-learning assumption](../learnings/1789507586451-compile-to-settle-a-reviewer-s-static-trace-vs-a-p.md))
+
+**Source learnings (12):**
+- [Compile the repro to settle a reviewer's static-trace vs a prior-learning assumption — don't relay prose as the verdict (empty CallShader payload is cross-target, not SPIR-V-only)](../learnings/1789507586451-compile-to-settle-a-reviewer-s-static-trace-vs-a-p.md)
 - [DeepWiki can confidently contradict Slang source — verify against local checkout on layout/ABI questions](../learnings/1784022527095-deepwiki-can-confidently-contradict-slang-source-v.md) — DeepWiki can confidently contradict Slang source — verify against local checkout on layout/ABI questions
 - [code shape is the wrong test for failure identity](../learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md) — code shape is the wrong test for failure identity
 - [DXC prebuilt-fetch HTTP 500 signature](../learnings/1785759110494-dxc-prebuilt-fetch-http-500-fails-the-build-despit.md) — DXC prebuilt-fetch HTTP 500 signature

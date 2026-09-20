@@ -3,7 +3,7 @@ title: Critique-gate scope, false-positives, and using it well
 type: concept
 group: agent-routing
 tags: [critique-gate, decision-review, output-review, comment-hygiene, false-positive, escalation, gate-scope, discipline]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -33,7 +33,10 @@ A genuine judgment split is not something to fold on. The [DECISION_REVIEW sever
 
 But the gate also earns its keep. [Run the critique BEFORE the [Resolution]](../learnings/1787375940428-run-the-critique-gate-before-the-resolution-not-af.md): the adversarial review found two BLOCKER-class issues, one a flaw in the regex the authorizer *themselves* specified — "I verified the tests pass" is not the critique, and the authorizer's own spec is the thing least likely to be re-audited. [The OUTPUT_REVIEW gate caught a real decision error](../learnings/1788297246013-approver-critique-mustfix-the-output-review-gate-c.md) the approver nearly shipped after dismissing the gate as a known token-misfire: read the FULL standing note (not its one-line index), don't let a parent's loose ack override the parent's structured standing instruction, and don't reconstruct a signed policy from memory to drive eligibility. And [switching a gate macro `#ifdef`→`#if` leaves stale prose](../learnings/1788296573909-switching-a-gate-macro-ifdef-if-leaves-stale-prose.md): the one-token code change flips the described semantics ("when defined"→"when nonzero"), so sweep comments, docs, and the PR body — the OUTPUT_REVIEW/delivery-gate pass earns its keep specifically on doc/comment/PR-body accuracy a code-focused peer review skims past, so a peer APPROVE is not license to skip the output critique.
 
-**Source learnings (9):**
+**The codex critique gate (`/app/hooks/gate-critique-on-deliver.sh`) that hard-blocks `gh pr create` clears ONLY via a recorded codex OUTPUT_REVIEW approve, a HOST-injected env kill-switch an agent cannot set (`CRITIQUE_ESCALATION=0`/`CRITIQUE_GATE_ACTIVE=0`), or a HUMAN-admin one-shot bypass grant in `workflow-state.json` (consulted only after ≥3 denials this session). This is by design: the bypass is reserved for a human admin.** An admin-orchestrator agent (Main/Orchestrator) must NOT declare a "waiver" it can grant — mechanically it can't (env is host-injected; writing the bypass flag forges a human safety decision), and it shouldn't. When codex is down and a well-verified PR is gate-blocked, escalate to the human operator with mechanisms + recommendation: prefer repairing/restarting codex (the gate then works as designed fleet-wide), else the operator injects the env kill-switch or grants the one-shot bypass. ([Codex critique gate is human-reserved — agents (even Main) cannot self-waive it](../learnings/1789598780832-codex-critique-gate-is-human-reserved-agents-even-.md))
+
+**Source learnings (10):**
+- [Codex critique gate is human-reserved — agents (even Main) cannot self-waive it; escalate to the operator when codex is down](../learnings/1789598780832-codex-critique-gate-is-human-reserved-agents-even-.md)
 - [Critique-gate audit false-positives on the literal "[Fix Report]" in a triager's report](../learnings/1787274342384-critique-gate-audit-false-positives-on-the-literal.md) — a naive substring match; advisory for a session that reviewed no code; paraphrase the marker.
 - [DECISION_REVIEW can raise a severity-classification disagreement that is an escalation](../learnings/1787324124929-critique-gate-decision-review-can-raise-a-severity.md) — present both positions to parent; distinguish a real deliverable defect from a defensible judgment split.
 - [Run the critique gate BEFORE the [Resolution] — it catches your own specs](../learnings/1787375940428-run-the-critique-gate-before-the-resolution-not-af.md) — the adversarial review found a flaw in the authorizer's own regex spec; verification is not the critique.

@@ -3,7 +3,7 @@ title: "Re-probing GitHub PR State Before Asserting It"
 type: concept
 group: general-misc
 tags: [github, pr-state, gh-cli, graphql, review-approval, merge-state, worktree-gc]
-source_count: 0
+source_count: 7
 ---
 
 # Re-probing GitHub PR State Before Asserting It
@@ -54,7 +54,10 @@ Incident (2026-07-14): while reaping the merged `fix/issue-11917-matrix` (PR #11
 
 ✅ Only propose reaping after confirming NO open PR points at the branch. A squash merge makes `git merge-base --is-ancestor <branch> origin/master` return FALSE (expected, not "unmerged") — confirm merged instead via tip-SHA match plus the squash commit subject. Never bundle a "want me to sweep the siblings too?" offer without running the open-PR check first, and don't manufacture a sweep from mild disk pressure (82% / 44G free is not pressure) — reap only the specific merged artifact you were dispatched for ([Verify open-PR status before calling a worktree/branch abandoned (worktree-GC trap)](../learnings/1784064164068-verify-open-pr-status-before-calling-a-worktree-br.md)).
 
-**Source learnings (6):**
+**When a GitHub issue is auto-closed COMPLETED by a maintainer's merged PR that isn't ours, do NOT reflexively treat our open draft PR as superseded — verify the closing PR actually fixes the reported scenario first.** A CI-only, single-arch, or partial fix can close the issue while leaving the real gap unaddressed. Measured (Tick 227): issue #13077 (macOS DXC universal-build host-tool failure) was closed COMPLETED by maintainer PR #13103, but #13103 only touches CI workflow files, does NOT modify `cmake/FetchDXC.cmake`, and adds a single-arch arm64 job that never exercises the universal (`x86_64;arm64`) failure the reporter hit — so our draft PR #13079 (the universal-build fix) remained the wanted fix. Rule: on issue-closed-by-foreign-PR, diff the closing PR's actual change against the reported repro before running the superseded-PR postmortem, closing our PR, or dropping the chain; if the closing PR misses the reported case, keep our PR open and flag the residual gap to the maintainer. ([Before treating our PR as superseded, verify the closing PR actually covers the reported scenario](../learnings/1789565107884-before-treating-our-pr-as-superseded-verify-the-cl.md))
+
+**Source learnings (7):**
+- [Before treating our PR as superseded by a foreign closing PR, diff its actual change vs the reported repro — a CI-only/single-arch fix can close the issue but miss the gap](../learnings/1789565107884-before-treating-our-pr-as-superseded-verify-the-cl.md)
 - [Re-pull mutable PR state before asserting it in a status report](../learnings/1781702557335-re-pull-mutable-pr-state-from-github-before-assert.md) — draft/state/review/mergeable change between turns; re-pull live before reporting
 - [Verify live PR draft/ready state before reporting — maintainers can flip it](../learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md) — read live isDraft/state/reviewDecision before writing "draft"/"ready"/"merged"
 - [Verify a PR's live state before rolling a fixer's PR-state claim upstream](../learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md) — maintainer-side moves go stale fast; re-pull before rolling a child's claim up

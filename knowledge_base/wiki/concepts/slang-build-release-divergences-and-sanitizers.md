@@ -3,7 +3,7 @@ title: "Slang Release-Build Divergences & Sanitizer Suppressions"
 type: concept
 group: slang-tooling
 tags: [build, release, lto, ld_library_path, sanitizer, debug, assert, external]
-source_count: 8
+source_count: 9
 ---
 
 # Slang Release-Build Divergences & Sanitizer Suppressions
@@ -42,7 +42,10 @@ Removing a SUMMARY-mode entry does NOT unmask a co-located leak on a different p
 
 **Two coupled gotchas make `SLANG_ASSERT` inert in this container's default build.** `SLANG_ASSERT(cond)` is `#ifdef _DEBUG`; in a non-`_DEBUG` build it expands to `SLANG_ASSUME`/`__builtin_assume(cond)` — the optimizer is told `cond` is always true and may **delete any code that only runs when `cond` is false**. And the stock `debug` CMake preset here actually produces `CMAKE_BUILD_TYPE=Release` (check `build/CMakeCache.txt`), so a `SLANG_ASSERT` you add will not fire locally even when its predicate is false — a violation is silently skipped, your tests pass, but a real `_DEBUG`/CI build aborts (this cost a review round on PR #12263, where an inert `getConstant` shape-assert only codex caught) ([local Debug preset builds Release → SLANG_ASSERT is inert](../learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md)). The coding consequence: **never assert a precondition you also runtime-guard on** — `SLANG_ASSERT(x); if(!x) return fallback;` lets release prove the fallback dead and delete it. Use a plain `if/else` runtime guard (with a rationale comment) for any condition that is a real discriminant now or under a future PR; reserve `SLANG_ASSERT` for genuinely-impossible states and `SLANG_RELEASE_ASSERT` for "crash loudly in release" ([SLANG_ASSERT becomes __builtin_assume in release — never assert a precondition you also guard on](../learnings/1785335639560-slang-assert-becomes-builtin-assume-in-release-nev.md)). To actually exercise asserts locally, configure `-DCMAKE_BUILD_TYPE=Debug`.
 
-**Source learnings (8):**
+**A pure-C++ Slang change where ALL Windows (MSVC) builds fail but ALL Linux (GCC) + macOS (Clang) pass is almost always an MSVC-only warning-as-error.** On #13089 every Linux/macOS leg and test passed, but all Windows builds failed with `error C2220 … warning C4458: declaration of 'workList' hides class member` — a local `List<IRInst*> workList;` shadowed a struct member of the same name. Slang's Windows build uses `/W4 /WX`, so C4458 (and siblings C4456 local-shadow, C4245/C4244 signed/unsigned, C4189 unused-local) are hard errors that GCC/Clang do not emit by default — a local Linux debug build cannot catch them. Guards: when adding a local inside a class/struct method, check it doesn't collide with a member (common Slang member names: `workList`, `builder`, `module`, `context`); and grep a failed Windows job log for `error C2220` + the specific `warning Cxxxx`. Fix is a behavior-neutral rename of the local. ([MSVC /WX rejects C4458 (local hides class member) that GCC/Clang pass silently — local Linux build won't catch it](../learnings/1789579281328-msvc-wx-rejects-c4458-local-hides-class-member-tha.md))
+
+**Source learnings (9):**
+- [MSVC /WX rejects C4458 (local hides class member) silently passed by GCC/Clang — all-Windows-fail/all-else-pass = MSVC warning-as-error](../learnings/1789579281328-msvc-wx-rejects-c4458-local-hides-class-member-tha.md)
 - [CI `-DSLANG_ENABLE_RELEASE_LTO=ON` defeats hidden-visibility/`--exclude-libs` that local `--preset release` keeps](../learnings/1784380337015-ci-release-lto-defeats-symbol-hiding-that-local-pr.md)
 - [local slangc runs STALE logic when `LD_LIBRARY_PATH` puts the package staging lib dir before `build/Debug/lib`](../learnings/1784435219287-local-slangc-can-silently-run-stale-logic-via-ld-l.md)
 - [Sanitizer-finding fixes must remove the matching expected-sanitizer-findings.txt suppression in the same PR](../learnings/1782328977641-sanitizer-finding-fixes-must-remove-the-matching-e.md)

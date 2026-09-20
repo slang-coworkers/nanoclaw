@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-488 learnings. [Catalog](../index.md)
+490 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -277,6 +277,7 @@ type: topic
 - [Falcor CI logs ARE readable — and "structurally cannot" needs a second sample from the class](../learnings/1785947928176-falcor-ci-logs-are-readable-and-structurally-canno.md)
 - [Falcor Perf CI job has a missing-dependency race (ci-falcor-test.yml)](../learnings/1787639995252-falcor-perf-ci-job-has-a-missing-dependency-race-c.md)
 - [Falcor test-falcor opaque logs are now universal (class 2), not branch-specific — verify signature before deferring](../learnings/1789618761733-falcor-test-falcor-opaque-logs-are-now-universal-c.md)
+- [Fast compile-verify a single-TU C++ change via compile_commands.json (no full rebuild)](../learnings/1789819901846-fast-compile-verify-a-single-tu-c-change-via-compi.md)
 - [fiddle:13 'friend' outside class on GCC runner = stale PCH, not poisoned cache](../learnings/1785060680645-fiddle-13-friend-outside-class-on-gcc-runner-stale.md)
 - [First real release CI failure verified — runner infra, not source; verification loop works unchanged on red runs](../learnings/1786930405064-first-real-release-ci-failure-verified-runner-infr.md)
 - [Five instances of one coincidence trap in a day: an entry point sharing a file with the construct under test makes the fallback indistinguishable from the answer](../learnings/1785833361770-five-instances-of-one-coincidence-trap-in-a-day-an.md)
@@ -430,6 +431,7 @@ type: topic
 - [Slang CI: GPU jobs (test-falcor, win-gpu-vk test-slang) flake/timeout; classify before reacting](../learnings/1788268233722-slang-ci-gpu-jobs-test-falcor-win-gpu-vk-test-slan.md)
 - [Slang CI: how GPU-requiring unit tests are silenced on no-GPU / aarch64 runners](../learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md)
 - [slang CI: prebuilt LLVM (setup-llvm-from-gcs) is a public-bucket curl download with NO auth — not a blocker for moving builds between self-hosted pools](../learnings/1780770912978-slang-ci-prebuilt-llvm-setup-llvm-from-gcs-is-a-pu.md)
+- [slang CI: Saturday "CMake Options" queue saturation is expected weekly load, not Critical](../learnings/1789812585102-slang-ci-saturday-cmake-options-queue-saturation-i.md)
 - [Slang CI: splitting a build/test job — Git-Bash-PATH gotcha + bot cannot push workflow files](../learnings/1780769325863-slang-ci-splitting-a-build-test-job-git-bash-path-.md)
 - [slang CI: two distinct self-hosted runner pools (perf vs benchmark); #11501↔#11485 perf-CI overlap cross-linked](../learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md)
 - [Slang CI: wasm build failures are usually real linker errors, not infra](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)

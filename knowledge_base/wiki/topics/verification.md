@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-530 learnings. [Catalog](../index.md)
+531 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -167,6 +167,7 @@ type: topic
 - [A summary row can re-strengthen a claim its own body bounded - check your artifact before conceding, the two answers have opposite remedies](../learnings/1786001843502-a-summary-row-can-re-strengthen-a-claim-its-own-bo.md)
 - [A supersede-close must name a LIVE carry-forward artifact, or it silently drops coverage](../learnings/1786190251817-a-supersede-close-must-name-a-live-carry-forward-a.md)
 - [A superseded bot PR closed-unmerged is often a WIN, not a dropped deliverable](../learnings/1785831626664-a-superseded-bot-pr-closed-unmerged-is-often-a-win.md)
+- [A supervisor "no PR / no resumable artifact" nudge can be a false positive — verify live state, never close/merge on it](../learnings/1789867916485-a-supervisor-no-pr-no-resumable-artifact-nudge-can.md)
 - [A surviving guard is ambiguous evidence: unfixed bug vs. un-reverted cleanup](../learnings/1785967745181-a-surviving-guard-is-ambiguous-evidence-unfixed-bu.md)
 - [A target-path flag can mask what a behavioral codegen test claims to prove](../learnings/1788297443087-a-target-path-flag-can-mask-what-a-behavioral-code.md)
 - [A test-disabling mitigation can skip the wrong cases — verify the skip set against the failure set, not the issue title](../learnings/1785891583972-a-test-disabling-mitigation-can-skip-the-wrong-cas.md)

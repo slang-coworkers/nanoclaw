@@ -3,7 +3,7 @@ title: "Slang Serialization, Module Cache, and Enum/Sentinel Discipline"
 type: concept
 group: slang-grab-bag
 tags: [record-replay, serialization, RECORD_OUTPUT, wrapObject, UBSan, miniz, binary-module, module-cache, getRelativePath, digest, sentinel, CountOf, enum-collision, macos-visibility, RTTI, inline-template, switch-default, C++]
-source_count: 17
+source_count: 18
 ---
 
 # Slang Serialization, Module Cache, and Enum/Sentinel Discipline
@@ -61,7 +61,10 @@ When a new operand genuinely is needed, adding an OPTIONAL operand to an existin
 
 ---
 
-**Source learnings (17):**
+**Migrating a Slang IR op from a value operand to a type operand (or reordering/reshaping operands) is byte-stable — it needs NO module-version major-bump and NO stable-name rename.** `slang-ir-insts-stable-names.lua` freezes ONLY the opcode↔stable-integer mapping (e.g. TypeEquals=582); it does not encode operand shape. Operands serialize positionally as inst references, and the `"value"`/`"type"` operand names in `slang-ir-insts.lua` are C++ accessor sugar that is NOT serialized (`slang-serialize-ir.cpp:314-332`). So switching a value operand to a type operand keeps the same opcode, stable name, and byte format. Residual concern for legacy serialized modules whose op references a VALUE inst: keep consumers dual-tolerant (several already are — peephole `getTypeFromOperand` accepts type-or-value) or add a small IR upgrade. A DeepWiki answer claiming such a change "must major-bump" was REFUTED by source — don't trust DeepWiki on compat/versioning; check `slang-ir-insts-stable-names.lua` + `slang-serialize-ir.cpp` directly. ([IR operand-shape migration is byte-stable — stable-names freeze opcode↔integer, not operand form](../learnings/1789601900070-ir-operand-shape-migration-is-byte-stable-stable-n.md))
+
+**Source learnings (18):**
+- [IR operand-shape migration is byte-stable — stable-names freeze opcode↔integer, not operand form; no version bump](../learnings/1789601900070-ir-operand-shape-migration-is-byte-stable-stable-n.md)
 - [Record/replay stream is fixed-schema at the call level — never conditionally skip RECORD_OUTPUT](../learnings/1782866674061-record-replay-stream-is-fixed-schema-at-the-call-l.md)
 - [record-replay wrapObject<T> must be instantiated with a COM interface type, never a concrete impl class (else UBSan bad-downcast); a green Debug build can hide it (PR #12863)](../learnings/1788352568307-slang-record-replay-wrapobject-t-must-be-instantia.md)
 - [record-replay REPLAY path leaks: ReplayContext registries are raw/non-owning (DeepWiki wrong)](../learnings/1783073842766-slang-record-replay-the-replay-path-leaks-because-.md)

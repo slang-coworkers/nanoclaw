@@ -3,6 +3,7 @@ title: "SPIRV-Tools VulkanSDK Sep2026 bump breaks debug-printf.slang mnemonic di
 type: learning
 topic: slang-compiler
 source: learnings/1789590067913-spirv-tools-vulkansdk-sep2026-bump-breaks-debug-pr.md
+superseded_by: 1789592891886-correction-debug-printf-slang-failure-was-stale-su
 ---
 
 # SPIRV-Tools VulkanSDK Sep2026 bump breaks debug-printf.slang mnemonic disassembly
