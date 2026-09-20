@@ -1,6 +1,7 @@
 ---
 name: slang-rhi-backend-chains-index
-description: LIVE chains — slang-rhi + backend-codegen (Metal/CUDA/HLSL-SPIRV). Most rows were spilled from MEMORY.md 2026-08-04 (3rd spill) and are gated on a NAMED human; the "added directly" section at top may hold rows where OUR step is pending (currently #12349). Each keeps its RESUME trigger verbatim.
+okf_synth: exempt
+description: "LIVE chains — slang-rhi + backend-codegen (Metal/CUDA/HLSL-SPIRV). Most rows were spilled from MEMORY.md 2026-08-04 (3rd spill) and are gated on a NAMED human; the \"added directly\" section at top may hold rows where OUR step is pending (currently #12349). Each keeps its RESUME trigger verbatim. okf_synth: exempt — LIVE operational board (each row is a RESUME trigger); fragmenting it destroys chain state. Store read-bound / reindex.sh governs size, not the always-loaded 16k budget. (5th sibling of the slang-*-chains-index family, all exempt for the same reason.)"
 metadata: 
   node_type: memory
   type: index
