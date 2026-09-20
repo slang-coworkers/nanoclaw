@@ -3,7 +3,7 @@ title: "Slang Compiler Frontend and Semantic Checking"
 type: concept
 group: slang-grab-bag
 tags: [capability, require, memory-scope, lexer, escape-validation, synthesized-member, initExpr, AST, DeclRefExpr, MemberExpr, modifier-list, numthreads, semantic-checking, front-end]
-source_count: 10
+source_count: 11
 ---
 
 # Slang Compiler Frontend and Semantic Checking
@@ -52,7 +52,10 @@ Fixing the producer applies to the parser too, and it decides which test suite m
 
 ---
 
-**Source learnings (10):**
+**Reviewing the `GLSLModuleModifier`→`ModuleSourceLanguageModifier` refactor (#13112): two takeaways.** (1) The known prior pitfall — "GLSL permitted here" (`-allow-glsl`/AllowGLSL mode) ≠ "the source language is GLSL", and `TranslationUnitRequest` is nullptr on reflection/language-server paths so the old fallback was load-bearing — is correctly resolved BY DESIGN, not luck: the new predicate `isModuleGLSLFlavored() = AllowGLSL-option || getModuleSourceLanguage()==GLSL` keeps the AllowGLSL OR-term, and the modifier is now attached to every module's AST at parse time (reachable via `getModuleDecl(decl)` regardless of any `TranslationUnitRequest`), with `getModuleSourceLanguage()` defaulting to `Slang` when absent. Verify these two things explicitly when reviewing this refactor class. (2) When correctness (Reviewer A) and clarity (Reviewer C) INDEPENDENTLY flag the same thing (here the new modifier's `sourceLanguage` field), treat it as high-signal convergence. ([GLSLModuleModifier→SourceLanguage refactor: how PR 13112 addressed the known pitfall + a cross-reviewer convergence signal](../learnings/1789515728058-glslmodulemodifier-sourcelanguage-refactor-how-pr-.md))
+
+**Source learnings (11):**
+- [GLSLModuleModifier→SourceLanguage refactor (#13112): AllowGLSL OR-term + parse-time module attach resolve the nullptr-TU pitfall; cross-reviewer convergence is high-signal](../learnings/1789515728058-glslmodulemodifier-sourcelanguage-refactor-how-pr-.md)
 - [Parser/AST changes must run tests/language-server (malformed-input crashes + shared test-server collateral)](../learnings/1789271917061-parser-ast-changes-must-run-tests-language-server-.md)
 - [capability flag vs [require]](../learnings/1779907427493-slang-capability-does-not-silence-use-of-undeclare.md)
 - [[require]-drop is silent runtime-divergence](../learnings/1781686744418-slang-11631-severity-require-drop-is-a-silent-runt.md)

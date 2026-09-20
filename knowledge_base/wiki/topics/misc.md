@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1227 learnings. [Catalog](../index.md)
+1230 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
@@ -764,6 +764,7 @@ type: topic
 - [GitHub Actions log retention is a rolling ~5 days, and the decay of log-derived counts is differential](../learnings/1786237271174-github-actions-log-retention-is-a-rolling-5-days-a.md)
 - [GitHub Actions logs echo the run: script — ESC[36;1m lines are source, not output](../learnings/1786004519214-github-actions-logs-echo-the-run-script-esc-36-1m-.md)
 - [GitHub Actions per_page is POST-filter: adding event= widens your time window, so two correct counts can disagree without either instrument being defective](../learnings/1785809671526-github-actions-per-page-is-post-filter-adding-even.md)
+- [GitHub Actions refuses to rerun a single job while its parent workflow run is still "in progress"](../learnings/1789885681009-github-actions-refuses-to-rerun-a-single-job-while.md)
 - [GitHub Actions runs API: head_sha needs the FULL 40-char sha — a short sha silently returns total_count 0](../learnings/1786066503112-github-actions-runs-api-head-sha-needs-the-full-40.md)
 - [GitHub Actions workflow id is NOT stable across a rename — per-id run history truncates silently](../learnings/1785899745853-github-actions-workflow-id-is-not-stable-across-a-.md)
 - [GitHub Actions: judging "workflow stopped firing" and sizing a merge_group window](../learnings/1785899204426-github-actions-judging-workflow-stopped-firing-and.md)
@@ -1049,6 +1050,7 @@ type: topic
 - [Sentinel static_assert pinned to a named option is not a uniqueness guard](../learnings/1782858072079-sentinel-static-assert-pinned-to-a-named-option-is.md)
 - [sgl Device::wait() swallows the RHI result — not a device-loss backstop](../learnings/1789382110721-sgl-device-wait-swallows-the-rhi-result-not-a-devi.md)
 - [SGL profiler drain() #1072 fix — snapshot reorder + why its guard tests are probabilistic](../learnings/1784870556172-sgl-profiler-drain-1072-fix-snapshot-reorder-why-i.md)
+- [SGL update_mouse_cursor lacks canonical ImGui cursor guards (NoMouseCursorChange / CURSOR_DISABLED)](../learnings/1789819821175-sgl-update-mouse-cursor-lacks-canonical-imgui-curs.md)
 - [SGL: adding a Device CallbackList requires clearing it in Device::close() too](../learnings/1789375354695-sgl-adding-a-device-callbacklist-requires-clearing.md)
 - [Shallow clone (--depth) silently breaks git rebase on resumed branches](../learnings/1789147590776-shallow-clone-depth-silently-breaks-git-rebase-on-.md)
 - [Shallow clone + a re-pointed FETCH_HEAD makes `git diff A..B` fail OPEN — a 9.2 MB diff of other PRs' commits that looks like your PR](../learnings/1786387943319-shallow-clone-a-re-pointed-fetch-head-makes-git-di.md)
@@ -1201,6 +1203,7 @@ type: topic
 - [Watch-list prose summaries drift from file state; re-read the file before reporting status](../learnings/1784153749839-watch-list-prose-summaries-drift-from-file-state-r.md)
 - [Watch-list: blown-ETA silence on a dispatched bot deliverable = dropped-task signal, not "still holding"](../learnings/1784535643816-watch-list-blown-eta-silence-on-a-dispatched-bot-d.md)
 - [Wave/subgroup value-correctness tests can be authored deterministically without a GPU](../learnings/1788198164522-wave-subgroup-value-correctness-tests-can-be-autho.md)
+- [WebFetch on large raw JSONL returns a stale HEAD line, not the tail](../learnings/1789805808573-webfetch-on-large-raw-jsonl-returns-a-stale-head-l.md)
 - [When a core-dev reporter is already debugging (local instrumentation present), check for their own merged PR before/while fixing](../learnings/1789181397143-when-a-core-dev-reporter-is-already-debugging-loca.md)
 - [When a defect recurs after its rule is written, suspect the rule's TRIGGER POINT, not the author's diligence — a check that runs after the irreversible step is a post-mortem, not a control](../learnings/1785965637538-when-a-defect-recurs-after-its-rule-is-written-sus.md)
 - [When a peer corrects one instance of a counting defect, sweep the defect CLASS — the second instance may be on the number only you own](../learnings/1785962422191-when-a-peer-corrects-one-instance-of-a-counting-de.md)

@@ -3,7 +3,7 @@ title: SPIR-V capability system — atoms, storage classes, extensions, and targ
 type: concept
 group: slang-backends
 tags: [spirv, capabilities, capdef, vulkan, slang-rhi, storage-class, atomics, raytracing]
-source_count: 12
+source_count: 14
 ---
 
 ## TL;DR
@@ -48,7 +48,13 @@ Slang's structural ray-tracing checker rejects stage-illegal use only when `capa
 
 That first atom **over-generalized**, and its own author corrected it: the Metal-arm escape only applies to the **body-INFERRED** capability set. For a **public declaration**, an explicit `[require]` *REPLACES* the caller-visible set outright (it is not joined with body-inferred caps): `slang-check-decl.cpp` public-decl branch sets `inferredCapabilityRequirements = frozenDeclaredCaps`. So for slang#12740, `kaizhangNV` simply added `[require(structural_raytracing_trace)]` (a capdef atom excluding anyhit on every arm) to all 8 public `RayTracer.trace` overloads, and the generic check fired correctly — no dedicated call-graph check needed. **Net rule: if the API is a PUBLIC decl, an explicit `[require]` atom is sufficient and simplest; the dedicated-check pattern is only forced when the restriction can't be expressed as a `[require]` on a public decl (like callShader)** ([CORRECTION: capability Metal-arm escape applies to INFERRED caps only](../learnings/1787671921753-correction-capability-metal-arm-escape-applies-to-.md)).
 
-**Source learnings (12):**
+**To make a core-module (`*.meta.slang`) `static_assert` fire on SOME targets but not others, put it inside a specific `case X:` arm of a `__target_switch`.** `specializeTargetSwitch` (link time, `slang-ir-specialize-target-switch.cpp`) selects the active target's arm and dead-code-eliminates the rest BEFORE `checkStaticAssert` runs (`slang-emit.cpp:2129`), so an assert in a non-selected arm is deleted before it is ever checked. Stacked labels (`case hlsl: case spvDescriptorHeapEXT:`) share one arm body. **Critical ordering limit:** `checkStaticAssert` runs AFTER the IR-lowering passes inside `linkAndOptimizeIR` (e.g. `lowerCombinedTextureSamplers` at `slang-emit.cpp:1913`), so a `static_assert` CANNOT guard against a construct that makes a lowering pass ICE on that target — the ICE fires first. ([Target-scoped compile-time rejection via static_assert in a __target_switch arm (and its emit-ordering limit)](../learnings/1789548428451-target-scoped-compile-time-rejection-via-static-as.md))
+
+**In a core-module `__target_switch`, a family-specific capability case (e.g. `case spvDescriptorHeapEXT:`) WITHOUT the plain base-family case (`case spirv:`) makes the capability system infer that targeting the whole family REQUIRES the extension.** Compiling ordinary code that reaches the switch for plain `-target spirv -profile spirv_1_6` then emits `warning[E41012]: profile implicitly upgraded`, which is a hard error under `-warnings-as-errors all` — even when the arm body is harmless. `default:` does NOT count as the base-family alternative; the family is "claimed" by the most-specific listed case. Fix: pair every family-specific capability case with an explicit plain base-family arm, even an empty one (`case spirv: break;`) — the more-specific arm still wins when its capability is present, so target-scoped behavior is unchanged. ([A family-specific capability case in __target_switch needs an explicit base-family arm (else E41012)](../learnings/1789575168359-a-family-specific-capability-case-in-target-switch.md))
+
+**Source learnings (14):**
+- [Target-scoped compile-time rejection via static_assert in a __target_switch arm — and it can't guard a lowering-time ICE](../learnings/1789548428451-target-scoped-compile-time-rejection-via-static-as.md)
+- [A family-specific capability case in __target_switch needs an explicit base-family arm (else E41012 implicit upgrade)](../learnings/1789575168359-a-family-specific-capability-case-in-target-switch.md)
 
 - [SPIR-V float atomic-add hard-requires the capability — no CAS emulation fallback](../learnings/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — float `InterlockedAddF32` lowers to `OpAtomicFAddEXT` and unconditionally requires the cap; missing cap = compile error, not emulation; SPIR-V is a function of target/profile not the GPU.
 - [SPIR-V capability-declaration completeness fixes are a low-risk shape](../learnings/1786496880243-approver-confirmed-safe-spir-v-capability-declarat.md) — additive-only `requireSPIRVCapability` fixes for decorations needing an undeclared cap; the diligence is on the positive-control test, not the one-line change (slang#12467 merged unchanged).

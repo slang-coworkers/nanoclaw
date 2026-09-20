@@ -3,7 +3,7 @@ title: Slang & slang-rhi test harness — inert directives, vacuous tests, and r
 type: concept
 group: slang
 tags: [slang, slang-test, slang-rhi, testing, filecheck, regression, revert-drill]
-source_count: 8
+source_count: 4
 ---
 
 ## TL;DR
@@ -56,7 +56,10 @@ Slang-rhi test authoring adds mechanics beyond those divergences. **GPU-free uni
 
 "`IRModule::create` etc. aren't exported from `libslang.so`, so a test can't link them" is **false** — the first half is true (`nm -D` finds none), but `slang-unit-test` already solves exactly this: `tools/CMakeLists.txt:414-425` adds `slang-repro-validator.cpp` to `target_sources` and calls its non-exported free function directly, "without publishing an internal validator as part of the stable public ABI." So **to unit-test a non-exported Slang internal, add its `.cpp` to `slang-unit-test`'s `target_sources`** — sanctioned, in use, ABI-safe. The generalizable lesson: **downgrade every "impossible / can't / unreachable" to the cost claim it usually is.** "Cannot be done" is falsified by a single counter-example and reads as unresearched or self-serving; "could be done by recompiling a large TU into the test target; disproportionate for a two-line change" is a judgement a reviewer can weigh — same decision, same code, only the honesty of the framing differs, unless you actually searched for the mechanism and can cite the search. "No existing test does X" is a prompt to investigate (how does this target handle non-exported internals *at all*?), not a conclusion; and labelling a claim "reasoned, not verified" *raises* the bar on the reasoning, it doesn't lower it — the label invites a reader to trust the argument instead of the evidence, which here sat one file away. [CORRECTION: "not exported so a test can't link it" is FALSE for slang-unit-test — it recompiles non-exported internals (tools/CMakeLists.txt:414-425)](../learnings/1785976052762-correction-not-exported-so-a-test-can-t-link-it-is.md)
 
-**Source learnings (3):**
+**The shader-slang slang-fixer container has a real GPU — NVIDIA L40S (Ada, SM 8.9)** — so the common "no GPU locally, render tests only ride CI" assumption is FALSE here. `nvidia-smi -L` lists it and slang-test reports `vk,vulkan: Supported` + cuda/llvm/cpu. `//TEST(compute):COMPARE_COMPUTE(...):-vk` cooperative-matrix / cooperative-matrix-2 tests (with granular `-render-feature` names like `cooperative-matrix-tensor-addressing`, `-block-loads`, `-reductions`) actually EXECUTE on the L40S and PASS, not land as `ignored` (measured on #9030: 27/27 passed). The L40S is SM 8.9 ≥ SM80, so it supports VK_NV_cooperative_matrix2; CI's Tesla-T4 tier is SM75 (< SM80) and skip-listed for these, but the local box is not T4. Always run `nvidia-smi -L` before punting a GPU test to CI — a passing (not ignored) result here is genuine functional verification. ([slang-fixer build box has an NVIDIA L40S — coop-matrix-2 render tests run locally](../learnings/1789501634936-slang-fixer-build-box-has-an-nvidia-l40s-coop-matr.md))
+
+**Source learnings (4):**
+- [slang-fixer build box has an NVIDIA L40S (SM 8.9) — coop-matrix-2 render tests execute and pass locally; run nvidia-smi -L before punting to CI](../learnings/1789501634936-slang-fixer-build-box-has-an-nvidia-l40s-coop-matr.md)
 
 - [slang-rhi GPU-free unit tests can call backend-internal functions; Vulkan access-flag mapping](../learnings/1789376245791-slang-rhi-unit-testing-backend-internal-functions-.md) — static test binary links internals via `target_sources`; #859 `calcAccessFlags` `SHADER_READ` fix; check the `d3d12-utils.cpp` sibling.
 - [slang-rhi headless Linux build needs SLANG_RHI_BUILD_EXAMPLES=OFF too](../learnings/1789435308022-slang-rhi-headless-linux-build-needs-slang-rhi-bui.md) — disabling GLFW test builds is not enough; `SLANG_RHI_BUILD_EXAMPLES` defaults ON and pulls in GLFW.

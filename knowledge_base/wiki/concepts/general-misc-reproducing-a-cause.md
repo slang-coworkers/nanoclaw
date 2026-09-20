@@ -3,7 +3,7 @@ title: "Reproducing a Cause, Not a Story"
 type: concept
 group: general-misc
 tags: [reproduction, root-cause, debugging, false-negative, cascade, process]
-source_count: 0
+source_count: 7
 ---
 
 # Reproducing a Cause, Not a Story
@@ -36,7 +36,10 @@ Fixing a "front-end crashes on X" issue often *unmasks* deeper layers the crash 
 
 Amending a memory index by +457 B pushed two leaf links past the ~24.4 KB readable-prefix bound, orphaning them (0 orphans before the edit, 2 after — a self-inflicted regression). The wrong instinct, followed four times, was to shave prose to recover bytes — lossy, and it converges slowly because the shortfall is being guessed at, not computed (2→2→1→1 orphan across passes). What worked at zero information cost: the two orphaned links sat on one row that *straddled* the boundary, so reordering the links *within that row* — moving the past-bound one to the front — pulled it inside with no deletion, ending at 147/147 reachable. Reachability is set by whether a link's *byte offset* falls in the prefix, not by total file size; for a row spanning the cut, link order is free, so the question is never only "how do I make the file smaller" but "which side of the cut is each link on" ([A link orphaned by a byte bound can be rescued by REORDERING its row, not by deleting text](../learnings/1786307748792-a-link-orphaned-by-a-byte-bound-can-be-rescued-by-.md)). Process note on issue authoring: when a maintainer asks the bot to file a new issue for design/analysis discussion rather than a solution, frame the issue as open questions — not a bug with a known fix. The existing PR's proposed fix must be listed as one candidate among neutral options, explicitly not endorsed; shader-slang/slang has no "discussion" label, so design-discussion issues go unlabeled, and you ack on the source PR with a short comment linking the new issue and the scope distinction ([Filing a neutral design-discussion issue split off from a PR](../learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md)).
 
-**Source learnings (6):**
+**A combined revert (removing several related arms/cases at once) plus a test whose `main()` runs the cases sequentially only proves the HUNK as a whole is load-bearing — NOT each removed piece independently.** If the first-executed case crashes (SIGSEGV/abort), the process dies there and the later cases never run, giving zero evidence about them. On slang#12494, reverting BOTH the `First` and `Last` arms of `isTypeEqualityWitness` and running a test that calls `firstEq()` before `lastEq()` gave SIGSEGV exit 139 — proving the hunk is required and that `firstEq` needs it, but `lastEq` never executed so the `Last` arm was NOT proven independently load-bearing. Fixes: run per-piece drills (remove only arm A → run; restore; remove only arm B → run), or narrow the claim to exactly what was shown ("the hunk is not revertible with the suite green; it aborts at the first-executed case; case Y is the symmetric mirror") and offer per-piece drills. An independent reviewer will catch an over-broad "both arms are load-bearing" claim. ([Revert-drill pitfall: removing multiple arms + a crash-on-first-case test only proves the HUNK, not each arm](../learnings/1789488824731-revert-drill-pitfall-removing-multiple-arms-a-cras.md))
+
+**Source learnings (7):**
+- [Revert-drill pitfall: a combined revert + a crash-on-first-case sequential test only proves the whole hunk, not each removed arm — run per-piece drills or narrow the claim](../learnings/1789488824731-revert-drill-pitfall-removing-multiple-arms-a-cras.md)
 - [A mechanism you cannot reproduce is a story — 4 wrong root causes before one 30-second repro](../learnings/1786076330361-a-mechanism-you-cannot-reproduce-is-a-story-4-wron.md)
 - [CORRECTION: a reproduced symptom is not a reproduced cause](../learnings/1786074471821-correction-a-reproduced-symptom-is-not-a-reproduce.md)
 - [A wrong repro shape yields a false negative indistinguishable from refutation](../learnings/1786080292080-a-wrong-repro-shape-yields-a-false-negative-indist.md)

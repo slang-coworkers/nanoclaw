@@ -3,7 +3,7 @@ title: "CI Build: Git Checkout Depth & Submodule Pins"
 type: concept
 group: ci-tooling
 tags: [ci, build, git, shallow-clone, submodules, git-provenance, repo-hygiene, slang, slang-rhi, slangpy]
-source_count: 18
+source_count: 19
 ---
 
 # CI Build: Git Checkout Depth & Submodule Pins
@@ -151,7 +151,10 @@ On slangpy#1089 the pin **did** move across 0.36.0→0.37.0 (`96fef6f9`→`af6a1
 
 **Reconcile a diverged branch without force-push when the remote holds a maintainer merge commit.** If the remote branch was updated via GitHub's "Update branch" (a `Merge branch 'master' into <branch>` commit) but your local was *rebased* onto newer master, `git push` is rejected non-fast-forward and the same fix now exists as two different SHAs. Do **not** force-push blindly — the remote merge commit may be a maintainer action, and you must first prove no unique remote content is lost. Safe recipe: `git fetch origin <branch>` and compare `HEAD` vs `FETCH_HEAD` (the tracking ref may not materialize — use `FETCH_HEAD`); prove the remote's fix-file content equals your last-shared state (`git diff FETCH_HEAD <last-shared-commit> -- <fix files>` → empty = nothing lost); replay ONLY your new commits onto the remote tip with `git rebase --onto FETCH_HEAD <branch-point-before-new-commits>`; then `git push origin HEAD:<branch>` fast-forwards — no force, remote merge commit preserved ([reconciling a diverged PR branch without force-push](../learnings/1789505131994-reconciling-a-diverged-pr-branch-without-force-pus.md)).
 
-**Source learnings (18):**
+**After any `git reset --hard`/checkout that moves submodule gitlinks (a rebased base almost always does), run `git submodule update --init --recursive` BEFORE building — or you get subtle mismatched-toolchain test failures.** After `git reset --hard <rebased-base>` a worktree's submodule working-dir checkouts do NOT auto-update; `git status` shows `external/spirv-tools`, `external/spirv-headers` as ` M`. Commit `c7954ebd1f` (SPIRV VulkanSDK Sep-2026 bump) both moved the tree gitlinks AND regenerated the in-tree `external/spirv-tools-generated/core_tables_*.inc` opcode→mnemonic tables. Building the NEW generated tables against the OLD (un-updated) submodule yields a mismatched disassembler that prints the `NonSemantic.DebugPrintf` extended instruction by NUMBER (`%set 1`) instead of the mnemonic — so `tests/spirv/debug-printf.slang` fails only its `DebugPrintf` CHECK. This was initially misdiagnosed as "the SPIRV-Tools bump broke it"; the real cause is the STALE tool. Fix: `git submodule update --init external/spirv-tools external/spirv-headers` then rebuild. ([CORRECTION: debug-printf.slang failure was a stale submodule checkout after reset --hard, not the SPIRV-Tools bump](../learnings/1789592891886-correction-debug-printf-slang-failure-was-stale-su.md))
+
+**Source learnings (19):**
+- [After reset --hard/checkout that moves submodule gitlinks, run git submodule update before building — stale submodule vs regenerated in-tree tables breaks debug-printf disassembly](../learnings/1789592891886-correction-debug-printf-slang-failure-was-stale-su.md)
 
 - [shallow clones fail THREE ways — history search, --stat inflation, and object-not-found (which manufactures a false negative); audit per clone](../learnings/1785768394345-shallow-clones-fail-three-ways-history-search-stat.md)
 - [/workspace/agent/slang-rhi is a SHALLOW clone — git log/blame/-S provenance is silently wrong past the graft root](../learnings/1785767576978-workspace-agent-slang-rhi-is-a-shallow-clone-git-l.md)

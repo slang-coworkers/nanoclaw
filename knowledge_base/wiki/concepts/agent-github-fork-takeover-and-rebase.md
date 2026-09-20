@@ -3,7 +3,7 @@ title: "Agent GitHub Fork-Takeover and Rebase Mechanics"
 type: concept
 group: agent-infra
 tags: [github, nv-slang-bot, gh-cli, fork-takeover, rebase, app-token, auth, outage]
-source_count: 3
+source_count: 5
 ---
 
 # Agent GitHub Fork-Takeover and Rebase Mechanics
@@ -35,7 +35,13 @@ When `gh` calls suddenly 401 "Bad credentials," the discriminating probe is **RE
 
 The 07-16/07-17 outage this diagnostic came from is **FIXED** — the App-token refresh cron had silently died on a missing `gh` on the newly-migrated host, so the github.com App token expired hourly and every `actions`/GraphQL call 401'd `Bad credentials`; `gh` 2.96 + a guarded refresh cron + git-push split into non-overlapping secrets restored it (verified recovered 07-17 ~11:47Z). Do NOT hold read-only or assume actions/GraphQL are down. Keep the REST-vs-actions-vs-GraphQL split above as a *diagnostic technique* for a future problem, not a current state, and re-diagnose any new 401 cluster from scratch (which paths fail? is the refresh cron alive / is `gh` present?). Full correction and receipts live on the sibling [Agent GitHub Token Boundaries and Write-Blocks](agent-github-token-boundaries-and-write-blocks.md) page.
 
-**Source learnings (3):**
+**To clear `mergeStateStatus=BEHIND` on an APPROVED slang PR (repo requires up-to-date branches), merge `origin/master` INTO the fix branch and push (non-force) — do NOT rebase.** Verified on #12988: a merge commit is fast-forward-ahead of the remote branch so a plain `git push` works (no destructive force-push, which can dismiss the review); the existing approval SURVIVED the merge-update (`reviewDecision` stayed `APPROVED`); and the push AUTO-RERAN CI on the merged sha (`BEHIND → BLOCKED` pending CI → maintainer merged once green). Updating your own fix branch is an allowed code push (not merge/`gh pr ready`/comment), so no operator approval needed. Watch submodule gitlinks: merging master brings pointer bumps that show as ` M` in `git status` — cosmetic and safe, the merge commit already records master's pointers. ([Clearing mergeStateStatus=BEHIND on an approved PR: merge master in (don't rebase) — preserves approval, no force-push](../learnings/1789535383508-clearing-mergestatestatus-behind-on-an-approved-pr.md))
+
+**shader-slang/slang has "dismiss stale approvals on push" enabled: pushing ANY new commit after a human approval — even a cosmetic, comment-only, zero-behavioral-change tidy — dismisses the approval and flips `reviewDecision` back to `REVIEW_REQUIRED`, costing a full re-review round.** (On #12880 a 3-line inline-comment removal silently dismissed maintainer approval of 063478d8a0.) Rules: once a human approval lands, do NOT push further commits unless a reviewer explicitly requires a code change — bundle everything (including codex/critique nit fixes) BEFORE the human reviews so the approved commit is final; when a critique gate raises a COSMETIC must-fix after an approval exists, a redundant comment is not worth dismissing a hard-won approval, so defer it. If a dismiss happens, recover with a plain comment to the approver stating the exact non-behavioral delta (`git diff <approved>..<head> --stat`) and asking for a quick re-approve — do NOT `--add-reviewer`. ([shader-slang/slang dismisses human PR approvals on ANY new commit — never push post-approval](../learnings/1789630473550-shader-slang-slang-dismisses-human-pr-approvals-on.md))
+
+**Source learnings (5):**
+- [Clearing mergeStateStatus=BEHIND on an approved PR: merge master in (don't rebase) — preserves approval, no force-push, auto-reruns CI](../learnings/1789535383508-clearing-mergestatestatus-behind-on-an-approved-pr.md)
+- [shader-slang/slang dismisses human PR approvals on ANY new commit — bundle nits before approval, never push post-approval](../learnings/1789630473550-shader-slang-slang-dismisses-human-pr-approvals-on.md)
 - [GitHub gateway 401 split: actions+GraphQL down, REST reads OK (diagnostic)](../learnings/1784216892956-github-gateway-401-split-actions-graphql-down-rest.md)
 - [PR takeover from a contributor's personal fork: bot App token can't push to the fork (even maintainerCanModify) — cherry-pick onto origin, fresh bot PR](../learnings/1784692103088-pr-takeover-from-a-contributor-s-personal-fork-bot.md)
 - [GH_TOKEN on samples is an App installation [REDACTED-BEARER_SECRET] 403 is expected, .permissions unreliable; push/comment work — rebase verified by patch-id + force-with-lease](../learnings/1784768440116-slangpy-samples-auth-rebase-mechanics-app-installa.md)

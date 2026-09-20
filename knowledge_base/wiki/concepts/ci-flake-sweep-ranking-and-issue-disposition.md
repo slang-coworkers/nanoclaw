@@ -3,7 +3,7 @@ title: "CI Flake Sweep Ranking and Issue Disposition"
 type: concept
 group: ci-tooling
 tags: [ci, sweep, ranking, denominator, unit, flake, independent-basis, tracking-issue, triage-park, slang]
-source_count: 6
+source_count: 7
 ---
 
 # CI Flake Sweep Ranking and Issue Disposition
@@ -37,7 +37,10 @@ Five failures from two slang CI sweeps, all in how a red set gets *counted and r
 
 Not every red or CI-flavored item in a sweep is fixable work, and a placeholder tracking issue is the case most likely to be mis-routed into churn. NVIDIA CI engineer @jkiviluoto-nv opens Falcor-CI tracking issues with one-line bodies (e.g. #11703 "Falcor 1 CI improvement", body just "Tracking the work."; also #9219, #9228) — self-assigned CI-infrastructure work whose code lives in `.github/workflows`, not `source/`, with no reproducer concept. **Park these at triaged: do NOT fix-forward to a fixer.** There is no compiler work, no design, no repro, so forwarding a placeholder produces pure bounce-back churn (mirrors the #11600 Falcor-YML park). But **still post a verified 5-bullet on the issue** — posting policy covers every triaged issue including maintainer-authored ones, and @jkiviluoto-nv is a *contributor* (not a wired collaborator), so the silent-skip carve-out doesn't apply; the value-add is cross-linking the Falcor-CI improvement family (#11495 build/test split → #11600 3-file .yml refactor, PARKED → #9219/#9228/#11703 tracking issues) so a human lands on the context. Do NOT set Issue Type "Feature" — a CI chore is not a compiler feature; leave Type untouched when unsure, to avoid label noise on the CI owner's own tracking issue ([park Falcor-CI placeholder tracking issues at triaged, cross-link the family](../learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-park-.md)).
 
-**Source learnings (6):**
+**In CI-sweep rollups, keep the two "falcor" failure causes labeled separately, and check PR authorship before writing "needs author attention."** (1) The babysitter's "falcor" bucket used to conflate bridge-403 auth errors (self-resolved ~09-15, no longer a live driver) with build-artifact-expiry (1-day retention, late falcor dequeue — still the live driver); lumping them makes the trend line misleading once one leg is fixed. (2) On #12608 a real (non-flake) C4458/C2220 compile error in the PR's own diff was correctly caught, but framing it "needs author attention" was imprecise — the PR was BOT-owned (`app/nv-slang-bot`, branch `fix/issue-12604`) and already routed to slang-fixer. Before writing "needs author/human attention" in a sweep report, check `gh pr view <n> --json author,headRefName` (or whether the head branch matches the `fix/issue-*` bot convention) — if bot-owned, say "needs fixer attention." ([Distinguish falcor bridge-403 (resolved) from artifact-expiry (live) in rollups; check bot-authorship before saying 'needs author attention'](../learnings/1789481620961-distinguish-falcor-bridge-403-resolved-from-artifa.md))
+
+**Source learnings (7):**
+- [Distinguish falcor bridge-403 (resolved) from artifact-expiry (live) in sweep rollups; check bot-authorship before 'needs author attention'](../learnings/1789481620961-distinguish-falcor-bridge-403-resolved-from-artifa.md)
 - [Falcor-CI placeholder tracking issues (@jkiviluoto-nv): PARK at triaged, don't fix-forward; still post the 5-bullet and cross-link the family](../learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-park-.md)
 - [before comparing two failure rates, check the denominator is the same population — a job-name prefix split turned a 4.5× gap into no gap; bound the unclassifiable](../learnings/1786222540253-before-comparing-two-failure-rates-check-the-denom.md)
 - [never grep your own log's reason/check field to rank flakes — self-authored boilerplate labels inflate the winner; enumerate distinct values, rank on the CI axis](../learnings/1786227400254-never-grep-your-own-log-s-reason-field-to-rank-fla.md)

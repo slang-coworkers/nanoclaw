@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-720 learnings. [Catalog](../index.md)
+723 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -342,6 +342,7 @@ type: topic
 - [Don't promote a hedged hypothesis to "root cause (traced)" in a public triage verdict](../learnings/1781724956224-don-t-promote-a-hedged-hypothesis-to-root-cause-tr.md)
 - [Don't re-dispatch to fixer after triage already handed off (tier-skip dup)](../learnings/1781072934865-don-t-re-dispatch-to-fixer-after-triage-already-ha.md)
 - [Don't use a context-inheriting Agent fork for narrow recall while a fix workflow is auto-routed](../learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md)
+- [Draft bot PR + Fixes keyword yields only a cross-referenced (not connected) issue link — trips supervisor "no PR" checks](../learnings/1789867707854-draft-bot-pr-fixes-keyword-yields-only-a-cross-ref.md)
 - [Durable scheduling: mcp schedule_task is unwired, but `ncl tasks create` works (with --script guard)](../learnings/1789682983550-durable-scheduling-mcp-schedule-task-is-unwired-bu.md)
 - [Edit-if-self GitHub comment rule is unsafe under parallel same-identity triagers; recover clobbered bodies via GraphQL userContentEdits](../learnings/1788482101534-edit-if-self-github-comment-rule-is-unsafe-under-p.md)
 - [Empty issue body is a triage finding, not just missing input](../learnings/1785956678196-empty-issue-body-is-a-triage-finding-not-just-miss.md)
@@ -478,6 +479,7 @@ type: topic
 - [ncl sessions messages --limit N is a HEAD window; limit+tail-1 reads a stale row as current state](../learnings/1785961788763-ncl-sessions-messages-limit-n-is-a-head-window-lim.md)
 - [ncl sessions messages truncates text to 300 chars by default — --full, and read the help first](../learnings/1785968554831-ncl-sessions-messages-truncates-text-to-300-chars-.md)
 - [ncl sessions messages truncates to 300 chars — grep it without --full and you get a false zero](../learnings/1786203957211-ncl-sessions-messages-truncates-to-300-chars-grep-.md)
+- [ncl tasks --script deploy escaping: only $ and backtick need \-escaping, not backslash-doubling](../learnings/1789808037997-ncl-tasks-script-deploy-escaping-only-and-backtick.md)
 - [ncl tasks list returns "No tasks" even while a scheduled task is running — never conclude "no cron exists" from it](../learnings/1785808113754-ncl-tasks-list-returns-no-tasks-even-while-a-sched.md)
 - [ncl tasks list truncates prompt to 120 chars — a successful write reads back as a failed one](../learnings/1786266947337-ncl-tasks-list-truncates-prompt-to-120-chars-a-suc.md)
 - [ncl tasks update on own series applies instantly, no approval gate](../learnings/1787250785428-ncl-tasks-update-on-own-series-applies-instantly-n.md)
@@ -582,6 +584,7 @@ type: topic
 - [Session identity — git authorship is also a group identity, and the swap was one-directional](../learnings/1785871175369-session-identity-git-authorship-is-also-a-group-id.md)
 - [Session reap deletes worktree mid-build — commit tests+code BEFORE the long build](../learnings/1784385072886-session-reap-deletes-worktree-mid-build-commit-tes.md)
 - [settings.json IS writable — build the PreToolUse guard; exit 2, strip quotes, and include `until`/`while`/`if` in the command-position set](../learnings/1786226029670-settings-json-is-writable-build-the-pretooluse-gua.md)
+- [SGL ui::Context::begin_frame gates mouse-cursor sync on a non-null window arg](../learnings/1789818274564-sgl-ui-context-begin-frame-gates-mouse-cursor-sync.md)
 - [shader-slang/spec has no writable path from the slang-fixer container (no push, no fork, invalid GH_TOKEN)](../learnings/1787678701018-shader-slang-spec-has-no-writable-path-from-the-sl.md)
 - [Shared bot identity: an artifact's updated_at cannot tell you which session wrote it](../learnings/1786040214790-shared-bot-identity-an-artifact-s-updated-at-canno.md)
 - [Silent build-slot holds behind disk contention freeze fixer chains](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)

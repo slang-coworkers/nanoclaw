@@ -3,6 +3,7 @@ title: "E30624/MatrixLayoutMode cluster split into two verdicts — behind-maste
 type: learning
 topic: review-approval
 source: learnings/1789435293943-e30624-matrixlayoutmode-cluster-split-into-two-ver.md
+superseded_by: 1789460715976-retraction-pr-13078-was-not-ahead-of-12986-it-was-
 ---
 
 # E30624/MatrixLayoutMode cluster split into two verdicts — behind-master disambiguation isn't always uniform across a cluster

@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-1658 learnings. [Catalog](../index.md)
+1665 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["N crash signatures" is a hypothesis about count, not an observation — but code shape is the WRONG test (slang#8785)](../learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md)
@@ -612,6 +612,7 @@ type: topic
 - [Run filecheck .slang tests through real slang-test (copy libslang-llvm.so), never a simulator](../learnings/1784743223082-run-filecheck-slang-tests-through-real-slang-test-.md)
 - [Running /slang-pr-review on a non-compiler repo (slang-rhi)](../learnings/1789377211919-running-slang-pr-review-on-a-non-compiler-repo-sla.md)
 - [Runtime slang-test for a new Vulkan extension is gated on slang-rhi harness support (abort/VK_KHR_shader_abort #11790)](../learnings/1782515089370-runtime-slang-test-for-a-new-vulkan-extension-is-g.md)
+- [Separating disclosed benchmark-resize noise from genuine compiler perf regressions in Slang's Nightly MDL Perf Test](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md)
 - [Serializing Slang reflection: use -reflection-json or reflect from a loaded module](../learnings/1782323528074-serializing-slang-reflection-use-reflection-json-o.md)
 - [shader-coverage vkdemo::Context break is all-platform and blocks the merge queue (not MSVC-only)](../learnings/1781301993943-shader-coverage-vkdemo-context-break-is-all-platfo.md)
 - [shader-slang board-sync bot auto-assigns a shepherd+reviewer on Bot PRs — don't remove it](../learnings/1789376759094-shader-slang-board-sync-bot-auto-assigns-a-shepher.md)
@@ -1024,6 +1025,7 @@ type: topic
 - [Slang reflection findFieldIndexByName already supports qualified module.var lookup](../learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md)
 - [Slang reflection: getElementVarLayout is null for non-ParameterGroup buffers; SSBO vs StructuredBuffer kinds differ](../learnings/1787658477648-slang-reflection-getelementvarlayout-is-null-for-n.md)
 - [Slang reflection: TypeReflection* pointer identity is not safe across ProgramLayout vs module reflection](../learnings/1780993688372-slang-reflection-typereflection-pointer-identity-i.md)
+- [Slang release builds: SLANG_ASSERT compiles to SLANG_ASSUME — a post-assert "safety guard" is NOT release-safe](../learnings/1789870012032-slang-release-builds-slang-assert-compiles-to-slan.md)
 - [Slang release CI green always lags master — merge_group CI is the real per-commit gate](../learnings/1785894855097-slang-release-ci-green-always-lags-master-merge-gr.md)
 - [Slang release CI: 41-52 min duration means an 01:30 liveness check has only ~40 min slack — dispatch jitter can leave the run in flight](../learnings/1786067341533-slang-release-ci-41-52-min-duration-means-an-01-30.md)
 - [Slang release packages deliberately exclude downstream compiler binaries (DXC/DXIL)](../learnings/1789421712604-slang-release-packages-deliberately-exclude-downst.md)
@@ -1262,6 +1264,7 @@ type: topic
 - [slang-pr-review: scope a re-run to focused verification when the re-push is test-only](../learnings/1782594329649-slang-pr-review-scope-a-re-run-to-focused-verifica.md)
 - [slang-pr-review: shared-container stale pre-staged diff → INTEGRITY-FAIL, verify before trusting counts](../learnings/1788161056956-slang-pr-review-shared-container-stale-pre-staged-.md)
 - [slang-pr-review: stacked-PR review + final-review.md wrap-up extraction + FETCH_HEAD race](../learnings/1789733573227-slang-pr-review-stacked-pr-review-final-review-md-.md)
+- [slang-pr-review: when the fixer is the requester, parent-edge and fixer-forward collapse to one send](../learnings/1789820780649-slang-pr-review-when-the-fixer-is-the-requester-pa.md)
 - [slang-raypayload-implicit-decoration-paq-gap](../learnings/1779295178725-slang-raypayload-implicit-decoration-paq-gap.md)
 - [slang-raypayload-paq-pass-asymmetric-skip-gap](../learnings/1779297394847-slang-raypayload-paq-pass-asymmetric-skip-gap.md)
 - [slang-rhi #787 texture-shared-cuda.vulkan flake is a missing-sync bug, not numeric tolerance](../learnings/1784741714597-slang-rhi-787-texture-shared-cuda-vulkan-flake-is-.md)
@@ -1327,6 +1330,7 @@ type: topic
 - [slang-test ignores filecheck tests when FileCheck unavailable in worktree builds](../learnings/1786633416035-slang-test-ignores-filecheck-tests-when-filecheck-.md)
 - [slang-test ignores INTERPRET (slangi) tests when slangi isn't built — use -cpu COMPARE_COMPUTE for local verifiability](../learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-sla.md)
 - [slang-test injects -O0 by default; SPIRV validation runs pre-opt](../learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md)
+- [slang-test LANG_SERVER harness desyncs if a config change emits a server→client refresh at initialize](../learnings/1789868223160-slang-test-lang-server-harness-desyncs-if-a-config.md)
 - [slang-test leaves *.slang.actual.txt artifacts in the test dir — delete before staging](../learnings/1781088712827-slang-test-leaves-slang-actual-txt-artifacts-in-th.md)
 - [slang-test N of N is a runTotal with ignored tests removed from the denominator](../learnings/1786092236462-slang-test-n-of-n-is-a-runtotal-with-ignored-tests.md)
 - [slang-test prints "100% of tests passed" after discarding hundreds of failures — read the DENOMINATOR](../learnings/1785837632487-slang-test-prints-100-of-tests-passed-after-discar.md)
@@ -1423,6 +1427,8 @@ type: topic
 - [slangc help-DB autolinks option-name tokens — never name a flag inside its own help text](../learnings/1787705364348-slangc-help-db-autolinks-option-name-tokens-never-.md)
 - [slangc help-text edits require regenerating command-line-slangc-reference.md (CI diff-checks it)](../learnings/1784827777508-slangc-help-text-edits-require-regenerating-comman.md)
 - [slangd Completion checking mode retains placement-illegal modifiers (ignoreUnallowedModifier) → manufactures malformed AST shapes that crash downstream](../learnings/1789401281467-slangd-completion-checking-mode-retains-placement-.md)
+- [slangd LSP: search-path #include resolution silently fails without workspaceFolders (no rootUri/rootPath fallback)](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md)
+- [slangd only reads workspaceFolders for #include roots; testing the deprecated handshake via slang-test LANG_SERVER](../learnings/1789818601805-slangd-only-reads-workspacefolders-for-include-roo.md)
 - [slangi `-disasm` shares the run-path crash — NOT a separate site (corrects a prior #11399 learning)](../learnings/1780385340573-slangi-disasm-crash-is-not-a-separate-site-it-exec.md)
 - [slangi autodiff NativeString into custom bwd derivative → constants-OOB (LIVE at HEAD, #12124)](../learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-deriv.md)
 - [slangi FieldExtract-on-pointer crashes emit-vm; MakeOptionalExpr must getSimpleVal its payload](../learnings/1786539532851-slangi-fieldextract-on-pointer-crashes-emit-vm-mak.md)
@@ -1589,6 +1595,7 @@ type: topic
 - [static_assert(false) in a switch(T.kind) arm fires EAGERLY for generic export functions](../learnings/1784691233062-static-assert-false-in-a-switch-t-kind-arm-fires-e.md)
 - [SubpassInput + -fvk-t-shift → E99997 is a layout-rule flip, SPIR-V-1.4+-only](../learnings/1789489702879-subpassinput-fvk-t-shift-e99997-is-a-layout-rule-f.md)
 - [Suite-wide spirv-opt (-O3) revives dormant SPIRV-Tools asserts (#12247, revives #11766/#11767)](../learnings/1785203893114-suite-wide-spirv-opt-o3-revives-dormant-spirv-tool.md)
+- [supervise-issues scan mis-flags slangpy-fixer draft-PR chains as awaiting_us (branch + Fixes-regex blind spot)](../learnings/1789867842533-supervise-issues-scan-mis-flags-slangpy-fixer-draf.md)
 - [supervisor worktree GC must bind repo from gitdir not tier folder](../learnings/1788098045338-supervisor-worktree-gc-must-bind-repo-from-gitdir-.md)
 - [Surface adjacent nits, don't auto-file follow-up issues (shader-slang "reign in the bot" signal, #12586)](../learnings/1788204898235-surface-adjacent-nits-don-t-auto-file-follow-up-is.md)
 - [Surfacing NVRTC PCH create-status to a Slang unit test (issue 12622)](../learnings/1788341328356-surfacing-nvrtc-pch-create-status-to-a-slang-unit-.md)
