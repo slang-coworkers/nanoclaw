@@ -1,0 +1,20 @@
+# codex-git-guard: the codex critique child runs git with GIT_CONFIG_SYSTEM
+# pointed here. Same table as CODEX_GIT_GUARD_CONFIG in
+# container/agent-runner/src/codex-mcp-server.ts, which renders this file;
+# the test asserts they match. System scope so the receive-pack git spawns
+# for a local-path push (it gets no GIT_CONFIG_COUNT/KEY/VALUE and no -c)
+# still runs the refusing hooks.
+[core]
+	hooksPath = /app/hooks/codex-git-guard
+[url "disabled://"]
+	pushInsteadOf = https://
+	pushInsteadOf = http://
+	pushInsteadOf = git@
+	pushInsteadOf = ssh://
+	pushInsteadOf = file://
+	pushInsteadOf = /
+	pushInsteadOf = .
+[protocol]
+	allow = never
+[protocol "file"]
+	allow = never
