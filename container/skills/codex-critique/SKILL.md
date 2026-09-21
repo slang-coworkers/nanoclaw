@@ -8,9 +8,11 @@ allowed-tools: Read, Grep, Glob, Bash(git diff:*), mcp__codex__codex, mcp__codex
 
 # Codex Critique
 
-You call `mcp__codex__codex` yourself — no subagent. Codex runs in a separate process, fresh session, read-only filesystem. Pass file paths, not contents. Capture `threadId` — needed for rounds 2/3 via `mcp__codex__codex-reply`.
+You call `mcp__codex__codex` yourself — no subagent. Codex runs in a separate process, fresh session, with its git pinned read-only (below). Pass file paths, not contents. Capture `threadId` — needed for rounds 2/3 via `mcp__codex__codex-reply`.
 
 **IMPORTANT: Always pass `sandbox: "danger-full-access"`.** Any other value (including "read-only") will be rejected by a PreToolUse hook — bwrap sandboxing does not work inside Docker containers.
+
+**Codex cannot commit or push; file writes remain possible — re-hash artifacts you hand it.** The codex subprocess's git is pinned read-only by its own env (set by the agent-runner, not in yours): refusing hooks via `core.hooksPath`, every push URL rewritten to an unsupported scheme plus `protocol.allow=never` so no transport runs at all, and a system-scope gitconfig that reaches the receive-pack of a local-path push. `git commit` (with or without `--no-verify`), `branch -f`, `reset --hard`, `checkout -B`, `tag`, `stash`, `fetch`, `merge`, `rebase` and `git push` to any remote or path — including an explicit pushurl — fail with `codex critique is read-only: git <hook> refused (codex-git-guard)` or `fatal: transport '…' not allowed`; see docs/mcp-allowlist.md for the residual holes. It can still edit files in a worktree (`danger-full-access` is a real filesystem), so after a round compare the `### Attested` hashes against `sha256sum` of the paths you passed, and treat a mismatch as a codex write, not your edit. If codex reports a "refused" or "not allowed" git error, that is the guard working — do not retry with different flags.
 
 ```
 mcp__codex__codex({ prompt: <below>, developer-instructions: <below>, sandbox: "danger-full-access", cwd: "/workspace/agent" })
