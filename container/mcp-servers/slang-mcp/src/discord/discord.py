@@ -936,7 +936,9 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
 
     Allowed targets:
     - Channels listed in DISCORD_ALLOWED_SEND_CHANNELS (comma-separated IDs)
+    - Threads whose parent channel is listed in DISCORD_ALLOWED_SEND_CHANNELS
     - Threads whose parent forum is listed in DISCORD_ALLOWED_SEND_FORUMS
+    - Forum channels listed in DISCORD_ALLOWED_SEND_FORUMS
 
     If neither env var is set, all sends are blocked.
 
@@ -951,8 +953,7 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
     try:
         if _read_only_blocked(f"send_message channel={args.channel_id}"):
             return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
-        allowed_channels_raw = os.environ.get("DISCORD_ALLOWED_SEND_CHANNELS", "")
-        allowed_channels = {c.strip() for c in allowed_channels_raw.split(",") if c.strip()}
+        allowed_channels = _allowed_send_channel_ids()
         allowed_forums_raw = os.environ.get("DISCORD_ALLOWED_SEND_FORUMS", "")
         allowed_forums = {c.strip() for c in allowed_forums_raw.split(",") if c.strip()}
 
@@ -977,10 +978,17 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
                     "error": f"Not authorized to access channel with ID {channel_id}"
                 }
 
-        # Enforce allowlist: direct channel match, thread in allowed forum, or forum itself
+        # Enforce allowlist: direct channel match, thread whose parent is
+        # an allowed text channel or forum, or the forum channel itself.
         is_allowed = args.channel_id in allowed_channels
-        if not is_allowed and isinstance(channel, discord.Thread) and channel.parent:
-            is_allowed = str(channel.parent.id) in allowed_forums
+        if not is_allowed and isinstance(channel, discord.Thread):
+            parent_id = None
+            if channel.parent is not None:
+                parent_id = str(channel.parent.id)
+            elif getattr(channel, "parent_id", None) is not None:
+                parent_id = str(channel.parent_id)
+            if parent_id is not None:
+                is_allowed = parent_id in allowed_channels or parent_id in allowed_forums
         if not is_allowed and isinstance(channel, discord.ForumChannel):
             is_allowed = args.channel_id in allowed_forums
         if not is_allowed:
