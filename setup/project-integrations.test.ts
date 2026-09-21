@@ -78,8 +78,8 @@ describe('PROJECTS catalog', () => {
     }
   });
 
-  it('offers slang, slangpy, and nanoclaw (dashboard lives at the channel step)', () => {
-    expect(PROJECTS.map((p) => p.value).sort()).toEqual(['nanoclaw', 'slang', 'slangpy']);
+  it('offers slang, slangpy, nanoclaw, and astra (dashboard lives at the channel step)', () => {
+    expect(PROJECTS.map((p) => p.value).sort()).toEqual(['astra', 'nanoclaw', 'slang', 'slangpy']);
   });
 
   it('does not include dashboard — it is merged from the channel step instead', () => {

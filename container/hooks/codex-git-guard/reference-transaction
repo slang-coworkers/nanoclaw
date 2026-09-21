@@ -1,0 +1,19 @@
+#!/bin/sh
+# codex-git-guard: see pre-commit. This is the hook the pre-* hooks cannot
+# replace: every ref write goes through a reference transaction, so it catches
+# commit --no-verify, update-ref, branch -f, reset --hard, checkout -B, tag,
+# stash, fetch, merge (ORIG_HEAD) and, on git 2.50, the HEAD switch of a plain
+# checkout. The receive-pack git spawns for a local-path push gets no
+# GIT_CONFIG_COUNT/KEY/VALUE (stripped), but it does inherit GIT_CONFIG_SYSTEM
+# (../gitconfig, which names this dir too), so this hook fires on that side as
+# well. Git calls this with "prepared", then "committed" or
+# "aborted". Refusing "prepared" aborts the transaction; the follow-up
+# "aborted" call must succeed silently or every refusal prints twice.
+cat >/dev/null 2>&1
+case "$1" in
+  prepared)
+    echo "codex critique is read-only: git reference-transaction refused (codex-git-guard)" >&2
+    exit 1
+    ;;
+esac
+exit 0
