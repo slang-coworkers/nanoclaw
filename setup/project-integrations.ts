@@ -55,6 +55,14 @@ export interface ProjectOption {
  * additive overlays. Dashboard is handled separately at the channel step — it
  * edits shared host src and may need manual conflict resolution — via
  * `integrateDashboard()`, so it is intentionally absent from this catalog.
+ *
+ * Astra (nv-astra) is a clean additive overlay too, but its branch lives on the
+ * internal GitLab mirror only (never GitHub) — it carries internal-registry image
+ * builds + a k8s deploy. `availableProjects()` gates every row on `git ls-remote
+ * origin`, so this entry is silently skipped on a GitHub checkout (no such branch)
+ * and offered wherever nv-astra actually exists. The astra-sandbox driver it
+ * activates ships here (src/drivers/astra-sandbox-driver.ts) but stays dormant
+ * unless selected via NANOCLAW_RUNTIME_DRIVER=astra-sandbox.
  */
 export const PROJECTS: ProjectOption[] = [
   {
@@ -74,6 +82,12 @@ export const PROJECTS: ProjectOption[] = [
     branch: 'nv-nanoclaw',
     label: 'NanoClaw coworkers',
     hint: 'agents for developing nanoclaw itself',
+  },
+  {
+    value: 'astra',
+    branch: 'nv-astra',
+    label: 'Astra (k8s sandbox runtime)',
+    hint: 'run the fleet on NVIDIA Astra — per-session Kata sandbox pods (astra-sandbox driver); GitLab-only branch',
   },
 ];
 

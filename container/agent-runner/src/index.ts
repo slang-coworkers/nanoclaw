@@ -43,7 +43,7 @@ import { getAgentMailbox, readMailboxContext } from './mailbox/index.js';
 // Providers barrel — each enabled provider self-registers on import.
 // Provider skills append imports to providers/index.ts.
 import './providers/index.js';
-import { createCodexConfigOverrides } from './providers/codex-app-server.js';
+import { buildCodexMcpServer } from './codex-mcp-server.js';
 import { createProvider } from './providers/factory.js';
 import { parseAllowedMcpTools } from './providers/claude.js';
 // Provider-contracts barrel — each provider's runtime contract attaches to its
@@ -117,13 +117,8 @@ async function main(): Promise<void> {
   // Build MCP servers config: nanoclaw built-in + codex stdio child + any
   // additional from host. The codex entry runs the local codex CLI as an
   // MCP child process so it can read /workspace/agent files directly when
-  // it reviews. Routing/auth come from `-c` overrides built from container
-  // env vars — no ~/.codex/config.toml file is needed.
-  const codexArgs: string[] = [];
-  for (const override of createCodexConfigOverrides()) {
-    codexArgs.push('-c', override);
-  }
-  codexArgs.push('mcp-server');
+  // it reviews — and only read: its env pins git read-only. See
+  // codex-mcp-server.ts for the env/envInherit split and the git guard.
   const mcpServers: Record<string, McpServerConfig> = {
     nanoclaw: {
       command: 'bun',
@@ -139,57 +134,7 @@ async function main(): Promise<void> {
         NANOCLAW_MCP_POLICY: process.env.NANOCLAW_MCP_POLICY || '',
       },
     },
-    codex: {
-      command: 'codex',
-      args: codexArgs,
-      // Env for the `codex mcp-server` subprocess.
-      //
-      // Two mechanisms to get variables to the child:
-      //   1. `env` — literal key=value pairs, serialized verbatim into
-      //      `[mcp_servers.codex.env]` in ~/.codex/config.toml.
-      //      Used ONLY for non-secret, non-sensitive values (HOME, PATH).
-      //   2. `envInherit` — names-only allowlist, serialized as
-      //      `env_vars = [...]`. codex-cli resolves each name from its
-      //      own process env at subprocess spawn time — values never
-      //      reach disk. Used for anything derived from OneCLI/secrets
-      //      (proxy token in HTTPS_PROXY authority, NVIDIA_API_KEY).
-      //
-      // Why NVIDIA_API_KEY has to be forwarded at all — even though
-      // OneCLI handles auth transparently:
-      //
-      // OneCLI's HTTPS proxy DOES swap secrets transparently at the TLS
-      // layer (the value in container env is usually `onecli-placeholder`,
-      // not a real token — the real secret never enters the container).
-      // BUT codex-cli validates `model_providers.<p>.env_key` at SESSION
-      // START — before any HTTP call is attempted. If the named env var
-      // is undefined it errors `Missing environment variable: NVIDIA_API_KEY`
-      // and the subprocess exits before OneCLI gets a chance to inject.
-      // The var must therefore be *defined* in the child env (placeholder
-      // is fine); OneCLI rewrites the Authorization header on the way out.
-      //
-      // Verified empirically 2026-05-07 via `codex exec` A/B test:
-      //   - without the var → codex errors at startup
-      //   - with `onecli-placeholder` → request reaches nvinference, OneCLI
-      //     swaps credentials, succeeds.
-      //
-      // envInherit forwards by NAME only, so even if the host passes a
-      // real NVIDIA_API_KEY (uncommon), it never lands in TOML.
-      // OPENAI_API_KEY is intentionally NOT forwarded — codex is routed
-      // through nvinference per the deployment's credential policy.
-      env: {
-        HOME: process.env.HOME ?? '/home/node',
-        PATH: process.env.PATH ?? '',
-      },
-      envInherit: [
-        'NVIDIA_API_KEY',
-        'HTTPS_PROXY',
-        'HTTP_PROXY',
-        'NO_PROXY',
-        'SSL_CERT_FILE',
-        'SSL_CERT_DIR',
-        'NODE_EXTRA_CA_CERTS',
-      ],
-    },
+    codex: buildCodexMcpServer(process.env),
   };
 
   // The spawn-time MCP policy. Read BEFORE any server is wired, because the

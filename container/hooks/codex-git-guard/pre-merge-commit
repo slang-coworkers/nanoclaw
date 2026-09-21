@@ -1,0 +1,4 @@
+#!/bin/sh
+# codex-git-guard: see pre-commit. Fires for the commit a `git merge` creates.
+echo "codex critique is read-only: git pre-merge-commit refused (codex-git-guard)" >&2
+exit 1
