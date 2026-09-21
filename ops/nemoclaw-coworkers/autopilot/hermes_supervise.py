@@ -142,9 +142,18 @@ Four stall shapes the chain markers do not show (autopilot.md §2.5; the 2026-09
               line. SECOND SOURCE: the row's ledger `notes` stamps `decision-needed:<C.x|none> <ROW> <ISO> —
               <question>` (hermes_queue `ledger.decisions`): one with no later pairing `delegated:` stamp and no
               operator answer / DEFAULT APPLIED after its ISO is an ask too (age from the ISO; `source: ledger`),
-              so a DM the collectors missed still surfaces — read on every known row that carries one, merged,
-              queued or a finished follow-up included (never a paused one); the same key as the text-detected
-              ask collapses into it (the stamp's `rule` rides along). A delegable stamp (`C.1`–`C.3`, not `none`)
+              so a DM the collectors missed still surfaces — read on every known row that carries one, queued
+              or a blocked follow-up included (never a paused one); the same key as the text-detected
+              ask collapses into it (the stamp's `rule` rides along). CLOSED (2026-09-21, the digest re-listing
+              answered asks for days): a stamp is closed — no ask, no alert, no `DECISION NEEDED (Nh)` line, from
+              any source — when (i) the word ANSWERED (any case, markdown stripped; the question itself beginning
+              with it included) or the phrase DEFAULT APPLIED stands anywhere LATER in the same notes cell
+              (hermes_queue `answered`; an ANSWERED dated before the stamp answers an older decision), (ii) the
+              row is merged / dropped (`_row_moot`: queue state, or the ledger cell saying merged), or (iii) a later
+              pairing `delegated:` stamp. A closed stamp closes its same-key DM / row-thread copies — and, the
+              Orchestrator abbreviating the ledger question or the stamp absorbing trailing text, the row's canonical
+              copies that are the same ask by text (`_same_ask_text` / `_same_ask_words`) or are dated before the answer's own ISO
+              (`answered_at`); a moot row closes every canonical ask it names. A delegable stamp (`C.1`–`C.3`, not `none`)
               ≥ 2 h old with no pairing `delegated:` stamp adds `default C.x overdue` to the alert (`detail`) so
               the Orchestrator applies the standing default on its next turn — the digest line is unchanged, no
               new action kind; that overdue alert is bounded on `<key>:default-overdue`, so an ask alerted fresh
@@ -194,6 +203,9 @@ ALERT_BOUND_H = 24.0
 HOLD_TOO_LONG_H = 48.0
 TEST_FAIL_CAP = 2  # in-plugin FAILs per review cycle (a REQUEST_CHANGES starts a new cycle); FAIL (env)/ESCALATE never count
 REVIEW_RC_CAP = 2  # REQUEST_CHANGES per PR
+MOOT_STATES = ("merged", "dropped")  # a row in one of these has no open decision: its stamps and their copies are closed (_row_moot)
+# hermes_queue.ANSWERED_RE's twin: where the Orchestrator's free-text closure starts a clause in a stamp's absorbed text
+ANSWERED_CLAUSE_RE = re.compile(r"(?i)(?:^|[;:.?!—–(\n]|\s-)\s*(?:answered|default\s+applied)\b")
 ORCHESTRATOR = "orchestrator"
 DUP_WINDOW_S = 900  # a2a copies of one send (sender `out`, receiver `in`) land within seconds of each other
 PR_EVENT_KINDS = ("handoff", "test_report", "review_verdict", "merged", "pr_opened")
@@ -475,13 +487,16 @@ def classify_message(msg: dict, rid: str) -> dict | None:
         vm = re.search(r"\*\*Verdict:\*\*\s*([^\n]*)", text)
         vtext = (vm.group(1) if vm else first).upper()
         cap_form = re.search(r"FAIL\s*[×X]\s*2", vtext) is not None
-        env_form = re.search(r"FAIL\s*\(\s*(ENV|ENVIRONMENTAL|OUTSIDE[- ]PLUGIN)", vtext) is not None
+        # `FAIL (env)`, `FAIL(env)`, `FAIL ×8 (env)`, `FAIL (environmental)`, `FAIL (outside-plugin)`: the environmental verdict
+        env_form = re.search(r"\bFAIL\b[^\n(]{0,16}\(\s*(ENV|ENVIRONMENTAL|OUTSIDE[- ]PLUGIN|INFRA)", vtext) is not None
+        plugin_form = re.search(r"\(\s*(?:IN-)?PLUGIN\b|\bIN-PLUGIN FAIL", vtext) is not None  # an explicit in-plugin FAIL beside it still counts
         ev["escalated_up"] = "ESCALATE" in vtext or "ESCALATE" in first.upper()
-        env_proof = re.search(r"\*\*Env cause:\*\*", text) is not None
-        if env_form and not cap_form and env_proof:
-            ev["verdict"] = "FAIL_ENV"  # every failing row outside plugin code, WITH the Env cause proof: never a counted round
-        elif env_form and not cap_form:
-            ev["verdict"] = "FAIL"  # 'FAIL (env)' without an Env cause line is not exempt (hermes-verify verdict rule): it counts
+        ev["env_proof"] = re.search(r"\*\*Env cause:\*\*", text) is not None
+        if env_form and not plugin_form:
+            # Round caps v2 (delegated-decisions.md): an environmental FAIL is never a counted round, Env cause line or not
+            # (2026-09-21, FLEET-F62: eight `FAIL(env)` rounds read as `cap: test FAIL x7`). A missing proof line stays on the
+            # event (`env_proof`) and the record (`env_fail_unproven`) for the merge gate / operator; it no longer moves the cap.
+            ev["verdict"] = "FAIL_ENV"
         elif cap_form or ("FAIL" in vtext and "ESCALATE" not in vtext):
             ev["verdict"] = "FAIL"  # counted toward the per-cycle cap; the ×2 form is the cap being hit
         elif ev["escalated_up"]:
@@ -719,6 +734,19 @@ def _same_ask_text(a: str, b: str) -> bool:
     return len(short) >= 40 and short[:200] in long_
 
 
+ASK_WORD_RE = re.compile(r"[a-z0-9]+")
+
+
+def _same_ask_words(a: str, b: str) -> bool:
+    """_same_ask_text's second net for a closed decision's copies: the two questions are the same ask when every word of
+    the shorter (≥ 6 words) is in the longer. A DM copy whose parenthesis sits mid-sentence ("on the sandbox (podman) tier")
+    is not a contiguous run of the ledger's abbreviated question, so the substring rule alone misses it — and with an
+    UNDATED answer (`ANSWERED 2026-09-18:` — date only — or no ISO at all) nothing else can close that copy."""
+    wa, wb = ASK_WORD_RE.findall((a or "").lower()), ASK_WORD_RE.findall((b or "").lower())
+    short, long_ = sorted((wa, wb), key=len)
+    return len(short) >= 6 and set(short) <= set(long_)
+
+
 def _mirrors_row_ask(ask: dict, out_rows: dict) -> str | None:
     """The row whose standing ask this OPERATOR-bound ask is a copy of (same text under a lead-in naming more rows), or None."""
     scan = ask.get("scan") or ask.get("text") or ""
@@ -931,6 +959,44 @@ def detect_infra_hold(events: list[dict], thread_msgs: list[dict] | None = None,
     }
 
 
+def _authorized_rounds(rid: str, ledger: dict, cfg: dict, last_rc_ts: str = "") -> set[int]:
+    """Round caps v2: the test rounds authorized above the base budget for this row IN THE CURRENT REVIEW CYCLE. Sources:
+    the ledger verdict cell's `round N authorized` phrases (hermes_queue `verdict.authorizations` — the operator's ruling
+    relayed by the Orchestrator, or the C.1 default's `round 3 authorized (delegated C.1 <ISO>)`), the loose `round 3`
+    reading (`verdict.round3`: a third round ran, so it was authorized — and the only signal a state.json predating
+    `authorized_rounds` carries), and config `authorize_round["<ID>"]`, the operator's override for one extra round
+    (autopilot.md §6: lifts the cap by exactly one; the same round when the cell already names it). A REQUEST_CHANGES
+    (`last_rc_ts`, the newest one) restarts the budget (§6: a new cycle starts with the base budget), so a cell phrase
+    counts only when the ISO in its parenthetical is later than that verdict; the undated phrases together lift the new
+    cycle by at most one round (they cannot be placed, and the old loose reading gave one). Before any REQUEST_CHANGES
+    every phrase counts."""
+    v = ledger.get("verdict") or {}
+    auths = v.get("authorizations")
+    if not isinstance(auths, list):  # a state.json predating `authorizations`: the bare round list, undated
+        auths = [{"round": n, "at": None} for n in (v.get("authorized_rounds") or [])]
+    out: set[int] = set()
+    undated: set[int] = set()
+    for a in auths:
+        n = a.get("round") if isinstance(a, dict) else None
+        if not isinstance(n, int) or isinstance(n, bool):
+            continue
+        at = a.get("at")
+        if not last_rc_ts:
+            out.add(n)
+        elif isinstance(at, str) and at:
+            if at > last_rc_ts:
+                out.add(n)
+        else:
+            undated.add(n)
+    if undated:
+        out.add(max(undated))
+    if v.get("round3"):
+        out.add(TEST_FAIL_CAP + 1)
+    if rid in (cfg.get("authorize_round") or {}):
+        out.add(TEST_FAIL_CAP + 1)
+    return out
+
+
 def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gating: dict, cfg: dict, thread_msgs: list[dict] | None = None) -> dict:
     """§2.3: terminal states first, then walk the chain backwards to the first evidence."""
     ledger = row.get("ledger") or {}
@@ -974,13 +1040,15 @@ def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gati
     # REQUEST_CHANGES draw on it. FAIL_ENV / ESCALATE reports are not in `fails` at all.
     last_rc_ts = rcs[-1]["ts"] if rcs else ""
     cycle_fails = [e for e in fails if e["ts"] > last_rc_ts]
-    res["review_cycle"] = len(rcs)
+    res["review_cycle"] = len(rcs) + 1  # 1-based: the CURRENT cycle (a REQUEST_CHANGES ends one and opens the next); never "cycle 0"
     res["cycle_fail_count"] = len(cycle_fails)
+    res["env_fail_unproven"] = sum(1 for e in reports if e["verdict"] == "FAIL_ENV" and e.get("env_proof") is False)
     res["test_rounds"] = [{"round": e["round"], "head": (e["head"] or "")[:7] or None, "verdict": e["verdict"], "ts": e["ts"]} for e in reports]
     res["review_rounds"] = [{"round": e["round"], "head": (e["head"] or "")[:7] or None, "verdict": e["verdict"], "ts": e["ts"]} for e in verdicts]
     res["fail_count"] = len(fails)
     res["rc_count"] = len(rcs)
-    round3_ok = rid in (cfg.get("authorize_round") or {}) or (ledger.get("verdict") or {}).get("round3", False)
+    authorized = _authorized_rounds(rid, ledger, cfg, last_rc_ts)  # scoped to the current cycle: a REQUEST_CHANGES restarts the budget
+    res["authorized_rounds"] = sorted(authorized)
 
     # Terminal states.
     pr_state = (pr or {}).get("state")
@@ -1000,10 +1068,15 @@ def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gati
     if any(e["kind"] == "stop" for e in events):
         res.update(stage="blocked", clock=None, reason="Orchestrator wrote blocked: STOP on the thread")
         return res
-    fail_cap = TEST_FAIL_CAP + (1 if round3_ok else 0)  # an authorized extra round lifts this cycle's cap by exactly one
+    extra = sorted(n for n in authorized if n > TEST_FAIL_CAP)  # every authorized round beyond the base budget lifts this cycle's cap by one
+    fail_cap = TEST_FAIL_CAP + len(extra)
     if len(cycle_fails) >= fail_cap:
-        why = "round 3 used" if round3_ok else "no round 3 authorized"
-        res.update(stage="blocked", clock=None, reason=f"cap: test FAIL x{len(cycle_fails)} in review cycle {len(rcs)}, {why}")
+        # never "no round N authorized" for a round the cell says IS authorized: name the rounds used and the next one owed
+        if extra:
+            why = f"round{'s' if len(extra) > 1 else ''} {', '.join(str(n) for n in extra)} used, no round {extra[-1] + 1} authorized"
+        else:
+            why = f"no round {TEST_FAIL_CAP + 1} authorized"
+        res.update(stage="blocked", clock=None, reason=f"cap: test FAIL x{len(cycle_fails)} in review cycle {res['review_cycle']}, {why}")
         return res
     if len(rcs) >= REVIEW_RC_CAP:
         res.update(stage="blocked", clock=None, reason=f"cap: review REQUEST_CHANGES x{len(rcs)}")
@@ -1036,7 +1109,8 @@ def resolve_stage(rid: str, row: dict, events: list[dict], pr: dict | None, gati
             res.update(
                 stage="testing", clock=last["ts"], round=last["round"], env_fail=True,
                 install_packages=last.get("install_packages"),
-                reason="[Test Report] ESCALATE (environmental)" if last["verdict"] == "ESCALATE" else "[Test Report] FAIL (env): outside plugin code, not a counted round",
+                reason=("[Test Report] ESCALATE (environmental)" if last["verdict"] == "ESCALATE"
+                        else "[Test Report] FAIL (env): outside plugin code, not a counted round" + (" (no Env cause line)" if last.get("env_proof") is False else "")),
             )
             return res
         res.update(stage="building", clock=last["ts"], round=last["round"], fix_after=f"FAIL round {last['round']}", reason="tester FAIL, new head due")
@@ -1704,8 +1778,10 @@ def _new_record(rid: str, res: dict, last_activity: str | None, book: dict) -> d
         "review_rounds": res.get("review_rounds", []),
         "fail_count": res.get("fail_count", 0),
         "cycle_fail_count": res.get("cycle_fail_count", 0),
-        "review_cycle": res.get("review_cycle", 0),
+        "review_cycle": res.get("review_cycle", 1),
         "rc_count": res.get("rc_count", 0),
+        "authorized_rounds": res.get("authorized_rounds", []),
+        "env_fail_unproven": res.get("env_fail_unproven", 0),
         "nudges": {"last": book["last"], "count": book["count"], "in_state": False},
         "action": "none",
         "target_role": None,
@@ -1992,23 +2068,77 @@ def _stamp_closed_by_delegation(d: dict, delegated: list[dict], rule: str | None
 
 
 def _open_stamps(decisions: list[dict]) -> list[dict]:
-    """hermes_queue.open_decisions, mirrored: the `decision-needed` stamps with no later pairing `delegated` stamp."""
+    """hermes_queue.open_decisions, mirrored: the `decision-needed` stamps with no later pairing `delegated` stamp and no
+    ANSWERED / DEFAULT APPLIED free text later in the same notes cell (`answered`, read by hermes_queue.parse_decision_stamps)."""
     delegated = [d for d in decisions if d.get("kind") == "delegated"]
-    return [d for d in decisions if d.get("kind") == "decision-needed"
+    return [d for d in decisions if d.get("kind") == "decision-needed" and not d.get("answered")
             and not _stamp_closed_by_delegation(d, delegated, str(d.get("tag") or "").strip() or None)]
+
+
+def _row_moot(row: dict | None) -> bool:
+    """A merged / dropped row's decisions are moot (2026-09-21: ISO-F11, CH-F50, CH-F49 and RT-F09 re-listed as
+    `DECISION NEEDED` for days after their merge): the queue state, or the ledger's merged/blocked cell saying merged."""
+    if not isinstance(row, dict):
+        return False
+    return row.get("state") in MOOT_STATES or ((row.get("ledger") or {}).get("outcome") == "merged")
+
+
+def _closed_stamp_keys(row: dict | None, rid: str) -> set[str]:
+    """The decision keys this row's ledger closes: every `decision-needed` stamp that is `answered` (ANSWERED / DEFAULT
+    APPLIED later in the cell) or on a moot row. A DM copy or a row-thread mirror carrying the same key is closed with it —
+    the stamp, the mirror and the DM are one decision."""
+    moot = _row_moot(row)
+    return {_stamp_key(d, rid) for d in _ledger_decisions(row) if d.get("kind") == "decision-needed" and (moot or d.get("answered"))}
+
+
+def _answered_stamp_closes(ask: dict, row: dict | None) -> bool:
+    """Does an `answered` stamp of this row close this canonical ask (its DM copy / row-thread mirror) although their keys
+    differ — the Orchestrator abbreviating the question in the ledger, or the stamp's question absorbing trailing text
+    (`…?; **ANSWERED …**`)? Yes when the two questions are the same ask by `_same_ask_text` (the shorter head inside the
+    longer, ≥ 40 chars; the stamp text markdown-stripped) or by `_same_ask_words` (every word of the shorter in the longer
+    — a parenthesis added mid-sentence), or when the answer's own ISO (`answered_at`) is not before the ask — the
+    row-scoped rule an operator inbound on the row thread already follows ("answers the row's DM copies too")."""
+    if not ask.get("canonical_row"):
+        return False
+    q = str(ask.get("text") or ask.get("head") or "")
+    scan = str(ask.get("scan") or "")
+    ts = str(ask.get("ts") or "")
+    for d in _ledger_decisions(row or {}):
+        if d.get("kind") != "decision-needed" or not d.get("answered"):
+            continue
+        # the stamp's question, cut at the ANSWERED clause it may have absorbed (`…?; ANSWERED operator: option 1`)
+        stamp_q = " ".join(ANSWERED_CLAUSE_RE.split(_strip_md(str(d.get("text") or "")), maxsplit=1)[0].split())
+        if _same_ask_text(q, stamp_q) or _same_ask_text(scan, stamp_q) or _same_ask_words(q, stamp_q):
+            return True
+        at = d.get("answered_at")
+        if isinstance(at, str) and at and ts and at >= ts:
+            return True
+    return False
+
+
+def _ask_closed(ask: dict, row: dict | None, rid: str, closed_keys: set[str] | None = None) -> bool:
+    """§2.5 closure of a text-detected ask by the row's ledger / state: its key is a closed stamp's (`_closed_stamp_keys`), or
+    the ask is a canonical `DECISION NEEDED — <ROW> —` copy (`canonical_row`) and the row is moot or an `answered` stamp of
+    the row is the same decision under other words (`_answered_stamp_closes`). A role's ordinary "awaiting operator" line
+    is never closed here — no stamp and no merge rules on it."""
+    keys = _closed_stamp_keys(row, rid) if closed_keys is None else closed_keys
+    if ask.get("key") in keys:
+        return True
+    return bool(ask.get("canonical_row")) and (_row_moot(row) or _answered_stamp_closes(ask, row))
 
 
 def _stamp_asks(decisions: list[dict], rid: str, answers: list[str], now: datetime) -> list[dict]:
     """§2.5 second source: the row's `decision-needed:<C.x|none> <ROW> <ISO> — <question>` stamps with no LATER
     `delegated:` stamp OF THE PAIRING KIND (_delegated_closes — a `delegated:advisory` written for a C.3 classification
-    never closes a live C.1 / C.2 / `none` decision) and no operator answer / DEFAULT APPLIED after the ISO, as asks
-    (`source: ledger`, age from the ISO, key = decision_key so the text-detected canonical ask collapses into it).
-    `default_overdue`: a delegable rule (`C.1`–`C.3`; never `none` or a rule the spine does not know) whose stamp is
-    ≥ DEFAULT_AFTER_H old — the standing default is due and nothing applied it."""
+    never closes a live C.1 / C.2 / `none` decision), not `answered` (ANSWERED / DEFAULT APPLIED free text later in the
+    same cell) and no operator answer / DEFAULT APPLIED after the ISO, as asks (`source: ledger`, age from the ISO,
+    key = decision_key so the text-detected canonical ask collapses into it). `default_overdue`: a delegable rule
+    (`C.1`–`C.3`; never `none` or a rule the spine does not know) whose stamp is ≥ DEFAULT_AFTER_H old — the standing
+    default is due and nothing applied it."""
     delegated = [d for d in decisions if d.get("kind") == "delegated"]
     out = []
     for d in decisions:
-        if d.get("kind") != "decision-needed":
+        if d.get("kind") != "decision-needed" or d.get("answered"):
             continue
         rule = str(d.get("tag") or "").strip() or None
         if _stamp_closed_by_delegation(d, delegated, rule) or any(a > d["at"] for a in answers):
@@ -2042,6 +2172,11 @@ def _operator_ask_check(tick: _Tick, rec: dict, book: dict, row: dict, thread_ms
     stamp_by_key: dict[str, dict] = {}  # the newest decision-needed stamp per key: the rule a same-key text ask falls under
     for d in sorted((d for d in decisions if d.get("kind") == "decision-needed"), key=lambda d: d["at"]):
         stamp_by_key[_stamp_key(d, rid)] = d
+    # closed decisions (2026-09-21): an `answered` stamp, or any stamp of a merged / dropped row, closes itself and every
+    # same-key copy (the DM, the row-thread mirror); a moot row closes its canonical asks outright. Nothing of them is
+    # listed, alerted or counted — from any source.
+    moot = _row_moot(row)
+    closed_keys = _closed_stamp_keys(row, rid)
     defaults = default_applied_ts(thread_msgs, rid) + list(tick.op_defaults.get(rid) or [])
     op_answers = list(tick.op_answers.get(rid) or [])
     thread_asks = detect_operator_asks(thread_msgs, rec["thread_id"], rid, events, op_answers)
@@ -2059,8 +2194,9 @@ def _operator_ask_check(tick: _Tick, rec: dict, book: dict, row: dict, thread_ms
         rule = str((stamp_by_key.get(a["key"]) or {}).get("tag") or "").strip() or None
         return any(x["at"] > a["ts"] and _delegated_closes(rule, x.get("tag")) for x in delegated)
 
-    asks = [a for a in thread_asks + op_asks if not default_answered(a)]
-    for s in _stamp_asks(decisions, rid, op_answers + row_thread_answers + defaults, tick.now):
+    asks = [a for a in thread_asks + op_asks if not default_answered(a) and not _ask_closed(a, row, rid, closed_keys)]
+    stamps = [] if moot else _stamp_asks(decisions, rid, op_answers + row_thread_answers + defaults, tick.now)
+    for s in stamps:
         same = [a for a in asks if a["key"] == s["key"]]
         if same:
             for a in same:
@@ -2304,11 +2440,11 @@ def supervise(
     known = set(rows_in) | set(follow_ups)
     tick.known = known
     paused = set(cfg.get("paused_rows") or [])
-    # a row whose ledger carries an open `decision-needed:` stamp is supervised for it whatever its state — merged, queued,
-    # deferred, a merged / blocked follow-up (a `none` decision about an upstream filing outlives the row's chain); the
-    # stamp is the second source precisely for the DM the collectors missed, so it must be read off-candidate too
+    # a row whose ledger carries an open `decision-needed:` stamp is supervised for it whatever its state — queued, deferred,
+    # a blocked follow-up; the stamp is the second source precisely for the DM the collectors missed, so it must be read
+    # off-candidate too. Never a paused row, and never a merged / dropped one: its decisions are moot (_row_moot)
     for rid, row in [*rows_in.items(), *((r, w) for r, w in follow_ups.items() if r not in rows_in)]:
-        if rid in paused or not isinstance(row, dict) or not _open_stamps(_ledger_decisions(row)):
+        if rid in paused or not isinstance(row, dict) or _row_moot(row) or not _open_stamps(_ledger_decisions(row)):
             continue
         rows_in.setdefault(rid, row)
         if rid not in candidates:
@@ -2335,14 +2471,23 @@ def supervise(
         if r == OPERATOR_ROW:
             continue
         if r in rows_in:
+            # a closed decision's DM copy (an answered stamp's, a merged / dropped row's canonical ask) is dropped before the
+            # row is looked at, so a merged row named only by such a copy is not supervised for it
+            tick.op_asks[r] = [a for a in tick.op_asks[r] if not _ask_closed(a, rows_in[r], r)]
+            if not tick.op_asks[r]:
+                tick.op_asks.pop(r)
+                continue
             # a row the operator thread names is supervised this tick too, whatever its state (a queued row's "your call")
             if r not in candidates:
                 candidates.append(r)
             continue
         # a known row nobody supervises this tick (a merged / blocked follow-up): its asks fall to OPERATOR so they still
-        # surface — a paused one stays silent, like every paused row
+        # surface — a paused one stays silent, like every paused row, and a closed decision (an answered stamp's copy, a
+        # merged / dropped row's canonical ask) is dropped here too
         asks = tick.op_asks.pop(r)
         if r not in paused:
+            frow = follow_ups.get(r) if isinstance(follow_ups.get(r), dict) else None
+            asks = [a for a in asks if not _ask_closed(a, frow, r)]
             tick.op_asks.setdefault(OPERATOR_ROW, []).extend(asks)
 
     out_rows = {

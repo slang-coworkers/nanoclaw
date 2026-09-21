@@ -92,9 +92,18 @@ Rules pinned here (each has a test in test_hermes_queue.py):
     `decision-needed` stamps with no LATER `delegated` stamp OF THE PAIRING KIND in the same cell
     (delegated_closes: `round` closes C.1, `carry` closes C.2, `advisory` closes only C.3 — which
     never has a DM — and `none` is never closed by a stamp; a rule-less ask is closed by any
-    non-advisory kind). The supervise tick reads them as a second source for its `operator_ask`
-    check (the DM may be missed by the collectors; the stamp is the durable anchor) and flags a
-    delegable one ≥ 2 h old as overdue.
+    non-advisory kind) and not `answered` — the Orchestrator's free-text closure `ANSWERED <ISO> …`
+    (bold or plain, any case, starting a clause) or `DEFAULT APPLIED` anywhere LATER in the same cell,
+    often far after the stamp; an ANSWERED whose adjacent ISO is dated before the stamp answers an older
+    decision and leaves it open (`answered_at` carries that ISO for the supervisor's DM-copy closure).
+    The supervise tick reads them as a second source for its `operator_ask` check (the DM may be missed
+    by the collectors; the stamp is the durable anchor), treats a merged / dropped row's stamps as
+    moot, and flags a delegable open one ≥ 2 h old as overdue.
+  * Round caps v2 in the verdict cell: `round N authorized` (`round-N` / `rN` / `authorized … round N`;
+    the past participle only — a request never grants; negations excluded) is `verdict.authorized_rounds`,
+    with `verdict.authorizations` carrying each phrase's parenthetical ISO so the supervisor can place it
+    in a review cycle; a `round 2/2 = FAIL (env)` / `FAIL ×2 (env)` / `**FAIL** (env)` is not the cap
+    form (`fail_round2`), since environmental FAILs never count.
 
 Output shape: see build_state().
 """
@@ -133,6 +142,40 @@ TESTER_PASS_RES = (
 FAIL_ROUND2_RES = (
     re.compile(r"(?i)round\s+2/2\s*(?:=|:|—|–|-)+\s*\**FAIL\b"),
     re.compile(r"FAIL\s*[×x]\s*2"),
+)
+# Round caps v2 (delegated-decisions.md): `FAIL (env)` / `FAIL(env)` / `FAIL (environmental)` never counts toward the cap, so a
+# `round 2/2 = FAIL (env)` or `FAIL ×2 (env)` in the verdict cell is not the cap being hit (read markdown-stripped: `**FAIL** (env)`).
+ENV_TAIL_RE = re.compile(r"(?i)\s*\**\s*\(\s*(?:env|environmental|outside[- ]plugin|infra)")
+# `round N authorized` in the verdict cell lifts the cap for round N (the operator's ruling relayed by the Orchestrator, or the
+# C.1 default's `round 3 authorized (delegated C.1 <ISO>)`). Variants: `round-3 authorized`, `r3 authorized`, `authorized …
+# round 3` (a few words, no punctuation between), British spelling; markdown around them. ONLY the past participle is a
+# grant: `authorize round 3` / `authorization for round 3` is a request (the DM asking for it, `awaiting authorization`,
+# `authorization … requested`) and never lifts anything; a negated phrase (`no round 3 authorized`, `not authorized`, the
+# supervisor's own cap reason copied into a cell) never does either. The forward window of the second form stops at any
+# punctuation so `round 3 authorized (operator msg 146), round 4/4 = FAIL` never reads round 4 as authorized.
+ROUND_AUTHORIZED_RES = (
+    re.compile(r"(?i)(?<!\bno\s)(?<!\bnot\s)(?<!\bnever\s)\b(?:round[\s-]*|r)(\d)\s+authori[sz]ed\b"),
+    re.compile(r"(?i)(?<!\bno\s)(?<!\bnot\s)(?<!\bnever\s)\bauthori[sz]ed\b[^.;,:()\n—–]{0,40}?\b(?:round[\s-]*|r)(\d)\b"),
+)
+# The parenthetical right after an authorization phrase — `round 3 authorized (operator msg 146, 2026-09-18T08:04Z, podman
+# tier)`, `(delegated C.1 <ISO>)` — carries the ISO that places it in a review cycle (hermes_supervise scopes it).
+AUTH_PAREN_RE = re.compile(r"\s*\(([^()]{0,160})\)")
+# The Orchestrator's free-text closure of a `decision-needed:` stamp, written ANYWHERE later in the same `notes` cell (often
+# > 1000 chars after the stamp, bold or plain, any case): `ANSWERED <ISO> …`, or `DEFAULT APPLIED`. It must START A CLAUSE
+# (`— ANSWERED`, `; ANSWERED`, `; **ANSWERED`, `; answered by`, `(default applied`, or the head of the question): the word
+# `answered` mid-sentence inside an open question ("the tester says AC-7 is answered by the fixture alone; accept that?")
+# closes nothing. `unanswered` never matches.
+ANSWERED_RE = re.compile(r"(?i)(?:^|[;:.?!—–(\n]|\s-)\s*(answered|default\s+applied)\b")
+# The answer's OWN timestamp is the one directly adjacent to ANSWERED — `ANSWERED 2026-09-21T06:48Z …`, `ANSWERED: <ISO>`,
+# `ANSWERED (2026-09-17T14:27Z, operator)`, `answered at <ISO>`; any ISO merely referenced later in the sentence
+# ("ANSWERED (per the operator's 2026-09-20T16:00:00Z card ruling)") is not its date, so that answer is undated and closes.
+ANSWER_TS_LEAD_RE = re.compile(r"\s*[:—–-]?\s*(?:\(\s*|(?:at|on)\s+)?")
+MD_STRIP_RE = re.compile(r"[*_`~]+")
+# A negated authorization (`no round 3 authorized` — the supervisor's own cap reason copied into a cell —, `round 3 not
+# authorized`, `declined to authorize round 3`): blanked before the loose `round 3` reading, so it never reads as a third round.
+NEGATED_ROUND_RE = re.compile(
+    r"(?i)\b(?:no|not|never)\s+round[\s-]*\d\**\s+\**authori[sz]ed\b|\bround[\s-]*\d\s+(?:not|never)\s+authori[sz]ed\b"
+    r"|\b(?:declined|refused)\s+to\s+authori[sz]e\b[^.;\n]{0,60}?\bround[\s-]*\d\b"
 )
 # ledger.md § Carried criteria and upstream-asks.md § Upstream asks (both Orchestrator-owned tables)
 CARRIED_HEADING_RE = re.compile(r"(?i)^##+\s+carried criteria\b")
@@ -283,23 +326,28 @@ def parse_iso(s: str) -> datetime:
     return dt
 
 
+def zone_offset_minutes(zone: str | None, default: int) -> int:
+    """A TS_RE zone token (`Z`, `IST`, `+05:30`, …) as minutes east of UTC; `default` when the timestamp names none."""
+    if not zone:
+        return default
+    if zone in ZONES:
+        return ZONES[zone]
+    sign = -1 if zone[0] == "-" else 1
+    digits = zone[1:].replace(":", "")
+    return sign * (int(digits[:2]) * 60 + int(digits[2:]))
+
+
+def _ts_match_iso(m: re.Match, tz_offset_minutes: int) -> str:
+    day, hh, mm, ss, zone = m.groups()
+    dt = datetime.fromisoformat(f"{day}T{hh}:{mm}:{ss or '00'}")
+    dt = dt.replace(tzinfo=timezone(timedelta(minutes=zone_offset_minutes(zone, tz_offset_minutes))))
+    return iso_utc(dt)
+
+
 def first_timestamp(cell: str, tz_offset_minutes: int) -> str | None:
     """First `YYYY-MM-DD HH:MM[:SS] [zone]` in the cell, as ISO UTC; install TZ when no zone."""
     m = TS_RE.search(cell)
-    if not m:
-        return None
-    day, hh, mm, ss, zone = m.groups()
-    offset = tz_offset_minutes
-    if zone:
-        if zone in ZONES:
-            offset = ZONES[zone]
-        else:
-            sign = -1 if zone[0] == "-" else 1
-            digits = zone[1:].replace(":", "")
-            offset = sign * (int(digits[:2]) * 60 + int(digits[2:]))
-    dt = datetime.fromisoformat(f"{day}T{hh}:{mm}:{ss or '00'}")
-    dt = dt.replace(tzinfo=timezone(timedelta(minutes=offset)))
-    return iso_utc(dt)
+    return _ts_match_iso(m, tz_offset_minutes) if m else None
 
 
 # --------------------------------------------------------------------------- plan
@@ -462,17 +510,91 @@ def parse_matrix(text: str) -> dict:
 
 # --------------------------------------------------------------------------- ledger
 
-def parse_verdict_cell(cell: str) -> dict:
+def authorizations(cell: str, tz_offset_minutes: int = 330) -> list[dict]:
+    """The rounds the verdict cell says are authorized, `{"round": N, "at": <ISO UTC | None>}` each, sorted by round:
+    `round 3 authorized (operator msg 146, 2026-09-18T08:04Z, …)`, `round-4 authorized`, `r5 authorised`, `authorized …
+    round 3`; only the past participle grants (a request — `authorize round 3?`, `authorization for round 3` — never does),
+    negated phrases excluded, markdown stripped and whitespace collapsed first (`no  round 3 authorized` is negated too).
+    `at` is the ISO in the parenthetical right after the phrase (the operator message / the C.1 default's stamp) — what
+    places the authorization in a review cycle (hermes_supervise._authorized_rounds) — or None when the phrase is undated.
+    Round caps v2: each lifts the tester's per-cycle FAIL budget for that round."""
+    text = " ".join(MD_STRIP_RE.sub("", cell or "").split())
+    found: dict[int, str | None] = {}
+    for rx in ROUND_AUTHORIZED_RES:
+        for m in rx.finditer(text):
+            n = int(m.group(1))
+            pm = AUTH_PAREN_RE.match(text, m.end())
+            at = first_timestamp(FRACTION_RE.sub(r"\1", pm.group(1)), tz_offset_minutes) if pm else None
+            if n not in found or (found[n] is None and at):
+                found[n] = at
+    return [{"round": n, "at": found[n]} for n in sorted(found)]
+
+
+def authorized_rounds(cell: str) -> list[int]:
+    """The authorized round numbers of the verdict cell (authorizations), sorted."""
+    return [a["round"] for a in authorizations(cell)]
+
+
+def _fail_round2(cell: str) -> bool:
+    """`round 2/2 = FAIL` / `FAIL ×2` in the verdict cell — the tester's cap form — unless the FAIL is `(env)`-qualified:
+    an environmental FAIL is never a counted round (round caps v2). Read markdown-stripped, so `round 2/2 = **FAIL** (env)`
+    is the env form too (the Orchestrator bolds in this cell)."""
+    text = MD_STRIP_RE.sub("", cell or "")
+    for rx in FAIL_ROUND2_RES:
+        for m in rx.finditer(text):
+            if not ENV_TAIL_RE.match(text, m.end()):
+                return True
+    return False
+
+
+def _third_round_ran(cell: str) -> bool:
+    """The loose `round 3` reading: a third test round is named in the cell OUTSIDE an authorization phrase (`round 3/3 =
+    FAIL`, `round 3 = PASS`) — it ran, so it was authorized. `round 3 authorized (…)` itself is read precisely by
+    authorizations() (and placed in its review cycle there), and a negated phrase (`no round 3 authorized`) by nothing."""
+    text = NEGATED_ROUND_RE.sub(" ", " ".join(MD_STRIP_RE.sub("", cell or "").split()))
+    for rx in ROUND_AUTHORIZED_RES:
+        text = rx.sub(" ", text)
+    return re.search(r"(?i)\bround\s+3", text) is not None
+
+
+def parse_verdict_cell(cell: str, tz_offset_minutes: int = 330) -> dict:
     tokens = VERDICT_TOKEN_RE.findall(cell)
     rounds = [int(r) for r in re.findall(r"(?i)\bround\s+(\d)", cell)]
+    auths = authorizations(cell, tz_offset_minutes)
     return {
         "tokens": tokens,
         "last_token": tokens[-1] if tokens else None,
         "rounds": rounds,
         "tester_pass": any(r.search(cell) for r in TESTER_PASS_RES),
-        "fail_round2": any(r.search(cell) for r in FAIL_ROUND2_RES),
-        "round3": re.search(r"(?i)\bround\s+3", cell) is not None,
+        "fail_round2": _fail_round2(cell),
+        # the loose reading (a third round RAN, so it was authorized) — never off an authorization phrase (`authorizations`
+        # reads those, dated) nor a negated one
+        "round3": _third_round_ran(cell),
+        "authorized_rounds": [a["round"] for a in auths],
+        "authorizations": auths,
     }
+
+
+def _answered_after(tail: str, stamp_at: str | None, tz_offset_minutes: int) -> tuple[bool, str | None]:
+    """Is a `decision-needed:` stamp closed by the Orchestrator's free text later in the same cell? `(answered, answered_at)`:
+    answered when the rest of the cell after the stamp (markdown stripped) carries the word ANSWERED (any case, starting a
+    clause — ANSWERED_RE) or DEFAULT APPLIED — the stamp's own question beginning with ANSWERED included. An ANSWERED whose
+    OWN timestamp (the ISO directly adjacent to it — ANSWER_TS_LEAD_RE; a zone-less one is read in the stamp's zone,
+    `tz_offset_minutes`) is EARLIER than the stamp answers an older decision in the same cell (the Orchestrator appends at
+    the end), so it leaves this stamp open. `answered_at`: the earliest dated closing answer's ISO, None when every closing
+    answer is undated — hermes_supervise closes the row's DM copies written before it."""
+    text = FRACTION_RE.sub(r"\1", MD_STRIP_RE.sub("", tail or ""))
+    answered, dated = False, []
+    for m in ANSWERED_RE.finditer(text):
+        lead = ANSWER_TS_LEAD_RE.match(text, m.end())
+        tm = TS_RE.match(text, lead.end() if lead else m.end())
+        ts = _ts_match_iso(tm, tz_offset_minutes) if tm else None
+        if ts and stamp_at and ts < stamp_at:
+            continue
+        answered = True
+        if ts:
+            dated.append(ts)
+    return answered, (min(dated) if dated else None)
 
 
 def parse_decision_stamps(notes: str, tz_offset_minutes: int = 330) -> list[dict]:
@@ -480,7 +602,11 @@ def parse_decision_stamps(notes: str, tz_offset_minutes: int = 330) -> list[dict
     delegated), `tag` (the rule `C.1`..`C.3` / `none`, or the delegated kind `round` / `carry` / `advisory`, as written),
     `row` (look-alike dashes normalised), `at` (ISO UTC via first_timestamp — the install zone when the stamp names none;
     fractional seconds dropped), `text` (what follows the timestamp's dash up to the next stamp, the next `; key:` note or
-    the end of the cell; a trailing `;` dropped — the cell is a running log the spine appends `hold:` notes to)."""
+    the end of the cell; a trailing `;` dropped — the cell is a running log the spine appends `hold:` notes to), `answered`
+    (_answered_after: the word ANSWERED or the phrase DEFAULT APPLIED starting a clause anywhere later in the SAME cell — the
+    Orchestrator's free-text closure, however far after the stamp; an ANSWERED whose adjacent timestamp is before the stamp
+    does not count, a zone-less one reading in the stamp's own zone) and `answered_at` (that answer's ISO, None when
+    undated)."""
     if not notes:
         return []
     matches = list(DECISION_STAMP_RE.finditer(notes))
@@ -491,23 +617,31 @@ def parse_decision_stamps(notes: str, tz_offset_minutes: int = 330) -> list[dict
         rest = notes[m.end():end].strip()
         rest = re.sub(r"^[\s—–:-]+", "", rest)
         rest = NEXT_NOTE_RE.split(rest, maxsplit=1)[0].rstrip(" ;\t")
+        ts_m = TS_RE.search(FRACTION_RE.sub(r"\1", ts))
+        at = _ts_match_iso(ts_m, tz_offset_minutes) if ts_m else None
+        # a zone-less ANSWERED ISO reads in the STAMP's zone (a `Z` stamp answered `2026-09-21T04:00` is 04:00Z, not IST)
+        stamp_zone = zone_offset_minutes(ts_m.group(5) if ts_m else None, tz_offset_minutes)
+        answered, answered_at = _answered_after(notes[m.end():], at, stamp_zone) if kind == "decision-needed" else (False, None)
         out.append({
             "kind": kind,
             "tag": tag,
             "row": ANY_DASH_RE.sub("-", row),
-            "at": first_timestamp(FRACTION_RE.sub(r"\1", ts), tz_offset_minutes),
+            "at": at,
             "text": " ".join(rest.split()),
+            "answered": answered,
+            "answered_at": answered_at,
         })
     return out
 
 
 def open_decisions(decisions: list[dict] | None) -> list[dict]:
     """The pending operator decisions of one cell: its `decision-needed` stamps with no LATER `delegated` stamp of the
-    PAIRING kind (delegated_closes — `round` for C.1, `carry` for C.2, `advisory` for C.3 only; `none` stays open). An
-    operator reply is not read here — the supervisor adds that from the threads."""
+    PAIRING kind (delegated_closes — `round` for C.1, `carry` for C.2, `advisory` for C.3 only; `none` stays open) and no
+    ANSWERED / DEFAULT APPLIED free text after them (`answered`). An operator reply on a thread is not read here — the
+    supervisor adds that from the threads."""
     items = [d for d in (decisions or []) if isinstance(d, dict) and d.get("at")]
     delegated = [d for d in items if d.get("kind") == "delegated"]
-    return [d for d in items if d.get("kind") == "decision-needed"
+    return [d for d in items if d.get("kind") == "decision-needed" and not d.get("answered")
             and not any(x["at"] > d["at"] and delegated_closes(d.get("tag"), x.get("tag")) for x in delegated)]
 
 
@@ -748,7 +882,7 @@ def parse_ledger(text: str, tz_offset_minutes: int = 330) -> dict:
             "spec_accepted_at": first_timestamp(spec, tz_offset_minutes) if not is_empty_cell(spec) else None,
             "pr": int(pr.group(1)) if pr and not is_empty_cell(pr_cell) else None,
             "pr_draft": "draft" in pr_cell.lower(),
-            "verdict": parse_verdict_cell(cell(cells, "verdict")),
+            "verdict": parse_verdict_cell(cell(cells, "verdict"), tz_offset_minutes),
             "notes_len": len(cell(cells, "notes")),
             "decisions": parse_decision_stamps(cell(cells, "notes"), tz_offset_minutes),
         }
@@ -786,7 +920,9 @@ def ledger_state(entry: dict, round3_authorized: bool = False) -> tuple[str, str
     if entry["outcome"] == "blocked":
         return "blocked", entry["reason"]
     v = entry["verdict"]
-    if v["fail_round2"] and not v["round3"] and not round3_authorized:
+    # the cap form in the cell with nothing lifting it: no `round 3 authorized` (or any `round N authorized`), no loose
+    # `round 3` (a third round ran), no config authorize_round. An `(env)` FAIL never reaches here (_fail_round2).
+    if v["fail_round2"] and not v["round3"] and not v.get("authorized_rounds") and not round3_authorized:
         return "blocked", "cap: test FAIL x2 (verdict cell), no round 3 authorized"
     if entry["pr"]:
         if entry["outcome"] == "gate_red":

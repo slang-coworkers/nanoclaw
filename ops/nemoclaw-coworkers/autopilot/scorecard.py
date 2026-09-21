@@ -58,6 +58,21 @@ DEFAULT_DISPATCHABLE = 33  # the plan's coverage line (dispatched rows) when the
 TICK_STALE_H = 3.0
 ALERT_WINDOW_H = 6.0
 TZ_OFFSETS = {"IST": timedelta(hours=5, minutes=30), "UTC": timedelta(0), "Z": timedelta(0)}
+# The `decision-needed:<C.x|none> <ROW> <ISO> — <question>` stamp of a ledger `notes` cell (escalation.md), read header-located
+# like everything here — the twin of hermes_queue.DECISION_STAMP_RE for the a|b|t|r decision filter (abtr.decision_lines).
+DECISION_STAMP_RE = re.compile(
+    r"\bdecision-needed[*`]*\s*:\s*[*`]*[A-Za-z0-9.]+[*`]*\s+[*`]*[A-Z0-9]+[-‐‑‒–−]F[0-9]+(?:\.[a-z])?[*`]*\s+[*`]*"
+    r"(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::(\d{2})(?:\.\d+)?)?\s*(Z|UTC|GMT|IST|CET|CEST|BST|EST|EDT|PST|PDT|[+-]\d{2}:?\d{2})?[*`]*"
+)
+STAMP_START_RE = re.compile(r"\b(?:decision-needed|delegated)[*`]*\s*:")  # the next stamp of either kind ends a question
+NEXT_NOTE_RE = re.compile(r";\s+(?=[a-z][a-z-]*:)")  # the next `; key:` note ends a question too (hermes_queue.NEXT_NOTE_RE)
+ANSWER_TS_RE = re.compile(r"(\d{4}-\d{2}-\d{2})[ T](\d{2}:\d{2})(?::(\d{2})(?:\.\d+)?)?\s*(Z|UTC|GMT|IST|CET|CEST|BST|EST|EDT|PST|PDT|[+-]\d{2}:?\d{2})?")
+# The Orchestrator's free-text closure of a stamp, starting a clause (`; ANSWERED`, `— answered by`, `(default applied`); the
+# word mid-sentence inside an open question closes nothing; `unanswered` never. hermes_queue.ANSWERED_RE's twin.
+ANSWERED_RE = re.compile(r"(?i)(?:^|[;:.?!—–(\n]|\s-)\s*(answered|default\s+applied)\b")
+ANSWER_TS_LEAD_RE = re.compile(r"\s*[:—–-]?\s*(?:\(\s*|(?:at|on)\s+)?")  # only an ISO directly adjacent to ANSWERED is its own date
+MD_STRIP_RE = re.compile(r"[*_`~]+")
+ZONE_MINUTES = {"Z": 0, "UTC": 0, "GMT": 0, "IST": 330, "CET": 60, "CEST": 120, "BST": 60, "EST": -300, "EDT": -240, "PST": -480, "PDT": -420}
 CARD_WINDOW_H = 24.0
 # hermes-task-card files: card-<role>-<outcome>-r<round>.png; the card-<role>-latest.png copies are not counted
 CARD_PNG_RE = re.compile(r"^card-.+-r\d+\.png$")
@@ -178,6 +193,56 @@ def hours_between(later, earlier):
     return round((later - earlier).total_seconds() / 3600.0, 1)
 
 
+def zone_offset(zone, default_offset: timedelta) -> timedelta:
+    """A zone token (`Z`, `IST`, `+05:30`, …) as an offset east of UTC; `default_offset` when the timestamp names none."""
+    if not zone:
+        return default_offset
+    if zone in ZONE_MINUTES:
+        return timedelta(minutes=ZONE_MINUTES[zone])
+    sign = -1 if zone[0] == "-" else 1
+    digits = zone[1:].replace(":", "")
+    return sign * timedelta(hours=int(digits[:2]), minutes=int(digits[2:]))
+
+
+def stamp_iso(day: str, hhmm: str, ss, zone, default_offset: timedelta) -> str:
+    """`YYYY-MM-DD HH:MM[:SS] [zone]` groups -> ISO UTC (`Z`); `default_offset` when the stamp names no zone."""
+    wall = datetime.strptime(f"{day} {hhmm}:{ss or '00'} +0000", "%Y-%m-%d %H:%M:%S %z")
+    return (wall - zone_offset(zone, default_offset)).strftime("%Y-%m-%dT%H:%M:%SZ")
+
+
+def decision_stamps(notes: str, default_offset: timedelta) -> list:
+    """The `decision-needed:` stamps of a `notes` cell, `{"at": <ISO UTC>, "answered": bool, "answered_at": <ISO | None>,
+    "text": <question>}` each, in text order — what abtr.decision_lines needs to drop a `DECISION NEEDED` line the ledger
+    already closed. `answered`: the word ANSWERED (any case, markdown stripped, starting a clause) or the phrase DEFAULT
+    APPLIED anywhere LATER in the same cell — the Orchestrator's free-text closure, however far after the stamp; an
+    ANSWERED whose OWN timestamp (the ISO directly adjacent to it; zone-less read in the stamp's zone) is EARLIER than the
+    stamp answers an older decision in the same cell and does not count. `answered_at`: the earliest dated closing
+    answer, None when every one is undated. `text`: what follows the stamp's dash up to the next stamp or `; key:` note.
+    Mirrors hermes_queue.parse_decision_stamps."""
+    out = []
+    text = notes or ""
+    for m in DECISION_STAMP_RE.finditer(text):
+        day, hhmm, ss, zone = m.groups()
+        at = stamp_iso(day, hhmm, ss, zone, default_offset)
+        stamp_offset = zone_offset(zone, default_offset)
+        nxt = STAMP_START_RE.search(text, m.end())
+        rest = re.sub(r"^[\s—–:-]+", "", text[m.end(): nxt.start() if nxt else len(text)].strip())
+        question = " ".join(NEXT_NOTE_RE.split(rest, maxsplit=1)[0].rstrip(" ;\t").split())
+        tail = MD_STRIP_RE.sub("", text[m.end():])
+        answered, dated = False, []
+        for am in ANSWERED_RE.finditer(tail):
+            lead = ANSWER_TS_LEAD_RE.match(tail, am.end())
+            tm = ANSWER_TS_RE.match(tail, lead.end() if lead else am.end())
+            ts = stamp_iso(*tm.groups(), stamp_offset) if tm else None
+            if ts and ts < at:
+                continue
+            answered = True
+            if ts:
+                dated.append(ts)
+        out.append({"at": at, "answered": answered, "answered_at": min(dated) if dated else None, "text": question})
+    return out
+
+
 def split_row(line: str) -> list:
     line = line.strip().removeprefix("|").removesuffix("|")
     return [c.replace("\x00", "\\|").strip() for c in line.replace("\\|", "\x00").split("|")]
@@ -269,6 +334,7 @@ def parse_ledger(text: str, default_offset: timedelta) -> dict:
             "verdict": verdict if not is_empty_cell(verdict) else "",
             "outcome_cell": outcome_cell[:120],
             "notes": " ".join(cell("notes").split())[:240],
+            "decisions": decision_stamps(cell("notes"), default_offset),  # read off the FULL cell: an ANSWERED is often > 1000 chars in
         }
         if rid != raw_id:
             rows[rid]["id_cell_raw"] = raw_id

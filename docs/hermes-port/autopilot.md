@@ -437,8 +437,8 @@ row's ledger `notes` stamps `decision-needed:<C.x|none> <ROW> <ISO> — <questio
 → `ledger.decisions` on the row record; `open_decisions` = those with no later `delegated:` stamp of the pairing
 kind): a stamp with no later pairing `delegated:` note and no operator answer after its ISO is an ask (`source:
 ledger`, age from the ISO), so a DM the collectors missed still surfaces — and it is read on every known row that
-carries one, merged, queued or a finished follow-up included (a `none` decision about an upstream filing outlives the
-chain; a paused row stays silent); a stamp whose key a text-detected ask already carries collapses into it (its
+carries one, queued or a blocked follow-up included; never a merged / dropped row (its decisions are moot, **Closed
+decisions** below) and never a paused one; a stamp whose key a text-detected ask already carries collapses into it (its
 `rule` and `stamp` ride along). The stamp's question ends at the next `; key:` note (a `hold:` appended later never
 changes its key), an ISO with fractional seconds keeps its zone, markdown around the stamp is stepped over. The row
 id in the DM line tolerates a hand-typed look-alike dash (`CH‑F49`) and keeps a follow-up's `.a` lower-case, so
@@ -467,6 +467,34 @@ sighting (< 2 h, the plain key) alerts exactly once more, with the detail, when 
 plain key alone the cue would have stayed bound for 24 h and never reached an action (DM 12:25Z, ticks at :17: 13:17Z
 plain, 15:17Z overdue). No stamp means nothing is pending a default (the spine's rule), so a text-only canonical ask
 alerts without the detail.
+
+**Closed decisions** (2026-09-21: the tick digest and the Slack DM re-listed `DECISION NEEDED (33h): FLEET-F62 — BAR
+DECISION: authorize round 6 …` a day after the operator answered it, `(26h): ISO-F11` and `(39h): CH-F50` after their
+merge, `(48h): CH-F49` under a bold `**ANSWERED …**`). The Orchestrator closes a decision as free text — `ANSWERED <ISO>
+…`, bold or plain, any case, or `DEFAULT APPLIED` — anywhere LATER in the same ledger `notes` cell, often more than 1000
+chars after the stamp and past several `; key:` notes, or the stamp's question itself begins with `ANSWERED`. So a
+`decision-needed:` stamp is **closed** when (i) the word ANSWERED (markdown stripped, **starting a clause** — `; ANSWERED`,
+`— answered by`, `(default applied`, the head of the question; the word mid-sentence inside an open question — "the tester
+says AC-7 is answered by the fixture alone; accept that?" — closes nothing; `unanswered` never) or the phrase DEFAULT
+APPLIED stands anywhere after it in the same cell (`hermes_queue.parse_decision_stamps` → `answered`, `answered_at`; an
+ANSWERED whose **own** timestamp — only the ISO directly adjacent to it, `ANSWERED <ISO>` / `ANSWERED: <ISO>` / `ANSWERED
+(<ISO>, …)`, a zone-less one read in the stamp's zone, never a time merely referenced later in the sentence — is EARLIER
+than the stamp answers an older decision in the cell and leaves this one open — the FLEET-F62 shape: 06:48Z answered, the
+08:24Z stamp still fires), (ii) the row is merged or dropped — the queue state, or the
+ledger's merged/blocked cell saying merged (`_row_moot`; a `blocked` row is not moot: a capped row still asks for its cap),
+or (iii) a later pairing `delegated:` stamp (the existing rule). A closed stamp produces nothing anywhere — no
+`operator_ask`, no `operator-ruling` alert, no `DECISION NEEDED (Nh)` status line, no `state.operator_asks` entry, no
+a|b|t|r decision line — and closes its copies (the row-thread mirror, the DM copy): by key, and — the Orchestrator
+abbreviates the question in the ledger, or the stamp absorbs its `; **ANSWERED …**` — also a canonical copy of the row
+whose words differ when the two questions are the same ask by text (`_same_ask_text`: the shorter head inside the longer;
+or `_same_ask_words`: every word of the shorter in the longer, for a parenthesis added mid-sentence — `the sandbox (podman)
+tier` — under an undated answer such as the date-only `ANSWERED 2026-09-18:`; the stamp's question cut at its ANSWERED
+clause) or when the copy is dated no later than the answer's own ISO (`answered_at`) — the row-scoped rule an
+operator inbound on the row thread already follows; a moot row closes every canonical ask it names, while a role's
+ordinary "awaiting operator" line is never closed by a merge or by a ledger answer. `abtr.decision_lines`
+applies the same filter on the report side from the row state and the ledger notes (`scorecard.decision_stamps`), so a
+`state.json` written before the supervisor learned the rule renders no stale line either. A genuinely open stamp fires
+exactly as before: same `decision_key`, same status line, same 24 h bound.
 
 **Where the acks come from.** `processing_ack` lives in each session's `outbound.db` under
 `data/v2-sessions/`, which the Orchestrator container cannot read. `collect-acks.sh` runs on the host
@@ -957,7 +985,10 @@ re-read on every fire; missing keys take the defaults shown:
 `paused_rows` removes those rows from nudging and escalation and holds their gate;
 `authorize_round` is `{"<ID>": "<reason>"}` and lifts that row's test cap by exactly one round
 in the current review cycle (a third counted FAIL in that cycle still blocks); a new review cycle
-starts with the base budget, so re-authorize per cycle when needed. Changing `wip` takes effect on the next dispatch tick; lowering it
+starts with the base budget, so re-authorize per cycle when needed. The ledger **verdict** cell's
+`round N authorized (… <ISO>)` phrases follow the same rule: one counts in the cycle its parenthetical
+ISO falls in (dated before the last `REQUEST_CHANGES`, it is spent history), and the undated phrases
+together lift a later cycle by at most one round (`hermes_supervise._authorized_rounds`). Changing `wip` takes effect on the next dispatch tick; lowering it
 never kills anything, it only stops filling slots.
 
 ## 7. The human's 6-hourly check
@@ -1065,9 +1096,28 @@ where it lives today and shows up in the next tick's state.
   failing row outside plugin code) and infra retries do not consume a round (hermes-verify's
   `rounds.log` rule); a `[Review Verdict] REQUEST_CHANGES` starts a new cycle with a fresh budget;
   the cap is `FAIL ×2` per cycle on the tester side and `REQUEST_CHANGES ×2` per PR on the reviewer side.
-  A `FAIL (env)` is exempt only when the report carries an `- **Env cause:**` line (proof outside
-  `plugins/**`); the supervisor counts it as a plain FAIL otherwise. `ESCALATE (pre-flight)` (hermes-testbed
-  §4b-0, mandatory every round) is never a round.
+  `ESCALATE (pre-flight)` (hermes-testbed §4b-0, mandatory every round) is never a round.
+  **Corrected 2026-09-21** (FLEET-F62: `Autopilot alert … blocked 0h · cap: test FAIL x7 in review cycle 0, round 3
+  used` and the tracker's `blocked - cap: test FAIL x2 in review cycle 0, no round 3 authorized`, while every tester
+  round was `FAIL(env)` and the verdict cell read `round 3 authorized (operator msg 146 …) … round 4 authorized … round 5
+  authorized`): (1) an environmental verdict — `FAIL (env)`, `FAIL(env)`, `FAIL ×8 (env)`, `FAIL (environmental)`,
+  `ESCALATE` — is **never** a counted round, with or without the `- **Env cause:**` proof line hermes-verify asks for;
+  the missing proof stays visible (`env_proof` on the event, `env_fail_unproven` on the record, `(no Env cause line)` in
+  the reason) for the merge gate and the operator but no longer moves the cap; an explicit in-plugin FAIL named beside an
+  env one still counts. (2) `round N authorized` in the ledger **verdict** cell — `round-N authorized`, `rN authorized`,
+  `authorized … round N` (a few words, no punctuation between), British spelling, markdown around it; **only the past
+  participle grants**: `authorize round 3?` / `authorization for round 3` / `awaiting authorization` is the request, never
+  the grant, and `round 3 authorized (…), round 4/4 = FAIL` authorizes round 3 alone; never a negated phrase such as `no
+  round 3 authorized` — lifts the current cycle's cap by one per authorized round (`hermes_queue.parse_verdict_cell` →
+  `authorized_rounds`, with `authorizations` carrying each phrase's parenthetical ISO so a `REQUEST_CHANGES` restarts the
+  budget, §6; the loose `round 3` reading — a third round RAN, named outside any authorization phrase — and config
+  `authorize_round["<ID>"]` still lift round 3), so the supervisor never prints
+  `no round N authorized` for a round the cell authorizes: the blocked reason names the rounds spent and the next one
+  owed (`cap: test FAIL x5 in review cycle 1, rounds 3, 4, 5 used, no round 6 authorized`). (3) The review cycle is
+  **1-based** — `review_cycle` is the CURRENT cycle, a `REQUEST_CHANGES` ends one and opens the next — so `review cycle
+  0` is never printed. (4) The a|b|t|r / tracker `blocked - cap: …` note is the supervisor's `reason` (else the queue's
+  `ledger_state` reason, which no longer blocks on an `(env)` FAIL either), so it derives from the same corrected logic;
+  the tester cell shows an environmental round as `⚠ ENV rN`, never `·`.
 - **Nudges are unmarked and threaded.** First character never `[`; `thread_id="hermes-<ID>"`
   always; `in_reply_to` when the role has written on the thread. The text is the §3 template
   and nothing else, so a nudge can never be mistaken for a dispatch or a verdict.

@@ -344,3 +344,97 @@ class DecisionLinesTest(unittest.TestCase):
         self.assertTrue(abtr.render_abtr_brief(nested, parsed_ledger(), NOW).splitlines()[1].startswith("DECISION NEEDED (15h): ISO-F14"))
         self.assertEqual(abtr.decision_lines(STATE), [])
         self.assertEqual(abtr.decision_lines({"operator_asks": [{"row": "X", "head": "y"}]}), ["DECISION NEEDED (?h): X — y"])
+
+    def test_closed_decisions_render_no_line(self):
+        """2026-09-21: `state.operator_asks` carried answered / merged asks for days. The report side filters them from what it
+        already loads — the row state (queue `merged` / `dropped`, supervisor stage `merged`, the ledger's merged/blocked cell)
+        for stamp-borne / canonical asks, and the ledger notes' ANSWERED / DEFAULT APPLIED after the ask's stamp
+        (scorecard.decision_stamps, read off the FULL cell) — so a state.json written before the supervisor learned the rule
+        renders no stale `DECISION NEEDED` line. Open asks, `OPERATOR` asks and a role's plain line are untouched."""
+        led = (LEDGER
+               + "| ISO-F11 | 2026-09-05 09:00 UTC | 2026-09-05 10:00 UTC | #20 | APPROVE | merged 1234abc — https://github.com/slang-coworkers/hermes-agent/pull/20 | "
+               "decision-needed:none ISO-F11 2026-09-17T09:00:00Z — file the adapter doc upstream?; hold: x; " + "note " * 300 + "; ANSWERED 2026-09-18T11:08Z operator option 1 |\n"
+               + "| FLEET-F62 | 2026-09-16 09:00 UTC | 2026-09-16 10:00 UTC | #21 | round 1/2 = FAIL(env) | — | "
+               "decision-needed:none FLEET-F62 2026-09-20T03:00:00Z — BAR DECISION: authorize round 6 on the sandbox tier, or stop at 5?; **ANSWERED 2026-09-21T06:48Z** operator: yes; "
+               "decision-needed:none FLEET-F62 2026-09-21T08:24:00Z — next bar: run round 6 on the podman box tonight, or wait? |\n"
+               + "| CH-F50 | 2026-09-16 09:00 UTC | 2026-09-16 10:00 UTC | #22 | PASS | — | "
+               "decision-needed:none CH-F50 2026-09-18T10:00:00Z — file the adapter registry doc upstream, or keep it on the fork?; ANSWERED operator ruled fork-only |\n")
+        rows = scorecard.parse_ledger(led, IST)["rows"]
+        self.assertEqual([(d["at"], d["answered"]) for d in rows["ISO-F11"]["decisions"]], [("2026-09-17T09:00:00Z", True)])
+        self.assertEqual([(d["at"], d["answered"], d["answered_at"]) for d in rows["FLEET-F62"]["decisions"]],
+                         [("2026-09-20T03:00:00Z", True, "2026-09-21T06:48:00Z"), ("2026-09-21T08:24:00Z", False, None)])
+        self.assertEqual([(d["answered"], d["answered_at"]) for d in rows["CH-F50"]["decisions"]], [(True, None)])
+        newer = "next bar: run round 6 on the podman box tonight, or wait?"
+        asks = [
+            # answered far after the stamp on a merged row: closed by both rules
+            {"row": "ISO-F11", "ts": "2026-09-17T09:00:00Z", "age_hours": 26.0, "head": "file the adapter doc upstream?", "source": "ledger", "stamp": "2026-09-17T09:00:00Z", "canonical_row": "ISO-F11"},
+            # a ledger-borne ask without the `stamp` field (a state.json predating it): closed on the stamp its `ts` names
+            {"row": "FLEET-F62", "ts": "2026-09-20T03:00:00Z", "age_hours": 33.0, "head": "BAR DECISION: authorize round 6 on the sandbox tier, or stop at 5?", "source": "ledger", "canonical_row": "FLEET-F62"},
+            # a REAL DM copy of that decision (no `source`, no `stamp`, a `thread_id`) whose words differ from the ledger's by a
+            # parenthesis — the in-flight FLEET-F62 shape: closed because the answer's own ISO is not before it
+            {"row": "FLEET-F62", "ts": "2026-09-20T03:00:00Z", "age_hours": 33.0, "role": "orchestrator", "thread_id": "sess-1789461233002-7tpn00", "canonical_row": "FLEET-F62",
+             "head": "BAR DECISION: authorize round 6 on the sandbox (podman) tier, or stop at 5?", "text": "BAR DECISION: authorize round 6 on the sandbox (podman) tier, or stop at 5?", "key": "operator-ruling:ask:a06de8607c"},
+            # the newer FLEET-F62 stamp, nothing after it: open — and its DM copy, differing by a parenthesis, is open too
+            {"row": "FLEET-F62", "ts": "2026-09-21T08:24:30Z", "age_hours": 2.0, "role": "orchestrator", "thread_id": "sess-1789461233002-7tpn00", "canonical_row": "FLEET-F62", "head": f"{newer} (sandbox tier)", "text": f"{newer} (sandbox tier)"},
+            {"row": "FLEET-F62", "ts": "2026-09-21T08:24:00Z", "age_hours": 2.0, "head": newer, "source": "ledger", "stamp": "2026-09-21T08:24:00Z", "canonical_row": "FLEET-F62"},
+            # a role's plain line on CH-F50 (a thread ask, no canonical_row): the undated answer never closes it …
+            {"row": "CH-F50", "ts": "2026-09-18T12:00:00Z", "age_hours": 20.0, "role": "architect", "thread_id": "hermes-CH-F50", "head": "awaiting operator on the upstream filing of the registry doc"},
+            # … but the row-thread mirror of the stamped question with a parenthesis added is the same ask by text: closed
+            {"row": "CH-F50", "ts": "2026-09-18T10:00:00Z", "age_hours": 22.0, "role": "orchestrator", "thread_id": "hermes-CH-F50", "canonical_row": "CH-F50",
+             "head": "file the adapter registry doc upstream, or keep it on the fork? (batch 5)", "text": "file the adapter registry doc upstream, or keep it on the fork? (batch 5)"},
+            # … and a REAL DM copy (no `source`, a `thread_id`) with the parenthesis MID-sentence: no contiguous run of the stamp's
+            # question and no answer ISO to place it (CH-F50's answer is undated) — the word net (_same_question) closes it
+            {"row": "CH-F50", "ts": "2026-09-18T10:30:00Z", "age_hours": 21.5, "role": "orchestrator", "thread_id": "sess-1789461233002-7tpn00", "canonical_row": "CH-F50",
+             "head": "file the adapter registry doc upstream (batch 5), or keep it on the fork?", "text": "file the adapter registry doc upstream (batch 5), or keep it on the fork?"},
+            # … while a canonical DM with other WORDS (`or drop it?`) is a new decision under that undated answer: open
+            {"row": "CH-F50", "ts": "2026-09-18T11:00:00Z", "age_hours": 21.0, "role": "orchestrator", "thread_id": "sess-1789461233002-7tpn00", "canonical_row": "CH-F50",
+             "head": "file the adapter registry doc upstream, or drop it?", "text": "file the adapter registry doc upstream, or drop it?"},
+            # a canonical ask on a row the queue says merged (RT-F09: no ANSWERED text at all): moot
+            {"row": "LOOP-F37", "ts": "2026-09-09T05:15:00Z", "age_hours": 15.0, "head": "keep the doc on the fork?", "canonical_row": "LOOP-F37"},
+            # a role's plain "awaiting operator" line on that merged row: not stamp-borne, not closed by the merge
+            {"row": "LOOP-F37", "ts": "2026-09-09T06:00:00Z", "age_hours": 15.0, "head": "awaiting operator on the upstream filing"},
+            # OPERATOR asks are never filtered
+            {"row": "OPERATOR", "ts": "2026-09-09T10:04:00Z", "age_hours": 10.9, "head": "One ruling: the nightly regression compares against the pinned tag"},
+        ]
+        st = {**STATE, "operator_asks": asks}
+        lines = abtr.decision_lines(st, rows)
+        self.assertEqual(lines, [
+            f"DECISION NEEDED (2h): FLEET-F62 — {newer} (sandbox tier)",
+            f"DECISION NEEDED (2h): FLEET-F62 — {newer}",
+            "DECISION NEEDED (20h): CH-F50 — awaiting operator on the upstream filing of the registry doc",
+            "DECISION NEEDED (21h): CH-F50 — file the adapter registry doc upstream, or drop it?",
+            "DECISION NEEDED (10h): OPERATOR — One ruling: the nightly regression compares against the pinned tag",
+            "DECISION NEEDED (15h): LOOP-F37 — awaiting operator on the upstream filing",
+        ])
+        # the renderers pass the ledger through: the brief and the markdown lead with the six open lines only
+        brief = abtr.render_abtr_brief(st, rows, NOW, prs=PRS, alerts=scorecard.parse_alerts(ALERTS)).splitlines()
+        self.assertEqual(brief[1:7], lines)
+        self.assertFalse(brief[7].startswith("DECISION NEEDED"))
+        md = abtr.render_abtr_markdown(st, rows, NOW, prs=PRS, alerts=scorecard.parse_alerts(ALERTS)).splitlines()
+        self.assertEqual((md[1:7], md[7]), (lines, abtr.LEGEND[0]))
+        # without the ledger, the row state alone still closes the moot canonical ask (LOOP-F37 is merged in STATE); the
+        # answered ones need the notes and stay, newest first
+        self.assertEqual([ln.split(": ")[1].split(" — ")[0] for ln in abtr.decision_lines(st)],
+                         ["FLEET-F62", "FLEET-F62", "FLEET-F62", "FLEET-F62", "CH-F50", "CH-F50", "CH-F50", "CH-F50", "ISO-F11", "OPERATOR", "LOOP-F37"])
+        # the supervisor's own merged stage and a queue `dropped` state are moot too
+        dropped = {**STATE, "rows": {**STATE["rows"], "ISO-F11": {"state": "dropped"}}, "operator_asks": asks[:1]}
+        self.assertEqual(abtr.decision_lines(dropped), [])
+        sup_merged = {**STATE, "supervise": {"rows": {"ISO-F11": {"stage": "merged"}}}, "operator_asks": asks[:1]}
+        self.assertEqual(abtr.decision_lines(sup_merged), [])
+
+    def test_env_fail_reads_as_an_environmental_round_not_a_counted_fail(self):
+        """Round caps v2 on the report side: a `FAIL(env)` last token in the verdict cell is `FAIL_ENV` (the tester still owes
+        a counted round: stage `testing`, cell `⚠ ENV rN`), and a supervisor `FAIL_ENV` round renders the same — never `·`."""
+        self.assertEqual(abtr.ledger_rounds("round 1/2 = FAIL (env) — podman tier unavailable"), ([{"round": 1, "verdict": "FAIL_ENV", "ts": None}], []))
+        self.assertEqual(abtr.ledger_rounds("round 2/2 = FAIL(env); 8 sandbox/live FAIL(env), 12 PASS"), ([{"round": 2, "verdict": "PASS", "ts": None}], []))  # the last token is PASS
+        self.assertEqual(abtr.ledger_rounds("round 2/2 FAIL"), ([{"round": 2, "verdict": "FAIL", "ts": None}], []))
+        self.assertEqual(abtr.ledger_stage({"pr": 9}, [{"round": 1, "verdict": "FAIL_ENV", "ts": None}], []), "testing")
+        st = {**STATE, "supervise": {"rows": {**STATE["supervise"]["rows"],
+                                             "MEM-F44": sup("testing", "2026-09-09T19:30:00Z", 1.5, pr=9, head="aaaa111", round=2, target_role="hermes-tester",
+                                                            test_rounds=[{"round": 1, "head": "0000001", "verdict": "FAIL_ENV", "ts": "2026-09-09T16:00:00Z"}]),
+                                             "COST-F29": sup("building", "2026-09-09T18:00:00Z", 3.0, pr=11, target_role="hermes-builder",
+                                                             test_rounds=[{"round": 2, "head": "cccc333", "verdict": "FAIL_ENV", "ts": "2026-09-09T17:00:00Z"}])}}}
+        rows = table_rows(render(st))
+        self.assertEqual(rows["MEM-F44"][4], "▶ r2 1.5h")  # active on round 2: the tester cell is the clock
+        self.assertEqual(rows["COST-F29"][4], "⚠ ENV r2")
+        self.assertIn("⚠ ESC/ENV", abtr.LEGEND[1])
