@@ -1,0 +1,7 @@
+#!/bin/sh
+# codex-git-guard: the codex critique subprocess is a reviewer, not a writer.
+# Reached only through core.hooksPath, which the agent-runner sets in the codex
+# MCP child's env (container/agent-runner/src/codex-mcp-server.ts). The Claude
+# session's own git never sees this directory.
+echo "codex critique is read-only: git pre-commit refused (codex-git-guard)" >&2
+exit 1

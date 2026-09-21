@@ -1,0 +1,8 @@
+#!/bin/sh
+# codex-git-guard: see pre-commit. Git feeds the ref lines on stdin; drain them
+# so git never writes into a closed pipe. `--no-verify` skips this hook, but
+# protocol.allow=never in the same env refuses every transport, so the push
+# dies anyway (`fatal: transport '...' not allowed`).
+cat >/dev/null 2>&1
+echo "codex critique is read-only: git pre-push refused (codex-git-guard)" >&2
+exit 1
