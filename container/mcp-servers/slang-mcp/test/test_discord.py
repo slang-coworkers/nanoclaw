@@ -110,6 +110,56 @@ async def test_send_message(mock_discord_client, mock_init_discord_client, allow
 
 
 @pytest.mark.asyncio
+async def test_send_message_to_thread_in_allowed_channel(
+    mock_discord_client, mock_init_discord_client
+):
+    """Threads inherit the parent text channel's send allowlist."""
+    mock_parent = MagicMock(spec=discord.TextChannel)
+    mock_parent.id = 67890
+    mock_thread = MagicMock(spec=discord.Thread)
+    mock_thread.id = 111
+    mock_thread.parent = mock_parent
+    mock_thread.parent_id = 67890
+    mock_message = MagicMock()
+    mock_message.id = 222
+    mock_message.channel.id = 111
+    mock_message.content = "Thread reply"
+    mock_message.created_at = datetime.now()
+    mock_message.jump_url = "https://discord.com/channels/1/111/222"
+    mock_thread.send = AsyncMock(return_value=mock_message)
+    mock_discord_client.get_channel.return_value = mock_thread
+
+    args = SendMessageArgs(channel_id="111", content="Thread reply")
+    with patch.dict(os.environ, {"DISCORD_ALLOWED_SEND_CHANNELS": "67890"}, clear=False):
+        result = await send_message(args)
+
+    assert result["message_id"] == "222"
+    assert result["channel_id"] == "111"
+    mock_thread.send.assert_called_once_with("Thread reply", view=None)
+
+
+@pytest.mark.asyncio
+async def test_send_message_to_thread_rejects_unlisted_parent(
+    mock_discord_client, mock_init_discord_client
+):
+    mock_parent = MagicMock(spec=discord.TextChannel)
+    mock_parent.id = 99999
+    mock_thread = MagicMock(spec=discord.Thread)
+    mock_thread.id = 111
+    mock_thread.parent = mock_parent
+    mock_thread.parent_id = 99999
+    mock_thread.send = AsyncMock()
+    mock_discord_client.get_channel.return_value = mock_thread
+
+    args = SendMessageArgs(channel_id="111", content="nope")
+    with patch.dict(os.environ, {"DISCORD_ALLOWED_SEND_CHANNELS": "67890"}, clear=False):
+        result = await send_message(args)
+
+    assert result["error"] == "Channel 111 is not in the allowed send list"
+    mock_thread.send.assert_not_called()
+
+
+@pytest.mark.asyncio
 async def test_read_messages(mock_discord_client, mock_init_discord_client):
     """Test read_messages function."""
     # Setup mock channel and messages - use spec to match TextChannel
