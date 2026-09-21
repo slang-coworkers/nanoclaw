@@ -252,6 +252,50 @@ class BuildTest(unittest.TestCase):
         self.assertIn("status: ATTENTION", proc.stdout)
 
 
+class DecisionStampsTest(unittest.TestCase):
+    """scorecard.decision_stamps — the header-located twin of hermes_queue.parse_decision_stamps' `at` / `answered`, read off
+    the FULL notes cell for abtr.decision_lines: a stamp is `answered` when ANSWERED (any case, markdown stripped) or DEFAULT
+    APPLIED stands anywhere later in the same cell; an ANSWERED dated before the stamp answers an older decision only."""
+
+    def test_answered_after_the_stamp_is_read_off_the_full_cell(self):
+        far = ("decision-needed:none ISO-F11 2026-09-17T09:00:00Z — file the adapter doc upstream?; hold: x (autopilot 2026-09-17T10:00Z); "
+               + "note " * 300 + "; ANSWERED 2026-09-18T11:08Z operator option 1")
+        expect = [{"at": "2026-09-17T09:00:00Z", "answered": True, "answered_at": "2026-09-18T11:08:00Z", "text": "file the adapter doc upstream?"}]
+        self.assertEqual(scorecard.decision_stamps(far, IST), expect)
+        text = LEDGER.replace("| Batch 1a |", f"| {far} |")
+        row = scorecard.parse_ledger(text, IST)["rows"]["LOOP-F35"]
+        self.assertEqual(row["decisions"], expect)
+        self.assertLessEqual(len(row["notes"]), 240)  # the note preview stays clipped; the decision read did not
+        # begins with ANSWERED; bold; lowercase; DEFAULT APPLIED; `unanswered` never; a zone-less stamp reads in the install zone
+        self.assertTrue(scorecard.decision_stamps("decision-needed:none CH-F50 2026-09-18T09:00:00Z — ANSWERED 2026-09-18: operator ruled option 2", IST)[0]["answered"])
+        bold = scorecard.decision_stamps("**decision-needed:C.1** CH-F49 2026-09-17T12:25:00Z — r3?; **ANSWERED 2026-09-17T14:27Z (operator, msg 140): AUTHORIZED r3**", IST)[0]
+        self.assertEqual((bold["answered"], bold["answered_at"], bold["text"]), (True, "2026-09-17T14:27:00Z", "r3?; **ANSWERED 2026-09-17T14:27Z (operator, msg 140): AUTHORIZED r3**"))
+        self.assertTrue(scorecard.decision_stamps("decision-needed:none X-F1 2026-09-21T03:00:00Z — q; answered by the operator: no", IST)[0]["answered"])
+        self.assertTrue(scorecard.decision_stamps("decision-needed:C.2 X-F1 2026-09-21T03:00:00Z — carry?; DEFAULT APPLIED — carried — veto within 12 h", IST)[0]["answered"])
+        self.assertFalse(scorecard.decision_stamps("decision-needed:none X-F1 2026-09-21T03:00:00Z — default if unanswered by 05:00Z: option 2; still unanswered", IST)[0]["answered"])
+        self.assertEqual(scorecard.decision_stamps("decision-needed:none X-F1 2026-09-21 08:30 — q", IST), [{"at": "2026-09-21T03:00:00Z", "answered": False, "answered_at": None, "text": "q"}])
+        # ANSWERED must start a clause (mid-sentence inside an open question closes nothing); a zone-less answer ISO reads in the
+        # STAMP's zone; only the ISO adjacent to ANSWERED is its date (a referenced earlier time leaves the answer undated -> closes)
+        self.assertFalse(scorecard.decision_stamps("decision-needed:none FLEET-F62 2026-09-21T02:00:00Z — the tester says AC-7 is answered by the fixture alone; accept that?", IST)[0]["answered"])
+        zl = scorecard.decision_stamps("decision-needed:none FLEET-F62 2026-09-21T02:00:00Z — q; ANSWERED 2026-09-21T04:00 operator: option 1", IST)[0]
+        self.assertEqual((zl["answered"], zl["answered_at"]), (True, "2026-09-21T04:00:00Z"))
+        ref = scorecard.decision_stamps("decision-needed:none FLEET-F62 2026-09-21T02:00:00Z — q; ANSWERED (per the operator's 2026-09-20T16:00:00Z card ruling): option 1", IST)[0]
+        self.assertEqual((ref["answered"], ref["answered_at"]), (True, None))
+        # the question ends at the next stamp or `; key:` note, like hermes_queue's
+        two = scorecard.decision_stamps("decision-needed:none X-F1 2026-09-21T03:00:00Z — q1; hold: batch6; delegated:round X-F1 2026-09-21T04:00Z — r3; decision-needed:none X-F1 2026-09-21T08:24:00Z — q2", IST)
+        self.assertEqual([d["text"] for d in two], ["q1", "q2"])
+        # the FLEET-F62 shape: the older decision answered at 06:48Z, the 08:24Z stamp open; the answer appended at the end,
+        # dated before the newer stamp, closes the older one only
+        fleet = ("decision-needed:none FLEET-F62 2026-09-21T03:00:00Z — BAR DECISION: authorize round 6?; ANSWERED 2026-09-21T06:48Z operator: yes; "
+                 "decision-needed:none FLEET-F62 2026-09-21T08:24:00Z — next bar?")
+        self.assertEqual([d["answered"] for d in scorecard.decision_stamps(fleet, IST)], [True, False])
+        appended = "decision-needed:none X-F1 2026-09-21T03:00:00Z — q1; decision-needed:none X-F1 2026-09-21T08:24:00Z — q2; ANSWERED 2026-09-21T06:48Z operator: q1 yes"
+        self.assertEqual([d["answered"] for d in scorecard.decision_stamps(appended, IST)], [True, False])
+        self.assertEqual([d["answered_at"] for d in scorecard.decision_stamps(fleet, IST)], ["2026-09-21T06:48:00Z", None])
+        self.assertEqual(scorecard.decision_stamps("", IST), [])
+        self.assertEqual(scorecard.decision_stamps("delegated:round X-F1 2026-09-21T03:00:00Z — r3; operator ruling B", IST), [])  # only decision-needed stamps
+
+
 class ParseIsoTest(unittest.TestCase):
     def test_iso_variants(self):
         self.assertEqual(scorecard.parse_iso("2026-09-09T12:00:00Z").tzinfo, timezone.utc)

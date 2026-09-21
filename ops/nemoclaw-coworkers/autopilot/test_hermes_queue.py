@@ -272,13 +272,13 @@ class LedgerParse(unittest.TestCase):
         e = hq.parse_ledger(ledger([{"id": "CH-F49", "notes": notes}]))["rows"]["CH-F49"]
         self.assertEqual(e["decisions"], [
             {"kind": "decision-needed", "tag": "C.1", "row": "CH-F49", "at": "2026-09-17T12:25:00Z",
-             "text": "authorize one final reviewer round (r3) to attest the corrected head `2f100634a7`, or not?"},
-            {"kind": "delegated", "tag": "round", "row": "CH-F49", "at": "2026-09-17T14:30:00Z", "text": "round 3 authorized (delegated C.1)"},
+             "text": "authorize one final reviewer round (r3) to attest the corrected head `2f100634a7`, or not?", "answered": False, "answered_at": None},
+            {"kind": "delegated", "tag": "round", "row": "CH-F49", "at": "2026-09-17T14:30:00Z", "text": "round 3 authorized (delegated C.1)", "answered": False, "answered_at": None},
         ])
         self.assertEqual(hq.open_decisions(e["decisions"]), [])  # the default was applied: nothing pending
         # a stamp with no question and no delegated note is pending; `none` is a rule like any other
         e2 = hq.parse_ledger(ledger([{"id": "CH-F49", "notes": "decision-needed:none CH-F49 2026-09-17T09:00Z"}]))["rows"]["CH-F49"]
-        self.assertEqual(e2["decisions"], [{"kind": "decision-needed", "tag": "none", "row": "CH-F49", "at": "2026-09-17T09:00:00Z", "text": ""}])
+        self.assertEqual(e2["decisions"], [{"kind": "decision-needed", "tag": "none", "row": "CH-F49", "at": "2026-09-17T09:00:00Z", "text": "", "answered": False, "answered_at": None}])
         self.assertEqual(hq.open_decisions(e2["decisions"]), e2["decisions"])
         # zone-less stamps read in the install zone like every ledger stamp; a delegated note OLDER than the stamp leaves it open
         e3 = hq.parse_ledger(ledger([{"id": "ISO-F14", "notes": "delegated:advisory ISO-F14 2026-09-17 08:00 — ADVISORY-FAIL(unattributed); decision-needed:C.2 ISO-F14 2026-09-17 09:00 — carry the live criteria to FLEET-F62?"}]))["rows"]["ISO-F14"]
@@ -302,6 +302,108 @@ class LedgerParse(unittest.TestCase):
         self.assertEqual([(d["kind"], d["tag"], d["row"], d["at"]) for d in bold],
                          [("decision-needed", "C.1", "CH-F49", "2026-09-17T12:25:00Z"), ("delegated", "round", "CH-F49", "2026-09-17T14:30:00Z")])
         self.assertEqual(hq.parse_decision_stamps("the decision was delegated to the builder; decision-needed soon"), [])  # prose, no colon: no stamp
+
+    def test_answered_free_text_later_in_the_cell_closes_the_stamp(self):
+        """2026-09-21: the digest re-listed ANSWERED asks for days. The Orchestrator closes a decision as free text — `ANSWERED
+        <ISO> …` (bold or plain, any case) or `DEFAULT APPLIED` — ANYWHERE later in the same notes cell, often > 1000 chars
+        after the stamp and past several `; key:` notes; the stamp's own question may begin with ANSWERED (CH-F50). Such a
+        stamp is `answered` and never pending. An ANSWERED dated BEFORE a later stamp answers the older decision only
+        (FLEET-F62: 06:48Z answered, 08:24Z still open); `unanswered` is not an answer."""
+        far = ("decision-needed:none ISO-F11 2026-09-18T09:00:00Z — file the adapter doc upstream?; hold: batch3+4 (autopilot 2026-09-18T10:00Z); "
+               + "progress note " * 120 + "; ANSWERED 2026-09-18T11:08Z operator option 1")
+        d = hq.parse_decision_stamps(far)
+        self.assertEqual([(x["text"], x["answered"]) for x in d], [("file the adapter doc upstream?", True)])
+        self.assertEqual(hq.open_decisions(d), [])
+        begins = hq.parse_decision_stamps("decision-needed:none CH-F50 2026-09-18T09:00:00Z — ANSWERED 2026-09-18: operator ruled option 2, fork only")
+        self.assertTrue(begins[0]["answered"])
+        bold = hq.parse_decision_stamps("decision-needed:C.1 CH-F49 2026-09-17T12:25:00Z — authorize one final reviewer round (r3)?; "
+                                        "**ANSWERED 2026-09-17T14:27Z (operator, dashboard msg 140): AUTHORIZED r3** — relayed to the tester")
+        self.assertEqual((bold[0]["answered"], hq.open_decisions(bold)), (True, []))
+        lower = hq.parse_decision_stamps("decision-needed:none X-F1 2026-09-21T03:00:00Z — q; answered by the operator: no")
+        self.assertTrue(lower[0]["answered"])
+        applied = hq.parse_decision_stamps("decision-needed:C.2 X-F1 2026-09-21T03:00:00Z — carry?; DEFAULT APPLIED — carried to FLEET-F62 — veto within 12 h")
+        self.assertTrue(applied[0]["answered"])
+        # the FLEET-F62 shape: the first decision answered at 06:48Z, a new stamp at 08:24Z with nothing after it -> open
+        fleet = hq.parse_decision_stamps("decision-needed:none FLEET-F62 2026-09-21T03:00:00Z — BAR DECISION: authorize round 6?; ANSWERED 2026-09-21T06:48Z operator: yes; "
+                                         "decision-needed:none FLEET-F62 2026-09-21T08:24:00Z — next bar?")
+        self.assertEqual([x["answered"] for x in fleet], [True, False])
+        self.assertEqual([x["at"] for x in hq.open_decisions(fleet)], ["2026-09-21T08:24:00Z"])
+        # the answer appended at the END of the cell, dated before the newer stamp: it closes the older decision only
+        appended = hq.parse_decision_stamps("decision-needed:none X-F1 2026-09-21T03:00:00Z — q1; decision-needed:none X-F1 2026-09-21T08:24:00Z — q2; "
+                                            "ANSWERED 2026-09-21T06:48Z operator: q1 yes")
+        self.assertEqual([x["answered"] for x in appended], [True, False])
+        # an undated ANSWERED after two stamps closes both (the literal rule); `unanswered` and the DM's own `default if
+        # unanswered by` never close anything; an ANSWERED BEFORE the stamp is not after it
+        undated = hq.parse_decision_stamps("decision-needed:none X-F1 2026-09-21T03:00:00Z — q1; decision-needed:none X-F1 2026-09-21T08:24:00Z — q2; ANSWERED operator: both")
+        self.assertEqual([x["answered"] for x in undated], [True, True])
+        self.assertFalse(hq.parse_decision_stamps("decision-needed:none X-F1 2026-09-21T03:00:00Z — default if unanswered by 05:00Z: option 2; still unanswered")[0]["answered"])
+        self.assertFalse(hq.parse_decision_stamps("ANSWERED 2026-09-20T10:00Z the old one; decision-needed:none X-F1 2026-09-21T03:00:00Z — q")[0]["answered"])
+        # ANSWERED must START A CLAUSE: the word mid-sentence inside an open question closes nothing
+        self.assertFalse(hq.parse_decision_stamps("decision-needed:none FLEET-F62 2026-09-21T02:00:00Z — the tester says AC-7 is answered by the fixture alone; accept that, or demand a live run?")[0]["answered"])
+        # a ZONE-LESS answer ISO reads in the STAMP's zone: 04:00 after a `Z` stamp at 02:00Z is 04:00Z (not 04:00 IST = 22:30Z the day before)
+        zl = hq.parse_decision_stamps("decision-needed:none FLEET-F62 2026-09-21T02:00:00Z — BAR DECISION …; ANSWERED 2026-09-21T04:00 operator: option 1")
+        self.assertEqual((zl[0]["answered"], zl[0]["answered_at"]), (True, "2026-09-21T04:00:00Z"))
+        ist = hq.parse_decision_stamps("decision-needed:none X-F1 2026-09-21 08:30 IST — q; ANSWERED 2026-09-21 09:00 yes")
+        self.assertEqual((ist[0]["at"], ist[0]["answered_at"]), ("2026-09-21T03:00:00Z", "2026-09-21T03:30:00Z"))
+        # only the ISO DIRECTLY ADJACENT to ANSWERED is its own date; a referenced earlier time is not, so that answer is undated and closes
+        ref = hq.parse_decision_stamps("decision-needed:none FLEET-F62 2026-09-21T02:00:00Z — q; ANSWERED (per the operator's 2026-09-20T16:00:00Z card ruling): option 1")
+        self.assertEqual((ref[0]["answered"], ref[0]["answered_at"]), (True, None))
+        adjacent = hq.parse_decision_stamps("decision-needed:none X-F1 2026-09-21T03:00:00Z — q; ANSWERED (2026-09-21T05:00Z, operator) yes; answered at 2026-09-21T07:00Z again")
+        self.assertEqual((adjacent[0]["answered"], adjacent[0]["answered_at"]), (True, "2026-09-21T05:00:00Z"))  # the earliest dated closing answer
+        self.assertEqual([x["answered_at"] for x in fleet], ["2026-09-21T06:48:00Z", None])
+        # build_state carries the flag; a delegated stamp never has one set
+        st = state(ledger([merged_row("LOOP-F35", 2), {"id": "MEM-F44", "notes": bold[0]["text"] and "decision-needed:C.1 MEM-F44 2026-09-17T12:25:00Z — r3?; ANSWERED 2026-09-17T14:27Z yes; delegated:round MEM-F44 2026-09-17T15:00Z — r3"}]))
+        self.assertEqual([(d["kind"], d["answered"]) for d in st["rows"]["MEM-F44"]["ledger"]["decisions"]], [("decision-needed", True), ("delegated", False)])
+
+    def test_verdict_cell_reads_round_authorizations_and_env_fails_never_cap(self):
+        """Round caps v2 in the verdict cell (the 2026-09-21 FLEET-F62 cell): `round N authorized` in its variants lifts the
+        cap for round N (`authorized_rounds`; `authorizations` carries each phrase's parenthetical ISO so the supervisor can
+        place it in a review cycle); ONLY the past participle grants — a request (`authorize round 3?`, `authorization for
+        round 3`) never does, nor a negated phrase, and the `authorized … round N` window stops at punctuation so a later
+        `round 4/4 = FAIL` is never read as an authorization; `round 2/2 = FAIL (env)` / `FAIL ×2 (env)` / `**FAIL** (env)` is
+        not the cap form, so ledger_state never blocks a row on environmental FAILs and never says `no round 3 authorized`
+        when the cell says it is."""
+        cell = ("round 1/2 = FAIL (env); round 2/2 = FAIL(env) — 8 sandbox/live FAIL(env), 12 PASS; "
+                "**round 3 authorized (operator msg 146, 2026-09-18T08:04Z, podman tier)**; round 4 authorized (operator msg 151); round-5 authorised")
+        v = hq.parse_verdict_cell(cell)
+        # `round3` (the loose reading) is "a third round RAN": the cell names round 3 only inside an authorization phrase, which
+        # `authorizations` reads precisely (and dated), so the loose flag stays off — `round 3/3 = FAIL` still sets it
+        self.assertEqual((v["authorized_rounds"], v["fail_round2"], v["round3"]), ([3, 4, 5], False, False))
+        self.assertEqual(v["authorizations"], [{"round": 3, "at": "2026-09-18T08:04:00Z"}, {"round": 4, "at": None}, {"round": 5, "at": None}])
+        self.assertTrue(hq.parse_verdict_cell("round 3 authorized (msg 9); round 3/3 = FAIL")["round3"])
+        self.assertFalse(hq.parse_verdict_cell("round 2/2 = FAIL; no round 3 authorized")["round3"])
+        # the participle in every form: `rN authorized`, `authorized … round N` (a few words, no punctuation), `round-N authorised`;
+        # a dated parenthetical in the install zone / with a zone; the C.1 default's own stamp
+        self.assertEqual(hq.authorized_rounds("r3 authorized by the operator; authorised one more test round 4; round-5 authorised"), [3, 4, 5])
+        self.assertEqual(hq.authorizations("round 3 authorized (delegated C.1 2026-09-19 10:00 IST); round 4 authorized (msg 9, 2026-09-19T12:00:00.000Z)"),
+                         [{"round": 3, "at": "2026-09-19T04:30:00Z"}, {"round": 4, "at": "2026-09-19T12:00:00Z"}])
+        # a REQUEST is not a grant (the DM asking for one, `awaiting authorization`, `authorization … requested`, the noun form)
+        for req in ("asked the operator to authorize round 3", "awaiting authorization for round 3", "requested authorization for round 3",
+                    "pending: authorize round 3?", "not yet authorized: round 3 pending", "authorization for round 3 requested 2026-09-21T08:00Z",
+                    "reviewer authorized fix-forward — round 3 = FAIL"):
+            self.assertEqual(hq.authorized_rounds(req), [], req)
+        # no forward leak past punctuation: the FAIL / the request after a real authorization is not a second one
+        self.assertEqual(hq.authorized_rounds("round 1/2 = FAIL(env); round 2/2 = FAIL(env); round 3 authorized (operator msg 146), round 4/4 = FAIL"), [3])
+        self.assertEqual(hq.authorized_rounds("round 3 authorized (operator msg 146) — round 4 requested"), [3])
+        # negations, hand-edited double spaces included
+        self.assertEqual(hq.authorized_rounds("no round 3 authorized; r4 not authorized; never authorized round 5; declined to authorize round 6"), [])
+        self.assertEqual(hq.authorized_rounds("no  round 3 authorized"), [])
+        self.assertEqual(hq.authorized_rounds("round 3/3 = FAIL"), [])  # a third round ran: `round3` (loose) reads that, not this
+        self.assertTrue(hq.parse_verdict_cell("round 1/2 = FAIL; round 2/2 = FAIL")["fail_round2"])
+        self.assertTrue(hq.parse_verdict_cell("FAIL ×2")["fail_round2"])
+        self.assertTrue(hq.parse_verdict_cell("round 2/2 = **FAIL**")["fail_round2"])
+        self.assertFalse(hq.parse_verdict_cell("round 2/2 = FAIL (env) — recipient provider")["fail_round2"])
+        self.assertFalse(hq.parse_verdict_cell("FAIL ×2 (env)")["fail_round2"])
+        self.assertFalse(hq.parse_verdict_cell("round 2/2 = **FAIL** (env)")["fail_round2"])  # the Orchestrator bolds in this cell
+        # ledger_state: only env FAILs + authorizations -> not blocked; a real x2 with an authorization in the cell -> not blocked;
+        # a real x2 with nothing lifting it -> the cap reason as before
+        fleet = state(ledger([merged_row("LOOP-F35", 2), {"id": "MEM-F44", "pr": "#3", "verdict": cell}]))["rows"]["MEM-F44"]
+        self.assertNotEqual(fleet["state"], "blocked")
+        self.assertIsNone(fleet["state_reason"])
+        lifted = state(ledger([merged_row("LOOP-F35", 2), {"id": "MEM-F44", "pr": "#3", "verdict": "round 1/2 = FAIL; round 2/2 = FAIL; round-3 authorized (operator msg 9)"}]))["rows"]["MEM-F44"]
+        self.assertEqual(lifted["state"], "building")
+        capped = state(ledger([merged_row("LOOP-F35", 2), {"id": "MEM-F44", "pr": "#3", "verdict": "round 1/2 = FAIL; round 2/2 = FAIL"}]))["rows"]["MEM-F44"]
+        self.assertEqual((capped["state"], capped["state_reason"]), ("blocked", "cap: test FAIL x2 (verdict cell), no round 3 authorized"))
 
     def test_a_delegated_stamp_closes_only_its_pairing_rule(self):
         """delegated-decisions.md § Standing defaults: `round` is C.1's default, `carry` C.2's, `advisory` C.3's — written "at

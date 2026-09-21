@@ -737,12 +737,116 @@ class RoundCapsV2(unittest.TestCase):
             handoff(2, self.HEAD_C, 16, round_no=2), test_report(2, self.HEAD_C, 1, "FAIL", 14),
         ]}
         r = run(self.st, threads, prs=[pr(2, "LOOP-F35", self.HEAD_C, created_h=27)])["rows"]["LOOP-F35"]
-        # two FAILs on the PR, but only one in review cycle 1: the row keeps building
-        self.assertEqual((r["stage"], r["fail_count"], r["cycle_fail_count"], r["review_cycle"]), ("building", 2, 1, 1))
+        # two FAILs on the PR, but only one in the current (second, 1-based) review cycle: the row keeps building
+        self.assertEqual((r["stage"], r["fail_count"], r["cycle_fail_count"], r["review_cycle"], r["rc_count"]), ("building", 2, 1, 2, 1))
         threads["hermes-LOOP-F35"] += [handoff(2, self.HEAD_D, 10, round_no=2), test_report(2, self.HEAD_D, 2, "FAIL", 8)]
         r = run(self.st, threads, prs=[pr(2, "LOOP-F35", self.HEAD_D, created_h=27)])["rows"]["LOOP-F35"]
         self.assertEqual(r["stage"], "blocked")
-        self.assertIn("cap: test FAIL x2 in review cycle 1", r["reason"])
+        self.assertEqual(r["reason"], "cap: test FAIL x2 in review cycle 2, no round 3 authorized")
+
+    def test_env_fails_with_round_authorizations_never_cap_and_a_real_fail_x2_still_does(self):
+        """The 2026-09-21 FLEET-F62 false positive: `Autopilot alert FLEET-F62 · blocked 0h · cap: test FAIL x7 in review
+        cycle 0, round 3 used` while every tester round was `FAIL(env)` and the verdict cell read `round 3 authorized …
+        round 4 authorized … round 5 authorized`. Round caps v2: env / ESCALATE rounds never count (Env cause line or
+        not), `round N authorized` in the cell lifts the cap for round N, the cycle is 1-based, and the reason never
+        says `no round N authorized` for a round the cell authorizes. A real in-plugin FAIL x2 with no authorization
+        still blocks, with the same keys as before."""
+        cell = ("round 1/2 = FAIL (env); round 2/2 = FAIL(env) — 8 sandbox/live FAIL(env), 12 PASS; "
+                "**round 3 authorized (operator msg 146, 2026-09-18T08:04Z, podman tier)**; round 4 authorized (operator msg 151); round-5 authorised")
+        st = state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2 (draft)", "verdict": cell}])
+        self.assertEqual(st["rows"]["LOOP-F35"]["ledger"]["verdict"]["authorized_rounds"], [3, 4, 5])
+        heads = [HEAD_A, HEAD_B, self.HEAD_C, self.HEAD_D, HEAD_A, HEAD_B, self.HEAD_C]
+        threads = {"hermes-LOOP-F35": list(self.base)}
+        for i, head in enumerate(heads):
+            threads["hermes-LOOP-F35"] += [handoff(2, head, 26 - 3 * i, round_no=i + 1 if i else 1),
+                                           test_report(2, head, i + 1, "FAIL(env) — 8 sandbox/live FAIL(env): podman tier unavailable, 12 PASS", 25 - 3 * i)]
+        threads["hermes-LOOP-F35"] += [handoff(2, self.HEAD_D, 4, round_no=8),
+                                       test_report(2, self.HEAD_D, 8, "FAIL — ESCALATE: sandbox tier unavailable", 3)]
+        out = run(st, threads, prs=[pr(2, "LOOP-F35", self.HEAD_D, created_h=27)])
+        r = out["rows"]["LOOP-F35"]
+        self.assertEqual((r["stage"], r["fail_count"], r["cycle_fail_count"], r["review_cycle"]), ("testing", 0, 0, 1))
+        self.assertEqual((r["authorized_rounds"], r["env_fail_unproven"]), ([3, 4, 5], 7))  # every FAIL(env) lacked the Env cause line: flagged, never counted
+        self.assertTrue(r["env_fail"])
+        self.assertEqual([t["verdict"] for t in r["test_rounds"]], ["FAIL_ENV"] * 7 + ["ESCALATE"])
+        self.assertEqual([a["alert_kind"] for a in out["actions"] if a["kind"] == "alert"], ["env-fail"])  # the §5 env escalation, never a cap alert
+        self.assertNotIn("cap:", json.dumps(out))
+        self.assertNotIn("review cycle 0", json.dumps(out))
+        # the same cell over two real in-plugin FAILs: the three authorizations lift the cap to five, so the row keeps building
+        real = {"hermes-LOOP-F35": self.base + [handoff(2, HEAD_A, 20), test_report(2, HEAD_A, 1, "FAIL", 18),
+                                                handoff(2, HEAD_B, 10, round_no=2), test_report(2, HEAD_B, 2, "FAIL", 8)]}
+        r2 = run(st, real, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
+        self.assertEqual((r2["stage"], r2["cycle_fail_count"], r2["authorized_rounds"]), ("building", 2, [3, 4, 5]))
+        # a fifth in-plugin FAIL spends them all: blocked, naming the rounds used and the next one owed — never "no round 3 authorized"
+        more = dict(real)
+        more["hermes-LOOP-F35"] = real["hermes-LOOP-F35"] + [
+            handoff(2, self.HEAD_C, 7, round_no=3), test_report(2, self.HEAD_C, 3, "FAIL", 6),
+            handoff(2, self.HEAD_D, 5, round_no=4), test_report(2, self.HEAD_D, 4, "FAIL", 4),
+            handoff(2, HEAD_A, 3, round_no=5), test_report(2, HEAD_A, 5, "FAIL", 2),
+        ]
+        r3 = run(st, more, prs=[pr(2, "LOOP-F35", HEAD_A, created_h=21)])["rows"]["LOOP-F35"]
+        self.assertEqual((r3["stage"], r3["reason"]), ("blocked", "cap: test FAIL x5 in review cycle 1, rounds 3, 4, 5 used, no round 6 authorized"))
+        # a real in-plugin FAIL x2 with NO authorization anywhere still fires, 1-based cycle, unchanged keys
+        plain = state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2 (draft)"}])
+        out4 = run(plain, real, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])
+        r4 = out4["rows"]["LOOP-F35"]
+        self.assertEqual((r4["stage"], r4["reason"], r4["authorized_rounds"]), ("blocked", "cap: test FAIL x2 in review cycle 1, no round 3 authorized", []))
+        self.assertEqual([(a["alert_kind"], a["row"]) for a in out4["actions"] if a["kind"] == "alert"], [("blocked", "LOOP-F35")])
+        self.assertIn("cap: test FAIL x2 in review cycle 1, no round 3 authorized", out4["actions"][0]["text"])
+        # `r3 authorized` / `authorized … round 3` in the cell: one lift, reason names round 3 as used
+        for phrase in ("r3 authorized (operator msg 140)", "the operator authorized a final test round 3"):
+            lifted = state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2 (draft)", "verdict": f"round 2/2 = FAIL; {phrase}"}])
+            self.assertEqual(run(lifted, real, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]["stage"], "building", phrase)
+            third = {"hermes-LOOP-F35": real["hermes-LOOP-F35"] + [handoff(2, self.HEAD_C, 7, round_no=3), test_report(2, self.HEAD_C, 3, "FAIL", 6)]}
+            r5 = run(lifted, third, prs=[pr(2, "LOOP-F35", self.HEAD_C, created_h=21)])["rows"]["LOOP-F35"]
+            self.assertEqual((r5["stage"], r5["reason"]), ("blocked", "cap: test FAIL x3 in review cycle 1, round 3 used, no round 4 authorized"), phrase)
+        # a negated phrase authorizes nothing
+        denied = state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2 (draft)", "verdict": "round 2/2 = FAIL; no round 3 authorized"}])
+        self.assertEqual(run(denied, real, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]["stage"], "blocked")
+
+    def test_request_changes_restarts_the_budget_after_env_fails_and_authorizations(self):
+        """REQUEST_CHANGES opens a new (1-based) cycle with the BASE budget (autopilot.md §6: re-authorize per cycle): the
+        FAILs before it, env or not, are spent history, and so are the cell's authorizations DATED before it (the ISO in
+        the phrase's parenthetical — `round 3 authorized (operator msg 146, <ISO>)`); one dated after it counts; the
+        undated phrases together lift the new cycle by at most one round (they cannot be placed in a cycle — the old loose
+        `round 3` reading gave one). Config `authorize_round` stays the per-cycle override."""
+        def cell(*phrases):
+            return state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2 (draft)", "verdict": "; ".join(phrases)}])
+        threads = {"hermes-LOOP-F35": self.base + [
+            handoff(2, HEAD_A, 30), test_report(2, HEAD_A, 1, "FAIL (env) — provider environment", 28),
+            handoff(2, HEAD_B, 26, round_no=2), test_report(2, HEAD_B, 2, "FAIL", 24),
+            handoff(2, self.HEAD_C, 22, round_no=3), test_report(2, self.HEAD_C, 3, "PASS", 20),
+            review_verdict(2, self.HEAD_C, 1, "REQUEST_CHANGES", 18),
+            handoff(2, self.HEAD_D, 16, round_no=2), test_report(2, self.HEAD_D, 1, "FAIL", 14),
+            handoff(2, HEAD_A, 12, round_no=2), test_report(2, HEAD_A, 2, "FAIL", 10),
+        ]}
+        prs = [pr(2, "LOOP-F35", HEAD_A, created_h=31)]
+        # three authorizations all dated in cycle 1 (before the 18 h-ago REQUEST_CHANGES): none carries — cycle 2's two
+        # in-plugin FAILs hit the base cap, and the reason owes round 3, the cell's `round 3 authorized` notwithstanding
+        spent = cell(f"round 3 authorized (operator msg 146, {ago(21)}, podman tier)", f"round 4 authorized (msg 150, {ago(20)})", f"round-5 authorised ({ago(19)})")
+        r = run(spent, threads, prs=prs)["rows"]["LOOP-F35"]
+        self.assertEqual((r["stage"], r["review_cycle"], r["cycle_fail_count"], r["fail_count"], r["env_fail_unproven"], r["authorized_rounds"]),
+                         ("blocked", 2, 2, 3, 1, []))
+        self.assertEqual(r["reason"], "cap: test FAIL x2 in review cycle 2, no round 3 authorized")
+        # the same cell before any REQUEST_CHANGES: every phrase counts (cap 5)
+        first_cycle = {"hermes-LOOP-F35": [m for m in threads["hermes-LOOP-F35"] if "[Review Verdict]" not in m["text"]]}
+        self.assertEqual(run(spent, first_cycle, prs=prs)["rows"]["LOOP-F35"]["authorized_rounds"], [3, 4, 5])
+        # one authorization dated AFTER the REQUEST_CHANGES counts in cycle 2: cap 3, still building; a third FAIL spends it
+        fresh = cell(f"round 3 authorized (operator msg 146, {ago(21)})", f"round 4 authorized (operator msg 160, {ago(15)})")
+        r = run(fresh, threads, prs=prs)["rows"]["LOOP-F35"]
+        self.assertEqual((r["stage"], r["authorized_rounds"]), ("building", [4]))
+        more = {"hermes-LOOP-F35": threads["hermes-LOOP-F35"] + [handoff(2, HEAD_B, 8, round_no=3), test_report(2, HEAD_B, 3, "FAIL", 6)]}
+        r = run(fresh, more, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=31)])["rows"]["LOOP-F35"]
+        self.assertEqual((r["stage"], r["reason"]), ("blocked", "cap: test FAIL x3 in review cycle 2, round 4 used, no round 5 authorized"))
+        # undated phrases after a REQUEST_CHANGES: +1 at most, whatever their number
+        undated = cell("round 3 authorized (operator msg 146)", "round 4 authorized", "round-5 authorised")
+        r = run(undated, threads, prs=prs)["rows"]["LOOP-F35"]
+        self.assertEqual((r["stage"], r["authorized_rounds"]), ("building", [5]))
+        r = run(undated, more, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=31)])["rows"]["LOOP-F35"]
+        self.assertEqual((r["stage"], r["reason"]), ("blocked", "cap: test FAIL x3 in review cycle 2, round 5 used, no round 6 authorized"))
+        # a state.json predating `authorizations` (bare `authorized_rounds`): read as undated, +1 at most
+        legacy = cell("x")
+        legacy["rows"]["LOOP-F35"]["ledger"]["verdict"] = {"authorized_rounds": [3, 4], "fail_round2": False, "round3": False}
+        self.assertEqual(run(legacy, threads, prs=prs)["rows"]["LOOP-F35"]["authorized_rounds"], [4])
 
     def test_authorization_lifts_only_the_current_cycle(self):
         threads = {"hermes-LOOP-F35": self.base + [
@@ -762,21 +866,35 @@ class RoundCapsV2(unittest.TestCase):
 
 
 class EnvFailProof(unittest.TestCase):
-    """A 'FAIL (env)' report is exempt from the cycle cap only with an '**Env cause:**' proof line
-    (hermes-verify verdict rule); without it the supervisor counts it like any FAIL."""
+    """Round caps v2 (delegated-decisions.md; the 2026-09-21 FLEET-F62 `test FAIL x7` false positive): a `FAIL (env)` /
+    `FAIL(env)` / ESCALATE report is never a counted round, with or without the `**Env cause:**` proof line hermes-verify
+    asks for. The missing proof is kept visible — `env_proof` on the event, `env_fail_unproven` on the record, `(no Env
+    cause line)` in the reason — for the merge gate and the operator; it no longer moves the cap. An explicit in-plugin
+    FAIL named beside an env one still counts."""
 
     def setUp(self):
         self.st = state([{"id": "LOOP-F35", "spec": stamp(30), "pr": "#2 (draft)"}])
         self.base = [spec_handoff("LOOP-F35", 30), builder_start("LOOP-F35", 29)]
 
-    def test_env_fail_without_proof_counts(self):
+    def test_env_fail_without_proof_is_exempt_but_flagged(self):
         threads = {"hermes-LOOP-F35": self.base + [
             handoff(2, HEAD_A, 20), test_report(2, HEAD_A, 1, "FAIL", 18),
             handoff(2, HEAD_B, 10, round_no=2), test_report(2, HEAD_B, 2, "FAIL (env) — provider environment", 3),
         ]}
         r = run(self.st, threads, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
-        self.assertEqual((r["stage"], r["cycle_fail_count"]), ("blocked", 2))
-        self.assertIn("cap: test FAIL x2", r["reason"])
+        self.assertEqual((r["stage"], r["cycle_fail_count"], r["fail_count"], r["env_fail_unproven"]), ("testing", 1, 1, 1))
+        self.assertEqual(r["reason"], "[Test Report] FAIL (env): outside plugin code, not a counted round (no Env cause line)")
+        self.assertTrue(r["env_fail"])
+        self.assertEqual([t["verdict"] for t in r["test_rounds"]], ["FAIL", "FAIL_ENV"])
+        # the compact spellings the tester writes: FAIL(env), FAIL ×8 (env), FAIL (environmental)
+        for verdict in ("FAIL(env) — podman tier unavailable", "FAIL ×8 (env) — 8 sandbox/live rows", "FAIL (environmental): desktop tier unavailable"):
+            t2 = {"hermes-LOOP-F35": threads["hermes-LOOP-F35"][:-1] + [test_report(2, HEAD_B, 2, verdict, 3)]}
+            r2 = run(self.st, t2, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
+            self.assertEqual((r2["stage"], r2["cycle_fail_count"], r2["test_rounds"][-1]["verdict"]), ("testing", 1, "FAIL_ENV"), verdict)
+        # an in-plugin FAIL named beside an env one is a counted round
+        mixed = {"hermes-LOOP-F35": threads["hermes-LOOP-F35"][:-1] + [test_report(2, HEAD_B, 2, "FAIL — AC-3 FAIL (plugin), AC-7 FAIL (env)", 3)]}
+        r3 = run(self.st, mixed, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
+        self.assertEqual((r3["stage"], r3["cycle_fail_count"]), ("blocked", 2))
 
     def test_env_fail_with_proof_is_exempt(self):
         proof = "- **Env cause:** tools/bot_mode_dm.py:316 spawns bare `hermes` — FileNotFoundError in r3-postonboard-probe.log"
@@ -785,7 +903,8 @@ class EnvFailProof(unittest.TestCase):
             handoff(2, HEAD_B, 10, round_no=2), test_report(2, HEAD_B, 2, "FAIL (env) — provider environment", 3, extra=proof),
         ]}
         r = run(self.st, threads, prs=[pr(2, "LOOP-F35", HEAD_B, created_h=21)])["rows"]["LOOP-F35"]
-        self.assertEqual((r["stage"], r["cycle_fail_count"]), ("testing", 1))
+        self.assertEqual((r["stage"], r["cycle_fail_count"], r["env_fail_unproven"]), ("testing", 1, 0))
+        self.assertEqual(r["reason"], "[Test Report] FAIL (env): outside plugin code, not a counted round")
         self.assertTrue(r["env_fail"])
 
 
@@ -2545,7 +2664,7 @@ class CanonicalDecisionAsk(unittest.TestCase):
         st = ch_row(ch_stamp(3))
         self.assertEqual(st["rows"]["CH-F49"]["ledger"]["decisions"],
                          [{"kind": "decision-needed", "tag": "C.1", "row": "CH-F49", "at": ago(3),
-                           "text": "authorize one final reviewer round (r3) to attest the corrected head `2f100634a7`, or not?"}])
+                           "text": "authorize one final reviewer round (r3) to attest the corrected head `2f100634a7`, or not?", "answered": False, "answered_at": None}])
         out = run(st, {"hermes-CH-F49": CH_DISPATCH})  # the DM never reached the collectors: the stamp alone carries the ask
         r = out["rows"]["CH-F49"]["operator_ask"]
         self.assertEqual(r["count"], 1)
@@ -2732,31 +2851,158 @@ class CanonicalDecisionAsk(unittest.TestCase):
         self.assertIsNone(both["rows"]["CH-F49"]["operator_ask"])
 
     def test_an_open_stamp_on_a_row_nobody_would_supervise_is_still_read(self):
-        """The second source exists for the DM the collectors missed — so it must be read on a merged / queued row and on a
-        finished follow-up too (a `none` decision about an upstream filing outlives the chain); a paused row stays silent."""
-        merged = state([merged_row("CH-F49", 7) | {"notes": f"decision-needed:none CH-F49 {ago(3)} — file the adapter doc upstream, or keep it on the fork?"}])
-        out = run(merged, {"hermes-CH-F49": CH_DISPATCH})
-        self.assertEqual((out["rows"]["CH-F49"]["stage"], out["rows"]["CH-F49"]["operator_ask"]["newest"]["source"]), ("merged", "ledger"))
+        """The second source exists for the DM the collectors missed — so it must be read on a queued row and on a blocked
+        follow-up too; a paused row stays silent. A merged / dropped row is MOOT (2026-09-21, rule ii: RT-F09's stamp
+        re-listed for days after its merge): its stamps are closed and it is not a candidate."""
+        queued_notes = f"decision-needed:none CH-F49 {ago(3)} — file the adapter doc upstream, or keep it on the fork?"
+        queued = state([{"id": "LOOP-F35", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        queued["rows"]["CH-F49"]["ledger"] = {"pr": None, "verdict": {}, "decisions": hq.parse_decision_stamps(queued_notes)}
+        out = run(queued, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]})
+        self.assertEqual((out["rows"]["CH-F49"]["stage"], out["rows"]["CH-F49"]["operator_ask"]["newest"]["source"]), ("queued", "ledger"))
         alerts = [a for a in out["actions"] if a.get("check") == "operator_ask"]
         self.assertEqual([(a["row"], a["ask_source"], a["status_text"]) for a in alerts],
                          [("CH-F49", "ledger", "DECISION NEEDED (3h): CH-F49 — file the adapter doc upstream, or keep it on the fork?")])
         self.assertNotIn("detail", alerts[0])  # `none`: never overdue
-        self.assertEqual((out["summary"]["in_flight"], out["summary"]["operator_ask"]), (0, 1))
-        # answered (DEFAULT APPLIED / a delegated: pairing note / an operator reply naming the row) — not a candidate, not listed
-        self.assertNotIn("CH-F49", run(state([merged_row("CH-F49", 7) | {"notes": ch_stamp(3) + f"; delegated:round CH-F49 {ago(1)} — r3"}]), {"hermes-CH-F49": CH_DISPATCH})["rows"])
-        self.assertIsNone(run(merged, {"hermes-CH-F49": CH_DISPATCH}, operator_threads=[op_thread(DM, [operator_in(1, "Operator ruling: CH-F49 — keep it on the fork")])])["rows"]["CH-F49"]["operator_ask"])
+        self.assertEqual(out["summary"]["operator_ask"], 1)
+        # answered (a delegated: pairing note / an operator reply naming the row) — not a candidate, or not listed
+        closed = state([{"id": "LOOP-F35", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        closed["rows"]["CH-F49"]["ledger"] = {"pr": None, "verdict": {}, "decisions": hq.parse_decision_stamps(ch_stamp(3) + f"; delegated:round CH-F49 {ago(1)} — r3")}
+        self.assertNotIn("CH-F49", run(closed, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]})["rows"])
+        self.assertIsNone(run(queued, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]},
+                              operator_threads=[op_thread(DM, [operator_in(1, "Operator ruling: CH-F49 — keep it on the fork")])])["rows"]["CH-F49"]["operator_ask"])
         # paused: silent; no thread at all: still read (the stamp needs no thread)
-        self.assertEqual(run(merged, {"hermes-CH-F49": CH_DISPATCH}, config={"paused_rows": ["CH-F49"]})["summary"]["operator_ask"], 0)
-        self.assertEqual(run(merged, {})["summary"]["operator_ask"], 1)
-        # a merged follow-up with an open stamp surfaces under its own id and never counts as a follow-up in flight
+        self.assertEqual(run(queued, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]}, config={"paused_rows": ["CH-F49"]})["summary"]["operator_ask"], 0)
+        self.assertEqual(run(queued, {})["summary"]["operator_ask"], 1)
+        # merged: moot — the same stamp on a merged row is closed; not a candidate, nothing listed, nothing alerted
+        merged = state([merged_row("CH-F49", 7) | {"notes": queued_notes}])
+        out_m = run(merged, {"hermes-CH-F49": CH_DISPATCH})
+        self.assertNotIn("CH-F49", out_m["rows"])
+        self.assertEqual((out_m["summary"]["operator_ask"], out_m["operator_asks"], [a for a in out_m["actions"] if a["kind"] == "alert"]), (0, [], []))
+        self.assertTrue(hs._row_moot(merged["rows"]["CH-F49"]))
+        # a merged follow-up with a stamp is moot too, and never counts as a follow-up in flight
         fu = state([merged_row("ISO-F10.a", 21) | {"notes": ch_stamp(3).replace("CH-F49", "ISO-F10.a")}, {"id": "LOOP-F35", "dispatched": stamp(6) + " (to hermes-architect)"}])
         self.assertEqual(fu["follow_up_rows"]["ISO-F10.a"]["state"], "merged")
         out2 = run(fu, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]})
-        self.assertEqual([(a["row"], a["ask_source"], a["detail"]) for a in out2["actions"] if a.get("check") == "operator_ask"], [("ISO-F10.a", "ledger", "default C.1 overdue")])
-        self.assertEqual((out2["summary"]["follow_ups"], out2["summary"]["in_flight"], out2["rows"]["ISO-F10.a"]["stage"]), (0, 1, "merged"))
+        self.assertEqual([a for a in out2["actions"] if a.get("check") == "operator_ask"], [])
+        self.assertEqual((out2["summary"]["follow_ups"], out2["summary"]["in_flight"], "ISO-F10.a" in out2["rows"]), (0, 1, False))
+        # a BLOCKED follow-up with an open stamp still surfaces under its own id (blocked is not moot: a capped row asks for the cap)
+        blocked_fu = state([{"id": "ISO-F10.a", "spec": stamp(20), "pr": "#7", "outcome": "blocked: STOP cap — test FAIL ×2", "notes": ch_stamp(3).replace("CH-F49", "ISO-F10.a")},
+                            {"id": "LOOP-F35", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        self.assertEqual(blocked_fu["follow_up_rows"]["ISO-F10.a"]["state"], "blocked")
+        out3 = run(blocked_fu, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]})
+        self.assertEqual([(a["row"], a["ask_source"], a["detail"]) for a in out3["actions"] if a.get("check") == "operator_ask"], [("ISO-F10.a", "ledger", "default C.1 overdue")])
         # the in-flight follow-up still counts (unchanged)
         live = state([{"id": "SCHED-F34.a", "dispatched": stamp(7) + " (to hermes-architect)"}])
         self.assertEqual(run(live, {"hermes-SCHED-F34.a": [msg(7, "Dispatch SCHED-F34.a: x", "in")]})["summary"]["follow_ups"], 1)
+
+    def test_answered_free_text_and_merged_rows_close_the_stamp_and_its_copies_everywhere(self):
+        """The 2026-09-21 digest: `DECISION NEEDED (33h): FLEET-F62 — BAR DECISION: authorize round 6 …` answered at 06:48Z,
+        `(26h): ISO-F11` merged with `; ANSWERED 2026-09-18T11:08Z operator option 1` > 1000 chars after the stamp, `(39h):
+        CH-F50` whose stamp text begins with ANSWERED, `(48h): CH-F49` with a bold ANSWERED, RT-F09 merged with no text at
+        all. Each is CLOSED: no operator_ask, no alert, no `DECISION NEEDED (Nh)` entry, from the stamp, the row-thread
+        mirror or the DM copy alike. A genuinely open stamp (FLEET-F62 08:24Z, no ANSWERED yet) fires exactly as before."""
+        q = "BAR DECISION: authorize round 6 on the sandbox tier, or stop at 5?"
+        stamp6 = f"decision-needed:none FLEET-F62 {ago(33)} — {q}"
+        st = state([{"id": "CH-F49", "dispatched": stamp(40) + " (to hermes-architect)", "notes": stamp6.replace("FLEET-F62", "CH-F49") + f"; hold: batch5 (autopilot {ago(30)}); " + "progress " * 200 + f"; ANSWERED {ago(31)} operator option 1 — proceed"}])
+        dm_copy = f"DECISION NEEDED — CH-F49 — {q}\n1. authorize\n2. stop  ← recommended\ndefault if unanswered by {ago(31)}: none — waits; not delegable"
+        out = run(st, {"hermes-CH-F49": CH_DISPATCH + [orch(33, dm_copy)]}, operator_threads=[op_thread(DM, [orch(33, dm_copy)])])
+        r = out["rows"]["CH-F49"]
+        self.assertIsNone(r["operator_ask"])  # the stamp, its row-thread mirror and its DM copy share one key: all closed
+        self.assertEqual((out["summary"]["operator_ask"], out["operator_asks"], [a for a in out["actions"] if a.get("check") == "operator_ask"]), (0, [], []))
+        self.assertNotIn("DECISION NEEDED", json.dumps(out["actions"]))
+        # the stamp text itself beginning with ANSWERED (CH-F50), a bold ANSWERED (CH-F49), a lowercase one: closed
+        for notes in (f"decision-needed:none CH-F49 {ago(39)} — ANSWERED 2026-09-18: operator ruled fork-only, no upstream filing",
+                      f"decision-needed:C.1 CH-F49 {ago(48)} — authorize one final reviewer round (r3)?; **ANSWERED {ago(47)} (operator, dashboard msg 140): AUTHORIZED r3**",
+                      f"decision-needed:none CH-F49 {ago(20)} — file upstream?; answered {ago(19)} by the operator: no"):
+            o = run(ch_row(notes), {"hermes-CH-F49": CH_DISPATCH})
+            self.assertEqual((o["summary"]["operator_ask"], o["operator_asks"]), (0, []), notes)
+        # `DEFAULT APPLIED` written into the notes closes too; `unanswered` never does
+        self.assertEqual(run(ch_row(f"decision-needed:C.2 CH-F49 {ago(5)} — carry AC-3?; DEFAULT APPLIED — carried to FLEET-F62 — veto within 12 h"), {"hermes-CH-F49": CH_DISPATCH})["summary"]["operator_ask"], 0)
+        still = run(ch_row(f"decision-needed:none CH-F49 {ago(5)} — file upstream?; default if unanswered by {ago(3)}: none; still unanswered"), {"hermes-CH-F49": CH_DISPATCH})
+        self.assertEqual(still["summary"]["operator_ask"], 1)
+        # the FLEET-F62 shape: the 33 h-old decision answered at 06:48Z; a newer stamp (no ANSWERED) fires exactly as before —
+        # same key, same status line, same 24 h bound, the older one nowhere
+        newer_q = "next bar: run round 6 on the podman box tonight, or wait for OSH-F63?"
+        fleet_notes = stamp6.replace("FLEET-F62", "CH-F49") + f"; ANSWERED {ago(31)} operator: option 1; decision-needed:none CH-F49 {ago(2)} — {newer_q}"
+        out2 = run(ch_row(fleet_notes), {"hermes-CH-F49": CH_DISPATCH})
+        alerts = [a for a in out2["actions"] if a.get("check") == "operator_ask"]
+        key = hs.decision_key("CH-F49", newer_q)
+        self.assertEqual([(a["row"], a["alert_key"], a["status_text"]) for a in alerts], [("CH-F49", key, f"DECISION NEEDED (2h): CH-F49 — {newer_q}")])
+        self.assertEqual([(a["key"], a["age_hours"], a["alerted"]) for a in out2["operator_asks"]], [(key, 2.0, True)])
+        self.assertEqual(out2["rows"]["CH-F49"]["operator_ask"]["count"], 1)
+        bound = run(ch_row(fleet_notes), {"hermes-CH-F49": CH_DISPATCH}, nudges={"CH-F49": {"alerts": {key: ago(1)}}})
+        self.assertEqual(([a for a in bound["actions"] if a["kind"] == "alert"], bound["operator_asks"][0]["bound"]), ([], ago(1)))
+        # merged rows are moot whatever the text: a DM copy of a merged row's decision is closed too, and never falls to OPERATOR
+        merged = state([merged_row("CH-F49", 7) | {"notes": stamp6.replace("FLEET-F62", "CH-F49")}, {"id": "LOOP-F35", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        out3 = run(merged, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]}, operator_threads=[op_thread(DM, [orch(33, dm_copy)])])
+        self.assertEqual((out3["summary"]["operator_ask"], out3["operator_asks"], "CH-F49" in out3["rows"]), (0, [], False))
+        self.assertNotIn("OPERATOR", {a["row"] for a in out3["actions"]})
+        # a merged follow-up's DM copy: the OPERATOR fallback drops it as well
+        fu = state([merged_row("ISO-F10.a", 21) | {"notes": stamp6.replace("FLEET-F62", "ISO-F10.a")}, {"id": "LOOP-F35", "dispatched": stamp(6) + " (to hermes-architect)"}])
+        out4 = run(fu, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]}, operator_threads=[op_thread(DM, [orch(33, dm_copy.replace("CH-F49", "ISO-F10.a"))])])
+        self.assertEqual((out4["summary"]["operator_ask"], out4["operator_asks"]), (0, []))
+        # a role's ordinary "awaiting operator" line on a merged row named by the DM is not a stamp and is not closed by the merge
+        plain = run(merged, {"hermes-LOOP-F35": [msg(6, "Dispatch LOOP-F35: x", "in")]},
+                    operator_threads=[op_thread(DM, [orch(1, "CH-F49 — awaiting operator on the upstream filing; your call.")])])
+        self.assertEqual([a["row"] for a in plain["operator_asks"]], ["CH-F49"])
+
+    def test_an_answered_stamp_closes_the_rows_dm_copy_whose_words_differ_from_the_ledgers(self):
+        """The Orchestrator abbreviates the question in the ledger (or the stamp absorbs its `; **ANSWERED …**`), so a DM copy's
+        decision_key differs from the stamp's — the in-flight FLEET-F62 shape that kept `DECISION NEEDED (33h): FLEET-F62 —
+        BAR DECISION: …` alive a day after the answer, from the DM copy and the row-thread mirror alike. An `answered` stamp
+        closes the row's canonical copies whose words differ when the two questions are the same ask by text
+        (_same_ask_text, the stamp's question cut at its ANSWERED clause) or when the answer's own ISO (`answered_at`) is
+        not before the copy — the row-scoped rule an operator inbound on the row thread already follows. A genuinely open
+        stamp's differing copy, a newer canonical DM the answer predates, and a role's plain ask still fire."""
+        q = "BAR DECISION: authorize round 6 on the sandbox tier, or stop at 5?"
+        dm_q = "BAR DECISION: authorize round 6 on the sandbox (podman) tier, or stop at 5?"
+        dm = f"DECISION NEEDED — FLEET-F62 — {dm_q}\n1. yes\n2. stop  ← recommended"
+        disp = [msg(40, "Dispatch FLEET-F62: x", "in")]
+        self.assertNotEqual(hs.decision_key("FLEET-F62", q), hs.decision_key("FLEET-F62", dm_q))  # the key path alone would not close it
+
+        def fleet(notes):
+            return state([{"id": "FLEET-F62", "dispatched": stamp(40) + " (to hermes-architect)", "notes": notes}])
+
+        answered = fleet(f"decision-needed:none FLEET-F62 {ago(33)} — {q}; hold: batch6; ANSWERED {ago(29)} operator: option 1")
+        self.assertEqual([(d["answered"], d["answered_at"]) for d in answered["rows"]["FLEET-F62"]["ledger"]["decisions"]], [(True, ago(29))])
+        for name, threads, op in (("DM copy", {"hermes-FLEET-F62": disp}, [op_thread(DM, [orch(33, dm)])]),
+                                  ("row-thread mirror", {"hermes-FLEET-F62": disp + [orch(33, dm)]}, None)):
+            out = run(answered, threads, operator_threads=op)
+            self.assertEqual((out["rows"]["FLEET-F62"]["operator_ask"], out["summary"]["operator_ask"], out["operator_asks"],
+                              [a for a in out["actions"] if a["kind"] == "alert"]), (None, 0, [], []), name)
+            self.assertNotIn("DECISION NEEDED", json.dumps(out["actions"]), name)
+        # an UNDATED ANSWERED the stamp's question absorbed (`…?; ANSWERED operator: …`), the DM adding a parenthesis: closed by text
+        undated = fleet(f"decision-needed:none FLEET-F62 {ago(33)} — {q}; ANSWERED operator: option 1")
+        self.assertEqual([(d["text"], d["answered_at"]) for d in undated["rows"]["FLEET-F62"]["ledger"]["decisions"]], [(f"{q}; ANSWERED operator: option 1", None)])
+        out = run(undated, {"hermes-FLEET-F62": disp}, operator_threads=[op_thread(DM, [orch(33, f"DECISION NEEDED — FLEET-F62 — {q} (podman box)")])])
+        self.assertEqual((out["summary"]["operator_ask"], out["operator_asks"]), (0, []))
+        # the parenthesis MID-sentence (`the sandbox (podman) tier`) under a DATE-ONLY answer (`ANSWERED 2026-09-18:`, the CH-F50
+        # shape — no time, so undated): the ledger's question is no contiguous run of the DM's and no ISO can place it, so only
+        # the word net (_same_ask_words: every word of the shorter in the longer) closes the copy — from the DM and the mirror
+        dated_day = fleet(f"decision-needed:none FLEET-F62 {ago(33)} — {q}; ANSWERED 2026-09-18: operator option 1")
+        self.assertEqual([(d["answered"], d["answered_at"]) for d in dated_day["rows"]["FLEET-F62"]["ledger"]["decisions"]], [(True, None)])
+        self.assertTrue(hs._same_ask_words(dm_q, q) and not hs._same_ask_text(dm_q, q))
+        for name, threads, op in (("DM copy", {"hermes-FLEET-F62": disp}, [op_thread(DM, [orch(33, dm)])]),
+                                  ("row-thread mirror", {"hermes-FLEET-F62": disp + [orch(33, dm)]}, None)):
+            out = run(dated_day, threads, operator_threads=op)
+            self.assertEqual((out["summary"]["operator_ask"], out["operator_asks"], [a for a in out["actions"] if a["kind"] == "alert"]), (0, [], []), name)
+        # control: other WORDS under the same undated answer is a new decision (round 7 / stop at 6) and fires
+        other = "BAR DECISION: authorize round 7 on the sandbox tier, or stop at 6?"
+        self.assertFalse(hs._same_ask_words(other, q))
+        out = run(dated_day, {"hermes-FLEET-F62": disp}, operator_threads=[op_thread(DM, [orch(33, f"DECISION NEEDED — FLEET-F62 — {other}")])])
+        self.assertEqual([(a["row"], a["status_text"]) for a in out["operator_asks"]], [("FLEET-F62", f"DECISION NEEDED (33h): FLEET-F62 — {other}")])
+        # control: the stamp OPEN (no ANSWERED) — the differing DM copy fires, once, with the stamp as a second ask on the record
+        open_ = fleet(f"decision-needed:none FLEET-F62 {ago(33)} — {q}; hold: batch6")
+        out = run(open_, {"hermes-FLEET-F62": disp}, operator_threads=[op_thread(DM, [orch(33, dm)])])
+        self.assertEqual([(a["row"], a["status_text"]) for a in out["operator_asks"]], [("FLEET-F62", f"DECISION NEEDED (33h): FLEET-F62 — {dm_q}")])
+        self.assertEqual((out["rows"]["FLEET-F62"]["operator_ask"]["count"], [a["alert_kind"] for a in out["actions"] if a["kind"] == "alert"]), (2, ["operator-ruling"]))
+        # control: a NEWER canonical DM (no stamp yet) after the answer is a new decision and fires
+        newer = "next bar: run round 6 on the podman box tonight, or wait for OSH-F63?"
+        out = run(answered, {"hermes-FLEET-F62": disp}, operator_threads=[op_thread(DM, [orch(3, f"DECISION NEEDED — FLEET-F62 — {newer}")])])
+        self.assertEqual([(a["row"], a["status_text"]) for a in out["operator_asks"]], [("FLEET-F62", f"DECISION NEEDED (3h): FLEET-F62 — {newer}")])
+        # control: a role's plain ask on the row thread is not a canonical copy and is never closed by the ledger answer
+        plain = run(answered, {"hermes-FLEET-F62": disp + [msg(3, "Operator authorization needed: podman box access for round 6.", sender="hermes-tester", role="tester")]})
+        self.assertEqual([(a["row"], a["role"]) for a in plain["operator_asks"]], [("FLEET-F62", "tester")])
 
     def test_a_follow_up_rows_canonical_ask_keeps_its_letter_and_is_attributed_and_answered(self):
         """`DECISION NEEDED — SCHED-F34.a — …`: `.upper()` would have made it `SCHED-F34.A` — unknown to `known`, unmatched by

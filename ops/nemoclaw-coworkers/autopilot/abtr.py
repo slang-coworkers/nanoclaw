@@ -11,6 +11,7 @@ Cells, one token plus an optional time or age:
   ▶ r2 3.1h   tester active on round 2
   ✗ FAIL r2   tester FAIL round 2 / ✗ RC r1 reviewer REQUEST_CHANGES round 1
   ⚠ ESC r1    tester ESCALATE (environmental, not a counted round)
+  ⚠ ENV r2    tester FAIL (env) (environmental, not a counted round either — round caps v2)
   ⏸           paused row or cost hold on the active role
   ·           not started
   gate: ✓ <sha7> merged · ✗ <reason> blocked · ▶ <age> at the merge gate · ⏸ <hold> held
@@ -43,6 +44,11 @@ DEFAULT_DISPATCHABLE = 33  # dispatched rows on the plan's coverage line when no
 STAGES = ("queued", "dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate", "merged")
 IN_FLIGHT = ("dispatched", "spec_handoff", "building", "pr_open", "testing", "review", "gate")
 VERDICT_TOKEN_RE = re.compile(r"\b(PASS|FAIL|APPROVE|REQUEST_CHANGES)\b")
+ENV_AFTER_RE = re.compile(r"(?i)[^(\n]{0,16}\(\s*(?:env|environmental|outside[- ]plugin|infra)")  # `FAIL (env)`, `FAIL ×8 (env)`
+MD_STRIP_RE = re.compile(r"[*_`~]+")
+# where the Orchestrator's free-text closure starts a clause in a stamp's absorbed question (hermes_queue.ANSWERED_RE's twin)
+ANSWERED_CLAUSE_RE = re.compile(r"(?i)(?:^|[;:.?!—–(\n]|\s-)\s*(?:answered|default\s+applied)\b")
+WORD_RE = re.compile(r"[a-z0-9]+")  # the words of a question, for _same_question's word-subset net
 ROUND_RE = re.compile(r"(?i)\bround\s+(\d)")
 BATCH_RE = re.compile(r"\b[Bb]atch\s+(\d[a-z]?)\b")
 MERGED_SHA_RE = re.compile(r"merged.{0,60}?\b([0-9a-f]{7,40})\b", re.IGNORECASE | re.DOTALL)
@@ -50,7 +56,7 @@ BLOCKED_REASON_RE = re.compile(r"blocked:\s*(.*)", re.IGNORECASE | re.DOTALL)
 HEADER_PREFIX = "Hermes autopilot"
 LEGEND = (
     "a architect · b builder · t tester · r reviewer · gate merge gate",
-    "✓ done HH:MMZ · ✓▶ done, forward owed · ▶ active h · ✗ FAIL/RC round · ⚠ ESC · ⏸ paused/cost · · not started",
+    "✓ done HH:MMZ · ✓▶ done, forward owed · ▶ active h · ✗ FAIL/RC round · ⚠ ESC/ENV · ⏸ paused/cost · · not started",
 )
 # stage -> (nudge after h, role owing the next artifact): hermes_supervise.SLO, for a state.json that predates those keys
 SLO_FALLBACK = {
@@ -137,9 +143,12 @@ def _num(v):
 
 def ledger_rounds(verdict_cell: str) -> tuple[list, list]:
     """Cross-check reading of the ledger's verdict cell: `round 2/2 FAIL` -> one test round;
-    APPROVE / REQUEST_CHANGES -> one review round. The threads are authoritative when present."""
-    tokens = VERDICT_TOKEN_RE.findall(verdict_cell or "")
-    rounds = [int(r) for r in ROUND_RE.findall(verdict_cell or "")]
+    APPROVE / REQUEST_CHANGES -> one review round; a `FAIL (env)` / `FAIL(env)` last token is
+    `FAIL_ENV` (round caps v2: environmental, not a counted round). The threads are authoritative when present."""
+    cell = verdict_cell or ""
+    matches = list(VERDICT_TOKEN_RE.finditer(cell))
+    tokens = [m.group(1) for m in matches]
+    rounds = [int(r) for r in ROUND_RE.findall(cell)]
     if not tokens:
         return [], []
     n = rounds[-1] if rounds else None
@@ -147,6 +156,8 @@ def ledger_rounds(verdict_cell: str) -> tuple[list, list]:
     if last in ("APPROVE", "REQUEST_CHANGES"):
         tests = [{"round": n, "verdict": "PASS", "ts": None}] if "PASS" in tokens else []
         return tests, [{"round": n, "verdict": last, "ts": None}]
+    if last == "FAIL" and ENV_AFTER_RE.match(cell, matches[-1].end()):
+        last = "FAIL_ENV"
     return [{"round": n, "verdict": last, "ts": None}], []
 
 
@@ -164,6 +175,8 @@ def ledger_stage(lr: dict, tests: list, reviews: list) -> str:
             return "review"
         if tests and tests[-1]["verdict"] == "FAIL":
             return "building"
+        if tests and tests[-1]["verdict"] == "FAIL_ENV":
+            return "testing"  # the tester still owes a counted round; the builder has nothing to fix
         return "pr_open"
     if lr.get("spec_accepted_at"):
         return "spec_handoff"
@@ -274,6 +287,8 @@ def row_view(rid: str, lr: dict | None, qrow: dict | None, srow: dict | None, no
         t = f"✗ FAIL r{last_t.get('round') or '?'}"
     elif last_t and last_t.get("verdict") == "ESCALATE":
         t = f"⚠ ESC r{last_t.get('round') or '?'}"
+    elif last_t and last_t.get("verdict") == "FAIL_ENV":
+        t = f"⚠ ENV r{last_t.get('round') or '?'}"  # environmental FAIL: not a counted round (round caps v2), never `·`
     elif last_t and last_t.get("verdict") == "PASS":
         t = done(last_t.get("ts"))
     elif stage in ("review", "gate") or group == "merged":
@@ -453,9 +468,66 @@ def header_line(state: dict, rows: list, now: datetime, alerts=(), config: dict 
     return line
 
 
-def decision_lines(state: dict) -> list:
+def _same_question(a: str, b: str) -> bool:
+    """hermes_supervise._same_ask_text + _same_ask_words, mirrored: two questions are one ask when the shorter's head (200
+    chars, ≥ 40) is inside the longer, or every word of the shorter (≥ 6 words) is in the longer — a DM copy differing from
+    the ledger stamp by a lead-in, a trailing parenthesis or one added mid-sentence ("the sandbox (podman) tier") is the
+    same decision; a new question (other words) is not."""
+    a, b = " ".join(a.split()).lower(), " ".join(b.split()).lower()
+    short, long_ = sorted((a, b), key=len)
+    if len(short) >= 40 and short[:200] in long_:
+        return True
+    ws, wl = sorted((WORD_RE.findall(a), WORD_RE.findall(b)), key=len)
+    return len(ws) >= 6 and set(ws) <= set(wl)
+
+
+def ask_closed(a: dict, state: dict, ledger_rows: dict | None) -> bool:
+    """A standing ask the ledger or the row state already closed (hermes_supervise §2.5 closure, mirrored on the report
+    side so a state.json written before the supervisor learned the rule renders no stale line): the row is merged /
+    dropped (queue state, supervisor stage or the ledger's merged/blocked cell) and the ask is stamp-borne or canonical,
+    or the row's ledger notes carry ANSWERED / DEFAULT APPLIED after the ask's stamp (scorecard.decision_stamps
+    `answered`) — matched on the stamp's ISO for a stamp-borne ask, and for a DM copy / thread mirror (no `stamp`, a
+    `thread_id`) whose words differ from the stamp's: the same question by `_same_question`, or, for a canonical copy,
+    the answer's own ISO (`answered_at`) not before the ask. A `OPERATOR` ask and a role's plain "awaiting operator"
+    line are never closed here (a plain line only when it quotes the stamp's question outright)."""
+    row = a.get("row")
+    if not isinstance(row, str) or not row or row == "OPERATOR":
+        return False
+    qrows = state.get("rows") if isinstance(state.get("rows"), dict) else {}
+    qrow = qrows.get(row) if isinstance(qrows.get(row), dict) else {}
+    sup = state.get("supervise") if isinstance(state.get("supervise"), dict) else {}
+    srows = sup.get("rows") if isinstance(sup.get("rows"), dict) else {}
+    srow = srows.get(row) if isinstance(srows.get(row), dict) else {}
+    lr = (ledger_rows or {}).get(row) if isinstance((ledger_rows or {}).get(row), dict) else {}
+    moot = qrow.get("state") in ("merged", "dropped") or srow.get("stage") == "merged" or lr.get("outcome") == "merged"
+    stamp_borne = bool(a.get("canonical_row") or a.get("stamp") or a.get("source") == "ledger")
+    if moot and stamp_borne:
+        return True
+    answered = [d for d in (lr.get("decisions") or []) if isinstance(d, dict) and d.get("answered")]
+    if not answered:
+        return False
+    anchor = a.get("stamp") or (a.get("ts") if a.get("source") == "ledger" else None)
+    if anchor and any(d.get("at") == anchor for d in answered):
+        return True
+    if not (a.get("canonical_row") or a.get("thread_id")):
+        return False
+    head = MD_STRIP_RE.sub("", str(a.get("text") or a.get("head") or ""))
+    ts = str(a.get("ts") or "")
+    for d in answered:
+        # the stamp's question, cut at the ANSWERED clause it may have absorbed (`…?; **ANSWERED …**`)
+        question = ANSWERED_CLAUSE_RE.split(MD_STRIP_RE.sub("", str(d.get("text") or "")), maxsplit=1)[0]
+        if _same_question(head, question):
+            return True
+        at = d.get("answered_at")
+        if a.get("canonical_row") and isinstance(at, str) and at and ts and at >= ts:
+            return True
+    return False
+
+
+def decision_lines(state: dict, ledger_rows: dict | None = None) -> list:
     """`DECISION NEEDED (<age>h): <row> — <head>` per standing operator ask (state.json `operator_asks`, or the
-    supervisor's own copy under `supervise`), newest first, clipped to MAX_LINE. [] when there are none."""
+    supervisor's own copy under `supervise`), newest first, clipped to MAX_LINE, minus the asks the ledger / row state
+    closed (ask_closed). [] when there are none."""
     state = state if isinstance(state, dict) else {}
     asks = state.get("operator_asks")
     if not isinstance(asks, list):
@@ -463,6 +535,8 @@ def decision_lines(state: dict) -> list:
         asks = sup.get("operator_asks") if isinstance(sup.get("operator_asks"), list) else []
     out = []
     for a in sorted((a for a in asks if isinstance(a, dict) and a.get("row")), key=lambda a: str(a.get("ts") or ""), reverse=True):
+        if ask_closed(a, state, ledger_rows):
+            continue
         age = a.get("age_hours")
         age_s = str(int(age)) if isinstance(age, (int, float)) and not isinstance(age, bool) else "?"
         prefix = f"DECISION NEEDED ({age_s}h): {a['row']} — "
@@ -481,7 +555,7 @@ def table_line(v: dict) -> str:
 def render_abtr_markdown(state: dict, ledger_rows: dict, now: datetime, prs=(), alerts=(), config: dict | None = None, dispatchable=None,
                          cards_24h=None) -> str:
     rows = derive_rows(state, ledger_rows, now, prs, alerts, config)
-    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h), *decision_lines(state), *LEGEND, "", TABLE_HEADER, TABLE_RULE]
+    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h), *decision_lines(state, ledger_rows), *LEGEND, "", TABLE_HEADER, TABLE_RULE]
     out.extend(table_line(v) for v in rows)
     if not rows:
         out.append("| · | · | · | · | · | · | · | no rows in the ledger or the state |")
@@ -503,7 +577,7 @@ def render_abtr_brief(state: dict, ledger_rows: dict, now: datetime, prs=(), ale
     title is the row's name clipped by short_title (2026-09-18, operator: the bare ids meant nothing in Slack); a row
     the state does not name prints as before."""
     rows = derive_rows(state, ledger_rows, now, prs, alerts, config)
-    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h), *decision_lines(state)]
+    out = [header_line(state, rows, now, alerts, config, dispatchable, ledger_rows, cards_24h), *decision_lines(state, ledger_rows)]
     for v in rows:
         if v["group"] != "in_flight":
             continue
