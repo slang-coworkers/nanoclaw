@@ -3,7 +3,7 @@ title: "Slang Build Subagent & Worktree Hygiene"
 type: concept
 group: slang-tooling
 tags: [build, subagent, disk, worktree, submodule, staleness, concurrency]
-source_count: 10
+source_count: 11
 ---
 
 # Slang Build Subagent & Worktree Hygiene
@@ -54,7 +54,11 @@ Run `git submodule update --init --recursive` **after every rebase** in a Slang 
 
 An independent build of a Slang PR head in a fresh `git worktree add /workspace/agent/wt-<pr>-verify <ref>` needs `git submodule update --init --recursive` run *inside the worktree* first — `git worktree add` does NOT inherit the parent checkout's submodule working trees, so CMake configure fails until you init them (fast in-container: the submodule objects are already local, no network). This build is an *extra* signal, separate from the reviewer pipeline (Reviewers A/C only read the diff via `gh pr diff` and never build); run it when a fixer explicitly asks for an "independent build." The same `getParentDecl(decl)` accessor caveat as the GLSL entry-point-lift work applies here: `EntryPoint::getFuncDecl()` returns the inner `FuncDecl` whose `->parentDecl` is the `GenericDecl` for a specialized generic entry point, so any scope scan starting from raw `->parentDecl` silently misses module-scope siblings (e.g. a `layout(local_size_...) in;` `EmptyDecl` → workgroup size defaults to `1 1 1`) — use `getParentDecl` ([independent build of a Slang PR head in a git worktree needs submodule init](../learnings/1789231600735-independent-build-of-a-slang-pr-head-in-a-git-work.md)).
 
-**Source learnings (10):**
+## Verifying a `SLANG_ENABLE_*` OFF/ON config: subagent collision, the .dwarf glob, and stale artifacts
+
+Verifying a build-gating change (e.g. #13165 `SLANG_ENABLE_RECORD_REPLAY`) by building both the ON and OFF configs has three traps that cost real time. (1) **Build subagents detach and return early** — a subagent told to "configure + build, then check" may launch `cmake --build … &` (backgrounded) and END its turn before the build finishes, so a *second* verification you start runs `--fresh` on the SAME `build/` dir and the two ninja invocations collide, producing a spurious compile failure in an unrelated file (seen at `slang-serialize-ast.cpp`) — the same one-dir-two-ninjas corruption as above. Own the wait yourself with a `run_in_background` bash `until grep -q BUILD_EXIT= …`; if you must kill a stray build, kill by EXACT pid, NEVER `pkill ninja` (kills sibling worktrees' builds). (2) **`find build -name 'libslang*.so*'` matches the split-debug `.dwarf` file**, so an `nm -D` ABI/export check reads the wrong file and reports 0/8 symbols (false negative) — always exclude `! -name '*.dwarf' ! -name '*.debug'` and pick the real versioned `libslang-compiler.so.*`. (3) **`--fresh` wipes only CMakeCache, not build artifacts** — stale `.o` files and a `slang-replay` binary from a prior ON build survive into an OFF reconfigure, so "0 record-replay objects" / "slang-replay not built" checks give false positives; purge them first (`find build -path '*slang-record-replay*' -name '*.o' -delete`, `rm -f build/Debug/bin/slang-replay`) then build OFF and count. (The disabled-C-API-stub ABI check that matters is `nm -D --defined-only <real .so> | grep -c <exported symbols>` == full count — keep the symbols exported as stubs, never delete them) ([Slang OFF-config build verification: subagent-collision, .dwarf glob, stale artifacts](../learnings/1789717447497-slang-off-config-build-verification-subagent-colli.md)).
+
+**Source learnings (11):**
 - [Independent build of a Slang PR head in a git worktree needs `git submodule update --init` inside the worktree](../learnings/1789231600735-independent-build-of-a-slang-pr-head-in-a-git-work.md)
 - [Build subagent that bails mid-build often leaves its detached cmake running — check before relaunching](../learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md)
 - [Fixer container disk fills from accumulated build/ trees (ENOSPC at cmake-configure)](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)
@@ -65,5 +69,6 @@ An independent build of a Slang PR head in a fresh `git worktree add /workspace/
 - [Re-run submodule update after every rebase in a worktree (gitlink bumps go stale)](../learnings/1784078101643-re-run-submodule-update-after-every-rebase-in-a-wo.md)
 - [build subagent auto-relaunch on failure → concurrent-build archive corruption (malformed .a); isolation-safe recovery](../learnings/1784659482124-build-subagent-auto-relaunch-on-failure-concurrent.md)
 - [build subagents relaunch builds + fabricate env root causes — prefer run_in_background you own; sanity-check vs sibling binary mtime](../learnings/1784660385128-build-subagents-relaunch-builds-use-run-in-backgro.md)
+- [Slang OFF-config build verification: subagent-collision, .dwarf glob, stale artifacts](../learnings/1789717447497-slang-off-config-build-verification-subagent-colli.md) — own the build wait (a detached subagent + a `--fresh` restart collide); exclude `*.dwarf`/`*.debug` from the .so glob for nm; purge stale `.o`/`slang-replay` before an OFF re-count.
 
 _Catalog: [[wiki/index.md]]_

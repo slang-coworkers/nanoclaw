@@ -3,7 +3,7 @@ title: GitHub CLI/API access under the OneCLI proxy — auth false alarms and wo
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, onecli-proxy, gh-token, pr-review, auth, curl, graphql]
-source_count: 20
+source_count: 18
 ---
 
 ## TL;DR
@@ -31,8 +31,6 @@ modes need a token to read the diff`. This *looks* like a hard blocker for pr/br
 **returned real data anyway** ([false alarm for reads](../learnings/1788307346773-gh-auth-status-invalid-gh-token-is-a-false-alarm-f.md),
 [don't abort a PR review](../learnings/1788254122013-gh-auth-status-invalid-gh-token-is-a-false-alarm-f.md),
 [public-repo fallback](../learnings/1788396720428-gh-pr-read-works-despite-invalid-gh-token-public-r.md),
-[reads still work](../learnings/1788549008722-gh-auth-status-token-invalid-warning-is-a-false-al.md),
-[invalid while reads work](../learnings/1788558749393-gh-auth-status-may-report-gh-token-invalid-while-a.md),
 [auth-status failure ≠ read failure](../learnings/1788782167834-gh-auth-status-failure-gh-read-failure-on-public-s.md),
 [doesn't block pr-mode](../learnings/1788795649545-gh-auth-status-failing-doesn-t-block-pr-mode-revie.md),
 [App-token false alarm](../learnings/1788799392809-gh-app-token-invalid-warning-is-a-false-alarm-for-.md),
@@ -103,8 +101,7 @@ Reads and writes are separate capabilities. Posting a PR review needs true
 back to `send_file`. So the only thing an invalid/absent token genuinely blocks is Step-6
 post-back — which is itself gated on the `<github-post-authorized />` marker. A chat/fix-chain
 review (no marker) never posts, making an invalid token a complete non-issue for it
-([writes are the separate capability](../learnings/1788558749393-gh-auth-status-may-report-gh-token-invalid-while-a.md),
-[Step-6 gated on marker](../learnings/1788469857073-gh-invalid-token-in-auth-status-still-allows-publi.md)).
+([Step-6 gated on marker](../learnings/1788469857073-gh-invalid-token-in-auth-status-still-allows-publi.md)).
 A parent's prose "post the verdict to the PR" does **not** substitute for the marker: without it,
 return via `send_file` only and confirm before any GitHub write — an unsolicited bot review on a
 PR a human already approved is noise on the system of record
@@ -185,7 +182,7 @@ most metadata, and `gh api repos/O/R/issues/<n> -q '.author_association'` (PRs a
 author association — both pass the hook and are read-only
 ([read-only pulls GET trips critique hook](../learnings/1788858953279-approver-infra-note-read-only-gh-api-pulls-n-gets-.md)).
 
-**Source learnings (20):**
+**Source learnings (18):**
 
 - [gh CLI auth broken even when OneCLI proxy curl works — GH_TOKEN is a literal sentinel](../learnings/1788204882348-gh-cli-auth-broken-even-when-onecli-proxy-curl-wor.md) — GH_TOKEN=ROUTED_VIA_ONECLI_PROXY; gh validates locally and fails, curl+proxy works; later corrected/over-generalized.
 - [Correction: gh CLI App-installation token is fine for actions/PR endpoints](../learnings/1788205146208-correction-gh-cli-app-installation-token-is-fine-f.md) — the container held a working App token; gh reads work, only auth-status/user/rate_limit fail.
@@ -197,8 +194,6 @@ author association — both pass the hook and are read-only
 - [gh 'invalid token' in auth status still allows public-repo reads — verify before aborting](../learnings/1788469857073-gh-invalid-token-in-auth-status-still-allows-publi.md) — 23-char ROUT… token; gh api/pr diff succeed; prose ≠ the post-authorized marker.
 - [Flap-resistant review harvest: GraphQL gh pr view --json reviews when REST --paginate 401-flaps](../learnings/1788523820839-approver-infra-abstain-flap-resistant-review-harve.md) — last page (head-matched bot review) is lost first; GraphQL one-shot fallback; ledger first-write caveat.
 - [gh REST reviews --paginate 401-flaps mid-pagination; GraphQL gh pr view --json reviews is flap-immune](../learnings/1788523950028-gh-rest-reviews-paginate-401-flaps-mid-pagination-.md) — judge connector health with a paginated probe; retry a lone 401; GraphQL is the standing harvest path.
-- [gh auth status "token invalid" warning is a false alarm — reads still work](../learnings/1788549008722-gh-auth-status-token-invalid-warning-is-a-false-al.md) — App token mis-validated; functional test is the real API call; post-review.sh exits 3 on 403 write.
-- [gh auth status may report GH_TOKEN invalid while API reads still work](../learnings/1788558749393-gh-auth-status-may-report-gh-token-invalid-while-a.md) — App token has read scope; verify with gh pr diff; A/B/C proceed; writes need pull_requests:write.
 - [gh auth-status failure ≠ gh read failure on public slang repos](../learnings/1788782167834-gh-auth-status-failure-gh-read-failure-on-public-s.md) — gh pr diff works; git fetch pull/<N>/head works tokenless; only posting needs a token.
 - [gh auth status failing doesn't block pr-mode reviews — gh pr diff/view still work on public repos](../learnings/1788795649545-gh-auth-status-failing-doesn-t-block-pr-mode-revie.md) — don't downgrade to patch mode; MCP github_* tools use their own token; .diff/git-fetch fallbacks.
 - [gh App-token 'invalid' warning is a false alarm for pr-mode reviews — reads still work](../learnings/1788799392809-gh-app-token-invalid-warning-is-a-false-alarm-for-.md) — verify with gh pr view --json number,state; runner scripts invoked directly (no leading run-clarity token).

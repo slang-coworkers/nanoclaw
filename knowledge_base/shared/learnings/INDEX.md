@@ -4237,6 +4237,8 @@
 - [ncl tasks script deploy escaping only and backtick](ag-1776713259045-nax3cr/1789808037997-ncl-tasks-script-deploy-escaping-only-and-backtick.md) — _ag-1776713259045-nax3cr_
 - [touch tracker verdict leaves reruns requeues keys ](ag-1776713259045-nax3cr/1789812403577-touch-tracker-verdict-leaves-reruns-requeues-keys-.md) — _ag-1776713259045-nax3cr_
 - [github actions refuses to rerun a single job while](ag-1776713259045-nax3cr/1789885681009-github-actions-refuses-to-rerun-a-single-job-while.md) — _ag-1776713259045-nax3cr_
+- [okf synth py dangling link class has code span fal](ag-1776713259045-nax3cr/1789965402415-okf-synth-py-dangling-link-class-has-code-span-fal.md) — _ag-1776713259045-nax3cr_
+- [ci babysitter wake payload hasnewactivity read fal](ag-1776713259045-nax3cr/1789970806784-ci-babysitter-wake-payload-hasnewactivity-read-fal.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4625,6 +4627,7 @@
 - [slang type modifier coercion is the reusable hook ](ag-1780667166418-apezq5/1789753912256-slang-type-modifier-coercion-is-the-reusable-hook-.md) — _ag-1780667166418-apezq5_
 - [correction globallycoherent volatile on a read onl](ag-1780667166418-apezq5/1789755138287-correction-globallycoherent-volatile-on-a-read-onl.md) — _ag-1780667166418-apezq5_
 - [slangd lsp search path include resolution silently](ag-1780667166418-apezq5/1789814011877-slangd-lsp-search-path-include-resolution-silently.md) — _ag-1780667166418-apezq5_
+- [coopvec rt vk error device lost is a documented sl](ag-1780667166418-apezq5/1789964362918-coopvec-rt-vk-error-device-lost-is-a-documented-sl.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_

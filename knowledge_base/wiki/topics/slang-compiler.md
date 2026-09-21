@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-1665 learnings. [Catalog](../index.md)
+1670 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["N crash signatures" is a hypothesis about count, not an observation — but code shape is the WRONG test (slang#8785)](../learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md)
@@ -241,6 +241,7 @@ type: topic
 - [Converting option-derived GLSL bool to SourceLanguage: prefer-TU-first drops the -allow-glsl case](../learnings/1787774464819-converting-option-derived-glsl-bool-to-sourcelangu.md)
 - [CoopMat vs CoopVec linalg InterlockedAccumulate — DeepWiki conflates them](../learnings/1781544794615-coopmat-vs-coopvec-linalg-interlockedaccumulate-de.md)
 - [CoopVec ICoopElement conditional-conformance refactor (#12411)](../learnings/1787354644407-coopvec-icoopelement-conditional-conformance-refac.md)
+- [CoopVec/RT VK_ERROR_DEVICE_LOST is a documented slang-rhi NV-driver interference class, not Slang codegen](../learnings/1789964362918-coopvec-rt-vk-error-device-lost-is-a-documented-sl.md)
 - [coopVecLoad two-overload split regresses fully-explicit-generic callers (#12411)](../learnings/1787395523470-coopvecload-two-overload-split-regresses-fully-exp.md)
 - [Copy the command from their text — never retype it from their description](../learnings/1786268741453-copy-the-command-from-their-text-never-retype-it-f.md)
 - [CORRECTION #12124: my slangi-autodiff-NativeString root cause was WRONG — real cause is VM Call param-slot over-read + producer fix #12127](../learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md)
@@ -443,6 +444,7 @@ type: topic
 - [IROpInfo drops most of the slang-ir-insts.lua operand schema](../learnings/1787329716091-iropinfo-drops-most-of-the-slang-ir-insts-lua-oper.md)
 - [IRTextureType format-operand: optional, and int-vs-uint matters for hoistable dedup (slang#11496/#11499)](../learnings/1780769319751-irtexturetype-format-operand-optional-and-int-vs-u.md)
 - [isSimpleType polarity in Slang empty-type legalization: true = RETAINED, and Metal returns false](../learnings/1786001077628-issimpletype-polarity-in-slang-empty-type-legaliza.md)
+- [issue_opened webhook by nv-slang-bot[bot] is often our own in-flight chain — check before dispatching](../learnings/1789894290167-issue-opened-webhook-by-nv-slang-bot-bot-is-often-.md)
 - [JSON reflection drops the global/entry-point scope's own container binding (the $Globals cbuffer)](../learnings/1785535775197-json-reflection-drops-the-global-entry-point-scope.md)
 - [Kind-dependent SPIR-V representation change: audit ALL width consumers + the constant-emit path (slang DescriptorHandle option-a)](../learnings/1784859574140-kind-dependent-spir-v-representation-change-audit-.md)
 - [Known flaky CI test: tests/debuginfo/debug-do-while-locals.slang on macOS-debug-aarch64](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md)
@@ -581,6 +583,8 @@ type: topic
 - [Reflection getContentVarLayout: producer-side content array-layout for structured buffers (slang#12776)](../learnings/1787777108008-reflection-getcontentvarlayout-producer-side-conte.md)
 - [Reflection JSON's "binding".index IS getOffset(category) — behaviourally exact, but include/slang.h never documents it](../learnings/1786011267097-reflection-json-s-binding-index-is-getoffset-categ.md)
 - [Reflection used:0 on a ParameterBlock subElementRegisterSpace is a metadata gap, not container semantics](../learnings/1786583259247-reflection-used-0-on-a-parameterblock-subelementre.md)
+- [Reflection-JSON dedups pointee layout by type, not type-layout (slang)](../learnings/1789944879524-reflection-json-dedups-pointee-layout-by-type-not-.md)
+- [Reflection-json dedups pointee layout by TypeReflection* — breaks when pointer layout becomes marker-dependent](../learnings/1789943171658-reflection-json-dedups-pointee-layout-by-typerefle.md)
 - [Registered is not executed — 207 SKIPPED .metal rows vs 0 PASSED, and why a zero-hit grep needs a control (column-padded logs)](../learnings/1785779851246-registered-is-not-executed-207-skipped-metal-rows-.md)
 - [Regression-testing Slang's LLVM emitter: use -target llvm-host-ir -o -, not host-callable](../learnings/1789480942899-regression-testing-slang-s-llvm-emitter-use-target.md)
 - [Release crash-reproduction is a distinct control from a Debug pass for SLANG_ASSERT-guarded fixes](../learnings/1787500349746-release-crash-reproduction-is-a-distinct-control-f.md)
@@ -1329,6 +1333,7 @@ type: topic
 - [slang-test has no category to gate a downstream-compiler VERSION (metal4.0)](../learnings/1784061153981-slang-test-has-no-category-to-gate-a-downstream-co.md)
 - [slang-test ignores filecheck tests when FileCheck unavailable in worktree builds](../learnings/1786633416035-slang-test-ignores-filecheck-tests-when-filecheck-.md)
 - [slang-test ignores INTERPRET (slangi) tests when slangi isn't built — use -cpu COMPARE_COMPUTE for local verifiability](../learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-sla.md)
+- [slang-test ignores spirv+filecheck reflection tests locally when FileCheck binary is absent](../learnings/1789941026991-slang-test-ignores-spirv-filecheck-reflection-test.md)
 - [slang-test injects -O0 by default; SPIRV validation runs pre-opt](../learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md)
 - [slang-test LANG_SERVER harness desyncs if a config change emits a server→client refresh at initialize](../learnings/1789868223160-slang-test-lang-server-harness-desyncs-if-a-config.md)
 - [slang-test leaves *.slang.actual.txt artifacts in the test dir — delete before staging](../learnings/1781088712827-slang-test-leaves-slang-actual-txt-artifacts-in-th.md)

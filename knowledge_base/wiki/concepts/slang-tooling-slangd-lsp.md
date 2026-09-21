@@ -3,7 +3,7 @@ title: "Triaging slangd (language-server) crashes: version-triage, direct-LSP re
 type: concept
 group: slang-tooling
 tags: [slangd, language-server, lsp, vscode-extension, completion-mode, triage, crash, groupshared, file-decl]
-source_count: 2
+source_count: 6
 ---
 
 ## TL;DR
@@ -29,6 +29,87 @@ checker strips.
 - **Stock slangd does NOT lower to IR** (`loadParsedModule` skips it under `isInLanguageServer()`), so
   an IR-lowering deref fires only if the crashing config actually compiles (e.g. a VFX-flavor real
   compile) — a non-repro via a plain LSP driver does not mean "not a bug."
+- **Search-path `#include` resolution depends on the workspace-root handshake.** slangd builds its
+  search dirs ONLY from `InitializeParams.workspaceFolders` (no `rootUri`/`rootPath` fallback,
+  `initializationOptions` discarded via `ignoreUnknownFields()`), so a client that announces its root
+  only via the deprecated single-root field gives slangd zero roots → a search-path include resolves
+  only when the target file is already open. Suspect the handshake first for any "slangd doesn't see
+  cross-file/include symbols" report.
+- **Not every "highlighting breaks after editing" report is slangd.** In the C#/VSIX Visual Studio
+  extension (`slang-vs-extension`, distinct from the VS *Code* extension and from slangd) the bug is
+  almost always the extension's own semantic-token tagger, not the server — rebuilding with newer
+  Slang libs will not fix it.
+
+## Search-path #include resolution depends on the workspaceFolders handshake
+
+Two atoms (near-duplicates, folded here) establish that slangd's non-relative / search-path `#include`
+resolution depends on the LSP workspace-root scan, and that scan is fed **only** by
+`InitializeParams.workspaceFolders`. `LanguageServerCore::init` (`slang-language-server.cpp:59-69`)
+reads ONLY `args.workspaceFolders`; the `InitializeParams` struct declares only `workspaceFolders` and
+ends its RTTI with `ignoreUnknownFields()`, so `rootUri`, `rootPath`, `initializationOptions`, and
+`capabilities` in the `initialize` request are silently DROPPED. The search-directory list is (a) a
+recursive disk scan of the `workspaceFolders` roots (`Workspace::init`,
+`slang-workspace-version.cpp:167-206`, indexing the containing dir of every `.slang`/`.hlsl`, skipping
+dot-dirs) plus (b) parent dirs of *open* documents (`Workspace::openDoc`). So a client that sends only
+the deprecated `rootUri`/`rootPath` (some non-VSCode editors — the Zed report #13179) gives slangd
+zero roots → search-path includes resolve only when the included file is opened directly, silently (no
+diagnostic). The principled fix is at the producer: fall back rootUri→rootPath when workspaceFolders is
+empty — guarded on `getLength()` because the RTTI String reader turns JSON `null` (VSCode sends
+`rootUri:null`) into an empty string, so an unguarded fallback would regress existing clients
+([search-path #include silently fails without workspaceFolders](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md),
+[slangd only reads workspaceFolders for #include roots + the LANG_SERVER test technique](../learnings/1789818601805-slangd-only-reads-workspacefolders-for-include-roo.md)).
+
+Config-channel corollary (why "just set the setting" fails on non-VSCode editors): `additionalSearchPaths`/
+`searchInAllWorkspaceDirectories` are read only via the server→client `workspace/configuration` **pull**
+(15 dotted `slang.*` sections, reply read *positionally*, whole reply DROPPED if the array length ≠ 15)
+or the `didChangeConfiguration` **push** — never from `initializationOptions`. `searchInAllWorkspaceDirectories`
+is pull-only and already default-true, so toggling it is usually a no-op; slangd's config surface is
+VSCode-pull-centric, and Zed/helix/neovim (which rely on `initializationOptions`) cannot configure it
+today. `updateConfigFromJSON` accepts FLAT dotted `slang.*` keys or a single `settings`/`RootElement`
+wrapper — NOT a nested `{"slang":{…}}` object; apply `initializationOptions` AFTER sending the
+InitializeResult, and SNAPSHOT the object before iterating (`getObject()` is a view into
+`JSONContainer::m_objectValues`, and serializing an outbound refresh can reallocate that buffer and
+dangle the view).
+
+### Testing the deprecated handshake and config channels via slang-test `LANG_SERVER`
+
+slang-test's `LANG_SERVER` test type (`runLanguageServerTest`, `tools/slang-test/slang-test-main.cpp`)
+SPAWNS `slangd` and drives it over JSON-RPC with `//COMPLETE`/`//HOVER`/`//SIGNATURE`/`//DIAGNOSTICS`
+directives compared against `<test>.slang.expected.txt`. It ALWAYS sent `workspaceFolders`, so exercising
+the deprecated handshake required adding `-init-root-uri`/`-init-root-path` args that send the single-root
+field with an EMPTY `workspaceFolders`. Observe include resolution positively by `#include`-ing a helper in
+a NEVER-OPENED subdir and `//HOVER`-ing a symbol it defines (resolved → hover shows the symbol; unresolved →
+the harness prints `null`, or `--------\nnull`); use a `CONTAINS <symbol>` expected file since output paths
+are redacted (`{REDACTED}.slang(line)`). The harness NEVER sends `initialized` and does not populate
+`initializationOptions`, so the config PULL and the initializationOptions channel are NOT exercised by it.
+**And do not try to test config ingestion by having the harness set `initializationOptions` at initialize:**
+`updateConfigFromJSON`'s per-setting handlers call `sendRefreshRequests`/`workspace/*/refresh` (server→client
+REQUESTS) when a value actually changes, but the harness's `waitForNonDiagnosticResponse` only drains
+`publishDiagnostics` — any refresh is left in / mis-consumed from the stream, and because the harness reuses
+ONE cached `slangd` process across all LANG_SERVER tests, the misaligned stream breaks not just that test
+(empty hover: `--------` with no result) but the NEXT tests too. The workspace-root approach (A) IS cleanly
+testable precisely because it needs no config change at init and emits no refresh
+([the LANG_SERVER refresh-desync trap](../learnings/1789868223160-slang-test-lang-server-harness-desyncs-if-a-config.md)). FileCheck-dependent
+language-server tests (~41) are ignored when LLVM FileCheck isn't installed, so a clean run reports
+"N/N runnable passed, 41 ignored".
+
+## "Stuck highlighting" in the VS (VSIX) extension is client-side, not slangd
+
+When the report is against `slang-vs-extension` (the C#/VSIX Visual Studio extension — distinct from the
+VS *Code* extension and from slangd), a "syntax highlighting breaks/gets stuck after editing" bug is almost
+always the extension's own C# semantic-token tagger, not the language server. `SlangTokenHighlightTagger`
+decodes cached LSP token deltas into absolute offsets against the *current* editor snapshot with no
+snapshot-version stamp and no `TranslateTo`, so a multi-line cut/paste shifts the buffer while cached
+tokens describe the old layout → mis-colored live text, and an offset overrun throws into
+`catch { yield break; }` which silently kills the entire remaining tag enumeration (never recovers until a
+fresh clean response lands). A dead debounce (`DateTime` compared `== null`, always false) fires an
+unthrottled `semanticTokens/full` per edit, and out-of-order responses overwrite the cache with no version
+check. The corrective worth stating up front: "rebuild with the latest Slang libraries / cut a new release"
+will NOT fix this — the extension doesn't even pin a slangd version, and the defect is client-side C#;
+non-reproducibility in vim/other LSP clients (which re-map/re-request tokens on didChange) is a positive
+signal it's the VS extension's tagger. Fix direction: stamp each token set with its request snapshot version
+and `TranslateTo`/re-map or discard-and-re-request on mismatch; replace `catch{yield break}` with a per-token
+`continue` ([slang-vs-extension stale-highlight bugs are client-side, not slangd](../learnings/1789645330820-slang-vs-extension-stale-highlight-bugs-are-client.md)).
 
 ## Version-triage before code-level hunting
 
@@ -96,8 +177,12 @@ Triage implications:
   placement-illegal modifiers (which build shapes no stage models) are still stripped, rather than
   guarding every downstream consumer.
 
-**Source learnings (2):**
+**Source learnings (6):**
 - [Triaging slangd crashes: drive LSP directly, and check the extension's bundled slang version](../learnings/1789400009815-triaging-slangd-language-server-crashes-drive-lsp-.md) — `__file_decl`=`FileDecl` (pervasive in VFX flavor); batch slangc skips LSP-only paths; a Python LSP driver reproduces GPU-free (drain stderr in a thread); version-triage first; `0xC0000005` is Windows-only.
 - [slangd Completion checking mode retains placement-illegal modifiers (ignoreUnallowedModifier)](../learnings/1789401281467-slangd-completion-checking-mode-retains-placement-.md) — `checkModifiers` sets `ignoreUnallowedModifier` in Completion mode → keeps a function-local `groupshared` slangc strips (E31201) → IR builds a rated function-local IRVar → consumers assume module-global → AV; stock slangd skips IR lowering so a plain LSP driver may not repro; fix at the producer.
+- [slangd LSP: search-path #include resolution silently fails without workspaceFolders](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md) — no rootUri/rootPath fallback; initializationOptions discarded; config is pull-only/positional; suspect the workspace-root handshake first.
+- [slangd only reads workspaceFolders for #include roots; testing the deprecated handshake via LANG_SERVER](../learnings/1789818601805-slangd-only-reads-workspacefolders-for-include-roo.md) — fix = rootUri→rootPath fallback guarded on getLength(); added -init-root-uri/-init-root-path slang-test args; snapshot the config object before iterating.
+- [slang-test LANG_SERVER harness desyncs if a config change emits a server→client refresh at initialize](../learnings/1789868223160-slang-test-lang-server-harness-desyncs-if-a-config.md) — the shared cached slangd process + a diagnostics-only drain leave a refresh in the stream, poisoning subsequent tests; the workspace-root path is cleanly testable because it emits no refresh.
+- [slang-vs-extension stale-highlight bugs are client-side semantic-token cache/version mismatches, not slangd](../learnings/1789645330820-slang-vs-extension-stale-highlight-bugs-are-client.md) — the C#/VSIX tagger decodes cached tokens with no snapshot-version stamp; rebuilding with newer Slang libs won't fix it; non-repro in vim confirms it's the extension.
 
 _Catalog: [[wiki/index.md]]_

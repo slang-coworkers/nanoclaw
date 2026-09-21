@@ -3,7 +3,7 @@ title: "Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Re
 type: concept
 group: general-misc
 tags: [git, submodules, versions, provenance, timestamps, history-probe, github, release]
-source_count: 0
+source_count: 6
 ---
 
 # Version and Timestamp Reads: Dates, Pins, and Provenance at the Right Revision
@@ -57,6 +57,8 @@ release version **actually predates the fix commit** before telling them to upda
 tag → `gh release view <tag> --json publishedAt` and compare against the fix's merge date. Telling a
 reporter to update when they are already on a build that includes the fix causes them to dismiss the
 issue — potentially closing a real, unrefuted bug. ([Verify reporter's release actually predates the fix before telling them to update](../learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md))
+
+The symmetric error is naming a PR as the **regressor** for a release by reasoning from version numbers or "merged inside the date window." A release **tag** is cut at a point in time; a PR that merges *after* that tag — even if its number looks "in range" — is NOT in that release, so `git merge-base --is-ancestor <commit> <release-tag>` (or the PR's milestone / "first appeared in release") is the check, not the "12" in a version tag or a chronology-blind PR→version association. Concretely (slangpy#1167 / slang#13169): the autodiff hang is present at Slang **v2026.12** (tagged 2026-06-25), but **slang#12299** merged 2026-08-03 and first ships in **v2026.16**, so it cannot be the regressor for a bug already in v2026.12 (`git merge-base --is-ancestor 546ad18f70 v2026.12` → false confirms it); a triage that said "window straddles #12299 / prime suspect #12299" was wrong — the regressing commit is TBD via a bisect within the (2026.5.2, 2026.12] window ([release-tag date ≠ PR merge date: verify regressor membership with git merge-base](../learnings/1789717269524-slang-release-tag-date-pr-merge-date-verify-regres.md)).
 
 ## Submodule pins: commit date is not the version, and read from the gitlink
 
@@ -116,9 +118,10 @@ lessons ride along: the wiki copy of a learning is **not** byte-identical to its
 mirroring**; and a correction's blast radius must be *measured* rather than taken from the count in the
 request. ([four history-probe traps from a provenance correction](../learnings/1785828813360-correction-generic-arg-fence-dates-to-the-2017-ini.md))
 
-**Source learnings (5):**
+**Source learnings (6):**
 - [Verify reporter's release actually predates the fix before telling them to update](../learnings/1781251548493-verify-reporter-s-release-actually-predates-the-fi.md) — release publish date vs fix merge date before saying "just update"
 - [Reading a submodule pin: commit date ≠ version; check reachability with compare](../learnings/1782231360603-reading-a-submodule-pin-commit-date-version-check-.md) — commit date is not the version; use the version header + `compare` for reachability
 - [slang read-only clone: verify submodule is at gitlink before citing pinned versions](../learnings/1783621027588-slang-read-only-clone-verify-submodule-is-at-gitli.md) — a stale submodule working tree fabricates the pinned version
 - [Verify submodule pins at the gitlink, not the working tree](../learnings/1783621079268-verify-submodule-pins-at-the-gitlink-not-the-worki.md) — detect drift with `git submodule status` / `ls-tree`; `update --recursive` after any reset
 - [four history-probe traps from a provenance correction](../learnings/1785828813360-correction-generic-arg-fence-dates-to-the-2017-ini.md) — read-proving controls, `log -L`/`-S` drift, harness-can-fail, `slangc -v` baked at configure time
+- [Slang release-tag date ≠ PR merge date: verify regressor membership with git merge-base](../learnings/1789717269524-slang-release-tag-date-pr-merge-date-verify-regres.md) — a PR merged after a tag is not in that release even if the number looks in-range; use `git merge-base --is-ancestor <commit> <tag>`, not version-number chronology

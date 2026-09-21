@@ -52,7 +52,7 @@ However, the GPU is NOT turnkey for `slang-test`. Vulkan real-GPU path does not 
 
 `/workspace/agent` is its own mount (`/dev/vdb`, ~251G) separate from `/workspace` (`/dev/vda1`, ~124G). Always run `df -h /workspace/agent` rather than bare `df -h` or `df /workspace` — a blocker can be a measurement artifact if the wrong mount is checked ([Disk-blocker false alarm: df the real build path, /workspace/agent is a separate roomy volume](../learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md)).
 
-The `/workspace/agent` mount fills from accumulated per-worktree `build/` directories (each slang Debug build is ~6–7.6 GB; ~17 worktrees = ~115 GB). The correct reclaim lever is `rm -rf <wt>/build` — fully safe, zero-work-loss, regenerable — not removing whole worktrees ([Disk-full on /workspace/agent: prune worktree build/ dirs, not whole worktrees](../learnings/1782151532732-disk-full-on-workspace-agent-prune-worktree-build-.md), [Slang fixer container disk fills from accumulated build/ trees](../learnings/1782148249067-slang-fixer-container-disk-fills-from-accumulated-.md)).
+The `/workspace/agent` mount fills from accumulated per-worktree `build/` directories (each slang Debug build is ~6–7.6 GB; ~17 worktrees = ~115 GB). The correct reclaim lever is `rm -rf <wt>/build` — fully safe, zero-work-loss, regenerable — not removing whole worktrees ([Disk-full on /workspace/agent: prune worktree build/ dirs, not whole worktrees](../learnings/1782151532732-disk-full-on-workspace-agent-prune-worktree-build-.md), [Slang fixer container disk fills from accumulated build/ trees](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)).
 
 Full `git worktree remove` is only safe when ALL hold: issue CLOSED + PR merged/closed + branch is on origin + NO uncommitted tracked changes. Never remove a worktree with local-only commits — the branch ref survives a `git worktree remove --force` but would be lost if you also `git branch -D` it ([Worktree-GC reap: safe-execution facts (branch refs survive; workflows-perm blocks wip/reap; pipefail bug)](../learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md)).
 
@@ -144,7 +144,7 @@ Two durable rules. **The exclusion belongs in the mirror step itself** — `cp` 
 - [Slang coworker containers have an NVIDIA GPU (L40S) — "no GPU" docs are stale](../learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md)
 - [Disk-blocker false alarm: df the real build path](../learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md)
 - [Disk-full on /workspace/agent: prune worktree build/ dirs, not whole worktrees](../learnings/1782151532732-disk-full-on-workspace-agent-prune-worktree-build-.md)
-- [Slang fixer container disk fills from accumulated build/ trees](../learnings/1782148249067-slang-fixer-container-disk-fills-from-accumulated-.md)
+- [Slang fixer container disk fills from accumulated build/ trees](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)
 - [Worktree-GC reap: safe-execution facts (branch refs survive; workflows-perm blocks wip/reap; pipefail bug)](../learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md)
 - [slang-fixer shared mount fills with in-flight build trees](../learnings/1782305359829-slang-fixer-shared-mount-fills-with-in-flight-buil.md)
 - [slang clone env: build on root overlay when /workspace full](../learnings/1780408305282-slang-clone-env-build-on-root-overlay-when-workspa.md)

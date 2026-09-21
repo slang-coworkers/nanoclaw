@@ -3,7 +3,7 @@ title: Devin head-currency and staleness on the fallback/Devin-only tier
 type: concept
 group: review-process
 tags: [approver, devin, staleness, head-current, fallback-tier, synchronize, abstain, stale-stage]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
@@ -130,6 +130,8 @@ old line numbers even when the analysis body and verdict are head-current — ju
 body + commit-status, not the nit anchors
 ([verify HEAD-CURRENT before trusting 0-bugs](../learnings/1787297274879-approver-infra-on-the-devin-only-tier-verify-the-f.md)).
 
+**A full timeout leaves a PRIOR run's files in `--out` — do not `cat` them as fresh.** When Reviewer B runs against a just-pushed *merge-commit* head, Devin is often still re-analyzing, so the done-check polls the full 30m and exits with `devin-error.txt` = "timeout: Devin did not reach a stable done state within 30m" and `devin-commit-status.txt` = "unknown". The trap is that the `--out` dir may still hold a `devin-flags.md` / `devin-page.txt` / `devin-screenshot.png` from a **prior** analysis — spot it by an old file mtime (e.g. an Aug birth date on a Sep run) — that reads as valid, PR-specific content but does NOT correspond to the reviewed head; and the nohup wrapper's `echo "exited: $?"` can mask the real non-zero exit as 0 in the task notification, so trust `devin-error.txt` + `devin-commit-status.txt`, not the notification's exit code. Correct handling (matching the workflow's timeout=exit-3 → Reviewer-B-skipped rule): mark Reviewer B `_skipped: Devin timed out … commit-status unknown_`, set `reviewers_complete=false`, and do NOT `cat` the stale `devin-flags.md` — presenting a prior commit's analysis as a fresh review of the current head is misleading; it's transient, and a re-run once Devin settles usually captures it ([Devin (Reviewer B) timeout on a fresh merge-commit head leaves a stale devin-flags.md](../learnings/1789684201897-devin-reviewer-b-timeout-on-a-fresh-merge-commit-h.md)).
+
 ## The decision rule: stale sole-signal IS the abstain — do not round up
 
 The single most important calibration lesson: once you diagnose your review signal as
@@ -161,7 +163,7 @@ policy abstain — every bot-authored `fix/issue-N` PR will keep forcing infra-a
 and record NO_REVIEW_SIGNAL as an infra-family code, distinct from an OPEN_GAP policy abstain
 ([the "up to date" banner can be wrong after a force-push](../learnings/1787352628706-approver-infra-abstain-devin-s-analysis-is-up-to-d.md)).
 
-**Source learnings (15):**
+**Source learnings (16):**
 
 - [devin-fetch has no force flag; re-fetch with cleared browser profile catches up to head](../learnings/1786692089001-approver-infra-abstain-devin-fetch-has-no-force-fl.md) — slang-rhi#797 returned a cached superseded-revision analysis; clearing agent-browser state and re-fetching forced a head-current re-render.
 - [A Devin exit-0 run can be CACHED-STALE — verify its cited symbols exist in the current diff](../learnings/1786694505500-approver-challenger-miss-a-devin-exit-0-run-can-be.md) — after a self-park→re-open, exit 0 described the old batched-resolve design; on a Devin-only tier a stale Devin is no head-current review signal at all.
@@ -178,3 +180,5 @@ and record NO_REVIEW_SIGNAL as an infra-family code, distinct from an OPEN_GAP p
 - [Devin's scraped analysis can lag the PR head even at exit-0 — re-run and assert head-currency](../learnings/1787706500193-approver-challenger-miss-devin-s-scraped-analysis-.md) — slang#12716; analysis prose said "three files" while metadata showed 6 files/2 commits; exit 0 ≠ finished re-analyzing.
 - [devin-fetch exit 0 is NOT head-current, and the parsed devin-flags.md can silently drop flags](../learnings/1787882263271-approver-infra-abstain-devin-fetch-exit-0-is-not-h.md) — slang#12537 R2; pre-rename identifier + old line numbers + "unknown" status ⇒ NO_REVIEW_SIGNAL; also cross-check the raw page's "N Bugs/M Flags" header.
 - [Devin (Reviewer B) can return a STALE analysis of a superseded commit — check its AI Analysis text matches the current head](../learnings/1789468313496-devin-reviewer-b-can-return-a-stale-analysis-of-a-.md) — slang#12782 force-updated 2→43 files; a 0/0/0 tally whose `## AI Analysis` described the old fix; grep the prose for a current-diff symbol, mark STALE + `reviewers_complete=false`; a clean Devin on a large fresh diff is a yellow flag.
+- [Devin (Reviewer B) timeout on a fresh merge-commit head leaves a stale devin-flags.md — don't cat it as fresh](../learnings/1789684201897-devin-reviewer-b-timeout-on-a-fresh-merge-commit-h.md) — a full-30m timeout leaves a PRIOR run's files in `--out` (old mtime); the nohup wrapper masks the exit code; mark Reviewer B skipped + reviewers_complete=false, trust devin-error.txt/commit-status.
+
