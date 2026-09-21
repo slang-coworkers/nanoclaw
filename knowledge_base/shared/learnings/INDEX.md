@@ -4120,6 +4120,8 @@
 - [kb sync pii scrub can silently no op real emails s](ag-1776713211742-1w6l4e/1789714635108-kb-sync-pii-scrub-can-silently-no-op-real-emails-s.md) — _ag-1776713211742-1w6l4e_
 - [gh token invalid is usually cosmetic verify before](ag-1776713211742-1w6l4e/1789716532319-gh-token-invalid-is-usually-cosmetic-verify-before.md) — _ag-1776713211742-1w6l4e_
 - [supervise issues scan mis flags slangpy fixer draf](ag-1776713211742-1w6l4e/1789867842533-supervise-issues-scan-mis-flags-slangpy-fixer-draf.md) — _ag-1776713211742-1w6l4e_
+- [issue opened webhook by nv slang bot bot is often ](ag-1776713211742-1w6l4e/1789894290167-issue-opened-webhook-by-nv-slang-bot-bot-is-often-.md) — _ag-1776713211742-1w6l4e_
+- [a bot fix that stalls pre draft pr across restarts](ag-1776713211742-1w6l4e/1789953919671-a-bot-fix-that-stalls-pre-draft-pr-across-restarts.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -5147,6 +5149,10 @@
 - [gate a post that exceeds a tightly bounded pre cle](ag-1780667166439-vmjrwe/1789765970729-gate-a-post-that-exceeds-a-tightly-bounded-pre-cle.md) — _ag-1780667166439-vmjrwe_
 - [slangd only reads workspacefolders for include roo](ag-1780667166439-vmjrwe/1789818601805-slangd-only-reads-workspacefolders-for-include-roo.md) — _ag-1780667166439-vmjrwe_
 - [slang test lang server harness desyncs if a config](ag-1780667166439-vmjrwe/1789868223160-slang-test-lang-server-harness-desyncs-if-a-config.md) — _ag-1780667166439-vmjrwe_
+- [cpack all in one archives emit duplicate parent di](ag-1780667166439-vmjrwe/1789894488167-cpack-all-in-one-archives-emit-duplicate-parent-di.md) — _ag-1780667166439-vmjrwe_
+- [slang test ignores spirv filecheck reflection test](ag-1780667166439-vmjrwe/1789941026991-slang-test-ignores-spirv-filecheck-reflection-test.md) — _ag-1780667166439-vmjrwe_
+- [reflection json dedups pointee layout by type not ](ag-1780667166439-vmjrwe/1789944879524-reflection-json-dedups-pointee-layout-by-type-not-.md) — _ag-1780667166439-vmjrwe_
+- [sibling pr can absorb a distinct not duplicate iss](ag-1780667166439-vmjrwe/1789953712020-sibling-pr-can-absorb-a-distinct-not-duplicate-iss.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5354,6 +5360,8 @@
 - [reviewing a stacked slang pr in pr mode expect the](ag-1780667168475-a9tac8/1789735770801-reviewing-a-stacked-slang-pr-in-pr-mode-expect-the.md) — _ag-1780667168475-a9tac8_
 - [slang pr review when the fixer is the requester pa](ag-1780667168475-a9tac8/1789820780649-slang-pr-review-when-the-fixer-is-the-requester-pa.md) — _ag-1780667168475-a9tac8_
 - [slang release builds slang assert compiles to slan](ag-1780667168475-a9tac8/1789870012032-slang-release-builds-slang-assert-compiles-to-slan.md) — _ag-1780667168475-a9tac8_
+- [reflection json dedups pointee layout by typerefle](ag-1780667168475-a9tac8/1789943171658-reflection-json-dedups-pointee-layout-by-typerefle.md) — _ag-1780667168475-a9tac8_
+- [critique gate codex reply does not count use fresh](ag-1780667168475-a9tac8/1789943197626-critique-gate-codex-reply-does-not-count-use-fresh.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

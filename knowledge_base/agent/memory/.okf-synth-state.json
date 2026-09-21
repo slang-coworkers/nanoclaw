@@ -2,28 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-08-31T04:20:17Z",
-   "backlog": 2432743,
-   "defects": 40,
-   "offenders": 189,
-   "top": {
-    "path": "imported/project_12371_spirv_prelink_validation_buffer.md",
-    "class": "OVERSIZE",
-    "size": 149555
-   }
-  },
-  {
-   "at": "2026-08-31T05:02:38Z",
-   "backlog": 2020759,
-   "defects": 40,
-   "offenders": 185,
-   "top": {
-    "path": "imported/project_9401_hpp_export_docs_mismatch.md",
-    "class": "OVERSIZE",
-    "size": 79486
-   }
-  },
-  {
    "at": "2026-09-01T04:14:35Z",
    "backlog": 1788504,
    "defects": 36,
@@ -329,6 +307,17 @@
     "path": "imported/feedback_a_negative_grep_for_someone_elses_wording_is_not_a_negative_for_the_belief.md",
     "class": "OVERSIZE",
     "size": 22862
+   }
+  },
+  {
+   "at": "2026-09-20T04:10:13Z",
+   "backlog": 264083,
+   "defects": 0,
+   "offenders": 85,
+   "top": {
+    "path": "imported/technique_ab_suite_delta_four_dispositions.md",
+    "class": "OVERSIZE",
+    "size": 22745
    }
   }
  ]
