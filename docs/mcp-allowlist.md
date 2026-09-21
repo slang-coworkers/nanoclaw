@@ -183,6 +183,94 @@ allowed list and withheld every disallowed server from `NANOCLAW_MCP_SERVERS`.
 > prompt injection and confused-deputy misuse. Against an agent that sets out
 > to defeat them, only layers 1–2 and the per-tool gates above hold.
 
+## The `codex` child's git is read-only
+
+The `codex-critique` skill calls `mcp__codex__codex` with sandbox
+`danger-full-access` (bwrap cannot create namespaces inside Docker, and
+`container/hooks/force-codex-sandbox.sh` forces the value) and cwd
+`/workspace/agent` — the role's group folder, which holds its git worktrees.
+Codex is meant to read and critique. On 2026-09-19 it did not, three times: it
+amended an ADR twice and then committed on the builder's worktree and
+force-pushed the PR branch, orphaning the legitimate head.
+
+So the child's git is pinned read-only through config that exists only in its
+environment. `container/agent-runner/src/codex-mcp-server.ts` builds the codex
+MCP entry with three layers in `env` (literal, non-secret); each covers what
+the one before cannot:
+
+| layer | delivered as | effect |
+| ----- | ------------ | ------ |
+| **Refusing hooks** | `GIT_CONFIG_KEY_0=core.hooksPath` → `/app/hooks/codex-git-guard` | `pre-commit`, `pre-merge-commit`, `pre-rebase`, `pre-push` and `reference-transaction` (exit 1 on `prepared`) all refuse with `codex critique is read-only: git <hook> refused (codex-git-guard)`. The last one catches every ref write: `commit --no-verify`, `update-ref`, `branch -f`, `reset --hard`, `checkout -B`, `tag`, `stash`, `fetch`, `merge` (ORIG_HEAD) |
+| **No transport at all** | `GIT_CONFIG_KEY_1..7=url.disabled://.pushInsteadOf` = `https://`, `http://`, `git@`, `ssh://`, `file://`, `/`, `.`; `GIT_CONFIG_KEY_8=protocol.allow=never`; `GIT_CONFIG_KEY_9=protocol.file.allow=never` | The rewrite turns a push URL derived from a remote's fetch URL, or given explicitly, into a scheme nothing serves. The protocol policy is what actually closes pushes: `pushInsteadOf` is ignored for a remote with an explicit pushurl (`git remote set-url --push …` — a plain `.git/config` write no hook sees), for scp-style `user@host:` with a non-`git` user, and for a short URL expanded by an `insteadOf` alias; `protocol.allow=never` is checked on the transport *type*, so every one of those dies client-side with `fatal: transport 'https' not allowed` (or `'file'`, `'ssh'`, `'disabled'`), `--no-verify` or not. `protocol.file.allow` must be explicit — a per-protocol key beats the `protocol.allow` fallback at any scope, and a global `protocol.file.allow=always` is common |
+| **System-scope backstop** | `GIT_CONFIG_SYSTEM=/app/hooks/codex-git-guard/gitconfig` — the same table in gitconfig syntax | `GIT_CONFIG_COUNT/KEY/VALUE` and `-c` (`GIT_CONFIG_PARAMETERS`) are stripped from the `receive-pack` git spawns for a local-path push (`local_repo_env`); `GIT_CONFIG_SYSTEM` is not. So even `git -c protocol.file.allow=always -c core.hooksPath=/dev/null push --no-verify ../clone` is refused on the remote side by *its* `reference-transaction`. System scope, not global: `GIT_CONFIG_GLOBAL` would replace `~/.gitconfig` and drop the OneCLI placeholder `insteadOf` that `container-runner.ts` writes there |
+
+Git reads `GIT_CONFIG_*` at command scope, above repo, worktree and global
+config, so a worktree's own `core.hooksPath` cannot undo the first two layers.
+The hooks dir and the gitconfig ride the existing read-only bind mount of
+`container/hooks` at `/app/hooks` (`src/container-runner.ts`); nothing is
+COPY'd into the image, and the execute bit comes from the checkout (git ignores
+a hook without `+x` — silently — which is why `index.codex-mcp-server.test.ts`
+asserts the bit). The gitconfig file is rendered from the TypeScript table
+(`renderCodexGitGuardGitconfig`) and the test asserts the committed file equals
+the render, so there is one source of truth.
+
+The child's process env is not what codex hands the shell commands it runs:
+that env goes through `shell_environment_policy`, which `~/.codex/config.toml`
+— a writable group-state mount — can narrow. So the pairs are also forced on
+the command line, where `-c` beats config.toml:
+`shell_environment_policy.include_only=[]` (an `include_only` in config.toml is
+applied *after* `set` and would drop every `GIT_CONFIG_*` silently — git would
+then run unguarded, with no error anywhere) and
+`shell_environment_policy.set.<NAME>="<value>"` for each pair (applied after
+`exclude`; without it `ignore_default_excludes=false` strips `GIT_CONFIG_KEY_n`
+alone through the `*KEY*` default exclude and every git command dies on the
+dangling COUNT). This is load-bearing, not belt-and-braces. Verified with
+`codex sandbox /usr/bin/env` on codex 0.151.0 and the pinned 0.146.0.
+`envInherit` (the names-only secret allowlist) is unchanged. The Claude
+session's own git never sees any of this: the pairs are in the MCP child's env,
+not the container's.
+
+**Holes, stated plainly.**
+
+- **File writes.** `danger-full-access` is a real filesystem; codex can still
+  edit a worktree. The skill tells the caller to re-hash the artifacts it
+  passed (`### Attested`) and treat a mismatch as a codex write.
+- **Pushes that never touch git.** A token plus `api.github.com` (`gh api`,
+  `curl`) can update a ref or open a PR without `git push`. Credential scope
+  in OneCLI is the control for that, not this guard.
+- **Same-scope overrides on the network side.** `git -c protocol.https.allow=always
+  -c core.hooksPath=/dev/null push …`, `--config-env=core.hooksPath=VAR`, a
+  hand-set `GIT_CONFIG_PARAMETERS`, or `-c url.<longer-base>.pushInsteadOf=…`
+  (longest match wins) are parsed after the env pairs at the same scope and
+  win. A *local-path* push that does this still hits the `GIT_CONFIG_SYSTEM`
+  backstop on the receive-pack side — unless the target repo's own config sets
+  `core.hooksPath` (repo scope beats system). `env -u GIT_CONFIG_COUNT -u
+  GIT_CONFIG_SYSTEM git …` drops the guard entirely. This guards a confused
+  reviewer, not an adversary — the same standing as layers 3–4 above.
+- **Branch switches on git < 2.46.** The image is `node:22-slim` (Debian
+  bookworm, git 2.39). There, HEAD symref writes — `checkout <existing-branch>`,
+  `switch`, `symbolic-ref HEAD …`, `worktree add <path> <existing-branch>` —
+  are not ref transactions and are expected to go through: they move the
+  builder worktree's HEAD (so the *builder's* next commit lands on another
+  branch) but rewrite no history. On git ≥ 2.50 they are refused, as the
+  proof shows. Run `scripts/prove-codex-git-guard.sh` inside the image before
+  relying on either behaviour.
+- **Transport reads are blocked too.** `git fetch`, `ls-remote`, `clone` and
+  `submodule update` fail under `protocol.allow=never`. Acceptable for a
+  reviewer; `fetch` was refused by the hooks anyway.
+- **Codex itself** issues no ref-writing git commands on 0.146.0/0.151.0
+  (`codex features list` reports `codex_git_commit` and `undo` as `removed`),
+  so the hooks fire only on commands the model runs. If a future codex re-adds
+  one, the refusal surfaces as that tool call failing — re-check with `codex
+  features list` on upgrade.
+
+Proof against a real git: `scripts/prove-codex-git-guard.sh` builds a
+throwaway repo, exports the same env with `core.hooksPath` and
+`GIT_CONFIG_SYSTEM` pointed at this checkout's
+`container/hooks/codex-git-guard`, and shows every write refused — including
+the explicit-pushurl, scp-style, alias, bare-relative and `-c`-bypass shapes —
+while `log`/`status`/`diff`/`show`/`blame` succeed.
+
 ## Changing the policy on a live group
 
 `ncl groups mcp-tools set` does two things:
