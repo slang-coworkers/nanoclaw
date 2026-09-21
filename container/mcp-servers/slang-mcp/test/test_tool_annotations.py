@@ -29,6 +29,7 @@ import pytest
 # then name so reviewers can read it as the contract.
 WRITE_TOOLS = [
     # Discord
+    "discord_create_thread",
     "discord_send_message",
     # GitHub
     "github_create_or_update_file",

@@ -1,5 +1,6 @@
 """Tests for Discord API integration."""
 
+import os
 from datetime import datetime, timedelta
 from unittest.mock import AsyncMock, MagicMock, patch
 
@@ -12,9 +13,11 @@ import discord
 dotenv.load_dotenv()
 
 from src.discord import (  # noqa: E402
+    CreateThreadArgs,
     GetUserInfoArgs,
     ReadMessagesArgs,
     SendMessageArgs,
+    create_thread,
     get_user_info,
     read_messages,
     send_message,
@@ -85,7 +88,8 @@ async def test_send_message(mock_discord_client, mock_init_discord_client, allow
 
     # Test function
     args = SendMessageArgs(channel_id="67890", content="Test message")
-    result = await send_message(args)
+    with patch.dict(os.environ, {"DISCORD_ALLOWED_SEND_CHANNELS": "67890"}, clear=False):
+        result = await send_message(args)
 
     # Verify results
     assert "message_id" in result
@@ -217,7 +221,8 @@ async def test_send_message_channel_not_found(
 
     # Test function
     args = SendMessageArgs(channel_id="99999", content="Test message")
-    result = await send_message(args)
+    with patch.dict(os.environ, {"DISCORD_ALLOWED_SEND_CHANNELS": "99999"}, clear=False):
+        result = await send_message(args)
 
     # Verify error is returned
     assert "error" in result
@@ -225,3 +230,137 @@ async def test_send_message_channel_not_found(
 
     # Verify client was used correctly
     mock_discord_client.get_channel.assert_called_once_with(99999)
+
+
+def _thread_env():
+    return patch.dict(
+        os.environ,
+        {"DISCORD_ALLOWED_SEND_CHANNELS": "67890", "DISCORD_READ_ONLY": "0"},
+        clear=False,
+    )
+
+
+def _mock_thread(*, thread_id=111, name="Status report", parent_id=67890):
+    mock_thread = MagicMock(spec=discord.Thread)
+    mock_thread.id = thread_id
+    mock_thread.name = name
+    mock_thread.parent_id = parent_id
+    mock_thread.jump_url = f"https://discord.com/channels/1/{thread_id}"
+    return mock_thread
+
+
+@pytest.mark.asyncio
+async def test_create_thread_standalone(mock_discord_client, mock_init_discord_client):
+    """Standalone public thread when message_id is omitted."""
+    mock_channel = MagicMock(spec=discord.TextChannel)
+    mock_thread = _mock_thread()
+    mock_channel.create_thread = AsyncMock(return_value=mock_thread)
+    mock_discord_client.get_channel.return_value = mock_channel
+
+    args = CreateThreadArgs(channel_id="67890", name="Status report")
+    with _thread_env():
+        result = await create_thread(args)
+
+    assert result == {
+        "thread_id": "111",
+        "thread_name": "Status report",
+        "channel_id": "67890",
+        "url": "https://discord.com/channels/1/111",
+    }
+    mock_channel.create_thread.assert_called_once_with(
+        name="Status report",
+        type=discord.ChannelType.public_thread,
+        auto_archive_duration=1440,
+    )
+
+
+@pytest.mark.asyncio
+async def test_create_thread_from_message(mock_discord_client, mock_init_discord_client):
+    """Thread attached to an existing channel message."""
+    mock_channel = MagicMock(spec=discord.TextChannel)
+    mock_message = MagicMock()
+    mock_message.id = 555
+    mock_thread = _mock_thread(name="Daily report")
+    mock_message.create_thread = AsyncMock(return_value=mock_thread)
+    mock_channel.fetch_message = AsyncMock(return_value=mock_message)
+    mock_discord_client.get_channel.return_value = mock_channel
+
+    args = CreateThreadArgs(
+        channel_id="67890",
+        name="Daily report",
+        message_id="555",
+        auto_archive_duration=10080,
+    )
+    with _thread_env():
+        result = await create_thread(args)
+
+    assert result["thread_id"] == "111"
+    assert result["message_id"] == "555"
+    assert result["thread_name"] == "Daily report"
+    mock_channel.fetch_message.assert_called_once_with(555)
+    mock_message.create_thread.assert_called_once_with(
+        name="Daily report",
+        auto_archive_duration=10080,
+    )
+    mock_channel.create_thread.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_thread_rejects_forum(mock_discord_client, mock_init_discord_client):
+    mock_channel = MagicMock(spec=discord.ForumChannel)
+    mock_discord_client.get_channel.return_value = mock_channel
+
+    args = CreateThreadArgs(channel_id="67890", name="Nope")
+    with _thread_env():
+        result = await create_thread(args)
+
+    assert "error" in result
+    assert "discord_send_message" in result["error"]
+    assert "thread_name" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_create_thread_rejects_existing_thread(
+    mock_discord_client, mock_init_discord_client
+):
+    mock_channel = MagicMock(spec=discord.Thread)
+    mock_discord_client.get_channel.return_value = mock_channel
+
+    args = CreateThreadArgs(channel_id="67890", name="Nope")
+    with _thread_env():
+        result = await create_thread(args)
+
+    assert "error" in result
+    assert "already a thread" in result["error"]
+
+
+@pytest.mark.asyncio
+async def test_create_thread_not_on_allowlist(
+    mock_discord_client, mock_init_discord_client
+):
+    args = CreateThreadArgs(channel_id="99999", name="Status")
+    with patch.dict(
+        os.environ, {"DISCORD_ALLOWED_SEND_CHANNELS": "67890"}, clear=False
+    ):
+        result = await create_thread(args)
+
+    assert result["error"] == "Channel 99999 is not in the allowed send list"
+    mock_discord_client.get_channel.assert_not_called()
+
+
+@pytest.mark.asyncio
+async def test_create_thread_message_missing(
+    mock_discord_client, mock_init_discord_client
+):
+    mock_channel = MagicMock(spec=discord.TextChannel)
+    mock_channel.fetch_message = AsyncMock(
+        side_effect=discord.NotFound(MagicMock(), "missing")
+    )
+    mock_discord_client.get_channel.return_value = mock_channel
+
+    args = CreateThreadArgs(channel_id="67890", name="Status", message_id="1")
+    with _thread_env():
+        result = await create_thread(args)
+
+    assert "error" in result
+    assert "not found" in result["error"]
