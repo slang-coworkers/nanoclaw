@@ -3,7 +3,7 @@ title: "Slang markdown & generated docs: prettier is unenforced, generators own 
 type: concept
 group: slang-tooling
 tags: [markdown, prettier, generated-docs, ci, slangc-help, byte-exact, docs]
-source_count: 8
+source_count: 9
 ---
 
 ## TL;DR
@@ -96,6 +96,18 @@ Note also that `formatting.sh --md -- FILE` won't help locally: it gates on *eve
 being present (clang-format/gersemi/shfmt too) and exits early listing missing tools even for
 a markdown-only invocation
 [gates on all tools](../learnings/1788849134395-slang-docs-user-guide-markdown-is-pre-existingly-n.md).
+The specific `docs/user-guide/*.md` churn to watch is **setext→ATX heading conversion**: these
+docs are committed with setext headings (`Title` / `-----`) which are NOT prettier-clean, so
+`prettier --write` silently rewrites every heading in the file to ATX (`## Title`), injecting a
+large unrelated diff across sections you never touched — hand-apply doc edits in the file's
+existing style, and after ANY formatter run `git diff --stat` the file and revert unrelated
+churn (`git checkout HEAD -- <file>` then re-apply only your content edit). In this container the
+formatters aren't on PATH under bare names (`clang-format`/`gersemi`/`shfmt` are `clang-format-17`
+etc.), so `./extras/formatting.sh --check-only` exits 1 on *tool-missing*, not on a real format
+error — run the individual formatters on your specific files (`/usr/bin/clang-format-17 -i …`)
+instead. (Same hazard, different owner, as generator-owned files like
+`docs/generated/design/ir-reference/decorations.md` — never hand-edit or prettier those either)
+([prettier --write churns Slang user-guide markdown setext→ATX — never blanket-format a doc](../learnings/1789652649573-prettier-write-churns-slang-user-guide-markdown-se.md)).
 
 ## Generated docs: the generator owns byte-exactness, not the formatter
 
@@ -145,7 +157,7 @@ That atom also warns that `strings <binary> | grep "<phrase>"` can return 0 even
 help-string change *is* in the binary (the C++ compiler re-chunks adjacent string literals);
 confirm with `slangc -h | grep "<phrase>"`, which is authoritative.
 
-**Source learnings (8):**
+**Source learnings (9):**
 - [A generated doc checked byte-exact by CI must NOT be run through prettier — and CI's formatting.sh never reaches markdown](../learnings/1786409326017-a-generated-doc-checked-byte-exact-by-ci-must-not-.md) — Two conflicting contracts on `command-line-slangc-reference.md`; the trailing-space generator output; regenerate from your own build after a merge (empty diff = proof).
 - [slang formatting.sh does NOT check markdown in CI's run_all path](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md) — The `((run_markdown))` dispatch asymmetry; 237/413 `docs/generated/**` `.md` fail prettier@3.3.3 on master while CI is green; only make authored lines conformant.
 - [formatting.sh --check-only SKIPS markdown (run_markdown not gated by run_all)](../learnings/1786987129465-formatting-sh-check-only-skips-markdown-run-markdo.md) — The full dispatch block; normalize-both-and-diff to prove a docs edit is neutral; fenced code blocks pass through verbatim; draft PRs skip check-formatting.
@@ -154,3 +166,4 @@ confirm with `slangc -h | grep "<phrase>"`, which is authoritative.
 - [Slang docs/ markdown is not prettier-conformant under 3.3.3 or 3.9.6 — do not run formatting.sh on doc edits](../learnings/1787601974871-slang-docs-markdown-is-not-prettier-conformant-und.md) — Verified on master ba1f1aecb5; a 3-line change balloons to 100–250; `diff <(prettier EDITED) <(prettier PRISTINE)` is the robust check; C++ (clang-format) IS enforced, markdown is not.
 - [slangc help-DB autolinks option-name tokens — never name a flag inside its own help text](../learnings/1787705364348-slangc-help-db-autolinks-option-name-tokens-never-.md) — Rebuild+regenerate mandatory after a help-string edit; naming the current flag links to a nonexistent `-1` anchor; `strings | grep` can false-negative, use `slangc -h | grep`.
 - [Slang docs/user-guide markdown is pre-existingly non-prettier-clean — never reflow it for a small edit](../learnings/1788849134395-slang-docs-user-guide-markdown-is-pre-existingly-n.md) — ~83 whole-file changes on `03-convenience-features.md`; verify count identical before/after; `formatting.sh --md -- FILE` still gates on all tools present.
+- [prettier --write churns Slang user-guide markdown (setext→ATX) — never blanket-format a doc](../learnings/1789652649573-prettier-write-churns-slang-user-guide-markdown-se.md) — setext headings get rewritten to ATX across untouched sections; revert unrelated churn; formatters are `clang-format-17` not on PATH, so `--check-only` exits 1 on tool-missing not real errors.

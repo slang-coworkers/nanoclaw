@@ -3,7 +3,7 @@ title: "CI Build Tooling & Workflow Structure"
 type: concept
 group: ci-tooling
 tags: [ci, build, wasm, falcor, workflows, test-silencing, perf, cmake, slang, capability-atoms, doc-regen, cmdline-ref, shallow-clone, submodules, git-provenance]
-source_count: 26
+source_count: 27
 ---
 
 # CI Build Tooling & Workflow Structure
@@ -86,6 +86,10 @@ Relevant in-tree infrastructure already exists: `-dump-repro`, `-load-repro`, `-
 **`slangpy-samples` CI runs `pre-commit --all-files` — inherited black failure is not your PR's fault.** The `pre-commit` job runs against the whole repo, so every PR's CI status reflects the formatting state of ALL files, not just your diff. When `main` itself is red (e.g. `black` reformats ~8 pre-existing `.py` files), any new PR inherits that red `pre-commit` check even when it touches zero Python. Triage a `github.ci_failed` before assuming it's yours: find which hook+files failed (`gh run view --log-failed | grep -iE "Failed|reformatted|\.py"`), check `git diff --name-only origin/main` (reformatted files not in your diff = inherited debt), and confirm main is already red. Do NOT pull the unrelated black reformatting into a focused PR — document it and move on; local `black --check` can pass while CI's pinned version fails ([slangpy-samples CI runs pre-commit --all-files — inherited black failure is not your PR's fault](../learnings/1783525328477-slangpy-samples-ci-runs-pre-commit-all-files-inher.md)).
 
 
+## Advisory-by-construction CI shell scripts: `continue-on-error` at the call site, not per-probe `|| true`
+
+For a CI shell script that is advisory-by-construction (every branch `exit 0`, only ever emits `::warning::`), the robust fix for "it crashed the build" is `continue-on-error: true` on the workflow **step**, NOT `|| true` on each internal probe. `|| true` fixes one probe at a time — the next probe added without it reintroduces the bug — whereas `continue-on-error` makes the "never gate the build" invariant *structural*: it covers every failure mode nobody enumerated (a future un-guarded probe, a syntax error, a segfault, a `set -o` change), and the step still renders as failed in the Actions UI (visible but non-gating). Keep the `|| true` edits too, but for a *different* reason: under `set -euo pipefail` an aborting probe kills the whole script, so `|| true` preserves the `::warning::` output of every *later* check — the two are complementary, not redundant. Corollary: don't over-build a regression test for an advisory script (an 82-line harness for a 141-line script whose only build-gating risk is fully subsumed by `continue-on-error` was dropped in review). But note: the `continue-on-error` line lives in `.github/workflows/*`, which the bot cannot push (see the Workflow Permission Constraint above) — ship the script's `|| true` edits and hand the `continue-on-error` step change to a maintainer (from #13041 → PR #13042) ([advisory CI shell scripts: continue-on-error beats per-probe || true; the bot can't edit .github/workflows](../learnings/1789654672103-advisory-ci-shell-scripts-continue-on-error-beats-.md)).
+
 ## COMPARE_COMPUTE filecheck-buffer Portability
 
 For COMPARE_COMPUTE tests using `filecheck-buffer=CHECK`, always include `-output-using-type` in the test directive. Without it, the output buffer is dumped as raw hex words by the LLVM JIT backend (`-api cpu+llvm`, used in CI) but as decimal by the gcc/genericcpp backend (used locally). Values > 9 (e.g. `30` vs `1E`) expose the mismatch; values ≤ 9 mask it. A local `-cpu` pass does not guarantee CI ([COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal](../learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md)).
@@ -133,7 +137,7 @@ On the coworker system's own NanoClaw host fork (`slang-coworkers/nanoclaw`), `.
 
 `ci.yml` registers exactly ONE aggregate job in branch protection: `check-ci`, whose `needs:` list enumerates every build/test/lint job and fails if any needed job != success ("any job added to `needs` above is gated automatically"). So to make a new check blocking, you don't touch branch-protection settings — you (1) write a `pull_request`-event job that `exit 1`s on violation, then (2) add its name to `check-ci.needs` (precedents: `check-cmdline-ref`, `check-capability-atoms-ref`). Combined with the durable workflows-permission wall: the *script/tool* change (e.g. an `--enforce` exit-1 mode under `extras/`) is bot-committable, but the `ci.yml` job + `check-ci.needs` edit is NOT — deliver it as a maintainer-applied diff and note the split in triage `next-action`. Bonus gotcha (`check-inst-version-changes.sh`): its advisory is only advisory because the script `exit 0`s and its poster runs `on: workflow_run` (no PR-head status); prefer a dedicated cheap job over flipping the existing "Check Version Constants" build step, whose artifact-upload lacks an `always()` guard ([making a slang CI check required = add a job to check-ci.needs](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)).
 
-**Source learnings (26):**
+**Source learnings (27):**
 
 - [make a slang check "required" by adding a `pull_request` exit-1 job to `check-ci.needs` (not branch-protection UI); the `ci.yml` edit is not bot-pushable (workflows-perm wall) → maintainer diff](../learnings/1784430693229-making-a-slang-ci-check-required-add-a-job-to-chec.md)
 - [DISABLE CI jobs are build-only](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
@@ -161,3 +165,4 @@ On the coworker system's own NanoClaw host fork (`slang-coworkers/nanoclaw`), `.
 - [nanoclaw sync-PR CI composes all nv-* branches (merge-order dep)](../learnings/1783633650284-nanoclaw-sync-pr-ci-composes-all-nv-branches-merge.md)
 - [slang#12032 Windows CI crash-dump: routes via ci-slang-test.yml, not the Linux container path](../learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md)
 - [nv-slang-bot GitHub App cannot push .github/workflows changes (lacks workflows permission)](../learnings/1789272278255-nv-slang-bot-github-app-cannot-push-github-workflo.md)
+- [advisory CI shell scripts: continue-on-error at the call site beats per-probe || true; bot can't edit .github/workflows](../learnings/1789654672103-advisory-ci-shell-scripts-continue-on-error-beats-.md) — `continue-on-error` makes "never gate the build" structural (covers unenumerated failure modes); keep `|| true` to preserve later probes' warnings under set -e; don't over-build the test.

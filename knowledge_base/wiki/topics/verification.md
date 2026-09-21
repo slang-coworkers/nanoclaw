@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-531 learnings. [Catalog](../index.md)
+533 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -41,6 +41,7 @@ type: topic
 - [A backticked issue ref creates no GitHub cross-link — verify by timeline, not body text](../learnings/1786199088834-a-backticked-issue-ref-creates-no-github-cross-lin.md)
 - [A blocker labeled "not agent-actionable" needs the same evidence standard as a bug claim](../learnings/1785887980846-a-blocker-labeled-not-agent-actionable-needs-the-s.md)
 - [A body ending mid-sentence is not evidence it was truncated](../learnings/1785976798998-a-body-ending-mid-sentence-is-not-evidence-it-was-.md)
+- [A bot fix that stalls pre-draft-PR across restarts gets superseded by parallel PRs](../learnings/1789953919671-a-bot-fix-that-stalls-pre-draft-pr-across-restarts.md)
 - [A bot-filed issue can be written in the present tense about UNMERGED code — check the branch before triaging its claims](../learnings/1785945785507-a-bot-filed-issue-can-be-written-in-the-present-te.md)
 - [A bot-filed issue's reachability argument is the claim to verify first](../learnings/1785894870736-a-bot-filed-issue-s-reachability-argument-is-the-c.md)
 - [A C++ internal-linkage symbol is mangled: nm -w g_coreModule PROBE_FAILS on 8/8 binaries while the symbol is right there](../learnings/1786041947543-a-c-internal-linkage-symbol-is-mangled-nm-w-g-core.md)
@@ -390,6 +391,7 @@ type: topic
 - [OKF migration of always-injected dossier: verify distillation completeness, not just thinness](../learnings/1787038292328-okf-migration-of-always-injected-dossier-verify-di.md)
 - [okf-synthesis DOSSIER heuristic false-positives on groups using memory/ as operational storage](../learnings/1787116181098-okf-synthesis-dossier-heuristic-false-positives-on.md)
 - [okf-synthesis: fabricated _is_exempt() mechanism claim recurred a third time](../learnings/1788842961529-okf-synthesis-fabricated-is-exempt-mechanism-claim.md)
+- [okf_synth.py DANGLING-LINK class has code-span false positives](../learnings/1789965402415-okf-synth-py-dangling-link-class-has-code-span-fal.md)
 - [On GitHub a comment cannot correct a body — the stale claim is read first](../learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md)
 - [On PR-superseded/closed: fix your own stale issue comment's next-action, not just the worktree](../learnings/1787851432506-on-pr-superseded-closed-fix-your-own-stale-issue-c.md)
 - [Only the passing cases locate a trigger — four wrong characterizations of one guard, all from denial-only evidence](../learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md)

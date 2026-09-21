@@ -3,7 +3,7 @@ title: "Agent Routing: Subagent & Fork Control"
 type: concept
 group: agent-routing
 tags: [subagent, fork, recall, auto-route, worktree, collision, read-only, Agent, context-inheriting, isolation]
-source_count: 21
+source_count: 22
 ---
 
 # Agent Routing: Subagent & Fork Control
@@ -26,6 +26,10 @@ The same hazard applies to fixers: a recall-scan fork launched to read `learning
 For narrow read-only lookup (learnings recall, "where is X defined"), use `subagent_type: "Explore"` (read-only tools only) OR open the prompt with a hard constraint: "READ-ONLY: do NOT post GitHub comments, edit labels, build, send_message/send_file, or dispatch any peer. Return ≤5 bullets and stop." Reserve bare `Agent(prompt=...)` forks for work where you WANT full-tool, full-context execution and have scoped the task accordingly ([Read-only recall forks must be scoped Explore or explicitly constrained — bare Agent forks inherit ALL tools and can post/dispatch](../learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md)).
 
 A fork already in flight does not see a later stand-down/HOLD — the agent that spawned it must `TaskStop` in-flight forks explicitly when a hold lands ([Correction: the #11600 hold-deviation was an in-flight fork, not a peer ignoring the hold](../learnings/1781366652185-correction-the-11600-hold-deviation-was-an-in-flig.md)).
+
+## A Fork Re-Enacts the Parent's Persona — the learnings-wiki fan-out incident
+
+The context a fork inherits includes the parent's CLAUDE.md persona, and a fork will *act it out*. On the 2026-09-18 learnings-wiki synth (serial path, uncovered ≈90), the whole task was delegated to one general-purpose subagent, which chose to fan out into **four `fork` subagents** to do the fold — and because a `fork` inherits the orchestrator CLAUDE.md (chain invariants, "report up", quiescence discipline), each fold fork re-enacted the orchestrator persona: it did its file writes, then **spawned its own phantom "quiescence watcher"** and paused "waiting for edits to settle" instead of finishing. Each fork burned 210K-335K tokens (~1.07M total, 99 tool_uses on the largest) for a run that folded only ~37 atoms, with `<result>` messages repeatedly claiming to be "waiting" for watchers that never reported (the per-atom writes had already persisted). Rules: for the learnings-wiki **serial path (uncovered ≤150)**, do NOT sub-delegate to a monolithic subagent that fans out — run the ~40-atom fold directly, or delegate to ONE bounded **fresh general-purpose subagent** (fresh context, not a fork); if a fan-out is genuinely needed (uncovered >150), spawn **fresh bounded `Agent` subagents per concept-group**, NEVER `fork`, and explicitly forbid nested "quiescence watcher" subagents in the prompt. Detector: a fork whose `<result>` says it is "waiting for a background watcher / quiescence monitor to signal" is paralyzed, not working — its writes have already persisted; do not wait on the watcher ([learnings-wiki serial path: never sub-delegate to a fork; forks re-enact the orchestrator and burn ~1M tokens](../learnings/1789713862648-learnings-wiki-serial-path-never-sub-delegate-to-a.md)).
 
 ## Auto-Route Background Fork Running the Whole Fix
 
@@ -83,7 +87,7 @@ This separates two failure classes that need opposite fixes. **Present-but-unfin
 
 Two subagent-control failure modes. A coworker must NEVER end a turn waiting on a **background** subagent's completion notification: a container restart (instruction update, redeploy, image rebuild) tears down the notification, and the coworker waits indefinitely — observed on #11682, where the fixer sat idle 3+ days after "I'll act on the background subagent's completion" until a maintainer pinged. Use a **synchronous blocking Agent** for builds/tests so the result returns in-turn ([fixer stalls forever waiting on a background-subagent completion notification across teardown](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)). And when you add a NEW `SLANG_ASSERT` that can fire during the core-module build, do NOT hand it to an autonomous `general-purpose` subagent — one edited `slang-parser.cpp` to inject debug `fprintf` probes and chased a phantom; the assert firing is *expected signal*, so run the build yourself (or use read-only `Explore` for diagnosis) and read the log deliberately ([build subagents will EDIT your source when a new assert fires — drive assert-bearing builds yourself](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)).
 
-**Source learnings (21):**
+**Source learnings (22):**
 - [Don't use context-inheriting fork for narrow recall during active workflow](../learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md)
 - [Read-only recall forks must be scoped Explore or explicitly constrained](../learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md)
 - [Duplicate dispatch peer live-writes the fix into your shared worktree](../learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
@@ -105,4 +109,5 @@ Two subagent-control failure modes. A coworker must NEVER end a turn waiting on 
 - [don't hand an assert-bearing build to an autonomous general-purpose subagent (it edits your source to 'debug'); drive it yourself or use read-only Explore](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)
 - [don't fork (omit subagent_type) for read-only recall/scan — the fork inherits full triage context and may run the whole workflow](../learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)
 - [subagent dispatch (Agent tool) is the one outward surface with no PreToolUse gate](../learnings/1785841367040-subagent-dispatch-agent-tool-is-the-one-outward-su.md)
+- [learnings-wiki serial path: never sub-delegate to a fork; forks re-enact the orchestrator and burn ~1M tokens](../learnings/1789713862648-learnings-wiki-serial-path-never-sub-delegate-to-a.md) — a fork inherits the parent CLAUDE.md persona and spawns phantom quiescence watchers; run the fold directly or via ONE fresh general-purpose subagent; a "waiting for a watcher" result is paralysis, not work.
 _Catalog: [[wiki/index.md]]_

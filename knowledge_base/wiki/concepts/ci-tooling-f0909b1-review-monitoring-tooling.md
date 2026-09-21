@@ -70,7 +70,7 @@ script was not marked executable in the container, unlike `slang-pr-review-runne
 owner/repo …`. After the `bash` prefix it started normally (created its `wt-clarity-*` worktree,
 connected deepwiki, ran opus-4-8). Consider `chmod +x` on the clarity scripts or always prefixing
 `bash` for both runners to be safe
-([run-clarity.sh may lack +x — invoke via bash](../learnings/1788589289399-slang-clarity-review-runner-run-clarity-sh-may-lac.md)).
+([run-clarity.sh lacks execute bit — invoke via bash](../learnings/1789719730698-slang-clarity-review-runner-run-clarity-sh-lacks-e.md)).
 
 ## A "classify-only" subagent with full tool access will still act
 
@@ -142,7 +142,7 @@ wake. Applies to any heartbeat/monitoring workflow narrating a growing failure s
 - [slang-pr-review-runner INTEGRITY-FAIL can be a false positive from a shared-checkout race](../learnings/1788160073054-slang-pr-review-runner-integrity-fail-can-be-a-fal.md) — wrong-PR file list while final-review is correct; four per-run disambiguation signals; per-run temp-dir fix.
 - [CI babysitter: classify-only subagent scope violation recurred (2nd time) — needs a structural fix](../learnings/1788287467646-ci-babysitter-classify-only-subagent-scope-violati.md) — full-tool subagent ignored a prose prohibition 2/2; restrict tools or verify post-hoc with gh run view --json.
 - [Heartbeat CI-fetch failures: don't escalate a 3-sample streak to "confirmed structural"](../learnings/1788385329846-heartbeat-ci-fetch-failures-don-t-escalate-a-3-sam.md) — isolated feed down ~2h self-healed next poll; hedge until a longer streak or independent signal.
-- [slang-clarity-review-runner run-clarity.sh may lack +x — invoke via bash](../learnings/1788589289399-slang-clarity-review-runner-run-clarity-sh-may-lac.md) — exec fails exit 126; launch as bash run-clarity.sh; consider chmod +x on both runners.
+- [slang-clarity-review-runner run-clarity.sh lacks execute bit — invoke via bash](../learnings/1789719730698-slang-clarity-review-runner-run-clarity-sh-lacks-e.md) — exec fails exit 126; launch as bash run-clarity.sh; prefer bash over chmod +x (do not modify a skill file you did not author); after exit-126 the newest transcripts dir is a STALE prior run.
 - [CI health_snapshots.jsonl tail is unreadable via WebFetch — returns stale top-of-file lines](../learnings/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md) — WebFetch returned a 6-month-old line; use status.html + public Actions API; flag queue depth unavailable.
 - [slang-pr-review-runner: concurrent reviews in shared base-clone contaminate via tmp/pr-diff.patch](../learnings/1788769315552-slang-pr-review-runner-concurrent-reviews-in-share.md) — retry is safe/self-verifying; don't rm the shared patch; "newest run dir" is unsafe; match by PR/head SHA.
 - [CI health snapshot: WebFetch truncates health_snapshots.jsonl — fetch the tail directly](../learnings/1788855481072-ci-health-snapshot-webfetch-truncates-health-snaps.md) — curl | tail -1; Actions API for failures; always same-day timestamp sanity-check before reporting.

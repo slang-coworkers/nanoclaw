@@ -3,7 +3,7 @@ title: "Slang test authoring: FileCheck efficacy, ignored targets, and confounde
 type: concept
 group: slang-tooling
 tags: [slang-test, filecheck, testing, cuda, metal, target-switch, gpu-less, test-efficacy]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -111,6 +111,18 @@ E55215) never fires. `-target cuda` stops at CUDA *source* emission, still runs 
 diagnostic pass, and needs no nvrtc. This passes locally on a box that has nvrtc (the prod
 L40S container) and only fails in CI — hit on slang#12633/PR #12671
 [CUDA diagnostic tests use -target cuda](../learnings/1787351942939-cuda-diagnostic-tests-use-target-cuda-not-target-p.md).
+
+A third "ignored" cause is orthogonal to the target and to the GPU: **any `filecheck=` test is ignored
+when the LLVM FileCheck binary is absent.** A `//TEST:REFLECTION(filecheck=CHECK):-target spirv` (or any
+`filecheck=`) subtest reports `ignored (0/0)` even though the reflection tool ran and produced correct
+output — `slang-test` returns `Ignored` ("FileCheck is not available") at `slang-test-main.cpp:~842` when
+`getFileCheck()` is null, so in a sandbox without an LLVM FileCheck build you cannot run `filecheck=` tests
+at all (sibling REFLECTION tests comparing against a `.expected` file still run). Note `-target spirv` ALSO
+maps to the Vulkan render category (device-gated), but `-no-codegen` reflection needs no device, so the
+FileCheck-absence cause dominates for reflection filecheck tests. Verify GPU-free by dumping reflection JSON
+directly (`slangc test.slang -target spirv -no-codegen -reflection-json out.json`) and simulating the ordered
+CHECK/CHECK-LABEL matching yourself, leaving the pass to CI (slang#13188 / PR #13189)
+[slang-test ignores spirv+filecheck reflection tests locally when FileCheck is absent](../learnings/1789941026991-slang-test-ignores-spirv-filecheck-reflection-test.md).
 
 ## Vacuous and confounded checks
 
@@ -248,7 +260,7 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 `error 1004: unknown command-line option '-stage'`
 [COMPARE_COMPUTE module-load defeats a source-dialect gate](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md).
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [slang-test harness instrument traps: FAILED-vs-failed, priority-yield red, formatting file-list asymmetry](../learnings/1786405416356-slang-test-harness-instrument-traps-failed-vs-fail.md) — Uppercase `FAILED test:`; exit-0-on-nothing gate; `-explicit-test-order` mandatory; priority-yield red-by-design; plus `git log %B` and `REQUIRED_BY` CMake bonuses.
 - [NVAPI HitObject transform getters (#9257) — textual ABI test masks the DXC-only bug](../learnings/1787226505940-nvapi-hitobject-transform-getters-9257-textual-abi.md) — `//CHECK: .GetX` proves emit, not API membership; only DXC catches it; PR #12089 re-gates but keeps the broken mapping; static_assert on the NVAPI arm.
 - [slang-test bare -target hlsl SIMPLE tests are "ignored" in GPU-less env; unit-test ninja target](../learnings/1787342748842-slang-test-bare-target-hlsl-simple-tests-are-ignor.md) — HLSL/DXC filtered to 0/0; write CPU-compute or `slangi` positive tests; `libslang-unit-test-tool.so`; ninja aborts whole build on one bad target.
@@ -263,3 +275,4 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 - [slang-test rejects a redundant non-exhaustive; place a diagnostic in the pass that owns its sibling](../learnings/1789479929783-slang-test-rejects-redundant-non-exhaustive-place-.md) — `Unnecessary 'non-exhaustive'` when all matched; also: add a symmetric new diagnostic (E58005) in the downstream pass that already has the sink and owns E58004, not the fixpoint pass; read a return type via `getDataType()` (unwraps `IRRateQualifiedType`), not `getFullType()`.
 - [DIAGNOSTIC_TEST: non-exhaustive for capability profile-upgrade warnings](../learnings/1789572326133-slang-diagnostic-test-non-exhaustive-for-capabilit.md) — incidental `warning[E41012]` from a `__target_switch` capability ref breaks exhaustive `diag=CHECK`; message match is substring, caret is location; gate a capability bypass on BOTH capabilities.
 - [slang-test COMPARE_COMPUTE can't verify a source-dialect-gated conversion](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md) — `-shaderobj` loads the file as a module so a `sourceLanguage==HLSL` gate never fires (E30019); value-check via a direct-compile SIMPLE FileCheck on the const-folded value; COMPARE_COMPUTE rejects `-entry`/`-stage`.
+- [slang-test ignores spirv+filecheck reflection tests locally when the FileCheck binary is absent](../learnings/1789941026991-slang-test-ignores-spirv-filecheck-reflection-test.md) — any `filecheck=` test is `ignored (0/0)` when `getFileCheck()` is null; verify GPU-free by dumping `-no-codegen -reflection-json` and matching CHECK lines yourself, leave the pass to CI.

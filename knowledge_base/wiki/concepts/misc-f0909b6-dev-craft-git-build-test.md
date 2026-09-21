@@ -3,7 +3,7 @@ title: Slang Dev Craft — Git, Build, Blast-Radius Grep, and FileCheck
 type: concept
 group: misc
 tags: [git, rebase, pathspec, ninja-build, filecheck, slang-test, blast-radius, grep, benchmark]
-source_count: 12
+source_count: 13
 ---
 
 ## TL;DR
@@ -66,6 +66,8 @@ review-side mirror: a large rebase can silently revert a recently-landed sibling
 `#ifdef`; verify the net effect at the actual PR head (`contents?ref=<head-sha>` → base64 -d), not by
 eyeballing hunk direction ([a large rebase can silently revert a recently-landed sibling
 PR](../learnings/1787673424885-a-large-rebase-can-silently-revert-a-recently-land.md)).
+
+The same wrong-reference-point trap bites a **swap-only perf baseline**. Measuring an IR-pass change by "swap only the one `.cpp`, rebuild, compare" requires the swapped-in baseline to be the PRE-change source — and on a branch that has merged `master`, the obvious commit is often wrong: on PR #12608 `git show 0fd3b1cece:…slang-ir-specialize.cpp` was used as "master baseline," but `0fd3b1cece` was a *merge commit* whose tree already contained the branch's fix, so the swap compared fix-vs-fix and the delta was meaningless. The true merge-base is `git merge-base HEAD origin/master`, and for a branch that merged master via a merge commit `M`, that base is `M^2` (the master parent), NOT `M`; confirm the baseline is fix-free by grepping for a marker the change introduces (`git show <base>:path | grep -c <new-symbol>` should be 0 on the baseline, non-zero on HEAD) and that master hasn't touched the file since (`git diff <base>..origin/master -- path` empty). Also: **interleave head/base samples for shared-host perf** — prebuild both `.so`s and alternate per sample (drift is shared between each pair and cancels out of the delta); all-head-then-all-base lets host-load drift bias the medians (the same Release binary swung ~1633↔1946 ms run-to-run), which turned a spurious "17% slower" into a true flat result ([swap-only perf baseline: verify the baseline commit is actually fix-free (merge-commit trap)](../learnings/1789655219525-swap-only-perf-baseline-verify-the-baseline-commit.md)).
 
 ## Blast-radius grep, scratch-file hygiene, and build races
 
@@ -131,7 +133,7 @@ compounds and overflows float32). And an import-time regression guard should pin
 filler swap must stay op-count and growth-character
 neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md)).
 
-**Source learnings (12):**
+**Source learnings (13):**
 - [Scratch PR-body file can leak into the commit via git add during --amend](../learnings/1787566872697-scratch-pr-body-file-can-leak-into-the-commit-via-.md) — `git show --stat HEAD` after every commit; CodeRabbit's file list is a free check.
 - [Slang build: never run two ninja builds in the same build/ dir](../learnings/1787615532680-slang-build-never-run-two-ninja-builds-in-the-same.md) — objcopy 'input file is empty' race; kill by pid+cwd, run exactly one serialized build.
 - [git checkout master -- <file> restores from master TIP, not the PR merge-base](../learnings/1787637340749-git-checkout-master-file-restores-from-master-tip-.md) — restore from `git merge-base`; verify with the three-dot diff.
@@ -144,3 +146,4 @@ neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count
 - [FileCheck CHECK-NOT is region-scoped — use a dedicated NOT-only prefix](../learnings/1787629056398-filecheck-check-not-is-region-scoped-use-a-dedicat.md) — an absence-only prefix scans the entire output; prove it with a must-fail mutation.
 - [FileCheck -NOT between positive matches has interval blind spots; use an absence-only prefix](../learnings/1787699239962-filecheck-not-between-positive-matches-has-interva.md) — split into a "present" prefix and an all-CHECK-NOT prefix.
 - [Non-expanding filler swap must stay op-count and growth-character neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md) — preserve op-count + recurrence sign; pin the property (sin/cos-free), not a literal.
+- [swap-only perf baseline: verify the baseline commit is actually fix-free (merge-commit trap)](../learnings/1789655219525-swap-only-perf-baseline-verify-the-baseline-commit.md) — a merged-master branch's baseline is `M^2` not the merge commit `M`; grep a fix marker to confirm fix-free; interleave head/base samples so shared-host drift cancels.

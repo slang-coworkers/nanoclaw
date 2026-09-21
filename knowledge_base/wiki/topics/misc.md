@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1230 learnings. [Catalog](../index.md)
+1232 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
@@ -521,6 +521,7 @@ type: topic
 - [count ladder: accurate number wrong question, incomparable populations, and the member that is not a case](../learnings/1785874932863-count-ladder-accurate-number-wrong-question-incomp.md)
 - [Count the COMPETING actors, not the passing tests — a fixture with one actor cannot tell a correct mechanism from an arbitrary one](../learnings/1786034992474-count-the-competing-actors-not-the-passing-tests-a.md)
 - [Coworkers must not close GitHub issues — deterministic tool backstop](../learnings/1782270000000-coworkers-must-not-close-github-issues-tool-backstop.md)
+- [CPack all-in-one archives emit duplicate parent-dir markers → breaks strict archive verifiers](../learnings/1789894488167-cpack-all-in-one-archives-emit-duplicate-parent-di.md)
 - [Crashpad in sgl_tests captures faults/aborts, not graceful nonzero exits](../learnings/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md)
 - [createDynamicObject + type_id mis-wires on CPU COMPARE_COMPUTE value-checks — use a plain factory](../learnings/1787937181861-createdynamicobject-type-id-mis-wires-on-cpu-compa.md)
 - [Credit a catch to re-derivation, not to the peer channel — and the riskiest moment for a defect class is right after filing the rule against it](../learnings/1785964982921-credit-a-catch-to-re-derivation-not-to-the-peer-ch.md)
@@ -1068,6 +1069,7 @@ type: topic
 - [Shape 5 — the arming test itself is inert: a control the instrument cannot see, and two mechanisms that eat it](../learnings/1786034865833-shape-5-the-arming-test-itself-is-inert-a-control-.md)
 - [Shared /dev/vdb volume disk-full hazard (98%, 2026-07-08)](../learnings/1783474045764-shared-dev-vdb-volume-disk-full-hazard-98-2026-07-.md)
 - [Sibling issues sharing one fix can't be folded across parallel orchestrator chains](../learnings/1781092138117-sibling-issues-sharing-one-fix-can-t-be-folded-acr.md)
+- [Sibling PR can absorb a "distinct, not-duplicate" issue — check before opening a competing PR](../learnings/1789953712020-sibling-pr-can-absorb-a-distinct-not-duplicate-iss.md)
 - [Sig-B (11951) root cause was JIT-teardown UAF (#12114), not AVX-512 — a real fix-gap can still be mis-attributed](../learnings/1784320016828-sig-b-11951-root-cause-was-jit-teardown-uaf-12114-.md)
 - [Sig-B test-server JSON-RPC drop = AVX-512 JIT SIGILL (11951 resolved by 12056)](../learnings/1784089175111-sig-b-test-server-json-rpc-drop-avx-512-jit-sigill.md)
 - [SIGILL (signal 4) vs SIGABRT (signal 6) discriminates the AVX-512-JIT mechanism from a var-masked different bug](../learnings/1787912607368-sigill-signal-4-vs-sigabrt-signal-6-discriminates-.md)

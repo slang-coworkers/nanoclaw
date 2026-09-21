@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-723 learnings. [Catalog](../index.md)
+724 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -308,6 +308,7 @@ type: topic
 - [Critique-gate OUTPUT_REVIEW is sticky within a reused codex thread](../learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-reu.md)
 - [Critique-gate records verdict from fresh codex calls, not codex-reply rounds](../learnings/1781661845733-critique-gate-records-verdict-from-fresh-codex-cal.md)
 - [critique-gate stage detector keys on the FIRST stage-keyword in the codex prompt — lead with the bare STAGE: line](../learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md)
+- [critique-gate: codex-reply does NOT count — use fresh mcp__codex__codex with verbatim developer-instructions each round](../learnings/1789943197626-critique-gate-codex-reply-does-not-count-use-fresh.md)
 - [critique-gate: codex-reply re-verify must NOT contain a literal "STAGE:" line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
 - [critique-gate: PLAN_REVIEW is required + any side-artifact edit re-arms the OUTPUT gate](../learnings/1785191965028-critique-gate-plan-review-is-required-any-side-art.md)
 - [critique-gate: STAGE marker in codex PROMPT + "### Verdict" block in codex RESPONSE, one call per stage](../learnings/1781321980304-critique-gate-stage-marker-in-codex-prompt-verdict.md)

@@ -3,7 +3,7 @@ title: Triage Discipline, Regression Classification, and the Draft-PR Workflow
 type: concept
 group: misc
 tags: [triage, regression, runtime-bisect, draft-pr, structural-ray-tracing, fork-pr, workaround, docs-site]
-source_count: 12
+source_count: 14
 ---
 
 ## TL;DR
@@ -68,6 +68,10 @@ routing a "PR-changed" nudge, and brief the fixer that the work landed under a d
 ([reconcile when your fix PR is closed in favour of a
 fork](../learnings/1787558759338-reconcile-when-your-fix-pr-is-closed-in-favour-of-.md)).
 
+## Open the draft PR early — supersession by parallel PRs, and sibling-PR dedup
+
+Holding a branch local until the critique gate fully passes is the anti-pattern that gets a done-or-nearly-done fix superseded by a parallel PR. In one supervisor tick two fixer chains were reaped as superseded by the identical mechanism: #12731 ("pad empty callable-data") — our `fix/issue-12731` branch was never pushed (build interrupted by two container restarts) and merged sibling PR #12723 grew to cover it with the same approach; and #12758 ("serialized IR module version range never enforced") — our branch stalled mid critique-gate loop across a session restart and merged PR #12905 shipped it. In both the work was essentially done but sat **without even a draft PR** because the fixer held until the gate passed / the build finished, and a container restart wiped the in-flight momentum. Rule: **open the draft PR early — as soon as there's a branch with a plausible fix — to claim the work and make it visible**; a draft PR makes the work discoverable so a maintainer doesn't independently re-solve it, survives container restarts as durable GitHub state (an un-pushed local branch does not), and costs nothing (draft PRs yield CI to human priority via `wait-for-human-priority`). The critique gate should block **merge/ready**, not **draft-PR creation** ([a bot fix that stalls pre-draft-PR across restarts gets superseded by parallel PRs](../learnings/1789953919671-a-bot-fix-that-stalls-pre-draft-pr-across-restarts.md); supervisor note: superseded-by-foreign-PR is a Step-7 postmortem, superseded-by-our-own-merged-PR is not). The dedup complement: when a sibling PR is OPEN and touches the *exact same file/helper* as your fix, re-check its current scope/title before opening a competing PR — maintainers often grow one PR to cover a linked issue rather than take two, and a triage "not a duplicate" reflects the state at triage time, not the eventual merge (on #12731 the independently-built Approach A converged exactly with #12723's merged solution — padding empty payloads to a dummy `int` field is the established pattern for the empty-struct-legalizes-to-`none` class, since the shared `legalizeInst` "non-simple operand(s)!" default-arm assert is not empty-struct-specific; and empty callable/ray payloads crash on `-target glsl` too, since the existing pad pass was gated `isD3DTarget || isSPIRV`) ([sibling PR can absorb a "distinct, not-duplicate" issue — check before opening a competing PR](../learnings/1789953712020-sibling-pr-can-absorb-a-distinct-not-duplicate-iss.md)).
+
 ## The structural-RT draft PR #12691 pattern
 
 A recurring cluster (#12718, #12728, #12740, #12742, #12743, #12744, #12745, #12747) — all authored by
@@ -118,7 +122,7 @@ implement should be `[sealed]` (stdlib interfaces default to `[open]`; cross-mod
 ([structural RT primitive markers must be sealed — open marker + open Custom bucket = target-lowering
 SIGSEGV](../learnings/1787669679140-structural-rt-primitive-markers-must-be-sealed-ope.md)).
 
-**Source learnings (12):**
+**Source learnings (14):**
 - [Reconcile when your fix PR is closed in favour of a fork](../learnings/1787558759338-reconcile-when-your-fix-pr-is-closed-in-favour-of-.md) — a closed PR number you cited is a stale public fact; verify state from GitHub before nudging.
 - [Prebuilt release binaries are a free runtime bisect](../learnings/1787635116151-prebuilt-release-binaries-are-a-free-runtime-bisec.md) — a byte-identical function across the window falsifies a bisect hypothesis on its own.
 - [Don't apply the regression label from a code-history hypothesis — runtime-bisect first](../learnings/1787635407452-don-t-apply-the-regression-label-from-a-code-histo.md) — ToT-repro proves the bug is real, not that it regressed; the label shapes priority.
@@ -131,3 +135,5 @@ SIGSEGV](../learnings/1787669679140-structural-rt-primitive-markers-must-be-seal
 - [Structural RT primitive markers must be sealed — open marker + open Custom bucket = SIGSEGV](../learnings/1787669679140-structural-rt-primitive-markers-must-be-sealed-ope.md) — an open catch-all arm for a closed set is a crash trap; fix at the front end.
 - [Structural-RT Dev-Opened issues on PR #12691 are author self-fixes — verify-and-bounce](../learnings/1787670623857-structural-rt-dev-opened-issues-on-pr-12691-are-au.md) — resolution is an author/operator call; runtime-use fixes must survive -ignore-capabilities.
 - [On an active draft PR, the reported bug is often already fixed on-branch — verify before building](../learnings/1787671408861-on-an-active-draft-pr-the-reported-bug-is-often-al.md) — anchor reports on durable fact + timestamp, not a fast-moving head SHA.
+- [a bot fix that stalls pre-draft-PR across restarts gets superseded by parallel PRs](../learnings/1789953919671-a-bot-fix-that-stalls-pre-draft-pr-across-restarts.md) — open the draft PR early (survives restarts, claims the work, yields CI); the gate blocks merge/ready, not draft creation; superseded-by-our-own-merged skips the postmortem.
+- [sibling PR can absorb a "distinct, not-duplicate" issue — check before opening a competing PR](../learnings/1789953712020-sibling-pr-can-absorb-a-distinct-not-duplicate-iss.md) — re-check an open sibling PR's current scope before competing; pad empty payloads to a dummy int (the shared default-arm assert isn't empty-struct-specific); GLSL crashes too.

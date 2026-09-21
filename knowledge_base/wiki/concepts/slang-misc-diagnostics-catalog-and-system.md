@@ -25,7 +25,7 @@ This page covers the Slang diagnostics system from three angles: the Lua-driven 
 
 ## Lua-Driven Diagnostic Definitions
 
-New compiler diagnostics must be added to `source/slang/slang-diagnostics.lua`, **not** the stale `slang-diagnostic-defs.h`. The parser accepts both `[attr]` and `[[attr]]` syntax. No-arg marker attributes only require two edits (`.meta.slang` + `.h`) ([Slang diagnostics are Lua-driven (slang-diagnostics.lua), not slang-diagnostic-defs.h](../learnings/1780493209457-slang-diagnostics-are-lua-driven-slang-diagnostics.md)).
+New compiler diagnostics must be added to `source/slang/slang-diagnostics.lua`, **not** the stale `slang-diagnostic-defs.h`. The parser accepts both `[attr]` and `[[attr]]` syntax. No-arg marker attributes only require two edits (`.meta.slang` + `.h`) ([Slang diagnostics are Lua-driven (slang-diagnostics.lua), not slang-diagnostic-defs.h](../learnings/1786010193246-slang-diagnostics-moved-from-slang-diagnostic-defs.md)).
 
 `Diagnostics::Unimplemented` carries `Severity::Internal` which triggers `SLANG_ABORT_COMPILATION` and produces a "file a GitHub issue" message — making it inappropriate for user-correctable limitations. Use dedicated error diagnostics or `SLANG_ASSERT` instead ([Slang Diagnostics::Unimplemented is Severity::Internal — aborts compilation, wrong channel for user-actionable errors](../learnings/1781784301760-slang-diagnostics-unimplemented-is-severity-intern.md)).
 
@@ -116,7 +116,7 @@ The worked *incidents* — E36121-as-a-pre-existing-discard, proving a one-site 
 - [catalog drift in _classify/cmd_list_stale](../learnings/1780355704625-slang-11410-catalog-drift-lives-in-classify-cmd-li.md)
 - [regenerate.py is lint, not generator](../learnings/1780358048390-slang-diagnostics-catalog-regenerate-py-is-lint-to.md)
 - [diagnostic-numbering caveat](../learnings/1780489631750-slang-shader-coverage-64-bit-counter-feasibility-d.md)
-- [diagnostics are Lua-driven](../learnings/1780493209457-slang-diagnostics-are-lua-driven-slang-diagnostics.md)
+- [diagnostics are Lua-driven](../learnings/1786010193246-slang-diagnostics-moved-from-slang-diagnostic-defs.md)
 - [cross-file pragma warning scope breaks](../learnings/1780594750097-slang-cross-file-pragma-warning-scope-breaks-via-a.md)
 - [Warnings render as warning[ECODE] — CHECK-NOT: warning NNNNN is vacuous](../learnings/1780600389554-slang-warnings-render-as-warning-ecode-check-not-w.md)
 - [stdlib deprecate-and-hide two mechanisms](../learnings/1780918035054-slang-stdlib-deprecate-and-hide-from-docs-deprecat.md)
