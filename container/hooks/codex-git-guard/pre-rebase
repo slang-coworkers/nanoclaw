@@ -1,0 +1,4 @@
+#!/bin/sh
+# codex-git-guard: see pre-commit. Fires before `git rebase` touches anything.
+echo "codex critique is read-only: git pre-rebase refused (codex-git-guard)" >&2
+exit 1
