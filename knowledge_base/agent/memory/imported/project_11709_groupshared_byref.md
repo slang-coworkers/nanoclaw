@@ -1,95 +1,93 @@
 ---
 name: project_11709_groupshared_byref
-description: "slang PR #11709 / issue #10641: pass bare groupshared array params by reference. Long chain — grew to Khronos+HLSL+CUDA+Metal+WGSL codegen, [noinline]/export policy (E30708-E30710), and call-site l-value E30711; diagnostic renumbered 30705->30706->30707 after a real cross-PR collision with #11885. State per file: OPEN, non-draft, csyonghe-vs-jhelferty design fork on __constref held. ⛔ Do NOT relay '#11709 verified green' — the early 'built green, zero regressions' claim was per-target INCOMPLETE (regressed 38 CUDA neural tests). ⛔ Also: the byte-identical CUDA signature cited as proof that `const groupshared` lowers like RW was NON-DIAGNOSTIC (CUDA prints a raw pointer for every by-reference mode); the claim was true, the evidence could not discriminate — the IR dump is the discriminator."
-metadata: 
+description: "slang PR #11709 / issue #10641: pass bare groupshared array params by reference. Grew to a five-backend codegen fix (Khronos+HLSL+CUDA+Metal+WGSL) + [noinline]/export policy (E30708-E30710) + call-site l-value E30711; diagnostic renumbered 30705->30706->30707 after a real cross-PR collision with #11885. ⛔ Never relay '#11709 verified green' — the early 'built green, zero regressions' was per-target INCOMPLETE (regressed 38 CUDA neural tests). ⛔ The byte-identical CUDA signature cited as proof was NON-DIAGNOSTIC — CUDA prints a raw pointer for every by-reference mode; the IR dump is the discriminator."
+metadata:
   node_type: memory
   type: project
   originSessionId: a5790b77-160e-4f43-8acc-cc66ac7dd6c3
 ---
 
-shader-slang/slang **#11709** ("Fix #10641: pass bare groupshared array parameter by reference") → PR **#11709** on branch `fix/issue-10641`, `Closes #10641`. (Note the issue and PR happen to share number 11709; the underlying bug issue is **#10641**, still OPEN.) slang-fixer chain.
+# #11709 — groupshared array param by reference (fix #10641)
 
-**Substance:** a bare `groupshared` array passed as a function parameter was lowered by-value, producing incorrect DXIL for backward-indexing patterns (#10641). Fix = unconditional by-reference lowering. Design surface handled with maintainer jhelferty-nv:
-- **§1** unconditional by-ref lowering + assert — drops the reviewer-flagged unprincipled `!hasModifier<InModifier>()` carve-out.
-- **§2** producer-side checker diagnostic **err 30705** rejecting `in`/`out`/`inout groupshared` (+ front-end-only diagnostic test, no GPU).
-- **§4** `get-address-validation.slang` fixed (other site is a DISABLE_TEST).
-- **docs** lead with `__constref groupshared` as the recommended read-only spelling — jhelferty-nv's explicit design answer to the open question the fixer had raised.
-- Fixer built green (one recoverable casing fix), zero regressions (new diag 1/1, diagnostics 517/517, compute 387/387, pointer 13/13, gh-10641 HLSL lane pass), clang-format clean. Committed `4ae3648e87`, pushed to `origin/fix/issue-10641`, finalized PR body, `pr: non-breaking` label, dispatched draft CI, posted push-confirmation comment.
+PR **#11709** on `fix/issue-10641`, `Closes #10641` (the issue and PR happen to
+share the number; the bug issue is **#10641**). slang-fixer chain, driven by
+maintainers jhelferty-nv and jkwak-work / csyonghe.
 
-**VERIFIED STATE 2026-07-07 ~18:53Z (Main at HEAD, corrects fixer's 18:49 report):**
-- PR #11709 is **non-draft** — flipped ready-for-review by **jhelferty-nv (maintainer)** at 18:51:06Z. **NOT a drafts-only breach** (maintainer flipped, not the bot — verified via issue timeline; matches [[feedback_drafts_only_guardrail]]). Fixer's repeated "draft" framing is STALE (maintainer flipped it ~2 min after the fixer's summary).
-- reviewDecision = **CHANGES_REQUESTED** (jhelferty-nv), mergeState = **DIRTY** (needs rebase). This verdict landed at ~18:51, AFTER the fixer declared the chain "webhook-driven, awaiting jhelferty's verdict." So the verdict is already IN — a fresh round-2 maintainer review the fixer had not yet seen at report time.
-- **CI:** the `github.ci_failed` on `4ae3648e8` the fixer classified was a benign priority-yield (only `wait-for-human-priority`+`check-ci` "failed"; 27 build/test jobs skipped; `filter` succeeded) — verifies nothing, `retry-yielded-bot-ci` auto-reruns. Consistent with [[project_bot_pr_priority_yield_red_run]].
+**Substance:** a bare `groupshared` array passed as a function parameter was lowered
+by-value → incorrect DXIL for backward-indexing (#10641). Fix = **unconditional
+by-reference lowering** (drops the reviewer-flagged unprincipled
+`!hasModifier<InModifier>()` carve-out), plus a producer-side checker diagnostic
+rejecting `in`/`out`/`inout groupshared`.
 
-**Routing decision (Main):** did NOT dispatch to the fixer. This is the fixer's chain on a single session; the maintainer's CHANGES_REQUESTED + ready-flip are GitHub events that webhook to the fixer's PR→session mapping (established over prior review rounds). Messaging now would be double-dispatch on an event the webhook already carries ([[feedback_no_double_dispatch_peer_wired]], [[feedback_let_fixer_own_single_session]]). Peer reviewer wasn't addressable this session so internal peer review was skipped — maintainer IS the reviewer here. Merge/ready-flip stay operator-gated for the bot; jhelferty owns both here.
+## What the chain grew into (final shape)
 
-**Next action / watch:** fixer should wake on jhelferty's CHANGES_REQUESTED webhook and drive round 2 (read the review body + inline count first per [[feedback_changes_requested_read_body]]; rebase to clear DIRTY). If supervise-issues shows this chain silent with the CHANGES_REQUESTED unhandled (webhook didn't route), THEN nudge the fixer on the canonical thread — but not before; don't reach past the webhook flow. Reopen/act only on that stall or a fresh substantive human comment.
+A change scoped as "Khronos + HLSL" turned out to span **five backends**:
 
-**Update 2026-07-07 ~18:55Z (fixer beats, mid-build — not yet pushed/verified):** fixer is driving the round-2 rebase itself: merged master, resolved a diagnostic-number collision **30705→30706** (both diags preserved), submodule synced, all 4 fix layers intact; waiting on build monitor, then push merge commit + dispatch draft CI + reply to maintainer. **WATCH — potential cross-PR collision:** #6319 (draft #11885, [[project_6319_dup_sysval_pr11885]]) already claims **E30706**. The fixer moved INTO 30706, so once #11709 pushes, verify at HEAD that 30706 isn't double-claimed by both open PRs (concurrent-PR diagnostic-number-collision hazard). Do NOT referee mid-build; re-verify the diagnostic number + PR state when the fixer reports its terminal push, and if both PRs land on 30706, surface it (the second-to-merge will need a bump). Did not message the fixer — progress beat, its chain to own.
+1. **CUDA** (`shared-memory-pool.slang`): `getSharedBaseAddr` intrinsic `($0).m_data`
+   → `($0)->m_data`. jhelferty directed: emit the by-ref groupshared param as a
+   **pointer/decayed param** — do NOT extend Khronos forced-inlining to CUDA, do NOT
+   copy the HLSL keyword-strip into CUDA emit.
+2. **Metal** (`slang-ir-specialize-address-space.cpp`): rate-qualified groupshared
+   param pointer types were skipped (`as<IRPtrTypeBase>` null through the
+   `RateQualified` wrapper); use `getDataType()`/`setDataType()` → emits `threadgroup*`.
+3. **WGSL** (`slang-ir-inline.cpp` + `slang-emit.cpp`): groupshared-only inlining
+   mode run BEFORE `legalizeIRForWGSL`, so the callee inlines away before
+   call-legalization bridges the shared global through a copy-in/out temp.
+4. **Target-aware `[noinline]`/`export` policy:** HLSL → **E30708**;
+   GLSL/SPIR-V-via-GLSL/WGSL → **E30709**; direct-SPIR-V keeps the boundary + emits
+   `SPV_KHR_variable_pointers`; **E30710 + `SLANG_FAIL`** backstops the
+   `linkWithOptions` option-drift path (clean error, not ICE).
+5. **Call-site l-value restriction E30711:** an argument to any `groupshared`
+   parameter must name thread-group-shared storage, checked by reusing
+   `getValidTypeForAddressOf` and accepting iff the AST `PtrTypeBase`'s address space
+   == `GroupShared`.
 
-**COLLISION CONFIRMED 2026-07-07 ~19:02Z (Main verified at HEAD, pushed commit `54a98c09a2`).** #11709 is non-draft/OPEN/mergeState BLOCKED, diagnostic now at **E30706**. But the fixer resolved only against MASTER (which has 30705=`multiple-depth-output-semantics` #11863, NOT 30706) — it could not see that **#6319 / PR #11885 ([[project_6319_dup_sysval_pr11885]]) already reserved E30706** for duplicate-system-value-semantics, with 30706 wired through ~8 test CHECK lines + its `-- 30705 is reserved for #11863` comment. So BOTH open PRs now define E30706; master has neither PR's number yet, so neither PR's CI catches the dup → whichever merges SECOND collides (silent double-define or a uniqueness-check CI fail). Cross-chain finding invisible to either fixer session — surfaced to slang-fixer as a heads-up (in_reply_to 18688), recommending #11709 move to **30707** (since #11885 reserved 30706 first and has it baked through its tests), fixer's call. NOT deciding it for them; NOT operator-gated (a diagnostic renumber is a code push). Watch: verify one of the two moves off 30706 before either merges.
+**Held design fork:** csyonghe implied read-**only**-by-ref (`__constref`);
+jhelferty directed read-**write**-by-ref as the default. Fixer surfaced the tension
+to both maintainers with verified facts and **held** rather than picking — the same
+neutral-hold pattern as #12219's csyonghe-vs-pdeayton fork.
 
-**2026-07-22 16:01 — STALE-RED CLEARED + rebased to current master; fresh CI in flight (fixer msg 56168).** #11709/`fix/issue-10641` resurfaced. Fixer diagnosed the prior red `test-linux-release-gcc-x86_64-sm80 / test-slang` as a **benign GPU-priority-yield/setup abort, NOT a genuine test failure** — ran ~65s with `steps: []` (no failing test step), run was from July 11 (logs expired), branch was **73 commits behind master**. Merged `origin/master` into `fix/issue-10641` cleanly (no conflicts), verified submodule pointers match master + the 10-file PR change intact, pushed head **`be7b2a4c6`**. Fresh `pull_request` CI run `29936029071` auto-triggered on new head (no manual dispatch, non-draft). Correct priority-yield diagnosis ([[project_bot_pr_priority_yield_red_run]]) + rebase-not-gated ([[feedback_pushes_not_gated]]).
+## Durable, reusable lessons
 
-**🔴 2026-07-22 17:39 — FRESH CI (post-rebase) found a GENUINE CUDA REGRESSION caused by this PR (fixer msg 56174; A/B-proven).** The rebase's fresh `pull_request` CI split into two reds:
-- **`test-falcor / Test (Falcor)`** → **infra flake** ("self-hosted runner lost communication with the server"); not this change, re-runnable.
-- **`test-linux-release-gcc-x86_64-sm80 / test-slang`** → **REAL regression from this PR.** 38 `tests/neural/` **CUDA** variants fail with nvrtc error `((&data_0)).m_data` (`.m_data` on a pointer). **Root cause:** the PR's by-ref `groupshared` param change breaks `getSharedBaseAddr`'s intrinsic at `shared-memory-pool.slang:59` which assumes **by-value** — the by-ref fix landed only for **Khronos (inline pass) + HLSL (emit), NOT CUDA.** A/B-proven: master head `d384b77e6` passed these same tests 12:07Z today. So the fix is INCOMPLETE across targets, not merge-ready.
-- **Fixer offered fix direction** (extend by-ref groupshared inlining to CUDA, OR unwrap in `slang-emit-cuda.cpp` like HLSL) and **HELD for maintainer confirm** — jhelferty scoped this round to "assess," and there's a genuine design choice (which layer). Correct: assess-scope respected, didn't unilaterally implement. Posted assessment on PR; recorded `fix-10641.md` + shared learning. **Next:** webhook-driven — fixer implements if jhelferty confirms the direction. So #11709 is NOT close to merge; the CUDA target-coverage gap is the live blocker.
+- **⛔ Per-target completeness.** "built green, zero regressions" was true only for the
+  targets the fixer ran; the CUDA `tests/neural/` suite (38 variants, A/B-proven
+  against master head) exposed the by-ref lowering wasn't wired for CUDA. A green claim
+  is scoped to the targets actually exercised. [[feedback_never_relay_a_verdict_not_in_hand]].
+- **⛔ Non-diagnostic evidence.** The byte-identical CUDA signature cited as proof that
+  `const groupshared` lowers like RW could not discriminate — CUDA prints a raw
+  pointer for *every* by-reference mode. The claim was true, the evidence couldn't
+  tell it from the alternative. The **IR dump** is the discriminator.
+- **A mid-pipeline `getErrorCount() != 0` bail must gate on a DELTA, not an absolute
+  count.** E30710's backstop aborted `linkAndOptimizeIR` on ANY prior error, so tests
+  emitting an early diagnostic lost a later expected one (from a pass that runs after
+  the early-return). Fix: capture the count before the pass, abort only when it
+  *changes*. Local per-directory runs missed it (they ran only new + targeted tests,
+  not pre-existing early-error+later-diagnostic combos); CI caught it.
+- **Concurrent-PR diagnostic-number collision.** Two open PRs adding diagnostics off a
+  shared master baseline can both claim the same number; master has neither yet, so
+  neither PR's CI catches the dup → whichever merges second collides. #11709 progressed
+  30705→30706→**30707** to yield 30706 to #11885 ([[project_6319_dup_sysval_pr11885]]),
+  which had it baked through its tests first. **Verify at HEAD that a new diagnostic
+  number isn't double-claimed by another open PR before merge.**
+- **Priority-yield red runs are benign.** The `test-slang` reds the fixer classified
+  were bot-PR priority-yields (short run, `steps: []`, only `wait-for-human-priority`
+  "failed") — verify nothing; `retry-yielded-bot-ci` auto-reruns.
+  [[project_bot_pr_priority_yield_red_run]]. Rebases/pushes are not operator-gated
+  ([[feedback_pushes_not_gated]]); merge/ready-flip are.
 
-**✅ 2026-07-22 19:23Z — jhelferty-nv CONFIRMED the CUDA fix direction; fixer implementing (Main-verified on PR thread).** Maintainer direction (comment, @nv-slang-bot): **do NOT extend Khronos forced-inlining to CUDA, do NOT copy the HLSL keyword-strip into CUDA emit.** A `groupshared` param is always a reference to one shared address → emit the by-ref groupshared param as a **pointer/decayed param** (no `__shared__` on the param, no forced inline). Fixer acked with matching impl plan 19:24Z. **Hold released correctly on maintainer input** — NOT jumping "assess-only" scope; jhelferty gave the go + backend policy.
+## Co-presence of two spellings is not a conflict (2026-08-10)
 
-**✅ 2026-07-22 21:35 — CUDA regression FIX PUSHED `e84414c5f`, THREE-BACKEND completion (fixer msg 56194; non-draft, CI run `29959598246` running).** Four changes, locally verified:
-1. **CUDA** (`shared-memory-pool.slang`): `getSharedBaseAddr` intrinsic `($0).m_data`→`($0)->m_data`. 10 previously-failing neural CUDA tests now compile via `-target cuda` + `-target ptx` (NVRTC).
-2. **Metal** (`slang-ir-specialize-address-space.cpp`): fixed a genuine abort — rate-qualified groupshared param pointer types were SKIPPED by address-space specialization (`as<IRPtrTypeBase>` null through the `RateQualified` wrapper); switched to `getDataType()`/`setDataType()` → Metal emits `threadgroup*`.
-3. **WGSL** (`slang-ir-inline.cpp`/`.h` + `slang-emit.cpp`): groupshared-only inlining mode, run BEFORE `legalizeIRForWGSL` so the callee inlines away before call-legalization bridges the shared global through a copy-in/out temp (codex-caught subtlety).
-4. Tests: `tests/bugs/gh-10641-cuda.slang` (CUDA/NVRTC/Metal) + `tests/wgsl/groupshared-param-inlined.slang`. Local 7/7 lanes, `tests/metal` 194/194, `tests/wgsl` 55/55. codex CODE_REVIEW approve (3 must-fix addressed), format clean, no AI attribution.
-So the by-ref groupshared fix now genuinely spans **Khronos + HLSL + CUDA + Metal + WGSL** (was Khronos+HLSL only → the CUDA gap that regressed). **✅ that `e84414c5f` CUDA/Metal/WGSL codegen fix went GREEN in CI incl the previously-red sm80 lane** (confirmed fixer msg 69624).
+I told the fixer a test divergence "is therefore your own later edit," inventing a
+defect. Truth, verified at the branch sha: **one file held prose describing the
+PRE-fix behavior (`BorrowInOutParam`) beside an assertion pinning the POST-fix
+behavior (`RefParam`)** — no stale half, no second version. And I'd `grep`ed the path
+in my own clone (on `master`), where the file **doesn't exist** — a bare
+`No such file or directory` would have "confirmed" the phantom just as easily.
 
-**✅ 2026-07-27 20:43 — target-aware `[noinline]`/`export` groupshared-param POLICY shipped, pushed `5ddb34650` (fixer msg 69624; non-draft, CI run 30303691759 running).** The larger feature jkwak's review directed (beyond the codegen fix): **6 source files + 5 tests, codex-approved after 3 rounds.**
-- **FE diagnoses per target:** HLSL → **E30708** (`[noinline]`/`export`); GLSL/SPIR-V-via-GLSL/WGSL → **E30709** (`[noinline]` blocks required inlining); direct-SPIR-V/Metal/CUDA **allowed**.
-- **IR:** stops force-inlining `[noinline]` groupshared callees; direct SPIR-V keeps the boundary + emits **`SPV_KHR_variable_pointers`** (cap derived from param rate).
-- **Backstop:** **E30710 + `SLANG_FAIL`** for the `linkWithOptions` option-drift path the FE can't see → clean error not ICE; new API unit test verifies.
-- **Review caught 4 subtle issues pre-ship:** biggest = `shouldEmitSPIRVDirectly()` returns true for plain GLSL too → direct-SPIR-V classification needed an `isSPIRV` guard on BOTH FE + IR sides; + FE/IR option-source drift via `linkWithOptions`.
-- **🔴→✅ 2026-07-27 22:23 — CI regression from `5ddb34650` self-caught + fixed, pushed `60cbe93ca` (fixer msg 69636).** The policy push went red on **4 UNRELATED diagnostic tests** (not the feature). **Bug:** the E30710 link-time-drift backstop's `if (sink->getErrorCount() != 0) return SLANG_FAIL` aborted `linkAndOptimizeIR` on ANY prior error → tests that emit an EARLY diagnostic and also expect a LATER one (from `checkUnsupportedInst`, which runs after the early-return) lost the later diagnostic because codegen bailed first. **Fix:** capture error count BEFORE the pass, abort only when it CHANGES (delta) — guard fires only when the pass itself reported the illegal boundary, never suppressing unrelated later diagnostic passes. A/B-verified (master 4/4 pass, old branch 4 fail); full regression `tests/diagnostics`+`tests/bugs` 1355/1355, spirv+wgsl+metal 792/792, all groupshared+drift green. **Lesson (fixer recorded):** a mid-pipeline `getErrorCount()!=0` bail must gate on a **DELTA, not an absolute count** — else it suppresses later expected diagnostics from downstream passes. Local per-directory runs missed it (only ran new tests + targeted regressions, not pre-existing early-error+later-diagnostic combos) — CI caught it. Honest process-gap acknowledgment.
-- **Next:** fixer watches CI 30310492658 (head `60cbe93ca`), reports on PR; then jkwak/jhelferty review of the completed policy. Merge OPERATOR-gated. Do NOT relay "green"/"approved" until CI + review confirm ([[feedback_never_relay_a_verdict_not_in_hand]]). Chain OPEN, fixer owns, webhook-driven.
-- ⚠️ Memory-scoping note for the record: the earlier design summary (§1/§2/§4 "built green, zero regressions") was per-target-INCOMPLETE — the CUDA `neural/` suite exposes the by-ref lowering wasn't wired for CUDA. Don't relay "#11709 verified green" — it regresses CUDA. [[feedback_never_relay_a_verdict_not_in_hand]].
-
-Diagnostic stays E30707 (collision-resolved below).
-
-**✅ 2026-07-30 17:22Z — REVIEW ROUND 2 (jkwak) RESOLVED, pushed `abbcc6a` (fixer msg 78410).** Two maintainer-requested changes, both codex-approved + replied per review thread:
-1. **HLSL 0043 comment** (`78e4a72`) — target-policy comment now cites DXC error 0043 + explains `export`, like `[noinline]`, forces a call boundary.
-2. **Blanket groupshared-arg restriction** (`abbcc6a`) — an argument to ANY `groupshared` parameter must now name thread-group-shared storage (**new error E30711**), checked at CALL SITE by reusing existing `getValidTypeForAddressOf` + accepting iff the resulting AST `PtrTypeBase`'s address space == `GroupShared`. Also extended that shared helper (benefits `&expr` too) to handle nested parens + single matrix components.
-- **Process lesson (fixer recorded, worth noting):** codex caught TWO wrong turns pre-ship — (a) an AST-shape heuristic with real false-rejects (parens, matrix swizzle, groupshared-pointer deref), then (b) a FACTUALLY WRONG claim the fixer was about to send jkwak ("address space is IR-only, can't check in FE") — but `PtrTypeBase` IS an AST type + `getValidTypeForAddressOf` already exposed exactly what was needed. Lesson: **don't tell a maintainer something's impossible before verifying it** (mirrors [[feedback_never_relay_a_verdict_not_in_hand]] discipline, applied to feasibility claims).
-- Verified: diagnostics+bugs+language-feature 3538/3538, existing `get-address-validation.slang` (guards the shared helper) green, neural CUDA compiles clean, core module builds. Fresh CI `30565583523` running; fixer to report outcome.
-
-**✅ 2026-07-30 19:50Z — MASTER MERGE CONFLICT RESOLVED, pushed `6341c6412002b5e096b61ea64733b972649bb1e1`; PR now MERGEABLE (Main-verified: state=open, draft=false, mergeable=true, mergeable_state=blocked=awaiting-maintainer-merge-press NOT conflict).** Maintainer reported branch CONFLICTING; fixer merged origin/master (18 commits) — ONE content conflict in `source/slang/slang-emit.cpp` WGSL target-switch case: **master's `legalizeBoolSwitchForTargetsRequiringIntSwitch`** (= the just-merged [[project_12260_enum_bool_switch_e39999]] PR #12275 L3, merged 18:01:42Z by skiminki-nv, commit 111f1ff715) vs **#11709's groupshared-by-ref inlining + error-count abort** (must precede `legalizeIRForWGSL`). Independent → fixer kept BOTH in correct order. Validated: merged tree rebuilds clean; groupshared suite + l-value test + link-drift unit test + get-address-validation 17/17; neural CUDA clean. Fresh CI `30576475620` running. **Full feature complete across ALL rounds** (CUDA/Metal/WGSL by-ref codegen + [noinline]/export policy + groupshared-arg l-value E30711 + 2 comment fixes + master merge). Fixer owns, webhook-driven, merge OP+maintainer-gated (jhelferty/jkwak). Await CI + maintainer merge.
-
-**⚠️ 2026-07-30 20:50Z — csyonghe REVIEW: point 1 done, point 2 = DESIGN FORK (fixer holding correctly).** csyonghe left 2 points:
-- **Point 1** (type-check groupshared arg↔param) — ALREADY implemented; verified E30711 fires on a non-groupshared arg. Done.
-- **Point 2** (auto-`__constref` model) — **genuine DESIGN FORK vs the read-WRITE-by-reference default jhelferty-nv directed.** csyonghe implies read-ONLY-by-ref (`__constref`); jhelferty directed read-write. Fixer surfaced the tension to BOTH maintainers with verified facts + asked them to align on read-write-vs-read-only default BEFORE reworking — did NOT unilaterally pick. codex OUTPUT_REVIEW-approved reply posted. **Two-maintainer scope-alignment needed (csyonghe vs jhelferty); fixer holds.** Same neutral-hold pattern as #12219's csyonghe-vs-pdeayton fork. No Main action.
-- **CI:** monitoring merge-push run `30576475620`; `test-falcor` shows a failure to classify (intermittent flake on prior runs — fixer will re-run if infra, flag if real). Await CI terminal + maintainer alignment on point 2. Draft, merge OP+maintainer-gated.
-- ⚠️ **DIAGNOSTIC-NUMBER WATCH (collision-prone chain):** this PR's err progressed 30705→30706→**30707** (main-error, collision-resolved w/ #11885 which holds 30706) and separately shipped E30708/E30709/E30710 (the target-aware policy). **New E30711** (groupshared-arg restriction) — verify at HEAD it doesn't collide with any other concurrent open PR's reserved diagnostic before merge (this chain has a documented concurrent-PR number-collision history; #6319/#11885 the prior hazard). Merge OPERATOR-gated; fixer owns, webhook-driven.
-
-**COLLISION RESOLVED 2026-07-07 ~19:12Z (Main verified at HEAD).** Fixer took the recommendation and moved #11709 to **30707** (`+ 30707, -- 30706 reserved for #11885 (duplicate-system-value-semantic)`, matching #11885's reservation-comment convention), rebuilt green (diag 1/1 err 30707, diagnostics 540/540), pushed `1b2d573707`, dispatched draft CI. Verified: #11709 diff = 30707, #11885 diff = 30706, master tops at 30705 → all three distinct, no double-define at any merge order. Watch closed. The intermediate `54a98c09a2` (30706) is superseded. Chain back to webhook-driven, awaiting jhelferty-nv review. NET: the cross-chain flag prevented a real merge-time collision neither fixer session could see — good catch to remember when two open PRs both add diagnostics off a shared master baseline (concurrent-PR number-collision hazard).
-## ⛔⭐⭐⭐ 2026-08-10 — I INFERRED A TEST DIVERGENCE THAT DOES NOT EXIST, FROM A PEER'S OWN FLAG, AND MY CLONE COULD NOT HAVE SHOWN ME OTHERWISE
-
-The fixer flagged a possible worktree collision: their test *"now asserts `RefParam` where I committed `BorrowInOutParam`"*, plus a commit they didn't recognize (`cf4dd01810`). ✅ **I correctly resolved the collision half** — `cf4dd01810` is bot-authored on `fix/issue-10641` = **their own PR #11709**, and they had reported shipping that exact sha to me 2h earlier; the other two sessions on that thread (triager, me) were 7 weeks idle. ⛔ **But I then told them the divergence "is therefore your own later edit," which invented a defect.** Their correction, verified line-for-line at `2875a54e7a`:
-```
-tests/bugs/gh-10641-const-groupshared-param.slang  (54 lines)
-  :9   PROSE       "...fell through to the read-write groupshared default and lowered to the same
-                    `BorrowInOutParam` as..."           <- describes PRE-FIX behavior
-  :50  prose       "...the bare spelling is the strict read-write reference `RefParam`..."
-  :54  ASSERTION   //CHECK-DAG: func %readWrite{{.*}}RefParam        <- the live claim
-  :47-48 ASSERTION //CHECK-DAG: func %readOnlyConst{{.*}}BorrowInParam  (x2)
-cf4dd01810's full patch (12,585 chars): RefParam 0 · BorrowInOutParam 0 · BorrowInParam 0
-                                        never touches that file at all
-```
-⇒ **One file, prose describing the old behavior beside an assertion pinning the new one. No stale half, no second version.**
-
-⇒ ⭐⭐⭐ **AND THE INSTRUMENT FAILURE IS THE ANCHOR-C SHAPE, EARNED AGAIN: I `grep`ed the path in MY clone, which is on `master` (`d7f3c47fcc`) — the file lives on THEIR BRANCH, so my read returned `No such file or directory`.** Had I run the grep *before* replying instead of after, a bare absence would have "confirmed" a phantom just as easily. ✅ **The fix is edge-independent reads: `gh api contents/<path>?ref=<sha>`, which resolved it in one call.** ⇒ **A path is not a claim about content until you name the ref — and my own store's ANCHOR C says exactly this about `/workspace/**` per-container paths. Same rule, git-ref axis.**
-
-⇒ ⭐⭐ **THEIR DIAGNOSIS OF MY ERROR IS SHARPER THAN MY OWN: "your inference was sound and only the premise was off — the reason it LOOKED like a later edit is that the strings coexist in the tree; the check that settled it was asking WHICH COMMIT EACH CAME FROM rather than whether both were present."** ⇒ **Co-presence of two spellings is not conflict. Attribute each occurrence to a commit AND to a role (prose vs assertion) before calling it a contradiction.** A `grep -l` that finds both strings answers "are both here", never "do both make the same claim".
-
-✅ **Their collateral checks, worth keeping:** the neighbouring `.slang.actual` is a gitignored slang-test artifact whose content **agrees** with expectations (37 `RefParam`-on-`readWrite`, 78 `BorrowInParam`-on-`readOnlyConst`) ⇒ leftover, not failure evidence; and `git status tests/` empty ⇒ no stray probe file can be swept into a commit.
-
-⚠️ **What I got right and should keep doing: flagging beat proceeding.** They stopped on the observation rather than the outcome, which is correct even though the outcome was benign — **a collision rule that only fires when a collision is real is untestable.**
+⇒ **Attribute each occurrence to a commit AND a role (prose vs assertion) before
+calling it a contradiction.** A `grep -l` finding both strings answers "are both
+here", never "do both make the same claim". A path is not a claim about content until
+you name the ref: read via `gh api contents/<path>?ref=<sha>`, which is
+edge-independent (same rule as ANCHOR C for per-container `/workspace/**` paths, on
+the git-ref axis). What was right and worth keeping: **flagging beat proceeding** — a
+collision rule that only fires when a collision is real is untestable.

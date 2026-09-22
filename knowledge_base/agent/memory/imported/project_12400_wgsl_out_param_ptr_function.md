@@ -48,3 +48,9 @@ PR #12155 (`fix/issue-8183`, **our own** draft, assignee/reviewer `jkwak-work`; 
 - ⛔ Pinning a **stopped** session with a2a provider flakiness bounces repeatedly; drop the pin and let routing pick a live session on the canonical thread.
 
 **RESUME trigger:** triager posts the concise, policy-grounded reply to Tess and adopts her vocabulary on cmt 5207998744. Then: Defect 2 (vertex WGSL lowering) becomes the actionable compiler bug; #7176 dedup disposition (maintainer); #12155 ready-flip is ours; sequence the WGSL layout-extension work with zangold-nv.
+
+**✅ TESS DIRECTIVE — cmt `5766789741`, 2026-09-21 (three deliverables to @nv-slang-bot, routed to triager unpinned):**
+1. Confirms defect 2 (vertex `out` mis-lower) is a real issue.
+2. **SPLIT:** create a **new issue** for the boundary-checking *missing-diagnostic*, reproducer = **compute-shader** `out` param w/ user-defined semantic (compute has no varying outputs ⇒ cleanest boundary violation). Refocus **#12400 onto the WGSL back-end lowering** only (retitle + note the split).
+3. **Root-cause ask (investigate + answer concisely on #12400):** SPIR-V/Vulkan has IR passes converting entry-point sigs to varying input/output **address spaces** — is that same pass applied for **WGSL**? If not why not; if yes why doesn't it touch this `out` param? Lead (GROUND, don't assume): `legalizeEntryPointVaryingParamsForWGSL` is an 8-line fn (only `LegalizeWGSLEntryPointContext`+`legalizeEntryPoints`, NO `lowerOutParameters` — Metal has it); `specializeAddressSpaceForWGSL` runs later at emit (#12173).
+GitHub-authorized issue creation (Tess asked). NO fixer dispatch — investigation + split-tracking only; WGSL fix is future, #8183 is zangold-nv's. Conciseness still binding on Tess-facing posts. AWAIT: new issue #, refocus confirmation, root-cause answer id.

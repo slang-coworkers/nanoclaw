@@ -1,68 +1,97 @@
 ---
-name: Self-wiring runaway-loop incident (SYSTEMIC + ongoing, 2026-06-02)
-description: Self-referential a2a wirings (platform_id agent:X:X) cause runaway empty-message loops; systemic across ALL agents, new ones still being minted; sever per-agent self-edge wirings, root cause unfixed
+name: Self-wiring runaway-loop incident (SYSTEMIC, 2026-06)
+description: Self-referential a2a wirings (platform_id agent:X:X, src==dst) cause runaway empty-ack self-wake loops, systemic across agents and re-minted on every self-route; the durable fix is a code guard in ensureA2aWiring, still pending. Reactive recipe = sever wiring + `ncl groups restart`. Includes the empty-ack loop decision tree and the diagnostic pitfalls.
 type: project
 originSessionId: 8e26fb9e-a17d-4359-b915-fc5aadc9dcb0
 ---
-Self-referential a2a messaging groups (platform_id `agent:<ag>:<ag>`, source==dest) route an agent's own chat output back into its own inbox → runaway empty-message self-wake loop ("Holding." / "No response needed." pings, growing). Distinct from the stall-sweep incident (host-fabricated relay directives); this is erroneous wiring.
 
-**Systemic scope (audit 2026-06-02 ~15:30 IST):** EVERY agent has (or had) a self-edge messaging group — NOT the one-off triage+fixer thing the prior fix assumed.
+# Self-edge a2a runaway loops
 
-Audit command:
+A self-referential a2a messaging group (platform_id `agent:<ag>:<ag>`, source ==
+dest) routes an agent's own chat output back into its own inbox → a runaway
+empty-message self-wake loop ("Holding." / "No response needed." pings, growing
+every ~15–30 s). **Systemic:** essentially every agent has held a self-edge mg, and
+they are **re-minted on the next self-route** after any manual deletion.
+
+## Root cause (nanoclaw read-only investigation, branch `sync/upstream-nv-main`)
+
+`ensureA2aWiring()` (`src/modules/agent-to-agent/agent-route.ts`, fresh-delegation
+branch) mints the `agent:<ag>:<ag>` mg + `mga` wiring on any **self-targeted
+fresh-delegation** a2a (`<message to="<own-name>">`), and the mint runs **BEFORE**
+the same-session guard — so the guard drops the self-*delivery* but not the self-edge
+*creation*. `wire_agents` (rejects src==dst) and `create_agent` are ruled out. There
+is **no GC**: sessions are born `status='active'`, no prod code sets otherwise, and
+the sweep wakes by session+inbound.db, never by wiring — so severing a wiring cannot
+stop a live looper. (`status='closed'` exists in the enum but is unreachable in prod.)
+
+## Reactive fix recipe (v2, validated end-to-end)
+
+Severing the self-edge *wiring* is necessary but **not sufficient**: a session
+already *running* on the self-edge mg keeps re-emitting contentless acks until its
+**container** is killed. So:
+
+1. `ncl wirings delete --id <self-edge-wiring>` (admin-approval-gated; surgical —
+   an agent messaging itself is never legitimate, legit cross-edges are untouched).
+2. `ncl groups restart --id <ag>` — restarts ALL sessions in the group and kills the
+   in-process looper. Once the wiring is gone, the fresh container has no inbound
+   routing to the self-edge, so it won't resurrect.
+3. A short post-restart re-mint watch on the self-edge mg id (Monitor: quiet ≥ 80 s
+   ⇒ dead) to confirm.
+
+**`request_restart` ≠ admin group restart:** an agent's own `request_restart` cycles
+only its main session, not sibling per-thread session containers, so it does not kill
+a looper on a different thread — unless that looper *is* the active session. Only
+`ncl groups restart --id <ag>` reliably kills it.
+
+**This is whack-a-mole** — the wiring is re-minted on the next self-route. The
+**durable fix (pending operator authorization, platform self-mod):** (A) hoist the
+self-target check above the mint / early-return guard in `ensureA2aWiring` when
+src==dst (~3–5 lines, bug-fix class); (B) add `closeSession()` +
+`ncl sessions close/stop` + sweep self-heal for `agent:X:X` sessions (skip if a
+pending `kind='task'` row); (C) one-shot cleanup after (A). Severing the
+orchestrator's self-edge is safe for scheduled tasks (they live in the session's own
+inbound.db and fire via `wakeContainer`, independent of the mg) but futile.
+
+## Decision tree for ANY empty-ack loop
+
+**FIRST audit `agent:X:X` self-edges:**
 `ncl messaging-groups list | grep -oE "agent:[a-z0-9-]+:[a-z0-9-]+" | awk -F: '{if($2==$3)print}'`
-Map mg→wiring: `ncl messaging-groups get --id <mg>` (read platform_id) + `ncl wirings list | grep <mg>`.
 
-**Inventory + status (2026-06-02 15:33 IST):**
-- SEVERED (wiring deleted; mg now orphan/harmless, no routing): slang-triager `mg-a2a-1779282325776-k5cdhq` (prior ~12:42 IST), slang-fixer `mg-a2a-1779427209798-ig5fkm` (prior), slang-reviewer `mg-a2a-1779427226642-x4gbch` / wiring `mga-a2a-1779427226643-dlqdlq` (this incident, operator-approved).
-- REMAINING ACTIVE self-edge wirings (dormant; WILL wake into loops on next restart): orchestrator `mga-a2a-1778309919755-fueq03`, nanoclaw `mga-a2a-1778744224489-2kp5uj`, perfhound `mga-a2a-1778744178132-7kqjo2`, slang-maintainer `mga-a2a-1780380610388-3lr73j`, slangpy-triager `mga-a2a-1779282325861-c46rwk`.
+- **Self-edge present** → the self-reflection loop above: sever wiring + `ncl groups
+  restart` (v2 recipe).
+- **Self-edge ABSENT** → it's a **mutual echo**: child emits "." → parent replies
+  "Holding." → that reply *wakes* the child → … Each side's content-free ack is the
+  other's wake source. **Fix: get ONE party (normally the parent) to emit ZERO
+  outbound on content-free pings** — not "Holding.", not a "going silent" notice,
+  literally nothing; end turn internal-only. The child's last ping then goes
+  unanswered → it idles → its real monitor delivers the terminal report. Loop dies in
+  ~1 cycle, **no restart** (a restart would kill in-flight build work). Refinement: a
+  stop-directive DOES stick here, but only once it names the parent's own "Holding."
+  replies as the wake source.
+- A **substantive** double-post (two full workflow passes, two content-bearing GitHub
+  comments) is neither — it's the Agent-fork footgun:
+  [[feedback_agent_fork_without_subagent_type_reruns_the_workflow]].
 
-**ROOT CAUSE STILL ACTIVE (the real fix):** slang-maintainer's self-edge mg `mg-a2a-1780380610388-q40ma6` was minted 2026-06-02 (TODAY), not in the 05-20/22 batch — so whatever creates `agent:X:X` edges is ONGOING. Deleting wirings is whack-a-mole until the minting source is found. Candidates: a NanoClaw wiring/agent-creation code path that mints a self-edge per agent, or a `wire_agents` call passing same src==dst. Escalate this to NanoClaw code investigation.
+## Diagnostic pitfalls (why this is easy to misdiagnose)
 
-**Trigger:** dormant self-edges wake on container restart (today's 11:38 IST restart woke reviewer's; flagged by slang-reviewer, who correctly identified the sender id == its own group id).
+- **`last_active` is NOT proof of a live loop** — a running-but-idle container bumps
+  it with heartbeats, and `ncl sessions list last_active` is *lagged*. Verify a loop
+  via `ncl sessions messages --id <sid>` (actual recent in/out traffic), never
+  `last_active` or `container_status`. [[feedback_last_active_tracks_inbound_not_agent_work]].
+- **Heavy builds emit frequent `Context compacted (~NNNK tokens)` notices** that look
+  like loop churn but are normal — confirm the *suspect* session has recent traffic
+  before diagnosing.
+- A truncated `ncl sessions list | grep running` can hide a newer running container →
+  page the full list before asserting "only running session."
 
-**Fix recipe:** `ncl wirings delete --id <self-edge-wiring>` (admin-approval-gated). Surgical — removes only X→X routing (an agent messaging itself is never legitimate); legit cross-edges (orch→child, peer↔peer, dashboard, parent) untouched. Orphan mg can be left harmless or cleaned.
+## Worst case: the broken approval gate turns cost-only into an outage
 
-**Status 2026-06-02 15:33 IST:** reviewer's active loop severed. 5 remaining active self-edges + the ongoing minting root cause are pending an operator decision (batch-clean the 5 + NanoClaw code investigation for the source).
-
-**KEY NEW INSIGHT (2026-06-02 ~18:30 IST):** Severing the self-edge *wiring* is necessary but NOT sufficient. A session already *running* on the self-edge mg keeps looping (re-emitting contentless "Holding."/"Waiting." every ~15-30s) until its CONTAINER is restarted — deleting the wiring only stops NEW external routing, not the live in-process outbound→inbound reflection. This is why slang-triager kept looping after its wiring was severed ~12:42 IST: session `sess-1780380612633-m71pbn` (on triage self-edge mg `mg-a2a-1779278980731`→ actually `mg-a2a-1779282325776-k5cdhq`) stayed alive ~19h (since 2026-06-01 22:59 IST). The other half was `sess-1780353396550-f8ssoa` on the orch→triage edge `mg-a2a-1779278980731-xsy5sd`. There is NO `ncl` verb to close/stop a session (sessions = read-only list/get/messages); the sweep auto-restarts *stopped* containers when due messages arrive. **Fix recipe v2: delete self-edge wiring + `ncl groups restart --id <ag>` to kill the live looping container.** Once the wiring is gone, the restarted container has no inbound routing to the self-edge → won't resurrect.
-
-**DIAGNOSTIC PITFALL (learned 2026-06-02 19:45 IST):** `last_active` advancing is NOT proof of an active loop — a running-but-idle container emits heartbeats that bump `last_active`. Verify loops via `ncl sessions messages --id <sid>` (actual in/out traffic), NOT `last_active`. Example: triage `f8ssoa` (orch→triage edge) and orch `1j0zt2` (thread 11409) both showed advancing `last_active` but had ZERO messages since 2026-06-01 ~22:57 — idle leftovers, not loop partners. The ONLY sessions that actually loop are the SELF-EDGE ones (`agent:X:X` mg) re-emitting contentless acks. Don't restart the orchestrator group / sever legit edges chasing a heartbeat ghost.
-
-**[MUST] `request_restart` ≠ admin group restart.** An agent's own `request_restart` cycles only its main session, NOT sibling per-thread session containers — so it does NOT kill a self-edge loop session running on a different thread. Only admin `ncl groups restart --id <ag>` (restarts ALL sessions in the group) kills the looper. triage's self-restart didn't stop m71pbn; my `ncl groups restart` (6 sessions) did.
-
-**Actions 2026-06-02 ~18:30 IST:** perfhound self-edge wiring `mga-a2a-1778744178132-7kqjo2` DELETED (operator-approved). REQUESTED (pending approval): triage group restart `ag-1779277874733-8x1dw6` (to kill m71pbn+f8ssoa) + self-edge wiring deletes for nanoclaw `mga-a2a-1778744224489-2kp5uj`, slangpy-triager `mga-a2a-1779282325861-c46rwk`, slang-maintainer `mga-a2a-1780380610388-3lr73j`. Orchestrator self-edge `mga-a2a-1778309919755-fueq03` HELD pending confirmation it isn't load-bearing for scheduled-task/self-wake delivery. Root-cause investigation dispatched to nanoclaw (minting source + missing host-side GC for terminal/looping sessions).
-
-**ROOT CAUSE IDENTIFIED (nanoclaw read-only investigation, 2026-06-02 ~19:49 IST — file: a2a-self-edge-investigation.md).** CAVEAT: findings are against worktree `wt-nv-main-sync` (branch `sync/upstream-nv-main`); nanoclaw flagged the actual RUNNING branch of the live "lego-nanoclaw" install must be confirmed before trusting line numbers. Treat as nanoclaw's finding pending branch-confirm, not established fact.
-- **Q1 minter:** `ensureA2aWiring()` (`src/modules/agent-to-agent/agent-route.ts:64`, sole prod caller `:489` fresh-delegation branch). A self-targeted a2a (target group == sender's own) that reaches fresh-delegation mints `agent:<ag>:<ag>` mg + `mga` wiring. The mint runs BEFORE the same-session guard at `:505` → guard drops self-delivery but NOT self-edge creation. `createMessagingGroupAgent` (`db/messaging-groups.ts:184-190`) also auto-creates the durable `agent-mg-a2a-*` self-destination. `wire_agents` (rejects src==dst at `wire-agents.ts:65`) and `create_agent` ruled out.
-- **Q2 GC gap:** sessions born `status='active'`; no prod code sets `status` otherwise. Sweep (`host-sweep.ts:238-245`) wakes by session+inbound.db, never by wiring → severing a wiring can't stop a live looper. `'closed'` enum exists (`cli/resources/sessions.ts:31-34`) but unreachable.
-- **Q3 orchestrator:** scheduled-task wakes live in the session's own inbound.db and fire via `wakeContainer(session)` — INDEPENDENT of the self-edge mg. Severing orchestrator self-edge `mga-a2a-1778309919755-fueq03` is SAFE for scheduled tasks but FUTILE (re-minted) → DECISION: not severing it; pursue fix A instead. (Don't *close* an orchestrator session without checking its inbound.db has no `kind='task'` rows.)
-- **Recommended fix (needs operator go-ahead + branch-confirm; platform self-mod):** (A) hoist self-target check above the mint in `routeAgentMessage` + early-return guard in `ensureA2aWiring` when src==dst (~3-5 lines, bug-fix class). (B) add host-side `closeSession(id)`=`updateSession(status='closed')`+killContainer, sweep self-heal for `agent:X:X` (src==dst 3-part only, skip if pending `kind='task'`), expose `ncl sessions close/stop`. (C) one-shot: close existing self-edge sessions + delete the `agent:X:X` mgs/wirings/`agent-mg-a2a-*` destinations.
-
-**RESOLUTION + CONFIRMED ROOT CAUSE (2026-06-02 ~18:48 IST):** Full detail now in shared learning "Self-edge a2a loops: root cause + fix". Summary:
-- slang-triager loop KILLED by its OWN `request_restart` (its looping session m71pbn WAS its active session → zero echoes 2+ min after). My verification Monitor's "still running" was a false alarm — it checked `container_status` (the fresh post-restart session is legitimately running), not echo activity.
-- slang-fixer hit the SAME loop (self-edge `ag-1779277891574-i5m2gg`, "No response needed." ×100+ since ~11:41); authorized its `request_restart` (same fix; caveat: if looping session ≠ active, fall back to `ncl groups restart --id <ag>` from outside = cycles ALL group containers).
-- **Minting source pinned:** `ensureA2aWiring()` (`agent-route.ts:64`, caller `:489`) mints `agent:<ag>:<ag>` on any self-targeted fresh-delegation a2a (`<message to="<own-name>">`), BEFORE the same-session guard at `:505`. `wire_agents`/`create_agent` ruled out.
-- **Severing wirings is FUTILE** (re-minted on next self-route) and never stops a live looping container — only a container kill does. No `ncl sessions close` verb exists (`status='closed'` unreachable in prod). So my pending 3 self-edge wiring deletes + triage group-restart are now SUPERSEDED/redundant (harmless if approved; the triage one would just re-restart its working fresh session).
-- **Durable fix (NOT implemented — needs operator sign-off; live branch `sync/upstream-nv-main`, NOT default docs `project/` checkout):** (A) guard `ensureA2aWiring` src==dst / hoist self-drop above `:489` (~3-5 lines); (B) `closeSession()`=updateSession(status='closed')+killContainer + expose `ncl sessions close` + sweep self-heal on `agent:X:X` sessions; (C) one-shot cleanup AFTER (A).
-- **Orchestrator self-edge severance is SAFE for scheduled tasks** (tasks live in session inbound.db, fire via wakeContainer, no mg lookup) but futile. Don't CLOSE an orch session without checking its cron tasks aren't in that session's inbound.db.
-- nanoclaw told to STAND BY (no patch). Investigation report: nanoclaw inbox file a2a-self-edge-investigation.md.
-
-**OPEN:** operator decision to authorize the (A)+(B)+(C) code fix on `sync/upstream-nv-main`. Until then, loops are mitigated reactively per-agent via container restart.
-
-**RECURRENCE 2026-06-05 ~00:18 IST (slang-fixer, after #11474 chain close):** slang-triager flagged slang-fixer in an empty-ack loop (~15 contentless "(holding)"/"."/"no action needed" msgs since chain close; triage's direct "hold silently" directive didn't stick — expected, the self-route inbound keeps re-arriving). Verified before acting (NOT relayed): (a) audit shows **8 agents currently hold self-edge mgs** — orchestrator akb54b, nanoclaw mk92ow, perfhound yx9hqr, slang-maintainer kngngs, slang-triager 8x1dw6, slang-fixer i5m2gg, slang-reviewer se4t3c, slangpy-triager se6fsb — minting still rampant. (b) Fixer self-edge wiring **`mga-a2a-1780421270820-hzq314`** (routes mg `mg-a2a-1779427209798-ig5fkm` = `agent:i5m2gg:i5m2gg`) is LIVE, created 2026-06-02T17:27 — i.e. RE-MINTED after the 06-02 12:42 severance, confirming the futility finding. (c) Fixer's legit wirings preserved: dashboard ×2, triage→fixer `mga-a2a-1779294975998-z3eoln` (ad4lt7), orch→fixer `mga-a2a-1779373144266-1913pk` (vmkkk7). DIAGNOSTIC NOTE: `ncl sessions list` last_active is LAGGED — my own active orch session showed 2026-06-04T18:35 while live; do NOT infer "no live loop" from stale last_active/container_status=stopped. Action: requested `ncl wirings delete --id mga-a2a-1780421270820-hzq314` (approval-pending); holding `ncl groups restart --id ag-1779277891574-i5m2gg` until the delete applies (so the fresh container has no self-edge to resurrect into). #11474 PR #11476 webhook routing is restart-safe via the persisted pr_session_mapping. Re-surfaced the durable (A) code fix to operator as the real solution — reactive restarts are whack-a-mole across 8 agents. **RESOLVED 2026-06-05 ~07:55 IST:** operator approved both cards — self-edge wiring delete (executed, verified non-re-minted) + fixer group restart (7 sessions cycled, killed the in-process looper). Post-restart check clean (no wiring routes ig5fkm, 4 legit edges intact, self-edge mg orphaned). A 5-min re-mint watch (Monitor) confirmed CLEAN — wiring stayed absent, loop confirmed dead. Reusable recipe validated end-to-end: surgical wiring-delete + `ncl groups restart --id <ag>` + a short post-restart re-mint watch on the self-edge mg id. Durable (A) fix + 7-self-edge sweep still pending operator authorization.
-
-**NEW VARIANT — substantive double-triage via pr_mention echo (2026-06-03 ~13:17 IST, issue #11441):** Distinct from the empty-ack self-edge loop above — here slang-triager ran TWO full triage passes on shader-slang/slang#11441 and posted TWO distinct, content-bearing GitHub comments (4610134816 at ~13:12, 4610174356 at ~13:17), sending me two `[Triage Resolution]`s (msg 6, 14) + two memos. Confirmed both comments are slang-triager's own (msg 14 cited 4610174356 as "my comment"). **CONFIRMED root cause (triage, msg 18) — fork-footgun, NOT a webhook echo loop and NOT cross-instance:** triage's workflow "Recall" step spawned an `Agent` WITHOUT a subagent_type to scan `/workspace/shared/learnings`. A no-subagent_type Agent is a FORK that inherits the spawner's FULL conversation context — so instead of just scanning learnings, the fork re-ran the ENTIRE triage workflow: it posted duplicate comment 4610174356 and sent the 1:17 memo, while the main pass posted 4610134816 and the 1:12 memo. One logical triage, accidentally executed twice, same bot identity. (My earlier pr_mention-echo hypothesis was WRONG — discard it.)
-
-**Generalizable hazard:** ANY workflow step that spawns `Agent` without a subagent_type for a "recall/scan/lookup" purpose forks and re-runs the whole current workflow, INCLUDING side effects (GitHub posts, upstream a2a messages, file writes). **Durable fix = spine change:** triage's Recall step must read learnings directly or use a typed subagent; audit other coworkers' spines for the same pattern. Shared learning written (append_learning). Interim mitigation: told triage to keep 4610134816, minimize 4610174356 (DUPLICATE), and stop using a context-inheriting fork for Recall.
-
-**slang-fixer involvement explained (msg 18) — NOT a phantom:** after a buddy flag, triage forwarded the staged briefing+memo to slang-fixer marked HOLD/design-blocked. That forward carried a `[Resolution]` marker; fixer's critique-gate refused it (critique_rounds=0) and the refusal bounced to me (msg 16). The gate blocked delivery (briefing NOT delivered downstream), so fixer holds nothing and is design-blocked regardless. I did NOT run /codex-critique (no legitimate dispatch I authored) and told fixer to stand down — the external contributor (romeoahmed) owns the eventual PR, so there is likely no implementation work for fixer here at all; the gating item remains the maintainer's 3 design answers, already routed to slang-maintainer.
-
-**Net:** within ~8 min one fresh issue (#11441) produced 2 triage passes + 2 public duplicate comments + 1 spurious fixer gate — but the root cause is the Agent-fork footgun in the triage workflow (a spine bug), DISTINCT from the self-edge empty-ack loops and the dev↔prod collision documented above.
-
-**NEW VARIANT — mutual fixer↔triager "Holding." echo ping-pong (2026-06-11 ~23:46 UTC, #11568 fix chain): NOT a self-edge loop; the PARENT's own acks are the wake source.** slang-triager flagged slang-fixer (#11568 session `v720ku`) in a "runaway loop" (~15 empty pings "(waiting on build monitor)"/"." every ~15s since ~23:38) and asked me to restart/nudge. VERIFIED before acting (did NOT relay or restart): (a) self-edge audit `agent:X:X` (src==dst) returned **EMPTY** — no self-edge wiring exists; all 5 fixer wirings legit (dashboard, main, 3 a2a edges). So NOT the self-edge reflection loop. (b) `ncl sessions messages --id v720ku` showed the real mechanism: a **MUTUAL echo** — fixer emits "." → triager replies "Holding." → that reply WAKES the fixer → fixer "." → … Each side's content-free ack is the OTHER's wake source. The triager's earlier stop-directive (seq 42) didn't take because the triager kept replying "Holding." right after it (seq 74/76/78/80), re-waking the fixer every cycle. (c) `krc9n0` (#11531) had a recent `last_active` but real traffic stopped 2026-06-10 → idle, NOT a looper (last_active pitfall again). **FIX (validated):** instruct the PARENT (triager) to emit ZERO outbound on content-free pings — not "Holding.", not a "going silent" notice, literally nothing; end turn internal-only. Once the parent stops replying, the child's last ping goes unanswered → child idles → its real monitor (BUILD_EXIT) delivers the terminal report. Loop died within ~1 cycle. **NO restart** — restart would have killed the fixer's near-complete feasibility build (~190/490). Independent Monitor (poll `v720ku` out-seq; quiet≥80s ⇒ dead) confirmed LOOP DEAD 80s after the corrective (out-seq stabilized at 93). **DECISION TREE for any empty-ack loop: FIRST audit `agent:X:X` self-edges.** Self-edge present → sever wiring + `ncl groups restart` (the v2 recipe above). Self-edge ABSENT → it's a mutual echo; get ONE party (normally the parent) to go *truly* silent; no restart, no wiring change. Refinement vs the self-edge "directive doesn't stick" finding: a directive DOES stick here — but only once it names the PARENT's own "Holding." replies as the wake source. The parent hadn't realized its acks were sustaining the loop.
-
-**RECURRENCE 2026-06-10 ~10:00 UTC (multi-group, during #11531 fix chain):** Self-emit loop active SIMULTANEOUSLY across 3 groups for issues #11531+#11532 — orchestrator (sessions umg7x7, qxy1yu), slang-triager (rs8nq4, p6pmi5), slang-fixer (krc9n0, 8wap0b), all last-active within minutes. Confirms the 06-05 reactive fix did NOT durably hold (re-minting continued) and that a single-group restart is insufficient when the loop spans groups. A targeted STOP message pinned to the looping fixer session (krc9n0, on the orch→fixer epsn3s edge, created by MY tier-skip direct dispatch) did NOT settle it — consistent with the "directive doesn't stick" finding (self-route inbound keeps re-arriving). DECISION: declined reactive whack-a-mole restart — #11531 chain is healthy (draft PR #11534 verified OPEN via GitHub, holding for reviewer); #11532 fixer session jkms07 had uncommitted work (NO PR) and was already stale (~10 min idle); a fixer-only restart leaves orch+triager looping regardless. Loop is cost-only, no correctness impact. The real fix remains durable code fix (A), STILL pending operator authorization — reactive restarts confirmed whack-a-mole again. Tolerating + holding for the reviewer verdict.
-
-**DIAGNOSTIC LESSON 2026-06-24 ~17:45 UTC (#11725, near-misdiagnosis):** A build-heavy fixer session emits frequent `Context compacted (~870K tokens)` notices to the parent as it churns through a long build (configure + slangc 486 targets + dep extraction). These LOOK like loop churn (every ~10 min, pinned at max context) but are NORMAL build activity. I nearly surfaced the #11725 build session's compaction notices to the operator as the kbeuyf/#11538 self-edge loop resurfacing (even fired an ask_user_question recommending a restart — it timed out, no harm). REALITY: kbeuyf (`sess-1781116117698-vmjrwe`/#11538) transcript ends 2026-06-10 with ZERO traffic since → IDLE leftover running container, NOT an active loop; the compactions coincided with #11725's build and stopped when its fix report + draft PR #11737 landed (msg 48 compaction 5:40 → msg 50 fix-report 5:42). **Rule: before diagnosing a loop from compaction-notice frequency, confirm via `ncl sessions messages --id <sid>` that the SUSPECT session has recent in/out traffic — compaction frequency and last_active are both unreliable loop signals. Heavy builds compact a lot; that's not a loop.** Also: my `ncl sessions list --agent-group | grep running` truncated before the (newer, 06-24) #11725 session row, so I wrongly concluded kbeuyf was "the only running fixer container" — the 11725 build container was also running. Page the full list / grep the thread before asserting "only running session." kbeuyf remains a stale leftover (06-10) = operator-cleanup candidate; in-container `ncl groups restart` still blocked by the non-functional approval gate (below).
-
-**WORST-STATE ESCALATION 2026-06-12 ~13:49 UTC (slang-fixer krc9n0, post-#11531/#11577 adoption) — "cost-only" became a SYSTEM-WIDE OUTAGE.** The krc9n0 ping-loop resumed ~00:00 UTC Jun 12 (right after the nit-fix push) and ran ~14h UNCHECKED to fully exhaust the shared API budget: `400 Budget has been exceeded! Current cost: 10000.0, Max budget: 10000.0`. This froze EVERY coworker on the shared budget (triager confirmed the 400; orchestrator hit it too) — not cost-only anymore, a total agent-system freeze. **The decisive failure: the `ncl` admin-approval gate has been NON-FUNCTIONAL since 2026-06-10 ("cli_command failed: no owner or admin configured to approve") — so the v2 fix recipe (sever self-edge wiring + `ncl groups restart`) is NOT executable from inside; BOTH steps are gated mutations and BOTH fail at the approval wall.** With no in-container lever, the loop ran to budget exhaustion. Once exhausted, even scheduled safety-net re-checks can't run (fresh agent fires also 400) — the system can only be recovered operator-side. ALL escalation channels exhausted this incident: `ncl groups restart` re-tested 5× (gated, failed every time); `PushNotification` fired repeatedly but SUPPRESSED every time ("user active" — operator continuously at keyboard but never engaging the alerts); `ask_user_question` decision card fired 4× — ALL timed out (600s, no response). Did NOT raise the budget cap via `onecli` myself — that's an autonomous financial action (directly increases spend) requiring operator authorization, not unilateral incident action. **Operator-only remediation required (surfaced via push+card, both unacknowledged): (1) RESET/raise the API budget to unfreeze agents, (2) host-kill slang-fixer (ag-1780667166439-vmjrwe) so the loop doesn't re-consume after reset, (3) FIX THE APPROVAL-GATE CONFIG so the reactive lever works next time.** LESSON: the broken approval gate is now the load-bearing risk — it converts the known cost-only loop into an unbounded outage by removing every in-container mitigation. Fixing the gate config + the durable (A) code fix are both now critical, not optional. Shared learning "ncl approval gate non-functional" already records the gate side.
+A single krc9n0 ping-loop ran ~14 h unchecked and **exhausted the shared API budget**
+(`400 Budget has been exceeded`), freezing every coworker on that budget. The
+decisive failure: the `ncl` admin-approval gate had been **non-functional** ("no owner
+or admin configured to approve"), so BOTH steps of the v2 recipe (gated mutations)
+failed from inside the container — no in-container lever existed, and every escalation
+channel (push, `ask_user_question`) went unacknowledged. **Lesson: a broken approval
+gate is load-bearing risk — it converts a known cost-only loop into an unbounded
+outage by removing every in-container mitigation.** Fixing the gate config and shipping
+the durable (A) fix are both critical, not optional.
