@@ -34,6 +34,7 @@ vi.mock('../log.js', () => ({
 import { closeDb, initTestDb, runMigrations } from '../db/index.js';
 import { log } from '../log.js';
 import { FORK_EXTENSION_NS, readForkExtension } from './fork-extension.js';
+import { PLUGIN_SCHEMA_URL } from './manifest.js';
 import { createAgentFromTemplate } from './create-agent.js';
 
 const originalCwd = process.cwd();
@@ -46,7 +47,11 @@ function write(p: string, body: string): void {
 /** A minimal plugin. `forkExt` lands under our own extension namespace. */
 function makeTemplate(ref: string, forkExt?: Record<string, unknown>): void {
   const dir = path.join(TEST_ROOT, 'templates', ref);
-  const manifest: Record<string, unknown> = { name: path.basename(ref), version: '1.0.0' };
+  const manifest: Record<string, unknown> = {
+    $schema: PLUGIN_SCHEMA_URL,
+    name: path.basename(ref),
+    version: '1.0.0',
+  };
   const extensions: Record<string, unknown> = { 'ai.nanoco.nanoclaw': { agentName: `The ${path.basename(ref)}` } };
   if (forkExt) extensions[FORK_EXTENSION_NS] = forkExt;
   manifest.extensions = extensions;
@@ -173,22 +178,46 @@ describe('createAgentFromTemplate — coworker type', () => {
     expect(fs.existsSync(path.join(TEST_ROOT, 'groups', 'plain'))).toBe(false);
   });
 
-  it('rejects a flat type from an explicit option — cost-cap immortality', async () => {
+  // The two refusals are INDEPENDENT and each case must cite the right one.
+  // Conflating them is how an earlier draft failed open: immortality is decided
+  // by the LITERAL stored value via isImmortalGroup, while `flat` is a property
+  // of the RESOLVED manifest. A registry contribution can set `main` to
+  // `flat: false`, at which point a resolved-flat test alone would wave literal
+  // `main` straight through to cost-cap immortality.
+  it('refuses literal "main" on the immortality authority, not on flatness', async () => {
     makeTemplate('plain');
-    await expect(createAgentFromTemplate('plain', { coworkerType: 'main' })).rejects.toThrow(/flat/i);
+    await expect(createAgentFromTemplate('plain', { coworkerType: 'main' })).rejects.toThrow(/immortality/i);
   });
 
-  it('rejects a type that INHERITS flat, which a string check on "main" would miss', async () => {
+  it('refuses a type that INHERITS flat on composition grounds', async () => {
+    // Not literally 'main', so isImmortalGroup does not catch it — and it is not
+    // immortal. It is still refused, because a flat composition discards
+    // workflows, skills and bindings.
     makeTemplate('plain');
-    await expect(createAgentFromTemplate('plain', { coworkerType: 'inherits-flat' })).rejects.toThrow(/flat/i);
+    await expect(createAgentFromTemplate('plain', { coworkerType: 'inherits-flat' })).rejects.toThrow(
+      /flat composition/i,
+    );
   });
 
-  it('degrades rather than throws when the TEMPLATE declares a flat type', async () => {
-    // Same rejection, hint strictness: a published template must not be able to
-    // hard-fail a stamp, but must never obtain immortality either.
+  it('degrades rather than throws when the TEMPLATE declares an immortal type', async () => {
+    // Hint strictness: a published template must not be able to hard-fail a
+    // stamp, and must never obtain immortality either.
     makeTemplate('flatty', { defaultCoworkerType: 'main' });
     const { group, report } = await createAgentFromTemplate('flatty');
     expect(group.coworker_type).toBeNull();
-    expect(report.join(' ')).toMatch(/flat/i);
+    expect(report.join(' ')).toMatch(/immortality/i);
+  });
+
+  it('propagates a broken registry instead of quietly stamping untyped', async () => {
+    // An unknown hint degrades; a registry that cannot load at all is
+    // infrastructure. Degrading there would produce an untyped group that still
+    // needs the same registry to resolve `default` at spawn — just as broken,
+    // only later, and without having said so.
+    // readCoworkerTypes tolerates a missing or unreadable source dir (an install
+    // with no types is legitimate), but yaml.load on a malformed registry file is
+    // unguarded — that is the reachable "broken registry" case.
+    makeTemplate('typed', { defaultCoworkerType: 'nanoclaw-writer' });
+    write(path.join(TEST_ROOT, 'project', 'container', 'spines', 'base', 'coworker-types.yaml'), '{[ not: yaml');
+    await expect(createAgentFromTemplate('typed')).rejects.toThrow();
   });
 });
