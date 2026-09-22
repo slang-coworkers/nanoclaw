@@ -3,7 +3,7 @@ title: "CI Flake Triage — Classification and Known Signatures"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, classification, known-signatures, xpass, check-cmdline-ref, merge-group, falcor, slang-rhi, json-rpc, priority-yield, metal4, gpu-printing, aarch64, slang]
-source_count: 28
+source_count: 29
 ---
 
 # CI Flake Triage — Classification and Known Signatures
@@ -29,6 +29,8 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 **Test duration is a fast signal.** A Windows GPU test job completing in under ~60 seconds means no actual tests ran — likely a disk-space preflight failure or artifact-download failure, not a real test result (see [runner pools and infrastructure](ci-flake-runner-pools-and-infrastructure.md) for the disk-space cluster case and [rerun decision rules](ci-flake-rerun-decision-rules.md) for the artifact-not-found case).
 
 **CPU-job failure pins legitimacy.** The CPU runner (`test-linux-release-gcc-x86_64-cpu / test-slang`) never touches the GPU fleet. If the same named test fails identically on the CPU job AND multiple GPU/macOS/Windows jobs, it cannot be a GPU/infra flake — it is a deterministic regression requiring author action, not a rerun ([CI babysitter: CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)).
+
+**A pure-Python `extras/` change cannot break C++ build/GPU-test jobs — use that to classify fast.** When the failing jobs on a Python-only PR are C++ builds (linux/macos), C++ static-unit-tests, or GPU tests, but the `Check Python Scripts (Core Python Only)` + `Check Formatting` legs PASS, the failure is NOT your change (it isn't compiled into slangc/slang-test): confirm via `--log-failed` — HTTP 504 downloads (sccache/OptiX tarballs), runner OOM, timeouts, cancellations = infra/flaky (auto-retries, do nothing); genuine C++ compile/link errors or unit-test asserts = master breakage inherited via a `BEHIND` branch (wait for the master fix / rebase when master is green). Don't rebase a `BEHIND` branch mid-CI-run — it cancels the running matrix and can dismiss a fresh maintainer approval. Related throttle trap on such a PR: a `nv-slang-bot[bot]` `workflow_dispatch` on a DRAFT bypasses the draft-skip but immediately PRIORITY-YIELDS (matrix skipped, parks `waiting` on `falcor-build-approval-gate`), so don't manually re-dispatch to "force" a matrix — the reliable un-yielded run comes from a human marking the PR ready (see [rerun decision rules](ci-flake-rerun-decision-rules.md) for the full priority-yield mechanics) ([slang bot CI priority-yield + classifying CI failures on a pure-Python PR](../learnings/1790019959011-slang-bot-ci-priority-yield-classifying-ci-failure.md)).
 
 **Deterministic build/link errors are never rerunnable** (unless the stale-base exception applies; see below). Grep the failed log for `undefined symbol`, `error C####`, `LNK####`, `FAILED:` (ninja) before classifying any build failure as flaky ([Slang CI: wasm build failures are usually real linker errors, not infra](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)).
 
@@ -80,7 +82,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **`debug-do-while-locals.slang` on macOS-debug-aarch64 = SPIRV-Tools assertion flake.** `tests/debuginfo/debug-do-while-locals.slang` can fail **only** on the `test-macos-debug-clang-aarch64 / test-slang` job with `Assertion failed: (unique_id_ != 0), function unique_id, file instruction.h, line 251` — and `instruction.h:251` lives in the **SPIRV-Tools** dependency (not Slang source), reached via the debug-info SPIR-V emission path. It flakes on that single platform while all Linux/Windows/macOS-release jobs pass, and slang-test's auto-retry does not always clear it. If it is the *only* failing test and your PR touches nothing in the debuginfo / SPIR-V emit path, it is not your change: classify flaky/infra and `gh run rerun <run-id> --failed` (≤3×); if it reproduces deterministically across reruns, report it as a pre-existing platform issue rather than blocking (seen 2026-09-14 on PR #12504, run 34891043815) ([known flaky CI test: debug-do-while-locals.slang on macOS-debug-aarch64](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md)).
 
-**Source learnings (28):**
+**Source learnings (29):**
 - [CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [WASM build failures are usually real linker errors](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
 - [a benign DWARF ld-note can mask the real undefined-reference cause; don't classify a link failure off the first "error" line](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
@@ -109,4 +111,5 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - [known flaky CI test: debug-do-while-locals.slang on macOS-debug-aarch64 = SPIRV-Tools instruction.h:251 assert](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md)
 - [Retraction: #13078 was base-skewed like #12783/#12992, not ahead — verify base vs the fix commit with git merge-base, don't trust detailed prose](../learnings/1789460715976-retraction-pr-13078-was-not-ahead-of-12986-it-was-.md)
 - [slang-rhi OMM VUID-10904 CI red is likely a VVL 1.4.341.1 false positive — converter proven compliant on-hardware; capture the struct bytes, don't install the SDK](../learnings/1789600998422-slang-rhi-omm-vuid-10904-ci-red-is-likely-a-vvl-1-.md)
+- [slang bot CI priority-yield + classifying CI failures on a pure-Python PR](../learnings/1790019959011-slang-bot-ci-priority-yield-classifying-ci-failure.md) — a Python-only extras/ change can't break C++/GPU jobs (Python+format legs green ⇒ infra or master breakage); a bot workflow_dispatch on a draft priority-yields, don't re-dispatch.
 _Catalog: [[wiki/index.md]]_

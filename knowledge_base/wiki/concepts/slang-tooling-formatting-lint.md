@@ -3,7 +3,7 @@ title: "Formatting & Lint Tooling (clang-format, prettier, gersemi)"
 type: concept
 group: slang-tooling
 tags: [clang-format, prettier, gersemi, formatting, lint, ci, draft-pr, check-formatting]
-source_count: 20
+source_count: 21
 ---
 
 # Formatting & Lint Tooling (clang-format, prettier, gersemi)
@@ -174,13 +174,15 @@ None found. The two "draft PR CI" learnings are complementary (one adds the work
 
 When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI gates differ from slang's: **clang-format v20** (not slang's version), an ASCII-only hook, and `-Werror`. Verify against these, not slang's toolchain ([1783022365578-slang-rhi-formatting-lint-gates-differ](../learnings/1783022365578-slang-rhi-formatting-lint-gates-differ-from-the-sl.md)).
 
+The exact pin is **`v20.1.7`** (`.pre-commit-config.yaml`, `mirrors-clang-format rev: v20.1.7`). The container ships only `clang-format-17`; running clang-format-17 `-i` on edited files **reflows pre-existing, untouched signatures** differently than 20 (collapses multi-line param lists, moves `override` to the next line), polluting the diff with unrelated churn that the pre-commit CI (clang-format-20) then rejects. Install the pinned version in a throwaway venv and run that: `python3 -m venv /tmp/cf-venv; /tmp/cf-venv/bin/pip install clang-format==20.1.7` (the PyPI package bundles the binary), then `/tmp/cf-venv/bin/clang-format -i <files>` and verify `/tmp/cf-venv/bin/clang-format --dry-run --Werror <file>` (exit 0 = clean). System pip is PEP-668-blocked → use a venv (or `--break-system-packages`). Always confirm the repo's formatter version from `.pre-commit-config.yaml` first — "clean under the version I have" ≠ "clean under CI's version"; the control test is `clang-format-XX --dry-run --Werror` on a file you did NOT touch — if it wants changes, your version differs from the one that produced the committed tree ([slang-rhi pins clang-format v20.1.7 (mirrors-clang-format) — wrong version churns untouched lines; run the pinned version from a venv](../learnings/1790032890420-slang-rhi-pins-clang-format-v20-1-7-mirrors-clang-.md)).
+
 
 ## Recent operational learnings (incremental fold 2026-07-17)
 
 **Never run prettier (formatting.sh --md) on the generated capability-atoms doc** — **Context:** slang#12097 — editing a capdef `///` doc comment regenerates `docs/user-guide/a4-02-reference-capability-atoms.md` via `slang-capability-generator`. [Never run prettier (formatting.sh --md) on the generated capability-atoms doc](../learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md)
 
 ---
-**Source learnings (20):**
+**Source learnings (21):**
 - [Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
@@ -190,6 +192,7 @@ When editing **shader-slang/slang-rhi** (not the compiler), its pre-commit/CI ga
 - [formatting.sh --since HEAD is a false-pass for uncommitted changes; run the full --check-only pre-push](../learnings/1782456154502-formatting-sh-since-head-is-a-false-pass-for-uncom.md)
 - [Run CI-pinned clang-format locally when the build is disk-blocked](../learnings/1782507462588-run-ci-pinned-clang-format-locally-when-the-build-.md)
 - [slang-rhi formatting/lint gates differ from slang (clang-format v20, ASCII hook, -Werror)](../learnings/1783022365578-slang-rhi-formatting-lint-gates-differ-from-the-sl.md)
+- [slang-rhi pins clang-format **v20.1.7** (mirrors-clang-format) — clang-format-17 reflows untouched signatures → CI-rejected churn; install 20.1.7 in a venv and run it; control-test on an untouched file](../learnings/1790032890420-slang-rhi-pins-clang-format-v20-1-7-mirrors-clang-.md)
 - [slang public headers must be ASCII-only (MSVC C4819 under non-UTF-8 charset)](../learnings/1783579004581-slang-public-headers-must-be-ascii-only-msvc-c4819.md)
 - [slang non-ASCII header sweep must include prelude/ and watch arrows — #12016 SHIPPED](../learnings/1783596951560-slang-non-ascii-header-sweep-must-include-prelude-.md)
 - [clang -Wformat-security rejects argless printf(fmt) — Linux gcc verify won't catch it](../learnings/1783560312328-clang-wformat-security-rejects-argless-printf-fmt-.md)

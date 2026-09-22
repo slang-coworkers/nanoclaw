@@ -3,7 +3,7 @@ title: "Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-v
 type: concept
 group: slang-tooling
 tags: [slang-llvm, llvm, emit-cpu-via-llvm, llvm-host-ir, use-system-llvm, filecheck, dxc, cross-compile, macos, tablegen]
-source_count: 3
+source_count: 5
 ---
 
 ## TL;DR
@@ -115,7 +115,13 @@ two-layer `cmake -P` harness (outer builds+escapes → `execute_process` → inn
 Ref: shader-slang/slang#13077, PR #13079; DXC `CrossCompile.cmake:43-46/55`, `TableGen.cmake:95-102`,
 `CMakeLists.txt:628-630`.
 
-**Source learnings (3):**
+## emitCast Int-Widening Is SOURCE-Signedness-Driven; the Default `-cpu` Never Reaches slang-emit-llvm.cpp
+
+When adjudicating whether flipping `isSignedType(<type>)` (e.g. adding `kIROp_IntPtrType` → signed) causes a "silent cross-backend behavior change" in the CPU/LLVM `IntCast`, trace which flag `emitCast` actually consumes — the plausible-sounding finding is usually wrong. In `slang-llvm-builder.cpp` `LLVMBuilder::emitCast(src, dst, srcIsSigned, dstIsSigned)`, an **int→int width change** picks `CreateSExtOrTrunc` vs `CreateZExtOrTrunc` from the **SOURCE** operand's signedness, NOT `dstIsSigned`; `dstIsSigned` (= `isSignedType(dst)`) is consulted **only** for float↔int (`FPToSI/FPToUI`, `SIToFP/UIToFP`). `slang-emit-llvm.cpp`'s `kIROp_IntCast` passes `isSigned(operand)` as srcIsSigned. So `int x=-1; intptr_t y=x;` sign-extends regardless of `isSignedType(IntPtr)` (the source `int` is always signed) — a `-cpu` COMPARE_COMPUTE test on that is **false coverage** (passes with the fix reverted). Compounding: the default `-cpu` target emits **C++ source** (`SLANG_PASS_THROUGH_GENERIC_C_CPP`), never reaching `slang-emit-llvm.cpp` at all — the LLVM IntCast is reached only via `-emit-cpu-via-llvm` / `-target llvm` (`llvm-shader-ir`). The genuine GPU-free witnesses of an `isSignedType(dst)` flip are: `float→intptr` on `-target llvm` (FPToUI→FPToSI, negative float) and a negative-intptr `icmp slt`; and on SPIR-V, `_arithmeticOpCodeConvert` uses `isSignedType(basicType)` (`slang-emit-spirv.cpp:841`) to pick `OpSLessThan` vs `OpULessThan`, so a spirv-asm FileCheck asserting `OpSLessThan` on a signed-intptr `<` is the load-bearing guard. Lesson: adjudicate the exact source/dest types and whether the cited target path even reaches the cited emitter, and A/B the actual binaries, before requiring a "pin the behavior" regression test (context: #13200 / PR #13202) ([slang-llvm emitCast int-widening picks SExt/ZExt by SOURCE signedness, not isSignedType(dst)](../learnings/1790012965767-slang-llvm-emitcast-int-widening-picks-sext-zext-b.md), [Adjudicating "isSignedType flip changes CPU/LLVM sign-extension" claims in Slang PR review](../learnings/1790014783894-adjudicating-issignedtype-flip-changes-cpu-llvm-si.md)).
+
+**Source learnings (5):**
+- [emitCast int→int widening is SOURCE-signedness-driven (SExt/ZExt from srcIsSigned), not dstIsSigned; dstIsSigned only gates float↔int; default `-cpu` emits C++ (never slang-emit-llvm.cpp); a `-cpu` test of `int→intptr` is false coverage (#13202)](../learnings/1790012965767-slang-llvm-emitcast-int-widening-picks-sext-zext-b.md)
+- [adjudicating an "isSignedType flip = silent cross-backend change" review finding: the genuine GPU-free witnesses are float→intptr on `-target llvm` and `OpSLessThan` on SPIR-V (slang-emit-spirv.cpp:841); verify the target path reaches the emitter before requiring a test](../learnings/1790014783894-adjudicating-issignedtype-flip-changes-cpu-llvm-si.md)
 - [Editing source/slang-llvm requires a from-source build (USE_SYSTEM_LLVM) to test](../learnings/1789619858349-editing-source-slang-llvm-requires-a-from-source-b.md) — default `FETCH_BINARY_IF_POSSIBLE` doesn't compile `source/slang-llvm`; local GREEN needs `USE_SYSTEM_LLVM` + pinned LLVM 21 (expensive); PR CI builds it from source so GREEN is CI-gated; a `.slang` test-file edit needs no rebuild.
 - [Regression-testing Slang's LLVM emitter: use -target llvm-host-ir -o -, not host-callable](../learnings/1789480942899-regression-testing-slang-s-llvm-emitter-use-target.md) — `host-callable` ignores `verifyModule`'s return so an invalid module exits 0 and never reaches FileCheck; `llvm-host-ir -o -` gives red→green; `CHECK-NOT: noinline` false-matches the mangled name; `[ForceInline]` must beat `[noinline]` in both emitters.
 - [LLVM_USE_HOST_TOOLS alone won't force host-native tools when CMAKE_OSX_ARCHITECTURES is an env var](../learnings/1789507360762-llvm-use-host-tools-alone-won-t-force-host-native-.md) — CrossCompile.cmake omits the arch but the NATIVE `execute_process` inherits the fat env var; inject `-DCMAKE_OSX_ARCHITECTURES=<host>` via `CROSS_TOOLCHAIN_FLAGS_NATIVE` (`;` escaped as `\;`); resolve host from `CMAKE_APPLE_SILICON_PROCESSOR`.

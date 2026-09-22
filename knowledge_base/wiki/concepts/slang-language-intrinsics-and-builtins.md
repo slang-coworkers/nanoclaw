@@ -3,7 +3,7 @@ title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
 tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector, capability-atoms, texture-shadow, prefix-expander, min-max]
-source_count: 24
+source_count: 25
 ---
 
 # Slang Intrinsics & Builtins
@@ -38,6 +38,10 @@ Slang exposes GPU intrinsics — texture/gather ops, variable pointers, groupsha
 - **On the CPU/LLVM backend `half` is always the fallback `struct half`** — `SLANG_LLVM` gates out the native `_Float16` block — and it declares only `explicit operator float()`. So `(int8_t)half` fails while `(int8_t)(float)h` compiles: an `explicit operator float()` does NOT chain through a single cast to a non-float scalar. Add explicit scalar conversion operators; do not switch the LLVM path to native `_Float16`.
 - **Statement-level capability requirements already exist** as `__requireCapability(...)` → `RequireCapabilityStmt`, and compound capabilities already exist as `alias` in `slang-capabilities.capdef`; `CapabilitySet` is a disjunction-of-conjunctions nested by target/stage. But there is NO generic `IRRequireTargetCapability` op, and generic-parameter-dependent `[require]` is genuinely unsupported.
 - **A capability design/RFC issue under active subsystem-owner debate is not fix-eligible** — park it and record both directions neutrally rather than dispatching a fixer.
+
+## `static_assert` Is a Builtin Intrinsic Fn (Function-Body Only); at Global Scope It Mis-Parses
+
+`static_assert(cond, msg)` is NOT a parser keyword/declaration form — it is a builtin intrinsic FUNCTION (`core.meta.slang:493`, `__intrinsic_op(kIROp_StaticAssert)`, marked `@experimetal`), so a call is only valid as an expression-statement INSIDE a function body (#13208, HEAD 0d06f4bd0, GPU-free). At global/module scope the parser accepts only declarations (`parseDecls`→`ParseDeclWithModifiers`), so a top-level `static_assert(...)` is consumed as a type-name, the following `(` commits to a function-declarator/parameter-list, and the args fail the parameter grammar → misleading `unexpected '(', expected ')'`. There is no decl→expr backtrack at module scope (function bodies have it via `parseStatement`). Generalizable: any call-shaped `ident(...)` at Slang global scope mis-parses this way — an `ident` immediately followed by `(` is never a valid declaration start, a useful detection signal for a tailored diagnostic. Making `static_assert` work at any scope (+ optional message) is tracked by #6136 (register it as a syntax-decl + a module-level `kIROp_StaticAssert`; the emit-time checker already recurses the module inst) ([static_assert is a builtin intrinsic fn (function-body only); at global scope it mis-parses as a declaration](../learnings/1790019025315-slang-static-assert-is-a-builtin-intrinsic-fn-func.md)).
 
 ## Variable Pointers (SPIR-V)
 
@@ -123,7 +127,8 @@ A generic `T:IFloat`/`IComparable` `min`/`max` specialized on a **vector** ICEs 
 
 The `__intrinsic_asm` marker **`$TR`** emits the call's RETURN type, where `$T<n>` emits operand *n*'s type (and unwraps an `IRTextureType` operand to its element type — the source of texture-intrinsic element-vs-vector bugs). #12276: `Texture2D<float>.Gather` on CUDA emitted `tex2Dgather<$T0>` = `tex2Dgather<float>` and assigned the scalar into the `float4` its signature promises → NVRTC constructor error; the fix is `tex2Dgather<$TR>`, since `$TR` = `m_callInst->getDataType()` produces exactly the `vector<T.Element,4>` result type (precedent: the `llvm bitcast` intrinsic uses `$TR`). When an intrinsic string needs the *result* type spelled rather than an operand's type, use `$TR`; reproduce compile-only with `slangc -target ptx` and grep the emitted `tex2Dgather<...>`, and remember editing `hlsl.meta.slang` needs the core-module-header regen ([intrinsic-asm $TR marker emits the call return type (fixes tex2Dgather element-vs-4-vector)](../learnings/1785372605179-intrinsic-asm-tr-marker-emits-the-call-return-type.md)).
 
-**Source learnings (24):**
+**Source learnings (25):**
+- [`static_assert` is a builtin intrinsic fn (function-body only); at global/module scope a top-level `static_assert(...)` mis-parses as a declaration (any `ident(...)` does) → misleading `unexpected '(', expected ')'`; any-scope support tracked by #6136 (#13208)](../learnings/1790019025315-slang-static-assert-is-a-builtin-intrinsic-fn-func.md)
 - [latest-version capability atom = `getElements()[count-2]` (`-1` is the stage atom, which sorts above version atoms); "max ≥ anchor" scan is wrong, contiguity-walk segfaults; internal predicates lack `SLANG_API` (test via `.slang` behavior)](../learnings/1784424625402-slang-capability-latest-version-atom-helper-must-u.md)
 - [slang-rhi#798 float4(float2,1.f) splat vs tail-pad — scalar splat resolves (vec2,vec2) ctor to (x,y,1,1); semantics-preserving fix adds explicit w](../learnings/1784281175141-slang-rhi-798-float4-float2-1-f-splat-vs-tail-pad-.md)
 - [Slang variable-pointers signature-walk fix: only (GroupShared, parameter) is a fail-without-fix regression test](../learnings/1780972705906-slang-variable-pointers-signature-walk-fix-only-gr.md)

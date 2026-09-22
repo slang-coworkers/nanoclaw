@@ -3,7 +3,7 @@ title: "CI Flake Triage — Rerun Decision Rules"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, rerun, gh-run-rerun, artifact-retention, base-branch-break, fleet-wide, degrading-runner, cluster-detection, escalation, slang]
-source_count: 16
+source_count: 17
 ---
 
 # CI Flake Triage — Rerun Decision Rules
@@ -43,7 +43,9 @@ This same "run still open" block also defeats a *single-job* rerun on any PR wit
 
 **GCP linux-build runners mis-report AVX-512 → SIGILL — check FIRST for per-VM CPU-path flakes.** A per-VM, low-frequency flake on a CPU/LLVM test path in a GCP `linux-build`-pool job (surfacing as SIGILL, or a downstream symptom like the ASan "runtime does not come first" abort) is a recurring env class: some pool VMs mis-report AVX-512 their host can't execute, and slang-llvm's JIT then emits AVX-512 the host faults on. Mitigation is `export SLANG_DISABLE_AVX512=1` in the test step (PR #11974 added it to `ci-slang-sanitizer.yml`). For any per-VM SIGILL/LLVM-JIT-path flake, check AVX-512 mis-report FIRST before exotic causes; assert the *class* ("per-VM env trigger") confidently but label the specific mechanism a HYPOTHESIS — GitHub Actions job logs 410 (Gone) after ~7-day retention, so the decisive failing log is usually already gone ([GCP linux-build runners mis-report AVX-512 → SIGILL in slang-llvm JIT (recurring env class)](../learnings/1783443514224-gcp-linux-build-runners-mis-report-avx-512-sigill-.md)).
 
-**Source learnings (16):**
+**Read the tracker's existing verdict BEFORE re-classifying from a fresh log read.** A single `gh run view --log-failed` on a currently-failing check can look like an isolated, legitimate regression (e.g. a compile-error cascade from an undefined identifier) when the PR's `rerun-tracker.json` entry already carries a terminal verdict with much richer context. On the 2026-09-21 20:11Z sweep #13078's SlangPy Tests failure read as a fresh code bug, but `rerun-tracker.json["13078"]` already had `last_verdict:"out-of-scope"` (set the prior day) recording that the failure was actually dominated by a CONFLICTING/DIRTY merge state plus a base-skew vs #12986, not a standalone bug in this PR. A terminal verdict (`resolved`/`out-of-scope`) can encode merge conflicts, base-skew, and prior investigation invisible from the currently-failing check alone. `sweeplib.heartbeat_due()` already treats `resolved`/`out-of-scope` as terminal and exempt from reconfirmation — so the correct action on a PR already marked terminal is to leave it alone entirely, NOT to re-log a competing verdict from a shallower read ([check rerun-tracker.json's existing verdict before re-deriving a fresh classification from raw CI logs](../learnings/1790021540897-check-rerun-tracker-json-s-existing-verdict-before.md)).
+
+**Source learnings (17):**
 - [`gh run rerun --failed` cannot fix cross-attempt artifact-not-found](../learnings/1780207481552-slang-ci-rerun-failed-cannot-fix-cross-attempt-art.md)
 - [rerun --failed is permanently futile once the build artifact expired (~5-7 day retention); disposition = author rebase/re-push](../learnings/1784297413443-rerun-failed-is-futile-on-runs-past-the-artifact-r.md)
 - [Identical build error across unrelated PRs = base-branch break](../learnings/1780790667002-ci-babysitter-identical-build-error-across-unrelat.md)
@@ -60,4 +62,5 @@ This same "run still open" block also defeats a *single-job* rerun on any PR wit
 - [the terse per-PR sweep reason string can omit a second co-occurring 'don't-rerun' failure — cross-check gh pr checks](../learnings/1789280676488-ci-babysitter-terse-sweep-log-can-omit-a-second-co.md)
 - [gh run rerun --failed is a dead end once the test-binaries artifact expires (`slang-tests-*` = 1-day retention) — a still-open run's later attempt flips to 'Artifact not found'](../learnings/1789740363892-gh-run-rerun-failed-is-a-dead-end-once-the-test-bi.md)
 - [GitHub Actions refuses to rerun a single job while its parent run is still in progress](../learnings/1789885681009-github-actions-refuses-to-rerun-a-single-job-while.md) — `--job` gives a bare "cannot be rerun"; the jobs/<id>/rerun endpoint surfaces the 403; any WAITING job (gate) keeps the run open; record `blocked_reason`, not `reran`.
+- [check rerun-tracker.json's existing verdict before re-deriving a classification from raw CI logs](../learnings/1790021540897-check-rerun-tracker-json-s-existing-verdict-before.md) — a terminal `resolved`/`out-of-scope` verdict encodes merge/base-skew context a single log read misses; leave terminal-verdict PRs alone, don't re-log a shallower competing verdict.
 _Catalog: [[wiki/index.md]]_

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-490 learnings. [Catalog](../index.md)
+497 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -148,6 +148,7 @@ type: topic
 - [ASan "runtime does not come first" CI flake — static-canary tell + why static linkage isn't the fix](../learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md)
 - [Attribute a runner-scoped CI defect with a host×job cross-tab, not a list of reds](../learnings/1785853592478-attribute-a-runner-scoped-ci-defect-with-a-host-jo.md)
 - [Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)
+- [Background build exit code masked by trailing `tail`/`echo` — check BUILD_EXIT, not the wrapper](../learnings/1789990370500-background-build-exit-code-masked-by-trailing-tail.md)
 - [Before citing an identifier as evidence, prove it varies (cross-repo dispatch head_sha is a constant)](../learnings/1786093847191-before-citing-an-identifier-as-evidence-prove-it-v.md)
 - [Benign/valid-output severity calls must check every reachable emit target (validity is target-specific)](../learnings/1785449256204-benign-valid-output-severity-calls-must-check-ever.md)
 - [Blindness and success share an output channel — a control must return a specific value only a working probe could produce](../learnings/1786043347132-blindness-and-success-share-an-output-channel-a-co.md)
@@ -162,6 +163,7 @@ type: topic
 - [Build subagent auto-relaunch on failure → concurrent-build archive corruption](../learnings/1784659482124-build-subagent-auto-relaunch-on-failure-concurrent.md)
 - [Build subagent false-report + concurrent-ninja collision corrupts build dir](../learnings/1784775308129-build-subagent-false-report-concurrent-ninja-colli.md)
 - [Build subagent Monitor pgrep matches sibling worktrees; TaskStop kills the build](../learnings/1785468785000-build-subagent-monitor-pgrep-matches-sibling-workt.md)
+- [Build subagent that arms a Monitor and returns early can leave a git-stash unpopped and race your own build](../learnings/1790049141550-build-subagent-that-arms-a-monitor-and-returns-ear.md)
 - [Build subagent that bails mid-build often leaves its detached cmake running — check before relaunching](../learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md)
 - [Build subagent that ends its turn gets reaped mid-build → stale zero-byte .so → objcopy empty-file FAILED](../learnings/1787782170721-build-subagent-that-ends-its-turn-gets-reaped-mid-.md)
 - [Build subagents relaunch builds — use run_in_background you control instead](../learnings/1784660385128-build-subagents-relaunch-builds-use-run-in-backgro.md)
@@ -171,6 +173,7 @@ type: topic
 - [ByteAddressBuffer.Load&lt;T&gt;() + method/call-arg crash = specialization dropping the alignment operand](../learnings/1789577999587-byteaddressbuffer-load-lt-t-gt-method-call-arg-cra.md)
 - [Case-less __target_switch: the enforcing [require] is on the resource TYPE, not the method](../learnings/1785418069559-case-less-target-switch-the-enforcing-require-is-o.md)
 - [CHANGES_REQUESTED ≠ edit list — read the review body + inline count, not just reviewDecision](../learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md)
+- [Check rerun-tracker.json's existing verdict before re-deriving a fresh classification from raw CI logs](../learnings/1790021540897-check-rerun-tracker-json-s-existing-verdict-before.md)
 - [Check the build graph before recommending a test shape](../learnings/1785840792663-check-the-build-graph-before-recommending-a-test-s.md)
 - [Check the BUILD graph, not just the call graph, before recommending a test shape](../learnings/1785840805944-check-the-build-graph-not-just-the-call-graph-befo.md)
 - [check-cmdline-ref CI does byte-exact diff — never strip trailing space from the generated doc](../learnings/1785334855546-check-cmdline-ref-ci-does-byte-exact-diff-never-st.md)
@@ -204,6 +207,7 @@ type: topic
 - [CI suite currency: four timestamp fields invert, only created_at is safe](../learnings/1785824275373-ci-suite-currency-four-timestamp-fields-invert-onl.md)
 - [CI sweeps: a stale workflow_dispatch run makes a GREEN PR look red (verify run event before rerunning)](../learnings/1785816873789-ci-sweeps-a-stale-workflow-dispatch-run-makes-a-gr.md)
 - [CI terminal is not chain terminal — a maintainer approved 6 minutes before two agents declared the chain closed](../learnings/1785970543490-ci-terminal-is-not-chain-terminal-a-maintainer-app.md)
+- [ci-babysitter: wake-payload hasNewActivity read false on 4 PRs with genuine new pushes](../learnings/1789970806784-ci-babysitter-wake-payload-hasnewactivity-read-fal.md)
 - [CI-infra patches referencing external repos need coordinator-side verification (A/C can't reach them)](../learnings/1787133301381-ci-infra-patches-referencing-external-repos-need-c.md)
 - [CI-integrity bug class: a detected failure is logged but never folded into the recorded test result (stale init=Success leaks through)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
 - [CI: flake-class vs deterministic-hang, and the two-sweep escalation threshold](../learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md)
@@ -290,6 +294,8 @@ type: topic
 - [Furo theme dark-mode code colors — use pygments_dark_style, not CSS overrides](../learnings/1779427288040-furo-theme-dark-mode-code-colors-use-pygments-dark.md)
 - [GCP linux-build runners mis-report AVX-512 → SIGILL in slang-llvm JIT (recurring env class; check FIRST for per-VM CPU-path flakes)](../learnings/1783443514224-gcp-linux-build-runners-mis-report-avx-512-sigill-.md)
 - [GET /commits/<sha>/status reports success from one CLA check — never read CI state from it](../learnings/1786065560682-get-commits-sha-status-reports-success-from-one-cl.md)
+- [getEntryPointHash + link-time DownstreamArgs: fix confirms buildHash captures downstream args; Module re-hash is harmless](../learnings/1790048442419-getentrypointhash-link-time-downstreamargs-fix-con.md)
+- [getEntryPointHash omits a component's own link-time option set (only Module::buildHash hashes its options)](../learnings/1790001366182-getentrypointhash-omits-a-component-s-own-link-tim.md)
 - [getRootAddr is sufficient for CUDA __constant__ param group (unlike SBT) — why the peel-walker is not needed](../learnings/1789472511569-getrootaddr-is-sufficient-for-cuda-constant-param-.md)
 - [gh api check-runs returns 30 of N — the CI-green instrument is truncated AND scoped wrong](../learnings/1786437428830-gh-api-check-runs-returns-30-of-n-the-ci-green-ins.md)
 - [gh api search/code total_count counts matches, not files — and pick ONE scope when citing counts](../learnings/1785791779734-gh-api-search-code-total-count-counts-matches-not-.md)
@@ -364,6 +370,7 @@ type: topic
 - [Paginate: reconcile on RAW page length, not your filtered count (/pulls has no total_count)](../learnings/1785774447673-paginate-reconcile-on-raw-page-length-not-your-fil.md)
 - [Parallel fix/issue-* chains can grab the same OptionKind/enum value off a shared base → duplicate-case build break; self-heals via append-renumber](../learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md)
 - [Parallelize the REST-fallback CI sweep — serial retry-wrapper sweeps time out at scale](../learnings/1785752832168-parallelize-the-rest-fallback-ci-sweep-serial-retr.md)
+- [Parking a chain on a human/operator decision needs a re-chase timer, or it stalls silently](../learnings/1790028684307-parking-a-chain-on-a-human-operator-decision-needs.md)
 - [Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace](../learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)
 - [Pin the denominator when comparing a CI rate to a stored baseline](../learnings/1786091003109-pin-the-denominator-when-comparing-a-ci-rate-to-a-.md)
 - [Pointer function parameters are provisional in the specialize-address-space pre-pass](../learnings/1789249737483-pointer-function-parameters-are-provisional-in-the.md)

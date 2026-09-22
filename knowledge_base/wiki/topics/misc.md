@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1232 learnings. [Catalog](../index.md)
+1236 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
@@ -705,6 +705,7 @@ type: topic
 - [gh api search/code indexes ONLY the default branch — your fix branch is invisible, and a same-file positive control does not catch it](../learnings/1786124936587-gh-api-search-code-indexes-only-the-default-branch.md)
 - [gh api silently switches to POST when -F/-f is passed without -X GET](../learnings/1785896229451-gh-api-silently-switches-to-post-when-f-f-is-passe.md)
 - [gh auth status "token invalid" warning is a false alarm — reads still work](../learnings/1788549008722-gh-auth-status-token-invalid-warning-is-a-false-al.md)
+- [gh auth status can report "invalid token" while gh pr diff still works (App installation token)](../learnings/1790018429990-gh-auth-status-can-report-invalid-token-while-gh-p.md)
 - [gh auth status false-negative under App installation token](../learnings/1789106327782-gh-auth-status-false-negative-under-app-installati.md)
 - [gh auth status false-negative with App installation token (gh api still works)](../learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md)
 - [gh auth status may report GH_TOKEN invalid while API reads still work](../learnings/1788558749393-gh-auth-status-may-report-gh-token-invalid-while-a.md)
@@ -720,6 +721,7 @@ type: topic
 - [gh pr comment (GraphQL) can fail where REST issues/comments succeeds — same token](../learnings/1786351785011-gh-pr-comment-graphql-can-fail-where-rest-issues-c.md)
 - [gh pr read works despite invalid GH_TOKEN (public repo fallback)](../learnings/1788396720428-gh-pr-read-works-despite-invalid-gh-token-public-r.md)
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)
+- [gh run --log becomes readable only after a run fully completes; job-level logs endpoint can stay empty](../learnings/1790038136269-gh-run-log-becomes-readable-only-after-a-run-fully.md)
 - [gh run list --workflow <wrong-filename> silently returns a RETIRED workflow's old runs instead of erroring](../learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-retur.md)
 - [gh run rerun --failed has no per-job filter for mixed intermittent+legitimate failures](../learnings/1787206386186-gh-run-rerun-failed-has-no-per-job-filter-for-mixe.md)
 - [gh run rerun --failed is a dead end once the test-binaries artifact expires (1-day retention)](../learnings/1789740363892-gh-run-rerun-failed-is-a-dead-end-once-the-test-bi.md)
@@ -806,6 +808,7 @@ type: topic
 - [Grep your own bot's prior comments before characterizing a sibling issue — a stale self-contradiction is the one error a peer can't catch](../learnings/1785961661778-grep-your-own-bot-s-prior-comments-before-characte.md)
 - [groupshared param by-ref regresses CUDA emit (vk-only inline pass masks it)](../learnings/1784741954379-groupshared-param-by-ref-regresses-cuda-emit-vk-on.md)
 - [Guard-failure taxonomy: four shapes, and the one test that catches all of them](../learnings/1785868701765-guard-failure-taxonomy-four-shapes-and-the-one-tes.md)
+- [Guarding a public getter that RHI calls internally breaks internal uses — split public-guarded from internal-unchecked](../learnings/1790032907874-guarding-a-public-getter-that-rhi-calls-internally.md)
 - [hasOption(DiagnosticColor) IS reliable on the getTargetCode composite path (unlike Optimization on getEntryPointCode)](../learnings/1782934361227-hasoption-diagnosticcolor-is-reliable-on-the-getta.md)
 - [Having a rule auto-loaded is not executing it: read-only dispatch constraints need a pre-dispatch check, and opportunity is not authorship](../learnings/1785805120902-having-a-rule-auto-loaded-is-not-executing-it-read.md)
 - [Heartbeat pre-check pending_summons is inflated by button spam — dedup by thread_id before working](../learnings/1783923415924-heartbeat-pre-check-pending-summons-is-inflated-by.md)
@@ -1003,6 +1006,7 @@ type: topic
 - [Regression-testing a native SIGSEGV under pytest (subprocess + strict xfail + phase bracket)](../learnings/1783875908806-regression-testing-a-native-sigsegv-under-pytest-s.md)
 - [Relaxing an assert to admit one shape blinds it to a worse one — a tightened-then-loosened invariant is not neutral](../learnings/1786035696933-relaxing-an-assert-to-admit-one-shape-blinds-it-to.md)
 - [Relay 'proceed/release' from upstream downstream — it is an action cue, not a status no-op](../learnings/1781075015015-relay-proceed-release-from-upstream-downstream-it-.md)
+- [Relaying a subagent's comment-accuracy nit: quote the committed comment, not the subagent's paraphrase of it](../learnings/1790038150865-relaying-a-subagent-s-comment-accuracy-nit-quote-t.md)
 - [Release-containment checks: prefer merge-base identity, don't cross ahead_by/behind_by, and test the shipped binary — tag ancestry isn't behavior](../learnings/1785954095027-release-containment-checks-prefer-merge-base-ident.md)
 - [Removing a redundancy MOVES the invariant rather than eliminating it — and null can become a meaningful value, making the obvious assert wrong](../learnings/1786032184217-removing-a-redundancy-moves-the-invariant-rather-t.md)
 - [render slug before submit — 50 char budget not word count](../learnings/1786047672173-render-slug-before-submit-50-char-budget-not-word-.md)

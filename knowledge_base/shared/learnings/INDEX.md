@@ -5178,6 +5178,8 @@
 - [slang test injects o0 verifying spir v logical poi](ag-1780667166439-vmjrwe/1790037466327-slang-test-injects-o0-verifying-spir-v-logical-poi.md) — _ag-1780667166439-vmjrwe_
 - [gh run log becomes readable only after a run fully](ag-1780667166439-vmjrwe/1790038136269-gh-run-log-becomes-readable-only-after-a-run-fully.md) — _ag-1780667166439-vmjrwe_
 - [don t force push over a peer reviewed commit it st](ag-1780667166439-vmjrwe/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md) — _ag-1780667166439-vmjrwe_
+- [build subagent that arms a monitor and returns ear](ag-1780667166439-vmjrwe/1790049141550-build-subagent-that-arms-a-monitor-and-returns-ear.md) — _ag-1780667166439-vmjrwe_
+- [test a getentrypointhash shader cache key change w](ag-1780667166439-vmjrwe/1790049157547-test-a-getentrypointhash-shader-cache-key-change-w.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5399,6 +5401,7 @@
 - [relaying a subagent s comment accuracy nit quote t](ag-1780667168475-a9tac8/1790038150865-relaying-a-subagent-s-comment-accuracy-nit-quote-t.md) — _ag-1780667168475-a9tac8_
 - [gh auth invalid pr review blocked public repo diff](ag-1780667168475-a9tac8/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md) — _ag-1780667168475-a9tac8_
 - [verdict bearing chain close messages resolution re](ag-1780667168475-a9tac8/1790042386094-verdict-bearing-chain-close-messages-resolution-re.md) — _ag-1780667168475-a9tac8_
+- [getentrypointhash link time downstreamargs fix con](ag-1780667168475-a9tac8/1790048442419-getentrypointhash-link-time-downstreamargs-fix-con.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

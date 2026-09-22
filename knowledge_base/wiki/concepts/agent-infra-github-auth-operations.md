@@ -3,7 +3,7 @@ title: "GitHub Auth and Operations in Agent Containers"
 type: concept
 group: agent-infra
 tags: [github, onecli, gh-cli, nv-slang-bot, workflows, pr-mapping, auth, proxy, credentials]
-source_count: 29
+source_count: 30
 ---
 
 # GitHub Auth and Operations in Agent Containers
@@ -96,6 +96,8 @@ Reviewer A can review the WRONG PR via stale `tmp/pr-diff.patch` from a prior ru
 
 The same false-negative bites the reviewer's own preflight: a `gh api rate_limit` probe returning `401 app_not_connected` (alongside `gh auth status` "token invalid") is the App-installation-token quirk, NOT a write block — when posting was authorized on PR #12303, the real `post-review.sh` POST landed review id 4825141937 despite the alarmed preflight. Do not pre-declare a token block from a preflight 401; attempt the real op and treat only a failing *actual* write (401/403) as degradation (→ file-only + escalate for a GitHub-connection re-login, not a container restart). Two mechanical traps on the read-fallback path: a read-only local-git `gh` shim installed at `~/.local/bin/gh` (to resolve `gh pr diff`/`gh pr view` from `git fetch origin pull/<N>/head`) wins PATH and shadows `/usr/bin/gh`, so it must be REMOVED before the post step or it refuses the POST; and the runner's `post-back.sh`/`post-review.sh`/`cleanup.sh` are mode `-rw-r--r--` (not +x), so invoke via explicit `bash <script>` — an exit-126 "Permission denied" from post-back's internal `"$DIR/post-review.sh"` call is a chmod issue, not a token failure ([gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)).
 
+Reconfirmed 2026-09-21/22 across four `/slang-pr-review` runs (#13202, #13206, #13214, #13215): the same `gh auth status` "GH_TOKEN invalid" / `gh api rate_limit` `app_not_connected` fired, yet `gh pr view`/`gh pr diff <N> -R shader-slang/slang` returned full data every time — for a **public** repo `gh` even falls back to unauthenticated reads, so `pr` mode (Reviewers A/C consume `gh pr diff`; B/Devin scrapes anonymously) runs fine; only posting needs a valid write token. Two operational corollaries from those runs: (1) the inner `claude --print` reviewer runs (Reviewer A `compose-and-run.sh`, Reviewer C `run-clarity.sh`) **bill to a separate pool from the nanoclaw session budget** — A reported $10–21 total while the session budget moved only cents, so A+C can run concurrently at the default `--max-budget-usd` 30/20 caps without draining the session; (2) distinguish a genuine `403 rate-limit` body (real — the shared 5,000/hr REST budget can be exhausted by a prior Reviewer-A pass) from the cosmetic auth-probe false-negative by reading the error text ([gh auth invalid ≠ pr-review blocked: public-repo diff reads work unauthenticated](../learnings/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md)).
+
 ## Emsdk and CI Run Logs
 
 Authenticated read of CI logs works even when `gh auth status` shows invalid: `gh run view <run-id> -R shader-slang/slang` and `gh run view --job <job-id> -R shader-slang/slang --log` both work via the read-only proxy path. Use this to find the last-good emsdk version: grep the last green run's wasm-job log for `Resolving SDK version 'X.Y.Z' to 'sdk-releases-<hash>-64bit'` ([Find last-good emsdk version for an emsdk-install-latest regression from the green run log](../learnings/1780624123110-find-last-good-emsdk-version-for-an-emsdk-install-.md)).
@@ -120,7 +122,8 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 
 > **Later incremental folds moved to [part 2](agent-infra-github-auth-operations-2.md)** (2026-08-17): the resolved 07-16/07-17 auth-outage diagnostics, the empty-list-looks-like-success trap + unauth REST fallback, the Discussions write-block, reviewing/triaging under an invalid token, PR takeover from a contributor's personal fork, human-cred-merge ≠ bot-write-recovery, and the third `.github/workflows/*` push boundary.
 
-**Source learnings (29):**
+**Source learnings (30):**
+- [gh auth invalid ≠ pr-review blocked: public-repo diff reads work unauthenticated; inner claude reviewer cost bills to a separate pool](../learnings/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md)
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work; remove the read-only local-git gh shim before posting](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)
 - [Fork-PR CI approval gate is keyed on origin-of-head (fork vs same-repo branch), not PR author — the bot fixer's same-repo-branch PRs skip it](../learnings/1785530290363-fork-pr-ci-approval-gate-is-keyed-on-origin-of-hea.md)
 - [CONSOLIDATED: GitHub auth & ops in agent containers](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)

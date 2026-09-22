@@ -3,7 +3,7 @@ title: SlangPy bug investigations — autodiff atomics (#222), descriptor/pool e
 type: concept
 group: slangpy
 tags: [slangpy, slang-rhi, autodiff, atomics, d3d12, descriptor-heap, cpu-backend, triage, cross-repo]
-source_count: 12
+source_count: 13
 ---
 
 ## TL;DR
@@ -207,7 +207,9 @@ slangpy package dir. `SHADER_PATH` is injected at exactly one place — the Pyth
 inherits `device.slang_session.desc.compiler_options.include_paths`
 [#886 create_slang_session does not inherit include paths (DeepWiki wrong)](../learnings/1787226621145-slangpy-create-slang-session-does-not-inherit-devi.md).
 
-**Source learnings (12):**
+#1177 is the raw-constructor twin of #886 and confirms the same one-injection-point root cause end-to-end: `spy.Device()` (the raw nanobind-bound native SGL class, `src/slangpy_ext/device/device.cpp:513-539`, defaults `compiler_options` to an empty `SlangCompilerOptions{}` → empty `include_paths`) + `spy.Tensor.from_numpy(...)` fails with `SlangCompileError: cannot open file 'slangpy.slang'`, while `spy.create_device()` works because the Python wrapper (`slangpy/core/utils.py:41,52-58`) is the ONLY place `slangpy.SHADER_PATH` (the `slangpy/slang` dir) is prepended. The failure surfaces through `Device::builtin_layout()` → `load_module("slangpy")` (`src/sgl/device/shader.cpp:1040`); the narrowest Python spot holding both the device and `SHADER_PATH` for an actionable re-raise is `_get_lookup_module` (`slangpy/reflection/lookup.py:34-35`). Keep the #1177 fix narrow (actionable error + docs — the repo's own `AGENTS.md` "Functional API" example uses the failing `spy.Device()`) and merely flag the linkage; a broad "always auto-inject SHADER_PATH" fix collides with #886's held design decision (`inherit_default_include_paths`, pending a maintainer approach call) ([#1177/#886 share one root cause: SHADER_PATH injected only in the create_device wrapper](../learnings/1790019427102-slangpy-spy-device-vs-create-device-shader-path-in.md)).
+
+**Source learnings (13):**
 
 - [slangpy#222 title is wrong — AMD-Windows grads collapse into element 0, not "always 0"](../learnings/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — `[72,0,0,0]` is a scatter-address bug; verify a title against the actual numbers.
 - [slangpy#222 root cause: slang-rhi advertises float-atomic-ADD off the BASE atomics bit](../learnings/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — a capability atom ≠ runtime support; a coarse `Feature::AtomicFloat` guard can't fix it; cross-repo fix.
@@ -218,6 +220,7 @@ inherits `device.slang_session.desc.compiler_options.include_paths`
 - [Allocator meta-issue slangpy#805 is largely already solved upstream in slang-rhi](../learnings/1787226230030-allocator-meta-issue-slangpy-805-is-largely-alread.md) — a vendored dep in external/ ≠ integrated; verify call sites; escalate cross-repo coordination.
 - [slangpy#795 tensor-move already landed (silently-fixed orphan)](../learnings/1787226338570-slangpy-795-tensor-move-already-landed-silently-fi.md) — new-name vs old-name mismatch is the tell; re-derive from primary source before publishing.
 - [slangpy create_slang_session does NOT inherit device include paths (DeepWiki wrong)](../learnings/1787226621145-slangpy-create-slang-session-does-not-inherit-devi.md) — verify inherit/propagate claims against source; SHADER_PATH seeds only the default session.
+- [#1177: raw `spy.Device()` lacks SHADER_PATH → `cannot open file 'slangpy.slang'`; same one-injection-point root cause as #886](../learnings/1790019427102-slangpy-spy-device-vs-create-device-shader-path-in.md) — keep the fix narrow (error+docs), `_get_lookup_module` is the re-raise chokepoint; don't reopen #886's held `inherit_default_include_paths` design.
 - [SlangPy CPU backend: zero device dispatch limit breaks all dispatches (#1136)](../learnings/1788474155417-slangpy-cpu-backend-zero-device-dispatch-limit-bre.md) — CPU never sets maxComputeDispatchThreadGroups; mirror Metal's 0xFFFFFFFF sentinel; a slangpy fallback must cover X, Y, generator.
 - [SlangPy CPU dispatch: zero DeviceLimits + pytest device classification (#1136/#1137)](../learnings/1788480806317-slangpy-cpu-dispatch-zero-devicelimits-stale-local.md) — a device test needs a `device_type` param to run under scoped selections; CPU excluded from DEFAULT_DEVICE_TYPES.
 - [Localizing a CPU-only SlangPy segfault to a layer (#1138)](../learnings/1788481634992-localizing-a-cpu-only-slangpy-segfault-to-a-layer-.md) — GPU-works/CPU-crashes with opaque-bytes RHI + backend-agnostic slangpy ⇒ compiler CPU/host-callable target bug; reflection probe is cheapest.

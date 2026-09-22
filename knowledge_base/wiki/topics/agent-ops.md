@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-724 learnings. [Catalog](../index.md)
+729 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -197,6 +197,7 @@ type: topic
 - [Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to](../learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md)
 - [Check a citation separately from the conclusion it decorates](../learnings/1786066006766-check-a-citation-separately-from-the-conclusion-it.md)
 - [Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)](../learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md)
+- [CI sweep script: action_required conclusion needed its own blocked-check branch, not just BLOCKED_STATUS](../learnings/1790036749012-ci-sweep-script-action-required-conclusion-needed-.md)
 - [CI-gate levers rank by failure DIRECTION, not completeness — de-gate fails OPEN](../learnings/1786522092980-ci-gate-levers-rank-by-failure-direction-not-compl.md)
 - [Cite the enclosing function, not just the line — a bare line number hides the blast radius](../learnings/1786183366163-cite-the-enclosing-function-not-just-the-line-a-ba.md)
 - [CLAassistant is typed `User`, not `Bot` — it trips supervisor "unanswered human comment" nudges (false alarm)](../learnings/1789521176741-claassistant-is-typed-user-not-bot-it-trips-superv.md)
@@ -293,6 +294,7 @@ type: topic
 - [critique gate hit names the surface reason names the defect and the off diagonal cell rule](../learnings/1785821641484-critique-gate-hit-names-the-surface-reason-names-t.md)
 - [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
 - [Critique gate re-arms on ANY file write between approve and delivery — even a heredoc gh-comment body](../learnings/1788259463864-critique-gate-re-arms-on-any-file-write-between-ap.md)
+- [Critique-gate ([Resolution]/PR delivery) only counts codex calls in the exact codex-critique format](../learnings/1790016287155-critique-gate-resolution-pr-delivery-only-counts-c.md)
 - [critique-gate and PR-body-file interaction traps](../learnings/1787821097042-critique-gate-and-pr-body-file-interaction-traps.md)
 - [Critique-gate approve expires if codex attests volatile session-trace files](../learnings/1787684241707-critique-gate-approve-expires-if-codex-attests-vol.md)
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md)
@@ -402,6 +404,7 @@ type: topic
 - [gh CLI works for repo-scoped writes despite "invalid token" — GH_TOKEN is a OneCLI routing sentinel](../learnings/1789099182120-gh-cli-works-for-repo-scoped-writes-despite-invali.md)
 - [gh GH_TOKEN can be stale while gateway curl still posts to GitHub](../learnings/1788089811545-gh-gh-token-can-be-stale-while-gateway-curl-still-.md)
 - [gh pulls?head=owner:branch is blind to fork PRs; index head.ref over the full open-PR list instead](../learnings/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md)
+- [gh read paths work despite OneCLI "invalid token" preflight warning](../learnings/1790009814074-gh-read-paths-work-despite-onecli-invalid-token-pr.md)
 - [gh run rerun --failed is blocked while a bot-PR CI run waits on the priority-yield gate](../learnings/1789265883183-gh-run-rerun-failed-is-blocked-while-a-bot-pr-ci-r.md)
 - [gh run rerun blocked while parent run status=waiting on pending approval gate](../learnings/1787596929089-gh-run-rerun-blocked-while-parent-run-status-waiti.md)
 - [gh run rerun fails on wedged falcor-build-approval-gate even when the target job already failed](../learnings/1788545503656-gh-run-rerun-fails-on-wedged-falcor-build-approval.md)
@@ -634,6 +637,7 @@ type: topic
 - [supervise-issues scan.py over-flags awaiting_us from non-bot timeline events (shepherd subscribe/mention)](../learnings/1789265524383-supervise-issues-scan-py-over-flags-awaiting-us-fr.md)
 - [supervise-issues scan.py over-flags awaiting_us when ball==ours (skips park gate)](../learnings/1787074119866-supervise-issues-scan-py-over-flags-awaiting-us-wh.md)
 - [supervise-issues scan.py over-flags nudges: bots tagged is_bot=false + board-sync notices read as human-last](../learnings/1787402461318-supervise-issues-scan-py-over-flags-nudges-bots-ta.md)
+- [supervise-issues scan.py: awaiting_us false-positive modes (Tick 238, 7 of 9 nudges)](../learnings/1790044307828-supervise-issues-scan-py-awaiting-us-false-positiv.md)
 - [supervise-issues scan.py: stored disposition must outrank per-tick reclassification](../learnings/1786498066587-supervise-issues-scan-py-stored-disposition-must-o.md)
 - [supervise-issues worktree GC bare-number resolver ignores repo binding in .git gitdir](../learnings/1787490790849-supervise-issues-worktree-gc-bare-number-resolver-.md)
 - [supervise-issues: awaiting_us is ~90% false-positive at scale — bot-last mislabeled, draft-held PRs the real bottleneck](../learnings/1789182038195-supervise-issues-awaiting-us-is-90-false-positive-.md)
@@ -705,6 +709,7 @@ type: topic
 - [updated_at is not a push signal — comment bumps fake freshness in CI triage](../learnings/1785795714343-updated-at-is-not-a-push-signal-comment-bumps-fake.md)
 - [upload-artifact silently drops dot-directory contents without include-hidden-files](../learnings/1787124782643-upload-artifact-silently-drops-dot-directory-conte.md)
 - [Use Explore subagent (not a bare fork) for the learnings-scan step](../learnings/1782329772659-use-explore-subagent-not-a-bare-fork-for-the-learn.md)
+- [Verdict-bearing chain-close messages ([Resolution]/[Review Verdict]) trip the codex critique-gate — run OUTPUT_REVIEW first](../learnings/1790042386094-verdict-bearing-chain-close-messages-resolution-re.md)
 - [Verified GitHub comments/labels are NOT operator-gated — only pr-ready/merge/auto-close are](../learnings/1782894060592-verified-github-comments-labels-are-not-operator-g.md)
 - [Verify a capability in a peer's ACTUAL environment before asserting it — skill/tool versions skew across groups](../learnings/1788238641032-verify-a-capability-in-a-peer-s-actual-environment.md)
 - [Verify a CI run belongs to THIS PR/head before crediting its conclusion](../learnings/1784873907730-verify-a-ci-run-belongs-to-this-pr-head-before-cre.md)

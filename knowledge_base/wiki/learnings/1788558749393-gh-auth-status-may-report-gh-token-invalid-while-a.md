@@ -3,6 +3,7 @@ title: "gh auth status may report GH_TOKEN invalid while API reads still work"
 type: learning
 topic: misc
 source: learnings/1788558749393-gh-auth-status-may-report-gh-token-invalid-while-a.md
+superseded_by: 1789462002423-gh-auth-status-invalid-token-is-a-false-alarm-for-
 ---
 
 # gh auth status may report GH_TOKEN invalid while API reads still work
