@@ -65,7 +65,14 @@ beforeEach(() => {
   vi.stubEnv('NANOCLAW_DISPLAY_NAME', 'Operator');
   // Every step but the terminating cli-agent step; the container step, where
   // the question is asked, is skipped as on any re-entry.
-  vi.stubEnv('NANOCLAW_SKIP', 'environment,container,onecli,auth,mounts,service,first-chat,timezone,channel,verify');
+  // `projects` is fork-only and unmocked: it shells `git ls-remote origin` for
+  // the nv-* project branches, which exist here, then blocks on an interactive
+  // multiselect the @clack mock below does not implement. Upstream omits it
+  // because a stock install has no project branches and the step no-ops.
+  vi.stubEnv(
+    'NANOCLAW_SKIP',
+    'environment,projects,container,onecli,auth,mounts,service,first-chat,timezone,channel,verify',
+  );
   fixture.fail.mockRejectedValue(new Error('failure assistance finished'));
   fixture.offerPortalReminder.mockResolvedValue(false);
 });
