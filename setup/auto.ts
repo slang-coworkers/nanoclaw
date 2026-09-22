@@ -273,9 +273,9 @@ async function main(): Promise<void> {
       brandBody(dimWrap('Your assistant lives in its own sandbox. It can only see what you explicitly share.', 4)),
     );
     // Asked before the step runs, because the step is what acts on the answer.
-    // An explicit "build it here" is a decision; the perk reminder for this
-    // question is only for installs that fell back to a local build unasked.
-    if ((await chooseImageSource()) === 'local') skip.add('echo-reminder');
+    // The answer lives in `.env` (imageSourceDecided); the perk reminder below
+    // reads it from there, so it survives a resume and a plain re-run alike.
+    await chooseImageSource();
     p.log.message(
       brandBody(
         dimWrap(
@@ -550,10 +550,16 @@ async function main(): Promise<void> {
     }
   }
 
+  // Only for a run that never reached the sandbox-image question. Any answer
+  // to it — a browser choice, a declined handoff, a skipped or failed sign-in
+  // — is written to `.env`, and that is the one store every kind of re-entry
+  // (fail()'s retry, the sg-docker re-exec, a plain re-run) still sees. An
+  // in-memory skip entry would not survive the first two, and the question is
+  // not asked again on any of them.
   if (
     portalEnabled() &&
     !skip.has('echo-reminder') &&
-    readImageSource() !== 'hardened' &&
+    !imageSourceDecided() &&
     readAgentImagePin() &&
     (process.env.NANOCLAW_AGENT_PROVIDER || readEnvKey('DEFAULT_AGENT_PROVIDER') || DEFAULT_AGENT_PROVIDER || 'claude')
       .trim()
@@ -574,7 +580,6 @@ async function main(): Promise<void> {
           },
         }),
       );
-      skip.add('echo-reminder');
     } catch (error) {
       await fail(
         'container',
