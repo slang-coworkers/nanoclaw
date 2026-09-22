@@ -439,6 +439,58 @@ class SendMessageArgs(BaseModel):
     )
 
 
+_THREAD_ARCHIVE_DURATIONS = (60, 1440, 4320, 10080)
+
+
+class CreateThreadArgs(BaseModel):
+    """Arguments for the create_thread tool."""
+
+    channel_id: str = Field(
+        ...,
+        description=(
+            "Parent text or announcement channel ID. Not a forum "
+            "(use discord_send_message with thread_name) and not an existing thread."
+        ),
+    )
+    name: str = Field(..., description="Thread title (1-100 characters)")
+    message_id: Optional[str] = Field(
+        None,
+        description=(
+            "If set, start a public thread attached to this message in channel_id. "
+            "If omitted, create a standalone public thread in the channel."
+        ),
+    )
+    auto_archive_duration: int = Field(
+        1440,
+        description="Minutes of inactivity before the thread archives. Discord allows 60, 1440, 4320, or 10080.",
+    )
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, v: str) -> str:
+        name = v.strip()
+        if len(name) < 1 or len(name) > 100:
+            raise ValueError("Thread name must be between 1 and 100 characters")
+        return name
+
+    @field_validator("message_id")
+    @classmethod
+    def empty_message_id(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return None
+        stripped = v.strip()
+        return stripped or None
+
+    @field_validator("auto_archive_duration")
+    @classmethod
+    def validate_auto_archive_duration(cls, v: int) -> int:
+        if v not in _THREAD_ARCHIVE_DURATIONS:
+            raise ValueError(
+                "auto_archive_duration must be one of 60, 1440, 4320, or 10080 minutes"
+            )
+        return v
+
+
 class ReadMessagesArgs(BaseModel):
     """Arguments for the read_messages tool."""
 
@@ -884,7 +936,9 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
 
     Allowed targets:
     - Channels listed in DISCORD_ALLOWED_SEND_CHANNELS (comma-separated IDs)
+    - Threads whose parent channel is listed in DISCORD_ALLOWED_SEND_CHANNELS
     - Threads whose parent forum is listed in DISCORD_ALLOWED_SEND_FORUMS
+    - Forum channels listed in DISCORD_ALLOWED_SEND_FORUMS
 
     If neither env var is set, all sends are blocked.
 
@@ -899,8 +953,7 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
     try:
         if _read_only_blocked(f"send_message channel={args.channel_id}"):
             return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
-        allowed_channels_raw = os.environ.get("DISCORD_ALLOWED_SEND_CHANNELS", "")
-        allowed_channels = {c.strip() for c in allowed_channels_raw.split(",") if c.strip()}
+        allowed_channels = _allowed_send_channel_ids()
         allowed_forums_raw = os.environ.get("DISCORD_ALLOWED_SEND_FORUMS", "")
         allowed_forums = {c.strip() for c in allowed_forums_raw.split(",") if c.strip()}
 
@@ -925,10 +978,17 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
                     "error": f"Not authorized to access channel with ID {channel_id}"
                 }
 
-        # Enforce allowlist: direct channel match, thread in allowed forum, or forum itself
+        # Enforce allowlist: direct channel match, thread whose parent is
+        # an allowed text channel or forum, or the forum channel itself.
         is_allowed = args.channel_id in allowed_channels
-        if not is_allowed and isinstance(channel, discord.Thread) and channel.parent:
-            is_allowed = str(channel.parent.id) in allowed_forums
+        if not is_allowed and isinstance(channel, discord.Thread):
+            parent_id = None
+            if channel.parent is not None:
+                parent_id = str(channel.parent.id)
+            elif getattr(channel, "parent_id", None) is not None:
+                parent_id = str(channel.parent_id)
+            if parent_id is not None:
+                is_allowed = parent_id in allowed_channels or parent_id in allowed_forums
         if not is_allowed and isinstance(channel, discord.ForumChannel):
             is_allowed = args.channel_id in allowed_forums
         if not is_allowed:
@@ -981,6 +1041,126 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
         return {"error": str(e)}
     except Exception as e:
         logger.error(f"Error in send_message: {str(e)}")
+        return {"error": str(e)}
+
+
+def _allowed_send_channel_ids() -> set[str]:
+    raw = os.environ.get("DISCORD_ALLOWED_SEND_CHANNELS", "")
+    return {c.strip() for c in raw.split(",") if c.strip()}
+
+
+def _thread_result(thread, *, parent_channel_id: str, message_id: Optional[str] = None) -> Dict[str, Any]:
+    result: Dict[str, Any] = {
+        "thread_id": str(thread.id),
+        "thread_name": thread.name,
+        "channel_id": parent_channel_id,
+        "url": getattr(thread, "jump_url", None),
+    }
+    if message_id is not None:
+        result["message_id"] = message_id
+    return result
+
+
+async def create_thread(args: CreateThreadArgs) -> Dict[str, Any]:
+    """Create a Discord thread in a text/announcement channel.
+
+    Two modes:
+    - message_id set: public thread attached to that message (status-report pattern).
+    - message_id omitted: standalone public thread in the channel.
+
+    Forums are rejected; use discord_send_message with thread_name instead.
+    Restricted to DISCORD_ALLOWED_SEND_CHANNELS (not forum allowlist).
+    """
+    global client
+
+    try:
+        if _read_only_blocked(f"create_thread channel={args.channel_id}"):
+            return {"error": "Discord write blocked: DISCORD_READ_ONLY=1"}
+
+        allowed_channels = _allowed_send_channel_ids()
+        if not allowed_channels:
+            return {"error": "No allowed send channels configured"}
+        if args.channel_id not in allowed_channels:
+            return {"error": f"Channel {args.channel_id} is not in the allowed send list"}
+
+        await ensure_client_connected()
+
+        channel_id = int(args.channel_id)
+        channel = client.get_channel(channel_id)
+        if not channel:
+            try:
+                channel = await client.fetch_channel(channel_id)
+            except discord.NotFound:
+                return {"error": f"Channel with ID {channel_id} not found"}
+            except discord.Forbidden:
+                return {
+                    "error": f"Not authorized to access channel with ID {channel_id}"
+                }
+
+        if isinstance(channel, discord.ForumChannel):
+            return {
+                "error": (
+                    "Forum channels are not supported by discord_create_thread. "
+                    "Use discord_send_message with thread_name to create a forum post."
+                )
+            }
+        if isinstance(channel, discord.Thread):
+            return {"error": f"Channel {args.channel_id} is already a thread"}
+        if not hasattr(channel, "create_thread") or not hasattr(channel, "fetch_message"):
+            return {
+                "error": (
+                    f"Channel {args.channel_id} cannot host threads "
+                    "(need a text or announcement channel)"
+                )
+            }
+
+        if args.message_id:
+            try:
+                message = await channel.fetch_message(int(args.message_id))
+            except discord.NotFound:
+                return {
+                    "error": (
+                        f"Message {args.message_id} not found in channel {args.channel_id}"
+                    )
+                }
+            except discord.Forbidden:
+                return {
+                    "error": f"Not authorized to read message {args.message_id}"
+                }
+            except AttributeError:
+                return {
+                    "error": (
+                        f"Channel {args.channel_id} cannot host threads "
+                        "(need a text or announcement channel)"
+                    )
+                }
+            thread = await message.create_thread(
+                name=args.name,
+                auto_archive_duration=args.auto_archive_duration,
+            )
+            return _thread_result(
+                thread, parent_channel_id=args.channel_id, message_id=str(message.id)
+            )
+
+        thread = await channel.create_thread(
+            name=args.name,
+            type=discord.ChannelType.public_thread,
+            auto_archive_duration=args.auto_archive_duration,
+        )
+        return _thread_result(thread, parent_channel_id=args.channel_id)
+    except asyncio.CancelledError:
+        logger.error("Discord operation was cancelled")
+        return {"error": "Operation cancelled"}
+    except RuntimeError as e:
+        if "Event loop is closed" in str(e):
+            logger.error("Event loop was closed, please retry the operation")
+            if client:
+                await cleanup_discord_client()
+            return {"error": "Discord connection was closed, please retry"}
+        logger.error(f"Runtime error in create_thread: {str(e)}")
+        return {"error": str(e)}
+    except Exception as e:
+        logger.error(f"Error in create_thread: {str(e)}")
         return {"error": str(e)}
 
 
