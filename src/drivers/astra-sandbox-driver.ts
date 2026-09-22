@@ -265,30 +265,30 @@ class AstraSandboxDriver implements SessionDriver {
     }
 
     const claimEnv: Record<string, string> = {
-        SESSION_INBOUND_DB_PATH: '/workspace/inbound.db',
-        SESSION_OUTBOUND_DB_PATH: '/workspace/outbound.db',
-        WORKSPACE_AGENT: '/workspace/agent',
-        ...(agent?.env ?? {}),
-        // The Astra sandbox pod runs readOnlyRootFilesystem:true — only /workspace
-        // and /tmp are writable emptyDir mounts. nanoclaw's container-runner sets
-        // HOME=/home/node for the Docker path (the agent image chmods it 777), but
-        // /home/node is on the immutable rootfs here, so the Claude SDK's first act
-        // — mkdir ~/.claude — dies EROFS before any model call. Point HOME at the
-        // writable session scratch so ~/.claude et al. land under /workspace.
-        HOME: '/workspace',
-        // DIRECT MODE (no OneCLI on Astra): the agent's Claude SDK authenticates
-        // straight to ANTHROPIC_BASE_URL with a real bearer. The `env` lane above
-        // carries ANTHROPIC_BASE_URL + ANTHROPIC_MODEL (forkContainerEnv), but the
-        // token is a credential-NAMED (_TOKEN) key the spec's `env` lane forbids,
-        // and the claude provider otherwise emits only the OneCLI sentinel
-        // (ROUTED_VIA_ONECLI_PROXY) on the dropped `contributedEnv` lane. With no
-        // proxy on Astra that sentinel would 401, so forward the router's own real
-        // token (Vault → router pod env) into the pod. Guarded on a non-sentinel
-        // value so an eventual OneCLI-on-Astra deploy — where the router holds no
-        // raw token — is unaffected.
-        ...(process.env.ANTHROPIC_AUTH_TOKEN && process.env.ANTHROPIC_AUTH_TOKEN !== 'ROUTED_VIA_ONECLI_PROXY'
-          ? { ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN }
-          : {}),
+      SESSION_INBOUND_DB_PATH: '/workspace/inbound.db',
+      SESSION_OUTBOUND_DB_PATH: '/workspace/outbound.db',
+      WORKSPACE_AGENT: '/workspace/agent',
+      ...(agent?.env ?? {}),
+      // The Astra sandbox pod runs readOnlyRootFilesystem:true — only /workspace
+      // and /tmp are writable emptyDir mounts. nanoclaw's container-runner sets
+      // HOME=/home/node for the Docker path (the agent image chmods it 777), but
+      // /home/node is on the immutable rootfs here, so the Claude SDK's first act
+      // — mkdir ~/.claude — dies EROFS before any model call. Point HOME at the
+      // writable session scratch so ~/.claude et al. land under /workspace.
+      HOME: '/workspace',
+      // DIRECT MODE (no OneCLI on Astra): the agent's Claude SDK authenticates
+      // straight to ANTHROPIC_BASE_URL with a real bearer. The `env` lane above
+      // carries ANTHROPIC_BASE_URL + ANTHROPIC_MODEL (forkContainerEnv), but the
+      // token is a credential-NAMED (_TOKEN) key the spec's `env` lane forbids,
+      // and the claude provider otherwise emits only the OneCLI sentinel
+      // (ROUTED_VIA_ONECLI_PROXY) on the dropped `contributedEnv` lane. With no
+      // proxy on Astra that sentinel would 401, so forward the router's own real
+      // token (Vault → router pod env) into the pod. Guarded on a non-sentinel
+      // value so an eventual OneCLI-on-Astra deploy — where the router holds no
+      // raw token — is unaffected.
+      ...(process.env.ANTHROPIC_AUTH_TOKEN && process.env.ANTHROPIC_AUTH_TOKEN !== 'ROUTED_VIA_ONECLI_PROXY'
+        ? { ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN }
+        : {}),
     };
     // claude-trace is a HOST-only wrapper: the Docker realization mounts it at
     // /opt/claude-trace and points CLAUDE_CODE_EXECUTABLE at it. The sandbox pod
