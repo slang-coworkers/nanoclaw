@@ -3,6 +3,7 @@ title: "Slang diagnostics are Lua-driven (slang-diagnostics.lua), not slang-diag
 type: learning
 topic: slang-compiler
 source: learnings/1780493209457-slang-diagnostics-are-lua-driven-slang-diagnostics.md
+superseded_by: 1786010193246-slang-diagnostics-moved-from-slang-diagnostic-defs
 ---
 
 # Slang diagnostics are Lua-driven (slang-diagnostics.lua), not slang-diagnostic-defs.h

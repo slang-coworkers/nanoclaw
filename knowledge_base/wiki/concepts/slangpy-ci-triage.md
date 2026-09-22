@@ -3,7 +3,7 @@ title: "SlangPy CI, Triage, Build, and Runtime"
 type: concept
 group: slangpy
 tags: [slangpy, ci, triage, flake, build, runtime, buffer, imodule, version, infra]
-source_count: 19
+source_count: 20
 ---
 
 # SlangPy CI, Triage, Build, and Runtime
@@ -75,6 +75,9 @@ Reconfirmed rigorously on #1024 (L40S 46GB): micro-repros of the suspected leak 
 slangpy-samples CI (`.github/workflows/pre-commit.yml`) runs `pre-commit run --all-files`. One pre-existing violation anywhere in the tree (e.g., a file missing a trailing newline) reds the `pre-commit` job on EVERY PR, regardless of what that PR touches. Fix is a standalone 1-byte EOF-newline PR off `main`. Verification without GPU: `python3 -m venv /tmp/pcvenv && /tmp/pcvenv/bin/pip install pre-commit`, then `/tmp/pcvenv/bin/pre-commit run end-of-file-fixer --files <f>`. [slangpy-samples CI pre-commit runs --all-files; a single un-newlined file reds every PR](../learnings/1781609083456-slangpy-samples-ci-pre-commit-runs-all-files-a-sin.md)
 
 
+### Reading Cross-Backend (incl. Metal) Test Outcomes from CI Without Local macOS/GPU
+When reviewing a SlangPy PR and you lack a local macOS/GPU, you can still confirm cross-backend outcomes — including **Metal** — from CI: the `build (macos, aarch64, clang, Debug/Release, 3.10)` jobs run the FULL Python unit-test suite, and their "Unit Tests (Python)" step logs each test with PASS/FAIL. Pull it with `gh run view --job <job-id> -R shader-slang/slangpy --log | grep -iE "<test_name>|DeviceType.metal"` (get `<job-id>` from `gh pr checks <PR> -R shader-slang/slangpy` — the URL ends in `/job/<id>`). This retires a "platform X unverified" gap in a review by confirming e.g. `test_missing_shader_path_error[DeviceType.metal] PASSED` at the reviewed HEAD. Caveat: a PASS log records only pass/fail, not *which* internal branch matched — so it cannot prove which of two alternative string-match arms fired; state only what the log shows. (Companion ground-truth from PR #1178: a raw `spy.Device()` has EMPTY `slang_session.desc.compiler_options.include_paths`; only `spy.create_device()` prepends `SHADER_PATH` = `slangpy/slang`; the cryptic builtin-load failure is exactly `cannot open file 'slangpy.slang'` — Slang always SINGLE-quotes the bare filename.) ([SlangPy CI macOS build jobs run the full pytest suite incl. Metal device tests](../learnings/1790024857395-slangpy-ci-macos-build-jobs-run-the-full-pytest-su.md))
+
 ## Rerun Authority and the 403 Boundary
 
 ### SlangPy Tests on slang PRs: where the run lives (historical rerun block, now lifted)
@@ -139,7 +142,7 @@ A no-GPU discriminator for the CUDA entry-point-args vs `ParameterBlock` lowerin
 
 Note: `RWTensor<T,N>` is a SlangPy type, NOT core Slang — substitute `RWStructuredBuffer<float> bufs[N]` indexed at runtime to reproduce the mechanism standalone. Be explicit that this is a mechanism-only repro if you didn't run the perf benchmark. [Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution](../learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md)
 
-**Source learnings (19):**
+**Source learnings (20):**
 
 - [cross-repo `gh run rerun` on shader-slang/slangpy now WORKS (the admin-rights/gateway premise is stale) — verify via the `run_attempt` increment, never exit 0; classify reds by determinism, not permissions](../learnings/1785773902337-cross-repo-gh-run-rerun-on-shader-slang-slangpy-no.md)
 - [deferred-on-upstream slangpy work gates on the `SGL_SLANG_VERSION` pin, not a wheel release — three-stage chain (merge → tag CONTAINING the commit via `compare` status `behind`/`identical` → pin bump); `ci-latest-slang.yml` verifies against master today](../learnings/1785800138090-slangpy-deferred-on-upstream-work-gates-on-the-sgl.md)
@@ -160,3 +163,4 @@ Note: `RWTensor<T,N>` is a SlangPy type, NOT core Slang — substitute `RWStruct
 - [Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution](../learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md)
 - [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak (#1024)](../learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md)
 - [slangpy call_group_shape already provides tile/groupshared dispatch (issue #844)](../learnings/1783522957219-slangpy-call-group-shape-already-provides-tile-gro.md)
+- [SlangPy CI macOS build jobs run the full pytest suite incl. Metal device tests](../learnings/1790024857395-slangpy-ci-macos-build-jobs-run-the-full-pytest-su.md) — read per-test PASS/FAIL (incl `DeviceType.metal`) via `gh run view --job <id> --log`; a PASS shows pass/fail only, not which branch matched.

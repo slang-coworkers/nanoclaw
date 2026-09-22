@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-293 learnings. [Catalog](../index.md)
+298 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -133,6 +133,7 @@ type: topic
 - [Dispatching background reviewers: nohup & inside run_in_background double-backgrounds (no completion signal)](../learnings/1788203787495-dispatching-background-reviewers-nohup-inside-run-.md)
 - [Don't add bare LICENSES/ SPDX texts in a REUSE repo — reuse lint fails on unused licenses (empirically verified)](../learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md)
 - [Don't assert an absence you didn't run the probe for — truncated grep preview and skipped nvidia-smi both produced false negatives in one PR](../learnings/1787049086568-don-t-assert-an-absence-you-didn-t-run-the-probe-f.md)
+- [Don't force-push over a peer-reviewed commit — it strands the reviewed base and blocks a delta re-review](../learnings/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md)
 - [Don't instruct coworkers to mark PRs ready-for-review (drafts-only is admin-set)](../learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md)
 - [Don't relay mid-flight review status upstream as settled — wait for it to stabilize](../learnings/1789445084069-don-t-relay-mid-flight-review-status-upstream-as-s.md)
 - [Empirical "I tested it" probes can miss the wrong sub-case — Devin's persistent flags deserve scrutiny even when initial reading says misread](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
@@ -142,6 +143,7 @@ type: topic
 - [gh 'invalid token' in auth status still allows public-repo reads — verify before aborting a pr-mode review](../learnings/1788469857073-gh-invalid-token-in-auth-status-still-allows-publi.md)
 - [gh 'invalid token' warning is benign for read-only pr-mode reviews](../learnings/1788823384047-gh-invalid-token-warning-is-benign-for-read-only-p.md)
 - [gh App-token 'invalid' warning is a false alarm for pr-mode reviews — reads still work](../learnings/1788799392809-gh-app-token-invalid-warning-is-a-false-alarm-for-.md)
+- [gh auth invalid ≠ pr-review blocked: public-repo diff reads work unauthenticated](../learnings/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md)
 - [gh auth status "invalid GH_TOKEN" is a false alarm for read-only pr-mode reviews](../learnings/1788254122013-gh-auth-status-invalid-gh-token-is-a-false-alarm-f.md)
 - [gh auth status "invalid GH_TOKEN" is a false alarm for reads — don't abort a PR review on it](../learnings/1788307346773-gh-auth-status-invalid-gh-token-is-a-false-alarm-f.md)
 - [gh auth status failing doesn't block pr-mode reviews — gh pr diff/view still work on public repos](../learnings/1788795649545-gh-auth-status-failing-doesn-t-block-pr-mode-revie.md)
@@ -225,6 +227,7 @@ type: topic
 - [Reviewer combined-review fan-out can trigger a taskless-fixer echo loop via always-engage a2a wiring](../learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md)
 - [Reviewer discipline: don't close a self-raised finding on the author's unverifiable EXIT=0; the critique gate exists to catch it](../learnings/1788771443270-reviewer-discipline-don-t-close-a-self-raised-find.md)
 - [Reviewer heuristic: a PR that lifts a subclass override into a shared base changes EVERY inheriting subclass](../learnings/1787580519409-reviewer-heuristic-a-pr-that-lifts-a-subclass-over.md)
+- [Reviewer reuse-nit trap: check the local's STATIC type before suggesting an accessor swap (IRInst* vs IRFunc*)](../learnings/1789990436303-reviewer-reuse-nit-trap-check-the-local-s-static-t.md)
 - [Reviewer run-dir selection: never pick by mtime when multiple reviews share the transcripts dir](../learnings/1788160503888-reviewer-run-dir-selection-never-pick-by-mtime-whe.md)
 - [Reviewer trap: an IRGlobalParam gate doesn't prove a getTypeNameHint reflection side-effect is "non-manifesting"](../learnings/1788774851147-reviewer-trap-an-irglobalparam-gate-doesn-t-prove-.md)
 - [Reviewer-A guard can be false in BOTH directions — recover from stream.jsonl, and never merge A's clarity candidates as Reviewer C](../learnings/1786044602672-reviewer-a-guard-can-be-false-in-both-directions-r.md)
@@ -235,6 +238,7 @@ type: topic
 - [Reviewer: a self-recommended comment addition does not reset the PR review pipeline](../learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md)
 - [Reviewer: gate the verdict on full-suite CI for broad-blast-radius changes, not static review alone](../learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md)
 - [Reviewing "reject unrepresentable input" fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md)
+- [Reviewing a "unify into a single source of truth" refactor: grep for the sites it did NOT migrate](../learnings/1790034772740-reviewing-a-unify-into-a-single-source-of-truth-re.md)
 - [Reviewing a pass-gating PR: green tests plus byte-identical output cannot detect a dead flag](../learnings/1785827882400-reviewing-a-pass-gating-pr-green-tests-plus-byte-i.md)
 - [Reviewing a PR whose head keeps moving (synchronize/merge churn)](../learnings/1784006371550-reviewing-a-pr-whose-head-keeps-moving-synchronize.md)
 - [Reviewing a race fix: check whether the "existing regression guards" are actually enabled](../learnings/1785777415067-reviewing-a-race-fix-check-whether-the-existing-re.md)
@@ -272,6 +276,7 @@ type: topic
 - [slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](../learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)
 - [slang-pr-review-runner patch mode: reviewer can't find the patch + commit -am drops new files](../learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md)
 - [slang-pr-review-runner: shared checkout /workspace/agent/slang is contended — run Reviewer A in an isolated worktree to avoid wrong-diff INTEGRITY-FAIL](../learnings/1789222069725-slang-pr-review-runner-shared-checkout-workspace-a.md)
+- [slang-pr-review: `gh auth status` false-negative + inner-CLI reviewers bill separately](../learnings/1790012094150-slang-pr-review-gh-auth-status-false-negative-inne.md)
 - [slang-pr-review: a container restart kills the completion-waiter; recover reviewer outputs from persistent paths](../learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md)
 - [slang-pr-review: claude CLI recovers from mid-stream 504 — don't kill a stalled reviewer run](../learnings/1781729409164-slang-pr-review-claude-cli-recovers-from-mid-strea.md)
 - [slang-pr-review: cross-check Reviewer C clarity findings against A and for internal consistency before forwarding](../learnings/1781627346796-slang-pr-review-cross-check-reviewer-c-clarity-fin.md)

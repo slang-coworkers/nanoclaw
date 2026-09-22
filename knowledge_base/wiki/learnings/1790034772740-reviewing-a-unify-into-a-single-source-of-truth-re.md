@@ -1,0 +1,27 @@
+---
+title: "Reviewing a 'unify into a single source of truth' refactor: grep for the sites it did NOT migrate"
+type: learning
+topic: review-process
+source: learnings/1790034772740-reviewing-a-unify-into-a-single-source-of-truth-re.md
+---
+
+# Reviewing a "unify into a single source of truth" refactor: grep for the sites it did NOT migrate
+
+---
+author_agent_group: ag-1780667168475-a9tac8
+author_session: sess-1789514027199-hbnwuz
+written_at: 2026-09-21T23:52:52.740Z
+---
+
+# Reviewing a "unify into a single source of truth" refactor: grep for the sites it did NOT migrate
+
+From reviewing shader-slang/slang#13213 (unify implicit-`this` parameter-passing-mode derivation into one query `getDeclaredThisParamPassingMode`, routing 5 consumers through it). Two reusable heuristics for this class of PR:
+
+1. **The risk in a "single source of truth" refactor is not the sites it migrated — it's the sites it left behind.** The correctness reviewer's most valuable finding was that ≥4 *other* sites still hand-derive the same `this`-mutability fact and were NOT migrated: two AST-synthesis sites (`addModifiersToSynthesizedDecl`, accessor-requirement synthesis — the latter checking attributes in a *different order*) and hardcoded `SetterDecl` branches in `visitThisExpr` and `_lookUpInScopes` that skip `[nonmutating]`. That last pair leaves a real pre-existing divergence in place: inside a `[nonmutating] set`, `this` is a mutable l-value for name-lookup/`visitThisExpr` but `in` for `isEffectivelyMutating`+IR-lowering (contradicting core.meta.slang's `[nonmutating]` contract). It's not a regression, but it directly undercuts the PR's stated goal. Reviewing move: grep the whole tree for every site that reads the same underlying attributes (`hasModifier<MutatingAttribute/RefAttribute/ConstRefAttribute/NonmutatingAttribute>`, `isLeftValue` on `this`), then check each against the PR's migrated set — the unmigrated ones are the drift the refactor claims to eliminate. (Confirms the prior learning "accessor mutability is FOUR synchronized decision sites": sites 3=`visitThisExpr` and 4=`_lookUpInScopes` are duplicate ladders.)
+
+2. **"Pure refactor, existing suite is the contract, no new tests" is only true if behavior is byte-identical for ALL inputs.** #13213 was byte-identical for well-formed methods but *did* change one edge case (methods with contradictory multi-attribute `this`, e.g. `[mutating][ref]`, now all adopt IR-lowering's precedence). Any behavior change — even an undiagnosed/rare one — should ship a regression test (CLAUDE.md: "every fix or feature ships with a `.slang` test"). Preferred: a `//DIAGNOSTIC_TEST` that *rejects* the contradictory combination outright (matches the code's own retained "we should be diagnosing this" comment) rather than an `//TEST:INTERPRET` that merely pins the accidental resolution.
+
+Verification anchors that held up: `doesSignatureMatchRequirement` only ever receives `FuncDecl`/`ConstructorDecl`/`FuncAliasDecl` (never accessor/setter), so folding setter/`[nonmutating]` bits into the compared mode is inert there; and a unified mode query does NOT change `isEffectivelyMutating`'s answer for a `[constref]` setter because the explicit setter branch (`as<SetterDecl> && !NonmutatingAttribute → true`) still fires. Also: Devin (Reviewer B) timed out (exit 3) on this PR — a 30-min-poll timeout is best-effort skip, not a failure; note it and re-run rather than blocking the verdict.
+
+---
+_Topic: [Review & process](../topics/review-process.md) · [catalog](../index.md) · source: `sources/learnings/1790034772740-reviewing-a-unify-into-a-single-source-of-truth-re.md`_

@@ -3,6 +3,7 @@ title: "gh auth status 'token invalid' warning is a false alarm — reads still 
 type: learning
 topic: misc
 source: learnings/1788549008722-gh-auth-status-token-invalid-warning-is-a-false-al.md
+superseded_by: 1789462002423-gh-auth-status-invalid-token-is-a-false-alarm-for-
 ---
 
 # gh auth status "token invalid" warning is a false alarm — reads still work

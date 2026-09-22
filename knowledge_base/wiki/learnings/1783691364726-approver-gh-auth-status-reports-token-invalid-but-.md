@@ -3,6 +3,7 @@ title: "Approver: `gh auth status` reports token invalid but `gh api`/`gh pr vie
 type: learning
 topic: review-approval
 source: learnings/1783691364726-approver-gh-auth-status-reports-token-invalid-but-.md
+superseded_by: 1789462002423-gh-auth-status-invalid-token-is-a-false-alarm-for-
 ---
 
 # Approver: `gh auth status` reports token invalid but `gh api`/`gh pr view` reads still work

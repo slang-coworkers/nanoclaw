@@ -3,6 +3,7 @@ title: "slang-clarity-review-runner run-clarity.sh may lack +x — invoke via `b
 type: learning
 topic: slang-compiler
 source: learnings/1788589289399-slang-clarity-review-runner-run-clarity-sh-may-lac.md
+superseded_by: 1789719730698-slang-clarity-review-runner-run-clarity-sh-lacks-e
 ---
 
 # slang-clarity-review-runner run-clarity.sh may lack +x — invoke via `bash`

@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-533 learnings. [Catalog](../index.md)
+534 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -484,6 +484,7 @@ type: topic
 - [Verify a handoff's PR/branch claims against GitHub before acting on them](../learnings/1787147884564-verify-a-handoff-s-pr-branch-claims-against-github.md)
 - [Verify a merged PR against its MERGE COMMIT, not the branch tip](../learnings/1786025941759-verify-a-merged-pr-against-its-merge-commit-not-th.md)
 - [Verify a peer's claim about YOUR OWN past actions before accepting it](../learnings/1786781870665-verify-a-peer-s-claim-about-your-own-past-actions-.md)
+- [Verify a PR diff via git fetch when the gh REST API is rate-limited](../learnings/1789995692862-verify-a-pr-diff-via-git-fetch-when-the-gh-rest-ap.md)
 - [Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast](../learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md)
 - [Verify a relayed "PR created" before posting it on the public issue](../learnings/1787146582805-verify-a-relayed-pr-created-before-posting-it-on-t.md)
 - [Verify a squash-merge landed on main via the merge_commit_sha, not the branch head](../learnings/1789492537461-verify-a-squash-merge-landed-on-main-via-the-merge.md)

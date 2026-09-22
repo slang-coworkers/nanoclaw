@@ -3,7 +3,7 @@ title: "Agent Routing: Chain Parking and Bot Detection"
 type: concept
 group: agent-routing
 tags: [github, webhook, chain-parking, watchers, draft-pr, bot-detection, CI, silence-fallback]
-source_count: 6
+source_count: 7
 ---
 
 # Agent Routing: Chain Parking and Bot Detection
@@ -31,6 +31,8 @@ Observed on slang#12313: after a maintainer offered the requester a concrete tec
 
 **Choosing the terminal act.** For a quiet *external* requester the right fallback is **close as answered, with no nudge**: someone who goes silent after a maintainer offered a concrete alternative is not owed a chase, and a reminder spends a maintainer-adjacent channel's credibility on someone who chose not to engage. A chain parked on an *internal* party, or on a maintainer routed the issue, can legitimately be nudged — but justify that by **deviation from the repo's norm, never by an absolute day count**. Closing is cheap and reversible here, because a substantive human comment re-opens a closed chain (the inbound-not-a-close rule), which makes "close with the reasoning on the record" strictly better than "park indefinitely" ([parking on an external party needs a silence date and a terminal act](../learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md)).
 
+The same gap bites when the party owed the next step is an **operator or maintainer decision** (not an external requester who can be closed out): parking with NO follow-up leaves the chain with no self-healing trigger, because no webhook will arrive to wake it. On slang#13073 PR(2) a chain was parked awaiting the operator's choice of critique-gate-clear mechanism and sat idle ~5 days — until the external maintainer publicly pinged "What has happened to this PR?" (a stall visible to the customer, on our side). "Escalated to the operator" is NOT "done": Main owns the chase until the block clears. So whenever the only thing that can un-stall a parked chain is a human who may not be watching, set an ACTIVE re-chase before ending the turn — a gated `ncl tasks create` poll or a supervise-issues entry — rather than relying on a pushed branch (which keeps the *work* safe but never resumes the chain) ([parking a chain on a human/operator decision needs a re-chase timer or it stalls silently](../learnings/1790028684307-parking-a-chain-on-a-human-operator-decision-needs.md)).
+
 <!-- fold-20260807 -->
 
 ## Watchers, Draft-PR Surfaces, and Bot Detection (2026-08-14 fold)
@@ -41,10 +43,11 @@ Three GitHub-observability traps a supervisor/watcher hits. **Key a PR watcher t
 
 Bot-identity detection has a routing corollary on the *opening* side: a `github.issue_opened` webhook authored by `nv-slang-bot[bot]` (or any of our bot identities) is frequently the *output* of an already-running "file + fix" chain (CI-babysitter → Orchestrator → fixer) — the fixer filed the issue, and the body's "a draft PR will be linked below" is that chain's own promise — so treating the webhook as a brand-new issue duplicates work. Measured on slang#13184: the webhook reached a *fresh* Orchestrator session with no memory of the 08:17 chain that had dispatched a `slang-fixer` ~15 min earlier (on a non-canonical topic thread `slang-ci-nightly-release-userskills-archive`) which had already committed the fix unpushed; routing it to triage spun up a second fixer + a triage comment, all racing one issue. Rule before routing an `issue_opened` whose author is one of our bots: (1) check for an in-flight chain on that topic first — `ncl sessions list --limit 2000 | grep -iE "<issue-#>|<topic-keywords>"`, looking for an active/running coworker session *including on a non-canonical thread* (CI chains use topic threads, not `gh-issue-…-<num>`); (2) if one exists, consolidate on it rather than dispatching a fresh triage+fix (it's usually furthest along); (3) resume/steer it via its exact `thread_id` + `target_session_id` pin (verify the a2a link owner via `ncl messaging-groups get`); (4) the fastest collapse is to get that fixer to open the PR + call `report_pr_created`, after which the PR→session mapping routes all future webhooks to the one owner. Detector: two `running` sessions in one agent group for one task (`ncl sessions list | grep <group>`) ([issue_opened webhook by nv-slang-bot[bot] is often our own in-flight chain — check before dispatching](../learnings/1789894290167-issue-opened-webhook-by-nv-slang-bot-bot-is-often-.md)).
 
-**Source learnings (6):**
+**Source learnings (7):**
 
 - [#11545 ByteAddressBuffer alignment cluster ownership flipped](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [parking on an external party needs a silence date and a terminal act](../learnings/1786082293702-parking-on-an-external-party-needs-a-silence-date-.md) — neither a webhook nor a periodic sweep fires on nothing happening, so a chain gated on an external reply needs an absolute date plus a named terminal act written where the chain is read; the fallback is usually a written exit condition, not another cron.
+- [parking a chain on a human/operator decision needs a re-chase timer or it stalls silently](../learnings/1790028684307-parking-a-chain-on-a-human-operator-decision-needs.md) — a chain parked on an operator/maintainer decision has no self-healing trigger (no webhook wakes it); "escalated to operator" ≠ done, Main owns the chase, so arm an active re-chase (gated task / supervise-issues) before ending the turn.
 - [key a PR watcher to the PR NUMBER, not a captured SHA — a force-push orphans the target and the poller reports plausibly on a dead commit](../learnings/1786280351305-key-a-pr-watcher-to-the-pr-number-not-a-captured-s.md)
 - [on a draft PR, statusCheckRollup and commits/<sha>/check-runs expose DIFFERENT sets — a manual-dispatch matrix is invisible on the PR page](../learnings/1786280978623-on-a-draft-pr-statuscheckrollup-and-commits-sha-ch.md)
 - [a closed-set allowlist is the wrong shape for bot detection — use __typename==Bot / per-comment is_bot; a derived boolean discards correctable evidence](../learnings/1786280996629-a-closed-set-allowlist-is-the-wrong-shape-for-bot-.md)
