@@ -9,6 +9,7 @@ import { PERSONA_PREPEND_FILE, stageGroupPersona } from './group-persona.js';
 import { log } from './log.js';
 import { CLAUDE_DEFAULT_SETTINGS, CLEANUP_PERIOD_DAYS_NEVER } from './migrate-claude-memory-settings.js';
 import { getProviderHostContract } from './provider-contracts/registry.js';
+import { readPluginSkills } from './templates/skills.js';
 import { initializeProviderGroupSurfaces } from './provider-contracts/realize.js';
 import { providerProvidesAgentSurfaces } from './providers/provider-container-registry.js';
 import type { AgentGroup } from './types.js';
@@ -61,6 +62,42 @@ export function refreshMirror(src: string, dst: string): boolean {
   if (fs.existsSync(dst)) fs.rmSync(dst, { recursive: true, force: true });
   fs.cpSync(src, dst, { recursive: true });
   return true;
+}
+
+/**
+ * Skill names a stamped template owns, read from the plugin copies at
+ * groups/<folder>/plugins/*\/ (written by templates/create-agent.ts before the
+ * skills overlay, and the same tree restamp treats as its pristine baseline).
+ *
+ * This exists because a template's skills are stamped into the SAME
+ * .claude-shared/skills directory this module mirrors container/skills into, so
+ * both of the mirror's destructive steps can reach them: refreshMirror replaces
+ * the destination on an mtime win, and the out-of-scope prune deletes anything
+ * the coworker type does not claim — which a template's skills never are, since
+ * they are not in the global catalog.
+ *
+ * Read through `readPluginSkills` rather than by enumerating directories, so
+ * ownership covers exactly the skills that passed validation when they were
+ * stamped. A stale mirror that merely shares a name with an unvalidated
+ * directory under plugins/ stays collectable.
+ */
+function pluginOwnedSkillNames(folder: string): Set<string> {
+  const owned = new Set<string>();
+  const pluginsRoot = path.join(GROUPS_DIR, folder, 'plugins');
+  let entries: fs.Dirent[];
+  try {
+    entries = fs.readdirSync(pluginsRoot, { withFileTypes: true });
+  } catch {
+    // No plugins/ at all — nothing was ever stamped here.
+    return owned;
+  }
+  for (const entry of entries) {
+    if (!entry.isDirectory()) continue;
+    for (const skill of readPluginSkills(path.join(pluginsRoot, entry.name)).skills) {
+      owned.add(skill.name);
+    }
+  }
+  return owned;
 }
 
 /**
@@ -222,8 +259,27 @@ export async function initGroupFilesystem(
           reason: scope.reason,
         });
       }
+      // Skills a stamped template owns are off limits to BOTH steps below. The
+      // template is their only source, so a refresh that replaces one or a
+      // prune that collects one is unrecoverable — there is nothing to
+      // re-mirror them from.
+      const pluginOwned = pluginOwnedSkillNames(group.folder);
+
       for (const skill of fs.readdirSync(skillsSrc)) {
         if (scope.dirs && !scope.dirs.has(skill)) continue;
+        // A catalog skill sharing a name with a plugin-owned one is shadowed:
+        // the template keeps the directory. Logged because the composed
+        // document still describes the CATALOG skill of that name, so the
+        // prompt and the executable body disagree — a collision the template
+        // author and the operator both need to see.
+        if (pluginOwned.has(skill)) {
+          log.warn('Catalog skill shadowed by a plugin-owned skill of the same name', {
+            group: group.name,
+            id: group.id,
+            skill,
+          });
+          continue;
+        }
         const src = path.join(skillsSrc, skill);
         const dst = path.join(skillsDst, skill);
         const existed = fs.existsSync(dst);
@@ -236,7 +292,7 @@ export async function initGroupFilesystem(
       // paying for skills it can't invoke — the mirror is copy-forward only.
       if (scope.dirs) {
         for (const existing of fs.readdirSync(skillsDst)) {
-          if (scope.dirs.has(existing)) continue;
+          if (scope.dirs.has(existing) || pluginOwned.has(existing)) continue;
           fs.rmSync(path.join(skillsDst, existing), { recursive: true, force: true });
           initialized.push(`skills/${existing} (pruned — out of type scope)`);
         }
