@@ -4125,6 +4125,12 @@
 - [parking a chain on a human operator decision needs](ag-1776713211742-1w6l4e/1790028684307-parking-a-chain-on-a-human-operator-decision-needs.md) — _ag-1776713211742-1w6l4e_
 - [independent critique catches regressions a green e](ag-1776713211742-1w6l4e/1790033016436-independent-critique-catches-regressions-a-green-e.md) — _ag-1776713211742-1w6l4e_
 - [supervise issues scan py awaiting us false positiv](ag-1776713211742-1w6l4e/1790044307828-supervise-issues-scan-py-awaiting-us-false-positiv.md) — _ag-1776713211742-1w6l4e_
+- [supervisor pull universe misses prs linked only vi](ag-1776713211742-1w6l4e/1790082708749-supervisor-pull-universe-misses-prs-linked-only-vi.md) — _ag-1776713211742-1w6l4e_
+- [supervisor scan misreads github actions board sync](ag-1776713211742-1w6l4e/1790082761650-supervisor-scan-misreads-github-actions-board-sync.md) — _ag-1776713211742-1w6l4e_
+- [slang agent environment has a gpu nvidia l40s driv](ag-1776713211742-1w6l4e/1790098423189-slang-agent-environment-has-a-gpu-nvidia-l40s-driv.md) — _ag-1776713211742-1w6l4e_
+- [deepwiki mcp renamed ask question to ask wiki ques](ag-1776713211742-1w6l4e/1790105346886-deepwiki-mcp-renamed-ask-question-to-ask-wiki-ques.md) — _ag-1776713211742-1w6l4e_
+- [a pre code plan critique gate lets you concede a n](ag-1776713211742-1w6l4e/1790117654797-a-pre-code-plan-critique-gate-lets-you-concede-a-n.md) — _ag-1776713211742-1w6l4e_
+- [supervise issues scan py awaiting us has four fals](ag-1776713211742-1w6l4e/1790126534976-supervise-issues-scan-py-awaiting-us-has-four-fals.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4146,6 +4152,7 @@
 - [ci health snapshot use curl tail not webfetch on h](ag-1776713258088-r8pp2t/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md) — _ag-1776713258088-r8pp2t_
 - [daily report ci health webfetch can t reach the ta](ag-1776713258088-r8pp2t/1789719726999-daily-report-ci-health-webfetch-can-t-reach-the-ta.md) — _ag-1776713258088-r8pp2t_
 - [webfetch on large raw jsonl returns a stale head l](ag-1776713258088-r8pp2t/1789805808573-webfetch-on-large-raw-jsonl-returns-a-stale-head-l.md) — _ag-1776713258088-r8pp2t_
+- [ci health snapshots jsonl exceeds webfetch 10mb li](ag-1776713258088-r8pp2t/1790065065697-ci-health-snapshots-jsonl-exceeds-webfetch-10mb-li.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4244,6 +4251,8 @@
 - [ci babysitter wake payload hasnewactivity read fal](ag-1776713259045-nax3cr/1789970806784-ci-babysitter-wake-payload-hasnewactivity-read-fal.md) — _ag-1776713259045-nax3cr_
 - [check rerun tracker json s existing verdict before](ag-1776713259045-nax3cr/1790021540897-check-rerun-tracker-json-s-existing-verdict-before.md) — _ag-1776713259045-nax3cr_
 - [ci sweep script action required conclusion needed ](ag-1776713259045-nax3cr/1790036749012-ci-sweep-script-action-required-conclusion-needed-.md) — _ag-1776713259045-nax3cr_
+- [ci babysitter action required fix 2026 09 22 12544](ag-1776713259045-nax3cr/1790079172299-ci-babysitter-action-required-fix-2026-09-22-12544.md) — _ag-1776713259045-nax3cr_
+- [action required workflow approval wedges are invis](ag-1776713259045-nax3cr/1790080487638-action-required-workflow-approval-wedges-are-invis.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4299,6 +4308,7 @@
 - [discord heartbeat pending summons stale by age alo](ag-1777389337838-f54d9l/1789671138823-discord-heartbeat-pending-summons-stale-by-age-alo.md) — _ag-1777389337838-f54d9l_
 - [discord per thread bot pipeline can fail on follow](ag-1777389337838-f54d9l/1789714845243-discord-per-thread-bot-pipeline-can-fail-on-follow.md) — _ag-1777389337838-f54d9l_
 - [slang ci saturday cmake options queue saturation i](ag-1777389337838-f54d9l/1789812585102-slang-ci-saturday-cmake-options-queue-saturation-i.md) — _ag-1777389337838-f54d9l_
+- [deepwiki mcp tool renamed ask question ask wiki qu](ag-1777389337838-f54d9l/1790105381468-deepwiki-mcp-tool-renamed-ask-question-ask-wiki-qu.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -4639,6 +4649,9 @@
 - [correction entry point uniform binding bloat acros](ag-1780667166418-apezq5/1790016065362-correction-entry-point-uniform-binding-bloat-acros.md) — _ag-1780667166418-apezq5_
 - [logical address space ptr as a struct field invali](ag-1780667166418-apezq5/1790017243652-logical-address-space-ptr-as-a-struct-field-invali.md) — _ag-1780667166418-apezq5_
 - [slang static assert is a builtin intrinsic fn func](ag-1780667166418-apezq5/1790019025315-slang-static-assert-is-a-builtin-intrinsic-fn-func.md) — _ag-1780667166418-apezq5_
+- [critique gate wedges non code pr review replies un](ag-1780667166418-apezq5/1790086509553-critique-gate-wedges-non-code-pr-review-replies-un.md) — _ag-1780667166418-apezq5_
+- [bwd diff over an existential interface differentia](ag-1780667166418-apezq5/1790102257091-bwd-diff-over-an-existential-interface-differentia.md) — _ag-1780667166418-apezq5_
+- [slang parser decl vs statement can t be disambigua](ag-1780667166418-apezq5/1790107330312-slang-parser-decl-vs-statement-can-t-be-disambigua.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5180,6 +5193,16 @@
 - [don t force push over a peer reviewed commit it st](ag-1780667166439-vmjrwe/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md) — _ag-1780667166439-vmjrwe_
 - [build subagent that arms a monitor and returns ear](ag-1780667166439-vmjrwe/1790049141550-build-subagent-that-arms-a-monitor-and-returns-ear.md) — _ag-1780667166439-vmjrwe_
 - [test a getentrypointhash shader cache key change w](ag-1780667166439-vmjrwe/1790049157547-test-a-getentrypointhash-shader-cache-key-change-w.md) — _ag-1780667166439-vmjrwe_
+- [critique gate wedges non code pr review replies at](ag-1780667166439-vmjrwe/1790086520678-critique-gate-wedges-non-code-pr-review-replies-at.md) — _ag-1780667166439-vmjrwe_
+- [never git add a in a worktree with scratch files v](ag-1780667166439-vmjrwe/1790096330385-never-git-add-a-in-a-worktree-with-scratch-files-v.md) — _ag-1780667166439-vmjrwe_
+- [slang draft pr cross fork blocked but direct upstr](ag-1780667166439-vmjrwe/1790099756100-slang-draft-pr-cross-fork-blocked-but-direct-upstr.md) — _ag-1780667166439-vmjrwe_
+- [testing that link time downstream args affect gete](ag-1780667166439-vmjrwe/1790100487907-testing-that-link-time-downstream-args-affect-gete.md) — _ag-1780667166439-vmjrwe_
+- [slang worktree build submodule init lparent rparen](ag-1780667166439-vmjrwe/1790108437994-slang-worktree-build-submodule-init-lparent-rparen.md) — _ag-1780667166439-vmjrwe_
+- [isfromcoremodule excludes only the embedded core m](ag-1780667166439-vmjrwe/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md) — _ag-1780667166439-vmjrwe_
+- [when a maintainer keeps calling a bot pr a rewrite](ag-1780667166439-vmjrwe/1790117615291-when-a-maintainer-keeps-calling-a-bot-pr-a-rewrite.md) — _ag-1780667166439-vmjrwe_
+- [static assert as a decl module scope conditions ne](ag-1780667166439-vmjrwe/1790123003621-static-assert-as-a-decl-module-scope-conditions-ne.md) — _ag-1780667166439-vmjrwe_
+- [slangi swallows codegen diagnostics unless linkand](ag-1780667166439-vmjrwe/1790128010974-slangi-swallows-codegen-diagnostics-unless-linkand.md) — _ag-1780667166439-vmjrwe_
+- [target gating an emitted code optimization cpu via](ag-1780667166439-vmjrwe/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5402,6 +5425,12 @@
 - [gh auth invalid pr review blocked public repo diff](ag-1780667168475-a9tac8/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md) — _ag-1780667168475-a9tac8_
 - [verdict bearing chain close messages resolution re](ag-1780667168475-a9tac8/1790042386094-verdict-bearing-chain-close-messages-resolution-re.md) — _ag-1780667168475-a9tac8_
 - [getentrypointhash link time downstreamargs fix con](ag-1780667168475-a9tac8/1790048442419-getentrypointhash-link-time-downstreamargs-fix-con.md) — _ag-1780667168475-a9tac8_
+- [okf no frontmatter pile is often a nested metadata](ag-1780667168475-a9tac8/1790061935849-okf-no-frontmatter-pile-is-often-a-nested-metadata.md) — _ag-1780667168475-a9tac8_
+- [slang associated types are reachable through a val](ag-1780667168475-a9tac8/1790106628469-slang-associated-types-are-reachable-through-a-val.md) — _ag-1780667168475-a9tac8_
+- [slang pr review runner integrity guard exit 1 can ](ag-1780667168475-a9tac8/1790108064998-slang-pr-review-runner-integrity-guard-exit-1-can-.md) — _ag-1780667168475-a9tac8_
+- [verify a filecheck directive collision fix statica](ag-1780667168475-a9tac8/1790108085939-verify-a-filecheck-directive-collision-fix-statica.md) — _ag-1780667168475-a9tac8_
+- [slang pr review reviewer a can truncate to a false](ag-1780667168475-a9tac8/1790123188250-slang-pr-review-reviewer-a-can-truncate-to-a-false.md) — _ag-1780667168475-a9tac8_
+- [hostvm slangi target early returns in linkandoptim](ag-1780667168475-a9tac8/1790125505241-hostvm-slangi-target-early-returns-in-linkandoptim.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -5442,6 +5471,11 @@
 - [correction nv slang bot gh token is valid gh auth ](ag-1780667169498-sqxdef/1789716480655-correction-nv-slang-bot-gh-token-is-valid-gh-auth-.md) — _ag-1780667169498-sqxdef_
 - [sgl ui context begin frame gates mouse cursor sync](ag-1780667169498-sqxdef/1789818274564-sgl-ui-context-begin-frame-gates-mouse-cursor-sync.md) — _ag-1780667169498-sqxdef_
 - [slangpy spy device vs create device shader path in](ag-1780667169498-sqxdef/1790019427102-slangpy-spy-device-vs-create-device-shader-path-in.md) — _ag-1780667169498-sqxdef_
+- [slangpy crashpad captures no dump for pytest xdist](ag-1780667169498-sqxdef/1790066177161-slangpy-crashpad-captures-no-dump-for-pytest-xdist.md) — _ag-1780667169498-sqxdef_
+- [slangpy crashpad is armed on xdist workers setup i](ag-1780667169498-sqxdef/1790066499859-slangpy-crashpad-is-armed-on-xdist-workers-setup-i.md) — _ag-1780667169498-sqxdef_
+- [okf synth dangling link false positives on code sp](ag-1780667169498-sqxdef/1790074303124-okf-synth-dangling-link-false-positives-on-code-sp.md) — _ag-1780667169498-sqxdef_
+- [a coworker reviewer s approve is not a github revi](ag-1780667169498-sqxdef/1790111333721-a-coworker-reviewer-s-approve-is-not-a-github-revi.md) — _ag-1780667169498-sqxdef_
+- [slangpy 1181 correction the vulkan worker crash is](ag-1780667169498-sqxdef/1790127518160-slangpy-1181-correction-the-vulkan-worker-crash-is.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_
@@ -5479,6 +5513,7 @@
 - [draft bot pr fixes keyword yields only a cross ref](ag-1780667172530-ht5rv2/1789867707854-draft-bot-pr-fixes-keyword-yields-only-a-cross-ref.md) — _ag-1780667172530-ht5rv2_
 - [a supervisor no pr no resumable artifact nudge can](ag-1780667172530-ht5rv2/1789867916485-a-supervisor-no-pr-no-resumable-artifact-nudge-can.md) — _ag-1780667172530-ht5rv2_
 - [test pure python slangpy changes locally without a](ag-1780667172530-ht5rv2/1790023108329-test-pure-python-slangpy-changes-locally-without-a.md) — _ag-1780667172530-ht5rv2_
+- [slangpy vulkan xdist worker crashed no traceback c](ag-1780667172530-ht5rv2/1790126928369-slangpy-vulkan-xdist-worker-crashed-no-traceback-c.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
 - [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [reviewing slangpy slang downstream retypes for a b](ag-1780667174559-cemrtg/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — _ag-1780667174559-cemrtg_
@@ -5492,6 +5527,7 @@
 - [slangpy pr review pin to explicit shas shared chec](ag-1780667174559-cemrtg/1789486053134-slangpy-pr-review-pin-to-explicit-shas-shared-chec.md) — _ag-1780667174559-cemrtg_
 - [sgl update mouse cursor lacks canonical imgui curs](ag-1780667174559-cemrtg/1789819821175-sgl-update-mouse-cursor-lacks-canonical-imgui-curs.md) — _ag-1780667174559-cemrtg_
 - [slangpy ci macos build jobs run the full pytest su](ag-1780667174559-cemrtg/1790024857395-slangpy-ci-macos-build-jobs-run-the-full-pytest-su.md) — _ag-1780667174559-cemrtg_
+- [slangpy create slang session include path inherita](ag-1780667174559-cemrtg/1790111150088-slangpy-create-slang-session-include-path-inherita.md) — _ag-1780667174559-cemrtg_
 - [approver challenger miss is it reachable is a ques](ag-1783611156430-vvj8oi/1786367763472-approver-challenger-miss-is-it-reachable-is-a-ques.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain record decision returns dec](ag-1783611156430-vvj8oi/1786367859537-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger miss no in tree caller does x ](ag-1783611156430-vvj8oi/1786368454060-approver-challenger-miss-no-in-tree-caller-does-x-.md) — _ag-1783611156430-vvj8oi_
