@@ -53,3 +53,29 @@ export function resolvePluginServer(config: McpServerConfig): McpServerConfig {
     },
   };
 }
+
+/**
+ * Write one configured MCP server into the map the provider is handed, refusing
+ * the names the runtime seeded for itself.
+ *
+ * `reserved` is derived from the seeded map's own keys at the call site rather
+ * than hardcoded here, so the guard cannot drift from what is actually seeded.
+ *
+ * A seeded entry IS the capability its name denotes: `nanoclaw` carries the
+ * mandatory message transport and `codex` the reasoning child. Overwriting one
+ * does not merely add a server — it redirects every `mcp__<name>__*` call the
+ * model makes to the replacement, so a template declaring `nanoclaw` would
+ * receive the send_message namespace and the session would lose its only way
+ * to reply. Refused rather than silently renamed: a renamed server and the
+ * manifest that declared it would disagree, and any other name works.
+ */
+export function assignConfiguredServer(
+  target: Record<string, McpServerConfig>,
+  reserved: ReadonlySet<string>,
+  name: string,
+  config: McpServerConfig,
+): 'assigned' | 'refused-reserved' {
+  if (reserved.has(name)) return 'refused-reserved';
+  target[name] = config;
+  return 'assigned';
+}

@@ -17,6 +17,7 @@ import { getCostCapPolicy } from './db/cost-cap-policy.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { isValidTimezone } from './timezone.js';
 import { log } from './log.js';
+import { RESERVED_MCP_SERVER_NAMES } from './mcp-allowlist.js';
 import type { AgentGroup, ContainerConfigRow, ContainerSpeed } from './types.js';
 
 /**
@@ -112,6 +113,12 @@ export function validateMcpServerName(name: string): void {
   // dropped (or worse) on every intake path, so reject it by name.
   if (!MCP_SERVER_NAME_RE.test(name) || name === '__proto__') {
     throw new Error('server name must be 1-64 characters of letters, digits, "_" or "-"');
+  }
+  // Same class of problem as "__proto__", one layer up: the name is structurally
+  // fine but the slot is not free. See RESERVED_MCP_SERVER_NAMES for why taking
+  // one is a capability redirect rather than a collision.
+  if (RESERVED_MCP_SERVER_NAMES.includes(name)) {
+    throw new Error(`server name "${name}" is reserved for a built-in runtime server`);
   }
 }
 

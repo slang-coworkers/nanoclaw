@@ -52,7 +52,7 @@ import { parseAllowedMcpTools } from './providers/claude.js';
 import './provider-contracts/index.js';
 import { registerProviderMemorySessionHook } from './provider-contracts/realize.js';
 import { getProviderRuntimeContract, requireProviderName } from './providers/provider-registry.js';
-import { resolvePluginServer } from './plugin-mcp.js';
+import { assignConfiguredServer, resolvePluginServer } from './plugin-mcp.js';
 import type { McpServerConfig } from './providers/types.js';
 import { runPollLoop } from './poll-loop.js';
 
@@ -136,6 +136,14 @@ async function main(): Promise<void> {
     },
     codex: buildCodexMcpServer(process.env),
   };
+  // Snapshotted from the seed above, before anything configured is merged in.
+  // Both merges below consult it: a seeded name denotes a runtime capability
+  // (nanoclaw the mandatory message transport, codex the reasoning child), so
+  // letting configuration take one would redirect that capability's whole
+  // `mcp__<name>__*` namespace rather than add a server. The host refuses such
+  // a name at template stamp time; this is the same refusal at the point of
+  // use, because container.json is also reachable by hand and by CLI.
+  const reservedServerNames: ReadonlySet<string> = new Set(Object.keys(mcpServers));
 
   // The spawn-time MCP policy. Read BEFORE any server is wired, because the
   // first line of enforcement is not wiring a server the policy allows nothing
@@ -160,7 +168,10 @@ async function main(): Promise<void> {
         { command: string; args: string[]; env: Record<string, string> }
       >;
       for (const [name, config] of Object.entries(additional)) {
-        mcpServers[name] = config;
+        if (assignConfiguredServer(mcpServers, reservedServerNames, name, config) === 'refused-reserved') {
+          log(`MCP server "${name}" refused — that name is reserved for a built-in runtime server`);
+          continue;
+        }
         log(`Additional MCP server: ${name} (${config.command})`);
       }
     } catch (e) {
@@ -174,7 +185,13 @@ async function main(): Promise<void> {
   for (const [name, serverConfig] of Object.entries(config.mcpServers)) {
     // Plugin-shipped servers get ${PLUGIN_ROOT}/${PLUGIN_DATA} expansion and
     // the two injected env vars; everything else passes through untouched.
-    mcpServers[name] = resolvePluginServer(serverConfig);
+    if (
+      assignConfiguredServer(mcpServers, reservedServerNames, name, resolvePluginServer(serverConfig)) ===
+      'refused-reserved'
+    ) {
+      log(`MCP server "${name}" refused — that name is reserved for a built-in runtime server`);
+      continue;
+    }
     log(
       serverConfig.type === 'http'
         ? `Additional MCP server: ${name} (HTTP)`
