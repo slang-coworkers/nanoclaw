@@ -18,6 +18,8 @@ import { log } from '../log.js';
 import { normalizeName } from '../modules/agent-to-agent/db/agent-destinations.js';
 import { createScheduledTask } from '../modules/scheduling/create.js';
 import type { AgentGroup } from '../types.js';
+import { decideCoworkerType } from './coworker-type.js';
+import { readForkExtension } from './fork-extension.js';
 import { resolveLocalTemplate } from './local-dir.js';
 import { pluginDataCwdSubpaths } from './mcp.js';
 import { prepareTemplateTasks } from './tasks.js';
@@ -28,6 +30,13 @@ export interface CreateAgentOptions {
   name?: string;
   /** IANA timezone for the new group; template task schedules fire in it. Omit to follow the install default. */
   timezone?: string;
+  /**
+   * Lego coworker type to compose this agent as. Overrides the template's own
+   * `defaultCoworkerType` hint. `undefined` = not supplied (the hint applies);
+   * `null` = an explicit opt-out of the hint. An explicit value that does not
+   * resolve is a hard failure, unlike the hint.
+   */
+  coworkerType?: string | null;
 }
 
 export interface CreateAgentResult {
@@ -96,6 +105,19 @@ export async function createAgentFromTemplate(ref: string, opts?: CreateAgentOpt
   const timezone = opts?.timezone && isValidTimezone(opts.timezone) ? opts.timezone : undefined;
   const tasks = prepareTemplateTasks(tpl.tasks, timezone ?? TIMEZONE);
 
+  // Decide the coworker type BEFORE the group row, its directories, its MCP
+  // config or its tasks exist. Composition is resolved at spawn, so an
+  // unresolvable type would otherwise surface at the moment the container needs
+  // a CLAUDE.md it cannot produce — with a half-created group already on disk.
+  // An explicit option throws here; a template's hint degrades and reports.
+  const forkExt = readForkExtension(tpl.extensions);
+  const typeDecision = decideCoworkerType({
+    projectRoot: process.cwd(),
+    ...(opts && 'coworkerType' in opts ? { explicit: opts.coworkerType } : {}),
+    ...(forkExt.defaultCoworkerType === undefined ? {} : { templateHint: forkExt.defaultCoworkerType }),
+  });
+  const notices = [...tpl.report, ...forkExt.report, ...typeDecision.report];
+
   const id = `ag-${randomUUID()}`;
   // Display-name fallback chain: explicit option → manifest extension
   // agentName → plugin folder leaf (exactly the pre-plugin derivation).
@@ -111,7 +133,7 @@ export async function createAgentFromTemplate(ref: string, opts?: CreateAgentOpt
     is_admin: 0,
     agent_provider: null,
     container_config: null,
-    coworker_type: null,
+    coworker_type: typeDecision.coworkerType,
     allowed_mcp_tools: null,
     overlays: null,
     routing: 'direct',
@@ -167,7 +189,7 @@ export async function createAgentFromTemplate(ref: string, opts?: CreateAgentOpt
   // present these exact paused tasks and resume only the ones the user accepts.
   for (const task of tasks.values()) await createScheduledTask(id, task, { status: 'paused' });
 
-  for (const line of tpl.report) log.warn('Template reader notice', { ref, notice: line });
+  for (const line of notices) log.warn('Template reader notice', { ref, notice: line });
 
-  return { group, report: tpl.report };
+  return { group, report: notices };
 }
