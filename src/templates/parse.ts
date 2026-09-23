@@ -33,6 +33,13 @@ export interface Template {
   contextExtras: { name: string; content: string }[]; // other extension-dir context/**/*.md
   skills: { name: string; srcDir: string }[]; // skills/<name>/ conforming skill folders
   tasks: TemplateTask[]; // ai.nanoco.nanoclaw/tasks/*.md, created paused when stamped
+  /**
+   * The manifest's raw `extensions` map. Upstream's reader keeps only what it
+   * consumes (`agentName`), but a fork namespace needs the map itself — see
+   * fork-extension.ts. Foreign namespaces are kept unvalidated by contract, so
+   * carrying the map costs nothing and validates nothing extra.
+   */
+  extensions: Record<string, unknown>;
   /** Absolute, containment-validated plugin root (stamping copies from here). */
   dir: string;
   /** Named skip/ignore notices — never silently stripped components. */
@@ -81,6 +88,7 @@ export function parseTemplate(dir: string): Template {
     contextExtras: extension.contextExtras,
     skills,
     tasks: extension.tasks,
+    extensions: manifest.extensions,
     dir: path.resolve(dir),
     report: [...manifest.report, ...skillsReport, ...mcpReport, ...extension.report],
   };
