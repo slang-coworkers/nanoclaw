@@ -3,7 +3,7 @@ title: "PR Review Practices"
 type: concept
 group: review-process
 tags: [pr-review, slang-reviewer, devin, reviewer-a, reviewer-b, reviewer-c, github, draft-pr, convergence, false-positives, a2a-review, fleet-contention, repo-root-isolation, pr-approver, shadow-mode, clause-gap, challenger, critique-gate, abstain-infra, head-pinning, human-calibration, memoization-safety]
-source_count: 31
+source_count: 30
 ---
 
 # PR Review Practices
@@ -56,7 +56,7 @@ Devin (Reviewer B) is best-effort and must be self-verified before it contribute
 
 ## Reviewer C (Clarity) Failure and Recovery
 
-Reviewer C can die mid-run from a transient `API Error: The socket connection was closed unexpectedly`. The failure leaves `clarity-review.md` as a tiny stub (~80–135 bytes) containing only the error string — even though the wrapper exits and the file exists. A naive "artifact present?" check would silently lose a whole reviewer [slang-pr-review Reviewer C can die mid-run on a transient API socket error — detect via tiny clarity-review.md, retry recovers](../learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md), [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md).
+Reviewer C can die mid-run from a transient `API Error: The socket connection was closed unexpectedly`. The failure leaves `clarity-review.md` as a tiny stub (~80–135 bytes) containing only the error string — even though the wrapper exits and the file exists. A naive "artifact present?" check would silently lose a whole reviewer [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md).
 
 **Detection:** After C finishes, check `wc -c clarity-review.md`. Healthy output is multi-KB (8–26 KB). A file under ~400–500 bytes, especially one containing `API Error|socket connection`, means the run crashed.
 
@@ -151,13 +151,12 @@ Two traps when monitoring nohup-background reviewer jobs [Verifying detached bac
 1. **Context compaction kills in-flight Monitor.** A large compaction event can fire Monitor's timeout early. After any compaction, re-check process/output state directly rather than trusting the monitor.
 2. **`pgrep -fc 'pattern'` false counts.** The pattern string appears in your own command pipeline → pgrep counts your own shell invocation. Use `ps aux | grep <pat> | grep -v grep` instead. Better still, treat the authoritative completion signal as the wrapper's done-marker in its log plus a non-empty output file: A = `>>> repro.sh: done` + `final-review.md`; C = `>>> run-clarity.sh: done (rc=0)` + `clarity-review.md`; B = `>>> devin-fetch: …/devin-flags.md (N lines)` + `devin-flags.md`.
 
-**Source learnings (31):**
+**Source learnings (30):**
 
 - [Empirical "I tested it" probes can miss the wrong sub-case](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
 - [Reviewer A flip-flops across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
 - [PR-review lenses: extracted-matcher integration gap + normalize-before-match blind spot](../learnings/1780323605226-pr-review-lenses-extracted-matcher-integration-gap.md)
 - [Verify "not constructible / defensive-only" claims that waive reviewer artifacts](../learnings/1780487356786-verify-not-constructible-defensive-only-claims-tha.md)
-- [Reviewer C can die mid-run on a transient API socket error](../learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md)
 - [Verify "inaccurate comment" flags against code text, not PR-body citations](../learnings/1780769188437-slang-review-verify-inaccurate-comment-flags-again.md)
 - [Multi-round PR review converges; scope down when delta is comment-only](../learnings/1780769199724-multi-round-pr-review-converges-scope-down-to-targ.md)
 - [A budget cap on a fan-out reviewer pipeline is structurally guaranteed to destroy its output](../learnings/1785839403586-a-budget-cap-on-a-fan-out-reviewer-pipeline-is-str.md)

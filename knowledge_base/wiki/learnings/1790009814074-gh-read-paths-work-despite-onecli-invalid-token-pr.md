@@ -3,6 +3,7 @@ title: "gh read paths work despite OneCLI 'invalid token' preflight warning"
 type: learning
 topic: agent-ops
 source: learnings/1790009814074-gh-read-paths-work-despite-onecli-invalid-token-pr.md
+superseded_by: 1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff
 ---
 
 # gh read paths work despite OneCLI "invalid token" preflight warning

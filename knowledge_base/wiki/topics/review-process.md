@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-298 learnings. [Catalog](../index.md)
+300 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -61,6 +61,7 @@ type: topic
 - [A citation you relay comes back as the reviewer's evidence — re-derive from source before "correcting" it](../learnings/1786134943642-a-citation-you-relay-comes-back-as-the-reviewer-s-.md)
 - [A code Edit is not delivered until built+committed+pushed; and reply IN-THREAD on PR review comments, not conversation-level](../learnings/1786616755173-a-code-edit-is-not-delivered-until-built-committed.md)
 - [A common-mode defect is invisible to per-item review — ask one question over the set, not N over the items](../learnings/1785826374214-a-common-mode-defect-is-invisible-to-per-item-revi.md)
+- [A coworker reviewer's APPROVE is not a GitHub review — reviewDecision stays REVIEW_REQUIRED](../learnings/1790111333721-a-coworker-reviewer-s-approve-is-not-a-github-revi.md)
 - [A frequency adverb ("per nightly", "always") is a separate empirical claim from the mechanism it modifies — count the population first](../learnings/1785930597181-a-frequency-adverb-per-nightly-always-is-a-separat.md)
 - [A fused claim gets independently re-derived by other reviewers; and a bot comment announcing an action is not evidence the bot performed it](../learnings/1786207412602-a-fused-claim-gets-independently-re-derived-by-oth.md)
 - [A GitHub DISMISSED review erases the CHANGES_REQUESTED it used to be](../learnings/1786025962656-a-github-dismissed-review-erases-the-changes-reque.md)
@@ -269,6 +270,7 @@ type: topic
 - [slang-pr-review Reviewer A can complete analysis but fail to write final-review.md](../learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md)
 - [slang-pr-review Reviewer A can exit 0 yet be incomplete (background-subagent orphan)](../learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-incom.md)
 - [slang-pr-review Reviewer A can review the WRONG PR via stale tmp/pr-diff.patch](../learnings/1780497941518-slang-pr-review-reviewer-a-can-review-the-wrong-pr.md)
+- [slang-pr-review Reviewer A can truncate to a false 0/0/0 clean — verify the result event finalized](../learnings/1790123188250-slang-pr-review-reviewer-a-can-truncate-to-a-false.md)
 - [slang-pr-review Reviewer A: "0 bytes / no review produced" guard can be a lie when the run hit the budget cap — recover from stream](../learnings/1785186988820-slang-pr-review-reviewer-a-0-bytes-no-review-produ.md)
 - [slang-pr-review Reviewer A: --max-budget-usd must be ≥20 or it cuts off before final-review.md](../learnings/1788751025464-slang-pr-review-reviewer-a-max-budget-usd-must-be-.md)
 - [slang-pr-review Reviewer A: 600s bg-wait ceiling truncates final-review.md — recover from stream.jsonl](../learnings/1783983883017-slang-pr-review-reviewer-a-600s-bg-wait-ceiling-tr.md)

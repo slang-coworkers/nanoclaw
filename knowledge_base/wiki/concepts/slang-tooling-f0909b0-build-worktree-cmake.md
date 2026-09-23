@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc,
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, dxc, glibc, asan, valgrind, sccache, ninja]
-source_count: 13
+source_count: 12
 ---
 
 ## TL;DR
@@ -56,7 +56,6 @@ generated. `git submodule status` shows a leading `-` on the uninitialized entri
 independent atoms report this identical finding across many issues, which is itself the signal
 that the `/slang-fix-issue` Setup step should bake it in:
 [full external cascade](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md),
-[the SPIRV-Headers target error](../learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md),
 [per-worktree init, top-level only](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md),
 [worktree init + DXIL disable](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md),
 [reconfirmed on a fresh #13017 worktree — the base clone is `git clone --depth 50` *without*
@@ -81,7 +80,7 @@ form above also works but is not required. A configure that dies on a missing `:
 submodule, not a code error
 [per-worktree init, top-level only](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md).
 Note the first configure also triggers a DXC clone+build (~500 MB, 10–30 min) unless cached
-[DXC clone on first configure](../learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md).
+[per-worktree init, top-level only](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md).
 
 Several of these atoms independently flag a **build-subagent hazard**: a subagent that launches
 ninja with `&`/`nohup` and then returns leaves a *detached* build that dies when its shell
@@ -211,11 +210,10 @@ and collects every failure instead of stopping at the first — the way to prove
 break is the *only* remaining one
 [per-target flags don't reach linked OBJECT libraries; `-k 0` must follow `--`](../learnings/1789384635713-cmake-per-target-compile-flags-don-t-propagate-to-.md).
 
-**Source learnings (13):**
+**Source learnings (12):**
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md) — Full cascade + `ninja: loading build-Debug.ninja: No such file`; explicit external list; a backgrounded subagent build dies — run foreground + Monitor for the artifact.
-- [Fresh worktree needs git submodule update --init before cmake configure](../learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md) — `get_target_property() ... "SPIRV-Headers::SPIRV-Headers"`; leading `-` in `git submodule status`; first configure also does a ~500 MB DXC clone+build.
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md) — #12297 added `slang-rich-diagnostics.cpp`; stale `build.ninja` → hundreds of undefined refs; reconfigure; grep `impl-Debug.ninja` (multi-config), not top-level `build.ninja`.
-- [Slang git worktree needs per-worktree submodule init before cmake configure](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md) — Top-level `--init --depth 1` is enough (no slang-rhi nested / dxc); a Monitor on `build.log` mis-fires when configure (not compile) fails — trust the subagent's completion.
+- [Slang git worktree needs per-worktree submodule init before cmake configure](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md) — Top-level `--init --depth 1` is enough (no slang-rhi nested / dxc); the `SPIRV-Headers::SPIRV-Headers` `get_target_property` error + leading `-` in `git submodule status` are the tell; first configure also does a ~500 MB DXC clone+build; a Monitor on `build.log` mis-fires when configure (not compile) fails — trust the subagent's completion.
 - [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md) — `git grep` skips submodule trees (excludes vendored `CMAKE_BINARY_DIR` hits); scope by tracked-vs-submodule, not `external/` prefix; `check-submodules.yml` pattern.
 - [slang worktree build needs submodule init; disable DXIL to skip 30-min DXC-from-source on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md) — GLIBC < 2.38 builds DXC from source; `-DSLANG_ENABLE_DXIL=OFF -DSLANG_SLANG_LLVM_FLAVOR=DISABLE`; a `run_in_background` grandchild survives; check `pgrep -x ninja` + `/proc/<pid>/cwd`.
 - [Slang ASan LD_LIBRARY_PATH gotcha is host-wide not container-specific](../learnings/1787840677149-slang-asan-ld-library-path-gotcha-is-host-wide-not.md) — `$(clang-18 -print-runtime-dir)` on `LD_LIBRARY_PATH`; `ASAN_OPTIONS=detect_leaks=0` during build; a lib-path issue makes slang-test silently *ignore* tests (false-green).

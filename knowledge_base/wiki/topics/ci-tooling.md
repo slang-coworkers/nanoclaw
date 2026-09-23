@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-497 learnings. [Catalog](../index.md)
+500 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -201,12 +201,14 @@ type: topic
 - [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak](../learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md)
 - [CI health snapshot: use curl|tail, not WebFetch, on health_snapshots.jsonl](../learnings/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md)
 - [CI health snapshot: WebFetch truncates health_snapshots.jsonl — fetch the tail directly](../learnings/1788855481072-ci-health-snapshot-webfetch-truncates-health-snaps.md)
+- [CI health_snapshots.jsonl exceeds WebFetch 10MB limit — use a tail approach](../learnings/1790065065697-ci-health-snapshots-jsonl-exceeds-webfetch-10mb-li.md)
 - [CI health_snapshots.jsonl feed can be badly stale — don't assert live queue health from it](../learnings/1784189757200-ci-health-snapshots-jsonl-feed-can-be-badly-stale-.md)
 - [CI health_snapshots.jsonl tail is unreadable via WebFetch — returns stale top-of-file lines](../learnings/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md)
 - [CI logs echo GPU-flake strings as script text — grep alone misclassifies](../learnings/1785780840892-ci-logs-echo-gpu-flake-strings-as-script-text-grep.md)
 - [CI suite currency: four timestamp fields invert, only created_at is safe](../learnings/1785824275373-ci-suite-currency-four-timestamp-fields-invert-onl.md)
 - [CI sweeps: a stale workflow_dispatch run makes a GREEN PR look red (verify run event before rerunning)](../learnings/1785816873789-ci-sweeps-a-stale-workflow-dispatch-run-makes-a-gr.md)
 - [CI terminal is not chain terminal — a maintainer approved 6 minutes before two agents declared the chain closed](../learnings/1785970543490-ci-terminal-is-not-chain-terminal-a-maintainer-app.md)
+- [ci-babysitter action_required fix (2026-09-22, #12544) is dead code — wrong data source](../learnings/1790079172299-ci-babysitter-action-required-fix-2026-09-22-12544.md)
 - [ci-babysitter: wake-payload hasNewActivity read false on 4 PRs with genuine new pushes](../learnings/1789970806784-ci-babysitter-wake-payload-hasnewactivity-read-fal.md)
 - [CI-infra patches referencing external repos need coordinator-side verification (A/C can't reach them)](../learnings/1787133301381-ci-infra-patches-referencing-external-repos-need-c.md)
 - [CI-integrity bug class: a detected failure is logged but never folded into the recorded test result (stale init=Success leaks through)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
@@ -482,6 +484,7 @@ type: topic
 - [Two top CI infra buckets are distinct: external Falcor pipeline vs own-fleet runner preemption](../learnings/1786494033565-two-top-ci-infra-buckets-are-distinct-external-fal.md)
 - [Untracking a checked-in build binary is safe only if nothing consumes the tracked copy](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
 - [Validate must-fail repro against CURRENT source, not a stale prebuilt binary — lowering drifts](../learnings/1786636025197-validate-must-fail-repro-against-current-source-no.md)
+- [Verify a FileCheck directive-collision fix statically (no build/FileCheck needed)](../learnings/1790108085939-verify-a-filecheck-directive-collision-fix-statica.md)
 - [Verify a PR fix on a build FROM the PR head, with master as control — worktree needs submodule init](../learnings/1787626975022-verify-a-pr-fix-on-a-build-from-the-pr-head-with-m.md)
 - [Verify a reported release-version mismatch against the actual artifact before treating it as a release-CI bug](../learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md)
 - [Verify a reporter's cited doc/spec path before repeating "impl disagrees with the reference"](../learnings/1785320946422-verify-a-reporter-s-cited-doc-spec-path-before-rep.md)

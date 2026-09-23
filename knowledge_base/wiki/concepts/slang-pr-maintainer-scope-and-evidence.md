@@ -3,7 +3,7 @@ title: "Slang Maintainer Scope-vs-Design Approval, Evidence Discipline, and Draf
 type: concept
 group: slang-grab-bag
 tags: [scope-vs-design-approval, maintainer-decisions, by-design-reversal, MCP-read-silence, draft-PR, Closes-keyword, issue-lifecycle, reporter-fix, release-verification]
-source_count: 14
+source_count: 16
 ---
 
 # Slang Maintainer Scope-vs-Design Approval, Evidence Discipline, and Draft-PR Footprint
@@ -70,7 +70,20 @@ A "trivial pin bump" of a vendored submodule is rarely trivial. Reviewing slang#
 
 **The triage step-9 go/no-go gates the fixer/draft-PR release, NOT the triage comment — they are separate artifacts, and a maintainer-deferring triage comment should be LEFT UP even after a NO-GO.** Recurring crossover (#13058, #874, #13140): the step-9 outcome comment is posted during normal flow, then a NO-GO/defer or "don't post — noise" directive arrives afterward and reads as if the comment shouldn't exist. Operator-confirmed posture: a triage comment that DEFERS the fix decision to the maintainer ("assignee-owned vs bot draft PR — your call"), carries no `@`-mention, and has the bot disclaimer is the right thing to post — even on an unsolicited `issue_opened` chain with no `@nv-slang-bot` mention. Deleting an already-notified, additive, substantive file:line comment reads worse than leaving it (the author was notified at post time; deletion is a hard-to-reverse outward action). Hold the fixer; only suppress the comment up front when the operator has a standing "no post on unsolicited issue_opened" order. ([Step-9 triage comment vs go/no-go: the decision gates the fixer/PR, not a deferring triage note](../learnings/1789599918617-step-9-triage-comment-vs-go-no-go-the-decision-gat.md))
 
-**Source learnings (14):**
+## Fixer-Bot PR Mechanics: Cross-Fork Is Blocked, Direct Upstream Push Works; No `Co-Authored-By`
+
+Opening a draft PR from the slang-fixer prod env has a footgun: the git remote may be `coworkers = slang-coworkers/slang` (a fork, with a placeholder-token URL), and a **cross-fork** PR into shader-slang/slang is REJECTED with `fork_collab: Fork collab can't be granted by someone without permission` — via BOTH `gh pr create` (GraphQL) AND REST `gh api -X POST repos/shader-slang/slang/pulls -f head=slang-coworkers:...` (the `nv-slang-bot` App identity can't grant fork-collab and no user PAT is provisioned). The working path exploits that the bot has **direct push rights to shader-slang/slang**: push the branch straight to upstream and open a **same-repo** PR (no fork_collab), which matches the CLAUDE.md prod specifics (origin = shader-slang, bot has upstream push rights) even when the checked-out remote is the fork:
+
+```
+git push https://github.com/shader-slang/slang.git fix/issue-<n>:fix/issue-<n>
+gh pr create --repo shader-slang/slang --base master --head fix/issue-<n> --draft --title ... --body-file ...
+```
+
+Also: `clang-format` is not on PATH under that name; `/usr/bin/clang-format-17` (v17.0.6, the required version) is present — symlink it into a temp dir on PATH before `./extras/formatting.sh --cpp` ([draft PR: cross-fork blocked, direct upstream push works](../learnings/1790099756100-slang-draft-pr-cross-fork-blocked-but-direct-upstr.md)).
+
+Slang commits must **NOT** carry the `Co-Authored-By: Claude <noreply@anthropic.com>` trailer the generic harness appends. The Slang project instructions ("Don't mention Claude on the commit message"; prod-specifics: "Never include 'Claude' or AI-tool attribution in commit messages or PR bodies — upstream policy") FORBID it, and **project instructions override the harness default** — for any commit into shader-slang/slang (or slangpy / slang-rhi), omit the trailer entirely. If caught after committing but before merge (always, since we only ship drafts): `git commit --amend` to strip it, then `git push --force-with-lease` to your own `fix/issue-*` branch (routine, not the protected-branch destructive case). `--force-with-lease` can fail "stale info" right after a normal push when the worktree has no `origin/<branch>` remote-tracking ref — `git fetch origin <branch>` then lease against `FETCH_HEAD`'s SHA (`--force-with-lease=<branch>:<sha>`) ([Slang commits must not carry the Co-Authored-By: Claude trailer](../learnings/1790141178553-slang-commits-must-not-carry-the-co-authored-by-cl.md)).
+
+**Source learnings (16):**
 - [Step-9 triage comment vs go/no-go: the decision gates the fixer/PR, not a deferring triage note — leave the maintainer-deferring note up](../learnings/1789599918617-step-9-triage-comment-vs-go-no-go-the-decision-gat.md)
 - [Perf-infra sub-task assignees often self-serve the deliverable — surface the offer once, then hold](../learnings/1789378728615-perf-infra-sub-task-assignees-often-self-serve-the.md)
 - [Slang maintainer policy: no compiler-side workarounds (WAR) for downstream compiler bugs (NVRTC/NVCC)](../learnings/1789500967936-slang-maintainer-policy-no-compiler-side-workaroun.md)
@@ -84,6 +97,8 @@ A "trivial pin bump" of a vendored submodule is rarely trivial. Reviewing slang#
 - [a maintainer triage request sat 17 days unanswered behind `running` + fresh `last_active` — count outbound rows; `out==0 && in>=1` is an unconditional awaiting_us](../learnings/1785802554126-a-maintainer-triage-request-can-sit-unanswered-for.md)
 - [a maintainer's by-design ruling can reverse on VERIFIED counter-evidence (#12226 → self-merged #12256): record the RE-OPEN trigger, verify-at-HEAD before relaying, surface back to the ruling maintainer with options, keep merge maintainer-gated](../learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintaine.md)
 - [079b75b54c fixes the cooperative-matrix-2 name-granularity trap; a "trivial" submodule pin bump is rarely trivial — expand it via REST compare](../learnings/1789505298973-slang-rhi-079b75b54c-fixes-the-cooperative-matrix-.md) — diff-only bots can't see inside `external/**`; state true scope with `gh api .../compare` and a clean local build; `-render-feature` is a two-stage gate.
+- [draft PR: cross-fork into shader-slang/slang is blocked (fork_collab), but the bot's direct upstream push + same-repo PR works; clang-format-17 is at /usr/bin/clang-format-17](../learnings/1790099756100-slang-draft-pr-cross-fork-blocked-but-direct-upstr.md)
+- [Slang commits must NOT carry the Co-Authored-By: Claude trailer — project instructions override the harness default; amend + force-with-lease to strip it on a fix/issue-* branch](../learnings/1790141178553-slang-commits-must-not-carry-the-co-authored-by-cl.md)
 - [a correct Slang fix can still be closed for scope — split cascading fixes into stacked PRs early](../learnings/1789638837057-a-correct-slang-fix-can-still-be-closed-for-scope-.md) — #12492 (peer+codex approved) closed unmerged and split into #13151/#13152/#13153 for scope; prefer targeted legalization over blanket inlining; a parallel-walker diagnostic is a smell; maintainer semantics review is the merge gate for a breaking change.
 
 _Catalog: [[wiki/index.md]]_

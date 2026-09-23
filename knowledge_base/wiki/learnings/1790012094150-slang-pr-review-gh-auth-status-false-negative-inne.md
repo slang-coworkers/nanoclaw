@@ -3,6 +3,7 @@ title: "slang-pr-review: `gh auth status` false-negative + inner-CLI reviewers b
 type: learning
 topic: review-process
 source: learnings/1790012094150-slang-pr-review-gh-auth-status-false-negative-inne.md
+superseded_by: 1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff
 ---
 
 # slang-pr-review: `gh auth status` false-negative + inner-CLI reviewers bill separately

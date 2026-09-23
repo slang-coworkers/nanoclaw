@@ -3,7 +3,7 @@ title: Slang Compiler Casts, Lookup & Language Server — Operator Resolution, D
 type: concept
 group: slang-grab-bag
 tags: [slang, name-resolution, operators, lookup, optional, language-server, module-serialization, diagnostics]
-source_count: 7
+source_count: 9
 ---
 
 ## TL;DR
@@ -75,6 +75,43 @@ checking runs at `ReadyForReference`, phase-ordered before any use-site body loo
 only affects local vars (member lookup ignores
 it)](../learnings/1787706486418-slang-hiddenfromlookup-only-affects-local-vars-mem.md)).
 
+An associated type (or typealias) declared by an interface is reachable **through a value**, not
+only through the type parameter. Given `interface IHasAssoc { associatedtype assocThing; }` and
+`void f<T>(T t) where T : IHasAssoc`, the statement `t.assocThing local;` compiles — `t.assocThing`
+is a valid type expression — because when a member is looked up on a value base but its decl is
+*effectively static*, the lookup-result constructor (`slang-check-expr.cpp:535-551`, the `else if
+(isEffectivelyStatic(...))` branch) rewrites the value access to a static, type-level reference built
+from the value's static type and gives it a `TypeType`, so it is accepted where a type is expected
+(`ExpectAType`). `isEffectivelyStatic` (`slang-check-decl.cpp:1512`) treats `AggTypeDecl` and
+`SimpleTypeDecl` as static, and `AssocTypeDecl : public AggTypeDecl`, so associated types qualify
+(`tests/language-feature/dynamic-dispatch/assoc-type-dynamic-dispatch.slang`). Review-calibration
+(PR #13225): a reviewer suggested a constraint-suggestion diagnostic should reject
+type-only/associated-type requirements on the *value-access* branch because "`v.m` can't reach
+`associatedtype m`" — that premise is FALSE (the suggestion `where T : IHasAssoc` is correct advice),
+and the fix author caught it with a compiler probe + a second codex review. Before recommending a
+filter/guard that suppresses output on a "member kind X isn't reachable in context Y" assumption,
+verify it against a built compiler — that is exactly the class of claim Slang's type system often
+falsifies ([associated types are reachable through a value in type
+position](../learnings/1790106628469-slang-associated-types-are-reachable-through-a-val.md)).
+
+A companion provenance pitfall in the same constraint-suggestion work (#13140): to exclude
+"builtin"/"library" decls, `isFromCoreModule(decl)` (`slang-lower-to-ir.cpp`) checks only
+`FromCoreModuleModifier`, which is applied **solely** to the embedded core module (core.meta.slang /
+hlsl / glsl, set in `slang-compile-request.cpp` when `m_isCoreModuleCode`). It does **not** cover the
+separately-compiled standard-library modules under `source/standard-modules/` (`slang.numerics`,
+`slang.functional`, `slang.neural`, `workgraph`, `differentiable`), which load from the
+standard-module search path as ordinary imported `.slang` modules carrying **no**
+`FromCoreModuleModifier`, so `isFromCoreModule` returns false and they leak into any "exclude builtin
+decls" logic (surfacing only with `-experimental-feature`, since they are `[ExperimentalModule]`-gated).
+There is **no** dedicated "is standard-library module" bit on `Module`/`ModuleDecl`, and
+`[ExperimentalModule]` is a fragile proxy (means "experimental", not "standard library" — a user can
+mark their own module experimental). The robust zero-infrastructure alternative is a same-module
+identity check `getModuleDecl(someScope) == getModuleDecl(candidateDecl)` (precedent
+`slang-check-expr.cpp:~1156`), which excludes core, ALL standard-library, and every other imported
+module at once — but also excludes the user's own *imported* modules, narrowing "user-declared" to
+"same-module" ([isFromCoreModule excludes only the embedded core module, not standard-library
+modules](../learnings/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md)).
+
 ## Language server, diagnostics infra, and module versioning
 
 Attribute-list completion returns a `[__AttributeUsage]` struct twice — once Struct(22), once
@@ -108,7 +145,7 @@ covering all three full-load callers); `m_version` is private and needs a public
 caller-side check ([Slang serialized module has TWO version axes — only the format one is checked on
 load](../learnings/1787695975002-slang-serialized-module-has-two-version-axes-only-.md)).
 
-**Source learnings (7):**
+**Source learnings (9):**
 - [Slang: fallible `as` cast already yields Optional<T>](../learnings/1787675835939-slang-fallible-as-cast-already-yields-optional-t-v.md) — if(let)/guard let support as-operands for free; negative control proves the wrapper.
 - [User-defined attribute completion duplicates (struct + synthesized mirror AttributeDecl)](../learnings/1787700311108-user-defined-attribute-completion-duplicates-struc.md) — dedup by final label in collectAttributes with a deterministic kind tie-break.
 - [Slang has no structured fix-it / auto-edit diagnostic infrastructure](../learnings/1787705444892-slang-has-no-structured-fix-it-auto-edit-diagnosti.md) — every fix-it ask is either a better diagnostic/note or a new cross-cutting project.
@@ -116,3 +153,5 @@ load](../learnings/1787695975002-slang-serialized-module-has-two-version-axes-on
 - [Slang infix operator lookup ignores member/extension-declared operators](../learnings/1787706116993-slang-infix-operator-lookup-ignores-member-extensi.md) — only free functions resolve; PR #11879 (make user's operator win) was closed unmerged.
 - [Slang hiddenFromLookup only affects local vars (member lookup ignores it)](../learnings/1787706486418-slang-hiddenfromlookup-only-affects-local-vars-mem.md) — &&-gated on isLocalVar; read the honoring site, not just the field.
 - [Slang serialized module has TWO version axes — only the format one is checked on load](../learnings/1787695975002-slang-serialized-module-has-two-version-axes-only-.md) — semantic m_version (4..28) is not range-checked; gate belongs in readSerializedModuleIR_.
+- [associated types are reachable through a value in type position (t.assocThing)](../learnings/1790106628469-slang-associated-types-are-reachable-through-a-val.md) — the isEffectivelyStatic lookup branch rewrites value access to a TypeType; verify "member kind X unreachable in context Y" claims against a built compiler.
+- [isFromCoreModule excludes only the embedded core module, not the source/standard-modules/ std-lib modules](../learnings/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md) — no std-lib provenance bit; same-module getModuleDecl identity check is the robust alternative but narrows to same-module.

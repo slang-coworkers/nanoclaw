@@ -3,7 +3,7 @@ title: "Slang Autodiff: Performance Regressions and IR-Pass Verification"
 type: concept
 group: slang-autodiff-ir
 tags: [autodiff, differentiation, performance, passes, simplify-ir, ci-gating, verification]
-source_count: 4
+source_count: 5
 ---
 
 # Slang Autodiff: Performance Regressions and IR-Pass Verification
@@ -25,6 +25,8 @@ Two distinct performance root causes emerge from the #9808 autodiff refactor ([s
 
 2. **Specialization fixpoint amplification.** Demand-driven derivative synthesis inside `specializeDynamicInsts` (`slang-ir-specialize.cpp:1779`) injects derivatives inside the whole-module fixpoint `for(;;)` @1680; each injection sets `iterChanged`, triggering another full outer iteration re-running 5 heavyweight passes. Synthesis itself is memoized (`slang-ir-translate.cpp:39-53`); the cost is the extra fixpoint iterations, not re-synthesis.
 
+The same fixpoint escalates from amplification to outright **non-convergence (a compile hang, no diagnostic, RSS +~40MB/min)** when `bwd_diff` is taken over a *generic differentiable-INTERFACE* param (`IDiffTensor<float,2>`), because there the memoization that bounds root-cause 2 is defeated: with `lowerWitnessLookups=true` the live existential conformance is resolved by on-demand autodiff transcription, which keeps synthesizing higher-order derivative-witness insts, and each order is a fresh `ForwardDifferentiate(...)` with a NEW operand → a NEW pointer-keyed `maybeTranslateInst` memo entry → dedup bypassed → `iterChanged` stays true forever, growing an unbounded Differential-of-Differential witness tower ([bwd_diff over an existential interface hangs specializeModule — higher-order witness tower](../learnings/1790102257091-bwd-diff-over-an-existential-interface-differentia.md)). Fast discriminators: **fwd works, bwd hangs** because the forward path has an explicit existential short-circuit (placeholder witness + "higher-order autodiff not supported yet" early return, `autodiff-fwd.cpp:74-80`) that the backward witness-synthesis path lacks; **concrete differentiable types converge** because the extra higher-order witnesses are unreferenced and DCE'd — only an existential keeps them live for dynamic dispatch, so the failing shape is a generic interface with an associated `Differential` used AS the differentiated param (an uncovered residual of #11667). `slangc -target spirv` hangs but `getEntryPointCode` does not: direct SPIR-V emission forces WHOLE-PROGRAM linking so specialization sees the exported differentiable fn still in existential form, whereas the single-entry-point closure resolves it concretely first. The principled fix is to bound/short-circuit the higher-order existential-witness synthesis (or record a structural fixed point); a bare outer-loop iteration cap only masks it (and `kMaxIRSpecializationDepthBudget=512` does not apply to this typeflow/autodiff path).
+
 ### Gating safety: the `.autodiff` predicate is narrower than the passes clean up
 
 The gating predicate is narrower than what the passes actually clean up ([slang#11474 Approach A gating-safety: .autodiff predicate is narrower than finalizeAutoDiffPass strips](../learnings/1780594873235-slang-11474-approach-a-gating-safety-autodiff-pred.md)): `calcRequiredLoweringPassSet` sets `.autodiff=true` only for `IRTranslateBase`/`IRTranslatedTypeBase` and `kIROp_Forward/BackwardDifferentiate` ops, but `finalizeAutoDiffPass` also strips `DifferentialPairType`, `DetachDerivative`, autodiff decorations (which `[Differentiable]` functions carry even when never differentiated), and releases differentiable-interface keep-alives. So a naive gating on `.autodiff` risks leaving those artifacts in a module the predicate classifies as non-autodiff — verify emit stays clean before shipping the gate.
@@ -38,9 +40,10 @@ The `simplifyIR`-side half of the regression is separate from the finalize-pass 
 For IR-level classifier or lowering changes, do NOT declare a fix verified on a narrow test sweep (e.g. `tests/diagnostics/` only) ([Gate Slang IR/classifier fix verdicts on full-suite CI](../learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-suit.md)). A classifier broadening that passes a 601-test `diagnostics/` sweep and earns a peer APPROVE can still produce false positives caught only in `tests/bugs/`. The specific example: classifying a store's value operand as a *read* spuriously emitted E41016 for `self.self = &self;` (storing an address is not reading the pointed-to location). Holding fixer PRs as drafts pending full-suite CI is what makes early catches possible.
 
 ---
-**Source learnings (4):**
+**Source learnings (5):**
 - [slang autodiff #9808 leaks compile-time onto non-autodiff modules via unconditional finalize passes](../learnings/1780594441175-slang-autodiff-9808-leaks-compile-time-onto-non-au.md)
 - [slang #11474: gating safety — .autodiff predicate is narrower than finalizeAutoDiffPass strips](../learnings/1780594873235-slang-11474-approach-a-gating-safety-autodiff-pred.md)
 - [slang #11780: simplifyIR half of #9808 perf regression](../learnings/1782474542819-slang-11780-simplifyir-half-of-9808-perf-regressio.md)
 - [Gate Slang IR classifier fix verdicts on full-suite CI](../learnings/1782450782359-gate-slang-ir-classifier-fix-verdicts-on-full-suit.md)
+- [bwd_diff over an existential interface hangs specializeModule (not fwd) — higher-order witness tower](../learnings/1790102257091-bwd-diff-over-an-existential-interface-differentia.md)
 _Catalog: [[wiki/index.md]]_

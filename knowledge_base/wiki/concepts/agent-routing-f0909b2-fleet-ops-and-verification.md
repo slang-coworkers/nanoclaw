@@ -91,8 +91,14 @@ The next two sweeps widen the blast radius: it is NOT limited to Falcor jobs. Th
 job-scoped rerun via `gh api -X POST repos/{...}/actions/jobs/{job_id}/rerun` ALSO
 fails (HTTP 403 "The workflow run containing this job is already running"), so a
 genuinely-intermittent failure on an *unrelated* job cannot be rerun at all while
-the gate sits pending
-([falcor gate blocks ALL reruns](../learnings/1788631867865-falcor-build-approval-gate-waiting-blocks-all-reru.md)).
+the gate sits pending — re-confirmed 2026-09-23 on PR #12208, a `test-slang`
+self-hosted-runner-lost-communication flake wedged behind a `waiting`
+`falcor-build-approval-gate`. The babysitter action: don't attempt `gh run rerun`
+while a gate 0c sits pending — classify the failure `intermittent-but-gate-wedged`,
+log via `sweeplib.touch_tracker_verdict(verdict="gate-wedged")` +
+`append_row(action="note", result="left")`, and revisit once the gate clears so the
+run can complete and a normal rerun becomes possible
+([falcor gate blocks all reruns in the same run — classify intermittent-but-gate-wedged](../learnings/1790136696883-falcor-build-approval-gate-waiting-blocks-reruns-o.md)).
 Confirmed again on PR #12840: an unrelated GPU flake
 ("The self-hosted runner lost communication with the server", sibling GPU jobs
 green) could not be rerun via either `--failed` or `--job` — the pending gate
@@ -287,7 +293,7 @@ review:
 - [gh auth status falsely reports nv-slang-bot token invalid; gh api still works](../learnings/1788881883720-gh-auth-status-falsely-reports-nv-slang-bot-token-.md) — Use `gh api` (REST) for everything; GraphQL-backed `gh` subcommands break; never `env -u GH_TOKEN`.
 - [Slang PR review: gh/api blocked by OneCLI but git-fetch + slang-mcp work — use --mode patch](../learnings/1788913121098-slang-pr-review-gh-api-blocked-by-onecli-but-git-f.md) — OneCLI `ROUT…` token + disconnected GitHub kills REST; `git fetch` and slang-mcp tools have independent auth.
 - [gh run rerun fails on wedged falcor-build-approval-gate](../learnings/1788545503656-gh-run-rerun-fails-on-wedged-falcor-build-approval.md) — A `waiting` gate keeps the run non-terminal; check jobs before rerun; trigger-step 403 is a distinct rerunnable bridge-auth flake.
-- [falcor-build-approval-gate 'waiting' blocks ALL reruns in that run](../learnings/1788631867865-falcor-build-approval-gate-waiting-blocks-all-reru.md) — Job-scoped rerun API also 403s; blast radius is the whole run, not just Falcor jobs.
+- [falcor-build-approval-gate WAITING blocks reruns of ANY job in the same run](../learnings/1790136696883-falcor-build-approval-gate-waiting-blocks-reruns-o.md) — Job-scoped rerun API also 403s; re-confirmed on PR #12208 — classify `intermittent-but-gate-wedged`, log `touch_tracker_verdict(verdict="gate-wedged")`, revisit when the gate clears.
 - [falcor-build-approval-gate wedge blocks rerun of unrelated sibling jobs](../learnings/1788675398136-falcor-build-approval-gate-wedge-blocks-rerun-of-u.md) — An unrelated GPU flake becomes un-rerunnable; grep `jobs[] | select(.status!="completed")` before concluding the API is broken.
 - [Script-gated deferral tasks must distinguish "condition not met" from "probe failed"](../learnings/1788432587694-script-gated-deferral-tasks-must-distinguish-condi.md) — Branch on the authoritative field; make probe-failure its own WAKE arm; verify with a deliberately-failing control before arming.
 - [Wired triager→fixer: don't double-dispatch; claim the edge on the canonical thread](../learnings/1788903865197-wired-triager-fixer-don-t-double-dispatch-claim-th.md) — Same `thread_id` folds a race into one session; resolve the EDGE (single parent), not the session.

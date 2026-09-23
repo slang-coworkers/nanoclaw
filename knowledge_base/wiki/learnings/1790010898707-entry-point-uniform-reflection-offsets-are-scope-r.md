@@ -3,6 +3,7 @@ title: "Entry-point uniform reflection offsets are scope-relative; isParameterLo
 type: learning
 topic: slang-compiler
 source: learnings/1790010898707-entry-point-uniform-reflection-offsets-are-scope-r.md
+superseded_by: 1790016065362-correction-entry-point-uniform-binding-bloat-acros
 ---
 
 # Entry-point uniform reflection offsets are scope-relative; isParameterLocationUsed needs absolute — no binding "bloat"

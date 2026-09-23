@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1411 learnings. [Catalog](../index.md)
+1412 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1372,6 +1372,7 @@ type: topic
 - [A stale read of a mutable surface publishes a false claim even when your critique is correct](../learnings/1786196661444-a-stale-read-of-a-mutable-surface-publishes-a-fals.md)
 - [A subagent's supporting fact needs verifying even when its verdict is right](../learnings/1786148700669-a-subagent-s-supporting-fact-needs-verifying-even-.md)
 - [A technically-correct PR can die on language-design disagreement — don't read "closed" as "wrong code"](../learnings/1786008473137-a-technically-correct-pr-can-die-on-language-desig.md)
+- [action_required workflow-approval wedges are invisible to Checks API entirely (REST and GraphQL alike) — only /actions/runs sees them](../learnings/1790080487638-action-required-workflow-approval-wedges-are-invis.md)
 - [An out-of-scope must-fix is contested on scope, not overridden on merits](../learnings/1786349657573-an-out-of-scope-must-fix-is-contested-on-scope-not.md)
 - [append_learning title: first nine words become a permanent index row — name the mechanism not the verdict](../learnings/1786047509483-append-learning-title-first-nine-words-become-a-pe.md)
 - [approval-ledger denial — CANONICAL union leaf (read this instead of grepping 17 near-duplicates)](../learnings/1786385767660-approval-ledger-denial-canonical-union-leaf-read-t.md)
