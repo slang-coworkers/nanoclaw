@@ -529,8 +529,19 @@ export class ClaudeProvider implements AgentProvider {
         cwd: input.cwd,
         additionalDirectories: this.additionalDirectories,
         resume: input.continuation,
+        // The append (agent name + destinations) is rebuilt at every container
+        // start. Left to the SDK default, Claude Code records the prompt on a
+        // session's first request and resends that record on every resume, so
+        // a resumed agent would keep its old name and destination list until
+        // compaction. snapshot: false renders it fresh each time.
+        //
+        // Upstream also hardcodes `pathToClaudeCodeExecutable: '/pnpm/claude'`
+        // here. NOT taken: this fork already sets that property above from
+        // `claudeExecutable`, which selects the claude-trace wrapper when tracing
+        // is on and the SDK-bundled native binary otherwise. A second literal
+        // would be a duplicate key that silently wins and disables tracing.
         systemPrompt: instructions
-          ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions }
+          ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions, snapshot: false }
           : undefined,
         allowedTools: [...TOOL_ALLOWLIST, ...mcpAllowedToolEntries(this.mcpPolicy, Object.keys(this.mcpServers))],
         disallowedTools: [...SDK_DISALLOWED_TOOLS, ...(this.blockedTools ?? [])],
@@ -559,13 +570,15 @@ export class ClaudeProvider implements AgentProvider {
         permissionMode: this.executionPolicy.permissionMode,
         allowDangerouslySkipPermissions: this.executionPolicy.allowDangerouslySkipPermissions,
         settingSources: ['project', 'user', 'local'],
-        // Only sent when enabled, so an install that never turns it on passes
-        // exactly the options it always did. `fastMode` is a Settings member
-        // rather than a query option, which is why it rides `settings`.
-        ...(this.inference.settings ? { settings: this.inference.settings } : {}),
+        // Flag-level settings: `fastMode` only when the install turns it on,
+        // then the execution policy's fixed keys, spread last so per-group
+        // input can never override them. Both are Settings members rather
+        // than query options, which is why they ride `settings`.
+        settings: { ...this.inference.settings, ...this.executionPolicy.settings },
         // this.mcpServers, not this.mcp.mcpServers: the contract resolver applies
         // shimCwd but NOT envInherit, and the fork resolves `envInherit` names to
-        // values in the constructor. Using the resolver's map drops those values.
+        // values in the constructor. Using the resolver's map drops those values,
+        // and also skips the constructor's removal of disallowed external servers.
         mcpServers: this.mcpServers,
         hooks: {
           PreToolUse: [{ hooks: [createPreToolUseHook(this.mcpPolicy)] }],
