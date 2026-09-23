@@ -39,7 +39,15 @@ describe('FALLBACK_PRICING', () => {
   // previous single-entry table discarded ~90% of them and reported the rest
   // as the total.
   it('prices the models actually in use, opus-5 above all', () => {
-    for (const model of ['claude-opus-5', 'aws/anthropic/bedrock-claude-opus-5', 'claude-sonnet-5']) {
+    for (const model of [
+      'claude-opus-5',
+      'aws/anthropic/bedrock-claude-opus-5',
+      'claude-sonnet-5',
+      'claude-opus-5-5',
+      'aws/anthropic/bedrock-claude-opus-5-5',
+      'azure/anthropic/claude-opus-5-5',
+      'azure/anthropic/claude-opus-4-8',
+    ]) {
       expect(FALLBACK_PRICING[model], `${model} would be silently dropped`).toBeDefined();
     }
   });
