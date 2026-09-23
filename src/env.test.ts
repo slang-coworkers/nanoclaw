@@ -104,6 +104,59 @@ describe('readEnvFile', () => {
 });
 
 /**
+ * The opt-in process.env fallback (NANOCLAW_ENV_ALLOW_PROCESS_FALLBACK). Off by
+ * default so the file-only contract holds everywhere it matters; Astra turns it
+ * on so config injected as pod env resolves without a second plaintext .env on
+ * disk. These pin: default off, file precedence, and no fabrication.
+ */
+describe('readEnvFile process.env fallback (opt-in)', () => {
+  const FLAG = 'NANOCLAW_ENV_ALLOW_PROCESS_FALLBACK';
+  const KEY = 'NC_TEST_FALLBACK_KEY';
+  let savedFlag: string | undefined;
+  let savedKey: string | undefined;
+
+  beforeEach(() => {
+    savedFlag = process.env[FLAG];
+    savedKey = process.env[KEY];
+    delete process.env[FLAG];
+    delete process.env[KEY];
+  });
+
+  afterEach(() => {
+    if (savedFlag === undefined) delete process.env[FLAG];
+    else process.env[FLAG] = savedFlag;
+    if (savedKey === undefined) delete process.env[KEY];
+    else process.env[KEY] = savedKey;
+  });
+
+  it('does NOT consult process.env when the flag is unset', () => {
+    if (fs.existsSync(envPath)) fs.unlinkSync(envPath);
+    process.env[KEY] = 'from-process-env';
+    expect(readEnvFile([KEY])).toEqual({});
+  });
+
+  it('falls back to process.env for missing keys when the flag is set', () => {
+    if (fs.existsSync(envPath)) fs.unlinkSync(envPath);
+    process.env[FLAG] = '1';
+    process.env[KEY] = 'from-process-env';
+    expect(readEnvFile([KEY])).toEqual({ [KEY]: 'from-process-env' });
+  });
+
+  it('prefers the .env file value over process.env when both are present', () => {
+    fs.writeFileSync(envPath, `${KEY}=from-file\n`);
+    process.env[FLAG] = '1';
+    process.env[KEY] = 'from-process-env';
+    expect(readEnvFile([KEY])).toEqual({ [KEY]: 'from-file' });
+  });
+
+  it('does not fabricate keys absent from both file and process.env', () => {
+    if (fs.existsSync(envPath)) fs.unlinkSync(envPath);
+    process.env[FLAG] = '1';
+    expect(readEnvFile([KEY])).toEqual({});
+  });
+});
+
+/**
  * `envValue` is the single-key form of `readEnvFile` — same file, same parser,
  * same rules. These pin that equivalence, because the reason it exists is that
  * a second hand-rolled parser drifted from this one on quoted values.
