@@ -91,6 +91,14 @@ class DiscordConfig(BaseModel):
 _GITHUB_CONFIG: Optional[GitHubConfig] = None
 _GITLAB_CONFIG: Optional[GitLabConfig] = None
 _DISCORD_CONFIG: Optional[DiscordConfig] = None
+# Deployment-profile switch (two-path support). Any service named here (comma-
+# separated in SLANG_MCP_DISABLED_SERVICES, e.g. "github,discord") is force-
+# disabled: its token is never read and its tools never register, even if a
+# credential is present in the environment. Empty by default, so the brev/prod
+# GitHub path is unchanged; the Astra deployment sets it so the GitHub token is
+# never used there (GitHub is unreachable from Astra sandbox egress and out of
+# scope). Populated in setup_environment().
+_DISABLED_SERVICES: set[str] = set()
 
 # Shared httpx clients (reused across requests)
 _github_http_client: Optional[httpx.AsyncClient] = None
@@ -101,24 +109,47 @@ _DEFAULT_TIMEOUT = httpx.Timeout(30.0, connect=10.0)
 
 def setup_environment():
     """Load environment variables and set up configurations."""
-    global _GITHUB_CONFIG, _GITLAB_CONFIG, _DISCORD_CONFIG, DEBUG
+    global _GITHUB_CONFIG, _GITLAB_CONFIG, _DISCORD_CONFIG, _DISABLED_SERVICES, DEBUG
 
     # Load environment variables from .env file
     dotenv.load_dotenv(dotenv_path=Path(__file__).parent.parent / ".env", override=True)
     # Global debug flag
     DEBUG = os.environ.get("DEBUG", "False").lower() == "true"
-    # Get GitHub access token.
+
+    # Two-path deployment switch: services listed in SLANG_MCP_DISABLED_SERVICES are
+    # force-disabled here, before any token is read, so a disabled service's
+    # credential is never loaded even if present in the environment. Astra sets
+    # "github,discord" (unreachable from its sandbox egress and out of scope);
+    # brev/prod leave it unset, so every service loads exactly as before.
+    _DISABLED_SERVICES = {
+        s.strip().lower()
+        for s in os.environ.get("SLANG_MCP_DISABLED_SERVICES", "").split(",")
+        if s.strip()
+    }
+    if _DISABLED_SERVICES:
+        logger.warning(
+            "Services force-disabled via SLANG_MCP_DISABLED_SERVICES: %s",
+            ", ".join(sorted(_DISABLED_SERVICES)),
+        )
+
+    # Get GitHub access token (skipped entirely when 'github' is disabled).
     # Preference order:
     #   1. ONECLI_URL set → OneCLI proxy injects Authorization; use placeholder token.
     #   2. GH_TOKEN — rotating GitHub App installation token (managed externally).
     #   3. GITHUB_ACCESS_TOKEN — legacy static PAT (backwards compat).
     onecli_url = os.environ.get("ONECLI_URL")
     github_token = (
-        os.environ.get("GH_TOKEN")
-        or os.environ.get("GITHUB_ACCESS_TOKEN")
-        or ("onecli-managed" if onecli_url else None)
+        None
+        if "github" in _DISABLED_SERVICES
+        else (
+            os.environ.get("GH_TOKEN")
+            or os.environ.get("GITHUB_ACCESS_TOKEN")
+            or ("onecli-managed" if onecli_url else None)
+        )
     )
-    if github_token:
+    if "github" in _DISABLED_SERVICES:
+        logger.info("GitHub force-disabled via SLANG_MCP_DISABLED_SERVICES; token not read")
+    elif github_token:
         _GITHUB_CONFIG = GitHubConfig(
             access_token=SecretStr(github_token),
             api_base=os.environ.get("GITHUB_API_BASE", "https://api.github.com"),
@@ -127,9 +158,13 @@ def setup_environment():
     else:
         logger.warning("GH_TOKEN / ONECLI_URL is not set in environment variables")
 
-    # Get GitLab access token
-    gitlab_token = os.environ.get("GITLAB_ACCESS_TOKEN")
-    if gitlab_token:
+    # Get GitLab access token (skipped when 'gitlab' is disabled)
+    gitlab_token = (
+        None if "gitlab" in _DISABLED_SERVICES else os.environ.get("GITLAB_ACCESS_TOKEN")
+    )
+    if "gitlab" in _DISABLED_SERVICES:
+        logger.info("GitLab force-disabled via SLANG_MCP_DISABLED_SERVICES; token not read")
+    elif gitlab_token:
         _GITLAB_CONFIG = GitLabConfig(
             access_token=SecretStr(gitlab_token),
             api_base=os.environ.get(
@@ -141,9 +176,13 @@ def setup_environment():
     else:
         logger.warning("GITLAB_ACCESS_TOKEN is not set in environment variables")
 
-    # Get Discord bot token
-    discord_token = os.environ.get("DISCORD_BOT_TOKEN")
-    if discord_token:
+    # Get Discord bot token (skipped when 'discord' is disabled)
+    discord_token = (
+        None if "discord" in _DISABLED_SERVICES else os.environ.get("DISCORD_BOT_TOKEN")
+    )
+    if "discord" in _DISABLED_SERVICES:
+        logger.info("Discord force-disabled via SLANG_MCP_DISABLED_SERVICES; token not read")
+    elif discord_token:
         _DISCORD_CONFIG = DiscordConfig(
             bot_token=SecretStr(discord_token),
         )
@@ -361,6 +400,8 @@ async def gitlab_request(method: str, url: str, **kwargs) -> Any:
 
 def get_slack_config() -> Dict[str, Any]:
     """Get Slack API configuration from environment variables."""
+    if "slack" in _DISABLED_SERVICES:
+        raise ValueError("Slack force-disabled via SLANG_MCP_DISABLED_SERVICES")
     slack_bot_token = os.environ.get("SLACK_BOT_TOKEN")
     slack_team_id = os.environ.get("SLACK_TEAM_ID")
 
