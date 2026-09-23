@@ -6,15 +6,47 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 608 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 252 |
-| `nv-slang` | slang project spine, skills, workflows | 157 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 88 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 67 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 618 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 254 |
+| `nv-slang` | slang project spine, skills, workflows | 161 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 90 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 69 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-23
+
+### nv-main (10 PRs)
+- **#1686** `Sync nv-main with upstream/main`
+- **#1682** `feat(templates): a template can declare its coworker type`
+- **#1695** `Sync nv-main with upstream/main (4 commits)`
+- **#1702** `feat(env): opt-in process.env fallback for readEnvFile`
+- **#1704** `fix: refuse MCP server names the runtime seeds for itself`
+- **#1707** `fix: stop describing a template-shadowed catalog skill`
+- **#1708** `feat: disclose a template's MCP reach in its approval card`
+- **#1711** `test: stop the spinner source scan from OOM-killing the suite`
+- **#1705** `fix(cost): price claude-opus-5-5 and the azure/anthropic fallback ids`
+- **#1709** `explain-diff-html: the explanation is the PR description, kept on the current head`
+
+### nv-dashboard (2 PRs)
+- **#1688** `Sync nv-dashboard with upstream/main`
+- **#1697** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (4 PRs)
+- **#1689** `Sync nv-slang with upstream/main`
+- **#1698** `Sync nv-slang with upstream/main`
+- **#1703** `feat(slang-mcp): SLANG_MCP_DISABLED_SERVICES two-path switch`
+- **#1712** `slang spines: maintainer direction is the acceptance criteria; relay it verbatim`
+
+### nv-slangpy (2 PRs)
+- **#1690** `Sync nv-slangpy with upstream/main`
+- **#1699** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#1691** `Sync nv-nanoclaw with upstream/main`
+- **#1700** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-09-22
 
