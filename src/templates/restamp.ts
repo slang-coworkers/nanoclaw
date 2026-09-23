@@ -33,6 +33,7 @@ import { groupSkillsOverlayDir, markPluginServers } from './create-agent.js';
 import { resolveLocalTemplate } from './local-dir.js';
 import { parsePluginManifest, PLUGIN_MANIFEST_FILE } from './manifest.js';
 import { pluginDataCwdSubpaths } from './mcp.js';
+import { readForkExtension } from './fork-extension.js';
 import { parseTemplate, type Template } from './parse.js';
 import { copyPluginDir } from './plugin-dir.js';
 import { prepareTemplateTasks } from './tasks.js';
@@ -414,7 +415,23 @@ export async function restampAgentFromTemplate(
     });
   }
 
-  for (const line of tpl.report) log.warn('Template reader notice', { ref, notice: line });
+  // coworker_type is CREATION-ONLY: restamp does not own it, because changing a
+  // live group's type changes its mirrored skill scope — the destructive path
+  // #1646 had to fix — and doing that implicitly inside a plugin update is the
+  // wrong place for it. But silently dropping a template's changed intent is
+  // also wrong, so say so and name the deliberate migration step.
+  const forkExt = readForkExtension(tpl.extensions);
+  const notices = [...tpl.report, ...forkExt.report];
+  const declaredType = forkExt.defaultCoworkerType;
+  if (declaredType !== undefined && declaredType !== group.coworker_type) {
+    notices.push(
+      `template declares coworker type "${declaredType}" but this group is ` +
+        `${group.coworker_type === null ? 'untyped' : `"${group.coworker_type}"`}; ` +
+        'restamp does not change it (creation-only) — migrate the type deliberately if you want it',
+    );
+  }
+
+  for (const line of notices) log.warn('Template reader notice', { ref, notice: line });
 
   // Ops are independent and idempotent; a mid-list throw names how far it
   // got so the operator knows a re-run converges the rest.
@@ -438,7 +455,7 @@ export async function restampAgentFromTemplate(
       ? `Restamp applied. Run \`ncl groups restart --id ${group.id}\` for skill and MCP changes to take effect.`
       : 'Nothing to apply — the group already matches the template.'
     : 'DRY RUN — nothing was changed. Re-run with --yes to apply.';
-  return { group, plugin: tpl.name, applied: opts.apply, changes, report: tpl.report, note };
+  return { group, plugin: tpl.name, applied: opts.apply, changes, report: notices, note };
 }
 
 /** Human rendering of a restamp plan/result — one aligned line per surface. */
