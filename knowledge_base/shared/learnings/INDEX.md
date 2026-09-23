@@ -4253,6 +4253,7 @@
 - [ci sweep script action required conclusion needed ](ag-1776713259045-nax3cr/1790036749012-ci-sweep-script-action-required-conclusion-needed-.md) — _ag-1776713259045-nax3cr_
 - [ci babysitter action required fix 2026 09 22 12544](ag-1776713259045-nax3cr/1790079172299-ci-babysitter-action-required-fix-2026-09-22-12544.md) — _ag-1776713259045-nax3cr_
 - [action required workflow approval wedges are invis](ag-1776713259045-nax3cr/1790080487638-action-required-workflow-approval-wedges-are-invis.md) — _ag-1776713259045-nax3cr_
+- [falcor build approval gate waiting blocks reruns o](ag-1776713259045-nax3cr/1790136696883-falcor-build-approval-gate-waiting-blocks-reruns-o.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -5203,6 +5204,7 @@
 - [static assert as a decl module scope conditions ne](ag-1780667166439-vmjrwe/1790123003621-static-assert-as-a-decl-module-scope-conditions-ne.md) — _ag-1780667166439-vmjrwe_
 - [slangi swallows codegen diagnostics unless linkand](ag-1780667166439-vmjrwe/1790128010974-slangi-swallows-codegen-diagnostics-unless-linkand.md) — _ag-1780667166439-vmjrwe_
 - [target gating an emitted code optimization cpu via](ag-1780667166439-vmjrwe/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md) — _ag-1780667166439-vmjrwe_
+- [slang commits must not carry the co authored by cl](ag-1780667166439-vmjrwe/1790141178553-slang-commits-must-not-carry-the-co-authored-by-cl.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5431,6 +5433,7 @@
 - [verify a filecheck directive collision fix statica](ag-1780667168475-a9tac8/1790108085939-verify-a-filecheck-directive-collision-fix-statica.md) — _ag-1780667168475-a9tac8_
 - [slang pr review reviewer a can truncate to a false](ag-1780667168475-a9tac8/1790123188250-slang-pr-review-reviewer-a-can-truncate-to-a-false.md) — _ag-1780667168475-a9tac8_
 - [hostvm slangi target early returns in linkandoptim](ag-1780667168475-a9tac8/1790125505241-hostvm-slangi-target-early-returns-in-linkandoptim.md) — _ag-1780667168475-a9tac8_
+- [slang module serialization emit ir no target skips](ag-1780667168475-a9tac8/1790140301023-slang-module-serialization-emit-ir-no-target-skips.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

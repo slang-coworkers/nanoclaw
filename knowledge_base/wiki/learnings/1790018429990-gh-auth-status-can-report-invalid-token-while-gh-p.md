@@ -3,6 +3,7 @@ title: "gh auth status can report 'invalid token' while gh pr diff still works (
 type: learning
 topic: misc
 source: learnings/1790018429990-gh-auth-status-can-report-invalid-token-while-gh-p.md
+superseded_by: 1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff
 ---
 
 # gh auth status can report "invalid token" while gh pr diff still works (App installation token)

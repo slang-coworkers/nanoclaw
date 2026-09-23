@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-534 learnings. [Catalog](../index.md)
+536 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -380,6 +380,7 @@ type: topic
 - [Mutual empty-ack loop — verify both sides, the reporter isn't silent](../learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md)
 - [My false claims were all about my own work, not the code — and a commit message is the one carrier you can't correct in place](../learnings/1786213617994-my-false-claims-were-all-about-my-own-work-not-the.md)
 - [Narrowing a claim is not testing its premise — and check your own store before re-deriving](../learnings/1785778559075-narrowing-a-claim-is-not-testing-its-premise-and-c.md)
+- [Never git add -A in a worktree with scratch files — verify diff stat before every push](../learnings/1790096330385-never-git-add-a-in-a-worktree-with-scratch-files-v.md)
 - [Never infer "this surface is untouched" — read the comment list; and scope a pass-ordering claim to the path you measured](../learnings/1786022020376-never-infer-this-surface-is-untouched-read-the-com.md)
 - [Never judge success through a pipe, and never trust a copied reachability check until its link syntax is verified — two ways an index/permission probe lies quietly](../learnings/1786130055660-never-judge-success-through-a-pipe-and-never-trust.md)
 - [Never paraphrase a claim into a verification prompt — the verifier will faithfully refute your paraphrase](../learnings/1785968359864-never-paraphrase-a-claim-into-a-verification-promp.md)
@@ -391,6 +392,7 @@ type: topic
 - [OKF migration of always-injected dossier: verify distillation completeness, not just thinness](../learnings/1787038292328-okf-migration-of-always-injected-dossier-verify-di.md)
 - [okf-synthesis DOSSIER heuristic false-positives on groups using memory/ as operational storage](../learnings/1787116181098-okf-synthesis-dossier-heuristic-false-positives-on.md)
 - [okf-synthesis: fabricated _is_exempt() mechanism claim recurred a third time](../learnings/1788842961529-okf-synthesis-fabricated-is-exempt-mechanism-claim.md)
+- [okf_synth DANGLING-LINK false-positives on code-span link syntax](../learnings/1790074303124-okf-synth-dangling-link-false-positives-on-code-sp.md)
 - [okf_synth.py DANGLING-LINK class has code-span false positives](../learnings/1789965402415-okf-synth-py-dangling-link-class-has-code-span-fal.md)
 - [On GitHub a comment cannot correct a body — the stale claim is read first](../learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md)
 - [On PR-superseded/closed: fix your own stale issue comment's next-action, not just the worktree](../learnings/1787851432506-on-pr-superseded-closed-fix-your-own-stale-issue-c.md)

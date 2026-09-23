@@ -3,7 +3,7 @@ title: "Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen"
 type: concept
 group: slang-backends
 tags: [cuda, cpp, c-family-emitter, swizzle, float3, codegen-perf, nvrtc, slang-12073]
-source_count: 24
+source_count: 23
 ---
 
 # Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen
@@ -60,7 +60,7 @@ Source-verified (HEAD 4233b2c) + empirical (NVRTC 12.6): do NOT describe `-capab
 
 ## Contradictions / supersessions
 
-**The vec3-layout hypothesis was WRONG and is superseded.** The first triage note ([Slang CUDA float3 loop arithmetic ~3x slower than float4 (vec3 layout + swizzle-constructor emission)](../learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md)) attributed the slowdown to `float3`'s 12-byte/4-byte-aligned CUDA layout (vs `float4`'s 16-byte/16-byte) defeating NVRTC register allocation, and framed it as CUDA-only. Both claims are false. Two later corrections ([CORRECTION: Slang float3 CUDA slowdown is swizzle-base re-evaluation, NOT vec3 layout/register pressure](../learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle-b.md), [Slang CUDA/CPP float3 .rgb swizzle slowdown is base re-evaluation, not layout](../learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md)) proved via GPU-free emitted-`.cu` inspection at slang HEAD `8f0c3515d` that the real cause is swizzle-base re-evaluation, and that the scope is **CUDA + CPU/C++** (shared emitter), not CUDA-alone. The 12-byte float3 layout is a real fact but a red herring for this perf bug — falsified by the `f3_epi` control (native `float3` with a register-resident base emits 1 fetch, is fast). The emission *form* observed in the original note (`float3{a,b,c}` constructors vs `OpVectorShuffle`) was correct; only the *causal consequence* (register spilling) was mis-inferred. Treat 1783908909248's layout attribution as retracted; keep its ownership rule of thumb (below).
+**The vec3-layout hypothesis was WRONG and is superseded.** The first triage note ([Slang CUDA float3 loop arithmetic ~3x slower than float4 (vec3 layout + swizzle-constructor emission)](../learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md)) attributed the slowdown to `float3`'s 12-byte/4-byte-aligned CUDA layout (vs `float4`'s 16-byte/16-byte) defeating NVRTC register allocation, and framed it as CUDA-only. Both claims are false. A later correction ([Slang CUDA/CPP float3 .rgb swizzle slowdown is base re-evaluation, not layout](../learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md)) proved via GPU-free emitted-`.cu` inspection at slang HEAD `8f0c3515d` that the real cause is swizzle-base re-evaluation, and that the scope is **CUDA + CPU/C++** (shared emitter), not CUDA-alone. The 12-byte float3 layout is a real fact but a red herring for this perf bug — falsified by the `f3_epi` control (native `float3` with a register-resident base emits 1 fetch, is fast). The emission *form* observed in the original note (`float3{a,b,c}` constructors vs `OpVectorShuffle`) was correct; only the *causal consequence* (register spilling) was mis-inferred. Treat 1783908909248's layout attribution as retracted; keep its ownership rule of thumb (below).
 
 ## Reusable rules
 
@@ -94,14 +94,13 @@ When a change makes `groupshared` params pass **by reference** (#10641 / PR #117
 
 **CUDA fast-math redirectable transcendentals — `__exp2f` does not exist.** Wiring `-fp-mode fast` to CUDA transcendental emission (slang#12619), the redirectable F32 wrappers with a hardware-approximate `__*f` intrinsic are exactly nine — `__sinf, __cosf, __tanf, __sincosf, __logf, __log2f, __log10f, __expf, __powf` — plus `__exp10f` (base-10). There is NO `__exp2f`: nvcc 12.6 errors "identifier __exp2f is undefined in device code", so F32 exp2 must stay precise (`::exp2f`) under fast math, alongside the other non-redirectable ones (atan2, asin, acos, atan, sqrt). A triage memo listing exp2 as redirectable was wrong — always verify each `__*f` name against nvcc, never trust a from-memory list. Fast verification (2 min, no 20-min build): write a minimal `__device__` harness mirroring the prelude wrappers, `nvcc -std=c++17 -c` it twice (default + `-DSLANG_CUDA_ENABLE_FAST_MATH=1`), and `-ptx` both then `grep -cE '\.approx\.'` (fast build should compile AND show more approx ops); nvcc 12.6 is at `/usr/local/cuda-12.6/bin/nvcc` in-container ([CUDA fast-math redirectable transcendentals — __exp2f does NOT exist (base-2 has no fast intrinsic)](../learnings/1787147170237-cuda-fast-math-redirectable-transcendentals-exp2f-.md)).
 
-**Source learnings (24):**
+**Source learnings (23):**
 - [`-capability cuda_sm_NN` is not a usable CUDA arch selector (#13198): bounded to {1_0..9_0}/ceiling 9.0, a FLOOR via max() not a pin, double `-arch` with a user `-Xnvrtc --gpu-architecture=`, and linkWithOptions-inert; new atoms deferred in #12839](../learnings/1790003555136-slang-cuda-capability-cuda-sm-nn-is-not-a-usable-a.md)
 - [`-target hpp/cpp` export without entrypoint works via `-whole-program`; `public` never roots against DCE](../learnings/1784381336769-slang-target-hpp-cpp-export-without-entrypoint-wor.md)
 - [public-vs-export emission asymmetry is a LINKING-ROOT gap (HLSLExportDecoration), not KeepAlive/DCE](../learnings/1784383334778-slang-host-target-public-vs-export-emission-asymme.md)
 - [`-target hpp` emits wrapper bodies not decls for `__extern_cpp` compute entrypoint (workhorse `_example` missing)](../learnings/1784381106344-slang-9403-target-hpp-emits-wrapper-bodies-not-dec.md)
 - [fix is prototypes-only (guard wrapper loop on `shouldEmitOnlyHeader()`), no fwd-decl needed](../learnings/1784382795938-slang-target-hpp-compute-entrypoint-emits-wrapper-.md)
 - [original (now-superseded) triage: float3 loop 3× slower on CUDA, attributed to vec3 layout; keep only the ownership rule](../learnings/1783908909248-slang-cuda-float3-loop-arithmetic-3x-slower-than-f.md)
-- [CORRECTION: cause is swizzle-base re-evaluation, not vec3 layout; scope is CUDA + CPU/C++](../learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle-b.md)
 - [#12073 file:line detail, fold-gate miss, principled shouldFoldInstIntoUseSites fix seam](../learnings/1783910573494-slang-c-family-swizzle-re-evaluates-base-per-compo.md)
 - [trigger boundary (folded base, not type), f3_epi control, triage meta-lesson](../learnings/1783910857099-float3-vec3-cuda-slowdown-is-swizzle-base-re-evalu.md)
 - [reviewer note: get emitted code / control kernel, don't reason from layout; workaround detail](../learnings/1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base.md)

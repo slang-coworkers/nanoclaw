@@ -3,7 +3,7 @@ title: reviewers_complete, NO_REVIEW_SIGNAL & calibration — never self-review 
 type: concept
 group: review-process
 tags: [reviewers-complete, no-review-signal, bot-authored, self-review, calibration-join, self-merge, retry, block-mandate, approver]
-source_count: 11
+source_count: 10
 ---
 
 ## TL;DR
@@ -68,8 +68,7 @@ by design — the author-bot's own COMMENTED review is not a production review),
 Devin exit 3 (30-min timeout). "No bot review AND no Devin ⇒ `reviewers_complete:false`
 ⇒ Step 2 short-circuits to ABSTAIN_INFRA — this is the WHOLE ballgame for bot-authored
 PRs: they depend entirely on Devin, so any Devin timeout is an automatic infra abstain".
-Do NOT let a clean challenger read or a pre-existing human APPROVE tempt a WOULD_APPROVE
-[bot-authored PR + Devin timeout = automatic NO_REVIEW_SIGNAL](../learnings/1786559968567-approver-infra-abstain-bot-authored-pr-devin-timeo.md).
+Do NOT let a clean challenger read or a pre-existing human APPROVE tempt a WOULD_APPROVE.
 The same on the docs-tooling PR slang#12511: all 6 clauses passed, CI green, a human
 had approved, yet zero *review* signal — "CI-green is a clause input, not a Step-2
 verdict prior; with no prior there is nothing to carry into the challenger", so the
@@ -137,14 +136,13 @@ Derive `mode` from the union of all three, filter `login not ending in [bot]`, a
 harvest staleness by **commit distance, never timestamp age** (an actively-developed
 branch runs a persistent one-revision review lag) [ "0 human reviews" is a claim about ONE GitHub surface — reviews, review_comments and issue_comments are three](../learnings/1786442894571-approver-clause-gap-0-human-reviews-is-a-claim-abo.md).
 
-**Source learnings (11):**
+**Source learnings (10):**
 
 - [a Devin timeout is a fact about my patience — ONE bounded retry flipped NO_REVIEW_SIGNAL into a verified BLOCK](../learnings/1786385970118-approver-infra-abstain-a-devin-timeout-is-a-fact-a.md) — distinguish structural (don't retry) from transient (always retry once) absence; ABSTAIN skips the critique gate so its inputs need the highest bar.
 - [a self-merge is a LOW-INFORMATION join — "merged" can measure author confidence rather than review](../learnings/1786442119950-approver-human-disagreement-a-self-merge-is-a-low-.md) — classify a join STRONG vs WEAK by whether the review gate fired; a post-merge artifact is valid corroboration, invalid as the sole severity-upgrade basis.
 - ["0 human reviews" is a claim about ONE GitHub surface — reviews, review_comments and issue_comments are three](../learnings/1786442894571-approver-clause-gap-0-human-reviews-is-a-claim-abo.md) — derive mode from the union of all three surfaces; judge staleness by commit distance not timestamp age.
 - [a review 🔴 mandates BLOCK — assessing it a false positive is not grounds to downgrade to ABSTAIN](../learnings/1786482488457-approver-critique-mustfix-a-review-mandates-block-.md) — Step 2 short-circuits so a Step-3 reason code is impossible; ABSTAIN is milder than BLOCK so downgrading is an upgrade-toward-approval and it bypasses the gate.
-- [bot-authored PR + Devin timeout = automatic NO_REVIEW_SIGNAL](../learnings/1786559968567-approver-infra-abstain-bot-authored-pr-devin-timeo.md) — production + CodeRabbit skip bot branches by design; a clean challenger read or human APPROVE does not license WOULD_APPROVE; poll the file/PID not the subagent's summary.
-- [bot-authored docs PR: production skips + Devin 30m timeout = NO_REVIEW_SIGNAL](../learnings/1786606687196-approver-infra-abstain-bot-authored-docs-pr-produc.md) — CI-green is a clause input, not a Step-2 verdict prior; with no prior there is nothing to carry into the challenger; the human approve is the backstop, shadow mode never auto-approves.
+- [bot-authored docs PR: production skips + Devin 30m timeout = NO_REVIEW_SIGNAL](../learnings/1786606687196-approver-infra-abstain-bot-authored-docs-pr-produc.md) — production + CodeRabbit skip bot branches by design; a clean challenger read or human APPROVE does not license WOULD_APPROVE; CI-green is a clause input, not a Step-2 verdict prior; with no prior there is nothing to carry into the challenger; the human approve is the backstop, shadow mode never auto-approves; poll the file/PID, not the subagent's summary.
 - [Devin-only WOULD_APPROVE on bot-authored PR #12491 merged unchanged — tier calibration confirmed](../learnings/1786608082569-approver-confirmed-devin-only-would-approve-on-bot.md) — exit 20 on a bot-authored PR → decide from Devin, do NOT round to ABSTAIN; only "no bot review AND no Devin" is NO_REVIEW_SIGNAL.
 - [slang-rhi synchronize mid-review strands the head with NO head-current review signal → NO_REVIEW_SIGNAL](../learnings/1786609068048-approver-infra-abstain-slang-rhi-synchronize-mid-r.md) — a green CodeRabbit status doesn't imply it reviewed the head (read the footer range); the approver's own trace + green CI is not a substitutable signal.
 - [DECISION_REVIEW caught reviewers_complete=true set from a self-trace + green CI](../learnings/1786609084892-approver-critique-mustfix-decision-review-caught-r.md) — the completeness field contradicted the honest provenance narrative; the mechanical check is "which artifact is the head-current review?"; the clean-trace-plus-green-CI combo is a false-safe generator.

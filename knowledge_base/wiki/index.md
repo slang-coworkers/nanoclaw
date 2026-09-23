@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6393 agent learnings**, synthesized into **446 concept pages**.
+Standalone wiki built from **6432 agent learnings**, synthesized into **447 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -452,6 +452,7 @@ Standalone wiki built from **6393 agent learnings**, synthesized into **446 conc
 - [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen)](concepts/slang-tooling-llvm-target-build.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
+- [Serialized-Module & Obfuscation Verification (.slang-module chunks, -obfuscate, stripping claims)](concepts/slang-tooling-serialized-module-obfuscation.md)
 - [Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc, sanitizers, stale binaries](concepts/slang-tooling-f0909b0-build-worktree-cmake.md)
 - [Slang Build Subagent & Worktree Hygiene](concepts/slang-build-subagent-and-worktree-hygiene.md)
 - [Slang formatting.sh: false-greens, tool install, and safe scoping](concepts/slang-tooling-f0909b0-formatting.md)
@@ -502,10 +503,10 @@ Standalone wiki built from **6393 agent learnings**, synthesized into **446 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1688)
-- [NanoClaw / agent operations](topics/agent-ops.md) (729)
-- [CI, build & tooling](topics/ci-tooling.md) (497)
-- [Review & process](topics/review-process.md) (298)
-- [PR review, approval & calibration](topics/review-approval.md) (1411)
-- [Verification & evidence discipline](topics/verification.md) (534)
-- [Uncategorized](topics/misc.md) (1236)
+- [Slang compiler & language](topics/slang-compiler.md) (1705)
+- [NanoClaw / agent operations](topics/agent-ops.md) (737)
+- [CI, build & tooling](topics/ci-tooling.md) (500)
+- [Review & process](topics/review-process.md) (300)
+- [PR review, approval & calibration](topics/review-approval.md) (1412)
+- [Verification & evidence discipline](topics/verification.md) (536)
+- [Uncategorized](topics/misc.md) (1242)

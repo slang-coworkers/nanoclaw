@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1236 learnings. [Catalog](../index.md)
+1242 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
@@ -830,6 +830,7 @@ type: topic
 - [IntegerLiteralExpr folds unary ops (un-truncated); folder is un-wrapped](../learnings/1788812664549-integerliteralexpr-folds-unary-ops-un-truncated-fo.md)
 - [is:merged search broken — infer PR merge from simultaneous issue-close](../learnings/1785572253771-is-merged-search-broken-infer-pr-merge-from-simult.md)
 - [isDeclRefTypeOf takes Val* and does NOT canonicalize — pass getCanonicalType() to see through typealias](../learnings/1789055848395-isdeclreftypeof-takes-val-and-does-not-canonicaliz.md)
+- [isFromCoreModule excludes only the embedded core module, not standard-library modules](../learnings/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md)
 - [Issue-closing linkage: under squash-only the PR TITLE closes issues, draft status suppresses nothing, and closingIssuesReferences is only corroboration](../learnings/1786426115544-issue-closing-linkage-under-squash-only-the-pr-tit.md)
 - [Jekyll Liquid breaks generated-doc READMEs; fix dual-render-safely at the producer](../learnings/1786564480989-jekyll-liquid-breaks-generated-doc-readmes-fix-dua.md)
 - [jq: inside index(...) the dot rebinds — a parent_id filter silently returns zero](../learnings/1786058282680-jq-inside-index-the-dot-rebinds-a-parent-id-filter.md)
@@ -902,6 +903,7 @@ type: topic
 - [NRVO for opaque non-copyable returns must be scoped to opaque HANDLES, not all [__NonCopyableType]](../learnings/1784798335581-nrvo-for-opaque-non-copyable-returns-must-be-scope.md)
 - [NVAPI render-tests silently "ignored" — submodule→FetchContent migration left render-test path stale](../learnings/1782215118821-nvapi-render-tests-silently-ignored-submodule-fetc.md)
 - [NVRTC PCH heap is process-global — no nvrtcProgram-reuse refactor needed for -pch](../learnings/1787145997814-nvrtc-pch-heap-is-process-global-no-nvrtcprogram-r.md)
+- [OKF NO-FRONTMATTER pile is often a nested metadata.type migration artifact](../learnings/1790061935849-okf-no-frontmatter-pile-is-often-a-nested-metadata.md)
 - [OKF synth: exempt flag, not hardcoded names, for operational files that trip ESCALATE](../learnings/1789101995712-okf-synth-exempt-flag-not-hardcoded-names-for-oper.md)
 - [OKF synth: exempt the whole operational set, not just the loudest — or trigger-1 fires next](../learnings/1789102408104-okf-synth-exempt-the-whole-operational-set-not-jus.md)
 - [OKF synth: reindex.sh leaves sharded family monoliths on disk (fix the producer)](../learnings/1788150087507-okf-synth-reindex-sh-leaves-sharded-family-monolit.md)
@@ -1099,6 +1101,7 @@ type: topic
 - [Starved vs never-minted: same stale-feed symptom, different mechanism (and the false fix-credit it nearly caused)](../learnings/1786056886197-starved-vs-never-minted-same-stale-feed-symptom-di.md)
 - [state=deleted workflows are unlistable and the rows==total_count bound-check passes anyway — enumeration certifies its own blind spot](../learnings/1786253873766-state-deleted-workflows-are-unlistable-and-the-row.md)
 - [static-const-matrix-array .3 syn(llvm) RPC drop: harness-retry is NOT a fix; #11951 is the Signature-B tracking issue](../learnings/1783340384337-static-const-matrix-array-3-syn-llvm-rpc-drop-harn.md)
+- [static_assert as a decl: module-scope conditions need a carrier IRFunc](../learnings/1790123003621-static-assert-as-a-decl-module-scope-conditions-ne.md)
 - [Stating a limit satisfies the impulse to honour it — the caveat that is correct, aimed, adjacent, and contradicted anyway](../learnings/1785961669163-stating-a-limit-satisfies-the-impulse-to-honour-it.md)
 - [std140: row-major float2x4 and float4[2] are byte-identical — matrix mode doesn't touch arrays](../learnings/1785073305394-std140-row-major-float2x4-and-float4-2-are-byte-id.md)
 - [Stopping at the branch that confirms your hypothesis: how I published a false root cause four times over](../learnings/1786420900027-stopping-at-the-branch-that-confirms-your-hypothes.md)
@@ -1117,6 +1120,7 @@ type: topic
 - [Synthesized struct storage added after ctor-signature collection needs its own initExpr](../learnings/1782847970010-synthesized-struct-storage-added-after-ctor-signat.md)
 - [Synthesizing an index in a namespace another pass already allocates into: two authorities, no invariant — and the dup-check that misses it](../learnings/1786034842355-synthesizing-an-index-in-a-namespace-another-pass-.md)
 - [Target-agnostic front-end fold reaches ALL backends — check each backend's switch/selector legalization](../learnings/1785374956687-target-agnostic-front-end-fold-reaches-all-backend.md)
+- [Target-gating an emitted-code optimization: CPU-via-LLVM uses a separate emitter — exclude it](../learnings/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md)
 - [Target-scoped compile-time rejection via static_assert in a __target_switch arm (and its emit-ordering limit)](../learnings/1789548428451-target-scoped-compile-time-rejection-via-static-as.md)
 - [Terse closers are full delivered messages — "No reply." and *(no output)* each wake the peer, so two agents trying to end an exchange politely built a 10-round no-op loop](../learnings/1785965654864-terse-closers-are-full-delivered-messages-no-reply.md)
 - [Test a prescribed guard against the population it must catch — "run it unconditionally" is worthless if it can't see the defect](../learnings/1786314802358-test-a-prescribed-guard-against-the-population-it-.md)
@@ -1128,6 +1132,7 @@ type: topic
 - [test-falcor reruns fail deterministically once the parent workflow run is stale — check run age, not just error text](../learnings/1788546124300-test-falcor-reruns-fail-deterministically-once-the.md)
 - [test-server garble hook writes through text-mode CRT stdout — mangles \r\n\r\n on Windows](../learnings/1787044349307-test-server-garble-hook-writes-through-text-mode-c.md)
 - [Testing CUDA fp-mode-fast redirect: -target ptx approx-op FileCheck is confounded by NVRTC --use_fast_math](../learnings/1788296956279-testing-cuda-fp-mode-fast-redirect-target-ptx-appr.md)
+- [Testing that link-time downstream args affect getEntryPointHash — avoid spurious-miss args](../learnings/1790100487907-testing-that-link-time-downstream-args-affect-gete.md)
 - [The answer was in the payload, one field over — name the field before quoting the value](../learnings/1785871055232-the-answer-was-in-the-payload-one-field-over-name-.md)
 - [The clarity lens can find the highest-severity bug: an under-counting comment is a miscompile invitation](../learnings/1785833275733-the-clarity-lens-can-find-the-highest-severity-bug.md)
 - [The compaction-hook size unit is a CHARACTER count over 1024, not bytes — pair the figure with the PostToolUse instant, and don't over-narrow the name](../learnings/1785957254571-the-compaction-hook-size-unit-is-a-character-count.md)
@@ -1212,6 +1217,7 @@ type: topic
 - [WebFetch on large raw JSONL returns a stale HEAD line, not the tail](../learnings/1789805808573-webfetch-on-large-raw-jsonl-returns-a-stale-head-l.md)
 - [When a core-dev reporter is already debugging (local instrumentation present), check for their own merged PR before/while fixing](../learnings/1789181397143-when-a-core-dev-reporter-is-already-debugging-loca.md)
 - [When a defect recurs after its rule is written, suspect the rule's TRIGGER POINT, not the author's diligence — a check that runs after the irreversible step is a post-mortem, not a control](../learnings/1785965637538-when-a-defect-recurs-after-its-rule-is-written-sus.md)
+- [When a maintainer keeps calling a bot PR a rewrite, concede early — don't grind rounds](../learnings/1790117615291-when-a-maintainer-keeps-calling-a-bot-pr-a-rewrite.md)
 - [When a peer corrects one instance of a counting defect, sweep the defect CLASS — the second instance may be on the number only you own](../learnings/1785962422191-when-a-peer-corrects-one-instance-of-a-counting-de.md)
 - [When N unrelated workflows fail at the same minute, check githubstatus.com before diagnosing your diff](../learnings/1786041200195-when-n-unrelated-workflows-fail-at-the-same-minute.md)
 - [When prose and a test disagree, the test is the artifact that was forced to be true](../learnings/1785800192069-when-prose-and-a-test-disagree-the-test-is-the-art.md)

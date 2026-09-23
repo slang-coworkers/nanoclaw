@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-729 learnings. [Catalog](../index.md)
+737 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -109,6 +109,7 @@ type: topic
 - [A peer's hold-ack is not compliance — enumerate the full prohibition set; the post-gate is the load-bearing safety](../learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md)
 - [A perf-only optimization must gate conservatively; provenance proxies relocate the bug](../learnings/1787595299942-a-perf-only-optimization-must-gate-conservatively-.md)
 - [A pr_closed webhook may be the echo of YOUR OWN close — check your outbound log before reporting it as news](../learnings/1786190416485-a-pr-closed-webhook-may-be-the-echo-of-your-own-cl.md)
+- [A pre-code plan-critique gate lets you concede a non-converging task cheaply](../learnings/1790117654797-a-pre-code-plan-critique-gate-lets-you-concede-a-n.md)
 - [A prior triage note can be right about the symptom and wrong about the layer — re-read the cited lines, and let a WORKING sibling case locate the guard](../learnings/1785959713982-a-prior-triage-note-can-be-right-about-the-symptom.md)
 - [A query shaped by expectation returns a clean zero about the wrong set — four forms, incl. reconciliations](../learnings/1786027704388-a-query-shaped-by-expectation-returns-a-clean-zero.md)
 - [A read-only daily-report session cannot see in-flight fixer session chains — don't frame owned work as new/unowned](../learnings/1783757869861-a-read-only-daily-report-session-cannot-see-in-fli.md)
@@ -310,6 +311,8 @@ type: topic
 - [Critique-gate OUTPUT_REVIEW is sticky within a reused codex thread](../learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-reu.md)
 - [Critique-gate records verdict from fresh codex calls, not codex-reply rounds](../learnings/1781661845733-critique-gate-records-verdict-from-fresh-codex-cal.md)
 - [critique-gate stage detector keys on the FIRST stage-keyword in the codex prompt — lead with the bare STAGE: line](../learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md)
+- [Critique-gate wedges non-code PR review-replies; unblock via a clean sibling session](../learnings/1790086509553-critique-gate-wedges-non-code-pr-review-replies-un.md)
+- [Critique-gate wedges non-code PR-review replies (attests mutating session transcript)](../learnings/1790086520678-critique-gate-wedges-non-code-pr-review-replies-at.md)
 - [critique-gate: codex-reply does NOT count — use fresh mcp__codex__codex with verbatim developer-instructions each round](../learnings/1789943197626-critique-gate-codex-reply-does-not-count-use-fresh.md)
 - [critique-gate: codex-reply re-verify must NOT contain a literal "STAGE:" line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
 - [critique-gate: PLAN_REVIEW is required + any side-artifact edit re-arms the OUTPUT gate](../learnings/1785191965028-critique-gate-plan-review-is-required-any-side-art.md)
@@ -322,6 +325,7 @@ type: topic
 - [Curating shared learnings: serialize directory edits, never parallel forks](../learnings/1782026325950-curating-shared-learnings-serialize-directory-edit.md)
 - [Daily report: check for a linked fix PR before flagging an issue as untriaged](../learnings/1781511232421-daily-report-check-for-a-linked-fix-pr-before-flag.md)
 - [Dashboard channels render markdown — always include hyperlinks for issue/PR/discussion refs](../learnings/1778835191236-dashboard-channels-render-markdown-always-include-.md)
+- [DeepWiki MCP tool renamed ask_question → ask_wiki_question; fleet-wide allowlist gap](../learnings/1790105381468-deepwiki-mcp-tool-renamed-ask-question-ask-wiki-qu.md)
 - [Defer bot fixer PR when a MEMBER self-assigned + self-diagnosed the issue](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md)
 - [Delivery gate counts ANY file edit — update memory/notes before the final OUTPUT critique](../learnings/1789554373150-delivery-gate-counts-any-file-edit-update-memory-n.md)
 - [Delivery-gate + codex-attestation mechanics that block GitHub review replies](../learnings/1786490307277-delivery-gate-codex-attestation-mechanics-that-blo.md)
@@ -364,6 +368,7 @@ type: topic
 - [Falcor gate latency compounds with 1-day artifact retention into unrecoverable failures](../learnings/1787077102662-falcor-gate-latency-compounds-with-1-day-artifact-.md)
 - [Falcor test-falcor DOES gate merge via check-ci needs (corrects earlier claim)](../learnings/1785979228844-falcor-test-falcor-does-gate-merge-via-check-ci-ne.md)
 - [falcor-build-approval-gate 'waiting' blocks ALL reruns in that run, not just Falcor jobs](../learnings/1788631867865-falcor-build-approval-gate-waiting-blocks-all-reru.md)
+- [falcor-build-approval-gate WAITING blocks reruns of ANY job in the same run, not just itself](../learnings/1790136696883-falcor-build-approval-gate-waiting-blocks-reruns-o.md)
 - [falcor-build-approval-gate wedge blocks rerun of unrelated sibling jobs in the same run](../learnings/1788675398136-falcor-build-approval-gate-wedge-blocks-rerun-of-u.md)
 - [Fetch a fork-based WIP PR checkpoint via pull/N/head, not the branch name](../learnings/1787668787779-fetch-a-fork-based-wip-pr-checkpoint-via-pull-n-he.md)
 - [findmnt -T settles cross-container path identity; matching HEAD does not](../learnings/1786033956026-findmnt-t-settles-cross-container-path-identity-ma.md)
@@ -628,6 +633,7 @@ type: topic
 - [supervise-issues pull-universe.sh cost-cap stamping was O(all-sessions), ~80min — fixed to O(1)](../learnings/1789349178875-supervise-issues-pull-universe-sh-cost-cap-stampin.md)
 - [supervise-issues pull-universe.sh cost-stamping does not scale past ~hundreds of sessions](../learnings/1789219415278-supervise-issues-pull-universe-sh-cost-stamping-do.md)
 - [supervise-issues pull-universe.sh step 1b cost-cap stamping does not scale (3291 sessions ≈ 55 min)](../learnings/1789265266088-supervise-issues-pull-universe-sh-step-1b-cost-cap.md)
+- [supervise-issues scan.py awaiting_us has four false-positive nudge modes](../learnings/1790126534976-supervise-issues-scan-py-awaiting-us-has-four-fals.md)
 - [supervise-issues scan.py counts bots as humans and disposition-posted as owed](../learnings/1787748905685-supervise-issues-scan-py-counts-bots-as-humans-and.md)
 - [supervise-issues scan.py ignores human-owned disposition on ball==ours](../learnings/1787490423993-supervise-issues-scan-py-ignores-human-owned-dispo.md)
 - [supervise-issues scan.py miscounts pr-board-sync bot comments as human, false awaiting_us](../learnings/1786712705926-supervise-issues-scan-py-miscounts-pr-board-sync-b.md)
@@ -658,6 +664,8 @@ type: topic
 - [supervisor nudge premise drawn from stale state can inject a wrong chain's disposition](../learnings/1786971231096-supervisor-nudge-premise-drawn-from-stale-state-ca.md)
 - [supervisor nudge: "who spoke last" is not "a human is unanswered"](../learnings/1786453196243-supervisor-nudge-who-spoke-last-is-not-a-human-is-.md)
 - [supervisor pull-universe dropped comment body, starving the board-sync administrative-comment filter](../learnings/1786798462479-supervisor-pull-universe-dropped-comment-body-star.md)
+- [supervisor pull-universe misses PRs linked only via closingIssuesReferences](../learnings/1790082708749-supervisor-pull-universe-misses-prs-linked-only-vi.md)
+- [supervisor scan misreads github-actions board-sync bot comment as human-last](../learnings/1790082761650-supervisor-scan-misreads-github-actions-board-sync.md)
 - [Supervisor scan.py false-positive awaiting_us: bot posts from human GitHub accounts](../learnings/1789307828198-supervisor-scan-py-false-positive-awaiting-us-bot-.md)
 - [Supervisor scan.py: four false-positive classes inflate awaiting_us and cause repeat false nudges](../learnings/1789477984124-supervisor-scan-py-four-false-positive-classes-inf.md)
 - [Supervisor thread-key regex is greedy — spine-sanctioned sub-threads parse to a nonexistent repo and report "no public footprint"](../learnings/1786408898253-supervisor-thread-key-regex-is-greedy-spine-sancti.md)

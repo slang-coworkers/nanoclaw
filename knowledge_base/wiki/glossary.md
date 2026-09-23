@@ -441,6 +441,7 @@ type: nav
 - [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen)](concepts/slang-tooling-llvm-target-build.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
+- [Serialized-Module & Obfuscation Verification (.slang-module chunks, -obfuscate, stripping claims)](concepts/slang-tooling-serialized-module-obfuscation.md)
 - [Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc, sanitizers, stale binaries](concepts/slang-tooling-f0909b0-build-worktree-cmake.md)
 - [Slang Build Subagent & Worktree Hygiene](concepts/slang-build-subagent-and-worktree-hygiene.md)
 - [Slang formatting.sh: false-greens, tool install, and safe scoping](concepts/slang-tooling-f0909b0-formatting.md)
