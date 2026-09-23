@@ -98,8 +98,12 @@ const MCP_PAYLOAD_MAX_BYTES = 16384;
 export const SECRET_ENV_KEY_RE = /(TOKEN|SECRET|PASSW(OR)?D|API_?KEY|APIKEY|CREDENTIAL|PRIVATE_?KEY|AUTH)/i;
 export const SECRET_VALUE_RE = /^(sk-|ghp_|github_pat_|xox[a-z]-|AKIA|-----BEGIN )/;
 
-/** Card-only placeholder for a secret-shaped value: byte length + sha256 fingerprint. */
-function redactSecret(value: string): string {
+/**
+ * Card-only placeholder for a secret-shaped value: byte length + sha256 fingerprint.
+ * Exported so the template-stamp card renders redactions identically — a second
+ * redactor would be free to drift from this one.
+ */
+export function redactSecret(value: string): string {
   const digest = createHash('sha256').update(value).digest('hex').slice(0, 8);
   return `<redacted: ${Buffer.byteLength(value, 'utf8')} bytes, sha256 ${digest}>`;
 }

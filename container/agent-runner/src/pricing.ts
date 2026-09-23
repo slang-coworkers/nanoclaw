@@ -41,6 +41,7 @@ export interface ModelRate {
 // Keyed by BASE model id (no provider prefix, no `[1m]`/`-v1`/date suffix).
 // normalizeModel() maps every wire variant onto one of these.
 export const MODEL_PRICING: Record<string, ModelRate> = {
+  'claude-opus-5-5': { input: 4e-6, output: 20e-6, cacheCreate: 5e-6, cacheRead: 2e-7 },
   'claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
   'claude-opus-4-8': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
   'claude-opus-4-7': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
@@ -64,6 +65,7 @@ export function normalizeModel(model: string | undefined): string {
   m = m
     .replace(/^aws\/anthropic\/bedrock-/, '')
     .replace(/^aws\/anthropic\//, '')
+    .replace(/^azure\/anthropic\//, '')
     .replace(/^anthropic\//, '');
   m = m.replace(/-v\d+$/, ''); // bedrock revision suffix (…-v1)
   if (MODEL_PRICING[m]) return m;

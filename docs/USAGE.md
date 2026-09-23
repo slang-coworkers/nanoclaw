@@ -389,7 +389,7 @@ Skills loaded inside agent containers at runtime:
 | `base-nanoclaw` | Core NanoClaw container primitives |
 | `buddy` | Pair-programming assistant |
 | `codex-critique` | Critique stage gates (PLAN_REVIEW, CODE_REVIEW, etc.) |
-| `explain-diff-html` | Self-contained HTML explanation (background, intuition, code walkthrough, quiz) of every PR a coworker opens, also posted on the PR as one collapsed `<details>` comment that is updated in place on every push; asked for by the PR-created hook |
+| `explain-diff-html` | Self-contained HTML explanation (background, intuition, code walkthrough, quiz) of every PR a coworker opens. On the PR, the same content in GitHub-safe Markdown is the PR description, rewritten for the current head on every push (`scripts/upsert_pr_body.py`: head check, issue links and bot disclaimer preserved, quiz answers spread by `--quiz-positions`). The PR-created and push hooks (`container/hooks/pr-auto-map.sh`) ask for it. |
 | `self-customize` | Agent self-modification tools |
 | `agent-browser` | In-container web browsing |
 | `slack-formatting` | Slack message formatting |
