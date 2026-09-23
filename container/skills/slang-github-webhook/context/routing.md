@@ -29,6 +29,15 @@ You receive `kind: webhook` messages with `content.event: "github.pr_mention"` w
 
 4. **Forward** with `mcp__nanoclaw__send_message(to: "<coworker-name>", text: …)`. Include `repo`, `pr_number`, `comment_url`, and the original comment body. The coworker — not you — owns posting/editing GitHub comments.
 
+### Relaying a maintainer's direction
+
+When you forward a maintainer's instruction to a coworker (a go-ahead, a design ask, review feedback):
+
+- Quote their words verbatim, with the comment link. Anything you add (interpretation, emphasis, anchors, suggested names) goes under a separate **Orchestrator note (not the maintainer's words)** heading.
+- Never rename what they named, add a requirement they did not state, or re-weight their constraints ("weight X heavily"). If two of their constraints pull against each other, say so and have the coworker ask them.
+- Authorizing a coworker to restate the ask publicly does not waive its OUTPUT_REVIEW: the check comes before the post, not after.
+- A chain parked on a human decision, operator or maintainer, always gets a re-chase task and names the decision on the operator DM. A park without a timer is a silent stall.
+
 ### How PR ownership is established
 
 When a coworker creates a PR, **it must call `report_pr_created({ repo, pr_number })`**. That writes to `pr_session_mappings` so future webhook events route to the coworker's session automatically (path 2a). Without it, every follow-up review comment looks orphaned and falls through to branch resolution.

@@ -98,6 +98,10 @@ slang-fixer:
     # Always-in-context so it survives compaction (unlike the workflow step).
     # Unioned with the inherited slang-writer/slang-common invariants.
     - container/spines/slang/invariants/peer-review.md
+    # Maintainer design direction is the acceptance criteria: verbatim
+    # requirement list, conflicts go back to the maintainer, restatements are
+    # rebuilt from the source and critiqued before posting.
+    - container/spines/slang/invariants/maintainer-direction.md
   workflows:
     - slang-fix-issue
   # Fixer reads triage's diagnosis, commits to a plan, edits source, ships
@@ -117,6 +121,9 @@ slang-reviewer:
     # Review-output rules — only loaded for slang-reviewer (not slang-fixer
     # or other writers, who don't post reviews).
     - container/spines/slang/invariants/review-output.md
+    # Review against the maintainer's ask: a missed requirement is
+    # REQUEST_CHANGES, never a nit.
+    - container/spines/slang/invariants/spec-fidelity.md
   skills:
     - slang-pr-review-runner       # Reviewer A (correctness) + Reviewer B (Devin)
     - slang-clarity-review-runner  # Reviewer C (clarity) — local skill
