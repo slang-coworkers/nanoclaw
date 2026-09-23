@@ -26,6 +26,14 @@ import { drainPostResponseEffects } from './post-response.js';
 import { listVerbs, renderVerbHelp } from './help-render.js';
 import { commandGuard, listCommands, lookup } from './registry.js';
 
+/**
+ * Same ceiling as the self-mod MCP card (`MCP_APPROVAL_CARD_MAX_BYTES`): an
+ * approval card is read on a phone, and a disclosure long enough to scroll past is
+ * one an approver skims. Over the cap the command is refused rather than truncated,
+ * because a truncated disclosure understates the reach being approved.
+ */
+const CLI_APPROVAL_CARD_MAX_BYTES = 1500;
+
 type DispatchOptions = {
   /** Verified approval row when a command is replayed after approval. */
   grant?: PendingApproval;
@@ -164,13 +172,37 @@ export async function dispatch(
       .map(([k, v]) => `--${k} ${v}`)
       .join(' ');
 
+    // Disclosure the command line cannot carry. A throw here refuses instead of
+    // carding: approving a request whose reach we could not render is worse than
+    // not offering the approval at all.
+    let detail: string[] | undefined;
+    try {
+      detail = cmd.approvalDetail?.(req.args);
+    } catch (e) {
+      return err(req.id, 'invalid-args', errMsg(e));
+    }
+    // Fenced and byte-capped exactly as the self-mod MCP card is: no payload line
+    // can add a line to the card, spoof a field, or break out of the fence, and an
+    // over-long disclosure is refused rather than silently truncated into an
+    // understatement of the reach.
+    const detailBlock = detail && detail.length > 0 ? '\n```\n' + detail.join('\n') + '\n```' : '';
+    const question =
+      `Agent "${agentName}" wants to run:\n\`ncl ${req.command}${argSummary ? ' ' + argSummary : ''}\`` + detailBlock;
+    if (Buffer.byteLength(question, 'utf8') > CLI_APPROVAL_CARD_MAX_BYTES) {
+      return err(
+        req.id,
+        'invalid-args',
+        `Rendered approval card exceeds ${CLI_APPROVAL_CARD_MAX_BYTES} bytes; run this from the host instead.`,
+      );
+    }
+
     await requestApproval({
       session,
       agentName,
       action: 'cli_command',
       payload: { frame: { id: req.id, command: req.command, args: req.args }, callerContext: ctx },
       title: `CLI: ${req.command}`,
-      question: `Agent "${agentName}" wants to run:\n\`ncl ${req.command}${argSummary ? ' ' + argSummary : ''}\``,
+      question,
     });
 
     return err(req.id, 'approval-pending', 'Approval request sent to admin. You will be notified of the result.');
