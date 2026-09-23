@@ -2,17 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-09-01T04:14:35Z",
-   "backlog": 1788504,
-   "defects": 36,
-   "offenders": 181,
-   "top": {
-    "path": "imported/feedback_a_status_set_broader_than_its_docstring_livelocks_the_throttle.md",
-    "class": "OVERSIZE",
-    "size": 69088
-   }
-  },
-  {
    "at": "2026-09-01T04:54:11Z",
    "backlog": 1583232,
    "defects": 35,
@@ -329,6 +318,17 @@
     "path": "imported/feedback_the_memory_limit_unit_is_codepoints_over_1024.md",
     "class": "OVERSIZE",
     "size": 22396
+   }
+  },
+  {
+   "at": "2026-09-22T04:10:09Z",
+   "backlog": 212274,
+   "defects": 0,
+   "offenders": 77,
+   "top": {
+    "path": "imported/project_12185_bindless_texture_nv_desc_handle_nonimage.md",
+    "class": "OVERSIZE",
+    "size": 22020
    }
   }
  ]

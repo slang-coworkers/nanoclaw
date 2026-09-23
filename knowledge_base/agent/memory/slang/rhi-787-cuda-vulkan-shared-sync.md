@@ -161,6 +161,25 @@ land waitOnHost now + tested follow-up. **register-all HEAD `6e040d1` pushed + G
 read-back; precise edits uncommitted; flip held.** Chain state: cleanly the maintainer's two calls; no bot
 action pending except executing his pick. Re-opens on jhelferty's webhook. Nothing for me to do but wait.
 
+### 🔀 NEW PARALLEL TRACK (2026-09-18, comment 5782267774) — explicit-public-API alternative, SKETCH-FIRST
+jhelferty: "create a separate alternative PR, which makes the transition to External an **explicit part of the
+public API**. Please **propose and sketch out an API for me to confirm before creating the PR**." Pivot: he's
+now considering an explicit-public-API design vs #812's internal-only approach, and wants to compare.
+- **This is a SEPARATE/ALTERNATIVE track — #812 is untouched** (register-all HEAD `6e040d1` green, held; its
+  precise-vs-register-all + fence-signal forks still open, NOT resolved by this). Do NOT un-hold or edit #812.
+- **Deliverable is an API SKETCH for his confirmation, NOT a PR.** No PR creation, no branch, no draft until he
+  confirms the API. Drafts-only gate not yet in play (no PR).
+- **⚠️ NEW public API = strict include/ ABI rules apply** (this is the departure from #812's "no new entry
+  points"): per slang CLAUDE.md "Modifying Public Headers" — append-only enums, NEVER reorder/insert/remove
+  virtuals in existing COM vtables, prefer a NEW derived/versioned interface with its own UUID over extending
+  an existing interface in place, keep existing UUIDs. `include/slang-rhi.h` is public COM-style surface.
+- Sketch must: compose with existing `Shared` usage / `getSharedHandle` / `FenceDesc::isShared` (don't
+  duplicate concepts); express the release-to-External / acquire-back ping-pong contract explicitly; include a
+  usage example (buffer-shared ping-pong rewritten via the API) + ABI-safety rationale; and state how the
+  internal register-all (#812) relates — is it a consumer of this primitive or fully replaced.
+- **Process:** fixer sketches → codex design pass focused on ABI-safety + minimality → report to me (I sanity-
+  check fast) → post to jhelferty for confirmation. Routed to slang-fixer (owns context/worktree).
+
 ### 🔴 OPEN — fence-signal release trigger DEFERRED, escalated to jhelferty with the PR (2026-09-16)
 Maintainer's policy listed 3 release triggers: "inside submit / waitOnHost / fence signal." Fixer implemented
 **waitOnHost (release) + submit (acquire-back)** — both tested paths — and **removed the fence-signal trigger**:
