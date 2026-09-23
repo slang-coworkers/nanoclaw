@@ -289,6 +289,16 @@ class AstraSandboxDriver implements SessionDriver {
       ...(process.env.ANTHROPIC_AUTH_TOKEN && process.env.ANTHROPIC_AUTH_TOKEN !== 'ROUTED_VIA_ONECLI_PROXY'
         ? { ANTHROPIC_AUTH_TOKEN: process.env.ANTHROPIC_AUTH_TOKEN }
         : {}),
+      // Coworkers that touch GitLab (git clone/push against gitlab-master, MR
+      // review, slang-mcp gitlab tools) authenticate as the nv-slang-bot service
+      // account. Forward its token (Vault → router pod env → here) the same
+      // guarded way as the model token, so the credential never lands in the DB /
+      // container.json plaintext. gitlab-master.nvidia.com is in the sandbox
+      // egress allow-list (Skiff-Lite); github.com is not, so slang-mcp's GitHub
+      // side stays disabled via SLANG_MCP_DISABLED_SERVICES.
+      ...(process.env.GITLAB_ACCESS_TOKEN
+        ? { GITLAB_ACCESS_TOKEN: process.env.GITLAB_ACCESS_TOKEN }
+        : {}),
     };
     // claude-trace is a HOST-only wrapper: the Docker realization mounts it at
     // /opt/claude-trace and points CLAUDE_CODE_EXECUTABLE at it. The sandbox pod
