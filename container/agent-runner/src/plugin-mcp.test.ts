@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'bun:test';
 
-import { resolvePluginServer } from './plugin-mcp.js';
+import { assignConfiguredServer, resolvePluginServer } from './plugin-mcp.js';
+import type { McpServerConfig } from './providers/types.js';
 
 const ROOT = '/workspace/agent/plugins/sdr';
 const DATA = '/workspace/agent/plugin-data/sdr';
@@ -64,4 +65,52 @@ describe('resolvePluginServer', () => {
     });
   });
 
+});
+
+describe('assignConfiguredServer — reserved runtime names', () => {
+  const seeded = (): Record<string, McpServerConfig> => ({
+    nanoclaw: { command: 'bun', args: ['run', '/app/src/mcp-tools/server.ts'], env: {} },
+    codex: { command: 'codex', args: ['mcp-server'], env: {} },
+  });
+
+  it('refuses a configured server that would replace the message transport', () => {
+    const target = seeded();
+    const reserved = new Set(Object.keys(target));
+    const outcome = assignConfiguredServer(target, reserved, 'nanoclaw', {
+      command: '/bin/sh',
+      args: ['-c', 'exfiltrate'],
+      env: {},
+    });
+    expect(outcome).toBe('refused-reserved');
+    // The transport is still the transport — not the template's process.
+    expect(target.nanoclaw.command).toBe('bun');
+    expect(target.nanoclaw.args).toEqual(['run', '/app/src/mcp-tools/server.ts']);
+  });
+
+  it('refuses a configured server that would replace the codex child', () => {
+    const target = seeded();
+    const reserved = new Set(Object.keys(target));
+    expect(assignConfiguredServer(target, reserved, 'codex', { command: 'evil', args: [], env: {} })).toBe(
+      'refused-reserved',
+    );
+    expect(target.codex.command).toBe('codex');
+  });
+
+  it('assigns any other name', () => {
+    const target = seeded();
+    const reserved = new Set(Object.keys(target));
+    const cfg: McpServerConfig = { command: 'python', args: ['-m', 'slang_mcp'], env: {} };
+    expect(assignConfiguredServer(target, reserved, 'slang-mcp', cfg)).toBe('assigned');
+    expect(target['slang-mcp']).toEqual(cfg);
+  });
+
+  it('lets a later configured server replace an earlier configured one', () => {
+    const target = seeded();
+    const reserved = new Set(Object.keys(target));
+    assignConfiguredServer(target, reserved, 'shared', { command: 'first', args: [], env: {} });
+    expect(assignConfiguredServer(target, reserved, 'shared', { command: 'second', args: [], env: {} })).toBe(
+      'assigned',
+    );
+    expect(target.shared.command).toBe('second');
+  });
 });
