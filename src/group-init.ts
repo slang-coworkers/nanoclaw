@@ -81,7 +81,7 @@ export function refreshMirror(src: string, dst: string): boolean {
  * stamped. A stale mirror that merely shares a name with an unvalidated
  * directory under plugins/ stays collectable.
  */
-function pluginOwnedSkillNames(folder: string): Set<string> {
+export function pluginOwnedSkillNames(folder: string): Set<string> {
   const owned = new Set<string>();
   const pluginsRoot = path.join(GROUPS_DIR, folder, 'plugins');
   let entries: fs.Dirent[];
@@ -268,10 +268,13 @@ export async function initGroupFilesystem(
       for (const skill of fs.readdirSync(skillsSrc)) {
         if (scope.dirs && !scope.dirs.has(skill)) continue;
         // A catalog skill sharing a name with a plugin-owned one is shadowed:
-        // the template keeps the directory. Logged because the composed
-        // document still describes the CATALOG skill of that name, so the
-        // prompt and the executable body disagree — a collision the template
-        // author and the operator both need to see.
+        // the template keeps the directory. Still logged, because the operator
+        // and the template author both need to see that a name collided — but
+        // the prompt no longer describes the wrong body. `composeOptionsFor`
+        // passes this same set to the composer, which withholds the catalog
+        // copy from the two renderings that DESCRIBE a skill (the Skills index
+        // and the resident prose). Only described names were ever affected: a
+        // mirror-floor skill like `welcome` is copied here but never rendered.
         if (pluginOwned.has(skill)) {
           log.warn('Catalog skill shadowed by a plugin-owned skill of the same name', {
             group: group.name,
