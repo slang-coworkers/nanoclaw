@@ -93,6 +93,10 @@ class Normalize(unittest.TestCase):
         self.assertEqual(T.normalize_model("anthropic/claude-haiku-4-5-v1"), "claude-haiku-4-5")
         self.assertEqual(T.normalize_model("claude-sonnet-5-20251001"), "claude-sonnet-5")
         self.assertEqual(T.normalize_model("<synthetic>"), "")
+        self.assertEqual(T.normalize_model("aws/anthropic/bedrock-claude-opus-5-5[1m]"), "claude-opus-5-5")
+        self.assertEqual(T.normalize_model("azure/anthropic/claude-opus-5-5[1m]"), "claude-opus-5-5")
+        self.assertEqual(T.normalize_model("azure/anthropic/claude-haiku-4-5"), "claude-haiku-4-5")
+        self.assertAlmostEqual(T.price_usage("azure/anthropic/claude-opus-5-5", {"input_tokens": 1_000_000}), 4.0, places=9)
         self.assertEqual(T.normalize_model(None), "")
 
 
