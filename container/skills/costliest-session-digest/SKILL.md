@@ -209,6 +209,7 @@ DEFAULT_MIN_USD = 1.00
 # --- Pricing core: VERBATIM port of dashboard/session-costs.ts MODEL_PRICING.
 # Keyed by BASE model id (no provider prefix, no `[1m]`/`-v1`/date suffix).
 MODEL_PRICING = {
+    "claude-opus-5-5": {"input": 4e-6, "output": 20e-6, "cacheCreate": 5e-6, "cacheRead": 2e-7},
     "claude-opus-5": {"input": 5e-6, "output": 25e-6, "cacheCreate": 6.25e-6, "cacheRead": 5e-7},
     "claude-opus-4-8": {"input": 5e-6, "output": 25e-6, "cacheCreate": 6.25e-6, "cacheRead": 5e-7},
     "claude-opus-4-7": {"input": 5e-6, "output": 25e-6, "cacheCreate": 6.25e-6, "cacheRead": 5e-7},
@@ -227,6 +228,7 @@ def normalize_model(model):
     m = re.sub(r"\[1m\]$", "", m)
     m = re.sub(r"^aws/anthropic/bedrock-", "", m)
     m = re.sub(r"^aws/anthropic/", "", m)
+    m = re.sub(r"^azure/anthropic/", "", m)
     m = re.sub(r"^anthropic/", "", m)
     m = re.sub(r"-v\d+$", "", m)
     if m in MODEL_PRICING:
