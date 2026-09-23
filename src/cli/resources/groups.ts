@@ -325,7 +325,10 @@ registerResource({
         '--id <group-id> to pick among several stamped groups, or --new to stamp another agent regardless. ' +
         'Without --template, use --folder <slug> (required) and --name <display name>; with --template the ' +
         "folder derives from the agent name (--name overrides the template's own). " +
-        'Optional --timezone <IANA id> sets the group timezone (template task schedules fire in it); like --name, it applies only when a group is created — both are ignored on the in-place update of an existing group.',
+        'Optional --timezone <IANA id> sets the group timezone (template task schedules fire in it); like --name, it applies only when a group is created — both are ignored on the in-place update of an existing group. ' +
+        "Optional --coworker-type <type> composes the stamped agent as that lego type, overriding the template's own " +
+        'declared default; pass --coworker-type "" to stamp untyped regardless of what the template asks for. A type ' +
+        'that does not resolve here fails the create, and a flat type (e.g. main) is refused.',
       handler: async (args) => {
         const timezone = parseTimezoneFlag(args.timezone) ?? undefined;
         if (args.template) {
@@ -358,9 +361,18 @@ registerResource({
                 : { ...result, note: `${result.note} Pass --new to stamp a separate agent instead.` };
             }
           }
+          // --coworker-type overrides the template's own defaultCoworkerType
+          // hint, and "" is the explicit opt-out of that hint. An explicit value
+          // that does not resolve on this install is a hard failure (the caller
+          // asked for something specific); the template's hint only degrades.
+          // normalizeArgs (cli/crud.ts) rewrites --kebab-case to snake_case before
+          // a handler sees it, so reading 'coworker-type' here would make the
+          // flag silently do nothing.
+          const coworkerType = args.coworker_type === undefined ? undefined : String(args.coworker_type).trim() || null;
           const { group, report } = await createAgentFromTemplate(ref, {
             name: args.name ? String(args.name) : undefined,
             timezone,
+            ...(coworkerType === undefined ? {} : { coworkerType }),
           });
           return report.length > 0 ? { ...group, templateReport: report } : group;
         }
