@@ -121,6 +121,10 @@ export interface CodexModelRate {
  * choice only actually moves a number for the family the fleet runs today.
  */
 export const CODEX_MODEL_PRICING: Record<string, CodexModelRate> = {
+  // gpt-6-sol — prod's codex-critique model from 2026-09-24. The gateway id is
+  // OpenAI-direct (openai/openai/gpt-6-sol) and LiteLLM has no azure entry for
+  // it, so this is the bare OpenAI rate; matches the runner's row.
+  'gpt-6-sol': { input: 2e-6, output: 1e-5, cacheRead: 2e-7 },
   // gpt-5.6 family (azure entries) — the fleet's current codex-critique models.
   'gpt-5.6-sol': { input: 5e-6, output: 3e-5, cacheRead: 5e-7 },
   'gpt-5.6': { input: 5e-6, output: 3e-5, cacheRead: 5e-7 },
