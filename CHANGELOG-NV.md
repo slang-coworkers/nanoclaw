@@ -6,8 +6,8 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 618 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 254 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 620 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 259 |
 | `nv-slang` | slang project spine, skills, workflows | 161 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 90 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 69 |
@@ -15,6 +15,19 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-24
+
+### nv-main (2 PRs)
+- **#1717** `fix(cost): price gpt-6-sol, prod's next codex critique model`
+- **#1722** `feat(timezone): dayKeyInTimezone — calendar-day key of an instant in an IANA zone`
+
+### nv-dashboard (5 PRs)
+- **#1714** `Merge nv-main into nv-dashboard (carries #1705 pricing)`
+- **#1706** `fix(dashboard): price claude-opus-5-5 and azure/anthropic ids`
+- **#1719** `test(dashboard): a runner-only codex model is not normalizer drift`
+- **#1720** `Merge nv-main into nv-dashboard (carries #1717 gpt-6-sol pricing)`
+- **#1721** `fix(dashboard): price gpt-6-sol in the codex table`
 
 ## 📅 2026-09-23
 
