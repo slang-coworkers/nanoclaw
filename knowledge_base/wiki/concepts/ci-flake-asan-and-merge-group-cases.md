@@ -3,7 +3,7 @@ title: "CI Flake — ASan, Merge-Group & Receipts-Level Root-Cause Cases"
 type: concept
 group: ci-tooling
 tags: [ci, asan, sanitizer, merge-group, canary, caller-bug, missing-sync, falcor, receipts, slang]
-source_count: 9
+source_count: 10
 ---
 
 # CI Flake — ASan, Merge-Group & Receipts-Level Root-Cause Cases
@@ -44,7 +44,11 @@ On a Slang PR, `test-falcor / Test (Falcor)` failing (~17min, so NOT a priority-
 
 A `nv-slang-bot` self-filed CI-health issue can be wrong about its own root cause. #12062 claimed a "hard-coded stale bot node id `BOT_kgDOCnlnWA`" in `pr-board-sync.yml` — but `grep`/`git log -S` found the id was NEVER in the repo, and the workflow's assignment code passes login strings, not node ids. The real cause was server-side: a phantom requested-reviewer already on PR #11964 made GitHub 422 on any reviewer-mutation REST call, and the failing step (`removeRequestedReviewers` @yml:1290) was the one mutation NOT wrapped in the fail-safe try/catch its siblings had. Reusable method: read the actual failing-step API to find `conclusion=failure`, note the response URL on the HttpError (it names the endpoint), grep the cited magic constant before believing "hard-coded", and treat a "global node id" 422 on a logins-only call as a pre-existing server-side entity, not your code ([verify a self-filed bot CI issue's root cause at receipts level — it can be wrong](../learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)).
 
-**Source learnings (9):**
+## gcc-ASan `spirv-opt` DEADLYSIGNAL Loop Is a Kernel-ASLR Flake — Run Under `setarch -R`
+
+A gcc-built AddressSanitizer binary (e.g. SPIRV-Tools `build-asan/tools/spirv-opt`) that intermittently (~75% of runs, nondeterministic) prints **millions of bare `AddressSanitizer:DEADLYSIGNAL` lines with no stack** and never terminates is an **environment issue, NOT a bug in the program under test** — the *same* binary on the *same* input runs clean the other ~25% of the time. Root cause: high-entropy kernel ASLR (`vm.mmap_rnd_bits`, common on newer kernels/containers) is incompatible with ASan's shadow-memory mapping, so ASan's SEGV handler re-faults in a loop. It masquerades as "my fix is nondeterministically broken" (cost ~30 min of false investigation during the #13230 / SPIRV-Tools #6711 `MergeReturnPass` UAF fix). Fix: run the ASan binary under `setarch "$(uname -m)" -R <cmd>` (sets the `ADDR_NO_RANDOMIZE` personality; **no root needed**) → ASan then behaves deterministically (real `heap-use-after-free` when the bug fires, clean exit otherwise); `sysctl -w vm.mmap_rnd_bits=28` also works but needs root. Also set `ASAN_OPTIONS=detect_leaks=0:abort_on_error=1:disable_coredump=1` — gcc-ASan core dumps are multi-GB and make each abort take minutes; a single ASan `spirv-opt` run is actually <1s, so apparent "hangs" were really concurrent-load contention from multiple ASan processes/builds running at once ([gcc-ASan spirv-opt DEADLYSIGNAL loop is a kernel-ASLR flake — run under setarch -R](../learnings/1790190755068-gcc-asan-spirv-opt-deadlysignal-loop-is-a-kernel-a.md)).
+
+**Source learnings (10):**
 - [ASan 'runtime does not come first' flake: static-canary tell, static linkage is not the fix](../learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md)
 - [ASan flake diagnosis, fix levers, and the GH Actions success() trap](../learnings/1782802321817-asan-runtime-does-not-come-first-ci-flake-diagnosi.md)
 - [CORRECTION: the canary is the gating step — harden it, not just test steps](../learnings/1782802481315-correction-to-asan-runtime-not-first-learning-the-.md)
@@ -54,3 +58,4 @@ A `nv-slang-bot` self-filed CI-health issue can be wrong about its own root caus
 - [Verify a self-filed bot CI issue's root cause at receipts level -- it can be wrong (#12062)](../learnings/1783744499019-verify-a-self-filed-bot-ci-issue-s-root-cause-at-r.md)
 - [release-not-debug + intermittent + rerun-clears + cross-API sharing = missing-sync signature; a tolerance widen on a bit-exact copy masks, doesn't fix (slang-rhi#787)](../learnings/1784741714597-slang-rhi-787-texture-shared-cuda-vulkan-flake-is-.md)
 - [test_GBufferRTTexGrads_d3d12 is catalogued CI flake #12145 (not your regression); test-falcor not required, log-as-left](../learnings/1785193029181-test-gbufferrttexgrads-d3d12-is-catalogued-ci-flak.md)
+- [gcc-ASan spirv-opt DEADLYSIGNAL loop is a kernel-ASLR flake, not a program bug — run under `setarch -R`; set ASAN_OPTIONS disable_coredump=1 so aborts stay fast](../learnings/1790190755068-gcc-asan-spirv-opt-deadlysignal-loop-is-a-kernel-a.md)

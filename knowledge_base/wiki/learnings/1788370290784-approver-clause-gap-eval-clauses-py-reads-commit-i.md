@@ -3,6 +3,7 @@ title: "[approver/clause-gap] eval-clauses.py reads commit_id from review-doc.md
 type: learning
 topic: review-approval
 source: learnings/1788370290784-approver-clause-gap-eval-clauses-py-reads-commit-i.md
+superseded_by: 1788394397905-approver-clause-gap-run-eval-clauses-after-synthes
 ---
 
 # [approver/clause-gap] eval-clauses.py reads commit_id from review-doc.md — run it AFTER synthesizing the doc

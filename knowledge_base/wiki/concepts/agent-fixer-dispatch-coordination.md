@@ -3,7 +3,7 @@ title: "Fixer Dispatch & Coordination Failure Modes"
 type: concept
 group: agent-fixer-codex-skills
 tags: [fixer, dispatch, coordination, subagent-typing, echo-loop, fixer-silence, hallucination-vs-invisible-edge, artifact-verification, slang]
-source_count: 8
+source_count: 9
 ---
 
 # Fixer Dispatch & Coordination Failure Modes
@@ -40,11 +40,15 @@ A fixer chain going silent for many hours with an active-but-`stopped` container
 
 The single-source-dispatch rule has a reporting-side corollary for periodic sweep/babysitter roles: finding a diagnosis does not make you the tier that dispatches its fix. When a CI-babysitter sweep surfaces a *systemic* infra/script bug (not a routine flaky-test rerun candidate) — e.g. the 2026-09-12 finding that `extras/verify-documented-compiler-version.sh` crashes with exit 4 on the new VS18/aarch64 runner image instead of hitting its intended `::warning::; exit 0` guard — put it in the sweep report's **Advice** section and stop there. The parent orchestrator independently verifies the diagnosis against `master` and routes the actual fix to `slang-fixer` itself; the parent explicitly flagged babysitter-side dispatch of this class of finding as a **double-dispatch risk**. The babysitter's job for a systemic finding ends at "diagnose + report + flag in Advice" — fix routing is the parent's ([CI babysitter: parent handles fix dispatch, I only diagnose + report](../learnings/1789251734550-ci-babysitter-parent-handles-fix-dispatch-i-only-d.md)).
 
+## Verify the scope from the maintainer's actual comment, not the relayed handoff
+
+A dispatched handoff can carry an *incomplete* scope just as easily as it can silently die. On slangpy #886/#1177 the maintainer's actual comment (kaizhangNV, 2026-09-22) was *"…let's add the slangpy module searching path by default. **And this should also fix the #1177.**"* — but the scope relayed to the fixer **dropped the "also fix #1177" clause** and told it to stay narrow (`create_slang_session` only, explicitly not #1177). The fixer implemented to the relayed scope, so its PR #1182 didn't satisfy the maintainer and was closed unmerged, superseded by the broader PR #1183. Lesson: before implementing from a relayed handoff, **read the maintainer's actual GitHub comment(s) on the issue directly** (`gh issue view <n> --comments` / API) — the truthfulness rule ("read the actual source; verify") applies to the *requirements*, not just the code; a relayed scope can be incomplete or contradict its source. Corollary: also check for **parallel bot PRs on the same issue family** before/while implementing — two nv-slang-bot sessions landed on #886/#1177 (#1182 vs #1183) with no collision signal reaching the fixer ([slangpy#886/#1177: read the maintainer's actual GitHub comment for scope — the relayed scope omitted "also fix #1177"](../learnings/1790193131048-slangpy-886-1177-read-the-maintainer-s-actual-gith.md)).
+
 ## Contradictions / Supersessions
 
 - The "fixer silence usually is NOT a dropped chain" framing ([Fixer silence from teardown-killed background build ≠ dropped chain](../learnings/1783471609043-fixer-silence-from-teardown-killed-background-buil.md)) is QUALIFIED: it remains the right default for a *nudge-before-restart* decision, but it is not a licence to relay the fixer's last message as status. Dispatches do silently die — slang#11917 batch-2 produced no branch and no PR across 7 days while a later dispatch completed in 2h — so the artifact check (`git/matching-refs/heads/<prefix>` + `gh pr list --search`) is mandatory before any downstream "in progress" claim ([a dispatched handoff can silently die](../learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-artif.md)).
 
-**Source learnings (8):**
+**Source learnings (9):**
 - [Don't fork (omit subagent_type) for read-only recall/scan steps](../learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)
 - [slang-fixer: contributor PR combined review is advisory](../learnings/1782719999000-slang-fixer-a-contributor-pr-combined-review-is-ad.md)
 - [Reviewer combined-review fan-out can trigger a taskless-fixer echo loop](../learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md)
@@ -53,4 +57,5 @@ The single-source-dispatch rule has a reporting-side corollary for periodic swee
 - [Peer 'not addressable / blocked' can mean session logged-out](../learnings/1783565846208-peer-not-addressable-blocked-can-mean-session-logg.md)
 - [CORRECTION to 'post-compaction coworker drift' — it was a real authorization on an invisible edge](../learnings/1783468031032-correction-to-post-compaction-coworker-drift-it-wa.md)
 - [CI babysitter: parent handles fix dispatch, I only diagnose + report](../learnings/1789251734550-ci-babysitter-parent-handles-fix-dispatch-i-only-d.md) — a sweep/babysitter surfacing a systemic infra bug flags it in the Advice section; the parent verifies against master and owns fix routing (babysitter-side dispatch is a double-dispatch risk)
+- [slangpy#886/#1177: read the maintainer's actual GitHub comment for scope — the relayed scope omitted "also fix #1177"](../learnings/1790193131048-slangpy-886-1177-read-the-maintainer-s-actual-gith.md) — a relayed handoff can drop scope clauses; re-fetch `gh issue view --comments` before implementing (PR #1182 was superseded by #1183 for this); check for parallel bot PRs on the same issue
 _Catalog: [[wiki/index.md]]_

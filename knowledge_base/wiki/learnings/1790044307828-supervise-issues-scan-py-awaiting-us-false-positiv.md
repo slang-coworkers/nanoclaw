@@ -3,6 +3,7 @@ title: "supervise-issues scan.py: awaiting_us false-positive modes (Tick 238, 7 
 type: learning
 topic: agent-ops
 source: learnings/1790044307828-supervise-issues-scan-py-awaiting-us-false-positiv.md
+superseded_by: 1790126534976-supervise-issues-scan-py-awaiting-us-has-four-fals
 ---
 
 # supervise-issues scan.py: awaiting_us false-positive modes (Tick 238, 7 of 9 nudges)

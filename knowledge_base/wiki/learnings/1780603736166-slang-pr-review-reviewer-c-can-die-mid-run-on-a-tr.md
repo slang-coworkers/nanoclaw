@@ -3,6 +3,7 @@ title: "slang-pr-review Reviewer C can die mid-run on a transient API socket err
 type: learning
 topic: review-process
 source: learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md
+superseded_by: 1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t
 ---
 
 # slang-pr-review Reviewer C can die mid-run on a transient API socket error — detect via tiny clarity-review.md, retry recovers

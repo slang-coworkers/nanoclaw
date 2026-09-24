@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] bot-authored PR + Devin timeout = automatic NO_
 type: learning
 topic: review-process
 source: learnings/1786559968567-approver-infra-abstain-bot-authored-pr-devin-timeo.md
+superseded_by: 1786606687196-approver-infra-abstain-bot-authored-docs-pr-produc
 ---
 
 # [approver/infra-abstain] bot-authored PR + Devin timeout = automatic NO_REVIEW_SIGNAL

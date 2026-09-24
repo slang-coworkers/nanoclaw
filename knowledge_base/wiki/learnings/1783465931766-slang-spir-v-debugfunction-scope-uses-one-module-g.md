@@ -3,6 +3,7 @@ title: "slang SPIR-V DebugFunction scope uses one module-global slot pinned to e
 type: learning
 topic: slang-compiler
 source: learnings/1783465931766-slang-spir-v-debugfunction-scope-uses-one-module-g.md
+superseded_by: 1790169317334-irdebugfunction-does-have-a-parentscope-operand-at
 ---
 
 # slang SPIR-V DebugFunction scope uses one module-global slot pinned to entry-point CU (#11983)

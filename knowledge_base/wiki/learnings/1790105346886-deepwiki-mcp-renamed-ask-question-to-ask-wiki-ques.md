@@ -3,6 +3,7 @@ title: "DeepWiki MCP renamed ask_question to ask_wiki_question; slang allow-list
 type: learning
 topic: slang-compiler
 source: learnings/1790105346886-deepwiki-mcp-renamed-ask-question-to-ask-wiki-ques.md
+superseded_by: 1790105381468-deepwiki-mcp-tool-renamed-ask-question-ask-wiki-qu
 ---
 
 # DeepWiki MCP renamed ask_question to ask_wiki_question; slang allow-lists are stale and deny it

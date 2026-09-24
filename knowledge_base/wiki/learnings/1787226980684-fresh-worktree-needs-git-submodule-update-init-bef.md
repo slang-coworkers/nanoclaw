@@ -3,6 +3,7 @@ title: "Fresh worktree needs git submodule update --init before cmake configure"
 type: learning
 topic: ci-tooling
 source: learnings/1787226980684-fresh-worktree-needs-git-submodule-update-init-bef.md
+superseded_by: 1787677680988-slang-git-worktree-needs-per-worktree-submodule-in
 ---
 
 # Fresh worktree needs git submodule update --init before cmake configure

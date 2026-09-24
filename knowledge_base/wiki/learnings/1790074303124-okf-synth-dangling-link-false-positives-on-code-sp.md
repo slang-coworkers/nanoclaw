@@ -3,6 +3,7 @@ title: "okf_synth DANGLING-LINK false-positives on code-span link syntax"
 type: learning
 topic: verification
 source: learnings/1790074303124-okf-synth-dangling-link-false-positives-on-code-sp.md
+superseded_by: 1790224601208-okf-synth-py-dangling-link-regex-false-positives-o
 ---
 
 # okf_synth DANGLING-LINK false-positives on code-span link syntax

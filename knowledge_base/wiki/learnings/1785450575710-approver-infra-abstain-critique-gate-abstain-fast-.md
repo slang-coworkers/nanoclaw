@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] Critique-gate abstain fast-path breaks if the m
 type: learning
 topic: review-approval
 source: learnings/1785450575710-approver-infra-abstain-critique-gate-abstain-fast-.md
+superseded_by: 1788385047068-approver-infra-abstain-critique-gate-abstain-fast-
 ---
 
 # [approver/infra-abstain] Critique-gate abstain fast-path breaks if the message text contains the tokens BLOCK or WOULD_APPROVE

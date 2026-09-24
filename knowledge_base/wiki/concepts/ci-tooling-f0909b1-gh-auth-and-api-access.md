@@ -3,7 +3,7 @@ title: GitHub CLI/API access under the OneCLI proxy — auth false alarms and wo
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, onecli-proxy, gh-token, pr-review, auth, curl, graphql]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -81,6 +81,15 @@ In the triager, the same holds: `gh auth status` says invalid and `gh api user` 
 normal Step-9 `gh api ... --method POST/PATCH` posting flow succeeds (verified posting a comment
 while triaging #12874). Test a repo-scoped call to confirm, then proceed — don't abandon `gh`
 for the onecli-gateway ([repo endpoints work as nv-slang-bot](../learnings/1788298673378-gh-cli-as-nv-slang-bot-invalid-token-user-403-is-n.md)).
+The identical false alarm fires in `/slang-pr-review` preflight — `gh auth status` reports the
+`nv-slang-bot[bot]` token invalid while `gh pr diff <N> -R <repo>` and
+`gh api repos/<repo>/pulls/<N> --jq .title` both return data — and the `slang-pr-review-runner`
+`install.sh` likewise prints `warning: gh auth not configured` for the same App-token reason. Do
+NOT abort the review on `gh auth status`; verify with a real repo-scoped read. Read access is all
+Reviewer A's inner CLI and Reviewer B/C need, so only the GitHub *post-back* step (which needs
+`pull_requests:write`) can genuinely degrade — a 403 there makes `post-review.sh` exit 3 and the
+workflow falls back to `send_file`
+([gh auth status invalid is a false alarm for App tokens in /slang-pr-review preflight](../learnings/1790172928541-gh-auth-status-invalid-token-is-a-false-alarm-for-.md)).
 
 **Supersession note.** An earlier finding claimed the `gh` CLI itself was broken because
 `GH_TOKEN` was set to the literal sentinel `ROUTED_VIA_ONECLI_PROXY`, which `gh` validates
@@ -182,7 +191,7 @@ most metadata, and `gh api repos/O/R/issues/<n> -q '.author_association'` (PRs a
 author association — both pass the hook and are read-only
 ([read-only pulls GET trips critique hook](../learnings/1788858953279-approver-infra-note-read-only-gh-api-pulls-n-gets-.md)).
 
-**Source learnings (18):**
+**Source learnings (19):**
 
 - [gh CLI auth broken even when OneCLI proxy curl works — GH_TOKEN is a literal sentinel](../learnings/1788204882348-gh-cli-auth-broken-even-when-onecli-proxy-curl-wor.md) — GH_TOKEN=ROUTED_VIA_ONECLI_PROXY; gh validates locally and fails, curl+proxy works; later corrected/over-generalized.
 - [Correction: gh CLI App-installation token is fine for actions/PR endpoints](../learnings/1788205146208-correction-gh-cli-app-installation-token-is-fine-f.md) — the container held a working App token; gh reads work, only auth-status/user/rate_limit fail.
@@ -202,3 +211,4 @@ author association — both pass the hook and are read-only
 - [Read-only gh api .../pulls/<n> GETs trip the critique-on-deliver bash hook](../learnings/1788858953279-approver-infra-note-read-only-gh-api-pulls-n-gets-.md) — hook matches the 'pulls' path segment regardless of method; use gh pr view or issues/<n> instead.
 - [CORRECTION: PR comments DO post via onecli-gateway (curl+HTTPS_PROXY) when gh/GH_TOKEN is broken](../learnings/1789225153684-correction-pr-comments-do-post-via-onecli-gateway-.md) — a bad GH_TOKEN breaks only gh/gh api; curl POST + git push still work through the proxy; don't delegate or spin.
 - [Invalid GH_TOKEN blocks all PR/issue-comment posting — SUPERSEDED: writes work via the proxy](../learnings/1789224850935-invalid-gh-token-blocks-all-pr-issue-comment-posti.md) — the "delegate or refresh, don't spin" framing was wrong; only gh needs refresh, curl/git post fine.
+- [gh auth status invalid is a false alarm for App tokens in /slang-pr-review preflight](../learnings/1790172928541-gh-auth-status-invalid-token-is-a-false-alarm-for-.md) — App tokens can't hit `/user`, so `gh auth status` (and the runner install.sh) reports invalid though repo reads work; verify with `gh pr diff <N>`, only post-back (`pull_requests:write`) degrades.

@@ -349,6 +349,7 @@ type: nav
 - [reviewers_complete, NO_REVIEW_SIGNAL & calibration — never self-review in place of the missing doc](concepts/review-process-f0909b0-reviewers-complete-infra-abstain.md)
 - [Slang Code-Review Lenses](concepts/review-pr-slang-review-lenses.md)
 - [The Step-3 challenger — verifying reviewer findings against source before they drive a verdict](concepts/review-process-f0909b1-challenger-verification.md)
+- [Working Live PRs Alongside Maintainers and Sibling Bots](concepts/review-maintainer-live-pr-interaction.md)
 
 **slang**
 - [nv-slang-bot identities and the license/cla gate](concepts/slang-a-bot-cla-identity.md)
@@ -386,6 +387,7 @@ type: nav
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
+- [Slang SPIR-V DebugFunction / NonSemantic debug-info: IRDebugFunction representation, DebugFunctionDefinition emit, and the shared-record producer class](concepts/slang-backends-spirv-debug-function-info.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
 - [slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling](concepts/slang-rhi-backend-runtime.md)
 - [SPIR-V capability system — atoms, storage classes, extensions, and target gating](concepts/slang-backends-f0909b0-spirv-capabilities.md)

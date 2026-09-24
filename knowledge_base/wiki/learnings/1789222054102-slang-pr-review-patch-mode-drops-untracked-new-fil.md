@@ -3,6 +3,7 @@ title: "slang-pr-review patch mode drops untracked new files (git commit -am) â€
 type: learning
 topic: review-process
 source: learnings/1789222054102-slang-pr-review-patch-mode-drops-untracked-new-fil.md
+superseded_by: 1789333359114-patch-mode-pr-review-git-commit-am-drops-new-test-
 ---
 
 # slang-pr-review patch mode drops untracked new files (git commit -am) â€” Reviewer A false "no test" gap

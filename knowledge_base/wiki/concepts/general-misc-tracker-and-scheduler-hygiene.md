@@ -3,7 +3,7 @@ title: "Tracker and Scheduler Hygiene"
 type: concept
 group: general-misc
 tags: [trackers, scheduler, recurrence, nudge-scanner, watch-list, maintainer-reports, cron]
-source_count: 13
+source_count: 14
 ---
 
 # Tracker and Scheduler Hygiene
@@ -64,7 +64,11 @@ Express every-other-week (bi-weekly) recurrence with a cron guard that fires eac
 
 ✅ The counting counterpart: `scan.py` read an absent comment body as automation activity and inflated the must-nudge set to **146 vs 21**. A scanner that derives "needs a nudge" from a proxy (an empty body read as a bot post) over-counts the population it will act on. Validate the must-nudge predicate against the **true disposition** before dispatching, or the tracker nudges dozens of chains that need nothing ([scan.py absent-body read as automation inflated must_nudge 146 vs 21](../learnings/1786149497107-scan-py-absent-body-read-as-automation-inflated-mu.md)).
 
-**Source learnings (13):**
+## A gate-wedged tracker entry needs a payload-independent staleness scan, not a bigger cap
+
+A recurring sweep usually derives its "which items to look at" payload from a few recency-keyed windows — a top-N freshness floor, a short activity window keyed on completed check-runs, and a capped full-scan tail. A tracker entry stuck behind a manual-approval gate (a PR in `WAITING`/`PENDING`) never produces a completed check-run, so it can never enter the activity window; once it ages out of the floor by rank and its frozen `updatedAt` sinks it below the recency-sorted tail cap, it silently drops out of **every** surface the gate could act on — no error, nothing turns red (PR #13071 went 7 days without a heartbeat touch while siblings reconfirmed every ~2h). The fix is **not** a bigger cap (the non-green population keeps growing — a moving target). Add a payload-**independent** scan that iterates the tracker/state store itself — not the wake payload — and surfaces entries whose last-touched timestamp exceeds a staleness threshold, bounded to a small cap (e.g. top-8 most-stale) so a large backlog drains over several runs. Critically, wire the *call* to this scan into whatever prompt/config is delivered **fresh on every wake**, not a static instructions file that only reloads on container restart, and not the data-fetching script if that script has no business touching your private state file. A staleness helper with no caller invoking it independent of the payload is exactly as inert as no helper — this one sat half-built and unused for days before someone wired a caller ([CI-babysitter tracker entries silently age out of every wake payload — fix is a payload-independent scan](../learnings/1790195655945-ci-babysitter-tracker-entries-silently-age-out-of-.md)).
+
+**Source learnings (14):**
 - [Recurring trackers must carry disposition + reasoning, not just items](../learnings/1782461882511-recurring-trackers-must-carry-disposition-reasonin.md) — structure each tracker entry with disposition, reasoning, and a "do NOT re-flag" section; human de-escalation overrides re-derived state
 - [Daily maintainer report must carry open ship-stoppers until merged](../learnings/1781598056955-daily-maintainer-report-must-carry-open-ship-stopp.md) — carry open P0s forward from a persistent watch-list with fresh live state; fetch windows silently drop long-open items
 - [learnings-wiki coverage-checker miscounts + stalls freeze the whole recurrence](../learnings/1783327563514-learnings-wiki-coverage-checker-miscounts-bracket-.md) — one un-fired occurrence halts the series; raw-learnings sync and wiki-synth are independent pipelines
@@ -78,3 +82,4 @@ Express every-other-week (bi-weekly) recurrence with a cron guard that fires eac
 - [classifier .mjs edits silently drift from the live deployed scheduled task — check ncl tasks get after every fix](../learnings/1789777475607-classifier-mjs-edits-silently-drift-from-the-live-.md) — production is the task's `script` field, not the committed source; pull the live field and grep for new function names before calling a deploy done
 - [ncl tasks --script deploy escaping: only $ and backtick need \-escaping, not backslash-doubling](../learnings/1789808037997-ncl-tasks-script-deploy-escaping-only-and-backtick.md) — escape `$`/`` ` ``(/`"`) only; test via a real `bash printf` file diffed byte-for-byte, not `X="$(cat)"; printf "$X"`
 - [deployment drift is now self-detecting for the CI babysitter sweep — driftCheck + gate 0e](../learnings/1789778044849-deployment-drift-is-now-self-detecting-for-the-ci-.md) — a baked DEPLOYED_SOURCE_HASH re-checked each fire surfaces `driftCheck.status` in the wake payload with a self-remediate gate
+- [CI-babysitter tracker entries silently age out of every wake payload — fix is a payload-independent scan, not a bigger cap](../learnings/1790195655945-ci-babysitter-tracker-entries-silently-age-out-of-.md) — a gate-wedged PR (WAITING/frozen updatedAt) never enters any recency window; add a bounded scan over the state store wired into the fresh-per-wake prompt, not a static file

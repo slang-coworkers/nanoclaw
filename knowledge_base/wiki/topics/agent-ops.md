@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-737 learnings. [Catalog](../index.md)
+741 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -536,6 +536,8 @@ type: topic
 - [Publish ONE consolidated GitHub comment per triage — refine internally, not in public rounds](../learnings/1786557889626-publish-one-consolidated-github-comment-per-triage.md)
 - [Publishing a narrower scope than your conclusion needs — and telling only your parent about a limit you never told GitHub](../learnings/1785960972845-publishing-a-narrower-scope-than-your-conclusion-n.md)
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
+- [Re-check the newest issue comment immediately before posting — a peer bot session shares your GitHub identity](../learnings/1790198726943-re-check-the-newest-issue-comment-immediately-befo.md)
+- [Re-derive maintainer scope directives from the primary GitHub comment — webhook bodies truncate, and never ADD scope you inferred](../learnings/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md)
 - [Re-read the authoritative hold surface at a gated action — a stale always-loaded rule beats a fresh not-loaded hold](../learnings/1786467632283-re-read-the-authoritative-hold-surface-at-a-gated-.md)
 - [RE-SCOPED, HIGH SEVERITY: ncl `--flag=value` is SILENTLY ignored on every verb but `tasks list` — returns full unfiltered data at exit 0](../learnings/1786243601219-re-scoped-high-severity-ncl-flag-value-is-silently.md)
 - [Re-triage close-check: verify the fix empirically at ToT, recommend close but defer the button to the maintainer](../learnings/1789159453847-re-triage-close-check-verify-the-fix-empirically-a.md)
@@ -636,6 +638,7 @@ type: topic
 - [supervise-issues scan.py awaiting_us has four false-positive nudge modes](../learnings/1790126534976-supervise-issues-scan-py-awaiting-us-has-four-fals.md)
 - [supervise-issues scan.py counts bots as humans and disposition-posted as owed](../learnings/1787748905685-supervise-issues-scan-py-counts-bots-as-humans-and.md)
 - [supervise-issues scan.py ignores human-owned disposition on ball==ours](../learnings/1787490423993-supervise-issues-scan-py-ignores-human-owned-dispo.md)
+- [supervise-issues scan.py mis-scores bot notices as "human spoke last"](../learnings/1790213221378-supervise-issues-scan-py-mis-scores-bot-notices-as.md)
 - [supervise-issues scan.py miscounts pr-board-sync bot comments as human, false awaiting_us](../learnings/1786712705926-supervise-issues-scan-py-miscounts-pr-board-sync-b.md)
 - [supervise-issues scan.py naive-datetime crash froze state ~23h and produced a 115-nudge false surge](../learnings/1787059894213-supervise-issues-scan-py-naive-datetime-crash-froz.md)
 - [supervise-issues scan.py over-flag is 3 concrete classifier defects, not noise](../learnings/1788008486909-supervise-issues-scan-py-over-flag-is-3-concrete-c.md)
@@ -710,6 +713,7 @@ type: topic
 - [Triaging a docs/process deliverable self-assigned to a maintainer — don't auto-forward to the code fixer](../learnings/1788881799057-triaging-a-docs-process-deliverable-self-assigned-.md)
 - [Two sessions on one branch: check live remote state before reporting, and never assume you made the last change](../learnings/1786026012219-two-sessions-on-one-branch-check-live-remote-state.md)
 - [Two sibling sessions scrubbed one issue 10s apart — reconcile in YOUR OWN comment, never edit theirs](../learnings/1785961450333-two-sibling-sessions-scrubbed-one-issue-10s-apart-.md)
+- [Two-maintainer design divergence on a PR: provide evidence, ask them to align, gate any redesign](../learnings/1790220265420-two-maintainer-design-divergence-on-a-pr-provide-e.md)
 - [Unblocking a budget-tapped coworker session: verify cost state directly, and use a NEW thread_id (not the same thread) to mint a fresh-budget session](../learnings/1789150203049-unblocking-a-budget-tapped-coworker-session-verify.md)
 - [Under a shared bot identity, "you did X" is a claim about a SESSION — only that session's own out-rows settle it, and a worktree mtime never does](../learnings/1786046014429-under-a-shared-bot-identity-you-did-x-is-a-claim-a.md)
 - [Untraceable from-parent mandate for costly/gated work — analyze cheaply and surface, don't execute](../learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md)
