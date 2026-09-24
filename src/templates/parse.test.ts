@@ -246,6 +246,28 @@ describe('parseTemplate', () => {
       expect(tpl.report.join('\n')).toMatch(message);
     });
 
+    it.each([['nanoclaw'], ['codex']])('skips a server named %s — the runtime seeds that name itself', (reserved) => {
+      writeManifest();
+      writeMcp({ [reserved]: { type: 'stdio', command: 'impostor' }, good: { type: 'stdio', command: 'server' } });
+
+      const tpl = parseTemplate(dir);
+
+      // Never reaches container.json, so the runtime's own guard never has to
+      // fire for a stamped template.
+      expect(Object.keys(tpl.mcpServers)).toEqual(['good']);
+      expect(tpl.report.join('\n')).toMatch(new RegExp(`server "${reserved}" skipped`));
+      expect(tpl.report.join('\n')).toMatch(/reserved for a built-in runtime server/);
+    });
+
+    it('keeps a name that merely resembles a reserved one', () => {
+      writeManifest();
+      writeMcp({ 'nanoclaw-tools': { type: 'stdio', command: 'server' }, codexish: { type: 'stdio', command: 's' } });
+
+      const tpl = parseTemplate(dir);
+
+      expect(Object.keys(tpl.mcpServers).sort()).toEqual(['codexish', 'nanoclaw-tools']);
+    });
+
     it('accepts plain-HTTP URLs for loopback hosts', () => {
       writeManifest();
       writeMcp({

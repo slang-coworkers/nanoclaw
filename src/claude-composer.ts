@@ -54,6 +54,7 @@ export function composeCoworkerSpine(options: ComposeCoworkerSpineOptions): stri
     overlays: options.overlays,
     cliScope: options.cliScope,
     mcpInstructions: options.mcpInstructions,
+    pluginOwnedSkills: options.pluginOwnedSkills,
   });
 }
 

@@ -108,6 +108,25 @@ export type McpAllowlistState = 'explicit' | 'inherited' | 'unrestricted';
  */
 export const BUILTIN_MCP_SERVER = 'nanoclaw';
 
+/**
+ * MCP server names the agent-runner seeds for itself before merging anything
+ * configured. Nothing on any intake path may take one.
+ *
+ * A seeded name is not just "already used" — it DENOTES a runtime capability.
+ * `nanoclaw` carries the mandatory message transport, `codex` the reasoning
+ * child. Taking the name redirects that capability's entire `mcp__<name>__*`
+ * namespace to the replacement, so a template declaring `nanoclaw` would be
+ * handed the `send_message` namespace while the session lost its only way to
+ * reply. Rejected at every intake (`validateMcpServerName`) rather than at one,
+ * because template mcp.json, `ncl groups config add-mcp-server`, and the
+ * `add_mcp_server` self-mod tool are three separate doors to the same map.
+ *
+ * The runtime's own guard derives its set from the seed literal's keys, so it
+ * cannot drift from what is actually seeded; this list is the early, clearer
+ * refusal. `src/mcp-allowlist-scope.test.ts` fails the build if the two drift.
+ */
+export const RESERVED_MCP_SERVER_NAMES: readonly string[] = [BUILTIN_MCP_SERVER, 'codex'];
+
 const BUILTIN_TOOL_PREFIX = `mcp__${BUILTIN_MCP_SERVER}__`;
 
 /**

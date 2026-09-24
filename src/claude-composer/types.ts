@@ -293,6 +293,12 @@ export interface ComposeCoworkerSpineOptions {
   // `instructions` field, so an agent cannot author its own; entries reach the DB
   // only through `ncl groups config` or a template, both admin-gated.
   mcpInstructions?: Record<string, string>;
+  // Skill names a stamped template owns, from `pluginOwnedSkillNames`. The
+  // catalog's copy of such a name is neither listed nor inlined: the template's
+  // body is what `/<name>` executes, so describing the catalog's would put a
+  // description in the prompt that the runtime contradicts. The name stays a
+  // valid slash command either way.
+  pluginOwnedSkills?: readonly string[];
 }
 
 export interface ComposeLegacyPromptOptions {
