@@ -51,6 +51,7 @@ import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
 import { approverPolicyCheck, type ApproverPolicyCheck } from './approver-policy.js';
+import { rowLabelForThread } from './row-label.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
 import {
   priceUsage,
