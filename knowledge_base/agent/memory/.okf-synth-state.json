@@ -2,17 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-09-01T04:54:11Z",
-   "backlog": 1583232,
-   "defects": 35,
-   "offenders": 177,
-   "top": {
-    "path": "imported/feedback_control_the_instrument_not_the_reasoning.md",
-    "class": "OVERSIZE",
-    "size": 61438
-   }
-  },
-  {
    "at": "2026-09-02T04:18:53Z",
    "backlog": 1416941,
    "defects": 34,
@@ -329,6 +318,17 @@
     "path": "imported/project_12185_bindless_texture_nv_desc_handle_nonimage.md",
     "class": "OVERSIZE",
     "size": 22020
+   }
+  },
+  {
+   "at": "2026-09-23T04:13:57Z",
+   "backlog": 190514,
+   "defects": 0,
+   "offenders": 73,
+   "top": {
+    "path": "imported/project_12266_defer_bare_decl_scope_leak_crash.md",
+    "class": "OVERSIZE",
+    "size": 21641
    }
   }
  ]

@@ -581,6 +581,7 @@ Migrated 2026-08-30; /okf-synthesis distills over time.
 - [feedback_supervisor_nudge_no_auto_close](feedback_supervisor_nudge_no_auto_close.md)
 - [feedback_supervisor_scan_misses_prod_branch_prs](feedback_supervisor_scan_misses_prod_branch_prs.md)
 - [feedback_supervisor_table_tier_links](feedback_supervisor_table_tier_links.md)
+- [feedback_sweep_a_correction_by_instrument_and_inference](feedback_sweep_a_correction_by_instrument_and_inference.md)
 - [feedback_sweep_rule_case_study_rhi800](feedback_sweep_rule_case_study_rhi800.md)
 - [feedback_tell_the_footprint_owner_when_you_post_yourself](feedback_tell_the_footprint_owner_when_you_post_yourself.md)
 - [feedback_the_compaction_bound_targets_the_wrong_file](feedback_the_compaction_bound_targets_the_wrong_file.md)
