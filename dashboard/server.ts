@@ -3030,8 +3030,8 @@ function ccusageSinceDate(daysAgo: number): string {
  * session-local codex/ directories.
  */
 function isClaudeModel(name: string): boolean {
-  // Claude model identifiers: 'claude-*', 'aws/anthropic/*', 'anthropic/*'
-  return /^(claude-|aws\/anthropic\/|anthropic\/)/.test(name);
+  // Claude model identifiers: 'claude-*', 'aws/anthropic/*', 'azure/anthropic/*', 'anthropic/*'
+  return /^(claude-|aws\/anthropic\/|azure\/anthropic\/|anthropic\/)/.test(name);
 }
 
 function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
@@ -3140,6 +3140,10 @@ export const FALLBACK_PRICING: Record<
   string,
   { input: number; output: number; cacheCreate: number; cacheRead: number }
 > = {
+  'claude-opus-5-5': { input: 4e-6, output: 20e-6, cacheCreate: 5e-6, cacheRead: 2e-7 },
+  'aws/anthropic/bedrock-claude-opus-5-5': { input: 4e-6, output: 20e-6, cacheCreate: 5e-6, cacheRead: 2e-7 },
+  'azure/anthropic/claude-opus-5-5': { input: 4e-6, output: 20e-6, cacheCreate: 5e-6, cacheRead: 2e-7 },
+  'azure/anthropic/claude-opus-4-8': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
   'claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
   'aws/anthropic/bedrock-claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
   'claude-opus-4-8': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
