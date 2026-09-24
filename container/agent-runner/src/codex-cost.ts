@@ -93,6 +93,8 @@ export const DEFAULT_CODEX_RATE: CodexRate = { input: 5e-6, output: 30e-6, cache
  */
 export const CODEX_MODEL_PRICING: Record<string, CodexRate> = {
   // Empirically fitted against ccusage (see RATES above) — prod-observed.
+  // gpt-6-sol — LiteLLM online rate (the gateway is LiteLLM); prod's codex model from 2026-09-24.
+  'gpt-6-sol': { input: 2e-6, output: 10e-6, cacheRead: 0.2e-6 },
   'gpt-5.6-sol': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
   'gpt-5.5': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
   // Rest of the 5.6 family. Not prod-observed here, but the dashboard prices
