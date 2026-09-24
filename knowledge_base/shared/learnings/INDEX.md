@@ -4136,6 +4136,9 @@
 - [cite dependency submodule versions by sha commit d](ag-1776713211742-1w6l4e/1790185229706-cite-dependency-submodule-versions-by-sha-commit-d.md) — _ag-1776713211742-1w6l4e_
 - [re derive maintainer scope directives from the pri](ag-1776713211742-1w6l4e/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md) — _ag-1776713211742-1w6l4e_
 - [supervise issues scan py mis scores bot notices as](ag-1776713211742-1w6l4e/1790213221378-supervise-issues-scan-py-mis-scores-bot-notices-as.md) — _ag-1776713211742-1w6l4e_
+- [kb sync step 4b control needs update index chmod c](ag-1776713211742-1w6l4e/1790219167090-kb-sync-step-4b-control-needs-update-index-chmod-c.md) — _ag-1776713211742-1w6l4e_
+- [two maintainer design divergence on a pr provide e](ag-1776713211742-1w6l4e/1790220265420-two-maintainer-design-divergence-on-a-pr-provide-e.md) — _ag-1776713211742-1w6l4e_
+- [okf synthesis double finalize causes recurring fal](ag-1776713211742-1w6l4e/1790223184028-okf-synthesis-double-finalize-causes-recurring-fal.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4261,6 +4264,7 @@
 - [action required workflow approval wedges are invis](ag-1776713259045-nax3cr/1790080487638-action-required-workflow-approval-wedges-are-invis.md) — _ag-1776713259045-nax3cr_
 - [falcor build approval gate waiting blocks reruns o](ag-1776713259045-nax3cr/1790136696883-falcor-build-approval-gate-waiting-blocks-reruns-o.md) — _ag-1776713259045-nax3cr_
 - [ci babysitter tracker entries silently age out of ](ag-1776713259045-nax3cr/1790195655945-ci-babysitter-tracker-entries-silently-age-out-of-.md) — _ag-1776713259045-nax3cr_
+- [okf synth py dangling link regex false positives o](ag-1776713259045-nax3cr/1790224601208-okf-synth-py-dangling-link-regex-false-positives-o.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4666,6 +4670,9 @@
 - [irdebugfunction does have a parentscope operand at](ag-1780667166418-apezq5/1790169317334-irdebugfunction-does-have-a-parentscope-operand-at.md) — _ag-1780667166418-apezq5_
 - [git describe is not a version id for sparsely tagg](ag-1780667166418-apezq5/1790185183125-git-describe-is-not-a-version-id-for-sparsely-tagg.md) — _ag-1780667166418-apezq5_
 - [re check the newest issue comment immediately befo](ag-1780667166418-apezq5/1790198726943-re-check-the-newest-issue-comment-immediately-befo.md) — _ag-1780667166418-apezq5_
+- [autodiff cantypebestored allowlist doesn t recurse](ag-1780667166418-apezq5/1790223013039-autodiff-cantypebestored-allowlist-doesn-t-recurse.md) — _ag-1780667166418-apezq5_
+- [bare clonedecoration of debugfuncdecoration re ref](ag-1780667166418-apezq5/1790223022890-bare-clonedecoration-of-debugfuncdecoration-re-ref.md) — _ag-1780667166418-apezq5_
+- [shared irdebugfunction via bare clonedecoration is](ag-1780667166418-apezq5/1790223703724-shared-irdebugfunction-via-bare-clonedecoration-is.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5230,6 +5237,8 @@
 - [slang rhi ci runs cuda interop tests on self hoste](ag-1780667166439-vmjrwe/1790197692432-slang-rhi-ci-runs-cuda-interop-tests-on-self-hoste.md) — _ag-1780667166439-vmjrwe_
 - [byte exact pr body metadata edits use gh api json ](ag-1780667166439-vmjrwe/1790199138458-byte-exact-pr-body-metadata-edits-use-gh-api-json-.md) — _ag-1780667166439-vmjrwe_
 - [fixing a producer breaks the coupled emit pr s tes](ag-1780667166439-vmjrwe/1790216980075-fixing-a-producer-breaks-the-coupled-emit-pr-s-tes.md) — _ag-1780667166439-vmjrwe_
+- [two review round gotchas filecheck check tokens in](ag-1780667166439-vmjrwe/1790222348386-two-review-round-gotchas-filecheck-check-tokens-in.md) — _ag-1780667166439-vmjrwe_
+- [maintainer who reviews and self fixes don t race a](ag-1780667166439-vmjrwe/1790226898754-maintainer-who-reviews-and-self-fixes-don-t-race-a.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5466,6 +5475,11 @@
 - [gh auth status invalid token is a false alarm for ](ag-1780667168475-a9tac8/1790172928541-gh-auth-status-invalid-token-is-a-false-alarm-for-.md) — _ag-1780667168475-a9tac8_
 - [xcode cmake generator rejects any lt config gt gen](ag-1780667168475-a9tac8/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md) — _ag-1780667168475-a9tac8_
 - [reviewer a final review md can be a stub recover t](ag-1780667168475-a9tac8/1790181801645-reviewer-a-final-review-md-can-be-a-stub-recover-t.md) — _ag-1780667168475-a9tac8_
+- [slang pr review integrity fail can be a false posi](ag-1780667168475-a9tac8/1790220188333-slang-pr-review-integrity-fail-can-be-a-false-posi.md) — _ag-1780667168475-a9tac8_
+- [autodiff fwd diff of a concrete generic specializa](ag-1780667168475-a9tac8/1790220192127-autodiff-fwd-diff-of-a-concrete-generic-specializa.md) — _ag-1780667168475-a9tac8_
+- [slang rhi debug sharedresourceownershiptracker rec](ag-1780667168475-a9tac8/1790221759357-slang-rhi-debug-sharedresourceownershiptracker-rec.md) — _ag-1780667168475-a9tac8_
+- [two accuracy traps when reviewing fno exceptions t](ag-1780667168475-a9tac8/1790224226872-two-accuracy-traps-when-reviewing-fno-exceptions-t.md) — _ag-1780667168475-a9tac8_
+- [filecheck check not window a not only guards the g](ag-1780667168475-a9tac8/1790231335186-filecheck-check-not-window-a-not-only-guards-the-g.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

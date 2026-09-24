@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-500 learnings. [Catalog](../index.md)
+504 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -209,11 +209,13 @@ type: topic
 - [CI sweeps: a stale workflow_dispatch run makes a GREEN PR look red (verify run event before rerunning)](../learnings/1785816873789-ci-sweeps-a-stale-workflow-dispatch-run-makes-a-gr.md)
 - [CI terminal is not chain terminal — a maintainer approved 6 minutes before two agents declared the chain closed](../learnings/1785970543490-ci-terminal-is-not-chain-terminal-a-maintainer-app.md)
 - [ci-babysitter action_required fix (2026-09-22, #12544) is dead code — wrong data source](../learnings/1790079172299-ci-babysitter-action-required-fix-2026-09-22-12544.md)
+- [CI-babysitter tracker entries silently age out of every wake payload — fix is a payload-independent scan, not a bigger cap](../learnings/1790195655945-ci-babysitter-tracker-entries-silently-age-out-of-.md)
 - [ci-babysitter: wake-payload hasNewActivity read false on 4 PRs with genuine new pushes](../learnings/1789970806784-ci-babysitter-wake-payload-hasnewactivity-read-fal.md)
 - [CI-infra patches referencing external repos need coordinator-side verification (A/C can't reach them)](../learnings/1787133301381-ci-infra-patches-referencing-external-repos-need-c.md)
 - [CI-integrity bug class: a detected failure is logged but never folded into the recorded test result (stale init=Success leaks through)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
 - [CI: flake-class vs deterministic-hang, and the two-sweep escalation threshold](../learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md)
 - [Cite cross-repo flake occurrences by run-id, not the babysat PR number](../learnings/1783930550138-cite-cross-repo-flake-occurrences-by-run-id-not-th.md)
+- [Cite dependency/submodule versions by SHA + commit date, never a git describe tag label](../learnings/1790185229706-cite-dependency-submodule-versions-by-sha-commit-d.md)
 - [Cite policy, never capability — a capability-negative has no failure signature because readers comply by not attempting](../learnings/1786199814402-cite-policy-never-capability-a-capability-negative.md)
 - [Cite pre-existing lines by CONTENT, not line number — branch numbers are the most ephemeral ref and rot into squash-merge commit messages](../learnings/1785941962003-cite-pre-existing-lines-by-content-not-line-number.md)
 - [Cite the SPEC, not a summarizer: SPV_NV_bindless_texture accepts uint2 OR uint64 (I got this wrong and it cost 4 guard iterations)](../learnings/1785776557998-cite-the-spec-not-a-summarizer-spv-nv-bindless-tex.md)
@@ -455,6 +457,7 @@ type: topic
 - [slang-llvm prebuilt ABI skew breaks master ToT builds (createLLVMBuilder_V2 vs _V3)](../learnings/1780320688142-slang-llvm-prebuilt-abi-skew-breaks-master-tot-bui.md)
 - [slang-rhi builds headless (no Vulkan SDK/GPU) via CMake FetchContent; fresh clones have no git identity](../learnings/1780310225210-slang-rhi-builds-headless-no-vulkan-sdk-gpu-via-cm.md)
 - [slang-rhi CI DOES run GPU tests — check-run names all say "build (...)", so never infer coverage from the name](../learnings/1785937835338-slang-rhi-ci-does-run-gpu-tests-check-run-names-al.md)
+- [slang-rhi CI runs CUDA interop tests on self-hosted GPU runners — read the per-test line, not the "GitHub-hosted skips" summary](../learnings/1790197692432-slang-rhi-ci-runs-cuda-interop-tests-on-self-hoste.md)
 - [Slang: IRBuilder source-loc RAII may already stamp struct keys — explicit sourceLoc= can be redundant](../learnings/1780416359939-slang-irbuilder-source-loc-raii-may-already-stamp-.md)
 - [SlangPy CI flake: shared nvrgfx GPU runner CUDA OOM](../learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-oom.md)
 - [Source doc comments: client-facing, no off-github refs, no change-narration](../learnings/1787573555990-source-doc-comments-client-facing-no-off-github-re.md)
@@ -505,5 +508,6 @@ type: topic
 - [When you correct a unit, grep every EXECUTABLE use of the old one - prose stating the new unit does not fix the recipes](../learnings/1785960172993-when-you-correct-a-unit-grep-every-executable-use-.md)
 - [When you hand a peer a file:line, verify the CITED function contains the mechanism — not just that the mechanism exists somewhere](../learnings/1785996662914-when-you-hand-a-peer-a-file-line-verify-the-cited-.md)
 - [Worktree volume can be 100% full — build fails ENOSPC at final link, not a code error](../learnings/1787280962308-worktree-volume-can-be-100-full-build-fails-enospc.md)
+- [Xcode CMake generator rejects any $&lt;CONFIG&gt; genex in per-source COMPILE_OPTIONS (presence, not value)](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md)
 - [XPASS is a deterministic author-owned CI failure, not a flake or regression](../learnings/1782360530038-xpass-is-a-deterministic-author-owned-ci-failure-n.md)
 - [Zombie queued CI runs poison queue metrics — 33% of a queue was two 71-day-old constants](../learnings/1786134666479-zombie-queued-ci-runs-poison-queue-metrics-33-of-a.md)

@@ -3,6 +3,7 @@ title: "Reviewer-A INTEGRITY-FAIL can be a false positive from a CONCURRENT PR r
 type: learning
 topic: review-process
 source: learnings/1786584985080-reviewer-a-integrity-fail-can-be-a-false-positive-.md
+superseded_by: 1790220188333-slang-pr-review-integrity-fail-can-be-a-false-posi
 ---
 
 # Reviewer-A INTEGRITY-FAIL can be a false positive from a CONCURRENT PR review on the shared checkout

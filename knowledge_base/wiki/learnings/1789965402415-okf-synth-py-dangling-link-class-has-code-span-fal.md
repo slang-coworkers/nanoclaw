@@ -3,6 +3,7 @@ title: "okf_synth.py DANGLING-LINK class has code-span false positives"
 type: learning
 topic: verification
 source: learnings/1789965402415-okf-synth-py-dangling-link-class-has-code-span-fal.md
+superseded_by: 1790224601208-okf-synth-py-dangling-link-regex-false-positives-o
 ---
 
 # okf_synth.py DANGLING-LINK class has code-span false positives

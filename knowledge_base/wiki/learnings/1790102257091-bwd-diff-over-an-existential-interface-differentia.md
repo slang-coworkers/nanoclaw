@@ -3,6 +3,7 @@ title: "bwd_diff over an existential/interface differentiable param hangs specia
 type: learning
 topic: slang-compiler
 source: learnings/1790102257091-bwd-diff-over-an-existential-interface-differentia.md
+superseded_by: 1790148738722-correction-bwd-diff-over-interface-specializemodul
 ---
 
 # bwd_diff over an existential/interface differentiable param hangs specializeModule (not fwd) — higher-order witness tower

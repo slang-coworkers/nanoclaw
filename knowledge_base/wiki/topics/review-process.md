@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-300 learnings. [Catalog](../index.md)
+305 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -161,6 +161,7 @@ type: topic
 - [Isolate Reviewer C in a git worktree for parallel /slang-pr-review runs](../learnings/1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-.md)
 - [Isolated REPO_ROOT worktree prevents the PR-review shared-tmp race; also verify reviewed-commit vs current head](../learnings/1789479957663-isolated-repo-root-worktree-prevents-the-pr-review.md)
 - [Maintainer naming request overrides automated-reviewer semantic objection](../learnings/1787619515509-maintainer-naming-request-overrides-automated-revi.md)
+- [Maintainer who reviews AND self-fixes: don't race a batch of "@bot rewrite this" comments](../learnings/1790226898754-maintainer-who-reviews-and-self-fixes-don-t-race-a.md)
 - [Markdown emphasis inside a phrase breaks literal grep - the runnable fix, not just "a grep miss is not an absent claim"](../learnings/1786003526432-markdown-emphasis-inside-a-phrase-breaks-literal-g.md)
 - [Mid-iteration PR: combined-review diff_hash (Reviewer A's SHA) mismatches pinned HEAD → approver Step-2 flag](../learnings/1783631632879-mid-iteration-pr-combined-review-diff-hash-reviewe.md)
 - [Monitor for a claude-CLI reviewer run must not grep the stream for generic failure words](../learnings/1787869224351-monitor-for-a-claude-cli-reviewer-run-must-not-gre.md)
@@ -214,6 +215,7 @@ type: topic
 - [Reviewer A can silently do a static-only review — verify the build actually ran](../learnings/1787323074074-reviewer-a-can-silently-do-a-static-only-review-ve.md)
 - [Reviewer A empty final-review.md on large diffs = 600s bg-wait timeout, not a clean result — recover subagents from stream.jsonl](../learnings/1789468288728-reviewer-a-empty-final-review-md-on-large-diffs-60.md)
 - [Reviewer A error_max_budget_usd salvage: subagent final texts are recoverable from stream.jsonl](../learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md)
+- [Reviewer A final-review.md can be a stub — recover the real review from stream.jsonl](../learnings/1790181801645-reviewer-a-final-review-md-can-be-a-stub-recover-t.md)
 - [Reviewer A final-review.md can be a truncated stub — verify size; recover lenses from stream.jsonl task_notifications](../learnings/1789483811315-reviewer-a-final-review-md-can-be-a-truncated-stub.md)
 - [Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](../learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md)
@@ -271,6 +273,7 @@ type: topic
 - [slang-pr-review Reviewer A can exit 0 yet be incomplete (background-subagent orphan)](../learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-incom.md)
 - [slang-pr-review Reviewer A can review the WRONG PR via stale tmp/pr-diff.patch](../learnings/1780497941518-slang-pr-review-reviewer-a-can-review-the-wrong-pr.md)
 - [slang-pr-review Reviewer A can truncate to a false 0/0/0 clean — verify the result event finalized](../learnings/1790123188250-slang-pr-review-reviewer-a-can-truncate-to-a-false.md)
+- [slang-pr-review Reviewer A INTEGRITY-FAIL from shared-checkout tmp/pr-diff.patch race](../learnings/1790158328926-slang-pr-review-reviewer-a-integrity-fail-from-sha.md)
 - [slang-pr-review Reviewer A: "0 bytes / no review produced" guard can be a lie when the run hit the budget cap — recover from stream](../learnings/1785186988820-slang-pr-review-reviewer-a-0-bytes-no-review-produ.md)
 - [slang-pr-review Reviewer A: --max-budget-usd must be ≥20 or it cuts off before final-review.md](../learnings/1788751025464-slang-pr-review-reviewer-a-max-budget-usd-must-be-.md)
 - [slang-pr-review Reviewer A: 600s bg-wait ceiling truncates final-review.md — recover from stream.jsonl](../learnings/1783983883017-slang-pr-review-reviewer-a-600s-bg-wait-ceiling-tr.md)
@@ -293,6 +296,8 @@ type: topic
 - [Stop polishing wording; keep recording mechanics — the boundary that ends a productive review thread](../learnings/1785905725952-stop-polishing-wording-keep-recording-mechanics-th.md)
 - [Supervisor scan awaiting_us false-flags: board-sync notices and bot reviewers](../learnings/1787532196124-supervisor-scan-awaiting-us-false-flags-board-sync.md)
 - [Triaging an issue that already has a community fix PR — review, don't duplicate](../learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md)
+- [Two accuracy traps when reviewing -fno-exceptions try/catch guard PRs (#12779 series)](../learnings/1790224226872-two-accuracy-traps-when-reviewing-fno-exceptions-t.md)
+- [Two review-round gotchas: FileCheck 'CHECK' tokens in prose, and never rm a file you didn't create](../learnings/1790222348386-two-review-round-gotchas-filecheck-check-tokens-in.md)
 - [Verdict-detection guards must page or query by author, not read reviews page 1](../learnings/1783665568170-verdict-detection-guards-must-page-or-query-by-aut.md)
 - [Verify "N reviewers APPROVE" against GitHub reviewDecision before posting it as a public verdict](../learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md)
 - [Verify "not constructible / defensive-only" claims that waive reviewer artifacts](../learnings/1780487356786-verify-not-constructible-defensive-only-claims-tha.md)

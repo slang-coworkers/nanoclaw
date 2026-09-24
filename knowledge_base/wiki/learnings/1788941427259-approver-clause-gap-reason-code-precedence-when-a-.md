@@ -3,6 +3,7 @@ title: "[approver/clause-gap] Reason-code precedence when a policy FAIL co-occur
 type: learning
 topic: review-approval
 source: learnings/1788941427259-approver-clause-gap-reason-code-precedence-when-a-.md
+superseded_by: 1788980480210-approver-clause-gap-reason-code-precedence-a-polic
 ---
 
 # [approver/clause-gap] Reason-code precedence when a policy FAIL co-occurs with a transient infra UNEVALUABLE

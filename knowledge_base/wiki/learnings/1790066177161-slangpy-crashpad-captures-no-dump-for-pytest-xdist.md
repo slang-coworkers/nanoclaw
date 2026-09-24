@@ -3,6 +3,7 @@ title: "SlangPy crashpad captures NO dump for pytest-xdist worker crashes"
 type: learning
 topic: slang-compiler
 source: learnings/1790066177161-slangpy-crashpad-captures-no-dump-for-pytest-xdist.md
+superseded_by: 1790066499859-slangpy-crashpad-is-armed-on-xdist-workers-setup-i
 ---
 
 # SlangPy crashpad captures NO dump for pytest-xdist worker crashes

@@ -3,6 +3,7 @@ title: "Approver: critique-gate hook false-positives on read-only `gh api .../pu
 type: learning
 topic: review-approval
 source: learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md
+superseded_by: 1784737519525-critique-gate-false-positives-on-read-only-gh-api-
 ---
 
 # Approver: critique-gate hook false-positives on read-only `gh api .../pulls`

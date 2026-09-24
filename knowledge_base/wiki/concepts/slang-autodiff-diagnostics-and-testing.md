@@ -3,7 +3,7 @@ title: "Slang Autodiff: Target Bugs, Diagnostics, Testing, and Loop-Carried Reco
 type: concept
 group: slang-autodiff-ir
 tags: [autodiff, differentiation, conditional, byte-address-buffer, diagnostics, testing, silent-gradient, member-methods, loop-carried, primal-hoist]
-source_count: 21
+source_count: 22
 ---
 
 # Slang Autodiff: Target Bugs, Diagnostics, Testing, and Loop-Carried Reconstruction
@@ -65,12 +65,16 @@ The follow-on localization of #12071 pins the mechanism: the reverse-mode `bwd_d
 
 Two durable testing consequences that survive the re-diagnosis: **no minimal pure-Slang repro is achievable** — scalar-in-loop and differentiable-*value-array* `DifferentialPair<float[N]>` stencils all PASS via `slangi` and `slang-test -cpu/-cuda`; only the reporter's SlangPy functional-API `IDiffTensor<float,2>` stencil (buffer-backed scatter-add adjoint) hangs, so the faithful reproducer to hand the Slang team is the SlangPy `repro.py`, and **a SlangPy regression test MUST use the actual `IDiffTensor` stencil shape** — a simplified `DiffTensorView` reduce is a false-green. Per slangpy#1053, do NOT land a pre-fix hanging tripwire test (it wedges CI runners) — prefer enabled-with-fix or a strict subprocess-timeout xfail only after validating CI device-recovery-after-child-kill. Regression window (self-verified on an L40S): SlangPy 0.42.0/Slang 2026.5.2 PASS · 0.43.1/2026.12 HANG · main/2026.17.1 HANG ⇒ (2026.5.2, 2026.12], still unfixed at 2026.17.1 (see [[wiki/concepts/general-misc-version-and-timestamp-reads.md]] for why #12299 cannot be the regressor). The gdb-attach recipe itself — force eager compile (`PipelineCompilationPolicy.immediate`, since SlangPy's default `deferred` runs codegen lazily at dispatch so a "hang at bwds dispatch" is often a COMPILE hang), `PR_SET_PTRACER_ANY` in the repro, sample `thread apply all bt` 2-3× to prove a non-terminating loop, with discriminators (missing backward `.cu` under `SLANGPY_DUMP_SLANG_INTERMEDIATES=1` = compile-side; `nvidia-smi` 0% = CPU/compiler-bound; `ps -o stat`=R at ~150% CPU = compiler loop) — beats recompiling the generated kernel with bare `slangc`, which hangs early in `diagnoseCircularConformances` for both failing and control variants (a module-linking confound that never reaches the real pass).
 
+## Autodiff-through-interface cluster: one root cause, four issue faces (Sep 2026)
+
+Fwd/bwd differentiation through **interface (existential) types** surfaced simultaneously as four separate-looking reports that are one root theme — worth clustering under a single owner rather than fixing independently: slang **#13226** (`slangc` HANGS in `specializeModule` on `bwd_diff` of interface-typed `[Differentiable]` params — the canonicalization ping-pong, see [[wiki/concepts/slang-autodiff-performance-and-passes.md]]); slang **#13230** (`spirv-opt` `MergeReturnPass` SIGABRT, #11146-class UAF, on the SlangPy fwd+bwd kernel); slang **#13233** (fwd-diff of an imported `IDifferentiable` struct with an explicit ctor + `no_diff` field emits invalid CUDA/HLSL + wrong SPIR-V — the IR-link annotation drop, see [[wiki/concepts/slang-autodiff-ir-autodiff-differentiation.md]]); slangpy **#1181** (nightly `ci-latest-slang` deterministically crashes the Vulkan xdist worker in `test_differentiable_interface_parameters`). Triage lesson: **a slangpy nightly-integration failure ("Slang branch: master" leg) is frequently the CI *face* of a slang-side compiler bug filed the same day** — cross-reference slangpy CI reds against new slang autodiff/SPIR-V issues before treating them as independent. Several members were UNTRIAGED (no `Dev Reviewed`, no assignee: #13230, #13233) even though a dev-owned sibling (#13226) existed — the cluster view catches the orphans ([Autodiff-through-interface cluster (Sep 2026): one root cause, four issue faces across two repos](../learnings/1790151331446-autodiff-through-interface-cluster-sep-2026-one-ro.md)).
+
 ## slangi Autodiff NativeString into Custom bwd Derivative (#12124)
 
 Passing a `NativeString` into a custom `bwd` derivative under `slangi` triggers a constants-OOB fault (shader-slang/slang#12124, LIVE at HEAD) ([slangi autodiff NativeString into custom bwd derivative → constants-OOB (LIVE at HEAD, #12124)](../learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-deriv.md)). That learning's root-cause section was later FALSIFIED: the real cause is a VM `Call` param-slot over-read, with the producer fix in #12127 ([CORRECTION #12124: my slangi-autodiff-NativeString root cause was WRONG — real cause is VM Call param-slot over-read + producer fix #12127](../learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md)).
 
 ---
-**Source learnings (21):**
+**Source learnings (22):**
 - [slang autodiff wires Optional intrinsics but omits the parallel Conditional family](../learnings/1782490233144-slang-autodiff-wires-optional-intrinsics-but-omits.md)
 - [slang #11782: conditional autodiff crash is flag-independent](../learnings/1782488412008-slang-11782-conditional-autodiff-crash-is-flag-ind.md)
 - [slang #11590: 41303 can't live in validation-only slice-1](../learnings/1781318517600-slang-11590-41303-can-t-live-in-validation-only-sl.md)
@@ -92,4 +96,5 @@ Passing a `NativeString` into a custom `bwd` derivative under `slangi` triggers 
 - [slangpy#1167 bwds() hang on runtime-loop IDiffTensor load — SlangPy-codegen-specific, no pure-Slang repro](../learnings/1789715066934-slangpy-1167-bwds-hang-on-runtime-loop-idifftensor.md)
 - [slangpy#1167: new bwds() HANG variant of reverse-loop reconstruction (runtime upper-bound)](../learnings/1789715336893-slangpy-1167-new-bwds-hang-variant-of-reverse-loop.md)
 - [pin a SlangPy/slangc compile HANG by gdb-attaching to the live linked session — #1167 is a target-specialization fixpoint, not autodiff primal-hoist](../learnings/1789721802032-pin-a-slangpy-slangc-compile-hang-by-gdb-attaching.md)
+- [autodiff-through-interface cluster (#13226/#13230/#13233/slangpy#1181): one root theme, four faces; a slangpy nightly red is often the CI face of a same-day slang autodiff bug](../learnings/1790151331446-autodiff-through-interface-cluster-sep-2026-one-ro.md)
 _Catalog: [[wiki/index.md]]_

@@ -3,6 +3,7 @@ title: "falcor-build-approval-gate 'waiting' blocks ALL reruns in that run, not 
 type: learning
 topic: agent-ops
 source: learnings/1788631867865-falcor-build-approval-gate-waiting-blocks-all-reru.md
+superseded_by: 1790136696883-falcor-build-approval-gate-waiting-blocks-reruns-o
 ---
 
 # falcor-build-approval-gate 'waiting' blocks ALL reruns in that run, not just Falcor jobs

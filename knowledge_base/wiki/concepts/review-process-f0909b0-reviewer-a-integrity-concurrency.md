@@ -3,7 +3,7 @@ title: Reviewer-A wrapper integrity & concurrency — INTEGRITY-FAIL, shared tmp
 type: concept
 group: review-process
 tags: [reviewer-a, integrity-fail, shared-tmp, concurrent-review, stream-jsonl, wrapper-success, in-thread-reply, delivery, slang-pr-review]
-source_count: 18
+source_count: 17
 ---
 
 ## TL;DR
@@ -45,30 +45,29 @@ comments, not as a conversation-level comment.
 `compose-and-run.sh`'s post-run guard re-reads the SHARED `$REPO_ROOT/tmp/pr-diff.patch`
 (where `REPO_ROOT=/workspace/agent/slang` for *all* slang and slang-rhi runs) and
 compares its `+++ b/` file set to the live PR's files. A concurrent review clobbers
-that file, so the guard reads the other PR's diff and mismatches. This is documented
-across three atoms with the same adjudication procedure and slightly different framings:
-
-- On PR#12508 the guard's `INTEGRITY-FAIL.txt` listed PR#12509's VM/bytecode files, but
-  `pr-diff.reference` sha256 == the live 12508 diff, the footer head matched, and 227
-  12508-hits vs 13 clobber-detection hits confirmed all four subagents ran on 12508 —
-  "the review was VALID; the guard's INPUT was stale". Discriminate by content with an
-  independent measurement, never the model's self-report [Reviewer-A INTEGRITY-FAIL can be a false positive from a clobbered SHARED tmp/pr-files.txt](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md).
-- On #12506 the guard reported PR#12493's files while `tmp/` held 12508/12509/12514
-  artifacts (several reviews sharing one checkout). The positive-binding proof:
-  `sha256sum <run_dir>/pr-diff.reference` (the runner's OWN capture at dispatch) vs the
-  `final-review.md` footer; `gh pr view <PR> --json files` vs the Changes Overview;
-  target fingerprints saturating `stream.jsonl`; `summarize.py <run_dir>` confirming
-  drift==0. Bonus: REVIEW.md Step 1 makes the inner model self-correct — two subagents
-  refused with "Staged Diff Does not match", the model regenerated an ISOLATED
-  `tmp/pr12506iso-diff.patch` and re-dispatched — "so a spurious INTEGRITY-FAIL often
-  coincides with a *correct* review" [Reviewer-A INTEGRITY-FAIL can be a false positive from a CONCURRENT PR review on the shared checkout](../learnings/1786584985080-reviewer-a-integrity-fail-can-be-a-false-positive-.md).
-- The cross-repo instance (slang-rhi#834 flagged as reviewing slang#12493 files) states
-  the four-step adjudication as a checklist — `pr-diff.reference` binding, the
-  `final-review.md` footer, a LIVE `gh pr diff <N>` in `stream.jsonl` tool_use, and
-  content sanity — and the prevention idea: "give each concurrent A-run its own worktree
-  like Reviewer C already does (`run-clarity.sh` isolates into `wt-clarity-<run_key>`),
-  or key the tmp diff path on the run". If all four point at the right PR, keep
-  `reviewers_complete:true` and note the false positive [slang-pr-review INTEGRITY-FAIL false-positive from shared tmp across concurrent cross-PR runs](../learnings/1786670426510-slang-pr-review-integrity-fail-false-positive-from.md).
+that file, so the guard reads the other PR's diff and mismatches. The adjudication
+procedure is identical across every observed instance: discriminate by CONTENT with an
+independent measurement, never the model's self-report or the guard headline. Confirm
+`sha256sum <run_dir>/pr-diff.reference` (the runner's OWN immutable capture at dispatch —
+not the shared `tmp/`) against a fresh `gh pr diff <N>`; check the `final-review.md`
+footer `reviewed:<head> · diff sha256`; confirm the target PR's fingerprints saturate
+`stream.jsonl` tool_use (the wrong-PR hits are the model's own clobber-detection reads);
+and `summarize.py <run_dir>` drift==0. If all agree, the review was VALID and the guard's
+INPUT was stale — keep `reviewers_complete:true` (or `reviewers_complete:false` with the
+findings flagged valid when A exited nonzero) and note the false positive. Observed on
+PR#12508 (guard listed PR#12509's VM files; 227 target-hits vs 13 clobber-detection hits)
+and across concurrent slang/slang-rhi cross-PR runs stating the same four-step checklist
+[Reviewer-A INTEGRITY-FAIL is a false positive from a clobbered shared tmp — adjudicate by content](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md).
+**The contamination need not be concurrent — a STALE cross-repo `tmp/pr-diff.patch` left
+by a PRIOR run trips it too:** on slang#13239 round-2 a leftover slang-rhi
+`tmp/pr-diff.patch` sat in the slang checkout, so the guard compared its `+++ b/` paths
+against #13239 and false-tripped while `pr-diff.reference` sha256 == the live diff
+(eb63ee7b0adf); `grep '^+++ b/' /workspace/agent/slang/tmp/pr-diff.patch` showing a
+different repo/PR's files is the tell [INTEGRITY-FAIL can be a false positive from a stale cross-repo tmp/pr-diff.patch](../learnings/1790220188333-slang-pr-review-integrity-fail-can-be-a-false-posi.md).
+REVIEW.md Step 1 also self-corrects — subagents that read the clobbered diff refuse
+("Staged Diff Does not match"), the model regenerates an isolated `tmp/iso-<pr>/pr-diff.patch`
+and re-dispatches — so a spurious INTEGRITY-FAIL routinely coincides with a *correct*
+review; the durable prevention is a per-run isolated worktree (below).
 
 The clean-prevention companion: before (re-)launching Reviewer A, `rm -f
 /workspace/agent/slang/tmp/{pr-diff.patch,pr-files.txt,context.json}` so the inner CLI
@@ -160,15 +159,14 @@ leaves review threads empty/unresolvable in the Files Changed view". Note the cr
 gate re-fires on ANY GitHub write once N edits have happened since the last OUTPUT_REVIEW
 — budget a fresh review round before the push+reply [a code Edit is not delivered until built+committed+pushed; and reply IN-THREAD on PR review comments](../learnings/1786616755173-a-code-edit-is-not-delivered-until-built-committed.md).
 
-**Source learnings (18):**
+**Source learnings (17):**
 
 - [a reviewer wrapper can report success with a 96-byte error-string artifact](../learnings/1786388990762-a-reviewer-wrapper-can-report-success-with-a-96-by.md) — gate at merge on size floor + content sniff; recover from `stream.jsonl` Write/Edit payloads (apply later Edits); report `reviewers_complete:false`; guard `isinstance(x, dict)`.
 - [Reviewer-A INTEGRITY-FAIL can be a false positive from a clobbered SHARED tmp/pr-files.txt](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — adjudicate by content (sha256 `pr-diff.reference` vs live diff, footer head, per-PR symbol hits), not the model's self-report or the guard headline.
-- [Reviewer-A INTEGRITY-FAIL can be a false positive from a CONCURRENT PR review on the shared checkout](../learnings/1786584985080-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — positive-binding proof procedure; REVIEW.md Step 1 self-corrects into an isolated diff, so a spurious INTEGRITY-FAIL often coincides with a correct review.
+- [INTEGRITY-FAIL false positive from a STALE cross-repo `tmp/pr-diff.patch` (not just concurrent); `pr-diff.reference` sha256 == live diff proves the review is valid; `grep '^+++ b/' tmp/pr-diff.patch` reveals the wrong-repo contamination.](../learnings/1790220188333-slang-pr-review-integrity-fail-can-be-a-false-posi.md)
 - [a code Edit is not delivered until built+committed+pushed; and reply IN-THREAD on PR review comments](../learnings/1786616755173-a-code-edit-is-not-delivered-until-built-committed.md) — confirm remote head via `git ls-remote` before saying "pushed"; use the review-comment `/replies` endpoint; the critique gate re-fires on any GitHub write after N edits.
 - [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md) — terminal test priority: `final-review.md` ≥500 B, INTEGRITY-FAIL.txt, the `{"type":"result"}` record, then `/proc/<pid>/cmdline` (not `pgrep -f`); 5+ min static-timeout backstop only.
 - [Shared slang checkout tmp/ is a cross-review race — a concurrent PR clobbers your staging](../learnings/1786670089193-shared-slang-checkout-tmp-is-a-cross-review-race-a.md) — clear the shared `tmp/{pr-diff.patch,pr-files.txt,context.json}` before launch; a transient 400 JSON-payload error is not deterministic if a sibling reviewer succeeded on the same model.
-- [slang-pr-review INTEGRITY-FAIL false-positive from shared tmp across concurrent cross-PR runs](../learnings/1786670426510-slang-pr-review-integrity-fail-false-positive-from.md) — four-step adjudication checklist; give each A-run its own worktree like Reviewer C's `wt-clarity-<run_key>`, or key the tmp path on the run.
 - [patch-mode `git apply` + `git commit -am` drops untracked NEW files from the reviewed diff → false Reviewer-A "no test" gap (tell: tests show `??`); Reviewer C's worktree sees them, so discount the gap; runner should `git add -A` before commit.](../learnings/1789333359114-patch-mode-pr-review-git-commit-am-drops-new-test-.md)
 - [isolated REPO_ROOT worktree prevents the PR-review shared-tmp race; verify reviewed-commit vs current head](../learnings/1789479957663-isolated-repo-root-worktree-prevents-the-pr-review.md) — a `wt-<pr>-revA` worktree of origin/master (with REVIEW.md + `.claude/agents`) gives Reviewer A its own `tmp/`; also re-read `headRefOid` after the pass and judge any mid-review delta.
 - [slang-pr-review-runner INTEGRITY-FAIL self-heals via tmp/iso-<pr>/ while the post-run net still trips](../learnings/1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal.md) — the CLI isolates the correct diff into `tmp/iso-<pr>-review/` and re-runs the affected subagents, so the review is grounded correctly even though the post-run guard re-reads the still-clobbered shared file.

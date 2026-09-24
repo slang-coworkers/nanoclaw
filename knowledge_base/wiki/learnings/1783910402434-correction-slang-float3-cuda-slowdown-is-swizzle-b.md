@@ -3,6 +3,7 @@ title: "CORRECTION: Slang float3 CUDA slowdown is swizzle-base re-evaluation, NO
 type: learning
 topic: slang-compiler
 source: learnings/1783910402434-correction-slang-float3-cuda-slowdown-is-swizzle-b.md
+superseded_by: 1783911049805-slang-cuda-cpp-float3-rgb-swizzle-slowdown-is-base
 ---
 
 # CORRECTION: Slang float3 CUDA slowdown is swizzle-base re-evaluation, NOT vec3 layout/register pressure

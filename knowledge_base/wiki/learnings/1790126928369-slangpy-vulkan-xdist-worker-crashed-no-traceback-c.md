@@ -3,6 +3,7 @@ title: "slangpy Vulkan 'xdist worker crashed, no traceback' can be a catchable S
 type: learning
 topic: slang-compiler
 source: learnings/1790126928369-slangpy-vulkan-xdist-worker-crashed-no-traceback-c.md
+superseded_by: 1790127518160-slangpy-1181-correction-the-vulkan-worker-crash-is
 ---
 
 # slangpy Vulkan "xdist worker crashed, no traceback" can be a catchable Slang SPIRV-Tools assert (compile-time), not a driver/GPU bug

@@ -3,7 +3,7 @@ title: Fleet operations — CI/GitHub infra, dispatch routing & verify-before-yo
 type: concept
 group: agent-routing
 tags: [gh-auth, onecli, falcor-gate, ci-rerun, dispatch, wired-coworkers, stale-toolchain, verification, revert-drill, skill-drift]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -189,6 +189,7 @@ $1=="160000"{print "GITLINK",$4}'`, empty = data-only. On 2026-09-15 both passed
 (0 execs / 0 gitlinks across ~20.9k staged files). Operator follow-up: swap the
 STEP-4b control for the cacheinfo form so it stops being a perpetual false alarm
 ([KB-sync data-only gate: core.fileMode=false defeats the chmod control; prove via cacheinfo](../learnings/1789441596421-kb-sync-step-4b-data-only-gate-core-filemode-false.md)).
+The equivalent one-liner is `git add -f <probe> && git update-index --chmod=+x <probe>`, which sets the staged mode directly — the same reason the STEP-4b *fix* `git update-index --chmod=-x <path>` works when a working-tree chmod is invisible to git. The gate itself is **never blind**: it reads the authoritative staged INDEX modes via `git ls-files -s` regardless of `core.fileMode`, so a real `100755`/`160000` entry is still caught; a 2026-09-24 direct scan (`git ls-files -s knowledge_base | awk '$1=="100755"||$1=="160000"'`) confirmed 0 executables / 0 gitlinks, and the "6 executables" an older STEP-4b note referenced had already been normalized to `100644` in prior syncs ([KB-sync STEP 4b control needs `update-index --chmod`; the gate reads INDEX modes, not the working-tree bit](../learnings/1790219167090-kb-sync-step-4b-control-needs-update-index-chmod-c.md)).
 
 ## Verify before you claim: stale toolchains and false premises
 
@@ -287,7 +288,7 @@ review:
   cause is skill-copy drift, flagged to the operator to reconcile once
   ([okf-synth exempt mechanism retracted; skill-copy drift](../learnings/1788842883204-okf-synth-escalate-on-a-load-bearing-top-offender-.md)).
 
-**Source learnings (18):**
+**Source learnings (19):**
 
 - [`gh auth status` says "GH_TOKEN invalid" — red herring for the app installation token](../learnings/1788374386518-gh-auth-status-says-gh-token-invalid-red-herring-f.md) — App tokens can't hit `/user`; repo-scoped reads/writes still work — test the actual call before escalating.
 - [gh auth status falsely reports nv-slang-bot token invalid; gh api still works](../learnings/1788881883720-gh-auth-status-falsely-reports-nv-slang-bot-token-.md) — Use `gh api` (REST) for everything; GraphQL-backed `gh` subcommands break; never `env -u GH_TOKEN`.
@@ -307,3 +308,4 @@ review:
 - [printf width-from-operand-size: an UNPINNED half can be misread as double](../learnings/1788904081233-printf-width-from-operand-size-fixes-an-unpinned-f.md) — A width-from-size rule interacts with EVERY unpinned type via the aliased operand; run codex before a `[Resolution]` close-out.
 - [okf-synth has NO `okf_synth: exempt`; a load-bearing top offender is a known false positive](../learnings/1788842883204-okf-synth-escalate-on-a-load-bearing-top-offender-.md) — Verify a skill's version (md5 + `git log -S`) before citing its mechanism; runtime copies drift from canonical.
 - [KB-sync STEP-4b data-only gate: core.fileMode=false defeats the chmod control — prove via cacheinfo](../learnings/1789441596421-kb-sync-step-4b-data-only-gate-core-filemode-false.md) — a fresh chmod stages as `100644` under `fileMode=false`; exercise the gate with `update-index --cacheinfo 100755` and scan the whole staged index (`git ls-files -s`), don't abort on the false alarm.
+- [KB-sync STEP 4b control needs `update-index --chmod`; the gate reads INDEX modes, not the working-tree bit](../learnings/1790219167090-kb-sync-step-4b-control-needs-update-index-chmod-c.md) — `git add -f && git update-index --chmod=+x` drives the control under `fileMode=false`; the real check (`git ls-files -s`) stays authoritative and caught 0 execs/0 gitlinks on 2026-09-24.

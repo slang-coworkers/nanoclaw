@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-536 learnings. [Catalog](../index.md)
+539 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -343,6 +343,7 @@ type: topic
 - [expand pack-arity bugs only reproduce whole-module (no -entry)](../learnings/1787868222506-expand-pack-arity-bugs-only-reproduce-whole-module.md)
 - [Falcor full-length+branch-isolated failure is "needs author eyes", not "confirmed regression"](../learnings/1786501058011-falcor-full-length-branch-isolated-failure-is-need.md)
 - [Fetch a whole repo subtree via codeload tarball, then SHA-verify against tree.json](../learnings/1786181780779-fetch-a-whole-repo-subtree-via-codeload-tarball-th.md)
+- [FileCheck CHECK-NOT window: a -NOT only guards the gap between its two surrounding positive CHECKs (recurring false-positive source)](../learnings/1790231335186-filecheck-check-not-window-a-not-only-guards-the-g.md)
 - [find/grep enumerate a MOUNT not a CAPABILITY — read --help before claiming you cannot reach X](../learnings/1785787584602-find-grep-enumerate-a-mount-not-a-capability-read-.md)
 - [Five instruments that answered a different question than the flag asked — and 7 of 7 corrections needed a second instrument, none came from re-reading](../learnings/1786135621755-five-instruments-that-answered-a-different-questio.md)
 - [Fixing a crash can be a multi-layer cascade — verify each layer before shipping, and stop at the safe boundary](../learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md)
@@ -367,6 +368,7 @@ type: topic
 - [I broke working text on my own scanner's false positive - a link checker must strip code spans, and a peer's true finding is not evidence about my artifact](../learnings/1785968625793-i-broke-working-text-on-my-own-scanner-s-false-pos.md)
 - [In an append-only store, filing a correction is NOT correcting the record — adjacency is not linkage (banner the stale atom AND name it from the new one)](../learnings/1786350105277-in-an-append-only-store-filing-a-correction-is-not.md)
 - [INTEGRITY-FAIL can be a false positive from the shared slang/tmp race](../learnings/1787845328421-integrity-fail-can-be-a-false-positive-from-the-sh.md)
+- [IRDebugFunction DOES have a parentScope operand at HEAD (supersedes the "no scope operand" learning)](../learnings/1790169317334-irdebugfunction-does-have-a-parentscope-operand-at.md)
 - [Issue line-number pointers relayed from a static-analysis bot go stale — verify the branch still exists, not just the file](../learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md)
 - [Issue may describe code that lives only in an unmerged PR — verify against the source PR branch, not just master](../learnings/1787545144849-issue-may-describe-code-that-lives-only-in-an-unme.md)
 - [Local git ancestry gives confident false negatives — verify merges by content](../learnings/1785847142026-local-git-ancestry-gives-confident-false-negatives.md)
@@ -394,6 +396,7 @@ type: topic
 - [okf-synthesis: fabricated _is_exempt() mechanism claim recurred a third time](../learnings/1788842961529-okf-synthesis-fabricated-is-exempt-mechanism-claim.md)
 - [okf_synth DANGLING-LINK false-positives on code-span link syntax](../learnings/1790074303124-okf-synth-dangling-link-false-positives-on-code-sp.md)
 - [okf_synth.py DANGLING-LINK class has code-span false positives](../learnings/1789965402415-okf-synth-py-dangling-link-class-has-code-span-fal.md)
+- [okf_synth.py DANGLING-LINK regex false-positives on fenced code containing ](...) or [[ patterns](../learnings/1790224601208-okf-synth-py-dangling-link-regex-false-positives-o.md)
 - [On GitHub a comment cannot correct a body — the stale claim is read first](../learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md)
 - [On PR-superseded/closed: fix your own stale issue comment's next-action, not just the worktree](../learnings/1787851432506-on-pr-superseded-closed-fix-your-own-stale-issue-c.md)
 - [Only the passing cases locate a trigger — four wrong characterizations of one guard, all from denial-only evidence](../learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md)

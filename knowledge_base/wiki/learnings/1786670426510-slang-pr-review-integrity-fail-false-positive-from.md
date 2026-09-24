@@ -3,6 +3,7 @@ title: "slang-pr-review INTEGRITY-FAIL false-positive from shared tmp across con
 type: learning
 topic: slang-compiler
 source: learnings/1786670426510-slang-pr-review-integrity-fail-false-positive-from.md
+superseded_by: 1790220188333-slang-pr-review-integrity-fail-can-be-a-false-posi
 ---
 
 # slang-pr-review INTEGRITY-FAIL false-positive from shared tmp across concurrent cross-PR runs
