@@ -400,19 +400,39 @@ export async function checkTableParity(repoRoot: string = REPO_ROOT): Promise<Ta
       );
     }
     const bases = new Set<string>(Object.keys(side.runnerTable));
-    for (const { table } of side.tables) for (const k of Object.keys(table)) bases.add(k);
+    const dashboardPriced = new Set<string>();
+    for (const { table } of side.tables) {
+      for (const k of Object.keys(table)) {
+        bases.add(k);
+        dashboardPriced.add(k);
+      }
+    }
     const inputs = normalizerInputs(bases, side.prefixes);
     for (const { where, fn } of side.normalizers) {
+      const runnerOnlyHits = new Set<string>();
       for (const input of inputs) {
         checks++;
         const mine = side.runnerNormalize(input);
         const theirs = fn(input);
+        // A dashboard normalizer resolves only onto rows its own table holds, so
+        // it returns '' for a model only the runner prices. That is the
+        // runner-only case (b) already allows; flagging it here would make every
+        // new model a deadlock between the nv-main and nv-dashboard PRs.
+        if (mine !== theirs && theirs === '' && mine !== '' && side.tables.length > 0 && !dashboardPriced.has(mine)) {
+          runnerOnlyHits.add(mine);
+          continue;
+        }
         if (mine !== theirs) {
           findings.push(
             `${side.label}: normalizer drift on ${JSON.stringify(input)} — ` +
               `runner ${JSON.stringify(mine)} vs ${where} ${JSON.stringify(theirs)}`,
           );
         }
+      }
+      if (runnerOnlyHits.size > 0) {
+        notes.push(
+          `${side.label}: ${where} does not resolve ${[...runnerOnlyHits].join(', ')} (runner-only row — allowed, see above)`,
+        );
       }
     }
   }

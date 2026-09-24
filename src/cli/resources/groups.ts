@@ -28,6 +28,7 @@ import { initGroupFilesystem } from '../../group-init.js';
 import { getProviderHostContract } from '../../provider-contracts/registry.js';
 import { resolveProviderName } from '../../providers/provider-name.js';
 import { createAgentFromTemplate } from '../../templates/create-agent.js';
+import { templateApprovalDetail } from '../../templates/approval-detail.js';
 import {
   formatRestampResult,
   groupsCarryingPlugin,
@@ -315,6 +316,11 @@ registerResource({
     },
     create: {
       access: 'approval',
+      // A bare `--template <ref>` tells the approver nothing about the MCP servers
+      // the stamp would wire. Rendered here so the card states the reach; a bad ref
+      // throws and refuses instead of carding an unrenderable request.
+      approvalDetail: (raw: Record<string, unknown>) =>
+        raw.template === undefined ? undefined : templateApprovalDetail(String(raw.template)),
       description:
         'Create (or return the existing) agent group with its container config. Idempotent on --folder (bare creates only; --folder cannot be combined with --template). ' +
         'With --template <ref>, stamp from a local agent plugin under templates/ (skills + MCP servers ' +

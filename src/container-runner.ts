@@ -79,7 +79,7 @@ import type { SupervisedHandle, SupervisedSnapshot } from './drivers/session-eve
 import { GROUP_FOLDER_LABEL, labelValueLegal, specInvalid } from './drivers/types.js';
 import type { ContainerSpec, MountSpec, SessionFailure, SessionSpec } from './drivers/types.js';
 import { getGatewayProvider, type GatewayContribution } from './gateway-providers/index.js';
-import { initGroupFilesystem } from './group-init.js';
+import { initGroupFilesystem, pluginOwnedSkillNames } from './group-init.js';
 import {
   PERSONA_PREPEND_FILE,
   isComposedDocument,
@@ -468,6 +468,7 @@ async function composeOptionsFor(agentGroup: AgentGroup): Promise<{
   overlays: string[] | undefined;
   cliScope: 'disabled' | 'group' | 'global';
   mcpInstructions: Record<string, string> | undefined;
+  pluginOwnedSkills: string[];
 }> {
   const groupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
   const configRow = await getContainerConfig(agentGroup.id);
@@ -478,6 +479,9 @@ async function composeOptionsFor(agentGroup: AgentGroup): Promise<{
     overlays: agentGroup.overlays ? JSON.parse(agentGroup.overlays) : undefined,
     cliScope: (configRow?.cli_scope ?? 'group') as 'disabled' | 'group' | 'global',
     mcpInstructions: readMcpInstructions(configRow?.mcp_servers, agentGroup.name),
+    // Same source `group-init` skips mirroring by, so the document describes
+    // exactly the skills whose catalog body it would have mirrored.
+    pluginOwnedSkills: [...pluginOwnedSkillNames(agentGroup.folder)],
   };
 }
 
@@ -546,6 +550,7 @@ export async function renderComposedDocument(agentGroup: AgentGroup): Promise<{
         overlays: opts.overlays,
         cliScope: opts.cliScope,
         mcpInstructions: opts.mcpInstructions,
+        pluginOwnedSkills: opts.pluginOwnedSkills,
       }),
     ),
   });

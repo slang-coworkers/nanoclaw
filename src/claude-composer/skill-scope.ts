@@ -302,6 +302,13 @@ export function residentSkillInstructions(
   types: Record<string, CoworkerTypeEntry>,
   catalog: Record<string, SkillMeta>,
   manifest: CoworkerManifest,
+  /**
+   * Skill names a stamped template owns. Their prose is withheld: resident prose
+   * is the sharpest case of the prompt/executable disagreement, because the whole
+   * body sits in context (onecli-gateway's credential rules, for one) while a
+   * template-authored body is what actually runs.
+   */
+  shadowed: ReadonlySet<string> = new Set(),
 ): { name: string; body: string }[] {
   const allowed = manifest.flat ? null : allowedNamesFor(types, catalog, manifest);
 
@@ -316,6 +323,9 @@ export function residentSkillInstructions(
     // floor entry naming a dir whose frontmatter `name:` differs is still mirrored,
     // so its prose must still be resident.
     if (allowed !== null && !allowed.has(meta.name) && !allowed.has(path.basename(dir))) continue;
+    // Matched on both keys, exactly as the allow-list above is: a template owning
+    // the dir basename shadows the skill even when its frontmatter `name:` differs.
+    if (shadowed.has(meta.name) || shadowed.has(path.basename(dir))) continue;
     const file = path.join(dir, 'instructions.md');
     let body: string;
     try {
