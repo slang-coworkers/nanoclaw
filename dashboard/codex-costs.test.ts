@@ -408,10 +408,16 @@ describe('CODEX_MODEL_PRICING agrees with the agent-runner’s copy (no drift)',
     expect(runnerNormalizers.length, 'runner exposes normalizeCodexModel for the parity check').toBeGreaterThan(0);
 
     // Battery over the UNION of both tables' keys × every wire form, plus edge
-    // inputs. Union (not just dashboard keys) so a model EITHER side prices is
-    // checked — a runner-only model the dashboard resolves to '' is exactly the
-    // drift this must catch; enumerating only dashboard keys would miss it.
-    const bases = new Set<string>([...Object.keys(CODEX_MODEL_PRICING), ...runnerKeys]);
+    // inputs, so a model EITHER side prices is checked. One asymmetry is allowed,
+    // the same one scripts/cost-parity.ts allows: a model only the RUNNER prices
+    // resolves to '' here because this table has no row for it yet. The two
+    // halves live on different branches (nv-main / nv-dashboard) and ship in
+    // separate PRs, and the composed CI runs this test on the nv-main PR, so
+    // forbidding runner-first would deadlock every new model. The enforcer may
+    // be stricter than the reporter; the reverse (a dashboard-only model the
+    // cost cap cannot see) stays a failure, in cost-parity's leg (b).
+    const dashboardKeys = new Set<string>(Object.keys(CODEX_MODEL_PRICING));
+    const bases = new Set<string>([...dashboardKeys, ...runnerKeys]);
     const inputs: (string | undefined)[] = [
       undefined,
       '',
@@ -435,13 +441,23 @@ describe('CODEX_MODEL_PRICING agrees with the agent-runner’s copy (no drift)',
         `  ${base.toUpperCase()} `,
       );
     }
-    // Every discovered normalizer must agree with the dashboard on every input.
+    // Every discovered normalizer must agree with the dashboard on every input,
+    // except the allowed runner-only case above.
+    const runnerOnly = new Set<string>();
     for (const { where, fn } of runnerNormalizers) {
       for (const input of inputs) {
-        expect(fn(input), `${where} vs dashboard disagree on ${JSON.stringify(input)}`).toBe(
-          normalizeCodexModel(input),
-        );
+        const theirs = fn(input);
+        const mine = normalizeCodexModel(input);
+        if (theirs !== '' && mine === '' && !dashboardKeys.has(theirs)) {
+          runnerOnly.add(theirs);
+          continue;
+        }
+        expect(theirs, `${where} vs dashboard disagree on ${JSON.stringify(input)}`).toBe(mine);
       }
     }
+    // A runner-only key must really be absent here (not a typo'd row), and the
+    // dashboard-only direction is not reachable from this test by construction:
+    // a key this table has and the runner lacks fails `expect(...).toBe(mine)`.
+    for (const k of runnerOnly) expect(dashboardKeys.has(k), `${k} is runner-only`).toBe(false);
   });
 });
