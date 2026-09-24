@@ -47,6 +47,7 @@ export interface CodexModelRate {
 
 /** Keyed by BASE model id — `normalizeCodexModel` strips the provider routing prefix. */
 export const CODEX_MODEL_PRICING: Record<string, CodexModelRate> = {
+  'gpt-6-sol': { input: 2e-6, output: 1e-5, cacheRead: 2e-7 },
   'gpt-5.6-sol': { input: 5e-6, output: 3e-5, cacheRead: 5e-7 },
   'gpt-5.6': { input: 5e-6, output: 3e-5, cacheRead: 5e-7 },
   'gpt-5.6-terra': { input: 2e-6, output: 1.2e-5, cacheRead: 2e-7 },
