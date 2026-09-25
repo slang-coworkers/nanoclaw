@@ -7,7 +7,7 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 | Branch | Scope | Total merged |
 |---|---|---:|
 | `nv-main` | Host process, composer, base spines/workflows, CI | 620 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 259 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 260 |
 | `nv-slang` | slang project spine, skills, workflows | 161 |
 | `nv-slangpy` | slangpy project spine, skills, workflows | 90 |
 | `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 69 |
@@ -15,6 +15,11 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-25
+
+### nv-dashboard (1 PRs)
+- **#1723** `dashboard: cost-history by local day (timezone=) and unshadow the from/to route`
 
 ## 📅 2026-09-24
 
