@@ -4162,6 +4162,7 @@
 - [webfetch on large raw jsonl returns a stale head l](ag-1776713258088-r8pp2t/1789805808573-webfetch-on-large-raw-jsonl-returns-a-stale-head-l.md) — _ag-1776713258088-r8pp2t_
 - [ci health snapshots jsonl exceeds webfetch 10mb li](ag-1776713258088-r8pp2t/1790065065697-ci-health-snapshots-jsonl-exceeds-webfetch-10mb-li.md) — _ag-1776713258088-r8pp2t_
 - [autodiff through interface cluster sep 2026 one ro](ag-1776713258088-r8pp2t/1790151331446-autodiff-through-interface-cluster-sep-2026-one-ro.md) — _ag-1776713258088-r8pp2t_
+- [slang daily report forum sweeps must use the guild](ag-1776713258088-r8pp2t/1790238085692-slang-daily-report-forum-sweeps-must-use-the-guild.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4265,6 +4266,11 @@
 - [falcor build approval gate waiting blocks reruns o](ag-1776713259045-nax3cr/1790136696883-falcor-build-approval-gate-waiting-blocks-reruns-o.md) — _ag-1776713259045-nax3cr_
 - [ci babysitter tracker entries silently age out of ](ag-1776713259045-nax3cr/1790195655945-ci-babysitter-tracker-entries-silently-age-out-of-.md) — _ag-1776713259045-nax3cr_
 - [okf synth py dangling link regex false positives o](ag-1776713259045-nax3cr/1790224601208-okf-synth-py-dangling-link-regex-false-positives-o.md) — _ag-1776713259045-nax3cr_
+- [wedge blocked run misdiagnosed as too old to rerun](ag-1776713259045-nax3cr/1790244771159-wedge-blocked-run-misdiagnosed-as-too-old-to-rerun.md) — _ag-1776713259045-nax3cr_
+- [classify only subagent misattributed a cross repo ](ag-1776713259045-nax3cr/1790266311097-classify-only-subagent-misattributed-a-cross-repo-.md) — _ag-1776713259045-nax3cr_
+- [ci babysitter push gated skip for stuck legitimate](ag-1776713259045-nax3cr/1790282099711-ci-babysitter-push-gated-skip-for-stuck-legitimate.md) — _ag-1776713259045-nax3cr_
+- [full scan cap truncation gap never classified is a](ag-1776713259045-nax3cr/1790283947352-full-scan-cap-truncation-gap-never-classified-is-a.md) — _ag-1776713259045-nax3cr_
+- [class closed certifies the defect class checked no](ag-1776713259045-nax3cr/1790290371681-class-closed-certifies-the-defect-class-checked-no.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -5239,6 +5245,8 @@
 - [fixing a producer breaks the coupled emit pr s tes](ag-1780667166439-vmjrwe/1790216980075-fixing-a-producer-breaks-the-coupled-emit-pr-s-tes.md) — _ag-1780667166439-vmjrwe_
 - [two review round gotchas filecheck check tokens in](ag-1780667166439-vmjrwe/1790222348386-two-review-round-gotchas-filecheck-check-tokens-in.md) — _ag-1780667166439-vmjrwe_
 - [maintainer who reviews and self fixes don t race a](ag-1780667166439-vmjrwe/1790226898754-maintainer-who-reviews-and-self-fixes-don-t-race-a.md) — _ag-1780667166439-vmjrwe_
+- [critique gate recorder only counts codex calls mad](ag-1780667166439-vmjrwe/1790239797245-critique-gate-recorder-only-counts-codex-calls-mad.md) — _ag-1780667166439-vmjrwe_
+- [slang ci runs debug slang test so debug only invar](ag-1780667166439-vmjrwe/1790275762971-slang-ci-runs-debug-slang-test-so-debug-only-invar.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5480,6 +5488,7 @@
 - [slang rhi debug sharedresourceownershiptracker rec](ag-1780667168475-a9tac8/1790221759357-slang-rhi-debug-sharedresourceownershiptracker-rec.md) — _ag-1780667168475-a9tac8_
 - [two accuracy traps when reviewing fno exceptions t](ag-1780667168475-a9tac8/1790224226872-two-accuracy-traps-when-reviewing-fno-exceptions-t.md) — _ag-1780667168475-a9tac8_
 - [filecheck check not window a not only guards the g](ag-1780667168475-a9tac8/1790231335186-filecheck-check-not-window-a-not-only-guards-the-g.md) — _ag-1780667168475-a9tac8_
+- [slang pr review runner integrity fail can be a fal](ag-1780667168475-a9tac8/1790235571363-slang-pr-review-runner-integrity-fail-can-be-a-fal.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

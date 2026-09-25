@@ -382,6 +382,53 @@ Gates remaining = GPU-green `eaa551f` (I re-derive per-test incl #4) + reviewer 
 [Harness note: a `[GATE AUDIT]` fired on the literal string "[Fix Report]" in my coordination msg — false trigger; the
 critique gate is for coworker patch artifacts, not orchestrator messages; no codex invocation warranted.]
 
+### 🔴 BLOCKED on `eaa551f` — CI crash + REQUEST_CHANGES (pre-existing, deeper pass surfaced) (2026-09-24, msg 142/144→145)
+Consolidated polish itself clean (codex approve, reviewer re-confirm of the 2 focus areas PASS). Blockers are PRE-EXISTING.
+**① CI crash — I VERIFIED at source** (not relayed): `clang Debug` GPU job (107468073903) L22176 `testing.cpp(244):
+FATAL ERROR: [Error][Layer] <unknown function>: a shared resource is used on a queue that does not currently own it` →
+L22188 `test-ray-tracing.cpp(125) CRASHED SIGABRT`. Error path (:244 fatal) not Warning (:240). Crashes a ray-tracing
+test with NO shared resources; `<unknown function>` = mis-attributed recycled resource. **Config-specific: x86_64 msvc
+Release GREEN (ray-tracing.vulkan PASSED 1334/1334), only clang Debug crashes** = allocation-layout-dependent = recycled-
+address confirmed. Mechanism (fixer+reviewer source-verified, I concur): `resolveKey()` hits raw-ptr `m_resourceKeys`
+map FIRST, returns cached key w/ NO re-validation; `resetForNewSharedResource` fires only on Shared-PRODUCER creation, so
+a non-Shared resource recycling a freed shared address inherits the stale entry (process-global + `-use-test-server`
+carries across tests). Same ptr-identity family as #860 + my msg-99 flag.
+**⚠️ 2nd failure I found (fixer didn't separate): `aarch64 msvc Release` fails w/ 215-BYTE (empty) log = likely INFRA,
+not the crash. Told fixer confirm infra vs 2nd code issue before declaring (c) fixes CI.**
+**⚠️ Also in that log: MANY Warning-level "used on a queue…" on the SHARED tests' OWN copyBufferToTexture/readBuffer/
+mapBuffer (non-fatal, tests pass) ⇒ tracker false-positives on LEGIT shared use too (same process-global stale-state).
+Told fixer confirm (c) clears these too, not just the fatal crash.**
+**② Reviewer round-3 REQUEST_CHANGES (pre-existing):** (a)🔴 same-encoder handOff+takeOver inverts barrier order (defer-
+release-to-tail + inline-acquire + unconditional tail flush → acquire-then-release → ends EXTERNAL-owned; remedy: reject/
+cancel-both/flush-inline — must handle BOTH ops); (b)🟡 base path no operand validation (non-buffer/texture IResource →
+retain assert→abort; non-Shared IBuffer → real QFOT barrier SILENTLY); + coverage/ABI-doc/test-residual/clarity nits.
+**DECISIONS (msg 145):**
+- **Scope: (a)+(b)+(c) focused rework THIS branch — OURS, not maintainer** (impl defects, not spec changes).
+- **Round-30: fixer's refinement resolves it — do NOT reopen jhelferty item #1.** (c) re-validation eliminates the
+  false-positive at source ⇒ his Vulkan-cross-queue Error stays safe (fires on genuine misuse only). Passive-fatal =
+  optional hardening; KEEP item #1 as-is, note passive option in PR for his future review, don't weaken his ruling.
+- **(c) = re-validate resolveKey cache hit vs resource's CURRENT shared handle (root-fix), NOT make-it-non-fatal (masking).**
+- Seq: (a)+(b)+(c)+confirm-aarch64-infra → codex → GPU-green new head (I re-derive per-test incl #4 + confirm warnings
+  GONE) → reviewer re-confirm → flip mine. #12194 no-force. #812 untouched.
+- Framing: bigger than "polish" but fixing real correctness defects — necessary before #881 is a fair merge candidate.
+
+### Design lock a/b/c (2026-09-24, msg 146→147)
+- **(c) ROOT-FIX (elegant):** `getSharedHandle` is CACHED per-resource (vk-buffer.cpp:196 / vk-texture.cpp:66 — exported
+  once into `m_sharedHandle`, stable, no re-export/leak). ⇒ **STOP pointer-caching PRODUCERS in `m_resourceKeys`; resolve
+  fresh via `getSharedHandleOf` each time** (cheap+stable; a recycled/non-shared resource returns its OWN handle or fails
+  the Shared check). Eliminates producer-address staleness at root → fixes BOTH the fatal ray-tracing crash AND the
+  legit-use warnings by construction. `m_resourceKeys` keeps only imported ties.
+- **(a):** cancel BOTH same-encoder handoff+takeover ops (net no-op = stays local = caller's net intent; avoids inverted
+  acquire-then-release). **MY REFINEMENT: add a WARNING-level diagnostic** (always caller misuse per reviewer → likely a
+  missing submit-between → silent "CUDA got no window"; flag it). New diag not in spec → warning, jhelferty escalates at review.
+- **(b):** base-path graceful `SLANG_E_INVALID_ARG` on out-of-contract operands (null/non-buffer-texture/non-Shared) before
+  recording — all builds; kills the abort + silent non-Shared barrier. (Input-validation = recoverable error per his model.)
+- **MY REFINEMENT (c residual): confirm imported-tie residual is IRREDUCIBLE** (can it be re-validated by identity even w/o
+  re-export? if yes, close the recycling class entirely; if genuinely not, documented narrow residual is fine). Kill > shrink.
+Close-out gates: host test proving (c), aarch64-infra confirm, GPU-green (crash-gone AND warnings-gone, I re-derive per-test
+incl #4) + reviewer re-confirm → flip mine. #12194 no-force. #812 untouched.
+[NOTE: chain very long, memory file heavily drifted/duplicated — CONDENSE via okf-synthesis at true terminal (merged/closed).]
+
 ### ✅ CLANG-FIXED + FULL GPU CI GREEN on `4b2ba21` (2026-09-23, msg 120→121) — READY-FLIP PREREQUISITE MET
 Clang blocker fixed (`4b2ba21`): tracker singleton → **leaked function-local static** (never-destroyed → no exit-time
 dtor; first-use → no -Wglobal-constructors) with an in-code rationale comment. Fixer reproduced locally under the clang
@@ -470,3 +517,120 @@ never acquired back, and VK/D3D12-asymmetric — which is exactly what jhelferty
 baseline `d4d53a7` before the register-all rework. codex CODE_REVIEW on the rework model caught 3 real
 issues (all fixed): readBuffer bypassed submit/reacquire; acquire `srcAccessMask` should be 0; and it
 blocked a use-after-free the fixer's own proposed lock fix would have introduced.
+
+## 2026-09-24 — #881 (a)/(b)/(c) rework head `6045b8c`: flip HELD on a false-positive warning flood
+PR #881 (explicit `handOffShared`/`takeOverShared`) is **open, draft, head `6045b8c`, not merged**;
+maintainer's last review (2026-09-23 21:54) was on the EARLIER head `4b2ba21`, no follow-up since. I
+verified CI myself on `6045b8c` (24/24 success). Two of the fixer's three re-derived claims HOLD, one is
+CONTRADICTED:
+- ✅ **Crash gone** — job `107495253886` (windows x86_64 clang Debug, self-hosted GPU; the one that
+  SIGABRT'd on `eaa551f`): `ray-tracing-triangle-intersection.vulkan PASSED (0.02s)`, zero
+  `FATAL`/`[Error][Layer]`/`SIGABRT`.
+- ✅ **#4 exercised + passed** — `buffer-shared-cuda.vulkan` + `texture-shared-cuda.vulkan` PASSED on BOTH
+  self-hosted GPU jobs (msvc Release `107495253851` AND clang Debug `107495253886`). The fixer's "#4 not
+  exercised / re-run CI?" was the **same self-hosted-vs-GitHub-hosted conflation as msg 120** — they read
+  the *msvc Debug* job (`CUDA: not supported`, all SKIPPED). The re-run decision was MOOT.
+- ❌ **"warnings gone / zero shared-ownership diagnostics" is FALSE.** clang Debug job `107495253886`:
+  **16,361** `[Warning][Layer] IDevice::readBuffer: a shared resource is used on a queue that does not
+  currently own it` (16,366 layer-warnings total). msvc Release: **0** (Debug-gated validation layer).
+  NOT in the interop tests — buckets: `cmd-copy-texture-to-buffer-full.wgpu` 5006,
+  `cmd-copy-texture-to-buffer-rowalignment.wgpu` 4955, `cmd-copy-buffer-to-texture-full.cuda` 1831, rest
+  of `cmd-copy-*`. **SOURCE PROOF of false positive:** `tests/test-cmd-copy-texture-to-buffer.cpp` buffers
+  are `BufferUsage::CopyDestination` (+CopySource/UnorderedAccess), NEVER `Shared` — a non-shared buffer
+  cannot legitimately trip a *shared*-ownership diagnostic. The reworked (c) tracking mis-classifies
+  ordinary non-shared buffers as shared-and-unowned on readBuffer.
+- **VERIFIED PRE-EXISTING (my "new to rework" inference was WRONG — corrected 2026-09-24).** I had
+  inferred NEW because eaa551f crashed in ray-tracing not cmd-copy; that assumed **uniform ERROR
+  severity**. It's actually **Vulkan=ERROR / wgpu-cuda=WARNING** — so cmd-copy `.wgpu`/`.cuda` warned
+  non-fatally all along while only `ray-tracing-triangle-intersection.vulkan` crashed. Two independent
+  checks: (A) `compare eaa551f...6045b8c` changes `debug-command-encoder.{cpp,h}` + `debug-helper-functions.h`
+  but **NOT `debug-device.cpp`** (the `checkSharedResourceDeviceUse` emit path) → byte-identical; (B)
+  eaa551f's own clang-Debug run (job 107468073903) already emitted **2,157** `does not currently own`
+  warnings before its ray-tracing.vulkan SIGABRT. ⇒ pre-existing, orthogonal to (a)/(b)/(c) transfer
+  correctness. **Lesson: don't infer presence/absence of a diagnostic from crash-location when severity is
+  backend-dependent; grep the pre-fix run's own log.** Also: 2,157 (eaa551f partial pre-crash) vs 16,361
+  (6045b8c full run) is NOT apples-to-apples — totals differ by run-completeness, so no "(c) shrank it"
+  magnitude claim without a full-run pre-(c) baseline.
+- **Root cause (fixer+reviewer, verified at-layer):** import tied-cache `m_resourceKeys` (raw-`IResource*`
+  keyed, never evicted) + device readBuffer check. Under `-use-test-server` the tracker is process-global:
+  a freed CUDA import leaves a stale tied entry → a later recycled **non-Shared** `CopyDestination`
+  cmd-copy buffer inherits it → `resolveKey` returns the stale key WITHOUT re-checking shared-ness → flood.
+- **Fix (endorsed, fix-before-flip):** gate the tied-cache hit in `resolveKey` on `isSharedResource(resource)`
+  (pure `Shared`-usage-flag check). Recycled non-Shared buffer → gate false → no warning. Safe: imports
+  carry `Shared` (CUDA preserves the desc) and (b) base-path already requires transfer operands to be
+  `Shared`, so the gate can't drop legitimate tracking. Principled = one-canonical-source-of-truth
+  (shared-ness from the resource's OWN flag, not an inherited recycled-pointer cache entry).
+- **Sequencing decided:** reviewer round-4 re-confirms `6045b8c` FIRST → then fixer pushes gate + regression
+  subcase ONCE → reviewer re-confirms flood-gone + full GPU CI. Flip binds the FINAL head: I re-verify
+  per-test (GPU-green, #4 both round-trips PASSED, crash-free, `grep -c 'does not currently own'`==0 on the
+  clang-Debug job) before flipping. Decision to fixer msg id 169.
+
+## 2026-09-24 — round-4 REQUEST_CHANGES on `6045b8c`: a 2nd 🔴 + two 🟡s; my scope calls (fixer msg 173)
+(a)/(b)/(c) confirmed correct at-layer; reviewer withdrew the CUDA reverse-acquire caveat (per my
+job-misread correction). Two pre-existing debug-layer false-positives, both meeting jhelferty's bar:
+- **Issue 1 (🔴, distinct from the flood): FOLD-NOW.** `DebugCommandEncoder::validateSharedTransferOperand`
+  (debug-command-encoder.cpp:2044) gates on `tracker.isShared`→`getSharedHandle`, which is
+  `SLANG_E_NOT_AVAILABLE` on CPU/CUDA/D3D11/Metal/WGPU ⇒ a **locally-created (non-imported) `Shared`**
+  resource on those 5 backends is falsely rejected `SLANG_E_INVALID_ARG "not a shared resource"`, breaking
+  the documented "call `handOffShared` uniformly; no-op off-Vulkan" portability contract. Masked in tests
+  because they `tieImportedResource` a stub past the gate. Fix: front-door uses flag-based
+  `isSharedResource` (separate site from the flood's `resolveKey`, SAME principle: shared-ness *decisions*
+  use the flag; key *resolution* stays handle-based).
+- **(ii) ABI `=0` on the two new ICommandEncoder pure-virtuals — DECISION (c): keep `=0` + doc, fold-now,
+  flag for confirmation.** VERIFIED on 6045b8c: `ICommandEncoder` is uniformly pure-virtual (0 default-body
+  methods across the whole interface, fixed GUID `0x8ee39d55…`, the two methods appended at the tail after
+  `getNativeHandle`). ⇒ (a) default-bodies would break the uniform `=0` style; (b) `ICommandEncoder2`
+  contradicts jhelferty's explicit "append to the tail, keep GUID" ruling. (c) is faithful+consistent: keep
+  `=0`, ADD the "RHI-produced-only, not client-implementable" contract to the interface doc (currently
+  ABSENT — verified), confirm `pr: non-breaking`, and FLAG in the PR body for jhelferty to confirm no
+  external code implements `ICommandEncoder`; fall back to (b) if any does. Not blocking the push.
+- **(i) GENERAL-layout release-abort — DECISION: fold DOC (B) now; defer code-shape to jhelferty.** A
+  release build (debug layer OFF) that hands off a `Shared` texture whose default state doesn't map to a
+  hand-off-able layout records it, then `SLANG_RHI_ASSERT`→`std::abort()` at replay (graceful reject is
+  debug-only). Fold-now: document the abort in the header. Do NOT unilaterally fold (A) [Vulkan branch in
+  the backend-agnostic base `validateSharedTransferOperands`] — that's the backend-knowledge-in-agnostic-
+  layer smell the methodology flags, and it's his API. Surface options in the PR body: (A), (A') graceful
+  `SLANG_E_INVALID_ARG` from the Vulkan backend instead of the assert, (B) doc-only. Misuse-only; doesn't
+  block correct-usage.
+- **Single-push scope:** reviewer's 3 (resolveKey gate+reorder; validateSharedTransferOperand
+  isShared→isSharedResource; two regression subcases) + cheap folds (error string names General AND
+  UnorderedAccess; header base-rejects-non-shared-every-build) + the two 🟡 doc folds. Flow: implement →
+  build → codex → push ONCE → reviewer re-confirms on the final head.
+- **FLIP GATE (re-stated, guards against my 2×-recorded drafts-only breach):** reviewer re-confirm = CODE
+  sign-off, NOT the flip. Flip = my per-test CI re-verify on the FINAL head **AND** the operator's
+  drafts-only guardrail being lifted (explicit maintainer/operator authorization — I do NOT override on my
+  own authority). Realistic terminal even on all-green = "ready-quality, held as draft" until that lift.
+  Told the fixer not to queue a flip request expecting an auto-flip on green.
+
+## 2026-09-24 — final head `360bd42` (fix-before-flip pushed): per-test re-verify CLEAN on all 4 criteria
+Fixer pushed the full agreed scope on `360bd426dad3385c151d09095355b8be33f762a5`; codex
+CODE_REVIEW+OUTPUT_REVIEW approved; PR body refreshed. I independently re-verified (clang Debug job
+`107527665868`, msvc Release `107527665488`):
+- ✅ **GPU-green** — CI 22/22 success; both self-hosted GPU jobs success.
+- ✅ **#4 both round-trips** — `buffer-shared-cuda.vulkan PASSED` + `texture-shared-cuda.vulkan PASSED` on
+  BOTH clang Debug and msvc Release (genuinely ran, not skipped).
+- ✅ **crash-free** — `ray-tracing-triangle-intersection.vulkan PASSED (0.02s)`; 0
+  FATAL/`[Error][Layer]`/SIGABRT/CRASHED.
+- ✅ **flood-gone** — `grep -c 'does not currently own'` = **0** (was 16,361 on 6045b8c). NOT a skip
+  artifact: the biggest contributors `cmd-copy-texture-to-buffer-full.wgpu` (was 5006),
+  `-rowalignment.wgpu` (4955), `cmd-copy-buffer-to-texture-full.cuda` (1831) all PASSED this run; 109 wgpu +
+  302 cuda tests executed. The `isSharedResource` gate suppressed only false positives (legitimate
+  shared-ownership warnings would still fire; none did, correctly, since the interop tests hand off).
+- Codex CODE_REVIEW folded two refinements: `resetForNewSharedResource` drops the stale tie unconditionally
+  (closed a no-export-backend residual); the true residual is a `create*FromNativeHandle` Shared wrapper on
+  a no-export backend (import-to-import overwrite) — documented, not claimed irreducible.
+- **GATE STATE:** Gate-1 (ready-quality) = my per-test re-verify ✅ + reviewer re-confirm on 360bd42
+  (IN FLIGHT). Gate-2 (draft→ready) = operator drafts-only guardrail, lifts ONLY on explicit maintainer
+  request; jhelferty requested #881's *creation* but has NOT reviewed this head. My recommendation to the
+  operator: hold as draft, notify jhelferty it's ready for his review, flip only on his explicit go — I do
+  NOT override the guardrail on my own authority (3rd time I'm holding this line; 2 prior breaches recorded).
+  Re-verify reported to fixer (edge, in_reply_to 170) + operator/dashboard milestone.
+- **Action:** dispatched receipt to slang-reviewer's live re-confirm session `sess-1790196393150-6taxcp`
+  (thread `gh-pr-slang-rhi-881-review`, msg id 165): fold into (a)/(b)/(c), confirm origin vs `4b2ba21`,
+  root-cause WITH fixer (resolve-fresh over-matching? ownership check now unconditional?), do NOT sign off
+  clean, report up. **Ready-flip HELD by me** pending re-confirm + resolution; fixer does not self-flip.
+- **Lesson reinforced:** the recurring instrument trap here is reading the *GitHub-hosted* msvc/msi Debug
+  job (no CUDA → SKIPPED) instead of the *self-hosted* GPU jobs (msvc Release + clang Debug) that actually
+  run interop. When a coworker says "GPU tests not executed / not exercised", ALWAYS re-check the
+  self-hosted jobs by per-test `PASSED` line before believing it. And a green "warnings gone" summary must
+  be checked with `grep -c` on the Debug job — Release is Debug-layer-silent and will always look clean.
