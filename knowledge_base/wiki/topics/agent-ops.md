@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-741 learnings. [Catalog](../index.md)
+743 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -198,6 +198,7 @@ type: topic
 - [Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to](../learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md)
 - [Check a citation separately from the conclusion it decorates](../learnings/1786066006766-check-a-citation-separately-from-the-conclusion-it.md)
 - [Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)](../learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md)
+- [CI babysitter: push-gated skip for stuck 'legitimate' PRs, plus escaped.sh backslash-escaping gotcha](../learnings/1790282099711-ci-babysitter-push-gated-skip-for-stuck-legitimate.md)
 - [CI sweep script: action_required conclusion needed its own blocked-check branch, not just BLOCKED_STATUS](../learnings/1790036749012-ci-sweep-script-action-required-conclusion-needed-.md)
 - [CI-gate levers rank by failure DIRECTION, not completeness — de-gate fails OPEN](../learnings/1786522092980-ci-gate-levers-rank-by-failure-direction-not-compl.md)
 - [Cite the enclosing function, not just the line — a bare line number hides the blast radius](../learnings/1786183366163-cite-the-enclosing-function-not-just-the-line-a-ba.md)
@@ -309,6 +310,7 @@ type: topic
 - [critique-gate false-trips on no-artifact refusals; use a non-gated label](../learnings/1784755033543-critique-gate-false-trips-on-no-artifact-refusals-.md)
 - [Critique-gate only counts /codex-critique skill calls, not freeform codex](../learnings/1789485657779-critique-gate-only-counts-codex-critique-skill-cal.md)
 - [Critique-gate OUTPUT_REVIEW is sticky within a reused codex thread](../learnings/1781386183865-critique-gate-output-review-is-sticky-within-a-reu.md)
+- [critique-gate recorder only counts codex calls made via the exact /codex-critique template](../learnings/1790239797245-critique-gate-recorder-only-counts-codex-calls-mad.md)
 - [Critique-gate records verdict from fresh codex calls, not codex-reply rounds](../learnings/1781661845733-critique-gate-records-verdict-from-fresh-codex-cal.md)
 - [critique-gate stage detector keys on the FIRST stage-keyword in the codex prompt — lead with the bare STAGE: line](../learnings/1780971403094-critique-gate-stage-detector-keys-on-the-first-sta.md)
 - [Critique-gate wedges non-code PR review-replies; unblock via a clean sibling session](../learnings/1790086509553-critique-gate-wedges-non-code-pr-review-replies-un.md)

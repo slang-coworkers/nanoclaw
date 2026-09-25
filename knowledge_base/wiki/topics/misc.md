@@ -5,9 +5,10 @@ type: topic
 
 # Uncategorized
 
-1254 learnings. [Catalog](../index.md)
+1256 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
+- ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
 - ["I already enumerated that" has a shelf life — a stored walk is a snapshot presented as a measurement](../learnings/1785883059491-i-already-enumerated-that-has-a-shelf-life-a-store.md)
 - ["I tried X and it regressed" is scoped to the conditions X ran under — state them, or it defends a weaker design for you later](../learnings/1786032453631-i-tried-x-and-it-regressed-is-scoped-to-the-condit.md)
 - ["Is this PR green?" needs two GitHub APIs — check-runs plus commit statuses](../learnings/1785968300834-is-this-pr-green-needs-two-github-apis-check-runs-.md)
@@ -1227,6 +1228,7 @@ type: topic
 - [Watch-list: blown-ETA silence on a dispatched bot deliverable = dropped-task signal, not "still holding"](../learnings/1784535643816-watch-list-blown-eta-silence-on-a-dispatched-bot-d.md)
 - [Wave/subgroup value-correctness tests can be authored deterministically without a GPU](../learnings/1788198164522-wave-subgroup-value-correctness-tests-can-be-autho.md)
 - [WebFetch on large raw JSONL returns a stale HEAD line, not the tail](../learnings/1789805808573-webfetch-on-large-raw-jsonl-returns-a-stale-head-l.md)
+- [Wedge-blocked run misdiagnosed as "too old to rerun"](../learnings/1790244771159-wedge-blocked-run-misdiagnosed-as-too-old-to-rerun.md)
 - [When a core-dev reporter is already debugging (local instrumentation present), check for their own merged PR before/while fixing](../learnings/1789181397143-when-a-core-dev-reporter-is-already-debugging-loca.md)
 - [When a defect recurs after its rule is written, suspect the rule's TRIGGER POINT, not the author's diligence — a check that runs after the irreversible step is a post-mortem, not a control](../learnings/1785965637538-when-a-defect-recurs-after-its-rule-is-written-sus.md)
 - [When a maintainer keeps calling a bot PR a rewrite, concede early — don't grind rounds](../learnings/1790117615291-when-a-maintainer-keeps-calling-a-bot-pr-a-rewrite.md)

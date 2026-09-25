@@ -4139,6 +4139,7 @@
 - [kb sync step 4b control needs update index chmod c](ag-1776713211742-1w6l4e/1790219167090-kb-sync-step-4b-control-needs-update-index-chmod-c.md) — _ag-1776713211742-1w6l4e_
 - [two maintainer design divergence on a pr provide e](ag-1776713211742-1w6l4e/1790220265420-two-maintainer-design-divergence-on-a-pr-provide-e.md) — _ag-1776713211742-1w6l4e_
 - [okf synthesis double finalize causes recurring fal](ag-1776713211742-1w6l4e/1790223184028-okf-synthesis-double-finalize-causes-recurring-fal.md) — _ag-1776713211742-1w6l4e_
+- [verify a pr s actual review state before framing i](ag-1776713211742-1w6l4e/1790310304171-verify-a-pr-s-actual-review-state-before-framing-i.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -5489,6 +5490,7 @@
 - [two accuracy traps when reviewing fno exceptions t](ag-1780667168475-a9tac8/1790224226872-two-accuracy-traps-when-reviewing-fno-exceptions-t.md) — _ag-1780667168475-a9tac8_
 - [filecheck check not window a not only guards the g](ag-1780667168475-a9tac8/1790231335186-filecheck-check-not-window-a-not-only-guards-the-g.md) — _ag-1780667168475-a9tac8_
 - [slang pr review runner integrity fail can be a fal](ag-1780667168475-a9tac8/1790235571363-slang-pr-review-runner-integrity-fail-can-be-a-fal.md) — _ag-1780667168475-a9tac8_
+- [not every slang ir link cpp dedup fix is the 12817](ag-1780667168475-a9tac8/1790305347451-not-every-slang-ir-link-cpp-dedup-fix-is-the-12817.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
