@@ -3,7 +3,7 @@ title: "Falsifiability and Claim Scope"
 type: concept
 group: general-misc
 tags: [falsifiability, scope, counterexample, dedup, verification-shape]
-source_count: 0
+source_count: 9
 ---
 
 # Falsifiability and Claim Scope
@@ -13,6 +13,7 @@ source_count: 0
 - Grep your own diff for the counterexample before defending a claim.
 - Narrowing a claim is not testing its premise.
 - A dedup scope for claim A does not cover a hypothesis B you fenced later.
+- Name the scope as precisely as the result — "X passed against Y", never bare "X passed". A closed audit certifies the defect *class* it checked, not the whole resolver, and the boundary must travel with the claim or the next reader rounds it up.
 - Know the two operational shapes: an RFC source-anchor vs a line-set verification on a report split.
 
 ## Narrowing a claim is not testing its premise
@@ -39,7 +40,11 @@ The instrumented-vs-uninstrumented axis has a self-directed corollary: **the ref
 
 **Two operational shapes from the same discipline.** *Triaging a maintainer's architectural RFC* (slang#12447, lazy deserialization of core-module IR, 5 explicit open design questions + a DRAFT prototype): a triage draft verified every source anchor correctly and still had to be rewritten, because correct verification assembled into the **wrong genre** — sentences like "the assumption looks well-founded" / "so this is not a counterexample" are **verdicts on questions the maintainer reserved for himself**, and codex judged the comment "functions as an architectural mini-review." On an RFC, supply **source anchors, not answers**, and check whether the maintainer already published the number you are about to lecture them about ([triaging a maintainer's architectural RFC: source anchors, not answers](../learnings/1786350576341-triaging-a-maintainer-s-architectural-rfc-source-a.md)). *Splitting the daily PR report for Discord* (~9.5 KB body vs a 2000-char cap): the exit-code contract is load-bearing — run `pr_report.py 2>/dev/null` and branch on `$?` (`10` = report due, post it; `0` = quiet day, do **not** post; anything else = transient, do not post, next fire retries), with stderr excluded because it is per-repo progress chatter and the body starts after the `--- report ---` marker. Chunk at assignee-bullet boundaries (`- **`), knowing one assignee block can itself exceed the budget, and **verify by line-set comparison** rather than eyeballing ([splitting the Slang PR report for Discord: chunk at assignee boundaries and verify by line-set](../learnings/1786338436692-splitting-the-slang-pr-report-for-discord-chunk-at.md)).
 
-**Source learnings (8):**
+## "Class closed" certifies the defect class checked, not the resolver — scope vs. confidence
+
+The same "narrowing is not testing" and "state the claim so it can be wrong" discipline governs how you *close* an audit. Closing a 2026-09-23 CI-resolver audit with "class closed — `dedupeByLatestAttempt` is the sole vulnerable spot" was correct **for the defect class it checked** (cross-suite id-collision) but got over-read as "this resolver is defect-free": `actionRequiredBlocksFromRuns` sat right next to it in the same file, added earlier for an unrelated bug, and harbored a *different* defect (reporting an `action_required` run as blocking even when a same-name sibling had already resolved) that the audit's lens never examined because it wasn't looking for that shape. The rule: **name the defect class explicitly when you close an audit** — "class closed: cross-suite id-collision in `dedupeByLatestAttempt`" is a true, bounded claim; bare "class closed" invites the reader (including future-you) to treat every resolver like it as cleared. This is the second instance of a recurring pattern — *verification proving less than it appeared to*; the first was a synthetic test that validated a consumer's handling of a data shape the producer never actually emitted, so the green test certified nothing about the real pipeline. Both share the structure: the verification step was real and passed honestly, but its **scope was narrower than the confidence subsequently assigned to it**. State the scope as precisely as the result — "X passed against Y", not "X passed" — so the boundary travels with the claim; and the discipline that avoids the trap is to prove the specific mechanism on **real data** (reproduce-before / drop-after diffing), not trust a prior "closed" verdict's implied scope ([\"class closed\" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)).
+
+**Source learnings (9):**
 - [narrowing a claim is not testing its premise — and check your own store first](../learnings/1785778559075-narrowing-a-claim-is-not-testing-its-premise-and-c.md) — narrowing a claim is not testing its premise — and check your own store first
 - [a dedup scope for claim A does not cover a hypothesis B you fenced later](../learnings/1785839198875-a-dedup-scope-drawn-for-claim-a-does-not-cover-a-h.md) — a dedup scope for claim A does not cover a hypothesis B you fenced later
 - [unfalsifiable claims outlive falsifiable ones — every code defect died in one round, the spliced number sur...](../learnings/1786222242448-unfalsifiable-claims-outlive-falsifiable-ones-ever.md) — unfalsifiable claims outlive falsifiable ones — every code defect died in one round, the spliced number sur...
@@ -48,3 +53,4 @@ The instrumented-vs-uninstrumented axis has a self-directed corollary: **the ref
 - [before defending a claim, grep your own diff for the counterexample](../learnings/1785841765585-before-defending-a-claim-grep-your-own-diff-for-th.md) — before defending a claim, grep your own diff for the counterexample
 - [triaging a maintainer's architectural RFC: source anchors, not answers](../learnings/1786350576341-triaging-a-maintainer-s-architectural-rfc-source-a.md) — triaging a maintainer's architectural RFC: source anchors, not answers
 - [splitting the Slang PR report for Discord: chunk at assignee boundaries and verify by line-set](../learnings/1786338436692-splitting-the-slang-pr-report-for-discord-chunk-at.md) — splitting the Slang PR report for Discord: chunk at assignee boundaries and verify by line-set
+- ["class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md) — name the defect class when closing an audit; state scope as precisely as the result ("X passed against Y"); prove the mechanism on real data, don't inherit a prior "closed" verdict's implied scope.

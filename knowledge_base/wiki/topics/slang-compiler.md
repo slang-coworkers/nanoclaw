@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-1727 learnings. [Catalog](../index.md)
+1732 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["N crash signatures" is a hypothesis about count, not an observation — but code shape is the WRONG test (slang#8785)](../learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md)
@@ -223,6 +223,7 @@ type: topic
 - [clang-format via pip wheel: never point it at .meta.slang (it will rewrite the whole file)](../learnings/1784332011128-clang-format-via-pip-wheel-never-point-it-at-meta-.md)
 - [clang-format-17 present but not symlinked; delivery-gate re-hashes after comment reflow](../learnings/1788909076727-clang-format-17-present-but-not-symlinked-delivery.md)
 - [clang-format-17 via pip --target needs PYTHONPATH set to run](../learnings/1782156721731-clang-format-17-via-pip-target-needs-pythonpath-se.md)
+- [classify-only subagent misattributed a cross-repo SlangPy Tests failure to the wrong Slang PR](../learnings/1790266311097-classify-only-subagent-misattributed-a-cross-repo-.md)
 - [Clip-space Z remap (slang #11599) is NOT DXC parity — unlike invert-y/position-w](../learnings/1781333043756-clip-space-z-remap-slang-11599-is-not-dxc-parity-u.md)
 - [CODEOWNERS auto-routes @shader-slang/dev on ready_for_review — not bot misfire](../learnings/1783531331428-codeowners-auto-routes-shader-slang-dev-on-ready-f.md)
 - [Combined-sampler GetDimensions off-by-one (WGSL/Metal/CUDA) — shared root with HLSL #10522](../learnings/1781992589265-combined-sampler-getdimensions-off-by-one-wgsl-met.md)
@@ -539,6 +540,7 @@ type: topic
 - [Non-mutating method on structured-buffer element copies whole element (16MB SPIR-V Function array → driver pipeline hang)](../learnings/1787807693317-non-mutating-method-on-structured-buffer-element-c.md)
 - [NonUniform on DescriptorHandle round-trip lands nested in uint2(...).x on textual targets (HLSL/GLSL) by design](../learnings/1784539603707-nonuniform-on-descriptorhandle-round-trip-lands-ne.md)
 - [NoSideEffect classifier already excludes execution-mask ops — the right basis for cross-block resource-load CSE (slang#12785)](../learnings/1787825603005-nosideeffect-classifier-already-excludes-execution.md)
+- [Not every slang-ir-link.cpp dedup fix is the #12817 "fix-the-producer" anti-pattern](../learnings/1790305347451-not-every-slang-ir-link-cpp-dedup-fix-is-the-12817.md)
 - [nv-slang-bot 403 on issue-assign and cross-session comment-edit](../learnings/1782388835952-nv-slang-bot-403-on-issue-assign-and-cross-session.md)
 - [nv-slang-bot App lacks 'workflows' permission — cannot open PRs touching .github/workflows/*](../learnings/1784154056053-nv-slang-bot-app-lacks-workflows-permission-cannot.md)
 - [nv-slang-bot App token cannot push .github/workflows but CAN push .github/actions](../learnings/1787124772122-nv-slang-bot-app-token-cannot-push-github-workflow.md)
@@ -808,6 +810,7 @@ type: topic
 - [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
 - [Slang CI priority-yield: a stale yielded run is NOT terminal — the gate escalates on any rerun, only the retry helper's 16h lookback expires](../learnings/1786440049067-slang-ci-priority-yield-a-stale-yielded-run-is-not.md)
 - [Slang CI red "slang-test left generated or modified files" is a flaky leftover-file check, not your bug](../learnings/1788402606374-slang-ci-red-slang-test-left-generated-or-modified.md)
+- [Slang CI runs Debug slang-test, so _DEBUG-only invariants are guarded by tests/ regressions](../learnings/1790275762971-slang-ci-runs-debug-slang-test-so-debug-only-invar.md)
 - [Slang CI verify-documented-compiler-version.sh exit 4 is a set -e/pipefail shell bug, NOT a docs allowlist data problem](../learnings/1789254176751-slang-ci-verify-documented-compiler-version-sh-exi.md)
 - [slang ci-examples.sh grades examples on exit code only — swallows warnings AND errors](../learnings/1783471474036-slang-ci-examples-sh-grades-examples-on-exit-code-.md)
 - [slang ci.yml already has a doc-only GPU skip (filter job, ci.yml:14-49) — two miscalibrated edges](../learnings/1786019244861-slang-ci-yml-already-has-a-doc-only-gpu-skip-filte.md)
@@ -855,6 +858,7 @@ type: topic
 - [Slang CUDA/OptiX payload register count is carried by payloadSize, not the _optix_trace_typed_N name](../learnings/1786644040522-slang-cuda-optix-payload-register-count-is-carried.md)
 - [Slang CUDA/OptiX varying-param legalizer: terminate-intrinsic detection + pre-pass timing](../learnings/1781782798777-slang-cuda-optix-varying-param-legalizer-terminate.md)
 - [Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution](../learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md)
+- [Slang daily-report: forum sweeps must use the guild active-threads API, and github_list_issues can false-empty](../learnings/1790238085692-slang-daily-report-forum-sweeps-must-use-the-guild.md)
 - [Slang debug -g level silently changes TEXTUAL codegen (folding), not just SPIR-V debug info](../learnings/1784443119965-slang-debug-g-level-silently-changes-textual-codeg.md)
 - [Slang default SPIR-V backend is direct; -target spirv + -emit-spirv-directly test the same path](../learnings/1789231961570-slang-default-spir-v-backend-is-direct-target-spir.md)
 - [Slang default Vulkan/SPIR-V buffer layout is std430/std140, not natural/scalar; scalar≠C](../learnings/1787601323178-slang-default-vulkan-spir-v-buffer-layout-is-std43.md)
@@ -1278,6 +1282,7 @@ type: topic
 - [slang-pr-review runners manage their own transcripts dir — no --out flag](../learnings/1787049654930-slang-pr-review-runners-manage-their-own-transcrip.md)
 - [slang-pr-review-runner fleet contention clobbers shared checkout staging](../learnings/1783635509659-slang-pr-review-runner-fleet-contention-clobbers-s.md)
 - [slang-pr-review-runner integrity guard (exit 1) can be a shared-checkout tmp race, not a wrong-diff review](../learnings/1790108064998-slang-pr-review-runner-integrity-guard-exit-1-can-.md)
+- [slang-pr-review-runner INTEGRITY-FAIL can be a false alarm under concurrent cross-repo reviews](../learnings/1790235571363-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)
 - [slang-pr-review-runner INTEGRITY-FAIL can be a false positive from a shared-checkout race](../learnings/1788160073054-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)
 - [slang-pr-review-runner INTEGRITY-FAIL can be a false positive from concurrent-run shared-tmp contention — pipeline self-heals via tmp/iso-<pr>/](../learnings/1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)
 - [slang-pr-review-runner INTEGRITY-FAIL can be a false positive under concurrent runs (shared tmp/pr-diff.patch)](../learnings/1789441851541-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)
