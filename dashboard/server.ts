@@ -46,6 +46,7 @@ import { Worker } from 'node:worker_threads';
 import { initDb as initSrcDb } from '../src/db/connection.js';
 import { CONTAINER_RUNTIME_BIN } from '../src/container-runtime.js';
 import { CONTAINER_INSTALL_LABEL } from '../src/config.js';
+import { dayKeyInTimezone, isValidTimezone } from '../src/timezone.js';
 import { refreshDestinationsForAgentGroup } from '../src/modules/agent-to-agent/write-destinations.js';
 import { CANONICAL_DECISIONS, canonicalizeDecision } from '../src/modules/approvals/decision.js';
 import { kbDoctorUnavailable, readKbDoctorArtifact, type KbDoctorView } from './kb-doctor-artifact.js';
@@ -2040,9 +2041,14 @@ interface PerFileCost {
   ok: boolean;
 }
 const perFileCostCache = new Map<string, PerFileCost>();
+// Historical non-UTC queries need their own day assignment without changing the
+// persisted UTC cache that backs the dashboard's regular cost views.
+const zonedPerFileCostCache = new Map<string, PerFileCost>();
 
-function scanFileCost(path: string, mtimeMs: number): PerFileCost {
-  const cached = perFileCostCache.get(path);
+function scanFileCost(path: string, mtimeMs: number, timezone = 'UTC'): PerFileCost {
+  const cache = timezone === 'UTC' ? perFileCostCache : zonedPerFileCostCache;
+  const cacheKey = timezone === 'UTC' ? path : `${timezone}\0${path}`;
+  const cached = cache.get(cacheKey);
   if (cached && cached.mtimeMs === mtimeMs) return cached;
   const out: PerFileCost = { mtimeMs, days: new Map(), unpriced: false, hadSignal: false, ok: false };
   // Dedupe by message id. A transcript replays the SAME assistant message on
@@ -2083,7 +2089,8 @@ function scanFileCost(path: string, mtimeMs: number): PerFileCost {
       // Flag "unpriced" only when an unknown model actually billed tokens. Zero-usage
       // synthetic rows (model "<synthetic>") carry no cost and must not raise the `*`.
       if (cost === 0 && tokens > 0 && msg.model && !normalizeModel(msg.model)) out.unpriced = true;
-      const key = isoDayKey(r.timestamp) ?? MISSING_TS_KEY;
+      const key =
+        (timezone === 'UTC' ? isoDayKey(r.timestamp) : dayKeyInTimezone(r.timestamp || '', timezone)) ?? MISSING_TS_KEY;
       const d = out.days.get(key) || { cost: 0, tokens: 0 };
       d.cost += cost;
       d.tokens += tokens;
@@ -2097,7 +2104,7 @@ function scanFileCost(path: string, mtimeMs: number): PerFileCost {
   } catch {
     /* unreadable — treat as no signal (ok stays false: transient, don't persist) */
   }
-  perFileCostCache.set(path, out);
+  cache.set(cacheKey, out);
   return out;
 }
 
@@ -2142,6 +2149,8 @@ interface CodexFileEvents {
   size: number;
   /** `YYYYMMDD` per event (from the event's own timestamp), '' when absent. */
   dayKeys: string[];
+  /** Full ISO timestamp per event, '' when absent, for non-UTC historical bucketing. */
+  timestamps: string[];
   /** Wire model id per event, '' when the rollout never declared one. */
   models: string[];
   /** 3 numbers per event: input_tokens, cached_input_tokens, output_tokens. */
@@ -2238,10 +2247,11 @@ function listCodexRollouts(codexHome: string): { f: string; m: number; s: number
 function readCodexFileEvents(f: string, m: number, s: number): CodexFileEvents {
   const cached = codexFileEventCache.get(f);
   if (cached && cached.mtimeMs === m && cached.size === s) return cached;
-  const out: CodexFileEvents = { mtimeMs: m, size: s, dayKeys: [], models: [], usage: [], ok: false };
+  const out: CodexFileEvents = { mtimeMs: m, size: s, dayKeys: [], timestamps: [], models: [], usage: [], ok: false };
   try {
     for (const ev of parseCodexRollout(readFileSync(f, 'utf-8'))) {
       out.dayKeys.push(ev.dayKey ?? '');
+      out.timestamps.push(ev.timestamp ?? '');
       out.models.push(ev.model);
       out.usage.push(ev.usage.input_tokens || 0, ev.usage.cached_input_tokens || 0, ev.usage.output_tokens || 0);
     }
@@ -2263,8 +2273,9 @@ function readCodexFileEvents(f: string, m: number, s: number): CodexFileEvents {
  * is not billed twice. See codex-costs.ts for the measurement behind that choice
  * and its known limitation.
  */
-function scanSessionCodexCost(codexHome: string): CodexSessionCost {
+function scanSessionCodexCost(codexHome: string, timezone = 'UTC'): CodexSessionCost {
   const files = listCodexRollouts(codexHome);
+  const cacheKey = timezone === 'UTC' ? codexHome : `${timezone}\0${codexHome}`;
   const empty: CodexSessionCost = {
     sig: '',
     days: new Map(),
@@ -2277,14 +2288,14 @@ function scanSessionCodexCost(codexHome: string): CodexSessionCost {
   // No rollouts: the overwhelmingly common case (most sessions never call codex).
   // Return without touching the cache so we don't hold an entry per session.
   if (files.length === 0) {
-    codexSessionCostCache.delete(codexHome);
+    codexSessionCostCache.delete(cacheKey);
     return empty;
   }
   const sig = createHash('sha1')
     .update(files.map((x) => `${x.f}:${x.m}:${x.s}`).join('\n'))
     .digest('hex')
     .slice(0, 16);
-  const cached = codexSessionCostCache.get(codexHome);
+  const cached = codexSessionCostCache.get(cacheKey);
   if (cached && cached.sig === sig) return cached;
 
   const out: CodexSessionCost = {
@@ -2322,7 +2333,8 @@ function scanSessionCodexCost(codexHome: string): CodexSessionCost {
       // side can require a model here because a `<synthetic>` row genuinely
       // carries no cost; a model-less codex reading is real spend we can't name.)
       if (cost === 0 && tokens > 0 && !normalizeCodexModel(model)) out.unpriced = true;
-      const dayKey = fe.dayKeys[i] || MISSING_TS_KEY;
+      const dayKey =
+        (timezone === 'UTC' ? fe.dayKeys[i] : dayKeyInTimezone(fe.timestamps[i], timezone)) || MISSING_TS_KEY;
       const d = out.days.get(dayKey) || { cost: 0, tokens: 0 };
       d.cost += cost;
       d.tokens += tokens;
@@ -2332,8 +2344,8 @@ function scanSessionCodexCost(codexHome: string): CodexSessionCost {
   // A session with an unreadable file is NOT cached: caching it would freeze a
   // transient EMFILE/EACCES as a permanently-undercounted session until some
   // file's mtime happened to change.
-  if (out.ok) codexSessionCostCache.set(codexHome, out);
-  else codexSessionCostCache.delete(codexHome);
+  if (out.ok) codexSessionCostCache.set(cacheKey, out);
+  else codexSessionCostCache.delete(cacheKey);
   return out;
 }
 
@@ -2424,7 +2436,7 @@ function getTraceDirListing(traceDir: string): { name: string; mtimeMs: number }
 }
 
 /**
- * Per-coworker cost of record over an ARBITRARY [fromKey, toKey] UTC-day window,
+ * Per-coworker cost of record over an ARBITRARY [fromKey, toKey] local-day window,
  * bucketed by the caller. Reuses the SAME validated pricers as /api/sessions —
  * `scanFileCost` (Claude per-day) + `scanSessionCodexCost` (Codex per-day), the
  * engine whose monthly total matched the real Anthropic bill to ~103% — so this
@@ -2438,6 +2450,7 @@ function getTraceDirListing(traceDir: string): { name: string; mtimeMs: number }
 function computeCostHistoryByGroup(
   fromKey: string,
   toKey: string,
+  timezone = 'UTC',
 ): Map<string, { folder: string; name: string; claude: Map<string, number>; codex: Map<string, number> }> {
   const out = new Map<
     string,
@@ -2467,7 +2480,7 @@ function computeCostHistoryByGroup(
       } catch {
         /* unreadable file → skip */
       }
-      const fc = scanFileCost(f, m);
+      const fc = scanFileCost(f, m, timezone);
       if (!fc.hadSignal) continue;
       for (const [key, d] of fc.days) if (inRange(key)) acc.claude.set(key, (acc.claude.get(key) ?? 0) + d.cost);
     }
@@ -2479,7 +2492,7 @@ function computeCostHistoryByGroup(
       /* no session dir yet */
     }
     for (const sessId of sessDirs) {
-      const cc = scanSessionCodexCost(join(sessionsDir, group.id, sessId, 'codex'));
+      const cc = scanSessionCodexCost(join(sessionsDir, group.id, sessId, 'codex'), timezone);
       if (!cc.hadSignal) continue;
       for (const [key, d] of cc.days) if (inRange(key)) acc.codex.set(key, (acc.codex.get(key) ?? 0) + d.cost);
     }
@@ -9705,7 +9718,7 @@ export async function handleRequest(
   }
 
   // API: 30-day cost history (combined across all coworkers, per-day rows).
-  if (url.pathname === '/api/cost-history') {
+  if (url.pathname === '/api/cost-history' && !url.searchParams.has('from')) {
     if (!requireAuth(req, res)) return;
     const dailyCosts = (ccusageCache['30d']?.combined || []).map((d) => ({
       date: d.date,
@@ -10142,13 +10155,23 @@ export async function handleRequest(
   // API: list sessions
   if (req.method === 'GET' && url.pathname === '/api/cost-history') {
     if (!requireAuth(req, res)) return;
-    // Per-coworker COST OF RECORD over an arbitrary [from,to] UTC-day window,
+    // Per-coworker COST OF RECORD over an arbitrary [from,to] local-day window,
     // bucketed by day|week|total. Transcript-priced (same engine as /api/sessions).
     // Query: from=YYYY-MM-DD (required) · to=YYYY-MM-DD (default today) ·
-    //        by=day|week|total (default week) · group=<folder> (optional).
+    //        by=day|week|total (default week) · group=<folder> (optional) ·
+    //        timezone=<IANA zone> (default UTC).
     const dateRe = /^\d{4}-\d{2}-\d{2}$/;
     const fromRaw = (url.searchParams.get('from') || '').trim();
-    const toRaw = (url.searchParams.get('to') || '').trim() || new Date().toISOString().slice(0, 10);
+    const timezone = (url.searchParams.get('timezone') || 'UTC').trim();
+    if (!isValidTimezone(timezone)) {
+      res.writeHead(400, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: `invalid IANA timezone '${timezone}'` }));
+      return;
+    }
+    const todayKey =
+      dayKeyInTimezone(new Date().toISOString(), timezone) || new Date().toISOString().slice(0, 10).replace(/-/g, '');
+    const todayLocal = `${todayKey.slice(0, 4)}-${todayKey.slice(4, 6)}-${todayKey.slice(6, 8)}`;
+    const toRaw = (url.searchParams.get('to') || '').trim() || todayLocal;
     const by = (url.searchParams.get('by') || 'week').trim();
     const groupFilter = (url.searchParams.get('group') || '').trim();
     const isReal = (s: string) => dateRe.test(s) && new Date(`${s}T00:00:00Z`).toISOString().slice(0, 10) === s;
@@ -10174,7 +10197,7 @@ export async function handleRequest(
         : by === 'week'
           ? weekKeyFromDayKey(dayKey)
           : `${dayKey.slice(0, 4)}-${dayKey.slice(4, 6)}-${dayKey.slice(6, 8)}`;
-    const byGroup = computeCostHistoryByGroup(fromKey, toKey);
+    const byGroup = computeCostHistoryByGroup(fromKey, toKey, timezone);
     const groups: any[] = [];
     let grand = 0;
     for (const [folder, acc] of byGroup) {
@@ -10216,6 +10239,7 @@ export async function handleRequest(
         source: 'transcript',
         from: fromRaw,
         to: toRaw,
+        timezone,
         by,
         group: groupFilter || null,
         groups,
