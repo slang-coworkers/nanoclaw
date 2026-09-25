@@ -2,17 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-09-02T04:18:53Z",
-   "backlog": 1416941,
-   "defects": 34,
-   "offenders": 173,
-   "top": {
-    "path": "imported/feedback_a_size_figure_names_a_file_check_which_one.md",
-    "class": "OVERSIZE",
-    "size": 52381
-   }
-  },
-  {
    "at": "2026-09-03T04:12:20Z",
    "backlog": 1284931,
    "defects": 34,
@@ -329,6 +318,17 @@
     "path": "imported/project_12266_defer_bare_decl_scope_leak_crash.md",
     "class": "OVERSIZE",
     "size": 21641
+   }
+  },
+  {
+   "at": "2026-09-24T04:16:31Z",
+   "backlog": 203004,
+   "defects": 0,
+   "offenders": 70,
+   "top": {
+    "path": "slang/rhi-787-cuda-vulkan-shared-sync.md",
+    "class": "OVERSIZE",
+    "size": 50880
    }
   }
  ]

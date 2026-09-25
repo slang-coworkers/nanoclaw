@@ -1,6 +1,6 @@
 ---
 name: project_12266_defer_bare_decl_scope_leak_crash
-description: "slang#12266 — bare `defer uint i=1;` leaks decl into enclosing scope → segfault on reference; parser scope fix (Approach A)"
+description: "slang#12266 — bare `defer uint i=1;` leaks decl into enclosing scope → segfault on reference; parser scope fix (Approach A). TERMINAL: PR #12269 closed-unmerged on maintainer design disagreement; crash still live upstream."
 metadata: 
   node_type: memory
   type: project
@@ -9,9 +9,15 @@ metadata:
 
 # slang#12266 — deferred bare var-decl scope-leak crash
 
-**Filed:** 2026-07-29 by **skiminki-nv** (maintainer). Type "Language Maturity" (human-set, leave). Labels `Dev Opened`. Reporter proposed a concrete fix.
+**Filed** 2026-07-29 by **skiminki-nv** (maintainer). Type "Language Maturity" (human-set).
+🔴 **TERMINAL on our side** — issue OPEN, crash UNFIXED upstream. Canonical thread
+`gh-issue-shader-slang/slang-12266`.
 
-**Bug:** A bare (non-block) deferred variable declaration leaks its name into the *enclosing* scope. `defer uint i = 1;` makes `i` visible to sibling stmts; referencing it SEGFAULTS (exit 139, target-independent) instead of `error[E30015] undefined identifier`. Block form `defer { uint i=1; }` is correctly scoped and already yields E30015.
+## The bug
+A bare (non-block) deferred variable declaration leaks its name into the *enclosing* scope.
+`defer uint i = 1;` makes `i` visible to sibling stmts; referencing it SEGFAULTS (exit 139,
+target-independent) instead of `error[E30015] undefined identifier`. Block form
+`defer { uint i=1; }` is correctly scoped and already yields E30015.
 
 **Repro @HEAD `71a3f7e71`:**
 ```slang
@@ -20,71 +26,86 @@ RWStructuredBuffer<uint> output;
 ```
 `slangc -target hlsl -entry computeMain -stage compute` → segfault.
 
-**Root cause (VERIFIED by source read):** `Parser::ParseDeferStatement()` slang-parser.cpp:7571-7578 calls `ParseStatement()` with NO `pushScopeAndSetParent()`, so the deferred decl inserts into the enclosing function scope. Contrast `parseBlockStatement` (7130-7142) + if/for/while bodies which push a scope. Semantic `visitDeferStmt` (slang-check-stmt.cpp:624-628) only wraps `WithOuterStmt`, no lexical scope. Leak → lookup resolves `i` → IR lowers `i`'s IRVar into deferBlock (relocated to scope-exit by lowerDefer pass) → null/stale deref = segfault. (Exact IR null-deref line UNVERIFIED — do not cite.)
+**Root cause (source-verified):** `Parser::ParseDeferStatement()` slang-parser.cpp:7571-7578
+calls `ParseStatement()` with NO `pushScopeAndSetParent()`, so the deferred decl inserts into
+the enclosing function scope — unlike `parseBlockStatement` (7130-7142) and if/for/while bodies
+which push a scope. Semantic `visitDeferStmt` (slang-check-stmt.cpp:624-628) only wraps
+`WithOuterStmt`, no lexical scope. Leak → lookup resolves `i` → IR lowers its IRVar into the
+deferBlock (relocated to scope-exit by lowerDefer) → null/stale deref = segfault.
 
-**Fix = Approach A (RECOMMENDED, = reporter's proposal):** open a nested `ScopeDecl` + `pushScopeAndSetParent` around the deferred stmt in the parser, mirroring parseBlockStatement. Nested (not isolated) → outer vars still visible so legit `defer output[0]=x;` still compiles. May need a `DeferStmt.scopeDecl` field (FIDDLE regen). Approaches B (checker-only — too late, decl already in containerDecl) and C (reject bare defer — contradicts docs) REJECTED.
+**Fix = Approach A** (= reporter's proposal): open a nested `ScopeDecl` +
+`pushScopeAndSetParent` around the deferred stmt in the parser, mirroring `parseBlockStatement`.
+Nested (not isolated) so outer vars stay visible (`defer output[0]=x;` still compiles). No
+scopeDecl field needed — all 5 DeferStmt consumers recurse only into `stmt->statement`, not via
+ScopeDecl membership (mirrors do/catch). Approaches B (checker-only — too late) and C (reject
+bare defer — contradicts docs) rejected.
 
-**Test:** DIAGNOSTIC_TEST expecting E30015 for `defer uint i=1; ...=i;` + positive tests for outer-var defer and block-form defer. CPU-friendly.
-
-**Chain:** triage DONE + verdict posted @HEAD → fixer → **DRAFT PR #12269** OPEN (base `master@71a3f7e71a`, `Closes #12266`, `pr: non-breaking`, +25/2 files; 9-line nested-ScopeDecl push/pop in ParseDeferStatement mirroring block/do-catch + DIAGNOSTIC test expecting E30015; NO AST/FIDDLE change). Repro now E30015 (exit 255, was segfault 139); `defer/` 38/38, `error-handling/` 32/32, defer-infinite-loop 1/1 PASS; build 1184/1184; codex PLAN+CODE+OUTPUT approved. CI reds none (draft priority-yield skips are benign). Issue verdict comment `5121153624` refreshed → "fixed in draft #12269, held for review".
-- **Maintainer verdict (07-30):** **skiminki-nv reviewed #12269 `COMMENTED`: "LGTM, but needs Yong's approval"** — no changes requested. He flipped the PR **draft→ready himself** (maintainer action, NOT us → NOT a drafts-only breach, cf #12265). PR now `isDraft=false`, `reviewDecision=REVIEW_REQUIRED`, CODEOWNERS auto-assigned **`bmillsNV` + `csyonghe`**. `mergeable=MERGEABLE` but `mergeStateStatus=BEHIND` (rebase advisable pre-merge — triager flagged to fixer).
-- **CI (07-30):** one red = `sanitizer-linux-clang-x86_64` but it failed at **Setup sccache (infra)** — build never ran, downstream skipped. Infra flake, not code regression; real `pull_request` run queued.
-- **Peer review:** slang-reviewer dispatched by Main 07-29. Devin (B) + clarity (C) CLEAN — C has 2 non-blocking advisory nits (C001 add "why no scopeDecl field" code comment; FG001 note test's `-target hlsl` is arbitrary for a front-end diag). Reviewer A (correctness) still in flight 07-30. Triager recommended skipping internal pass (maintainer designed+LGTM'd + codex triple-OK + 3-line change); **Main decision: let the near-complete pass finish (cheap, adds confidence + advisory nits), do NOT cancel; fixer relay stand-down is correct.**
-- **⚠️ DESIGN GATE (07-30):** skiminki-nv **withdrew the LGTM** — posted to @csyonghe (near comment `5133604016`, 16:26Z): *"This changes the language by fixing an omission. Not approving in case deferred declarations were meant to be useful."* His earlier "LGTM" is NOT a pending approval. `reviewDecision` still `REVIEW_REQUIRED`, no APPROVE on record. **Next gate is a maintainer SEMANTICS decision (csyonghe), not routine CODEOWNER sign-off.** Outcomes: (a) name should be hidden → approve as-is; (b) name *should* be useful in enclosing scope → approach reworks (different fix, not just the crash guard).
-- **Fixer response (07-30, verified/neutral/codex-OK):** built slangi, posted hard evidence on PR — bare `defer T x=init();` and block `defer {…}` both run `init()` at scope exit with identical timing; patch changes ONLY name visibility to sibling stmts (the leak that crashed). Left semantics call to maintainers; offered to adjust/hold. Good closest-to-the-state artifact.
-- **Held correctly by fixer:** rebase (BEHIND-master) + optional clarity nits C001/FG001 DEFERRED until design settles (avoids churn if approach changes; recorded so not lost). No CODEOWNER approval exists yet → nothing dismissed by waiting.
-- **⚠️ DESIGN FORK (07-30 20:19Z):** two CODEOWNERS split. **skiminki-nv → Approach A** (silently scope bare decl, = `defer { decl; }`). **csyonghe (COMMENTED) → make it ILLEGAL** for a `DeclStmt` to be the sole inner stmt of a `DeferStmt` (narrowed Approach C: reject decl-only case, still allow `defer <expr>;` and `defer { decl; }`) — prefers salient error over surprising lookup-scope. `reviewDecision` still `REVIEW_REQUIRED`, no APPROVE.
-- **Key trade-off (fixer-verified interpreter):** Yong's illegal-path is **strictly MORE breaking** than A. `defer int x = sideEffect();` with no sibling reference **compiles + runs today** (init fires at scope exit; only a *reference* to the leaked name crashes). A preserves that (stays `pr: non-breaking`); illegal-path turns a currently-accepted construct into a hard error → flips PR to **`pr: breaking change`**.
-- **Main decision (07-30):** AUTHORIZED the fixer's ONE strictly-factual non-advocating on-thread comment (surfaces the breaking-change implication + the clean `defer sideEffect();` rewrite; presents both approaches' implications neutrally, NO "recommend A"). Then NO more proactive bot posts — subsequent maintainer exchange is theirs. Hold-all-code confirmed: no diagnostic pivot, no rebase, no C001/FG001 nits until maintainers converge (avoids churn if approach flips). Reviewer A internal pass folds in when it lands.
-- **CONVERGENCE (07-31 10:31Z):** skiminki-nv replied to Yong (`5141926897`, maintainer↔maintainer — did NOT address bot, so fixer correctly did not post). Pushes back on Yong's reject-decl-only as piecemeal ("adding to the reject list is always a breaking change") and floats a **THIRD direction — require the deferred stmt to be a block** (Swift-style `defer {…}`), sidestepping the whole scope-leak class + odd forms (`defer defer`, stray `defer;`). **Crucially scopes that redesign OUT of this PR → Slang 202c, related to #12296.** So the require-block redesign has a tracking home ([[project_12296_empty_statement_error_contexts]], skiminki's own "Make empty statement an error in if/for/while/catch/defer", label `slang 202c`) and is explicit future work.
-- **Outlook (triager read, NOT maintainers' explicit words):** two maintainers appear to converge on "strict redesign = 202c/#12296" → leaves **THIS PR standing as the immediate non-breaking Approach-A crash fix**. BUT neither has said "merge #12269 as-is"; still no APPROVE (`reviewDecision=REVIEW_REQUIRED`, both reviews `COMMENTED`).
-- **No-nudge directive applied:** fixer told NOT to nudge for explicit merge/hold; all code held (no pivot/rebase/nits), no proactive posts. Fixer acts only on direct bot mention / REQUEST_CHANGES / APPROVE / CI. My one authorized factual comment (breaking-change asymmetry) — status per fixer; the 10:31 maintainer exchange was maintainer↔maintainer so no bot post was warranted.
-- **DESIGN SETTLED (08-04 18:10Z):** csyonghe (`5182866965`): *"I agree that this is the right direction we should head to in our future language versions -- disallow all statements that doesn't make sense in a `defer`"*, preferring exactly two legal forms: `defer exprStmt;` and `defer blockStmt`. **Fork CLOSED** — both CODEOWNERS agree, both scope it to **Slang 202c / #12296**, NOT this PR. **Load-bearing consequence:** their agreed end-state would eventually *disallow* the bare **declaration** form this PR fixes ⇒ #12269 is the correct **INTERIM non-breaking crash fix**, later superseded for that form by 202c; it does NOT conflict since both keeper forms (`defer <expr>;`, `defer {…}`) keep working unchanged. (Fixer's inference, triager-verified against both comments.)
-- **PR disposition STILL UNSTATED (08-04):** OPEN, non-draft, `reviewDecision=REVIEW_REQUIRED`, `mergeStateStatus=BLOCKED`, both reviews `COMMENTED`, no APPROVE, `reviewRequests:[bmillsNV]`. Neither maintainer has said "merge as-is" NOR "close in favour of 202c". No-nudge directive held (08-04 exchange was maintainer↔maintainer; no bot post authorized).
-- **Triager correction (08-04, good catch):** issue verdict comment `5121153624` still called #12269 a *draft* ("the draft is yours to review… we'll close the draft") — **FALSE** since skiminki flipped it ready 07-30 ⇒ a **live inaccuracy on a public artifact, not merely stale**. PATCHED in place (verified: comment count still 1, false wording 0 occurrences, now records the 202c/#12296 split). Direction-settled was the refresh trigger.
-- **⚠️ Branch now `behind_by 34`, DIVERGED (08-04):** rebase held per directive but no longer trivial; triager told fixer to **re-run `defer/` + `error-handling/` after rebase** rather than trust the pre-rebase run. Good call — [[feedback_verify_regression_claims_at_precision]].
-- ✅**REVIEW COMPLETE 08-04 — `APPROVE_WITH_NITS`, 0 bugs / 1 gap** (`diff_hash d2a5b8f014be`, head `90b471ce5a607285cb6118018b5553ac876a5c1e` = live head, unchanged since review). A+B+C+D whole. File: `combined-review-12269.md` (my inbox `a2a-1785867609661-eu8ga6/`). NO GitHub post (maintainers mid-decision; deliberately withheld).
-  - **A (correctness):** security ✅ (parser exception/longjmp-free ⇒ `PopScope()` always reached, scope stack can't unbalance); ir-correctness ✅ (full consumer trace: deferred decl reached via statement tree `stmt->statement→DeclStmt→decl`, NOT via ScopeDecl membership ⇒ not storing ScopeDecl on DeferStmt is CORRECT, mirrors do/catch); test-coverage 3 gaps→1 kept; **code-quality-reviewer MALFUNCTIONED — reviewed the WRONG PR (#12271)**, output unusable, dimension covered first-hand instead (no issues).
-  - **B (Devin):** CLEAN — 0 bugs / 0 flags / 0 informational.
-  - **C (clarity):** 2 non-blocking comment-only nits, no bug alleged.
-  - **D (reviewer's own 3-lens source verification):** all 3 lenses ✅ — scope is NESTED not isolated (`pushScopeAndSetParent` slang-parser.cpp:160-164 sets `parentDecl`), proven in-tree by `no-block.slang:17` (`defer outputBuffer[i++] = j;` reads outer `i` + loop `j`) and `scoped.slang:12`, both of which would emit E30015 under isolation; no scopeDecl field needed (all 5 DeferStmt consumers recurse only into `stmt->statement`: check-stmt 624, lower-to-ir 8919, check-decl 1329, language-server-ast-lookup 728, ast-iterator 480); no regression to nested/multiple/block-form/do-catch.
-- **THE ONE GAP (🟡, non-blocking, test-only):** `bare-decl-scope.slang:12` tests only *name-invisibility*; the *shadowing/nesting* behavior the fix most directly changes (bare deferred decl vs. an enclosing same-named var) and continued execution of the deferred initializer are untested. ⛔**A's suggested repro snippet DOES NOT WORK as literally written** — with `defer int j = (i = 42);` at function scope both buffer writes execute BEFORE the deferred init runs at function exit, so neither observes `42`; **needs a nested block to be observable** (A hedges this itself; reviewer D caught it). Relay the caveat with the gap or the fixer implements a broken test.
-- **Nit disposition:** **FG001 SURVIVES** (test pins `-target hlsl` for a target-independent front-end diag — note the target is arbitrary). **C001 was dropped by A** as "resolved by the ir-correctness trace" — ⚠️**I think that's a category error worth flagging: the trace proves the omission is CORRECT, which does not satisfy C001's ask, which was to DOCUMENT why no scope field is needed** (+ name do/catch as the precedent actually followed, since `parseBlockStatement` *does* store its ScopeDecl on the node — the exact discrepancy a maintainer will check). Correctness ≠ self-explanatory. Non-blocking either way.
-- **Reviewer A cosmetic imprecision (verified by D):** A calls it a "two-line fix"; it is **9 lines** (5 code + 4 comment). Findings unaffected.
-- 🔴**MY HYPOTHESIS WAS WRONG — CORRECTED.** I wrote that Reviewer A "WENT DARK — teardown casualty" and told the reviewer to treat the run as terminated. **The run had COMPLETED; its output persisted on disk and was recovered intact.** Only the *reporting monitor* died. ⇒ refines [[feedback_in_session_monitors_dont_survive_teardown]]: **teardown kills the DELIVERY mechanism; it does not necessarily kill the WORK — check disk artifacts before writing a run off.** My nudge happened to be correctly structured (it offered "if output is on disk, send it" as option 1, which is what saved it) but my stated diagnosis was wrong; a dark monitor is evidence about notification only.
-- **INFRA BUG FOUND (real, cross-cutting):** the run's `INTEGRITY-FAIL` marker was **adjudicated a FALSE POSITIVE** — the guard diffs a **shared `tmp/pr-diff.patch` that a CONCURRENT PR review clobbered** (it listed `slang-compiler-options.cpp` + `unit-test-stdin-compile.cpp`, a different PR). A's own captured `pr-diff.reference` holds exactly the two real #12269 files and its footer pins the correct head+hash. **The same shared-tmp clobber independently explains the code-quality-reviewer reviewing #12271.** ⇒ [[project_review_pipeline_shared_tmp_diff_clobber]]. Drift = 0 for A and C (zero GitHub-write tool calls in either `tool-uses.jsonl`). **Reviewer reports this is the 5th+ occurrence**; more evidence for the worktree-per-run isolation proposal already in the operator queue. ⭐⭐**Two failure shapes from ONE root cause: the LOUD one (INTEGRITY-FAIL false positive) and the SILENT one (a reviewer confidently reviewing a different PR). The false positive trains you to dismiss the guard exactly when it is also producing wrong output** — cf [[feedback_a_guard_can_be_inert_and_read_as_passing]].
-- 🔴**MONITOR REFINEMENT (reviewer-supplied, corrects the stored remedy): the monitor WAS armed `persistent: true` and STILL died silently.** So `persistent` is **necessary-but-insufficient**, NOT the fix. Correct remedy: **host-level `schedule_task` cron, or run the pass foreground in-turn.** Reviewer rewrote its own stored note and shared it. ⇒ patch [[feedback_in_session_monitors_dont_survive_teardown]] — its "how to apply" must not imply `persistent:true` rescues an in-session watcher.
-## 🔴 TERMINAL 2026-08-06 — PR CLOSED UNMERGED, CRASH STILL LIVE UPSTREAM
-
-**PR #12269 CLOSED UNMERGED** 2026-08-06T09:26:19Z by **skiminki-nv** — *"Closing this PR due to Yong's disapproval."* Verified `mergedAt: null`, `mergeCommit: null`, `reviewDecision` never past `REVIEW_REQUIRED`. ⛔**Issue #12266 remains OPEN — the segfault is UNFIXED upstream.** Closed on **language design, NOT a code fault** (internal `APPROVE_WITH_NITS` 0 bugs; Devin 0/0/0; codex all green). ⇒ **a correct fix can die on design disagreement; "closed" says nothing about the work's quality.**
-
-**The irony, timed:** skiminki posted his strongest PRO-PR argument at 09:25:13Z — *"the correct fix is to just open/close a scope for the deferred statements, just like the PR does… Otherwise, we'll just keep patching corner cases"* — then closed the PR **66 seconds later** at 09:26:19Z citing Yong's disapproval, conceding *"I don't think this discussion is going to converge."*
-
-**CRASH FAMILY — 4 forms, broader than the reported one** (triager-measured on its own edge at master `9eb90c50a`, own binary, freshness established behaviorally since `19d1d4065`/`d2b405d31` touched the parser, control = plain undefined identifier → E30015. ⚠️**Their measurement, not mine — I did not rebuild to confirm; receipts are specific and controlled**):
+## Crash family — 4 forms, broader than reported (triager-measured @master `9eb90c50a`, their receipts)
 | form | result |
 |---|---|
 | `defer uint i=1;` | **139 segfault** |
 | `defer if(…) uint i=1;` | **139** |
 | `defer while(false) uint i=1;` | **139** |
 | `defer do int i=1; while(false);` | **139** |
-| `defer for(;;) int i=1;` | ✅ E30015 already correct — its parser **pushes a scope** (consistent with root cause) |
-⇒ **skiminki's "we'll just keep patching corner cases" is EMPIRICALLY TRUE**: a reject-list would need `if`/`while`/`do` arms too. The `for` arm working is positive confirmation of the diagnosis.
+| `defer for(;;) int i=1;` | ✅ E30015 already correct — the `for` parser pushes a scope |
 
-**5th data point neither tier had:** skiminki notes `if (false) int i = 1;` + a read of `i` is **legal Slang 2026 today** — the same declaration-scoping question **entirely outside `defer`**. The leak class is broader than this issue. (Matches the triage memo's original row: if/while single-stmt bodies also leak, but only `defer` CRASHES.)
+⇒ skiminki's "we'll just keep patching corner cases" is empirically true; the `for` arm working
+confirms the diagnosis. The leak class is broader than `defer`: `if (false) int i = 1;` + a read
+of `i` is legal Slang 2026 today (same decl-scoping question outside `defer`).
 
-**Public footprint corrected (was ACTIVELY FALSE, not merely stale):** verdict `5121153624` said "fixed in #12269 … awaiting a CODEOWNER approval" — with the PR closed that told a reader **a closed PR fixes a live crash**. PATCHED in place → closed-unmerged status, still-reproducing at `9eb90c50a`, the crash-family table, the 202c/#12296 split, maintainer decision needed. Verified: comment count still **1**, false wording 0 occurrences, no HTML-escaping. ⭐⭐**A public comment can go from true to FALSE without anyone editing it — the world moved. Chain-terminal is the moment to re-read your own public artifacts.**
+## Design fork — SETTLED, scoped OUT of this PR
+Two CODEOWNERS split: skiminki-nv → Approach A (silently scope the bare decl); csyonghe → make a
+decl-only `DeferStmt` inner ILLEGAL. Settled 2026-08-04 (comment `5182866965`): both agree the
+future-language end-state disallows nonsensical `defer` statements (keep only `defer exprStmt;`
+and `defer blockStmt`), and both scope that redesign to **Slang 202c / #12296**
+([[project_12296_empty_statement_error_contexts]]), NOT this PR. **Consequence:** #12269 was the
+correct INTERIM non-breaking crash fix; the agreed end-state would later disallow the bare *decl*
+form, but both keeper forms keep working unchanged so there is no conflict. Note: csyonghe's
+illegal-path is strictly MORE breaking than A — `defer int x = sideEffect();` with no reference
+compiles+runs today (init fires at scope-exit; only a *reference* crashes), so A stays
+`pr: non-breaking` while illegal-path flips to `pr: breaking change`.
 
-**Preserved / moot:** patch revivable at branch `fix/issue-12266` @ `90b471ce5a` — **fixer correctly did NOT delete branch/worktree, reopen, repush, or comment** (closed-on-design ≠ wrong work; revival plausible since skiminki said he'll diagnose the ill-defined declaration corner cases). Queued nits (C001 / FG001 / shadowing-execution test gap / rebase) are **MOOT unless revived**.
+## PR #12269 — CLOSED UNMERGED 2026-08-06 (design, not code)
+Draft opened @`71a3f7e71a` (`Closes #12266`, `pr: non-breaking`, 9-line nested-ScopeDecl push/pop
++ DIAGNOSTIC test expecting E30015, no AST/FIDDLE change; repro → E30015). skiminki flipped it
+draft→ready himself (maintainer action, not a drafts-only breach). **Internal review was CLEAN —
+`APPROVE_WITH_NITS`, 0 bugs** (head `90b471ce5a`, `diff_hash d2a5b8f014be`; A correctness ✅,
+Devin 0/0/0, C clarity 2 non-blocking nits; never posted to GitHub — maintainers mid-decision).
+**CLOSED UNMERGED** 2026-08-06T09:26:19Z by skiminki-nv ("Closing due to Yong's disapproval";
+`mergedAt: null`). ⇒ **a correct fix can die on design disagreement; "closed" says nothing about
+the work's quality.** The public verdict comment `5121153624` was PATCHED in place (it had gone
+from true to *actively false* — "fixed in #12269" while the PR was closed and the crash live):
+now records closed-unmerged, still-reproducing @`9eb90c50a`, the crash-family table, the
+202c/#12296 split. ⭐ **A public comment can go true→false with no edit — the world moved;
+chain-terminal is the moment to re-read your own public artifacts.**
 
-**Next human action:** maintainer call — land the scope-push for **Slang 2026** (non-breaking, patch ready) **OR** gate the crash otherwise until the categorical `defer` review in **#12296**. ⚠️**Until then a segfault is reachable from RELEASED Slang on 4 source forms.**
+## Disposition
+- Patch revivable at branch `fix/issue-12266` @ `90b471ce5a` — fixer correctly did NOT delete
+  branch/worktree, reopen, repush, or comment (closed-on-design ≠ wrong work). Queued nits
+  (C001 doc-why-no-scopeDecl / FG001 arbitrary `-target hlsl` / shadowing-execution test gap /
+  rebase, now `behind_by 34`) are MOOT unless revived.
+- **Human comment 2026-09-15 (`5685417102`)** — skiminki-nv, no bot mention: "Marking this as
+  blocked. @tangent-vector, @csyonghe, and me need to discuss the right fix." Administrative /
+  confirmatory, NOT substantive ⇒ no re-open, no bot post, no dispatch. One new fact: a 3-way
+  maintainer discussion now formally OWNS the live crash (tangent-vector looped in) — a small
+  positive on the ownerless-crash concern escalated Aug-6. This explicit disposition is the
+  non-silent close Invariant 4 requires.
 
-**Blocker:** no maintainer consensus. **Chain TERMINAL on our side** — re-opens ONLY on a fresh substantive human comment or an explicit revive request.
+**Blocker:** no maintainer consensus; a segfault is reachable from RELEASED Slang on 4 source
+forms. **RESUME bar (unchanged):** a fresh *substantive* human comment on #12266 (design
+decision, new repro, question-to-us) or an explicit revive request. Do NOT re-dispatch, reopen,
+repush, or delete the branch.
 
-### Human comment 2026-09-15 (`5685417102`) — CONFIRMATORY, no re-open
-skiminki-nv (human, **no `@nv-slang-bot` mention**): *"Marking this as blocked. @tangent-vector, @csyonghe, and me need to have a discussion on what is the right fix."* Webhook `github.pr_mention` but `is_pr:false` + no bot mention ⇒ NOT an authorized-post trigger. **Disposition: administrative/confirmatory, NOT substantive** (no counter-proposal / gap / repro / question-to-us / revive request). Confirms the recorded TERMINAL/blocked state (~5wk after the Aug-6 close) and adds one fact: names a **3-way maintainer discussion — tangent-vector newly looped in + csyonghe + skiminki** ⇒ the live crash is now formally OWNED for discussion, not orphaned; small positive on the ownerless-crash concern escalated Aug-6. **Actions taken: NONE on GitHub** (no bot mention; maintainers mid-coordination ⇒ a bot reply is pure noise), **no triager dispatch** (fails its own resume bar of *substantive*/revive; a wake = [[feedback_benign_ack_loop_dont_restart_if_live_chains]] noise), no reopen/repush/branch-touch. This explicit disposition = the non-silent close Invariant 4 requires. Brief operator loop-close sent (follows the Aug-6 "live crash, no owner" escalation). **RESUME bar UNCHANGED** — this comment does not meet it; re-opens only on a *substantive* human comment (design decision, revive request, new repro) or explicit revive.
+**Durable lessons (already distilled in their own concepts):** verify regression claims at
+precision after a rebase [[feedback_verify_regression_claims_at_precision]]; in-session monitors
+die on teardown but the WORK may persist on disk — check artifacts before writing a run off, and
+`persistent:true` is necessary-but-insufficient (use a host cron / foreground pass)
+[[feedback_in_session_monitors_dont_survive_teardown]]; the shared `tmp/pr-diff.patch` clobber
+between concurrent reviews (one loud INTEGRITY-FAIL false positive + one silent wrong-PR review
+from a single root cause) [[project_review_pipeline_shared_tmp_diff_clobber]],
+[[feedback_a_guard_can_be_inert_and_read_as_passing]]; don't restart live chains on a benign ack
+[[feedback_benign_ack_loop_dont_restart_if_live_chains]]; don't close open proposals
+[[feedback_dont_close_open_proposals]].
 
-- **Prior chain state (historical):** HELD on maintainer PR disposition (approve-and-merge vs close-in-favour-of-202c). No blocker on our side; fix effort small either way. Issue verdict comment `5121153624` held as-is (PR non-draft = live public artifact carrying discussion); refresh once direction *settles* or at merge — NOT on intermediate exchanges. 🔴**TERMINAL — RESUME ONLY on: a fresh substantive HUMAN comment on #12266, or an explicit revive request. Do NOT re-dispatch, reopen, repush, or delete `fix/issue-12266`.** (Superseded triggers, historical: CODEOWNER approve→merge / "close for 202c".) Canonical thread `gh-issue-shader-slang/slang-12266`. Family: [[feedback_dont_close_open_proposals]].
-
-**Re-probed 2026-08-04 (moved from the MEMORY.md index — only copy):** PR #12269 is **non-draft @`90b471ce5a`, `mergeable_state: blocked`, with ZERO non-`COMMENTED` reviews.** ⇒ **it is awaiting a FIRST review, not a merge** — do not phrase RESUME as "merge lands." ⚠️`blocked` names only *that* a requirement is unmet, never *which* (the #12148 lesson), so don't infer a specific gate from it.
-
-**Related (NOT dup):** #12261 (statement labels on non-breakable stmts) — same-author language-hardening family. Feature origin PR #6619 (defer, merged 2025-04-07).
+**Related (NOT dup):** #12261 (statement labels on non-breakable stmts) — same-author
+language-hardening family. Feature origin PR #6619 (defer, merged 2025-04-07).
