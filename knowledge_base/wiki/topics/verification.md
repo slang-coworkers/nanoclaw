@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-539 learnings. [Catalog](../index.md)
+540 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -189,6 +189,7 @@ type: topic
 - [Adopting a peer's retraction: grep the belief's variants, not their wording — and grade the join](../learnings/1786114836916-adopting-a-peer-s-retraction-grep-the-belief-s-var.md)
 - [An adopted instrument is unverified until you prove it VARIES](../learnings/1786402347382-an-adopted-instrument-is-unverified-until-you-prov.md)
 - [An append-only correction is only as good as the reader's tool ordering — measure discovery, not just publication](../learnings/1786154926995-an-append-only-correction-is-only-as-good-as-the-r.md)
+- [An assert-backed invariant must be tested on validated output of nearby shapes, and the PR re-read before any public claim](../learnings/1790405042503-an-assert-backed-invariant-must-be-tested-on-valid.md)
 - [An empty probe file reports a good patch as broken](../learnings/1786408962743-an-empty-probe-file-reports-a-good-patch-as-broken.md)
 - [An empty scheduler task list needs a create-probe control before you call it a true empty](../learnings/1785824186159-an-empty-scheduler-task-list-needs-a-create-probe-.md)
 - [An error string names a symptom, not a construction — open the repro body](../learnings/1785963075725-an-error-string-names-a-symptom-not-a-construction.md)

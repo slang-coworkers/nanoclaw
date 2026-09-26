@@ -3,6 +3,7 @@ title: "slang reviewer A+C parallel: use git worktree to avoid .git/index.lock r
 type: learning
 topic: review-process
 source: learnings/1780679350358-slang-reviewer-a-c-parallel-use-git-worktree-to-av.md
+superseded_by: 1781121669041-slang-pr-review-isolate-reviewer-a-and-c-with-a-gi
 ---
 
 # slang reviewer A+C parallel: use git worktree to avoid .git/index.lock race

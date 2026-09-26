@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-743 learnings. [Catalog](../index.md)
+748 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -214,6 +214,7 @@ type: topic
 - [codex critique-gate tracks FRESH-call verdicts, not codex-reply re-verifications](../learnings/1782439747524-codex-critique-gate-tracks-fresh-call-verdicts-not.md)
 - [codex danger-full-access can amend your branch + worktree resyncs to origin on restart](../learnings/1788103619006-codex-danger-full-access-can-amend-your-branch-wor.md)
 - [codex danger-full-access can mutate your worktree and amend your commit](../learnings/1788103140445-codex-danger-full-access-can-mutate-your-worktree-.md)
+- [codex-cli 0.155.x removed `mcp-server` — silently kills mcp__codex__* and every critique gate fleet-wide](../learnings/1790393694066-codex-cli-0-155-x-removed-mcp-server-silently-kill.md)
 - [codex-critique + critique-gate: /workspace not /tmp, and the gate denies the whole bash block](../learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md)
 - [codex-critique artifacts must live under /workspace, not /tmp (ephemeral + invisible to codex)](../learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md)
 - [codex-critique can push scope-expanding over-engineering the human maintainer will reject](../learnings/1788380776351-codex-critique-can-push-scope-expanding-over-engin.md)
@@ -478,6 +479,7 @@ type: topic
 - [Measured the last unmeasured mechanism - the reachability sweep is a TRIAGE ORDER, not a detector; consequence not probability](../learnings/1785964907534-measured-the-last-unmeasured-mechanism-the-reachab.md)
 - [Mechanism found for the ncl flag asymmetry: dispatcher-level flags (--id, --agent-group-id) are consumed before any verb's allowlist — and a stored rule is a hypothesis carrying an unstated scope](../learnings/1786242584790-mechanism-found-for-the-ncl-flag-asymmetry-dispatc.md)
 - [Memory-qualifier-drop diagnostic: destination-type check needed beyond an error-count gate](../learnings/1789543242916-memory-qualifier-drop-diagnostic-destination-type-.md)
+- [Metal [[stage_in]] on a non-entry helper = former entry point not demoted (lowerOutParameters useCount gate)](../learnings/1790389765020-metal-stage-in-on-a-non-entry-helper-former-entry-.md)
 - [Missing-return severity is target-gated; 202c proposal moves it to language-version gating](../learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md)
 - [nanoclaw-kb fork has core.fileMode=false — KB-sync DATA-ONLY GATE control must use update-index --chmod](../learnings/1789700701048-nanoclaw-kb-fork-has-core-filemode-false-kb-sync-d.md)
 - [ncl approval gate non-functional — no admin configured to approve](../learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md)
@@ -488,6 +490,7 @@ type: topic
 - [ncl sessions list is recency-capped at 200 rows — use --thread-id to probe for a parked/old session](../learnings/1783622539495-ncl-sessions-list-is-recency-capped-at-200-rows-us.md)
 - [ncl sessions list silently caps at the limit you pass — raise it to detect](../learnings/1786182825976-ncl-sessions-list-silently-caps-at-the-limit-you-p.md)
 - [ncl sessions messages --limit N is a HEAD window; limit+tail-1 reads a stale row as current state](../learnings/1785961788763-ncl-sessions-messages-limit-n-is-a-head-window-lim.md)
+- [ncl sessions messages on a huge/old session can wedge the host — never run it on the main DM session](../learnings/1790403484197-ncl-sessions-messages-on-a-huge-old-session-can-we.md)
 - [ncl sessions messages truncates text to 300 chars by default — --full, and read the help first](../learnings/1785968554831-ncl-sessions-messages-truncates-text-to-300-chars-.md)
 - [ncl sessions messages truncates to 300 chars — grep it without --full and you get a false zero](../learnings/1786203957211-ncl-sessions-messages-truncates-to-300-chars-grep-.md)
 - [ncl tasks --script deploy escaping: only $ and backtick need \-escaping, not backslash-doubling](../learnings/1789808037997-ncl-tasks-script-deploy-escaping-only-and-backtick.md)
@@ -501,6 +504,7 @@ type: topic
 - [Never judge GitHub API quota from /rate_limit — the gateway injects per-path](../learnings/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md)
 - [Nightly MDL Perf Test = compile-time perf gate, not a GPU/corpus test](../learnings/1784184423207-nightly-mdl-perf-test-compile-time-perf-gate-not-a.md)
 - [No cross-group task query exists from inside a container — every route silently returns your own rows; and the tasks-list parse asymmetry localized](../learnings/1786241921742-no-cross-group-task-query-exists-from-inside-a-con.md)
+- [nonStaticSatisfiesStatic adaptation: gate by hasDirectFuncType, not param0==This](../learnings/1790318683938-nonstaticsatisfiesstatic-adaptation-gate-by-hasdir.md)
 - [nv-* pre-commit hook runs format:fix then re-adds only src/**/*.ts — silently drops other staged files from the commit](../learnings/legoop-feedback_precommit_hook_drops_files.md)
 - [NVRTC -pch (12.8+) helps only the #include-form prelude, not raw-prepended text; default heap is 256MB; one-shot is a regression](../learnings/1787147387204-nvrtc-pch-12-8-helps-only-the-include-form-prelude.md)
 - [NVRTC -pch for CUDA prelude SHIPPED (PR #12880) — findings held up; provenance was reporter's numbers not a 12.9 fixer run](../learnings/1789272870056-nvrtc-pch-for-cuda-prelude-shipped-pr-12880-findin.md)
@@ -591,6 +595,7 @@ type: topic
 - [Scheduled-task sessions drop `<message>` blocks silently — report via send_message; and `ncl tasks list` showing "No tasks" is not proof of none](../learnings/1786240364490-scheduled-task-sessions-drop-message-blocks-silent.md)
 - [SCOPE CORRECTION — /workspace/shared mount flags are PER-CONTAINER (ro on coworker edges, rw on Main): my previous title asserting the store "is ro-mounted" over-generalized one edge into a property of the store](../learnings/1786438399718-scope-correction-workspace-shared-mount-flags-are-.md)
 - [Second correction: the DNS theory for that OneCLI 502 is REFUTED — four resolvable hosts return resolution_failed](../learnings/1785942743113-second-correction-the-dns-theory-for-that-onecli-5.md)
+- [Second issue riding an existing PR splits the fixer's inbox: check the PR owner session first](../learnings/1790404807814-second-issue-riding-an-existing-pr-splits-the-fixe.md)
 - [send_message to=parent can fail as unaddressable — send_file and message-block still route](../learnings/1784828845885-send-message-to-parent-can-fail-as-unaddressable-s.md)
 - [Sender name is not a session identity — session-scope authorizations with a token](../learnings/1785890078504-sender-name-is-not-a-session-identity-session-scop.md)
 - [Sentinel-gated helper needs a negative-invariant test, not just positive coverage](../learnings/1788248579806-sentinel-gated-helper-needs-a-negative-invariant-t.md)

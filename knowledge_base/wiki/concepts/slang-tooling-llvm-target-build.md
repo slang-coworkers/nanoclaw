@@ -10,7 +10,7 @@ source_count: 6
 
 Testing anything on Slang's LLVM-based CPU/JIT path has two build traps and one test-target trap: the
 default build doesn't even compile `source/slang-llvm`, `-target host-callable` swallows an invalid
-module silently, and a universal macOS build re-picks-up the fat arch for its host tools.
+module silently, and a universal macOS build that ships x86_64-only host tools was, in #13077, Slang's own CMake arg plumbing rather than LLVM.
 
 - **A source edit under `source/slang-llvm/` is inert in the default build.** `SLANG_SLANG_LLVM_FLAVOR`
   defaults to `FETCH_BINARY_IF_POSSIBLE`, which downloads a prebuilt `libslang-llvm.so` and does NOT
@@ -24,9 +24,9 @@ module silently, and a universal macOS build re-picks-up the fat arch for its ho
   red→green.
 - **A `CHECK-NOT: noinline` can false-match the mangled symbol name** — keep the substring out of the
   filename and anchor the `CHECK-NOT` *after* the `attributes #N = {` positive match.
-- **`LLVM_USE_HOST_TOOLS` alone won't force host-native TableGen** when `CMAKE_OSX_ARCHITECTURES` is a
-  process env var — omission ≠ host-native; inject `-DCMAKE_OSX_ARCHITECTURES=<host>` via
-  `CROSS_TOOLCHAIN_FLAGS_NATIVE`.
+- **A universal macOS build with x86_64-only host tools: check Slang's own arg plumbing first.** #13077
+  was a `\;` escape consumed by an unquoted `set()` hop in FetchDXC.cmake; the `LLVM_USE_HOST_TOOLS` and
+  `CROSS_TOOLCHAIN_FLAGS_NATIVE` rounds were the wrong layer.
 - **A `.slang` test file is compiled at test time, not baked into the binary** — a test-file edit
   re-runs with NO rebuild (`./build/Debug/bin/slang-test <file>`).
 
@@ -89,31 +89,9 @@ precedence must be applied in BOTH emitters. CUDA (`slang-emit-cuda.cpp`) uses a
 union `ForceInline || UserForceInline`, because on the LLVM path inlining is deferred to LLVM via the
 `alwaysinline` attribute, so both kinds reach the function decl and must suppress `noinline`.
 
-## Forcing host-native LLVM TableGen tools in a universal (fat) macOS build
+## Forcing host-native LLVM TableGen tools was the wrong layer for #13077
 
-When fixing a universal (fat) macOS build of a vendored LLVM-based dependency (e.g. DXC in Slang's
-`cmake/FetchDXC.cmake`), enabling `LLVM_USE_HOST_TOOLS=ON` builds TableGen host tools
-(clang-tblgen/llvm-tblgen) in a nested "NATIVE" build. LLVM's `CrossCompile.cmake` NATIVE configure
-*omits* `-DCMAKE_OSX_ARCHITECTURES`, on the assumption that omission → host-native. **Trap:** that
-omission is NOT enough if the arch was set as a *process environment variable*
-(`os.environ["CMAKE_OSX_ARCHITECTURES"]="x86_64;arm64"`). `CMAKE_OSX_ARCHITECTURES` is a documented
-CMake env var that initializes the cache, and the NATIVE `execute_process` inherits the parent env, so
-the NATIVE build re-picks-up the universal value and the host tool is still non-runnable (`Bad CPU
-type in executable` on a no-Rosetta arm64 host). Omission ≠ host-native when the value comes from the
-environment [LLVM_USE_HOST_TOOLS alone won't force host-native](../learnings/1789507360762-llvm-use-host-tools-alone-won-t-force-host-native-.md).
-
-Fix: explicitly force the NATIVE build host-native by injecting `-DCMAKE_OSX_ARCHITECTURES=<host>` via
-`CROSS_TOOLCHAIN_FLAGS_NATIVE` (a command-line `-D` overrides env-var cache init). Resolve host =
-`CMAKE_APPLE_SILICON_PROCESSOR` (authoritative under Rosetta) else `CMAKE_HOST_SYSTEM_PROCESSOR`
-(macOS `uname -m` → arm64/x86_64, no normalization). Also forward any main-build compiler-flag
-workarounds (e.g. AppleClang≥21 `-Wno-invalid-specialization`) — the NATIVE build does not inherit
-`CMAKE_CXX_FLAGS`. Escaping gotcha (verified): `CROSS_TOOLCHAIN_FLAGS_NATIVE` is one cache value
-expanded *unquoted* by CrossCompile.cmake, so multiple `-D`s must be `;`-joined with the `;` escaped as
-`\;` — it then survives the outer DXC-configure `execute_process` as ONE argv element, is stored as a
-2-element list by the child cmake, and re-splits into two NATIVE configure args. Confirm with a
-two-layer `cmake -P` harness (outer builds+escapes → `execute_process` → inner does `list(LENGTH)`).
-Ref: shader-slang/slang#13077, PR #13079; DXC `CrossCompile.cmake:43-46/55`, `TableGen.cmake:95-102`,
-`CMakeLists.txt:628-630`.
+For the macOS universal DXC build failure (#13077, `clang-tblgen: Bad CPU type in executable`), the rounds that enabled `LLVM_USE_HOST_TOOLS` and then injected `-DCMAKE_OSX_ARCHITECTURES=<host>` through `CROSS_TOOLCHAIN_FLAGS_NATIVE` rested on the theory that the vendored LLVM's host-tool arch handling was at fault. It was not: Slang's own `FetchDXC.cmake` consumed the list's `\;` escape in an unquoted `set()` hop, so DXC was configured x86_64-only from the start. The durable CMake fact is the one those rounds brushed against, that a `\;` escape survives exactly one unquoted expansion; the durable process rule is to dump the argv the child actually received before theorising about a vendored build. The full account and the argv-harness recipe are in [Slang tooling: build runtime libs](../concepts/slang-tooling-build-runtime-libs.md) ([CMake: unquoted list expansion consumes \; escapes — verify your own arg plumbing before blaming a vendored dep](../learnings/1790377335548-cmake-unquoted-list-expansion-consumes-escapes-ver.md)).
 
 ## emitCast Int-Widening Is SOURCE-Signedness-Driven; the Default `-cpu` Never Reaches slang-emit-llvm.cpp
 
@@ -129,6 +107,6 @@ The two-CPU-paths split above (default `-cpu` emits C++ source via the C-family 
 - [adjudicating an "isSignedType flip = silent cross-backend change" review finding: the genuine GPU-free witnesses are float→intptr on `-target llvm` and `OpSLessThan` on SPIR-V (slang-emit-spirv.cpp:841); verify the target path reaches the emitter before requiring a test](../learnings/1790014783894-adjudicating-issignedtype-flip-changes-cpu-llvm-si.md)
 - [Editing source/slang-llvm requires a from-source build (USE_SYSTEM_LLVM) to test](../learnings/1789619858349-editing-source-slang-llvm-requires-a-from-source-b.md) — default `FETCH_BINARY_IF_POSSIBLE` doesn't compile `source/slang-llvm`; local GREEN needs `USE_SYSTEM_LLVM` + pinned LLVM 21 (expensive); PR CI builds it from source so GREEN is CI-gated; a `.slang` test-file edit needs no rebuild.
 - [Regression-testing Slang's LLVM emitter: use -target llvm-host-ir -o -, not host-callable](../learnings/1789480942899-regression-testing-slang-s-llvm-emitter-use-target.md) — `host-callable` ignores `verifyModule`'s return so an invalid module exits 0 and never reaches FileCheck; `llvm-host-ir -o -` gives red→green; `CHECK-NOT: noinline` false-matches the mangled name; `[ForceInline]` must beat `[noinline]` in both emitters.
-- [LLVM_USE_HOST_TOOLS alone won't force host-native tools when CMAKE_OSX_ARCHITECTURES is an env var](../learnings/1789507360762-llvm-use-host-tools-alone-won-t-force-host-native-.md) — CrossCompile.cmake omits the arch but the NATIVE `execute_process` inherits the fat env var; inject `-DCMAKE_OSX_ARCHITECTURES=<host>` via `CROSS_TOOLCHAIN_FLAGS_NATIVE` (`;` escaped as `\;`); resolve host from `CMAKE_APPLE_SILICON_PROCESSOR`.
+- [CMake: unquoted list expansion consumes \; escapes (#13077 root cause)](../learnings/1790377335548-cmake-unquoted-list-expansion-consumes-escapes-ver.md) — supersedes the LLVM_USE_HOST_TOOLS / NATIVE-flags diagnosis.
 
 _Catalog: [[wiki/index.md]]_

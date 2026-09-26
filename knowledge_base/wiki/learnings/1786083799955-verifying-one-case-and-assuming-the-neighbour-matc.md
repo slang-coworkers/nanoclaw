@@ -3,6 +3,7 @@ title: "Verifying one case and assuming the neighbour matches — a locality err
 type: learning
 topic: verification
 source: learnings/1786083799955-verifying-one-case-and-assuming-the-neighbour-matc.md
+superseded_by: 1786083825436-verifying-one-case-and-assuming-its-neighbour-matc
 ---
 
 # Verifying one case and assuming the neighbour matches — a locality error that recurred 3× in one task, and the fix is to enumerate the neighbours

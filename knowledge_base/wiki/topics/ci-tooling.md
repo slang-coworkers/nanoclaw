@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-504 learnings. [Catalog](../index.md)
+508 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -227,6 +227,8 @@ type: topic
 - [CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative](../learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md)
 - [CMake file(DOWNLOAD): EXPECTED_HASH is deferred-fatal in configure mode and defeats STATUS-based retry/fallback](../learnings/1785765561771-cmake-file-download-expected-hash-is-deferred-fata.md)
 - [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md)
+- [CMake: escaped list (\;) forwarded to a sub-configure is lost by a second unquoted expansion — verify with a cmake -P argv harness](../learnings/1790373222851-cmake-escaped-list-forwarded-to-a-sub-configure-is.md)
+- [CMake: every unquoted ${list} hop eats one level of \; escaping — list values get truncated before execute_process](../learnings/1790372578345-cmake-every-unquoted-list-hop-eats-one-level-of-es.md)
 - [CMake: seed CMAKE_<LANG>_FLAGS_<CONFIG>_INIT to make a default flag user-overridable (not target_compile_options + detection)](../learnings/1785767372104-cmake-seed-cmake-lang-flags-config-init-to-make-a-.md)
 - [CodeRabbit under-read measured at ~92% (11/12) — and it only corrupts a row when it coincides with a false absence](../learnings/1785779282480-coderabbit-under-read-measured-at-92-11-12-and-it-.md)
 - [COMPARE_COMPUTE filecheck-buffer: use -output-using-type or CI (cpu+llvm) dumps HEX while local (gcc cpu) dumps decimal](../learnings/1781271132976-compare-compute-filecheck-buffer-use-output-using-.md)
@@ -376,6 +378,7 @@ type: topic
 - [Parallelize the REST-fallback CI sweep — serial retry-wrapper sweeps time out at scale](../learnings/1785752832168-parallelize-the-rest-fallback-ci-sweep-serial-retr.md)
 - [Parking a chain on a human/operator decision needs a re-chase timer, or it stalls silently](../learnings/1790028684307-parking-a-chain-on-a-human-operator-decision-needs.md)
 - [Per-agent build volume is /dev/vdb (/workspace/agent), not shared /workspace](../learnings/1780381892104-per-agent-build-volume-is-dev-vdb-workspace-agent-.md)
+- [Per-conformer specialization of a caller under dynamic dispatch: use a traversal-owned interface + blanket extension](../learnings/1790404968818-per-conformer-specialization-of-a-caller-under-dyn.md)
 - [Pin the denominator when comparing a CI rate to a stored baseline](../learnings/1786091003109-pin-the-denominator-when-comparing-a-ci-rate-to-a-.md)
 - [Pointer function parameters are provisional in the specialize-address-space pre-pass](../learnings/1789249737483-pointer-function-parameters-are-provisional-in-the.md)
 - [Pointer-formation UB (cur+N only compared, deref short-circuit-guarded) is UBSan-flaggable but NOT a realized crash — don't over-call P1](../learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md)
@@ -487,6 +490,7 @@ type: topic
 - [Two top CI infra buckets are distinct: external Falcor pipeline vs own-fleet runner preemption](../learnings/1786494033565-two-top-ci-infra-buckets-are-distinct-external-fal.md)
 - [Untracking a checked-in build binary is safe only if nothing consumes the tracked copy](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
 - [Validate must-fail repro against CURRENT source, not a stale prebuilt binary — lowering drifts](../learnings/1786636025197-validate-must-fail-repro-against-current-source-no.md)
+- [Verify a "green once PR X lands" dependency by applying X's actual diff — #12935 is insufficient for genuinely-multi-type is/as (#13261)](../learnings/1790318063842-verify-a-green-once-pr-x-lands-dependency-by-apply.md)
 - [Verify a FileCheck directive-collision fix statically (no build/FileCheck needed)](../learnings/1790108085939-verify-a-filecheck-directive-collision-fix-statica.md)
 - [Verify a PR fix on a build FROM the PR head, with master as control — worktree needs submodule init](../learnings/1787626975022-verify-a-pr-fix-on-a-build-from-the-pr-head-with-m.md)
 - [Verify a reported release-version mismatch against the actual artifact before treating it as a release-CI bug](../learnings/1781385600632-verify-a-reported-release-version-mismatch-against.md)

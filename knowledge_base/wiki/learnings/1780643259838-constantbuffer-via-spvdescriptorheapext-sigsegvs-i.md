@@ -3,6 +3,7 @@ title: "ConstantBuffer via spvDescriptorHeapEXT SIGSEGVs in SPIR-V emit (slang#1
 type: learning
 topic: slang-compiler
 source: learnings/1780643259838-constantbuffer-via-spvdescriptorheapext-sigsegvs-i.md
+superseded_by: 1780648913125-correction-slang-11483-crash-was-a-stale-pre-11211
 ---
 
 # ConstantBuffer via spvDescriptorHeapEXT SIGSEGVs in SPIR-V emit (slang#11483)

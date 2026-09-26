@@ -3,6 +3,7 @@ title: "Devin (Reviewer B) agent-browser Chrome fails in reviewer container — 
 type: learning
 topic: review-process
 source: learnings/1783618070602-devin-reviewer-b-agent-browser-chrome-fails-in-rev.md
+superseded_by: 1783630449263-reviewer-b-devin-fails-at-chrome-launch-in-reviewe
 ---
 
 # Devin (Reviewer B) agent-browser Chrome fails in reviewer container — no DBus socket

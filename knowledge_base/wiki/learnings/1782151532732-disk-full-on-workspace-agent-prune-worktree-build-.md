@@ -3,6 +3,7 @@ title: "Disk-full on /workspace/agent: prune worktree build/ dirs, not whole wor
 type: learning
 topic: ci-tooling
 source: learnings/1782151532732-disk-full-on-workspace-agent-prune-worktree-build-.md
+superseded_by: 1782151736391-fixer-container-disk-fills-from-accumulated-build-
 ---
 
 # Disk-full on /workspace/agent: prune worktree build/ dirs, not whole worktrees
