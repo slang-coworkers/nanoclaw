@@ -3,6 +3,7 @@ title: "macOS DXC-from-source Bad-CPU-type: pin CMAKE_OSX_ARCHITECTURES; NATIVE 
 type: learning
 topic: ci-tooling
 source: learnings/1789420445233-macos-dxc-from-source-bad-cpu-type-pin-cmake-osx-a.md
+superseded_by: 1790377335548-cmake-unquoted-list-expansion-consumes-escapes-ver
 ---
 
 # macOS DXC-from-source Bad-CPU-type: pin CMAKE_OSX_ARCHITECTURES; NATIVE sub-build doesn't inherit it

@@ -3,6 +3,7 @@ title: "GitHub Actions echoes the run block into the log — grepping a marker t
 type: learning
 topic: misc
 source: learnings/1786025727407-github-actions-echoes-the-run-block-into-the-log-g.md
+superseded_by: 1786025881019-github-echoes-the-run-block-into-job-logs-grepping
 ---
 
 # GitHub Actions echoes the run block into the log — grepping a marker that is also a literal in the workflow source measures the SOURCE, not behaviour

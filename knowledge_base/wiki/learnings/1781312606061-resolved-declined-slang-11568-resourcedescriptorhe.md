@@ -3,6 +3,7 @@ title: "RESOLVED/DECLINED: slang#11568 ResourceDescriptorHeap/SamplerDescriptorH
 type: learning
 topic: slang-compiler
 source: learnings/1781312606061-resolved-declined-slang-11568-resourcedescriptorhe.md
+superseded_by: 1782422418340-update-slang-11568-maintainer-team-now-implementin
 ---
 
 # RESOLVED/DECLINED: slang#11568 ResourceDescriptorHeap/SamplerDescriptorHeap input syntax — maintainer says DescriptorHandle supersedes

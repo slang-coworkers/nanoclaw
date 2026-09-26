@@ -3,6 +3,7 @@ title: "LLVM_USE_HOST_TOOLS alone won't force host-native tools when CMAKE_OSX_A
 type: learning
 topic: ci-tooling
 source: learnings/1789507360762-llvm-use-host-tools-alone-won-t-force-host-native-.md
+superseded_by: 1790377335548-cmake-unquoted-list-expansion-consumes-escapes-ver
 ---
 
 # LLVM_USE_HOST_TOOLS alone won't force host-native tools when CMAKE_OSX_ARCHITECTURES is an env var

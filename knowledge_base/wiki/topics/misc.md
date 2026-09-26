@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1256 learnings. [Catalog](../index.md)
+1259 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -447,6 +447,7 @@ type: topic
 - [Before believing a zero, prove the run REACHED the target: a coverage counter, not a liveness control](../learnings/1785984244886-before-believing-a-zero-prove-the-run-reached-the-.md)
 - [Before calling a worklist return-signal a correctness hole, check self-enqueue + pre-existing scope](../learnings/1789382023678-before-calling-a-worklist-return-signal-a-correctn.md)
 - [Before comparing two failure rates, check the DENOMINATOR is the same population — a job-name split turned a '4.5x gap' into no gap at all](../learnings/1786222540253-before-comparing-two-failure-rates-check-the-denom.md)
+- [Before dispatching a fix for an ICE in a known crash family, apply the open sibling PR and re-run the repro](../learnings/1790318063820-before-dispatching-a-fix-for-an-ice-in-a-known-cra.md)
 - [Before dispatching a resumed chain, check GitHub for your own bot's footprint](../learnings/1785968537045-before-dispatching-a-resumed-chain-check-github-fo.md)
 - [Before executing a "land this patch" dispatch, check the PR doesn't already exist](../learnings/1780769347490-before-executing-a-land-this-patch-dispatch-check-.md)
 - [Before fixing a gap on an unmerged PR, re-fetch the LIVE PR head — the author may have already done it](../learnings/1788212329588-before-fixing-a-gap-on-an-unmerged-pr-re-fetch-the.md)
@@ -917,6 +918,7 @@ type: topic
 - [OKF NO-FRONTMATTER pile is often a nested metadata.type migration artifact](../learnings/1790061935849-okf-no-frontmatter-pile-is-often-a-nested-metadata.md)
 - [OKF synth: exempt flag, not hardcoded names, for operational files that trip ESCALATE](../learnings/1789101995712-okf-synth-exempt-flag-not-hardcoded-names-for-oper.md)
 - [OKF synth: exempt the whole operational set, not just the loudest — or trigger-1 fires next](../learnings/1789102408104-okf-synth-exempt-the-whole-operational-set-not-jus.md)
+- [OKF synth: path-form wikilinks need .md; MEMORY.md inert when autoMemoryEnabled=false](../learnings/1790397155008-okf-synth-path-form-wikilinks-need-md-memory-md-in.md)
 - [OKF synth: reindex.sh leaves sharded family monoliths on disk (fix the producer)](../learnings/1788150087507-okf-synth-reindex-sh-leaves-sharded-family-monolit.md)
 - [OKF synthesis: legacy native-memory frontmatter false-flags as DOSSIER](../learnings/1788109261898-okf-synthesis-legacy-native-memory-frontmatter-fal.md)
 - [okf-synthesis backlog is inflated by frontmatter-convention mismatch, not rot](../learnings/1787373318278-okf-synthesis-backlog-is-inflated-by-frontmatter-c.md)
@@ -925,6 +927,7 @@ type: topic
 - [okf-synthesis scoped fix: exclude documented operational files, source list from index.md](../learnings/1787116919680-okf-synthesis-scoped-fix-exclude-documented-operat.md)
 - [okf-synthesis: nested metadata.type recognition + self-declared exempt flag (implemented)](../learnings/1787375075036-okf-synthesis-nested-metadata-type-recognition-sel.md)
 - [okf-synthesis: reindex.sh left orphaned monolithic family indexes that regrow every run](../learnings/1788150354105-okf-synthesis-reindex-sh-left-orphaned-monolithic-.md)
+- [okf-synthesis: run finalize exactly once, and always fold the top offender](../learnings/1790396413821-okf-synthesis-run-finalize-exactly-once-and-always.md)
 - [okf_synth NO-FRONTMATTER backlog in imported/ is one mechanical bug: type nested under metadata](../learnings/1789533464993-okf-synth-no-frontmatter-backlog-in-imported-is-on.md)
 - [On a draft PR, `statusCheckRollup` and `commits/<sha>/check-runs` expose DIFFERENT SETS — a manual-dispatch matrix can be fully green and invisible on the PR page](../learnings/1786280978623-on-a-draft-pr-statuscheckrollup-and-commits-sha-ch.md)
 - [On a shallow clone, git merge-base lies about remote ancestry — use GitHub compare API](../learnings/1787862114697-on-a-shallow-clone-git-merge-base-lies-about-remot.md)
