@@ -7,7 +7,15 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 const mocks = vi.hoisted(() => ({
   detectInstalledGateway: vi.fn<() => string | undefined>(),
   isGatewayInstalled: vi.fn<() => boolean>(),
-  runSkill: vi.fn(async () => ({ deferred: [], agentTasks: [] })),
+  // Typed like its two siblings above, and for a reason beyond consistency: the
+  // bare `vi.fn(async () => …)` infers a ZERO-parameter signature, so
+  // `mock.calls` becomes `[][]` and the `([, options]) => options.mode`
+  // assertion below cannot type-check. This fork typechecks `setup/`
+  // (`scripts/typecheck-gate.mjs`); upstream does not, which is why it ships green
+  // there and red here.
+  runSkill: vi.fn<
+    (skillDir: string, opts?: { mode?: 'install' | 'refresh' }) => Promise<{ deferred: string[]; agentTasks: never[] }>
+  >(async () => ({ deferred: [], agentTasks: [] })),
   upsertEnvVar: vi.fn(),
 }));
 
@@ -84,7 +92,7 @@ describe('gateway installation', () => {
 
     await installGateway(undefined, '/install');
 
-    expect(mocks.runSkill.mock.calls.map(([, options]) => options.mode)).toEqual(['refresh', 'install']);
+    expect(mocks.runSkill.mock.calls.map(([, options]) => options?.mode)).toEqual(['refresh', 'install']);
     expect(mocks.upsertEnvVar).toHaveBeenCalledWith('NANOCLAW_GATEWAY_PROVIDER', 'iron-proxy', '/install');
   });
 
