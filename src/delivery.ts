@@ -26,7 +26,7 @@ import {
   getMessagingGroupByPlatform,
   getMessagingGroupForOwnDestination,
 } from './db/messaging-groups.js';
-import { clearDeliveryAttempt, recordDeliveryAttempt } from './db/coordination.js';
+import { clearDeliveryAttempt, getDeliveryAttempt, recordDeliveryAttempt } from './db/coordination.js';
 import { runGuarded, type DeliveryGuardSpec, type GuardedDeliveryHandler } from './delivery-guard.js';
 import { isUnguarded, unguarded, type Unguarded } from './guard/index.js';
 import { mapConcurrent } from './concurrency.js';
@@ -40,7 +40,7 @@ import {
 } from './modules/cost-ceiling-adjustment/index.js';
 import { log } from './log.js';
 import { normalizeOptions } from './channels/ask-question.js';
-import { clearOutbox, readOutboxFiles, withExistingMailboxSession } from './session-manager.js';
+import { clearOutbox, readOutboxFiles, withExistingMailboxSession, writeSessionMessage } from './session-manager.js';
 import { pauseTypingRefreshAfterDelivery, setTypingAdapter } from './modules/typing/index.js';
 import type { OutboundFile } from './channels/adapter.js';
 import type { PendingApproval, Session } from './types.js';
@@ -49,6 +49,19 @@ import type { OutboundMessage } from './mailbox/index.js';
 const ACTIVE_POLL_MS = 1000;
 const SWEEP_POLL_MS = 60_000;
 const MAX_DELIVERY_ATTEMPTS = 3;
+/**
+ * How many times a `kind: 'system'` row may be STARTED. System actions run
+ * host code (cli_request → dispatch, approvals, …); when one of them takes the
+ * process down, no catch block runs, no attempt is recorded, and the same row
+ * is re-executed after every restart — the 2026-09-26 crash loop: 66
+ * restarts on one `ncl sessions messages` request against a 2.6 GB session.
+ * So a system action's attempt is recorded when it starts, not only when it
+ * fails, and a row whose previous starts never completed is quarantined
+ * (delivered/failed + an error response to the agent) before it can run
+ * again. 2 = one retry, so a host restarted by an operator mid-command still
+ * gets a second chance; a third start is the poison-pill signature.
+ */
+export const MAX_SYSTEM_ACTION_STARTS = 2;
 /**
  * Sessions drained in parallel per poll tick. A visit is one mailbox round
  * trip (read the queue) plus the channel sends; serially, a tick scaled as
@@ -148,7 +161,7 @@ let sweepPolling = false;
 /**
  * Callbacks fired when the delivery adapter is first set (and again if it's
  * replaced). Lets modules that need the adapter at boot (e.g. approvals →
- * OneCLI handler) hook in without core calling into the module directly.
+ * gateway approval handlers) hook in without core calling into the module directly.
  *
  * Not a general-purpose registry — narrow lifecycle hook only.
  */
@@ -307,6 +320,16 @@ async function drainSession(session: Session): Promise<void> {
   }
 
   for (const msg of pending) {
+    // Count the START of a system action (see MAX_SYSTEM_ACTION_STARTS). The
+    // row is durable in the central DB before host code runs, so a crash
+    // mid-action is visible to the next process life as an uncompleted start.
+    if (msg.kind === 'system') {
+      const starts = await recordAttemptRow(msg.id, session.id, 'started — no completion recorded');
+      if (starts !== null && starts > MAX_SYSTEM_ACTION_STARTS) {
+        await quarantineSystemAction(msg, session, agentGroup.id, starts);
+        continue;
+      }
+    }
     try {
       const platformMsgId = await deliverMessage(msg, session);
       await withExistingMailboxSession(agentGroup.id, session.id, (mailbox) =>
@@ -342,7 +365,12 @@ async function drainSession(session: Session): Promise<void> {
         }
       }
     } catch (err) {
-      const attempts = await recordAttemptRow(msg.id, session.id, err);
+      // A system row's attempt was already counted at its start; re-read it
+      // instead of counting the same attempt twice.
+      const attempts =
+        msg.kind === 'system'
+          ? ((await getDeliveryAttempt(msg.id).catch(() => undefined))?.attempts ?? null)
+          : await recordAttemptRow(msg.id, session.id, err);
       if (attempts !== null && attempts >= MAX_DELIVERY_ATTEMPTS) {
         log.error('Message delivery failed permanently, giving up', {
           messageId: msg.id,
@@ -372,6 +400,63 @@ async function drainSession(session: Session): Promise<void> {
       }
     }
   }
+}
+
+/**
+ * A system action whose previous starts never completed: mark the outbound
+ * row failed so no process life re-executes it, drop the attempt row, and —
+ * for a cli_request — answer the agent's pending `ncl` call with an error
+ * frame instead of letting it time out in silence.
+ */
+async function quarantineSystemAction(
+  msg: { id: string; content: string },
+  session: Session,
+  agentGroupId: string,
+  starts: number,
+): Promise<void> {
+  let content: Record<string, unknown> = {};
+  try {
+    content = JSON.parse(msg.content) as Record<string, unknown>;
+  } catch {
+    // Unparseable content is still quarantined below; there is just no
+    // request to answer.
+  }
+  log.error('System action quarantined — previous executions never completed (host crashed mid-action?)', {
+    messageId: msg.id,
+    sessionId: session.id,
+    action: content.action,
+    command: content.command,
+    starts,
+  });
+  try {
+    await withExistingMailboxSession(agentGroupId, session.id, (mailbox) => mailbox.markDeliveryFailed(msg.id));
+    if (content.action === 'cli_request' && typeof content.requestId === 'string') {
+      const requestId = content.requestId;
+      await writeSessionMessage(agentGroupId, session.id, {
+        id: `cli-resp-${requestId}`,
+        kind: 'system',
+        timestamp: new Date().toISOString(),
+        content: JSON.stringify({
+          type: 'cli_response',
+          requestId,
+          frame: {
+            id: requestId,
+            ok: false,
+            error: {
+              code: 'handler-error',
+              message: `quarantined: the host did not survive ${starts - 1} previous attempt(s) to run '${String(
+                content.command ?? '?',
+              )}'. It will not be retried — narrow the request (e.g. --limit/--since_seq) or ask an operator.`,
+            },
+          },
+        }),
+        trigger: false,
+      });
+    }
+  } catch (err) {
+    log.error('Failed to record system-action quarantine', { messageId: msg.id, sessionId: session.id, err });
+  }
+  await clearAttemptRow(msg.id);
 }
 
 async function deliverMessage(

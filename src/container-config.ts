@@ -17,6 +17,7 @@ import { getCostCapPolicy } from './db/cost-cap-policy.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { isValidTimezone } from './timezone.js';
 import { log } from './log.js';
+import { RESERVED_MCP_SERVER_NAMES } from './mcp-allowlist.js';
 import type { AgentGroup, ContainerConfigRow, ContainerSpeed } from './types.js';
 
 /**
@@ -78,7 +79,7 @@ export type McpServerConfig = McpStdioServerConfig | McpHttpServerConfig;
  * matched as whole words between [_.-] separators: `author` never matches
  * `auth`, but `authToken`, `clientSecret`, and `x-auth` all do. A match
  * hard-blocks registration — the URL persists to the container config and
- * renders on the approval card, so secrets must ride via OneCLI. Non-secret
+ * renders on the approval card, so secrets must ride via the selected gateway. Non-secret
  * query params are legitimate endpoint config (e.g. Datadog's `?toolsets=apm`).
  */
 const SECRET_QUERY_KEY_RE =
@@ -112,6 +113,12 @@ export function validateMcpServerName(name: string): void {
   // dropped (or worse) on every intake path, so reject it by name.
   if (!MCP_SERVER_NAME_RE.test(name) || name === '__proto__') {
     throw new Error('server name must be 1-64 characters of letters, digits, "_" or "-"');
+  }
+  // Same class of problem as "__proto__", one layer up: the name is structurally
+  // fine but the slot is not free. See RESERVED_MCP_SERVER_NAMES for why taking
+  // one is a capability redirect rather than a collision.
+  if (RESERVED_MCP_SERVER_NAMES.includes(name)) {
+    throw new Error(`server name "${name}" is reserved for a built-in runtime server`);
   }
 }
 
@@ -160,11 +167,11 @@ export function parseMcpServerConfig(input: Record<string, unknown>): McpServerC
       throw new Error('url must use HTTPS (plain HTTP is allowed only for localhost and host.docker.internal)');
     }
     if (parsed.username || parsed.password || parsed.hash) {
-      throw new Error('url must not contain credentials or fragments; use OneCLI for authentication');
+      throw new Error('url must not contain credentials or fragments; use the credential gateway');
     }
     for (const key of parsed.searchParams.keys()) {
       if (SECRET_QUERY_KEY_RE.test(key.replace(CAMEL_SPLIT_RE, '$1_$2'))) {
-        throw new Error(`url query parameter "${key}" looks like a credential; use OneCLI for authentication`);
+        throw new Error(`url query parameter "${key}" looks like a credential; use the credential gateway`);
       }
     }
     const headers = parseStringRecord(input.headers, 'headers');

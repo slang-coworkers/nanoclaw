@@ -21,7 +21,7 @@ import {
 } from './db/messages-in.js';
 import { classifyTurnError } from './transient-error.js';
 import { getUndeliveredMessages, hasIdenticalSend, outboundWatermark, writeMessageOut } from './db/messages-out.js';
-import { clearStaleProcessingAcks } from './db/container-state.js';
+import { clearStaleProcessingAcks, gcOutboundHistory } from './db/container-state.js';
 import { resolveDestinationThread } from './db/session-routing.js';
 import { touchHeartbeat } from './heartbeat.js';
 import { getAgentMailbox } from './mailbox/index.js';
@@ -2520,6 +2520,23 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // Same for the reply stamp a killed container left behind (see session-state.ts).
   clearCurrentReplyRoute();
 
+  // Outbound history GC (the host prunes the inbound side): drop messages_out
+  // rows the host has already delivered, and acks for inbound rows that no
+  // longer exist, older than the retention window. Prod 2026-09-27: one
+  // session had 193k delivered rows the host re-read every second.
+  try {
+    const retentionDays =
+      Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0 ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) : 7;
+    const gc = gcOutboundHistory(new Date(Date.now() - retentionDays * 86_400_000).toISOString());
+    if (gc.messagesOut > 0 || gc.acks > 0) {
+      log(
+        `Outbound history GC: removed ${gc.messagesOut} delivered messages_out rows, ${gc.acks} orphan acks (>${retentionDays}d)`,
+      );
+    }
+  } catch (err) {
+    log(`Outbound history GC skipped: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   // Runner-instance readiness handshake (NanoClaw #1, "set ceiling v2") —
   // publish before anything else so the host's post-wake readiness poll finds
   // it as soon as possible.
@@ -3780,8 +3797,7 @@ export async function processQuery(
         // Route it like any other retry: one queued turn, behind any follow-ups
         // already pushed, carrying THIS turn's route so the correction is answered
         // into the same conversation it is correcting.
-        if (queuedCorrection && !terminalCeilingStop)
-          pushRetry(corrections.join('\n\n'), correctionArchivePrompt);
+        if (queuedCorrection && !terminalCeilingStop) pushRetry(corrections.join('\n\n'), correctionArchivePrompt);
         if (terminalCeilingStop) {
           // Surface the withheld answer durably (same delivery mechanism as
           // finalizeSilentTurn), then ack the batch FAILED — NOT completed — so

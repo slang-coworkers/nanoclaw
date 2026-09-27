@@ -107,6 +107,12 @@ export interface MailboxOperations {
   setContainerToolInFlight(tool: string, declaredTimeoutMs: number | null): void;
   clearContainerToolInFlight(): void;
   clearStaleProcessingAcks(): void;
+  /**
+   * Runner-side mailbox history GC (the runner owns outbound.db): drop
+   * messages_out rows the host has already delivered and processing_ack rows
+   * whose inbound message no longer exists, both older than the cutoff.
+   */
+  gcOutboundHistory(cutoffIso: string): { messagesOut: number; acks: number };
 }
 
 export interface AgentMailbox {
