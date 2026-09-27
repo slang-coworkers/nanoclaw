@@ -18,6 +18,9 @@
  *   against their full reviewed text so a later edit to a row cannot pass through.
  * - `## Resident Skill Instructions`, the resident half of a skill dir's contract.
  *   A section strip, rebuilt from the skill's own `instructions.md`.
+ * - `### Connecting external accounts`, added to `container/CLAUDE.md` upstream and
+ *   EMITTED rather than dropped, so every type carries it. A section strip, rebuilt
+ *   from the base document's own section body.
  * - Four fragments whose bodies differ from the fixtures'. Whole-body substitutions
  *   for the ones `main` emits verbatim, line substitutions where typed composition
  *   re-levels headings; the post-edit side is digest-pinned, because reading the
@@ -35,6 +38,7 @@ import { describe, expect, it } from 'vitest';
 
 import { composeCoworkerSpine } from '../claude-composer.js';
 import { PARITY_MCP, PARITY_PERSONA } from './parity.fixtures.js';
+import { RUNTIME_CONTRACT_PATH } from './runtime-contract.js';
 
 const GOLDEN_DIR = path.join(import.meta.dirname, '__goldens__');
 const PRE_DIR = path.join(import.meta.dirname, '__goldens__', 'pre-anchor-retarget');
@@ -63,6 +67,8 @@ const NCL_ROWS: readonly string[] = [
 ];
 
 const RESIDENT_HEADING = '## Resident Skill Instructions';
+
+const CONNECT_HEADING = 'Connecting external accounts';
 
 /**
  * Fragments `main` emits verbatim and no other type binds, so a body substitution
@@ -162,6 +168,38 @@ function residentSectionBytes(): string {
   return `\n${RESIDENT_HEADING}\n\n### \`/onecli-gateway\`\n\n${body}\n`;
 }
 
+/**
+ * The exact bytes the emitted `Connecting external accounts` section adds, rebuilt
+ * from `container/CLAUDE.md` rather than from the composer.
+ *
+ * Same reasoning as `residentSectionBytes`: a delete-between-headings strip would
+ * absorb an edit made INSIDE the section, and reusing `renderRuntimeContract` would
+ * make the assertion agree with itself. The body is read with this file's own
+ * splitter and re-leveled to `###` explicitly.
+ */
+function connectSectionBytes(): string {
+  const doc = fs.readFileSync(path.join(process.cwd(), RUNTIME_CONTRACT_PATH), 'utf-8');
+  const start = doc.indexOf(`## ${CONNECT_HEADING}\n`);
+  expect(start, `${RUNTIME_CONTRACT_PATH} no longer has a '## ${CONNECT_HEADING}' section`).toBeGreaterThan(-1);
+  // Last section in the file today, so no following `##` — the body runs to EOF.
+  // The blank line that separates it from the next SPINE section belongs to the
+  // composer's block join, not to this block, so it is deliberately not included.
+  const next = doc.indexOf('\n## ', start + 1);
+  const body = doc.slice(start + `## ${CONNECT_HEADING}\n`.length, next === -1 ? doc.length : next + 1);
+  expect(body.length, 'the section body must not be empty').toBeGreaterThan(0);
+  // One leading newline, not two: the other one terminates the PRECEDING section's
+  // body and stays behind when this block is removed.
+  return `\n### ${CONNECT_HEADING}\n${body}`;
+}
+
+/** Remove that exact block, leaving the document as it stood before. */
+function stripConnectSection(doc: string): string {
+  const block = connectSectionBytes();
+  // Byte for byte, exactly once — an edit inside the section fails here.
+  expect(doc.split(block).length - 1, `the emitted '${CONNECT_HEADING}' block must appear once`).toBe(1);
+  return doc.replace(block, '');
+}
+
 /** Remove that exact block, leaving the document as it stood before. */
 function stripResidentSection(doc: string): string {
   const block = residentSectionBytes();
@@ -189,7 +227,9 @@ describe('composed-document content changes are bounded to the declared set', ()
 
       expect(before).not.toContain(RESIDENT_HEADING);
 
-      expect(transformed).toBe(stripResidentSection(golden(GOLDEN_DIR, name)));
+      expect(before).not.toContain(CONNECT_HEADING);
+
+      expect(transformed).toBe(stripConnectSection(stripResidentSection(golden(GOLDEN_DIR, name))));
       // Byte delta accounts for every declared change and nothing else: the anchor
       // string's length difference plus each rewritten fragment's.
       const fragmentDelta = REWRITTEN_FRAGMENTS.reduce((sum, { name, file }) => {
@@ -221,7 +261,9 @@ describe('composed-document content changes are bounded to the declared set', ()
 
       expect(before).not.toContain(RESIDENT_HEADING);
 
-      let stripped = stripResidentSection(shipped).replace(SKILL_LINE_RE, '');
+      expect(before).not.toContain(CONNECT_HEADING);
+
+      let stripped = stripConnectSection(stripResidentSection(shipped)).replace(SKILL_LINE_RE, '');
       for (const row of NCL_ROWS) stripped = stripped.replace(row, '');
       expect(stripped).toBe(applyLineRewrites(before));
     });

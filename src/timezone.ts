@@ -18,6 +18,35 @@ export function resolveTimezone(tz: string): string {
   return isValidTimezone(tz) ? tz : 'UTC';
 }
 
+const dayKeyFormatters = new Map<string, Intl.DateTimeFormat>();
+
+/**
+ * Convert an instant to a sortable YYYYMMDD calendar-day key in an IANA timezone.
+ * Invalid timezones follow resolveTimezone() and fall back to UTC.
+ */
+export function dayKeyInTimezone(utcIso: string, timezone: string): string | null {
+  const date = new Date(utcIso);
+  if (Number.isNaN(date.getTime())) return null;
+  const zone = resolveTimezone(timezone);
+  let formatter = dayKeyFormatters.get(zone);
+  if (!formatter) {
+    formatter = new Intl.DateTimeFormat('en-US', {
+      timeZone: zone,
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+    });
+    dayKeyFormatters.set(zone, formatter);
+  }
+  const parts = Object.fromEntries(
+    formatter
+      .formatToParts(date)
+      .filter((p) => p.type !== 'literal')
+      .map((p) => [p.type, p.value]),
+  );
+  return `${parts.year}${parts.month}${parts.day}`;
+}
+
 /**
  * Convert a UTC ISO timestamp to a localized display string.
  * Uses the Intl API (no external dependencies).
