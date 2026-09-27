@@ -14,6 +14,7 @@ import {
   getDueOutboundMessages,
   getInboundSourceSessionId,
   getMessageForRetry,
+  gcInboundHistory,
   getMostRecentPeerSourceSessionId,
   getNextDueAt,
   getProcessingClaims,
@@ -182,8 +183,13 @@ function getTaskStats(db: Database.Database, seriesId: string): TaskStats {
   };
 }
 
-export function wrapSqliteInbound(db: Database.Database, nextSequence = () => nextEvenAcross(db)): InboundMailbox {
+export function wrapSqliteInbound(
+  db: Database.Database,
+  nextSequence = () => nextEvenAcross(db),
+  opts: { outboundPath?: string } = {},
+): InboundMailbox {
   return {
+    gcHistory: (cutoffIso) => gcInboundHistory(db, { cutoffIso, outboundPath: opts.outboundPath }),
     setRouting: (routing) => {
       const record = parseSessionRoutingRecord(routing);
       upsertSessionRouting(db, {
@@ -505,7 +511,7 @@ export class SqliteAgentMailbox implements AgentMailbox {
       // the container-owned outbound.db just to insert an inbound row; the
       // two-DB split exists to avoid exactly that cross-mount coupling.
       return await action({
-        ...wrapSqliteInbound(inbound),
+        ...wrapSqliteInbound(inbound, undefined, { outboundPath: sessionMailboxPath(key, 'outbound') }),
         ...wrapSqliteOutbound(readableOutbound, writableOutbound, undefined, { inboundPath }),
       });
     } finally {

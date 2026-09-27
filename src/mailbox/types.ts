@@ -103,6 +103,11 @@ export interface InboundMailbox {
    * implement it — a mailbox without it is simply never skipped.
    */
   nextDueAt?(): string | null;
+  /**
+   * Drop consumed system frames and orphan `delivered` rows older than the
+   * cutoff (host-owned history; see gcInboundHistory). Optional for fakes.
+   */
+  gcHistory?(cutoffIso: string): { systemRows: number; deliveredRows: number };
   markMessageFailed(messageId: string): void;
   retryWithBackoff(messageId: string, backoffSec: number): void;
   getMessageForRetry(messageId: string, status: 'pending' | 'processing'): MessageRetry | undefined;

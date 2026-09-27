@@ -406,6 +406,41 @@ async function maintainSessionMailbox(
     log.error('Echo backlog prune failed', { sessionId: session.id, err });
   }
   // MODULE-HOOK:cross-session-echo-prune:end
+
+  gcMailboxHistory(mailbox, session);
+}
+
+// --- mailbox history GC --------------------------------------------------------
+// The host owns inbound.db, so the host prunes it: consumed system frames
+// (cli_response & co.) and orphan `delivered` rows older than the retention
+// window. Once a day per session, on a full pass — cheap, and the write it
+// makes simply costs one extra full pass the next tick. The runner prunes its
+// own outbound.db on start (sqliteGcOutboundHistory). Together they cap what
+// used to grow without bound (2.6 GB of cli_response rows in one session on
+// prod, 2026-09-26).
+export const MAILBOX_RETENTION_DAYS =
+  Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0 ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) : 7;
+const MAILBOX_GC_INTERVAL_MS = 24 * 60 * 60_000;
+const lastMailboxGc = new Map<string, number>();
+
+export function _resetMailboxGcForTesting(): void {
+  lastMailboxGc.clear();
+}
+
+function gcMailboxHistory(mailbox: InboundMailbox, session: Session): void {
+  if (!mailbox.gcHistory) return;
+  const now = Date.now();
+  if (now - (lastMailboxGc.get(session.id) ?? 0) < MAILBOX_GC_INTERVAL_MS) return;
+  lastMailboxGc.set(session.id, now);
+  const cutoff = new Date(now - MAILBOX_RETENTION_DAYS * 86_400_000).toISOString();
+  try {
+    const result = mailbox.gcHistory(cutoff);
+    if (result.systemRows > 0 || result.deliveredRows > 0) {
+      log.info('Mailbox history GC', { sessionId: session.id, ...result, retentionDays: MAILBOX_RETENTION_DAYS });
+    }
+  } catch (err) {
+    log.warn('Mailbox history GC failed — will retry tomorrow', { sessionId: session.id, err });
+  }
 }
 
 /**
