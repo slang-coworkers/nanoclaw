@@ -541,12 +541,21 @@ export function getDueOutboundMessages(db: Database.Database, opts: DueOutboundO
       if (!fs.existsSync(opts.inboundPath)) throw new Error(`inbound mailbox missing: ${opts.inboundPath}`);
       db.prepare('ATTACH DATABASE ? AS inb').run(opts.inboundPath);
       try {
+        // Two-phase: the inner query decides WHICH rows are due and undelivered
+        // touching only id / deliver_after / timestamp (row headers — a row's
+        // `content` lives in overflow pages SQLite never reads for columns it
+        // does not need). Only the ≤ limit winners are then read in full. The
+        // one-phase `SELECT m.* … ORDER BY timestamp` read every row's content
+        // on every 1 s poll: 20-50 MB per poll for a 21k-row session on prod
+        // (strace, 2026-09-27).
         return db
           .prepare(
             `SELECT m.* FROM messages_out m
-             WHERE (m.deliver_after IS NULL OR datetime(m.deliver_after) <= datetime('now'))
-               AND NOT EXISTS (SELECT 1 FROM inb.delivered d WHERE d.message_out_id = m.id)
-             ORDER BY m.timestamp ASC${limit !== undefined ? ' LIMIT ?' : ''}`,
+             JOIN (SELECT id FROM messages_out
+                     WHERE (deliver_after IS NULL OR datetime(deliver_after) <= datetime('now'))
+                       AND NOT EXISTS (SELECT 1 FROM inb.delivered d WHERE d.message_out_id = messages_out.id)
+                     ORDER BY timestamp ASC${limit !== undefined ? ' LIMIT ?' : ''}) w ON w.id = m.id
+             ORDER BY m.timestamp ASC`,
           )
           .all(...(limit !== undefined ? [limit] : [])) as OutboundMessage[];
       } finally {
