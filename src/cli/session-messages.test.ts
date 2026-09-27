@@ -21,7 +21,7 @@ import { initTestDb, closeDb, runMigrations, createAgentGroup } from '../db/inde
 import { createSession } from '../db/sessions.js';
 import { inboundDbPath, outboundDbPath } from '../mailbox/sqlite/paths.js';
 import { initSessionFolder } from '../session-manager.js';
-import { readSessionMessages } from './session-messages.js';
+import { keyQuerySql, readSessionMessages } from './session-messages.js';
 
 const AG = 'ag-test';
 const SESS = 'sess-test';
@@ -250,5 +250,22 @@ describe('readSessionMessages', () => {
     expect(rows[0].text).toMatch(/^\[content too large to display: \d+ bytes\]$/);
     expect(rows[0].truncated).toBe(true);
     expect(rows[1].text).toBe('small');
+  });
+
+  it('selects the page window from the seq index without touching content (two-phase read)', async () => {
+    // The key query must be index-driven and must not reference `content`:
+    // that is the whole reason paging a 12k-row transcript no longer costs
+    // 40-60 MB of reads per call. Assert on the plan, not on timing.
+    seedSession();
+    writeInbound([{ seq: 1, kind: 'chat', timestamp: now(), content: JSON.stringify({ text: 'x' }) }]);
+    const { sql, params } = keyQuerySql('messages_in', { sinceSeq: 0, includeSystem: false, reverse: true, fetch: 50 });
+    expect(sql).not.toMatch(/content/);
+    const db = new Database(inboundDbPath(AG, SESS), { readonly: true });
+    const plan = (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as Array<{ detail: string }>)
+      .map((r) => r.detail)
+      .join(' | ');
+    db.close();
+    expect(plan).toMatch(/USING (COVERING )?INDEX/);
+    expect(plan).not.toMatch(/TEMP B-TREE/);
   });
 });

@@ -79,27 +79,50 @@ export async function readSessionMessages(opts: ReadOpts): Promise<TranscriptRow
   const inPath = inboundDbPath(session.agent_group_id, session.id);
   const outPath = outboundDbPath(session.agent_group_id, session.id);
 
-  // Every filter, the sort direction and the row budget are pushed into SQL.
-  // The merged result needs the first `offset + limit` rows of each table (in
-  // the requested direction) and nothing more, so the read is bounded by the
-  // request, not by the size of the session. Prod 2026-09-26: the previous
-  // version materialized both tables (2.6 GB for one session) before slicing,
-  // and took the host down with a heap OOM on every restart.
+  // Two-phase read. Phase 1 walks each table's seq index and returns ONLY the
+  // keys of the first `offset + limit` matching rows — no `content` column is
+  // touched, so SQLite never reads a row's overflow pages just to skip it.
+  // Phase 2 merges the two key lists, slices the requested window, and fetches
+  // content for exactly those rows.
+  //
+  // Prod 2026-09-26: the first version materialized both tables (2.6 GB for
+  // one session) before slicing and OOM'd the host. The next one bounded the
+  // rows but still read the content of every row up to `offset + limit`: an
+  // agent paging its own 12k-row transcript every few seconds cost 40-60 MB
+  // of reads per call (strace, 2026-09-27). Content is now read once, for
+  // the ≤ `limit` rows that are actually returned.
   const query = { sinceSeq, kind: kindFilter, includeSystem, reverse, fetch: offset + limit };
-  const inbound = fs.existsSync(inPath) ? readRows(inPath, 'messages_in', query) : [];
-  const outbound = fs.existsSync(outPath) ? readRows(outPath, 'messages_out', query) : [];
+  const inDb = fs.existsSync(inPath) ? new Database(inPath, { readonly: true }) : null;
+  const outDb = fs.existsSync(outPath) ? new Database(outPath, { readonly: true }) : null;
+  try {
+    const keys: Array<{ seq: number; direction: 'in' | 'out' }> = [];
+    if (inDb) for (const seq of readKeys(inDb, 'messages_in', query)) keys.push({ seq, direction: 'in' });
+    if (outDb) for (const seq of readKeys(outDb, 'messages_out', query)) keys.push({ seq, direction: 'out' });
 
-  const merged: TranscriptRow[] = [];
-  for (const r of inbound) merged.push(project(r, 'in', full));
-  for (const r of outbound) merged.push(project(r, 'out', full));
+    // Ascending by seq is the default (chronological transcript). `reverse` sorts
+    // newest-first so `--limit N --reverse` returns the most recent N rows — the
+    // only way to fetch the last outbound (a plain `--limit 1` returns the OLDEST
+    // row, then slices from offset 0).
+    keys.sort((a, b) => (reverse ? b.seq - a.seq : a.seq - b.seq));
+    const window = keys.slice(offset, offset + limit);
 
-  // Ascending by seq is the default (chronological transcript). `reverse` sorts
-  // newest-first so `--limit N --reverse` returns the most recent N rows — the
-  // only way to fetch the last outbound (a plain `--limit 1` returns the OLDEST
-  // row, then slices from offset 0).
-  merged.sort((a, b) => (reverse ? b.seq - a.seq : a.seq - b.seq));
+    const rows = new Map<string, RawRow>();
+    const inSeqs = window.filter((k) => k.direction === 'in').map((k) => k.seq);
+    const outSeqs = window.filter((k) => k.direction === 'out').map((k) => k.seq);
+    if (inDb && inSeqs.length) for (const r of readRowsBySeq(inDb, 'messages_in', inSeqs)) rows.set(`in:${r.seq}`, r);
+    if (outDb && outSeqs.length)
+      for (const r of readRowsBySeq(outDb, 'messages_out', outSeqs)) rows.set(`out:${r.seq}`, r);
 
-  return merged.slice(offset, offset + limit);
+    const result: TranscriptRow[] = [];
+    for (const k of window) {
+      const row = rows.get(`${k.direction}:${k.seq}`);
+      if (row) result.push(project(row, k.direction, full));
+    }
+    return result;
+  } finally {
+    inDb?.close();
+    outDb?.close();
+  }
 }
 
 function clampLimit(raw: unknown): number {
@@ -118,26 +141,41 @@ interface RowQuery {
   fetch: number;
 }
 
-function readRows(dbPath: string, table: 'messages_in' | 'messages_out', q: RowQuery): RawRow[] {
-  const db = new Database(dbPath, { readonly: true });
-  try {
-    const where: string[] = ['seq > ?'];
-    const params: unknown[] = [q.sinceSeq];
-    if (q.kind) {
-      where.push('kind = ?');
-      params.push(q.kind);
-    }
-    if (!q.includeSystem) where.push("kind <> 'system'");
-    params.push(q.fetch);
+/** Phase 1: the seq keys of the first `fetch` matching rows, in the requested direction. `content` is never selected. */
+export function keyQuerySql(table: 'messages_in' | 'messages_out', q: RowQuery): { sql: string; params: unknown[] } {
+  const where: string[] = ['seq > ?'];
+  const params: unknown[] = [q.sinceSeq];
+  if (q.kind) {
+    where.push('kind = ?');
+    params.push(q.kind);
+  }
+  if (!q.includeSystem) where.push("kind <> 'system'");
+  params.push(q.fetch);
+  return {
+    sql: `SELECT seq FROM ${table} WHERE ${where.join(' AND ')} ORDER BY seq ${q.reverse ? 'DESC' : 'ASC'} LIMIT ?`,
+    params,
+  };
+}
+
+function readKeys(db: Database.Database, table: 'messages_in' | 'messages_out', q: RowQuery): number[] {
+  const { sql, params } = keyQuerySql(table, q);
+  return (db.prepare(sql).all(...params) as Array<{ seq: number }>).map((r) => r.seq);
+}
+
+/** Phase 2: content for exactly the selected rows (≤ MAX_LIMIT per table). */
+function readRowsBySeq(db: Database.Database, table: 'messages_in' | 'messages_out', seqs: number[]): RawRow[] {
+  const out: RawRow[] = [];
+  // SQLite's default variable limit is generous (≥ 999); chunk anyway so a
+  // raised MAX_LIMIT can never turn into a "too many SQL variables" surprise.
+  for (let i = 0; i < seqs.length; i += 500) {
+    const chunk = seqs.slice(i, i + 500);
     const sql = `SELECT seq, kind, timestamp,
          CASE WHEN length(content) > ${MAX_CONTENT_BYTES} THEN NULL ELSE content END AS content,
          length(content) AS content_len
-       FROM ${table} WHERE ${where.join(' AND ')}
-       ORDER BY seq ${q.reverse ? 'DESC' : 'ASC'} LIMIT ?`;
-    return db.prepare(sql).all(...params) as RawRow[];
-  } finally {
-    db.close();
+       FROM ${table} WHERE seq IN (${chunk.map(() => '?').join(',')})`;
+    out.push(...(db.prepare(sql).all(...chunk) as RawRow[]));
   }
+  return out;
 }
 
 function project(row: RawRow, direction: 'in' | 'out', full: boolean): TranscriptRow {
