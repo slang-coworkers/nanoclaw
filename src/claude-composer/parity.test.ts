@@ -96,16 +96,22 @@ describe('composed-document byte parity', () => {
       //
       // Scheduling prose is part of them too, and it names `ncl tasks` because no
       // scheduling MCP module is registered.
-      'base-common': 'fe9c65d6f0a7f9ed',
-      'base-common.persona': '1c3b96f40845a57a',
+      //
+      // Moved a fifth time by the upstream gateway-seam merge: `container/CLAUDE.md`
+      // gained a `## Connecting external accounts` section and it is EMITTED, so
+      // every composed doc carries it. `section-completeness.test.ts` is what made
+      // that a decision instead of a silent drop.
+      'base-common': '8c8ad204d97ae56e',
+      'base-common.persona': '72a5d1d460c1b9a7',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
-      // standalone values the content phase produced — abaecd63bd33b299 and
-      // 8129ebe911b83bec, moved once by the `agents.md` anchor retarget — are
+      // standalone values the content phase produced — a107cc5eae0f5a3b and
+      // 7ac61543c0a5dc29, moved once by the `agents.md` anchor retarget and again by
+      // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: '5c7a642dc52e4a11',
-      'default.persona': 'caa7649b12f008c4',
+      default: 'da7cade266ccdbc3',
+      'default.persona': '0f73f114a1ae41b2',
     };
 
     const actual: Record<string, string> = {};
