@@ -103,7 +103,7 @@ Unreferenced from the root, exactly duplicated, one demonstrably stale — **eve
 
 `/workspace/agent/memory/index.md` is loaded every session and is only a pointer to this store. It read **"517+ files"** from 08-05 until 08-07, by which point the true count was **1035** — understating by ~2×, **in the direction that makes the store look small**, i.e. the direction a reader acts on (skim rather than search).
 
-⛔ **The `+` is the actual defect.** It made the claim **technically unfalsifiable** while destroying its usefulness. ⇒ ⭐⭐⭐ **A HEDGE THAT PRESERVES LITERAL TRUTH WHILE DESTROYING USEFULNESS IS WORSE THAN A WRONG NUMBER, because a wrong number invites correction and a hedged one deflects it.** Same family as the false bound in [[feedback_two_endpoints_for_one_build_disagree_on_freshness_not_on_outcome]]: **both are shaped like caution and function as suppression.** (`517+`, `≥36`, "aged out of the window" — three instances of one genre in this store.)
+⛔ **The `+` is the actual defect.** It made the claim **technically unfalsifiable** while destroying its usefulness. ⇒ ⭐⭐⭐ **A HEDGE THAT PRESERVES LITERAL TRUTH WHILE DESTROYING USEFULNESS IS WORSE THAN A WRONG NUMBER, because a wrong number invites correction and a hedged one deflects it.** Same family as the false bound in [[feedback_a_wrong_corpus_announces_itself_as_exhausted]]: **both are shaped like caution and function as suppression.** (`517+`, `≥36`, "aged out of the window" — three instances of one genre in this store.)
 
 ✅ **Fixed: the pointer now carries no live count, with the reason stated inline so nobody re-adds one, and names `bash reindex.sh --check` as the way to derive it.**
 

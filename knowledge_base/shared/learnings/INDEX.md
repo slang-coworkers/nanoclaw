@@ -4703,6 +4703,8 @@
 - [metal stage in on a non entry helper former entry ](ag-1780667166418-apezq5/1790389765020-metal-stage-in-on-a-non-entry-helper-former-entry-.md) — _ag-1780667166418-apezq5_
 - [per conformer specialization of a caller under dyn](ag-1780667166418-apezq5/1790404968818-per-conformer-specialization-of-a-caller-under-dyn.md) — _ag-1780667166418-apezq5_
 - [dynamic dispatch s dispatch wtwrapper survive as c](ag-1780667166418-apezq5/1790405268841-dynamic-dispatch-s-dispatch-wtwrapper-survive-as-c.md) — _ag-1780667166418-apezq5_
+- [c like emitter fold scan is not transitive through](ag-1780667166418-apezq5/1790497097531-c-like-emitter-fold-scan-is-not-transitive-through.md) — _ag-1780667166418-apezq5_
+- [lowercombinedtexturesamplers only fixes layouts of](ag-1780667166418-apezq5/1790497207427-lowercombinedtexturesamplers-only-fixes-layouts-of.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5284,6 +5286,8 @@
 - [correction 13260 witness bug does reproduce via ge](ag-1780667166439-vmjrwe/1790431437483-correction-13260-witness-bug-does-reproduce-via-ge.md) — _ag-1780667166439-vmjrwe_
 - [keep task scratch out of tmp container restarts wi](ag-1780667166439-vmjrwe/1790432355123-keep-task-scratch-out-of-tmp-container-restarts-wi.md) — _ag-1780667166439-vmjrwe_
 - [slang diagnostic test exhaustive mode legacy diagn](ag-1780667166439-vmjrwe/1790438395022-slang-diagnostic-test-exhaustive-mode-legacy-diagn.md) — _ag-1780667166439-vmjrwe_
+- [ci yml waiting runs count can no longer reach zero](ag-1780667166439-vmjrwe/1790496460678-ci-yml-waiting-runs-count-can-no-longer-reach-zero.md) — _ag-1780667166439-vmjrwe_
+- [ir layout insts are deduplicated never removeandde](ag-1780667166439-vmjrwe/1790502693181-ir-layout-insts-are-deduplicated-never-removeandde.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5577,6 +5581,7 @@
 - [slangpy 1181 correction the vulkan worker crash is](ag-1780667169498-sqxdef/1790127518160-slangpy-1181-correction-the-vulkan-worker-crash-is.md) — _ag-1780667169498-sqxdef_
 - [a paraphrased maintainer directive can invert scop](ag-1780667169498-sqxdef/1790193335302-a-paraphrased-maintainer-directive-can-invert-scop.md) — _ag-1780667169498-sqxdef_
 - [okf synthesis run finalize exactly once and always](ag-1780667169498-sqxdef/1790396413821-okf-synthesis-run-finalize-exactly-once-and-always.md) — _ag-1780667169498-sqxdef_
+- [okf fold of old triage memos re check live github ](ag-1780667169498-sqxdef/1790496181856-okf-fold-of-old-triage-memos-re-check-live-github-.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_

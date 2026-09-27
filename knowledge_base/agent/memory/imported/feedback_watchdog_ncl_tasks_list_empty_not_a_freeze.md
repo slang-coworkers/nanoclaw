@@ -92,3 +92,20 @@ real lookup bug (see header). What survives is the *action*: still don't escalat
 **Why this is NOT a freeze:** the watchdog and daily wiki-synth tasks *fired and reached the agent this very turn* (their scheduled-task blocks are in the turn context). A recurring series that fires is by definition live and armed. A genuine recurrence-freeze shows a task row with a **past `at=`**; an *absent* task that just fired is a different thing entirely — and un-re-armable anyway (no series id to pass to `update_task`).
 
 **How to apply:** On a watchdog run, if `ncl tasks list` is empty, do NOT escalate "tasks vanished/frozen" — that contradicts the fact the watchdog itself is running. Send no message (per the watchdog's "nothing overdue → do nothing" rule). Only re-arm tasks that actually appear with a past `at=` — ⛔**and that pass the session check in the 08-05 header above; a past `at=` alone is NOT sufficient.** This is distinct from the coverage-checker stall in the shared learnings (that one leaves a visible overdue row). Related: [[feedback_benign_ack_loop_dont_restart_if_live_chains]].
+
+---
+
+# When `ncl` itself is dead: read-only fallbacks (2026-09-26 18:00Z tick)
+
+Every `ncl` verb timed out (30s) for this whole tick. The `cli_request` rows sat in `outbound.db`
+with no `delivered` row in `inbound.db`; the host's last pickup was 16:00:53Z, right after this session's
+daily cost cap escalated ($51/$50). The dashboard showed **0 of 5588** sessions `running`, this one
+included, plus a bulk `last_active` stamp at 18:02:46Z across 27 sessions. Fallbacks that still worked:
+- **Own-session task rows:** open `/workspace/inbound.db` read-only (`?mode=ro`) and run
+  `messages_in WHERE kind='task' AND status='pending'`. That gives the exact `process_after` and `recurrence`.
+- **Fleet task list:** `curl $DASHBOARD_URL/api/tasks` returns id, cron, sessionId and agentGroupId,
+  but **no next-run**. For a `task-<ms>-xxx` id, `<ms>` is when the row was created (the previous
+  completion), so next-run ≈ the next cron slot after that time. This is an inference; it is not proof.
+- **Session liveness:** `curl $DASHBOARD_URL/api/sessions` returns `last_active`. A value shared by
+  dozens of sessions (e.g. 09-25 06:23Z ×51) is a bulk host stamp and does not show that the session ran.
+⛔ Re-arming still needs `ncl tasks update`, so with `ncl` dead nothing can be re-armed. Report instead.

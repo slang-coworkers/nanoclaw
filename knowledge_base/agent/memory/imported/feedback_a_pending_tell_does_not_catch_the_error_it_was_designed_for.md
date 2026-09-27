@@ -42,4 +42,15 @@ The party who can verify a tell (the sender) is often the party who cannot obser
 
 ⛔ **2026-08-21.** The CI-babysitter and I agreed in-session that it would build a coverage filter; turns later it wrote back that no such task was in its queue. Neither of us fabricated — the babysitter runs each sweep in a **`new_session: true`** container (prior conversation discarded, the heartbeat/cron default), so a handshake reached in one a2a exchange does not survive the next fire unless written to a durable surface. I had meanwhile told the operator "the babysitter is building X" — an unverifiable claim about a peer's future action. ⇒ **When delegating durable/recurring work to a cron peer, the handoff is not done until it lands on a surface the peer re-reads each fire** (a task it schedules, a line in its tracker file, a memory entry); confirm *that* exists, not that the peer said "will do." Same class as ANCHOR E: a mechanism designed but not *instantiated* — here the instantiation is persistence, not code.
 
+## A correct diagnosis sitting in a log reads as handled
+
+**2026-08-07, `slang-discord-support`.** Its wake correctly root-caused a 2 h 10 m user-visible miss —
+the Discord scan was gated on a single un-retried auth probe, so a transient 503 produced
+`discord_auth_ok:false` + `new_discord_messages:0` (a null reading that looks quiet), and the quiet-path
+stamp marked unread messages read. The diagnosis was published to its own log, and the broken line was
+still live in the script afterward. ⇒ **A wake that finds a defect in its own instrument must patch it or
+leave an explicit ARMED trigger; a log entry is not the fix.** The fix shape worth copying: a 3-try retry
+tested on **both** paths — the failure path first (unreachable host → bounded exit, and a genuine auth
+break still reported, so a real credential failure isn't masked) — then read back by sha256.
+
 Related: [[feedback_an_identifier_that_does_not_distinguish_its_members]] (a destination NAME does not distinguish its SESSIONS — same class, different identifier), [[feedback_unrecognized_file_content_is_not_evidence_of_an_editor]] (sibling-write race, mtimes as discriminator), [[feedback_deference_drifts_to_whoever_corrected_you_last]], [[feedback_a_multi_probe_turn_has_a_window_not_a_timestamp]], [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]] (a control that fires by luck is not a control).
