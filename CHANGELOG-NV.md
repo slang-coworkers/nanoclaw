@@ -6,15 +6,40 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 620 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 260 |
-| `nv-slang` | slang project spine, skills, workflows | 161 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 90 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 69 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 629 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 261 |
+| `nv-slang` | slang project spine, skills, workflows | 162 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 91 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 70 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-27
+
+### nv-main (9 PRs)
+- **#1731** `host: stop the sweep from starving timers — quiet-session skip, per-key yield, OneCLI ensure memo`
+- **#1732** `mailbox: bound the two reads that scaled with a session's whole history`
+- **#1733** `delivery: count a system action's START so a host-killing request is quarantined, not replayed`
+- **#1734** `mailbox: retention GC on both sides of the session mailbox`
+- **#1735** `fix(mailbox): two-phase reads for transcript paging and the due-outbound poll`
+- **#1736** `feat(webhook): durable inbox for GitHub deliveries (write-ahead record + replay drain)`
+- **#1738** `merge: upstream gateway-provider seam into nv-main (34 commits)`
+- **#1739** `merge: upstream d36c7ca4d into nv-main (round 2)`
+- **#1740** `Sync nv-main with upstream/main`
+
+### nv-dashboard (1 PRs)
+- **#1742** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#1743** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#1744** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1745** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-09-25
 
