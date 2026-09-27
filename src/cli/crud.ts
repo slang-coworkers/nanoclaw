@@ -58,6 +58,8 @@ export interface CustomOperation {
   handler: (args: Record<string, unknown>, ctx: CallerContext) => Promise<unknown>;
   /** Presentational renderer for human mode — see CommandDef.formatHuman. */
   formatHuman?: (data: unknown) => string;
+  /** Extra approval-card disclosure derived from the args — see CommandDef.approvalDetail. */
+  approvalDetail?: (raw: Record<string, unknown>) => string[] | undefined;
 }
 
 export interface ResourceDef {
@@ -550,6 +552,7 @@ export function registerResource(def: ResourceDef): void {
           : (raw) => normalizeArgs(raw),
         handler: async (args, ctx) => op.handler(args as Record<string, unknown>, ctx),
         formatHuman: op.formatHuman,
+        approvalDetail: op.approvalDetail,
       });
     }
   }

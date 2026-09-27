@@ -1,3 +1,4 @@
+import { connectGatewayAccount } from '../../gateway-connections.js';
 import { randomUUID } from 'crypto';
 
 import {
@@ -28,6 +29,7 @@ import { initGroupFilesystem } from '../../group-init.js';
 import { getProviderHostContract } from '../../provider-contracts/registry.js';
 import { resolveProviderName } from '../../providers/provider-name.js';
 import { createAgentFromTemplate } from '../../templates/create-agent.js';
+import { templateApprovalDetail } from '../../templates/approval-detail.js';
 import {
   formatRestampResult,
   groupsCarryingPlugin,
@@ -142,6 +144,16 @@ registerResource({
   // DELETE violates FK constraints (#2525).
   operations: { list: 'open', get: 'open', update: 'approval' },
   customOperations: {
+    connect: {
+      access: 'open',
+      description:
+        'Get the selected gateway’s account-connection step for any --host. Does not grant credentials or change policy.',
+      handler: async (args, ctx) => {
+        const id = ctx.caller === 'agent' ? ctx.agentGroupId : String(args.id ?? '');
+        if (!id) throw new Error('--id is required on the host');
+        return connectGatewayAccount(id, String(args.host ?? ''));
+      },
+    },
     'mcp-tools get': {
       access: 'open',
       description:
@@ -315,6 +327,11 @@ registerResource({
     },
     create: {
       access: 'approval',
+      // A bare `--template <ref>` tells the approver nothing about the MCP servers
+      // the stamp would wire. Rendered here so the card states the reach; a bad ref
+      // throws and refuses instead of carding an unrenderable request.
+      approvalDetail: (raw: Record<string, unknown>) =>
+        raw.template === undefined ? undefined : templateApprovalDetail(String(raw.template)),
       description:
         'Create (or return the existing) agent group with its container config. Idempotent on --folder (bare creates only; --folder cannot be combined with --template). ' +
         'With --template <ref>, stamp from a local agent plugin under templates/ (skills + MCP servers ' +
