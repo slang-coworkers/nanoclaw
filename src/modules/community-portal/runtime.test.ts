@@ -104,14 +104,16 @@ async function serve(req: IncomingMessage, res: ServerResponse): Promise<void> {
   res.writeHead(404);
   res.end(JSON.stringify({ error: 'not_found' }));
 }
-async function until(check: () => boolean, timeout = 5_000): Promise<void> {
+async function until(check: () => boolean | Promise<boolean>, timeout = 5_000): Promise<void> {
   const deadline = Date.now() + timeout;
-  while (!check()) {
+  while (!(await check())) {
     if (Date.now() > deadline) throw new Error('timed out');
     await sleep(10);
   }
 }
 const journalFile = (): string => path.join(root, 'data/community-portal.json');
+const readJournal = async (): Promise<{ credentials: object; operations: object }> =>
+  JSON.parse(await readFile(journalFile(), 'utf8')) as { credentials: object; operations: object };
 
 beforeEach(async () => {
   root = await mkdtemp(path.join(os.tmpdir(), 'nc-portal-runtime-'));

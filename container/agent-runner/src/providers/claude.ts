@@ -326,6 +326,9 @@ const postToolUseHook: HookCallback = async () => {
   return { continue: true };
 };
 
+/** Minimum spacing between `activity` frames derived from streaming deltas. */
+const STREAM_ACTIVITY_INTERVAL_MS = 1000;
+
 /** The real clock for archive names and rotation stamps; tests hand the history functions a fixed one. */
 const REAL_CLOCK = { now: () => Date.now() };
 
@@ -543,8 +546,15 @@ export class ClaudeProvider implements AgentProvider {
         systemPrompt: instructions
           ? { type: 'preset' as const, preset: 'claude_code' as const, append: instructions, snapshot: false }
           : undefined,
+        // Fork tool policy: upstream moved these onto `this.mcp` /
+        // `this.executionPolicy`, shapes this fork does not carry.
         allowedTools: [...TOOL_ALLOWLIST, ...mcpAllowedToolEntries(this.mcpPolicy, Object.keys(this.mcpServers))],
         disallowedTools: [...SDK_DISALLOWED_TOOLS, ...(this.blockedTools ?? [])],
+        // The SDK emits `assistant` only per completed content block, so a long
+        // block is silent and the host sweep kills the container mid-generation.
+        // Streaming deltas are the liveness signal for that window; translateEvents
+        // turns them into throttled `activity` and nothing else.
+        includePartialMessages: true,
         env: this.env,
         model: this.inference.model,
         fallbackModel: this.fallbackModel,
@@ -593,11 +603,21 @@ export class ClaudeProvider implements AgentProvider {
 
     async function* translateEvents(): AsyncGenerator<ProviderEvent> {
       let messageCount = 0;
+      let lastStreamActivityAt = 0;
       for await (const message of sdkResult) {
         if (aborted) return;
-        messageCount++;
 
-        // Yield activity for every SDK event so the poll loop knows the agent is working
+        // Yield activity for every SDK event so the poll loop knows the agent
+        // is working. Deltas arrive per token and carry no content for us, so
+        // they count at most once per second, and not as messages.
+        if (message.type === 'stream_event') {
+          const now = Date.now();
+          if (now - lastStreamActivityAt < STREAM_ACTIVITY_INTERVAL_MS) continue;
+          lastStreamActivityAt = now;
+          yield { type: 'activity' };
+          continue;
+        }
+        messageCount++;
         yield { type: 'activity' };
 
         if (message.type === 'system' && message.subtype === 'init') {

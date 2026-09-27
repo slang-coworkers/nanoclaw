@@ -181,3 +181,54 @@ describe('the built-in server name is defined once per runtime and must not drif
     expect(isBuiltinMcpTool('mcp__notnanoclaw__x')).toBe(false);
   });
 });
+
+// The host refuses a reserved server name at every intake; the runtime refuses
+// it again at the point of use, deriving its set from the seed literal's own
+// keys. That makes the runtime authoritative and this list the early, clearer
+// message — so the list must name exactly what the runtime seeds. A name added
+// to the seed without being added here would be silently takeable by a template
+// until the container's guard caught it, which is precisely the late, confusing
+// failure the host-side check exists to prevent.
+describe('the reserved server names must cover exactly what the runtime seeds', () => {
+  function seededServerNames(): string[] {
+    const src = fs.readFileSync(path.join(process.cwd(), 'container/agent-runner/src/index.ts'), 'utf-8');
+    const open = src.indexOf('const mcpServers: Record<string, McpServerConfig> = {');
+    expect(open).toBeGreaterThan(-1);
+    const close = src.indexOf('\n  };', open);
+    expect(close).toBeGreaterThan(open);
+    const body = src.slice(src.indexOf('{', open) + 1, close);
+    // Top-level keys only — nested entries are indented deeper than 4 spaces.
+    return [...body.matchAll(/^ {4}([A-Za-z0-9_-]+):/gm)].map((m) => m[1]);
+  }
+
+  it('names every server the runtime seeds, and nothing it does not', async () => {
+    const { RESERVED_MCP_SERVER_NAMES } = await import('./mcp-allowlist.js');
+    expect([...RESERVED_MCP_SERVER_NAMES].sort()).toEqual(seededServerNames().sort());
+  });
+
+  it('includes the built-in transport, whatever it is named', async () => {
+    const { BUILTIN_MCP_SERVER, RESERVED_MCP_SERVER_NAMES } = await import('./mcp-allowlist.js');
+    expect(RESERVED_MCP_SERVER_NAMES).toContain(BUILTIN_MCP_SERVER);
+  });
+
+  it('is enforced by the shared intake gate, so every door is closed at once', async () => {
+    const { validateMcpServerName } = await import('./container-config.js');
+    const { RESERVED_MCP_SERVER_NAMES } = await import('./mcp-allowlist.js');
+    for (const name of RESERVED_MCP_SERVER_NAMES) {
+      expect(() => validateMcpServerName(name)).toThrow(/reserved for a built-in runtime server/);
+    }
+    // Structurally identical names that are not reserved still pass.
+    expect(() => validateMcpServerName('nanoclaw-tools')).not.toThrow();
+    expect(() => validateMcpServerName('slang-mcp')).not.toThrow();
+  });
+
+  it('is refused by the runtime too, derived from the seed rather than a list', async () => {
+    const runtimeSrc = fs.readFileSync(path.join(process.cwd(), 'container/agent-runner/src/index.ts'), 'utf-8');
+    // Derived from the seed's keys — not a second hardcoded list that could drift.
+    expect(runtimeSrc).toMatch(
+      /const reservedServerNames: ReadonlySet<string> = new Set\(Object\.keys\(mcpServers\)\)/,
+    );
+    // Both merge sites consult it.
+    expect([...runtimeSrc.matchAll(/assignConfiguredServer\(mcpServers, reservedServerNames,/g)]).toHaveLength(2);
+  });
+});

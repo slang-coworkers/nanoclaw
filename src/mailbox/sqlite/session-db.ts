@@ -5,6 +5,8 @@
  * shared between host and container. Callers own the connection lifecycle
  * (open-write-close per op). See session-manager.ts header for invariants.
  */
+import fs from 'fs';
+
 import Database from 'better-sqlite3';
 
 import { createInboundRecord, failureClassOf, isFailedAck } from '../model.js';
@@ -219,6 +221,29 @@ export function countDueMessages(db: Database.Database): number {
   ).count;
 }
 
+/**
+ * Earliest future `process_after` among pending trigger rows, or null when
+ * nothing is scheduled. The sweep's quiet-session skip needs it because a
+ * scheduled row becomes due with no file write, so mtimes alone cannot say
+ * when to look again (see reconcile-session.ts).
+ */
+export function getNextDueAt(db: Database.Database): string | null {
+  // Compare and return the NORMALIZED form ('YYYY-MM-DD HH:MM:SS', UTC): rows
+  // are written both as JS ISO ('T'…'Z') and as SQLite datetime() text, and a
+  // raw MIN() over mixed forms sorts 'T' after ' ' — it could pick a later row.
+  // parseSqliteUtc() reads the normalized form as UTC.
+  const row = db
+    .prepare(
+      `SELECT MIN(SUBSTR(REPLACE(REPLACE(process_after, 'T', ' '), 'Z', ''), 1, 19)) AS next FROM messages_in
+       WHERE status = 'pending'
+         AND trigger = 1
+         AND process_after IS NOT NULL
+         AND SUBSTR(REPLACE(REPLACE(process_after, 'T', ' '), 'Z', ''), 1, 19) > datetime('now')`,
+    )
+    .get() as { next: string | null } | undefined;
+  return row?.next ?? null;
+}
+
 export function markMessageFailed(db: Database.Database, messageId: string): void {
   db.prepare("UPDATE messages_in SET status = 'failed' WHERE id = ?").run(messageId);
 }
@@ -428,7 +453,118 @@ export interface OutboundMessage {
   content: string;
 }
 
-export function getDueOutboundMessages(db: Database.Database): OutboundMessage[] {
+export interface GcInboundOptions {
+  /** ISO instant; rows older than this are eligible. */
+  cutoffIso: string;
+  /** This session's outbound.db; needed to tell an orphan `delivered` row from a live one. */
+  outboundPath?: string;
+}
+
+/**
+ * Host-side mailbox history GC (the host owns inbound.db).
+ *
+ * Prod 2026-09-26: one session's inbound.db held 187,625 consumed `cli_response`
+ * rows (2.6 GB) — every `ncl` reply ever written back to it, never pruned —
+ * and a 193k-row `delivered` table. Nothing in the system deletes either.
+ *
+ *   - consumed system frames (`kind='system'`, terminal status) older than the
+ *     cutoff go; chat/task rows are the conversation and stay;
+ *   - `delivered` rows older than the cutoff go ONLY when their messages_out
+ *     row no longer exists. A `delivered` row whose message still exists is
+ *     the only thing standing between that message and a redelivery, so the
+ *     order of the two GCs is: runner drops delivered messages_out first
+ *     (see agent-runner sqliteGcOutboundHistory), host drops the orphans after.
+ */
+export function gcInboundHistory(
+  db: Database.Database,
+  opts: GcInboundOptions,
+): { systemRows: number; deliveredRows: number } {
+  const norm = (col: string) => `SUBSTR(REPLACE(REPLACE(${col}, 'T', ' '), 'Z', ''), 1, 19)`;
+  const cutoff = opts.cutoffIso.replace('T', ' ').replace('Z', '').slice(0, 19);
+  const systemRows = db
+    .prepare(
+      `DELETE FROM messages_in
+       WHERE kind = 'system' AND status IN ('completed', 'failed') AND ${norm('timestamp')} < ?`,
+    )
+    .run(cutoff).changes;
+  let deliveredRows = 0;
+  if (opts.outboundPath && fs.existsSync(opts.outboundPath)) {
+    db.prepare('ATTACH DATABASE ? AS outb').run(opts.outboundPath);
+    try {
+      deliveredRows = db
+        .prepare(
+          `DELETE FROM delivered
+           WHERE ${norm('delivered_at')} < ?
+             AND NOT EXISTS (SELECT 1 FROM outb.messages_out m WHERE m.id = delivered.message_out_id)`,
+        )
+        .run(cutoff).changes;
+    } finally {
+      db.exec('DETACH DATABASE outb');
+    }
+  }
+  return { systemRows, deliveredRows };
+}
+
+export interface DueOutboundOptions {
+  /**
+   * This session's inbound.db. When given, rows already recorded in its
+   * `delivered` table are excluded IN SQL (the file is ATTACHed for the query),
+   * so a long-lived session no longer costs a full scan of its whole outbound
+   * history on every poll.
+   */
+  inboundPath?: string;
+  /** Max rows returned, oldest first. Only applied together with the SQL delivered-filter. */
+  limit?: number;
+  /** Called when the attached query could not run and the full scan was used instead. */
+  onFallback?: (err: unknown) => void;
+}
+
+/**
+ * Outbound rows due for delivery, oldest first.
+ *
+ * Prod 2026-09-27: the Orchestrator's tick session had 193k `messages_out`
+ * rows and a 193k-row `delivered` set, both read in full on every 1 s poll —
+ * hundreds of MB/s of page-cache reads on the host's single thread. With
+ * `inboundPath` the delivered set stays inside SQLite (`NOT EXISTS`, served by
+ * the PRIMARY KEY index on delivered.message_out_id) and the result is capped.
+ *
+ * A LIMIT is only safe together with that filter: on the unfiltered scan the
+ * oldest rows are the delivered ones, so a cap would return nothing new and
+ * starve every undelivered row behind them. The fallback therefore stays a
+ * full, uncapped scan — exactly the pre-existing behaviour.
+ */
+export function getDueOutboundMessages(db: Database.Database, opts: DueOutboundOptions = {}): OutboundMessage[] {
+  const limit = opts.limit !== undefined && opts.limit > 0 ? Math.floor(opts.limit) : undefined;
+  if (opts.inboundPath) {
+    try {
+      // ATTACH would CREATE a missing file; never conjure an inbound.db here.
+      if (!fs.existsSync(opts.inboundPath)) throw new Error(`inbound mailbox missing: ${opts.inboundPath}`);
+      db.prepare('ATTACH DATABASE ? AS inb').run(opts.inboundPath);
+      try {
+        // Two-phase: the inner query decides WHICH rows are due and undelivered
+        // touching only id / deliver_after / timestamp (row headers — a row's
+        // `content` lives in overflow pages SQLite never reads for columns it
+        // does not need). Only the ≤ limit winners are then read in full. The
+        // one-phase `SELECT m.* … ORDER BY timestamp` read every row's content
+        // on every 1 s poll: 20-50 MB per poll for a 21k-row session on prod
+        // (strace, 2026-09-27).
+        return db
+          .prepare(
+            `SELECT m.* FROM messages_out m
+             JOIN (SELECT id FROM messages_out
+                     WHERE (deliver_after IS NULL OR datetime(deliver_after) <= datetime('now'))
+                       AND NOT EXISTS (SELECT 1 FROM inb.delivered d WHERE d.message_out_id = messages_out.id)
+                     ORDER BY timestamp ASC${limit !== undefined ? ' LIMIT ?' : ''}) w ON w.id = m.id
+             ORDER BY m.timestamp ASC`,
+          )
+          .all(...(limit !== undefined ? [limit] : [])) as OutboundMessage[];
+      } finally {
+        db.exec('DETACH DATABASE inb');
+      }
+    } catch (err) {
+      opts.onFallback?.(err);
+    }
+  }
   return db
     .prepare(
       `SELECT * FROM messages_out
