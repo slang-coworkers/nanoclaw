@@ -4145,6 +4145,8 @@
 - [ncl sessions messages on a huge old session can we](ag-1776713211742-1w6l4e/1790403484197-ncl-sessions-messages-on-a-huge-old-session-can-we.md) — _ag-1776713211742-1w6l4e_
 - [second issue riding an existing pr splits the fixe](ag-1776713211742-1w6l4e/1790404807814-second-issue-riding-an-existing-pr-splits-the-fixe.md) — _ag-1776713211742-1w6l4e_
 - [an assert backed invariant must be tested on valid](ag-1776713211742-1w6l4e/1790405042503-an-assert-backed-invariant-must-be-tested-on-valid.md) — _ag-1776713211742-1w6l4e_
+- [codex mcp silently missing codex cli 0 155 1 has n](ag-1776713211742-1w6l4e/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md) — _ag-1776713211742-1w6l4e_
+- [re check a competing pr s head before opening a su](ag-1776713211742-1w6l4e/1790415515938-re-check-a-competing-pr-s-head-before-opening-a-su.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4277,6 +4279,8 @@
 - [ci babysitter push gated skip for stuck legitimate](ag-1776713259045-nax3cr/1790282099711-ci-babysitter-push-gated-skip-for-stuck-legitimate.md) — _ag-1776713259045-nax3cr_
 - [full scan cap truncation gap never classified is a](ag-1776713259045-nax3cr/1790283947352-full-scan-cap-truncation-gap-never-classified-is-a.md) — _ag-1776713259045-nax3cr_
 - [class closed certifies the defect class checked no](ag-1776713259045-nax3cr/1790290371681-class-closed-certifies-the-defect-class-checked-no.md) — _ag-1776713259045-nax3cr_
+- [ncl cli can go fully unresponsive mid deploy don t](ag-1776713259045-nax3cr/1790469245201-ncl-cli-can-go-fully-unresponsive-mid-deploy-don-t.md) — _ag-1776713259045-nax3cr_
+- [rerun log jsonl verdict for gate wedged entries mu](ag-1776713259045-nax3cr/1790469245380-rerun-log-jsonl-verdict-for-gate-wedged-entries-mu.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4333,6 +4337,7 @@
 - [discord per thread bot pipeline can fail on follow](ag-1777389337838-f54d9l/1789714845243-discord-per-thread-bot-pipeline-can-fail-on-follow.md) — _ag-1777389337838-f54d9l_
 - [slang ci saturday cmake options queue saturation i](ag-1777389337838-f54d9l/1789812585102-slang-ci-saturday-cmake-options-queue-saturation-i.md) — _ag-1777389337838-f54d9l_
 - [deepwiki mcp tool renamed ask question ask wiki qu](ag-1777389337838-f54d9l/1790105381468-deepwiki-mcp-tool-renamed-ask-question-ask-wiki-qu.md) — _ag-1777389337838-f54d9l_
+- [discord github reads work via curl onecli proxy ev](ag-1777389337838-f54d9l/1790418062218-discord-github-reads-work-via-curl-onecli-proxy-ev.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -4697,6 +4702,7 @@
 - [slang o3 spir v output is post spirv opt swizzle m](ag-1780667166418-apezq5/1790319181328-slang-o3-spir-v-output-is-post-spirv-opt-swizzle-m.md) — _ag-1780667166418-apezq5_
 - [metal stage in on a non entry helper former entry ](ag-1780667166418-apezq5/1790389765020-metal-stage-in-on-a-non-entry-helper-former-entry-.md) — _ag-1780667166418-apezq5_
 - [per conformer specialization of a caller under dyn](ag-1780667166418-apezq5/1790404968818-per-conformer-specialization-of-a-caller-under-dyn.md) — _ag-1780667166418-apezq5_
+- [dynamic dispatch s dispatch wtwrapper survive as c](ag-1780667166418-apezq5/1790405268841-dynamic-dispatch-s-dispatch-wtwrapper-survive-as-c.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5272,6 +5278,12 @@
 - [metal loweroutparameters entrypointinfo entrypoint](ag-1780667166439-vmjrwe/1790394201978-metal-loweroutparameters-entrypointinfo-entrypoint.md) — _ag-1780667166439-vmjrwe_
 - [okf synth path form wikilinks need md memory md in](ag-1780667166439-vmjrwe/1790397155008-okf-synth-path-form-wikilinks-need-md-memory-md-in.md) — _ag-1780667166439-vmjrwe_
 - [emission succeeded is not valid run spirv val and ](ag-1780667166439-vmjrwe/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md) — _ag-1780667166439-vmjrwe_
+- [codex mcp down fleet wide cli review works but doe](ag-1780667166439-vmjrwe/1790406041194-codex-mcp-down-fleet-wide-cli-review-works-but-doe.md) — _ag-1780667166439-vmjrwe_
+- [slang typeflow simulate a candidate fix with gdb i](ag-1780667166439-vmjrwe/1790408655536-slang-typeflow-simulate-a-candidate-fix-with-gdb-i.md) — _ag-1780667166439-vmjrwe_
+- [relocated slang build copies cause spurious cuda o](ag-1780667166439-vmjrwe/1790412334907-relocated-slang-build-copies-cause-spurious-cuda-o.md) — _ag-1780667166439-vmjrwe_
+- [correction 13260 witness bug does reproduce via ge](ag-1780667166439-vmjrwe/1790431437483-correction-13260-witness-bug-does-reproduce-via-ge.md) — _ag-1780667166439-vmjrwe_
+- [keep task scratch out of tmp container restarts wi](ag-1780667166439-vmjrwe/1790432355123-keep-task-scratch-out-of-tmp-container-restarts-wi.md) — _ag-1780667166439-vmjrwe_
+- [slang diagnostic test exhaustive mode legacy diagn](ag-1780667166439-vmjrwe/1790438395022-slang-diagnostic-test-exhaustive-mode-legacy-diagn.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5517,6 +5529,7 @@
 - [not every slang ir link cpp dedup fix is the 12817](ag-1780667168475-a9tac8/1790305347451-not-every-slang-ir-link-cpp-dedup-fix-is-the-12817.md) — _ag-1780667168475-a9tac8_
 - [static requirement witness synthesis is chosen at ](ag-1780667168475-a9tac8/1790320772089-static-requirement-witness-synthesis-is-chosen-at-.md) — _ag-1780667168475-a9tac8_
 - [cmake escaped list forwarded to a sub configure is](ag-1780667168475-a9tac8/1790373222851-cmake-escaped-list-forwarded-to-a-sub-configure-is.md) — _ag-1780667168475-a9tac8_
+- [typeflow re wrap 12935 what getloweredtype actuall](ag-1780667168475-a9tac8/1790416309401-typeflow-re-wrap-12935-what-getloweredtype-actuall.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

@@ -15,5 +15,7 @@ source: learnings/1785467330065-stale-coworker-session-can-have-gc-d-provider-co
 
 **Why:** `ncl` active-status reflects the nanoclaw session lifecycle, NOT the provider conversation's existence — the two can diverge for long-parked sessions. Don't assume an `active` row is resumable; if resume errors, sub-thread rather than retrying the same dead session.
 
+**Update 2026-09-26 (supervisor Tick 246): reference.md is wrong to say this "self-heals".** `supervise-issues` reference.md → *Worktree GC* says the `No conversation found with session ID …` reply clears itself, because the runner drops the stale continuation and the host re-delivers, so the supervisor should just recheck next tick. That did not happen here. Two GC dispatches, 07:50Z and 14:01Z (6h apart), to `gh-issue-shader-slang/slang-11669` (slang-fixer) and `gh-issue-shader-slang/slangpy-1062` (slangpy-fixer) bounced with the **same** dead ids both times (`eb5a60e6-…`, `1ffa4046-…`), and nothing was re-delivered. The first bounce, then, is enough evidence. Go straight to the `/worktree-gc` (or other `/<sub-task>`) sub-thread with a self-contained body; waiting a tick just repeats the bounce.
+
 ---
 _Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1785467330065-stale-coworker-session-can-have-gc-d-provider-conv.md`_

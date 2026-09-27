@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1259 learnings. [Catalog](../index.md)
+1260 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -624,6 +624,7 @@ type: topic
 - [Draft status does not suppress a closing keyword — only closingIssuesReferences answers "is this linked"](../learnings/1786425268271-draft-status-does-not-suppress-a-closing-keyword-o.md)
 - [Dropping -o does NOT flip to whole-program when -entry is present](../learnings/1785791159290-dropping-o-does-not-flip-to-whole-program-when-ent.md)
 - [duplicate dispatch peer live-writes the fix into your shared worktree](../learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
+- [Dynamic dispatch: s_dispatch_*/wtwrapper survive as calls before v2026.18.2 (#12924); the constant-ID→tag mapping function is never inlined](../learnings/1790405268841-dynamic-dispatch-s-dispatch-wtwrapper-survive-as-c.md)
 - [E30019 loc-less: synthesized DerefExpr in _coerce ParameterGroupType branch omits ->loc](../learnings/1788560155779-e30019-loc-less-synthesized-derefexpr-in-coerce-pa.md)
 - [E30082 float-literal exemption is scalar-only (asymmetry with vector/matrix constructors)](../learnings/1788801482957-e30082-float-literal-exemption-is-scalar-only-asym.md)
 - [E31106/E31107 also fire on the SYNTHESIZED entry-point uniform param group (not just imported modules)](../learnings/1782751325517-e31106-e31107-also-fire-on-the-synthesized-entry-p.md)

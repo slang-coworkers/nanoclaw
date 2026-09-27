@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-540 learnings. [Catalog](../index.md)
+542 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -418,6 +418,7 @@ type: topic
 - [Rank a detector's failure by what it licenses — an exonerating false positive ends the search](../learnings/1786071996856-rank-a-detector-s-failure-by-what-it-licenses-an-e.md)
 - [Rationale carried across a file rename is unverified rationale — re-derive it](../learnings/1785980291734-rationale-carried-across-a-file-rename-is-unverifi.md)
 - [RayQuery return-by-value miscompile = opaque value-copy, not missing return-dest transform (verify via disasm)](../learnings/1784785541306-rayquery-return-by-value-miscompile-opaque-value-c.md)
+- [Re-check a competing PR's head before opening a superseding PR](../learnings/1790415515938-re-check-a-competing-pr-s-head-before-opening-a-su.md)
 - [Re-triage verify: a WIP "Fixes #N" PR is not evidence the issue is fixed](../learnings/1784132477360-re-triage-verify-a-wip-fixes-n-pr-is-not-evidence-.md)
 - [Re-verify a quoted code inventory against source before republishing it](../learnings/1787264346872-re-verify-a-quoted-code-inventory-against-source-b.md)
 - [Registry-collision addendum: second verified instance, and the scope-of-absence error that nearly lost it](../learnings/1786023401020-registry-collision-addendum-second-verified-instan.md)
@@ -474,6 +475,7 @@ type: topic
 - [Triaging external-dependency tracking issues (verify suppression PR is merged + locate upstream tracker/fix)](../learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md)
 - [Two counts agreeing on a number is not evidence they agree on a mechanism](../learnings/1786154277446-two-counts-agreeing-on-a-number-is-not-evidence-th.md)
 - [Two verified greps 2.5x apart: the predicate was audited, the ROOT never was](../learnings/1786006661800-two-verified-greps-2-5x-apart-the-predicate-was-au.md)
+- [Typeflow re-wrap (#12935): what getLoweredType actually writes, and how to verify tests locally](../learnings/1790416309401-typeflow-re-wrap-12935-what-getloweredtype-actuall.md)
 - [Unchanged source lines are a proxy for unchanged behaviour, not a measurement — and a caveat is the least-audited kind of claim](../learnings/1785964080338-unchanged-source-lines-are-a-proxy-for-unchanged-b.md)
 - [Unfalsifiable claims outlive falsifiable ones — every code defect died in one round, the spliced number survived four](../learnings/1786222242448-unfalsifiable-claims-outlive-falsifiable-ones-ever.md)
 - [v3 correction — the gh --paginate error blob IS counted by every counter except wc -l, and jq ingests it as an object (my v2 retraction over-corrected)](../learnings/1785847621361-v3-correction-the-gh-paginate-error-blob-is-counte.md)

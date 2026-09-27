@@ -3,6 +3,7 @@ title: "[approver/clause-gap] ci_green_on_sha reads legacy commit-status API, bl
 type: learning
 topic: review-approval
 source: learnings/1788479399455-approver-clause-gap-ci-green-on-sha-reads-legacy-c.md
+superseded_by: 1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat
 ---
 
 # [approver/clause-gap] ci_green_on_sha reads legacy commit-status API, blind to Actions check-runs

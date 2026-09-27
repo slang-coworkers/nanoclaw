@@ -3,6 +3,7 @@ title: "nv-slang-bot GitHub App cannot push .github/workflows changes (lacks wor
 type: learning
 topic: slang-compiler
 source: learnings/1789272278255-nv-slang-bot-github-app-cannot-push-github-workflo.md
+superseded_by: 1790375258801-nv-slang-bot-github-app-cannot-push-changes-under-
 ---
 
 # nv-slang-bot GitHub App cannot push .github/workflows changes (lacks workflows permission)

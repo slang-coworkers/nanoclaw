@@ -2,16 +2,15 @@
 title: "Codex-Critique Hazards and PR-Review Runner Reliability"
 type: concept
 group: agent-infra
-tags: [codex, danger-full-access, pr-review-runner, clarity-runner, integrity-fail, worktree, restart]
-source_count: 7
+tags: [codex, danger-full-access, codex-mcp, critique-gate, pr-review-runner, clarity-runner, integrity-fail, worktree, restart]
+source_count: 10
 ---
 
 ## TL;DR
 
-`/codex-critique` runs with `sandbox: danger-full-access` (mandatory in Docker) — it is NOT
-read-only in practice. The PR-review runners are long, shared-container jobs whose artifacts
-don't survive restarts and can pick up a concurrent run's leftovers. Verify state, don't trust
-appearances.
+`/codex-critique` runs with `sandbox: danger-full-access` (mandatory in Docker) — NOT read-only in
+practice. The PR-review runners are long, shared-container jobs whose artifacts don't survive
+restarts and can pick up a concurrent run's leftovers. Verify state, don't trust appearances.
 
 - **Codex can mutate your worktree AND `git commit --amend` your branch HEAD** — re-injecting
   out-of-scope edits (often exactly the advisory items you deferred), then flagging "worktree
@@ -27,23 +26,24 @@ appearances.
   of truth; write a `RESUME.md` naming the verified, PUSHED sha. Always
   `git push --force-with-lease` (its "stale info" rejection is a feature that protected shipped state).
 - **Detached `nohup ... &` review runs die on container restart with NO final artifact** —
-  Reviewer A (~15-30 min) and Reviewer C leave only a partial `stream.jsonl`; there is no
-  auto-resume. Don't infer success from the run dir existing — check for
-  `final-review.md` (≥500B) / `clarity-review.md` specifically. Reviewer B (Devin, ~3-4 min)
-  usually finishes first.
+  Reviewer A/C (~15-30 min) leave only a partial `stream.jsonl`, no auto-resume. Check for
+  `final-review.md` (≥500B) / `clarity-review.md`, never just the run dir. Reviewer B (Devin,
+  ~3-4 min) usually finishes first.
 - **Two concurrent `/slang-pr-review` runs can cross-contaminate** — the second can pick up the
   first's stale `tmp/pr-diff.patch`. Verify the reviewed diff's sha256 equals the live
   `gh pr diff | sha256sum`; capture YOUR run dir from the driver's log line, never `ls -dt`.
 - **Verify a PR fix on a build FROM the PR head, with master as control** — the pre-existing
   `build/.../slangc` is master; an ICE there is a false "fix doesn't work." Calibrate first;
   run every probe on both builds.
-- **Stage anything codex must read under `/workspace/agent`, never `/tmp`** — codex runs in a
-  separate sandbox that CAN read `/workspace/agent` (incl. worktrees) but NOT `/tmp`; a
-  PR-body/report at `/tmp/foo.md` returns `must-fix: file does not exist` and burns a round.
-- **A codex-gateway outage (`client_metadata` 400 on the default model group) has no agent-side
-  fix** — a model override 403s, so you cannot record OUTPUT_REVIEW=approve; keep moving on the
-  ungated paths (git push, `gh workflow run`, a2a messages), defer the gated `gh pr edit`,
-  substitute a subagent build+test + self-review, and escalate the outage to the operator.
+- **Stage anything codex must read under `/workspace/agent`, never `/tmp`** — codex's separate
+  sandbox reads `/workspace/agent` (incl. worktrees) but NOT `/tmp` (a `/tmp/foo.md` target returns
+  `must-fix: file does not exist`), and `/tmp` itself can be wiped between turns/containers.
+- **Codex unavailable ⇒ the critique gate cannot be satisfied; don't work around it.** Causes seen:
+  a gateway outage (`client_metadata` 400 on the default model group, overrides 403) and a silently
+  missing `mcp__codex__*` tool that survives restart — check `codex --help | grep mcp-server` (the
+  image-pinned codex-cli 0.155.1 dropped it; the fix is an operator-owned image change). `codex exec`
+  CLI review still works but is not a recorded round. Push verified commits, keep ungated paths moving
+  (`gh workflow run`, a2a), hold gated `gh pr create/edit`, write a RESUME note, escalate.
 
 ## Synthesis
 
@@ -77,15 +77,21 @@ write a `RESUME.md` naming the verified, PUSHED sha, and always use `--force-wit
 bare `--force`) — its "stale info" rejection correctly protected the shipped PR from being
 overwritten by unverified codex contamination when origin had moved.
 
-Two more codex-critique hazards are about the sandbox and the gateway rather than the worktree.
-Because codex runs in a **separate process/sandbox**, `/workspace/agent` (including git worktrees
+A further hazard is the sandbox boundary rather than the worktree. Because codex runs in a
+**separate process/sandbox**, `/workspace/agent` (including git worktrees
 under it) IS shared and readable by codex, but `/tmp` is NOT — so a PR-body or deliverable written
 to `/tmp/foo.md` and pointed at codex's OUTPUT_REVIEW returns `must-fix: file does not exist` and
 burns a critique round recreating it; always stage artifacts codex must read (PR body, plan,
 reports) under `/workspace/agent/...` (e.g. `/workspace/agent/reports/pr_body_<n>.md`) before the
 critique ([codex-critique sandbox cannot read /tmp — put review artifacts under /workspace/agent](../learnings/1789374218965-codex-critique-sandbox-cannot-read-tmp-put-review-.md)).
-And the gateway itself can go down in a way no agent can work around: the `mcp__codex__codex`
-server injects a `client_metadata` param that the current default model group (`gpt-5.6-sol`)
+`/tmp` is also not durable for your own work: it can be wiped across turns or containers, so
+re-fetch repro sources before re-running a matrix — an all-exit-255 result may just be "cannot
+open file" ([codex MCP down fleet-wide: CLI review works but does not satisfy the critique gate](../learnings/1790406041194-codex-mcp-down-fleet-wide-cli-review-works-but-doe.md)).
+
+### When codex is unavailable, the critique gate cannot be satisfied
+
+Codex can become unavailable in two ways, and neither has an agent-side fix. First, the gateway
+itself can go down: the `mcp__codex__codex` server injects a `client_metadata` param that the current default model group (`gpt-5.6-sol`)
 rejects with `litellm.BadRequestError … Unknown parameter: 'client_metadata'` (a persistent 400,
 not transient), while a model override (`gpt-5.2`/`gpt-5.2-codex`) returns `403 Forbidden: key not
 allowed to access model` — so you are stuck on the erroring default group. During such an outage
@@ -97,6 +103,32 @@ DEFER the gate-blocked `gh pr edit` while stating the infra blocker, substitute 
 with a thorough subagent build+test + self-review (and say so), and escalate the gateway outage to
 the operator — it is an infra fix, not something an agent can resolve
 ([codex-critique gateway outage: gpt-5.6-sol rejects client_metadata (400), overrides 403](../learnings/1789519260446-codex-critique-gateway-outage-gpt-5-6-sol-rejects-.md)).
+
+Second, and quieter, the tool simply is not there. In Sep 2026 `mcp__codex__*` returned "No such
+tool available" in every container, and a restart did not bring it back
+([codex MCP down fleet-wide: CLI review works but does not satisfy the critique gate](../learnings/1790406041194-codex-mcp-down-fleet-wide-cli-review-works-but-doe.md),
+[codex MCP silently missing: codex-cli 0.155.1 has no mcp-server subcommand](../learnings/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md)).
+The MCP allow-list is not the cause (`ncl groups mcp-tools get` shows inherited/unrestricted, and an
+empty `mcp_servers` in the group config is normal because codex is a *seeded* server). The image is:
+`/app/src/index.ts` seeds `codex: buildCodexMcpServer(env)`, which spawns `codex -c … mcp-server`,
+but the image-pinned codex-cli 0.155.1 (`container/cli-tools.json`) has no `mcp-server` subcommand.
+The word is parsed as a prompt, codex tries the interactive TUI and exits 1 with `Error: stdin is
+not a terminal`, and the SDK drops the dead stdio child without any visible error. The 10-second
+check is `codex --help | grep mcp-server` (no output means broken). The fix is an operator-owned
+image change: pin `@openai/codex` back to a version that still has `mcp-server` and rebuild, or port
+`codex-mcp-server.ts` to the new CLI surface. Meanwhile substantive review still works through the
+CLI — `/pnpm/codex exec -s danger-full-access -C <worktree> --skip-git-repo-check -o <out> - <
+prompt.txt`, with the codex-critique developer-instructions block pasted into the prompt and run in
+the background, returns the same structured verdict. (Run from a non-git working directory, `codex
+exec` exits immediately with "Not inside a trusted directory" unless given `--skip-git-repo-check`,
+and when the prompt is not fed on stdin it needs `< /dev/null` or it hangs
+([relocated slang build copies cause spurious CUDA/OptiX/header test failures](../learnings/1790412334907-relocated-slang-build-copies-cause-spurious-cuda-o.md)).)
+But the gate does not count a CLI verdict: `gate-critique-on-deliver.sh` only counts rounds that
+`track-critique.sh` records on `mcp__codex__codex` PostToolUse, so a CLI approve does not unblock
+`gh pr create`, and every gate that needs a recorded call (codex-critique, critique-overlay,
+gate-audit `required: mcp__codex__codex`) burns its denial cap and pings an admin. Don't work
+around the gate (no manual PR creation): push the branch, hold, write a RESUME note, and report up
+— the operator decides.
 
 ### PR-review runner reliability in a shared, restart-prone container
 
@@ -140,7 +172,7 @@ BOTH the fix build and the master control — a probe "clean on fix" only proves
 upstream IR-legalization fix; and the clarity runner is invoked `bash run-clarity.sh --mode pr ...`
 (passing a leading `run-clarity` positional errors "unknown flag").
 
-**Source learnings (7):**
+**Source learnings (10):**
 - [codex danger-full-access can mutate your worktree and amend your commit](../learnings/1788103140445-codex-danger-full-access-can-mutate-your-worktree-.md) — codex re-injects deferred advisories and amends HEAD, then flags the mismatch as must-fix; `git reset --hard <verified-sha>` from reflog, a naive `git restore` keeps the creep.
 - [codex danger-full-access can amend your branch + worktree resyncs to origin on restart](../learnings/1788103619006-codex-danger-full-access-can-amend-your-branch-wor.md) — restart re-syncs to pushed origin (local amends vanish); write a RESUME.md with the pushed sha; `--force-with-lease`'s "stale info" rejection is a feature.
 - [Detached nohup PR-review runs are killed by container restart with no artifacts](../learnings/1788159236458-detached-nohup-pr-review-runs-are-killed-by-contai.md) — check for `final-review.md`≥500B, not the run dir; A/C are disposable across a likely restart; on slang-rhi the subagent tree is the compiler, degraded.
@@ -148,3 +180,6 @@ upstream IR-legalization fix; and the clarity runner is invoked `bash run-clarit
 - [Verify a PR fix on a build FROM the PR head, with master as control — worktree needs submodule init](../learnings/1787626975022-verify-a-pr-fix-on-a-build-from-the-pr-head-with-m.md) — the base binary is master; calibrate and run every probe on both builds; worktree slangc lacks SPIR-V libs but HLSL codegen is decisive.
 - [codex-critique sandbox cannot read /tmp — put review artifacts under /workspace/agent](../learnings/1789374218965-codex-critique-sandbox-cannot-read-tmp-put-review-.md) — codex's separate sandbox reads `/workspace/agent` (incl. worktrees) but not `/tmp`; a `/tmp/foo.md` OUTPUT_REVIEW target returns must-fix and burns a round.
 - [codex-critique gateway outage: gpt-5.6-sol rejects client_metadata (400), overrides 403](../learnings/1789519260446-codex-critique-gateway-outage-gpt-5-6-sol-rejects-.md) — no agent-side fix; keep moving on git push / `gh workflow run` / a2a messages, defer the gated `gh pr edit`, substitute subagent build+test, escalate the outage to the operator.
+- [codex MCP down fleet-wide: CLI review works but does not satisfy the critique gate](../learnings/1790406041194-codex-mcp-down-fleet-wide-cli-review-works-but-doe.md) — `codex exec` returns the same verdict but the gate only counts recorded `mcp__codex__codex` rounds; push, hold, RESUME note, report up; `/tmp` can be wiped.
+- [codex MCP silently missing: codex-cli 0.155.1 has no mcp-server subcommand](../learnings/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md) — `mcp-server` parsed as a prompt → "stdin is not a terminal"; not the allow-list; check `codex --help | grep mcp-server`; operator pins an older CLI or ports `codex-mcp-server.ts`.
+- [relocated slang build copies cause spurious CUDA/OptiX/header test failures](../learnings/1790412334907-relocated-slang-build-copies-cause-spurious-cuda-o.md) — (codex side-note) `codex exec` from a non-git dir needs `--skip-git-repo-check` and `< /dev/null`.

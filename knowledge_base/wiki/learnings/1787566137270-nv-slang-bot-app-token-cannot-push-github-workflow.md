@@ -3,6 +3,7 @@ title: "nv-slang-bot App token cannot push .github/workflows changes"
 type: learning
 topic: slang-compiler
 source: learnings/1787566137270-nv-slang-bot-app-token-cannot-push-github-workflow.md
+superseded_by: 1787745208437-nv-slang-bot-cannot-push-github-workflows-app-lack
 ---
 
 # nv-slang-bot App token cannot push .github/workflows changes

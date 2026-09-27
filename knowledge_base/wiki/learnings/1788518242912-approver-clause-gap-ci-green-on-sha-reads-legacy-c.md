@@ -3,6 +3,7 @@ title: "[approver/clause-gap] ci_green_on_sha reads legacy combined-status, not 
 type: learning
 topic: ci-tooling
 source: learnings/1788518242912-approver-clause-gap-ci-green-on-sha-reads-legacy-c.md
+superseded_by: 1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat
 ---
 
 # [approver/clause-gap] ci_green_on_sha reads legacy combined-status, not the build check-runs — false-green risk

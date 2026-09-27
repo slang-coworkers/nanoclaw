@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-748 learnings. [Catalog](../index.md)
+754 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -214,6 +214,8 @@ type: topic
 - [codex critique-gate tracks FRESH-call verdicts, not codex-reply re-verifications](../learnings/1782439747524-codex-critique-gate-tracks-fresh-call-verdicts-not.md)
 - [codex danger-full-access can amend your branch + worktree resyncs to origin on restart](../learnings/1788103619006-codex-danger-full-access-can-amend-your-branch-wor.md)
 - [codex danger-full-access can mutate your worktree and amend your commit](../learnings/1788103140445-codex-danger-full-access-can-mutate-your-worktree-.md)
+- [Codex MCP down fleet-wide: CLI review works but does not satisfy the critique gate](../learnings/1790406041194-codex-mcp-down-fleet-wide-cli-review-works-but-doe.md)
+- [codex MCP silently missing: codex-cli 0.155.1 has no mcp-server subcommand](../learnings/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md)
 - [codex-cli 0.155.x removed `mcp-server` — silently kills mcp__codex__* and every critique gate fleet-wide](../learnings/1790393694066-codex-cli-0-155-x-removed-mcp-server-silently-kill.md)
 - [codex-critique + critique-gate: /workspace not /tmp, and the gate denies the whole bash block](../learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md)
 - [codex-critique artifacts must live under /workspace, not /tmp (ephemeral + invisible to codex)](../learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md)
@@ -346,6 +348,7 @@ type: topic
 - [Diligence slots 3-6 — the four low-scrutiny slots that never reached shared, including blame-assignment as a narrative default](../learnings/1785970552558-diligence-slots-3-6-the-four-low-scrutiny-slots-th.md)
 - [Discord MCP 401 + send-timeout = global gateway credential failure, not cold-start](../learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md)
 - [Discord MCP 401 across all channels = token outage, not transient](../learnings/1784708358394-discord-mcp-401-across-all-channels-token-outage-n.md)
+- [Discord/GitHub reads work via curl+OneCLI-proxy even without dedicated MCP tools](../learnings/1790418062218-discord-github-reads-work-via-curl-onecli-proxy-ev.md)
 - [Disk-full on fixer /dev/vdb: reap grant often frees nothing; disk self-recovers](../learnings/1783473857394-disk-full-on-fixer-dev-vdb-reap-grant-often-frees-.md)
 - [doctest reports "0 skipped" when device-gated tests SKIP — a suite tally NEVER proves a specific test ran](../learnings/1785938047863-doctest-reports-0-skipped-when-device-gated-tests-.md)
 - [Don't fork (omit subagent_type) for read-only recall/scan steps — the fork inherits full triage context and may run the entire workflow](../learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)
@@ -465,6 +468,7 @@ type: topic
 - [Issue-supervisor nudges completed bot work because mandatory-draft PRs read as "no PR"](../learnings/1789521755042-issue-supervisor-nudges-completed-bot-work-because.md)
 - [Judge coworker output by real engineering quality, not proxy metrics](../learnings/legoop-feedback_ab_evaluation_criteria.md)
 - [KB-sync STEP 4b data-only gate: core.fileMode=false defeats the chmod control — prove via cacheinfo instead](../learnings/1789441596421-kb-sync-step-4b-data-only-gate-core-filemode-false.md)
+- [Keep task scratch out of /tmp — container restarts wipe it mid-task](../learnings/1790432355123-keep-task-scratch-out-of-tmp-container-restarts-wi.md)
 - [learnings-wiki fold: single-source→single-page is the failure-robust unit; citation-superset gate makes deletes safe](../learnings/1789053488629-learnings-wiki-fold-single-source-single-page-is-t.md)
 - [learnings-wiki serial path: never sub-delegate to a fork; forks re-enact the orchestrator and burn ~1M tokens](../learnings/1789713862648-learnings-wiki-serial-path-never-sub-delegate-to-a.md)
 - [Legoop project buddy not using codex](../learnings/legoop-project_buddy_not_using_codex.md)
@@ -483,6 +487,7 @@ type: topic
 - [Missing-return severity is target-gated; 202c proposal moves it to language-version gating](../learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md)
 - [nanoclaw-kb fork has core.fileMode=false — KB-sync DATA-ONLY GATE control must use update-index --chmod](../learnings/1789700701048-nanoclaw-kb-fork-has-core-filemode-false-kb-sync-d.md)
 - [ncl approval gate non-functional — no admin configured to approve](../learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md)
+- [ncl CLI can go fully unresponsive mid-deploy — don't retry-loop, leave verified artifact on disk](../learnings/1790469245201-ncl-cli-can-go-fully-unresponsive-mid-deploy-don-t.md)
 - [ncl group container fixes — Bookworm package gaps + approval sequencing](../learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md)
 - [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](../learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
 - [ncl mutating-verb help/probes can dispatch the real approval-gated action](../learnings/1783650441468-ncl-mutating-verb-help-probes-can-dispatch-the-rea.md)
@@ -571,6 +576,7 @@ type: topic
 - [Relocating a gate: substituting an accessor can silently swap the OBJECT](../learnings/1786114268925-relocating-a-gate-substituting-an-accessor-can-sil.md)
 - [report_pr_created binds the CALLING session — open the PR from the fix thread, not a chat](../learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md)
 - [report_pr_created remaps the PR to the CALLING session](../learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md)
+- [rerun-log.jsonl verdict for gate-wedged entries must be 'intermittent', not 'unclassifiable'](../learnings/1790469245380-rerun-log-jsonl-verdict-for-gate-wedged-entries-mu.md)
 - [Resolve agent_group_id to a coworker name BEFORE calling two sessions on one thread a collision](../learnings/1786096459202-resolve-agent-group-id-to-a-coworker-name-before-c.md)
 - [Resolve agent_group_id to a coworker name before reading a session list as a collision](../learnings/1786096520048-resolve-agent-group-id-to-a-coworker-name-before-r.md)
 - [RESOLVED: `ncl tasks list` has no --agent-group-id flag (it's --group) — the flag name differs per verb and the wrong one is silently swallowed](../learnings/1786241587140-resolved-ncl-tasks-list-has-no-agent-group-id-flag.md)
