@@ -312,12 +312,20 @@ export function wrapSqliteInbound(db: Database.Database, nextSequence = () => ne
   };
 }
 
+/**
+ * Cap on due outbound rows handed to one delivery poll. Oldest first, so a
+ * backlog larger than this simply takes more polls; nothing is skipped.
+ */
+export const DUE_OUTBOUND_LIMIT = 200;
+
 export function wrapSqliteOutbound(
   source: Database.Database | (() => Database.Database),
   writable: () => Database.Database = () => (typeof source === 'function' ? source() : source),
   nextSequence = () => nextEvenAcross(undefined, writable()),
+  opts: { inboundPath?: string } = {},
 ): OutboundMailbox {
   const readable = () => (typeof source === 'function' ? source() : source);
+  let fallbackWarned = false;
   return {
     getTerminalProcessingAcks: () =>
       (
@@ -359,7 +367,20 @@ export function wrapSqliteOutbound(
       };
     },
     getDueMessages: (excludeIds) =>
-      getDueOutboundMessages(readable())
+      getDueOutboundMessages(readable(), {
+        inboundPath: opts.inboundPath,
+        limit: opts.inboundPath ? DUE_OUTBOUND_LIMIT : undefined,
+        onFallback: (err) => {
+          if (fallbackWarned) return;
+          fallbackWarned = true;
+          log.warn('Due-outbound SQL filter unavailable — falling back to the full scan for this session', {
+            inboundPath: opts.inboundPath,
+            err,
+          });
+        },
+      })
+        // The JS exclusion stays: it is the whole filter on the fallback path
+        // and a harmless no-op when the SQL filter already ran.
         .filter((row) => !excludeIds?.has(String(row.id)))
         .map((row) => {
           try {
@@ -485,7 +506,7 @@ export class SqliteAgentMailbox implements AgentMailbox {
       // two-DB split exists to avoid exactly that cross-mount coupling.
       return await action({
         ...wrapSqliteInbound(inbound),
-        ...wrapSqliteOutbound(readableOutbound, writableOutbound),
+        ...wrapSqliteOutbound(readableOutbound, writableOutbound, undefined, { inboundPath }),
       });
     } finally {
       inbound.close();

@@ -5,6 +5,8 @@
  * shared between host and container. Callers own the connection lifecycle
  * (open-write-close per op). See session-manager.ts header for invariants.
  */
+import fs from 'fs';
+
 import Database from 'better-sqlite3';
 
 import { createInboundRecord, failureClassOf, isFailedAck } from '../model.js';
@@ -451,7 +453,57 @@ export interface OutboundMessage {
   content: string;
 }
 
-export function getDueOutboundMessages(db: Database.Database): OutboundMessage[] {
+export interface DueOutboundOptions {
+  /**
+   * This session's inbound.db. When given, rows already recorded in its
+   * `delivered` table are excluded IN SQL (the file is ATTACHed for the query),
+   * so a long-lived session no longer costs a full scan of its whole outbound
+   * history on every poll.
+   */
+  inboundPath?: string;
+  /** Max rows returned, oldest first. Only applied together with the SQL delivered-filter. */
+  limit?: number;
+  /** Called when the attached query could not run and the full scan was used instead. */
+  onFallback?: (err: unknown) => void;
+}
+
+/**
+ * Outbound rows due for delivery, oldest first.
+ *
+ * Prod 2026-09-27: the Orchestrator's tick session had 193k `messages_out`
+ * rows and a 193k-row `delivered` set, both read in full on every 1 s poll —
+ * hundreds of MB/s of page-cache reads on the host's single thread. With
+ * `inboundPath` the delivered set stays inside SQLite (`NOT EXISTS`, served by
+ * the PRIMARY KEY index on delivered.message_out_id) and the result is capped.
+ *
+ * A LIMIT is only safe together with that filter: on the unfiltered scan the
+ * oldest rows are the delivered ones, so a cap would return nothing new and
+ * starve every undelivered row behind them. The fallback therefore stays a
+ * full, uncapped scan — exactly the pre-existing behaviour.
+ */
+export function getDueOutboundMessages(db: Database.Database, opts: DueOutboundOptions = {}): OutboundMessage[] {
+  const limit = opts.limit !== undefined && opts.limit > 0 ? Math.floor(opts.limit) : undefined;
+  if (opts.inboundPath) {
+    try {
+      // ATTACH would CREATE a missing file; never conjure an inbound.db here.
+      if (!fs.existsSync(opts.inboundPath)) throw new Error(`inbound mailbox missing: ${opts.inboundPath}`);
+      db.prepare('ATTACH DATABASE ? AS inb').run(opts.inboundPath);
+      try {
+        return db
+          .prepare(
+            `SELECT m.* FROM messages_out m
+             WHERE (m.deliver_after IS NULL OR datetime(m.deliver_after) <= datetime('now'))
+               AND NOT EXISTS (SELECT 1 FROM inb.delivered d WHERE d.message_out_id = m.id)
+             ORDER BY m.timestamp ASC${limit !== undefined ? ' LIMIT ?' : ''}`,
+          )
+          .all(...(limit !== undefined ? [limit] : [])) as OutboundMessage[];
+      } finally {
+        db.exec('DETACH DATABASE inb');
+      }
+    } catch (err) {
+      opts.onFallback?.(err);
+    }
+  }
   return db
     .prepare(
       `SELECT * FROM messages_out
