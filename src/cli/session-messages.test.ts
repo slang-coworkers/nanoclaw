@@ -21,7 +21,7 @@ import { initTestDb, closeDb, runMigrations, createAgentGroup } from '../db/inde
 import { createSession } from '../db/sessions.js';
 import { inboundDbPath, outboundDbPath } from '../mailbox/sqlite/paths.js';
 import { initSessionFolder } from '../session-manager.js';
-import { readSessionMessages } from './session-messages.js';
+import { keyQuerySql, readSessionMessages } from './session-messages.js';
 
 const AG = 'ag-test';
 const SESS = 'sess-test';
@@ -185,5 +185,87 @@ describe('readSessionMessages', () => {
 
   it('throws when session id does not exist', async () => {
     await expect(readSessionMessages({ id: 'sess-nope' })).rejects.toThrow(/session not found/);
+  });
+
+  it('pages with offset/limit across both tables in seq order without loading the rest', async () => {
+    seedSession();
+    // 20 inbound (odd seq) + 20 outbound (even seq) chat rows, interleaved.
+    writeInbound(
+      Array.from({ length: 20 }, (_, i) => ({
+        seq: 2 * i + 1,
+        kind: 'chat',
+        timestamp: now(),
+        content: JSON.stringify({ text: `in ${2 * i + 1}` }),
+      })),
+    );
+    writeOutbound(
+      Array.from({ length: 20 }, (_, i) => ({
+        seq: 2 * i + 2,
+        kind: 'chat',
+        timestamp: now(),
+        content: JSON.stringify({ text: `out ${2 * i + 2}` }),
+      })),
+    );
+    const page = await readSessionMessages({ id: SESS, offset: 5, limit: 10 });
+    expect(page.map((r) => r.seq)).toEqual([6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    const last = await readSessionMessages({ id: SESS, limit: 1, reverse: true });
+    expect(last.map((r) => r.seq)).toEqual([40]);
+    const tail = await readSessionMessages({ id: SESS, limit: 3, reverse: true, offset: 1 });
+    expect(tail.map((r) => r.seq)).toEqual([39, 38, 37]);
+    const since = await readSessionMessages({ id: SESS, since_seq: 36 });
+    expect(since.map((r) => r.seq)).toEqual([37, 38, 39, 40]);
+  });
+
+  it('filters system rows in SQL so --limit counts only visible rows', async () => {
+    seedSession();
+    // 400 system rows first, then 3 chat rows: the old in-memory filter would have
+    // needed all 403 rows to return the 3 visible ones.
+    writeInbound(
+      Array.from({ length: 400 }, (_, i) => ({
+        seq: 2 * i + 1,
+        kind: 'system',
+        timestamp: now(),
+        content: JSON.stringify({ type: 'cli_response' }),
+      })),
+    );
+    writeOutbound(
+      [801, 803, 805].map((seq) => ({
+        seq,
+        kind: 'chat',
+        timestamp: now(),
+        content: JSON.stringify({ text: `t${seq}` }),
+      })),
+    );
+    const rows = await readSessionMessages({ id: SESS, limit: 3 });
+    expect(rows.map((r) => r.seq)).toEqual([801, 803, 805]);
+  });
+
+  it('replaces an oversized row body with a placeholder instead of loading it', async () => {
+    seedSession();
+    writeInbound([
+      { seq: 1, kind: 'chat', timestamp: now(), content: JSON.stringify({ text: 'x'.repeat(1_000_001) }) },
+      { seq: 3, kind: 'chat', timestamp: now(), content: JSON.stringify({ text: 'small' }) },
+    ]);
+    const rows = await readSessionMessages({ id: SESS, full: true });
+    expect(rows[0].text).toMatch(/^\[content too large to display: \d+ bytes\]$/);
+    expect(rows[0].truncated).toBe(true);
+    expect(rows[1].text).toBe('small');
+  });
+
+  it('selects the page window from the seq index without touching content (two-phase read)', async () => {
+    // The key query must be index-driven and must not reference `content`:
+    // that is the whole reason paging a 12k-row transcript no longer costs
+    // 40-60 MB of reads per call. Assert on the plan, not on timing.
+    seedSession();
+    writeInbound([{ seq: 1, kind: 'chat', timestamp: now(), content: JSON.stringify({ text: 'x' }) }]);
+    const { sql, params } = keyQuerySql('messages_in', { sinceSeq: 0, includeSystem: false, reverse: true, fetch: 50 });
+    expect(sql).not.toMatch(/content/);
+    const db = new Database(inboundDbPath(AG, SESS), { readonly: true });
+    const plan = (db.prepare(`EXPLAIN QUERY PLAN ${sql}`).all(...params) as Array<{ detail: string }>)
+      .map((r) => r.detail)
+      .join(' | ');
+    db.close();
+    expect(plan).toMatch(/USING (COVERING )?INDEX/);
+    expect(plan).not.toMatch(/TEMP B-TREE/);
   });
 });
