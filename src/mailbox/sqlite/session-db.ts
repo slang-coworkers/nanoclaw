@@ -453,6 +453,58 @@ export interface OutboundMessage {
   content: string;
 }
 
+export interface GcInboundOptions {
+  /** ISO instant; rows older than this are eligible. */
+  cutoffIso: string;
+  /** This session's outbound.db; needed to tell an orphan `delivered` row from a live one. */
+  outboundPath?: string;
+}
+
+/**
+ * Host-side mailbox history GC (the host owns inbound.db).
+ *
+ * Prod 2026-09-26: one session's inbound.db held 187,625 consumed `cli_response`
+ * rows (2.6 GB) — every `ncl` reply ever written back to it, never pruned —
+ * and a 193k-row `delivered` table. Nothing in the system deletes either.
+ *
+ *   - consumed system frames (`kind='system'`, terminal status) older than the
+ *     cutoff go; chat/task rows are the conversation and stay;
+ *   - `delivered` rows older than the cutoff go ONLY when their messages_out
+ *     row no longer exists. A `delivered` row whose message still exists is
+ *     the only thing standing between that message and a redelivery, so the
+ *     order of the two GCs is: runner drops delivered messages_out first
+ *     (see agent-runner sqliteGcOutboundHistory), host drops the orphans after.
+ */
+export function gcInboundHistory(
+  db: Database.Database,
+  opts: GcInboundOptions,
+): { systemRows: number; deliveredRows: number } {
+  const norm = (col: string) => `SUBSTR(REPLACE(REPLACE(${col}, 'T', ' '), 'Z', ''), 1, 19)`;
+  const cutoff = opts.cutoffIso.replace('T', ' ').replace('Z', '').slice(0, 19);
+  const systemRows = db
+    .prepare(
+      `DELETE FROM messages_in
+       WHERE kind = 'system' AND status IN ('completed', 'failed') AND ${norm('timestamp')} < ?`,
+    )
+    .run(cutoff).changes;
+  let deliveredRows = 0;
+  if (opts.outboundPath && fs.existsSync(opts.outboundPath)) {
+    db.prepare('ATTACH DATABASE ? AS outb').run(opts.outboundPath);
+    try {
+      deliveredRows = db
+        .prepare(
+          `DELETE FROM delivered
+           WHERE ${norm('delivered_at')} < ?
+             AND NOT EXISTS (SELECT 1 FROM outb.messages_out m WHERE m.id = delivered.message_out_id)`,
+        )
+        .run(cutoff).changes;
+    } finally {
+      db.exec('DETACH DATABASE outb');
+    }
+  }
+  return { systemRows, deliveredRows };
+}
+
 export interface DueOutboundOptions {
   /**
    * This session's inbound.db. When given, rows already recorded in its
