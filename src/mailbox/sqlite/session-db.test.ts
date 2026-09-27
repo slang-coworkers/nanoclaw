@@ -213,7 +213,9 @@ describe('getNextDueAt', () => {
     insert.run('unscheduled', 12, 'pending', null, 1); // due now, no timer
     const next = getNextDueAt(db);
     expect(next).not.toBeNull();
-    expect(Math.abs(Date.parse(next!) - (Date.now() + 600_000))).toBeLessThan(5_000);
+    // Normalized SQLite text, UTC — never let Date.parse read it as local time.
+    expect(next).toMatch(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/);
+    expect(Math.abs(Date.parse(next!.replace(' ', 'T') + 'Z') - (Date.now() + 600_000))).toBeLessThan(5_000);
     db.close();
   });
 });

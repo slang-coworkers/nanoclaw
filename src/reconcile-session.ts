@@ -66,6 +66,7 @@ import {
   retryWithBackoff,
 } from './mailbox/sqlite/session-db.js';
 import { inboundDbPath, outboundDbPath } from './mailbox/sqlite/paths.js';
+import { _resetSweepStatsForTesting, sweepStats } from './sweep-stats.js';
 
 // Absolute idle ceiling for a running container. If the heartbeat file hasn't
 // been touched in this long, the container is either stuck or doing genuinely
@@ -122,6 +123,7 @@ const quietSessions = new Map<string, QuietSnapshot>();
 
 export function _resetQuietSessionsForTesting(): void {
   quietSessions.clear();
+  _resetSweepStatsForTesting();
 }
 
 /** Pure decision: can this pass be skipped given what the last full pass recorded? */
@@ -253,8 +255,10 @@ async function reconcileActiveSession(session: Session): Promise<void> {
     !isContainerRunning(session.id) &&
     shouldSkipQuietSession(quietSessions.get(session.id), inboundMtimeMs, outboundMtimeMs, Date.now())
   ) {
+    sweepStats.quietSkips++;
     return;
   }
+  sweepStats.fullPasses++;
   quietSessions.delete(session.id);
 
   try {
@@ -327,7 +331,9 @@ async function reconcileActiveSession(session: Session): Promise<void> {
       if (!shouldWake) {
         await maintainSessionMailbox(mailbox, session, agentGroup.id);
         // Read after maintenance: recurrence may have just armed the next row.
-        nextDueAt = mailbox.nextDueAt?.();
+        // And if maintenance itself left something due right now (a stuck
+        // row reset to pending), do not snapshot — the next tick must wake it.
+        nextDueAt = mailbox.countDueMessages() > 0 ? undefined : mailbox.nextDueAt?.();
       }
       return true;
     });

@@ -226,9 +226,13 @@ export function countDueMessages(db: Database.Database): number {
  * when to look again (see reconcile-session.ts).
  */
 export function getNextDueAt(db: Database.Database): string | null {
+  // Compare and return the NORMALIZED form ('YYYY-MM-DD HH:MM:SS', UTC): rows
+  // are written both as JS ISO ('T'…'Z') and as SQLite datetime() text, and a
+  // raw MIN() over mixed forms sorts 'T' after ' ' — it could pick a later row.
+  // parseSqliteUtc() reads the normalized form as UTC.
   const row = db
     .prepare(
-      `SELECT MIN(process_after) AS next FROM messages_in
+      `SELECT MIN(SUBSTR(REPLACE(REPLACE(process_after, 'T', ' '), 'Z', ''), 1, 19)) AS next FROM messages_in
        WHERE status = 'pending'
          AND trigger = 1
          AND process_after IS NOT NULL
