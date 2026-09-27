@@ -22,6 +22,15 @@ describe('pricing parity (must match dashboard/session-costs.ts)', () => {
     expect(MODEL_PRICING['claude-opus-5']).toEqual(MODEL_PRICING['claude-opus-4-8']);
   });
 
+  it('opus-5-5 carries LiteLLM\'s $4/$20 per-Mtok rates (not the opus-5 row)', () => {
+    expect(MODEL_PRICING['claude-opus-5-5']).toEqual({
+      input: 4e-6,
+      output: 20e-6,
+      cacheCreate: 5e-6,
+      cacheRead: 2e-7,
+    });
+  });
+
   it('sonnet-5 and haiku-4-5 rates match the dashboard table', () => {
     expect(MODEL_PRICING['claude-sonnet-5']).toEqual({
       input: 2e-6,
@@ -44,6 +53,14 @@ describe('normalizeModel', () => {
     expect(normalizeModel('aws/anthropic/bedrock-claude-opus-5')).toBe('claude-opus-5');
     expect(normalizeModel('aws/anthropic/claude-haiku-4-5-v1')).toBe('claude-haiku-4-5');
     expect(normalizeModel('claude-sonnet-5-20251001')).toBe('claude-sonnet-5');
+  });
+
+  it('prices the Azure fallback ids and opus-5-5 instead of reading them as unpriced', () => {
+    expect(normalizeModel('aws/anthropic/bedrock-claude-opus-5-5[1m]')).toBe('claude-opus-5-5');
+    expect(normalizeModel('azure/anthropic/claude-opus-5-5[1m]')).toBe('claude-opus-5-5');
+    expect(normalizeModel('azure/anthropic/claude-opus-4-8[1m]')).toBe('claude-opus-4-8');
+    expect(normalizeModel('azure/anthropic/claude-haiku-4-5')).toBe('claude-haiku-4-5');
+    expect(priceUsage('azure/anthropic/claude-opus-5-5', { input_tokens: 1_000_000 })).toBeCloseTo(4, 10);
   });
 
   it('returns "" for unknown/synthetic models (treated as unpriced)', () => {

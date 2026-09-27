@@ -589,6 +589,7 @@ export function renderCoworkerSpine(
     overlays?: string[];
     cliScope?: 'disabled' | 'group' | 'global';
     mcpInstructions?: Record<string, string>;
+    pluginOwnedSkills?: readonly string[];
   } = {},
 ): string {
   return renderProjectDoc(composedDocHeader(), {
@@ -614,6 +615,7 @@ export function renderCoworkerSections(
     overlays?: string[];
     cliScope?: 'disabled' | 'group' | 'global';
     mcpInstructions?: Record<string, string>;
+    pluginOwnedSkills?: readonly string[];
   } = {},
 ): ComposedSectionInput[] {
   // cliScope gates inclusion of the `ncl-*.md` tool-instruction fragments.
@@ -627,6 +629,14 @@ export function renderCoworkerSections(
   const types = readCoworkerTypes(projectRoot);
   const catalog = readSkillCatalog(projectRoot);
   const manifest = resolveCoworkerManifest(types, coworkerType, catalog, projectRoot, { cliScope });
+  // Skill names a stamped template owns. The template's body is what `/<name>`
+  // executes (group-init skips mirroring the catalog copy), so describing the
+  // catalog's here would make the prompt disagree with the executable — and the
+  // agent trusts the prompt. Withheld from the two renderings that DESCRIBE a
+  // skill, and from nothing else: the name is still a real slash command, so it
+  // must stay in `capabilitySkillNames` below or every surviving `/<name>` ref
+  // would be rewritten as an unknown one.
+  const shadowedSkills = new Set(opts.pluginOwnedSkills ?? []);
 
   // Inject per-agent overlays from DB (agent_groups.overlays column).
   if (opts.overlays && opts.overlays.length > 0) {
@@ -673,7 +683,7 @@ export function renderCoworkerSections(
     }
     // A flat type has no manifest skill list to scope against, and `group-init`
     // mirrors every skill for it, so its resident set is everything mirrored.
-    const flatResident = residentSkillInstructions(types, catalog, manifest);
+    const flatResident = residentSkillInstructions(types, catalog, manifest, shadowedSkills);
     if (flatResident.length > 0) {
       bodies.push(`## ${RESIDENT_INSTRUCTIONS_SECTION}\n\n${renderResidentInstructions(flatResident)}`);
     }
@@ -1008,12 +1018,13 @@ export function renderCoworkerSections(
   // the skill's `provides:` traits — bound skills land under their domain
   // heading (Repo, Code, Test, …), unbound skills (e.g. `base-nanoclaw` host
   // tools) land under "Other" so they're still visible to the reader.
-  if (manifest.skills.length > 0) {
+  const describedSkills = manifest.skills.filter((s) => !shadowedSkills.has(s.name));
+  if (describedSkills.length > 0) {
     sections.push(
       section(
         'Skills',
         renderCategorizedList(
-          manifest.skills,
+          describedSkills,
           (s) => s.provides,
           (s) => `- \`/${s.name}\` — ${s.description}`,
         ),
@@ -1025,7 +1036,7 @@ export function renderCoworkerSections(
   // `instructions.md` beside it must be resident. Placed right after the Skills
   // index because it is about the same skills — and before MCP guidance, which is
   // the same kind of "how to use what you have" prose.
-  const resident = residentSkillInstructions(types, catalog, manifest);
+  const resident = residentSkillInstructions(types, catalog, manifest, shadowedSkills);
   if (resident.length > 0) {
     sections.push(section(RESIDENT_INSTRUCTIONS_SECTION, renderResidentInstructions(resident)));
   }

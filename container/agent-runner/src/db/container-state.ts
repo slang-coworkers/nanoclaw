@@ -11,3 +11,7 @@ export function clearContainerToolInFlight(): void {
 export function clearStaleProcessingAcks(): void {
   getAgentMailbox().operations.clearStaleProcessingAcks();
 }
+
+export function gcOutboundHistory(cutoffIso: string): { messagesOut: number; acks: number } {
+  return getAgentMailbox().operations.gcOutboundHistory(cutoffIso);
+}

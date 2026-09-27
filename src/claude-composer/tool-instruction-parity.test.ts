@@ -97,8 +97,14 @@ const SHADOWS: Record<string, Shadow> = {
   },
   'self-mod.instructions.md': {
     fragments: ['self-mod.md'],
-    digest: '760305a39e7ef14d',
-    note: 'Carries the remote-URL rules and the `onecli-managed` literal; adds rebuild-vs-restart semantics upstream lacks.',
+    digest: '00a9764c279ee0ad',
+    note:
+      'Carries the remote-URL rules and the `onecli-managed` literal; adds rebuild-vs-restart semantics ' +
+      'upstream lacks. The upstream file carries a local correction: upstream genericized the placeholder ' +
+      'to `"gateway-managed"`, but on this fork that string is load-bearing — the onecli-gateway skill ' +
+      'claims config files by matching `"onecli-managed"`, so the generic value would leave every MCP ' +
+      'server config unmanaged. This file is emitted verbatim to providers that own their surfaces, so ' +
+      'the wrong marker would reach them directly.',
     rules: [
       'host.docker.internal',
       'credential-looking query parameter',
