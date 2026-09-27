@@ -46,6 +46,7 @@ describe('rate-table parity with the container copies', () => {
     for (const id of claudeIds) expect(normalizeModel(id), id).toBe(p.normalizeModel(id));
     const codexIds = [
       'azure/openai/gpt-5.6-sol',
+      'openai/openai/gpt-6-sol',
       'openai/openai/gpt-5.5',
       'gpt-5.6-luna-20260101',
       'gpt-5.6-latest',

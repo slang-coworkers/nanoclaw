@@ -68,14 +68,27 @@ describe('clack spinner outcome contract', () => {
   });
 });
 
-/** Every `<something>.stop(...)` call site with more than one argument. */
+/**
+ * Every `<something>.stop(...)` call site with more than one argument.
+ *
+ * The text prefilter is what keeps this affordable. Parsing every .ts file under
+ * setup/ and src/ grew with the tree until it held a full TypeScript AST for each
+ * one and the suite was OOM-killed on CI (`vitest run` SIGKILLed); `.stop` appears
+ * in a few dozen files, so parsing only those is the same check for a fraction of
+ * the memory and time.
+ *
+ * It costs no coverage: an offending call names the `stop` member by
+ * definition, so a file without that substring cannot contain one. The AST walk is still the thing
+ * that decides — the original tz-from-claude.ts offender put its `1` four lines
+ * below the `.stop(`, which no line-wise grep would have seen — this only skips
+ * files where there is nothing for it to decide about.
+ */
 function overArgumentedStopCalls(file: string): number[] {
-  const src = ts.createSourceFile(
-    file,
-    fs.readFileSync(file, 'utf-8'),
-    ts.ScriptTarget.ES2022,
-    true,
-  );
+  const text = fs.readFileSync(file, 'utf-8');
+  // `.stop` not `.stop(`: `foo.stop (msg, 1)` is valid TypeScript and the paren
+  // form would skip the file that contains it.
+  if (!text.includes('.stop')) return [];
+  const src = ts.createSourceFile(file, text, ts.ScriptTarget.ES2022, true);
   const hits: number[] = [];
   const walk = (n: ts.Node): void => {
     if (

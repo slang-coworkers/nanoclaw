@@ -21,6 +21,8 @@
  * is immediately ready; delayed retries don't count. The sweep uses it to end
  * a tick only after the tick's work is done.
  */
+import { setImmediate as yieldToEventLoop } from 'node:timers/promises';
+
 import { log } from './log.js';
 import {
   sessionIdOf,
@@ -135,6 +137,16 @@ class InProcessReconcileQueue implements ReconcileQueue {
   private async run(key: ReconcileKey): Promise<void> {
     let retryInMs = 0;
     try {
+      // One macrotask boundary before each key. A reconcile is mostly
+      // synchronous SQLite work, and back-to-back keys across the workers
+      // otherwise form one long JS turn in which no timer or socket callback
+      // runs: on prod (2026-09-27) the 5 s OneCLI abort fired late and killed
+      // spawn requests the gateway had answered in 8 ms, and GitHub's 10 s
+      // webhook deadline expired on deliveries the handler never got to. The
+      // promise form from timers/promises is deliberate — it is not replaced
+      // by fake timers in tests, so suites that never advance a clock still
+      // drain.
+      await yieldToEventLoop();
       await this.dispatch(key);
       this.failures.delete(key);
     } catch (err) {

@@ -46,7 +46,17 @@ const MEMORY_NOTE_PLACEHOLDER = '{{provider-memory-note}}';
  * `runtime-contract.test.ts` asserts every one of these still resolves — a
  * rename upstream would otherwise quietly drop an agent-facing guarantee.
  */
-export const EMITTED_CONTRACT_SECTIONS = ['Received attachments', 'Memory', 'Conversation history'] as const;
+export const EMITTED_CONTRACT_SECTIONS = [
+  'Received attachments',
+  'Memory',
+  'Conversation history',
+  // Carried, not dropped: the resident gateway fragment covers `connect_url`
+  // and "never ask for a raw credential", but nothing in the spine says don't
+  // run `gh auth login`, don't invent an authorization link, or that a bare 403
+  // does not name who denied it. Emitting is also the safe direction — an agent
+  // reading credential hygiene twice costs nothing.
+  'Connecting external accounts',
+] as const;
 
 /**
  * Base-document sections deliberately NOT carried, each because the spine states
