@@ -15,6 +15,7 @@ import {
   getInboundSourceSessionId,
   getMessageForRetry,
   getMostRecentPeerSourceSessionId,
+  getNextDueAt,
   getProcessingClaims,
   insertMessage,
   markDelivered,
@@ -208,6 +209,7 @@ export function wrapSqliteInbound(db: Database.Database, nextSequence = () => ne
       ),
     insertMessage: async (message) => insertMessage(db, message, nextSequence()),
     countDueMessages: () => countDueMessages(db),
+    nextDueAt: () => getNextDueAt(db),
     markMessageFailed: (messageId) => markMessageFailed(db, messageId),
     retryWithBackoff: (messageId, backoffSec) => retryWithBackoff(db, messageId, backoffSec),
     getMessageForRetry: (messageId, status) => {

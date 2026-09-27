@@ -219,6 +219,29 @@ export function countDueMessages(db: Database.Database): number {
   ).count;
 }
 
+/**
+ * Earliest future `process_after` among pending trigger rows, or null when
+ * nothing is scheduled. The sweep's quiet-session skip needs it because a
+ * scheduled row becomes due with no file write, so mtimes alone cannot say
+ * when to look again (see reconcile-session.ts).
+ */
+export function getNextDueAt(db: Database.Database): string | null {
+  // Compare and return the NORMALIZED form ('YYYY-MM-DD HH:MM:SS', UTC): rows
+  // are written both as JS ISO ('T'…'Z') and as SQLite datetime() text, and a
+  // raw MIN() over mixed forms sorts 'T' after ' ' — it could pick a later row.
+  // parseSqliteUtc() reads the normalized form as UTC.
+  const row = db
+    .prepare(
+      `SELECT MIN(SUBSTR(REPLACE(REPLACE(process_after, 'T', ' '), 'Z', ''), 1, 19)) AS next FROM messages_in
+       WHERE status = 'pending'
+         AND trigger = 1
+         AND process_after IS NOT NULL
+         AND SUBSTR(REPLACE(REPLACE(process_after, 'T', ' '), 'Z', ''), 1, 19) > datetime('now')`,
+    )
+    .get() as { next: string | null } | undefined;
+  return row?.next ?? null;
+}
+
 export function markMessageFailed(db: Database.Database, messageId: string): void {
   db.prepare("UPDATE messages_in SET status = 'failed' WHERE id = ?").run(messageId);
 }

@@ -65,6 +65,8 @@ import {
   markMessageFailed,
   retryWithBackoff,
 } from './mailbox/sqlite/session-db.js';
+import { inboundDbPath, outboundDbPath } from './mailbox/sqlite/paths.js';
+import { _resetSweepStatsForTesting, sweepStats } from './sweep-stats.js';
 
 // Absolute idle ceiling for a running container. If the heartbeat file hasn't
 // been touched in this long, the container is either stuck or doing genuinely
@@ -89,6 +91,64 @@ const A2A_MAX_TRIES = 12;
 const A2A_UNKNOWN_MAX_TRIES = 2;
 const A2A_BACKOFF_BASE_MS = 60_000; // 1 min, doubling …
 const A2A_BACKOFF_CAP_MS = 3_600_000; // … capped at 1h per step (multi-hour total).
+
+// --- quiet-session skip -------------------------------------------------------
+// A tick reconciles every active session with synchronous SQLite work (two DB
+// opens, ack sync, due count, recurrence, SLA — ~8 ms each). At ~2,600 active
+// sessions that is ~21 s of blocked JS thread per tick, measured with a CPU
+// profile on prod 2026-09-27; the bursts starved the OneCLI spawn timeout and
+// GitHub's webhook deadline. Nearly all of those sessions are quiet: no
+// container, no file change since the last pass, no scheduled row coming due.
+// Remember what the last full pass saw and skip such a session for the price
+// of two stat() calls.
+//
+// Skipping is a latency choice, never a correctness one:
+//   - any inbound/outbound write moves an mtime → full pass on the next tick
+//     (the router's own writes also enqueue the session explicitly);
+//   - a scheduled row becomes due with NO write → `nextDueAtMs`, read on the
+//     last full pass, forces the pass when its time comes;
+//   - a running container is never skipped (its SLA check is time-based);
+//   - a full pass runs at least every QUIET_FULL_PASS_MS regardless.
+export const QUIET_FULL_PASS_MS = 10 * 60_000;
+
+export interface QuietSnapshot {
+  inboundMtimeMs: number;
+  outboundMtimeMs: number;
+  /** Epoch ms of the earliest scheduled row; +Infinity when none. */
+  nextDueAtMs: number;
+  passAtMs: number;
+}
+
+const quietSessions = new Map<string, QuietSnapshot>();
+
+export function _resetQuietSessionsForTesting(): void {
+  quietSessions.clear();
+  _resetSweepStatsForTesting();
+}
+
+/** Pure decision: can this pass be skipped given what the last full pass recorded? */
+export function shouldSkipQuietSession(
+  prev: QuietSnapshot | undefined,
+  inboundMtimeMs: number,
+  outboundMtimeMs: number,
+  nowMs: number,
+): boolean {
+  if (!prev) return false;
+  // A missing file is never "quiet" — let the full pass see (and log) it.
+  if (inboundMtimeMs === 0 || outboundMtimeMs === 0) return false;
+  if (inboundMtimeMs !== prev.inboundMtimeMs || outboundMtimeMs !== prev.outboundMtimeMs) return false;
+  if (nowMs >= prev.nextDueAtMs) return false;
+  if (nowMs - prev.passAtMs >= QUIET_FULL_PASS_MS) return false;
+  return true;
+}
+
+function fileMtimeMs(p: string): number {
+  try {
+    return fs.statSync(p).mtimeMs;
+  } catch {
+    return 0;
+  }
+}
 
 /**
  * Parse a timestamp that may be in SQLite datetime('now') format
@@ -186,6 +246,21 @@ async function reconcileActiveSession(session: Session): Promise<void> {
   const agentGroup = await getAgentGroup(session.agent_group_id);
   if (!agentGroup) return;
 
+  // Quiet-session skip (see QUIET_FULL_PASS_MS above). Mtimes are read BEFORE
+  // the pass so a write the pass itself makes shows up as a change next tick —
+  // one extra pass, never a missed one.
+  const inboundMtimeMs = fileMtimeMs(inboundDbPath(agentGroup.id, session.id));
+  const outboundMtimeMs = fileMtimeMs(outboundDbPath(agentGroup.id, session.id));
+  if (
+    !isContainerRunning(session.id) &&
+    shouldSkipQuietSession(quietSessions.get(session.id), inboundMtimeMs, outboundMtimeMs, Date.now())
+  ) {
+    sweepStats.quietSkips++;
+    return;
+  }
+  sweepStats.fullPasses++;
+  quietSessions.delete(session.id);
+
   try {
     // Runaway detection (non-blocking). NEVER stops the session — on a fresh
     // runaway episode it only surfaces an admin card; a human clicking Stop is
@@ -248,18 +323,35 @@ async function reconcileActiveSession(session: Session): Promise<void> {
 
     let dueCount = 0;
     let shouldWake = false;
+    let nextDueAt: string | null | undefined;
     const exists = await withExistingMailboxSession(agentGroup.id, session.id, async (mailbox) => {
       mailbox.applyProcessingAcks(mailbox.getTerminalProcessingAcks());
       dueCount = mailbox.countDueMessages();
       shouldWake = dueCount > 0 && !isContainerRunning(session.id);
       if (!shouldWake) {
         await maintainSessionMailbox(mailbox, session, agentGroup.id);
+        // Read after maintenance: recurrence may have just armed the next row.
+        // And if maintenance itself left something due right now (a stuck
+        // row reset to pending), do not snapshot — the next tick must wake it.
+        nextDueAt = mailbox.countDueMessages() > 0 ? undefined : mailbox.nextDueAt?.();
       }
       return true;
     });
     if (!exists) return;
 
-    if (!shouldWake) return;
+    if (!shouldWake) {
+      // Only a mailbox that can report its next timer may be skipped later;
+      // a session with a live container is re-checked every tick regardless.
+      if (nextDueAt !== undefined && !isContainerRunning(session.id)) {
+        quietSessions.set(session.id, {
+          inboundMtimeMs,
+          outboundMtimeMs,
+          nextDueAtMs: nextDueAt ? parseSqliteUtc(nextDueAt) : Number.POSITIVE_INFINITY,
+          passAtMs: Date.now(),
+        });
+      }
+      return;
+    }
 
     // Waking refreshes routing through the mailbox. Keep it outside the
     // session transaction so serialized implementations do not re-enter

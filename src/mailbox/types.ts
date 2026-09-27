@@ -96,6 +96,13 @@ export interface InboundMailbox {
   replaceDestinations(entries: Destination[]): void;
   insertMessage(message: InboundMessage): Promise<void>;
   countDueMessages(): number;
+  /**
+   * Earliest FUTURE `process_after` among pending trigger rows (ISO/SQLite
+   * text), or null when nothing is scheduled. Lets the sweep skip a quiet
+   * session without missing a timer. Optional so hand-rolled fakes need not
+   * implement it — a mailbox without it is simply never skipped.
+   */
+  nextDueAt?(): string | null;
   markMessageFailed(messageId: string): void;
   retryWithBackoff(messageId: string, backoffSec: number): void;
   getMessageForRetry(messageId: string, status: 'pending' | 'processing'): MessageRetry | undefined;
