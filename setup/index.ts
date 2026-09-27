@@ -30,14 +30,14 @@ const STEPS: Record<
   mounts: () => import('./mounts.js'),
   service: () => import('./service.js'),
   verify: () => import('./verify.js'),
-  onecli: () => import('./onecli.js'),
-  auth: () => import('./auth.js'),
   'provider-auth': () => import('./provider-auth.js'),
   'cli-agent': () => import('./cli-agent.js'),
   'project-integrations': () => import('./project-integrations.js'),
   registry: () => import('./registry.js'),
   portal: () => import('./portal.js'),
   'registry-reconcile': () => import('./registry-reconcile.js'),
+  gateway: () => import('./gateways/step.js'),
+  'gateway-auth': () => import('./gateways/auth-step.js'),
   // >>> nanoclaw:setup-steps
   // <<< nanoclaw:setup-steps
 };

@@ -26,6 +26,7 @@ export interface ModelRate {
 
 /** Keyed by BASE model id (no provider prefix, no `[1m]`/`-v1`/date suffix). */
 export const MODEL_PRICING: Record<string, ModelRate> = {
+  'claude-opus-5-5': { input: 4e-6, output: 20e-6, cacheCreate: 5e-6, cacheRead: 2e-7 },
   'claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
   'claude-opus-4-8': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
   'claude-opus-4-7': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
@@ -46,6 +47,7 @@ export interface CodexModelRate {
 
 /** Keyed by BASE model id — `normalizeCodexModel` strips the provider routing prefix. */
 export const CODEX_MODEL_PRICING: Record<string, CodexModelRate> = {
+  'gpt-6-sol': { input: 2e-6, output: 1e-5, cacheRead: 2e-7 },
   'gpt-5.6-sol': { input: 5e-6, output: 3e-5, cacheRead: 5e-7 },
   'gpt-5.6': { input: 5e-6, output: 3e-5, cacheRead: 5e-7 },
   'gpt-5.6-terra': { input: 2e-6, output: 1.2e-5, cacheRead: 2e-7 },
@@ -76,6 +78,7 @@ export function normalizeModel(model: string | undefined): string {
   m = m
     .replace(/^aws\/anthropic\/bedrock-/, '')
     .replace(/^aws\/anthropic\//, '')
+    .replace(/^azure\/anthropic\//, '')
     .replace(/^anthropic\//, '');
   // Raw Bedrock id as reported inside a streamed body: `anthropic.<model>-<date>-v1:0`.
   m = m.replace(/^anthropic\./, '').replace(/:\d+$/, '');

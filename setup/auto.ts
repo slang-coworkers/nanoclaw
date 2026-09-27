@@ -15,7 +15,7 @@
  *   NANOCLAW_AGENT_PROVIDER preselect the setup provider and skip the picker
  *                          (for packaged flows). Example: claude.
  *   NANOCLAW_SKIP          comma-separated step names to skip
- *                          (environment|projects|container|onecli|auth|mounts|
+ *                          (environment|projects|container|gateway|auth|mounts|
  *                           service|cli-agent|timezone|channel|
  *                           verify|first-chat)
  *   NANOCLAW_PROJECTS      preselect project overlays (e.g. slang,slangpy) and
@@ -54,7 +54,7 @@ import { runInheritScript } from './lib/inherit-script.js';
 import { offerPortalReminder, portalEnabled, runImagePortal } from './portal.js';
 import { pingCliAgent, PING_AGENT_FOLDER, type PingResult } from './lib/agent-ping.js';
 import { getSetupProvider, listSetupProviders } from './providers/registry.js';
-import { applyProviderSkill } from './providers/install.js';
+import { applyProviderSkill, loadHostContractModules } from './providers/install.js';
 import {
   getInstallableProviderDescriptor,
   listInstallableProviderDescriptors,
@@ -84,7 +84,9 @@ import { runWindowedStep } from './lib/windowed-runner.js';
 import { runUninstallFlow } from './uninstall/flow.js';
 import { detectExistingInstall } from './uninstall/scan.js';
 import { detectRegisteredGroups, detectExistingDisplayName, readEnvKey } from './environment.js';
-import { pollHealth } from './onecli.js';
+import { installGateway, runGatewayAuth } from './gateways/install.js';
+import { loadGatewayCatalog } from './gateways/catalog.js';
+import { configuredGatewayKind, detectInstalledGateway } from './gateways/selection.js';
 import { SERVICE_NAME_CAVEAT, getLaunchdLabel, getSystemdUnit, serviceRestartHint } from '../src/install-slug.js';
 import type { AgentGroup } from '../src/types.js';
 import { claudeCliAvailable, resolveTimezoneViaClaude } from './lib/tz-from-claude.js';
@@ -187,7 +189,16 @@ async function main(): Promise<void> {
     setupLog.userInput('start_choice', startChoice);
   }
   if (startChoice === 'advanced') {
-    configValues = await runAdvancedScreen(configValues);
+    const gatewayCatalog = loadGatewayCatalog();
+    configValues.gatewayProvider ??=
+      configuredGatewayKind(process.cwd()) || detectInstalledGateway(process.cwd()) || gatewayCatalog.default;
+    configValues = await runAdvancedScreen(configValues, {
+      gatewayProvider: gatewayCatalog.gateways.map(({ kind, label, description }) => ({
+        value: kind,
+        label,
+        hint: description,
+      })),
+    });
     applyToEnv(configValues);
   }
 
@@ -332,103 +343,26 @@ async function main(): Promise<void> {
     maybeReexecUnderSg();
   }
 
-  if (!skip.has('onecli')) {
+  let gatewayKind = process.env.NANOCLAW_GATEWAY_PROVIDER?.trim().toLowerCase();
+  if (!skip.has('gateway')) {
     p.log.message(
       brandBody(
         dimWrap(
-          'Your assistant never gets your API keys directly. The vault adds them to approved requests as they leave the sandbox.',
+          'Your assistant never receives real credentials. The selected gateway adds them only at the network boundary.',
           4,
         ),
       ),
     );
-
-    const remoteHost = process.env.NANOCLAW_ONECLI_API_HOST?.trim();
-
-    if (remoteHost) {
-      // Advanced-settings override: user has already named a remote vault,
-      // so skip the local-vs-fresh prompt entirely. Health-check it here
-      // rather than letting the step fail silently — a typo in the URL is a
-      // common mistake and the answer is human-fixable.
-      const s = p.spinner();
-      s.start(`Checking remote OneCLI at ${remoteHost}…`);
-      const healthy = await pollHealth(remoteHost, 5000);
-      if (!healthy) {
-        s.error(`Couldn't reach OneCLI at ${remoteHost}.`);
-        await fail(
-          'onecli',
-          `Couldn't reach OneCLI at ${remoteHost}.`,
-          'Check the URL and that OneCLI is running on the remote machine, then retry.',
-        );
-      }
-      s.stop('Remote OneCLI is reachable.');
-
-      const res = await runQuietStep(
-        'onecli',
-        {
-          running: `Connecting to remote OneCLI at ${remoteHost}…`,
-          done: 'OneCLI vault ready.',
-        },
-        ['--remote-url', remoteHost],
+    try {
+      const gateway = await installGateway(gatewayKind);
+      gatewayKind = gateway.kind;
+      p.log.success(`${gateway.label} gateway ready.`);
+    } catch (error) {
+      await fail(
+        'gateway',
+        "Couldn't install the selected gateway.",
+        error instanceof Error ? error.message : String(error),
       );
-      if (!res.ok) {
-        const err = res.terminal?.fields.ERROR;
-        await fail(
-          'onecli',
-          `Couldn't connect to remote OneCLI (${err ?? 'unknown error'}).`,
-          'Check the URL and that OneCLI is running on the remote machine, then retry.',
-        );
-      }
-    } else {
-      // Respect an existing OneCLI install. Re-running the installer would
-      // rebind the listener and knock any other app using that gateway
-      // offline — confirm with the user before doing that.
-      const existing = detectExistingOnecli();
-      let reuse = false;
-      if (existing) {
-        const choice = ensureAnswer(
-          await brightSelect({
-            message: `Found an existing OneCLI at ${existing.apiHost}. What would you like to do?`,
-            options: [
-              {
-                value: 'reuse',
-                label: 'Use the existing instance',
-                hint: 'recommended — keeps other apps bound to this vault working',
-              },
-              {
-                value: 'fresh',
-                label: 'Install a fresh instance for NanoClaw',
-                hint: 'reinstalls onecli; other apps may need to reconnect',
-              },
-            ],
-          }),
-        ) as 'reuse' | 'fresh';
-        setupLog.userInput('onecli_choice', choice);
-        reuse = choice === 'reuse';
-      }
-
-      const res = await runQuietStep(
-        'onecli',
-        {
-          running: reuse ? 'Hooking up to your existing OneCLI…' : "Setting up OneCLI, your agent's vault…",
-          done: 'OneCLI vault ready.',
-        },
-        reuse ? ['--reuse'] : [],
-      );
-      if (!res.ok) {
-        const err = res.terminal?.fields.ERROR;
-        if (err === 'onecli_not_on_path_after_install') {
-          await fail(
-            'onecli',
-            'OneCLI was installed but your shell needs to refresh to see it.',
-            'Open a new shell or run `export PATH="$HOME/.local/bin:$PATH"`, then retry.',
-          );
-        }
-        await fail(
-          'onecli',
-          `Couldn't set up OneCLI (${err ?? 'unknown error'}).`,
-          'Make sure curl is installed and ~/.local/bin is writable, then retry.',
-        );
-      }
     }
   }
 
@@ -485,8 +419,9 @@ async function main(): Promise<void> {
       const s = p.spinner();
       s.start(`Installing ${agentProvider}…`);
       let blockers: string[];
+      let hostContractModules: string[] = [];
       try {
-        ({ blockers } = await applyProviderSkill(skillDir, process.cwd()));
+        ({ blockers, hostContractModules } = await applyProviderSkill(skillDir, process.cwd()));
       } catch (err) {
         s.error(`Couldn't install ${agentProvider}.`);
         const message = err instanceof Error ? err.message : String(err);
@@ -510,6 +445,11 @@ async function main(): Promise<void> {
           rebuild.hint,
         );
       }
+      // This process imported src/provider-contracts/index.ts at startup, and
+      // ESM caches the barrel, so a line appended to it now never evaluates
+      // here; load the contract module directly before the auth step asks the
+      // gateway store for model endpoints.
+      await loadHostContractModules(hostContractModules);
       await import(`./providers/${agentProvider}.js`);
       providerEntry = getSetupProvider(agentProvider);
     }
@@ -525,7 +465,10 @@ async function main(): Promise<void> {
         );
       }
     } else {
-      await runAuthStep();
+      // The selected gateway owns credential auth for the default runtime; the
+      // old flow called OneCLI's step directly, which no longer exists.
+      if (!gatewayKind) throw new Error('No gateway is selected for agent authentication');
+      runGatewayAuth(gatewayKind, agentProvider);
     }
     // Persist the pick as the instance-wide default so every future group
     // (channel-approved, ncl-created) is created on this provider. Read from

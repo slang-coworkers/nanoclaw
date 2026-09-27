@@ -10,6 +10,7 @@ import {
   sqliteFindByName,
   sqliteFindByRouting,
   sqliteFindCliResponse,
+  sqliteGcOutboundHistory,
   sqliteCommitCostCeilingAdjustment,
   sqliteFindQuestionResponse,
   sqliteGetAllDestinations,
@@ -262,4 +263,5 @@ export class SqliteAgentMailbox implements AgentMailbox {
 
   clearContainerToolInFlight = sqliteClearContainerToolInFlight;
   clearStaleProcessingAcks = sqliteClearStaleProcessingAcks;
+  gcOutboundHistory = sqliteGcOutboundHistory;
 }

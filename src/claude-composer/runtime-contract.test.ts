@@ -58,6 +58,10 @@ Be concise.
 
 Files you create are saved in \`/workspace/agent/\`.
 
+## Connecting external accounts
+
+Keep real credentials in the gateway.
+
 ## Received attachments
 
 Files arrive at \`/workspace/inbox/<message-id>/<filename>\`.
@@ -72,10 +76,10 @@ The \`conversations/\` folder holds searchable transcripts.
 `;
 
 describe('section selection', () => {
-  it('emits exactly the three sections the ownership table keeps', () => {
+  it('emits exactly the sections the ownership table keeps', () => {
     const out = renderRuntimeContract(makeProject(FULL))!;
 
-    expect(out.match(/^### /gm)).toHaveLength(3);
+    expect(out.match(/^### /gm)).toHaveLength(EMITTED_CONTRACT_SECTIONS.length);
     for (const heading of EMITTED_CONTRACT_SECTIONS) expect(out).toContain(`### ${heading}`);
   });
 
@@ -96,6 +100,7 @@ describe('section selection', () => {
     expect(out).toContain('/workspace/inbox/<message-id>/<filename>');
     expect(out).toContain('instructions.prepend.md');
     expect(out).toContain('`conversations/` folder');
+    expect(out).toContain('Keep real credentials in the gateway');
   });
 
   it('preserves document order', () => {
@@ -167,10 +172,10 @@ describe('against the real contract document', () => {
     }
   });
 
-  it('renders all three from the real file', () => {
+  it('renders every emitted section from the real file', () => {
     const out = renderRuntimeContract(ROOT)!;
 
-    expect(out.match(/^### /gm)).toHaveLength(3);
+    expect(out.match(/^### /gm)).toHaveLength(EMITTED_CONTRACT_SECTIONS.length);
   });
 
   // `container/CLAUDE.md` is enumerated as an install surface so an operator
