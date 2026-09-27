@@ -78,6 +78,19 @@ export type CommandDef<TArgs = unknown, TData = unknown> = {
    * throwing formatter is ignored — clients fall back to rendering `data`.
    */
   formatHuman?: (data: TData) => string;
+  /**
+   * Extra disclosure lines for this command's approval card, derived from the raw
+   * args. Without it an `access: 'approval'` command is carded as its command line
+   * alone — fine when the args ARE the request (`roles grant --role admin`), not
+   * fine when one arg stands for a payload the approver cannot see. A template ref
+   * is the case in point: it wires a set of MCP servers from an untrusted manifest.
+   *
+   * Runs BEFORE the card is minted and before `parseArgs`, so it must tolerate
+   * unvalidated args. A throw refuses the command rather than carding it: the
+   * alternative is asking a human to approve a request whose reach we failed to
+   * render, which is the defect this field exists to remove.
+   */
+  approvalDetail?: (raw: Record<string, unknown>) => string[] | undefined;
 };
 
 const registry = new Map<string, CommandDef>();

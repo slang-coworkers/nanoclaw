@@ -20,6 +20,7 @@ import { log } from './log.js';
 import { registerReconcileEnqueue } from './reconcile-feeds.js';
 import { createReconcileQueue, type InProcessReconcileQueue } from './reconcile-queue.js';
 import { reconcileSession } from './reconcile-session.js';
+import { sweepStats } from './sweep-stats.js';
 import { sessionKey } from './reconcile.js';
 
 export {
@@ -187,9 +188,13 @@ async function sweep(): Promise<void> {
   // Enqueue order matches the loop this replaces: egress re-heal, then every
   // active session, then the central scans. Keys START in that order; up to
   // RECONCILE_CONCURRENCY of them run at once.
+  const startedAt = Date.now();
+  const statsBefore = { ...sweepStats };
+  let sessionCount = 0;
   tickQueue.add('singleton:egress-reheal');
   try {
     const sessions = await getActiveSessions();
+    sessionCount = sessions.length;
     for (const session of sessions) {
       tickQueue.add(sessionKey(session.id));
     }
@@ -203,6 +208,16 @@ async function sweep(): Promise<void> {
   // The tick ends — and the next one is armed — only after everything this
   // tick enqueued has run. Delayed backoff retries don't hold the tick open.
   await tickQueue.idle();
+  // One line per tick: how many sessions were visited, how many took the full
+  // pass vs the quiet skip, and how long the tick held the queue. This is the
+  // number to watch after the 2026-09-27 incident (a tick was ~21 s of blocked
+  // JS thread at ~2,600 sessions) and the input for the metrics exporter.
+  log.info('Sweep tick', {
+    sessions: sessionCount,
+    fullPasses: sweepStats.fullPasses - statsBefore.fullPasses,
+    quietSkips: sweepStats.quietSkips - statsBefore.quietSkips,
+    ms: Date.now() - startedAt,
+  });
   if (!running) return;
   setTimeout(() => void sweep(), SWEEP_INTERVAL_MS);
 }
