@@ -18,7 +18,23 @@ import {
 
 import { combinedCaBundle, stageOnecliFile } from './onecli-files.js';
 
-const onecli = new OneCLI({ url: ONECLI_URL, apiKey: ONECLI_API_KEY });
+// The SDK's default abort is 5 s. On prod (2026-09-27) that timer fired while
+// the host's JS thread was busy with a sweep burst and killed spawn requests
+// the gateway had answered in 8 ms — hundreds of "aborted due to timeout"
+// wakes against a healthy OneCLI. 30 s is a backstop for a genuinely stuck
+// gateway, not a budget the happy path ever approaches.
+const ONECLI_TIMEOUT_MS = Number(process.env.ONECLI_TIMEOUT_MS) > 0 ? Number(process.env.ONECLI_TIMEOUT_MS) : 30_000;
+const onecli = new OneCLI({ url: ONECLI_URL, apiKey: ONECLI_API_KEY, timeout: ONECLI_TIMEOUT_MS });
+
+// Agent groups whose OneCLI agent this process has already ensured. The agent
+// record is durable, so one successful ensureAgent per group per process is
+// enough; every further spawn of the group skips the POST entirely (the same
+// call that used to time out). Dropped again if the config read fails, in
+// case the agent was deleted out-of-band — the next spawn re-ensures.
+const ensuredAgents = new Set<string>();
+export function _resetEnsuredAgentsForTesting(): void {
+  ensuredAgents.clear();
+}
 
 /** Convert the typed SDK response without its shared temporary-file side effects. */
 function contributionFromConfig(config: ContainerConfig, groupScope: string): GatewayContribution {
@@ -73,8 +89,17 @@ registerGatewayProvider('onecli', () => ({
   async contribute({ key, groupName }) {
     // OneCLI agent identifier is always the agent group id — stable across
     // sessions and reversible via getAgentGroup() for approval routing.
-    await onecli.ensureAgent({ name: groupName, identifier: key.agentGroupId });
-    const config = await onecli.getContainerConfig({ agent: key.agentGroupId });
+    if (!ensuredAgents.has(key.agentGroupId)) {
+      await onecli.ensureAgent({ name: groupName, identifier: key.agentGroupId });
+      ensuredAgents.add(key.agentGroupId);
+    }
+    let config: ContainerConfig;
+    try {
+      config = await onecli.getContainerConfig({ agent: key.agentGroupId });
+    } catch (err) {
+      ensuredAgents.delete(key.agentGroupId);
+      throw err;
+    }
     const contribution = contributionFromConfig(config, key.agentGroupId);
     log.info('OneCLI gateway applied', { agentGroupId: key.agentGroupId, sessionId: key.sessionId });
     return contribution;

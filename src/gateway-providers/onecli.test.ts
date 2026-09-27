@@ -23,7 +23,7 @@ vi.mock('../config.js', () => ({
 }));
 
 import { getGatewayProviderFactory, type GatewayProviderInput } from './gateway-provider-registry.js';
-import './onecli.js';
+import { _resetEnsuredAgentsForTesting } from './onecli.js';
 
 const input: GatewayProviderInput = {
   key: { installSlug: 'test', agentGroupId: 'group-1', sessionId: 'session-1' },
@@ -57,6 +57,7 @@ beforeEach(() => {
   sdk.ensureAgent.mockReset().mockResolvedValue({});
   sdk.getContainerConfig.mockReset().mockImplementation(async () => config);
   sdk.applyContainerConfig.mockReset().mockRejectedValue(new Error('legacy temporary CA path'));
+  _resetEnsuredAgentsForTesting();
 });
 afterEach(() => {
   vi.restoreAllMocks();
@@ -160,5 +161,28 @@ describe('OneCLI gateway contribution', () => {
     fs.writeFileSync(path.join(dir, 'data', 'onecli'), 'unrelated');
     await expect(provider().contribute(input)).rejects.toThrow();
     expect(fs.readFileSync(path.join(dir, 'data', 'onecli'), 'utf8')).toBe('unrelated');
+  });
+
+  it('ensures the OneCLI agent once per group and re-ensures only after a config read fails', async () => {
+    // Prod 2026-09-27: every spawn re-POSTed /v1/agents (409 = "exists") under a
+    // 5 s abort that fired late whenever the host thread was busy — hundreds of
+    // failed wakes against a healthy gateway. The agent record is durable, so
+    // one ensure per group per process is all a spawn needs.
+    await provider().contribute(input);
+    await provider().contribute({ ...input, key: { ...input.key, sessionId: 'session-2' } });
+    expect(sdk.ensureAgent).toHaveBeenCalledTimes(1);
+    expect(sdk.getContainerConfig).toHaveBeenCalledTimes(2);
+
+    // A failing config read drops the memo: the agent may have been deleted
+    // out-of-band, and the next spawn must be allowed to recreate it.
+    sdk.getContainerConfig.mockRejectedValueOnce(new Error('agent not found'));
+    await expect(provider().contribute(input)).rejects.toThrow('agent not found');
+    await provider().contribute(input);
+    expect(sdk.ensureAgent).toHaveBeenCalledTimes(2);
+
+    // A different group is ensured on its own.
+    await provider().contribute({ ...input, key: { ...input.key, agentGroupId: 'group-2' }, groupName: 'Other' });
+    expect(sdk.ensureAgent).toHaveBeenLastCalledWith({ name: 'Other', identifier: 'group-2' });
+    expect(sdk.ensureAgent).toHaveBeenCalledTimes(3);
   });
 });

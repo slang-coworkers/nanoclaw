@@ -9,7 +9,13 @@ import fs from 'fs';
 import path from 'path';
 import { describe, it, expect, afterEach } from 'vitest';
 
-import { ensureSchema, getInboundSourceSessionId, migrateMessagesInTable, syncProcessingAcks } from './session-db.js';
+import {
+  ensureSchema,
+  getInboundSourceSessionId,
+  getNextDueAt,
+  migrateMessagesInTable,
+  syncProcessingAcks,
+} from './session-db.js';
 
 const TEST_DIR = '/tmp/nanoclaw-session-db-test';
 const DB_PATH = path.join(TEST_DIR, 'inbound.db');
@@ -182,5 +188,32 @@ describe('syncProcessingAcks — script-skip counter', () => {
     syncProcessingAcks(inDb, outDb);
 
     expect(status(inDb, 't1')).toBe('completed');
+  });
+});
+
+describe('getNextDueAt', () => {
+  // The sweep's quiet-session skip relies on this to keep timers honest: a
+  // scheduled row becomes due with no file write, so the earliest FUTURE
+  // process_after is the one moment the skipped session must be revisited.
+  it('returns the earliest future process_after among pending trigger rows, ignoring due, done and non-trigger rows', () => {
+    if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DIR, { recursive: true });
+    ensureSchema(DB_PATH, 'inbound');
+    const db = new Database(DB_PATH);
+    const insert = db.prepare(
+      "INSERT INTO messages_in (id, seq, kind, timestamp, status, process_after, trigger, content) VALUES (?, ?, 'task', datetime('now'), ?, ?, ?, '{}')",
+    );
+    const future = (ms: number) => new Date(Date.now() + ms).toISOString();
+    expect(getNextDueAt(db)).toBeNull();
+    insert.run('past-due', 2, 'pending', future(-60_000), 1); // already due — countDueMessages' business
+    insert.run('done', 4, 'completed', future(60_000), 1); // not pending
+    insert.run('context-only', 6, 'pending', future(30_000), 0); // trigger=0 never wakes
+    insert.run('later', 8, 'pending', future(3_600_000), 1);
+    insert.run('sooner', 10, 'pending', future(600_000), 1);
+    insert.run('unscheduled', 12, 'pending', null, 1); // due now, no timer
+    const next = getNextDueAt(db);
+    expect(next).not.toBeNull();
+    expect(Math.abs(Date.parse(next!) - (Date.now() + 600_000))).toBeLessThan(5_000);
+    db.close();
   });
 });
