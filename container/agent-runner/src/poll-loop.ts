@@ -2521,16 +2521,18 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   clearCurrentReplyRoute();
 
   // Outbound history GC (the host prunes the inbound side): drop messages_out
-  // rows the host has already delivered, and acks for inbound rows that no
+  // system rows the host has already delivered (never chat replies), and acks for inbound rows that no
   // longer exist, older than the retention window. Prod 2026-09-27: one
   // session had 193k delivered rows the host re-read every second.
   try {
     const retentionDays =
-      Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0 ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) : 7;
+      Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0
+        ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS)
+        : 30;
     const gc = gcOutboundHistory(new Date(Date.now() - retentionDays * 86_400_000).toISOString());
     if (gc.messagesOut > 0 || gc.acks > 0) {
       log(
-        `Outbound history GC: removed ${gc.messagesOut} delivered messages_out rows, ${gc.acks} orphan acks (>${retentionDays}d)`,
+        `Outbound history GC: removed ${gc.messagesOut} delivered system messages_out rows, ${gc.acks} orphan acks (>${retentionDays}d)`,
       );
     }
   } catch (err) {
