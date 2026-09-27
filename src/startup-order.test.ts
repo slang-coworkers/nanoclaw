@@ -36,7 +36,14 @@ vi.mock('./mcp-auth-proxy.js', () => ({
   configureContainerTokenStore: vi.fn(),
 }));
 vi.mock('./dashboard-ingress.js', () => ({ startDashboardIngress: () => ({ close: vi.fn() }) }));
-vi.mock('./github-webhook-server.js', () => ({ startGitHubWebhookServer: () => undefined }));
+vi.mock('./github-webhook-server.js', () => ({
+  startGitHubWebhookServer: () => undefined,
+  processGitHubDelivery: vi.fn(),
+}));
+vi.mock('./webhook-inbox-drain.js', () => ({
+  startWebhookInboxDrain: vi.fn(),
+  stopWebhookInboxDrain: vi.fn(),
+}));
 vi.mock('./modules/cost-approval/index.js', () => ({ registerCostApproval: vi.fn() }));
 vi.mock('./db/messaging-groups.js', () => ({
   getMessagingGroupsByChannel: async () => [],
