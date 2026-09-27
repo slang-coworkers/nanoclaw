@@ -20,7 +20,7 @@ function seedOutbound(rows: Array<{ id: string; ts: string; deliverAfter?: strin
   const db = new Database(outboundPath);
   for (const [i, r] of rows.entries()) {
     db.prepare(
-      "INSERT INTO messages_out (id, seq, kind, timestamp, deliver_after, content) VALUES (?, ?, 'chat', ?, ?, '{\"text\":\"x\"}')",
+      'INSERT INTO messages_out (id, seq, kind, timestamp, deliver_after, content) VALUES (?, ?, \'chat\', ?, ?, \'{"text":"x"}\')',
     ).run(r.id, 2 * i + 1, r.ts, r.deliverAfter ?? null);
   }
   db.close();
