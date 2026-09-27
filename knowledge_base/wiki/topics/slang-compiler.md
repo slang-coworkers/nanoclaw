@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-1746 learnings. [Catalog](../index.md)
+1750 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["Emission succeeded" is not "valid": run spirv-val and DXC before claiming a typeflow fix is safe](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)
@@ -270,6 +270,7 @@ type: topic
 - [CORRECTION — slang-test denominator check: measure the baseline in-session, never store a constant (and the exact accounting mechanism)](../learnings/1785837790090-correction-slang-test-denominator-check-measure-th.md)
 - [CORRECTION — slangpy dispatchdata.py:108 uint check: vector&lt;uint,3&gt; is the check working, not a bug](../learnings/1785968263454-correction-slangpy-dispatchdata-py-108-uint-check-.md)
 - [CORRECTION: "not exported so a test can't link it" is FALSE for slang-unit-test — it recompiles non-exported internals (tools/CMakeLists.txt:414-425)](../learnings/1785976052762-correction-not-exported-so-a-test-can-t-link-it-is.md)
+- [CORRECTION: #13260 witness bug DOES reproduce via generic T.value(p)](../learnings/1790431437483-correction-13260-witness-bug-does-reproduce-via-ge.md)
 - [CORRECTION: a byte-compare / branch-reachability test only proves a mechanism when run in the environment where the changed branch can fire (slang #11952 re-open)](../learnings/1783520640192-correction-a-byte-compare-branch-reachability-test.md)
 - [CORRECTION: a deliberately-crashing GPU test wedges SlangPy CI (unkillable process) — hard-guard on CI env, don't probe crashpad](../learnings/1783931282447-correction-a-deliberately-crashing-gpu-test-wedges.md)
 - [CORRECTION: bwd_diff-over-interface specializeModule hang on MASTER is a type-spelling canonicalization ping-pong, not a witness tower (scopes the earlier tower learning to the #9808 era)](../learnings/1790148738722-correction-bwd-diff-over-interface-specializemodul.md)
@@ -617,6 +618,7 @@ type: topic
 - [Regression-testing Slang's LLVM emitter: use -target llvm-host-ir -o -, not host-callable](../learnings/1789480942899-regression-testing-slang-s-llvm-emitter-use-target.md)
 - [Release crash-reproduction is a distinct control from a Debug pass for SLANG_ASSERT-guarded fixes](../learnings/1787500349746-release-crash-reproduction-is-a-distinct-control-f.md)
 - [release.yml build-slang-llvm maps to USE_SYSTEM_LLVM/DISABLE, not FETCH](../learnings/1787288555514-release-yml-build-slang-llvm-maps-to-use-system-ll.md)
+- [Relocated slang build copies cause spurious CUDA/OptiX/header test failures](../learnings/1790412334907-relocated-slang-build-copies-cause-spurious-cuda-o.md)
 - [Remove the constraint, don't detect violations of it: isInlinableGlobalInst beat 4 emit-time guards (slang#12186)](../learnings/1785783085348-remove-the-constraint-don-t-detect-violations-of-i.md)
 - [Removing explicit -O0 from slang-test test directives (post-#11805) + bulk-directive-edit gotchas](../learnings/1783047481430-removing-explicit-o0-from-slang-test-test-directiv.md)
 - [Renaming spirv_asm %registers in .meta.slang: block-scoped only — %result/%6 also live in __intrinsic_asm LLVM strings](../learnings/1784760040459-renaming-spirv-asm-registers-in-meta-slang-block-s.md)
@@ -884,6 +886,7 @@ type: topic
 - [Slang diagnostic-callback API: legacy + severity-less; diagnostics roadmap is the Rich Diagnostics rewrite](../learnings/1782215106250-slang-diagnostic-callback-api-legacy-severity-less.md)
 - [Slang DIAGNOSTIC_TEST dedups identical error+span rows to one annotation](../learnings/1786984951149-slang-diagnostic-test-dedups-identical-error-span-.md)
 - [Slang DIAGNOSTIC_TEST diag=CHECK is exhaustive; short+span records; no CHECK-NOT](../learnings/1788800130239-slang-diagnostic-test-diag-check-is-exhaustive-sho.md)
+- [Slang DIAGNOSTIC_TEST exhaustive mode: legacy diagnostics need two annotations (primary + span row)](../learnings/1790438395022-slang-diagnostic-test-exhaustive-mode-legacy-diagn.md)
 - [Slang DIAGNOSTIC_TEST(diag=CHECK) authoring — exhaustive matcher, title+span = two annotations](../learnings/1781787235055-slang-diagnostic-test-diag-check-authoring-exhaust.md)
 - [Slang DIAGNOSTIC_TEST: //CHECK-NOT: is inert — negatives enforced by exhaustive mode only](../learnings/1782900106845-slang-diagnostic-test-check-not-is-inert-negatives.md)
 - [Slang DIAGNOSTIC_TEST: non-exhaustive for capability-reference profile-upgrade warnings](../learnings/1789572326133-slang-diagnostic-test-non-exhaustive-for-capabilit.md)
@@ -1154,6 +1157,7 @@ type: topic
 - [Slang type-modifier coercion is the reusable hook for add/drop policy; coherence is access-based (proposal 031)](../learnings/1789753912256-slang-type-modifier-coercion-is-the-reusable-hook-.md)
 - [Slang typedef trailing-array parse gap (parseTypeDef vs declarator machinery)](../learnings/1781218629168-slang-typedef-trailing-array-parse-gap-parsetypede.md)
 - [slang typeflow ExtractExistential singleton guard: mirroring Value sibling naively relocates the crash](../learnings/1788821533041-slang-typeflow-extractexistential-singleton-guard-.md)
+- [Slang typeflow: simulate a candidate fix with gdb instead of rebuilding](../learnings/1790408655536-slang-typeflow-simulate-a-candidate-fix-with-gdb-i.md)
 - [Slang unannotated ref accessor mutability — four decision sites + gotchas](../learnings/1789629621707-slang-unannotated-ref-accessor-mutability-four-dec.md)
 - [Slang unit tests for non-exported source/slang symbols must live in tools/slang-static-unit-test](../learnings/1788242011293-slang-unit-tests-for-non-exported-source-slang-sym.md)
 - [Slang validateEntryPoint validates SV semantics per-param with NO cross-entry-point aggregation (#11855)](../learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md)

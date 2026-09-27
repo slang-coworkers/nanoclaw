@@ -3,7 +3,7 @@ title: GitHub and infra tooling gotchas — bot tokens, gateway auth, harvest ex
 type: concept
 group: agent-routing
 tags: [nv-slang-bot, github-app, workflows-permission, onecli-gateway, gh-token, collect-reviews, ci-dispatch, ncl, pagination]
-source_count: 11
+source_count: 10
 ---
 
 ## TL;DR
@@ -21,7 +21,7 @@ Operational gotchas across the fixer/approver toolchain: the `nv-slang-bot` GitH
 
 ## nv-slang-bot workflow-push limit and the fork route (a supersession)
 
-Two atoms establish the limit and one supersedes the "patch-only" conclusion. [The App token cannot push `.github/workflows/` changes](../learnings/1787566137270-nv-slang-bot-app-token-cannot-push-github-workflow.md): the push is rejected "without `workflows` permission" — an App-permission limit (ordinary code pushes fine), applying to origin and the `slang-coworkers/slang` fork alike, so a CI-hardening sub-task that edits workflow YAML cannot be a bot-pushed PR. The [patch-mode atom](../learnings/1787745208437-nv-slang-bot-cannot-push-github-workflows-app-lack.md) adds that `github_create_or_update_file` on a workflow path *silently no-ops* (returns nulled fields — verify by re-fetching), and recommends delivering the fix as a `git format-patch` diff for a maintainer, plus `zizmor --offline` to prove a template-injection refactor cleared findings. **However**, the later [correction](../learnings/1787843299757-nv-slang-bot-can-open-a-github-workflows-pr-via-th.md) supersedes the "patch-only" framing: the bot CAN *open* a workflow-changing PR via the fork (verified: PR #12772, head `slang-coworkers/slang:fix/issue-12771`, changed `.github/workflows/ci-slang-build.yml`) — the direct-push limit holds, but a cross-fork PR routes around it, and the merge still needs a maintainer. Practical rule: separate "bot-pushable via fork" (source, tests, data files, AND workflow YAML) from "needs maintainer merge/approval"; tell reporters the bot can *propose* the workflow PR, not that it "can't touch workflows."
+One atom establishes the limit and a later one supersedes its "patch-only" conclusion. [The App token cannot push `.github/workflows/` changes](../learnings/1787745208437-nv-slang-bot-cannot-push-github-workflows-app-lack.md): a direct push is rejected "without `workflows` permission" (an App-permission limit — ordinary code pushes fine), and `github_create_or_update_file` on a workflow path *silently no-ops* (returns nulled fields — verify by re-fetching); it recommends delivering the fix as a `git format-patch` diff for a maintainer, plus `zizmor --offline` to prove a template-injection refactor cleared findings. **However**, the later [correction](../learnings/1787843299757-nv-slang-bot-can-open-a-github-workflows-pr-via-th.md) supersedes the "patch-only" framing: the bot CAN *open* a workflow-changing PR via the fork (verified: PR #12772, head `slang-coworkers/slang:fix/issue-12771`, changed `.github/workflows/ci-slang-build.yml`) — the direct-push limit holds, but a cross-fork PR routes around it, and the merge still needs a maintainer. Practical rule: separate "bot-pushable via fork" (source, tests, data files, AND workflow YAML) from "needs maintainer merge/approval"; tell reporters the bot can *propose* the workflow PR, not that it "can't touch workflows."
 
 ## Gateway-vs-gh credential divergence
 
@@ -35,10 +35,9 @@ On CI dispatch: [don't manually dispatch `ci.yml` on a non-draft PR](../learning
 
 Finally, one `ncl` surprise: [`ncl tasks update` on a self-owned series applies instantly with no approval gate](../learnings/1787250785428-ncl-tasks-update-on-own-series-applies-instantly-n.md) — contrary to CLAUDE.md's "mutating verbs trigger admin approval" framing, `tasks update --script` returned `{"touched":1}` immediately and the new script was live. Don't extrapolate approval-gating from the table's framing (which also omits `tasks` from the scoped-resource list despite it being group-scoped); check by firing and observing.
 
-**Source learnings (11):**
+**Source learnings (10):**
 - [ncl tasks update on own series applies instantly, no approval gate](../learnings/1787250785428-ncl-tasks-update-on-own-series-applies-instantly-n.md) — don't extrapolate approval-gating from the CLAUDE.md table's "mutating" framing; verify by firing and observing.
 - [Don't manually dispatch ci.yml on a non-draft PR — pull_request already runs it](../learnings/1787275583180-don-t-manually-dispatch-ci-yml-on-a-non-draft-pr-t.md) — a manual dispatch yields to the human-priority gate, reporting a cosmetic failure; disambiguate the webhook by run event.
-- [nv-slang-bot App token cannot push .github/workflows changes](../learnings/1787566137270-nv-slang-bot-app-token-cannot-push-github-workflow.md) — direct push/Contents API rejected without workflows permission; split PRs so pushable parts still land.
 - [gh run rerun blocked while parent run status=waiting on a pending approval gate](../learnings/1787596929089-gh-run-rerun-blocked-while-parent-run-status-waiti.md) — read the failure via check-runs annotations; defer the rerun, log it as rerun_blocked.
 - [Collector exit 21 (OneCLI pagination 401) is a broken instrument, not NO_REVIEW_SIGNAL](../learnings/1787738174969-approver-infra-abstain-collector-exit-21-onecli-pa.md) — >100-review PRs 401 on page 2; hand-page via GraphQL and use a head-current trusted-bot primary.
 - [nv-slang-bot cannot push .github/workflows (App lacks workflows permission) — patch mode](../learnings/1787745208437-nv-slang-bot-cannot-push-github-workflows-app-lack.md) — Contents API silently no-ops on workflow paths; superseded by the fork-route atom for opening (not merging) the PR.

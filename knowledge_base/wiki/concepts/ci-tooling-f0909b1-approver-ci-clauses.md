@@ -3,7 +3,7 @@ title: PR-approver CI clauses and calibration — the ci_green_on_sha check-runs
 type: concept
 group: ci-tooling
 tags: [pr-approver, ci-green-on-sha, check-runs, status-api, calibration, abstain, clause-gap]
-source_count: 13
+source_count: 10
 ---
 
 ## TL;DR
@@ -20,57 +20,30 @@ source_count: 13
 
 ## The core defect: ci_green_on_sha is blind to Actions check-runs
 
-Five independent atoms across three repos record the same clause imprecision, so it is a
-settled, reproducible defect rather than a one-off. `eval-clauses.py`'s `ci_green_on_sha` clause
-calls `gh api repos/{repo}/commits/{sha}/status` and branches on `.state`. That **legacy
-combined-status endpoint aggregates only old-style commit *statuses*** (contexts posted via the
-Statuses API) and does **not** observe the *Checks* API (`/commits/{sha}/check-runs`), where all
-modern GitHub-Actions build/test jobs live. On shader-slang repos the Status-API contexts are
-essentially just `license/cla` + `CodeRabbit`, while the meaningful matrix is check-runs. So the
-clause structurally cannot see an Actions build failure
-([reads only the combined Status-API](../learnings/1788448775664-approver-clause-gap-ci-green-on-sha-reads-only-the.md),
-[reads legacy commit-status, blind to check-runs](../learnings/1788479399455-approver-clause-gap-ci-green-on-sha-reads-legacy-c.md)).
+Atoms across three repos record the same settled, reproducible defect. `eval-clauses.py`'s
+`ci_green_on_sha` calls only `gh api repos/{repo}/commits/{sha}/status` and branches on `.state`.
+That **legacy combined-status endpoint aggregates only Status-API contexts** — on shader-slang
+repos essentially `license/cla` + `CodeRabbit` — and never observes the *Checks* API
+(`/commits/{sha}/check-runs`), where every GitHub-Actions build/test job lives. Two false-signal
+modes follow, both observed:
 
-This produces **three concrete false-signal modes**, all observed:
-
-1. **False-PASS on red builds (the dangerous inverse).** On slang-rhi#851 the clause reported
-   `ci_green_on_sha = pass` ("combined status=success") while all 6 Windows builds failed at the
-   Build step and pre-commit (clang-format) failed. slang-rhi posts exactly 2 commit statuses
-   (`license/cla`, `CodeRabbit`), both green, while `/check-runs` was full of `conclusion=failure`.
-   With **0** posters the combined status is `pending` and the clause fail-safe-abstains; with
-   **≥1 trivial poster going green** it FALSE-PASSES and masks red builds
+1. **False-PASS on red builds.** With **0** posters the combined state is `pending` and the clause
+   fail-safe-abstains (slang-rhi#853: `pending` over 10 hard `failure` check-runs, a real `-Werror`
+   compile break); with **≥1 trivial poster going green** it FALSE-PASSES — on slang-rhi#851 it
+   reported `pass` while all 6 Windows builds and pre-commit (clang-format) failed
    ([false-passes on slang-rhi](../learnings/1788374870675-approver-clause-gap-ci-green-on-sha-false-passes-o.md)).
-   The same false-green risk was localized to a script defect on slangpy#1141, where 7 build
-   jobs were still `in_progress` yet the clause passed — and would equally have passed if they'd
-   been red ([false-green on slangpy build matrix](../learnings/1788518242912-approver-clause-gap-ci-green-on-sha-reads-legacy-c.md)).
+2. **False-PASS on still-running builds.** On slangpy#1141 (7 jobs) and slangpy#1144 (all 12
+   `build (...)` runs `in_progress, conclusion=null`) the clause recorded `pass` mid-flight.
 
-2. **False-PASS / unevaluable on a red Actions matrix that never posts a status.** On slang-rhi#853
-   the combined state was `pending` (only CodeRabbit + license/cla report) even though the Actions
-   matrix had 10 hard `failure` check-runs (a real compile break — `OptixOpacityMicromap`
-   undeclared under `-Werror`); once CodeRabbit settles to success the clause would report `pass`,
-   blind to the red builds. On a repo whose CI is entirely Actions check-runs, the clause carries
-   ~zero signal about the actual build
-   ([reads only combined status; misses Actions failures](../learnings/1788448775664-approver-clause-gap-ci-green-on-sha-reads-only-the.md)).
-
-3. **False-PASS on still-running builds.** On slangpy#1144 the clause recorded `pass` while all
-   12 `build (...)` check-runs were `in_progress, conclusion=null` — the approver was woken with
-   `APPROVER_CI_GATE` apparently OFF, mid-flight. "combined status=success" is not "CI is green"
-   when the meaningful jobs are check-runs still executing
-   ([blind to in-progress check-runs](../learnings/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md)).
-
-**Directional safety and the backstop.** In shadow mode the clause only ever gates an *abstain*,
-never a positive approve, so an over-lenient CI clause can at worst let a decision proceed to the
-challenger — never auto-approve on red CI ([safe direction is abstain-only](../learnings/1788479399455-approver-clause-gap-ci-green-on-sha-reads-legacy-c.md)).
-The production host `APPROVER_CI_GATE` parks reviewable PRs and only wakes the approver on a
-settled head after required CI is green, normally covering the blind spot; the gap bites only with
-the gate OFF ([APPROVER_CI_GATE backstop](../learnings/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md)).
-Until the clause is hardened, the challenger is the only backstop: on any PR that would otherwise
-pass the deterministic clauses (small enough for `tier_eligible`, trusted author, same-repo head),
-never trust `ci_green_on_sha=pass` alone — read `/check-runs` directly and treat any check-run in
-{failure, timed_out, cancelled, action_required} as CI-not-green ⇒ ABSTAIN, with PR-introduced-vs-
-pre-existing attribution as a one-subagent check
-([challenger must cross-check check-runs](../learnings/1788448775664-approver-clause-gap-ci-green-on-sha-reads-only-the.md),
-[treat green as "no red legacy status," not "CI is green"](../learnings/1788479399455-approver-clause-gap-ci-green-on-sha-reads-legacy-c.md)).
+**Directional safety and the backstop.** In shadow mode the clause only gates an *abstain*, so an
+over-lenient pass at worst lets a decision reach the challenger — never an auto-approve on red CI —
+and the production host `APPROVER_CI_GATE` parks reviewable PRs until required CI is green on a
+settled head, so the gap bites only with the gate OFF. Read a green `ci_green_on_sha` as "no red
+legacy status," not "CI is green": until the clause treats any non-`completed`/non-`success`
+check-run as `unevaluable`, the challenger must read `/check-runs` directly on any PR that otherwise
+clears the deterministic clauses and treat any run in {failure, timed_out, cancelled,
+action_required} as CI-not-green ⇒ ABSTAIN, with PR-introduced-vs-pre-existing attribution as a
+one-subagent check ([blind to in-progress check-runs; APPROVER_CI_GATE backstop](../learnings/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md)).
 Cheap red-build root-causing: after run completion, `gh run view --repo <r> --job <id>
 --log-failed` serves the compile error (the `.../actions/jobs/<id>/logs` 302 redirect often
 yields no Location via `gh api`); wait for `gh run view <run_id> --json status` to complete first
@@ -203,16 +176,13 @@ Two more transferable lessons from slang#12859 (experimental numeric-interface m
   material regardless of the clause outcome
   ([all-CI-SKIPPED gives no build signal](../learnings/1788480227101-approver-stale-draft-build-caveats-all-ci-skipped-.md)).
 
-**Source learnings (13):**
+**Source learnings (10):**
 
 - [Confirmed-safe: new CI lint-guard PR, positive-control verified, merged unchanged](../learnings/1788162629504-approver-calibration-confirmed-safe-new-ci-lint-gu.md) — the 4-point safe-guard checklist; spend challenger budget on positive control + review-signal head-currency.
 - [Protected-path ABSTAIN vindicated — .github CI-gating PR merged with bot Major findings unaddressed](../learnings/1788280113952-approver-calibration-protected-path-abstain-vindic.md) — clean merge ≠ over-conservative; docs-only CI-skip is itself a CI-integrity attack surface.
 - [ci_green_on_sha FALSE-PASSES on slang-rhi when a trivial status-poster is green while builds are red](../learnings/1788374870675-approver-clause-gap-ci-green-on-sha-false-passes-o.md) — combined status total=2 is meaningless; check-runs full of failure; string_view doctest MSVC break.
 - [MEMBER-authored .github/** CI PRs over v0-shadow caps merge unchanged — abstain is deliberate scope](../learnings/1788384987787-approver-calibration-member-authored-github-ci-prs.md) — trusted-author + same-repo + CI-green + .github confined → expected deterministic abstain; feed calibration, don't widen.
-- [ci_green_on_sha reads only the combined Status-API, not GitHub Actions check-runs](../learnings/1788448775664-approver-clause-gap-ci-green-on-sha-reads-only-the.md) — slang-rhi#853 10 failure check-runs while combined pending; challenger must read /check-runs.
-- [ci_green_on_sha reads legacy commit-status API, blind to Actions check-runs](../learnings/1788479399455-approver-clause-gap-ci-green-on-sha-reads-legacy-c.md) — safe direction is abstain-only; treat green as "no red legacy status," not "CI is green."
 - [Stale draft build caveats + all-CI-SKIPPED on large feature PRs (slang#12859)](../learnings/1788480227101-approver-stale-draft-build-caveats-all-ci-skipped-.md) — re-verify prereqs on pinned head; all-skipped = no executed build; class widening to CMakeLists + size caps.
-- [ci_green_on_sha reads legacy combined-status, not the build check-runs — false-green risk (slangpy#1141)](../learnings/1788518242912-approver-clause-gap-ci-green-on-sha-reads-legacy-c.md) — clause passed with 7 build jobs in_progress; cross-check check-runs before letting green support WOULD_APPROVE.
 - [ci_green_on_sha reads the Status API, blind to in-progress check-runs (slangpy#1144)](../learnings/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md) — passed while 12 build runs in_progress; APPROVER_CI_GATE normally covers it; treat non-completed check-runs as pending.
 - [ci_green_on_sha=fail from an external "SlangPy Tests" repository_dispatch status, not a check-run — expected-red on SlangPy-coordination PRs (slang#12975)](../learnings/1788945529133-approver-clause-gap-ci-green-on-sha-failure-from-t.md) — the inverse of the false-green: split combined `/statuses` vs `/check-runs`; an external red + all-green check-runs is a cross-repo coordination state, reported as "external coordinated check red," not a diff regression.
 - [`CLAUSE_UNEVALUABLE:ci_green_on_sha` structurally unevaluable on check-runs-only repos — combined-status total_count=0 (nanoclaw#1500)](../learnings/1788949627703-approver-infra-abstain-ci-green-on-sha-unevaluable.md) — combined-status returns `total_count=0` regardless of green check-runs, so with `require_ci_green:true` fleet-wide the clause permanently infra-abstains on green PRs; cross-check `/check-runs`, fix by unioning check-runs into the clause.

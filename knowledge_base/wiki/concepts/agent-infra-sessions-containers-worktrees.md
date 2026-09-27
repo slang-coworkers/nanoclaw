@@ -3,7 +3,7 @@ title: "Sessions, Containers, and Worktrees in Agent Infrastructure"
 type: concept
 group: agent-infra
 tags: [sessions, containers, worktrees, disk, build, ncl, nanoclaw, agent-runner, onecli, scheduled-task, cron, observability]
-source_count: 38
+source_count: 39
 ---
 
 # Sessions, Containers, and Worktrees in Agent Infrastructure
@@ -21,7 +21,7 @@ Runtime mechanics of NanoClaw agent containers: restarts and reaps, container co
 - **`git worktree remove --force` keeps the branch ref; `git branch -D` loses work.** Delete a branch only if checked out nowhere and never pushed, and disclose it.
 - **Sibling worktrees share one `.git`:** `git stash clear` wipes every sibling's stashes (use `git reset --hard HEAD`), and any sibling's SHA resolves locally, so test ancestry, not resolvability.
 - **Reclaim `build/` dirs, not worktrees** (~6–7.6 GB each, regenerable; `container_status=stopped` is not abandoned). `df` the exact build path: `/workspace/agent` is a separate, roomier mount.
-- **The root overlay and `/tmp` are ephemeral**, and codex cannot see `/tmp`. Anything another process must read lives under `/workspace`.
+- **The root overlay and `/tmp` are ephemeral** — wiped between Bash calls and by a container restart mid-task — and codex cannot see `/tmp`. Keep anything needed to resume (repro inputs, before/after outputs, PR-body drafts, logs) or that another process must read under `/workspace/agent/<scratch-dir>/`, outside the worktree; worktree-root logs aren't gitignored.
 - **Isolate parallel reviewers and builds in their own worktrees.** Shared checkouts race on `.git/index.lock` and clobber staging paths, so a reviewer can read the wrong PR's diff.
 - **A container reset can corrupt submodule trees** while HEAD and gitlink look fine: run `git submodule update --init --recursive --force`, not CMake debugging; re-install pip tools.
 - **`ncl sessions list` is a capped, oldest-first page.** Verify handoffs with `--thread-id`. A cron fire is its own row with empty `messaging_group_id` and `created_at` on the cron boundary.
@@ -49,11 +49,11 @@ Slang coworker containers have an NVIDIA L40S (driver 565.57.01, CUDA 12.7, ~46 
 
 `/workspace/agent` is its own mount (`/dev/vdb`, ~251 GB), separate from `/workspace` (`/dev/vda1`, ~124 GB); run `df -h /workspace/agent`, since a disk blocker is often a measurement artifact ([df the real build path](../learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md)). Usage can swing wildly across resets (observed 99% to 10%).
 
-The mount fills from per-worktree `build/` dirs (~6–7.6 GB per slang Debug build; ~17 worktrees ≈ 115 GB). The lever is `rm -rf <wt>/build`, zero-loss and regenerable ([disk fills from build/ trees](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)). When concurrent chains fill it, unblock in order: out-of-source build on the free `/dev/vda1`, wait for in-flight siblings, then admin volume expansion; never blindly reclaim siblings ([don't reclaim siblings](../learnings/1782305359829-slang-fixer-shared-mount-fills-with-in-flight-buil.md)).
+The mount fills from per-worktree `build/` dirs (~6–7.6 GB per slang Debug build; ~17 worktrees ≈ 115 GB). The lever is `rm -rf <wt>/build`, zero-loss and regenerable ([disk fills from build/ trees](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md)). When concurrent chains fill it, unblock in order: out-of-source build on the free `/dev/vda1`, wait for in-flight siblings, then admin volume expansion. The root overlay is not an escape hatch: it is the same device as `/dev/vdb` ([one device](../learnings/1783474045764-shared-dev-vdb-volume-disk-full-hazard-98-2026-07-.md)), so until the operator prunes or expands it, prefer CI over local builds; never blindly reclaim siblings ([don't reclaim siblings](../learnings/1782305359829-slang-fixer-shared-mount-fills-with-in-flight-buil.md)).
 
 A fixer "holding for a build slot" behind `/dev/vdb` contention is idle and emits nothing. On 2026-07-11 two no-PR chains with committed fixes (slang #11967, #11970) went ~97h silent until a supervisor nudge. A bot-last, no-PR, silent chain is a promise still owed, not a human handoff; fixers bound such holds by polling with a deadline and emitting a blocker plus ETA. Reaping closed-chain worktrees freed the volume (100% to 46 GB free) and let both builds resume ([silent build-slot holds](../learnings/1783772920595-silent-build-slot-holds-behind-disk-contention-fre.md)).
 
-As a last resort when `/workspace` is full, symlink the build dir to the root overlay (`ln -s /home/node/<build-dir> /workspace/agent/wt-<n>/build`); a container restart wipes it ([build on root overlay](../learnings/1780408305282-slang-clone-env-build-on-root-overlay-when-workspa.md)). `codex` runs in a separate process that cannot see `/tmp`, and `/tmp` is wiped between Bash invocations, so codex inputs (PR body, plan) live under `/workspace` ([codex artifacts under /workspace](../learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md)).
+`/tmp` and the root overlay are ephemeral, so nothing resume-critical or cross-process lives there. `/tmp` is wiped between Bash invocations and by container restarts: a slang#13263 session that stalled and came back ~30h later found its downloaded repro, helper drafts, and probe files under `/tmp/pp13263` gone, while the git worktree and `/workspace/agent` survived. `codex` also runs in a separate process that cannot see `/tmp`, so a PR body staged there reads as "missing" and burns a critique round. Keep repro inputs, before/after outputs, PR-body drafts, codex inputs, and logs under `/workspace/agent/<scratch-dir>/`, outside the worktree so they can't be committed; build/test logs written to the worktree root aren't gitignored either (`.gitignore` covers only `build/**/*.log`), so move them out before `git add` ([codex artifacts under /workspace](../learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md), [keep task scratch out of /tmp](../learnings/1790432355123-keep-task-scratch-out-of-tmp-container-restarts-wi.md)). As a last resort when `/workspace` is full, symlink the build dir to the root overlay (`ln -s /home/node/<build-dir> /workspace/agent/wt-<n>/build`); a container restart wipes it ([build on root overlay](../learnings/1780408305282-slang-clone-env-build-on-root-overlay-when-workspa.md)).
 
 ## Builds and Worktree Setup in Fixer Sessions
 
@@ -97,7 +97,7 @@ No remote branch and no tagged session are weak stall signals, since fixers work
 
 A nested `.git` in a tree about to be published is a scrub bypass no text check can see. On 2026-08-06 the nightly `knowledge_base` sync (slang-coworkers/nanoclaw to `nv-coworkers`) found the auto-memory source `/home/node/.claude/projects/-workspace-agent/memory/` had become a git repo after the recipe was written, and `cp -rL <src>/. <dest>/` copied its `.git/`. `scrub_kb_pii.py` rewrites working-tree text only, so zlib-compressed `.git/objects` pass it and the `grep -rhoE '<email regex>'` check by construction, and committing them publishes the unscrubbed history. The tell was a count: ~520 files expected, 10,011 mirrored, 772 under `knowledge_base/auto-memory/.git`. Compare against `git ls-tree -r --name-only HEAD <path> | wc -l` before staging. The fix (PR #1094) removes `auto-memory/.git` and `__pycache__` dirs after the mirror and before the scrub. The exclusion belongs in the mirror step, not in an operator's memory, and every publish-to-public job asserts `find <dest> -type d \( -name .git -o -name node_modules -o -name __pycache__ -o -name .venv \)` is empty ([nested .git is a scrub bypass](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md)).
 
-**Source learnings (38):**
+**Source learnings (39):**
 - [Nested .git is a PII-scrub bypass](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md) — prune VCS dirs in the mirror; gate on file count.
 - [Resolving is not belonging](../learnings/1786280483668-resolving-is-not-belonging-sibling-worktrees-share.md) — shared object store; test ancestry.
 - [GC dirname can diverge from branch](../learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md) — wt-slang-12244-doc held PR #12309's branch.
@@ -112,8 +112,9 @@ A nested `.git` in a tree about to be published is a scrub bypass no text check 
 - [Disk fills from build/ trees](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md) — ~6–7.6 GB per Debug build.
 - [Reap safe-execution facts](../learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md) — refs survive; workflows-perm blocks wip/reap.
 - [Shared mount fills with in-flight builds](../learnings/1782305359829-slang-fixer-shared-mount-fills-with-in-flight-buil.md) — don't reclaim siblings.
-- [Build on root overlay](../learnings/1780408305282-slang-clone-env-build-on-root-overlay-when-workspa.md) — last resort; ephemeral.
+- [Shared /dev/vdb disk-full hazard](../learnings/1783474045764-shared-dev-vdb-volume-disk-full-hazard-98-2026-07-.md) — overlay `/` and `/dev/vdb` are one device, so building on the root overlay is no escape; clear own build/ trees, fall back to CI.
 - [Codex artifacts under /workspace](../learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md) — /tmp is wiped and invisible.
+- [Keep task scratch out of /tmp](../learnings/1790432355123-keep-task-scratch-out-of-tmp-container-restarts-wi.md) — restarts wipe /tmp mid-task; scratch under /workspace/agent/<dir>/, logs out of the worktree root.
 - [ncl sessions list is capped](../learnings/1781778033276-ncl-sessions-list-is-capped-use-thread-id-for-hand.md) — use --thread-id.
 - [Fixer stall diagnosis](../learnings/1781727054458-fixer-stall-diagnosis-unpushed-worktree-vs-dead-se.md) — bounded status probe first.
 - [Render transcripts as HTML](../learnings/legoop-reference_show_transcript_skill.md) — /show-transcript via uvx.

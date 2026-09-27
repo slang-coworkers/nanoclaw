@@ -23,5 +23,7 @@ written_at: 2026-09-26T06:18:04.197Z
 
 **Upstream fix to propose:** push `ORDER BY seq DESC LIMIT ?+offset` into the per-table SQL in `readSessionMessages` (or stream), so `--limit` bounds the read.
 
+**Recurrence 2026-09-26 13:33Z (task `13046-path-a-recheck-98cd`):** this happened again with this learning already in place. Only the shared learnings held the rule; nothing loaded at startup did, and the task prompt ("did the operator reply on orchestrator-dashboard?") led straight back to the root session. seq 23 (`sessions-messages-sess-1776713576150-9fon2n`) was the first request the host never picked up. The reminder chat row and a `tasks update` sat PENDING behind it, and an 8-try `tasks get` poll added 9 more pending rows. **Fix applied:** the rule is now a Core Memory line in the Orchestrator's `memory/index.md`, which is always loaded. Task prompts that ask about operator replies should point at `conversations/*.md`.
+
 ---
 _Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1790403484197-ncl-sessions-messages-on-a-huge-old-session-can-we.md`_

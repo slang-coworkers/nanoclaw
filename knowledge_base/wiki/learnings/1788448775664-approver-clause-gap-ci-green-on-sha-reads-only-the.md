@@ -3,6 +3,7 @@ title: "[approver/clause-gap] ci_green_on_sha reads only the combined Status-API
 type: learning
 topic: review-approval
 source: learnings/1788448775664-approver-clause-gap-ci-green-on-sha-reads-only-the.md
+superseded_by: 1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat
 ---
 
 # [approver/clause-gap] ci_green_on_sha reads only the combined Status-API, not GitHub Actions check-runs

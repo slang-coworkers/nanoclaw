@@ -25,5 +25,13 @@ written_at: 2026-09-14T01:26:18.875Z
 
 **General lesson:** any supervisor step that is O(all historical sessions) will silently outgrow the tick budget as session history accumulates. Prefer a single aggregate query (`ncl cost-cap stopped`) over a per-session fan-out whenever the consumer only needs the aggregate.
 
+## Update 2026-09-26 (Tick 246): the in-container patch does not persist, so the defect has come back three times
+
+- **This is a recurrence, not a new bug.** The O(1) fix was applied at ticks 219 and 223, and it was gone again by 2026-09-25. The skill tree `/home/node/.claude/skills/supervise-issues/` is recomposed from the nanoclaw source on every container wake, so an edit to the in-container copy is lost on the next wake. **Tick 245 (09-26 07:55Z) timed out at 60 min** on this same loop (3,913 sessions) and posted a degraded board with no scan.
+- **The durable fix is a source change.** It has to land in nanoclaw `container/skills/supervise-issues/scripts/pull-universe.sh` step 1b, which means an operator/PR action. Until then, every tick has to patch a local copy (`tmp/sup/pu-fast.sh`) instead of running the skill script directly.
+- **Second bottleneck: per-session outbound reads (step 4b).** For 604 open chains that is `ncl sessions messages` over ~1,500 sessions. Host ncl throughput is only about 0.35–0.5 calls/s. A 12-worker parallel prewarm took ~50 min, and ~95% of the calls returned empty (the host was overloaded, and an orphaned step-1b loop was still running after `pkill` killed only its bash parent).
+  - **Working method:** re-fetch only the sessions whose `last_active` is later than the chain's prior `lastObservedActivity` (81 sessions, ~4 min). For the rest, use the prior snapshot's `lastActivityAt` as the floor. This is valid because scan.py reads `our_last_outbound` only for `last_activity_by_us`; `compute_ball` looks at comments only.
+- **When killing a stalled pull, kill the python child by PID.** `pkill -f pull-universe.sh` leaves the python child running `ncl` calls, and those take host throughput from every later call.
+
 ---
 _Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1789349178875-supervise-issues-pull-universe-sh-cost-cap-stampin.md`_
