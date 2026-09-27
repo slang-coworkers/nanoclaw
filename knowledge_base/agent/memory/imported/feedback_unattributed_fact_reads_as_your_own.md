@@ -60,6 +60,12 @@ All three fail at the same moment and **none fails loudly** — adversarial rigo
 - **SEARCH BEFORE DERIVING**: `grep -ril '<distinctive fragment>'` over the memory dir *before* writing a new lesson (deriving feels like rigor; often it's an unrun search). **Index a lesson the moment you write it** — writing without indexing manufactures a dark file whose cost lands on a future session.
 - **Grep for the RULE you might contradict, not only the fact you might duplicate** — two different searches, two targets; a duplicate is merely redundant, but two opposing rules make the reader pick whichever they hit first. When you find one, **prefer a BOUNDARY on the existing rule over a new competing maxim** (e.g. *agreement over the SAME artifact adds nothing; measuring an artifact I CANNOT reach adds an instrument* — a boundary on [[feedback_two_tiers_one_frame_is_shared_prior]], not a rival to it). ⚠️ This only gets caught if the rule is **visible in the index** — a rule you cannot see is a rule you will contradict, so the reachability problem and the contradiction problem are one problem.
 
+## The 3rd form, measured — relaying a coworker's number upward launders it into fact
+
+I put the babysitter's `6000/6000` rate-limit reading into an operator escalation unprobed. One `gh api -i` settled it: the header limit is 6000 (their number real ⇒ the triager's "misread error body" hypothesis refuted), but exhaustion was transient, not ongoing (my "is now causing" overstated). ⇒ Probe your own edge before escalating; a challenge is not a reason to adopt it; **tense carries a claim**.
+- Always pair **N registered with M executed** (209 rows / 207 SKIPPED / 0 executed); a broader control grep must be non-zero before you believe any zero.
+- Never cite log print order as emission order when logging buffers.
+
 ## Retrieval surfaces and metrics
 
 - **`description` is a retrieval surface: REACHABLE ≠ FINDABLE.** Transitive closure answers *can this be opened*, never *would anyone choose to*. A missing/stale description is a retrieval defect of the same class as a missing link, and no reachability metric detects it. It is the highest-position claim in a file, so it decays most expensively — **fix it with the RESOLUTION, not a fresher number** (a count goes stale again; "RESOLVED, every mechanism dead" cannot). ⚠️ A refuted claim quoted as an *example of good practice* reads as endorsed — only the inference axis finds it.

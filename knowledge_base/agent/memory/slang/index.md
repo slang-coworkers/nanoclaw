@@ -13,6 +13,10 @@ decay and must be re-read, not remembered.
 ## Map
 
 - [slang-rhi#787 — CUDA↔Vulkan shared-texture missing sync](rhi-787-cuda-vulkan-shared-sync.md) —
-  real missing `VK_QUEUE_FAMILY_EXTERNAL` ownership release, not a tolerance flake. Draft PR #812,
-  GPU-CI runtime-verified, APPROVE_WITH_NITS. **Open items:** maintainer confirmation of the point-3
-  deviation; pre-existing dedicated-allocation asymmetry to file after #812 lands.
+  real missing `VK_QUEUE_FAMILY_EXTERNAL` ownership release, not a tolerance flake. Maintainer
+  mandated an explicit `handOffShared`/`takeOverShared` API; DRAFT PR #881 (head `360bd42`,
+  GPU-CI-green, per-test verified) held pending reviewer re-confirm + operator drafts-only lift.
+  #812 (register-all) held as the alternative.
+  - [PR #881 review-round history (condensed)](rhi-787-review-history.md) — how the design converged
+    (#812 forks, the rejected `IExternalMemoryQueue` sketch) and the codex/maintainer/reviewer rounds
+    resolved; settled history kept out of the live parent.

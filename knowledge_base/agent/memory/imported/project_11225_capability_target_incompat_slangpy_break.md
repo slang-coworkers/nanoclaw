@@ -38,6 +38,15 @@ The initial "landed alongside #11225" framing had the ordering wrong. `slangpy/.
 
 Against a local Slang built from `pull/11225/head` (`v2026.14.1-24-gdb61cec`) via `SGL_LOCAL_SLANG=ON`: **28× E36121 without the guard → 0 with it** (delta exactly 28; `33 = 28 + 5` closes against 5 LFS-pointer environmental failures). Three `slangc` arms isolate causation. Provenance control (the model to reuse — do NOT infer from a version string): `strings … | grep -c 'is incompatible with compilation target'` = **2** on the source-built `libslang.so` vs **0** on the downloaded `slang-2026.14.1` release, proving the diagnostic is compiled into the library under test. The `true` arm (guard KEEPS the request) was closed by Windows CI: `SGL_HAS_NVAPI: ON` + `SGL_HAS_D3D12: ON`, 200/200 cases, zero E36121, with `testing.cpp:72-83` iterating `{d3d12, vulkan}` per-SUBCASE. **Bound published, not hidden:** on Linux `SGL_HAS_NVAPI` expands to literal `0`, so the predicate short-circuits — the local A/B validates the *mechanism*, not the *choice of predicate*.
 
+## 🔴 Re-opened 08-05 18:00Z — no longer dormant
+
+`jhelferty-nv` (cmt `5195409568`) pulled in `@zangold-nv` + `@ccummingsNV` but framed a confirmed defect with an approved+green fix (spy#1088, `skallweitNV` APPROVED, CI 13✅) as a speculative *"might cause some downstream issues"* — they commented **after** our 08-03T15:25Z in-place tracking-comment edit and missed it.
+- ⭐⭐ **An in-place comment edit notifies nobody.** "Edit in place, don't spam" and "actually gets read" are different goals; on a chain idle 2 days the edit is invisible to humans who arrive later. Triager was asked (msg 21, session `sess-1785745076437-eti3f3`) to lead with #1088 + the merge gate.
+- ⚠️ #1088 was `mergeable_state=behind` (behind_by 1); a rebase force-push may dismiss the single approval on `1dc014b`.
+- ⛔ **Its green CI cannot observe the fix** (`SGL_SLANG_VERSION` pinned 2026.12 predates #11225) ⇒ "approved+green" ≠ "fix CI-verified". The real proof is the fixer's local A/B against a source build of `pull/11225/head` (28 E36121 → 0), whose positive control showed the newer `2026.14.1` release would read clean on both arms ⇒ ⭐⭐ **version-newer is not change-inclusive when the change is unmerged.**
+
+RESUME=promote/merge spy#1088.
+
 ## Session theme — the one transferable control
 
 Across the chain, multiple tiers repeatedly accepted **a signal that cannot distinguish the states it is being used to distinguish**. Instances: a vacuous grep (matched whether or not the condition held — doctest's `DEEPEST SUBCASE` header form, worsened by CRLF defeating `$`-anchors); a release artifact that merely *looks* newer than the pinned tag while being on the wrong side of an unmerged change; a stale symlink monitor; `--depth 1` masking a fetch failure; and an escalation whose presupposition (a draft PR that did not yet exist) had already been disproved.

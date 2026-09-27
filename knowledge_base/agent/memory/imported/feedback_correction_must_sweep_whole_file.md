@@ -75,6 +75,16 @@ carry-through instances, and the verifier-is-subject-to-its-own-class rule — i
 
 ## Split-out concepts (folded 2026-09-18 by /okf-synthesis)
 
+## Sweep-class corollaries (from the 08-03 derivations)
+
+- ⭐ The verifier is subject to its own class — confirm zeros against raw text.
+- ⭐ A conceded correction can be installed as its own opposite in the surface you rewrote most recently.
+- ⭐ A hoisted block can evict its own imperative — track headroom (the fix documenting a broken grep cost 1.2KB).
+- ⭐ Diagnosing ≠ localizing — a confident diagnosis carries no address; grep your own store before attributing a defect elsewhere.
+- ⭐ A mis-addressed correction ⇒ accept the lesson and decline the work item, separately.
+- ⭐ A controlling block carries conclusions + do-not-reintroduce markers only; derivations go to a child, else every correction adds an undeletable layer.
+- Stale-note forms that no link check sees: [[technique_stale_memory_notes_five_forms]].
+
 This file now holds only the core sweep rule. Three lessons that had accreted here were relocated:
 
 - [[feedback_relevance_and_provenance_are_two_controls.md]] — the slang-rhi#800 "one defect, four guises" case study (relevance vs provenance as two disjoint controls).

@@ -83,3 +83,21 @@ constant, then move it once"*, reachable via `index-feedback-8`) and
 rule as new, grep your own store.** Their actual contribution is narrower and real: the axis→control
 *mapping* (SIZE axis ⇒ same-file control; BRANCH axis ⇒ a string on the same non-default branch AND
 on the default branch), now in shared at `1786124936587`.
+
+## Corollaries from slang#12298 (08-05) — every store figure is about ONE store
+
+Moved here from [[feedback_a_null_from_an_instrument_with_no_field_is_an_unasked_question]], where the per-group bind was settled with `findmnt`.
+- **A memory-health figure is about your store only.** I published "121 wikilinks, 0 missing"; the triager measured 76,366 chars / 3 wikilinks / 0 missing at the identical absolute path. Neither can verify or repair the other's ⇒ the only valid cross-boundary move is **"measure it and tell me"**, never assert a state and hand over a remedy.
+- ⭐⭐⭐ **The routing layer differs too.** Two closed chains had 0 hits in the triager's `MEMORY.md` — naively two dark chains — but that group routed them through `CLAUDE.local.md` (auto-loaded), where all resolved. A reachability metric is only meaningful against the layer that actually gets loaded, and that layer is per-group. Ask: *"which file is your loaded routing layer, and do these N chains resolve in it?"*
+- **Dedup is per-store.** A peer that deduped correctly against its own memory gives no coverage for yours.
+
+## Mode 7 — reachable to the TEAM, invisible to the AGENT (slang-fixer, 08-03)
+
+The symmetry fired in both directions in one session:
+
+| rule | held by | absent from | consequence |
+|---|---|---|---|
+| no `../` in `#include` (jkwak, repo-wide; #12216, 420 files) | slang-fixer's store, unindexed | mine entirely (`include` 0 hits in my index) | zero coverage of a standing directive with no CI guard |
+| never take state from a summarizing tool | `/workspace/shared/learnings/` | slang-fixer's store at any depth | the error fired twice (#12186, #12201) |
+
+⭐⭐ "The corpus knows" is not a property any individual agent can rely on — and the shared store failing is the worse case, because its existence creates false assurance. ✅ **When a peer cites a rule you don't hold, file and index it in your own store — don't merely comply.** Compliance ends with the message.

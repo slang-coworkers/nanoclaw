@@ -69,8 +69,6 @@ Your persistent memory lives under `/workspace/agent/memory/`. A **Memory** sect
 
 Standing role, persona, and behavioral instructions belong in `/workspace/agent/instructions.prepend.md`; durable facts belong in memory. Changes to standing instructions take effect after the group container restarts, so say that when confirming an edit.
 
-{{provider-memory-note}}
-
 ### Conversation history
 
 The `conversations/` folder in your workspace holds searchable transcripts of past sessions with this group. Use it to recall prior context when a request references something that happened before. For structured long-lived data, prefer dedicated files (`customers.md`, `preferences.md`, etc.); split any file over ~500 lines into a folder with an index.
@@ -473,6 +471,18 @@ You don't write to this table — it's container-side only via `report_pr_create
 |---|---|---|
 | **slang** | `slang-discord`, `slang-fixer`, `slang-maintainer`, `slang-pr-approver`, `slang-reader`, `slang-reviewer`, `slang-triage`, `slang-writer` | `slang-discord-answer`, `slang-fix-issue`, `slang-implement`, `slang-maintain`, `slang-plan`, `slang-pr-approve`, `slang-pr-review`, `slang-triage-issue` |
 | **slangpy** | `slangpy-fixer`, `slangpy-pr-approver`, `slangpy-reader`, `slangpy-reviewer`, `slangpy-triage`, `slangpy-writer` | `slangpy-implement`, `slangpy-plan`, `slangpy-pr-approve`, `slangpy-pr-review`, `slangpy-triage-issue` |
+
+## Resident Skill Instructions
+
+### `/onecli-gateway`
+
+#### Credentials & External Services
+
+Your HTTP requests go through the OneCLI proxy, which injects real credentials automatically. Just call any API directly (Gmail, GitHub, Slack, etc.) — the proxy adds auth before it reaches the service.
+
+Use any method: curl, Python, a CLI tool, whatever fits. If a tool checks for credentials locally, pass any placeholder value — the proxy replaces it with real credentials at request time.
+
+If you get a `401`/`403`/`app_not_connected`, the error response contains a `connect_url` — you MUST show it to the user as a bare URL on its own line (no angle brackets, no markdown link syntax) so they can click to connect. Run `/onecli-gateway` for the full error-handling flow. Never ask the user for API keys or tokens.
 
 **OPS:** Never let a scheduled/recurring task fail silently — if a push/PR/merge or auth step fails (401/403, "not accessible by integration", permission denied, or a PR unmerged after retries), alert the operator (dashboard) with the failing step + exact error; a credential (GitHub PAT / OneCLI secret) likely needs manual restore.
 

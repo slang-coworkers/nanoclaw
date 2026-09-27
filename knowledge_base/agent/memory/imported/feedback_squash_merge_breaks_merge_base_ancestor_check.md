@@ -16,7 +16,16 @@ metadata:
 - Read the **merge commit**: `parents` length **1 ⇒ squash** (2 ⇒ true merge commit). Then confirm `files` and the actual patch hunks match what was intended.
 - Best of all: read the **file content on `main`** and confirm the expected text is present. That answers "did the fix land" directly, with no graph reasoning.
 
-**Related mechanism, same chain (TRUE, but see the correction):** a `Closes #N` auto-close lands ~1 second *after* `merged_at` — closure is **eventually consistent** with the merge, a follow-up action rather than part of the merge transaction. A read at `merged_at+0s` can *legitimately* observe OPEN. Before acting on any "the auto-close did not fire" claim, **re-read issue state**; otherwise you perform a human-gated close on an already-closed issue.
+## ⛔ The inverted form: the same check can PASS BY LUCK (slang#12301, 08-06, measured)
+
+Close-out rule was *"confirm the merge commit `--is-ancestor origin/master`."* On #12301: `bbaef7d62e` has **1** parent (squash); the pre-squash branch head `d7d1e6dea6` vs `master` is **diverged** (ahead 39, behind 1); the merge commit vs `master` is **identical**. The method was right **only because the merge-commit sha happened to be used** — with the branch sha it confidently reports "not on master". Merge style is a hidden precondition. ⭐⭐⭐ **A check that is right for a reason you didn't choose is not yet a reliable check** — and a correct answer retires the scrutiny.
+
+- ✅ **Style-agnostic replacement:** assert **content on master** with a must-hit control and a zero-control (measured: `canonicalizeBoolTagConstants`=3, `lowerEnumType`=1, `zzzNOPE`=0). Content survives squash, rebase and merge-commit alike.
+- ⭐⭐⭐ **Trigger: this class is surfaced by the FAILING instance, never by the passing one** (a false positive produces no symptom). ⇒ When a peer reports a false negative in a check you also use, immediately ask whether **yours** is a false positive.
+- ⭐⭐ **Credit rule:** the party whose instrument failed found it — don't reassign that to whoever reported upward.
+- ⚠️ Peer behaviour worth copying: ancestry said "not landed", the PR said `MERGED`; the fixer neither forced the destructive worktree removal nor escalated — it **switched instruments** (5/6 files byte-identical; the delta was master's own unrelated `5b3f7a2430`) and proceeded only once the disagreement was explained. **Two instruments disagreeing is information about an instrument, not licence to pick the convenient one.**
+
+**Related mechanism, #805 chain (TRUE, but see the correction):** a `Closes #N` auto-close lands ~1 second *after* `merged_at` — closure is **eventually consistent** with the merge, a follow-up action rather than part of the merge transaction. A read at `merged_at+0s` can *legitimately* observe OPEN. Before acting on any "the auto-close did not fire" claim, **re-read issue state**; otherwise you perform a human-gated close on an already-closed issue.
 
 ⚠️ **But that race did NOT cause the #805 incident — I recorded a guessed cause as fact.** The fixer (the only tier that could see its own timing) refuted it: its issue-state command was **denied by its critique gate and never ran**, its fallback was **git-only** (⇒ **capability-mismatched** — git cannot see GitHub issue state), and it asserted "still OPEN" from a **~8h-old** remembered value. Its read was **~2 min after `closed_at`**.
 - ⭐⭐ **PRIMARY: a blocked verification call means UNKNOWN, not UNCHANGED.** No care *within* a capability-mismatched fallback could have helped.

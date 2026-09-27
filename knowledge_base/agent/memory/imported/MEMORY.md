@@ -81,36 +81,37 @@ before trusting. [[feedback_a_clean_orphan_count_does_not_validate_range_labels]
 | index | range (first … last leaf stem) |
 |---|---|
 | **Rules** — corrections, confirmed approaches, instrument defects. | |
-| [[index-feedback-1]] | `a_401_body_piped_to_grep_ic…` … `a_consumer_merged_before_its_producer_fails_silently` |
-| [[index-feedback-2]] | `a_control_built_from_the_matchers_own_assumption_is_blind` … `a_dispatch_is_a_clearance_and_decays` |
-| [[index-feedback-3]] | `a_doctest_tally_counts_device_skipped_cases_as_passed` … `a_latch_its_own_failure_path_can_write_is_not_a_latch` |
-| [[index-feedback-4]] | `a_latchs_field_set_is_its_blind_spot` … `a_null_from_an_instrument_with_no_field_is_an_unasked_question` |
-| [[index-feedback-5]] | `a_null_guard_inside_a_truthiness_branch_is_dead` … `a_remedy_that_cannot_prevent_the_failure_it_is_offered_for` |
-| [[index-feedback-6]] | `a_repeated_head_sha_is_a_quiet_master_not_a_stale_pin` … `a_shared_bot_identity_makes_authorship_unattributable_from_github` |
-| [[index-feedback-7]] | `a_shared_bot_identity_makes_duplicate_posts_invisible` … `a_tools_output_set_is_scoped_to_the_tools_question` |
-| [[index-feedback-8]] | `a_transmitted_artifacts_size_belongs_to_the_send` … `an_echoed_referent_becomes_a_shared_phantom_obligation` |
-| [[index-feedback-9]] | `an_elapsed_time_figure_drifts_because_nothing_recomputes_it` … `ci_terminal_is_not_chain_terminal_arm_the_deciding_axis` |
-| [[index-feedback-10]] | `claim_the_weakest_thing_that_closes_the_question` … `expected_noise_line_is_not_a_failure_signature` |
-| [[index-feedback-11]] | `false_coverage_the_five_mechanisms…` … `independence_of_two_axes_is_not_evidence_one_is_out_of_scope` |
-| [[index-feedback-12]] | `issue_opened_webhook_is_not_evidence_the_issue_is_new` … `never_fabricate_events_between_turns` |
-| [[index-feedback-13]] | `never_read_an_exit_status_through_a_pipe` … `resume_triggers_fail_three_ways_enumerations_are_category_blind` |
-| [[index-feedback-14]] | `retirement_is_keyed_to_chain_state_not_bytes` … `the_compaction_bound_targets_the_wrong_file` |
-| [[index-feedback-15]] | `the_errors_that_escape_are_in_the_explanatory_layer_not_the_measurements` … `verify_a_summary_count_against_the_rows_not_the_previous_count` |
-| [[index-feedback-16]] | `verify_a_write_by_reading_the_file_not_the_buffer` … `zero_test_jobs_is_not_zero_tests_ran` (tail shard — repacking mints new shards; after every leaf `ls index-feedback-*.md \| wc -l` vs this table.) |
+| [[index-feedback-1]] | `a_401_body_piped_to_grep_ic_is_a_false_zero_that_refutes` … `a_control_built_from_the_matchers_own_assumption_is_blind` |
+| [[index-feedback-2]] | `a_control_returning_zero_is_unproven_until_a_must_hit_fires` … `a_diff_marker_describes_a_state_not_an_action` |
+| [[index-feedback-3]] | `a_diff_prefix_regex_hides_markdown_bullets` … `a_hedge_costs_the_entailments_of_the_decided_claim` |
+| [[index-feedback-4]] | `a_helper_choice_needs_the_arm_that_distinguishes_it` … `a_negative_rule_answers_its_own_question_not_whether_nothing_happened` |
+| [[index-feedback-5]] | `a_new_ci_gate_needs_a_constructed_violation` … `a_reference_keyed_gate_cannot_see_an_artifact_older_than_its_referent` |
+| [[index-feedback-6]] | `a_referential_error_needs_a_namespace_check_not_scepticism` … `a_sender_at_global_scope_can_verify_its_own_delivery` |
+| [[index-feedback-7]] | `a_sentence_can_rot_without_becoming_false` … `a_terminal_turn_must_emit_no_row` |
+| [[index-feedback-8]] | `a_thread_id_on_a_message_tag_loses_to_your_own_session_thread` … `an_approval_that_never_saw_the_finding_is_not_a_refutation` |
+| [[index-feedback-9]] | `an_arm_keyed_on_a_state_refires_forever` … `bare_text_is_delivered` |
+| [[index-feedback-10]] | `benign_ack_loop_dont_restart_if_live_chains` … `diff_relative_line_numbers_in_bot_reviews` |
+| [[index-feedback-11]] | `directional_agreement_is_not_reproduction` … `grep_the_object_that_holds_the_code_not_the_launcher` |
+| [[index-feedback-12]] | `group_clone_is_shared_by_all_sibling_sessions` … `name_what_you_held_fixed` |
+| [[index-feedback-13]] | `name_what_your_instrument_cannot_record_before_enumerating` … `peer_reviewed_is_not_human_reviewed_in_an_agent_fleet` |
+| [[index-feedback-14]] | `piping_to_head_masks_the_exit_code_you_are_testing` … `signature_grep_passed_vs_failed` |
+| [[index-feedback-15]] | `six_errors_one_mechanism_a_proxy_read_where_the_artifact_was_available` … `two_closures_cannot_share_a_module_level_guard` |
+| [[index-feedback-16]] | `two_endpoints_for_one_build_disagree_on_freshness_not_on_outcome` … `zero_hit_grep_has_never_once_proved_fabrication_in_my_store` |
+| [[index-feedback-17]] | `zero_output_is_not_available_scratchpad_still_delivers` … `zero_test_jobs_is_not_zero_tests_ran` (tail shard — repacking mints new shards; after every leaf `ls index-feedback-*.md \| wc -l` vs this table.) |
 | **Chains** — per-issue/PR state. Open the specific chain before touching it. | |
-| [[index-project-1]] | `10027_vector4_import_abort_pending` … `11877_operator_overload_fastpath` |
-| [[index-project-2]] | `11878_e30051_alias_handoff` … `12052_stranded_mergequeue_operator_escalation` |
-| [[index-project-3]] | `12054_msvc_release_opt_ref_icf` … `12143_macos_release_signing_version_extraction_bug` |
-| [[index-project-4]] | `12145_gbufferrttexgrads_d3d12_access_violation` … `12283_llvm_jit_coff_ordered_sections_windows` |
-| [[index-project-5]] | `12284_cross_module_overload_silent_break_warning` … `12375_downstream_sibling_sweep_followup` |
-| [[index-project-6]] | `12376_fossil_oob_relative_ptr` … `12460_empty_generic_param_list_outermost_gate` |
-| [[index-project-7]] | `12461_switch_case_decl_later_case_g2_undeclared` … `9661_cuda_getdimensions_scrub` |
-| [[index-project-8]] | `9736_cuda_atomic_conflict_nonstatic_device_funcs` … `nanoclaw_1064_tasks_group_scope_lookup_bug` |
-| [[index-project-9]] | `nanoclaw_1065_reclaim_before_wake` … `nanoclaw_1119_fail_closed_task_snapshot` |
-| [[index-project-10]] | `nanoclaw_1120_owned_drift_verifier` … `nanoclaw_1171_pr_mapping_first_claim_wins` |
-| [[index-project-11]] | `nanoclaw_1172_panel_tests_unreachable` … `slang_ci_zombie_runs_inert_not_gate_blockers` |
-| [[index-project-12]] | `slang_docs_pages_liquid_outage` … `slangpy_899_bool_dtype_native_tensor_scrub` |
-| [[index-project-13]] | `slangpy_925_manylinux_2_28_version_override` … `workspace_deletion_incident` |
+| [[index-project-1]] | `10027_vector4_import_abort_pending` … `11859_require_derivative_pr11872` |
+| [[index-project-2]] | `11877_operator_overload_fastpath` … `12034_rebase_bom_decode_merge` |
+| [[index-project-3]] | `12035_overload_diag_reasons` … `12132_analyzemakestruct_positional_oob` |
+| [[index-project-4]] | `12134_base_interface_assoc_type_followup` … `12266_defer_bare_decl_scope_leak_crash` |
+| [[index-project-5]] | `12268_triage_workflow_proposal` … `12361_catchall_direct_throw_sccp_param_ice` |
+| [[index-project-6]] | `12362_nonmatching_handlers_escaping_throw_hang` … `12431_12432_unit_test_assert_empty_output` |
+| [[index-project-7]] | `12433_bare_type_name_typetype_ice` … `9153_public_by_default_structs` |
+| [[index-project-8]] | `9382_gather_constoffset_pending` … `fork_reentrancy_phantom_codriver` |
+| [[index-project-9]] | `gate_audit_shared_jsonl_mtime_race` … `nanoclaw_1108_service_hint_single_source` |
+| [[index-project-10]] | `nanoclaw_1109_escalation_retire_race` … `nanoclaw_1162_gc_full_candidate_list` |
+| [[index-project-11]] | `nanoclaw_1163_reply_capacity_settlement` … `scan_py_subthread_key_parse_falsepositive` |
+| [[index-project-12]] | `scheduler_stall_incident` … `slangpy_1058_cuda_fastmath_downstream_args` |
+| [[index-project-13]] | `slangpy_1059_float3_cuda_perf` … `workspace_deletion_incident` |
 | [[index-technique]] | Reusable measurement/tooling procedures. |
 | [[index-reference]] | Pointers to external resources. |
 | [[index-command]] | Exact command invocations with their traps. |
