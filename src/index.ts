@@ -33,6 +33,7 @@ import { getMessagingGroupsByChannel, getMessagingGroupAgents } from './db/messa
 import { startActiveDeliveryPoll, startSweepDeliveryPoll, setDeliveryAdapter, stopDeliveryPolls } from './delivery.js';
 import { startHostInstanceLease, stopHostInstanceLease } from './host-instance.js';
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
+import { startWebhookInboxDrain, stopWebhookInboxDrain } from './webhook-inbox-drain.js';
 import { startHostModules, stopHostModules } from './host-lifecycle.js';
 import { startGatewayApprovalCoordinator, stopGatewayApprovalCoordinator } from './gateway-approval-coordinator.js';
 import { startGatewayAvailabilityMonitor } from './gateway-availability.js';
@@ -48,7 +49,11 @@ import {
   configureContainerTokenStore,
 } from './mcp-auth-proxy.js';
 import { startDashboardIngress } from './dashboard-ingress.js';
-import { startGitHubWebhookServer, type GitHubWebhookServerHandle } from './github-webhook-server.js';
+import {
+  processGitHubDelivery,
+  startGitHubWebhookServer,
+  type GitHubWebhookServerHandle,
+} from './github-webhook-server.js';
 import { enforceUpgradeTripwire } from './upgrade-state.js';
 
 // Response registry lives in response-registry.ts to break the
@@ -400,6 +405,10 @@ async function main(): Promise<void> {
 
   // 3c. GitHub webhook server (publicly exposed, HMAC-validated)
   githubWebhookHandle = startGitHubWebhookServer();
+  // 3d. Webhook inbox drain — replays verified GitHub deliveries the request
+  // path did not finish (host died mid-processing, handler threw). First pass
+  // 20 s after start, then every minute. See src/webhook-inbox-drain.ts.
+  startWebhookInboxDrain(processGitHubDelivery);
 
   // 4. Delivery adapter bridge — dispatches to channel adapters. The registry
   // factory owns exact-instance resolution (a named instance never sends
@@ -512,6 +521,7 @@ async function shutdown(signal: string): Promise<void> {
   await stopHostInstanceLease();
   stopDeliveryPolls();
   stopHostSweep();
+  stopWebhookInboxDrain();
   mcpProxyHandle?.stop();
   mcpStackHandle?.stop();
   await dashboardIngressHandle?.stop();

@@ -422,6 +422,38 @@ CREATE TABLE cost_cap_policy (
 
 ---
 
+### 1.20 `webhook_inbox`
+
+Write-ahead record of every **verified** GitHub webhook delivery (App-signed or trusted peer forward), keyed by GitHub's delivery GUID. Written by `src/github-webhook-server.ts` before any routing runs; drained by `src/webhook-inbox-drain.ts`. Exists because a delivery used to live only in the request handler's stack — a host dying mid-processing lost the event, GitHub never retries on its own and keeps its delivery log ~3 days (prod 2026-09-25/26: 110 deliveries hand-replayed).
+
+```sql
+CREATE TABLE webhook_inbox (
+  delivery_id     TEXT PRIMARY KEY,   -- X-GitHub-Delivery GUID (or nodelivery-<sha256 prefix> when absent)
+  event_type      TEXT NOT NULL,      -- X-GitHub-Event
+  trust           TEXT NOT NULL,      -- 'github' | 'peer'
+  raw_body        TEXT NOT NULL,      -- exact bytes the HMAC covered (≤ 512 KB)
+  received_at     TEXT NOT NULL,      -- first observation
+  status          TEXT NOT NULL,      -- 'pending' | 'done' | 'failed'
+  attempts        INTEGER NOT NULL DEFAULT 0,  -- processing attempts STARTED (bounded by WEBHOOK_INBOX_MAX_ATTEMPTS = 6)
+  started_at      TEXT,               -- when the current attempt began (stale pending = host died)
+  next_attempt_at TEXT,               -- failed rows: when the drain may retry; NULL = parked (budget spent)
+  http_status     INTEGER,            -- response sent for the completed attempt
+  outcome_json    TEXT,               -- response body (e.g. {"ok":true,"outcome":"local"})
+  last_error      TEXT,
+  processed_at    TEXT
+);
+CREATE INDEX idx_webhook_inbox_status    ON webhook_inbox(status, next_attempt_at);
+CREATE INDEX idx_webhook_inbox_processed ON webhook_inbox(processed_at);
+```
+
+- **Lifecycle:** accept (`pending`, attempts+1) → `done` with the response GitHub received, or `failed` with a backoff (1 m, 5 m, 15 m, 1 h, 6 h) and then parked. A redelivery of a known GUID re-processes (downstream `messages_in` ids dedup it) — it never short-circuits, so redelivery semantics are unchanged.
+- **Drain:** first pass 20 s after host start, then every 60 s: replays `failed` rows whose backoff elapsed and `pending` rows whose attempt started > 2 min ago (abandoned by a dead host), through the same `processGitHubDelivery` the live handler uses. Parked rows are logged at ERROR and left for an operator.
+- **Retention:** `done` rows pruned after `NANOCLAW_WEBHOOK_INBOX_RETENTION_DAYS` (default 14); `failed`/parked rows after 4× that.
+- **Fail-soft:** the handler wraps every inbox write; a missing table or DB error warns once and the delivery still routes exactly as before the inbox existed.
+- Access layer: `src/db/webhook-inbox.ts`.
+
+---
+
 ## 2. Migration system
 
 Migrations live in `src/db/migrations/`, one file per migration. Runner: `runMigrations()` in `src/db/migrations/index.ts`. It:
