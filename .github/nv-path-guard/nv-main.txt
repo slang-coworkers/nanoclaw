@@ -261,3 +261,12 @@ container/skills/onecli-gateway/**
 # Upstream's top-level security policy — same class as README_ko.md, AGENTS.md
 # and CONTRIBUTING.md above.
 SECURITY.md
+
+# Upstream gateway-seam merge (2026-09-27): the pinned OneCLI request-summary
+# helper upstream vendored for approval-card parity. `/add-iron-proxy` builds it;
+# this fork does not install that gateway, but `src/gateway-providers/onecli.test.ts`
+# reads `fixtures.json` from here, so the directory is load-bearing for a test
+# nv-main runs. Verified the path existed on upstream/main (9 files) and NOT on
+# origin/nv-main before this merge, so this RECORDS new upstream ownership rather
+# than widening the fork's — same class as the slack-a2a-rooms entry above.
+gateway-compat/**

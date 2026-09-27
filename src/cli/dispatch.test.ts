@@ -1,3 +1,6 @@
+import fs from 'fs';
+import path from 'path';
+
 import { describe, it, expect, vi, beforeEach } from 'vitest';
 
 // --- Mocks ---
@@ -1157,5 +1160,103 @@ describe('formatHuman hook', () => {
 
     expect(resp.ok).toBe(true);
     if (resp.ok) expect(resp.human).toBeUndefined();
+  });
+});
+
+// --- approvalDetail: disclosure the command line cannot carry ------------------
+register({
+  name: 'detail-cmd',
+  description: 'approval-gated command that discloses its payload',
+  resource: 'groups',
+  access: 'approval',
+  approvalDetail: (raw) => (raw.template === undefined ? undefined : [`mcp "x": stdio command="${raw.template}"`]),
+  parseArgs: (raw) => raw,
+  handler: async (args) => ({ echo: args }),
+});
+
+register({
+  name: 'detail-throws-cmd',
+  description: 'approval-gated command whose disclosure cannot be rendered',
+  resource: 'groups',
+  access: 'approval',
+  approvalDetail: () => {
+    throw new Error('Template not found: "nope"');
+  },
+  parseArgs: (raw) => raw,
+  handler: async (args) => ({ echo: args }),
+});
+
+register({
+  name: 'detail-huge-cmd',
+  description: 'approval-gated command whose disclosure exceeds the card',
+  resource: 'groups',
+  access: 'approval',
+  approvalDetail: () => [('x'.repeat(200) + '\n').repeat(20)],
+  parseArgs: (raw) => raw,
+  handler: async (args) => ({ echo: args }),
+});
+
+describe('approval card disclosure', () => {
+  beforeEach(() => {
+    approvalState.requestApproval.mockClear();
+    mockGetContainerConfig.mockReturnValue({ cli_scope: 'global' });
+    mockGetSession.mockReturnValue({ id: 's1', agent_group_id: 'g1', messaging_group_id: 'mg1' });
+    mockGetAgentGroup.mockReturnValue({ id: 'g1', name: 'Group One' });
+  });
+
+  function question(): string {
+    return String((approvalState.requestApproval.mock.calls[0][0] as { question: string }).question);
+  }
+
+  it('fences the detail into the card alongside the command line', async () => {
+    const resp = await dispatch({ id: '1', command: 'detail-cmd', args: { template: 'sales/sdr' } }, agentCtx());
+
+    expect(resp.ok).toBe(false);
+    if (!resp.ok) expect(resp.error.code).toBe('approval-pending');
+    const q = question();
+    // Both halves: what was typed, and what it actually brings.
+    expect(q).toContain('ncl detail-cmd');
+    expect(q).toContain('mcp "x": stdio command="sales/sdr"');
+    // Fenced, so no disclosure line can pose as card chrome.
+    expect(q).toMatch(/```[\s\S]*mcp "x"[\s\S]*```/);
+  });
+
+  it('leaves the card unchanged when a command discloses nothing', async () => {
+    await dispatch({ id: '2', command: 'detail-cmd', args: { other: 'v' } }, agentCtx());
+
+    const q = question();
+    expect(q).toContain('ncl detail-cmd');
+    expect(q).not.toContain('```');
+  });
+
+  it('refuses rather than carding a request whose disclosure could not be rendered', async () => {
+    const resp = await dispatch({ id: '3', command: 'detail-throws-cmd', args: { template: 'nope' } }, agentCtx());
+
+    expect(resp.ok).toBe(false);
+    if (!resp.ok) {
+      expect(resp.error.code).toBe('invalid-args');
+      expect(resp.error.message).toMatch(/Template not found/);
+    }
+    // The point: no human is asked to approve a reach we failed to render.
+    expect(approvalState.requestApproval).not.toHaveBeenCalled();
+  });
+
+  it('refuses rather than truncating an over-long disclosure into an understatement', async () => {
+    const resp = await dispatch({ id: '4', command: 'detail-huge-cmd', args: {} }, agentCtx());
+
+    expect(resp.ok).toBe(false);
+    if (!resp.ok) expect(resp.error.message).toMatch(/exceeds \d+ bytes/);
+    expect(approvalState.requestApproval).not.toHaveBeenCalled();
+  });
+});
+
+describe('the template stamp verb actually supplies its disclosure', () => {
+  it('is wired on groups create, not merely available', () => {
+    const src = fs.readFileSync(path.join(process.cwd(), 'src/cli/resources/groups.ts'), 'utf-8');
+    expect(src).toMatch(/approvalDetail: \(raw: Record<string, unknown>\) =>/);
+    expect(src).toMatch(/templateApprovalDetail\(String\(raw\.template\)\)/);
+    // CustomOperation must forward it, or the field is inert on every resource verb.
+    const crud = fs.readFileSync(path.join(process.cwd(), 'src/cli/crud.ts'), 'utf-8');
+    expect(crud).toMatch(/approvalDetail: op\.approvalDetail/);
   });
 });

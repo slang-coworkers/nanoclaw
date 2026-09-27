@@ -205,6 +205,18 @@ docker ps --filter name=nc-prod | grep <session-id>
 # If not: 60s sweep will wake; or check inbound.db for stuck pending rows.
 ```
 
+Every verified delivery is also on file in the central DB (`webhook_inbox`, see [db-central.md](db-central.md#120-webhook_inbox)) with the exact response GitHub received, so "did it arrive, and what did we answer?" no longer depends on the log window:
+
+```bash
+# 5. What did we record for this delivery GUID (from GitHub's App → Advanced → Recent Deliveries)?
+pnpm exec tsx scripts/q.ts data/v2.db "SELECT status, attempts, http_status, outcome_json, last_error, next_attempt_at FROM webhook_inbox WHERE delivery_id = '<guid>'"
+
+# 6. Anything the host could not finish? (failed = retrying on backoff; next_attempt_at NULL = parked, needs an operator)
+pnpm exec tsx scripts/q.ts data/v2.db "SELECT delivery_id, event_type, attempts, next_attempt_at, substr(last_error,1,120) FROM webhook_inbox WHERE status <> 'done' ORDER BY received_at"
+```
+
+A host that dies mid-delivery (OOM, crash-loop) leaves `pending` rows; the inbox drain replays them within ~20 s of the next start, so a GitHub-side redelivery is only needed for events GitHub could not deliver at all (connection refused while the host was down — those show a non-2xx status in GitHub's delivery log).
+
 ### Backfilling a mapping for a legacy PR
 
 PRs created before the mapping system existed (pre-2026-05-28) have no row, so they fall to orchestrator on every comment. To fix:

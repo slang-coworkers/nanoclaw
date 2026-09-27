@@ -166,6 +166,41 @@ export function normalizeCodexModel(m: string | undefined): string { return N(m)
     expect(r.findings.join('\n')).toMatch(/codex: the runner cannot price gpt-6-brandnew/);
   });
 
+  it('allows a new runner-only model even when the dashboard normalizer resolves only its own rows', async () => {
+    // The nv-main runner gains a row before the nv-dashboard table does (they
+    // ship in separate PRs). The dashboard normalizer reads its own table, so it
+    // returns '' for that model — the runner-only case, not normalizer drift.
+    const root = fakeRepo({
+      claude: `import { MODEL_PRICING as R, normalizeModel as N } from ${JSON.stringify(RUNNER_PRICING)};
+const { 'claude-haiku-4-5': _dropped, ...rest } = R as unknown as Record<string, Record<string, number>>;
+export const MODEL_PRICING: Record<string, Record<string, number>> = rest;
+export function normalizeModel(m: string | undefined): string {
+  const k = N(m);
+  return k in MODEL_PRICING ? k : '';
+}
+`,
+    });
+    const r = await checkTableParity(root);
+    expect(r.findings).toEqual([]);
+    expect(r.status).toBe('ok');
+    expect(r.notes.join('\n')).toMatch(/does not resolve claude-haiku-4-5 \(runner-only row/);
+  });
+
+  it('still catches a dashboard normalizer that drops a model BOTH sides price', async () => {
+    const root = fakeRepo({
+      claude: `import { MODEL_PRICING as R, normalizeModel as N } from ${JSON.stringify(RUNNER_PRICING)};
+export const MODEL_PRICING: Record<string, Record<string, number>> = R as unknown as Record<string, Record<string, number>>;
+export function normalizeModel(m: string | undefined): string {
+  const k = N(m);
+  return k === 'claude-sonnet-5' ? '' : k;
+}
+`,
+    });
+    const r = await checkTableParity(root);
+    expect(r.status).toBe('drift');
+    expect(r.findings.join('\n')).toMatch(/claude: normalizer drift on "claude-sonnet-5"/);
+  });
+
   it('catches NORMALIZER drift on a dated snapshot id (the 25x luna overcharge)', async () => {
     // The tables are byte-identical here. Only the function that decides WHICH
     // row to read differs — which is exactly how the real defect presented:
