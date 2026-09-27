@@ -1,6 +1,6 @@
 {
   "name": "nanoclaw",
-  "version": "2.3.0",
+  "version": "2.4.0",
   "description": "Personal AI assistant. Lightweight, secure, customizable.",
   "type": "module",
   "packageManager": "pnpm@10.34.5",
@@ -40,10 +40,10 @@
     "test:watch": "HTTP_PROXY= HTTPS_PROXY= http_proxy= https_proxy= NODE_USE_ENV_PROXY= NO_PROXY='*' vitest"
   },
   "dependencies": {
+    "@onecli-sh/sdk": "2.2.1",
     "@chat-adapter/telegram": "4.29.0",
     "@clack/core": "^1.2.0",
     "@clack/prompts": "^1.2.0",
-    "@onecli-sh/sdk": "2.2.1",
     "better-sqlite3": "13.0.3",
     "ccusage": "20.0.19",
     "chat": "4.29.0",

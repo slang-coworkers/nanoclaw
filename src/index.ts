@@ -19,7 +19,12 @@ import {
   validateContainerTimeouts,
 } from './config.js';
 import { enforceStartupBackoff, resetCircuitBreaker } from './circuit-breaker.js';
-import { adoptRunningSessions } from './container-runner.js';
+import {
+  abortGatewaySessionObservers,
+  adoptRunningSessions,
+  resumeGatewaySessionAdmission,
+  stopGatewaySessionsForUnavailability,
+} from './container-runner.js';
 import { closeDb, initDb, getDb } from './db/connection.js';
 import { runMigrations } from './db/migrations/index.js';
 import { getSessionDriver } from './drivers/index.js';
@@ -30,6 +35,9 @@ import { startHostInstanceLease, stopHostInstanceLease } from './host-instance.j
 import { startHostSweep, stopHostSweep } from './host-sweep.js';
 import { startWebhookInboxDrain, stopWebhookInboxDrain } from './webhook-inbox-drain.js';
 import { startHostModules, stopHostModules } from './host-lifecycle.js';
+import { startGatewayApprovalCoordinator, stopGatewayApprovalCoordinator } from './gateway-approval-coordinator.js';
+import { startGatewayAvailabilityMonitor } from './gateway-availability.js';
+import { getGatewayProvider } from './gateway-providers/index.js';
 import { registerCostApproval } from './modules/cost-approval/index.js';
 import { routeInbound } from './router.js';
 import { log } from './log.js';
@@ -110,6 +118,7 @@ let mcpStackHandle: { stop: () => void } | null = null;
 let mcpProxyHandle: { stop: () => void } | null = null;
 let dashboardIngressHandle: { stop: () => Promise<void> } | null = null;
 let githubWebhookHandle: GitHubWebhookServerHandle | null = null;
+let stopGatewayAvailabilityMonitor: (() => void) | undefined;
 
 async function main(): Promise<void> {
   // Singleton guard: prevent duplicate orchestrators on the same data directory
@@ -154,6 +163,9 @@ async function main(): Promise<void> {
   // 0.5 Upgrade tripwire — refuse to start if this install was updated
   // outside the sanctioned path (raw `git pull` instead of /update-nanoclaw).
   enforceUpgradeTripwire();
+
+  // Select once and fail before serving if the configured package is absent.
+  const gatewayProvider = getGatewayProvider();
 
   // 1. Init central DB
   const db = await initDb(CENTRAL_DB_PATH, { role: 'host' });
@@ -237,20 +249,16 @@ async function main(): Promise<void> {
     log.warn('orphan-groups scan threw', { err: String(err) });
   }
 
-  // 2. Session runtime: prove it is reachable, then reconcile what survived a
-  // restart. Adoption replaces the old reap-everything cleanup — a session that
-  // is still running keeps running, and only true orphans are stopped.
+  // 2. Session runtime: prove it is reachable, then take the host lease and gate
+  // inbound routing. Adoption itself now runs AFTER the gateway approval
+  // subscription is healthy (step 5) — upstream's invariant: never open inbound
+  // routing for work whose credentials we cannot get approved.
   await getSessionDriver().ensureReady?.();
-  // Container MCP-proxy tokens outlive the host process (KillMode=process keeps
-  // coworker containers alive across a restart); restore them before adoption
-  // so a survivor's first proxied call is authorised, and let adoption prune
-  // the tokens of containers that are gone.
-  configureContainerTokenStore({ path: path.join(process.cwd(), 'data', '.mcp-container-tokens.json') });
-  await adoptRunningSessions();
-  // Reset stale container_status from previous host runs. Kept AFTER adoption so
-  // it only clears rows adoption did not claim; repeated from the pre-reconcile
-  // reset above as the canonical post-runtime reset — idempotent.
-  await getDb().run("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'");
+  await startHostInstanceLease();
+  let releaseInbound!: () => void;
+  const inboundReady = new Promise<void>((resolve) => {
+    releaseInbound = resolve;
+  });
 
   // 2b. MCP server stack (registry + auth proxy)
   const mcpStack = await startMcpServers(MCP_PROXY_PORT + 100);
@@ -276,33 +284,42 @@ async function main(): Promise<void> {
   await initChannelAdapters((adapter: ChannelAdapter): ChannelSetup => {
     return {
       onInbound(platformId, threadId, message) {
-        routeInbound({
-          channelType: adapter.channelType,
-          // The one host-side stamping seam: adapters stay instance-blind,
-          // the host stamps the receiving instance on every inbound event.
-          instance: adapter.instance ?? adapter.channelType,
-          platformId,
-          threadId,
-          message: {
-            id: message.id,
-            kind: message.kind,
-            content: JSON.stringify(message.content),
-            timestamp: message.timestamp,
-            isMention: message.isMention,
-            isGroup: message.isGroup,
-          },
-        }).catch((err) => {
-          log.error('Failed to route inbound message', { channelType: adapter.channelType, err });
-        });
+        // Adapters connect early so no platform message is missed, but routing
+        // waits on inboundReady — resolved once gateway approval health and
+        // session adoption are established.
+        inboundReady
+          .then(() =>
+            routeInbound({
+              channelType: adapter.channelType,
+              // The one host-side stamping seam: adapters stay instance-blind,
+              // the host stamps the receiving instance on every inbound event.
+              instance: adapter.instance ?? adapter.channelType,
+              platformId,
+              threadId,
+              message: {
+                id: message.id,
+                kind: message.kind,
+                content: JSON.stringify(message.content),
+                timestamp: message.timestamp,
+                isMention: message.isMention,
+                isGroup: message.isGroup,
+              },
+            }),
+          )
+          .catch((err) => {
+            log.error('Failed to route inbound message', { channelType: adapter.channelType, err });
+          });
       },
       onInboundEvent(event) {
-        routeInbound(event).catch((err) => {
-          log.error('Failed to route inbound event', {
-            sourceAdapter: adapter.channelType,
-            targetChannelType: event.channelType,
-            err,
+        inboundReady
+          .then(() => routeInbound(event))
+          .catch((err) => {
+            log.error('Failed to route inbound event', {
+              sourceAdapter: adapter.channelType,
+              targetChannelType: event.channelType,
+              err,
+            });
           });
-        });
       },
       onMetadata(platformId, name, isGroup) {
         log.info('Channel metadata discovered', {
@@ -397,15 +414,37 @@ async function main(): Promise<void> {
   // factory owns exact-instance resolution (a named instance never sends
   // through a sibling bot of the same platform) and raises
   // MissingChannelAdapterError so an offline adapter takes the retry path.
-  setDeliveryAdapter(createChannelDeliveryAdapter());
+  const deliveryAdapter = createChannelDeliveryAdapter();
+  setDeliveryAdapter(deliveryAdapter);
 
-  // 5. Start registered host modules. Imports only registered callbacks; the
+  // 5. Core starts the selected gateway's normalized approval subscription only
+  // after persistence and delivery are ready, then adopts survivors and finally
+  // opens inbound routing. The order is the invariant: a session must not be
+  // admitted before its credential approvals can reach a human.
+  await startGatewayApprovalCoordinator(gatewayProvider, deliveryAdapter, stopGatewaySessionsForUnavailability, {
+    onAvailable: resumeGatewaySessionAdmission,
+    waitUntilReady: true,
+  });
+  stopGatewayAvailabilityMonitor = await startGatewayAvailabilityMonitor(
+    gatewayProvider,
+    stopGatewaySessionsForUnavailability,
+    resumeGatewaySessionAdmission,
+  );
+  // Container MCP-proxy tokens outlive the host process (KillMode=process keeps
+  // coworker containers alive across a restart); restore them before adoption
+  // so a survivor's first proxied call is authorised, and let adoption prune
+  // the tokens of containers that are gone.
+  configureContainerTokenStore({ path: path.join(process.cwd(), 'data', '.mcp-container-tokens.json') });
+  await adoptRunningSessions();
+  releaseInbound();
+  // Reset stale container_status from previous host runs. Kept AFTER adoption so
+  // it only clears rows adoption did not claim; repeated from the pre-reconcile
+  // reset above as the canonical post-runtime reset — idempotent.
+  await getDb().run("UPDATE sessions SET container_status = 'stopped' WHERE container_status = 'running'");
+
+  // 6. Start registered host modules. Imports only registered callbacks; the
   // actual work begins here, after DB + delivery are ready and before polls.
-  await startHostModules({ db, signal: hostAbortController.signal });
-
-  // 5b. Register this host process in durable state and keep its lease fresh
-  // (shadow state — observability across restarts, no behavior reads it).
-  await startHostInstanceLease();
+  await startHostModules({ db, deliveryAdapter, signal: hostAbortController.signal });
 
   // 6. Start delivery polls
   startActiveDeliveryPoll();
@@ -474,6 +513,9 @@ async function shutdown(signal: string): Promise<void> {
     /* ignore */
   }
   hostAbortController.abort();
+  stopGatewayAvailabilityMonitor?.();
+  await stopGatewayApprovalCoordinator();
+  await abortGatewaySessionObservers();
   await stopHostModules();
   // Stamp the durable stop before the DB closes below.
   await stopHostInstanceLease();
