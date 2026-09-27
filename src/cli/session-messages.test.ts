@@ -186,4 +186,41 @@ describe('readSessionMessages', () => {
   it('throws when session id does not exist', async () => {
     await expect(readSessionMessages({ id: 'sess-nope' })).rejects.toThrow(/session not found/);
   });
+
+  it('pages with offset/limit across both tables in seq order without loading the rest', async () => {
+    seedSession();
+    // 20 inbound (odd seq) + 20 outbound (even seq) chat rows, interleaved.
+    writeInbound(Array.from({ length: 20 }, (_, i) => ({ seq: 2 * i + 1, kind: 'chat', timestamp: now(), content: JSON.stringify({ text: `in ${2 * i + 1}` }) })));
+    writeOutbound(Array.from({ length: 20 }, (_, i) => ({ seq: 2 * i + 2, kind: 'chat', timestamp: now(), content: JSON.stringify({ text: `out ${2 * i + 2}` }) })));
+    const page = await readSessionMessages({ id: SESS, offset: 5, limit: 10 });
+    expect(page.map((r) => r.seq)).toEqual([6, 7, 8, 9, 10, 11, 12, 13, 14, 15]);
+    const last = await readSessionMessages({ id: SESS, limit: 1, reverse: true });
+    expect(last.map((r) => r.seq)).toEqual([40]);
+    const tail = await readSessionMessages({ id: SESS, limit: 3, reverse: true, offset: 1 });
+    expect(tail.map((r) => r.seq)).toEqual([39, 38, 37]);
+    const since = await readSessionMessages({ id: SESS, since_seq: 36 });
+    expect(since.map((r) => r.seq)).toEqual([37, 38, 39, 40]);
+  });
+
+  it('filters system rows in SQL so --limit counts only visible rows', async () => {
+    seedSession();
+    // 400 system rows first, then 3 chat rows: the old in-memory filter would have
+    // needed all 403 rows to return the 3 visible ones.
+    writeInbound(Array.from({ length: 400 }, (_, i) => ({ seq: 2 * i + 1, kind: 'system', timestamp: now(), content: JSON.stringify({ type: 'cli_response' }) })));
+    writeOutbound([801, 803, 805].map((seq) => ({ seq, kind: 'chat', timestamp: now(), content: JSON.stringify({ text: `t${seq}` }) })));
+    const rows = await readSessionMessages({ id: SESS, limit: 3 });
+    expect(rows.map((r) => r.seq)).toEqual([801, 803, 805]);
+  });
+
+  it('replaces an oversized row body with a placeholder instead of loading it', async () => {
+    seedSession();
+    writeInbound([
+      { seq: 1, kind: 'chat', timestamp: now(), content: JSON.stringify({ text: 'x'.repeat(1_000_001) }) },
+      { seq: 3, kind: 'chat', timestamp: now(), content: JSON.stringify({ text: 'small' }) },
+    ]);
+    const rows = await readSessionMessages({ id: SESS, full: true });
+    expect(rows[0].text).toMatch(/^\[content too large to display: \d+ bytes\]$/);
+    expect(rows[0].truncated).toBe(true);
+    expect(rows[1].text).toBe('small');
+  });
 });
