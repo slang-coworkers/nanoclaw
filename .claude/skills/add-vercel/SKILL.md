@@ -29,7 +29,7 @@ Verify OneCLI is working (required for credential injection):
 onecli version 2>/dev/null && echo "ONECLI_OK" || echo "ONECLI_MISSING"
 ```
 
-If `ONECLI_MISSING`, tell the user to run `/init-onecli` first, then retry `/add-vercel`. Stop here.
+If `ONECLI_MISSING`, tell the user to run `/add-onecli` first, then retry `/add-vercel`. Stop here.
 
 ## Phase 2: Install Container Skill
 

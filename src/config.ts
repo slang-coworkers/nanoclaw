@@ -9,8 +9,6 @@ import { isValidTimezone } from './timezone.js';
 const envConfig = readEnvFile([
   'ASSISTANT_NAME',
   'ASSISTANT_HAS_OWN_NUMBER',
-  'ONECLI_URL',
-  'ONECLI_API_KEY',
   'TZ',
   'DASHBOARD_PORT',
   'DASHBOARD_SECRET',
@@ -42,7 +40,6 @@ const envConfig = readEnvFile([
   'CONTAINER_PIDS_LIMIT',
   'NANOCLAW_EGRESS_LOCKDOWN',
   'NANOCLAW_EGRESS_NETWORK',
-  'ONECLI_GATEWAY_CONTAINER',
   'WEBHOOK_PORT',
 ]);
 
@@ -195,13 +192,11 @@ export const CONTAINER_MEMORY_LIMIT = process.env.CONTAINER_MEMORY_LIMIT || envC
 // Empty = no cap.
 export const CONTAINER_PIDS_LIMIT = process.env.CONTAINER_PIDS_LIMIT ?? envConfig.CONTAINER_PIDS_LIMIT ?? '2048';
 
-// Egress lockdown — force all agent traffic through the OneCLI gateway on a
+// Egress lockdown — force all agent traffic through the selected gateway on a
 // no-internet Docker network. Off by default; consumed by src/egress-lockdown.ts.
 export const EGRESS_LOCKDOWN = (process.env.NANOCLAW_EGRESS_LOCKDOWN || envConfig.NANOCLAW_EGRESS_LOCKDOWN) === 'true';
 export const EGRESS_NETWORK =
   process.env.NANOCLAW_EGRESS_NETWORK || envConfig.NANOCLAW_EGRESS_NETWORK || 'nanoclaw-egress';
-export const ONECLI_GATEWAY_CONTAINER =
-  process.env.ONECLI_GATEWAY_CONTAINER || envConfig.ONECLI_GATEWAY_CONTAINER || 'onecli';
 
 // MCP proxy
 export const MCP_PROXY_PORT = parseInt(process.env.MCP_PROXY_PORT || envConfig.MCP_PROXY_PORT || '3100', 10);

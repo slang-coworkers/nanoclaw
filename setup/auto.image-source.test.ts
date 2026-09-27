@@ -71,7 +71,7 @@ beforeEach(() => {
   // because a stock install has no project branches and the step no-ops.
   vi.stubEnv(
     'NANOCLAW_SKIP',
-    'environment,projects,container,onecli,auth,mounts,service,first-chat,timezone,channel,verify',
+    'environment,projects,container,gateway,auth,mounts,service,first-chat,timezone,channel,verify',
   );
   fixture.fail.mockRejectedValue(new Error('failure assistance finished'));
   fixture.offerPortalReminder.mockResolvedValue(false);

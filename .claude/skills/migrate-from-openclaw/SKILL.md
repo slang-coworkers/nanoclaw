@@ -400,7 +400,7 @@ past expiry, warn that the token may need refreshing; the user can run
 `claude setup-token` and register the fresh token.
 
 If OneCLI isn't installed yet, defer this: tell the user that during `/setup`
-(or `/init-onecli`) they'll register the Anthropic credential, and note the
+(or `/add-onecli`) they'll register the Anthropic credential, and note the
 discovered profile in `migration-state.md` so it isn't lost.
 
 > There is no supported `.env`-credentials opt-out anymore: the session spec's
