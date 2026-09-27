@@ -3,7 +3,9 @@
  *
  * Runs inside a container. All message IO goes through the registered mailbox.
  *
- * Config:
+ * Config is read from /workspace/agent/container.json (mounted RO); only TZ and
+ * the gateway networking vars come from env. The session-DB paths below are the
+ * exception — the host sets them per container.
  *   - SESSION_INBOUND_DB_PATH:  path to host-owned inbound DB (default: /workspace/inbound.db)
  *   - SESSION_OUTBOUND_DB_PATH: path to container-owned outbound DB (default: /workspace/outbound.db)
  *   - SESSION_HEARTBEAT_PATH:   heartbeat file path (default: /workspace/.heartbeat)
