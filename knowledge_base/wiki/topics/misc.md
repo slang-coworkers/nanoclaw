@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1260 learnings. [Catalog](../index.md)
+1262 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -474,6 +474,7 @@ type: topic
 - [Byte-identical output is not proof a patch is effectless — check the layer](../learnings/1785775152713-byte-identical-output-is-not-proof-a-patch-is-effe.md)
 - [ByteAddressBuffer.Load of struct with empty/zero-size field emits Load&lt;void&gt;](../learnings/1787580105549-byteaddressbuffer-load-of-struct-with-empty-zero-s.md)
 - [ByteAddressBufferLoad alignment operand: natural-alignment overload is function-local until peephole](../learnings/1789579501578-byteaddressbufferload-alignment-operand-natural-al.md)
+- [C-like emitter fold scan is not transitive through force-folded GEP/FieldAddress (silent miscompile #13273)](../learnings/1790497097531-c-like-emitter-fold-scan-is-not-transitive-through.md)
 - [Cancelling a one-shot scheduled task removes the trigger, not the payload — and a spent row is immutable](../learnings/1786073581086-cancelling-a-one-shot-scheduled-task-removes-the-t.md)
 - [capdef append-only means append after the LAST Normal def in the whole file, not after the topic block](../learnings/1788071111340-capdef-append-only-means-append-after-the-last-nor.md)
 - [capdef def inheritance accepts top-level | disjunction but NOT parenthesized (b|c) inside a conjunction](../learnings/1784126862980-capdef-def-inheritance-accepts-top-level-disjuncti.md)
@@ -930,6 +931,7 @@ type: topic
 - [okf-synthesis: reindex.sh left orphaned monolithic family indexes that regrow every run](../learnings/1788150354105-okf-synthesis-reindex-sh-left-orphaned-monolithic-.md)
 - [okf-synthesis: run finalize exactly once, and always fold the top offender](../learnings/1790396413821-okf-synthesis-run-finalize-exactly-once-and-always.md)
 - [okf_synth NO-FRONTMATTER backlog in imported/ is one mechanical bug: type nested under metadata](../learnings/1789533464993-okf-synth-no-frontmatter-backlog-in-imported-is-on.md)
+- [okf_synth.py misses bare-stem wikilinks when you delete a concept](../learnings/1790569242936-okf-synth-py-misses-bare-stem-wikilinks-when-you-d.md)
 - [On a draft PR, `statusCheckRollup` and `commits/<sha>/check-runs` expose DIFFERENT SETS — a manual-dispatch matrix can be fully green and invisible on the PR page](../learnings/1786280978623-on-a-draft-pr-statuscheckrollup-and-commits-sha-ch.md)
 - [On a shallow clone, git merge-base lies about remote ancestry — use GitHub compare API](../learnings/1787862114697-on-a-shallow-clone-git-merge-base-lies-about-remot.md)
 - [On state conflict, GitHub (system of record) breaks the tie — not stale context, not a coworker's word](../learnings/1788475445155-on-state-conflict-github-system-of-record-breaks-t.md)

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-508 learnings. [Catalog](../index.md)
+510 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -213,6 +213,7 @@ type: topic
 - [ci-babysitter: wake-payload hasNewActivity read false on 4 PRs with genuine new pushes](../learnings/1789970806784-ci-babysitter-wake-payload-hasnewactivity-read-fal.md)
 - [CI-infra patches referencing external repos need coordinator-side verification (A/C can't reach them)](../learnings/1787133301381-ci-infra-patches-referencing-external-repos-need-c.md)
 - [CI-integrity bug class: a detected failure is logged but never folded into the recorded test result (stale init=Success leaks through)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
+- [ci.yml waiting-runs count can no longer reach zero (falcor-build-approval-gate)](../learnings/1790496460678-ci-yml-waiting-runs-count-can-no-longer-reach-zero.md)
 - [CI: flake-class vs deterministic-hang, and the two-sweep escalation threshold](../learnings/1782346148219-ci-flake-class-vs-deterministic-hang-and-the-two-s.md)
 - [Cite cross-repo flake occurrences by run-id, not the babysat PR number](../learnings/1783930550138-cite-cross-repo-flake-occurrences-by-run-id-not-th.md)
 - [Cite dependency/submodule versions by SHA + commit date, never a git describe tag label](../learnings/1790185229706-cite-dependency-submodule-versions-by-sha-commit-d.md)
@@ -341,6 +342,7 @@ type: topic
 - [LeakSanitizer regression verification blocked by unrelated infra flake](../learnings/1787071797412-leaksanitizer-regression-verification-blocked-by-u.md)
 - [learnings-wiki footer counts drift chronically — the generator should recompute N, and duplicate citation rows hide inside it](../learnings/1785825237204-learnings-wiki-footer-counts-drift-chronically-the.md)
 - [learnings-wiki obsidian-link gap is nav-only, not broken citations — characterize before scoping a fix](../learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md)
+- [Link-time associated types: extern-side vs export-side lookup are different layout gaps (#12131 fixes only export-side)](../learnings/1790573149484-link-time-associated-types-extern-side-vs-export-s.md)
 - [LLVM_USE_HOST_TOOLS alone won't force host-native tools when CMAKE_OSX_ARCHITECTURES is an env var](../learnings/1789507360762-llvm-use-host-tools-alone-won-t-force-host-native-.md)
 - [Local Slang Debug preset builds CMAKE_BUILD_TYPE=Release → SLANG_ASSERT is inert (compiles to __builtin_assume); test assert logic in _DEBUG or by reasoning](../learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md)
 - [Look for a sibling run at the SAME commit before reasoning about a CI failure's cause — and a rerun only informs if the step under test actually ran](../learnings/1786041527710-look-for-a-sibling-run-at-the-same-commit-before-r.md)

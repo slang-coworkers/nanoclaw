@@ -3,6 +3,7 @@ title: "GitHub triage label is 'Dev Reviewed' (space), not 'Dev_Reviewed' — un
 type: learning
 topic: agent-ops
 source: learnings/1786263334409-github-triage-label-is-dev-reviewed-space-not-dev-.md
+superseded_by: 1786263427862-slang-triage-label-is-dev-reviewed-with-a-space-de
 ---
 
 # GitHub triage label is "Dev Reviewed" (space), not "Dev_Reviewed" — underscore silently returns 0

@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-754 learnings. [Catalog](../index.md)
+759 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -295,6 +295,7 @@ type: topic
 - [Critique gate false-positives on read-only gh api /pulls/ calls](../learnings/1784737519525-critique-gate-false-positives-on-read-only-gh-api-.md)
 - [Critique gate false-positives read-only PR reviews fetch as PR-creation](../learnings/1787552747233-critique-gate-false-positives-read-only-pr-reviews.md)
 - [Critique gate fires on no-code triage-confirmations too](../learnings/1783523465568-critique-gate-fires-on-no-code-triage-confirmation.md)
+- [Critique gate fires on read-only gh calls in non-PR tasks (e.g. OKF memory synthesis)](../learnings/1790568902795-critique-gate-fires-on-read-only-gh-calls-in-non-p.md)
 - [critique gate has two distinct triggers reconcile before calling one the actual trigger](../learnings/1785782804999-critique-gate-has-two-distinct-triggers-reconcile-.md)
 - [critique gate hit names the surface reason names the defect and the off diagonal cell rule](../learnings/1785821641484-critique-gate-hit-names-the-surface-reason-names-t.md)
 - [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
@@ -450,6 +451,7 @@ type: topic
 - [Half int-literal conversion warning (E30081): getMaximumTypeBitSize=0 for half routes everything through _coerce, not overflow](../learnings/1788947867563-half-int-literal-conversion-warning-e30081-getmaxi.md)
 - [Hand-editing docs/generated/tests coverage tree: lint gate + honest META + PR disclosure](../learnings/1788384936519-hand-editing-docs-generated-tests-coverage-tree-li.md)
 - [Held-no-PR is triage's GitHub footprint; fixer posting its own hold comment races + duplicates (slang#12051)](../learnings/1783708077598-held-no-pr-is-triage-s-github-footprint-fixer-post.md)
+- [Held/no-go fixer handoffs: ack without the [Fix Report] marker](../learnings/1790550516952-held-no-go-fixer-handoffs-ack-without-the-fix-repo.md)
 - [Hold interim triage classification 5-bullet until terminal; author-facing scoping questions are fine to post](../learnings/1781116432142-hold-interim-triage-classification-5-bullet-until-.md)
 - [Hold the fixer until parent confirms before high-stakes maintainer-facing posts (don't fire in parallel under delegated latitude)](../learnings/1782755822091-hold-the-fixer-until-parent-confirms-before-high-s.md)
 - [Holding a fixer PR as draft enables clean maintainer supersession](../learnings/1781245034372-holding-a-fixer-pr-as-draft-enables-clean-maintain.md)
@@ -490,6 +492,7 @@ type: topic
 - [ncl CLI can go fully unresponsive mid-deploy — don't retry-loop, leave verified artifact on disk](../learnings/1790469245201-ncl-cli-can-go-fully-unresponsive-mid-deploy-don-t.md)
 - [ncl group container fixes — Bookworm package gaps + approval sequencing](../learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md)
 - [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](../learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
+- [ncl mutating call can time out client-side while the write still completes server-side](../learnings/1790508939611-ncl-mutating-call-can-time-out-client-side-while-t.md)
 - [ncl mutating-verb help/probes can dispatch the real approval-gated action](../learnings/1783650441468-ncl-mutating-verb-help-probes-can-dispatch-the-rea.md)
 - [ncl sessions list is capped — use --thread-id for handoff verification](../learnings/1781778033276-ncl-sessions-list-is-capped-use-thread-id-for-hand.md)
 - [ncl sessions list is recency-capped at 200 rows — use --thread-id to probe for a parked/old session](../learnings/1783622539495-ncl-sessions-list-is-recency-capped-at-200-rows-us.md)
@@ -499,6 +502,7 @@ type: topic
 - [ncl sessions messages truncates text to 300 chars by default — --full, and read the help first](../learnings/1785968554831-ncl-sessions-messages-truncates-text-to-300-chars-.md)
 - [ncl sessions messages truncates to 300 chars — grep it without --full and you get a false zero](../learnings/1786203957211-ncl-sessions-messages-truncates-to-300-chars-grep-.md)
 - [ncl tasks --script deploy escaping: only $ and backtick need \-escaping, not backslash-doubling](../learnings/1789808037997-ncl-tasks-script-deploy-escaping-only-and-backtick.md)
+- [ncl tasks get --json yields null prompt; guard before tasks update --prompt](../learnings/1790574444468-ncl-tasks-get-json-yields-null-prompt-guard-before.md)
 - [ncl tasks list returns "No tasks" even while a scheduled task is running — never conclude "no cron exists" from it](../learnings/1785808113754-ncl-tasks-list-returns-no-tasks-even-while-a-sched.md)
 - [ncl tasks list truncates prompt to 120 chars — a successful write reads back as a failed one](../learnings/1786266947337-ncl-tasks-list-truncates-prompt-to-120-chars-a-suc.md)
 - [ncl tasks update on own series applies instantly, no approval gate](../learnings/1787250785428-ncl-tasks-update-on-own-series-applies-instantly-n.md)
@@ -514,6 +518,7 @@ type: topic
 - [NVRTC -pch (12.8+) helps only the #include-form prelude, not raw-prepended text; default heap is 256MB; one-shot is a regression](../learnings/1787147387204-nvrtc-pch-12-8-helps-only-the-include-form-prelude.md)
 - [NVRTC -pch for CUDA prelude SHIPPED (PR #12880) — findings held up; provenance was reporter's numbers not a 12.9 fixer run](../learnings/1789272870056-nvrtc-pch-for-cuda-prelude-shipped-pr-12880-findin.md)
 - [NVRTC automatic -pch keys on TU leading-directive TEXT, not included-file content — same-path header swap reuses a STALE PCH](../learnings/1787354583234-nvrtc-automatic-pch-keys-on-tu-leading-directive-t.md)
+- [OKF fold of old triage memos: re-check live GitHub state before distilling](../learnings/1790496181856-okf-fold-of-old-triage-memos-re-check-live-github-.md)
 - [OKF synthesis can't converge on a flat 690-file triage pile — needs a bulk issues/ migration, not 4-folds/day](../learnings/1788150355474-okf-synthesis-can-t-converge-on-a-flat-690-file-tr.md)
 - [okf-synth finalize: run it exactly once per pass, and the root triage-memo population grows faster than a 4-item fold](../learnings/1787285821812-okf-synth-finalize-run-it-exactly-once-per-pass-an.md)
 - [Onboard-repo-to-dashboard issues are ops/infra, not code triage](../learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-not.md)
