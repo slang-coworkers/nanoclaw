@@ -5,7 +5,7 @@ import os from 'os';
 import path from 'path';
 
 import * as p from '@clack/prompts';
-import { afterAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest';
 
 // Mock child_process so runCodexLoginAuth never spawns a real codex CLI; the
 // spawn stand-in plays `codex login` writing auth.json into whatever
@@ -22,10 +22,18 @@ vi.mock('child_process', () => ({
 // Keep the auth flow's structured logging out of logs/setup.log.
 vi.mock('../logs.js', () => ({ step: vi.fn(), userInput: vi.fn() }));
 
+// The failure-assist offer reads its yes/no through clack's confirm; everything
+// else in the module keeps the real clack rendering.
+const mockConfirm = vi.fn();
+vi.mock('@clack/prompts', async (original) => ({
+  ...(await original<typeof import('@clack/prompts')>()),
+  confirm: (...args: unknown[]) => mockConfirm(...args),
+}));
+
 // Barrel-driven registration lives in ./barrel-registration.test.ts — importing
 // codex.js here self-registers the provider, so a registration assertion in this
 // file would survive deletion of the barrel's import line.
-import { buildCodexFailurePrompt, runCodexLoginAuth, verifyCodexInstall } from './codex.js';
+import { buildCodexFailurePrompt, offerCodexFailureAssist, runCodexLoginAuth, verifyCodexInstall } from './codex.js';
 
 const ROOT = process.cwd();
 const scratches: string[] = [];
@@ -165,6 +173,41 @@ describe('buildCodexFailurePrompt', () => {
 
     expect(prompt).toContain('logs/setup-steps/');
     expect(prompt).not.toContain('Hint:');
+  });
+});
+
+describe('offerCodexFailureAssist', () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    mockSpawn.mockReset();
+    mockSpawnSync.mockReset();
+    mockConfirm.mockReset();
+  });
+
+  it('launches Codex read-only with approval on request', async () => {
+    const home = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-assist-home-'));
+    try {
+      fs.mkdirSync(path.join(home, '.codex'));
+      fs.writeFileSync(path.join(home, '.codex', 'auth.json'), '{}');
+      vi.stubEnv('HOME', home);
+      vi.stubEnv('CODEX_HOME', '');
+      mockSpawnSync.mockReturnValue({ status: 0, stdout: 'codex-cli 0.155.1' });
+      mockConfirm.mockResolvedValue(true);
+      mockSpawn.mockImplementation(() => {
+        const child = new EventEmitter();
+        setImmediate(() => child.emit('close', 0));
+        return child;
+      });
+
+      expect(await offerCodexFailureAssist({ stepName: 'gateway', msg: 'boom' }, '/repo')).toBe('launched');
+
+      const [binary, args] = mockSpawn.mock.calls[0] as [string, string[]];
+      expect(binary).toBe('codex');
+      expect(args.slice(0, 4)).toEqual(['--sandbox', 'read-only', '--ask-for-approval', 'on-request']);
+      expect(args).toHaveLength(5);
+    } finally {
+      fs.rmSync(home, { recursive: true, force: true });
+    }
   });
 });
 
