@@ -3,7 +3,7 @@ title: CI gate & rerun mechanics — waiting vs queued, priority-yield, Falcor g
 type: concept
 group: agent-routing
 tags: [ci, github-actions, rerun, priority-yield, falcor, environment-gate, run-attempt, runner-name, rate-limit, hold-surface, slang]
-source_count: 11
+source_count: 12
 ---
 
 ## TL;DR
@@ -19,10 +19,13 @@ source_count: 11
 - Re-check `isDraft` at the moment of CI dispatch — a human ready-flip between pushes turns the drafts-only manual dispatch into a cosmetic-red false alarm on top of the real `pull_request` run.
 - Re-read the authoritative hold surface at the moment of a gated action, not at planning time — an always-loaded "always do X when C" rule fires without a deliberation gap and silently beats a superseding hold that lives in a split-out on-demand file.
 - Never judge GitHub API quota from `/rate_limit` behind the OneCLI gateway — the credential is injected per-path, so `/rate_limit` reports the anonymous 60 bucket. Read `X-Ratelimit-Limit` from a real `/repos/...` response. The instrument that reports on quota is subject to the quota's plumbing.
+- A nonzero `ci.yml` `status=waiting` count is the Falcor approval gate, not backpressure; it no longer reaches zero, so never gate a dispatch on it.
 
 ## Two states that look alike: waiting vs queued, skipped vs starved
 
 The central trap is a status allowlist that folds "blocked on a human" in with "blocked on a resource." In the Actions API, `queued` drains with time but `waiting` (environment approval) does not — so `ci.yml`'s bot-priority retry helper, whose `ACTIVE_STATUSES` includes `waiting`, was jammed indefinitely: seven "active" runs, five draining `queued` but two `waiting` aged ~36h/~58h on an unactioned `falcor-ci` approval, making the "quiet" precondition structurally unreachable and reddening every yielded bot run in the fleet ([GitHub Actions `waiting` ≠ queued — a human approval gate that jams CI retry](../learnings/1786404029507-github-actions-waiting-queued-it-s-a-human-approva.md)). `gh run list` renders both as pending-ish; the distinction only shows in `status`. Whenever you see a set defined by a status allowlist, ask which members can clear on their own. The symmetric read-error is `runner_name`: empty is not evidence of starvation because `conclusion: skipped` (a `needs:`/`if:` short-circuit) also yields null runner — 37 jobs read "starved by the dead GPU pool" but were all `skipped` by one 13-second gate job, while a genuine concurrent pool outage co-occurred but was causally unrelated ([empty runner_name does not distinguish starved from skipped](../learnings/1786438262793-empty-runner-name-does-not-distinguish-starved-by-.md)). Read `conclusion` first; a concurrent outage is FACT while the causal link is HYPOTHESIS, and require the victim to show `queued`-with-no-runner rather than merely co-occur.
+
+The same distinction retires an older fleet rule, "don't `gh workflow run ci.yml` until `actions/workflows/ci.yml/runs?status=waiting` returns `total_count=0`". As of 2026-09-27 shader-slang/slang had 73 `ci.yml` runs in `status=waiting`, each parked on a `falcor-build-approval-gate` job (human branches included), so the count can no longer reach zero, while newer runs still finish (a 2026-09-26 run completed 41 jobs with 72 older runs parked). A nonzero waiting count is the approval gate, not queue contention: read the waiting job's name from `/actions/runs/<id>/jobs` (status `waiting`) before treating it as backpressure [ci.yml waiting-runs count can no longer reach zero (falcor-build-approval-gate)](../learnings/1790496460678-ci-yml-waiting-runs-count-can-no-longer-reach-zero.md).
 
 ## Reruns mutate in place; read the decision, not the rollup
 
@@ -36,7 +39,7 @@ The `falcor-ci` deployment-approval gate produces two distinct non-rerunnable st
 
 Two "re-check at action time" rules. Re-query `gh pr view --json isDraft` at the moment of a drafts-only manual `ci.yml` dispatch — a human ready-flip between pushes turns the manual run into a cosmetic-red false alarm (only `wait-for-human-priority`+`check-ci` fail, builds skipped) firing on top of the real `pull_request` run the ready-flip already triggered ([re-check isDraft at the moment of CI dispatch](../learnings/1786606902247-re-check-isdraft-at-the-moment-of-ci-dispatch-a-hu.md)). And re-read the authoritative hold surface at the gated action itself: an always-loaded "always dispatch CI on drafts" rule fires with no deliberation gap and silently beats a superseding "no `ci.yml` dispatch while any run is `waiting`" hold living in a split-out on-demand file — grep the hold surface for the action verb immediately before executing, not at planning time ([re-read the authoritative hold surface at a gated action](../learnings/1786467632283-re-read-the-authoritative-hold-surface-at-a-gated-.md)). Finally, quota: behind the OneCLI gateway the credential is injected per-path, so `/rate_limit` reports the anonymous 60 bucket while `/repos/...` reports 6000 — never judge quota from `/rate_limit`; read `X-Ratelimit-Limit` off a real request, and note the tell is internal contradiction (`used:0` after ten calls) not a second tool ([never judge GitHub API quota from /rate_limit](../learnings/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md)). The instrument that reports on quota is itself subject to the quota's plumbing — prefer a response header on a real request over a dedicated status endpoint.
 
-**Source learnings (11):**
+**Source learnings (12):**
 
 - [GitHub Actions `waiting` ≠ queued — it's a human approval gate that can jam CI retry indefinitely](../learnings/1786404029507-github-actions-waiting-queued-it-s-a-human-approva.md) — split the active set by status; a status allowlist mixes "blocked on human" with "blocked on resource."
 - [empty runner_name does not distinguish starved-by-dead-pool from skipped-by-gate](../learnings/1786438262793-empty-runner-name-does-not-distinguish-starved-by-.md) — read `conclusion` first; a concurrent outage is the most dangerous backdrop; require the mechanism's fingerprint.
@@ -49,3 +52,4 @@ Two "re-check at action time" rules. Re-query `gh pr view --json isDraft` at the
 - [Falcor gate latency compounds with 1-day artifact retention into unrecoverable failures](../learnings/1787077102662-falcor-gate-latency-compounds-with-1-day-artifact-.md) — classify `artifact-expiry-blocked (non-rerunnable)`; only a fresh push/retention bump/faster approval fixes it.
 - [re-read the authoritative hold surface at a gated action](../learnings/1786467632283-re-read-the-authoritative-hold-surface-at-a-gated-.md) — an always-loaded "always do X when C" rule beats a fresh not-loaded hold; re-derive gate state at action time.
 - [never judge GitHub API quota from /rate_limit — the gateway injects per-path](../learnings/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — read `X-Ratelimit-Limit` off a real `/repos/...` request; internal contradiction is the tell.
+- [ci.yml waiting-runs count can no longer reach zero (falcor-build-approval-gate)](../learnings/1790496460678-ci-yml-waiting-runs-count-can-no-longer-reach-zero.md) — 73 runs parked on the approval gate; the "wait for total_count=0" rule is unsatisfiable, so read the waiting job's name instead.

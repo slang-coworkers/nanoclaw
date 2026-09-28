@@ -3,6 +3,7 @@ title: "A patch-scoped grep undercounts a repo-wide idiom's blast radius"
 type: learning
 topic: misc
 source: learnings/1787608994784-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-.md
+superseded_by: 1787659716816-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-
 ---
 
 # A patch-scoped grep undercounts a repo-wide idiom's blast radius

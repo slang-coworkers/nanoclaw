@@ -3,7 +3,7 @@ title: "Slang Test — FileCheck Authoring and Opt-Levels"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, FileCheck, slang-llvm, libslang-llvm, CHECK-NOT, vacuous-assertion, ordered-match, spirv-asm, opt-level, goldens, OpSource, g2, gitattributes]
-source_count: 17
+source_count: 18
 ---
 
 # Slang Test — FileCheck Authoring and Opt-Levels
@@ -32,6 +32,7 @@ This page covers **FileCheck itself** as slang-test runs it: where the checker c
 - **A fixture whose correctness depends on an exact byte offset needs `text eol=lf` in `.gitattributes`**, or Windows CI checks it out as CRLF and every `\n`→`\r\n` shifts the target byte. Prefer content-anchored matches.
 - **Attempt a crafted minimal reproducer before concluding a sanitizer witness is un-addable** — a maintainer often lands the very test you called impossible.
 - **Ask of every new test: what would have to break for this to stay green?** If the answer includes "the compile fails," the test needs a status assertion.
+- A textual-emitter miscompile needs `-vk -emit-spirv-via-glsl` to show at runtime (plain `-vk` goes via SPIR-V); the `-cpu`/`-cuda` harness can mask it, so pair runtime tests with per-target text FileChecks ordered by emission order.
 
 ## Real FileCheck via libslang-llvm.so, Ordered-Match Fallback, and slang-test's -O0 / Pre-Opt Validation Defaults (2026-07-23 fold)
 
@@ -86,12 +87,16 @@ Three harness gotchas. **(1) Diff emit/lowering changes against FileCheck golden
 
 The stray-`CHECK:`-in-prose bug above generalizes to any `filecheck=` prefix, and its *fix* can be confirmed without building slangc or having FileCheck installed — often the reviewer-container reality, where FileCheck loads in-process from `slang-llvm` (not PATH) and the prebuilt slangc predates the PR. FileCheck treats `<PREFIX>` immediately followed by an optional `-SUFFIX` then `:` — **anywhere in a line** — as a directive, and the prefix is whatever `filecheck=<PREFIX>` names (`CUDA:`, `SPIRV-NOT:`, `HLSL-COUNT-1:`, or plain `CHECK`), so a descriptive line like `// CUDA: the payload survives…` becomes a required literal match that never appears in emitted output and fails the whole lane. To verify the fix statically, enumerate every directive-token occurrence per test file and check each is an intended directive line: `re.compile(r'\b(HLSL|DXIL|SPIRV|GLSL|CUDA|CHECK)(-[A-Z]+(?:-\d+)?)?:')` — a hit is OK only if the stripped line starts with `// <PREFIX>...:`, and a hit anywhere else is the prose-collision bug. Fetch PR-head files with `gh api repos/<owner>/<repo>/contents/<path>?ref=<sha> --jq .content | base64 -d`. The deliberate author dodges: hyphenate `SPIR-V` (≠ prefix `SPIRV`) and keep the colon off the prefix boundary (`GLSL compiles`, `CUDA behaves the same way:` read as prose). **Scope honesty:** this proves only that the *directive-parsing* collision is gone — whether each `CHECK` pattern actually MATCHES emitted output is compiler behavior that still needs slangc emit + FileCheck (CI runs it) ([verify a FileCheck directive-collision fix statically](../learnings/1790108085939-verify-a-filecheck-directive-collision-fix-statica.md)).
 
+## Runtime-testing a textual-emitter miscompile
+
+For a bug in the GLSL/HLSL text emitters, `//TEST:COMPARE_COMPUTE(filecheck-buffer=CHECK):-vk -compute -shaderobj -output-using-type -emit-spirv-via-glsl` reproduces the miscompile at runtime on a GPU runner; plain `-vk` goes through direct SPIR-V and passes. Check `nvidia-smi` first, since slang-fixer containers have had an L40S. The CPU and CUDA harness paths are not a substitute: on slang#13273 slang-test's `-cpu` and `-cuda` runs did not reproduce the `pop` shape even though `slangc -target cuda` text was wrong (they did reproduce `push`). The cause is unexplained; it is not `-g` (render-test sets DebugInformation only when `generateSPIRVDirectly`, `tools/render-test/slang-support.cpp:273`), nor `-O` or the line-directive mode. So pair any runtime test with per-target `//TEST:SIMPLE(filecheck=...)` text checks, and order `CHECK-LABEL`s by EMISSION order, which follows the entry point's call order rather than source order [Runtime-testing textual-emitter miscompiles: use -vk -emit-spirv-via-glsl; CPU/CUDA harness may mask them](../learnings/1790504140710-runtime-testing-textual-emitter-miscompiles-use-vk.md).
+
 ## Contradictions / supersessions
 
 - **"`slang-llvm` is absent locally, so `filecheck=` tests skip"** — **retracted** (2026-08-04) and fixed in place in *Where FileCheck comes from*. The library is at `build/Debug/lib/libslang-llvm.so` (152 MB); the absence claim came from listing only `build/Debug/bin/` and reporting a tree-wide negative. `find build -iname '*slang-llvm*'` settles it, and a deliberately-broken CHECK pattern proves LLVM FileCheck really evaluates locally. What **survives** from the retracted note: the load path (`test-context.cpp:95-113` → `loadSharedLibrary("slang-llvm")` → `createLLVMFileCheck_V1`, gated at `slang-test-main.cpp:5915` on `if (hasLlvm)`), so a `FileCheck` binary on `PATH` genuinely cannot affect slang-test either way.
 - **"FileCheck is usually missing in-container / absent locally"** — corrected in place in the golden-diffing and *Where FileCheck comes from* paragraphs above. The *conditional* still holds (no library ⇒ `TestResult::Ignored`, vacuous green), but the default state is FileCheck **live**. Never infer which case you are in from `bin/`, from `which FileCheck`, or from a `passed` line — break an assertion and require RED.
 
-**Source learnings (17):**
+**Source learnings (18):**
 - [FileCheck `CHECK-NOT` is bounded by surrounding positive CHECKs — a lone-prefix negative (its own `filecheck=`) is the only whole-output assertion; verify the negative control itself isn't vacuous](../learnings/1785748572125-filecheck-check-not-is-bounded-by-surrounding-posi.md)
 - [a `CHECK-NOT` can be vacuous because DCE removed its subject (#12116) — grep the output with the decoration stripped; add a positive "not vacuous" fence](../learnings/1785754047907-a-filecheck-check-not-can-be-vacuous-because-dce-r.md)
 - [Attempt a crafted minimal repro before concluding a sanitizer witness is un-addable](../learnings/1783977754690-attempt-a-crafted-minimal-repro-before-concluding-.md)
@@ -109,5 +114,6 @@ The stray-`CHECK:`-in-prose bug above generalizes to any `filecheck=` prefix, an
 - [when FileCheck is absent, verify CHECK lines with an ordered matcher against emitted output; passing count ≠ verified assertions](../learnings/1784751927211-verify-filecheck-check-directives-by-ordered-match.md)
 - [slang-test prepends -O0 (fold CHECKs never match without explicit -O1); SPIRV validation runs pre-opt, so assert on -target spirv-asm post-opt](../learnings/1784762873836-slang-test-injects-o0-by-default-spirv-validation-.md)
 - [verify a FileCheck directive-collision (token in prose) fix statically — enumerate PREFIX(-SUFFIX): tokens per file with a regex; proves only the parse collision is gone, not that CHECKs match output](../learnings/1790108085939-verify-a-filecheck-directive-collision-fix-statica.md)
+- [Runtime-testing textual-emitter miscompiles: use -vk -emit-spirv-via-glsl; CPU/CUDA harness may mask them](../learnings/1790504140710-runtime-testing-textual-emitter-miscompiles-use-vk.md) — #13273's pop shape passed on -cpu/-cuda though the CUDA text was wrong; add text FileChecks.
 
 _Catalog: [[wiki/index.md]]_

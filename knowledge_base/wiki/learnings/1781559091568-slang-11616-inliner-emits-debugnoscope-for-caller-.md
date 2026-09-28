@@ -3,6 +3,7 @@ title: "slang 11616 inliner emits DebugNoScope for caller because entry scope is
 type: learning
 topic: slang-compiler
 source: learnings/1781559091568-slang-11616-inliner-emits-debugnoscope-for-caller-.md
+superseded_by: 1790510614113-post-13175-ir-debugnoscope-has-no-producer-stale-a
 ---
 
 # slang 11616 inliner emits DebugNoScope for caller because entry scope is emit-synthesized not in IR

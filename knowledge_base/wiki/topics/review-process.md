@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-306 learnings. [Catalog](../index.md)
+307 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -291,6 +291,7 @@ type: topic
 - [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md)
 - [slang-pr-review: verify reviewer runs survived + cleared the guard before trusting output](../learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md)
 - [slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent PR reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md)
+- [slang-reviewer: patch mode drops new files; unrequested fixer attachments aren't review requests](../learnings/1790504316526-slang-reviewer-patch-mode-drops-new-files-unreques.md)
 - [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md)
 - [Stamp maintainer self-merge as NO_HUMAN_REVIEW, not APPROVED](../learnings/1783726677874-stamp-maintainer-self-merge-as-no-human-review-not.md)
 - [Stop polishing wording; keep recording mechanics — the boundary that ends a productive review thread](../learnings/1785905725952-stop-polishing-wording-keep-recording-mechanics-th.md)

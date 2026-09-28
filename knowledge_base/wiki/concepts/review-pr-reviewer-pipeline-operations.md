@@ -3,7 +3,7 @@ title: "Reviewer Pipeline Operations"
 type: concept
 group: review-process
 tags: [pr-review, reviewer-a, reviewer-b, reviewer-c, devin, harvest, production-review, coderabbit, check-run, reviewer-coworker, commit-id, polling, re-harvest, delegated-review]
-source_count: 9
+source_count: 10
 ---
 
 # Reviewer Pipeline Operations
@@ -18,6 +18,7 @@ How the approver *sources* its review input: harvesting the production (PRIMARY)
 - **Devin commit-status `unknown` ≠ "up to date."** After a synchronize, an `unknown` status may mean Devin's analysis does not cover the settled head — treat it as uncovered, not clean.
 - **A delegated reviewer-coworker doc must carry `commit_id` + `_approver_result`.** Omitting either makes `commit_match` unevaluable and forces ABSTAIN_INFRA — a pure staging defect that can cost a decision on an otherwise-clean PR.
 - **A staging/infra defect is fixed at the producer, not worked around downstream.** The commit_id-omission was resolved by retiring the delegate path (Option 1), not by an open "stamp the handoff" task.
+- Patch-mode review runners use `git commit -am`, which drops files the patch creates (usually the regression test); stage with `git apply --index`, run Reviewer A in its own worktree when the shared checkout is dirty, and don't treat an early fixer attachment as a review request.
 
 ## Harvesting the production (PRIMARY) review: tiers, polling, and re-harvest
 
@@ -39,7 +40,11 @@ When a reviewer-coworker (a delegated reviewer) produces the review doc the appr
 
 ---
 
-**Source learnings (9):**
+## Patch-mode reviews: new files, a dirty shared checkout, and early attachments
+
+Three traps surfaced in the slang#13273 session (2026-09-27). First, patch mode leaves out new files: `slang-pr-review-runner/scripts/compose-and-run.sh:113` and `slang-clarity-review-runner/scripts/run-clarity.sh:185` both run `git apply` and then `git commit -am`, and `-a` stages only tracked files, so a file the patch creates (usually the new `tests/...slang` regression test) stays untracked and is missing from the diff Reviewers A and C review; after applying `fix-13273.patch`, `tests/bugs/gh-13273.slang` was still `??`. The fix is `git apply --index` (or `git add -A`) before the commit, and the scripts have not been changed yet. Second, Reviewer A's patch mode aborts within seconds when the shared `/workspace/agent/slang` checkout holds untracked files that also exist on `origin/master`, because `git checkout -b patch-review-* origin/master` refuses to overwrite them. Run it in its own worktree instead (`git worktree add --detach /workspace/agent/wt-<N>-revA origin/master`, then `REPO_ROOT=/workspace/agent/wt-<N>-revA compose-and-run.sh ...`), and leave the untracked files alone, since they belong to someone else. Third, an attachment from slang-fixer is not a review request unless the message says so: the fixer sends the patch and PR body ahead of time while its codex-critique gate is pending, and the auto-route hook still starts `/slang-pr-review`, so read what the message asks for before starting; the explicit request follows once the gate clears [slang-reviewer: patch mode drops new files; unrequested fixer attachments aren't review requests](../learnings/1790504316526-slang-reviewer-patch-mode-drops-new-files-unreques.md).
+
+**Source learnings (10):**
 
 - [[approver/infra-abstain] harvest exit-0 on SECONDARY (CodeRabbit) while production review check-run still in_progress = wait + re-harvest, don't settle for fallback tier](../learnings/1784113859103-approver-infra-abstain-harvest-exit-0-on-secondary.md)
 - [[approver/infra-abstain] harvest exit-0 can pick CodeRabbit secondary while the primary prod review is still in_progress — re-harvest, do not settle](../learnings/1784117112458-approver-infra-abstain-harvest-exit-0-can-pick-cod.md)
@@ -50,5 +55,6 @@ When a reviewer-coworker (a delegated reviewer) produces the review doc the appr
 - [[approver/infra-abstain] reviewer-coworker review-doc omits contract-required commit_id + _approver_result → commit_match UNEVALUABLE → ABSTAIN_INFRA](../learnings/1784186159657-approver-infra-abstain-reviewer-coworker-review-do.md)
 - [[approver/infra-abstain] JOIN: commit_id-omission infra-abstain (slang#12055) merged-APPROVED at exact decided head, gap merged over — the staging defect cost a decision on a clean PR](../learnings/1784197707754-approver-infra-abstain-join-commit-id-omission-inf.md)
 - [[approver/infra-abstain] CORRECTION+SUPERSEDES — slang#12055 commit_id-omission abstain is FIXED via Option 1 (delegate path retired), NOT an open 'stamp the handoff' task](../learnings/1784197928722-approver-infra-abstain-correction-supersedes-slang.md)
+- [slang-reviewer: patch mode drops new files; unrequested fixer attachments aren't review requests](../learnings/1790504316526-slang-reviewer-patch-mode-drops-new-files-unreques.md) — `commit -am` leaves the new test untracked; dirty shared checkout aborts Reviewer A; early fixer attachments are context, not requests.
 </content>
 </invoke>

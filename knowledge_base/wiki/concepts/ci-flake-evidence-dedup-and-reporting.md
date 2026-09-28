@@ -3,7 +3,7 @@ title: "CI Flake — Evidence Dedup, Reporting & Health-Claim Integrity"
 type: concept
 group: ci-tooling
 tags: [ci, flake, dedup, run-id, reporting, escalation, classification, health-dashboard, memoized-verdict, slang]
-source_count: 19
+source_count: 21
 ---
 
 # CI Flake — Evidence Dedup, Reporting & Health-Claim Integrity
@@ -25,6 +25,7 @@ How to turn raw flake evidence into a trustworthy report: dedup log-derived coun
 - **Verify the CONSEQUENCE at its own surface.** A wedged *run* is not a wedged *outcome*; an all-green dashboard can mean a stopped pipeline (ask *did work flow?*); the health-claim discriminator is terminal-vs-non-terminal, not "smallest bucket."
 - **Any memoized verdict needs an invalidation trigger for every input that can change the answer** — a skip mark voided only on head-sha change is blind to a fresh run on the same sha; add a per-sweep freshness test and a planted negative control.
 - **A durable record is not a due action, and a guard's retirement condition is part of its design** — an armed check needs a consumer on the sweep's emit list, and a settled measurement needs a permanent home (as-of stamp + population + reproduction basis + invalidation trigger) that the guard's lifetime doesn't bound.
+- "Nightly green" must name the workflow: Slang has several nightlies (Slang Test with agentic-tests, VKGLCTS, MDL Perf, gcc11/glibc Release, weekly CMake Options), and one green run says nothing about the others.
 
 ## Flake Evidence Dedup
 
@@ -70,7 +71,11 @@ A memoized CI verdict ("skip this PR, logs expired") voided only on **head-sha c
 
 Generalizing: **any memoized verdict needs an invalidation trigger for every input that can change the answer**, not just the most obvious one. The same shape recurs as *a durable record is not a due action* — an armed nightly-CI monitor with correct coverage still resolved silently because no sweep step read it; making a check *durable* (compaction-proof ledger note) does not make it *due* (on the sweep's own emit list). And *a guard's retirement condition is part of its design* — a figure protected by an armed check regressed a third time the moment the check correctly retired, because a **settled** measurement outlives the question that produced it and needs a permanent home (as-of stamp + population + reproduction basis + invalidation trigger, none optional) that the guard's lifetime doesn't bound ([a durable record is not a due action](../learnings/1786257122553-a-durable-record-is-not-a-due-action-armed-checks-.md), [a guard's retirement condition is part of its design](../learnings/1786264054032-a-guard-s-retirement-condition-is-part-of-its-desi.md)).
 
-**Source learnings (19):**
+## "Nightly green" names a workflow, not the nightlies
+
+"The nightly" is not one thing. shader-slang/slang schedules `Nightly Slang Test` (whose `agentic-tests` job runs the `docs/generated/tests` suite), `Nightly Slang VKGLCTS Test`, `Nightly MDL Perf Test` (its `Check trend` step fails on compile-time regressions against the trailing median), `ubuntu18-gcc11 Release`, `Linux glibc 2.28 Release`, and the weekly `CMake Options`. On 2026-09-24 the maintainer seat reported "Nightly GREEN" from VKGLCTS alone and Main relayed it to the operator, while `Nightly Slang Test` had been red since 09-23 on `docs/generated/tests/design/ir-reference/metadata/debug-no-scope-emitted-without-operands.slang` and MDL Perf had gone red on 09-24; the seat caught its own error on 09-27. Before saying or relaying "nightly green", name the workflow that is green, and treat an unnamed "nightly green" as unverified for every other workflow ["Nightly green" is per-workflow: check every Slang nightly before relaying it](../learnings/1790509221208-nightly-green-is-per-workflow-check-every-slang-ni.md). The check works without GitHub auth (OneCLI `app_not_connected`; unauthenticated REST allows 60 core requests/hr and 10 searches/min): `actions/workflows/<id>/runs?per_page=10` gives each workflow's history, with ids from `actions/runs?created=>=DATE&status=failure` (URL-encode `>=` with `curl -G --data-urlencode`, or the body comes back empty); `check-runs/<job_id>/annotations` returns perf-regression lines such as `backend_matrix_glsl/compileInner 1.11x`; `curl -L .../actions/jobs/<job_id>/logs` downloads the full job log (302 → blob) to grep for `FAILED test`; and `compare/<last-green>...<first-red>` narrows the suspect commits in one call. To corroborate a "0 merged" search, check master `commits?since=` and `actions/runs?event=merge_group`, since an idle queue is not a failing queue [Slang "nightly green" must enumerate every nightly workflow; unauth GitHub REST fallback works](../learnings/1790509064349-slang-nightly-green-must-enumerate-every-nightly-w.md).
+
+**Source learnings (21):**
 - [Flaky-CI evidence: dedup by run id](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)
 - [Headline the dominant root-cause in babysitter reports](../learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)
 - [CI-integrity bug: detected failure logged but not recorded (stale init=Success)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
@@ -90,3 +95,5 @@ Generalizing: **any memoized verdict needs an invalidation trigger for every inp
 - [a durable record is not a due action — armed checks need a consumer on the report path](../learnings/1786257122553-a-durable-record-is-not-a-due-action-armed-checks-.md)
 - [a guard's retirement condition is part of its design — settled values need a home the guard's lifetime doesn't bound](../learnings/1786264054032-a-guard-s-retirement-condition-is-part-of-its-desi.md)
 - [CI babysitter: double-check PR numbers before naming which PR has which failure in reports — re-verify your own paraphrased facts at write time](../learnings/1789424667165-ci-babysitter-double-check-pr-numbers-before-namin.md)
+- ["Nightly green" is per-workflow: check every Slang nightly before relaying it](../learnings/1790509221208-nightly-green-is-per-workflow-check-every-slang-ni.md) — a VKGLCTS-only green was relayed while Nightly Slang Test and MDL Perf were red.
+- [Slang "nightly green" must enumerate every nightly workflow; unauth GitHub REST fallback works](../learnings/1790509064349-slang-nightly-green-must-enumerate-every-nightly-w.md) — per-workflow run history, annotations, job logs and compare all work over unauthenticated REST.

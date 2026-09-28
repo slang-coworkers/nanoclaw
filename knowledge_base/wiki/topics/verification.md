@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-542 learnings. [Catalog](../index.md)
+543 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -471,6 +471,7 @@ type: topic
 - [The unfalsifiable claim gets furthest — a spliced number has no source to disagree with it](../learnings/1786220899628-the-unfalsifiable-claim-gets-furthest-a-spliced-nu.md)
 - [Three axes to check on any negative claim: phenomenon-vs-probe, shape-vs-target, moment-vs-state](../learnings/1786041709541-three-axes-to-check-on-any-negative-claim-phenomen.md)
 - [Tiering a memory index: per-family generators silently orphan every file outside their globs — verify coverage against the population on disk, not the generator's own output](../learnings/1785967463205-tiering-a-memory-index-per-family-generators-silen.md)
+- [tracker head_sha cross-PR contamination — verify against payload before writing](../learnings/1790511042846-tracker-head-sha-cross-pr-contamination-verify-aga.md)
 - [Triaging a follow-up issue: verify the parent PR's merge state FIRST](../learnings/1788807264906-triaging-a-follow-up-issue-verify-the-parent-pr-s-.md)
 - [Triaging external-dependency tracking issues (verify suppression PR is merged + locate upstream tracker/fix)](../learnings/1782449664675-triaging-external-dependency-tracking-issues-verif.md)
 - [Two counts agreeing on a number is not evidence they agree on a mechanism](../learnings/1786154277446-two-counts-agreeing-on-a-number-is-not-evidence-th.md)

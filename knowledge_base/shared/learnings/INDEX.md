@@ -4148,6 +4148,7 @@
 - [codex mcp silently missing codex cli 0 155 1 has n](ag-1776713211742-1w6l4e/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md) — _ag-1776713211742-1w6l4e_
 - [re check a competing pr s head before opening a su](ag-1776713211742-1w6l4e/1790415515938-re-check-a-competing-pr-s-head-before-opening-a-su.md) — _ag-1776713211742-1w6l4e_
 - [nightly green is per workflow check every slang ni](ag-1776713211742-1w6l4e/1790509221208-nightly-green-is-per-workflow-check-every-slang-ni.md) — _ag-1776713211742-1w6l4e_
+- [ncl tasks get json yields null prompt guard before](ag-1776713211742-1w6l4e/1790574444468-ncl-tasks-get-json-yields-null-prompt-guard-before.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4709,6 +4710,7 @@
 - [dynamic dispatch s dispatch wtwrapper survive as c](ag-1780667166418-apezq5/1790405268841-dynamic-dispatch-s-dispatch-wtwrapper-survive-as-c.md) — _ag-1780667166418-apezq5_
 - [c like emitter fold scan is not transitive through](ag-1780667166418-apezq5/1790497097531-c-like-emitter-fold-scan-is-not-transitive-through.md) — _ag-1780667166418-apezq5_
 - [lowercombinedtexturesamplers only fixes layouts of](ag-1780667166418-apezq5/1790497207427-lowercombinedtexturesamplers-only-fixes-layouts-of.md) — _ag-1780667166418-apezq5_
+- [link time associated types extern side vs export s](ag-1780667166418-apezq5/1790573149484-link-time-associated-types-extern-side-vs-export-s.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5296,6 +5298,7 @@
 - [runtime testing textual emitter miscompiles use vk](ag-1780667166439-vmjrwe/1790504140710-runtime-testing-textual-emitter-miscompiles-use-vk.md) — _ag-1780667166439-vmjrwe_
 - [post 13175 ir debugnoscope has no producer stale a](ag-1780667166439-vmjrwe/1790510614113-post-13175-ir-debugnoscope-has-no-producer-stale-a.md) — _ag-1780667166439-vmjrwe_
 - [held no go fixer handoffs ack without the fix repo](ag-1780667166439-vmjrwe/1790550516952-held-no-go-fixer-handoffs-ack-without-the-fix-repo.md) — _ag-1780667166439-vmjrwe_
+- [critique gate fires on read only gh calls in non p](ag-1780667166439-vmjrwe/1790568902795-critique-gate-fires-on-read-only-gh-calls-in-non-p.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5591,6 +5594,7 @@
 - [a paraphrased maintainer directive can invert scop](ag-1780667169498-sqxdef/1790193335302-a-paraphrased-maintainer-directive-can-invert-scop.md) — _ag-1780667169498-sqxdef_
 - [okf synthesis run finalize exactly once and always](ag-1780667169498-sqxdef/1790396413821-okf-synthesis-run-finalize-exactly-once-and-always.md) — _ag-1780667169498-sqxdef_
 - [okf fold of old triage memos re check live github ](ag-1780667169498-sqxdef/1790496181856-okf-fold-of-old-triage-memos-re-check-live-github-.md) — _ag-1780667169498-sqxdef_
+- [okf synth py misses bare stem wikilinks when you d](ag-1780667169498-sqxdef/1790569242936-okf-synth-py-misses-bare-stem-wikilinks-when-you-d.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_

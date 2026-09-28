@@ -3,7 +3,7 @@ title: Slang Dev Craft — Git, Build, Blast-Radius Grep, and FileCheck
 type: concept
 group: misc
 tags: [git, rebase, pathspec, ninja-build, filecheck, slang-test, blast-radius, grep, benchmark]
-source_count: 13
+source_count: 12
 ---
 
 ## TL;DR
@@ -77,13 +77,12 @@ slang-test reject absolute `-o` paths). Grepping only `tests/**` found 3 affecte
 `.slang` files under `docs/generated/tests/` that nightly CI runs — a blanket reject would be a
 ~1000-file regression. When a change forbids/changes a token or convention, grep the ENTIRE repo (all
 test trees, generated dirs, docs) and check whether a `_meta`/prompt/doc file *mandates* the pattern;
-`-o -` is NOT equivalent to `-o /dev/null` (it mixes target text with the IR dump). The second atom
-adds that a host-conditional exemption (`/dev/null` exact-match on POSIX, `NUL` case-insensitive on
-Windows) changes the blast radius PER platform — the Linux-only nightly tree was unaffected but the
+`-o -` is NOT equivalent to `-o /dev/null` (it mixes target text with the IR dump). A
+host-conditional exemption (`/dev/null` exact-match on POSIX, `NUL` case-insensitive on Windows)
+also changes the blast radius PER platform — the Linux-only nightly tree was unaffected but the
 cross-platform every-PR suite was not, so enumerate a guard's effect on EACH platform's CI leg
-separately ([a patch-scoped grep undercounts a repo-wide idiom's blast
-radius](../learnings/1787608994784-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-.md),
-[host-conditional guards need per-platform blast-radius
+separately ([a patch-scoped grep undercounts a repo-wide idiom; host-conditional guards need
+per-platform blast-radius
 checks](../learnings/1787659716816-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-.md)).
 
 A scratch PR-body file (`.pr-body-11317.md`) leaked into a fix commit via a blanket `git add
@@ -133,14 +132,13 @@ compounds and overflows float32). And an import-time regression guard should pin
 filler swap must stay op-count and growth-character
 neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md)).
 
-**Source learnings (13):**
+**Source learnings (12):**
 - [Scratch PR-body file can leak into the commit via git add during --amend](../learnings/1787566872697-scratch-pr-body-file-can-leak-into-the-commit-via-.md) — `git show --stat HEAD` after every commit; CodeRabbit's file list is a free check.
 - [Slang build: never run two ninja builds in the same build/ dir](../learnings/1787615532680-slang-build-never-run-two-ninja-builds-in-the-same.md) — objcopy 'input file is empty' race; kill by pid+cwd, run exactly one serialized build.
 - [git checkout master -- <file> restores from master TIP, not the PR merge-base](../learnings/1787637340749-git-checkout-master-file-restores-from-master-tip-.md) — restore from `git merge-base`; verify with the three-dot diff.
 - [git default pathspec 'dir/*.cpp' silently matches nothing — a false-clean diff](../learnings/1787658137006-git-default-pathspec-dir-cpp-silently-matches-noth.md) — use no-pathspec changeset or byte-hash; three-dot vs two-dot for rebase artifacts.
 - [Rebase onto current origin/master BEFORE the CODE critique, not after the fix is "done"](../learnings/1787661100185-rebase-onto-current-origin-master-before-the-code-.md) — a no-conflict rebase proves text merged, not that behaviors compose.
 - [A large rebase can silently revert a recently-landed sibling PR](../learnings/1787673424885-a-large-rebase-can-silently-revert-a-recently-land.md) — verify net effect at the PR head, not by eyeballing hunk +/- direction.
-- [A patch-scoped grep undercounts a repo-wide idiom's blast radius](../learnings/1787608994784-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-.md) — a convention lives wherever it's documented; docs/generated/tests runs nightly.
 - [A patch-scoped grep undercounts a repo-wide idiom; host-conditional guards need per-platform checks](../learnings/1787659716816-a-patch-scoped-grep-undercounts-a-repo-wide-idiom-.md) — a per-platform exemption changes the blast radius per CI leg.
 - [FileCheck CHECK-LABEL blocks must be in emit order, not source order](../learnings/1787564174427-filecheck-check-label-blocks-must-be-in-emit-order.md) — dump the emission order and reorder; a partial fail is a test-ordering tell.
 - [FileCheck CHECK-NOT is region-scoped — use a dedicated NOT-only prefix](../learnings/1787629056398-filecheck-check-not-is-region-scoped-use-a-dedicat.md) — an absence-only prefix scans the entire output; prove it with a must-fail mutation.
