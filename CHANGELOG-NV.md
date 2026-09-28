@@ -6,15 +6,37 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 629 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 261 |
-| `nv-slang` | slang project spine, skills, workflows | 162 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 91 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 70 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 635 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 262 |
+| `nv-slang` | slang project spine, skills, workflows | 163 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 92 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 71 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-28
+
+### nv-main (6 PRs)
+- **#1737** `mailbox GC + webhook inbox: no age-based pruning unless an operator opts in (system-only when enabled)`
+- **#1750** `fix(gateway): register the OneCLI provider so the host can boot`
+- **#1763** `ops(metrics): host-health signals from the 09-26 outage + Grafana alert rules`
+- **#1764** `ops(metrics): first-run fixes — /proc liveness, breaker semantics, rules-only alert provisioning`
+- **#1765** `` container: pin @openai/codex to 0.153.4 — last release with `codex mcp-server` (restores mcp__codex__codex) ``
+- **#1766** `` runner: codex MCP bridge over `codex app-server` (drop-in for the removed `codex mcp-server`) ``
+
+### nv-dashboard (1 PRs)
+- **#1758** `Merge nv-main into nv-dashboard — register the OneCLI gateway provider`
+
+### nv-slang (1 PRs)
+- **#1759** `Merge nv-main into nv-slang — register the OneCLI gateway provider`
+
+### nv-slangpy (1 PRs)
+- **#1760** `Merge nv-main into nv-slangpy — register the OneCLI gateway provider`
+
+### nv-nanoclaw (1 PRs)
+- **#1761** `Merge nv-main into nv-nanoclaw — register the OneCLI gateway provider`
 
 ## 📅 2026-09-27
 
