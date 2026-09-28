@@ -9,7 +9,7 @@
   ],
   "timezone": "browser",
   "schemaVersion": 39,
-  "version": 2,
+  "version": 3,
   "refresh": "1m",
   "time": {
     "from": "now-6h",
@@ -3659,6 +3659,995 @@
           "resultFormat": "table"
         }
       ]
+    },
+    {
+      "id": 57,
+      "type": "row",
+      "title": "\ud83d\udea8 Incident signals \u2014 the 2026-09-26 outage, as it would have looked (see reports/prod-outage-2026-09-26-postmortem.html)",
+      "collapsed": false,
+      "gridPos": {
+        "x": 0,
+        "y": 113,
+        "w": 24,
+        "h": 1
+      },
+      "panels": []
+    },
+    {
+      "id": 58,
+      "type": "stat",
+      "title": "Host up",
+      "description": "pidfile PID alive. false = the host process is down (crash loop, tripwire, deploy).",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 114,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"host_up\") FROM \"nanoclaw_host\" WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 59,
+      "type": "stat",
+      "title": "Host uptime",
+      "description": "Age of the host process. A young process for hours = crash loop.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 3,
+        "y": 114,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"host_uptime_s\") FROM \"nanoclaw_host\" WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 0
+              },
+              {
+                "color": "green",
+                "value": 600
+              }
+            ]
+          },
+          "unit": "s"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 60,
+      "type": "stat",
+      "title": "Host restarts (total)",
+      "description": "PID changes seen by the collector since its state file was created.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 114,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"host_restarts_total\") FROM \"nanoclaw_host\" WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 3
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 61,
+      "type": "stat",
+      "title": "Circuit-breaker attempt",
+      "description": "data/circuit-breaker.json only exists while startups keep failing. Anything > 0 is an outage in progress.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 9,
+        "y": 114,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"breaker_attempt\") FROM \"nanoclaw_host\" WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 62,
+      "type": "stat",
+      "title": "Sweep tick (last)",
+      "description": "Synchronous work per 60 s sweep. Healthy 1-3 s (first tick after a restart ~20 s). 19 s sustained = the stall.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 114,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"sweep_tick_ms\") FROM \"nanoclaw_host\" WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 5000
+              },
+              {
+                "color": "red",
+                "value": 10000
+              }
+            ]
+          },
+          "unit": "ms"
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 63,
+      "type": "stat",
+      "title": "Wake failures / min",
+      "description": "wakeContainer failed lines in the last collector run. 288-506 per window during the incident; 0 healthy.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 15,
+        "y": 114,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"wake_failed\") FROM \"nanoclaw_host\" WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1
+              },
+              {
+                "color": "red",
+                "value": 5
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 64,
+      "type": "stat",
+      "title": "Spawns / min",
+      "description": "Containers started in the last run. 0 for a long time WHILE wakes > 0 = nothing can start.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 18,
+        "y": 114,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"spawns\") FROM \"nanoclaw_host\" WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 65,
+      "type": "stat",
+      "title": "Webhook inbox parked",
+      "description": "GitHub deliveries that exhausted their replay budget \u2014 an operator must redeliver. Failed-but-retrying rows are not counted here.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 21,
+        "y": 114,
+        "w": 3,
+        "h": 4
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"inbox_parked\") FROM \"nanoclaw_host\" WHERE $timeFilter",
+          "rawQuery": true,
+          "resultFormat": "time_series"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value",
+        "justifyMode": "center"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 66,
+      "type": "timeseries",
+      "title": "Sweep tick duration (ms, max per interval)",
+      "description": "Left axis: ms of synchronous work per sweep. 2026-09-27 before #1731: 19 s every tick, and gaps of 40-60 s between log lines.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 118,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT max(\"sweep_tick_ms_max\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "tick ms"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT max(\"sweep_full_passes\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "full passes"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT max(\"sweep_quiet_skips\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "quiet skips"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 10000
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 67,
+      "type": "timeseries",
+      "title": "Wakes vs spawns vs wake failures (per minute)",
+      "description": "Healthy: spawns track wakes, failures 0. Incident: wakes \u226b spawns = 0, failures rising.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 118,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT sum(\"wakes\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "wakes"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT sum(\"spawns\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "spawns"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT sum(\"wake_failed\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "wake failed"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT sum(\"stale_restarts\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "stale-CLAUDE.md respawns"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT sum(\"quarantined\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "quarantined"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 68,
+      "type": "timeseries",
+      "title": "Webhook inbox rows by state",
+      "description": "Every verified GitHub delivery is a row (#1736). parked > 0 needs a human; replays > 0 means the drain recovered something.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 126,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"inbox_done\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "done"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"inbox_failed\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "failed (retrying)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"inbox_parked\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "parked"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"inbox_pending\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "pending"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT sum(\"inbox_replays\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "replays"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 69,
+      "type": "timeseries",
+      "title": "Mailbox growth",
+      "description": "Session inbound/outbound.db sizes. Latency no longer depends on this (#1731-#1735) but disk does; one session reached 2.6 GB. No pruning runs unless an operator sets a retention.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 126,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"mailbox_bytes_total\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "total bytes (all sessions)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"mailbox_bytes_max\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "largest single DB"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false,
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          },
+          "unit": "bytes",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 1073741824
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 70,
+      "type": "timeseries",
+      "title": "Host process: uptime and restarts",
+      "description": "09-26 16:02Z \u2192 09-27 07:56Z would show: uptime sawtooth never exceeding ~30 s, FATAL every attempt, breaker attempt climbing to 66.",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 134,
+        "w": 12,
+        "h": 8
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT last(\"host_uptime_s\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "uptime s"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT sum(\"host_restart\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "restart events"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT max(\"breaker_attempt\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "breaker attempt"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT sum(\"fatal\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "FATAL lines"
+        },
+        {
+          "refId": "E",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "query": "SELECT sum(\"heap_oom\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(none)",
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "heap OOM lines"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 71,
+      "type": "alertlist",
+      "title": "Firing NanoClaw alerts",
+      "gridPos": {
+        "x": 12,
+        "y": 134,
+        "w": 12,
+        "h": 8
+      },
+      "options": {
+        "alertName": "",
+        "dashboardAlerts": false,
+        "groupBy": [],
+        "groupMode": "default",
+        "maxItems": 20,
+        "sortOrder": 1,
+        "stateFilter": {
+          "firing": true,
+          "pending": true,
+          "noData": false,
+          "normal": false,
+          "error": true
+        },
+        "viewMode": "list",
+        "folder": null,
+        "alertInstanceLabelFilter": "team=nanoclaw"
+      },
+      "description": "Rules from ops/grafana/alerting/nanoclaw-alerts.yaml. Notifications go to the nanoclaw-ops contact point \u2014 wire a Slack webhook there."
     }
   ],
   "templating": {
