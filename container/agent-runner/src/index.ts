@@ -45,7 +45,7 @@ import { getAgentMailbox, readMailboxContext } from './mailbox/index.js';
 // Providers barrel — each enabled provider self-registers on import.
 // Provider skills append imports to providers/index.ts.
 import './providers/index.js';
-import { buildCodexMcpServer } from './codex-mcp-server.js';
+import { buildCodexMcpServer, probeCodexMcpServer } from './codex-mcp-server.js';
 import { createProvider } from './providers/factory.js';
 import { parseAllowedMcpTools } from './providers/claude.js';
 // Provider-contracts barrel — each provider's runtime contract attaches to its
@@ -138,6 +138,15 @@ async function main(): Promise<void> {
     },
     codex: buildCodexMcpServer(process.env),
   };
+  {
+    // Say it loudly when the codex child cannot exist (see probeCodexMcpServer).
+    const probe = probeCodexMcpServer();
+    log(
+      probe.ok
+        ? `codex MCP child: ${probe.version} (${probe.detail})`
+        : `ERROR codex MCP child unavailable: ${probe.version} — ${probe.detail}; mcp__codex__codex will NOT exist in this session`,
+    );
+  }
   // Snapshotted from the seed above, before anything configured is merged in.
   // Both merges below consult it: a seeded name denotes a runtime capability
   // (nanoclaw the mandatory message transport, codex the reasoning child), so
