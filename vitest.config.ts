@@ -12,6 +12,11 @@ export default defineConfig({
       'scripts/**/*.test.ts',
       'dashboard/**/*.test.ts',
       'container/*.test.ts',
+      // A gateway skill's own scripts, tested where they live. NOT its
+      // `payload/` — those files import as if already installed under `src/`,
+      // so they only resolve once the skill has been applied, and the skill
+      // runs them itself as its `nc:run effect:test` step.
+      '.claude/skills/*/scripts/**/*.test.ts',
     ],
     // Both are load-bearing and non-overlapping: test-setup registers the
     // mailbox composition (without it every session test throws "No agent
