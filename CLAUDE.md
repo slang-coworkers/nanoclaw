@@ -374,6 +374,7 @@ The agent container runs on **Bun**; the host runs on **Node** (pnpm). They comm
 **Gotchas — trigger + action:**
 
 - **Adding or bumping a runtime dep in `container/agent-runner/`** → edit `package.json`, then `cd container/agent-runner && bun install` and commit the updated `bun.lock`. Do not run `pnpm install` there — agent-runner is not a pnpm workspace.
+- **Bumping `@openai/codex` in `container/cli-tools.json`** → the runner's codex MCP child is `codex mcp-server` (`container/agent-runner/src/codex-mcp-server.ts`), which upstream removed after **0.153.4**. The image build fails on a pin without it (`install-cli-tools.sh`), and the runner logs `codex MCP child unavailable` at start. Going past 0.153.4 means first replacing that child with an MCP→`codex app-server` bridge.
 - **Bumping `@anthropic-ai/claude-agent-sdk`, `@modelcontextprotocol/sdk`, or any agent-runner runtime dep** → no `minimumReleaseAge` policy applies to this tree. Check the release date on npm, pin deliberately, never `bun update` blindly.
 - **Writing a new named-param SQL insert/update in the container** → use `$name` in both SQL and JS keys: `.run({ $id: msg.id })`. `bun:sqlite` does not auto-strip the prefix the way `better-sqlite3` does on the host. Positional `?` params work normally.
 - **Adding a test in `container/agent-runner/src/`** → import from `bun:test`, not `vitest`. Vitest runs on Node and can't load `bun:sqlite`. `vitest.config.ts` excludes this tree.
