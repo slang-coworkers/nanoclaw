@@ -2524,16 +2524,19 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // system rows the host has already delivered (never chat replies), and acks for inbound rows that no
   // longer exist, older than the retention window. Prod 2026-09-27: one
   // session had 193k delivered rows the host re-read every second.
+  // OFF unless an operator sets NANOCLAW_MAILBOX_RETENTION_DAYS (operator
+  // decision 2026-09-28: the mailbox is the persistence layer for every open
+  // issue/PR chain — nothing is pruned by age by default).
   try {
     const retentionDays =
-      Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0
-        ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS)
-        : 30;
-    const gc = gcOutboundHistory(new Date(Date.now() - retentionDays * 86_400_000).toISOString());
-    if (gc.messagesOut > 0 || gc.acks > 0) {
-      log(
-        `Outbound history GC: removed ${gc.messagesOut} delivered system messages_out rows, ${gc.acks} orphan acks (>${retentionDays}d)`,
-      );
+      Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0 ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) : 0;
+    if (retentionDays > 0) {
+      const gc = gcOutboundHistory(new Date(Date.now() - retentionDays * 86_400_000).toISOString());
+      if (gc.messagesOut > 0 || gc.acks > 0) {
+        log(
+          `Outbound history GC: removed ${gc.messagesOut} delivered system messages_out rows, ${gc.acks} orphan acks (>${retentionDays}d)`,
+        );
+      }
     }
   } catch (err) {
     log(`Outbound history GC skipped: ${err instanceof Error ? err.message : String(err)}`);
