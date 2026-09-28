@@ -47,8 +47,8 @@ groups:
         for: 2m
         labels: { team: nanoclaw, severity: critical }
         annotations:
-          summary: The host process is not running (no live pidfile) for 2 minutes.
-          runbook: Check `systemctl --user status nanoclaw`, logs/nanoclaw.error.log for FATAL / tripwire / circuit breaker. 09-26: heap OOM crash loop; 09-28: empty gateway registration.
+          summary: 'The host process is not running (no live pidfile) for 2 minutes.'
+          runbook: 'Check `systemctl --user status nanoclaw`, logs/nanoclaw.error.log for FATAL / tripwire / circuit breaker. 09-26: heap OOM crash loop; 09-28: empty gateway registration.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -66,8 +66,8 @@ groups:
         for: 1m
         labels: { team: nanoclaw, severity: critical }
         annotations:
-          summary: data/circuit-breaker.json shows repeated failed startups (attempt {{ $values.B }}).
-          runbook: The host dies on every start. Read the FATAL line in logs/nanoclaw.error.log; if it names a cli_request, #1733 should have quarantined it; if "No gateway provider", installed.ts lost its onecli import.
+          summary: 'data/circuit-breaker.json shows repeated failed startups (attempt {{ $values.B }}).'
+          runbook: 'The host dies on every start. Read the FATAL line in logs/nanoclaw.error.log; if it names a cli_request, #1733 should have quarantined it; if "No gateway provider", installed.ts lost its onecli import.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -86,7 +86,7 @@ groups:
         labels: { team: nanoclaw, severity: warning }
         annotations:
           summary: '{{ $values.B }} host restarts in the last hour.'
-          runbook: One restart is a deploy. Several in an hour is a crash loop that the breaker has not caught yet, or a deploy gone wrong.
+          runbook: 'One restart is a deploy. Several in an hour is a crash loop that the breaker has not caught yet, or a deploy gone wrong.'
         data:
           - refId: A
             relativeTimeRange: { from: 3600, to: 0 }
@@ -106,7 +106,7 @@ groups:
         labels: { team: nanoclaw, severity: warning }
         annotations:
           summary: 'Sweep tick {{ $values.B }} ms — the event loop is doing seconds of synchronous work per minute.'
-          runbook: Healthy is 1-3 s (the first tick after a restart is ~20 s and is excluded by the 5 m hold). Look for a session whose mailbox reads are unbounded (strace the host, see the post-mortem §4b).
+          runbook: 'Healthy is 1-3 s (the first tick after a restart is ~20 s and is excluded by the 5 m hold). Look for a session whose mailbox reads are unbounded (strace the host, see the post-mortem §4b).'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -124,8 +124,8 @@ groups:
         for: 5m
         labels: { team: nanoclaw, severity: critical }
         annotations:
-          summary: No "Sweep tick" log line in 5 minutes while the host is up — the event loop is frozen or the sweep is stuck.
-          runbook: 09-27 08:00-11:27Z looked exactly like this between ticks (40-60 s gaps, then whole ticks missing). Capture a CPU profile (SIGUSR1 + inspector) before restarting.
+          summary: 'No "Sweep tick" log line in 5 minutes while the host is up — the event loop is frozen or the sweep is stuck.'
+          runbook: '09-27 08:00-11:27Z looked exactly like this between ticks (40-60 s gaps, then whole ticks missing). Capture a CPU profile (SIGUSR1 + inspector) before restarting.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -152,7 +152,7 @@ groups:
         labels: { team: nanoclaw, severity: critical }
         annotations:
           summary: '{{ $values.B }} wakeContainer failures per minute for 5 minutes — new work cannot start.'
-          runbook: 09-27 this was 288-506 per 6 min with OneCLI "aborted due to timeout" — OneCLI was fine, the event loop was frozen. Check sweep tick first; then docker; then OneCLI :10254.
+          runbook: '09-27 this was 288-506 per 6 min with OneCLI "aborted due to timeout" — OneCLI was fine, the event loop was frozen. Check sweep tick first; then docker; then OneCLI :10254.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
@@ -170,8 +170,8 @@ groups:
         for: 0s
         labels: { team: nanoclaw, severity: warning }
         annotations:
-          summary: A cli_request was started twice without completing (the host died running it) and has been parked (#1733).
-          runbook: Find "System action quarantined" in logs/nanoclaw.error.log; the request id and session are in the line. The agent got an error frame; nothing replays it.
+          summary: 'A cli_request was started twice without completing (the host died running it) and has been parked (#1733).'
+          runbook: 'Find "System action quarantined" in logs/nanoclaw.error.log; the request id and session are in the line. The agent got an error frame; nothing replays it.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -190,8 +190,8 @@ groups:
         for: 2m
         labels: { team: nanoclaw, severity: critical }
         annotations:
-          summary: Port 3841 not accepting connections for 2 minutes — GitHub deliveries are failing (GitHub does not retry).
-          runbook: Once the host is back, replay from the App delivery log (python3 /tmp/prod-deploy/gh-redeliver.py) and check webhook_inbox.
+          summary: 'Port 3841 not accepting connections for 2 minutes — GitHub deliveries are failing (GitHub does not retry).'
+          runbook: 'Once the host is back, replay from the App delivery log (python3 /tmp/prod-deploy/gh-redeliver.py) and check webhook_inbox.'
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
@@ -248,7 +248,7 @@ groups:
         for: 5m
         labels: { team: nanoclaw, severity: warning }
         annotations:
-          summary: No nanoclaw_collector point in 5 minutes — every other rule here is blind.
+          summary: 'No nanoclaw_collector point in 5 minutes — every other rule here is blind.'
           runbook: 'systemctl status nanoclaw-metrics.timer; journalctl -u nanoclaw-metrics -n 20; /tmp/nanoclaw-metrics.collector.err'
         data:
           - refId: A
