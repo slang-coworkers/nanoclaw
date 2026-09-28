@@ -101,3 +101,18 @@ set -- $(specs)
 if [ "$#" -gt 0 ]; then
   pnpm install -g "$@"
 fi
+
+# The agent-runner's codex MCP child is codex-mcp-bridge.ts, which drives `codex app-server`
+# (codex's own `mcp-server` subcommand was removed upstream after 0.153.4 — prod ran three days with
+# no codex tool and nothing red, 2026-09-25..28). An image whose codex has no `app-server` would
+# boot fine and every coworker would silently lose `mcp__codex__codex`. Fail the build instead.
+if command -v codex >/dev/null 2>&1; then
+  codex_ver=$(codex --version 2>/dev/null | tail -n 1)
+  if codex --help 2>/dev/null | grep -qE '^[[:space:]]+app-server([[:space:]]|$)'; then
+    echo "codex app-server subcommand verified (${codex_ver})"
+  else
+    echo "FATAL: ${codex_ver} has no 'app-server' subcommand, so the runner's codex MCP bridge cannot start." >&2
+    echo "       Check the @openai/codex pin in cli-tools.json (app-server exists from 0.5x onwards)." >&2
+    exit 1
+  fi
+fi
