@@ -26,6 +26,7 @@ import { realCli, validateRuntimeName, type Cli, type SupervisedProcess } from '
 import { JsonDocumentStream } from './json-stream.js';
 import {
   LABELS,
+  isGatewayOwned,
   asFailureError,
   labelsForKey,
   specInvalid,
@@ -375,6 +376,7 @@ export class DockerSessionDriver implements SessionDriver {
   async reapResidue(installSlug: string): Promise<void> {
     // Containers first: an auxiliary container whose host died has no owner left
     // to close it. Only non-running ones — an adopted session's are still serving it.
+    // A stopped gateway is kept: removing it leaves nothing to recreate it.
     try {
       const out = this.#cli.run([
         'ps',
@@ -388,9 +390,15 @@ export class DockerSessionDriver implements SessionDriver {
         '--filter',
         'status=dead',
         '--format',
-        '{{.Names}}',
+        `{{.Names}}|{{.Label "${LABELS.session}"}}|{{.Label "${LABELS.role}"}}`,
       ]);
-      const stale = out.trim().split('\n').filter(Boolean);
+      const stale = out
+        .trim()
+        .split('\n')
+        .filter(Boolean)
+        .map((line) => line.split('|'))
+        .filter(([, sessionId, role]) => !isGatewayOwned(sessionId, role))
+        .map(([name]) => name);
       for (const name of stale) {
         try {
           this.#cli.run(['rm', '--force', validateRuntimeName(name, 'container')]);
@@ -403,8 +411,8 @@ export class DockerSessionDriver implements SessionDriver {
       log.warn('Failed to clean up orphaned containers', { err });
     }
 
-    // Pre-seam residue carries only the install label. A named role without a
-    // session belongs to an installed gateway's own lifecycle and must survive
+    // Session-less residue: pre-seam containers carry only the install label.
+    // Gateway-owned containers are the one session-less kind that must survive
     // driver reconciliation.
     try {
       const out = this.#cli.run([
@@ -419,7 +427,7 @@ export class DockerSessionDriver implements SessionDriver {
         .split('\n')
         .filter(Boolean)
         .map((line) => line.split('|'))
-        .filter(([, sessionId, role]) => !sessionId && !role)
+        .filter(([, sessionId, role]) => !sessionId && !isGatewayOwned(sessionId, role))
         .map(([name]) => name);
       for (const name of preSeam) {
         try {
