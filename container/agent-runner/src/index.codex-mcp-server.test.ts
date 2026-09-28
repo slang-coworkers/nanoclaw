@@ -81,8 +81,14 @@ function gitAvailable(): boolean {
 describe('codex MCP child env — git write guard', () => {
   it('carries HOME/PATH plus exactly the GIT_CONFIG_* guard pairs', () => {
     const cfg = stdio(buildCodexMcpServer({ HOME: '/home/node', PATH: '/usr/bin' }));
-    expect(cfg.command).toBe('codex');
-    expect(cfg.env).toEqual({ HOME: '/home/node', PATH: '/usr/bin', ...EXPECTED_GIT_CONFIG });
+    expect(cfg.command).toBe('bun');
+    expect(cfg.args?.[0]).toBe('run');
+    expect(String(cfg.args?.[1])).toMatch(/codex-mcp-bridge\.ts$/);
+    // The bridge's env: HOME/PATH, the git guard, and the runner-computed -c overrides (JSON).
+    const { CODEX_MCP_BRIDGE_OVERRIDES, CODEX_MODEL: _model, ...rest } = cfg.env ?? {};
+    expect(rest).toEqual({ HOME: '/home/node', PATH: '/usr/bin', ...EXPECTED_GIT_CONFIG });
+    expect(Array.isArray(JSON.parse(String(CODEX_MCP_BRIDGE_OVERRIDES)))).toBe(true);
+    expect(JSON.parse(String(CODEX_MCP_BRIDGE_OVERRIDES))).toContain('sandbox_mode=danger-full-access');
     // No stray GIT_CONFIG_* beyond the count — git dies on a KEY without a VALUE.
     const gitKeys = Object.keys(cfg.env ?? {}).filter((k) => k.startsWith('GIT_CONFIG_'));
     expect(gitKeys.sort()).toEqual(Object.keys(EXPECTED_GIT_CONFIG).sort());
@@ -131,16 +137,14 @@ describe('codex MCP child env — git write guard', () => {
     expect(spawnEnv).toMatchObject({ ...EXPECTED_GIT_CONFIG, HTTPS_PROXY: 'http://tok@proxy:1' });
   });
 
-  it('forces include_only=[] and mirrors every pair as a TOML-string shell_environment_policy.set, before mcp-server', () => {
+  it('forces include_only=[] and mirrors every pair as a TOML-string shell_environment_policy.set, in the bridge overrides', () => {
     const cfg = stdio(buildCodexMcpServer({}));
-    const args = cfg.args ?? [];
-    expect(args[args.length - 1]).toBe('mcp-server');
-    // Every override is a `-c <k=v>` pair.
-    const overrides: string[] = [];
-    for (let i = 0; i < args.length - 1; i += 2) {
-      expect(args[i]).toBe('-c');
-      overrides.push(args[i + 1]);
-    }
+    // The bridge (codex-mcp-bridge.ts) receives the runner-computed `-c` overrides as JSON in
+    // its env and passes them to every `codex app-server` it spawns — the same list that used
+    // to precede `mcp-server` on the child's command line.
+    expect(cfg.command).toBe('bun');
+    const overrides = JSON.parse(String(cfg.env?.CODEX_MCP_BRIDGE_OVERRIDES)) as string[];
+    expect(Array.isArray(overrides)).toBe(true);
     const policyOverrides = codexGitGuardShellPolicyOverrides();
     // include_only=[] comes first: a config.toml include_only is applied after
     // `set` and would silently drop every pair — git would run unguarded.
@@ -236,7 +240,9 @@ describe('container/hooks/codex-git-guard/gitconfig (GIT_CONFIG_SYSTEM)', () => 
     const rendered = renderCodexGitGuardGitconfig();
     expect(rendered).toContain('[core]\n\thooksPath = /app/hooks/codex-git-guard\n');
     expect(rendered).toContain('[url "disabled://"]\n\tpushInsteadOf = https://\n');
-    expect(rendered).toContain('\tpushInsteadOf = .\n[protocol]\n\tallow = never\n[protocol "file"]\n\tallow = never\n');
+    expect(rendered).toContain(
+      '\tpushInsteadOf = .\n[protocol]\n\tallow = never\n[protocol "file"]\n\tallow = never\n',
+    );
     // Comments only start with '#'; every other line is a header or a tab-indented pair.
     for (const line of rendered.trimEnd().split('\n')) {
       expect(line).toMatch(/^(#.*|\[[a-z]+( "[^"]+")?\]|\t[A-Za-z]+ = \S+)$/);
