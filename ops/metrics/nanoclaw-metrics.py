@@ -451,7 +451,8 @@ def collect_health():
 #   quarantined        #1733 fired: a system action that killed the host was parked
 #   stale_restarts     containers respawned because their composed CLAUDE.md changed (a deploy side effect)
 #   host_restart / host_uptime_s   the crash loop showed as a pid that never got old
-#   breaker_attempt    data/circuit-breaker.json exists only while the host is crash-looping
+#   breaker_attempt    data/circuit-breaker.json: attempt 1 is written at EVERY start and removed on clean shutdown,
+#                      so 1 = normal; >= 2 = the host has crashed and is being restarted by the breaker
 #   inbox_*            webhook_inbox rows by state; parked > 0 = a GitHub delivery needs an operator
 #   mailbox_bytes_*    session DB growth (2.6 GB in one session was the root cause)
 # The log-derived counters are per collector run (60 s); the rest are gauges.
@@ -472,8 +473,9 @@ def _host_pid():
     try:
         with open(PIDFILE) as fh:
             pid = int(fh.read().strip())
-        os.kill(pid, 0)
-        return pid
+        # /proc, not kill(2): the collector runs as `telegraf`, and kill(pid, 0) on ubuntu's
+        # process is EPERM — which read as "host down" on the first prod run (2026-09-28).
+        return pid if os.path.isdir(f"/proc/{pid}") else None
     except Exception:  # noqa: BLE001 - absent pidfile = host down or restarting
         return None
 
@@ -542,8 +544,12 @@ def collect_host(state):
         fields["breaker_attempt"] = 0
     # -- log-derived counters for this run (the main/error log offsets are advanced by collect_logs, so
     #    keep our own offsets: same file, separate keys).
-    main = read_new_bytes(LOG, state, "host_log_off").decode("utf-8", "replace")
-    err = read_new_bytes(ERRLOG, state, "host_errlog_off").decode("utf-8", "replace")
+    # The host log is ANSI-coloured (`\x1b[35msessions\x1b[39m=2676`): strip escapes before matching
+    # key=value pairs, or the sweep regex never matches (first prod run, 2026-09-28).
+    import re
+    ansi = re.compile(r"\x1b\[[0-9;]*m")
+    main = ansi.sub("", read_new_bytes(LOG, state, "host_log_off").decode("utf-8", "replace"))
+    err = ansi.sub("", read_new_bytes(ERRLOG, state, "host_errlog_off").decode("utf-8", "replace"))
     ticks = _sweep_re().findall(main)
     if ticks:
         sessions, full, quiet, ms = ticks[-1]

@@ -3870,7 +3870,7 @@
       "id": 61,
       "type": "stat",
       "title": "Circuit-breaker attempt",
-      "description": "data/circuit-breaker.json only exists while startups keep failing. Anything > 0 is an outage in progress.",
+      "description": "data/circuit-breaker.json attempt. 1 = normal start (file is written at every start, removed on clean shutdown). >= 2 = the host crashed and the breaker is spacing restarts \u2014 an outage in progress.",
       "datasource": {
         "type": "influxdb",
         "uid": "PF3A0F3054C0DA367"
@@ -3917,8 +3917,12 @@
                 "value": null
               },
               {
+                "color": "orange",
+                "value": 2
+              },
+              {
                 "color": "red",
-                "value": 1
+                "value": 3
               }
             ]
           }
