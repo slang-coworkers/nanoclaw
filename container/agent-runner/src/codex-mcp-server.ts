@@ -99,6 +99,7 @@
  * guards a confused reviewer, not an adversary. Proof:
  * scripts/prove-codex-git-guard.sh; docs/mcp-allowlist.md has the long form.
  */
+import { spawnSync } from 'node:child_process';
 import { createCodexConfigOverrides, tomlBasicString } from './providers/codex-app-server.js';
 import type { McpServerConfig } from './providers/types.js';
 
@@ -170,9 +171,7 @@ export function renderCodexGitGuardGitconfig(): string {
     const variable = key.slice(last + 1);
     const subsection = last > first ? key.slice(first + 1, last) : undefined;
     const header =
-      subsection === undefined
-        ? `[${name}]`
-        : `[${name} "${subsection.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`;
+      subsection === undefined ? `[${name}]` : `[${name} "${subsection.replace(/\\/g, '\\\\').replace(/"/g, '\\"')}"]`;
     if (header !== section) {
       lines.push(header);
       section = header;
@@ -229,4 +228,35 @@ export function buildCodexMcpServer(processEnv: NodeJS.ProcessEnv = process.env)
     },
     envInherit: [...CODEX_MCP_ENV_INHERIT],
   };
+}
+
+/**
+ * Does this codex CLI still have the `mcp-server` subcommand? Upstream deprecated it
+ * and removed it after 0.153.4 (0.154.0+ falls into the interactive TUI and dies with
+ * "stdin is not a terminal"), so the child above silently never comes up. The image
+ * build refuses such a pin (container/install-cli-tools.sh); this is the runtime
+ * mirror so a container that somehow got one says so in its log instead of every
+ * coworker discovering `mcp__codex__codex` is missing mid-task (prod 2026-09-25..28).
+ */
+export function codexMcpServerSupported(helpText: string): boolean {
+  return /^[ \t]+mcp-server(\s|$)/m.test(helpText);
+}
+
+export function probeCodexMcpServer(): { ok: boolean; version: string; detail: string } {
+  try {
+    const help = spawnSync('codex', ['--help'], { encoding: 'utf8', timeout: 8_000 });
+    const ver = spawnSync('codex', ['--version'], { encoding: 'utf8', timeout: 8_000 });
+    const version = (ver.stdout || '').trim().split('\n').pop() || 'unknown';
+    if (help.error) return { ok: false, version, detail: `codex not runnable: ${help.error.message}` };
+    const ok = codexMcpServerSupported(help.stdout || '');
+    return {
+      ok,
+      version,
+      detail: ok
+        ? 'mcp-server subcommand present'
+        : 'no `mcp-server` subcommand — pin @openai/codex <= 0.153.4 or migrate to codex app-server',
+    };
+  } catch (err) {
+    return { ok: false, version: 'unknown', detail: err instanceof Error ? err.message : String(err) };
+  }
 }
