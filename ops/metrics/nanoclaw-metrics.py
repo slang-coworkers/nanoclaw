@@ -544,8 +544,12 @@ def collect_host(state):
         fields["breaker_attempt"] = 0
     # -- log-derived counters for this run (the main/error log offsets are advanced by collect_logs, so
     #    keep our own offsets: same file, separate keys).
-    main = read_new_bytes(LOG, state, "host_log_off").decode("utf-8", "replace")
-    err = read_new_bytes(ERRLOG, state, "host_errlog_off").decode("utf-8", "replace")
+    # The host log is ANSI-coloured (`\x1b[35msessions\x1b[39m=2676`): strip escapes before matching
+    # key=value pairs, or the sweep regex never matches (first prod run, 2026-09-28).
+    import re
+    ansi = re.compile(r"\x1b\[[0-9;]*m")
+    main = ansi.sub("", read_new_bytes(LOG, state, "host_log_off").decode("utf-8", "replace"))
+    err = ansi.sub("", read_new_bytes(ERRLOG, state, "host_errlog_off").decode("utf-8", "replace"))
     ticks = _sweep_re().findall(main)
     if ticks:
         sessions, full, quiet, ms = ticks[-1]
