@@ -4,35 +4,13 @@
 # ops/metrics/nanoclaw-metrics.py every 60 s. Thresholds come from the 2026-09-26 outage
 # (reports/prod-outage-2026-09-26-postmortem.html): each rule would have fired hours before a human noticed.
 #
-# Notifications: the `nanoclaw-ops` contact point below is a Slack incoming webhook read from the
-# environment variable NANOCLAW_ALERT_SLACK_WEBHOOK (set it in /etc/default/grafana-server, then restart
-# Grafana). Until it is set, rules still evaluate and show as Firing on the dashboard's
+# Notifications: none yet (see below). Rules still evaluate and show as Firing on the dashboard's
 # "Firing NanoClaw alerts" panel and under Alerting → Alert rules.
 apiVersion: 1
 
-contactPoints:
-  - orgId: 1
-    name: nanoclaw-ops
-    receivers:
-      - uid: nanoclaw-ops-slack
-        type: slack
-        settings:
-          url: ${NANOCLAW_ALERT_SLACK_WEBHOOK}
-          title: '{{ template "default.title" . }}'
-          text: '{{ template "default.message" . }}'
-        disableResolveMessage: false
-
-policies:
-  - orgId: 1
-    receiver: nanoclaw-ops
-    group_by: ['alertname']
-    group_wait: 30s
-    group_interval: 5m
-    repeat_interval: 4h
-    routes:
-      - receiver: nanoclaw-ops
-        object_matchers:
-          - ['team', '=', 'nanoclaw']
+# Contact point / policy: add them when a Slack webhook exists — a Slack receiver with an empty url makes Grafana's
+# provisioning module FAIL AT START (observed 2026-09-28 08:18Z: 'recipient must be specified when using the Slack chat API').
+# Until then rules use the default receiver and are visible on the dashboard's alert-list panel.
 
 groups:
   - orgId: 1
@@ -66,7 +44,7 @@ groups:
         for: 1m
         labels: { team: nanoclaw, severity: critical }
         annotations:
-          summary: 'data/circuit-breaker.json shows repeated failed startups (attempt {{ $values.B }}).'
+          summary: 'data/circuit-breaker.json shows repeated failed startups (attempt {{ $values.B }}; 1 is a normal start).'
           runbook: 'The host dies on every start. Read the FATAL line in logs/nanoclaw.error.log; if it names a cli_request, #1733 should have quarantined it; if "No gateway provider", installed.ts lost its onecli import.'
         data:
           - refId: A
@@ -78,7 +56,7 @@ groups:
             model: { refId: B, type: reduce, expression: A, reducer: last, settings: { mode: dropNN } }
           - refId: C
             datasourceUid: __expr__
-            model: { refId: C, type: threshold, expression: B, conditions: [ { evaluator: { type: gt, params: [0] } } ] }
+            model: { refId: C, type: threshold, expression: B, conditions: [ { evaluator: { type: gt, params: [1] } } ] }
       - uid: nc-host-restarts
         title: NanoClaw host restarted more than twice in an hour
         condition: C

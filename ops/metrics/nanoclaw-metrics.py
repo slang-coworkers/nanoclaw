@@ -451,7 +451,8 @@ def collect_health():
 #   quarantined        #1733 fired: a system action that killed the host was parked
 #   stale_restarts     containers respawned because their composed CLAUDE.md changed (a deploy side effect)
 #   host_restart / host_uptime_s   the crash loop showed as a pid that never got old
-#   breaker_attempt    data/circuit-breaker.json exists only while the host is crash-looping
+#   breaker_attempt    data/circuit-breaker.json: attempt 1 is written at EVERY start and removed on clean shutdown,
+#                      so 1 = normal; >= 2 = the host has crashed and is being restarted by the breaker
 #   inbox_*            webhook_inbox rows by state; parked > 0 = a GitHub delivery needs an operator
 #   mailbox_bytes_*    session DB growth (2.6 GB in one session was the root cause)
 # The log-derived counters are per collector run (60 s); the rest are gauges.
@@ -472,8 +473,9 @@ def _host_pid():
     try:
         with open(PIDFILE) as fh:
             pid = int(fh.read().strip())
-        os.kill(pid, 0)
-        return pid
+        # /proc, not kill(2): the collector runs as `telegraf`, and kill(pid, 0) on ubuntu's
+        # process is EPERM — which read as "host down" on the first prod run (2026-09-28).
+        return pid if os.path.isdir(f"/proc/{pid}") else None
     except Exception:  # noqa: BLE001 - absent pidfile = host down or restarting
         return None
 
