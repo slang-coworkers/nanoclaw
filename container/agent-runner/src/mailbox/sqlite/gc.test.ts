@@ -3,10 +3,11 @@ import { afterEach, beforeEach, describe, expect, it } from 'bun:test';
 import { closeSessionDb, getInboundDb, getOutboundDb, initTestSessionDb } from './connection.js';
 import { sqliteGcOutboundHistory } from './operations.js';
 
-// Runner-side history GC. Pins the safety rules: an undelivered messages_out row
-// is never dropped (the host has not recorded it in `delivered`), rows inside
-// the retention window stay, and an ack is dropped only when its inbound row is
-// gone.
+// Runner-side history GC. Pins the safety rules: only `kind = 'system'` frames
+// are ever pruned (a chat reply is conversation history, kept whatever its age),
+// an undelivered row is never dropped (the host has not recorded it in
+// `delivered`), rows inside the retention window stay, and an ack is dropped
+// only when its inbound row is gone.
 
 const OLD = '2026-08-01 00:00:00';
 const NEW = '2026-09-27 00:00:00';
@@ -17,15 +18,17 @@ beforeEach(() => {
   const inbound = getInboundDb();
   const outbound = getOutboundDb();
   const out = outbound.prepare(
-    "INSERT INTO messages_out (id, seq, kind, timestamp, content) VALUES (?, ?, 'chat', ?, '{}')",
+    "INSERT INTO messages_out (id, seq, kind, timestamp, content) VALUES (?, ?, ?, ?, '{}')",
   );
-  out.run('out-old-delivered', 1, OLD); // delivered + old → gone
-  out.run('out-old-undelivered', 3, OLD); // never delivered → kept
-  out.run('out-new-delivered', 5, NEW); // inside window → kept
+  out.run('sys-old-delivered', 1, 'system', OLD); // system frame, delivered + old → gone
+  out.run('chat-old-delivered', 3, 'chat', OLD); // the agent's reply: conversation history → kept forever
+  out.run('out-old-undelivered', 5, 'system', OLD); // never delivered → kept
+  out.run('out-new-delivered', 7, 'system', NEW); // inside window → kept
   const del = inbound.prepare(
     "INSERT INTO delivered (message_out_id, platform_message_id, status, delivered_at) VALUES (?, NULL, 'delivered', ?)",
   );
-  del.run('out-old-delivered', OLD);
+  del.run('sys-old-delivered', OLD);
+  del.run('chat-old-delivered', OLD);
   del.run('out-new-delivered', NEW);
   inbound
     .prepare(
@@ -43,12 +46,12 @@ afterEach(() => {
 });
 
 describe('sqliteGcOutboundHistory', () => {
-  it('drops delivered old messages_out rows and orphan old acks, nothing else', () => {
+  it('drops delivered old SYSTEM messages_out rows and orphan old acks — never chat replies', () => {
     expect(sqliteGcOutboundHistory(CUTOFF)).toEqual({ messagesOut: 1, acks: 1 });
     const outIds = (
       getOutboundDb().prepare('SELECT id FROM messages_out ORDER BY seq').all() as Array<{ id: string }>
     ).map((r) => r.id);
-    expect(outIds).toEqual(['out-old-undelivered', 'out-new-delivered']);
+    expect(outIds).toEqual(['chat-old-delivered', 'out-old-undelivered', 'out-new-delivered']);
     const ackIds = (
       getOutboundDb().prepare('SELECT message_id FROM processing_ack ORDER BY message_id').all() as Array<{
         message_id: string;
