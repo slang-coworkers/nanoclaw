@@ -1,5 +1,6 @@
 /**
- * The `codex` MCP child — `codex mcp-server` run as a stdio subprocess so the
+ * The `codex` MCP child — since 2026-09-28 our own bridge (codex-mcp-bridge.ts) over
+ * `codex app-server`; before that `codex mcp-server` run as a stdio subprocess so the
  * codex-critique skill can hand it /workspace/agent paths to review. Routing
  * and auth come from `-c` overrides built from container env vars; no
  * ~/.codex/config.toml is needed for them.
@@ -100,6 +101,7 @@
  * scripts/prove-codex-git-guard.sh; docs/mcp-allowlist.md has the long form.
  */
 import { spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { createCodexConfigOverrides, tomlBasicString } from './providers/codex-app-server.js';
 import type { McpServerConfig } from './providers/types.js';
 
@@ -213,31 +215,40 @@ export const CODEX_MCP_ENV_INHERIT: readonly string[] = [
 ];
 
 export function buildCodexMcpServer(processEnv: NodeJS.ProcessEnv = process.env): McpServerConfig {
-  const args: string[] = [];
-  for (const override of [...createCodexConfigOverrides(), ...codexGitGuardShellPolicyOverrides()]) {
-    args.push('-c', override);
-  }
-  args.push('mcp-server');
+  // The child is our own MCP bridge (codex-mcp-bridge.ts) over `codex app-server`.
+  // `codex mcp-server`, the previous child, was removed upstream after 0.153.4.
+  // The `-c` overrides are computed HERE, in the runner's env (CODEX_MODEL,
+  // CODEX_MODEL_PROVIDER, CODEX_BASE_URL … are not forwarded to the child), and
+  // handed to the bridge as JSON; the bridge passes them to every app-server it
+  // spawns, exactly as they used to be passed to `codex mcp-server`.
+  const overrides = [...createCodexConfigOverrides(), ...codexGitGuardShellPolicyOverrides()];
   return {
-    command: 'codex',
-    args,
+    command: 'bun',
+    args: ['run', fileURLToPath(new URL('./codex-mcp-bridge.ts', import.meta.url))],
     env: {
       HOME: processEnv.HOME ?? '/home/node',
       PATH: processEnv.PATH ?? '',
       ...codexGitGuardEnv(),
+      CODEX_MCP_BRIDGE_OVERRIDES: JSON.stringify(overrides),
+      ...(processEnv.CODEX_MODEL ? { CODEX_MODEL: processEnv.CODEX_MODEL } : {}),
     },
     envInherit: [...CODEX_MCP_ENV_INHERIT],
   };
 }
 
 /**
- * Does this codex CLI still have the `mcp-server` subcommand? Upstream deprecated it
- * and removed it after 0.153.4 (0.154.0+ falls into the interactive TUI and dies with
- * "stdin is not a terminal"), so the child above silently never comes up. The image
- * build refuses such a pin (container/install-cli-tools.sh); this is the runtime
- * mirror so a container that somehow got one says so in its log instead of every
- * coworker discovering `mcp__codex__codex` is missing mid-task (prod 2026-09-25..28).
+ * Does this codex CLI have the subcommand the codex child needs? The bridge
+ * (codex-mcp-bridge.ts) drives `codex app-server`; `codexMcpServerSupported`
+ * is kept for the legacy path and its tests. Upstream removed `mcp-server`
+ * after 0.153.4 and every coworker lost `mcp__codex__codex` without a single
+ * red signal (prod 2026-09-25..28) — the image build refuses a pin without
+ * `app-server` (container/install-cli-tools.sh) and this runtime probe logs
+ * the version and a loud ERROR when the child cannot exist.
  */
+export function codexAppServerSupported(helpText: string): boolean {
+  return /^[ \t]+app-server(\s|$)/m.test(helpText);
+}
+
 export function codexMcpServerSupported(helpText: string): boolean {
   return /^[ \t]+mcp-server(\s|$)/m.test(helpText);
 }
@@ -248,13 +259,13 @@ export function probeCodexMcpServer(): { ok: boolean; version: string; detail: s
     const ver = spawnSync('codex', ['--version'], { encoding: 'utf8', timeout: 8_000 });
     const version = (ver.stdout || '').trim().split('\n').pop() || 'unknown';
     if (help.error) return { ok: false, version, detail: `codex not runnable: ${help.error.message}` };
-    const ok = codexMcpServerSupported(help.stdout || '');
+    const ok = codexAppServerSupported(help.stdout || '');
     return {
       ok,
       version,
       detail: ok
-        ? 'mcp-server subcommand present'
-        : 'no `mcp-server` subcommand — pin @openai/codex <= 0.153.4 or migrate to codex app-server',
+        ? 'app-server subcommand present (served through codex-mcp-bridge.ts)'
+        : 'no `app-server` subcommand — the codex MCP bridge cannot start; check the @openai/codex pin',
     };
   } catch (err) {
     return { ok: false, version: 'unknown', detail: err instanceof Error ? err.message : String(err) };
