@@ -413,13 +413,17 @@ async function maintainSessionMailbox(
 // --- mailbox history GC --------------------------------------------------------
 // The host owns inbound.db, so the host prunes it: consumed system frames
 // (cli_response & co.) and orphan `delivered` rows older than the retention
-// window. Once a day per session, on a full pass — cheap, and the write it
+// window. Disabled unless an operator sets NANOCLAW_MAILBOX_RETENTION_DAYS;
+// conversation rows — chat/task/webhook — are never pruned even then. Once a day per session, on a full pass — cheap, and the write it
 // makes simply costs one extra full pass the next tick. The runner prunes its
 // own outbound.db on start (sqliteGcOutboundHistory). Together they cap what
 // used to grow without bound (2.6 GB of cli_response rows in one session on
 // prod, 2026-09-26).
+// OFF by default (operator decision 2026-09-28): session mailboxes are the
+// persistence layer for every open issue/PR chain, so nothing is pruned by
+// age unless NANOCLAW_MAILBOX_RETENTION_DAYS is set explicitly. 0 = never.
 export const MAILBOX_RETENTION_DAYS =
-  Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0 ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) : 7;
+  Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0 ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) : 0;
 const MAILBOX_GC_INTERVAL_MS = 24 * 60 * 60_000;
 const lastMailboxGc = new Map<string, number>();
 
@@ -428,7 +432,7 @@ export function _resetMailboxGcForTesting(): void {
 }
 
 function gcMailboxHistory(mailbox: InboundMailbox, session: Session): void {
-  if (!mailbox.gcHistory) return;
+  if (!mailbox.gcHistory || MAILBOX_RETENTION_DAYS <= 0) return;
   const now = Date.now();
   if (now - (lastMailboxGc.get(session.id) ?? 0) < MAILBOX_GC_INTERVAL_MS) return;
   lastMailboxGc.set(session.id, now);

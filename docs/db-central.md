@@ -448,7 +448,7 @@ CREATE INDEX idx_webhook_inbox_processed ON webhook_inbox(processed_at);
 
 - **Lifecycle:** accept (`pending`, attempts+1) → `done` with the response GitHub received, or `failed` with a backoff (1 m, 5 m, 15 m, 1 h, 6 h) and then parked. A redelivery of a known GUID re-processes (downstream `messages_in` ids dedup it) — it never short-circuits, so redelivery semantics are unchanged.
 - **Drain:** first pass 20 s after host start, then every 60 s: replays `failed` rows whose backoff elapsed and `pending` rows whose attempt started > 2 min ago (abandoned by a dead host), through the same `processGitHubDelivery` the live handler uses. Parked rows are logged at ERROR and left for an operator.
-- **Retention:** `done` rows pruned after `NANOCLAW_WEBHOOK_INBOX_RETENTION_DAYS` (default 14); `failed`/parked rows after 4× that.
+- **Retention:** none by default — rows are kept indefinitely. Setting `NANOCLAW_WEBHOOK_INBOX_RETENTION_DAYS=N` prunes `done` rows after N days and `failed`/parked rows after 4×N.
 - **Fail-soft:** the handler wraps every inbox write; a missing table or DB error warns once and the delivery still routes exactly as before the inbox existed.
 - Access layer: `src/db/webhook-inbox.ts`.
 
