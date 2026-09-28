@@ -99,3 +99,32 @@ Two honesty caveats, same spirit as the rest of this file:
   carry no model, so a true cost-by-model split is not derivable from any
   collector-readable source today. If that changes, wire it in rather than
   approximating dollars from turns.
+
+## Host health + alerts (added 2026-09-28 after the 09-26 outage)
+
+The collector now also emits **`nanoclaw_host`** (one point per run) and
+**`nanoclaw_host_mailbox`** (largest session DB, tagged by session). Fields:
+`host_up`, `host_uptime_s`, `host_restart`, `host_restarts_total`, `breaker_attempt`,
+`sweep_tick_ms` / `sweep_tick_ms_max` / `sweep_full_passes` / `sweep_quiet_skips` / `sweep_ticks`,
+`spawns`, `wakes`, `wake_failed`, `quarantined`, `stale_restarts`, `fatal`, `heap_oom`,
+`inbox_pending` / `inbox_done` / `inbox_failed` / `inbox_parked` / `inbox_replays` / `inbox_parked_events`,
+`mailbox_bytes_total` / `mailbox_bytes_max` / `mailbox_files` / `mailbox_over_500mb`.
+Log-derived counters are per collector run (60 s); the collector keeps its own log offsets
+(`host_log_off`, `host_errlog_off`) so they do not interfere with `collect_logs`.
+Set `NANOCLAW_DIR` to point the collector at another install (tests, lego).
+
+The dashboard gained a row **"Incident signals"** (last row) and an alert-list panel.
+
+| File | Deployed to | Notes |
+|---|---|---|
+| `grafana/alerting/nanoclaw-alerts.yaml` | `/etc/grafana/provisioning/alerting/` | 11 rules in folder *NanoClaw* (host down, crash loop, restarts, sweep slow / stalled, wake failures, quarantine, webhook port, inbox parked, mailbox > 1 GB, collector stale) + contact point `nanoclaw-ops` (Slack) + policy on `team=nanoclaw`. Read at Grafana start: `sudo systemctl restart grafana-server`. |
+
+The Slack destination is the environment variable **`NANOCLAW_ALERT_SLACK_WEBHOOK`** for the
+grafana-server process (`/etc/default/grafana-server`). Until it is set the rules still evaluate
+and show as Firing on the dashboard and under Alerting → Alert rules; nothing is sent.
+
+Why these thresholds: every rule maps to a symptom in
+`reports/prod-outage-2026-09-26-postmortem.html` — a young/absent host pid and a climbing breaker
+attempt (the 66-crash loop), a 19 s sweep tick with 40–60 s gaps (the frozen event loop),
+hundreds of wake failures with zero spawns (no new work), port 3841 closed for 15.9 h (321 GitHub
+deliveries lost), a 2.6 GB session DB (the root cause's fuel).
