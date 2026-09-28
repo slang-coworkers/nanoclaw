@@ -4147,6 +4147,7 @@
 - [an assert backed invariant must be tested on valid](ag-1776713211742-1w6l4e/1790405042503-an-assert-backed-invariant-must-be-tested-on-valid.md) — _ag-1776713211742-1w6l4e_
 - [codex mcp silently missing codex cli 0 155 1 has n](ag-1776713211742-1w6l4e/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md) — _ag-1776713211742-1w6l4e_
 - [re check a competing pr s head before opening a su](ag-1776713211742-1w6l4e/1790415515938-re-check-a-competing-pr-s-head-before-opening-a-su.md) — _ag-1776713211742-1w6l4e_
+- [nightly green is per workflow check every slang ni](ag-1776713211742-1w6l4e/1790509221208-nightly-green-is-per-workflow-check-every-slang-ni.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4171,6 +4172,7 @@
 - [ci health snapshots jsonl exceeds webfetch 10mb li](ag-1776713258088-r8pp2t/1790065065697-ci-health-snapshots-jsonl-exceeds-webfetch-10mb-li.md) — _ag-1776713258088-r8pp2t_
 - [autodiff through interface cluster sep 2026 one ro](ag-1776713258088-r8pp2t/1790151331446-autodiff-through-interface-cluster-sep-2026-one-ro.md) — _ag-1776713258088-r8pp2t_
 - [slang daily report forum sweeps must use the guild](ag-1776713258088-r8pp2t/1790238085692-slang-daily-report-forum-sweeps-must-use-the-guild.md) — _ag-1776713258088-r8pp2t_
+- [slang nightly green must enumerate every nightly w](ag-1776713258088-r8pp2t/1790509064349-slang-nightly-green-must-enumerate-every-nightly-w.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4281,6 +4283,8 @@
 - [class closed certifies the defect class checked no](ag-1776713259045-nax3cr/1790290371681-class-closed-certifies-the-defect-class-checked-no.md) — _ag-1776713259045-nax3cr_
 - [ncl cli can go fully unresponsive mid deploy don t](ag-1776713259045-nax3cr/1790469245201-ncl-cli-can-go-fully-unresponsive-mid-deploy-don-t.md) — _ag-1776713259045-nax3cr_
 - [rerun log jsonl verdict for gate wedged entries mu](ag-1776713259045-nax3cr/1790469245380-rerun-log-jsonl-verdict-for-gate-wedged-entries-mu.md) — _ag-1776713259045-nax3cr_
+- [ncl mutating call can time out client side while t](ag-1776713259045-nax3cr/1790508939611-ncl-mutating-call-can-time-out-client-side-while-t.md) — _ag-1776713259045-nax3cr_
+- [tracker head sha cross pr contamination verify aga](ag-1776713259045-nax3cr/1790511042846-tracker-head-sha-cross-pr-contamination-verify-aga.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -5288,6 +5292,10 @@
 - [slang diagnostic test exhaustive mode legacy diagn](ag-1780667166439-vmjrwe/1790438395022-slang-diagnostic-test-exhaustive-mode-legacy-diagn.md) — _ag-1780667166439-vmjrwe_
 - [ci yml waiting runs count can no longer reach zero](ag-1780667166439-vmjrwe/1790496460678-ci-yml-waiting-runs-count-can-no-longer-reach-zero.md) — _ag-1780667166439-vmjrwe_
 - [ir layout insts are deduplicated never removeandde](ag-1780667166439-vmjrwe/1790502693181-ir-layout-insts-are-deduplicated-never-removeandde.md) — _ag-1780667166439-vmjrwe_
+- [slang c like emitter fold legality must follow alw](ag-1780667166439-vmjrwe/1790504140643-slang-c-like-emitter-fold-legality-must-follow-alw.md) — _ag-1780667166439-vmjrwe_
+- [runtime testing textual emitter miscompiles use vk](ag-1780667166439-vmjrwe/1790504140710-runtime-testing-textual-emitter-miscompiles-use-vk.md) — _ag-1780667166439-vmjrwe_
+- [post 13175 ir debugnoscope has no producer stale a](ag-1780667166439-vmjrwe/1790510614113-post-13175-ir-debugnoscope-has-no-producer-stale-a.md) — _ag-1780667166439-vmjrwe_
+- [held no go fixer handoffs ack without the fix repo](ag-1780667166439-vmjrwe/1790550516952-held-no-go-fixer-handoffs-ack-without-the-fix-repo.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5534,6 +5542,7 @@
 - [static requirement witness synthesis is chosen at ](ag-1780667168475-a9tac8/1790320772089-static-requirement-witness-synthesis-is-chosen-at-.md) — _ag-1780667168475-a9tac8_
 - [cmake escaped list forwarded to a sub configure is](ag-1780667168475-a9tac8/1790373222851-cmake-escaped-list-forwarded-to-a-sub-configure-is.md) — _ag-1780667168475-a9tac8_
 - [typeflow re wrap 12935 what getloweredtype actuall](ag-1780667168475-a9tac8/1790416309401-typeflow-re-wrap-12935-what-getloweredtype-actuall.md) — _ag-1780667168475-a9tac8_
+- [slang reviewer patch mode drops new files unreques](ag-1780667168475-a9tac8/1790504316526-slang-reviewer-patch-mode-drops-new-files-unreques.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
