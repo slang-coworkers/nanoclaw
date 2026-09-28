@@ -7,7 +7,7 @@
  * Each pass is a handful of indexed SQL statements when there is nothing to
  * do; when there is, each row goes through the same `processGitHubDelivery`
  * the live handler uses, so a replayed delivery is routed exactly like a fresh
- * one. Retention pruning rides along once a pass.
+ * one. Retention pruning rides along only when a retention is configured.
  *
  * A pass never overlaps itself and never throws out of the timer.
  */
@@ -34,10 +34,14 @@ export interface DrainResult {
   pruned: number;
 }
 
-/** Days a processed delivery stays on file (replay/audit window). */
+/**
+ * Days a processed delivery stays on file. 0 (the default) = keep forever:
+ * nothing is pruned by age unless an operator sets
+ * NANOCLAW_WEBHOOK_INBOX_RETENTION_DAYS (operator decision 2026-09-28).
+ */
 export const WEBHOOK_INBOX_RETENTION_DAYS = (() => {
   const raw = Number(process.env.NANOCLAW_WEBHOOK_INBOX_RETENTION_DAYS);
-  return Number.isFinite(raw) && raw > 0 ? raw : 14;
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
 })();
 
 const FIRST_PASS_DELAY_MS = 20_000;
@@ -123,7 +127,8 @@ export async function drainWebhookInbox(
     }
   }
 
-  const shouldPrune = opts.prune ?? Date.parse(nowIso) - lastPruneAt >= PRUNE_INTERVAL_MS;
+  const shouldPrune =
+    WEBHOOK_INBOX_RETENTION_DAYS > 0 && (opts.prune ?? Date.parse(nowIso) - lastPruneAt >= PRUNE_INTERVAL_MS);
   if (shouldPrune) {
     lastPruneAt = Date.parse(nowIso);
     try {
