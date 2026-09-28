@@ -102,20 +102,17 @@ if [ "$#" -gt 0 ]; then
   pnpm install -g "$@"
 fi
 
-# The agent-runner's codex MCP child (container/agent-runner/src/codex-mcp-server.ts) launches
-# `codex mcp-server`, which is what the `mcp__codex__codex` critique tool is. Upstream deprecated
-# that subcommand and REMOVED it after 0.153.4 (present in 0.152.x / 0.153.x, gone in 0.154.0+;
-# `codex app-server` is the replacement, a different protocol). An image built on a pin without it
-# still builds and boots, and every coworker simply has no codex tool — prod ran that way from
-# 2026-09-25 (cutover to 0.155.1) until 2026-09-28 with nothing turning red. Fail the build instead.
+# The agent-runner's codex MCP child is codex-mcp-bridge.ts, which drives `codex app-server`
+# (codex's own `mcp-server` subcommand was removed upstream after 0.153.4 — prod ran three days with
+# no codex tool and nothing red, 2026-09-25..28). An image whose codex has no `app-server` would
+# boot fine and every coworker would silently lose `mcp__codex__codex`. Fail the build instead.
 if command -v codex >/dev/null 2>&1; then
   codex_ver=$(codex --version 2>/dev/null | tail -n 1)
-  if codex --help 2>/dev/null | grep -qE '^[[:space:]]+mcp-server([[:space:]]|$)'; then
-    echo "codex mcp-server subcommand verified (${codex_ver})"
+  if codex --help 2>/dev/null | grep -qE '^[[:space:]]+app-server([[:space:]]|$)'; then
+    echo "codex app-server subcommand verified (${codex_ver})"
   else
-    echo "FATAL: ${codex_ver} has no 'mcp-server' subcommand, so the runner's codex MCP child cannot start." >&2
-    echo "       Pin @openai/codex to <= 0.153.4 in cli-tools.json, or migrate codex-mcp-server.ts to" >&2
-    echo "       'codex app-server' (an MCP->App-Server bridge) before bumping past it." >&2
+    echo "FATAL: ${codex_ver} has no 'app-server' subcommand, so the runner's codex MCP bridge cannot start." >&2
+    echo "       Check the @openai/codex pin in cli-tools.json (app-server exists from 0.5x onwards)." >&2
     exit 1
   fi
 fi

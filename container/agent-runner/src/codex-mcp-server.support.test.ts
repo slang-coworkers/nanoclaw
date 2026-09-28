@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'bun:test';
 
-import { codexMcpServerSupported } from './codex-mcp-server.js';
+import { codexAppServerSupported, codexMcpServerSupported } from './codex-mcp-server.js';
 
 // codex-cli 0.153.4 (last version with the subcommand) vs 0.155.1 (removed). The
 // runner launches `codex mcp-server`; without the subcommand codex falls into
@@ -38,5 +38,11 @@ describe('codexMcpServerSupported', () => {
   });
   it('does not mistake `mcp` (external servers) or `app-server` for it', () => {
     expect(codexMcpServerSupported(HELP_0_155_1)).toBe(false);
+  });
+
+  it('app-server (what the bridge needs) is present in both, and is what the probe keys on', () => {
+    expect(codexAppServerSupported(HELP_0_153_4)).toBe(true);
+    expect(codexAppServerSupported(HELP_0_155_1)).toBe(true);
+    expect(codexAppServerSupported('Commands:\n  mcp   Manage external MCP servers\n')).toBe(false);
   });
 });
