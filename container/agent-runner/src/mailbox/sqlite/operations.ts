@@ -452,9 +452,13 @@ export function sqliteFindByRouting(channelType: string, platformId: string): De
  * and every `cli_request` it ever wrote) that the host re-read on every 1 s
  * poll. Nothing deleted them. Two things are safe for the runner to drop:
  *
- *   1. messages_out rows the host has RECORDED AS DELIVERED (inbound.db's
+ *   1. `kind = 'system'` messages_out rows (cli_request frames, a2a / self-mod /
+ *      learning actions) the host has RECORDED AS DELIVERED (inbound.db's
  *      `delivered` table is the host's ledger) and that are older than the
- *      cutoff. Order matters across the two GCs: this one runs first, and
+ *      cutoff. The agent's own replies (`kind = 'chat'`) are conversation
+ *      history and are never pruned, whatever their age — the transcript a
+ *      coworker reads back must not thin out behind it.
+ *      Order matters across the two GCs: this one runs first, and
  *      the host then removes the now-orphaned `delivered` rows — never the
  *      reverse, or a still-present message would be redelivered.
  *   2. processing_ack rows older than the cutoff whose inbound message no
@@ -472,7 +476,9 @@ export function sqliteGcOutboundHistory(cutoffIso: string): { messagesOut: numbe
   const delivered = inbound
     .prepare(`SELECT message_out_id FROM delivered WHERE ${norm('delivered_at')} < ?`)
     .all(cutoff) as Array<{ message_out_id: string }>;
-  const deleteOut = outbound.prepare(`DELETE FROM messages_out WHERE id = ? AND ${norm('timestamp')} < ?`);
+  const deleteOut = outbound.prepare(
+    `DELETE FROM messages_out WHERE id = ? AND kind = 'system' AND ${norm('timestamp')} < ?`,
+  );
   let messagesOut = 0;
   outbound.transaction(() => {
     for (const row of delivered) messagesOut += deleteOut.run(row.message_out_id, cutoff).changes;
