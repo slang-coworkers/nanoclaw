@@ -28,7 +28,9 @@ vi.mock('./modules/cost-approval/index.js', () => ({ reconcileCostCards: vi.fn()
 vi.mock('./modules/cost-ceiling-adjustment/index.js', () => ({
   reconcileCostCeilingAdjustments: vi.fn(),
 }));
+vi.mock('./container-runner.js', () => ({ stopOrphanedSessions: vi.fn() }));
 
+import { stopOrphanedSessions } from './container-runner.js';
 import { getActiveSessions } from './db/sessions.js';
 import { ensureEgressNetwork } from './egress-lockdown.js';
 import { RECONCILE_CONCURRENCY, startHostSweep, stopHostSweep } from './host-sweep.js';
@@ -80,6 +82,12 @@ beforeEach(() => {
     .mockImplementation(async () => {
       order.push('cost-ceiling');
     });
+  vi.mocked(stopOrphanedSessions)
+    .mockReset()
+    .mockImplementation(async () => {
+      order.push('orphans');
+      return 0;
+    });
   vi.mocked(getActiveSessions)
     .mockReset()
     .mockResolvedValue([{ id: 's-1' }, { id: 's-2' }] as Awaited<ReturnType<typeof getActiveSessions>>);
@@ -104,7 +112,15 @@ describe('sweep over the workqueue', () => {
     await runSweepTick();
 
     expect(reconcileSession).toHaveBeenCalledTimes(2);
-    expect(order).toEqual(['egress', 'session:s-1', 'session:s-2', 'approvals', 'cost-cards', 'cost-ceiling']);
+    expect(order.filter((step) => step !== 'orphans')).toEqual([
+      'egress',
+      'session:s-1',
+      'session:s-2',
+      'approvals',
+      'cost-cards',
+      'cost-ceiling',
+    ]);
+    expect(order).toContain('orphans');
 
     await runSweepTick();
     expect(reconcileSession).toHaveBeenCalledTimes(4);
@@ -158,6 +174,24 @@ describe('sweep over the workqueue', () => {
 
     await runSweepTick();
     // s-2 and the closing singletons still ran; the tick completed and re-armed.
-    expect(order).toEqual(['egress', 'session:s-2', 'approvals', 'cost-cards', 'cost-ceiling']);
+    expect(order.filter((step) => step !== 'orphans')).toEqual([
+      'egress',
+      'session:s-2',
+      'approvals',
+      'cost-cards',
+      'cost-ceiling',
+    ]);
+  });
+
+  it('stops orphaned sessions once per tick, and a failure there still re-arms', async () => {
+    await runSweepTick();
+    expect(stopOrphanedSessions).toHaveBeenCalledTimes(1);
+
+    vi.mocked(stopOrphanedSessions).mockRejectedValueOnce(new Error('db down'));
+    await runSweepTick();
+    expect(stopOrphanedSessions).toHaveBeenCalledTimes(2);
+
+    await runSweepTick();
+    expect(stopOrphanedSessions).toHaveBeenCalledTimes(3);
   });
 });
