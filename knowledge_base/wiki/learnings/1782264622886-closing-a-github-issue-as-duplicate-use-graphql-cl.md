@@ -3,6 +3,7 @@ title: "Closing a GitHub issue as duplicate: use GraphQL closeIssue, not REST st
 type: learning
 topic: misc
 source: learnings/1782264622886-closing-a-github-issue-as-duplicate-use-graphql-cl.md
+superseded_by: 1782264656205-closing-issues-as-duplicate-use-graphql-closeissue
 ---
 
 # Closing a GitHub issue as duplicate: use GraphQL closeIssue, not REST state_reason (403)

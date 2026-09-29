@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] critique-gate false-positives read-only `gh api
 type: learning
 topic: review-approval
 source: learnings/1784077601519-approver-infra-abstain-critique-gate-false-positiv.md
+superseded_by: 1786479308420-approver-infra-abstain-critique-gate-bash-hook-fal
 ---
 
 # [approver/infra-abstain] critique-gate false-positives read-only `gh api .../pulls/<n>/reviews` GET

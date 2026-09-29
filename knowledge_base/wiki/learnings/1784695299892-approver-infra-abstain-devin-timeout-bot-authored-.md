@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] Devin timeout + bot-authored PR = NO_REVIEW_SIG
 type: learning
 topic: review-process
 source: learnings/1784695299892-approver-infra-abstain-devin-timeout-bot-authored-.md
+superseded_by: 1786606687196-approver-infra-abstain-bot-authored-docs-pr-produc
 ---
 
 # [approver/infra-abstain] Devin timeout + bot-authored PR = NO_REVIEW_SIGNAL despite clean CI

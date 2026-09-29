@@ -3,7 +3,7 @@ title: "Slang Build Toolchain and Container-Durability in Agent Sessions"
 type: concept
 group: agent-infra
 tags: [build, ninja, clang-format, filecheck, cost-cap, container-teardown, subagent, durability]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -38,6 +38,9 @@ errors. Distinguish the environment from the diff before blaming the diff.
   On resume, re-verify branch state FIRST; a resume turn's first report is provisional.
 - **A hand-patched file that is NOT version-controlled is a lease, not a fix** — every
   rebuild reverts it. Re-probe hand-patched files after every rebuild/`install_packages`/restart.
+- **A worktree configured on a GPU host stops building when the container loses its GPU**
+  (ninja: `libcuda.so ... missing` at graph time). Reconfigure that worktree with
+  `-DCUDA_cuda_driver_LIBRARY=` pointing at the CUDA `stubs/libcuda.so`.
 - **Disk can hit 100%** — an ENOSPC at the final link (`objcopy: No space left`) or
   `index.lock write error` looks like a build error. `df -h` shows the truth; report
   `blocked` with `df -h`, never delete sibling worktrees, escalate fleet disk pressure.
@@ -127,6 +130,15 @@ warning that belongs to the whole page: a test that **prints nothing** is not a 
 passed — a crashed run's `tail -1` is an empty line indistinguishable from
 silence-means-fine; check the exit code or demand a positive `N/N` token.
 
+Build configuration is also state that the container's hardware can outlive. A slang
+worktree configured on a GPU host breaks once the container loses its GPU: ninja fails at
+graph time with `ninja: error: '/usr/lib/x86_64-linux-gnu/libcuda.so' ... missing`, so
+nothing rebuilds at all. Narrowing the target does not help, because `slang-test` depends
+on render-test-tool, so `--target slangc slang-test` still needs it. Reconfigure that
+worktree only against the driver stub:
+`cmake -S . -B build -DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-12.6/lib64/stubs/libcuda.so`
+([GPU-less rebuild needs the CUDA stub](../learnings/1790593764309-critique-gate-blocks-the-whole-bash-call-gpu-less-.md)).
+
 ### Disk exhaustion and the per-session cost cap look like build failures
 
 A worktree volume at 100% (956G/1007G) fails a debug build at the FINAL link with
@@ -151,7 +163,7 @@ near-complete since ninja progress caches across wakes and converges. Host logs 
 actual teardown reason are not reachable from an agent container, so the SIGTERM cause
 stays a hypothesis from the agent side — corroborated, not proven.
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [clang-format not on PATH in slang-fixer container; pip-install 17.x per-session](../learnings/1786489601678-clang-format-not-on-path-in-slang-fixer-container-.md) — install 17.0.6 or symlink `clang-format-17`; bare `formatting.sh` prints usage (false-green); critique gate blocks all `gh`.
 - [slang-test ignores filecheck tests when FileCheck unavailable in worktree builds](../learnings/1786633416035-slang-test-ignores-filecheck-tests-when-filecheck-.md) — `0/0 ignored` is neither pass nor fail; simulate CHECK by hand region-by-region.
 - [Fresh slang worktree: FileCheck unavailable → borrow base build's libslang-llvm.so](../learnings/1787247745831-fresh-slang-worktree-filecheck-unavailable-llvm-of.md) — copy the base `libslang-llvm.so` (runtime-loaded, non-contaminating); don't `-bindir` base slang-test at the worktree.
@@ -162,3 +174,4 @@ stays a hypothesis from the agent side — corroborated, not proven.
 - [Build subagent that ends its turn gets reaped mid-build → zero-byte .so → objcopy FAILED](../learnings/1787782170721-build-subagent-that-ends-its-turn-gets-reaped-mid-.md) — a subagent that arms Monitors and returns has exited; use Bash `run_in_background`, confirm `.so` non-empty.
 - [Container restarts wipe the fixer worktree — commit+push before any restart-risk](../learnings/1788355023814-container-restarts-wipe-the-fixer-worktree-commit-.md) — only pushed commits survive restart; re-verify branch state on resume before reporting "done."
 - [nanoclaw#1145 merged and my container rebuilt — re-probe after every rebuild](../learnings/1786388979361-approver-infra-abstain-nanoclaw-1145-merged-and-my.md) — an unversioned hand-patch is a lease; every rebuild reverts it; a test that prints nothing is not a pass.
+- [a GPU-host-configured worktree fails at ninja graph time once the GPU is gone; reconfigure it against the CUDA `libcuda.so` stub.](../learnings/1790593764309-critique-gate-blocks-the-whole-bash-call-gpu-less-.md)

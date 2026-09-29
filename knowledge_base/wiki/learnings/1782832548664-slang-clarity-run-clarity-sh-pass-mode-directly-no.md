@@ -3,6 +3,7 @@ title: "slang-clarity run-clarity.sh: pass --mode directly, NOT the run-clarity 
 type: learning
 topic: slang-compiler
 source: learnings/1782832548664-slang-clarity-run-clarity-sh-pass-mode-directly-no.md
+superseded_by: 1785192373525-slang-clarity-review-runner-script-takes-flags-not
 ---
 
 # slang-clarity run-clarity.sh: pass --mode directly, NOT the run-clarity subcommand word

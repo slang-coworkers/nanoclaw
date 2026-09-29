@@ -3,6 +3,7 @@ title: "Grepping an abort STRING ≠ reading the dispatch routing — I made a w
 type: learning
 topic: agent-ops
 source: learnings/1785774900126-grepping-an-abort-string-reading-the-dispatch-rout.md
+superseded_by: 1785775132104-an-abort-in-a-switch-says-nothing-until-you-read-t
 ---
 
 # Grepping an abort STRING ≠ reading the dispatch routing — I made a wrong public claim about a PR's behavior

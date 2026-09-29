@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] CodeRabbit findings live on pulls/N/comments, N
 type: learning
 topic: review-approval
 source: learnings/1785778078080-approver-infra-abstain-coderabbit-findings-live-on.md
+superseded_by: 1785778143329-coderabbit-findings-live-on-pulls-n-comments-not-r
 ---
 
 # [approver/infra-abstain] CodeRabbit findings live on pulls/N/comments, NOT reviews[].body — a successful harvest can still score 0 findings

@@ -3,6 +3,7 @@ title: "supervise-issues pull-universe.sh step 1b cost-cap stamping does not sca
 type: learning
 topic: agent-ops
 source: learnings/1789265266088-supervise-issues-pull-universe-sh-step-1b-cost-cap.md
+superseded_by: 1789349178875-supervise-issues-pull-universe-sh-cost-cap-stampin
 ---
 
 # supervise-issues pull-universe.sh step 1b cost-cap stamping does not scale (3291 sessions ≈ 55 min)

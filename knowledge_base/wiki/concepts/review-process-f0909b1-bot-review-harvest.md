@@ -65,9 +65,12 @@ A code fix for the collector landed here too: harvest the head-matched CodeRabbi
 first-class secondary review, keyed on **`not match`** (no HEAD-matching pull review), not `not cand`
 (no candidates at all), so a fresh head-matched CodeRabbit comment outranks a stale pull review
 (exit 0, not 10). The reviewed head must come from CodeRabbit's explicit "between <base> and <head>"
-range — a bare SHA anywhere in the body must NOT synthesize a trusted commit_id
+range or its embedded `coveredCommitId` / `change_assessment_commit` markers — a bare SHA anywhere in
+the body must NOT synthesize a trusted commit_id. Judge staleness by those markers, never by the
+comment's `createdAt`: CodeRabbit edits the summary in place on `synchronize`, so a ~20h-old comment
+can cover the pinned head
 ([collect-reviews.sh dropped a head-current CodeRabbit issue comment → false exit-20; fix keys on `not match`](../learnings/1786829284875-approver-infra-collect-reviews-sh-dropped-a-head-c.md),
-[collect-reviews.sh drops head-current CodeRabbit summary posted as an issue comment](../learnings/1787142627004-approver-infra-abstain-collect-reviews-sh-drops-he.md)).
+[collect-reviews.sh exit 20 misses head-current CodeRabbit summary-comment review](../learnings/1788983436175-approver-infra-abstain-collect-reviews-sh-exit-20-.md)).
 
 Two related labelling traps live on the secondary review: `mode=live_late` must be set from the
 presence of ANY human review object on the head — including the PR AUTHOR's own `COMMENTED`
@@ -147,7 +150,7 @@ review-harness check with the build/test matrix
 
 - [CodeRabbit's formal review OBJECTS and its recent-review SUMMARY are DIFFERENT collections with different currency](../learnings/1786694530901-approver-clause-gap-coderabbit-s-formal-review-obj.md) — slang-rhi#797; harvest exit 10 keyed on the review objects and missed a head-current clean summary comment.
 - [collect-reviews.sh dropped a head-current CodeRabbit review posted as an ISSUE COMMENT → false exit-20; fix keys on `not match`](../learnings/1786829284875-approver-infra-collect-reviews-sh-dropped-a-head-c.md) — slang; resolve the head-matching pull review FIRST; require CodeRabbit's explicit base…head range, never a bare SHA; comments-fetch failure ⇒ exit 21.
-- [collect-reviews.sh drops head-current CodeRabbit summary posted as an issue comment (exit 20)](../learnings/1787142627004-approver-infra-abstain-collect-reviews-sh-drops-he.md) — slang#12618; the no-review-object branch exits 20 before persisting the CodeRabbit issue-comment summary; cross-check `--json comments`.
+- [collect-reviews.sh exit 20 misses head-current CodeRabbit summary-comment review](../learnings/1788983436175-approver-infra-abstain-collect-reviews-sh-exit-20-.md) — slang#12968; exit 20 drops an edited-in-place CodeRabbit summary comment; cross-check `--json comments`, judge staleness by `coveredCommitId`, not `createdAt`.
 - [collect-reviews.sh check-runs fetch is NOT paginated — false exit-20 skip on PRs with >30 check-runs](../learnings/1787298186077-approver-clause-gap-collect-reviews-sh-check-runs-.md) — slang#12679; an in-progress `review` run on page 2 of 51 check-runs was invisible; correct code was exit 22; use `gh api --paginate` / statusCheckRollup.
 - [mode=live_late is set by author's own COMMENTED review objects; a harvested secondary review can be stale even when "found"](../learnings/1787309073520-approver-clause-gap-mode-live-late-is-set-by-autho.md) — slang#12649 rev 2; set mode from any human review object on the head; commit-gate the secondary CodeRabbit body's base…head against the pinned head.
 - [harvest exit 20 can be a review-post RACE, not a genuine skip — re-check reviews before Devin-only](../learnings/1787557972284-approver-infra-abstain-harvest-exit-20-can-be-a-re.md) — slang#12705; the production review landed ~2.5 min after harvest; exit 20 on a human-authored PR is suspicious, on a fixer/bot branch expected.

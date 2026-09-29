@@ -3,7 +3,7 @@ title: PR-approver ABSTAIN delivery — the critique-gate token trap and transpo
 type: concept
 group: slang-autodiff-ir
 tags: [approver, abstain, critique-gate, gate-critique-on-deliver, gate-chain-routing, send-message, record-decision, matcher-vs-intent, in-reply-to]
-source_count: 10
+source_count: 9
 ---
 
 ## TL;DR
@@ -47,15 +47,13 @@ uppercase tokens — even inside a negation or a counterfactual — disqualifies
 drops the message into full stage enforcement. The exact tripping phrases recorded across
 sessions: "a maintainer policy call, not BLOCK" and "either artifact yields a clean WOULD_APPROVE"
 ([critique gate ABSTAIN fast-path defeated by your own message text](../learnings/1786442329725-approver-critique-mustfix-the-critique-gate-s-abst.md)),
-"not a BLOCK" / "not a WOULD_APPROVE" in the verdict narrative
-([defeated by literal tokens anywhere](../learnings/1786479724589-approver-critique-mustfix-abstain-fast-path-is-def.md)),
 "my first draft was WOULD_APPROVE" / "so not BLOCK" in the reasoning tail
 ([delivery refused if body contains the tokens](../learnings/1787079264586-approver-infra-abstain-approval-decision-delivery-.md)),
 "Approving for merge would be unsound…" using `WOULD_APPROVE` in the Next-action bullet
 ([must not contain the tokens even in prose](../learnings/1787568646622-approver-infra-abstain-abstain-approval-decision-m.md)),
 "Not WOULD_APPROVE … and not a clean BLOCK"
 ([fast-path defeated by the literal words](../learnings/1787769476913-approver-infra-critique-gate-abstain-fast-path-is-.md)),
-"no verified 🔴, so not a BLOCK"
+"no verified 🔴, so not a BLOCK" (R1 phrased it differently and passed; R2 tripped)
 ([defeated by BLOCK/WOULD_APPROVE anywhere; reword don't run a ceremonial critique](../learnings/1787848138413-approver-infra-abstain-the-critique-on-deliver-abs.md)),
 "Not a BLOCK"
 ([ABSTAIN message must not contain the tokens](../learnings/1787880871011-approver-process-abstain-message-must-not-contain-.md)),
@@ -143,10 +141,9 @@ under-specific matcher. The corrective posture is the same throughout: *a guard 
 is not thereby a broken guard — read the predicate before reporting on it, then word your message
 so the state-token test the hook actually runs reads it as the abstain it is.*
 
-**Source learnings (10):**
+**Source learnings (9):**
 
 - [The critique gate's ABSTAIN fast-path is defeated by your own message text](../learnings/1786442329725-approver-critique-mustfix-the-critique-gate-s-abst.md) — Conjunction predicate over delivered text; "not BLOCK"/"clean WOULD_APPROVE" prose re-arms it; also corrects a mis-diagnosis (the send_message denial was the author's wording, not a broken hook).
-- [ABSTAIN fast-path is defeated by the literal tokens WOULD_APPROVE/BLOCK anywhere](../learnings/1786479724589-approver-critique-mustfix-abstain-fast-path-is-def.md) — Unanchored negative guard; describe states without the token; don't run a ceremonial critique; verified by reading the hook.
 - [ABSTAIN [Approval Decision] must be delivered via the send_message TOOL](../learnings/1786633049888-approver-infra-abstain-approval-decision-must-be-d.md) — Fast-path lives only in the PreToolUse tool hook; a final-response `<message>` block bypasses it; transport-vs-content distinction.
 - [ABSTAIN decisions bypass the ledger critique-gate but NOT the delivery-message gate; never let codex attest volatile trace files](../learnings/1787049679140-approver-infra-abstain-decisions-bypass-the-ledger.md) — record_decision relaxed for abstain rows but the send is separately gated; exact STAGE format + danger-full-access; delivery re-hashes the Attested list.
 - [ABSTAIN delivery is refused if the message contains WOULD_APPROVE or BLOCK anywhere](../learnings/1787079264586-approver-infra-abstain-approval-decision-delivery-.md) — Unanchored guard trips on "my first draft was WOULD_APPROVE"/"so not BLOCK"; strip tokens and resend; MATCHER-vs-LEVEL over-block.

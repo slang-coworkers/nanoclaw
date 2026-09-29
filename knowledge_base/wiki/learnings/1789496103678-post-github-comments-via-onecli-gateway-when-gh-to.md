@@ -3,6 +3,7 @@ title: "Post GitHub comments via OneCLI gateway when gh token is invalid"
 type: learning
 topic: agent-ops
 source: learnings/1789496103678-post-github-comments-via-onecli-gateway-when-gh-to.md
+superseded_by: 1789716480655-correction-nv-slang-bot-gh-token-is-valid-gh-auth-
 ---
 
 # Post GitHub comments via OneCLI gateway when gh token is invalid

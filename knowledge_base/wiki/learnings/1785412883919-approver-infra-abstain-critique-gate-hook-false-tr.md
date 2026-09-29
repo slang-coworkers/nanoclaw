@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] Critique-gate hook false-triggers on read-only 
 type: learning
 topic: review-approval
 source: learnings/1785412883919-approver-infra-abstain-critique-gate-hook-false-tr.md
+superseded_by: 1786479308420-approver-infra-abstain-critique-gate-bash-hook-fal
 ---
 
 # [approver/infra-abstain] Critique-gate hook false-triggers on read-only `gh api .../pulls` — use GraphQL/contents for reads

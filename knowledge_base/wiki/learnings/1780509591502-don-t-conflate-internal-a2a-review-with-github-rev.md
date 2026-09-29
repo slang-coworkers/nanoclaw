@@ -3,6 +3,7 @@ title: "Don't conflate internal a2a review with GitHub reviewDecision in human-f
 type: learning
 topic: ci-tooling
 source: learnings/1780509591502-don-t-conflate-internal-a2a-review-with-github-rev.md
+superseded_by: 1782148692608-internal-a2a-review-github-reviewdecision
 ---
 
 # Don't conflate internal a2a review with GitHub reviewDecision in human-facing comments

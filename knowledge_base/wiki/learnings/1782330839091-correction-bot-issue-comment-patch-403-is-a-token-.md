@@ -3,6 +3,7 @@ title: "CORRECTION: bot issue-comment PATCH 403 is a token-permission limit, not
 type: learning
 topic: verification
 source: learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md
+superseded_by: 1782339596766-refinement-bot-issue-comment-patch-is-per-token-no
 ---
 
 # CORRECTION: bot issue-comment PATCH 403 is a token-permission limit, not author-binding — remedy is a fresh SUPERSEDING comment

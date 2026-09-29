@@ -3,7 +3,7 @@ title: "Fixer PR Creation, Fork & CI Mechanics"
 type: concept
 group: agent-fixer-codex-skills
 tags: [fixer, pr-hygiene, push-rights, drafts-only, fork-permissions, ci, tools-gfx, slang-rhi, devin, critique-gate, slang]
-source_count: 13
+source_count: 14
 ---
 
 # Fixer PR Creation, Fork & CI Mechanics
@@ -28,6 +28,8 @@ The fixer authenticated as `nv-slang-bot[bot]` may push `fix/issue-<n>` branches
 All fixer PRs must open as **DRAFT**. Fixers must never self-flip a PR to ready-for-review (`gh pr ready`) or merge it — those remain operator/maintainer-gated ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)). However, before directing a revert of a non-draft state, always verify the *actor* via the timeline API (`ready_for_review` event `.actor.login`) — a human maintainer may have flipped the PR intentionally ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)). Reverting a maintainer's deliberate decision is a worse breach than the (potentially nonexistent) bot violation. The corrected rule: revert only a **bot-authored** self-flip; leave human-flipped PRs alone. The audit is one call, and **current draft state cannot answer it — only the timeline actor can**: `gh api repos/O/R/issues/<n>/timeline --jq '.[] | select(.event=="ready_for_review" or .event=="convert_to_draft") | "\(.event) actor=\(.actor.login) \(.created_at)"'`. Confirming instance on PR #12281: the actor came back `pdeayton-nv` — a human flipped it, guardrail intact, nothing to revert ([draft-guardrail audit: use the timeline event actor, not current state](../learnings/1785825109539-a-dispatched-handoff-can-silently-die-verify-artif.md)).
 
 PR bodies must include an explicit `Closes #N` / `Fixes #N` closing keyword to auto-link the issue ([Fixer PRs must use a Closes/Fixes #N closing keyword, not a prose issue reference](../learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md)). Prose mentions like "also reported in #N" do not link. Backfill: `gh api -X PATCH repos/<o>/<r>/pulls/<pr> -f body="$(existing)\n\nCloses #<issue>"`. Do not pass `--reviewer` to `gh pr create`; let CODEOWNERS auto-assign.
+
+`/explain-diff-html` replaces the whole PR body and keeps only the issue links and the disclaimer, so running it on a slang PR drops the required five-part description unless you carry it across. Compose the explanation from the approved body's sections: Motivation and Concepts go in Background, Proposed solution goes in Intuition, and Change summary, Process report, Tests and Risk go in Code walkthrough. Then run one OUTPUT_REVIEW on the result; the upsert's `--dry-run` shows that `Fixes #N` survives ([/explain-diff-html replaces the PR body — map the five-part sections into it](../learnings/1790593764309-critique-gate-blocks-the-whole-bash-call-gpu-less-.md)).
 
 ## tools/gfx Legacy Code and the slang-rhi Twin
 
@@ -55,7 +57,7 @@ The `gate-critique-on-deliver.sh` hook keys off delivery markers (`[Fix Report]`
 
 - The "fixers must not self-flip PRs" rule ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)) was corrected by ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)): the drafts-only rule stands, but the bot never self-flipped in the confirming instance; a maintainer did — VERIFY THE ACTOR (timeline event, not current state) before directing a revert.
 
-**Source learnings (13):**
+**Source learnings (14):**
 - [slang-fixer can push fix/ branches direct to origin](../learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md)
 - [slang-fixer PR push: szihs fork master is stale/divergent](../learnings/1780357449295-slang-fixer-pr-push-szihs-fork-master-is-stale-div.md)
 - [Fixer PRs must use a Closes/Fixes #N closing keyword](../learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md)
@@ -69,4 +71,5 @@ The `gate-critique-on-deliver.sh` hook keys off delivery markers (`[Fix Report]`
 - [Devin Review done-detector false positives](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)
 - [Critique gate fires on no-code triage-confirmations too](../learnings/1783523465568-critique-gate-fires-on-no-code-triage-confirmation.md)
 - [STEP-0 byte-compare to decide if a diff changed emitted output; and codex delivery-gate verdict-parsing format](../learnings/1783352556452-step-0-byte-compare-to-decide-if-a-diff-changed-em.md)
+- [`/explain-diff-html` replaces the PR body; map the five-part sections into Background / Intuition / Code walkthrough, then one OUTPUT_REVIEW.](../learnings/1790593764309-critique-gate-blocks-the-whole-bash-call-gpu-less-.md)
 _Catalog: [[wiki/index.md]]_

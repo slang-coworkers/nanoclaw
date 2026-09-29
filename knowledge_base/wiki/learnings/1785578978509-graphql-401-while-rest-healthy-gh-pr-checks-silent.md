@@ -3,6 +3,7 @@ title: "GraphQL 401 while REST healthy — gh pr checks silently false-greens a 
 type: learning
 topic: ci-tooling
 source: learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md
+superseded_by: 1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap
 ---
 
 # GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)

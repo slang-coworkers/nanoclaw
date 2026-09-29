@@ -3,7 +3,7 @@ title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
 tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector, capability-atoms, texture-shadow, prefix-expander, min-max]
-source_count: 25
+source_count: 26
 ---
 
 # Slang Intrinsics & Builtins
@@ -16,6 +16,7 @@ Slang exposes GPU intrinsics and builtin types as core-module declarations (`cor
 - **Dot-form `__intrinsic_asm ".Method"` on a `void` method discards a value-returning target op.** `[mutating]` only makes `this` inout; capture the value explicitly (`this = __hlslSplat(t);`, precedent `__hlslLoadBAB`).
 - **The `$P` prefix expander switches on `argType->getOp()` and has no vector case**, so a generic `min`/`max` specialized on a vector (or matrix) hits `default: SLANG_UNEXPECTED` (E99997); concrete overloads work via `VECTOR_MAP_BINARY`.
 - **A `default:`-arm diagnostic catches only element types with NO prefix**; prefixed vector element types lacking a vector prelude helper (`intptr_t`, `int16_t`) slip through to "undeclared identifier".
+- **Overload resolution inside a generic body is not redone after specialization**, so a low-rank scalar-decomposition fallback overload leaves every generic caller without the native vector/matrix op. Route all overload families through one shared target-aware `[ForceInline]` worker.
 - **Builtin vector/matrix types ARE `DeclRefType<StructDecl>`**, so init-list coercion goes through `createInvokeExprForExplicitCtor`; its viability must not depend on `outExpr` (`canCoerce` probes with null).
 - **`float4(float2 xy, 1.f)` does NOT tail-pad to `(x,y,1,0)`**; the scalar splats to `float2(1,1)` giving `(x,y,1,1)`. The semantics-preserving rewrite is `float4(xy, 1.f, 1.f)`.
 - **`|`/`&`/`^` work on `[Flags]` enums (via `ILogical`) but `|=`/`&=`/`^=` do not** (table constrained on `__BuiltinLogicalType`). Add generic compound operators over `T : ILogical` with `[OverloadRank(-10)]`.
@@ -45,6 +46,8 @@ In `hlsl.meta.slang`, a dot-prefix `__intrinsic_asm ".Method"` on a `[mutating] 
 A generic `T:IFloat`/`IComparable` `min`/`max` specialized on a vector ICEs with E99997 on `-target cpp`/`cuda` (regression from #9593). Concrete `min(float3,float3)` works because the concrete `vector<T,N>` overloads decompose element-wise via `VECTOR_MAP_BINARY`; the generic path emits a single whole-vector `$P_min`, and `case 'P'` in `slang-intrinsic-expand.cpp` switches on `argType->getOp()` with no `kIROp_VectorType` case. A meta.slang-only fix fails; the authorized fix unwraps `IRVectorType` to its element before the switch, adds vector-arity prelude helpers (CPU `template<int N>`, CUDA explicit 2/3/4), and folds the `kIROp_IsVector` peephole on the pre-unwrap type. Gotchas: `slang-embed` follows `#include`, so prelude edits need a fresh worktree to re-embed; an include-order trap forces a `Vector<T,N>` forward-decl at the scalar-intrinsics tail; `__isVector<T>()` works in a COMPARE_COMPUTE test; a draft-PR `gh workflow run ci.yml` shows a benign priority-yield "failure" ([$P prefix + vector min/max fix layer](../learnings/1785207760204-slang-p-prefix-vector-min-max-fix-layer-prelude-em.md)).
 
 The matrix sibling is the same crash through the same path (`extension matrix<T,N,M,L>:IFloat` → `$P_max` → the patched `case 'P'` unwraps only vectors, so a matrix falls to `default:`). It is pre-existing and outside the vector scope, so blocking on it is a scope judgment; three reviewers agreed the `$P` widening rests on an unstated invariant ([matrix sibling crash left by vector fix](../learnings/1785210150352-slang-p-vector-min-max-fix-leaves-matrix-sibling-c.md)). In round 2 the fixer added an `E55215` diagnostic in the `default:` arm, but it catches only element types with no `$P` prefix. Vector element types with a recognized prefix but no vector helper (`intptr_t`→IPTR, `int16_t`→I16, reachable via `vector<intptr_t,N>:IInteger`) slip past into a downstream "undeclared identifier" error, and the PR claim that "IPTR/UPTR are not vector element types" is false. Verdict: APPROVE_WITH_NITS on that exotic residual ([E55215 misses prefix-having element types](../learnings/1785214611295-slang-12249-round-2-e55215-diagnostic-misses-prefi.md)).
+
+**Widening a builtin intrinsic's constraint with a scalar-decomposition fallback costs generic callers the native aggregate op.** Suppose `hlsl.meta.slang` gains a low-rank "broad" overload such as `min<T:__BuiltinArithmeticType, let N:int>(vector<T,N>, vector<T,N>)` whose body is `VECTOR_MAP_BINARY` (a scalar loop). Concrete callers still get the native vector op, because the narrow overload wins on rank. Generic callers do not: overload resolution runs when the generic body is checked and is NOT redone after specialization, so every generic caller is stuck with per-element scalar ops (no SPIR-V vector `FMin`/`SMin`, no HLSL `min`). The maintainer's version (#13139, closing #13114) sends the int, float and broad overload families through shared target-aware `[ForceInline]` workers (`__vectorMinImpl`, `__matrixMinImpl`), so all three get native aggregate ops and matrices keep their `MatrixLayoutMode`. So factor the target switch into a shared worker rather than writing a scalar fallback, and cover matrices as well as vectors ([core-module: a broad generic overload that decomposes to scalars loses aggregate intrinsics for generic callers](../learnings/1790642295187-slang-core-module-a-broad-generic-overload-that-de.md)).
 
 ## Builtin vector types and constructor resolution
 
@@ -100,7 +103,7 @@ Facts that shape any capability RFC triage (#9210, verified @33f9ed0ce): stateme
 
 Falsified earlier claims: vectors take the abstract-type ctor path (#11730); a negated constant gather offset stays a runtime `OpSNegate` (#9382); extending `specializeAddressSpace` to DXIL fixes groupshared params (#10641).
 
-**Source learnings (25):**
+**Source learnings (26):**
 - [static_assert is function-body only](../learnings/1790019025315-slang-static-assert-is-a-builtin-intrinsic-fn-func.md) — global-scope `ident(...)` mis-parses as a decl; any-scope support is #6136 (#13208)
 - [latest-version atom = getElements()[count-2]](../learnings/1784424625402-slang-capability-latest-version-atom-helper-must-u.md) — `-1` is the stage atom; scans are wrong or segfault; no `SLANG_API`
 - [float4(float2,1.f) splat vs tail-pad](../learnings/1784281175141-slang-rhi-798-float4-float2-1-f-splat-vs-tail-pad-.md) — resolves (vec2,vec2) to (x,y,1,1); fix adds explicit w (slang-rhi#798)
@@ -126,5 +129,6 @@ Falsified earlier claims: vectors take the abstract-type ctor path (#11730); a n
 - [$P fix leaves matrix sibling crash](../learnings/1785210150352-slang-p-vector-min-max-fix-leaves-matrix-sibling-c.md) — identical path, out of vector scope (#12249)
 - [E55215 misses prefix-having element types](../learnings/1785214611295-slang-12249-round-2-e55215-diagnostic-misses-prefi.md) — IPTR/UPTR/narrow-int slip past `default:` (#12249)
 - [$TR marker emits the call return type](../learnings/1785372605179-intrinsic-asm-tr-marker-emits-the-call-return-type.md) — fixes `tex2Dgather<$T0>`; full marker list (#12276)
+- [broad generic scalar-decomposition overload loses native aggregate ops for generic callers; use a shared target-aware worker (#13139)](../learnings/1790642295187-slang-core-module-a-broad-generic-overload-that-de.md)
 
 _Catalog: [[wiki/index.md]]_

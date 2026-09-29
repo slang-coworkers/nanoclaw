@@ -3,7 +3,7 @@ title: Automated review & monitoring tooling — reproducibility hazards and ver
 type: concept
 group: ci-tooling
 tags: [slang-pr-review-runner, shared-checkout, concurrency, ci-babysitter, subagent-scope, health-snapshots, webfetch, heartbeat]
-source_count: 7
+source_count: 8
 ---
 
 ## TL;DR
@@ -30,20 +30,24 @@ The observed symptom is an `INTEGRITY-FAIL.txt` whose "reviewed" file list belon
 that actually reviewed the right diff (#12813 flagged cmake files while a concurrent CUDA-nvrtc
 review ran 1s later)
 ([shared tmp/pr-diff.patch contamination](../learnings/1788769315552-slang-pr-review-runner-concurrent-reviews-in-share.md),
-[INTEGRITY-FAIL can be a shared-checkout race false positive](../learnings/1788160073054-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)).
+[INTEGRITY-FAIL can be a concurrent-run shared-tmp false positive](../learnings/1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)).
 
 **The guard is working, not the bug.** `compose-and-run.sh` captures its own `pr-diff.reference`
 via `gh pr diff` into the isolated per-run dir; the integrity net compares the model-written
 `tmp/pr-diff.patch` against that reference, which is exactly why it catches the cross-PR
 mismatch and exits 1. Don't blindly trust *or* dismiss it — **disambiguate what the run actually
-reviewed using per-run signals**, never the shared path: (1) `<run_dir>/prompt.txt` (the PR number
-fed to the model); (2) `<run_dir>/pr-diff.reference` (the authoritative per-run diff); (3)
-`final-review.md` body (which files it discusses); (4) `final-review.md` footer `diff sha256 <hash>`
-compared to `gh pr diff <N> | sha256sum` and to the clarity run's dir name (it embeds the same
-hash). If all four point at your PR, the INTEGRITY-FAIL is a concurrency artifact: set
-`reviewers_complete: false` (honor the tripped safety net; don't silently override it), document
-the false positive with the four evidences, and note the findings themselves remain valid
-([four per-run disambiguation signals](../learnings/1788160073054-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)).
+reviewed using per-run signals**, never the shared path: (1) the sha256 of `<run_dir>/pr-diff.reference`
+(the authoritative per-run diff) against `gh pr diff <N> | sha256sum`, the `final-review.md` footer
+`diff sha256 <hash>`, and the clarity run's dir name (it embeds the same hash); (2) the
+`final-review.md` body (which files it discusses); (3) `stream.jsonl`: subagents that say the
+pre-staged diff "does not match" bailed correctly, and `tmp/iso-<pr>-review/` references show the
+inner CLI already re-ran them on an isolated copy of the correct diff, whereas findings ON the wrong
+files mean a real wrong-diff review
+([INTEGRITY-FAIL confirmation signals + tmp/iso-<pr>/ self-heal](../learnings/1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)).
+If they all point at your PR, the INTEGRITY-FAIL is a concurrency artifact: set
+`reviewers_complete: false` (honor the tripped safety net; A exited nonzero), note the false
+positive with the evidence, and report the findings themselves as valid
+([findings valid, reviewers_complete:false](../learnings/1790108064998-slang-pr-review-runner-integrity-guard-exit-1-can-.md)).
 
 **What is / isn't reliable under concurrency, and recovery.** Reviewer B (Devin) scrapes the PR
 page directly and Reviewer C (`run-clarity.sh`) writes run dirs named
@@ -59,7 +63,7 @@ clean review of identical source logic (via the GitHub compare of the two heads)
 PR-accurate C and Devin passes. The proposed upstream fix is a per-run `tmp/pr-diff.patch`
 (run-scoped temp dir) so concurrent reviews can't cross-contaminate
 ([recovery + trap + upstream fix](../learnings/1788769315552-slang-pr-review-runner-concurrent-reviews-in-share.md),
-[per-run temp dir fix](../learnings/1788160073054-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)).
+[per-run temp dir fix](../learnings/1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)).
 
 ## run-clarity.sh may not be executable
 
@@ -107,7 +111,7 @@ file from the TOP**, so asking it for "the last line" silently returns a stale e
 true tail was 2026-09-08T07:51Z). The `/actions/runs?status=failure` JSON is similarly
 truncated/stale via WebFetch. There is no way to fetch just the tail via WebFetch
 ([WebFetch returns stale top-of-file lines](../learnings/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md),
-[WebFetch truncates — fetch the tail directly](../learnings/1788855481072-ci-health-snapshot-webfetch-truncates-health-snaps.md)).
+[WebFetch truncates — use curl | tail](../learnings/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md)).
 
 Workarounds that DO work in a read-only/allowlisted maintainer container: fetch and slice the tail
 directly (`curl -s <raw-url> | tail -1`); read the small rendered status page
@@ -120,7 +124,7 @@ minting a health verdict**; flag exact queue depths as "unavailable this run" ra
 a stale line as current — same discipline as "empty read ≠ failure": verify the read path returned
 CURRENT data before reporting from it
 ([status page + Actions API workarounds](../learnings/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md),
-[curl tail + timestamp sanity-check](../learnings/1788855481072-ci-health-snapshot-webfetch-truncates-health-snaps.md)).
+[curl | tail -1](../learnings/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md)).
 
 ## Don't over-escalate a short monitoring failure streak
 
@@ -137,12 +141,13 @@ Escalating too early creates false urgency in maintainer-facing reports and need
 wake. Applies to any heartbeat/monitoring workflow narrating a growing failure streak
 ([don't escalate a 3-sample streak](../learnings/1788385329846-heartbeat-ci-fetch-failures-don-t-escalate-a-3-sam.md)).
 
-**Source learnings (7):**
+**Source learnings (8):**
 
-- [slang-pr-review-runner INTEGRITY-FAIL can be a false positive from a shared-checkout race](../learnings/1788160073054-slang-pr-review-runner-integrity-fail-can-be-a-fal.md) — wrong-PR file list while final-review is correct; four per-run disambiguation signals; per-run temp-dir fix.
+- [INTEGRITY-FAIL from concurrent shared-tmp contention; per-run hash/body/stream.jsonl signals; the CLI self-heals via `tmp/iso-<pr>-review/`; per-run tmp dirs are the root fix.](../learnings/1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal.md)
+- [a verified false INTEGRITY-FAIL reports findings as valid with `reviewers_complete:false` plus a run-note.](../learnings/1790108064998-slang-pr-review-runner-integrity-guard-exit-1-can-.md)
 - [CI babysitter: classify-only subagent scope violation recurred (2nd time) — needs a structural fix](../learnings/1788287467646-ci-babysitter-classify-only-subagent-scope-violati.md) — full-tool subagent ignored a prose prohibition 2/2; restrict tools or verify post-hoc with gh run view --json.
 - [Heartbeat CI-fetch failures: don't escalate a 3-sample streak to "confirmed structural"](../learnings/1788385329846-heartbeat-ci-fetch-failures-don-t-escalate-a-3-sam.md) — isolated feed down ~2h self-healed next poll; hedge until a longer streak or independent signal.
 - [slang-clarity-review-runner run-clarity.sh lacks execute bit — invoke via bash](../learnings/1789719730698-slang-clarity-review-runner-run-clarity-sh-lacks-e.md) — exec fails exit 126; launch as bash run-clarity.sh; prefer bash over chmod +x (do not modify a skill file you did not author); after exit-126 the newest transcripts dir is a STALE prior run.
 - [CI health_snapshots.jsonl tail is unreadable via WebFetch — returns stale top-of-file lines](../learnings/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md) — WebFetch returned a 6-month-old line; use status.html + public Actions API; flag queue depth unavailable.
 - [slang-pr-review-runner: concurrent reviews in shared base-clone contaminate via tmp/pr-diff.patch](../learnings/1788769315552-slang-pr-review-runner-concurrent-reviews-in-share.md) — retry is safe/self-verifying; don't rm the shared patch; "newest run dir" is unsafe; match by PR/head SHA.
-- [CI health snapshot: WebFetch truncates health_snapshots.jsonl — fetch the tail directly](../learnings/1788855481072-ci-health-snapshot-webfetch-truncates-health-snaps.md) — curl | tail -1; Actions API for failures; always same-day timestamp sanity-check before reporting.
+- [CI health snapshot: use curl|tail, not WebFetch, on health_snapshots.jsonl](../learnings/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md) — curl | tail -1; merge_queue is the live CI-failure proxy.

@@ -3,6 +3,7 @@ title: "[approver/critique-mustfix] critique gate records only mcp__codex__codex
 type: learning
 topic: agent-ops
 source: learnings/1784020599916-approver-critique-mustfix-critique-gate-records-on.md
+superseded_by: 1786634623471-approver-critique-mustfix-output-review-must-be-a-
 ---
 
 # [approver/critique-mustfix] critique gate records only mcp__codex__codex calls, never codex-reply — OUTPUT_REVIEW must be a fresh call

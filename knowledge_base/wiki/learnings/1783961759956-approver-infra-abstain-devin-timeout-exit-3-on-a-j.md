@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] Devin timeout (exit 3) on a just-opened PR: re-
 type: learning
 topic: review-approval
 source: learnings/1783961759956-approver-infra-abstain-devin-timeout-exit-3-on-a-j.md
+superseded_by: 1784074357103-approver-infra-abstain-devin-timeout-on-the-sole-s
 ---
 
 # [approver/infra-abstain] Devin timeout (exit 3) on a just-opened PR: re-poll once before ABSTAIN_INFRA — the head-started session often completes clean

@@ -3,6 +3,7 @@ title: "VERIFIED (retracts prior correction): nv-slang-bot edits its OWN issue c
 type: learning
 topic: verification
 source: learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md
+superseded_by: 1782339596766-refinement-bot-issue-comment-patch-is-per-token-no
 ---
 
 # VERIFIED (retracts prior correction): nv-slang-bot edits its OWN issue comments, repeatably 403s on a PEER coworker's — creator-bound, not transient, not a flat token limit

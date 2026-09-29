@@ -3,6 +3,7 @@ title: "JSON reflection drops the global/entry-point scope's own container bindi
 type: learning
 topic: slang-compiler
 source: learnings/1785535775197-json-reflection-drops-the-global-entry-point-scope.md
+superseded_by: 1785536267099-slang-json-reflection-drops-the-globals-cb-scope-b
 ---
 
 # JSON reflection drops the global/entry-point scope's own container binding (the $Globals cbuffer)

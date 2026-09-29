@@ -2,8 +2,8 @@
 title: "slangc CLI behavior: exit codes, crash semantics, output streams, and option propagation"
 type: concept
 group: slang-tooling
-tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf]
-source_count: 9
+tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf, filestream, fifo, output-paths]
+source_count: 14
 ---
 
 ## TL;DR
@@ -18,9 +18,17 @@ several inspection paths silently drop the CLI options you passed.
 - **Debug asserts do NOT always catch OOB.** "Segfault is Release-only because List asserts
   bounds in debug" is a plausible-but-wrong claim; a null-deref before any List access
   segfaults (exit 139) even in the debug build. Verify segfault claims by process exit code.
-- **`-o /dev/null` is not a valid slangc output path in-container** — it fails E00004 and
-  exits 255 exactly like an ICE. Write to a real file and record the byte count as a second
-  signal.
+- **`-o /dev/null` fails for BINARY targets on any Linux build since v2025.24, not just
+  in-container** — it fails E00004 and exits 255 exactly like an ICE. `FileStream` refuses
+  every non-regular path (FIFOs, devices, `/dev/stdout` as a pipe); text targets slip through
+  via a raw `fopen`. Write to a real file and record the byte count as a second signal.
+- **Other FileStream writers fail quietly on special files:** `-depfile` is silent (exit 0,
+  its result is discarded), `-reflection-json` prints a path-less E52004 and exits 0. Small
+  outputs on a full disk also exit 0 with a 0-byte file (flush/close errors are ignored).
+- **Relaxing that gate means auditing every write-mode caller for `seek`** (the record-replay
+  mirror seeks per write and hits a Release-UB assert on a FIFO). `getPathType` FAILS on
+  FIFOs rather than returning a non-FILE type, and `/dev/null` is seekable so it never
+  reproduces a seek bug.
 - **`head -N` on a compiler log can hide the ICE** — Slang prints warnings first. Grep for
   outcome classes (`assert failure|E99997`), don't slice by position.
 - **`-dump-ir` writes to stderr, target text to stdout, non-interleaved.** slang-test composes
@@ -75,7 +83,10 @@ Two instrument traps each produced a wrong reading during slang#11004. First, `s
 positive control. Write to a real file and record the byte count as a second signal that
 separates "compiled" from "died before writing output" (a minimal fragment shader is a stable
 636 bytes)
-[-o /dev/null fails, byte-count as second signal](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md):
+[-o /dev/null fails, byte-count as second signal](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md).
+The failure is not a container quirk: it is the `FileStream` special-file gate described in the
+next section, and it hits only binary targets
+[FIFOs/devices refused for binary output since v2025.24](../learnings/1790618025182-slangc-refuses-fifos-devices-for-binary-output-sin.md):
 
 ```bash
 out=/tmp/x.spv; rm -f "$out"
@@ -107,6 +118,79 @@ match region can run past the IR into the now-populated stdout block need a seco
 [streams do not mix](../learnings/1788160383724-slang-test-dump-ir-target-o-does-not-mix-streams-s.md).
 The meta-rule: verify stream/composition claims against `slang-test-main.cpp` before repeating
 harness lore from `_common.md`.
+
+## Special-file and failed-write outputs: the FileStream gate (slang#13294)
+
+Consider `slangc x.slang -target spirv -o /dev/null` next to the same command with
+`-target spirv-asm`. The first fails with E00004 and the second succeeds, on any Linux build
+since #9217 (v2025.24). `FileStream::_init` (`source/core/slang-stream.cpp:131-139`) calls
+`Path::getPathType` on every existing path, and `getPathType` returns `SLANG_FAIL` for anything
+that is not `S_ISDIR`/`S_ISREG`. Every FileStream-based writer therefore refuses FIFOs,
+`/dev/null` and `/dev/stdout` when it is a pipe: binary `-o` fails with E00004, `-depfile` fails
+silently with exit 0, and `-reflection-json` prints E52004 but still exits 0. Text targets
+(glsl/hlsl/spirv-asm) avoid the gate. `File::writeAllTextIfChanged` first tries `readAllText`,
+which hits the check, and then falls back to a raw `fopen` in `writeNativeText`. So when a text
+target works and the binary target does not, suspect FileStream first, and treat any test
+result that relies on `-o /dev/null` with care. Old release binaries bisect a CLI regression in
+seconds with `gh release download vX -R shader-slang/slang -p 'slang-X-linux-x86_64.tar.gz'`
+[FIFOs/devices refused for binary output since v2025.24](../learnings/1790618025182-slangc-refuses-fifos-devices-for-binary-output-sin.md),
+[text targets bypass FileStream via writeNativeText](../learnings/1790622981578-locationless-e52004-prints-no-path-fifo-unit-test-.md).
+
+Several of these failures are silent or hard to read. `-depfile` failures of every kind
+(missing directory, a directory path) vanish because `slang-end-to-end-request.cpp:1262`
+discards the result of `writeDependencyFile`. `Diagnostics::UnableToWriteFile` (E52004) carries
+the path only in its span (`'~path'`), so a diagnostic raised with no source location prints
+just `error[E52004]: unable to write file`. For a location-less output-file failure, PR #13295
+uses `CannotWriteOutputFile` (E00004, "cannot write output file '<path>'"), which binary `-o`
+already used. `EndToEndCompileRequest::compile()` also snapshots `m_diagnosticOutput` before the
+reflection-json, repro-dump and perf diagnostics, so an API caller with no diagnostic writer
+never sees an error emitted after that point unless the snapshot is refreshed. Refreshing it is
+safe because `StringBuilder::produceString()` copies without clearing. A full disk shows the
+same pattern: `FileStream::flush` and `close` ignore the results of `fflush`/`fclose`, so an
+output smaller than the stdio buffer exits 0 and leaves a 0-byte file, while a larger output
+correctly gets E00004 (filed as a #13294 follow-up)
+[E52004 is path-less without a location](../learnings/1790622981578-locationless-e52004-prints-no-path-fifo-unit-test-.md),
+[diagnostic-output snapshot and getPathType on FIFOs](../learnings/1790646938428-relaxing-a-shared-filestream-gate-audit-every-writ.md),
+[RLIMIT_FSIZE full-disk simulation](../learnings/1790644539122-simulate-a-full-disk-for-slangc-output-tests-with-.md).
+
+Relaxing `FileStream::_init` so that the write modes (`Create`/`Append`) accept existing FIFOs,
+ttys and devices, as PR #13295 does, is a change to a shared gate. Audit every write-mode
+caller for `seek`, not only the `Open` callers, and grep all of `source/`. The first audit of
+#13295 searched only `source/core`, `source/slang` and `source/compiler-core`, and so it missed
+`source/slang-record-replay`. There, `ReplayStream::setMirrorFile` (`replay-stream.cpp:137`)
+opens in `Create` mode and `ReplayStream::write` seeks before every write (`:100`). `fseek` on a
+FIFO or tty fails with ESPIPE, and `FileStream::seek` then hits `SLANG_ASSERT(rs == 0)`, which
+throws in Debug and is `SLANG_ASSUME` (undefined behaviour) in Release. The fix stays local to
+that consumer: `setMirrorFile` refuses an existing non-regular path. `/dev/null` is seekable on
+Linux, so it never reproduces a seek bug; test with a FIFO or tty, and refuse `/dev/null` as a
+mirror because it keeps nothing, not because it cannot seek. Two predicate traps sit next to
+this. First, `getPathType` FAILS for FIFOs, devices and sockets instead of succeeding with a
+non-FILE type, so "exists and is not a regular file" must be written as
+`File::exists(p) && !(SLANG_SUCCEEDED(getPathType(p, &t)) && t == SLANG_PATH_TYPE_FILE)`; a spec
+that says "getPathType succeeds and isn't FILE" silently misses FIFOs. Second,
+`FileMode::Open` + `FileAccess::Write` maps to `"wb"`, so a policy keyed on mode behaves
+differently from one keyed on access
+[Create-mode relaxation reaches ReplayStream's seek-per-write mirror](../learnings/1790626903530-filestream-create-mode-relaxations-reach-replaystr.md),
+[audit every writer for seeks; getPathType FAILS for FIFOs](../learnings/1790646938428-relaxing-a-shared-filestream-gate-audit-every-writ.md).
+
+Three test techniques make these paths checkable without a GPU or threads. A FIFO output test
+runs `mkfifo`, opens the read end with `O_RDONLY|O_NONBLOCK` BEFORE starting slangc through
+`ProcessUtil::execute`, and drains it with `read()` until it returns 0 after slangc exits;
+slangc's write-open succeeds at once and small outputs fit in the pipe buffer
+(`tools/slang-unit-test/unit-test-special-file-output.cpp`). In the container's Debug build the
+default `cmake --build --preset debug` compiled `slang-unit-test` despite `EXCLUDE_FROM_ALL`, but
+confirm a new test is in the binary with `strings libslang-unit-test-tool.so | grep <TestName>`
+[FIFO unit-test pattern](../learnings/1790622981578-locationless-e52004-prints-no-path-fifo-unit-test-.md).
+For FIFO *input* from the shell, wrap the writer as `timeout N sh -c 'cat f > fifo'`; a plain
+`(cat f > fifo) &` blocks in `open()` forever if slangc never opens the FIFO, and the shell hangs
+[FIFO input needs a timeout wrapper](../learnings/1790618025182-slangc-refuses-fifos-devices-for-binary-output-sin.md).
+To simulate a full disk on an ordinary file without `/dev/full`, run
+`bash -c "trap '' XFSZ; ulimit -f 0; exec slangc ..." 2>&1 | cat`, which makes every write fail
+with EFBIG instead of killing the process with SIGXFSZ. Keep the limit inside the
+`bash -c ... exec`, and pipe to an unlimited `cat` outside it: the agent Bash tool's own
+stdout/stderr is a file, so a limit on the whole command also swallows slangc's diagnostics and
+your `echo rc=$?`, which reads as "no error printed"
+[RLIMIT_FSIZE full-disk simulation](../learnings/1790644539122-simulate-a-full-disk-for-slangc-output-tests-with-.md).
 
 ## Options dropped on inspection paths; option semantics
 
@@ -193,7 +277,7 @@ churn, whereas changing the default to emit column would touch hundreds of `test
 expected-output blocks
 [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md).
 
-**Source learnings (9):**
+**Source learnings (14):**
 - [slangc -o /dev/null fails in-container; and head -N on a compiler log hides the ICE](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md) — E00004 exit 255 looks like an ICE; byte-count as a second signal; warnings print first so grep outcome classes; don't publish from an unread `rc255` catch-all bucket.
 - [Slang debug build: SLANG_ASSERT does NOT always catch OOB — verify segfault claims empirically](../learnings/1786514794799-slang-debug-build-slang-assert-does-not-always-cat.md) — Null-deref before any List access segfaults (exit 139) in debug; the requested-index-vs-program-count guard; a locally-true mechanism need not be the one in play.
 - [slangc exit 255 is a normal error, not a crash — verify signals + the real null path](../learnings/1786873188157-slangc-exit-255-is-a-normal-error-not-a-crash-veri.md) — 134/139 are real crashes; `SLANG_ASSERT=system` forces SIGABRT; enumerate which producer yields null (multi-declarator, not EOF); shared-clone `git stash pop` hazard.
@@ -202,4 +286,9 @@ expected-output blocks
 - [slang-test -dump-ir + target: `-o -` does NOT mix streams (stderr=IR, stdout=target)](../learnings/1788160383724-slang-test-dump-ir-target-o-does-not-mix-streams-s.md) — Corrects `_common.md` lore; non-interleaved labeled blocks; `-o /dev/null`→`-o -` is a clean swap; only trailing-match CHECK-NOT/DAG/COUNT need review.
 - [DXC errors on duplicate semantics; Slang silently re-indexes them](../learnings/1788387854199-dxc-errors-on-duplicate-semantics-slang-silently-r.md) — `(base,index)` collision rules; DXIL/SPIR-V diagnose, Slang legalizes via `_returnNonOverlappingAttributeIndex`; a hard error would be breaking, warn first.
 - [slangc -warnings-as-errors needs an operand + module still written when it escalates](../learnings/1788913047747-slangc-warnings-as-errors-needs-an-operand-module-.md) — The operand requirement; the write-site escalation leaves the `.slang-module` on disk; `-no-codegen` returns SLANG_OK; argue scope-calls to codex with reasons.
+- [FileStream refuses FIFOs/devices since v2025.24 (binary -o E00004, -depfile silent, -reflection-json E52004 exit 0); text targets bypass; depfile result discarded; release-binary bisect; FIFO-input timeout wrapper.](../learnings/1790618025182-slangc-refuses-fifos-devices-for-binary-output-sin.md)
+- [Location-less E52004 has no path, use E00004; nonblocking-FIFO unit-test pattern; slang-unit-test built by default debug build.](../learnings/1790622981578-locationless-e52004-prints-no-path-fifo-unit-test-.md)
+- [Relaxing Create/Append reaches ReplayStream's seek-per-write mirror (ESPIPE, Release UB); /dev/null seeks fine; Open+Write maps to "wb".](../learnings/1790626903530-filestream-create-mode-relaxations-reach-replaystr.md)
+- [Audit every writer for seek incl. slang-record-replay; getPathType FAILS for FIFOs; /dev/null refused as mirror since it keeps nothing; diagnostic-output snapshot.](../learnings/1790646938428-relaxing-a-shared-filestream-gate-audit-every-writ.md)
+- [`trap '' XFSZ; ulimit -f 0` inside bash -c, piped to cat; small outputs exit 0 with 0-byte file because flush/close errors are ignored.](../learnings/1790644539122-simulate-a-full-disk-for-slangc-output-tests-with-.md)
 - [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md) — verified on top-of-tree; rich via `shouldEmitRichDiagnostics` with no flag; the classic path emits column only under LanguageServer + a bare-integer id; an MSVC-parseable single line is a distinct opt-in third style.

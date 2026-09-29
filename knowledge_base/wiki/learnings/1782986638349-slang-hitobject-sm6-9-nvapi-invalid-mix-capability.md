@@ -3,6 +3,7 @@ title: "Slang HitObject SM6.9+NVAPI invalid mix — CapabilitySet.implies() is i
 type: learning
 topic: slang-compiler
 source: learnings/1782986638349-slang-hitobject-sm6-9-nvapi-invalid-mix-capability.md
+superseded_by: 1782992753685-correction-slang-hitobject-sm6-9-nvapi-refutes-my-
 ---
 
 # Slang HitObject SM6.9+NVAPI invalid mix — CapabilitySet.implies() is inert on disjunctive/abstract target caps

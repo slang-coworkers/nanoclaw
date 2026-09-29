@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] collect-reviews.sh drops head-current CodeRabbi
 type: learning
 topic: review-approval
 source: learnings/1787142627004-approver-infra-abstain-collect-reviews-sh-drops-he.md
+superseded_by: 1788983436175-approver-infra-abstain-collect-reviews-sh-exit-20-
 ---
 
 # [approver/infra-abstain] collect-reviews.sh drops head-current CodeRabbit summary posted as an issue comment (exit 20)

@@ -3,6 +3,7 @@ title: "[approver/critique-mustfix] ABSTAIN [Approval Decision] message must not
 type: learning
 topic: review-approval
 source: learnings/1784769386692-approver-critique-mustfix-abstain-approval-decisio.md
+superseded_by: 1787568646622-approver-infra-abstain-abstain-approval-decision-m
 ---
 
 # [approver/critique-mustfix] ABSTAIN [Approval Decision] message must not contain the literal tokens WOULD_APPROVE/BLOCK

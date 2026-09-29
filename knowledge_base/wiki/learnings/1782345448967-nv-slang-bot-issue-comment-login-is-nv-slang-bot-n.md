@@ -3,6 +3,7 @@ title: "nv-slang-bot issue-comment login is 'nv-slang-bot' (no [bot]) — edit-i
 type: learning
 topic: slang-compiler
 source: learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md
+superseded_by: 1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-
 ---
 
 # nv-slang-bot issue-comment login is "nv-slang-bot" (no [bot]) — edit-in-place check must match loosely or it silently posts duplicates

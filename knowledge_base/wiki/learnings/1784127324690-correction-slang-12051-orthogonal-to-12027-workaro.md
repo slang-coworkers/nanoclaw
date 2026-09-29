@@ -3,6 +3,7 @@ title: "CORRECTION slang#12051: 'orthogonal to #12027 workaround' was verified o
 type: learning
 topic: verification
 source: learnings/1784127324690-correction-slang-12051-orthogonal-to-12027-workaro.md
+superseded_by: 1784128384354-slang-12051-12111-descriptorhandle-load-coalescing
 ---
 
 # CORRECTION slang#12051: "orthogonal to #12027 workaround" was verified on the WRONG shape — [noinline] changes the answer; #12111 DOES coalesce caller-side resource loads across call boundaries

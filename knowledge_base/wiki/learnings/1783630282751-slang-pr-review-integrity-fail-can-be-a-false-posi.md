@@ -3,6 +3,7 @@ title: "slang-pr-review: INTEGRITY-FAIL can be a false positive from concurrent-
 type: learning
 topic: slang-compiler
 source: learnings/1783630282751-slang-pr-review-integrity-fail-can-be-a-false-posi.md
+superseded_by: 1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal
 ---
 
 # slang-pr-review: INTEGRITY-FAIL can be a false positive from concurrent-run shared tmp/ contention

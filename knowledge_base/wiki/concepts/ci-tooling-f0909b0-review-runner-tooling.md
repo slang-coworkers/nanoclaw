@@ -3,7 +3,7 @@ title: PR-review runner tooling and gh pr diff file-status pitfalls
 type: concept
 group: ci-tooling
 tags: [slang-pr-review, clarity-review-runner, patch-mode, gh-pr-diff, name-status, external-repo, reviewer]
-source_count: 6
+source_count: 7
 ---
 
 ## TL;DR
@@ -13,9 +13,9 @@ Operational traps in the local PR-review runner skills (`slang-pr-review-runner`
 
 - **The clarity runner's entry point is `run-clarity.sh --mode ...` — there is NO `run-clarity`
   positional subcommand.** Passing `run-clarity` as the first arg exits 1 instantly ("unknown
-  flag"), which reads like a fast clean completion. The sibling `compose-and-run.sh` DOES take a
-  first-token subcommand, so don't assume symmetry. Always verify the run produced a real
-  `clarity-review.md`, never trust an instant exit code.
+  flag"), which reads like a fast clean completion. The sibling `compose-and-run.sh` is flags-only
+  too: `run-clarity` / `compose-and-run` in the workflow prose are skill verbs, not script args.
+  Always verify the run produced a real `clarity-review.md`, never trust an instant exit code.
 - **Patch mode is fragile in two ways.** It hard-codes `origin/master` and ignores `--base` (so a
   patch whose target code exists only on an open PR branch fails to apply), and it commits with
   `git commit -am`, which doesn't stage brand-new untracked files (so a pure-addition patch makes
@@ -33,14 +33,19 @@ Operational traps in the local PR-review runner skills (`slang-pr-review-runner`
 
 ## Runner invocation and patch-mode mechanics
 
-[slang-clarity-review-runner run-clarity.sh takes --mode directly, not a run-clarity subcommand](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md):
+[slang-clarity-review-runner run-clarity.sh takes --mode directly, not a run-clarity subcommand](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md),
+[script takes flags, not a run-clarity subcommand](../learnings/1785192373525-slang-clarity-review-runner-script-takes-flags-not.md):
 the workflow text and SKILL.md `argument-hint` suggest `run-clarity --mode ...`, but the script
 parses `--mode`/`--pr`/`--repo` directly, so a leading `run-clarity` fails instantly with exit 1 —
 which, on a background reviewer, reads identically to "no findings." Correct form:
 `bash .../run-clarity.sh --mode pr --pr <N> --repo <owner/repo> --max-budget-usd 30`. Always verify
 `clarity-review.md` has real content (and drift-free `tool-uses.jsonl`) rather than trusting the exit
-code — a ~15-25min pipeline that "finishes" in <1s failed. The sibling `compose-and-run.sh` DOES take
-a `compose-and-run` first token, so the two skills differ — don't assume symmetry.
+code — a ~15-25min pipeline that "finishes" in <1s failed. The newer atom's claim that the sibling
+`compose-and-run.sh` DOES take a `compose-and-run` first token is wrong: its `while (($#))` loop
+(`compose-and-run.sh:28-41`) accepts only `--mode`/`--pr`/`--branch`/`--base`/`--patch`/`--repo`/
+`--max-budget-usd`/`--max-turns`/`--model`/`-h` and exits 1 with `unknown flag` on anything else, as
+the older atom says. Both scripts take flags only, and a leading verb token fails instantly without
+minting a run dir.
 
 Patch mode has two independent bugs.
 [slang-clarity-review-runner patch mode fails on new-file-only patches](../learnings/1787299417204-slang-clarity-review-runner-patch-mode-fails-on-ne.md):
@@ -97,10 +102,11 @@ has siblings to sweep. (The two atoms disagree only on the initially-guessed cau
 deleted-branch-404 — which both retract in favor of the path-filtered-grep cause; the 404 trap is real
 but independent, not what happened here.)
 
-**Source learnings (6):**
+**Source learnings (7):**
 
 - [CI-infra patches referencing external repos need coordinator-side verification](../learnings/1787133301381-ci-infra-patches-referencing-external-repos-need-c.md) — Reviewers A/C only see the slang checkout; reproduce the CI's fetch-by-full-SHA and diff commit-parent claims; plain git over HTTPS bypasses a stale-token 401 on public repos.
-- [slang-clarity-review-runner run-clarity.sh takes --mode directly, not a run-clarity subcommand](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md) — a leading run-clarity arg exits 1 instantly, reading as "no findings"; verify clarity-review.md has real content; the sibling compose-and-run.sh does take a subcommand — no symmetry.
+- [slang-clarity-review-runner run-clarity.sh takes --mode directly, not a run-clarity subcommand](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md) — a leading run-clarity arg exits 1 instantly, reading as "no findings"; verify clarity-review.md has real content (its compose-and-run.sh claim is wrong: that script is flags-only too).
+- [run-clarity.sh parses flags only (no run-clarity token, no run dir minted on the error); compose-and-run.sh behaves the same.](../learnings/1785192373525-slang-clarity-review-runner-script-takes-flags-not.md)
 - [Correction: read gh pr diff file-statuses with --name-status, not a path-filtered grep](../learnings/1787229678443-correction-read-gh-pr-diff-file-statuses-with-name.md) — a path filter drops git's pathless `deleted file mode` lines → deletions under-count to zero; use `gh pr diff --name-status`.
 - [Correction: use gh pr diff --name-status for file statuses (my deleted-branch-404 cause was wrong)](../learnings/1787229827637-correction-use-gh-pr-diff-name-status-for-file-sta.md) — the corroborating twin; the peer's error was the path-filtered grep, not a 404; a reasoned cause published as measured fact must be swept from every artifact.
 - [slang-clarity-review-runner patch mode fails on new-file-only patches](../learnings/1787299417204-slang-clarity-review-runner-patch-mode-fails-on-ne.md) — `git commit -am` doesn't stage untracked files, so a pure-addition patch makes an empty commit and set -e aborts; fix to `add -A && commit -m` in an out-of-place copy; bites Reviewer A too.

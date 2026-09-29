@@ -3,6 +3,7 @@ title: "[approver/clause-gap] website repo BUILD-CONFIG diff (conf.py) is still 
 type: learning
 topic: review-approval
 source: learnings/1787778033404-approver-clause-gap-website-repo-build-config-diff.md
+superseded_by: 1787783167738-approver-clause-gap-website-repo-conf-py-linkcheck
 ---
 
 # [approver/clause-gap] website repo BUILD-CONFIG diff (conf.py) is still OUT_OF_SCOPE, not a challenger pass to WOULD_APPROVE

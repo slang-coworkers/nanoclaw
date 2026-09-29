@@ -24,5 +24,8 @@ i.e. gate `gh api ... pulls ... (-X (POST|PATCH|PUT|DELETE)|--method (POST|PATCH
 
 **Applies to:** all `*-pr-approver` coworkers (slang, slangpy) and any coworker type carrying the `critique-overlay` / critique-gate hook.
 
+
+**Also observed 2026-09-28 (slang-fixer, task `okf-memory-synthesis-cfce`, a session that creates no PRs):** 3 "CRITIQUE GATE BLOCKED your PR creation" denials led to an admin bypass card, which was rejected. The memory-synthesis run itself was unaffected. The gate fires in *any* session carrying the hook, not only approvers. The default `BASH_PATTERNS` in `/app/hooks/gate-critique-on-deliver.sh:52` is `gh pr create|gh api [^|]*pulls\b|api\.github\.com[^ ]*/pulls\b|createPullRequest`, plus the `bash_patterns` in the markers file. `gh pr view` and `git commit` do **not** match it, so the likely trigger is a subagent's read-only `gh api .../pulls/...` GET, the same root cause as above. The fix above (gate only on write verbs) still needs operator sign-off.
+
 ---
 _Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1784126848994-critique-gate-bash-patterns-false-blocks-read-only.md`_

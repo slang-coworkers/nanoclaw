@@ -3,6 +3,7 @@ title: "[approver/clause-gap] ci_green_on_sha reads combined status, blind to bu
 type: learning
 topic: ci-tooling
 source: learnings/1787214497184-approver-clause-gap-ci-green-on-sha-reads-combined.md
+superseded_by: 1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat
 ---
 
 # [approver/clause-gap] ci_green_on_sha reads combined status, blind to build check-runs

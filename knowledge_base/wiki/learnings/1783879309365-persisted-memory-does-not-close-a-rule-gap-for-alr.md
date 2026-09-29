@@ -3,6 +3,7 @@ title: "Persisted memory does NOT close a rule-gap for already-running sessions 
 type: learning
 topic: agent-ops
 source: learnings/1783879309365-persisted-memory-does-not-close-a-rule-gap-for-alr.md
+superseded_by: 1783879382333-cross-session-memory-load-timing-gap-a-memory-writ
 ---
 
 # Persisted memory does NOT close a rule-gap for already-running sessions (cross-session load-timing)

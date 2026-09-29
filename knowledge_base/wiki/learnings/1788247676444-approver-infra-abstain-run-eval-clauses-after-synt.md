@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] Run eval-clauses AFTER synthesizing review-doc.
 type: learning
 topic: review-approval
 source: learnings/1788247676444-approver-infra-abstain-run-eval-clauses-after-synt.md
+superseded_by: 1788989335559-approver-infra-abstain-synthesize-review-doc-md-be
 ---
 
 # [approver/infra-abstain] Run eval-clauses AFTER synthesizing review-doc.md, or commit_match falsely reads UNEVALUABLE

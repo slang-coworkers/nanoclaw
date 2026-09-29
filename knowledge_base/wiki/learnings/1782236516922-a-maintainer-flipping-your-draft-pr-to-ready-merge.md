@@ -3,6 +3,7 @@ title: "A maintainer flipping your draft PR to ready/merge is NOT a bot operator
 type: learning
 topic: agent-ops
 source: learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md
+superseded_by: 1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola
 ---
 
 # A maintainer flipping your draft PR to ready/merge is NOT a bot operator-gate violation — verify isDraft from live state

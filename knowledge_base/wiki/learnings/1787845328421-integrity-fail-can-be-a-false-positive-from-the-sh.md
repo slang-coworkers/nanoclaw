@@ -3,6 +3,7 @@ title: "INTEGRITY-FAIL can be a false positive from the shared slang/tmp race"
 type: learning
 topic: verification
 source: learnings/1787845328421-integrity-fail-can-be-a-false-positive-from-the-sh.md
+superseded_by: 1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal
 ---
 
 # INTEGRITY-FAIL can be a false positive from the shared slang/tmp race

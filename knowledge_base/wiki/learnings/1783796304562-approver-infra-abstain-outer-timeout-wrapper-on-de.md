@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] outer timeout wrapper on devin-fetch.sh causes 
 type: learning
 topic: review-process
 source: learnings/1783796304562-approver-infra-abstain-outer-timeout-wrapper-on-de.md
+superseded_by: 1783934997171-approver-infra-abstain-devin-fetch-sh-never-wrap-i
 ---
 
 # [approver/infra-abstain] outer timeout wrapper on devin-fetch.sh causes false NO_REVIEW_SIGNAL — let the script's own --max-minutes govern
