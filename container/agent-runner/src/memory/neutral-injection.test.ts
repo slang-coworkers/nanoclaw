@@ -52,19 +52,23 @@ describe('every provider without a session-start hook says so', () => {
     expect(make().registerMemorySessionHook(MEMORY_SESSION_HOOK)).toBe(false);
   });
 
-  // The other side of the branch: Claude has a hook, so it must report true or
-  // it would start paying for a redundant system-prompt copy.
-  it('claude returns true, and wires the hook it claims to have', () => {
+  // Claude also returns false (2026-09-29): Claude Code clips hook stdout above
+  // ~10 KB to a 2 KB preview, so the section rides in the system prompt like
+  // every other provider, and the contract step strips any hook a previous
+  // runner left in settings.json.
+  it('claude returns false and removes the hook an older runner wrote', () => {
     const prev = process.env.CLAUDE_CONFIG_DIR;
     process.env.CLAUDE_CONFIG_DIR = path.join(tmp, '.claude');
     try {
-      // Through the contract helper, as index.ts does: the settings.json WRITE is
-      // the contract's `lifecycle.memorySessionHookRegistration`, so calling the
-      // provider method directly registers the hook but writes no file.
+      fs.mkdirSync(path.join(tmp, '.claude'), { recursive: true });
+      fs.writeFileSync(
+        path.join(tmp, '.claude', 'settings.json'),
+        JSON.stringify({ hooks: { SessionStart: [{ matcher: 'startup|clear|compact', hooks: [{ type: 'command', command: MEMORY_SESSION_HOOK.command, timeout: 10 }] }] } }),
+      );
       const provider = createProvider('claude', {});
-      expect(registerProviderMemorySessionHook('claude', provider, MEMORY_SESSION_HOOK)).toBe(true);
+      expect(registerProviderMemorySessionHook('claude', provider, MEMORY_SESSION_HOOK)).toBe(false);
       const settings = JSON.parse(fs.readFileSync(path.join(tmp, '.claude', 'settings.json'), 'utf-8'));
-      expect(JSON.stringify(settings.hooks.SessionStart)).toContain(MEMORY_SESSION_HOOK.command);
+      expect(JSON.stringify(settings.hooks ?? {})).not.toContain(MEMORY_SESSION_HOOK.command);
     } finally {
       if (prev === undefined) delete process.env.CLAUDE_CONFIG_DIR;
       else process.env.CLAUDE_CONFIG_DIR = prev;

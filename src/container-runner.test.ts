@@ -7,6 +7,7 @@
  * thing it was really guarding. Argv assertions moved to
  * `src/drivers/docker-driver.test.ts`, which is where argv now lives.
  */
+import { spawnSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -18,9 +19,11 @@ import type { ContainerConfig } from './container-config.js';
 import {
   armSessionLifecycle,
   assertComposedDocUsable,
+  CLAUDE_MD_GUARD_CMD,
   composeSessionSpec,
   migrateStandingInstructions,
   normalizeRotateAgeDays,
+  ONECLI_STUB_GUARD_CMD,
   parseMemoryMb,
   parsePidsLimit,
   readStandingInstructions,
@@ -29,6 +32,7 @@ import {
   resolveSpawnProvider,
   syncSkillSymlinks,
   toMountSpecs,
+  upsertGuardHook,
   watchGatewayAvailability,
 } from './container-runner.js';
 import type { SupervisedHandle } from './drivers/session-events.js';
@@ -190,6 +194,56 @@ describe('one provider per spawn', () => {
   it('neither half resolves the tiers itself', () => {
     expect(spawn).not.toMatch(/resolveProviderName\(/);
     expect(contribution).not.toMatch(/resolveProviderName\(/);
+  });
+});
+
+describe('inline guard hooks', () => {
+  // Claude Code runs hook commands with /bin/sh (dash in the agent image). dash's
+  // echo expanded the JSON's `\n` escapes, jq rejected the input and both guards
+  // exited 0 on every multi-line tool input. Run them the way Claude Code does.
+  const hasJq = spawnSync('jq', ['--version']).status === 0;
+  const run = (cmd: string, input: unknown) =>
+    spawnSync('/bin/sh', ['-c', cmd], { input: JSON.stringify(input), encoding: 'utf-8' }).status;
+
+  it.skipIf(!hasJq)('CLAUDE.md guard blocks a Write whose content spans lines', () => {
+    const input = { tool_name: 'Write', tool_input: { file_path: '/workspace/agent/CLAUDE.md', content: 'one\ntwo' } };
+    expect(run(CLAUDE_MD_GUARD_CMD, input)).toBe(2);
+  });
+
+  it.skipIf(!hasJq)('CLAUDE.md guard lets other files through', () => {
+    const input = { tool_name: 'Edit', tool_input: { file_path: '/workspace/agent/notes.md', old_string: 'a\nb' } };
+    expect(run(CLAUDE_MD_GUARD_CMD, input)).toBe(0);
+  });
+
+  it.skipIf(!hasJq)('stub guard blocks a multi-line command that bakes $GH_TOKEN into a remote', () => {
+    const command =
+      'cd /workspace/agent/wt\ngit remote set-url origin https://x-access-token:$GH_TOKEN@github.com/o/r.git';
+    expect(run(ONECLI_STUB_GUARD_CMD, { tool_name: 'Bash', tool_input: { command } })).toBe(2);
+  });
+
+  it.skipIf(!hasJq)('stub guard lets a clean remote URL through', () => {
+    const command = 'cd /workspace/agent/wt\ngit remote set-url origin https://github.com/o/r.git';
+    expect(run(ONECLI_STUB_GUARD_CMD, { tool_name: 'Bash', tool_input: { command } })).toBe(0);
+  });
+});
+
+describe('upsertGuardHook', () => {
+  const guard = (command: string) => ({ matcher: 'Bash', hooks: [{ type: 'command', command, timeout: 5 }] });
+  const other = { matcher: 'Bash', hooks: [{ type: 'command', command: 'bash /app/hooks/gate-plan.sh', timeout: 5 }] };
+
+  it('replaces an older revision of the same guard', () => {
+    const out = upsertGuardHook([other, guard('echo MARK old')], 'Bash', 'MARK', 'printf MARK new');
+    expect(out).toEqual([other, guard('printf MARK new')]);
+  });
+
+  it('is idempotent', () => {
+    const once = upsertGuardHook([other], 'Bash', 'MARK', 'printf MARK new');
+    expect(upsertGuardHook(once, 'Bash', 'MARK', 'printf MARK new')).toEqual(once);
+  });
+
+  it('leaves a same-marker hook under another matcher alone', () => {
+    const edit = { matcher: 'Edit|Write', hooks: [{ type: 'command', command: 'echo MARK', timeout: 5 }] };
+    expect(upsertGuardHook([edit], 'Bash', 'MARK', 'printf MARK new')).toEqual([edit, guard('printf MARK new')]);
   });
 });
 

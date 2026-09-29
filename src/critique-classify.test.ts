@@ -1,6 +1,6 @@
 // Tests for src/modules/critique-escalation/classify.ts.
 //
-// The reason strings below are copied VERBATIM from the six `DENIAL_REASON=`
+// The reason strings below are copied VERBATIM from the eight `DENIAL_REASON=`
 // assignments in container/hooks/gate-critique-on-deliver.sh. That is the
 // point of this suite: classification decides whether a human is interrupted,
 // so it must be pinned to the exact text the gate actually emits. If someone
@@ -22,6 +22,10 @@ const NO_VERDICT =
   "OUTPUT_REVIEW ran but no verdict was recorded (missing or unparseable). Re-run /codex-critique with STAGE: OUTPUT_REVIEW and make sure codex returns a '### Verdict' section containing approve or must-fix";
 const MUST_FIX =
   'OUTPUT_REVIEW last verdict is "must-fix" (must be "approve"). Re-run /codex-critique with STAGE: OUTPUT_REVIEW after fixing the issues';
+const PLAN_NO_VERDICT =
+  "PLAN_REVIEW ran but no verdict was recorded (missing or unparseable). Re-run /codex-critique with STAGE: PLAN_REVIEW and make sure codex returns a '### Verdict' section containing approve or must-fix";
+const PLAN_MUST_FIX =
+  'PLAN_REVIEW last verdict is "must-fix" (must be "approve"). Re-run /codex-critique with STAGE: PLAN_REVIEW after fixing the plan';
 const EDITS_SINCE =
   '13 edit(s) recorded since the last critique round — the OUTPUT_REVIEW approve no longer covers the current state. Re-run /codex-critique with STAGE: OUTPUT_REVIEW';
 const ARTIFACTS_CHANGED =
@@ -35,6 +39,13 @@ describe('classifyEscalation', () => {
 
   it('treats an unrecorded verdict as missing — re-running the stage fixes it', () => {
     expect(classifyEscalation(NO_VERDICT)).toBe('missing');
+    expect(classifyEscalation(PLAN_NO_VERDICT)).toBe('missing');
+  });
+
+  it('classifies a must-fix PLAN_REVIEW as FAILED and re-runs PLAN_REVIEW, not OUTPUT_REVIEW', () => {
+    expect(classifyEscalation(PLAN_MUST_FIX)).toBe('failed');
+    expect(stageToRerun(PLAN_MUST_FIX)).toBe('PLAN_REVIEW');
+    expect(stageToRerun(PLAN_NO_VERDICT)).toBe('PLAN_REVIEW');
   });
 
   it('classifies the two STALE reasons', () => {

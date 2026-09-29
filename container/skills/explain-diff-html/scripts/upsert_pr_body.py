@@ -171,7 +171,10 @@ def main(argv: list[str]) -> int:
     finally:
         os.unlink(tmp)
     legacy = retire_legacy_comment(a.repo, a.pr, False)
-    print(json.dumps({"updated": True, "chars": len(body), "head": live[:12], "legacy_comment": legacy}))
+    # repo/pr are echoed so the PostToolUse receipt (pr-auto-map.sh) can name the
+    # PR even when the command passed them as shell variables.
+    result = {"updated": True, "repo": a.repo, "pr": a.pr, "chars": len(body), "head": live[:12]}
+    print(json.dumps({**result, "legacy_comment": legacy}))
     return 0
 
 
