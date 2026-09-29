@@ -4652,6 +4652,235 @@
         "alertInstanceLabelFilter": "team=nanoclaw"
       },
       "description": "Rules from ops/grafana/alerting/nanoclaw-alerts.yaml. Notifications go to the nanoclaw-ops contact point \u2014 wire a Slack webhook there."
+    },
+    {
+      "id": 72,
+      "type": "stat",
+      "title": "Codex tool missing (live sessions)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 142,
+        "w": 6,
+        "h": 4
+      },
+      "description": "Live sessions whose runner startup probe found no usable codex MCP child (mcp__codex__codex absent). Must be 0. 09-25..28 this was every session for 3 days.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT last(\"missing\") FROM \"nanoclaw_codex\" WHERE $timeFilter"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 73,
+      "type": "stat",
+      "title": "Codex tool OK / unknown (live sessions)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 142,
+        "w": 6,
+        "h": 4
+      },
+      "description": "ok = probe found the child; unknown = runner predates the probe record (spawned before this change).",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "ok",
+          "query": "SELECT last(\"ok\") FROM \"nanoclaw_codex\" WHERE $timeFilter"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "unknown",
+          "query": "SELECT last(\"unknown\") FROM \"nanoclaw_codex\" WHERE $timeFilter"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "none",
+        "graphMode": "none",
+        "textMode": "value_and_name"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 74,
+      "type": "timeseries",
+      "title": "Codex tool availability across live sessions",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 12,
+        "y": 142,
+        "w": 12,
+        "h": 8
+      },
+      "description": "Per collector tick: live sessions, and how many have / lack / don't report the codex MCP child. Red line = missing. Source: session_state.codex_child in each live outbound.db.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "live sessions",
+          "query": "SELECT max(\"live\") FROM \"nanoclaw_codex\" WHERE $timeFilter GROUP BY time($__interval) fill(none)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "codex ok",
+          "query": "SELECT max(\"ok\") FROM \"nanoclaw_codex\" WHERE $timeFilter GROUP BY time($__interval) fill(none)"
+        },
+        {
+          "refId": "C",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "codex MISSING",
+          "query": "SELECT max(\"missing\") FROM \"nanoclaw_codex\" WHERE $timeFilter GROUP BY time($__interval) fill(none)"
+        },
+        {
+          "refId": "D",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "unknown (old runner)",
+          "query": "SELECT max(\"unknown\") FROM \"nanoclaw_codex\" WHERE $timeFilter GROUP BY time($__interval) fill(none)"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "no data",
+          "custom": {
+            "drawStyle": "line",
+            "lineWidth": 1,
+            "fillOpacity": 8,
+            "spanNulls": false
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "codex MISSING"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              },
+              {
+                "id": "custom.lineWidth",
+                "value": 2
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "templating": {
