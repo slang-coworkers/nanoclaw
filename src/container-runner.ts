@@ -859,7 +859,8 @@ function resolveTypeManifest(agentGroup: AgentGroup): {
 
 /**
  * Whether the runtime overlay hooks (gate-plan, gate-critique-on-deliver,
- * track-edits, track-critique, intent-router, workflow-state-reset) should
+ * track-edits, track-critique, gate-explain-on-stop, intent-router,
+ * workflow-state-reset) should
  * be injected into the container's settings.json for this agent group.
  *
  * Critique enforcement under Model A is overlay-marker-gated at the hook
@@ -2565,6 +2566,17 @@ export async function buildMounts(
           settings.hooks.PostToolUse.push({
             matcher: 'mcp__codex__codex|mcp__codex__codex-reply',
             hooks: [{ type: 'command', command: 'bash /app/hooks/track-critique.sh', timeout: 5 }],
+          });
+        }
+        // gate-explain-on-stop.sh — Stop hook: blocks the end of a turn (once;
+        // stop_hook_active lets the next stop through) while a PR this session
+        // created or pushed to has a description explaining an older head. Reads
+        // pr-auto-map.sh's receipts; self-scoped to the critique gate like
+        // gate-critique-on-deliver.sh.
+        if (!settings.hooks.Stop) settings.hooks.Stop = [];
+        if (!hasCmd('Stop', 'gate-explain-on-stop.sh')) {
+          settings.hooks.Stop.push({
+            hooks: [{ type: 'command', command: 'bash /app/hooks/gate-explain-on-stop.sh', timeout: 5 }],
           });
         }
       }
