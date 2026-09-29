@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] collect-reviews.sh exit 20 on slang-rhi hides C
 type: learning
 topic: review-approval
 source: learnings/1787054813237-approver-infra-abstain-collect-reviews-sh-exit-20-.md
+superseded_by: 1788983436175-approver-infra-abstain-collect-reviews-sh-exit-20-
 ---
 
 # [approver/infra-abstain] collect-reviews.sh exit 20 on slang-rhi hides CodeRabbit's issue-comment summary

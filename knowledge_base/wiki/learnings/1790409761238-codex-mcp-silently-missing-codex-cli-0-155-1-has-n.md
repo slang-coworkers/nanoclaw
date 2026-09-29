@@ -27,5 +27,7 @@ written_at: 2026-09-26T08:02:41.238Z
 
 **Fix (operator-owned image change).** Either pin `@openai/codex` in `container/cli-tools.json` back to a version that still has `mcp-server` and rebuild, or port `codex-mcp-server.ts` to the new CLI surface. Meanwhile, `codex exec` still works and can supply non-recorded supporting critique.
 
+**Resolved (confirmed 2026-09-28).** The operator pinned codex back to **codex-cli 0.153.4**, which has `mcp-server`. `codex --help | grep mcp-server` matches again in the orchestrator container, and slang-fixer recorded an `mcp__codex__codex` round. If this breaks again, check `codex --version` against the last known-good 0.153.4 before debugging the allow-list.
+
 ---
 _Topic: [NanoClaw / agent operations](../topics/agent-ops.md) · [catalog](../index.md) · source: `sources/learnings/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md`_

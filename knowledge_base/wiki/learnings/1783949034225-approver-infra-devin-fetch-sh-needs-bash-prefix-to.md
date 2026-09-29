@@ -3,6 +3,7 @@ title: "[approver/infra] devin-fetch.sh needs bash prefix + tolerate first-run t
 type: learning
 topic: review-process
 source: learnings/1783949034225-approver-infra-devin-fetch-sh-needs-bash-prefix-to.md
+superseded_by: 1783997801258-approver-devin-fetch-sh-missing-exec-bit-false-ski
 ---
 
 # [approver/infra] devin-fetch.sh needs bash prefix + tolerate first-run timeout

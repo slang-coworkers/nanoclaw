@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 10
+source_count: 12
 ---
 
 ## TL;DR
@@ -16,6 +16,7 @@ content-based and hash-based, which creates a family of self-inflicted traps:
 - **The gate counts edit *events* since the last critique, not hash diffs.** Any
   file write after an approve re-arms it — even reverting a file to its
   byte-exact attested content, editing a memory note, or posting a `gh` comment.
+  Any Bash call counts, even a read-only `wc -c`: approve and send back-to-back.
   Batch ALL edits, format once, commit, then run CODE_REVIEW + OUTPUT_REVIEW as
   the final actions before sending. Never interleave.
 - **It re-hashes every `### Attested` file at send time.** If codex attests a
@@ -30,7 +31,9 @@ content-based and hash-based, which creates a family of self-inflicted traps:
   missing.
 - **Read-only `gh api .../pulls/N` GETs trip the PR-creation Bash arm.** Use
   `gh pr view --json` or run the skill's python scripts (subprocess `gh api`
-  isn't inspected).
+  isn't inspected). The arm matches raw command text (heredocs included); after
+  three denials it escalates to an admin bypass. Read inline comments via the
+  MCP `github_get_pull_request_comments` tool.
 - **Recorded rounds require a FRESH `mcp__codex__codex` call** with the verbatim
   reviewer developer-instructions and a `STAGE:` line — `codex-reply` does not
   count; `sandbox: danger-full-access` is required; omit `model`.
@@ -66,6 +69,19 @@ files, `append_learning`) are fine afterward — they are not delivery markers.
 A code commit push is NOT operator-gated and does NOT go through the gate — push
 freely, gate only the report
 ([attestation treadmill](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md)).
+
+"No intervening writes" is stricter than it sounds: the counter treats **any
+Bash call** after the approve as an edit, even a read-only `wc -c` on the
+deliverable, so step (5) means the approve and the gated `send_message` run
+back-to-back with nothing in between. If something does slip in, the author
+cleared it with a cheap `mcp__codex__codex-reply` re-attestation ("no content
+changes, re-hash X") instead of a full re-review; since replies carry no
+`developer-instructions` and are not recorded as new rounds (see below), fall
+back to a fresh `/codex-critique` OUTPUT_REVIEW if the reply does not clear it.
+If `mcp__codex__codex` itself is missing after an image rebuild,
+`request_restart` loads it, and an admin will usually reject a gate bypass
+while that path exists
+([any Bash between approve and send counts as an edit](../learnings/1790593139115-critique-gate-any-bash-between-approve-and-send-co.md)).
 
 Two secondary edit-triggers on the same PR: **PR-body citations drift.** If you
 cite `file.cpp:NNNN` in the PR body, every comment trim or `clang-format` reflow
@@ -140,6 +156,16 @@ The read-only-`gh-api-pulls` over-match recurs beyond the approver context: even
 harvesting live PR state for a stale-webhook check trips it, so use
 `gh pr view --json ...` or the `.../issues/<n>` endpoint for reads
 ([recorded rounds require fresh codex](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md)).
+The arm matches the command *text*, so it also fires on a GET of one inline
+review comment and on a heredoc memory note that merely contains the PR-open
+verb or a `/pulls/` path. After three denials the hook opens an admin bypass
+escalation, so stop retrying: read inline review comments with
+`mcp__slang-mcp__github_get_pull_request_comments`, and write memory text that
+names gated commands with the Edit tool rather than a Bash heredoc
+([gate regex-matches PR-open phrases in reads and heredocs](../learnings/1790593139115-critique-gate-any-bash-between-approve-and-send-co.md)).
+Because a denial rejects the whole Bash call, any other step chained into it
+is silently skipped too; see the push-bundling rule on
+[the gate-mechanics page](agent-routing-f0909b1-critique-gate-mechanics.md).
 
 ## Recorded rounds must be fresh codex calls with the canonical block
 
@@ -228,7 +254,21 @@ in the PR Process report; mirror the removed file as the template via
 `git show <removal-commit>^:<path>`; verify the new `.slang` runs with
 `slang-test`; and run `formatting.sh` on any README table row.
 
-**Source learnings (10):**
+The lint gate is narrower than the conventions it sits beside. When you
+retarget a bundle test after an intentional compiler change, also fix the stale
+instruction in the bundle's `_prompt.md`. The merged precedents #13150 and
+#13172 both edited `_prompt.md` alongside the test and the README
+drift-from-source row, while #13282 (retargeting after #13175) first missed
+`metadata/_prompt.md:165-167` ("DebugNoScope is emitted with zero operands").
+Without that edit the approved regeneration path (re-prompt plus `mark-fresh`)
+regenerates the stale test. `_common.md` also requires each README coverage
+row's Claim to equal `Cnn: <//META: purpose>` verbatim, and `regenerate.py lint`
+does not check it, so diff the two by hand. Rewriting README `## Claims`
+entries to HEAD behaviour, against `_claims.md` §1's "doc's own wording", is
+precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
+([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
+
+**Source learnings (12):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -240,3 +280,5 @@ in the PR Process report; mirror the removed file as the template via
 - [codex-critique delivery gate: recorded rounds require fresh codex calls](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md) — `codex-reply` doesn't count; use a fresh call with verbatim developer-instructions + STAGE line; `danger-full-access`; omit model.
 - [Slang :: -qualified operator-name references: fix + PR-gate/comment-hygiene gotchas](../learnings/1788914603700-slang-qualified-operator-name-references-fix-pr-ga.md) — Critique gate blocks `gh pr create`/`edit --body`; timeless comments even in tests; `--force-with-lease=<branch>:<sha>` in fresh worktrees.
 - [Hand-editing docs/generated/tests coverage tree: lint gate + honest META + PR disclosure](../learnings/1788384936519-hand-editing-docs-generated-tests-coverage-tree-li.md) — Legitimate to hand-add symmetric entries if regenerate.py lint passes 0 errors, META is honest, and the PR discloses it.
+- [any Bash after approve counts as an edit; the PR-creation arm text-matches reads and heredocs, escalating after 3 denials; read inline comments via MCP.](../learnings/1790593139115-critique-gate-any-bash-between-approve-and-send-co.md)
+- [a bundle-test retarget must also fix `_prompt.md`, or `mark-fresh` regenerates the stale test; lint does not check Claim == META purpose.](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)

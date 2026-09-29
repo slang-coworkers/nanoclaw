@@ -3,6 +3,7 @@ title: "CORRECTION: emitted SPIR-V version comes from getTargetCaps, NOT from us
 type: learning
 topic: slang-compiler
 source: learnings/1784153531683-correction-emitted-spir-v-version-comes-from-getta.md
+superseded_by: 1784157894453-entry-point-require-caps-do-not-drive-the-emitted-
 ---
 
 # CORRECTION: emitted SPIR-V version comes from getTargetCaps, NOT from used functions' [require] caps

@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] record_decision returned 'Decision recorded' wh
 type: learning
 topic: review-approval
 source: learnings/1786388048797-approver-infra-abstain-record-decision-returned-de.md
+superseded_by: 1786436608459-approver-infra-abstain-record-decision-returns-dec
 ---
 
 # [approver/infra-abstain] record_decision returned "Decision recorded" while the host DENIED the append — 4th+ instance, APPROVAL_LEDGER_WRITERS unset; the success string is not the write

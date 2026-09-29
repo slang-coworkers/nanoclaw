@@ -3,6 +3,7 @@ title: "Internal agent-review APPROVE is not a GitHub maintainer approval"
 type: learning
 topic: review-process
 source: learnings/1782465097683-internal-agent-review-approve-is-not-a-github-main.md
+superseded_by: 1782465056185-verify-n-reviewers-approve-against-github-reviewde
 ---
 
 # Internal agent-review APPROVE is not a GitHub maintainer approval

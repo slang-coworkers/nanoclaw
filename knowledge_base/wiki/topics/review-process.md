@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-307 learnings. [Catalog](../index.md)
+313 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -205,6 +205,7 @@ type: topic
 - [Review-resume sweep: check merge-state, token validity, artifact survival before re-running](../learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md)
 - [Reviewer A ($30 budget cap) can silently produce no final-review.md](../learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md)
 - [Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
+- [Reviewer A (compose-and-run) aborts at 600s bg-subagent wait — set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790636700676-reviewer-a-compose-and-run-aborts-at-600s-bg-subag.md)
 - [Reviewer A (nv-slang-bot) can emit confident false-positive crash bugs whose repros do not compile — always compile the repro](../learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md)
 - [Reviewer A (slang-pr-review-runner) can die on transient API-400 payload truncation](../learnings/1787266138406-reviewer-a-slang-pr-review-runner-can-die-on-trans.md)
 - [Reviewer A (slang-pr-review-runner) can hit the claude CLI 600s background-wait ceiling → kills subagents → false 0/0/0 review](../learnings/1789695101887-reviewer-a-slang-pr-review-runner-can-hit-the-clau.md)
@@ -220,6 +221,7 @@ type: topic
 - [Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](../learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md)
 - [Reviewer A missed capability-defs interface-include propagation to slang-unit-test](../learnings/1787783966666-reviewer-a-missed-capability-defs-interface-includ.md)
+- [Reviewer A REVIEW-GUARD false positive: 'socket' in a legitimate review](../learnings/1790645552774-reviewer-a-review-guard-false-positive-socket-in-a.md)
 - [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md)
 - [Reviewer A transient 400 payload-truncation reproduces on back-to-back retries](../learnings/1787341192642-reviewer-a-transient-400-payload-truncation-reprod.md)
 - [Reviewer A wrong-PR integrity fail: shared tmp/ staging collision between concurrent runs](../learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md)
@@ -254,6 +256,7 @@ type: topic
 - [Scoped to verify the bug? Read the fix's open review threads — the fix may contain the same bug class](../learnings/1785985363443-scoped-to-verify-the-bug-read-the-fix-s-open-revie.md)
 - [Self-review catches errors only when it executes a check — re-reading your own claim catches nothing](../learnings/1785831745909-self-review-catches-errors-only-when-it-executes-a.md)
 - [Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers reliably ask for a shared predicate](../learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md)
+- [Skip /explain-diff-html when it would overwrite a repo-mandated, OUTPUT_REVIEW-approved PR body](../learnings/1790592963343-skip-explain-diff-html-when-it-would-overwrite-a-r.md)
 - [Slang #13107/#13115 static-const POD-struct-array global-constant fold: 3-reviewer consensus + recurring findings](../learnings/1789525381949-slang-13107-13115-static-const-pod-struct-array-gl.md)
 - [Slang PR #11815 review — A∩C converge on dead Flavor::Simple arm; Devin "30m timeout" quirk](../learnings/1782735484974-slang-pr-11815-review-a-c-converge-on-dead-flavor-.md)
 - [Slang PR review: adjudicating Devin bugs + cross-round context (Reviewer A can't see the PR body)](../learnings/1788907887233-slang-pr-review-adjudicating-devin-bugs-cross-roun.md)
@@ -270,6 +273,7 @@ type: topic
 - [slang-pr-review patch mode drops untracked new files (git commit -am) — Reviewer A false "no test" gap](../learnings/1789222054102-slang-pr-review-patch-mode-drops-untracked-new-fil.md)
 - [slang-pr-review re-review gotchas: benign INTEGRITY-FAIL from concurrent A+C runs, and stale Devin panel on force-push](../learnings/1788769244100-slang-pr-review-re-review-gotchas-benign-integrity.md)
 - [slang-pr-review Reviewer A can complete analysis but fail to write final-review.md](../learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md)
+- [slang-pr-review Reviewer A can die silently: set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790649618844-slang-pr-review-reviewer-a-can-die-silently-set-cl.md)
 - [slang-pr-review Reviewer A can exit 0 yet be incomplete (background-subagent orphan)](../learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-incom.md)
 - [slang-pr-review Reviewer A can review the WRONG PR via stale tmp/pr-diff.patch](../learnings/1780497941518-slang-pr-review-reviewer-a-can-review-the-wrong-pr.md)
 - [slang-pr-review Reviewer A can truncate to a false 0/0/0 clean — verify the result event finalized](../learnings/1790123188250-slang-pr-review-reviewer-a-can-truncate-to-a-false.md)
@@ -291,6 +295,8 @@ type: topic
 - [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md)
 - [slang-pr-review: verify reviewer runs survived + cleared the guard before trusting output](../learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md)
 - [slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent PR reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md)
+- [slang-reviewer: an executed repro beats Reviewer A's traced example, and C can die on API 503s](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md)
+- [slang-reviewer: ending the turn after dispatching background reviewers lets the container get reaped, which kills them](../learnings/1790619062342-slang-reviewer-ending-the-turn-after-dispatching-b.md)
 - [slang-reviewer: patch mode drops new files; unrequested fixer attachments aren't review requests](../learnings/1790504316526-slang-reviewer-patch-mode-drops-new-files-unreques.md)
 - [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md)
 - [Stamp maintainer self-merge as NO_HUMAN_REVIEW, not APPROVED](../learnings/1783726677874-stamp-maintainer-self-merge-as-no-human-review-not.md)

@@ -3,7 +3,7 @@ title: SPIR-V validation gating and backend PR-review/CI-scope methodology
 type: concept
 group: slang-backends
 tags: [spirv, spirv-val, validation, ci, pr-review, approver, testing, dependency-bump]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -19,6 +19,7 @@ How to actually *prove* a SPIR-V backend fix works, and how to read CI/review si
 - **Test-gating completeness is decided by compiling, not by filename** — a "coopmat"-named test emitting 0 coopmat ops needs no gate.
 - **Dependency-bump PRs that regenerate large checked-in tables deterministically trip the line-count auto-approve cap** — expected policy conservatism, low-signal, routinely merge unchanged.
 - **An `isFromCoreModule`-keyed reject must be probed against ALL builtin .meta modules (hlsl/glsl/diff), not just core.meta.**
+- **In an upstream spirv-opt pass, `Clone()` + `KillInst(original)` also strips the clone**, because both share the result id: its `OpName`/decorations and debug-info mappings go. Move the node itself instead. The stock `SPIRV_CHECK_CONTEXT` skips def-use for passes that preserve little, so call `context()->IsConsistent()` inside `Process()`.
 
 ## SPIR-V validation is env-var-gated, not target-gated
 
@@ -42,7 +43,11 @@ Two more review-calibration facts. SPIR-V/dependency-bump PRs regenerate large c
 
 Finally, a PR that adds a NEW reject/gate on a "builtin-only" modifier predicated on `isFromCoreModule(decl)` risks OVER-rejection breaking the compiler's own module build. The cheap-but-misleading move is to grep only `core.meta.slang`; these modifiers are also used in `hlsl.meta.slang`, `glsl.meta.slang`, and `diff.meta.slang`. Whether those get rejected depends on whether `isFromCoreModule` returns true for them — and `getBuiltinModuleSource` routes BOTH the Core module (core+hlsl+diff) AND the GLSL module through `addBuiltinSource`, so all carry the `FromCoreModuleModifier` and are NOT rejected (verified true for slang#12538, over-rejection refuted). The probe: enumerate ALL builtin `.meta` module uses, trace the module-load path to confirm each carries the core marker, then confirm zero legitimate user use in-tree ([new reject/gate keyed to isFromCoreModule — probe the builtin non-core modules](../learnings/1787300853078-approver-challenger-probe-new-reject-gate-keyed-to.md)).
 
-**Source learnings (10):**
+## Reviewing upstream SPIRV-Tools passes: result-id cleanup and consistency checks
+
+Slang ships spirv-opt through `slang-glslang`, so reviewing a SPIRV-Tools pass change is sometimes part of checking a SPIR-V fix. Consider a pass that relocates an instruction by calling `Clone()` and then `KillInst(original)`, the shape examined for KhronosGroup/SPIRV-Tools#6885. The clone keeps the original's result id, and `KillInst` cleans up several tables keyed by that id, so it also damages the clone. `KillNamesAndDecorates(id)` deletes any `OpName` on it, and probably its decorations too; the lost name is an observable change in the output. `DebugInfoManager::ClearDebugInfo` erases the `fn_id_to_dbg_fn_` and `id_to_dbg_inst_` entries that the clone still needs. Def-use survives only by accident: `AnalyzeDefUse(clone)` → `AnalyzeInstDef` has already cleared the original's entry, so `KillInst`'s `ClearInst` does nothing. Relocating the node itself (`RemoveFromList()`, re-homing it through its `unique_ptr`, then `set_instr_block`) avoids all three problems. Two tooling details matter when checking such a pass. `Pass::Run` invalidates the analyses a pass does not preserve *before* it calls `IsConsistent()`, so the stock `SPIRV_CHECK_CONTEXT` check skips def-use for passes that preserve little, such as merge-return; call `context()->IsConsistent()` inside `Process()` to actually test it. And to hand-edit a disassembled module while keeping specific ids, reassemble with `spirv-as --preserve-numeric-ids`; without it `%129` is only a name and gets renumbered ([SPIRV-Tools: Clone()+KillInst(original) drops names/debug-mapping that share the result id](../learnings/1790644293067-spirv-tools-clone-killinst-original-drops-names-de.md)).
+
+**Source learnings (11):**
 
 - [spirv-asm skips the validator — a pass fix "validated" with spirv-asm is not validated](../learnings/1786585687402-spirv-asm-skips-the-validator-a-pass-fix-validated.md) — the original framing; a termination fix looked green under spirv-asm but produced invalid SPIR-V under `-target spirv`+validation, masking a second latent bug.
 - [-target spirv-asm SKIPS the SPIR-V validator (slang#12498)](../learnings/1786597336651-target-spirv-asm-skips-the-spir-v-validator-a-vali.md) — `rc=0`+right opcodes ≠ validity; "compiles to SPIR-V" vs "validator accepts it" are different claims; when a fix only stops a hang, ask what it now produces.
@@ -54,3 +59,4 @@ Finally, a PR that adds a NEW reject/gate on a "builtin-only" modifier predicate
 - [SPIR-V/dependency-bump PRs trip the tier_eligible size cap on regenerated tables](../learnings/1787987969795-approver-clause-context-spir-v-dependency-bump-prs.md) — a regenerated `.inc` blows the line-count cap by construction; deterministic ABSTAIN_POLICY, low-signal, not an infra defect.
 - [CONFIRMED: regenerated-table SPIR-V dependency bump merged unchanged (#12824)](../learnings/1788248435061-approver-clause-context-confirmed-regenerated-tabl.md) — merge outcome confirms the tier_eligible abstain was pure policy conservatism; the class is empirically safe-as-is.
 - [new reject/gate keyed to isFromCoreModule — probe the builtin non-core modules](../learnings/1787300853078-approver-challenger-probe-new-reject-gate-keyed-to.md) — over-rejection probe for `isFromCoreModule`-keyed rejects: enumerate all builtin `.meta` uses and confirm each carries the core marker (all do, via `addBuiltinSource`).
+- [Clone()+KillInst(original) shares the result id, so OpName/decorations and debug-info maps of the clone are dropped; relocate the node instead; IsConsistent() inside Process(); `spirv-as --preserve-numeric-ids`.](../learnings/1790644293067-spirv-tools-clone-killinst-original-drops-names-de.md)

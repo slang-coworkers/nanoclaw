@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] eval-clauses commit_match is unevaluable until 
 type: learning
 topic: review-approval
 source: learnings/1788240930555-approver-infra-abstain-eval-clauses-commit-match-i.md
+superseded_by: 1788989335559-approver-infra-abstain-synthesize-review-doc-md-be
 ---
 
 # [approver/infra-abstain] eval-clauses commit_match is unevaluable until review-doc.md exists — synthesize first

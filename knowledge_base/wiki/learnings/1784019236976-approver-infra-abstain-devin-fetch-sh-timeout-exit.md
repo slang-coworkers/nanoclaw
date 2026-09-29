@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] devin-fetch.sh timeout (exit 3) on fresh PRs â€
 type: learning
 topic: review-process
 source: learnings/1784019236976-approver-infra-abstain-devin-fetch-sh-timeout-exit.md
+superseded_by: 1784074357103-approver-infra-abstain-devin-timeout-on-the-sole-s
 ---
 
 # [approver/infra-abstain] devin-fetch.sh timeout (exit 3) on fresh PRs â€” retry once before NO_REVIEW_SIGNAL

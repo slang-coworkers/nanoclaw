@@ -3,7 +3,7 @@ title: "PR Review Practices"
 type: concept
 group: review-process
 tags: [pr-review, slang-reviewer, devin, reviewer-a, reviewer-b, reviewer-c, github, draft-pr, convergence, false-positives, a2a-review, fleet-contention, repo-root-isolation, pr-approver, shadow-mode, clause-gap, challenger, critique-gate, abstain-infra, head-pinning, human-calibration, memoization-safety]
-source_count: 30
+source_count: 31
 ---
 
 # PR Review Practices
@@ -62,7 +62,7 @@ Reviewer C can die mid-run from a transient `API Error: The socket connection wa
 
 **Recovery without re-running:** The clarity pipeline writes intermediate candidate files to `<REPO_ROOT>/tmp/review-candidates/pr-<N>-clarity.md`, `pr-<N>-fine-grained-clarity.md`, and (if consolidation completed) `pr-<N>-clarity-workflow.md`. The crash typically hits after generation but before consolidation, so the raw candidates usually survived. Reassemble `clarity-review.md` from those files with a "RECOVERED / un-consolidated" header rather than burning another ~$2–5/~20–45 min re-run that may hit the same fault [Recover slang clarity-review candidates after a transient API error instead of re-running](../learnings/1781731735312-recover-slang-clarity-review-candidates-after-a-tr.md), [slang Reviewer C clarity run: recover truncated output from on-disk candidate file](../learnings/1782739994323-slang-reviewer-c-clarity-run-recover-truncated-out.md). When the worktree is already GC'd on disk (candidate files gone), reconstruct them from the `Write`/`Edit` tool calls recorded verbatim in the run-dir's `stream.jsonl`: replay each candidate's last `Write` content, then apply its `Edit`s in stream order (`replace(old,new,1)`) — a mid-consolidation drop still counts the generation passes complete, so the full pre-dedup candidate set is usually recoverable; confirm drift is clean first (`grep -cE '"(gh api|gh pr|slang-review-post-github)"|--method (POST|PUT)|/reviews' tool-uses.jsonl` == 0) [Recover a dead clarity/correctness review run's candidates from stream.jsonl](../learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md).
 
-**If re-running:** a single re-run recovers cleanly — the error is transient infra, not a logic problem. Budget ≥50 min for the monitor; C routinely runs longer than A (Reviewer A ~20–30 min; Reviewer C ~25–45 min) [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md).
+**If re-running:** a single re-run recovers cleanly — the error is transient infra, not a logic problem. Budget ≥50 min for the monitor; C routinely runs longer than A (Reviewer A ~20–30 min; Reviewer C ~25–45 min) [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md). The same holds for an explicit `CLARITY-INCOMPLETE` exit: on slang#13283 C failed twice after about 10–13 `api_retry`s ending in API 503 `server_error`, and the third attempt succeeded in about 35 minutes. Grep the log for `api_retry`/`server_error` before suspecting a prompt or skill bug, then retry [C can die on API 503s — retry](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md).
 
 
 ## Reviewer A + C Parallelism and Checkout Isolation
@@ -151,7 +151,7 @@ Two traps when monitoring nohup-background reviewer jobs [Verifying detached bac
 1. **Context compaction kills in-flight Monitor.** A large compaction event can fire Monitor's timeout early. After any compaction, re-check process/output state directly rather than trusting the monitor.
 2. **`pgrep -fc 'pattern'` false counts.** The pattern string appears in your own command pipeline → pgrep counts your own shell invocation. Use `ps aux | grep <pat> | grep -v grep` instead. Better still, treat the authoritative completion signal as the wrapper's done-marker in its log plus a non-empty output file: A = `>>> repro.sh: done` + `final-review.md`; C = `>>> run-clarity.sh: done (rc=0)` + `clarity-review.md`; B = `>>> devin-fetch: …/devin-flags.md (N lines)` + `devin-flags.md`.
 
-**Source learnings (30):**
+**Source learnings (31):**
 
 - [Empirical "I tested it" probes can miss the wrong sub-case](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
 - [Reviewer A flip-flops across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
@@ -167,6 +167,7 @@ Two traps when monitoring nohup-background reviewer jobs [Verifying detached bac
 - [Devin reviewer: 'unknown' commit-status + 'Generating...' = weak signal](../learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md)
 - [devin-fetch can exit 0 while analysis still "Generating" — low-confidence](../learnings/1781192458084-devin-reviewer-devin-fetch-can-exit-0-while-analys.md)
 - [Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md)
+- [CLARITY-INCOMPLETE after repeated `api_retry`/503 `server_error` is transient; grep the log, then retry (third attempt succeeded).](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md)
 - [Stacked-PR review: Reviewer A checks out master, producing false positives + missed-drop](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md)
 - [Devin reviewer (B) can exit rc=0 while analysis is still "Generating" — false all-clear](../learnings/1781731413287-devin-reviewer-b-can-exit-rc-0-while-analysis-is-s.md)
 - [Recover slang clarity-review candidates after a transient API error](../learnings/1781731735312-recover-slang-clarity-review-candidates-after-a-tr.md)

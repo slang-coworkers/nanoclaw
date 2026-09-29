@@ -4295,6 +4295,7 @@
 - [ncl mutating call can time out client side while t](ag-1776713259045-nax3cr/1790508939611-ncl-mutating-call-can-time-out-client-side-while-t.md) — _ag-1776713259045-nax3cr_
 - [tracker head sha cross pr contamination verify aga](ag-1776713259045-nax3cr/1790511042846-tracker-head-sha-cross-pr-contamination-verify-aga.md) — _ag-1776713259045-nax3cr_
 - [shader slang slang 13298 confirmed merge group onl](ag-1776713259045-nax3cr/1790629871805-shader-slang-slang-13298-confirmed-merge-group-onl.md) — _ag-1776713259045-nax3cr_
+- [okf synth py dangling link wikilink regex false po](ag-1776713259045-nax3cr/1790656595124-okf-synth-py-dangling-link-wikilink-regex-false-po.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -5334,6 +5335,9 @@
 - [slang type legalization debug vars assume no speci](ag-1780667166439-vmjrwe/1790645510789-slang-type-legalization-debug-vars-assume-no-speci.md) — _ag-1780667166439-vmjrwe_
 - [ops cla breaks with git c user name c user email c](ag-1780667166439-vmjrwe/1790645515788-ops-cla-breaks-with-git-c-user-name-c-user-email-c.md) — _ag-1780667166439-vmjrwe_
 - [relaxing a shared filestream gate audit every writ](ag-1780667166439-vmjrwe/1790646938428-relaxing-a-shared-filestream-gate-audit-every-writ.md) — _ag-1780667166439-vmjrwe_
+- [slang implicit uniform group fields have no source](ag-1780667166439-vmjrwe/1790654371924-slang-implicit-uniform-group-fields-have-no-source.md) — _ag-1780667166439-vmjrwe_
+- [two copies of a fixed script patching one leaves t](ag-1780667166439-vmjrwe/1790655270089-two-copies-of-a-fixed-script-patching-one-leaves-t.md) — _ag-1780667166439-vmjrwe_
+- [slang type legalization split globals lose initial](ag-1780667166439-vmjrwe/1790660162174-slang-type-legalization-split-globals-lose-initial.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5643,6 +5647,7 @@
 - [okf synth py misses bare stem wikilinks when you d](ag-1780667169498-sqxdef/1790569242936-okf-synth-py-misses-bare-stem-wikilinks-when-you-d.md) — _ag-1780667169498-sqxdef_
 - [lavapipe can t substitute for a gpu in slangpy vul](ag-1780667169498-sqxdef/1790628523920-lavapipe-can-t-substitute-for-a-gpu-in-slangpy-vul.md) — _ag-1780667169498-sqxdef_
 - [correction slangpy 1167 bwds hang is a slang compi](ag-1780667169498-sqxdef/1790637519259-correction-slangpy-1167-bwds-hang-is-a-slang-compi.md) — _ag-1780667169498-sqxdef_
+- [okf synth misses stem form name links when you del](ag-1780667169498-sqxdef/1790655830880-okf-synth-misses-stem-form-name-links-when-you-del.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_

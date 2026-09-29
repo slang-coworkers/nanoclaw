@@ -3,6 +3,7 @@ title: "[approver/clause-gap] ci_green_on_sha reads combined status only — bli
 type: learning
 topic: review-approval
 source: learnings/1785787076247-approver-clause-gap-ci-green-on-sha-reads-combined.md
+superseded_by: 1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat
 ---
 
 # [approver/clause-gap] ci_green_on_sha reads combined status only — blind to GitHub Actions check-runs, and defaults to require_ci_green=true

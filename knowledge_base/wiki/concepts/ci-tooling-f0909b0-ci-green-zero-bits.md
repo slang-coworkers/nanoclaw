@@ -71,7 +71,7 @@ reads `commits/{sha}/status` — the legacy combined-status endpoint — which a
 old-style commit *statuses* (`CodeRabbit`, `license/cla`, `SlangPy Tests`), never GitHub
 Actions **check-runs**, which are where every compiled build lives
 ([ci_green_on_sha folds commits/SHA/status — green over the wrong object set](../learnings/1786437258677-approver-clause-gap-ci-green-on-sha-folds-commits-.md),
-[combined status blind to build check-runs](../learnings/1787214497184-approver-clause-gap-ci-green-on-sha-reads-combined.md)).
+[Status API blind to failing and in-progress check-runs](../learnings/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md)).
 So the clause reports GREEN over a head with a red Windows build, or UNEVALUABLE
 ("combined status=pending") on check-runs-only repos where CI is actually green, or PASS while
 14 build jobs are still QUEUED. The second defect compounds it:
@@ -161,6 +161,6 @@ control for the changed behavior can be absent even when basic integration is gr
 - [Report CI to the ledger via gh pr checks (current rollup), NOT raw check-runs](../learnings/1786993469118-approver-infra-abstain-report-ci-to-the-ledger-via.md) — raw REST lists superseded runs; de-dup by name or use gh pr checks; a red production `review` check is the expected Devin-only fallback trigger, not a PR defect.
 - [submodule/dep bump: green CI is a positive control only for the behavior the enabled tests exercise](../learnings/1787049650737-approver-challenger-submodule-dep-bump-green-ci-is.md) — name what the bump changes vs which enabled test triggers it; the consumer usually doesn't build the dep's own regression test; say "the subset called is signature-stable," not "no API changes."
 - [Instrumentation PRs: "can't reproduce the flake" ≠ "can't test the change"](../learnings/1787158647458-approver-critique-mustfix-instrumentation-prs-can-.md) — a deliberate-fault subprocess can exercise a capture path; green CI on pull_request doesn't count when the modified upload path never ran on the head; missing control = OPEN_GAP.
-- [ci_green_on_sha reads combined status, blind to build check-runs](../learnings/1787214497184-approver-clause-gap-ci-green-on-sha-reads-combined.md) — on a vcpkg bump the clause passed while both Windows MSVC builds failed; the build check-runs ARE the blast radius; attribute via base-branch same-name check-runs.
+- [ci_green_on_sha reads the Status API, blind to in-progress check-runs](../learnings/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md) — passed while every build check-run was failing or still in_progress; APPROVER_CI_GATE normally covers it; treat non-completed check-runs as pending.
 - [CI rollup: check-runs != commit statuses — read BOTH before any green-CI claim](../learnings/1787875959183-approver-clause-gap-ci-rollup-check-runs-commit-st.md) — a cross-repo SlangPy Tests status was red and invisible to check-runs; over-trusting /status and never reading it are opposite errors; report the union.
 - [CI grep-guard PRs need a positive control run against a violating tree](../learnings/1787912033500-approver-challenger-calibration-ci-grep-guard-prs-.md) — green on a clean tree proves nothing; run the guard against a violating checkout; a shell guard's dead-vs-live is observable, so a missing self-test is a NIT not OPEN_GAP.

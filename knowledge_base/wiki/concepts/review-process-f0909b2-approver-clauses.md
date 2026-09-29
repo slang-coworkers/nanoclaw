@@ -3,7 +3,7 @@ title: Approver eligibility clauses, harvest exit codes, and the bot-PR class
 type: concept
 group: review-process
 tags: [approver, eval-clauses, commit-match, harvest, collect-reviews, exit-20, author-trust, tier-eligible, reason-code, infra-abstain]
-source_count: 12
+source_count: 11
 ---
 
 ## TL;DR
@@ -47,12 +47,13 @@ Four independent sessions hit and recorded the same trap, which makes it a settl
 ("review doc absent or carries no commit_id") — a pure step-ordering artifact with nothing
 to do with the PR, yet `CLAUSE_UNEVALUABLE` classifies as an **infra** reason_code that the
 quality gate is driven to ~0, so recording it verbatim mislabels a clean policy abstain as a
-pipeline defect. The first record (slang#12769) showed it flipping to `pass` with a real
-`diff_hash` once the doc existed
-[eval-clauses commit_match is unevaluable until review-doc.md exists](../learnings/1788240930555-approver-infra-abstain-eval-clauses-commit-match-i.md);
-slang#12542 named the exact remedy — synthesize the doc, then re-run so clauses read 5 pass
-/ 1 fail (author_trust) / 0 unevaluable, and record the genuine gating clause
-[Run eval-clauses AFTER synthesizing review-doc.md, or commit_match falsely reads UNEVALUABLE](../learnings/1788247676444-approver-infra-abstain-run-eval-clauses-after-synt.md);
+pipeline defect. The remedy is strict ordering: Step-1b synthesizes the doc (with the
+`_approver_result` block carrying `commit_id`) before Step-2 runs eval-clauses; if clauses
+were run early to peek at a policy short-circuit, re-run them once the doc exists, so
+`commit_match` flips to `pass`, `unevaluable` goes to `[]`, and only the genuine gating
+clause is recorded (slang#12963: a clean `ABSTAIN_POLICY` / `CLAUSE_FAIL:no_protected_paths`
+with no spurious infra code; the same flip recurred on slang#12769 and slang#12542)
+[Synthesize review-doc.md BEFORE eval-clauses.py or commit_match falsely reports UNEVALUABLE](../learnings/1788989335559-approver-infra-abstain-synthesize-review-doc-md-be.md);
 slang#12656 and slang#12889 confirmed harvest.json carrying the matching commit_id is not
 enough — the doc is the source; the check that distinguishes artifact from real gap is: if
 `harvest.json.commit_id == tmp/context.json.commit_sha` and `stale=false`, the unevaluable
@@ -122,13 +123,12 @@ fully passes — do not "upgrade" a clause-fail abstain to BLOCK; instead surfac
 🔴 (file:line) in the human-facing report while recording the operative clause
 [A Step-1 clause FAIL pre-empts a Step-2 review BLOCK verdict](../learnings/1788552456784-approver-procedure-a-step-1-clause-fail-pre-empts-.md).
 
-**Source learnings (12):**
+**Source learnings (11):**
 - [collect-reviews exit 20 can hide an in_progress production review check-run](../learnings/1787913333461-approver-infra-abstain-collect-reviews-exit-20-can.md) — probe head check-runs on a fresh PR; wait + re-harvest if `review` is in_progress (exit 22, not 20).
 - [harvest exit-20 conflates a FAILED production review with a genuine skip](../learnings/1788161149996-approver-infra-abstain-harvest-exit-20-conflates-a.md) — >300-file diff → HTTP 406 too_large fails the reviewer; record primary review as infra-absent, not skipped.
 - [CodeRabbit commit-status=success can coexist with zero harvestable review (22→20)](../learnings/1788294962668-approver-harvest-coderabbit-commit-status-success-.md) — green CodeRabbit status ≠ posted review object; correct fall to Devin-only, not infra failure.
 - [collect-reviews.sh exit 20 drops a clean CodeRabbit summary-comment review](../learnings/1788912218187-approver-infra-abstain-collect-reviews-sh-exit-20-.md) — `if not cand:` fires before consulting cr_summary; cross-check CodeRabbit comments/statuses on a clause-passing PR.
-- [eval-clauses commit_match is unevaluable until review-doc.md exists](../learnings/1788240930555-approver-infra-abstain-eval-clauses-commit-match-i.md) — synthesize doc first; unevaluable+harvest-matched is an ordering artifact, not CLAUSE_UNEVALUABLE.
-- [Run eval-clauses AFTER synthesizing review-doc.md (author_trust decisive)](../learnings/1788247676444-approver-infra-abstain-run-eval-clauses-after-synt.md) — re-run post-synthesis; record the genuine gating clause, never the ordering-induced unevaluable.
+- [Synthesize review-doc.md BEFORE eval-clauses.py or commit_match falsely reports UNEVALUABLE](../learnings/1788989335559-approver-infra-abstain-synthesize-review-doc-md-be.md) — synthesize doc first, re-run after an early peek; record the genuine gating clause, never the ordering-induced unevaluable.
 - [Run eval-clauses after synthesizing — commit_match reads the doc, not harvest.json](../learnings/1788394397905-approver-clause-gap-run-eval-clauses-after-synthes.md) — unevaluable+harvest.commit_id==pinned & stale=false ⇒ ordering artifact; only genuine policy fails stand.
 - [synchronize that drops its own tests is an OPEN_GAP a stale bot review can't see](../learnings/1788102710919-approver-clause-gap-synchronize-that-drops-its-own.md) — compare bot commit vs head; diff file sets; a rebase deleting its own tests is a nameable ABSTAIN(OPEN_GAP).
 - [Bot-authored upstream-sync PRs are a dispositive clause-fail class](../learnings/1788442495371-approver-process-bot-authored-upstream-sync-prs-ar.md) — run clauses before spending Devin; author_trust + tier_eligible fail by construction; WORKING AS INTENDED.

@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-543 learnings. [Catalog](../index.md)
+544 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -398,6 +398,7 @@ type: topic
 - [okf_synth DANGLING-LINK false-positives on code-span link syntax](../learnings/1790074303124-okf-synth-dangling-link-false-positives-on-code-sp.md)
 - [okf_synth.py DANGLING-LINK class has code-span false positives](../learnings/1789965402415-okf-synth-py-dangling-link-class-has-code-span-fal.md)
 - [okf_synth.py DANGLING-LINK regex false-positives on fenced code containing ](...) or [[ patterns](../learnings/1790224601208-okf-synth-py-dangling-link-regex-false-positives-o.md)
+- [okf_synth.py DANGLING-LINK/WIKILINK regex false-positives on code/log text](../learnings/1790656595124-okf-synth-py-dangling-link-wikilink-regex-false-po.md)
 - [On GitHub a comment cannot correct a body — the stale claim is read first](../learnings/1785895975302-on-github-a-comment-cannot-correct-a-body-the-stal.md)
 - [On PR-superseded/closed: fix your own stale issue comment's next-action, not just the worktree](../learnings/1787851432506-on-pr-superseded-closed-fix-your-own-stale-issue-c.md)
 - [Only the passing cases locate a trigger — four wrong characterizations of one guard, all from denial-only evidence](../learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md)

@@ -3,6 +3,7 @@ title: "CI health snapshot: WebFetch truncates health_snapshots.jsonl — fetch 
 type: learning
 topic: ci-tooling
 source: learnings/1788855481072-ci-health-snapshot-webfetch-truncates-health-snaps.md
+superseded_by: 1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h
 ---
 
 # CI health snapshot: WebFetch truncates health_snapshots.jsonl — fetch the tail directly

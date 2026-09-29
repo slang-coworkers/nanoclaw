@@ -3,7 +3,7 @@ title: Correctness-review methodology — coverage lenses, codegen reproduction,
 type: concept
 group: review-process
 tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile]
-source_count: 12
+source_count: 14
 ---
 
 ## TL;DR
@@ -138,6 +138,18 @@ behind main lists mostly main's OWN drift the branch lacks, so identify the file
 should verify") does not inoculate you — only the tool call does
 [when a reviewer disputes your claim with a runnable check, run it before defending](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md).
 
+The rule applies to Reviewer A's own examples as well: a traced example is a prediction until
+someone executes it. On slang#13283 Reviewer A flagged a 🟡 cross-scope temporary gap from a code
+trace, with `while (s.a[k+2] != 0) k++; return s.a[k+2];` as the example. Run against PR and
+master, it did not reproduce: both emitted the same valid GLSL, because `fixValueScoping` had
+already given the index a temporary. The real trigger was an if/else whose else returns early,
+where redundancy removal lets a GEP in the dominating then-block replace the GEP after the if. For
+emitter or scoping findings, build PR and base in `wt-<N>-verify` / `wt-<N>-master` (copy
+`external/` from `/workspace/agent/slang`, `cmake --preset default`, build Release slangc) and run
+the probe through `-target spirv -emit-spirv-via-glsl`, where glslang turns an out-of-scope
+identifier into a hard error. Report the gap as confirmed or refuted, never as predicted
+[an executed repro beats Reviewer A's traced example](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md).
+
 ## Self-raised findings, EXIT=0, and the full file list
 
 As the reviewer, do not close a finding YOU raised on the author's self-reported result you
@@ -166,9 +178,11 @@ description
 
 The automated stack has a **false-negative floor on subtle ABI/legalization correctness**. On slang PR #12875 (AnyValue bulk-copy of autodiff backward-context structs — the same subsystem as the AnyValue review lens above) the *entire* stack — slang-reviewer's 3-reviewer pass + CodeRabbit + an independent bot review + the codex PLAN/CODE/OUTPUT gates — returned APPROVE with 0 correctness bugs and the PR was reported "clean, awaiting merge." The maintainer's own (GPT-5-assisted) deep review then found two real bugs the stack missed: an ABI-preserved empty member (zero-leaf but carrying ExternCpp/Public/BinaryInterfaceType) must NOT be treated as byte-compatible, and a user `bit_cast<Word>(Empty{})` was silently zero-filled where the empty-source zero-fill needed to be provenance-gated (only the marshalling pass's own whole-object casts take it; an unmarked user cast must stay a loud failure). Both verified against master (loud `E99997`) vs the naive gate (silent `Word{0}`). Treat a clean automated pass on a byte-compatibility / type-legalization PR as *not yet proven*, and apply the numeric-exercise lens harder there ([maintainer's own deep review caught correctness bugs the automated review stack missed on slang#12875](../learnings/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md)).
 
+A second blind spot of the same stack is **fidelity to a maintainer's written spec**, because every diff-focused pass checks the code against itself. On slang-rhi#881, five rounds (three reviewers plus a source cross-check each) signed off a head that missed two requirements from the maintainer's spec in #787 comment 5798248018. The spec said cross-queue ownership misuse is an "error if the PRODUCER is Vulkan", but the code decided on `ctx->deviceType`, the device doing the use, so the headline misuse (CUDA using a resource Vulkan still owns) was only a warning. The spec also said "Unowned→Owned(Q) on initData", yet the debug device never registered ownership at create. Both survived every correctness pass because the code was internally consistent. When a maintainer wrote a spec, fetch it (`gh api repos/O/R/issues/N/comments --jq '.[]|select(.user.login=="<maintainer>")'` plus the PR review comments), list each requirement with its comment link, and mark it met / partial / missed with `file:line` before any sign-off. A tooling trap from the same review: `gh run list --commit <sha>` needs the full 40-character SHA, and a short SHA silently returns `[]`, which reads as "no CI run exists" ([review against the maintainer's spec, not just the diff](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md)).
+
 Two durable-text disciplines that cost avoidable review round-trips, both caught by codex OUTPUT_REVIEW: **(1) never cite `file.cpp:NNNN` in source comments, PR descriptions, or review replies** — a maintainer merging master into the branch shifts every line number, so refer to code by **stable symbol names** (`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`); line numbers are fine only in ephemeral scratch/logs. **(2) `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches message text as a plain substring** — `{{.*}}` FileCheck regex is NOT supported and silently fails (0/1) — and the CHECK must be specific enough to reject the buggy variant (`//CHECK: cyclic reference '$inheritance'` naming the symbol, not the loose `//CHECK: cyclic reference` which also matches a wrong `'E'` diagnostic and wouldn't catch a revert) ([never cite file.cpp:line in durable text — merges make it stale; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md)).
 
-**Source learnings (12):**
+**Source learnings (14):**
 - [Review lens: AnyValue bulk-copy / empty-struct legalize — numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md) — dispatch the target conformer + pin its numeric result; assert the AnyValue invariant so the silent-default doesn't swallow other shapes.
 - [Review lens: a threaded/recursive parameter — revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md) — delete the parameter and check a test fails; the deeper nested path is the untested one; silent miscompile risk.
 - [Reproduce a reviewer's EXACT codegen scenario before disputing](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md) — unused vs used + -emit-spirv-directly flip the result; run codex's literal case, not a near-miss variant.
@@ -178,6 +192,8 @@ Two durable-text disciplines that cost avoidable review round-trips, both caught
 - [Reviewing 'reject unrepresentable input' fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md) — slang#13063 R1; a guard at one `getNaturalSizeAndAlignment` site left `kIROp_Var`/`kIROp_Store` pointee queries unguarded; grade Gap not Bug if reachability unverified; A catches it, B/C rarely do.
 - [Round-2 review of a 'factored guard into shared helper' fix: doc-overstatement + defensive guards](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md) — slang#13063 R2; check the helper doc doesn't overstate coverage, mark removal-insensitive guards defensive (don't demand removal on a final round), surface A-vs-C comment-accuracy disagreements; R1 REQUEST_CHANGES → R2 nits-only = APPROVE_WITH_NITS.
 - [When a reviewer disputes your claim with a runnable check, run it before defending](../learnings/1789423550516-when-a-reviewer-disputes-your-claim-with-a-runnabl.md) — slangpy#1091/PR #1162; a decidable dispute (grep, `git merge-tree`, read-at-head) is settled by the command, not a confident justification; re-read fast-moving siblings at current head.
+- [Reviewer A's traced scoping example did not reproduce (the real trigger was an early-return else); build PR + base worktrees and probe via `-emit-spirv-via-glsl`; also C dies on API 503s (retry) and a Devin exit-3 on a fresh draft is the normal skip.](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md)
 - [slang-rhi review lens: pooled staging + RAII free + fallible queue-wait = in-flight page reuse](../learnings/1789444437478-slang-rhi-review-lens-pooled-staging-raii-free-on-.md) — slang-rhi#869; OOM ≠ device loss, RAII frees pooled staging with no fence → torn data on a later sequential readback; "mirror readTexture" re-trips the `m_totalUsed==0` assert; run the critique gate on the verdict.
 - [maintainer's own deep review caught correctness bugs the automated stack missed on slang#12875](../learnings/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md) — full stack (3 reviewers + CodeRabbit + bot + codex gates) APPROVEd 0 bugs; maintainer found ABI-empty-member byte-incompat + ungated `bit_cast` zero-fill; treat a clean pass on ABI/legalization PRs as not-yet-proven.
+- [five diff-review rounds on slang-rhi#881 missed two spec'd rules (producer-based severity, ownership at create); map each spec requirement to met/partial/missed with file:line before sign-off; `gh run list --commit` needs the full SHA.](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md)
 - [never cite file.cpp:line in durable text; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md) — merges shift line numbers so cite symbols; `//DIAGNOSTIC_TEST` matches text as a plain substring (`{{.*}}` unsupported), so make the CHECK reject the buggy variant.

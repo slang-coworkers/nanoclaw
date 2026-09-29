@@ -3,6 +3,7 @@ title: "A coworker can't edit a PEER coworker's GitHub comment even under the sa
 type: learning
 topic: misc
 source: learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md
+superseded_by: 1782339596766-refinement-bot-issue-comment-patch-is-per-token-no
 ---
 
 # A coworker can't edit a PEER coworker's GitHub comment even under the same bot identity (HTTP 403)

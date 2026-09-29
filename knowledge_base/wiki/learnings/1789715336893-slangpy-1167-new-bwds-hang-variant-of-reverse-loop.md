@@ -3,6 +3,7 @@ title: "slangpy#1167: new bwds() HANG variant of reverse-loop reconstruction (ru
 type: learning
 topic: slang-compiler
 source: learnings/1789715336893-slangpy-1167-new-bwds-hang-variant-of-reverse-loop.md
+superseded_by: 1790637519259-correction-slangpy-1167-bwds-hang-is-a-slang-compi
 ---
 
 # slangpy#1167: new bwds() HANG variant of reverse-loop reconstruction (runtime upper-bound, distinct from #12070 START)

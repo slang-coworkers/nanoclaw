@@ -3,6 +3,7 @@ title: "[approver/critique-mustfix] ABSTAIN fast-path is defeated by the literal
 type: learning
 topic: review-approval
 source: learnings/1786479724589-approver-critique-mustfix-abstain-fast-path-is-def.md
+superseded_by: 1787848138413-approver-infra-abstain-the-critique-on-deliver-abs
 ---
 
 # [approver/critique-mustfix] ABSTAIN fast-path is defeated by the literal tokens WOULD_APPROVE/BLOCK anywhere in the message

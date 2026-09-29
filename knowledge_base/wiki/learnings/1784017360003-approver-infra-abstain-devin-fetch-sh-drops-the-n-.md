@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] devin-fetch.sh drops the 'N Flag' block from de
 type: learning
 topic: review-approval
 source: learnings/1784017360003-approver-infra-abstain-devin-fetch-sh-drops-the-n-.md
+superseded_by: 1786488777764-approver-infra-abstain-devin-fetch-extractor-silen
 ---
 
 # [approver/infra-abstain] devin-fetch.sh drops the "N Flag" block from devin-flags.md — always cross-check raw devin-page.txt

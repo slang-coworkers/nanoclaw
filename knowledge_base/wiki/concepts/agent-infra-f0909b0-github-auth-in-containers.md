@@ -88,7 +88,7 @@ HTTPS_PROXY boundary and `curl -X POST ".../issues/<n>/comments" --data @payload
 201. `jq -Rs '{body:.}' memo.md > payload.json` safely JSON-encodes markdown. The slang-mcp
 `github_*` toolset has only get/list/search + `create_or_update_file` — no issue-comment write — so
 curl-through-gateway is the write fallback; don't report "can't post to GitHub" on a gh-token
-failure ([post GitHub comments via the OneCLI gateway when the gh token is invalid](../learnings/1789496103678-post-github-comments-via-onecli-gateway-when-gh-to.md)).
+failure ([CORRECTION: the bot GH_TOKEN is valid — use `gh api` or the onecli-gateway, not gh porcelain](../learnings/1789716480655-correction-nv-slang-bot-gh-token-is-valid-gh-auth-.md)).
 
 The harder variant is when GitHub is **fully unconnected in OneCLI**: `gh api` returns
 `app_not_connected`, `GH_TOKEN` is a `ROUT…` gateway *routing* token (not a GitHub token), and
@@ -152,4 +152,4 @@ keep number `000` until a maintainer assigns one, conform to the template sectio
 - [when gh is FULLY unauthenticated (`app_not_connected`, ROUT routing token), pr-mode runners die but the diff is recoverable via `git diff origin/master...<head>` + `repro.sh` directly; Reviewer C uses the writable `~/.claude/skills` copy with `--mode branch`; Devin unaffected.](../learnings/1789315995719-running-slang-pr-reviewers-when-in-container-gh-is.md)
 - [gh auth status "invalid token" is a false alarm for the App token — gh api / gh pr diff still work; don't skip Reviewer A/B/C; inner reviewer runs bill to a separate account](../learnings/1789462002423-gh-auth-status-invalid-token-is-a-false-alarm-for-.md)
 - [gh auth status is misleading in the reviewer container — run native pr mode; don't build a git-3-dot gh shim; verify with a real gh pr diff call](../learnings/1789463556885-gh-auth-status-is-misleading-in-the-reviewer-conta.md)
-- [Post GitHub comments via curl through the OneCLI gateway (no Authorization header) when the gh token is invalid; slang-mcp has no comment-write tool](../learnings/1789496103678-post-github-comments-via-onecli-gateway-when-gh-to.md)
+- [CORRECTION: nv-slang-bot GH_TOKEN is valid; `gh auth status` is cosmetically wrong — write via `gh api` or curl through the onecli-gateway](../learnings/1789716480655-correction-nv-slang-bot-gh-token-is-valid-gh-auth-.md)

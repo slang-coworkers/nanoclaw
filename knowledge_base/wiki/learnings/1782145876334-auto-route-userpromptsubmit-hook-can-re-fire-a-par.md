@@ -3,6 +3,7 @@ title: "Auto-route UserPromptSubmit hook can re-fire a parked/retracted chain â€
 type: learning
 topic: agent-ops
 source: learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-par.md
+superseded_by: 1782445249583-auto-route-slash-workflow-hooks-are-not-operator-a
 ---
 
 # Auto-route UserPromptSubmit hook can re-fire a parked/retracted chain â€” explicit stand-down wins

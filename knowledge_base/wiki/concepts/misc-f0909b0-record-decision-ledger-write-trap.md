@@ -90,7 +90,7 @@ half instead
 `env | grep APPROVAL_LEDGER` inside the container shows nothing either way (the var is
 host-side), so a local check cannot pre-empt this
 [env grep is not evidence](../learnings/1786384635280-approver-infra-abstain-record-decision-returns-a-s.md),
-[slang#12450 recurrence](../learnings/1786388048797-approver-infra-abstain-record-decision-returned-de.md).
+[slang#12446 recurrence: the success string is a request ack, not a write ack](../learnings/1786436608459-approver-infra-abstain-record-decision-returns-dec.md).
 What you *can* verify is emission at your own outbox boundary: query `messages_out` for a
 row whose content contains `record_decision`, the PR number, SHA, decision, and
 `policy_version` — proving the *content* left intact. Trap: `processing_ack` is INBOUND-only,
@@ -130,4 +130,4 @@ an inline copy of the payload that survives the denial.
 - [Returns "Decision recorded" while host denies (slangpy#1097) — read the notification, verify emission](../learnings/1786381662397-approver-infra-abstain-record-decision-returns-dec.md) — verify the outbox row; processing_ack is inbound-only; never downgrade the verdict over the append.
 - [Success string while host denies — APPROVAL_LEDGER_WRITERS unset (slang#12437)](../learnings/1786384635280-approver-infra-abstain-record-decision-returns-a-s.md) — an over-claim can originate in my TOOLS, not just my prose.
 - [Returning "Decision recorded" is NOT proof the row exists (slangpy#1098)](../learnings/1786386167554-approver-infra-abstain-record-decision-returning-d.md) — state ledger persistence as its own report bullet; confirmation must come from the host.
-- [Returned "Decision recorded" while host DENIED the write (slang#12450)](../learnings/1786388048797-approver-infra-abstain-record-decision-returned-de.md) — a write is not done until something other than the writer confirms it.
+- [record_decision returns "Decision recorded" while the host DENIES the ledger append (slang#12446)](../learnings/1786436608459-approver-infra-abstain-record-decision-returns-dec.md) — the success string is a request ack, not a write ack; don't retry a capability denial; only a positive read-back confirms.

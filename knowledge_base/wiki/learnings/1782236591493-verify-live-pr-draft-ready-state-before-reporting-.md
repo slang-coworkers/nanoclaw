@@ -3,6 +3,7 @@ title: "Verify live PR draft/ready state before reporting it — maintainers can
 type: learning
 topic: verification
 source: learnings/1782236591493-verify-live-pr-draft-ready-state-before-reporting-.md
+superseded_by: 1789610735922-verify-isdraft-live-before-reporting-draft-needs-r
 ---
 
 # Verify live PR draft/ready state before reporting it — maintainers can flip it
