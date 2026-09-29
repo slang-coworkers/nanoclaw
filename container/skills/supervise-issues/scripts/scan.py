@@ -60,9 +60,15 @@ OUTPUT (stdout), a JSON object:
   "now": "...",
   "rows": [ {thread,repo,issue,pr,state,ball,delta,last_activity_by_us,
              needs_nudge,nudge_reason,action,non_nudge_reason,escalate,
-             github_artifact,disposition,last_outbound_error_class,
-             stopped_session_count,mis_threaded,needs_cost_notice,
-             cost_notice_session,cost_notice_folder,cost_notice_link} ],
+             escalate_reason,github_artifact,disposition,disposition_expired,
+             last_outbound_error_class,stopped_session_count,mis_threaded,
+             needs_cost_notice,cost_notice_session,cost_notice_folder,
+             cost_notice_link} ],
+  # disposition_expired = the self-stop disposition text our later activity
+  #   superseded this tick (see disposition_expired()); null otherwise. It is
+  #   treated as absent and dropped from the next state's snapshot.
+  # escalate_reason = why escalate is true ("" otherwise): silent ≥ 4h, or
+  #   still stuck ≥ 24h after our newest nudgedAt (NO_PROGRESS_ESCALATE_S).
   # cost_notice_* are populated only on a cost_stopped row (the specific
   # blocked session id, its coworker folder, and the dashboard session-mode
   # deep-link "#/cw/<folder>/s/<session>"), empty strings otherwise.
@@ -105,6 +111,8 @@ FRESH_DISPATCH_S = 5 * 60
 WORKING_S = 60 * 60
 SILENT_S = 60 * 60
 ESCALATE_S = 4 * 60 * 60
+# A chain still needing a nudge this long after our newest nudgedAt escalates.
+NO_PROGRESS_ESCALATE_S = 24 * 60 * 60
 
 DEFAULT_BOT_LOGINS = ["nv-slang-bot[bot]", "nv-slang-bot"]
 
@@ -322,6 +330,45 @@ HUMAN_OWNED_DISPOSITION = (
     "awaiting-pickup", "closed-by-us", "stood-down", "advisory",
 )
 
+# The subset of those tokens that record OUR OWN decision to stop (a NO-GO, a
+# stand-down, a self-close) rather than a human actually driving. Such a park is a
+# point-in-time call, so it expires once we act on the chain again — see
+# disposition_expired. The remaining tokens (human-debate / external-pr /
+# maintainer-driving / advisory) name a human owner and never expire.
+SELF_STOP_DISPOSITION = ("stood-down", "closed-by-us", "awaiting-pickup")
+
+
+def disposition_expired(chain, last_by_us):
+    """True iff the chain's disposition is a self-stop park that our own later
+    activity has superseded. The single source of truth: run() strips an expired
+    disposition from the chain before classify / we_owe_next_step /
+    compute_non_nudge_reason see it, and drops it from the next state.
+
+    Expired iff: it carries a SELF_STOP token, carries none of the human-owner
+    tokens, has a stamp (`disposition_at`, set by run() from the prior snapshot's
+    `dispositionAt` only while the text is unchanged), and last_by_us is strictly
+    later than that stamp. Root of #13073: a 09-14 "stood-down … NO-GO" was carried
+    forward forever, so the chain stayed parked after the fixer resumed work
+    (09-15→09-16) and through five silent days until the maintainer asked "What
+    has happened to this PR?" (09-21). An unstamped (legacy) disposition is
+    stamped on first sight, so it expires only after our NEXT activity."""
+    disp = (chain.get("disposition") or "").lower()
+    if not any(tok in disp for tok in SELF_STOP_DISPOSITION):
+        return False
+    if any(tok in disp for tok in HUMAN_OWNED_DISPOSITION if tok not in SELF_STOP_DISPOSITION):
+        return False
+    stamp = parse_ts(chain.get("disposition_at"))
+    ours = parse_ts(last_by_us)
+    return stamp is not None and ours is not None and ours > stamp
+
+
+def has_live_pr(chain):
+    """A PR is the chain's artifact only while OPEN or MERGED. A CLOSED-unmerged PR
+    is an abandoned attempt, not a deliverable — #13073's closed #13112 read as
+    "artifact exists" and hid the fixer's owed next step."""
+    return str((chain.get("pr") or {}).get("state") or "").upper() in ("OPEN", "MERGED")
+
+
 # EXACT agent-group folders whose coworker renders its verdict as an approval-ledger
 # decision — NEVER a GitHub comment. `slang-pr-approver` / `slangpy-pr-approver` are
 # shadow reviewers: they read a PR and write a decision row, they do not post. So on
@@ -399,15 +446,15 @@ def we_owe_next_step(chain, sessions_by_id, silent_age):
     The direction-of-the-ball heuristic (compute_ball) reads bot-last as
     'awaiting_human', but bot-last is ambiguous: it is either a genuine handoff to
     a human OR a promise we still owe ("Will update here when the PR is up"). This
-    disambiguates deterministically: a fixer-role session is on the thread, no PR /
-    owed artifact exists yet, no human-owned disposition says otherwise, and we've
-    been silent past the soft-nudge window. Such a chain is ours to wake, not park.
+    disambiguates deterministically: a fixer-role session is on the thread, no live
+    PR / owed artifact exists yet, no human-owned disposition says otherwise, and
+    we've been silent past the soft-nudge window. Such a chain is ours to wake, not park.
     """
     disp = (chain.get("disposition") or "").lower()
     if any(tok in disp for tok in HUMAN_OWNED_DISPOSITION):
         return False  # a human genuinely owns it -> leave alone
-    if chain.get("pr"):
-        return False  # PR exists -> artifact present; Step 2b/CI owns the nudge
+    if has_live_pr(chain):
+        return False  # live PR -> artifact present; Step 2b/CI owns the nudge
     has_fixer = any(
         "fixer" in (sessions_by_id.get(sid, {}).get("group_folder") or "")
         for sid in chain.get("sessions", [])
@@ -438,7 +485,7 @@ def compute_non_nudge_reason(chain, sessions_by_id, ball, state, needs_nudge):
       human-owned:<disp>  human-owned disposition genuinely owns the next step
       read-only-role      chain held only by a read-only role (approver); verdict
                           is a ledger decision, not a GitHub post — nothing to nudge
-      pr-open             a PR/owed artifact exists; CI/Step-2b owns the nudge
+      pr-open             a live (OPEN/MERGED) PR exists; CI/Step-2b owns the nudge
       running             a live container acted within the working window
       awaiting-human      we spoke last, no fixer-owed promise outstanding
       fresh-dispatch      dispatched/working; inside the fresh/working window
@@ -454,7 +501,7 @@ def compute_non_nudge_reason(chain, sessions_by_id, ball, state, needs_nudge):
             return f"human-owned:{tok}"
     if is_read_only_role_only(chain, sessions_by_id):
         return "read-only-role"
-    if chain.get("pr"):
+    if has_live_pr(chain):
         return "pr-open"
     if state in ("fixing", "pr_open") and any_session_running(chain, sessions_by_id):
         return "running"
@@ -502,7 +549,9 @@ def classify(now, chain, sessions_by_id, bot_logins):
     # "advisory:maintainer-driving — no action" since June, and slang-11612
     # "advisory:maintainer-driving" idle 7wk, both wrongly nudged). A chain with
     # NO disposition, or an active-work disposition ("fixing"/"in_progress"),
-    # falls through unchanged and is still classified by ball/silence below.
+    # falls through unchanged and is still classified by ball/silence below — as
+    # does a self-stop disposition our later activity expired (run() strips it
+    # first; see disposition_expired).
     disp = (chain.get("disposition") or "").lower()
     if any(tok in disp for tok in HUMAN_OWNED_DISPOSITION):
         return ("awaiting_human", ball, last_by_us, False, "")
@@ -671,11 +720,23 @@ def run(payload):
             counts["closed"] += 1
             continue
 
+        prior = prior_state.get(thread, {}) if isinstance(prior_state, dict) else {}
+
+        # Disposition stamp: carry the prior `dispositionAt` in only while the text
+        # is unchanged; a new/changed/legacy disposition is stamped at this tick
+        # (snapshot refresh below). An expired self-stop park is stripped from the
+        # chain here, once, so every downstream check sees it as absent.
+        chain = dict(chain)
+        same_disp = bool(chain.get("disposition")) and prior.get("disposition") == chain["disposition"]
+        chain["disposition_at"] = prior.get("dispositionAt") if same_disp else None
+        expired_disp = None
+        if disposition_expired(chain, compute_last_activity_by_us(chain, bot_logins)):
+            expired_disp = chain.pop("disposition")
+
         state, ball, last_by_us, needs_nudge, reason = classify(
             now, chain, sessions_by_id, bot_logins
         )
 
-        prior = prior_state.get(thread, {}) if isinstance(prior_state, dict) else {}
         is_new = thread in new_keys
         # Delta vs last tick: state change or fresher activity than the snapshot.
         changed = (
@@ -726,6 +787,7 @@ def run(payload):
             dts = session_dispatch_ts(chain)
             eff_age = (now - dts).total_seconds() if dts is not None else None
         escalate = state == "silent" and (eff_age or 0) >= ESCALATE_S
+        escalate_reason = "no activity by us ≥ 4h" if escalate else ""
 
         # --- action cooldown (SKILL.md §3: do NOT re-fire the same action on a chain
         # we already acted on when nothing a human is waiting on has changed since).
@@ -772,16 +834,27 @@ def run(payload):
             default=None,
         )
 
-        nudge_cooldown = needs_nudge and acted_and_quiet(
-            recorded_marker_ts(prior.get("nudgedAt")), newest_material_ts,
-        )
+        nudged_at = recorded_marker_ts(prior.get("nudgedAt"))
+        nudge_cooldown = needs_nudge and acted_and_quiet(nudged_at, newest_material_ts)
         if nudge_cooldown:
             needs_nudge = False
             reason = ""
+            # Nudge without progress escalates: still stuck (classify wanted a nudge)
+            # ≥ NO_PROGRESS_ESCALATE_S after our newest nudge, with nothing external
+            # since. Replaces the prose-only "nudged twice → escalate" — the cooldown
+            # never re-nudges a quiet chain, so it could never be nudged twice
+            # (#13073 sat 5 days after a nudge). The escalatedAt gate below fires it
+            # once per episode.
+            nudge_age = (now - nudged_at).total_seconds() if nudged_at is not None else 0
+            if nudge_age >= NO_PROGRESS_ESCALATE_S:
+                escalate = True
+                escalate_reason = (f"nudged {int(nudge_age // 3600)}h ago, still stuck, "
+                                   "nothing external since; escalate to operator")
         if escalate and acted_and_quiet(
             recorded_marker_ts(prior.get("escalatedAt")), newest_material_ts,
         ):
             escalate = False
+            escalate_reason = ""
 
         # Action plan — the mechanical enforcement surface (SKILL.md §3).
         # `action` is a strict 1:1 function of `needs_nudge`: True -> 'nudge',
@@ -811,8 +884,10 @@ def run(payload):
             "action": action,
             "non_nudge_reason": non_nudge_reason,
             "escalate": escalate,
+            "escalate_reason": escalate_reason,
             "github_artifact": github_artifact(chain),
-            "disposition": chain.get("disposition") or prior.get("disposition"),
+            "disposition": None if expired_disp else (chain.get("disposition") or prior.get("disposition")),
+            "disposition_expired": expired_disp,
             "last_outbound_error_class": chain.get("last_outbound_error_class"),
             "stopped_session_count": stopped_session_count(chain, sessions_by_id),
             "mis_threaded": mis_threaded(chain),
@@ -835,8 +910,14 @@ def run(payload):
             snap["prStateChangedAt"] = pr_state_changed_at
         if cost_stopped_at is not None:
             snap["costStoppedAt"] = cost_stopped_at
-        if chain.get("disposition"):
+        if expired_disp is not None:
+            # Expired self-stop park: drop it so pull-universe stops rehydrating it.
+            snap.pop("disposition", None)
+            snap.pop("dispositionAt", None)
+        elif chain.get("disposition"):
             snap["disposition"] = chain["disposition"]
+            # Keep the original stamp while the text is unchanged; else stamp now.
+            snap["dispositionAt"] = chain.get("disposition_at") or now_iso
         art = github_artifact(chain)
         if art:
             snap["githubArtifactUrl"] = art
