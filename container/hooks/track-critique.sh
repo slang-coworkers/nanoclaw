@@ -22,13 +22,19 @@ esac
 
 # Skip buddy invocations. (Bounded at 2000 chars — long enough to contain the
 # canonical reviewer block checked by the instruction-pinning gate below.)
-DEV_INST=$(echo "$INPUT" | jq -r '.tool_input."developer-instructions" // .tool_input.developer_instructions // empty' 2>/dev/null | head -c 2000)
-PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null | head -c 500)
+# The prompt cap must reach the STAGE / REQUIREMENTS fields behind a long
+# verbatim TASK block; at 500 chars both were silently missed. `|| true`: a
+# field longer than the pipe buffer makes jq die of SIGPIPE when head exits,
+# which under pipefail would abort the hook.
+DEV_INST=$(echo "$INPUT" | jq -r '.tool_input."developer-instructions" // .tool_input.developer_instructions // empty' 2>/dev/null | head -c 2000 || true)
+PROMPT=$(echo "$INPUT" | jq -r '.tool_input.prompt // empty' 2>/dev/null | head -c 16000 || true)
 # Herestrings, not `echo | grep -q`: under pipefail, grep -q's early exit can
 # SIGPIPE the echo (exit 141) and abort the whole hook mid-run — a rare,
 # timing-dependent flake that silently dropped recordings.
 if grep -q "You are Buddy" <<< "$DEV_INST" 2>/dev/null; then exit 0; fi
-if grep -qE "^BATCH [0-9]+ \(" <<< "$PROMPT" 2>/dev/null; then exit 0; fi
+# Buddy's BATCH header opens its prompt; keep the signature check on the head
+# so a TASK line that happens to read "BATCH 2 (" doesn't drop a real round.
+if grep -qE "^BATCH [0-9]+ \(" <<< "${PROMPT:0:500}" 2>/dev/null; then exit 0; fi
 
 # Skip error / timeout responses. Sniff only a bounded prefix here — the
 # verdict parse below must see the FULL payload. (Truncating the whole
@@ -167,6 +173,65 @@ if [ -n "$STAGE" ] && [ "${CRITIQUE_PIN_INSTRUCTIONS:-1}" != "0" ]; then
   fi
 fi
 
+# Maintainer-requirements field. TASK is often a parent's paraphrase, so
+# reviews checked behavior preservation and never fidelity to what the
+# maintainer actually asked for. For roles whose required stages include
+# PLAN_REVIEW (the fixer path), a PLAN/CODE/OUTPUT_REVIEW call only counts when
+# its prompt carries `REQUIREMENTS:` with either `none — <reason>` or at least
+# one GitHub comment URL for codex to re-fetch and hold the artifact to.
+# Activation and required stages resolve exactly like
+# gate-critique-on-deliver.sh (host env wins over the overlay files).
+# CRITIQUE_REQUIREMENTS=0 disables. Replies are exempt, like pinning.
+OVERLAY_DIR="${OVERLAY_MARKER_DIR:-/workspace/agent}"
+GATE_ACTIVE=0
+if [ -n "${CRITIQUE_GATE_ACTIVE:-}" ]; then
+  [ "$CRITIQUE_GATE_ACTIVE" = "1" ] && GATE_ACTIVE=1
+elif [ -f "$OVERLAY_DIR/.overlay-critique-gate" ]; then
+  GATE_ACTIVE=1
+fi
+REQUIRED_JSON="${CRITIQUE_REQUIRED_STAGES:-}"
+if [ -z "$REQUIRED_JSON" ] && [ -f "$OVERLAY_DIR/.critique-required-stages" ]; then
+  REQUIRED_JSON=$(cat "$OVERLAY_DIR/.critique-required-stages" 2>/dev/null || true)
+fi
+PLAN_REQUIRED=0
+if [ "$GATE_ACTIVE" = "1" ] && jq -e 'type == "array" and index("PLAN_REVIEW") != null' <<< "$REQUIRED_JSON" >/dev/null 2>&1; then
+  PLAN_REQUIRED=1
+fi
+case "$STAGE" in PLAN_REVIEW|CODE_REVIEW|OUTPUT_REVIEW) REQ_STAGE=1 ;; *) REQ_STAGE=0 ;; esac
+if [ "$TOOL" = "mcp__codex__codex" ] && [ "$PLAN_REQUIRED" = "1" ] && [ "$REQ_STAGE" = "1" ] \
+  && [ "${CRITIQUE_REQUIREMENTS:-1}" != "0" ]; then
+  # The field value is its own line plus continuation lines, up to the next
+  # `WORD:` / `WORD (…):` field line (TASK, WHAT I DID, WHY, ARTIFACTS). No
+  # interval expressions and no POSIX classes — the container awk is mawk.
+  REQ_BLOCK=$(awk '
+    in_req && /^[ \t]*[A-Z][A-Z _]*(\([^)]*\))?[ \t]*:/ { exit }
+    in_req { print; next }
+    /^[ \t]*REQUIREMENTS[ \t]*:/ {
+      in_req = 1
+      line = $0
+      sub(/^[ \t]*REQUIREMENTS[ \t]*:/, "", line)
+      print line
+    }
+  ' <<< "$PROMPT" 2>/dev/null || true)
+  REQ_FLAT=$(tr '\n' ' ' <<< "$REQ_BLOCK" | sed -E 's/^[[:space:]]+//' || true)
+  REQ_OK=0
+  if grep -qE 'https://github\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+/(issues|pull)/[0-9]+#(issuecomment-|discussion_r|pullrequestreview-|issue-)[0-9]+' <<< "$REQ_BLOCK" 2>/dev/null; then
+    REQ_OK=1
+  elif [[ "$REQ_FLAT" =~ ^[Nn][Oo][Nn][Ee]([^A-Za-z0-9_](.*))?$ ]] && [[ "${BASH_REMATCH[2]:-}" =~ [A-Za-z0-9] ]]; then
+    REQ_OK=1
+  fi
+  if [ "$REQ_OK" != "1" ]; then
+    jq -n --arg msg "Critique round NOT recorded: this codex call carried STAGE: $STAGE but no valid REQUIREMENTS: field. Your role requires PLAN_REVIEW, so every PLAN/CODE/OUTPUT_REVIEW prompt must carry, on the line after ROUND:, either
+REQUIREMENTS: none — <why no maintainer design direction applies>
+or
+REQUIREMENTS:
+R1. \"<verbatim maintainer quote>\" — https://github.com/<owner>/<repo>/issues/<n>#issuecomment-<id>
+(one item per line; #discussion_r<id>, #pullrequestreview-<id> and #issue-<id> (issue/PR body) anchors also work). Re-fetch the maintainer's comments from GitHub for the quotes — never a parent's summary. Then re-run /codex-critique." \
+      '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
+    exit 0
+  fi
+fi
+
 # Every recorded round also re-arms the delivery gate's soft-cap: a genuine
 # critique call is the compliance signal the cap exists to elicit. Without
 # the reset, 3 early denials opened the gate for the session's lifetime — a
@@ -210,7 +275,9 @@ fi
 ROUNDS=$(jq -r '.critique_rounds' "$STATE")
 STAGE_DONE=$(jq -r '(.critique_stages // {}) | to_entries | map("\(.key)=\(.value)") | join(", ") | if . == "" then "none" else . end' "$STATE" 2>/dev/null || echo "none")
 VERDICT_INFO=$(jq -r '(.critique_verdicts // {}) | to_entries | map("\(.key)=\(.value)") | join(", ") | if . == "" then "none" else . end' "$STATE" 2>/dev/null || echo "none")
-jq -n --arg msg "Critique round $ROUNDS recorded (stages: $STAGE_DONE; verdicts: $VERDICT_INFO). Delivery gate requires every required stage count >= 1 AND OUTPUT_REVIEW verdict = approve." \
+VERDICT_RULE="OUTPUT_REVIEW verdict = approve"
+[ "$PLAN_REQUIRED" = "1" ] && VERDICT_RULE="PLAN_REVIEW and OUTPUT_REVIEW verdicts = approve"
+jq -n --arg msg "Critique round $ROUNDS recorded (stages: $STAGE_DONE; verdicts: $VERDICT_INFO). Delivery gate requires every required stage count >= 1 AND $VERDICT_RULE." \
   '{hookSpecificOutput: {hookEventName: "PostToolUse", additionalContext: $msg}}'
 
 exit 0

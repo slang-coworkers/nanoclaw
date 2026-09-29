@@ -67,8 +67,9 @@ its module docstring carries the full contract:
 
 Output: `{rows, summary, state}`. Each row → `state` (`awaiting_us`/`awaiting_human`/`silent`/
 `pr_open`/`cost_stopped`/…), `ball` (`ours`/`human`/`none`), `delta` (`new`/`updated`/`same`),
-`last_activity_by_us`, `needs_nudge` + `nudge_reason`, `escalate`, `github_artifact`,
-`mis_threaded`, `needs_cost_notice`. Write `state` back to `supervisor-state.json`. The script decides
+`last_activity_by_us`, `needs_nudge` + `nudge_reason`, `escalate` + `escalate_reason`,
+`github_artifact`, `disposition_expired`, `mis_threaded`, `needs_cost_notice`. Write `state` back to
+`supervisor-state.json`. The script decides
 *which* rows need a nudge and *why* — **you** still compose and thread-key each nudge (Step 3) and
 make every judgment call (substantive-comment decisions, escalation wording). `needs_cost_notice` is
 the one exception where the script also decides *when to post*, not just *whether* — see *Cost-stopped
@@ -113,6 +114,16 @@ lastObservedActivity}`. Terminal (`closed-by-us`) chains move to `_archived` wit
 reason + the comment URL. Invariant: every routed+triaged issue is in the in-flight set OR
 `_archived`, never absent from both.
 
+**Self-stop dispositions expire.** `scan.py` stamps each disposition with `dispositionAt` (kept
+while the text is unchanged; a new, changed or legacy unstamped one is stamped at that tick). A
+disposition that records *our own* stop — token `stood-down`, `closed-by-us` or `awaiting-pickup`,
+and none of `human-debate` / `external-pr` / `maintainer-driving` / `advisory` — **expires once
+`last_activity_by_us` is later than its stamp**: it is treated as absent, dropped from the next state,
+and the row carries `disposition_expired: <old text>` (`scan.py::disposition_expired`). Do not re-add
+an expired disposition; record a new one only for a new stop decision. Human-owner dispositions never
+expire. Root of #13073: a 09-14 NO-GO kept the chain parked through the fixer's resumed work and five
+silent days.
+
 ## Classification states + thresholds
 
 `last_activity_by_us` = the most recent of our outbound on the session, our commit/push on the PR
@@ -134,6 +145,7 @@ gh pr view <pr> --repo <owner>/<repo> --json reviews,comments
 | `awaiting_us` | latest actor is a non-bot, unanswered by us; ball in our court | STUCK regardless of how recent — nudge owning tier now (Step 3); does not wait for any stale window |
 | `silent` ≥ 60 min | no `last_activity_by_us`, ball not cleanly on a human | stuck — investigate (container running? last msg answered? `[Refusal]`/`[not actionable]`?) then soft-nudge deepest tier |
 | `silent` ≥ 4 h | as above, escalated | escalate via `ask_user_question(timeout: 0)`: extend / re-dispatch from triage / close (out of scope) / abandon |
+| nudged, no progress ≥ 24 h | still needs a nudge but held by the nudge cooldown (already nudged, nothing external since) and the newest `nudgedAt` is ≥ 24 h old | `escalate=true` + `escalate_reason` — escalate as above and record `escalatedAt` (fires once per episode) |
 | `closing` | final `[Report]`, PR opened, or refusal landed | run Step 5 comment-verification before dropping off the table |
 | `closed_no_github_comment` | Step 5 found no comment | nudge responsible coworker; escalate if unmet after 2 nudges |
 
@@ -144,8 +156,9 @@ unanswered human comment is `awaiting_us`, never watch-only.
 **Fixer-owned carve-out (bot-last is ambiguous).** Bot-last is not automatically "leave alone."
 A bot's last word is either a genuine handoff to a human *or a promise we still owe* ("Will update
 here when the PR is up"). So a bot-last chain flips to `awaiting_us` (nudge the fixer) when **all**
-hold: a **fixer-role session** owns the thread, **no PR** exists yet (no owed artifact), **no
-human-owned disposition** says a human is driving, and it has been **silent ≥ 60 min by us**. This
+hold: a **fixer-role session** owns the thread, **no live PR** exists (no owed artifact — only an
+`OPEN` or `MERGED` PR counts; a `CLOSED`-unmerged one does not), **no human-owned disposition** says
+a human is driving, and it has been **silent ≥ 60 min by us**. This
 is computed deterministically in `scan.py::we_owe_next_step` and was the root cause of slang#12002
 (fixer edited code, said "waiting on the build monitor", idle-exited, and was never woken because
 bot-last read as `awaiting_human` forever). Human-owned dispositions that keep a bot-last chain
@@ -154,7 +167,8 @@ parked: `active:human-debate`, `stood-down:external-PR`, `advisory:maintainer-dr
 `maintainer-driving`, `awaiting-pickup`, `closed-by-us`, `stood-down`, `advisory`). These
 dispositions are **rehydrated by `pull-universe.sh` from the prior tick's state** before
 classification — without that, the gate saw `None` every tick and over-flagged (the Tick-86 105→1
-reconciliation noise).
+reconciliation noise). The self-stop ones (`stood-down` / `closed-by-us` / `awaiting-pickup`) expire
+on our own later activity — see *No-PR chain dispositions*.
 
 **Bounce limb (additive to the carve-out).** The silence-clock condition is *relaxed* when the
 owning container is `stopped` **and** its last outbound classed as an error
