@@ -296,9 +296,7 @@ class AstraSandboxDriver implements SessionDriver {
       // container.json plaintext. gitlab-master.nvidia.com is in the sandbox
       // egress allow-list (Skiff-Lite); github.com is not, so slang-mcp's GitHub
       // side stays disabled via SLANG_MCP_DISABLED_SERVICES.
-      ...(process.env.GITLAB_ACCESS_TOKEN
-        ? { GITLAB_ACCESS_TOKEN: process.env.GITLAB_ACCESS_TOKEN }
-        : {}),
+      ...(process.env.GITLAB_ACCESS_TOKEN ? { GITLAB_ACCESS_TOKEN: process.env.GITLAB_ACCESS_TOKEN } : {}),
     };
     // claude-trace is a HOST-only wrapper: the Docker realization mounts it at
     // /opt/claude-trace and points CLAUDE_CODE_EXECUTABLE at it. The sandbox pod
