@@ -611,6 +611,200 @@ describe('reviewer-instruction pinning', () => {
   });
 });
 
+describe('maintainer-requirements field (fixer path)', () => {
+  // Roles whose required stages include PLAN_REVIEW must hand codex the
+  // maintainer's words: a PLAN/CODE/OUTPUT_REVIEW call without a REQUIREMENTS:
+  // field (`none — <reason>` or a GitHub comment URL) is not recorded.
+  const FIXER_STAGES = ['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW'];
+  const APPROVER_STAGES = ['DECISION_REVIEW', 'OUTPUT_REVIEW'];
+  const URL = 'https://github.com/shader-slang/slang/issues/13073#issuecomment-3301234567';
+  let overlayDir: string;
+
+  beforeEach(() => {
+    overlayDir = path.join(tmpRoot, 'overlay');
+    fs.mkdirSync(overlayDir, { recursive: true });
+  });
+
+  function activate(stages: string[]): void {
+    fs.writeFileSync(path.join(overlayDir, '.overlay-critique-gate'), 'critique-gate\n');
+    fs.writeFileSync(path.join(overlayDir, '.critique-required-stages'), JSON.stringify(stages));
+  }
+
+  function critique(prompt: string, env: Record<string, string> = {}, threadId = 't-req'): RunResult {
+    return run(
+      {
+        tool_name: 'mcp__codex__codex',
+        tool_input: { prompt, sandbox: 'danger-full-access', 'developer-instructions': REVIEWER_INSTRUCTIONS },
+        tool_response: JSON.stringify({ threadId, content: '### Verdict\napprove' }),
+      },
+      { OVERLAY_MARKER_DIR: overlayDir, ...env },
+    );
+  }
+
+  function prompt(stage: string, requirements: string | null, task = 'fix the thing'): string {
+    const req = requirements === null ? '' : `${requirements}\n`;
+    return `STAGE: ${stage}\nROUND: 1/3\n${req}\nTASK (verbatim — only you have this, codex cannot read it from disk):\n${task}\n\nWHAT I DID: planned\nWHY: because\nARTIFACTS (read these yourself): /workspace/agent/reports/1.md`;
+  }
+
+  const recorded = (stage: string) => (readState() as any).critique_stages?.[stage] ?? 0;
+
+  it('records a round whose REQUIREMENTS items cite a GitHub comment URL', () => {
+    activate(FIXER_STAGES);
+    const res = critique(prompt('PLAN_REVIEW', `REQUIREMENTS:\nR1. "make it the sole source" — ${URL}`));
+    expect(recorded('PLAN_REVIEW')).toBe(1);
+    expect(res.stdout).toContain('recorded');
+    expect(res.stdout).toContain('PLAN_REVIEW and OUTPUT_REVIEW verdicts = approve');
+  });
+
+  it('accepts review-comment and review-body URLs on the field line itself', () => {
+    activate(FIXER_STAGES);
+    critique(
+      prompt(
+        'CODE_REVIEW',
+        'REQUIREMENTS: R1. "x" — https://github.com/shader-slang/slang/pull/13213#discussion_r2001234567',
+      ),
+    );
+    critique(
+      prompt(
+        'OUTPUT_REVIEW',
+        'REQUIREMENTS: R1. "y" — https://github.com/shader-slang/slang/pull/13213#pullrequestreview-3001234567',
+      ),
+      {},
+      't-req-2',
+    );
+    // An issue/PR body the maintainer wrote carries an `#issue-<id>` anchor.
+    critique(
+      prompt(
+        'PLAN_REVIEW',
+        'REQUIREMENTS: R1. "z" — https://github.com/shader-slang/slang/issues/13073#issue-3401234567',
+      ),
+      {},
+      't-req-3',
+    );
+    expect(recorded('CODE_REVIEW')).toBe(1);
+    expect(recorded('OUTPUT_REVIEW')).toBe(1);
+    expect(recorded('PLAN_REVIEW')).toBe(1);
+  });
+
+  it('records a round with `none — <reason>`', () => {
+    activate(FIXER_STAGES);
+    critique(prompt('PLAN_REVIEW', 'REQUIREMENTS: none — no maintainer has commented on the issue'));
+    expect(recorded('PLAN_REVIEW')).toBe(1);
+  });
+
+  it.each([
+    ['bare none', 'REQUIREMENTS: none'],
+    ['none with only a separator', 'REQUIREMENTS: none —'],
+    ['empty field', 'REQUIREMENTS:'],
+    ['a word that merely starts with none', 'REQUIREMENTS: nonetheless'],
+    ['a bare issue URL (not a comment)', 'REQUIREMENTS: R1. "x" — https://github.com/shader-slang/slang/issues/13073'],
+    ['a paraphrase with no URL', 'REQUIREMENTS: R1. the orchestrator says keep it declarative'],
+  ])('does NOT record a round with %s', (_label, field) => {
+    activate(FIXER_STAGES);
+    const res = critique(prompt('PLAN_REVIEW', field));
+    expect(readState().critique_rounds).toBeUndefined();
+    expect(res.stdout).toContain('NOT recorded');
+    expect(res.stdout).toContain('REQUIREMENTS: none — <why no maintainer design direction applies>');
+  });
+
+  it('does NOT record a round with the field missing', () => {
+    activate(FIXER_STAGES);
+    const res = critique(prompt('OUTPUT_REVIEW', null));
+    expect(readState().critique_rounds).toBeUndefined();
+    expect(res.stdout).toContain('NOT recorded');
+    expect(res.stdout).toContain('#issuecomment-<id>');
+  });
+
+  it('a comment URL outside the field (e.g. in TASK) does not satisfy it', () => {
+    activate(FIXER_STAGES);
+    critique(prompt('PLAN_REVIEW', 'REQUIREMENTS:', `see ${URL}`));
+    expect(readState().critique_rounds).toBeUndefined();
+  });
+
+  it('finds the field behind a >500-char TASK block [regression: 500-char prompt cap]', () => {
+    activate(FIXER_STAGES);
+    const longTask = 'The maintainer asked for a redesign. '.repeat(60); // ~2.2KB
+    expect(longTask.length).toBeGreaterThan(500);
+    const p =
+      `STAGE: PLAN_REVIEW\nROUND: 1/3\n\nTASK (verbatim — only you have this, codex cannot read it from disk):\n${longTask}\n\n` +
+      `REQUIREMENTS:\nR1. "sole source" — ${URL}\n\nWHAT I DID: planned\nWHY: because`;
+    const res = critique(p);
+    expect(recorded('PLAN_REVIEW')).toBe(1);
+    expect(res.stdout).not.toContain('NOT recorded');
+  });
+
+  it('detects a STAGE line preceded by >500 chars', () => {
+    const preamble = 'Context line for the reviewer.\n'.repeat(25); // ~800 chars
+    expect(preamble.length).toBeGreaterThan(500);
+    critique(`${preamble}STAGE: PLAN_REVIEW\nROUND: 1/3\nTASK: fix`);
+    expect(recorded('PLAN_REVIEW')).toBe(1);
+  });
+
+  it('records a prompt larger than the pipe buffer (head must not SIGPIPE-abort the hook)', () => {
+    activate(FIXER_STAGES);
+    critique(prompt('PLAN_REVIEW', `REQUIREMENTS:\nR1. "q" — ${URL}`, 'x'.repeat(200_000)));
+    expect(recorded('PLAN_REVIEW')).toBe(1);
+  });
+
+  it('is inactive when the required stages lack PLAN_REVIEW (approver)', () => {
+    activate(APPROVER_STAGES);
+    const res = critique(prompt('OUTPUT_REVIEW', null));
+    expect(recorded('OUTPUT_REVIEW')).toBe(1);
+    expect(res.stdout).toContain('AND OUTPUT_REVIEW verdict = approve');
+  });
+
+  it('is inactive when the critique gate is off', () => {
+    activate(FIXER_STAGES);
+    critique(prompt('OUTPUT_REVIEW', null), { CRITIQUE_GATE_ACTIVE: '0' });
+    expect(recorded('OUTPUT_REVIEW')).toBe(1);
+  });
+
+  it('exempts DIAGNOSIS_REVIEW', () => {
+    activate([...FIXER_STAGES, 'DIAGNOSIS_REVIEW']);
+    critique(prompt('DIAGNOSIS_REVIEW', null));
+    expect(recorded('DIAGNOSIS_REVIEW')).toBe(1);
+  });
+
+  it('CRITIQUE_REQUIREMENTS=0 disables the rule', () => {
+    activate(FIXER_STAGES);
+    critique(prompt('PLAN_REVIEW', null), { CRITIQUE_REQUIREMENTS: '0' });
+    expect(recorded('PLAN_REVIEW')).toBe(1);
+  });
+
+  it('codex-reply stays exempt', () => {
+    activate(FIXER_STAGES);
+    critique(prompt('PLAN_REVIEW', `REQUIREMENTS:\nR1. "q" — ${URL}`), {}, 't-reply');
+    run(
+      {
+        tool_name: 'mcp__codex__codex-reply',
+        tool_input: { threadId: 't-reply', prompt: 'ROUND: 2/3 — addressed 1 — re-verify' },
+        tool_response: JSON.stringify({ threadId: 't-reply', content: '### Verdict\nmust-fix\n- R1 missed' }),
+      },
+      { OVERLAY_MARKER_DIR: overlayDir },
+    );
+    const state = readState() as any;
+    expect(state.critique_rounds).toBe(2);
+    expect(state.critique_verdicts?.PLAN_REVIEW).toBe('must-fix');
+  });
+
+  it('host env CRITIQUE_REQUIRED_STAGES wins over the (agent-writable) file', () => {
+    // File claims approver stages (rule off) — env says fixer (rule on).
+    activate(APPROVER_STAGES);
+    critique(prompt('PLAN_REVIEW', null), {
+      CRITIQUE_GATE_ACTIVE: '1',
+      CRITIQUE_REQUIRED_STAGES: JSON.stringify(FIXER_STAGES),
+    });
+    expect(readState().critique_rounds).toBeUndefined();
+    // And the reverse: file says fixer, env says approver → rule off.
+    activate(FIXER_STAGES);
+    critique(prompt('OUTPUT_REVIEW', null), {
+      CRITIQUE_GATE_ACTIVE: '1',
+      CRITIQUE_REQUIRED_STAGES: JSON.stringify(APPROVER_STAGES),
+    });
+    expect(recorded('OUTPUT_REVIEW')).toBe(1);
+  });
+});
+
 describe('soft-cap re-arm', () => {
   // A recorded round is the compliance signal the denial cap exists to
   // elicit — it must restore the wall. Without the reset, 3 early denials
