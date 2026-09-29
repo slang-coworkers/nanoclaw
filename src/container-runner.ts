@@ -2110,6 +2110,41 @@ export function resolveClaudeTraceDir(): string | null {
   return null;
 }
 
+// Inline PreToolUse guards written into each group's settings.json. Claude Code
+// runs hook commands with /bin/sh — dash in the node:22-slim image — and dash's
+// `echo` expands the `\n` escapes inside the hook's JSON input, so jq rejected it
+// ("control characters … must be escaped"), FILE/CMD came back empty and the guard
+// exited 0 on every multi-line tool input. `printf '%s\n'` passes the bytes through.
+
+// Block direct edits to CLAUDE.md — it is re-composed from templates +
+// instructions.prepend.md on every container wake, so direct edits are silently lost.
+export const CLAUDE_MD_GUARD_CMD = `INPUT=$(cat); FILE=$(printf '%s\\n' "$INPUT" | jq -r '.tool_input.file_path // empty'); if printf '%s\\n' "$FILE" | grep -q 'CLAUDE\\.md$'; then echo "CLAUDE.md is auto-generated from templates + instructions.prepend.md on every container start. Your edits here will be overwritten. Edit instructions.prepend.md instead — it lives in the same directory and its contents are appended to the composed CLAUDE.md." >&2; exit 2; fi; exit 0`;
+
+// Block git remote URLs that bake in the OneCLI proxy stub ($GH_TOKEN /
+// ROUTED_VIA_ONECLI_PROXY / "placeholder" — historical name). The proxy only
+// rewrites Authorization headers, not URL-embedded creds, so every later push
+// fails with "Invalid username or token" (witnessed on slang-fixer 2026-06-01).
+// The fix is to drop the auth from the URL and let the proxy inject by host+path.
+export const ONECLI_STUB_GUARD_CMD = `INPUT=$(cat); CMD=$(printf '%s\\n' "$INPUT" | jq -r '.tool_input.command // empty'); if printf '%s\\n' "$CMD" | grep -qE '(git +(remote +set-url|config +remote\\.[^ ]+\\.url)).*(ROUTED_VIA_ONECLI_PROXY|placeholder|\\$GH_TOKEN|\\$\\{GH_TOKEN\\})'; then echo "Refusing to bake the OneCLI proxy stub into a git remote URL. The stub (\\$GH_TOKEN=ROUTED_VIA_ONECLI_PROXY) is not a real credential — the proxy injects auth on the wire by matching host+path, not URL-embedded creds. Drop the auth from the URL: \\\`git remote set-url origin https://github.com/<owner>/<repo>.git\\\` and retry. The proxy will inject the right token for that host+path automatically." >&2; exit 2; fi; exit 0`;
+
+type HookEntry = { matcher?: string; hooks?: Array<{ type?: string; command?: string; timeout?: number }> };
+
+/**
+ * Install `command` as the single guard for `matcher`, replacing any earlier
+ * revision of it — an entry for the same matcher whose command carries `marker`
+ * but differs. The settings.json dedup pass only collapses identical entries, so a
+ * guard whose text changed never reached a group that already held the old text.
+ */
+export function upsertGuardHook(entries: HookEntry[], matcher: string, marker: string, command: string): HookEntry[] {
+  const kept = entries.filter(
+    (h) => !(h.matcher === matcher && h.hooks?.some((i) => i.command?.includes(marker) && i.command !== command)),
+  );
+  if (!kept.some((h) => h.matcher === matcher && h.hooks?.some((i) => i.command === command))) {
+    kept.push({ matcher, hooks: [{ type: 'command', command, timeout: 5 }] });
+  }
+  return kept;
+}
+
 export async function buildMounts(
   agentGroup: AgentGroup,
   session: Session,
@@ -2359,55 +2394,26 @@ export async function buildMounts(
       );
       settings.hooks[event].push(hookConfig);
     }
-    // Guard hook: block direct edits to CLAUDE.md — agents must edit .instructions.md instead.
-    // CLAUDE.md is auto-composed from templates + .instructions.md on every container wake,
-    // so direct edits are silently lost. This hook enforces the single source of truth.
-    const guardCmd = `INPUT=$(cat); FILE=$(echo "$INPUT" | jq -r '.tool_input.file_path // empty'); if echo "$FILE" | grep -q 'CLAUDE\\.md$'; then echo "CLAUDE.md is auto-generated from templates + instructions.prepend.md on every container start. Your edits here will be overwritten. Edit instructions.prepend.md instead — it lives in the same directory and its contents are appended to the composed CLAUDE.md." >&2; exit 2; fi; exit 0`;
-    const guardHookConfig = {
-      matcher: 'Edit|Write',
-      hooks: [{ type: 'command', command: guardCmd, timeout: 5 }],
-    };
+    // Guard hooks (CLAUDE.md edits, OneCLI stub in git remotes) — see
+    // CLAUDE_MD_GUARD_CMD / ONECLI_STUB_GUARD_CMD. The marker is how an older
+    // revision of each guard is recognised and replaced. For CLAUDE.md it is the
+    // literal `CLAUDE\.md` (one backslash) in the stored command: a check that
+    // searched for two backslashes never matched, and the guard was re-appended
+    // on every restart until tens of thousands of duplicates buried gate-plan +
+    // gate-critique-on-deliver.
     if (!settings.hooks.PreToolUse) settings.hooks.PreToolUse = [];
-    const hasGuard = settings.hooks.PreToolUse.some(
-      (h: { matcher?: string; hooks?: { command?: string }[] }) =>
-        h.matcher === 'Edit|Write' &&
-        // Stored command contains the literal substring `CLAUDE\.md` (the
-        // shell regex anchor for the .md extension) — i.e. one backslash.
-        // The previous check searched for two backslashes and never matched,
-        // so the guard hook was re-appended on every restart, accumulating
-        // tens of thousands of duplicates that buried gate-plan +
-        // gate-critique-on-deliver. The dedup pass at the top is the
-        // belt-and-braces; this is the suspenders.
-        h.hooks?.some((inner: { command?: string }) => inner.command?.includes('CLAUDE\\.md')),
+    settings.hooks.PreToolUse = upsertGuardHook(
+      settings.hooks.PreToolUse,
+      'Edit|Write',
+      'CLAUDE\\.md',
+      CLAUDE_MD_GUARD_CMD,
     );
-    if (!hasGuard) {
-      settings.hooks.PreToolUse.push(guardHookConfig);
-    }
-
-    // Guard hook: block git remote URLs that bake in the OneCLI proxy stub
-    // ($GH_TOKEN / ROUTED_VIA_ONECLI_PROXY / "placeholder" — historical name).
-    // Symptom this catches: `git remote set-url origin https://x-access-token:$GH_TOKEN@…`
-    // hardcodes the stub into .git/config; the OneCLI proxy only rewrites
-    // Authorization headers, not URL-embedded creds, so every push then
-    // fails with "Invalid username or token". Witnessed on slang-fixer
-    // 2026-06-01 — see [[project_szihs_pat_path_routing]] for context.
-    // The fix is to drop the auth from the URL entirely and let the proxy
-    // inject by host+path match: `https://github.com/<owner>/<repo>.git`.
-    const stubGuardCmd = `INPUT=$(cat); CMD=$(echo "$INPUT" | jq -r '.tool_input.command // empty'); if echo "$CMD" | grep -qE '(git +(remote +set-url|config +remote\\.[^ ]+\\.url)).*(ROUTED_VIA_ONECLI_PROXY|placeholder|\\$GH_TOKEN|\\$\\{GH_TOKEN\\})'; then echo "Refusing to bake the OneCLI proxy stub into a git remote URL. The stub (\\$GH_TOKEN=ROUTED_VIA_ONECLI_PROXY) is not a real credential — the proxy injects auth on the wire by matching host+path, not URL-embedded creds. Drop the auth from the URL: \\\`git remote set-url origin https://github.com/<owner>/<repo>.git\\\` and retry. The proxy will inject the right token for that host+path automatically." >&2; exit 2; fi; exit 0`;
-    const stubGuardHookConfig = {
-      matcher: 'Bash',
-      hooks: [{ type: 'command', command: stubGuardCmd, timeout: 5 }],
-    };
-    const hasStubGuard = settings.hooks.PreToolUse.some(
-      (h: { matcher?: string; hooks?: { command?: string }[] }) =>
-        h.matcher === 'Bash' &&
-        h.hooks?.some((inner: { command?: string }) =>
-          inner.command?.includes('Refusing to bake the OneCLI proxy stub'),
-        ),
+    settings.hooks.PreToolUse = upsertGuardHook(
+      settings.hooks.PreToolUse,
+      'Bash',
+      'Refusing to bake the OneCLI proxy stub',
+      ONECLI_STUB_GUARD_CMD,
     );
-    if (!hasStubGuard) {
-      settings.hooks.PreToolUse.push(stubGuardHookConfig);
-    }
 
     // Overlay hook injection: enforce plan/critique gates via runtime hooks.
     // Uses resolveOverlayHookFlags() so agent_groups.disable_overlays=1 skips
