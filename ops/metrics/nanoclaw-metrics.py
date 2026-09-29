@@ -9,6 +9,7 @@ Failures are contained: any section that throws is skipped and counted in
 nanoclaw_collector.errors, so telegraf keeps getting the sections that work.
 """
 
+import glob
 import json
 import os
 import socket
@@ -18,11 +19,14 @@ import time
 import urllib.request
 from datetime import datetime, timezone
 
-NC = "/home/ubuntu/slang-coworkers-prod/nanoclaw"
+NC = os.environ.get("NANOCLAW_DIR", "/home/ubuntu/slang-coworkers-prod/nanoclaw")
 DB = os.path.join(NC, "data", "v2.db")
 LOG = os.path.join(NC, "logs", "nanoclaw.log")
 ERRLOG = os.path.join(NC, "logs", "nanoclaw.error.log")
 FUNNEL = os.path.join(NC, "reports", "funnel.json")
+SESSIONS_DIR = os.path.join(NC, "data", "v2-sessions")
+BREAKER = os.path.join(NC, "data", "circuit-breaker.json")
+PIDFILE = os.path.join(NC, "data", "nanoclaw.pid")
 
 WINDOW_MS = 300_000          # 5m rolling window for hook_events
 STALE_SEC = 3600             # running container silent this long = stale
@@ -439,6 +443,157 @@ def collect_health():
     })
 
 
+# ---------- host health: the 2026-09-26 outage signals ----------
+#
+# Every field here is a leading indicator of the incident in
+# reports/prod-outage-2026-09-26-postmortem.html. None was measured before:
+#   sweep_tick_ms      synchronous work per 60 s sweep (19 s during the stall, 1-3 s healthy)
+#   spawns / wake_failed   0 spawns + rising wake failures = the event loop is frozen
+#   quarantined        #1733 fired: a system action that killed the host was parked
+#   stale_restarts     containers respawned because their composed CLAUDE.md changed (a deploy side effect)
+#   host_restart / host_uptime_s   the crash loop showed as a pid that never got old
+#   breaker_attempt    data/circuit-breaker.json: attempt 1 is written at EVERY start and removed on clean shutdown,
+#                      so 1 = normal; >= 2 = the host has crashed and is being restarted by the breaker
+#   inbox_*            webhook_inbox rows by state; parked > 0 = a GitHub delivery needs an operator
+#   mailbox_bytes_*    session DB growth (2.6 GB in one session was the root cause)
+# The log-derived counters are per collector run (60 s); the rest are gauges.
+
+_SWEEP_RE = None
+
+
+def _sweep_re():
+    global _SWEEP_RE
+    if _SWEEP_RE is None:
+        import re
+        _SWEEP_RE = re.compile(r'Sweep tick.*?sessions=(\d+).*?fullPasses=(\d+).*?quietSkips=(\d+).*?ms=(\d+)')
+    return _SWEEP_RE
+
+
+def _host_pid():
+    """PID of the host process: the pidfile it writes at startup, verified live."""
+    try:
+        with open(PIDFILE) as fh:
+            pid = int(fh.read().strip())
+        # /proc, not kill(2): the collector runs as `telegraf`, and kill(pid, 0) on ubuntu's
+        # process is EPERM — which read as "host down" on the first prod run (2026-09-28).
+        return pid if os.path.isdir(f"/proc/{pid}") else None
+    except Exception:  # noqa: BLE001 - absent pidfile = host down or restarting
+        return None
+
+
+def _pid_uptime_s(pid):
+    with open("/proc/uptime") as fh:
+        up = float(fh.read().split()[0])
+    with open(f"/proc/{pid}/stat") as fh:
+        fields = fh.read().rsplit(")", 1)[1].split()
+    start_ticks = int(fields[19])  # field 22 (starttime), 0-based after comm
+    hz = os.sysconf(os.sysconf_names.get("SC_CLK_TCK", 2))
+    return max(0, int(up - start_ticks / hz))
+
+
+def _mailbox_sizes():
+    total = 0; biggest = 0; biggest_name = ""; over_500mb = 0; files = 0
+    with os.scandir(SESSIONS_DIR) as groups:
+        for g in groups:
+            if not g.is_dir(follow_symlinks=False):
+                continue
+            try:
+                sessions = os.scandir(g.path)
+            except OSError:
+                continue
+            with sessions:
+                for sdir in sessions:
+                    if not sdir.is_dir(follow_symlinks=False):
+                        continue
+                    for name in ("inbound.db", "outbound.db"):
+                        try:
+                            sz = os.stat(os.path.join(sdir.path, name)).st_size
+                        except OSError:
+                            continue
+                        files += 1; total += sz
+                        if sz > 500 * 1024 * 1024:
+                            over_500mb += 1
+                        if sz > biggest:
+                            biggest = sz; biggest_name = f"{sdir.name}/{name}"
+    return total, biggest, biggest_name, over_500mb, files
+
+
+def collect_host(state):
+    fields = {}
+    # -- host process liveness / restarts
+    pid = _host_pid()
+    fields["host_up"] = pid is not None
+    if pid is not None:
+        try:
+            fields["host_uptime_s"] = _pid_uptime_s(pid)
+        except Exception as exc:  # noqa: BLE001 - /proc shape; the gauge is just absent this run
+            _errors.append(f"host.uptime:{exc}")
+        prev = state.get("host_pid")
+        restarted = prev is not None and prev != pid
+        fields["host_restart"] = 1 if restarted else 0
+        if restarted:
+            state["host_restarts_total"] = int(state.get("host_restarts_total", 0)) + 1
+        state["host_pid"] = pid
+    else:
+        fields["host_restart"] = 0
+    fields["host_restarts_total"] = int(state.get("host_restarts_total", 0))
+    # -- circuit breaker: the file exists only during a crash loop
+    try:
+        with open(BREAKER) as fh:
+            fields["breaker_attempt"] = int(json.load(fh).get("attempt", 0))
+    except Exception:  # noqa: BLE001 - no file = no crash loop
+        fields["breaker_attempt"] = 0
+    # -- log-derived counters for this run (the main/error log offsets are advanced by collect_logs, so
+    #    keep our own offsets: same file, separate keys).
+    # The host log is ANSI-coloured (`\x1b[35msessions\x1b[39m=2676`): strip escapes before matching
+    # key=value pairs, or the sweep regex never matches (first prod run, 2026-09-28).
+    import re
+    ansi = re.compile(r"\x1b\[[0-9;]*m")
+    main = ansi.sub("", read_new_bytes(LOG, state, "host_log_off").decode("utf-8", "replace"))
+    err = ansi.sub("", read_new_bytes(ERRLOG, state, "host_errlog_off").decode("utf-8", "replace"))
+    ticks = _sweep_re().findall(main)
+    if ticks:
+        sessions, full, quiet, ms = ticks[-1]
+        fields.update({"sweep_tick_ms": int(ms), "sweep_full_passes": int(full),
+                       "sweep_quiet_skips": int(quiet), "sweep_sessions": int(sessions),
+                       "sweep_tick_ms_max": max(int(t[3]) for t in ticks), "sweep_ticks": len(ticks)})
+    else:
+        fields["sweep_ticks"] = 0
+    fields["spawns"] = main.count("Spawning session")
+    fields["wakes"] = main.count("Waking container for due")
+    fields["inbox_replays"] = main.count("webhook-inbox: replaying delivery")
+    fields["wake_failed"] = err.count("wakeContainer failed")
+    fields["quarantined"] = err.count("System action quarantined")
+    fields["stale_restarts"] = err.count("CLAUDE.md stale")
+    fields["inbox_parked_events"] = err.count("webhook-inbox: delivery parked")
+    fields["fatal"] = err.count("FATAL")
+    fields["heap_oom"] = err.count("heap out of memory")
+    # -- webhook inbox states (central DB, read-only)
+    try:
+        con = connect_ro()
+        rows = con.execute(
+            "SELECT status, CASE WHEN status='failed' AND next_attempt_at IS NULL THEN 1 ELSE 0 END AS parked, COUNT(*) "
+            "FROM webhook_inbox GROUP BY 1, 2").fetchall()
+        con.close()
+        inbox = {"inbox_pending": 0, "inbox_done": 0, "inbox_failed": 0, "inbox_parked": 0}
+        for status, parked, n in rows:
+            inbox[f"inbox_{status}"] = inbox.get(f"inbox_{status}", 0) + n
+            if parked:
+                inbox["inbox_parked"] += n
+        fields.update(inbox)
+    except Exception as exc:  # noqa: BLE001 - table appears with migration 945
+        _errors.append(f"host.inbox:{exc}")
+    # -- mailbox growth (disk only after #1731-#1735, but it is still the root cause's fuel)
+    try:
+        total, biggest, biggest_name, over_500mb, files = _mailbox_sizes()
+        fields.update({"mailbox_bytes_total": total, "mailbox_bytes_max": biggest,
+                       "mailbox_files": files, "mailbox_over_500mb": over_500mb})
+        emit("nanoclaw_host_mailbox", {"bytes": biggest}, {"session_db": biggest_name or "none"})
+    except Exception as exc:  # noqa: BLE001
+        _errors.append(f"host.mailbox:{exc}")
+    emit("nanoclaw_host", fields)
+
+
 def collect_cost():
     """Fleet / per-coworker / per-session USD accrued TODAY.
 
@@ -515,6 +670,53 @@ def collect_cost():
         emit("nanoclaw_cost", {"dropped_sessions": overflow}, {"scope": "session_overflow"})
 
 
+def collect_codex():
+    """Codex tool availability across LIVE sessions (the 2026-09-25..28 blind spot).
+
+    A session is live when its `.heartbeat` was touched in the last 3 minutes.
+    Each runner publishes its startup probe of the codex MCP child as
+    `session_state.codex_child` in outbound.db (JSON {ok, version, detail});
+    a live session without the row runs a runner older than that change.
+    Emits nanoclaw_codex: live, ok, missing, unknown (+ the codex version mix).
+    """
+    live = ok = missing = unknown = 0
+    versions = {}
+    cutoff = time.time() - 180
+    for hb in glob.glob(os.path.join(NC, "data", "v2-sessions", "*", "sess-*", ".heartbeat")):
+        try:
+            if os.path.getmtime(hb) < cutoff:
+                continue
+        except OSError:
+            continue
+        live += 1
+        db = os.path.join(os.path.dirname(hb), "outbound.db")
+        row = None
+        try:
+            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=2)
+            row = con.execute("SELECT value FROM session_state WHERE key='codex_child'").fetchone()
+            con.close()
+        except Exception as exc:  # noqa: BLE001 - a busy or legacy mailbox is just 'unknown'
+            _errors.append(f"codex.{os.path.basename(os.path.dirname(hb))}:{exc}")
+        if not row:
+            unknown += 1
+            continue
+        try:
+            st = json.loads(row[0])
+        except Exception:  # noqa: BLE001
+            unknown += 1
+            continue
+        if st.get("ok"):
+            ok += 1
+        else:
+            missing += 1
+        v = str(st.get("version") or "?").replace("codex-cli ", "")
+        versions[v] = versions.get(v, 0) + 1
+    fields = {"live": live, "ok": ok, "missing": missing, "unknown": unknown}
+    for v, n in versions.items():
+        fields["v_" + v.replace(".", "_")] = n
+    emit("nanoclaw_codex", fields)
+
+
 def main():
     t0 = time.time()
     now_ms = int(t0 * 1000)
@@ -524,6 +726,8 @@ def main():
                      ("logs", lambda: collect_logs(state)),
                      ("funnel", collect_funnel),
                      ("health", collect_health),
+                     ("host", lambda: collect_host(state)),
+                     ("codex", collect_codex),
                      ("cost", collect_cost)):
         try:
             fn()

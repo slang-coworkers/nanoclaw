@@ -1,6 +1,6 @@
 ---
 name: add-codex
-description: Use Codex (OpenAI's codex app-server) as a full agent provider — planning, tool orchestration, MCP tools, server-side history, session resume — alongside or instead of Claude. ChatGPT subscription or OpenAI API key, vault-only via OneCLI. Per-group via `ncl groups config update --provider codex`. Distinct from using OpenAI as an MCP tool (where Claude remains the planner).
+description: Use Codex (OpenAI's codex app-server) as a full agent provider — planning, tool orchestration, MCP tools, server-side history, session resume — alongside or instead of Claude. ChatGPT subscription or OpenAI API key, vault-only via the selected gateway. Per-group via `ncl groups config update --provider codex`. Distinct from using OpenAI as an MCP tool (where Claude remains the planner).
 metadata:
   nanoclaw-provider: codex
   nanoclaw-provider-label: Codex
@@ -15,7 +15,7 @@ metadata:
 
 NanoClaw resolves each group's agent backend through three tiers — `sessions.agent_provider` → `agent_groups.agent_provider` → `container_configs.provider` → `claude` (see **Use it** below). This fork carries the Codex payload in trunk, so this skill wires and authenticates rather than fetching: confirm the payload, append one import to each of the three provider barrels, add the pinned Codex CLI to the container manifest (`container/cli-tools.json`), rebuild, then run the vault auth walk-through.
 
-The provider runs `codex app-server` as a child process speaking JSON-RPC over stdio: native streaming, MCP tools, server-side conversation history (the continuation is a thread id, no on-disk transcript). This replaced the earlier `@openai/codex-sdk` library integration, which is gone — no dependency on it remains in `container/agent-runner/package.json`, and any lockfile still naming `@openai/codex-sdk` is stale and should be deleted, not reinstalled from. Credentials are **vault-only**: OneCLI serves a sentinel `auth.json` stub into the container and swaps the real ChatGPT token or API key on the wire — no key in `.env`, nothing readable in the container.
+The provider runs `codex app-server` as a child process speaking JSON-RPC over stdio: native streaming, MCP tools, server-side conversation history (the continuation is a thread id, no on-disk transcript). This replaced the earlier `@openai/codex-sdk` library integration, which is gone — no dependency on it remains in `container/agent-runner/package.json`, and any lockfile still naming `@openai/codex-sdk` is stale and should be deleted, not reinstalled from. Credentials are **vault-only**: The selected gateway serves a sentinel `auth.json` stub into the container and swaps the real ChatGPT token or API key on the wire — no key in `.env`, nothing readable in the container.
 
 The mechanical steps under **Install** carry `nc:` directive fences: an agent reads the prose and applies them, and a parser can apply them deterministically from the same document. Every directive is idempotent, so the whole skill is safe to re-run; anything a parser can't apply falls back to the prose beside it.
 
@@ -48,6 +48,27 @@ The payload this fork does not carry, and does not want:
 
 `setup/providers/codex.ts` is fork-local too: upstream's `verifyCodexInstall` requires `codex-agents-md.ts`, so upstream's copy reports this working install as broken.
 
+### Use the selected gateway for authentication
+
+Codex credentials are vault-only either way; `setup/providers/codex.ts` in trunk
+carries the login walk-through and writes to the vault through the `onecli` CLI.
+
+Upstream ships a `payload/` for this step and an `nc:copy` fence that installs it.
+**Neither belongs here**, for the same reason step 1 gives: all three of its
+destinations are files this fork diverges on or deliberately omits.
+`payload/setup/providers/codex.ts`'s `verifyCodexInstall` requires
+`src/providers/codex-agents-md.ts`, which this fork does not carry, so it reports a
+working install as broken; `payload/setup/providers/codex.test.ts` would replace the
+guard you are reading about; and `payload/src/provider-contracts/codex.ts` targets a
+declaration this fork has no barrel entry for. The payload tree was removed rather
+than left unreferenced — an unused copy of a file that breaks the install check is a
+trap for whoever reads it next.
+
+Upstream's copy does route storage through the gateway-agnostic
+`setup/gateways/credential-store.ts` seam, which is better than calling `onecli`
+directly and is worth adopting as its own change — deliberately, not as a side
+effect of a refresh fence.
+
 ### 2. Wire the barrels
 
 This fork carries no `src/provider-contracts/codex.ts` nor its container twin, so the two
@@ -75,15 +96,15 @@ import './codex.js';
 The agent's global Node CLIs install from `container/cli-tools.json` (a json-merge seam), not hand-edited Dockerfile layers. Add Codex by appending one entry — idempotent on `name`, so a re-run is a no-op. `@openai/codex` has no native postinstall (its published `scripts` are empty), so no `onlyBuilt`. Both `container/Dockerfile` and `container/Dockerfile.derived` install every manifest entry via pinned `pnpm install -g`; no Dockerfile edit is needed.
 
 ```nc:json-merge into:container/cli-tools.json key:name
-{ "name": "@openai/codex", "version": "0.155.1" }
+{ "name": "@openai/codex", "version": "0.156.1" }
 ```
 
-The version (`0.155.1`, published 2026-09-18) is the canonical pin — this SKILL.md is the source of truth, and `container/cli-tools.json` must agree with it.
+The version (`0.156.1`, published 2026-09-23) is the canonical pin — this SKILL.md is the source of truth, and `container/cli-tools.json` must agree with it.
 
 Two things to know before bumping it:
 
 - **The pin is the whole supply-chain control.** Codex briefly escaped the manifest into a hand-written `pnpm install -g` layer duplicated across both Dockerfiles, and `0.146.1` reached the image roughly 14.6 hours after it was published. Keep it here.
-- **The release-age quarantine is ENFORCED on this install path**, not merely documented. `container/install-cli-tools.sh` writes `minimum-release-age=4320` into `/root/.npmrc` — the config a global install actually reads — and proves at build time that pnpm is honouring it. A pin younger than three days fails the image build with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. So check the publish time before bumping (`pnpm view @openai/codex@<version> time`) and choose a version that has already matured rather than the newest tag — `0.155.1` was 110 hours old when it was adopted here. Do **not** reach for `minimumReleaseAgeExclude` — it needs explicit human sign-off, and every entry is a permanent hole unless someone prunes it.
+- **The release-age quarantine is ENFORCED on this install path**, not merely documented. `container/install-cli-tools.sh` writes `minimum-release-age=4320` into `/root/.npmrc` — the config a global install actually reads — and proves at build time that pnpm is honouring it. A pin younger than three days fails the image build with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. So check the publish time before bumping (`pnpm view @openai/codex@<version> time`) and choose a version that has already matured rather than the newest tag — `0.156.1` was 110 hours old when it was adopted here. Do **not** reach for `minimumReleaseAgeExclude` — it needs explicit human sign-off, and every entry is a permanent hole unless someone prunes it.
 
 ### 4. Build
 
@@ -110,7 +131,7 @@ The registration tests import only the real barrels — they go red if a barrel 
 pnpm exec tsx setup/index.ts --step provider-auth codex
 ```
 
-The same walk-through fresh installs get from the setup picker: ChatGPT subscription (browser login or device pairing) or an OpenAI API key, landed in the OneCLI vault. Idempotent — it short-circuits when a matching secret already exists. It finishes with the install check.
+The same walk-through fresh installs get from the setup picker: ChatGPT subscription (browser login or device pairing) or an OpenAI API key, landed in the selected gateway’s vault. Idempotent — it short-circuits when a matching secret already exists. It finishes with the install check.
 
 ## Use it
 

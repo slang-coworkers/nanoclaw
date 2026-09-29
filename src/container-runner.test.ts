@@ -7,10 +7,11 @@
  * thing it was really guarding. Argv assertions moved to
  * `src/drivers/docker-driver.test.ts`, which is where argv now lives.
  */
+import { spawnSync } from 'child_process';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
-import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
+import { afterAll, afterEach, beforeAll, describe, expect, it, vi } from 'vitest';
 
 import { CONTAINER_CPU_LIMIT, CONTAINER_MEMORY_LIMIT } from './config.js';
 import type { CapDiagnostics } from './claude-composer/project-doc.js';
@@ -18,9 +19,11 @@ import type { ContainerConfig } from './container-config.js';
 import {
   armSessionLifecycle,
   assertComposedDocUsable,
+  CLAUDE_MD_GUARD_CMD,
   composeSessionSpec,
   migrateStandingInstructions,
   normalizeRotateAgeDays,
+  ONECLI_STUB_GUARD_CMD,
   parseMemoryMb,
   parsePidsLimit,
   readStandingInstructions,
@@ -29,8 +32,11 @@ import {
   resolveSpawnProvider,
   syncSkillSymlinks,
   toMountSpecs,
+  upsertGuardHook,
+  watchGatewayAvailability,
 } from './container-runner.js';
 import type { SupervisedHandle } from './drivers/session-events.js';
+import { resetGatewayProvider } from './gateway-providers/index.js';
 import { log } from './log.js';
 import type { VolumeMount } from './providers/provider-container-registry.js';
 import type { AgentGroup, Session } from './types.js';
@@ -52,6 +58,8 @@ beforeAll(async () => {
 afterAll(async () => {
   await closeDb();
 });
+
+afterEach(() => resetGatewayProvider());
 
 describe('resolveProviderName', () => {
   const tiers = (
@@ -165,7 +173,14 @@ describe('one provider per spawn', () => {
   // function) while silently narrowing the absence ones, so the extraction has
   // to prove it reached the end.
   //
-  const spawn = fnBody('async function spawnContainer', 'await runtime.finishedPromise;');
+  // Two lines, because `await runtime.finishedPromise;` alone stopped being
+  // unique file-wide once `retryPendingAdoption` grew one of its own — and a
+  // non-unique anchor is exactly the hole the uniqueness assertion closes. The
+  // pair is still the function's last statement, so both properties hold.
+  const spawn = fnBody(
+    'async function spawnContainer',
+    'if (!runtime.finished) await finishAndResolve(session.id, runtime);\n      await runtime.finishedPromise;',
+  );
   const contribution = fnBody(
     'export async function resolveProviderContribution',
     'return { provider, contribution: surfaces.contribution, surfaces };',
@@ -179,6 +194,56 @@ describe('one provider per spawn', () => {
   it('neither half resolves the tiers itself', () => {
     expect(spawn).not.toMatch(/resolveProviderName\(/);
     expect(contribution).not.toMatch(/resolveProviderName\(/);
+  });
+});
+
+describe('inline guard hooks', () => {
+  // Claude Code runs hook commands with /bin/sh (dash in the agent image). dash's
+  // echo expanded the JSON's `\n` escapes, jq rejected the input and both guards
+  // exited 0 on every multi-line tool input. Run them the way Claude Code does.
+  const hasJq = spawnSync('jq', ['--version']).status === 0;
+  const run = (cmd: string, input: unknown) =>
+    spawnSync('/bin/sh', ['-c', cmd], { input: JSON.stringify(input), encoding: 'utf-8' }).status;
+
+  it.skipIf(!hasJq)('CLAUDE.md guard blocks a Write whose content spans lines', () => {
+    const input = { tool_name: 'Write', tool_input: { file_path: '/workspace/agent/CLAUDE.md', content: 'one\ntwo' } };
+    expect(run(CLAUDE_MD_GUARD_CMD, input)).toBe(2);
+  });
+
+  it.skipIf(!hasJq)('CLAUDE.md guard lets other files through', () => {
+    const input = { tool_name: 'Edit', tool_input: { file_path: '/workspace/agent/notes.md', old_string: 'a\nb' } };
+    expect(run(CLAUDE_MD_GUARD_CMD, input)).toBe(0);
+  });
+
+  it.skipIf(!hasJq)('stub guard blocks a multi-line command that bakes $GH_TOKEN into a remote', () => {
+    const command =
+      'cd /workspace/agent/wt\ngit remote set-url origin https://x-access-token:$GH_TOKEN@github.com/o/r.git';
+    expect(run(ONECLI_STUB_GUARD_CMD, { tool_name: 'Bash', tool_input: { command } })).toBe(2);
+  });
+
+  it.skipIf(!hasJq)('stub guard lets a clean remote URL through', () => {
+    const command = 'cd /workspace/agent/wt\ngit remote set-url origin https://github.com/o/r.git';
+    expect(run(ONECLI_STUB_GUARD_CMD, { tool_name: 'Bash', tool_input: { command } })).toBe(0);
+  });
+});
+
+describe('upsertGuardHook', () => {
+  const guard = (command: string) => ({ matcher: 'Bash', hooks: [{ type: 'command', command, timeout: 5 }] });
+  const other = { matcher: 'Bash', hooks: [{ type: 'command', command: 'bash /app/hooks/gate-plan.sh', timeout: 5 }] };
+
+  it('replaces an older revision of the same guard', () => {
+    const out = upsertGuardHook([other, guard('echo MARK old')], 'Bash', 'MARK', 'printf MARK new');
+    expect(out).toEqual([other, guard('printf MARK new')]);
+  });
+
+  it('is idempotent', () => {
+    const once = upsertGuardHook([other], 'Bash', 'MARK', 'printf MARK new');
+    expect(upsertGuardHook(once, 'Bash', 'MARK', 'printf MARK new')).toEqual(once);
+  });
+
+  it('leaves a same-marker hook under another matcher alone', () => {
+    const edit = { matcher: 'Edit|Write', hooks: [{ type: 'command', command: 'echo MARK', timeout: 5 }] };
+    expect(upsertGuardHook([edit], 'Bash', 'MARK', 'printf MARK new')).toEqual([edit, guard('printf MARK new')]);
   });
 });
 
@@ -400,7 +465,10 @@ function compose(
     containerConfig: overrides.containerConfig ?? containerConfig,
     mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
     contribution: (overrides.contribution ?? {}) as never,
-    gateway: (overrides.gateway ?? {}) as never,
+    gateway: {
+      networkAccess: { endpoint: 'localhost', target: { kind: 'host' } },
+      ...(overrides.gateway ?? {}),
+    } as never,
     instanceId: 'test-instance-id',
   });
 }
@@ -414,12 +482,26 @@ function composeWithFolder(folder: string) {
     containerConfig,
     mailboxEnvironment: { NANOCLAW_MAILBOX_BACKEND: 'sqlite' },
     contribution: {} as never,
-    gateway: {} as never,
+    gateway: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' } } } as never,
     instanceId: 'test-instance-id',
   });
 }
 
 describe('composeSessionSpec', () => {
+  it('carries gateway lineage without overriding reserved host labels', async () => {
+    const spec = await compose({
+      gateway: {
+        labels: {
+          'provider-channel-id': 'channel-123',
+          'nanoclaw-container-name': 'wrong-runtime',
+        },
+      },
+    });
+    expect(spec.labels['provider-channel-id']).toBe('channel-123');
+    // The reserved host label always wins — a gateway cannot rename the runtime.
+    expect(spec.labels['nanoclaw-container-name']).not.toBe('wrong-runtime');
+  });
+
   it('keys the session by install, group and session id', async () => {
     expect((await compose()).key).toMatchObject({ agentGroupId: 'agent-1', sessionId: 'session-1' });
   });
@@ -465,7 +547,7 @@ describe('composeSessionSpec', () => {
           {
             class: 'allowlisted-extra',
             hostPath: '/tmp/ca.pem',
-            containerPath: '/tmp/onecli-ca.pem',
+            containerPath: '/tmp/gateway-ca.pem',
             mode: 'ro',
             groupScope: 'agent-1',
           },
@@ -475,13 +557,14 @@ describe('composeSessionSpec', () => {
     const targets = spec.containers[0].mounts.map((m) => m.containerPath);
     expect(targets.filter((t) => t === '/workspace')).toHaveLength(1);
     expect(spec.containers[0].mounts.find((m) => m.containerPath === '/workspace')?.hostPath).toBe('/tmp/stub');
-    expect(targets).toContain('/tmp/onecli-ca.pem');
+    expect(targets).toContain('/tmp/gateway-ca.pem');
   });
 
   it('gateway containers ride beside the agent', async () => {
     const spec = await compose({
       gateway: {
         containers: [{ role: 'egress-proxy', image: 'proxy:1', env: {}, mounts: [] }],
+        networkAccess: { endpoint: 'egress-proxy', target: { kind: 'session-container', role: 'egress-proxy' } },
       },
     });
     expect(spec.containers.map((c) => c.role)).toEqual(['agent', 'egress-proxy']);
@@ -553,6 +636,7 @@ describe('composeSessionSpec', () => {
   it('asks for a shared-private network and the standard posture', async () => {
     const spec = await compose();
     expect(spec.network).toBe('shared-private');
+    expect(spec.networkAccess).toEqual({ endpoint: 'localhost', target: { kind: 'host' } });
     expect(spec.hardening).toBe('standard');
     expect(spec.runtimeTier).toBe('container');
     expect(spec.stopGraceSeconds).toBe(1);
@@ -719,6 +803,9 @@ describe('armSessionLifecycle', () => {
     await armSessionLifecycle({
       handle,
       onTerminal: () => {},
+      beforeStart: () => {
+        order.push('gateway');
+      },
       afterStart: () => {
         order.push('afterStart');
       },
@@ -727,7 +814,7 @@ describe('armSessionLifecycle', () => {
     // A failure landing during startup must find a runtime that already knows
     // how to finalize; recording "running" before the session exists would
     // mark a session running that never started.
-    expect(order).toEqual(['onTerminal', 'start', 'afterStart']);
+    expect(order).toEqual(['onTerminal', 'gateway', 'start', 'afterStart']);
   });
 
   it('never runs the post-start bookkeeping when the start fails', async () => {
@@ -746,6 +833,54 @@ describe('armSessionLifecycle', () => {
     ).rejects.toThrow('image-unavailable');
 
     expect(order).toEqual(['onTerminal', 'start']);
+  });
+
+  it('runs failure cleanup before propagating a start failure', async () => {
+    const { handle, order } = fakeHandle(async () => {
+      throw new Error('start-failed');
+    });
+
+    await expect(
+      armSessionLifecycle({
+        handle,
+        onTerminal: () => {},
+        onFailure: async () => {
+          order.push('cleanup');
+        },
+      }),
+    ).rejects.toThrow('start-failed');
+
+    expect(order).toEqual(['onTerminal', 'start', 'cleanup']);
+  });
+});
+
+describe('gateway availability', () => {
+  it('stops the affected runtime when its lease becomes unavailable', () => {
+    const stop = vi.fn();
+    const gateway = {
+      contribution: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' as const } } },
+      onUnavailable(callback: (reason: string) => void) {
+        callback('gateway-lost');
+      },
+    };
+    expect(watchGatewayAvailability(gateway, new AbortController().signal, stop)).toBe(true);
+    expect(stop).toHaveBeenCalledWith('gateway-lost');
+  });
+
+  it('ignores reports after core cancels local observation', () => {
+    const stop = vi.fn();
+    let report!: (reason: string) => void;
+    const controller = new AbortController();
+    const gateway = {
+      contribution: { networkAccess: { endpoint: 'localhost', target: { kind: 'host' as const } } },
+      onUnavailable(callback: (reason: string) => void) {
+        report = callback;
+      },
+    };
+    watchGatewayAvailability(gateway, controller.signal, stop);
+    controller.abort();
+    report('late-loss');
+    expect(stop).not.toHaveBeenCalled();
   });
 });
 

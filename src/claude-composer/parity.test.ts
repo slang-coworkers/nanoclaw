@@ -79,12 +79,13 @@ describe('composed-document byte parity', () => {
   // regression would let that test pass, and these constants would not.
   it('matches the recorded digests', () => {
     const digests: Record<string, string> = {
-      // Moved three times. First after the refactor: base-common gained the
+      // Moved four times. First after the refactor: base-common gained the
       // `explain-diff-html` skill (one `## Skills` line in every composed doc).
       // Then when the group-scope `ncl` table gained its `tasks` and
       // `pr-mappings` rows — two resources agents could already reach and were
       // never told about. Then when `explain-diff-html`'s description grew the
-      // collapsed-PR-comment contract (that one `## Skills` line changed).
+      // collapsed-PR-comment contract (that one `## Skills` line changed), and again
+      // when the explanation moved into the PR description (same line).
       // Goldens regenerated in the same commit, visibly, every time: that is
       // the point of pinning the digests here as well as the bytes, since a
       // golden edited alongside a regression would go unnoticed.
@@ -95,16 +96,22 @@ describe('composed-document byte parity', () => {
       //
       // Scheduling prose is part of them too, and it names `ncl tasks` because no
       // scheduling MCP module is registered.
-      'base-common': '7d09d800d40deb23',
-      'base-common.persona': '4e09ccb512ada501',
+      //
+      // Moved a fifth time by the upstream gateway-seam merge: `container/CLAUDE.md`
+      // gained a `## Connecting external accounts` section and it is EMITTED, so
+      // every composed doc carries it. `section-completeness.test.ts` is what made
+      // that a decision instead of a silent drop.
+      'base-common': '8c8ad204d97ae56e',
+      'base-common.persona': '72a5d1d460c1b9a7',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
-      // standalone values the content phase produced — abaecd63bd33b299 and
-      // 8129ebe911b83bec, moved once by the `agents.md` anchor retarget — are
+      // standalone values the content phase produced — a107cc5eae0f5a3b and
+      // 7ac61543c0a5dc29, moved once by the `agents.md` anchor retarget and again by
+      // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: '95ff9291f2aca189',
-      'default.persona': '2ed9a9df004df344',
+      default: 'da7cade266ccdbc3',
+      'default.persona': '0f73f114a1ae41b2',
     };
 
     const actual: Record<string, string> = {};

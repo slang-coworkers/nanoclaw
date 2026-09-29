@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe('Claude memory SessionStart registration', () => {
-  it('writes the shared command once without disturbing other hooks', () => {
+  it('removes the memory hook (current and legacy) without disturbing other hooks', () => {
     const settingsFile = path.join(configDir, 'settings.json');
     fs.writeFileSync(
       settingsFile,
@@ -52,17 +52,15 @@ describe('Claude memory SessionStart registration', () => {
     registerProviderMemorySessionHook('claude', provider, MEMORY_SESSION_HOOK);
 
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
-    expect(settings.outputStyle).toBe('Concise');
+    expect(settings.outputStyle).toBe('default');
     expect(settings.customValue).toBe('preserved');
     expect(settings.hooks.Stop).toEqual([{ hooks: [{ type: 'command', command: 'custom-stop' }] }]);
     expect(settings.hooks.SessionStart).toEqual([
       { matcher: 'resume', hooks: [{ type: 'command', command: 'custom-resume' }] },
       { matcher: '.*', hooks: [{ type: 'command', command: 'custom-start' }] },
-      {
-        matcher: 'startup|clear|compact',
-        hooks: [{ type: 'command', command: 'bun /app/src/memory/hook.ts', timeout: 10 }],
-      },
     ]);
+    expect(JSON.stringify(settings.hooks)).not.toContain('memory/hook.ts');
+    expect(JSON.stringify(settings.hooks)).not.toContain('memory-hook.ts');
   });
 
   it.each([undefined, 'Explanatory', 'My chat style'])('seeds tone without replacing %j', (outputStyle) => {
@@ -70,7 +68,7 @@ describe('Claude memory SessionStart registration', () => {
     if (outputStyle !== undefined) fs.writeFileSync(settingsFile, JSON.stringify({ outputStyle }));
     const provider = createProvider('claude');
     registerProviderMemorySessionHook('claude', provider, MEMORY_SESSION_HOOK);
-    expect(JSON.parse(fs.readFileSync(settingsFile, 'utf-8')).outputStyle).toBe(outputStyle ?? 'Concise');
+    expect(JSON.parse(fs.readFileSync(settingsFile, 'utf-8')).outputStyle).toBe(outputStyle ?? 'default');
 
     const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
     fs.writeFileSync(settingsFile, JSON.stringify({ ...settings, outputStyle: 'Learning' }));
