@@ -39,6 +39,7 @@ export type ReconcileFn = (sessionId: string) => Promise<void>;
 export const SINGLETON_KEYS = [
   'singleton:egress-reheal',
   'singleton:approvals-scan',
+  'singleton:orphan-containers',
   'singleton:cost-cards',
   'singleton:cost-ceiling-adjustments',
 ] as const;
