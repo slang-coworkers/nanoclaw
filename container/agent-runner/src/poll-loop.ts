@@ -35,6 +35,7 @@ import {
   getCostCap,
   setCostCap,
   setCostControlProtocol,
+  setCodexChild,
   commitCostCeilingAdjustmentOutcome,
   commitCostReconcileOutcome,
   type CostCapState,
@@ -44,6 +45,7 @@ import {
   type CostReconcileReceipt,
 } from './db/session-state.js';
 import { getConfig } from './config.js';
+import { probeCodexMcpServer } from './codex-mcp-server.js';
 import { priceUsage } from './pricing.js';
 import { MISSING_DAY_KEY, ledgerKey, scanCodexRollouts } from './codex-cost.js';
 // #65 durable cost ledger — DUAL-RUN (additive; writes cost_events alongside the
@@ -394,6 +396,19 @@ function publishRunnerReadiness(): void {
     // or the host refuses to enqueue a reconcile to this runner.
     operations: RUNNER_COST_CONTROL_OPERATIONS,
   });
+}
+
+/**
+ * Durable copy of the codex-child startup probe (index.ts logs it; this makes it
+ * readable from the host side per live session). Never fails startup.
+ */
+function publishCodexChild(): void {
+  try {
+    const probe = probeCodexMcpServer();
+    setCodexChild({ ok: probe.ok, version: probe.version, detail: probe.detail, checkedAt: new Date().toISOString() });
+  } catch (err) {
+    log(`codex child probe not recorded: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 /**
@@ -2547,6 +2562,7 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // publish before anything else so the host's post-wake readiness poll finds
   // it as soon as possible.
   publishRunnerReadiness();
+  publishCodexChild();
 
   // Cost cap (NanoClaw #1): load persisted spend so the cap survives respawns,
   // and publish the current cap state for the dashboard. Provider name gates
