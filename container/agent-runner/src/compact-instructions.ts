@@ -48,8 +48,7 @@ export function buildPostCompactionReminder(names: string[], taskId: string | nu
 export function buildCompactInstructions(names: string[], taskId: string | null): string {
   const sentences = buildDeliverySentences(names, taskId);
   const deliveryReminder = sentences.map(
-    (sentence, index) =>
-      `   ${index === 0 ? '"' : ''}${sentence}${index === sentences.length - 1 ? '"' : ''}`,
+    (sentence, index) => `   ${index === 0 ? '"' : ''}${sentence}${index === sentences.length - 1 ? '"' : ''}`,
   );
 
   return [
@@ -68,7 +67,15 @@ export function buildCompactInstructions(names: string[], taskId: string | null)
     '3. If a TodoWrite checklist is active, preserve its items and their status',
     '   (pending / in_progress / completed) verbatim.',
     '',
-    '4. At the END of the compaction summary, include this verbatim reminder:',
+    // nv-main: a summary keeps the agent's own framing and drops the
+    // maintainer's words, so carry pointers to the source, never a paraphrase.
+    '4. If any plan file under /workspace/agent/reports/ has a "## Maintainer requirements" section,',
+    '   keep that file path and every maintainer GitHub comment URL verbatim. Never restate or',
+    '   paraphrase the maintainer requirements themselves. Include this instruction in the summary:',
+    '   "Re-read the ## Maintainer requirements section of those plan files before writing any plan,',
+    '   running any codex critique round, or posting to GitHub."',
+    '',
+    '5. At the END of the compaction summary, include this verbatim reminder:',
     ...deliveryReminder,
   ].join('\n');
 }

@@ -3483,7 +3483,7 @@
           "alias": "total"
         },
         {
-          "refId": "A",
+          "refId": "B",
           "datasource": {
             "type": "influxdb",
             "uid": "PF3A0F3054C0DA367"
@@ -3494,7 +3494,7 @@
           "alias": "claude"
         },
         {
-          "refId": "A",
+          "refId": "C",
           "datasource": {
             "type": "influxdb",
             "uid": "PF3A0F3054C0DA367"
@@ -3663,7 +3663,7 @@
     {
       "id": 57,
       "type": "row",
-      "title": "\ud83d\udea8 Incident signals \u2014 the 2026-09-26 outage, as it would have looked (see reports/prod-outage-2026-09-26-postmortem.html)",
+      "title": "\ud83d\udea8 Incident signals",
       "collapsed": false,
       "gridPos": {
         "x": 0,

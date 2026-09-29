@@ -284,7 +284,7 @@ async function main(): Promise<void> {
   // that memory arrives in context holds for every provider. Registration goes
   // through the contract helper so the memory capability is resolved too.
   const needsMemoryInPrompt = !registerProviderMemorySessionHook(providerName, provider, MEMORY_SESSION_HOOK);
-  if (needsMemoryInPrompt) log(`Memory delivered via system prompt (${providerName} has no session-start hook)`);
+  if (needsMemoryInPrompt) log(`Memory delivered via system prompt (${providerName}: no usable session-start hook — Claude Code clips hook output above ~10 KB)`);
 
   // Re-read on every rebuild rather than caching a boot-time copy: the agent
   // edits its own memory during the session, and this string outlives the
