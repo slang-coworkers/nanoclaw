@@ -18,6 +18,7 @@ function deferred(): { promise: Promise<void>; resolve: () => void; reject: (err
 const noopSingletons: Record<SingletonKey, () => Promise<void>> = {
   'singleton:egress-reheal': async () => {},
   'singleton:approvals-scan': async () => {},
+  'singleton:orphan-containers': async () => {},
   'singleton:cost-cards': async () => {},
   'singleton:cost-ceiling-adjustments': async () => {},
 };
@@ -188,6 +189,7 @@ describe('reconcile queue', () => {
         'singleton:approvals-scan': async () => {
           calls.push('approvals');
         },
+        'singleton:orphan-containers': async () => {},
         'singleton:cost-cards': async () => {
           calls.push('cost-cards');
         },
