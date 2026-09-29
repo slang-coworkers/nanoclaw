@@ -823,14 +823,14 @@ describe('OUTPUT_REVIEW verdict gate', () => {
     expect(off.status).toBe(0);
   });
 
-  it('does not enforce verdict for stages other than OUTPUT_REVIEW', () => {
-    activateWithStages(['PLAN_REVIEW', 'CODE_REVIEW']);
+  it('does not enforce verdict for stages other than PLAN_REVIEW / OUTPUT_REVIEW', () => {
+    activateWithStages(['DIAGNOSIS_REVIEW', 'CODE_REVIEW', 'DECISION_REVIEW']);
     fs.writeFileSync(
       stateFile,
       JSON.stringify({
-        critique_rounds: 2,
-        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1 },
-        critique_verdicts: { PLAN_REVIEW: 'must-fix', CODE_REVIEW: 'must-fix' },
+        critique_rounds: 3,
+        critique_stages: { DIAGNOSIS_REVIEW: 1, CODE_REVIEW: 1, DECISION_REVIEW: 1 },
+        critique_verdicts: { DIAGNOSIS_REVIEW: 'must-fix', CODE_REVIEW: 'must-fix', DECISION_REVIEW: 'must-fix' },
       }),
     );
     const result = run({
@@ -838,5 +838,90 @@ describe('OUTPUT_REVIEW verdict gate', () => {
       tool_input: { text: '[Resolution] PR #123 ready' },
     });
     expect(result.status).toBe(0);
+  });
+});
+
+describe('PLAN_REVIEW verdict gate (fixer path)', () => {
+  // A must-fix plan review — e.g. "maintainer requirement dropped" — used to
+  // block nothing: only its count was checked.
+  const FIXER_STAGES = ['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW'];
+
+  function activateWithStages(stages: string[]): void {
+    fs.writeFileSync(markerFile, 'critique-gate\n');
+    fs.writeFileSync(path.join(overlayDir, '.critique-required-stages'), JSON.stringify(stages));
+  }
+
+  function state(verdicts: Record<string, string>): void {
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 3,
+        critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 1 },
+        critique_verdicts: verdicts,
+      }),
+    );
+  }
+
+  const deliver = (env: Record<string, string> = {}) =>
+    run({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text: '[Resolution] PR #123 ready' } }, env);
+
+  it('denies delivery when PLAN_REVIEW last verdict is must-fix (even with OUTPUT_REVIEW approved)', () => {
+    activateWithStages(FIXER_STAGES);
+    state({ PLAN_REVIEW: 'must-fix', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
+    const result = deliver();
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('PLAN_REVIEW last verdict is "must-fix" (must be "approve")');
+    expect(result.stderr).toContain('Re-run /codex-critique with STAGE: PLAN_REVIEW after fixing');
+  });
+
+  it('denies gh pr create on a must-fix PLAN_REVIEW', () => {
+    activateWithStages(FIXER_STAGES);
+    state({ PLAN_REVIEW: 'must-fix', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
+    const result = run({ tool_name: 'Bash', tool_input: { command: 'gh pr create --title foo' } });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('PLAN_REVIEW');
+  });
+
+  it('passes when PLAN_REVIEW and OUTPUT_REVIEW are approve', () => {
+    activateWithStages(FIXER_STAGES);
+    state({ PLAN_REVIEW: 'approve', CODE_REVIEW: 'must-fix', OUTPUT_REVIEW: 'approve' });
+    expect(deliver().status).toBe(0);
+  });
+
+  it('fails closed when PLAN_REVIEW ran but no verdict was recorded', () => {
+    activateWithStages(FIXER_STAGES);
+    state({ CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
+    const result = deliver();
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('PLAN_REVIEW ran but no verdict was recorded');
+  });
+
+  it('CRITIQUE_VERDICT_STRICT=0 lets a missing PLAN_REVIEW verdict through (but not a must-fix)', () => {
+    activateWithStages(FIXER_STAGES);
+    state({ CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
+    expect(deliver({ CRITIQUE_VERDICT_STRICT: '0' }).status).toBe(0);
+    state({ PLAN_REVIEW: 'must-fix', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
+    expect(deliver({ CRITIQUE_VERDICT_STRICT: '0' }).status).toBe(2);
+  });
+
+  it('groups without PLAN_REVIEW in their required stages are unaffected', () => {
+    activateWithStages(['DECISION_REVIEW', 'OUTPUT_REVIEW']);
+    fs.writeFileSync(
+      stateFile,
+      JSON.stringify({
+        critique_rounds: 3,
+        critique_stages: { PLAN_REVIEW: 1, DECISION_REVIEW: 1, OUTPUT_REVIEW: 1 },
+        critique_verdicts: { PLAN_REVIEW: 'must-fix', DECISION_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' },
+      }),
+    );
+    expect(deliver().status).toBe(0);
+  });
+
+  it('host env CRITIQUE_REQUIRED_STAGES decides whether the PLAN_REVIEW verdict is gated', () => {
+    activateWithStages(['DECISION_REVIEW', 'OUTPUT_REVIEW']);
+    state({ PLAN_REVIEW: 'must-fix', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
+    const result = deliver({ CRITIQUE_GATE_ACTIVE: '1', CRITIQUE_REQUIRED_STAGES: JSON.stringify(FIXER_STAGES) });
+    expect(result.status).toBe(2);
+    expect(result.stderr).toContain('PLAN_REVIEW last verdict');
   });
 });
