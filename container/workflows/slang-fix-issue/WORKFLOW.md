@@ -76,7 +76,7 @@ uses:
    Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it with limit=100 (concepts section only — the file is large), identify concept pages relevant to slang issue #<number>'s topic or similar fix patterns, read up to 2 concept pages and follow their links to cited learnings if needed. If no concept fits, Grep wiki/ for keywords. IF NO wiki/ dir: fall back to Grep /workspace/shared/learnings/ for keywords and reading at most 3 hits. Return ≤5 bullets — title, 1-line summary, file path. No hits → 'no prior hits'.")
    ```
 
-3. **Understand** {#understand} — Read the triage handoff. Extract: issue number, symptom, relevant files, repro steps. If insufficient, fill in via DeepWiki + slang-mcp:
+3. **Understand** {#understand} — Read the triage handoff. Extract: issue number, symptom, relevant files, repro steps. Then read the maintainer's direction **at the source**: every maintainer comment and review on the issue and on each PR linked to it (`gh api repos/shader-slang/slang/issues/<n>/comments`, `…/pulls/<pr>/reviews`, `…/pulls/<pr>/comments`). The handoff and any parent relay are summaries, not the spec. If insufficient, fill in via DeepWiki + slang-mcp:
 
    ```
    mcp__deepwiki__ask_question("shader-slang/slang", "<question about the component>")
@@ -84,6 +84,8 @@ uses:
    ```
 
 4. **Plan** {#plan} — Run `/slang-plan` with `target=slang-<issue_number>`. It writes a structured plan to `/workspace/agent/reports/slang-<issue_number>.md` (diagnosis, approach, files in scope, test strategy, risks). Subsequent steps assume it exists.
+
+   The plan opens with `## Maintainer requirements (as of <newest maintainer comment URL>)`: one item per requirement, `R<n>. "<verbatim quote>" — <comment URL>`, each marked **planned**, **conflict — asked <link>** or **out of scope — maintainer agreed <link>**; or `none — <reason>`. Pass that section as `REQUIREMENTS:` on every codex critique round (a PLAN / CODE / OUTPUT_REVIEW round without it is not recorded). When a maintainer comments again, refresh the section and re-run PLAN_REVIEW before building on it. If two of the maintainer's constraints pull against each other, ask on GitHub before you build.
 
 5. **Reproduce** {#repro} — Write a failing test at `tests/<area>/test-<issue_number>.slang` with the right directive:
    - CPU computation: `//TEST:COMPARE_COMPUTE(filecheck-buffer=CHECK):-cpu -output-using-type`
@@ -132,6 +134,8 @@ uses:
 
    Use a heredoc body (single-line `--body` strips badly) with sections: **Summary** (bug + fix), **Diagnosis** (root cause + file:line), **Approach** (subsystem, change, alternatives ruled out), **Files changed**, **Tests** (repro + broader suite), **Risk** (blast radius + out-of-scope), and `Closes #<n>.` Capture the PR URL for the **Peer review** step.
 
+   Once the PR is open, and after **every** later push, run `/explain-diff-html` so the PR description explains the current head. While a push is unexplained the turn cannot end and `[Fix Review Request]` / `[Fix Report]` are refused.
+
    Apply the required `pr:` label and trigger CI (a draft PR does not auto-run `ci.yml`); re-dispatch after each push:
 
    ```bash
@@ -154,8 +158,10 @@ uses:
 8. **Peer review** {#peer-review} — When `slang-reviewer` is in your destinations, dispatch with the artifact + test summary:
 
    ```
-   send_message(to="slang-reviewer", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: pr (or patch)\nPR / Patch: <url-or-path>\nBase: shader-slang/slang@master\nTests added: tests/<area>/test-<issue_number>.slang\nTest results: <PASS / X failures>")
+   send_message(to="slang-reviewer", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: pr (or patch)\nPR / Patch: <url-or-path>\nBase: shader-slang/slang@master\nTests added: tests/<area>/test-<issue_number>.slang\nTest results: <PASS / X failures>\nMaintainer direction: <comment URLs, or none>\nFixer self-check: <R1 met · R2 partial (why) · …>")
    ```
+
+   Send the maintainer's comment links, not your paraphrase: the reviewer builds its own requirement list from them and checks it against your self-check.
 
    End your turn after sending. Reviewer A's pipeline runs ~20-30 min; **don't reply to status echoes** — apply the quietness protocol from the spine's **Report shape** rules (`chain-reporting.md`, under Mechanics): "No echoes, no meta-acks... Nothing substantive → send nothing."
 
