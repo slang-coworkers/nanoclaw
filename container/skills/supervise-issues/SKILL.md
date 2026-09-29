@@ -114,9 +114,11 @@ state from the classification table (reference.md → *Classification states + t
 discriminator that matters most: bot spoke last → `awaiting_human` (leave alone); human spoke last
 and we haven't answered → `awaiting_us` (stuck now, nudge immediately, regardless of how recent the
 human comment is and without waiting for any stale window). **Exception — bot-last is ambiguous:**
-a fixer-owned chain with no PR and no human-owned disposition that has gone silent is a promise we
-still owe, not a handoff → `awaiting_us`, nudge the fixer (reference.md → *Classification states*,
-fixer-owned carve-out; root cause of slang#12002). **Bounce limb (additive):** a fixer-owned, no-PR
+a fixer-owned chain with no live (OPEN/MERGED) PR and no human-owned disposition that has gone silent
+is a promise we still owe, not a handoff → `awaiting_us`, nudge the fixer (reference.md → *Classification states*,
+fixer-owned carve-out; root cause of slang#12002). A self-stop disposition (`stood-down` /
+`closed-by-us` / `awaiting-pickup`) stops parking the chain once we act on it after it was recorded
+— the row shows `disposition_expired` (reference.md → *No-PR chain dispositions*; #13073). **Bounce limb (additive):** a fixer-owned, no-PR
 chain whose owning container is `stopped` with an error-class last outbound (`last_outbound_error_class`
 ∈ transient|unknown) has *bounced* — it will not self-recover, so it is `awaiting_us` even if the
 silence clock is still fresh (the #12097 shape). **Cost-stopped (highest priority — checked before
@@ -238,8 +240,10 @@ CI rebase nudge (from Step 2b — to the fixer, keyed on the chain's thread):
 <message to="<fixer>" thread_id="gh-issue-<owner>/<repo>-<num>">[Supervisor — CI — gh-issue-X/Y-N] PR #<pr>'s last workflow_dispatch ended <failure|cancelled> and hasn't re-run (likely external: flake/cancel/eviction). main is stable now — rebase/merge master to re-dispatch CI on a clean base. Once it goes green, mark ready for review.</message>
 ```
 
-Don't open new threads, don't multi-cast, and don't escalate before nudging. If a chain has been
-nudged twice with no response, escalate via `ask_user_question` instead of nudging a third time.
+Don't open new threads, don't multi-cast, and don't escalate before nudging. `scan.py` does not
+re-nudge a chain until something external changes (nudge cooldown); if it still needs a nudge ≥ 24 h
+after its newest `nudgedAt`, the row carries `escalate: true` + `escalate_reason` — escalate via
+`ask_user_question` and record `escalatedAt` (once per episode; #13073 sat 5 days after a nudge).
 
 ### 4. Closing-report rollup
 
@@ -351,8 +355,9 @@ Per chain (`threadId` key):
 - `nudgedAt: [iso, …]`, `escalatedAt`, `lastObservedActivity` — nudge/escalation bookkeeping.
 - `githubCommentRequestedAt`, `githubCommentUrl` — Step 5 enforcement.
 - `postmortem: {done, supersededByPr, learningTitle, at}` — Step 7, once per chain.
-- `disposition`, `githubArtifactUrl` — no-PR chains (R3). Terminal (`closed-by-us`) chains move to
-  `_archived` with the URL + reason.
+- `disposition`, `dispositionAt`, `githubArtifactUrl` — no-PR chains (R3). `dispositionAt` is
+  stamped by `scan.py`; an expired self-stop disposition is dropped (don't re-add it). Terminal
+  (`closed-by-us`) chains move to `_archived` with the URL + reason.
 - `ci: {cell, latestRunId}` — Step 2b. `latestRunId` is the last CI run's `databaseId`; "stale" =
   a bad conclusion on the *same* id next tick (nobody re-dispatched).
 

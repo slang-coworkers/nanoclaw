@@ -480,14 +480,20 @@ export class ClaudeProvider implements AgentProvider {
 
   /**
    * `memory` is the contract's resolved memory capability (the runtime env
-   * that keeps the SDK's own auto-memory off). Core registers the hook before
-   * any query, so the SDK sees the same env it always did. The hook FILE is
-   * written by the contract's `lifecycle.memorySessionHookRegistration`
-   * (provider-contracts/claude.ts), which is why this no longer calls
-   * writeMemorySessionHook itself.
+   * that keeps the SDK's own auto-memory off). Core registers before any
+   * query, so the SDK sees the same env it always did.
    *
-   * Returns true: Claude Code has a native session-start mechanism, so the
-   * runner does NOT add the memory section to the system prompt.
+   * Returns FALSE on purpose (2026-09-29): Claude Code has a session-start
+   * hook, and the runner used it to deliver the OKF Memory section — but Claude
+   * Code persists hook stdout above ~10 KB to a file and hands the model only a
+   * ~2 KB preview ("Output too large … Full output saved to …"). Every group
+   * whose index.md + system/definition.md crossed that line (prod: main,
+   * slang-fixer, slang_ci-babysitter, slang-pr-approver) lost its Map and the
+   * memory definition in every context window since. The system-prompt path
+   * (same one Codex uses) has no such clipping, is re-read on every query
+   * rebuild, and is resent after compaction, so memory now travels there. The
+   * contract's registration step removes the stale SessionStart entry from
+   * settings.json so an old install does not double-inject a preview.
    */
   registerMemorySessionHook(hook: MemorySessionHookRegistration, memory?: unknown): boolean {
     this.memorySessionHook = hook;
@@ -495,7 +501,7 @@ export class ClaudeProvider implements AgentProvider {
       ...this.env,
       ...((memory as ReturnType<typeof resolveClaudeMemoryRuntime> | undefined) ?? {}),
     };
-    return true;
+    return false;
   }
 
   isSessionInvalid(err: unknown): boolean {
