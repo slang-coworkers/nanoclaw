@@ -6,15 +6,45 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 635 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 262 |
-| `nv-slang` | slang project spine, skills, workflows | 163 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 92 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 71 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 644 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 264 |
+| `nv-slang` | slang project spine, skills, workflows | 166 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 94 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 73 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-29
+
+### nv-main (9 PRs)
+- **#1768** `Sync nv-main with upstream/main`
+- **#1776** `codex tool availability as a signal: runner probe → session_state → collector → Grafana`
+- **#1779** `Sync nv-main with upstream/main`
+- **#1778** `memory: deliver the OKF section to Claude via the system prompt (Claude Code clips hook output to a 2 KB preview)`
+- **#1789** `grafana: fix Fleet cost over time (duplicate refIds), shorten incident row title, add dashboard check`
+- **#1786** `supervise-issues: expire stale self-stop dispositions, closed PR is no artifact, escalate nudges without progress`
+- **#1787** `container-runner: inline guard hooks fail open under /bin/sh — use printf, replace stale revisions`
+- **#1788** `codex-critique: enforce maintainer requirements on the fixer path (REQUIREMENTS field, PLAN_REVIEW must approve)`
+- **#1790** `fixer public text: long comments need a reviewed body; PR description refreshed after every push`
+
+### nv-dashboard (2 PRs)
+- **#1770** `Sync nv-dashboard with upstream/main`
+- **#1781** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (3 PRs)
+- **#1771** `Sync nv-slang with upstream/main`
+- **#1782** `Sync nv-slang with upstream/main`
+- **#1791** `slang fixer/reviewer: maintainer requirements live in the plan, travel as links, reviewer builds its own list`
+
+### nv-slangpy (2 PRs)
+- **#1772** `Sync nv-slangpy with upstream/main`
+- **#1783** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#1773** `Sync nv-nanoclaw with upstream/main`
+- **#1784** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-09-28
 
