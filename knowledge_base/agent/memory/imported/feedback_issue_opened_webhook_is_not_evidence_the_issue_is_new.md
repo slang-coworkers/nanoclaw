@@ -92,3 +92,6 @@ dispatch / no-op / **build the resume trigger the chain is missing**. A self-fil
 the shape that looks most like a no-op and is least like one.
 
 Related: the closest-to-the-state principle means a stale-webhook dispatch also aims at the wrong tier — the state holder, not a fresh triager, owns the reply. See [[project_12316_type_layout_policy_duplication_techdebt]].
+
+### 2026-09-29, #13301: the sibling Main session and the webhook session race, so poll the sibling first
+slang#13301 (bot-filed, `reproduced`) reached a fresh Main session on `gh-issue-shader-slang/slang-13301` at 23:59Z. The filing report (`[Triage Resolution]`, row 84) reached the **#13169 Main session** (`sess-1789716051236-1oi1cj`) at 00:01Z and was still unprocessed when I looked. I polled that session's `messages_out` instead of dispatching. It routed #13301 to `slang-fixer` on the canonical thread at 00:02Z (localize plus a local candidate fix, no PR). ⇒ When the grep finds the filing report in a sibling session and that session hasn't answered yet, **wait on its outbound rows** (10 s poll, ~5 min cap). Don't dispatch in parallel: two Main sessions dispatching the same issue produce duplicate fixer work on one thread. Its warning to the triager ("don't re-triage the webhook") went to the wrong tier, because the webhook lands on Main, not the triager.

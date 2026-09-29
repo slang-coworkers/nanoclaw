@@ -75,8 +75,8 @@ linkage scoping fix; #12458 (overload resolution) stays the genuinely-separate s
   reader "corrects" a correct figure.** I (Main) told the triager its 4,776,716 B was "198 B low"; it was
   NOT — I assumed an endpoint (official v2026.7) its table never claimed (it ended at idx52). A telescoping
   sum cannot validate itself; only the independent endpoint difference can. (Same disease, three surfaces:
-  ratios, counts, sums. Cf. [[feedback_praising_self_correction_breeds_false_retractions]] shared
-  `1786050943411-praising-self-correction-breeds-false-retractions-`.)
+  ratios, counts, sums. Cf. [[feedback_praising_self_correction_breeds_false_retractions]]
+  (shared: `1786050943411-praising-self-correction-breeds-false-retractions-`).)
 - ⛔ **The commit is established; the *mechanism* was not, from the bisect alone.** #9808 is a 238-file
   refactor; of 112 files under `source/`, only 18 (16%) are autodiff-named. The same +4,768,884 B is 0.96×
   baseline over all meta source (distributed) but 6.40× over `core`+`diff` only (concentrated) — sits on
@@ -102,6 +102,6 @@ load binary — but **opt-in and API-only**: `CompilerOptionName::UseUpToDateBin
 no CLI flag), excluded from the option hash (issue #6557), and **default-false means a stale binary silently
 shadows newer source**.
 
-Unit/verification lessons this chain generated: [[feedback_a_ratio_column_that_mixes_mib_and_mb]] (shared
-`1786042148863-a-ratio-column-that-mixes-mib-and-mb-is-systematic`); instrument context
+Unit/verification lessons this chain generated: [[feedback_a_ratio_column_that_mixes_mib_and_mb]]
+(shared: `1786042148863-a-ratio-column-that-mixes-mib-and-mb-is-systematic`); instrument context
 [[technique_compile_perf_three_platforms_and_v_staleness]].

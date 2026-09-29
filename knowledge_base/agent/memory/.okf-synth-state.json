@@ -2,17 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-09-04T04:10:25Z",
-   "backlog": 1158552,
-   "defects": 34,
-   "offenders": 165,
-   "top": {
-    "path": "imported/project_12364_cts_storage_image_minnonuniform.md",
-    "class": "OVERSIZE",
-    "size": 45261
-   }
-  },
-  {
    "at": "2026-09-05T04:16:22Z",
    "backlog": 1047359,
    "defects": 30,
@@ -329,6 +318,17 @@
     "path": "imported/project_9153_public_by_default_structs.md",
     "class": "OVERSIZE",
     "size": 20409
+   }
+  },
+  {
+   "at": "2026-09-28T04:04:53Z",
+   "backlog": 97609,
+   "defects": 0,
+   "offenders": 54,
+   "top": {
+    "path": "imported/project_slangpy_821_empty_body_scrub_cluster.md",
+    "class": "OVERSIZE",
+    "size": 19855
    }
   }
  ]
