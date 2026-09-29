@@ -4388,7 +4388,7 @@ export function checkCritiqueGate(
   // gate-critique-on-deliver.sh. The composer materializes
   // .critique-required-stages next to the overlay marker; when present (and
   // non-empty) the gate requires every listed stage recorded AND, when
-  // OUTPUT_REVIEW is required, its last verdict to be "approve" — failing
+  // PLAN_REVIEW / OUTPUT_REVIEW is required, its last verdict to be "approve" — failing
   // closed on a missing verdict unless CRITIQUE_VERDICT_STRICT=0. Without
   // the file, the historical any-1-round check applies. Before this parity
   // the text-output path (the most common delivery path) enforced only the
@@ -4414,8 +4414,14 @@ export function checkCritiqueGate(
     const stages = state.critique_stages ?? {};
     const verdicts = state.critique_verdicts ?? {};
     const missing = required.filter((s) => (stages[s] ?? 0) < 1);
+    const planVerdict = verdicts['PLAN_REVIEW'] ?? '';
     if (missing.length > 0) {
       denialReason = `required critique stages are missing: ${missing.join(', ')}`;
+    } else if (required.includes('PLAN_REVIEW') && planVerdict !== '' && planVerdict !== 'approve') {
+      denialReason = `PLAN_REVIEW last verdict is "${planVerdict}" (must be "approve") — re-run /codex-critique with STAGE: PLAN_REVIEW after fixing the plan`;
+    } else if (required.includes('PLAN_REVIEW') && planVerdict === '' && process.env.CRITIQUE_VERDICT_STRICT !== '0') {
+      denialReason =
+        'PLAN_REVIEW ran but no verdict was recorded (missing or unparseable) — re-run /codex-critique with STAGE: PLAN_REVIEW';
     } else if (required.includes('OUTPUT_REVIEW')) {
       const verdict = verdicts['OUTPUT_REVIEW'] ?? '';
       if (verdict !== '' && verdict !== 'approve') {

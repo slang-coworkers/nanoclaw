@@ -11,7 +11,7 @@ import json
 import subprocess
 import sys
 import unittest
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import ClassVar
 
@@ -19,10 +19,10 @@ SCAN = str(Path(__file__).resolve().parent / "scan.py")
 NOW = "2026-06-26T12:00:00Z"
 
 
-def run_scan(payload):
+def run_scan(payload, scan=SCAN):
     payload.setdefault("now", NOW)
     p = subprocess.run(
-        [sys.executable, SCAN],
+        [sys.executable, scan],
         input=json.dumps(payload),
         capture_output=True,
         text=True,
@@ -1121,6 +1121,287 @@ class NudgeCooldown(unittest.TestCase):
         r = row_for(run_scan(self._silent_escalating(422, prior)), "gh-issue-o/r-422")
         self.assertFalse(r["needs_nudge"])   # nudge cooled (already nudged, nothing new)
         self.assertTrue(r["escalate"])       # ...but first escalation still fires
+
+
+def _fixer_bot_last(issue, disp, prior=None, our_out="2026-06-21T12:00:00Z", pr=None):
+    """Fixer-owned chain, bot spoke last at `our_out`, container stopped, no human
+    after -> awaiting_us via we_owe_next_step unless a disposition / live PR parks it."""
+    thread = f"gh-issue-o/r-{issue}"
+    return thread, {
+        "state": {thread: prior} if prior is not None else {},
+        "sessions": [{"id": "s1", "thread_id": thread, "container_status": "stopped",
+                      "group_folder": "slang-fixer"}],
+        "chains": {thread: {
+            "repo": "o/r", "issue": issue, "sessions": ["s1"], "our_last_outbound": our_out,
+            "pr": pr, "disposition": disp,
+            "comments": [{"author": "nv-slang-bot[bot]", "at": our_out, "is_bot": True}],
+        }},
+    }
+
+
+class SelfStopDispositionExpiry(unittest.TestCase):
+    """#13073: a self-stop disposition (stood-down / closed-by-us / awaiting-pickup)
+    is OUR point-in-time decision; once we act on the chain after it was recorded it
+    no longer describes the chain. Human-owner dispositions never expire."""
+
+    DISP = "stood-down:assignee-owned — NO-GO 2026-09-14"
+
+    def test_stale_self_stop_with_later_activity_is_not_parked(self):
+        thread, payload = _fixer_bot_last(
+            501, self.DISP, prior={"disposition": self.DISP, "dispositionAt": "2026-06-20T00:00:00Z"})
+        out = run_scan(payload)
+        r = row_for(out, thread)
+        self.assertEqual(r["state"], "awaiting_us")
+        self.assertTrue(r["needs_nudge"])
+        self.assertEqual(r["disposition_expired"], self.DISP)
+        self.assertIsNone(r["disposition"])
+        self.assertNotIn("disposition", out["state"][thread])     # not carried forward
+        self.assertNotIn("dispositionAt", out["state"][thread])
+
+    def test_self_stop_stamped_after_our_activity_stays_parked(self):
+        thread, payload = _fixer_bot_last(
+            502, self.DISP, prior={"disposition": self.DISP, "dispositionAt": "2026-06-22T00:00:00Z"})
+        out = run_scan(payload)
+        r = row_for(out, thread)
+        self.assertEqual(r["state"], "awaiting_human")
+        self.assertEqual(r["non_nudge_reason"], "human-owned:stood-down")
+        self.assertIsNone(r["disposition_expired"])
+        self.assertEqual(out["state"][thread]["dispositionAt"], "2026-06-22T00:00:00Z")  # stamp kept
+
+    def test_legacy_unstamped_disposition_stamped_then_expires_on_next_activity(self):
+        # No stamp -> stamped at first sight, still parked (conservative).
+        thread, payload = _fixer_bot_last(503, self.DISP, prior={"disposition": self.DISP})
+        out1 = run_scan(payload)
+        self.assertEqual(row_for(out1, thread)["state"], "awaiting_human")
+        self.assertEqual(out1["state"][thread]["dispositionAt"], NOW)
+        # Next tick, no new activity by us -> still parked, stamp unchanged.
+        out2 = run_scan({**payload, "now": "2026-06-27T00:00:00Z", "state": out1["state"]})
+        self.assertEqual(row_for(out2, thread)["state"], "awaiting_human")
+        self.assertEqual(out2["state"][thread]["dispositionAt"], NOW)
+        # We act after the stamp, then go quiet -> expired, no longer parked.
+        _, later = _fixer_bot_last(503, self.DISP, our_out="2026-06-27T01:00:00Z")
+        out3 = run_scan({**later, "now": "2026-06-27T12:00:00Z", "state": out2["state"]})
+        r3 = row_for(out3, thread)
+        self.assertEqual(r3["disposition_expired"], self.DISP)
+        self.assertEqual(r3["state"], "awaiting_us")
+
+    def test_changed_disposition_text_is_restamped(self):
+        # A new/changed disposition never inherits the old stamp.
+        thread, payload = _fixer_bot_last(
+            504, self.DISP, prior={"disposition": "triaged:awaiting-pickup",
+                                   "dispositionAt": "2026-06-01T00:00:00Z"})
+        out = run_scan(payload)
+        self.assertEqual(row_for(out, thread)["state"], "awaiting_human")
+        self.assertEqual(out["state"][thread]["dispositionAt"], NOW)
+
+    def test_human_owner_dispositions_never_expire(self):
+        for disp in ("advisory:maintainer-driving", "active:human-debate", "stood-down:external-PR"):
+            thread, payload = _fixer_bot_last(
+                505, disp, prior={"disposition": disp, "dispositionAt": "2026-06-01T00:00:00Z"})
+            out = run_scan(payload)
+            r = row_for(out, thread)
+            self.assertEqual(r["state"], "awaiting_human", disp)
+            self.assertIsNone(r["disposition_expired"], disp)
+            self.assertTrue(r["non_nudge_reason"].startswith("human-owned:"), disp)
+            self.assertEqual(out["state"][thread]["disposition"], disp)
+
+
+class ClosedPrIsNotArtifact(unittest.TestCase):
+    """Only an OPEN or MERGED PR is an artifact. #13073's CLOSED-unmerged #13112 read
+    as 'artifact exists' and hid the fixer's owed next step."""
+
+    def test_closed_pr_does_not_suppress_owed_step(self):
+        for st in ("CLOSED", "closed"):
+            pr = {"number": 999, "state": st, "fixes_issue": 506}
+            thread, payload = _fixer_bot_last(506, None, pr=pr)
+            r = row_for(run_scan(payload), thread)
+            self.assertEqual(r["state"], "awaiting_us", st)
+            self.assertTrue(r["needs_nudge"], st)
+
+    def test_open_and_merged_pr_still_suppress(self):
+        for st in ("OPEN", "MERGED", "merged"):
+            pr = {"number": 999, "state": st, "fixes_issue": 507}
+            thread, payload = _fixer_bot_last(507, None, pr=pr)
+            r = row_for(run_scan(payload), thread)
+            self.assertEqual(r["state"], "awaiting_human", st)
+            self.assertEqual(r["non_nudge_reason"], "pr-open", st)
+
+    def test_closed_pr_non_nudge_reason_is_not_pr_open(self):
+        # Fresh bot-last chain (inside SILENT_S) with a CLOSED PR -> not nudged, but
+        # the reason is the real one, not 'pr-open'.
+        pr = {"number": 999, "state": "CLOSED", "fixes_issue": 508}
+        thread, payload = _fixer_bot_last(508, None, pr=pr, our_out="2026-06-26T11:50:00Z")
+        r = row_for(run_scan(payload), thread)
+        self.assertFalse(r["needs_nudge"])
+        self.assertEqual(r["non_nudge_reason"], "awaiting-human")
+
+
+class NoProgressEscalation(unittest.TestCase):
+    """A chain still needing a nudge ≥24h after our newest nudge — suppressed by the
+    cooldown because nothing external changed — escalates, once per episode (the
+    escalatedAt gate). Replaces the prose-only 'nudged twice → escalate'."""
+
+    def _cooled(self, issue, nudged_at, escalated_at=None):
+        thread = f"gh-issue-o/r-{issue}"
+        prior = {"lastState": "awaiting_us", "lastActivityAt": "2026-06-20T00:00:00Z",
+                 "lastPrState": None, "nudgedAt": [nudged_at]}
+        if escalated_at:
+            prior["escalatedAt"] = escalated_at
+        return thread, {
+            "state": {thread: prior},
+            "sessions": [{"id": "s1", "thread_id": thread, "container_status": "stopped",
+                          "group_folder": "slang-fixer"}],
+            "chains": {thread: {
+                "repo": "o/r", "issue": issue, "sessions": ["s1"],
+                "our_last_outbound": "2026-06-20T00:00:00Z",
+                "comments": [{"author": "human", "at": "2026-06-21T00:00:00Z", "is_bot": False}],
+            }},
+        }
+
+    def test_nudged_24h_ago_no_progress_escalates_once(self):
+        thread, payload = self._cooled(510, "2026-06-25T12:00:00Z")   # exactly 24h
+        out = run_scan(payload)
+        r = row_for(out, thread)
+        self.assertEqual(r["non_nudge_reason"], "nudge-cooldown")
+        self.assertTrue(r["escalate"], r)
+        self.assertIn("nudged 24h ago", r["escalate_reason"])
+        self.assertEqual(out["summary"]["escalate"], 1)
+        # Next tick of the same episode: the LLM recorded escalatedAt -> no repeat.
+        state = out["state"]
+        state[thread]["escalatedAt"] = NOW
+        out2 = run_scan({**payload, "now": "2026-06-27T00:00:00Z", "state": state})
+        r2 = row_for(out2, thread)
+        self.assertFalse(r2["escalate"], r2)
+        self.assertEqual(r2["escalate_reason"], "")
+
+    def test_nudged_under_24h_ago_does_not_escalate(self):
+        thread, payload = self._cooled(511, "2026-06-25T13:00:00Z")   # 23h
+        r = row_for(run_scan(payload), thread)
+        self.assertEqual(r["non_nudge_reason"], "nudge-cooldown")
+        self.assertFalse(r["escalate"])
+        self.assertEqual(r["escalate_reason"], "")
+
+    def test_new_external_event_starts_a_new_episode(self):
+        # Escalated last episode; a human comments after that -> the nudge re-arms
+        # (not a cooldown row, so no no-progress escalation this tick).
+        thread, payload = self._cooled(512, "2026-06-22T00:00:00Z", escalated_at="2026-06-23T00:00:00Z")
+        payload["chains"][thread]["comments"].append(
+            {"author": "human", "at": "2026-06-26T08:00:00Z", "is_bot": False})
+        r = row_for(run_scan(payload), thread)
+        self.assertTrue(r["needs_nudge"])
+        self.assertFalse(r["escalate"])
+
+
+# --- slang#13073 replay -------------------------------------------------------
+# Real, public record (issue comments; PR #13112 lifecycle) plus our outbound times
+# from the session DBs (last outbound of each burst per session). The chain was
+# parked by a 09-14 NO-GO disposition and sat silent 09-16T22:46Z -> 09-21T22:08Z,
+# when the maintainer asked "What has happened to this PR?".
+R13073 = "gh-issue-shader-slang/slang-13073"
+R13073_FIXER = _sid_at("2026-09-14T20:09:28Z")
+R13073_MAIN = _sid_at("2026-09-14T20:01:06Z")
+R13073_OUT = {
+    R13073_FIXER: ["2026-09-14T20:10:45Z", "2026-09-15T01:10:05Z", "2026-09-15T20:06:44Z",
+                   "2026-09-15T23:59:52Z", "2026-09-16T05:48:05Z", "2026-09-16T22:43:53Z"],
+    R13073_MAIN: ["2026-09-14T20:09:46Z", "2026-09-15T21:28:42Z", "2026-09-16T05:46:30Z",
+                  "2026-09-16T22:46:38Z", "2026-09-21T22:12:26Z"],
+}
+R13073_COMMENTS = [  # (author, at, is_bot)
+    ("nv-slang-bot[bot]", "2026-09-14T20:08:37Z", True),
+    ("tangent-vector", "2026-09-15T19:51:38Z", False),
+    ("nv-slang-bot[bot]", "2026-09-15T20:05:31Z", True),
+    ("tangent-vector", "2026-09-15T21:27:46Z", False),
+    ("nv-slang-bot[bot]", "2026-09-16T05:47:57Z", True),
+    ("tangent-vector", "2026-09-16T20:17:38Z", False),   # go-ahead on step 2 (unanswered)
+    ("tangent-vector", "2026-09-21T22:08:38Z", False),   # "What has happened to this PR?"
+    ("nv-slang-bot[bot]", "2026-09-21T22:13:04Z", True),  # our apology
+]
+# 12h ticks from 09-15T12:00Z, plus one just after the maintainer's ping (before our
+# 22:13 reply) and the end of the window.
+R13073_TICKS = [*((datetime(2026, 9, 15, 12, tzinfo=timezone.utc) + timedelta(hours=12 * k))
+                  .strftime("%Y-%m-%dT%H:%M:%SZ") for k in range(13)),
+                "2026-09-21T22:10:00Z", "2026-09-21T22:30:00Z"]
+
+
+def replay_13073(scan=SCAN, drop_comment_at=None):
+    """Tick-by-tick replay with true state carry: each tick's output `state` is the
+    next tick's prior; a needs_nudge row appends the tick to nudgedAt and an escalate
+    row sets escalatedAt (the LLM's bookkeeping, SKILL.md §3). The disposition is
+    rehydrated from the carried state (pull-universe.sh). Returns [(tick, row)]."""
+    def ts(s):
+        return datetime.fromisoformat(s.replace("Z", "+00:00"))
+
+    state = {R13073: {"disposition": "stood-down:assignee-owned — NO-GO 2026-09-14",
+                      "nudgedAt": ["2026-09-15T00:06:53Z"], "lastState": "awaiting_human",
+                      "lastActivityAt": "2026-09-14T20:10:45Z", "lastPrState": None}}
+    rows = []
+    for tick in R13073_TICKS:
+        t = ts(tick)
+        outs = {sid: [o for o in v if ts(o) <= t] for sid, v in R13073_OUT.items()}
+        sessions = [{"id": sid, "thread_id": R13073, "group_folder": folder,
+                     # coarse idle model: running iff it emitted outbound in the last hour
+                     "container_status": "running" if o and (t - ts(o[-1])).total_seconds() < 3600
+                     else "stopped"}
+                    for sid, folder, o in ((R13073_FIXER, "slang-fixer", outs[R13073_FIXER]),
+                                           (R13073_MAIN, "main", outs[R13073_MAIN]))]
+        created, closed = ts("2026-09-15T23:11:43Z"), ts("2026-09-16T20:10:35Z")
+        pr = None if t < created else {"number": 13112, "state": "OPEN" if t < closed else "CLOSED",
+                                       "isDraft": False, "fixes_issue": 13073}
+        out = run_scan({"now": tick, "state": state, "sessions": sessions, "chains": {R13073: {
+            "repo": "shader-slang/slang", "issue": 13073,
+            "sessions": [R13073_FIXER, R13073_MAIN],
+            "our_last_outbound": max((o[-1] for o in outs.values() if o), key=ts),
+            "our_last_push": None, "pr": pr, "issue_open": True, "pending_ask_user": False,
+            "disposition": state.get(R13073, {}).get("disposition"),
+            "comments": [{"author": a, "at": at, "is_bot": b, "kind": "comment"}
+                         for a, at, b in R13073_COMMENTS if ts(at) <= t and at != drop_comment_at],
+        }}}, scan=scan)
+        row = row_for(out, R13073)
+        state = out["state"]
+        if row["needs_nudge"]:
+            state[R13073]["nudgedAt"] = [*state[R13073].get("nudgedAt", []), tick]
+        if row["escalate"]:
+            state[R13073]["escalatedAt"] = tick
+        rows.append((tick, row))
+    return rows
+
+
+class Replay13073(unittest.TestCase):
+    STALL_START = "2026-09-16T22:46:38Z"
+
+    def _check(self, rows):
+        by_tick = dict(rows)
+        stall = [(t, r) for t, r in rows if self.STALL_START < t < "2026-09-21T22:08:38Z"]
+        first_tick, first = stall[0]
+        # The stale NO-GO expires once the fixer resumes (09-16T00:00 tick) ...
+        self.assertEqual(by_tick["2026-09-16T00:00:00Z"]["disposition_expired"],
+                         "stood-down:assignee-owned — NO-GO 2026-09-14")
+        # ... so the first tick after the stall starts nudges ...
+        self.assertEqual(first_tick, "2026-09-17T00:00:00Z")
+        self.assertEqual(first["state"], "awaiting_us")
+        self.assertTrue(first["needs_nudge"], first)
+        self.assertEqual([t for t, r in stall if r["needs_nudge"]], [first_tick])
+        # ... and it escalates exactly once, ≤ 24h after that nudge.
+        esc = [t for t, r in stall if r["escalate"]]
+        self.assertEqual(len(esc), 1, esc)
+        self.assertLessEqual((datetime.fromisoformat(esc[0].replace("Z", "+00:00"))
+                              - datetime.fromisoformat(first_tick.replace("Z", "+00:00"))
+                              ).total_seconds(), 24 * 3600)
+        # The maintainer's 09-21 ping is awaiting_us (re-arms past the cooldown) ...
+        ping = by_tick["2026-09-21T22:10:00Z"]
+        self.assertEqual((ping["state"], ping["ball"], ping["needs_nudge"]), ("awaiting_us", "ours", True))
+        # ... and once we answered it the chain is no longer ours to chase.
+        self.assertEqual(by_tick["2026-09-21T22:30:00Z"]["state"], "awaiting_human")
+        return first
+
+    def test_public_record(self):
+        self._check(replay_13073())
+
+    def test_bot_last_variant_needs_closed_pr_rule(self):
+        # Without Tess's 09-16 go-ahead the stalled chain is bot-last: only
+        # we_owe_next_step (fixer, CLOSED PR is no artifact, silent) can wake it.
+        first = self._check(replay_13073(drop_comment_at="2026-09-16T20:17:38Z"))
+        self.assertEqual(first["ball"], "human")
 
 
 if __name__ == "__main__":
