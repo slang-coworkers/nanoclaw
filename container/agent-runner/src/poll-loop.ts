@@ -21,7 +21,7 @@ import {
 } from './db/messages-in.js';
 import { classifyTurnError } from './transient-error.js';
 import { getUndeliveredMessages, hasIdenticalSend, outboundWatermark, writeMessageOut } from './db/messages-out.js';
-import { clearStaleProcessingAcks } from './db/container-state.js';
+import { clearStaleProcessingAcks, gcOutboundHistory } from './db/container-state.js';
 import { resolveDestinationThread } from './db/session-routing.js';
 import { touchHeartbeat } from './heartbeat.js';
 import { getAgentMailbox } from './mailbox/index.js';
@@ -35,6 +35,7 @@ import {
   getCostCap,
   setCostCap,
   setCostControlProtocol,
+  setCodexChild,
   commitCostCeilingAdjustmentOutcome,
   commitCostReconcileOutcome,
   type CostCapState,
@@ -44,6 +45,7 @@ import {
   type CostReconcileReceipt,
 } from './db/session-state.js';
 import { getConfig } from './config.js';
+import { probeCodexMcpServer } from './codex-mcp-server.js';
 import { priceUsage } from './pricing.js';
 import { MISSING_DAY_KEY, ledgerKey, scanCodexRollouts } from './codex-cost.js';
 // #65 durable cost ledger — DUAL-RUN (additive; writes cost_events alongside the
@@ -56,6 +58,7 @@ import {
   formatMessages,
   extractRouting,
   categorizeMessage,
+  FAILURE_NOTICE_FIELD,
   isClearCommand,
   isRunnerCommand,
   isSessionEcho,
@@ -393,6 +396,19 @@ function publishRunnerReadiness(): void {
     // or the host refuses to enqueue a reconcile to this runner.
     operations: RUNNER_COST_CONTROL_OPERATIONS,
   });
+}
+
+/**
+ * Durable copy of the codex-child startup probe (index.ts logs it; this makes it
+ * readable from the host side per live session). Never fails startup.
+ */
+function publishCodexChild(): void {
+  try {
+    const probe = probeCodexMcpServer();
+    setCodexChild({ ok: probe.ok, version: probe.version, detail: probe.detail, checkedAt: new Date().toISOString() });
+  } catch (err) {
+    log(`codex child probe not recorded: ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 /**
@@ -2520,10 +2536,33 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // Same for the reply stamp a killed container left behind (see session-state.ts).
   clearCurrentReplyRoute();
 
+  // Outbound history GC (the host prunes the inbound side): drop messages_out
+  // system rows the host has already delivered (never chat replies), and acks for inbound rows that no
+  // longer exist, older than the retention window. Prod 2026-09-27: one
+  // session had 193k delivered rows the host re-read every second.
+  // OFF unless an operator sets NANOCLAW_MAILBOX_RETENTION_DAYS (operator
+  // decision 2026-09-28: the mailbox is the persistence layer for every open
+  // issue/PR chain — nothing is pruned by age by default).
+  try {
+    const retentionDays =
+      Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0 ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) : 0;
+    if (retentionDays > 0) {
+      const gc = gcOutboundHistory(new Date(Date.now() - retentionDays * 86_400_000).toISOString());
+      if (gc.messagesOut > 0 || gc.acks > 0) {
+        log(
+          `Outbound history GC: removed ${gc.messagesOut} delivered system messages_out rows, ${gc.acks} orphan acks (>${retentionDays}d)`,
+        );
+      }
+    }
+  } catch (err) {
+    log(`Outbound history GC skipped: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   // Runner-instance readiness handshake (NanoClaw #1, "set ceiling v2") —
   // publish before anything else so the host's post-wake readiness poll finds
   // it as soon as possible.
   publishRunnerReadiness();
+  publishCodexChild();
 
   // Cost cap (NanoClaw #1): load persisted spend so the cap survives respawns,
   // and publish the current cap state for the dashboard. Provider name gates
@@ -3654,7 +3693,11 @@ export async function processQuery(
             // stays shut and the gated body is never pushed to the channel.
             // The fork previously had to drop this call entirely for want of
             // exactly this counter.
-            await deliverErrorResult(routing, event.error ?? 'The agent run failed. Check the logs for details.');
+            const notice = event.error ?? 'The agent run failed. Check the logs for details.';
+            if (sendsFailureNotice(routing)) await deliverErrorResult(routing, notice);
+            // Keep the reason in the runner log, since the skipped notice may
+            // be the only place it would have been recorded.
+            else log(`Error result — notice not sent on this route: ${notice}`);
             notifyExchangeComplete(onExchangeComplete, {
               prompt: archivePrompts[0] ?? initialPrompt,
               result: [event.text, event.error].filter(Boolean).join('\n'),
@@ -3780,8 +3823,7 @@ export async function processQuery(
         // Route it like any other retry: one queued turn, behind any follow-ups
         // already pushed, carrying THIS turn's route so the correction is answered
         // into the same conversation it is correcting.
-        if (queuedCorrection && !terminalCeilingStop)
-          pushRetry(corrections.join('\n\n'), correctionArchivePrompt);
+        if (queuedCorrection && !terminalCeilingStop) pushRetry(corrections.join('\n\n'), correctionArchivePrompt);
         if (terminalCeilingStop) {
           // Surface the withheld answer durably (same delivery mechanism as
           // finalizeSilentTurn), then ack the batch FAILED — NOT completed — so
@@ -3909,17 +3951,19 @@ export async function processQuery(
       // Completed turns are no longer answering or queued. Preserve partial
       // output from unfinished turns and report that the run did not finish.
       // Retrying the same route or several queued turns in one thread needs
-      // only one notice. Task and agent wakes have no human chat endpoint.
+      // only one notice. The host picks an a2a reply's session by in_reply_to,
+      // so agent routes also compare it.
       const failedRoutes = [...(answering ? [routing] : []), ...queuedTurns.map((turn) => turn.routing)];
       const noticed: RoutingContext[] = [];
       for (const target of failedRoutes) {
-        if (target.taskRun || !target.platformId || !target.channelType || target.channelType === 'agent') continue;
+        if (!sendsFailureNotice(target)) continue;
         if (
           noticed.some(
             (prior) =>
               prior.platformId === target.platformId &&
               prior.channelType === target.channelType &&
-              prior.threadId === target.threadId,
+              prior.threadId === target.threadId &&
+              (target.channelType !== 'agent' || prior.inReplyTo === target.inReplyTo),
           )
         )
           continue;
@@ -4344,7 +4388,7 @@ export function checkCritiqueGate(
   // gate-critique-on-deliver.sh. The composer materializes
   // .critique-required-stages next to the overlay marker; when present (and
   // non-empty) the gate requires every listed stage recorded AND, when
-  // OUTPUT_REVIEW is required, its last verdict to be "approve" — failing
+  // PLAN_REVIEW / OUTPUT_REVIEW is required, its last verdict to be "approve" — failing
   // closed on a missing verdict unless CRITIQUE_VERDICT_STRICT=0. Without
   // the file, the historical any-1-round check applies. Before this parity
   // the text-output path (the most common delivery path) enforced only the
@@ -4370,8 +4414,14 @@ export function checkCritiqueGate(
     const stages = state.critique_stages ?? {};
     const verdicts = state.critique_verdicts ?? {};
     const missing = required.filter((s) => (stages[s] ?? 0) < 1);
+    const planVerdict = verdicts['PLAN_REVIEW'] ?? '';
     if (missing.length > 0) {
       denialReason = `required critique stages are missing: ${missing.join(', ')}`;
+    } else if (required.includes('PLAN_REVIEW') && planVerdict !== '' && planVerdict !== 'approve') {
+      denialReason = `PLAN_REVIEW last verdict is "${planVerdict}" (must be "approve") — re-run /codex-critique with STAGE: PLAN_REVIEW after fixing the plan`;
+    } else if (required.includes('PLAN_REVIEW') && planVerdict === '' && process.env.CRITIQUE_VERDICT_STRICT !== '0') {
+      denialReason =
+        'PLAN_REVIEW ran but no verdict was recorded (missing or unparseable) — re-run /codex-critique with STAGE: PLAN_REVIEW';
     } else if (required.includes('OUTPUT_REVIEW')) {
       const verdict = verdicts['OUTPUT_REVIEW'] ?? '';
       if (verdict !== '' && verdict !== 'approve') {
@@ -4575,6 +4625,15 @@ export function checkCritiqueGate(
 }
 
 /**
+ * Does a failure on this route get a notice? Task runs report through their
+ * run log. A turn woken only by failure notices sends none, so an a2a or
+ * self-addressed failure chain stops after one notice.
+ */
+function sendsFailureNotice(routing: RoutingContext): boolean {
+  return !routing.taskRun && !!routing.platformId && !!routing.channelType && !routing.failureNoticeWake;
+}
+
+/**
  * Deliver a turn's text straight to the channel the batch arrived on. Used when
  * a turn ends in a provider error (e.g. a non-retryable 403 billing_error) with
  * no <message> envelope: the notice would otherwise be dropped as scratchpad.
@@ -4590,7 +4649,7 @@ async function deliverErrorResult(routing: RoutingContext, text: string): Promis
     platform_id: routing.platformId,
     channel_type: routing.channelType,
     thread_id: routing.threadId,
-    content: JSON.stringify({ text: stripHarnessTagArtifacts(text) }),
+    content: JSON.stringify({ text: stripHarnessTagArtifacts(text), [FAILURE_NOTICE_FIELD]: true }),
   });
 }
 

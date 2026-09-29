@@ -1,6 +1,6 @@
 import { describe, it, expect } from 'vitest';
 
-import { formatLocalTime, isValidTimezone, parseZonedToUtc, resolveTimezone } from './timezone.js';
+import { dayKeyInTimezone, formatLocalTime, isValidTimezone, parseZonedToUtc, resolveTimezone } from './timezone.js';
 
 // --- formatLocalTime ---
 
@@ -60,6 +60,22 @@ describe('resolveTimezone', () => {
   it('falls back to UTC for invalid timezone', () => {
     expect(resolveTimezone('IST-2')).toBe('UTC');
     expect(resolveTimezone('')).toBe('UTC');
+  });
+});
+
+describe('dayKeyInTimezone', () => {
+  it('assigns UTC events around Pacific midnight to the correct local day', () => {
+    expect(dayKeyInTimezone('2026-08-28T06:59:59.999Z', 'America/Los_Angeles')).toBe('20260827');
+    expect(dayKeyInTimezone('2026-08-28T07:00:00.000Z', 'America/Los_Angeles')).toBe('20260828');
+  });
+
+  it('honors the winter Pacific offset', () => {
+    expect(dayKeyInTimezone('2026-01-09T07:59:59.999Z', 'America/Los_Angeles')).toBe('20260108');
+    expect(dayKeyInTimezone('2026-01-09T08:00:00.000Z', 'America/Los_Angeles')).toBe('20260109');
+  });
+
+  it('returns null for an invalid timestamp', () => {
+    expect(dayKeyInTimezone('not-a-timestamp', 'America/Los_Angeles')).toBeNull();
   });
 });
 

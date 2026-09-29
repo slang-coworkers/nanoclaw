@@ -444,3 +444,57 @@ export function sqliteFindByRouting(channelType: string, platformId: string): De
           .get(channelType, platformId) as DestinationRow | undefined);
   return row && destination(row);
 }
+
+/**
+ * Runner-side mailbox history GC (the runner owns outbound.db).
+ *
+ * Prod 2026-09-27: one session carried 193k `messages_out` rows (every reply
+ * and every `cli_request` it ever wrote) that the host re-read on every 1 s
+ * poll. Nothing deleted them. Two things are safe for the runner to drop:
+ *
+ *   1. `kind = 'system'` messages_out rows (cli_request frames, a2a / self-mod /
+ *      learning actions) the host has RECORDED AS DELIVERED (inbound.db's
+ *      `delivered` table is the host's ledger) and that are older than the
+ *      cutoff. The agent's own replies (`kind = 'chat'`) are conversation
+ *      history and are never pruned, whatever their age — the transcript a
+ *      coworker reads back must not thin out behind it.
+ *      Order matters across the two GCs: this one runs first, and
+ *      the host then removes the now-orphaned `delivered` rows — never the
+ *      reverse, or a still-present message would be redelivered.
+ *   2. processing_ack rows older than the cutoff whose inbound message no
+ *      longer exists (the host GC'd it); an ack for a live row is kept.
+ *
+ * Runs on container start; containers respawn often enough (absolute
+ * ceiling) that this bounds the tables without a timer.
+ */
+export function sqliteGcOutboundHistory(cutoffIso: string): { messagesOut: number; acks: number } {
+  const inbound = getInboundDb();
+  const outbound = getOutboundDb();
+  const norm = (col: string) => `SUBSTR(REPLACE(REPLACE(${col}, 'T', ' '), 'Z', ''), 1, 19)`;
+  const cutoff = cutoffIso.replace('T', ' ').replace('Z', '').slice(0, 19);
+
+  const delivered = inbound
+    .prepare(`SELECT message_out_id FROM delivered WHERE ${norm('delivered_at')} < ?`)
+    .all(cutoff) as Array<{ message_out_id: string }>;
+  const deleteOut = outbound.prepare(
+    `DELETE FROM messages_out WHERE id = ? AND kind = 'system' AND ${norm('timestamp')} < ?`,
+  );
+  let messagesOut = 0;
+  outbound.transaction(() => {
+    for (const row of delivered) messagesOut += deleteOut.run(row.message_out_id, cutoff).changes;
+  })();
+
+  const acks = outbound
+    .prepare(`SELECT message_id FROM processing_ack WHERE ${norm('status_changed')} < ?`)
+    .all(cutoff) as Array<{ message_id: string }>;
+  const stillExists = inbound.prepare('SELECT 1 AS x FROM messages_in WHERE id = ?');
+  const deleteAck = outbound.prepare('DELETE FROM processing_ack WHERE message_id = ?');
+  let ackRows = 0;
+  outbound.transaction(() => {
+    for (const ack of acks) {
+      if (!stillExists.get(ack.message_id)) ackRows += deleteAck.run(ack.message_id).changes;
+    }
+  })();
+
+  return { messagesOut, acks: ackRows };
+}

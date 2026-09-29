@@ -194,8 +194,11 @@ slang-fixer:
 ```
 
 Stage names must be `UPPER_SNAKE` (others are dropped at parse). `OUTPUT_REVIEW`
-is special: it carries the verdict / freshness / attested-hash checks. Empty or
-unset = legacy "any one critique round" mode.
+is special: it carries the verdict / freshness / attested-hash checks.
+`PLAN_REVIEW` carries a verdict check too (last verdict must be `approve`), and
+requiring it makes `track-critique.sh` refuse PLAN/CODE/OUTPUT_REVIEW rounds
+whose prompt lacks a `REQUIREMENTS:` field (maintainer quotes + comment URLs, or
+`none — <reason>`). Empty or unset = legacy "any one critique round" mode.
 
 ### R3 — gate a new delivery message shape
 
@@ -282,6 +285,7 @@ CRITIQUE_VERDICT_STRICT=0      # allow delivery when a required verdict is unrec
 CRITIQUE_FRESHNESS=0           # allow delivery after edits since the last review
 CRITIQUE_ATTEST=0              # skip attested-hash re-check
 CRITIQUE_PIN_INSTRUCTIONS=0    # record reviews even with non-canonical instructions
+CRITIQUE_REQUIREMENTS=0        # record fixer reviews without a REQUIREMENTS: field
 CRITIQUE_ESCALATION=0          # revert the denial cap to silent fail-open
 ```
 
@@ -363,5 +367,5 @@ Bigger: needs proxy rule support (configured via the OneCLI web UI today; see
 
 `CRITIQUE_GATE_ACTIVE` · `CRITIQUE_REQUIRED_STAGES` · `CRITIQUE_VERDICT_STRICT`
 · `CRITIQUE_FRESHNESS` · `CRITIQUE_ATTEST` (+ `CRITIQUE_ATTEST_ROOT`) ·
-`CRITIQUE_PIN_INSTRUCTIONS` · `CRITIQUE_ESCALATION` (+
+`CRITIQUE_PIN_INSTRUCTIONS` · `CRITIQUE_REQUIREMENTS` · `CRITIQUE_ESCALATION` (+
 `CRITIQUE_ESCALATION_TIMEOUT_SECS`).

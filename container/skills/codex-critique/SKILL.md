@@ -23,6 +23,8 @@ mcp__codex__codex({ prompt: <below>, developer-instructions: <below>, sandbox: "
 ```
 STAGE: <DIAGNOSIS_REVIEW | PLAN_REVIEW | CODE_REVIEW | DECISION_REVIEW | OUTPUT_REVIEW>
 ROUND: <n>/3
+REQUIREMENTS: <none — why no maintainer design direction applies | the items below, one per line>
+R1. "<maintainer's words, verbatim>" — https://github.com/<owner>/<repo>/issues/<n>#issuecomment-<id>
 
 TASK (verbatim — only you have this, codex cannot read it from disk):
 <the original user request, no paraphrasing>
@@ -32,9 +34,11 @@ WHY: <reasoning, evidence, tradeoffs>
 ARTIFACTS (read these yourself): <file paths, or "run git diff <base>..HEAD">
 ```
 
+`REQUIREMENTS:` is how codex holds the work to what the maintainer actually asked for; `TASK` is often a parent's paraphrase. Quote the maintainer's comments re-fetched from GitHub (`#issuecomment-`, `#discussion_r`, `#pullrequestreview-` URLs, or `#issue-` for an issue/PR body the maintainer wrote), never a parent's summary or your own plan. Keep the same items in a `## Maintainer requirements` section of your plan file — it survives context compaction; your recollection does not. If your role's required stages include `PLAN_REVIEW`, fill the field on every PLAN/CODE/OUTPUT_REVIEW round: `track-critique.sh` does not record a round without `none — <reason>` or at least one comment URL.
+
 ## When to invoke each STAGE
 
-Run each at its natural workflow transition. If `critique-gate` is in your overlay set with required stages, the gate denies delivery markers / `gh pr create` until each has a recorded round (naming what's missing).
+Run each at its natural workflow transition. If `critique-gate` is in your overlay set with required stages, the gate denies delivery markers / `gh pr create` until each has a recorded round (naming what's missing); a required `PLAN_REVIEW` or `OUTPUT_REVIEW` must also end on `approve`.
 
 | Stage              | Run after                                 | Pass to codex                                                        |
 | ------------------ | ----------------------------------------- | -------------------------------------------------------------------- |
@@ -46,6 +50,8 @@ Run each at its natural workflow transition. If `critique-gate` is in your overl
 
 Answer-style work (a question, a release note) uses `OUTPUT_REVIEW` for factual accuracy and source coverage. No separate `ANSWER_REVIEW` stage.
 
+Where the critique gate is on, public GitHub comments and reviews of 1000+ characters need this too: write the body to a file, run `OUTPUT_REVIEW` with that file under ARTIFACTS, then post it unchanged with `--body-file <file>` (gh api: `-F body=@<file>`).
+
 ## developer-instructions
 
 ```
@@ -53,14 +59,18 @@ You are an independent reviewer with read-only intent but you MAY run read comma
 Return ONLY the structured output below.
 Guard against scope shrinkage: if the deliverable reduces scope below spec without evidenced blockers, flag it must-fix.
 Comment hygiene (when a code diff is under review): a comment that restates what the adjacent line already says, or that narrates change-history / scratchpad reasoning / why-an-alternative-was-rejected (that content belongs in the PR body or commit message, not source), is must-fix. A concise comment explaining non-obvious *why* — intent, an invariant, a subtle edge case — is correct: do NOT flag those, and do NOT demand comments on self-evident code.
+Maintainer requirements (the prompt's `REQUIREMENTS:` field; skip when absent): fetch every cited URL yourself (`gh api`, or `curl` through the proxy) and confirm each quote is verbatim, then scan that thread for maintainer comments (author_association OWNER / MEMBER / COLLABORATOR) newer than the newest one cited. Grade each item met / partial / missed against the artifact. An item the artifact misses, narrows or contradicts, with no linked maintainer comment accepting that, is must-fix in every round. So is a misquote, a missed newer maintainer comment, or `none` while the issue/PR thread carries maintainer design direction.
 ROUNDS (`ROUND: <n>/3` is in the prompt; three is the whole budget and must be enough):
-- Round 1 alone may open must-fix items on pre-existing content. Later rounds may open one only for a regression from the latest edits; anything else is Advisory, prefixed `LATE:`.
+- Round 1 alone may open must-fix items on pre-existing content. Later rounds may open one only for a regression from the latest edits or a maintainer-requirement miss; anything else is Advisory, prefixed `LATE:`.
 - From round 2, first restate every prior id as `RESOLVED — <evidence>` or `UNRESOLVED — <what is still missing>`.
-- Round 3 returns `approve` unless an open item is a correctness, safety, security or data-loss defect with its failing RE-CHECK output pasted. Everything else is downgraded to Advisory and listed in Notes.
+- Round 3 returns `approve` unless an open item is a correctness, safety, security or data-loss defect with its failing RE-CHECK output pasted. A missed maintainer requirement counts as a correctness defect; its RE-CHECK is the quote beside the artifact line that misses it. Everything else is downgraded to Advisory and listed in Notes.
 Make the work shippable; do not prove it imperfect.
 
 ### Verdict
 approve | must-fix
+
+### Requirements
+- R<n>: met | partial | missed — <artifact file:line, or what is missing>. `- none` when REQUIREMENTS is `none` or absent.
 
 ### Must-fix (blocks merge)
 - <id>. <file:line> — what is wrong and why it blocks at this STAGE. FIX: exact snippet, diff hunk or command, applicable as written. RE-CHECK: command + expected output that clears it.

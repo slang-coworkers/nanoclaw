@@ -3,7 +3,9 @@
  *
  * Runs inside a container. All message IO goes through the registered mailbox.
  *
- * Config:
+ * Config is read from /workspace/agent/container.json (mounted RO); only TZ and
+ * the gateway networking vars come from env. The session-DB paths below are the
+ * exception — the host sets them per container.
  *   - SESSION_INBOUND_DB_PATH:  path to host-owned inbound DB (default: /workspace/inbound.db)
  *   - SESSION_OUTBOUND_DB_PATH: path to container-owned outbound DB (default: /workspace/outbound.db)
  *   - SESSION_HEARTBEAT_PATH:   heartbeat file path (default: /workspace/.heartbeat)
@@ -43,7 +45,7 @@ import { getAgentMailbox, readMailboxContext } from './mailbox/index.js';
 // Providers barrel — each enabled provider self-registers on import.
 // Provider skills append imports to providers/index.ts.
 import './providers/index.js';
-import { buildCodexMcpServer } from './codex-mcp-server.js';
+import { buildCodexMcpServer, probeCodexMcpServer } from './codex-mcp-server.js';
 import { createProvider } from './providers/factory.js';
 import { parseAllowedMcpTools } from './providers/claude.js';
 // Provider-contracts barrel — each provider's runtime contract attaches to its
@@ -136,6 +138,15 @@ async function main(): Promise<void> {
     },
     codex: buildCodexMcpServer(process.env),
   };
+  {
+    // Say it loudly when the codex child cannot exist (see probeCodexMcpServer).
+    const probe = probeCodexMcpServer();
+    log(
+      probe.ok
+        ? `codex MCP child: ${probe.version} (${probe.detail})`
+        : `ERROR codex MCP child unavailable: ${probe.version} — ${probe.detail}; mcp__codex__codex will NOT exist in this session`,
+    );
+  }
   // Snapshotted from the seed above, before anything configured is merged in.
   // Both merges below consult it: a seeded name denotes a runtime capability
   // (nanoclaw the mandatory message transport, codex the reasoning child), so
@@ -273,7 +284,7 @@ async function main(): Promise<void> {
   // that memory arrives in context holds for every provider. Registration goes
   // through the contract helper so the memory capability is resolved too.
   const needsMemoryInPrompt = !registerProviderMemorySessionHook(providerName, provider, MEMORY_SESSION_HOOK);
-  if (needsMemoryInPrompt) log(`Memory delivered via system prompt (${providerName} has no session-start hook)`);
+  if (needsMemoryInPrompt) log(`Memory delivered via system prompt (${providerName}: no usable session-start hook — Claude Code clips hook output above ~10 KB)`);
 
   // Re-read on every rebuild rather than caching a boot-time copy: the agent
   // edits its own memory during the session, and this string outlives the

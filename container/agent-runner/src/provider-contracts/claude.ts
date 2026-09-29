@@ -17,7 +17,10 @@ import {
 } from './registry.js';
 
 const provider = 'claude';
-const tone = { default: 'Concise', toSettings: (tone: string) => ({ outputStyle: tone }) };
+// Claude Code's own default output style. With a named style (such as Concise) Claude Code adds a style message to every
+// request, and the conversation is then not read back from the prompt cache: each request writes it to the cache again.
+// The concise instruction is in the agent's CLAUDE.md (container/CLAUDE.md, Communication), in the cached prefix.
+const tone = { default: 'default', toSettings: (tone: string) => ({ outputStyle: tone }) };
 
 export const claudeRuntimeContract: ProviderRuntimeContract = {
   seamVersion: PROVIDER_RUNTIME_CONTRACT_SEAM_VERSION,
@@ -47,6 +50,7 @@ export const claudeRuntimeContract: ProviderRuntimeContract = {
 registerProviderContract(provider, claudeRuntimeContract);
 
 function writeMemorySessionHook(hook: RuntimeMemoryHookInput): void {
+  // Name kept for the contract seam; the write is now a removal (memory rides in the system prompt).
   const filePath = path.join(claudeConfigDirectory(), 'settings.json');
   fs.mkdirSync(path.dirname(filePath), { recursive: true });
   const exists = fs.existsSync(filePath);
@@ -59,16 +63,16 @@ function writeMemorySessionHook(hook: RuntimeMemoryHookInput): void {
   const sessionStart = hooks.SessionStart === undefined ? [] : hooks.SessionStart;
   if (!Array.isArray(sessionStart)) throw new Error(`${filePath} hooks.SessionStart must be an array`);
 
+  // Memory is delivered in the system prompt (see ClaudeProvider.registerMemorySessionHook):
+  // strip the memory hook — current and legacy commands — that earlier runners wrote here,
+  // otherwise Claude Code keeps injecting its clipped ~2 KB preview on top of the real copy.
   const memoryCommands = new Set([hook.command, ...hook.legacyCommands]);
   const nextSessionStart = sessionStart
     .map((entry) => removeMemoryCommands(entry, memoryCommands))
     .filter((entry) => entry !== undefined);
-  nextSessionStart.push({
-    matcher: hook.sources.join('|'),
-    hooks: [{ type: 'command', command: hook.command, timeout: 10 }],
-  });
 
-  hooks.SessionStart = nextSessionStart;
+  if (nextSessionStart.length > 0) hooks.SessionStart = nextSessionStart;
+  else delete hooks.SessionStart;
   parsed.hooks = hooks;
   // Seed user defaults; existing values and higher-priority project/local settings win.
   const settings = { ...tone.toSettings(tone.default), ...parsed };

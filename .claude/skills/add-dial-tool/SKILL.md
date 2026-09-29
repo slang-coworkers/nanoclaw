@@ -35,7 +35,7 @@ anything else runs:
 command -v onecli >/dev/null
 ```
 
-If it fails, tell the user to run `/init-onecli` first, then retry. Stop here.
+If it fails, tell the user to run `/add-onecli` first, then retry. Stop here.
 
 Calls this setup makes to Dial identify the install. The `dial` CLI prepends
 `DIAL_USER_AGENT` to its own token, so the account's requests stay attributable
@@ -254,7 +254,7 @@ channel** too, run `/add-dial`.
 ## Troubleshooting
 
 **`command -v onecli` fails.** OneCLI is not installed or not on `PATH`. Run
-`/init-onecli`, then re-run this skill.
+`/add-onecli`, then re-run this skill.
 
 **`ncl` can't reach the host.** The agent list and the scoping steps talk to the
 running NanoClaw service. Start it (`pnpm run dev`, or restart the service) and
