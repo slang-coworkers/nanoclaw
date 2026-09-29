@@ -20,6 +20,14 @@
 # Force-push gates intentionally NOT wired in v1 — too noisy for legitimate
 # rebases of feature branches; revisit if abuse pattern emerges.
 #
+# Two further checks share this hook (both no-ops unless the gate is active):
+#   - Long public comments (Bash: gh issue/pr comment, gh pr review, comment /
+#     review API calls) must be posted from a file an OUTPUT_REVIEW attested
+#     and approved. Denied comments do NOT count toward the denial cap.
+#   - [Fix Review Request] / [Fix Report] are refused while a PR this session
+#     created or pushed to still has a description explaining an older head
+#     (lib/explain-diff-owed.sh). Not counted toward the escalation cap.
+#
 # Stdin: JSON with tool_name, tool_input. Exit 0 = allow, exit 2 = deny.
 set -euo pipefail
 
@@ -58,7 +66,151 @@ if [ -f "$MARKERS_FILE" ]; then
   [ -n "$EXTRA_BASH" ] && BASH_PATTERNS="$BASH_PATTERNS|$EXTRA_BASH"
 fi
 
+STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
+
+# shellcheck source=lib/explain-diff-owed.sh
+. "$(dirname "${BASH_SOURCE[0]}")/lib/explain-diff-owed.sh"
+
+# ── Long public comments need a reviewed body file ──────────────────────────
+# A fixer posted a 2,214-char restatement of a maintainer's design 8 s after
+# being asked, before the fidelity check that found ~11 misses in it: comment
+# commands never matched BASH_PATTERNS. Design statements run 2–14k chars,
+# status notes 0.4–0.9k, so the line sits at CRITIQUE_COMMENT_MIN_CHARS
+# (default 1000). At or above it the body must be a file whose sha256 an
+# OUTPUT_REVIEW attested, with that stage's last verdict approve. The size is
+# the larger of the body file and the whole command: a command that writes the
+# body file and posts it in one go carries the text itself, and an existing
+# (reviewed) file of the same name is not what gets posted.
+# CRITIQUE_COMMENT_GATE=0 disables. These denials are NOT counted toward the
+# delivery soft-cap — no state is written here.
+
+# Path the comment body is read from, as written in the command; "" when the
+# body is inline (--body, -b, -f body=) or on stdin (-, heredoc).
+comment_body_ref() {
+  local c="$1" q="[\"']?" p="([^\"'[:space:];&|)]+)" re
+  re="--body-file[[:space:]=]+${q}${p}"
+  [[ $c =~ $re ]] && { printf '%s' "${BASH_REMATCH[1]}"; return 0; }
+  re="(-F|--field)[[:space:]=]+${q}body=@${p}"
+  [[ $c =~ $re ]] && { printf '%s' "${BASH_REMATCH[2]}"; return 0; }
+  re="(^|[[:space:]])-F[[:space:]]+${q}([^\"'[:space:];&|)=]+)${q}([[:space:];&|)]|$)"
+  [[ $c =~ $re ]] && { printf '%s' "${BASH_REMATCH[2]}"; return 0; }
+  re="--input[[:space:]=]+${q}${p}"
+  [[ $c =~ $re ]] && { printf '%s' "${BASH_REMATCH[1]}"; return 0; }
+  re="(-d|--data|--data-binary)[[:space:]=]*${q}@${p}"
+  [[ $c =~ $re ]] && { printf '%s' "${BASH_REMATCH[2]}"; return 0; }
+  re="[\$][(](cat[[:space:]]+|<[[:space:]]*)${q}${p}"
+  [[ $c =~ $re ]] && { printf '%s' "${BASH_REMATCH[2]}"; return 0; }
+  return 0
+}
+
+# Absolute path of an existing body file, or "". Relative paths resolve against
+# a leading `cd <abs>` in the command, then the hook's cwd.
+resolve_body_path() {
+  local ref="$1" base
+  # shellcheck disable=SC2088  # matching a literal "~/" the shell left unexpanded
+  case "$ref" in *'$'* | *'`'*) return 0 ;; "~/"*) ref="$HOME/${ref#\~/}" ;; esac
+  if [ "${ref#/}" != "$ref" ]; then
+    [ -f "$ref" ] && printf '%s' "$ref"
+    return 0
+  fi
+  for base in "$CMD_CD" "$HOOK_CWD"; do
+    case "$base" in /*) [ -f "$base/$ref" ] && { printf '%s' "$base/$ref"; return 0; } ;; esac
+  done
+  return 0
+}
+
+sha256_of() {
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "$1" 2>/dev/null | awk '{print $1}'
+  else
+    shasum -a 256 "$1" 2>/dev/null | awk '{print $1}'
+  fi
+}
+
+COMMENT_WHAT=""
+if [ "$TOOL" = "Bash" ] && [ "${CRITIQUE_COMMENT_GATE:-1}" != "0" ]; then
+  if grep -qE '(^|[^[:alnum:]_./-])gh[[:space:]]+(issue|pr)[[:space:]]+comment([[:space:]]|$)' <<< "$TEXT"; then
+    COMMENT_WHAT="issue/PR comment"
+  elif grep -qE '(^|[^[:alnum:]_./-])gh[[:space:]]+pr[[:space:]]+review([[:space:]]|$)' <<< "$TEXT"; then
+    COMMENT_WHAT="PR review"
+  elif grep -qE '(issues|pulls)/([0-9]+/(comments|reviews)|comments/[0-9]+)' <<< "$TEXT" \
+    && grep -qE '(^|[^[:alnum:]_./-])(gh[[:space:]]+api|curl)([[:space:]]|$)' <<< "$TEXT" \
+    && grep -qE '(^|[[:space:]])((-X|--method|--request)[[:space:]=]*["'"'"']?(POST|PATCH|PUT|post|patch|put)|(-f|-F|--field|--raw-field|--input|-d|--data|--data-binary|--data-raw|--json)([[:space:]=]|$))' <<< "$TEXT"; then
+    COMMENT_WHAT="comment/review API call"
+  elif grep -qE '(^|[^[:alnum:]_./-])gh[[:space:]]+api[[:space:]]+graphql' <<< "$TEXT" \
+    && grep -qE '(addComment|addPullRequestReview|updateIssueComment)' <<< "$TEXT"; then
+    COMMENT_WHAT="comment/review GraphQL mutation"
+  fi
+fi
+
+if [ -n "$COMMENT_WHAT" ]; then
+  COMMENT_MIN="${CRITIQUE_COMMENT_MIN_CHARS:-1000}"
+  case "$COMMENT_MIN" in '' | *[!0-9]*) COMMENT_MIN=1000 ;; esac
+  CMD_BYTES=$(printf '%s' "$TEXT" | wc -c | tr -d '[:space:]')
+  HOOK_CWD=$(echo "$INPUT" | jq -r '.cwd // ""' 2>/dev/null || true)
+  CMD_CD=""
+  re_cd="(^|[;&|(][[:space:]]*)cd[[:space:]]+[\"']?([^\"'[:space:];&|)]+)"
+  [[ $TEXT =~ $re_cd ]] && CMD_CD="${BASH_REMATCH[2]}"
+  BODY_REF=$(comment_body_ref "$TEXT")
+  case "$BODY_REF" in - | /dev/stdin) BODY_REF="" ;; esac
+  BODY_PATH=""
+  BODY_BYTES=0
+  COMMENT_DENY=""
+  if [ -n "$BODY_REF" ]; then
+    BODY_PATH=$(resolve_body_path "$BODY_REF")
+    if [ -n "$BODY_PATH" ]; then
+      BODY_BYTES=$(wc -c < "$BODY_PATH" | tr -d '[:space:]')
+    else
+      case "$BODY_REF" in
+        # An absolute literal path that does not exist yet is written by this
+        # same command, so its text is in the command: sized as inline below.
+        /*) case "$BODY_REF" in *'$'* | *'`'*) ;; *) BODY_REF="" ;; esac ;;
+      esac
+      [ -n "$BODY_REF" ] && COMMENT_DENY="its body file \"$BODY_REF\" cannot be resolved (not a literal path, or relative to a directory this hook cannot see) — use an absolute path to a file written in an earlier step"
+    fi
+  fi
+  SIZE=$CMD_BYTES
+  [ "$BODY_BYTES" -gt "$SIZE" ] && SIZE=$BODY_BYTES
+  if [ -z "$COMMENT_DENY" ] && [ "$SIZE" -ge "$COMMENT_MIN" ]; then
+    if [ -z "$BODY_PATH" ]; then
+      COMMENT_DENY="it carries ~$SIZE bytes of body text inline (--body / -f body= / heredoc / a file this same command writes), not a reviewed file"
+    elif [ "$CMD_BYTES" -ge "$COMMENT_MIN" ]; then
+      COMMENT_DENY="the command itself is $CMD_BYTES bytes, so it carries or rewrites body text beyond the file $BODY_PATH"
+    else
+      BODY_SHA=$(sha256_of "$BODY_PATH")
+      ATTESTED=$(jq -r --arg h "$BODY_SHA" \
+        '[((.critique_attested // {}).OUTPUT_REVIEW // {})[] | strings | ascii_downcase] | any(. == $h)' \
+        "$STATE" 2>/dev/null || echo false)
+      OUT_VERDICT=$(jq -r '(.critique_verdicts // {}).OUTPUT_REVIEW // ""' "$STATE" 2>/dev/null || true)
+      if [ -z "$BODY_SHA" ] || [ "$ATTESTED" != "true" ]; then
+        COMMENT_DENY="$BODY_PATH (sha256 ${BODY_SHA:0:12}) is not among the files an OUTPUT_REVIEW attested"
+      elif [ "$OUT_VERDICT" != "approve" ]; then
+        COMMENT_DENY="the last OUTPUT_REVIEW verdict is \"${OUT_VERDICT:-none}\", not \"approve\""
+      fi
+    fi
+  fi
+  if [ -n "$COMMENT_DENY" ]; then
+    cat >&2 << EOF
+PUBLIC COMMENT REVIEW REQUIRED before this $COMMENT_WHAT: $COMMENT_DENY.
+
+Public comments of $COMMENT_MIN+ characters are posted only from a file an
+OUTPUT_REVIEW approved:
+  1. Write the body to a file in its own step
+     (e.g. /workspace/agent/reports/comments/<n>-<slug>.md).
+  2. Run /codex-critique with STAGE: OUTPUT_REVIEW and list that file under
+     ARTIFACTS — the reviewer attests its sha256 under "### Attested".
+  3. On approve, post the file unchanged with a short command:
+     gh issue comment <n> --body-file <file>   (gh api: -F body=@<file>)
+
+Status notes under $COMMENT_MIN characters need no review. This denial does not
+count toward the delivery gate's denial cap.
+EOF
+    exit 2
+  fi
+fi
+
 HIT=""
+EXPLAIN_HIT=""
 case "$TOOL" in
   mcp__nanoclaw__send_message)
     # Anchored to line start (the chain protocol emits markers as message /
@@ -70,6 +222,12 @@ case "$TOOL" in
     # a silent gate bypass.
     if grep -qE "^[[:space:]]*\[($MSG_MARKERS)\]" <<< "$TEXT"; then
       HIT="delivery/handoff message"
+    fi
+    # A fix report / review request presents the PR to a reviewer, who reads
+    # its description first — so it waits until that describes the pushed head.
+    if [ "${EXPLAIN_DIFF_GATE:-1}" != "0" ] \
+      && grep -qE '^[[:space:]]*\[(Fix Review Request|Fix Report)\]' <<< "$TEXT"; then
+      EXPLAIN_HIT="fix report / review request"
     fi
     ;;
   Bash)
@@ -84,7 +242,7 @@ case "$TOOL" in
     ;;
 esac
 
-[ -z "$HIT" ] && exit 0
+[ -z "$HIT" ] && [ -z "$EXPLAIN_HIT" ] && exit 0
 
 # ABSTAIN fast-path (PR-approver): an [Approval Decision] whose state is
 # ABSTAIN_POLICY / ABSTAIN_INFRA makes NO positive claim about the code — it
@@ -95,14 +253,13 @@ esac
 # mislabelling a WOULD_APPROVE as an abstain is decline to approve. Matched on
 # the decision token in the delivered message, anchored so a mid-sentence
 # mention of the word doesn't trip it. CRITIQUE_ABSTAIN_FASTPATH=0 disables.
-if [ "$TOOL" = "mcp__nanoclaw__send_message" ] && [ "${CRITIQUE_ABSTAIN_FASTPATH:-1}" != "0" ]; then
+if [ "$TOOL" = "mcp__nanoclaw__send_message" ] && [ -z "$EXPLAIN_HIT" ] \
+  && [ "${CRITIQUE_ABSTAIN_FASTPATH:-1}" != "0" ]; then
   if grep -qE '\b(ABSTAIN_POLICY|ABSTAIN_INFRA)\b' <<< "$TEXT" \
      && ! grep -qE '\b(WOULD_APPROVE|BLOCK)\b' <<< "$TEXT"; then
     exit 0
   fi
 fi
-
-STATE="${WORKFLOW_STATE_FILE:-/workspace/.claude/workflow-state.json}"
 
 # Required-stages enforcement (per-overlay opt-in via .critique-required-stages,
 # materialized by the composer from the matched overlays' frontmatter).
@@ -121,7 +278,9 @@ if [ -n "${CRITIQUE_REQUIRED_STAGES:-}" ]; then
 fi
 DENIAL_REASON=""
 
-if [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&1; then
+if [ -z "$HIT" ]; then
+  : # a [Fix Review Request] that is not a declared delivery marker: refresh check only
+elif [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&1; then
   DONE=$(jq -c '.critique_stages // {}' "$STATE" 2>/dev/null || echo '{}')
   VERDICTS=$(jq -c '.critique_verdicts // {}' "$STATE" 2>/dev/null || echo '{}')
   MISSING=$(jq -r --argjson done "$DONE" '
@@ -193,6 +352,30 @@ else
   ROUNDS=$(jq -r '.critique_rounds // 0' "$STATE" 2>/dev/null || echo 0)
   if [ "$ROUNDS" -lt 1 ]; then
     DENIAL_REASON="no critique rounds recorded (critique_rounds=$ROUNDS)"
+  fi
+fi
+
+# PR description refresh: a fix report / review request waits until every PR
+# this session created or pushed to has a description explaining its pushed
+# head. Checked after the critique so a delivery short on both hears about the
+# critique first. Like the comment rule it leaves the denial counter alone: the
+# remedy is an upsert, not a critique round, and the escalation path (retracted
+# only by a new critique round) would card a human for nothing.
+GATE_TITLE="CRITIQUE REQUIRED"
+REMEDY="Run /codex-critique for the stage named above"
+if [ -z "$DENIAL_REASON" ] && [ -n "$EXPLAIN_HIT" ]; then
+  OWED=$(explain_diff_owed_lines)
+  if [ -n "$OWED" ]; then
+    OWED_LIST=$(jq -rn --arg o "$OWED" '$o | split("\n") | map(select(length > 0)) | join("; and ")')
+    cat >&2 << EOF
+PR DESCRIPTION REFRESH REQUIRED before this $EXPLAIN_HIT: $OWED_LIST.
+
+Run /explain-diff-html for the PR's current head (upsert_pr_body.py), then
+resend. If the upsert itself fails (e.g. a GitHub error), tell your parent in a
+plain message instead of resending the marker. This denial does not count
+toward the critique escalation. EXPLAIN_DIFF_GATE=0 (host env) disables it.
+EOF
+    exit 2
   fi
 fi
 
@@ -390,11 +573,11 @@ wait for the admin decision. Do not retry the delivery in a tight loop.
 EOF
       else
         cat >&2 << EOF
-CRITIQUE REQUIRED before $HIT — denial cap reached (self-heal attempt $ATTEMPTS).
+$GATE_TITLE before $HIT — denial cap reached (self-heal attempt $ATTEMPTS).
 
 Reason: $DENIAL_REASON.
 
-Run /codex-critique for the stage named above, then retry. The gate will NOT
+$REMEDY, then retry. The gate will NOT
 open on its own; there is no timeout. If you genuinely cannot run the
 critique, say why in this session and an admin will be asked.
 EOF
@@ -404,17 +587,28 @@ EOF
     jq -n --arg reason "$DENIAL_REASON" --arg hit "$HIT" --argjson at "$NOW_EPOCH" --argjson denials "$DENIALS" \
       '{requested_at: $at, reason: $reason, hit: $hit, denials: $denials}' > "$ESC_FILE" 2>/dev/null || true
     cat >&2 << EOF
-CRITIQUE REQUIRED before $HIT — denial cap reached; escalation opened.
+$GATE_TITLE before $HIT — denial cap reached; escalation opened.
 
 Reason: $DENIAL_REASON.
 
-Run /codex-critique for the stage named above, then retry the $HIT. The gate
+$REMEDY, then retry the $HIT. The gate
 does not time out and will not open on its own. If you cannot run the
 critique, say why in this session — after repeated attempts an admin is asked.
 EOF
     exit 2
   fi
   jq '.critique_gate_denials = ((.critique_gate_denials // 0) + 1)' "$STATE" > "$STATE.tmp" 2>/dev/null && mv "$STATE.tmp" "$STATE" || true
+  if [ "$GATE_TITLE" != "CRITIQUE REQUIRED" ]; then
+    cat >&2 << EOF
+$GATE_TITLE before $HIT.
+
+Reason: $DENIAL_REASON.
+
+The reviewer reads the PR description first, so it must explain the head you
+pushed. $REMEDY for each PR named above, then resend.
+EOF
+    exit 2
+  fi
   cat >&2 << EOF
 CRITIQUE REQUIRED before $HIT.
 

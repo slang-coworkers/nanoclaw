@@ -46,6 +46,8 @@ Run each at its natural workflow transition. If `critique-gate` is in your overl
 
 Answer-style work (a question, a release note) uses `OUTPUT_REVIEW` for factual accuracy and source coverage. No separate `ANSWER_REVIEW` stage.
 
+Where the critique gate is on, public GitHub comments and reviews of 1000+ characters need this too: write the body to a file, run `OUTPUT_REVIEW` with that file under ARTIFACTS, then post it unchanged with `--body-file <file>` (gh api: `-F body=@<file>`).
+
 ## developer-instructions
 
 ```
