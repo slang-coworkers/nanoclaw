@@ -130,6 +130,18 @@ if [ -f "$REQUIRED_FILE" ] && jq -e 'length > 0' "$REQUIRED_FILE" >/dev/null 2>&
   if [ -n "$MISSING" ]; then
     DENIAL_REASON="missing critique stages: $MISSING"
   fi
+  # PLAN_REVIEW verdict gate (fixer path): a must-fix plan review — e.g. "a
+  # maintainer requirement was dropped" — used to block nothing, because only
+  # the stage's count was checked. Same semantics as the OUTPUT_REVIEW gate
+  # below, including CRITIQUE_VERDICT_STRICT fail-closed on a missing verdict.
+  if [ -z "$DENIAL_REASON" ] && jq -e 'index("PLAN_REVIEW")' "$REQUIRED_FILE" >/dev/null 2>&1; then
+    PLAN_VERDICT=$(jq -r '.PLAN_REVIEW // empty' <<< "$VERDICTS" 2>/dev/null || true)
+    if [ -n "$PLAN_VERDICT" ] && [ "$PLAN_VERDICT" != "approve" ]; then
+      DENIAL_REASON="PLAN_REVIEW last verdict is \"$PLAN_VERDICT\" (must be \"approve\"). Re-run /codex-critique with STAGE: PLAN_REVIEW after fixing the plan"
+    elif [ -z "$PLAN_VERDICT" ] && [ "${CRITIQUE_VERDICT_STRICT:-1}" != "0" ]; then
+      DENIAL_REASON="PLAN_REVIEW ran but no verdict was recorded (missing or unparseable). Re-run /codex-critique with STAGE: PLAN_REVIEW and make sure codex returns a '### Verdict' section containing approve or must-fix"
+    fi
+  fi
   # OUTPUT_REVIEW verdict gate: count>=1 is not enough — last verdict must be
   # "approve". This prevents delivering with an un-reverified must-fix output.
   # Fails CLOSED when OUTPUT_REVIEW is required but no verdict was recorded:

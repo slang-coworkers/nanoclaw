@@ -1,7 +1,7 @@
 /**
  * Classify a critique-gate denial reason, and decide whether it needs a human.
  *
- * The gate emits exactly six denial reasons (container/hooks/
+ * The gate emits exactly eight denial reasons (container/hooks/
  * gate-critique-on-deliver.sh). Measured over the 18 escalations prod raised
  * between 2026-07-07 and 2026-08-05, they split:
  *

@@ -39,6 +39,28 @@ describe('compaction delivery reminder', () => {
   });
 });
 
+describe('maintainer requirements survive compaction', () => {
+  it('keeps plan-file pointers and URLs, forbids paraphrase, and orders a re-read', () => {
+    const instructions = buildCompactInstructions(['family'], null);
+
+    expect(instructions).toContain('/workspace/agent/reports/');
+    expect(instructions).toContain('"## Maintainer requirements" section');
+    expect(instructions).toContain('every maintainer GitHub comment URL verbatim');
+    expect(instructions).toContain('Never restate or');
+    expect(instructions).toContain('running any codex critique round, or posting to GitHub.');
+  });
+
+  it('keeps the verbatim delivery reminder as the last numbered item', () => {
+    const instructions = buildCompactInstructions(['family'], null);
+    const items = instructions.match(/^\d+\. /gm) ?? [];
+
+    expect(items).toEqual(['1. ', '2. ', '3. ', '4. ', '5. ']);
+    expect(instructions.indexOf('4. If any plan file')).toBeLessThan(
+      instructions.indexOf('5. At the END of the compaction summary'),
+    );
+  });
+});
+
 describe('post-compaction reminder', () => {
   it('re-states the canonical delivery sentences with the live destinations', () => {
     const reminder = buildPostCompactionReminder(['family', 'ops'], null);
