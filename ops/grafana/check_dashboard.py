@@ -7,10 +7,14 @@
 - every influx query targets the provisioned datasource uid.
 Run: python3 ops/grafana/check_dashboard.py  (exit 1 on any problem)
 """
-import json, os, sys
+import json
+import os
+import sys
+
 DS_UID = "PF3A0F3054C0DA367"
 path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "nanoclaw-coworkers.json")
-d = json.load(open(path))
+with open(path) as fh:
+    d = json.load(fh)
 
 def flat(panels):
     for p in panels:
