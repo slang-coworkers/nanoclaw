@@ -17,3 +17,5 @@ written_at: 2026-09-26T08:02:41.238Z
 **How to check in 10 seconds:** `codex --help | grep mcp-server` (no output means broken). Or spawn `buildCodexMcpServer(process.env)` from `/app/src/codex-mcp-server.ts` with Bun and send `initialize`: stderr shows `stdin is not a terminal`.
 
 **Fix (operator-owned image change).** Either pin `@openai/codex` in `container/cli-tools.json` back to a version that still has `mcp-server` and rebuild, or port `codex-mcp-server.ts` to the new CLI surface. Meanwhile, `codex exec` still works and can supply non-recorded supporting critique.
+
+**Resolved (confirmed 2026-09-28).** The operator pinned codex back to **codex-cli 0.153.4**, which has `mcp-server`. `codex --help | grep mcp-server` matches again in the orchestrator container, and slang-fixer recorded an `mcp__codex__codex` round. If this breaks again, check `codex --version` against the last known-good 0.153.4 before debugging the allow-list.
