@@ -220,6 +220,25 @@ groups:
           - refId: C
             datasourceUid: __expr__
             model: { refId: C, type: threshold, expression: B, conditions: [ { evaluator: { type: gt, params: [1073741824] } } ] }
+      - uid: nc-codex-tool-missing
+        title: Codex tool missing in live agent sessions
+        condition: C
+        for: 3m
+        labels: { team: nanoclaw, severity: critical }
+        annotations:
+          summary: '{{ $values.B }} live session(s) report that mcp__codex__codex does not exist (runner startup probe).'
+          runbook: 'The critique gate is down for those coworkers. `docker exec <c> codex --help | grep app-server`; check the image pin in container/cli-tools.json and the runner log line "codex MCP child". 2026-09-25..28: image shipped codex 0.155.1 without the child subcommand — 3 days unnoticed.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: PF3A0F3054C0DA367
+            model: { refId: A, rawQuery: true, resultFormat: time_series, query: 'SELECT last("missing") FROM "nanoclaw_codex" WHERE $timeFilter' }
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last, settings: { mode: dropNN } }
+          - refId: C
+            datasourceUid: __expr__
+            model: { refId: C, type: threshold, expression: B, conditions: [ { evaluator: { type: gt, params: [0] } } ] }
       - uid: nc-collector-stale
         title: NanoClaw metrics collector not reporting
         condition: C

@@ -521,3 +521,33 @@ export function commitCostReconcileOutcome(params: {
     ...(params.newCostCap ? { costCapKey: COST_CAP_KEY, costCapValue: JSON.stringify(params.newCostCap) } : {}),
   });
 }
+
+/**
+ * Startup probe of the codex MCP child (see codex-mcp-server.ts). Published once
+ * per container so the host and the metrics collector can see, per LIVE session,
+ * whether `mcp__codex__codex` exists — the 2026-09-25..28 outage (a codex image
+ * without the child's subcommand) ran three days with the fact only in container
+ * stdout, which is lost on exit.
+ */
+const CODEX_CHILD_KEY = 'codex_child';
+
+export interface CodexChildState {
+  ok: boolean;
+  version: string;
+  detail: string;
+  checkedAt: string;
+}
+
+export function setCodexChild(state: CodexChildState): void {
+  setValue(CODEX_CHILD_KEY, JSON.stringify(state));
+}
+
+export function getCodexChild(): CodexChildState | undefined {
+  const raw = getValue(CODEX_CHILD_KEY);
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as CodexChildState;
+  } catch {
+    return undefined;
+  }
+}
