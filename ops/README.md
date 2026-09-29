@@ -35,6 +35,10 @@ Two things about this are easy to get wrong and cost real time:
 Edit **this file** and copy it to `/var/lib/grafana/dashboards/`. The provisioner
 picks it up within 30s.
 
+Before copying, run `python3 ops/grafana/check_dashboard.py`. It catches what Grafana only
+reports at render time: two queries in one panel sharing a `refId` make Grafana reject the
+whole panel (400 `query.duplicateRefId`), and the panel just shows 0 / no data.
+
 Do **not** edit in the Grafana UI: provisioned dashboards report
 `meta.canSave: false`, and an anonymous `POST /api/dashboards/db` returns 403.
 That is deliberate — the file is the source of truth.
