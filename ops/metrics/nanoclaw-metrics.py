@@ -9,6 +9,7 @@ Failures are contained: any section that throws is skipped and counted in
 nanoclaw_collector.errors, so telegraf keeps getting the sections that work.
 """
 
+import glob
 import json
 import os
 import socket
@@ -669,6 +670,53 @@ def collect_cost():
         emit("nanoclaw_cost", {"dropped_sessions": overflow}, {"scope": "session_overflow"})
 
 
+def collect_codex():
+    """Codex tool availability across LIVE sessions (the 2026-09-25..28 blind spot).
+
+    A session is live when its `.heartbeat` was touched in the last 3 minutes.
+    Each runner publishes its startup probe of the codex MCP child as
+    `session_state.codex_child` in outbound.db (JSON {ok, version, detail});
+    a live session without the row runs a runner older than that change.
+    Emits nanoclaw_codex: live, ok, missing, unknown (+ the codex version mix).
+    """
+    live = ok = missing = unknown = 0
+    versions = {}
+    cutoff = time.time() - 180
+    for hb in glob.glob(os.path.join(NC, "data", "v2-sessions", "*", "sess-*", ".heartbeat")):
+        try:
+            if os.path.getmtime(hb) < cutoff:
+                continue
+        except OSError:
+            continue
+        live += 1
+        db = os.path.join(os.path.dirname(hb), "outbound.db")
+        row = None
+        try:
+            con = sqlite3.connect(f"file:{db}?mode=ro", uri=True, timeout=2)
+            row = con.execute("SELECT value FROM session_state WHERE key='codex_child'").fetchone()
+            con.close()
+        except Exception as exc:  # noqa: BLE001 - a busy or legacy mailbox is just 'unknown'
+            _errors.append(f"codex.{os.path.basename(os.path.dirname(hb))}:{exc}")
+        if not row:
+            unknown += 1
+            continue
+        try:
+            st = json.loads(row[0])
+        except Exception:  # noqa: BLE001
+            unknown += 1
+            continue
+        if st.get("ok"):
+            ok += 1
+        else:
+            missing += 1
+        v = str(st.get("version") or "?").replace("codex-cli ", "")
+        versions[v] = versions.get(v, 0) + 1
+    fields = {"live": live, "ok": ok, "missing": missing, "unknown": unknown}
+    for v, n in versions.items():
+        fields["v_" + v.replace(".", "_")] = n
+    emit("nanoclaw_codex", fields)
+
+
 def main():
     t0 = time.time()
     now_ms = int(t0 * 1000)
@@ -679,6 +727,7 @@ def main():
                      ("funnel", collect_funnel),
                      ("health", collect_health),
                      ("host", lambda: collect_host(state)),
+                     ("codex", collect_codex),
                      ("cost", collect_cost)):
         try:
             fn()
