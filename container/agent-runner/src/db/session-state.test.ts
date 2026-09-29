@@ -3,8 +3,10 @@ import { beforeEach, describe, expect, test } from 'bun:test';
 import { getOutboundDb, initTestSessionDb } from '../mailbox/sqlite/connection.js';
 import {
   clearContinuation,
+  getCodexChild,
   getContinuation,
   migrateLegacyContinuation,
+  setCodexChild,
   setContinuation,
 } from './session-state.js';
 
@@ -96,5 +98,17 @@ describe('session-state — legacy migration', () => {
 
     const second = migrateLegacyContinuation('claude');
     expect(second).toBe('once');
+  });
+});
+
+describe('session-state — codex child probe record', () => {
+  test('round-trips the startup probe as one JSON row the host can read per live session', () => {
+    expect(getCodexChild()).toBeUndefined();
+    setCodexChild({ ok: false, version: 'codex-cli 0.155.1', detail: 'no app-server', checkedAt: '2026-09-25T07:45:00.000Z' });
+    expect(getCodexChild()).toEqual({ ok: false, version: 'codex-cli 0.155.1', detail: 'no app-server', checkedAt: '2026-09-25T07:45:00.000Z' });
+    setCodexChild({ ok: true, version: 'codex-cli 0.156.1', detail: 'app-server via bridge', checkedAt: '2026-09-28T13:40:00.000Z' });
+    expect(getCodexChild()?.ok).toBe(true);
+    const row = getOutboundDb().prepare("SELECT value FROM session_state WHERE key = 'codex_child'").get() as { value: string };
+    expect(JSON.parse(row.value).version).toBe('codex-cli 0.156.1');
   });
 });
