@@ -66,7 +66,10 @@ export function scrubSecrets(input: string): { text: string; redactions: Redacti
     let count = 0;
     text = text.replace(re, (_m, ...g) => {
       count++;
-      if (type === 'basic-auth-url') return `${g[0] as string}[REDACTED:credentials]@`;
+      // No ':' inside the placeholder — `user:pass@` is what this pattern matches, so a
+      // colon would make the scrub non-idempotent and the import-side re-scrub would
+      // reject every seed that ever contained a credential URL.
+      if (type === 'basic-auth-url') return `${g[0] as string}[REDACTED]@`;
       return `[REDACTED:${type}]`;
     });
     bump(type, count);

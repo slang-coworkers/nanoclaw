@@ -20,7 +20,8 @@ describe('scrubSecrets — redacts real credential shapes', () => {
     ['nvidia', 'nvapi-EXAMPLEfakeNvidiaKeyXXXXXXXXXX'],
     ['aws-akia', 'AKIAEXAMPLEFAKE00000'],
     ['aws-asia-temp', 'ASIAEXAMPLEFAKE00000'],
-    ['google', 'AIzaSyEXAMPLEfake0000000000000000000ab'],
+    // AIza + exactly 35 chars (real Google API keys are 39 long).
+    ['google', `AIza${'SyEXAMPLEfake'.padEnd(35, '0')}`],
     ['jwt', 'eyJhbGciOiJSUzI1NiJ9.eyJzdWIiOiJleGFtcGxlIn0.ZXhhbXBsZXNpZw'],
     ['bearer', 'Authorization: Bearer EXAMPLEfakeBearerToken0123456789'],
     ['basic-auth-url', 'git clone https://user:EXAMPLEfakepass@gitlab-master.nvidia.com/x/y.git'],
@@ -32,6 +33,16 @@ describe('scrubSecrets — redacts real credential shapes', () => {
       const { text, redactions } = scrubSecrets(input);
       expect(text).toMatch(REDACTED);
       expect(totalRedactions(redactions)).toBeGreaterThan(0);
+    });
+
+    // Import re-scrubs every seed file and rejects any that still yields a
+    // redaction, so a scrubbed file must scrub clean a second time — otherwise
+    // every seed that ever held this credential shape would be refused on import.
+    it(`is idempotent for ${name}`, () => {
+      const once = scrubSecrets(input).text;
+      const twice = scrubSecrets(once);
+      expect(twice.redactions).toEqual([]);
+      expect(twice.text).toBe(once);
     });
   }
 
