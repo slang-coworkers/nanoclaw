@@ -13,7 +13,8 @@ Produce one self-contained HTML page that teaches a reader what a change does an
 ## When
 
 - **After every PR you create.** The PR-created hook context names the PR (`owner/repo#N`). Call `report_pr_created` first, then run this skill, then send the review request / report with the file path in its artifact list. The explanation is part of opening a PR, not an optional extra.
-- **After every push to a PR you own.** A fix round, a review-driven rewrite, an amended design: re-run against the new head and rewrite the description (see *The PR description*). The push hook reminds you with the pushed head. Skip only a push that changes nothing a reader would notice (typo, rebase with no content change), and then say so in your report.
+- **After every push to a PR you own.** A fix round, a review-driven rewrite, an amended design: re-run against the new head and rewrite the description (see *The PR description*). The push hook reminds you with the pushed head. For a push that changes nothing a reader would notice (typo, rebase with no content change), re-run `upsert_pr_body.py` on the new head with the previous explanation (its head line updated) and say so in your report.
+- **Enforced where the critique gate is on.** Until `upsert_pr_body.py` has written the description for the head you last pushed (or for a PR you just opened), a Stop hook holds your turn open once, and `[Fix Review Request]` / `[Fix Report]` are refused with the PR named.
 - **After anything else rewrites the description.** A workflow that edits the PR body (`gh pr edit --body`, a PATCH to `pulls/<n>`) replaces the explanation; re-run so the description is the explanation again.
 - **On request.** "Explain this PR / branch / diff" from anyone in the chain.
 

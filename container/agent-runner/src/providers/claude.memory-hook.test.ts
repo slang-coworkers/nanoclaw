@@ -25,7 +25,7 @@ afterEach(() => {
 });
 
 describe('Claude memory SessionStart registration', () => {
-  it('writes the shared command once without disturbing other hooks', () => {
+  it('removes the memory hook (current and legacy) without disturbing other hooks', () => {
     const settingsFile = path.join(configDir, 'settings.json');
     fs.writeFileSync(
       settingsFile,
@@ -58,11 +58,9 @@ describe('Claude memory SessionStart registration', () => {
     expect(settings.hooks.SessionStart).toEqual([
       { matcher: 'resume', hooks: [{ type: 'command', command: 'custom-resume' }] },
       { matcher: '.*', hooks: [{ type: 'command', command: 'custom-start' }] },
-      {
-        matcher: 'startup|clear|compact',
-        hooks: [{ type: 'command', command: 'bun /app/src/memory/hook.ts', timeout: 10 }],
-      },
     ]);
+    expect(JSON.stringify(settings.hooks)).not.toContain('memory/hook.ts');
+    expect(JSON.stringify(settings.hooks)).not.toContain('memory-hook.ts');
   });
 
   it.each([undefined, 'Explanatory', 'My chat style'])('seeds tone without replacing %j', (outputStyle) => {

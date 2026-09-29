@@ -1192,6 +1192,49 @@ describe('checkCritiqueGate — required stages + verdict parity with the bash h
     expect(gate().blocked).toBe(false);
   });
 
+  describe('PLAN_REVIEW verdict (fixer path)', () => {
+    const FIXER = ['PLAN_REVIEW', 'CODE_REVIEW', 'OUTPUT_REVIEW'];
+    const withVerdicts = (verdicts: Record<string, string>) => {
+      fs.writeFileSync(requiredPath, JSON.stringify(FIXER));
+      fs.writeFileSync(
+        statePath,
+        JSON.stringify({
+          critique_rounds: 3,
+          critique_stages: { PLAN_REVIEW: 1, CODE_REVIEW: 1, OUTPUT_REVIEW: 1 },
+          critique_verdicts: verdicts,
+        }),
+      );
+    };
+
+    it('denies when PLAN_REVIEW last verdict is must-fix, even with OUTPUT_REVIEW approved', () => {
+      withVerdicts({ PLAN_REVIEW: 'must-fix', CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
+      const r = gate();
+      expect(r.blocked).toBe(true);
+      expect(r.reason).toContain('PLAN_REVIEW last verdict is "must-fix"');
+    });
+
+    it('fails closed on a missing PLAN_REVIEW verdict; CRITIQUE_VERDICT_STRICT=0 lets it through', () => {
+      withVerdicts({ CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
+      expect(gate().reason).toContain('PLAN_REVIEW ran but no verdict was recorded');
+      process.env.CRITIQUE_VERDICT_STRICT = '0';
+      withVerdicts({ CODE_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' });
+      expect(gate().blocked).toBe(false);
+    });
+
+    it('does not gate a PLAN_REVIEW verdict the role does not require', () => {
+      fs.writeFileSync(requiredPath, JSON.stringify(['DECISION_REVIEW', 'OUTPUT_REVIEW']));
+      fs.writeFileSync(
+        statePath,
+        JSON.stringify({
+          critique_rounds: 3,
+          critique_stages: { PLAN_REVIEW: 1, DECISION_REVIEW: 1, OUTPUT_REVIEW: 1 },
+          critique_verdicts: { PLAN_REVIEW: 'must-fix', DECISION_REVIEW: 'approve', OUTPUT_REVIEW: 'approve' },
+        }),
+      );
+      expect(gate().blocked).toBe(false);
+    });
+  });
+
   it('keeps the legacy any-1-round check when no required-stages file exists', () => {
     fs.writeFileSync(statePath, JSON.stringify({ critique_rounds: 1 }));
     expect(gate().blocked).toBe(false);
