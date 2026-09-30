@@ -91,13 +91,38 @@ function stopHealthMonitor(): void {
   healthTimer = null;
 }
 
+/**
+ * One slow or failed health probe must not stop the fleet. Before 2026-09-30 a
+ * single miss (5 s timeout) marked every lease unavailable and killed every
+ * running session; on prod that happened in bursts whenever OneCLI was busy
+ * serving streaming traffic (133 session stops on 09-29/30, a triage turn lost).
+ * A real outage still fails closed: HEALTH_FAILURES_BEFORE_UNAVAILABLE
+ * consecutive misses, each allowed HEALTH_PROBE_TIMEOUT_MS, ~30 s in all.
+ */
+export const HEALTH_PROBE_INTERVAL_MS = 5_000;
+export const HEALTH_PROBE_TIMEOUT_MS = 10_000;
+export const HEALTH_FAILURES_BEFORE_UNAVAILABLE = 3;
+let consecutiveHealthFailures = 0;
+
 async function probeHealth(): Promise<void> {
   if (probing || liveLeases.size === 0) return;
   probing = true;
   try {
-    const response = await fetch(healthUrl, { signal: AbortSignal.timeout(5_000) });
+    const response = await fetch(healthUrl, { signal: AbortSignal.timeout(HEALTH_PROBE_TIMEOUT_MS) });
     if (!response.ok) throw new Error(`status ${response.status}`);
+    if (consecutiveHealthFailures > 0) log.info('OneCLI health probe recovered', { after: consecutiveHealthFailures });
+    consecutiveHealthFailures = 0;
   } catch (err) {
+    consecutiveHealthFailures++;
+    if (consecutiveHealthFailures < HEALTH_FAILURES_BEFORE_UNAVAILABLE) {
+      log.warn('OneCLI health probe failed; tolerating', {
+        attempt: consecutiveHealthFailures,
+        of: HEALTH_FAILURES_BEFORE_UNAVAILABLE,
+        err,
+      });
+      return;
+    }
+    consecutiveHealthFailures = 0;
     const reason = 'OneCLI gateway unavailable';
     log.error(reason, { err });
     stopHealthMonitor();
@@ -114,7 +139,7 @@ function monitorLease(signal: AbortSignal): Pick<GatewaySessionLease, 'onUnavail
   const lease: { unavailable?: string; notify?: (reason: string) => void } = {};
   liveLeases.add(lease);
   if (!healthTimer) {
-    healthTimer = setInterval(() => void probeHealth(), 5_000);
+    healthTimer = setInterval(() => void probeHealth(), HEALTH_PROBE_INTERVAL_MS);
     healthTimer.unref();
   }
   const close = () => {
