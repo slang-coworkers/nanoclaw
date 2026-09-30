@@ -5,6 +5,26 @@ import type { MessageInRow } from '../db/messages-in.js';
 import { touchHeartbeat } from '../heartbeat.js';
 
 const SCRIPT_TIMEOUT_MS = 30_000;
+// A gate script may ask for a longer budget with a directive in its first lines:
+//   # nanoclaw-task-timeout: 120        (seconds; "120s" also accepted)
+// Clamped to [SCRIPT_TIMEOUT_MS, SCRIPT_MAX_TIMEOUT_MS]. Opt-in and per task: the
+// slang_ci-babysitter full scan (twice a day, ~150 PRs) needs more than 30 s and was
+// killed at every full-scan fire for months (found 2026-09-30).
+export const SCRIPT_MAX_TIMEOUT_MS = 300_000;
+const TIMEOUT_DIRECTIVE = /^#\s*nanoclaw-task-timeout:\s*(\d+)\s*s?\s*$/;
+const DIRECTIVE_SCAN_LINES = 5;
+// While a long script runs, refresh the heartbeat so a legitimately slow gate is
+// never mistaken for a hung container.
+const HEARTBEAT_EVERY_MS = 30_000;
+
+/** Timeout requested by the script's `# nanoclaw-task-timeout: N` directive, clamped; default otherwise. */
+export function scriptTimeoutMs(script: string): number {
+  for (const line of script.split('\n', DIRECTIVE_SCAN_LINES)) {
+    const m = TIMEOUT_DIRECTIVE.exec(line.trim());
+    if (m) return Math.min(SCRIPT_MAX_TIMEOUT_MS, Math.max(SCRIPT_TIMEOUT_MS, Number(m[1]) * 1000));
+  }
+  return SCRIPT_TIMEOUT_MS;
+}
 const SCRIPT_MAX_BUFFER = 1024 * 1024;
 // On timeout the group gets SIGTERM, so a script can trap it and clean up as it could
 // under execFile, then SIGKILL after the grace. 2 s is enough to drop a lock or temp dir
@@ -213,9 +233,16 @@ export async function applyPreTaskScripts(messages: MessageInRow[]): Promise<Tas
       continue;
     }
 
-    log(`running script for task ${msg.id}`);
+    const timeoutMs = scriptTimeoutMs(script);
+    log(`running script for task ${msg.id}${timeoutMs !== SCRIPT_TIMEOUT_MS ? ` (budget ${timeoutMs / 1000}s by directive)` : ''}`);
     touchHeartbeat();
-    const result = await runScript(script, msg.id);
+    const beat = setInterval(touchHeartbeat, HEARTBEAT_EVERY_MS);
+    let result: ScriptResult | null;
+    try {
+      result = await runScript(script, msg.id, timeoutMs);
+    } finally {
+      clearInterval(beat);
+    }
     touchHeartbeat();
 
     if (!result || !result.wakeAgent) {
