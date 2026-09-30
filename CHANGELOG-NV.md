@@ -6,15 +6,36 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 644 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 264 |
-| `nv-slang` | slang project spine, skills, workflows | 166 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 94 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 73 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 649 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 265 |
+| `nv-slang` | slang project spine, skills, workflows | 167 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 95 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 74 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-09-30
+
+### nv-main (5 PRs)
+- **#1793** `Sync nv-main with upstream/main`
+- **#1801** `onecli: tolerate transient health-probe misses instead of stopping every session`
+- **#1803** `metrics+grafana: alert on gateway-driven session stops and tolerated OneCLI probe misses`
+- **#1804** `okf-synthesis: quote the gate's fallback JSON in the documented ncl command`
+- **#1805** `` runner: per-task gate-script budget via `# nanoclaw-task-timeout: N` (30 s default, 300 s cap) ``
+
+### nv-dashboard (1 PRs)
+- **#1795** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#1796** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#1797** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1798** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-09-29
 
