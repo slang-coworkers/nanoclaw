@@ -2,8 +2,8 @@
 title: "Slang Test — Output Assertions and Truncated Runs"
 type: concept
 group: slang-grab-bag
-tags: [slang-test, FileCheck, output-path, result-code, dev-null, OpString, self-match, whole-program, truncated-run, pending-retry, denominator, vacuous-assertion]
-source_count: 5
+tags: [slang-test, FileCheck, output-path, result-code, metallib, success-only-pattern, dev-null, OpString, self-match, whole-program, truncated-run, pending-retry, denominator, vacuous-assertion]
+source_count: 7
 ---
 
 # Slang Test — Output Assertions and Truncated Runs
@@ -17,6 +17,7 @@ This page covers the ways a slang-test run can go **green while asserting nothin
 - **Write `result code = {{0}}`, not `result code = 0`.** Under `-g` the IR dump embeds the whole source, so the literal matches its own comment echoed back and passes even when the real exit was 255. `{{N}}` is evaluated as a regex; `{N}` is the inert spelling.
 - **The IR dump / `OpString` self-match is the same family** — the whole source, including your `//CHECK` lines, lands in the dump, so a `CHECK-NOT` or positive `CHECK-DAG` can match its own echoed comment with no real instruction present. Break the literal and anchor on the opcode.
 - **Never count with a bare `grep -c '<Op>'`** — it counts your own comment lines echoed in the `OpString`. Use `grep -cE 'OpExtInst.*<Op>'`.
+- **`//TEST:SIMPLE(filecheck=…)` never checks the result code.** Downstream compilers (metallib) quote the source line in their errors, so `LIB: computeMain` matches a failed compile. Use a success-only pattern (`define void @computeMain`) or assert `result code = {{0}}`.
 - **Reproduce the Windows `-o /dev/null` failure on Linux with `-dump-ir -o /nonexistent-dir/out.spv`** — same `E00004`, exit 255, IR still dumped, test still green. That is the negative control for any `result code` assertion.
 - **`slang-test` reports `100% of tests passed (264/264)` on a run TRUNCATED by its consecutive-failure breaker** — disqualifying failures never *enter* the total (`PendingRetry` prints before `m_totalTestCount++`), so the percentage is arithmetically true and answers a different question.
 - **The percentage prints to stdout while the bail notice `fprintf(stderr,…)`s**, so `cmd 2>/dev/null | grep '% of tests passed'` discards the disqualifying fact by construction.
@@ -44,7 +45,13 @@ The **validated** safe pattern — proven on real output in both directions, not
 - **`slang-test`'s process exit code as a pass/fail signal** — it returned **0 on a FAILED test**, and exits 0 even with failing tests in a truncated run. Parse the `FAILED test:` / `% of tests passed` / `failed(pending retry)` lines, never `$?`.
 - **"6 tests committed" as a coverage figure** — narrowed in place under *DIAGNOSTIC_TEST Caret Alignment* in [part 2](slang-misc-test-harness-2.md): count assertion-bearing tests only (3 of the 6 files), and name the single discriminating case rather than letting a file count stand in for power.
 
-**Source learnings (5):**
+## SIMPLE+filecheck never gates on the result code: downstream-compile checks need success-only patterns
+
+A `//TEST:SIMPLE(filecheck=X): -target metallib` test passes whenever its pattern matches anywhere in the FileCheck buffer, whatever the compile returned. In `tools/slang-test/slang-test-main.cpp`, `runSimpleTest` calls `_validateOutput(..., forceFailure=false, ...)`, and the FileCheck branch returns `_fileCheckTest(...)` without reading `result code` (~989-991, 3234-3238). Downstream compiler errors quote the offending source line (Metal goes through the GCC-style diagnostic parser), so a weak pattern such as `// LIB: computeMain` also matches the error output for a *rejected* kernel signature, and the test goes green on a failed compile. Use a pattern that can only appear in successful output: `// METALLIB: define void @computeMain` (`tests/metal/simple-compute.slang:22`, `barrier.slang:8`) or a lowered intrinsic name such as `sample_compare_depth_2d`. The same caution applies to every SIMPLE directive meant to prove a downstream compile succeeded: a green macOS "metallib passed" line is not proof unless the pattern appears only in successful output. Found on slang PR #12294 R2, where the R1 report had relayed the weak evidence as proof ([SIMPLE+filecheck never gates on the result code; metallib `LIB: computeMain` passes on a failed compile](../learnings/1790702677475-slang-test-simple-filecheck-never-gates-on-the-res.md), [SIMPLE+FileCheck ignores the compile result: use success-only patterns (slang-reviewer, #12294)](../learnings/1790704590796-slang-test-simple-filecheck-ignores-the-compile-re.md)). This is the same gap as the `CHECK-NOT`-only case on [slang-b-test-harness](slang-b-test-harness.md): pair every FileCheck with positive evidence of success, either a success-only pattern or a `result code = {{0}}` line as above.
+
+**Source learnings (7):**
+- [SIMPLE+filecheck never gates on the result code, so a metallib `LIB: computeMain` check passes on a failed compile; use `define void @computeMain` (#12294 R2)](../learnings/1790702677475-slang-test-simple-filecheck-never-gates-on-the-res.md)
+- [SIMPLE+FileCheck ignores the compile result; downstream errors quote the source line, so use success-only patterns (slang-reviewer, #12294)](../learnings/1790704590796-slang-test-simple-filecheck-ignores-the-compile-re.md)
 - [FileCheck tests that pass without testing anything: bounded `CHECK-NOT` + `-g2` `OpString` self-match; never count with bare `grep -c '<Op>'` (#10918)](../learnings/1785779116844-filecheck-tests-that-pass-without-testing-anything.md)
 - [dump-based FileCheck tests need `-o -` and an explicit `result code = 0` — `-o /dev/null` is Windows-invalid and passes on a failing compile (#12281, pdeayton-nv)](../learnings/1785775051459-dump-based-filecheck-tests-need-o-and-an-explicit-.md)
 - [never use `-o /dev/null` in slang tests (corrects the "idiomatic pattern" note; #12333/PR #12334); `-g` makes `result code = 0` self-match — use `result code = {{0}}`; dropping `-o` flips `-whole-program`](../learnings/1785787436624-never-use-o-dev-null-in-slang-tests-and-g-makes-re.md)

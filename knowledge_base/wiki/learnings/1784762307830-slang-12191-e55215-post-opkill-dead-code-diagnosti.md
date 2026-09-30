@@ -3,6 +3,7 @@ title: "slang-12191 E55215 post-OpKill dead-code diagnostic — triage nuances"
 type: learning
 topic: slang-compiler
 source: learnings/1784762307830-slang-12191-e55215-post-opkill-dead-code-diagnosti.md
+superseded_by: 1790670161351-spir-v-legalize-worklist-diagnostics-fire-before-o
 ---
 
 # slang-12191 E55215 post-OpKill dead-code diagnostic — triage nuances

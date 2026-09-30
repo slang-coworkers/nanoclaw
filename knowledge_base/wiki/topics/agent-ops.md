@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-766 learnings. [Catalog](../index.md)
+772 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -190,6 +190,7 @@ type: topic
 - [Bot content from a human account defeats non-bot detection — gate on authorship and ordering, not account type](../learnings/1786451957401-bot-content-from-a-human-account-defeats-non-bot-d.md)
 - [Bot enqueuePullRequest blocked for ALL PRs, not just forks](../learnings/1782260121429-bot-enqueuepullrequest-blocked-for-all-prs-not-jus.md)
 - [Bot GH_TOKEN is invalid in coworker containers — post/edit GitHub comments via the onecli-gateway (curl to api.github.com), not gh](../learnings/1789715347678-bot-gh-token-is-invalid-in-coworker-containers-pos.md)
+- [Bot-authored PR regressions route to parent, not "author attention"](../learnings/1790734170020-bot-authored-pr-regressions-route-to-parent-not-au.md)
 - [Bot/coworker PRs stay draft — ready-flip & merge are maintainer/operator-gated](../learnings/1787344144243-bot-coworker-prs-stay-draft-ready-flip-merge-are-m.md)
 - [Branch name fix/issue-N on an external fork can fool "ours" PR classification](../learnings/1780903498636-branch-name-fix-issue-n-on-an-external-fork-can-fo.md)
 - [Bucket a stalled merge queue by asking whether the failing gate is REQUIRED](../learnings/1785997166793-bucket-a-stalled-merge-queue-by-asking-whether-the.md)
@@ -200,6 +201,7 @@ type: topic
 - [Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to](../learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md)
 - [Check a citation separately from the conclusion it decorates](../learnings/1786066006766-check-a-citation-separately-from-the-conclusion-it.md)
 - [Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)](../learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md)
+- [Check that a fixer's promised diagnostic landed: git log -S across the PR, including older open maintainer threads](../learnings/1790721272121-check-that-a-fixer-s-promised-diagnostic-landed-gi.md)
 - [CI babysitter: push-gated skip for stuck 'legitimate' PRs, plus escaped.sh backslash-escaping gotcha](../learnings/1790282099711-ci-babysitter-push-gated-skip-for-stuck-legitimate.md)
 - [CI sweep script: action_required conclusion needed its own blocked-check branch, not just BLOCKED_STATUS](../learnings/1790036749012-ci-sweep-script-action-required-conclusion-needed-.md)
 - [CI-gate levers rank by failure DIRECTION, not completeness — de-gate fails OPEN](../learnings/1786522092980-ci-gate-levers-rank-by-failure-direction-not-compl.md)
@@ -252,6 +254,7 @@ type: topic
 - [CONSOLIDATED: GitHub auth & ops in agent containers (gh probes lie; use org-scoped REST / raw token)](../learnings/1780558152381-CONSOLIDATED-github-auth-and-ops-in-agent-containers.md)
 - [Container reset can corrupt submodule working trees → configure fails at add_subdirectory](../learnings/1784324456149-container-reset-can-corrupt-submodule-working-tree.md)
 - [Container restarts wipe the fixer worktree — commit+push before any restart-risk, and re-verify branch state on resume](../learnings/1788355023814-container-restarts-wipe-the-fixer-worktree-commit-.md)
+- [Container stops when the turn ends — keep long review jobs in-turn](../learnings/1790686802018-container-stops-when-the-turn-ends-keep-long-revie.md)
 - [Content lives where its author looked, not where its reader will look — a rule in a draft's rationale is not in the draft's output, and a gate's disqualifying case must be written before the gate is claimed](../learnings/1785974071533-content-lives-where-its-author-looked-not-where-it.md)
 - [Context-inheriting Agent forks can no-op on long build/verify work — use a detached script + Monitor](../learnings/1782224927601-context-inheriting-agent-forks-can-no-op-on-long-b.md)
 - [Contributor PR offers get a brief warm yes, not a triage dump](../learnings/1783439199713-contributor-pr-offers-get-a-brief-warm-yes-not-a-t.md)
@@ -285,6 +288,7 @@ type: topic
 - [CORRECTION: the critique gate blocks composed multi-field jq, NOT read-only gh api](../learnings/1785781643460-correction-the-critique-gate-blocks-composed-multi.md)
 - [CORRECTION: the session-row census DOES work — use `--full`; my earlier "void instrument" note is wrong and would retire a working method](../learnings/1786046641971-correction-the-session-row-census-does-work-use-fu.md)
 - [CORRECTION: to mint a fresh coworker session, dispatch on a NEW thread_id (sub-thread) — the canonical thread always reuses the existing session](../learnings/1789146870261-correction-to-mint-a-fresh-coworker-session-dispat.md)
+- [Counting unresolved PR review threads: include isOutdated=true, classify by first author](../learnings/1790717452750-counting-unresolved-pr-review-threads-include-isou.md)
 - [Coworker memory/ is best-effort: reap-restore wipes in-session dossiers; okf-synthesis relocates issue memos to issues/](../learnings/1789187760131-coworker-memory-is-best-effort-reap-restore-wipes-.md)
 - [Coworker OKF memory trees are not git-tracked; memo-write path is spine-baked](../learnings/1789188194373-coworker-okf-memory-trees-are-not-git-tracked-memo.md)
 - [Coworkers can't self-suppress the supervisor re-wake — disposition lives in the Orchestrator's state file](../learnings/1789416255279-coworkers-can-t-self-suppress-the-supervisor-re-wa.md)
@@ -303,6 +307,7 @@ type: topic
 - [critique gate hit names the surface reason names the defect and the off diagonal cell rule](../learnings/1785821641484-critique-gate-hit-names-the-surface-reason-names-t.md)
 - [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
 - [Critique gate re-arms on ANY file write between approve and delivery — even a heredoc gh-comment body](../learnings/1788259463864-critique-gate-re-arms-on-any-file-write-between-ap.md)
+- [critique gate: Attested hashes in backticks are silently not recorded](../learnings/1790724661749-critique-gate-attested-hashes-in-backticks-are-sil.md)
 - [Critique-gate ([Resolution]/PR delivery) only counts codex calls in the exact codex-critique format](../learnings/1790016287155-critique-gate-resolution-pr-delivery-only-counts-c.md)
 - [critique-gate and PR-body-file interaction traps](../learnings/1787821097042-critique-gate-and-pr-body-file-interaction-traps.md)
 - [Critique-gate approve expires if codex attests volatile session-trace files](../learnings/1787684241707-critique-gate-approve-expires-if-codex-attests-vol.md)
@@ -585,6 +590,7 @@ type: topic
 - [Relaxing a shared FileStream gate: audit every writer for seeks; getPathType FAILS for FIFOs](../learnings/1790646938428-relaxing-a-shared-filestream-gate-audit-every-writ.md)
 - [Release-asset asymmetry from moving a CI leg into a no-sudo container (verify exact failing command, not disk/transient)](../learnings/1782845136368-release-asset-asymmetry-from-moving-a-ci-leg-into-.md)
 - [Relocating a gate: substituting an accessor can silently swap the OBJECT](../learnings/1786114268925-relocating-a-gate-substituting-an-accessor-can-sil.md)
+- [Report up right after push+CI dispatch; don't gate the report on a long CI watch](../learnings/1790669062658-report-up-right-after-push-ci-dispatch-don-t-gate-.md)
 - [report_pr_created binds the CALLING session — open the PR from the fix thread, not a chat](../learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md)
 - [report_pr_created remaps the PR to the CALLING session](../learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md)
 - [rerun-log.jsonl verdict for gate-wedged entries must be 'intermittent', not 'unclassifiable'](../learnings/1790469245380-rerun-log-jsonl-verdict-for-gate-wedged-entries-mu.md)

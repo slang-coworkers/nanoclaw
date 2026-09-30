@@ -3,7 +3,7 @@ title: "Slang formatting.sh: false-greens, tool install, and safe scoping"
 type: concept
 group: slang-tooling
 tags: [formatting, clang-format, gersemi, shfmt, prettier, ci, false-green, worktree]
-source_count: 11
+source_count: 12
 ---
 
 ## TL;DR
@@ -23,9 +23,14 @@ prints a diff you never see) in exactly the states where it has verified nothing
   the max as exclusive: `[17, 18)`. The repo/copilot docs saying "17-18" are wrong; 18.x
   fails. Install `clang-format==17.0.6` via pip/venv; the npm package ships v15 (rejects the
   repo `.clang-format`) — never use it.
-- **clang-format is often present as `clang-format-17`, unsymlinked.** `formatting.sh` calls
-  bare `clang-format`, skips C++, and prints a false "needs clang-format". Symlink it or run
+- **clang-format is often present as `clang-format-17`, unsymlinked** (the expected
+  `slang-fixer` container shape). `formatting.sh` looks up bare `clang-format` and stops with
+  "needs clang-format". Shim it into a writable dir with no install:
+  `mkdir -p /tmp/cf17 && ln -sf /usr/bin/clang-format-17 /tmp/cf17/clang-format` then
+  `PATH=/tmp/cf17:$PATH ./extras/formatting.sh --check-only --cpp`, or run
   `/usr/bin/clang-format-17 -i` / `--dry-run --Werror` directly.
+- **An edit after a critique approve needs a fresh `mcp__codex__codex` round.** A
+  `codex-reply` follow-up carries no developer-instructions, so the gate does not record it.
 - **pip-installed tools vanish across a container restart.** An earlier real green does not
   survive; re-verify every session.
 - **Local gersemi/clang-format can flag pristine master.** A version/lark mismatch with CI
@@ -115,13 +120,16 @@ every fresh session
 Second, clang-format is frequently **already present but unsymlinked** — the binary lives at
 `/usr/bin/clang-format-17` (and `/usr/lib/llvm-17/bin/clang-format`) but not as bare
 `clang-format`, so `formatting.sh` skips C++ and prints a false "needs clang-format". Don't
-conclude formatting is impossible; symlink it into a writable dir (`/usr/local/bin` is not
-writable and sudo is blocked) or run the binary directly
-[clang-format-17 present, unsymlinked](../learnings/1788909076727-clang-format-17-present-but-not-symlinked-delivery.md):
+conclude formatting is impossible; shim it into a writable dir (`/usr/local/bin` is not
+writable and sudo is blocked) so the script itself runs, or run the binary directly
+[clang-format-17 present, unsymlinked](../learnings/1788909076727-clang-format-17-present-but-not-symlinked-delivery.md),
+[shim clang-format-17 as `clang-format`](../learnings/1790692417192-formatting-sh-needs-a-clang-format-binary-name-shi.md):
 
 ```bash
-/usr/bin/clang-format-17 -i source/slang/foo.cpp                    # reflow in place
-/usr/bin/clang-format-17 --dry-run --Werror source/slang/foo.cpp    # exit 0 = clean
+mkdir -p /tmp/cf17 && ln -sf /usr/bin/clang-format-17 /tmp/cf17/clang-format
+PATH=/tmp/cf17:$PATH ./extras/formatting.sh --check-only --cpp       # the script, unmodified
+/usr/bin/clang-format-17 -i source/slang/foo.cpp                    # or: reflow in place
+/usr/bin/clang-format-17 --dry-run --Werror source/slang/foo.cpp    # or: exit 0 = clean
 ```
 
 This unsymlinked-`clang-format-17` state has now been measured on multiple prod containers (again on
@@ -134,12 +142,16 @@ silently skipped — only touch those files if you can format them), while `pret
 md/yaml/json
 ([clang-format-17 present but bare clang-format absent — `formatting.sh` silently skips C++](../learnings/1788947866097-clang-format-absent-but-clang-format-17-present-ba.md)).
 
-The same atom records a coworker-runtime interaction worth knowing: after a codex OUTPUT_REVIEW
+The same atoms record a coworker-runtime interaction worth knowing: after a codex OUTPUT_REVIEW
 `approve`, **any** further edit — even a comment-only clang-format reflow — invalidates the
-`### Attested` hashes and the `gate-critique-on-deliver` hook blocks the report send. The
-working sequence is: edit → `codex-reply` on the same threadId to re-attest → commit and push
-so HEAD matches the reviewed worktree → then send
+`### Attested` hashes and the `gate-critique-on-deliver` hook blocks the report send
 [delivery-gate re-hash](../learnings/1788909076727-clang-format-17-present-but-not-symlinked-delivery.md).
+The re-attest must be a **fresh `mcp__codex__codex` call with the canonical `/codex-critique`
+block**: a `codex-reply` on the same threadId carries no developer-instructions, so the gate
+prints "Critique round NOT recorded" and the block stands (this supersedes the older atom's
+"`codex-reply` to re-attest" step). The working sequence is: edit → fresh codex OUTPUT_REVIEW →
+commit and push so HEAD matches the reviewed worktree → then send
+[codex-reply is not recorded](../learnings/1790692417192-formatting-sh-needs-a-clang-format-binary-name-shi.md).
 
 ## Distinguishing PR drift from pre-existing drift (version mismatch)
 
@@ -192,7 +204,7 @@ yours), avoid bare `git add -A`, and evict a stray file by restoring it to the c
 parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- <file>`
 (origin/master may have advanced, reintroducing it as a spurious modification).
 
-**Source learnings (11):**
+**Source learnings (12):**
 - [clang-format for slang: 17.x ONLY (repo docs say 17-18 and are wrong) — install via venv](../learnings/1786381193362-clang-format-for-slang-17-x-only-repo-docs-say-17-.md) — The `[17,18)` bound, the PEP-668 venv install, and two positive-control traps (`--check-only` exit 0 masks a silent no-op; type flags narrow the file set to 5 extensions).
 - [formatting.sh --check-only exits 0 when its tools are missing — a green that checked nothing](../learnings/1786424195348-formatting-sh-check-only-exits-0-when-its-tools-ar.md) — On slang#12454 all four formatters were absent; the grep-for-missing-tool-lines gate, plus the same-session `xxd`-missing false negative.
 - [slang formatting.sh --check-only EXITS 0 WHILE CHECKING NOTHING — and pip clang-format vanishes across a restart](../learnings/1786424384200-slang-formatting-sh-check-only-exits-0-while-check.md) — Two-container measurement; the require-both-exit-0-and-zero-missing gate; the `[17,18)` bound; the install disappearing later the same day.
@@ -204,3 +216,4 @@ parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- 
 - [gersemi 0.21.0 flags pristine slang master — normalize-and-diff to isolate the PR's true CMake delta](../learnings/1788904511298-gersemi-0-21-0-flags-pristine-slang-master-normali.md) — Local lark mismatch flags unchanged master; pass full `--definitions`; format-both-and-diff; don't commit an `--in-place` reflow from a mismatched tool.
 - [clang-format-17 present but not symlinked; delivery-gate re-hashes after comment reflow](../learnings/1788909076727-clang-format-17-present-but-not-symlinked-delivery.md) — Binary at `/usr/bin/clang-format-17` unsymlinked → false "needs clang-format"; run directly; a comment >100 cols fails CI; a post-approve edit re-arms the codex attest gate.
 - [clang-format-17 present but bare clang-format absent — formatting.sh silently skips C++ (slang-fixer container)](../learnings/1788947866097-clang-format-absent-but-clang-format-17-present-ba.md) — recurs across prod containers; run `clang-format-17 -i --style=file`; bare no-args no-ops; gersemi/shfmt also absent, prettier present.
+- [formatting.sh needs a bare `clang-format` name — shim clang-format-17 via a /tmp symlink; codex-reply rounds are not recorded by the critique gate](../learnings/1790692417192-formatting-sh-needs-a-clang-format-binary-name-shi.md)

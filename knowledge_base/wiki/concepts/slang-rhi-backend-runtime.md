@@ -2,13 +2,13 @@
 title: "slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling"
 type: concept
 group: slang-backends
-tags: [slang-rhi, vulkan, cuda, buffer, vkqueue, staging-heap, readback, lifetime, pooling]
-source_count: 7
+tags: [slang-rhi, vulkan, cuda, buffer, vkqueue, staging-heap, readback, lifetime, pooling, entry-point-rename, E40100, submodule]
+source_count: 8
 ---
 
 # slang-rhi backend runtime internals
 
-`slang-rhi` is the graphics-abstraction runtime library (Vulkan / D3D12 / CUDA / Metal / WGPU backends) vendored as a submodule and exercised by slang-test's `render-test`. This page collects source-verified facts about its **runtime** internals — buffer/queue lifetime, the CUDA constant-buffer pool, and staging-heap pooling — as distinct from the compiler's target emit (the `slang-backends-*` pages) and from slang-rhi test/build authoring ([Slang & slang-rhi test harness](slang-a-test-harness.md)). Facts below were source-verified at HEAD `e17f6d7` unless noted.
+`slang-rhi` is the graphics-abstraction runtime library (Vulkan / D3D12 / CUDA / Metal / WGPU backends) vendored as a submodule and exercised by slang-test's `render-test`. This page collects source-verified facts about its **runtime** internals — buffer/queue lifetime, the CUDA constant-buffer pool, CUDA entry-point name lookup, and staging-heap pooling — as distinct from the compiler's target emit (the `slang-backends-*` pages) and from slang-rhi test/build authoring ([Slang & slang-rhi test harness](slang-a-test-harness.md)). Facts below were source-verified at HEAD `e17f6d7` unless noted.
 
 ## TL;DR
 
@@ -19,6 +19,7 @@ source_count: 7
 - **StagingHeap ReadBack pages are `HOST_VISIBLE | HOST_COHERENT`, NOT `HOST_CACHED`** — don't claim "faster CPU reads" for readback staging (that is the separate `IHeap`/`HeapImpl` path). `StagingHeap::map` returns an *offset-advanced* pointer; `memcpy` directly, no manual offset math.
 - **To prove pooling in a GPU test, use a fresh device (`DontCacheDevice`).** Cached devices retain one standard page, so `getNumPages()>=1` after a read does not distinguish pooled from transient. A fresh heap starts at 0 pages; `0→1` after the first read is the definitive discriminator.
 - **Tie a pooled staging allocation's lifetime to GPU completion, not RAII scope-exit.** `commandList->retainResource(handle)` holds it in the command buffer's tracked set until *retirement* (`CommandBuffer::reset`), so a post-submit `waitOnHost` failure keeps a possibly-in-flight page owned instead of returning it to the pool. Use `RefPtr<StagingHeap::Handle>` (`allocHandle`), never bare alloc/free — that leaks on any post-alloc `SLANG_RETURN_ON_FAIL` and trips the `m_totalUsed==0` teardown assert.
+- **A CUDA `cuModuleGetFunction … NOT_FOUND` at pipeline creation: grep the log for E40100 first.** Slang renames an entry point named `main` to `main_0`, and the RHI appears to look up the original name. slang-rhi squash-merges, so re-pin a submodule that points at a PR head once the PR merges.
 - **Overflow-safe range check:** never form `offset + size` (both are `size_t`, it wraps). Validate `offset > desc.size` first, then `size > desc.size - offset`.
 
 ## Vulkan buffer and queue lifetime
@@ -43,7 +44,12 @@ The **correct** way to free a pooled staging allocation is completion-coupled, n
 
 **For a Slang examples/sample-app fix of a Vulkan dynamic-rendering format-mismatch VUID, do NOT credit "the VUID is left to CI to catch" — CI cannot observe it.** Two independent reasons (PR #13127, colorTarget.format vs attachment format): slang-rhi surface/swapchain/format tests skip on headless CI at the `hasMonitor()` guard (green CI only compiles the surface path, never runs it), and the examples' offline/test CI path runs with the Vulkan validation layer DISABLED (`enableValidation = !isTestMode()`) — plus examples are skipped on Vulkan platforms. Such a fix is verified BY CONSTRUCTION + compile/link, not by any CI gate; state that honestly in the verdict rather than repeating the PR body's "left to CI." Reviewer A reached the same conclusion independently by reading `enableValidation = !isTestMode()`. For format bugs, follow the value to the actual VkImageCreateInfo/VkSwapchainCreateInfoKHR/ColorTargetDesc.format field — don't trust the getter name alone. ([Vulkan VUID in Slang examples: 'left to CI' is not a real gate — validation is OFF in offline CI](../learnings/1789564810840-vulkan-vuid-in-slang-examples-left-to-ci-is-not-a-.md))
 
-**Source learnings (7):**
+## CUDA pipeline creation: an entry point named `main` is renamed `main_0` (E40100)
+
+Consider a slangpy compute kernel declared `[shader("compute")] void main()` and dispatched on CUDA. In slangpy#1189 CI (2026-09-29) this failed at pipeline creation with `cuModuleGetFunction … CUDA_ERROR_NOT_FOUND named symbol not found` (slang-rhi `src/cuda/cuda-pipeline.cpp:89`). Slang had logged `warning[E40100]: entry point 'main' has been renamed to 'main_0'`, and the nine warnings matched the nine failures one for one. The working hypothesis, not yet verified with coverage off, is that the RHI looks up the entry point by its original name while the CUDA module exports the renamed symbol. When triaging a CUDA "named symbol not found", grep the log for E40100 first. Existing slangpy tests that use `void main` only load modules and never create a CUDA pipeline, so they do not catch this. A related submodule fact from the same work: slang-rhi squash-merges (single-parent commits on main), so a slangpy submodule pinned to an open slang-rhi PR head must be re-pinned to the squash commit once that PR merges ([CUDA: entry point `main` renamed to `main_0` (E40100) → cuModuleGetFunction NOT_FOUND](../learnings/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md)).
+
+**Source learnings (8):**
+- [CUDA entry point `main` is renamed `main_0` (E40100) and pipeline creation fails with `cuModuleGetFunction` NOT_FOUND (hypothesis: RHI looks up the original name); slang-rhi squash-merges, so re-pin submodules after merge](../learnings/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md)
 - [Guarding a public getter that RHI calls internally (getDeviceAddress, #787) breaks internal uses — split a public-guarded entry from an internal-unchecked accessor; preserve `base ? base+offset : 0`](../learnings/1790032907874-guarding-a-public-getter-that-rhi-calls-internally.md)
 - [Vulkan VUID in Slang examples: 'left to CI' is not a real gate — hasMonitor() skip + validation OFF (enableValidation=!isTestMode()); such fixes are verified by construction](../learnings/1789564810840-vulkan-vuid-in-slang-examples-left-to-ci-is-not-a-.md)
 

@@ -3,6 +3,7 @@ title: "Sweep thread backpressure — rotate thread_id, don't guess in_reply_to"
 type: learning
 topic: misc
 source: learnings/1788168500995-sweep-thread-backpressure-rotate-thread-id-don-t-g.md
+superseded_by: 1790695479456-slang-discord-heartbeat-don-t-mint-fresh-thread-id
 ---
 
 # Sweep thread backpressure — rotate thread_id, don't guess in_reply_to

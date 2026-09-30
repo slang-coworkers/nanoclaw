@@ -3,7 +3,7 @@ title: "Slang markdown & generated docs: prettier is unenforced, generators own 
 type: concept
 group: slang-tooling
 tags: [markdown, prettier, generated-docs, ci, slangc-help, byte-exact, docs]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -22,8 +22,14 @@ PR red or balloons a minimal diff into a rejected reformat.
   reviewers reject. Prove your edit is *formatting-neutral* by diffing
   `prettier(HEAD:file)` vs `prettier(working file)`; only your added lines should differ.
 - **Version drift makes the raw diff-line count unreliable.** CI pins `prettier@3.3.3`; local
-  installs (3.9.6, or even 3.3.3 via a different install path) reformat differently. The
-  line-local delta comparison is the robust signal, not the count.
+  installs (3.9.6/3.9.9, or even 3.3.3 via a different install path) reformat differently and
+  give false "dirty" results. Install 3.3.3 into `/tmp` and put it first on `PATH` before any
+  `--md` check; the line-local delta comparison is the robust signal, not the count. Where a
+  generated README is non-conformant on master even under 3.3.3, make a minimal padded edit
+  rather than reformatting the file.
+- **A `docs/generated/tests` bundle's `_prompt.md` can contradict its own tests** ("do not
+  test X", "compute-only"). Fix the prompt when you touch the bundle, or regeneration fights
+  the tests.
 - **Generated docs have a generator, not a formatter, as their source of truth.**
   `docs/command-line-slangc-reference.md` is produced by `slangc -help-style markdown -h` and
   CI (`check-cmdline-ref`) does a **byte-exact diff** against the committed file. The
@@ -92,6 +98,12 @@ The **version-drift caveat** is why the count is untrustworthy: local prettier 3
 of an old doc to rewrite, so the raw diff-line count is not a pass/fail signal — the
 line-local comparison is
 [version drift](../learnings/1787178316113-slang-docs-markdown-is-pre-existing-prettier-nonco.md).
+The container's default `prettier` is now 3.9.9, so to check with CI's version install the pin
+locally — `cd /tmp && npm install prettier@3.3.3`, put `/tmp/node_modules/.bin` first on `PATH`,
+then `extras/formatting.sh --check-only --md -- <files>`. Even under 3.3.3 some generated READMEs
+(e.g. `docs/generated/design/target-pipelines/hlsl/README.md`) already fail on master; for those
+make a minimal padded edit that matches the surrounding lines instead of a 200-line reformat
+[prettier 3.3.3 pin for a stale docs/generated/tests retarget](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md).
 Note also that `formatting.sh --md -- FILE` won't help locally: it gates on *every* tool
 being present (clang-format/gersemi/shfmt too) and exits early listing missing tools even for
 a markdown-only invocation
@@ -157,7 +169,17 @@ That atom also warns that `strings <binary> | grep "<phrase>"` can return 0 even
 help-string change *is* in the binary (the C++ compiler re-chunks adjacent string literals);
 confirm with `slangc -h | grep "<phrase>"`, which is authoritative.
 
-**Source learnings (9):**
+The agentic test bundles under `docs/generated/tests/` have the same owner problem one level
+up: each bundle is regenerated from its `_prompt.md` checklist, and lines like "Do not test X"
+or "compute-only / no DXR" can contradict tests the bundle already has. When a compiler change
+makes a bundle's tests stale (nightly 36520729454 → slang#13311 / PR #13312, after #13071's
+WGSL `loop` and #13256's empty ray-payload legalization), retarget the tests *and* fix the
+prompt, or the next regeneration fights them. The retargeting rule itself (check the
+invariant, not the new spelling) is on
+[the test-authoring page](slang-tooling-f0909b0-test-authoring-filecheck.md#vacuous-and-confounded-checks)
+[stale docs/generated/tests retarget](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md).
+
+**Source learnings (10):**
 - [A generated doc checked byte-exact by CI must NOT be run through prettier — and CI's formatting.sh never reaches markdown](../learnings/1786409326017-a-generated-doc-checked-byte-exact-by-ci-must-not-.md) — Two conflicting contracts on `command-line-slangc-reference.md`; the trailing-space generator output; regenerate from your own build after a merge (empty diff = proof).
 - [slang formatting.sh does NOT check markdown in CI's run_all path](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md) — The `((run_markdown))` dispatch asymmetry; 237/413 `docs/generated/**` `.md` fail prettier@3.3.3 on master while CI is green; only make authored lines conformant.
 - [formatting.sh --check-only SKIPS markdown (run_markdown not gated by run_all)](../learnings/1786987129465-formatting-sh-check-only-skips-markdown-run-markdo.md) — The full dispatch block; normalize-both-and-diff to prove a docs edit is neutral; fenced code blocks pass through verbatim; draft PRs skip check-formatting.
@@ -167,3 +189,4 @@ confirm with `slangc -h | grep "<phrase>"`, which is authoritative.
 - [slangc help-DB autolinks option-name tokens — never name a flag inside its own help text](../learnings/1787705364348-slangc-help-db-autolinks-option-name-tokens-never-.md) — Rebuild+regenerate mandatory after a help-string edit; naming the current flag links to a nonexistent `-1` anchor; `strings | grep` can false-negative, use `slangc -h | grep`.
 - [Slang docs/user-guide markdown is pre-existingly non-prettier-clean — never reflow it for a small edit](../learnings/1788849134395-slang-docs-user-guide-markdown-is-pre-existingly-n.md) — ~83 whole-file changes on `03-convenience-features.md`; verify count identical before/after; `formatting.sh --md -- FILE` still gates on all tools present.
 - [prettier --write churns Slang user-guide markdown (setext→ATX) — never blanket-format a doc](../learnings/1789652649573-prettier-write-churns-slang-user-guide-markdown-se.md) — setext headings get rewritten to ATX across untouched sections; revert unrelated churn; formatters are `clang-format-17` not on PATH, so `--check-only` exits 1 on tool-missing not real errors.
+- [Stale docs/generated/tests retarget: prettier 3.3.3 pin, closing-keyword trap, invariant CHECKs](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md) — install prettier@3.3.3 in /tmp for `--md` checks; fix a bundle's contradictory `_prompt.md` when retargeting its tests.

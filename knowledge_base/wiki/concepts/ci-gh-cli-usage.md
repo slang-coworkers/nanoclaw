@@ -3,7 +3,7 @@ title: "gh CLI Usage & PR/Issue Mechanics"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, pr, issues, workflow, bot-process, slang]
-source_count: 18
+source_count: 21
 ---
 
 # gh CLI Usage & PR/Issue Mechanics
@@ -15,8 +15,8 @@ Concrete pitfalls and correct patterns for using the `gh` CLI in the Slang proje
 > **This page is part 1 of the gh CLI Usage & PR/Issue Mechanics synthesis** (split 2026-08-07, re-split 2026-08-17 to stay under the 40 KB read cap). Siblings: [part 2](ci-gh-cli-usage-2.md), [part 3](ci-gh-cli-usage-3.md), [part 4 — instrument-lie incident folds](ci-gh-cli-usage-4.md). The TL;DR below is shared across all parts.
 
 ## TL;DR
-- **`gh search` is not an existence or merge oracle.** `gh search prs`/`issues` have index lag and return false zeroes; `is:merged` returns 0 while PRs demonstrably merge. Use the timeline, `closingIssuesReferences`, a `--head fix/issue-<n>` list, or a direct `pulls/<n>` read.
-- **A PR title containing `Fix #N` does not auto-close anything** — GitHub honors the keyword only in the PR **body** (or a manual Development-panel link). Verify with `gh pr view <pr> --json closingIssuesReferences`, never a body regex (the `owner/repo#N` long form defeats a naive pattern).
+- **`gh search` is not an existence or merge oracle.** `gh search prs`/`issues` have index lag and return false zeroes; `is:merged` has returned 0 while PRs demonstrably merge, and `is:unmerged` returned 0 even for known closed-unmerged PRs. Use the timeline, `closingIssuesReferences`, a `--head fix/issue-<n>` list, or a direct `pulls/<n>` read; for a period census, take the complete `is:merged merged:>=<ts>` list cross-checked against master commits since `<ts>`, and treat anything outside it as not merged.
+- **A closing keyword can hide in the PR title or in body prose.** shader-slang/slang squash-merges with the PR title as the commit title, so a title `Fix #N: …` lands on master as a closing keyword; body prose like "(#A, which fixes #B)" also links #B. When a PR only partly fixes an issue, retitle it and reword the body, then re-check `gh pr view <pr> --json closingIssuesReferences` (never a body regex; the `owner/repo#N` long form defeats one). If #N is still listed, it is a manual Development link that needs triage rights to remove.
 - **`gh issue view --comments` can print nothing at exit 0** — a renderer quirk, not an auth failure. Read `gh api .../issues/<n>` and `.../issues/<n>/comments` instead.
 - **Never cite an env var, CLI flag, or command name you have not verified** via `--help`/`man`/repo grep. It is a high-frequency hallucination surface and a fabricated knob name is unrecoverable for the reader.
 - **Pushing commits to a `fix/issue-*` branch is not a user-facing write** and needs no per-push approval. The gated set is narrow: PR/issue comments, review replies, reactions, `gh pr ready`, merge.
@@ -36,7 +36,9 @@ Concrete pitfalls and correct patterns for using the `gh` CLI in the Slang proje
 - Branch convention: `gh pr list --repo <r> --head fix/issue-<num>`
 - If the PR number is known: `gh api repos/<r>/pulls/<num>` directly ([gh search prs misses recent/open PRs — don't use it for PR-existence checks](../learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md))
 
-Note: a PR title containing `Fix #N` does NOT auto-close the issue — GitHub only honors `Close(s)/Fix(es)/Resolve(s) #N` in the PR body (or a manual Development-panel link).
+Merge state has the same problem. On 2026-09-29 the slang-mcp `github_search_issues` query `is:pr is:unmerged` returned 0 even for PRs known to be closed unmerged (#13227, #13214). For a "what merged since `<ts>`" census, take the complete `is:merged merged:>=<ts>` list, cross-check it against master's commits since the same `<ts>`, and call anything outside that list unmerged. Never query `is:unmerged` directly ([is:unmerged returns false zeroes](../learnings/1790670087305-github-search-is-unmerged-unreliable-check-run-att.md)).
+
+Note: the PR title is not the only place a closing keyword can come from. See [Checking Closing-Issue Links](#checking-closing-issue-links): on a squash-merge repo the title becomes the master commit title.
 
 ## A Name That Resolves Is Not the Name You Meant
 
@@ -51,6 +53,13 @@ gh pr view <pr> -R <owner>/<repo> --json closingIssuesReferences --jq '[.closing
 ```
 
 Do NOT decide from a body regex. GitHub honors both the short form (`Closes #N`) and the long form (`Closes owner/repo#N`) — a naive `keyword #N` pattern produces false-negatives for the long form. The API call is authoritative ([Check a PR's closing-issue link via gh closingIssuesReferences, not a body regex](../learnings/1780462327680-check-a-pr-s-closing-issue-link-via-gh-closingissu.md)).
+
+Two sources of accidental closing links are easy to miss when a PR is narrowed to a partial fix ("Part of #N, which stays open for the follow-up"):
+
+- **The title.** shader-slang/slang squash-merges with `squash_merge_commit_title=PR_TITLE`, so the PR title becomes the commit title on master, and a closing keyword in a commit that lands on the default branch closes the issue. On #12294 (2026-09-29) the body said "Part of #12291" but the title was still `Fix #12291: …`, and `closingIssuesReferences` was `[12291]`. Editing the body was not enough ([scope-narrowed PR: check the squash title too](../learnings/1790698191466-scope-narrowed-pr-check-closingissuesreferences-sq.md)).
+- **Body prose.** A parenthetical like "(#13071, which fixes #13066)" in the PR body makes GitHub add #13066 to `closingIssuesReferences` (PR #13312). Reword it ("the change requested in #13066") ([closing-keyword trap in body prose](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md)).
+
+After retitling or rewording, re-run the `closingIssuesReferences` query. If #N is still listed, it is a manual Development-panel link, which someone with triage rights must remove.
 
 ## gh issue view --comments Can Return Empty
 
@@ -120,7 +129,7 @@ For the `shader-slang/shader-slang.github.io` Sphinx site using the Furo theme, 
 
 Checking Slang nightly CI health via the **unauthenticated** GitHub Actions API, `GET /repos/shader-slang/slang/actions/runs?event=schedule&per_page=20` returned a **stale cached page** (newest run 08-30) even though nightly runs had executed that morning — it silently looked like nothing ran. It recurred on 2026-09-28: `?event=schedule&per_page=40` served June/July runs of unrelated scheduled workflows (CI Health, Populate sccache), a listing that reads like "latest schedule runs" and is not. The **reliable path is per workflow id**: list `actions/workflows?per_page=100`, keep names containing "nightly"/"cmake options", then read `actions/workflows/<id>/runs?per_page=4` for each. On slang "nightly green" means ALL of them — 8 scheduled nightlies (Slang Test, VKGLCTS, MDL Perf, Remix, Coverage, Sanitizer, Sascha, Falcor) plus the weekly CMake Options run — and in a `created=` filter the `>=` must be URL-encoded as `%3E%3D`, or the unauthenticated API returns non-JSON ([event=schedule run listing is stale — query nightlies per workflow id](../learnings/1790583283909-github-actions-event-schedule-run-listing-is-stale.md)). A cheaper approximation is `GET .../actions/runs?branch=master&per_page=100`, then client-side filter run names containing "Nightly" and take the newest per name (returns current conclusions — Nightly Slang Test / Sascha / Falcor / VKGLCTS / MDL Perf). Caveats: a burst of per-PR runs can consume the 100-run master window and push an infrequent nightly (e.g. `Nightly MDL Perf Test`) out of it — so "no runs found for workflow X in last 100" is NOT "X didn't run" (query that workflow-id's runs endpoint for its own history); and `?status=failure&per_page=N` reliably surfaces in-window failures and distinguishes schedule/master (nightly regressions) from pull_request/workflow_dispatch/merge_group events (per-PR churn, not master regressions) ([GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter for nightly conclusions](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md)).
 
-**Source learnings (18):**
+**Source learnings (21):**
 - [GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md) — unauth event=schedule can be a stale cache; filter master runs by name for nightly conclusions
 
 - [gh search prs misses recent open PRs](../learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md)
@@ -140,5 +149,8 @@ Checking Slang nightly CI health via the **unauthenticated** GitHub Actions API,
 - [[approver/clause-gap] ci_green_on_sha reads only the combined-status endpoint, not Actions check-runs — and the CodeRabbit exit-22 wait-then-reharvest works](../learnings/1784148788488-approver-clause-gap-ci-green-on-sha-reads-only-the.md)
 - [Rerun supersedes attempt-1 logs — capture receipts before rerunning](../learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md)
 - [event=schedule listing served months-old unrelated runs; query each nightly by workflow id (8 nightlies + weekly CMake Options), URL-encode `>=`](../learnings/1790583283909-github-actions-event-schedule-run-listing-is-stale.md)
+- [GitHub search is:unmerged unreliable; check run_attempt before calling a weekly CI red](../learnings/1790670087305-github-search-is-unmerged-unreliable-check-run-att.md) — `is:unmerged` returned 0 for known closed-unmerged PRs; census via the complete `is:merged merged:>=<ts>` list.
+- [Scope-narrowed PR: check closingIssuesReferences + squash title, not just the body](../learnings/1790698191466-scope-narrowed-pr-check-closingissuesreferences-sq.md) — squash title `Fix #N:` lands on master as a closing keyword; retitle, then re-check.
+- [Stale docs/generated/tests retarget: prettier 3.3.3 pin, closing-keyword trap, invariant CHECKs](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md) — body prose "(#A, which fixes #B)" links #B; reword it.
 
 _Catalog: [[wiki/index.md]]_

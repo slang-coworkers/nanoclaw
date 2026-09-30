@@ -2,8 +2,8 @@
 title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, and GPU-free repro
 type: concept
 group: slang-backends
-tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro]
-source_count: 10
+tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register]
+source_count: 11
 ---
 
 ## TL;DR
@@ -15,6 +15,7 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 - **C-style-cast cases in `tryEmitInstExprImpl` drop precedence parens** — they `return true` without `maybeEmitParens`, so `(T*)p->field` instead of `((T*)p)->field`. A family bug across several cases; the repro needs an INLINED single-use cast (a named local hides it).
 - **Metal argument-buffer tier is a RUNTIME device capability, not a compile-time choice** — a portable argument-buffer struct compiles once and runs on both tiers; don't bake a tier into the program.
 - **DispatchMesh/amplification legalization is Metal-only via VIRTUAL DISPATCH** (a per-target subclass override), not a call-site `if` — a "generic"-named legalization fn can be effectively single-target. Intrinsic-asm threads values only via `$`-operands; bare identifiers emit verbatim and need the name in lexical scope.
+- **A Metal binding test must use an index the fallback cannot hit.** An unbound MSL kernel argument takes the first available index, so check an explicit `register(tN)` past every earlier slot, with distinct t/s numbers to avoid E39001.
 - **CI noise on Metal-only PRs**: a Falcor-Perf failure can NEVER be caused by a Metal-only diff (Falcor is D3D12/Vulkan, never compiles for Metal); priority-yield + "Artifact not found" is infra, not code.
 
 ## Metal is GPU-free reproducible
@@ -41,7 +42,12 @@ Metal tier-1 vs tier-2 argument buffers is a RUNTIME device capability (`MTLDevi
 
 DispatchMesh (amplification) legalization is Metal-only via VIRTUAL DISPATCH: `legalizeAmplificationStageEntryPoint` is a `virtual` on the base context whose base body is an empty no-op, overridden only by `LegalizeMetalEntryPointContext` (WGSL inherits the no-op; CPU/CUDA use free functions) — so a "generic"-named legalization fn can be effectively single-target; check for a per-target subclass override before assuming it runs everywhere. `__intrinsic_asm` string substitution threads values ONLY via `$0..$N` (the IR call's operands); bare identifiers (Metal's `_slang_mesh_payload`, `_slang_mgp`) are emitted verbatim as source text and require that exact name to be in lexical scope at the emit site (they resolve via synthesized `IRParam`s carrying `IRExternCppDecoration`), which is why the fix inlines helpers containing the call. The standard mechanism to expose an entry-point value to a helper is to thread it as an `IRCall` operand OR inline the helper (`performForceInlining` runs pre-emit) — inlining-to-bring-a-value-into-scope is an established pattern, not a hack ([Metal DispatchMesh legalization: intrinsic-asm operand-vs-name threading, virtual-dispatch target gating](../learnings/1788394097476-metal-dispatchmesh-legalization-intrinsic-asm-oper.md)).
 
-**Source learnings (10):**
+## Binding tests: Metal's first-available-index fallback hides a dropped attribute (#12294)
+
+MSL 4.1 §5.2.1 gives a kernel argument without an explicit `[[buffer(N)]]`/`[[texture(N)]]`/`[[sampler(N)]]` "the first available location index". So a FileCheck that requires only *some* binding attribute, or one at index 0, can pass even when the emitter drops the attribute, because Metal's fallback lands in the same slot the layout chose. To prove a binding fix is needed, give the resource an explicit `register(tN)`/`register(sN)` whose index is past everything declared before it, and check the red-before-fix run. On slang#12294 the first choice, `t8`, still coincided: two unbound 4-element texture arrays declared earlier already filled slots 0-7. Also, `register(t8)` together with `register(s8)` on arrays raises E39001 (overlap in the Vulkan binding space) even when targeting Metal, so use distinct numbers (`t16`/`s12` worked). Codex OUTPUT_REVIEW caught both ([Metal binding tests: zero-based indices can pass on a buggy emitter](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)). The same PR's `-target metallib` smoke line has its own false-green: see [slang-test-output-assertions-and-truncated-runs](slang-test-output-assertions-and-truncated-runs.md).
+
+**Source learnings (11):**
+- [Metal binding tests: an unbound kernel arg takes the first available index, so a zero-based or attribute-presence check passes on a buggy emitter; pick an index past all earlier slots and avoid t/s overlap (E39001) (#12294)](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)
 
 - [reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md) — Metal source emission (incl. SIGSEGV crashes) is GPU-free; use a runtime single-use operand to defeat constant-fold/hoist masking; cross-check `-target spirv-asm`.
 - [Metal MS-texture emit: int2 read coord + get_width(lod) are multisample-general, not depth-specific](../learnings/1786993599232-metal-ms-texture-emit-int2-read-coord-get-width-lo.md) — color controls proved 2 of 3 "depth" bugs are MS-general; texture emit lives in the core-module intrinsic layer; run contrast controls before accepting a shared-locus framing.
