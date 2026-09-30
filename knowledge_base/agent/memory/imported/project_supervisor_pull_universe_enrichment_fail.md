@@ -18,3 +18,11 @@ Tick 80 (2026-07-10): `scripts/pull-universe.sh` returned all 294 chains but its
 **Rule:** never fire scan.py nudge/escalate flags without first confirming enrichment populated PR+comment data. Related: [[feedback_verify_regression_claims_at_precision]], defend-parks discipline.
 
 **FIX INBOUND (2026-07-10): slang-coworkers/nanoclaw#886** — bot PR `fix(supervise-issues): partial-tolerant PR enrichment` (branch `fix/nv-main/pull-universe-partial-salvage` → `nv-main`), reviewed inline clean, 25/25 tests green locally at head `66a3ad9`. Fixes exactly this: `gh_graphql()` salvages partial-success (data + errors[], rc≠0) instead of discarding the batch; resolver `issue()` → `issueOrPullRequest()` so PR-keyed chains stop 404-poisoning batches (their own PR → `self_pr`). Merge is maintainer's (`nv-main` upstream-tracked). **Until #886 merges + this container picks up the new skill, the detect-and-recover discipline above still applies.** See [[project_nanoclaw_pr874_webhook_route_approver]] #886 entry.
+
+## Second defect: the pull picks a stale CLOSED PR over a live one (Tick 253, 2026-09-30)
+
+In `pull-universe.sh` Step 4a (`bot_pr` loop), the pull takes the **first** cross-referenced PR whose head is `fix/issue-N` or `fix/issue-N-*`. The timeline lists PRs oldest-first, so an older CLOSED PR on the same head wins over a newer OPEN one. Heads outside that pattern (`feature/…-787`) are never matched at all.
+
+The 09-29 scan.py update stopped counting a CLOSED PR as a live artifact. Since then these chains read as "fixer owes a PR" and flip to `awaiting_us` with a nudge. In Tick 253, 4 of the 15 raw nudges were this defect: #11877 → live #12162, #13073 → #13213, #13206 → #13305, rhi-787 → rhi#881.
+
+**How to apply:** each tick, for every open chain whose `pr.state == CLOSED`, search that repo for an OPEN or MERGED bot PR (`gh pr list --search <n> --state all`) whose body says it fixes #n or whose head contains n. Then patch `payload.chains[t].pr` before re-running scan.py (`tmp/sup253b/pr-corrections.json` shows the shape). The durable fix is to prefer OPEN over MERGED over CLOSED, newest first, in the `bot_pr` loop.

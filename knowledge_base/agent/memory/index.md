@@ -6,23 +6,11 @@ okf_version: "0.1"
 
 ## Core Memory
 
-⚠️ **CORRECTED 2026-09-02 (memory-integrity-scan).** The old pointer here — *"the live store is the native path `/home/node/.claude/projects/-workspace-agent/memory/`, index `MEMORY.md`"* — is **stale**. That native store was migrated into `imported/` on **2026-08-30** and then **retired**: verified 2026-09-02 it is EMPTY (dir + `.git` last modified 2026-08-30 15:42, 0 recoverable git objects; the rest of `~/.claude` persists fine). **The live store is now this OKF store — the bulk of leaves live in [`imported/`](imported/index.md)** (router [imported/MEMORY.md](imported/MEMORY.md), ~1250 leaves; the OKF synth cron writes new leaves there daily). Reindex / orphan-audit: `bash /workspace/agent/memory/imported/reindex.sh [--check]` (the native-path reindex.sh is gone with the store). This stale pointer was *itself* the "stale index that passes every structural check" failure the two-store banner below warns of. **Operator to confirm the retirement was intended (escalated 2026-09-02).**
-⛔ **NO COUNT IS RECORDED HERE ON PURPOSE.** A count in a pointer is stale the moment the next leaf lands — this line once said *"517+ files"* while the real figure was ~1035, understating by ~2x. For live figures run `bash imported/reindex.sh --check` (prints leaves / reachable / ORPHANED and the tightest shard's headroom).
-
-⛔ **NEVER `ncl sessions messages` / `sessions get` on the main dashboard session `sess-1776713576150-9fon2n`** (or any huge old session). The read is unbounded, so `--limit` doesn't cap it. It wedges my session's host pickup and every later `ncl` call times out, including sends and task updates. This happened twice on 2026-09-26 (05:32Z, 13:33Z), and the second time the shared learning already existed. To find operator replies, grep `conversations/*.md` instead. Recovery: back up `/workspace/outbound.db`, then delete only my undelivered read-only `cli_request` rows. [learning](/workspace/shared/learnings/ag-1776713211742-1w6l4e/1790403484197-ncl-sessions-messages-on-a-huge-old-session-can-we.md)
-
-Verified 2026-08-04: this file was the untouched OKF template ("Nothing stored yet"), dated Jul 15.
-
-⛔ **Two-store hazard (kept — this is why the archive is a distinct folder).** The
-[ported lego-operator archive](legoop-archive/index.md) holds **52 `legoop-*.md`
-operator facts that exist ONLY here** (all absent from the live store's index). It is a
-distinct namespace, not a copy of anything. ⛔ **A `cp` in EITHER direction destroys the
-other store entirely** — they are fully disjoint, not divergent-with-overlap. Never sync
-these; different stores that only share a shape. ⭐ *An old mtime is evidence about
-writes, never about relevance.* A stale index that passes every structural check — file
-present, links well-formed, confident phrasing — is the failure mode this banner exists
-to prevent. (2026-08-19: the archive, formerly a loose `MEMORY.md` + 52 root siblings,
-was folded into `legoop-archive/` with `type:` frontmatter on each file.)
+- **Memory lives in this OKF store.** The old native store (`~/.claude/projects/-workspace-agent/memory/`) was migrated into [imported/](imported/index.md) on 2026-08-30 and retired; the router is [imported/MEMORY.md](imported/MEMORY.md).
+- **Never record counts in pointers** — they go stale with the next leaf. Live figures: `bash imported/reindex.sh --check`.
+- **Dashboard session `sess-1776713576150-9fon2n`: read it only as `ncl sessions messages <sid> --reverse --json --limit ≤400`** (rows under `.data`). The host bounded this read on 2026-09-27 (two-phase keys-then-content, nanoclaw `e24a7ec64`/`9b0003065`); before that it was unbounded and wedged every later `ncl` call. Never page it with a large `--offset`. `conversations/*.md` does **not** contain dashboard-session rows.
+- **[legoop-archive/](legoop-archive/index.md) and imported/ are disjoint stores** — never `cp` between them.
+- Full context, evidence and history for these: [system/hazards.md](system/hazards.md).
 
 ## Map
 
