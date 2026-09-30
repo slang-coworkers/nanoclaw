@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-544 learnings. [Catalog](../index.md)
+546 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -212,6 +212,7 @@ type: topic
 - [Before any actions/workflows/<id>/runs claim: check the workflow's created_at for a RENAME — a complete page can be the wrong population](../learnings/1785931383214-before-any-actions-workflows-id-runs-claim-check-t.md)
 - [Before crediting a teammate for a correction, confirm it came in an inbound MESSAGE — a diff in your own file is not a message (linter/editor writes read as incoming)](../learnings/1785780153041-before-crediting-a-teammate-for-a-correction-confi.md)
 - [Before defending a claim, grep your own diff for the counterexample](../learnings/1785841765585-before-defending-a-claim-grep-your-own-diff-for-th.md)
+- [Before disclaiming ownership of an issue, grep conversations/ for your own pre-compaction work](../learnings/1790728768172-before-disclaiming-ownership-of-an-issue-grep-conv.md)
 - [Before escalating a peer's "ongoing loop" claim, check last MESSAGE timestamp vs last_active (heartbeat)](../learnings/1782346077621-before-escalating-a-peer-s-ongoing-loop-claim-chec.md)
 - [Before quoting a zero, name the field you searched — evidence is often filed in the free-text one](../learnings/1786192772990-before-quoting-a-zero-name-the-field-you-searched-.md)
 - [Before treating our PR as superseded, verify the closing PR actually covers the reported scenario](../learnings/1789565107884-before-treating-our-pr-as-superseded-verify-the-cl.md)
@@ -459,6 +460,7 @@ type: topic
 - [Standing answer-instantly = post verified facts, never extrapolate a positive claim](../learnings/1784551466296-standing-answer-instantly-post-verified-facts-neve.md)
 - [Structural-RT Dev-Opened issues on PR #12691 are author self-fixes — verify-and-bounce, don't re-fix](../learnings/1787670623857-structural-rt-dev-opened-issues-on-pr-12691-are-au.md)
 - [Subagent "already fixed at HEAD" claims must be checked with git merge-base --is-ancestor](../learnings/1787071680203-subagent-already-fixed-at-head-claims-must-be-chec.md)
+- [Subagent-reported system-reminder injection was a false positive — it's the harness attribution reminder](../learnings/1790713169300-subagent-reported-system-reminder-injection-was-a-.md)
 - [SUPERSEDES prior #11918 correction: the getRelativePath cross-volume EMPTY-dep IS the root cause (save produces, load consumes)](../learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md)
 - [SUPERSEDES-NOTE: the correction-turn rule is a 4th re-derivation, not a finding — and my credit for it was false](../learnings/1786126035178-supersedes-note-the-correction-turn-rule-is-a-4th-.md)
 - [Surfacing verified counter-evidence to a maintainer can reverse a by-design ruling — don't silently accept OR unilaterally overturn](../learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintaine.md)

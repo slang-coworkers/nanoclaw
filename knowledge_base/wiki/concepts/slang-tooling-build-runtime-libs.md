@@ -3,7 +3,7 @@ title: "Build System, Prebuilt Deps (DXC/LLVM) & CMake Options"
 type: concept
 group: slang-tooling
 tags: [cmake, dxc, llvm, glibc, ld_library_path, prebuilt, falcor, sccache, ci]
-source_count: 29
+source_count: 30
 ---
 
 # Build System, Prebuilt Deps (DXC/LLVM) & CMake Options
@@ -18,7 +18,7 @@ This page covers the Slang build system's dependency and option surface: CMake o
 - **CMake list forwarding:** a `\;`-escaped list survives exactly ONE unquoted expansion. The #13077 macOS universal DXC build lost `arm64` in an unquoted `set()` hop in FetchDXC.cmake; append once, quoted and guarded, and verify with a `cmake -P` argv harness that replays the real consuming code, not just the edited block.
 - **slang-llvm prebuilt ABI skew** (`createLLVMBuilder_V2` vs `_V3`) silently produces no object file → cryptic `cannot find shader.o` link failure; the FETCH_BINARY fallback downloads an incompatible binary rather than DISABLE. Windows slang-llvm has three distinct crash classes (COFF ordered-section #12283, teardown execute-AV #12292, AVX-512 SIGILL #11062) — do not conflate.
 - **CI infra facts:** prebuilt LLVM (`setup-llvm-from-gcs`) is a public-bucket curl, NO auth (a false blocker for moving build pools). `api.github.com` is called only by `GitHubRelease.cmake` for slang-llvm version resolution; asset downloads are direct URLs, not rate-limited.
-- **CMake options:** `SLANG_OVERRIDE_*_PATH` are CMake-only (no docs/matrix rows), unlike `SLANG_ENABLE_*` which need a `cmake-options-matrix.json` entry (CI builds each at non-default). `CACHE PATH` absolutizes relative `-D` values — pass `:STRING` to keep them relative. Cheap minimal static build skips DXC via `SLANG_ENABLE_DXIL=OFF`.
+- **CMake options:** `SLANG_OVERRIDE_*_PATH` are CMake-only (no docs/matrix rows), unlike `SLANG_ENABLE_*` which need a `cmake-options-matrix.json` entry (CI builds each at non-default). `CACHE PATH` absolutizes relative `-D` values — pass `:STRING` to keep them relative. Cheap minimal static build skips DXC via `SLANG_ENABLE_DXIL=OFF`. `CMAKE_INSTALL_INCLUDEDIR` does NOT fully relocate the public headers (a hardcoded `install(DIRECTORY include DESTINATION .)` and the `.pc` file still use `<prefix>/include`).
 - **Falcor** exposes `FALCOR_LOCAL_SLANG` cache vars for a custom Slang build; do NOT redirect Slang's `CMAKE_RUNTIME_OUTPUT_DIRECTORY` (all per-config dirs collapse to one path).
 
 ## LD_LIBRARY_PATH order when debug-build and prebuilt libs coexist
@@ -141,6 +141,10 @@ A CI job (added by PR #10945) builds each option at its non-default value; an un
 
 When you pass a **relative** path to a `CACHE PATH` variable via `-DVAR=relative/path`, CMake silently converts it to an absolute path relative to the cmake working directory. If downstream code string-concatenates the variable onto another base path, the result is a doubled path. Fix: pass the value typed as a string: `-DVAR:STRING=relative/path`. A `:STRING` override on reconfigure overrides a previously-cached `:PATH` entry without a cache wipe. ([CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative](../learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md))
 
+### CMAKE_INSTALL_INCLUDEDIR moves only half of the header install
+
+At master `b9199bdaa` (v2026.18.3-15), `-DCMAKE_INSTALL_INCLUDEDIR=include/X` moves the `PUBLIC_HEADER` install (`cmake/SlangTarget.cmake:680`) and `slang::slang`'s exported `INTERFACE_INCLUDE_DIRECTORIES` (`:501`), but root `CMakeLists.txt:849-853` `install(DIRECTORY include DESTINATION .)` still copies all six public headers into plain `<prefix>/include`, and `extras/pkgconfig/slang-compiler.pc.in` hardcodes `includedir=${prefix}/include` and `libdir=${prefix}/lib`. So a distro packager cannot move `slang.h` off `/usr/include/slang.h` (the S-Lang collision) without patching CMake. The `libslang.so` half of that conflict is only the transitional compat symlink (`source/slang/CMakeLists.txt:529-547`): the real library has been `libslang-compiler` since #8746 (v2025.21), `-DSLANG_ENABLE_SLANG_PROXY=OFF` (#11689, 2026.18) drops the symlink, and #9203 plans to remove it at the end of 2026. Prior reports: #4016 (closed via the rename), #8334 (AUR, dup), #13308 (openSUSE; header half parked for a maintainer decision). A configure-only build dir plus grepping the generated `cmake_install.cmake` and `slangTargets.cmake` checks an install-layout claim quickly and without a GPU or a compile ([CMAKE_INSTALL_INCLUDEDIR doesn't relocate Slang's public headers](../learnings/1790672390817-cmake-install-includedir-doesn-t-relocate-slang-s-.md)).
+
 ## Falcor: FALCOR_LOCAL_SLANG CMake hook and CI topology
 
 Public Falcor (NVIDIAGameWorks/Falcor) exposes `FALCOR_LOCAL_SLANG` (BOOL) + `FALCOR_LOCAL_SLANG_DIR` + `FALCOR_LOCAL_SLANG_BUILD_DIR` cache vars for using a local Slang build instead of its packman-pinned one. When ON, the `deploy_dependencies` target copies Slang DLLs/SOs from those paths into Falcor's output directory — no manual copy step needed.
@@ -153,7 +157,7 @@ Falcor CI's workflow is just `cp` into a preinstalled Falcor on a self-hosted Wi
 
 When a compile-perf request proposes "add a CUDA variant of workload X following the `extra_flags=["-target","cuda"]` flag-swap pattern" (e.g. #13054), do NOT accept the premise uniformly — check two things per workload in `tools/compile-perf/lib/manifest.py` first. (1) **`mode=`.** A `mode="target"` workload (e.g. `complexity_ladder`, `codegen_spirv`) genuinely is a mechanical copy with `extra_flags` swapped — the in-tree idiom is `codegen_spirv`↔`emit_cuda` (same `gen`; keep `default_size ∈ sweep_sizes` for the module-load self-check). But a `mode="api"` workload (e.g. `rt_renderer`, `api_cmd="rt-composite"`) has NO `extra_flags` to flip — its target is hardcoded in the C++ driver (`native/api-driver.cpp`, `target.format = SLANG_SPIRV`), so a CUDA variant needs a C++ api-driver change, not a Python line. (2) **Shader intrinsics.** DXR raytracing intrinsics (`TraceRay`, `[shader("raygen")]`, `RaytracingAccelerationStructure`, `DispatchRaysIndex`) won't retarget to `-target cuda` naively — they lower via OptiX and need OptiX-capable RT lowering (a larger lift); plain compute (RWStructuredBuffer/generics/sin/cos) is CUDA-clean. Also: for these workloads the *value* is the comparison SWEEP (CUDA/SPIRV ratio + scaling exponent) on the homogeneous nightly runner, so the manifest edit alone is inert — a strong reason to defer to the self-assigned perf-initiative owner rather than dispatch a bot PR. (DeepWiki-confirmed aside: the load/store redundancy-removal pass `removeRedundancyInFunc`/`eliminateRedundantLoadStore` is target-agnostic — run for all backends via `simplifyIR`/`simplifyNonSSAIR` in `linkAndOptimizeIR`, gated by `minimalOptimization`, not by target.) ([compile-perf "add a -target cuda variant" is only a flag-swap for mode=target non-RT workloads](../learnings/1789378792842-compile-perf-add-a-target-cuda-variant-is-only-a-f.md))
 
-**Source learnings (29):**
+**Source learnings (30):**
 - [slangc Debug-build LD_LIBRARY_PATH order matters when prebuilt lib is colocated](../learnings/1779369251370-slangc-debug-build-ld-library-path-order-matters-w.md)
 - [fresh Release/bin/slangc needs the packaged lib dir on LD_LIBRARY_PATH (Release/lib first) else segfault masks the real bug](../learnings/1784336671594-slang-build-fresh-release-bin-slangc-needs-package.md)
 - [DXC v1.10.2605.2 prebuilts require GLIBC 2.38 (blocks Ubuntu 22.04 CI)](../learnings/1779429443648-dxc-v1-10-2605-2-prebuilts-require-glibc-2-38-bloc.md)
@@ -183,5 +187,6 @@ When a compile-perf request proposes "add a CUDA variant of workload X following
 - [compile-perf "add a -target cuda variant" is only a flag-swap for mode=target non-RT workloads](../learnings/1789378792842-compile-perf-add-a-target-cuda-variant-is-only-a-f.md)
 - [CMake: unquoted list expansion consumes \; escapes — the #13077 root cause was FetchDXC.cmake's own set() hop, not vendored LLVM](../learnings/1790377335548-cmake-unquoted-list-expansion-consumes-escapes-ver.md) — quoted guarded append; `lipo -archs` check; three wrong-layer rounds.
 - [CMake: escaped list lost by a second unquoted expansion — verify with a cmake -P argv harness](../learnings/1790373222851-cmake-escaped-list-forwarded-to-a-sub-configure-is.md) — print the child's exact argv via python json, compare stamp hashes.
+- [CMAKE_INSTALL_INCLUDEDIR doesn't relocate Slang's public headers (duplicate hardcoded install rule)](../learnings/1790672390817-cmake-install-includedir-doesn-t-relocate-slang-s-.md) — `install(DIRECTORY include DESTINATION .)` + hardcoded `.pc` paths; `libslang.so` is only the compat symlink.
 
 _Catalog: [[wiki/index.md]]_

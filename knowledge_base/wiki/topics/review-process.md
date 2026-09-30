@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-313 learnings. [Catalog](../index.md)
+318 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -98,6 +98,7 @@ type: topic
 - [CodeRabbit ignores *.map by default — linker version scripts go unreviewed](../learnings/1785991860433-coderabbit-ignores-map-by-default-linker-version-s.md)
 - [combined-review RESULT_JSON: reviewers_complete=false when ANY dispatched reviewer (incl. Devin) is skipped](../learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md)
 - [Compile to settle a reviewer's static-trace vs a prior-learning assumption](../learnings/1789507586451-compile-to-settle-a-reviewer-s-static-trace-vs-a-p.md)
+- [Concurrent reviews race on shared slang/tmp/pr-diff.patch; Reviewer A integrity guard false-positives](../learnings/1790716418006-concurrent-reviews-race-on-shared-slang-tmp-pr-dif.md)
 - [CORRECTION to "Reviewing a race fix" — measure sizeof, keep wrap holes distinct, read the guard a valve sits inside](../learnings/1785778166680-correction-to-reviewing-a-race-fix-measure-sizeof-.md)
 - [CORRECTION — bot-PR reviewer routing in slang/slang-rhi is a misfire, not deliberate design (and how I got it wrong twice)](../learnings/1785891791274-correction-bot-pr-reviewer-routing-in-slang-slang-.md)
 - [CORRECTION — the Devin HEADER_RE drop is unconditional; my zero-count conjunct was wrong](../learnings/1786115910981-correction-the-devin-header-re-drop-is-uncondition.md)
@@ -221,12 +222,15 @@ type: topic
 - [Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](../learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md)
 - [Reviewer A missed capability-defs interface-include propagation to slang-unit-test](../learnings/1787783966666-reviewer-a-missed-capability-defs-interface-includ.md)
+- [Reviewer A patch-mode: inner orchestrator can end_turn while background subagents run (review-guard <500B)](../learnings/1790707975468-reviewer-a-patch-mode-inner-orchestrator-can-end-t.md)
 - [Reviewer A REVIEW-GUARD false positive: 'socket' in a legitimate review](../learnings/1790645552774-reviewer-a-review-guard-false-positive-socket-in-a.md)
 - [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md)
 - [Reviewer A transient 400 payload-truncation reproduces on back-to-back retries](../learnings/1787341192642-reviewer-a-transient-400-payload-truncation-reprod.md)
 - [Reviewer A wrong-PR integrity fail: shared tmp/ staging collision between concurrent runs](../learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md)
+- [Reviewer A's merge step can drop a subagent's verified crash — scan per-subagent summaries](../learnings/1790744483226-reviewer-a-s-merge-step-can-drop-a-subagent-s-veri.md)
 - [Reviewer A/C output files hold only the LAST assistant text block — reconstruct the review from stream.jsonl](../learnings/1785896984738-reviewer-a-c-output-files-hold-only-the-last-assis.md)
 - [Reviewer B (Devin) fails at Chrome launch in reviewer container — no dbus](../learnings/1783630449263-reviewer-b-devin-fails-at-chrome-launch-in-reviewe.md)
+- [Reviewer background jobs die at turn end — keep the turn open until they finish](../learnings/1790712733292-reviewer-background-jobs-die-at-turn-end-keep-the-.md)
 - [Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run](../learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md)
 - [Reviewer C drift check: a Read of slang-review-post-github/SKILL.md is NOT drift](../learnings/1788810108542-reviewer-c-drift-check-a-read-of-slang-review-post.md)
 - [Reviewer combined-review fan-out can trigger a taskless-fixer echo loop via always-engage a2a wiring](../learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md)
@@ -305,6 +309,7 @@ type: topic
 - [Triaging an issue that already has a community fix PR — review, don't duplicate](../learnings/1781125005627-triaging-an-issue-that-already-has-a-community-fix.md)
 - [Two accuracy traps when reviewing -fno-exceptions try/catch guard PRs (#12779 series)](../learnings/1790224226872-two-accuracy-traps-when-reviewing-fno-exceptions-t.md)
 - [Two review-round gotchas: FileCheck 'CHECK' tokens in prose, and never rm a file you didn't create](../learnings/1790222348386-two-review-round-gotchas-filecheck-check-tokens-in.md)
+- [User turn interrupts kill setsid'd reviewer jobs — keep coordinator verification independent of A/B/C](../learnings/1790727232799-user-turn-interrupts-kill-setsid-d-reviewer-jobs-k.md)
 - [Verdict-detection guards must page or query by author, not read reviews page 1](../learnings/1783665568170-verdict-detection-guards-must-page-or-query-by-aut.md)
 - [Verify "N reviewers APPROVE" against GitHub reviewDecision before posting it as a public verdict](../learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md)
 - [Verify "not constructible / defensive-only" claims that waive reviewer artifacts](../learnings/1780487356786-verify-not-constructible-defensive-only-claims-tha.md)

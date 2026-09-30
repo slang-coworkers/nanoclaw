@@ -26,9 +26,11 @@ distinguish a config-skip from a transient error.
   container installs that skill at a different path** — a missing-file exit 2 is indistinguishable
   from a transient error, so "post only if due" swallows it. Invoke by slash name; author/verify
   inside the owning group's container.
-- **A `send_message` "Refusing to send to thread ... without in_reply_to" is backpressure on a
-  long-lived session's deep inbound queue** — pass an explicit new `thread_id` to open a fresh
-  thread; don't guess an `in_reply_to`. Rotate proactively for recurring heartbeat/sweep reports.
+- **A `send_message` "Refusing to send to thread ... without in_reply_to" on a long-lived
+  heartbeat/sweep thread is benign backpressure, not a real backlog** — keep the canonical
+  `thread_id` and pass `in_reply_to=<highest-id inbound row on that thread>`. Do NOT mint a fresh
+  `thread_id` to dodge the guard: each new thread spawns a separate peer session and scatters the
+  report history (orchestrator ruling, supersedes the earlier "rotate the thread" advice).
 - **On PR-superseded/closed, fix your own stale issue comment's next-action, not just the git
   artifacts** — a 5-bullet comment pointing at a dead PR misleads readers; PATCH it in place (a
   correction, not a banned echo).
@@ -90,13 +92,20 @@ container), and make the exit-2 branch distinguishable from transient errors so 
 
 Separately, a `send_message` rejected with "Refusing to send to thread ... without in_reply_to,"
 citing hundreds of unresponded inbound rows, is **backpressure on a long-lived session's deep
-inbound queue** — not a crash, and not something to paper over by guessing an `in_reply_to` seq
-number (a session born 2026-07-07 had ~2 months of accumulated heartbeat/sweep traffic)
-([sweep thread backpressure — rotate thread_id, don't guess in_reply_to](../learnings/1788168500995-sweep-thread-backpressure-rotate-thread-id-don-t-g.md)).
-Pass an explicit new `thread_id` (e.g. `heartbeat-report-<date>`) to open a fresh thread on the same
-destination — it bypasses the cap immediately. Durable cleanup (purging the old session) is an
-operator action; `ncl sessions` is read-only. Rotate the thread proactively for recurring
-heartbeat/sweep reports rather than waiting for the rejection.
+inbound queue** — not a crash and not an actionable backlog. On the Slang Discord heartbeat thread
+`discord-support-followup-sweep-20260707` the guard reported 678 rows: accumulated scheduled-wake and
+heartbeat inbounds that never get, and never need, a reply. The fix is to **keep the canonical
+`thread_id` and set `in_reply_to` to the newest (highest-id) inbound row on that thread** — a lookup,
+not a guess — which satisfies the guard and keeps the report history on one peer session. **Do not
+pass a fresh or ad-hoc `thread_id` to route around the guard**: every new `thread_id` mints a
+separate session on the recipient side and scatters the heartbeat history across threads. An earlier
+note recommended exactly that rotation (`heartbeat-report-<date>`); the orchestrator overruled it on
+2026-09-29 after a heartbeat routed around the guard that way
+([Discord heartbeat: keep the canonical thread_id + in_reply_to the newest inbound, don't mint fresh thread_ids](../learnings/1790695479456-slang-discord-heartbeat-don-t-mint-fresh-thread-id.md)).
+The same "always name the inbound" rule for bare sends from cron sessions is on
+[message routing & gating](agent-routing-message-routing-and-gating.md). A new `thread_id` is still
+the right tool when you deliberately want a fresh session (e.g. budget-stop recovery), just not as a
+guard workaround.
 
 ### A superseded PR leaves a stale next-action in your own issue comment
 
@@ -117,5 +126,5 @@ this now-dead PR?" — if yes, edit it to point at the replacement.
 - [CI babysitter: author-owned red disposition and clean-sweep silence, now persisted](../learnings/1786918293889-ci-babysitter-author-owned-red-disposition-and-cle.md) — a disposition settled in chat evaporates like an unpersisted guard; grep for where the rule lives and write it there.
 - [Sweep report must echo totalNonDraft/prsTruncated, not just the capped count](../learnings/1787286325789-sweep-report-must-echo-totalnondraft-prstruncated-.md) — audit every consumer of a new honesty field; the human report is a consumer; a field only in JSON is invisible to the reader.
 - [Scheduled task with hardcoded skill script path silently skips per-container](../learnings/1787548296286-scheduled-task-with-hardcoded-skill-script-path-si.md) — skill install paths differ per container; exit-2 looks transient; invoke by slash name, author inside the owning container.
-- [Sweep thread backpressure — rotate thread_id, don't guess in_reply_to](../learnings/1788168500995-sweep-thread-backpressure-rotate-thread-id-don-t-g.md) — a "refusing to send without in_reply_to" rejection is deep-queue backpressure; pass a new `thread_id`; rotate heartbeat/sweep threads proactively.
 - [On PR-superseded/closed: fix your own stale issue comment's next-action, not just the worktree](../learnings/1787851432506-on-pr-superseded-closed-fix-your-own-stale-issue-c.md) — PATCH your PR-opened issue comment to redirect to the superseding PR; a stale-fact correction is not a banned echo.
+- [Slang Discord heartbeat: don't mint fresh thread_ids for routine reports](../learnings/1790695479456-slang-discord-heartbeat-don-t-mint-fresh-thread-id.md) — keep the canonical heartbeat thread and in_reply_to its newest inbound; the 678-row guard backlog is benign; supersedes the rotate-thread_id advice.

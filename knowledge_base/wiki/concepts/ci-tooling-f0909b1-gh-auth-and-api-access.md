@@ -3,7 +3,7 @@ title: GitHub CLI/API access under the OneCLI proxy — auth false alarms and wo
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, onecli-proxy, gh-token, pr-review, auth, curl, graphql]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -13,7 +13,7 @@ source_count: 19
 - The functional test is a **real read**, never `gh auth status`: run `gh pr diff <N> -R <repo>` or `gh pr view <N> -R <repo> --json number` and proceed if it returns data.
 - App installation tokens legitimately FAIL on `gh auth status`, `gh api /user` (403 "Resource not accessible by integration"), and `gh api rate_limit` — these endpoints have no App identity. That is NOT a broken credential; test a repo-scoped endpoint before concluding auth is down.
 - Only **writes** (posting a review/comment, rerun, merge-queue enqueue) need real `pull_requests:write`; on 403 `post-review.sh` exits 3 → send_file fallback. A fix-chain review without a `<github-post-authorized />` marker never posts anyway.
-- **A wedged `gh`/`GH_TOKEN` does NOT block GitHub *writes*.** Post an issue/PR comment with raw `curl -X POST .../issues/<N>/comments --data @body.json` (no `Authorization` header — the onecli-gateway injects the `nv-slang-bot[bot]` App token, which has `issues:write`) and `git push` through the same proxy; only `gh`/`gh api` need an operator token refresh. Don't delegate the post or spin. slang-mcp `github_*` has no comment-create endpoint, so proxied `curl` is the path.
+- **A wedged `gh`/`GH_TOKEN` does NOT block GitHub *writes*.** Post an issue/PR comment with raw `curl -X POST .../issues/<N>/comments --data @body.json` (no `Authorization` header — the onecli-gateway injects the `nv-slang-bot[bot]` App token, which has `issues:write`) and `git push` through the same proxy (on shader-slang/slang; `git push` to `shader-slang.github.io` 401s, so update a PR branch there server-side with REST `POST /merges`); only `gh`/`gh api` need an operator token refresh. Don't delegate the post or spin. slang-mcp `github_*` has no comment-create endpoint, so proxied `curl` is the path.
 - `GH_TOKEN` may be the literal sentinel `ROUTED_VIA_ONECLI_PROXY` (23 chars). Raw `curl` (honors `HTTPS_PROXY`) gets real credential injection; `gh` validates the sentinel locally and can fail. But when the credential is a real App token, `gh` reads work fine — the original "gh is broken, use curl" finding over-generalized (see below).
 - **Ad-hoc `curl` to `api.github.com` is anonymous-tier (60/hr)** — the proxy does NOT inject a token for `/actions/runs` or `/rate_limit`, so anonymous reads miss self-hosted-runner workflow failures on `slang`. Don't "independently verify" the precheck with ad-hoc curl.
 - Workarounds for wedged/paginated reads: raw REST `curl` bypasses `gh run view --log`'s run-status gate on gate-wedged runs; **GraphQL `gh pr view --json reviews`** is flap-immune where REST `--paginate` 401-flaps mid-pagination.
@@ -140,6 +140,10 @@ delegate or refresh"
 [CORRECTION: PR comments DO post via the proxy when gh/GH_TOKEN is broken](../learnings/1789225153684-correction-pr-comments-do-post-via-onecli-gateway-.md);
 superseding the earlier [blocks-all-posting belief](../learnings/1789224850935-invalid-gh-token-blocks-all-pr-issue-comment-posti.md)).
 
+**`git push` authorization is per repo, and REST can stand in for it.** On `shader-slang/shader-slang.github.io`, `git push` over smart-HTTP fails with `Authentication failed`, because the OneCLI gateway doesn't accept the credential for `git-receive-pack` on that repo. Pushes to `shader-slang/slang` work, and REST writes to github.io also work. To bring a bot PR branch up to date with `main` without pushing, create the merge server-side:
+`gh api -X POST repos/shader-slang/shader-slang.github.io/merges -f base=<pr-branch> -f head=main -f commit_message="Merge branch 'main' into <pr-branch>"`.
+That advances the ref and triggers `pull_request` CI (it is an App token, not `GITHUB_TOKEN`, so workflows do fire). Don't trust the repo's `permissions` field: it reports all-false there even though REST writes succeed. For a green control, note that the site's Sphinx linkcheck workflow runs on `pull_request` only, so `main` has no runs of its own; use other PRs' recent runs instead ([github.io git push 401s; REST /merges updates the branch](../learnings/1790698605213-shader-slang-github-io-git-push-401s-rest-merges-u.md)).
+
 ## API-access workarounds for wedged, paginated, and anonymous reads
 
 Even with working auth, three CLI/API behaviors need explicit workarounds:
@@ -191,7 +195,7 @@ most metadata, and `gh api repos/O/R/issues/<n> -q '.author_association'` (PRs a
 author association — both pass the hook and are read-only
 ([read-only pulls GET trips critique hook](../learnings/1788858953279-approver-infra-note-read-only-gh-api-pulls-n-gets-.md)).
 
-**Source learnings (19):**
+**Source learnings (20):**
 
 - [gh CLI auth broken even when OneCLI proxy curl works — GH_TOKEN is a literal sentinel](../learnings/1788204882348-gh-cli-auth-broken-even-when-onecli-proxy-curl-wor.md) — GH_TOKEN=ROUTED_VIA_ONECLI_PROXY; gh validates locally and fails, curl+proxy works; later corrected/over-generalized.
 - [Correction: gh CLI App-installation token is fine for actions/PR endpoints](../learnings/1788205146208-correction-gh-cli-app-installation-token-is-fine-f.md) — the container held a working App token; gh reads work, only auth-status/user/rate_limit fail.
@@ -212,3 +216,4 @@ author association — both pass the hook and are read-only
 - [CORRECTION: PR comments DO post via onecli-gateway (curl+HTTPS_PROXY) when gh/GH_TOKEN is broken](../learnings/1789225153684-correction-pr-comments-do-post-via-onecli-gateway-.md) — a bad GH_TOKEN breaks only gh/gh api; curl POST + git push still work through the proxy; don't delegate or spin.
 - [Invalid GH_TOKEN blocks all PR/issue-comment posting — SUPERSEDED: writes work via the proxy](../learnings/1789224850935-invalid-gh-token-blocks-all-pr-issue-comment-posti.md) — the "delegate or refresh, don't spin" framing was wrong; only gh needs refresh, curl/git post fine.
 - [gh auth status invalid is a false alarm for App tokens in /slang-pr-review preflight](../learnings/1790172928541-gh-auth-status-invalid-token-is-a-false-alarm-for-.md) — App tokens can't hit `/user`, so `gh auth status` (and the runner install.sh) reports invalid though repo reads work; verify with `gh pr diff <N>`, only post-back (`pull_requests:write`) degrades.
+- [shader-slang.github.io: git push 401s, REST /merges updates a PR branch from main](../learnings/1790698605213-shader-slang-github-io-git-push-401s-rest-merges-u.md) — git-receive-pack credential not accepted on github.io; REST writes work; `permissions` all-false is misleading; linkcheck has no `main` runs.

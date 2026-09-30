@@ -4186,6 +4186,7 @@
 - [github actions event schedule run listing is stale](ag-1776713258088-r8pp2t/1790583283909-github-actions-event-schedule-run-listing-is-stale.md) — _ag-1776713258088-r8pp2t_
 - [slang user attribute string args reflection only r](ag-1776713258088-r8pp2t/1790669546280-slang-user-attribute-string-args-reflection-only-r.md) — _ag-1776713258088-r8pp2t_
 - [github search is unmerged unreliable check run att](ag-1776713258088-r8pp2t/1790670087305-github-search-is-unmerged-unreliable-check-run-att.md) — _ag-1776713258088-r8pp2t_
+- [okf tracker regrowth enforce a one line roster rul](ag-1776713258088-r8pp2t/1790743007196-okf-tracker-regrowth-enforce-a-one-line-roster-rul.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4756,6 +4757,7 @@
 - [bash rc capture cmd rc silently reports 0](ag-1780667166418-apezq5/1790715683632-bash-rc-capture-cmd-rc-silently-reports-0.md) — _ag-1780667166418-apezq5_
 - [slang ice unknown type modifier in semantic checki](ag-1780667166418-apezq5/1790727973088-slang-ice-unknown-type-modifier-in-semantic-checki.md) — _ag-1780667166418-apezq5_
 - [spir v 16 bit storage which shapes actually need i](ag-1780667166418-apezq5/1790728274564-spir-v-16-bit-storage-which-shapes-actually-need-i.md) — _ag-1780667166418-apezq5_
+- [before moving deleting a memory file check for a s](ag-1780667166418-apezq5/1790742067051-before-moving-deleting-a-memory-file-check-for-a-s.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5383,6 +5385,7 @@
 - [critique gate attested hashes in backticks are sil](ag-1780667166439-vmjrwe/1790724661749-critique-gate-attested-hashes-in-backticks-are-sil.md) — _ag-1780667166439-vmjrwe_
 - [before disclaiming ownership of an issue grep conv](ag-1780667166439-vmjrwe/1790728768172-before-disclaiming-ownership-of-an-issue-grep-conv.md) — _ag-1780667166439-vmjrwe_
 - [slang reaching concrete builtin overloads from abs](ag-1780667166439-vmjrwe/1790730458349-slang-reaching-concrete-builtin-overloads-from-abs.md) — _ag-1780667166439-vmjrwe_
+- [a new slang warning fails compare compute tests th](ag-1780667166439-vmjrwe/1790743536144-a-new-slang-warning-fails-compare-compute-tests-th.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5665,6 +5668,8 @@
 - [glsl emit combined sampler calls are texture name ](ag-1780667168475-a9tac8/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md) — _ag-1780667168475-a9tac8_
 - [user turn interrupts kill setsid d reviewer jobs k](ag-1780667168475-a9tac8/1790727232799-user-turn-interrupts-kill-setsid-d-reviewer-jobs-k.md) — _ag-1780667168475-a9tac8_
 - [autodiff a module scope ir annotation recorded dur](ag-1780667168475-a9tac8/1790732389632-autodiff-a-module-scope-ir-annotation-recorded-dur.md) — _ag-1780667168475-a9tac8_
+- [reviewer a s merge step can drop a subagent s veri](ag-1780667168475-a9tac8/1790744483226-reviewer-a-s-merge-step-can-drop-a-subagent-s-veri.md) — _ag-1780667168475-a9tac8_
+- [a new slang warning can fail gpu tests the compute](ag-1780667168475-a9tac8/1790744483266-a-new-slang-warning-can-fail-gpu-tests-the-compute.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -5718,6 +5723,7 @@
 - [correction slangpy 1167 bwds hang is a slang compi](ag-1780667169498-sqxdef/1790637519259-correction-slangpy-1167-bwds-hang-is-a-slang-compi.md) — _ag-1780667169498-sqxdef_
 - [okf synth misses stem form name links when you del](ag-1780667169498-sqxdef/1790655830880-okf-synth-misses-stem-form-name-links-when-you-del.md) — _ag-1780667169498-sqxdef_
 - [cuda entry point named main is renamed to main 0 e](ag-1780667169498-sqxdef/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md) — _ag-1780667169498-sqxdef_
+- [slangpy torch bridge api version collides again 10](ag-1780667169498-sqxdef/1790742118142-slangpy-torch-bridge-api-version-collides-again-10.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_

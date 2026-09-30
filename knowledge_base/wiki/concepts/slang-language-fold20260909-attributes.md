@@ -2,8 +2,8 @@
 title: "Slang Attributes: Parsing, Name Resolution, and Target Whitelist"
 type: concept
 group: slang-language-core
-tags: [attributes, parser, parseAttributeName, AttributeTargets, enum-members, namespaces, reflection, e31000, e20001]
-source_count: 2
+tags: [attributes, parser, string-literal, parseAttributeName, AttributeTargets, enum-members, namespaces, reflection, e31000, e20001]
+source_count: 3
 ---
 
 # Slang Attributes: Parsing, Name Resolution, and Target Whitelist
@@ -15,6 +15,7 @@ How `[Attr(...)]` attributes flow through the Slang front-end: the parser (`pars
 - Attributes are parsed by `parseAttributeName` (name) + `ParseModifiers` (per-decl), resolved by `lookUpAttributeDecl` against a target whitelist (`_AttributeTargets` / `getAttributeTargetSyntaxClasses`); the parser and the whitelist are **separate** gates a new attribute position must clear.
 - `[Attr]` on an enum member (#12551) is a **two-layer** gap: `parseEnumCaseDecl` never calls `ParseModifiers`, and `EnumCaseDecl` isn't in `_AttributeTargets` — but the reflection half already works (enum members reflect as `VariableReflection`, so per-member attribute reflection comes for free once the front-end admits it).
 - A `::`-qualified attribute name is FOLDED to a flat underscore name in the parser by design (`[vk::binding]` → `vk_binding`), which is how builtin qualified attributes resolve. A fix for namespaced USER attributes must keep the flat lookup FIRST and add scoped resolution as a FALLBACK — never split the flat name on `_` (namespace/identifier names contain underscores). Today `[ns::Attr]` warns `E31000 unknown attribute 'ns_Attr'` and is silently dropped (#12668).
+- A `string` argument of a user attribute reflects back only when it is a raw string LITERAL: `spReflectionUserAttribute_GetArgumentValueString` returns `nullptr` for anything else, so `static const string X = "..."; [Attr(X)]` type-checks but reads back null. A `#define X "..."` macro round-trips (the parser sees a literal). Source-read inference, not yet compiled.
 
 ## User Attributes on Enum Members: Two-Layer Front-End Gap (#12551)
 
@@ -24,7 +25,19 @@ Allowing `[Attr]` on enum members (#12551) is a TWO-LAYER front-end gap, both la
 
 When triaging attribute name-resolution bugs (e.g. #12668 — a user-defined attribute in a namespace not found via `[ns::Attr(...)]`), the root cause is in the PARSER, not the checker. `parseAttributeName` (`slang-parser.cpp:~941`) intentionally FOLDS a `::`-qualified attribute name into a single underscore-joined identifier: `[my_namespace::Example]` becomes the flat name `my_namespace_Example` before any semantic checking. `UncheckedAttribute`/`AttributeBase` (`slang-ast-modifier.h:~806/820`) then store only that flat `keywordName` (plus `originalIdentifierToken` = the LAST segment only), so the qualified path is unrecoverable, and `lookUpAttributeDecl` (`slang-check-modifier.cpp:~163`) does a flat lookup then appends `"Attribute"` via plain string concat (`~:224`) — so a namespaced user attribute is searched for as the nonexistent `my_namespace_ExampleAttribute`. WHY the fold is deliberate (a load-bearing constraint for any fix): Slang's builtin qualified attributes are REGISTERED under flat underscore names in `core.meta.slang` (`attribute_syntax [vk_binding(...)] : GLSLBindingAttribute;` `~:4381`, plus vk_location, vk_push_constant, vk_shader_record, gl_binding, …), so user source `[vk::binding(0,1)]` only works because the fold produces `vk_binding`, matching the registered `AttributeDecl` in the FIRST lookup branch (~30+ tests depend on this). A fix for user-defined qualified attributes must therefore keep the existing flat lookup FIRST and add scoped resolution only as a FALLBACK — never remove the fold. Splitting the flat name back on `_` is NOT viable (namespace/identifier names legitimately contain underscores — `my_namespace` itself does — so `_`-boundaries are ambiguous); the parser must PRESERVE the qualifier segments to fix it properly. Reproduces on CPU/front-end only: `slangc file.slang -target spirv -o out.spv` emits `warning E31000: unknown attribute 'ns_Attr'` and silently drops the attribute (exit 0, so it's a warning not an error) ([Slang attribute ::-qualified names are folded to underscore flat names in the parser (deliberate, for builtin vk::/gl_ attrs)](../learnings/1787273970210-slang-attribute-qualified-names-are-folded-to-unde.md)).
 
-**Source learnings (2):**
+## String Arguments of User Attributes Reflect Only as Raw Literals
+
+Consider a user who wants a named constant string in an attribute:
+
+```slang
+static const string kName = "foo";
+[MyAttr(kName)] struct S {}
+```
+
+The checker accepts this, but reflection returns nothing for the argument. `spReflectionUserAttribute_GetArgumentValueString` (`slang-reflection-api.cpp` ~L401) returns a value only when the stored argument expression is a `StringLiteralExpr`, and `nullptr` otherwise. On the checking side (`slang-check-modifier.cpp` ~L997), a `string` parameter of a user-defined attribute is only `CheckTerm`'d and coerced, never folded to a constant, because `isValidCompileTimeConstantType` accepts only scalar integers and enums. So the argument stays a `VarExpr` referring to `kName`, and the reflection accessor sees a non-literal. A `#define kName "foo"` macro should round-trip, because preprocessing hands the parser a real literal. This is an inference from reading source (2026-09-29, from a Discord question about named constant strings in attributes) and has not been confirmed by compiling; verify with a reflection probe before telling a user it is the behaviour ([User-attribute string args: reflection only returns raw string literals](../learnings/1790669546280-slang-user-attribute-string-args-reflection-only-r.md)).
+
+**Source learnings (3):**
 - [`[Attr]` on enum members (#12551) is a two-layer gap: `parseEnumCaseDecl` skips `ParseModifiers` (E20001) and `EnumCaseDecl` is absent from `_AttributeTargets`; reflection already works via `VariableReflection`](../learnings/1786742270900-user-attributes-on-enum-members-two-layer-front-en.md)
 - [`parseAttributeName` folds `::`-qualified attribute names to flat underscore names (`[vk::binding]`→`vk_binding`) so builtin attrs resolve; a namespaced user-attribute fix (#12668) must keep flat lookup first and add scoped fallback, never split on `_` (E31000 today)](../learnings/1787273970210-slang-attribute-qualified-names-are-folded-to-unde.md)
+- [User-attribute `string` args reflect only as raw `StringLiteralExpr`; a `static const string` argument type-checks but `GetArgumentValueString` returns null (source-read, unverified)](../learnings/1790669546280-slang-user-attribute-string-args-reflection-only-r.md)
 _Catalog: [[wiki/index.md]]_

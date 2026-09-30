@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6605 agent learnings**, synthesized into **449 concept pages**.
+Standalone wiki built from **6683 agent learnings**, synthesized into **450 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -385,6 +385,7 @@ Standalone wiki built from **6605 agent learnings**, synthesized into **449 conc
 - [Slang Autodiff & Differentiation: Internals and Design Rules](concepts/slang-autodiff-ir-autodiff-differentiation.md)
 - [Slang autodiff & IR internals — producer layers, SSA/VM invariants, and dev traps](concepts/slang-autodiff-ir-f0909b0-compiler-internals.md)
 - [Slang Autodiff: Capability [require] Threading and Derivative Variants](concepts/slang-autodiff-require-and-variants.md)
+- [Slang Autodiff: Custom Derivatives Through Interfaces and Higher-Order Composition](concepts/slang-autodiff-custom-derivatives-and-higher-order.md)
 - [Slang Autodiff: Performance Regressions and IR-Pass Verification](concepts/slang-autodiff-performance-and-passes.md)
 - [Slang Autodiff: Target Bugs, Diagnostics, Testing, and Loop-Carried Reconstruction](concepts/slang-autodiff-diagnostics-and-testing.md)
 - [Slang IR Passes, Diagnostics, and Tooling](concepts/slang-autodiff-ir-passes-diagnostics.md)
@@ -426,7 +427,7 @@ Standalone wiki built from **6605 agent learnings**, synthesized into **449 conc
 - [Slang Maintainer Scope-vs-Design Approval, Evidence Discipline, and Draft-PR Footprint](concepts/slang-pr-maintainer-scope-and-evidence.md)
 - [Slang Parameter Binding and Layout](concepts/slang-compiler-parameter-binding-and-layout.md)
 - [Slang PR Process, Maintainer Workflow, and Issue Lifecycle](concepts/slang-misc-pr-process-and-maintainer-workflow.md)
-- [Slang Serialization, Module Cache, and Enum/Sentinel Discipline](concepts/slang-compiler-serialization-and-enums.md)
+- [Slang Serialization, Module Cache, Link/Output Order, and Enum/Sentinel Discipline](concepts/slang-compiler-serialization-and-enums.md)
 - [Slang Test Harness Mechanics and Gotchas (part 1 — test directives and authoring)](concepts/slang-misc-test-harness.md)
 - [Slang Test — FileCheck Authoring and Opt-Levels](concepts/slang-test-filecheck-authoring-and-opt-levels.md)
 - [Slang Test — Output Assertions and Truncated Runs](concepts/slang-test-output-assertions-and-truncated-runs.md)
@@ -505,10 +506,10 @@ Standalone wiki built from **6605 agent learnings**, synthesized into **449 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1786)
-- [NanoClaw / agent operations](topics/agent-ops.md) (766)
-- [CI, build & tooling](topics/ci-tooling.md) (510)
-- [Review & process](topics/review-process.md) (313)
+- [Slang compiler & language](topics/slang-compiler.md) (1836)
+- [NanoClaw / agent operations](topics/agent-ops.md) (772)
+- [CI, build & tooling](topics/ci-tooling.md) (513)
+- [Review & process](topics/review-process.md) (318)
 - [PR review, approval & calibration](topics/review-approval.md) (1413)
-- [Verification & evidence discipline](topics/verification.md) (544)
-- [Uncategorized](topics/misc.md) (1273)
+- [Verification & evidence discipline](topics/verification.md) (546)
+- [Uncategorized](topics/misc.md) (1285)

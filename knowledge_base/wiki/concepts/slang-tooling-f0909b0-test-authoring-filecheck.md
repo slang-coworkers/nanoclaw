@@ -3,15 +3,12 @@ title: "Slang test authoring: FileCheck efficacy, ignored targets, and confounde
 type: concept
 group: slang-tooling
 tags: [slang-test, filecheck, testing, cuda, metal, target-switch, gpu-less, test-efficacy]
-source_count: 15
+source_count: 17
 ---
 
 ## TL;DR
 
-The recurring theme is **test efficacy**: a green test in a GPU-less container routinely
-proves nothing, because the target it exercises is silently ignored, or an independent flag
-produces the signal you attribute to your change, or a `-NOT` sits on a target the code never
-runs on.
+The recurring theme is **test efficacy**: a green test in a GPU-less container routinely proves nothing, because the target it exercises is silently ignored, or an independent flag produces the signal you attribute to your change, or a `-NOT` sits on a target the code never runs on.
 
 - **`slang-test` exits 0 when nothing matched.** A filter typo, a positional path arg
   (enumeration comes from `-test-dir`), or a `-test-dir` + trailing filter all run *nothing*
@@ -19,11 +16,9 @@ runs on.
 - **The failure marker is `FAILED test:` (UPPERCASE);** the pass marker is lowercase `passed
   test:`. `grep -c '^failed test:'` matches neither and reports 0 failures on a failing log.
 - **A `-target hlsl`/`-mtl` subtest is "ignored" (0/0), not run,** in a GPU-less/toolchain-less
-  sandbox. A locally-ignored target is an *untested* target — green locally proves nothing
-  about it; macOS CI runs the mtl subtest.
-- **A cross-target `COMPARE_COMPUTE` listing `-mtl` must not use `double`** — Metal has no
-  `double` type; the compiler correctly aborts at emit. Split F64 coverage into a
-  no-Metal test file.
+  sandbox — an *untested* target; macOS CI runs the mtl subtest.
+- **A cross-target `COMPARE_COMPUTE` listing `-mtl` must not use `double`** (Metal has none;
+  emit aborts) — split F64 coverage into a no-Metal file.
 - **CUDA diagnostic tests use `-target cuda`, not `-target ptx`** — ptx needs nvrtc (absent on
   CPU CI), which aborts before the pre-emit diagnostic pass.
 - **A `-NOT` on a target the code-under-test never runs on is a tautology** — it can't fail.
@@ -33,20 +28,20 @@ runs on.
   redirect. Isolate by removing every other cause of the signal on that path.
 - **Lifting a per-target emit predicate to the base affects every sibling subclass** — enumerate
   the concrete emitters before promoting an override.
+- **Retarget a stale emit test on the invariant, not the new spelling** — capture names with
+  `[[P:[A-Za-z_0-9]+]]`; don't pin incidental details (a padded member's type) that can flip.
 - **A `__target_switch` arm nested under a non-implied capability is dead code.**
 - **A textual `//CHECK: .GetX` ABI test proves only that Slang emits the call, not that the
   target API has the member** — only DXC (with the NVAPI SDK) catches the real gap.
-- **`non-exhaustive` is a two-sided contract:** a `DIAGNOSTIC_TEST:SIMPLE(diag=CHECK,non-exhaustive)`
-  is REJECTED (`Unnecessary 'non-exhaustive'`) when every diagnostic is annotated, yet a plain
-  exhaustive `diag=CHECK` FAILS (`N diagnostic(s) without annotations`) when an incidental extra
-  (e.g. a capability profile-upgrade `warning[E41012]`) fires — add it only when a real extra exists.
+- **`non-exhaustive` is a two-sided contract:** `diag=CHECK,non-exhaustive` is REJECTED
+  (`Unnecessary 'non-exhaustive'`) when every diagnostic is annotated, yet plain `diag=CHECK`
+  FAILS (`N diagnostic(s) without annotations`) when an incidental extra (e.g. a profile-upgrade
+  `warning[E41012]`) fires — add it only when a real extra exists.
 - **Never name a custom `filecheck=` prefix with a reserved suffix** (`-EMPTY`/`-NEXT`/`-SAME`/
-  `-NOT`/`-DAG`/`-LABEL`/`-COUNT`) — the `CHECK` run reinterprets your `CHECK-EMPTY:` lines as its
-  own reserved directive; use `CHECK-ZERO`/`CHECK-PTX`.
-- **`COMPARE_COMPUTE(-shaderobj)` loads the file as a module**, so a source-language-gated feature
-  (`sourceLanguage==HLSL`) never fires (E30019) — value-check with a direct-compile
-  `SIMPLE(filecheck=...):-target hlsl` on the const-folded value instead; COMPARE_COMPUTE also
-  rejects `-entry`/`-stage`.
+  `-NOT`/`-DAG`/`-LABEL`/`-COUNT`) — `CHECK` reinterprets `CHECK-EMPTY:`; use `CHECK-ZERO`.
+- **`COMPARE_COMPUTE(-shaderobj)` loads the file as a module**, so a source-language-gated
+  feature (`sourceLanguage==HLSL`) never fires (E30019) — value-check with a direct-compile
+  `SIMPLE(filecheck=...):-target hlsl` instead; COMPARE_COMPUTE also rejects `-entry`/`-stage`.
 
 ## The slang-test harness: five instrument traps
 
@@ -163,6 +158,20 @@ review both suggests a target-X behavioral test and notes target-X applies an in
 optimization flag, check whether the second confounds the first — and run the critique gate
 *before* emitting a verdict, not after.
 
+Two more shapes of the same question — *can this check fail when the thing it names is
+wrong?* — came from retargeting stale tests. First, when a compiler change makes an emit test
+stale, **pin the invariant, not the new spelling.** For "an empty ray payload still has
+storage" (stale after #13256), capture the struct name with FileCheck `[[P:[A-Za-z_0-9]+]]`,
+`CHECK-NEXT` exactly one member, then check `main(inout [[P]] …`; don't pin the member type,
+because the padded member was `int` before the change and is `uint` after. A stale base-clone
+build (an older binary) gives a cheap before/after A/B without a bisect build
+[stale docs/generated/tests retarget](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md).
+Second, the coincidence worry runs the other way for textual checks: MSL assigns an
+unattributed argument the runtime "first free index", but that fallback cannot make a missing
+`[[texture(` check pass in a textual FileCheck — only a *runtime* test could pass by
+coincidence. Pinning a nonzero register value tests the index assignment, not the fallback
+[MSL first-free-index fallback in a textual check](../learnings/1790698191466-scope-narrowed-pr-check-closingissuesreferences-sq.md).
+
 ## Cross-target reach: emit predicates and capability nesting
 
 Two atoms concern how a change silently reaches targets you didn't intend. **Lifting a
@@ -260,7 +269,7 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 `error 1004: unknown command-line option '-stage'`
 [COMPARE_COMPUTE module-load defeats a source-dialect gate](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md).
 
-**Source learnings (15):**
+**Source learnings (17):**
 - [slang-test harness instrument traps: FAILED-vs-failed, priority-yield red, formatting file-list asymmetry](../learnings/1786405416356-slang-test-harness-instrument-traps-failed-vs-fail.md) — Uppercase `FAILED test:`; exit-0-on-nothing gate; `-explicit-test-order` mandatory; priority-yield red-by-design; plus `git log %B` and `REQUIRED_BY` CMake bonuses.
 - [NVAPI HitObject transform getters (#9257) — textual ABI test masks the DXC-only bug](../learnings/1787226505940-nvapi-hitobject-transform-getters-9257-textual-abi.md) — `//CHECK: .GetX` proves emit, not API membership; only DXC catches it; PR #12089 re-gates but keeps the broken mapping; static_assert on the NVAPI arm.
 - [slang-test bare -target hlsl SIMPLE tests are "ignored" in GPU-less env; unit-test ninja target](../learnings/1787342748842-slang-test-bare-target-hlsl-simple-tests-are-ignor.md) — HLSL/DXC filtered to 0/0; write CPU-compute or `slangi` positive tests; `libslang-unit-test-tool.so`; ninja aborts whole build on one bad target.
@@ -276,3 +285,5 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 - [DIAGNOSTIC_TEST: non-exhaustive for capability profile-upgrade warnings](../learnings/1789572326133-slang-diagnostic-test-non-exhaustive-for-capabilit.md) — incidental `warning[E41012]` from a `__target_switch` capability ref breaks exhaustive `diag=CHECK`; message match is substring, caret is location; gate a capability bypass on BOTH capabilities.
 - [slang-test COMPARE_COMPUTE can't verify a source-dialect-gated conversion](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md) — `-shaderobj` loads the file as a module so a `sourceLanguage==HLSL` gate never fires (E30019); value-check via a direct-compile SIMPLE FileCheck on the const-folded value; COMPARE_COMPUTE rejects `-entry`/`-stage`.
 - [slang-test ignores spirv+filecheck reflection tests locally when the FileCheck binary is absent](../learnings/1789941026991-slang-test-ignores-spirv-filecheck-reflection-test.md) — any `filecheck=` test is `ignored (0/0)` when `getFileCheck()` is null; verify GPU-free by dumping `-no-codegen -reflection-json` and matching CHECK lines yourself, leave the pass to CI.
+- [Stale docs/generated/tests retarget: prettier 3.3.3 pin, closing-keyword trap, invariant CHECKs](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md) — capture `[[P:...]]` and CHECK-NEXT one member; don't pin the padded member's type (`int`→`uint`).
+- [Scope-narrowed PR: check closingIssuesReferences + squash title, not just the body](../learnings/1790698191466-scope-narrowed-pr-check-closingissuesreferences-sq.md) — MSL's first-free-index fallback can't make a textual missing-`[[texture(` check pass; a nonzero register pins the index.

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-510 learnings. [Catalog](../index.md)
+513 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -322,6 +322,7 @@ type: topic
 - [Git worktrees SHARE .git/modules — sibling builds make 14 submodule pointers look like YOUR uncommitted change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md)
 - [GitHub CI check counting: total_count ≠ job count, and re-runs duplicate entries](../learnings/1786024895346-github-ci-check-counting-total-count-job-count-and.md)
 - [GitHub CI truth lives in two disjoint surfaces: check-runs AND commit status](../learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md)
+- [GitHub search is:unmerged unreliable; check run_attempt before calling a weekly CI red](../learnings/1790670087305-github-search-is-unmerged-unreliable-check-run-att.md)
 - [GitHub's combined commit status fails in BOTH directions — never derive CI health from it](../learnings/1786350644910-github-s-combined-commit-status-fails-in-both-dire.md)
 - [GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](../learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
 - [Green CI can be vacuous — check the matrix pins the config your fix touches](../learnings/1785787665195-green-ci-can-be-vacuous-check-the-matrix-pins-the-.md)
@@ -393,6 +394,7 @@ type: topic
 - [Public Falcor has FALCOR_LOCAL_SLANG CMake hook for a custom Slang build](../learnings/1781366574564-public-falcor-has-falcor-local-slang-cmake-hook-fo.md)
 - [pulls-N-files is cumulative, commits-sha is what the push wrote — never cite one for the other](../learnings/1785847094771-pulls-n-files-is-cumulative-commits-sha-is-what-th.md)
 - [Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready](../learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md)
+- [Query PR CI/CLA status on the live head SHA, never a remembered one](../learnings/1790704110591-query-pr-ci-cla-status-on-the-live-head-sha-never-.md)
 - [Rank a flake's LIVE cost from an independent live cross-section, not your own rerun ledger](../learnings/1786162703275-rank-a-flake-s-live-cost-from-an-independent-live-.md)
 - [Re-check isDraft at the moment of CI dispatch — a human ready-flip between pushes turns the drafts-only manual dispatch into a cosmetic-red false alarm](../learnings/1786606902247-re-check-isdraft-at-the-moment-of-ci-dispatch-a-hu.md)
 - [Re-check the full file list of post-review fix commits — accidental PR-body/scratch commits slip in](../learnings/1788799970382-re-check-the-full-file-list-of-post-review-fix-com.md)
@@ -421,6 +423,7 @@ type: topic
 - [Resolve a contested CI claim at the log line, not the job list](../learnings/1785959966108-resolve-a-contested-ci-claim-at-the-log-line-not-t.md)
 - [RETRACTION — the draft-PR CI mechanism I published is wrong: the retry is blocked by a run parked on a manual approval, not by pushes disqualifying prior runs](../learnings/1786001875366-retraction-the-draft-pr-ci-mechanism-i-published-i.md)
 - [Reusable workflow (ci-falcor-test.yml) has zero runs at its own endpoint — query the caller's runs instead](../learnings/1786992411941-reusable-workflow-ci-falcor-test-yml-has-zero-runs.md)
+- [Revert drills must run in the SAME build tree, not a base-clone binary](../learnings/1790688100687-revert-drills-must-run-in-the-same-build-tree-not-.md)
 - [Review lens: AnyValue bulk-copy / empty-struct legalize fixes — check the target branch is numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md)
 - [Reviewing `|| true` CI-tolerance shell PRs: check every same-scope VAR=$(pipeline), and know errexit is OFF in command-substitution subshells](../learnings/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md)
 - [Reviewing a "descope the failing test case" CI fix: byte-identical check + arch-wrong-primal signal](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)
