@@ -186,7 +186,7 @@ ncl tasks create \
   --group <agent-group-id> \
   --name "okf-memory-synthesis" \
   --recurrence "0 4 * * *" \
-  --script 'OKF_MEMORY_ROOT=/workspace/agent/memory python3 /workspace/agent/tools/okf_synth.py gate || echo {"wakeAgent":true,"data":{"SCANNER_FAILED":"okf_synth.py did not run - investigate, do NOT assume clean"}}' \
+  --script 'OKF_MEMORY_ROOT=/workspace/agent/memory python3 /workspace/agent/tools/okf_synth.py gate || echo '"'"'{"wakeAgent":true,"data":{"SCANNER_FAILED":"okf_synth.py did not run - investigate, do NOT assume clean"}}'"'"'' \
   --prompt 'OKF MEMORY SYNTHESIS — the gate fired, so /workspace/agent/memory has backlog (data lists it by class). Load the /okf-synthesis skill and follow it: write /workspace/agent/tools/okf_synth.py, run `okf_synth.py scan`, then fold AT MOST 4 offenders largest-first — distill DOSSIER files into one-concept-per-file OKF pages (type + description + [[links]]), SPLIT any OVERSIZE concept by subtopic, trim INDEX-BLOAT so index.md sits well under the 16k always-loaded budget (move detail into linked concepts, keep the Map accurate), and repair stale indexes / missing frontmatter / dangling links. Reconcile and prune — do NOT append; a smaller, truer memory is the goal. Run `okf_synth.py finalize`; if it prints ESCALATE, message the owner with the stuck offender and why. Reply one line: files scanned, offenders by class, folded, escalated?'
 ```
 
@@ -556,7 +556,9 @@ def cmd_finalize():
 
 def cmd_gate():
     """One line of JSON for the pre-task gate. Never raises past here: a crash is
-    caught by the shell `|| echo {wakeAgent:true...}` fallback in the cron."""
+    caught by the shell `|| echo '{"wakeAgent":true,...}'` fallback in the cron (the JSON MUST be quoted: unquoted, bash strips the
+    double quotes, the task runner rejects the line as invalid JSON, and the task is skipped as an error — so on a group whose
+    tool does not exist yet the agent is never woken to write it; found on prod/lego/hermes 2026-09-30)."""
     report = scan()
     if not report["exists"]:
         print(json.dumps({"wakeAgent": False, "data": {"note": f"no memory root at {report['root']}"}}))
