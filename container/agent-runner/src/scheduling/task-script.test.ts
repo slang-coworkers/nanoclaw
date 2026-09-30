@@ -215,3 +215,21 @@ describe('a timed-out script takes its children down with it', () => {
     expect(lines.join('\n')).toContain('stdout maxBuffer length exceeded');
   });
 });
+
+describe('scriptTimeoutMs — per-task budget directive', () => {
+  it('defaults to 30 s without a directive', async () => {
+    const { scriptTimeoutMs } = await import('./task-script.js');
+    expect(scriptTimeoutMs('echo \'{"wakeAgent":false}\'')).toBe(30_000);
+  });
+  it('honours `# nanoclaw-task-timeout: N` in the first lines (with or without "s")', async () => {
+    const { scriptTimeoutMs } = await import('./task-script.js');
+    expect(scriptTimeoutMs('#!/bin/bash\n# nanoclaw-task-timeout: 120\nnode sweep.mjs')).toBe(120_000);
+    expect(scriptTimeoutMs('# nanoclaw-task-timeout: 90s\nnode x')).toBe(90_000);
+  });
+  it('clamps to [30 s, 300 s] and ignores a directive buried below the first lines', async () => {
+    const { scriptTimeoutMs, SCRIPT_MAX_TIMEOUT_MS } = await import('./task-script.js');
+    expect(scriptTimeoutMs('# nanoclaw-task-timeout: 5\nx')).toBe(30_000);
+    expect(scriptTimeoutMs('# nanoclaw-task-timeout: 9999\nx')).toBe(SCRIPT_MAX_TIMEOUT_MS);
+    expect(scriptTimeoutMs('a\nb\nc\nd\ne\n# nanoclaw-task-timeout: 120\n')).toBe(30_000);
+  });
+});

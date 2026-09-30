@@ -239,6 +239,44 @@ groups:
           - refId: C
             datasourceUid: __expr__
             model: { refId: C, type: threshold, expression: B, conditions: [ { evaluator: { type: gt, params: [0] } } ] }
+      - uid: nc-gateway-stops
+        title: Coworker sessions stopped by the credential gateway
+        condition: C
+        for: 0s
+        labels: { team: nanoclaw, severity: critical }
+        annotations:
+          summary: '{{ $values.B }} session stop(s) in 10 min because the host declared the OneCLI gateway unavailable.'
+          runbook: 'Every running coworker is killed when this fires; in-flight background work is lost and nothing retries it. Check `docker ps | grep onecli` and `curl -s http://127.0.0.1:10254/v1/health`. If OneCLI is healthy it was a false alarm: see #1801. Afterwards resume the stopped sessions (reports/prod-deploy-scripts/.../inflight.py finds them).'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 600, to: 0 }
+            datasourceUid: PF3A0F3054C0DA367
+            model: { refId: A, rawQuery: true, resultFormat: time_series, query: 'SELECT sum("gateway_stops") FROM "nanoclaw_host" WHERE $timeFilter' }
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last, settings: { mode: dropNN } }
+          - refId: C
+            datasourceUid: __expr__
+            model: { refId: C, type: threshold, expression: B, conditions: [ { evaluator: { type: gt, params: [0] } } ] }
+      - uid: nc-gateway-probe-misses
+        title: OneCLI health probes failing (tolerated)
+        condition: C
+        for: 0s
+        labels: { team: nanoclaw, severity: warning }
+        annotations:
+          summary: '{{ $values.B }} tolerated OneCLI health-probe misses in 15 min — three in a row stop every session.'
+          runbook: 'OneCLI is slow or unreachable from the host. Look at `docker logs onecli --since 15m` for load (broken pipe / connection error bursts) and host CPU.'
+        data:
+          - refId: A
+            relativeTimeRange: { from: 900, to: 0 }
+            datasourceUid: PF3A0F3054C0DA367
+            model: { refId: A, rawQuery: true, resultFormat: time_series, query: 'SELECT sum("gateway_probe_misses") FROM "nanoclaw_host" WHERE $timeFilter' }
+          - refId: B
+            datasourceUid: __expr__
+            model: { refId: B, type: reduce, expression: A, reducer: last, settings: { mode: dropNN } }
+          - refId: C
+            datasourceUid: __expr__
+            model: { refId: C, type: threshold, expression: B, conditions: [ { evaluator: { type: gt, params: [2] } } ] }
       - uid: nc-collector-stale
         title: NanoClaw metrics collector not reporting
         condition: C
