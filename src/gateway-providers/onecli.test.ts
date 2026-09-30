@@ -54,7 +54,12 @@ vi.mock('../env.js', () => ({
   }),
 }));
 
-import { contributionFromConfig, withProviderEnv } from './onecli.js';
+import {
+  contributionFromConfig,
+  HEALTH_FAILURES_BEFORE_UNAVAILABLE,
+  HEALTH_PROBE_INTERVAL_MS,
+  withProviderEnv,
+} from './onecli.js';
 import { getGatewayProviderRegistration } from './gateway-provider-registry.js';
 
 const provider = getGatewayProviderRegistration('onecli')!;
@@ -254,13 +259,39 @@ describe('OneCLI gateway package', () => {
     second.onUnavailable?.(unavailable);
 
     expect(vi.getTimerCount()).toBe(1);
-    await vi.advanceTimersByTimeAsync(5_000);
-    expect(fetchMock).toHaveBeenCalledTimes(1);
+    // Misses below the threshold are tolerated: nobody is told, the monitor keeps running.
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL_MS * (HEALTH_FAILURES_BEFORE_UNAVAILABLE - 1));
+    expect(fetchMock).toHaveBeenCalledTimes(HEALTH_FAILURES_BEFORE_UNAVAILABLE - 1);
+    expect(unavailable).not.toHaveBeenCalled();
+    // The threshold-th consecutive miss fails closed for every live lease.
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(HEALTH_FAILURES_BEFORE_UNAVAILABLE);
     expect(unavailable).toHaveBeenCalledTimes(2);
     expect(vi.getTimerCount()).toBe(0);
 
     firstController.abort();
     secondController.abort();
+    fetchMock.mockRestore();
+  });
+
+  it('a transient miss followed by a healthy probe stops nothing (the 2026-09-30 fleet-kill)', async () => {
+    vi.useFakeTimers();
+    const fetchMock = vi
+      .spyOn(globalThis, 'fetch')
+      .mockRejectedValueOnce(new Error('The operation was aborted due to timeout'))
+      .mockRejectedValueOnce(new Error('fetch failed'))
+      .mockResolvedValue(new Response('{}', { status: 200 }));
+    const controller = new AbortController();
+    const lease = await provider.sessions.ensure(input('s3'), controller.signal);
+    const unavailable = vi.fn();
+    lease.onUnavailable?.(unavailable);
+
+    await vi.advanceTimersByTimeAsync(HEALTH_PROBE_INTERVAL_MS * 6);
+    expect(fetchMock.mock.calls.length).toBeGreaterThanOrEqual(3);
+    expect(unavailable).not.toHaveBeenCalled();
+    expect(vi.getTimerCount()).toBe(1);
+
+    controller.abort();
     fetchMock.mockRestore();
   });
 
