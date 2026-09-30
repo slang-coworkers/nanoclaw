@@ -4881,6 +4881,140 @@
           }
         ]
       }
+    },
+    {
+      "id": 75,
+      "type": "stat",
+      "title": "Gateway session stops (24h)",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 0,
+        "y": 150,
+        "w": 6,
+        "h": 4
+      },
+      "description": "Sessions killed because the host declared the OneCLI gateway unavailable. Must be 0 outside a real outage (09-28..30: 435 false stops).",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "query": "SELECT sum(\"gateway_stops\") FROM \"nanoclaw_host\" WHERE time > now() - 24h"
+        }
+      ],
+      "options": {
+        "reduceOptions": {
+          "calcs": [
+            "lastNotNull"
+          ],
+          "fields": "",
+          "values": false
+        },
+        "colorMode": "background",
+        "graphMode": "none",
+        "textMode": "value"
+      },
+      "fieldConfig": {
+        "defaults": {
+          "noValue": "0",
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "red",
+                "value": 1
+              }
+            ]
+          }
+        },
+        "overrides": []
+      }
+    },
+    {
+      "id": 76,
+      "type": "timeseries",
+      "title": "Gateway: session stops vs tolerated probe misses",
+      "datasource": {
+        "type": "influxdb",
+        "uid": "PF3A0F3054C0DA367"
+      },
+      "gridPos": {
+        "x": 6,
+        "y": 150,
+        "w": 18,
+        "h": 8
+      },
+      "description": "Stops = sessions killed for gateway unavailability. Misses = single failed OneCLI health probes the host tolerated (#1801); three in a row cause stops.",
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "session stops",
+          "query": "SELECT sum(\"gateway_stops\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(0)"
+        },
+        {
+          "refId": "B",
+          "datasource": {
+            "type": "influxdb",
+            "uid": "PF3A0F3054C0DA367"
+          },
+          "rawQuery": true,
+          "resultFormat": "time_series",
+          "alias": "probe misses (tolerated)",
+          "query": "SELECT sum(\"gateway_probe_misses\") FROM \"nanoclaw_host\" WHERE $timeFilter GROUP BY time($__interval) fill(0)"
+        }
+      ],
+      "options": {
+        "legend": {
+          "displayMode": "list",
+          "placement": "bottom"
+        },
+        "tooltip": {
+          "mode": "multi"
+        }
+      },
+      "fieldConfig": {
+        "defaults": {
+          "custom": {
+            "drawStyle": "bars",
+            "fillOpacity": 60,
+            "lineWidth": 1
+          }
+        },
+        "overrides": [
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "session stops"
+            },
+            "properties": [
+              {
+                "id": "color",
+                "value": {
+                  "mode": "fixed",
+                  "fixedColor": "red"
+                }
+              }
+            ]
+          }
+        ]
+      }
     }
   ],
   "templating": {
