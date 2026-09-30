@@ -568,6 +568,11 @@ def collect_host(state):
     fields["inbox_parked_events"] = err.count("webhook-inbox: delivery parked")
     fields["fatal"] = err.count("FATAL")
     fields["heap_oom"] = err.count("heap out of memory")
+    # Gateway-driven stops (a lease declared unavailable kills running sessions) and the
+    # tolerated health-probe misses that precede one (#1801). 2026-09-28..30: 435 false
+    # stops from single slow probes went unnoticed — neither signal was collected.
+    fields["gateway_stops"] = err.count("Gateway session became unavailable") + err.count("Gateway unavailable; stopping active sessions")
+    fields["gateway_probe_misses"] = err.count("OneCLI health probe failed; tolerating")
     # -- webhook inbox states (central DB, read-only)
     try:
         con = connect_ro()
