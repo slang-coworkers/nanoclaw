@@ -20,7 +20,7 @@ Alphabetical shard of the project family, packed by SIZE so every shard keeps he
 - [[project_11924_miniz_alloc_wrappers]] — "#11924 miniz alloc-wrapper hardening — MERGED (PR #11934, jkwak-work, 07-08). Chain closed/terminal."
 - [[project_11925_mimalloc_core_parked]] — "#11925 use mimalloc for Slang core — TERMINAL 2026-07-20: author @pdeayton-nv shipped it himself + closed; our chain stood down, WIP reaped, stale promise-comment edited in place"
 - [[project_11927_odr_headers_asan_parked]] — "shader-slang/slang#11927 ODR-in-public-headers mixed-ASan — TRIAGE-AND-PARK, gated on"
-- [[project_11933_fp_precise_nocontraction]] — SHIPPED — #11933 -fp-mode precise no-op on direct SPIR-V; PR #11935 MERGED to master (33f9ed0ce); issue left OPEN for per-decl follow-up
+- [[project_11933_fp_precise_nocontraction]] — SHIPPED — #11933 -fp-mode precise no-op on direct SPIR-V; PR #11935 MERGED to master (33f9ed0ce); issue CLOSED 2026-07-08; per-decl follow-up now tracked by #13324
 - [[project_11936_replay_blob_leak_pr11942]] — "#11936 record-replay replay-path blob leaks — PR #11942 MERGED; issue stays OPEN for deferred proxy-wrapper leaks"
 - [[project_11938_pathinfo_leak_parked]] — "#11938 CacheFileSystem::PathInfo repro-load leak — PARKED behind author's own PR #11937; fixer NOT dispatched"
 - [[project_11943_append_atomic_counter_alternative]] — PR #11943 AppendStructuredBuffer review chain → bot alternative #11972 MERGED by jkwak 07-08; #11943 closed. TERMINAL-POSITIVE.

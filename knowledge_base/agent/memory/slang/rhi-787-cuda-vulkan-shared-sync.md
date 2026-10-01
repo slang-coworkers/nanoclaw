@@ -1,17 +1,15 @@
 ---
 type: project
 title: slang-rhi#787 CUDA↔Vulkan shared-texture missing sync
-description: Real missing cross-API ownership bug (not tolerance). Maintainer jhelferty-nv rejected #812's create-time approach, then rejected the fixer's IExternalMemoryQueue sketch and MANDATED his own explicit API — handOffShared/takeOverShared appended to ICommandEncoder. Implemented in DRAFT PR #881 (current head 360bd42, GPU-CI-green, per-test PASSED incl the #4 round-trip, crash-free, warning-flood gone). Two gates remain: (1) reviewer re-confirm on final head; (2) operator drafts-only lift on explicit maintainer go. #812 (register-all) held as the other alternative. Review-round history split to [[rhi-787-review-history.md]].
+description: Real missing cross-API ownership bug (not tolerance). jhelferty-nv mandated their own explicit API (handOffShared/takeOverShared on ICommandEncoder), implemented in PR #881 — jhelferty flipped it READY 2026-09-28; final head 775f522 GPU-CI-green, per-test re-verified; NOT merge-ready: reviewer REQUEST_CHANGES on R4/R5 pending jhelferty's answer to 5907630393, plus skallweitNV review. #812 (register-all) held draft as the alternative. Review-round history split to [[rhi-787-review-history.md]].
 tags: [slang-rhi, synchronization, cuda, vulkan, interop, live-chain]
 resource: https://github.com/shader-slang/slang-rhi/issues/787
 ---
 
 # slang-rhi#787 — CUDA↔Vulkan shared-texture missing synchronization
 
-**State (2026-09-24): LIVE. Draft PR #881 implements jhelferty's mandated explicit API; head
-`360bd42` is GPU-CI-green and I have per-test re-verified it. Held as draft pending (1) slang-reviewer
-re-confirm on `360bd42` and (2) the operator drafts-only guardrail lift on an explicit maintainer go.**
-#812 (register-all internal design, HEAD `6e040d1`, GPU-green) is held untouched as the alternative.
+**State (2026-09-30): LIVE, parked on human review. PR #881 is NON-DRAFT — jhelferty flipped it ready themself on 2026-09-28 after accepting the same-encoder proposal, and requested review from skallweitNV. Final head `775f522` is GPU-CI-green and per-test re-verified by me, but **NOT merge-ready**: reviewer REQUEST_CHANGES on R4/R5 until jhelferty answers scope question 5907630393 (see the 2026-09-30 CORRECTION at the end). Re-chase task `rhi-881 review rechase` fires 2026-10-03T09:00Z and checks both 5907630393 and skallweitNV's review.**
+#812 (register-all internal design, HEAD `6e040d1`) is held untouched as the alternative; its fate is jhelferty's call.
 Canonical thread `gh-issue-shader-slang/slang-rhi-787`; PR review thread `gh-pr-slang-rhi-881-review`.
 Re-opens on jhelferty's webhook. Full review-round history: [[rhi-787-review-history.md]].
 
@@ -41,8 +39,8 @@ mean different things and only covers a one-shot initialized create"):
   waits stay on the CUDA driver, as SlangPy does.
 
 ## ⭐ DECISIVE SPEC (comment 5798248018) — implement jhelferty's own API; add nothing
-"Please implement this. **Do not invent another API.**" He rejected the fixer's `IExternalMemoryQueue`
-sketch (see [[rhi-787-review-history.md]]) and specified his own. **Implement verbatim.** Explicit
+"Please implement this. **Do not invent another API.**" They rejected the fixer's `IExternalMemoryQueue`
+sketch (see [[rhi-787-review-history.md]]) and specified their own. **Implement verbatim.** Explicit
 prohibitions: NO `IExternalMemoryQueue`, NO `SubmitDesc` extension, NO new queue types, NO shared-fence CUDA
 import.
 - **API — append to `ICommandEncoder` TAIL, keep existing GUID** (`0x8ee39d55…`, spans 2767..2964, last
@@ -89,18 +87,18 @@ body refreshed. I independently re-verified (clang Debug job `107527665868`, msv
 `4b2ba21`, root-cause WITH the fixer, do NOT sign off clean, report up). Gate-2 (draft→ready) = the operator
 drafts-only guardrail, which lifts ONLY on an explicit maintainer request; jhelferty requested #881's
 *creation* but has NOT reviewed this head. **My recommendation to the operator: hold as draft, notify
-jhelferty it's ready for his review, flip only on his explicit go — I do NOT override the guardrail on my
+jhelferty it's ready for their review, flip only on their explicit go — I do NOT override the guardrail on my
 own authority** (3rd time holding this line; 2 prior breaches recorded). Ready-flip is mine to call once
 both gates clear; the fixer does not self-flip. #12194 no-force-push. #812 untouched/held.
 
 ## Flip authorization (pre-loaded)
 The drafts-only gate IS liftable here — jhelferty's explicit "open a PR" request is the documented
 exception (cf. jkwak / slangpy#1083). `gh pr ready` is operator-gated, so the fixer brings the flip to me
-and I confirm only on the maintainer's explicit "land now." Flip stays HELD until he resolves review and
-authorizes.
+and I confirm only on the maintainer's explicit "land now." Flip stays HELD until they resolve review and
+authorize.
 
 ## Open items
-1. **jhelferty to review head `360bd42`** and give the explicit land-now that lifts the drafts-only gate; he
+1. **jhelferty to review head `360bd42`** and give the explicit land-now that lifts the drafts-only gate; they
    may also still weigh #881 (explicit API) vs #812 (register-all) as the shape to keep.
 2. **Human draft→ready flip** is the only gate to merge; the bot will not do it.
 3. **After the fix lands: file the dedicated-allocation asymmetry** — `cuda-buffer.cpp:129` sets
@@ -134,3 +132,28 @@ authorizes.
   passed once under the failing config, NOT that the race is eliminated. Durable signal = no recurrence on
   `windows-release-gpu-rhi` across later PRs. Infra: slang-rhi's `ci.yml` has **no draft gate** ⇒ drafts
   auto-run real CI on self-hosted GPU runners, unlike the slang repo's manual-dispatch rule.
+
+## 2026-09-30 — #881 READY (flipped by jhelferty themself), final head `775f522`, parked on human review
+- **Flip was the maintainer's, not ours:** timeline `ready_for_review` by **jhelferty-nv 2026-09-28T19:06:51Z**,
+  seconds after they replied "I accept your proposal" (r4126017892, same-encoder fallback). They then requested
+  review from **skallweitNV** ("Is this roughly what you were thinking of…?"). The drafts-only gate was lifted
+  by the maintainer's own action; we never flipped. (Resolves the gate-2 question I held on 09-24.)
+- jhelferty 09-28 inline comments r4124277593 (support-table 'x'→'yes' + portability note) and r4124507698
+  (same-encoder reversal should be an ERROR) addressed in 3 commits `eb5229dfe`, `5f237d8f6`, `775f52231`
+  (debug-layer + tests + docs/api.md only).
+- **My per-test re-verify on 775f522** (clang Debug job 109042934512, msvc Release 109042934457): 28 success
+  / 9 skipped / 0 fail; `buffer-shared-cuda.vulkan` + `texture-shared-cuda.vulkan` PASSED on both;
+  `ray-tracing-triangle-intersection.vulkan` PASSED; `cmd-copy-texture-to-buffer-full.{vulkan,wgpu}` PASSED;
+  `does not currently own`=0; FATAL/crash=0.
+- Reviewer (09-30): APPROVE_WITH_NITS; A/C runs on 775f522 lost in the 09-28 outage (`reviewers_complete=false`).
+  I declined a bot re-run: small source-verified delta, clean CI, and the PR is now in human maintainer review.
+- **Open:** skallweitNV review; fate of alt draft #812 (jhelferty's call, ask at terminal). Re-chase task
+  `rhi-881 review rechase` fires 2026-10-03T09:00Z. At merge/close → okf-synthesis condense this file.
+- **CORRECTION 2026-09-30 09:01 — NOT merge-ready. Reviewer verdict is REQUEST_CHANGES on R4/R5 only**
+  (supersedes its 09:00 APPROVE_WITH_NITS). R4 = AS/micromap build-input buffers aren't validated as uses (spec
+  5798248018 line 31 says "AS/micromap ops on the buffer" are uses; only scratch buffers are checked). R5 = the
+  same-device operand precondition (spec line 11) isn't validated. The PR body lists both as "Known partials".
+  The scope question to jhelferty (PR comment 5907630393, 09-30 08:48) has no reply yet. **My miss:** I relayed
+  "P1/P2 descoped" as settled without checking that the maintainer had agreed. A coworker's descope of a
+  maintainer's requirement isn't a deferral until the maintainer agrees. Parked on TWO inputs: jhelferty on
+  5907630393 + skallweitNV's review. The re-chase task now covers both.

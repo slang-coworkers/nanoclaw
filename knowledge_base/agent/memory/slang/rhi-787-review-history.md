@@ -45,7 +45,7 @@ for confirmation (issuecomment-5795943347). Its strategic edge (§5a): explicit-
 completeness burden** — the app names exactly which resources to release/acquire, so RHI never infers and the
 untracked-formation problem vanishes.
 
-**DECISIVE (comment 5798248018): jhelferty rejected `IExternalMemoryQueue` and specified his own API** —
+**DECISIVE (comment 5798248018): jhelferty rejected `IExternalMemoryQueue` and specified their own API** —
 `handOffShared`/`takeOverShared` appended to the `ICommandEncoder` tail. "Do not invent another API." That
 mandated spec is the current design, recorded in the parent.
 
@@ -56,7 +56,7 @@ order:
 
 - **Round-4 3-must-fix escalation (msg 104→105):** #3 tracker atomicity RESOLVED in fixer's favour (debug
   layer TRACKS not GATES; reject-and-not-apply desyncs the tracker → keep apply-and-warn); #1 setBinding
-  best-effort + #2 end-of-encoding state-restoration routed to the maintainer (deviations from his explicit
+  best-effort + #2 end-of-encoding state-restoration routed to the maintainer (deviations from their explicit
   spec). Owned that codex's #2 pushback had merit and my prior directive under-weighted it. Mechanism:
   ungated ruling-request COMMENT to jhelferty (hook blocks only `gh pr create`, not comments); do NOT bypass
   the hook.

@@ -1,6 +1,6 @@
 ---
 name: command_ncl_flags_and_caps
-description: "COMMAND-KEYED lookup for `ncl` — the file to open when you are ABOUT TO TYPE an ncl command, not after an incident. Correct flag spellings per resource (sessions=--agent-group-id, tasks=--group), the silent 200-row cap on every list verb, and PER-RESOURCE unrecognized-flag tolerance (`sessions list` ignores an invented flag and returns the full set at exit 0; `tasks list` errors loudly — everything else UNTESTED). Discriminator must be PIPE-FREE: `| head` masks the exit status and reports tolerant for everything."
+description: "COMMAND-KEYED lookup for `ncl` — the file to open when you are ABOUT TO TYPE an ncl command, not after an incident. Correct flag spellings per resource (sessions=--agent-group-id, tasks=--group), the silent 200-row cap on every list verb, and PER-RESOURCE unrecognized-flag tolerance (`sessions list` ignores an invented flag and returns the full set at exit 0; `tasks list` errors loudly on unknown flags yet silently discards `--id`/`--agent-group-id`; 08-09 sweep found destinations/members/wirings/users/roles/approvals `list` tolerant too). Discriminator must be PIPE-FREE: `| head` masks the exit status and reports tolerant for everything."
 metadata:
   node_type: memory
   type: reference
@@ -54,8 +54,9 @@ below is **NOT universal**; at least `tasks list` validates its flag set. `tasks
 
 ⇒ ⭐⭐ **A tolerance claim is per-resource until enumerated per-resource.** The original finding was
 measured on `sessions list`; I generalized it to "`ncl`" and this file said so for a day. Treat the
-rule as: *`sessions list` is known-tolerant; `tasks list` is known-strict; every other resource is
-UNTESTED.* Cheap discriminator before trusting any filtered result — **run it with a garbage flag
+rule as: *`tasks list` is known-strict (but discards `--id`/`--agent-group-id` silently); `sessions`,
+`destinations`, `members`, `wirings`, `users`, `roles`, `approvals` `list` are known-tolerant (08-09
+sweep); anything else is UNTESTED.* Cheap discriminator before trusting any filtered result — **run it with a garbage flag
 and see whether you get an error or data:**
 ```bash
 # ⛔ PIPE-FREE — `| head` MASKS the upstream exit status and returns "tolerant" for EVERYTHING.
@@ -104,11 +105,13 @@ evidence and licenses action; bound the list before believing any zero.
 1. **Unrecognized-flag tolerance** (above) — **PER-RESOURCE, not global.** Main-reproduced 08-05 with
    the garbage-flag discriminator: `ncl tasks list --zzz-nonexistent` → **`error (invalid-args):
    unknown flag`**, non-zero; `ncl sessions list --zzz-nonexistent` → **rows, exit 0**. So
-   `sessions list` is known-tolerant, `tasks list` known-strict, **every other resource UNTESTED** —
-   run the discriminator before trusting any filtered result.
-2. **`--agent-group-id` is inert at `cli_scope=group`.** Confirmed by slang-triager on its own edge:
+   `sessions list` is known-tolerant, `tasks list` known-strict; the 08-09 eight-verb sweep and the
+   `tasks list --id`/`--agent-group-id` exception are in
+   [[feedback_ncl_sessions_list_agent_group_flag_not_filtering]]. Run the discriminator anyway.
+2. **`--agent-group-id` cannot be pointed at a foreign group from `cli_scope=group`.** slang-triager's edge:
    baseline `202` · own id `202` · **nonexistent id `202`** · another group's id `202` — four
-   identical, so a nonexistent value returns the caller's full set instead of denying. At `global`
+   identical, so a nonexistent value returns the caller's full set instead of denying. ("Ignored" vs
+   "scope-forced to the caller's group" predict the same output there — don't call it *inert*.) At `global`
    it filters correctly (2178 → 862 → 0). Reading: `crud.ts:334` maps `--agent-group-id` →
    `agent_group_id`, the key `dispatch.ts:83` auto-fills and `guard.ts:74-78` rejects when foreign.
    **Check your own `cli_scope` (`ncl groups config get --id <gid>`) before quoting a filtered count
@@ -121,12 +124,11 @@ ncl sessions list --limit 10000 | grep <ag-id>          # spelling-proof
 ncl sessions list --limit 10000 | awk 'NR>2 && $2=="<gid>"'
 ```
 
-⛔ **Quote no row count from `feedback_ncl_sessions_list_agent_group_flag_not_filtering.md`** — every
-figure in it was measured through the unparsed flag. Its **method** is sound and load-bearing; its
-numbers and its original mechanism are not.
+⛔ **Quote no 08-04/05 row count** — those were measured through the unparsed `--agent-group` flag.
+The re-measured 08-09 figures (real flag) are in [[feedback_ncl_sessions_list_agent_group_flag_not_filtering]].
 
-Related: [[feedback_ncl_sessions_list_agent_group_flag_not_filtering]] (the incident, with the
-retraction), [[feedback_thread_id_filter_for_session_existence]] (where I first filed the correct
+Related: [[feedback_ncl_sessions_list_agent_group_flag_not_filtering]] (the incident's effect spec +
+lessons), [[feedback_thread_id_filter_for_session_existence]] (where I first filed the correct
 spelling on 08-04 and then failed to retrieve it), [[technique_three_questions_session_worktree_thread]]
 (session vs directory vs thread key), [[feedback_watchdog_ncl_tasks_list_empty_not_a_freeze]].
 
