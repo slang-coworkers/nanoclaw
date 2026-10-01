@@ -1,4 +1,4 @@
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
 import fs from 'node:fs';
 import os from 'node:os';
@@ -21,6 +21,7 @@ import {
   startService,
   stopService,
   verifyServiceHealth,
+  withRecordedNohupHost,
   type CommandRunner,
   type ServiceEnvironment,
 } from './service.js';
@@ -359,7 +360,7 @@ describe('drain and health gates', () => {
 
     await drainContainers(root, env);
     expect(calls).toEqual([ps, `docker stop -t ${CUTOVER_STOP_GRACE_SECONDS} aaa111 bbb222`, ps, ps]);
-    expect(progress).toEqual(['Stopping 2 NanoClaw container(s) for cutover: aaa111, bbb222']);
+    expect(progress).toEqual(['Stopping 2 NanoClaw container(s): aaa111, bbb222']);
   });
 
   it('keeps its inlined label contract equal to src/drivers/types.ts', () => {
@@ -611,5 +612,106 @@ describe('stopService idempotency (already-stopped is success, per mode)', () =>
         env({ run: () => '', tryRun: () => ({ ok: true, stdout: '' }) }),
       ),
     ).resolves.toBeUndefined();
+  });
+});
+
+describe('withRecordedNohupHost (nohup rollback stop target)', () => {
+  function fixture() {
+    const root = temp();
+    const proc = temp();
+    const env: ServiceEnvironment = {
+      platform: 'linux',
+      home: os.homedir(),
+      uid: 1000,
+      procRoot: proc,
+      runner: { run: () => '', tryRun: () => ({ ok: true, stdout: '' }) },
+      sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+    };
+    const writeProc = (pid: number, argv: string[]) => {
+      fs.mkdirSync(path.join(proc, String(pid)), { recursive: true });
+      fs.writeFileSync(path.join(proc, String(pid), 'cmdline'), `${argv.join('\0')}\0`);
+    };
+    const host = (pid: number) => writeProc(pid, ['node', path.join(root, 'dist', 'index.js')]);
+    const recordPid = (text: string) => fs.writeFileSync(path.join(root, 'nanoclaw.pid'), `${text}\n`);
+    const captured = { mode: 'nohup' as const, active: true, definition: path.join(root, 'start-nanoclaw.sh') };
+    return { root, env, host, writeProc, recordPid, captured };
+  }
+
+  it('stops the host recorded in nanoclaw.pid, not the dead pid captured before cutover', async () => {
+    const { root, env, host, recordPid, captured } = fixture();
+    const dead = spawnSync('node', ['-e', '']).pid;
+    const live = spawn('sleep', ['30'], { stdio: 'ignore' });
+    const exited = new Promise((resolve) => live.once('exit', resolve));
+    try {
+      host(live.pid!);
+      recordPid(String(live.pid));
+      const handle = withRecordedNohupHost({ ...captured, pid: dead }, root, env);
+      expect(handle).toEqual({ ...captured, pid: live.pid, active: true });
+      await stopService(handle, env);
+      await expect(exited).resolves.toBeDefined();
+    } finally {
+      live.kill('SIGKILL');
+    }
+  });
+
+  it.each(['real path', 'symlink alias'])('matches a symlinked checkout when the launcher recorded the %s', (form) => {
+    const { env, writeProc, captured } = fixture();
+    const real = temp();
+    const alias = path.join(temp(), 'nanoclaw');
+    fs.symlinkSync(real, alias);
+    fs.mkdirSync(path.join(real, 'dist'));
+    fs.writeFileSync(path.join(real, 'dist', 'index.js'), '');
+    const [recorded, projectRoot] = form === 'real path' ? [real, alias] : [alias, real];
+    fs.writeFileSync(path.join(projectRoot, 'nanoclaw.pid'), '5151\n');
+    writeProc(5151, ['node', path.join(recorded, 'dist', 'index.js')]);
+    expect(withRecordedNohupHost({ ...captured, pid: 4242 }, projectRoot, env)).toMatchObject({
+      pid: 5151,
+      active: true,
+    });
+  });
+
+  it('never targets a recorded pid that is not this checkout host (reused, relative, 0, -1, garbage)', () => {
+    const { root, env, writeProc, recordPid, captured } = fixture();
+    writeProc(4242, ['/usr/bin/sleep', '30']);
+    writeProc(5151, ['node', 'dist/index.js']);
+    writeProc(6161, ['tail', '-f', path.join(root, 'dist', 'index.js')]);
+    for (const text of ['4242', '5151', '6161', '0', '-1', 'garbage']) {
+      recordPid(text);
+      expect(withRecordedNohupHost({ ...captured, pid: 4242 }, root, env)).toEqual({
+        ...captured,
+        pid: undefined,
+        active: false,
+      });
+    }
+  });
+
+  it('logs whether it found a host to stop or none', () => {
+    const { root, env, host, recordPid, captured } = fixture();
+    const progress: string[] = [];
+    env.log = (message) => progress.push(message);
+    recordPid('5151');
+    withRecordedNohupHost(captured, root, env);
+    host(5151);
+    withRecordedNohupHost(captured, root, env);
+    expect(progress).toEqual([
+      'No running NanoClaw host found for this checkout; nothing to stop',
+      'Found running NanoClaw host (PID 5151); stopping it',
+    ]);
+  });
+
+  it('detectService (cutover) treats a recorded pid reused by another process as not running', () => {
+    const { root, env, writeProc, recordPid } = fixture();
+    fs.writeFileSync(path.join(root, 'start-nanoclaw.sh'), '#!/bin/bash\n');
+    recordPid(String(process.pid));
+    writeProc(process.pid, ['/usr/bin/sleep', '30']);
+    expect(detectService(root, env)).toMatchObject({ mode: 'nohup', pid: process.pid, active: false });
+    writeProc(process.pid, ['node', path.join(root, 'dist', 'index.js')]);
+    expect(detectService(root, env)).toMatchObject({ mode: 'nohup', pid: process.pid, active: true });
+  });
+
+  it('leaves service-manager handles untouched', () => {
+    const { root, env } = fixture();
+    const handle = { mode: 'systemd-user' as const, active: true, name: 'nanoclaw-v2-x' };
+    expect(withRecordedNohupHost(handle, root, env)).toBe(handle);
   });
 });
