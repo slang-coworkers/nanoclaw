@@ -77,3 +77,12 @@ the code-detector needs a **shebang-keyed pass unioned with the extension-keyed 
 All instances: 100% under `knowledge_base/`, non-bot real emails **0**, all secret
 matchers **0**. The scrub holds per instance — re-check per instance rather than
 trusting the body text.
+
+## STEP 4b control needs a forced index mode (2026-09-30)
+
+The shared clone `/workspace/agent/nanoclaw-kb` has `core.fileMode=false` in `.git/config`,
+so `chmod +x` + `git add` stages the probe as `100644` and the control prints nothing. The
+detector itself works: add `git update-index --chmod=+x knowledge_base/.gate-probe` after the
+`git add -f`, and the control prints `EXEC:`. With fileMode off, filesystem exec bits can't
+leak into the index, so a clean real run stays trustworthy. Also, `/workspace/agent/CLAUDE.local.md`
+no longer exists (retired 2026-08-18), so the STEP 4 force-add `fatal: pathspec` is expected.
