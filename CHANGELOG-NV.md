@@ -6,15 +6,35 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 649 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 265 |
-| `nv-slang` | slang project spine, skills, workflows | 167 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 95 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 74 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 651 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 268 |
+| `nv-slang` | slang project spine, skills, workflows | 168 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 96 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 75 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-01
+
+### nv-main (2 PRs)
+- **#1807** `Sync nv-main with upstream/main`
+- **#1815** `fix(pricing): price claude-sonnet-5-5 instead of reading it as $0`
+
+### nv-dashboard (3 PRs)
+- **#1809** `Sync nv-dashboard with upstream/main`
+- **#1817** `sync: merge nv-main into nv-dashboard (2026-10-01)`
+- **#1816** `fix(dashboard-pricing): price claude-sonnet-5-5 (and the bedrock sonnet-5 id)`
+
+### nv-slang (1 PRs)
+- **#1810** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#1811** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1812** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-09-30
 
