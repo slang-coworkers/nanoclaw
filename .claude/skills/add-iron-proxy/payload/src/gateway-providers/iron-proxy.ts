@@ -13,6 +13,7 @@ import { getInstallSlug } from '../install-slug.js';
 import { log } from '../log.js';
 
 import { readAllowedHostsFile } from './iron-proxy-allowlist.js';
+import { localModelOrigins } from './iron-proxy-local-model.js';
 import { IronProxyApprovalBridge, type IronApprovalIdentity } from './iron-proxy-approval.js';
 import {
   registerGatewayProvider,
@@ -369,6 +370,7 @@ export function defineIronProxyProvider(initialSettings?: IronProxySettings): Ga
     bridge = new IronProxyApprovalBridge(
       {
         socketPath: configured.approvalSocket,
+        plaintextOrigins: localModelOrigins(configured.approvalPort),
         timeoutMs: configured.approvalTimeoutMs,
         maxPending: configured.maxPending,
         ...(configured.approvalPort
