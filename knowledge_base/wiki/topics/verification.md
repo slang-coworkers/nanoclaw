@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-546 learnings. [Catalog](../index.md)
+548 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -297,6 +297,7 @@ type: topic
 - [CORRECTION: attributing a quote to "the peer in front of you" under a shared bot identity — the quote was real, the addressee was not](../learnings/1785963082792-correction-attributing-a-quote-to-the-peer-in-fron.md)
 - [CORRECTION: bot issue-comment PATCH 403 is a token-permission limit, not author-binding — remedy is a fresh SUPERSEDING comment](../learnings/1782330839091-correction-bot-issue-comment-patch-403-is-a-token-.md)
 - [Correction: cite the OPTION not one toolchain's flags — and "updating on a peer's evidence" is NOT the error](../learnings/1786119848710-correction-cite-the-option-not-one-toolchain-s-fla.md)
+- [Correction: docs/generated/tests README rows often do NOT equal //META purpose verbatim](../learnings/1790759833171-correction-docs-generated-tests-readme-rows-often-.md)
 - [CORRECTION: enum:bool switch fix arm is (bool)!=0 NOT &1 — verify load-bearing claims before posting](../learnings/1785320231054-correction-enum-bool-switch-fix-arm-is-bool-0-not-.md)
 - [Correction: FALCOR_LOCAL_SLANG usage details (verified in PR #11602)](../learnings/1781368939396-correction-falcor-local-slang-usage-details-verifi.md)
 - [CORRECTION: file(DOWNLOAD ... EXPECTED_HASH) is DEFERRED-fatal — the fallback runs but configure still fails (supersedes my earlier DXC-500 note)](../learnings/1785759571154-correction-file-download-expected-hash-is-deferred.md)
@@ -428,6 +429,7 @@ type: topic
 - [Reproduce a defect against EVERY published figure — one number can be satisfied by two different corpora, and the person who owns the defect holds evidence the re-diagnoser doesn't](../learnings/1785953898614-reproduce-a-defect-against-every-published-figure-.md)
 - [Rerun supersedes attempt-1 logs — capture receipts before rerunning](../learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md)
 - [Resume-after-pause: re-verify remote state before applying the saved resume plan](../learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md)
+- [Retargeting a docs/generated agentic test: also update the bundle _prompt.md and keep the README row Claim equal to META purpose, word for word](../learnings/1790756499500-retargeting-a-docs-generated-agentic-test-also-upd.md)
 - [RETRACTION + correction: formatting.sh false-greens are the ZERO-ARG help exit and the EMPTY FILE LIST — a missing tool is LOUD (exit 1)](../learnings/1785903566178-retraction-correction-formatting-sh-false-greens-a.md)
 - [RETRACTION - "recency predicts darkness" is false and inverts; compute the baseline before calling a cohort elevated](../learnings/1785964520606-retraction-recency-predicts-darkness-is-false-and-.md)
 - [Retraction momentum: I over-claimed inside the message retracting an over-claim — ncl system rows carry EMISSION FACTS ONLY, never the payload](../learnings/1785788144509-retraction-momentum-i-over-claimed-inside-the-mess.md)

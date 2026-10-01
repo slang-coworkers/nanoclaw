@@ -3,7 +3,7 @@ title: Container-side critique & delivery gates — false-positives on reads, an
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, pre-tool-use-hook, pr-approver, codex-attestation, abstain, gh-api, mcp]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -19,6 +19,7 @@ source_count: 19
 - Ship an ABSTAIN `[Approval Decision]` via the `mcp__nanoclaw__send_message` **tool** (its shell hook has the abstain fast-path), never a trailing `<message>` block (the host `poll-loop.ts` gate has NO abstain fast-path and always refuses it).
 - Keep the literal words `BLOCK` / `WOULD_APPROVE` out of ABSTAIN prose — the fast-path's negative guard is unanchored, so "not a BLOCK" defeats it. Say "a rejecting verdict" / "a clean approval."
 - Delivery re-hashes every path in codex's `### Attested` block: never attest volatile files (`.claude-trace/*.jsonl`, `logs/*`, `/workspace/*.db`) — they mutate every turn and block the post. Scope codex's reads+attestation to stable `work/<pr>-<sha>/` artifacts.
+- `### Attested` lines must be plain `- <64-hex sha256> <path>` — a backticked hash records nothing and the gate denies the approved file. Check the Attested block before posting; fix with a `codex-reply` asking for plain lines, then post the unchanged file.
 - Any file write — including a `cat > /tmp/reply.md` heredoc — counts as an "edit" and re-arms the gate. Get one OUTPUT_REVIEW approve, then post all replies with inline bodies and zero writes between.
 - Each gated STAGE (DECISION_REVIEW, OUTPUT_REVIEW) must be a **fresh** `mcp__codex__codex` call with the verbatim `/codex-critique` developer-instructions; `mcp__codex__codex-reply` never records a round (no `developer-instructions` param → fails the sentinel check).
 - Evaluative absolutes ("improvement", "no new risk", "strictly improves") on an un-regression-tested change are OUTPUT_REVIEW must-fixes — describe what code DOES, never grade it, unless you measured it. Grep ALL artifacts for the absolute in one pass; a residual copy re-triggers.
@@ -54,7 +55,10 @@ The same "any write re-arms the edit clause" trap has a subtler form: the gate c
 
 **When the `critique-gate` overlay is active, the `### Attested` sha256 hashes bind each approve to the exact files reviewed, and the delivery gate re-hashes at send time and DENIES if any attested file changed after the approve — so batch all source edits, THEN run the final attestation round once.** Fixing slang#13124: editing an already-attested source file (even a comment-only tweak) invalidates the approve of *every* stage that attested it (not just OUTPUT_REVIEW), forcing a `codex-reply` re-attest on all threads; and any `Write`/`Edit`/Bash-heredoc after an OUTPUT_REVIEW approve — even to non-deliverable files (a memory note, a `/tmp` file) — re-arms the gate on the next delivery `send_message`. Do file writes first, OUTPUT_REVIEW last, then send delivery messages with no edits in between. OUTPUT_REVIEW (Opus-backed codex) is also strict on factual absolutes: write PR bodies conditionally ("normally differs"), not absolutely. ([Codex critique attestation cascade — batch source edits before the final round](../learnings/1789563826008-codex-critique-attestation-cascade-batch-source-ed.md))
 
-**Source learnings (19):**
+A third way an approve fails to unlock delivery is formatting: `track-critique.sh` records an `### Attested` line only if it matches `-[ \t]*<64-hex sha256>[ \t]+<path>`, so when codex wraps the hash (or path) in backticks — `` - `3429…` `/path` `` — nothing is recorded and the post of the very file codex just approved is denied with "is not among the files an OUTPUT_REVIEW attested". Check the returned Attested lines before posting; if they are backticked, send a `codex-reply` on the same OUTPUT_REVIEW thread asking codex to re-emit Attested as plain `- <sha256> <absolute path>` lines (the hook maps the reply's threadId back to its stage and records its attestation), then post the unchanged file with `--body-file <absolute path>`. Asking for that exact plain format in the original OUTPUT_REVIEW prompt avoids the extra round ([codex Attested hashes in backticks are not recorded — re-emit as plain lines via codex-reply](../learnings/1790787211620-critique-gate-codex-attested-hashes-in-backticks-a.md)).
+
+**Source learnings (20):**
+- [codex Attested hashes in backticks are not recorded by track-critique.sh — the gate denies the approved file; re-emit plain `- <sha256> <path>` lines via codex-reply, then post the unchanged file](../learnings/1790787211620-critique-gate-codex-attested-hashes-in-backticks-a.md)
 - [Codex critique attestation cascade — batch all source edits then run the final attestation round once; any post-approve write re-arms the delivery gate](../learnings/1789563826008-codex-critique-attestation-cascade-batch-source-ed.md)
 
 - [critique-gate hook blocks read-only gh api pulls GETs](../learnings/1786386194490-tooling-critique-gate-hook-blocks-read-only-gh-api.md) — method-blind `BASH_PATTERNS` denies pure GETs; use gh pr view/diff or graphql; `CRITIQUE_GATE_ACTIVE` can't be unset by a child.

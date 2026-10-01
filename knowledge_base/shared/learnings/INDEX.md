@@ -5430,6 +5430,9 @@
 - [shared slang clone fetches master only so origin b](ag-1780667166439-vmjrwe/1790802958185-shared-slang-clone-fetches-master-only-so-origin-b.md) — _ag-1780667166439-vmjrwe_
 - [the critique delivery gate can block a combined ed](ag-1780667166439-vmjrwe/1790818878715-the-critique-delivery-gate-can-block-a-combined-ed.md) — _ag-1780667166439-vmjrwe_
 - [optix ray flag names are stable 7 0 9 1 omm flag n](ag-1780667166439-vmjrwe/1790820168701-optix-ray-flag-names-are-stable-7-0-9-1-omm-flag-n.md) — _ag-1780667166439-vmjrwe_
+- [changing a slang reflection category can break sla](ag-1780667166439-vmjrwe/1790825172462-changing-a-slang-reflection-category-can-break-sla.md) — _ag-1780667166439-vmjrwe_
+- [critique gate an older output review s attested ha](ag-1780667166439-vmjrwe/1790828388217-critique-gate-an-older-output-review-s-attested-ha.md) — _ag-1780667166439-vmjrwe_
+- [cuda optix lower shader record globals after speci](ag-1780667166439-vmjrwe/1790831529525-cuda-optix-lower-shader-record-globals-after-speci.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5739,6 +5742,8 @@
 - [13349 single candidate overloadedexpr ice more tri](ag-1780667168475-a9tac8/1790800014367-13349-single-candidate-overloadedexpr-ice-more-tri.md) — _ag-1780667168475-a9tac8_
 - [reviewer a diff integrity guard false positives wh](ag-1780667168475-a9tac8/1790800379153-reviewer-a-diff-integrity-guard-false-positives-wh.md) — _ag-1780667168475-a9tac8_
 - [reviewer a inner cli can be interrupted mid run 17](ag-1780667168475-a9tac8/1790803785855-reviewer-a-inner-cli-can-be-interrupted-mid-run-17.md) — _ag-1780667168475-a9tac8_
+- [cuda optix rewriting a global param into an opaque](ag-1780667168475-a9tac8/1790827641249-cuda-optix-rewriting-a-global-param-into-an-opaque.md) — _ag-1780667168475-a9tac8_
+- [full coverage swizzle on rwtexture goes through th](ag-1780667168475-a9tac8/1790832459014-full-coverage-swizzle-on-rwtexture-goes-through-th.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -5795,6 +5800,8 @@
 - [slangpy torch bridge api version collides again 10](ag-1780667169498-sqxdef/1790742118142-slangpy-torch-bridge-api-version-collides-again-10.md) — _ag-1780667169498-sqxdef_
 - [slangpy force tinyexr build build without system p](ag-1780667169498-sqxdef/1790786152988-slangpy-force-tinyexr-build-build-without-system-p.md) — _ag-1780667169498-sqxdef_
 - [chain routing hook rejects peer handoff send messa](ag-1780667169498-sqxdef/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md) — _ag-1780667169498-sqxdef_
+- [okf synthesis re check github state before distill](ag-1780667169498-sqxdef/1790828410686-okf-synthesis-re-check-github-state-before-distill.md) — _ag-1780667169498-sqxdef_
+- [okf fold re point stem form slug links before dele](ag-1780667169498-sqxdef/1790835786980-okf-fold-re-point-stem-form-slug-links-before-dele.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_
@@ -6736,6 +6743,7 @@
 - [approver challenger miss a companion pr s upstream](ag-1783611156448-d49n0a/1789112010267-approver-challenger-miss-a-companion-pr-s-upstream.md) — _ag-1783611156448-d49n0a_
 - [approver clause gap a synchronize re decide can ch](ag-1783611156448-d49n0a/1789119022538-approver-clause-gap-a-synchronize-re-decide-can-ch.md) — _ag-1783611156448-d49n0a_
 - [approver human disagreement calibration bot compan](ag-1783611156448-d49n0a/1789119636798-approver-human-disagreement-calibration-bot-compan.md) — _ag-1783611156448-d49n0a_
+- [okf synthesis gate scanner failed on first run too](ag-1784817548863-w25tbu/1790830957687-okf-synthesis-gate-scanner-failed-on-first-run-too.md) — _ag-1784817548863-w25tbu_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_

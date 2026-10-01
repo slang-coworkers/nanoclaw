@@ -3,7 +3,7 @@ title: GLSL / WGSL emit, front-end recognition, buffer layout, bindless heaps, a
 type: concept
 group: slang-backends
 tags: [glsl, wgsl, bindless, descriptor-heap, nonuniform, buffer-layout, std430, overload, dxc, reflection, cross-module]
-source_count: 15
+source_count: 18
 ---
 
 ## TL;DR
@@ -18,6 +18,9 @@ GLSL/WGSL emit and front-end facts, plus the bindless-via-glsl CI leg, buffer la
 - **`globallycoherent` on a function parameter is rejected in default mode** by a fall-through in `isModifierAllowedOnDecl` omitting `ParamDecl`; a second gate hides behind it. And "-allow-glsl permitted here" ≠ "the source language is GLSL."
 - **DXC duplicate-semantic behavior is backend-split** (DXIL errors, SPIR-V has an index-0 gap); Slang's silent re-index is Metal/WGSL-only.
 - **A GLSL-operator overload ambiguity under 202c** is caused by REDUNDANT equal-rank glsl spellings, not by unreachable `OverloadRank` — capture the actual surviving candidate set before theorizing.
+- **`import glsl;` (or `-lang glsl`) on WGSL/Metal hits E36107 from `glsl.meta.slang` `[require]` gates that predate WGSL** (matrix `operator*`/`*=` gated `cpp_cuda_glsl_hlsl_spirv_llvm`, #13350). Widening the gate alone suffices only when the body forwards to a callee that already has metal/wgsl cases (`mul`); 634 of 698 gates omit wgsl.
+- **GLSL interface blocks never compile for Metal/WGSL** — `Std140DataLayout` is `[require(spirv)] [require(glsl)]`, and uniform blocks default to std140.
+- **GLSL combined-sampler calls parenthesize every argument** (`texture((name_0), …)`), so check `texture({{.*}}name`. `-profile …+GL_EXT_X` / `-capability GL_EXT_X` never emit `#extension`; only a per-use `__requireCapability`/`__glsl_extension` does.
 - **The shader-visible `DescriptorHandle` `uint2` is `.x`=heap/array index, `.y`=0 for an ORDINARY handle — NOT a 64-bit low/high split.** The 64-bit-value reading holds ONLY for an acceleration structure (`__asuint64`, and only on some targets), and `.x`=texture / `.y`=sampler holds ONLY in the combined-sampler SPLIT lowering — scope every claim; this is distinct from the host/runtime `uint64` packing (D3D12 2×32-into-64, Metal 128b).
 
 ## Two type paths in the C-like emitters (WGSL example)
@@ -54,7 +57,57 @@ DXC duplicate-semantic behavior is backend-split (verified against the vendored 
 
 Gating off the generic-parameter-count tie-breaker in `compareOverloadCandidateSpecificity` for 202c regresses `builtin-operator-fastpath-glsl.slang` (`mat*mat`, `vec==vec` become ambiguous under `-std 202c -allow-glsl`). The tempting-but-WRONG diagnosis was "make `OverloadRank` reachable for generics" (the generic early-return supposedly skips it). Empirical candidate-set capture refutes it: for every failing call, BOTH ambiguous candidates live in `glsl.meta.slang`, same operator, IDENTICAL `[OverloadRank(15)]`, differing ONLY in generic-param count; both are FULLY SPECIALIZED at the compare step so the early-return does NOT fire and `OverloadRank` IS reached — but both ranks are equal. So "rank-first for generics" is a no-op here; the real root cause is REDUNDANT same-operator glsl spellings (a broad general form + a narrower specialized form) previously separated ONLY by the now-removed count heuristic. The fix requires a genuine language-design/core-module change (distinct ranks, merge the spellings, or a real structural-specificity rule), NOT the 202c gate alone. **General lesson: when a tie-breaker removal causes ambiguity, capture the ACTUAL surviving candidate set + each candidate's rank + flavor before theorizing about which fallback "should" fire** ([slang#12829: removing generic-param-count tie-breaker regresses glsl operators](../learnings/1787965868058-slang-12829-removing-generic-param-count-tie-break.md), [CORRECTION: slang 12829 glsl regression is equal-rank redundant spellings, not unreachable OverloadRank](../learnings/1787966040183-correction-slang-12829-glsl-regression-is-equal-ra.md)).
 
-**Source learnings (15):**
+## `import glsl;` on WGSL/Metal: `glsl.meta.slang` require gates and std140 blocks
+
+Consider `import glsl;` (or `-lang glsl`, which imports the module implicitly) with a matrix
+`a * b` compiled `-target wgsl` or `-target metal`. It fails E36107 (#13350) because
+`glsl.meta.slang:226-287` gates the three `operator*` and four `operator*=` overloads with
+`[require(cpp_cuda_glsl_hlsl_spirv_llvm, sm_4_0_version)]`. That set predates WGSL support (#3912
+landed before #5006), and the later `*=` overloads (#9501) copied it; the sibling `==`/`!=`
+overloads use `cpp_cuda_glsl_hlsl_metal_spirv_wgsl_llvm`. Unlike the fwidth trap, where widening
+`[require]` also needs a `__target_switch` case (see
+[WGSL/Metal cross-target emission](../concepts/slang-backends-wgsl-metal.md)), widening the gate
+alone is enough here: the bodies only forward to `mul`, which already has metal/wgsl cases, and a
+prototype emitted native `a * b` identical to the GLSL target. The user workaround is that GLSL
+`a * b` equals `mul(b, a)`. Rebuilding only `slang-glsl-module slangc` after
+`cmake -E touch source/slang/glsl.meta.slang` takes a few minutes
+[matrix `*` E36107 is an operator gate, not an emit gap](../learnings/1790793913411-e36107-on-wgsl-metal-with-import-glsl-matrix-glsl-.md).
+The class is large: 634 of 698 `glsl.meta.slang` `[require]` gates omit wgsl, and after PR #13356
+62 declarations (`mix`, `mod`, `atan(y,x)`, `inversesqrt`, …) are still gated to
+`cpp_cuda_glsl_hlsl_spirv_llvm` (tracked in #13355). Before widening one, check that its callees
+have metal/wgsl cases.
+
+A second gate sits on the layout types rather than on functions. `Std140DataLayout` is
+`[require(spirv)] [require(glsl)]` (`hlsl.meta.slang:41-45`) and `Std430DataLayout` is
+spirv/glsl/llvm only, so any GLSL `layout(std140) uniform {…}` or `buffer {…}` block gives E36107
+on `-target metal` and on wgsl. Dropping the `std140` qualifier doesn't help, because uniform
+blocks default to std140. One consequence is that `tests/glsl/matrix-mul.slang`'s METAL lane has
+never compiled; it passes only because its regex matches the diagnostic's quoted source (see
+[test authoring](../concepts/slang-tooling-f0909b0-test-authoring-filecheck.md))
+[GLSL interface blocks never compile for Metal](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md).
+
+## GLSL emit shape: combined-sampler parens and where `#extension` comes from
+
+Two facts from reviewing #13333 (Release build at a05023cd30). First, a combined-sampler call such
+as `SamplerCubeArrayShadow.SampleCmpBias(...)` on `-target glsl` emits
+`texture((combinedShadowCubeArray_0), (_S1), (0.5), (0.25))`, with every argument parenthesized,
+so `CHECK: texture(combinedShadowCubeArray` never matches even on correct output; use
+`texture({{.*}}name`. A separate Texture + `SamplerComparisonState` call emits
+`texture(samplerCubeArrayShadow(tex_0,samp_0), …)` with no extra paren. A reviewer bot's untested
+CHECK sketch had exactly this bug, so run any suggested CHECK at head before posting it. Second,
+`-profile glsl_460+GL_EXT_X` and `-capability GL_EXT_X` do NOT emit `#extension GL_EXT_X`; the
+directive comes only from a per-use `__requireCapability` / `__glsl_extension`
+(`IRRequireTargetExtension`). So a test asserting `#extension` is not made vacuous by a profile
+that already includes the extension, and choosing `glsl_460` over a richer profile is not
+load-bearing. To drill such a test's failability, break the compiler rather than the test: remove
+the wrapper's `__glsl_extension` + `__requireCapability`, or revert `SampleCmpBias`→`SampleCmp` in
+the `glsl.meta.slang` `default:` branch, then `cmake -E touch` the meta file and rebuild
+`generate_core_module_headers` + `slangc` (~3 min on Release). That drill showed the existing
+`sample-cmp.slang` and `intrinsic-texture.slang` passing under the regression while only the new
+per-form tests failed
+[combined-sampler parens; profile caps don't emit `#extension`](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md).
+
+**Source learnings (18):**
 
 - [WGSL emit has TWO type paths — a grep hit in one is not coverage in the other](../learnings/1786706500522-wgsl-emit-has-two-type-paths-emittype-routing-vs-e.md) — `_emitType` routes, `emitSimpleTypeImpl` names; a new IR type usually needs a case in the latter; identify the enclosing function after a grep hit.
 - [internal modifier breaks cross-builtin-module calls — GLSL is a separate module from Core](../learnings/1786522969053-internal-modifier-breaks-cross-builtin-module-call.md) — `internal` = same-module only; GLSL is a separate builtin module; measure with a core-module rebuild; alternatives are `[require(spirv)]` (necessary-not-sufficient) or relocating the decl.
@@ -71,3 +124,6 @@ Gating off the generic-parameter-count tie-breaker in `compareOverloadCandidateS
 - [slang#12829: removing generic-param-count tie-breaker regresses glsl operators](../learnings/1787965868058-slang-12829-removing-generic-param-count-tie-break.md) — the failing candidates are glsl-vs-glsl at identical rank 15; the "unreachable rank" theory is refuted by the captured candidate set; needs a language-design change.
 - [CORRECTION: slang 12829 glsl regression is equal-rank redundant spellings, not unreachable OverloadRank](../learnings/1787966040183-correction-slang-12829-glsl-regression-is-equal-ra.md) — capture the surviving candidates' flavor + ranks + conversion-cost ties before asserting a root cause; the real cause is redundant same-operator spellings.
 - [shader-visible `DescriptorHandle` `uint2`: ordinary handle = `.x` index / `.y`=0 (NOT a 64-bit split, #12937), AS = `__asuint64` GPU address on some targets, combined texture-sampler = `.x`/`.y` split only in the HLSL/`spvDescriptorHeapEXT` lowering; scope every claim and verify against the `getDescriptorFromHandle` target switches (docs PR #12938).](../learnings/1788849400575-descriptorhandle-uint2-component-semantics-shader-.md)
+- [GLSL emit: combined-sampler calls are `texture((name_0), …)`; profile/-capability GL_EXT_X don't emit `#extension` (#13333)](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md) — drill failability by breaking the compiler
+- [E36107 on wgsl/metal with `import glsl;` matrix `*` = glsl.meta.slang operator gate, not an emit gap (#13350)](../learnings/1790793913411-e36107-on-wgsl-metal-with-import-glsl-matrix-glsl-.md) — widening the gate alone suffices because bodies forward to `mul`
+- [GLSL interface blocks never compile for Metal (Std140DataLayout gate); tests/glsl/matrix-mul.slang METAL is vacuous; 62 decls still gated (#13355)](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md)

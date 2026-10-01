@@ -3,7 +3,7 @@ title: SPIR-V capability system — atoms, storage classes, extensions, and targ
 type: concept
 group: slang-backends
 tags: [spirv, capabilities, capdef, vulkan, slang-rhi, storage-class, atomics, raytracing]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -14,6 +14,7 @@ Slang's SPIR-V capability system decides whether an emitted instruction is legal
 - **Capability-declaration-completeness fixes** (a decoration/op needs a cap the module never declared) are additive-only and low-risk: they can only add an `OpCapability` line. Confirm the exact decoration→capability pairing against `spirv.core.grammar.json`, that it is a single emit site, and that the test's positive control does not self-declare the cap via a system value.
 - **Capability atoms carry transitive implications.** A version alias (`spirv_1_5`) bundles extension atoms; a bare extension implies a version floor. To classify "did the user request a version vs an extension," test the **non-implied LEAF atoms** (`newSetWithoutImpliedAtoms`), never the closure. `def X : Y` means X implies Y; siblings sharing a parent do NOT imply each other.
 - **Storage-class / bit-width caps** must be split per storage class: `RWStructuredBuffer<uint8_t>` needs narrow `StorageBuffer8BitAccess`, not broad `UniformAndStorageBuffer8BitAccess`. The narrow enumerants are already vendored in `spirv.h` (generated, not capdef) — no submodule bump needed. Enforce narrow↔broad subsumption at the ONE funnel (`requireSPIRVCapability`), not by coordinating arms. Watch: `-profile spirv_1_3` uses legacy `BufferBlock`/`Uniform` encoding and hides the modern-path bug.
+- **`StorageBuffer16BitAccess` alone validates 16-bit loads, stores, `OpCopyObject` and width-only converts**; `Int16`/`Float16` are needed only for 16-bit constants, arithmetic, `OpPhi`, Function-storage vars and whole-struct loads. Slang declares `Int16` whenever the type exists, and `spirv-opt --trim-capabilities` drops the wrong cap.
 - **Stage restriction via capability atoms is unreliable when a `__target_switch` has a permissive/empty `case metal: break;` arm** — it re-admits stages for body-INFERRED caps. But an explicit `[require]` on a PUBLIC decl *replaces* the caller-visible set, so it IS sufficient there; the dedicated call-graph check is only forced when the rule can't be a public-decl `[require]`.
 - **slang-rhi capability accounting is SPIR-V-neutral** under the default (non-restrictive) profile — fixing which Vulkan bit advertises a cap does not change emitted SPIR-V. The vk.xml `<spirvcapability><enable>` table is authority; one Vulkan bit can enable TWO SPIR-V caps.
 - **Availability = the intrinsic's `[require]` target set AND its `__target_switch` case bodies** — widen both together or the fix is half-done.
@@ -42,6 +43,22 @@ When Slang emits an over-broad `UniformAndStorageBuffer8BitAccess` where narrow 
 
 Two subtleties for the fixer. First, **enforce subsumption at the single insertion point**: `requireCapabilitiesForType` is called lazily per pointer-type emission, so its `Uniform` and `StorageBuffer` arms fire in emission order, not source order — an initial fix that coordinated the two arms leaked BOTH caps when a struct is bound through a ConstantBuffer AND a RWStructuredBuffer with the uniform access emitted first. The robust fix enforces the invariant at the ONE funnel every cap goes through (`requireSPIRVCapability`): skip a narrow request when its broad superset is present, and retract a subsumed narrow when adding the broad — order-independent, single source of truth, with the narrow↔broad pairing in one helper (`getStorageBufferCapabilityPair`). Also note the narrow cap ALSO covers legacy SSBOs (`Uniform` + `BufferBlock`-decorated), so "Uniform class ⇒ broad cap" is false ([SPIR-V storage capability subsumption must be enforced at the single insertion point](../learnings/1788166383343-spir-v-storage-capability-subsumption-must-be-enfo.md)). Second, **the SPIR-V version profile changes the storage class and can HIDE the bug**: `-profile spirv_1_3` emits an SSBO with the legacy `BufferBlock`+`Uniform` encoding (where the broad cap is genuinely correct), while default/`spirv_1_5` uses modern `Block`+`StorageBuffer` (where narrow is minimal). A storage-buffer capability test must therefore use default/1.5+, not 1.3, or it never exercises the buggy modern path ([SPIR-V storage-buffer cap bugs: -profile spirv_1_3 hides them](../learnings/1787699257464-spir-v-storage-buffer-cap-bugs-profile-spirv-1-3-u.md)).
 
+The 16-bit arithmetic capabilities are a separate question from the storage ones, and the
+answer is narrower than "any 16-bit type needs `Int16`" (spirv-val-checked during triage of
+#13338). Under SPV_KHR_16bit_storage, `StorageBuffer16BitAccess` alone validates loads, stores,
+`OpCopyObject`, and width-only converts (`OpUConvert`/`OpSConvert`/`OpFConvert`), so
+`buf16[i] = uint16_t(x)` does NOT need `Int16`. spirv-val (vulkan1.2) still requires
+`Int16`/`Float16` for a 16-bit `OpConstant` ("Cannot form constants of 8- or 16-bit types"),
+arithmetic, `OpPhi`/`?:`, Function-storage 16-bit variables (which Slang produces at `-O0`), and
+whole-struct loads of a struct with 16-bit members. glslang declares `Int16` by use; DXC and
+Slang emit it whenever the 16-bit type exists (`slang-emit-spirv.cpp:2476`/`:2500`).
+`spirv-opt --trim-capabilities` is not a fix: it keeps `Int16` and drops the storage capability.
+The work is tracked as #6608 (`Int16`, deprioritized) and #8760/#9910 (broad storage cap; draft
+PR #12759). To check shapes by hand, `cmake --build build --config Debug --target spirv-as
+spirv-val spirv-opt` builds the tools in about a minute from the existing slang build tree (into
+`build/external/spirv-tools/tools/Debug/`)
+[SPIR-V 16-bit storage: which shapes actually need Int16/Float16](../learnings/1790728274564-spir-v-16-bit-storage-which-shapes-actually-need-i.md).
+
 ## Stage restriction: capability atom vs dedicated call-graph check
 
 Slang's structural ray-tracing checker rejects stage-illegal use only when `capabilities->isIncompatibleWith(getAtomFromStage(stage))` is true, and `isIncompatibleWith` returns "compatible" if ANY target key shares ANY intersecting stage. A stdlib wrapper whose body is `__target_switch { case metal: break; default: <native>; }` leaves an UNCONSTRAINED `metal` entry (empty break body ⇒ metal target with all stages). Since Metal legitimately pairs e.g. `_anyhit + metal`, the join finds a match under the `metal` key and no diagnostic fires — even though the intrinsic's own `[require]` propagated. This is why `callShader` uses a dedicated call-graph reachability check instead of a capability atom ([capability isIncompatibleWith is defeated by an unconstrained target arm](../learnings/1787668797917-slang-capability-isincompatiblewith-is-defeated-by.md)).
@@ -52,9 +69,10 @@ That first atom **over-generalized**, and its own author corrected it: the Metal
 
 **In a core-module `__target_switch`, a family-specific capability case (e.g. `case spvDescriptorHeapEXT:`) WITHOUT the plain base-family case (`case spirv:`) makes the capability system infer that targeting the whole family REQUIRES the extension.** Compiling ordinary code that reaches the switch for plain `-target spirv -profile spirv_1_6` then emits `warning[E41012]: profile implicitly upgraded`, which is a hard error under `-warnings-as-errors all` — even when the arm body is harmless. `default:` does NOT count as the base-family alternative; the family is "claimed" by the most-specific listed case. Fix: pair every family-specific capability case with an explicit plain base-family arm, even an empty one (`case spirv: break;`) — the more-specific arm still wins when its capability is present, so target-scoped behavior is unchanged. ([A family-specific capability case in __target_switch needs an explicit base-family arm (else E41012)](../learnings/1789575168359-a-family-specific-capability-case-in-target-switch.md))
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [Target-scoped compile-time rejection via static_assert in a __target_switch arm — and it can't guard a lowering-time ICE](../learnings/1789548428451-target-scoped-compile-time-rejection-via-static-as.md)
 - [A family-specific capability case in __target_switch needs an explicit base-family arm (else E41012 implicit upgrade)](../learnings/1789575168359-a-family-specific-capability-case-in-target-switch.md)
+- [SPIR-V 16-bit storage: which shapes actually need Int16/Float16 (spirv-val-checked, #13338)](../learnings/1790728274564-spir-v-16-bit-storage-which-shapes-actually-need-i.md) — loads/stores/copies/width-only converts don't; constants, arithmetic, OpPhi, Function vars do
 
 - [SPIR-V float atomic-add hard-requires the capability — no CAS emulation fallback](../learnings/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — float `InterlockedAddF32` lowers to `OpAtomicFAddEXT` and unconditionally requires the cap; missing cap = compile error, not emulation; SPIR-V is a function of target/profile not the GPU.
 - [SPIR-V capability-declaration completeness fixes are a low-risk shape](../learnings/1786496880243-approver-confirmed-safe-spir-v-capability-declarat.md) — additive-only `requireSPIRVCapability` fixes for decorations needing an undeclared cap; the diligence is on the positive-control test, not the one-line change (slang#12467 merged unchanged).

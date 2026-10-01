@@ -3,18 +3,15 @@ title: "Slang test authoring: FileCheck efficacy, ignored targets, and confounde
 type: concept
 group: slang-tooling
 tags: [slang-test, filecheck, testing, cuda, metal, target-switch, gpu-less, test-efficacy]
-source_count: 17
+source_count: 20
 ---
 
 ## TL;DR
 
 The recurring theme is **test efficacy**: a green test in a GPU-less container routinely proves nothing, because the target it exercises is silently ignored, or an independent flag produces the signal you attribute to your change, or a `-NOT` sits on a target the code never runs on.
 
-- **`slang-test` exits 0 when nothing matched.** A filter typo, a positional path arg
-  (enumeration comes from `-test-dir`), or a `-test-dir` + trailing filter all run *nothing*
-  and read as a pass. Gate on `[0-9]+% of tests passed (n/m)` appearing.
-- **The failure marker is `FAILED test:` (UPPERCASE);** the pass marker is lowercase `passed
-  test:`. `grep -c '^failed test:'` matches neither and reports 0 failures on a failing log.
+- **`slang-test` exits 0 when nothing matched** (filter typo, positional path arg, `-test-dir` + trailing filter) — gate on `[0-9]+% of tests passed (n/m)` appearing.
+- **The failure marker is `FAILED test:` (UPPERCASE)**; `grep -c '^failed test:'` reports 0 failures on a failing log.
 - **A `-target hlsl`/`-mtl` subtest is "ignored" (0/0), not run,** in a GPU-less/toolchain-less
   sandbox — an *untested* target; macOS CI runs the mtl subtest.
 - **A cross-target `COMPARE_COMPUTE` listing `-mtl` must not use `double`** (Metal has none;
@@ -23,9 +20,7 @@ The recurring theme is **test efficacy**: a green test in a GPU-less container r
   CPU CI), which aborts before the pre-emit diagnostic pass.
 - **A `-NOT` on a target the code-under-test never runs on is a tautology** — it can't fail.
   Put positive assertions on the target the pass runs on.
-- **A target-path flag can mask a behavioral lane** — e.g. `-target ptx` for `-fp-mode fast`
-  also passes NVRTC `--use_fast_math`, which produces `.approx` ops regardless of the prelude
-  redirect. Isolate by removing every other cause of the signal on that path.
+- **A target-path flag can mask a behavioral lane** (`-target ptx` adds NVRTC `--use_fast_math`, so `.approx` appears regardless of the prelude redirect) — remove every other cause of the signal.
 - **Lifting a per-target emit predicate to the base affects every sibling subclass** — enumerate
   the concrete emitters before promoting an override.
 - **Retarget a stale emit test on the invariant, not the new spelling** — capture names with
@@ -39,6 +34,9 @@ The recurring theme is **test efficacy**: a green test in a GPU-less container r
   `warning[E41012]`) fires — add it only when a real extra exists.
 - **Never name a custom `filecheck=` prefix with a reserved suffix** (`-EMPTY`/`-NEXT`/`-SAME`/
   `-NOT`/`-DAG`/`-LABEL`/`-COUNT`) — `CHECK` reinterprets `CHECK-EMPTY:`; use `CHECK-ZERO`.
+- **`filecheck=CHECK,WGSL` activates ONLY `CHECK`** — slang-test hands FileCheck one prefix, so every `WGSL:` line is dead (garbage there still passes). Use one prefix per `//TEST` directive; a newly-live `METAL: [[kernel]]` must be escaped `{{\[\[}}kernel{{\]\]}}`.
+- **SIMPLE+FileCheck ignores the compiler's exit code**, so a loose `{{.*}}` regex can match the source line quoted in an error diagnostic (`tests/glsl/matrix-mul.slang`'s METAL lane has never compiled).
+- **Don't pin incidental output that is another open PR's bug** — split a one-line full-signature CHECK into `CHECK: void f(` + one `CHECK-SAME:` per param, and run the test against that PR's diff.
 - **`COMPARE_COMPUTE(-shaderobj)` loads the file as a module**, so a source-language-gated
   feature (`sourceLanguage==HLSL`) never fires (E30019) — value-check with a direct-compile
   `SIMPLE(filecheck=...):-target hlsl` instead; COMPARE_COMPUTE also rejects `-entry`/`-stage`.
@@ -133,6 +131,26 @@ CallableKHR`) — don't add a `-NOT` on the unaffected target to "document" non-
 a comment's job
 [-NOT on an unrun target is a tautology](../learnings/1787659385637-a-filecheck-not-on-a-target-the-code-under-test-ne.md).
 
+Two further shapes of a check that cannot discriminate. **A loose regex can match the
+diagnostic instead of the output.** `tests/glsl/matrix-mul.slang`'s METAL directive (added by
+#4378) has never compiled, because GLSL `std140` blocks are gated off Metal with E36107 (see
+[GLSL / WGSL emit](../concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)). It passes
+anyway: `{{.*}}m1{{.*}}*{{.*}}m2{{.*}}*{{.*}}a_position{{.*}}` matches the source line that the
+E36107 diagnostic quotes, and slang-test's SIMPLE+FileCheck ignores the compiler's exit code.
+Don't count such a lane as coverage; anchor on tokens only real output can contain
+[matrix-mul METAL lane is vacuous](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md).
+**A full-line CHECK can pin another open PR's bug.** On #13328 (combined-sampler classifier fix)
+a new test checked the whole Metal kernel signature on one line, which also pinned the missing
+`[[texture(n)]]` on resource arrays that open PR #12294 fixes. Applying only #12294's
+`slang-emit-metal.cpp` hunk (`git apply --include=<path> pr.diff`) and rebuilding made the test
+fail on correct output, so whichever PR landed second would break CI. The remedy was
+`MTL: void computeMain(` followed by one `MTL-SAME:` line per parameter, verified three ways:
+it passes with the other PR, passes without it, and still fails on the unfixed `.cpp`. When a
+test matches incidental output that the PR body itself calls a separate known bug, find the
+open PR for that bug and run the test against its diff. The clarity reviewer caught this from
+the test text alone; the correctness pass's test-coverage agent missed it
+[full-signature CHECK pins another PR's bug](../learnings/1790712737290-a-full-signature-metal-check-can-pin-another-open-.md).
+
 The subtler cousin is a **flag on the target path masking the signal you attribute to your
 change**. Two atoms from the CUDA fast-math redirect work (slang#12619 and its R2/R3 review
 #12872) converge on the identical trap: to prove the prelude's `#if
@@ -215,7 +233,7 @@ path (DXC), not just the emit.
 
 ## Authoring diagnostic tests, FileCheck prefixes, and COMPARE_COMPUTE lanes
 
-Four authoring rules for tests that pass in CI, not just in a GPU-less sandbox.
+Authoring rules for tests that pass in CI, not just in a GPU-less sandbox.
 
 **`non-exhaustive` is a two-sided contract — rejected when redundant, required when a real extra
 fires.** `slang-test` errors `Unnecessary 'non-exhaustive': All N diagnostic(s) were matched by
@@ -251,6 +269,23 @@ This hides locally because `SIMPLE(filecheck=...)` directives are silently IGNOR
 when slang-llvm/FileCheck is unavailable, and early `wait-for-human-priority` CI yields never run
 test-slang — so "CI was green before" is not evidence if the prior runs were priority-yields.
 
+**A comma list in `filecheck=` does not add prefixes.** slang-test splits a directive's option
+list on `,` (`tools/slang-test/slang-test-main.cpp` ~:367), `getFileCheckPrefix` reads only the
+`filecheck` key, and `slang-llvm-filecheck.cpp:92` passes exactly one prefix. So in
+`//TEST:SIMPLE(filecheck=CHECK,WGSL):` every `// WGSL:` line is ignored. On #13356, garbage in
+every `WGSL:`/`METAL:`/`GLSL:` line still passed 3/3, while breaking one `CHECK:` line failed.
+That overturns the same PR's earlier reading that the form shares `CHECK` lines across targets
+and adds a per-target second prefix [earlier comma-prefix reading](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md).
+Use one prefix per `//TEST` directive. Activating the dead lines surfaces two latent traps:
+`// METAL: [[kernel]]` parses as a FileCheck variable (`undefined variable: kernel`; escape it as
+`{{\[\[}}kernel{{\]\]}}`), and prose such as `// ... only on GLSL: WGSL and Metal ...` becomes a
+`GLSL:` directive. Existing users of the comma form reportedly include
+`tests/spirv/debug-matrix-layout.slang`, `tests/spirv/optional-vertex-output.slang`,
+`tests/bugs/gh-11021-dxil-default-profile.slang` and
+`tests/vkray/empty-payload-glsl-noinline-helper-chain.slang` (not individually re-verified).
+When reviewing a `filecheck=X,Y` test, run the mutation drill
+[comma prefixes are dead](../learnings/1790799835281-slang-test-filecheck-check-wgsl-silently-activates.md).
+
 **`COMPARE_COMPUTE(-shaderobj)` can't verify a source-dialect-gated conversion.** When a feature is
 gated on the translation unit's source language (e.g.
 `getShared()->getTranslationUnitRequest()->sourceLanguage == SourceLanguage::HLSL`, as in the #13075
@@ -269,7 +304,7 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 `error 1004: unknown command-line option '-stage'`
 [COMPARE_COMPUTE module-load defeats a source-dialect gate](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md).
 
-**Source learnings (17):**
+**Source learnings (20):**
 - [slang-test harness instrument traps: FAILED-vs-failed, priority-yield red, formatting file-list asymmetry](../learnings/1786405416356-slang-test-harness-instrument-traps-failed-vs-fail.md) — Uppercase `FAILED test:`; exit-0-on-nothing gate; `-explicit-test-order` mandatory; priority-yield red-by-design; plus `git log %B` and `REQUIRED_BY` CMake bonuses.
 - [NVAPI HitObject transform getters (#9257) — textual ABI test masks the DXC-only bug](../learnings/1787226505940-nvapi-hitobject-transform-getters-9257-textual-abi.md) — `//CHECK: .GetX` proves emit, not API membership; only DXC catches it; PR #12089 re-gates but keeps the broken mapping; static_assert on the NVAPI arm.
 - [slang-test bare -target hlsl SIMPLE tests are "ignored" in GPU-less env; unit-test ninja target](../learnings/1787342748842-slang-test-bare-target-hlsl-simple-tests-are-ignor.md) — HLSL/DXC filtered to 0/0; write CPU-compute or `slangi` positive tests; `libslang-unit-test-tool.so`; ninja aborts whole build on one bad target.
@@ -287,3 +322,6 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 - [slang-test ignores spirv+filecheck reflection tests locally when the FileCheck binary is absent](../learnings/1789941026991-slang-test-ignores-spirv-filecheck-reflection-test.md) — any `filecheck=` test is `ignored (0/0)` when `getFileCheck()` is null; verify GPU-free by dumping `-no-codegen -reflection-json` and matching CHECK lines yourself, leave the pass to CI.
 - [Stale docs/generated/tests retarget: prettier 3.3.3 pin, closing-keyword trap, invariant CHECKs](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md) — capture `[[P:...]]` and CHECK-NEXT one member; don't pin the padded member's type (`int`→`uint`).
 - [Scope-narrowed PR: check closingIssuesReferences + squash title, not just the body](../learnings/1790698191466-scope-narrowed-pr-check-closingissuesreferences-sq.md) — MSL's first-free-index fallback can't make a textual missing-`[[texture(` check pass; a nonzero register pins the index.
+- [A full-signature Metal CHECK can pin another open PR's bug — split into CHECK + CHECK-SAME per param and drill it against that PR's diff (#13328 vs #12294)](../learnings/1790712737290-a-full-signature-metal-check-can-pin-another-open-.md)
+- [tests/glsl/matrix-mul.slang METAL lane is vacuous: its regex matches the E36107 diagnostic's quoted source; SIMPLE+FileCheck ignores exit code](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md)
+- [`filecheck=CHECK,WGSL` activates only CHECK — extra comma prefixes are dead; `[[kernel]]` needs escaping once activated (#13356)](../learnings/1790799835281-slang-test-filecheck-check-wgsl-silently-activates.md)

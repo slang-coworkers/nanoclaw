@@ -3,7 +3,7 @@ title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, 
 type: concept
 group: slang-backends
 tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register]
-source_count: 11
+source_count: 13
 ---
 
 ## TL;DR
@@ -16,6 +16,7 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 - **Metal argument-buffer tier is a RUNTIME device capability, not a compile-time choice** — a portable argument-buffer struct compiles once and runs on both tiers; don't bake a tier into the program.
 - **DispatchMesh/amplification legalization is Metal-only via VIRTUAL DISPATCH** (a per-target subclass override), not a call-site `if` — a "generic"-named legalization fn can be effectively single-target. Intrinsic-asm threads values only via `$`-operands; bare identifiers emit verbatim and need the name in lexical scope.
 - **A Metal binding test must use an index the fallback cannot hit.** An unbound MSL kernel argument takes the first available index, so check an explicit `register(tN)` past every earlier slot, with distinct t/s numbers to avoid E39001.
+- **A one-operand `makeVector(float4, packed_float4)` is Metal's packed→logical conversion, not a lane list.** `IRMetalPackedVectorType` is not an `IRVectorType`, so a peephole that treats a non-vector operand as one scalar lane stores a whole `packed_float4` into a float. Count a lane only for an `IRBasicType` operand matching the result's element type.
 - **CI noise on Metal-only PRs**: a Falcor-Perf failure can NEVER be caused by a Metal-only diff (Falcor is D3D12/Vulkan, never compiles for Metal); priority-yield + "Artifact not found" is infra, not code.
 
 ## Metal is GPU-free reproducible
@@ -46,8 +47,33 @@ DispatchMesh (amplification) legalization is Metal-only via VIRTUAL DISPATCH: `l
 
 MSL 4.1 §5.2.1 gives a kernel argument without an explicit `[[buffer(N)]]`/`[[texture(N)]]`/`[[sampler(N)]]` "the first available location index". So a FileCheck that requires only *some* binding attribute, or one at index 0, can pass even when the emitter drops the attribute, because Metal's fallback lands in the same slot the layout chose. To prove a binding fix is needed, give the resource an explicit `register(tN)`/`register(sN)` whose index is past everything declared before it, and check the red-before-fix run. On slang#12294 the first choice, `t8`, still coincided: two unbound 4-element texture arrays declared earlier already filled slots 0-7. Also, `register(t8)` together with `register(s8)` on arrays raises E39001 (overlap in the Vulkan binding space) even when targeting Metal, so use distinct numbers (`t16`/`s12` worked). Codex OUTPUT_REVIEW caught both ([Metal binding tests: zero-based indices can pass on a buggy emitter](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)). The same PR's `-target metallib` smoke line has its own false-green: see [slang-test-output-assertions-and-truncated-runs](slang-test-output-assertions-and-truncated-runs.md).
 
-**Source learnings (11):**
+## Packed buffer vectors: a one-operand `makeVector` is a conversion, not a lane list
+
+Metal buffer lowering converts between `vector<T,N>` and `IRMetalPackedVectorType` with a
+one-operand `makeVector`. `__unpackVector` in `slang-ir-lower-buffer-element-type.cpp` (~:3041,
+plus :2312 and :3069) emits `makeVector(float4, packed_float4Load)` and
+`makeVector(packed_float4, v)`, and `slang-emit-metal.cpp:764` prints the first as `float4(p)`.
+`IRMetalPackedVectorType` is a sibling of `IRVectorType`, not a subtype, so `as<IRVectorType>`
+returns null for it. Any peephole that maps `makeVector` lanes to operands and assumes "not a
+vector ⇒ one scalar lane" therefore mis-folds this shape: `swizzle`/`GetElement` lane 0 becomes
+the whole `packed_float4`, and `StructuredBuffer<float4> c; out[i] = c[i].x;` on `-target metal`
+emits `*(out+i) = *(c+i)`, storing a packed vector into a float. Master (checked 2026-09-30 at
+16c3d3f686) already miscompiles `c[i][0]` this way through its `GetElement(makeVector)` fold, and
+the swizzle fold on branch fix/issue-13263 extended the bug to `.x` and `.xx`. The fix counts an
+operand as one lane only if it is an `IRBasicType` whose type equals the result's element type,
+reads that element type from either `IRVectorType` or `IRMetalPackedVectorType` instead of
+assuming the result is an `IRVectorType`, and otherwise gives up
+[one-operand makeVector(float4, packed_float4) is a conversion](../learnings/1790765098240-metal-lowering-uses-a-one-operand-makevector-float.md),
+[one-operand makeVector can be a Metal packed-vector conversion](../learnings/1790766506870-slang-ir-a-one-operand-makevector-can-be-a-metal-p.md).
+The full slang-test suite did not catch it, because `tests/metal` is text-only FileCheck with no
+case for this shape; a peer reviewer found it by probing `-target metal`. The regression test is
+`tests/metal/swizzle-of-packed-vector-load.slang`, which checks that the output still goes
+through `float4(`.
+
+**Source learnings (13):**
 - [Metal binding tests: an unbound kernel arg takes the first available index, so a zero-based or attribute-presence check passes on a buggy emitter; pick an index past all earlier slots and avoid t/s overlap (E39001) (#12294)](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)
+- [Metal lowering uses a one-operand makeVector(float4, packed_float4) as a conversion — don't count non-IRVectorType operands as scalars](../learnings/1790765098240-metal-lowering-uses-a-one-operand-makevector-float.md) — master's `c[i][0]` already miscompiles
+- [Slang IR: a one-operand makeVector can be a Metal packed-vector conversion, not a lane list](../learnings/1790766506870-slang-ir-a-one-operand-makevector-can-be-a-metal-p.md) — match element types; test tests/metal/swizzle-of-packed-vector-load.slang
 
 - [reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md) — Metal source emission (incl. SIGSEGV crashes) is GPU-free; use a runtime single-use operand to defeat constant-fold/hoist masking; cross-check `-target spirv-asm`.
 - [Metal MS-texture emit: int2 read coord + get_width(lod) are multisample-general, not depth-specific](../learnings/1786993599232-metal-ms-texture-emit-int2-read-coord-get-width-lo.md) — color controls proved 2 of 3 "depth" bugs are MS-general; texture emit lives in the core-module intrinsic layer; run contrast controls before accepting a shared-locus framing.

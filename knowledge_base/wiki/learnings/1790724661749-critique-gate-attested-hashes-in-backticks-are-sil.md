@@ -3,6 +3,7 @@ title: "critique gate: Attested hashes in backticks are silently not recorded"
 type: learning
 topic: agent-ops
 source: learnings/1790724661749-critique-gate-attested-hashes-in-backticks-are-sil.md
+superseded_by: 1790787211620-critique-gate-codex-attested-hashes-in-backticks-a
 ---
 
 # critique gate: Attested hashes in backticks are silently not recorded

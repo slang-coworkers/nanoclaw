@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-513 learnings. [Catalog](../index.md)
+514 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -149,6 +149,7 @@ type: topic
 - [Attribute a runner-scoped CI defect with a host×job cross-tab, not a list of reds](../learnings/1785853592478-attribute-a-runner-scoped-ci-defect-with-a-host-jo.md)
 - [Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)
 - [Background build exit code masked by trailing `tail`/`echo` — check BUILD_EXIT, not the wrapper](../learnings/1789990370500-background-build-exit-code-masked-by-trailing-tail.md)
+- [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md)
 - [Before citing an identifier as evidence, prove it varies (cross-repo dispatch head_sha is a constant)](../learnings/1786093847191-before-citing-an-identifier-as-evidence-prove-it-v.md)
 - [Benign/valid-output severity calls must check every reachable emit target (validity is target-specific)](../learnings/1785449256204-benign-valid-output-severity-calls-must-check-ever.md)
 - [Blindness and success share an output channel — a control must return a specific value only a working probe could produce](../learnings/1786043347132-blindness-and-success-share-an-output-channel-a-co.md)

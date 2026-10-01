@@ -23,6 +23,8 @@ The shape only becomes a problem at **module scope**, where a `static const` ini
 
 Lesson: don't assert "SSA/inline canonicalizes X" from intuition — check the emitted code first. This premise was wrong in both a source comment and the PR body and took an extra codex OUTPUT_REVIEW round to catch ([Slang synthesized member-wise ctor calls are NOT SSA-collapsed to makeStruct in function bodies](../learnings/1789527902521-slang-synthesized-member-wise-ctor-calls-are-not-s.md)).
 
+Related module-global shape: a `static` global initialized from a global param places the use in an `IRGlobalVar` initializer block, so passes that rewrite global-param uses must key on `IRGlobalValueWithCode`; see [[wiki/concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md]].
+
 **Source learnings (1):**
 
 - [Slang synthesized member-wise ctor calls are NOT SSA-collapsed to makeStruct in function bodies](../learnings/1789527902521-slang-synthesized-member-wise-ctor-calls-are-not-s.md) — the `Call($init)` is the correct runtime lowering; the module-scope `static const` illegality is fixed by a bounded `Call($init)`→`MakeStruct` normalization at the global-constant legality boundary, not by producer rewrite or module-scope SSA.
