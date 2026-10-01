@@ -63,6 +63,12 @@ describe('normalizeModel', () => {
     expect(priceUsage('azure/anthropic/claude-opus-5-5', { input_tokens: 1_000_000 })).toBeCloseTo(4, 10);
   });
 
+  it('prices sonnet-5-5 (LiteLLM: same $2/$10 per-Mtok rates as sonnet-5) instead of reading it as $0', () => {
+    expect(normalizeModel('aws/anthropic/bedrock-claude-sonnet-5-5')).toBe('claude-sonnet-5-5');
+    expect(MODEL_PRICING['claude-sonnet-5-5']).toEqual(MODEL_PRICING['claude-sonnet-5']);
+    expect(priceUsage('aws/anthropic/bedrock-claude-sonnet-5-5', { input_tokens: 1_000_000 })).toBeCloseTo(2, 10);
+  });
+
   it('returns "" for unknown/synthetic models (treated as unpriced)', () => {
     expect(normalizeModel('<synthetic>')).toBe('');
     expect(normalizeModel(undefined)).toBe('');

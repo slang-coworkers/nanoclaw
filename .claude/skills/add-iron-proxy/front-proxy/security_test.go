@@ -622,3 +622,99 @@ func mustURL(raw string) *url.URL {
 	}
 	return u
 }
+func TestLocalModelHostIsPlainHTTPOnlyWithAWrittenPort(t *testing.T) {
+	var hits atomic.Int32
+	var decided []string
+	b := &fixtureBridge{request: func(ctx context.Context, r *pb.TransformRequestRequest) (*pb.TransformRequestResponse, error) {
+		decided = append(decided, r.Request.Host)
+		return &pb.TransformRequestResponse{Action: pb.TransformAction_TRANSFORM_ACTION_CONTINUE}, nil
+	}}
+	g, _ := fixture(t, b, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits.Add(1); w.WriteHeader(200) }))
+	g.cfg.AllowedHosts = append(g.cfg.AllowedHosts, "host.docker.internal")
+	send := func(method, target string) int {
+		r := httptest.NewRequest(method, target, nil)
+		r.Header.Set("Proxy-Authorization", auth(g, "session-A"))
+		w := httptest.NewRecorder()
+		g.ServeHTTP(w, r)
+		return w.Code
+	}
+	// The port decision is the bridge's: the front forwards any written-out port to it.
+	if code := send("GET", "http://host.docker.internal:11434/v1/models"); code != 200 || hits.Load() != 1 {
+		t.Fatalf("local model: status=%d upstream=%d", code, hits.Load())
+	}
+	if len(decided) != 1 || decided[0] != "host.docker.internal:11434" {
+		t.Fatalf("bridge saw %v", decided)
+	}
+	for _, target := range []string{"http://host.docker.internal/v1/models", "http://host.docker.internal:80/v1/models"} {
+		if code := send("GET", target); code != 403 {
+			t.Fatalf("%s: status=%d", target, code)
+		}
+	}
+	w := httptest.NewRecorder()
+	r := httptest.NewRequest("CONNECT", "host.docker.internal:443", nil)
+	r.Host = "host.docker.internal:443"
+	r.Header.Set("Proxy-Authorization", auth(g, "session-A"))
+	g.ServeHTTP(w, r)
+	if w.Code != 403 || hits.Load() != 1 || len(decided) != 1 {
+		t.Fatalf("CONNECT despite an allow entry: status=%d upstream=%d decided=%v", w.Code, hits.Load(), decided)
+	}
+}
+
+func TestLocalModelPortRefusedByTheBridgeNeverReachesUpstream(t *testing.T) {
+	var hits atomic.Int32
+	b := &fixtureBridge{request: func(ctx context.Context, r *pb.TransformRequestRequest) (*pb.TransformRequestResponse, error) {
+		if r.Request.Host != "host.docker.internal:11434" {
+			return &pb.TransformRequestResponse{Action: pb.TransformAction_TRANSFORM_ACTION_REJECT}, nil
+		}
+		return &pb.TransformRequestResponse{Action: pb.TransformAction_TRANSFORM_ACTION_CONTINUE}, nil
+	}}
+	g, _ := fixture(t, b, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits.Add(1); w.WriteHeader(200) }))
+	r := httptest.NewRequest("GET", "http://host.docker.internal:8001/v1/models", nil)
+	r.Header.Set("Proxy-Authorization", auth(g, "session-A"))
+	w := httptest.NewRecorder()
+	g.ServeHTTP(w, r)
+	if w.Code != 403 || hits.Load() != 0 {
+		t.Fatalf("undeclared port: status=%d upstream=%d", w.Code, hits.Load())
+	}
+}
+
+func TestLocalModelServesOnlyTheOpenAIPaths(t *testing.T) {
+	var hits atomic.Int32
+	g, _ := fixture(t, &fixtureBridge{}, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { hits.Add(1); w.WriteHeader(200) }))
+	send := func(method, target string) int {
+		r := httptest.NewRequest(method, target, nil)
+		r.Header.Set("Proxy-Authorization", auth(g, "session-A"))
+		w := httptest.NewRecorder()
+		g.ServeHTTP(w, r)
+		return w.Code
+	}
+	const base = "http://host.docker.internal:11434"
+	allowed := [][2]string{{"POST", "/v1/chat/completions"}, {"GET", "/v1/models"}, {"GET", "/v1/models/"}, {"GET", "/v1/models/llama3"}, {"POST", "/v1/embeddings"}}
+	for _, c := range allowed {
+		if code := send(c[0], base+c[1]); code != 200 {
+			t.Fatalf("%s %s: status=%d", c[0], c[1], code)
+		}
+	}
+	refused := [][2]string{
+		{"POST", "/api/pull"},
+		{"DELETE", "/api/delete"},
+		{"POST", "/v1"},
+		{"POST", "/v1/../api/pull"},
+		{"POST", "/v1/%2e%2e/api/pull"},
+		{"POST", "/v1%2F..%2Fapi/pull"},
+		{"GET", "/v1//models"},
+		{"POST", "/v1/load_lora_adapter"},
+		{"GET", "/v1/models/a/b"},
+		{"DELETE", "/v1/models/qwen"},
+		{"POST", "/v1/models"},
+		{"GET", "/v1/chat/completions"},
+	}
+	for _, c := range refused {
+		if code := send(c[0], base+c[1]); code != 403 {
+			t.Fatalf("%s %s: status=%d", c[0], c[1], code)
+		}
+	}
+	if int(hits.Load()) != len(allowed) {
+		t.Fatalf("upstream hits=%d", hits.Load())
+	}
+}

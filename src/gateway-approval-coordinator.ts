@@ -414,9 +414,13 @@ async function processGatewayRequest(
         group: providerGroup?.agent_provider,
         config: config?.provider,
       });
-      const domains = getProviderHostContract(providerName)?.modelDomains ?? [];
+      const contract = getProviderHostContract(providerName);
+      const domains = contract?.modelDomains ?? [];
       const host = request.destination.host.toLowerCase().replace(/:443$/, '');
-      if (domains.some((domain) => host === domain || host.endsWith(`.${domain}`)))
+      if (
+        domains.some((domain) => host === domain || host.endsWith(`.${domain}`)) ||
+        (contract?.modelAuthorities ?? []).includes(request.destination.host.toLowerCase())
+      )
         return current() ? 'approve' : unavailableDecision();
     }
 
