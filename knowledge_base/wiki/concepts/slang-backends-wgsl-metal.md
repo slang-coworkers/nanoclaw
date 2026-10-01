@@ -3,7 +3,7 @@ title: "Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)"
 type: concept
 group: slang-backends
 tags: [wgsl, metal, webgpu, combined-sampler, static-const, buffer-layout, wave-intrinsics]
-source_count: 22
+source_count: 24
 ---
 
 # Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)
@@ -25,6 +25,7 @@ The WGSL (`slang-emit-wgsl.cpp`) backend is a textual target that, unlike HLSL, 
 - groupshared-by-ref (#10641) breaks Metal (unwrap the rate: `getDataType()` before address-space specialize), WGSL (inline the callee BEFORE `legalizeIRForWGSL` or `legalizeCall` reintroduces the whole-array copy), and CUDA differently — a green vk/HLSL/SPIR-V run clears NONE.
 - Pointer address space is TYPE-LEVEL on Metal/WGSL (`Ptr<T,Access,AddressSpace,Layout>`) but PASS-INFERRED on SPIR-V (`specializeAddressSpace`): the same conflicting-address-space return is a semantic type mismatch (E30019, caught in checking BEFORE the pass) on Metal/WGSL vs E58005/E58004 (after the pass) on SPIR-V. Metal/WGSL DO support returning pointers and `__getAddress`; don't generalize one context-specific E36107 (`&gShared` in an entry point) or E31160 (`__getAddress` of a function-local) into "no pointers on this target." Any "X can't reach Y" claim needs a named diagnostic + test or a failing repro, never prose.
 - Metal `[[stage_in]]` on a non-entry function is a former entry point that `lowerOutParameters` never inlined: an entry-point uniform's `IREntryPointParamDecoration` counted as a second use (#13271). Retarget before the inline decision, re-read `entryPointDecor` from the wrapper, and test with a user-semantic input, since SV_* inputs have no VaryingInput layout.
+- `fixEntryPointCallsites` clones of a called entry point keep each param's `IRLayoutDecoration`, which breaks Metal (`[[stage_in]]`) AND CUDA (system-value params dropped from the declaration but still passed at the call) — strip at the producer. Listing the callee entry point first (`-entry vsB -entry vsA`) hangs HLSL/GLSL/WGSL on master; wrap slangc in `timeout`.
 
 ## Static-Const Arrays Must Be var<private> for Runtime Indexing
 
@@ -85,6 +86,28 @@ On Metal, `lowerOutParameters` (reached through `legalizeShaderOutputParamsForMe
 
 The fix moves the retarget inside `lowerOutParameters`, before that decision, so the original is inlined and deleted. It exposed a hidden cascade: `EntryPointInfo::entryPointDecor` kept pointing at the old function's `IREntryPointDecoration`. The old inline path had worked only because it called `removeFromParent()` on that decoration (detached, operands intact) before `removeAndDeallocate()` on the function; without the detach, `packStageInParameters` → `getProfile()` crashes on a null operand. Re-read the decoration from the returned wrapper, which `transferFunctionDecorations` clones onto it. To require that a helper signature carries no attributes at all, use the FileCheck pattern `{{^[^[]*}} vsB_0({{[^[]*}}){{$}}` ([lowerOutParameters: EntryPointInfo.entryPointDecor goes stale after the wrapper swap; retarget uniform decor before the inline decision](../learnings/1790394201978-metal-loweroutparameters-entrypointinfo-entrypoint.md)).
 
+The `fixEntryPointCallsites` leak is not Metal-only. That pass (`slang-emit.cpp:2364`) runs for
+every target, and CUDA's `emitSimpleFuncParamsImpl` (`slang-emit-cuda.cpp:1597`) skips
+system-value parameters in the declaration while the call site still passes them. On master,
+`tests/spirv/nested-entrypoint.slang -target cuda -entry outerMain -entry innerMain` declares
+`innerMain_0()` but calls `innerMain_0(&_S2)`. Stripping the clone's parameter layouts at the
+producer (the `removeParamLayoutDecorations` helper in #13284) fixes Metal and CUDA together, so
+any change to param layouts on non-entry functions changes CUDA signatures as well as Metal
+attributes. When fixing an IR shape for one emitter, grep every emitter that reads the same
+decoration (`getVarLayout(param)`) and add a test line per affected target
+[stale param layouts break CUDA too](../learnings/1790761751687-stale-entry-point-param-layouts-on-a-cloned-ordina.md),
+[CUDA signature mismatch fixed as a side effect of #13284](../learnings/1790758864251-slang-listing-the-callee-entry-point-first-hangs-h.md).
+A separate hang, already on master with no filed issue, involves the same shape: two vertex entry
+points where `vsA` calls `vsB`, both returning a struct with `SV_Position`/`TEXCOORD` fields,
+compiled `-target hlsl -entry vsB -entry vsA` (callee listed first), spin at 100% CPU for more
+than 6 minutes. GLSL and WGSL hang the same way; Metal, SPIR-V and `-entry vsA` alone (0.3 s) are
+fine. Wrap slangc in `timeout 60` when cross-target diffing so the loop can't block
+[callee-first entry-point order hangs HLSL/GLSL/WGSL](../learnings/1790758864251-slang-listing-the-callee-entry-point-first-hangs-h.md).
+Two process notes came with the fix: the shared base clone's `origin/master` moves as sibling
+worktrees fetch, so `git checkout origin/master -- <file>` can pull newer upstream content
+(restore from the pinned base SHA instead), and every codex PLAN/CODE/OUTPUT critique round needs a
+`REQUIREMENTS:` line [stale param layouts](../learnings/1790761751687-stale-entry-point-param-layouts-on-a-cloned-ordina.md).
+
 ## groupshared-by-ref Multi-Backend Breakage and a Metal Binding-Loss Already Fixed by a Duplicate (2026-07-23 fold)
 
 Passing a bare `groupshared` array param **by reference** (#10641 / PR #11709) breaks three C-like backends differently, and a green vk/HLSL/SPIR-V run clears NONE of them. On Metal it is a silent abort rooted in the address-space pass, not the emitter: the param's IR type is `RateQualified(GroupShared, BorrowInOutParam(Array))`, so `as<IRPtrTypeBase>(param->getFullType())` is null and the pointer's address space is never specialized — the fix is `getDataType()`/`setDataType()` (unwrap the rate first). On WGSL the groupshared-by-ref callee MUST be inlined BEFORE `legalizeIRForWGSL`, or `legalizeCall`'s copy-in/out bridges a whole-array `var<workgroup>` copy that silently reintroduces the per-invocation copy #10641 exists to remove (a `WGSL-NOT: ptr<workgroup` check misses it; assert no whole-array copy + add a behavioral compute lane). Test the actual downstream compiler via a `-target ptx`/NVRTC lane, not just emitted source ([groupshared by-ref param: Metal addr-space + WGSL inline-ordering gotchas (#10641)](../learnings/1784756124264-groupshared-by-ref-param-metal-addr-space-wgsl-inl.md)).
@@ -95,7 +118,7 @@ Separately, a triage discipline note with a Metal root cause: #7669 (Metal `Stru
 
 The address-space model differs by target, which changes *when* a pointer conflict is caught. On **SPIR-V** a source `int*` is address-space-agnostic; the concrete storage class (Function/StorageBuffer/Workgroup/PhysicalStorageBuffer) is assigned LATER by the `specializeAddressSpace` IR pass, so a function returning pointers in two different address spaces is only detectable in/after that pass — E58005 (`conflicting-return-pointer-storage-classes`) catches it, E58004 catches non-returnable classes. On **Metal/WGSL** a pointer's address space is PART OF ITS TYPE (`Ptr<T, Access, AddressSpace.Device|GroupShared|…, Layout>`), so the SAME conflict (e.g. returning a `uniform int*` device pointer on one path and a `__getAddress(groupshared)` threadgroup pointer on another) is a plain **type mismatch — E30019** — reported in semantic checking, BEFORE the address-space pass, and never reaching it. Verified empirically (built slangc, 2026-09): Metal DOES allow functions that return pointers (a `uniform int*` passthrough compiles; a same-address-space return compiles) — pointers are NOT unavailable on Metal/WGSL. `__getAddress` is the spelled-out form of `&` and is available on Metal (`tests/metal/metal-pointer-params.slang`, `pointer-in-buffer-getaddress.slang`); `__getAddress` of a **function-local** is rejected with E31160 ("cannot take the address of a function-local variable on this target"); `__getAddress` on a structured-buffer subscript `buf[i]` is a pre-existing frontend limitation on ALL targets (#10841); and `&gShared` (groupshared) in a Metal/WGSL/GLSL compute entry point can give E36107 ("unavailable features in entry point") — but that is context-specific, NOT a general "pointers unavailable," so do not generalize one E36107 into "no pointers on this target." Meta-lesson (a maintainer pushed hard on this): treat any "X cannot reach Y" claim in code/PR comments as needing a citation or a failing repro, never prose — a plausible unreachability argument that hasn't been run is exactly where reviews stall; if you must state unreachability, name the exact diagnostic that enforces it (with a test), or weaken it to "not attempted; covered by construction" ([Pointer address space is type-level on Metal/WGSL but pass-inferred on SPIR-V](../learnings/1789546490977-pointer-address-space-is-type-level-on-metal-wgsl-.md)).
 
-**Source learnings (22):**
+**Source learnings (24):**
 - [output-struct flatten (`maybeFlattenNestedStructs`) desyncs var-layout → positional-index null-deref in `ensureStructHasUserSemantic` (Metal/WGSL segfault)](../learnings/1784382530471-slang-metal-wgsl-entry-point-output-struct-flatten.md)
 - [Slang per-target stride for `StructuredBuffer<float3, ScalarDataLayout>` — WGSL is the outlier](../learnings/1780177237717-slang-per-target-stride-for-structuredbuffer-float.md)
 - [Coverage wave-aggregate tests — CUDA/Metal FileCheck asserting `WaveActiveCountBits` passes for the wrong reason](../learnings/1780935575501-coverage-wave-aggregate-tests-cuda-metal-filecheck.md)
@@ -118,4 +141,6 @@ The address-space model differs by target, which changes *when* a pointer confli
 - [Pointer address space is type-level on Metal/WGSL (`Ptr<T,Access,AddressSpace,Layout>` → conflict is E30019 in checking) but pass-inferred on SPIR-V (`specializeAddressSpace` → E58005/E58004 after the pass); Metal/WGSL DO allow returning pointers + `__getAddress`; any "X can't reach Y" claim needs a named diagnostic+test or a failing repro](../learnings/1789546490977-pointer-address-space-is-type-level-on-metal-wgsl-.md)
 - [Metal [[stage_in]] on a non-entry helper = former entry point not demoted](../learnings/1790389765020-metal-stage-in-on-a-non-entry-helper-former-entry-.md) — uniform's IREntryPointParamDecoration is a 2nd use; SV_* tests can't catch it (#13271).
 - [lowerOutParameters: entryPointDecor goes stale after the wrapper swap](../learnings/1790394201978-metal-loweroutparameters-entrypointinfo-entrypoint.md) — retarget before the inline decision, re-read the decoration from the wrapper (#13271).
+- [Listing the callee entry point first hangs HLSL/GLSL/WGSL; fixEntryPointCallsites copies had invalid CUDA signatures (#13284)](../learnings/1790758864251-slang-listing-the-callee-entry-point-first-hangs-h.md)
+- [Stale entry-point param layouts on a cloned ordinary function break CUDA too, not just Metal](../learnings/1790761751687-stale-entry-point-param-layouts-on-a-cloned-ordina.md) — strip in the producer; grep every `getVarLayout(param)` reader
 _Catalog: [[wiki/index.md]]_

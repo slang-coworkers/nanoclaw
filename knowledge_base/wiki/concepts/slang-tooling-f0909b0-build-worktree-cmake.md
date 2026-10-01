@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc,
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, dxc, glibc, asan, valgrind, sccache, ninja]
-source_count: 15
+source_count: 18
 ---
 
 ## TL;DR
@@ -12,13 +12,7 @@ Building Slang in a per-issue `git worktree` over a shared base clone has a smal
 setup traps that, unhandled, each cost 10–40 minutes — and the CMake build graph can go stale
 under you after a rebase.
 
-- **`git worktree add` does NOT populate submodules** (nor *nested* ones). `cmake --preset
-  default` then fails at configure with `get_target_property() called with non-existent target
-  "SPIRV-Headers::SPIRV-Headers"` or a cascade of `external/<x> does not contain a
-  CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree *before* the
-  first configure. This is a one-time-per-worktree step; the base clone has them, so copying
-  from it won't help — init in the worktree. Top-level `--init` is enough; `--recursive` also
-  works but is not required for the Slang build.
+- **`git worktree add` does NOT populate submodules** (nor *nested* ones), so configure fails with `non-existent target "SPIRV-Headers::SPIRV-Headers"` or `external/<x> does not contain a CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree before the first configure; copying from the base clone won't help.
 - **A configure that dies on a missing `::` target is almost always an uninitialised nested
   submodule, not a code error** — the nested `external/spirv-tools/external/spirv-headers` is
   the usual culprit even when the top-level shows a SHA.
@@ -34,6 +28,8 @@ under you after a rebase.
   `slangc -v`'s `-g<sha>` and `git merge-base --is-ancestor` before trusting its emit. But in a
   *reused* build tree rebuilt incrementally at a new checkout, `-v` still prints the
   configure-time describe; there, take provenance from `git log -1` + a clean `git status`.
+- **A slangc/slang-test copied out of `build/Debug` is a different instrument.** The prelude resolves relative to the exe (missing → the embedded prelude is inlined, changing `.cu` text) and nvrtc looks for OptiX headers at `<bin>/../../../external/optix-dev/include` (missing → every OptiX/PTX compile fails), so ~31 CUDA/OptiX/header tests fail from a `-bindir` copy. Run baseline and candidate from the same kind of location plus a no-change control, or rebuild the tree shape with hardlinks + symlinks.
+- **No NVIDIA driver in the container:** configure with `-DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-12.6/lib64/stubs/libcuda.so` so the link doesn't fail on a missing `libcuda.so`.
 - **Sanitizer gotchas (ASan/TSan) are host-wide, not container-specific:** `LD_LIBRARY_PATH`
   must include the clang runtime dir; `ASAN_OPTIONS=detect_leaks=0` during the build.
 - **valgrind memcheck's glibc `ld.so`/`dlopen` `$ORIGIN` errors are false positives** — triage
@@ -114,6 +110,39 @@ clang-format"; install the pinned version without admin via `python3 -m pip inst
 clang-format==17.0.6` then `export PATH="$HOME/.local/bin:$PATH"` (Lua diagnostics like
 `slang-diagnostics.lua` are NOT formatted by the script — match style by hand)
 [fresh-worktree submodule init + clang-format-17 via pip; don't detach the build](../learnings/1789394522873-fresh-slang-worktree-submodule-init-clang-format-1.md).
+
+## Relocated binary copies: prelude and OptiX headers resolve relative to the build tree
+
+Keeping a master baseline by snapshotting `build/Debug/{bin,lib}` into a scratch directory
+produces a binary that behaves differently from the in-tree one on the CUDA/PTX paths, for two
+reasons. First, slangc's `TestToolUtil::setSessionDefaultPreludeFromExePath` resolves `prelude/`
+relative to the executable; when it is not found, the embedded prelude is inlined, so the emitted
+`.cu` text differs (including the `#include <optix...>` lines and `optixGet` counts). Second,
+nvrtc's `_findOptixIncludePath` (`slang-nvrtc-compiler.cpp`) looks for
+`<instance>/../../../external/optix-dev/include`, so a copy fails every OptiX/PTX ray-tracing
+compile with "Failed to locate OptiX headers (optix.h)". Run as `slang-test -bindir <copy>/bin`,
+about 31 tests (`tests/cuda/*`, `tests/optix/*`, `tests/headers/generate-cuh`/`hpp-header`, a few
+hlsl-intrinsic SER tests) fail from the copy while passing in-tree, so a "fixed vs master" diff
+between a copy-run baseline and an in-tree candidate is an artifact
+[bindir copy fails ~31 CUDA/OptiX tests](../learnings/1790714053699-slang-test-from-a-bindir-binary-copy-fails-31-cuda.md).
+Run baseline and candidate from the same kind of location, and add a no-change control program:
+if it differs too, the difference is environmental. To make a copy comparable without
+rebuilding, recreate the tree shape around it
+[prelude + OptiX resolve relative to `<bin>/../../..`](../learnings/1790719029887-slang-binary-copies-prelude-optix-headers-resolve-.md):
+
+```bash
+mkdir -p X/build/Debug X/external
+cp -al copy/bin copy/lib X/build/Debug/
+ln -s <tree>/external/optix-dev X/external/optix-dev
+ln -s <tree>/prelude X/prelude
+```
+
+That like-for-like setup showed master's own PTX nvrtc failure for slang#13329. Keep test lists
+and scratch under `/workspace/agent/`, not `/tmp`, which a container restart wipes. Separately, a
+container with no NVIDIA driver fails the link against a missing
+`/usr/lib/x86_64-linux-gnu/libcuda.so`; reconfigure with
+`-DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-12.6/lib64/stubs/libcuda.so`
+[CUDA driver stub](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md).
 
 ## GLIBC, DXC-from-source, and the stale CMake graph
 
@@ -236,7 +265,7 @@ break is the *only* remaining one
 
 `cmake -GXcode` fails at **configure** with "Xcode does not support per-config per-source COMPILE_OPTIONS: <genex> specified for source: X.cpp" whenever a per-source `COMPILE_OPTIONS` (set via `set_source_files_properties`) carries a context-sensitive `$<CONFIG:...>` generator expression. `cmGlobalXCodeGenerator` / `XCodeGeneratorExpressionInterpreter::Evaluate()` errors on the **PRESENCE** of the `$<CONFIG>` condition (`GetHadContextSensitiveCondition()` true), NOT on whether the resolved flags differ across configs — so `$<$<NOT:$<CONFIG:Debug>>:-Os>` that resolves to `-Os` in every config is still hard-rejected. Ninja Multi-Config (Slang's `default` preset, used by every CI job including the macOS `xcode-27` runner — a runner *label*, not the generator) tolerates it, and `CMakePresets.json` defines no Xcode generator, so this regression is **invisible to CI** (slang#13240/#13241). Fix pattern: branch on `CMAKE_CXX_COMPILER_ID` at configure time and emit a plain config-independent flag on the non-MSVC (Clang/AppleClang) path, keeping the `$<CONFIG>` genex only where a real per-config difference exists (MSVC Debug `/RTC1` vs optimization). Two gotchas: (1) match `CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"` (== `$<CXX_COMPILER_ID:MSVC>`), NOT the `MSVC` CMake variable — the latter is also true for clang-cl (compiler id `Clang`), so `if(MSVC)` would silently change clang-cl's flags; (2) to prove old-vs-new flag equivalence without a 20-min slang build, `file(GENERATE)` cannot evaluate `$<CXX_COMPILER_ID>` without a `TARGET` (throws "may only be used with binary targets") — instead compile a trivial 2-target throwaway replicating the `set_source_files_properties(... COMPILE_OPTIONS ...)`, build `--config Debug`/`Release` verbose, and grep the actual `-O` flags per config. Reviewer note: when a PR touches per-source `COMPILE_OPTIONS`, check whether any `$<CONFIG>` genex sits on a non-MSVC path — that is the exact shape that breaks `-GXcode`; a configure-only `buildtool: "Xcode"` macOS job wired into `check-cmake` (mirroring `cmake-options-build.yml`'s `buildtool` → `-G` for the windows-vs jobs) would cheaply guard it ([Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md)).
 
-**Source learnings (15):**
+**Source learnings (18):**
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md) — Full cascade + `ninja: loading build-Debug.ninja: No such file`; explicit external list; a backgrounded subagent build dies — run foreground + Monitor for the artifact.
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md) — #12297 added `slang-rich-diagnostics.cpp`; stale `build.ninja` → hundreds of undefined refs; reconfigure; grep `impl-Debug.ninja` (multi-config), not top-level `build.ninja`.
 - [Slang git worktree needs per-worktree submodule init before cmake configure](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md) — Top-level `--init --depth 1` is enough (no slang-rhi nested / dxc); the `SPIRV-Headers::SPIRV-Headers` `get_target_property` error + leading `-` in `git submodule status` are the tell; first configure also does a ~500 MB DXC clone+build; a Monitor on `build.log` mis-fires when configure (not compile) fails — trust the subagent's completion.
@@ -252,3 +281,6 @@ break is the *only* remaining one
 - [Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md) — Ninja MC tolerates it so CI (no `-GXcode` job) misses it (slang#13240/#13241); branch on `CMAKE_CXX_COMPILER_ID` (not `if(MSVC)` — matches clang-cl); prove flag equivalence with a 2-target throwaway, not `file(GENERATE)`.
 - [Fresh worktree: SPIRV-Headers configure error until `git submodule update --init --recursive --jobs 16` (~13 s); slangc+slang-test release ~10 min on 64 cores; "building DXC from source" did not block those targets.](../learnings/1790636604671-fresh-slang-git-worktree-init-submodules-before-cm.md)
 - [slangc -version in a reused worktree reports configure-time HEAD, not the built source](../learnings/1790693044766-slangc-version-in-a-reused-worktree-reports-config.md) — take repro SHA from `git log -1` + `git status`; no gdb in-container, A/B stack limits via Python setrlimit.
+- [slang-test from a -bindir binary copy fails ~31 CUDA/OptiX/header tests that pass in-tree — compare like-for-like locations](../learnings/1790714053699-slang-test-from-a-bindir-binary-copy-fails-31-cuda.md)
+- [Slang binary copies: prelude + OptiX headers resolve relative to <bin>/../../.. — hardlink/symlink fix and no-change control (#13329)](../learnings/1790719029887-slang-binary-copies-prelude-optix-headers-resolve-.md)
+- [No-driver container: link CUDA via the libcuda.so stub (`-DCUDA_cuda_driver_LIBRARY=...stubs/libcuda.so`); also slangc `-o /dev/null` E00004](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md)

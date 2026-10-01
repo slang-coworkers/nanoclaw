@@ -3,7 +3,7 @@ title: "Slang SPIR-V Backend: Emission, Capabilities, and Validation"
 type: concept
 group: slang-backends
 tags: [spirv, vulkan, codegen, capabilities, descriptor-heap, debug-info, atomics, spirv-opt, spirv-tools, optimization-level]
-source_count: 28
+source_count: 30
 ---
 
 # Slang SPIR-V Backend: Emission, Capabilities, and Validation
@@ -28,6 +28,7 @@ The SPIR-V backend is Slang's primary Vulkan/Khronos target, implemented via a d
 - **Descriptor-heap `ConstantBuffer` garbage is a WRONG STORAGE CLASS (Uniform vs StorageBuffer), not a missing `ArrayStride`** — a typed `OpBufferPointerEXT` needs pointer-type ArrayStride, emitted only for Storage/PhysStorage. Per spec the `OpTypeBufferEXT` and `OpBufferPointerEXT` storage classes are INDEPENDENT (DeepWiki claimed otherwise and was wrong).
 - **SPIR-V atomic emit has FOUR cross-layer address-space gates** — front-end E30047, `isValidAtomicDest` (E41403), `isAtomicableAddressSpace` (**a miss silently falls back to non-atomic load/store**), and `emitMemorySemanticMask` (a miss → `memoryClass=0` → VUID-10870). `AtomicAdd/Inc/Dec/CompareExchange` bypass gate 3.
 - **Signature-derived `VariablePointers` must gate on `[noinline]` via `findDecoration`, not `hasUses()`** — inlined helpers retain uses, and over-declaring the cap triggers driver miscompile #9061.
+- **`VariablePointers`/`VariablePointersStorageBuffer` lift "a variable may not hold a pointer" only for Workgroup/StorageBuffer pointees; a `Uniform` pointee is rejected regardless.** Pre-1.4 Slang lowers SSBOs to `Uniform`+`BufferBlock`, so a Function var holding one on `-profile spirv_1_3` is unfixable by declaring a capability.
 - **Default optimization level still runs spirv-opt; only `-O0` runs ZERO passes** — but **`-O0` MASKS spirv-opt aborts rather than fixing them** (#12247 revives #11766/#11767), and `CreatePrivateToLocalPass` breaks function-`static` persistence. Triaging "N tests fail under `-O3`": **EXIT 0 = benign FileCheck drift, EXIT 134 = a real abort** (~77 of 79 were benign).
 - **`-g1 OpLine` / `-g2 DebugLine` come ONLY from statement-granularity `IRDebugLine` markers**, so propagating `sourceLoc` onto value insts changes emitted SPIR-V by zero bytes — such a fix has no writable test. At `-g2` the full source is embedded as an `OpString`, so a `CHECK-NOT` whose text appears in your own `//CHECK` line falsely matches.
 - **A clean `slangc` exit proves nothing: run `spirv-val` explicitly.** `//TEST:SIMPLE` and `-target spirv-asm` do NOT validate; CI sets `SLANG_RUN_SPIRV_VALIDATION=1`, so validation-absence tests pass locally and fail in CI. A capability/validation regression test **must use a real `-target spirv` directive**.
@@ -82,6 +83,29 @@ The `spvDescriptorHeapEXT` path uses `kIROp_SPIRVLoadDescriptorFromHeap` (not `I
 
 `requireVariableBufferCapabilityIfNeeded` is called from value-materialization sites (var/phi/call/element-ptr/load), NOT from function-signature emission. A `Ptr<T, GroupShared>` that survives as a `[noinline]` function parameter emits a valid `OpTypeFunction %_ptr_Workgroup_T` but NO `OpCapability VariablePointers`. Fix: walk the function type in `emitFunc` and gate on `IRNoInlineDecoration` (not `hasUses()`) — inlined helpers retain uses but must not spuriously declare the cap, which triggers driver miscompile #9061 ([Slang SPIR-V variable-pointers cap is declared from value sites, not function signatures](../learnings/1780967438806-slang-spir-v-variable-pointers-cap-is-declared-fro.md), [Signature-derived SPIR-V VariablePointers must gate on [noinline], not hasUses() (driver bug #9061)](../learnings/1781023718622-signature-derived-spir-v-variablepointers-must-gat.md), [slang SPIR-V: isolating a signature-only VariablePointers cap repro (avoid value-site self-declare)](../learnings/1780970685981-slang-spir-v-isolating-a-signature-only-variablepo.md)).
 
+**What the capability can and cannot lift.** An OpVariable (Function/Private) whose pointee
+contains a logical pointer is governed by `ValidateVariablePointer` in SPIRV-Tools
+`source/val/validate_memory.cpp` (main, read 2026-09-30). A pointer to **StorageBuffer** is legal
+only with `VariablePointersStorageBuffer` declared, a pointer to **Workgroup** only with
+`VariablePointers`, and a pointer to **any other storage class, including `Uniform`**, is rejected
+whatever capabilities are declared (*"variables can only allocate a pointer to the StorageBuffer
+or Workgroup storage classes"*). Older spirv-val builds word it *"In Logical addressing, variables
+may not allocate a pointer type"*, so a report quoting that text came from a validator that
+predates the per-storage-class check. The storage class depends on the profile: Slang lowers
+SSBOs/`RWStructuredBuffer` to `Uniform`+`BufferBlock` before SPIR-V 1.4 and to `StorageBuffer`+`Block`
+from 1.4 on (`getStorageBufferAddressSpace()` in `slang-ir-spirv-legalize.cpp`). On ≥1.4,
+`requireVariableBufferCapabilityIfNeeded` already declares VPSB and the module validates (per
+slang-fixer on #13250, not independently re-verified); on `-profile spirv_1_3` a Function slot
+holding the resource pointer (`%_ptr_Function__ptr_Uniform_RWStructuredBuffer`) cannot be fixed by
+any capability. On #13250 the triage memo had rejected "rely on VariablePointers" citing only
+Slang's own legalizer (`spirv-legalize.cpp:1031-1037`), while the maintainer named the missing
+capability as the fundamental issue; each was right for one storage class. Check a "rejected
+approach" claim about spec or validator semantics against the validator source or the spec's
+Universal Validation Rules, because a citation into Slang's code is not evidence of what
+spirv-val accepts, and check which storage class the target profile actually emits
+[VP/VPSB lift the rule only for StorageBuffer/Workgroup pointees](../learnings/1790784612373-spir-v-function-var-holding-a-logical-pointer-vpsb.md),
+[pre-1.4 Slang SSBOs are Uniform](../learnings/1790785526520-spir-v-variable-pointers-cover-only-storagebuffer-.md).
+
 ## Atomics
 
 The SPIR-V atomic emit has FOUR cross-layer gates keyed on address space. When adding an `AddressSpace` case, all four must be updated: (1) front-end l-value check E30047, (2) IR validator `isValidAtomicDest` E41403, (3) emitter `isAtomicableAddressSpace` (AtomicLoad/Store/Exchange only; fallback to non-atomic emitLoad/emitStore silently loses atomicity), (4) emitter `emitMemorySemanticMask` (missing case → `memoryClass=0` → VUID-10870). `AtomicAdd`/`Inc`/`Dec`/`CompareExchange` bypass gate 3 and always emit the atomic op ([SPIR-V atomic emit has TWO address-space gates — a per-address-space fix must touch both](../learnings/1782322436550-spir-v-atomic-emit-has-two-address-space-gates-a-p.md), [Slang SPIR-V atomic emission has 4 cross-layer gates keyed on address space — check all when reviewing atomic/VUID fixes](../learnings/1782346122322-slang-spir-v-atomic-emission-has-4-cross-layer-gat.md)).
@@ -90,7 +114,7 @@ The SPIR-V atomic emit has FOUR cross-layer gates keyed on address space. When a
 
 **spvdb `-g2` debug-info opt bug (default opt is O1):** Slang's default optimization level is `OptimizationLevel::Default` (O1), not `None`/`-O0` (`slang-compiler-options.cpp:459-460`), so a plain `slangc -target spirv -g2` DOES run the SPIRV-Tools optimizer (`glslang_optimizeSPIRV` early-returns only on explicit None with no `-Xspirv-opt`; default vs `-O0` produce different SPIR-V, 5344B vs 5620B). Consequently the intermittent `SPVDB_DEBUGGER` debuginfo failure — SPIRV-Tools `assert(unique_id_ != 0)` at `opt/instruction.h:251` on macOS-aarch64 Debug (#13024) — is a **latent slangc `-g2` SPIR-V debug-info emit/opt bug, NOT a slang-test/spvdb integration or stale-vendored-state problem**: `libspvdb` has its own IR and never links SPIRV-Tools, and `runSpvdbDebuggerTest` compiles Step-1 SPIR-V in a *fresh isolated `UseExe` subprocess* (exempt from the long-lived test-server global-state class), so the assert fires inside that single `-g2` compile (ADCE/DebugInfoManager reading `unique_id()` on an unregistered inst). It classifies as a real bug with a non-deterministic trigger (introduced by #12896; ~6-fail/4-pass across identical `merge_group` requeues; Debug-only because the assert compiles out under `NDEBUG`) — already tracked (#13024, quarantine draft #13026), so cross-reference rather than re-file, and grep your own `memory/` for the assertion text before spawning a fresh CI-history investigation ([SPVDB_DEBUGGER failure is a slangc -g2 SPIR-V opt bug, not a spvdb-integration bug](../learnings/1789170739377-a-spvdb-debugger-debuginfo-slang-test-failure-is-a.md), [spvdb unique_id_ assertion is a real bug with a flaky trigger — tracked #13024](../learnings/1789179963682-spvdb-unique-id-assertion-on-macos-debug-aarch64-r.md)).
 
-**Source learnings (28):**
+**Source learnings (30):**
 - [A SPVDB_DEBUGGER/debuginfo slang-test failure is a slangc -g2 SPIR-V opt bug (default opt is O1, not None), not a spvdb integration bug](../learnings/1789170739377-a-spvdb-debugger-debuginfo-slang-test-failure-is-a.md)
 - [spvdb unique_id_ assertion on macos-debug-aarch64 — real bug, flaky trigger, tracked #13024 (don't re-file)](../learnings/1789179963682-spvdb-unique-id-assertion-on-macos-debug-aarch64-r.md)
 - [adding a nullary entry-point attribute + SPIR-V execution mode (`[postdepthcoverage]`): mirror `[earlydepthstencil]` across 9 sites; `ASTNodeType` is FIDDLE-regenerated (not append-only); a new IR op bumps `k_maxSupportedModuleVersion`; `requireSPIRVCapability`/`requireSPIRVExecutionMode` are pure emission funnels (no capdef atoms needed)](../learnings/1789107867239-adding-a-nullary-entry-point-attribute-spir-v-exec.md)
@@ -119,3 +143,5 @@ The SPIR-V atomic emit has FOUR cross-layer gates keyed on address space. When a
 - [Slang SPIR-V atomic emission has 4 cross-layer gates keyed on address space](../learnings/1782346122322-slang-spir-v-atomic-emission-has-4-cross-layer-gat.md)
 - [Descriptor-heap ConstantBuffer miscompile (#11483) = wrong storage class (Uniform not StorageBuffer), NOT missing ArrayStride](../learnings/1783384030612-descriptor-heap-constantbuffer-miscompile-11483-wr.md)
 - [Descriptor-heap ConstantBuffer<T> SPIR-V crash cluster — 3 fixes landed, verify at ToT](../learnings/1783459628122-descriptor-heap-constantbuffer-t-spir-v-crash-clus.md)
+- [SPIR-V Function var holding a logical pointer: VPSB/VP lift the rule only for StorageBuffer/Workgroup pointees (#13250)](../learnings/1790784612373-spir-v-function-var-holding-a-logical-pointer-vpsb.md) — verify rejected-approach claims against validator source
+- [SPIR-V variable pointers cover only StorageBuffer/Workgroup pointees; pre-1.4 Slang SSBOs are Uniform](../learnings/1790785526520-spir-v-variable-pointers-cover-only-storagebuffer-.md) — `-profile spirv_1_3` unfixable by capability

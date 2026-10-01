@@ -3,7 +3,7 @@ title: "slangc CLI behavior: exit codes, crash semantics, output streams, and op
 type: concept
 group: slang-tooling
 tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf, filestream, fifo, output-paths]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -131,7 +131,11 @@ silently with exit 0, and `-reflection-json` prints E52004 but still exits 0. Te
 (glsl/hlsl/spirv-asm) avoid the gate. `File::writeAllTextIfChanged` first tries `readAllText`,
 which hits the check, and then falls back to a raw `fopen` in `writeNativeText`. So when a text
 target works and the binary target does not, suspect FileStream first, and treat any test
-result that relies on `-o /dev/null` with care. Old release binaries bisect a CLI regression in
+result that relies on `-o /dev/null` with care. It recurs in practice: verifying
+slang#11782 in the slang-fixer container, `-target spirv -o /dev/null` exited 255 on a compile that
+succeeded, and the workflow docs suggest exactly that command for SPIR-V validation checks, so an
+EXIT=255 there does not mean the compile failed; write to a temp file (`-o /tmp/x.spv`) for the real
+exit code [-o /dev/null E00004 in the fixer container](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md). Old release binaries bisect a CLI regression in
 seconds with `gh release download vX -R shader-slang/slang -p 'slang-X-linux-x86_64.tar.gz'`
 [FIFOs/devices refused for binary output since v2025.24](../learnings/1790618025182-slangc-refuses-fifos-devices-for-binary-output-sin.md),
 [text targets bypass FileStream via writeNativeText](../learnings/1790622981578-locationless-e52004-prints-no-path-fifo-unit-test-.md).
@@ -277,7 +281,7 @@ churn, whereas changing the default to emit column would touch hundreds of `test
 expected-output blocks
 [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md).
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [slangc -o /dev/null fails in-container; and head -N on a compiler log hides the ICE](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md) — E00004 exit 255 looks like an ICE; byte-count as a second signal; warnings print first so grep outcome classes; don't publish from an unread `rc255` catch-all bucket.
 - [Slang debug build: SLANG_ASSERT does NOT always catch OOB — verify segfault claims empirically](../learnings/1786514794799-slang-debug-build-slang-assert-does-not-always-cat.md) — Null-deref before any List access segfaults (exit 139) in debug; the requested-index-vs-program-count guard; a locally-true mechanism need not be the one in play.
 - [slangc exit 255 is a normal error, not a crash — verify signals + the real null path](../learnings/1786873188157-slangc-exit-255-is-a-normal-error-not-a-crash-veri.md) — 134/139 are real crashes; `SLANG_ASSERT=system` forces SIGABRT; enumerate which producer yields null (multi-declarator, not EOF); shared-clone `git stash pop` hazard.
@@ -292,3 +296,4 @@ expected-output blocks
 - [Audit every writer for seek incl. slang-record-replay; getPathType FAILS for FIFOs; /dev/null refused as mirror since it keeps nothing; diagnostic-output snapshot.](../learnings/1790646938428-relaxing-a-shared-filestream-gate-audit-every-writ.md)
 - [`trap '' XFSZ; ulimit -f 0` inside bash -c, piped to cat; small outputs exit 0 with 0-byte file because flush/close errors are ignored.](../learnings/1790644539122-simulate-a-full-disk-for-slangc-output-tests-with-.md)
 - [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md) — verified on top-of-tree; rich via `shouldEmitRichDiagnostics` with no flag; the classic path emits column only under LanguageServer + a bare-integer id; an MSVC-parseable single line is a distinct opt-in third style.
+- [slangc -o /dev/null fails with E00004 in the fixer container (slang#11782)](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md) — workflow docs suggest it for validation checks; EXIT=255 there is not a compile failure

@@ -3,7 +3,7 @@ title: CUDA / OptiX backend — ray payloads, hit attributes, ray flags, prelude
 type: concept
 group: slang-backends
 tags: [cuda, optix, ptx, nvrtc, raytracing, payload, hit-attribute, ray-flags, prelude, inout, noinline]
-source_count: 16
+source_count: 19
 ---
 
 ## TL;DR
@@ -14,6 +14,8 @@ CUDA/OptiX backend facts, mostly around ray tracing, the NVRTC-compiled prelude,
 - **An `inout` ray payload is legalized TWICE** (VaryingInput + VaryingOutput), and a direction-agnostic `case RayPayload:` branch double-reads the registers. The dead reads survive DCE because `kIROp_GetOptiXPayloadRegister` is conservatively side-effecting — fix at the producer, don't mark it pure.
 - **OptiX hit-attribute lowering is field-wise (one 32-bit register per scalar leaf), not byte-packed.** A `ReportHit` write path must gather leaves into ONE `optixReportIntersection` call (OptiX has no per-attribute setter), and must emit `__float_as_uint` explicitly (CUDA `kIROp_BitCast` is a numeric cast, not bit-preserving).
 - **HLSL ray flags are passed verbatim into `optixTrace` with no validation.** Only `RAY_FLAG_SKIP_TRIANGLES`(0x100) and `SKIP_PROCEDURAL_PRIMITIVES`(0x200) lack an OptiX equivalent (0x400 DOES map); key an "unsupported" diagnostic off the named `OptixRayFlags` set (supported = 0x4FF), not a `>=0x100` threshold.
+- **`OptixRayFlags` bits 0–7 are identical in every OptiX release 7.0–9.1, but the 0x400 OMM flag first appears in 7.6.0**, so emitting ray flags by name needs `#if OPTIX_VERSION >= 70600` around it. A long-lived draft adding a `slang-diagnostics.lua` entry must re-check its code against master before rebasing.
+- **Lower shader-record (SBT) globals to an opaque intrinsic only after `specializeResourceUsage` and the global-init move.** Earlier, a `ConstantBuffer<T>` helper param stays unspecialized and its reads get `__ldg` (the #10188 stale-SBT read), `expand` bodies crash, and per-entry-point reference graphs miss generic calls and the static initializers CUDA injects into EVERY entry point.
 - **CUDA `HitObject` GeometryIndex already means the OptiX SBT GAS index**, equal to the DXR geometry ordinal only under slang-rhi's one-record-per-input layout; the pipeline `GeometryIndex()` has no cuda case (E36107).
 - **The whole `slang-cuda-prelude.h` is fed to NVRTC verbatim**, so any OptiX helper using an SDK-N symbol without `#if (OPTIX_VERSION >= NNNNN)` breaks ALL RT shaders on older SDKs. Resolve thresholds from `external/optix-dev` git tags (7.x decls live in `optix_7_device.h`), verify GPU-free with nvcc.
 - **CUDA `noinline` policy must be target-gated** — `IRNoInlineDecoration` is already consumed by SPIR-V/LLVM/HLSL emitters, so an ungated heuristic pass would regress them.
@@ -31,6 +33,21 @@ An `inout` ray payload is legalized TWICE and double-reads its registers: `proce
 OptiX hit-attribute lowering is field-wise — one 32-bit OptiX attribute register per scalar leaf — NOT a byte-packed/padding-preserving blob: `emitOptiXAttributeFetch` recurses fields/elements/lanes and consumes exactly one register per scalar `IRBasicType` leaf (CUDA emit wraps float leaves in `__int_as_float`). The 8-register/32-byte cap + its diagnostic live in the legalize pass. So anyone extending `ReportHit` to CUDA must flatten the WRITE side field-wise to match the reader — a whole-struct `bit_cast<uint[N]>` would DESYNC on padding, sub-dword fields, and float bit layout → silent wrong runtime values; the read path is the canonical contract ([OptiX hit-attribute lowering is field-wise, not byte-packed](../learnings/1787174981538-optix-hit-attribute-lowering-is-field-wise-not-byt.md)). The `ReportHit` write path (slang#12637) adds several sharp facts: OptiX has NO per-attribute-register setter (contrast ray *payloads*, which have `optixSetPayload_N`) — hit attributes are written ONLY via one `optixReportIntersection(hitT, hitKind, a0..a7)` call, so the write path must gather all leaves into ONE call, not per-register stores; **CUDA lowers `kIROp_BitCast` as a plain numeric C cast, NOT bit-preserving**, so moving a float into a 32-bit attribute register requires an explicit `__float_as_uint(x)` (an IR BitCast would emit `(unsigned int)(0.5f)` → 0; verify via PTX: `0.5f` → `1056964608` = `0x3F000000`); a new target-specific IR marker op carrying an aggregate operand must be flattened AFTER post-inline DCE but BEFORE empty-type/resource legalization; and FileCheck slang-tests are silently IGNORED when slang-llvm is absent (a vacuous `0/0` pass) — verify CUDA/OptiX emit by direct `slangc -target cuda` + per-leaf grep ([OptiX ReportHit write path: no attribute setter, non-bit-preserving CUDA BitCast, pass ordering](../learnings/1787792439688-optix-reporthit-write-path-no-attribute-setter-non.md)).
 
 HLSL `TraceRay`'s ray-flags argument is emitted verbatim into `optixTrace(...)` with NO bit validation — the CUDA arm of `TraceRay`'s `__target_switch` is literally `case cuda: __intrinsic_asm "optixTrace";`, and the generic intrinsic-asm path writes the operand as-is, so flags with no OptiX equivalent silently miscompile (exit 0, then a runtime GPU fault reading like a null-ptr deref). The correct fix is a compile-time diagnostic, not a bit translation, because the flags ARE meaningful — OptiX just can't express them per-ray (it controls triangle/AABB skipping at the pipeline level). Any `case cuda: __intrinsic_asm "..."` bare pass-through in a `.meta.slang` `__target_switch` does zero operand validation, so enum/flag args whose value space differs between HLSL/DXR and OptiX are candidates for this same silent-miscompile ([CUDA/OptiX TraceRay ray-flags are a bare intrinsic-asm pass-through](../learnings/1787172018498-cuda-optix-traceray-ray-flags-are-a-bare-intrinsic.md)). The exact mask, resolved from `external/optix-dev/include/optix_types.h`: `OptixRayFlags` defines bits 0–7 plus `FORCE_OPACITY_MICROMAP_2_STATE=1<<10` (=0x400) — no bit 8 or 9. HLSL RAY_FLAG maps identically for bits 0–7 (including `CULL_OPAQUE(0x40)↔CULL_DISABLED_ANYHIT` — value AND semantics match, NOT a hazard) and `RAY_FLAG_FORCE_OMM_2_STATE(0x400)↔FORCE_OPACITY_MICROMAP_2_STATE` (coincident, DOES translate). **The ONLY unsupported HLSL bits are `SKIP_TRIANGLES=0x100` and `SKIP_PROCEDURAL_PRIMITIVES=0x200`.** Correct mask: supported = 0x4FF, unsupported = `flags & ~0x4FF` — key it off the named OptiX set, not a `>=0x100` threshold (which would wrongly flag 0x400) ([HLSL RAY_FLAG vs OptiX OptixRayFlags — only 0x100/0x200 lack an equivalent](../learnings/1787173053502-hlsl-ray-flag-vs-optix-optixrayflags-only-0x100-0x.md)).
+
+The named set is stable across SDKs except for one bit. All 12 NVIDIA/optix-dev tags (v7.0.0 to
+v9.1.0) define `OptixRayFlags` bits 0–7 with identical names and values. No release defines bit 8
+or 9, so HLSL `RAY_FLAG_SKIP_TRIANGLES`/`SKIP_PROCEDURAL_PRIMITIVES` never have an OptiX name, and
+`OPTIX_RAY_FLAG_FORCE_OPACITY_MICROMAP_2_STATE = 1u<<10` first appears in v7.6.0 (`OPTIX_VERSION`
+70600; the header was `optix_7_types.h` before 7.7). Emitting OptiX ray flags by name, which is
+maintainer jkwak-work's direction on slang#12629 following his HLSL barrier-flag pattern from
+#11437, therefore needs an `#if OPTIX_VERSION >= 70600` guard for the OMM flag. To check a tag
+quickly: `git clone --depth 1 --branch vX --filter=blob:none --sparse
+https://github.com/NVIDIA/optix-dev.git && git sparse-checkout set include`. A process note from
+the same work: slang#12644 sat as a draft for about six weeks while master assigned its diagnostic
+code (55215) to a different error, which is part of why the PR went DIRTY. Before rebasing a
+long-lived draft that adds a `slang-diagnostics.lua` entry, re-check the code against current
+master and reallocate it
+[OptiX ray-flag names are stable 7.0–9.1; the OMM flag needs OPTIX_VERSION >= 70600](../learnings/1790820168701-optix-ray-flag-names-are-stable-7-0-9-1-omm-flag-n.md).
 
 A second, orthogonal trap in `case cuda: __intrinsic_asm` beyond that missing operand validation: the CUDA arm forwards **ALL** of the enclosing function's arguments **positionally**, whereas the spirv/glsl arms call helpers with EXPLICIT operands (e.g. `__spirvExecuteShaderEXT(HitOrMiss, p)` / `__glslInvoke(HitOrMiss, __rayPayloadLocation(p))`) that pass a fixed operand list regardless of the enclosing signature. So when mirroring a `__target_switch` case across overloads of different arity in `hlsl.meta.slang` (slang#12553), copying the 3-arg overload's `case cuda: __intrinsic_asm "optixInvoke";` verbatim into a 2-arg overload emits `optixInvoke(hit, payload)` instead of `optixInvoke(accelStruct, hit, payload)` — an arity the CUDA prelude never provided, so NVRTC errors `no instance of overloaded function "optixInvoke" matches the argument list`. The fix adds a matching-arity wrapper to `prelude/slang-cuda-prelude.h` that forwards to the existing one (a null `(OptixTraversableHandle)0` handle — the 3-arg wrapper ignores both handles and packs only the payload, so it is exact, not a stub). Two verification lessons: `-target cuda` returning EXIT 0 was a SILENT no-op (the invoke was dropped, not compiled) — the real CUDA-codegen gate is `-target ptx -Xnvrtc -I external/optix-dev/include/`, which actually compiles the emitted C++ through NVRTC (present in the fleet env); and missing-return E41009 is target-gated (`doesTargetAllowMissingReturns`, `slang-ir-missing-return.cpp:18-26`, false ONLY for Khronos/WGPU), so the same core-module gap gives E41009 on SPIR-V/GLSL, a silent drop on CUDA, and nothing on DXIL (matches `case hlsl:`) — do not frame it as "warning on DXIL" ([case cuda __intrinsic_asm forwards args positionally — dropping an arg breaks NVRTC arity](../learnings/1786786566207-case-cuda-intrinsic-asm-forwards-args-positionally.md)).
 
@@ -52,12 +69,52 @@ NVRTC `-pch` for the CUDA prelude shipped in PR #12880, gated on NVRTC ≥12.8 A
 
 A super-linear **downstreamCompile timer** on a matrix-heavy CUDA kernel is nvrtc-intrinsic, not a Slang emit-size artifact. Slang emits **O(N)** CUDA C++ for an N-matrix-multiply chain — CUDA does not legalize/scalarize matrix types (`targetLegalizesMatrixTypes()` is false for CUDA), matrices stay as the prelude `Matrix<T,ROWS,COLS>` struct, and `mul(matrix,matrix)` is `[__readNone]` (not force-inline) so it emits once as a specialized helper with N call sites. The downstreamCompile timer (PR #13050) wraps exactly the downstream `compiler->compile(...)` call (`slang-code-gen.cpp:1028`), which for `-target ptx`/`cuda` is the NVRTC wrapper — so it isolates nvrtc's own source→PTX cost and *excludes* Slang's IR passes (including the already-tracked O(n²) redundancy-removal cost of #13010/#13059). Therefore super-linearity in that bucket on an O(N)-source kernel is genuinely nvrtc-intrinsic → upstream NVIDIA, no Slang code lever (likely register-pressure/dependency-chain pathology in nvrtc's allocator). Don't assume Slang handed nvrtc a super-linearly-larger input; and note the reporter's `backend_matrix`/`gen_matrix_chain` workloads are local/uncommitted (grep of `tools/compile-perf/` is empty — only `codegen_ptx`/`gen_codegen` scalar math is committed), so their exact numbers aren't reproducible from the repo ([a downstreamCompile-timer super-linearity on a matrix kernel is nvrtc-intrinsic, not a Slang emit-size artifact](../learnings/1789389982745-a-downstreamcompile-timer-super-linearity-on-a-mat.md)).
 
-**Source learnings (16):**
+## Shader-record (SBT) globals: lower after specialization and the global-init move
+
+Consider PR #12646 (slang#12628), which maps a global `shaderRecordEXT` `ConstantBuffer` to the
+OptiX SBT on CUDA by rewriting the `IRGlobalParam` into an opaque intrinsic, `GetOptiXSbtDataPtr`.
+Placed early in `linkAndOptimizeIR`, next to `collectOptiXEntryPointUniformParams`
+(`slang-emit.cpp` ~:1391), the rewrite broke three things, all reproduced on a Release build.
+First, `specializeResourceUsage` (~:2097) specializes a callee's ConstantBuffer/resource
+parameter only when the call-site argument is a `kIROp_GlobalParam`
+(`slang-ir-specialize-resources.cpp` ~:740; any other opcode gives `ThisFuncFailed`). A helper
+`float4 readIt(ConstantBuffer<T> cb)` therefore stayed unspecialized and the raw SBT pointer
+flowed into the parameter; the `isPointerToImmutableLocation` walker cannot see the
+`GetOptiXSbtDataPtr` root through a function parameter, so the callee emitted
+`__ldg(&cb->field)`, which is the #10188 stale-SBT-read bug. Second, a use inside an `expand` body
+crashed slangc, because `IRExpand` owns a block but is not an `IRGlobalValueWithCode`, and
+`specializeModule` (~:1552) had not run yet. Third, a reference-graph diagnostic missed
+interface/generic calls, since before specialization the call graph does not follow witness
+tables. Moving the rewrite to just after `specializeResourceUsage` fixed all three. The review
+probe is `readIt(gSbt)` with a ConstantBuffer-typed parameter, then a grep of the callee for
+`__ldg`
+[rewriting a global param into an opaque intrinsic before specializeResourceUsage](../learnings/1790827641249-cuda-optix-rewriting-a-global-param-into-an-opaque.md),
+[lower shader-record globals after specialization](../learnings/1790831529525-cuda-optix-lower-shader-record-globals-after-speci.md).
+
+The pass order has a second constraint. `moveGlobalVarInitializationToEntryPoints`
+(`slang-ir-explicit-global-init.cpp` ~:107-114, 187-240) injects EVERY global initializer into
+EVERY entry point, even entry points that never reference the global, and CUDA/CPU run it late
+(~:2483). Any per-entry-point diagnostic built from `buildEntryPointReferenceGraph` before that
+pass is therefore unsound for uses inside a `static` initializer. With an RT entry point and a
+compute entry point in one compile plus `static uint x = gSbt.id;`, the compute kernel ends up
+calling `optixGetSbtDataPointer()` with no error; on SPIR-V spirv-val catches the analog
+(VUID-07119), but on CUDA nothing does. Run such lowering after the global-init move (~:2490)
+[every static initializer reaches every entry point](../learnings/1790827641249-cuda-optix-rewriting-a-global-param-into-an-opaque.md).
+Provenance can still be lost after the move: a ConstantBuffer handle stored in a struct field,
+returned, or chosen by `select` loses its root, and `isPointerToImmutableLocation` then calls it
+immutable by type. `lowerImmutableBufferLoadForCUDA` therefore needs a module-level guard; PR
+#12646 keyed it on the deduplicated IR types of `GetOptiXSbtDataPtr`
+[module-level `__ldg` guard](../learnings/1790831529525-cuda-optix-lower-shader-record-globals-after-speci.md).
+
+**Source learnings (19):**
 - [E36107 for an RT intrinsic on CUDA: check the `[require]` FIRST-arg target set, not the capability compound](../learnings/1789186196430-e36107-for-an-rt-intrinsic-on-cuda-check-the-requi.md) — `raytracing_motionblur` includes a `cuda` conjunct, so the `glsl_spirv` first arg is the real block; fix = widen the first arg + add the `case cuda` arm + a matching-arity prelude overload.
 - [downstreamCompile super-linearity on a matrix CUDA kernel is nvrtc-intrinsic — Slang emits O(N), the timer excludes Slang IR passes](../learnings/1789389982745-a-downstreamcompile-timer-super-linearity-on-a-mat.md)
 - [NVRTC PCH review (#12880): empty-diagnostics null-deref + removed getDownstreamCompilerVersion](../learnings/1789272763883-nvrtc-pch-review-slang-12880-empty-diagnostics-nul.md) — a length-0 terminated slice must be `""`-backed not nullptr; exercise the "no output" diagnostics branch; a stale-master branch that builds locally may not merge.
 - [NVRTC -pch for the CUDA prelude SHIPPED (#12880)](../learnings/1789272870056-nvrtc-pch-for-cuda-prelude-shipped-pr-12880-findin.md) — gated on NVRTC ≥12.8 + `#include`-form prelude, optional `nvrtcGetPCHCreateStatus` symbol, `slang-nvrtc-pch-status` token; a DRAFT PR skips Slang CI so ≥12.8 asserts run only when marked ready.
 - [CUDA SER path already treats GeometryIndex as the OptiX SBT GAS index](../learnings/1790318608424-slang-cuda-ser-path-already-treats-geometryindex-a.md) — equals the DXR ordinal only with one SBT record per input and no per-primitive offset (#13265).
+- [OptiX ray-flag names are stable 7.0–9.1; OMM flag needs OPTIX_VERSION >= 70600; long-lived drafts lose their diagnostic code (#12629, #12644)](../learnings/1790820168701-optix-ray-flag-names-are-stable-7-0-9-1-omm-flag-n.md)
+- [CUDA/OptiX: rewriting a global param into an opaque intrinsic before specializeResourceUsage breaks helper specialization, so SBT data gets __ldg (#12646)](../learnings/1790827641249-cuda-optix-rewriting-a-global-param-into-an-opaque.md) — also: every static initializer reaches every entry point
+- [CUDA/OptiX: lower shader-record globals after specialization and the global-init move (#12628, PR #12646)](../learnings/1790831529525-cuda-optix-lower-shader-record-globals-after-speci.md) — module-level `__ldg` guard for lost provenance
 
 - [Slang CUDA/OptiX payload register count is carried by payloadSize, not the trace name](../learnings/1786644040522-slang-cuda-optix-payload-register-count-is-carried.md) — grep the `payloadSize` immediate not `_optix_trace_typed_32`; prelude fixed-width catch-alls over-read/write N in [9,15]+[17,31]; distinguish source-UB from PTX manifestation; GPU-free repro.
 - [OptiX inout ray-payload legalized twice: direction-agnostic RayPayload branch double-reads](../learnings/1786656384074-optix-inout-ray-payload-legalized-twice-direction-.md) — legalized as VaryingInput+VaryingOutput, the branch ignores `info.kind`; dead reads survive DCE (side-effecting); fix at the producer, not by marking pure.

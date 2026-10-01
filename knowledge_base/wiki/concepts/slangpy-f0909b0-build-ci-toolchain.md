@@ -3,7 +3,7 @@ title: SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-rep
 type: concept
 group: slangpy
 tags: [slangpy, build, ci, sanitizers, asan, lsan, toolchain, slang-version, cross-repo, breaking-change]
-source_count: 17
+source_count: 18
 ---
 
 ## TL;DR
@@ -15,6 +15,9 @@ coordinating breaking changes with slang. Recurring facts:
   for `Python.h`; `dpkg-deb -x` the X11 `-dev` debs (GLFW forces X11 even headless);
   build the `slangpy_ext` target directly (the `examples/tinybc` `-Werror=restrict`
   under gcc12 aborts the full build).
+- **Forcing TinyEXR needs BOTH `-DCMAKE_DISABLE_FIND_PACKAGE_OpenEXR=ON` and
+  `-DOpenEXR_FOUND=OFF`** (the first alone breaks the `ternary` macro at configure); an empty
+  `RuntimeError()` from nanobind hints at invalid-UTF-8 / garbage `what()` bytes.
 - **A stale worktree goes stale in TWO ways**: rebuild `slangpy_ext` AND the
   `slangpy_torch` bridge (a version-hash check), or the native torch path silently
   degrades to a green fallback run.
@@ -63,6 +66,26 @@ the source `slangpy/` dir (import via `PYTHONPATH`), and the repro must use
 `spy.create_device(...)` not raw `spy.Device(...)` (only `create_device` injects the
 `slangpy/slang` include path)
 [building slangpy headless on rootless Linux](../learnings/1787079385346-building-slangpy-headless-on-a-rootless-linux-box-.md).
+
+Other userspace-only build levers, verified on a Debian 12 container
+[force TinyEXR + build without system Python headers](../learnings/1790786152988-slangpy-force-tinyexr-build-build-without-system-p.md):
+an alternative to `uv` for `Python.h` is to `curl` the bookworm `libpython3.11-dev` /
+`python3.11-dev` / `libpython3.11` debs from `deb.debian.org/debian/pool/main/p/python3.11/`,
+`dpkg -x` them into a prefix `R`, pass `-DPython_INCLUDE_DIR=$R/usr/include/python3.11
+-DPython_LIBRARY=$R/usr/lib/x86_64-linux-gnu/libpython3.11.so`, and `export
+CPATH=$R/usr/include` (`pyconfig.h` includes the multiarch `<x86_64-linux-gnu/python3.11/pyconfig.h>`).
+To force the bundled TinyEXR, `-DCMAKE_DISABLE_FIND_PACKAGE_OpenEXR=ON` alone FAILS configure
+(`ternary(SGL_HAS_OPENEXR ${OpenEXR_FOUND} ON OFF)` at CMakeLists.txt:373 gets an empty arg);
+add `-DOpenEXR_FOUND=OFF` and confirm `#define SGL_HAS_OPENEXR 0` in `config.h`. A new
+worktree's submodules populate offline via `git -c protocol.file.allow=always -c
+submodule.external/X.url=<main>/.git/modules/external/X submodule update external/X` (nested
+nanobind `ext/robin_map` and nanothread `ext/cmake-defaults` need `--init` inside them; the
+`data` submodule is required because cmrc embeds its fonts), and vcpkg is reusable with
+`-DVCPKG_INSTALLED_DIR=<other build>/vcpkg_installed -DVCPKG_MANIFEST_INSTALL=OFF` when
+vcpkg.json/triplets/overlays/commit match (slangpy_ext Release then builds in ~40 s at -j60).
+Debugging hint: under Python 3.11, `PyErr_SetString` with invalid UTF-8 yields a bare
+`RuntimeError()` with no args, so an empty RuntimeError from a nanobind call suggests the C++
+`what()` held garbage bytes (e.g. a use-after-free of the error string).
 
 Resuming an old worktree and moving the branch forward stales the prebuilt native
 artifacts in TWO independent ways — fix both or the torch path silently degrades. (1)
@@ -267,7 +290,7 @@ pytest feasible). The merge-gate trap is the same coordination gate: such a PR c
 coordination gate not a code defect
 [reviewing SlangPy .slang downstream retypes for a breaking change](../learnings/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md).
 
-**Source learnings (17):**
+**Source learnings (18):**
 
 - [Building SlangPy headless on a rootless Linux box (#827 repro)](../learnings/1787079385346-building-slangpy-headless-on-a-rootless-linux-box-.md) — uv Python for headers, dpkg-deb X11 -dev debs, build slangpy_ext directly, create_device not raw Device.
 - [Resuming a stale slangpy worktree: rebuild slangpy_ext AND the torch bridge together](../learnings/1787101717889-resuming-a-stale-slangpy-worktree-rebuild-slangpy-.md) — the torch bridge is a version-hash check; skipping it gives a false-green fallback run.
@@ -286,3 +309,4 @@ coordination gate not a code defect
 - [the `SLANGPY_CHERRY_PICK_PR` production pattern: fork→same-repo recreation, maintainer sets the cherry-pick var so slang CI stays green while the breaking PR merges before the companion; companion waits on the release gate; revert the var post-merge.](../learnings/1789073598653-slang-slangpy-coordinated-breaking-change-the-slan.md)
 - [SlangPy reused build tree keeps a STALE slang across a rebase — reconfigure `--fresh`, read SGL_SLANG_VERSION](../learnings/1789220844035-slangpy-reused-build-tree-keeps-a-stale-slang-sgl-.md) — `cmake --build` never re-fetches the cached slang; confirm the effective version from CMakeCache, not slang-rhi's `SLANG_RHI_FETCH_SLANG_VERSION`.
 - [Stale CMakeCache SGL_SLANG_VERSION: incremental builds keep the OLD slang after a pin bump/rebase (two false regressions)](../learnings/1789220982301-stale-cmakecache-sgl-slang-version-incremental-sla.md) — a green CI + a red local `undefined identifier` (e.g. MatrixLayoutMode) for a released symbol is the stale-cache signature, not a defect.
+- [force TinyEXR (`-DOpenEXR_FOUND=OFF` too), userspace Python.h via `dpkg -x` debs, offline worktree submodules, vcpkg reuse, empty RuntimeError = garbage what()](../learnings/1790786152988-slangpy-force-tinyexr-build-build-without-system-p.md)

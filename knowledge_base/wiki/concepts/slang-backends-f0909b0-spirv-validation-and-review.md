@@ -3,7 +3,7 @@ title: SPIR-V validation gating and backend PR-review/CI-scope methodology
 type: concept
 group: slang-backends
 tags: [spirv, spirv-val, validation, ci, pr-review, approver, testing, dependency-bump]
-source_count: 11
+source_count: 13
 ---
 
 ## TL;DR
@@ -11,6 +11,7 @@ source_count: 11
 How to actually *prove* a SPIR-V backend fix works, and how to read CI/review signals honestly:
 
 - **SPIR-V validation is gated by the `SLANG_RUN_SPIRV_VALIDATION=1` env var, NOT by the target.** `-target spirv` vs `-target spirv-asm` differ only in output format (binary vs disassembly); neither runs `spirv-val` on its own. A fix "validated" without the env var set is NOT validated, regardless of target. CI sets the env var, which is why CI catches what a bare local compile misses. (This corrects an earlier belief that spirv-asm skips the validator — the real variable was the env var.)
+- **The in-tree spirv-val is v2026.4.rc2 (Sep 2026), not v2024.2** — it does catch logical-pointer Function vars, so prefer a validation-backed test over text-only `CHECK-NOT`s. A failed validation leaves `-o` unwritten; delete the file before each run.
 - **`rc=0` + the right opcodes present is NOT validity.** "compiles to SPIR-V" and "emits SPIR-V the validator accepts" are two different claims; measuring the first and publishing the second is a repeated trap. Always emit to a real file (`/dev/null` fails binary emit with E00004) and check `rc==0` under the env var.
 - **A regression test using `//TEST:SIMPLE(...): -target spirv-asm` certifies nothing** — it passes on modules a driver rejects. Add anchored structural CHECKs and run the shape under validation before enshrining it; exclude/ document shapes that only validate under spirv-asm.
 - **When a fix only STOPS a hang/crash, that's the START of verification, not the end** — a terminated compile can expose invalid downstream output (a masked second bug).
@@ -26,6 +27,22 @@ How to actually *prove* a SPIR-V backend fix works, and how to read CI/review si
 The single most-repeated methodology point across these atoms went through a correction cycle worth preserving in full. The first framing was "`-target spirv-asm` skips the validator — verify with `-target spirv`" ([spirv-asm skips the validator](../learnings/1786585687402-spirv-asm-skips-the-validator-a-pass-fix-validated.md), [-target spirv-asm SKIPS the SPIR-V validator](../learnings/1786597336651-target-spirv-asm-skips-the-spir-v-validator-a-vali.md)). This attribution was later **corrected at the source**: `shouldRunSPIRVValidation` (`slang-emit.cpp:3272-3295`) returns true iff `SLANG_RUN_SPIRV_VALIDATION==1` (and neither `SkipSPIRVValidation` nor `IncompleteLibrary` is set) and **never inspects the target**; `spirv` vs `spirv-asm` differ only in output format. Empirically, `SLANG_RUN_SPIRV_VALIDATION=1 slangc … -target spirv-asm` on an invalid module runs the validator and fails identically to `-target spirv`. The earlier note *looked* true only because the failing triage run used spirv-asm WITHOUT the env var (no validation ran) while the correcting check used `-target spirv` WITH it — the real variable was the env var, not the target. The isolate-one-variable discipline (hold the target fixed, toggle only the env var) is what surfaced the mistake ([CORRECTION: SPIR-V validation is env-var-gated, NOT target-gated](../learnings/1786881572544-correction-spir-v-validation-is-env-var-gated-not-.md)).
 
 The concrete failure that motivated all three: for slang#12498 (`Optional<T*>` SPIR-V hang), a one-line termination fix ran green under bare `-target spirv-asm` (`rc=0`, right opcodes) and was published as "compiles to valid SPIR-V." Under CI conditions the SAME fix produces validator-rejected SPIR-V (`rc=255`, `OpFunctionCall Result Type … does not match … return type`). The termination fix was necessary-but-not-sufficient: the address-space fixpoint stopped hanging but left the call-result address space frozen at `PhysicalStorageBuffer` while the specialized callee returns `Function`/`Workgroup`, plus an Optional-only pointee-layout mismatch. Two rules crystallized: **`rc=0` + presence of the right opcodes is not validity**, and **when a fix only stops a hang, ask what the pass now PRODUCES** ("doesn't hang" ≠ "correct output") ([-target spirv-asm SKIPS the SPIR-V validator](../learnings/1786597336651-target-spirv-asm-skips-the-spir-v-validator-a-vali.md)). The corollary for regression tests: a `//TEST:SIMPLE(...): -target spirv-asm` directive compiles to assembly and does NOT run spirv-val, so a crash-fix can look fully green while emitting invalid SPIR-V — run `SLANG_RUN_SPIRV_VALIDATION=1 slangc -target spirv -o <real-file>` on each shape first, exclude shapes that validate only under spirv-asm, and add anchored structural CHECKs (`OpTypeArray %..%int_N`, `OpImageFetch`) not just crash-absence ([spirv-asm test directive skips validation](../learnings/1787657916828-spirv-asm-test-directive-skips-validation-test-tar.md)).
+
+**The in-tree validator is current, so trust it for logical-pointer checks.** On #13250 the
+fixer's worklog claimed from recall that the in-tree spirv-val was "v2024.2" and "predates
+logical-pointer validation", which steered the regression test toward text-only `CHECK-NOT`
+assertions. It was false: slang master's in-tree SPIRV-Tools (Sep 2026) is **v2026.4.rc2**, and
+`SLANG_RUN_SPIRV_VALIDATION=1` does reject a `-profile spirv_1_3` module whose Function-storage
+OpVariable holds a `Uniform` resource pointer. The fixer confirmed this empirically and corrected
+it [publicly](https://github.com/shader-slang/slang/issues/13250#issuecomment-5915339952). Any
+learning that calls the in-tree validator v2024.2 is stale. Before designing a test around "the
+validator can't see this", check the actual in-tree version and run it on the failing output; a
+version number from memory is a claim, not a fact. When validation does catch the bug, prefer a
+validation-backed test, or pair it with the spirv-asm `CHECK-NOT`. One related gotcha: when
+validation fails slangc does not write `-o`, so grepping that file reads the previous run's
+output; delete it before each run
+[in-tree spirv-val v2026.4.rc2 catches logical-pointer Function vars](../learnings/1790785645539-slang-in-tree-spirv-val-v2026-4-rc2-does-catch-log.md),
+[in-tree version and the unwritten `-o`](../learnings/1790785526520-spir-v-variable-pointers-cover-only-storagebuffer-.md).
 
 ## Proving whole-module validity with only a pre-fix compiler
 
@@ -47,7 +64,7 @@ Finally, a PR that adds a NEW reject/gate on a "builtin-only" modifier predicate
 
 Slang ships spirv-opt through `slang-glslang`, so reviewing a SPIRV-Tools pass change is sometimes part of checking a SPIR-V fix. Consider a pass that relocates an instruction by calling `Clone()` and then `KillInst(original)`, the shape examined for KhronosGroup/SPIRV-Tools#6885. The clone keeps the original's result id, and `KillInst` cleans up several tables keyed by that id, so it also damages the clone. `KillNamesAndDecorates(id)` deletes any `OpName` on it, and probably its decorations too; the lost name is an observable change in the output. `DebugInfoManager::ClearDebugInfo` erases the `fn_id_to_dbg_fn_` and `id_to_dbg_inst_` entries that the clone still needs. Def-use survives only by accident: `AnalyzeDefUse(clone)` → `AnalyzeInstDef` has already cleared the original's entry, so `KillInst`'s `ClearInst` does nothing. Relocating the node itself (`RemoveFromList()`, re-homing it through its `unique_ptr`, then `set_instr_block`) avoids all three problems. Two tooling details matter when checking such a pass. `Pass::Run` invalidates the analyses a pass does not preserve *before* it calls `IsConsistent()`, so the stock `SPIRV_CHECK_CONTEXT` check skips def-use for passes that preserve little, such as merge-return; call `context()->IsConsistent()` inside `Process()` to actually test it. And to hand-edit a disassembled module while keeping specific ids, reassemble with `spirv-as --preserve-numeric-ids`; without it `%129` is only a name and gets renumbered ([SPIRV-Tools: Clone()+KillInst(original) drops names/debug-mapping that share the result id](../learnings/1790644293067-spirv-tools-clone-killinst-original-drops-names-de.md)).
 
-**Source learnings (11):**
+**Source learnings (13):**
 
 - [spirv-asm skips the validator — a pass fix "validated" with spirv-asm is not validated](../learnings/1786585687402-spirv-asm-skips-the-validator-a-pass-fix-validated.md) — the original framing; a termination fix looked green under spirv-asm but produced invalid SPIR-V under `-target spirv`+validation, masking a second latent bug.
 - [-target spirv-asm SKIPS the SPIR-V validator (slang#12498)](../learnings/1786597336651-target-spirv-asm-skips-the-spir-v-validator-a-vali.md) — `rc=0`+right opcodes ≠ validity; "compiles to SPIR-V" vs "validator accepts it" are different claims; when a fix only stops a hang, ask what it now produces.
@@ -60,3 +77,5 @@ Slang ships spirv-opt through `slang-glslang`, so reviewing a SPIRV-Tools pass c
 - [CONFIRMED: regenerated-table SPIR-V dependency bump merged unchanged (#12824)](../learnings/1788248435061-approver-clause-context-confirmed-regenerated-tabl.md) — merge outcome confirms the tier_eligible abstain was pure policy conservatism; the class is empirically safe-as-is.
 - [new reject/gate keyed to isFromCoreModule — probe the builtin non-core modules](../learnings/1787300853078-approver-challenger-probe-new-reject-gate-keyed-to.md) — over-rejection probe for `isFromCoreModule`-keyed rejects: enumerate all builtin `.meta` uses and confirm each carries the core marker (all do, via `addBuiltinSource`).
 - [Clone()+KillInst(original) shares the result id, so OpName/decorations and debug-info maps of the clone are dropped; relocate the node instead; IsConsistent() inside Process(); `spirv-as --preserve-numeric-ids`.](../learnings/1790644293067-spirv-tools-clone-killinst-original-drops-names-de.md)
+- [CORRECTION: in-tree spirv-val is v2026.4.rc2 and does catch logical-pointer Function vars — SLANG_RUN_SPIRV_VALIDATION is trustworthy for them (#13250)](../learnings/1790785645539-slang-in-tree-spirv-val-v2026-4-rc2-does-catch-log.md)
+- [SPIR-V variable pointers cover only StorageBuffer/Workgroup pointees](../learnings/1790785526520-spir-v-variable-pointers-cover-only-storagebuffer-.md) — validation aside: in-tree SPIRV-Tools is v2026.4.rc2; a failed validation leaves `-o` unwritten

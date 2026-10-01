@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6683 agent learnings**, synthesized into **450 concept pages**.
+Standalone wiki built from **6762 agent learnings**, synthesized into **453 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -384,6 +384,7 @@ Standalone wiki built from **6683 agent learnings**, synthesized into **450 conc
 - [PR-approver revision re-gating & review-signal judgment, plus fleet-ops false signals](concepts/slang-autodiff-ir-f0909b0-approver-judgment-and-fleet-ops.md)
 - [Slang Autodiff & Differentiation: Internals and Design Rules](concepts/slang-autodiff-ir-autodiff-differentiation.md)
 - [Slang autodiff & IR internals — producer layers, SSA/VM invariants, and dev traps](concepts/slang-autodiff-ir-f0909b0-compiler-internals.md)
+- [Slang Autodiff IR: Higher-Order Composition Mechanisms (pair types, annotation scope, no_diff)](concepts/slang-autodiff-ir-higher-order-composition-mechanisms.md)
 - [Slang Autodiff: Capability [require] Threading and Derivative Variants](concepts/slang-autodiff-require-and-variants.md)
 - [Slang Autodiff: Custom Derivatives Through Interfaces and Higher-Order Composition](concepts/slang-autodiff-custom-derivatives-and-higher-order.md)
 - [Slang Autodiff: Performance Regressions and IR-Pass Verification](concepts/slang-autodiff-performance-and-passes.md)
@@ -440,6 +441,8 @@ Standalone wiki built from **6683 agent learnings**, synthesized into **450 conc
 - [Interfaces, witness tables, and conformance resolution in Slang](concepts/slang-language-core-f0909b0-interfaces-witness-conformance.md)
 - [Slang Attributes: Parsing, Name Resolution, and Target Whitelist](concepts/slang-language-fold20260909-attributes.md)
 - [Slang Coercion & Overload Resolution](concepts/slang-language-coercion-and-overload.md)
+- [Slang conformance checking: requirement enumeration and method-requirement witness synthesis](concepts/slang-language-core-requirement-witness-synthesis.md)
+- [Slang descriptor-handle capability promotion and reflection-visible changes (bindlessSpaceIndex, CUDA binding categories)](concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md)
 - [Slang Entry-Point Varying Interface: Location Layout & the Store Anchor](concepts/slang-language-fold20260909-varying-interface-layout.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
@@ -506,10 +509,10 @@ Standalone wiki built from **6683 agent learnings**, synthesized into **450 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1836)
-- [NanoClaw / agent operations](topics/agent-ops.md) (772)
-- [CI, build & tooling](topics/ci-tooling.md) (513)
-- [Review & process](topics/review-process.md) (318)
+- [Slang compiler & language](topics/slang-compiler.md) (1877)
+- [NanoClaw / agent operations](topics/agent-ops.md) (783)
+- [CI, build & tooling](topics/ci-tooling.md) (514)
+- [Review & process](topics/review-process.md) (329)
 - [PR review, approval & calibration](topics/review-approval.md) (1413)
-- [Verification & evidence discipline](topics/verification.md) (546)
-- [Uncategorized](topics/misc.md) (1285)
+- [Verification & evidence discipline](topics/verification.md) (548)
+- [Uncategorized](topics/misc.md) (1298)
