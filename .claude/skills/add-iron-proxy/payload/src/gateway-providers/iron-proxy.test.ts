@@ -121,6 +121,17 @@ describe('Iron Proxy provider', () => {
     expect(front).toEqual(JSON.parse(ironFrontConfig(settings)));
   });
 
+  it('keeps the local model host out of the front config; the bridge decides its port', () => {
+    const front = JSON.parse(ironFrontConfig(settings));
+    expect(front.plaintext_origins).toBeUndefined();
+    expect(front.allowed_hosts).not.toContain('host.docker.internal');
+  });
+
+  it('keeps the Docker bridge reachable, so host.docker.internal works on Linux', () => {
+    const denied = parseYaml(ironProxyConfig(settings)).proxy.upstream_deny_cidrs as string[];
+    for (const cidr of denied) expect(cidr).not.toMatch(/^(?:172\.(?:1[6-9]|2\d|3[01])\.|10\.|192\.168\.)/);
+  });
+
   it('uses the configured port for the front listener and agent URL only', () => {
     const configured = readIronProxySettings({ NANOCLAW_IRON_PROXY_PORT: '18081' }, root);
     fs.mkdirSync(path.dirname(configured.identityKey), { recursive: true });
