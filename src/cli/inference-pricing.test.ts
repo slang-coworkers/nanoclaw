@@ -34,6 +34,7 @@ describe('rate-table parity with the container copies', () => {
       'aws/anthropic/bedrock-claude-opus-5',
       'aws/anthropic/bedrock-claude-opus-4-8',
       'aws/anthropic/bedrock-claude-sonnet-5',
+      'aws/anthropic/bedrock-claude-sonnet-5-5',
       'aws/anthropic/claude-haiku-4-5-v1',
       'claude-opus-4-8[1m]',
       'claude-opus-5',
