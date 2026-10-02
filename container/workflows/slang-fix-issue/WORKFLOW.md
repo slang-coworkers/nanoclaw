@@ -161,7 +161,7 @@ uses:
    send_message(to="slang-reviewer", text="[Fix Review Request] shader-slang/slang#<number>: <title>\n\nMode: pr (or patch)\nPR / Patch: <url-or-path>\nBase: shader-slang/slang@master\nTests added: tests/<area>/test-<issue_number>.slang\nTest results: <PASS / X failures>\nMaintainer direction: <comment URLs, or none>\nFixer self-check: <R1 met · R2 partial (why) · …>")
    ```
 
-   Send the maintainer's comment links, not your paraphrase: the reviewer builds its own requirement list from them and checks it against your self-check.
+   Send the maintainer's comment links, not your paraphrase: the reviewer builds its own requirement list from them and checks it against your self-check. The critique gate refuses a request whose `Maintainer direction:` is a bare "none": give the reason after the dash (`none — <why no maintainer direction applies>`), and when you cite maintainer comments include `Fixer self-check:` with R1, R2… for each.
 
    End your turn after sending. Reviewer A's pipeline runs ~20-30 min; **don't reply to status echoes** — apply the quietness protocol from the spine's **Report shape** rules (`chain-reporting.md`, under Mechanics): "No echoes, no meta-acks... Nothing substantive → send nothing."
 
