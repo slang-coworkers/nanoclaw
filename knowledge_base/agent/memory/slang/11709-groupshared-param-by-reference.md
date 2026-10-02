@@ -46,6 +46,28 @@ As of 2026-09-30 the head is `cddb935c48`. It is not a draft and is CHANGES_REQU
     - When the hold lifts: push, then slang-reviewer does a delta-only review.
     - Not an issue: the whole-array load and bwd checkpoint are valid but copy-heavy (master ICEs here, so
       there's no baseline). They go in the PR description as a known limitation.
+- **Q1 answered 2026-10-01 13:45Z** by jhelferty-nv ([5932748637](https://github.com/shader-slang/slang/issues/13339#issuecomment-5932748637)).
+  Her answers: implement the split **on #13339** ("see how wide the blast radius gets"), and `const groupshared` maps to `RefReadOnly`.
+  - slang-fixer pushed `fix/issue-13339-ref-access-modes` at `7131985de3`: 3 commits on master `3e98d9563f`,
+    21 files, +344/−48 including tests.
+  - Draft-PR creation is blocked by its own PLAN_REVIEW. Codex holds R5: on master, `const groupshared` has
+    nothing to map, because `getExplicitlyDeclaredParamPassingMode` has no groupshared branch.
+    That mapping belongs to #11709 once it rebases.
+  - Decision (me, 10-01): post one verified #13339 comment giving her the blast radius she asked for, stating
+    that scoping fact, and asking her to confirm the split. Opening the draft through the operator to get
+    around the gate is **rejected**.
+  - #11709 now stays held until the #13339 PR lands. Then it does one rebase-and-rework push that includes
+    the P1 fix, followed by one delta review.
+  - The rework, per the fixer:
+    - drop the `isReadOnlyGroupSharedParam` matching and lowering in favor of the mode;
+    - take `IRBuilder::getRefParamType(…, access, …)` and `ParameterDirectionInfo.accessQualifier`;
+    - keep `HLSLGroupSharedModifier` in the synthesis clone list;
+    - add `const groupshared`/`groupshared` matching tests in both directions;
+    - rebase over `transposeDirection`'s Ref case.
+    - **Test expectation flips.** `tests/diagnostics/groupshared-param-requirement-qualifiers.slang`
+      accepts `ReadsOnly : ISharedWrite`, where a `const groupshared` method meets a `groupshared` requirement.
+      This is the "asks for less" rule. Under the plan's exact mode match it becomes E38108. (Verified at
+      `cddb935c48`; disclosed to jhelferty-nv in [5934711587](https://github.com/shader-slang/slang/issues/13339#issuecomment-5934711587).)
 - **Decision routing.** The rework-or-hold call belongs to tangent-vector, not the operator.
   slang-fixer's #13339 reply asks them (1) who implements the split: #13339, #11709, or after #13232;
   and (2) whether `const groupshared` should map to `RefReadOnly`.
@@ -55,7 +77,8 @@ As of 2026-09-30 the head is `cddb935c48`. It is not a draft and is CHANGES_REQU
 
 | Item | State |
 |---|---|
-| tangent-vector: who implements the split / `const groupshared` mapping | asked 09-30 |
+| who implements the split / `const groupshared` mapping | **answered** 10-01 by jhelferty-nv: on #13339; yes `RefReadOnly` |
+| confirm the `const groupshared` mapping lands with #11709 (not #13339) | asked 10-01 in [5934711587](https://github.com/shader-slang/slang/issues/13339#issuecomment-5934711587); the #13339 draft waits on it (PLAN_REVIEW R5) |
 | [r4141296596](https://github.com/shader-slang/slang/pull/11709#discussion_r4141296596): release assert (a)/(b) for pre-PR `.slang-module`s | open |
 | [r4139502685](https://github.com/shader-slang/slang/pull/11709#discussion_r4139502685): E30709 warning vs error | open |
 | jhelferty-nv CHANGES_REQUESTED | sticky until she re-reviews |

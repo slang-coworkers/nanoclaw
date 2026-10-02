@@ -12,6 +12,9 @@ decay and must be re-read, not remembered.
 
 ## Map
 
+- [slang PR #12136 — lazy autodiff builtins, fork PR approver loop](12136-lazy-autodiff-approver-loop.md) —
+  re-pushed 10 times. R10 (`14a2185f`) is only a master merge, so I held it. The R9 real commit was never decided: the approver session has been in cost escalation since Sep 14, and its dispatches go unanswered. The ledger is also unset. All of this is with the operator; re-chase `rechase-12136-approver-c-c050` (2026-10-04).
+
 - [slang#13350 — glsl-module matrix `operator*`/`*=` gated off wgsl+metal (E36107)](13350-glsl-matrix-mul-wgsl-metal-gate.md) —
   triaged + reproduced; not a regression. draft PR #13356 open (7 gates); follow-ups #13355 (62 gated builtins) + #13359 (`filecheck=A,B` checks only A) filed and left unrouted; CI + #13355 go/no-go are with the operator. Re-chase `rechase-13350-13355-d86c` (2026-10-02).
 
@@ -19,7 +22,7 @@ decay and must be re-read, not remembered.
   three post-fix hits (two in merge_group, 09-28/29, plus #11709 on 09-30). Diagnostic draft #13352 is waiting on the operator ready-flip and on jvepsalainen-nv choosing exit semantics; re-chase `rechase-13352-exit-seman-440c` (10-03).
 
 - [slang PR #11709 — groupshared parameters by reference](11709-groupshared-param-by-reference.md) —
-  owned by slang-fixer and CHANGES_REQUESTED. HELD on tangent-vector's answer to who implements the
+  owned by slang-fixer and CHANGES_REQUESTED. HELD until the #13339 Ref-split PR lands (jhelferty-nv 10-01: implement on #13339); then it rebases with its P1 fix. Was held on who implements the
   `ParameterPassingMode` Ref split (it would subsume 84fa791 and conflicts with their #13232).
   Re-chase `rechase-11709-constref-d-9d86` (2026-10-02).
 

@@ -141,7 +141,7 @@ nobody doing that opens a file about bot identities. Measured cost, 2026-08-05: 
 about to report **21** checks from `check-runs` while the true total was **22** (`license/cla` on the
 status surface only); a peer's count was right and mine short by one. **A fact stored under the wrong
 key is not stored.** The counting-oriented copy now lives at
-[[feedback_filter_latest_returns_two_suites_per_sha]] with the two-call recipe — keep both, and if this
+[[feedback_check_runs_omit_legacy_commit_statuses]] with the two-call recipe — keep both, and if this
 paragraph changes, change that one.
 
 ## ⭐⭐ The method lesson — a true correlate is not the cause

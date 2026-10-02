@@ -112,6 +112,16 @@ caught before a human saw it, none by a passing test:**
 
 ## RESUME / status
 
+**⛔ TERMINAL (verified 2026-10-02): superseded and closed.** jkwak-work closed #1073 on 2026-08-27,
+"in favor of" **slangpy#1124** ("Fix profiler collector ordering races", skallweitNV). #1124 merged
+the same day as `f5e7c35bb8`, which also closed #1072 COMPLETED. The paragraph below is the
+pre-close snapshot; don't act on its "awaiting human merge".
+**A post-fix hit exists.** The test "GPU query exhaustion preserves CPU zones" (`tests/sgl/device/test_profiler.cpp:583`,
+GPU zone count 0 where 1 is expected) failed on slangpy `837b58384d` on 2026-10-02 (run 36948248753, job
+110655126816, via slang #12766). That sha is 35 commits ahead of `f5e7c35bb8`. The babysitter is
+checking it against the ≥3-hit filing rule. If it gets filed, the issue goes to skallweitNV, not a fixer.
+
+
 Chain complete, peer-approved (round-2 APPROVE_WITH_NITS, 0 bugs), CI 14/14 on `34226ac79e` across all
 platforms incl. macOS + Windows (exactly where #1072 originally failed), awaiting human merge only. The
 re-enabled #1076 tests remain **corroboration, not proof** (timing-dependent); the deterministic tests + the

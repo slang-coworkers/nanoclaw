@@ -36,6 +36,8 @@ okf_version: "0.1"
 - [Harness / provider findings](harness/index.md) - durable structural facts about
   running a group on the Codex provider vs Claude (headline: settings.json hooks are
   inert for Codex). Distilled 2026-08-20 from the May-2026 A/B and parity R&D notes.
+- [PR approvers paused](pr-approvers-paused.md) - **check `paused` before routing any
+  approver webhook**; both approvers are operator-paused and the decision is still pending.
 - [Supervise-tick delivery guardrail](project_supervise_tick_no_cc_discord.md) - each
   `/supervise-issues` tick delivers to `orchestrator-dashboard` and nowhere else; never
   CC a coworker.

@@ -21,3 +21,5 @@ The `chain-routing-gate` overlay was the deterministic replacement for Buddy's m
 
 Sibling branches reference the nv-main-owned overlay — resolves at fan-merge (same cross-branch pattern as base-nanoclaw, [[project_nv_branch_cross_imports]]). Path-guard CI on nv-main rejects new files outside nv-main.txt allowlist — add new generic overlays there. See [[feedback_precommit_hook_drops_files]] for the commit footgun hit during this work.
 
+
+**Observed 2026-10-01 (Main, #13288 rollup):** a final-response `<message to="orchestrator-dashboard" in_reply_to="12">[Resolution]…` was REFUSED as "omitted in_reply_to", even though the attribute was there. msg 12 was a pre-compaction operator inbound, so the gate probably treats an id that doesn't resolve as absent. The rollup went through as `send_message(to="orchestrator-dashboard", in_reply_to=<the coworker [Resolution] inbound being rolled up>, thread_id=<canonical>)`. ⇒ For a Main→operator `[Report]`/`[Resolution]`, set `in_reply_to` to the inbound that is live in this turn. Use the MCP tool so you get a delivery receipt back.

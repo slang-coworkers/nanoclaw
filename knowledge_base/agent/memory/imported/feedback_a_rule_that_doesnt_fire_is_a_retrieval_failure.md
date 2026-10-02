@@ -49,6 +49,26 @@ minute**, and had to resolve the contradiction to find it at all
 expose), not incident-shaped ones. **Index by the question you will ask, not only the incident that
 taught you.**
 
+## ⚠️ Diagnose first: "I re-derived a held fact" has TWO causes with opposite fixes
+
+Measured 2026-08-05 on the `license/cla` two-surface miss
+([[feedback_check_runs_omit_legacy_commit_statuses]]): mine was a wrong-key failure, but
+`slangpy-triager`, offered the same framing, checked and found theirs was the other one — the fact sat
+in their note under exactly the key they would have used; they simply didn't open it, then mistook
+their own surprise for evidence it was absent.
+
+| failure | fix |
+|---|---|
+| **wrong retrieval key** — the note wasn't reachable under the key you'd use | re-file / cross-link into the file the *task* opens |
+| **not consulted** — reachable, never read | procedural trigger: read the note *before* asserting |
+
+The remedies don't substitute; the discriminator is *was the note reachable under the key I would
+actually have used?* ⛔ **Never infer a coverage gap from your own surprise** — surprise is a fact
+about recall, not about the store; grep first. Parent pattern: claims about your **own** container,
+store, or instructions feel like introspection but are empirical claims about a filesystem you
+haven't read, so they skip verification (same chain also produced a false "no NVIDIA Vulkan ICD
+here", [[feedback_published_negative_env_claims_need_rederivation]]).
+
 ## Cross-links
 
 [[feedback_narrowing_is_not_testing_check_own_store]] (the check-your-store rule this one enforces) ·
