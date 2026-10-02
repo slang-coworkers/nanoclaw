@@ -703,6 +703,10 @@ describe('long public comments need a reviewed body file', () => {
   });
 });
 
+/** A review request that names its maintainer direction (the REVIEW_REQUEST_GATE format). */
+const RR = (head: string): string =>
+  `[Fix Review Request] ${head}\n\nMode: pr\nMaintainer direction: none — the issue has no maintainer design comments`;
+
 describe('fix report / review request waits for the PR description refresh', () => {
   const AUTO_MAP = path.resolve(process.cwd(), 'container', 'hooks', 'pr-auto-map.sh');
   const send = (text: string) => ({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text } });
@@ -752,7 +756,7 @@ describe('fix report / review request waits for the PR description refresh', () 
     expect(readState().critique_gate_denials).toBe(0);
 
     explain('555d69c0ffee');
-    expect(run(send('[Fix Review Request] shader-slang/slang#13213 ready for review')).status).toBe(0);
+    expect(run(send(RR('shader-slang/slang#13213 ready for review'))).status).toBe(0);
   });
 
   it('a push after the explanation makes it owed again', () => {
@@ -789,10 +793,116 @@ describe('fix report / review request waits for the PR description refresh', () 
   it('other messages, no receipts, the kill switch, and an inactive gate all pass', () => {
     openAndPush();
     expect(run(send('Still working on the review comments.')).status).toBe(0);
-    expect(run(send('[Fix Review Request] x'), { EXPLAIN_DIFF_GATE: '0' }).status).toBe(0);
+    expect(run(send(RR('x')), { EXPLAIN_DIFF_GATE: '0' }).status).toBe(0);
     expect(run(send('[Fix Review Request] x'), { CRITIQUE_GATE_ACTIVE: '0' }).status).toBe(0);
     fs.rmSync(explainStateFile);
-    expect(run(send('[Fix Review Request] x')).status).toBe(0);
+    expect(run(send(RR('x'))).status).toBe(0);
+  });
+});
+
+describe('[Fix Review Request] must name its maintainer direction (REVIEW_REQUEST_GATE)', () => {
+  const send = (text: string) => ({
+    tool_name: 'mcp__nanoclaw__send_message',
+    tool_input: { to: 'slang-reviewer', text },
+  });
+  const readState = (): Record<string, unknown> =>
+    JSON.parse(fs.readFileSync(stateFile, 'utf-8')) as Record<string, unknown>;
+  const HEAD =
+    '[Fix Review Request] shader-slang/slang#13073: thread mode through specialization\n\nMode: pr\nPR / Patch: https://github.com/shader-slang/slang/pull/13213';
+  const LINK = 'https://github.com/shader-slang/slang/issues/13073#issuecomment-3301234567';
+
+  beforeEach(() => {
+    activateOverlay();
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 1, critique_gate_denials: 0 }));
+  });
+
+  it('passes with maintainer comment links and a self-check scoring them', () => {
+    const r = run(
+      send(`${HEAD}\nMaintainer direction: ${LINK}\nFixer self-check: R1 met · R2 partial (no options hook yet)`),
+    );
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe('');
+  });
+
+  it('passes with links and a self-check written as lists under bold labels', () => {
+    const r = run(
+      send(
+        `${HEAD}\n**Maintainer direction:**\n- ${LINK} ("pure refactor")\n- https://github.com/shader-slang/slang/pull/13213#discussion_r2201234\n**Fixer self-check:**\n- R1 met\n- R2 met`,
+      ),
+    );
+    expect(r.status).toBe(0);
+  });
+
+  it('passes with "none" followed by a reason (dash, colon or parentheses)', () => {
+    for (const v of [
+      'none — the issue has no maintainer comments',
+      'none: reporter-only issue, no maintainer replied',
+      'none (issue body is the only spec)',
+    ]) {
+      expect(run(send(`${HEAD}\nMaintainer direction: ${v}`)).status, v).toBe(0);
+    }
+  });
+
+  it('refuses a bare "none" and says what to add — not counted toward escalation', () => {
+    const r = run(send(`${HEAD}\nMaintainer direction: none`));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('REVIEW REQUEST INCOMPLETE');
+    expect(r.stderr).toContain('bare "none"');
+    expect(r.stderr).toContain('Maintainer direction: none — <why no maintainer direction applies>');
+    expect(r.stderr.trim().split('\n')).toHaveLength(1);
+    expect(readState().critique_gate_denials).toBe(0);
+  });
+
+  it('refuses a request with no Maintainer direction line', () => {
+    const r = run(send(`${HEAD}\nTests added: tests/x.slang\nTest results: PASS`));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('no `Maintainer direction:` line');
+    expect(readState().critique_gate_denials).toBe(0);
+  });
+
+  it('refuses a direction that neither links a comment nor says none with a reason', () => {
+    const r = run(send(`${HEAD}\nMaintainer direction: see the issue thread`));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('neither links a maintainer comment');
+  });
+
+  it('refuses links without a Fixer self-check, and a self-check with no R items', () => {
+    const noCheck = run(send(`${HEAD}\nMaintainer direction: ${LINK}`));
+    expect(noCheck.status).toBe(2);
+    expect(noCheck.stderr).toContain('no `Fixer self-check:` line');
+    const noItems = run(send(`${HEAD}\nMaintainer direction: ${LINK}\nFixer self-check: all addressed`));
+    expect(noItems.status).toBe(2);
+    expect(noItems.stderr).toContain('has no R1, R2… items');
+  });
+
+  it('REVIEW_REQUEST_GATE=0 turns it off', () => {
+    expect(run(send(`${HEAD}\nMaintainer direction: none`), { REVIEW_REQUEST_GATE: '0' }).status).toBe(0);
+  });
+
+  it('leaves other messages alone, including ones that only mention the marker', () => {
+    expect(run(send('Status: CI is green; I will send the [Fix Review Request] next.')).status).toBe(0);
+    expect(run(send('Still applying the reviewer comments.')).status).toBe(0);
+  });
+
+  it('is a no-op where the critique gate is inactive', () => {
+    fs.rmSync(markerFile);
+    expect(run(send(`${HEAD}\nMaintainer direction: none`)).status).toBe(0);
+    activateOverlay();
+    expect(run(send(`${HEAD}\nMaintainer direction: none`), { CRITIQUE_GATE_ACTIVE: '0' }).status).toBe(0);
+  });
+
+  it('a declared [Fix Review Request] marker hears about the missing critique first', () => {
+    fs.writeFileSync(
+      path.join(overlayDir, '.critique-delivery-markers'),
+      JSON.stringify({ message_markers: ['Fix Review Request'] }),
+    );
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const critique = run(send(`${HEAD}\nMaintainer direction: none`));
+    expect(critique.status).toBe(2);
+    expect(critique.stderr).toContain('no critique rounds recorded');
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 1 }));
+    expect(run(send(`${HEAD}\nMaintainer direction: none`)).stderr).toContain('REVIEW REQUEST INCOMPLETE');
+    expect(run(send(`${HEAD}\nMaintainer direction: none — no maintainer comments`)).status).toBe(0);
   });
 });
 

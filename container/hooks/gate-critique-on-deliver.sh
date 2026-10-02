@@ -20,13 +20,17 @@
 # Force-push gates intentionally NOT wired in v1 — too noisy for legitimate
 # rebases of feature branches; revisit if abuse pattern emerges.
 #
-# Two further checks share this hook (both no-ops unless the gate is active):
+# Three further checks share this hook (all no-ops unless the gate is active):
 #   - Long public comments (Bash: gh issue/pr comment, gh pr review, comment /
 #     review API calls) must be posted from a file an OUTPUT_REVIEW attested
 #     and approved. Denied comments do NOT count toward the denial cap.
 #   - [Fix Review Request] / [Fix Report] are refused while a PR this session
 #     created or pushed to still has a description explaining an older head
 #     (lib/explain-diff-owed.sh). Not counted toward the escalation cap.
+#   - A [Fix Review Request] must name its maintainer direction: a
+#     `Maintainer direction:` line linking the maintainer's GitHub comments or
+#     saying `none — <reason>`, plus a `Fixer self-check:` with R1, R2… when it
+#     links comments. Format only. Not counted toward the escalation cap.
 #
 # Stdin: JSON with tool_name, tool_input. Exit 0 = allow, exit 2 = deny.
 set -euo pipefail
@@ -211,6 +215,7 @@ fi
 
 HIT=""
 EXPLAIN_HIT=""
+RR_HIT=""
 case "$TOOL" in
   mcp__nanoclaw__send_message)
     # Anchored to line start (the chain protocol emits markers as message /
@@ -229,6 +234,12 @@ case "$TOOL" in
       && grep -qE '^[[:space:]]*\[(Fix Review Request|Fix Report)\]' <<< "$TEXT"; then
       EXPLAIN_HIT="fix report / review request"
     fi
+    # The review request itself — the message must START with the marker (a
+    # status note that quotes one mid-text is not a request).
+    re_rr='^[[:space:]]*\[Fix Review Request\]'
+    if [ "${REVIEW_REQUEST_GATE:-1}" != "0" ] && [[ $TEXT =~ $re_rr ]]; then
+      RR_HIT="review request"
+    fi
     ;;
   Bash)
     # Known PR-creation shapes: the gh CLI, direct REST calls carrying the
@@ -242,7 +253,7 @@ case "$TOOL" in
     ;;
 esac
 
-[ -z "$HIT" ] && [ -z "$EXPLAIN_HIT" ] && exit 0
+[ -z "$HIT" ] && [ -z "$EXPLAIN_HIT" ] && [ -z "$RR_HIT" ] && exit 0
 
 # ABSTAIN fast-path (PR-approver): an [Approval Decision] whose state is
 # ABSTAIN_POLICY / ABSTAIN_INFRA makes NO positive claim about the code — it
@@ -253,7 +264,7 @@ esac
 # mislabelling a WOULD_APPROVE as an abstain is decline to approve. Matched on
 # the decision token in the delivered message, anchored so a mid-sentence
 # mention of the word doesn't trip it. CRITIQUE_ABSTAIN_FASTPATH=0 disables.
-if [ "$TOOL" = "mcp__nanoclaw__send_message" ] && [ -z "$EXPLAIN_HIT" ] \
+if [ "$TOOL" = "mcp__nanoclaw__send_message" ] && [ -z "$EXPLAIN_HIT" ] && [ -z "$RR_HIT" ] \
   && [ "${CRITIQUE_ABSTAIN_FASTPATH:-1}" != "0" ]; then
   if grep -qE '\b(ABSTAIN_POLICY|ABSTAIN_INFRA)\b' <<< "$TEXT" \
      && ! grep -qE '\b(WOULD_APPROVE|BLOCK)\b' <<< "$TEXT"; then
@@ -387,6 +398,59 @@ resend. If the upsert itself fails (e.g. a GitHub error), tell your parent in a
 plain message instead of resending the marker. This denial does not count
 toward the critique escalation. EXPLAIN_DIFF_GATE=0 (host env) disables it.
 EOF
+    exit 2
+  fi
+fi
+
+# ── [Fix Review Request] names its maintainer direction ─────────────────────
+# The fixer's codex rounds must carry the maintainer's words (REQUIREMENTS:,
+# track-critique.sh), but the review request the reviewer and humans read did
+# not have to. On #13213 the reviewer worked from a relay of a relay. So the
+# request must name its source: a `Maintainer direction:` line linking the
+# maintainer's GitHub comments, or `none — <reason>`; and when it links
+# comments, a `Fixer self-check:` scoring them as R1, R2… Format only: whether
+# the cited direction is complete or quoted accurately is the reviewer's check
+# (spec-fidelity — it builds its own list from the issue and PR). Like the
+# comment and refresh rules it leaves the denial counter alone: the remedy is
+# an edit to the message, and the escalation path would card a human for
+# nothing. REVIEW_REQUEST_GATE=0 (host env) disables.
+
+# Prints what is missing from a review request, or nothing when it is complete.
+# Labels tolerate list bullets and markdown bold; a label's value runs on until
+# the next `Label:` line (at most 15 lines), so a list of links under the label
+# counts. `https:` is not a label: a label's colon is followed by a space or EOL.
+review_request_problem() {
+  awk '
+    function norm(s) { sub(/^[ \t]*([-*+][ \t]+)?/, "", s); gsub(/\*\*|__/, "", s); return s }
+    function islabel(s) { return (tolower(s) ~ /^[a-z][a-z0-9 \/()_-]*:([ \t]|$)/) }
+    { line = norm($0); low = tolower(line) }
+    mode != "" && (islabel(line) || n >= 15) { mode = "" }
+    mode == "dir" { dir = dir " " line; n++; next }
+    mode == "sc" { sc = sc " " line; n++; next }
+    !hasdir && low ~ /^maintainer direction[ \t]*:/ {
+      hasdir = 1; v = line; sub(/^[^:]*:[ \t]*/, "", v); dir = v; mode = "dir"; n = 0; next
+    }
+    !hassc && low ~ /^fixer self-check[ \t]*:/ {
+      hassc = 1; v = line; sub(/^[^:]*:[ \t]*/, "", v); sc = v; mode = "sc"; n = 0; next
+    }
+    END {
+      if (!hasdir) { print "it has no `Maintainer direction:` line"; exit }
+      if (dir !~ /github\.com\/[^ \t)]*(issuecomment-[0-9]+|pullrequestreview-[0-9]+|discussion_r[0-9]+|#issue-[0-9]+)/) {
+        d = tolower(dir); gsub(/`/, "", d); sub(/^[ \t]+/, "", d)
+        if (d ~ /^none[ \t]*(—|–|-|:|\()[ \t]*[^ \t)]/) exit
+        if (d ~ /^none[ \t.]*$/) { print "its `Maintainer direction:` says a bare \"none\" with no reason"; exit }
+        print "its `Maintainer direction:` neither links a maintainer comment on GitHub nor says none with a reason"; exit
+      }
+      if (!hassc) { print "it cites maintainer comments but has no `Fixer self-check:` line"; exit }
+      if (sc !~ /(^|[^A-Za-z0-9])[Rr][0-9]+([^0-9]|$)/) { print "its `Fixer self-check:` has no R1, R2… items"; exit }
+    }
+  ' <<< "$1"
+}
+
+if [ -z "$DENIAL_REASON" ] && [ -n "$RR_HIT" ]; then
+  RR_PROBLEM=$(review_request_problem "$TEXT")
+  if [ -n "$RR_PROBLEM" ]; then
+    echo "REVIEW REQUEST INCOMPLETE: $RR_PROBLEM. Expected \`Maintainer direction: https://github.com/<owner>/<repo>/issues/<n>#issuecomment-<id>\` (one link per maintainer comment) or \`Maintainer direction: none — <why no maintainer direction applies>\`, and with links \`Fixer self-check: R1 met · R2 partial (why)\` — fix the message and resend; this does not count toward the critique escalation (REVIEW_REQUEST_GATE=0 disables)." >&2
     exit 2
   fi
 fi
