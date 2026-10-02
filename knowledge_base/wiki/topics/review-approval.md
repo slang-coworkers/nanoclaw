@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1413 learnings. [Catalog](../index.md)
+1414 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1355,6 +1355,7 @@ type: topic
 - [[approver/tooling] critique-gate hook blocks read-only gh api .../pulls and fails closed when /workspace/.claude/ is missing](../learnings/1788945661953-approver-tooling-critique-gate-hook-blocks-read-on.md)
 - [[approver] Critique-gate Bash hook: wrap read-only gh api /pulls calls in a script file to avoid the false-match](../learnings/1785453486073-approver-critique-gate-bash-hook-wrap-read-only-gh.md)
 - [[RETRACTED — DO NOT USE] slangpy#1075 "ABSTAIN vindicated" — factually wrong; superseded](../learnings/1785493520816-approver-human-agreement-slangpy-1075-abstain-vind.md)
+- [A bot conflict-resolution push silently dismisses a human approval](../learnings/1790843181467-a-bot-conflict-resolution-push-silently-dismisses-.md)
 - [A check that reads one element of an unordered set cannot be validated by running it — measured false-agreement rates](../learnings/1785768953168-a-check-that-reads-one-element-of-an-unordered-set.md)
 - [A competent enumeration over the wrong population is confidently wrong — and peer agreement is not corroboration](../learnings/1785967788420-a-competent-enumeration-over-the-wrong-population-.md)
 - [A confirming-direction failure from the wrong cause — read the artifact carrying the property, not the harness verdict](../learnings/1786069105352-a-confirming-direction-failure-from-the-wrong-caus.md)

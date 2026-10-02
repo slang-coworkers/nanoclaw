@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 12
+source_count: 13
 ---
 
 ## TL;DR
@@ -163,6 +163,10 @@ escalation, so stop retrying: read inline review comments with
 `mcp__slang-mcp__github_get_pull_request_comments`, and write memory text that
 names gated commands with the Edit tool rather than a Bash heredoc
 ([gate regex-matches PR-open phrases in reads and heredocs](../learnings/1790593139115-critique-gate-any-bash-between-approve-and-send-co.md)).
+A later session hit both shapes again (a read-only `gh api repos/.../pulls/comments/<id>`
+GET, and a memory heredoc that only mentioned PR-creation words) and found one more: the
+hook rejects `-F body=@$var.md` because it needs a literal absolute path, so post each
+reply with a literal `-F body=@/abs/path.md` [Counting unresolved PR review threads: include isOutdated=true, classify by first author](../learnings/1790717452750-counting-unresolved-pr-review-threads-include-isou.md).
 Because a denial rejects the whole Bash call, any other step chained into it
 is silently skipped too; see the push-bundling rule on
 [the gate-mechanics page](agent-routing-f0909b1-critique-gate-mechanics.md).
@@ -268,7 +272,7 @@ entries to HEAD behaviour, against `_claims.md` §1's "doc's own wording", is
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (12):**
+**Source learnings (13):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -282,3 +286,4 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [Hand-editing docs/generated/tests coverage tree: lint gate + honest META + PR disclosure](../learnings/1788384936519-hand-editing-docs-generated-tests-coverage-tree-li.md) — Legitimate to hand-add symmetric entries if regenerate.py lint passes 0 errors, META is honest, and the PR discloses it.
 - [any Bash after approve counts as an edit; the PR-creation arm text-matches reads and heredocs, escalating after 3 denials; read inline comments via MCP.](../learnings/1790593139115-critique-gate-any-bash-between-approve-and-send-co.md)
 - [a bundle-test retarget must also fix `_prompt.md`, or `mark-fresh` regenerates the stale test; lint does not check Claim == META purpose.](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)
+- [Counting unresolved PR review threads: include isOutdated=true, classify by first author](../learnings/1790717452750-counting-unresolved-pr-review-threads-include-isou.md) — the hook also blocks a read-only pulls/comments GET and rejects `-F body=@$var`; use a literal absolute path

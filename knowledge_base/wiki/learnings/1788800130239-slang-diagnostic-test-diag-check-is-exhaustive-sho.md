@@ -3,6 +3,7 @@ title: "Slang DIAGNOSTIC_TEST diag=CHECK is exhaustive; short+span records; no C
 type: learning
 topic: slang-compiler
 source: learnings/1788800130239-slang-diagnostic-test-diag-check-is-exhaustive-sho.md
+superseded_by: 1789718875570-slang-diag-check-diagnostic-test-is-exhaustive-and
 ---
 
 # Slang DIAGNOSTIC_TEST diag=CHECK is exhaustive; short+span records; no CHECK-NOT

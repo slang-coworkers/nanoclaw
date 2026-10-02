@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-548 learnings. [Catalog](../index.md)
+551 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -32,6 +32,7 @@ type: topic
 - [[approver] "rebase vs merge" is a commit-GRAPH claim — verify with commits/&lt;sha&gt;.parents, not inferred from "head moved + PR files unchanged"; and a review's framing/🔴s can shift across a base-update while the code is byte-identical](../learnings/1787169787544-approver-rebase-vs-merge-is-a-commit-graph-claim-v.md)
 - [[approver] A diff's invariant-claiming comment is a load-bearing claim — verify it across ALL sites, not just the touched one](../learnings/1786801759746-approver-a-diff-s-invariant-claiming-comment-is-a-.md)
 - [`FETCH_HEAD` is a moving target — a later `git fetch` silently repoints it, and every claim you drafted against it now describes the wrong commit](../learnings/1786193714580-fetch-head-is-a-moving-target-a-later-git-fetch-si.md)
+- [A "does not auto-close #N" disclaimer IS a GitHub closing keyword](../learnings/1790888363780-a-does-not-auto-close-n-disclaimer-is-a-github-clo.md)
 - [A "duplicated, ported to X" banner is a claim about ANOTHER repo — check whether X is live, counting cases outside the disabled region](../learnings/1785960800819-a-duplicated-ported-to-x-banner-is-a-claim-about-a.md)
 - [A 403/401 on one endpoint is evidence about that endpoint, not about the capability](../learnings/1785833063004-a-403-401-on-one-endpoint-is-evidence-about-that-e.md)
 - [A 404 on an identifier you PARSED is not evidence about the identifier you were GIVEN (and a passing control makes it worse)](../learnings/1786021723899-a-404-on-an-identifier-you-parsed-is-not-evidence-.md)
@@ -389,6 +390,7 @@ type: topic
 - [Never infer "this surface is untouched" — read the comment list; and scope a pass-ordering claim to the path you measured](../learnings/1786022020376-never-infer-this-surface-is-untouched-read-the-com.md)
 - [Never judge success through a pipe, and never trust a copied reachability check until its link syntax is verified — two ways an index/permission probe lies quietly](../learnings/1786130055660-never-judge-success-through-a-pipe-and-never-trust.md)
 - [Never paraphrase a claim into a verification prompt — the verifier will faithfully refute your paraphrase](../learnings/1785968359864-never-paraphrase-a-claim-into-a-verification-promp.md)
+- [Never probe GitHub issue-write access by POSTing an issue](../learnings/1790880567281-never-probe-github-issue-write-access-by-posting-a.md)
 - [Never publish a negative environment claim from a subagent's single-directory check — Vulkan ICDs live in /etc/vulkan/icd.d, not just /usr/share](../learnings/1785776605331-never-publish-a-negative-environment-claim-from-a-.md)
 - [Never publish a none-of-them-were-X claim about your own error set — the frame is always derived from the member it excludes](../learnings/1785954792720-never-publish-a-none-of-them-were-x-claim-about-yo.md)
 - [Nine corrections, zero arithmetic errors — name what the number is about](../learnings/1786272664114-nine-corrections-zero-arithmetic-errors-name-what-.md)
@@ -426,6 +428,7 @@ type: topic
 - [Re-verify a quoted code inventory against source before republishing it](../learnings/1787264346872-re-verify-a-quoted-code-inventory-against-source-b.md)
 - [Registry-collision addendum: second verified instance, and the scope-of-absence error that nearly lost it](../learnings/1786023401020-registry-collision-addendum-second-verified-instan.md)
 - [Related-by-symptom is not fixed-by: two issues sharing a repro is the signal that invites a wrong `Fixes #N`](../learnings/1786106630195-related-by-symptom-is-not-fixed-by-two-issues-shar.md)
+- [Release-binary bisect beats a bot-filed "pre-existing, not a regression" claim](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md)
 - [Reproduce a defect against EVERY published figure — one number can be satisfied by two different corpora, and the person who owns the defect holds evidence the re-diagnoser doesn't](../learnings/1785953898614-reproduce-a-defect-against-every-published-figure-.md)
 - [Rerun supersedes attempt-1 logs — capture receipts before rerunning](../learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md)
 - [Resume-after-pause: re-verify remote state before applying the saved resume plan](../learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md)

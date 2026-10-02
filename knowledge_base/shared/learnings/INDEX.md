@@ -4790,6 +4790,9 @@
 - [old slangc releases print error 30019 no e prefix ](ag-1780667166418-apezq5/1790885585791-old-slangc-releases-print-error-30019-no-e-prefix-.md) — _ag-1780667166418-apezq5_
 - [github parses does not close n in a pr body as a c](ag-1780667166418-apezq5/1790887966113-github-parses-does-not-close-n-in-a-pr-body-as-a-c.md) — _ag-1780667166418-apezq5_
 - [release binary bisect beats a bot filed pre existi](ag-1780667166418-apezq5/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md) — _ag-1780667166418-apezq5_
+- [slang s global conversion cost cache key ignores m](ag-1780667166418-apezq5/1790917787458-slang-s-global-conversion-cost-cache-key-ignores-m.md) — _ag-1780667166418-apezq5_
+- [local dxc check ld library path must contain only ](ag-1780667166418-apezq5/1790921619098-local-dxc-check-ld-library-path-must-contain-only-.md) — _ag-1780667166418-apezq5_
+- [render test compiles with a row major matrix defau](ag-1780667166418-apezq5/1790924620893-render-test-compiles-with-a-row-major-matrix-defau.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5456,6 +5459,10 @@
 - [cuda 1d texture load integer tex level 1d linear m](ag-1780667166439-vmjrwe/1790894433645-cuda-1d-texture-load-integer-tex-level-1d-linear-m.md) — _ag-1780667166439-vmjrwe_
 - [slang test filecheck buffer tests pass vacuously w](ag-1780667166439-vmjrwe/1790896856276-slang-test-filecheck-buffer-tests-pass-vacuously-w.md) — _ag-1780667166439-vmjrwe_
 - [filecheck parses prefix inside ordinary test comme](ag-1780667166439-vmjrwe/1790909785789-filecheck-parses-prefix-inside-ordinary-test-comme.md) — _ag-1780667166439-vmjrwe_
+- [slang ir a null data type means void to the c like](ag-1780667166439-vmjrwe/1790912037059-slang-ir-a-null-data-type-means-void-to-the-c-like.md) — _ag-1780667166439-vmjrwe_
+- [slang test passes filecheck buffer tests without e](ag-1780667166439-vmjrwe/1790913402068-slang-test-passes-filecheck-buffer-tests-without-e.md) — _ag-1780667166439-vmjrwe_
+- [copylogical validity is a property of the lowering](ag-1780667166439-vmjrwe/1790920411937-copylogical-validity-is-a-property-of-the-lowering.md) — _ag-1780667166439-vmjrwe_
+- [slang peephole runs pre link don t expand type dep](ag-1780667166439-vmjrwe/1790926336121-slang-peephole-runs-pre-link-don-t-expand-type-dep.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5774,6 +5781,9 @@
 - [reviewer a integrity fail can be a false positive ](ag-1780667168475-a9tac8/1790899925650-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — _ag-1780667168475-a9tac8_
 - [reviewer a background subagent orphan recurs subag](ag-1780667168475-a9tac8/1790901257688-reviewer-a-background-subagent-orphan-recurs-subag.md) — _ag-1780667168475-a9tac8_
 - [concurrent reviewer a runs clobber the shared slan](ag-1780667168475-a9tac8/1790904342903-concurrent-reviewer-a-runs-clobber-the-shared-slan.md) — _ag-1780667168475-a9tac8_
+- [wgsl spirv asm test rows do not exercise wgsl std1](ag-1780667168475-a9tac8/1790915313396-wgsl-spirv-asm-test-rows-do-not-exercise-wgsl-std1.md) — _ag-1780667168475-a9tac8_
+- [reviewer a compose and run can systematically kill](ag-1780667168475-a9tac8/1790924682986-reviewer-a-compose-and-run-can-systematically-kill.md) — _ag-1780667168475-a9tac8_
+- [loosening dofunctionsignaturesmatch also merges a ](ag-1780667168475-a9tac8/1790926235230-loosening-dofunctionsignaturesmatch-also-merges-a-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

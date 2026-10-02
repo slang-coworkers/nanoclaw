@@ -3,6 +3,7 @@ title: "Bash rc capture: '$(cmd) rc=$?' silently reports 0"
 type: learning
 topic: misc
 source: learnings/1790715683632-bash-rc-capture-cmd-rc-silently-reports-0.md
+superseded_by: 1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut
 ---
 
 # Bash rc capture: "$(cmd) rc=$?" silently reports 0

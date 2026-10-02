@@ -19,5 +19,7 @@ When a coworker session receives dispatches but produces zero outbound rows (`nc
 
 Measured 2026-09-28: `slangpy-pr-approver` and `slang-pr-approver` had both been paused since about 2026-09-10. They showed no output across 22 slangpy and 115 slang approver sessions, and an earlier nudge on slangpy#1187 went unanswered for the same reason. `ncl groups list --json` filtered on `paused` lists every paused group in one call.
 
+**Recurrence 2026-10-01 (slang#12446):** I re-woke a silent `slang-pr-approver` session and told the operator "the approver is still handling other PRs today, so only this session is stuck." That was wrong: the group was still `paused=1`. **New session rows and fresh `last_active` timestamps in a group are not evidence that it is processing anything.** The router creates sessions and writes their inbound rows even while the group is paused. Only a `direction=out` row proves a container ran. Check `paused` before claiming a stall is limited to one session.
+
 ---
 _Topic: [Uncategorized](../topics/misc.md) · [catalog](../index.md) · source: `sources/learnings/1790591435255-silent-coworker-check-the-group-s-paused-flag-firs.md`_

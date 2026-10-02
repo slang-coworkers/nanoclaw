@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc,
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, dxc, glibc, asan, valgrind, sccache, ninja]
-source_count: 18
+source_count: 20
 ---
 
 ## TL;DR
@@ -29,7 +29,8 @@ under you after a rebase.
   *reused* build tree rebuilt incrementally at a new checkout, `-v` still prints the
   configure-time describe; there, take provenance from `git log -1` + a clean `git status`.
 - **A slangc/slang-test copied out of `build/Debug` is a different instrument.** The prelude resolves relative to the exe (missing → the embedded prelude is inlined, changing `.cu` text) and nvrtc looks for OptiX headers at `<bin>/../../../external/optix-dev/include` (missing → every OptiX/PTX compile fails), so ~31 CUDA/OptiX/header tests fail from a `-bindir` copy. Run baseline and candidate from the same kind of location plus a no-change control, or rebuild the tree shape with hardlinks + symlinks.
-- **No NVIDIA driver in the container:** configure with `-DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-12.6/lib64/stubs/libcuda.so` so the link doesn't fail on a missing `libcuda.so`.
+- **No NVIDIA driver in the container:** configure with `-DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-12.6/lib64/stubs/libcuda.so` so the link doesn't fail on a missing `libcuda.so`. At run time `gfx-smoke` then fails with `Failed to load DLL "gfx"` because `lib/libgfx.so` needs `libcuda.so.1` — environmental; `ldd` before naming a loader cause.
+- **Never run baseline and candidate full suites concurrently** (or alongside a build): contention fabricates "patched-only" failures. Run serially, or rerun the set difference serially; ~91 environmental failures remain on a quiet no-GPU box.
 - **Sanitizer gotchas (ASan/TSan) are host-wide, not container-specific:** `LD_LIBRARY_PATH`
   must include the clang runtime dir; `ASAN_OPTIONS=detect_leaks=0` during the build.
 - **valgrind memcheck's glibc `ld.so`/`dlopen` `$ORIGIN` errors are false positives** — triage
@@ -111,7 +112,7 @@ clang-format==17.0.6` then `export PATH="$HOME/.local/bin:$PATH"` (Lua diagnosti
 `slang-diagnostics.lua` are NOT formatted by the script — match style by hand)
 [fresh-worktree submodule init + clang-format-17 via pip; don't detach the build](../learnings/1789394522873-fresh-slang-worktree-submodule-init-clang-format-1.md).
 
-## Relocated binary copies: prelude and OptiX headers resolve relative to the build tree
+## A/B baselines must be like-for-like: relocated copies, concurrent suites, and the missing CUDA driver
 
 Keeping a master baseline by snapshotting `build/Debug/{bin,lib}` into a scratch directory
 produces a binary that behaves differently from the in-tree one on the CUDA/PTX paths, for two
@@ -143,6 +144,24 @@ container with no NVIDIA driver fails the link against a missing
 `/usr/lib/x86_64-linux-gnu/libcuda.so`; reconfigure with
 `-DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-12.6/lib64/stubs/libcuda.so`
 [CUDA driver stub](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md).
+
+At run time the same missing driver shows up as `tests/cpu-program/gfx-smoke.slang (cpu)` failing
+with `Failed to load DLL "gfx"`. `libgfx.so` is built, but it lives in `build/Debug/lib/`, not
+`bin/`, and `ldd build/Debug/lib/libgfx.so` shows `libcuda.so.1 => not found`; that is an
+environmental failure unrelated to any compiler change, not "no libgfx in this build". Run `ldd` on
+the library before naming the cause of a loader error
+[gfx-smoke = missing libcuda.so.1](../learnings/1790710627405-slang-test-gfx-smoke-failed-to-load-dll-gfx-on-lin.md).
+
+Contention is the other way an A/B comparison lies. Running the master and patched full suites at
+the same time (`-use-test-server -server-count 12` each, 64 cores, with a `-j48` build also
+running) produced 73 "patched-only" failures across llvm/cpu tests in both directions; a serial
+rerun of those files on the patched binaries passed 130/130. Run baseline and candidate suites one
+after another with no build running, or rerun the set difference serially before reporting any
+regression. A clean serial suite on a quiet no-GPU Linux box still leaves about 91 environmental
+failures (numerics 46, cuda 21, functional 12, optix 4, a few others), and
+`slang-test -exclude-prefix tests/<scratch-dir>` keeps ad-hoc probe files under `tests/` out of
+full-suite runs
+[don't run two full suites concurrently](../learnings/1790718692458-don-t-run-two-slang-test-full-suites-concurrently-.md).
 
 ## GLIBC, DXC-from-source, and the stale CMake graph
 
@@ -265,7 +284,7 @@ break is the *only* remaining one
 
 `cmake -GXcode` fails at **configure** with "Xcode does not support per-config per-source COMPILE_OPTIONS: <genex> specified for source: X.cpp" whenever a per-source `COMPILE_OPTIONS` (set via `set_source_files_properties`) carries a context-sensitive `$<CONFIG:...>` generator expression. `cmGlobalXCodeGenerator` / `XCodeGeneratorExpressionInterpreter::Evaluate()` errors on the **PRESENCE** of the `$<CONFIG>` condition (`GetHadContextSensitiveCondition()` true), NOT on whether the resolved flags differ across configs — so `$<$<NOT:$<CONFIG:Debug>>:-Os>` that resolves to `-Os` in every config is still hard-rejected. Ninja Multi-Config (Slang's `default` preset, used by every CI job including the macOS `xcode-27` runner — a runner *label*, not the generator) tolerates it, and `CMakePresets.json` defines no Xcode generator, so this regression is **invisible to CI** (slang#13240/#13241). Fix pattern: branch on `CMAKE_CXX_COMPILER_ID` at configure time and emit a plain config-independent flag on the non-MSVC (Clang/AppleClang) path, keeping the `$<CONFIG>` genex only where a real per-config difference exists (MSVC Debug `/RTC1` vs optimization). Two gotchas: (1) match `CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"` (== `$<CXX_COMPILER_ID:MSVC>`), NOT the `MSVC` CMake variable — the latter is also true for clang-cl (compiler id `Clang`), so `if(MSVC)` would silently change clang-cl's flags; (2) to prove old-vs-new flag equivalence without a 20-min slang build, `file(GENERATE)` cannot evaluate `$<CXX_COMPILER_ID>` without a `TARGET` (throws "may only be used with binary targets") — instead compile a trivial 2-target throwaway replicating the `set_source_files_properties(... COMPILE_OPTIONS ...)`, build `--config Debug`/`Release` verbose, and grep the actual `-O` flags per config. Reviewer note: when a PR touches per-source `COMPILE_OPTIONS`, check whether any `$<CONFIG>` genex sits on a non-MSVC path — that is the exact shape that breaks `-GXcode`; a configure-only `buildtool: "Xcode"` macOS job wired into `check-cmake` (mirroring `cmake-options-build.yml`'s `buildtool` → `-G` for the windows-vs jobs) would cheaply guard it ([Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md)).
 
-**Source learnings (18):**
+**Source learnings (20):**
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md) — Full cascade + `ninja: loading build-Debug.ninja: No such file`; explicit external list; a backgrounded subagent build dies — run foreground + Monitor for the artifact.
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md) — #12297 added `slang-rich-diagnostics.cpp`; stale `build.ninja` → hundreds of undefined refs; reconfigure; grep `impl-Debug.ninja` (multi-config), not top-level `build.ninja`.
 - [Slang git worktree needs per-worktree submodule init before cmake configure](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md) — Top-level `--init --depth 1` is enough (no slang-rhi nested / dxc); the `SPIRV-Headers::SPIRV-Headers` `get_target_property` error + leading `-` in `git submodule status` are the tell; first configure also does a ~500 MB DXC clone+build; a Monitor on `build.log` mis-fires when configure (not compile) fails — trust the subagent's completion.
@@ -284,3 +303,5 @@ break is the *only* remaining one
 - [slang-test from a -bindir binary copy fails ~31 CUDA/OptiX/header tests that pass in-tree — compare like-for-like locations](../learnings/1790714053699-slang-test-from-a-bindir-binary-copy-fails-31-cuda.md)
 - [Slang binary copies: prelude + OptiX headers resolve relative to <bin>/../../.. — hardlink/symlink fix and no-change control (#13329)](../learnings/1790719029887-slang-binary-copies-prelude-optix-headers-resolve-.md)
 - [No-driver container: link CUDA via the libcuda.so stub (`-DCUDA_cuda_driver_LIBRARY=...stubs/libcuda.so`); also slangc `-o /dev/null` E00004](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md)
+- [slang-test gfx-smoke "Failed to load DLL gfx" on Linux containers = missing libcuda.so.1, not missing libgfx](../learnings/1790710627405-slang-test-gfx-smoke-failed-to-load-dll-gfx-on-lin.md) — `libgfx.so` is in `lib/`; `ldd` shows `libcuda.so.1 => not found`; environmental.
+- [Don't run two slang-test full suites concurrently for A/B baselines](../learnings/1790718692458-don-t-run-two-slang-test-full-suites-concurrently-.md) — 73 contention-only failures vanished on a serial rerun; ~91 no-GPU environmental baseline; `-exclude-prefix` for scratch probes.

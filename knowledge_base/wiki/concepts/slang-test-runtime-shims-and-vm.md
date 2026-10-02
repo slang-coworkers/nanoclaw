@@ -3,7 +3,7 @@ title: "slang-test Runtime Shims, DX12 Lanes, Generated Bundles, and the slangi 
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, dx12, filecheck, docs-generated-tests, shared-library-loader, slangi, vm, bytecode]
-source_count: 8
+source_count: 10
 ---
 
 # slang-test Runtime Shims, DX12 Lanes, Generated Bundles, and the slangi VM
@@ -12,14 +12,14 @@ A small cluster of runtime-facing slang-test gotchas: reading a DX12 empty-outpu
 
 ## TL;DR
 
-- **An empty-output FileCheck failure in a `-dx12` `COMPARE_COMPUTE` lane is usually an arg-parse failure (error 1004, unknown option), not a codegen/runtime bug** — `-use-dxil` is not a valid slang-test flag for dx12 since DXIL is already the default. Read the ACTUAL block first.
+- **An empty-output FileCheck failure in a `-dx12` `COMPARE_COMPUTE` lane is usually an arg-parse failure (error 1004, unknown option), not a codegen/runtime bug** — render-test has `-use-dxbc` but no `-use-dxil` (DXIL is already the dx12 default). Linux/no-GPU runs skip the dx12 line, so it fails only on Windows CI; prove a suspect flag by moving it onto a `-cpu` line. Read the ACTUAL block first.
 - **Stale auto-generated test bundles in `docs/generated/tests/` are usually compiler-driven** (diagnostic-text drift, IR mangled-name drift), so `regenerate.py list-stale` won't detect them. No hand-editing — route to the regeneration workflow.
 - **A test shim for `ISlangSharedLibraryLoader` must match the bare logical name** (e.g. `"slang-llvm"`) — platform decoration happens inside `DefaultSharedLibraryLoader` after your shim sees the path, and the bare name is identical on all platforms.
 - **A VM opcode validator and its executor must agree on the operand-section size convention**, or validation passes and execution crashes (e.g. printf with `%s` and string literals).
 
 ## DX12 Lane: Empty Output FileCheck Failure
 
-An empty-output FileCheck failure in a dx12 `COMPARE_COMPUTE` lane is usually an **arg-parse failure** (error 1004: unknown option), not a codegen/runtime bug. `-use-dxil` is not a valid slang-test flag for dx12 since DXIL is already the default. Always read the ACTUAL block first ([slang-test -dx12 lane: empty-output FileCheck fail is often a bad test flag, not codegen — read the ACTUAL block](../learnings/1782252899885-slang-test-dx12-lane-empty-output-filecheck-fail-i.md)).
+An empty-output FileCheck failure in a dx12 `COMPARE_COMPUTE` lane is usually an **arg-parse failure** (error 1004: unknown option), not a codegen/runtime bug. Always read the ACTUAL block first ([slang-test -dx12 lane: empty-output FileCheck fail is often a bad test flag, not codegen — read the ACTUAL block](../learnings/1782252899885-slang-test-dx12-lane-empty-output-filecheck-fail-i.md)). The recurring culprit is `-use-dxil`: render-test's parser (`tools/render-test/options.cpp`) knows `-use-dxbc` but has no `-use-dxil`, which falls through to `unknownCommandLineOption`; DXIL is already the `-dx12` default, so the fix is to drop the flag. The trap is that it passes everywhere a fixer or local reviewer looks: on Linux or no-GPU runs the dx12 line is skipped as unsupported, and only Windows D3D12 CI fails (PR #13283's two new tests, missed in a first review round). To verify any suspicious COMPARE_COMPUTE flag without a GPU, copy the test, move the flag onto a `-cpu -compute -shaderobj ...` line, and run slang-test: option parsing happens before device selection, so error 1004 appears at once. Keep such review probes under `/workspace/agent/reviews/<PR>/probes/`, not `/tmp`, which a container restart wipes. The CI side has a matching trap: when the bot's run priority-yields (`wait-for-human-priority` + `check-ci` fail), the `pull_request` workflow run concludes `skipped` and runs no test jobs, so report "test jobs have not run; GPU/D3D12 unverified" (check `gh api repos/.../actions/runs/<id>`), never "only the priority gate failed" ([-use-dxil is not a render-test option; check it on a CPU line](../learnings/1790760343957-slang-test-use-dxil-is-not-a-render-test-option-ru.md); [render-test has -use-dxbc but no -use-dxil; a skipped pull_request run is not "priority gate only"](../learnings/1790762926576-render-test-has-use-dxbc-but-no-use-dxil-a-skipped.md)).
 
 ## Agentic Test Bundle Staleness
 
@@ -43,10 +43,12 @@ Second, even when a codegen diagnostic *is* emitted, slangi can still swallow it
 
 ---
 
-**Source learnings (8):**
+**Source learnings (10):**
 - [slangi printf %s: 'works when stored in a String local' can be a constant-fold artifact, not inline-vs-local](../learnings/1789157865424-slangi-printf-s-a-works-when-stored-in-a-string-lo.md)
 - [DeepWiki conflates slangi HostVM with CPU-via-LLVM for String sizing — verify at the per-target switch](../learnings/1789158419753-deepwiki-conflates-slangi-hostvm-with-cpu-via-llvm.md)
 - [dx12 lane empty-output FileCheck fail is often a bad test flag, not codegen](../learnings/1782252899885-slang-test-dx12-lane-empty-output-filecheck-fail-i.md)
+- [slang-test: `-use-dxil` is not a render-test option; run the directive on a CPU line to check it](../learnings/1790760343957-slang-test-use-dxil-is-not-a-render-test-option-ru.md)
+- [render-test has -use-dxbc but no -use-dxil; a "skipped" pull_request run is not "priority gate only"](../learnings/1790762926576-render-test-has-use-dxbc-but-no-use-dxil-a-skipped.md)
 - [agentic test bundle staleness is often compiler-driven; list-stale won't catch it](../learnings/1782217764152-agentic-test-bundle-staleness-is-often-compiler-dr.md)
 - [shared library loader test shims match the bare logical name cross-platform](../learnings/1780324906216-slang-loads-downstream-libs-by-logical-name-test-s.md)
 - [slangi VM validator and executor must agree on the operand-section size convention](../learnings/1780413778599-slangi-vm-validator-and-executor-must-agree-on-ope.md)
