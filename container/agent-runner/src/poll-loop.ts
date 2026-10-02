@@ -3606,7 +3606,7 @@ export async function processQuery(
         const taskBounce = isTaskTurn && bounceClass === 'transient' && taskTries < TASK_BOUNCE_MAX_TRIES;
         if (
           bounceEligible &&
-          event.text &&
+          errorNotice &&
           bounceClass !== 'permanent' &&
           (routing.channelType === 'agent' || taskBounce)
         ) {
@@ -3618,20 +3618,20 @@ export async function processQuery(
             for (const id of initialBatchIds) taskBounceCounts.set(id, taskTries + 1);
             log(
               `task-run transient bounce (try ${taskTries + 1}/${TASK_BOUNCE_MAX_TRIES}) — row left pending for retry: ` +
-                event.text.slice(0, 80),
+                errorNotice.slice(0, 80),
             );
             await autoAppendTaskLog(
-              `[transient provider error, retry ${taskTries + 1}/${TASK_BOUNCE_MAX_TRIES}] ${event.text.slice(0, 200)}`,
+              `[transient provider error, retry ${taskTries + 1}/${TASK_BOUNCE_MAX_TRIES}] ${errorNotice.slice(0, 200)}`,
             );
           } else {
             log(
               `a2a transient bounce (${bounceClass}) — trigger left pending for host redrive: ` +
-                event.text.slice(0, 80),
+                errorNotice.slice(0, 80),
             );
           }
           notifyExchangeComplete(onExchangeComplete, {
             prompt: archivePrompts[0] ?? initialPrompt,
-            result: event.text,
+            result: [event.text, event.error].filter(Boolean).join('\n'),
             continuation: queryContinuation ?? initialContinuation,
             status: 'error',
           });
