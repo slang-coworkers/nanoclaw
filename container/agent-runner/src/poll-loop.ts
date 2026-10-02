@@ -696,6 +696,52 @@ function costCeilingRemainingUsd(): number | undefined {
   return Math.max(0.01, costCeilingUsd - costSpentUsd);
 }
 
+/**
+ * The `maxBudgetUsd` the ACTIVE query was created with, and the ceiling it was
+ * computed from. The SDK fixes a query's budget for the query's lifetime, but the
+ * loop keeps that query open and pushes later messages into it. A live
+ * `set_ceiling` raise therefore never reaches an open query: once the query has
+ * spent its start-time budget, the SDK stops it ("Reached maximum budget ($X)")
+ * and every follow-up pushed into the same query fails at once with no tokens.
+ * Seen on lego 2026-10-01: a query opened under a $50 ceiling with $37.69 spent
+ * kept a $12.31 budget through raises to $220 and $720.
+ */
+let activeQueryBudget: { budgetUsd: number; ceilingUsd: number } | undefined;
+
+/** The budget for a query about to be created; records it as the active query's basis. */
+function startQueryBudget(): number | undefined {
+  const budgetUsd = costCeilingRemainingUsd();
+  activeQueryBudget = budgetUsd == null ? undefined : { budgetUsd, ceilingUsd: costCeilingUsd };
+  return budgetUsd;
+}
+
+/**
+ * Whether the active query's budget is stale: the live headroom now exceeds the
+ * budget the query was created with. Without a ceiling change the headroom only
+ * shrinks as the query spends, so this is true only after a raise (or a
+ * reconcile that lowered spend, or the ceiling being lifted). A real ceiling hit
+ * is never stale. Null when the query had no budget or nothing changed.
+ */
+function staleQueryBudget(): { budgetUsd: number; ceilingUsd: number; headroomUsd: number } | null {
+  if (!activeQueryBudget) return null;
+  const headroomUsd = costCeilingRemainingUsd() ?? Number.POSITIVE_INFINITY;
+  if (headroomUsd <= activeQueryBudget.budgetUsd + 0.01) return null;
+  return { ...activeQueryBudget, headroomUsd };
+}
+
+function describeStaleBudget(s: { budgetUsd: number; ceilingUsd: number; headroomUsd: number }): string {
+  const now = Number.isFinite(s.headroomUsd) ? `$${s.headroomUsd.toFixed(2)} headroom` : 'no ceiling';
+  return (
+    `ceiling changed since query start ($${s.budgetUsd.toFixed(2)} budget from a $${s.ceilingUsd.toFixed(2)} ` +
+    `ceiling, now ${now} under $${costCeilingUsd.toFixed(2)})`
+  );
+}
+
+/** The SDK's max-budget stop, as the Claude provider surfaces it (error subtype text). */
+function isMaxBudgetStop(event: { isError?: boolean; error?: string; text: string | null }): boolean {
+  return event.isError === true && /reached maximum budget/i.test(event.error ?? event.text ?? '');
+}
+
 /** Current status band from spent/cap/escalation/stop state. */
 function computeCostStatus(): CostCapStatus {
   // Tier-2 hard ceiling: a non-immortal session past the ceiling reads 'stopped'
@@ -2054,6 +2100,12 @@ export const __costCapTestHooks = {
   foldCodexCost,
   computeCostStatus,
   costCeilingRemainingUsd,
+  startQueryBudget,
+  staleQueryBudget,
+  getActiveQueryBudget: () => activeQueryBudget,
+  clearActiveQueryBudget: () => {
+    activeQueryBudget = undefined;
+  },
   applyCostOverride,
   resetCostForNewSession,
   initCostTracking,
@@ -2782,8 +2834,9 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       continuation: newSessionBatch ? undefined : continuation,
       cwd: config.cwd,
       systemContext: config.systemContext,
-      // Tier-2 ceiling soft-brake for THIS turn (undefined when no ceiling applies).
-      maxBudgetUsd: costCeilingRemainingUsd(),
+      // Tier-2 ceiling soft-brake for THIS query (undefined when no ceiling applies).
+      // Recorded as the query's budget basis: see activeQueryBudget.
+      maxBudgetUsd: startQueryBudget(),
     });
     // Process the query while concurrently polling for new messages
     const skippedSet = new Set(skipped.map((s) => s.id));
@@ -3192,6 +3245,7 @@ export async function processQuery(
   let pollInFlight = false;
   let endedForCommand = false;
   let freshSessionDeferLogged = false;
+  let staleBudgetDeferLogged = false;
   // True once the SDK has emitted a `result` for the current turn and nothing has
   // been pushed since; cleared by the next push. Post-turn accounting events keep it.
   let turnComplete = false;
@@ -3386,6 +3440,33 @@ export async function processQuery(
           );
           endedForCommand = true;
           query.end();
+          return;
+        }
+
+        // Stale query budget (see activeQueryBudget): a ceiling raise applied since
+        // this query started cannot reach it, so a follow-up pushed here runs on
+        // the old budget, or fails at once if that budget is spent. Leave the rows
+        // pending and end the query; the outer loop starts a fresh one whose
+        // budget comes from the current ceiling. Same in-flight rule as the
+        // fresh-session path: never end a query that is still working (its tool
+        // calls would be denied) — wait for the turn to finish.
+        const staleBudget = staleQueryBudget();
+        if (staleBudget) {
+          const idleMs = Date.now() - lastEventTime;
+          if (freshSessionArrivalAction(idleMs, turnComplete && bgTasks === 0, idleEndLimit(bgTasks), 0) === 'end') {
+            log(`${describeStaleBudget(staleBudget)} — ending query; next message starts fresh`);
+            endedForCommand = true;
+            query.end();
+            done = true;
+            return;
+          }
+          if (!staleBudgetDeferLogged) {
+            staleBudgetDeferLogged = true;
+            log(
+              `${describeStaleBudget(staleBudget)} — leaving ${newMessages.length} follow-up message(s) pending ` +
+                `until the active turn ends`,
+            );
+          }
           return;
         }
 
@@ -3925,6 +4006,21 @@ export async function processQuery(
               query.end();
               break;
             }
+          }
+        }
+        // The SDK stopped this query on its max budget, but the ceiling has been
+        // raised since the query started (see activeQueryBudget). Every follow-up
+        // pushed into this query would fail at once, so end it — after this
+        // result's delivery and ack above, and without `break`, so the turn's
+        // `usage` event is still accounted. The next message starts a fresh query
+        // whose budget comes from the current ceiling. A real ceiling hit is not
+        // stale and keeps today's behavior.
+        if (isMaxBudgetStop(event)) {
+          const staleStop = staleQueryBudget();
+          if (staleStop) {
+            log(`SDK max-budget stop, but ${describeStaleBudget(staleStop)} — ending query; next message starts fresh`);
+            endedForCommand = true;
+            query.end();
           }
         }
         // Advance the turn route only AFTER this result's delivery, ack and

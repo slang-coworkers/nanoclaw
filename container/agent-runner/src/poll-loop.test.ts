@@ -17,6 +17,7 @@ import {
   isCorruptionError,
   isNewSessionBatch,
   processQuery,
+  __costCapTestHooks as costHooks,
   resolveInReplyToOverride,
   taskOptsOutOfNewSession,
 } from './poll-loop.js';
@@ -2519,4 +2520,153 @@ describe('fresh-session task arriving mid-query — defer, never abort the activ
     expect(pushes.some((p) => p.includes('scheduled fire'))).toBe(false);
     expect(getPendingMessages().map((m) => m.id)).toEqual(['t2']);
   }, 20_000);
+});
+
+
+// --- Stale query budget: a live ceiling raise must reach an open query ---
+// lego perfhound 2026-10-01: a query opened under a $50 ceiling with $37.69 spent
+// got maxBudgetUsd $12.31. The ceiling was raised to $220 and then $720, but
+// follow-ups kept being pushed into that query; once it had spent $12.31 the SDK
+// stopped it and every later message failed at once with no tokens.
+describe('stale query budget (ceiling raised after the query started)', () => {
+  const CHAT = { platformId: 'chan-1', channelType: 'discord', threadId: null, inReplyTo: 'm1' };
+  let saved: ReturnType<typeof costHooks.getState>;
+
+  beforeEach(() => {
+    saved = costHooks.getState();
+    costHooks.setState({
+      costEnabled: true,
+      costImmortal: false,
+      costCapUsd: 10,
+      costSpentUsd: 37.69,
+      costCeilingUsd: 50,
+      costCeilingHardStop: false,
+      costStopRequested: false,
+    });
+  });
+
+  afterEach(() => {
+    costHooks.setState({
+      costEnabled: saved.costEnabled,
+      costImmortal: saved.costImmortal,
+      costCapUsd: saved.costCapUsd,
+      costSpentUsd: saved.costSpentUsd,
+      costCeilingUsd: saved.costCeilingUsd,
+      costCeilingHardStop: saved.costCeilingHardStop,
+      costStopRequested: saved.costStopRequested,
+    });
+    costHooks.clearActiveQueryBudget();
+  });
+
+  /** A query that yields `script` events, then idles until end() or a deadline. */
+  function controllableQuery(script: (q: { pushes: string[]; ended: () => boolean }) => AsyncGenerator<ProviderEvent>) {
+    const pushes: string[] = [];
+    let ended = false;
+    const query: AgentQuery = {
+      push: (m: string) => {
+        pushes.push(m);
+      },
+      end: () => {
+        ended = true;
+      },
+      events: script({ pushes, ended: () => ended }),
+      abort: () => {
+        ended = true;
+      },
+    };
+    return { query, pushes, ended: () => ended };
+  }
+
+  async function until(cond: () => boolean, ms = 5000): Promise<void> {
+    const deadline = Date.now() + ms;
+    while (!cond() && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
+  }
+
+  const pending = (id: string) => getPendingMessages().some((m) => m.id === id);
+
+  it('records the budget a query starts with, and reports it stale only after a raise', () => {
+    expect(costHooks.startQueryBudget()).toBeCloseTo(12.31, 2);
+    expect(costHooks.staleQueryBudget()).toBeNull();
+    costHooks.setState({ costSpentUsd: 45 }); // spend inside the query: headroom shrinks, never stale
+    expect(costHooks.staleQueryBudget()).toBeNull();
+    costHooks.setState({ costCeilingUsd: 40 }); // a lowered ceiling is not stale either
+    expect(costHooks.staleQueryBudget()).toBeNull();
+    costHooks.setState({ costCeilingUsd: 720 });
+    const stale = costHooks.staleQueryBudget();
+    expect(stale?.budgetUsd).toBeCloseTo(12.31, 2);
+    expect(stale?.headroomUsd).toBeCloseTo(675, 2);
+    // The next query is created from the live ceiling.
+    expect(costHooks.startQueryBudget()).toBeCloseTo(675, 2);
+    expect(costHooks.staleQueryBudget()).toBeNull();
+  });
+
+  it('records no basis when no ceiling applies', () => {
+    costHooks.setState({ costEnabled: false });
+    expect(costHooks.startQueryBudget()).toBeUndefined();
+    expect(costHooks.getActiveQueryBudget()).toBeUndefined();
+    expect(costHooks.staleQueryBudget()).toBeNull();
+  });
+
+  it('after a raise, ends the query instead of pushing the follow-up, and leaves it pending', async () => {
+    costHooks.startQueryBudget();
+    const q = controllableQuery(async function* ({ ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      yield { type: 'result', text: 'first answer' };
+      costHooks.setState({ costCeilingUsd: 720 });
+      insertMessage('m2', 'chat', { sender: 'A', text: 'follow-up after the raise' });
+      await until(() => ended());
+    });
+
+    await processQuery(q.query, CHAT, ['m1'], 'claude', undefined, 'prompt', undefined, false, undefined, 20);
+
+    expect(q.ended()).toBe(true);
+    expect(q.pushes.some((p) => p.includes('follow-up after the raise'))).toBe(false);
+    expect(pending('m2')).toBe(true);
+  });
+
+  it('without a raise, still pushes the follow-up into the open query', async () => {
+    costHooks.startQueryBudget();
+    const q = controllableQuery(async function* ({ pushes }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      yield { type: 'result', text: 'first answer' };
+      insertMessage('m2', 'chat', { sender: 'A', text: 'ordinary follow-up' });
+      await until(() => pushes.some((p) => p.includes('ordinary follow-up')));
+      yield { type: 'result', text: 'second answer' };
+    });
+
+    await processQuery(q.query, CHAT, ['m1'], 'claude', undefined, 'prompt', undefined, false, undefined, 20);
+
+    expect(q.pushes.some((p) => p.includes('ordinary follow-up'))).toBe(true);
+    expect(pending('m2')).toBe(false);
+  });
+
+  it('ends the query on a max-budget stop when the ceiling was raised meanwhile', async () => {
+    costHooks.startQueryBudget();
+    const q = controllableQuery(async function* ({ ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      costHooks.setState({ costCeilingUsd: 720 });
+      yield { type: 'result', text: null, isError: true, error: 'Reached maximum budget ($12.31)' };
+      await until(() => ended(), 3000);
+    });
+
+    await processQuery(q.query, CHAT, ['m1'], 'claude', undefined, 'prompt', undefined, false, undefined, 20);
+
+    expect(q.ended()).toBe(true);
+  });
+
+  it('a real ceiling hit is unchanged: the query is not ended by this path', async () => {
+    costHooks.startQueryBudget();
+    const q = controllableQuery(async function* ({ pushes }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      costHooks.setState({ costSpentUsd: 49.99 }); // spent the budget; no raise
+      yield { type: 'result', text: null, isError: true, error: 'Reached maximum budget ($12.31)' };
+      insertMessage('m2', 'chat', { sender: 'A', text: 'after a real hit' });
+      await until(() => pushes.some((p) => p.includes('after a real hit')), 3000);
+    });
+
+    await processQuery(q.query, CHAT, ['m1'], 'claude', undefined, 'prompt', undefined, false, undefined, 20);
+
+    expect(q.ended()).toBe(false);
+    expect(q.pushes.some((p) => p.includes('after a real hit'))).toBe(true);
+  });
 });
