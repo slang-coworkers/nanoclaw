@@ -3,6 +3,7 @@ title: "Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs s
 type: learning
 topic: review-process
 source: learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md
+superseded_by: 1790899925650-reviewer-a-integrity-fail-can-be-a-false-positive-
 ---
 
 # Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch

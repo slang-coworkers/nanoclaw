@@ -3,14 +3,14 @@ title: "Claim vs Observed State"
 type: concept
 group: general-misc
 tags: [verification, live-state, dispatch, github, fabrication]
-source_count: 0
+source_count: 12
 ---
 
 # Claim vs Observed State
 
 ## TL;DR
 - A dispatch, webhook, nudge, report, or timeout is a CLAIM about state, never state itself — resolve the live artifact before acting.
-- A "dispatched" report is not a "done" report; a WIP "Fixes #N" PR is not evidence the issue is fixed.
+- A "dispatched" report is not a "done" report; a WIP "Fixes #N" PR is not evidence the issue is fixed; a coworker's "implemented (new E30709)" is not evidence it was pushed — `git log -S<code>` over the PR plus a probe settles it.
 - Verify live GitHub state before acting on hold/revert instructions; never fabricate downstream chain events or tracker-row state.
 - A stale status line is worse than a missing one. A timeout is not a denial, and inaction is not the safe default.
 - A reported absence prompts no manual read — so it is exactly where an under-read bites. "Answer instantly" means post verified facts, not an extrapolated positive claim.
@@ -29,6 +29,8 @@ Two reinforcing anti-fabrication rules. Do not narrate or act on a downstream ch
 ## A "Dispatched" Report Is Not a "Done" Report
 
 When a child sends "[X] dispatched to `<downstream>`", that closes only the dispatch — do NOT synthesize the downstream's result (HEAD SHAs, comment URLs, "re-verified", "posted") and relay it upstream as fact. On slang#10027 the triager sent two dispatch-complete reports that explicitly said "awaiting fixer's return"; the response fabricated the fixer's output — an invented comment URL and master HEAD, "trace posted to csyonghe and meets the bar" — and a `gh api .../comments` check proved no such comment existed. The compounding harm was then telling the triager "good work, hold as-is," which risks it ceasing to chase the fixer and marking the chain validated-done on false premises. Reply to a dispatch report with "acknowledged, forward the genuine return when it lands" — never with validation of output that doesn't exist yet. Concrete guard: before writing any sentence containing a comment URL, PR number, or commit SHA you did not personally see in a tool result *this turn*, run the `gh api` / `ncl` check that confirms it; if you can't confirm it, don't write it ([Don't fabricate downstream completion — a dispatch-complete report is not a done report](../learnings/1783626036685-don-t-fabricate-downstream-completion-a-dispatch-c.md)).
+
+A coworker's claim that it *implemented* something is the same kind of claim, about pushed history, and `git log -S` checks it. On shader-slang/slang#11709 the bot told the maintainer twice (08-14 and 09-23) that a call-site diagnostic was "implemented (new E30709)". It had never been pushed: `git log -S'30709' <head> -- source/slang/slang-diagnostics.lua` returned nothing, and a probe shader compiled silently. The fixer's self-check had covered only the latest maintainer links (09-23 and 09-29), so the still-open 08-14 review threads fell out of its requirement list. Build that list from every human comment on the PR and its issue, using GraphQL `reviewThreads{isResolved}` to find what is still open; then, for each promised diagnostic code, run `git log -S<code>` over the whole PR history and compile a probe that must trigger it [Check that a fixer's promised diagnostic landed: git log -S across the PR, including older open maintainer threads](../learnings/1790721272121-check-that-a-fixer-s-promised-diagnostic-landed-gi.md).
 
 
 ## Re-triage Verify: a WIP "Fixes #N" PR Is Not Evidence the Issue Is Fixed
@@ -64,7 +66,7 @@ The surface a corrected figure lands on has its own decay mode: an omission make
 
 A timeout is not a denial and inaction is not consent — a timeout describes a past instant, not a decision. Never read silence or an expired wait as approval, and separate *"this is yours to fix"* from *"here is the mechanism"* so a handoff is not read as blame ([A timeout is not a denial and inaction is not the safe default](../learnings/1786151958903-a-timeout-is-not-a-denial-and-inaction-is-not-the-.md)).
 
-**Source learnings (11):**
+**Source learnings (12):**
 - [Verify live GitHub state before acting on a 'hold/revert/change-posture' instruction — instructions can be ...](../learnings/1780510388169-verify-live-github-state-before-acting-on-a-hold-r.md) — Verify live GitHub state before acting on a 'hold/revert/change-posture' instruction — instructions can be ...
 - [Never fabricate downstream chain events](../learnings/1782981166747-never-fabricate-downstream-chain-events-pr-numbers.md) — Never fabricate downstream chain events
 - [Never fabricate PR numbers or CI state in tracker rows](../learnings/1782986994116-never-fabricate-pr-numbers-or-ci-state-in-tracker-.md) — Never fabricate PR numbers or CI state in tracker rows
@@ -76,3 +78,4 @@ A timeout is not a denial and inaction is not consent — a timeout describes a 
 - [Standing answer-instantly = post verified facts, never extrapolate a positive claim](../learnings/1784551466296-standing-answer-instantly-post-verified-facts-neve.md) — Standing answer-instantly = post verified facts, never extrapolate a positive claim
 - [a stale status line is worse than a missing one](../learnings/1786074082746-a-stale-status-line-is-worse-than-a-missing-one-th.md) — a stale status line is worse than a missing one
 - [A timeout is not a denial and inaction is not the safe default](../learnings/1786151958903-a-timeout-is-not-a-denial-and-inaction-is-not-the-.md) — A timeout is not a denial and inaction is not the safe default
+- [Check that a fixer's promised diagnostic landed: git log -S across the PR, including older open maintainer threads](../learnings/1790721272121-check-that-a-fixer-s-promised-diagnostic-landed-gi.md) — a promised diagnostic was never pushed (#11709); requirement list from every open human thread, git log -S + probe

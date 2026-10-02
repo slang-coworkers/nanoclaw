@@ -3,7 +3,7 @@ title: "slangc CLI, Freshness & Emit-Verification Mechanics"
 type: concept
 group: slang-tooling
 tags: [slangc, cli, filecheck, dump-ir, diagnostics, version, freshness, check-cmdline-ref, render-test]
-source_count: 12
+source_count: 14
 ---
 
 # slangc CLI, Freshness & Emit-Verification Mechanics
@@ -17,6 +17,7 @@ This page covers how to invoke `slangc` correctly for local verification work: t
 - **Any edit to a `slangc` help/description string** (CLI options in `slang-options.cpp`, OR the tables in `slang-type-text-util.cpp`) changes `slangc -help-style markdown -h` and trips `check-cmdline-ref` CI — REGENERATE `docs/command-line-slangc-reference.md`, never hand-edit (whitespace/order is fragile). The `nv-slang-bot` cannot self-dispatch `/regenerate-cmdline-ref`.
 - **`-dump-ir` shows the CODEGEN pipeline, not the validation-only pipeline** (uninit-use etc. run on a separate IR view). And `-dump-ir` emits NOTHING unless slangc runs the backend — a FileCheck test needs `-o /dev/null` or an `-entry`/`-stage`, else empty stdout+stderr and "expected string not found."
 - **A `COMPARE_COMPUTE(...)` lane runs under render-test, not slangc** — different parser (rejects `-warnings-disable`), and it diffs stderr against empty (any warning fails the lane). A slangc-local pass does not predict the CI lane; put profile assertions on a `SIMPLE(filecheck=...)` lane.
+- **A new warning fails every COMPARE_COMPUTE* leg whose shader triggers it, on GPU CI only** (no-GPU runs ignore those legs). Sweep `tests/` with the PR `slangc` before shipping a warning, and suppress intentional triggers with `-xslang -Wno-<id>` on the compute directive.
 - **Injecting a default slang-test compiler flag needs TWO forms:** bare (`-O0`) for slangc-backed paths, `-Xslang -O0` for render-test-backed paths — inject per-run-function, not at the single parse chokepoint.
 - **Two diagnostic catalogs, two naming conventions:** `slang-diagnostics.lua` → PascalCase C++ symbols; `slang-misc-diagnostic-defs.h` X-macro → verbatim camelCase. A single-case grep silently misses the other catalog.
 
@@ -72,6 +73,8 @@ A `//TEST(compute):COMPARE_COMPUTE(...):-vk` lane runs under **render-test**, no
 
 A slangc-local pass does not predict whether the COMPARE_COMPUTE lane passes in CI. The robust split: keep the runtime smoke test on the **default** profile (proves ops execute), and put profile-specific assertions on a static `SIMPLE(filecheck=...):-profile <p> -target spirv` lane (SIMPLE does not diff stderr). ([render-test (COMPARE_COMPUTE) is not slangc — local slangc pass does not predict the runtime lane](../learnings/1782373627011-render-test-compare-compute-is-not-slangc-local-sl.md))
 
+The empty-stderr rule makes a NEW warning a breaking change for tests, not a no-op. Any `COMPARE_COMPUTE`/`COMPARE_COMPUTE_EX` leg whose shader triggers the warning fails on GPU CI, while `SIMPLE(filecheck=…)` legs of the same file still pass, because FileCheck matches only its CHECK lines. Local no-GPU runs report those compute legs as ignored, so a green local suite does not clear a new warning. PR #11709's E30709 (groupshared → `out`) failed `tests/metal/out-param.slang` on the vk/mtl legs of every GPU job; the fix was `-xslang -Wno-30709` on the compute directives (precedent: `tests/language-feature/shader-params/entry-point-uniform-params-implicit.slang`). Before shipping a warning, compile every `tests/**/*.slang` that could trigger it with the PR's `slangc` (no `-entry` needed, checking still runs; the #11709 sweep covered 91 files in about 2 minutes), grep the output for the warning code, and inspect each hit's `//TEST` directives: SIMPLE/filecheck legs are safe, COMPARE_COMPUTE* legs are not. To prove a suppression locally, make a temporary `-cpu` COMPARE_COMPUTE_EX copy of the leg and A/B the flag; a front-end warning fires on any target ([a new warning fails COMPARE_COMPUTE tests that trigger it](../learnings/1790743536144-a-new-slang-warning-fails-compare-compute-tests-th.md); [the compute harness requires empty stderr](../learnings/1790744483266-a-new-slang-warning-can-fail-gpu-tests-the-compute.md)).
+
 ## slang-test default compiler flag: two injection forms required
 
 When injecting a default Slang compiler flag (e.g. `-O0`) into `slang-test` invocations, two distinct argument-assembly classes exist in `tools/slang-test/slang-test-main.cpp`:
@@ -90,7 +93,7 @@ Slang has two diagnostic catalogs with different naming conventions:
 
 A single-case grep (camel OR pascal) will silently miss alive entries in the other catalog. Before claiming a diagnostic is dead: run both forms and get zero hits. A "I tried a repro and it didn't fire" test is not a substitute — diagnostics are gated on specific syntactic shapes that a naive repro may not exercise. ([Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase](../learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md))
 
-**Source learnings (12):**
+**Source learnings (14):**
 - [Verify Slang diagnostics with slangc-only build (slang-test won't link: X11 missing)](../learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md)
 - [Verifying Slang PR emit locally: build slangc-only to dodge the slang-rhi/X11 build break](../learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md)
 - [slangc -v version string is baked at CONFIGURE time, not build time](../learnings/1781823299532-slangc-v-version-string-is-baked-at-configure-time.md)
@@ -101,6 +104,8 @@ A single-case grep (camel OR pascal) will silently miss alive entries in the oth
 - [slangc -dump-ir shows the codegen pipeline, NOT the validation-only pipeline](../learnings/1782440022487-slangc-dump-ir-shows-the-codegen-pipeline-not-the-.md)
 - [-dump-ir emits nothing unless slangc runs the backend — a filecheck test needs -o /dev/null or -entry/-stage](../learnings/1785554892234-dump-ir-emits-nothing-unless-slangc-runs-the-backe.md)
 - [render-test (COMPARE_COMPUTE) is not slangc — local slangc pass does not predict the runtime lane](../learnings/1782373627011-render-test-compare-compute-is-not-slangc-local-sl.md)
+- [A new Slang warning fails COMPARE_COMPUTE tests that trigger it (stderr must be empty)](../learnings/1790743536144-a-new-slang-warning-fails-compare-compute-tests-th.md) — #11709 E30709 failed `tests/metal/out-param.slang` vk/mtl legs; `-xslang -Wno-<id>`; `-cpu` COMPARE_COMPUTE_EX A/B.
+- [A new Slang warning can fail GPU tests: the compute harness requires empty stderr](../learnings/1790744483266-a-new-slang-warning-can-fail-gpu-tests-the-compute.md) — sweep every candidate test with the PR slangc (91 files, ~2 min); SIMPLE legs safe, COMPARE_COMPUTE* not.
 - [slang-test default compiler flag needs TWO forms: bare for slangc paths, -Xslang for render-test paths](../learnings/1782653846227-slang-test-default-compiler-flag-needs-two-forms-b.md)
 - [Slang diagnostic catalog name conventions — emit sites are PascalCase, not camelCase](../learnings/1779977434246-slang-diagnostic-catalog-name-conventions-emit-sit.md)
 

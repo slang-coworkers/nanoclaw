@@ -135,7 +135,7 @@ copy the harness's "Suggested annotations" block; add `,non-exhaustive` only for
 genuine intentionally-unannotated secondary diagnostic (the harness errors on an
 unnecessary one). Front-end diagnostics need no target/entrypoint; unused locals
 don't warn
-([DIAGNOSTIC_TEST diag=CHECK is exhaustive; short+span records; no CHECK-NOT](../learnings/1788800130239-slang-diagnostic-test-diag-check-is-exhaustive-sho.md),
+([DIAGNOSTIC_TEST diag=CHECK is exhaustive; short+span records; no CHECK-NOT](../learnings/1789718875570-slang-diag-check-diagnostic-test-is-exhaustive-and.md),
 [diagnostic severity is per-definition; diag=CHECK is exhaustive](../learnings/1788902941686-slang-diagnostic-severity-is-per-definition-diag-c.md)).
 Assert `warning[E30082]` (bracket form), never `warning 30082` (vacuous); a
 comment-line echo of a bare code can self-match, so prefer message-text carets.
@@ -206,7 +206,7 @@ target, file, helper) must be checked at the exact reviewed ref
 
 - [Slang HAS opt-in default-off warnings (WarningLevel + -W<name>) — wiki "disable-only" is stale](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — full opt-in ladder; use `pedantic` for off-by-default; a sign-change warning needs its own `_coerce` branch.
 - [Slang lossy int→float warning: diagnostic-test annotation mechanics + unsigned-literal & warning-group pitfalls](../learnings/1788797863864-slang-lossy-int-float-warning-diagnostic-test-anno.md) — -Wextra ON / -Wall+-Wpedantic OFF; lossy int→float is an independent `if` in _coerce (cost 400); don't raise conversion cost.
-- [Slang DIAGNOSTIC_TEST diag=CHECK is exhaustive; short+span records; no CHECK-NOT](../learnings/1788800130239-slang-diagnostic-test-diag-check-is-exhaustive-sho.md) — exhaustive substring matching; assert absence by leaving unannotated; use `warning[E30082]` bracket form.
+- [Slang diag=CHECK DIAGNOSTIC_TEST is exhaustive](../learnings/1789718875570-slang-diag-check-diagnostic-test-is-exhaustive-and.md) — exhaustive substring matching; assert absence by leaving unannotated; use `warning[E30082]` bracket form.
 - [E30082 float-literal exemption is scalar-only (asymmetry with vector/matrix constructors)](../learnings/1788801482957-e30082-float-literal-exemption-is-scalar-only-asym.md) — a float4(...) of literals still warns; pin the branch; the `< kConversionCost_Explicit` gate is correct-but-non-local.
 - [IntegerLiteralExpr folds unary ops (un-truncated); folder is un-wrapped](../learnings/1788812664549-integerliteralexpr-folds-unary-ops-un-truncated-fo.md) — reduce a folded literal to source width, peel ParenExpr, use magnitude; gate representability to bare literals (folder doesn't wrap per-op).
 - [Width-based int→float diagnostics: getMaximumTypeBitSize returns 64 for IntPtr/UIntPtr](../learnings/1788814344464-width-based-int-float-diagnostics-getmaximumtypebi.md) — a pointer-suffixed literal false-positives at width 64; per-branch handling, not a blanket exclude.

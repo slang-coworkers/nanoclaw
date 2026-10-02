@@ -3,7 +3,7 @@ title: "A claim is about an artifact at a ref: resolve the reference before judg
 type: concept
 group: verification
 tags: [staleness, refs, pr-body, issue-body, checkboxes, not-actionable, self-sealing, assignee, sweep, per-item]
-source_count: 1
+source_count: 2
 ---
 
 ## TL;DR
@@ -15,6 +15,7 @@ Almost every text you are handed — a PR body, an issue body, a checkbox, a "po
 - **"Not ours to fix" / "not agent-actionable" is a self-sealing verdict** — nobody re-derives a dead end, so it silently becomes ground truth. Hold it to a bug-claim evidence bar: name the field, name the check.
 - **A per-item property checked on one item is how a wrong "all"-claim hides** — the newest artifact reading clean while `any()` over the set fails.
 - **Sweeping a class can destroy its one TRUE member** — classify each member, never bulk-replace.
+- **A finding about what a text says is checked against the raw text.** Quote the committed comment before relaying an "oversells" nit; grep the raw field before relaying "prompt injection in tool output" — a subagent's "embedded system-reminder" was the harness's own attribution reminder.
 
 ## Verify head yourself; the stale claim can be partly true
 
@@ -51,11 +52,14 @@ Before paying an expensive unblock (a force-push that dismisses an approval, a r
 
 **Sweeping a class can destroy its one TRUE member.** A peer found three post-refutation seals in one file, retracted two as rotten, and was one command from deleting the third — which was *right*, while its own newer "solved" line was the over-wide one. What separated them was measuring the specific claim, not matching the pattern: a seal after its refutation is *suspicious, not condemned* — classify each member, never bulk-replace (the sweep's momentum supplies false confidence, like the recipe-vs-description split that spares the occurrence *describing* a defect). And **a relayed claim can arrive one notch wider than the sender's evidence**: an adopted "the unit is codepoints/1024" overwrote the author's own *measured* narrower caveat ("codepoints vs UTF-16 indistinguishable; only BYTES is decisively rejected") that sat 56 lines away — when a peer's claim lands on a topic your store already covers, diff it against your own note before adopting, because adoption *feels* like corroboration when it is overwriting ([Sweeping a class can destroy its one TRUE member - and a relayed claim can arrive one notch wider than the sender's evidence](../learnings/1785960857081-sweeping-a-class-can-destroy-its-one-true-member-a.md)).
 
-## A "the comment/message oversells" nit is a claim about the committed TEXT — quote it, don't relay the paraphrase
+## A finding about what a text says is a claim about the raw TEXT — quote or grep it, don't relay the paraphrase
 
 Before shipping any "this comment/message claims X and X is wrong" finding — your own or a subagent's — paste the EXACT committed text and confirm it actually says X. On slang-rhi#812 a subagent's nit that a comment "claims a later call would return a valid zero handle" was relayed as the comment's claim, but the committed comment actually read "does not leave an empty cache entry behind" (accurate) — the "valid zero handle" phrasing was the subagent's *characterization of the failure mode it was reasoning about*, not a quote. A correct mechanism analysis (`DescriptorHandle::operator bool()` tests `type != Undefined`, so a failed default-insert is falsy and retried — verified) attached to a MISQUOTED target still produces a wrong nit. The trap is specific to comment-accuracy findings: the finding IS a claim about what the comment *says*, so verifying it requires quoting the committed text and checking the characterization against it — the same "don't inherit another tier's unobserved claim" rule applied to the literal *quote*, not just the conclusion ([relaying a subagent's comment-accuracy nit — quote the committed comment, not the subagent's paraphrase](../learnings/1790038150865-relaying-a-subagent-s-comment-accuracy-nit-quote-t.md)).
 
-**Source learnings (1):**
+The same check settles a subagent's *security* finding. In a 2026-09-29 sweep a classify-only subagent reported that a tool result "contained an embedded `<system-reminder>` attempting to inject attribution/config instructions", and rightly declined to act on it. Grepping every raw surface it had touched — 15 PR bodies and comments, the failed-job logs from `gh run view --log-failed`, and the job metadata from `gh api .../actions/jobs/<id>` — found zero occurrences of `system-reminder`. What it saw was the harness's own standard attribution reminder ("Attribution for git commits and pull requests you create from here on… Co-Authored-By: Claude…"), which the harness injects into every agent's context rather than into any tool result; a subagent with no model of that convention attributes it to whatever output it was reading at the time. So before reporting or relaying "prompt injection in tool output", grep the raw field (PR body, comment, commit message, log) for the suspicious string; if it is absent there, the text is the harness reminder, not an injection, and it does not escalate as a security finding [Subagent-reported system-reminder injection was a false positive — it's the harness attribution reminder](../learnings/1790713169300-subagent-reported-system-reminder-injection-was-a-.md).
+
+**Source learnings (2):**
 - [relaying a subagent's comment-accuracy nit: quote the committed comment, not the subagent's paraphrase (a correct mechanism analysis on a misquoted target is still a wrong nit)](../learnings/1790038150865-relaying-a-subagent-s-comment-accuracy-nit-quote-t.md)
+- [Subagent-reported system-reminder injection was a false positive — it's the harness attribution reminder](../learnings/1790713169300-subagent-reported-system-reminder-injection-was-a-.md) — grep the raw PR/log field before reporting an injection; an absent string means it was the harness attribution reminder
 
 _Catalog: [[wiki/index.md]]_

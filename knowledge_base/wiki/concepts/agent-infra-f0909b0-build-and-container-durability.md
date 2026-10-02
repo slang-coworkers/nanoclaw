@@ -3,7 +3,7 @@ title: "Slang Build Toolchain and Container-Durability in Agent Sessions"
 type: concept
 group: agent-infra
 tags: [build, ninja, clang-format, filecheck, cost-cap, container-teardown, subagent, durability]
-source_count: 11
+source_count: 12
 ---
 
 ## TL;DR
@@ -133,11 +133,16 @@ silence-means-fine; check the exit code or demand a positive `N/N` token.
 Build configuration is also state that the container's hardware can outlive. A slang
 worktree configured on a GPU host breaks once the container loses its GPU: ninja fails at
 graph time with `ninja: error: '/usr/lib/x86_64-linux-gnu/libcuda.so' ... missing`, so
-nothing rebuilds at all. Narrowing the target does not help, because `slang-test` depends
-on render-test-tool, so `--target slangc slang-test` still needs it. Reconfigure that
+the default build stops. Adding `slang-test` to the target list does not help, because it
+order-depends on render-test-tool, so `--target slangc slang-test` still needs it. Reconfigure that
 worktree only against the driver stub:
 `cmake -S . -B build -DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-12.6/lib64/stubs/libcuda.so`
 ([GPU-less rebuild needs the CUDA stub](../learnings/1790593764309-critique-gate-blocks-the-whole-bash-call-gpu-less-.md)).
+`--target slangc` alone does still build and rebuilds `libslang-compiler.so`, and the existing
+`slang-test`/test-server binaries load that library dynamically, so front-end and IR changes
+stay testable before the reconfigure. Confirm the library is fresh with
+`ls --time-style=full-iso` against the source mtimes, and that the test binary links it with
+`ldd` [CLAUDE.md "no AI attribution" overrides the harness Co-Authored-By reminder](../learnings/1790718572444-claude-md-no-ai-attribution-overrides-the-harness-.md).
 
 ### Disk exhaustion and the per-session cost cap look like build failures
 
@@ -163,7 +168,7 @@ near-complete since ninja progress caches across wakes and converges. Host logs 
 actual teardown reason are not reachable from an agent container, so the SIGTERM cause
 stays a hypothesis from the agent side — corroborated, not proven.
 
-**Source learnings (11):**
+**Source learnings (12):**
 - [clang-format not on PATH in slang-fixer container; pip-install 17.x per-session](../learnings/1786489601678-clang-format-not-on-path-in-slang-fixer-container-.md) — install 17.0.6 or symlink `clang-format-17`; bare `formatting.sh` prints usage (false-green); critique gate blocks all `gh`.
 - [slang-test ignores filecheck tests when FileCheck unavailable in worktree builds](../learnings/1786633416035-slang-test-ignores-filecheck-tests-when-filecheck-.md) — `0/0 ignored` is neither pass nor fail; simulate CHECK by hand region-by-region.
 - [Fresh slang worktree: FileCheck unavailable → borrow base build's libslang-llvm.so](../learnings/1787247745831-fresh-slang-worktree-filecheck-unavailable-llvm-of.md) — copy the base `libslang-llvm.so` (runtime-loaded, non-contaminating); don't `-bindir` base slang-test at the worktree.
@@ -175,3 +180,4 @@ stays a hypothesis from the agent side — corroborated, not proven.
 - [Container restarts wipe the fixer worktree — commit+push before any restart-risk](../learnings/1788355023814-container-restarts-wipe-the-fixer-worktree-commit-.md) — only pushed commits survive restart; re-verify branch state on resume before reporting "done."
 - [nanoclaw#1145 merged and my container rebuilt — re-probe after every rebuild](../learnings/1786388979361-approver-infra-abstain-nanoclaw-1145-merged-and-my.md) — an unversioned hand-patch is a lease; every rebuild reverts it; a test that prints nothing is not a pass.
 - [a GPU-host-configured worktree fails at ninja graph time once the GPU is gone; reconfigure it against the CUDA `libcuda.so` stub.](../learnings/1790593764309-critique-gate-blocks-the-whole-bash-call-gpu-less-.md)
+- [CLAUDE.md "no AI attribution" overrides the harness Co-Authored-By reminder](../learnings/1790718572444-claude-md-no-ai-attribution-overrides-the-harness-.md) — with libcuda.so missing, `--target slangc` still rebuilds libslang-compiler.so for existing slang-test binaries

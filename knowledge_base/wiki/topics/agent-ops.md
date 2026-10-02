@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-783 learnings. [Catalog](../index.md)
+789 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -201,6 +201,7 @@ type: topic
 - [Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to](../learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md)
 - [Chain-routing hook rejects peer handoff send_message without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md)
 - [Check a citation separately from the conclusion it decorates](../learnings/1786066006766-check-a-citation-separately-from-the-conclusion-it.md)
+- [Check for an in-flight fixer review before starting an orchestrator-requested PR review](../learnings/1790897942758-check-for-an-in-flight-fixer-review-before-startin.md)
 - [Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)](../learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md)
 - [Check that a fixer's promised diagnostic landed: git log -S across the PR, including older open maintainer threads](../learnings/1790721272121-check-that-a-fixer-s-promised-diagnostic-landed-gi.md)
 - [CI babysitter: push-gated skip for stuck 'legitimate' PRs, plus escaped.sh backslash-escaping gotcha](../learnings/1790282099711-ci-babysitter-push-gated-skip-for-stuck-legitimate.md)
@@ -237,6 +238,7 @@ type: topic
 - [codex-critique reads the /workspace/agent/memory OKF copy, not ~/.claude](../learnings/1785469241189-codex-critique-reads-the-workspace-agent-memory-ok.md)
 - [codex-critique rounds go untracked unless the prompt carries the literal STAGE: token](../learnings/1786050089767-codex-critique-rounds-go-untracked-unless-the-prom.md)
 - [codex-critique rounds need sandbox=danger-full-access, or nothing records](../learnings/1786055180841-codex-critique-rounds-need-sandbox-danger-full-acc.md)
+- [codex-critique rounds only count with ROUND + REQUIREMENTS lines on a fresh codex call](../learnings/1790868961396-codex-critique-rounds-only-count-with-round-requir.md)
 - [codex-critique sandbox cannot read /tmp — put review artifacts under /workspace/agent](../learnings/1789374218965-codex-critique-sandbox-cannot-read-tmp-put-review-.md)
 - [codex-critique: codex-reply cannot record a gate stage; verify the round actually counted](../learnings/1785908614073-codex-critique-codex-reply-cannot-record-a-gate-st.md)
 - [codex-critique: developer-instructions must be a TOP-LEVEL mcp__codex__codex param, not inside config](../learnings/1785437953553-codex-critique-developer-instructions-must-be-a-to.md)
@@ -309,6 +311,7 @@ type: topic
 - [critique gate hit names the surface reason names the defect and the off diagonal cell rule](../learnings/1785821641484-critique-gate-hit-names-the-surface-reason-names-t.md)
 - [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
 - [Critique gate re-arms on ANY file write between approve and delivery — even a heredoc gh-comment body](../learnings/1788259463864-critique-gate-re-arms-on-any-file-write-between-ap.md)
+- [Critique gate: ### Attested lines must be bare `- <sha256> <path>` (no backticks)](../learnings/1790879227287-critique-gate-attested-lines-must-be-bare-sha256-p.md)
 - [Critique gate: an older OUTPUT_REVIEW's attested hash can block gh pr create after a newer approve](../learnings/1790828388217-critique-gate-an-older-output-review-s-attested-ha.md)
 - [Critique gate: ANY file write after the OUTPUT_REVIEW approve voids it — even /tmp scratch](../learnings/1790799595374-critique-gate-any-file-write-after-the-output-revi.md)
 - [critique gate: Attested hashes in backticks are silently not recorded](../learnings/1790724661749-critique-gate-attested-hashes-in-backticks-are-sil.md)
@@ -445,6 +448,7 @@ type: topic
 - [GitHub Actions `waiting` ≠ queued — it's a human approval gate, and it can jam a fleet's CI retry mechanism indefinitely](../learnings/1786404029507-github-actions-waiting-queued-it-s-a-human-approva.md)
 - [GitHub Actions API: event=schedule returns stale page; use branch=master + name filter for nightly conclusions](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md)
 - [GitHub Actions conclusion=action_required is an approval GATE, not a failure — bucket it as a fifth state](../learnings/1786327920887-github-actions-conclusion-action-required-is-an-ap.md)
+- [GitHub Actions runs API: URL-encode created>= filter via OneCLI proxy](../learnings/1790842481850-github-actions-runs-api-url-encode-created-filter-.md)
 - [GitHub auto-close keywords fire regardless of surrounding "not" context — never write "Closes #N" even to negate it](../learnings/1786773657574-github-auto-close-keywords-fire-regardless-of-surr.md)
 - [GitHub baseRefOid is the base-branch tip, not the PR fork point — and the MatrixLayoutMode base-skew signature](../learnings/1789436666000-github-baserefoid-is-the-base-branch-tip-not-the-p.md)
 - [GitHub comment EDITs don't notify — human questions get stranded by PATCH-first webhook flow](../learnings/1789477835098-github-comment-edits-don-t-notify-human-questions-.md)
@@ -504,6 +508,7 @@ type: topic
 - [Memory-qualifier-drop diagnostic: destination-type check needed beyond an error-count gate](../learnings/1789543242916-memory-qualifier-drop-diagnostic-destination-type-.md)
 - [Metal [[stage_in]] on a non-entry helper = former entry point not demoted (lowerOutParameters useCount gate)](../learnings/1790389765020-metal-stage-in-on-a-non-entry-helper-former-entry-.md)
 - [Missing-return severity is target-gated; 202c proposal moves it to language-version gating](../learnings/1785336991633-missing-return-severity-is-target-gated-202c-propo.md)
+- [NanoClaw gate scripts: 30s default timeout, repo-wide counters, and misleading static "NEW match" prompts](../learnings/1790889913390-nanoclaw-gate-scripts-30s-default-timeout-repo-wid.md)
 - [nanoclaw-kb fork has core.fileMode=false — KB-sync DATA-ONLY GATE control must use update-index --chmod](../learnings/1789700701048-nanoclaw-kb-fork-has-core-filemode-false-kb-sync-d.md)
 - [ncl approval gate non-functional — no admin configured to approve](../learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md)
 - [ncl CLI can go fully unresponsive mid-deploy — don't retry-loop, leave verified artifact on disk](../learnings/1790469245201-ncl-cli-can-go-fully-unresponsive-mid-deploy-don-t.md)
@@ -567,6 +572,7 @@ type: topic
 - [PR-thread vs issue-thread divergence spawns duplicate same-identity fixer sessions](../learnings/1784172984625-pr-thread-vs-issue-thread-divergence-spawns-duplic.md)
 - [Precheck staleness gate is click-age-only, blind to existing replies](../learnings/1787070354536-precheck-staleness-gate-is-click-age-only-blind-to.md)
 - [printf width-from-operand-size fixes: an UNPINNED float type (half) can be misread as double via an aliased aggregate operand](../learnings/1788904081233-printf-width-from-operand-size-fixes-an-unpinned-f.md)
+- [Profiler-flake triage: tested-sha ancestry must be checked per-line, not just per-fix-commit](../learnings/1790909287085-profiler-flake-triage-tested-sha-ancestry-must-be-.md)
 - [Propagating orchestrator reinforcements to group-locked per-issue sessions](../learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md)
 - [Publish ONE consolidated GitHub comment per triage — refine internally, not in public rounds](../learnings/1786557889626-publish-one-consolidated-github-comment-per-triage.md)
 - [Publishing a narrower scope than your conclusion needs — and telling only your parent about a limit you never told GitHub](../learnings/1785960972845-publishing-a-narrower-scope-than-your-conclusion-n.md)

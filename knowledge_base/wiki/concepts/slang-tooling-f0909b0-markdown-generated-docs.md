@@ -3,7 +3,7 @@ title: "Slang markdown & generated docs: prettier is unenforced, generators own 
 type: concept
 group: slang-tooling
 tags: [markdown, prettier, generated-docs, ci, slangc-help, byte-exact, docs]
-source_count: 10
+source_count: 12
 ---
 
 ## TL;DR
@@ -28,8 +28,11 @@ PR red or balloons a minimal diff into a rejected reformat.
   generated README is non-conformant on master even under 3.3.3, make a minimal padded edit
   rather than reformatting the file.
 - **A `docs/generated/tests` bundle's `_prompt.md` can contradict its own tests** ("do not
-  test X", "compute-only"). Fix the prompt when you touch the bundle, or regeneration fights
-  the tests.
+  test X", "compute-only") or restate the old claim. Fix the prompt when you touch the bundle,
+  or regeneration (`mark-fresh`) reverts the retarget; lint catches neither.
+- **README coverage rows often do NOT equal `//META: purpose` verbatim** (15/72 in one bundle),
+  despite `_common.md`'s rule; a single mismatch is a nit. Script a bundle-wide check before
+  asserting any convention.
 - **Generated docs have a generator, not a formatter, as their source of truth.**
   `docs/command-line-slangc-reference.md` is produced by `slangc -help-style markdown -h` and
   CI (`check-cmdline-ref`) does a **byte-exact diff** against the committed file. The
@@ -179,7 +182,24 @@ invariant, not the new spelling) is on
 [the test-authoring page](slang-tooling-f0909b0-test-authoring-filecheck.md#vacuous-and-confounded-checks)
 [stale docs/generated/tests retarget](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md).
 
-**Source learnings (10):**
+Even a prompt with no "do not test" line can restate the old claim, and `regenerate.py lint`
+catches neither of the two retarget omissions below. For #13282, `metadata/_prompt.md:165-167`
+still said "DebugNoScope is emitted with zero operands", so the approved regeneration path
+(re-prompt + `mark-fresh`) would have regenerated the stale test and silently reverted the fix;
+the precedents #13150 and #13172 both edited `_prompt.md` alongside the test, so grep the bundle's
+`_prompt.md` for the old claim's key terms. The second item is the README coverage row:
+`_common.md` asks each row's Claim cell to equal the test's `//META: purpose=` line verbatim, as
+`Cnn: <purpose>`, but that rule is neither lint-enforced nor followed bundle-wide. A full scan of
+the 72 `ir-reference/metadata` tests (2026-09-30) found 15 rows that differ (4 only by markdown
+`\_` escaping, 4 grouped rows with a merged claim, about 7 with an extra trailing clause), so a
+single row mismatch is a nit, not a gap. Before asserting any bundle-wide convention, script the
+check over the whole bundle (parse each `.slang`'s `//META: purpose=`, find the README row
+containing ``[`<file>`]``, strip the `C.., C..: ` prefix) rather than generalizing from a spot
+check
+[retarget: update `_prompt.md`](../learnings/1790756499500-retargeting-a-docs-generated-agentic-test-also-upd.md)
+[correction: README rows often differ from `//META: purpose`](../learnings/1790759833171-correction-docs-generated-tests-readme-rows-often-.md).
+
+**Source learnings (12):**
 - [A generated doc checked byte-exact by CI must NOT be run through prettier — and CI's formatting.sh never reaches markdown](../learnings/1786409326017-a-generated-doc-checked-byte-exact-by-ci-must-not-.md) — Two conflicting contracts on `command-line-slangc-reference.md`; the trailing-space generator output; regenerate from your own build after a merge (empty diff = proof).
 - [slang formatting.sh does NOT check markdown in CI's run_all path](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md) — The `((run_markdown))` dispatch asymmetry; 237/413 `docs/generated/**` `.md` fail prettier@3.3.3 on master while CI is green; only make authored lines conformant.
 - [formatting.sh --check-only SKIPS markdown (run_markdown not gated by run_all)](../learnings/1786987129465-formatting-sh-check-only-skips-markdown-run-markdo.md) — The full dispatch block; normalize-both-and-diff to prove a docs edit is neutral; fenced code blocks pass through verbatim; draft PRs skip check-formatting.
@@ -190,3 +210,5 @@ invariant, not the new spelling) is on
 - [Slang docs/user-guide markdown is pre-existingly non-prettier-clean — never reflow it for a small edit](../learnings/1788849134395-slang-docs-user-guide-markdown-is-pre-existingly-n.md) — ~83 whole-file changes on `03-convenience-features.md`; verify count identical before/after; `formatting.sh --md -- FILE` still gates on all tools present.
 - [prettier --write churns Slang user-guide markdown (setext→ATX) — never blanket-format a doc](../learnings/1789652649573-prettier-write-churns-slang-user-guide-markdown-se.md) — setext headings get rewritten to ATX across untouched sections; revert unrelated churn; formatters are `clang-format-17` not on PATH, so `--check-only` exits 1 on tool-missing not real errors.
 - [Stale docs/generated/tests retarget: prettier 3.3.3 pin, closing-keyword trap, invariant CHECKs](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md) — install prettier@3.3.3 in /tmp for `--md` checks; fix a bundle's contradictory `_prompt.md` when retargeting its tests.
+- [Retargeting a docs/generated agentic test: also update the bundle _prompt.md and keep the README row Claim equal to META purpose, word for word](../learnings/1790756499500-retargeting-a-docs-generated-agentic-test-also-upd.md) — `_prompt.md` restating the old claim makes regeneration revert the fix (#13282; precedents #13150/#13172); its verbatim-row half is corrected by the next atom.
+- [Correction: docs/generated/tests README rows often do NOT equal //META purpose verbatim](../learnings/1790759833171-correction-docs-generated-tests-readme-rows-often-.md) — 15/72 rows differ; the `_common.md` rule is unenforced, so a mismatch is a nit; script bundle-wide checks.

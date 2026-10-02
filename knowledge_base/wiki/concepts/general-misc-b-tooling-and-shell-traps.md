@@ -3,7 +3,7 @@ title: Tooling and shell traps that return a confident wrong value
 type: concept
 group: general
 tags: [grep, jq, shell, gh-api, git, exit-codes, pagination, instruments]
-source_count: 14
+source_count: 16
 ---
 
 ## TL;DR
@@ -16,6 +16,8 @@ result, no zero — a real value about a set you never saw.** The concrete traps
   On a whitespace-collapsed one-line file every present fragment reads exactly `1`.
 - **Exit status after a pipe is the LAST stage's** — `head`/`tail` answer for the real
   command. Use `${PIPESTATUS[0]}` or redirect instead of piping.
+- **A `$(…)` substitution resets `$?` before you read it** — `echo "$(basename $f) rc=$?"`
+  prints basename's 0 and hides a segfault's 139. Capture `rc=$?` in its own statement.
 - **`cmd_A 2>/dev/null || cmd_B` launders a guessed identifier** — the pipeline validates B
   only; A's arguments were checked by nothing.
 - **`gh api` exits 1 on HTTP errors AND writes the error JSON to stdout, even with `--jq`** —
@@ -65,6 +67,8 @@ result matches `^[0-9]+$`; anything else is VOID, treated as unknown, never as 0
 under either exit-code semantics, which is why it beats a guard built on "exit 0 lies." A
 coverage loop over 18 issues printed `0/18` when the true answer was 15/18, during a 403
 rate-limit window, for exactly this reason. [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
+
+**A command substitution resets `$?` before you read it — no pipe required.** In `slangc …; echo "$(basename $f) rc=$?"` the word is expanded left to right, so `$(basename …)` runs first and `$?` then reports *basename's* status, which is always 0. Plain `$var` expansions leave `$?` alone; only substitutions reset it. Crash-regression drills hit this independently three times on 2026-09-29 (the #13322 review, the #13332 triage, and its round-2 review): segfaulting `slangc` runs (rc 139) printed `rc=0`, a release matrix briefly signalled a false "fixed in v2026.7", and five crashing drills looked like passes until they were re-run. Capture the status in its own statement straight after the command — `cmd; rc=$?; echo "… rc=$rc $(…)"` — and corroborate it with the output file's size, since a crash leaves no output; when a version matrix contradicts an earlier run, audit the capture before believing the contradiction. A neighbouring blind spot: a compiler segfault that takes down in-process `slang-test` can print nothing at all for that test, so rerun it with `-use-test-server` or under plain `slangc` to see the FAILED line. [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) [Shell rc capture: `echo "$(cmd) rc=$?"` reports the substitution's rc, not the prior command's](../learnings/1790713338019-shell-rc-capture-echo-cmd-rc-reports-the-substitut.md)
 
 **`cmd_A 2>/dev/null || cmd_B` launders a fabricated identifier into a correct answer.** A
 published GitHub comment id 404'd; the substance attached to it was entirely correct. Traced:
@@ -205,3 +209,21 @@ written with it emits one string twice; only `--date=iso-local` reads `TZ`. A da
 a *field*: publish `author.date=…` or the offset, never a bare timestamp — a wrong label does
 more damage than a wrong value, because nobody re-derives a label. And a correction wrapped in
 an otherwise-agreeing message buys itself a free pass. [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](../learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)
+
+**Source learnings (16):**
+- [grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](../learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
+- [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
+- [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) — a `$(…)` in the echo resets `$?`; capture `rc=$?` in its own statement, check output size
+- [Shell rc capture: `echo "$(cmd) rc=$?"` reports the substitution's rc, not the prior command's](../learnings/1790713338019-shell-rc-capture-echo-cmd-rc-reports-the-substitut.md) — same trap in a crash drill; a segfault in in-process slang-test can print nothing, use -use-test-server
+- [A `cmd_A || cmd_B` fallback launders a fabricated identifier into a correct answer — never put a guessed id in a command](../learnings/1785964722368-a-cmd-a-cmd-b-fallback-launders-a-fabricated-ident.md)
+- [A shell || fallback launders a guessed identifier — cmd_A 2>/dev/null || cmd_B validates B only, never A's arguments](../learnings/1785964820042-a-shell-fallback-launders-a-guessed-identifier-cmd.md)
+- [GitHub Actions API filter params fail as a PLAUSIBLE NUMBER, never an exception — run a bogus-value control on every filter](../learnings/1785964944948-github-actions-api-filter-params-fail-as-a-plausib.md)
+- [`head -1` on a GitHub Actions job-id prefix silently returns a sibling job](../learnings/1785980581019-head-1-on-a-github-actions-job-id-prefix-silently-.md)
+- [AMENDS the head -1 sibling-job learning — use == or ^…$, not an unanchored test()](../learnings/1785980770072-amends-the-head-1-sibling-job-learning-use-or-not-.md)
+- [git tag --contains | head -1 is LEXICOGRAPHIC, not chronological — it silently reports the wrong first release](../learnings/1785964074974-git-tag-contains-head-1-is-lexicographic-not-chron.md)
+- [Symbol provenance: search the symbol, not one file's history](../learnings/1785965629992-symbol-provenance-search-the-symbol-not-one-file-s.md)
+- [Diff size: state the question and the notation — two-dot against a moved base folds upstream drift into your number](../learnings/1785969302800-diff-size-state-the-question-and-the-notation-two-.md)
+- [Three-dot diff is meaningless across a rebase — compare blob SHAs to prove content survived a history rewrite](../learnings/1785969801904-three-dot-diff-is-meaningless-across-a-rebase-comp.md)
+- [Two APIs, two denominators — state the surface before calling a count a contradiction](../learnings/1785970315044-two-apis-two-denominators-state-the-surface-before.md)
+- ["Is this PR green?" needs two GitHub APIs — check-runs plus commit statuses](../learnings/1785968300834-is-this-pr-green-needs-two-github-apis-check-runs-.md)
+- [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](../learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)
