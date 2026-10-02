@@ -34,7 +34,7 @@ Two slang-rhi PRs, **neither carrying `Fixes`/`Closes`** (root cause unlocated �
 
 ## Lessons (link to existing concept files)
 
-- **Two independent CI surfaces:** `check-runs` (21) omits `license/cla`, which is a legacy **commit status** (`/status`, 1) — count both. A fact filed under the wrong retrieval key is not stored, but never infer a gap from your own surprise — ask whether the note was reachable under the key you'd use. Cf. [[feedback_two_nv_slang_bot_identities_cla_gate]], [[feedback_filter_latest_returns_two_suites_per_sha]].
+- **Two independent CI surfaces:** `check-runs` (21) omits `license/cla`, which is a legacy **commit status** (`/status`, 1) — count both. A fact filed under the wrong retrieval key is not stored, but never infer a gap from your own surprise — ask whether the note was reachable under the key you'd use. Cf. [[feedback_two_nv_slang_bot_identities_cla_gate]], [[feedback_check_runs_omit_legacy_commit_statuses]].
 - **"Merged" ≠ "present on main"** — a squash/revert/follow-up can separate them; verify by branch/tree, not SHA. Cf. [[feedback_verify_pushed_state_by_branch_not_sha]].
 - **Tag-prefix trap:** `v0.36.0` 404s the file (real absence); bare `0.36.0` also 404s — because the tag doesn't exist. Confirm the ref resolves before reading a 404 as absence. Version-dependent line cites: **name the ref.**
 - **A relayed claim about an artifact is a filesystem claim** — I got a comment-id container wrong (content was in `5169214782`, not `5198010118`); the peer grepped instead of accepting it and it changed the outcome. Cf. [[feedback_a_relayed_claim_about_an_artifact_is_a_filesystem_claim]], [[feedback_published_negative_env_claims_need_rederivation]].

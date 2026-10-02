@@ -1,62 +1,88 @@
 ---
 name: project_11985_macos_metal_capability_regression
-description: "slang#11985 intermittent macOS CI failure. ⛔ Heavy retraction history — do NOT restate: the original capability-attribute diagnosis was publicly RETRACTED, then the 'macOS-26 Metal driver/runtime race' reconciliation was itself an OVER-CORRECTION. Resolved truth (merged #12009): deterministic per-OS collision — slang-rhi advertises metallib_4_0 on macOS>=26 so Slang emits the metal4.0-only attribute while the downstream compiler is hard-coded -std=metal3.1. Also ⛔ the 'Approach A is a functional no-op' Vulkan-headers framing was DISPROVEN by build (submodule v1.4.307 too old). State: Metal cause resolved; closure gated only on a maintainer-authored revert of #12075 (bot lacks workflows perm)."
-metadata: 
+description: "slang#11985 intermittent macOS CI failure. Resolved truth (merged #12009): deterministic per-OS collision — slang-rhi advertises metallib_4_0 on macOS>=26 so Slang emits the metal4.0-only `[[required_threads_per_threadgroup]]` while the downstream compiler was hard-coded -std=metal3.1. ⛔ Two earlier public framings were each half-wrong (original dx inverted the OS direction; the 'macOS-26 runtime race' reconciliation over-corrected). Vulkan-headers sub-cause: the fetch is load-bearing (submodule v1.4.307 too old) — 'Approach A is a no-op' was disproven by build. Closure gated on a maintainer-authored revert of #12075 (bot lacks workflows perm)."
+metadata:
   node_type: memory
   type: project
   originSessionId: b63b776f-b15c-43f2-90e2-00d74c7ee891
 ---
 
-**#11985 "Intermittent MacOS CI failure"** — filed by maintainer jkwak-work (surfaced on bot PR run pr=11907, the mimalloc chain [[project_11925_mimalloc_core_parked]]).
+# slang#11985 — intermittent macOS CI failure (Metal cause resolved; closure maintainer-gated)
 
-Triaged @ ToT 33f9ed0ce → bug/regression, medium/P2, target-emit (Metal)+capabilities. Verdict posted on #11985 (comment 4910230625); `regression`+`Metal` labels added (human `Testing` type + `Dev Opened` preserved).
+Filed by maintainer **jkwak-work** (surfaced on bot PR run #11907, the mimalloc chain
+[[project_11925_mimalloc_core_parked]]). Triaged as bug/regression, medium/P2, target-emit (Metal) +
+capabilities; verdict cmt 4910230625, `regression`+`Metal` labels added. Related: #10560 (feature),
+#11973 (same job), [[project_11989_examples_fail_on_warnings]] (spun off from this issue),
+[[project_12096_metal4_oscap_macos26_rhi795]].
 
-**Root cause (triager + fixer both @ ToT 33f9ed0ce — REFINED to a capability-default POLICY defect, not a mechanical gate bug):** The emit gate `slang-emit-metal.cpp:215 implies(metallib_4_0)` is *correct* (#10592's own `tests/metal/threadgroup-size.slang` uses explicit `-capability`, METAL3-NOT case passes). The actual bug: bare `-target metal` **defaults** target caps to `metallib_4_0` — abstract `metal` atom canonicalizes to `metallib_latest`, which #10592 flipped 3_1→4_0 (`slang-capabilities.capdef:207`). So the Metal-4.0-only `[[required_threads_per_threadgroup]]` is emitted BY DEFAULT while offline is hardcoded `-std=metal3.1` (`slang-gcc-compiler-util.cpp:973`) and slang-rhi passes only `Capability::metal` with no 4.0 `MTLLanguageVersion` (`metal-device.cpp:252,329`) → attribute rejected on free macos-latest runners with <4.0 Metal → createComputePipeline fails → gpu-printing exits 255. Intermittency = free-runner Metal-version heterogeneity, NOT a flake. Same masked error caused `slang-test` `*Metal.internal` failures (cleared on retry).
+## Resolved root cause (Metal) — merged #12009, confirmed by instrumentation on macOS 26.4
 
-**Regression from PR #10592 (72fdc442c) — now PUBLICLY ENDORSED by maintainer jkwak-work** on the issue (comment 4910286902, looped in @jhelferty-nv). Main did not independently re-verify at hunk precision, but maintainer endorsement is stronger corroboration; relay as "maintainer-endorsed" not "Main-verified" per [[feedback_verify_regression_claims_at_precision]].
+PR #12009 (merged 2026-07-15T02:46Z, author nv-slang-bot, assignee jhelferty-nv; part of the #11999
+re-enable chain [[project_11999_gpu_printing_reenable_parked]]) instrumented `gpu-printing`'s four silent
+`return SLANG_FAIL` sites + `IDebugCallback`. The macos-26 CI log then showed verbatim at
+`createComputePipeline`: *"'required_threads_per_threadgroup' attribute requires Metal language standard
+metal4.0 or higher"*.
 
-**Fix forms (maintainer picks — HELD):** **A1** revert `metallib_latest`→3_1 (surgical, immediately shippable, fixer's recommended-minimal); **A2** decouple default-from-latest; **A4** thread a real Metal-version option (correct-by-construction, touches slang-rhi submodule → multi-PR). Fixer confirmed the diagnosis independently, wrote plan artifact `reports/slang-11985.md` (fixer's fs), opened NO PR. On maintainer GitHub direction the fixer is instantly executable: worktree + chosen option + default-target FileCheck-NOT test + draft PR.
+1. slang-rhi advertises Metal caps by OS (`metal-device.cpp`): macOS≥26 → `metallib_4_0`; macOS 15 → only
+   `metallib_3_2`.
+2. Given 4.0, Slang's emitter correctly emits the metal4.0-only attribute (gated `implies(metallib_4_0)`,
+   `slang-emit-metal.cpp`).
+3. Slang hard-coded the downstream metal compiler to `-std=metal3.1` (`slang-gcc-compiler-util.cpp`) →
+   rejected.
 
-Related: #10560 (feature), #11973 (same job, was framed infra — now refined to a compiler cause).
+**Deterministic per-OS, not a race.** "Flaky" = the `macos-latest` pool mixing macos-15 and the new
+macos-26 ("Tahoe") image. **Fix (single source of truth):** derive `-std=metalX.Y` from the target's
+metallib cap — new `SemanticVersion metalLanguageVersion` on `DownstreamCompileOptions`, set at code-gen
+when `implies(metallib_4_0)`; unset → historical `-std=metal3.1`. #12009 also reverted the #11995
+macOS example quarantine. The A1/A2/A4 capability-default fix forms are **moot**. #10592's
+`metallib_latest` 3_1→4_0 flip introduced the latent emit-vs-std inconsistency; it was fixed at the
+`-std` layer, not by reverting #10592.
 
----
+### ⛔ Diagnosis history — relay THIS synthesis, never either earlier half
 
-**SECOND ROOT CAUSE (orthogonal failure mode, 2026-07-09) — CMake configure downloads Vulkan-Headers.** jkwak-work asked the bot to investigate a distinct failure pattern (comment 4927945553): CMake configure fails to download vulkan-header; why download when headers already exist? Triager investigated @ ToT a97110a43, posted incremental verdict (comment 4927986987, Metal verdict untouched), handed to fixer.
+- **Original triager dx (cmt 4910230625):** mechanism ✅ right (metal4.0 attr vs hard-coded 3.1). ❌ Said
+  "emitted unconditionally by default" (actually gated on the runtime-advertised cap) and ❌ inverted the
+  OS direction ("fails on older Metal" — it fails on *newer* macos-26).
+- **jkwak's local agent (cmt 4930650800)** correlated 12+ runs: failures only on macos-26, macos-15 passes.
+  Correct data.
+- **Reconciliation/retraction (cmt 4930705367):** ✅ right that macos-26 fails and "flaky" = image mix;
+  ❌ relabelled it a "driver/runtime race" and abandoned the mechanism. **Over-corrected.** Its one solid
+  observation: the original log only showed the attribute error in slang-test unit tests, while
+  `gpu-printing` failed with zero output — the attr→gpu-printing link had been *inferred*, not read.
+- Lesson: when new evidence contradicts a direction, refine the contradicted part, don't discard the
+  mechanism. See [[feedback_verify_regression_claims_at_precision]]. Triager chose not to re-litigate on
+  the resolved issue (reasonable).
 
-- **Cause:** **slang-rhi** (not Slang core) fetches Vulkan-Headers v1.4.318 from GitHub at configure time (`FetchPackage(vulkan_headers)`, fires because `SLANG_RHI_HAS_VULKAN` is ON for Darwin). Slang core already vendors Vulkan-Headers via the `external/vulkan` submodule (→`Vulkan::Headers`), but slang-rhi builds its own headers target from the fetched copy and it's never redirected locally → redundant network download. Code: `external/slang-rhi/CMakeLists.txt:214-216,574-578`; `external/CMakeLists.txt:145-159`; `FetchPackage.cmake`; `ci-slang-build.yml`.
-- **Correction to jkwak:** local copy is `external/vulkan/` (Vulkan-Headers), NOT `external/spirv-headers/` (SPIR-V-Headers is a separate Khronos upstream that can't satisfy Vulkan API headers).
-- **Intermittency mechanism (PROVEN in code, not locally repro'd):** CI sets no `SLANG_GITHUB_TOKEN` → anonymous fetch → GitHub per-IP rate-limit on shared free-runner IPs. Rate-limit-vs-transient split is well-supported hypothesis; final validation via clean macOS CI configure.
-- **Fix = Approach A:** set `FETCHCONTENT_SOURCE_DIR_VULKAN_HEADERS`→`external/vulkan` so slang-rhi uses the submodule, no download (guard: submodule VK_HEADER_VERSION 307 vs v1.4.318 pin; bump if symbol gap). Fallbacks: B (CI export `SLANG_GITHUB_TOKEN` + cache/retry, symptom-only), C (upstream slang-rhi reuse `Vulkan::Headers`, cross-repo). Fixer implementing; DRAFT PR; merge operator-gated. Triager owns fixer edge — do NOT double-dispatch.
-- **2026-07-09 — jkwak replied (comment 4928018877):** *"Ok. If it is downloading Vulkan-header not spirv-header, then the download is expected. Thanks for the investigation."* → he considers the download **legitimate/expected**. Triager posted a clarification (comment 4928052647) separating "download expected" from the intermittency and framing Approach A as a "functional no-op that removes the flake," asking jkwak to steer A-vs-accept.
-- **2026-07-09 — ⚠️ BUILD DISPROVES THE "NO-OP" FRAMING (fixer Linux build @ a97110a43, receipts).** **P1 PASS:** redirect fires — CMakeCache `FETCHCONTENT_SOURCE_DIR_VULKAN_HEADERS`→`external/vulkan`, no `vulkan_headers-*` under `build/_deps/`, zero fetch. **P2 FAIL (exit 1):** vendored `external/vulkan` submodule is **v1.4.307**, too old to compile slang-rhi's Vulkan backend. **slang-rhi's real pin is v1.4.347** (memo's "v1.4.318" was WRONG). `vk-device.cpp` uses symbols absent from v307: `VK_KHR_SHADER_BFLOAT16_EXTENSION_NAME`, `VK_EXT_SHADER_FLOAT8_EXTENSION_NAME`, and `VulkanExtendedFeatures` members `shaderConstantDataFeatures`/`faultFeatures`/`shaderAbortFeatures`/`shaderFloat8Features`/`shaderBfloat16Features`. **Implication:** bare Approach A is NOT a no-op — redirect-only **breaks the build**. Shipping A correctly needs *also* bumping `external/vulkan` 307→≥347 (heavy: rewrites the Vulkan-Headers all of Slang consumes, needs own validation). **This vindicates jkwak's "download is expected" — the fetch is load-bearing** (how slang-rhi gets headers newer than the vendored copy). Fixer recommends **leave-as-is** (close working-as-intended); did NOT push/PR/self-bump; worktree `wt-slang-11985`/`fix/issue-11985` preserved.
-- **Routed to triager:** post honest GitHub correction to jkwak (the "A is a no-op" framing in cmt 4928052647 is disproven by build) + drive fixer's next step. Expected resolution: **close Vulkan sub-cause working-as-intended**; if the rate-limit flake is worth mitigating, low-risk path = **fallback B** (CI `SLANG_GITHUB_TOKEN` + cache/retry), NOT the submodule bump. Submodule bump 307→347 = distinct larger task if jkwak wants it.
-- **2026-07-09 — CORRECTION POSTED (triager cmt 4928199536).** Triager independently re-verified P1/P2 before retracting, and traced its own earlier wrong pin (318) to a **dirty slang-rhi submodule working tree** (`687dc18` ahead of gitlink `29dc332` which pins v1.4.347); fixed via `git submodule update --checkout`. Correction is a FRESH comment explicitly flagged as retracting cmt 4928052647 (not a silent edit of the one jkwak is reading). Recommended to jkwak: close sub-cause **working-as-intended**; mitigation (if wanted) = fallback B; 307→347 bump only on his ask. Durable learning saved (shared): "Verify submodule pins at the gitlink, not the working tree." Vulkan sub-cause **awaiting jkwak's steer** (webhook re-entry); fixer holding, branch/worktree `wt-slang-11985`/`fix/issue-11985` preserved.
+## Closure gate — revert #12075 (bot-blocked)
 
----
+jkwak set the precondition (cmt 4961076388) and later asked the bot for the revert PR (cmt 4985755940).
+#12075 (jvepsalainen-nv, merged `7cc70648a9`) touches only
+`.github/workflows/nightly-slang-coverage-test.yml` (pins coverage-macos → macos-15 as a stopgap). The
+revert is safe now, **but nv-slang-bot lacks the `workflows` permission**
+[[project_bot_workflows_permission]], so a workflow-only PR is not bot-actionable. Triager (cmt
+4985828042) asked a maintainer to click Revert / `git revert 7cc70648a9` and offered the diff. Not
+fixer-actionable; triager owns the fixer edge — no double-dispatch
+[[feedback_no_double_dispatch_peer_wired]].
 
-**2026-07-09 — ⚠️ jkwak landed his OWN mitigation + shared a DIVERGING diagnosis (Metal cause, comment 4930650800; NO @nv-slang-bot mention — informational, not a direct ask).**
-- **Mitigation shipped (routes around A1/A2/A4):** jkwak disabled the failing example on macOS via **PR #11995**, with **#11999** as the tracking issue to re-enable once resolved. So the immediate CI-green need is handled his way (disable-not-fix); the A1/A2/A4 capability fix-form question is now **deferred/subsumed** — only relevant if our diagnosis is confirmed as a real latent bug worth fixing to re-enable.
-- **⚠️ DIAGNOSTIC CONFLICT — jkwak's local agent contradicts our triager's capability-attribute diagnosis.** His agent's empirical finding across 12+ affected runs: single flaky failure = `gpu-printing` exits 255 (zero output) in the examples step of `test-macos-release-clang-aarch64 / test-slang`; **every occurrence on the NEW `macos-26-arm64` ("Tahoe") image** GitHub recently mixed into the `macos-latest` pool (image 20260630.0213.1, appearing since ~Jul 5; Jul 3/7 samples still macos-15). `macos-15` jobs pass; **flaky (some macos-26 pass too)** → looks like a **Metal race / driver behavior change in macOS 26**, NOT a capability mismatch. Excluded as unrelated: pr-11685 merge-group failures (PR-specific, Linux+macOS identical), Windows-GPU-only, network flakiness.
-- **Why this challenges our diagnosis (do NOT relay ours as settled):** our triager's capability-attribute-rejection theory (Metal-4.0-only `[[required_threads_per_threadgroup]]` rejected on <4.0 Metal) predicts a **deterministic** failure on **older** Metal. jkwak's data is the opposite: **flaky** on the **newest** image, passing on macos-15. Our code-trace was **never locally reproduced** (no Metal on Linux); jkwak's is runner-correlation across 12+ real runs = stronger empirical evidence for the operative cause. The two may both be true (latent attr bug + separate macOS-26 flake) or ours may be a plausible-but-wrong mechanism. **Verify before defending — per [[feedback_verify_regression_claims_at_precision]] + "verify before relaying coworker findings as fact".** Note: overlaps with the **#11999 re-enable chain** ([[project_11999_gpu_printing_reenable_parked]], draft PR #12009 adds IDebugCallback+stage reportError — RHI-creation-failure framing, closer to jkwak's Metal-race theory than ours). Same triager coworker owns both — reconcile.
-- **Routed to triager:** process this substantive comment, reconcile our public capability diagnosis (cmt 4910230625) against jkwak's macos-26 evidence honestly (defend with new evidence OR acknowledge the flake as the more likely operative cause — don't silently leave a contradicted diagnosis on the record), determine A1/A2/A4 disposition (superseded by disable?), and connect to the #11999 re-enable work. Triager owns GitHub + fixer edge.
+## Vulkan-Headers download sub-cause (separate, awaiting jkwak)
 
----
+jkwak asked (cmt 4927945553) why CMake configure downloads vulkan headers.
 
-**2026-07-10 — RECONCILED: our capability diagnosis was WRONG on the operative cause; retracted on the issue (triager cmt 4930705367 corrects cmt 4910230625).** Triager re-read the original CI log before conceding — no reflexive defense. **Decisive finding:** `gpu-printing` (the actual job failure) had **ZERO output** and failed silently at `createComputePipeline`; the metal-4.0 attribute error appeared **ONLY in the slang-test unit tests, which CLEARED on retry**. We had **INFERRED** the attribute→gpu-printing link; **the log never supported it.** Operative cause ≈ **macOS-26 ("Tahoe") Metal driver/runtime race on device/pipeline creation** (flaky, only on newest macos-26 image, macos-15 passes) — consistent with #12009's RHI-creation-failure framing. The emit-4.0-vs-`-std=metal3.1` attribute mismatch is a **real LATENT inconsistency but NOT this ticket's cause**. Regression-from-#10592 survives only as "#10592 introduced that latent emit-vs-std inconsistency," NOT as the cause of the observed flake.
+- **Cause:** slang-rhi (not core) `FetchPackage(vulkan_headers)` at configure time (fires because
+  `SLANG_RHI_HAS_VULKAN` is ON for Darwin) — `external/slang-rhi/CMakeLists.txt:214-216,574-578`. The
+  local copy is `external/vulkan/` (Vulkan-Headers), not `external/spirv-headers/`.
+- **Intermittency:** CI sets no `SLANG_GITHUB_TOKEN` → anonymous fetch → per-IP rate limit on shared
+  runners (code-proven, not repro'd).
+- **⛔ "Approach A is a functional no-op" was DISPROVEN by build.** Redirecting
+  `FETCHCONTENT_SOURCE_DIR_VULKAN_HEADERS`→`external/vulkan` works (no fetch) but the submodule is
+  **v1.4.307**, too old for slang-rhi's Vulkan backend (pin is **v1.4.347** — the earlier "v1.4.318" was
+  read from a dirty submodule working tree; verify pins at the gitlink). Missing symbols include
+  `VK_KHR_SHADER_BFLOAT16_EXTENSION_NAME`, `VK_EXT_SHADER_FLOAT8_EXTENSION_NAME`. **The fetch is
+  load-bearing** — jkwak's "download is expected" (cmt 4928018877) is right.
+- Correction posted as a fresh comment retracting the no-op framing (triager cmt 4928199536).
+  Recommendation: close working-as-intended; if mitigation wanted → CI `SLANG_GITHUB_TOKEN` +
+  cache/retry; a 307→347 submodule bump only on jkwak's ask. Fixer holding branch/worktree
+  `fix/issue-11985` / `wt-slang-11985`.
 
-**2026-07-15 — #12009 MERGED (Main read the PR directly); ROOT CAUSE CONFIRMED by instrumentation on macOS 26.4; diagnosis SYNTHESIS (3rd + final correction).** PR #12009 "Instrument gpu-printing example to diagnose macOS Metal failure (#11999)" merged 2026-07-15T02:46:38Z (author nv-slang-bot, assignee jhelferty-nv, base master). Instrumented `execute()`'s four silent `return SLANG_FAIL` sites + `enableValidation`/`IDebugCallback` → the CI log on macos-26 showed the failure verbatim at `createComputePipeline`: *"'required_threads_per_threadgroup' attribute requires Metal language standard metal4.0 or higher"*. **Confirmed mechanism:** (1) slang-rhi advertises Metal caps by OS (`metal-device.cpp`): macOS≥26 → `metallib_4_0`, macOS15 → only `metallib_3_2`; (2) given 4.0, Slang's emitter correctly emits the metal4.0-only attribute (gated `implies(metallib_4_0)`); (3) but Slang hard-coded the downstream metal compiler to `-std=metal3.1` (`slang-gcc-compiler-util.cpp`) → rejected. **DETERMINISTIC per-OS, NOT a runtime race** — macOS15 passed only because it never advertised 4.0 → never emitted the attribute; macOS26 turns emission on → collides with hard-coded 3.1. The "flaky" appearance = `macos-latest` image mix (macos-15 vs macos-26). **Fix (right layer, single source of truth):** derive `-std=metalX.Y` from the target's metallib cap (new `SemanticVersion metalLanguageVersion` on `DownstreamCompileOptions`, set at code-gen when `implies(metallib_4_0)`, `calcArgs` honors it; unset → historical `-std=metal3.1`, no other target changes). Green macos-26 CI on #12009 = the e2e proof.
-
-**⚠️ DIAGNOSIS SYNTHESIS — both earlier Main→operator relays were PARTLY wrong; here is the resolved truth (do NOT over-claim either direction):**
-- **Original triager dx (cmt 4910230625):** mechanism ✅ RIGHT (metal4.0-attr-vs-hardcoded-`-std=metal3.1` collision at createComputePipeline). But ❌ said "emitted UNCONDITIONALLY by default" (actually gated on the runtime-advertised cap) and ❌ inverted the OS direction ("fails on OLDER <4.0 Metal" — actually fails on NEWER macos-26 which advertises 4.0 → triggers emission; older macos-15 PASSES).
-- **Reconciliation (cmt 4930705367, "macOS-26 driver/runtime race"):** ✅ RIGHT that macos-26 fails / macos-15 passes and that "flaky" = image mix; ❌ mislabeled it a runtime race — it's a deterministic compile-time attribute/std collision, exactly the original mechanism. **Over-corrected.**
-- **Net:** the original *mechanism* was essentially correct; the reconciliation should have refined the OS-direction, not abandoned the mechanism. Regression-from-#10592 framing: the emit-vs-std mismatch was the latent bug; #12009 fixed it at the `-std` layer (not by reverting #10592's cap flip). Triager chose NOT to re-litigate on the resolved issue (reasonable). **If the operator asks, relay THIS synthesis, grounded in merged #12009 — not either earlier one-sided version.**
-
-**State:** **Metal cause RESOLVED by merged #12009** (real fix landed; #11995 quarantine already reverted inside #12009 via `tests/expected-example-failure-github.txt`). A1/A2/A4 = MOOT (fixed at the `-std` layer, not the capability-default layer). **#11985 closure now gated ONLY on reverting #12075** (jkwak, cmt 4985755940). Triager owns the fixer edge — do NOT double-dispatch [[feedback_no_double_dispatch_peer_wired]].
-
-**#12075 REVERT DISPOSITION (triager cmt 4985828042) — bot-BLOCKED, maintainer-authored revert needed.** #12075 = jvepsalainen-nv (maintainer), MERGED `7cc70648a9`, single file `.github/workflows/nightly-slang-coverage-test.yml` (pinned coverage-macos → macos-15 as a stopgap). Revert is SAFE now (#12009 fixed the real cause, so unpinning back to macos-latest no longer hits the metal4.0 error). **BUT nv-slang-bot App lacks the `workflows` permission** [[project_bot_workflows_permission]] → cannot open a PR whose only file is `.github/workflows/*` (#12009 could merge because it touched test/source files, not a workflow file). So jkwak's "make a new PR" is NOT bot-actionable. **Next:** maintainer clicks GitHub Revert on #12075 (server-side, their identity has workflow perms) or `git revert 7cc70648a9`; triager offered on the issue to prepare the exact diff. NOT fixer-actionable — triager correctly did NOT dispatch into the wall. #11985 clear to close once the revert lands.
-
-**Vulkan-header sub-cause (separate):** still awaiting jkwak's close-WAI-vs-fallback-B steer (triager cmt 4928199536). Fixer holding, branch/worktree `wt-slang-11985`/`fix/issue-11985` preserved. See also [[project_11989_examples_fail_on_warnings]].
-
-**2026-07-13 — jkwak set a CLOSING PRECONDITION (comment 4961076388):** *"Before closing this issue, the following PR should be reverted: https://github.com/shader-slang/slang/pull/12075"*. Dispatch STALLED 07-13→07-15 by triager provider logout [[project_slang_triager_auth_outage]] (recovered 07-15).
-
-**2026-07-15 22:08 UTC — jkwak GAVE EXPLICIT GO to create the revert (comment 4985755940, github.pr_mention):** *"The issue is resolved by the merged PR: https://github.com/shader-slang/slang/pull/12009 . Please make a new PR that reverts the following PR: https://github.com/shader-slang/slang/pull/12075"*. So: **#12009 MERGED** (jkwak considers the macos-26 operative cause resolved — vindicates the instrumentation/RHI-race path over our retracted capability dx), and the closing precondition is now **authorized + actionable**: create a NEW PR reverting **#12075**. **⚠️ #12075 still UNKNOWN to Main's context** — fixer must READ it first (title/what-changed/merge-state/author); do NOT guess. Likely the macos-example *disable* stopgap (#11995-family) now removable since #12009 fixed the real cause — UNVERIFIED. Routed triager→fixer: investigate #12075, create the revert as a **DRAFT PR** (drafts-only guardrail [[feedback_drafts_only_guardrail]]; `Fixes`/`Closes #11985` link since jkwak gates close on it), call **`report_pr_created`** [[feedback_verify_report_pr_created]], surface any conflict. **Ready-flip + merge stay operator/maintainer-gated** [[feedback_github_writes_operator_authorized]] — jkwak asked for the PR, not for us to land it. Triager owns fixer edge — no double-dispatch.
+Ops note: dispatch stalled 07-13→07-15 by the triager provider logout
+[[project_slang_triager_auth_outage]].

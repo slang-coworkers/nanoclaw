@@ -1,56 +1,79 @@
 ---
 name: project_11967_64bit_indexing_e2e
-description: IN-FLIGHT —
-metadata: 
+description: "slang#11967 64-bit indexing E2E test (follow-up to #11541). Bot PR #12081 (test-only static SPIR-V guard) MERGED 07-13; issue REOPENED 07-17 out of a team meeting and reassigned to @jvepsalainen-nv. Bot's runtime COMPARE_COMPUTE slice committed on fix/issue-11967-runtime @ 5433246218 but never pushed (cred outage). Interface-path IArray/IRWArray truncation = parked design decision #11990; new candidate: Buffer/RWBuffer Load((int)index) truncation (hlsl.meta.slang:19387)."
+metadata:
   node_type: memory
   type: project
   originSessionId: 6e58fdce-57cd-4316-a9bc-670e8d6c3adb
 ---
 
-**#11967** (shader-slang/slang, author skiminki-nv, labels spirv_vulkan) — E2E-test follow-up to #11538/PR #11541 (capability bit, MERGED). Filed 2026-07-07.
+# slang#11967 — 64-bit indexing E2E test
 
-Triage (slang-triager, verdict posted as issue comment 4902156792) found this is NOT just a missing test — there's a **real defect**: a 64-bit index is preserved on the direct `RWStructuredBuffer` path but **silently truncated to 32-bit** through the `IArray`/`IRWArray` `__subscript(int index)` interface (verified via IR dump on ToT; warning E30081). SPIR-V emit itself is correct (slang-emit-spirv.cpp:8863).
+shader-slang/slang, author skiminki-nv, label `spirv_vulkan`. E2E-test follow-up to #11538 / PR #11541
+(capability bit, merged) [[project_11538_bc_build_pending]]. Thread `gh-issue-shader-slang/slang-11967`;
+triager owns the fixer edge — no double-dispatch [[feedback_no_double_dispatch_peer_wired]].
 
-- Classification: feature-request / medium / P2 / frontend+stdlib-interface.
-- Human-set Type=Feature + labels left untouched (human-triage-authoritative).
-- Recommended **Approach A** — widen interface subscript to a generic `TIndex`, mirroring the already-generic buffer/Ptr subscripts (core.meta.slang:1470, hlsl.meta.slang:6011+), + add spirv-asm codegen E2E test. Bottleneck at core.meta.slang:990/1036. Fallback **C** = additive overload if conformance-widening cascades — that cascade is the "is it a blocker" design question skiminki surfaced.
-- **Forwarded to slang-fixer** on canonical thread `gh-issue-shader-slang/slang-11967` (memo `triage-11967.md`). Chain OPEN awaiting fixer's [Fix Report].
+## What is actually broken (empirical, not the triage memo's static read)
 
-Do NOT double-dispatch to fixer — triager owns the peer-wire. See [[project_11538_bc_build_pending]], [[feedback_no_double_dispatch_peer_wired]].
+- The **direct concrete-buffer** 64-bit path works untruncated (reaches `OpAccessChain`); SPIR-V emit is
+  correct.
+- Only the **interface-constrained path** truncates: a >2³² index through a generic `IArray`/`IRWArray`
+  `__subscript(int index)` constraint (warning E30081). Needs both a >8GB buffer and generic-interface
+  access — niche.
+- **Widening the interface subscript to generic `TIndex` (Approach A) fails to build**: magic types throw
+  **E38100** (no generic-subscript witness), so it means conformance/witness-synthesis surgery that
+  skiminki already hesitated on. An additive overload (B) hits the same wall. ⇒ Approach **(c)**: ship
+  the test, document the limitation.
+- That limitation is tracked as its own **needs-maintainer-decision** issue **#11990**
+  [[project_11990_iarray_subscript_64bit_pending]] — parked; do not attempt widening without maintainer
+  sign-off.
+- **New candidate (verified by triager, not yet filed/widened):** Buffer/RWBuffer
+  `__subscript(uint index)` getter does `Load((int)index)` at `hlsl.meta.slang:19387` — uint→int
+  truncation on the *concrete* path, distinct from #11990.
 
-**APPROACH DECIDED 2026-07-08 ~01:47Z — (c) test + document, NOT (a) widen. Main affirmed + directed a follow-up issue.** The fixer's BUILD empirically disproved the triage's static assumption: widening the `IArray`/`IRWArray` subscript to generic `TIndex` (Approach A) does NOT synthesize cleanly — magic types throw **E38100** (no generic-subscript witness), so (a) = wide-blast-radius surgery in the conformance/witness-synthesis core, **against skiminki-nv's already-stated hesitation about widening the requirement.** (b) additive overload also hits E38100 as a requirement, or is unreachable through the generic constraint as a non-requirement → no clean win. So **(c)**: ship the E2E test (what #11967 actually asked, follow-up to #11541) + document the interface-path limitation.
-- **Triage refinement (empirical > static, triager owned it):** the memo's "64-bit index truncated" was too broad. Build shows the **direct concrete-buffer 64-bit path works untruncated** (test asserts it reaches `OpAccessChain`). ONLY the **interface-constrained path** truncates — a >2³² index through a generic `IArray`/`IRWArray` constraint, needing BOTH an >8GB buffer AND generic-interface access. Genuinely niche. Test re-pins that path to current (truncating) behavior with an explicit limitation comment — scoped, not papered over.
-- **Main decision on the open question: YES, file the root-cause interface-truncation defect as its OWN issue** (cross-link #11967 + #11541), framed as **needs-maintainer-decision** (does widening the subscript requirement justify the conformance/witness-synthesis surgery, given skiminki's hesitation and the E38100 cascade?) — NOT as "we will fix it." Reasons: a limitation buried in a test comment is discoverable only by someone reading that file; a tracked issue is the durable, searchable home AND the correct venue to get skiminki's sign-off BEFORE any (a) implementation. **Do NOT dispatch a fixer on the follow-up** — it's a design-decision issue, no maintainer go yet ([[feedback_dont_close_open_proposals]], parked-feature discipline). Fixer files the issue (issue creation not gated), does the #11967 test re-pin, draft PR `Closes #11967`, `report_pr_created`. #11967 builds LAST in the disk-serialized queue (heaviest core-module). Await draft PR# + the follow-up issue #.
+## Shipped — PR #12081 (merged 2026-07-13, `fd4bd25314`)
 
-**✅ SHIPPED 2026-07-13 ~14:39Z — draft PR #12081 (Main-verified at HEAD).** OPEN/**draft**/nv-slang-bot/`fix/issue-11967`, `Closes #11967`, label `pr: non-breaking`, body cites #11990. Approach (c) as decided: 1 test-only file `tests/spirv/shader-64bit-indexing-functional.slang` (+58, NO compiler code) — E2E guard pins the ≥2³² `OpConstant %ulong 4294967296` through `OpIAdd %ulong` to the same id at `OpAccessChain` (truncation would insert OpU/SConvert + fail). Tests: target 1/1, 7/7 siblings, revert-drill discriminates, slangc+slang-test 470/470 clean. codex PLAN/CODE/OUTPUT approve (2 advisories adopted). Scope HELD — did NOT widen the IArray/IRWArray requirement; interface-path truncation stays maintainer-owned in #11990, NO duplicate filed. Draft stays draft (fixer flips nothing). **Root cause of the 148h stall (fixer self-diagnosed):** not technical — it kept BACKGROUNDING the build and losing the completion notification across container reaps, waiting on a signal that never came; fixed by foreground build (ninja resumes incrementally, reaped window costs nothing). This is the SAME backgrounded-build-loses-signal pattern behind the #11568/#10788 recovery stalls this session — a recurring fixer failure mode worth a shared learning. Chain webhook-driven (review/CI on #12081). Closes the supervise `awaiting_us` row for #11967.
+Test-only `tests/spirv/shader-64bit-indexing-functional.slang`: pins the ≥2³² `OpConstant %ulong
+4294967296` through `OpIAdd %ulong` to the same id at `OpAccessChain` (truncation would insert a convert).
+Revert-drill discriminates. jkwak-work approved ("a static test like this will do fine"), flipped it
+ready himself, and merged over an unrelated infra-flake red. Bot flipped/merged nothing
+[[feedback_drafts_only_guardrail]].
 
-**APPROVED 2026-07-13 17:05Z (Main-verified at HEAD — NO breach).** jkwak-work APPROVED #12081 ("a static test like this will do fine", no findings) AND flipped it ready-for-review himself at 17:05:16Z → reviewDecision=APPROVED, non-draft, MERGEABLE, HEAD unchanged at reviewed commit `9d126aa970`. Maintainer flipped (timeline actor=jkwak-work), fixer touched nothing ([[feedback_drafts_only_guardrail]]) — 4th clean instance of this same pattern this session (#12055/#12053/#11984). Fixer posted a courteous PR reply (static-guard rationale + optional scaled-down runtime follow-up + #11990 tracked). Merge is jkwak's to take (operator/maintainer-gated; bot does NOT merge). Terminal = jkwak merges → reap. Webhook-driven.
+## Reopened 2026-07-17 — runtime slice (bot work stranded)
 
-**✅ MERGED & CLOSED — TERMINAL 2026-07-13 19:47:42Z (Main-verified at HEAD).** jkwak-work merged #12081 (merge commit `fd4bd25314`); issue #11967 CLOSED/COMPLETED. Deliverable upstream: test-only E2E SPIR-V codegen guard `tests/spirv/shader-64bit-indexing-functional.slang`. CI red before merge = confirmed infra flake (unrelated `static-const-matrix-array` LLVM-interpreter JSON-RPC crash; the added test passed on Windows GPU) — maintainer merged over it. Fixer reaped worktree wt-slang-11967 + sentinel. Scope held end-to-end: no requirement widening, no duplicate; **interface-path 64-bit truncation stays maintainer-owned in #11990** (unaffected). Closed the supervise `awaiting_us` row for #11967. **Landmark: this is the 148h-stalled chain — payoff of the foreground-build fix; root cause (backgrounded-build-lost-signal) captured as shared learning "Never background a long build in a fixer session."** Chain terminal; note historical.
+jkwak reopened out of a team meeting and reassigned to **@jvepsalainen-nv** (cmt 4994726033), then asked
+@nv-slang-bot for a NEW PR with a **COMPARE_COMPUTE runtime test**, assigned to him (4994845920). Scope
+inputs: jkwak — coop vec/mat out of scope (4995203110), extension-name coverage already exists
+(4995173817); skiminki (5000287042) — GPU-in-the-loop is what "e2e" means, survey other stdlib indexable
+types, coopvec/mat = determine disposition (note + postpone if they can't work with 64-bit), exit
+condition deliberately exploratory.
 
-**FOLLOW-UP ISSUE FILED = #11990 (2026-07-08 ~01:51Z; Main verified at HEAD, framing faithful).** https://github.com/shader-slang/slang/issues/11990 — OPEN, nv-slang-bot, **0 assignees / 0 labels** (no dispatch/self-assign ✓). Title "…(design decision)"; body opens "maintainer design decision requested (not a committed fix)"; cross-links #11967+#11541; captures direct-concrete-path-WORKS vs interface-constrained-path-TRUNCATES, repro conditions (>8GB buffer + generic-interface access), the E38100 witness-synthesis cascade, skiminki-nv's hesitation; poses widen-vs-leave as the open maintainer question. **PARKED design decision — no fixer dispatched, no one assigned; do NOT attempt Approach (a) until skiminki (or another maintainer) signs off on widening the requirement.** Reopen/act only on a maintainer decision on #11990. Remaining #11967 work: on its build slot (last in disk queue) → test-file re-pin citing #11990 → draft PR `Closes #11967` → `report_pr_created`; await that PR#.
+Fixer state (07-17 08:29Z):
+- Runtime test committed **`5433246218`** on `fix/issue-11967-runtime`:
+  `tests/spirv/shader-64bit-indexing-runtime.slang` (Vulkan `COMPARE_COMPUTE`, `uint64_t` index under
+  `[Shader64BitIndexing]`). SPIR-V validation passes; codex approve. `[Shader64BitIndexing]` is
+  Vulkan/SPIR-V-only (other targets → E36107), so it can only execute on CI GPU runners.
+- ⚠️ The fixer's "no NVIDIA Vulkan ICD in-container despite L40S" is **suspect** — the same claim from
+  another coworker was a bad probe (looked only at `/usr/share/vulkan/icd.d`, real ICD at
+  `/etc/vulkan/icd.d/nvidia_icd.json`) [[feedback_published_negative_env_claims_need_rederivation]].
+  Re-derive with `vkEnumeratePhysicalDevices` before calling it unrunnable.
+- **Blocked on the env-wide GitHub cred expiry** [[project_github_actions_graphql_401_outage]] — never
+  pushed. Resume artifacts were on the fixer's fs: patch `/workspace/agent/patches/fix-11967-runtime.patch`,
+  PR body `/workspace/agent/critique-11967/pr-body-runtime.md`.
+- **Assignee:** triager ruled draft PR with **no assignee**, @-mentioning jkwak in the body (cites a
+  standing [MUST NOT] on bot-PR assignee mutations — triager's reading; not indexed here). Operator
+  override offered, non-urgent.
 
-**FIXER CONTEXT-DRIFT event + RESTART-TIMING decision 2026-07-08 ~02:33Z.** The fixer (compaction-degraded) nearly shipped, via a stale 05:30Z autonomous fallback task (`task-1783477555239-v7ypvs`), the REJECTED Approach B + a DUPLICATE of #11990. Triager caught the stale msg 88 BEFORE it fired, sent a hard re-anchor → fixer self-corrected: confirmed (c), **cancelled the fallback task**, committed the correct (c) test `b496fa9418` (limitation comment cites #11990), re-verified #11990 files nothing new. No harm reached GitHub.
-**Main DECISION — do NOT restart the fixer now; let the batch drain.** Rationale: (a) immediate risk already resolved by self-correction on re-anchor — the fixer is context-drifting, not in an unrecoverable loop (distinct from [[project_taskless_fixer_review_cc_loop]]); (b) a mid-flight restart's blast radius = FOUR staged/committed-but-unpushed fixes (`b496fa9418` #11967, `52fee2521b` #11970, `20bc7d0125` #11969, + #11925's staged Mechanism-B set) — real work loss, and #11925's set may be uncommitted working-tree state; (c) the clean restart moment is AFTER the four PRs drain, then restart+re-brief. Agreeing with triager's lean.
-**TRIPWIRE (gave triager):** if a SECOND drift event hits BEFORE the batch drains — fixer re-proposes a rejected approach, tries to widen the requirement, re-files #11990, or ships a wrong artifact — do NOT keep re-anchoring indefinitely; escalate to me and I'll `ncl groups restart --id ag-1780667166439-vmjrwe` even mid-batch (cost of wrong artifacts > staged-work loss at that point). Absent a second event: proactively restart+re-brief after PR #4 lands. This complements [[project_11538_bc_build_pending]]'s inverse lesson (productive-heavy-work compaction churn ≠ stuck — don't over-restart); the discriminator is whether drift is PRODUCING WRONG ARTIFACTS (restart) vs just churning tokens on correct work (leave it).
+As of 08-04 the issue is human-owned and stale-reopened; not ours to drive
+[[project_fixer_restart_tripwire]].
 
-**🔁 RE-OPENED 2026-07-17 (meeting-driven) — runtime-test follow-up dispatched.** After the terminal MERGE (below), jkwak-work reopened #11967 out of a team meeting and **reassigned the issue to @jvepsalainen-nv** (human maintainer). Batch of 6 comments (by comment_id):
-- `4994726033` jkwak: reopen + reassign to jvepsalainen-nv "as discussed in the meeting."
-- `4994845920` jkwak → **@nv-slang-bot**: make a NEW PR adding a **COMPARE_COMPUTE (runtime) test** improving on #12081's compile-time-only test; **assign the PR to jkwak.** ← actionable bot ask.
-- `4995053384` skiminki: "no solid opinion; untested=broken by default"; re-raises IArray/IRWArray + other limits + extension-coverage testing.
-- `4995150884` jkwak: exit-condition unclear — are we fixing the IArray/IRWArray limitation or just mentioning it?
-- `4995173817` jkwak: extension-name coverage **already done** (existing test L42-44).
-- `4995203110` jkwak: **coop vec/mat OUT of scope** — spec only relaxes buffer address range, no cross-extension guarantee.
-**Scope for the bot PR (narrow):** runtime COMPARE_COMPUTE test of the **64-bit buffer** indexing path only. OUT: coop vec/mat. PARKED (unchanged): IArray/IRWArray requirement-widening = design decision in **#11990** — do NOT attempt (a)/widen here; the exit-condition/"mentioning limitations" debate is maintainer-owned (jkwak↔skiminki, issue now jvepsalainen-nv's). New branch + draft PR (not reopening merged #12081), assign to jkwak, `report_pr_created`, draft-only guardrail. **Routed via slang-triager on canonical thread `gh-issue-shader-slang/slang-11967` (triager owns fixer edge) 2026-07-17; `<github-post-authorized />` (real bot mention).** Chain RE-OPEN awaiting triager→fixer brief + draft PR#.
+## Durable lessons from this chain
 
-**SCOPE CLARIFICATION 2026-07-17 (skiminki-nv, comment 5000287042) — forwarded to triager.** Refines the exit-condition debate: (1) **blesses GPU-in-the-loop** = confirms the COMPARE_COMPUTE runtime slice already in flight ("e2e means GPU in the loop; driver bugs plausible"). (2) #11990 covers IArray/IRWArray, but also **survey other stdlib module types** for obvious 64-bit-index issues. (3) **coopvec/mat = soft, not hard-excluded**: separate PR/test OR, if analysis shows they can't work with 64-bit indexes, **note it on #11967 and postpone/cancel** (jkwak had said "out of scope"; skiminki softens to "determine disposition"). (4) Exit-condition **deliberately exploratory** — discovering the true affected scope IS part of the task. No @nv-slang-bot mention (human thread reply) → supplemental context for the fixer's runtime-test work, NOT a fresh post-task; triager folds in, posts status per standing policy. #11990 interface-widening stays maintainer-owned/parked.
-
-**🔧 RUNTIME SLICE DONE + codex-reviewed, ⛔ BLOCKED ON CRED (2026-07-17 08:29Z, fixer msg 41920).** The reopened runtime-test work is at a clean, fully-escalated stopping point:
-- **Runtime test committed `5433246218`:** `tests/spirv/shader-64bit-indexing-runtime.slang` — Vulkan `COMPARE_COMPUTE` indexing a buffer via `uint64_t` under `[Shader64BitIndexing]`. Verified as far as container allows (SPIR-V validation passes; `OpCapability Shader64BitIndexingEXT` + `OpTypeInt 64` + `OpAccessChain %index` present; slang-test cleanly ignores the `(vk)` run — ⚠️**"no NVIDIA Vulkan ICD in-container despite L40S" is now SUSPECT, NOT verified**: the identical claim from `slangpy-triager` on 2026-08-03 was **FALSE** — a subagent had probed only `/usr/share/vulkan/icd.d` (Mesa-only) while the real ICD sat at `/etc/vulkan/icd.d/nvidia_icd.json`, and an L40S was enumerable all along ([[feedback_published_negative_env_claims_need_rederivation]]). Different container (slang-fixer's, 17 days earlier) so I can NOT call this one false — but "L40S present yet no ICD" is exactly the signature of that bad probe. **Re-derive with `vkEnumeratePhysicalDevices` before treating the `(vk)` run as unrunnable here**; if it enumerates, this test may be executable rather than validation-only). codex round-10 approve, citations verified.
-- **Feasibility finding:** `[Shader64BitIndexing]`/`spvShader64BitIndexingEXT` is **Vulkan/SPIR-V-only** (CUDA/HLSL/Metal → E36107) → runtime test is inherently Vulkan, executes on CI GPU runners.
-- **Scope-findings note (per skiminki's exploratory exit-condition):** surveyed stdlib indexable types; surfaced a **VERIFIED NEW candidate to track (not widen into this PR): Buffer/RWBuffer `Load((int)index)` uint→int truncation on the concrete path.** coopvec/mat = out-of-scope-for-now (register-vs-buffer rationale). IArray/IRWArray widening stays parked in #11990.
-- **⛔ Blocked:** GitHub cred env-wide expiry ([[project_github_actions_graphql_401_outage]]) — can't push / open PR / `report_pr_created`. NOT restart-fixable; escalated to operator. **Resume artifacts (durable, fixer msg 41926):** branch `fix/issue-11967-runtime` @ `5433246218`; patch backup `/workspace/agent/patches/fix-11967-runtime.patch`; pre-written PR body `/workspace/agent/critique-11967/pr-body-runtime.md` (@-mentions jkwak in prose, NO `--assignee`/`--reviewer`, NO `Closes`/`Fixes`); resume steps in fixer task #14. **Resume on cred-restore:** push → draft PR (no assignee, per gate ruling above) → report_pr_created → draft CI → report PR#. Fixer holding, no retry-spam.
-- **⚠️ ASSIGNEE GATE CONFLICT — RESOLVED by triager (edge owner), operator override still pending (2026-07-17 08:32Z, triager msg 41922):** jkwak's comment 4994845920 (authorized bot mention) asked to **assign the PR to jkwak**. Triager's call as fixer-edge owner: **open the draft PR with NO assignee/reviewer** — it cites a **standing operator [MUST NOT] on bot-PR assignee mutations** as beating jkwak's request — and **satisfy his intent by @-mentioning him in the PR body**. Told fixer to hold (no retry-spam) until creds return. (Note: triager's [MUST NOT] citation is ITS reading of a standing gate; I don't have that exact gate text indexed — the *action* is safe/correct regardless since @-mention honors intent without mutating the gated field. If a bot-PR-assignee [MUST NOT] is confirmed, worth its own learning.) Main surfaced the (a) honor-jkwak / (b) keep-no-assignee choice to operator as a possible one-off override — NON-URGENT (assignee mutable post-open; PR cred-blocked anyway). Main did NOT reach past triager to the fixer.
-- **✅ TRUNCATION FINDING VERIFIED at claim-precision (triager):** the fixer's new candidate is real — Buffer/RWBuffer `__subscript(uint index)` getter does `Load((int)index)` at **hlsl.meta.slang:19387** → uint→int truncation on the **concrete** path (distinct from + beyond the #11990 interface-path issue). Tracked, NOT widened into this PR.
-
-**INVOLUNTARY RESTART 2026-07-08 ~11:50Z — prod rebuild 2.1.39 pre-empted the deferred fixer restart, MID-batch (before any of the 4 PRs landed).** So the drift/tripwire concern is now MOOT (fresh fixer session, compaction cruft cleared — the very thing I was going to do after PR#4, done involuntarily). New concern = WORK-LOSS recovery. Per operator notice: source/commits/uncommitted-TRACKED changes untouched; only gitignored build/ output cleared from worktrees (`/ephemeral` was 100% full). Verified from Main: NO branches pushed for any of 11925/11967/11969/11970 (all 404) — so the 4 fixes were LOCAL commits (`b496fa9418` #11967, `52fee2521b` #11970, `20bc7d0125` #11969, + #11925 staged set), expected to survive as commits; **#11925's set was described as "staged" — if uncommitted-and-untracked it may be the one at risk; triager must verify.** Recovery routes through triager (owns fixer dispatch edge; my re-freeze of daily tasks separately re-armed). Also: this restart RE-FROZE the 3 daily tasks again (nightly/relCI/wiki at 06:02Z past-due) — same [[project_scheduler_stall_incident]] orphan bug; re-armed 12:30/12:40/00:00. Dispatched triager 11:5x to: (1) verify the 4 commits survived on disk (esp. #11925), (2) re-run the cleared builds (serialized queue unchanged: #11969→#11925→#11970→#11967), (3) re-brief the FRESH fixer session on the queue + (c)-for-#11967 + #11990-already-filed (so it doesn't re-file or re-decide) + report_pr_created-mandatory. Tripwire retired (restart already happened cleanly); revert to normal drain.
+- **Never background a long build in a fixer session** — the 148h stall was the fixer backgrounding the
+  build and losing the completion signal across container reaps (shared learning). Foreground builds
+  resume incrementally under ninja.
+- **Drift vs churn:** restart a context-drifting fixer when it produces wrong artifacts (it nearly
+  shipped the rejected Approach B + a duplicate of #11990 via a stale fallback task), not when it merely
+  churns tokens on correct work. The standing tripwire lives in [[project_fixer_restart_tripwire]]; the
+  07-08 prod rebuild restarted the fixer involuntarily anyway (local commits survived; only gitignored
+  build output was cleared). See also [[project_fleet_disk_capacity_wall_11969]].

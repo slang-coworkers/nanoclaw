@@ -7,6 +7,8 @@ metadata:
   originSessionId: d121aed2-2953-4ba3-81f4-b3f8111b7852
 ---
 
+**2026-10-01 — #9085 MERGED; tests-only follow-up = draft PR #13333** (`fix/issue-9038-followup-tests`, head `d374fa39aa`). slang-reviewer R2 APPROVE_WITH_NITS (budget spent); slang-fixer [Fix Report] 09-30 00:21Z (never relayed then because the container stopped; relayed 10-01 21:00Z). Parked on the **operator's ready-flip** (drafts-only). No real CI on head yet (run 36647612850 = priority yield + falcor gate waiting). Re-chase `rechase-13333-ready-flip-2e7e` fires 10-05 21:00Z.
+
 PR #9085 "Add GLSL support for SampleCmpBias and SampleCmpGrad" (Fixes #9038). Copilot-authored draft on same-repo branch `copilot/add-glsl-samplecmp-support`. Maintainer @jhelferty-nv asked nv-slang-bot to take it over (2026-07-07 webhook, comment 4909016932) — rebase + **finish** the issue, not just resolve conflicts.
 
 slang-fixer drove it end-to-end on thread `gh-issue-shader-slang/slang-9085`: rebased onto master, all 7 maintainer items met, pushed, **held DRAFT** (not flipped ready — gate intact). Full 5-part write-up + test table lives in the PR description (durable artifact; ack comment PATCH-edit 403'd, description supersedes). Label corrected `pr: breaking change` → `pr: non-breaking`.

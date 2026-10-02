@@ -2,61 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-09-06T04:15:21Z",
-   "backlog": 941779,
-   "defects": 30,
-   "offenders": 158,
-   "top": {
-    "path": "imported/project_slang_rhi_598_optix_coopvec_capability.md",
-    "class": "OVERSIZE",
-    "size": 39795
-   }
-  },
-  {
-   "at": "2026-09-07T04:17:16Z",
-   "backlog": 851760,
-   "defects": 27,
-   "offenders": 155,
-   "top": {
-    "path": "imported/project_12074_sgl_tests_teardown_exitcode_flake.md",
-    "class": "OVERSIZE",
-    "size": 37304
-   }
-  },
-  {
-   "at": "2026-09-07T04:17:24Z",
-   "backlog": 851760,
-   "defects": 27,
-   "offenders": 155,
-   "top": {
-    "path": "imported/project_12074_sgl_tests_teardown_exitcode_flake.md",
-    "class": "OVERSIZE",
-    "size": 37304
-   }
-  },
-  {
-   "at": "2026-09-08T04:14:22Z",
-   "backlog": 768756,
-   "defects": 27,
-   "offenders": 151,
-   "top": {
-    "path": "imported/feedback_shallow_clone_makes_your_head_the_graft_root.md",
-    "class": "OVERSIZE",
-    "size": 36083
-   }
-  },
-  {
-   "at": "2026-09-08T04:14:36Z",
-   "backlog": 768756,
-   "defects": 27,
-   "offenders": 151,
-   "top": {
-    "path": "imported/feedback_shallow_clone_makes_your_head_the_graft_root.md",
-    "class": "OVERSIZE",
-    "size": 36083
-   }
-  },
-  {
    "at": "2026-09-09T04:18:25Z",
    "backlog": 696913,
    "defects": 27,
@@ -329,6 +274,61 @@
     "path": "imported/project_slangpy_823_tensorview_interop_buffer_noncuda.md",
     "class": "OVERSIZE",
     "size": 19177
+   }
+  },
+  {
+   "at": "2026-10-01T04:09:20Z",
+   "backlog": 59831,
+   "defects": 0,
+   "offenders": 43,
+   "top": {
+    "path": "imported/project_slangpy_222_amd_atomic_grad_scatter.md",
+    "class": "OVERSIZE",
+    "size": 19012
+   }
+  },
+  {
+   "at": "2026-10-01T06:13:32Z",
+   "backlog": 48177,
+   "defects": 0,
+   "offenders": 39,
+   "top": {
+    "path": "imported/feedback_gh_paginate_401s_on_page2_use_explicit_pages.md",
+    "class": "OVERSIZE",
+    "size": 18582
+   }
+  },
+  {
+   "at": "2026-10-01T12:07:06Z",
+   "backlog": 38566,
+   "defects": 0,
+   "offenders": 35,
+   "top": {
+    "path": "imported/project_11985_macos_metal_capability_regression.md",
+    "class": "OVERSIZE",
+    "size": 18283
+   }
+  },
+  {
+   "at": "2026-10-01T18:04:55Z",
+   "backlog": 30017,
+   "defects": 0,
+   "offenders": 31,
+   "top": {
+    "path": "imported/feedback_reversing_a_correct_position_under_a_defective_input.md",
+    "class": "OVERSIZE",
+    "size": 17910
+   }
+  },
+  {
+   "at": "2026-10-02T00:13:03Z",
+   "backlog": 22776,
+   "defects": 0,
+   "offenders": 27,
+   "top": {
+    "path": "imported/feedback_an_enumeration_claim_needs_a_computed_complement.md",
+    "class": "OVERSIZE",
+    "size": 17727
    }
   }
  ]
