@@ -729,6 +729,41 @@ describe('a2a transient bounce (Part a — do not ack a bounced handoff)', () =>
     expect(getUndeliveredMessages()).toHaveLength(0);
   });
 
+  it('bounces a transient-auth a2a error carried in event.error with no text', async () => {
+    // providers/claude.ts reuses the CLI's fixed notices as `error` with
+    // `text: null` (upstream #3994), so the bounce must not depend on text.
+    insertMessage('h1e', 'chat', { text: '[Triage handoff] …' });
+    const query: AgentQuery = {
+      push() {},
+      end() {},
+      abort() {},
+      events: {
+        async *[Symbol.asyncIterator]() {
+          yield { type: 'init', continuation: 'mock-session-err' } as ProviderEvent;
+          yield {
+            type: 'result',
+            text: null,
+            isError: true,
+            error: 'Not logged in · Please run /login\nWhoever runs this NanoClaw needs to fix this outside the chat.',
+          } as ProviderEvent;
+        },
+      },
+    };
+    const result = await processQuery(query, a2aRouting, ['h1e'], 'mock');
+    expect(ackStatus('h1e')).toBe('bounced-transient');
+    expect(result.bouncedIds).toContain('h1e');
+    expect(getUndeliveredMessages()).toHaveLength(0);
+  });
+
+  it('marks a novel a2a error carried only in event.error bounced-unknown', async () => {
+    insertMessage('h2e', 'chat', { text: '[handoff]' });
+    const { query } = makeResultQuery({ type: 'result', text: '', isError: true, error: 'Incorrect API key' });
+    const result = await processQuery(query, a2aRouting, ['h2e'], 'mock');
+    expect(ackStatus('h2e')).toBe('bounced-unknown');
+    expect(result.bouncedIds).toContain('h2e');
+    expect(getUndeliveredMessages()).toHaveLength(0);
+  });
+
   it('marks a novel a2a error bounced-unknown', async () => {
     insertMessage('h2', 'chat', { text: '[handoff]' });
     const result = await processQuery(
@@ -1917,7 +1952,9 @@ describe('a2a failure notices (never answer a notice with a notice)', () => {
   /** One failing turn over every pending row, as the poll loop would run it. */
   async function failTurn(): Promise<void> {
     const rows = getPendingMessages(true);
-    const { query } = makeResultQuery({ type: 'result', text: '', isError: true, error: 'Incorrect API key' });
+    // Fork: a non-permanent error on an a2a edge bounces for redrive instead of
+    // sending a notice, so the notice path needs a permanent error.
+    const { query } = makeResultQuery({ type: 'result', text: '', isError: true, error: 'Invalid API key' });
     await processQuery(query, extractRouting(rows), [], 'mock', undefined, 'prompt', undefined);
     markCompleted(rows.map((m) => m.id));
   }
@@ -1941,7 +1978,7 @@ describe('a2a failure notices (never answer a notice with a notice)', () => {
     const toA = agentOutbound();
     expect(toA).toHaveLength(1);
     expect(toA[0].platform_id).toBe('ag-a');
-    expect(JSON.parse(toA[0].content)).toEqual({ text: 'Incorrect API key', failureNotice: true });
+    expect(JSON.parse(toA[0].content)).toEqual({ text: 'Invalid API key', failureNotice: true });
 
     // A's session: the notice arrives from B and A's turn fails too.
     routeToSession(toA[0].content, 'ag-b', 'a2a-2');
