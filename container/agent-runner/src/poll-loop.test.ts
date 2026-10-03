@@ -4,7 +4,7 @@ import os from 'os';
 import path from 'path';
 
 import { initTestSessionDb, closeSessionDb, getInboundDb, getOutboundDb } from './mailbox/sqlite/connection.js';
-import { getPendingMessages, markCompleted, type MessageInRow } from './db/messages-in.js';
+import { getPendingMessages, markCompleted, markProcessing, type MessageInRow } from './db/messages-in.js';
 import { getUndeliveredMessages, writeMessageOut } from './db/messages-out.js';
 import { formatMessages, extractRouting, isClearCommand, isRunnerCommand } from './formatter.js';
 import {
@@ -17,10 +17,12 @@ import {
   isCorruptionError,
   isNewSessionBatch,
   processQuery,
+  __costCapTestHooks as costHooks,
   resolveInReplyToOverride,
   taskOptsOutOfNewSession,
 } from './poll-loop.js';
 import { MockProvider } from './providers/mock.js';
+import { __setConfigForTest } from './config.js';
 import type { AgentQuery, ProviderEvent, ProviderExchange } from './providers/types.js';
 
 beforeEach(() => {
@@ -2556,4 +2558,363 @@ describe('fresh-session task arriving mid-query — defer, never abort the activ
     expect(pushes.some((p) => p.includes('scheduled fire'))).toBe(false);
     expect(getPendingMessages().map((m) => m.id)).toEqual(['t2']);
   }, 20_000);
+});
+
+
+// --- Stale query budget: a live ceiling raise must reach an open query ---
+// lego perfhound 2026-10-01: a query opened under a $50 ceiling with $37.69 spent
+// got maxBudgetUsd $12.31. The ceiling was raised to $220 and then $720, but
+// follow-ups kept being pushed into that query; once it had spent $12.31 the SDK
+// stopped it and every later message failed at once with no tokens.
+describe('stale query budget (ceiling raised after the query started)', () => {
+  const CHAT = { platformId: 'chan-1', channelType: 'discord', threadId: null, inReplyTo: 'm1' };
+  let saved: ReturnType<typeof costHooks.getState>;
+
+  beforeEach(() => {
+    saved = costHooks.getState();
+    __setConfigForTest({
+      provider: 'claude',
+      assistantName: 'test',
+      groupName: 'test',
+      agentGroupId: 'ag-test',
+      maxMessagesPerPrompt: 10,
+      mcpServers: {},
+      model: 'claude-opus-4-8',
+    } as Parameters<typeof __setConfigForTest>[0]);
+    costHooks.setState({
+      costEnabled: true,
+      costImmortal: false,
+      costWindow: 'lifetime',
+      costCapUsd: 10,
+      costSpentUsd: 37.69,
+      costCeilingUsd: 50,
+      costCeilingHardStop: false,
+      costCeilingEscalated: false,
+      costStopRequested: false,
+      costBudgetGen: 0,
+    });
+  });
+
+  afterEach(() => {
+    costHooks.setState({
+      costEnabled: saved.costEnabled,
+      costImmortal: saved.costImmortal,
+      costWindow: saved.costWindow,
+      costCapUsd: saved.costCapUsd,
+      costSpentUsd: saved.costSpentUsd,
+      costCeilingUsd: saved.costCeilingUsd,
+      costCeilingHardStop: saved.costCeilingHardStop,
+      costCeilingEscalated: saved.costCeilingEscalated,
+      costStopRequested: saved.costStopRequested,
+      costBudgetGen: saved.costBudgetGen,
+    });
+    costHooks.clearActiveQueryBudget();
+    __setConfigForTest(null);
+  });
+
+  /** A live set_ceiling control, applied the way the poller applies it. */
+  function raiseCeiling(toUsd: number, id = `cca-${toUsd}`): void {
+    const st = costHooks.getState();
+    costHooks.applyCostOverride({
+      id: `in-${id}`,
+      kind: 'cost_override',
+      content: JSON.stringify({
+        protocolVersion: 2,
+        operation: 'set_ceiling',
+        adjustmentId: id,
+        expectedEpochKey: String(st.costBudgetGen),
+        expectedCeilingCents: Math.round(st.costCeilingUsd * 100),
+        targetCeilingCents: Math.round(toUsd * 100),
+      }),
+    } as unknown as MessageInRow);
+    expect(costHooks.getState().costCeilingUsd).toBeCloseTo(toUsd, 2);
+  }
+
+  /** A query driven by `script`; push/end/abort are recorded. */
+  function controllableQuery(
+    script: (q: { pushes: string[]; ended: () => boolean }) => AsyncGenerator<ProviderEvent>,
+  ) {
+    const pushes: string[] = [];
+    let ended = false;
+    let aborted = false;
+    const query: AgentQuery = {
+      push: (m: string) => {
+        pushes.push(m);
+      },
+      end: () => {
+        ended = true;
+      },
+      events: script({ pushes, ended: () => ended || aborted }),
+      abort: () => {
+        aborted = true;
+      },
+    };
+    return { query, pushes, ended: () => ended || aborted, aborted: () => aborted };
+  }
+
+  async function until(cond: () => boolean, ms = 5000): Promise<void> {
+    const deadline = Date.now() + ms;
+    while (!cond() && Date.now() < deadline) await new Promise((r) => setTimeout(r, 20));
+  }
+
+  const pending = (id: string) => getPendingMessages().some((m) => m.id === id);
+  const ackOf = (id: string) =>
+    (
+      getOutboundDb().prepare('SELECT status FROM processing_ack WHERE message_id = ?').get(id) as
+        | { status: string }
+        | undefined
+    )?.status;
+  const usage = (totalCostUsd: number): ProviderEvent => ({
+    type: 'usage',
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 0,
+    ephemeral1hInputTokens: 0,
+    ephemeral5mInputTokens: 0,
+    durationMs: 1,
+    totalCostUsd,
+    numTurns: 1,
+    sessionId: 'sess-1',
+  });
+
+  it('records the budget a query starts with, and reports it stale only after a raise', () => {
+    expect(costHooks.startQueryBudget()).toBeCloseTo(12.31, 2);
+    expect(costHooks.staleQueryBudget()).toBeNull();
+    costHooks.setState({ costSpentUsd: 45 }); // spend inside the query: headroom shrinks, never stale
+    expect(costHooks.staleQueryBudget()).toBeNull();
+    raiseCeiling(720);
+    expect(costHooks.staleQueryBudget()?.budgetUsd).toBeCloseTo(12.31, 2);
+    // The next query is created from the live ceiling and starts clean.
+    expect(costHooks.startQueryBudget()).toBeCloseTo(675, 2);
+    expect(costHooks.staleQueryBudget()).toBeNull();
+  });
+
+  it('records no basis when no ceiling applies', () => {
+    costHooks.setState({ costEnabled: false });
+    expect(costHooks.startQueryBudget()).toBeUndefined();
+    expect(costHooks.getActiveQueryBudget()).toBeUndefined();
+    expect(costHooks.staleQueryBudget()).toBeNull();
+  });
+
+  it('a one-cent raise latches the query stale', () => {
+    costHooks.startQueryBudget();
+    raiseCeiling(50.01);
+    expect(costHooks.staleQueryBudget()).not.toBeNull();
+  });
+
+  it('a raise smaller than the spend accrued since the query started still latches it stale', () => {
+    costHooks.setState({ costSpentUsd: 40 }); // $10 budget
+    costHooks.startQueryBudget();
+    costHooks.setState({ costSpentUsd: 46 }); // the query spent $6 of it
+    raiseCeiling(55); // headroom $9 < the $10 start budget, but the query has only $4 left
+    expect(costHooks.staleQueryBudget()).not.toBeNull();
+    costHooks.setState({ costSpentUsd: 50 }); // later spend must not erase it
+    expect(costHooks.staleQueryBudget()).not.toBeNull();
+  });
+
+  it('a reconcile that lowers spend after in-query accrual latches the query stale', () => {
+    costHooks.setState({ costSpentUsd: 40 }); // $10 budget
+    costHooks.startQueryBudget();
+    costHooks.setState({ costSpentUsd: 47 }); // accrued inside the query
+    const st = costHooks.getState();
+    costHooks.applyCostOverride({
+      id: 'in-csr-1',
+      kind: 'cost_override',
+      content: JSON.stringify({
+        protocolVersion: 2,
+        operation: 'reconcile',
+        adjustmentId: 'csr-1',
+        expectedEpochKey: String(st.costBudgetGen),
+        expectedCeilingCents: Math.round(st.costCeilingUsd * 100),
+        expectedSpentCents: Math.round(st.costSpentUsd * 100),
+        targetSpentCents: 4300,
+      }),
+    } as unknown as MessageInRow);
+    expect(costHooks.getState().costSpentUsd).toBeCloseTo(43, 2); // headroom $7: below the $10 start budget
+    expect(costHooks.staleQueryBudget()).not.toBeNull();
+  });
+
+  it('a lowered ceiling is not stale', () => {
+    costHooks.startQueryBudget();
+    raiseCeiling(45);
+    expect(costHooks.staleQueryBudget()).toBeNull();
+  });
+
+  it('after a raise, ends the query instead of pushing a new follow-up, and leaves it pending', async () => {
+    costHooks.startQueryBudget();
+    const q = controllableQuery(async function* ({ ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      yield { type: 'result', text: 'first answer' };
+      raiseCeiling(720);
+      insertMessage('m2', 'chat', { sender: 'A', text: 'follow-up after the raise' });
+      await until(() => ended());
+    });
+
+    await processQuery(q.query, CHAT, ['m1'], 'claude', undefined, 'prompt', undefined, false, undefined, 20);
+
+    expect(q.ended()).toBe(true);
+    expect(q.pushes.some((p) => p.includes('follow-up after the raise'))).toBe(false);
+    expect(pending('m2')).toBe(true);
+  });
+
+  it('without a raise, still pushes the follow-up into the open query and acks it at its own result', async () => {
+    costHooks.startQueryBudget();
+    let ackAtPush: string | undefined;
+    const q = controllableQuery(async function* ({ pushes }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      yield { type: 'result', text: 'first answer' };
+      insertMessage('m2', 'chat', { sender: 'A', text: 'ordinary follow-up' });
+      await until(() => pushes.some((p) => p.includes('ordinary follow-up')));
+      ackAtPush = ackOf('m2');
+      yield { type: 'result', text: 'second answer' };
+    });
+
+    await processQuery(q.query, CHAT, ['m1'], 'claude', undefined, 'prompt', undefined, false, undefined, 20);
+
+    expect(q.pushes.some((p) => p.includes('ordinary follow-up'))).toBe(true);
+    expect(ackAtPush).toBe('processing');
+    expect(ackOf('m2')).toBe('completed');
+    expect(q.aborted()).toBe(false);
+  });
+
+  it('a follow-up queued BEFORE the raise is released at the turn boundary, not run on the old budget', async () => {
+    costHooks.startQueryBudget();
+    let ackAtPush: string | undefined;
+    const q = controllableQuery(async function* ({ pushes, ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      // m2 arrives while turn 1 is still running: pushed and queued behind it.
+      insertMessage('m2', 'chat', { sender: 'A', text: 'queued before the raise' });
+      await until(() => pushes.some((p) => p.includes('queued before the raise')));
+      ackAtPush = ackOf('m2');
+      raiseCeiling(720);
+      yield { type: 'result', text: 'turn one done' };
+      yield usage(0.5);
+      await until(() => ended(), 3000);
+    });
+
+    const result = await processQuery(
+      q.query,
+      CHAT,
+      ['m1'],
+      'claude',
+      undefined,
+      'prompt',
+      undefined,
+      false,
+      undefined,
+      20,
+    );
+
+    expect(ackAtPush).toBe('processing');
+    expect(q.aborted()).toBe(true);
+    expect(ackOf('m2')).toBeUndefined();
+    expect(pending('m2')).toBe(true);
+    expect(result.retryIds).toEqual(['m2']);
+  });
+
+  it('a max-budget stop after a raise during the running turn is retried, not failed, and charged once', async () => {
+    insertMessage('m1', 'chat', { sender: 'A', text: 'long task' });
+    markProcessing(['m1']);
+    costHooks.startQueryBudget();
+    const spentBefore = costHooks.getState().costSpentUsd;
+    const q = controllableQuery(async function* ({ ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      raiseCeiling(720);
+      yield { type: 'result', text: null, isError: true, error: 'Reached maximum budget ($12.31)' };
+      yield usage(3);
+      await until(() => ended(), 3000);
+    });
+
+    const result = await processQuery(
+      q.query,
+      CHAT,
+      ['m1'],
+      'claude',
+      undefined,
+      'prompt',
+      undefined,
+      false,
+      undefined,
+      20,
+    );
+
+    expect(q.aborted()).toBe(true);
+    expect(result.retryIds).toEqual(['m1']);
+    expect(ackOf('m1')).toBeUndefined();
+    expect(pending('m1')).toBe(true);
+    expect(getUndeliveredMessages().some((m) => m.content.includes('maximum budget'))).toBe(false);
+    expect(costHooks.getState().costSpentUsd).toBeCloseTo(spentBefore + 3, 6);
+  });
+
+  it('a stale max-budget stop on a turn that already messaged the user is not retried, but the query still ends', async () => {
+    insertMessage('m1', 'chat', { sender: 'A', text: 'task' });
+    markProcessing(['m1']);
+    costHooks.startQueryBudget();
+    const q = controllableQuery(async function* ({ ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      await writeMessageOut({
+        id: 'out-progress',
+        in_reply_to: 'm1',
+        kind: 'chat',
+        platform_id: 'chan-1',
+        channel_type: 'discord',
+        thread_id: null,
+        content: JSON.stringify({ text: 'progress: halfway' }),
+      });
+      raiseCeiling(720);
+      yield { type: 'result', text: null, isError: true, error: 'Reached maximum budget ($12.31)' };
+      yield usage(1);
+      await until(() => ended(), 3000);
+    });
+
+    const result = await processQuery(
+      q.query,
+      CHAT,
+      ['m1'],
+      'claude',
+      undefined,
+      'prompt',
+      undefined,
+      false,
+      undefined,
+      20,
+    );
+
+    expect(result.retryIds ?? []).toEqual([]); // a retry could repeat "progress: halfway"
+    expect(ackOf('m1')).toBe('failed');
+    expect(q.aborted()).toBe(true); // the next message still starts a fresh query
+  });
+
+  it('a real ceiling hit is unchanged: the error is delivered and the query is not cut', async () => {
+    insertMessage('m1', 'chat', { sender: 'A', text: 'task' });
+    markProcessing(['m1']);
+    costHooks.startQueryBudget();
+    const q = controllableQuery(async function* ({ pushes }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      costHooks.setState({ costSpentUsd: 49.99 }); // spent the budget; no raise
+      yield { type: 'result', text: null, isError: true, error: 'Reached maximum budget ($12.31)' };
+      insertMessage('m2', 'chat', { sender: 'A', text: 'after a real hit' });
+      await until(() => pushes.some((p) => p.includes('after a real hit')), 3000);
+    });
+
+    const result = await processQuery(
+      q.query,
+      CHAT,
+      ['m1'],
+      'claude',
+      undefined,
+      'prompt',
+      undefined,
+      false,
+      undefined,
+      20,
+    );
+
+    expect(q.aborted()).toBe(false);
+    expect(result.retryIds ?? []).toEqual([]);
+    expect(ackOf('m1')).toBe('failed');
+    expect(getUndeliveredMessages().some((m) => m.content.includes('maximum budget'))).toBe(true);
+    expect(q.pushes.some((p) => p.includes('after a real hit'))).toBe(true);
+  });
 });

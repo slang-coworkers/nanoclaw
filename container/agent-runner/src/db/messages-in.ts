@@ -156,6 +156,16 @@ export function markBounced(ids: string[], status: 'bounced-transient' | 'bounce
   getAgentMailbox().operations.markMessages(ids, status);
 }
 
+/**
+ * Return claimed messages to pending in this container (drops their
+ * 'processing' acks) so the next poll re-claims them — used when a query is cut
+ * short before it answered them (stale query budget).
+ */
+export function releaseProcessing(ids: string[]): void {
+  if (ids.length === 0) return;
+  getAgentMailbox().operations.releaseProcessingAcks(ids);
+}
+
 /** Mark a single message as failed — writes to processing_ack in outbound.db. */
 export function markFailed(id: string): void {
   getAgentMailbox().operations.markMessages([id], 'failed');

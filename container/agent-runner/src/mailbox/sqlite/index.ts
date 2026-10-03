@@ -3,6 +3,7 @@ import {
   getInboundDb,
   sqliteClearContainerToolInFlight,
   sqliteClearStaleProcessingAcks,
+  sqliteReleaseProcessingAcks,
   sqliteSetContainerToolInFlight,
 } from './connection.js';
 import {
@@ -263,5 +264,6 @@ export class SqliteAgentMailbox implements AgentMailbox {
 
   clearContainerToolInFlight = sqliteClearContainerToolInFlight;
   clearStaleProcessingAcks = sqliteClearStaleProcessingAcks;
+  releaseProcessingAcks = sqliteReleaseProcessingAcks;
   gcOutboundHistory = sqliteGcOutboundHistory;
 }
