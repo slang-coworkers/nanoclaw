@@ -6,15 +6,39 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 652 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 269 |
-| `nv-slang` | slang project spine, skills, workflows | 169 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 97 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 76 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 655 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 271 |
+| `nv-slang` | slang project spine, skills, workflows | 172 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 99 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 78 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-03
+
+### nv-main (3 PRs)
+- **#1835** `Sync nv-main with upstream/main`
+- **#1842** `Sync nv-main with upstream/main`
+- **#1829** `feat(critique-gate): a [Fix Review Request] must name its maintainer direction`
+
+### nv-dashboard (2 PRs)
+- **#1837** `Sync nv-dashboard with upstream/main`
+- **#1844** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (3 PRs)
+- **#1838** `Sync nv-slang with upstream/main`
+- **#1845** `Sync nv-slang with upstream/main`
+- **#1830** `docs(slang-fix-issue): say what the review-request gate refuses`
+
+### nv-slangpy (2 PRs)
+- **#1839** `Sync nv-slangpy with upstream/main`
+- **#1846** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (2 PRs)
+- **#1840** `Sync nv-nanoclaw with upstream/main`
+- **#1847** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-10-02
 
