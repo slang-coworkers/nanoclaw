@@ -3,8 +3,10 @@ title: Classifying red Slang CI — infra/flake vs. real regression
 type: concept
 group: ci-tooling
 tags: [slang-ci, test-falcor, flake, infra, rerun, ci-triage, gpu-jobs, regression]
-source_count: 14
+source_count: 15
 ---
+
+# Classifying red Slang CI — infra/flake vs. real regression
 
 ## TL;DR
 
@@ -14,16 +16,18 @@ source_count: 14
 - GPU jobs (`test-windows-*-gpu-vk / test-slang`) flake/timeout: a step stuck `in_progress` at completion with an empty `--log-failed` is a timeout/cancellation, not an assertion failure. React to the current head only (a new push auto-cancels prior runs).
 - **Uniform** failure across *every* `test-slang` job (all OSes/arches, incl. CPU) ⇒ a deterministic `.slang` failure. Separate three causes: the PR's own new test, a PR-introduced regression of a pre-existing test, or inherited master-side breakage.
 - Known flaky/benign reds: `##[error]slang-test left generated or modified files` (leftover `moduleG####.slang` from a module test) when `100% of tests passed`; and the `build-windows-debug-cl-aarch64` job's `verify-documented-compiler-version.sh` **exit 4** — a `set -e`/`pipefail` command-substitution trip in that best-effort script (fix: `|| true`), NOT a `docs/building.md` allowlist gap.
+- **An ERR trap does not see everything:** without `set -E` it misses failures inside functions, and `trap '…; exit 0' ERR` turns the step green, which hides a broken check the way `|| true` does; prefer `exit "$status"` plus `continue-on-error`, and raise the trade-off with the maintainer.
 - A **manual `ci.yml` dispatch on a DRAFT PR** makes `test-falcor` fail fast (~15s, `failed_steps: []`) because the draft-gated *build* jobs that produce its artifact are skipped — it is not a code failure and clears on `gh pr ready`, not on a rerun.
 - **`gh run rerun` has hard age limits**: >30 days = "created over a month ago"; ~>1 week = "cannot be retried". Classification is moot for stale PRs — the only recovery is a fresh commit / `/ci`.
-- `gh run view --log-failed --job <id>` is the reliable log fetch; the `/actions/jobs/<id>/logs` REST endpoint often returns empty. `check-ci` failing is just the aggregate — find the real failing job.
+- `gh run view --log-failed --job <id>` is the reliable log fetch; the `/actions/jobs/<id>/logs` REST endpoint often returns empty, and needs `gh api --allow-escape-sequences` to print ANSI-laden logs. `check-ci` failing is just the aggregate — find the real failing job.
 
 ## The overriding rule: read the fresh log, classify, then act
 
 The single discipline that unifies every atom here: **fetch the actual failing-job log for the
 current head and read it before concluding anything or touching code.** The check-run
 output title/summary are frequently `null`, and `gh api .../actions/jobs/<id>/logs` frequently
-returns empty — so the reliable path is
+returns empty or is refused (gh will not print a body containing ANSI escapes unless given
+`gh api --allow-escape-sequences repos/<o>/<r>/actions/jobs/<id>/logs`) — so the reliable path is
 `gh run view <run-id> -R shader-slang/slang --log-failed --job <job-id>` and grep for
 `% of tests passed`, `FAILED test:`, and `##[error]`
 ([leftover-file flake — fetch log fast](../learnings/1788402606374-slang-ci-red-slang-test-left-generated-or-modified.md),
@@ -156,6 +160,23 @@ positive
 [same, reproduced + fixed in #13042](../learnings/1789254176751-slang-ci-verify-documented-compiler-version-sh-exi.md),
 [reviewing `|| true` CI-tolerance shell PRs](../learnings/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md)).
 
+The follow-up PR (shader-slang/slang#13352) adds `trap '…; exit 0' ERR` to the same script as a
+diagnostic, and reviewing it surfaced how far an ERR trap actually reaches (verified on bash 5.2).
+Without `set -E`, the trap fires only for **top-level** failures: a `set -e` abort inside a
+function body called at top level (`f(){ false; }; f`) exits silently with rc=1 and never runs the
+trap. Errexit is already cleared inside `$(...)`, so a failure there reaches the trap only if the
+substitution's status fails the assignment; an array assignment `A=($(exit 4))` propagates status
+4 exactly like a scalar `A=$(exit 4)`. `set -u` unbound-variable errors bypass ERR but print a bash
+message to stderr, so a truly silent exit rules them out. A multi-line `$BASH_COMMAND` splits the
+`::warning::` annotation, and only its first line becomes the annotation. The review lens is the
+`exit 0`: it turns the step GREEN plus an annotation, which behaves like `|| true` on the `run:`
+line, and maintainer jvepsalainen-nv explicitly ranked that below `continue-on-error` because a
+broken check should stay visible (red) without gating (see the advisory-script section of
+[CI Build Tooling](../concepts/ci-build-tooling.md)). Raise that trade-off with the maintainer
+rather than treating it as settled; `exit "$status"` plus `continue-on-error` keeps both the
+diagnostic and the red step
+([Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md)).
+
 ## gh run rerun has hard age limits
 
 `gh run rerun <id>` (and `-j <jobId>`) is rejected outright past certain ages, independent of
@@ -212,7 +233,8 @@ first failed line, so later CHECK directives were never exercised on the failing
 pass there is predicted, not proven; confirm via a CI re-run
 ([reviewing a descope CI fix](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)).
 
-**Source learnings (14):**
+**Source learnings (15):**
+- [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md) — slang#13352: no `set -E` = top-level only; `$BASH_COMMAND` splits annotations; `exit 0` ≈ `|| true`, below `continue-on-error`; `gh api --allow-escape-sequences` for job logs.
 
 - [gh run rerun has hard age limits — old CI failures on stale PRs cannot be rerun](../learnings/1788199935009-gh-run-rerun-has-hard-age-limits-old-ci-failures-o.md) — >30d "over a month ago", >~1wk "cannot be retried", "already running"; classification moot for stale PRs.
 - [test-falcor CI failures are usually external-bridge infra (403), not your code — and it's non-required](../learnings/1788206678107-test-falcor-ci-failures-are-usually-external-bridg.md) — Falcor consumes Slang as a library; 403 at trigger step = infra; verify required-status membership.

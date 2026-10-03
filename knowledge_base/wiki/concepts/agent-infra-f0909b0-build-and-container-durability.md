@@ -3,51 +3,47 @@ title: "Slang Build Toolchain and Container-Durability in Agent Sessions"
 type: concept
 group: agent-infra
 tags: [build, ninja, clang-format, filecheck, cost-cap, container-teardown, subagent, durability]
-source_count: 12
+source_count: 14
 ---
+
+# Slang Build Toolchain and Container-Durability in Agent Sessions
 
 ## TL;DR
 
 Building slang inside an agent container is fragile in ways that masquerade as code
 errors. Distinguish the environment from the diff before blaming the diff.
 
-- **`clang-format` is not on PATH** in slang containers; only `clang-format-17`
-  (`/usr/bin/clang-format-17`) exists, and the repo requires **17.x**. Symlink it or
-  `pip install clang-format==17.0.6 --break-system-packages`. `./extras/formatting.sh`
-  with **no type flag** just prints usage — a silent false-green. Always pass `--cpp`,
-  `--md`, etc.
-- **A bare slang-test/slangc build has no FileCheck** — it needs `libslang-llvm.so`
-  (from the slang-llvm lib). Without it, `//TEST:SIMPLE(filecheck=...)` tests are
-  **IGNORED** (`0/0, 1 ignored`) — not passed, not failed; assertions never run.
-  Fix by copying the base clone's `libslang-llvm.so` into the worktree lib dir (it's
-  loaded at runtime, independent of your code, so it doesn't contaminate the test).
+- **`clang-format` is not on PATH** in slang containers; only `clang-format-17` exists and
+  the repo requires **17.x**. Symlink it or `pip install clang-format==17.0.6
+  --break-system-packages`. `./extras/formatting.sh` with **no type flag** just prints
+  usage — a silent false-green. Always pass `--cpp`, `--md`, etc.
+- **A bare slang-test/slangc build has no FileCheck** (needs `libslang-llvm.so`), so
+  `//TEST:SIMPLE(filecheck=...)` tests are **IGNORED** (`0/0, 1 ignored`), not passed.
+  Copy the base clone's `libslang-llvm.so` into the worktree lib dir.
+- **`--target slangc slang-test` does not build the standard modules.** A full
+  `slang-test` run then shows ~60 spurious failures (`cannot open file
+  'slang/numerics.slang'`). Build `cmake --build --preset debug` with no target before
+  quoting full-suite numbers.
 - **Never read a test result off `tail -1`** — a crashed run prints an empty line that
   looks like silence-means-fine. Check exit code or demand a positive `N/N` token.
-- **Background builds die on container teardown / subagent turn-end.** A `run_in_background`
-  or subagent-with-Monitors build is killed when the container cycles or the subagent
-  returns; leftover truncated zero-byte `.so` then fails `objcopy`. Run builds
-  **synchronously** — foreground chunks (~9.5 min) in one active turn, or Bash
-  `run_in_background` that blocks to a completion notification. Ninja resumes from cache
-  between chunks.
-- **Advancing object count across wakes = teardown-killed (keep alive); frozen at the
-  exact same number forever = genuine hang.** NEVER `rm -rf build` on a suspected-hung
-  long build before confirming which — a clean rebuild discards recoverable cache and, if
-  teardowns continue, never finishes.
+- **Background builds die on container teardown / subagent turn-end**, leaving truncated
+  zero-byte `.so` files that then fail `objcopy`. Run builds **synchronously**: foreground
+  chunks (~9.5 min) in one active turn, or a blocking background call. Ninja resumes.
+- **Advancing object count across wakes = teardown-killed (keep alive); frozen forever =
+  genuine hang.** NEVER `rm -rf build` before confirming which.
 - **Commit AND push eagerly** — a pushed origin commit is the only restart-durable state.
-  Container restarts wipe the worktree; uncommitted (or committed-unpushed) work vanishes.
   On resume, re-verify branch state FIRST; a resume turn's first report is provisional.
 - **A hand-patched file that is NOT version-controlled is a lease, not a fix** — every
-  rebuild reverts it. Re-probe hand-patched files after every rebuild/`install_packages`/restart.
-- **A worktree configured on a GPU host stops building when the container loses its GPU**
-  (ninja: `libcuda.so ... missing` at graph time). Reconfigure that worktree with
-  `-DCUDA_cuda_driver_LIBRARY=` pointing at the CUDA `stubs/libcuda.so`.
-- **Disk can hit 100%** — an ENOSPC at the final link (`objcopy: No space left`) or
-  `index.lock write error` looks like a build error. `df -h` shows the truth; report
-  `blocked` with `df -h`, never delete sibling worktrees, escalate fleet disk pressure.
-- **A fresh-worktree cold build recompiles SPIRV-Tools + DXC from source** (~1142 ninja
-  steps, hours). Repeated `interrupted by user` (SIGTERM, not a compile error) across
-  multi-hour sessions can be the **per-session cost cap** reaping the container, not host
-  churn — diagnose with `ncl cost-cap get --group` and raise the cap.
+  rebuild reverts it. Re-probe hand-patched files after every rebuild/restart.
+- **A build dir configured in a GPU container fails in a no-driver one** (ninja:
+  `libcuda.so ... missing` at graph time); a plain `cmake --preset default` keeps the
+  stale cached path. Reconfigure with `-DCUDA_cuda_driver_LIBRARY=<cuda>/lib64/stubs/libcuda.so`
+  or `-DSLANG_ENABLE_CUDA=OFF`; run `nvidia-smi` first, since GPU availability varies.
+- **Disk can hit 100%** — ENOSPC at the final link or `index.lock write error` looks like
+  a build error. `df -h` shows the truth; never delete sibling worktrees; escalate.
+- **A fresh-worktree cold build recompiles SPIRV-Tools + DXC** (~1142 steps, hours).
+  Repeated `interrupted by user` across long sessions can be the **per-session cost cap**
+  reaping the container — check `ncl cost-cap get --group` and raise the cap.
 
 ## Synthesis
 
@@ -143,6 +139,22 @@ worktree only against the driver stub:
 stay testable before the reconfigure. Confirm the library is fresh with
 `ls --time-style=full-iso` against the source mtimes, and that the test binary links it with
 `ldd` [CLAUDE.md "no AI attribution" overrides the harness Co-Authored-By reminder](../learnings/1790718572444-claude-md-no-ai-attribution-overrides-the-harness-.md).
+The trap recurs after `git merge origin/master` into a long-lived fix branch reused in a
+different container: the failure comes before anything compiles, and re-running a plain
+`cmake --preset default` does not help because it keeps the cached driver path. Pass the stub
+explicitly (`cmake --preset default -DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-12.6/lib64/stubs/libcuda.so`)
+or configure with `-DSLANG_ENABLE_CUDA=OFF`, and check `nvidia-smi` before choosing, because
+GPU availability differs between containers
+([worktree rebuild after merging master: sync submodules + CUDA stub](../learnings/1790802270657-slang-worktree-rebuild-after-merging-master-sync-s.md)).
+
+Target selection is the other way a build quietly under-delivers. Building only
+`--target slangc slang-test` skips the standard modules, so a full `slang-test` run reports
+about 60 failures that are not regressions: 46 in `tests/numerics` with
+`error[E00001]: cannot open file 'slang/numerics.slang'`, plus `tests/functional`,
+`tests/dispatcher`, and `tests/cpu-program`. Run `cmake --build --preset debug` with no target
+before quoting full-suite numbers; after that the only remaining failure in the measured case
+was `gfx-smoke`, which is environmental and also fails on master
+([fresh slang worktree: build the full preset before a full slang-test run](../learnings/1790799614368-fresh-slang-worktree-init-submodules-and-build-the.md)).
 
 ### Disk exhaustion and the per-session cost cap look like build failures
 
@@ -168,7 +180,7 @@ near-complete since ninja progress caches across wakes and converges. Host logs 
 actual teardown reason are not reachable from an agent container, so the SIGTERM cause
 stays a hypothesis from the agent side — corroborated, not proven.
 
-**Source learnings (12):**
+**Source learnings (14):**
 - [clang-format not on PATH in slang-fixer container; pip-install 17.x per-session](../learnings/1786489601678-clang-format-not-on-path-in-slang-fixer-container-.md) — install 17.0.6 or symlink `clang-format-17`; bare `formatting.sh` prints usage (false-green); critique gate blocks all `gh`.
 - [slang-test ignores filecheck tests when FileCheck unavailable in worktree builds](../learnings/1786633416035-slang-test-ignores-filecheck-tests-when-filecheck-.md) — `0/0 ignored` is neither pass nor fail; simulate CHECK by hand region-by-region.
 - [Fresh slang worktree: FileCheck unavailable → borrow base build's libslang-llvm.so](../learnings/1787247745831-fresh-slang-worktree-filecheck-unavailable-llvm-of.md) — copy the base `libslang-llvm.so` (runtime-loaded, non-contaminating); don't `-bindir` base slang-test at the worktree.
@@ -180,4 +192,6 @@ stays a hypothesis from the agent side — corroborated, not proven.
 - [Container restarts wipe the fixer worktree — commit+push before any restart-risk](../learnings/1788355023814-container-restarts-wipe-the-fixer-worktree-commit-.md) — only pushed commits survive restart; re-verify branch state on resume before reporting "done."
 - [nanoclaw#1145 merged and my container rebuilt — re-probe after every rebuild](../learnings/1786388979361-approver-infra-abstain-nanoclaw-1145-merged-and-my.md) — an unversioned hand-patch is a lease; every rebuild reverts it; a test that prints nothing is not a pass.
 - [a GPU-host-configured worktree fails at ninja graph time once the GPU is gone; reconfigure it against the CUDA `libcuda.so` stub.](../learnings/1790593764309-critique-gate-blocks-the-whole-bash-call-gpu-less-.md)
+- [Slang worktree rebuild after merging master: sync submodules + CUDA stub](../learnings/1790802270657-slang-worktree-rebuild-after-merging-master-sync-s.md) — plain reconfigure keeps the stale libcuda path; pass the stub or `-DSLANG_ENABLE_CUDA=OFF`; check `nvidia-smi`.
+- [Fresh slang worktree: init submodules, and build the full preset before a full slang-test run](../learnings/1790799614368-fresh-slang-worktree-init-submodules-and-build-the.md) — `--target slangc slang-test` skips standard modules → ~60 spurious full-suite failures.
 - [CLAUDE.md "no AI attribution" overrides the harness Co-Authored-By reminder](../learnings/1790718572444-claude-md-no-ai-attribution-overrides-the-harness-.md) — with libcuda.so missing, `--target slangc` still rebuilds libslang-compiler.so for existing slang-test binaries

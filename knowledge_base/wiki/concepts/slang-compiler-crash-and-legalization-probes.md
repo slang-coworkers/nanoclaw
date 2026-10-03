@@ -3,8 +3,10 @@ title: Slang Compiler Crash & Legalization Probes — Front-End Fall-Throughs, T
 type: concept
 group: slang-grab-bag
 tags: [slang, ir-lowering, codegen, legalization, glsl-legalize, cuda, spirv, byte-address-buffer, producer-fix]
-source_count: 13
+source_count: 16
 ---
+
+# Slang Compiler Crash & Legalization Probes
 
 ## TL;DR
 
@@ -37,6 +39,12 @@ mishandles an input shape, and the crash surfaces far downstream in codegen or t
   — an `as<IRUndefined>` guard is incomplete; handle both shapes in glsl-legalize's `assign`.
 - **Nested swizzle-of-swizzle vector lvalue** miscompiles from a `.add(count)` (should be
   `.setCount`) plus a by-value lambda output param (should be `auto&`).
+- **A full-coverage texture swizzle store (`t[i].xyzw = v`) is lowered as read-modify-write** —
+  needless load everywhere, false E56006 / hard E55204 on CUDA; fix in `legalizeStore`.
+- **Inherited-field access through a BoundMember/BoundStorage base (#13348) needs `InheritanceDecl`
+  at all three `BoundMemberInfo` consumers** — fixing `materialize` alone is insufficient.
+- **An entry point with a `uniform` param, called by another compiled entry point, segfaults on
+  every target** (open on master; `-entry <caller>` alone works).
 - **`CoerceToProperTypeImpl` has THREE failure representations, not two** — normalize at the wrapper.
 - **"guard A subsumes guard B" is a claim about the FULL consumer set of each** — a `static_assert`
   reachability walk and `isFromCoreModule` cover disjoint consumers; keep both.
@@ -108,6 +116,16 @@ module from an older compiler bakes the decoration into serialized IR). Bonus: `
 if(!x) return false;` is DEAD in Release because `SLANG_ASSERT`→`__builtin_assume` licenses deleting
 the null-check ([entry-point decoration relocation: two seductive-but-wrong companion
 fixes](../learnings/1787615422745-slang-entry-point-decoration-relocation-two-seduct.md)).
+A second entry-point-callsite crash is open and unfiled as of 2026-09-30: compiling an entry point
+that has an entry-point `uniform` parameter together with another entry point that *calls* it
+segfaults (rc 139) on SPIR-V, CUDA and Metal alike —
+`[shader("compute")][numthreads(1,1,1)] void inner(int id : SV_DispatchThreadID, uniform int k)`
+called as `inner(id, 3)` from a second `[shader("compute")] outer`, then `slangc x.slang -target
+spirv-asm`. Compiling only the caller (`-entry outer`) works, and the crash is already on master
+(8d763dd39). The unverified hypothesis is that `moveEntryPointUniformParamsToGlobalScope` strips the
+uniform param from the callee's signature while the caller still passes the argument, and the
+arity mismatch crashes a later pass
+[uniform-param entry point called by another entry point segfaults](../learnings/1790767202448-slang-compiling-a-uniform-param-entry-point-togeth.md).
 
 ## Subsumption, wrappers, and value-shape completeness
 
@@ -119,6 +137,22 @@ validation requires be an integer literal), a consumer the use-site walk structu
 two guards cover disjoint consumer classes; keep both, and let the broad regression suite (not the
 one motivating test) expose a false subsumption ([reachability-from-static_assert does NOT subsume a
 core-module force-inline guard](../learnings/1787658437191-reachability-from-static-assert-does-not-subsume-a.md)).
+
+The same full-consumer-set question decides an inherited-field ICE (#13348). `h.p.baseField`, where
+`p` is a get/set or `ref` property/subscript returning `struct Derived : Base`, crashes lowering with
+E99997 "unexpected member flavor". `emitCastToConcreteSuperTypeRec` (`slang-lower-to-ir.cpp:7330`)
+calls `extractField` with an `InheritanceDecl`, and for a BoundMember/BoundStorage base
+`extractField` defers it into `BoundMemberInfo` (:1153-1167). All THREE consumers of
+`BoundMemberInfo::declRef` accept `VarDecl` but not `InheritanceDecl`: `materialize` (:1263 →
+abort :1278), `tryGetAddress` (:10288, silent fall-through) and `assign` (:10720 → :10741). Fixing
+`materialize` alone is insufficient; a prototype accepting `InheritanceDecl` at all three sites,
+narrowed to struct bases (interface inheritance lowers to a requirement key at :11434), fixes every
+shape. The supported builtin shape `RWStructuredBuffer<Derived> buf; buf[0].baseField` fails too,
+for both read and write; get-only properties and `StructuredBuffer` reads are fine. It is not a
+regression (2025.23.2 fails too). When validating, test with get/set or buffer shapes, because a
+user-written `ref` accessor still emits invalid HLSL/SPIR-V/CPU for the independent #9636. Under
+`-std 2026` user struct→struct inheritance is E30811, but core-module decls are exempt
+[inherited-field access through BoundStorage/BoundMember ICEs at three consumers](../learnings/1790788517757-inherited-field-access-through-boundstorage-boundm.md).
 
 `CoerceToProperTypeImpl` has THREE failure representations, not the two the issue named: null out-param,
 `getErrorType()` (only inside `if(diagSink)`), and `return false` without touching the out-param
@@ -147,8 +181,19 @@ index (should `.setCount`), and the `backpermute` lambda takes its output param 
 `auto&`) — the matrix sibling only worked because its output is a raw C-array that decays to a
 pointer ([nested swizzle-of-swizzle vector lvalue miscompiles (backpermute by-value + add-count
 bug)](../learnings/1787736858261-slang-nested-swizzle-of-swizzle-vector-lvalue-misc.md)).
+Swizzle stores into textures have their own shape gap. `assign()` in `slang-lower-to-ir.cpp`
+emits `swizzledStore` for every swizzle of more than one element, including full-coverage ones
+such as `t[i].xyzw = v` (or `.xy` on a `float2` texel), so `legalizeImageSubscript` lowers them as a
+read-modify-write: a needless image load on every target, a CUDA-only false E56006 warning since
+PR #13363, and a hard CUDA E55204 on a format-converted `[format("rgba8")] RWTexture2D<float4>`
+(no converting read exists) even though `t[i] = v` compiles. The fix belongs in `legalizeStore`:
+when the swizzle indices are a permutation of all of `imageElementType`'s components, emit a plain
+imageStore of the reordered source. `RWBuffer` never reaches CUDA surface emit (capability check
+E36107 rejects it first), and `tests/bugs/gh-4411.slang` (scalar-texel `.x =`) is the canonical
+scalar whole-texel store through `ref`
+[full-coverage swizzle on RWTexture goes through the RMW path](../learnings/1790832459014-full-coverage-swizzle-on-rwtexture-goes-through-th.md).
 
-**Source learnings (13):**
+**Source learnings (16):**
 - [ParseModifiers on a decl whose name can be a bareword keyword breaks previously-valid code](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md) — use bracket-only ParseSquareBracketAttributes; test with a case/field named `point`/`linear`.
 - [ByteAddressBuffer.Load of struct with empty/zero-size field emits Load<void>](../learnings/1787580105549-byteaddressbuffer-load-of-struct-with-empty-zero-s.md) — add a natural-size-0 skip in emitLegalLoad/Store field loops.
 - [getDefaultVal on AssocTypeDecl built an empty IRMakeStruct](../learnings/1787585281811-slang-getdefaultval-on-assoctypedecl-built-an-empt.md) — producer-side emitDefaultConstruct; assert consumer with EXACT ==, not min-bound.
@@ -162,3 +207,6 @@ bug)](../learnings/1787736858261-slang-nested-swizzle-of-swizzle-vector-lvalue-m
 - [CUDA surface stride + format-through-param is compile-time verifiable and structurally documented](../learnings/1787665524776-cuda-surface-stride-format-through-param-is-compil.md) — structural limitation (format not recoverable through IRParam), not a regression.
 - [Partial-init struct return: undef varying store is fieldExtract(load(unpromoted var)), not IRUndefined](../learnings/1787708099936-partial-init-struct-return-undef-varying-store-is-.md) — an as<IRUndefined> guard is incomplete; fix in glsl-legalize assign, handle both shapes.
 - [Slang nested swizzle-of-swizzle vector lvalue miscompiles](../learnings/1787736858261-slang-nested-swizzle-of-swizzle-vector-lvalue-misc.md) — .add(count) should be .setCount; backpermute output param must be auto&.
+- [Uniform-param entry point compiled with an entry point that calls it segfaults (all targets)](../learnings/1790767202448-slang-compiling-a-uniform-param-entry-point-togeth.md) — rc 139 on spirv/cuda/metal; `-entry outer` alone works; hypothesis: `moveEntryPointUniformParamsToGlobalScope` arity mismatch.
+- [Inherited-field access through BoundStorage/BoundMember ICEs at three VarDecl-only consumers (#13348)](../learnings/1790788517757-inherited-field-access-through-boundstorage-boundm.md) — materialize/tryGetAddress/assign all need `InheritanceDecl` (struct bases only); `buf[0].baseField` fails too; `ref` accessors confounded by #9636.
+- [Full-coverage swizzle on RWTexture goes through the RMW path (false E56006 / E55204 on CUDA)](../learnings/1790832459014-full-coverage-swizzle-on-rwtexture-goes-through-th.md) — fix in `legalizeStore`: a component permutation becomes a plain imageStore.

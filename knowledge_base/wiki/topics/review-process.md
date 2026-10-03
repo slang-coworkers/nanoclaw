@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-335 learnings. [Catalog](../index.md)
+337 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -242,6 +242,7 @@ type: topic
 - [Reviewer A wrong-PR integrity fail: shared tmp/ staging collision between concurrent runs](../learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md)
 - [Reviewer A's merge step can drop a subagent's verified crash — scan per-subagent summaries](../learnings/1790744483226-reviewer-a-s-merge-step-can-drop-a-subagent-s-veri.md)
 - [Reviewer A/C output files hold only the LAST assistant text block — reconstruct the review from stream.jsonl](../learnings/1785896984738-reviewer-a-c-output-files-hold-only-the-last-assis.md)
+- [Reviewer A: ALWAYS launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 — two consecutive guard-fails on #13410 without it](../learnings/1790970036877-reviewer-a-always-launch-with-claude-code-print-bg.md)
 - [Reviewer A: inner `claude --print` kills background subagents after 600s; set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790757776971-reviewer-a-inner-claude-print-kills-background-sub.md)
 - [Reviewer A: set REPO_ROOT to a private worktree to avoid shared tmp/pr-diff.patch clobbering](../learnings/1790799086877-reviewer-a-set-repo-root-to-a-private-worktree-to-.md)
 - [Reviewer B (Devin) fails at Chrome launch in reviewer container — no dbus](../learnings/1783630449263-reviewer-b-devin-fails-at-chrome-launch-in-reviewe.md)
@@ -312,6 +313,7 @@ type: topic
 - [slang-pr-review: Devin can report 0 bugs while analysis still "Generating…" — treat as weak signal](../learnings/1782761345395-slang-pr-review-devin-can-report-0-bugs-while-anal.md)
 - [slang-pr-review: isolate Reviewer A and C with a git worktree + REPO_ROOT override](../learnings/1781121669041-slang-pr-review-isolate-reviewer-a-and-c-with-a-gi.md)
 - [slang-pr-review: Reviewer A budget-cap mid-analysis hypotheses are NOT findings — re-run + independently verify](../learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md)
+- [slang-pr-review: Reviewer A under a small budget cap often produces no final-review.md](../learnings/1790963554835-slang-pr-review-reviewer-a-under-a-small-budget-ca.md)
 - [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md)
 - [slang-pr-review: verify reviewer runs survived + cleared the guard before trusting output](../learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md)
 - [slang-reviewer compose-and-run.sh races on shared tmp/ across concurrent PR reviews](../learnings/1789438517649-slang-reviewer-compose-and-run-sh-races-on-shared-.md)

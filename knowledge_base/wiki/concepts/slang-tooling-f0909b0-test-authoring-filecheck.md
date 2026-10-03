@@ -3,8 +3,10 @@ title: "Slang test authoring: FileCheck efficacy, ignored targets, and confounde
 type: concept
 group: slang-tooling
 tags: [slang-test, filecheck, testing, cuda, metal, target-switch, gpu-less, test-efficacy]
-source_count: 20
+source_count: 24
 ---
+
+# Slang test authoring: FileCheck efficacy, ignored targets, and confounded lanes
 
 ## TL;DR
 
@@ -34,7 +36,8 @@ The recurring theme is **test efficacy**: a green test in a GPU-less container r
   `warning[E41012]`) fires — add it only when a real extra exists.
 - **Never name a custom `filecheck=` prefix with a reserved suffix** (`-EMPTY`/`-NEXT`/`-SAME`/
   `-NOT`/`-DAG`/`-LABEL`/`-COUNT`) — `CHECK` reinterprets `CHECK-EMPTY:`; use `CHECK-ZERO`.
-- **`filecheck=CHECK,WGSL` activates ONLY `CHECK`** — slang-test hands FileCheck one prefix, so every `WGSL:` line is dead (garbage there still passes). Use one prefix per `//TEST` directive; a newly-live `METAL: [[kernel]]` must be escaped `{{\[\[}}kernel{{\]\]}}`.
+- **`filecheck=CHECK,WGSL` activates ONLY `CHECK`** — commas inside `(...)` separate options, so `WGSL` is a dead bare key and every `WGSL:` line is skipped (garbage there still passes; 4 master tests, #13359). Use one prefix per `//TEST` directive; a repeated key (`filecheck=A,filecheck=B`) crashes slang-test; a newly-live `METAL: [[kernel]]` must be escaped `{{\[\[}}kernel{{\]\]}}`.
+- **A lone `CHECK: 0` over a multi-slot `COMPARE_COMPUTE` buffer matches any unwritten zero slot** — size the buffer to what you write or pin slot 0 with `CHECK: type: int32_t` + `CHECK-NEXT:`.
 - **SIMPLE+FileCheck ignores the compiler's exit code**, so a loose `{{.*}}` regex can match the source line quoted in an error diagnostic (`tests/glsl/matrix-mul.slang`'s METAL lane has never compiled).
 - **Don't pin incidental output that is another open PR's bug** — split a one-line full-signature CHECK into `CHECK: void f(` + one `CHECK-SAME:` per param, and run the test against that PR's diff.
 - **`COMPARE_COMPUTE(-shaderobj)` loads the file as a module**, so a source-language-gated
@@ -139,6 +142,15 @@ anyway: `{{.*}}m1{{.*}}*{{.*}}m2{{.*}}*{{.*}}a_position{{.*}}` matches the sourc
 E36107 diagnostic quotes, and slang-test's SIMPLE+FileCheck ignores the compiler's exit code.
 Don't count such a lane as coverage; anchor on tokens only real output can contain
 [matrix-mul METAL lane is vacuous](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md).
+**An unanchored value check can match an unwritten slot.** `-output-using-type` prints every slot
+of a `COMPARE_COMPUTE` output buffer, so a test that declares `data=[0 0 0 0]` but writes only slot
+0 lets a lone `// CHECK: 0` match any untouched zero slot — it cannot tell 0 from 2 in slot 0.
+`docs/generated/tests/design/ir-reference/misc/is-vector-folds-false.slang` has exactly this shape
+and still passes after the #13357 fix changed its value to 2. Size the buffer to the slots you
+write, or pin the first slot with `CHECK: type: int32_t` followed by `CHECK-NEXT: <value>`. When a
+reviewer claims a behaviour change "will break" such a test, run it first
+(`slang-test -test-dir docs/generated/tests <file>`)
+[a lone CHECK: 0 over a multi-slot buffer is vacuous](../learnings/1790799624727-a-lone-check-0-over-a-multi-slot-compare-compute-b.md).
 **A full-line CHECK can pin another open PR's bug.** On #13328 (combined-sampler classifier fix)
 a new test checked the whole Metal kernel signature on one line, which also pinned the missing
 `[[texture(n)]]` on resource arrays that open PR #12294 fixes. Applying only #12294's
@@ -269,22 +281,43 @@ This hides locally because `SIMPLE(filecheck=...)` directives are silently IGNOR
 when slang-llvm/FileCheck is unavailable, and early `wait-for-human-priority` CI yields never run
 test-slang — so "CI was green before" is not evidence if the prior runs were priority-yields.
 
-**A comma list in `filecheck=` does not add prefixes.** slang-test splits a directive's option
-list on `,` (`tools/slang-test/slang-test-main.cpp` ~:367), `getFileCheckPrefix` reads only the
-`filecheck` key, and `slang-llvm-filecheck.cpp:92` passes exactly one prefix. So in
-`//TEST:SIMPLE(filecheck=CHECK,WGSL):` every `// WGSL:` line is ignored. On #13356, garbage in
-every `WGSL:`/`METAL:`/`GLSL:` line still passed 3/3, while breaking one `CHECK:` line failed.
-That overturns the same PR's earlier reading that the form shares `CHECK` lines across targets
-and adds a per-target second prefix [earlier comma-prefix reading](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md).
-Use one prefix per `//TEST` directive. Activating the dead lines surfaces two latent traps:
+**slang-test supports exactly one FileCheck prefix per `//TEST` directive; a comma list does not
+add prefixes.** The text inside a directive's parentheses is split on every `,` into separate
+options (`_parseCommandArguments`, `tools/slang-test/slang-test-main.cpp` :346/:367), so
+`//TEST:SIMPLE(filecheck=CHECK,WGSL):` becomes `filecheck=CHECK` plus a valueless option `WGSL`
+that nothing reads. `getFileCheckPrefix` (:96) reads only the `filecheck` key, and
+`slang-llvm-filecheck.cpp:92` passes one prefix (`fcReq.CheckPrefixes = {fileCheckPrefix};`), so
+every `// WGSL:` line is silently dead and the test passes even when those lines are false. On
+#13356, garbage in every `WGSL:`/`METAL:`/`GLSL:` line still passed 3/3, while breaking one `CHECK:`
+line failed; the minimal proof drill is `filecheck=CHECK,EXTRA` with a false `EXTRA:` line
+(passes) against `filecheck=EXTRA` (fails). The legitimate comma use is two *different* options,
+e.g. `filecheck=CHECK,diag=diag`. For lines shared across targets, write a separate
+`filecheck=CHECK` directive per target. Four tests on master use the broken form and are silently
+affected — `tests/spirv/debug-matrix-layout.slang`, `tests/spirv/optional-vertex-output.slang`,
+`tests/bugs/gh-11021-dxil-default-profile.slang`,
+`tests/vkray/empty-payload-glsl-noinline-helper-chain.slang` — tracked in shader-slang/slang#13359;
+`git blame` dates the splitting to #2747 (2023), while `git log -L` gave misleading history for
+those lines. The wrong reading ("the form shares `CHECK` lines and adds a per-target second
+prefix") came from treating "an existing test uses the syntax" as proof it works; presence is not a
+mechanism, so read the parser. Activating the dead lines surfaces two latent traps:
 `// METAL: [[kernel]]` parses as a FileCheck variable (`undefined variable: kernel`; escape it as
 `{{\[\[}}kernel{{\]\]}}`), and prose such as `// ... only on GLSL: WGSL and Metal ...` becomes a
-`GLSL:` directive. Existing users of the comma form reportedly include
-`tests/spirv/debug-matrix-layout.slang`, `tests/spirv/optional-vertex-output.slang`,
-`tests/bugs/gh-11021-dxil-default-profile.slang` and
-`tests/vkray/empty-payload-glsl-noinline-helper-chain.slang` (not individually re-verified).
-When reviewing a `filecheck=X,Y` test, run the mutation drill
-[comma prefixes are dead](../learnings/1790799835281-slang-test-filecheck-check-wgsl-silently-activates.md).
+`GLSL:` directive. When reviewing a `filecheck=X,Y` test, run the mutation drill
+[comma prefixes are dead](../learnings/1790799835281-slang-test-filecheck-check-wgsl-silently-activates.md),
+[CORRECTION: one prefix per directive](../learnings/1790800525677-correction-slang-test-does-not-support-multiple-fi.md),
+[commas separate options](../learnings/1790805124373-slang-test-commas-inside-separate-options-so-filec.md).
+
+Two facts constrain a real multi-prefix fix for #13359. A repeated option key is not a workaround:
+slang-test stores `//TEST(...)` options in a `Dictionary` via `Dictionary::add`, which asserts on a
+duplicate key, so `filecheck=CHECK,filecheck=EXTRA` terminates slang-test with an uncaught
+`Slang::InternalError` in Release as well as Debug. And when several prefixes are passed to
+in-process LLVM FileCheck, the unused-prefix guard ("no check strings found with prefix 'X:'") comes
+free — it runs in the library's `FileCheck::readCheckFile`, and `FileCheckRequest::AllowUnusedPrefixes`
+defaults to false (llvmorg-21.1.2 and main) — but `FileCheck::ValidateCheckPrefixes()` (rejects empty,
+non-`^[a-zA-Z0-9_-]*$` and duplicate prefixes) is called only by the FileCheck tool's `main`
+(`llvm/utils/FileCheck/FileCheck.cpp` ~:1162), so an embedder like slang-llvm must call it itself.
+In the CLI, `--check-prefix` is an alias of the comma-separated `--check-prefixes`
+[unused-prefix error lives in readCheckFile](../learnings/1790817962233-llvm-filecheck-unused-prefix-error-lives-in-readch.md).
 
 **`COMPARE_COMPUTE(-shaderobj)` can't verify a source-dialect-gated conversion.** When a feature is
 gated on the translation unit's source language (e.g.
@@ -304,7 +337,7 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 `error 1004: unknown command-line option '-stage'`
 [COMPARE_COMPUTE module-load defeats a source-dialect gate](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md).
 
-**Source learnings (20):**
+**Source learnings (24):**
 - [slang-test harness instrument traps: FAILED-vs-failed, priority-yield red, formatting file-list asymmetry](../learnings/1786405416356-slang-test-harness-instrument-traps-failed-vs-fail.md) — Uppercase `FAILED test:`; exit-0-on-nothing gate; `-explicit-test-order` mandatory; priority-yield red-by-design; plus `git log %B` and `REQUIRED_BY` CMake bonuses.
 - [NVAPI HitObject transform getters (#9257) — textual ABI test masks the DXC-only bug](../learnings/1787226505940-nvapi-hitobject-transform-getters-9257-textual-abi.md) — `//CHECK: .GetX` proves emit, not API membership; only DXC catches it; PR #12089 re-gates but keeps the broken mapping; static_assert on the NVAPI arm.
 - [slang-test bare -target hlsl SIMPLE tests are "ignored" in GPU-less env; unit-test ninja target](../learnings/1787342748842-slang-test-bare-target-hlsl-simple-tests-are-ignor.md) — HLSL/DXC filtered to 0/0; write CPU-compute or `slangi` positive tests; `libslang-unit-test-tool.so`; ninja aborts whole build on one bad target.
@@ -325,3 +358,7 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 - [A full-signature Metal CHECK can pin another open PR's bug — split into CHECK + CHECK-SAME per param and drill it against that PR's diff (#13328 vs #12294)](../learnings/1790712737290-a-full-signature-metal-check-can-pin-another-open-.md)
 - [tests/glsl/matrix-mul.slang METAL lane is vacuous: its regex matches the E36107 diagnostic's quoted source; SIMPLE+FileCheck ignores exit code](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md)
 - [`filecheck=CHECK,WGSL` activates only CHECK — extra comma prefixes are dead; `[[kernel]]` needs escaping once activated (#13356)](../learnings/1790799835281-slang-test-filecheck-check-wgsl-silently-activates.md)
+- [CORRECTION: slang-test does not support multiple FileCheck prefixes](../learnings/1790800525677-correction-slang-test-does-not-support-multiple-fi.md) — corrects the "several prefixes per directive" reading; one prefix per `//TEST`; names the 4 affected tests; presence is not a mechanism.
+- [slang-test: commas inside `(...)` separate options](../learnings/1790805124373-slang-test-commas-inside-separate-options-so-filec.md) — `_parseCommandArguments` split; `filecheck=CHECK,EXTRA` proof drill; legit `filecheck=CHECK,diag=diag`; #13359; behaviour dates from #2747.
+- [LLVM FileCheck: unused-prefix error lives in readCheckFile, prefix validation only in the tool](../learnings/1790817962233-llvm-filecheck-unused-prefix-error-lives-in-readch.md) — `AllowUnusedPrefixes` defaults false; embedders must call `ValidateCheckPrefixes()`; a repeated slang-test option key asserts in `Dictionary::add`.
+- [A lone `CHECK: 0` over a multi-slot COMPARE_COMPUTE buffer passes vacuously](../learnings/1790799624727-a-lone-check-0-over-a-multi-slot-compare-compute-b.md) — unwritten zero slots match; size the buffer or pin with `CHECK: type: int32_t` + `CHECK-NEXT:`.

@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-551 learnings. [Catalog](../index.md)
+553 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -340,6 +340,7 @@ type: topic
 - [E36110/E36108 false positive: public interface impl calling portable stdlib fn inherits its full cross-target [require]](../learnings/1787690962502-e36110-e36108-false-positive-public-interface-impl.md)
 - [E38052 VS-missing-SV_Position is an intentional heuristic false-positive (VS→GS is known-legit)](../learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md)
 - [E41035 must-init false positive on WaveIsFirstLane-guarded out-param store](../learnings/1786747082828-e41035-must-init-false-positive-on-waveisfirstlane.md)
+- [E41035 must-init walk is path-insensitive: same-condition if/if pairs false-positive](../learnings/1790993123820-e41035-must-init-walk-is-path-insensitive-same-con.md)
 - [Edit-in-place when you were last commenter; persist parent ownership-claims to tracker](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Empty stdout AND stderr with a nonzero result code is a signature, not an absence of evidence](../learnings/1786195062200-empty-stdout-and-stderr-with-a-nonzero-result-code.md)
@@ -408,6 +409,7 @@ type: topic
 - [Only the passing cases locate a trigger — four wrong characterizations of one guard, all from denial-only evidence](../learnings/1785782647584-only-the-passing-cases-locate-a-trigger-four-wrong.md)
 - [Over-claims have three origins, not one — compression, recall, and uncontrolled instruments; and the second error arrives while correcting the first](../learnings/1785831112646-over-claims-have-three-origins-not-one-compression.md)
 - [Partition a count by the mechanism before using it as evidence for a fix](../learnings/1786351744859-partition-a-count-by-the-mechanism-before-using-it.md)
+- [Path-set cycle guards in recursive type walks can be exponential — probe with a complete pointer graph](../learnings/1790981687370-path-set-cycle-guards-in-recursive-type-walks-can-.md)
 - [Perf regression bisected to a fix ≠ the fix's logic is the cost (byte-compare serialized artifacts to distinguish semantic vs LTO-layout)](../learnings/1783349482128-perf-regression-bisected-to-a-fix-the-fix-s-logic-.md)
 - [pgrep -f in a guard self-matches the shell asking the question — verified fix is pgrep on the exe name; the [b]racket trick does NOT transfer from grep](../learnings/1786038259966-pgrep-f-in-a-guard-self-matches-the-shell-asking-t.md)
 - [Phase-ordering fixes: the shared consumer (choke point) often beats the producer; and verify "regressions" against baseline](../learnings/1789483453715-phase-ordering-fixes-the-shared-consumer-choke-poi.md)

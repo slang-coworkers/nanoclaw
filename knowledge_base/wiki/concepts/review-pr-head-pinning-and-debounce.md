@@ -3,12 +3,10 @@ title: "Head-Pinning, Debounce & Byte-Proving Under Live Head Churn"
 type: concept
 group: review-process
 tags: [pr-approver, head-pinning, debounce, byte-proving, synchronize, master-merge, codegen-inert, patch-mode, force-push, freshness]
-source_count: 24
+source_count: 25
 ---
 
 # Head-Pinning, Debounce & Byte-Proving Under Live Head Churn
-
-Deciding against the *right* commit when a PR head keeps moving. The single most recurring approver failure is deciding on a stale SHA — this page is the discipline that prevents it: pin the settled head, re-pin it after every slow phase and at both critique stages, debounce force-push bursts, and byte-prove that a frozen review still covers a moved head. Reading the *review signal* under the same churn (the late-post race, re-harvesting at record time) lives in [harvest tiers & verdict reporting](review-pr-harvest-tiers-and-verdict-reporting.md); the decision framework itself lives in [approver decision & shadow-mode](review-pr-approver-decision-and-shadow-mode.md).
 
 ## TL;DR
 - **The subject of a decision is the compiled behavior, not a commit SHA.** Pin the settled head, then re-pin it — after the slow harvest/Devin phase AND at both critique stages (DECISION_REVIEW and OUTPUT_REVIEW). A stale pin is a guaranteed must-fix.
@@ -21,6 +19,11 @@ Deciding against the *right* commit when a PR head keeps moving. The single most
 - **A pure master-merge synchronize does NOT close a held coverage gap** — re-decide from the PR's own diff, not a maintainer's approve.
 - **A single `gh pr view --json changedFiles` read within seconds of a synchronize can be transient.** Read scope 2–3× back-to-back; scope *shrinkage* is the direction that produces false-safes.
 - **On a remediation revision, direct source verification is the load-bearing signal** — a source-verified fix cannot be flipped by a STALE Devin 🔴.
+- **Freshness binds the base too: re-check every appended public-enum value and stable-name ID against CURRENT `origin/master` each round**, not the PR base. A slot that was free at the base can be taken by a later merge, which makes the PR CONFLICTING and, after a rebase, a duplicate key.
+
+## Overview
+
+Deciding against the *right* commit when a PR head keeps moving. The single most recurring approver failure is deciding on a stale SHA — this page is the discipline that prevents it: pin the settled head, re-pin it after every slow phase and at both critique stages, debounce force-push bursts, and byte-prove that a frozen review still covers a moved head. Reading the *review signal* under the same churn (the late-post race, re-harvesting at record time) lives in [harvest tiers & verdict reporting](review-pr-harvest-tiers-and-verdict-reporting.md); the decision framework itself lives in [approver decision & shadow-mode](review-pr-approver-decision-and-shadow-mode.md).
 
 ## Pin the settled head — and re-pin it
 
@@ -54,8 +57,11 @@ On a revision (`synchronize`) of a PR you previously BLOCKed, never trust "autho
 
 The dual freshness hazard: on a remediation revision, a STALE Devin snapshot re-flags the already-fixed finding and can drive a *false BLOCK* on the correct fix. Tells: line-number drift vs the new head, the narrative omitting the revision's headline change, `devin-commit-status.txt` reading "unknown" (not a positive "up to date"). Cross-check the finding's cited `file:line` against source at the pinned head; when stale, clear the browser profile and re-run, preserving the stale attempt for the audit trail. Direct source verification is the load-bearing signal on a remediation turn — Devin is corroboration, so a source-verified fix cannot be flipped by a stale 🔴 ([on a remediation revision, a STALE Devin snapshot re-flags the already-fixed finding — verify freshness or it drives a false BLOCK](../learnings/1783884242462-approver-challenger-miss-on-a-remediation-revision.md)).
 
-**Source learnings (24):**
+Freshness also runs against the base, not just the head. On slang#13300 R2 the PR appended `CompilerOptionName::LayoutRulesVersion = 160`, which was correct at the PR's base, but master had since merged #13297 `BitfieldPackingRules = 160` (`include/slang.h`), making the PR CONFLICTING. Kept as-is through a rebase, the two options would share a `CompilerOptionSet` key and produce duplicate case labels. Each review round should run `git show origin/master:include/slang.h | grep -n "= <N>"` for every appended public-enum value, and do the same for IDs in `slang-ir-insts-stable-names.lua`; this is the review-side form of the diagnostic-code collision in [CI Build Tooling](../concepts/ci-build-tooling.md). The same round showed why a code-read prediction about behavior needs a probe before it becomes a finding: the prediction that varyings get reshaped under `-layout-rules-version 202c` did not reproduce, since SPIR-V varyings with matrices only change type name (`_logicalnatural` → `_logicalscalar_rounded`) and struct varyings compile byte-identical ([verify a public-enum slot against current master on every review round](../learnings/1790765617137-verify-public-enum-slot-against-current-master-on-.md)).
 
+**Source learnings (25):**
+
+- [verify a public-enum slot against CURRENT master on every review round, not just the PR base](../learnings/1790765617137-verify-public-enum-slot-against-current-master-on-.md) — slang#13300 R2: `LayoutRulesVersion = 160` collided with master's `BitfieldPackingRules = 160`; grep origin/master for appended values and stable-name IDs; probe 202c varying predictions before escalating.
 - [pin a moving PR head with patch mode, not pr mode](../learnings/1783681496336-pin-a-moving-pr-head-with-patch-mode-not-pr-mode.md) — patch mode freezes diff_hash; pr mode silently rebinds to the live tip.
 - [re-pin live head at BOTH critique stages, not just at build time](../learnings/1784037974102-approver-critique-mustfix-re-pin-live-head-at-both.md) — codex gate re-verifies headRefOid at DECISION_REVIEW and OUTPUT_REVIEW.
 - [re-pin head AFTER slow harvest/Devin, not just at debounce start](../learnings/1783930401148-approver-critique-mustfix-re-pin-head-after-slow-h.md) — the head can advance during the slow phase.

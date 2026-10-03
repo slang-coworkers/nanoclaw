@@ -3,8 +3,10 @@ title: /slang-pr-review pipeline operations (dispatch, run-dir, budget, env, int
 type: concept
 group: review-process
 tags: [slang-pr-review, reviewer-a, reviewer-b, reviewer-c, background-dispatch, monitor, run-dir, integrity-fail, max-budget-usd, onecli, drift-check, slang-rhi]
-source_count: 10
+source_count: 11
 ---
+
+# /slang-pr-review pipeline operations (dispatch, run-dir, budget, env, integrity, drift)
 
 ## TL;DR
 
@@ -21,8 +23,10 @@ of recurring operational traps:
   too short for ~30-min reviewers). `pgrep -f`/`pkill -f` are blocked by a guard hook —
   use `ps -eo args | grep`, and keep grep patterns in a script file so the watcher's own
   argv doesn't self-match.
-- **`run-clarity.sh` often lacks the exec bit** (`Permission denied` under `nohup`) —
-  launch it as `bash run-clarity.sh …`. A/B scripts are already +x.
+- **Any runner script may lack the exec bit** — `run-clarity.sh` most often, but on
+  2026-09-30 `compose-and-run.sh` and `devin-fetch.sh` did too (exit 126 `Permission
+  denied`). Launch every one as `bash <script> …`, and read each reviewer log for the real
+  exit code: a "completed (exit 0)" seconds after dispatch means the script never ran.
 - **Reviewer A `--max-budget-usd` must be ≥ 20.** The cap covers the whole run (orchestrator
   + ~5 subagents + synthesis); even a tiny PR costs ~$14, and a cap of 12 aborts AFTER the
   subagents finish but BEFORE `final-review.md` is written — a 0-byte review + misleading
@@ -58,6 +62,13 @@ The third recording (PR #12899) adds two specifics: `run-clarity.sh` is not exec
 patterns must live in a script file so the watcher's own argv doesn't self-match, since
 `pgrep -f`/`pkill -f` are guard-blocked
 [Dispatching /slang-pr-review reviewers in background: two gotchas](../learnings/1788446192623-dispatching-slang-pr-review-reviewers-in-backgroun.md).
+The exec-bit loss is not specific to Reviewer C. On 2026-09-30 `compose-and-run.sh`,
+`devin-fetch.sh` and `run-clarity.sh` under `/home/node/.claude/skills/*/scripts/` all failed
+immediately with exit 126, and the background dispatch hid it because the wrapper's
+`echo "exit=$?"` itself returned 0. So invoke all three as `bash <script> …`, and judge a run by
+each reviewer log's own exit code rather than the background task's status; a
+"completed (exit 0)" notification within seconds of dispatch is the tell that nothing ran
+[runner scripts may lack the exec bit; invoke them with bash](../learnings/1790799233577-slang-pr-review-runner-clarity-runner-scripts-may-.md).
 
 ## Run-dir selection, integrity, budget, and drift
 
@@ -125,11 +136,12 @@ the pre-`final-review.md` abort on a larger diff. And on a fixer PEER-REVIEW han
 slang-rhi is also typically App-write-limited, so `post-back.sh` would 403→exit 3
 [running /slang-pr-review on a non-compiler repo (slang-rhi)](../learnings/1789377211919-running-slang-pr-review-on-a-non-compiler-repo-sla.md).
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [Reviewer run-dir selection: never pick by mtime when reviews share transcripts](../learnings/1788160503888-reviewer-run-dir-selection-never-pick-by-mtime-whe.md) — pick by RUN_DIR from task .output or PR/head-SHA in dir name; INTEGRITY-FAIL.txt is a hard stop.
 - [Dispatching background reviewers: nohup & inside run_in_background double-backgrounds](../learnings/1788203787495-dispatching-background-reviewers-nohup-inside-run-.md) — run scripts directly or arm a Monitor kill-0 waiter; guard hook blocks pgrep -f.
 - [Devin Review is static-only; and don't double-background reviewer dispatch](../learnings/1788341384825-devin-review-is-static-only-and-don-t-double-backg.md) — Devin never builds/runs; CI is the only oracle for arch-dependent runtime bugs; PID-wait monitor.
 - [Dispatching /slang-pr-review reviewers in background: two gotchas](../learnings/1788446192623-dispatching-slang-pr-review-reviewers-in-backgroun.md) — run-clarity.sh lacks exec bit (use `bash`); keep waiter grep patterns in a script file.
+- [slang-pr-review-runner / clarity-runner scripts may lack the exec bit; invoke them with bash](../learnings/1790799233577-slang-pr-review-runner-clarity-runner-scripts-may-.md) — 2026-09-30: compose-and-run.sh, devin-fetch.sh and run-clarity.sh all exit 126; a wrapper `echo exit=$?` reports 0; check each reviewer log's exit code.
 - [gh via OneCLI app_not_connected blocks Reviewers A & C (curl still works)](../learnings/1788378606664-slang-pr-review-pipeline-gh-via-onecli-app-not-con.md) — escalate the env blocker, run B best-effort, deliver a PARTIAL review + RESUME.md; don't fake A/C.
 - [/slang-pr-review runs cleanly against slang-rhi in pr mode](../learnings/1788477201526-slang-pr-review-runs-cleanly-against-slang-rhi-and.md) — A/C take --repo and fetch that repo's diff; App token authorizes reads despite the auth-status warning.
 - [Running /slang-pr-review on a non-compiler repo (slang-rhi)](../learnings/1789377211919-running-slang-pr-review-on-a-non-compiler-repo-sla.md) — diff-based (`--repo` enough); local Reads fail so ground claims against the fetched PR head, not the stale mount; Devin passes fast (read Bugs/Flags, not "AI Analysis"); cap A/C for budget but mind the ≥$20 floor; no `<github-post-authorized />` → `send_file` only.

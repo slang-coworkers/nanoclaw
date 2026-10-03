@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-789 learnings. [Catalog](../index.md)
+792 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -137,6 +137,7 @@ type: topic
 - [A triage checkpoint SHA can be stale within minutes on an active draft PR — diff checkpoint→head before fixing](../learnings/1787669533760-a-triage-checkpoint-sha-can-be-stale-within-minute.md)
 - [A true conclusion launders its mechanism — publish what you isolated, hold what you merely observed](../learnings/1785892607600-a-true-conclusion-launders-its-mechanism-publish-w.md)
 - [A vendor status page is a LAGGING indicator — measure the queue, stratified by the class you gate on](../learnings/1786042035800-a-vendor-status-page-is-a-lagging-indicator-measur.md)
+- [A webhook comment body is a snapshot; re-fetch the live comment before relaying a maintainer's words](../learnings/1790963122988-a-webhook-comment-body-is-a-snapshot-re-fetch-the-.md)
 - [A webhook payload is a snapshot: read state before triaging, and recover a replaced body via GraphQL userContentEdits](../learnings/1786393129422-a-webhook-payload-is-a-snapshot-read-state-before-.md)
 - [A worktree claim written only by sessions that PROCEED leaves the collision hole open — and CHANGES_REQUESTED is sticky, pinned to a commit](../learnings/1785869498997-a-worktree-claim-written-only-by-sessions-that-pro.md)
 - [A wrong mechanism riding a right conclusion draws no pushback from outcomes](../learnings/1785826139100-a-wrong-mechanism-riding-a-right-conclusion-draws-.md)
@@ -580,6 +581,7 @@ type: topic
 - [Re-check the newest issue comment immediately before posting — a peer bot session shares your GitHub identity](../learnings/1790198726943-re-check-the-newest-issue-comment-immediately-befo.md)
 - [Re-derive maintainer scope directives from the primary GitHub comment — webhook bodies truncate, and never ADD scope you inferred](../learnings/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md)
 - [Re-read the authoritative hold surface at a gated action — a stale always-loaded rule beats a fresh not-loaded hold](../learnings/1786467632283-re-read-the-authoritative-hold-surface-at-a-gated-.md)
+- [Re-run ls-remote right before citing a branch author's WIP — it can be force-pushed mid-triage](../learnings/1790952109142-re-run-ls-remote-right-before-citing-a-branch-auth.md)
 - [RE-SCOPED, HIGH SEVERITY: ncl `--flag=value` is SILENTLY ignored on every verb but `tasks list` — returns full unfiltered data at exit 0](../learnings/1786243601219-re-scoped-high-severity-ncl-flag-value-is-silently.md)
 - [Re-triage close-check: verify the fix empirically at ToT, recommend close but defer the button to the maintainer](../learnings/1789159453847-re-triage-close-check-verify-the-fix-empirically-a.md)
 - [Re-triage: rescan live cross-ref timeline for newer maintainer PRs touching the issue's files](../learnings/1781713625746-re-triage-rescan-live-cross-ref-timeline-for-newer.md)
@@ -654,6 +656,7 @@ type: topic
 - [Slang verify gotchas: slang-test crashes at startup in-container; codex revert-without-rebuild false positive](../learnings/1782819445679-slang-verify-gotchas-slang-test-crashes-at-startup.md)
 - [slang#12032 Windows CI crash-dump: routes via ci-slang-test.yml, not the Linux container path](../learnings/1783637017715-slang-12032-windows-ci-crash-dump-routes-via-ci-sl.md)
 - [slang-fixer can push fix/ branches direct to origin (fork-only rule does not apply)](../learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md)
+- [slang-fixer sessions cannot message sibling slang-fixer sessions; Main must relay pinned](../learnings/1790970879464-slang-fixer-sessions-cannot-message-sibling-slang-.md)
 - [slang-fixer: [Fix Report] gate needs in_reply_to; [Fix Status] doesn't; Falcor approval-gate CI failures are cosmetic](../learnings/1789475921872-slang-fixer-fix-report-gate-needs-in-reply-to-fix-.md)
 - [slang-mcp's Discord Gateway connection is LAZY — init_discord_client() only fires when a Discord tool is invoked. After slang-mcp respawn, no live MESSAGE_CREATE events flow until first tool call.](../learnings/legoop-project_slang_mcp_gateway_lazy.md)
 - [slang-triager has no deliverable edge to slang-fixer — route triage handoffs through the orchestrator (parent)](../learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-fix.md)

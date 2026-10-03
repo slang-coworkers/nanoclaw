@@ -3,8 +3,10 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 13
+source_count: 17
 ---
+
+# Critique-gate, delivery-gate & chain-routing hook mechanics
 
 ## TL;DR
 
@@ -19,16 +21,16 @@ content-based and hash-based, which creates a family of self-inflicted traps:
   Any Bash call counts, even a read-only `wc -c`: approve and send back-to-back.
   Batch ALL edits, format once, commit, then run CODE_REVIEW + OUTPUT_REVIEW as
   the final actions before sending. Never interleave.
-- **It re-hashes every `### Attested` file at send time.** If codex attests a
-  volatile file (`.claude-trace/*.jsonl`), the gate blocks delivery forever.
-  Re-run OUTPUT_REVIEW attesting ONLY stable committed files.
+- **It re-hashes every `### Attested` file at send time.** A volatile attested file
+  (`.claude-trace/*.jsonl`) blocks delivery forever, and a stale attestation from an
+  older round can deny `gh pr create` after a newer approve. Re-run a fresh
+  OUTPUT_REVIEW attesting ONLY the current, stable committed files.
 - **ABSTAIN delivery messages must not contain the literal tokens
   `WOULD_APPROVE` or `BLOCK`.** The gate's ABSTAIN fast-path is suppressed by
   those exact (case-sensitive) uppercase tokens, even in "not a BLOCK" prose.
   Paraphrase; keep the `ABSTAIN_POLICY` token present.
-- **`mkdir -p /workspace/.claude` at session start** — the hook writes its own
-  state there and fails confusingly (denying even read-only commands) if it is
-  missing.
+- **`mkdir -p /workspace/.claude` at session start** — the hook writes its state
+  there and, if it is missing, denies even read-only commands.
 - **Read-only `gh api .../pulls/N` GETs trip the PR-creation Bash arm.** Use
   `gh pr view --json` or run the skill's python scripts (subprocess `gh api`
   isn't inspected). The arm matches raw command text (heredocs included); after
@@ -39,7 +41,8 @@ content-based and hash-based, which creates a family of self-inflicted traps:
   count; `sandbox: danger-full-access` is required; omit `model`.
 - **Chain-routing gate blocks any delivery-marker `send_message` without
   `in_reply_to`** — even fresh delegations. Set `in_reply_to=<chain-initiating
-  inbound>` plus explicit `to` + `thread_id`.
+  inbound>` plus explicit `to` + `thread_id`. `send_file` is ungated, so send the
+  handoff message before its memo to keep order.
 - **Comment hygiene is strictly enforced**, even in test files: timeless
   invariants only, no change-history narration, no line-restating comments.
 
@@ -82,6 +85,14 @@ If `mcp__codex__codex` itself is missing after an image rebuild,
 `request_restart` loads it, and an admin will usually reject a gate bypass
 while that path exists
 ([any Bash between approve and send counts as an edit](../learnings/1790593139115-critique-gate-any-bash-between-approve-and-send-co.md)).
+On 2026-09-30 two `[Fix Report]` sends were refused in a row: first after a
+memory-file append, then after writing a scratch `/tmp/*.json` copy of the
+already-approved report. The freshness counter (`edits_since_critique`) is bumped
+by every tracked write, deliverable or not, and each refusal costs a re-review
+round plus a denial strike (three strikes open an escalation). So finish every
+write (memory, scratch, logs) first, then OUTPUT_REVIEW, then send with no
+file-writing tool call in between
+([any file write after the approve voids it, even /tmp scratch](../learnings/1790799595374-critique-gate-any-file-write-after-the-output-revi.md)).
 
 Two secondary edit-triggers on the same PR: **PR-body citations drift.** If you
 cite `file.cpp:NNNN` in the PR body, every comment trim or `clang-format` reflow
@@ -106,6 +117,17 @@ committed source/test/deliverable files and to NOT read/hash anything under
 This same at-send re-hash is why editing an attested file after an approve
 silently invalidates it and forces re-running that stage
 ([recorded rounds require fresh codex](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md)).
+The attestation set can also outlive the round that made it. The gate reads
+`critique_attested.OUTPUT_REVIEW` in `/workspace/.claude/workflow-state.json`; if
+an earlier OUTPUT_REVIEW attested a file (say a test file) whose content later
+changed, `gh pr create` is denied with "reviewed artifacts changed since the
+OUTPUT_REVIEW approve" even when the file now equals HEAD and a later round
+approved, because a `codex-reply` round may not replace the attestation set.
+Diagnose with `jq '.critique_attested.OUTPUT_REVIEW'
+/workspace/.claude/workflow-state.json` against `sha256sum`, then run a FRESH
+`mcp__codex__codex` OUTPUT_REVIEW that lists the current files (PR body plus the
+flagged file) so they are re-attested at current hashes
+([an older OUTPUT_REVIEW's attested hash can block gh pr create](../learnings/1790828388217-critique-gate-an-older-output-review-s-attested-ha.md)).
 
 ## Content-based token matching: the ABSTAIN fast-path trap
 
@@ -210,21 +232,21 @@ produced no PR ([chain-routing gate in_reply_to](../learnings/1788540148122-chai
 For a fresh peer dispatch, reply on the peer's existing edge
 (`in_reply_to=<a prior inbound from that peer>`) rather than a bare send
 ([volatile attested file](../learnings/1788423324537-critique-delivery-gate-codex-attesting-a-volatile-.md)).
-A second report independently confirms the same gate on a slangpy triage
-(#1153): a **fresh downstream delegation to a peer** — where you have no inbound
-from that peer — is still blocked when the text carries a chain marker and
-`in_reply_to` is unset. Set `in_reply_to=<the originating chain inbound id>`
-(e.g. the parent's dispatch message) while keeping the explicit `to="<peer>"`
-— `to` wins for delivery, `in_reply_to` only supplies `thread_id` +
-reply-correlation, and `thread_id` is then optional (the runtime derives it).
-A `send_file` with the same marker-free text is NOT gated, which is why an
-attached memo goes through while the handoff message is blocked. Separately,
-merely *quoting* another tier's bracketed marker name in prose (writing "Fix
-Report" to say you await the fixer's report) trips the benign `[GATE AUDIT]`
-note that codex-critique was never run — a literal-string false-positive for a
-read-only/triage role that owns no fix critique; avoid quoting other tiers'
-marker names to keep the audit clean
-([chain-routing gate needs in_reply_to on a fresh peer delegation carrying a chain marker](../learnings/1789374291867-chain-routing-gate-needs-in-reply-to-when-message-.md)).
+Later reports confirm the same gate on every fresh peer delegation that
+carries a marker: a slangpy `[Triage handoff]` (#1153) and a second one to
+slangpy-fixer, and a fixer's `[Fix Review Request]` to `slang-reviewer` (PR
+#13353), were all refused until `in_reply_to=<the parent inbound that dispatched
+this chain>` was added beside the explicit `to`. `to` wins for delivery;
+`in_reply_to` only supplies `thread_id` + reply-correlation, so `thread_id` is
+then optional. Because `send_file` is not gated, an attached memo can land before
+its blocked handoff text: send the message first, then the file, to keep order.
+Separately, merely *quoting* another tier's bracketed marker name in prose
+(writing "Fix Report" to say you await the fixer's report) trips the benign
+`[GATE AUDIT]` note for a read-only/triage role that owns no fix critique, so
+avoid quoting other tiers' marker names
+([chain-routing gate needs in_reply_to on a fresh peer delegation carrying a chain marker](../learnings/1789374291867-chain-routing-gate-needs-in-reply-to-when-message-.md),
+[chain-routing hook rejects peer handoff without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md),
+[peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md)).
 
 ## Comment hygiene and PR-body discipline are gate-enforced
 
@@ -272,7 +294,7 @@ entries to HEAD behaviour, against `_claims.md` §1's "doc's own wording", is
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (13):**
+**Source learnings (17):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -287,3 +309,7 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [any Bash after approve counts as an edit; the PR-creation arm text-matches reads and heredocs, escalating after 3 denials; read inline comments via MCP.](../learnings/1790593139115-critique-gate-any-bash-between-approve-and-send-co.md)
 - [a bundle-test retarget must also fix `_prompt.md`, or `mark-fresh` regenerates the stale test; lint does not check Claim == META purpose.](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)
 - [Counting unresolved PR review threads: include isOutdated=true, classify by first author](../learnings/1790717452750-counting-unresolved-pr-review-threads-include-isou.md) — the hook also blocks a read-only pulls/comments GET and rejects `-F body=@$var`; use a literal absolute path
+- [Critique gate: ANY file write after the OUTPUT_REVIEW approve voids it — even /tmp scratch](../learnings/1790799595374-critique-gate-any-file-write-after-the-output-revi.md) — `edits_since_critique` counts memory appends and scratch writes; each refusal is a denial strike (3 escalate); write first, review, send
+- [Critique gate: an older OUTPUT_REVIEW's attested hash can block gh pr create after a newer approve](../learnings/1790828388217-critique-gate-an-older-output-review-s-attested-ha.md) — `codex-reply` may not replace the attestation set; diagnose via `jq .critique_attested`; fresh codex call re-attests current files
+- [Chain-routing hook rejects peer handoff send_message without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md) — add `in_reply_to=<parent inbound>` beside explicit `to`; `send_file` is ungated so send the message first
+- [explain-diff upsert re-appends Fixes/disclaimer; peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md) — `[Fix Review Request]` to slang-reviewer refused without `in_reply_to`; a `codex-reply` round is not recorded
