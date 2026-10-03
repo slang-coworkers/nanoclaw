@@ -882,6 +882,9 @@ describe('[Fix Review Request] must name its maintainer direction (REVIEW_REQUES
       'https://github.com/shader-slang/issues/13073#issuecomment-1',
       'https://github.com/shader-slang/slang/blob/master/README.md#issuecomment-1',
       'https://evil.example/?u=https://github.com/shader-slang/slang/issues/13073#issuecomment-1',
+      'https://evil.example/?u=(https://github.com/shader-slang/slang/issues/13073#issuecomment-1)',
+      'https://github.com/shader-slang/slang/issues/13073#issuecomment-123evil',
+      'https://github.com/shader-slang/slang/issues/13073#issuecomment-123-evil',
     ]) {
       const r = run(send(`${HEAD}\nMaintainer direction: ${url}\nFixer self-check: R1 met`));
       expect(r.status, url).toBe(2);
@@ -928,6 +931,27 @@ describe('[Fix Review Request] must name its maintainer direction (REVIEW_REQUES
     const r = run(send(`${HEAD}\nMaintainer direction: none (there were no maintainer comments`));
     expect(r.status).toBe(2);
     expect(r.stderr).toContain('REVIEW REQUEST INCOMPLETE');
+  });
+
+  it('accepts the link raw, as an <autolink>, as "(url)" after a space, or as a markdown link', () => {
+    for (const dir of [`see (${LINK})`, `<${LINK}>`, `${LINK}.`]) {
+      expect(run(send(`${HEAD}\nMaintainer direction: ${dir}\nFixer self-check: R1 met`)).status, dir).toBe(0);
+    }
+  });
+
+  it('refuses a self-check whose only "R1" is not a standalone item', () => {
+    for (const sc of ['R1foo', 'R1_met', 'see https://x.example/?requirement=R1&status=unknown']) {
+      const r = run(send(`${HEAD}\nMaintainer direction: ${LINK}\nFixer self-check: ${sc}`));
+      expect(r.status, sc).toBe(2);
+      expect(r.stderr, sc).toContain('has no R1, R2… items');
+    }
+    expect(run(send(`${HEAD}\nMaintainer direction: ${LINK}\nFixer self-check: (R1) met`)).status).toBe(0);
+  });
+
+  it('has no line limit on a label value: a link 16 lines down still counts', () => {
+    const context = Array.from({ length: 15 }, (_, i) => `context line ${i + 1}`).join('\n');
+    const r = run(send(`${HEAD}\nMaintainer direction:\n${context}\n${LINK}\nFixer self-check: R1 met`));
+    expect(r.status).toBe(0);
   });
 
   it('REVIEW_REQUEST_GATE=0 turns it off', () => {

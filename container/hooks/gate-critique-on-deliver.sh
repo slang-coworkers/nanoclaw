@@ -419,15 +419,17 @@ fi
 # Carriage returns are stripped first (a CRLF body would otherwise hide the
 # label colons). The two required labels are recognised before anything else,
 # tolerating list bullets and markdown bold; a label's value runs on until the
-# next top-level `Label:` line (at most 15 lines), so links or R-items listed
+# next top-level `Label:` line (no line limit), so links or R-items listed
 # under it count. List items (`- R1: met`, `- Maintainer comment: <url>`) and
 # bare `R<n>:` items never start a new section. `https:` is not a label: a
 # label's colon is followed by a space or EOL.
 # A link counts only as a canonical comment/review URL on github.com:
 # https://github.com/<owner>/<repo>/(issues|pull)/<n>[/…][?query]#issuecomment-…
-# (or #pullrequestreview- / #discussion_r / #issue-), not preceded by other URL
-# characters, so notgithub.com, github.com.evil and links buried in another
-# URL's query do not pass.
+# (or #pullrequestreview- / #discussion_r / #issue-) ending at the number. It
+# must start a token: raw, <autolink>, "(url)" after whitespace, or a markdown
+# [text](url) — never a "(" or "=" inside another URL — so notgithub.com,
+# github.com.evil, a github URL inside another URL's query, and anchors like
+# #issuecomment-123evil do not pass.
 review_request_problem() {
   local body="${1//$'\r'/}"
   awk '
@@ -439,18 +441,18 @@ review_request_problem() {
       item = listed || (low ~ /^r[0-9]+[ \t]*[:.)-]/)
     }
     !hasdir && low ~ /^maintainer direction[ \t]*:/ {
-      hasdir = 1; v = line; sub(/^[^:]*:[ \t]*/, "", v); dir = v; mode = "dir"; n = 0; next
+      hasdir = 1; v = line; sub(/^[^:]*:[ \t]*/, "", v); dir = v; mode = "dir"; next
     }
     !hassc && low ~ /^fixer self-check[ \t]*:/ {
-      hassc = 1; v = line; sub(/^[^:]*:[ \t]*/, "", v); sc = v; mode = "sc"; n = 0; next
+      hassc = 1; v = line; sub(/^[^:]*:[ \t]*/, "", v); sc = v; mode = "sc"; next
     }
-    mode != "" && ((!item && islabel(line)) || n >= 15) { mode = "" }
-    mode == "dir" { dir = dir " " line; n++; next }
-    mode == "sc" { sc = sc " " line; n++; next }
+    mode != "" && !item && islabel(line) { mode = "" }
+    mode == "dir" { dir = dir " " line; next }
+    mode == "sc" { sc = sc " " line; next }
     END {
       if (!hasdir) { print "it has no `Maintainer direction:` line"; exit }
       dl = tolower(dir)
-      if (dl !~ /(^|[ \t(<"])https:\/\/github\.com\/[a-z0-9_.-]+\/[a-z0-9_.-]+\/(issues|pull)\/[0-9]+(\/[a-z]+)*(\?[^ \t)#]*)?#(issuecomment-|pullrequestreview-|discussion_r|issue-)[0-9]+/) {
+      if (dl !~ /(^|[ \t<"]|(^|[ \t])[(]|[]][(])https:\/\/github\.com\/[a-z0-9_.-]+\/[a-z0-9_.-]+\/(issues|pull)\/[0-9]+(\/[a-z]+)*(\?[^ \t)#]*)?#(issuecomment-|pullrequestreview-|discussion_r|issue-)[0-9]+([^a-z0-9_-]|$)/) {
         d = dl; gsub(/`/, "", d); sub(/^[ \t]+/, "", d)
         if (d ~ /^none[ \t]*(—|–|-|:)[ \t]*[^ \t]/) exit
         if (d ~ /^none[ \t]*\([ \t]*[^ \t)][^)]*\)/) exit
@@ -458,7 +460,7 @@ review_request_problem() {
         print "its `Maintainer direction:` neither links a maintainer comment on GitHub (https://github.com/<owner>/<repo>/issues|pull/<n>#issuecomment-…) nor says none with a reason"; exit
       }
       if (!hassc) { print "it cites maintainer comments but has no `Fixer self-check:` line"; exit }
-      if (sc !~ /(^|[^A-Za-z0-9])[Rr][0-9]+([^0-9]|$)/) { print "its `Fixer self-check:` has no R1, R2… items"; exit }
+      if (sc !~ /(^|[ \t(,;|])[Rr][0-9]+($|[ \t:.,;)|-])/) { print "its `Fixer self-check:` has no R1, R2… items"; exit }
     }
   ' <<< "$body"
 }
