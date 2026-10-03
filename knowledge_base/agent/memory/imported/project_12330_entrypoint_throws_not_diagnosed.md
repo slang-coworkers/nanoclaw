@@ -139,3 +139,5 @@ remaining items: refresh the verdict comment `5208479135` with reconciled deltas
 `diagnostics` 726→728) and the rewritten (not appended) justification clause. Open, held out of this chain:
 `try`/`catch` appears broken under `slangi` (`VM operand access out of bounds`) — a 5th throw/catch issue
 needing its own triage. 4th throw/catch chain in ~72h (#12343, #12361, #12362).
+
+Lessons distilled from this chain: [[feedback_an_enumeration_is_not_a_proof_audit_the_quantifier]] (quantifier + the `:1727` refutation) · [[feedback_a_gate_on_one_path_is_not_a_gate_on_the_behaviour]] (caret-note harness claim).

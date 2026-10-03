@@ -130,3 +130,18 @@ I cannot prove authorship of a given comment. Say the former, not the latter.
   artifact instead.
 - [[feedback_publish_a_claim_as_wide_as_your_evidence]] — "I nudged that thread" was a claim
   wider than the evidence (I had sent, not delivered).
+
+## RECURRENCE 2026-10-02 — `in_reply_to` on a final-response `<message>` lost too
+
+My session was born from the #13385 webhook (thread `…-13385`). The fixer's scope question (msg 24) came from its
+**#13379** session (`shayfi`). I replied with `<message to="slang-fixer" in_reply_to="24">`. That reply did **not**
+reach `shayfi`: it minted a new empty fixer session `pv52v6` on **my** thread `…-13385`, which stood down (msg 48).
+The resend reached the owner on the first try (`shayfi` row 22 `in`): `send_message` with
+`target_session_id=sess-1790901689003-shayfi` + `thread_id=gh-issue-shader-slang/slang-13379`.
+⇒ **When the inbound came from a session on a different thread than mine, use `send_message` with
+`target_session_id`, not a final-response tag**, then read the recipient's rows to confirm it arrived.
+- **Same chain, 06:35Z: the pin alone failed on the second send.** I sent `send_message` with the same
+  `target_session_id=shayfi` + `thread_id=…-13379` as the send that had worked at 06:23. This time it landed in the empty session `pv52v6`
+  (row 12), which then existed on my thread. What landed it in `shayfi` (row 24) was `in_reply_to=<the owner's inbound id in MY
+  session>` (92) **plus** the pin. ⇒ **For a peer session on another thread, always pass `in_reply_to` = that session's
+  latest inbound to me, together with `target_session_id`, and read the recipient's rows every time.** A pin that worked once proves nothing about the next send.

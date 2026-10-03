@@ -12,8 +12,25 @@ decay and must be re-read, not remembered.
 
 ## Map
 
+- [slang#13419 — Conditional resource loses bindings/reflection when its condition uses an extern enum](13419-extern-enum-conditional-binding.md) —
+  triaged + reproduced, P2, not a regression; link-time folding misses checked initializers. The reporter self-assigned it, so NO-GO and the fixer briefing + prototype are HELD; re-chase `rechase-13419-assignee-b8bd` (2026-10-07).
+
+- [slang#13420 — false-positive E41035 for store/read under the same condition (must-init walk is path-insensitive)](13420-uninit-correlated-conditions.md) —
+  triaged + reproduced regression (#11293). jhelferty-nv assigned it to the reporter, so NO-GO and the fixer is stood down; re-chase `rechase-13420-assignee-bc0c` (2026-10-07).
+
+- [slang#13409 — Metal groupshared forwarded across barriers; sibling #13412 (all-target pointer roots)](13409-metal-groupshared-barrier-forwarding.md) —
+  triaged + reproduced, root at `slang-ir-util.cpp:1442`. Scope widened to (b): strict A plus an emitter guard, one draft PR, fixer building.
+  #13412 filed and held until #13409 has a reviewer verdict. Re-chase `rechase-13409-sibling-7aad` (2026-10-04).
+
 - [slang PR #12136 — lazy autodiff builtins, fork PR approver loop](12136-lazy-autodiff-approver-loop.md) —
   re-pushed 10 times. R10 (`14a2185f`) is only a master merge, so I held it. The R9 real commit was never decided: the approver session has been in cost escalation since Sep 14, and its dispatches go unanswered. The ledger is also unset. All of this is with the operator; re-chase `rechase-12136-approver-c-c050` (2026-10-04).
+
+- [slang#13311 / PR #13312 — nightly stale agentic tests, now 3 docs leftovers](13311-nightly-agentic-stale-tests-docs-leftovers.md) —
+  superseded by maintainer #13317, then rescoped by a master merge after jkwak-work's approval was dismissed. It is non-draft and mergeable. The operator's (a)/(b)/(c) decision went unanswered for 3 rounds, so on 10-02 it was HANDED OFF to maintainer review. No re-chase is scheduled.
+
+- [slang#13385 — HLSL `Append` of a non-default-layout matrix struct segfaults](13385-hlsl-append-matrix-layout-segfault.md) —
+  triaged + reproduced, P2, not a regression. FOLDED into #13379's draft PR #13386 as a follow-up commit after the
+  reviewer's verdict. Bare-matrix Append/Consume gap filed as #13388, left unrouted, go/no-go with the operator. Re-chase `rechase-13385-13388-6855` (2026-10-03).
 
 - [slang#13350 — glsl-module matrix `operator*`/`*=` gated off wgsl+metal (E36107)](13350-glsl-matrix-mul-wgsl-metal-gate.md) —
   triaged + reproduced; not a regression. draft PR #13356 open (7 gates); follow-ups #13355 (62 gated builtins) + #13359 (`filecheck=A,B` checks only A) filed and left unrouted; CI + #13355 go/no-go are with the operator. Re-chase `rechase-13350-13355-d86c` (2026-10-02).
@@ -24,7 +41,7 @@ decay and must be re-read, not remembered.
 - [slang PR #11709 — groupshared parameters by reference](11709-groupshared-param-by-reference.md) —
   owned by slang-fixer and CHANGES_REQUESTED. HELD until the #13339 Ref-split PR lands (jhelferty-nv 10-01: implement on #13339); then it rebases with its P1 fix. Was held on who implements the
   `ParameterPassingMode` Ref split (it would subsume 84fa791 and conflicts with their #13232).
-  Re-chase `rechase-11709-constref-d-9d86` (2026-10-02).
+  Draft #13406 (the split) opened 10-02; re-chase `rechase-13406-11709-e638` (2026-10-06).
 
 - [slang#13348 — inherited field through a property/subscript BoundStorage → E99997 ICE](13348-inherited-field-boundstorage-ice.md) —
   triaged + reproduced; three BoundMember consumers accept VarDecl only and reject InheritanceDecl. The author
@@ -43,7 +60,8 @@ decay and must be re-read, not remembered.
 
 - [slang#13332 — second-order crash on a no_diff value; is higher-order supported?](13332-second-order-nodiff-scope.md) —
   owned by fixer `sess-1789716207340-dwbdoz`. jkwak-work says second-order is unsupported (diagnose, don't crash), which
-  contradicts the user guide. His answer likely decides the #13320–#13327 family. Re-chase `rechase-13332-2nd-order-ad11`.
+  contradicts the user guide. The answer likely decides the #13320–#13327 family. Question unanswered after 2 rechases (last
+  2026-10-02, not re-armed). saipraveenb25's PR #13360 may overlap. Waiting on the operator's ping-or-hold call.
 
 - [slang#13319 — conflicting link-time exports, order-dependent pick](13319-conflicting-link-time-exports.md) —
   triaged; linker ambiguity diagnostic never implemented. Fixer HELD pending a maintainer
@@ -55,8 +73,8 @@ decay and must be re-read, not remembered.
 
 - [slang-rhi#787 — CUDA↔Vulkan shared-texture missing sync](rhi-787-cuda-vulkan-shared-sync.md) —
   real missing `VK_QUEUE_FAMILY_EXTERNAL` ownership release, not a tolerance flake. Maintainer
-  mandated an explicit `handOffShared`/`takeOverShared` API; DRAFT PR #881 (head `360bd42`,
-  GPU-CI-green, per-test verified) held pending reviewer re-confirm + operator drafts-only lift.
+  mandated an explicit `handOffShared`/`takeOverShared` API; PR #881 (head `775f522`,
+  GPU-CI-green, per-test verified) is NON-DRAFT since 09-28 (jhelferty flipped it); reviewer REQUEST_CHANGES on R4/R5 only. Parked on jhelferty's R4/R5 answer (5907630393, silent as of 10-02) + skallweitNV review; re-chase `rhi-881-review-rechase-381b` (10-03).
   #812 (register-all) held as the alternative.
   - [PR #881 review-round history (condensed)](rhi-787-review-history.md) — how the design converged
     (#812 forks, the rejected `IExternalMemoryQueue` sketch) and the codex/maintainer/reviewer rounds

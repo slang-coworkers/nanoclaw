@@ -37,3 +37,10 @@ description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgs
   GLSL std140/std430 fail with E36107 on metal as well as wgsl, so a WGSL-only `[require]` widen won't fix Metal. Triager is idle until #13356 merges.
 - **2026-10-01 01:05:** jkwak-work commented on #13359 (5922625720), mentioning @nv-slang-bot: "the \"filecheck\" tool is from LLVM. I wonder how LLVM project uses it regarding the problem you discovered." Routed to slang-triager on `gh-issue-shader-slang/slang-13359` with GitHub-post authorization. Step (3) of `rechase-13350-13355-d86c` now checks that the triager replied and routes only comments newer than this one.
 - **2026-10-01 01:25 (checked live):** slang-triager answered jkwak-work in comment 5922837368 (4672 chars, bot author). The answer: LLVM FileCheck accepts comma-separated `--check-prefixes`, and by default it fails when a prefix has no check lines (`--allow-unused-prefixes` turns that off). The conflict comes from slang-test's grammar. The triager also reported a new finding from a local drill: a duplicated option key, e.g. `filecheck=CHECK,filecheck=EXTRA`, crashes slang-test with an uncaught `InternalError` (`Dictionary::add` asserts on duplicates). #13359 is now **assigned to jkwak-work**. Still unrouted, no fix authorized. Step (3) of the re-chase routes only comments newer than 5922837368.
+- **2026-10-02 09:00 re-chase (checked live):** Nothing has moved since 2026-09-30.
+  - **#13356:** draft @ 39e7f04, 0 GitHub reviews, no inline or human comments, shepherd jhelferty-nv. Checks: 5 pass, 56 SKIPPED.
+  - **#13355:** no comments, no assignee, no competing PR.
+  - **#13359:** nothing newer than 5922837368.
+  - **No triager nudge:** the fixer session already holds the [Fix Report] (21:38) and r2 verdict.
+  - I routed nothing. I sent the operator a 5-bullet on orchestrator-dashboard (msg 17) asking for **(A)** a decision on the #13356 CI gate and **(B)** a #13355 go/no-go.
+  - Re-armed as `rechase-13350-13355-r2-6066` for 2026-10-05 09:00Z.

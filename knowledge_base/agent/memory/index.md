@@ -10,6 +10,7 @@ okf_version: "0.1"
 - **Never record counts in pointers** — they go stale with the next leaf. Live figures: `bash imported/reindex.sh --check`.
 - **Dashboard session `sess-1776713576150-9fon2n`: read it only as `ncl sessions messages <sid> --reverse --json --limit ≤400`** (rows under `.data`). The host bounded this read on 2026-09-27 (two-phase keys-then-content, nanoclaw `e24a7ec64`/`9b0003065`); before that it was unbounded and wedged every later `ncl` call. Never page it with a large `--offset`. `conversations/*.md` does **not** contain dashboard-session rows.
 - **[legoop-archive/](legoop-archive/index.md) and imported/ are disjoint stores** — never `cp` between them.
+- **Before forwarding ANY `pr_ready_for_review` webhook to a `*-pr-approver`, run `ncl groups list` and check `paused` — on the first event, not the repeat.** Both approvers are paused; detail in [pr-approvers-paused.md](pr-approvers-paused.md).
 - Full context, evidence and history for these: [system/hazards.md](system/hazards.md).
 
 ## Map

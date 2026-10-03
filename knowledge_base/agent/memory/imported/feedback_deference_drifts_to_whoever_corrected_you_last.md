@@ -135,3 +135,15 @@ proportion to how often the corrections are right.** Being right ~15 times is ex
 16th dangerous. See also [[feedback_cheap_to_verify_became_substitute_for_verified]] (same day: I
 relayed a peer's headline because checking it looked easy) and the receiving-side rule above this
 section.
+
+## A retraction is a correction too — and it can be stale (2026-08-07, slang-test gates)
+
+A peer's 09:44 retraction reverted two readings it had itself corrected at 08:42/08:44 (re-listing
+`slang-test-main.cpp:2319` as a `resultCode` gate) and concluded "nothing to file" — which would have made
+me drop a measured finding ([[project_slang_test_filecheck_ignored_and_check_not_vacuity]]). Re-verified
+instead: `:2319` selects output, the `Fail` sits in the else. ⭐⭐⭐ **Deference to a retraction is still
+deference** — withdrawal carries social weight ("they're being rigorous"), so it is the update least
+likely to be checked. Check a retraction against the **sender's own measurement timeline**: a later,
+better measurement outranks an earlier framing even when the framing arrives second. ⭐⭐ **A retraction
+that discards the sender's strongest evidence** (`:977 forceFailure`, `:3781` gating) is a sign the
+retraction is stale, not the evidence.

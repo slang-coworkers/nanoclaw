@@ -78,14 +78,30 @@ As of 2026-09-30 the head is `cddb935c48`. It is not a draft and is CHANGES_REQU
 | Item | State |
 |---|---|
 | who implements the split / `const groupshared` mapping | **answered** 10-01 by jhelferty-nv: on #13339; yes `RefReadOnly` |
-| confirm the `const groupshared` mapping lands with #11709 (not #13339) | asked 10-01 in [5934711587](https://github.com/shader-slang/slang/issues/13339#issuecomment-5934711587); the #13339 draft waits on it (PLAN_REVIEW R5) |
+| confirm the `const groupshared` mapping lands with #11709 (not #13339) | **answered** 10-02 by jhelferty-nv ([5957659185](https://github.com/shader-slang/slang/issues/13339#issuecomment-5957659185)): "for now keep the `const groupshared` change in #11709". Draft **#13406** opened 10-02 17:46Z (head `66523f1b33`, `pr: breaking change`, Fixes #13339, CLA success, mapped to slang-fixer); 5-bullet posted [5958125514](https://github.com/shader-slang/slang/issues/13339#issuecomment-5958125514) |
 | [r4141296596](https://github.com/shader-slang/slang/pull/11709#discussion_r4141296596): release assert (a)/(b) for pre-PR `.slang-module`s | open |
 | [r4139502685](https://github.com/shader-slang/slang/pull/11709#discussion_r4139502685): E30709 warning vs error | open |
 | jhelferty-nv CHANGES_REQUESTED | sticky until she re-reviews |
 | `__constref groupshared` A/B (r4137802265) | **closed**: "(A)" at r4138118657, implemented in `c18511b5ef` (E30712) |
 
-Re-chase: `rechase-11709-constref-d-9d86` (2026-10-02 09:00Z). It was retargeted on 09-30 to the four
-live items above; before that it watched only the A/B thread, which was already closed.
+**#13406 review (2026-10-02).** tangent-vector left 8 inline comments on `66523f1b33`, then APPROVED (review 5395294814,
+18:24Z). **The approval was auto-dismissed at 18:49:15Z**: the fixer's push of `8a979c9067` triggered stale-review
+dismissal, so `reviewDecision` is now empty. The fixer's report still said "approved", and I corrected it.
+- Six of the comments are fixed in code; head is now `794728a954`.
+- He is sharply critical of the bot rewording his doc comment ("Please revert your incorrect change"). It was reverted
+  byte-for-byte.
+- Still open with him: split `RefParam<T,A>` into separate types? (r4168522180, "a subtle policy decision being made very
+  lightly"). Re-approval at the current head is also needed.
+- Every further push will dismiss a re-approval again, so the fixer should batch changes into one push.
+- **Held batch (10-02 20:29Z):** 4 local commits on `794728a954`, ending at `0702c3ff3d`.
+  - They fix slang-reviewer's must-fix: user-written `RefParam<float,(Access)7>` hit E99997, where master gives E39999.
+  - A new diagnostic, E30032, rejects any invalid constant access. A generic, non-constant `A` still falls back to read-write.
+  - slang-reviewer re-verified the batch from patches: APPROVE_WITH_NITS, suite 7415/7416.
+  - Both facts are in front of tangent-vector at [r4169516769](https://github.com/shader-slang/slang/pull/13406#discussion_r4169516769)
+    (no ping, no recommendation). One push follows his answer on the split.
+
+Re-chase: `rechase-13406-11709-e638` (2026-10-06 09:00Z), which covers #13406 CI and review, the ready-flip decision, and the three
+open #11709 items. The old `rechase-11709-constref-d-9d86` fired on 10-02 and is gone. **The #11709 hold lifts when #13406 merges.**
 
 ## Lessons
 

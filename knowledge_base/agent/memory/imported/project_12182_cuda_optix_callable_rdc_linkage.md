@@ -1,73 +1,79 @@
 ---
 name: project-12182-cuda-optix-callable-rdc-linkage
-description: PR
+description: "MERGED 2026-09-01 (jkwak-work, 5ed83a468c). Human PR by ksavoie-nv adding OptiX callables on CUDA; settled linkage policy = static on every generated CUDA __device__ fn unless HLSLExport/CudaDeviceExport-decorated. Our rounds-4–6 isPublicOrExportedFunc recommendation was WRONG (couples Slang-module visibility to CUDA TU linkage); kept for the lessons."
 metadata: 
   node_type: memory
   type: project
   originSessionId: d48066a0-5d47-4266-ae79-573534644728
 ---
 
-shader-slang/slang PR **#12182** "Add callable shader support to CUDA/OptiX backend" — author **ksavoie-nv**, branch `add-callshader-support-to-optix`, labeled `pr: breaking change` + `optix`. Human-contributor PR (not a bot chain).
+shader-slang/slang PR **#12182** "Add callable shader support to CUDA/OptiX backend" — author
+**ksavoie-nv**, branch `add-callshader-support-to-optix`, labels `pr: breaking change` + `optix`.
+Human-contributor PR; we answered @nv-slang-bot questions from jkwak-work and ksavoie over seven
+rounds (07-28 → 08-06), explanation-only via `slang-fixer` (MODE=pr-review-fix), thread
+`gh-issue-shader-slang/slang-12182`.
 
-**07-28:** Maintainer **jkwak-work** mentioned @nv-slang-bot (comment 5109886974) asking us to unroll ksavoie's self-declared blocker (comment 5093474096) — "sounds incomplete but I can't find any problems." Routed to **slang-fixer** as explanation-only (MODE=pr-review-fix, no fix). Fixer verified all claims against source at PR HEAD `574661e3` and posted a **review-style comment** (no verdict, no code): https://github.com/shader-slang/slang/pull/12182#issuecomment-5110036497
+## Outcome (terminal)
 
-**The non-obvious gap (the answer to "what am I missing"):** the `static` multiple-definition guard in `slang-emit-cuda.cpp` keys off `m_entryPointStage`, which `slang-emit.cpp:2744-2752` collapses to `Stage::Unknown` whenever `getEntryPointCount()!=1`; `isRaytracingStage(Stage::Unknown)`=false (`slang-profile.cpp:209-222`). So for any multi-entry / whole-module `-target cuda` compile the duplicate-definition protection is **silently OFF** — invisible in every single-entry test. Labeled **reasoned-not-reproduced** (no local OptiX linker; confirmed only that protection is off + untested). Secondary: gate keys on stage not `-rdc`, so CUDA-*source* output over-applies `static` → cross-module helpers unresolvable unless `[CudaDeviceExport]` (the breaking change; `docs/cuda-target.md` uncovered). Tertiary: `tests/cuda/optix-exported-device-function.slang` CHECK-NOT passes vacuously.
+**MERGED 2026-09-01T14:00:50Z by jkwak-work**, merge commit `5ed83a468c`, final head `3395e9b6`
+(≥4 force-pushes over the life of the PR). jkwak approved 08-26 after a Slack discussion with Yong;
+ksavoie fixed `tests/cuda/noinline.slang` (now expects `static __device__ __noinline__`) and added a
+breaking-change note 08-28 — the break being our round-1 point that cross-module references to
+generated helpers now need `[CudaDeviceExport]`. No bot action remains.
 
-**07-29 round 2:** ksavoie-nv replied (comment 5123651841) with 3 questions, explicitly asking @nv-slang-bot for doc-cited answers. Fixer posted citation-backed reply (https://github.com/shader-slang/slang/pull/12182#issuecomment-5123731343):
-- **Q2 (is the self-`-rdc` cross-module-linking workflow supported?):** No documented contract in repo. CUDA documented only as NVRTC pass-through (`docs/cuda-target.md:31-35`); `-rdc` auto-added only for RayTracing pipeline (`slang-nvrtc-compiler.cpp:1341-1345`); no doc promises generated `__device__` helpers are externally linkable. → lowers Q1 stakes.
-- **Q3 (`[CudaDeviceExport]` OK despite experimental?):** Genuinely experimental — `/// @experimental` at source of truth `core.meta.slang:4778-4781` + `4793-4796` alias (line #s at PR HEAD `574661e3`, NOT master where it's ~4803/4818). Reported as fact; not ruled on.
-- **Q1 (silently add `static`?):** Left as jkwak's acceptability call; fixer contributed framing + deferred suggestion only.
+**Shipped linkage policy (ksavoie's rule):** emit `static` on **all** generated CUDA functions except
+those explicitly exported (`HLSLExportDecoration` or `CudaDeviceExportDecoration`). This decouples
+downstream CUDA TU linkage from Slang-module visibility. Callable entry points stay external
+(`extern "C" __device__ __direct_callable__<name>`; the entry-point branch in `slang-emit-cuda.cpp`
+returns before helper logic).
 
-Gotcha logged by fixer: **for a comment about a PR branch, cite PR-HEAD line numbers (permalinks), not working-tree/master** — line numbers drift; codex OUTPUT_REVIEW caught it.
+## The technical substance
 
-**07-30 round 3:** jkwak-work posted 3 more @nv-slang-bot review-thread questions; fixer answered each on its own thread (all cited to PR HEAD `574661e3`):
-- **Q-A `__global__`→`__device__` backcompat** (reply r3686633676): switch scoped to `Stage::Callable` only (`slang-emit-cuda.cpp:438-455`, returns before helper logic) → **compute kernels unaffected**. Self-correction: callables were NOT new on CUDA — pre-PR (merge-base `601d363f`) emitted every entry point `extern "C" __global__` and already named callables `__direct_callable__`; PR *changes* an existing narrow `-stage callable -target cuda` surface (old `__global__` callable wasn't OptiX-usable anyway).
-- **Q-B OptiX nvcc/nvrtc requirements checklist** (reply r3686634466): `-rdc`✅(RT only) + PTX output✅ met; `-m64` nvcc-only=N/A to NVRTC; `-G` OptiX-IR-only=N/A on PTX path; `--use_fast_math`/`--generate-line-info` caller-gated; `-Wno-deprecated` moot via blanket `-w`; arch floor compute_35/50/75 by CUDA ver. Deployment-SM bound + module compile options + `OPTIX_FORCE_DEPRECATED_LAUNCHER` env = host-app responsibility. No missing *required* NVRTC flag.
-- **Q-C (crux) — jkwak's "emit `static __device__` for callables, skip step 3" idea** (reply r3686635454): **wrong for the callables** — the callable entry point must stay externally visible (`extern "C" __device__`, returns `:454`, never `static`) so OptiX resolves `__direct_callable__<name>`. `static` targets only generated **helpers** (`:477-482`, excludes `[CudaDeviceExport]`). jkwak's `__global__`-external-linkage reasoning is right *for callables*; the multiple-def collision is the *helpers* (implicit-internal w/o `-rdc` → external w/ `-rdc`). "static ineffective" = multi-entry-only, not always. On public/private: `public→static` machinery exists in `CPPSourceEmitter` (`isPublicOrExportedFunc`) but **CUDA bypasses it** — so his "let users control via public/private" idea = reuse an existing signal, not a new mechanism (fact reported; design call left to jkwak).
+- **Why helpers collide.** Under `-rdc`, `__device__` functions get external linkage — intended nvcc
+  behaviour (NVCC manual §4.2.7.4, §6.2 `nvlink`), not a downstream bug. Two entry points sharing a
+  struct each emit a synthesized initializer ⇒ duplicate definition at `optixPipelineCreate`/`nvlink`.
+  `-rdc` is auto-added only for the RayTracing pipeline (`slang-nvrtc-compiler.cpp:1341-1345`), but a
+  user `-rdc` on plain `-target cuda` hits the same collision.
+- **Why the original RT-stage gate was wrong.** It keyed off `m_entryPointStage`, which
+  `slang-emit.cpp` collapses to `Stage::Unknown` when `getEntryPointCount()!=1`, and
+  `isRaytracingStage(Stage::Unknown)` is false — so the protection was silently off for multi-entry
+  compiles, invisible in single-entry tests. Dropping the gate and making `static` unconditional
+  dissolves the problem.
+- **`-rdc` is not visible at source emission** — it is decided downstream (`slang-code-gen.cpp`
+  DownstreamCompileOptions), so gating on it would need new plumbing into the emitter `Desc`.
+- **The `raytracing` capability atom can't discriminate** — its alias expands to `… | cuda`, so every
+  CUDA target satisfies it.
+- **Cross-backend precedent:** HLSL and C++/CPU couple export to `public`; **SPIR-V decouples** via
+  `DownstreamModuleExport/Import` → `LinkageAttributes`, not visibility-derived — SPIR-V is the real
+  precedent for the shipped design. `HLSLExportDecoration` as a CUDA co-predicate is a policy reading
+  of the bare `export` keyword; we asked for an explicit code comment.
+- `[CudaDeviceExport]` is `/// @experimental` (`core.meta.slang`) yet is now one of only two opt-outs.
 
-**Infra note (fixer-reported, unverified by me):** codex-delivery/OUTPUT_REVIEW gate false-positives on read-only `gh api .../pulls/comments` and on the REST `pulls/.../replies` POST; fixer worked around it by posting via GraphQL `addPullRequestReviewThreadReply` mutation. If this recurs across coworkers posting inline review-thread replies, formalize as a shared learning + gate-regex fix.
+## Our error (rounds 4–6), corrected by the author in round 7
 
-**07-30 round 4:** jkwak-work accepted the diagnosis ("didn't realize the problem was the non-entry-point functions"), proposed hoisting `isPublicOrExportedFunc` to a shared util, and asked HOW to gate `static` for callable-related non-entry helpers incl. multi-entry. Fixer posted design answer (reply r3686851857):
-- **Hoist:** viable/clean — free `IRFunc`-decoration-only fn at `slang-emit-cpp.cpp:955-978`, no emitter state; recommended home `slang-ir-util.h`; its "public" set already covers EntryPoint + CudaDeviceExport (matches the CUDA gate's needed exclusions).
-- **Multi-entry gate — reachable-vs-plumbing:** the *true* `-rdc`/pipeline signal is decided **downstream of source emission** (`slang-code-gen.cpp:944-951` on DownstreamCompileOptions; source emit runs earlier via nested `emitEntryPointsSource` `:504/:531`), NOT visible via emitter `Desc`/`getTargetReq()`/`getTargetProgram()` → gating on literal `-rdc` **needs new plumbing** into `Desc`. Cheaper, zero-plumbing alt reachable today: emitter holds `m_irModule` (`slang-emit-c-like.h:764`), walk `getGlobalInsts()` for "module has any RT entry point" via existing `isRaytracingStage()` (the review-bot's module-scan) — flagged honestly as a *proxy* for `-rdc` (can diverge; keeps source-without-`-rdc` over-application).
-- **Composition:** callable entry points stay external automatically (entry-point branch returns `slang-emit-cuda.cpp:454` before helper `static` logic); switch helper exclusion from `!findDecoration<IRCudaDeviceExportDecoration>()` → `!isPublicOrExportedFunc(func)` folds in [CudaDeviceExport]+entry-point exclusions and honors `public` helpers too.
-Fixer offered to open a **draft** PR (hoist + module-level gate) but held it pending jkwak's explicit go-ahead. Process lesson: an Explore subagent gave 2 stale line numbers; fixer re-verified all citations against `git show pr-12182:` before posting.
+We recommended `static` iff `!isPublicOrExportedFunc(func)` (hoisted from `slang-emit-cpp.cpp`). That
+predicate's **first case is `kIROp_PublicDecoration`**, so any `public` Slang function stayed external
+and collided (`slang-unit-test-tool/optixMultipleDefinition`). I had named the matching subset
+(EntryPoint + CudaDeviceExport) and never flagged the `public` superset — the wrong axis (Slang
+module visibility vs downstream TU linkage) was the whole error. We posted a plain concession
+(comment 5199013899, 08-06T00:31Z, verified) before jkwak's human design meeting.
 
-**07-31 round 5 — ⚠️ PR force-pushed `574661e3`→`8106ee8d`** (ksavoie **removed** the `static` workaround entirely + added an executable reproducer, comment 5147346656). ksavoie corrected a misconception & posed a policy fork; asked bot to also answer jkwak's questions at r3687314848. Fixer posted (reply r3693609537):
-- **`-rdc`→external `__device__` linkage is INTENDED nvcc behavior**, not a downstream bug (NVCC manual §4.2.7.4 + §6.2 `nvlink`). So this is a Slang linkage-*policy* question, no compiler workaround to chase. Collision manifests at `optixPipelineCreate`/`nvlink` (two entry points sharing a struct → duplicate synthesized initializer), NOT Slang linking.
-- **Scope expansion CONFIRMED:** at new HEAD the helper path has **no RT gating at all** (`slang-emit-cuda.cpp:465-468` emits plain `__device__`) → **plain `-target cuda` under user `-rdc` hits the same collision**, triggered by Slang-generated struct-type initializers. Fact (no RT branch in source) vs inference (plain-CUDA nvlink not run locally; same mechanism as ksavoie's RT reproducer).
-- **Policy fork — fixer RECOMMENDS Option A** (all generated `__device__` helpers `static`, `[CudaDeviceExport]` opt-out, **drop RT gating entirely**), for jkwak/ksavoie to ratify: breaks no documented contract (round-2), **dissolves** the rounds-3/4 multi-entry `Stage::Unknown` problem (no gate → no `m_entryPointStage` dep), minimal — `static` for every `!isPublicOrExportedFunc` `__device__` helper unconditionally (predicate already excludes entry points + `[CudaDeviceExport]`, so callables stay external). **Option B** (linkable CUDA modules) = real new extern/static mechanism the CUDA path currently bypasses.
-- **jkwak's `raytracing` capability-atom idea WON'T WORK:** alias expands to `… | cuda`, so every CUDA target satisfies it — can't distinguish RT/plain/`-rdc`; `-rdc` is a downstream compile-mode, not capability state.
-Process lesson: codex caught that gating `static` on `isDefinition(func)` mismatches forward-decl (extern) vs definition (static) linkage since preamble runs for both → use decoration-only predicate. **Standing lesson: always re-verify PR HEAD SHA on each round — force-pushes happen** (this one moved the whole citation base).
+## Lessons
 
-**07-31 round 6 — DIRECTION RATIFIED.** jkwak-work (comment 3693724589): "convinced we should emit `static` for those `__device__` functions" — asked for the concrete gating condition. Fixer posted (reply r3693752497; HEAD re-verified unchanged `8106ee8d`):
-- **THE CONDITION:** emit `static` for a `__device__` fn **iff `!isPublicOrExportedFunc(func)`**, **UNCONDITIONAL** — no `-rdc` detection, no RT-stage gate. Safe: no-op without `-rdc` (helpers already internal), restores internal linkage with `-rdc` (linkage-semantics inference, labeled). Answer to "how gate multi-entry": you DON'T gate — dropping RT gate removes `m_entryPointStage`/`Stage::Unknown` dependency entirely.
-- **Insertion site:** helper `else` branch `slang-emit-cuda.cpp:465-468` (bare `__device__` at HEAD; workaround-removal already deleted the old `[CudaDeviceExport]` check, so it's a pure ADD, not a swap). Applies to both plain-CUDA + OptiX.
-- **Round-5 trap re-flagged:** key on decoration (`isPublicOrExportedFunc`), NOT `isDefinition(func)` — preamble runs for BOTH fwd-decl (`slang-emit-c-like.cpp:4001`) and def (`:3916`); `isDefinition` gate → `extern` decl vs `static` def linkage mismatch. Decoration predicate agrees for both.
-- **Callables stay external:** entry-point branch returns `slang-emit-cuda.cpp:438-454` before helper logic; `isPublicOrExportedFunc` excludes `EntryPointDecoration` anyway.
-
-**READY-TO-EXECUTE Option-A implement plan (fixer switches to implement path on explicit "go" from jkwak or ksavoie):** (a) hoist `isPublicOrExportedFunc` `slang-emit-cpp.cpp:955-978` → `slang-ir-util.*` (free IRFunc-decoration fn, no emitter state, add `#include` in slang-emit-cuda.cpp); (b) add `static` prefix in helper branch gated on `!isPublicOrExportedFunc(func)`, applied **uniformly to decl+def**; (c) drop RT-stage gating; (d) keep ksavoie's reproducer as regression test + add a plain-CUDA FileCheck test. Drafts-only guardrail applies.
-
-**08-05 round 7 — ⛔ OUR ROUNDS-4–6 RECOMMENDATION WAS CORRECTED BY THE AUTHOR. HEAD now `13741fd8`.** ksavoie-nv (issue comment 5197395869, 21:10:35Z): the `!isPublicOrExportedFunc` filter **"wouldn't work"** — it returns true for **any `public` Slang function**, coupling downstream CUDA link visibility to *Slang-module* visibility; `public` Slang fns landing in multiple emitted CUDA TUs (`slang-unit-test-tool/optixMultipleDefinition`) stay externally visible → the same multiple-definition error. His replacement, already implemented + regression-free per him: **`static` on ALL CUDA functions except those explicitly exported (`HLSLExportDecoration` or `CudaDeviceExportDecoration`)** — decoupling downstream link visibility from Slang visibility, which he believes matches HLSL/SPIR-V; asked @nv-slang-bot to correct him if wrong. Also told jkwak it's ready for another human review pass.
-
-⚠️ **My round-4 miss to own:** I reported the predicate's "public set already includes EntryPoint + CudaDeviceExport, matching the exclusions the CUDA gate needs" — named the matching subset, never flagged the `public`-function **superset** that breaks it. The wrong axis (Slang module visibility vs downstream TU linkage) was the whole error.
-
-Round-7 dispatch sent to slang-fixer as an **error-audit** task (own the mistake plainly; assess his rule for the Q-C callable-external invariant + round-5 decl/def uniformity; verify the cross-backend claim with evidence, not agreement; note `[CudaDeviceExport]`-experimental is now load-bearing as 1 of only 2 opt-outs; retire the draft-PR offer since his impl supersedes it). Production review bot is independently probing the new impl — incl. a predicate named `_isCudaDeviceFunctionDefinitionExported` and the exact decl/def trap (comments 3723655296, 3723655660, 3722288598) — worth reconciling.
-
-**08-06 00:20 — round-7 turn DIED mid-flight; re-dispatched.** Verified 3 h after delivery: **no `nv-slang-bot` comment on the PR after 21:10:35Z** (zero outward artifact) AND fixer session `sess-1785274398178-0owe49` frozen at `last_active 21:12` with seq 30 (inbound dispatch) as the last row, **no outbound**. ⇒ the 21:49 container restart killed the turn before any work landed. Because the outward artifact was confirmed ABSENT, re-dispatch was safe (no double-post) — the opposite call from 40 min earlier, when absence-of-report alone could not distinguish died-vs-working. ⭐**Two probes settle it: (1) does the outward artifact exist? (2) is the recipient session's `last_active` frozen at the delivery timestamp with no outbound row? Frozen+absent = died, redrive. Moving/absent = working, wait.**
-
-**⚠️ NEW human input — jkwak-work 2026-08-05T23:00:02Z** (comment 5198362303): *"I am planning to discuss this tomorrow in a meeting."* ⇒ the A-vs-B / linkage-policy decision is going to a **human meeting ~08-06**. Makes our rounds-4–6 retraction **time-sensitive**: it should be on the record before he carries the analysis in. Re-dispatch flags this.
-
-**08-06 00:31:54Z — round 7 CLOSED, concession posted before the meeting.** ✅**Independently verified by me** (not relayed): `gh api` shows comment **5199013899**, author `nv-slang-bot[bot]`, `2026-08-06T00:31:54Z`, 10,870 chars, opens *"you're right, and the predicate we recommended was wrong"*, citations pinned HEAD `13741fd8`. Landed ~1.5 h after jkwak's 23:00Z "discuss this tomorrow in a meeting" ⇒ on the record in time. https://github.com/shader-slang/slang/pull/12182#issuecomment-5199013899
-
-**Verdict: our rounds-4–6 recommendation was WRONG (not partially).** `kIROp_PublicDecoration` is the **first case** in `isPublicOrExportedFunc` (`slang-emit-cpp.cpp:956-978`) → any `public` Slang fn skipped `static`, stayed external, collided. Right axis = downstream CUDA TU linkage; that predicate encodes Slang-module visibility.
-
-**ksavoie's replacement rule VERIFIED sound on both our invariants:** callables stay external (entry-point branch returns before helper logic) ✅; **decl/def uniformity holds** — and his `isDefinition()` use is **NOT** my round-5 trap, because `isDefinition()` is a property of the `IRFunc` (same answer at fwd-decl and body emission), and body-less fns correctly stay external. The two production-bot probes (3723655296, 3723655660) are **clarity/naming only, no correctness hazard** — looked for a real decl/def bug, found none. Pushed back on one point: `HLSLExportDecoration` as CUDA export co-predicate is a *policy* reading (it's the bare `export` keyword modifier) — wants an explicit code comment.
-
-**Cross-backend — his instinct right, his stated reason wrong:** HLSL **couples** (`public|HLSLExport` → emitted `export`, whole-program + supported profile); C++/CPU **couples** (the very code we wrongly borrowed; CUDA already bypasses it); **SPIR-V decouples** via dedicated `DownstreamModuleExport/Import` → `LinkageAttributes`, a marker that is **not visibility-derived at all** ⇒ SPIR-V is the real precedent for his design. Draft-PR offer retired; `[CudaDeviceExport]`/`[CUDADeviceExport]` `@experimental` flagged for the policy call.
-
-⭐**Process lesson (fixer, worth reusing): codex caught a NEW overclaim introduced INSIDE the correction** — a SPIR-V "nuance" asserted from a **stale code comment** (`compiler-tu.cpp:155` says "mark all public functions" but the fn never checks that). *An overclaim inside a concession is the least-audited claim in the turn* — the humility framing buys unearned trust for everything after it.
-
-**State:** Awaiting the **human meeting outcome (~08-06)** on the linkage policy — jkwak/ksavoie decide; ksavoie has asked jkwak for a human review pass. No bot action pending; fixer holds thread `gh-issue-shader-slang/slang-12182`. **HEAD `13741fd8` (3 force-pushes — always re-verify).** See [[feedback_verify_elapsed_time_from_live_artifact]].
-
-**Why:** webhook-driven chains resurface in fresh sessions; this preserves the analysis so a jkwak reply doesn't force re-derivation.
+- **Re-verify the PR HEAD SHA every round and cite PR-HEAD permalinks**, not master/working-tree
+  line numbers — a force-push moved the whole citation base mid-thread, and an Explore subagent
+  returned stale line numbers that were caught only by `git show pr-12182:` re-verification.
+- **Decl/def linkage must agree.** The function preamble runs for both forward declaration
+  (`slang-emit-c-like.cpp:4001`) and definition (`:3916`); a predicate that differs between them
+  yields `extern` decl vs `static` def. Key on a property of the `IRFunc` itself — `isDefinition()`
+  is fine for that reason, a per-emission-site check is not.
+- **When borrowing a predicate, audit its full positive set, not the subset you need.**
+- ⭐**An overclaim inside a concession is the least-audited claim in the turn** — codex caught a
+  SPIR-V "nuance" asserted from a stale code comment (`compiler-tu.cpp:155`) inside our round-7
+  correction; the humility framing buys unearned trust for what follows.
+- **Died-vs-working after a dispatch:** probe (1) does the outward artifact exist? (2) is the
+  recipient session frozen at the delivery timestamp with no outbound row? Frozen + absent ⇒ died,
+  redrive safely (round 7 was killed by a container restart and redriven). See
+  [[feedback_verify_elapsed_time_from_live_artifact]].
+- Infra (fixer-reported, unverified): the codex OUTPUT_REVIEW gate false-positived on REST
+  `pulls/.../replies`; the GraphQL `addPullRequestReviewThreadReply` mutation worked.

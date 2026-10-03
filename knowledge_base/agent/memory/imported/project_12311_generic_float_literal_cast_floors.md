@@ -1,109 +1,55 @@
 ---
 name: project-12311-generic-float-literal-cast-floors
-description: "#12311 (T)0.25 in T:IArithmetic generic floors to 0 — IArithmetic lacks __init(float)"
+description: "#12311 (T)0.25 in T:IArithmetic generic floors to 0 (IArithmetic lacks __init(float)). TERMINAL: closed 2026-09-11 by jkwak-work as a known design limitation (fix path = experimental slang.numerics; user workaround = extension __init(float) or E30081-as-error). PR #12312 (bare requirement) rejected/closed — a non-[sealed] interface admits the open user-conformer set."
 metadata: 
   node_type: memory
   type: project
   originSessionId: 5fa1a76c-57e3-4577-b9b3-3bf709556acd
 ---
 
-# shader-slang/slang #12311 — Casting float types via generics floors the value
+# shader-slang/slang #12311 — casting a float literal via generics floors the value
 
-**Reporter:** Tabris05. **Filed/triaged 2026-08-01.** bug / high / **P1** / frontend (semantic checker + core-module interface).
+**Reporter:** Tabris05. Filed/triaged 2026-08-01, bug / high / P1 / frontend.
+**State: TERMINAL — issue closed 2026-09-11T20:35Z (completed, label `reproduced`); PR #12312 closed
+unmerged 20:37Z.** RE-OPEN only on a fresh substantive question the workaround doesn't cover.
 
-## Repro
 ```slang
 T oneQuarter<T : IArithmetic>() { return (T)0.25; }
-[shader("compute")]
-void main(uniform float* black_box) {
-    black_box[0] = (float)0.25;      // 0.25  ✓
-    black_box[1] = oneQuarter<float>(); // 0    ✗  (expected 0.25)
-}
+// black_box[0] = (float)0.25;        -> 0.25
+// black_box[1] = oneQuarter<float>(); -> 0     (warning E30081 only)
 ```
-Reproduced @HEAD d3ec9cc49 (slangi generic=0.0 vs direct=0.25; CUDA/C++/GLSL/SPIR-V all fold generic body → 0). Silent wrong result, no error (warning E30081 fires).
 
-## Root cause (triager, comment 5149827226)
-`IArithmetic` (core.meta.slang:140) declares only `__init(int)` / `__init(This)` — **no `__init(float)`** (IFloat has it @:308). Casting a float literal to `T:IArithmetic` picks `__init(int)`, truncating 0.25→0 **at generic-check time, before specialization**. Value is destroyed in the front-end.
+## Root cause (confirmed by maintainer)
 
-## Solution fork
-- **(A) — CHOSEN. Committed in draft PR #12312.** Fixer's committed diff adds a **bare** `__init(float val);` requirement to IArithmetic (a hard interface requirement, NOT defaulted — earlier "defaulted" framing was superseded by the committed code). Triager's mechanism trace across all core-module conformers claims it is **non-breaking in practice** because every existing conformer already satisfies it — but the *public-interface requirement addition* is genuinely a maintainer call (see hold points).
-  - ⚠️ **float-value-preservation:** for `T=float` the cast must resolve to `float`'s own `__init(float)` (identity), preserving 0.25; non-float types truncate by design. 3-dimension (target × direct-vs-generic × value) regression test proves it.
-- **(B)** checker defers literal conversion for constrained generic params — triager verified **genuinely intractable**; dropped.
-- (C) IR/emit band-aid — rejected (value already gone in front-end).
+`IArithmetic` (`core.meta.slang`) declares `__init(int)` / `__init(This)` but no `__init(float)`, so
+`(T)0.25` binds to `__init(int)` **at generic-check time**, before `T=float` is known. ⭐ The *why* posted
+to the reporter (cmt 5643547971): Slang checks a generic body once against the constraint's requirement
+set, then at specialization routes the call through `float`'s witness for the `__init(int)` requirement —
+float's own float ctor never re-enters overload resolution. `ITexelElement` hits the same bug (worse:
+no diagnostic) because `associatedtype Element : __BuiltinArithmeticType`, which derives `IArithmetic`.
 
-## Two maintainer-hold design points (surfaced, PR stays DRAFT)
-1. **Public-interface requirement addition** — adding a bare requirement to a public core-module interface (`IArithmetic`); non-breaking-in-practice but still a spec/compat call for a maintainer.
-2. **Truncate-for-non-float semantics** — non-float `T` still truncates the float literal (by design); maintainer to confirm that's the desired behavior.
+## History in one paragraph
 
-## Chain state — TERMINAL HELD (2026-08-01, [Triage Resolution] delivered)
-Triaged → reproduced → root-cause verified → verdict + `reproduced` + Type=Bug posted (cmt 5149827226, refreshed in place to "fix in draft PR #12312, held pending review"). **Draft PR #12312** (latest commit 5665da3e70): bare `__init(float val);` requirement on `interface IArithmetic` (core.meta.slang) + INTERPRET regression test; `Closes #12311`, `pr: non-breaking`, stays DRAFT (won't auto-close).
+Draft PR #12312 added a bare `__init(float)` requirement to `IArithmetic`; review was APPROVE-WITH-NITS
+and an 08-10 differential matrix showed it transitively fixed `IArithmetic`, `ITexelElement` and
+`IInteger` (one residual: `ICoopElement`, which doesn't derive `IArithmetic`, still floored silently).
+On 2026-09-11 tangent-vector **rejected the approach** (PR cmt 5639073499): `IArithmetic`/`IFloat` are
+non-`[sealed]`, so a new requirement synthesizes via `__init(int)` for any *user* conformer without a
+float init and silently truncates there — trading one silent wrong result for another. jkwak-work then
+closed the issue (cmt 5640322596) as a **design-level limitation**: long-term fix is the experimental
+`slang.numerics` module; short-term, the user adds `extension<T> T : IArithmetic { __init(float val); }`
+or treats `warning E30081` as an error. No in-repo change owed; fixer stood down.
 
-**Review:** ✅ APPROVE-WITH-NITS, no must-fix (codex PLAN/CODE/OUTPUT + triager ir-correctness/compat lens). Non-breaking mechanism-traced: int/vector/CoopMat/CoopVec + user `struct:IArithmetic` with only `__init(int)` all auto-satisfy via witness synthesis through existing int init; float-family keep value-preserving `__init(float)`; no overload regression for `(T)<int-lit>`. 3 nits = PR-description-only, folded in.
+## ⭐⭐⭐ Durable lessons
 
-**Tests:** repro PASS (float→0.25, int→0, castVal<float>(2.75)→2.75, <int>→2, user MyNumber→2) via slangi + slang-test; regression green — generics 252/252, interfaces 71/71, autodiff 879/879, min-max-iarithmetic 5/5. ⚠️ CoopMat/CoopVec synthesis path is CI-only (not reachable by INTERPRET) — flagged for full-CI confirm before merge.
-
-## ⚠️ RE-OPENED 2026-08-01 by reporter (comment 5236595461)
-Tabris05: *"me using `IArithmetic` for the interface here was purely an example (since the bot's fix seems fixated on this interface specifically). `ITexelElement` was the actual interface I ran into this issue with in the wild."*
-
-⇒ **Scope challenge to PR #12312.** The fix adds `__init(float)` to `IArithmetic` only; root cause (cast `(T)x` = `T.__init(x)`) is not confined to one interface. Dispatched to slang-triager on the canonical thread.
-
-### Triager measured findings (2026-08-10, interim — my "same fix repeated N times" framing was WRONG)
-- **`ITexelElement` REPRODUCES and is WORSE.** slangi @HEAD `716ec597f`: `direct=0.250000 texelAssoc=0.000000 texelCtor=0.000000 arith=0.000000`. ⚠️**NO diagnostic at all** on the ITexelElement path (measured `no-diag` ×3 cells) vs `warning[E30081]` on the IArithmetic control ⇒ strictly worse severity than what the issue was filed on (silent wrong code, zero warning).
-- **⚠️ DIFFERENT SHAPE, not a repeat.** `ITexelElement` (hlsl.meta.slang:592) does NOT declare `__init(int)`. It declares `__init(Element x)` where `Element` is an **associated type** constrained `: __BuiltinArithmeticType` (core.meta.slang:378, which extends IArithmetic). Flooring happens one level deeper — in the literal→`Element` conversion. **Adding `__init(float)` to ITexelElement is not the right shape for it.** Also `(T)0.25` verbatim hard-errors `E30019` (expected `T.Element`, got `float`) — reproducing spellings are the Element-typed ones.
-- **Blast radius census** (all `*.meta.slang`, 41 interface decls scanned = non-zero control): **Class A** (declares int-ish `__init`, no `__init(float)` = bug class) = **4**: `IArithmetic`(core:140), `ILogical`(:178), `IInteger`(:251), `ICoopElement`(:902). **Class B** (immune, has `__init(float)`) = 1: `IFloat`(:304). **Class C** (`__init` takes neither) = 3: **`ITexelElement`**, `__EnumType`, `IDefaultInitializable`. Must-hit control confirms PR touches only IArithmetic (`IArithmetic`×4; other three ×0).
-- **PR head MOVED** `5665da3e70` → **`1e00452b11`** (2 commits); still DRAFT, `pr: non-breaking`, mergeStateStatus **BEHIND**, reviewDecision REVIEW_REQUIRED. **Issue gained assignee `jkwak-work`.**
-### SETTLED by measurement (2026-08-10) — ⭐BOTH ratios were wrong: triager's "1 of 4" AND Main's "2 of 4"
-Differential matrix, slangi, PRE=master `716ec597f` vs POST=PR head `1e00452b11` (isolated worktree, both binaries freshness-proven behaviourally; run **per-cell** — a combined run aborts on `IInteger` E39999):
-
-| cell | PRE | POST |
-|---|---|---|
-| CONTROL non-generic `(float)0.25` | 0.250000 | 0.250000 |
-| `T:IArithmetic` | 0.0 (+W E30081) | **0.250000** ✅ |
-| `T:ITexelElement` `(T.Element)0.25` | 0.0 no-diag | **0.250000** ✅ |
-| `T:ITexelElement` `T(T.Element(0.25))` | 0.0 no-diag | **0.250000** ✅ |
-| `T:IInteger` T=int | **error E39999** ambiguous int/int64_t | 0 ✅ (correct for int; clears a pre-existing ERROR) |
-| `T:ILogical` | n/a — **no float type conforms at all** | n/a |
-| `T:ICoopElement` T=float | 0.0 no-diag | **0.0 no-diag** ⛔ |
-
-POST verified EXACT (`v == 0.25f` ⇒ 1), not a printf artifact.
-
-**⇒ #12312 already fixes the reporter's wild case transitively.** `Element : __BuiltinArithmeticType` → derives IArithmetic; `IInteger : IArithmetic, ILogical`. One addition at one hierarchy point covers **3 shapes** while the diff mentions IArithmetic×4 and the other four ×0 (must-hit control passed) — the PR is broader than it reads.
-
-**ONE genuine residual = the useful finding:** **`ICoopElement` does NOT derive from IArithmetic**, so the fix cannot reach it, yet `float` DOES conform (via `__BuiltinArithmeticType : ICoopElement`; also `IFloatingPointCoopElement : ICoopElement`). `T:ICoopElement`, T=float ⇒ still **0.0 silently, no diagnostic, post-fix**. Live proof that per-interface addition doesn't generalise — better evidence for hold point (i) than any repetition count. `ILogical` is **n/a, not a gap** (no FP conformer exists).
-
-**Design verdict:** ⛔the reporter's comment does **NOT** revive Approach B — a cast IS a ctor invoke bound to the constraint's requirement set; nothing changed. Transitivity is why per-interface is *less* bad than both of us thought. **RECOMMEND: land #12312 as-is** (fixes filed + wild case); track `ICoopElement` separately rather than widening. Posted as fresh delta comment **5236743498** (stacked, not an edit — last commenter was the human OP; verified live: nv-slang-bot[bot], 3529 chars, 0 HTML-escaping, 7 table rows, disclaimer). No fixer dispatch (nothing to build; widen-vs-separate is a maintainer scope call). PR left DRAFT untouched. Worktree `wt-12311-texel` + `refs/pr/12312` retained — the two-state differential IS the instrument.
-
-⚠️**Main's cited line numbers were MASTER-based, −4 vs PR head** (ILogical :182 not :178, IInteger :255 not :251, IFloat :308 not :304, `__BuiltinArithmeticType` :382 not :378, ICoopElement :906 not :902 — the PR adds 4 lines above them). Every *clause* Main quoted was correct. ✅**The hedge worked:** Main wrote "state as of my edge — re-derive on your worktree, don't take my line numbers on faith", triager re-derived, caught the offset. Cheap correction instead of a propagated wrong citation.
-
-**HELD on maintainer** — two design points: (i) adding a requirement to a public core-module interface (source-compat as tested; triager assessed serialized-module/ABI benign — witness keyed by mangled name, build-tag digest gates stale core modules); (ii) truncate-toward-zero for non-float conformers. Maintainer signoff → mark ready + merge. **Webhook-driven from here** (fixer owns PR review/CI follow-up via /slang-github-webhook). RE-OPEN only on fresh substantive human comment.
-
-## ⛔ MAINTAINER REVERSED THE APPROACH — 2026-09-11 (supersedes everything above marked "RECOMMEND land as-is")
-Prior "fixed, held in draft PR #12312" resolution is **STALE — dropped.** tangent-vector **rejected PR #12312's approach** (PR cmt 5639073499); fixer conceded (cmt 5639118312); issue footprint corrected (#12311 cmt 5639195823). **RE-HELD, nothing builds until maintainer answers 2 Qs.**
-
-**Why rejected (the reversal we did NOT see, and it refutes our own "non-breaking" reading):** `IArithmetic`/`IFloat`/`IComparable` are **non-`[sealed]`** ⇒ a bare `__init(float)` *requirement* is unbounded over **user** conformers. For a non-int-like user arithmetic type (fixed-point / rational), it synthesizes via `__init(int)` and **silently truncates `(T)0.25`→0** — trading the reported silent-wrong-result for a **fresh** one in user code. ⭐This is exactly the `ICoopElement` residual (fix can't reach a conformer that has no value-preserving float init) **generalised to the whole user-conformer space**, and the `MyNumber` test we cited as proof-of-non-breaking IS that footgun. So our own APPROVE-WITH-NITS "non-breaking-in-practice" reading was **wrong** — it only checked *core-module* conformers, never the open user-conformer set that a non-sealed interface admits.
-
-**New direction (maintainer's, two-pronged), both HELD on his answers:**
-- (a) `extension<T:IArithmetic>{ __init(float) }` whose selection **diagnoses a compile error** ⇒ `(T)0.25` fails **loudly with guidance**, not floor / not silent-convert. Extension member ≠ conformance requirement ⇒ **no user-conformance impact** (precedent: `[deprecated]` on the vector inits).
-- (b) evolve the numeric interfaces in the experimental **`slang.numerics`** module where breaking changes are cheap.
-
-**OPEN (block build):** maintainer to (i) pick diagnostic level — **error vs warning**; (ii) say whether the extension prong is its own change or part of the `slang.numerics` effort. Then close (now non-draft) **PR #12312 as superseded**.
-
-**Routing:** if the diagnostic-extension prong is assigned to us, **fixer implements on a fresh branch**; the maintainer's reply webhook routes to the **fixer's** session ⇒ **no relay from Main**. Prototype deliberately held (intersects strategic `slang.numerics` scope). RESUME = maintainer's answers, or any fresh substantive human comment.
-
-## ✅ CLOSED by maintainer as KNOWN LIMITATION — 2026-09-11 (jkwak-work, issue cmt 5640322596)
-Maintainer resolved it definitively and **is closing the issue**. NOT a work assignment to us — no fixer dispatch, no Slang-repo code change owed. Terminal.
-- **Confirms root cause verbatim:** `IArithmetic` has `__init(int val)` and no float ctor ⇒ float implicitly casts to int = floor. **`ITexelElement` is the same problem** because its `associatedtype Element : __BuiltinArithmeticType` and `__BuiltinArithmeticType : ..., IArithmetic, ICoopElement` ⇒ element conforms to IArithmetic. (Matches the triager's re-open trace exactly.)
-- **Long-term fix:** the recently-merged **experimental `slang.numerics`** module (interface-design redo). This is prong (b) from the reversal, now stated as the sanctioned path.
-- **Short-term = USER-SIDE workaround (in the reporter's own code), NOT a core change:** `extension<T> T : IArithmetic { __init(float val); }`; **or** treat the existing `warning E30081` (implicit float→int) as an error via compiler flag to catch it loudly. (This is a lighter form of prong (a) — no in-repo diagnostic-extension implementation; the two open Qs from the fixer's concession are thereby MOOT — maintainer chose "user applies extension / treats warning as error" over an in-repo change.)
-- **Design framing:** maintainer calls it "a design-level problem when `IArithmetic`/`IFloat` were introduced" — i.e. accepted-as-known-limitation, not a bug to be patched in core now.
-- **Consequences:** PR #12312 (bare-requirement approach, already rejected 09-11) is fully dead — close as superseded if still open. Chain **TERMINAL**. RE-OPEN only if the reporter comes back with a fresh substantive question the workaround doesn't cover. Routed to slang-triager (owns issue verdict) to close out per posting policy; no bot post likely needed since the maintainer's own comment resolves it.
-
-### ✅ CLOSE-OUT CONFIRMED (triager receipts, 2026-09-11T20:40Z)
-- **Issue #12311 closed** by jkwak-work — state=completed, **2026-09-11T20:35Z**, label `reproduced`. No fix dispatched.
-- **PR #12312 closed, unmerged, superseded — 2026-09-11T20:37Z** (confirmed).
-- **No bot post added** (agreed): maintainer's closing comment 5640322596 is the authoritative public artifact; triager's prior comment 5639195823 already retracted the "fix in draft PR" framing so the footprint isn't misleading; a thanks/restate would be noise.
-- **Fixer stood down permanently** — its awaited PR-thread reply will never come (resolution landed on the ISSUE, not the PR; issue-comment webhooks route to the triager, not the fixer).
-### Follow-up human comment 2026-09-11 (Tabris05, cmt 5643524726) — routed to triager, NOT auto-closed
-Reporter's "two cents" on the closed issue: *"surprising that this code would invoke the IArithmetic constructor at all. Intuitively when I pass T=float I expect the function to behave as if all Ts were floats, so the cast would invoke the float constructor."* + *"I'll definitely check out slang.numerics … found the standard numeric interfaces a bit frictional in general."* ⇒ a **design-opinion** (specialize-then-resolve expectation — exactly the design-level limitation the maintainer already acknowledged) + a **positive sign-off** (will try slang.numerics). Borderline substantive/ack. Routed to slang-triager on canonical thread per "human comment re-opens even on a closed chain" — triager (owns issue verdict) judges: brief explanatory reply (why the cast binds to the constraint's requirement set at generic-check, before T=float specialization picks float's own ctor) vs explicit positive close. Issue stays CLOSED — any reply COMMENT-only, no reopening unless a genuine new gap. NOT silent no-op. → **Triager chose option A, POSTED COMMENT-only reply cmt 5643547971** (2026-09-12): explains **check-then-specialize** — Slang type-checks a generic body ONCE against the constraint's requirement set (`__init(int)`/`__init(This)`, no float) BEFORE `T` binds, so at specialization the call routes through `float`'s witness for the `__init(int)` requirement and float's own float ctor never re-enters overload resolution ⇒ the missing float requirement surfaces as a silent floor, and the fix belongs at the interface layer (`slang.numerics`). This answered the one thing neither the maintainer's close nor any prior comment covered (the *why*, not the *what*). Verified: nv-slang-bot[bot], 1503 chars, 0 escaping, disclaimer, **issue stayed closed/completed — comment did NOT reopen**. `slang.numerics`-friction remark = general feedback, nothing dispatched. Chain remains TERMINAL/CLOSED; RE-OPEN only on a fresh substantive question the workaround doesn't cover.
-
-- **Durable lesson (filed):** our differential run measured the right cells over the **wrong population** — a non-`[sealed]` interface admits the open user-conformer set, so an in-tree-only "non-breaking" check cannot clear a requirement addition, and the `MyNumber` case cited as proof-of-non-breaking WAS the footgun. Preferred remedy for this class = a **diagnosing extension**, not a new requirement.
+- **Measured the right cells over the wrong population.** Our "non-breaking" check covered only
+  core-module conformers; a non-`[sealed]` interface admits an open user-conformer set, so an in-tree
+  check cannot clear a requirement addition — and the `MyNumber` user type we cited as proof of
+  non-breaking *was* the footgun. For this class prefer a **diagnosing extension** over a new requirement.
+- The `ICoopElement` residual (fix cannot reach a conformer without a value-preserving float init) was
+  the maintainer's objection in miniature, sitting in our own matrix. A residual that the fix "can't
+  reach" is worth asking *who else it can't reach*.
+- Per-cell runs: a combined slangi run aborted on the `IInteger` E39999 cell; run differential matrices
+  one cell per invocation.
+- Line numbers Main quoted were master-based, −4 vs the PR head; the hedge "re-derive on your worktree"
+  let the triager catch it cheaply — cf. [[feedback_line_numbers_shift_in_the_patched_tree]].
