@@ -885,6 +885,8 @@ describe('[Fix Review Request] must name its maintainer direction (REVIEW_REQUES
       'https://evil.example/?u=(https://github.com/shader-slang/slang/issues/13073#issuecomment-1)',
       'https://github.com/shader-slang/slang/issues/13073#issuecomment-123evil',
       'https://github.com/shader-slang/slang/issues/13073#issuecomment-123-evil',
+      '[comment](https://git**hub**.com/shader-slang/slang/issues/13073#issuecomment-123)',
+      'https://git__hub__.com/shader-slang/slang/issues/13073#issuecomment-123',
     ]) {
       const r = run(send(`${HEAD}\nMaintainer direction: ${url}\nFixer self-check: R1 met`));
       expect(r.status, url).toBe(2);
@@ -895,6 +897,7 @@ describe('[Fix Review Request] must name its maintainer direction (REVIEW_REQUES
   it('accepts a canonical URL with a query string or as a markdown link', () => {
     for (const dir of [
       'https://github.com/shader-slang/slang/issues/13073?notification_referrer_id=NT_abc#issuecomment-3301234567',
+      'https://github.com/shader-slang/slang/issues/13073?utm_campaign=(direct)#issuecomment-3301234567',
       '[the design comment](https://github.com/shader-slang/slang/pull/13213/files#discussion_r2201234)',
     ]) {
       expect(run(send(`${HEAD}\nMaintainer direction: ${dir}\nFixer self-check: R1 met`)).status, dir).toBe(0);
@@ -946,6 +949,25 @@ describe('[Fix Review Request] must name its maintainer direction (REVIEW_REQUES
       expect(r.stderr, sc).toContain('has no R1, R2… items');
     }
     expect(run(send(`${HEAD}\nMaintainer direction: ${LINK}\nFixer self-check: (R1) met`)).status).toBe(0);
+  });
+
+  it('cuts sections only at the template labels: unlabelled-template lines like `Maintainer comment:` stay inside', () => {
+    expect(
+      run(send(`${HEAD}\nMaintainer direction:\nMaintainer comment: ${LINK}\nFixer self-check: R1 met`)).status,
+    ).toBe(0);
+    expect(
+      run(send(`${HEAD}\nMaintainer direction: ${LINK}\nFixer self-check:\nRequirement R1: met\nRequirement R2: met`))
+        .status,
+    ).toBe(0);
+    // A template label still ends the section: a link after `Tests added:` is not direction.
+    const after = run(send(`${HEAD}\nMaintainer direction: see below\nTests added: ${LINK}\nFixer self-check: R1 met`));
+    expect(after.status).toBe(2);
+    expect(after.stderr).toContain('neither links a maintainer comment');
+  });
+
+  it('strips emphasis from the label only: bold labels pass, emphasis inside a value is kept', () => {
+    expect(run(send(`${HEAD}\n**Maintainer direction:** ${LINK}\n__Fixer self-check:__ R1 met`)).status).toBe(0);
+    expect(run(send(`${HEAD}\n**Maintainer direction**: none — no maintainer comments`)).status).toBe(0);
   });
 
   it('has no line limit on a label value: a link 16 lines down still counts', () => {

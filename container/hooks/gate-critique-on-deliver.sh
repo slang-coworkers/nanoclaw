@@ -416,51 +416,59 @@ fi
 # nothing. REVIEW_REQUEST_GATE=0 (host env) disables.
 
 # Prints what is missing from a review request, or nothing when it is complete.
-# Carriage returns are stripped first (a CRLF body would otherwise hide the
-# label colons). The two required labels are recognised before anything else,
-# tolerating list bullets and markdown bold; a label's value runs on until the
-# next top-level `Label:` line (no line limit), so links or R-items listed
-# under it count. List items (`- R1: met`, `- Maintainer comment: <url>`) and
-# bare `R<n>:` items never start a new section. `https:` is not a label: a
-# label's colon is followed by a space or EOL.
+# Carriage returns are stripped first. Sections are cut only at the request
+# template's OWN field labels (Maintainer direction, Fixer self-check, Mode, PR,
+# PR / Patch, Patch, Base, Tests added, Test results, Scope), matched at the
+# start of a line after an optional list bullet and markdown emphasis — never
+# at an arbitrary `Something:` line, so `Maintainer comment: <url>` or
+# `Requirement R1: met` stay inside their section. Emphasis is stripped from
+# the label prefix only; values are read verbatim (a `git**hub**.com` link is
+# not a github.com link). A section runs to the next template label or the end.
 # A link counts only as a canonical comment/review URL on github.com:
 # https://github.com/<owner>/<repo>/(issues|pull)/<n>[/…][?query]#issuecomment-…
-# (or #pullrequestreview- / #discussion_r / #issue-) ending at the number. It
-# must start a token: raw, <autolink>, "(url)" after whitespace, or a markdown
-# [text](url) — never a "(" or "=" inside another URL — so notgithub.com,
-# github.com.evil, a github URL inside another URL's query, and anchors like
-# #issuecomment-123evil do not pass.
+# (or #pullrequestreview- / #discussion_r / #issue-) ending at the number; the
+# query may hold balanced parentheses. It must start a token: raw, <autolink>,
+# "(url)" after whitespace, or a markdown [text](url) — never a "(" or "="
+# inside another URL. The bare-"none" check reads the first non-empty value of
+# the direction section.
 review_request_problem() {
   local body="${1//$'\r'/}"
   awk '
-    function norm(s) { sub(/^[ \t]*([-*+]|[0-9]+[.)])[ \t]+/, "", s); gsub(/\*\*|__/, "", s); return s }
-    function islabel(s) { return (tolower(s) ~ /^[a-z][a-z0-9 \/()_-]*:([ \t]|$)/) }
+    function trim(s) { sub(/^[ \t]+/, "", s); sub(/[ \t]+$/, "", s); return s }
     {
-      listed = ($0 ~ /^[ \t]*([-*+]|[0-9]+[.)])[ \t]+/)
-      line = norm($0); low = tolower(line)
-      item = listed || (low ~ /^r[0-9]+[ \t]*[:.)-]/)
+      raw = $0
+      lab = raw
+      sub(/^[ \t]*(([-*+]|[0-9]+[.)])[ \t]+)?/, "", lab)
+      sub(/^(\*\*|__)/, "", lab)
+      key = ""; val = ""
+      if (match(tolower(lab), /^(maintainer direction|fixer self-check|mode|pr|pr \/ patch|patch|base|tests added|test results|scope)[ \t]*(\*\*|__)?[ \t]*:/)) {
+        key = tolower(substr(lab, 1, RLENGTH))
+        sub(/[ \t]*(\*\*|__)?[ \t]*:$/, "", key)
+        val = substr(lab, RLENGTH + 1)
+        sub(/^[ \t]*(\*\*|__)?/, "", val)
+      }
     }
-    !hasdir && low ~ /^maintainer direction[ \t]*:/ {
-      hasdir = 1; v = line; sub(/^[^:]*:[ \t]*/, "", v); dir = v; mode = "dir"; next
+    key == "maintainer direction" && !hasdir { hasdir = 1; mode = "dir"; dir = val; dfirst = trim(val); next }
+    key == "fixer self-check" && !hassc { hassc = 1; mode = "sc"; sc = val; next }
+    key != "" { mode = ""; next }
+    mode == "dir" {
+      dir = dir " " raw
+      if (dfirst == "") { f = raw; sub(/^[ \t]*(([-*+]|[0-9]+[.)])[ \t]+)?/, "", f); dfirst = trim(f) }
+      next
     }
-    !hassc && low ~ /^fixer self-check[ \t]*:/ {
-      hassc = 1; v = line; sub(/^[^:]*:[ \t]*/, "", v); sc = v; mode = "sc"; next
-    }
-    mode != "" && !item && islabel(line) { mode = "" }
-    mode == "dir" { dir = dir " " line; next }
-    mode == "sc" { sc = sc " " line; next }
+    mode == "sc" { sc = sc " " raw; next }
     END {
       if (!hasdir) { print "it has no `Maintainer direction:` line"; exit }
       dl = tolower(dir)
-      if (dl !~ /(^|[ \t<"]|(^|[ \t])[(]|[]][(])https:\/\/github\.com\/[a-z0-9_.-]+\/[a-z0-9_.-]+\/(issues|pull)\/[0-9]+(\/[a-z]+)*(\?[^ \t)#]*)?#(issuecomment-|pullrequestreview-|discussion_r|issue-)[0-9]+([^a-z0-9_-]|$)/) {
-        d = dl; gsub(/`/, "", d); sub(/^[ \t]+/, "", d)
+      if (dl !~ /(^|[ \t<"]|(^|[ \t])[(]|[]][(])https:\/\/github\.com\/[a-z0-9_.-]+\/[a-z0-9_.-]+\/(issues|pull)\/[0-9]+(\/[a-z]+)*(\?([^ \t()#]|[(][^ \t()#]*[)])*)?#(issuecomment-|pullrequestreview-|discussion_r|issue-)[0-9]+([^a-z0-9_-]|$)/) {
+        d = tolower(dfirst); gsub(/`/, "", d); sub(/^[ \t]+/, "", d)
         if (d ~ /^none[ \t]*(—|–|-|:)[ \t]*[^ \t]/) exit
         if (d ~ /^none[ \t]*\([ \t]*[^ \t)][^)]*\)/) exit
         if (d ~ /^none[ \t.]*$/) { print "its `Maintainer direction:` says a bare \"none\" with no reason"; exit }
         print "its `Maintainer direction:` neither links a maintainer comment on GitHub (https://github.com/<owner>/<repo>/issues|pull/<n>#issuecomment-…) nor says none with a reason"; exit
       }
       if (!hassc) { print "it cites maintainer comments but has no `Fixer self-check:` line"; exit }
-      if (sc !~ /(^|[ \t(,;|])[Rr][0-9]+($|[ \t:.,;)|-])/) { print "its `Fixer self-check:` has no R1, R2… items"; exit }
+      if (sc !~ /(^|[ \t(,;|*])[Rr][0-9]+($|[ \t:.,;)|*-])/) { print "its `Fixer self-check:` has no R1, R2… items"; exit }
     }
   ' <<< "$body"
 }
