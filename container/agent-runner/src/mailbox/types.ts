@@ -108,6 +108,12 @@ export interface MailboxOperations {
   clearContainerToolInFlight(): void;
   clearStaleProcessingAcks(): void;
   /**
+   * Return claimed messages to `pending` in a running container: drop their
+   * `processing` acks so getPendingMessages sees them again. Rows already acked
+   * completed/failed/bounced are left alone.
+   */
+  releaseProcessingAcks(ids: string[]): void;
+  /**
    * Runner-side mailbox history GC (the runner owns outbound.db): drop
    * messages_out rows the host has already delivered and processing_ack rows
    * whose inbound message no longer exists, both older than the cutoff.

@@ -193,6 +193,15 @@ export function sqliteClearStaleProcessingAcks(): void {
   getOutboundDb().prepare("DELETE FROM processing_ack WHERE status = 'processing'").run();
 }
 
+/** Drop the `processing` acks of these ids so they read as pending again. */
+export function sqliteReleaseProcessingAcks(ids: string[]): void {
+  if (ids.length === 0) return;
+  const statement = getOutboundDb().prepare("DELETE FROM processing_ack WHERE message_id = ? AND status = 'processing'");
+  getOutboundDb().transaction(() => {
+    for (const id of ids) statement.run(id);
+  })();
+}
+
 /** For tests — creates in-memory DBs with the session schemas. */
 export function initTestSessionDb(): { inbound: Database; outbound: Database } {
   _testMode = true;
