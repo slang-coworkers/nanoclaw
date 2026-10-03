@@ -875,6 +875,61 @@ describe('[Fix Review Request] must name its maintainer direction (REVIEW_REQUES
     expect(noItems.stderr).toContain('has no R1, R2… items');
   });
 
+  it('accepts only canonical github.com comment URLs — spoofed hosts and malformed paths are refused', () => {
+    for (const url of [
+      'https://notgithub.com/shader-slang/slang/issues/13073#issuecomment-1',
+      'https://github.com.evil/shader-slang/slang/issues/13073#issuecomment-1',
+      'https://github.com/shader-slang/issues/13073#issuecomment-1',
+      'https://github.com/shader-slang/slang/blob/master/README.md#issuecomment-1',
+      'https://evil.example/?u=https://github.com/shader-slang/slang/issues/13073#issuecomment-1',
+    ]) {
+      const r = run(send(`${HEAD}\nMaintainer direction: ${url}\nFixer self-check: R1 met`));
+      expect(r.status, url).toBe(2);
+      expect(r.stderr, url).toContain('neither links a maintainer comment');
+    }
+  });
+
+  it('accepts a canonical URL with a query string or as a markdown link', () => {
+    for (const dir of [
+      'https://github.com/shader-slang/slang/issues/13073?notification_referrer_id=NT_abc#issuecomment-3301234567',
+      '[the design comment](https://github.com/shader-slang/slang/pull/13213/files#discussion_r2201234)',
+    ]) {
+      expect(run(send(`${HEAD}\nMaintainer direction: ${dir}\nFixer self-check: R1 met`)).status, dir).toBe(0);
+    }
+  });
+
+  it('list items with their own colon stay under their label (`- R1: met`, `- Maintainer comment: <url>`)', () => {
+    const r = run(
+      send(
+        `${HEAD}\nMaintainer direction:\n- Maintainer comment: ${LINK}\nFixer self-check:\n- R1: met\n- R2: partial (options hook later)`,
+      ),
+    );
+    expect(r.status).toBe(0);
+    expect(run(send(`${HEAD}\nMaintainer direction: ${LINK}\nFixer self-check:\nR1: met\nR2: met`)).status).toBe(0);
+  });
+
+  it('parses a CRLF body with both values on the following lines', () => {
+    const body = [
+      '[Fix Review Request] shader-slang/slang#13073: x',
+      '',
+      'Mode: pr',
+      'Maintainer direction:',
+      `- ${LINK}`,
+      'Fixer self-check:',
+      '- R1 met',
+      '',
+    ].join('\r\n');
+    const r = run(send(body));
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe('');
+  });
+
+  it('refuses "none (" with an unclosed parenthesis', () => {
+    const r = run(send(`${HEAD}\nMaintainer direction: none (there were no maintainer comments`));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('REVIEW REQUEST INCOMPLETE');
+  });
+
   it('REVIEW_REQUEST_GATE=0 turns it off', () => {
     expect(run(send(`${HEAD}\nMaintainer direction: none`), { REVIEW_REQUEST_GATE: '0' }).status).toBe(0);
   });
