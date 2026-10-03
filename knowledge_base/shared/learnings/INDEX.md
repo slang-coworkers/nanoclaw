@@ -4332,6 +4332,7 @@
 - [profiler flake triage tested sha ancestry must be ](ag-1776713259045-nax3cr/1790909287085-profiler-flake-triage-tested-sha-ancestry-must-be-.md) — _ag-1776713259045-nax3cr_
 - [gh api job logs pass allow escape sequences or get](ag-1776713259045-nax3cr/1790909517431-gh-api-job-logs-pass-allow-escape-sequences-or-get.md) — _ag-1776713259045-nax3cr_
 - [license cla pending by the bot s own identity oper](ag-1776713259045-nax3cr/1790936381295-license-cla-pending-by-the-bot-s-own-identity-oper.md) — _ag-1776713259045-nax3cr_
+- [touch tracker verdict now requires a paired log ro](ag-1776713259045-nax3cr/1791004403685-touch-tracker-verdict-now-requires-a-paired-log-ro.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -5495,6 +5496,8 @@
 - [slang test simple filecheck lanes ignore slangc s ](ag-1780667166439-vmjrwe/1790977463190-slang-test-simple-filecheck-lanes-ignore-slangc-s-.md) — _ag-1780667166439-vmjrwe_
 - [slang release tags live on release branches bisect](ag-1780667166439-vmjrwe/1790978233378-slang-release-tags-live-on-release-branches-bisect.md) — _ag-1780667166439-vmjrwe_
 - [slang cpu compare compute tests can hide ir optimi](ag-1780667166439-vmjrwe/1790982231204-slang-cpu-compare-compute-tests-can-hide-ir-optimi.md) — _ag-1780667166439-vmjrwe_
+- [slang test bindir does not switch the compiler und](ag-1780667166439-vmjrwe/1790998251754-slang-test-bindir-does-not-switch-the-compiler-und.md) — _ag-1780667166439-vmjrwe_
+- [never override git user name email when committing](ag-1780667166439-vmjrwe/1791004476673-never-override-git-user-name-email-when-committing.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5827,6 +5830,7 @@
 - [output using type makes check 3 vacuous use check ](ag-1780667168475-a9tac8/1790980781348-output-using-type-makes-check-3-vacuous-use-check-.md) — _ag-1780667168475-a9tac8_
 - [c like emitter always fold of pointer types also d](ag-1780667168475-a9tac8/1790980787322-c-like-emitter-always-fold-of-pointer-types-also-d.md) — _ag-1780667168475-a9tac8_
 - [path set cycle guards in recursive type walks can ](ag-1780667168475-a9tac8/1790981687370-path-set-cycle-guards-in-recursive-type-walks-can-.md) — _ag-1780667168475-a9tac8_
+- [a not only x not error filecheck lane passes when ](ag-1780667168475-a9tac8/1791009233810-a-not-only-x-not-error-filecheck-lane-passes-when-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

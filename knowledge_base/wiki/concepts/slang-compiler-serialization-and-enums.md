@@ -3,12 +3,10 @@ title: "Slang Serialization, Module Cache, Link/Output Order, and Enum/Sentinel 
 type: concept
 group: slang-grab-bag
 tags: [record-replay, serialization, ir-link, export-conflict, dictionary-order, determinism, RECORD_OUTPUT, wrapObject, UBSan, miniz, binary-module, module-cache, getRelativePath, digest, sentinel, CountOf, enum-collision, macos-visibility, RTTI, inline-template, switch-default, C++]
-source_count: 23
+source_count: 24
 ---
 
 # Slang Serialization, Module Cache, Link/Output Order, and Enum/Sentinel Discipline
-
-This page covers the record/replay layer (fixed-schema stream, ownership/UBSan hazards), the miniz heap-archive allocator gotcha, the binary-module up-to-date check and the #11918 cross-drive cache-miss correction chain, order-dependent output (IR-link symbol choice among conflicting exports, Dictionary iteration order), terminal count/sentinel enum discipline, plus a set of C++/build reading-error lessons (macOS cross-dylib exception catch, an inline template's `__FILE__`, and a switch's `default:` arm) surfaced during serialization and RHI triage.
 
 ## TL;DR
 - The record/replay stream is **fixed-schema at the call level**: `executeNextCall` re-invokes the same call shape on playback, so **never conditionally skip `RECORD_OUTPUT`** — a skipped output desynchronizes every subsequent call.
@@ -19,9 +17,12 @@ This page covers the record/replay layer (fixed-schema stream, ownership/UBSan h
 - #11918 (Windows cross-drive cache MISS) root cause: `getRelativePath` returns empty across volumes → an EMPTY serialized module dep (save produces it, load consumes it); RESOLVED by PR #11921. The path went through two prior wrong/partial hypotheses — a model correction-supersession chain.
 - Terminal `CountOf`/`Count`/`NUM_*` sentinels should stay **IMPLICIT** (restore textual order == value order); a `static_assert(CountOf == Named + 1)` is NOT a uniqueness guard.
 - Reading errors to avoid: an inline template's `__FILE__` names the header (attributes the instantiating TU, not the data owner); a switch's `default: break;` admits **every** case.
+- An exception thrown from a destructor-time flush (pre-#13345 `Fossil::SerialReader`) goes to `std::terminate`; a typed `catch` across macOS dylibs silently misses — "just throw" fixes neither.
 - Two modules exporting the same link-time symbol link silently; which one wins depends on module order relative to the extern-declaring module. Do not call it "last wins".
 - `Dictionary` iteration is insertion-ordered only because of `unordered_dense`; pointer-keyed loops that reach output would go run-to-run nondeterministic under a hash-order map. Byte-compare repeated runs to check.
 - `SLANG_ASSERT` becomes `SLANG_ASSUME` under NDEBUG, so a false assert in release is UB. Before citing an internals behaviour, read it at a named ref — several entries here record a premise that was false.
+
+This page covers the record/replay layer (fixed-schema stream, ownership/UBSan hazards), the miniz heap-archive allocator gotcha, the binary-module up-to-date check and the #11918 cross-drive cache-miss correction chain, order-dependent output (IR-link symbol choice among conflicting exports, Dictionary iteration order), terminal count/sentinel enum discipline, plus a set of C++/build reading-error lessons (macOS cross-dylib exception catch, an inline template's `__FILE__`, and a switch's `default:` arm) surfaced during serialization and RHI triage.
 
 ## Record/Replay Stream Is Fixed-Schema at the Call Level
 
@@ -51,9 +52,11 @@ When a trailing `CountOf`/`Count`/`NUM_*` sentinel enumerator collides with a re
 
 Slang's binary-module up-to-date check is **digest-based, not mtime-based** ([1783028515295-slang-binary-module-up-to-date-check-i](../learnings/1783028515295-slang-binary-module-up-to-date-check-is-digest-bas.md)). The Windows-only #11918 cross-drive cache MISS was investigated through several corrections: the reproducer first refuted the naive path-layer hypothesis ([1783029316997-slang-11918-cross-drive-module-cache-m](../learnings/1783029316997-slang-11918-cross-drive-module-cache-miss-reproduc.md)); a correction said the load side is drive-agnostic and `getRelativePath` is save-side only ([1783029497134-correction-to-11918-learning-load-side](../learnings/1783029497134-correction-to-11918-learning-load-side-path-layer-.md)); that was then **superseded** — the `getRelativePath` cross-volume EMPTY-dep IS the root cause (save produces an empty dep, load consumes it) ([1783031868902-supersedes-prior-11918-correction-the-](../learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md)), confirmed RESOLVED by PR #11921 ([1783038802019-slang-11918-resolved-getrelativepath-r](../learnings/1783038802019-slang-11918-resolved-getrelativepath-returns-empty.md)). A model chain worth reading end-to-end for how corrections supersede.
 
-## macOS Hidden Visibility Breaks Cross-Dylib Typed C++ Exception Catch
+## When a Thrown Compiler Exception Never Reaches Its `catch`: Fossil Destructor Flush and macOS Hidden Visibility
 
 On macOS, hidden visibility breaks catching a `Slang::Exception`/`InternalError` BY TYPE across dylibs — libc++abi relies on RTTI *identity*, which hidden visibility duplicates, so a typed `catch` in another dylib silently misses ([1783011716114-macos-hidden-visibility-breaks-cross-d](../learnings/1783011716114-macos-hidden-visibility-breaks-cross-dylib-typed-c.md)).
+
+The fossil deserializer had a second route to the same symptom (#13343, fixed by PR #13345). Before that PR, `Fossil::SerialReader` drained its deferred-action queue — object *contents*, e.g. a WitnessTable's requirement dictionary — inside its destructor (`slang-serialize-fossil.cpp` ~1213). Destructors are implicitly `noexcept`, so ANY exception thrown while reading deferred contents (a `SLANG_ASSERT`/`InternalError`, `SLANG_UNEXPECTED`, a new `SLANG_ABORT_COMPILATION`) calls `std::terminate` and the callers' `catch` blocks never run: loading a stale `.slang-module` printed `terminate called after throwing an instance of 'Slang::InternalError'`, rc 134 (0xC0000409 on Windows). So "throw instead of returning nullptr" from `_readImportedDecl` does not fix the crash on its own. Confirm with `gdb -batch -ex run -ex 'bt 40' --args slangc ...` and look for `~SerialReader` → `_flush` in the frames. PR #13345 moves the drain into an explicit outermost-only `flush()` called at both construction sites (`readFossilizedDecl`, `readSerializedModuleIR_`). To pin "failed cleanly, no abort" in a test, note that slang-test SIMPLE(filecheck) output starts with `result code = N`, so `CHECK: result code = -1` works — and an in-process slangc terminate kills slang-test itself ([fossil deferred-read exception calls std::terminate](../learnings/1790783529890-slang-fossil-deserializer-an-exception-from-a-defe.md)).
 
 ## Reading a C++ Crash Path: `__FILE__` of an Inline Template, and a Switch's Default Arm
 
@@ -83,7 +86,7 @@ Two places where an ordering that is not a documented rule silently decides what
 
 **Dictionary iteration order reaches output through pointer-keyed loops.** At master b9199bdaa, Slang's `Dictionary`/`HashSet` wrap `ankerl::unordered_dense`, whose dense-vector storage iterates in insertion order (an erase swaps the last entry into the hole), so output is deterministic today. Several plain (non-`Ordered`) Dictionary loops still let that order reach output: `slang-ir-lower-dynamic-dispatch-insts.cpp:338`, over an `IRInst*`-keyed map (:276), sets the wrapper/switch-case order of the generated dispatch function; `slang-serialize-source-loc.cpp:128`, over a `SourceFile*`-keyed map, sets `m_sourceInfos` order in serialized modules (the reader is a linear search, :170-176, so only bytes change); and `slang-ir-link.cpp:1939`, int-keyed, sets the atomic struct's order. Swapping in a hash-order map (e.g. `boost::unordered_flat_map`, #13309, branch expipiplus1 3c87126) would make pointer-keyed output vary between runs of one binary, because pointers hash by address and ASLR moves addresses. Check with a byte-compare of output across repeated runs of the same binary; FileCheck tests will not catch it. Related: master `getHashCode(const char*, len)` (`slang-hash.h:136-139`) calls the PRIVATE `ankerl::unordered_dense::detail::wyhash::hash`, which Homebrew's unordered_dense no longer has; PR #13293 switches it to the public `hash<std::string_view>`, and the #13309 branch's WYHASH path re-adds the private call ([Dictionary iteration order leaks into output via pointer-keyed loops](../learnings/1790673419809-slang-dictionary-iteration-order-leaks-into-output.md)).
 
-**Source learnings (23):**
+**Source learnings (24):**
 - [IR-link: conflicting exports resolve silently; winner depends on where the extern module sits (not "last wins"); `[export]`/`[hlslExport]` traps for a conflict diagnostic (#13319)](../learnings/1790691097788-ir-link-conflicting-exports-pick-silently-and-the-.md)
 - [Dictionary (unordered_dense) iterates in insertion order today; pointer-keyed loops in dynamic-dispatch, source-loc serialization and ir-link would go nondeterministic under a hash-order map (#13309)](../learnings/1790673419809-slang-dictionary-iteration-order-leaks-into-output.md)
 - [IR operand-shape migration is byte-stable — stable-names freeze opcode↔integer, not operand form; no version bump](../learnings/1789601900070-ir-operand-shape-migration-is-byte-stable-stable-n.md)
@@ -99,6 +102,7 @@ Two places where an ordering that is not a documented rule silently decides what
 - [CORRECTION to #11918: load-side path layer is drive-agnostic; getRelativePath is save-side only](../learnings/1783029497134-correction-to-11918-learning-load-side-path-layer-.md)
 - [SUPERSEDES #11918 correction: getRelativePath cross-volume EMPTY-dep IS the root cause](../learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md)
 - [#11918 RESOLVED: getRelativePath returns empty across Windows volumes → empty serialized module dep (PR #11921)](../learnings/1783038802019-slang-11918-resolved-getrelativepath-returns-empty.md)
+- [Fossil deserializer: an exception from a deferred read calls std::terminate (flush ran in ~SerialReader)](../learnings/1790783529890-slang-fossil-deserializer-an-exception-from-a-defe.md) — destructors are noexcept; PR #13345 explicit outermost `flush()`; gdb `~SerialReader`→`_flush`; `CHECK: result code = -1`.
 - [macOS: hidden visibility breaks cross-dylib typed catch of C++ exceptions (libc++abi RTTI-identity)](../learnings/1783011716114-macos-hidden-visibility-breaks-cross-dylib-typed-c.md)
 - [an inline template's __FILE__ names the header — a crash path's dir prefix attributes the instantiating TU, not the data owner](../learnings/1786303967402-an-inline-template-s-file-names-the-header-so-a-cr.md)
 - [a switch's `default: break;` admits every case — reading case labels without the default arm inverts a guard into a no-op](../learnings/1786304686679-a-switch-s-default-break-admits-every-case-reading.md)

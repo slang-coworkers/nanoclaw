@@ -88,7 +88,7 @@ On PR #11628 (WGSL emitter), a maintainer suggested simplifying a predicate. The
 
 ## /slang-pr-review Runner: Invocation, and Failing Toward CLEAN
 
-**Invocation.** The runner scripts parse flags only. The `run-clarity` in SKILL.md's `argument-hint` is the skill verb. Passing it to the script exits 1 with `error: unknown flag run-clarity`. Call `bash scripts/run-clarity.sh --mode pr --pr <N> --repo <owner/repo>`; `compose-and-run.sh` behaves the same way ([flags only](../learnings/1785192373525-slang-clarity-review-runner-script-takes-flags-not.md)). Take the run dir from the script's `>>> output → <dir>` line. `ls -dt transcripts/*` can grab a stale run; after one failed call it picked an unrelated pr12031 transcript ([capture the run dir](../learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-dir.md)).
+**Invocation.** The runner scripts parse flags only. The `run-clarity` in SKILL.md's `argument-hint` is the skill verb. Passing it to the script exits 1 with `error: unknown flag run-clarity`. Call `bash scripts/run-clarity.sh --mode pr --pr <N> --repo <owner/repo>`; `compose-and-run.sh` behaves the same way ([flags only](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md)). Take the run dir from the script's `>>> output → <dir>` line. `ls -dt transcripts/*` can grab a stale run; after one failed call it picked an unrelated pr12031 transcript ([capture the run dir](../learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-dir.md)).
 
 **Exit 0 proves nothing. Two failure signatures:**
 - **Premature stop.** On #11870, a run exited 0 after 52s and 13 turns. It left a 96B `final-review.md`, `stop_reason: tool_use`, and zero subagents. An identical re-run produced a 6 KB review. To check, grep `stream.jsonl` for `subagent_type`; `tool-uses.jsonl` can be empty even on healthy runs. Re-run once, and fall back to B, C and a manual read only if the re-run also stops ([premature stop](../learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md)).
@@ -153,7 +153,7 @@ The COMMENT-state post in `/slangpy-pr-review` and `/slang-pr-review` runs only 
 - [Defer to a self-assigned MEMBER](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md) — hold the bot PR; route a parent go/no-go
 - [Stack on a sibling PR](../learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md) — --base the sibling branch; faithful subset by construction
 - [Literal suggestion can be unsafe](../learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md) — enumerate every read site of a reused predicate
-- [run-clarity.sh takes flags](../learnings/1785192373525-slang-clarity-review-runner-script-takes-flags-not.md) — a leading run-clarity word exits 1 at once
+- [run-clarity.sh takes flags](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md) — a leading run-clarity word exits 1 at once
 - [Capture the run dir](../learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-dir.md) — use the `>>> output →` line, not ls -t
 - [A premature termination](../learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md) — exit 0, <500B, no subagent_type, ~13 turns; re-run once
 - [A background-subagent orphan](../learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-incom.md) — "I'll wait for the background agents" = orphaned; re-run

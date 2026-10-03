@@ -3,12 +3,10 @@ title: "Slang Parameter Binding and Layout"
 type: concept
 group: slang-grab-bag
 tags: [bitfield, scalar-layout, parameter-binding, vk-binding, layout-kind, entry-point, system-value, SV_Target, SV_Position, validateEntryPoint, type-layout, ir-layout, spirv-layout, descriptor-set, mesh, geometry, E38052]
-source_count: 11
+source_count: 12
 ---
 
 # Slang Parameter Binding and Layout
-
-This page covers `slang-parameter-binding` predicates (the `vk::binding` diagnostics and single-kind exclusion guards), entry-point system-value validation (`validateEntryPoint`), the twice-set `SV_Target` location, the architectural duplication of layout POLICY between `slang-type-layout.cpp` and `slang-ir-layout.cpp` (including the Natural/scalar op sharing), and where bitfield packing is decided.
 
 ## TL;DR
 - The `vk::binding` entry-point diagnostic predicate keys off an AST type that must match the binder's layout-kind contract; it misfires on struct-of-resources entry params (#11861 mirrors #11857).
@@ -19,9 +17,12 @@ This page covers `slang-parameter-binding` predicates (the `vk::binding` diagnos
 - The `SV_Target<N>` resource `index` is set in **TWO** places in `slang-parameter-binding.cpp` — patch both.
 - Layout POLICY is written **twice**: `slang-type-layout.cpp` and `slang-ir-layout.cpp` share NO code. SPIR-V layout decorations use the **IR path**, not reflection `IRTypeLayout`. The two are not 1:1, so "just unify them" is capped in value.
 - The IR rule `Natural` encodes as the same op as user `ScalarDataLayout`, so a per-target change to scalar rounding also hits natural buffers unless a separate internal op is added. `sizeof`/`alignof` are target-independent AST constants.
+- **Natural layout already rounds array strides** (`S{double;int}`: size 12, stride 16), so only a nested struct moving later fields tells natural from rounded rules; a `LoadAligned` promise must be a power of two (E41301).
 - Bitfield packing is decided at semantic check from the linkage options and baked into a precompiled module; the importing session's flags do not change it.
 - A zero-width bitfield becomes the first member of the next backing group; under MSB-first packing its getter reads -1 when the next field is negative.
 - Check bitfield layout without a GPU or MSVC: `-target cpp` output plus g++ `__attribute__((ms_struct))` as an MSVC-layout emulation.
+
+This page covers `slang-parameter-binding` predicates (the `vk::binding` diagnostics and single-kind exclusion guards), entry-point system-value validation (`validateEntryPoint`), the twice-set `SV_Target` location, the architectural duplication of layout POLICY between `slang-type-layout.cpp` and `slang-ir-layout.cpp` (including the Natural/scalar op sharing), and where bitfield packing is decided.
 
 ## `vk::binding` Parameter-Binding Predicates: Single-Kind Guards Are Correct-but-Fragile
 
@@ -47,6 +48,8 @@ The duplication is not just per-fix but architectural, verified by direct source
 
 **Changing what "scalar layout" means per target hits three traps** (#12714's `-layout-rules-version 202c` rounding, PR #13300). (1) The IR rule `Natural` and user `ScalarDataLayout` share one encoded op: `getOpFromTypeLayoutRuleName(Natural)` returns `kIROp_ScalarBufferLayoutType`, the same op user `ScalarDataLayout` lowers to on buffers and on `Ptr<T,..,L>`, so a version-aware decoder also rounds non-scalar natural buffers (for example `-fvk-use-dx-layout` structured buffers) through their element pointers. PR #13300 adds an internal `NaturalBufferLayoutType` op, emitted only on rounding targets, so IR elsewhere stays byte-identical. (2) The DX-layout block in `getTypeLayoutRuleNameForBuffer` returns `Natural` for pointers before the pointer branch is reached, while reflection lays pointees out as scalar regardless; the two agreed only because natural == scalar. User pointers carry `DefaultBufferLayoutType` (not a null layout), and so do StorageBuffer element pointers, so tell them apart by `AddressSpace::UserPointer`. (3) `sizeof`/`alignof` fold to target-independent AST constants (`SizeOfIntVal` in `slang-ast-val.cpp`, `ASTNaturalLayoutContext` in lower-to-ir), so they cannot follow a per-target rule, and ByteAddressBuffer `Load<T>` uses natural rules too. Tooling: `slangc -reflection-json <file>` prints reflection in the REFLECTION-test format, and the generated `command-line-slangc-reference.md` has trailing spaces on about 900 lines that CI byte-compares, so don't trim them ([layout: IR rule Natural doubles as user ScalarDataLayout's op; sizeof is target-independent](../learnings/1790635577609-slang-layout-ir-rule-natural-doubles-as-user-scala.md)).
 
+Testing such a rounding change needs a type whose layout actually differs. `IRTypeLayoutRules::getNatural()` already gives an array stride of alignUp(size, align): `S{double x; int y;}` has size 12 but stride 16, so `S[N]` does NOT distinguish natural from rounded rules. A difference shows only when a nested struct moves later fields — `U{S z; float w;}` (`w`@12 vs @16) or `T{S a; float b[3];}` (stride 24 vs 32). The byte-address aligned-array path (`isWideAccessAligned`) needs `promisedAlignment % (stride*count) == 0`, and E41301 requires the promise to be a power of two, so `LoadAligned<U[2]>` with a rounded 48-byte size can never take the typed path; pick a type whose rounded array size is a power of two. As an oracle, DXC's HLSL `sizeof(T)` (v1.9.2602, `-HV 2021`) includes struct rounding (`sizeof({S; float})` = 24), and DXC runs locally through the `libdxcompiler.so` the Slang build ships in `build/Debug/lib` plus the headers in `build/_deps/dxc_source-src/include` — a 20-line `IDxcCompiler3` driver is enough ([natural layout already rounds array strides; BAB promises must be pow2](../learnings/1790769300394-slang-ir-natural-layout-already-rounds-array-strid.md)).
+
 ## Bitfields: Packing Is Fixed at Semantic Check and Baked Into Modules
 
 Bitfield offsets are decided at semantic-check time, not per target. `SemanticsDeclAttributesVisitor::visitStructDecl` (`slang-check-decl.cpp` ~20922) reads the packing rule from the *linkage* option set and stores the result in `BitFieldModifier::offset` → `IRBitFieldAccessorDecoration`. Consequently (verified on #13296, where `-msvc-style-bitfield-packing` packs MSB-first although MSVC packs LSB-first), a `.slang-module` built with the flag stays MSB-first when imported into a session that does not pass it. Packing is a property of the module build, so an option change or deprecation warning reaches only whoever builds the module. Any new `CompilerOptionName` also needs its own case in `writeCommandLineArgs` (`slang-compiler-options.cpp`), which re-emits options into the SPIR-V/LLVM debug command line and omits an option by default ([bitfield packing is baked into precompiled modules; gcc ms_struct is a GPU-free MSVC-layout oracle](../learnings/1790625408306-slang-bitfield-packing-is-baked-into-precompiled-m.md)).
@@ -57,7 +60,7 @@ Zero-width fields (`T x : 0`) show how the checker groups backings (`slang-check
 
 ---
 
-**Source learnings (11):**
+**Source learnings (12):**
 - [vk::binding entry-point diagnostic predicate (AST-type) must match binder's layout-kind contract](../learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md)
 - [slang #11861: vk::binding on struct-of-resources entry param — mirror of #11857, same predicate](../learnings/1782871594193-slang-11861-vk-binding-on-struct-of-resources-entr.md)
 - [Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers ask for a shared predicate](../learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md)
@@ -69,3 +72,4 @@ Zero-width fields (`T x : 0`) show how the checker groups backings (`slang-check
 - [bitfield packing is fixed at check time from linkage options and baked into .slang-module; gcc ms_struct as MSVC-layout oracle](../learnings/1790625408306-slang-bitfield-packing-is-baked-into-precompiled-m.md)
 - [zero-width bitfields open the next backing; MSB-first signed readback bug; no portable spelling](../learnings/1790631718776-slang-zero-width-bitfields-layout-vs-native-and-a-.md)
 - [Natural and user ScalarDataLayout share one IR op; DX-layout pointer rule; sizeof/alignof target-independent](../learnings/1790635577609-slang-layout-ir-rule-natural-doubles-as-user-scala.md)
+- [Slang IR natural layout already rounds array strides; BAB alignment promises must be powers of two](../learnings/1790769300394-slang-ir-natural-layout-already-rounds-array-strid.md) — `S[N]` can't tell natural from rounded; use `U{S z; float w;}`; E41301 pow2; local DXC `sizeof` oracle.

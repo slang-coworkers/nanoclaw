@@ -3,8 +3,10 @@ title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, 
 type: concept
 group: slang-backends
 tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register]
-source_count: 13
+source_count: 14
 ---
+
+# Metal backend — emit bugs, intrinsic-string codegen, argument buffers, and GPU-free repro
 
 ## TL;DR
 
@@ -16,7 +18,7 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 - **Metal argument-buffer tier is a RUNTIME device capability, not a compile-time choice** — a portable argument-buffer struct compiles once and runs on both tiers; don't bake a tier into the program.
 - **DispatchMesh/amplification legalization is Metal-only via VIRTUAL DISPATCH** (a per-target subclass override), not a call-site `if` — a "generic"-named legalization fn can be effectively single-target. Intrinsic-asm threads values only via `$`-operands; bare identifiers emit verbatim and need the name in lexical scope.
 - **A Metal binding test must use an index the fallback cannot hit.** An unbound MSL kernel argument takes the first available index, so check an explicit `register(tN)` past every earlier slot, with distinct t/s numbers to avoid E39001.
-- **A one-operand `makeVector(float4, packed_float4)` is Metal's packed→logical conversion, not a lane list.** `IRMetalPackedVectorType` is not an `IRVectorType`, so a peephole that treats a non-vector operand as one scalar lane stores a whole `packed_float4` into a float. Count a lane only for an `IRBasicType` operand matching the result's element type.
+- **A one-operand `makeVector(float4, packed_float4)` is Metal's packed→logical conversion, not a lane list.** `IRMetalPackedVectorType` is not an `IRVectorType`, so a peephole that treats a non-vector operand as one scalar lane stores a whole `packed_float4` into a float. Count a lane only for an `IRBasicType` operand matching the result's element type — compared via `unwrapAttributedType`, since `unorm`/`snorm`/`no_diff` operands are `IRAttributedType` and raw pointer equality silently loses folds.
 - **CI noise on Metal-only PRs**: a Falcor-Perf failure can NEVER be caused by a Metal-only diff (Falcor is D3D12/Vulkan, never compiles for Metal); priority-yield + "Artifact not found" is infra, not code.
 
 ## Metal is GPU-free reproducible
@@ -65,15 +67,27 @@ reads that element type from either `IRVectorType` or `IRMetalPackedVectorType` 
 assuming the result is an `IRVectorType`, and otherwise gives up
 [one-operand makeVector(float4, packed_float4) is a conversion](../learnings/1790765098240-metal-lowering-uses-a-one-operand-makevector-float.md),
 [one-operand makeVector can be a Metal packed-vector conversion](../learnings/1790766506870-slang-ir-a-one-operand-makevector-can-be-a-metal-p.md).
+That element-type equality must compare `unwrapAttributedType(...)` (`slang-ir-util.h:364`) on both
+sides, not raw type pointers: `IRInst::getDataType()` strips only `IRRateQualifiedType`
+(`slang-ir.cpp:8975`), so a `unorm float` operand is `IRAttributedType(float, UNorm)` and never
+pointer-equals `float`. The front end lets such modifiers drop during coercion, so these values do
+reach `makeVector` operands (`float2(RWTexture2D<unorm float>[id], 0.0)`). On fix/issue-13263 R2
+(8a76ecc5f1) the raw check in `findMakeVectorLane` silently lost master's fold of
+`float2(tex[id], 0.0).y` → `0.0f` — output stayed correct, so only a differential compile caught it:
+build a base-reverted and a head binary, compile the ~1331-test corpus × spirv/hlsl/metal with
+`xargs -P 48` and diff the stripped outputs (about 3 minutes). `__vectorReshape<1>(uint3(...))` is
+callable from user code and is a handy trigger for `vector<T,1>`-typed swizzles in tests
+[IR type-pointer equality misses IRAttributedType](../learnings/1790769162592-ir-type-pointer-equality-misses-irattributedtype-u.md).
 The full slang-test suite did not catch it, because `tests/metal` is text-only FileCheck with no
 case for this shape; a peer reviewer found it by probing `-target metal`. The regression test is
 `tests/metal/swizzle-of-packed-vector-load.slang`, which checks that the output still goes
 through `float4(`.
 
-**Source learnings (13):**
+**Source learnings (14):**
 - [Metal binding tests: an unbound kernel arg takes the first available index, so a zero-based or attribute-presence check passes on a buggy emitter; pick an index past all earlier slots and avoid t/s overlap (E39001) (#12294)](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)
 - [Metal lowering uses a one-operand makeVector(float4, packed_float4) as a conversion — don't count non-IRVectorType operands as scalars](../learnings/1790765098240-metal-lowering-uses-a-one-operand-makevector-float.md) — master's `c[i][0]` already miscompiles
 - [Slang IR: a one-operand makeVector can be a Metal packed-vector conversion, not a lane list](../learnings/1790766506870-slang-ir-a-one-operand-makevector-can-be-a-metal-p.md) — match element types; test tests/metal/swizzle-of-packed-vector-load.slang
+- [IR type-pointer equality misses IRAttributedType (unorm/snorm/no_diff); use unwrapAttributedType in peephole type checks](../learnings/1790769162592-ir-type-pointer-equality-misses-irattributedtype-u.md) — `getDataType()` strips only rate qualifiers; differential corpus compile caught a lost fold; `__vectorReshape<1>` trigger.
 
 - [reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md) — Metal source emission (incl. SIGSEGV crashes) is GPU-free; use a runtime single-use operand to defeat constant-fold/hoist masking; cross-check `-target spirv-asm`.
 - [Metal MS-texture emit: int2 read coord + get_width(lod) are multisample-general, not depth-specific](../learnings/1786993599232-metal-ms-texture-emit-int2-read-coord-get-width-lo.md) — color controls proved 2 of 3 "depth" bugs are MS-general; texture emit lives in the core-module intrinsic layer; run contrast controls before accepting a shared-locus framing.

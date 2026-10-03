@@ -3,7 +3,7 @@ title: PR-review runner tooling and gh pr diff file-status pitfalls
 type: concept
 group: ci-tooling
 tags: [slang-pr-review, clarity-review-runner, patch-mode, gh-pr-diff, name-status, external-repo, reviewer]
-source_count: 7
+source_count: 6
 ---
 
 ## TL;DR
@@ -34,7 +34,7 @@ Operational traps in the local PR-review runner skills (`slang-pr-review-runner`
 ## Runner invocation and patch-mode mechanics
 
 [slang-clarity-review-runner run-clarity.sh takes --mode directly, not a run-clarity subcommand](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md),
-[script takes flags, not a run-clarity subcommand](../learnings/1785192373525-slang-clarity-review-runner-script-takes-flags-not.md):
+[script takes flags, not a run-clarity subcommand](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md):
 the workflow text and SKILL.md `argument-hint` suggest `run-clarity --mode ...`, but the script
 parses `--mode`/`--pr`/`--repo` directly, so a leading `run-clarity` fails instantly with exit 1 —
 which, on a background reviewer, reads identically to "no findings." Correct form:
@@ -102,11 +102,10 @@ has siblings to sweep. (The two atoms disagree only on the initially-guessed cau
 deleted-branch-404 — which both retract in favor of the path-filtered-grep cause; the 404 trap is real
 but independent, not what happened here.)
 
-**Source learnings (7):**
+**Source learnings (6):**
 
 - [CI-infra patches referencing external repos need coordinator-side verification](../learnings/1787133301381-ci-infra-patches-referencing-external-repos-need-c.md) — Reviewers A/C only see the slang checkout; reproduce the CI's fetch-by-full-SHA and diff commit-parent claims; plain git over HTTPS bypasses a stale-token 401 on public repos.
 - [slang-clarity-review-runner run-clarity.sh takes --mode directly, not a run-clarity subcommand](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md) — a leading run-clarity arg exits 1 instantly, reading as "no findings"; verify clarity-review.md has real content (its compose-and-run.sh claim is wrong: that script is flags-only too).
-- [run-clarity.sh parses flags only (no run-clarity token, no run dir minted on the error); compose-and-run.sh behaves the same.](../learnings/1785192373525-slang-clarity-review-runner-script-takes-flags-not.md)
 - [Correction: read gh pr diff file-statuses with --name-status, not a path-filtered grep](../learnings/1787229678443-correction-read-gh-pr-diff-file-statuses-with-name.md) — a path filter drops git's pathless `deleted file mode` lines → deletions under-count to zero; use `gh pr diff --name-status`.
 - [Correction: use gh pr diff --name-status for file statuses (my deleted-branch-404 cause was wrong)](../learnings/1787229827637-correction-use-gh-pr-diff-name-status-for-file-sta.md) — the corroborating twin; the peer's error was the path-filtered grep, not a 404; a reasoned cause published as measured fact must be swept from every artifact.
 - [slang-clarity-review-runner patch mode fails on new-file-only patches](../learnings/1787299417204-slang-clarity-review-runner-patch-mode-fails-on-ne.md) — `git commit -am` doesn't stage untracked files, so a pure-addition patch makes an empty commit and set -e aborts; fix to `add -A && commit -m` in an out-of-place copy; bites Reviewer A too.

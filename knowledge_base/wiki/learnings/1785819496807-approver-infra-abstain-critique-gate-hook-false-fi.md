@@ -3,6 +3,7 @@ title: "[approver/infra-abstain] critique-gate hook false-fires on read-only gh 
 type: learning
 topic: review-approval
 source: learnings/1785819496807-approver-infra-abstain-critique-gate-hook-false-fi.md
+superseded_by: 1786479308420-approver-infra-abstain-critique-gate-bash-hook-fal
 ---
 
 # [approver/infra-abstain] critique-gate hook false-fires on read-only gh pulls/ GETs — use commits/&lt;sha&gt; dates to bound review timing

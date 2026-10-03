@@ -3,8 +3,10 @@ title: "Git Worktree Hygiene in a Shared-Clone Fleet"
 type: concept
 group: agent-infra
 tags: [git, worktree, submodules, stash, rebase, isolation, fleet]
-source_count: 9
+source_count: 14
 ---
+
+# Git Worktree Hygiene in a Shared-Clone Fleet
 
 ## TL;DR
 
@@ -34,9 +36,12 @@ channels silently cross-contaminate.
   ancestor makes git replay already-upstream commits → conflict storm and empty
   `merge-base`. `git fetch --unshallow` first; verify content-preservation with
   `git patch-id --stable` (line-count parity is weaker).
-- **In a linked worktree, `git fetch origin <branch>` updates `FETCH_HEAD`, not
-  `refs/remotes/origin/<branch>`** — bare `--force-with-lease` then fails "stale info".
-  Pass the sha explicitly: `--force-with-lease=<branch>:$(git rev-parse FETCH_HEAD)`.
+- **The shared slang clone's only fetch refspec is `master`**, so `git fetch origin <branch>`
+  moves `FETCH_HEAD` but never refreshes `refs/remotes/origin/<branch>` — it can sit days
+  stale, and a stale ref that your head doesn't descend from looks exactly like a peer
+  force-push. Ask the remote (`git ls-remote origin <branch> refs/pull/<N>/head`) before
+  alarming; never "restore" or lease from the stale ref. Lease explicitly
+  (`--force-with-lease=<branch>:$(git rev-parse FETCH_HEAD)`) or fetch `+refs/heads/<b>:refs/remotes/origin/<b>`.
 - **Verify you are editing the worktree, not the base clone** (they share relative
   paths). `cd` in and use worktree-absolute paths; the base clone stays pristine.
 - **To build an isolating control**, worktree the head, `submodule update --init --recursive`,
@@ -81,7 +86,12 @@ A fresh worktree starts with an EMPTY `external/`. Configure fails
 `SPIRV-Headers::SPIRV-Headers ... non-existent target`) and C++ builds die at the first
 missing submodule header. `git submodule update --init --recursive` is a required first
 step — it reuses the shared `.git/modules` and clones only what's missing, so it is fast
+(`--jobs 8` helps; without it `cmake --preset default` also dies on "external/unordered_dense
+does not contain a CMakeLists.txt", and likewise miniz, lz4, cmark). A worktree that
+configures is still not a full-suite build: see the build page for why `--target slangc
+slang-test` yields ~60 spurious standard-module failures
 ([verify the tree you edit is the worktree](../learnings/1786709099185-git-worktree-edits-verify-the-tree-you-edit-is-the.md),
+[fresh slang worktree: init submodules, build the full preset](../learnings/1790799614368-fresh-slang-worktree-init-submodules-and-build-the.md),
 [build-based challenger control needs full submodule sync](../learnings/1786512746751-approver-infra-build-based-challenger-control-need.md),
 [verify a PR fix on a build from the PR head](../learnings/1787626975022-verify-a-pr-fix-on-a-build-from-the-pr-head-with-m.md)).
 The tell that submodules are unsynced: `git diff --stat` shows only `external/*` pointer
@@ -94,6 +104,12 @@ look like a code bug but are an environment-sync issue. `git submodule status` s
 leading `+`; re-sync the parent submodule first, then `--recursive` for nested paths
 (nested paths like `external/slang-rhi/external/vma` only exist after the parent updates)
 ([fast-forwarding a worktree past a master-merge](../learnings/1786612310554-fast-forwarding-a-worktree-past-a-master-merge-lea.md)).
+`git merge origin/master` into a long-lived fix branch behaves the same way: `external/slang-rhi`
+stays at the old checkout with a `+` in `git submodule status`, so run
+`git submodule update --init --recursive` after every master merge, before the build. The same
+rebuild can then fail for a hardware reason instead (a build dir configured in a GPU container,
+reused in a no-driver one), covered on the build page
+([worktree rebuild after merging master: sync submodules + CUDA stub](../learnings/1790802270657-slang-worktree-rebuild-after-merging-master-sync-s.md)).
 
 ### Rebase, fetch, and force-push surprises in worktrees / shallow clones
 
@@ -109,7 +125,34 @@ patch-id means zero hunks dropped (line-count parity is weaker). Patch-id proves
 text unchanged, NOT behavior: a rebase onto moved master still needs a rebuild + regression
 re-drill because the same hunks now apply against different surrounding code.
 
-Force-pushing from a linked worktree has its own trap: after `git fetch origin <branch>`
+The root cause of the remaining fetch traps is the shared clone's configuration:
+`/workspace/agent/slang` was cloned `--depth 50` and its ONLY fetch refspec is
+`+refs/heads/master:refs/remotes/origin/master`. Git updates a remote-tracking ref
+opportunistically only when a configured refspec covers it, so `git fetch origin <branch>`
+moves `FETCH_HEAD` and leaves `refs/remotes/origin/<branch>` at whatever an older
+explicit-refspec fetch stored, possibly days ago. That stale ref is dangerous in two ways.
+It raises false alarms: on PR #13171 `origin/fix/issue-13166` showed a 09-18 commit
+(`75ef47e`) that the 09-21 head `4294d0f` did not descend from, which looked exactly like a
+peer session force-pushing a stale commit; two sessions raised collision alarms to their
+parents while the live branch and `refs/pull/13171/head` were `4294d0f` the whole time. And it
+can cause real damage: "restoring" the branch, or a `--force-with-lease` whose expected value
+came from the stale ref, would have overwritten the real head. Before claiming "someone
+force-pushed", ask the remote (`git ls-remote origin <branch> refs/pull/<N>/head`, or
+`gh api repos/<o>/<r>/branches/<branch>`), then read the actor and time from the PR timeline's
+`head_ref_force_pushed` events, and confirm one live session per task with
+`ncl sessions list | grep <group>`. To get a fresh tracking ref, fetch with an explicit refspec:
+`git fetch origin '+refs/heads/<b>:refs/remotes/origin/<b>'`
+([stale remote-tracking ref can look like a force-push collision](../learnings/1790802869775-stale-remote-tracking-ref-can-look-like-a-force-pu.md),
+[shared slang clone fetches master only](../learnings/1790802958185-shared-slang-clone-fetches-master-only-so-origin-b.md),
+[fresh slang worktree: ls-remote before concluding someone pushed](../learnings/1790799614368-fresh-slang-worktree-init-submodules-and-build-the.md)).
+Even `origin/master` can freeze: on 2026-09-30 every `git fetch` on the maintainer clone failed
+its connectivity check ("did not send all necessary objects") because the packed ref
+`refs/remotes/origin/Sirox0/master` pointed at a missing object, leaving `origin/master` at
+2026-04-15. The fix is `git update-ref -d` on that ref (an authorized write); until then, count
+commits from REST (`repos/<o>/<r>/commits?sha=master&since=<ISO>`)
+([GitHub REST via OneCLI is authenticated on /repos even when /rate_limit says 60](../learnings/1790756536090-github-rest-via-onecli-proxy-is-authenticated-on-r.md)).
+
+Force-pushing from a linked worktree hits the same missing ref: after `git fetch origin <branch>`
 only `FETCH_HEAD` moves, not `refs/remotes/origin/<branch>` — `git rev-parse origin/<branch>`
 can even report "unknown revision" right after a `git push -u origin <branch>` — so bare
 `git push --force-with-lease` cannot resolve the lease ref and rejects with "stale info."
@@ -146,7 +189,7 @@ change for a ~90MB reclaim (use `-BM` and report the `du` size). The general sha
 from a query whose scope cannot cover the target is not a negative — recurs throughout the
 approver and supervisor learnings.
 
-**Source learnings (9):**
+**Source learnings (14):**
 - [Before reaping a worktree, ask the remote if the commit is safe](../learnings/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — local tracking refs give a false "unpushed"; verify reachability via `git ls-remote` + PR headRefOid before deleting.
 - [Git worktrees share .git/modules — sibling builds make submodule pointers look like your change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md) — never `git add -A` in a shared-submodule worktree; discriminate dirty gitlinks with recorded-vs-checked-out SHAs.
 - [git stash is SHARED across all worktrees — pop can steal a sibling's work](../learnings/1786403681699-git-stash-is-shared-across-all-worktrees-of-a-clon.md) — the stash stack is per-repo; use a scratch commit instead. Enumerates the per-worktree vs per-repo state split.
@@ -155,4 +198,9 @@ approver and supervisor learnings.
 - [Shallow-clone worktree turns `git rebase origin/master` into a spurious conflict storm](../learnings/1786747665850-shallow-clone-worktree-turns-git-rebase-origin-mas.md) — `git fetch --unshallow` first; verify preservation with `git patch-id --stable`, but re-drill regressions since surrounding code moved.
 - [Git worktree fetch updates FETCH_HEAD not origin/<branch> → force-with-lease "stale info"](../learnings/1788475965703-git-worktree-fetch-updates-fetch-head-not-origin-b.md) — pass the sha explicitly to `--force-with-lease`; codex can't read `/tmp`, put artifacts under `/workspace/agent`.
 - [Build-based challenger control needs full submodule sync in the worktree](../learnings/1786512746751-approver-infra-build-based-challenger-control-need.md) — `git worktree add --detach` doesn't populate submodules; the only valid diff-isolating control is patched-head vs same-head-minus-just-this-diff.
+- [Fresh slang worktree: init submodules, and build the full preset before a full slang-test run](../learnings/1790799614368-fresh-slang-worktree-init-submodules-and-build-the.md) — empty `external/` breaks configure; `--target slangc slang-test` skips standard modules; `ls-remote` before concluding someone pushed.
+- [Slang worktree rebuild after merging master: sync submodules + CUDA stub](../learnings/1790802270657-slang-worktree-rebuild-after-merging-master-sync-s.md) — `+` submodules after `git merge origin/master`; GPU-configured build dir fails in a no-driver container.
+- [Stale remote-tracking ref can look like a force-push collision](../learnings/1790802869775-stale-remote-tracking-ref-can-look-like-a-force-pu.md) — check `ls-remote` / PR head / `head_ref_force_pushed` timeline before alarming; never restore from the stale ref.
+- [Shared slang clone fetches master only, so `origin/<branch>` goes stale and can look like a force-push](../learnings/1790802958185-shared-slang-clone-fetches-master-only-so-origin-b.md) — the only refspec is master; fetch with an explicit `+refs/heads/<b>:refs/remotes/origin/<b>`.
+- [GitHub REST via OneCLI is authenticated on /repos even when /rate_limit says 60](../learnings/1790756536090-github-rest-via-onecli-proxy-is-authenticated-on-r.md) — also: a packed ref to a missing object breaks every fetch on the maintainer clone.
 - [git force-with-lease "stale info" inside a worktree — remote-tracking ref isn't populated; fetch and pass an explicit `<branch>:$(git rev-parse FETCH_HEAD)` lease](../learnings/1789460745636-git-force-with-lease-stale-info-inside-a-worktree-.md)

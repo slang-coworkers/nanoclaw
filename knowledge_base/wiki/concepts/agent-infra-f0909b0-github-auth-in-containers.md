@@ -3,8 +3,10 @@ title: "Diagnosing GitHub Auth in Coworker Containers (gh / OneCLI / App token)"
 type: concept
 group: agent-infra
 tags: [gh, onecli, github-app-token, auth, app_not_connected, spec-repo, read-vs-write]
-source_count: 8
+source_count: 9
 ---
+
+# Diagnosing GitHub Auth in Coworker Containers (gh / OneCLI / App token)
 
 ## TL;DR
 
@@ -25,11 +27,12 @@ from public GETs (which succeed regardless). Probe the actual path you need.
 - **`gh issue view <n>` and other GraphQL-backed `gh` subcommands can return EMPTY output
   (no error)** with an App token — do NOT conclude GitHub is unreachable; use `gh api` /
   `gh api graphql` directly.
-- **Tell a dead connection from an under-scoped token with two cheap reads:** `gh api rate_limit`
-  (`app_not_connected` 401 = OneCLI has no live connection; `limit=5000+` = authed;
-  `limit=60` = unauthenticated) and `gh api repos/OWNER/REPO --jq '.permissions'` (all-false =
-  disconnected). Both disconnected → not transient, not `/user`-specific; every authenticated
-  path fails. Reconnect is operator-side (OneCLI connect URL).
+- **`/rate_limit` is not a credential probe** — the proxy injects on `/repos/...` paths but
+  not on `/rate_limit`, which can report `limit=60` while real repo calls carry
+  `X-RateLimit-Limit: 6000`. Read `X-RateLimit-*` headers off a real `/repos` call
+  (`curl -D hdr.txt`) before rationing; tell a dead connection by `app_not_connected` 401 on
+  `/repos` plus all-false `gh api repos/OWNER/REPO --jq '.permissions'`. Reconnect is
+  operator-side (OneCLI connect URL).
 - **`shader-slang/spec` has NO writable route** from the slang container (no push, no fork,
   `/user` 403). This is different from `shader-slang/slang` which pushes fine. Draft locally,
   commit on a branch, report the blocker up with the doc — don't hunt a workaround.
@@ -117,12 +120,19 @@ unblocked ([Running slang PR reviewers when in-container gh is unauthenticated (
 ### Distinguishing dead-connection from under-scoped, and the spec-repo dead end
 
 When `gh` genuinely fails, distinguish a *dead credential connection* from a merely *under-scoped
-token* with two cheap reads, since public GETs succeed in both cases: `gh api rate_limit` (a
-disconnected broker never reaches GitHub and returns the OneCLI proxy error
-`{"error":"app_not_connected", ...connect URL...}` at HTTP 401; a real token returns `limit=5000+`;
-an unauthenticated one `limit=60`) and `gh api repos/OWNER/REPO --jq '.permissions'` (write-capable
-returns `push/triage/maintain` true; disconnected returns all false)
+token* with cheap reads, since public GETs succeed in both cases. A disconnected broker never
+reaches GitHub and returns the OneCLI proxy error `{"error":"app_not_connected", ...connect URL...}`
+at HTTP 401, and `gh api repos/OWNER/REPO --jq '.permissions'` returns all false (write-capable
+returns `push/triage/maintain` true)
 ([diagnosing a gh 403/invalid-token — OneCLI app_not_connected](../learnings/1787673998635-diagnosing-a-gh-403-invalid-token-in-the-coworker-.md)).
+Do not use `/rate_limit` to read the token's quota. The proxy credentials requests by path
+prefix, and `/rate_limit` is not on its allow-list, so the endpoint answers for an anonymous
+caller: on 2026-09-30 `curl https://api.github.com/rate_limit` reported a core limit of 60 while
+`curl .../repos/shader-slang/slang/actions/...` responses in the same container carried
+`X-RateLimit-Limit: 6000`. Budget calls from the `X-RateLimit-Limit`/`-Remaining` headers of a
+real `/repos` call (`curl -D hdr.txt ...`) instead. Job logs also download fine through the
+proxy with `curl -sL .../actions/jobs/<id>/logs`
+([GitHub REST via OneCLI is authenticated on /repos even when /rate_limit says 60](../learnings/1790756536090-github-rest-via-onecli-proxy-is-authenticated-on-r.md)).
 If both signals say disconnected it is NOT transient and NOT `/user`-specific — every
 authenticated path (labels, comments, Issue Type via GraphQL, PR create, and `git push`, since the
 origin remote is `x-access-token:<token>@github.com/...` backed by the same connection) will fail.
@@ -144,7 +154,8 @@ to open the PR or provision a writable route. (Proposal conventions: copy `propo
 keep number `000` until a maintainer assigns one, conform to the template sections exactly, Status
 = "Design Review".)
 
-**Source learnings (8):**
+**Source learnings (9):**
+- [GitHub REST via OneCLI proxy is authenticated on /repos paths even when /rate_limit says 60](../learnings/1790756536090-github-rest-via-onecli-proxy-is-authenticated-on-r.md) — read `X-RateLimit-*` headers off a real `/repos` call; `/rate_limit` is not credentialed.
 - [Diagnosing a gh 403/invalid-token in the coworker container (OneCLI app_not_connected)](../learnings/1787673998635-diagnosing-a-gh-403-invalid-token-in-the-coworker-.md) — two cheap reads (`rate_limit`, `.permissions`) tell dead-connection from under-scoped; both dead ⇒ every authenticated path fails, reconnect is operator-side.
 - [shader-slang/spec has no writable path from the slang-fixer container](../learnings/1787678701018-shader-slang-spec-has-no-writable-path-from-the-sl.md) — no push, no fork, invalid GH_TOKEN, /user 403; draft locally and report the blocker up, don't hunt a workaround.
 - [slang PR review: gh pr diff works even when gh auth status shows invalid GH_TOKEN](../learnings/1788581852750-slang-pr-review-gh-pr-diff-works-even-when-gh-auth.md) — OneCLI intercepts only `gh api`/`gh api graphql`; `gh pr diff`/`gh pr view` read via raw token, so preflight status failure doesn't block the runner.

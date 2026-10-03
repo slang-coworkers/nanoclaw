@@ -6,6 +6,8 @@ tags: [git, worktree, shared-clone, concurrency, patch, format-patch, stash]
 source_count: 12
 ---
 
+# Git in a shared clone — worktrees, co-tenant resets, and patch-handoff traps
+
 ## TL;DR
 
 `/workspace/agent/<project>/` is a **per-agent-group** mount, so N concurrent sessions of one coworker share **one** working tree. This produces a family of silent corruption and false-diagnosis bugs, plus a set of git commands whose filters do something other than intended while still producing a valid, cleanly-pushing result.
@@ -19,6 +21,7 @@ source_count: 12
 - **`git format-patch -1 -- <path>` filters the diff but keeps the whole commit message** — a `Fix owner/repo#N` subject then auto-closes the wrong issue.
 - **A patch from `git diff` silently omits untracked test files.** `git add -N` first; assert `grep -c '^+++'` equals your file count.
 - **Never restore an uncommitted file from a committed ref** — `git checkout HEAD -- <path>` reverts uncommitted work. Take a byte copy first.
+- **A diff against a base newer than your branch's base reverts upstream work.** `reset --soft origin/master` after a sibling fetch, or stacking a branch as `<fixed-base>..HEAD`, silently undoes every master change since you branched. Diff only your own commits (`merge-base`) and check `--stat` for files you never touched.
 
 ## The shared clone has two seats, and the victim has no defense
 
@@ -71,3 +74,22 @@ A refinement on *which instrument answers which question*: a diffstat counts **c
 ## `git reset --soft origin/master` in a shared-clone worktree can silently revert upstream
 
 Git worktrees under `/workspace/agent/wt-*` share the base clone's `.git` refs, so a sibling fixer session running `git fetch origin master` advances the SHARED `refs/remotes/origin/master` for ALL worktrees. Hazard: `git reset --soft origin/master` to squash your branch may now point HEAD at a commit NEWER than your branch's base while keeping your stale index — so the diff between that index and the advanced `origin/master` REVERTS every upstream commit landed since you branched, and a following `git add <your files> && git commit` silently reverts unrelated upstream work (observed: reverting a feature, deleting other people's test files). Guards that worked: `git push --force-with-lease` REJECTED the bad push ("stale info") — use it, never bare `--force`; recover with `git reset --hard <explicit-good-SHA>` (your last good pushed commit), not any `origin/*` ref that may have moved; to rebase, prefer `git fetch && git rebase origin/master` (which reports conflicts) over `reset --soft origin/master`. A maintainer squash-merge collapses commits anyway, so don't chase clean single-commit history at this risk. [git reset --soft origin/master in a shared-clone worktree can silently revert upstream](../learnings/1789619873780-git-reset-soft-origin-master-in-a-shared-clone-wor.md)
+
+The same inversion corrupts a **stacked test build**. To test how two fixes interact, a session generated the #13322 layer as `git -C wt-13322 diff a05023cd30 HEAD`, where `a05023cd30` was the newer base it was stacking onto. `wt-13322` had branched from an older master, so the diff also reverted every master change in between (meta.slang, capdef, metal tests: +702/-814 across 19 files). It built fine and produced a typeflow segfault that looked like a real interaction between the fixes. The cause is the same in both cases: a two-point diff between your HEAD and any base you did not branch from carries the base delta as well as your work. Take only the branch's own commits (`git diff <first-own>^ <last-own>`, or `git diff $(git merge-base <base> HEAD) HEAD`), and after stacking run `git diff <your-head> HEAD --stat`; any file you did not expect means the stack is contaminated ([stacking a fix branch: diff its own commits, not <fixed-base>..HEAD](../learnings/1790773012843-stacking-a-fix-branch-diff-its-own-commits-not-fix.md)).
+
+**Source learnings (15):**
+- [Victim-seat rule for the shared group clone: you cannot prevent a co-tenant reset, so never hold a working tree there](../learnings/1785998884009-victim-seat-rule-for-the-shared-group-clone-you-ca.md)
+- [An artifact you don't remember creating means a concurrent writer — shared bot identities are last-write-wins](../learnings/1786026421791-an-artifact-you-don-t-remember-creating-means-a-co.md)
+- [A clean git status in a shared clone does not mean your patch is still there — diff the hunk, not the status](../learnings/1786042035892-a-clean-git-status-in-a-shared-clone-does-not-mean.md)
+- [git worktree DOES protect against a co-tenant `reset --hard` — but `refs/stash` is shared and cross-worktree destructive](../learnings/1786044390060-git-worktree-does-protect-against-a-co-tenant-rese.md)
+- [git worktree list reports prunable from a foreign mount and the worktree is HEALTHY - never run worktree prune against a clone reached by a foreign path](../learnings/1786002315941-git-worktree-list-reports-prunable-from-a-foreign-.md)
+- [git --work-tree pointed at a foreign checkout diffs against YOUR index - present files report as deletions; and a broken instrument fails toward the answer that licenses the action](../learnings/1786002501367-git-work-tree-pointed-at-a-foreign-checkout-diffs-.md)
+- [git rm --cached while amending stages a full-file deletion](../learnings/1786042764028-git-rm-cached-while-amending-stages-a-full-file-de.md)
+- [git format-patch with a path filter keeps the full commit message](../learnings/1786044350330-git-format-patch-with-a-path-filter-keeps-the-full.md)
+- [Git commands whose filter narrows the DIFF but not the MESSAGE (or the other way round) produce valid commits that do the wrong thing](../learnings/1786044389931-git-commands-whose-filter-narrows-the-diff-but-not.md)
+- [A patch built from git diff silently omits untracked test files — check '^+++' count against intent](../learnings/1786043930883-a-patch-built-from-git-diff-silently-omits-untrack.md)
+- [Never git add -A in a worktree with scratch files — verify diff stat before every push](../learnings/1790096330385-never-git-add-a-in-a-worktree-with-scratch-files-v.md)
+- [A verification tool is also an actor — never restore a working file from a committed ref](../learnings/1786051121888-a-verification-tool-is-also-an-actor-never-restore.md)
+- [git ls-files $@ unquoted silently narrows a repo-wide pathspec to top-level files](../learnings/1786023595379-git-ls-files-unquoted-silently-narrows-a-repo-wide.md)
+- [git reset --soft origin/master in a shared-clone worktree can silently revert upstream](../learnings/1789619873780-git-reset-soft-origin-master-in-a-shared-clone-wor.md)
+- [stacking a fix branch: diff its own commits, not <fixed-base>..HEAD](../learnings/1790773012843-stacking-a-fix-branch-diff-its-own-commits-not-fix.md)

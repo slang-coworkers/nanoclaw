@@ -3,8 +3,10 @@ title: Correctness-review methodology — coverage lenses, codegen reproduction,
 type: concept
 group: review-process
 tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile]
-source_count: 14
+source_count: 16
 ---
+
+# Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline
 
 ## TL;DR
 
@@ -23,7 +25,9 @@ confirming or refuting? Compilation and clean exits prove far less than they app
 - **Reproduce a reviewer's/codex's EXACT source + EXACT flags before disputing.** Codegen and
   reflection effects are use/lowering-dependent — "unused vs used," "-emit-spirv-directly vs
   not," "global param survives vs copied-to-local" all flip the result. A near-miss repro
-  produces a false-negative and a wrong shared conclusion.
+  produces a false-negative and a wrong shared conclusion. Run the test shape the reviewer
+  SUGGESTS, not only its illustrative example, and set `SLANG_RUN_SPIRV_VALIDATION=1` (slangc
+  returns 0 on invalid SPIR-V); `-target ptx` (nvrtc) is a real CUDA compile check here.
 - **A static IR gate is necessary but not sufficient.** `as<IRGlobalParam>` gating a
   reflection side-effect does not prove "non-manifesting" — you must craft the repro to
   exercise the SURVIVAL path, or say "unverified" rather than confirm.
@@ -150,6 +154,22 @@ the probe through `-target spirv -emit-spirv-via-glsl`, where glslang turns an o
 identifier into a hard error. Report the gap as confirmed or refuted, never as predicted
 [an executed repro beats Reviewer A's traced example](../learnings/1790622924515-slang-reviewer-an-executed-repro-beats-reviewer-a-.md).
 
+The converse failure is running only the example when the reviewer also suggested a sharper
+shape. In round 2 of slang#11709, Reviewer A said the backward-diff `Ref` mapping makes a
+`no_diff groupshared` parameter by-value and leaves the AST and IR signatures disagreeing. It gave a
+plain-`__ref` example and *suggested* a test with a `no_diff const groupshared` parameter. The
+example ICEs on both master and the PR, so the claim was dismissed and a real regression was
+missed. The suggested shape was the bug: `fwd_diff(f)`/`bwd_diff(f)` applied directly to
+`f(uint i, no_diff const groupshared float a[4], float x)` emits invalid SPIR-V with rc=0
+(spirv-val: "OpLoad Pointer … is not a logical pointer"), CUDA that nvrtc rejects (`(**&s_0)[i]`),
+and Metal that dereferences an array value, while master is valid for all three. Four rules
+follow. Reproduce the reviewer's suggested test shape as well as its example. Always set
+`SLANG_RUN_SPIRV_VALIDATION=1`, because without it slangc exits 0 on invalid SPIR-V. Use
+`-target ptx` as a real CUDA compile check (nvrtc 12.6 works in this container; Metal has no
+downstream compiler here). Test both a *direct* `fwd_diff`/`bwd_diff(f)` and a *differentiated
+caller* of `f`, since they take different paths and only the direct one broke here
+([run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md)).
+
 ## Self-raised findings, EXIT=0, and the full file list
 
 As the reviewer, do not close a finding YOU raised on the author's self-reported result you
@@ -178,11 +198,13 @@ description
 
 The automated stack has a **false-negative floor on subtle ABI/legalization correctness**. On slang PR #12875 (AnyValue bulk-copy of autodiff backward-context structs — the same subsystem as the AnyValue review lens above) the *entire* stack — slang-reviewer's 3-reviewer pass + CodeRabbit + an independent bot review + the codex PLAN/CODE/OUTPUT gates — returned APPROVE with 0 correctness bugs and the PR was reported "clean, awaiting merge." The maintainer's own (GPT-5-assisted) deep review then found two real bugs the stack missed: an ABI-preserved empty member (zero-leaf but carrying ExternCpp/Public/BinaryInterfaceType) must NOT be treated as byte-compatible, and a user `bit_cast<Word>(Empty{})` was silently zero-filled where the empty-source zero-fill needed to be provenance-gated (only the marshalling pass's own whole-object casts take it; an unmarked user cast must stay a loud failure). Both verified against master (loud `E99997`) vs the naive gate (silent `Word{0}`). Treat a clean automated pass on a byte-compatibility / type-legalization PR as *not yet proven*, and apply the numeric-exercise lens harder there ([maintainer's own deep review caught correctness bugs the automated review stack missed on slang#12875](../learnings/1789475349530-maintainer-s-own-deep-review-caught-correctness-bu.md)).
 
-A second blind spot of the same stack is **fidelity to a maintainer's written spec**, because every diff-focused pass checks the code against itself. On slang-rhi#881, five rounds (three reviewers plus a source cross-check each) signed off a head that missed two requirements from the maintainer's spec in #787 comment 5798248018. The spec said cross-queue ownership misuse is an "error if the PRODUCER is Vulkan", but the code decided on `ctx->deviceType`, the device doing the use, so the headline misuse (CUDA using a resource Vulkan still owns) was only a warning. The spec also said "Unowned→Owned(Q) on initData", yet the debug device never registered ownership at create. Both survived every correctness pass because the code was internally consistent. When a maintainer wrote a spec, fetch it (`gh api repos/O/R/issues/N/comments --jq '.[]|select(.user.login=="<maintainer>")'` plus the PR review comments), list each requirement with its comment link, and mark it met / partial / missed with `file:line` before any sign-off. A tooling trap from the same review: `gh run list --commit <sha>` needs the full 40-character SHA, and a short SHA silently returns `[]`, which reads as "no CI run exists" ([review against the maintainer's spec, not just the diff](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md)).
+A second blind spot of the same stack is **fidelity to a maintainer's written spec**, because every diff-focused pass checks the code against itself. On slang-rhi#881, five rounds (three reviewers plus a source cross-check each) signed off a head that missed two requirements from the maintainer's spec in #787 comment 5798248018. The spec said cross-queue ownership misuse is an "error if the PRODUCER is Vulkan", but the code decided on `ctx->deviceType`, the device doing the use, so the headline misuse (CUDA using a resource Vulkan still owns) was only a warning. The spec also said "Unowned→Owned(Q) on initData", yet the debug device never registered ownership at create. Both survived every correctness pass because the code was internally consistent. When a maintainer wrote a spec, fetch it (`gh api repos/O/R/issues/N/comments --jq '.[]|select(.user.login=="<maintainer>")'` plus the PR review comments), list each requirement with its comment link, and mark it met or missed with `file:line` before any sign-off ("partial" says how much is missing, not a lower severity: a missed item gates the verdict until the maintainer defers it on record, per [Working Live PRs Alongside Maintainers](../concepts/review-maintainer-live-pr-interaction.md) and [a spec requirement left unimplemented is a merge blocker until the maintainer defers it](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md)). A tooling trap from the same review: `gh run list --commit <sha>` needs the full 40-character SHA, and a short SHA silently returns `[]`, which reads as "no CI run exists" ([review against the maintainer's spec, not just the diff](../learnings/1790583621446-review-against-the-maintainer-s-spec-not-just-the-.md)).
 
 Two durable-text disciplines that cost avoidable review round-trips, both caught by codex OUTPUT_REVIEW: **(1) never cite `file.cpp:NNNN` in source comments, PR descriptions, or review replies** — a maintainer merging master into the branch shifts every line number, so refer to code by **stable symbol names** (`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`); line numbers are fine only in ephemeral scratch/logs. **(2) `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches message text as a plain substring** — `{{.*}}` FileCheck regex is NOT supported and silently fails (0/1) — and the CHECK must be specific enough to reject the buggy variant (`//CHECK: cyclic reference '$inheritance'` naming the symbol, not the loose `//CHECK: cyclic reference` which also matches a wrong `'E'` diagnostic and wouldn't catch a revert) ([never cite file.cpp:line in durable text — merges make it stale; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md)).
 
-**Source learnings (14):**
+**Source learnings (16):**
+- [run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md) — slang#11709 R2: the suggested `no_diff const groupshared` shape was the regression; SLANG_RUN_SPIRV_VALIDATION=1; -target ptx; test direct fwd/bwd_diff and a differentiated caller.
+- [a spec requirement left unimplemented is a merge blocker until the maintainer defers it](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md) — grade spec items met/missed; "partial" is not a severity tier.
 - [Review lens: AnyValue bulk-copy / empty-struct legalize — numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md) — dispatch the target conformer + pin its numeric result; assert the AnyValue invariant so the silent-default doesn't swallow other shapes.
 - [Review lens: a threaded/recursive parameter — revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md) — delete the parameter and check a test fails; the deeper nested path is the untested one; silent miscompile risk.
 - [Reproduce a reviewer's EXACT codegen scenario before disputing](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md) — unused vs used + -emit-spirv-directly flip the result; run codex's literal case, not a near-miss variant.

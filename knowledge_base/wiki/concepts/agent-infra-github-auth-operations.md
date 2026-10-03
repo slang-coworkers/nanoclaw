@@ -3,7 +3,7 @@ title: "GitHub Auth and Operations in Agent Containers"
 type: concept
 group: agent-infra
 tags: [github, onecli, gh-cli, nv-slang-bot, workflows, pr-mapping, auth, proxy, credentials]
-source_count: 30
+source_count: 31
 ---
 
 # GitHub Auth and Operations in Agent Containers
@@ -15,7 +15,7 @@ source_count: 30
 - **`gh auth status` / `gh api user` / any identity probe is a FALSE-NEGATIVE.** They return 401 / "token invalid" / `app_not_connected` even when GitHub reads AND writes work. The `GH_TOKEN` is a GitHub App installation token with no `/user` identity. Never self-block on a probe.
 - **Verify reads** with a real org-scoped call: `gh api repos/<o>/<r> --jq .full_name`. **Verify writes** by attempting the actual write and trusting its exit code / returned URL. Escalate "GitHub down" only on a real 4xx from the endpoint you need.
 - **Works:** org-scoped REST `gh api repos/<o>/<r>/...` (GET + POST/PATCH comments, labels, bodies); `git push` of `fix/issue-*` branches; `gh pr create --draft`; raw-token `git push https://x-access-token:${GH_TOKEN}@github.com/...`.
-- **Does NOT work:** GraphQL (`gh issue view`, `gh search`) → empty/`app_not_connected` (use REST); deep pagination (keep `--limit 100`, page 2 goes unauthenticated → 401).
+- **Unreliable:** porcelain `gh issue view` (can return empty; use REST); deep pagination (keep `--limit 100`, page 2 goes unauthenticated → 401). `search` is on the proxy allow-list: `gh search issues` works, but inline `gh api search/issues?q=` breaks on unencoded `>`/`,`/`+`.
 - **nv-slang-bot perms:** `actions/contents/issues/pull_requests:write, metadata/org_projects:read`. NOT `workflows` — any push touching `.github/workflows/*` is rejected atomically (whole push fails). Route workflow patches to the orchestrator's PAT, or cross-fork via `slang-coworkers`.
 - **Bot login is `nv-slang-bot`** (no `[bot]` suffix) — edit-in-place guards comparing to `"nv-slang-bot[bot]"` never match → duplicate POSTs. A session can only edit/delete comments IT created; cross-session comment edit 403s. Exactly one tier owns the issue-level 5-bullet.
 - **Merge-queue enqueue is structurally blocked** for the bot — always escalate evictions for human requeue.
@@ -42,7 +42,7 @@ Reconfirmed 2026-09-11 across two more containers, with two added specifics: (1)
 
 **Works:** org-scoped REST via `gh api repos/<o>/<r>/...` (GET issues/PRs/comments; POST/PATCH comments, labels, PR/issue body); `git push` of `fix/issue-*` branches to origin; `gh pr create --draft`; raw-token fallback via `git push "https://x-access-token:${GH_TOKEN}@github.com/<o>/<r>.git" <branch>` and `curl -H "Authorization: Bearer ${GH_TOKEN}"`.
 
-**Does not work:** GraphQL (`gh issue view`, `gh search issues`, `gh api search/issues`) → empty / `app_not_connected`. Use REST `gh api repos/<o>/<r>/issues/<n>` for reads; list recent issues and filter client-side for dup-search.
+**Unreliable:** the porcelain `gh issue view` (empty output under the App token). Use REST `gh api repos/<o>/<r>/issues/<n>` for reads. Search, by contrast, is credentialed by the proxy (`search` is on its path allow-list), and the earlier "search returns empty" readings were query-construction failures rather than auth failures. On 2026-10-01, `gh api "search/issues?q=…+created:>2026-09-20"` died with "unexpected end of JSON input" on the unencoded operators, while `gh search issues --repo shader-slang/slang "Foo Bar" --created ">2026-09-20" --json number,state,title` worked reliably for a dup-search. Use the porcelain, or encode the query yourself, and remember search-index lag before reading a zero as "not filed" ([gh api search/issues with inline query string can fail; use gh search issues](../learnings/1790842344778-gh-api-search-issues-with-inline-query-string-can-.md)).
 
 **Pagination 401:** keep `gh api` / `gh run list` / `gh pr list` to `--limit 100` (one page) — page-2 fetches go unauthenticated through the proxy and 401. Narrow by filter rather than deep-paging.
 
@@ -122,7 +122,8 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 
 > **Later incremental folds moved to [part 2](agent-infra-github-auth-operations-2.md)** (2026-08-17): the resolved 07-16/07-17 auth-outage diagnostics, the empty-list-looks-like-success trap + unauth REST fallback, the Discussions write-block, reviewing/triaging under an invalid token, PR takeover from a contributor's personal fork, human-cred-merge ≠ bot-write-recovery, and the third `.github/workflows/*` push boundary.
 
-**Source learnings (30):**
+**Source learnings (31):**
+- [gh api search/issues with inline query string can fail; use gh search issues](../learnings/1790842344778-gh-api-search-issues-with-inline-query-string-can-.md) — search works through the proxy; the inline query string is what breaks.
 - [gh auth invalid ≠ pr-review blocked: public-repo diff reads work unauthenticated; inner claude reviewer cost bills to a separate pool](../learnings/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md)
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work; remove the read-only local-git gh shim before posting](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)
 - [Fork-PR CI approval gate is keyed on origin-of-head (fork vs same-repo branch), not PR author — the bot fixer's same-repo-branch PRs skip it](../learnings/1785530290363-fork-pr-ci-approval-gate-is-keyed-on-origin-of-hea.md)
