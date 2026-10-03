@@ -157,3 +157,9 @@ authorize.
   "P1/P2 descoped" as settled without checking that the maintainer had agreed. A coworker's descope of a
   maintainer's requirement isn't a deferral until the maintainer agrees. Parked on TWO inputs: jhelferty on
   5907630393 + skallweitNV's review. The re-chase task now covers both.
+- **2026-10-02 09:00 re-chase (`rechase-rhi-881-r4r5-8fb7`):** jhelferty still silent on 5907630393: no comment,
+  reaction, review or inline reply since 09-30 08:48Z. Head is still `775f522`; skallweitNV and dshreiner-nv are
+  requested, no reviews. The reviewer DID answer the re-sent request (msg 291 = its 787-thread seq 34) in
+  session `sess-1785935169470-plpq2f` at 08:52Z: REQUEST_CHANGES R4/R5 only. Its 6taxcp session retracted the
+  09:00 APPROVE at 09:01Z, so the verdicts agree. Operator told (dashboard msg 33). The `rhi-881-review-rechase-381b`
+  timer (10-03 09:00Z) already covers both inputs; no new timer.

@@ -81,37 +81,38 @@ before trusting. [[feedback_a_clean_orphan_count_does_not_validate_range_labels]
 | index | range (first … last leaf stem) |
 |---|---|
 | **Rules** — corrections, confirmed approaches, instrument defects. | |
-| [[index-feedback-1]] | `a_401_body_piped_to_grep_ic_is_a_false_zero_that_refutes` … `a_control_built_from_the_matchers_own_assumption_is_blind` |
-| [[index-feedback-2]] | `a_control_returning_zero_is_unproven_until_a_must_hit_fires` … `a_diff_marker_describes_a_state_not_an_action` |
-| [[index-feedback-3]] | `a_diff_prefix_regex_hides_markdown_bullets` … `a_hedge_costs_the_entailments_of_the_decided_claim` |
-| [[index-feedback-4]] | `a_helper_choice_needs_the_arm_that_distinguishes_it` … `a_negative_rule_answers_its_own_question_not_whether_nothing_happened` |
-| [[index-feedback-5]] | `a_new_ci_gate_needs_a_constructed_violation` … `a_reference_keyed_gate_cannot_see_an_artifact_older_than_its_referent` |
-| [[index-feedback-6]] | `a_referential_error_needs_a_namespace_check_not_scepticism` … `a_sender_at_global_scope_can_verify_its_own_delivery` |
-| [[index-feedback-7]] | `a_sentence_can_rot_without_becoming_false` … `a_terminal_turn_must_emit_no_row` |
-| [[index-feedback-8]] | `a_thread_id_on_a_message_tag_loses_to_your_own_session_thread` … `an_approval_that_never_saw_the_finding_is_not_a_refutation` |
-| [[index-feedback-9]] | `an_arm_keyed_on_a_state_refires_forever` … `bare_text_is_delivered` |
-| [[index-feedback-10]] | `benign_ack_loop_dont_restart_if_live_chains` … `diff_relative_line_numbers_in_bot_reviews` |
-| [[index-feedback-11]] | `directional_agreement_is_not_reproduction` … `grep_the_object_that_holds_the_code_not_the_launcher` |
-| [[index-feedback-12]] | `group_clone_is_shared_by_all_sibling_sessions` … `name_what_you_held_fixed` |
-| [[index-feedback-13]] | `name_what_your_instrument_cannot_record_before_enumerating` … `peer_reviewed_is_not_human_reviewed_in_an_agent_fleet` |
-| [[index-feedback-14]] | `piping_to_head_masks_the_exit_code_you_are_testing` … `signature_grep_passed_vs_failed` |
-| [[index-feedback-15]] | `six_errors_one_mechanism_a_proxy_read_where_the_artifact_was_available` … `two_closures_cannot_share_a_module_level_guard` |
-| [[index-feedback-16]] | `two_endpoints_for_one_build_disagree_on_freshness_not_on_outcome` … `zero_hit_grep_has_never_once_proved_fabrication_in_my_store` |
-| [[index-feedback-17]] | `zero_output_is_not_available_scratchpad_still_delivers` … `zero_test_jobs_is_not_zero_tests_ran` (tail shard — repacking mints new shards; after every leaf `ls index-feedback-*.md \| wc -l` vs this table.) |
+| [[index-feedback-1]] | `a_401_body_piped_to_grep_ic_is_a_false_zero_that_refutes` … `a_constraint_stated_as_a_remedy_scores_a_correct_fix_as_wrong` |
+| [[index-feedback-2]] | `a_consumer_merged_before_its_producer_fails_silently` … `a_diagnostic_definition_site_does_not_name_the_emitting_layer` |
+| [[index-feedback-3]] | `a_diagnostics_absence_is_weaker_evidence_than_its_presence` … `a_guard_whose_expected_value_the_defect_supplies_is_circular` |
+| [[index-feedback-4]] | `a_handoff_granting_destructive_authority_needs_the_same_audit_as_blame` … `a_multi_probe_turn_has_a_window_not_a_timestamp` |
+| [[index-feedback-5]] | `a_mutable_last_active_makes_a_replayed_window_a_floor` … `a_prose_only_rule_loses_to_a_mechanical_counter` |
+| [[index-feedback-6]] | `a_pruned_worktree_makes_git_show_a_silent_empty_file` … `a_reviews_commit_id_can_postdate_the_review` |
+| [[index-feedback-7]] | `a_risk_does_not_license_a_mechanism` … `a_stale_snapshot_dispatch_duplicates_a_chain_another_leg_already_ran` |
+| [[index-feedback-8]] | `a_state_row_carries_only_the_fields_you_asked_of_it` … `a_wrong_corpus_announces_itself_as_exhausted` |
+| [[index-feedback-9]] | `a_wrong_mechanism_bolted_to_right_numbers_has_no_failure_signature` … `an_inbound_row_does_not_name_its_sender` |
+| [[index-feedback-10]] | `an_injected_clock_cannot_test_a_filesystem_race` … `compaction_target_yields_to_load_bearing_content` |
+| [[index-feedback-11]] | `compare_the_unit_the_claim_is_about` … `expected_noise_line_is_not_a_failure_signature` |
+| [[index-feedback-12]] | `false_coverage_the_five_mechanisms_that_consume_the_reason_to_look` … `inbound_scan_must_cover_issue_comments_not_just_reviews` |
+| [[index-feedback-13]] | `independence_of_two_axes_is_not_evidence_one_is_out_of_scope` … `ncl_sessions_messages_truncates_at_300_chars` |
+| [[index-feedback-14]] | `ncl_sessions_messages_truncates_text_so_grep_lies` … `read_the_input_contract_not_more_output` |
+| [[index-feedback-15]] | `record_decision_ok_proves_emission_not_persistence` … `stripping_comments_leaves_the_same_hole_in_string_literals` |
+| [[index-feedback-16]] | `success_shaped_output_from_a_component_that_never_ran` … `two_sets_same_count_different_members` |
+| [[index-feedback-17]] | `two_tiers_one_frame_is_shared_prior` … `zero_test_jobs_is_not_zero_tests_ran` (tail shard — repacking mints new shards; after every leaf `ls index-feedback-*.md \| wc -l` vs this table.) |
 | **Chains** — per-issue/PR state. Open the specific chain before touching it. | |
-| [[index-project-1]] | `10027_vector4_import_abort_pending` … `11859_require_derivative_pr11872` |
-| [[index-project-2]] | `11877_operator_overload_fastpath` … `12034_rebase_bom_decode_merge` |
-| [[index-project-3]] | `12035_overload_diag_reasons` … `12132_analyzemakestruct_positional_oob` |
-| [[index-project-4]] | `12134_base_interface_assoc_type_followup` … `12266_defer_bare_decl_scope_leak_crash` |
-| [[index-project-5]] | `12268_triage_workflow_proposal` … `12361_catchall_direct_throw_sccp_param_ice` |
-| [[index-project-6]] | `12362_nonmatching_handlers_escaping_throw_hang` … `12431_12432_unit_test_assert_empty_output` |
-| [[index-project-7]] | `12433_bare_type_name_typetype_ice` … `9153_public_by_default_structs` |
-| [[index-project-8]] | `9382_gather_constoffset_pending` … `fork_reentrancy_phantom_codriver` |
-| [[index-project-9]] | `gate_audit_shared_jsonl_mtime_race` … `nanoclaw_1108_service_hint_single_source` |
-| [[index-project-10]] | `nanoclaw_1109_escalation_retire_race` … `nanoclaw_1162_gc_full_candidate_list` |
-| [[index-project-11]] | `nanoclaw_1163_reply_capacity_settlement` … `scan_py_subthread_key_parse_falsepositive` |
-| [[index-project-12]] | `scheduler_stall_incident` … `slangpy_1058_cuda_fastmath_downstream_args` |
-| [[index-project-13]] | `slangpy_1059_float3_cuda_perf` … `workspace_deletion_incident` |
+| [[index-project-1]] | `10027_vector4_import_abort_pending` … `11847_pr_board_sync_protected_path_abstain` |
+| [[index-project-2]] | `11858_utf8_eof_ceded` … `12025_wavetangledvector_diff_subscript` |
+| [[index-project-3]] | `12029_lifted_diff_constraint_arithmetic` … `12132_analyzemakestruct_positional_oob` |
+| [[index-project-4]] | `12134_base_interface_assoc_type_followup` … `12260_enum_bool_switch_e39999` |
+| [[index-project-5]] | `12261_statement_labels_non_breakable` … `12356_default_value_blob_c_abi_gap` |
+| [[index-project-6]] | `12360_assoc_type_dyndispatch_specialize_av` … `12430_existential_static_requirement_ice` |
+| [[index-project-7]] | `12430_pr12555_existentialtype_saga` … `8681_debuginfo_strip_spiropt` |
+| [[index-project-8]] | `8785_amplification_shader_payload_docs_wrong` … `discord_gateway_401_outage` |
+| [[index-project-9]] | `discord_support_heartbeat_dead` … `nanoclaw_1096_funnel_review_cycles` |
+| [[index-project-10]] | `nanoclaw_1097_codex_one_copy` … `nanoclaw_1154_ownership_one_matcher` |
+| [[index-project-11]] | `nanoclaw_1157_mcp_allowlist_failopen` … `nanoclaw_pr875_approver_mounted_policy` |
+| [[index-project-12]] | `nanoclaw_pr876_slangpy_approver_mounted_policy` … `slangpy_1001_build_time_kernel_compilation_scrub` |
+| [[index-project-13]] | `slangpy_1001_triager_memo_verbatim` … `upstream_sync_incident` |
+| [[index-project-14]] | `workspace_deletion_incident` … `workspace_deletion_incident` (tail shard — repacking mints new shards; after every leaf `ls index-project-*.md \| wc -l` vs this table.) |
 | [[index-technique]] | Reusable measurement/tooling procedures. |
 | [[index-reference]] | Pointers to external resources. |
 | [[index-command]] | Exact command invocations with their traps. |

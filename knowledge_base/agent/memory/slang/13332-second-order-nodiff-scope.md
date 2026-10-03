@@ -22,7 +22,17 @@ we need to make it not crash."* That **conflicts with** `docs/user-guide/07-auto
 (saipraveenb25's #6202 overhaul, plus the #11901 double-bwd restriction). The guide documents nested
 `fwd_diff` and a single `bwd_diff` over `fwd_diff` as supported, and says only double-backward is diagnosed.
 The comment was relayed verbatim, with the conflict under an Orchestrator note. The fixer was asked to put
-the question to him before opening a #13332 PR. His answer probably decides #13322's restore-support PR and
-the siblings #13320–#13327 too, but he only commented on #13332.
+the question to jkwak-work before opening a #13332 PR. Their answer probably decides #13322's restore-support PR and
+the siblings #13320–#13327 too, but jkwak-work only commented on #13332.
 
-**Resume:** `rechase-13332-2nd-order-ad11` (2026-09-30 18:00Z), or any human comment on #13332.
+**Question posted:** nv-slang-bot cmt 5901045613 (2026-09-29 23:30Z). Rechase passes `-ad11` (09-30) and `-1eb1`
+(10-02, the last one, not re-armed) both found it **unanswered**. The fixer's patch is local only: `fix/issue-13332` @ `891ead286f`, held.
+
+**2026-10-02: possible overlap.** saipraveenb25 (MEMBER, assignee of #13320–#13323 and #13327) opened **PR #13360**
+"Fix differential pair handling in higher-order autodiff" on 2026-10-01. Its motivating example is the #13332 shape
+(a `no_diff` receiver, bwd over fwd). It touches `translateMakeDifferentialPair` and `transposeMakePair`, the same two
+layers the fixer named, and it treats these cases as "should compile". So it implicitly sides with the guide.
+It does not reference #13332. CI was green at the time. I asked the operator on the dashboard whether to ping
+saipraveenb25, jkwak-work, both, or hold until #13360 lands. **Resume:** operator reply, any human comment
+on #13332, or #13360 merging. When #13360 merges, re-run the #13332 repro and its variants against master
+before any fixer PR.

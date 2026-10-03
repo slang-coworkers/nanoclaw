@@ -7,219 +7,116 @@ metadata:
   originSessionId: de399eac-1a9d-4047-90ad-7b81aca21579
 ---
 
-Measured 2026-08-06 at `d7d59f374` while verifying shader-slang/slang#12391, which claims the
-anti-starvation bound in `extras/ci/wait-for-priority.py` cannot be reached during sustained
-contention.
+Measured 2026-08-06 at `d7d59f374` while verifying shader-slang/slang#12391 (the anti-starvation
+bound in `extras/ci/wait-for-priority.py` cannot be reached under sustained contention), plus a
+second instance 08-08.
 
-## ⛔ What I published, and what is actually true
+## What I published, and what is true
 
-I wrote in [[feedback_a_pushing_draft_starves_its_own_ci_retry]] (and it propagated into
-[[feedback_absence_of_an_effect_is_not_absence_of_the_actor]]):
-
-> Waiting does produce CI, and it is bounded. `--max-yield-hours 12`, measured from `created_at`
-> (fixed across reruns, so age accumulates), stops yielding past the ceiling. Oldest dispatch
-> #29909 created 05:58:41Z ⇒ **ages out ~17:58Z the same day with zero intervention.**
-> **Bounded, self-healing — no human action owed for the rerun.**
-
-**Every code citation was right. The behavioural conclusion is false.** The escalation branch
-(`wait-for-priority.py:176-182`, `escalated = yielded and self_age_hours >= args.max_yield_hours`)
-is unreachable on **both** arms, and I never enumerated the arms:
+I wrote in [[feedback_a_pushing_draft_starves_its_own_ci_retry]] (propagated into
+[[feedback_absence_of_an_effect_is_not_absence_of_the_actor]]) that `--max-yield-hours 12`,
+measured from the fixed `created_at`, makes bot-dispatch starvation *"bounded, self-healing — no
+human action owed"*. **Every code citation was right; the behavioural conclusion is false.** The
+escalation branch (`wait-for-priority.py:176-182`,
+`escalated = yielded and self_age_hours >= args.max_yield_hours`) is unreachable on both arms:
 
 | arm | `IS_THROTTLED_BOT` | gate script called? | age when evaluated |
 |---|---|---|---|
-| attempt 1 (bot dispatch) | `true` | yes | **~0.2–0.4 min** (6/6 measured) |
+| attempt 1 (bot dispatch) | `true` | yes | **~0.2–0.4 min** (6/6; triager: 40 runs, 0.18–0.65 min) |
 | attempt ≥2 (rerun) | **`false`** | **no — exits at `ci.yml:101`** | never computed |
 
-- **Attempt 1 can never be old.** The gate job started 0.2–0.4 min after `created_at` on 6/6 bot
-  dispatches (`slang-triager` independently measured 40 runs: 0.18–0.65 min, 0 runs ≥720 min, max
-  **1108× below** the ceiling). Age at evaluation is always ≈0, so the `>= 12` compare is always
-  false. ⚠️ **My stated MECHANISM for this was wrong** — I said "the gate is the run's first job."
-  It is not: `wait-for-human-priority` has `needs: [filter]` (`ci.yml:66-67`), and `filter` is the
-  measured first job on 4/4 runs. The gate is the first job *that runs the script*, one hop in. The
-  number is unaffected (both jobs start within a minute), but ⭐⭐ **I asserted a job-graph property
-  I never read the graph for** — `needs:` was two lines above the code I was already quoting.
+- **Attempt 1 can never be old.** The gate job (`wait-for-human-priority`, which `needs: [filter]`
+  at `ci.yml:66-67` — I first misstated it as the run's first job without reading the graph) starts
+  within a minute of creation, so the `>= 12h` compare is always false.
 - **A rerun does not re-enter the gate.** `IS_THROTTLED_BOT` (`ci.yml:99`) is
   `event_name == 'workflow_dispatch' && github.triggering_actor == 'nv-slang-bot[bot]'`.
-  `retry-yielded-bot-ci.py:144-152` reruns via `gh api -X POST .../rerun` under the *retry
-  workflow's* token, so **`triggering_actor` flips to `github-actions[bot]`** while `actor` stays
-  `nv-slang-bot[bot]`. Complete population in the 200 most recent CI runs — 5 of 5 bot
-  `workflow_dispatch` reruns: `IS_THROTTLED_BOT: false`. The script that owns the aging logic is
-  never invoked.
+  `retry-yielded-bot-ci.py:144-152` reruns under the retry workflow's token, so
+  **`triggering_actor` flips to `github-actions[bot]`** while `actor` stays `nv-slang-bot[bot]`.
+  5 of 5 bot `workflow_dispatch` reruns in the 200 most recent CI runs: `IS_THROTTLED_BOT: false`.
 
-⛔ **INSTRUMENT DEFECT in my first evidence line (caught by `slang-triager`, 2026-08-06).**
-**GitHub echoes the whole `run:` block into the job log**, so the literal string
-`Not a throttled bot run` appears in **every** gate log as the echoed `echo` *command* — including
-runs where the script demonstrably ran. Verified on #29837 att1: `grep 'Not a throttled bot run'`
-matches, prefixed `^[[36;1m`, while the script actually printed `Priority gate for run`. A raw
-substring grep for that phrase **measures the script's source text, not its behaviour** — the
-triager's own first census read `11/11` before catching it.
+The docstring's load-bearing sentence (*"the age keeps growing each time the retry workflow reruns"*,
+`:65-68`) describes a computation that never happens. The rerun **does** rescue the run — #29837,
+#29753, #29790 all att1 failure → att2 success — but by **bypassing** the gate, not by aging. This
+also refutes #12391's fix direction 2 (let the retry escalate an aged run): the rerun never consults
+aging. The honest bound: bot starvation ends only when `any_active_ci` goes quiet, which #12391
+correctly calls unbounded.
 
-⭐⭐⭐ **My alternation mixed a clean pattern with a contaminated one, and reporting them together
-made the sound half look like it depended on the rotten half.** `IS_THROTTLED_BOT: (true|false)`
-matches ONLY the resolved env-block value (`0` matches against both echoed forms — verified by
-construction); `Not a throttled bot run` is contaminated. So the **conclusion never rested on the
-bad instrument** — but a reader can't tell that from `A / B` in one breath. ⇒ **Report each
-instrument's count separately, and state which one is decisive.** Two clean instruments confirm it:
-`IS_THROTTLED_BOT: false` **5/5** and `Priority gate for run` **0/5**.
+## Second instance (08-08): the same flip produced a 31h deadlock
 
-✅ **Two-cell control (the triager's, re-run on my edge) — the filtered instrument inverts exactly:**
+Run #30098 (`31179559787`, branch `fix/issue-12383`): attempt 2, `triggering_actor=github-actions[bot]`,
+`status=waiting` on the falcor-ci / ci-approvers environment gate, `wait_timer: 0`,
+`current_user_can_approve: false` ⇒ no elapsed-time exit at any duration.
 
-| run | arm | `Priority gate for run` | REAL `Not a throttled` | env |
-|---|---|---|---|---|
-| #29837 att1 | script ran | **1** | 0 | `true` |
-| #29837 att2 | early exit | **0** | 1 | `false` |
+**Exempt as a subject, blocking as an object.** `ci.yml:101` reads `triggering_actor`, so #30098
+skips the gate and its ceiling. But `run_actor_login()` (`ci_priority_common.py:48-55`) also prefers
+`triggering_actor`, and `is_bot()` (`:40-45`) matches any `…[bot]` suffix — so it still classifies as
+`older_bot`, and 9 later dispatches across 4 branches yielded behind it.
 
-⭐⭐ **`Priority gate for run` is the uncontaminated discriminator** — only the script prints it, it
-never appears as echoed source. Filter echoed lines by the `^[[36;1m` ANSI prefix / `##[group]`
-marker. ⇒ **When grepping a CI job log, every pattern that also appears in the workflow's own source
-is contaminated by the command echo.** Prefer a string the script prints that does not exist in the
-YAML, or filter the echo prefix.
+Paired control — two attempt-2 reruns, one field apart:
 
-⇒ So the docstring's load-bearing sentence — *"the age keeps growing each time the retry workflow
-reruns a still-yielding bot run"* (`wait-for-priority.py:65-68`) — describes a computation that
-does not happen on the rerun path.
+| run | `actor` | `triggering_actor` | outcome |
+|---|---|---|---|
+| #30105 | `nv-slang-bot[bot]` | `nv-slang-bot[bot]` | **escalated at +12h00m55s**, then success |
+| #30098 | `nv-slang-bot[bot]` | `github-actions[bot]` | exempt, waiting 31h+ |
 
-## ✅ The escape hatch works — for the opposite reason
+The ceiling works when reached; this run was unreachable by it. Meanwhile `ci-retry-yielded-bot.yml`
+ran 16 consecutive hourly times, all `conclusion=success`, each logging *"CI is still active …
+not rerunning bot CI — active #30098 (waiting)"*.
 
-A rerun **succeeds precisely because it bypasses the gate**, not because anything aged out:
-#29837 att=2 → success, #29753 att=2 → success, #29790 att=2 → success (all attempt 1 = failure).
-`created_at` fixedness does buy something real: it is what makes those runs *selectable* by
-`retry-yielded-bot-ci.py`'s lookback. It buys nothing at the gate.
+**Fix:** `ci.yml:101` should key on `actor`, not `triggering_actor`, so a rerun cannot launder a run
+out of its own throttle class. Human unblock: approve **or cancel** the stuck run — cancelling also
+frees the retry path. (`#30098` is a `run_number`, not a PR; branch names carry the *issue* number —
+`fix/issue-12307` → PR #12310.)
 
-⇒ **#29909 will never "age out."** It is `completed/failure`; a completed run re-evaluates nothing.
-It either gets rerun (and then proceeds gate-free) or stays failed. My 17:58Z prediction had no
-mechanism behind it — I asserted a deadline for an evaluation that was never scheduled.
-
-⚠️ **This also refutes #12391's fix direction 2** ("let the retry escalate an aged run even while CI
-is active"): the reran run does not consult the aging logic at all, so making the retry fire during
-contention already yields full CI. The premise that a rerun evaluates age is the same error I made.
-
-## The lesson
-
-⭐⭐⭐ **A bound that is only evaluated at moments when the measured quantity is structurally ~0 is
-decorative, and reads as a guarantee.** I verified the comparison exists, the threshold is passed
-in (`ci.yml:109`), and the operands are correct — three true facts that say nothing about whether
-the compare can ever be true. ⇒ **For any threshold, ask what the measured value IS at the instants
-the compare runs.** Not "is the code reached" — *what is on the left-hand side when it is.*
-
-⭐⭐ **`actor` and `triggering_actor` are different fields and a rerun splits them.** Any workflow
-condition keyed on `triggering_actor` silently changes meaning on attempt ≥2. Same trap class as
-[[feedback_a_guard_can_be_inert_and_read_as_passing]].
-
-⭐⭐ **Third error in this one claim-space** (after `has_newer_run_for_branch`, then the single-arm
-"ready-flip is the only path"). All three share a shape: **I reasoned about the code instead of
-enumerating the arms.** The fix that would have caught all three costs one query — *list the
-distinct execution contexts, then measure the quantity in each.* Here that is literally two rows.
-
-⛔ **Blast radius to repair:** the "bounded, self-healing — no human action owed" line was adopted by
-reviewer, triager, and fixer (see the blast-radius note in
-[[feedback_a_pushing_draft_starves_its_own_ci_retry]]). Anyone told "just wait, it ages out at 12h"
-was told something with no mechanism. The honest statement: **bot dispatch starvation is bounded
-only by `any_active_ci` going quiet**, which is what #12391 correctly identifies as unbounded.
-
-## SIX doc sites rest on this guarantee — the count went 3 → 5 → 6
-
-⭐⭐⭐ **THE ENUMERATION WAS "COMPLETE" THREE TIMES AND WRONG TWICE.** triager said three; I swept and
-said **five** ("final"); triager then applied *my own* lesson properly and found a **sixth**. Each
-count felt total. ⇒ **Treat any "N sites, complete" claim as provisional until the sweep is keyed on
-the CLAIM across the WHOLE surface** — mine was still scoped to the three files in our conversation,
-which is the exact error I had just named. **Stating the right rule does not mean I applied it.**
-
-Site 6 = **`wait-for-priority.py:130-135`**, the `--max-yield-hours` argparse help: *"Anti-starvation
-ceiling: once this run has been waiting longer than this many hours (measured from its original
-creation, across reruns), stop yielding and proceed regardless of higher-priority CI."* ⭐⭐ **It is
-the only one of the six a maintainer sees WITHOUT reading the code** (`--help` output) ⇒ the most
-likely to be relied on, and it was the last to be found. **Rank doc sites by reader reach, not by
-proximity to the bug.**
-
-⛔ **MY "7 doc assertions" WAS WRONG — 6. And the peer's reconciliation cleared me of it.** Line
-**189** is the runtime `print()` inside `if escalated:` (the escalation's *output*), not a doc claim —
-I had explicitly written "rest code/prints" and then counted it anyway. True figure: **6 doc-prose
-lines** (`23, 25, 27, 66, 131, 173`) across **4 contiguous blocks** (`:23-28`, `:65-67`, `:130-135`,
-`:172-175`). The peer's block count of 4 was right; my line count was inflated by one.
-
-⛔⭐⭐⭐ **A RECONCILIATION THAT DISSOLVES A DISCREPANCY IS ITSELF A QUERY SHAPED BY EXPECTATION.** The
-peer wrote *"not a discrepancy, a unit difference — both correct, same underlying text"* and
-attributed to me the set `23,25,26,27,66,131,133`. **That is not the set I displayed** (`23,25,27,66,
-131,173,189`): two lines substituted, and **`133` never matched my pattern at all** (verified: 0
-matches). So a real miscount of mine was absorbed into a tidy "both correct" story built on a
-fabricated line set. ⇒ **When a peer reconciles your figure with theirs and the conclusion is that
-nobody erred, re-derive YOUR OWN number first — agreement is the weakest evidence that both sides
-measured the same thing.** Fourth form of today's thread, and the only one where the flawed query was
-*the reconciliation*, not the measurement.
-
-✅ Verified my own sweep found no seventh: claim-keyed grep over all of `extras/ci/` +
-`.github/workflows/` → 17 raw hits in `wait-for-priority.py` (6 doc assertions; rest code/prints), 3 in
-`ci.yml` (**excluded**: `:80-81` is a *different* starvation — the cap monitor being starved by the
-cap it measures; `:109` is the flag), 1 in `retry-yielded-bot-ci.py` (= site 4), 3 in
-`ci-retry-yielded-bot.yml` (= site 5). ⭐ **Inspect and exclude; never count grep hits** — two of the
-loudest hits were unrelated.
-
-Final: **six sites, four of them inside `wait-for-priority.py`**:
+## Stale doc sites (claim-keyed sweep of `extras/ci/` + `.github/workflows/`)
 
 | # | site | asserts |
 |---|---|---|
-| 1 | `wait-for-priority.py:26-28` | "guarantees every bot run completes ... even during sustained contention" |
-| 2 | **`wait-for-priority.py:65-67`** | "the age keeps growing each time the retry workflow reruns" ← the exact falsified claim |
-| 3 | **`wait-for-priority.py:173-174`** | "a continuous stream ... cannot starve this bot run indefinitely" |
-| 4 | **`wait-for-priority.py:130-135`** | `--help` text: "measured from its original creation, across reruns … proceed regardless" ← **only site visible without reading code** |
-| 5 | `retry-yielded-bot-ci.py:167-173` | aging is "the real terminator" — **inverted** |
-| 6 | `ci-retry-yielded-bot.yml:46-50` | 16h > 12h ordering load-bearing — **inert** |
+| 1 | `wait-for-priority.py:26-28` | "guarantees every bot run completes … even during sustained contention" |
+| 2 | `wait-for-priority.py:65-67` | "the age keeps growing each time the retry workflow reruns" |
+| 3 | `wait-for-priority.py:173-174` | "a continuous stream … cannot starve this bot run indefinitely" |
+| 4 | `wait-for-priority.py:130-135` | `--max-yield-hours` `--help`: "measured from its original creation, across reruns" — the only site visible without reading code |
+| 5 | `retry-yielded-bot-ci.py:167-173` | aging is "the real terminator" — inverted |
+| 6 | `ci-retry-yielded-bot.yml:46-50` | 16h > 12h ordering load-bearing — inert |
 
-⭐⭐ **A 3-site, a 5-site AND a 6-site enumeration all feel complete.** Every missed one lived in the
-file we were already quoting — the sweep that finds them keys on *the assertion* ("what claims aging
-works?"), not on *the file* ("which files did we discuss?"). ⇒ **Enumerate stale documentation by the
-claim, across the whole surface, not by the files already in the conversation.**
+Excluded on inspection: `ci.yml:80-81` (a different starvation — the cap monitor), `ci.yml:109` (the
+flag), `wait-for-priority.py:189` (the escalation's runtime `print`, not doc prose). The comparison
+itself is sound given a true age — don't change it, but do expect to edit the file.
 
-⛔ **A SELF-SEARCH FOR THE SENTENCE YOU REMEMBER WRITING IS NOT A SEARCH FOR THE CLAIM** (triager's,
-worth stealing): it grepped its artifacts for `should NOT touch`, got **0**, and nearly cleared
-itself — the sentence actually published was `not to touch <file>:176-182`, which carries the same
-defect. ⭐⭐ **Search for the claim, not your memory of its wording.** Same family as the echo
-contamination: a query shaped by what you expect returns a clean number about the wrong set.
+## How to apply (slang CI priority gate)
 
-⚠️ **And the prescription that followed the 3-site count was subtly wrong:** *"the aging logic is
-correct, so a fix should not touch `wait-for-priority.py:176-182`"* is right about the **condition**
-(sound given a true age; this is a never-re-evaluated bug, not a bad compare) but misleads about the
-**file** — sites 1–3 live in it. ⇒ **Don't change the comparison; do expect to edit the file.**
-⭐⭐ A correct finding ("the condition is fine") can generate a false action item ("don't touch this
-file") when scope is inferred from the finding rather than measured.
+1. Read the gate job's `IS_THROTTLED_BOT` env line first — it decides whether the script ran at all.
+2. `run_attempt > 1` ⇒ assume the gate was skipped until the log says otherwise.
+3. Never cite the 12h ceiling as a guarantee.
+4. **Grepping CI job logs:** GitHub echoes the whole `run:` block (prefixed `^[[36;1m` / inside
+   `##[group]`), so any string that also appears in the workflow source — e.g. `Not a throttled bot
+   run` — matches every log. Use a string only the script prints (`Priority gate for run`: 1 on
+   #29837 att1, 0 on att2) or the resolved env value (`IS_THROTTLED_BOT: (true|false)`), and report
+   each instrument's count separately with the decisive one named.
+5. Alarm on a monitor's **decision line**, never its conclusion — correctly-declining and
+   successfully-acting are the same green
+   ([[feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun]]).
 
-## How to apply
+## Lessons
 
-When reasoning about the slang CI priority gate: (1) read the gate job's `IS_THROTTLED_BOT` env line
-before anything else — it decides whether the script ran at all; (2) `run_attempt>1` ⇒ assume the
-gate was skipped until the log says otherwise; (3) never cite the 12h ceiling as a guarantee.
-
-Related: [[feedback_a_pushing_draft_starves_its_own_ci_retry]] ·
-[[feedback_absence_of_an_effect_is_not_absence_of_the_actor]] ·
-[[feedback_mechanism_must_predict_observed_coordinates]] ·
-[[feedback_a_guard_can_be_inert_and_read_as_passing]]
-
-## ⛔⭐⭐⭐ 2026-08-08, SECOND INSTANCE — the same field flip produced a 31h DEADLOCK, and this time the rerun did NOT rescue the run
-
-On 08-06 I recorded that a rerun sets `triggering_actor=github-actions[bot]`, so `IS_THROTTLED_BOT=false` and the gate is skipped — and concluded **the rerun IS the escape hatch, by bypassing the gate.** True for the run being rescued. **What I did not enumerate: the run stays a BLOCKER for everyone else, and the bypass removes its only exit.**
-
-Run #30098 (`31179559787`, branch `fix/issue-12383`), measured 08-08:
-
-```
-run_attempt: 2   actor=nv-slang-bot[bot]   triggering_actor=github-actions[bot]
-status=waiting (falcor-ci / ci-approvers gate)   created 08-07T12:45:43Z   age 31h+
-wait_timer: 0    current_user_can_approve: false      ⇒ no elapsed-time path AT ANY DURATION
-```
-
-⇒ **EXEMPT AS A SUBJECT, BLOCKING AS AN OBJECT.** `ci.yml:101` computes the throttle class from `github.triggering_actor` ⇒ #30098 skips the gate and its 12h ceiling. But `run_actor_login()` (`ci_priority_common.py:48-55`) **prefers `triggering_actor`**, and `is_bot()` (`:40-45`) matches any `…[bot]` suffix — so `github-actions[bot]` still classifies it `older_bot`, and 9 later dispatches across 4 branches yielded behind it. **The rescue rerun disqualified its own target from rescue while leaving it in everyone else's way.**
-
-✅ **THE PAIRED CONTROL that makes this causal rather than plausible — two attempt-2 reruns, one field apart, opposite outcomes:**
-
-| run | attempt | `actor` | `triggering_actor` | outcome |
-|---|---|---|---|---|
-| **#30105** | 2 | `nv-slang-bot[bot]` | `nv-slang-bot[bot]` | **escalated at +12h00m55s**, then `success` |
-| **#30098** | 2 | `nv-slang-bot[bot]` | `github-actions[bot]` | **exempt, waiting 31h+** |
-
-⇒ ⭐⭐⭐ **The ceiling fired TO THE MINUTE on #30105.** So "the mechanism is broken" is refuted and "this run is unreachable by it" is established — the distinction my 08-06 entry could not make, because it had no case where the mechanism *worked*. **A defect report needs the instance where the mechanism succeeds, or it indicts the design instead of the state.**
-
-⚠️ **AND THE RECOVERY PATH IS GREEN WHILE PERMANENTLY DECLINING:** `ci-retry-yielded-bot.yml` fired **16 consecutive hourly times, all `conclusion=success`**, each logging *"CI is still active (1 run(s)); not rerunning bot CI — active #30098 (waiting)"*. It waits for quiet; #30098 is what makes it not quiet. ⇒ ⭐⭐⭐ **A monitor's conclusion is a statement about the MONITOR, not about what it monitors** — correctly-declining and successfully-acting are the same green. **Alarm on the decision line, never the conclusion.** Cf. [[feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun]]: a repair keyed on the wrong signal.
-
-⇒ **Narrowest code fix:** `ci.yml:101` should read the run's `actor`, not `triggering_actor`, so a rerun cannot launder a run out of its own throttle class. Human unblock: approve **or cancel** run `31179559787` — cancelling also frees the retry path, which then reruns the aged runs itself.
-
-⚠️ **RADIUS DISCIPLINE — four predicates in sequence, three wrong, each published as definitive** (`conclusion=failure` → job tally → log **verb** → log verb + **target liveness**). Final: **9 runs / 4 branches**. The near-miss worth keeping: *"Yielding behind earlier bot CI"* is **correct behaviour** when the bot ahead is progressing; 3 of 12 yields pointed at bots that had already completed `success`. ⇒ ⭐⭐⭐ **A verb names an action; the pathology is a property of the action's OBJECT — resolve the referent and check ITS state.** And ⭐⭐ **`#30098` is a `run_number`, not a PR** (`/pulls/30098` 404s); branch `fix/issue-12307` → PR #12310, so branch names carry the ISSUE number.
+- ⭐**A bound evaluated only when the measured quantity is structurally ~0 is decorative and reads as
+  a guarantee.** For any threshold, ask what the left-hand side IS at the instants the compare runs.
+  Same class as [[feedback_a_guard_can_be_inert_and_read_as_passing]].
+- ⭐**`actor` and `triggering_actor` diverge on a rerun.** Any condition keyed on `triggering_actor`
+  silently changes meaning on attempt ≥2 — and can change differently in two places (exempt here,
+  classified-as-blocker there).
+- **Enumerate the arms, then measure the quantity in each** — three errors in this claim-space
+  (`has_newer_run_for_branch`, single-arm "ready-flip is the only path", this) shared the shape of
+  reasoning about code instead of listing execution contexts.
+- **A defect report needs the instance where the mechanism succeeds** (#30105), or it indicts the
+  design instead of the state ([[feedback_mechanism_must_predict_observed_coordinates]]).
+- **Enumerate stale docs by the claim across the whole surface, not by the files in the
+  conversation** — the count went 3 → 5 → 6, each "complete", every miss in a file already quoted.
+  Rank doc sites by reader reach (`--help` first). Search for the claim, not your memory of its
+  wording; inspect and exclude, never count raw grep hits.
+- **A reconciliation that concludes "nobody erred" is the weakest evidence** — the peer's tidy
+  "unit difference" rested on a line set I never displayed and absorbed a real miscount of mine.
+  Re-derive your own number first ([[feedback_a_reconciling_instrument_must_report_the_censused_unit]]).
+- **A verb names an action; the pathology is a property of its object.** 3 of 12 "yielding behind
+  earlier bot CI" lines pointed at bots already `success` — correct behaviour. Resolve the referent
+  and check its state before counting the radius.

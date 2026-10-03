@@ -2,50 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-09-09T04:18:25Z",
-   "backlog": 696913,
-   "defects": 27,
-   "offenders": 147,
-   "top": {
-    "path": "imported/project_11528_gapc_pending.md",
-    "class": "OVERSIZE",
-    "size": 31909
-   }
-  },
-  {
-   "at": "2026-09-10T04:12:36Z",
-   "backlog": 635938,
-   "defects": 27,
-   "offenders": 143,
-   "top": {
-    "path": "imported/project_12393_bwddiff_ref_param_abort.md",
-    "class": "OVERSIZE",
-    "size": 30606
-   }
-  },
-  {
-   "at": "2026-09-11T04:09:30Z",
-   "backlog": 580405,
-   "defects": 27,
-   "offenders": 139,
-   "top": {
-    "path": "imported/project_12223_debug_build_og_debuggability.md",
-    "class": "OVERSIZE",
-    "size": 27434
-   }
-  },
-  {
-   "at": "2026-09-12T04:13:10Z",
-   "backlog": 540032,
-   "defects": 27,
-   "offenders": 135,
-   "top": {
-    "path": "imported/project_12284_cross_module_overload_silent_break_warning.md",
-    "class": "OVERSIZE",
-    "size": 26507
-   }
-  },
-  {
    "at": "2026-09-13T04:09:56Z",
    "backlog": 499077,
    "defects": 26,
@@ -329,6 +285,50 @@
     "path": "imported/feedback_an_enumeration_claim_needs_a_computed_complement.md",
     "class": "OVERSIZE",
     "size": 17727
+   }
+  },
+  {
+   "at": "2026-10-02T06:06:33Z",
+   "backlog": 17715,
+   "defects": 0,
+   "offenders": 24,
+   "top": {
+    "path": "imported/feedback_a_rerun_changes_triggering_actor_so_the_gate_is_skipped.md",
+    "class": "OVERSIZE",
+    "size": 17501
+   }
+  },
+  {
+   "at": "2026-10-02T12:17:15Z",
+   "backlog": 12563,
+   "defects": 0,
+   "offenders": 20,
+   "top": {
+    "path": "imported/project_12405_peephole_fp_mode_unreachable_and_leaks.md",
+    "class": "OVERSIZE",
+    "size": 17209
+   }
+  },
+  {
+   "at": "2026-10-02T18:18:14Z",
+   "backlog": 9874,
+   "defects": 0,
+   "offenders": 17,
+   "top": {
+    "path": "imported/feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new.md",
+    "class": "OVERSIZE",
+    "size": 17853
+   }
+  },
+  {
+   "at": "2026-10-03T00:06:32Z",
+   "backlog": 6178,
+   "defects": 0,
+   "offenders": 14,
+   "top": {
+    "path": "imported/feedback_a_turn_error_is_evidence_about_the_turn_not_the_work.md",
+    "class": "OVERSIZE",
+    "size": 16875
    }
   }
  ]

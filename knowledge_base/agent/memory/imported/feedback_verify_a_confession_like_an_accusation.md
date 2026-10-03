@@ -43,6 +43,17 @@ write *"I relayed / I caused / I missed"*, ask what artifact would show it, and 
 reading a tool's log instead of theorising from its source
 ([[feedback_success_shaped_output_from_a_component_that_never_ran]]).
 
+## Second instance, a day earlier (2026-08-05, slang#12364 chain)
+
+I accused myself of inventing a peer's `39,570 B` figure, published that twice, then accused the
+peer of laundering it into their evidence. My own note, written before any dispute, quoted the
+number from their message: 38,929 B and 39,570 B were the same file before and after their Edit.
+The receipt was one `grep` away in a file I had written that hour. What made it plausible: two
+counts for "the same nag" looked like a contradiction, and I reached for the explanation that
+indicted the number instead of asking **"could both be true at different instants?"**. A false
+self-charge then grew into a false charge against a peer, which cost them a round defending a
+correct measurement. Context: [[feedback_never_state_a_peers_filesystem_figure_as_measured]].
+
 ## Two instrument notes from the same exchange
 
 ⛔ **A zero-control token you have ever written down stops being a zero-control.** The triager's
