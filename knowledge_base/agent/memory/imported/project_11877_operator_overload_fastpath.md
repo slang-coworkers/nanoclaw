@@ -1,53 +1,84 @@
 ---
 name: project_11877_operator_overload_fastpath
-description: "slang#11877: user-defined global `operator OP` on builtin scalar/vector/matrix types silently dropped since v2026.11 (first-bad #11493, author csyonghe). ⛔ Three retractions: the triager's 'predates #11493' bisect was WRONG (cached slangc version string); the verdict comment mis-attributed #11493 to @skiminki-nv (corrected in place); a bot comment claiming `import glsl;` works flag-free from JS was WRONG/untested. Approach A (#11879) REJECTED by jkwak; state = diagnostic draft PR #12162 open, maintainer-gated; JS/WASM enableGLSL gap flagged, Discussion reply blocked by missing App Discussions:write perm."
+description: "slang#11877: user-defined global `operator OP` on builtin scalar/vector/matrix types silently dropped since v2026.11 (first-bad #11493, author csyonghe). Approach A (#11879) REJECTED by jkwak → diagnostic DRAFT PR #12162 (decl-site error), maintainer-gated, untouched since 2026-07-21 (re-checked 2026-10-03). Discussion #11840 reply still unposted: the App lacks Discussions:write. Three retractions on this chain (bisect fooled by a cached version string, wrong @-mention, untested JS claim)."
 metadata: 
   node_type: memory
   type: project
   originSessionId: 8a8a12da-1dd6-48d9-ab11-aec7ef0d4c0b
 ---
 
-**shader-slang/slang#11877** — a user-defined global `operator OP` whose params are builtin scalar/vector/matrix types (e.g. `float4x4 operator*`) is **silently dropped** since v2026.11: `a*b` resolves to the builtin component-wise multiply, overload never called, no diagnostic. Genuine high-severity silent correctness regression.
+# slang#11877 — user operator overloads on builtin types silently dropped
 
-**First-bad = #11493** (`61ad43dbc`, "Hard-code a fast path for builtin scalar/vector/matrix operators"), confirmed by fresh symbol-checked GOOD→BAD builds (parent `956f6ed52` honors → #11493 drops). Issue's own attribution to #11493 turned out ACCURATE; triager's interim "predates #11493" call was WRONG — fooled by slangc's cached CMake version string (see shared learning "Slang bisect: don't trust slangc's version string"). Mechanism: `visitInvokeExpr` (slang-check-expr.cpp:5007→5008) returns the `BuiltinOperatorExpr` fast path BEFORE overload resolution at :5044; only matrix deferral is GLSL-scope-gated (:4723-4733). Target-independent (front-end drop before emit).
+**State (re-checked 2026-10-03):** issue OPEN; **#12162 OPEN, draft**, 0 comments, 0 reviews,
+last updated 2026-07-21; Discussion #11840 open and unanswered by us. **Healthy maintainer-gated
+hold** — no Main action unless one of the resume triggers below fires.
 
-**Fix: PR #11879** (`fix/issue-11877`, `Closes #11877`, `pr: non-breaking`). Approach A: new `hasUserDefinedNonCoreOperatorInScope` does existence-only scoped `lookUp` filtered `!isFromCoreModule`, defers to real overload resolution on any user candidate; applied at binary+unary fast-path sites, mirrors GLSL-scope deferral. No-overload common case stays cheap (preserves #11493's perf intent). Regression test `builtin-operator-user-overload-11877.slang` (CPU COMPARE_COMPUTE + HLSL/SPIR-V emit checks).
+## The bug
 
-**State (2026-07-02):** **jkwak-work (maintainer) flipped to ready-for-review** 23:06Z — bot never readied it, drafts-only gate INTACT. `reviewDecision=REVIEW_REQUIRED` (no formal approval), `mergeable=true` but `mergeable_state=behind` (needs rebase onto master before merge). Labels `Office-Yong`/`Office-Tess`. jkwak soft-positive but deferred to office-hours: unsure how name-resolve works at AST stage. Open design point = per-expr scoped lookup vs. memoized per-`Linkage` "any user operator exists" fast-reject flag (perf vs #11493's skip-resolution intent), for **@csyonghe** (= #11493's ACTUAL author + `Office-Yong` label; verified on PR+commit 61ad43dbc = Yong He). Verdict posted issuecomment-4852879346; fixer PR reply 4871193089.
+A user-defined global `operator OP` whose parameters are builtin scalar/vector/matrix types (e.g.
+`float4x4 operator*`) has been ignored since v2026.11: `a*b` resolves to the builtin operator, the
+overload is never called, and there is no diagnostic. **First-bad = #11493** (`61ad43dbc`,
+"Hard-code a fast path for builtin scalar/vector/matrix operators", author **csyonghe**),
+confirmed by symbol-checked GOOD→BAD builds (parent `956f6ed52` honours the overload). The
+mechanism is front-end and target-independent: `visitInvokeExpr` (`slang-check-expr.cpp`
+~5007) returns the `BuiltinOperatorExpr` fast path before overload resolution (~5044); only the
+matrix deferral is GLSL-scope-gated.
 
-**CORRECTION (2026-07-06):** our verdict comment 4852879346 originally mis-attributed #11493 to **@skiminki-nv** — WRONG. #11493 author is **csyonghe (Yong He)** (PR + commit 61ad43dbc verified). jkwak-work caught it (issue comment 4895184179, "the author of #11493 is not skiminki-nv"). Corrected: edited comment in-place skiminki-nv→csyonghe + replied to jkwak. Office-hour was already routed correctly via `Office-Yong` (=Yong He); only the public @-mention was wrong. Lesson → shared learning on verifying @-mention identity before posting.
+## Timeline
 
-**DESIGN FLIP (2026-07-15):** jkwak-work (maintainer) office-hours verdict lands on the ISSUE (issuecomment-4985591226, direct @nv-slang-bot mention): **user code is NOT supposed to override builtin matrix multiplication — Approach A is REJECTED.** He is closing PR #11879 himself. New directive: make a **new PR that emits a diagnostic error** for these cases (silent-drop → hard error), NOT enable the overload. For the specific matrix-mul use case he suggests `-allow-glsl`. Example he cited: `public float4x4 operator* (float4x4 m0, float4x4 m1) { return mul(m1, m0); }`.
+- **07-02:** fix PR #11879 (Approach A — defer to overload resolution when a non-core user
+  operator is in scope). jkwak flipped it ready; design question went to office hours for
+  csyonghe.
+- **07-15 design flip:** jkwak (issuecomment-4985591226) — user code is **not** supposed to
+  override builtin matrix multiply. **Approach A rejected**; he closes #11879. New directive: a PR
+  that emits a **diagnostic** instead of dropping silently; `-allow-glsl` for the matrix-mul use.
+- **07-20: #12162** (branch `fix/issue-11877` reused, `pr: breaking change`, `Closes #11877`).
+  Rejects the overload **at the declaration site** (`checkOverloadedBuiltinOperatorDecl` from
+  `checkCallableDeclCommon`), reusing the fast path's own `getBuiltinArithmeticCommonType` +
+  `isFastPathedOperandFor` so the rejected set matches exactly what the fast path shadows. New
+  diag `cannot-overload-builtin-operator-on-builtin-operands` (30073), suppressed in GLSL scope
+  for matrix ops + vector equality. 5 tests. Reviewers csyonghe + jkwak were requested by human
+  maintainer jhelferty-nv, not by the bot. `report_pr_created(12162)` called; issue footprint
+  issuecomment-5022454595.
 
-**Routed to slang-fixer (2026-07-15)** on canonical thread `gh-issue-shader-slang/slang-11877` with `<github-post-authorized />`. Task: fresh DRAFT PR (new branch, `fix/issue-11877` is stale), diagnostic at operator-decl or fast-path-drop site, replace the old COMPARE_COMPUTE regression test with an expected-diagnostic test, `report_pr_created` on open. Open scope Q for fixer↔jkwak: which cases warrant the error (all builtin scalar/vector/matrix operator overloads vs matrix-only) + decl-time vs use-site diagnostic. Do NOT touch #11879 (jkwak closes it). Drafts-only + maintainer-gated merge INTACT.
+## JS/WASM workaround gap
 
-**JS/WASM WORKAROUND GAP (2026-07-15):** original reporter brussig-tud replied (issuecomment-4985669814, NO bot @-mention) — jkwak's `-allow-glsl` workaround suggestion doesn't help because their actual use case is the **JavaScript/WASM frontend**, which they couldn't find any way to pass compiler options through. slang-triager VERIFIED at HEAD `8e3f9163d` (msg 36, read from source): **TRUE gap — JS/WASM cannot set `-allow-glsl` or ANY compiler option today.** Only `GlobalSession.createSession(int compileTarget)` is bound to embind (`source/slang-wasm/slang-wasm-bindings.cpp:18-22`, `slang-wasm.cpp:74-99`); body never populates `compilerOptionEntries`/`allowGLSLSyntax`; no `SessionDesc`/`CompilerOptionEntry`/`CompilerOptionName` types bound. Live option path elsewhere = `SessionDesc::compilerOptionEntries` loaded at `slang-global-session.cpp:855` (the public `allowGLSLSyntax` bool @ `slang.h:4338` is a RED HERRING — only touched by record-replay, not read at session creation). Playground = separate `shader-slang/slang-playground` repo (not checked). Minimal fix = expose `CompilerOptionEntry`/`compilerOptionEntries` (or an `allowGLSL` bool param) through embind + thread into `createSession` — **maintainer's call.**
+brussig-tud's real use case is the JS/WASM frontend, which cannot set `-allow-glsl` or enable the
+glsl module. Full mechanism: [[reference_slang_two_glsl_switches_unreachable_from_wasm]].
+Answered on the issue in comment 5022342835 (07-20), with the gap `@jkwak-work`-flagged as his
+design call — no fix or timeline promised.
 
-**WITHDRAWN → HELD, NOT POSTED (2026-07-15):** before triager posted the verified JS/WASM answer, re-check found **brussig-tud DELETED their own comment 4985669814** (now 404s, absent from issue; issue `updatedAt` 21:59Z). Decision = **HOLD, do NOT post** (option a): a voluntarily-withdrawn comment is not a live question — posting a bot reply (even reframed standalone) would re-surface a retracted question on the user's behalf AND stack tangential content onto jkwak's active diagnostic-PR turn (last commenter = jkwak, human, so not edit-in-place). Verified research retained here + in shared learning; if brussig re-asks (issue OR the linked GitHub Discussion #11840), answer INSTANTLY with citations already in hand. No GitHub footprint created.
+**Discussion #11840 reply BLOCKED.** jkwak @-mentioned the bot there (discussioncomment-17654002)
+asking for a JS snippet; the honest answer is that none exists. Posting fails: the App lacks
+`Discussions: write` → [[project_bot_discussions_write_permission_gap]]. Escalated to the
+operator 07-16. The reply body was saved on the triager side
+(`/workspace/agent/active-work/discussion-11840-reply.md`). Node IDs: discussion
+`D_kwDOBZiKEc4And-U`, jkwak's comment `DC_kwDOBZiKEc4BDWDy`, thread root `DC_kwDOBZiKEc4BDWCA`.
+brussig has since replied there (17659429, 07-16: "I don't think compiler options can be set
+from JavaScript"), which matches our finding.
 
-**RE-ASKED w/ bot mention (2026-07-15, comment 5022293066):** brussig-tud re-engaged, THIS TIME with real `@nv-slang-bot` mention (→ live question, posting authorized) + NEW detail: `import glsl;` yields `error[E38201]: 'glsl' module not available`, whose text points at a DIFFERENT/deeper mechanism than triager's prior finding — **`SlangGlobalSessionDesc::enableGLSL` at GLOBAL-session creation** (the `glsl` module is gated at global-session init, not per-session `compilerOptionEntries`). Reproduced on Playground. Also references **#12162** ("nothing in it enables the GLSL module without explicit GLSL input") — identity TBD (could be slang-fixer's diagnostic PR auto-linked, or an unrelated GLSL PR). Routed to slang-triager on canonical thread to: (1) verify the `enableGLSL` global-session mechanism + whether WASM `createGlobalSession` binding exposes it, (2) identify what #12162 is + who owns it, (3) POST verified answer to brussig (real mention → authorized) + @jkwak-work for the design call, re-checking comment liveness first (last one was deleted).
+## Three retractions on this chain
 
-**RESOLVED + POSTED (2026-07-20, comment 5022342835, REST issue-comment OK):** triager verified at HEAD `6a244fee2` (source-read) and posted. Findings:
-- **TWO separate GLSL switches** (key distinction, saved as shared learning): (a) `SlangGlobalSessionDesc::enableGLSL` (`slang.h:5720`, default false) gates the `glsl` **module** at GLOBAL-session creation — read in `slang-api.cpp` (loads `BuiltinModuleName::GLSL`); when false `import glsl;`→`E38201` (`slang-session.cpp:1547-1562`). (b) `AllowGLSL` (`slang.h:1089`, the `-allow-glsl` flag) enables GLSL input SYNTAX + operator scope but does NOT register the glsl module. So `-allow-glsl` alone can't make `import glsl;` work — brussig's two-switch intuition CORRECT.
-- **Neither reachable from JS/WASM today (CONFIRMED):** WASM `createGlobalSession()` (`slang-wasm.cpp:58-72`) is argument-less → default overload zero-inits desc → `enableGLSL=false`; `SlangGlobalSessionDesc` not embind-bound. `createSession(int)` doesn't expose `compilerOptionEntries`. brussig's "impossible from JS/TS" CORRECT on both routes.
-- **#12162 = slang-fixer's OWN diagnostic PR for THIS issue** (author nv-slang-bot, "pr: breaking change"). Files = `slang-check-*` + `slang-diagnostics.lua` + tests; adds the compiler error for overloading a builtin operator, message points at `import glsl;`/`-allow-glsl`. NO slang-wasm/GLSL-enablement changes — brussig's read (nothing in it exposes GLSL-enable) CORRECT.
+1. **Bisect fooled by a cached version string.** The triager's interim "predates #11493" was
+   wrong — slangc's CMake version string was stale. Symbol-checked builds settled it. Cf.
+   [[feedback_a_binary_mtime_is_a_build_date_and_cannot_date_an_install]].
+2. **Wrong @-mention.** Our verdict (4852879346) credited #11493 to @skiminki-nv; jkwak caught it
+   (4895184179). Edited in place to csyonghe. Verify an @-mention's identity on the PR/commit
+   before posting.
+3. **Untested positive claim.** Bot comment 5021127531 (07-20) said `import glsl;` works flag-free
+   from JS. It was extrapolated under a standing "answer instantly" instruction, contradicted the
+   citations already in hand, and was refuted by brussig's repro. **"Answer instantly" means post
+   the verified facts you have, never a new capability claim you haven't tested.** The same false
+   claim reached the #12162 PR body via the slangc/slang-test `enableGLSL=true` harness trap;
+   fixed by force-push `aca1d2df82`, body re-verified 07-20 12:54Z.
 
-**#12162 VERIFIED LIVE STATE (2026-07-20 12:43Z fetch):** branch `fix/issue-11877` (reused; content is the NEW diagnostic approach, not old Approach A #11879), created 07-20 10:07Z, **state=open, draft=TRUE** (drafts-only gate INTACT), assignee **jkwak-work**, reviewers requested **csyonghe + jkwak-work**, label "pr: breaking change", `Closes #11877`, 0 comments. Approach = reject the user overload **at the declaration site** (`checkOverloadedBuiltinOperatorDecl` from `checkCallableDeclCommon`) — NOT use-site — reusing the fast path's own `getBuiltinArithmeticCommonType` oracle (promoted to `SemanticsVisitor` base) + `isFastPathedOperandFor` element-eligibility so the rejected set matches EXACTLY what the fast path shadows; new diag `cannot-overload-builtin-operator-on-builtin-operands` (30073); suppressed in GLSL scope (`-allow-glsl`/`import glsl;`) for matrix ops + vector equality (the honored-workaround path). Thorough writeup + 5 tests (error/glsl/allow-glsl/glsl-scalar-error/eligible-boundary). Matches jkwak's directive precisely. Fixer built it 07-15→07-20 but never reported back to Main — chain-hygiene gap; nudged 07-20 to confirm `report_pr_created` (#12162) + issue-status bullet. HEALTHY holding state: maintainer-gated review by csyonghe+jkwak; no action to push forward.
+Also: brussig once deleted their own comment (4985669814) before we replied. We held: a
+withdrawn comment is not a live question. The re-ask (5022293066, with a real bot mention)
+authorised the post.
 
-**HYGIENE CONFIRMED + PR-BODY CORRECTION VERIFIED (2026-07-20 12:54Z, msgs 50/52):**
-- `report_pr_created(12162)` CALLED (re-called this turn; webhooks route to fixer session). ✓
-- 5-bullet issue footprint POSTED: issuecomment-5022454595 (verdict=triaged→diagnostic draft #12162, held pending maintainer review; JS-GLSL gap noted as separate design point). Draft-held issue now has public footprint. ✓
-- Reviewers csyonghe+jkwak were requested by **human maintainer jhelferty-nv** at 10:07Z, NOT bot `--reviewer`. no-pre-request-reviewers rule INTACT. ✓
-- Fixer QA (their claims, not independently verified by Main — not relaying upstream): codex CODE_REVIEW+OUTPUT_REVIEW approved; tests 32/32; broad regression 4291/4291.
+## Resume triggers
 
-**⚠️ SAME false-JS-claim error hit the FIXER too (root cause found):** fixer's own local verification FALSE-PASSED "`import glsl;` works flag-free from JS" because **slangc AND slang-test both hardcode `enableGLSL=true`** (main.cpp:94, test-context.cpp:119) — the harness never exercised the JS default (`enableGLSL=false`). brussig hit `E38201` on the real frontend. This false claim had reached PR #12162 BODY + a `-glsl` test comment. Fixer force-pushed `aca1d2df82` correcting the PR body + test comment (codex re-approved); **Main VERIFIED the corrected PR body directly (fetch 12:54Z, updated_at 12:53:43Z)** — now accurately states `import glsl;` needs `enableGLSL` (set by slangc/slang-test, NOT reachable from JS/WASM), JS gap tracked separately. Fix/tests themselves unaffected (they verify real GLSL-scope behavior under harness enableGLSL=true; only the JS-frontend *claim* was wrong). Instance of "verify branch in env where it fires" — test harness masks real-world default. Fixer recorded shared learning.
-
-**CHAIN STATE = HEALTHY HOLD.** #12162 draft, maintainer-gated (csyonghe+jkwak human-requested review). #11879 = jkwak to close (not ours). JS/WASM enableGLSL gap = flagged to jkwak, his design call. Re-engage on: slang-reviewer verdict on #12162, PR review/CI webhooks (→fixer via pr_session_mapping), or fresh substantive brussig/jkwak reply (→triager, citations in hand). No Main action pending.
-- Post corrected the bot's earlier claim, gave two-switch distinction w/ citations, `@jkwak-work`-flagged the JS/WASM-GLSL-enablement gap (small binding change to expose `enableGLSL` on WASM `createGlobalSession`) as HIS design call — no fix/timeline promised.
-
-**⚠️ PROCESS INCIDENT (2026-07-20 10:14Z, comment 5021127531):** an EARLIER bot comment claimed `import glsl;` is a "flag-free route that works from the JavaScript frontend" — WRONG + UNTESTED, contradicted the citations already in hand (msg 36 said NO JS option surface). Posted on the standing-instruction ("answer instantly") but by EXTRAPOLATING a positive claim instead of posting the verified-negative citations. brussig refuted via repro. Triager caught + corrected + saved shared learning. LESSON: standing "answer instantly" = post the VERIFIED facts in hand, never extrapolate a new positive capability claim without testing.
-
-**RE-SURFACED — HOLD SUPERSEDED (2026-07-16):** on GitHub **Discussion #11840** ("Overloading operator* for matrix types not possible anymore?", brussig-tud, the public face of #11877), maintainer **jkwak-work directly @-mentioned @nv-slang-bot** (discussioncomment-17654002): suggested the `AllowGLSL` option and asked *"can you give us a code snippet of how to do it in JavaScript/WASM?"* This is a **live maintainer-initiated question to the bot** → the earlier HOLD no longer applies; a reply is now warranted + operator-requested (dashboard-admin msg 38902, "check my comment and leave a comment for it").
-- **Main re-verified at HEAD `8e3f9163d` (07-16):** gap CONFIRMED unchanged. `GlobalSession::createSession(int compileTarget)` (`source/slang-wasm/slang-wasm.cpp`) is the ONLY session-creation binding; it builds a `SessionDesc` internally setting only `targets`/`targetCount`, never `compilerOptionEntries` / `allowGLSLSyntax`. `slang-wasm-bindings.cpp` binds NO `SessionDesc`/`CompilerOptionEntry`/`CompilerOptionName`. → **No JS/WASM snippet exists today to set AllowGLSL (or any option).** Minimal fix = bind `CompilerOptionEntry`/`compilerOptionEntries` into `createSession`, or add an `allowGLSL` bool param that sets `CompilerOptionName::AllowGLSL` — API-shape = maintainer's call. (`allowGLSLSyntax` bool in slang.h is a red herring — not read at session creation.)
-- **Routed to slang-triager (07-16)** on canonical thread `gh-issue-shader-slang/slang-11877` with `<github-post-authorized />` + the exact verified content, to post the reply on Discussion #11840 answering jkwak. Triager owns this chain + holds the research + has GitHub posting (slang-github). Do NOT double-post from Main.
-- **⛔ POST BLOCKED — App-permission gap (07-16, triager msg 38906):** nv-slang-bot GitHub App **lacks `Discussions: write`** → `addDiscussionComment` returns `FORBIDDEN "Resource not accessible by integration"`. Not content, not auth-token-death (reads work; App-token probe failures are expected) — a durable App-permission gap, same class as [[project_bot_workflows_permission]]. See [[project_bot_discussions_write_permission_gap]] for the full play. Verified reply body saved (triager side) `/workspace/agent/active-work/discussion-11840-reply.md`. Node IDs: discussion `D_kwDOBZiKEc4And-U`, jkwak's mention comment `DC_kwDOBZiKEc4BDWDy` (17654002), threads under top-level root `DC_kwDOBZiKEc4BDWCA` (17653888). **Escalated to operator (dashboard) 07-16** for mechanics: either operator posts via a `Discussions:write` credential (GraphQL in the gap memo), or grants the App the permission so the triager posts directly. Held pending operator — triager standing by to post the instant the App gains the perm.
+- A review, CI or comment webhook on #12162 (routes to the fixer via `pr_session_mappings`).
+- A fresh substantive comment from brussig or jkwak on #11877 → triager, citations in hand.
+- The App gains `Discussions: write` → triager posts the saved #11840 reply.
+- #11879 is jkwak's to close, not ours.

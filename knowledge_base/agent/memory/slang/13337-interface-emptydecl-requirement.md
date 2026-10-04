@@ -1,12 +1,12 @@
 ---
 type: chain
 title: slang#13337 — stray `;` in an interface becomes an empty-named requirement (E38100)
-description: Triaged + reproduced; the checkInterfaceConformance deny-list lets EmptyDecl through as a requirement. Self-assigned by the author, so no fixer; resumes on a PR/human comment or the re-chase
-tags: [slang, frontend, semantic-check, interfaces, parked]
+description: CLOSED 2026-10-02 — the author's PR #13367 (Approach A, skip EmptyDecl in the requirement loop) merged; triaged + reproduced by us, no fixer dispatched
+tags: [slang, frontend, semantic-check, interfaces, closed]
 resource: /workspace/inbox/a2a-1790757872228-f1f2j2/triage-13337.md
 ---
 
-# slang#13337 — extra `;` in an interface → E38100 missing member '' (parked on author)
+# slang#13337 — extra `;` in an interface → E38100 missing member '' (CLOSED — fixed by the author)
 
 Reporter pdeayton-nv (MEMBER, `Dev Opened`, **self-assigned**). This is the sibling of
 [#13336](13336-override-after-property-ice.md): same reporter and profile, filed the same morning.
@@ -33,6 +33,10 @@ labels `Dev Opened` + `reproduced`, Type=Bug; assignee pdeayton-nv. **No fixer d
 owns the fix; self-assigned maintainer ⇒ stand down, see #13336 and #12221). The chain was interrupted by the
 00:21Z gateway false alarm and resumed 08:31Z. The triager re-ran root cause, and only then posted.
 
-**Resume on:** a PR from the assignee, a human comment asking for a bot PR (→ slang-fixer on
-`gh-issue-shader-slang/slang-13337` with the memo), or the re-chase `rechase-13337-assignee-413f`
-(2026-10-03, which also sweeps #13336).
+**CLOSED 2026-10-02 18:08Z (COMPLETED)** by the assignee's
+[PR #13367](https://github.com/shader-slang/slang/pull/13367) "Ignore empty declarations in interface
+conformance", merge `00febe288`, +114/−0. It is Approach A as triaged: `if (as<EmptyDecl>(…)) continue;` in the
+`checkInterfaceConformance` requirement loop (slang-check-decl.cpp), placed after attribute validation. Three
+tests: positive `tests/language-feature/interfaces/interface-empty-decl.slang`, a negative control (real
+requirements beside a `;` still give E38100), and attribute validation on an empty decl. No bot PR was ever
+requested. Re-chase `rechase-13337-assignee-413f` verified this on 2026-10-03 and closed the chain. **Terminal.**

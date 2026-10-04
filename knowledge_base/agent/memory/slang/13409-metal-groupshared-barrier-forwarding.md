@@ -26,6 +26,13 @@ miscompile the code. This has been broken since at least 2025.6.1.
 - MSL evidence: the spec has no sentence stating the rule. Cite SPIRV-Cross `spirv_msl.cpp:3868` instead, and
   have the fixer add a `-target metallib` test.
 
+## PR #13421 (draft, opened 10-03, head `6ad57af497`, 2 commits as decided)
+Both commits are authored by **User `286953280`** (the unsigned-CLA identity), so `license/cla` is pending. Not a merge block on slang.
+The triager asked for a re-author force-push. **I did not authorize it** (history rewrite, not durably
+authorized), and on 10-03 05:35Z bundled it with the operator's still-unanswered CLA decision from 10-02.
+Signing the CLA (a) makes the push unnecessary. Re-chase `rechase-cla-bot-identity-4012`. New commits on the branch
+use the App identity.
+
 ## Sibling #13412 (bot-filed by triager 10-02 19:20Z, `reproduced`)
 Pointer roots (loaded/computed/param) get the same exemption, on **all targets incl. direct SPIR-V**.
 Finding 3 (a `RWStructuredBufferGetElementPtr` root, a device-buffer load moved across barriers, source-emit only)

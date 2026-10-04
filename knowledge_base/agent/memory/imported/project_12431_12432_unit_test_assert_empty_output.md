@@ -62,8 +62,8 @@ counterexample: `slangc` has `LINK_WITH_PRIVATE core slang` yet
 `Slang::` ⇒ core IS linked, not stripped). The three-copy conclusion **still holds for test-server**,
 but the deciding fact is the `SLANG_ASSERT` at `test-server-main.cpp:569`, which expands to
 `::Slang::handleAssert` (`slang-common.h:364`) and pulls `slang-signal.cpp.o` in.
-⭐⭐ **Right conclusion, adjacent reason** — the pattern from
-[[feedback_a_shared_bot_identity_makes_duplicate_posts_invisible]]. And the corollary is sharper than
+⭐⭐ **Right conclusion, adjacent reason** — the pattern in
+[[feedback_right_conclusion_adjacent_reason]]. And the corollary is sharper than
 the original claim: **adding the proposed `getLastSignalMessage()` call would itself pull the object
 into a link that lacks it, creating the very always-empty copy the fix tries to read.**
 

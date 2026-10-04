@@ -1,15 +1,15 @@
 ---
 type: project
 title: slang-rhi#787 CUDA↔Vulkan shared-texture missing sync
-description: Real missing cross-API ownership bug (not tolerance). jhelferty-nv mandated their own explicit API (handOffShared/takeOverShared on ICommandEncoder), implemented in PR #881 — jhelferty flipped it READY 2026-09-28; final head 775f522 GPU-CI-green, per-test re-verified; NOT merge-ready: reviewer REQUEST_CHANGES on R4/R5 pending jhelferty's answer to 5907630393, plus skallweitNV review. #812 (register-all) held draft as the alternative. Review-round history split to [[rhi-787-review-history.md]].
+description: Real missing cross-API ownership bug (not tolerance). jhelferty-nv mandated their own explicit API (handOffShared/takeOverShared on ICommandEncoder), implemented in PR #881 — jhelferty flipped it READY 2026-09-28; final head 775f522 GPU-CI-green, per-test re-verified; NOT merge-ready: reviewer REQUEST_CHANGES on R4/R5 pending jhelferty's answer to 5907630393, plus skallweitNV review. #812 (register-all alt) closed by jhelferty 2026-09-28. Review-round history split to [[rhi-787-review-history.md]].
 tags: [slang-rhi, synchronization, cuda, vulkan, interop, live-chain]
 resource: https://github.com/shader-slang/slang-rhi/issues/787
 ---
 
 # slang-rhi#787 — CUDA↔Vulkan shared-texture missing synchronization
 
-**State (2026-09-30): LIVE, parked on human review. PR #881 is NON-DRAFT — jhelferty flipped it ready themself on 2026-09-28 after accepting the same-encoder proposal, and requested review from skallweitNV. Final head `775f522` is GPU-CI-green and per-test re-verified by me, but **NOT merge-ready**: reviewer REQUEST_CHANGES on R4/R5 until jhelferty answers scope question 5907630393 (see the 2026-09-30 CORRECTION at the end). Re-chase task `rhi-881 review rechase` fires 2026-10-03T09:00Z and checks both 5907630393 and skallweitNV's review.**
-#812 (register-all internal design, HEAD `6e040d1`) is held untouched as the alternative; its fate is jhelferty's call.
+**State (2026-09-30): LIVE, parked on human review. PR #881 is NON-DRAFT — jhelferty flipped it ready themself on 2026-09-28 after accepting the same-encoder proposal, and requested review from skallweitNV. Final head `775f522` is GPU-CI-green and per-test re-verified by me, but **NOT merge-ready**: reviewer REQUEST_CHANGES on R4/R5 until jhelferty answers scope question 5907630393 (see the 2026-09-30 CORRECTION at the end). Re-chase task `rhi-881-review-rechase-5bfe` fires 2026-10-07T09:00Z (10-03 run: both still silent) and checks both 5907630393 and skallweitNV's review.**
+#812 (register-all internal design, HEAD `6e040d1`) was CLOSED by jhelferty-nv 2026-09-28 — no longer an open question.
 Canonical thread `gh-issue-shader-slang/slang-rhi-787`; PR review thread `gh-pr-slang-rhi-881-review`.
 Re-opens on jhelferty's webhook. Full review-round history: [[rhi-787-review-history.md]].
 
@@ -163,3 +163,11 @@ authorize.
   session `sess-1785935169470-plpq2f` at 08:52Z: REQUEST_CHANGES R4/R5 only. Its 6taxcp session retracted the
   09:00 APPROVE at 09:01Z, so the verdicts agree. Operator told (dashboard msg 33). The `rhi-881-review-rechase-381b`
   timer (10-03 09:00Z) already covers both inputs; no new timer.
+- **2026-10-03 09:00 re-chase (`rhi-881-review-rechase-381b`):** both inputs still silent. jhelferty has not
+  replied to or reacted on 5907630393 (3 days). skallweitNV and dshreiner-nv are requested but have posted no
+  reviews. skallweitNV was active in the repo 10-02 (opened #885-#889), just not on #881. Head is still `775f522`.
+  **#812 was already CLOSED by jhelferty-nv 2026-09-28T19:37Z** (the same day they flipped #881 ready), so the
+  "ask whether to close #812" terminal step is moot; drop it. Operator told (dashboard msg 11). Re-armed as
+  `rhi-881-review-rechase-5bfe` for 10-07 09:00Z. If still silent then, ask the operator whether to ping
+  out-of-band or post one GitHub reminder.
+
