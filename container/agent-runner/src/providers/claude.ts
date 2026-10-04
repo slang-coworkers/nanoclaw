@@ -370,9 +370,11 @@ function createPreCompactHook(assistantName?: string): HookCallback {
  * Claude Code auto-compacts context at this window (tokens). Default is
  * tuned for a 200K context model (~80% fill). For 1M models (model ID
  * contains "[1m]"), we raise the window to 900K so the agent can use the
- * full context before compacting. Operator override: set
- * CLAUDE_CODE_AUTO_COMPACT_WINDOW in the host env to raise or lower the
- * threshold without editing source.
+ * full context before compacting.
+ *
+ * Operator override: set CLAUDE_CODE_AUTO_COMPACT_WINDOW in the host env or
+ * `.env`; the host-side claude provider (src/providers/claude.ts) passes it
+ * into the container.
  */
 function getAutoCompactWindow(): string {
   if (process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW) return process.env.CLAUDE_CODE_AUTO_COMPACT_WINDOW;
