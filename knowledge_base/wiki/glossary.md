@@ -382,8 +382,8 @@ type: nav
 
 **Slang backends**
 - [CUDA / OptiX backend — ray payloads, hit attributes, ray flags, prelude version-gating, noinline](concepts/slang-backends-f0909b0-cuda-optix.md)
-- [GLSL / WGSL emit, front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)
-- [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
+- [GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)
+- [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, ray query, groupshared, buffer layout rules, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
 - [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)

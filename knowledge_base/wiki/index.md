@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6853 agent learnings**, synthesized into **453 concept pages**.
+Standalone wiki built from **6865 agent learnings**, synthesized into **453 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -393,8 +393,8 @@ Standalone wiki built from **6853 agent learnings**, synthesized into **453 conc
 
 ### Slang backends
 - [CUDA / OptiX backend — ray payloads, hit attributes, ray flags, prelude version-gating, noinline](concepts/slang-backends-f0909b0-cuda-optix.md)
-- [GLSL / WGSL emit, front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)
-- [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
+- [GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)
+- [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, ray query, groupshared, buffer layout rules, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
 - [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
@@ -509,10 +509,10 @@ Standalone wiki built from **6853 agent learnings**, synthesized into **453 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1922)
-- [NanoClaw / agent operations](topics/agent-ops.md) (792)
+- [Slang compiler & language](topics/slang-compiler.md) (1925)
+- [NanoClaw / agent operations](topics/agent-ops.md) (794)
 - [CI, build & tooling](topics/ci-tooling.md) (514)
-- [Review & process](topics/review-process.md) (337)
+- [Review & process](topics/review-process.md) (340)
 - [PR review, approval & calibration](topics/review-approval.md) (1416)
 - [Verification & evidence discipline](topics/verification.md) (553)
-- [Uncategorized](topics/misc.md) (1319)
+- [Uncategorized](topics/misc.md) (1323)

@@ -1,12 +1,12 @@
 ---
-title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, and GPU-free repro
+title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, ray query, groupshared, buffer layout rules, and GPU-free repro
 type: concept
 group: slang-backends
-tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register]
-source_count: 14
+tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register, ray-query, intersection-params, groupshared, threadgroup, buffer-layout]
+source_count: 22
 ---
 
-# Metal backend — emit bugs, intrinsic-string codegen, argument buffers, and GPU-free repro
+# Metal backend — emit bugs, intrinsic-string codegen, argument buffers, ray query, groupshared, buffer layout rules, and GPU-free repro
 
 ## TL;DR
 
@@ -19,6 +19,9 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 - **DispatchMesh/amplification legalization is Metal-only via VIRTUAL DISPATCH** (a per-target subclass override), not a call-site `if` — a "generic"-named legalization fn can be effectively single-target. Intrinsic-asm threads values only via `$`-operands; bare identifiers emit verbatim and need the name in lexical scope.
 - **A Metal binding test must use an index the fallback cannot hit.** An unbound MSL kernel argument takes the first available index, so check an explicit `register(tN)` past every earlier slot, with distinct t/s numbers to avoid E39001.
 - **A one-operand `makeVector(float4, packed_float4)` is Metal's packed→logical conversion, not a lane list.** `IRMetalPackedVectorType` is not an `IRVectorType`, so a peephole that treats a non-vector operand as one scalar lane stores a whole `packed_float4` into a float. Count a lane only for an `IRBasicType` operand matching the result's element type — compared via `unwrapAttributedType`, since `unorm`/`snorm`/`no_diff` operands are `IRAttributedType` and raw pointer equality silently loses folds.
+- **Metal RayQuery flags map through inline `__requirePrelude` helpers in `hlsl.meta.slang` (`RayQuery::__reset`), not a prelude file.** 0x04 ACCEPT_FIRST_HIT_AND_END_SEARCH is `intersection_params::accept_any_intersection(true)` (same semantics as DXR/Vulkan); the getters (`get_*`, `should_*`) exist only in Apple's header, not the spec; Metal runtime ray-query lanes are ignored on macOS CI, so only `-target metallib` gives signal.
+- **Metal/CPU `groupshared` becomes an entry-point-local var**, so `canInstHaveSideEffectAtAddress` lets barriers and callees forward/DSE across it; treat `AddressSpace::GroupShared` roots as globals, but keep param roots exempt. Threadgroup declarations take no initializer; cite SPIRV-Cross, not the MSL spec.
+- **On Metal the buffer layout rule NAME is a lowering selector** (packing, struct clone, matrix lowering, `_natural`/`_default` type-name suffix), and CB `ScalarDataLayout` is silently ignored in IR and reflection alike. A new rule changes MSL identifiers and needs a layout IR op; diff whole files.
 - **CI noise on Metal-only PRs**: a Falcor-Perf failure can NEVER be caused by a Metal-only diff (Falcor is D3D12/Vulkan, never compiles for Metal); priority-yield + "Artifact not found" is infra, not code.
 
 ## Metal is GPU-free reproducible
@@ -83,7 +86,130 @@ case for this shape; a peer reviewer found it by probing `-target metal`. The re
 `tests/metal/swizzle-of-packed-vector-load.slang`, which checks that the output still goes
 through `float4(`.
 
-**Source learnings (14):**
+## RayQuery ray flags → `raytracing::intersection_params` (#13408)
+
+Metal translates `RAY_FLAG` bits into an `intersection_params` value in
+`_slang_ray_flags_to_intersection_params`. That helper is not in a prelude file. It is a
+`__requirePrelude(R"(...)")` string inside `RayQuery::__reset` in `source/slang/hlsl.meta.slang`
+(~:21884 @92258f61b), and its only caller is TraceRayInline's `case metal:`, which passes
+`rayFlags | rayFlagsGeneric`, so the template flags on `RayQuery<...>` take the same path.
+`RayFlags()` uses the inverse helper `_slang_intersection_params_to_ray_flags` (~:22885). Since
+#9926 both helpers have lacked 0x04 `ACCEPT_FIRST_HIT_AND_END_SEARCH`; Copilot and CodeRabbit
+flagged it on that PR and nobody replied. The MSL call is `params.accept_any_intersection(true)`,
+which is what SPIRV-Cross `spvMakeIntersectionParams` (spirv_msl.cpp) emits for
+TerminateOnFirstHit, so SPIRV-Cross's MSL helpers are the prior art for auditing any Metal flag
+mapping. Edits need the core-module rebuild sequence, and a `-target metal` FileCheck on the helper
+body verifies them GPU-free
+[Metal RayQuery ray flags are mapped by inline __requirePrelude helpers](../learnings/1790964538262-metal-rayquery-ray-flags-are-mapped-by-inline-requ.md).
+
+The semantics match. The MSL 4.1 spec (2026-06-04) intersection-function return table says "Even if
+true is returned, a committed hit will immediately halt searching if accept_any_intersection() is
+true." That is DXR `RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH` and Vulkan TerminateOnFirstHit:
+search stops on the first committed hit, and non-opaque or procedural candidates still reach user
+code first. The spec has no opacity-micromap feature, so flag 0x400 has no Metal equivalent
+[MSL spec 4.1: accept_any_intersection halts on first committed hit](../learnings/1790978570656-msl-spec-4-1-accept-any-intersection-halts-on-firs.md).
+
+The round trip in `RayFlags()` needs getters, and the spec does not document any. The spec (§6.19.3,
+Table 6.32) lists only setters (`force_opacity`, `set_*_cull_mode`, `accept_any_intersection(bool)`)
+plus `intersection_query::get_intersection_params()`. Apple's shipped `<metal_raytracing>` header
+has the getters anyway: `get_forced_opacity()`, `get_triangle_cull_mode()`,
+`get_geometry_cull_mode()`, `get_opacity_cull_mode()`, `get_geometry_type()`, and, for the bools,
+`should_accept_any_intersection()` and `should_assume_identity_transforms()`.
+`get_intersection_params()` fills them from the live query, so the round trip reads real state. A
+search for `get_accept_any_intersection` finds nothing, which is how CodeRabbit on #9926 wrongly
+concluded there was no getter. Header copies are readable without a Mac via raw.githubusercontent.com
+on dortania/PatcherSupportPkg (`Universal-Binaries/<macOS>/System/Library/PrivateFrameworks/GPUCompiler.framework/Versions/<N>/Libraries/lib/clang/<ver>/include/metal/metal_raytracing`,
+GPUCompiler 31001/32023 trees at commit 94354f9de4f). The gh API tree endpoint returns 401 through
+the proxy, but raw URLs work
+[intersection_params getters exist only in Apple's header](../learnings/1790969961307-metal-intersection-params-getters-exist-only-in-ap.md),
+[Metal runtime ray-query test lanes are ignored on macOS CI](../learnings/1790972350334-metal-runtime-ray-query-test-lanes-are-ignored-on-.md).
+The spec PDF is over 10 MB, so WebFetch fails on it. To search it without pdftotext or pypdf,
+download it with curl, zlib-decompress each `stream…endstream` block in Python, and join the
+`(...)` Tj strings
+[MSL spec 4.1: accept_any_intersection halts on first committed hit](../learnings/1790978570656-msl-spec-4-1-accept-any-intersection-halts-on-firs.md).
+
+Test with a `-target metallib` SIMPLE lane. A Metal runtime ray-query lane gives no CI signal:
+`//TEST(compute, metal):COMPARE_COMPUTE_EX … -metal … -render-feature ray-query` lanes are reported
+as `ignored test: … (mtl)` on test-macos-release-clang-aarch64 (merge_group run 37043131359,
+2026-10-02; e.g. tests/metal/ray-query-intrinsics.slang.2, the only enabled mtl lane ignored in
+tests/metal while 29 others pass). Only the metallib lane proves the MSL compiles with Apple's
+compiler, so do not accept "the macOS Metal runtime lane is the hardware check" in a PR claim.
+Vulkan ray-query lanes do run on test-windows-*-gpu-vk
+[Metal runtime ray-query test lanes are ignored on macOS CI](../learnings/1790972350334-metal-runtime-ray-query-test-lanes-are-ignored-on-.md).
+
+## `groupshared` on Metal: a function-local var, and threadgroup declarations take no initializer (#13409)
+
+On Metal (and CPU targets), `introduceExplicitGlobalContext` (slang-ir-explicit-global-context.cpp:556-575)
+turns each `groupshared` global into an entry-point-local `var` with `AddressSpace::GroupShared`.
+Other GPU targets keep an `IRGlobalVar`, and CUDA deliberately skips the hoist.
+`canInstHaveSideEffectAtAddress` (slang-ir-util.cpp ~1442, `kIROp_Call` arm) skips its "an opaque
+call may write anything" check when the root is a child of the function. A
+`GroupMemoryBarrierWithGroupSync()` call (no arguments) or a `[noinline]` callee that writes the
+slot through KernelContext is therefore treated as not modifying it, and three consumers
+miscompile: `tryRemoveRedundantLoad` (forwards across a barrier), `simplifyForEmit`
+`processLoadUse` (moves a re-load past a barrier), and `tryRemoveRedundantStore` (DSE). To triage a
+"load moved across a barrier on Metal" report, compare `-dump-ir` after `simplifyNonSSAIR`
+(forwarding) with the final IR: if the final IR still has the right store, the re-load comes from
+`simplifyForEmit`. The emitter's fold check is not the culprit; it uses `mightHaveSideEffects`, and
+the barrier blocks it. A safe prototype fix also treats roots whose pointer type has
+`AddressSpace::GroupShared` as globals in that arm. The broader inversion, "only private local vars
+are immune", breaks `inout` copy-in/copy-out: after `undoParameterCopy` an `inout` is a pointer
+param, and `x = t; barrier; return x` starts re-reading another thread's value, so param roots need
+an exemption. The same predicate also forwards through a pointer loaded inside the function
+(`uint* q = cb.p; *q = 1; w(); outb = *q` gives 1) on all targets including SPIR-V; that was unfiled
+when recorded
+[Metal/CPU groupshared is a function-local var after introduceExplicitGlobalContext](../learnings/1790967869022-metal-cpu-groupshared-is-a-function-local-var-afte.md).
+
+The same issue's second bug is the C-like emitter folding a store into the `threadgroup`
+declaration. It reproduces only when the variable is read later, for example by an atomic
+(`s = tid.x; barrier; InterlockedAdd(s,1,old);` gives `threadgroup uint s_0 = tid_0.x;`). A plain
+store with no later read is removed as dead code, and `-g` also hides the fold. Do not cite the MSL
+spec for the "no initializer on threadgroup vars" rule: v4.1 §4.4 (p.120-121) only shows
+uninitialized declarations, and a full-text grep finds no sentence forbidding `threadgroup T x = v;`.
+Web answers quoting "cannot be declared and initialized at the same time" describe older or
+OpenCL-style wording. Cite SPIRV-Cross `spirv_msl.cpp:3868` (main aa217aeb6c9f), "Cannot directly
+initialize threadgroup variables. Need fixup hooks.", which emits the initializer as a separate
+assignment. Without a Metal toolchain, a `-target metallib` test on macOS CI is the only real proof
+[MSL spec doesn't state the no-initializer-on-threadgroup rule](../learnings/1790984185438-the-msl-spec-doesn-t-state-the-no-initializer-on-t.md).
+
+## Buffer layout rules on Metal: CB data-layout parameter ignored, and the rule NAME is a lowering selector (#13423)
+
+On Metal (master 6ba151dcf), `ConstantBuffer<T, ScalarDataLayout>` and `-fvk-use-scalar-layout` are
+silently ignored for constant buffers. The CB keeps native MSL `float3` (16 bytes), while
+`StructuredBuffer<T>` is packed (`packed_float3`, 12 bytes, since #11578, between v2026.2 and
+v2026.12). `getTypeLayoutRuleNameForBuffer` (slang-ir-lower-buffer-element-type.cpp:2416-2417)
+returns Natural for every non-Khronos, non-LLVM target before it reads the buffer's explicit data
+layout. `MetalBufferElementTypeLoweringPolicy::usesPackedVectorStorage` (:2991-3003) packs only the
+StorageBuffer/UserPointer address spaces, and CBs are Uniform. Reflection's
+`MetalLayoutRulesFamilyImpl::getConstantBufferRules` (slang-type-layout.cpp:2799) ignores both the
+options and the container type. Emitted MSL and reflection agree (B@16), so nothing miscompiles;
+the request is dropped with no diagnostic. Across targets, SPIR-V honors CB ScalarDataLayout,
+HLSL/WGSL ignore it, CUDA/CPP are natural anyway, and `Std140DataLayout`/`Std430DataLayout` on Metal
+give E36107. A fix must change IR and reflection in lock step, including the Tier-2 family at
+type-layout.cpp:2869. Avoiding `float3` alone does not make native and scalar layouts coincide
+(`float x; float4 y;` puts y at 16 native vs 4 scalar), so verify offsets per target with
+`-reflection-json`
+[Metal ConstantBuffer ignores the L data-layout parameter](../learnings/1791056669263-metal-constantbuffer-ignores-the-l-data-layout-par.md).
+
+The `IRTypeLayoutRuleName` does more than pick layout numbers on Metal. The emitter never prints
+strides or offsets (`array<T,N>` uses only operands 0 and 1, emit-metal.cpp:1472), but three
+lowering gates read the rule name: `usesPackedVectorStorage` packs only for Natural, the struct
+`isTrivial` check clones a struct when the rule is not Natural, and `shouldLowerMatrixType` leaves a
+default-major matrix alone only for Natural. The name also becomes the `_natural`/`_default` suffix
+of lowered type names through `getLayoutName`. Adding a rule name to a buffer class therefore changes
+emitted MSL identifiers (`Args_natural_0` becomes `Args_default_0`) even when the layout is
+unchanged. A "byte-identical" prototype claim on #13423 (a ~25-line change honoring only explicit
+annotations) was false for exactly this reason, so diff whole files, identifiers included. A new rule
+also needs a layout IR op: `fixBufferAccessPointerTypes` stamps `getOpFromTypeLayoutRuleName(rule)`
+on derived pointers, and with no case for the new rule it falls back to `DefaultBufferLayoutType`,
+which pointer queries map to Natural, leaving the buffer with two contradicting layouts
+(`MetalParameterBlockLayout` is the precedent). `extras/check-ir-stable-names.lua update` re-sorts
+and drops unrelated entries, so add the stable-name line by hand and then run `check`
+[IR layout rule NAME is a lowering selector and leaks into MSL type names](../learnings/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md).
+The same function's exact-target checks are what break the WGSL-via-Tint path; see
+[GLSL/WGSL emit and buffer layout](../concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md).
+
+**Source learnings (22):**
 - [Metal binding tests: an unbound kernel arg takes the first available index, so a zero-based or attribute-presence check passes on a buggy emitter; pick an index past all earlier slots and avoid t/s overlap (E39001) (#12294)](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)
 - [Metal lowering uses a one-operand makeVector(float4, packed_float4) as a conversion — don't count non-IRVectorType operands as scalars](../learnings/1790765098240-metal-lowering-uses-a-one-operand-makevector-float.md) — master's `c[i][0]` already miscompiles
 - [Slang IR: a one-operand makeVector can be a Metal packed-vector conversion, not a lane list](../learnings/1790766506870-slang-ir-a-one-operand-makevector-can-be-a-metal-p.md) — match element types; test tests/metal/swizzle-of-packed-vector-load.slang
@@ -99,3 +225,11 @@ through `float4(`.
 - [Merge-join #12741: Metal precedence-wrapping is low-risk for the COUNT-test class](../learnings/1788298167079-approver-human-disagreement-merge-join-12741-metal.md) — shared-precedence-machinery parenthesization adds parens only in tighter-than-Prefix contexts → byte-identical in common contexts; unconditional token changes still need the COUNT audit.
 - [Metal argument-buffer tier is runtime, not compile-time — encode both offsets](../learnings/1787595516314-metal-argument-buffer-tier-is-runtime-not-compile-.md) — tier is a runtime device capability; one struct runs both tiers; layout encoding already holds multi-kind offsets; one contents-ruleset returning both is the principled fix; don't call front-end layout from IR.
 - [Metal DispatchMesh legalization: intrinsic-asm operand-vs-name threading, virtual-dispatch target gating](../learnings/1788394097476-metal-dispatchmesh-legalization-intrinsic-asm-oper.md) — amplification legalization is Metal-only via a virtual override; `$`-operands vs verbatim bare identifiers (needing in-scope `IRParam`s); inline-to-bring-into-scope is the standard pattern.
+- [Metal RayQuery ray flags are mapped by inline __requirePrelude helpers in hlsl.meta.slang (no 0x04 before #13408)](../learnings/1790964538262-metal-rayquery-ray-flags-are-mapped-by-inline-requ.md) — helper lives in `RayQuery::__reset`; 0x04 → `accept_any_intersection(true)`; SPIRV-Cross is prior art.
+- [MSL spec 4.1: accept_any_intersection halts on first COMMITTED hit; getters are header-only](../learnings/1790978570656-msl-spec-4-1-accept-any-intersection-halts-on-firs.md) — matches DXR/Vulkan terminate-on-first-hit; no OMM (0x400); how to grep the >10 MB PDF.
+- [Metal intersection_params getters exist only in Apple's header; bool getters are named should_*](../learnings/1790969961307-metal-intersection-params-getters-exist-only-in-ap.md) — read the header via dortania raw URLs; add metallib + runtime lanes.
+- [Metal runtime ray-query test lanes are ignored on macOS CI](../learnings/1790972350334-metal-runtime-ray-query-test-lanes-are-ignored-on-.md) — only `-target metallib` SIMPLE lanes give Apple-compiler signal.
+- [Metal/CPU groupshared is a function-local var after introduceExplicitGlobalContext (#13409)](../learnings/1790967869022-metal-cpu-groupshared-is-a-function-local-var-afte.md) — `canInstHaveSideEffectAtAddress` treats barriers/callees as not touching it; GroupShared-address-space fix; param roots need an exemption.
+- [The MSL spec doesn't state the 'no initializer on threadgroup vars' rule; cite SPIRV-Cross instead](../learnings/1790984185438-the-msl-spec-doesn-t-state-the-no-initializer-on-t.md) — spirv_msl.cpp:3868; the fold repro needs a later read (atomic); `-g` hides it.
+- [Metal ConstantBuffer ignores the L data-layout parameter (ScalarDataLayout) in both IR and reflection](../learnings/1791056669263-metal-constantbuffer-ignores-the-l-data-layout-par.md) — dropped silently, IR and reflection agree; fix both in lock step; verify offsets with -reflection-json.
+- [Slang IR layout rule NAME is a lowering selector and leaks into MSL type names](../learnings/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md) — gates packing/struct clone/matrix lowering; `_natural`→`_default` identifiers; add a layout IR op; hand-edit stable names.

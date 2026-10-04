@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-1922 learnings. [Catalog](../index.md)
+1925 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["Emission succeeded" is not "valid": run spirv-val and DXC before claiming a typeflow fix is safe](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)
@@ -553,6 +553,7 @@ type: topic
 - [Metal argument-buffer tier is runtime, not compile-time — encode both offsets, don't hard-switch](../learnings/1787595516314-metal-argument-buffer-tier-is-runtime-not-compile-.md)
 - [Metal binding tests: zero-based indices can pass on a buggy emitter](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)
 - [Metal cast-paren bug: repro needs an INLINED cast; + Falcor-Perf/priority-yield CI is infra not code](../learnings/1788298129501-metal-cast-paren-bug-repro-needs-an-inlined-cast-f.md)
+- [Metal ConstantBuffer ignores the L data-layout parameter (ScalarDataLayout) in both IR and reflection](../learnings/1791056669263-metal-constantbuffer-ignores-the-l-data-layout-par.md)
 - [Metal depth-texture gather bug: WGSL branch already has the isShadow guard Metal lacks](../learnings/1786994230312-metal-depth-texture-gather-bug-wgsl-branch-already.md)
 - [Metal DescriptorHandle #10842: compiler-emit DONE, slang-rhi runtime is the gap; combined won't-fit is real (64b)](../learnings/1784918108597-metal-descriptorhandle-10842-compiler-emit-done-sl.md)
 - [Metal DescriptorHandle-in-buffer emits illegal device T* device* (11970) — an existing pass already owns the shape but its filter misses it](../learnings/1783421582372-metal-descriptorhandle-in-buffer-emits-illegal-dev.md)
@@ -1080,6 +1081,7 @@ type: topic
 - [Slang interface: __init requirements cannot have default bodies (E30317)](../learnings/1785565100286-slang-interface-init-requirements-cannot-have-defa.md)
 - [Slang int→enum public-param retype breaks downstream generic matrix extensions (SlangPy Tests CI)](../learnings/1788455543019-slang-int-enum-public-param-retype-breaks-downstre.md)
 - [Slang int→half E30081 warning: use round-trip exactness, not a fixed [-2048,2048] range](../learnings/1788945215723-slang-int-half-e30081-warning-use-round-trip-exact.md)
+- [Slang IR layout rule NAME is a lowering selector and leaks into MSL type names](../learnings/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md)
 - [Slang IR module-version bump for an additive optional operand — backward-compat facts](../learnings/1789476647852-slang-ir-module-version-bump-for-an-additive-optio.md)
 - [Slang IR natural layout already rounds array strides; BAB alignment promises must be powers of two](../learnings/1790769300394-slang-ir-natural-layout-already-rounds-array-strid.md)
 - [Slang IR text dumper renders all IRParams identically — orphan-vs-attached invisible from text](../learnings/1780729718385-slang-ir-text-dumper-renders-all-irparams-identica.md)
@@ -1821,6 +1823,7 @@ type: topic
 - [spirv-asm skips the validator — a pass fix "validated" with spirv-asm is not validated](../learnings/1786585687402-spirv-asm-skips-the-validator-a-pass-fix-validated.md)
 - [spirv-asm test directive skips validation; test -target spirv to catch illegal SPIR-V](../learnings/1787657916828-spirv-asm-test-directive-skips-validation-test-tar.md)
 - [spirv-opt crash suppressed via expected-failure list is often droppable via the -O0 default (PR #11805), independent of the upstream fix](../learnings/1783036168133-spirv-opt-crash-suppressed-via-expected-failure-li.md)
+- [spirv-opt LoopUnroll silently skips Slang's [unroll] loops at -O3 (trampoline exit block)](../learnings/1791074922027-spirv-opt-loopunroll-silently-skips-slang-s-unroll.md)
 - [spirv-opt won't CSE OpGroupNonUniform* — they're non-combinators](../learnings/1789578103315-spirv-opt-won-t-cse-opgroupnonuniform-they-re-non-.md)
 - [SPIRV-Tools VulkanSDK Sep2026 bump breaks debug-printf.slang mnemonic disassembly](../learnings/1789590067913-spirv-tools-vulkansdk-sep2026-bump-breaks-debug-pr.md)
 - [SPIRV-Tools: Clone()+KillInst(original) drops names/debug-mapping that share the result id](../learnings/1790644293067-spirv-tools-clone-killinst-original-drops-names-de.md)

@@ -5506,6 +5506,8 @@
 - [slang cpu compare compute tests can hide ir optimi](ag-1780667166439-vmjrwe/1790982231204-slang-cpu-compare-compute-tests-can-hide-ir-optimi.md) — _ag-1780667166439-vmjrwe_
 - [slang test bindir does not switch the compiler und](ag-1780667166439-vmjrwe/1790998251754-slang-test-bindir-does-not-switch-the-compiler-und.md) — _ag-1780667166439-vmjrwe_
 - [never override git user name email when committing](ag-1780667166439-vmjrwe/1791004476673-never-override-git-user-name-email-when-committing.md) — _ag-1780667166439-vmjrwe_
+- [image subscript rmw shortcut compare a swizzle aga](ag-1780667166439-vmjrwe/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md) — _ag-1780667166439-vmjrwe_
+- [slang ir layout rule name is a lowering selector a](ag-1780667166439-vmjrwe/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5840,6 +5842,7 @@
 - [path set cycle guards in recursive type walks can ](ag-1780667168475-a9tac8/1790981687370-path-set-cycle-guards-in-recursive-type-walks-can-.md) — _ag-1780667168475-a9tac8_
 - [a not only x not error filecheck lane passes when ](ag-1780667168475-a9tac8/1791009233810-a-not-only-x-not-error-filecheck-lane-passes-when-.md) — _ag-1780667168475-a9tac8_
 - [reviewer a on large slang prs the 30 budget can cu](ag-1780667168475-a9tac8/1791081955973-reviewer-a-on-large-slang-prs-the-30-budget-can-cu.md) — _ag-1780667168475-a9tac8_
+- [reviewer a subagent outputs recover full text from](ag-1780667168475-a9tac8/1791094754719-reviewer-a-subagent-outputs-recover-full-text-from.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
