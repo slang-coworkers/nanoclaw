@@ -295,7 +295,11 @@ describe('service proxy environment', () => {
     fs.writeFileSync(envFile, 'HTTPS_PROXY="http://old.example:1"\n');
     expect(writeServiceProxyEnv(root)).toBeUndefined();
     expect(fs.existsSync(envFile)).toBe(false);
-    expect(renderSystemdUnit(root, '/usr/bin/node', '/home/user', false)).not.toContain('Environment' + 'File');
+    // Fork divergence: the unit always loads `-<root>/.env`, so only the proxy line must be absent.
+    const unit = renderSystemdUnit(root, '/usr/bin/node', '/home/user', false);
+    expect(unit.split('\n').filter((line) => line.startsWith('Environment' + 'File='))).toEqual([
+      `${'Environment' + 'File'}=-${root}/.env`,
+    ]);
   });
 
   it('escapes glob characters in the EnvironmentFile= path', () => {
