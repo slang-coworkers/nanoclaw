@@ -1,128 +1,97 @@
 ---
 name: project_supervisor_probe_defects_ci_cell
-description: "Two CONFIRMED defects in my supervisor CI cell: (1) same-run-id is NOT evidence nobody re-dispatched — a rerun MUTATES the run id, run_attempt is the only discriminator (30555601781 = attempt 2, 8h gap); (2) latest-non-skipped-run reaches BACKWARD past a draft head — must key on head.sha. Plus a critique gate now blocking read-only gh reads."
+description: "Three confirmed defects in the /supervise-issues probe, all STILL LIVE in the shipped skill at 2026-10-03: (1) 'same run id ⇒ nobody re-dispatched' is false — a rerun bumps run_attempt on the same id; (2) 'latest non-skipped run' borrows an ancestor's green past a draft head — key on head.sha; (3) pull-universe.sh's $-anchored thread regex silently drops sub-thread keys (12 real sub-chains + 6 topic threads on my edge). Plus the lessons the fixer and I took from diagnosing them."
 metadata:
   node_type: memory
   type: project
 ---
 
-# Supervisor CI-cell probe: two confirmed defects + a gate blocking verification
+# Supervisor probe: three confirmed defects (2026-08-11)
 
-**2026-08-11.** `slang-fixer` refuted two discriminators my supervisor procedure uses, on two different chains. **Both verified on my edge before I accepted either.**
+`slang-fixer` refuted the first two on two chains; I verified both on my edge before accepting.
+The third took both of us. **Re-checked 2026-10-03: all three are still in
+`/home/node/.claude/skills/supervise-issues/`** — `SKILL.md` §2b still says "same run id … nobody
+re-dispatched" and "latest non-`skipped` CI run"; `scripts/pull-universe.sh` still has
+`re.match(r"gh-issue-(.+/.+)-(\d+)$", t)`. Until fixed, distrust those three cells.
 
-## ⛔⭐⭐⭐ DEFECT 1 — "same run id ⇒ nobody re-dispatched" is FALSE. A rerun MUTATES the same id.
-
-My skill's Step-2b defines ❌ stale as *"a real failure … and it is the same run id recorded last tick (nobody re-dispatched)"*. Measured on the run they cited:
-```
-run 30555601781   run_attempt = 2
-   created_at      2026-07-30T15:13:21Z
-   run_started_at  2026-07-30T23:22:56Z     <- 8h 9m later => it WAS re-dispatched
-   status completed/failure   branch fix/issue-12291
-```
-⇒ ⭐⭐⭐ **A rerun does not mint a new run id — it increments `run_attempt` on the SAME id.** So run-id stability across ticks is evidence of **nothing**, and my probe reads a correctly-retried run as "nobody touched it" and nudges for a rebase that already happened. ⇒ ✅ **`run_attempt` is the only discriminator; the cell must compare `(id, run_attempt)`, not `id`.** **This misfires on EVERY retried run**, which is exactly the population the aging retry helper produces — i.e. the defect is concentrated in the runs the rule most cares about.
-
-## ⛔⭐⭐⭐ DEFECT 2 — "latest non-skipped run" reaches BACKWARD past a draft head. Confirmed.
-
-They said my nudge claimed *"latest CI run is green"* while the head has no real CI. Measured:
-```
-PR #11617  head 4bd18cba1e  draft=true, unchanged since 2026-08-05
-   check-runs ON THE HEAD SHA  ->  {"skipped": 44, "success": 4}
-   the run my probe credited: 30888884926  head_sha = 7cfb025521  completed/success
-                                            ^^ TWO COMMITS BACK
-```
-⇒ **The filter walks back until it finds a non-skipped run, so on a draft head whose own CI is skipped it certifies an ANCESTOR's green as the head's.** ⇒ ⭐⭐ **No reordering fixes this — it is structural. The cell must key on `head.sha` and report "no signal on head" rather than borrowing an ancestor's result.** Same family as the reviewer's *"CI is NO SIGNAL, not green"* (83/82 of ~88 check-runs skipped) and my own `run.conclusion`-vs-`job.conclusion` unit error: **a green that belongs to a different object than the one under review.**
-
-## ⚠️ AND A THIRD ITEM THAT IS MINE TO FIX: the critique gate is now blocking READ-ONLY verification
-
-`CRITIQUE REQUIRED before PR creation — denial cap reached; escalation opened. Reason: 2 edit(s) recorded since the last critique round.` The two "edits" are **memory-file writes**, and the gate fires because the command text contains `pulls` — so a `gh api .../pulls/...` **read** is denied.
-⇒ ⛔ **The single fact that would lift their hold (has pdeayton replied?) is unverifiable because the gate cannot distinguish a read from a write, nor a memory write from a deliverable.** ⇒ **A freshness gate keyed on command SUBSTRING and on edit COUNT (not edit TARGET) converts into a denial-of-verification.** They correctly refused to work around it.
-⚠️ **And their structural objection is real: the attested set includes codex's own live session transcripts under `/workspace/codex/sessions/**`, which the reviewer APPENDS TO AS IT RUNS — so every round attests a file the next round invalidates.** The blocked round returned `approve` with **zero** must-fix. ⇒ **A gate whose attestation set includes its own output can never be satisfied. Operator-gated: exclude the reviewer's transcript dir from the attested set.**
-
-## ✅ Their self-caught fabrication is the item I would most want other coworkers to copy
-They ran a script whose Python **printed a hardcoded conclusion** (*"no new inbound webhook"*) rather than measuring, caught it, and re-derived: 81 inbound rows mention 11617, latest three being the nudge and the gate notice. ⇒ **The claim survived; the first version was a fabricated measurement.** ⭐⭐ **And they scoped the re-derived version correctly: "my INBOX has no maintainer message, which is not the same as GitHub having none."** Reporting the instrument's reach rather than the conclusion's feel.
-
-✅ **Their treadmill argument is sound and I am not overriding the hold:** #11617 drifted 19 → 20 → **36** behind in five days; syncing per tick would have meant four merges, each dropping a commit into a maintainer's open review window mid-thread. **Ready-flip stays refused (operator-gated, and pdeayton is mid-question on the encoding).** Same for #12294 — a deliberate draft *offer* to the assignee who owns the direction under #10842; flipping it ready converts deference into a competing merge demand.
-⚠️ **And their falcor point defeats the rebase nudge's premise:** *"main is stable now"* does not license the green, because **falcor-on-master is unknown — no master `ci.yml` run since 2026-06-23**, and the recent cross-branch failures are all yield-gate, none reaching falcor. **"Rebase → it'll go green" is an untested prediction**, and the one genuinely unproven fact remains whether the `-target metallib` probe actually executed.
-
-## ✅ 03:59Z — THIRD DATA POINT ON DEFECT 2, VERIFIED AT THE HEAD SHA; AND THE FIXER RETRACTED ITS OWN GATE CLAIM BY TESTING IT
+## 1 — A rerun keeps the run id and bumps `run_attempt`
 
 ```
-run 30972108017   head_sha = 4bd18cba1e (= #11617's HEAD)   completed/SKIPPED
-the green the nudge cited: 30888884926  head_sha = 7cfb025521   completed/success
-#11617 reviews: {"COMMENTED": 5}   -- no APPROVED, no CHANGES_REQUESTED
-comments after 2026-08-05T04:00Z: 0   (newest three: 08-04 x2 bot, 08-04 jkwak-work)
+run 30555601781  run_attempt=2  created 2026-07-30T15:13:21Z  run_started 23:22:56Z (8h later)
 ```
-⇒ ✅ **"Latest CI run is green" has been false for this head across all four nudges, now confirmed at the head sha itself.** `head.sha` keying is the fix; there is no reordering that saves the *latest-non-skipped* filter. ⇒ ✅ **And pdeayton genuinely has not replied — 0 comments in 6 days — so the hold is correct and I am not overriding it.**
+So id stability across ticks proves nothing, and the ❌ stale rule nudges for a rebase that
+already happened — on exactly the retried runs the rule cares most about. **Fix: compare
+`(id, run_attempt)`.** Related: [[feedback_a_rerun_in_flight_is_not_a_rerun_that_cleared]].
 
-⇒ ⭐⭐⭐ **THEIR SELF-RETRACTION IS THE MOST VALUABLE ITEM: they told me a fresh critique round "produces the same deadlock plus a new unsatisfiable hash", then RAN IT and it cleared immediately.** Their own diagnosis of the error: *"an untested capability-negative — asserting an impossibility without trying it."* **That is my store's rule 3 (`published_negative_env_claims_need_rederivation`) — the one error class with no failure signature, because readers comply by not attempting.** Here the cost was concrete: an operator escalation I was about to carry for a gate that self-heals every round.
+## 2 — "Latest non-skipped run" reaches back past a draft head
 
-⇒ ⭐⭐ **AND THE MECHANISM GENERALIZES: TWO GATE CONDITIONS, ONE REASON STRING THEY STOPPED READING.**
 ```
-edits_since_critique: 2            <- FRESHNESS: what was actually blocking
-OUTPUT_REVIEW verdict: approve     <- verdict gate: already satisfied
-critique_attested: 2 codex paths   <- HASH gate: only evaluated AFTER freshness passes
+PR #11617 head 4bd18cba1e (draft)  check-runs on head: {skipped: 44, success: 4}
+credited run 30888884926  head_sha 7cfb025521  success   ← two commits back
+run 30972108017 on the real head: SKIPPED
 ```
-**The hash deadlock they escalated on 08-06 was real then. When the refusal's reason string CHANGED to the freshness counter, they kept applying the old diagnosis.** ⇒ **A correct fact reused as a diagnosis for a different symptom — the same generator as every stale-anchor error this week. ⇒ RE-READ THE REASON STRING ON EVERY REFUSAL; a gate with N conditions emits N different messages and only one is current.** ✅ **Operator escalation on the codex-transcript attestation can be DROPPED (it self-heals per round) unless we want those paths excluded on principle.**
+Four nudges told the fixer "latest CI is green" when the head had no real CI. No reordering
+fixes it. **Fix: key on `head.sha` and report "no signal on head"** instead of borrowing an
+ancestor's result. Same family as a green that belongs to a different object than the one under
+review.
 
-⚠️ **They also weakened a claim of their own unprompted, correctly:** they had been asserting *"a pending redesign WILL invalidate the sync"* as fact; established is only that the prototype awaits acceptance and the head has no CI. **Still sufficient to hold, and a smaller claim than they were making.** ⭐ **Volunteering that a load-bearing claim is a risk rather than a fact — while the conclusion survives — is the behaviour that makes the refusal credible.**
+## 3 — A two-stage filter, permissive then strict, drops sub-thread keys silently
 
-⚠️ **And one earlier fabrication they caught themselves: a script whose Python PRINTED a hardcoded "no new inbound webhook" instead of measuring.** Re-derived properly (81 inbound rows mention 11617), and scoped correctly: *"my INBOX has no maintainer message, which is not the same as GitHub having none."*
+My nudge said sub-thread `gh-issue-shader-slang/slang-12150/ovhk89-credit` had no outbound; it
+had one (`sess-1785851342400-hheoxc` seq 3, 2026-08-04T14:19Z), so the key sat `awaiting_us` for
+7 days. I eliminated four candidate mechanisms and stopped at "unresolved" rather than guessing a
+fifth. The fixer found it: stage 1 (`startswith("gh-issue-")`) admits the sub-key, stage 2 (the
+`$`-anchored regex) drops it.
 
-## ⛔⭐⭐⭐ 2026-08-11 14:11Z — MY NUDGE'S PREMISE ("no outbound at all") WAS FALSE, AND I COULD NOT FIND THE MECHANISM. Stopping at unresolved, per the lesson the fixer had just published.
+⭐⭐⭐ **Every diagnostic probe checks the predicate named after the property, gets "yes", and
+treats that as "so it was scanned".** All four of my eliminations were downstream of a set the
+thread never entered. When a probe's precondition is checked by a different predicate than the
+one that admits the record, verifying the named predicate proves nothing.
 
-They corrected my #12150-credit nudge: the sub-thread **does** have an outbound. **Verified directly, and the row is unambiguous:**
-```
-ncl sessions messages sess-1785851342400-hheoxc  ->  5 rows total
-  seq 2   in   2026-08-04T13:49:02Z
-  seq 3   out  2026-08-04T14:19:31Z     <- the outbound my nudge said did not exist
-  seq 4   in   2026-08-11T13:13:13Z     <- MY NUDGE
-  seq 45  out  2026-08-11T14:11:21Z
-  seq 47  out  2026-08-11T14:11:44Z
-```
-⇒ **So the key was held `awaiting_us` for 7 days on a false premise.** I then tried to find the defect in my own probe and **eliminated every candidate**:
-```
-1. wrong flag form?    `--id <sid>` AND positional both work, both return the out rows.   NOT IT
-2. break placement?    loop is correct — `continue` skips inbound, `break` stops at first `out`.  NOT IT
-3. replay the function verbatim on that session  ->  returns 2026-08-11T14:11:44Z.        WORKS TODAY
-4. window too small?   at 13:13 the session held only seq 2,3,4; `--limit 10` CONTAINS seq 3.  NOT IT
-```
-⇒ ⭐⭐⭐ **FOUR CANDIDATE MECHANISMS, ALL REFUTED, AND THE HONEST ANSWER IS "UNRESOLVED".** The function works when replayed against the same session, so either the state differed at scan time in a way I cannot reconstruct, or the false premise entered from a different path than `ncl_last_outbound` (e.g. the session was not in the scanned `sess_ids` set at all — which I cannot test retroactively). ⇒ **I am recording "cause unidentified, effect measured" rather than picking a story.**
+**My edge: 791 stage-1 keys, 773 kept, 18 dropped** (the fixer could see only 10). They split:
+- **12 rescuable** sub-chains with a parent issue number (e.g. `…/slang-10027/diag-retry`,
+  `…/slang-12073/resume`, `…/slang-12231-supersede`, `…/slangpy-1079/upstream-slang`);
+- **6 topic threads** with no issue number (e.g. `…/slang-backend-codegen-perf`,
+  `…/slangpy-sgl-tests-teardown`), correctly excluded.
 
-⇒ ⭐⭐⭐ **AND THAT IS EXACTLY THE LESSON THEY HAD JUST PUBLISHED, APPLIED TO ME WITHIN THE HOUR: "each retraction reached for a replacement story, and the replacement was the least-audited claim in the sequence."** They were wrong **four times** on one small fact (CODEOWNERS → a human maintainer (mine) → `members[0]` third-fallback → actor-names-token-owner), each retraction supplying a new mechanism, and codex's sharpest catch was that **their retraction was still a mechanism.** ⇒ ✅ **"A NEGATIVE RESULT IS A COMPLETE ANSWER."** I had four eliminations and no cause; publishing a fifth guess would have been the same error one tier up.
+**Fix needs both:** relax stage 2 to map a sub-key to its parent
+(`^gh-issue-(.+?/.+?)-(\d+)(?:[/-].*)?$`), **and** log every still-dropped key. Relaxing alone
+turns the 6 topic threads into phantom issues; logging alone leaves 12 sub-chains invisible.
+Related parse defect: [[project_scan_py_subthread_key_parse_falsepositive]];
+enrichment failure: [[project_supervisor_pull_universe_enrichment_fail]].
 
-## ✅ CORRECTIONS ACCEPTED, BOTH AGAINST ME
-⛔ **DROP "two maintainers are engaged on a draft" — I asserted it and it is unsupported.** The timeline `actor` field **cannot distinguish a manual click from automation running under that identity**, so those three assign/review-request events establish **neither** a manual action by `jhelferty-nv` **nor** PR-specific review interest. ⚠️ **Not claimed (and I must not overshoot the retraction): he IS a human maintainer, and separate human interest could exist — only the manual-click attribution is contested.** ⇒ **A timeline `actor` is an identity, not an agency claim.**
+## The critique gate blocked read-only verification (resolved)
 
-✅ **Their ownership finding stands and my re-send was right: #12150/#12340/#12339 ARE theirs** — `git ls-remote origin fix/issue-12150` == local HEAD `80da876add`, run log present. ⇒ ⭐⭐ **The sibling's decline rested on "I took no action during the restart window" — an absence of RECOLLECTION, never measured. A DECLINE NEEDS THE SAME EVIDENCE AS AN ACCEPTANCE.** That is the mirror of my own carve-out on refused credit, and it is the rule that resolves ownership disputes between two sessions of one coworker.
+The gate denied a `gh api …/pulls/…` **read** because its `pulls` pattern matches command text and
+it counts memory-file writes as edits → [[project_critique_gate_pulls_pattern_builtin_floor]].
+The fixer first escalated a hash deadlock, then ran a fresh round and it cleared — the blocking
+condition was freshness (`edits_since_critique: 2`), not the hash. ⭐ **Re-read the reason string
+on every refusal: a gate with N conditions emits N messages and only one is current**
+([[feedback_gate_remedy_may_be_disjunctive_reread_it]]). The codex-transcript attestation
+escalation was dropped; it self-heals per round.
 
-⚠️ **And their propagation catch is the one with the longest tail: the first draft of their reply asserted that final-response prose isn't delivered — a claim they had ALREADY written into an always-loaded index row, where a sibling session compacted it and PRESERVED THE FALSE CLAIM.** Codex refuted it from a session log they had not run. ⇒ **A false claim in an always-loaded index survives compaction as a rule stripped of its evidence — which is precisely why the index is a router, never a source.** They fixed the leaf's `description:` frontmatter so the retraction propagated to both index shards (ORPHANED=0, 429/429).
+## Lessons from the exchange
 
-## ✅⭐⭐⭐ 2026-08-11 14:29Z — THE FIXER FOUND THE CAUSE I COULD NOT: A TWO-STAGE FILTER, PERMISSIVE STAGE 1 / STRICT STAGE 2. Verified, and MY EDGE IS WORSE THAN THEIRS.
+- **A negative result is a complete answer.** The fixer was wrong four times on one fact, each
+  retraction supplying a new mechanism; a retraction that is itself a mechanism is the
+  least-audited claim → [[feedback_a_retractions_own_prose_regenerates_the_retracted_claim]].
+  "Sufficient mechanism measured, cause unconfirmed" is the honest ceiling when the state needed
+  to confirm it (`supervisor-state.json`) is not in your container.
+- **An untested capability-negative** ("a fresh round will deadlock") has no failure signature
+  because readers comply by not trying. Run it.
+- **A script that prints a hardcoded conclusion is a fabricated measurement.** Scope the redo
+  to the instrument's reach: "my inbox has no maintainer message" ≠ "GitHub has none".
+- **A timeline `actor` is an identity, not an agency claim** — it cannot tell a manual click
+  from automation under that login.
+- **A decline needs the same evidence as an acceptance.** A sibling declined #12150/#12340/#12339
+  on "I took no action" (unmeasured recollection); `git ls-remote` proved they were its.
+- **A false claim in an always-loaded index row survives compaction stripped of its evidence** —
+  the index is a router, never a source. Fix the leaf's `description:` so the retraction
+  propagates to the generated shards.
 
-My fifth (untested) hypothesis was *"the session wasn't in the scanned set at all."* **They located the discriminator in the skill's own script and I reproduced it exactly:**
-```
-pull-universe.sh:53   if not (thread_id).startswith("gh-issue-"):  continue     <- STAGE 1: sub-key PASSES
-pull-universe.sh:70   m = re.match(r"gh-issue-(.+/.+)-(\d+)$", t)               <- STAGE 2: $-anchored
-                      if not m: continue                                        <- sub-key DROPPED
+## Holds endorsed (operator-gated)
 
-  gh-issue-shader-slang/slang-12150                 -> stage1=True  stage2=('shader-slang/slang','12150')
-  gh-issue-shader-slang/slang-12150/ovhk89-credit   -> stage1=True  stage2=None  -> DROPPED
-```
-⇒ ⭐⭐⭐ **THE TRAP, IN THEIR WORDS AND IT IS THE REAL FINDING: "every diagnostic instinct probes the predicate NAMED AFTER THE PROPERTY (`startswith` → is it a gh-issue thread? → yes), and that *yes* licenses 'so it was scanned.' The drop happens in a regex nobody re-reads because the first check already passed."** ⇒ **That is why all four of my eliminations came back clean — every one was downstream of a set the thread never entered.** ⭐⭐ **Generalization: when a probe's own precondition is checked by a DIFFERENT predicate than the one that admits the record, verifying the named predicate proves nothing.**
-
-⛔⭐⭐ **AND MY POPULATION IS 18, NOT THEIR 10 — measured on my edge (791 stage-1 keys, 773 kept, 18 dropped). They could only see their own container's slice.** Splitting the 18 by whether an issue number is recoverable:
-```
-RESCUABLE (12) — a relaxed `^gh-issue-(.+?/.+?)-(\d+)(?:[/-].*)?$` maps each to its parent issue:
-   …/slang-10027/diag-retry · …/slang-11135/json-reflection-scope · …/slang-11568/recovery
-   …/slang-12036/mimalloc-all-platforms · …/slang-12073/resume · …/slang-12150/ovhk89-credit
-   …/slang-12231-supersede · …/slang-12244/gc-reap
-   …/slangpy-1051/slang-escalation · …/slangpy-1055/upstream-slang
-   …/slangpy-1059/upstream-slang · …/slangpy-1079/upstream-slang
-NOT A CHAIN (6) — no issue number exists; these are TOPIC threads, correctly excluded:
-   …/slang-backend-codegen-perf · …/slang-coverage-macos-segfault
-   …/slang-getdefaultvalueblob-c-export · …/slang-mimalloc-submodule-branch
-   …/slang-windows-gpu-runner-health · …/slangpy-sgl-tests-teardown
-```
-⇒ ⭐⭐⭐ **THE POPULATION SPLITS INTO TWO KINDS AND THAT DECIDES THE FIX. Relaxing the regex alone would sweep the 6 topic threads into the chain universe as phantom issues (`gh-issue-<repo>-<words>` has no number to resolve). Logging alone leaves 12 real sub-chains invisible.** ⇒ ✅ **CORRECT FIX IS BOTH: relax stage 2 to map a sub-key onto its parent issue (rescues 12), AND log every still-dropped key (surfaces the 6, and any future shape).** Their instinct to prefer logging was right about the *principle* — *"a filter that silently narrows a universe reads as covered everything"* — and my measurement shows logging alone is insufficient. **Neither of us had the whole answer; the split needed the bigger population.**
-
-⇒ ⭐⭐ **THEIR SCOPE DISCIPLINE IS THE PART TO COPY: they held it at "SUFFICIENT MECHANISM MEASURED, CAUSE STILL UNCONFIRMED"** — because `supervisor-state.json` is not in their container, they could not test key membership retroactively, and a key can enter state from a prior tick. **Having just been wrong four times by answering "then what DID happen?", stopping at sufficient-and-measured was the discipline, not the limitation.** ⇒ **My "effect-measured/cause-unidentified" upgrades to "sufficient mechanism measured" — not to "solved".**
+#11617 stays draft (drifted 19→36 behind in five days; syncing per tick drops commits into
+pdeayton's open review; 0 replies in 6 days). #12294 stays a draft offer to the assignee under
+#10842. "Rebase → it'll go green" was untested: no master `ci.yml` run since 2026-06-23, so
+falcor-on-master was unknown.

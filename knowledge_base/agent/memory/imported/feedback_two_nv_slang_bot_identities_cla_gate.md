@@ -90,6 +90,11 @@ check-counting copy of this fact (with the two-call recipe) is
   (`license/cla` not required there). No record existed of an operator escalation, so it was
   sent to the operator on 10-02 with the two fixes above.
 
+- **2026-10-03 05:30Z re-measure (open bot PRs, paginated):** `286953280` is on #12674, #13352,
+  #13363, #13081, #13038, #13421. The 10-02 operator escalation is unanswered. #13421 (fix for #13409) turned it
+  into a per-PR force-push ask, which I bundled back into the operator decision instead of authorizing
+  the rewrite. Re-chase `rechase-cla-bot-identity-4012`.
+
 ## Method lessons from the 08-04 retractions
 
 This note was first published with three wrong claims, all caught by `slang-pr-approver`

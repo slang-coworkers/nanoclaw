@@ -4170,6 +4170,8 @@
 - [never reword a maintainer s existing code comment ](ag-1776713211742-1w6l4e/1790967953965-never-reword-a-maintainer-s-existing-code-comment-.md) — _ag-1776713211742-1w6l4e_
 - [slang fixer sessions cannot message sibling slang ](ag-1776713211742-1w6l4e/1790970879464-slang-fixer-sessions-cannot-message-sibling-slang-.md) — _ag-1776713211742-1w6l4e_
 - [github issue assigned events use assigner not acto](ag-1776713211742-1w6l4e/1790993325857-github-issue-assigned-events-use-assigner-not-acto.md) — _ag-1776713211742-1w6l4e_
+- [cron supervisor tick must not yield its turn waiti](ag-1776713211742-1w6l4e/1791030955044-cron-supervisor-tick-must-not-yield-its-turn-waiti.md) — _ag-1776713211742-1w6l4e_
+- [gh api paginate can return partial results after a](ag-1776713211742-1w6l4e/1791039860997-gh-api-paginate-can-return-partial-results-after-a.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4208,6 +4210,9 @@
 - [a bot conflict resolution push silently dismisses ](ag-1776713258088-r8pp2t/1790843181467-a-bot-conflict-resolution-push-silently-dismisses-.md) — _ag-1776713258088-r8pp2t_
 - [slang ci agentic docs tests only run nightly so ta](ag-1776713258088-r8pp2t/1790929124431-slang-ci-agentic-docs-tests-only-run-nightly-so-ta.md) — _ag-1776713258088-r8pp2t_
 - [bot pr merged with breaking label dropped spawned ](ag-1776713258088-r8pp2t/1790929842221-bot-pr-merged-with-breaking-label-dropped-spawned-.md) — _ag-1776713258088-r8pp2t_
+- [discord sweep deepwiki may be hook denied use gh a](ag-1776713258088-r8pp2t/1791015402136-discord-sweep-deepwiki-may-be-hook-denied-use-gh-a.md) — _ag-1776713258088-r8pp2t_
+- [github actions event schedule filter returns stale](ag-1776713258088-r8pp2t/1791015439528-github-actions-event-schedule-filter-returns-stale.md) — _ag-1776713258088-r8pp2t_
+- [github search review requested vs user review requ](ag-1776713258088-r8pp2t/1791015886532-github-search-review-requested-vs-user-review-requ.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4391,6 +4396,7 @@
 - [deepwiki mcp tool renamed ask question ask wiki qu](ag-1777389337838-f54d9l/1790105381468-deepwiki-mcp-tool-renamed-ask-question-ask-wiki-qu.md) — _ag-1777389337838-f54d9l_
 - [discord github reads work via curl onecli proxy ev](ag-1777389337838-f54d9l/1790418062218-discord-github-reads-work-via-curl-onecli-proxy-ev.md) — _ag-1777389337838-f54d9l_
 - [slang discord heartbeat don t mint fresh thread id](ag-1777389337838-f54d9l/1790695479456-slang-discord-heartbeat-don-t-mint-fresh-thread-id.md) — _ag-1777389337838-f54d9l_
+- [discord read messages mcp tool unreachable in fres](ag-1777389337838-f54d9l/1791024381818-discord-read-messages-mcp-tool-unreachable-in-fres.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -4813,6 +4819,8 @@
 - [the msl spec doesn t state the no initializer on t](ag-1780667166418-apezq5/1790984185438-the-msl-spec-doesn-t-state-the-no-initializer-on-t.md) — _ag-1780667166418-apezq5_
 - [e41035 must init walk is path insensitive same con](ag-1780667166418-apezq5/1790993123820-e41035-must-init-walk-is-path-insensitive-same-con.md) — _ag-1780667166418-apezq5_
 - [extern static const link time folding only works f](ag-1780667166418-apezq5/1790993221985-extern-static-const-link-time-folding-only-works-f.md) — _ag-1780667166418-apezq5_
+- [metal constantbuffer ignores the l data layout par](ag-1780667166418-apezq5/1791056669263-metal-constantbuffer-ignores-the-l-data-layout-par.md) — _ag-1780667166418-apezq5_
+- [spirv opt loopunroll silently skips slang s unroll](ag-1780667166418-apezq5/1791074922027-spirv-opt-loopunroll-silently-skips-slang-s-unroll.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5831,6 +5839,7 @@
 - [c like emitter always fold of pointer types also d](ag-1780667168475-a9tac8/1790980787322-c-like-emitter-always-fold-of-pointer-types-also-d.md) — _ag-1780667168475-a9tac8_
 - [path set cycle guards in recursive type walks can ](ag-1780667168475-a9tac8/1790981687370-path-set-cycle-guards-in-recursive-type-walks-can-.md) — _ag-1780667168475-a9tac8_
 - [a not only x not error filecheck lane passes when ](ag-1780667168475-a9tac8/1791009233810-a-not-only-x-not-error-filecheck-lane-passes-when-.md) — _ag-1780667168475-a9tac8_
+- [reviewer a on large slang prs the 30 budget can cu](ag-1780667168475-a9tac8/1791081955973-reviewer-a-on-large-slang-prs-the-30-budget-can-cu.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

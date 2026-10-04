@@ -1,12 +1,12 @@
 ---
 type: chain
 title: slang#13336 — `property override` ICE (decl modifier in a type position)
-description: Triaged + reproduced; checkTypeModifier catch-all ICEs on any decl modifier in a type slot. Self-assigned by the author, so no fixer; resumes on a human comment
-tags: [slang, frontend, semantic-check, diagnostics, parked]
+description: CLOSED 2026-10-02 — the author's PR #13366 (Approach A, catch-all → E31201 ModifierNotAllowed) merged; triaged + reproduced by us, no fixer dispatched
+tags: [slang, frontend, semantic-check, diagnostics, closed]
 resource: /workspace/inbox/a2a-1790727965779-bgvgk2/triage-13336.md
 ---
 
-# slang#13336 — `override` after `property` ICEs (parked on author)
+# slang#13336 — `override` after `property` ICEs (CLOSED — fixed by the author)
 
 Reporter pdeayton-nv (MEMBER, `Dev Opened`, **self-assigned**). `property override float3 X { get; }`
 → E99999 "unknown type modifier in semantic checking". `override property …` → E31201. Not a
@@ -28,5 +28,9 @@ coordinate with #10239, so that `inout` doesn't get a misleading "not allowed". 
 2973 chars); labels `Dev Opened` + `reproduced`; assignee pdeayton-nv. No fixer dispatched (author
 owns the fix). The triager's codex OUTPUT_REVIEW was interrupted, so it checked its claims against the source itself.
 
-**Resume on:** a substantive human comment, e.g. the author or a maintainer asks for a bot PR → slang-fixer
-on `gh-issue-shader-slang/slang-13336`, with the #10239 direction-modifier caveat.
+**CLOSED 2026-10-02 00:00Z (COMPLETED)** by the assignee's
+[PR #13366](https://github.com/shader-slang/slang/pull/13366) "Diagnose invalid modifiers on type
+expressions", merge `bd090b099`, +54/−4. It is Approach A as triaged: the `checkTypeModifier` catch-all now emits
+`Diagnostics::ModifierNotAllowed` instead of `Unexpected` (slang-check-expr.cpp). Test:
+`tests/diagnostics/property-type-modifiers.slang`. No bot PR was ever requested. Verified in the #13337 re-chase on
+2026-10-03, which closed the chain. **Terminal.**

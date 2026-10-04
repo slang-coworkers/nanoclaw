@@ -2,39 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-09-13T04:09:56Z",
-   "backlog": 499077,
-   "defects": 26,
-   "offenders": 132,
-   "top": {
-    "path": "imported/project_12260_enum_bool_switch_e39999.md",
-    "class": "OVERSIZE",
-    "size": 26009
-   }
-  },
-  {
-   "at": "2026-09-13T04:10:10Z",
-   "backlog": 499077,
-   "defects": 26,
-   "offenders": 132,
-   "top": {
-    "path": "imported/project_12260_enum_bool_switch_e39999.md",
-    "class": "OVERSIZE",
-    "size": 26009
-   }
-  },
-  {
-   "at": "2026-09-14T04:18:17Z",
-   "backlog": 447620,
-   "defects": 0,
-   "offenders": 108,
-   "top": {
-    "path": "imported/feedback_a_relay_names_an_inbound_that_must_exist_in_the_thread.md",
-    "class": "OVERSIZE",
-    "size": 25242
-   }
-  },
-  {
    "at": "2026-09-14T04:18:30Z",
    "backlog": 447620,
    "defects": 0,
@@ -329,6 +296,39 @@
     "path": "imported/feedback_a_turn_error_is_evidence_about_the_turn_not_the_work.md",
     "class": "OVERSIZE",
     "size": 16875
+   }
+  },
+  {
+   "at": "2026-10-03T06:06:39Z",
+   "backlog": 3316,
+   "defects": 1,
+   "offenders": 11,
+   "top": {
+    "path": "imported/index.md",
+    "class": "INDEX-STALE",
+    "size": 146625
+   }
+  },
+  {
+   "at": "2026-10-03T06:07:05Z",
+   "backlog": 2816,
+   "defects": 0,
+   "offenders": 10,
+   "top": {
+    "path": "imported/project_12366_pre_tool_use_hook_unregistered.md",
+    "class": "OVERSIZE",
+    "size": 16765
+   }
+  },
+  {
+   "at": "2026-10-03T12:07:48Z",
+   "backlog": 624,
+   "defects": 0,
+   "offenders": 6,
+   "top": {
+    "path": "imported/project_slangpy_1001_triager_memo_verbatim.md",
+    "class": "OVERSIZE",
+    "size": 16167
    }
   }
  ]

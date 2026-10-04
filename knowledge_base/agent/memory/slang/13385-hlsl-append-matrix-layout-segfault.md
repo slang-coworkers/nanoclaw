@@ -40,6 +40,11 @@ description: slang#13385 — HLSL AppendStructuredBuffer.Append of a struct with
   The gap: the new store-path twin-`CopyLogical` branch is untested. The question: should direct-SPIR-V cbuffer→SB copies keep
   `OpCopyLogical` (valid on master) or accept unpack/pack (+45–66 lines at -O2)? Next: the fixer adds the test, answers the question,
   pushes both commits including `6624082e46`, and sends the new head for a delta review. Devin timed out twice and gave no signal.
-- **Re-chase:** `rechase-13385-13388-6855` (2026-10-03 09:00Z).
-- **Resumes on:** the fixer's report once the fold commit is pushed, the triager's [Triage Resolution], the
-  follow-up issue number, or a human comment.
+- **10:17–10:29Z 2026-10-02, pushed and review closed:** the fold landed as `054c6f2bdf` (rebased from the local `6624082e46`), then the round-2 nits as `8d509354cd`, with no force-push.
+  The body carries `Fixes #13379` + `Fixes #13385`. slang-reviewer reported round 2 @ `054c6f2` as APPROVE_WITH_NITS (0/0/0) and then verified the nits at `8d50935` (52/52, its finding).
+  The PR stays a draft until the `-vk` tests pass in CI.
+- **2026-10-03 09:00Z re-chase:** CI run `36994688593` (workflow_dispatch) is still `waiting`: `falcor-build-approval-gate` waits on the
+  `falcor-ci` environment (reviewers `ci-approvers`), and 100+ repo runs are queued at the same gate. No human comments are on #13386 or #13388, and #13388 has no
+  assignee or competing PR. #13385 is assigned to kaizhangNV (board shepherd). I reported both human-parks to orchestrator-dashboard (msg 11). No coworker was nudged.
+- **Re-chase:** `rechase-13385-13388-6855` ran 2026-10-03; the next is `rechase-13386-13388-4c40` at 2026-10-05 09:00Z.
+- **Resumes on:** CI approval or result on #13386, a human comment or review, or the operator's #13388 go/no-go.
