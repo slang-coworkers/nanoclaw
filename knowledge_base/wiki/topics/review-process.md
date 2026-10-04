@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-337 learnings. [Catalog](../index.md)
+340 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -155,6 +155,7 @@ type: topic
 - [gh REST reviews --paginate 401-flaps mid-pagination on multi-page PRs; GraphQL gh pr view --json reviews is flap-immune](../learnings/1788523950028-gh-rest-reviews-paginate-401-flaps-mid-pagination-.md)
 - [gh-shim fallback for dead token on public repo (pr-mode review)](../learnings/1785339099440-gh-shim-fallback-for-dead-token-on-public-repo-pr-.md)
 - [GitHub approval state: use latestOpinionatedReviews, never latestReviews — a later COMMENTED hides a live APPROVED](../learnings/1786073602625-github-approval-state-use-latestopinionatedreviews.md)
+- [GitHub search review-requested vs user-review-requested counts differ (teams)](../learnings/1791015886532-github-search-review-requested-vs-user-review-requ.md)
 - [GLSLModuleModifier→SourceLanguage refactor: how PR 13112 addressed the known pitfall + a cross-reviewer convergence signal](../learnings/1789515728058-glslmodulemodifier-sourcelanguage-refactor-how-pr-.md)
 - [grep -c counts LINES not occurrences — and every genuinely new finding in a saturated review came from repairing an instrument, not looking harder](../learnings/1785942371271-grep-c-counts-lines-not-occurrences-and-every-genu.md)
 - [Historical R0-pinned review: repoint clone origin to R0 base, not just local ref](../learnings/1783689995051-historical-r0-pinned-review-repoint-clone-origin-t.md)
@@ -234,10 +235,12 @@ type: topic
 - [Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](../learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md)
 - [Reviewer A missed capability-defs interface-include propagation to slang-unit-test](../learnings/1787783966666-reviewer-a-missed-capability-defs-interface-includ.md)
+- [Reviewer A on large Slang PRs: the $30 budget can cut off subagents, and a run can come back empty](../learnings/1791081955973-reviewer-a-on-large-slang-prs-the-30-budget-can-cu.md)
 - [Reviewer A orphan is now 3/3 on claude CLI 2.1.285 even without run_in_background in tool-uses — treat the pipeline as broken, not flaky](../learnings/1790792204414-reviewer-a-orphan-is-now-3-3-on-claude-cli-2-1-285.md)
 - [Reviewer A patch-mode: inner orchestrator can end_turn while background subagents run (review-guard <500B)](../learnings/1790707975468-reviewer-a-patch-mode-inner-orchestrator-can-end-t.md)
 - [Reviewer A REVIEW-GUARD false positive: 'socket' in a legitimate review](../learnings/1790645552774-reviewer-a-review-guard-false-positive-socket-in-a.md)
 - [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md)
+- [Reviewer A subagent outputs: recover full text from reviewerA.log, not extracts](../learnings/1791094754719-reviewer-a-subagent-outputs-recover-full-text-from.md)
 - [Reviewer A transient 400 payload-truncation reproduces on back-to-back retries](../learnings/1787341192642-reviewer-a-transient-400-payload-truncation-reprod.md)
 - [Reviewer A wrong-PR integrity fail: shared tmp/ staging collision between concurrent runs](../learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md)
 - [Reviewer A's merge step can drop a subagent's verified crash — scan per-subagent summaries](../learnings/1790744483226-reviewer-a-s-merge-step-can-drop-a-subagent-s-veri.md)

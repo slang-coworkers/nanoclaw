@@ -3,7 +3,7 @@ title: "Slang test authoring: FileCheck efficacy, ignored targets, and confounde
 type: concept
 group: slang-tooling
 tags: [slang-test, filecheck, testing, cuda, metal, target-switch, gpu-less, test-efficacy]
-source_count: 24
+source_count: 26
 ---
 
 # Slang test authoring: FileCheck efficacy, ignored targets, and confounded lanes
@@ -37,7 +37,7 @@ The recurring theme is **test efficacy**: a green test in a GPU-less container r
 - **Never name a custom `filecheck=` prefix with a reserved suffix** (`-EMPTY`/`-NEXT`/`-SAME`/
   `-NOT`/`-DAG`/`-LABEL`/`-COUNT`) — `CHECK` reinterprets `CHECK-EMPTY:`; use `CHECK-ZERO`.
 - **`filecheck=CHECK,WGSL` activates ONLY `CHECK`** — commas inside `(...)` separate options, so `WGSL` is a dead bare key and every `WGSL:` line is skipped (garbage there still passes; 4 master tests, #13359). Use one prefix per `//TEST` directive; a repeated key (`filecheck=A,filecheck=B`) crashes slang-test; a newly-live `METAL: [[kernel]]` must be escaped `{{\[\[}}kernel{{\]\]}}`.
-- **A lone `CHECK: 0` over a multi-slot `COMPARE_COMPUTE` buffer matches any unwritten zero slot** — size the buffer to what you write or pin slot 0 with `CHECK: type: int32_t` + `CHECK-NEXT:`.
+- **A lone `CHECK: 0` over a multi-slot `COMPARE_COMPUTE` buffer matches any unwritten zero slot, and `CHECK: 3` matches the `3` in the `type: int32_t` header** — pin with `CHECK: type: int32_t` then `CHECK-NEXT: {{^}}N{{$}}` per value (`CHECK-NEXT: 3` still accepts `13`), and mutation-check it.
 - **SIMPLE+FileCheck ignores the compiler's exit code**, so a loose `{{.*}}` regex can match the source line quoted in an error diagnostic (`tests/glsl/matrix-mul.slang`'s METAL lane has never compiled).
 - **Don't pin incidental output that is another open PR's bug** — split a one-line full-signature CHECK into `CHECK: void f(` + one `CHECK-SAME:` per param, and run the test against that PR's diff.
 - **`COMPARE_COMPUTE(-shaderobj)` loads the file as a module**, so a source-language-gated
@@ -151,6 +151,15 @@ write, or pin the first slot with `CHECK: type: int32_t` followed by `CHECK-NEXT
 reviewer claims a behaviour change "will break" such a test, run it first
 (`slang-test -test-dir docs/generated/tests <file>`)
 [a lone CHECK: 0 over a multi-slot buffer is vacuous](../learnings/1790799624727-a-lone-check-0-over-a-multi-slot-compare-compute-b.md).
+The type header is itself a match target: FileCheck matches substrings, so on #13410 a bare
+`// CHECK: 3` matched the `3` in `int32_t`, each following `CHECK: 0` matched any later line with a
+0, and a synthetic buggy buffer `[0,3,0]` passed on every leg (vk via-GLSL included). Even
+`CHECK-NEXT: 3` accepts `13`. The robust form is `// CHECK: type: int32_t` then one
+`// CHECK-NEXT: {{^}}N{{$}}` per value; validate it by writing constant buggy and correct values into
+a scratch `COMPARE_COMPUTE_EX ... -cpu -compute -shaderobj -output-using-type` test (copy a vk-only
+test's CHECK block into it) and confirming the buggy one FAILS
+[value CHECKs can match the type header](../learnings/1790973538630-output-using-type-value-checks-can-match-the-type-.md),
+[`CHECK: 3` is vacuous; use `CHECK-NEXT: {{^}}N{{$}}`](../learnings/1790980781348-output-using-type-makes-check-3-vacuous-use-check-.md).
 **A full-line CHECK can pin another open PR's bug.** On #13328 (combined-sampler classifier fix)
 a new test checked the whole Metal kernel signature on one line, which also pinned the missing
 `[[texture(n)]]` on resource arrays that open PR #12294 fixes. Applying only #12294's
@@ -337,7 +346,7 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 `error 1004: unknown command-line option '-stage'`
 [COMPARE_COMPUTE module-load defeats a source-dialect gate](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md).
 
-**Source learnings (24):**
+**Source learnings (26):**
 - [slang-test harness instrument traps: FAILED-vs-failed, priority-yield red, formatting file-list asymmetry](../learnings/1786405416356-slang-test-harness-instrument-traps-failed-vs-fail.md) — Uppercase `FAILED test:`; exit-0-on-nothing gate; `-explicit-test-order` mandatory; priority-yield red-by-design; plus `git log %B` and `REQUIRED_BY` CMake bonuses.
 - [NVAPI HitObject transform getters (#9257) — textual ABI test masks the DXC-only bug](../learnings/1787226505940-nvapi-hitobject-transform-getters-9257-textual-abi.md) — `//CHECK: .GetX` proves emit, not API membership; only DXC catches it; PR #12089 re-gates but keeps the broken mapping; static_assert on the NVAPI arm.
 - [slang-test bare -target hlsl SIMPLE tests are "ignored" in GPU-less env; unit-test ninja target](../learnings/1787342748842-slang-test-bare-target-hlsl-simple-tests-are-ignor.md) — HLSL/DXC filtered to 0/0; write CPU-compute or `slangi` positive tests; `libslang-unit-test-tool.so`; ninja aborts whole build on one bad target.
@@ -362,3 +371,5 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 - [slang-test: commas inside `(...)` separate options](../learnings/1790805124373-slang-test-commas-inside-separate-options-so-filec.md) — `_parseCommandArguments` split; `filecheck=CHECK,EXTRA` proof drill; legit `filecheck=CHECK,diag=diag`; #13359; behaviour dates from #2747.
 - [LLVM FileCheck: unused-prefix error lives in readCheckFile, prefix validation only in the tool](../learnings/1790817962233-llvm-filecheck-unused-prefix-error-lives-in-readch.md) — `AllowUnusedPrefixes` defaults false; embedders must call `ValidateCheckPrefixes()`; a repeated slang-test option key asserts in `Dictionary::add`.
 - [A lone `CHECK: 0` over a multi-slot COMPARE_COMPUTE buffer passes vacuously](../learnings/1790799624727-a-lone-check-0-over-a-multi-slot-compare-compute-b.md) — unwritten zero slots match; size the buffer or pin with `CHECK: type: int32_t` + `CHECK-NEXT:`.
+- [-output-using-type value CHECKs can match the type header](../learnings/1790973538630-output-using-type-value-checks-can-match-the-type-.md) — `CHECK: 3` matched `int32_t` (#13410)
+- [-output-using-type makes `CHECK: 3` vacuous; use `CHECK: type: int32_t` + `CHECK-NEXT: {{^}}N{{$}}`](../learnings/1790980781348-output-using-type-makes-check-3-vacuous-use-check-.md) — buggy `[0,3,0]` passed; scratch `-cpu` mutation check

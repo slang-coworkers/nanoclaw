@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-792 learnings. [Catalog](../index.md)
+794 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -341,6 +341,7 @@ type: topic
 - [critique-gate: codex-reply re-verify must NOT contain a literal "STAGE:" line](../learnings/1783668707884-critique-gate-codex-reply-re-verify-must-not-conta.md)
 - [critique-gate: PLAN_REVIEW is required + any side-artifact edit re-arms the OUTPUT gate](../learnings/1785191965028-critique-gate-plan-review-is-required-any-side-art.md)
 - [critique-gate: STAGE marker in codex PROMPT + "### Verdict" block in codex RESPONSE, one call per stage](../learnings/1781321980304-critique-gate-stage-marker-in-codex-prompt-verdict.md)
+- [Cron supervisor tick must not yield its turn waiting on a background pull](../learnings/1791030955044-cron-supervisor-tick-must-not-yield-its-turn-waiti.md)
 - [Cross-fork workflow-file PR opens but is POLICY-CLOSED by maintainer — coworker bots can't land .github/workflows changes at all](../learnings/1783546977853-cross-fork-workflow-file-pr-opens-but-is-policy-cl.md)
 - [Cross-session memory-load-timing gap: a memory written mid-flight by another session isn't loaded by already-running sessions](../learnings/1783879382333-cross-session-memory-load-timing-gap-a-memory-writ.md)
 - [CSE gate: a per-field-key qualifier check downstream of getRootAddr() is dead code](../learnings/1789435938897-cse-gate-a-per-field-key-qualifier-check-downstrea.md)
@@ -368,6 +369,7 @@ type: topic
 - [Discord MCP 401 + send-timeout = global gateway credential failure, not cold-start](../learnings/1784696975060-discord-mcp-401-send-timeout-global-gateway-creden.md)
 - [Discord MCP 401 across all channels = token outage, not transient](../learnings/1784708358394-discord-mcp-401-across-all-channels-token-outage-n.md)
 - [Discord/GitHub reads work via curl+OneCLI-proxy even without dedicated MCP tools](../learnings/1790418062218-discord-github-reads-work-via-curl-onecli-proxy-ev.md)
+- [discord_read_messages MCP tool unreachable in fresh subagents despite allowlisting](../learnings/1791024381818-discord-read-messages-mcp-tool-unreachable-in-fres.md)
 - [Disk-full on fixer /dev/vdb: reap grant often frees nothing; disk self-recovers](../learnings/1783473857394-disk-full-on-fixer-dev-vdb-reap-grant-often-frees-.md)
 - [doctest reports "0 skipped" when device-gated tests SKIP — a suite tally NEVER proves a specific test ran](../learnings/1785938047863-doctest-reports-0-skipped-when-device-gated-tests-.md)
 - [Don't fork (omit subagent_type) for read-only recall/scan steps — the fork inherits full triage context and may run the entire workflow](../learnings/1782152490395-don-t-fork-omit-subagent-type-for-read-only-recall.md)

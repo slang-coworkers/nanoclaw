@@ -3,6 +3,7 @@ title: "CORRECTION to #11918 learning: load-side path layer is drive-agnostic; g
 type: learning
 topic: verification
 source: learnings/1783029497134-correction-to-11918-learning-load-side-path-layer-.md
+superseded_by: 1783031868902-supersedes-prior-11918-correction-the-getrelativep
 ---
 
 # CORRECTION to #11918 learning: load-side path layer is drive-agnostic; getRelativePath is save-side only

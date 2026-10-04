@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1319 learnings. [Catalog](../index.md)
+1323 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -619,6 +619,7 @@ type: topic
 - [Discord send_message enforces a 2000-char hard limit](../learnings/1781903378102-discord-send-message-enforces-a-2000-char-hard-lim.md)
 - [Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)
 - [Discord support: do mandatory research before sending, not after](../learnings/1788755188581-discord-support-do-mandatory-research-before-sendi.md)
+- [Discord sweep: DeepWiki may be hook-denied; use gh api for source facts](../learnings/1791015402136-discord-sweep-deepwiki-may-be-hook-denied-use-gh-a.md)
 - [Discord: 'float4[N] in struct reads garbage, matrix works' + 'upgraded for descriptor heap' = bug #11483](../learnings/1785073991889-discord-float4-n-in-struct-reads-garbage-matrix-wo.md)
 - [discord_send_message caps content at 2000 chars, not 4000](../learnings/1786006619395-discord-send-message-caps-content-at-2000-chars-no.md)
 - [Discriminator for the gh-404-stdout bug: `V=$(cmd || echo x)` is broken, `V=$(cmd) || V=x` is safe — plus where shape-validation is still required](../learnings/1786154661882-discriminator-for-the-gh-404-stdout-bug-v-cmd-echo.md)
@@ -727,6 +728,7 @@ type: topic
 - [gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
 - [gh api --jq does not accept jq's --arg (silent zero rows)](../learnings/1786091512952-gh-api-jq-does-not-accept-jq-s-arg-silent-zero-row.md)
 - [gh api --jq writes the error object to stdout on 4xx, so emptiness guards are unreachable dead code](../learnings/1786051213646-gh-api-jq-writes-the-error-object-to-stdout-on-4xx.md)
+- [gh api --paginate can return partial results after a mid-run 401](../learnings/1791039860997-gh-api-paginate-can-return-partial-results-after-a.md)
 - [gh api -f on a GET path sends a POST and 404s: a whole matrix of false absences with a passing-looking shape](../learnings/1786002146982-gh-api-f-on-a-get-path-sends-a-post-and-404s-a-who.md)
 - [gh api .../actions/jobs/<id>/logs returns RC=1 and 0 bytes without --allow-escape-sequences — greps as "tests absent"](../learnings/1789597409221-gh-api-actions-jobs-id-logs-returns-rc-1-and-0-byt.md)
 - [gh api check-runs truncates at 30 without --paginate — any count near a round number is a page boundary](../learnings/1786060908492-gh-api-check-runs-truncates-at-30-without-paginate.md)
@@ -809,6 +811,7 @@ type: topic
 - [GitHub Actions refuses to rerun a single job while its parent workflow run is still "in progress"](../learnings/1789885681009-github-actions-refuses-to-rerun-a-single-job-while.md)
 - [GitHub Actions runs API: head_sha needs the FULL 40-char sha — a short sha silently returns total_count 0](../learnings/1786066503112-github-actions-runs-api-head-sha-needs-the-full-40.md)
 - [GitHub Actions workflow id is NOT stable across a rename — per-id run history truncates silently](../learnings/1785899745853-github-actions-workflow-id-is-not-stable-across-a-.md)
+- [GitHub Actions: event=schedule filter returns stale runs even on per-workflow endpoint](../learnings/1791015439528-github-actions-event-schedule-filter-returns-stale.md)
 - [GitHub Actions: event=schedule run listing is stale — query nightlies per workflow id](../learnings/1790583283909-github-actions-event-schedule-run-listing-is-stale.md)
 - [GitHub Actions: judging "workflow stopped firing" and sizing a merge_group window](../learnings/1785899204426-github-actions-judging-workflow-stopped-firing-and.md)
 - [GitHub App token 403 on /user is normal — not a broken write path](../learnings/1787633494370-github-app-token-403-on-user-is-normal-not-a-broke.md)
@@ -865,6 +868,7 @@ type: topic
 - [I endorsed as proof-of-X the exact signature my own published comment characterised as proof-of-NOT-X — a direction test read in the direction expected](../learnings/1785992935123-i-endorsed-as-proof-of-x-the-exact-signature-my-ow.md)
 - [ICE on unsupported-but-formable type construct → recommend a front-end diagnostic, not "make lookup succeed"](../learnings/1788316685226-ice-on-unsupported-but-formable-type-construct-rec.md)
 - [if constexpr does NOT discard branches in a non-template function (dead-code-to-type-checked conversions)](../learnings/1783059299573-if-constexpr-does-not-discard-branches-in-a-non-te.md)
+- [Image-subscript RMW shortcut: compare a swizzle against the image op's texel width, not the element type](../learnings/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md)
 - [Implementation gap in WIP draft-PR code is not a Bug — don't set Issue Type=Bug on dev tracking issues](../learnings/1788367478397-implementation-gap-in-wip-draft-pr-code-is-not-a-b.md)
 - [Implied-constraint synthesis is additive, not ABI-breaking, when it only fires on programs that error today](../learnings/1787955885624-implied-constraint-synthesis-is-additive-not-abi-b.md)
 - [In a homogeneous fleet every environment attribute is a fleet fingerprint, never a party one](../learnings/1786081217250-in-a-homogeneous-fleet-every-environment-attribute.md)
