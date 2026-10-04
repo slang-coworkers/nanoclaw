@@ -31,6 +31,7 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 
 import { discoverAdditionalDirectories } from './additional-directories.js';
+import { trustGatewayCaForChromium } from './browser-trust.js';
 import { refreshPrimaryClones } from './refresh-clones.js';
 import { loadConfig } from './config.js';
 import { buildSystemPromptAddendum, type SessionMode } from './destinations.js';
@@ -84,6 +85,9 @@ async function main(): Promise<void> {
   // in the agent's host-backed workspace. Before the addendum, because the
   // memory fallback below reads the tree it creates.
   ensureMemoryScaffold();
+
+  // The agent browser trusts only NSS, not the gateway CA env vars.
+  trustGatewayCaForChromium({ log });
 
   // Runtime-generated system-prompt addendum: agent identity (name) plus the
   // live destinations map and session-mode (chat vs isolated task run).
