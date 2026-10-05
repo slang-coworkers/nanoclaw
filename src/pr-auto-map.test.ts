@@ -1,11 +1,11 @@
 // Integration tests for container/hooks/pr-auto-map.sh.
 //
-// A push to a branch that backs a PR moves the PR's head, so the PR description
-// (the /explain-diff-html explanation) describes a stale head until it is
-// rewritten. The hook reads repo, branch and new head from git's own push report
+// A push to a branch that backs a PR moves the PR's head, so the PR's
+// explanation comment (the /explain-diff-html explanation) describes a stale head
+// until it is rewritten. The hook reads repo, branch and new head from git's own push report
 // and reminds the agent. It also keeps the receipts the refresh gates read
-// (container/hooks/lib/explain-diff-owed.sh): PR created, branch pushed, PR
-// description written by upsert_pr_body.py.
+// (container/hooks/lib/explain-diff-owed.sh): PR created, branch pushed,
+// explanation comment written by upsert_pr_body.py.
 
 import { spawnSync } from 'child_process';
 import fs from 'fs';
@@ -58,7 +58,7 @@ const UPSERT =
 const upsertOut = (head: string) =>
   `${JSON.stringify({ updated: true, repo: 'shader-slang/slang', pr: 13213, chars: 9000, head, legacy_comment: 'none' })}\n`;
 
-describe('pr-auto-map.sh — push reminds the agent to refresh the PR description', () => {
+describe('pr-auto-map.sh — push reminds the agent to refresh the explanation comment', () => {
   it('fast-forward push from a worktree: repo, branch and new head come from the push report', () => {
     const ctx = run(
       'cd /workspace/agent/wt-slang-13073-pr2 && git push origin HEAD',
@@ -98,7 +98,7 @@ describe('pr-auto-map.sh — push reminds the agent to refresh the PR descriptio
   });
 });
 
-describe('pr-auto-map.sh — receipts for the PR description refresh gates', () => {
+describe('pr-auto-map.sh — receipts for the explanation comment refresh gates', () => {
   it('PR create: records the PR and its branch (owner: prefix dropped), keeps the reminder', () => {
     const ctx = hook(
       'gh pr create --repo shader-slang/slang --head slang-coworkers:fix/issue-13073 --title t --body-file /tmp/b.md',
