@@ -16,14 +16,15 @@
     "@chat-adapter/teams": "4.29.0",
     "@chat-adapter/telegram": "4.29.0",
     "@chat-adapter/whatsapp": "4.29.0",
-    "@deltachat/stdio-rpc-server": "2.49.0",
+    "@earendil-works/pi-coding-agent": "0.84.2",
     "@firecrawl/anydoc": "0.1.6",
     "@getdial/cli": "0.37.0",
     "@grpc/grpc-js": "1.14.5",
     "@grpc/proto-loader": "0.8.1",
+    "@mariozechner/claude-trace": "1.0.9",
     "@microsoft/teams.cli": "3.0.2",
     "@onecli-sh/sdk": "2.2.1",
-    "@openai/codex": "0.155.1",
+    "@openai/codex": "0.156.1",
     "@opencode-ai/sdk": "1.18.25",
     "@resend/chat-sdk-adapter": "0.1.1",
     "@types/qrcode": "1.5.6",
@@ -107,10 +108,10 @@
         ".claude/skills/add-whatsapp-cloud/SKILL.md nc:dep"
       ]
     },
-    "@deltachat/stdio-rpc-server": {
-      "version": "2.49.0",
+    "@earendil-works/pi-coding-agent": {
+      "version": "0.84.2",
       "sources": [
-        ".claude/skills/add-deltachat/SKILL.md nc:dep"
+        "container/cli-tools.json"
       ]
     },
     "@firecrawl/anydoc": {
@@ -138,6 +139,12 @@
         ".claude/skills/add-iron-proxy/SKILL.md nc:dep manager:pnpm"
       ]
     },
+    "@mariozechner/claude-trace": {
+      "version": "1.0.9",
+      "sources": [
+        "container/cli-tools.json"
+      ]
+    },
     "@microsoft/teams.cli": {
       "version": "3.0.2",
       "sources": [
@@ -151,9 +158,10 @@
       ]
     },
     "@openai/codex": {
-      "version": "0.155.1",
+      "version": "0.156.1",
       "sources": [
-        ".claude/skills/add-codex/SKILL.md nc:json-merge"
+        ".claude/skills/add-codex/SKILL.md nc:json-merge",
+        "container/cli-tools.json"
       ]
     },
     "@opencode-ai/sdk": {
