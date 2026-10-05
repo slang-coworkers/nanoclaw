@@ -132,9 +132,9 @@ uses:
    - **Triaged-issue mode (default):** push to a writable remote (`origin`, else the `slang-coworkers/slang` fork) and open a **draft PR** against `--repo shader-slang/slang --base master`.
    - **PR-review-fix mode:** deliver into the author's PR per the deltas above (slangbot-style cross-fork PR via the `nv-slang-bot` user PAT, else patch-comment).
 
-   Use a heredoc body (single-line `--body` strips badly) with sections: **Summary** (bug + fix), **Diagnosis** (root cause + file:line), **Approach** (subsystem, change, alternatives ruled out), **Files changed**, **Tests** (repro + broader suite), **Risk** (blast radius + out-of-scope), and `Closes #<n>.` Capture the PR URL for the **Peer review** step.
+   Keep the description **concise** (about 5–15 lines): a squash merge copies it into slang's git log as the commit message. Write it to a file and pass `--body-file` (single-line `--body` strips badly) with: **Summary** (the bug and the fix, 1–3 lines), **Root cause** (one line, `file:line`), **Tests** (repro + broader suite, one line), **Risk** (blast radius, one line), and `Closes #<n>.` The approach, rejected alternatives and design rationale go in the explanation comment, not here; GitHub already lists the files. Capture the PR URL for the **Peer review** step.
 
-   Once the PR is open, and after **every** later push, run `/explain-diff-html` so the PR description explains the current head. While a push is unexplained the turn cannot end and `[Fix Review Request]` / `[Fix Report]` are refused.
+   Once the PR is open, and after **every** later push, run `/explain-diff-html` so the PR's explanation comment (one comment directly under the description, edited in place) explains the current head. Run it right after `gh pr create`, so it is the PR's first comment. While a push is unexplained the turn cannot end and `[Fix Review Request]` / `[Fix Report]` are refused.
 
    Apply the required `pr:` label and trigger CI (a draft PR does not auto-run `ci.yml`); re-dispatch after each push:
 
@@ -171,7 +171,7 @@ uses:
 
    If `slang-reviewer` isn't in destinations, skip to the **Report** step.
 
-9. **Report + save + refresh PR description** {#report} — Send the [Fix Report] to parent, refresh the PR body with final state, persist a memory file.
+9. **Report + save + refresh PR description** {#report} — Send the [Fix Report] to parent, refresh the concise PR description with the final state, persist a memory file.
 
    The five-bullet report uses **markdown list syntax with bold field labels** (`•` glyphs degrade to raw bytes in dashboards):
 
@@ -181,7 +181,7 @@ uses:
 
    `in_reply_to` names the inbound that dispatched this fix (the triage handoff) so the report routes back up the exact edge — it is **required** on `[Fix Report]` under the chain-routing-gate (`thread_id` is derived from it).
 
-   Refresh the draft PR body with final values — rebuild `$FINAL_BODY` from the **Push + draft PR** heredoc sections (Risk → renamed Review; `## Files changed` from `$(git diff --stat main..HEAD | sed 's/^/- /')`), then `gh pr edit <pr-number> -R shader-slang/slang --body "$FINAL_BODY"`.
+   Refresh the draft PR description with final values in the same concise shape as **Push + draft PR** (Summary, Root cause, Tests, Risk → renamed Review, `Closes #<n>.`; no files list, no explanation), then `gh pr edit <pr-number> -R shader-slang/slang --body-file <file>`. The explanation comment is separate and already follows the head.
 
    Persist the run to `/workspace/agent/memory/fix-<number>.md`: title, date, status, worktree path, branch, files changed, test result, PR/patch URL.
 
