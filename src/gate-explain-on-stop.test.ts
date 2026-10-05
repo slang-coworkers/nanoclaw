@@ -64,7 +64,7 @@ describe('gate-explain-on-stop.sh', () => {
     const r = stop();
     expect(r.status).toBe(0);
     expect(r.decision?.decision).toBe('block');
-    expect(r.decision?.reason).toContain(`opened ${PR}; its description still explains nothing`);
+    expect(r.decision?.reason).toContain(`opened ${PR}; its explanation comment still explains nothing`);
     expect(r.decision?.reason).toContain('upsert_pr_body.py');
   });
 
@@ -76,7 +76,9 @@ describe('gate-explain-on-stop.sh', () => {
     });
     const r = stop();
     expect(r.decision?.decision).toBe('block');
-    expect(r.decision?.reason).toContain(`pushed 9f8e7d6 to ${PR}; its description still explains head 555d69c`);
+    expect(r.decision?.reason).toContain(
+      `pushed 9f8e7d6 to ${PR}; its explanation comment still explains head 555d69c`,
+    );
   });
 
   it('passes when stop_hook_active is true (never loops the session)', () => {

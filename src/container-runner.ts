@@ -3256,6 +3256,12 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'ANTHROPIC_DEFAULT_OPUS_MODEL',
     'ANTHROPIC_DEFAULT_SONNET_MODEL',
     'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+    // The Claude SDK's fallback model after a primary-model error or overload.
+    // Unset, the SDK uses its built-in default, which an inference key scoped to
+    // specific models refuses (403 "key not allowed to access model"); the turn
+    // bounces and the session goes quiet. The agent-runner reads it in config.ts
+    // (a container.json `fallbackModel` still wins). Must differ from the main model.
+    'ANTHROPIC_FALLBACK_MODEL',
     'ENABLE_PROMPT_CACHING_1H',
     // Separate Bedrock-specific toggle read by the Claude Code SDK when
     // requests route through an aws/anthropic/bedrock-* model. All three

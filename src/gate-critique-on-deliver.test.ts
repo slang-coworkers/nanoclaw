@@ -707,7 +707,7 @@ describe('long public comments need a reviewed body file', () => {
 const RR = (head: string): string =>
   `[Fix Review Request] ${head}\n\nMode: pr\nMaintainer direction: none — the issue has no maintainer design comments`;
 
-describe('fix report / review request waits for the PR description refresh', () => {
+describe('fix report / review request waits for the explanation comment refresh', () => {
   const AUTO_MAP = path.resolve(process.cwd(), 'container', 'hooks', 'pr-auto-map.sh');
   const send = (text: string) => ({ tool_name: 'mcp__nanoclaw__send_message', tool_input: { text } });
   const readState = (): Record<string, unknown> =>
@@ -748,7 +748,7 @@ describe('fix report / review request waits for the PR description refresh', () 
     openAndPush();
     const denied = run(send('[Fix Review Request] shader-slang/slang#13213 ready for review'));
     expect(denied.status).toBe(2);
-    expect(denied.stderr).toContain('PR DESCRIPTION REFRESH REQUIRED');
+    expect(denied.stderr).toContain('EXPLANATION COMMENT REFRESH REQUIRED');
     expect(denied.stderr).toContain('pushed 555d69c to shader-slang/slang#13213');
     expect(denied.stderr).toContain('/explain-diff-html');
     expect(denied.stderr).not.toContain('Invoke /codex-critique');
@@ -769,7 +769,7 @@ describe('fix report / review request waits for the PR description refresh', () 
     );
     const denied = run(send('[Fix Review Request] round 2'));
     expect(denied.status).toBe(2);
-    expect(denied.stderr).toContain('its description still explains head 555d69c');
+    expect(denied.stderr).toContain('its explanation comment still explains head 555d69c');
   });
 
   it('[Fix Report] as a declared delivery marker: critique first, then the refresh', () => {
@@ -785,7 +785,7 @@ describe('fix report / review request waits for the PR description refresh', () 
     fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 1 }));
     const refresh = run(send('[Fix Report] done'));
     expect(refresh.status).toBe(2);
-    expect(refresh.stderr).toContain('PR DESCRIPTION REFRESH REQUIRED');
+    expect(refresh.stderr).toContain('EXPLANATION COMMENT REFRESH REQUIRED');
     explain('555d69c0ffee');
     expect(run(send('[Fix Report] done')).status).toBe(0);
   });

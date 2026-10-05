@@ -2,7 +2,7 @@
 # Stop hook: the turn does not end while a PR this session created or pushed to
 # has a description that explains an older head (or nothing).
 #
-# The PR description is the /explain-diff-html explanation of the PR's current
+# The PR's explanation comment is the /explain-diff-html explanation of its current
 # head. pr-auto-map.sh only REMINDS after a create or a push, and a reminder was
 # followed on 4 of the fixer's last 8 PRs; the operator requirement is that the
 # description is refreshed on every push. So at Stop, if any PR owes a refresh
@@ -31,6 +31,6 @@ OWED=$(explain_diff_owed_lines)
 
 jq -nc --arg owed "$OWED" '{
   decision: "block",
-  reason: ("PR description is stale: " + ($owed | split("\n") | map(select(length > 0)) | join("; and ")) + ". Run /explain-diff-html for the new head (upsert_pr_body.py --repo <owner/repo> --pr <n> --head <sha> --explanation <file>) before ending the turn — every push must leave the PR description explaining the pushed head. For a push that changes nothing a reader would notice, re-run upsert_pr_body.py on the new head with the previous explanation.")
+  reason: ("Explanation comment is stale: " + ($owed | split("\n") | map(select(length > 0)) | join("; and ")) + ". Run /explain-diff-html for the new head (upsert_pr_body.py --repo <owner/repo> --pr <n> --head <sha> --explanation <file>) before ending the turn — every push must leave the explanation comment explaining the pushed head. For a push that changes nothing a reader would notice, re-run upsert_pr_body.py on the new head with the previous explanation.")
 }'
 exit 0
