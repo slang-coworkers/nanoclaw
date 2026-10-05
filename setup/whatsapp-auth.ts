@@ -41,6 +41,7 @@ import {
   useMultiFileAuthState,
 } from '@whiskeysockets/baileys';
 import { emitStatus } from './status.js';
+import { resolveWaWebVersion, type WaWebVersion } from './whatsapp-auth-version.js';
 
 const AUTH_DIR = path.join(process.cwd(), 'store', 'auth');
 const PAIRING_CODE_FILE = path.join(process.cwd(), 'store', 'pairing-code.txt');
@@ -144,6 +145,16 @@ export async function run(args: string[]): Promise<void> {
     return;
   }
 
+  // Once, before connecting: a failure is reported as this step's own block,
+  // and the 515 reconnect reuses the version instead of looking it up mid-link.
+  let version: WaWebVersion;
+  try {
+    version = await resolveWaWebVersion(fetchLatestWaWebVersion);
+  } catch (err) {
+    emitStatus('WHATSAPP_AUTH', { STATUS: 'failed', ERROR: err instanceof Error ? err.message : String(err) });
+    process.exit(1);
+  }
+
   fs.mkdirSync(AUTH_DIR, { recursive: true });
 
   return new Promise<void>((resolve) => {
@@ -176,9 +187,6 @@ export async function run(args: string[]): Promise<void> {
 
     async function connectSocket(isReconnect = false): Promise<void> {
       const { state, saveCreds } = await useMultiFileAuthState(AUTH_DIR);
-      const { version } = await fetchLatestWaWebVersion({}).catch(() => ({
-        version: undefined,
-      }));
 
       const sock = makeWASocket({
         version,
