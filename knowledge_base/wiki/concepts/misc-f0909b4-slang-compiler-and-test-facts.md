@@ -26,6 +26,9 @@ issues. Grouped by subsystem:
 - **IR passes**: a DCE epoch-stamp optimization must keep one zeroing per call
   (serialize-ir writes unbounded scratchData); a fixpoint memoization can hit high
   hit rates because keys recur across rounds.
+- **Storage-type lowering**: `lowerBufferElementTypeToStorageType` can emit `CopyLogical` on every
+  target though only SPIR-V lowers it (fix the producer), and `&local` is a UserPointer on CPU/CUDA,
+  so a global UserPointer pointee rewrite splits it from the parameter type — test with `&local`.
 - **Language semantics**: `if(let)` desugars entirely in the parser; `BottomType`/
   `Never` is only the throws-error type, not a noreturn marker (its intent is
   unwired).
@@ -106,6 +109,22 @@ convergence rounds*, not along one dataflow path — a `unionSet(s1,s2)` memo th
 looked hit-rate-zero along a growing chain actually gave 1.81x because the same
 hash-consed operand pairs recur every round. Both are low-risk provably-equivalent
 "down-payment" cleanups (bar: byte-identical output + existing regression tests).
+
+## Buffer-element storage-type lowering: CopyLogical and `&local` (slang#13379/#13405)
+
+`lowerBufferElementTypeToStorageType` is a whole-program pass with two consumers that do not
+exist on every target. First, its store path (~:2116, via `copyLogical()`) can emit the
+`CopyLogical` IR op on ALL targets, but `lowerCopyLogical` runs only inside SPIR-V legalization
+(<1.4) and only `emit-spirv` emits the op, so on GLSL and other targets it reaches an emitter that
+cannot handle it (#13379). Running `lowerCopyLogical` everywhere is not the fix: its structural walk
+cannot bridge WGSL std140 struct-wrapped arrays or Metal packed vectors, so the producer is what
+changes ([release-binary bisect beats a bot-filed "pre-existing" claim](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md)).
+Second, `&x` has type `Ptr<T, ReadWrite, AddressSpace::Device>` even for a function local, and
+Device is UserPointer; the checker (`slang-check-expr.cpp`) accepts that on CPU/CUDA as "flat
+memory". Since #8526 the pass rewrites UserPointer pointee types globally on CPU/CUDA, which silently
+splits an `&local` argument's type from the parameter type (#13405). Test any pointer-pointee
+lowering with an `&local` argument, not only a buffer pointer ([Slang release tags live on release
+branches; `&local` is UserPointer on CPU/CUDA](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md)).
 
 ## Language semantics (slang#12612)
 
@@ -203,3 +222,5 @@ positive-control CHECK that the output actually changed.
 - [slang test: -vk without -output-using-type prints HEX — do not misread as wrong values](../learnings/1786994719051-slang-test-vk-without-output-using-type-prints-hex.md) — carry `-output-using-type` on every target line; run the positive control through the instrument before asserting a backend is broken.
 - [slang-test: //CHECK-NOT: error (bare) false-matches the 'standard error = {' wrapper](../learnings/1787000622215-slang-test-check-not-error-bare-false-matches-the-.md) — use `CHECK-NOT: error:` (the diagnostic form) so it scans the whole output without tripping the harness wrapper.
 - [Slang CLI integer options are space-separated, not =value](../learnings/1787168871585-slang-cli-integer-options-are-space-separated-not-.md) — `-flag N` not `-flag=N` (only `-D` splits on `=`); a `-flag=N` FileCheck test silently exercises nothing — add a positive-control CHECK.
+- [Release-binary bisect beats a bot-filed 'pre-existing' claim; CopyLogical is emitted on all targets but lowered only for SPIR-V](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md) — #13379; fix the producer, not by running lowerCopyLogical everywhere
+- [Slang release tags live on release branches; `&local` is UserPointer on CPU/CUDA](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md) — #13405/#8526: a global UserPointer pointee rewrite splits `&local` from the param type

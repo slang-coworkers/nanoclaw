@@ -3,7 +3,7 @@ title: CI gate & rerun mechanics — waiting vs queued, priority-yield, Falcor g
 type: concept
 group: agent-routing
 tags: [ci, github-actions, rerun, priority-yield, falcor, environment-gate, run-attempt, runner-name, rate-limit, hold-surface, slang]
-source_count: 13
+source_count: 14
 ---
 
 # CI gate & rerun mechanics — waiting vs queued, priority-yield, Falcor gates, run_attempt, and reading the right instrument
@@ -22,6 +22,7 @@ source_count: 13
 - Re-check `isDraft` at the moment of CI dispatch — a human ready-flip between pushes turns the drafts-only manual dispatch into a cosmetic-red false alarm on top of the real `pull_request` run.
 - Re-read the authoritative hold surface at the moment of a gated action, not at planning time — an always-loaded "always do X when C" rule fires without a deliberation gap and silently beats a superseding hold that lives in a split-out on-demand file.
 - Never judge GitHub API quota from `/rate_limit` behind the OneCLI gateway — the credential is injected per-path, so `/rate_limit` reports the anonymous 60 bucket. Read `X-Ratelimit-Limit` from a real `/repos/...` response. The instrument that reports on quota is subject to the quota's plumbing.
+- PR and merge-queue CI do not run `docs/generated/tests`; only the `Nightly Slang Test` / `agentic-tests` job does, so a target-gated pass can merge green and break the nightly. Triage by failing target (`.slang.N` = Nth TEST line) and target guards in the green→red compare; a lost runner's logs 404 (BlobNotFound), so read `check-runs/<id>/annotations`.
 - A nonzero `ci.yml` `status=waiting` count is the Falcor approval gate, not backpressure; it no longer reaches zero, so never gate a dispatch on it.
 
 ## Two states that look alike: waiting vs queued, skipped vs starved
@@ -40,11 +41,15 @@ The `falcor-ci` deployment-approval gate produces two distinct non-rerunnable st
 
 A third Falcor state is invisible to the wake payload. A `falcor-build-approval-gate` run that times out of WAITING becomes a **completed** run with `conclusion: CANCELLED`; that is terminal, so it drops out of `blockedChecks` (which only captures check-run `status` in `{waiting, requested, pending}`), yet the PR's `mergeStateStatus` stays `BLOCKED` and `gh pr checks` reports it as `fail`. On 2026-09-30 a sweep marked #12716 and #13270 `resolved` on "blockedChecks empty, same head sha, must be clean"; both were reclassified to `gate-wedged`. Never infer clean from `blockedChecks:[] && onlyBlocked:false` alone: always also run `gh pr checks` or read `mergeStateStatus`/`statusCheckRollup` conclusions for CANCELLED/FAILURE. A CANCELLED approval-gate run is not fixable by rerun; it needs a human to re-approve inside the workflow's approval window ([Falcor gate CANCELLED (not WAITING) is invisible to blockedChecks](../learnings/1790755755702-falcor-gate-cancelled-not-waiting-is-invisible-to-.md)).
 
+## Coverage the PR gate never runs: nightly-only agentic docs tests
+
+A green PR and merge-queue run is not a full-suite verdict: neither runs `docs/generated/tests`, which only the `Nightly Slang Test` / `agentic-tests` job exercises, so a change that breaks only those tests merges green and surfaces a day later. On 2026-10-02 the nightly went red on `docs/generated/tests/design/ir-reference/differentiation/reverse-mode-emitted-name-prefixes.slang`, on the CUDA and Metal legs only, after #13358 added a CUDA/Metal-only `expandAutodiffParameterContexts` pass. To triage an agentic nightly red, list which targets fail (the `.slang.N` suffix maps to the Nth `//TEST` line) and grep `compare/<green>...<red>` for target guards in `slang-emit.cpp`. Two tooling notes from the same triage: `actions/runs?created=<ISO>..<ISO>` works through the OneCLI proxy with the colons encoded as `%3A`, and when a job's runner was lost `actions/jobs/<id>/logs` returns BlobNotFound, so read `check-runs/<id>/annotations` instead ([agentic docs tests only run nightly, so target-gated passes can merge red](../learnings/1790929124431-slang-ci-agentic-docs-tests-only-run-nightly-so-ta.md)).
+
 ## Timing and instrument hygiene at the moment of action
 
 Two "re-check at action time" rules. Re-query `gh pr view --json isDraft` at the moment of a drafts-only manual `ci.yml` dispatch — a human ready-flip between pushes turns the manual run into a cosmetic-red false alarm (only `wait-for-human-priority`+`check-ci` fail, builds skipped) firing on top of the real `pull_request` run the ready-flip already triggered ([re-check isDraft at the moment of CI dispatch](../learnings/1786606902247-re-check-isdraft-at-the-moment-of-ci-dispatch-a-hu.md)). And re-read the authoritative hold surface at the gated action itself: an always-loaded "always dispatch CI on drafts" rule fires with no deliberation gap and silently beats a superseding "no `ci.yml` dispatch while any run is `waiting`" hold living in a split-out on-demand file — grep the hold surface for the action verb immediately before executing, not at planning time ([re-read the authoritative hold surface at a gated action](../learnings/1786467632283-re-read-the-authoritative-hold-surface-at-a-gated-.md)). Finally, quota: behind the OneCLI gateway the credential is injected per-path, so `/rate_limit` reports the anonymous 60 bucket while `/repos/...` reports 6000 — never judge quota from `/rate_limit`; read `X-Ratelimit-Limit` off a real request, and note the tell is internal contradiction (`used:0` after ten calls) not a second tool ([never judge GitHub API quota from /rate_limit](../learnings/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md)). The instrument that reports on quota is itself subject to the quota's plumbing — prefer a response header on a real request over a dedicated status endpoint.
 
-**Source learnings (13):**
+**Source learnings (14):**
 
 - [GitHub Actions `waiting` ≠ queued — it's a human approval gate that can jam CI retry indefinitely](../learnings/1786404029507-github-actions-waiting-queued-it-s-a-human-approva.md) — split the active set by status; a status allowlist mixes "blocked on human" with "blocked on resource."
 - [empty runner_name does not distinguish starved-by-dead-pool from skipped-by-gate](../learnings/1786438262793-empty-runner-name-does-not-distinguish-starved-by-.md) — read `conclusion` first; a concurrent outage is the most dangerous backdrop; require the mechanism's fingerprint.
@@ -59,3 +64,4 @@ Two "re-check at action time" rules. Re-query `gh pr view --json isDraft` at the
 - [never judge GitHub API quota from /rate_limit — the gateway injects per-path](../learnings/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — read `X-Ratelimit-Limit` off a real `/repos/...` request; internal contradiction is the tell.
 - [ci.yml waiting-runs count can no longer reach zero (falcor-build-approval-gate)](../learnings/1790496460678-ci-yml-waiting-runs-count-can-no-longer-reach-zero.md) — 73 runs parked on the approval gate; the "wait for total_count=0" rule is unsatisfiable, so read the waiting job's name instead.
 - [Falcor gate CANCELLED (not WAITING) is invisible to blockedChecks — caused a false 'resolved'](../learnings/1790755755702-falcor-gate-cancelled-not-waiting-is-invisible-to-.md) — a timed-out gate is terminal so `blockedChecks` is empty while `mergeStateStatus` is BLOCKED; always run `gh pr checks`; classify gate-wedged.
+- [slang CI: agentic docs tests only run nightly, so target-gated passes can merge red](../learnings/1790929124431-slang-ci-agentic-docs-tests-only-run-nightly-so-ta.md) — #13358's CUDA/Metal-only pass broke the nightly; `.slang.N` = Nth TEST line; read annotations when logs are BlobNotFound

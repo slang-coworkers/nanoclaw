@@ -3,7 +3,7 @@ title: Slang Dev Craft — Git, Build, Blast-Radius Grep, and FileCheck
 type: concept
 group: misc
 tags: [git, rebase, pathspec, ninja-build, filecheck, slang-test, blast-radius, grep, benchmark]
-source_count: 12
+source_count: 13
 ---
 
 ## TL;DR
@@ -35,7 +35,8 @@ wrong result.
 - **Never run two ninja builds in the same `build/` dir** — an `objcopy: input file is empty` race;
   kill by pid+cwd, run exactly one serialized build.
 - **FileCheck `CHECK-LABEL` blocks must be in EMIT order, and `CHECK-NOT` is REGION-scoped** — a
-  whole-output "never appears" assertion needs its OWN absence-only prefix.
+  whole-output "never appears" assertion needs its OWN absence-only prefix; a `[[X:regex]]` capture
+  reused by the next `CHECK-NEXT` can fail "same line" — use per-RUN prefixes with exact values.
 - **A non-expanding filler swap in a benchmark generator must stay op-count AND growth-character
   neutral**; pin the property, not a literal coefficient.
 
@@ -118,6 +119,10 @@ must-fail mutation drill ([CHECK-NOT is region-scoped — use a dedicated NOT-on
 prefix](../learnings/1787629056398-filecheck-check-not-is-region-scoped-use-a-dedicat.md),
 [FileCheck -NOT between positive matches has interval blind spots; use an absence-only
 prefix](../learnings/1787699239962-filecheck-not-between-positive-matches-has-interva.md)).
+A capture reused on the next line fails too: `CHECK-NEXT: [[X:[0-9.]+]]` followed by
+`CHECK-NEXT: [[X]]` reports "same line as previous match", because the regex can match part of a
+line; for per-layout expected values use per-RUN prefixes (e.g. `COL`/`ROW`) with exact values
+([Slang release tags live on release branches; FileCheck CHECK-NEXT capture trap](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md)).
 Adjacent gotchas: a directive token in a `.slang` comment (`HLSL:`, `SPIRV:`) is parsed as a real
 directive — keep them out of prose; and a byte-address store has no template arg, so `-NOT: Store<void`
 is vacuous.
@@ -132,7 +137,7 @@ compounds and overflows float32). And an import-time regression guard should pin
 filler swap must stay op-count and growth-character
 neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md)).
 
-**Source learnings (12):**
+**Source learnings (13):**
 - [Scratch PR-body file can leak into the commit via git add during --amend](../learnings/1787566872697-scratch-pr-body-file-can-leak-into-the-commit-via-.md) — `git show --stat HEAD` after every commit; CodeRabbit's file list is a free check.
 - [Slang build: never run two ninja builds in the same build/ dir](../learnings/1787615532680-slang-build-never-run-two-ninja-builds-in-the-same.md) — objcopy 'input file is empty' race; kill by pid+cwd, run exactly one serialized build.
 - [git checkout master -- <file> restores from master TIP, not the PR merge-base](../learnings/1787637340749-git-checkout-master-file-restores-from-master-tip-.md) — restore from `git merge-base`; verify with the three-dot diff.
@@ -145,3 +150,4 @@ neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count
 - [FileCheck -NOT between positive matches has interval blind spots; use an absence-only prefix](../learnings/1787699239962-filecheck-not-between-positive-matches-has-interva.md) — split into a "present" prefix and an all-CHECK-NOT prefix.
 - [Non-expanding filler swap must stay op-count and growth-character neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md) — preserve op-count + recurrence sign; pin the property (sin/cos-free), not a literal.
 - [swap-only perf baseline: verify the baseline commit is actually fix-free (merge-commit trap)](../learnings/1789655219525-swap-only-perf-baseline-verify-the-baseline-commit.md) — a merged-master branch's baseline is `M^2` not the merge commit `M`; grep a fix marker to confirm fix-free; interleave head/base samples so shared-host drift cancels.
+- [Slang release tags live on release branches — bisect from merge-base; FileCheck CHECK-NEXT capture trap](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md) — `[[X:[0-9.]+]]` then `[[X]]` on CHECK-NEXT fails "same line"; use per-RUN COL/ROW prefixes

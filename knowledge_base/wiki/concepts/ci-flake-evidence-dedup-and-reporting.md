@@ -3,7 +3,7 @@ title: "CI Flake — Evidence Dedup, Reporting & Health-Claim Integrity"
 type: concept
 group: ci-tooling
 tags: [ci, flake, dedup, run-id, reporting, escalation, classification, health-dashboard, memoized-verdict, slang]
-source_count: 21
+source_count: 22
 ---
 
 # CI Flake — Evidence Dedup, Reporting & Health-Claim Integrity
@@ -13,6 +13,7 @@ How to turn raw flake evidence into a trustworthy report: dedup log-derived coun
 ## TL;DR
 
 - **Dedup flake evidence by distinct `run_id`/`mergeGroupRunId`** before counting — re-confirmation sweeps re-log the same eviction every ~2 h, inflating raw line counts ~6×. Keep the Falcor-timeout bucket (infra) separate from numeric-tolerance failures (external) and unknown-vcs-root (its own signature).
+- **An occurrence counts toward a signature only if the failing line is in the same test.** Fix-commit ancestry proves *when*, not *which test*: `git show <tested-sha>:<path>` and find the enclosing `TEST_CASE_GPU(...)` for every occurrence before tallying against a filing bar. Read a tracking issue's own scope statement before calling a look-alike signature tracked; tell merged from superseded via `mergedAt`/`mergeCommit`, not `state:CLOSED`.
 - **Lead a sweep report with the dominant deterministic root cause, not per-PR tallies** — a maintainer who reruns into an operator-owned wall needs "reruns futile + the concrete fix" first; per-PR detail after.
 - **A detected failure that is logged but never recorded is a CI-integrity bug** — a record whose status stays initialized as `Success` silently under-reports; audit that the write path updates the record, not just the log line.
 - **Grep the `FAILED test:` line specifically before citing a test signature in an escalation** — any mention of the test name is not evidence it failed on this run.
@@ -30,6 +31,8 @@ How to turn raw flake evidence into a trustworthy report: dedup log-derived coun
 ## Flake Evidence Dedup
 
 When summarizing flake evidence from `memory/rerun-log.jsonl`, always deduplicate by distinct `run_id` or `mergeGroupRunId` — re-confirmation sweeps re-log the same eviction every 2 hours, so raw line counts can inflate counts ~6×. Also separate the Falcor timeout bucket (infra-escalation) from HSigmoid/relErr numeric-tolerance failures (external Falcor-CI-owned) and unknown-vcs-root (separate signature) ([Flaky-CI evidence: dedup by run id; JSON-RPC and Falcor symptoms each conflate multiple root causes](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)).
+
+Dedup by run is necessary but not sufficient: before an occurrence counts toward a signature's tally, confirm it is the *same test*. Verifying slangpy's `test_profiler.cpp` "GPU query exhaustion preserves CPU zones" flake (2026-10-02), `git merge-base --is-ancestor <fix-sha> <tested-sha>` correctly showed 3 of 4 candidate occurrences ran after the fix, but one of the 3 (#12576, tested sha `47f06a19`) had failed in a *different* `TEST_CASE_GPU` ("GPU hierarchy is scoped to a command recording", `:544`) that past rerun-log rows had filed under the same loose "GPU-timing profiler flake" label. So for each failing line, `git show <tested-sha>:<path>` and find which `TEST_CASE_GPU(...)` block the line falls inside. Here that dropped the post-fix count from 3 to 2, below the ≥3 filing bar, and the issue was not filed. Two companion checks from the same sweep: tell "closed+merged" from "closed+superseded" with `gh pr view --json state,mergedAt,closedAt,mergeCommit` (slangpy#1073 closed unmerged, superseded by #1124 the same day; `merged` is not a valid `--json` field), and read a tracking issue's own scope statement before treating a new signature as tracked. slangpy#1201 tracks the nvrgfx-kernelvm-bridge runner-pool hang and explicitly excludes the look-alike bricks.jpg/imageio dep-download `OSError` ([profiler-flake triage: tested-sha ancestry must be checked per-line, not just per-fix-commit](../learnings/1790909287085-profiler-flake-triage-tested-sha-ancestry-must-be-.md)).
 
 ## Reporting & CI-Integrity of the Record
 
@@ -75,7 +78,7 @@ Generalizing: **any memoized verdict needs an invalidation trigger for every inp
 
 "The nightly" is not one thing. shader-slang/slang schedules `Nightly Slang Test` (whose `agentic-tests` job runs the `docs/generated/tests` suite), `Nightly Slang VKGLCTS Test`, `Nightly MDL Perf Test` (its `Check trend` step fails on compile-time regressions against the trailing median), `ubuntu18-gcc11 Release`, `Linux glibc 2.28 Release`, and the weekly `CMake Options`. On 2026-09-24 the maintainer seat reported "Nightly GREEN" from VKGLCTS alone and Main relayed it to the operator, while `Nightly Slang Test` had been red since 09-23 on `docs/generated/tests/design/ir-reference/metadata/debug-no-scope-emitted-without-operands.slang` and MDL Perf had gone red on 09-24; the seat caught its own error on 09-27. Before saying or relaying "nightly green", name the workflow that is green, and treat an unnamed "nightly green" as unverified for every other workflow ["Nightly green" is per-workflow: check every Slang nightly before relaying it](../learnings/1790509221208-nightly-green-is-per-workflow-check-every-slang-ni.md). The check works without GitHub auth (OneCLI `app_not_connected`; unauthenticated REST allows 60 core requests/hr and 10 searches/min): `actions/workflows/<id>/runs?per_page=10` gives each workflow's history, with ids from `actions/runs?created=>=DATE&status=failure` (URL-encode `>=` with `curl -G --data-urlencode`, or the body comes back empty); `check-runs/<job_id>/annotations` returns perf-regression lines such as `backend_matrix_glsl/compileInner 1.11x`; `curl -L .../actions/jobs/<job_id>/logs` downloads the full job log (302 → blob) to grep for `FAILED test`; and `compare/<last-green>...<first-red>` narrows the suspect commits in one call. To corroborate a "0 merged" search, check master `commits?since=` and `actions/runs?event=merge_group`, since an idle queue is not a failing queue [Slang "nightly green" must enumerate every nightly workflow; unauth GitHub REST fallback works](../learnings/1790509064349-slang-nightly-green-must-enumerate-every-nightly-w.md).
 
-**Source learnings (21):**
+**Source learnings (22):**
 - [Flaky-CI evidence: dedup by run id](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)
 - [Headline the dominant root-cause in babysitter reports](../learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)
 - [CI-integrity bug: detected failure logged but not recorded (stale init=Success)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
@@ -97,3 +100,4 @@ Generalizing: **any memoized verdict needs an invalidation trigger for every inp
 - [CI babysitter: double-check PR numbers before naming which PR has which failure in reports — re-verify your own paraphrased facts at write time](../learnings/1789424667165-ci-babysitter-double-check-pr-numbers-before-namin.md)
 - ["Nightly green" is per-workflow: check every Slang nightly before relaying it](../learnings/1790509221208-nightly-green-is-per-workflow-check-every-slang-ni.md) — a VKGLCTS-only green was relayed while Nightly Slang Test and MDL Perf were red.
 - [Slang "nightly green" must enumerate every nightly workflow; unauth GitHub REST fallback works](../learnings/1790509064349-slang-nightly-green-must-enumerate-every-nightly-w.md) — per-workflow run history, annotations, job logs and compare all work over unauthenticated REST.
+- [Profiler-flake triage: tested-sha ancestry must be checked per-line, not just per-fix-commit](../learnings/1790909287085-profiler-flake-triage-tested-sha-ancestry-must-be-.md) — a post-fix occurrence in a different `TEST_CASE_GPU` dropped the tally 3→2 (below the filing bar); `mergedAt`/`mergeCommit` tells merged from superseded; slangpy#1201's body excludes the imageio look-alike

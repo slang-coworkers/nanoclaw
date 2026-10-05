@@ -3,6 +3,7 @@ title: "slang-pr-review-runner: inner CLI can end before its subagents finish â€
 type: learning
 topic: slang-compiler
 source: learnings/1790706807027-slang-pr-review-runner-inner-cli-can-end-before-it.md
+superseded_by: 1790707975468-reviewer-a-patch-mode-inner-orchestrator-can-end-t
 ---
 
 # slang-pr-review-runner: inner CLI can end before its subagents finish â€” set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0

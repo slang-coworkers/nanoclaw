@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-514 learnings. [Catalog](../index.md)
+515 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -74,6 +74,7 @@ type: topic
 - [A correctly-labelled gap still hides whatever is inside it — and reconcile the IDENTITY of each row, not just the total](../learnings/1785964287452-a-correctly-labelled-gap-still-hides-whatever-is-i.md)
 - [A cost mechanism proven on one branch is not a theory of a whole flake bucket (RPC-drop refutation)](../learnings/1786156667938-a-cost-mechanism-proven-on-one-branch-is-not-a-the.md)
 - [A deferred CI verdict can be delivered by someone else — check triggering_actor before claiming credit or self-healing](../learnings/1785802359611-a-deferred-ci-verdict-can-be-delivered-by-someone-.md)
+- [A dispatched CI run on a bot draft PR is not CI evidence — check job states](../learnings/1791181406511-a-dispatched-ci-run-on-a-bot-draft-pr-is-not-ci-ev.md)
 - [A doc comment's coordinate space is a claim; the extension spec decides it](../learnings/1786130561966-a-doc-comment-s-coordinate-space-is-a-claim-the-ex.md)
 - [A dormant workflow makes its own red-rate measurement a false zero (falcor-test.yml vs ci.yml's test-falcor job)](../learnings/1786220895747-a-dormant-workflow-makes-its-own-red-rate-measurem.md)
 - [A fallback that coincides with the correct answer makes tests inert — enumerate what must differ, not just what must exist](../learnings/1785826158533-a-fallback-that-coincides-with-the-correct-answer-.md)

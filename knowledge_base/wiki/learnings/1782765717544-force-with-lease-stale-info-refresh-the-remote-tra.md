@@ -3,6 +3,7 @@ title: "force-with-lease 'stale info' — refresh the remote-tracking ref first"
 type: learning
 topic: misc
 source: learnings/1782765717544-force-with-lease-stale-info-refresh-the-remote-tra.md
+superseded_by: 1789460745636-git-force-with-lease-stale-info-inside-a-worktree-
 ---
 
 # force-with-lease "stale info" — refresh the remote-tracking ref first

@@ -3,7 +3,7 @@ title: "Slang Autodiff: Target Bugs, Diagnostics, Testing, and Loop-Carried Reco
 type: concept
 group: slang-autodiff-ir
 tags: [autodiff, differentiation, conditional, byte-address-buffer, diagnostics, testing, silent-gradient, member-methods, loop-carried, primal-hoist]
-source_count: 23
+source_count: 22
 ---
 
 # Slang Autodiff: Target Bugs, Diagnostics, Testing, and Loop-Carried Reconstruction
@@ -75,10 +75,10 @@ Fwd/bwd differentiation through **interface (existential) types** surfaced simul
 
 ## slangi Autodiff NativeString into Custom bwd Derivative (#12124)
 
-Passing a `NativeString` into a custom `bwd` derivative under `slangi` triggers a constants-OOB fault (shader-slang/slang#12124, LIVE at HEAD) ([slangi autodiff NativeString into custom bwd derivative → constants-OOB (LIVE at HEAD, #12124)](../learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-deriv.md)). That learning's root-cause section was later FALSIFIED: the real cause is a VM `Call` param-slot over-read, with the producer fix in #12127 ([CORRECTION #12124: my slangi-autodiff-NativeString root cause was WRONG — real cause is VM Call param-slot over-read + producer fix #12127](../learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md)).
+Passing a `NativeString` into a custom `bwd` derivative under `slangi` faults with a VM constants-OOB (shader-slang/slang#12124). The cause is two independent bugs, not the first-guessed `canTypeBeStored`/`addConstantValue` pair (the fixer applied both of those edits and got zero change): (1) the VM `Call` handler sizes each argument by the callee's parameter-slot size, so it over-reads the deliberate size-0 `VoidLit` placeholder emitted at constants-section end for the custom derivative's non-differentiable param; (2) once that is fixed, the captured `NativeString` is stored into the caller's context but the nested backward-derivative sub-context is extracted at a different offset (an `int` happens to align, an 8-byte pointer does not). The producer fix landed as #12127. The durable lesson: a root cause is only confirmed when applying its fix changes the symptom ([CORRECTION #12124: real cause is VM Call param-slot over-read + producer fix #12127](../learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md)).
 
 ---
-**Source learnings (23):**
+**Source learnings (22):**
 - [slang autodiff wires Optional intrinsics but omits the parallel Conditional family](../learnings/1782490233144-slang-autodiff-wires-optional-intrinsics-but-omits.md)
 - [slang #11782: conditional autodiff crash is flag-independent](../learnings/1782488412008-slang-11782-conditional-autodiff-crash-is-flag-ind.md)
 - [slang #11590: 41303 can't live in validation-only slice-1](../learnings/1781318517600-slang-11590-41303-can-t-live-in-validation-only-sl.md)
@@ -95,7 +95,6 @@ Passing a `NativeString` into a custom `bwd` derivative under `slangi` triggers 
 - [slangpy#1055: bwd_diff of vector/scalar divide with coupled loop accumulators is silently wrong](../learnings/1783882682982-slangpy-1055-bwd-diff-of-vector-scalar-divide-with.md)
 - [slang autodiff: vector-by-scalar divide loses gradients only inside a loop, not the divide transpose (slang#12071)](../learnings/1783885532350-slang-autodiff-vector-by-scalar-divide-loses-gradi.md)
 - [slang autodiff: loop-carried vector/scalar divide wrong gradient = broadcast placed at scalar-operand definition lands inside primal loop, breaks dominance after loop split (slang#12071 / PR#12095)](../learnings/1784133819087-slang-autodiff-loop-carried-vector-scalar-divide-w.md)
-- [slangi autodiff NativeString into custom bwd derivative → constants-OOB (LIVE at HEAD, #12124)](../learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-deriv.md)
 - [CORRECTION #12124: my slangi-autodiff-NativeString root cause was WRONG — real cause is VM Call param-slot over-read + producer fix #12127](../learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md)
 - [slangpy#1167 bwds() hang on runtime-loop IDiffTensor load — SlangPy-codegen-specific, no pure-Slang repro](../learnings/1789715066934-slangpy-1167-bwds-hang-on-runtime-loop-idifftensor.md)
 - [pin a SlangPy/slangc compile HANG by gdb-attaching to the live linked session — #1167 is a target-specialization fixpoint, not autodiff primal-hoist](../learnings/1789721802032-pin-a-slangpy-slangc-compile-hang-by-gdb-attaching.md)

@@ -3,7 +3,7 @@ title: "Triage discipline: verify at HEAD, distrust stale memos, check for exist
 type: concept
 group: agent-fixer-codex-skills
 tags: [triage, head-freshness, stale-checkout, verification, draft-pr, close-recommendation]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -15,6 +15,7 @@ source_count: 14
 - **"Out of scope" / "already correct" claims in a triage handoff are hypotheses, not facts.** A report scoping a neighboring block OUT is a statement about the report's boundary, not a correctness certificate. If you'll say a block is fine, open it and check — otherwise say "out of scope, not evaluated." Surface any contradiction to the dispatcher as a separate flag; don't self-expand scope or stay silent.
 - **When a downstream agent reverses your specific instruction with a fresh reading, spawn a read-only verification against current source** — neither accept nor reject from memory. Then correct the memo in place (strike the wrong finding with the verifying HEAD + date).
 - **A landed fix + green multi-platform CI warrants a close recommendation** — continued caution creates avoidable maintainer toil. The evidence bar is "merged (not draft) + multi-platform green."
+- **Re-run `git ls-remote origin refs/heads/<branch>` immediately before citing someone else's open branch**, and quote the pinned SHA — an author can force-push a rewritten tip mid-triage (slang#13397: a 6-minute-old WIP diff made the report wrong).
 - **Re-read the OTHER PR's live head before acting on a claim about it.** Before filing a follow-up for an "uncovered" case, or opening a superseding/competing PR, fetch `pulls/<n>` `.head.sha` (or `pulls/<n>/commits --jq '.[-1].sha'`), compare it to the SHA your decision was measured against, and diff its core change against yours. If it moved, hold and re-decide — a parallel chain may have already landed the same fix.
 - Subagents hallucinate confident `file:line` citations; two conflicting reports about the same file is the tell. Never hand a fixer load-bearing pointers sourced only from a subagent digest — spot-verify the lines directly with `git show <ref>:file | grep -n`.
 
@@ -27,6 +28,8 @@ The same decay hits memo `file:line` findings, which are HEAD-relative. A memo w
 ## Draft PRs move under you — the #12691 family
 
 A tight cluster of atoms documents the same pattern on core-team member kaizhangNV's actively-developed draft PRs (the #12691 structural-ray-tracing family): the reported bug was ALREADY FIXED on-branch by the author before the fixer touched it, four times in one day. In the sharpest case the fix was the commit *immediately after* the SHA the triage memo pinned ([the fix is often the commit after the triage SHA](../learnings/1787671421853-12691-family-the-fix-is-often-the-commit-after-the.md)). Related sub-cases: a triage that *rejected* the issue's simpler capability-atom suggestion, only for the author to have already landed exactly that route correctly ([checkpoint SHA stale within minutes](../learnings/1787669533760-a-triage-checkpoint-sha-can-be-stale-within-minute.md)); and a mid-escalation to the operator for a "patch-their-draft go/no-go" that a HEAD check made moot in two read-only commands ([re-verify draft-PR at PR HEAD](../learnings/1787669928995-re-verify-a-triaged-draft-pr-issue-at-pr-head-befo.md)). The mandatory first step on any active-draft-PR-by-core-team issue: `git fetch origin pull/<n>/head` → `git log <triage-SHA>..FETCH_HEAD --oneline` → read the newest commit's diff+test. Chain conduct on these: report up, verify by ancestry + source read + diagnostic-severity check, and never open a competing PR or patch a core-team member's own active draft. A self-labeled "not run-confirmed / strong hypothesis" step in a memo (e.g. "the metal arm defeats a capability atom") is exactly the claim to re-verify — the author's committed test may assert the diagnostic fires via the very path the memo said couldn't catch it.
+
+The window can be minutes even inside one triage, so a branch tip has to be re-read at the moment of *citing*, not only at the start. Triaging slang#13397, the triager fetched the author's candidate branch and diffed its WIP commit; about 6 minutes later the author force-pushed a rewritten tip that kept the FixedArray/Array bounds checks the WIP had removed, and the report's "branch removes array bounds checks" was true only of the stale commit (the orchestrator caught it). Before citing any claim about someone else's open branch, run `git ls-remote origin refs/heads/<branch>`, pin the SHA you quote into the comment, and re-check it immediately before posting ([re-run ls-remote right before citing a branch author's WIP](../learnings/1790952109142-re-run-ls-remote-right-before-citing-a-branch-auth.md)).
 
 ## Does the code even exist yet?
 
@@ -50,7 +53,7 @@ The mirror case is a superseding PR. On slang#13046 a path-A "supersede #12935" 
 
 No contradictions; the atoms are one discipline observed across many issues, all pointing to "re-verify at current HEAD before asserting or dispatching." The draft-PR atoms ([#12691 family](../learnings/1787671421853-12691-family-the-fix-is-often-the-commit-after-the.md), [checkpoint SHA](../learnings/1787669533760-a-triage-checkpoint-sha-can-be-stale-within-minute.md), [re-verify at HEAD](../learnings/1787669928995-re-verify-a-triaged-draft-pr-issue-at-pr-head-befo.md)) are progressive refinements of the same pattern rather than competing claims.
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [scoping-out is not a correctness certificate](../learnings/1786985585376-triage-trap-an-issue-scoping-something-out-is-not-.md) — an issue scoping a neighboring block OUT does not certify it correct; open and check, or say "not evaluated."
 - [triage handoff out-of-scope claim unverified](../learnings/1786985585404-a-triage-handoff-s-out-of-scope-already-correct-cl.md) — incidental "X is correct/out of scope" handoff claims are hypotheses; verify at source and surface contradictions as a separate flag.
 - [check for an author's self-implemented PR](../learnings/1787035926588-triage-check-for-an-author-s-self-implemented-pr-b.md) — search for a companion `Fixes #N` PR before building; verify it (named ref, git show, run tests), don't just read it.
@@ -65,3 +68,4 @@ No contradictions; the atoms are one discipline observed across many issues, all
 - [verify a feature exists on master](../learnings/1788212132503-triage-verify-a-feature-exists-on-master-before-di.md) — an issue naming files may describe unmerged-branch work; verdict = not independently actionable; spot-verify subagent file:line citations.
 - [verify the live PR branch head before filing a follow-up a PR review flags as "uncovered"](../learnings/1789736671963-verify-the-live-pr-branch-head-before-filing-a-fol.md) — resolve a "falls through default" claim at `pulls/<n>`→`.head.sha`, not master or the reviewer's line numbers; the residual may already be covered (with a test) in the stacked family.
 - [re-check a competing PR's head before opening a superseding PR](../learnings/1790415515938-re-check-a-competing-pr-s-head-before-opening-a-su.md) — immediately before a superseding/competing PR, compare the competitor's current head SHA to the SUPERSEDE measurement and diff core changes; if it moved, hold and re-decide (#13046 vs #12935).
+- [re-run ls-remote right before citing a branch author's WIP](../learnings/1790952109142-re-run-ls-remote-right-before-citing-a-branch-auth.md) — slang#13397's author force-pushed 6 minutes into triage; pin and re-check the tip SHA before posting. Also: deleting a file's explicit `-cuda` line can *add* a synthesized CUDA run
