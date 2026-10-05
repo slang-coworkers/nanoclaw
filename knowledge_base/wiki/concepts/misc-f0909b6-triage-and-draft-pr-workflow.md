@@ -3,7 +3,7 @@ title: Triage Discipline, Regression Classification, and the Draft-PR Workflow
 type: concept
 group: misc
 tags: [triage, regression, runtime-bisect, draft-pr, structural-ray-tracing, fork-pr, workaround, docs-site]
-source_count: 14
+source_count: 17
 ---
 
 ## TL;DR
@@ -16,6 +16,12 @@ member's own active draft PR and is already fixed on-branch.
   bisect is a hypothesis generator, not confirmation. Prebuilt release tarballs make a zero-build
   runtime bisect cheap (minutes); a function byte-identical across the claimed window falsifies the
   bisect on its own. Reproducing on ToT proves the bug is real, not that it's a regression.
+- **"Pre-existing, not a regression" is also a two-version claim.** Step back through release
+  tarballs at 3-6 month intervals (#13379 broke in v2025.20, a year back); release tags sit on
+  release branches, so build the candidate list as `git log $(git merge-base vA vB)..vB`, not `vA..vB`.
+- **After a semantics-changing PR merges, sweep the next day's issues for a cluster it caused** and
+  frame revert vs fix-forward before the release cut (#12992 → 8 matrix-layout issues in 13h). Read
+  approval state at merge time — a later push can dismiss the only approval.
 - **A workaround you post publicly must compile AND preserve semantics** — "it compiles" can mask a
   variant that silently dropped/hard-coded parameters. Test the EXACT restructure, not an easier
   lookalike; retract a wrong workaround in a fresh @mention (GitHub edits don't notify).
@@ -55,6 +61,22 @@ semantics against what the user needs, test the EXACT restructure, and retract a
 comment with a fresh @mention ([verify a suggested workaround compiles AND preserves semantics before
 posting it](../learnings/1787636240819-verify-a-suggested-workaround-compiles-and-preserv.md)).
 
+
+The same binaries settle the opposite claim, "pre-existing, not a regression", and that claim needs
+as much evidence as the regression label. For #13379 (CopyLogical reaching the GLSL emitter) the
+filer checked master, v2026.19 and a dev build, then wrote "pre-existing"; older tarballs
+(`https://github.com/shader-slang/slang/releases/download/v<ver>/slang-<ver>-linux-x86_64.tar.gz`)
+showed v2025.19.1 compiled it fine, the bug arrived in v2025.20 (#8819) and spread to more targets in
+v2025.24.2 (#9341). Checking only the last 2-3 releases cannot find a year-old regression, so step
+back through releases at 3-6 month intervals until the repro passes, then tie candidate commits to
+that window ([release-binary bisect beats a bot-filed "pre-existing" claim](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md)).
+Turning the window into a commit list has its own trap: Slang release tags live on release
+branches, so an earlier tag is often not an ancestor of a later one. `git log v2025.17.3..v2025.18`
+was wrong for exactly that reason; use `mb=$(git merge-base vA vB)` as the good end and
+`git log $mb..vB` as the candidate list (9 commits for #13405, with #8526 the obvious suspect), and
+check a candidate with `git merge-base --is-ancestor <commit> v<tag>` ([Slang release tags live on
+release branches — bisect from merge-base](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md)).
+
 Two more triage-routing facts. A stale `docs.shader-slang.org/.../external/slang/…` page whose GitHub
 `master` version is correct is almost always a stale git-submodule pin in the
 `shader-slang.github.io` superproject (RTD renders whatever commit the `docs/external/slang` submodule
@@ -67,6 +89,19 @@ from GitHub (`gh pr view <n> --json state,closedAt` + read the closing comment f
 routing a "PR-changed" nudge, and brief the fixer that the work landed under a different number
 ([reconcile when your fix PR is closed in favour of a
 fork](../learnings/1787558759338-reconcile-when-your-fix-pr-is-closed-in-favour-of-.md)).
+
+## A semantics-changing merge can seed a regression cluster
+
+A regression often arrives as a burst of separately-filed issues that share one cause. On 2026-10-01
+shader-slang/slang #12992 (a bot PR honoring matrix layout modifiers on arrays and returns) merged
+after its `pr: breaking change` label had been dropped; within about 13 hours the bot's own
+follow-up sweeps filed 8 matrix-layout issues, 2 of them confirmed regressions (#13376 E30019, #13382
+invalid SPIR-V vertex input). When a PR that changes type or layout semantics merges, sweep the next
+day's new issues for a cluster that traces back to it, and put the revert-vs-fix-forward decision to
+maintainers *before* the next release cut rather than triaging each issue alone. The same day #13358
+merged after its only approval had been dismissed by a later push, so approval state is read at
+merge time, not review time ([bot PR merged with breaking label dropped spawned 2 P0 regressions
+within 13h](../learnings/1790929842221-bot-pr-merged-with-breaking-label-dropped-spawned-.md)).
 
 ## Open the draft PR early — supersession by parallel PRs, and sibling-PR dedup
 
@@ -122,7 +157,7 @@ implement should be `[sealed]` (stdlib interfaces default to `[open]`; cross-mod
 ([structural RT primitive markers must be sealed — open marker + open Custom bucket = target-lowering
 SIGSEGV](../learnings/1787669679140-structural-rt-primitive-markers-must-be-sealed-ope.md)).
 
-**Source learnings (14):**
+**Source learnings (17):**
 - [Reconcile when your fix PR is closed in favour of a fork](../learnings/1787558759338-reconcile-when-your-fix-pr-is-closed-in-favour-of-.md) — a closed PR number you cited is a stale public fact; verify state from GitHub before nudging.
 - [Prebuilt release binaries are a free runtime bisect](../learnings/1787635116151-prebuilt-release-binaries-are-a-free-runtime-bisec.md) — a byte-identical function across the window falsifies a bisect hypothesis on its own.
 - [Don't apply the regression label from a code-history hypothesis — runtime-bisect first](../learnings/1787635407452-don-t-apply-the-regression-label-from-a-code-histo.md) — ToT-repro proves the bug is real, not that it regressed; the label shapes priority.
@@ -137,3 +172,6 @@ SIGSEGV](../learnings/1787669679140-structural-rt-primitive-markers-must-be-seal
 - [On an active draft PR, the reported bug is often already fixed on-branch — verify before building](../learnings/1787671408861-on-an-active-draft-pr-the-reported-bug-is-often-al.md) — anchor reports on durable fact + timestamp, not a fast-moving head SHA.
 - [a bot fix that stalls pre-draft-PR across restarts gets superseded by parallel PRs](../learnings/1789953919671-a-bot-fix-that-stalls-pre-draft-pr-across-restarts.md) — open the draft PR early (survives restarts, claims the work, yields CI); the gate blocks merge/ready, not draft creation; superseded-by-our-own-merged skips the postmortem.
 - [sibling PR can absorb a "distinct, not-duplicate" issue — check before opening a competing PR](../learnings/1789953712020-sibling-pr-can-absorb-a-distinct-not-duplicate-iss.md) — re-check an open sibling PR's current scope before competing; pad empty payloads to a dummy int (the shared default-arm assert isn't empty-struct-specific); GLSL crashes too.
+- [Release-binary bisect beats a bot-filed 'pre-existing, not a regression' claim](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md) — #13379 worked in v2025.19.1, broke in v2025.20 (#8819); step back 3-6 months per probe. Also: CopyLogical is produced on all targets but lowered only for SPIR-V
+- [Slang release tags live on release branches — bisect from merge-base](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md) — `git log $(git merge-base vA vB)..vB` (#13405 → 9 candidates, #8526); also `&local` is UserPointer on CPU/CUDA and a CHECK-NEXT capture trap
+- [Bot PR merged with breaking label dropped spawned 2 P0 regressions within 13h](../learnings/1790929842221-bot-pr-merged-with-breaking-label-dropped-spawned-.md) — #12992 → 8 matrix-layout issues (#13376, #13382); sweep for the cluster, frame revert vs fix-forward before the release cut; #13358 merged with its only approval dismissed

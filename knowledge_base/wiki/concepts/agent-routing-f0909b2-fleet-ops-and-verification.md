@@ -3,7 +3,7 @@ title: Fleet operations — CI/GitHub infra, dispatch routing & verify-before-yo
 type: concept
 group: agent-routing
 tags: [gh-auth, onecli, falcor-gate, ci-rerun, dispatch, wired-coworkers, stale-toolchain, verification, revert-drill, skill-drift]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -33,6 +33,10 @@ the instant it finishes — so don't blindly re-dispatch on top of it. Run the
 two-session detector (`ncl sessions list | grep <fixer-group>`) FIRST. The same
 canonical `thread_id` folds a double-dispatch into one session; when a race
 happens, resolve the EDGE (who is the single parent), not the session.
+
+**Script-gated tasks fail toward silence.** Make "probe failed" its own WAKE arm, and put
+`# nanoclaw-task-timeout: N` in the first 5 lines of the stored script or a >30 s gate is killed
+as a failed run and auto-paused after 8.
 
 **Verify before you claim.** Reproduce any "separate finding" on the SAME
 toolchain as the PR head — a stale checkout pins an old slang with already-fixed
@@ -169,6 +173,21 @@ AND a bogus/unreachable target; if the bogus one doesn't wake, the gate fails
 toward silence. This is the task-gate analogue of the Monitor "silence is not
 success" rule ([script-gated deferral tasks](../learnings/1788432587694-script-gated-deferral-tasks-must-distinguish-condi.md)).
 
+The host adds its own silent-failure modes on top. A `--script` gate that runs past **30 s is
+killed and counted as a failed run** (skip reason `error`, backoff, auto-pause after 8) unless
+one of the first 5 lines of the script text *stored on the task* carries
+`# nanoclaw-task-timeout: N` (clamped 30–300); a directive inside a file the stored script calls
+does not count, so store e.g. `#!/bin/bash` / `# nanoclaw-task-timeout: 180` / `exec python3
+gate.py`. An audit of a 6-hourly merge-queue watch (2026-10-01) found three more: a heartbeat
+counter built on `actions/runs?event=merge_group` counts every workflow's runs, so it is not a
+per-job denominator (scope with `actions/workflows/<id>/runs` and count the target job itself);
+`gh … 2>/dev/null` turns a 401 `app_not_connected` into "no matches" (retry, then exit
+non-zero, which is the probe-failed arm above); and a static task prompt saying "fired with a NEW
+match" reads as a real alert in every session row even when the gate returned
+`wakeAgent:false`, so word it conditionally. Match a known failure on its annotation text as
+well as a duration constant, which drifted by one second (14m01s vs 14m00s) on a real occurrence
+([gate scripts: 30 s default timeout, repo-wide counters, misleading static prompts](../learnings/1790889913390-nanoclaw-gate-scripts-30s-default-timeout-repo-wid.md)).
+
 ## The KB-sync data-only gate: core.fileMode=false defeats the chmod control
 
 The nightly `knowledge_base` sync into the `nanoclaw-kb` clone carries a STEP-4b
@@ -288,7 +307,7 @@ review:
   cause is skill-copy drift, flagged to the operator to reconcile once
   ([okf-synth exempt mechanism retracted; skill-copy drift](../learnings/1788842883204-okf-synth-escalate-on-a-load-bearing-top-offender-.md)).
 
-**Source learnings (19):**
+**Source learnings (20):**
 
 - [`gh auth status` says "GH_TOKEN invalid" — red herring for the app installation token](../learnings/1788374386518-gh-auth-status-says-gh-token-invalid-red-herring-f.md) — App tokens can't hit `/user`; repo-scoped reads/writes still work — test the actual call before escalating.
 - [gh auth status falsely reports nv-slang-bot token invalid; gh api still works](../learnings/1788881883720-gh-auth-status-falsely-reports-nv-slang-bot-token-.md) — Use `gh api` (REST) for everything; GraphQL-backed `gh` subcommands break; never `env -u GH_TOKEN`.
@@ -297,6 +316,7 @@ review:
 - [falcor-build-approval-gate WAITING blocks reruns of ANY job in the same run](../learnings/1790136696883-falcor-build-approval-gate-waiting-blocks-reruns-o.md) — Job-scoped rerun API also 403s; re-confirmed on PR #12208 — classify `intermittent-but-gate-wedged`, log `touch_tracker_verdict(verdict="gate-wedged")`, revisit when the gate clears.
 - [falcor-build-approval-gate wedge blocks rerun of unrelated sibling jobs](../learnings/1788675398136-falcor-build-approval-gate-wedge-blocks-rerun-of-u.md) — An unrelated GPU flake becomes un-rerunnable; grep `jobs[] | select(.status!="completed")` before concluding the API is broken.
 - [Script-gated deferral tasks must distinguish "condition not met" from "probe failed"](../learnings/1788432587694-script-gated-deferral-tasks-must-distinguish-condi.md) — Branch on the authoritative field; make probe-failure its own WAKE arm; verify with a deliberately-failing control before arming.
+- [NanoClaw gate scripts: 30s default timeout, repo-wide counters, and misleading static 'NEW match' prompts](../learnings/1790889913390-nanoclaw-gate-scripts-30s-default-timeout-repo-wid.md) — `# nanoclaw-task-timeout: N` must be in the stored script text; scope run counters per workflow; don't swallow 401s
 - [Wired triager→fixer: don't double-dispatch; claim the edge on the canonical thread](../learnings/1788903865197-wired-triager-fixer-don-t-double-dispatch-claim-th.md) — Same `thread_id` folds a race into one session; resolve the EDGE (single parent), not the session.
 - [Triager memo sent UP is FYI, not a relay request — run the two-session detector](../learnings/1788910357132-triager-memo-sent-up-to-the-orchestrator-is-fyi-no.md) — `ncl sessions list | grep <group> | grep <thread>` before dispatching; safe-in-both-outcomes stand-down, never a bare "stop".
 - [Verify "separate findings" on the SAME toolchain as the PR head](../learnings/1788483703122-verify-separate-findings-on-the-same-toolchain-as-.md) — A behind-by-N checkout pins an old slang with already-fixed bugs; `SLANG_RHI_FETCH_SLANG_VERSION` resolves the pin.

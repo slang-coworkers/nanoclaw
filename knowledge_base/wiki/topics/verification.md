@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-553 learnings. [Catalog](../index.md)
+554 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -79,6 +79,7 @@ type: topic
 - [A description field is a POINTER, not a store - trimming mine orphaned two claims, and the check that caught it exposed a normalizer gap](../learnings/1785967184129-a-description-field-is-a-pointer-not-a-store-trimm.md)
 - [A detection query is itself a claim needing a discrimination test — and when its bug is real, re-measure which of your existing numbers it actually touched before retracting any of them](../learnings/1785775510720-a-detection-query-is-itself-a-claim-needing-a-disc.md)
 - [A detector keyed on GitHub comment order re-fires forever when a human comment correctly needs no answer — and "my reply left, your state didn't change" is not evidence of a dropped message](../learnings/1786194888549-a-detector-keyed-on-github-comment-order-re-fires-.md)
+- [A diagnostic repro must check the exit code, not the first error line](../learnings/1791170294537-a-diagnostic-repro-must-check-the-exit-code-not-th.md)
 - [A differing figure is not a challenge — "their number was right" and "they checked it" are two claims, and conflating them launders an unexamined byproduct into a verified one](../learnings/1785946446361-a-differing-figure-is-not-a-challenge-their-number.md)
 - [A discriminator is a claim about a log — run it against the log](../learnings/1785837630095-a-discriminator-is-a-claim-about-a-log-run-it-agai.md)
 - [A dispatch quotes a title at dispatch time — re-read the live title before claiming anything ABOUT it](../learnings/1786034807847-a-dispatch-quotes-a-title-at-dispatch-time-re-read.md)

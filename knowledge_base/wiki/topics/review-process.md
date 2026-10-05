@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-340 learnings. [Catalog](../index.md)
+344 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -218,6 +218,7 @@ type: topic
 - [Reviewer A (slang-pr-review-runner) can hit the claude CLI 600s background-wait ceiling → kills subagents → false 0/0/0 review](../learnings/1789695101887-reviewer-a-slang-pr-review-runner-can-hit-the-clau.md)
 - [Reviewer A (slang-pr-review-runner) needs isolated REPO_ROOT + higher budget under concurrent runs](../learnings/1783620361461-reviewer-a-slang-pr-review-runner-needs-isolated-r.md)
 - [Reviewer A (slang-pr-review-runner) premature-termination signature: exit-0 but incomplete](../learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md)
+- [Reviewer A (slang-pr-review-runner) runs out of budget on large layout PRs; re-run missing subagents directly](../learnings/1791132067717-reviewer-a-slang-pr-review-runner-runs-out-of-budg.md)
 - [Reviewer A + C parallel isolation: use /workspace/agent/slang-clarity as C's REPO_ROOT](../learnings/1782586901771-reviewer-a-c-parallel-isolation-use-workspace-agen.md)
 - [Reviewer A background-subagent orphan recurs back-to-back on claude CLI 2.1.285 — substitute direct lenses instead of a 3rd rerun](../learnings/1790786024623-reviewer-a-background-subagent-orphan-recurs-back-.md)
 - [Reviewer A background-subagent orphan recurs; subagent jsonl absent; quarantine + one re-run](../learnings/1790901257688-reviewer-a-background-subagent-orphan-recurs-subag.md)
@@ -231,6 +232,7 @@ type: topic
 - [Reviewer A final-review.md can be a stub — recover the real review from stream.jsonl](../learnings/1790181801645-reviewer-a-final-review-md-can-be-a-stub-recover-t.md)
 - [Reviewer A final-review.md can be a truncated stub — verify size; recover lenses from stream.jsonl task_notifications](../learnings/1789483811315-reviewer-a-final-review-md-can-be-a-truncated-stub.md)
 - [Reviewer A inner CLI can be interrupted mid-run (~17-22 min) with "[Request interrupted by user]"; the guard catches it](../learnings/1790803785855-reviewer-a-inner-cli-can-be-interrupted-mid-run-17.md)
+- [Reviewer A inner CLI can end its turn with background subagents still running — rerun with CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1](../learnings/1791168330129-reviewer-a-inner-cli-can-end-its-turn-with-backgro.md)
 - [Reviewer A INTEGRITY-FAIL can be a false positive from a concurrent session overwriting slang/tmp/pr-diff.patch](../learnings/1790899925650-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](../learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md)
@@ -265,6 +267,7 @@ type: topic
 - [Reviewer-flagged "crash on valid input": verify reachability empirically (past upstream guards) before disclosing](../learnings/1789689508202-reviewer-flagged-crash-on-valid-input-verify-reach.md)
 - [Reviewer: a self-recommended comment addition does not reset the PR review pipeline](../learnings/1782857285922-reviewer-a-self-recommended-comment-addition-does-.md)
 - [Reviewer: gate the verdict on full-suite CI for broad-blast-radius changes, not static review alone](../learnings/1782454067582-reviewer-gate-the-verdict-on-full-suite-ci-for-bro.md)
+- [Reviewers' source-only "local enum bypasses parseDeclBody" claim is unreachable — local enum is rejected at parse](../learnings/1791179306916-reviewers-source-only-local-enum-bypasses-parsedec.md)
 - [Reviewing "reject unrepresentable input" fixes: check sibling layout-query sites](../learnings/1789396536261-reviewing-reject-unrepresentable-input-fixes-check.md)
 - [Reviewing a "unify into a single source of truth" refactor: grep for the sites it did NOT migrate](../learnings/1790034772740-reviewing-a-unify-into-a-single-source-of-truth-re.md)
 - [Reviewing a pass-gating PR: green tests plus byte-identical output cannot detect a dead flag](../learnings/1785827882400-reviewing-a-pass-gating-pr-green-tests-plus-byte-i.md)
@@ -307,6 +310,7 @@ type: topic
 - [slang-pr-review Reviewer C can die mid-run on a transient API socket error — detect via tiny clarity-review.md, retry recovers](../learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md)
 - [slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](../learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)
 - [slang-pr-review-runner patch mode: reviewer can't find the patch + commit -am drops new files](../learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md)
+- [slang-pr-review-runner scripts may lose exec bit; Reviewer A still needs CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)
 - [slang-pr-review-runner: export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 on every Reviewer A launch (not baked into the scripts)](../learnings/1790837192079-slang-pr-review-runner-export-claude-code-print-bg.md)
 - [slang-pr-review-runner: shared checkout /workspace/agent/slang is contended — run Reviewer A in an isolated worktree to avoid wrong-diff INTEGRITY-FAIL](../learnings/1789222069725-slang-pr-review-runner-shared-checkout-workspace-a.md)
 - [slang-pr-review: `gh auth status` false-negative + inner-CLI reviewers bill separately](../learnings/1790012094150-slang-pr-review-gh-auth-status-false-negative-inne.md)

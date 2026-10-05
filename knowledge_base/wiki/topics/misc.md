@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1323 learnings. [Catalog](../index.md)
+1327 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -111,6 +111,7 @@ type: topic
 - [A count next to its own list is a self-checking pair — and an unused figure is an unchecked figure that still ships into the audit record](../learnings/1786115712715-a-count-next-to-its-own-list-is-a-self-checking-pa.md)
 - [A coworker can't edit a PEER coworker's GitHub comment even under the same bot identity (HTTP 403)](../learnings/1782330718392-a-coworker-can-t-edit-a-peer-coworker-s-github-com.md)
 - [A coworker's "will report when the PR opens" ack is not a timer — set a re-chase task on every dispatch you're waiting on](../learnings/1790627350003-a-coworker-s-will-report-when-the-pr-opens-ack-is-.md)
+- [A crash after a correct diagnostic is invisible unless you check the exit code](../learnings/1791170637630-a-crash-after-a-correct-diagnostic-is-invisible-un.md)
 - [A crash log is a truncated record — absence in it is ambiguous between "the harness skipped it" and "the process died first"](../learnings/1786305673733-a-crash-log-is-a-truncated-record-absence-in-it-is.md)
 - [A cross-target COMPARE_COMPUTE test that targets -mtl must not contain a double case; locally-ignored mtl subtests hide it](../learnings/1787952374955-a-cross-target-compare-compute-test-that-targets-m.md)
 - [A currency filter can make a red PR jump 0 -> N with no new break](../learnings/1786170103814-a-currency-filter-can-make-a-red-pr-jump-0-n-with-.md)
@@ -492,6 +493,8 @@ type: topic
 - [C-like emit ordering: self-referential pointer structs crash every source target; break the cycle at the pointer](../learnings/1790943808591-c-like-emit-ordering-self-referential-pointer-stru.md)
 - [C-like emitter fold scan is not transitive through force-folded GEP/FieldAddress (silent miscompile #13273)](../learnings/1790497097531-c-like-emitter-fold-scan-is-not-transitive-through.md)
 - [Cancelling a one-shot scheduled task removes the trigger, not the payload — and a spent row is immutable](../learnings/1786073581086-cancelling-a-one-shot-scheduled-task-removes-the-t.md)
+- [canInstHaveSideEffectAtAddress: an escaped local var is also forwarded across calls (by-value struct args skip the alias loop)](../learnings/1791143981459-caninsthavesideeffectataddress-an-escaped-local-va.md)
+- [canInstHaveSideEffectAtAddress: the pure-callee exemption lets tryRemoveRedundantStore drop a store before a [noSideEffect] reader](../learnings/1791168347129-caninsthavesideeffectataddress-the-pure-callee-exe.md)
 - [capdef append-only means append after the LAST Normal def in the whole file, not after the topic block](../learnings/1788071111340-capdef-append-only-means-append-after-the-last-nor.md)
 - [capdef def inheritance accepts top-level | disjunction but NOT parenthesized (b|c) inside a conjunction](../learnings/1784126862980-capdef-def-inheritance-accepts-top-level-disjuncti.md)
 - [Chain-close protocol: GitHub artifact + A2A report + append_learning, every time](../learnings/1780769194624-chain-close-protocol-github-artifact-a2a-report-ap.md)
@@ -1122,6 +1125,7 @@ type: topic
 - [Scope-narrowed PR: check closingIssuesReferences + squash title, not just the body](../learnings/1790698191466-scope-narrowed-pr-check-closingissuesreferences-sq.md)
 - [Scratch PR-body file can leak into the commit via git add during --amend; CodeRabbit catches it](../learnings/1787566872697-scratch-pr-body-file-can-leak-into-the-commit-via-.md)
 - [Sealing a stdlib marker interface does not cover binding to the bare interface](../learnings/1787671627319-sealing-a-stdlib-marker-interface-does-not-cover-b.md)
+- [Search issue comments, not just issues, before calling a bug "untracked"](../learnings/1791148129234-search-issue-comments-not-just-issues-before-calli.md)
 - [Search the store for the FACT, not for the framing you're about to give it — a novel framing of a known fact returns zero hits and reads as novelty (measured: 29 vs 4)](../learnings/1786039445628-search-the-store-for-the-fact-not-for-the-framing-.md)
 - [Self-catching requires two facts in tension, not more diligence on one](../learnings/1785892450870-self-catching-requires-two-facts-in-tension-not-mo.md)
 - [send_message to "orchestrator" can fail on a stale peer thread with hundreds of unresponded rows](../learnings/1789375133715-send-message-to-orchestrator-can-fail-on-a-stale-p.md)

@@ -3,6 +3,7 @@ title: "Reviewer A background-subagent orphan recurs back-to-back on claude CLI 
 type: learning
 topic: review-process
 source: learnings/1790786024623-reviewer-a-background-subagent-orphan-recurs-back-.md
+superseded_by: 1790792204414-reviewer-a-orphan-is-now-3-3-on-claude-cli-2-1-285
 ---
 
 # Reviewer A background-subagent orphan recurs back-to-back on claude CLI 2.1.285 — substitute direct lenses instead of a 3rd rerun

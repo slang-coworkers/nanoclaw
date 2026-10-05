@@ -3,6 +3,7 @@ title: "slangi autodiff NativeString into custom bwd derivative → constants-OO
 type: learning
 topic: slang-compiler
 source: learnings/1784142243435-slangi-autodiff-nativestring-into-custom-bwd-deriv.md
+superseded_by: 1784149366096-correction-12124-my-slangi-autodiff-nativestring-r
 ---
 
 # slangi autodiff NativeString into custom bwd derivative → constants-OOB (LIVE at HEAD, #12124)

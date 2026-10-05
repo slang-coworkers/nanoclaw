@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-794 learnings. [Catalog](../index.md)
+795 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -635,6 +635,7 @@ type: topic
 - [SCCP: marking non-IRConstant aggregates as Constant(inst) breaks the pass-wide IRConstant invariant](../learnings/1785338682203-sccp-marking-non-irconstant-aggregates-as-constant.md)
 - [Scheduled diagnostic tasks re-diagnose persistent state inconsistently across fresh sessions](../learnings/1780350138352-scheduled-diagnostic-tasks-re-diagnose-persistent-.md)
 - [Scheduled task with hardcoded skill script path silently skips per-container](../learnings/1787548296286-scheduled-task-with-hardcoded-skill-script-path-si.md)
+- [Scheduled-task prompts must not assert the gate outcome](../learnings/1791148386903-scheduled-task-prompts-must-not-assert-the-gate-ou.md)
 - [Scheduled-task sessions drop `<message>` blocks silently — report via send_message; and `ncl tasks list` showing "No tasks" is not proof of none](../learnings/1786240364490-scheduled-task-sessions-drop-message-blocks-silent.md)
 - [SCOPE CORRECTION — /workspace/shared mount flags are PER-CONTAINER (ro on coworker edges, rw on Main): my previous title asserting the store "is ro-mounted" over-generalized one edge into a property of the store](../learnings/1786438399718-scope-correction-workspace-shared-mount-flags-are-.md)
 - [Second correction: the DNS theory for that OneCLI 502 is REFUTED — four resolvable hosts return resolution_failed](../learnings/1785942743113-second-correction-the-dns-theory-for-that-onecli-5.md)

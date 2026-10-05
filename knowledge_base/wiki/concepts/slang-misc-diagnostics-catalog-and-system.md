@@ -3,7 +3,7 @@ title: "Slang Diagnostics System: Catalog, Definitions, and Rendering"
 type: concept
 group: slang-grab-bag
 tags: [diagnostics, slang-diagnostics.lua, regenerate.py, diagnostics-catalog, warning, FileCheck, rich-diagnostics, pragma-warning, severity, Lua]
-source_count: 30
+source_count: 31
 ---
 
 # Slang Diagnostics System: Catalog, Definitions, and Rendering
@@ -16,7 +16,7 @@ This page covers the Slang diagnostics system from three angles: the Lua-driven 
 - **Slang diagnostic output is `warning[ENNNNN]:` (brackets), never `warning NNNNN`.** A `CHECK-NOT: warning 30856` passes vacuously — assert `E30856` / `[E30856]` and verify against the bug-present binary.
 - **`regenerate.py` is a linter, not the generator** — `.slang` catalog tests are LLM/operator-driven. The catalog has three divergent provenance stores (`//META`, `README.md`, `freshness.json`); `mark-fresh` only touches `freshness.json`.
 - **Deprecate-and-hide-from-docs = two mechanisms:** `[deprecated("msg")]` (compiler warning) + `//@hidden:` line-comment pragma (doc exclusion). Neither alone does both.
-- **warn→error escalation on invalid/miscompiling code is NOT a breaking change** (breaking = breaks valid code or ABI). The in-tree mechanism is a call-site if/else picking error-struct vs warning-struct by `languageVersion`; there is no per-diagnostic warnings-as-errors knob. A 202c *error* form depends on `SLANG_LANGUAGE_VERSION_202C`, which is added only by an OPEN PR — a pure-*warning* extension needs no version atom.
+- **warn→error escalation on invalid/miscompiling code, and a new error on meaningless code (a modifier with no possible effect, e.g. `row_major int x;` → E39026), are NOT breaking changes** — label `pr: non-breaking`, list the newly rejected forms, let the maintainer escalate (breaking = breaks valid code users rely on, or ABI). A `check-pr-label` failure right after a maintainer label swap is a race; it passes on rerun. The in-tree mechanism is a call-site if/else picking error-struct vs warning-struct by `languageVersion`; there is no per-diagnostic warnings-as-errors knob. A 202c *error* form depends on `SLANG_LANGUAGE_VERSION_202C`, which is added only by an OPEN PR — a pure-*warning* extension needs no version atom.
 - **Adjudicate a "false-positive warning?" dispute by diffing emitted target code**, not arguing intent. Run the discriminating control before relaying a plausible mechanism (E36108 'llvm' was alias-membership, not a linked-library leak).
 - **API-path option bugs can't be `.slang` tests** — the CLI path is often immune. `applySettingsToDiagnosticSink` double-applies and an empty option set clobbers with defaults; the empty set is the linked *composite* component's, not the loaded module's. Write a GPU-free `slang-unit-test`.
 - **E36110/E36108 can be a FALSE POSITIVE on a public interface impl calling a portable stdlib fn** (`normalize`, #12755) — front-end capability inference is target-agnostic (`_propagateRequirement` unions every target's `[require]`) and a Public decl's inferred set is clamped, so a `cuda_sm_2_0` atom the impl merely SUPPORTS fails the witness-table check even for `-target hlsl`. Spurious-vs-legit line: extra abstract-TARGET the impl merely supports (spurious) vs extra SUB-CAP needed within a shared target (legit).
@@ -67,9 +67,9 @@ The `SlangDiagnosticCallback` API has no severity parameter and only covers the 
 
 To add a multi-mode diagnostic display flag (e.g. for type-alias "aka" annotations): copy the `DiagnosticColor` option pattern, and put display-mode-dependent decoration in the diagnostics formatter (where the sink is reachable) rather than inside `Type::toText` which has no sink context ([Slang: adding a diagnostic type-display flag — DiagnosticColor template + toText has no sink context](../learnings/1782215211806-slang-adding-a-diagnostic-type-display-flag-diagno.md)).
 
-## warn→error Escalation Is Non-Breaking
+## warn→error Escalation and Newly Diagnosing Meaningless Code Are Non-Breaking
 
-Escalating a warning to an error for previously-silently-miscompiling code is **not** considered a "breaking change" in Slang — breaking means breaking valid code or ABI. The maintainer reverted a `pr: breaking change` label back to `pr: non-breaking` for a `[[vk::location]]` misuse escalation ([warn→error on an invalid *misuse* can still be labeled pr: non-breaking (maintainer call, slang #6216)](../learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md)).
+Escalating a warning to an error for previously-silently-miscompiling code is **not** considered a "breaking change" in Slang — breaking means breaking valid code or ABI. The maintainer reverted a `pr: breaking change` label back to `pr: non-breaking` for a `[[vk::location]]` misuse escalation ([warn→error on an invalid *misuse* can still be labeled pr: non-breaking (maintainer call, slang #6216)](../learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md)). The same holds for a brand-new error on code that was meaningless: #12992 made `row_major int x;` (a layout keyword on a non-matrix, previously silently ignored) report E39026, and the bot labeled it `pr: breaking change` with a peer reviewer agreeing and citing #12840; maintainer jkwak-work relabeled it `pr: non-breaking` ("the braking cases don't seem like a properly cases to worry about"). Default rule: when a change only starts rejecting code that has no possible effect, label `pr: non-breaking`, list the newly rejected forms in the PR body, and let the maintainer escalate; reserve `pr: breaking change` for ABI/API changes or for rejecting code real users plausibly write and rely on. CI trap when a maintainer swaps labels: `check-pr-label` can run in the gap between unlabel and label, fail, and fire a `github.ci_failed` webhook that passes on the automatic rerun about a minute later — compare `issues/<n>/events` label timestamps against the check-run `started_at` before treating it as real ([newly diagnosing meaningless code is pr: non-breaking](../learnings/1790877742239-slang-pr-label-newly-diagnosing-meaningless-code-i.md)).
 
 A `warn-error` on a diagnostic for invalid/miscompiling code can still carry its original warning-class label even when it becomes a hard error in certain contexts ([warn→error on an invalid *misuse* can still be labeled pr: non-breaking (maintainer call, slang #6216)](../learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md)).
 
@@ -107,7 +107,7 @@ The "implicit float→double conversion" warning **E30082** is emitted in `Seman
 
 The worked *incidents* — E36121-as-a-pre-existing-discard, proving a one-site guard fix complete, "a warning is not the end of a compile" (#8785 ICE/SIGSEGV), the severity-downgrade-receiver rule, shared-formatter golden regressions, `(Struct)0` deprecation, and the std140 source-loc drop — live on the companion page [Slang Diagnostics: Deep-Dive Incidents & Case Studies](slang-misc-diagnostics-deep-dives.md) (this page hit the 40 KB cap).
 
-**Source learnings (30):**
+**Source learnings (31):**
 - [Empty-statement lint (UnintendedEmptyStatement 20101) is a parser check keyed on parent-stmt type (fires only under IfStmt); warn→error-by-version copies the volatile-modifier if/else; 202c error form blocked on OPEN #12179](../learnings/1785434273353-empty-statement-lint-unintendedemptystatement-2010.md)
 - [stale E30055 catalog test is a syntax error](../learnings/1780347335365-slang-11407-stale-30055-catalog-test-is-a-syntax-e.md)
 - [catalog generated tests have 3 provenance stores](../learnings/1780352287480-slang-diagnostics-catalog-generated-tests-have-3-d.md)
@@ -126,6 +126,7 @@ The worked *incidents* — E36121-as-a-pre-existing-discard, proving a one-site 
 - [diagnostic callback API legacy severity-less](../learnings/1782215106250-slang-diagnostic-callback-api-legacy-severity-less.md)
 - [adding diagnostic type-display flag](../learnings/1782215211806-slang-adding-a-diagnostic-type-display-flag-diagno.md)
 - [warn→error is non-breaking](../learnings/1782716774890-warn-error-on-an-invalid-misuse-can-still-be-label.md)
+- [Slang PR label: newly diagnosing meaningless code is pr: non-breaking per maintainers](../learnings/1790877742239-slang-pr-label-newly-diagnosing-meaningless-code-i.md) — #12992 `row_major int x;` → E39026 relabeled non-breaking by jkwak-work; `check-pr-label` label-swap race fires a spurious ci_failed.
 - [pin source citations to comment text not line numbers](../learnings/1780177496970-pin-slang-source-citations-to-comment-text-or-func.md)
 - [validateEntryPoint validates SV semantics per-param with NO cross-entry-point aggregation (#11855)](../learnings/1782860967918-slang-validateentrypoint-validates-sv-semantics-pe.md)
 - [API compiler-options: applySettingsToDiagnosticSink double-apply clobbers with defaults; use slang-unit-test](../learnings/1782929205990-slang-api-compiler-options-applysettingstodiagnost.md)

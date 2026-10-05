@@ -3,7 +3,7 @@ title: Slang Compiler Casts, Lookup & Language Server — Operator Resolution, D
 type: concept
 group: slang-grab-bag
 tags: [slang, name-resolution, operators, lookup, optional, language-server, module-serialization, diagnostics]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -21,6 +21,11 @@ because even maintainers get surprised.
   `__subscript`. This is documented + test-pinned as intentional. The maintainer-preferred fix for
   "an operator you declared is never honored" is a *declaration-site diagnostic* in
   `checkCallableDeclCommon`, not making member operators resolvable (a language-design change).
+- **Constraint-suggestion diagnostics (#13225) have three classification traps**: an interface
+  default method's hidden `This` is a `GenericTypeParamDecl` (exclude via
+  `defaultImplDecl->thisTypeDecl`), `v::m` on a value has a non-`TypeType` base (read
+  `StaticMemberExpr` from the expr), and `DIAGNOSTIC_TEST diag=` ignores note order (pin order
+  with `filecheck=`).
 - **`Decl::hiddenFromLookup` only affects LOCAL vars** — it's `&&`-gated on `isLocalVar`, so setting
   it on a container member (struct/type/func) has no effect. Read the *honoring* site, not just the
   field definition, before trusting "set this flag."
@@ -94,6 +99,8 @@ verify it against a built compiler — that is exactly the class of claim Slang'
 falsifies ([associated types are reachable through a value in type
 position](../learnings/1790106628469-slang-associated-types-are-reachable-through-a-val.md)).
 
+Round 3 of the same #13225 review found three more traps for a "suggest a missing constraint" diagnostic. (1) **A "base is a generic type parameter" check also catches the hidden `This` of interface default methods.** The parser builds each default method as an `InterfaceDefaultImplDecl` whose synthesized `thisTypeDecl` is a `GenericTypeParamDecl` named `This` (`slang-parser.cpp:6224-6232`), and `visitThisExpr` types `this` as `DeclRefType(thisTypeDecl)` (`slang-check-expr.cpp:9315-9318`), so `as<GenericTypeParamDecl>` passes and the note can suggest `where This : IBar` — a clause no one can write, because `maybeParseGenericConstraints` returns early when `genericParent` is null (`slang-parser.cpp:1969`). Exclude it with `defaultImplDecl->thisTypeDecl == decl`. (2) **For `v::m` on a value, `baseType` is not a `TypeType`.** `x::m` is always a `StaticMemberExpr` routed through `_lookupStaticMember`; with a value base, `handleLeafExpr` takes the `DeclRefType` branch and hands the value's *type* to `lookupMemberResultFailure`, so "a `TypeType` base means static access" misclassifies `v::m` as a value access — take the access kind from the expression too (`as<StaticMemberExpr>(expr)`). (3) **`DIAGNOSTIC_TEST:SIMPLE(diag=...)` does not check order**: each annotation matches the first unmatched diagnostic on its line (`tools/slang-test/diagnostic-annotation-util.cpp`), so two sorted `//CHECK:` note lines pass in either emit order. To pin ordering use a `//TEST:SIMPLE(filecheck=...)` file and declare the interfaces in reverse order so walk order differs from sorted order ([generic-param base checks catch the hidden This; v::m has a non-TypeType base; DIAGNOSTIC_TEST ignores note order](../learnings/1790871269416-slang-diagnostics-generic-param-base-checks-also-c.md)).
+
 A companion provenance pitfall in the same constraint-suggestion work (#13140): to exclude
 "builtin"/"library" decls, `isFromCoreModule(decl)` (`slang-lower-to-ir.cpp`) checks only
 `FromCoreModuleModifier`, which is applied **solely** to the embedded core module (core.meta.slang /
@@ -145,7 +152,7 @@ covering all three full-load callers); `m_version` is private and needs a public
 caller-side check ([Slang serialized module has TWO version axes — only the format one is checked on
 load](../learnings/1787695975002-slang-serialized-module-has-two-version-axes-only-.md)).
 
-**Source learnings (9):**
+**Source learnings (10):**
 - [Slang: fallible `as` cast already yields Optional<T>](../learnings/1787675835939-slang-fallible-as-cast-already-yields-optional-t-v.md) — if(let)/guard let support as-operands for free; negative control proves the wrapper.
 - [User-defined attribute completion duplicates (struct + synthesized mirror AttributeDecl)](../learnings/1787700311108-user-defined-attribute-completion-duplicates-struc.md) — dedup by final label in collectAttributes with a deterministic kind tie-break.
 - [Slang has no structured fix-it / auto-edit diagnostic infrastructure](../learnings/1787705444892-slang-has-no-structured-fix-it-auto-edit-diagnosti.md) — every fix-it ask is either a better diagnostic/note or a new cross-cutting project.
@@ -155,3 +162,4 @@ load](../learnings/1787695975002-slang-serialized-module-has-two-version-axes-on
 - [Slang serialized module has TWO version axes — only the format one is checked on load](../learnings/1787695975002-slang-serialized-module-has-two-version-axes-only-.md) — semantic m_version (4..28) is not range-checked; gate belongs in readSerializedModuleIR_.
 - [associated types are reachable through a value in type position (t.assocThing)](../learnings/1790106628469-slang-associated-types-are-reachable-through-a-val.md) — the isEffectivelyStatic lookup branch rewrites value access to a TypeType; verify "member kind X unreachable in context Y" claims against a built compiler.
 - [isFromCoreModule excludes only the embedded core module, not the source/standard-modules/ std-lib modules](../learnings/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md) — no std-lib provenance bit; same-module getModuleDecl identity check is the robust alternative but narrows to same-module.
+- [Slang diagnostics: generic-param base checks also catch the hidden This; v::m has a non-TypeType base; DIAGNOSTIC_TEST ignores note order](../learnings/1790871269416-slang-diagnostics-generic-param-base-checks-also-c.md) — #13225 round 3: exclude `thisTypeDecl`; classify static access from `StaticMemberExpr`; use `filecheck=` to pin note order.
