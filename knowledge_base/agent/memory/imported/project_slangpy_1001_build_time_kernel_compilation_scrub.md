@@ -192,7 +192,7 @@ skim. Re-run in the checkout: controls 56/10, target 0. Textbook
 
 Also: the standing comment miscites `device.cpp:363-364` for cache paths (those lines are
 shader-model/feature-query code; real sites `device.h:157`/`:162`, `device.cpp:98-118`) — triager used
-the correct pointers and did not repeat it. Verbatim memo:
+the correct pointers and did not repeat it. Distilled memo (HEAD pointers, PR record, A/B/C):
 [[project_slangpy_1001_triager_memo_verbatim]].
 
 **Open state:** issue remains OPEN, unowned, awaiting a **human roadmap decision**. Nothing further

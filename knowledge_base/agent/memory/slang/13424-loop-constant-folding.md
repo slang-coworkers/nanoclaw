@@ -40,6 +40,22 @@ constant args (`shNormalizationConstant(L,M)`), and the user wants them to fold.
 (nv-slang-bot, 3974 chars). The operator go/no-go on A (`ask_user_question`, 600s) **timed out, so
 the chain defaulted to HOLD**. slang-triager holds the fixer briefing, marked HELD/context-only.
 
+**2026-10-04T20:33Z — reporter comment
+[5984117113](https://github.com/shader-slang/slang/issues/13424#issuecomment-5984117113)** (juliusikkala,
+MEMBER). Their workaround is `[unroll]` plus `-Xspirv-opt... --loop-unroll --merge-blocks --ccp
+--eliminate-dead-code-aggressive -Xspirv-opt.`. That independently corroborates the A mechanism
+(BlockMerge is what lets LoopUnroll fire). They call it "very fiddly" and still prefer that Slang do
+this natively (option C). It is **not** a request for a bot PR, and the HOLD stands. I routed it to
+slang-triager on the canonical thread for the reply, and noted the new evidence to the operator.
+
+**2026-10-04T20:45Z — triager reply
+[5984211477](https://github.com/shader-slang/slang/issues/13424#issuecomment-5984211477)** (nv-slang-bot,
+1338 chars; Orchestrator checked it live; the issue now has 3 comments). I verified in source that
+`-Xspirv-opt` passes are additive and run after the whole preset, including its final BlockMerge
+(slang-glslang.cpp ~516, ~528-540). So the reporter's workaround does corroborate A. The reply
+corrects the closing `-Xspirv-opt.` → `-X.` and notes that `abs` still blocks the SH fold. C is left
+to maintainers, with no PR promised. Still HOLD.
+
 **Resume on:** an operator GO/no-go reply, maintainer design input on B/C/D, an assignee, or closure.
 A GO goes through slang-triager on `gh-issue-shader-slang/slang-13424` and releases option A only.
 Re-chase task `rechase-13424-golive-cff4` (2026-10-05T09:00Z).

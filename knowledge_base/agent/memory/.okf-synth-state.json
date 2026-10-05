@@ -2,17 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-09-14T04:18:30Z",
-   "backlog": 447620,
-   "defects": 0,
-   "offenders": 108,
-   "top": {
-    "path": "imported/feedback_a_relay_names_an_inbound_that_must_exist_in_the_thread.md",
-    "class": "OVERSIZE",
-    "size": 25242
-   }
-  },
-  {
    "at": "2026-09-15T04:09:08Z",
    "backlog": 413467,
    "defects": 0,
@@ -329,6 +318,17 @@
     "path": "imported/project_slangpy_1001_triager_memo_verbatim.md",
     "class": "OVERSIZE",
     "size": 16167
+   }
+  },
+  {
+   "at": "2026-10-04T18:14:29Z",
+   "backlog": 83,
+   "defects": 0,
+   "offenders": 2,
+   "top": {
+    "path": "imported/project_9661_cuda_getdimensions_scrub.md",
+    "class": "OVERSIZE",
+    "size": 16060
    }
   }
  ]

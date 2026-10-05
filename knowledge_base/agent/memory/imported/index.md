@@ -1014,6 +1014,7 @@ Migrated 2026-08-30; /okf-synthesis distills over time.
 - [project_13276_rt_payload_extern_assoc_type_layout](project_13276_rt_payload_extern_assoc_type_layout.md)
 - [project_13306_global_uniform_as_temporary_hlsl_gec](project_13306_global_uniform_as_temporary_hlsl_gec.md)
 - [project_13397_cuda_pointer_only_buffer_refs](project_13397_cuda_pointer_only_buffer_refs.md)
+- [project_13427_double_vector_varying_location_count](project_13427_double_vector_varying_location_count.md)
 - [project_6319_dup_sysval_pr11885](project_6319_dup_sysval_pr11885.md)
 - [project_6434_nthsetbit_intrinsic_scrub](project_6434_nthsetbit_intrinsic_scrub.md)
 - [project_6471_combined_sampler_register_space](project_6471_combined_sampler_register_space.md)

@@ -47,4 +47,5 @@ description: slang#13385 — HLSL AppendStructuredBuffer.Append of a struct with
   `falcor-ci` environment (reviewers `ci-approvers`), and 100+ repo runs are queued at the same gate. No human comments are on #13386 or #13388, and #13388 has no
   assignee or competing PR. #13385 is assigned to kaizhangNV (board shepherd). I reported both human-parks to orchestrator-dashboard (msg 11). No coworker was nudged.
 - **Re-chase:** `rechase-13385-13388-6855` ran 2026-10-03; the next is `rechase-13386-13388-4c40` at 2026-10-05 09:00Z.
+- **10-04 overlap:** #13425 (#13423 Metal scalar CB) adds a `canCopyStorageValueDirectly` gate in the same store-path hunks, which also fixes #13379. I decided the order: **#13386 lands first**, then #13425 rebases and drops its gate.
 - **Resumes on:** CI approval or result on #13386, a human comment or review, or the operator's #13388 go/no-go.
