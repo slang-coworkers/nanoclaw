@@ -1,6 +1,6 @@
 # shellcheck shell=bash
-# Sourced, not executed. The one definition of "this PR's description no longer
-# explains its head", shared by the two gates that enforce the refresh
+# Sourced, not executed. The one definition of "this PR's explanation comment no
+# longer explains its head", shared by the two gates that enforce the refresh
 # (gate-explain-on-stop.sh, gate-critique-on-deliver.sh). pr-auto-map.sh writes
 # the receipts this reads.
 #
@@ -47,11 +47,11 @@ EXPLAIN_DIFF_OWED_JQ='
   | (if $last != null and ($last.head // "") != "" then "pushed \($last.head[0:7]) to \($k)"
      elif $last != null then "pushed to \($k)"
      else "opened \($k)" end)
-    + "; its description still explains "
+    + "; its explanation comment still explains "
     + (if ($pr.explained_head // "") != "" then "head \($pr.explained_head[0:7])" else "nothing" end)
 '
 
-# Print one "<what happened>; its description still explains <what>" line per
+# Print one "<what happened>; its explanation comment still explains <what>" line per
 # PR that owes a refresh; print nothing when none does or there are no receipts.
 explain_diff_owed_lines() {
   local f="${1:-$EXPLAIN_DIFF_STATE}"

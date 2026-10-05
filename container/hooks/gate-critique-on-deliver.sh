@@ -378,9 +378,9 @@ else
   fi
 fi
 
-# PR description refresh: a fix report / review request waits until every PR
-# this session created or pushed to has a description explaining its pushed
-# head. Checked after the critique so a delivery short on both hears about the
+# Explanation refresh: a fix report / review request waits until every PR
+# this session created or pushed to has an explanation comment explaining its
+# pushed head. Checked after the critique so a delivery short on both hears about the
 # critique first. Like the comment rule it leaves the denial counter alone: the
 # remedy is an upsert, not a critique round, and the escalation path (retracted
 # only by a new critique round) would card a human for nothing.
@@ -391,7 +391,7 @@ if [ -z "$DENIAL_REASON" ] && [ -n "$EXPLAIN_HIT" ]; then
   if [ -n "$OWED" ]; then
     OWED_LIST=$(jq -rn --arg o "$OWED" '$o | split("\n") | map(select(length > 0)) | join("; and ")')
     cat >&2 << EOF
-PR DESCRIPTION REFRESH REQUIRED before this $EXPLAIN_HIT: $OWED_LIST.
+EXPLANATION COMMENT REFRESH REQUIRED before this $EXPLAIN_HIT: $OWED_LIST.
 
 Run /explain-diff-html for the PR's current head (upsert_pr_body.py), then
 resend. If the upsert itself fails (e.g. a GitHub error), tell your parent in a
@@ -706,8 +706,8 @@ $GATE_TITLE before $HIT.
 
 Reason: $DENIAL_REASON.
 
-The reviewer reads the PR description first, so it must explain the head you
-pushed. $REMEDY for each PR named above, then resend.
+The reviewer reads the PR's explanation comment first, so it must explain the
+head you pushed. $REMEDY for each PR named above, then resend.
 EOF
     exit 2
   fi
