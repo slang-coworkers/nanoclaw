@@ -33,5 +33,24 @@ Sampled v2025.17 through v2026.19: all emit `float3`.
   stays, because without it `-fvk-use-scalar-layout` would pack IR while reflection stays native, which is a miscompile.
   The fixer is building in `wt-slang-13423`; nothing is pushed yet.
 
+## PR #13425 (draft, opened 10-04, head `ac70249886`, nv-slang-bot)
+`fix/issue-13423` → master. Label `pr: non-breaking`, closes #13423, 10 files +275/−15. **I checked all of this live on 10-04.**
+New `MetalConstantBuffer` IR rule name (appended + stable name), reflection honours `ScalarDataLayoutType`,
+Metal-only EP-uniforms guard, test `tests/metal/constant-buffer-scalar-layout.slang`, and the Tier-2 unit test
+`unit-test-metal-scalar-constant-buffer-tier-2-reflection.cpp`. CI on the draft: 4 pass, 56 skipping; macOS
+`metallib` only runs once it's un-drafted. A' is raised in the PR body as a maintainer question. The triager reported
+byte-identity 25/25 and slang-test 4268/4269 (gfx-smoke fails on master too).
+
+## 10-04 17:07Z — Triage Resolution (head `278cdfaa01`)
+I checked live: draft, 14 files +540/−24, 4 incremental commits, closes #13423. slang-reviewer r2 APPROVE_WITH_NITS (0 bugs). The r1 🔴
+(copying a scalar CB into an RWStructuredBuffer let `IRCopyLogical` reach a non-SPIR-V emitter, an ICE) was fixed at the producer with
+`canCopyStorageValueDirectly`. Codex CODE and OUTPUT approve. Adds a docs line and bumps `k_maxSupportedModuleVersion` from 33 to 34.
+The dispatch run 37218415580 is `waiting`, and pull_request CI is skipped because the PR is a draft.
+**Overlap with #13386, which I verified:** both PRs rewrite the store-path hunks at master ~:1923 and ~:2105 of
+lower-buffer-element-type.cpp. #13425's copy gate also fixes #13379, which #13386 fixes more broadly (`storeLogicalValue`).
+**My order decision: #13386 lands first** (it is older, already reviewed, and closes #13379 + #13385). #13425 keeps its gate so it stands
+alone and does not depend on an unmerged draft. If #13386 lands first, #13425 rebases and drops the gate, and keeps its tests as regression coverage.
+The PR body gets a "Related to #13379 / overlaps #13386" note with no code change. Re-chase `rechase-13425-maintainer-540f` (2026-10-06 09:00Z).
+
 ## Resumes on
-The fixer's draft PR / report; a human comment on #13423; any maintainer objection on the #11578 design.
+A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then rebases); a human comment on #13423; any maintainer objection on the #11578 design.

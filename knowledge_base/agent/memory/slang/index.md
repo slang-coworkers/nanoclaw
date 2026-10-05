@@ -13,8 +13,12 @@ decay and must be re-read, not remembered.
 ## Map
 
 - [slang#12627 — CUDA masked RWTexture store, draft PR #13363](12627-cuda-masked-rwtexture-store.md) —
-  held on jkwak-work's coherency answer (RMW+warning vs CUDA error; warning scope). Round-2 review verdict was lost
-  to a reviewer restart and chased 10-04. Next re-chase `rechase-12627-jkwak-8576` (2026-10-07). Follow-ups #13361/#13362/#13364/#13365 not dispatched.
+  held on jkwak-work's coherency answer (RMW+warning vs CUDA error; warning scope). Peer review complete (2 rounds, 0 bugs),
+  `[Fix Report]` in 10-04 at head `b79ae81e23`. Next re-chase `rechase-12627-jkwak-8576` (2026-10-07). Follow-ups #13361/#13362/#13364/#13365 not dispatched.
+
+- [slang#13428 — local multi-declarator `j < 2` → E30015 (parser declarator registration)](13428-local-multi-declarator-generic-lookahead.md) —
+  regression from #6281. Approach B, plus the DeclGroup hide/unhide miscompile, is in **draft PR #13432** (`fix/issue-13428-b`), waiting on the reviewer and CI.
+  Sibling #13430 (local struct `decl has no parent`) was released to the fixer on its own thread 10-05.
 
 - [slang#13424 — loops with a constant trip count are not folded at -O3](13424-loop-constant-folding.md) —
   triaged + reproduced, P3 enhancement, SPIR-V only (spirv-opt LoopUnroll declines Slang's loop shape). Option A (1-line BlockMerge) operator go/no-go
@@ -25,7 +29,7 @@ decay and must be re-read, not remembered.
 
 - [slang#13423 — Metal ConstantBuffer ignores ScalarDataLayout](13423-metal-cb-scalar-layout.md) —
   triaged + reproduced, enhancement P2, not a regression (#11578 kept CBs native on purpose). GO on Approach A (explicit
-  `ScalarDataLayout` only, IR + reflection + Tier-2) via the triager on 10-03; A' is a PR design question. Overlaps draft #13300.
+  `ScalarDataLayout` only, IR + reflection; Tier-2 :2869 dropped as unreachable, covered by a unit test) via the triager on 10-03 → **draft PR #13425** (`278cdfaa01`, review r2 APPROVE_WITH_NITS), waiting on a maintainer review and un-draft. Overlaps #13386's store path, and #13386 lands first; re-chase `rechase-13425-maintainer-540f` (10-06); A' is a PR design question. Overlaps draft #13300.
 
 - [slang#13419 — Conditional resource loses bindings/reflection when its condition uses an extern enum](13419-extern-enum-conditional-binding.md) —
   triaged + reproduced, P2, not a regression; link-time folding misses checked initializers. The reporter self-assigned it, so NO-GO and the fixer briefing + prototype are HELD; re-chase `rechase-13419-assignee-b8bd` (2026-10-07).
@@ -35,7 +39,7 @@ decay and must be re-read, not remembered.
 
 - [slang#13409 — Metal groupshared forwarded across barriers; sibling #13412 (all-target pointer roots)](13409-metal-groupshared-barrier-forwarding.md) —
   triaged + reproduced, root at `slang-ir-util.cpp:1442`. Scope widened to (b): strict A plus an emitter guard, one draft PR, fixer building.
-  #13412 filed and held until #13409 has a reviewer verdict. Re-chase `rechase-13409-sibling-7aad` (2026-10-04).
+  PR #13421 REQUEST_CHANGES(small, 0 bugs); 10-04 G1→narrow, G2 fix, #13412 GO (corrected B). Re-chase `rechase-13421-g1g2-13412-4e79` (2026-10-06).
 
 - [slang PR #12136 — lazy autodiff builtins, fork PR approver loop](12136-lazy-autodiff-approver-loop.md) —
   re-pushed 10 times. R10 (`14a2185f`) is only a master merge, so I held it. The R9 real commit was never decided: the approver session has been in cost escalation since Sep 14, and its dispatches go unanswered. The ledger is also unset. All of this is with the operator; re-chase `rechase-12136-approver-c-c050` (2026-10-04).

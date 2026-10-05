@@ -30,6 +30,10 @@ goto-def allowlist is core/glsl only. At R10 these sit at `slang-language-server
 
 ## Open blockers (all need the operator)
 
+0. **The approver group is `paused=1`** (since ~09-10, operator decision pending from 09-29 msg 29).
+   R7/R9 arrived after the pause, so they sit unread **regardless of cost**: a `cost-cap continue`
+   alone won't wake it. Caught 10-04; the Oct-01 ask had missed it. #12136 is now listed in
+   `approver-pause-followup-b5f2`. ⇒ When a session is silent, check `paused` before blaming cost.
 1. **Cost escalation stalls the session.** `ncl cost-cap status` shows `escalated`:
    spent $51.18, cap $31.59, ceiling $83.69. Dispatches R7 (inbound seq 78) and R9 (seq 80) were
    delivered. `last_active` updated on each, but there has been **no outbound since seq 147
@@ -49,4 +53,6 @@ Instead, compare the PR's own diff: take the `+/-` lines of `compare <master-par
 for each implementation file and check them against the previous revision's
 `compare <merge-base>...<prevHead>`. R10 vs R9 matched on all 23 files.
 
-Re-chase: `rechase-12136-approver-c-c050` (2026-10-04).
+Re-chases: `rechase-12136-approver-c-c050` (10-04: unchanged, head still `14a2185f`, no operator
+answer; re-pinged as dashboard msg 41 with the pause correction) → `rechase-12136-approver-d-b6d8`
+(10-07 09:00Z).

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#12627 — CUDA/PTX component-masked RWTexture2D store emits a subscript on CUsurfObject
-description: Fix is in draft PR #13363 (surface read-modify-write + warning E56006), held on jkwak-work's answer to the CUDA coherency question. Follow-ups #13361/#13362/#13364/#13365.
+description: Fix is in draft PR #13363 (surface read-modify-write + warning E56006), peer review complete at b79ae81e23, held on jkwak-work's answer to the CUDA coherency question. Follow-ups #13361/#13362/#13364/#13365.
 tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, held, awaiting-maintainer]
 ---
 
@@ -10,20 +10,23 @@ tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, held, awaiting-mai
 Assignee and PR shepherd: jkwak-work. Fixer session `sess-1787171888548-4gv6cq` (thread `gh-issue-shader-slang/slang-12627`).
 Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170935547-1z63sa`.
 
-## State (checked live 2026-10-04 02:15Z)
+## State (checked live 2026-10-04 03:25Z)
 
-- **PR [#13363](https://github.com/shader-slang/slang/pull/13363):** draft, `fix/issue-12627`, head `899bbbe624`,
-  5 ahead / 12 behind master, no human reviews. Gated CI hasn't run because it's a draft. `license/cla` is
-  pending (the bot-identity problem, tracked in `rechase-cla-bot-identity-*`; not a required check).
+- **PR [#13363](https://github.com/shader-slang/slang/pull/13363):** draft, `fix/issue-12627`, head `b79ae81e23`
+  (merged master `6ba151dcfc`, no force-push), 22 files +913/−155, no human reviews. CI on the draft: 4 pass / 1 pending /
+  56 skipping (gated CI doesn't run on drafts). `license/cla` is pending: bot-identity problem, not a required check.
+- **Peer review is done: both rounds used.** R1 REQUEST_CHANGES with 0 bugs, fixed at `899bbbe624`. R2 REQUEST_CHANGES with
+  0 bugs (2 gaps, 2 nits), fixed at `b79ae81e23`. The `[Fix Report]` arrived 10-04 03:22Z. Caveats: both Reviewer A runs were
+  budget-capped and incomplete, and Devin timed out; the coordinator verified A's findings by hand. G4 (duplicate warning per
+  specialization) was declined, with the reason in the PR. Clarity items C007 and FG001 are deferred.
+- **New diagnostics:** E56006 warning (CUDA-only, provisional), E56007 (conversion unavailable) and E56008 (unspelled shape)
+  errors. Both errors cover cases that already failed in nvrtc, so they don't break working code.
 - **Open with jkwak-work, unanswered since 10-01 03:10Z.** One reply settles both:
   [coherency Q](https://github.com/shader-slang/slang/issues/12627#issuecomment-5923952063): (a) keep the RMW with a warning,
   or (b) make it a compile-time error on CUDA. The warning-scope question
-  ([5923147529](https://github.com/shader-slang/slang/issues/12627#issuecomment-5923147529)) asks CUDA-only or all
-  RMW targets. Secondary: [5925676317](https://github.com/shader-slang/slang/issues/12627#issuecomment-5925676317) asks whether to fold #13364 into #13363.
-- **Re-chase:** `rechase-12627-jkwak-8576` (2026-10-07 02:00Z).
-- **Review:** round 1 was REQUEST_CHANGES with 0 bugs; fixed at `899bbbe624`. The round-2 run finished on 10-01, but the reviewer's
-  session restarted before it merged the results, so the verdict was **never sent**. That went unseen for 3 days.
-  The 10-04 re-chase nudged the fixer, which pinged the reviewer, which is now merging the results.
+  ([5923147529](https://github.com/shader-slang/slang/issues/12627#issuecomment-5923147529)) asks CUDA-only or all RMW targets.
+  Secondary: [5925676317](https://github.com/shader-slang/slang/issues/12627#issuecomment-5925676317) asks whether to fold #13364 in.
+- **Re-chase:** `rechase-12627-jkwak-8576` (2026-10-07 02:00Z). Whether to ping jkwak-work again is the operator's call.
 
 ## Follow-ups (all bot-filed, not dispatched, `doNotNudge` in supervisor-state.json)
 

@@ -34,6 +34,10 @@ container never started.
 
 **Prompt edits race.** Each webhook runs in its own session, and `ncl tasks update --prompt` replaces the whole prompt. On 2026-10-02 the slang-rhi#887 and #888 sessions edited it at the same minute, and #888's write disappeared with no error. After an update, re-read the prompt and confirm your PR is in it. If it's missing, re-apply your entry to the prompt as it now stands.
 
+**A silent approver session may be paused rather than out of budget.** On 10-01 I diagnosed #12136's silence
+as a cost escalation and asked continue/lapse without checking `paused`. The R7/R9 dispatches were sent
+after the pause began. Check both before asking the operator to pick a remedy.
+
 **Follow-up timer:** `approver-pause-followup-b5f2` was itself `paused` and past due on
 2026-10-01, so the pending decision had no live timer. Who paused it, and why, is unknown, so I
 didn't resume it on my own authority.

@@ -4213,6 +4213,8 @@
 - [discord sweep deepwiki may be hook denied use gh a](ag-1776713258088-r8pp2t/1791015402136-discord-sweep-deepwiki-may-be-hook-denied-use-gh-a.md) — _ag-1776713258088-r8pp2t_
 - [github actions event schedule filter returns stale](ag-1776713258088-r8pp2t/1791015439528-github-actions-event-schedule-filter-returns-stale.md) — _ag-1776713258088-r8pp2t_
 - [github search review requested vs user review requ](ag-1776713258088-r8pp2t/1791015886532-github-search-review-requested-vs-user-review-requ.md) — _ag-1776713258088-r8pp2t_
+- [bot pr cla pending old nv slang bot users noreply ](ag-1776713258088-r8pp2t/1791101927185-bot-pr-cla-pending-old-nv-slang-bot-users-noreply-.md) — _ag-1776713258088-r8pp2t_
+- [bot prs cla blocked when commits use nv slang bot ](ag-1776713258088-r8pp2t/1791102425218-bot-prs-cla-blocked-when-commits-use-nv-slang-bot-.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4338,6 +4340,7 @@
 - [gh api job logs pass allow escape sequences or get](ag-1776713259045-nax3cr/1790909517431-gh-api-job-logs-pass-allow-escape-sequences-or-get.md) — _ag-1776713259045-nax3cr_
 - [license cla pending by the bot s own identity oper](ag-1776713259045-nax3cr/1790936381295-license-cla-pending-by-the-bot-s-own-identity-oper.md) — _ag-1776713259045-nax3cr_
 - [touch tracker verdict now requires a paired log ro](ag-1776713259045-nax3cr/1791004403685-touch-tracker-verdict-now-requires-a-paired-log-ro.md) — _ag-1776713259045-nax3cr_
+- [scheduled task prompts must not assert the gate ou](ag-1776713259045-nax3cr/1791148386903-scheduled-task-prompts-must-not-assert-the-gate-ou.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4821,6 +4824,11 @@
 - [extern static const link time folding only works f](ag-1780667166418-apezq5/1790993221985-extern-static-const-link-time-folding-only-works-f.md) — _ag-1780667166418-apezq5_
 - [metal constantbuffer ignores the l data layout par](ag-1780667166418-apezq5/1791056669263-metal-constantbuffer-ignores-the-l-data-layout-par.md) — _ag-1780667166418-apezq5_
 - [spirv opt loopunroll silently skips slang s unroll](ag-1780667166418-apezq5/1791074922027-spirv-opt-loopunroll-silently-skips-slang-s-unroll.md) — _ag-1780667166418-apezq5_
+- [slang tryparsegenericapp swizzle bases swizzleexpr](ag-1780667166418-apezq5/1791128536486-slang-tryparsegenericapp-swizzle-bases-swizzleexpr.md) — _ag-1780667166418-apezq5_
+- [vulkan 64 bit varying location counts slang glsl v](ag-1780667166418-apezq5/1791134194001-vulkan-64-bit-varying-location-counts-slang-glsl-v.md) — _ag-1780667166418-apezq5_
+- [caninsthavesideeffectataddress an escaped local va](ag-1780667166418-apezq5/1791143981459-caninsthavesideeffectataddress-an-escaped-local-va.md) — _ag-1780667166418-apezq5_
+- [slang parser local decl groups are invisible to pa](ag-1780667166418-apezq5/1791148614375-slang-parser-local-decl-groups-are-invisible-to-pa.md) — _ag-1780667166418-apezq5_
+- [slang parser parentdecl container is not proof of ](ag-1780667166418-apezq5/1791150138311-slang-parser-parentdecl-container-is-not-proof-of-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5508,6 +5516,10 @@
 - [never override git user name email when committing](ag-1780667166439-vmjrwe/1791004476673-never-override-git-user-name-email-when-committing.md) — _ag-1780667166439-vmjrwe_
 - [image subscript rmw shortcut compare a swizzle aga](ag-1780667166439-vmjrwe/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md) — _ag-1780667166439-vmjrwe_
 - [slang ir layout rule name is a lowering selector a](ag-1780667166439-vmjrwe/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md) — _ag-1780667166439-vmjrwe_
+- [slang ir copylogical emits spir v only ircopylogic](ag-1780667166439-vmjrwe/1791124516519-slang-ir-copylogical-emits-spir-v-only-ircopylogic.md) — _ag-1780667166439-vmjrwe_
+- [slang tryparsegenericapp classify by as declreftyp](ag-1780667166439-vmjrwe/1791149609749-slang-tryparsegenericapp-classify-by-as-declreftyp.md) — _ag-1780667166439-vmjrwe_
+- [slang test filecheck buf 2 vacuously matches type ](ag-1780667166439-vmjrwe/1791162065748-slang-test-filecheck-buf-2-vacuously-matches-type-.md) — _ag-1780667166439-vmjrwe_
+- [session attribution reminder adds co authored by c](ag-1780667166439-vmjrwe/1791166638297-session-attribution-reminder-adds-co-authored-by-c.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5843,6 +5855,12 @@
 - [a not only x not error filecheck lane passes when ](ag-1780667168475-a9tac8/1791009233810-a-not-only-x-not-error-filecheck-lane-passes-when-.md) — _ag-1780667168475-a9tac8_
 - [reviewer a on large slang prs the 30 budget can cu](ag-1780667168475-a9tac8/1791081955973-reviewer-a-on-large-slang-prs-the-30-budget-can-cu.md) — _ag-1780667168475-a9tac8_
 - [reviewer a subagent outputs recover full text from](ag-1780667168475-a9tac8/1791094754719-reviewer-a-subagent-outputs-recover-full-text-from.md) — _ag-1780667168475-a9tac8_
+- [metal has no lowercopylogical two storage lowering](ag-1780667168475-a9tac8/1791096341904-metal-has-no-lowercopylogical-two-storage-lowering.md) — _ag-1780667168475-a9tac8_
+- [reviewer a slang pr review runner runs out of budg](ag-1780667168475-a9tac8/1791132067717-reviewer-a-slang-pr-review-runner-runs-out-of-budg.md) — _ag-1780667168475-a9tac8_
+- [search issue comments not just issues before calli](ag-1780667168475-a9tac8/1791148129234-search-issue-comments-not-just-issues-before-calli.md) — _ag-1780667168475-a9tac8_
+- [slang pr review runner scripts may lose exec bit r](ag-1780667168475-a9tac8/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md) — _ag-1780667168475-a9tac8_
+- [reviewer a inner cli can end its turn with backgro](ag-1780667168475-a9tac8/1791168330129-reviewer-a-inner-cli-can-end-its-turn-with-backgro.md) — _ag-1780667168475-a9tac8_
+- [caninsthavesideeffectataddress the pure callee exe](ag-1780667168475-a9tac8/1791168347129-caninsthavesideeffectataddress-the-pure-callee-exe.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

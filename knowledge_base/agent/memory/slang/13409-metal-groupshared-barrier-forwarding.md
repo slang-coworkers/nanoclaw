@@ -36,10 +36,41 @@ use the App identity.
 ## Sibling #13412 (bot-filed by triager 10-02 19:20Z, `reproduced`)
 Pointer roots (loaded/computed/param) get the same exemption, on **all targets incl. direct SPIR-V**.
 Finding 3 (a `RWStructuredBufferGetElementPtr` root, a device-buffer load moved across barriers, source-emit only)
-was posted as comment 5963139346; I verified it: bot author, 3207 chars. **No fixer yet**: GO waits for a reviewer
-verdict on #13409's draft. The fix is the corrected B: only an unpassed local `var` is immune, and inout params
+was posted as comment 5963139346; I verified it: bot author, 3207 chars. **GO given 2026-10-04** (see below). The fix is the corrected B: only an unpassed local `var` is immune, and inout params
 need an explicit decision. Naive B breaks copy-in/copy-out after `undoParameterCopy`.
 
+## Review + decisions 2026-10-04 (re-chase)
+- slang-reviewer at 10-03 06:33Z: **REQUEST_CHANGES (small), 0 bugs, 2 gaps.** Revert check master 0/11 vs head 11/11.
+  Full A/B shows no regressions. 131/136 groupshared outputs are byte-identical; the other 5 are Metal outputs that
+  move to the correct order. **The fixer never acted on it** (silent about 37h, head unchanged).
+- **G1 → Option 1:** narrow the GroupShared early return to `isGroupSharedAddr(root) && isChildInstOf(root, func)`.
+  The global path already handles barriers on HLSL/GLSL/SPIR-V. I verified on master that a `[noSideEffect]` reader
+  of a global groupshared keeps the earlier store on HLSL/GLSL. Strict A everywhere would cost those targets
+  forwarding with no test behind it. **G2:** `METALLIB: result code = 0`. The reviewer's "untracked device-buffer
+  load" note is probably finding 3 (it only read the #13412 body), and the triager is checking that.
+- **#13412 GO** (sent to the triager on `gh-issue-shader-slang/slang-13412`): corrected B. Immune roots are an
+  unpassed non-GroupShared local `IRVar`, plus out/inout/borrow params (copy semantics). Everything else (loaded or
+  computed ptr, `T*` param, `rwstructuredBufferGetElementPtr`) takes the global path. `__ref` gets an explicit
+  decision. Use one named helper that composes with #13421. Perf/semantics A/B is required. Draft only.
+- 10-04 19:59Z: the triager briefed the fixer (thread `-13412`, msg 3). It added an **escape check**: on master a local var
+  whose address escapes through a by-value struct arg (`isValueType(Struct)` skips it in the arg loop) or through
+  global memory gets forwarded too. I reproduced the CUDA case (`w_0(&_S1); outb = 1U`). It also added the
+  `alias_inout` test (`y=x; w(); return y` with `x`=`g[0]`), which I saw is wrong in HLSL. If escape handling grows
+  the change, the default is to split: B lands first, and escape becomes its own issue (filed with my OK). The
+  escaped shape goes into the PR body and the 5-bullet on #13412.
+
+## 2026-10-04 19:53Z: triager update (checked on GitHub)
+The reviewer's "separate issue" (a barrier-only device-buffer read moved past `AllMemoryBarrierWithGroupSync`) is finding 3 again, so no new issue.
+It was appended to #13412 comment 5963139346 (edited 19:52:30Z, still the only comment). **Direct SPIR-V keeps the order.** HLSL/GLSL/WGSL move the read,
+and Metal/CUDA dereference after the barrier. So "every target" (reviewer) and the PR body's "on all targets" are both wrong.
+The fixer is rewriting that line along with G1+G2 (new commits, App identity). The PR head was still `6ad57af497` at 19:53Z.
+
+## 2026-10-04 21:18Z: [Triage Resolution] (checked live)
+#13421 head `c42049e18f`, still a draft, 3 commits. Commit 3 (G1+G2) is App-authored (`274397474`); commits 1-2 are still `286953280`.
+CI run 37230791271 is `waiting` (needs human priority release; metallib lane not run). Reviewer R2 is APPROVE_WITH_NITS, 0 bugs.
+Terminal handoff: a draft held pending review. Asked the operator for the ready-flip; the CLA decision is separate. Triager closed until merge.
+
 ## Sessions / tasks
-Fixer `sess-1790967825882-vnvecr`, triager `sess-1790963826393-0y71gs`, both on `gh-issue-shader-slang/slang-13409`.
-Re-chase `rechase-13409-sibling-7aad` (2026-10-04 19:00Z) holds the full state.
+Fixer `sess-1790967825882-vnvecr`, triager `sess-1790963826393-0y71gs`, reviewer `sess-1791004457668-whh9sf`,
+all on `gh-issue-shader-slang/slang-13409`. The #13412 thread had only my own session as of 10-04.
+Re-chase `rechase-13421-g1g2-13412-4e79` (2026-10-06 19:00Z). The earlier `rechase-13409-sibling-7aad` is done.
