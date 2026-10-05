@@ -7,22 +7,27 @@ PR description stays the author's own concise text (what changed, why, how it wa
 tested, issue links): squash merges copy the description into git log, so it must
 not carry the explanation.
 
+Which comments are ours: only a comment that STARTS with an exact marker for this
+repo#pr (the current `:comment` marker, or the `<!-- explain-diff-html <ref> -->`
+marker of earlier versions) AND whose author is a bot account, the PR's author, or
+the identity `gh api user` reports. A maintainer's comment that quotes the marker
+is never touched: a successful edit is not proof of ownership, because the write
+role can edit anyone's comment.
+
 What a run does:
-  - updates the existing explanation comment, or creates it when there is none.
-    An older collapsed explanation comment (LEGACY_MARKER, or the pointer an
-    earlier version left behind) is converted into the explanation comment rather
-    than adding a second one. If several candidates exist, the OLDEST is kept and
-    the others are reduced to a one-line pointer to it (never deleted).
-  - removes any explain-diff-html section (START..END) an earlier version wrote into
-    the description, so the description returns to the author's text. Issue links
-    and the bot disclaimer outside that section are untouched. If what remains is
-    shorter than SHORT_BODY characters, a NOTE line asks the agent to write a
-    concise description; the run still succeeds.
+  - updates the oldest of our comments in place, or creates one when we have none.
+    Our other marker comments become a one-line pointer to it (never deleted).
+  - re-reads the comments and reports success only when exactly one of ours carries
+    the current marker for the explained head. Any failed write exits 5 without
+    the success line, so the freshness gates keep asking for a re-run.
+  - removes the explanation block an earlier version wrote at the top of the
+    description (`<!-- explain-diff-html:start <this ref> head=… -->` … end marker)
+    and nothing else. A block it cannot identify unambiguously is left alone, with
+    a NOTE. A description shorter than SHORT_BODY characters also gets a NOTE.
 
 Comment order: GitHub lists comments by creation time and cannot reorder them. The
 explanation sits directly after the description when it is the PR's first comment
-(run this right after `gh pr create`); otherwise the oldest existing explanation
-comment keeps its place, and a new one is appended.
+(run this right after `gh pr create`); otherwise our oldest comment keeps its place.
 
 Head check: the caller passes the commit the explanation was written from
 (`git -C <worktree> rev-parse HEAD`). If the PR's live head is a different
@@ -34,7 +39,7 @@ Usage:
   upsert_pr_body.py --quiz-positions --head SHA [--questions 5] [--options 4]
 
 Exit codes: 0 written (or dry-run printed), 2 usage, 3 over the size limit,
-4 head mismatch, 5 gh failure.
+4 head mismatch, 5 gh failure or the comments did not converge to one.
 """
 
 from __future__ import annotations
@@ -48,43 +53,75 @@ import subprocess
 import sys
 import tempfile
 
-# Where the explanation lives now: one PR comment that starts with this marker.
 COMMENT_MARKER = "<!-- explain-diff-html:comment {ref} head={sha} -->"
-COMMENT_PREFIX = "<!-- explain-diff-html:comment "
-# A superseded duplicate, reduced to a pointer. Never a candidate again.
-POINTER_PREFIX = "<!-- explain-diff-html:pointer "
-# The section an earlier version wrote INTO the description. Stripped on every run.
-START = "<!-- explain-diff-html:start {ref} head={sha} -->"
-START_RE = re.compile(r"<!-- explain-diff-html:start [^>]*-->")
+POINTER_MARKER = "<!-- explain-diff-html:pointer {ref} -->"
+_REF = r"([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)#(\d+)"
+CURRENT_RE = re.compile(r"<!-- explain-diff-html:comment " + _REF + r" head=([0-9a-f]{7,40}) -->(?:\r?\n|$)")
+LEGACY_RE = re.compile(r"<!-- explain-diff-html " + _REF + r" -->(?:\r?\n|$)")
+# The block the previous version wrote at the top of the description.
+START_LINE_RE = re.compile(r"[ \t]*<!-- explain-diff-html:start " + _REF + r" head=[0-9a-f]{7,40} -->[ \t]*\r?\n")
+START_ANY = "<!-- explain-diff-html:start "
 END = "<!-- explain-diff-html:end -->"
-# The collapsed-comment marker of the first version (and the pointer the second
-# version left behind). A comment carrying it is converted, not duplicated.
-LEGACY_MARKER = "<!-- explain-diff-html "
 MAX_COMMENT = 60_000  # GitHub rejects comment bodies over 65,536 characters.
 SHORT_BODY = 200
 
-
-def strip_section(body: str) -> str:
-    """Remove every explain-diff-html section (start..end) from a body."""
-    out, i = [], 0
-    while True:
-        m = START_RE.search(body, i)
-        if not m:
-            out.append(body[i:])
-            break
-        out.append(body[i : m.start()])
-        end = body.find(END, m.end())
-        i = len(body) if end < 0 else end + len(END)
-    return "".join(out)
+ISSUE_LINK_RE = re.compile(
+    r"^\s*(?:[-*]\s*)?(?:\*\*)?(?:fix(?:e[sd])?|close[sd]?|resolve[sd]?|part of|refs?|related to)(?:\*\*)?:?\s+"
+    r"(?:[\w.-]+/[\w.-]+)?#\d+",
+    re.IGNORECASE,
+)
+DISCLAIMER_RE = re.compile(r"generated by an automated|^\s*<sub>\s*🤖", re.IGNORECASE)
 
 
-def description_after_strip(body: str) -> tuple[str, bool, bool]:
-    """(new description, changed?, too short?). Collapses the blank lines a removed section leaves."""
-    old = body or ""
-    new = strip_section(old)
-    if new != old:
-        new = re.sub(r"\n{3,}", "\n\n", new).strip() + "\n"
-    return new, new != old, len(new.strip()) < SHORT_BODY
+def same_ref(m: re.Match, repo: str, pr: int) -> bool:
+    return m.group(1).lower() == repo.lower() and int(m.group(2)) == pr
+
+
+def marker_kind(body: str, repo: str, pr: int) -> str | None:
+    """'current' / 'legacy' when the body STARTS with our marker for this exact repo#pr."""
+    m = CURRENT_RE.match(body or "")
+    if m and same_ref(m, repo, pr):
+        return "current"
+    m = LEGACY_RE.match(body or "")
+    if m and same_ref(m, repo, pr):
+        return "legacy"
+    return None
+
+
+def is_ours(c: dict, trusted: set[str]) -> bool:
+    return c.get("type") == "Bot" or (c.get("login") or "") in trusted
+
+
+def owned(comments: list[dict], repo: str, pr: int, trusted: set[str]) -> list[dict]:
+    """Our marker comments for this PR, oldest first."""
+    mine = [c for c in comments if marker_kind(c.get("body") or "", repo, pr) and is_ours(c, trusted)]
+    return sorted(mine, key=lambda c: (c.get("created_at") or "", int(c.get("id") or 0)))
+
+
+def trailer_only(text: str) -> bool:
+    return all(ISSUE_LINK_RE.search(s) or DISCLAIMER_RE.search(s) for s in text.splitlines() if s.strip())
+
+
+def strip_legacy_section(body: str, repo: str, pr: int) -> tuple[str, str]:
+    """Remove the explanation block an earlier version wrote at the top of the description.
+
+    Returns (new body, status): 'none', 'stripped', or 'left: <why>' when a block is
+    present but cannot be identified unambiguously (the body is then unchanged).
+    """
+    body = body or ""
+    m = START_LINE_RE.match(body)
+    if not m:
+        return body, ("left: an explain-diff start marker that is not at the top of the description" if START_ANY in body else "none")
+    if not same_ref(m, repo, pr):
+        return body, f"left: the start marker names {m.group(1)}#{m.group(2)}, not this PR"
+    rest = body[m.end():]
+    ends = [i.start() for i in re.finditer(re.escape(END), rest)]
+    if not ends:
+        return body, "left: the start marker has no end marker"
+    tail = rest[ends[-1] + len(END):]
+    if len(ends) > 1 and not trailer_only(tail):
+        return body, "left: several end markers and text after the last one"
+    return tail.lstrip("\r\n"), "stripped"
 
 
 def explanation_comment(explanation: str, ref: str, sha: str) -> str:
@@ -92,23 +129,7 @@ def explanation_comment(explanation: str, ref: str, sha: str) -> str:
 
 
 def pointer_body(ref: str, keep_url: str) -> str:
-    return f"{POINTER_PREFIX}{ref} -->\n_Superseded: the explanation of this PR is in [this comment]({keep_url}), updated on every push._"
-
-
-def is_candidate(body: str) -> bool:
-    b = (body or "").lstrip()
-    if b.startswith(POINTER_PREFIX):
-        return False
-    return b.startswith((COMMENT_PREFIX, LEGACY_MARKER))
-
-
-def plan_comments(comments: list[dict]) -> tuple[dict | None, list[dict]]:
-    """The comment to keep (oldest candidate) and the duplicate candidates to reduce to pointers."""
-    cands = sorted(
-        (c for c in comments if is_candidate(c.get("body") or "")),
-        key=lambda c: (c.get("created_at") or "", int(c.get("id") or 0)),
-    )
-    return (cands[0] if cands else None), cands[1:]
+    return POINTER_MARKER.format(ref=ref) + f"\n_Superseded: the explanation of this PR is in [this comment]({keep_url}), updated on every push._"
 
 
 def quiz_positions(sha: str, questions: int = 5, options: int = 4) -> list[str]:
@@ -132,6 +153,10 @@ def quiz_positions(sha: str, questions: int = 5, options: int = 4) -> list[str]:
         counter += 1
 
 
+class GhError(Exception):
+    pass
+
+
 def gh_try(args: list[str]) -> tuple[bool, str]:
     r = subprocess.run(["gh", *args], capture_output=True, text=True, check=False)
     if r.returncode != 0:
@@ -142,27 +167,53 @@ def gh_try(args: list[str]) -> tuple[bool, str]:
 def gh(args: list[str]) -> str:
     ok, out = gh_try(args)
     if not ok:
-        print(f"gh {' '.join(args[:3])} failed: {out}", file=sys.stderr)
-        sys.exit(5)
+        raise GhError(f"gh {' '.join(args[:4])} failed: {out}")
     return out
 
 
-def with_body_file(text: str, args_before: list[str], args_after: list[str] | None = None, *, strict: bool = True):
-    """Run `gh api … -F body=@<tmp> …` with `text` as the body."""
+def with_body(text: str, args_before: list[str], args_after: list[str] | None = None) -> str:
+    """`gh api … -F body=@<tmp> …` with `text` as the body; raises GhError on failure."""
     with tempfile.NamedTemporaryFile("w", suffix=".md", delete=False, encoding="utf-8") as f:
         f.write(text)
         tmp = f.name
     try:
-        args = [*args_before, "-F", f"body=@{tmp}", *(args_after or [])]
-        return gh(args) if strict else gh_try(args)
+        return gh([*args_before, "-F", f"body=@{tmp}", *(args_after or [])])
     finally:
         os.unlink(tmp)
 
 
 def list_comments(repo: str, pr: int) -> list[dict]:
     out = gh(["api", f"repos/{repo}/issues/{pr}/comments", "--paginate",
-              "--jq", ".[] | {id, created_at, html_url, body}"])
+              "--jq", ".[] | {id, created_at, html_url, body, login: .user.login, type: .user.type}"])
     return [json.loads(line) for line in out.splitlines() if line.strip()]
+
+
+def self_login() -> str:
+    ok, out = gh_try(["api", "user", "--jq", ".login"])
+    return out.strip() if ok else ""
+
+
+def marker_head(body: str) -> str:
+    m = CURRENT_RE.match(body or "")
+    return m.group(3) if m else ""
+
+
+def converge(repo: str, pr: int, ref: str, comment: str, sha: str, trusted: set[str]) -> dict:
+    """Make exactly one of our comments carry the explanation for `sha`; returns it. Raises GhError otherwise."""
+    for attempt in range(2):
+        mine = owned(list_comments(repo, pr), repo, pr, trusted)
+        if len(mine) == 1 and marker_kind(mine[0]["body"], repo, pr) == "current" and marker_head(mine[0]["body"]) == sha:
+            return mine[0]
+        if not mine:
+            raise GhError("our explanation comment is missing after writing it")
+        if attempt == 1:
+            break
+        keep, extra = mine[0], mine[1:]
+        if marker_head(keep["body"]) != sha:
+            with_body(comment, ["api", "-X", "PATCH", f"repos/{repo}/issues/comments/{keep['id']}"], ["--silent"])
+        for d in extra:
+            with_body(pointer_body(ref, keep.get("html_url") or ""), ["api", "-X", "PATCH", f"repos/{repo}/issues/comments/{d['id']}"], ["--silent"])
+    raise GhError(f"our explanation comments on {ref} did not converge to one (a concurrent writer?); re-run")
 
 
 def main(argv: list[str]) -> int:
@@ -185,7 +236,15 @@ def main(argv: list[str]) -> int:
     if not re.fullmatch(r"[0-9a-f]{7,40}", a.head):
         p.error("--head must be a commit sha (7-40 hex chars): git -C <worktree> rev-parse HEAD")
 
-    pr = json.loads(gh(["api", f"repos/{a.repo}/pulls/{a.pr}", "--jq", "{body: .body, head: .head.sha}"]))
+    try:
+        return run(a)
+    except GhError as e:
+        print(str(e), file=sys.stderr)
+        return 5
+
+
+def run(a: argparse.Namespace) -> int:
+    pr = json.loads(gh(["api", f"repos/{a.repo}/pulls/{a.pr}", "--jq", "{body: .body, head: .head.sha, author: .user.login}"]))
     live = pr.get("head") or ""
     if not live or not live.startswith(a.head):
         print(
@@ -202,60 +261,59 @@ def main(argv: list[str]) -> int:
         print(f"explanation comment is {len(comment)} chars, over {MAX_COMMENT}: shrink the explanation and re-run", file=sys.stderr)
         return 3
 
-    keep, dups = plan_comments(list_comments(a.repo, a.pr))
-    new_desc, desc_changed, desc_short = description_after_strip(pr.get("body") or "")
-    note = (
-        f"NOTE: the PR description is {len(new_desc.strip())} chars. Write a concise description "
-        f"(what changed, why, how it was tested, issue links) with `gh pr edit {a.pr} -R {a.repo} --body-file <file>`; "
-        "squash merges copy it into git log, so keep the explanation out of it."
-    ) if desc_short else ""
+    trusted = {x for x in (pr.get("author") or "", self_login()) if x}
+    mine = owned(list_comments(a.repo, a.pr), a.repo, a.pr, trusted)
+    new_desc, desc_status = strip_legacy_section(pr.get("body") or "", a.repo, a.pr)
+    notes = []
+    if desc_status.startswith("left:"):
+        notes.append(f"NOTE: the description still holds an explain-diff block this script will not remove ({desc_status[6:]}); "
+                     f"move it out by hand with `gh pr edit {a.pr} -R {a.repo} --body-file <file>`.")
+    if len(new_desc.strip()) < SHORT_BODY:
+        notes.append(f"NOTE: the PR description is {len(new_desc.strip())} chars. Write a concise description "
+                     f"(what changed, why, how it was tested, issue links) with `gh pr edit {a.pr} -R {a.repo} --body-file <file>`; "
+                     "squash merges copy it into git log, so keep the explanation out of it.")
 
     if a.dry_run:
         sys.stdout.write(comment)
-        plan = {
-            "comment": f"update {keep['id']}" if keep else "create",
-            "pointers": [d["id"] for d in dups],
-            "description": "strip explain-diff section" if desc_changed else "unchanged",
-            "chars": len(comment),
-        }
+        plan = {"comment": f"update {mine[0]['id']}" if mine else "create", "pointers": [d["id"] for d in mine[1:]],
+                "description": desc_status, "trusted": sorted(trusted), "chars": len(comment)}
         print(f"\n[dry-run] {json.dumps(plan)}", file=sys.stderr)
-        if note:
-            print(note, file=sys.stderr)
+        for n in notes:
+            print(n, file=sys.stderr)
         return 0
 
-    # Oldest candidate first; one we cannot edit (written by someone else) is skipped,
-    # so a run never stalls on it or adds a fresh comment every time.
-    action, cid, url = "created", None, ""
-    for c in ([keep] if keep else []) + dups:
-        ok, _ = with_body_file(comment, ["api", "-X", "PATCH", f"repos/{a.repo}/issues/comments/{c['id']}"],
-                               ["--silent"], strict=False)
-        if ok:
-            action, cid, url = "updated", c["id"], c.get("html_url") or ""
-            break
-        print(f"could not edit comment {c['id']} (not ours?); trying the next", file=sys.stderr)
-    if cid is None:
-        made = json.loads(with_body_file(comment, ["api", "-X", "POST", f"repos/{a.repo}/issues/{a.pr}/comments"],
-                                         ["--jq", "{id, html_url}"]))
-        cid, url = made.get("id"), made.get("html_url") or ""
-    pointers = []
-    for d in ([keep] if keep else []) + dups:
-        if d["id"] == cid:
-            continue
-        ok, _ = with_body_file(pointer_body(ref, url), ["api", "-X", "PATCH", f"repos/{a.repo}/issues/comments/{d['id']}"],
-                               ["--silent"], strict=False)
-        if ok:
-            pointers.append(d["id"])
-    if desc_changed:
-        with_body_file(new_desc, ["api", "-X", "PATCH", f"repos/{a.repo}/pulls/{a.pr}"], ["--silent"])
+    action = "updated"
+    if mine:
+        with_body(comment, ["api", "-X", "PATCH", f"repos/{a.repo}/issues/comments/{mine[0]['id']}"], ["--silent"])
+        for d in mine[1:]:
+            with_body(pointer_body(ref, mine[0].get("html_url") or ""), ["api", "-X", "PATCH", f"repos/{a.repo}/issues/comments/{d['id']}"], ["--silent"])
+    else:
+        made = json.loads(with_body(comment, ["api", "-X", "POST", f"repos/{a.repo}/issues/{a.pr}/comments"],
+                                    ["--jq", "{id, login: .user.login}"]))
+        if made.get("login"):
+            trusted.add(made["login"])
+        action = "created"
+    kept = converge(a.repo, a.pr, ref, comment, live[:12], trusted)
 
-    if note:
-        print(note)
+    if desc_status == "stripped":
+        ok, err = True, ""
+        try:
+            with_body(new_desc, ["api", "-X", "PATCH", f"repos/{a.repo}/pulls/{a.pr}"], ["--silent"])
+        except GhError as e:
+            ok, err = False, str(e)
+        if not ok:
+            desc_status = "strip failed"
+            notes.append(f"NOTE: could not remove the old explanation block from the description ({err}); re-run to retry.")
+
+    for n in notes:
+        print(n)
     # repo/pr/head are echoed so the PostToolUse receipt (pr-auto-map.sh) can name the
-    # PR even when the command passed them as shell variables. Keep this the last line.
+    # PR even when the command passed them as shell variables. Keep this the last line,
+    # and print it only after the comments converged.
     print(json.dumps({
         "updated": True, "repo": a.repo, "pr": a.pr, "head": live[:12], "chars": len(comment),
-        "comment": cid, "comment_action": action, "comment_url": url, "pointers": pointers,
-        "description": "stripped" if desc_changed else "unchanged",
+        "comment": kept["id"], "comment_action": action, "comment_url": kept.get("html_url") or "",
+        "pointers": [d["id"] for d in mine[1:]], "description": desc_status,
     }))
     return 0
 
