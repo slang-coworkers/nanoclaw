@@ -2,10 +2,10 @@
 # PostToolUse hook (matcher: Bash):
 # Auto-detects PR creation from gh CLI or curl output and instructs the agent to
 # call report_pr_created and run /explain-diff-html; on a `git push` it reminds
-# the agent to refresh the explanation (the PR description) for the pushed head.
+# the agent to refresh the explanation (the PR's explanation comment) for the pushed head.
 #
 # It also keeps the receipts the refresh gates read (lib/explain-diff-owed.sh):
-# a PR created, a branch pushed, a PR description written by upsert_pr_body.py.
+# a PR created, a branch pushed, an explanation comment written by upsert_pr_body.py.
 # Receipts are best effort — a write failure never changes the reminder.
 #
 # Stdin: JSON with tool_name, tool_input, tool_response.
@@ -82,7 +82,7 @@ case "$COMMAND" in
               record '.pushes = ((.pushes // {}) + {($repo + ":" + $branch): {repo: $repo, branch: $branch,
                         head: (if $head == "" then null else $head end), pushed_at: $now, seq: .seq}})' \
                 --arg repo "$PUSH_REPO" --arg branch "$PUSH_BRANCH" --arg head "$PUSH_HEAD"
-              PUSH_MSG="Pushed ${PUSH_HEAD:-the new head} to $PUSH_REPO:$PUSH_BRANCH. If that branch backs an open PR you own, re-run /explain-diff-html for it now so the PR description explains this head (upsert_pr_body.py refuses a stale head). Skip only a push that changes nothing a reader would notice, and say so in your report."
+              PUSH_MSG="Pushed ${PUSH_HEAD:-the new head} to $PUSH_REPO:$PUSH_BRANCH. If that branch backs an open PR you own, re-run /explain-diff-html for it now so the PR's explanation comment explains this head (upsert_pr_body.py refuses a stale head). Skip only a push that changes nothing a reader would notice, and say so in your report."
               ;;
           esac
         fi
@@ -137,12 +137,12 @@ if [ "$IS_PR_CREATE" = "true" ]; then
       # (container/skills/explain-diff-html — in base-common, so every project
       # spine has it). The hookSpecificOutput.additionalContext is injected into
       # the agent's next turn.
-      CREATE_MSG="PR created: $REPO#$PR_NUM. IMPORTANT: Call report_pr_created(repo=\"$REPO\", pr_number=$PR_NUM) now so webhook events for this PR route to your session. Then run /explain-diff-html for $REPO#$PR_NUM: write the self-contained HTML under /workspace/agent/reports/pr-explanations/, deliver it with send_file to the thread that asked for this PR, make the same content the PR description with its upsert_pr_body.py (GitHub-safe Markdown, rewritten for the new head on every later push), and list the file path in the review request or report that follows. Never post the file path or internal URLs to GitHub."
+      CREATE_MSG="PR created: $REPO#$PR_NUM. IMPORTANT: Call report_pr_created(repo=\"$REPO\", pr_number=$PR_NUM) now so webhook events for this PR route to your session. Then run /explain-diff-html for $REPO#$PR_NUM: write the self-contained HTML under /workspace/agent/reports/pr-explanations/, deliver it with send_file to the thread that asked for this PR, make the same content the PR's explanation comment with its upsert_pr_body.py (one comment directly under the description, GitHub-safe Markdown, rewritten for the new head on every later push), keep the PR description itself concise (what changed, why, how tested, issue links: squash merges copy it into git log), and list the file path in the review request or report that follows. Never post the file path or internal URLs to GitHub."
     fi
   fi
 fi
 
-# A PR description written by upsert_pr_body.py: the receipt that clears the
+# An explanation comment written by upsert_pr_body.py: the receipt that clears the
 # refresh owed by the create / push above. Only a real write counts — its JSON
 # result line says "updated": true; --dry-run and --quiz-positions write nothing.
 case "$COMMAND" in
@@ -184,7 +184,7 @@ case "$COMMAND" in
     ;;
 esac
 
-# The description was just rewritten in this same command; the push reminder is moot.
+# The explanation comment was just rewritten in this same command; the push reminder is moot.
 [ -n "$EXPLAINED" ] && PUSH_MSG=""
 
 CTX="$CREATE_MSG"
