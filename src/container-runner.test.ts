@@ -525,6 +525,17 @@ describe('composeSessionSpec', () => {
     expect((await compose()).containers[0].env.NANOCLAW_MAILBOX_BACKEND).toBe('sqlite');
   });
 
+  it('forwards the host fallback model so the SDK never falls back to its built-in default', async () => {
+    vi.stubEnv('ANTHROPIC_FALLBACK_MODEL', 'aws/anthropic/bedrock-claude-sonnet-5-5');
+    try {
+      expect((await compose()).containers[0].env.ANTHROPIC_FALLBACK_MODEL).toBe(
+        'aws/anthropic/bedrock-claude-sonnet-5-5',
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('the gateway contribution fills the contributed lane last and wins a collision', async () => {
     const spec = await compose({
       contribution: { env: { HTTPS_PROXY: 'http://provider:1' } },
