@@ -6,15 +6,35 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 656 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 272 |
-| `nv-slang` | slang project spine, skills, workflows | 173 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 100 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 79 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 659 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 273 |
+| `nv-slang` | slang project spine, skills, workflows | 175 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 101 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 80 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-05
+
+### nv-main (3 PRs)
+- **#1864** `Sync nv-main with upstream/main 7ccc3e6e1`
+- **#1852** `fix(container): forward ANTHROPIC_FALLBACK_MODEL into agent containers`
+- **#1873** `explain-diff-html: one explanation comment; concise PR description`
+
+### nv-dashboard (1 PRs)
+- **#1866** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#1867** `Sync nv-slang with upstream/main`
+- **#1874** `slang fixer: concise PR description; explanation goes in one comment`
+
+### nv-slangpy (1 PRs)
+- **#1868** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1869** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-10-04
 
