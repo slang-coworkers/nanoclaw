@@ -55,6 +55,19 @@ function log(message, color = "reset") {
     // that protocol. stderr is safe.
     console.error(`${exports.colors[color]}${message}${exports.colors.reset}`);
 }
+// NANOCLAW PATCH (2026-10): exit once the wrapped claude has exited. The child
+// runs with stdio "inherit", so this process holds the SDK's stdout pipe too:
+// the SDK gets EOF only after BOTH processes are gone. Upstream never exits
+// here; it waits for the event loop to drain, and a lingering socket or timer
+// kept the wrapper (and the agent-runner's query) alive for hours.
+// Trace writes are synchronous (appendFileSync/writeFileSync) in each
+// response's end handler, so letting the loop drain finishes any in-flight
+// pair. EXIT_DRAIN_MS only bounds the wait; it never skips a completed write.
+const EXIT_DRAIN_MS = 10000;
+function exitAfterChild(code, signal) {
+    process.exitCode = code ?? (signal ? 1 : 0);
+    setTimeout(() => process.exit(), EXIT_DRAIN_MS).unref();
+}
 function showHelp() {
     console.log(`
 ${exports.colors.blue}Claude Trace${exports.colors.reset}
@@ -343,6 +356,7 @@ async function runClaudeNativeWithProxy(claudePath, claudeArgs = [], includeAllR
         else {
             log("\nClaude session completed", "green");
         }
+        exitAfterChild(code, signal);
     });
     // Handle our own signals
     const handleSignal = (signal) => {
@@ -419,6 +433,7 @@ async function runClaudeWithInterception(claudeArgs = [], includeAllRequests = f
         else {
             log("\nClaude session completed", "green");
         }
+        exitAfterChild(code, signal);
     });
     // Handle our own signals
     const handleSignal = (signal) => {

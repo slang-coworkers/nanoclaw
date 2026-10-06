@@ -250,6 +250,19 @@ case "$TOOL" in
     if grep -qE "($BASH_PATTERNS)" <<< "$TEXT"; then
       HIT="PR creation"
     fi
+    # gate-pr-description.sh runs in parallel on the same Bash call. When it
+    # refuses the description, step aside: this denial must not be counted (or
+    # escalate) for a command that is already refused for its description.
+    if [ -n "$HIT" ] && [ "${PR_DESCRIPTION_GATE:-1}" != "0" ] && command -v python3 >/dev/null 2>&1; then
+      PR_DESC_LIB="$(dirname "${BASH_SOURCE[0]}")/lib/pr_description.py"
+      if [ -f "$PR_DESC_LIB" ]; then
+        set +e
+        printf '%s' "$INPUT" | python3 "$PR_DESC_LIB" --quiet >/dev/null 2>&1
+        pr_desc_rc=$?
+        set -e
+        [ "$pr_desc_rc" = "2" ] && exit 0
+      fi
+    fi
     ;;
 esac
 
