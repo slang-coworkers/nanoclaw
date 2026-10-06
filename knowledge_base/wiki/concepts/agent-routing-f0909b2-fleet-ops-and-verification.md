@@ -99,8 +99,9 @@ the gate sits pending — re-confirmed 2026-09-23 on PR #12208, a `test-slang`
 self-hosted-runner-lost-communication flake wedged behind a `waiting`
 `falcor-build-approval-gate`. The babysitter action: don't attempt `gh run rerun`
 while a gate 0c sits pending — classify the failure `intermittent-but-gate-wedged`,
-log via `sweeplib.touch_tracker_verdict(verdict="gate-wedged")` +
-`append_row(action="note", result="left")`, and revisit once the gate clears so the
+log it with one `sweeplib.touch_tracker_verdict(verdict="gate-wedged", log_row={action:"note",
+result:"left", ...})` call (since 2026-10-03 the paired log row is a required argument, see
+[CI Flake — Sweep Mechanics](ci-flake-sweep-mechanics-and-routing.md)), and revisit once the gate clears so the
 run can complete and a normal rerun becomes possible
 ([falcor gate blocks all reruns in the same run — classify intermittent-but-gate-wedged](../learnings/1790136696883-falcor-build-approval-gate-waiting-blocks-reruns-o.md)).
 Confirmed again on PR #12840: an unrelated GPU flake

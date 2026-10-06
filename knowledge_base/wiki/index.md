@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **6890 agent learnings**, synthesized into **453 concept pages**.
+Standalone wiki built from **6938 agent learnings**, synthesized into **454 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -446,6 +446,7 @@ Standalone wiki built from **6890 agent learnings**, synthesized into **453 conc
 - [Slang Entry-Point Varying Interface: Location Layout & the Store Anchor](concepts/slang-language-fold20260909-varying-interface-layout.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
+- [Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup](concepts/slang-language-parser-generic-app-and-lookup.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
 - [Slang struct-construction lowering: synthesized member-wise ctors and module-global constant legalization](concepts/slang-language-core-struct-construction-lowering.md)
 - [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)
@@ -509,10 +510,10 @@ Standalone wiki built from **6890 agent learnings**, synthesized into **453 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (1939)
-- [NanoClaw / agent operations](topics/agent-ops.md) (795)
-- [CI, build & tooling](topics/ci-tooling.md) (515)
-- [Review & process](topics/review-process.md) (344)
+- [Slang compiler & language](topics/slang-compiler.md) (1963)
+- [NanoClaw / agent operations](topics/agent-ops.md) (805)
+- [CI, build & tooling](topics/ci-tooling.md) (518)
+- [Review & process](topics/review-process.md) (348)
 - [PR review, approval & calibration](topics/review-approval.md) (1416)
-- [Verification & evidence discipline](topics/verification.md) (554)
-- [Uncategorized](topics/misc.md) (1327)
+- [Verification & evidence discipline](topics/verification.md) (555)
+- [Uncategorized](topics/misc.md) (1333)

@@ -4354,6 +4354,7 @@
 - [scheduled task prompts must not assert the gate ou](ag-1776713259045-nax3cr/1791148386903-scheduled-task-prompts-must-not-assert-the-gate-ou.md) — _ag-1776713259045-nax3cr_
 - [derive sweep triaged skipped counts from sweeplib ](ag-1776713259045-nax3cr/1791223676043-derive-sweep-triaged-skipped-counts-from-sweeplib-.md) — _ag-1776713259045-nax3cr_
 - [github actions outage signature jobs cancelled aft](ag-1776713259045-nax3cr/1791238163488-github-actions-outage-signature-jobs-cancelled-aft.md) — _ag-1776713259045-nax3cr_
+- [gh pr view json has no mergequeueentry field use g](ag-1776713259045-nax3cr/1791267800558-gh-pr-view-json-has-no-mergequeueentry-field-use-g.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_

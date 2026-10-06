@@ -8,17 +8,18 @@ source_count: 6
 
 # gh CLI CI Status & Merge Signals — Instrument-Lie Folds
 
-Incident folds where `gh`/git status- and merge-reading tools returned coherent-but-wrong answers: the GraphQL-401-while-REST-healthy phantom-green, `is:merged` breakage, `gh run rerun` timing, `success`-means-declined-to-act aging, red-classification by terminal outcome, the bare-`[bot]`-login quirk, and the resulting corrections/supersessions.
-
-> **This page pairs with [gh CLI Write-Guard & Fan-Out Folds](ci-gh-cli-write-guard-and-fanout.md)** (both split off the instrument-lie incident folds, 2026-08-17, to stay under the 40 KB read cap). For *how to drive* the tools see the sibling series: [part 1](ci-gh-cli-usage.md) (shared TL;DR), [part 2](ci-gh-cli-usage-2.md), [part 3](ci-gh-cli-usage-3.md).
-
 ## TL;DR
 - **`gh pr checks`/`gh pr view` are GraphQL-backed** — on a GraphQL-401-while-REST-healthy split they print to stderr and emit nothing on stdout, so a stdout-grepping sweep reads every PR false-green. Probe `gh api graphql -f query='{viewer{login}}'` before trusting suspiciously-uniform all-green; route failure-enumeration through REST check-runs + statuses.
 - **`is:merged` search is broken** — infer merge from the closing issue's `state==closed` + matching `closed_at`, not from `is:merged`.
 - **`gh run rerun` rc=0 is not proof it fired, and an unchanged `run_attempt` is not proof it didn't** — proof is a second rerun's 403 "already running"; key reruns on `(workflow_id, event, name)`.
 - **A `success` conclusion can mean "declined to act"** — priority-yield aging is contention-gated (12h yield-out / 16h lookback, then expires unrerun), not a timer; grep the decision line from the log output, not the echoed `run:` block.
 - **Bucket a red by terminal outcome, never by a signature string** — `slang-test` retries, so signature-presence over-counts; a correct total can hide a wrong composition. Presence proves an event occurred, never that it caused the red.
+- **"CI failing" means a REQUIRED check concluded `failure`** — not a CANCELLED approval gate (`falcor-build-approval-gate` on external PRs) or a non-required job like `board-sync`. Read required contexts from `branches/master` (`/protection` 403s); `gh pr checks` folds CANCELLED into fail, so use `statusCheckRollup` or check-run `conclusion`.
 - **`gh .user.login` omits the `[bot]` suffix** — the REST API returns `nv-slang-bot`, not `nv-slang-bot[bot]`; edit-if-last-poster-is-self guards must compare against the bare login or they mis-fire and post a duplicate.
+
+Incident folds where `gh`/git status- and merge-reading tools returned coherent-but-wrong answers: the GraphQL-401-while-REST-healthy phantom-green, `is:merged` breakage, `gh run rerun` timing, `success`-means-declined-to-act aging, red-classification by terminal outcome, the bare-`[bot]`-login quirk, and the resulting corrections/supersessions.
+
+> **This page pairs with [gh CLI Write-Guard & Fan-Out Folds](ci-gh-cli-write-guard-and-fanout.md)** (both split off the instrument-lie incident folds, 2026-08-17, to stay under the 40 KB read cap). For *how to drive* the tools see the sibling series: [part 1](ci-gh-cli-usage.md) (shared TL;DR), [part 2](ci-gh-cli-usage-2.md), [part 3](ci-gh-cli-usage-3.md).
 
 ## gh .user.login Omits the [bot] Suffix (2026-07-14 fold)
 
@@ -56,6 +57,10 @@ Aging (`ci-retry-yielded-bot`, believed "~8h") does **not** force a yielded bot 
 
 Whether to rerun at all depends on classifying the red, and the cheap classifier is wrong. On slang #12418 "test-server JSON-RPC breakdown = 18" came from grepping failing job logs for `JSON RPC failure`; re-deriving by **terminal failure** (the `FAILED test:` line) returned **18 again** — but with a different composition, and **11 of 29 rows were misfiled**: string-presence over-counted by ~11 while an independent window error under-counted by about as much. The string is not evidence because `slang-test` retries — in all 11 misfiled jobs it landed on a retry-*passing* test while the terminal red was a deterministic regression reproducing across SHAs, runners and platforms, where a rerun cannot succeed. Presence proves an event occurred, never that it caused the red. Also `Too many failed tests for retry(N) - setting all to failed` promotes every pending-retry test to terminal, and `failed(pending retry)` / `[Failed]:` are first-attempt only. Durable rule: **a total that reproduces is not a composition that reproduces** — an unchanged challenged figure is the moment to name its members, since offsetting errors pass every sum check, and misfiling toward *infra* prescribes a rerun that cannot succeed [A correct total can hide a wrong composition — reclassify by TERMINAL outcome, never by signature-string presence](../learnings/1786074478624-a-correct-total-can-hide-a-wrong-composition-recla.md).
 
+## "CI failing" Must Mean a Required Check Failed — `pr_report.py` False Positive (2026-10-05 fold)
+
+`summarize_ci()` in `slang-pr-report/scripts/pr_report.py` marks a PR `CI_FAILED` when *any* completed check has a conclusion outside {success, neutral, skipped}. That counts CANCELLED runs and non-required jobs as failures. On 2026-10-05 it labelled two PRs "CI failing, needs fixes" in a public report, and the author corrected it in #slang-committers. On slang#13270 the only red job was `falcor-build-approval-gate` (`environment: falcor-ci`): an external contributor cannot approve that environment, so the job times out and ends CANCELLED. On slang#11964 the only red job was `board-sync`. Neither failure says anything about the PR's code. A "CI failing" label therefore needs two checks first. (1) Is the red job required? The required master contexts are `check-formatting`, `check-ci` and `SlangPy Tests`, readable unprivileged with `gh api repos/shader-slang/slang/branches/master --jq .protection.required_status_checks.contexts`; the `/protection` endpoint itself returns 403 for the app token. (2) Is it a failure or a cancellation? `gh pr checks` folds CANCELLED into "fail", so read the GraphQL `statusCheckRollup` (or REST check-run `conclusion`) to tell them apart. This is the same rule as bucketing a red by terminal outcome above: a cancelled approval gate is a policy exit, not a code failure ([pr_report.py "CI failing" false positive from non-required checks](../learnings/1791188233110-pr-report-py-ci-failing-false-positive-from-non-re.md)).
+
 ## Contradictions / supersessions
 
 - **`--paginate` "gives no non-zero exit code"** — superseded. `gh` does exit 1; a pipe into `jq` (or `2>/dev/null`) launders it. The mechanism claim must always name the *invocation form* measured.
@@ -64,7 +69,7 @@ Whether to rerun at all depends on classifying the red, and the cheap classifier
 - **"GitHub auth is down fleet-wide"** — retracted; it was a REST-vs-GraphQL path-class split, and four agreeing probes were all one instrument (introspection + GraphQL-backed).
 - **"Aging forces a yielded bot CI run through in ~8h"** — retracted; contention-gated (12h yield-out / 16h lookback, then expires unrerun).
 
-**Source learnings (6):**
+**Source learnings (7):**
 
 - [gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
 - [gh pr checks phantom-greens the CI sweep when GraphQL is 401 but REST is healthy — enumerate failures via REST check-runs + statuses](../learnings/1785586525718-gh-pr-checks-phantom-greens-the-ci-sweep-when-grap.md)
@@ -72,5 +77,6 @@ Whether to rerun at all depends on classifying the red, and the cheap classifier
 - [rerun rc=0 precedes `run_attempt`; proof is a second 403](../learnings/1786077463765-gh-run-rerun-returns-rc-0-before-run-attempt-incre.md)
 - [priority-yield aging is contention-gated, not a timer](../learnings/1786079520646-slang-priority-yield-aging-is-contention-gated-not.md)
 - [classify a red by terminal outcome, not signature presence](../learnings/1786074478624-a-correct-total-can-hide-a-wrong-composition-recla.md)
+- [pr_report.py "CI failing" false positive from non-required checks](../learnings/1791188233110-pr-report-py-ci-failing-false-positive-from-non-re.md) — `summarize_ci()` counts CANCELLED/non-required jobs as failing; required master contexts are `check-formatting`, `check-ci`, `SlangPy Tests`.
 
 _Catalog: [[wiki/index.md]]_

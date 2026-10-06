@@ -3,7 +3,7 @@ title: "Slang Parameter Binding and Layout"
 type: concept
 group: slang-grab-bag
 tags: [bitfield, scalar-layout, parameter-binding, vk-binding, layout-kind, entry-point, system-value, SV_Target, SV_Position, validateEntryPoint, type-layout, ir-layout, spirv-layout, descriptor-set, mesh, geometry, E38052]
-source_count: 12
+source_count: 13
 ---
 
 # Slang Parameter Binding and Layout
@@ -15,6 +15,7 @@ source_count: 12
 - A duplicate-SV check must fire for **system values only**; its collision key's **output binding space** is the hard part (classic = empty space, mesh = by CATEGORY, geometry = per-STREAM), with an `inout TriangleStream<T>` double-collection landmine.
 - E38052 "VS has no SV_Position output" is an **intentional heuristic false-positive** (VS→GS/tess/mesh is known-legit); `-warnings-disable 38052` is the documented escape hatch.
 - The `SV_Target<N>` resource `index` is set in **TWO** places in `slang-parameter-binding.cpp` — patch both.
+- GLSL varying layout counts every vector as one Location, so `double3/4` and 64-bit-integer 3/4-vectors (and arrays and matrices of them) get half the Locations Vulkan requires (#13427). Fix `GetVectorLayout` in the GLSL varying rules and, separately, the hull patch-constant IR layout.
 - Layout POLICY is written **twice**: `slang-type-layout.cpp` and `slang-ir-layout.cpp` share NO code. SPIR-V layout decorations use the **IR path**, not reflection `IRTypeLayout`. The two are not 1:1, so "just unify them" is capped in value.
 - The IR rule `Natural` encodes as the same op as user `ScalarDataLayout`, so a per-target change to scalar rounding also hits natural buffers unless a separate internal op is added. `sizeof`/`alignof` are target-independent AST constants.
 - **Natural layout already rounds array strides** (`S{double;int}`: size 12, stride 16), so only a nested struct moving later fields tells natural from rounded rules; a `LoadAligned` promise must be a power of two (E41301).
@@ -36,9 +37,11 @@ A duplicate-SV diagnostic must fire for **system values only** (the post-linking
 
 Distinct from these: the E38052 "vertex shader has no output with SV_Position" warning (PR #10971) is an **intentional heuristic false-positive** — it's gated only on `stage == Vertex` with no pipeline-pairing awareness, and its in-code comment explicitly names the VS→GS/tess/mesh case as legitimate-but-undetected, with `-warnings-disable 38052` as the documented escape hatch. So E38052 on a VS→GS shader is known and intentional, not a clear bug ([E38052 VS-missing-SV_Position is an intentional heuristic false-positive (VS→GS is known-legit)](../learnings/1782910937014-e38052-vs-missing-sv-position-is-an-intentional-he.md)).
 
-## SV_Target Location Fix Lives in TWO Places in slang-parameter-binding
+## Varying Locations: the SV_Target Index Is Set in Two Places, and 64-bit Vectors Are Undercounted
 
 When making a fragment `SV_Target<N>` output derive its GLSL/SPIR-V `layout(location=N)` from the render-target index (#11944), note the VarLayout resource `index` is set in **two** distinct places in `slang-parameter-binding.cpp` — patch both, or the location is right in one path and stale in the other ([SV_Target location fix lives in TWO places in slang-parameter-binding.cpp](../learnings/1783263604045-sv-target-location-fix-lives-in-two-places-in-slan.md)).
+
+How many Locations a varying consumes is the other half of the same assignment, and it is wrong for wide 64-bit vectors (#13427). `DefaultVaryingLayoutRulesImpl::GetVectorLayout` (`slang-type-layout.cpp:1035-1045`) ignores the element type, and `GLSLVaryingLayoutRulesImpl` (:1048) inherits it unchanged, so every vector counts as one Location. Vulkan requires two for `double3`, `double4`, `int64_t3` and `uint64_t4` (a 64-bit scalar, `double2` and `int64_t2` correctly take one), and arrays and matrices inherit the undercount (`double4x4` gets 4 Locations instead of 8). spirv-val reports 08721 on vertex and fragment inputs and 08722 on outputs, geometry output included; mesh outputs are numbered the same wrong way but not flagged. Overriding `GetVectorLayout` in the GLSL varying rules (more than 16 bytes → 2 Locations) fixes every front-end shape, changes reflection with it, leaves HLSL output identical, and passed 3208/3209 in the test subsets. It does not reach the hull patch-constant OUTPUT path, because `createPatchConstantFuncResultTypeLayout` (`slang-ir-glsl-legalize.cpp`) builds its own IR layout with a leaf size of `fromRaw(1)`, so a front-end-only fix leaves hull and domain disagreeing — another instance of layout policy coded twice. To check expected numbers, use DXC `-spirv` through the dxcspv harness at `/workspace/agent/scratch-13324`; the local libslang-glslang build does not expose `--auto-map-locations` [Vulkan 64-bit varying Location counts](../learnings/1791134194001-vulkan-64-bit-varying-location-counts-slang-glsl-v.md).
 
 ## Layout POLICY Itself Is Written Twice: type-layout vs ir-layout Share No Code
 
@@ -60,7 +63,7 @@ Zero-width fields (`T x : 0`) show how the checker groups backings (`slang-check
 
 ---
 
-**Source learnings (12):**
+**Source learnings (13):**
 - [vk::binding entry-point diagnostic predicate (AST-type) must match binder's layout-kind contract](../learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md)
 - [slang #11861: vk::binding on struct-of-resources entry param — mirror of #11857, same predicate](../learnings/1782871594193-slang-11861-vk-binding-on-struct-of-resources-entr.md)
 - [Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers ask for a shared predicate](../learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md)
@@ -73,3 +76,4 @@ Zero-width fields (`T x : 0`) show how the checker groups backings (`slang-check
 - [zero-width bitfields open the next backing; MSB-first signed readback bug; no portable spelling](../learnings/1790631718776-slang-zero-width-bitfields-layout-vs-native-and-a-.md)
 - [Natural and user ScalarDataLayout share one IR op; DX-layout pointer rule; sizeof/alignof target-independent](../learnings/1790635577609-slang-layout-ir-rule-natural-doubles-as-user-scala.md)
 - [Slang IR natural layout already rounds array strides; BAB alignment promises must be powers of two](../learnings/1790769300394-slang-ir-natural-layout-already-rounds-array-strid.md) — `S[N]` can't tell natural from rounded; use `U{S z; float w;}`; E41301 pow2; local DXC `sizeof` oracle.
+- [GLSLVaryingLayoutRulesImpl inherits a type-blind GetVectorLayout: double3/4 get 1 Location (08721/08722); hull patch-constant output layout is a separate IR path (#13427)](../learnings/1791134194001-vulkan-64-bit-varying-location-counts-slang-glsl-v.md)

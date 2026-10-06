@@ -3,6 +3,7 @@ title: "Slang commits must NOT carry the Co-Authored-By: Claude trailer"
 type: learning
 topic: slang-compiler
 source: learnings/1790141178553-slang-commits-must-not-carry-the-co-authored-by-cl.md
+superseded_by: 1791195802831-coworker-commits-on-shader-slang-repos-must-not-ca
 ---
 
 # Slang commits must NOT carry the Co-Authored-By: Claude trailer

@@ -3,7 +3,7 @@ title: "Slang Autodiff: Custom Derivatives Through Interfaces and Higher-Order C
 type: concept
 group: slang-autodiff-ir
 tags: [autodiff, custom-derivative, interface, witness-table, conformance, derivative-of, primal-substitute, higher-order, silent-gradient, crash-triage]
-source_count: 7
+source_count: 8
 ---
 
 # Slang Autodiff: Custom Derivatives Through Interfaces and Higher-Order Composition
@@ -15,6 +15,7 @@ Split from [[wiki/concepts/slang-autodiff-ir-autodiff-differentiation.md]] (inte
 - **A call through an interface requirement (existential, generic `<T:I>`, dynamic dispatch) silently runs the AUTO-derivative instead of a custom `[BackwardDerivative]`/`[ForwardDerivative]`.** Side-effecting gradient scatters vanish, and once such a caller exists the direct concrete call in the same module can lose the override too.
 - **Root cause (#13301): two conformances, one witness symbol, first wins.** `checkDifferentiableCallableCommon` synthesizes a default `IForward/IBackwardDifferentiable` extension at SignatureChecked; `translate{Fwd,Bwd}DerivativeAttributeToAD2` adds a second one for the user derivative at ReadyForLookup. Both lower to the same mangled witness name and the merged table keeps the default's entries. Tell: one witness table with two `[export]`s in `-dump-ir-before specializeModule`.
 - **The attribute-on-primal fix (skip the default when the decl carries its own derivative attribute) does not cover `[BackwardDerivativeOf]` or `[Differentiable][PrimalSubstitute(g)]`.** `*DerivativeOf` needs a single extension whose members are bound before conformances, because its primal resolution looks up the default members.
+- **Library workaround on released compilers:** make the requirement's witness a plain `[ForceInline][Differentiable]` forwarder and put `[BackwardDerivative]` on a private, statically dispatched helper. Removing `[Differentiable]` from the conformer instead gives E38110. Extension methods are not requirements and are unaffected, so a test suite that only uses them stays green.
 - **To tell which derivative ran**, make the custom derivative deliberately wrong (d=10 where auto gives 3), add a call counter, and anchor FileCheck values with `{{^}}`.
 - **`bwd_diff(fwd_diff(f))` crashes on master even for `f(s)=s*s` (#13321, since #9808 / AD 2.0).** Debug asserts at the unchecked `cast<IRFuncType>` in `TypeFlowSpecializationContext::analyzeCall` (`slang-ir-typeflow-specialize.cpp:4795`). Every repro that uses the bwd-of-fwd form lands on that frame, so restate a candidate bug as `fwd_diff(fwd_diff(g))` beside a plain-`g` control, and check it in a Debug build.
 - **A `diffVal` assert at `slang-ir-autodiff-fwd.cpp:2098` means some callee took the silent `if (!diffCallee)` branch in `ForwardDiffTranslationContext::translateCall`.** Find which one with a temporary `fprintf` after `tryGetAssociationOfKind`, then fix the producer that should have registered the annotation, not the consumer.
@@ -43,6 +44,20 @@ With that patch applied (fix-13301.patch; CPU probes on 2026-09-29, master 4fe66
 - `[Differentiable] read` plus `[BackwardDerivativeOf(read)] read_bwd`: the existential call gives 3 where 10 is expected. The `DerivativeOf` path never adds the attribute to the primal's modifiers (the same inverse-placement asymmetry described on the internals page: `registerAssociatedDecl` without `addModifier`), so a skip keyed on the primal's attributes cannot see it. It also cannot be fixed at header time, because its primal resolution looks up the default members; it needs a single extension whose members are bound before conformances are formed [#13301 root cause](../learnings/1790689225165-slang-autodiff-differentiable-backward-forward-der.md).
 - `[Differentiable][PrimalSubstitute(g)] read`, where `g` is `[Differentiable][BackwardDerivative]`: the existential call gives 3. A plain `[PrimalSubstitute(g)] read` without `[Differentiable]` is correct (10/10).
 
+## Library-side workaround until the compiler fix ships
+
+A library can avoid #13301 on released compilers by keeping `[BackwardDerivative]` off the requirement's witness. Consider SlangPy's `DiffTensor` `load` requirement. The witness becomes a plain forwarder, and the custom derivative moves to a private helper that is not a requirement:
+
+```slang
+[ForceInline][Differentiable]
+T load(I idx[D]) { return _load_custom(idx); }        // the requirement's witness
+
+[Differentiable][BackwardDerivative(_load_bwd)]
+T _load_custom(I idx[D]) { ... }                      // private, statically dispatched
+```
+
+Default synthesis is now correct for the forwarder, because it has no custom derivative for a second conformance to lose. Its body calls the helper statically, so the helper's `[BackwardDerivative]` is used even when `load` is reached through an interface. The workaround was verified on Slang 2026.16.1 and 2026.18.3 for SlangPy's DiffTensor load/store via `IDiffTensor`/`IWDiffTensor`/`IRWDiffTensor`, including a generic `<T:IDiffTensor>` called from a concrete wrapper (gradients went from 0 to 3). Removing `[Differentiable]` from the conformer instead fails with E38110 "callable differentiability requirement not satisfied". Extension methods on `TensorType : IDiffTensor`, such as SlangPy's int-scalar `load(int i0)`, are not requirements and are unaffected. SlangPy's only interface-differentiation test (`test_tensor.slang:282`) goes through that extension path, which is why its CI stays green. Tracked as slangpy#1204 ([#13301 workaround: forwarder witness plus a private custom-derivative helper; dropping [Differentiable] gives E38110](../learnings/1791189874294-slang-13301-workaround-keep-backwardderivative-off.md)). The GPU-free CPU repro recipe used for it is on [[wiki/concepts/slangpy-build-and-infra-operations.md]].
+
 ## Higher-order composition crashes (#13320-#13323)
 
 Probing the #13301 fix exposed pre-existing higher-order crashes on master (slangc rc 139) that are independent of the patch. The first probe listed two: `fwd_diff(fwd_diff(f))`, where `f` is a member `[ForwardDerivative(read_fwd)][Differentiable]` method and `read_fwd` is not `[Differentiable]` (the free-function version correctly gives E30027), and `bwd_diff(fwd_diff(f))` with a differentiable custom fwd on a member method [two pre-existing higher-order segfaults](../learnings/1790691457543-slang-autodiff-the-custom-derivative-through-inter.md). Dropping the repro's extra features one at a time showed that none of them mattered for the second crash: composed `bwd_diff(fwd_diff(f))` crashes even for `f(s)=s*s`, and has since #9808 (AD 2.0, v2026.7). It was filed as #13321. The failing site is the unchecked `cast<IRFuncType>(resolvedCallee->getDataType())` at `slang-ir-typeflow-specialize.cpp:4795`. No test covers the composed form; only the wrapper form is tested (`tests/autodiff/high-order-backward-diff-1/-2`) [backtrace a Debug SLANG_ASSERT without gdb; found #13321](../learnings/1790695170333-backtrace-a-slang-debug-slang-assert-on-linux-with.md).
@@ -65,7 +80,7 @@ The same review chain produced two corrections to read-only, code-traced finding
 - When an old release compiles a higher-order form and master crashes (#13327, a third-order derivative), prove the old output was *right*, not just rc 0, with a g++ host harness over its `-target cpp` output; v2026.5.2 computed `6 6 12`. Procedure on [[wiki/concepts/misc-f0909b3-slang-test-verification.md]] [prove an old release's -target cpp output is correct with a g++ host harness](../learnings/1790705791676-prove-an-old-slang-release-s-target-cpp-output-is-.md).
 - Lean worktree builds: `SLANG_ENABLE_SLANGD=OFF` breaks configure because slang-test depends on slangd. Build `slang-numerics-modules`, `slang-functional-module`, `slang-neural-module`, `slang-workgraph-module`, and `slang-glsl-module` before running the full suite, otherwise about 60 tests fail with "cannot open file slang/numerics/...". `tests/dispatcher/smoke.slang` needs the `slang` dispatcher binary [#13301 build tips](../learnings/1790689225165-slang-autodiff-differentiable-backward-forward-der.md).
 
-**Source learnings (7):**
+**Source learnings (8):**
 - [custom [BackwardDerivative] on an interface-requirement impl is silently replaced by auto-diff via interface/generic calls](../learnings/1790639544574-slang-custom-backwardderivative-on-an-interface-re.md)
 - [#13301 root cause: [Differentiable] + [Backward|Forward]Derivative creates two conformances sharing one witness symbol; the default wins](../learnings/1790689225165-slang-autodiff-differentiable-backward-forward-der.md)
 - [#13301 persists for *DerivativeOf and [Differentiable][PrimalSubstitute]; two pre-existing higher-order segfaults](../learnings/1790691457543-slang-autodiff-the-custom-derivative-through-inter.md)
@@ -73,4 +88,5 @@ The same review chain produced two corrections to read-only, code-traced finding
 - [making a crashing callee resolvable can turn an adjacent crash into a silent wrong gradient (E38037 keyed on callee opcodes)](../learnings/1790698803515-making-a-crashing-autodiff-call-resolvable-can-tur.md)
 - [A/B a code-traced crash on pristine master and the sibling form; drill each case of a multi-case predicate](../learnings/1790702192345-before-accepting-a-code-traced-new-crash-finding-r.md)
 - [#13321's bwd-of-fwd cast crash confounds other higher-order repros; isolate with fwd_diff(fwd_diff(...)) in Debug](../learnings/1790704234870-a-higher-order-autodiff-crash-repro-can-be-confoun.md)
+- [#13301 library workaround: forwarder witness + private [BackwardDerivative] helper; dropping [Differentiable] gives E38110; extension methods unaffected (slangpy#1204)](../learnings/1791189874294-slang-13301-workaround-keep-backwardderivative-off.md)
 _Catalog: [[wiki/index.md]]_

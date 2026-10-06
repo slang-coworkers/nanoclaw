@@ -156,8 +156,9 @@ the barrier blocks it. A safe prototype fix also treats roots whose pointer type
 are immune", breaks `inout` copy-in/copy-out: after `undoParameterCopy` an `inout` is a pointer
 param, and `x = t; barrier; return x` starts re-reading another thread's value, so param roots need
 an exemption. The same predicate also forwards through a pointer loaded inside the function
-(`uint* q = cb.p; *q = 1; w(); outb = *q` gives 1) on all targets including SPIR-V; that was unfiled
-when recorded
+(`uint* q = cb.p; *q = 1; w(); outb = *q` gives 1) on all targets including SPIR-V, since filed as
+#13412; the predicate's other unsound exemptions (escaped locals, pure callees) are on
+[Slang IR passes](../concepts/misc-f0909b7-slang-ir-optimization.md)
 [Metal/CPU groupshared is a function-local var after introduceExplicitGlobalContext](../learnings/1790967869022-metal-cpu-groupshared-is-a-function-local-var-afte.md).
 
 The same issue's second bug is the C-like emitter folding a store into the `threadgroup`

@@ -3,12 +3,10 @@ title: "Bot Operational Protocols and Maintainer Interactions"
 type: concept
 group: general-misc
 tags: [operational, maintainer, triage, pr-watcher, scheduling, design-discussion, latent-defect, tracking-issues]
-source_count: 29
+source_count: 30
 ---
 
 # Bot Operational Protocols and Maintainer Interactions
-
-How the bot deals with maintainers and contributors and runs recurring work: PR-watcher design, design-discussion etiquette, dedup before filing or fixing, PR iteration, GitHub posting authority, bot identity, correction hygiene, and shared-learnings write mechanics.
 
 ## TL;DR
 - Put a PR-watcher's change detection in the task's `script` guard with a state file, not in the agent prompt. Don't key on `mergeStateStatus`. After `report_pr_created`, schedule no watcher: webhooks already route to you.
@@ -19,7 +17,7 @@ How the bot deals with maintainers and contributors and runs recurring work: PR-
 - A contributor who offers a PR gets a short, warm yes, not a triage dump. If a maintainer already answered, add nothing.
 - Use they/them for anyone whose pronouns aren't stated. A login, display name or old memory note does not state pronouns.
 - Re-run the dedup search right before opening a bot PR, because contributors often fix their own cleanup issues. A contributor's companion follow-up issue is offer-only.
-- Before calling a chat-reported bug new, search GitHub by symptom, reporter, and the pass or file they cite.
+- Before calling a chat-reported bug new or a bug untracked, search GitHub by symptom, reporter, and the pass or file they cite, and also read the comments on the candidate issues; issue search does not cover comments.
 - A clear, verified answer can be the whole fix for a docs-discoverability issue. A bot PR closed in favor of the reporter's own PR is a good outcome, but refresh the issue comment. How-to prose belongs in `docs/user-guide/`, not in `include/slang.h`.
 - Before a cross-cutting IR fix, grep open PRs for the same file or fold, including PRs from our own bot's other sessions.
 - On a PR under review, push new commits and use `git merge origin/master`. Never force-push a rebase.
@@ -31,6 +29,8 @@ How the bot deals with maintainers and contributors and runs recurring work: PR-
 - `append_learning`: never start `content` with a heading. INDEX titles are lowercased, stripped of punctuation and cut to ~50 chars, so search on fragments and put word stems early.
 - A standing gap note's severity depends on which targets it breaks, not on the syntax it names. Recompute its counts before quoting them.
 - If a Discord summon thread drifts off-lane, still answer a fresh in-lane question from the summoner.
+
+How the bot deals with maintainers and contributors and runs recurring work: PR-watcher design, design-discussion etiquette, dedup before filing or fixing, PR iteration, GitHub posting authority, bot identity, correction hygiene, and shared-learnings write mechanics.
 
 ## PR-Watcher Tasks
 
@@ -60,7 +60,7 @@ A "re-enable this test once upstream is fixed" issue needs two cheap checks. Fir
 
 ## Dedup Before Filing or Fixing
 
-**Check a chat-reported bug against GitHub before calling it new.** A bug that was already filed and fixed can look live when it sits in the channel's recent-N window and the reporter retracted only part of it. On the 2026-08-04 sweep, crossvr's `slang-ir-byte-address-legalize` corruption report looked unfiled after a partial retraction. It was actually #12265, filed by the reporter and closed by #12267 two days later. Search by symptom keywords, by reporter username, and by the pass or file they cite. One `github_search_issues` call costs far less than a false "needs an issue" ([check a chat-reported bug against GitHub first](../learnings/1785831640500-resolve-a-chat-reported-bug-against-github-before-.md)).
+**Check a chat-reported bug against GitHub before calling it new.** A bug that was already filed and fixed can look live when it sits in the channel's recent-N window and the reporter retracted only part of it. On the 2026-08-04 sweep, crossvr's `slang-ir-byte-address-legalize` corruption report looked unfiled after a partial retraction. It was actually #12265, filed by the reporter and closed by #12267 two days later. Search by symptom keywords, by reporter username, and by the pass or file they cite. One `github_search_issues` call costs far less than a false "needs an issue" ([check a chat-reported bug against GitHub first](../learnings/1785831640500-resolve-a-chat-reported-bug-against-github-before-.md)). Searching issues is not enough, though, because issue search covers titles and bodies, not comments. In the #13421 R1 review a related bug (device-buffer loads moved past `AllMemoryBarrierWithGroupSync`) was called untracked after a `gh search issues` pass and a read of the body of the nearest issue, #13412. It was already filed as a **comment** on #13412 (issuecomment-5963139346), posted by another tier during the same triage, and the fixer rightly pushed back. Follow-up shapes found mid-triage are often appended to a sibling issue rather than filed fresh, so before writing "not tracked / should be filed", also list the comments on each candidate issue: `gh api repos/<o>/<r>/issues/<n>/comments --jq '.[].body' | grep -i <keyword>` ([search issue comments, not just issues, before calling a bug untracked](../learnings/1791148129234-search-issue-comments-not-just-issues-before-calli.md)).
 
 **Grep open PRs before a cross-cutting fix, including our own.** Before proposing a change to a shared IR pass (peephole, SCCP, simplify, legalize, lowering), run `gh pr list -R <repo> --search "<filename> OR <op-name>" --state open --json number,title,author,files`. On #12110/#12116, a prototype fold in `slang-ir-peephole.cpp` duplicated our own bot's PR #12263 from another session. When a maintainer says a fix "conflates a separate concern", look for the PR that owns that concern before defending your approach ([check for an in-flight bot PR on the same pass](../learnings/1785443375063-before-proposing-a-cross-cutting-ir-fix-check-for-.md)).
 
@@ -108,7 +108,7 @@ Two ownership facts shape repairs. `/workspace/shared/` is writable only by Main
 
 Standing down from off-lane drift on a handled thread (say, a trusted maintainer answering general C++ questions) doesn't mean leaving the thread for good. When the summoner posts a real in-lane question that nobody has answered, answer it ([answer a fresh in-lane question from the summoner](../learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md)).
 
-**Source learnings (29):**
+**Source learnings (30):**
 - [Obsidian-link gap is nav-only; triage by target, recompute counts](../learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md)
 - [A correction isn't applied until every surface is fixed; grep old+new](../learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md)
 - [append_learning injects title as H1; never start content with one](../learnings/1785774989369-append-learning-injects-the-title-as-h1-never-star.md)
@@ -136,6 +136,7 @@ Standing down from off-lane drift on a handled thread (say, a trusted maintainer
 - [Edit in place when last commenter; persist parent ownership claims](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
 - [Off-lane summon thread: still answer a fresh in-lane question](../learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md)
 - [Check a chat-reported bug against GitHub before calling it new](../learnings/1785831640500-resolve-a-chat-reported-bug-against-github-before-.md)
+- [Search issue comments, not just issues, before calling a bug 'untracked'](../learnings/1791148129234-search-issue-comments-not-just-issues-before-calli.md) — the #13421 "untracked" bug was already a comment on #13412; list candidate issues' comments before saying "should be filed".
 - [they/them until stated; fix live misgendering via PATCH](../learnings/1790197020671-default-to-they-them-for-a-person-until-pronouns-a.md)
 - [#13296: a handle or old note is not a stated pronoun](../learnings/1790625520308-default-to-they-them-for-maintainers-and-reporters.md)
 
