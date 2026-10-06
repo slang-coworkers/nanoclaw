@@ -2496,6 +2496,18 @@ export async function buildMounts(
         });
       }
 
+      // gate-pr-description.sh: a PR description set by `gh pr create|edit` or
+      // `gh api …/pulls` stays short (2 lines per section, ≤1,000 chars, no
+      // tables), because squash merges copy it into git log; the explanation
+      // lives in the explanation comment. Fires for ALL agents, like pr-auto-map.
+      if (!hasCmd('PreToolUse', 'gate-pr-description.sh')) {
+        if (!settings.hooks.PreToolUse) settings.hooks.PreToolUse = [];
+        settings.hooks.PreToolUse.push({
+          matcher: 'Bash',
+          hooks: [{ type: 'command', command: 'bash /app/hooks/gate-pr-description.sh', timeout: 5 }],
+        });
+      }
+
       // force-codex-sandbox: reject mcp__codex__codex calls with
       // sandbox != "danger-full-access". bwrap doesn't work inside Docker
       // containers, so read-only sandbox wastes a round-trip (30% of

@@ -73,6 +73,19 @@ describe('overlay hook registration', () => {
     expect(count(hooks.Stop, 'gate-explain-on-stop.sh')).toBe(1);
   });
 
+  it('registers gate-pr-description.sh as a PreToolUse Bash hook for every group, once', async () => {
+    let hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-pr-description.sh')).toBe(1);
+    const entry = hooks.PreToolUse.find((e) => e.hooks?.some((h) => h.command?.includes('gate-pr-description.sh')));
+    expect(entry?.matcher).toBe('Bash');
+    expect(entry?.hooks?.[0].command).toBe('bash /app/hooks/gate-pr-description.sh');
+    hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-pr-description.sh')).toBe(1);
+    // Not an overlay gate: a group with overlays disabled still keeps descriptions short.
+    hooks = await settingsAfterSpawn({ disable_overlays: 1 });
+    expect(count(hooks.PreToolUse, 'gate-pr-description.sh')).toBe(1);
+  });
+
   it('is not registered when overlays are disabled for the group', async () => {
     const hooks = await settingsAfterSpawn({ disable_overlays: 1 });
     expect(count(hooks.Stop, 'gate-explain-on-stop.sh')).toBe(0);
