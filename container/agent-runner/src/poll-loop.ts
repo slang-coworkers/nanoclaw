@@ -95,6 +95,13 @@ const BG_TASK_IDLE_END_MS = process.env.NANOCLAW_BG_TASK_IDLE_END_MS
   ? Math.max(IDLE_END_MS, parseInt(process.env.NANOCLAW_BG_TASK_IDLE_END_MS, 10))
   : Math.max(IDLE_END_MS, 5_400_000);
 
+// How long an idle-ended query's event stream may stay silent before the poll
+// loop gives up on it. A healthy provider closes within seconds of end() (or
+// keeps emitting while an in-flight turn drains). Observed on a live install: the SDK stream
+// never closed, which parked processQuery forever and left the container deaf.
+// Abandoning it returns to the outer loop, which starts a fresh query.
+export const IDLE_END_GRACE_MS = 60_000;
+
 /** The idle-end limit that applies right now: the long one while subagents run. */
 export function idleEndLimit(
   bgTasks: number,
@@ -3022,6 +3029,41 @@ interface QueryResult {
   undeliveredIds?: string[];
 }
 
+/**
+ * Iterate a provider's events until the stream closes or `abandon` fires. A
+ * plain for-await waits on a stream that never closes forever. On abandon the
+ * pending read is left behind, never awaited. A consumer break or throw still
+ * closes the stream, exactly as for-await does.
+ */
+async function* untilAbandoned<T>(events: AsyncIterable<T>, abandon: AbortSignal): AsyncGenerator<T> {
+  const it = events[Symbol.asyncIterator]();
+  let closeOnExit = true;
+  try {
+    while (!abandon.aborted) {
+      let onAbandon = (): void => {};
+      const next = await new Promise<IteratorResult<T> | null>((resolve, reject) => {
+        onAbandon = () => resolve(null);
+        abandon.addEventListener('abort', onAbandon, { once: true });
+        it.next().then(resolve, reject);
+      }).finally(() => abandon.removeEventListener('abort', onAbandon));
+      if (next === null) break;
+      if (next.done) {
+        closeOnExit = false;
+        return;
+      }
+      yield next.value;
+    }
+    // Ask the stream to close once its pending read settles, without waiting.
+    closeOnExit = false;
+    void it.return?.().catch(() => {});
+  } catch (err) {
+    closeOnExit = false;
+    throw err;
+  } finally {
+    if (closeOnExit) await it.return?.();
+  }
+}
+
 export async function processQuery(
   query: AgentQuery,
   routing: RoutingContext,
@@ -3191,6 +3233,12 @@ export async function processQuery(
   // will kill the container and messages get reset to pending.
   let pollInFlight = false;
   let endedForCommand = false;
+  // Set when the idle-end rule closes the query's input. From then on the
+  // query is dead to the poller: the idle check never re-runs, and nothing is
+  // claimed or pushed into it — a push after end() is never read.
+  let idleEndedAt: number | undefined;
+  // Fired when an idle-ended stream stays silent past IDLE_END_GRACE_MS.
+  const abandonStream = new AbortController();
   let freshSessionDeferLogged = false;
   // True once the SDK has emitted a `result` for the current turn and nothing has
   // been pushed since; cleared by the next push. Post-turn accounting events keep it.
@@ -3202,6 +3250,22 @@ export async function processQuery(
   signal?.addEventListener('abort', onSignalAbort, { once: true });
   const pollHandle = setInterval(() => {
     if (done || pollInFlight || endedForCommand) return;
+    if (idleEndedAt !== undefined) {
+      // Pending rows stay pending for the next query. Only watch for a stream
+      // that never closes; events after the end (a draining turn) reset the clock.
+      const quietMs = Date.now() - Math.max(lastEventTime, idleEndedAt);
+      if (quietMs > IDLE_END_GRACE_MS && !abandonStream.signal.aborted) {
+        log(
+          `Query stream still open ${Math.round(quietMs / 1000)}s after idle end — abandoning it; ` +
+            `the next message starts a fresh query`,
+        );
+        // Stop reading first, so the killed stream's rejection lands nowhere.
+        abandonStream.abort();
+        query.abort();
+        query.kill?.();
+      }
+      return;
+    }
     pollInFlight = true;
 
     void (async () => {
@@ -3281,6 +3345,7 @@ export async function processQuery(
             log(
               `No SDK events for ${idleLimit / 1000}s${bgTasks > 0 ? ` (${bgTasks} background task(s) still open)` : ''}, ending query`,
             );
+            idleEndedAt = Date.now();
             query.end();
           }
           return;
@@ -3470,7 +3535,7 @@ export async function processQuery(
   }, activePollIntervalMs);
 
   try {
-    for await (const event of query.events) {
+    for await (const event of untilAbandoned(query.events, abandonStream.signal)) {
       lastEventTime = Date.now();
       // `result` closes a turn; usage events are post-turn accounting; anything
       // else means the SDK is working again.
