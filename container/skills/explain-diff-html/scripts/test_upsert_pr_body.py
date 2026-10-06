@@ -37,8 +37,9 @@ def comment(cid, body, at, login=BOT):
 class FakeGH:
     """Records gh calls; serves a PR, its comments, and accepts edits."""
 
-    def __init__(self, body="", comments=None, live=HEAD, me="", fail_patch=(), fail_pr_patch=False, on_post=None, heads=None):
+    def __init__(self, body="", comments=None, live=HEAD, me="", fail_patch=(), fail_pr_patch=False, on_post=None, heads=None, bodies=None):
         self.body, self.me = body, me
+        self.bodies = list(bodies) if bodies else None
         self.heads = list(heads) if heads else None
         self.live = live
         self.comments = {c["id"]: dict(c) for c in (comments or [])}
@@ -68,6 +69,8 @@ class FakeGH:
             return True, "\n".join(json.dumps(c) for c in ordered)
         if method == "GET" and "/pulls/" in path:
             head = self.heads.pop(0) if self.heads else self.live
+            if self.bodies:
+                self.body = self.bodies.pop(0)
             return True, json.dumps({"body": self.body, "head": head})
         if method == "PATCH" and "/issues/comments/" in path:
             cid = int(path.rsplit("/", 1)[1])
@@ -291,6 +294,17 @@ class Failures(Base):
         self.assertEqual(code, 4)
         self.assertFalse(self.has_success_receipt(out))
         self.assertIn("moved", err)
+
+    def test_description_edited_during_the_run_is_not_overwritten(self):
+        old = OLD_SECTION + "\n\nFixes #1\n"
+        edited = old + "\nA maintainer's note added meanwhile.\n"
+        fake = FakeGH(bodies=[old, edited])
+        code, out, err = self.run_script(fake)
+        self.assertEqual(code, 5)
+        self.assertFalse(self.has_success_receipt(out))
+        self.assertIn("description changed", err)
+        self.assertEqual(fake.body, edited)
+        self.assertFalse(any("pulls/" in " ".join(c) for c in fake.writes()))
 
     def test_head_mismatch_writes_nothing(self):
         fake = FakeGH(body=CONCISE, live="f" * 40)

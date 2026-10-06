@@ -358,13 +358,20 @@ def run(a: argparse.Namespace) -> int:
         action = "created"
     kept = converge(a.repo, a.pr, ref, comment, live[:12], trusted)
 
-    if desc_status == "stripped":
-        with_body(new_desc, ["api", "-X", "PATCH", f"repos/{a.repo}/pulls/{a.pr}"], ["--silent"])
-
-    now = live_pr(a.repo, a.pr).get("head") or ""
+    latest = live_pr(a.repo, a.pr)
+    now = latest.get("head") or ""
     if now != live:
         raise Refused(4, f"the PR head moved from {live[:12]} to {now[:12]} during this run; "
                          "re-run /explain-diff-html for the new head")
+    if desc_status == "stripped":
+        # Edit only the description we inspected: if anyone changed it meanwhile, write nothing to it.
+        if (latest.get("body") or "") != (pr.get("body") or ""):
+            raise Refused(5, "the PR description changed during this run; nothing was written to it — re-run")
+        with_body(new_desc, ["api", "-X", "PATCH", f"repos/{a.repo}/pulls/{a.pr}"], ["--silent"])
+        after = live_pr(a.repo, a.pr).get("head") or ""
+        if after != live:
+            raise Refused(4, f"the PR head moved from {live[:12]} to {after[:12]} during this run; "
+                             "re-run /explain-diff-html for the new head")
 
     for n in notes:
         print(n)
