@@ -66,6 +66,19 @@ call, and assert the decoded body's byte length matches the request's
 silently sending a truncated request). See `container/claude-trace/dist/reverse-proxy.js`'s
 current `handleRequest()` for the exact applied form.
 
+**Second manual fix, `dist/cli.js` (2026-10, the agent-runner dead-query fix):**
+upstream's `runClaudeNativeWithProxy()` and `runClaudeWithInterception()` never
+exit after the wrapped claude exits. They wait for the event loop to drain. The
+child runs with `stdio: "inherit"`, so the wrapper also holds the SDK's stdout
+pipe. One lingering proxy socket then kept the wrapper alive for hours: the SDK
+never saw EOF and the runner's query never ended. Both `child.on("exit")`
+handlers now call `exitAfterChild(code, signal)`. It sets
+`process.exitCode = code ?? (signal ? 1 : 0)` and arms an unref'd
+`EXIT_DRAIN_MS` (10 s) timer that calls `process.exit()`. The loop can still
+drain on its own, which finishes any in-flight trace write. The timer only
+bounds the wait. Reapply it after any rebuild; the regression test is
+`container/agent-runner/src/claude-trace-exit.test.ts`.
+
 ## Layout
 
 | path | what |
