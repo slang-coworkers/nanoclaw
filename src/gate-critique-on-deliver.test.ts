@@ -735,7 +735,7 @@ describe('fix report / review request waits for the explanation comment refresh'
   function explain(head: string): void {
     postToolUse(
       'python3 /home/node/.claude/skills/explain-diff-html/scripts/upsert_pr_body.py --repo "$R" --pr "$N" --head "$(git rev-parse HEAD)" --explanation /tmp/explain-body.md',
-      `${JSON.stringify({ updated: true, repo: 'shader-slang/slang', pr: 13213, chars: 9000, head, legacy_comment: 'none' })}\n`,
+      `EXPLAIN_DIFF_RECEIPT ${JSON.stringify({ updated: true, repo: 'shader-slang/slang', pr: 13213, chars: 9000, head })}\n`,
     );
   }
 
