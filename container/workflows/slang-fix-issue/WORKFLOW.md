@@ -132,7 +132,7 @@ uses:
    - **Triaged-issue mode (default):** push to a writable remote (`origin`, else the `slang-coworkers/slang` fork) and open a **draft PR** against `--repo shader-slang/slang --base master`.
    - **PR-review-fix mode:** deliver into the author's PR per the deltas above (slangbot-style cross-fork PR via the `nv-slang-bot` user PAT, else patch-comment).
 
-   Keep the description **concise** (about 5–15 lines): a squash merge copies it into slang's git log as the commit message. Write it to a file and pass `--body-file` (single-line `--body` strips badly) with: **Summary** (the bug and the fix, 1–3 lines), **Root cause** (one line, `file:line`), **Tests** (repro + broader suite, one line), **Risk** (blast radius, one line), and `Closes #<n>.` The approach, rejected alternatives and design rationale go in the explanation comment, not here; GitHub already lists the files. Capture the PR URL for the **Peer review** step.
+   Keep the description **concise**: a squash merge copies it into slang's git log as the commit message. Write it to a file and pass `--body-file` (single-line `--body` strips badly) with four labeled sections, **each at most 2 lines**: **Summary** (the bug and the fix), **Root cause** (`file:line`), **Tests** (repro + broader suite), **Risk** (blast radius), then `Fixes #<n>` / `Closes #<n>.` The whole description stays under 1,000 characters and has no tables; a hook refuses `gh pr create` / `gh pr edit` otherwise and names what is over. A question that blocks merge is one line: `Open question (blocks merge): <the question> — details in the explanation comment.` The approach, rejected alternatives, design rationale, per-case tables and long risk lists go in the explanation comment, not here; GitHub already lists the files. Capture the PR URL for the **Peer review** step.
 
    Once the PR is open, and after **every** later push, run `/explain-diff-html` so the PR's explanation comment (one comment directly under the description, edited in place) explains the current head. Run it right after `gh pr create`, so it is the PR's first comment. While a push is unexplained the turn cannot end and `[Fix Review Request]` / `[Fix Report]` are refused.
 
@@ -181,7 +181,7 @@ uses:
 
    `in_reply_to` names the inbound that dispatched this fix (the triage handoff) so the report routes back up the exact edge — it is **required** on `[Fix Report]` under the chain-routing-gate (`thread_id` is derived from it).
 
-   Refresh the draft PR description with final values in the same concise shape as **Push + draft PR** (Summary, Root cause, Tests, Risk → renamed Review, `Closes #<n>.`; no files list, no explanation), then `gh pr edit <pr-number> -R shader-slang/slang --body-file <file>`. The explanation comment is separate and already follows the head.
+   Refresh the draft PR description with final values in the same concise shape as **Push + draft PR** (Summary, Root cause, Tests, Risk → renamed Review, each at most 2 lines, under 1,000 characters, no tables, `Closes #<n>.`; no files list, no explanation), then `gh pr edit <pr-number> -R shader-slang/slang --body-file <file>`. The explanation comment is separate and already follows the head.
 
    Persist the run to `/workspace/agent/memory/fix-<number>.md`: title, date, status, worktree path, branch, files changed, test result, PR/patch URL.
 
