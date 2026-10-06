@@ -547,9 +547,14 @@ export class ClaudeProvider implements AgentProvider {
     const claudeExecutable =
       process.env.CLAUDE_CODE_EXECUTABLE || '/app/node_modules/@anthropic-ai/claude-agent-sdk-linux-x64/claude';
 
+    // Only kill() aborts this. The SDK then closes its process: stdin end,
+    // SIGTERM, then SIGKILL.
+    const sdkAbort = new AbortController();
+
     const sdkResult = sdkQuery({
       prompt: stream,
       options: {
+        abortController: sdkAbort,
         pathToClaudeCodeExecutable: claudeExecutable,
         cwd: input.cwd,
         additionalDirectories: this.additionalDirectories,
@@ -854,6 +859,11 @@ export class ClaudeProvider implements AgentProvider {
       abort: () => {
         aborted = true;
         stream.end();
+      },
+      kill: () => {
+        aborted = true;
+        stream.end();
+        sdkAbort.abort();
       },
     };
   }
