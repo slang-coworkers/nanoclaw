@@ -83,7 +83,7 @@ python3 /home/node/.claude/skills/explain-diff-html/scripts/upsert_pr_body.py \
 
 - **Head check.** It refuses (exit 4) when the PR's live head is not the commit you explained: push first, or re-run on the current head. A stale explanation never overwrites a newer one.
 - **One comment.** It edits our explanation comment in place, or creates it when there is none, then re-reads the comments and succeeds only when exactly one of ours carries the explanation you passed, for the head you explained. A comment is ours only when it starts with the marker for this exact PR **and** its author is an identity this coworker has proven it writes as: the `gh api user` login, a login GitHub returned for one of this script's own posts (remembered in `~/.claude/explain-diff-actors.json`), or one you name in `EXPLAIN_DIFF_ACTOR`. If anyone else's comment starts with our marker, nothing is written and it exits 5 naming that comment: set `EXPLAIN_DIFF_ACTOR=<login>` only when that login is this coworker's own GitHub identity, never a human's; otherwise tell your parent. Our older collapsed comment is converted rather than duplicated; extra copies of ours become a one-line pointer to the kept one. Any failed write exits 5, and a head that moved during the run exits 4, both without a receipt, so re-run. GitHub orders comments by time and cannot move them, so run the script right after `gh pr create`: the first comment sits directly under the description.
-- **The description.** It removes the explanation block an earlier version wrote into the description only when it is exactly that block: the start marker for this PR as the very first line, through the one end-marker line. Anything else (an indented or later example, two end markers, a missing end) is left in place with a `NOTE:`; move it out by hand. When the description is under 200 characters it prints a `NOTE:` too: write the concise description then (see *The PR description*).
+- **The description.** It removes the explanation block an earlier version wrote into the description only when it is exactly that block: the start marker for this PR as the very first line, through the one end-marker line. Anything else (an indented or later example, two end markers, a missing end) is left in place with a `NOTE:`; move it out by hand. When the description is under 200 characters, or over the limits in *The PR description*, it prints a `NOTE:` too: write or rewrite the concise description then.
 - **Where the chain's status goes.** Post the rolled-up 5-bullet on the issue (`fix in draft PR #N, held pending review` when draft-held), as chain reporting already asks for a draft PR.
 - **Size.** Over 60,000 characters exits 3 (GitHub rejects comments over 65,536): drop the deep-background layer first, then compress the code walkthrough to its story; never drop the quiz.
 - `--dry-run` prints the comment and what it would change to stderr, without writing anything.
@@ -92,7 +92,13 @@ Writing the explanation comment is unconditional for PRs you own. If `gh` fails 
 
 ## The PR description
 
-Squash merges copy the description into git log, so it is the commit message maintainers will live with. Keep it short and meaningful, about 5–15 lines: what changed, why, how it was tested, and the issue links (`Fixes #N`, `Part of #N`) plus the bot disclaimer. Write it with `gh pr create --body-file` and update it with `gh pr edit <n> --body-file <file>` when the change itself changes. Never paste the explanation, the quiz, or diagrams into it.
+Squash merges copy the description into git log, so it is the commit message maintainers will live with. Keep it short and meaningful: what changed, why, how it was tested, and the issue links (`Fixes #N`, `Part of #N`) plus the bot disclaimer. Write it with `gh pr create --body-file` and update it with `gh pr edit <n> --body-file <file>` when the change itself changes. Never paste the explanation, the quiz, or diagrams into it.
+
+The limits are enforced: a `gh pr create`, `gh pr edit` or `gh api …/pulls` whose description breaks them is refused with one line naming what is over, and the script above prints a `NOTE:` for a description already over them.
+- **2 lines per section.** A section starts at a line with a bold label (`**Summary.**`) or a `## Heading`; it holds at most 2 non-empty lines, the label line included.
+- **1,000 characters in total**, not counting the `<sub>` disclaimer and `Fixes #N` lines.
+- **No tables.** Tables, per-case details and long risk lists go in the explanation comment.
+- **Open questions are one line:** `Open question (blocks merge): <the question> — details in the explanation comment.`
 
 ## Deliver
 
@@ -113,4 +119,4 @@ One focused pass: read for background, write, verify the checklist, deliver. Do 
 - No `http(s)://` asset references; the file opens from disk.
 - Quiz: the correct answers sit at the `--quiz-positions` letters (not all in one position); the HTML shuffles options on load.
 - Explanation comment: first line is the `## 📖 Explanation — head <sha7> · <date>` heading; deep background and the quiz are in closed `<details>` blocks with blank lines after `<summary>` and before `</details>`; no `<style>`, `<script>`, or `style=` anywhere; diagrams are Mermaid or text fences; the script exited 0 (not 3 or 4) and reported the head you explained.
-- PR description: concise (what, why, how tested, issue links), no explanation in it, and no `NOTE:` line left unanswered.
+- PR description: concise (what, why, how tested, issue links), each section at most 2 lines, under 1,000 characters, no tables, no explanation in it, and no `NOTE:` line left unanswered.

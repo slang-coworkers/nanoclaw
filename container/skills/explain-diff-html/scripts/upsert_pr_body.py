@@ -31,7 +31,8 @@ What a run does:
   - removes the explanation block an earlier version wrote into the description,
     only when it is exactly that block: the start marker for this PR as the very
     first line, and exactly one end-marker line. Anything else is left unchanged
-    with a NOTE. A description shorter than SHORT_BODY characters also gets a NOTE.
+    with a NOTE. A description shorter than SHORT_BODY characters also gets a NOTE,
+    and so does one over the description limits (see description_problems).
   - prints the receipt line (RECEIPT_PREFIX + JSON) as the last stdout line, only
     after every write succeeded. Any failed write exits 5 without it.
 
@@ -77,6 +78,66 @@ END = "<!-- explain-diff-html:end -->"
 RECEIPT_PREFIX = "EXPLAIN_DIFF_RECEIPT "
 MAX_COMMENT = 60_000  # GitHub rejects comment bodies over 65,536 characters.
 SHORT_BODY = 200
+
+# Description limits: the same rules and env knobs as the PreToolUse gate
+# (container/hooks/lib/pr_description.py); keep the two in step. Squash merges copy
+# the description into git log, so each section (a line starting with a bold label
+# or a `## Heading`) holds at most 2 non-empty lines, the whole description at most
+# 1,000 characters, and no table. A final `<sub>` disclaimer line and exact
+# `Fixes|Closes|Resolves #N` lines are not counted. test_upsert_pr_body.py checks
+# this copy against the hook's on a shared corpus.
+_ISSUE_REF = r"(?:(?:[\w.-]+/[\w.-]+)?#\d+|https://github\.com/[\w.-]+/[\w.-]+/(?:issues|pull)/\d+)"
+_CLOSING_WORD = r"(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)"
+_CLOSING_RE = re.compile(
+    rf"^\s*{_CLOSING_WORD}\s*:?\s+{_ISSUE_REF}(?:\s*(?:,|and)\s*(?:{_CLOSING_WORD}\s*:?\s+)?{_ISSUE_REF})*\s*\.?\s*$",
+    re.IGNORECASE,
+)
+_DISCLAIMER_RE = re.compile(r"^\s*<sub>.*</sub>\s*$", re.IGNORECASE)
+_BOLD_LABEL_RE = re.compile(r"^\s*(\*\*|__)\s*(?P<label>[^*_\n]{1,80}?)\s*[.:]?\s*\1[.:]?(\s|$)")
+_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(?P<label>.+?)\s*#*\s*$")
+_TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$")
+
+
+def _env_int(name: str, default: int) -> int:
+    v = os.environ.get(name, "")
+    return int(v) if v.isdigit() and int(v) > 0 else default
+
+
+def description_limits() -> tuple[int, int]:
+    return _env_int("PR_DESCRIPTION_MAX_CHARS", 1000), _env_int("PR_DESCRIPTION_MAX_SECTION_LINES", 2)
+
+
+def description_problems(body: str, max_chars: int, max_lines: int) -> list[str]:
+    """What in a description breaks the limits, as short phrases; empty when it is fine."""
+    lines = body.replace("\r\n", "\n").split("\n")
+    last = max((i for i, ln in enumerate(lines) if ln.strip()), default=-1)
+    if last >= 0 and _DISCLAIMER_RE.match(lines[last]):
+        lines = lines[:last] + lines[last + 1:]
+    lines = [ln for ln in lines if not _CLOSING_RE.match(ln)]
+    problems: list[str] = []
+    sections: list[list] = []
+    for ln in lines:
+        if not ln.strip():
+            continue
+        m = _BOLD_LABEL_RE.match(ln) or _HEADING_RE.match(ln)
+        if m:
+            sections.append([m.group("label").strip().rstrip(".:"), 1])
+        elif sections:
+            sections[-1][1] += 1
+    for label, n in sections:
+        if n > max_lines:
+            problems.append(f"{label} has {n} lines, max {max_lines}")
+    prev = ""
+    for ln in lines:
+        if ln.strip() and "|" in ln and "-" in ln and _TABLE_SEP_RE.match(ln) and "|" in prev:
+            problems.append("it contains a table")
+            break
+        if ln.strip():
+            prev = ln
+    total = len("\n".join(lines).strip())
+    if total > max_chars:
+        problems.append(f"total {total:,} chars, max {max_chars:,}")
+    return problems
 
 
 def actors_file() -> str:
@@ -329,6 +390,14 @@ def run(a: argparse.Namespace) -> int:
         notes.append(f"NOTE: the PR description is {len(new_desc.strip())} chars. Write a concise description "
                      f"(what changed, why, how it was tested, issue links) with `gh pr edit {a.pr} -R {a.repo} --body-file <file>`; "
                      "squash merges copy it into git log, so keep the explanation out of it.")
+    if os.environ.get("PR_DESCRIPTION_GATE", "1") != "0":
+        max_chars, max_lines = description_limits()
+        problems = description_problems(new_desc, max_chars, max_lines)
+        if problems:
+            notes.append(f"NOTE: the PR description is over the limits ({'; '.join(problems)}). Keep each section to "
+                         f"{max_lines} lines and the whole description under {max_chars:,} chars with no tables; "
+                         f"rewrite it with `gh pr edit {a.pr} -R {a.repo} --body-file <file>` and leave details, "
+                         "tables and open questions in the explanation comment.")
 
     if a.dry_run:
         # Everything human-readable goes to stderr; stdout carries only a non-success trailer,
