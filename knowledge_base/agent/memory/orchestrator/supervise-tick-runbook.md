@@ -13,7 +13,7 @@ Tick 257 lost 13 min to it before killing it.
 1. In a fresh `tickNNN/` dir, fetch the inputs once, serially (concurrent `ncl` calls hit "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick262/`; repoint `titles.py` to payload4.json and `sed` any `tickNNN` paths).
+2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick264/`; repoint `titles.py` to payload4.json and `sed` any `tickNNN` paths).
    It reads those three files via `SESSIONS_FILE` / `GROUPS_FILE` / `STOPPED_FILE` env vars and
    stops reading outbound once it reaches sessions older than the newest outbound found so far.
    The cost result is exact: it uses the same predicate as the dashboard.
@@ -32,6 +32,11 @@ Tick 257 lost 13 min to it before killing it.
   Record `advisory:maintainer-driving` or `triaged:awaiting-pickup`.
 - A human PR author reclaiming their PR ("picking it back up").
 - `watch:` / `handed-off:` dispositions aren't tokens scan.py recognizes. Re-tokenize to `advisory:…`.
+
+**Recurring REAL shape (tick 264):** a round-2 `[Fix Review Request]` lands in a slang-reviewer session whose
+container then stops without processing it. scan.py flags the chain `awaiting_us` against the *fixer*, but the
+stalled tier is the reviewer. Check the reviewer session's newest row: an unanswered `in` after its last `out`
+means nudge **slang-reviewer** (pinned `target_session_id`), not the fixer.
 
 **Sending a nudge:** a thread-keyed `send_message` can be refused with "without in_reply_to … has received messages
 on it". Pin it with `target_session_id=<owning session>` instead, then read the recipient's rows to confirm

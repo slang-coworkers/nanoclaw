@@ -7,7 +7,7 @@ metadata:
   originSessionId: d121aed2-2953-4ba3-81f4-b3f8111b7852
 ---
 
-**2026-10-01 — #9085 MERGED; tests-only follow-up = draft PR #13333** (`fix/issue-9038-followup-tests`, head `d374fa39aa`). slang-reviewer R2 APPROVE_WITH_NITS (budget spent); slang-fixer [Fix Report] 09-30 00:21Z (never relayed then because the container stopped; relayed 10-01 21:00Z). Parked on the **operator's ready-flip** (drafts-only). No real CI on head yet (run 36647612850 = priority yield + falcor gate waiting). Re-chase `rechase-13333-ready-flip-2e7e` fires 10-05 21:00Z.
+**2026-10-01 — #9085 MERGED; tests-only follow-up = draft PR #13333** (`fix/issue-9038-followup-tests`, head `d374fa39aa`). slang-reviewer R2 APPROVE_WITH_NITS (budget spent); slang-fixer [Fix Report] 09-30 00:21Z (never relayed then because the container stopped; relayed 10-01 21:00Z). Parked on the **operator's ready-flip** (drafts-only). No real CI on head yet (run 36647612850 = priority yield + falcor gate waiting). Re-chase `rechase-13333-ready-flip-2e7e` fires 10-05 21:00Z. **10-05 21:00Z:** still draft, unchanged; operator re-asked (dashboard msg 13, 2nd unanswered ask); re-chase re-armed as `rechase-13333-ready-flip-feeb` for 10-09 21:00Z.
 
 PR #9085 "Add GLSL support for SampleCmpBias and SampleCmpGrad" (Fixes #9038). Copilot-authored draft on same-repo branch `copilot/add-glsl-samplecmp-support`. Maintainer @jhelferty-nv asked nv-slang-bot to take it over (2026-07-07 webhook, comment 4909016932) — rebase + **finish** the issue, not just resolve conflicts.
 

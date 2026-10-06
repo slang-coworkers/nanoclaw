@@ -9,7 +9,7 @@ metadata:
 
 **shader-slang/slang#12241** — "[Metal RayTracing]: Start the implementation - part 1" — opened 2026-07-27 by **kaizhangNV** (org member, self-filed + self-assigned).
 
-Disposition: **WATCH-ONLY / parked-at-triaged.** Maintainer-authored feature-tracking placeholder under umbrella **#11296**. Type=Feature + labels (`pr: new feature`, `Dev Opened`) already human-set; milestone Q3 2026. No GitHub post, no label change, no fixer dispatch — nothing to verify on a maintainer's own tracking issue. Skip-rule (core-team + no reproducer) + no-autofixer-on-maintainer-self-filed both fire.
+Disposition: **WATCH-ONLY / parked-at-triaged.** Maintainer-authored feature-tracking placeholder under umbrella **#11296**. Type=Feature + label `pr: new feature` already human-set (`Dev Opened` is auto-applied by `issue-add-labels.yml`, not a human signal — see [project_13441](project_13441_remove_issue_add_labels_workflow.md)); milestone Q3 2026. No GitHub post, no label change, no fixer dispatch — nothing to verify on a maintainer's own tracking issue. Skip-rule (core-team + no reproducer) + no-autofixer-on-maintainer-self-filed both fire.
 
 **Blocker (external, self-imposed):** compiler-side work deferred until the new Metal RT-API **proposal doc stabilizes** (per issue body).
 

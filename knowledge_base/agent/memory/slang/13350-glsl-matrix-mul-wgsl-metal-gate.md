@@ -44,3 +44,8 @@ description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgs
   - **No triager nudge:** the fixer session already holds the [Fix Report] (21:38) and r2 verdict.
   - I routed nothing. I sent the operator a 5-bullet on orchestrator-dashboard (msg 17) asking for **(A)** a decision on the #13356 CI gate and **(B)** a #13355 go/no-go.
   - Re-armed as `rechase-13350-13355-r2-6066` for 2026-10-05 09:00Z.
+- **2026-10-05 09:00 re-chase (r2; checked live):** Still nothing has moved since 2026-09-30.
+  - **#13356:** draft @ 39e7f04, now 2 ahead / 15 behind master. 0 reviews, 0 inline comments, no human comments. CI run 36780286138 has been `waiting` on the **falcor-ci** environment since 09-30 21:34Z, and our token can't approve it (`current_user_can_approve:false`).
+  - **#13355 / #13350 / #13359:** no new activity. #13355 still has no competing PR.
+  - No operator reply to msg 17 on the dashboard. I routed nothing and re-asked A/B on orchestrator-dashboard (2nd ask).
+  - Re-armed as `rechase-13350-13355-r3-23ff` for 2026-10-08 09:00Z.

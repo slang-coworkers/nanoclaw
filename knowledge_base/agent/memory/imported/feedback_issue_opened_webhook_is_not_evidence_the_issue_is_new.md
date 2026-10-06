@@ -48,3 +48,6 @@ This rule was first right about late payloads and silent about edited ones, then
 and silent about who wrote the issue.
 
 Related: [[project_12316_type_layout_policy_duplication_techdebt]].
+
+### 2026-10-05, #13411: a `pr_mention` webhook can fire for a human @-mentioning another human
+`github.pr_mention` on #13411 (our own docs-regen tracker) carried jhelferty-nv's comment *"@jvepsalainen-nv … I'm assuming it'll be fixed the next time you run the gen?"*. It didn't mention @nv-slang-bot. He had just assigned the issue to jvepsalainen-nv, who owns the regen runs. The procedure's "issue → triager" row would have dispatched a maintainer-to-maintainer question to the triager. ⇒ **Read who the body @-mentions before routing a `pr_mention`.** If it's another human, hold: no dispatch and no bot post. If it's a factual question we can answer, check the facts locally. Here `regenerate.py list-stale` on master already flagged misc.md and its test bundle, because `slang-ir-peephole.cpp` is a watched path. Then offer that answer to the operator, not to GitHub. Recorded the handoff in the owning re-chase task (`rechase-12249-13411-4260`).
