@@ -435,6 +435,7 @@ type: nav
 - [Slang Entry-Point Varying Interface: Location Layout & the Store Anchor](concepts/slang-language-fold20260909-varying-interface-layout.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
+- [Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup](concepts/slang-language-parser-generic-app-and-lookup.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
 - [Slang struct-construction lowering: synthesized member-wise ctors and module-global constant legalization](concepts/slang-language-core-struct-construction-lowering.md)
 - [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)

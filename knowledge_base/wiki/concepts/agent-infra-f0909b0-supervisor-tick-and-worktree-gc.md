@@ -3,7 +3,7 @@ title: "Supervisor Tick Reliability and Worktree-GC Repo Binding"
 type: concept
 group: agent-infra
 tags: [supervise-issues, pull-universe, thread-key, worktree-gc, gitdir, datetime, gh-401]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -21,6 +21,10 @@ defects. Verify the instrument before nudging or reaping.
   → replace(tzinfo=utc)`). A naive/aware `max()` mix crashes scan.py with 0-byte output;
   because the ~19-min pull-universe feeds it, one crash freezes state and fires no nudge
   for ~23h — and the recovery tick then produces a false surge.
+- **A cron tick never ends its turn to wait on a background pull** — a fresh cron session
+  may get no follow-up turn. Wait in-turn with a foreground `until [ -f done ]` loop
+  (≤10 min per call); at tick start, a tick dir with `pull.done` but no `board-msg.md`
+  (or a lagging `_meta.tick`) is a stalled tick to report.
 - **A `gh` 401 `app_not_connected` aborts the whole tick** (pull-universe runs under
   `set -euo pipefail`); `GH_TOKEN` being the sentinel `ROUTED_VIA_ONECLI_PROXY` is not
   evidence of a live connection. Diagnose with `gh api rate_limit`; the fix is
@@ -71,7 +75,7 @@ don't let an authority gradient carry an unverified instrument reading into your
 
 ### Tick-killing crashes and auth drops
 
-Two failures take out the entire tick. First, a **naive-datetime crash**: `parse_ts()`
+Three failures take out the entire tick. First, a **naive-datetime crash**: `parse_ts()`
 returned a naive datetime for a timestamp lacking `Z`/offset, so
 `compute_last_activity_by_us → max(candidates)` mixed naive with the always-aware
 session-dispatch ts and raised `TypeError`, crashing scan.py with 0-byte output on every
@@ -92,6 +96,20 @@ credential is injected per-request by the gateway. Diagnose with `gh api rate_li
 to the operator. Do not fabricate a board: without `gh`, PR/CI/closed-issue/artifact reads
 are all impossible, so report BLOCKED with honest `ncl`-only partial counts and leave state
 at last-good ([supervisor tick blocks when gh 401s](../learnings/1787832314750-supervisor-tick-blocks-when-gh-401s-on-onecli-gith.md)).
+
+Third, a tick can **yield its own turn and never get another one**. A cron fire is a fresh
+session with no default reply target, so once it ends its turn to "continue when the
+monitor fires", nothing guarantees a follow-up turn. The 2026-10-03 00:00Z tick (259)
+started its ~20-minute universe pull in the background, posted "Pull is still running;
+I'll continue when the monitor fires", and ended. The pull finished at 00:35Z, but no board
+was posted and `supervisor-state.json` was never written; the miss surfaced only 12 h later,
+when tick 260 found `_meta.tick` still at 258. So a cron tick waits for its long job inside
+the same turn, with a foreground `until [ -f done ]; do sleep 15; done` loop of at most
+10 minutes per call, repeated as needed. The detector belongs at the start of every tick:
+compare `_meta.tick`/`_lastTick` in the state file with the previous tick directory, and a
+tick directory holding `pull.done` but no `board-msg.md` is a stalled tick. Report it and
+compute deltas against the last completed tick
+([cron supervisor tick must not yield its turn waiting on a background pull](../learnings/1791030955044-cron-supervisor-tick-must-not-yield-its-turn-waiti.md)).
 
 ### Worktree-GC: bind the repo from the gitdir, key PR-state on the actual branch
 
@@ -149,10 +167,11 @@ stale-ref "ahead" signal, and fetch before trusting any local `origin/*` ahead/b
 
 Tick 216 (2026-09-10) reported 129 needs_nudge / 32 escalate on 548 open chains — a pathological over-flag, not real work, from three durable classifier gaps. (1) **A disposition agreed in-chat or in a `triage-*.md` memo but never written to `supervisor-state.json` is re-flagged every tick.** `scan.py`'s human-owned park (`classify()` checks `HUMAN_OWNED_DISPOSITION` before the ball/silence branches) only fires if the token is IN the state file, and `pull-universe.sh` rehydrates `disposition` from prior state each tick — so when a chain is parked/non-actionable/handed-off, write a recognized `disposition` token (`advisory`, `maintainer-driving`, `stood-down`, `awaiting-pickup`, `external-pr`, `human-debate`, `closed-by-us`) to the state file **that tick**; a memo is not a substitute (five slang perf-epic sub-tasks #12942/12945-12948, closed-by-design at triage, re-flagged because the decision never became a `disposition` key). (2) **Read-only / never-post roles (e.g. `slang-pr-approver`) are structural `awaiting_us` false-positives** — their output is a ledger decision, never a GitHub post, so "human spoke last, unanswered by us" is *always* true (confirmed on #12389); `scan.py` should exclude read-only roles from `awaiting_us`. (3) **R3 "0 comments = no artifact" is a false-positive for a maintainer-self-assigned PM/tracking issue** (core-team reporter + no reproducer + self-assigned) — the disposition + internal memo is the resumable artifact; a bot triage comment is noise on their tracker. Operational rule at scale: never fire 100+ nudges or 32 blocking escalations mechanically — check prior `nudgedAt` (nudged twice → escalate, not a 3rd nudge) and prior-tick cadence (a days-old last nudge means a full blast is a spike, not "resuming"); act on the genuinely-fresh delta and escalate the *systemic* condition once ([persist no-post dispositions to state; read-only roles are awaiting_us false-positives](../learnings/1789058323075-supervise-issues-persist-no-post-dispositions-to-s.md)).
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [Supervisor thread-key regex is greedy — sub-threads parse to a nonexistent repo](../learnings/1786408898253-supervisor-thread-key-regex-is-greedy-spine-sancti.md) — `^gh-issue-([^/]+/[^/]+)-(\d+)(?:/.*)?$`, greedy-within-segment for hyphenated repos; check the instrument's error log before nudging.
 - [scan.py naive-datetime crash froze state ~23h and produced a 115-nudge false surge](../learnings/1787059894213-supervise-issues-scan-py-naive-datetime-crash-froz.md) — normalize naive→UTC at the parse_ts chokepoint; a recovery-tick surge is a backlog, hold and escalate.
 - [supervisor tick blocks when gh 401s on OneCLI GitHub disconnect](../learnings/1787832314750-supervisor-tick-blocks-when-gh-401s-on-onecli-gith.md) — `set -euo pipefail` aborts on the first 401; diagnose with `gh api rate_limit`, report BLOCKED, escalate the connect URL, never fabricate a board.
+- [Cron supervisor tick must not yield its turn waiting on a background pull](../learnings/1791030955044-cron-supervisor-tick-must-not-yield-its-turn-waiti.md) — tick 259 yielded mid-pull and never posted; wait in-turn, detect `pull.done` without `board-msg.md`.
 - [worktree GC PR-state must key on the worktree's actual branch, not fix/issue-N](../learnings/1786971355711-worktree-gc-pr-state-must-key-on-the-worktree-s-ac.md) — a -v2/renamed branch can be live while the convention name is CLOSED; the "reply active" affordance is the recoverable backstop.
 - [worktree-gc.py false-reaps batched-issue worktrees (missing -batchN suffix)](../learnings/1786984117495-worktree-gc-py-false-reaps-batched-issue-worktrees.md) — multi-batch fixes break the 1-PR-per-issue assumption; resolve the actual branch.
 - [worktree GC must resolve owning repo from the gitdir pointer, never the tier default](../learnings/1787401355432-worktree-gc-must-resolve-owning-repo-from-the-gitd.md) — reviewer worktrees review any repo; bare numbers collide; key the exclusion ledger on the gitdir-proven owner.

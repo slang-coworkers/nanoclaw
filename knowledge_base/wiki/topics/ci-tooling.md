@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-515 learnings. [Catalog](../index.md)
+518 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -136,6 +136,7 @@ type: topic
 - [Adding a public capability alias requires regenerating TWO CI-checked docs, not just a4-02](../learnings/1785207263835-adding-a-public-capability-alias-requires-regenera.md)
 - [Address-space specialization: recursion under -disable-non-essential-validations, and keying cycle detection on the stable root](../learnings/1789475023606-address-space-specialization-recursion-under-disab.md)
 - [Advisory CI shell scripts: continue-on-error beats per-probe || true; and the bot can't edit .github/workflows](../learnings/1789654672103-advisory-ci-shell-scripts-continue-on-error-beats-.md)
+- [After merging origin/master, sync submodules before the verify build](../learnings/1791250506095-after-merging-origin-master-sync-submodules-before.md)
 - [An A/B that rebuilds in place DESTROYS ITS OWN CONTROL — preserve the baseline artifacts (bin AND lib) before building the treatment, and verify the copy is genuinely control-like](../learnings/1786043422607-an-a-b-that-rebuilds-in-place-destroys-its-own-con.md)
 - [An answered-list and an outstanding-list must partition ONE enumerated set — building them separately hides members in neither](../learnings/1785962417090-an-answered-list-and-an-outstanding-list-must-part.md)
 - [An empty-body APPROVED is invisible to a comments endpoint — read approval STATE from pulls/N/reviews or GraphQL reviewDecision](../learnings/1785849572099-an-empty-body-approved-is-invisible-to-a-comments-.md)
@@ -201,6 +202,7 @@ type: topic
 - [CI follow-up issue filed by a contributor against their own still-open PR → stand down to plan-only](../learnings/1780769335094-ci-follow-up-issue-filed-by-a-contributor-against-.md)
 - [CI force-flag PRs: green carries zero bits — get the runner-log token, on the SAME runner pool (`runs-on` is a request, `actions/jobs/<id>` is what ran)](../learnings/1786387985233-ci-force-flag-prs-green-carries-zero-bits-get-the-.md)
 - [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak](../learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md)
+- [CI health queries: URL-encode created>=, runs_queued floor of 2 is zombie runs](../learnings/1791188297214-ci-health-queries-url-encode-created-runs-queued-f.md)
 - [CI health snapshot: use curl|tail, not WebFetch, on health_snapshots.jsonl](../learnings/1789546707009-ci-health-snapshot-use-curl-tail-not-webfetch-on-h.md)
 - [CI health snapshot: WebFetch truncates health_snapshots.jsonl — fetch the tail directly](../learnings/1788855481072-ci-health-snapshot-webfetch-truncates-health-snaps.md)
 - [CI health_snapshots.jsonl exceeds WebFetch 10MB limit — use a tail approach](../learnings/1790065065697-ci-health-snapshots-jsonl-exceeds-webfetch-10mb-li.md)
@@ -322,6 +324,7 @@ type: topic
 - [git origin/branch is a local cache — never cite it for what is pushed](../learnings/1786196186804-git-origin-branch-is-a-local-cache-never-cite-it-f.md)
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md)
 - [Git worktrees SHARE .git/modules — sibling builds make 14 submodule pointers look like YOUR uncommitted change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md)
+- [GitHub Actions outage signature: jobs cancelled after exactly 15 min with empty runner_name and zero steps](../learnings/1791238163488-github-actions-outage-signature-jobs-cancelled-aft.md)
 - [GitHub CI check counting: total_count ≠ job count, and re-runs duplicate entries](../learnings/1786024895346-github-ci-check-counting-total-count-job-count-and.md)
 - [GitHub CI truth lives in two disjoint surfaces: check-runs AND commit status](../learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md)
 - [GitHub search is:unmerged unreliable; check run_attempt before calling a weekly CI red](../learnings/1790670087305-github-search-is-unmerged-unreliable-check-run-att.md)

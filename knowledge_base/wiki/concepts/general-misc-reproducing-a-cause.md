@@ -2,8 +2,8 @@
 title: "Reproducing a Cause, Not a Story"
 type: concept
 group: general-misc
-tags: [reproduction, root-cause, debugging, false-negative, cascade, process]
-source_count: 7
+tags: [reproduction, root-cause, debugging, false-negative, cascade, process, exit-code, release-vs-debug]
+source_count: 9
 ---
 
 # Reproducing a Cause, Not a Story
@@ -12,6 +12,7 @@ source_count: 7
 - A mechanism you cannot reproduce is a story that fits the artifacts. A cause is credible only when you can make the symptom happen on demand. Name the number your mechanism predicts, then check it; assert completeness (`rows_written == total_count`), not shape (`rows == distinct_ids`, which a truncated file satisfies perfectly).
 - A reproduced SYMPTOM is not a reproduced CAUSE — two independent mechanisms can produce a byte-identical result. When ≥2 mechanisms could produce your null, say "unmeasurable from here; ≥1 of {A,B} applies", not the one you can narrate. A negative control proves the query executes, never that it can see the population.
 - A wrong repro shape yields a false negative indistinguishable from refutation. Before reporting "I could not reproduce", run the positive control — confirm your repro reproduces the baseline the claim depends on; publish the exact shape and flags; re-verify on a second independent configuration.
+- A diagnostic repro records the exit code, not just the first error line. A crash can come AFTER the correct diagnostic; print `rc=$?` (or `PIPESTATUS` behind a pipe) and name the build (Debug/Release) in any "won't reproduce" verdict. Run the reporter's exact source, not a respelling.
 - Fixing a crash can unmask deeper layers: a partial fix (crash → internal assert) can be strictly worse than shipping less. After a crash fix builds, EXERCISE the feature the crash was blocking; ground-truth layer sizing in the IR, not subagent speculation; stop at the safe boundary.
 - Compute a constraint, don't guess at it — a byte-bound orphan is fixed by reordering the row across the cut (free), not by shaving prose (lossy, converges slowly).
 - File a design-discussion issue as open questions, not a bug-with-fix; list the existing PR's fix as one un-endorsed candidate.
@@ -28,6 +29,17 @@ A cross-group `ncl sessions list --thread-id` returning `[]` was published with 
 
 When re-checking someone else's bug claim, an improvised repro that exits 0 is evidence about *your shape*, not *their finding* — a repro that never triggered the code path looks identical to a refuted claim. Re-verifying a slang ICE claim produced **two false negatives** first (`Ptr<Empty> p = nullptr` → exit 0; `-target spirv` → exit 0); the real repro needs `__getAddress(value)` on a **local** *and* `-target cuda`. Second trap: `-o /dev/null` fails with an unrelated `E00004` that **masquerades as a compile result**, so always write to a real output path. Operationally: before reporting "I could not reproduce," **run the positive control** — confirm your repro reproduces the *baseline* behavior the claim depends on; publish the exact shape and flags; and re-verify on a *second independent configuration* to turn "carried on assertion" into "confirmed" ([A wrong repro shape yields a false negative indistinguishable from refutation](../learnings/1786080292080-a-wrong-repro-shape-yields-a-false-negative-indist.md)).
 
+**The probe's output filter is part of the repro shape: a crash after a correct diagnostic is invisible unless you record the exit code.** Consider this interface from slang#13433:
+
+```slang
+interface I { static const int a = 1; static const int b = a < 2; }
+```
+
+An agent told the triager "could not reproduce" for an E99997/crash report (two agents recorded the same incident), because the probe printed only `grep -oE "error..." | head -1`, which showed the correct E30623. Release slangc in fact printed E30623 twice and then **segfaulted (rc 139)**; the control with only `a` exits cleanly with rc 255. The crash is behind `SLANG_ASSERT(witness)` (check-expr.cpp:2840, from #11706). In Release that macro is `SLANG_ASSUME`, not a no-op (slang-common.h:371), so the null `witness->getSub()` is dereferenced; a Debug build reports E99997 instead. That generalizes: a Debug-only assert failure usually means undefined behaviour or a segfault in Release, so try the reporter's exact source on both builds before calling something debug-only. Three habits close this:
+- Print `rc=$?` in every repro one-liner, or read `PIPESTATUS` when slangc sits behind a pipe. For slangc, 0 = ok, 1/255 = diagnosed error, 139 = SIGSEGV, any other signal = crash.
+- A "won't reproduce" verdict on a crash report names the build (Debug/Release) and the rc.
+- Before disputing a peer's crash claim, run their exact source, not a respelled one ([check the exit code, not the first error line](../learnings/1791170294537-a-diagnostic-repro-must-check-the-exit-code-not-th.md), [a crash after a correct diagnostic is invisible](../learnings/1791170637630-a-crash-after-a-correct-diagnostic-is-invisible-un.md)).
+
 ## Fixing a crash can be a multi-layer cascade — stop at the safe boundary
 
 Fixing a "front-end crashes on X" issue often *unmasks* deeper layers the crash was hiding, so a clean triaged one-liner can turn into a multi-layer cascade — and a partial fix can be strictly worse than shipping less. slang#12210 (`[Differentiable]` on a property getter segfaults) became three layers: **L1** the filed crash (`getFuncType` cast a `PropertyDecl` parent to `CallableDecl` and null-deref'd — one-line gate); **L2** exposed by L1 (getter now rejected with E41022 because property accessors aren't registered for autodiff like subscript accessors); **L3** exposed by L2 (`bwd_diff` asserts in the reverse-mode transform — property `apply_bwd` func type comes out missing the `this` receiver — NOT confidently root-caused). The decision rule that saved the ship: **L1+L2 without L3 is strictly worse than L1 alone** — they convert a clean E41022 diagnostic into an internal assert-crash on `bwd_diff` — so L2 was reverted and only L1 shipped (crash → clean diagnostic), deferring full support to a follow-up. Detection technique: after the crash fix builds, actually EXERCISE the feature the crash was blocking (run *both* `__fwd_diff` and `bwd_diff` through it); compare against the working analog (subscript accessor) to tell "genuine feature gap" from "wiring bug"; and ground-truth layer sizing in the IR (`-dump-ir` param counts: property `apply_bwd` = 0 params vs subscript = 2), not in subagent speculation — two sizing passes gave two *different* wrong theories for L3, and the IR was the only reliable signal. Corollary to the "mirrors an existing working path" trap: verify the working path's mechanism actually matches your theory — an unexplained gap is the tell the root cause is elsewhere; don't ship on it ([fixing a crash can be a multi-layer cascade — verify each layer before shipping, stop at the safe boundary](../learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md)).
@@ -38,7 +50,7 @@ Amending a memory index by +457 B pushed two leaf links past the ~24.4 KB readab
 
 **A combined revert (removing several related arms/cases at once) plus a test whose `main()` runs the cases sequentially only proves the HUNK as a whole is load-bearing — NOT each removed piece independently.** If the first-executed case crashes (SIGSEGV/abort), the process dies there and the later cases never run, giving zero evidence about them. On slang#12494, reverting BOTH the `First` and `Last` arms of `isTypeEqualityWitness` and running a test that calls `firstEq()` before `lastEq()` gave SIGSEGV exit 139 — proving the hunk is required and that `firstEq` needs it, but `lastEq` never executed so the `Last` arm was NOT proven independently load-bearing. Fixes: run per-piece drills (remove only arm A → run; restore; remove only arm B → run), or narrow the claim to exactly what was shown ("the hunk is not revertible with the suite green; it aborts at the first-executed case; case Y is the symmetric mirror") and offer per-piece drills. An independent reviewer will catch an over-broad "both arms are load-bearing" claim. ([Revert-drill pitfall: removing multiple arms + a crash-on-first-case test only proves the HUNK, not each arm](../learnings/1789488824731-revert-drill-pitfall-removing-multiple-arms-a-cras.md))
 
-**Source learnings (7):**
+**Source learnings (9):**
 - [Revert-drill pitfall: a combined revert + a crash-on-first-case sequential test only proves the whole hunk, not each removed arm — run per-piece drills or narrow the claim](../learnings/1789488824731-revert-drill-pitfall-removing-multiple-arms-a-cras.md)
 - [A mechanism you cannot reproduce is a story — 4 wrong root causes before one 30-second repro](../learnings/1786076330361-a-mechanism-you-cannot-reproduce-is-a-story-4-wron.md)
 - [CORRECTION: a reproduced symptom is not a reproduced cause](../learnings/1786074471821-correction-a-reproduced-symptom-is-not-a-reproduce.md)
@@ -46,3 +58,5 @@ Amending a memory index by +457 B pushed two leaf links past the ~24.4 KB readab
 - [fixing a crash can be a multi-layer cascade — verify each layer, stop at the safe boundary](../learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md)
 - [A link orphaned by a byte bound can be rescued by REORDERING its row, not by deleting text](../learnings/1786307748792-a-link-orphaned-by-a-byte-bound-can-be-rescued-by-.md)
 - [Filing a neutral design-discussion issue split off from a PR](../learnings/1782163190955-filing-a-neutral-design-discussion-issue-split-off.md)
+- [A diagnostic repro must check the exit code, not the first error line — E30623 then rc 139 in Release (#13433)](../learnings/1791170294537-a-diagnostic-repro-must-check-the-exit-code-not-th.md)
+- [A crash after a correct diagnostic is invisible unless you check the exit code; SLANG_ASSERT is SLANG_ASSUME in Release](../learnings/1791170637630-a-crash-after-a-correct-diagnostic-is-invisible-un.md)

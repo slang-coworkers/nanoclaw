@@ -3,7 +3,7 @@ title: "PR Review: Approval State, Branch Delivery, and Diff Reading"
 type: concept
 group: review-process
 tags: [pr-review, pr-approver, github, approval-state, delivery-verification, pass-gating, diff-reading, partial-fix, fetch-head, remote-blob]
-source_count: 13
+source_count: 14
 ---
 
 # PR Review: Approval State, Branch Delivery, and Diff Reading
@@ -14,6 +14,7 @@ A measurement made inside your own container, or taken from the wrong field, tel
 - **Read approval state from `latestOpinionatedReviews`, never `latestReviews`.** A later COMMENTED from the same reviewer hides a live APPROVED in `latestReviews`. Check the commit each verdict is bound to. Distrust any field named for *recency* when you need *state*.
 - **Name the system before you assert a status.** Internal pipelines, codex stages, and peer verdicts count as zero GitHub reviews. Write "3 internal pipelines approve; 0 GitHub reviews."
 - **"X structurally cannot Y" needs evidence** of an X that did Y, or a reading of the mechanism. Piling up more confirmations from the same arm doesn't count.
+- **A dispatched CI run on a bot draft PR is not CI evidence.** The PR-event run is skipped and the dispatch waits on a priority gate. Report CI only from `gh run view <id> --json headSha,status,conclusion,jobs` once jobs ran; never re-dispatch around the hold.
 - **A local build plus green tests is not delivery.** Seen from outside your container, "corrected locally, not pushed" looks the same as "never corrected." Compare `git show HEAD:<path>` with the worktree, then check the REMOTE object after you push.
 - **`FETCH_HEAD` is mutable, and checking out the wrong ref fails silently.** Fetch into a named ref you own (`refs/pr/<N>`). Prove the content arrived by grepping for a revision-unique marker; the expected count must be non-zero.
 - **Before you merge into a `fix/` branch you authored, fast-forward to the remote tip.** A maintainer may have pushed to it.
@@ -44,6 +45,8 @@ The general lesson: when an API offers two similarly named collections, one is o
 **System: name the system before asserting a status.** One session argued that a draft PR should go ready-for-review because "reviews are already in hand." It cited a reviewer coworker's APPROVE_WITH_NITS, codex approvals across 3 stages, and a triager's verification. The PR itself showed `reviewCount: 0` and `REVIEW_REQUIRED`. All three approvals were real, but none was a GitHub review, and the GitHub review is the one the maintainer sees. The mistake was swapping the artifact you can see for the artifact your audience reads. The honest split is longer and strictly stronger. The compressed version looks overstated the moment someone runs the query, and that costs you credibility for the rest of the argument ([name the system](../learnings/1786074647297-internal-pipeline-approvals-are-not-github-reviews.md)).
 
 The same message claimed that "a draft PR structurally cannot get CI coverage," based on a single PR. A peer measured the fleet: 3 of 3 drafts had zero build/test jobs, but one non-draft got 30. The CI gate also yields to higher-priority work, so n=4 cannot separate draft status from queue contention. **"X structurally cannot Y" requires an X that did Y, or a reading of the mechanism.** More confirmations from the same arm just cover the same region again.
+
+**The mechanism, read: a dispatched run on a bot draft is not CI evidence.** While the PR is a draft, the PR-event `CI` run is `skipped`. `gh workflow run ci.yml --ref <branch>` then creates a `workflow_dispatch` run that usually sits `waiting`: `wait-for-human-priority` "fails" by design and `falcor-build-approval-gate` waits. So "CI run N dispatched" proves nothing about the head. Before reporting CI, run `gh run view <id> --json headSha,status,conclusion,jobs`, and report the run ID, head SHA and conclusion only once jobs have actually executed. Don't re-dispatch to get around the priority hold (the triager and orchestrator forbid it), and remember a new push cancels the previous head's run (cancel-in-progress) ([dispatched draft-PR run](../learnings/1791181406511-a-dispatched-ci-run-on-a-bot-draft-pr-is-not-ci-ev.md)).
 
 ## Local Verification Is Not Delivery
 
@@ -134,7 +137,7 @@ Instrument trap on the same PR: **`slang-test -OX <file>` does not override a di
 
 Self-check: *if I disappeared now, would a stranger reading the tracker know what's still broken?* ([honest partial fix](../learnings/1785827571091-a-partial-fix-needs-a-visibly-disabled-test-a-real.md)).
 
-**Source learnings (13):**
+**Source learnings (14):**
 
 - [Verify a PR diff via git fetch when gh REST is rate-limited](../learnings/1789995692862-verify-a-pr-diff-via-git-fetch-when-the-gh-rest-ap.md) — 403 → empty diff e3b0c442; git is a separate bucket
 - [Don't force-push over a peer-reviewed commit](../learnings/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md) — strands the reviewed base; push nits as new commits
@@ -149,3 +152,4 @@ Self-check: *if I disappeared now, would a stranger reading the tracker know wha
 - [Read the diff for intent claims](../learnings/1785828146545-read-the-diff-for-intent-claims-current-state-plus.md) — `slang-test -OX` can't override a directive's own -O
 - [A partial fix needs a disabled test, follow-up issue, no auto-close](../learnings/1785827571091-a-partial-fix-needs-a-visibly-disabled-test-a-real.md) — each omission fails toward "looks complete"
 - [A commit whose subject says "document" can carry live code](../learnings/1785839519730-a-commit-whose-subject-says-document-can-carry-liv.md) — read the patch; a count shows existence, not impact
+- [A dispatched CI run on a bot draft PR is not CI evidence — check job states, head SHA, conclusion](../learnings/1791181406511-a-dispatched-ci-run-on-a-bot-draft-pr-is-not-ci-ev.md) — PR-event CI skipped on drafts; dispatch waits on wait-for-human-priority; no re-dispatch

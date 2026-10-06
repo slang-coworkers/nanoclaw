@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-344 learnings. [Catalog](../index.md)
+348 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -104,6 +104,7 @@ type: topic
 - [CORRECTION — bot-PR reviewer routing in slang/slang-rhi is a misfire, not deliberate design (and how I got it wrong twice)](../learnings/1785891791274-correction-bot-pr-reviewer-routing-in-slang-slang-.md)
 - [CORRECTION — the Devin HEADER_RE drop is unconditional; my zero-count conjunct was wrong](../learnings/1786115910981-correction-the-devin-header-re-drop-is-uncondition.md)
 - [CORRECTION: formatting.sh type flags NARROW — --modified alone skips markdown, so pre-commit needs TWO commands](../learnings/1785939364103-correction-formatting-sh-type-flags-narrow-modifie.md)
+- [CORRECTION: Reviewer A early-exit is not caused by the CLI version](../learnings/1791209006651-correction-reviewer-a-early-exit-is-not-caused-by-.md)
 - [CORRECTION: the formatting.sh markdown dispatch is line 444, not 445 (I published :445 six times)](../learnings/1785938443477-correction-the-formatting-sh-markdown-dispatch-is-.md)
 - [CUDA half-texture Load fix: half3 is NOT overreach; report count-drift + OUTPUT_REVIEW re-arm pitfalls](../learnings/1785465186257-cuda-half-texture-load-fix-half3-is-not-overreach-.md)
 - [CUDA prelude review: two instrument traps that fake a result (host-only -funsigned-char, __half2 false-positive control)](../learnings/1786045749799-cuda-prelude-review-two-instrument-traps-that-fake.md)
@@ -177,6 +178,7 @@ type: topic
 - [No reviewer/assignee re-requests on bot-authored Slang PRs (standing dev-team policy)](../learnings/1788988960370-no-reviewer-assignee-re-requests-on-bot-authored-s.md)
 - [On a PR under review: incremental commits + merge master, never force-push a rebase](../learnings/1785520732879-on-a-pr-under-review-incremental-commits-merge-mas.md)
 - [On pure-CMake override-path PRs, Reviewer C (clarity) is the value-add](../learnings/1782407661384-on-pure-cmake-override-path-prs-reviewer-c-clarity.md)
+- [optixGetSbtGASIndex needs OptiX >= 7.1; Reviewer A background teardown recurred (#13437)](../learnings/1791203817991-optixgetsbtgasindex-needs-optix-7-1-reviewer-a-bac.md)
 - [Partition control: when a census splits a set into buckets, check the buckets sum to an independently-counted total — one addition beats inspection and peer review](../learnings/1785962802817-partition-control-when-a-census-splits-a-set-into-.md)
 - [Patch-mode PR review: git commit -am drops NEW test files → false "no test in patch" gap](../learnings/1789333359114-patch-mode-pr-review-git-commit-am-drops-new-test-.md)
 - [Patch-mode review diff contaminated by dirty shared checkout (git commit -am)](../learnings/1787746426193-patch-mode-review-diff-contaminated-by-dirty-share.md)
@@ -241,6 +243,7 @@ type: topic
 - [Reviewer A orphan is now 3/3 on claude CLI 2.1.285 even without run_in_background in tool-uses — treat the pipeline as broken, not flaky](../learnings/1790792204414-reviewer-a-orphan-is-now-3-3-on-claude-cli-2-1-285.md)
 - [Reviewer A patch-mode: inner orchestrator can end_turn while background subagents run (review-guard <500B)](../learnings/1790707975468-reviewer-a-patch-mode-inner-orchestrator-can-end-t.md)
 - [Reviewer A REVIEW-GUARD false positive: 'socket' in a legitimate review](../learnings/1790645552774-reviewer-a-review-guard-false-positive-socket-in-a.md)
+- [Reviewer A shares /workspace/agent/slang/tmp with concurrent runs — isolate with REPO_ROOT=<own worktree>](../learnings/1791205564538-reviewer-a-shares-workspace-agent-slang-tmp-with-c.md)
 - [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md)
 - [Reviewer A subagent outputs: recover full text from reviewerA.log, not extracts](../learnings/1791094754719-reviewer-a-subagent-outputs-recover-full-text-from.md)
 - [Reviewer A transient 400 payload-truncation reproduces on back-to-back retries](../learnings/1787341192642-reviewer-a-transient-400-payload-truncation-reprod.md)
@@ -311,6 +314,7 @@ type: topic
 - [slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](../learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)
 - [slang-pr-review-runner patch mode: reviewer can't find the patch + commit -am drops new files](../learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md)
 - [slang-pr-review-runner scripts may lose exec bit; Reviewer A still needs CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)
+- [slang-pr-review-runner: after a container restart, Reviewer A silently falls back to /pnpm/claude and ends early (exit 1)](../learnings/1791207325225-slang-pr-review-runner-after-a-container-restart-r.md)
 - [slang-pr-review-runner: export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 on every Reviewer A launch (not baked into the scripts)](../learnings/1790837192079-slang-pr-review-runner-export-claude-code-print-bg.md)
 - [slang-pr-review-runner: shared checkout /workspace/agent/slang is contended — run Reviewer A in an isolated worktree to avoid wrong-diff INTEGRITY-FAIL](../learnings/1789222069725-slang-pr-review-runner-shared-checkout-workspace-a.md)
 - [slang-pr-review: `gh auth status` false-negative + inner-CLI reviewers bill separately](../learnings/1790012094150-slang-pr-review-gh-auth-status-false-negative-inne.md)

@@ -3,12 +3,10 @@ title: "CI Flake — Evidence Dedup, Reporting & Health-Claim Integrity"
 type: concept
 group: ci-tooling
 tags: [ci, flake, dedup, run-id, reporting, escalation, classification, health-dashboard, memoized-verdict, slang]
-source_count: 22
+source_count: 23
 ---
 
 # CI Flake — Evidence Dedup, Reporting & Health-Claim Integrity
-
-How to turn raw flake evidence into a trustworthy report: dedup log-derived counts before they inflate, headline the dominant root cause, and — the recurring theme across every operational fold — verify a health claim at its own surface before it goes to a maintainer. A green dashboard, a wedged run, a "skip, logs expired" mark, and an armed guard all read the opposite of how they look until you probe the consequence directly.
 
 ## TL;DR
 
@@ -22,11 +20,13 @@ How to turn raw flake evidence into a trustworthy report: dedup log-derived coun
 - **Some real regressions are CI-invisible** — tools compiled out-of-band (e.g. by `bench.py`) escape CMake CI, so a Windows include-order break is real yet never reddens a check.
 - **Resolve runners by `runner_name`, not by "Machine name"** — an image-baked OS computer name (e.g. `SLANG-WINDOWS-2`) is shared across many ephemeral VMs and is not a physical-host discriminator.
 - **Know what a named workflow actually gates** — `Nightly MDL Perf Test` is a compile-time front-end perf gate, not a GPU/corpus runtime test.
-- **Don't assert live queue health from a stale feed** — `health_snapshots.jsonl` can be months out of date.
+- **Don't assert live queue health from a stale feed** — `health_snapshots.jsonl` can be months out of date. Its `runs_queued` floor is 2 (two zombie runs queued since May), and `status=waiting` approval-gate runs never show in `jobs_queued`.
 - **Verify the CONSEQUENCE at its own surface.** A wedged *run* is not a wedged *outcome*; an all-green dashboard can mean a stopped pipeline (ask *did work flow?*); the health-claim discriminator is terminal-vs-non-terminal, not "smallest bucket."
 - **Any memoized verdict needs an invalidation trigger for every input that can change the answer** — a skip mark voided only on head-sha change is blind to a fresh run on the same sha; add a per-sweep freshness test and a planted negative control.
 - **A durable record is not a due action, and a guard's retirement condition is part of its design** — an armed check needs a consumer on the sweep's emit list, and a settled measurement needs a permanent home (as-of stamp + population + reproduction basis + invalidation trigger) that the guard's lifetime doesn't bound.
 - "Nightly green" must name the workflow: Slang has several nightlies (Slang Test with agentic-tests, VKGLCTS, MDL Perf, gcc11/glibc Release, weekly CMake Options), and one green run says nothing about the others.
+
+How to turn raw flake evidence into a trustworthy report: dedup log-derived counts before they inflate, headline the dominant root cause, and — the recurring theme across every operational fold — verify a health claim at its own surface before it goes to a maintainer. A green dashboard, a wedged run, a "skip, logs expired" mark, and an armed guard all read the opposite of how they look until you probe the consequence directly.
 
 ## Flake Evidence Dedup
 
@@ -66,6 +66,8 @@ Three CI-health readings that each mean the opposite of how they look. **A wedge
 
 **An all-green CI dashboard can mean a stopped pipeline.** `jobs_queued:0, runs_queued:2, runners idle` looked healthy; it meant master hadn't advanced in >32 h, zero `merge_group` runs existed, and the one "running job" was `CI Health` observing itself — one environment-protection gate had wedged the estate into a self-sustaining yield/retry loop. Before calling a green snapshot healthy, ask *did work flow?* (did the default branch advance? did merge-queue runs occur?); check `GET /actions/runs/{id}/pending_deployments` on any long-`waiting` run (env gates don't surface as failures); classify each "failed" run by *which* jobs failed (gate/roll-up jobs failing with the rest skipped is a policy exit, not a regression); and a denominator of zero is undefined, not 0% ([an all-green CI dashboard can mean a stopped pipeline — cross-check throughput](../learnings/1786264150678-an-all-green-ci-dashboard-can-mean-a-stopped-pipel.md)).
 
+**Know the baselines of the health feed before reading a number from it.** In slang-ci-analytics `health_snapshots`, `runs_queued` sits at a constant **2** because two shader-slang/slang runs have been stuck `queued` since May 2026: 26596502131 (`pages-build-deployment`, the same stalled Pages run as above) and 26435273307 (`Falcor Tests`). So 2 is the floor, not real queueing, and only a value above it means anything. The opposite blind spot is `status=waiting`: slang `CI` runs in that state (100+ on 2026-10-05) are bot `fix/issue-*` `workflow_dispatch` runs parked at `falcor-build-approval-gate` (environment `falcor-ci`, team `ci-approvers`). That is a human-approval backlog, and it never appears in `jobs_queued`. Three more facts for scheduling health checks: through the OneCLI proxy, `actions/runs?created=>=<ts>` returns an empty body (a JSON decode error, not an API error) unless `>=` is URL-encoded as `%3E%3D`; the weekly `CMake Options` sweep runs Saturdays at 08:00Z, not Fridays; and the slangpy scheduled `sanitizers` workflow has never had a green run since it was added (52/52 failed, 08-15 to 10-05, tracked in slangpy#1130), so a red there is not news ([CI health queries: URL-encode created>=, runs_queued floor of 2 is zombie runs](../learnings/1791188297214-ci-health-queries-url-encode-created-runs-queued-f.md)).
+
 **The discriminator for a health claim beside a bucket table is terminal-vs-non-terminal, not "smallest bucket".** A `nonterminal 1` row *was* the blocker (a run parked on a deployment gate that retry logic counted as "still active"), while flagging singletons scored ~11% precision (singletons are common, not exceptional). Whoever is about to *act* on a health claim must run the probe — adjacency is not caught by independent review by default (two readers missed it) ([non-terminal is the cell a health claim rounds away](../learnings/1786264504844-non-terminal-is-the-cell-a-health-claim-rounds-awa.md)).
 
 ## Memoized verdicts, armed checks, and retiring guards (2026-08-14 fold)
@@ -78,7 +80,7 @@ Generalizing: **any memoized verdict needs an invalidation trigger for every inp
 
 "The nightly" is not one thing. shader-slang/slang schedules `Nightly Slang Test` (whose `agentic-tests` job runs the `docs/generated/tests` suite), `Nightly Slang VKGLCTS Test`, `Nightly MDL Perf Test` (its `Check trend` step fails on compile-time regressions against the trailing median), `ubuntu18-gcc11 Release`, `Linux glibc 2.28 Release`, and the weekly `CMake Options`. On 2026-09-24 the maintainer seat reported "Nightly GREEN" from VKGLCTS alone and Main relayed it to the operator, while `Nightly Slang Test` had been red since 09-23 on `docs/generated/tests/design/ir-reference/metadata/debug-no-scope-emitted-without-operands.slang` and MDL Perf had gone red on 09-24; the seat caught its own error on 09-27. Before saying or relaying "nightly green", name the workflow that is green, and treat an unnamed "nightly green" as unverified for every other workflow ["Nightly green" is per-workflow: check every Slang nightly before relaying it](../learnings/1790509221208-nightly-green-is-per-workflow-check-every-slang-ni.md). The check works without GitHub auth (OneCLI `app_not_connected`; unauthenticated REST allows 60 core requests/hr and 10 searches/min): `actions/workflows/<id>/runs?per_page=10` gives each workflow's history, with ids from `actions/runs?created=>=DATE&status=failure` (URL-encode `>=` with `curl -G --data-urlencode`, or the body comes back empty); `check-runs/<job_id>/annotations` returns perf-regression lines such as `backend_matrix_glsl/compileInner 1.11x`; `curl -L .../actions/jobs/<job_id>/logs` downloads the full job log (302 → blob) to grep for `FAILED test`; and `compare/<last-green>...<first-red>` narrows the suspect commits in one call. To corroborate a "0 merged" search, check master `commits?since=` and `actions/runs?event=merge_group`, since an idle queue is not a failing queue [Slang "nightly green" must enumerate every nightly workflow; unauth GitHub REST fallback works](../learnings/1790509064349-slang-nightly-green-must-enumerate-every-nightly-w.md).
 
-**Source learnings (22):**
+**Source learnings (23):**
 - [Flaky-CI evidence: dedup by run id](../learnings/1782598546890-flaky-ci-evidence-dedup-by-run-id-json-rpc-and-fal.md)
 - [Headline the dominant root-cause in babysitter reports](../learnings/1782248669315-ci-babysitter-headline-the-dominant-root-cause-whe.md)
 - [CI-integrity bug: detected failure logged but not recorded (stale init=Success)](../learnings/1782392187766-ci-integrity-bug-class-a-detected-failure-is-logge.md)
@@ -90,6 +92,7 @@ Generalizing: **any memoized verdict needs an invalidation trigger for every inp
 - [SLANG-WINDOWS-2 is an image-baked pool name, not a physical host — resolve runners by runner_name](../learnings/1784161547411-slang-windows-2-is-an-image-baked-pool-name-not-a-.md)
 - [Nightly MDL Perf Test = compile-time perf gate, not a GPU/corpus test](../learnings/1784184423207-nightly-mdl-perf-test-compile-time-perf-gate-not-a.md)
 - [CI health_snapshots.jsonl feed can be badly stale — don't assert live queue health from it](../learnings/1784189757200-ci-health-snapshots-jsonl-feed-can-be-badly-stale-.md)
+- [CI health queries: URL-encode created>=, runs_queued floor of 2 is zombie runs](../learnings/1791188297214-ci-health-queries-url-encode-created-runs-queued-f.md) — `runs_queued` 2 is baseline; 100+ `waiting` runs are the falcor approval backlog; CMake Options runs Saturdays; slangpy sanitizers never green (slangpy#1130).
 - [a wedged run is evidence of a wedged run, not a wedged outcome — verify the consequence at its own surface (72-day queued run, Pages built anyway)](../learnings/1786264741786-a-wedged-run-is-evidence-of-a-wedged-run-not-a-wed.md)
 - [an all-green CI dashboard can mean a stopped pipeline — cross-check throughput (branch advance, merge_group runs), not just queue depth](../learnings/1786264150678-an-all-green-ci-dashboard-can-mean-a-stopped-pipel.md)
 - [non-terminal is the cell a health claim rounds away — the discriminator is terminal-vs-non-terminal, not smallest bucket](../learnings/1786264504844-non-terminal-is-the-cell-a-health-claim-rounds-awa.md)

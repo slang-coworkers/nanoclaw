@@ -3,7 +3,7 @@ title: Slang Compiler Crash & Legalization Probes — Front-End Fall-Throughs, T
 type: concept
 group: slang-grab-bag
 tags: [slang, ir-lowering, codegen, legalization, glsl-legalize, cuda, spirv, byte-address-buffer, producer-fix]
-source_count: 16
+source_count: 17
 ---
 
 # Slang Compiler Crash & Legalization Probes
@@ -39,8 +39,8 @@ mishandles an input shape, and the crash surfaces far downstream in codegen or t
   — an `as<IRUndefined>` guard is incomplete; handle both shapes in glsl-legalize's `assign`.
 - **Nested swizzle-of-swizzle vector lvalue** miscompiles from a `.add(count)` (should be
   `.setCount`) plus a by-value lambda output param (should be `auto&`).
-- **A full-coverage texture swizzle store (`t[i].xyzw = v`) is lowered as read-modify-write** —
-  needless load everywhere, false E56006 / hard E55204 on CUDA; fix in `legalizeStore`.
+- **A full-coverage texture swizzle store (`t[i].xyzw = v`) is lowered as read-modify-write** — fix in
+  `legalizeStore`, but measure coverage against the image op's texel (4-wide on Metal/GLSL/SPIR-V, `T` on CUDA).
 - **Inherited-field access through a BoundMember/BoundStorage base (#13348) needs `InheritanceDecl`
   at all three `BoundMemberInfo` consumers** — fixing `materialize` alone is insufficient.
 - **An entry point with a `uniform` param, called by another compiled entry point, segfaults on
@@ -192,8 +192,16 @@ imageStore of the reordered source. `RWBuffer` never reaches CUDA surface emit (
 E36107 rejects it first), and `tests/bugs/gh-4411.slang` (scalar-texel `.x =`) is the canonical
 scalar whole-texel store through `ref`
 [full-coverage swizzle on RWTexture goes through the RMW path](../learnings/1790832459014-full-coverage-swizzle-on-rwtexture-goes-through-th.md).
+The follow-up fix showed that "full coverage" must be measured against the texel the image op
+actually writes, not against the texture's element type. On Metal, GLSL and SPIR-V that texel is
+always a 4-vector, so treating `t[i].yx = v` on `[format("rgba32f")] RWTexture2D<float2>` as full
+coverage would zero `.zw` of the wider backing format; on CUDA the texel is the element type
+(`surf*write<T>` writes `sizeof(T)` bytes), so there the shortcut does apply to `float2`. Pin both
+directions with GLSL, Metal and SPIR-V CHECKs, and test a non-self-inverse swizzle (`.yzwx` must
+become `v.wxyz`): `.wzyx` and `.yx` pass even when the component mapping is reversed
+[image-subscript RMW shortcut: compare against the image op's texel width](../learnings/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md).
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [ParseModifiers on a decl whose name can be a bareword keyword breaks previously-valid code](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md) — use bracket-only ParseSquareBracketAttributes; test with a case/field named `point`/`linear`.
 - [ByteAddressBuffer.Load of struct with empty/zero-size field emits Load<void>](../learnings/1787580105549-byteaddressbuffer-load-of-struct-with-empty-zero-s.md) — add a natural-size-0 skip in emitLegalLoad/Store field loops.
 - [getDefaultVal on AssocTypeDecl built an empty IRMakeStruct](../learnings/1787585281811-slang-getdefaultval-on-assoctypedecl-built-an-empt.md) — producer-side emitDefaultConstruct; assert consumer with EXACT ==, not min-bound.
@@ -210,3 +218,4 @@ scalar whole-texel store through `ref`
 - [Uniform-param entry point compiled with an entry point that calls it segfaults (all targets)](../learnings/1790767202448-slang-compiling-a-uniform-param-entry-point-togeth.md) — rc 139 on spirv/cuda/metal; `-entry outer` alone works; hypothesis: `moveEntryPointUniformParamsToGlobalScope` arity mismatch.
 - [Inherited-field access through BoundStorage/BoundMember ICEs at three VarDecl-only consumers (#13348)](../learnings/1790788517757-inherited-field-access-through-boundstorage-boundm.md) — materialize/tryGetAddress/assign all need `InheritanceDecl` (struct bases only); `buf[0].baseField` fails too; `ref` accessors confounded by #9636.
 - [Full-coverage swizzle on RWTexture goes through the RMW path (false E56006 / E55204 on CUDA)](../learnings/1790832459014-full-coverage-swizzle-on-rwtexture-goes-through-th.md) — fix in `legalizeStore`: a component permutation becomes a plain imageStore.
+- [skip the texel read only when the swizzle covers the image op's texel (4-vector on Metal/GLSL/SPIR-V, element type on CUDA); test a non-self-inverse swizzle; don't rebuild during an A/B run (exit 127)](../learnings/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md)

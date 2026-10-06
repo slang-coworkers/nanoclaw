@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc,
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, dxc, glibc, asan, valgrind, sccache, ninja]
-source_count: 20
+source_count: 22
 ---
 
 ## TL;DR
@@ -12,7 +12,7 @@ Building Slang in a per-issue `git worktree` over a shared base clone has a smal
 setup traps that, unhandled, each cost 10–40 minutes — and the CMake build graph can go stale
 under you after a rebase.
 
-- **`git worktree add` does NOT populate submodules** (nor *nested* ones), so configure fails with `non-existent target "SPIRV-Headers::SPIRV-Headers"` or `external/<x> does not contain a CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree before the first configure; copying from the base clone won't help.
+- **`git worktree add` does NOT populate submodules** (nor *nested* ones), so configure fails with `non-existent target "SPIRV-Headers::SPIRV-Headers"` or `external/<x> does not contain a CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree before the first configure. If that (or `--reference`) fails with "transport 'file' not allowed", copy `external/` from another worktree whose submodule pins match (`git diff --quiet <base> HEAD -- external .gitmodules`).
 - **A configure that dies on a missing `::` target is almost always an uninitialised nested
   submodule, not a code error** — the nested `external/spirv-tools/external/spirv-headers` is
   the usual culprit even when the top-level shows a SHA.
@@ -20,14 +20,17 @@ under you after a rebase.
   target-agnostic/SPIR-V fix, pass `-DSLANG_ENABLE_DXIL=OFF -DSLANG_SLANG_LLVM_FLAVOR=DISABLE`;
   `rm -rf build/CMakeCache.txt build/CMakeFiles` before reconfiguring so it takes effect.
   The DXC build did not block building just the `slangc`/`slang-test` targets (~10 min
-  release on 64 cores after a ~13 s submodule init).
+  release on 64 cores after a ~13 s submodule init). For slangc-only checks, also turn off
+  RHI/GFX/examples/tests and build `slangc slang-glslang` (~5 min).
 - **Rebasing a long-lived worktree can stale the CMake build graph** — a rebase that adds a new
   `.cpp` to a `CMakeLists.txt` leaves `build.ninja` unaware of it → hundreds of `undefined
   reference` at link. Reconfigure (`cmake --preset default`) before rebuilding.
 - **The prebuilt `slangc` in the mounted checkout can be many commits behind HEAD** — check
-  `slangc -v`'s `-g<sha>` and `git merge-base --is-ancestor` before trusting its emit. But in a
-  *reused* build tree rebuilt incrementally at a new checkout, `-v` still prints the
-  configure-time describe; there, take provenance from `git log -1` + a clean `git status`.
+  `slangc -v`'s `-g<sha>` and `git merge-base --is-ancestor` before trusting its emit. In a
+  *reused* build tree `-v` prints the configure-time describe, and a clean `git status` proves
+  only the source: a revert drill restored without a rebuild leaves the REVERTED binary. Rebuild
+  after every drill restore, and before citing an old worktree's binary rebuild it or check
+  the binary is newer than the last source change.
 - **A slangc/slang-test copied out of `build/Debug` is a different instrument.** The prelude resolves relative to the exe (missing → the embedded prelude is inlined, changing `.cu` text) and nvrtc looks for OptiX headers at `<bin>/../../../external/optix-dev/include` (missing → every OptiX/PTX compile fails), so ~31 CUDA/OptiX/header tests fail from a `-bindir` copy. Run baseline and candidate from the same kind of location plus a no-change control, or rebuild the tree shape with hardlinks + symlinks.
 - **No NVIDIA driver in the container:** configure with `-DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-12.6/lib64/stubs/libcuda.so` so the link doesn't fail on a missing `libcuda.so`. At run time `gfx-smoke` then fails with `Failed to load DLL "gfx"` because `lib/libgfx.so` needs `libcuda.so.1` — environmental; `ldd` before naming a loader cause.
 - **Never run baseline and candidate full suites concurrently** (or alongside a build): contention fabricates "patched-only" failures. Run serially, or rerun the set difference serially; ~91 environmental failures remain on a quiet no-GPU box.
@@ -87,6 +90,12 @@ submodule init took about 13 s (the main clone already had the objects), and a r
 only the `slangc` and `slang-test` targets finished in roughly 10 minutes on 64 cores, even
 though the configure log said "building DXC from source"
 [init time and slangc/slang-test build time on a fresh worktree](../learnings/1790636604671-fresh-slang-git-worktree-init-submodules-before-cm.md).
+When the init cannot run, because the submodule URLs point at the local base clone and git
+blocks file transport (`submodule update --reference` fails with "transport 'file' not
+allowed"), a populated `external/` copied from another worktree at the same base works. Check
+first that the pins match, with `git diff --quiet <base> HEAD -- external .gitmodules`; on
+#13429 that gave a configure plus `slangc`/`slang-test` build in about 10 min
+[copy external/ from a same-base worktree](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md).
 
 Several of these atoms independently flag a **build-subagent hazard**: a subagent that launches
 ninja with `&`/`nohup` and then returns leaves a *detached* build that dies when its shell
@@ -171,6 +180,11 @@ from source"). If your fix is target-agnostic / SPIR-V-tested (not DXIL), skip i
 `-DSLANG_ENABLE_DXIL=OFF -DSLANG_SLANG_LLVM_FLAVOR=DISABLE`, and `rm -rf build/CMakeCache.txt
 build/CMakeFiles` before reconfiguring so the options take effect
 [disable DXIL on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md).
+As of 2026-10 the default Linux preset source-builds DXC (~30 min). When you only need a
+`slangc` to probe, configure with `-DSLANG_ENABLE_DXIL=OFF -DSLANG_ENABLE_SLANG_RHI=OFF
+-DSLANG_ENABLE_GFX=OFF -DSLANG_ENABLE_EXAMPLES=OFF -DSLANG_ENABLE_TESTS=OFF` and build the
+`slangc slang-glslang` targets, about 5 min on 64 cores
+[slangc-only configure](../learnings/1791180810533-check-a-reused-worktree-s-slangc-provenance-before.md).
 
 Separately, **rebasing a long-lived worktree can stale the CMake build graph.** After
 `git rebase origin/master` in a worktree whose `build/` was configured weeks ago,
@@ -205,7 +219,18 @@ rebuild after checking out a different SHA in the same build tree does not regen
 build of `4fe660083` printed `2026.18.3-18-gf0dcfb7bc`. So `-v` is trustworthy for a binary
 that was never rebuilt (the prebuilt-lag case above), but not for a reused worktree. When you
 hand a crash repro to a triager, state the SHA from `git log -1` plus a clean-tracked-files
-`git status` in the tree you built, and say that `-version` was not the source. The same
+`git status` in the tree you built, and say that `-version` was not the source.
+
+A clean `git status` describes the source, not the binary, and a revert drill is the usual way
+the two part. The drill runs `git checkout <base> -- source/`, rebuilds, then restores the
+source. If nobody rebuilds after the restore, the tree reads clean at HEAD while
+`build/Release/bin/slangc` is still the reverted build. A week later that binary looks like the
+PR head: on #13276, wt-10877's "PR head" results were really the merge base. So rebuild after
+every restore (incremental, minutes). Before reusing an old worktree's binary, compare the
+library's mtime with the newest source mtime (`stat`). A binary older than the source means
+rebuild; checkouts touch mtimes without changing content, so a false alarm only costs a
+rebuild. If in doubt, just rebuild
+[reused-worktree slangc provenance](../learnings/1791180810533-check-a-reused-worktree-s-slangc-provenance-before.md). The same
 container also lacks gdb, lldb, `/usr/bin/time` and `bc`; to test whether a segfault is a stack
 overflow, rerun it under different stack limits from Python (`subprocess` with a
 `resource.setrlimit(RLIMIT_STACK, …)` `preexec_fn`). A crash at the same point under an 8 MB
@@ -284,7 +309,7 @@ break is the *only* remaining one
 
 `cmake -GXcode` fails at **configure** with "Xcode does not support per-config per-source COMPILE_OPTIONS: <genex> specified for source: X.cpp" whenever a per-source `COMPILE_OPTIONS` (set via `set_source_files_properties`) carries a context-sensitive `$<CONFIG:...>` generator expression. `cmGlobalXCodeGenerator` / `XCodeGeneratorExpressionInterpreter::Evaluate()` errors on the **PRESENCE** of the `$<CONFIG>` condition (`GetHadContextSensitiveCondition()` true), NOT on whether the resolved flags differ across configs — so `$<$<NOT:$<CONFIG:Debug>>:-Os>` that resolves to `-Os` in every config is still hard-rejected. Ninja Multi-Config (Slang's `default` preset, used by every CI job including the macOS `xcode-27` runner — a runner *label*, not the generator) tolerates it, and `CMakePresets.json` defines no Xcode generator, so this regression is **invisible to CI** (slang#13240/#13241). Fix pattern: branch on `CMAKE_CXX_COMPILER_ID` at configure time and emit a plain config-independent flag on the non-MSVC (Clang/AppleClang) path, keeping the `$<CONFIG>` genex only where a real per-config difference exists (MSVC Debug `/RTC1` vs optimization). Two gotchas: (1) match `CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"` (== `$<CXX_COMPILER_ID:MSVC>`), NOT the `MSVC` CMake variable — the latter is also true for clang-cl (compiler id `Clang`), so `if(MSVC)` would silently change clang-cl's flags; (2) to prove old-vs-new flag equivalence without a 20-min slang build, `file(GENERATE)` cannot evaluate `$<CXX_COMPILER_ID>` without a `TARGET` (throws "may only be used with binary targets") — instead compile a trivial 2-target throwaway replicating the `set_source_files_properties(... COMPILE_OPTIONS ...)`, build `--config Debug`/`Release` verbose, and grep the actual `-O` flags per config. Reviewer note: when a PR touches per-source `COMPILE_OPTIONS`, check whether any `$<CONFIG>` genex sits on a non-MSVC path — that is the exact shape that breaks `-GXcode`; a configure-only `buildtool: "Xcode"` macOS job wired into `check-cmake` (mirroring `cmake-options-build.yml`'s `buildtool` → `-G` for the windows-vs jobs) would cheaply guard it ([Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md)).
 
-**Source learnings (20):**
+**Source learnings (22):**
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md) — Full cascade + `ninja: loading build-Debug.ninja: No such file`; explicit external list; a backgrounded subagent build dies — run foreground + Monitor for the artifact.
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md) — #12297 added `slang-rich-diagnostics.cpp`; stale `build.ninja` → hundreds of undefined refs; reconfigure; grep `impl-Debug.ninja` (multi-config), not top-level `build.ninja`.
 - [Slang git worktree needs per-worktree submodule init before cmake configure](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md) — Top-level `--init --depth 1` is enough (no slang-rhi nested / dxc); the `SPIRV-Headers::SPIRV-Headers` `get_target_property` error + leading `-` in `git submodule status` are the tell; first configure also does a ~500 MB DXC clone+build; a Monitor on `build.log` mis-fires when configure (not compile) fails — trust the subagent's completion.
@@ -305,3 +330,5 @@ break is the *only* remaining one
 - [No-driver container: link CUDA via the libcuda.so stub (`-DCUDA_cuda_driver_LIBRARY=...stubs/libcuda.so`); also slangc `-o /dev/null` E00004](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md)
 - [slang-test gfx-smoke "Failed to load DLL gfx" on Linux containers = missing libcuda.so.1, not missing libgfx](../learnings/1790710627405-slang-test-gfx-smoke-failed-to-load-dll-gfx-on-lin.md) — `libgfx.so` is in `lib/`; `ldd` shows `libcuda.so.1 => not found`; environmental.
 - [Don't run two slang-test full suites concurrently for A/B baselines](../learnings/1790718692458-don-t-run-two-slang-test-full-suites-concurrently-.md) — 73 contention-only failures vanished on a serial rerun; ~91 no-GPU environmental baseline; `-exclude-prefix` for scratch probes.
+- [reused worktree's slangc can be a revert drill's build; rebuild after restore; slangc-only configure ~5 min](../learnings/1791180810533-check-a-reused-worktree-s-slangc-provenance-before.md)
+- [file transport blocks submodule init; copy external/ from a same-base worktree (#13429)](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)

@@ -3,6 +3,7 @@
 ## TL;DR
 - `slang-glslang` IS the SPIR-V backend (it bundles SPIRV-Tools/spirv-opt and has nothing to do with GLSL). It is always a runtime-loaded module: a missing module is a build/packaging fix, never a reason to make its load optional. Opt out of one pass through a dedicated CMake escape hatch, not by deleting it.
 - Default optimization runs spirv-opt, `-target spirv-asm` included; only `-O0` skips it. Reproduce at `-O0` before blaming the emitter. `private-to-local` breaks function-`static` persistence.
+- spirv-opt's LoopUnroll does not fire on Slang's `[unroll]` loops at -O2/-O3, because a trampoline block still precedes the merge when it runs; DXC and NVRTC fold the same loops. A `[ForceUnroll]` bound built from integer `abs`/`min`/`max` gives E40020, since those are opaque intrinsics in Slang IR.
 - An assert/crash inside `external/spirv-tools` is an upstream bug: file it upstream and mark the Slang test expected-failure.
 - Granular pass control goes through `spvtools::Optimizer::RegisterPassesFromFlags`, not a hand-maintained flag→pass table.
 - A clean `slangc` exit proves nothing about validity. Validate with `SLANG_RUN_SPIRV_VALIDATION=1` (CI always sets it; `//TEST:SIMPLE` FileCheck never validates); never use the system `spirv-val`; `-skip-spirv-validation` only to inspect output.
@@ -36,6 +37,8 @@
 **Granular pass selection (#12204):** `-OX` levels are hand-unrolled presets (~40 `RegisterPass` calls, `slang-glslang.cpp:316`). Use bundled `spvtools::Optimizer::RegisterPassesFromFlags(flags)` (`optimizer.hpp:140`); the pass string crosses the C ABI as a new `glslang_CompileRequest_1_3`. No correctness risk (spirv-opt is size/perf only), but it ties the CLI to the bundled SPIRV-Tools version ([RegisterPassesFromFlags is the clean primitive](../learnings/1784829679560-granular-spvopt-pass-selection-registerpassesfromf.md)).
 
 **fp8 constants abort in spirv-tools:** `GetWordsFromScalarFloatConstant` (`opt/folding_rules.cpp`) asserts width 16/32/64 (the integer sibling handles 8). Upstream fix #11766; Slang expected-failure #11744 ([fp8 width-8 gap](../learnings/1782449605671-fp8-scalar-float-constants-abort-in-spirv-tools-co.md)).
+
+**spirv-opt's LoopUnroll skips Slang's `[unroll]` loops at -O2/-O3.** Slang lowers `[unroll]` to `OpLoopMerge … Unroll`, yet a constant-trip loop such as `for (i = 0; i < 10; ++i) sum += i` survives the bundled preset (`slang-glslang.cpp:493`, the same order as upstream `RegisterPerformancePasses`). `Loop::FindConditionBlock` (spirv-tools `loop_descriptor.cpp:619`) requires the merge block's single in-loop predecessor to be the `OpBranchConditional`, but at that point in the preset Slang's output still has a trampoline `%x: OpBranch %merge` left by the breakable-region wrap, and BlockMerge runs only later. Running `spirv-opt -O` twice, or adding BlockMerge just before LoopUnroll, unrolls and folds the loop to a constant. DXIL (DXC) and PTX (NVRTC) fold such loops with no hint, so "loop not folded at -O3" reports are SPIR-V-specific. Two related folding limits: spirv-opt has no GLSL.std.450 `SAbs` constant-fold rule (`SMin`/`SMax`/`SClamp` exist), and in Slang IR integer `abs`/`min`/`max`/`clamp`/`sign` are opaque target-intrinsic calls, so a `[ForceUnroll]` bound built from them gives E40020 while the ternary form folds (#13424) ([spirv-opt LoopUnroll silently skips Slang's [unroll] loops at -O3](../learnings/1791074922027-spirv-opt-loopunroll-silently-skips-slang-s-unroll.md)).
 
 ## Debug Information
 
@@ -102,7 +105,7 @@ Triaging "add a SPIR-V capability bit" (#11538): grep `external/spirv-headers/in
 - DeepWiki said user-defined varying suffixes set the location; refuted by code trace and spirv-dis.
 - **RETRACTED (public, #12186):** "`OpConvertUTo*NV` need a 64-bit scalar." `SPV_NV_bindless_texture` allows uint64 OR uint2, so `tests/bugs/gh-9916.slang` is valid.
 
-**Source learnings (40):**
+**Source learnings (41):**
 - [-g0/DebugInfoLevel::None emits EXACTLY OpSource/OpName/OpMemberName in SPIR-V (not OpLine/OpString/OpModuleProcessed)](../learnings/1784828289031-g0-debuginfolevel-none-emits-exactly-opsource-opna.md)
 - [granular SpvOpt pass selection: RegisterPassesFromFlags is the clean primitive; no hand-maintained flag→pass table (#12204)](../learnings/1784829679560-granular-spvopt-pass-selection-registerpassesfromf.md)
 - [Slang SPIR-V output-topology: hull/domain arm only handles a subset of OutputTopologyType](../learnings/1780253722562-slang-spir-v-output-topology-hull-domain-arm-only-.md)
@@ -143,3 +146,4 @@ Triaging "add a SPIR-V capability bit" (#11538): grep `external/spirv-headers/in
 - [SPIR-V opaque resource/sampler function-locals get no debug info; root = two upstream TYPE gates (`isDebuggableType` default only `IRBasicType`; spirv-legalize `isSimpleDataType`); the emit path already emits `OpDebugLocalVariable` + `OpDebugValue` with no backing `OpVariable`; #12918.](../learnings/1788744414687-slang-spir-v-opaque-resource-sampler-function-loca.md)
 - [fix #12918 at the leaf/creation gates via `isResourceType` (NOT recursive `isDebuggableType`, or struct-of-handle becomes debuggable → illegal OpVariable); `processDebugVar`'s `isSimpleDataType` strip is dead (DebugVar is always a Ptr); `let` takes a different lowering path than `var` — test both; PR #12919.](../learnings/1788748635093-slang-spir-v-opaque-handle-local-debug-info-fix-at.md)
 - [SPIR-V debug-var: value-operand limits & param arg-index remap timing (#12918/#12919)](../learnings/1789468940215-slang-spir-v-debug-var-value-operand-limits-param-.md) — type-eligibility vs value-representability are separate; drop combined-sampler DebugValue but not legal arrays; ArgNumber remap is cross-cutting.
+- [FindConditionBlock needs the conditional as the merge's in-loop predecessor; Slang's trampoline block defeats it until BlockMerge; no SAbs fold; integer abs/min/max opaque → E40020 (#13424)](../learnings/1791074922027-spirv-opt-loopunroll-silently-skips-slang-s-unroll.md)

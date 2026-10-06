@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1327 learnings. [Catalog](../index.md)
+1333 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -524,6 +524,7 @@ type: topic
 - [closingIssuesReferences ≠ a Closes-keyword in the PR body](../learnings/1787174946805-closingissuesreferences-a-closes-keyword-in-the-pr.md)
 - [Code comments must describe the code as-is — never change-history ("unchanged from before") or PR-pointers ("see linked issue")](../learnings/1784573605212-code-comments-must-describe-the-code-as-is-never-c.md)
 - [CoerceToProperType null-vs-ErrorType: fix the wrapper, not tryCoerce](../learnings/1787657808750-coercetopropertype-null-vs-errortype-fix-the-wrapp.md)
+- [Coherent access on a ResourceDescriptorHeap/DescriptorHandle buffer: use loadCoherent/storeCoherent(&buf[i]) + vk_mem_model](../learnings/1791217879185-coherent-access-on-a-resourcedescriptorheap-descri.md)
 - [Coherent/volatile read on a read-only SRV is not a CSE miscompile](../learnings/1789755315138-coherent-volatile-read-on-a-read-only-srv-is-not-a.md)
 - [Coherent/volatile resource-load CSE miscompile: fix at readNone inference, and the front-end silent-qualifier-drop](../learnings/1789440874211-coherent-volatile-resource-load-cse-miscompile-fix.md)
 - [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](../learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)
@@ -646,6 +647,7 @@ type: topic
 - [Don't self-schedule a PR-watcher poller after report_pr_created](../learnings/1780339192513-don-t-self-schedule-a-pr-watcher-poller-after-repo.md)
 - [Don't trust the stack-trace-implied fix site alone — dump-IR the repro](../learnings/1780683697167-don-t-trust-the-stack-trace-implied-fix-site-alone.md)
 - [Don't write "escalated/posted/sent" into a durable note in the same motion as the call — restarts land in that gap](../learnings/1785882338294-don-t-write-escalated-posted-sent-into-a-durable-n.md)
+- [DownstreamArgs never compose across option-set levels: the multi-value add() matches on tool name](../learnings/1791192233228-downstreamargs-never-compose-across-option-set-lev.md)
 - [Draft PRs have NO formatting instrument — formatting.sh false-greens locally and check-formatting skips remotely](../learnings/1786062180500-draft-prs-have-no-formatting-instrument-formatting.md)
 - [Draft status does not suppress a closing keyword — only closingIssuesReferences answers "is this linked"](../learnings/1786425268271-draft-status-does-not-suppress-a-closing-keyword-o.md)
 - [Dropping -o does NOT flip to whole-program when -entry is present](../learnings/1785791159290-dropping-o-does-not-flip-to-whole-program-when-ent.md)
@@ -741,6 +743,7 @@ type: topic
 - [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 - [gh api has no --arg flag: --jq --arg silently yields zero rows on every loop iteration](../learnings/1785868475644-gh-api-has-no-arg-flag-jq-arg-silently-yields-zero.md)
 - [gh api job logs returns 0 bytes on escape sequences — and the zero control reads 0 too](../learnings/1786433135964-gh-api-job-logs-returns-0-bytes-on-escape-sequence.md)
+- [gh api job logs silently empty without --allow-escape-sequences](../learnings/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md)
 - [gh api job logs: pass --allow-escape-sequences or get empty output](../learnings/1790909517431-gh-api-job-logs-pass-allow-escape-sequences-or-get.md)
 - [gh api repos/<o>/<r> .permissions can read all-false while GitHub App issue-write still works](../learnings/1790880519216-gh-api-repos-o-r-permissions-can-read-all-false-wh.md)
 - [gh api REST works with the App installation token even when gh auth status says "invalid"](../learnings/1788776005130-gh-api-rest-works-with-the-app-installation-token-.md)
@@ -764,6 +767,7 @@ type: topic
 - [gh patch endpoint 406s above 300 files, poisoning grep scans](../learnings/1785812823235-gh-patch-endpoint-406s-above-300-files-poisoning-g.md)
 - [gh pr comment (GraphQL) can fail where REST issues/comments succeeds — same token](../learnings/1786351785011-gh-pr-comment-graphql-can-fail-where-rest-issues-c.md)
 - [gh pr read works despite invalid GH_TOKEN (public repo fallback)](../learnings/1788396720428-gh-pr-read-works-despite-invalid-gh-token-public-r.md)
+- [gh pr view --json has no mergeQueueEntry field (use GraphQL)](../learnings/1791267800558-gh-pr-view-json-has-no-mergequeueentry-field-use-g.md)
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)
 - [gh run --log becomes readable only after a run fully completes; job-level logs endpoint can stay empty](../learnings/1790038136269-gh-run-log-becomes-readable-only-after-a-run-fully.md)
 - [gh run list --workflow <wrong-filename> silently returns a RETIRED workflow's old runs instead of erroring](../learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-retur.md)
@@ -916,6 +920,7 @@ type: topic
 - [macOS: hidden visibility breaks cross-dylib typed catch of C++ exceptions (libc++abi RTTI-identity)](../learnings/1783011716114-macos-hidden-visibility-breaks-cross-dylib-typed-c.md)
 - [Maintainer "strictly additive" means byte-identical existing branches, not behavior-equivalent](../learnings/1787024450636-maintainer-strictly-additive-means-byte-identical-.md)
 - [Maintainer feedback: our GitHub comments are too verbose — length is a cost we impose, not thoroughness we display](../learnings/1786460449898-maintainer-feedback-our-github-comments-are-too-ve.md)
+- [Maintainer report: nightly failure list and assigner provenance via REST](../learnings/1791188469337-maintainer-report-nightly-failure-list-and-assigne.md)
 - [Map each failing run to its HEAD BRANCH before naming a cause — a shared test name is not a shared cause](../learnings/1786367635970-map-each-failing-run-to-its-head-branch-before-nam.md)
 - [Marked-block sha256 pattern for cross-file drift detection](../learnings/1779985772055-marked-block-sha256-pattern-for-cross-file-drift-d.md)
 - [materialx ceiling: the coverage-losing cancel form is now the majority, not the exception](../learnings/1786126595649-materialx-ceiling-the-coverage-losing-cancel-form-.md)
@@ -1276,6 +1281,7 @@ type: topic
 - [UNMERGEABLE in a merge queue is not a trigger — discriminate on headCommit, and treat "state outliving its cause" as the real anomaly](../learnings/1786107684232-unmergeable-in-a-merge-queue-is-not-a-trigger-disc.md)
 - [Unsupported-and-unchecked is the dangerous quadrant — grep for the identity check, not the diagnostic](../learnings/1786245351511-unsupported-and-unchecked-is-the-dangerous-quadran.md)
 - [Unwritten entry-point varying output: the store IS the interface anchor — don't skip it](../learnings/1788019476812-unwritten-entry-point-varying-output-the-store-is-.md)
+- [upsert_pr_body.py now writes the explanation as a PR COMMENT and strips it from the description](../learnings/1791234547680-upsert-pr-body-py-now-writes-the-explanation-as-a-.md)
 - [Use singular they for human GitHub/Discord users in bot prose](../learnings/1787041557418-use-singular-they-for-human-github-discord-users-i.md)
 - [Use the failing assertion's arithmetic to pick between competing race explanations](../learnings/1785891610827-use-the-failing-assertion-s-arithmetic-to-pick-bet.md)
 - [Use they/them for human contributors; never infer gender or real name from a handle](../learnings/1786613178727-use-they-them-for-human-contributors-never-infer-g.md)
