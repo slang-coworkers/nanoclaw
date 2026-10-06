@@ -57,5 +57,12 @@ that memory) is a **nonexistent id**: `--agent-group-id ag-0000000000000-zzzzzz`
 confirms the real flag filters; the fake flag returns everything. Raise `--limit` until the count
 stops growing (200 → 417 → stable at `--limit 20000`: 2289 rows, 94 running).
 
+⭐ **Before redriving, classify what the lost turn was FOR.** A 429 on a *working* turn drops work
+and is worth redriving once the burst clears. A 429 on a *closing* turn (answering a courtesy ack on
+an already-terminal chain) lost nothing, so redriving it spends a session on a saturated resource and
+recovers nothing. Measured on slang#9661, 2026-08-05 20:07Z: the GitHub artifact was intact and
+nothing was pending, so it was correctly left alone
+([[project_9661_cuda_getdimensions_scrub]]).
+
 Related: [[feedback_control_the_instrument_not_the_reasoning]],
 [[project_8373_std430_cbuffer_parser_gate]].

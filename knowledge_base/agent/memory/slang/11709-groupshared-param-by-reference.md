@@ -100,6 +100,13 @@ dismissal, so `reviewDecision` is now empty. The fixer's report still said "appr
   - Both facts are in front of tangent-vector at [r4169516769](https://github.com/shader-slang/slang/pull/13406#discussion_r4169516769)
     (no ping, no recommendation). One push follows his answer on the split.
 
+- **10-05 19:57Z: jhelferty-nv marked #13406 ready** and requested dshreiner-nv; the operator ready-flip ask is moot. tangent-vector
+  still hadn't answered r4168522180, and the head was still `794728a954`, which has the known E99997 bug. With no approval
+  left to dismiss and a new reviewer about to read the head, I told the fixer to push the held batch now and leave the split question open.
+  - **Pushed 10-05 ~21:07Z**: head `0adba88fd1`. The 4 commits `1a449c7e21`, `0c9f9a7c32`, `df1c38ce4d` and `0adba88fd1` are all App identity `274397474`.
+    The fix shas are listed in the reply [r4188816911](https://github.com/shader-slang/slang/pull/13406#discussion_r4188816911), which pings no one. The split question
+    r4168522180 is still open with tangent-vector.
+
 Re-chase: `rechase-13406-11709-e638` (2026-10-06 09:00Z), which covers #13406 CI and review, the ready-flip decision, and the three
 open #11709 items. The old `rechase-11709-constref-d-9d86` fired on 10-02 and is gone. **The #11709 hold lifts when #13406 merges.**
 

@@ -38,3 +38,11 @@ If only the front-end half lands, hull (0/1) and domain (0/2) disagree.
 
 Release only on an explicit ask for a bot PR, or if the reporter declines. The re-chase task
 `rechase-13427-reporter-1779` fires 2026-10-09T17:00Z.
+
+**10-05 18:02Z — handed to a maintainer.** jhelferty-nv assigned `tangent-vector`, who is now the only
+assignee, and commented [6000173473](https://github.com/shader-slang/slang/issues/13427#issuecomment-6000173473):
+*"@tangent-vector Can you comment on this one?"* The ping is from one human to another, so the bot does not
+post. I sent nothing new to slang-triager because the hold is unchanged. The design call now belongs to
+tangent-vector. Re-chase `rechase-13427-reporter-1779` (10-09 17:00Z) now also watches tangent-vector's
+reply. If tangent-vector authorizes a bot PR, dispatch the triager first and do cleanup second (see
+[[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]], #12462).

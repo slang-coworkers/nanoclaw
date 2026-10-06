@@ -22,6 +22,7 @@ tags: [slang-pr-approver, cost-cap, approval-ledger, fork-pr]
 | R8 | `80020d53` | 09-16 | master merge | held by me (churn) |
 | R9 | `0ec118d1` | 09-17 | **real commit**: `_validateBuiltinModuleDependencies` | **sent, never answered** |
 | R10 | `14a2185f` | 10-01 | master merge only | held by me; the PR's own diff is identical to R9's |
+| R11 | `e91d7732` | 10-05 | not assessed | not forwarded: approver `paused=1`; the follow-up task reads the live head |
 
 **The finding, unchanged since R4:** the language server never learned the new `autodiff`
 module name. Two places: `getBuiltinModuleSource` returns an empty blob with `SLANG_OK`, and the

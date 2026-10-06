@@ -88,6 +88,20 @@ if not CHECK:
         os.remove(src)
         print('%-9s %d rows -> %d shards (conserved; source monolith removed)'%(fam,len(rows),n))
 
+# ---- folder index.md: one row per sibling .md, generated, never hand-edited ----
+# index.md is the OKF folder index for this directory. It used to be hand-edited,
+# so every leaf a sibling session added was missing from it until the next OKF
+# synth run flagged INDEX-STALE (6 of 8 runs 2026-10-02..06 were exactly that).
+# Generating it here, after sharding, means a writer running reindex.sh fixes it.
+FOLDER_HDR='# Imported native memory\n\nMigrated 2026-08-30; /okf-synthesis distills over time.\n\n'
+def folder_rows():
+    return ['- [%s](%s)'%(f[:-3],f) for f in sorted(os.listdir('.'))
+            if f.endswith('.md') and f!='index.md']
+if not CHECK:
+    io.open('index.md','w',encoding='utf-8').write(FOLDER_HDR+'\n'.join(folder_rows())+'\n')
+stale_idx=sorted(set(folder_rows())-set(io.open('index.md',encoding='utf-8').read().split('\n')))
+for r in stale_idx: print('   NOT IN index.md:',r)
+
 # ---- verify: orphans from the READABLE PREFIX, both notation classes -------
 # The root index uses BOTH `- [[wikilink]]` rows and `| [[x]] |` table rows, and
 # topic indexes additionally use `](path.md)`. A single-notation parser
@@ -144,5 +158,5 @@ if tight:
     print('tightest shard: %s (%d chars headroom)'%(tight[0][1],tight[0][0]))
     if tight[0][0]<3000:
         print('!! under 3000 chars headroom — re-run without --check to repack')
-sys.exit(1 if orph else 0)
+sys.exit(1 if orph or stale_idx else 0)
 PY

@@ -12,17 +12,30 @@ decay and must be re-read, not remembered.
 
 ## Map
 
+- [slang#13220 — CUDA interface dispatch unreachable default, draft PR #13228](13220-cuda-dispatch-unreachable-default.md) —
+  held draft `842ea5d5c1`. kaizhangNV accepts the `s_dispatch_*` fix; waiting on their 3-way answer for force-unwrap of `none` `Optional<Interface>`
+  (undefined / must trap / must return a value). Re-chase `rechase-13228-kaizhang-a0d7` (2026-10-08).
+
+- [slang#13259 + #12934 — typeflow refined-info re-wrap ICE, PR #12935](13259-typeflow-refined-info-rewrap.md) —
+  **MERGED 2026-10-05** (`e6be8dcdd7`). The producer fix in `makeInfoForConcreteType` replaced a disproven consumer `none()` fix. Holds the overclaim timeline and lessons.
+
+- [slang#13436 — DownstreamArgs lost across option levels (linkWithOptions / addTarget)](13436-downstream-args-cross-level.md) —
+  triaged + reproduced bug P2, not a regression; #12900's deferred cross-level case. (b) compose-once → **held draft PR #13450**
+  (c527aaf207), FROZEN: maintainer-assigned kaizhangNV 10-05 (before the PR opened); C1 precedence open; @-mention OK + side finding await operator.
+  Re-chase `rechase-13436-precedence-4252` (2026-10-07).
+
 - [slang#12627 — CUDA masked RWTexture store, draft PR #13363](12627-cuda-masked-rwtexture-store.md) —
   held on jkwak-work's coherency answer (RMW+warning vs CUDA error; warning scope). Peer review complete (2 rounds, 0 bugs),
   `[Fix Report]` in 10-04 at head `b79ae81e23`. Next re-chase `rechase-12627-jkwak-8576` (2026-10-07). Follow-ups #13361/#13362/#13364/#13365 not dispatched.
 
 - [slang#13428 — local multi-declarator `j < 2` → E30015 (parser declarator registration)](13428-local-multi-declarator-generic-lookahead.md) —
   regression from #6281. Approach B, plus the DeclGroup hide/unhide miscompile, is in **draft PR #13432** (`fix/issue-13428-b`), waiting on the reviewer and CI.
-  Sibling #13430 (local struct `decl has no parent`) was released to the fixer on its own thread 10-05.
+  Sibling #13430 (local struct `decl has no parent`) is fixed in **draft PR #13434** (Approach B, no semantic visitor in local type bodies). #13433 (interface crash) and #13435 (local-struct static const silent miscompile) are filed and unrouted. Each has a 12h maintainer-reply gate (`i13433-maintainer-gate-6a3c`, `i13435-maintainer-gate-c5d3`).
 
 - [slang#13424 — loops with a constant trip count are not folded at -O3](13424-loop-constant-folding.md) —
-  triaged + reproduced, P3 enhancement, SPIR-V only (spirv-opt LoopUnroll declines Slang's loop shape). Option A (1-line BlockMerge) operator go/no-go
-  timed out, so HOLD; B/C/D need maintainer design. Re-chase `rechase-13424-golive-cff4` (2026-10-05).
+  triaged + reproduced, P3 enhancement, SPIR-V only (spirv-opt LoopUnroll declines Slang's loop shape). Option A (1-line BlockMerge) go/no-go: the 10-04
+  card never reached the operator; delivered ask 10-05 (row 453608). HOLD; B/C/D need maintainer design; reporter
+  opened upstream SPIRV-Tools#6930 (abs folding). Final re-chase `rechase-13424-ask3-d301` (2026-10-08).
 
 - [slang#13391 + #8323 — WGSL-via-Tint std140 layout, draft PR #13402](13391-wgsl-tint-std140.md) —
   our gates have passed (review r2 APPROVE_WITH_NITS). The Windows x64 Tint rows are held by the bot-CI gate deadlock (run 37055310934, falcor-ci), and the operator has been told a maintainer must rerun it. Re-chase `rechase-13402-tint-ci-001b` (2026-10-04).

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13424 — Missing constant folding for loops (constant trip count not folded at -O3)
-description: Triaged + reproduced P3 enhancement; SPIR-V-only gap. Option A (1-line BlockMerge before spirv-opt LoopUnroll) awaiting operator go/no-go, defaulted HOLD on timeout
+description: Triaged + reproduced P3 enhancement; SPIR-V-only gap. Option A (1-line BlockMerge before spirv-opt LoopUnroll) awaiting operator go/no-go (2nd ask 10-05, really the 1st delivered one); HOLD
 tags: [slang, spirv, optimization, loop-unroll, spirv-opt, held]
 resource: /workspace/inbox/a2a-1791074879332-d9xk98/triage-13424.md
 ---
@@ -56,6 +56,23 @@ slang-triager on the canonical thread for the reply, and noted the new evidence 
 corrects the closing `-Xspirv-opt.` → `-X.` and notes that `abs` still blocks the SH fold. C is left
 to maintainers, with no PR promised. Still HOLD.
 
-**Resume on:** an operator GO/no-go reply, maintainer design input on B/C/D, an assignee, or closure.
-A GO goes through slang-triager on `gh-issue-shader-slang/slang-13424` and releases option A only.
-Re-chase task `rechase-13424-golive-cff4` (2026-10-05T09:00Z).
+**2026-10-05T09:00Z re-chase.** On #13424 nothing has changed: no assignee, no new comments since 20:45Z,
+open, same labels. **New cross-ref:** at 10-04 22:36Z the reporter opened upstream
+[KhronosGroup/SPIRV-Tools#6930](https://github.com/KhronosGroup/SPIRV-Tools/pull/6930), "spirv-opt: Add
+constant folding rules for SAbs & FAbs". It's open, has no reviews, and cites #13424. It covers the `abs`
+half of the gap (option D's spirv-opt side), and A covers the LoopUnroll half. (The `gh` token returns
+401 on KhronosGroup, so read it via WebFetch.)
+- ⚠️ **The 10-04 00:49Z "timeout" was never a real ask.** That `ask_user_question` came from session
+  `sess-1791072289395-rekfl6` (`messaging_group_id` NULL). Its row 17 (`chat-sdk`, `[system:
+  ask_question]`) has **no matching row in the dashboard session**, so the operator never saw the card
+  and the HOLD was not their choice. Same failure as
+  [the timeout-is-not-a-decision rule](../imported/feedback_a_timeout_is_not_a_decision_verify_the_ask_was_delivered.md).
+- So this run did **not** use `ask_user_question` (the brief asked for it). It sent the go/no-go with
+  `send_message(to=orchestrator-dashboard, thread=gh-issue-shader-slang/slang-13424)` instead, which
+  landed as dashboard row 453608 at 09:04:47Z, reply GO / HOLD / DROP. Nothing went to slang-triager:
+  there's no GO, and a cross-ref isn't a comment.
+
+**Resume on:** an operator GO / HOLD / DROP reply, maintainer design input on B/C/D, an assignee, closure,
+or movement on SPIRV-Tools#6930. A GO goes through slang-triager on `gh-issue-shader-slang/slang-13424`
+and releases option A only. Re-chase task `rechase-13424-ask3-d301` (2026-10-08T09:00Z) sends the
+**final** ask (via send_message), then holds by default and stops asking.

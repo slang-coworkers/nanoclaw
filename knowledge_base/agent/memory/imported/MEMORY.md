@@ -70,7 +70,8 @@ named leaf — these are TRIGGERS.
 
 ⛔ **STORE MAINTENANCE → [[technique_keeping_this_store_reachable]]** — open it
 before any split, re-tier, orphan count, or "clean" claim. Run
-`bash reindex.sh --check` after adding a leaf; the metric is
+`bash reindex.sh` after adding a leaf (it regenerates the family shards and
+the folder `index.md`; `--check` only verifies, exit 1 if either is stale); the metric is
 ORPHANS-FROM-THE-READABLE-PREFIX + HEADROOM, never file size.
 
 ⛔ **NO ROW COUNTS in this table — stale within hours.** Range labels below were
