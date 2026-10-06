@@ -35,6 +35,9 @@ function run(payload: object, env: Record<string, string> = {}): RunResult {
       OVERLAY_MARKER_DIR: overlayDir,
       WORKFLOW_STATE_FILE: stateFile,
       EXPLAIN_DIFF_STATE_FILE: explainStateFile,
+      // These tests cover the critique logic on its own; the step-aside for a
+      // description gate-pr-description.sh refuses has its own describe block.
+      PR_DESCRIPTION_GATE: '0',
       ...env,
     },
     encoding: 'utf-8',
@@ -1413,5 +1416,35 @@ describe('PLAN_REVIEW verdict gate (fixer path)', () => {
     const result = deliver({ CRITIQUE_GATE_ACTIVE: '1', CRITIQUE_REQUIRED_STAGES: JSON.stringify(FIXER_STAGES) });
     expect(result.status).toBe(2);
     expect(result.stderr).toContain('PLAN_REVIEW last verdict');
+  });
+});
+
+describe('description gate step-aside (gate-pr-description.sh refuses the description)', () => {
+  const LONG_BODY = ['**Risk.** One.', '- two', '- three', '- four'].join('\n');
+  const createWith = (file: string) => ({
+    tool_name: 'Bash',
+    tool_input: { command: `gh pr create --title t --body-file ${file}` },
+  });
+
+  it('exits 0 without touching critique state when the description is refused', () => {
+    activateOverlay();
+    const file = path.join(tmpRoot, 'long-desc.md');
+    fs.writeFileSync(file, LONG_BODY);
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0, critique_gate_denials: 2 }));
+    const r = run(createWith(file), { PR_DESCRIPTION_GATE: '1' });
+    expect(r.status).toBe(0);
+    expect(r.stderr).toBe('');
+    expect(JSON.parse(fs.readFileSync(stateFile, 'utf-8')).critique_gate_denials).toBe(2);
+    expect(fs.existsSync(path.join(tmpRoot, 'critique-escalation.json'))).toBe(false);
+  });
+
+  it('still denies on critique when the description is fine', () => {
+    activateOverlay();
+    const file = path.join(tmpRoot, 'ok-desc.md');
+    fs.writeFileSync(file, '**Summary.** Short.\n\nFixes #1\n');
+    fs.writeFileSync(stateFile, JSON.stringify({ critique_rounds: 0 }));
+    const r = run(createWith(file), { PR_DESCRIPTION_GATE: '1' });
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('PR creation');
   });
 });

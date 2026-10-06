@@ -406,6 +406,22 @@ OK_DESC = (
 
 
 class DescriptionLimits(Base):
+    def test_same_rules_as_the_hook(self):
+        # The PreToolUse gate keeps its own copy (container/hooks/lib/pr_description.py):
+        # both must judge every description the same way.
+        import importlib.util
+        hook = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "hooks", "lib", "pr_description.py")
+        if not os.path.isfile(hook):
+            self.skipTest("hook lib not in this tree")
+        spec = importlib.util.spec_from_file_location("pr_description", hook)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        corpus = [LONG_DESC, OK_DESC, "A | B\n--- | ---\n1 | 2", "| a |\n|---|", "**Summary.** a | b, then ---.",
+                  f"<sub>{'x' * 1200}</sub>\n**Summary.** s", f"Fixes the analysis in #1 {'y' * 1200}",
+                  "**Summary.** s\n\nFixes #1, closes o/r#2.\n\n<sub>bot</sub>", "## Summary\none\ntwo"]
+        for body in corpus:
+            self.assertEqual(U.description_problems(body, 1000, 2), mod.check_body(body, 1000, 2), body[:40])
+
     def test_rules(self):
         problems = U.description_problems(LONG_DESC, 1000, 2)
         # Everything after a label belongs to that section until the next label:

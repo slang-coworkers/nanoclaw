@@ -142,11 +142,75 @@ describe('gate-pr-description.sh', () => {
     expect(run(`gh api -X POST repos/shader-slang/slang/pulls/13450/comments -F body=@${f}`).status).toBe(0);
   });
 
-  it('lets body-less edits through (title, labels, reviewers, --fill)', () => {
+  it('lets body-less edits through (title, labels, reviewers)', () => {
     expect(run('gh pr edit 13450 --title "new title" --add-label "pr: non-breaking"').status).toBe(0);
     expect(run('gh pr edit 13450 --add-reviewer someone').status).toBe(0);
-    expect(run('gh pr create --fill --draft').status).toBe(0);
     expect(run('gh pr ready 13450 && gh pr view 13450').status).toBe(0);
+    expect(run('gh pr create --help').status).toBe(0);
+  });
+
+  it('refuses gh pr create whose description comes from --fill*, --template, --editor, --recover or a prompt', () => {
+    for (const flags of [
+      '--fill --draft',
+      '--fill-first',
+      '--fill-verbose',
+      '--template pr.md',
+      '-T pr.md',
+      '--editor',
+      '--recover x.json',
+      '--title x',
+    ]) {
+      const r = run(`gh pr create ${flags}`);
+      expect(r.status, flags).toBe(2);
+      expect(r.stderr, flags).toContain('--body-file <absolute path>');
+    }
+  });
+
+  it('finds the gh api endpoint past option values and reads --input=FILE (#4)', () => {
+    const f = path.join(tmp, 'long.md');
+    fs.writeFileSync(f, LONG);
+    expect(run(`gh api -X PATCH -H 'Accept: application/vnd.github+json' repos/o/r/pulls/1 -F body=@${f}`).status).toBe(
+      2,
+    );
+    const j = path.join(tmp, 'payload.json');
+    fs.writeFileSync(j, JSON.stringify({ body: LONG }));
+    expect(run(`gh api --method=PATCH repos/o/r/pulls/1 --input=${j}`).status).toBe(2);
+    fs.writeFileSync(j, JSON.stringify({ body: OK }));
+    expect(run(`gh api --method=PATCH repos/o/r/pulls/1 --input=${j}`).status).toBe(0);
+  });
+
+  it('never reads a stale file this same command overwrites (#5)', () => {
+    const f = path.join(tmp, 'desc.md');
+    fs.writeFileSync(f, OK);
+    const r = run(`printf '%s\\n' '**Risk.** one' '- two' '- three' > ${f}; gh pr edit 1 -F ${f}`);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('writes');
+  });
+
+  it('allows a literal $ or backtick inside a single-quoted body (#6)', () => {
+    expect(run("gh pr edit 1 --body '**Summary.** costs $5 and names `foo`.'").status).toBe(0);
+  });
+
+  it('resolves a relative cd and a piped heredoc on stdin (#7)', () => {
+    fs.mkdirSync(path.join(tmp, 'reports'));
+    fs.writeFileSync(path.join(tmp, 'reports', 'desc.md'), OK);
+    expect(run('cd reports && gh pr edit 1 --body-file desc.md').status).toBe(0);
+    expect(run(`cat <<'EOF' | gh pr create --title x --body-file -\n${OK}\nEOF`).status).toBe(0);
+    expect(run(`cat <<'EOF' | gh pr create --title x --body-file -\n${LONG}\nEOF`).status).toBe(2);
+  });
+
+  it('counts a table without outer pipes (#8)', () => {
+    const r = run(heredocCreate('**Summary.** Short.\n\nA | B\n--- | ---\n1 | 2'));
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('it contains a table');
+    expect(run(heredocCreate('**Summary.** a | b, then ---.')).status).toBe(0);
+  });
+
+  it('excludes only a final <sub> disclaimer and exact closing lines (#9)', () => {
+    const sub = `<sub>${'x'.repeat(1200)}</sub>`;
+    expect(run(heredocCreate(`${sub}\n\n**Summary.** Short.`)).status).toBe(2);
+    expect(run(heredocCreate(`Fixes the entire analysis in #1 ${'y'.repeat(1200)}`)).status).toBe(2);
+    expect(run(heredocCreate('**Summary.** Short.\n\nFixes #1, closes o/r#2.\n\n<sub>bot</sub>')).status).toBe(0);
   });
 
   it('refuses a description it cannot read, asking for an absolute --body-file', () => {

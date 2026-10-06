@@ -83,14 +83,19 @@ SHORT_BODY = 200
 # (container/hooks/lib/pr_description.py); keep the two in step. Squash merges copy
 # the description into git log, so each section (a line starting with a bold label
 # or a `## Heading`) holds at most 2 non-empty lines, the whole description at most
-# 1,000 characters, and no table. The `<sub>` disclaimer and `Fixes #N` lines are
-# not counted.
+# 1,000 characters, and no table. A final `<sub>` disclaimer line and exact
+# `Fixes|Closes|Resolves #N` lines are not counted. test_upsert_pr_body.py checks
+# this copy against the hook's on a shared corpus.
+_ISSUE_REF = r"(?:(?:[\w.-]+/[\w.-]+)?#\d+|https://github\.com/[\w.-]+/[\w.-]+/(?:issues|pull)/\d+)"
+_CLOSING_WORD = r"(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)"
+_CLOSING_RE = re.compile(
+    rf"^\s*{_CLOSING_WORD}\s*:?\s+{_ISSUE_REF}(?:\s*(?:,|and)\s*(?:{_CLOSING_WORD}\s*:?\s+)?{_ISSUE_REF})*\s*\.?\s*$",
+    re.IGNORECASE,
+)
 _DISCLAIMER_RE = re.compile(r"^\s*<sub>.*</sub>\s*$", re.IGNORECASE)
-_CLOSING_RE = re.compile(r"^\s*(fix(es|ed)?|close[sd]?|resolve[sd]?)\b.*(#\d+|/issues/\d+)", re.IGNORECASE)
 _BOLD_LABEL_RE = re.compile(r"^\s*(\*\*|__)\s*(?P<label>[^*_\n]{1,80}?)\s*[.:]?\s*\1[.:]?(\s|$)")
 _HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(?P<label>.+?)\s*#*\s*$")
-_TABLE_ROW_RE = re.compile(r"^\s*\|.*\|\s*$")
-_TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-{3,}:?\s*(\|\s*:?-{3,}:?\s*)+\|?\s*$")
+_TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$")
 
 
 def _env_int(name: str, default: int) -> int:
@@ -104,8 +109,11 @@ def description_limits() -> tuple[int, int]:
 
 def description_problems(body: str, max_chars: int, max_lines: int) -> list[str]:
     """What in a description breaks the limits, as short phrases; empty when it is fine."""
-    lines = [ln for ln in body.replace("\r\n", "\n").split("\n")
-             if not _DISCLAIMER_RE.match(ln) and not _CLOSING_RE.match(ln)]
+    lines = body.replace("\r\n", "\n").split("\n")
+    last = max((i for i, ln in enumerate(lines) if ln.strip()), default=-1)
+    if last >= 0 and _DISCLAIMER_RE.match(lines[last]):
+        lines = lines[:last] + lines[last + 1:]
+    lines = [ln for ln in lines if not _CLOSING_RE.match(ln)]
     problems: list[str] = []
     sections: list[list] = []
     for ln in lines:
@@ -119,8 +127,13 @@ def description_problems(body: str, max_chars: int, max_lines: int) -> list[str]
     for label, n in sections:
         if n > max_lines:
             problems.append(f"{label} has {n} lines, max {max_lines}")
-    if any(_TABLE_SEP_RE.match(ln) for ln in lines) and any(_TABLE_ROW_RE.match(ln) for ln in lines):
-        problems.append("it contains a table")
+    prev = ""
+    for ln in lines:
+        if ln.strip() and "|" in ln and "-" in ln and _TABLE_SEP_RE.match(ln) and "|" in prev:
+            problems.append("it contains a table")
+            break
+        if ln.strip():
+            prev = ln
     total = len("\n".join(lines).strip())
     if total > max_chars:
         problems.append(f"total {total:,} chars, max {max_chars:,}")
