@@ -56,7 +56,7 @@ const receipts = (): Receipts => JSON.parse(fs.readFileSync(receiptsFile, 'utf-8
 const UPSERT =
   'python3 /home/node/.claude/skills/explain-diff-html/scripts/upsert_pr_body.py --repo "$R" --pr "$N" --head "$(git -C "$WT" rev-parse HEAD)" --explanation /tmp/explain-body.md';
 const upsertOut = (head: string) =>
-  `${JSON.stringify({ updated: true, repo: 'shader-slang/slang', pr: 13213, chars: 9000, head, legacy_comment: 'none' })}\n`;
+  `EXPLAIN_DIFF_RECEIPT ${JSON.stringify({ updated: true, repo: 'shader-slang/slang', pr: 13213, chars: 9000, head })}\n`;
 
 describe('pr-auto-map.sh — push reminds the agent to refresh the explanation comment', () => {
   it('fast-forward push from a worktree: repo, branch and new head come from the push report', () => {
@@ -159,13 +159,25 @@ describe('pr-auto-map.sh — receipts for the explanation comment refresh gates'
     expect(pr?.branch).toBe('fix/issue-13073');
   });
 
-  it('upsert with the older output shape falls back to literal --repo/--pr flags', () => {
+  it('a receipt without repo/pr falls back to literal --repo/--pr flags', () => {
     hook(
       'python3 upsert_pr_body.py --repo o/r --pr 12 --head abc1234 --explanation /tmp/e.md',
-      '{"updated": true, "chars": 100, "head": "abc1234def00", "legacy_comment": "none"}\n',
+      'EXPLAIN_DIFF_RECEIPT {"updated": true, "chars": 100, "head": "abc1234def00"}\n',
       '',
     );
     expect(receipts().prs?.['o/r#12']).toMatchObject({ explained_head: 'abc1234def00', created_at: null });
+  });
+
+  it('only a prefixed stdout receipt counts: bare JSON, stderr, and a dry-run trailer do not', () => {
+    const bare = `${JSON.stringify({ updated: true, repo: 'shader-slang/slang', pr: 13213, head: '555d69c0ffee' })}\n`;
+    hook(UPSERT, `## 📖 Explanation\n${bare}`, '');
+    hook(UPSERT, '', upsertOut('555d69c0ffee'));
+    hook(
+      UPSERT,
+      'EXPLAIN_DIFF_RECEIPT {"updated": false, "dry_run": true}\n',
+      `## 📖 Explanation\n${upsertOut('555d69c0ffee')}`,
+    );
+    expect(fs.existsSync(receiptsFile)).toBe(false);
   });
 
   it('no receipt for --dry-run, --quiz-positions, or a failed / head-mismatch run', () => {
