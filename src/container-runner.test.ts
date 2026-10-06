@@ -536,6 +536,20 @@ describe('composeSessionSpec', () => {
     }
   });
 
+  it('forwards the PR-description gate knobs into the container', async () => {
+    vi.stubEnv('PR_DESCRIPTION_GATE', '0');
+    vi.stubEnv('PR_DESCRIPTION_MAX_CHARS', '1500');
+    vi.stubEnv('PR_DESCRIPTION_MAX_SECTION_LINES', '3');
+    try {
+      const env = (await compose()).containers[0].env;
+      expect(env.PR_DESCRIPTION_GATE).toBe('0');
+      expect(env.PR_DESCRIPTION_MAX_CHARS).toBe('1500');
+      expect(env.PR_DESCRIPTION_MAX_SECTION_LINES).toBe('3');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('the gateway contribution fills the contributed lane last and wins a collision', async () => {
     const spec = await compose({
       contribution: { env: { HTTPS_PROXY: 'http://provider:1' } },
