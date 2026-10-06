@@ -214,6 +214,13 @@ export interface AgentQuery {
 
   /** Force-stop the query. */
   abort(): void;
+
+  /**
+   * Hard teardown: terminate whatever runs the query (e.g. the SDK's CLI
+   * process). Used only after the caller has stopped reading `events` because
+   * the stream never closed. Optional; providers without a process omit it.
+   */
+  kill?(): void;
 }
 
 export type ProviderEvent =
