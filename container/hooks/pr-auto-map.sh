@@ -24,6 +24,10 @@ RESPONSE=$(echo "$INPUT" | jq -r '.tool_response // empty' 2>/dev/null)
 RESPONSE_TEXT=$(echo "$INPUT" | jq -r 'if (.tool_response | type) == "object"
   then ((.tool_response.stdout // "") + "\n" + (.tool_response.stderr // ""))
   else (.tool_response // "") end' 2>/dev/null || true)
+# stdout alone: upsert_pr_body.py's receipt is a stdout line, and its human-readable
+# output (dry-run text, errors) goes to stderr, so nothing there can pass as one.
+STDOUT_TEXT=$(echo "$INPUT" | jq -r 'if (.tool_response | type) == "object"
+  then (.tool_response.stdout // "") else (.tool_response // "") end' 2>/dev/null || true)
 
 HOOK_DIR=$(dirname "${BASH_SOURCE[0]}")
 # shellcheck source=lib/explain-diff-owed.sh
@@ -143,14 +147,16 @@ if [ "$IS_PR_CREATE" = "true" ]; then
 fi
 
 # An explanation comment written by upsert_pr_body.py: the receipt that clears the
-# refresh owed by the create / push above. Only a real write counts — its JSON
-# result line says "updated": true; --dry-run and --quiz-positions write nothing.
+# refresh owed by the create / push above. Only a real write counts — a stdout line
+# `EXPLAIN_DIFF_RECEIPT {..."updated": true...}`, which the script prints only after
+# every write succeeded; --dry-run and --quiz-positions write nothing.
 case "$COMMAND" in
   *upsert_pr_body.py*)
     case "$COMMAND" in
       *--dry-run* | *--quiz-positions*) ;;
       *)
-        RESULT=$(printf '%s\n' "$RESPONSE_TEXT" | jq -Rc 'fromjson? | select(type == "object" and .updated == true)' 2>/dev/null | tail -n 1 || true)
+        RESULT=$(printf '%s\n' "$STDOUT_TEXT" | sed -n 's/^EXPLAIN_DIFF_RECEIPT //p' \
+          | jq -Rc 'fromjson? | select(type == "object" and .updated == true)' 2>/dev/null | tail -n 1 || true)
         if [ -n "$RESULT" ]; then
           U_HEAD=$(jq -r '.head // ""' <<< "$RESULT" 2>/dev/null || true)
           U_REPO=$(jq -r '.repo // ""' <<< "$RESULT" 2>/dev/null || true)
