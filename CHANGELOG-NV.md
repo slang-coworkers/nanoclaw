@@ -6,15 +6,36 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 659 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 273 |
-| `nv-slang` | slang project spine, skills, workflows | 175 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 101 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 80 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 663 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 274 |
+| `nv-slang` | slang project spine, skills, workflows | 177 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 102 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 81 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-06
+
+### nv-main (4 PRs)
+- **#1882** `Sync nv-main with upstream/main`
+- **#1877** `fix(runner): stop the idle-end dead-query loop that swallows follow-ups`
+- **#1875** `explain-diff-html: only edit our own comment, fail closed, safe description cleanup`
+- **#1892** `feat(hooks): keep PR descriptions to 2 lines per section, ≤1,000 chars, no tables`
+
+### nv-dashboard (1 PRs)
+- **#1884** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#1885** `Sync nv-slang with upstream/main`
+- **#1893** `slang fixer: PR description at most 2 lines per section, ≤1,000 chars, no tables`
+
+### nv-slangpy (1 PRs)
+- **#1886** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1887** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-10-05
 
