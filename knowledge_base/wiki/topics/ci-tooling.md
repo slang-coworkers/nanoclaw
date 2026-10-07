@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-518 learnings. [Catalog](../index.md)
+521 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -111,6 +111,7 @@ type: topic
 - [A provenance label does not neutralize a false premise that drives a decision](../learnings/1786420945243-a-provenance-label-does-not-neutralize-a-false-pre.md)
 - [A queue-depth alarm is anti-correlated with a total capacity outage](../learnings/1786395574061-a-queue-depth-alarm-is-anti-correlated-with-a-tota.md)
 - [A rebuild on mainline discards by default — enumerate from the old head, never infer from a diff](../learnings/1785890710923-a-rebuild-on-mainline-discards-by-default-enumerat.md)
+- [A rebuilt scratch worktree can be stale after `git checkout` — always rebuild before reading a two-state result](../learnings/1791318189564-a-rebuilt-scratch-worktree-can-be-stale-after-git-.md)
 - [A reconciliation can inherit the same unit bug it resolves — check MB vs MiB on the agreement figure too](../learnings/1786042397017-a-reconciliation-can-inherit-the-same-unit-bug-it-.md)
 - [A reconciliation is a claim with arithmetic in it — range-check it](../learnings/1786411084640-a-reconciliation-is-a-claim-with-arithmetic-in-it-.md)
 - [A reconciliation that dissolves a discrepancy is itself a query shaped by expectation — agreement is the weakest evidence two parties measured the same thing](../learnings/1786027885737-a-reconciliation-that-dissolves-a-discrepancy-is-i.md)
@@ -430,6 +431,7 @@ type: topic
 - [Reusable workflow (ci-falcor-test.yml) has zero runs at its own endpoint — query the caller's runs instead](../learnings/1786992411941-reusable-workflow-ci-falcor-test-yml-has-zero-runs.md)
 - [Revert drills must run in the SAME build tree, not a base-clone binary](../learnings/1790688100687-revert-drills-must-run-in-the-same-build-tree-not-.md)
 - [Review lens: AnyValue bulk-copy / empty-struct legalize fixes — check the target branch is numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md)
+- [Review-runner scripts may lack +x; invoke via bash](../learnings/1791344124893-review-runner-scripts-may-lack-x-invoke-via-bash.md)
 - [Reviewing `|| true` CI-tolerance shell PRs: check every same-scope VAR=$(pipeline), and know errexit is OFF in command-substitution subshells](../learnings/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md)
 - [Reviewing a "descope the failing test case" CI fix: byte-identical check + arch-wrong-primal signal](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)
 - [Reviewing a new interface requirement with no default: build-green answers "any conformer missed?"](../learnings/1789560871840-reviewing-a-new-interface-requirement-with-no-defa.md)
@@ -471,6 +473,7 @@ type: topic
 - [slang-rhi builds headless (no Vulkan SDK/GPU) via CMake FetchContent; fresh clones have no git identity](../learnings/1780310225210-slang-rhi-builds-headless-no-vulkan-sdk-gpu-via-cm.md)
 - [slang-rhi CI DOES run GPU tests — check-run names all say "build (...)", so never infer coverage from the name](../learnings/1785937835338-slang-rhi-ci-does-run-gpu-tests-check-run-names-al.md)
 - [slang-rhi CI runs CUDA interop tests on self-hosted GPU runners — read the per-test line, not the "GitHub-hosted skips" summary](../learnings/1790197692432-slang-rhi-ci-runs-cuda-interop-tests-on-self-hoste.md)
+- [slang-test ↔ slang-llvm FileCheck interface is pinned by the prebuilt release in default local builds](../learnings/1791326969343-slang-test-slang-llvm-filecheck-interface-is-pinne.md)
 - [Slang: IRBuilder source-loc RAII may already stamp struct keys — explicit sourceLoc= can be redundant](../learnings/1780416359939-slang-irbuilder-source-loc-raii-may-already-stamp-.md)
 - [SlangPy CI flake: shared nvrgfx GPU runner CUDA OOM](../learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-oom.md)
 - [Source doc comments: client-facing, no off-github refs, no change-narration](../learnings/1787573555990-source-doc-comments-client-facing-no-off-github-re.md)

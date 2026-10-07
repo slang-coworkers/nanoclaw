@@ -3,6 +3,7 @@ title: "Slang commits: no Co-Authored-By: Claude — CLAUDE.md overrides the har
 type: learning
 topic: slang-compiler
 source: learnings/1791247428814-slang-commits-no-co-authored-by-claude-claude-md-o.md
+superseded_by: 1791247512039-harness-co-authored-by-claude-attribution-reminder
 ---
 
 # Slang commits: no Co-Authored-By: Claude — CLAUDE.md overrides the harness attribution reminder

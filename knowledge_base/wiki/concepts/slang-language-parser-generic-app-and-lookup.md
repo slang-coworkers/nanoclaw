@@ -3,7 +3,7 @@ title: "Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup"
 type: concept
 group: slang-language-core
 tags: [parser, tryParseGenericApp, generic-app, CheckTerm, swizzle, DeclRefType, parser-lookup, CompleteDecl, AddMember, local-decl, enum, parseDeclBody, e39999, e30015, test-masking]
-source_count: 6
+source_count: 7
 ---
 
 # Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup
@@ -23,6 +23,7 @@ How the Slang parser decides whether `name <` opens a generic application or is 
 - A local `enum` written directly in a function body never reaches `parseEnumDecl`; the parser takes `enum` as an identifier and rejects it (E30102 + E20001 + E30015). An enum nested in a local struct is parsed through that struct's `parseDeclBody`. Probe any source-only reviewer claim about a local-enum path before relaying it.
 - A regression row for a parser-lookup bug must use names that nothing else in the test file declares at global scope. A same-named global makes the lookup fall back to it, so the row compiles on master and no longer guards the bug. Verify each headline row with a master binary, both with and without the global.
 - Before attributing full-suite failures to a parser change, rerun exactly the failing set with the change reverted. A local run can carry about 30 pre-existing failures (a stale standard-module build, gfx-smoke without a GPU).
+- Label a parser or disambiguation change that alters which programs are accepted `pr: breaking change` by default (or say the label is a judgement call), even when no previously-valid program changes meaning. If a maintainer relabels it, accept and reply with a measured master-vs-branch exposure table.
 - A/B probes against a master `slangc` catch checked-base reuse pitfalls in under a minute. Give probes a real `-o` file, because `-o /dev/null` gives E00004 on current master (#13294).
 
 ## How tryParseGenericApp classifies the base of `name <` (#13426, PR #13429)
@@ -43,6 +44,10 @@ The fix classifies the checked base by its type, not by its expression node. Bot
 Reusing the already-checked base (the reuse #12892 introduced) has two pitfalls, and both appeared within a minute of an A/B against a master `slangc`. First, `visitMemberExpr` rewrites `expr->baseExpression` in place. Returning the raw `MemberExpr` after `CheckTerm` checks it a second time, and `p->y` with `float2* p` then reports a false E30101, so the reuse must widen to every `baseKind != Unknown`. Second, the reuse must not be unconditional: `h.o.get<3>()`, where `o` is an interface-typed field, checks to a `LetExpr`, which `AddGenericOverloadCandidates` rejects with E39999 [same](../learnings/1791149609749-slang-tryparsegenericapp-classify-by-as-declreftyp.md).
 
 A local full `slang-test` run can show about 30 pre-existing failing files (a stale `slang.numerics` standard-module build, gfx-smoke without a GPU). Rerun exactly that set with the change reverted before attributing any of them to the parser change [same testing note](../learnings/1791128536486-slang-tryparsegenericapp-swizzle-bases-swizzleexpr.md).
+
+## Labelling parser disambiguation changes `pr: breaking change`
+
+PR #13429 was opened as `pr: non-breaking` because probes found no program that compiled before and changed meaning; what changed was that code which used to error now compiles (`uv.y<2>(3)` now parses as `(uv.y<2)>(3)`) and some diagnostics differ. The shepherd (skiminki-nv) relabelled it `pr: breaking change` because there was "at least a theoretical chance that this fix breaks existing code". For any parser or disambiguation change that alters which programs are accepted, default to `pr: breaking change` or say in the PR body that the label is a judgement call; when a maintainer flags the label, accept it and reply with a short measured exposure table (master vs. branch, per spelling) rather than arguing. Editing the PR body or labels does not re-trigger `ci.yml` (its `pull_request` types are opened/synchronize/reopened/ready_for_review), so status text can be fixed while CI runs on a held head ([maintainers flag parser disambiguation changes as `pr: breaking change` even when they only accept previously-rejected code](../learnings/1791192194734-slang-maintainers-flag-parser-disambiguation-chang.md)).
 
 ## Local declarator groups are invisible to parser-time lookup (#13428)
 
@@ -75,9 +80,10 @@ A test row for a parser-lookup bug is masked when the same file also declares a 
 
 Tooling notes from the same review: `slang-pr-review-runner/scripts/*.sh` and `run-clarity.sh` can lose the exec bit after a restart (exit 126), so invoke them with `bash <script>`. New worktrees need `git -c protocol.file.allow=always submodule update --init --recursive`, because file transport is blocked by default. When grepping clarity `tool-uses.jsonl` for `slang-review-post-github`, Reads of the skill's own files also match, so inspect the hits before calling it drift [same](../learnings/1791175231268-slang-tests-a-global-with-the-same-name-masks-pars.md).
 
-**Source learnings (6):**
+**Source learnings (7):**
 - [swizzle/matrix-swizzle bases stay Unknown in body-stage tryParseGenericApp and hit the FOLLOW heuristic (#13426, E39999); classify by the checked base's type](../learnings/1791128536486-slang-tryparsegenericapp-swizzle-bases-swizzleexpr.md)
 - [classify NonGeneric by as<DeclRefType>; reuse checkedBase only when kind != Unknown (visitMemberExpr in-place rewrite; LetExpr from h.o.get<3>())](../learnings/1791149609749-slang-tryparsegenericapp-classify-by-as-declreftyp.md)
+- [parser disambiguation changes get `pr: breaking change` even when they only accept previously-rejected code (PR #13429); label edits don't re-trigger ci.yml](../learnings/1791192194734-slang-maintainers-flag-parser-disambiguation-chang.md)
 - [local declarators join the scope only in CompleteDecl, so later initializers miss earlier ones (#13428, E30015/E30060); Body-stage early add](../learnings/1791148614375-slang-parser-local-decl-groups-are-invisible-to-pa.md)
 - [ParseEnum sets parentDecl before AddMember, so a parentDecl-keyed skip drops every enum and breaks slang-bootstrap](../learnings/1791150138311-slang-parser-parentdecl-container-is-not-proof-of-.md)
 - [a local enum in a function body is rejected at parse, so the "bypasses parseDeclBody" review claim on #13434 is unreachable; probe source-only claims](../learnings/1791179306916-reviewers-source-only-local-enum-bypasses-parsedec.md)

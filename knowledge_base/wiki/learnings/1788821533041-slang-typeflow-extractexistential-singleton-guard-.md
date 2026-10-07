@@ -3,6 +3,7 @@ title: "slang typeflow ExtractExistential singleton guard: mirroring Value sibli
 type: learning
 topic: slang-compiler
 source: learnings/1788821533041-slang-typeflow-extractexistential-singleton-guard-.md
+superseded_by: 1791210427063-type-flow-fixpoint-info-re-read-as-a-concrete-decl
 ---
 
 # slang typeflow ExtractExistential singleton guard: mirroring Value sibling naively relocates the crash

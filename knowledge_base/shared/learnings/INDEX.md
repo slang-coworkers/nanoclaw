@@ -5595,6 +5595,10 @@
 - [slang checkmodifiers substitute a modifier in the ](ag-1780667166439-vmjrwe/1791337734435-slang-checkmodifiers-substitute-a-modifier-in-the-.md) — _ag-1780667166439-vmjrwe_
 - [slangd lang server harness config pushes leak refr](ag-1780667166439-vmjrwe/1791339299959-slangd-lang-server-harness-config-pushes-leak-refr.md) — _ag-1780667166439-vmjrwe_
 - [slang full debug build fails on missing libcuda so](ag-1780667166439-vmjrwe/1791340353915-slang-full-debug-build-fails-on-missing-libcuda-so.md) — _ag-1780667166439-vmjrwe_
+- [filecheck not beside a dag group is blind between ](ag-1780667166439-vmjrwe/1791352103054-filecheck-not-beside-a-dag-group-is-blind-between-.md) — _ag-1780667166439-vmjrwe_
+- [slang linker a symbolalias re runs cloneglobalvalu](ag-1780667166439-vmjrwe/1791352109049-slang-linker-a-symbolalias-re-runs-cloneglobalvalu.md) — _ag-1780667166439-vmjrwe_
+- [slang ir shape name hint changes also run the nigh](ag-1780667166439-vmjrwe/1791357683498-slang-ir-shape-name-hint-changes-also-run-the-nigh.md) — _ag-1780667166439-vmjrwe_
+- [slang d3d hit attribute params are borrow in point](ag-1780667166439-vmjrwe/1791357853437-slang-d3d-hit-attribute-params-are-borrow-in-point.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5952,6 +5956,10 @@
 - [review check a reviewer s suggested test snippet c](ag-1780667168475-a9tac8/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md) — _ag-1780667168475-a9tac8_
 - [filecheck not around a dag group does not guard te](ag-1780667168475-a9tac8/1791336888864-filecheck-not-around-a-dag-group-does-not-guard-te.md) — _ag-1780667168475-a9tac8_
 - [ir link e45002 witness skip must be two sided gene](ag-1780667168475-a9tac8/1791336896506-ir-link-e45002-witness-skip-must-be-two-sided-gene.md) — _ag-1780667168475-a9tac8_
+- [lang server config pull initial reply that changes](ag-1780667168475-a9tac8/1791344121901-lang-server-config-pull-initial-reply-that-changes.md) — _ag-1780667168475-a9tac8_
+- [review runner scripts may lack x invoke via bash](ag-1780667168475-a9tac8/1791344124893-review-runner-scripts-may-lack-x-invoke-via-bash.md) — _ag-1780667168475-a9tac8_
+- [slang test target slangc slang test build leaves s](ag-1780667168475-a9tac8/1791353125648-slang-test-target-slangc-slang-test-build-leaves-s.md) — _ag-1780667168475-a9tac8_
+- [lowering changes that add ir name hints can break ](ag-1780667168475-a9tac8/1791355553166-lowering-changes-that-add-ir-name-hints-can-break-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -6061,6 +6069,7 @@
 - [critique gate codex attested hashes in backticks a](ag-1780667172530-ht5rv2/1790787211620-critique-gate-codex-attested-hashes-in-backticks-a.md) — _ag-1780667172530-ht5rv2_
 - [slangpy workaround for slang 13301 keep backwardde](ag-1780667172530-ht5rv2/1791193276857-slangpy-workaround-for-slang-13301-keep-backwardde.md) — _ag-1780667172530-ht5rv2_
 - [coworker commits on shader slang repos must not ca](ag-1780667172530-ht5rv2/1791195802831-coworker-commits-on-shader-slang-repos-must-not-ca.md) — _ag-1780667172530-ht5rv2_
+- [cpu large dispatch coverage in slangpy crossing th](ag-1780667172530-ht5rv2/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
 - [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [reviewing slangpy slang downstream retypes for a b](ag-1780667174559-cemrtg/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — _ag-1780667174559-cemrtg_
