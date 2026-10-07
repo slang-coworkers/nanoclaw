@@ -45,7 +45,9 @@ GHCR_MIRROR="$(env_get NANOCLAW_GHCR_MIRROR)"
 say "settings in .env (existing values kept)"
 
 # ── Packages ──────────────────────────────────────────────────────────────────
-pkgs=(build-essential libpam-systemd podman slirp4netns python3 curl git)
+# dbus-user-session: setup checks Docker access from the user manager with
+# `systemd-run --user`, which needs a session bus the image does not ship.
+pkgs=(build-essential libpam-systemd dbus-user-session podman slirp4netns python3 curl git)
 command -v docker >/dev/null 2>&1 || pkgs+=(docker.io)
 docker buildx version >/dev/null 2>&1 || pkgs+=(docker-buildx)
 docker compose version >/dev/null 2>&1 || pkgs+=(docker-compose-v2)
@@ -79,6 +81,8 @@ id -nG "$ME" | grep -qw docker || sudo -n usermod -aG docker "$ME"
 # ── User services (Teleport sessions register no login session) ──────────────
 sudo -n loginctl enable-linger "$ME"
 sudo -n systemctl start "user@$(id -u).service" || die "user@$(id -u).service failed to start"
+# A user manager that predates dbus-user-session only gets its bus on request.
+XDG_RUNTIME_DIR="/run/user/$(id -u)" systemctl --user start dbus.socket 2>/dev/null || true
 grep -qs 'XDG_RUNTIME_DIR' "$HOME/.bashrc" || echo 'export XDG_RUNTIME_DIR="/run/user/$(id -u)"' >>"$HOME/.bashrc"
 
 # ── podman API socket for agent containers ───────────────────────────────────

@@ -106,6 +106,21 @@ describe('container/build-prep.sh', () => {
     );
   });
 
+  it('passes the Debian mirror, and rejects one that is not a URL', () => {
+    const res = run({ NANOCLAW_DEBIAN_MIRROR: 'https://deb.debian.org/' });
+    expect(res.status).toBe(0);
+    expect(res.stdout).toBe('--build-arg\nDEBIAN_MIRROR=https://deb.debian.org\n');
+    // The slim base has no CA certificates yet, so apt gets the host's bundle.
+    expect(staged()).toEqual(['host-ca-bundle.pem']);
+    expect(fs.readFileSync(path.join(STAGE, 'host-ca-bundle.pem'), 'utf-8')).toContain('BEGIN CERTIFICATE');
+    expect(run({ NANOCLAW_DEBIAN_MIRROR: 'deb.debian.org' }).status).toBe(1);
+  });
+
+  it('stages no host bundle for a plain-HTTP Debian mirror', () => {
+    expect(run({ NANOCLAW_DEBIAN_MIRROR: 'http://mirror.example/debian-root' }).status).toBe(0);
+    expect(staged()).toEqual([]);
+  });
+
   it('rejects a GitHub mirror that is not a URL', () => {
     expect(run({ NANOCLAW_GITHUB_RELEASES_MIRROR: 'mirror.example' }).status).toBe(1);
   });
