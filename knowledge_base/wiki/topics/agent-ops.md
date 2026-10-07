@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-805 learnings. [Catalog](../index.md)
+811 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -305,6 +305,7 @@ type: topic
 - [Critique delivery-gate: codex attesting a volatile file (.claude-trace jsonl) blocks delivery forever](../learnings/1788423324537-critique-delivery-gate-codex-attesting-a-volatile-.md)
 - [critique gate arms on MEMORY-file edits and denies read-only gh api — verify state before you start editing notes](../learnings/1785881956405-critique-gate-arms-on-memory-file-edits-and-denies.md)
 - [Critique gate blocks PR CLOSE, not just create — and branch-delete is a destructive false workaround](../learnings/1785799595481-critique-gate-blocks-pr-close-not-just-create-and-.md)
+- [Critique gate blocks read-only `gh api .../pulls/N` calls](../learnings/1791303973484-critique-gate-blocks-read-only-gh-api-pulls-n-call.md)
 - [Critique gate blocks the WHOLE Bash call; GPU-less rebuild needs CUDA stub](../learnings/1790593764309-critique-gate-blocks-the-whole-bash-call-gpu-less-.md)
 - [critique gate denial counter never persists so escalation cap is dead code when state dir missing](../learnings/1785820482825-critique-gate-denial-counter-never-persists-so-esc.md)
 - [Critique gate false-positives on read-only gh api /pulls/ calls](../learnings/1784737519525-critique-gate-false-positives-on-read-only-gh-api-.md)
@@ -319,6 +320,7 @@ type: topic
 - [Critique gate: an older OUTPUT_REVIEW's attested hash can block gh pr create after a newer approve](../learnings/1790828388217-critique-gate-an-older-output-review-s-attested-ha.md)
 - [Critique gate: ANY file write after the OUTPUT_REVIEW approve voids it — even /tmp scratch](../learnings/1790799595374-critique-gate-any-file-write-after-the-output-revi.md)
 - [critique gate: Attested hashes in backticks are silently not recorded](../learnings/1790724661749-critique-gate-attested-hashes-in-backticks-are-sil.md)
+- [Critique gate: backtick-wrapped Attested lines leave stale hashes](../learnings/1791320198757-critique-gate-backtick-wrapped-attested-lines-leav.md)
 - [critique gate: codex Attested hashes in backticks are not recorded](../learnings/1790787211620-critique-gate-codex-attested-hashes-in-backticks-a.md)
 - [Critique-gate ([Resolution]/PR delivery) only counts codex calls in the exact codex-critique format](../learnings/1790016287155-critique-gate-resolution-pr-delivery-only-counts-c.md)
 - [critique-gate and PR-body-file interaction traps](../learnings/1787821097042-critique-gate-and-pr-body-file-interaction-traps.md)
@@ -352,6 +354,7 @@ type: topic
 - [CUDA/PTX 1D texture Load: integer-coord tex.level.1d silently returns zero (GPU-verified) — diagnose, don't un-gate](../learnings/1787173148906-cuda-ptx-1d-texture-load-integer-coord-tex-level-1.md)
 - [Curating shared learnings: serialize directory edits, never parallel forks](../learnings/1782026325950-curating-shared-learnings-serialize-directory-edit.md)
 - [Daily report: check for a linked fix PR before flagging an issue as untriaged](../learnings/1781511232421-daily-report-check-for-a-linked-fix-pr-before-flag.md)
+- [Daily report: Dev Reviewed count stopped tracking triage after the 10-05 milestone sweep](../learnings/1791275455369-daily-report-dev-reviewed-count-stopped-tracking-t.md)
 - [Dashboard channels render markdown — always include hyperlinks for issue/PR/discussion refs](../learnings/1778835191236-dashboard-channels-render-markdown-always-include-.md)
 - [DeepWiki MCP tool renamed ask_question → ask_wiki_question; fleet-wide allowlist gap](../learnings/1790105381468-deepwiki-mcp-tool-renamed-ask-question-ask-wiki-qu.md)
 - [Defer bot fixer PR when a MEMBER self-assigned + self-diagnosed the issue](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md)
@@ -428,6 +431,7 @@ type: topic
 - [Gate on evidence on disk, not on intention — the frozen-artifact invariant](../learnings/1785824548562-gate-on-evidence-on-disk-not-on-intention-the-froz.md)
 - [Gate refusals now go to sender not peer (PR](../learnings/legoop-project_gate_refusal_sender_only.md)
 - [gate-critique-on-deliver can block read-only `gh` PR queries as "PR creation"](../learnings/1791208209365-gate-critique-on-deliver-can-block-read-only-gh-pr.md)
+- [gate-critique-on-deliver refuses gh pr edit --body-file with a $VAR path](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md)
 - [Gated GitHub set is ONLY gh pr ready + merge — comments/labels/replies/reactions post freely](../learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)
 - [Gated GitHub write needs a TRACEABLE operator source, not a bare parent relay](../learnings/1781523727513-gated-github-write-needs-a-traceable-operator-sour.md)
 - [Gated-pushback replies: re-flag ANY post-approval wording change before posting](../learnings/1789490573346-gated-pushback-replies-re-flag-any-post-approval-w.md)
@@ -545,6 +549,7 @@ type: topic
 - [Never judge GitHub API quota from /rate_limit — the gateway injects per-path](../learnings/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md)
 - [Nightly MDL Perf Test = compile-time perf gate, not a GPU/corpus test](../learnings/1784184423207-nightly-mdl-perf-test-compile-time-perf-gate-not-a.md)
 - [No cross-group task query exists from inside a container — every route silently returns your own rows; and the tasks-list parse asymmetry localized](../learnings/1786241921742-no-cross-group-task-query-exists-from-inside-a-con.md)
+- [No gdb in container: an LD_PRELOAD SIGSEGV/__cxa_throw shim + addr2line on the .dwarf pins Release fault sites](../learnings/1791310105655-no-gdb-in-container-an-ld-preload-sigsegv-cxa-thro.md)
 - [nonStaticSatisfiesStatic adaptation: gate by hasDirectFuncType, not param0==This](../learnings/1790318683938-nonstaticsatisfiesstatic-adaptation-gate-by-hasdir.md)
 - [nv-* pre-commit hook runs format:fix then re-adds only src/**/*.ts — silently drops other staged files from the commit](../learnings/legoop-feedback_precommit_hook_drops_files.md)
 - [NVRTC -pch (12.8+) helps only the #include-form prelude, not raw-prepended text; default heap is 256MB; one-shot is a regression](../learnings/1787147387204-nvrtc-pch-12-8-helps-only-the-include-form-prelude.md)
@@ -620,6 +625,7 @@ type: topic
 - [Report up right after push+CI dispatch; don't gate the report on a long CI watch](../learnings/1790669062658-report-up-right-after-push-ci-dispatch-don-t-gate-.md)
 - [report_pr_created binds the CALLING session — open the PR from the fix thread, not a chat](../learnings/1780723000000-report-pr-created-binds-the-calling-session-not-the-fix-thread.md)
 - [report_pr_created remaps the PR to the CALLING session](../learnings/1782606474451-report-pr-created-remaps-the-pr-to-the-calling-ses.md)
+- [Reports answering a re-chase task's dispatch go to that task's session and get lost once it closes](../learnings/1791316462228-reports-answering-a-re-chase-task-s-dispatch-go-to.md)
 - [rerun-log.jsonl verdict for gate-wedged entries must be 'intermittent', not 'unclassifiable'](../learnings/1790469245380-rerun-log-jsonl-verdict-for-gate-wedged-entries-mu.md)
 - [Resolve agent_group_id to a coworker name BEFORE calling two sessions on one thread a collision](../learnings/1786096459202-resolve-agent-group-id-to-a-coworker-name-before-c.md)
 - [Resolve agent_group_id to a coworker name before reading a session list as a collision](../learnings/1786096520048-resolve-agent-group-id-to-a-coworker-name-before-r.md)

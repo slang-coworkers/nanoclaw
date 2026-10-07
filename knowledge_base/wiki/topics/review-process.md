@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-348 learnings. [Catalog](../index.md)
+352 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -210,6 +210,7 @@ type: topic
 - [Review severity: doc-vs-behavior conflict on a maintainer-owned design point is a QUESTION, not a BLOCK](../learnings/1785539785590-review-severity-doc-vs-behavior-conflict-on-a-main.md)
 - [Review-completion Monitor: anchor filters to exit markers, not streamed JSON](../learnings/1784380841597-review-completion-monitor-anchor-filters-to-exit-m.md)
 - [Review-resume sweep: check merge-state, token validity, artifact survival before re-running](../learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md)
+- [Review: check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md)
 - [Reviewer A ($30 budget cap) can silently produce no final-review.md](../learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md)
 - [Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
 - [Reviewer A (compose-and-run) aborts at 600s bg-subagent wait — set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790636700676-reviewer-a-compose-and-run-aborts-at-600s-bg-subag.md)
@@ -247,6 +248,7 @@ type: topic
 - [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md)
 - [Reviewer A subagent outputs: recover full text from reviewerA.log, not extracts](../learnings/1791094754719-reviewer-a-subagent-outputs-recover-full-text-from.md)
 - [Reviewer A transient 400 payload-truncation reproduces on back-to-back retries](../learnings/1787341192642-reviewer-a-transient-400-payload-truncation-reprod.md)
+- [Reviewer A truncated final-review.md on a SMALL diff too — check size, not just counts](../learnings/1791329053525-reviewer-a-truncated-final-review-md-on-a-small-di.md)
 - [Reviewer A wrong-PR integrity fail: shared tmp/ staging collision between concurrent runs](../learnings/1785209892572-reviewer-a-wrong-pr-integrity-fail-shared-tmp-stag.md)
 - [Reviewer A's merge step can drop a subagent's verified crash — scan per-subagent summaries](../learnings/1790744483226-reviewer-a-s-merge-step-can-drop-a-subagent-s-veri.md)
 - [Reviewer A/C output files hold only the LAST assistant text block — reconstruct the review from stream.jsonl](../learnings/1785896984738-reviewer-a-c-output-files-hold-only-the-last-assis.md)
@@ -297,6 +299,7 @@ type: topic
 - [slang Reviewer A false positives on own-line //CHECK directives from prompt condensation](../learnings/1781177378439-slang-reviewer-a-false-positives-on-own-line-check.md)
 - [slang reviewer A+C parallel: use git worktree to avoid .git/index.lock race](../learnings/1780679350358-slang-reviewer-a-c-parallel-use-git-worktree-to-av.md)
 - [slang Reviewer C clarity run: recover truncated output from on-disk candidate file](../learnings/1782739994323-slang-reviewer-c-clarity-run-recover-truncated-out.md)
+- [Slang reviewers: leave existing comments verbatim; a long comment for an exceptional case means restructure](../learnings/1791320932441-slang-reviewers-leave-existing-comments-verbatim-a.md)
 - [slang-fixer: a contributor-PR combined review is advisory, not a fix task — and don't echo the reviewer](../learnings/1782719999000-slang-fixer-a-contributor-pr-combined-review-is-ad.md)
 - [slang-pr-review merge step: find Reviewer C run-dir from stdout, and drift-grep tool NAME not content](../learnings/1782738058115-slang-pr-review-merge-step-find-reviewer-c-run-dir.md)
 - [slang-pr-review patch mode drops untracked new files (git commit -am) — Reviewer A false "no test" gap](../learnings/1789222054102-slang-pr-review-patch-mode-drops-untracked-new-fil.md)
@@ -313,6 +316,7 @@ type: topic
 - [slang-pr-review Reviewer C can die mid-run on a transient API socket error — detect via tiny clarity-review.md, retry recovers](../learnings/1780603736166-slang-pr-review-reviewer-c-can-die-mid-run-on-a-tr.md)
 - [slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](../learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)
 - [slang-pr-review-runner patch mode: reviewer can't find the patch + commit -am drops new files](../learnings/1780311762982-slang-pr-review-runner-patch-mode-reviewer-can-t-f.md)
+- [slang-pr-review-runner Reviewer A killed by claude CLI 600s background-wait ceiling](../learnings/1791298146686-slang-pr-review-runner-reviewer-a-killed-by-claude.md)
 - [slang-pr-review-runner scripts may lose exec bit; Reviewer A still needs CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)
 - [slang-pr-review-runner: after a container restart, Reviewer A silently falls back to /pnpm/claude and ends early (exit 1)](../learnings/1791207325225-slang-pr-review-runner-after-a-container-restart-r.md)
 - [slang-pr-review-runner: export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 on every Reviewer A launch (not baked into the scripts)](../learnings/1790837192079-slang-pr-review-runner-export-claude-code-print-bg.md)

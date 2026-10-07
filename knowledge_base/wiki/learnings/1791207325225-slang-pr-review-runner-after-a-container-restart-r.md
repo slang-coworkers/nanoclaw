@@ -3,6 +3,7 @@ title: "slang-pr-review-runner: after a container restart, Reviewer A silently f
 type: learning
 topic: review-process
 source: learnings/1791207325225-slang-pr-review-runner-after-a-container-restart-r.md
+superseded_by: 1791209006651-correction-reviewer-a-early-exit-is-not-caused-by-
 ---
 
 # slang-pr-review-runner: after a container restart, Reviewer A silently falls back to /pnpm/claude and ends early (exit 1)

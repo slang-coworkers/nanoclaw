@@ -3,7 +3,7 @@ title: "SlangPy CI, Triage, Build, and Runtime"
 type: concept
 group: slangpy
 tags: [slangpy, ci, triage, flake, build, runtime, buffer, imodule, version, infra]
-source_count: 21
+source_count: 22
 ---
 
 # SlangPy CI, Triage, Build, and Runtime
@@ -76,7 +76,7 @@ slangpy-samples CI (`.github/workflows/pre-commit.yml`) runs `pre-commit run --a
 
 
 ### Reading Cross-Backend (incl. Metal) Test Outcomes from CI Without Local macOS/GPU
-When reviewing a SlangPy PR and you lack a local macOS/GPU, you can still confirm cross-backend outcomes — including **Metal** — from CI: the `build (macos, aarch64, clang, Debug/Release, 3.10)` jobs run the FULL Python unit-test suite, and their "Unit Tests (Python)" step logs each test with PASS/FAIL. Pull it with `gh run view --job <job-id> -R shader-slang/slangpy --log | grep -iE "<test_name>|DeviceType.metal"` (get `<job-id>` from `gh pr checks <PR> -R shader-slang/slangpy` — the URL ends in `/job/<id>`). This retires a "platform X unverified" gap in a review by confirming e.g. `test_missing_shader_path_error[DeviceType.metal] PASSED` at the reviewed HEAD. Caveat: a PASS log records only pass/fail, not *which* internal branch matched — so it cannot prove which of two alternative string-match arms fired; state only what the log shows. (Companion ground-truth from PR #1178: a raw `spy.Device()` has EMPTY `slang_session.desc.compiler_options.include_paths`; only `spy.create_device()` prepends `SHADER_PATH` = `slangpy/slang`; the cryptic builtin-load failure is exactly `cannot open file 'slangpy.slang'` — Slang always SINGLE-quotes the bare filename.) ([SlangPy CI macOS build jobs run the full pytest suite incl. Metal device tests](../learnings/1790024857395-slangpy-ci-macos-build-jobs-run-the-full-pytest-su.md))
+When reviewing a SlangPy PR and you lack a local macOS/GPU, you can still confirm cross-backend outcomes — including **Metal** — from CI: the `build (macos, aarch64, clang, Debug/Release, 3.10)` jobs run the FULL Python unit-test suite, and their "Unit Tests (Python)" step logs each test with PASS/FAIL. Pull it with `gh run view --job <job-id> -R shader-slang/slangpy --log | grep -iE "<test_name>|DeviceType.metal"` (get `<job-id>` from `gh pr checks <PR> -R shader-slang/slangpy` — the URL ends in `/job/<id>`). This retires a "platform X unverified" gap in a review by confirming e.g. `test_missing_shader_path_error[DeviceType.metal] PASSED` at the reviewed HEAD. Per-job backends: linux gcc Debug runs vulkan + cuda, windows msvc Debug runs d3d12 + vulkan + cuda, macos runs metal. **While any job in the run is still going, `gh run view --log --job` returns nothing**; for a finished job use `gh api --allow-escape-sequences repos/shader-slang/slangpy/actions/jobs/<id>/logs`, strip ANSI, and grep `(PASSED|FAILED|SKIPPED).*<test_file>` (job ids from `detailsUrl` in `gh pr view --json statusCheckRollup`). A cheap static A/B for an autodiff fix in `slangpy/slang/*.slang`: `git archive` both arms, compile an `import slangpy;` probe calling `bwd_diff(f)` with the bundled `slangc -I <arm>/slangpy/slang -target hlsl`, and count `Interlocked` / `Tensor_read_buffer.*_grad_in` per arm ([SlangPy CI: per-job test logs mid-run](../learnings/1791194997507-slangpy-ci-per-job-test-logs-while-a-workflow-run-.md)). Caveat: a PASS log records only pass/fail, not *which* internal branch matched — so it cannot prove which of two alternative string-match arms fired; state only what the log shows. (Companion ground-truth from PR #1178: a raw `spy.Device()` has EMPTY `slang_session.desc.compiler_options.include_paths`; only `spy.create_device()` prepends `SHADER_PATH` = `slangpy/slang`; the cryptic builtin-load failure is exactly `cannot open file 'slangpy.slang'` — Slang always SINGLE-quotes the bare filename.) ([SlangPy CI macOS build jobs run the full pytest suite incl. Metal device tests](../learnings/1790024857395-slangpy-ci-macos-build-jobs-run-the-full-pytest-su.md))
 
 ## Rerun Authority and the 403 Boundary
 
@@ -142,7 +142,7 @@ A no-GPU discriminator for the CUDA entry-point-args vs `ParameterBlock` lowerin
 
 Note: `RWTensor<T,N>` is a SlangPy type, NOT core Slang — substitute `RWStructuredBuffer<float> bufs[N]` indexed at runtime to reproduce the mechanism standalone. Be explicit that this is a mechanism-only repro if you didn't run the perf benchmark. [Slang CUDA: __constant__-vs-.param codegen check + slangpy-type repro substitution](../learnings/1782457879561-slang-cuda-constant-vs-param-codegen-check-slangpy.md)
 
-**Source learnings (21):**
+**Source learnings (22):**
 
 - [cross-repo `gh run rerun` on shader-slang/slangpy now WORKS (the admin-rights/gateway premise is stale) — verify via the `run_attempt` increment, never exit 0; classify reds by determinism, not permissions](../learnings/1785773902337-cross-repo-gh-run-rerun-on-shader-slang-slangpy-no.md)
 - [Stale 'bot cannot rerun slangpy' claim contradicted by own rerun-log.jsonl precedent](../learnings/1790907793442-stale-bot-cannot-rerun-slangpy-claim-contradicted-.md) — reruns succeeded on #11709/#13078/#13357 and `--job` on #12766 (2026-10-02); grep the action ledger before re-asserting a "cannot" claim
@@ -165,3 +165,4 @@ Note: `RWTensor<T,N>` is a SlangPy type, NOT core Slang — substitute `RWStruct
 - [CI GPU-OOM that passes on rerun is usually peak concurrent VRAM, not a leak (#1024)](../learnings/1782896626067-ci-gpu-oom-that-passes-on-rerun-is-usually-peak-co.md)
 - [slangpy call_group_shape already provides tile/groupshared dispatch (issue #844)](../learnings/1783522957219-slangpy-call-group-shape-already-provides-tile-gro.md)
 - [SlangPy CI macOS build jobs run the full pytest suite incl. Metal device tests](../learnings/1790024857395-slangpy-ci-macos-build-jobs-run-the-full-pytest-su.md) — read per-test PASS/FAIL (incl `DeviceType.metal`) via `gh run view --job <id> --log`; a PASS shows pass/fail only, not which branch matched.
+- [SlangPy CI: per-job test logs while a run is in progress; per-job backend coverage; static autodiff A/B](../learnings/1791194997507-slangpy-ci-per-job-test-logs-while-a-workflow-run-.md) — `gh run view --log --job` is empty mid-run; use `gh api --allow-escape-sequences .../jobs/<id>/logs`.

@@ -3,7 +3,7 @@ title: "Reviewer-Run Survival & Review-Tool Operational Infra"
 type: concept
 group: review-process
 tags: [pr-review, pr-approver, reviewer-a, devin, session-teardown, background-wait, budget-cap, critique-gate, runner-ops, infra-abstain]
-source_count: 54
+source_count: 55
 ---
 
 # Reviewer-Run Survival & Review-Tool Operational Infra
@@ -17,7 +17,7 @@ Keeping reviewer and Devin runs alive, invoking them without false skips, postin
 - **Export `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` on every `compose-and-run.sh`/`run-clarity.sh` launch** (the scripts still don't). Otherwise the inner `claude --print` lead ends its turn and print mode kills its background subagents. If the lead still ends its turn with subagents in the background, re-run with `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`, which forces them into the foreground.
 - **Tell a teardown from a budget cut in `stream.jsonl`:** `task_updated … "status":"killed"` plus `[Request interrupted by user]` with `parent_tool_use_id` set is a background-subagent teardown; `error_max_budget_usd` is the cap.
 - **`Run state: success` does not mean the review finished.** Check every row of `summarize.py`'s per-subagent table has tool uses > 0 and open `final-review.md` for an "incomplete" header. $30 is too little for a ~700–900-line diff; re-dispatch only the missing lenses yourself (`Agent` with their `subagent_type`) and keep `reviewers_complete=false`.
-- **On claude CLI 2.1.285 Reviewer A is broken (orphaned 3/3 runs), not flaky.** `install.sh` does not pin the CLI. Re-run at most once with the variable, then substitute direct `.claude/agents/*` lenses with `reviewers_complete=false`. The durable fix is pinning 2.1.280.
+- **On claude CLI 2.1.285 Reviewer A is broken (orphaned 3/3 runs), not flaky.** `install.sh` does not pin the CLI. Re-run at most once with the variable, then substitute direct `.claude/agents/*` lenses with `reviewers_complete=false`. Pinning a version is not a proven fix: the same early exit hit 2.1.280 and 2.1.289. Still re-run `install.sh` after every container restart (it wipes `~/.local/bin/claude`).
 - **Recover a stub from `stream.jsonl` or `reviewerA.log` before re-running** (main synthesis, untruncated `task_notification` summaries, or an earlier top-level turn); set `reviewers_complete=false` and name missing lenses. A hand-made extract can truncate summaries, so check its line lengths.
 - **A's merge step can drop a subagent's verified crash.** Grep the per-subagent summaries for crash/null/SIGSEGV and reproduce any hit.
 - **Isolate and identify your run.** Launch every A run in a private `REPO_ROOT` worktree and take the run dir from the runner's echo, never newest-mtime. INTEGRITY-FAIL and REVIEW-GUARD FAIL both false-trip: adjudicate by sha match and content.
@@ -71,7 +71,9 @@ On 2.1.283/2.1.284 it is intermittent (the lead's choice, not a version regressi
 
 Diagnose: `grep -o '"subagent_stats":{[^}]*}[^}]*}[^}]*}' <run>/stream.jsonl | tail -1` and `grep -o '"claude_code_version":"[^"]*"' <run>/stream.jsonl`. If the final parent text says the reviewers "are running in the background", there is nothing to recover: the `/tmp/claude-*/tasks/*.output` targets under `~/.claude/projects/-workspace-agent-slang/<sid>/subagents/` hold only `.meta.json` stubs. `mv` the run dir to `*-INCOMPLETE` and re-run at most once with the variable (#13378: 6 killed, $17.49, 14 min) ([#13378](../learnings/1790901257688-reviewer-a-background-subagent-orphan-recurs-subag.md)).
 
-If that orphans too, stop rerunning: run the `.claude/agents/*` lenses (security, ir-correctness, test-coverage, code-quality) from the coordinator as ordinary Agent calls on the head worktree plus the full diff and REVIEW.md, apply REVIEW.md Step 3's filter yourself, label the section "Reviewer A (substitute, not the byte-equivalent pipeline)", and set `reviewers_complete=false`. A delta re-review needed one delta-scoped code-quality lens (~$3). Durable fix: pin 2.1.280 in `install.sh`, or have `repro.sh` wait for task notifications.
+If that orphans too, stop rerunning: run the `.claude/agents/*` lenses (security, ir-correctness, test-coverage, code-quality) from the coordinator as ordinary Agent calls on the head worktree plus the full diff and REVIEW.md, apply REVIEW.md Step 3's filter yourself, label the section "Reviewer A (substitute, not the byte-equivalent pipeline)", and set `reviewers_complete=false`. A delta re-review needed one delta-scoped code-quality lens (~$3). Durable fix: have `repro.sh` wait for task notifications; a version pin alone does not hold (below).
+
+**The CLI version is not the trigger.** A container restart wipes `~/.local/bin/claude`, and `compose-and-run.sh` then silently resolves `/pnpm/claude` (2.1.280). The early exit on #13432 (lead backgrounds 6 subagents, ends its turn "waiting for the reviewers", all `stopped`, exit 1, stray-line `final-review.md`) was first blamed on that fallback. A third run after `install.sh` restored 2.1.289 failed identically, while round 1 on 2.1.289 had succeeded the same day. Root cause unknown (nondeterministic backgrounding by the lead, or Agent-tool defaults). Keep the restart preflight and compare `claude --version` with `stream.jsonl`'s `"claude_code_version"`, but after one early exit stop re-running ($11–19 each): deliver with `reviewers_complete=false` on Reviewer C plus your own verification, quoting A's partial notes from the `result` record ([CORRECTION: early exit is not the CLI version](../learnings/1791209006651-correction-reviewer-a-early-exit-is-not-caused-by-.md)).
 
 ## Reviewer A: budget cutoffs on large PRs
 
@@ -139,7 +141,7 @@ The gate records a round only when the codex call uses the exact `/codex-critiqu
 
 `reviewers_complete:true` is a harness-integrity assertion checked against disk: true only when `devin-flags.md` exists or a bot review was harvested. Never pre-fill it before Devin is terminal ([reviewers_complete](../learnings/1784049951184-approver-critique-mustfix-never-set-reviewers-comp.md)).
 
-**Source learnings (54):**
+**Source learnings (55):**
 - [run runner scripts from writable /home/node/.claude/skills](../learnings/1789621947264-slang-pr-review-runner-scripts-must-run-from-home-.md)
 - [verify runs survived and cleared the guard](../learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md)
 - [600s stub: recover synthesis from stream.jsonl](../learnings/1783983883017-slang-pr-review-reviewer-a-600s-bg-wait-ceiling-tr.md)
@@ -194,3 +196,4 @@ The gate records a round only when the codex call uses the exact `/codex-critiqu
 - [#13425 budget cut; re-dispatch missing lenses via Agent](../learnings/1791132067717-reviewer-a-slang-pr-review-runner-runs-out-of-budg.md)
 - [#13429 exec bit lost; bg-wait variable still not baked in](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)
 - [#13431 lead ends turn; CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1](../learnings/1791168330129-reviewer-a-inner-cli-can-end-its-turn-with-backgro.md)
+- [CORRECTION: #13432 early exit is not the CLI version; stop after one](../learnings/1791209006651-correction-reviewer-a-early-exit-is-not-caused-by-.md)

@@ -3,7 +3,7 @@ title: "CI Flake Triage — Classification and Known Signatures"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, classification, known-signatures, xpass, check-cmdline-ref, merge-group, falcor, slang-rhi, json-rpc, priority-yield, metal4, gpu-printing, aarch64, slang]
-source_count: 29
+source_count: 30
 ---
 
 # CI Flake Triage — Classification and Known Signatures
@@ -42,7 +42,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **Merge-group collisions are legitimate, not flakes.** When a merge-group run fails with a build error (e.g. `duplicate case value`) while the PR's own head checks are green, two PRs in the merge queue introduced the same enum value — this is a real source-level conflict. Do NOT requeue; the author must rebase and renumber ([Merge-group build break with green head = merge-time collision, legitimate not flake](../learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)).
 
-**XPASS (unexpected pass) is author-owned.** If a test the PR fixes is still listed in an `expected-failure*.txt` file, the harness reports XPASS as a failure. It reproduces identically on the CPU job AND every GPU platform. Do not rerun — the author must remove the test from the expected-failure list ([XPASS is a deterministic author-owned CI failure, not a flake or regression](../learnings/1782360530038-xpass-is-a-deterministic-author-owned-ci-failure-n.md)).
+**XPASS (unexpected pass) is author-owned.** If a test the PR fixes is still listed in an `expected-failure*.txt` file, the harness reports XPASS as a failure. It reproduces identically on the CPU job AND every GPU platform. Do not rerun — the author must remove the test from the expected-failure list ([XPASS is a deterministic author-owned CI failure, not a flake or regression](../learnings/1782360530038-xpass-is-a-deterministic-author-owned-ci-failure-n.md)). The lists a step reads differ by workflow, which matters when adding a key as well as removing one: the "Test Slang via glsl" step in `ci-slang-test.yml` (Windows GPU) reads only `tests/expected-failure-via-glsl.txt`, while `ci-slang-test-container.yml` (Linux T4) also reads expected-failure-github/linux/linux-gpu. A test that fails in both the direct-SPIR-V and the via-GLSL pass therefore needs its key in both `expected-failure-github.txt` and `expected-failure-via-glsl.txt` ([gh api job logs silently empty without --allow-escape-sequences](../learnings/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md)).
 
 **check-cmdline-ref failures are always deterministic** — a rerun will never clear them. They are almost always caused by the PR itself (changes to `slang-options.cpp` without regenerating docs, or an incorrect doc edit) rather than master-wide staleness ([Attributing check-cmdline-ref CI failures (not master-doc drift by default)](../learnings/1782324937326-attributing-check-cmdline-ref-ci-failures-not-mast.md)).
 
@@ -82,7 +82,7 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 
 **`debug-do-while-locals.slang` on macOS-debug-aarch64 = SPIRV-Tools assertion flake.** `tests/debuginfo/debug-do-while-locals.slang` can fail **only** on the `test-macos-debug-clang-aarch64 / test-slang` job with `Assertion failed: (unique_id_ != 0), function unique_id, file instruction.h, line 251` — and `instruction.h:251` lives in the **SPIRV-Tools** dependency (not Slang source), reached via the debug-info SPIR-V emission path. It flakes on that single platform while all Linux/Windows/macOS-release jobs pass, and slang-test's auto-retry does not always clear it. If it is the *only* failing test and your PR touches nothing in the debuginfo / SPIR-V emit path, it is not your change: classify flaky/infra and `gh run rerun <run-id> --failed` (≤3×); if it reproduces deterministically across reruns, report it as a pre-existing platform issue rather than blocking (seen 2026-09-14 on PR #12504, run 34891043815) ([known flaky CI test: debug-do-while-locals.slang on macOS-debug-aarch64](../learnings/1789420993765-known-flaky-ci-test-tests-debuginfo-debug-do-while.md)).
 
-**Source learnings (29):**
+**Source learnings (30):**
 - [CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
 - [WASM build failures are usually real linker errors](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)
 - [a benign DWARF ld-note can mask the real undefined-reference cause; don't classify a link failure off the first "error" line](../learnings/1784347920752-a-benign-dwarf-ld-note-can-mask-the-real-undefined.md)
@@ -112,4 +112,6 @@ Deciding whether a red Slang CI job is a flake or a legitimate author-owned fail
 - [Retraction: #13078 was base-skewed like #12783/#12992, not ahead — verify base vs the fix commit with git merge-base, don't trust detailed prose](../learnings/1789460715976-retraction-pr-13078-was-not-ahead-of-12986-it-was-.md)
 - [slang-rhi OMM VUID-10904 CI red is likely a VVL 1.4.341.1 false positive — converter proven compliant on-hardware; capture the struct bytes, don't install the SDK](../learnings/1789600998422-slang-rhi-omm-vuid-10904-ci-red-is-likely-a-vvl-1-.md)
 - [slang bot CI priority-yield + classifying CI failures on a pure-Python PR](../learnings/1790019959011-slang-bot-ci-priority-yield-classifying-ci-failure.md) — a Python-only extras/ change can't break C++/GPU jobs (Python+format legs green ⇒ infra or master breakage); a bot workflow_dispatch on a draft priority-yields, don't re-dispatch.
+- [via-GLSL expected-failure lists differ per workflow (rider on the gh job-log escape-sequences atom)](../learnings/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md) — a test failing both SPIR-V passes needs keys in expected-failure-github.txt and expected-failure-via-glsl.txt.
+
 _Catalog: [[wiki/index.md]]_

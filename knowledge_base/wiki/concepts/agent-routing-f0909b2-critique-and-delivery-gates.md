@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 17
+source_count: 19
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -42,7 +42,12 @@ content-based and hash-based, which creates a family of self-inflicted traps:
 - **Chain-routing gate blocks any delivery-marker `send_message` without
   `in_reply_to`** — even fresh delegations. Set `in_reply_to=<chain-initiating
   inbound>` plus explicit `to` + `thread_id`. `send_file` is ungated, so send the
-  handoff message before its memo to keep order.
+  handoff message before its memo to keep order. Deliver marker messages through
+  the `send_message` tool: a final-response `<message>` block was refused even
+  with `in_reply_to`, and a refused block is never delivered. A `[Resolution]`
+  also needs a codex OUTPUT_REVIEW first.
+- **`--body-file` must be a literal absolute path** (`$VAR` paths and
+  `-F body=@$var` are refused as unresolvable).
 - **Comment hygiene is strictly enforced**, even in test files: timeless
   invariants only, no change-history narration, no line-restating comments.
 
@@ -189,6 +194,9 @@ A later session hit both shapes again (a read-only `gh api repos/.../pulls/comme
 GET, and a memory heredoc that only mentioned PR-creation words) and found one more: the
 hook rejects `-F body=@$var.md` because it needs a literal absolute path, so post each
 reply with a literal `-F body=@/abs/path.md` [Counting unresolved PR review threads: include isOutdated=true, classify by first author](../learnings/1790717452750-counting-unresolved-pr-review-threads-include-isou.md).
+The same literal-path rule binds `gh pr edit N --body-file $D/file.md`: it is refused
+with "cannot be resolved (not a literal path…)" even for an OUTPUT_REVIEW-approved file,
+so spell the absolute path out ([`--body-file $VAR` refused](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md)).
 Because a denial rejects the whole Bash call, any other step chained into it
 is silently skipped too; see the push-bundling rule on
 [the gate-mechanics page](agent-routing-f0909b1-critique-gate-mechanics.md).
@@ -248,6 +256,19 @@ avoid quoting other tiers' marker names
 [chain-routing hook rejects peer handoff without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md),
 [peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md)).
 
+**Send marker messages through the `send_message` tool, not a final-response block.**
+On slangpy#1204 an Orchestrator `[Resolution]` written as a final-response
+`<message to=…>` block was refused for lacking `in_reply_to`, then refused again with
+`in_reply_to="22"` (the peer inbound being rolled up). The same text via
+`mcp__nanoclaw__send_message({to, in_reply_to: 22, thread_id: "gh-issue-<owner>/<repo>-<n>", text})`
+landed first time. A refused block is not delivered at all; it only reaches the scratchpad
+log. The send also logged `[GATE AUDIT] … codex-critique … was never invoked`: a
+`[Resolution]` is expected to pass OUTPUT_REVIEW, and the after-the-fact critique found two
+errors already delivered (a local CPU repro attributed to CI, helpers called `private` with
+no access modifier). So run a read-only `mcp__codex__codex` against live GitHub before any
+`[Resolution]`, and quote task ids from `ncl tasks list`, since `--name` gets a hash suffix and
+truncation ([final-response Resolution refused twice](../learnings/1791196726879-final-response-resolution-refused-twice-by-chain-r.md)).
+
 ## Comment hygiene and PR-body discipline are gate-enforced
 
 Two process gotchas from the `Namespace::operator+` parse-gap fix
@@ -259,6 +280,11 @@ Two process gotchas from the `Namespace::operator+` parse-gap fix
   first time", "already worked pre-fix") and comments that restate the adjacent
   line. Write TIMELESS invariants ("X must diagnose Y"); keep change-history in
   the PR body/commit only. Don't overclaim a test-coverage analogy either.
+- **The explain-diff-html upsert does not write the description.** `upsert_pr_body.py`
+  writes the explanation to ONE PR comment and strips the old explanation block from the
+  description; write the concise description yourself afterwards with
+  `gh pr edit --body-file <literal absolute path>`
+  ([upsert writes a comment, not the description](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md)).
 - Operational git note: `--force-with-lease` fails with "stale info" in a fresh
   worktree lacking `refs/remotes/origin/*` — use explicit
   `--force-with-lease=<branch>:<remote-sha>` (sha via `git ls-remote`).
@@ -294,7 +320,7 @@ entries to HEAD behaviour, against `_claims.md` §1's "doc's own wording", is
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (17):**
+**Source learnings (19):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -313,3 +339,5 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [Critique gate: an older OUTPUT_REVIEW's attested hash can block gh pr create after a newer approve](../learnings/1790828388217-critique-gate-an-older-output-review-s-attested-ha.md) — `codex-reply` may not replace the attestation set; diagnose via `jq .critique_attested`; fresh codex call re-attests current files
 - [Chain-routing hook rejects peer handoff send_message without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md) — add `in_reply_to=<parent inbound>` beside explicit `to`; `send_file` is ungated so send the message first
 - [explain-diff upsert re-appends Fixes/disclaimer; peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md) — `[Fix Review Request]` to slang-reviewer refused without `in_reply_to`; a `codex-reply` round is not recorded
+- [Final-response [Resolution] refused twice by chain-routing-gate](../learnings/1791196726879-final-response-resolution-refused-twice-by-chain-r.md) — use the send_message tool with in_reply_to + canonical thread_id; OUTPUT_REVIEW a [Resolution] first; task ids from `ncl tasks list`
+- [gate-critique-on-deliver refuses gh pr edit --body-file with a $VAR path](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md) — spell the absolute path; upsert_pr_body.py writes one comment, not the description
