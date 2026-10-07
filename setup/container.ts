@@ -283,6 +283,18 @@ export async function run(args: string[]): Promise<void> {
       const gpu = normalize(/^ENABLE_GPU=(.+)$/m);
       if (gpu === '1' || gpu === 'true') buildArgs.push('--build-arg ENABLE_GPU=1');
     }
+    // Hosts whose bridge has no egress (sandbox VMs that forbid kernel
+    // forwarding) build with NANOCLAW_BUILD_NETWORK=host. Same source and
+    // precedence as ./container/build.sh: the environment wins, then .env.
+    const fromEnvFile = fs.existsSync(envPath)
+      ? fs
+          .readFileSync(envPath, 'utf-8')
+          .match(/^NANOCLAW_BUILD_NETWORK=(.+)$/m)?.[1]
+          .trim()
+          .replace(/^["']|["']$/g, '')
+      : undefined;
+    const buildNetwork = process.env.NANOCLAW_BUILD_NETWORK?.trim() || fromEnvFile;
+    if (buildNetwork && /^[A-Za-z0-9_.-]+$/.test(buildNetwork)) buildArgs.push(`--network ${buildNetwork}`);
   } catch {
     // .env is optional; absence is normal on a fresh checkout
   }

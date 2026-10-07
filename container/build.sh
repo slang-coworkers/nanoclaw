@@ -10,6 +10,8 @@
 # Reads optional build flags from ../.env:
 #   INSTALL_CJK_FONTS=true   — add Chinese/Japanese/Korean fonts (~200MB)
 #   ENABLE_GPU=1             — add CUDA toolkit + Vulkan loader + GLVND (~multi-GB)
+#   NANOCLAW_BUILD_NETWORK=host — build RUN steps on this network (hosts whose
+#                              bridge has no egress, e.g. forward-drop sandbox VMs)
 # setup/container.ts reads the same file, so both build paths stay in sync.
 # Callers can also override by exporting either var directly.
 
@@ -133,6 +135,12 @@ fi
 if [ -z "${ENABLE_GPU:-}" ] && [ -f "../.env" ]; then
     ENABLE_GPU="$(grep '^ENABLE_GPU=' ../.env | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')"
 fi
+if [ -z "${NANOCLAW_BUILD_NETWORK:-}" ] && [ -f "../.env" ]; then
+    NANOCLAW_BUILD_NETWORK="$(grep '^NANOCLAW_BUILD_NETWORK=' ../.env | tail -n1 | cut -d= -f2- | tr -d '"' | tr -d "'" | tr -d '[:space:]')"
+fi
+case "${NANOCLAW_BUILD_NETWORK:-}" in
+    *[!A-Za-z0-9_.-]*) echo "Ignoring invalid NANOCLAW_BUILD_NETWORK='${NANOCLAW_BUILD_NETWORK}'" >&2; NANOCLAW_BUILD_NETWORK="" ;;
+esac
 
 BUILD_ARGS=()
 if [ "${INSTALL_CJK_FONTS:-false}" = "true" ]; then
@@ -205,7 +213,7 @@ build_image() {
     while :; do
         # No pipefail in this script, so the pipeline's status is tee's and
         # `set -e` stays quiet; docker's own status is read from PIPESTATUS.
-        "${CONTAINER_RUNTIME}" build "$@" 2>&1 | tee "$log" >&2
+        "${CONTAINER_RUNTIME}" build ${NANOCLAW_BUILD_NETWORK:+--network "$NANOCLAW_BUILD_NETWORK"} "$@" 2>&1 | tee "$log" >&2
         status=${PIPESTATUS[0]}
         if [ "$status" -eq 0 ]; then
             rm -f "$log"

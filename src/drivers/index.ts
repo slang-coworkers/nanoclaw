@@ -64,7 +64,12 @@ import type { MountPolicy, SessionDriver, SessionSpec } from './types.js';
 
 const DEFAULT_DRIVER_KIND = 'docker';
 
-const SETTINGS = ['NANOCLAW_RUNTIME_DRIVER', 'NANOCLAW_SESSION_MATERIAL_ROOT'] as const;
+const SETTINGS = [
+  'NANOCLAW_RUNTIME_DRIVER',
+  'NANOCLAW_SESSION_MATERIAL_ROOT',
+  'NANOCLAW_AGENT_NETWORK',
+  'NANOCLAW_SLIRP_HOST_IP',
+] as const;
 
 /** `process.env` wins, then `.env`, then the default. */
 export function readSetting(key: (typeof SETTINGS)[number], env: NodeJS.ProcessEnv = process.env): string {
@@ -78,12 +83,24 @@ export function readSetting(key: (typeof SETTINGS)[number], env: NodeJS.ProcessE
  * registration — the driver stays constructible without it in tests, and
  * composition never sees an argv-shaped network selection: `spec.network`
  * states the intent, this realizes it, and nothing rides between them.
+ *
+ * `NANOCLAW_AGENT_NETWORK=slirp4netns` is for hosts whose bridge has no egress —
+ * e.g. sandbox VMs that forbid kernel forwarding. Each session keeps its own
+ * network namespace but egresses through userspace, so traffic leaves as the
+ * host's own. It needs a runtime that implements slirp4netns behind the docker
+ * CLI (podman's Docker-compatible API via DOCKER_HOST) with host loopback
+ * allowed; the host is then reachable at `NANOCLAW_SLIRP_HOST_IP` (slirp's
+ * default 10.0.2.2). Unset keeps the default topology.
  */
-function dockerNetworkArgs(spec: SessionSpec): string[] {
+export function dockerNetworkArgs(spec: SessionSpec, env: NodeJS.ProcessEnv = process.env): string[] {
   if (spec.networkAccess.target.kind === 'session-container') return [];
   if (ensureEgressNetwork(spec.networkAccess)) {
     log.info('Egress lockdown active', { containerName: agentContainerName(spec), network: EGRESS_NETWORK });
     return egressNetworkArgs();
+  }
+  if (readSetting('NANOCLAW_AGENT_NETWORK', env).toLowerCase() === 'slirp4netns') {
+    const hostIp = readSetting('NANOCLAW_SLIRP_HOST_IP', env) || '10.0.2.2';
+    return ['--network', 'slirp4netns', `--add-host=${spec.networkAccess.endpoint}:${hostIp}`];
   }
   return os.platform() === 'linux' ? [`--add-host=${spec.networkAccess.endpoint}:host-gateway`] : [];
 }
