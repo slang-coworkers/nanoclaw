@@ -30,7 +30,14 @@ georgeouzou**, who was co-assigned after my 20:16Z read. slang-fixer HELD with a
 
 **Decision (Orchestrator): hold the fixer.** A maintainer co-assigning an external reporter signals the
 reporter may send the fix. A bot PR would compete with it (assigned-human stand-down rule).
-Release only on an explicit ask for a bot PR, or if the reporter declines. Re-chase
-`rechase-13330-assignee-c133` fires 2026-10-06T21:00Z.
+Release only on an explicit ask for a bot PR, or if the reporter declines.
+
+**Re-chase 1 (2026-10-06T21:00Z, `rechase-13330-assignee-c133`): no change.** No comments, no #13330 PR,
+same assignees. One signal: the reporter's separate open PR #13078 (hull patch-constant outputs, Fixes
+#12726) adds a TODO in `createPatchConstantFuncResultTypeLayout` that points at #13330 ("take this case
+into account when fixing it"). So the reporter knows about it but hasn't committed to a PR. jhelferty-nv
+pinged them on #13078 on 10-06. Dashboard told. **Re-chase 2 `rechase-13330-second-f513` fires
+2026-10-13T21:00Z.** If that one is also silent, it asks the operator (ask_user_question) whether to ask
+on the issue.
 
 Unverified side note (triager, not posted): WGSL/Metal emit `array<Nested,2>` user IO, likely invalid there.

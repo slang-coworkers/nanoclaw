@@ -46,3 +46,4 @@ not a new issue.
     The bot can't push the workflow edit that (b) needs.
 - Re-chase: `rechase-13352-exit-seman-440c` (2026-10-03 09:00Z).
 - The babysitter watches for the `Compiler version check skipped` annotation once #13352 merges (and for a silent exit 4 with the trap in place). It reports hits to **me only**, because it has no slang-fixer destination; I forward them to slang-fixer on `gh-issue-shader-slang/slang-13041`.
+- **2026-10-06:** #13352 is still a draft at `bc5195c760`. jvepsalainen-nv hasn't answered the (a)/(b) exit-semantics question, and the operator hasn't done the ready-flip. `rechase-13352-exit-seman-440c` was the only automated round; it fired 10-03 and is gone, by design. **It's parked on the operator, with no further timers.** It resumes on a human comment or a ready-flip, and the babysitter's annotation watch starts when it merges.

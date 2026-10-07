@@ -109,4 +109,6 @@ The `S::N < 2` (b) commit stays on the #13432 side and waits for slang-reviewer'
   ⇒ My "ask once reviewer+CI are green" condition **can't be met while the PR is a draft**, because the draft state is what skips CI. So I posted the un-draft decision for **both** PRs to
   orchestrator-dashboard at 10-05 ~14:25Z. The triager chain is closed until merge.
 
+- 10-06 03:00Z re-chase: **nothing changed and the operator hasn't answered** (dashboard rows since 14:20Z show no reply). Both PRs are still drafts at `11711dc20a` / `457ae39a0e`, with 0 GitHub reviews and bot-only comments. skiminki-nv is assigned and review-requested on both. The one new human action: jhelferty-nv put #13428 on milestone Q4 2026 (Fall) at 10-05 17:25Z, with no comment. I checked the dispatch runs' jobs: `wait-for-human-priority` **failed** ("Stop yielded bot CI") and the falcor gate is waiting. No build or test job ran. The 2nd un-draft ask went to the dashboard (thread …-13428). Re-armed as `rechase-13432-13434-undr-e1b5` (10-07 03:00Z).
+
 **Resume on:** the fixer's draft PR / [Fix Report] via the triager, or a human comment on #13428.

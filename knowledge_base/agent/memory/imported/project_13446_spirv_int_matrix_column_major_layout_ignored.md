@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13446_spirv_int_matrix_column_major_layout_ignored
-description: "slang#13446 (bot-filed 10-05 ~20:10Z by slang-fixer on the #13378 chain): on SPIR-V, legalizeMatrixTypes lowers int/uint/bool matrices to row vectors regardless of layout while reflection honours column-major -> silent wrong value on Vulkan. The array form is the FOURTH #12992 regression. Maintainer A/B fix choice; owned by the #12992 chain; NO fixer dispatched; covered by rechase-13376-13375-05dc."
+description: "slang#13446 (bot-filed 10-05 ~20:10Z by slang-fixer on the #13378 chain): on SPIR-V, legalizeMatrixTypes lowers int/uint/bool matrices to row vectors regardless of layout while reflection honours column-major -> silent wrong value on Vulkan. The array form is the FOURTH #12992 regression. Maintainer A/B fix choice; owned by the #12992 chain; NO fixer dispatched; covered by rechase-13376-13375-05dc. 10-06 16:32Z jkwak-work asked @nv-slang-bot to triage; dispatched to slang-triager; triaged 18:06Z (cmt 6022423678, rec option 1 via pass order); waits on jkwak-work; gate i13446-decision-gate-162d."
 metadata:
   node_type: memory
   type: project
@@ -31,3 +31,29 @@ fixer's next step was to split the int sub-case into its own test file citing #1
 **Resume path.** A non-bot comment on #13446 routes verbatim to slang-fixer pinned `qoc687` on
 `gh-issue-shader-slang/slang-13446`. The re-chase task asks whether the triager or fixer should take #13443, #13444 and
 #13446 once #13378 is green.
+
+**10-06 16:32Z: maintainer asked for triage.** jkwak-work self-assigned the issue at about 20:45Z on 10-05, with the Q4
+milestone. At 16:32Z on 10-06 they commented "@nv-slang-bot can you triage this issue?" (issuecomment-6020811285). I added
+👀 and dispatched it to **slang-triager** on `gh-issue-shader-slang/slang-13446` with `<github-post-authorized />`. The
+triager owns the single GitHub reply; I posted no TODO comment. The re-chase task's standing rule sends a human comment
+here to the fixer, but this was an explicit request for triage on an issue, so it went to the triager per CLAUDE.md's
+routing. I recorded that exception in `rechase-13376-13375-be74`, which nudges the triager once if nothing has posted
+after 2h. The brief tells the triager that the fixer's claims are unverified (the offsets and the value 11 were worked out
+statically) and that the A/B fix choice stays with the maintainer.
+
+**10-06 18:06Z: triaged.** slang-triager (session `sess-1791304536740-1mhykc`) posted comment 6022423678, approved by
+OUTPUT_REVIEW. Every claim in the body reproduced at master `5cb03fa5f`. The value 11 is real GPU output (CI run 37360827212,
+vk leg). It refines the root cause to **pass order**: `legalizeMatrixTypes` (slang-emit.cpp:2072) runs before the main
+`lowerBufferElementTypeToStorageType` (:2617), which already builds `_MatrixStorage_*_ColMajor` with transposing pack and
+unpack. LLVM runs buffer lowering first for this reason. A second gap is the Khronos `shouldLowerMatrixType` (:2860).
+- **Also broken:** bool matrices, std140 ConstantBuffer, square int3x3 (transposed elements), WGSL, GLSL and Metal.
+- **History:** the single-member form has existed since #7687 (v2025.13). The array regression is on master only.
+- **Recommendation:** option 1's outcome, by moving the pass. Prototype P2 was reverted and is incomplete: Metal SIGSEGV,
+  bool storage fails spirv-val, GLSL unchanged. P1 (an early extra buffer-lowering run) broke 7 tests. It recommends
+  against option 2.
+
+The memo is at `inbox/a2a-1791310117663-c42qw9/triage-13446.md`. slang-fixer session `sess-1791310101653-q7uc6d`, on the
+-13446 thread, holds the memo and the P2 diff as **context only** and waits for an explicit go. **Resume trigger:**
+`i13446-decision-gate-162d` checks every 12h via `gates/i13446-decision-gate.sh`, firing on a non-bot comment after 18:06:51Z
+or on close. Controls were proven: an earlier SINCE gives HUMAN_REPLY, closed #12990 gives CLOSED, and the live run gives
+false. The #13446 entry was taken out of `rechase-13376-13375-be74`.

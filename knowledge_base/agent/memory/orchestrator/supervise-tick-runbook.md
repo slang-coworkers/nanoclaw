@@ -13,7 +13,7 @@ Tick 257 lost 13 min to it before killing it.
 1. In a fresh `tickNNN/` dir, fetch the inputs once, serially (concurrent `ncl` calls hit "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick264/`; repoint `titles.py` to payload4.json and `sed` any `tickNNN` paths).
+2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick267/`; repoint `titles.py` to payload4.json and `sed` any `tickNNN` paths).
    It reads those three files via `SESSIONS_FILE` / `GROUPS_FILE` / `STOPPED_FILE` env vars and
    stops reading outbound once it reaches sessions older than the newest outbound found so far.
    The cost result is exact: it uses the same predicate as the dashboard.
@@ -47,3 +47,9 @@ the monitor fires" and ended its turn. A cron session that yields has no follow-
 a board or wrote state. Wait for the pull inside the turn instead (a foreground `until [ -f pull.done ]` loop,
 ≤10 min per call). Tick 260 caught it because `_meta.tick` was still 258 and the 00:00Z tick dir had no
 `board-msg.md`.
+
+**pull.sh drops last-outbound (tick 267, 2026-10-07):** `ncl sessions messages` was fast again (~1.5 s), but pull.sh still returned `our_last_outbound=None` for 31 of the 53 open chains it re-fetched. 72 more carried a stale `None` in the cache. Run `tick267/refetch_lo.py` and `refetch_none.py` (retrying, 90 s timeout) on payload1 before prfix, then fix naive `YYYY-MM-DD HH:MM:SS` stamps to ISO `Z`. Also re-list sessions just before the final scan: a chain can get its first session mid-tick (#13469/#13470).
+
+**Scan blind spot (tick 267):** a PR-bearing chain where a human `@bot` asks for work, the bot posts "On it", and then the owning container stops. The bot spoke last, so scan.py says `awaiting_human`. Detector: the owning session's newest row is an `in` webhook with no `out` after it, and the PR head hasn't moved. That was #12875: a 9 h stall, and the fixer had lost context.
+
+**Slow `ncl sessions messages` (tick 266, 2026-10-06):** each call took ~30 s, and some hit the 30 s ncl timeout, so the stock outbound pass would take hours. Fix: in `tick266/pull.sh`, `LO_CACHE` and `PREV_LA` env vars reuse the previous tick's `our_last_outbound` and `last_outbound_text` for any chain whose session set and per-session `last_active` are unchanged. Build `lo-cache.json` from the previous `payload1.json` and `prev-la.json` from the previous `sessions.json`. Only about 15 of 4,234 sessions changed between ticks, so the pull took 6 min. Also filter `wt-dirs.txt` to drop submodule `.git` files (gitdir containing `/modules/`, e.g. slangpy `data`/`samples`).

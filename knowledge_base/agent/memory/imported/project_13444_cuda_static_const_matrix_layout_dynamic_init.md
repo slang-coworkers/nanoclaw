@@ -24,3 +24,8 @@ expected-failure entry for `.7 syn (cuda)` citing #13444.
 
 **Resume path.** `rechase-13376-13375-a3ba` (19:30Z 10-05, re-arms ~2h): "#13443 and #13444 have no fix dispatched;
 once #13378 is green, consider asking the triager or fixer." A non-bot comment routes on `gh-issue-shader-slang/slang-13444`.
+
+**10-05 20:45Z:** jkwak-work assigned the issue to themselves and set the Q4 2026 milestone. **10-06 16:31Z:** jkwak-work commented "@nv-slang-bot can you triage the issue?"
+(comment 6020786658). The comment was routed verbatim, with `<github-post-authorized />`, to slang-fixer, pinned to `qoc687`, on thread
+`gh-issue-shader-slang/slang-13444` (msg 31). The scope is triage only: a fix PR needs a go-ahead. The re-chase task `rechase-13376-13375-be74` was updated
+to watch for the triage post and to nudge once if the fixer is silent for more than 2h.
