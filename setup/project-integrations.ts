@@ -63,6 +63,13 @@ export interface ProjectOption {
  * and offered wherever nv-astra actually exists. The astra-sandbox driver it
  * activates ships here (src/drivers/astra-sandbox-driver.ts) but stays dormant
  * unless selected via NANOCLAW_RUNTIME_DRIVER=astra-sandbox.
+ *
+ * Agent sandbox (nv-agent-sandbox) follows the same GitLab-only pattern: an
+ * additive overlay carrying the setup-agent-sandbox skill for NVIDIA corpnet
+ * KubeVirt sandbox VMs (no bridge egress, allowlisted downloads). The runtime
+ * knobs it relies on ship here and stay dormant until set:
+ * NANOCLAW_AGENT_NETWORK=slirp4netns (src/drivers/index.ts) and
+ * NANOCLAW_BUILD_NETWORK (container/build.sh, setup/container.ts).
  */
 export const PROJECTS: ProjectOption[] = [
   {
@@ -88,6 +95,12 @@ export const PROJECTS: ProjectOption[] = [
     branch: 'nv-astra',
     label: 'Astra (k8s sandbox runtime)',
     hint: 'run the fleet on NVIDIA Astra — per-session Kata sandbox pods (astra-sandbox driver); GitLab-only branch',
+  },
+  {
+    value: 'agent-sandbox',
+    branch: 'nv-agent-sandbox',
+    label: 'NVIDIA agent sandbox VM',
+    hint: 'corpnet KubeVirt sandboxes — podman + slirp4netns agents, Artifactory mirrors, self-hosted OneCLI; GitLab-only branch',
   },
 ];
 
