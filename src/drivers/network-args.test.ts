@@ -2,8 +2,30 @@ import os from 'os';
 
 import { describe, expect, it } from 'vitest';
 
-import { dockerNetworkArgs } from './index.js';
+import { applyAgentDockerHost, dockerNetworkArgs } from './index.js';
 import { fixtureSpec, fixtureSpecWithAux } from './spec-fixture.js';
+
+describe('applyAgentDockerHost', () => {
+  const PODMAN = 'unix:///run/podman/podman.sock';
+
+  it('points docker children at the agent engine', () => {
+    const env: NodeJS.ProcessEnv = { NANOCLAW_AGENT_DOCKER_HOST: PODMAN };
+    expect(applyAgentDockerHost(env)).toBe(PODMAN);
+    expect(env.DOCKER_HOST).toBe(PODMAN);
+  });
+
+  it('leaves an explicit DOCKER_HOST alone', () => {
+    const env: NodeJS.ProcessEnv = { NANOCLAW_AGENT_DOCKER_HOST: PODMAN, DOCKER_HOST: 'tcp://elsewhere:2375' };
+    expect(applyAgentDockerHost(env)).toBeUndefined();
+    expect(env.DOCKER_HOST).toBe('tcp://elsewhere:2375');
+  });
+
+  it('does nothing when unset', () => {
+    const env: NodeJS.ProcessEnv = {};
+    expect(applyAgentDockerHost(env)).toBeUndefined();
+    expect(env.DOCKER_HOST).toBeUndefined();
+  });
+});
 
 describe('dockerNetworkArgs', () => {
   it('keeps the default topology when NANOCLAW_AGENT_NETWORK is unset', () => {
