@@ -69,11 +69,29 @@ const SETTINGS = [
   'NANOCLAW_SESSION_MATERIAL_ROOT',
   'NANOCLAW_AGENT_NETWORK',
   'NANOCLAW_SLIRP_HOST_IP',
+  'NANOCLAW_AGENT_DOCKER_HOST',
 ] as const;
 
 /** `process.env` wins, then `.env`, then the default. */
 export function readSetting(key: (typeof SETTINGS)[number], env: NodeJS.ProcessEnv = process.env): string {
   return env[key]?.trim() || readEnvFile([...SETTINGS])[key]?.trim() || '';
+}
+
+/**
+ * Point this process's docker CLI children at the engine that runs agent
+ * containers when that is not the default one: hosts that build images with
+ * Docker but run agents under podman's Docker-compatible API (NVIDIA agent
+ * sandbox VMs) set `NANOCLAW_AGENT_DOCKER_HOST`. Every docker child the host
+ * spawns — sessions, reaping, per-group image builds — then inherits it. An
+ * explicit DOCKER_HOST wins. Returns the endpoint applied, if any.
+ */
+export function applyAgentDockerHost(env: NodeJS.ProcessEnv = process.env): string | undefined {
+  if (env.DOCKER_HOST) return undefined;
+  const host = readSetting('NANOCLAW_AGENT_DOCKER_HOST', env);
+  if (!host) return undefined;
+  env.DOCKER_HOST = host;
+  log.info('Agent containers use a separate engine', { dockerHost: host });
+  return host;
 }
 
 /**
@@ -216,7 +234,10 @@ export function mountPolicy(env: NodeJS.ProcessEnv = process.env): MountPolicy {
 let installed: SessionEventsDriver | null = null;
 
 export function getSessionDriver(): SessionEventsDriver {
-  if (!installed) installed = createSessionDriver(configuredDriverKind());
+  if (!installed) {
+    applyAgentDockerHost();
+    installed = createSessionDriver(configuredDriverKind());
+  }
   return installed;
 }
 
