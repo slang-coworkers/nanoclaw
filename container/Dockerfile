@@ -32,6 +32,27 @@ ARG INSTALL_CJK_FONTS=false
 # Bun (the runtime) is pinned here because it installs from a different source.
 ARG BUN_VERSION=1.4.0
 
+# ---- Restricted networks (no-ops by default) ---------------------------------
+# container/build-prep.sh stages certificates in extra-ca/ (otherwise it holds
+# only its README): *.crt from NANOCLAW_EXTRA_CA_DIR for hosts whose outbound
+# HTTPS is re-signed by an inspecting proxy, and the host's own CA bundle
+# (host-ca-bundle.pem) when Debian is fetched over HTTPS — this slim base image
+# has no CA certificates of its own until ca-certificates is installed below,
+# so the first apt-get trusts the staged files; the step after that switches
+# apt to the system store.
+# DEBIAN_MIRROR replaces http://deb.debian.org for hosts that only allow HTTPS
+# or must use a mirror. Empty = Debian's sources, unchanged.
+COPY extra-ca/ /usr/local/share/ca-certificates/nanoclaw-extra/
+ARG DEBIAN_MIRROR=
+RUN staged="$(ls /usr/local/share/ca-certificates/nanoclaw-extra/*.crt /usr/local/share/ca-certificates/nanoclaw-extra/*.pem 2>/dev/null)"; \
+    if [ -n "$staged" ]; then \
+      cat $staged > /etc/apt/nanoclaw-ca.pem; \
+      echo 'Acquire::https::CaInfo "/etc/apt/nanoclaw-ca.pem";' > /etc/apt/apt.conf.d/99nanoclaw-ca; \
+    fi \
+    && if [ -n "$DEBIAN_MIRROR" ]; then \
+      sed -i "s|http://deb.debian.org|${DEBIAN_MIRROR%/}|g" /etc/apt/sources.list.d/debian.sources; \
+    fi
+
 # Enable contrib + non-free + non-free-firmware so per-group container_configs
 # can install packages like nvidia-cuda-toolkit (in non-free) without surprise
 # "no installation candidate" failures.
@@ -97,11 +118,42 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
        fi \
     && rm -rf /var/lib/apt/lists/*
 
+# ---- Extra CA certificates ----------------------------------------------------
+# The staged *.crt join the system store now that ca-certificates is installed,
+# apt goes back to that store, and build-prep.sh passes the trust args below.
+# By default the RUN does nothing and the args stay unset (a build arg without a
+# value is not exported to RUN steps). Agents get their runtime trust from the
+# gateway's combined bundle, which is built from the host's system store.
+RUN if ls /usr/local/share/ca-certificates/nanoclaw-extra/*.crt >/dev/null 2>&1; then \
+      update-ca-certificates; \
+    fi \
+    && rm -f /etc/apt/apt.conf.d/99nanoclaw-ca /etc/apt/nanoclaw-ca.pem
+ARG NODE_EXTRA_CA_CERTS
+ARG PIP_CERT
+ARG UV_NATIVE_TLS
+
+# Where github.com is unreachable, release downloads (gh, uv, bun, prebuilt
+# native modules) go through GITHUB_RELEASES_MIRROR — a URL standing in for
+# https://github.com. Empty = the usual sources.
+ARG GITHUB_RELEASES_MIRROR=
+ARG npm_config_better_sqlite3_binary_host_mirror
+
 # LLVM apt repo — versioned clang-format-NN (slang CI pins clang-format-17) is
 # not in Debian bookworm default repos. Add official apt.llvm.org so per-group
 # container_config apt installs (packages_apt) resolve it.
-RUN curl -fsSL https://apt.llvm.org/llvm-snapshot.gpg.key -o /usr/share/keyrings/apt-llvm.asc \
-    && echo "deb [signed-by=/usr/share/keyrings/apt-llvm.asc] http://apt.llvm.org/bookworm/ llvm-toolchain-bookworm-17 main" > /etc/apt/sources.list.d/llvm-toolchain-17.list
+# Where apt.llvm.org is unreachable (e.g. allowlisted corp networks), point
+# LLVM_APT_KEY_URL / LLVM_APT_REPO at a mirror. If the key cannot be fetched the
+# repo is skipped rather than failing the build: only per-group clang-format-NN
+# installs need it, and a dead source would break every later apt-get update.
+# Defaults are byte-identical to the previous unconditional step.
+ARG LLVM_APT_KEY_URL=https://apt.llvm.org/llvm-snapshot.gpg.key
+ARG LLVM_APT_REPO=http://apt.llvm.org/bookworm/
+RUN if curl -fsSL --max-time 30 "${LLVM_APT_KEY_URL}" -o /usr/share/keyrings/apt-llvm.asc; then \
+      echo "deb [signed-by=/usr/share/keyrings/apt-llvm.asc] ${LLVM_APT_REPO} llvm-toolchain-bookworm-17 main" > /etc/apt/sources.list.d/llvm-toolchain-17.list; \
+    else \
+      rm -f /usr/share/keyrings/apt-llvm.asc; \
+      echo "WARNING: ${LLVM_APT_KEY_URL} unreachable - LLVM apt repo not added (clang-format-NN unavailable)" >&2; \
+    fi
 
 # GPU packages: CUDA toolkit, Vulkan, X11/GL (only when ENABLE_GPU=1)
 # libglvnd0 is load-bearing for Vulkan: the nvidia container runtime injects
@@ -139,16 +191,25 @@ ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 # ---- GitHub CLI ---------------------------------------------------------------
-RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+# With GITHUB_RELEASES_MIRROR set, the release .deb at GH_VERSION comes from the
+# mirror (cli.github.com's apt repo is not mirrored there); otherwise the apt repo.
+ARG GH_VERSION=2.102.0
+RUN if [ -n "$GITHUB_RELEASES_MIRROR" ]; then \
+      curl -fsSL -o /tmp/gh.deb "${GITHUB_RELEASES_MIRROR}/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_$(dpkg --print-architecture).deb" \
+      && dpkg -i /tmp/gh.deb && rm -f /tmp/gh.deb; \
+    else \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
     && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
     && apt-get update && apt-get install -y gh \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 # ---- uv (Python package manager) + claude-code-transcripts -------------------
-RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh \
+RUN curl -LsSf https://astral.sh/uv/install.sh \
+    | env UV_INSTALL_DIR=/usr/local/bin ${GITHUB_RELEASES_MIRROR:+UV_INSTALLER_GITHUB_BASE_URL=$GITHUB_RELEASES_MIRROR} sh \
     && uv tool install --python-preference system claude-code-transcripts \
     && chmod -R a+rX /root /root/.local \
     && ln -sf /root/.local/bin/claude-code-transcripts /usr/local/bin/claude-code-transcripts
@@ -156,9 +217,22 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/b
 # ---- Bun runtime -------------------------------------------------------------
 # Install via the official script (handles multi-arch detection), then move
 # the binary to /usr/local/bin so the non-root `node` user can execute it.
-RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" && \
+# Where github.com needs GITHUB_RELEASES_MIRROR, bun.sh is unreachable too, so
+# the release zip comes straight from the mirror (same target choice as the script).
+RUN if [ -n "$GITHUB_RELEASES_MIRROR" ]; then \
+      case "$(dpkg --print-architecture)" in \
+        arm64) target=linux-aarch64 ;; \
+        *) target=linux-x64; grep -q avx2 /proc/cpuinfo || target=linux-x64-baseline ;; \
+      esac; \
+      curl -fsSL -o /tmp/bun.zip "${GITHUB_RELEASES_MIRROR}/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-${target}.zip" \
+      && unzip -q -o /tmp/bun.zip -d /tmp \
+      && install -m 0755 "/tmp/bun-${target}/bun" /usr/local/bin/bun \
+      && rm -rf /tmp/bun.zip "/tmp/bun-${target}"; \
+    else \
+    curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" && \
     install -m 0755 /root/.bun/bin/bun /usr/local/bin/bun && \
-    rm -rf /root/.bun
+    rm -rf /root/.bun; \
+    fi
 
 # ---- pnpm + global Node CLIs -------------------------------------------------
 ENV PNPM_HOME="/pnpm"

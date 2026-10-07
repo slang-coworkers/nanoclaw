@@ -407,6 +407,17 @@ if [ -n "${NANOCLAW_COMPOSE_ONLY:-}" ]; then
   exit 0
 fi
 
+# Hosts the generic flow cannot prepare on its own (today: NVIDIA agent sandbox
+# VMs) are recognised and prepared here, after compose_fork so the freshly
+# merged prep runs. A no-op everywhere else; NANOCLAW_HOST_PROFILE=none skips it.
+# shellcheck source=setup/host-profile.sh
+source "$PROJECT_ROOT/setup/host-profile.sh"
+if ! nanoclaw_apply_host_profile "$PROJECT_ROOT"; then
+  log "host profile prep failed"
+  echo "Host preparation failed — see the output above" >&2
+  exit 1
+fi
+
 install_deps
 check_build_tools
 
