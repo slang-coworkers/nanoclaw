@@ -138,6 +138,7 @@ async function main(): Promise<void> {
   // an already-running Node process — so without this patch a freshly
   // installed `onecli` is invisible to a subsequent `runInheritScript`.
   ensureLocalBinOnPath();
+  ensureUserRuntimeDir();
 
   // Parse CLI flags first — `--help` short-circuits before we render anything,
   // and flag values get folded into process.env so existing step code reading
@@ -2007,6 +2008,19 @@ function ensureLocalBinOnPath(): void {
   const segments = current.split(path.delimiter).filter(Boolean);
   if (segments.includes(localBin)) return;
   process.env.PATH = current ? `${localBin}${path.delimiter}${current}` : localBin;
+}
+
+/**
+ * `systemctl --user` finds the user manager through XDG_RUNTIME_DIR, which only
+ * a pam_systemd login session sets. SSH front-ends that open no such session
+ * (Teleport on agent sandbox VMs) leave it unset even though lingering keeps
+ * /run/user/<uid> alive, and the service step then falls back to nohup.
+ */
+function ensureUserRuntimeDir(): void {
+  const uid = process.getuid?.();
+  if (process.env.XDG_RUNTIME_DIR || os.platform() !== 'linux' || uid == null || uid === 0) return;
+  const dir = `/run/user/${uid}`;
+  if (fs.existsSync(path.join(dir, 'systemd'))) process.env.XDG_RUNTIME_DIR = dir;
 }
 
 function anthropicSecretExists(): boolean {
