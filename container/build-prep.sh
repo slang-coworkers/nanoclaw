@@ -14,6 +14,9 @@
 #   NANOCLAW_GITHUB_RELEASES_MIRROR  URL that stands in for https://github.com in
 #                                    release downloads (gh, uv, bun, prebuilt
 #                                    native modules), e.g. an Artifactory GitHub remote
+#   NANOCLAW_DEBIAN_MIRROR           URL that replaces http://deb.debian.org in the
+#                                    image's apt sources (e.g. https://deb.debian.org
+#                                    where plain HTTP is blocked, or a mirror)
 #   NANOCLAW_DOCKERHUB_MIRROR        registry path that proxies Docker Hub, e.g.
 #                                    registry.example.com/dockerhub-remote. Base
 #                                    images missing locally are pulled through it
@@ -77,6 +80,28 @@ if [ -n "$GH_MIRROR" ]; then
   echo "GitHub release downloads via $GH_MIRROR" >&2
   build_arg "GITHUB_RELEASES_MIRROR=$GH_MIRROR"
   build_arg "npm_config_better_sqlite3_binary_host_mirror=$GH_MIRROR/WiseLibs/better-sqlite3/releases/download"
+fi
+
+# ── Debian packages ──────────────────────────────────────────────────────────
+DEBIAN_MIRROR="$(setting NANOCLAW_DEBIAN_MIRROR)"
+if [ -n "$DEBIAN_MIRROR" ]; then
+  DEBIAN_MIRROR="${DEBIAN_MIRROR%/}"
+  case "$DEBIAN_MIRROR" in
+    http://* | https://*) ;;
+    *) echo "NANOCLAW_DEBIAN_MIRROR must be an http(s) URL, got '$DEBIAN_MIRROR'" >&2; exit 1 ;;
+  esac
+  echo "Debian packages via $DEBIAN_MIRROR" >&2
+  build_arg "DEBIAN_MIRROR=$DEBIAN_MIRROR"
+  # The base image has no CA certificates until its first apt-get installs
+  # them, so an HTTPS mirror has to be verified with the host's bundle.
+  if [[ "$DEBIAN_MIRROR" == https://* ]]; then
+    bundle=""
+    for candidate in /etc/ssl/certs/ca-certificates.crt /etc/pki/tls/certs/ca-bundle.crt /etc/ssl/cert.pem; do
+      [ -s "$candidate" ] && { bundle="$candidate"; break; }
+    done
+    [ -n "$bundle" ] || { echo "An https:// NANOCLAW_DEBIAN_MIRROR needs a CA bundle on this host" >&2; exit 1; }
+    cp "$bundle" "$STAGE/host-ca-bundle.pem"
+  fi
 fi
 
 # ── Docker Hub base images ───────────────────────────────────────────────────

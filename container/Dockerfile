@@ -32,6 +32,27 @@ ARG INSTALL_CJK_FONTS=false
 # Bun (the runtime) is pinned here because it installs from a different source.
 ARG BUN_VERSION=1.4.0
 
+# ---- Restricted networks (no-ops by default) ---------------------------------
+# container/build-prep.sh stages certificates in extra-ca/ (otherwise it holds
+# only its README): *.crt from NANOCLAW_EXTRA_CA_DIR for hosts whose outbound
+# HTTPS is re-signed by an inspecting proxy, and the host's own CA bundle
+# (host-ca-bundle.pem) when Debian is fetched over HTTPS — this slim base image
+# has no CA certificates of its own until ca-certificates is installed below,
+# so the first apt-get trusts the staged files; the step after that switches
+# apt to the system store.
+# DEBIAN_MIRROR replaces http://deb.debian.org for hosts that only allow HTTPS
+# or must use a mirror. Empty = Debian's sources, unchanged.
+COPY extra-ca/ /usr/local/share/ca-certificates/nanoclaw-extra/
+ARG DEBIAN_MIRROR=
+RUN staged="$(ls /usr/local/share/ca-certificates/nanoclaw-extra/*.crt /usr/local/share/ca-certificates/nanoclaw-extra/*.pem 2>/dev/null)"; \
+    if [ -n "$staged" ]; then \
+      cat $staged > /etc/apt/nanoclaw-ca.pem; \
+      echo 'Acquire::https::CaInfo "/etc/apt/nanoclaw-ca.pem";' > /etc/apt/apt.conf.d/99nanoclaw-ca; \
+    fi \
+    && if [ -n "$DEBIAN_MIRROR" ]; then \
+      sed -i "s|http://deb.debian.org|${DEBIAN_MIRROR%/}|g" /etc/apt/sources.list.d/debian.sources; \
+    fi
+
 # Enable contrib + non-free + non-free-firmware so per-group container_configs
 # can install packages like nvidia-cuda-toolkit (in non-free) without surprise
 # "no installation candidate" failures.
@@ -98,16 +119,15 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
     && rm -rf /var/lib/apt/lists/*
 
 # ---- Extra CA certificates ----------------------------------------------------
-# Hosts whose outbound HTTPS is re-signed by an inspecting proxy set
-# NANOCLAW_EXTRA_CA_DIR; container/build-prep.sh stages those certificates in
-# extra-ca/ and passes the trust args below. By default extra-ca/ holds only its
-# README, the RUN does nothing and the args stay unset (a build arg without a
+# The staged *.crt join the system store now that ca-certificates is installed,
+# apt goes back to that store, and build-prep.sh passes the trust args below.
+# By default the RUN does nothing and the args stay unset (a build arg without a
 # value is not exported to RUN steps). Agents get their runtime trust from the
 # gateway's combined bundle, which is built from the host's system store.
-COPY extra-ca/ /usr/local/share/ca-certificates/nanoclaw-extra/
 RUN if ls /usr/local/share/ca-certificates/nanoclaw-extra/*.crt >/dev/null 2>&1; then \
       update-ca-certificates; \
-    fi
+    fi \
+    && rm -f /etc/apt/apt.conf.d/99nanoclaw-ca /etc/apt/nanoclaw-ca.pem
 ARG NODE_EXTRA_CA_CERTS
 ARG PIP_CERT
 ARG UV_NATIVE_TLS
@@ -197,9 +217,22 @@ RUN curl -LsSf https://astral.sh/uv/install.sh \
 # ---- Bun runtime -------------------------------------------------------------
 # Install via the official script (handles multi-arch detection), then move
 # the binary to /usr/local/bin so the non-root `node` user can execute it.
-RUN curl -fsSL https://bun.sh/install | env ${GITHUB_RELEASES_MIRROR:+GITHUB=$GITHUB_RELEASES_MIRROR} bash -s "bun-v${BUN_VERSION}" && \
+# Where github.com needs GITHUB_RELEASES_MIRROR, bun.sh is unreachable too, so
+# the release zip comes straight from the mirror (same target choice as the script).
+RUN if [ -n "$GITHUB_RELEASES_MIRROR" ]; then \
+      case "$(dpkg --print-architecture)" in \
+        arm64) target=linux-aarch64 ;; \
+        *) target=linux-x64; grep -q avx2 /proc/cpuinfo || target=linux-x64-baseline ;; \
+      esac; \
+      curl -fsSL -o /tmp/bun.zip "${GITHUB_RELEASES_MIRROR}/oven-sh/bun/releases/download/bun-v${BUN_VERSION}/bun-${target}.zip" \
+      && unzip -q -o /tmp/bun.zip -d /tmp \
+      && install -m 0755 "/tmp/bun-${target}/bun" /usr/local/bin/bun \
+      && rm -rf /tmp/bun.zip "/tmp/bun-${target}"; \
+    else \
+    curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" && \
     install -m 0755 /root/.bun/bin/bun /usr/local/bin/bun && \
-    rm -rf /root/.bun
+    rm -rf /root/.bun; \
+    fi
 
 # ---- pnpm + global Node CLIs -------------------------------------------------
 ENV PNPM_HOME="/pnpm"
