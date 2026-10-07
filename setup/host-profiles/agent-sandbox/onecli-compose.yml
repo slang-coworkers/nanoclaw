@@ -1,0 +1,45 @@
+# OneCLI gateway for NVIDIA agent sandbox VMs, installed by prep.sh when no
+# OneCLI is running yet (an existing install is upgraded in place instead).
+# Differs from the onecli.sh installer's compose in two deliberate ways:
+#   - host networking: the VM drops forwarded traffic, and the gateway proxies
+#     agent egress, so a bridge network would black-hole it.
+#   - no NEXTAUTH_SECRET: unset selects local mode (no login). Set without an
+#     OAuth provider, every CLI call answers AUTH_REQUIRED.
+# ONECLI_VERSION comes from .env next to this file, which prep.sh pins to
+# .claude/skills/add-onecli/versions.json.
+name: onecli
+services:
+  postgres:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    network_mode: host
+    environment:
+      POSTGRES_USER: onecli
+      POSTGRES_PASSWORD: onecli
+      POSTGRES_DB: onecli
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U onecli']
+      interval: 5s
+      timeout: 3s
+      start_period: 15s
+      retries: 10
+  onecli:
+    image: ghcr.io/onecli/onecli:${ONECLI_VERSION}
+    container_name: onecli
+    restart: unless-stopped
+    network_mode: host
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://onecli:onecli@127.0.0.1:5432/onecli
+      APP_URL: http://127.0.0.1:10254
+      GATEWAY_API_URL: http://127.0.0.1:10255
+      INTERNAL_API_URL: http://localhost:10254
+    volumes:
+      - app-data:/app/data
+volumes:
+  pgdata:
+  app-data:
