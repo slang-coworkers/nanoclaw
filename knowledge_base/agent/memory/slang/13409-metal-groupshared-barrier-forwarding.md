@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13409 — Metal groupshared load forwarded/moved across barrier; sibling #13412
-description: canInstHaveSideEffectAtAddress (slang-ir-util.cpp:1442) exempts in-function roots from "call may write"; fix = strict A + Metal emitter guard; pointer-root sibling #13412 held
+description: canInstHaveSideEffectAtAddress exempts in-function roots from "call may write"; drafts #13421 (groupshared, Metal/CPU) + #13431 (pointer roots, #13412) both internally approved, awaiting CI release + human review
 ---
 
 # slang#13409 (human-filed, girivs82, 2026-10-02) + sibling #13412
@@ -70,7 +70,24 @@ The fixer is rewriting that line along with G1+G2 (new commits, App identity). T
 CI run 37230791271 is `waiting` (needs human priority release; metallib lane not run). Reviewer R2 is APPROVE_WITH_NITS, 0 bugs.
 Terminal handoff: a draft held pending review. Asked the operator for the ready-flip; the CLA decision is separate. Triager closed until merge.
 
+## 2026-10-06 19:45Z re-chase (checked live)
+- **#13421:** still a draft at `c42049e18f`. No new commits and no human review or comment. The description was shortened on 10-06 12:17Z; the explanation comment is 6016048614. On 10-05 17:12Z jhelferty-nv **reassigned the reviewer and assignee from jvepsalainen-nv to jhelferty-nv**. #13409 and #13412 are now in milestone Q4 2026.
+- **#13412 fix = draft PR #13431** (`fix/issue-13412-v2`, head `bf9f3fd05a`, 8 commits, all App-authored, CLA passes). Reviewer and assignee is kaizhangNV. The triager sent [Triage Resolution] on 10-05 15:55Z and the chain is closed. Its 5-bullet is comment 5963139346.
+- **CI has never run on either PR.** The bot's dispatch runs (37230791271 and 37334999072) are stuck in `waiting`: they had to give way to other CI, and they are also held at `falcor-build-approval-gate`. `ci-retry-yielded-bot` only reruns runs that have finished, so it never reruns these. Pull-request CI skips drafts, so marking a PR ready is the only way CI runs.
+- ⚠️ **Lost reports:** the triager's 10-05 updates and asks went to my 10-04 re-chase session after it had closed, so nobody saw them for about 28h. **I learned to read the `-13412` triager session directly, not rely on my own inbox.**
+- **My decisions:** FILE both out-of-scope candidates (`undoParameterCopy` inout-groupshared on Metal/CUDA; pure-reader dead-store via `tryRemoveRedundantStore`). Both still reproduce at `c8e02397a7`. Filing only: no fix until #13421 and #13431 land. The dead-store issue leads with the pointer-root shape; the escaped-local shape is secondary because it is unsupported. Branch `fix/issue-13412` @ `b106f7c2c8` is KEPT, the same as `fix/issue-13428`. Sent to the triager as msg 739 on `-13412`, pinned to `sess-1791142972332-o68o4g`.
+- Dashboard 5-bullet msg 741. Ready-flip not re-asked (CI isn't green). Next re-chase is `rechase-13421-13431-revi-c551`, 10-08 19:00Z.
+
+## 2026-10-06 20:26Z: both candidates filed (checked live)
+- **#13465** (`undoParameterCopy`: inout groupshared passed by address on Metal/CUDA; Metal, cuda, reproduced) and **#13466** (dead-store removal vs. a pure callee reading through a pointer; reproduced). Both are bot-authored, open, and have 0 comments. Fix direction is left open, with a bot PR offered on request.
+- The triager's [Triage Update] is seq 33 in `sess-1791142972332-o68o4g`. It went into the triager's own session and did **not** reach any Main inbox; I found it by reading that session directly.
+- The `issue_opened` webhooks for both issues were no-ops: the chain owns them and no fixer starts until #13421 and #13431 land. `rechase-13421-13431-revi-c551` now watches both issues for human comments (routed to the triager on each issue's own canonical thread). Once both PRs merge, it asks the operator before routing any fix.
+
+## 2026-10-06 20:26Z: follow-ups filed (checked live)
+- slang-triager filed **#13465** (`undoParameterCopy`: inout groupshared passed by address on Metal/CUDA) and **#13466** (dead-store removal drops a store a side-effect-free callee reads through a pointer; the CPU lane gives 0, not 1; `-g2` hides it). Both are bot-authored and `reproduced`, both still fail with #13431 applied, and both leave the fix direction open. Report: triager row 33.
+- The `issue_opened` webhook for #13466 reached a fresh Main session (`sess-1791318403627-u82a8r`). It was owned, so I dispatched nothing. `rechase-13421-13431-revi-c551` now also watches #13465/#13466 for human comments (routed to the triager, pinned) and asks the operator about routing fixes once both PRs merge.
+
 ## Sessions / tasks
 Fixer `sess-1790967825882-vnvecr`, triager `sess-1790963826393-0y71gs`, reviewer `sess-1791004457668-whh9sf`,
 all on `gh-issue-shader-slang/slang-13409`. The #13412 thread had only my own session as of 10-04.
-Re-chase `rechase-13421-g1g2-13412-4e79` (2026-10-06 19:00Z). The earlier `rechase-13409-sibling-7aad` is done.
+Re-chase `rechase-13421-g1g2-13412-4e79` (2026-10-06 19:00Z, done). #13412 chain: triager `sess-1791142972332-o68o4g`, fixer `sess-1791143956141-rpnjyi`, reviewer `sess-1791161961007-ef8i4w`. The earlier `rechase-13409-sibling-7aad` is done.

@@ -107,8 +107,35 @@ dismissal, so `reviewDecision` is now empty. The fixer's report still said "appr
     The fix shas are listed in the reply [r4188816911](https://github.com/shader-slang/slang/pull/13406#discussion_r4188816911), which pings no one. The split question
     r4168522180 is still open with tangent-vector.
 
-Re-chase: `rechase-13406-11709-e638` (2026-10-06 09:00Z), which covers #13406 CI and review, the ready-flip decision, and the three
-open #11709 items. The old `rechase-11709-constref-d-9d86` fired on 10-02 and is gone. **The #11709 hold lifts when #13406 merges.**
+- **10-05 21:58Z:** jhelferty-nv asked for the new diagnostic to be renumbered, because its number collided with one on master. The fixer merged master `d307206deb`
+  and moved E30032 to **E30034**. Head is now `a1286c3415`.
+- **Re-chase `rechase-13406-11709-e638` fired 2026-10-06 09:00Z (the only automated round).** Nothing is merged and nobody was pinged. Sent the operator one table.
+  - dshreiner-nv was requested at 19:57:40Z, and jhelferty-nv removed the request 28 s later, so jhelferty-nv is the only requested reviewer.
+  - tangent-vector has posted no review at this head and has been silent since 10-02 18:17Z. r4168522180 is still unanswered.
+  - CI on the head is all green. `falcor-build-approval-gate` is waiting on a maintainer. The bot also dispatched a run where `check-ci` failed, but only because
+    `wait-for-human-priority` failed and every job was skipped.
+  - The three #11709 items are unchanged: r4141296596 and r4139502685 are unresolved with no maintainer reply, and review 5354344993 still requests changes.
+  - ~~No timer remains.~~ Replaced by `rechase-13406-r2-9164` (2026-10-09 09:00Z). It notices the #13406 merge, lifts the #11709 hold through slang-fixer, and otherwise sends the operator one table.
+- **10-06 16:51/17:17Z: jhelferty-nv CHANGES_REQUESTED** (review 5431819390, at `a1286c3415`).
+  - [r4198094764](https://github.com/shader-slang/slang/pull/13406#discussion_r4198094764): `readonly` + `__ref` must also derive
+    `RefReadOnly`. That needs a new declaration-level `ReadOnlyModifier`, separate from `GLSLReadOnlyModifier`; checking decides
+    which one applies once the type is known. `const __ref` keeps working as the legacy spelling.
+  - [r4198335992](https://github.com/shader-slang/slang/pull/13406#discussion_r4198335992): witness synthesis should add
+    `ReadOnlyModifier` instead of `ConstModifier`.
+  - The fixer is planning R6/R7. I checked its summary against her text and it's faithful.
+  - **#11709 rebase impact (open):** with `readonly` as the canonical spelling, `readonly groupshared` → `RefReadOnly` is probably
+    needed alongside `const groupshared`. Ask her when #11709 rebases; don't assume it.
+  - **R6/R7 pushed 10-06 ~20:57Z**: head `0843d66c6b`, App identity. Replies [r4200350398](https://github.com/shader-slang/slang/pull/13406#discussion_r4200350398) and [r4200350749](https://github.com/shader-slang/slang/pull/13406#discussion_r4200350749), no pings.
+    Both parity checks match master: `readonly image2D` gives byte-identical `NonWritable`, and `readonly uint` without `__ref` still gives E31206.
+    Her CHANGES_REQUESTED stands until she re-reviews.
+  - **10-06 21:53Z, waiting on her design choice.** In [r4200385314](https://github.com/shader-slang/slang/pull/13406#discussion_r4200385314)/[r4200510268](https://github.com/shader-slang/slang/pull/13406#discussion_r4200510268) she asked whether to parse as
+    `ReadOnlyModifier` first, or as `UncheckedReadOnlyModifier` resolved later.
+    - The bot replied in [r4200803328](https://github.com/shader-slang/slang/pull/13406#discussion_r4200803328), with no pings. It disclosed that `0843d66c6b` keeps master's early GLSL fold, which is *not* the fully
+      deferred classification she asked for, and asked which ordering she prefers.
+    - Her answer goes in one batched push.
+  - **10-07 00:19Z she chose "parse as `ReadOnlyModifier` first"** ([r4201706513](https://github.com/shader-slang/slang/pull/13406#discussion_r4201706513)). Pushed ~01:49Z: head `d47ae5627d`, App identity.
+    The `checkModifiers`/`visitParamDecl` paths turn it into the GLSL form on images, buffers and non-`__ref` declarations. Every unchanged path matches master byte for byte.
+    Her CHANGES_REQUESTED still stands; she needs to re-review at `d47ae5627d`.
 
 ## Lessons
 

@@ -10,7 +10,7 @@ tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, held, awaiting-mai
 Assignee and PR shepherd: jkwak-work. Fixer session `sess-1787171888548-4gv6cq` (thread `gh-issue-shader-slang/slang-12627`).
 Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170935547-1z63sa`.
 
-## State (checked live 2026-10-04 03:25Z)
+## State (checked live 2026-10-04 03:25Z; re-checked 2026-10-07 02:00Z: unchanged, still no human reply)
 
 - **PR [#13363](https://github.com/shader-slang/slang/pull/13363):** draft, `fix/issue-12627`, head `b79ae81e23`
   (merged master `6ba151dcfc`, no force-push), 22 files +913/−155, no human reviews. CI on the draft: 4 pass / 1 pending /
@@ -26,14 +26,18 @@ Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170
   or (b) make it a compile-time error on CUDA. The warning-scope question
   ([5923147529](https://github.com/shader-slang/slang/issues/12627#issuecomment-5923147529)) asks CUDA-only or all RMW targets.
   Secondary: [5925676317](https://github.com/shader-slang/slang/issues/12627#issuecomment-5925676317) asks whether to fold #13364 in.
-- **Re-chase:** `rechase-12627-jkwak-8576` (2026-10-07 02:00Z). Whether to ping jkwak-work again is the operator's call.
+- **Re-chase:** `rechase-12627-jkwak-892c` (2026-10-09 02:00Z). On 10-07 I asked the operator on the dashboard whether to post one short
+  re-ping on #12627 (jkwak-work was active on other chains on 10-06). Their answer is pending, and I don't post it myself.
 
-## Follow-ups (all bot-filed, not dispatched, `doNotNudge` in supervisor-state.json)
+## Follow-ups (bot-filed, not dispatched, `doNotNudge` in supervisor-state.json)
 
-- #13361 WGSL, same root cause. Assigned to jkwak-work, handed off.
-- #13362 `+=`/`++`/`inout` on a texel. Ready for slang-fixer; needs an operator go.
-- #13364 unify the CUDA surface spellings. Waits for #13363 to merge (or for jkwak-work to ask that it be folded in).
-- #13365 C++/CPU `*(tex[coord]).w` compile failure. Independent; ready for slang-fixer; needs an operator go.
+On 2026-10-05, maintainers triaged all four: they assigned owners and set milestones. A follow-up that a human now owns is not
+dispatched unless that assignee or the operator asks.
+
+- #13361 WGSL, same root cause. Owned by jkwak-work, Q4 2026.
+- #13362 `+=`/`++`/`inout` on a texel. jhelferty-nv assigned it to **jvepsalainen-nv** (no milestone).
+- #13364 unify the CUDA surface spellings. jkwak-work self-assigned, Q1 2027. Waits for #13363 to merge.
+- #13365 C++/CPU `*(tex[coord]).w` compile failure. jkwak-work self-assigned, Q4 2026.
 
 ## Lessons
 

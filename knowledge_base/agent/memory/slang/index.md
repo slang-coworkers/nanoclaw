@@ -12,6 +12,10 @@ decay and must be re-read, not remembered.
 
 ## Map
 
+- [slang#9078 — GLSL→Metal global varying layout-key crash](9078-glsl-metal-global-layout-key.md) —
+  **draft PR #13467** (`302264acd3`) implements jhelferty-nv's producer-side design. `[Fix Report]` Partial. Reviewer REQUEST_CHANGES (1/2):
+  on CPU/CUDA every global after a user in/out is mis-offset (wrong data, where master asserted). Held on jhelferty-nv's a/b/c; the reviewer recommends (a). Re-chase `rechase-9078-jhelferty-4047` (2026-10-09).
+
 - [slang#13220 — CUDA interface dispatch unreachable default, draft PR #13228](13220-cuda-dispatch-unreachable-default.md) —
   held draft `842ea5d5c1`. kaizhangNV accepts the `s_dispatch_*` fix; waiting on their 3-way answer for force-unwrap of `none` `Optional<Interface>`
   (undefined / must trap / must return a value). Re-chase `rechase-13228-kaizhang-a0d7` (2026-10-08).
@@ -32,6 +36,10 @@ decay and must be re-read, not remembered.
   regression from #6281. Approach B, plus the DeclGroup hide/unhide miscompile, is in **draft PR #13432** (`fix/issue-13428-b`), waiting on the reviewer and CI.
   Sibling #13430 (local struct `decl has no parent`) is fixed in **draft PR #13434** (Approach B, no semantic visitor in local type bodies). #13433 (interface crash) and #13435 (local-struct static const silent miscompile) are filed and unrouted. Each has a 12h maintainer-reply gate (`i13433-maintainer-gate-6a3c`, `i13435-maintainer-gate-c5d3`).
 
+- [slang#13463 — Zed: slangd null config reply disables workspace include search](13463-zed-slangd-null-config.md) —
+  triaged + reproduced P2 LSP bug, not a regression, not a #13179 dup. GO via the triager 10-06, amended 10-07 to D (null → default, absent → keep);
+  #13216 item 3 is out of scope. **Held draft PR #13475** (`fa2b5b9e31`); waiting on the slang-reviewer verdict, then CI and a maintainer.
+
 - [slang#13424 — loops with a constant trip count are not folded at -O3](13424-loop-constant-folding.md) —
   triaged + reproduced, P3 enhancement, SPIR-V only (spirv-opt LoopUnroll declines Slang's loop shape). Option A (1-line BlockMerge) go/no-go: the 10-04
   card never reached the operator; delivered ask 10-05 (row 453608). HOLD; B/C/D need maintainer design; reporter
@@ -51,8 +59,8 @@ decay and must be re-read, not remembered.
   triaged + reproduced regression (#11293). jhelferty-nv assigned it to the reporter, so NO-GO and the fixer is stood down; re-chase `rechase-13420-assignee-bc0c` (2026-10-07).
 
 - [slang#13409 — Metal groupshared forwarded across barriers; sibling #13412 (all-target pointer roots)](13409-metal-groupshared-barrier-forwarding.md) —
-  triaged + reproduced, root at `slang-ir-util.cpp:1442`. Scope widened to (b): strict A plus an emitter guard, one draft PR, fixer building.
-  PR #13421 REQUEST_CHANGES(small, 0 bugs); 10-04 G1→narrow, G2 fix, #13412 GO (corrected B). Re-chase `rechase-13421-g1g2-13412-4e79` (2026-10-06).
+  drafts #13421 (#13409, `c42049e18f`, reviewer jhelferty-nv) and #13431 (#13412, `bf9f3fd05a`, reviewer kaizhangNV) both passed
+  internal review; CI has never run (bot dispatches stuck `waiting`). Out-of-scope follow-ups filed 10-06 as #13465 + #13466 (filing only, no fix until both PRs land). Re-chase `rechase-13421-13431-revi-c551` (10-08).
 
 - [slang PR #12136 — lazy autodiff builtins, fork PR approver loop](12136-lazy-autodiff-approver-loop.md) —
   re-pushed 10 times. R10 (`14a2185f`) is only a master merge, so I held it. The R9 real commit was never decided: the approver session has been in cost escalation since Sep 14, and its dispatches go unanswered. The ledger is also unset. All of this is with the operator; re-chase `rechase-12136-approver-c-c050` (2026-10-04).
@@ -74,7 +82,7 @@ decay and must be re-read, not remembered.
 - [slang PR #11709 — groupshared parameters by reference](11709-groupshared-param-by-reference.md) —
   owned by slang-fixer and CHANGES_REQUESTED. HELD until the #13339 Ref-split PR lands (jhelferty-nv 10-01: implement on #13339); then it rebases with its P1 fix. Was held on who implements the
   `ParameterPassingMode` Ref split (it would subsume 84fa791 and conflicts with their #13232).
-  Draft #13406 (the split) opened 10-02; re-chase `rechase-13406-11709-e638` (2026-10-06).
+  #13406 (the split) opened 10-02 and was marked ready 10-05. jhelferty-nv requested changes 10-06 (`readonly` modifier). Re-chase `rechase-13406-r2-9164` (10-09) also catches the merge that lifts the #11709 hold.
 
 - [slang#13348 — inherited field through a property/subscript BoundStorage → E99997 ICE](13348-inherited-field-boundstorage-ice.md) —
   triaged + reproduced; three BoundMember consumers accept VarDecl only and reject InheritanceDecl. The author
@@ -97,12 +105,12 @@ decay and must be re-read, not remembered.
   2026-10-02, not re-armed). saipraveenb25's PR #13360 may overlap. Waiting on the operator's ping-or-hold call.
 
 - [slang#13319 — conflicting link-time exports, order-dependent pick](13319-conflicting-link-time-exports.md) —
-  triaged; linker ambiguity diagnostic never implemented. Fixer HELD pending a maintainer
-  error-vs-warning decision; re-chase `rechase-13319-severity-595a` (2026-10-06).
+  draft PR #13471 (E45002 warning, `pr: non-breaking`) open 2026-10-07; held on kaizhangNV's
+  error-vs-warning call + draft-gated CI. Re-chase `rechase-13471-severity-fbf6` (2026-10-14).
 
 - [slang#13330 — array-of-struct shader IO crashes SPIR-V/GLSL](13330-array-of-struct-shader-io.md) —
   triaged; two legalize-pass defects (write-path void store + overlapping input Locations). Fixer
-  HELD: external reporter co-assigned; re-chase `rechase-13330-assignee-c133` (2026-10-06).
+  HELD: external reporter co-assigned; re-chase 1 silent (10-06); re-chase 2 `rechase-13330-second-f513` (2026-10-13).
 
 - [slang-rhi#787 — CUDA↔Vulkan shared-texture missing sync](rhi-787-cuda-vulkan-shared-sync.md) —
   real missing `VK_QUEUE_FAMILY_EXTERNAL` ownership release, not a tolerance flake. Maintainer

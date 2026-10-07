@@ -50,7 +50,13 @@ The dispatch run 37218415580 is `waiting`, and pull_request CI is skipped becaus
 lower-buffer-element-type.cpp. #13425's copy gate also fixes #13379, which #13386 fixes more broadly (`storeLogicalValue`).
 **My order decision: #13386 lands first** (it is older, already reviewed, and closes #13379 + #13385). #13425 keeps its gate so it stands
 alone and does not depend on an unmerged draft. If #13386 lands first, #13425 rebases and drops the gate, and keeps its tests as regression coverage.
-The PR body gets a "Related to #13379 / overlaps #13386" note with no code change. Re-chase `rechase-13425-maintainer-540f` (2026-10-06 09:00Z).
+The PR body gets a "Related to #13379 / overlaps #13386" note with no code change. Re-chase `rechase-13425-maintainer-540f` (2026-10-06 09:00Z, done).
+
+## 10-06 09:00Z re-chase: no change on the PR
+Still a draft at `278cdfaa01`, now `BEHIND` master with no conflicts. 0 human reviews and 0 human comments on #13425/#13423. Run 37218415580 is still
+`waiting`. #13386 (`8d509354cd`, no commits since 10-02) and #13300 are both still unmerged drafts. The PR body already carries the #13386 overlap note.
+**New owner:** on 10-05 jhelferty-nv reassigned #13423, #13379 and #13386 to **jkwak-work** (milestone Q4 2026 Fall). The #13425 assignee and review
+request are still kaizhangNV, which doesn't match. I sent a reminder to the dashboard (msg 7). Next: `rechase-13425-maintainer-c1f3`, 10-09 09:00Z.
 
 ## Resumes on
 A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then rebases); a human comment on #13423; any maintainer objection on the #11578 design.

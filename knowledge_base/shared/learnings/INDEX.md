@@ -4179,6 +4179,7 @@
 - [harness co authored by claude attribution reminder](ag-1776713211742-1w6l4e/1791247512039-harness-co-authored-by-claude-attribution-reminder.md) — _ag-1776713211742-1w6l4e_
 - [a webhook that dies on no conversation found is no](ag-1776713211742-1w6l4e/1791248489950-a-webhook-that-dies-on-no-conversation-found-is-no.md) — _ag-1776713211742-1w6l4e_
 - [triage feature requests test the existing mechanis](ag-1776713211742-1w6l4e/1791250963495-triage-feature-requests-test-the-existing-mechanis.md) — _ag-1776713211742-1w6l4e_
+- [reports answering a re chase task s dispatch go to](ag-1776713211742-1w6l4e/1791316462228-reports-answering-a-re-chase-task-s-dispatch-go-to.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4226,6 +4227,9 @@
 - [ci health queries url encode created runs queued f](ag-1776713258088-r8pp2t/1791188297214-ci-health-queries-url-encode-created-runs-queued-f.md) — _ag-1776713258088-r8pp2t_
 - [maintainer report nightly failure list and assigne](ag-1776713258088-r8pp2t/1791188469337-maintainer-report-nightly-failure-list-and-assigne.md) — _ag-1776713258088-r8pp2t_
 - [watch list full re checks must include parked moni](ag-1776713258088-r8pp2t/1791188752973-watch-list-full-re-checks-must-include-parked-moni.md) — _ag-1776713258088-r8pp2t_
+- [github assigned events assigner vs actor differ be](ag-1776713258088-r8pp2t/1791275221820-github-assigned-events-assigner-vs-actor-differ-be.md) — _ag-1776713258088-r8pp2t_
+- [shader slang slang approval requirement disabled s](ag-1776713258088-r8pp2t/1791275373343-shader-slang-slang-approval-requirement-disabled-s.md) — _ag-1776713258088-r8pp2t_
+- [daily report dev reviewed count stopped tracking t](ag-1776713258088-r8pp2t/1791275455369-daily-report-dev-reviewed-count-stopped-tracking-t.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4854,6 +4858,18 @@
 - [coherent access on a resourcedescriptorheap descri](ag-1780667166418-apezq5/1791217879185-coherent-access-on-a-resourcedescriptorheap-descri.md) — _ag-1780667166418-apezq5_
 - [dev opened label is bot applied issue add labels y](ag-1780667166418-apezq5/1791220010907-dev-opened-label-is-bot-applied-issue-add-labels-y.md) — _ag-1780667166418-apezq5_
 - [a green ci run on a draft slang pr usually means t](ag-1780667166418-apezq5/1791249794628-a-green-ci-run-on-a-draft-slang-pr-usually-means-t.md) — _ag-1780667166418-apezq5_
+- [no gdb in container an ld preload sigsegv cxa thro](ag-1780667166418-apezq5/1791310105655-no-gdb-in-container-an-ld-preload-sigsegv-cxa-thro.md) — _ag-1780667166418-apezq5_
+- [int bool matrix buffer layout lost by pass order](ag-1780667166418-apezq5/1791310149747-int-bool-matrix-buffer-layout-lost-by-pass-order.md) — _ag-1780667166418-apezq5_
+- [slang linkage op mutex front back split races on a](ag-1780667166418-apezq5/1791314287042-slang-linkage-op-mutex-front-back-split-races-on-a.md) — _ag-1780667166418-apezq5_
+- [generic ifloat min max autodiff 13449 differentiab](ag-1780667166418-apezq5/1791314395475-generic-ifloat-min-max-autodiff-13449-differentiab.md) — _ag-1780667166418-apezq5_
+- [dxc harness scratch 13440 dxcdxil needs dxclib env](ag-1780667166418-apezq5/1791315511105-dxc-harness-scratch-13440-dxcdxil-needs-dxclib-env.md) — _ag-1780667166418-apezq5_
+- [unbounded checker recursion where each level is a ](ag-1780667166418-apezq5/1791316435617-unbounded-checker-recursion-where-each-level-is-a-.md) — _ag-1780667166418-apezq5_
+- [a rebuilt scratch worktree can be stale after git ](ag-1780667166418-apezq5/1791318189564-a-rebuilt-scratch-worktree-can-be-stale-after-git-.md) — _ag-1780667166418-apezq5_
+- [slang dead store bugs can hide under default debug](ag-1780667166418-apezq5/1791318495821-slang-dead-store-bugs-can-hide-under-default-debug.md) — _ag-1780667166418-apezq5_
+- [slangd a null workspace configuration reply disabl](ag-1780667166418-apezq5/1791318736825-slangd-a-null-workspace-configuration-reply-disabl.md) — _ag-1780667166418-apezq5_
+- [slang test slang llvm filecheck interface is pinne](ag-1780667166418-apezq5/1791326969343-slang-test-slang-llvm-filecheck-interface-is-pinne.md) — _ag-1780667166418-apezq5_
+- [slang inheritance circularity guard is decl identi](ag-1780667166418-apezq5/1791331579789-slang-inheritance-circularity-guard-is-decl-identi.md) — _ag-1780667166418-apezq5_
+- [local slangc version string can be stale after a r](ag-1780667166418-apezq5/1791334791808-local-slangc-version-string-can-be-stale-after-a-r.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5560,6 +5576,25 @@
 - [after merging master that bumps the ir module vers](ag-1780667166439-vmjrwe/1791238883748-after-merging-master-that-bumps-the-ir-module-vers.md) — _ag-1780667166439-vmjrwe_
 - [slang commits no co authored by claude claude md o](ag-1780667166439-vmjrwe/1791247428814-slang-commits-no-co-authored-by-claude-claude-md-o.md) — _ag-1780667166439-vmjrwe_
 - [after merging origin master sync submodules before](ag-1780667166439-vmjrwe/1791250506095-after-merging-origin-master-sync-submodules-before.md) — _ag-1780667166439-vmjrwe_
+- [pre check a pr description against the length hook](ag-1780667166439-vmjrwe/1791289373392-pre-check-a-pr-description-against-the-length-hook.md) — _ag-1780667166439-vmjrwe_
+- [gate critique on deliver refuses gh pr edit body f](ag-1780667166439-vmjrwe/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md) — _ag-1780667166439-vmjrwe_
+- [slang diagnostic test annotate every record unloca](ag-1780667166439-vmjrwe/1791296982463-slang-diagnostic-test-annotate-every-record-unloca.md) — _ag-1780667166439-vmjrwe_
+- [critique gate blocks read only gh api pulls n call](ag-1780667166439-vmjrwe/1791303973484-critique-gate-blocks-read-only-gh-api-pulls-n-call.md) — _ag-1780667166439-vmjrwe_
+- [cuda device matrix vector globals only a brace lit](ag-1780667166439-vmjrwe/1791305634716-cuda-device-matrix-vector-globals-only-a-brace-lit.md) — _ag-1780667166439-vmjrwe_
+- [a keyword free pr body does not mean the pr won t ](ag-1780667166439-vmjrwe/1791313410216-a-keyword-free-pr-body-does-not-mean-the-pr-won-t-.md) — _ag-1780667166439-vmjrwe_
+- [moving legalizematrixtypes later exposes passes th](ag-1780667166439-vmjrwe/1791313692068-moving-legalizematrixtypes-later-exposes-passes-th.md) — _ag-1780667166439-vmjrwe_
+- [correction slang k maxsupportedmoduleversion is ra](ag-1780667166439-vmjrwe/1791314340428-correction-slang-k-maxsupportedmoduleversion-is-ra.md) — _ag-1780667166439-vmjrwe_
+- [github pr head stuck on old sha after a push an em](ag-1780667166439-vmjrwe/1791319940105-github-pr-head-stuck-on-old-sha-after-a-push-an-em.md) — _ag-1780667166439-vmjrwe_
+- [critique gate backtick wrapped attested lines leav](ag-1780667166439-vmjrwe/1791320198757-critique-gate-backtick-wrapped-attested-lines-leav.md) — _ag-1780667166439-vmjrwe_
+- [slang reviewers leave existing comments verbatim a](ag-1780667166439-vmjrwe/1791320932441-slang-reviewers-leave-existing-comments-verbatim-a.md) — _ag-1780667166439-vmjrwe_
+- [deterministic compile perf a b for a slang pass ca](ag-1780667166439-vmjrwe/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md) — _ag-1780667166439-vmjrwe_
+- [slang ir layout field keys getsimpleval on a globa](ag-1780667166439-vmjrwe/1791330554022-slang-ir-layout-field-keys-getsimpleval-on-a-globa.md) — _ag-1780667166439-vmjrwe_
+- [slang ir linker isbetterfortarget can return true ](ag-1780667166439-vmjrwe/1791333125522-slang-ir-linker-isbetterfortarget-can-return-true-.md) — _ag-1780667166439-vmjrwe_
+- [slang ir set order is host compiler dependent lazy](ag-1780667166439-vmjrwe/1791336133684-slang-ir-set-order-is-host-compiler-dependent-lazy.md) — _ag-1780667166439-vmjrwe_
+- [slang witness shape inference on interface subject](ag-1780667166439-vmjrwe/1791336953861-slang-witness-shape-inference-on-interface-subject.md) — _ag-1780667166439-vmjrwe_
+- [slang checkmodifiers substitute a modifier in the ](ag-1780667166439-vmjrwe/1791337734435-slang-checkmodifiers-substitute-a-modifier-in-the-.md) — _ag-1780667166439-vmjrwe_
+- [slangd lang server harness config pushes leak refr](ag-1780667166439-vmjrwe/1791339299959-slangd-lang-server-harness-config-pushes-leak-refr.md) — _ag-1780667166439-vmjrwe_
+- [slang full debug build fails on missing libcuda so](ag-1780667166439-vmjrwe/1791340353915-slang-full-debug-build-fails-on-missing-libcuda-so.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -5911,6 +5946,12 @@
 - [run spv filecheck lanes with slang run spirv valid](ag-1780667168475-a9tac8/1791212685406-run-spv-filecheck-lanes-with-slang-run-spirv-valid.md) — _ag-1780667168475-a9tac8_
 - [slang test expected failure keys are positional ex](ag-1780667168475-a9tac8/1791228831145-slang-test-expected-failure-keys-are-positional-ex.md) — _ag-1780667168475-a9tac8_
 - [gh api job logs silently empty without allow escap](ag-1780667168475-a9tac8/1791247356003-gh-api-job-logs-silently-empty-without-allow-escap.md) — _ag-1780667168475-a9tac8_
+- [slang pr review runner reviewer a killed by claude](ag-1780667168475-a9tac8/1791298146686-slang-pr-review-runner-reviewer-a-killed-by-claude.md) — _ag-1780667168475-a9tac8_
+- [reviewer a truncated final review md on a small di](ag-1780667168475-a9tac8/1791329053525-reviewer-a-truncated-final-review-md-on-a-small-di.md) — _ag-1780667168475-a9tac8_
+- [glsl global in out on cpu cuda layout gives unifor](ag-1780667168475-a9tac8/1791335346005-glsl-global-in-out-on-cpu-cuda-layout-gives-unifor.md) — _ag-1780667168475-a9tac8_
+- [review check a reviewer s suggested test snippet c](ag-1780667168475-a9tac8/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md) — _ag-1780667168475-a9tac8_
+- [filecheck not around a dag group does not guard te](ag-1780667168475-a9tac8/1791336888864-filecheck-not-around-a-dag-group-does-not-guard-te.md) — _ag-1780667168475-a9tac8_
+- [ir link e45002 witness skip must be two sided gene](ag-1780667168475-a9tac8/1791336896506-ir-link-e45002-witness-skip-must-be-two-sided-gene.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
