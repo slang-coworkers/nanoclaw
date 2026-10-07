@@ -36,6 +36,7 @@ import { fileURLToPath } from 'url';
 import * as p from '@clack/prompts';
 import { styleText } from 'node:util';
 
+import { currentUpgradeState, writeUpgradeState } from '../src/upgrade-state.js';
 import { composeMergeViaClaude } from './lib/claude-assist.js';
 
 export interface ProjectOption {
@@ -63,6 +64,10 @@ export interface ProjectOption {
  * and offered wherever nv-astra actually exists. The astra-sandbox driver it
  * activates ships here (src/drivers/astra-sandbox-driver.ts) but stays dormant
  * unless selected via NANOCLAW_RUNTIME_DRIVER=astra-sandbox.
+ *
+ * NVIDIA agent sandbox VMs are deliberately not an overlay: setup.sh recognises
+ * them and applies setup/host-profiles/agent-sandbox/, so they install from the
+ * same branch with the same commands as any other host.
  */
 export const PROJECTS: ProjectOption[] = [
   {
@@ -226,11 +231,43 @@ async function selectInteractively(
  */
 function mergeViaMergeTrain(branch: string): Promise<number> {
   const root = repoRoot();
-  return composeBranch(branch, {
-    runMergeTrain: (b) => spawnSync('bash', ['setup/merge-train.sh', b], { cwd: root, stdio: 'inherit' }).status ?? 1,
-    llmCompose: (b) => composeMergeViaClaude(b, root),
-    llmEnabled: process.env.NANOCLAW_LLM_MERGE === '1',
-  });
+  return withUpgradeMarkerCarried(root, () =>
+    composeBranch(branch, {
+      runMergeTrain: (b) => spawnSync('bash', ['setup/merge-train.sh', b], { cwd: root, stdio: 'inherit' }).status ?? 1,
+      llmCompose: (b) => composeMergeViaClaude(b, root),
+      llmEnabled: process.env.NANOCLAW_LLM_MERGE === '1',
+    }),
+  );
+}
+
+/**
+ * The startup tripwire binds the upgrade marker to the exact HEAD, and composing
+ * an overlay moves HEAD. When setup composes one after the service step stamped
+ * the marker (the channel step's Dashboard pick), the "restart to load it" that
+ * follows would stop the host as an unsanctioned install. Same rule as setup's
+ * own commits (setup/lib/setup-commit.ts): a marker that matched the old HEAD is
+ * rewritten for the new one; one that already mismatched stays stale.
+ */
+export async function withUpgradeMarkerCarried(
+  root: string,
+  compose: () => number | Promise<number>,
+  deps: { current: typeof currentUpgradeState; write: typeof writeUpgradeState } = {
+    current: currentUpgradeState,
+    write: writeUpgradeState,
+  },
+): Promise<number> {
+  const marker = deps.current(root);
+  const status = await compose();
+  if (status === 0 && marker) {
+    deps.write({
+      version: marker.version,
+      via: marker.via,
+      channel: marker.channel,
+      ref: marker.ref,
+      projectRoot: root,
+    });
+  }
+  return status;
 }
 
 export type DashboardOutcome = 'merged' | 'already' | 'failed';
