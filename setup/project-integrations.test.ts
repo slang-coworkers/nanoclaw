@@ -6,8 +6,48 @@ import {
   runProjectIntegrations,
   composeBranch,
   integrateDashboardCore,
+  withUpgradeMarkerCarried,
   type ProjectOption,
 } from './project-integrations.js';
+import type { UpgradeState } from '../src/upgrade-state.js';
+
+describe('withUpgradeMarkerCarried', () => {
+  const marker: UpgradeState = {
+    version: '1.0.0',
+    commit: 'old',
+    tree: 'old-tree',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    via: 'setup',
+  };
+
+  function deps(current: UpgradeState | null) {
+    const writes: unknown[] = [];
+    return {
+      writes,
+      deps: { current: () => current, write: (opts: unknown) => (writes.push(opts), marker) },
+    };
+  }
+
+  it('rewrites a current marker for the HEAD a successful compose moved to', async () => {
+    const d = deps(marker);
+    expect(await withUpgradeMarkerCarried('/root', () => 0, d.deps as never)).toBe(0);
+    expect(d.writes).toEqual([
+      { version: '1.0.0', via: 'setup', channel: undefined, ref: undefined, projectRoot: '/root' },
+    ]);
+  });
+
+  it('leaves the marker alone when the compose fails', async () => {
+    const d = deps(marker);
+    expect(await withUpgradeMarkerCarried('/root', async () => 1, d.deps as never)).toBe(1);
+    expect(d.writes).toEqual([]);
+  });
+
+  it('never blesses a marker that was already stale', async () => {
+    const d = deps(null);
+    expect(await withUpgradeMarkerCarried('/root', () => 0, d.deps as never)).toBe(0);
+    expect(d.writes).toEqual([]);
+  });
+});
 
 describe('composeBranch (merge tiers)', () => {
   const ok: () => number = () => 0;
