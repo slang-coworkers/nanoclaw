@@ -358,6 +358,22 @@ export async function run(args: string[]): Promise<void> {
       log.error('Container image pull failed', { exitCode: pullRes.status, errorCode });
     }
   } else {
+    // Restricted networks (extra CA certificates, GitHub-release and Docker Hub
+    // mirrors): the same preparation ./container/build.sh runs. Its stdout is one
+    // argument per line; with nothing configured it is empty.
+    const prep = spawnSync('bash', [path.join(projectRoot, 'container', 'build-prep.sh')], {
+      cwd: projectRoot,
+      encoding: 'utf-8',
+      stdio: ['ignore', 'pipe', 'inherit'],
+    });
+    if (prep.status !== 0) {
+      errorCode = 'build_prep_failed';
+      log.error('Container build preparation failed', { exitCode: prep.status });
+    } else {
+      buildArgs.push(...(prep.stdout ?? '').split('\n').filter(Boolean));
+    }
+  }
+  if (source === 'build' && !errorCode) {
     log.info('Building container', { runtime, buildArgs });
     const buildRes = spawnSync(
       buildCmd.split(' ')[0],
@@ -421,6 +437,21 @@ export async function run(args: string[]): Promise<void> {
       } catch (err) {
         log.warn('Could not remove the smoke-test workspace', { workspace, err });
       }
+    }
+  }
+
+  // Hosts whose agents run under another engine (NANOCLAW_AGENT_DOCKER_HOST,
+  // e.g. podman's API on agent sandbox VMs) need the image copied there; the
+  // script is a no-op otherwise.
+  if (buildOk && testOk) {
+    const sync = spawnSync('bash', [path.join(projectRoot, 'container', 'sync-agent-runtime.sh'), image], {
+      cwd: projectRoot,
+      stdio: 'inherit',
+    });
+    if (sync.status !== 0) {
+      testOk = false;
+      errorCode = 'agent_runtime_sync_failed';
+      log.error('Could not copy the image to the agent runtime', { exitCode: sync.status });
     }
   }
 

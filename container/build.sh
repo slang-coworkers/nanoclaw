@@ -12,6 +12,9 @@
 #   ENABLE_GPU=1             — add CUDA toolkit + Vulkan loader + GLVND (~multi-GB)
 #   NANOCLAW_BUILD_NETWORK=host — build RUN steps on this network (hosts whose
 #                              bridge has no egress, e.g. forward-drop sandbox VMs)
+# Restricted-network settings (extra CA certificates, GitHub-release and Docker
+# Hub mirrors) are read by container/build-prep.sh, and NANOCLAW_AGENT_DOCKER_HOST
+# by container/sync-agent-runtime.sh — see those scripts.
 # setup/container.ts reads the same file, so both build paths stay in sync.
 # Callers can also override by exporting either var directly.
 
@@ -232,6 +235,17 @@ build_image() {
     done
 }
 
+# Restricted networks: stage extra CA certificates, pull Docker Hub bases through
+# a mirror, and add the matching build args. Prints nothing when unconfigured.
+if [ "$PULL" = "false" ] && [ "$OVERLAY" = "false" ]; then
+    PREP_ARGS_FILE="$(mktemp)"
+    bash "$SCRIPT_DIR/build-prep.sh" > "$PREP_ARGS_FILE"
+    while IFS= read -r arg; do
+        [ -n "$arg" ] && BUILD_ARGS+=("$arg")
+    done < "$PREP_ARGS_FILE"
+    rm -f "$PREP_ARGS_FILE"
+fi
+
 echo "Building NanoClaw agent container image..."
 echo "Image: ${IMAGE_NAME}:${TAG}"
 
@@ -272,6 +286,10 @@ else
 
     build_image "${BUILD_ARGS[@]}" -t "${IMAGE_NAME}:${TAG}" .
 fi
+
+# Hosts whose agents run under another engine (NANOCLAW_AGENT_DOCKER_HOST) get
+# the image copied there. No-op otherwise.
+bash "$SCRIPT_DIR/sync-agent-runtime.sh" "${IMAGE_NAME}:${TAG}"
 
 echo ""
 if [ "$PULL" = "true" ]; then

@@ -97,6 +97,27 @@ RUN --mount=type=cache,target=/var/cache/apt,sharing=locked \
        fi \
     && rm -rf /var/lib/apt/lists/*
 
+# ---- Extra CA certificates ----------------------------------------------------
+# Hosts whose outbound HTTPS is re-signed by an inspecting proxy set
+# NANOCLAW_EXTRA_CA_DIR; container/build-prep.sh stages those certificates in
+# extra-ca/ and passes the trust args below. By default extra-ca/ holds only its
+# README, the RUN does nothing and the args stay unset (a build arg without a
+# value is not exported to RUN steps). Agents get their runtime trust from the
+# gateway's combined bundle, which is built from the host's system store.
+COPY extra-ca/ /usr/local/share/ca-certificates/nanoclaw-extra/
+RUN if ls /usr/local/share/ca-certificates/nanoclaw-extra/*.crt >/dev/null 2>&1; then \
+      update-ca-certificates; \
+    fi
+ARG NODE_EXTRA_CA_CERTS
+ARG PIP_CERT
+ARG UV_NATIVE_TLS
+
+# Where github.com is unreachable, release downloads (gh, uv, bun, prebuilt
+# native modules) go through GITHUB_RELEASES_MIRROR — a URL standing in for
+# https://github.com. Empty = the usual sources.
+ARG GITHUB_RELEASES_MIRROR=
+ARG npm_config_better_sqlite3_binary_host_mirror
+
 # LLVM apt repo — versioned clang-format-NN (slang CI pins clang-format-17) is
 # not in Debian bookworm default repos. Add official apt.llvm.org so per-group
 # container_config apt installs (packages_apt) resolve it.
@@ -150,16 +171,25 @@ ENV PLAYWRIGHT_CHROMIUM_EXECUTABLE_PATH=/usr/bin/chromium
 ENV PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD=1
 
 # ---- GitHub CLI ---------------------------------------------------------------
-RUN curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
+# With GITHUB_RELEASES_MIRROR set, the release .deb at GH_VERSION comes from the
+# mirror (cli.github.com's apt repo is not mirrored there); otherwise the apt repo.
+ARG GH_VERSION=2.102.0
+RUN if [ -n "$GITHUB_RELEASES_MIRROR" ]; then \
+      curl -fsSL -o /tmp/gh.deb "${GITHUB_RELEASES_MIRROR}/cli/cli/releases/download/v${GH_VERSION}/gh_${GH_VERSION}_linux_$(dpkg --print-architecture).deb" \
+      && dpkg -i /tmp/gh.deb && rm -f /tmp/gh.deb; \
+    else \
+    curl -fsSL https://cli.github.com/packages/githubcli-archive-keyring.gpg \
     | dd of=/usr/share/keyrings/githubcli-archive-keyring.gpg \
     && chmod go+r /usr/share/keyrings/githubcli-archive-keyring.gpg \
     && echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://cli.github.com/packages stable main" \
     | tee /etc/apt/sources.list.d/github-cli.list > /dev/null \
     && apt-get update && apt-get install -y gh \
-    && rm -rf /var/lib/apt/lists/*
+    && rm -rf /var/lib/apt/lists/*; \
+    fi
 
 # ---- uv (Python package manager) + claude-code-transcripts -------------------
-RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/bin sh \
+RUN curl -LsSf https://astral.sh/uv/install.sh \
+    | env UV_INSTALL_DIR=/usr/local/bin ${GITHUB_RELEASES_MIRROR:+UV_INSTALLER_GITHUB_BASE_URL=$GITHUB_RELEASES_MIRROR} sh \
     && uv tool install --python-preference system claude-code-transcripts \
     && chmod -R a+rX /root /root/.local \
     && ln -sf /root/.local/bin/claude-code-transcripts /usr/local/bin/claude-code-transcripts
@@ -167,7 +197,7 @@ RUN curl -LsSf https://astral.sh/uv/install.sh | env UV_INSTALL_DIR=/usr/local/b
 # ---- Bun runtime -------------------------------------------------------------
 # Install via the official script (handles multi-arch detection), then move
 # the binary to /usr/local/bin so the non-root `node` user can execute it.
-RUN curl -fsSL https://bun.sh/install | bash -s "bun-v${BUN_VERSION}" && \
+RUN curl -fsSL https://bun.sh/install | env ${GITHUB_RELEASES_MIRROR:+GITHUB=$GITHUB_RELEASES_MIRROR} bash -s "bun-v${BUN_VERSION}" && \
     install -m 0755 /root/.bun/bin/bun /usr/local/bin/bun && \
     rm -rf /root/.bun
 
