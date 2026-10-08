@@ -44,12 +44,19 @@ import { withSetupLock, launchSlackJob, readSlackJob, slackJobStatus } from '../
 // — the wizard itself stays free of channel-specific imports.
 import { runChannelSkillWithPreStep } from './channels/run-channel-skill.js';
 import { run as runProjectIntegrationsStep, integrateDashboard } from './project-integrations.js';
+import { ensureOrchestrator, installDashboardService, restartHostService } from './dashboard-service.js';
 import {
   channelDmLabel,
   initialChannelOptions,
   runInitialChannel,
   type ChannelChoice,
 } from './channels/initial-setup.js';
+import {
+  customEndpointBaseUrl,
+  endpointFromSecrets,
+  endpointModelDefaults,
+  NVIDIA_INFERENCE_URL,
+} from './lib/custom-endpoint.js';
 import { runInheritScript } from './lib/inherit-script.js';
 import { offerPortalReminder, portalEnabled, runImagePortal } from './portal.js';
 import { logFirstChat, pingCliAgent, PING_AGENT_FOLDER, type PingResult } from './lib/agent-ping.js';
@@ -1544,8 +1551,17 @@ async function askAgentProviderChoice(): Promise<string> {
 
 async function runAuthStep(): Promise<void> {
   if (anthropicSecretExists()) {
+    // The vault already holds a credential, so there is nothing to prompt for —
+    // but a custom endpoint still has to reach .env (see customEndpointBaseUrl).
+    const baseUrl =
+      customEndpointBaseUrl(process.env.NANOCLAW_ANTHROPIC_BASE_URL) ??
+      (readEnvKey('ANTHROPIC_BASE_URL')?.trim() ? undefined : endpointFromSecrets(onecliSecretsJson()));
+    if (baseUrl) recordEndpoint(baseUrl);
     p.log.success(brandBody('Your Claude account is already connected.'));
-    setupLog.step('auth', 'skipped', 0, { REASON: 'secret-already-present' });
+    setupLog.step('auth', 'skipped', 0, {
+      REASON: 'secret-already-present',
+      ...(baseUrl ? { BASE_URL: 'recorded' } : {}),
+    });
     return;
   }
 
@@ -1579,13 +1595,18 @@ async function runAuthStep(): Promise<void> {
           hint: 'pay-per-use via console.anthropic.com',
         },
         {
+          value: 'endpoint',
+          label: 'Use an Anthropic-compatible endpoint',
+          hint: 'e.g. the NVIDIA inference API — you enter its URL and key',
+        },
+        {
           value: 'skip',
           label: "Skip — I'll connect later",
           hint: 'not recommended — Claude helps debug setup issues',
         },
       ],
     }),
-  ) as 'subscription' | 'oauth' | 'api' | 'skip';
+  ) as 'subscription' | 'oauth' | 'api' | 'endpoint' | 'skip';
   setupLog.userInput('auth_method', method);
   phEmit('auth_method_chosen', { method });
 
@@ -1606,11 +1627,32 @@ async function runAuthStep(): Promise<void> {
     return;
   }
 
-  if (method === 'subscription') {
+  if (method === 'endpoint') {
+    await runEndpointPrompt();
+  } else if (method === 'subscription') {
     await runSubscriptionAuth();
   } else {
     await runPasteAuth(method);
   }
+}
+
+/** Ask for an Anthropic-compatible endpoint's URL and key, then store them like the env-var path. */
+async function runEndpointPrompt(): Promise<void> {
+  const url = ensureAnswer(
+    await p.text({
+      message: 'Endpoint URL',
+      initialValue: NVIDIA_INFERENCE_URL,
+      validate: (v) => (customEndpointBaseUrl(v) ? undefined : 'Enter an http(s) URL'),
+    }),
+  ) as string;
+  const key = ensureAnswer(
+    await p.password({
+      message: 'API key for that endpoint (stored in the OneCLI vault, never in .env)',
+      clearOnError: true,
+      validate: (v) => ((v ?? '').trim() ? undefined : 'Required'),
+    }),
+  ) as string;
+  await runCustomEndpointAuth(customEndpointBaseUrl(url)!, key.replace(/\s+/g, ''));
 }
 
 async function runSubscriptionAuth(): Promise<void> {
@@ -1748,12 +1790,22 @@ async function runCustomEndpointAuth(baseUrl: string, token: string): Promise<vo
   // ANTHROPIC_BASE_URL has to be in .env so the runtime provider config
   // reads it when building container env. The token is *not* written —
   // OneCLI holds it.
-  writeEnvLine('ANTHROPIC_BASE_URL', baseUrl);
+  // ANTHROPIC_BASE_URL, its model ids, and the claude provider registration
+  // that passes them and the placeholder bearer into the container. Only for
+  // a custom endpoint; standard installs don't load the provider file at all.
+  recordEndpoint(baseUrl);
+}
 
-  // Register the claude provider so the runtime passes ANTHROPIC_BASE_URL
-  // and the placeholder bearer into the container. Only appended when the
-  // user has configured a custom endpoint; standard installs don't load
-  // the file at all.
+/**
+ * Record a custom endpoint in .env: ANTHROPIC_BASE_URL, the provider-prefixed
+ * model ids it needs (endpointModelDefaults; never over an operator's own
+ * value), and the Claude provider registration that passes both to agents.
+ */
+function recordEndpoint(baseUrl: string): void {
+  writeEnvLine('ANTHROPIC_BASE_URL', baseUrl);
+  for (const [key, value] of Object.entries(endpointModelDefaults(baseUrl))) {
+    if (!readEnvKey(key)?.trim()) writeEnvLine(key, value);
+  }
   appendProviderImport('./claude.js');
 }
 
@@ -1948,10 +2000,51 @@ async function integrateDashboardChoice(): Promise<typeof BACK_TO_CHANNEL_SELECT
     ),
   );
   const outcome = await integrateDashboard();
-  if (outcome === 'merged') {
-    p.log.success('Dashboard merged (nv-dashboard). Restart the service to load it, then open the viewer.');
-  } else if (outcome === 'already') {
-    p.log.info('Dashboard (nv-dashboard) is already integrated — nothing to merge.');
+  if (outcome === 'merged' || outcome === 'already') {
+    if (outcome === 'merged') {
+      p.log.success('Dashboard merged (nv-dashboard).');
+      // The host loads the dashboard's ingress at startup.
+      if (restartHostService()) p.log.info('Restarted NanoClaw to load it.');
+    } else {
+      p.log.info('Dashboard (nv-dashboard) is already integrated — nothing to merge.');
+    }
+    const service = installDashboardService();
+    const port = readEnvKey('DASHBOARD_PORT') || '3737';
+    if (service.status === 'installed') {
+      p.log.success(`Dashboard running as a service (${service.name}) — http://127.0.0.1:${port}`);
+      // It listens on loopback only; from a laptop it is reached over a tunnel.
+      const target = `${os.userInfo().username}@${os.hostname()}`;
+      p.log.info(
+        brandBody(
+          wrapForGutter(
+            `From your laptop: ssh -L ${port}:127.0.0.1:${port} ${target}  (Teleport: tsh ssh -L ${port}:127.0.0.1:${port} ${target}), then open http://127.0.0.1:${port}`,
+            4,
+          ),
+        ),
+      );
+    } else if (service.status === 'skipped') {
+      p.log.info(service.hint);
+    } else if (service.status === 'failed') {
+      p.log.warn(`Could not start the dashboard service (${service.name}): ${service.error}`);
+    }
+    if (service.status === 'installed') {
+      const wanted = ensureAnswer(
+        await p.confirm({
+          message: 'Create the Orchestrator — the admin coworker that sets up and manages the others?',
+          initialValue: true,
+        }),
+      );
+      if (wanted) {
+        const s = p.spinner();
+        s.start('Creating the Orchestrator…');
+        const orch = await ensureOrchestrator(process.cwd(), port);
+        if (orch.status === 'ready') {
+          s.stop(`Orchestrator ready — open the dashboard and say hi (http://127.0.0.1:${port}).`);
+        } else {
+          s.stop(`Could not set up the Orchestrator: ${orch.error}`);
+        }
+      }
+    }
   } else {
     p.log.warn(
       `Could not compose nv-dashboard — the merge was rolled back (conflict outside nv-main's owned set, ` +
@@ -2021,6 +2114,16 @@ function ensureUserRuntimeDir(): void {
   if (process.env.XDG_RUNTIME_DIR || os.platform() !== 'linux' || uid == null || uid === 0) return;
   const dir = `/run/user/${uid}`;
   if (fs.existsSync(path.join(dir, 'systemd'))) process.env.XDG_RUNTIME_DIR = dir;
+}
+
+function onecliSecretsJson(): string {
+  try {
+    return (
+      spawnSync('onecli', ['secrets', 'list'], { encoding: 'utf-8', stdio: ['ignore', 'pipe', 'pipe'] }).stdout ?? ''
+    );
+  } catch {
+    return '';
+  }
 }
 
 function anthropicSecretExists(): boolean {
