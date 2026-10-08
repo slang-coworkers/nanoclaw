@@ -102,6 +102,7 @@ class Normalize(unittest.TestCase):
         self.assertEqual(T.normalize_model("aws/anthropic/bedrock-claude-haiku-5-5"), "claude-haiku-5-5")
         self.assertEqual(T.normalize_model("azure/anthropic/claude-haiku-5-5"), "claude-haiku-5-5")
         self.assertAlmostEqual(T.price_usage("aws/anthropic/bedrock-claude-haiku-5-5", {"input_tokens": 1_000_000}), 0.1, places=9)
+        self.assertAlmostEqual(T.price_usage("aws/anthropic/bedrock-claude-sonnet-5-5", {"cache_read_input_tokens": 1_000_000}), 0.1, places=9)
         self.assertEqual(T.normalize_model(None), "")
 
 
