@@ -14,7 +14,8 @@
  */
 import { describe, expect, it } from 'vitest';
 
-import { ccusageDailyArgs, codexDayKey, FALLBACK_PRICING, normalizeCodexEntry } from './server.js';
+import { ccusageDailyArgs, codexDayKey, fallbackPricing, normalizeCodexEntry } from './server.js';
+import { MODEL_PRICING } from './session-costs.js';
 
 describe('ccusageDailyArgs', () => {
   it('does NOT pass --offline', () => {
@@ -32,8 +33,8 @@ describe('ccusageDailyArgs', () => {
   });
 });
 
-describe('FALLBACK_PRICING', () => {
-  // scanSkillTranscriptCosts does `if (!FALLBACK_PRICING[model]) continue`, so
+describe('fallbackPricing', () => {
+  // scanSkillTranscriptCosts does `if (!fallbackPricing(model)) continue`, so
   // a missing model is DROPPED rather than merely unpriced. Prod's skill
   // transcripts held 2,002 opus-5 records against 205 sonnet-5 ones, so the
   // previous single-entry table discarded ~90% of them and reported the rest
@@ -51,21 +52,26 @@ describe('FALLBACK_PRICING', () => {
       'claude-haiku-5-5',
       'aws/anthropic/bedrock-claude-haiku-5-5',
       'azure/anthropic/claude-haiku-5-5',
+      'claude-sonnet-5-5',
+      'aws/anthropic/bedrock-claude-sonnet-5-5',
+      'azure/anthropic/claude-sonnet-5-5',
+      'aws/anthropic/bedrock-claude-opus-5-5[1m]',
+      'aws/anthropic/claude-haiku-4-5-v1',
     ]) {
-      expect(FALLBACK_PRICING[model], `${model} would be silently dropped`).toBeDefined();
+      expect(fallbackPricing(model), `${model} would be silently dropped`).toBeDefined();
     }
   });
 
   it('matches LiteLLM rates — the same source ccusage prices against', () => {
     // Divergence here means the ccusage path and the skill-transcript path
     // disagree about what the same tokens cost.
-    expect(FALLBACK_PRICING['claude-opus-5']).toEqual({
+    expect(fallbackPricing('claude-opus-5')).toEqual({
       input: 5e-6,
       output: 25e-6,
       cacheCreate: 6.25e-6,
       cacheRead: 5e-7,
     });
-    expect(FALLBACK_PRICING['claude-sonnet-5']).toEqual({
+    expect(fallbackPricing('claude-sonnet-5')).toEqual({
       input: 2e-6,
       output: 10e-6,
       cacheCreate: 2.5e-6,
@@ -74,9 +80,29 @@ describe('FALLBACK_PRICING', () => {
   });
 
   it('prices haiku-5-5 (Bedrock primary + Azure backup) at the LiteLLM online rate', () => {
-    for (const id of ['claude-haiku-5-5', 'aws/anthropic/bedrock-claude-haiku-5-5', 'azure/anthropic/claude-haiku-5-5']) {
-      expect(FALLBACK_PRICING[id], id).toEqual({ input: 1e-7, output: 5e-7, cacheCreate: 1.25e-7, cacheRead: 1e-8 });
+    for (const id of [
+      'claude-haiku-5-5',
+      'aws/anthropic/bedrock-claude-haiku-5-5',
+      'azure/anthropic/claude-haiku-5-5',
+    ]) {
+      expect(fallbackPricing(id), id).toEqual({ input: 1e-7, output: 5e-7, cacheCreate: 1.25e-7, cacheRead: 1e-8 });
     }
+  });
+
+  it('prices sonnet-5-5 cache reads at the LiteLLM live $0.10/Mtok (since 2026-10-07)', () => {
+    for (const id of [
+      'claude-sonnet-5-5',
+      'aws/anthropic/bedrock-claude-sonnet-5-5',
+      'azure/anthropic/claude-sonnet-5-5',
+    ]) {
+      expect(fallbackPricing(id), id).toEqual({ input: 2e-6, output: 10e-6, cacheCreate: 2.5e-6, cacheRead: 1e-7 });
+    }
+  });
+
+  it('is MODEL_PRICING itself, so the two can never drift', () => {
+    for (const [key, rate] of Object.entries(MODEL_PRICING)) expect(fallbackPricing(key), key).toBe(rate);
+    expect(fallbackPricing('<synthetic>')).toBeUndefined();
+    expect(fallbackPricing('constructor')).toBeUndefined();
   });
 
   it('does not price sonnet-5 at sonnet-4-6 rates', () => {
@@ -84,8 +110,8 @@ describe('FALLBACK_PRICING', () => {
     // 3e-6/15e-6/3.75e-6/3e-7, which is claude-sonnet-4-6's price list
     // verbatim — a 50% markup. A wrong rate is worse than a missing one; it
     // renders with full confidence and invites no scrutiny.
-    const sonnet5 = FALLBACK_PRICING['claude-sonnet-5'];
-    const sonnet46 = FALLBACK_PRICING['claude-sonnet-4-6'];
+    const sonnet5 = fallbackPricing('claude-sonnet-5')!;
+    const sonnet46 = fallbackPricing('claude-sonnet-4-6')!;
     expect(sonnet46).toBeDefined();
     expect(sonnet5).not.toEqual(sonnet46);
     expect(sonnet5.input).toBeLessThan(sonnet46.input);
@@ -94,7 +120,7 @@ describe('FALLBACK_PRICING', () => {
   it('keeps every rate a positive, plausible per-token USD figure', () => {
     // Guards the units. A rate entered per-million rather than per-token would
     // still be a number and would still render — six orders of magnitude out.
-    for (const [model, p] of Object.entries(FALLBACK_PRICING)) {
+    for (const [model, p] of Object.entries(MODEL_PRICING)) {
       for (const [field, rate] of Object.entries(p)) {
         expect(rate, `${model}.${field}`).toBeGreaterThan(0);
         expect(rate, `${model}.${field} looks per-million, not per-token`).toBeLessThan(1e-3);

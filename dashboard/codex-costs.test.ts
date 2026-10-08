@@ -301,8 +301,7 @@ describe('CODEX_MODEL_PRICING agrees with the agent-runner’s copy (no drift)',
   // copies only `agent-runner/` into /app and src/container-runner.ts bind-mounts
   // only container/agent-runner/src at /app/src, so nothing under dashboard/ (or
   // a hypothetical src/shared/) resolves inside the container. The table is
-  // therefore duplicated there and guarded here — the same discipline
-  // session-costs.ts uses against server.ts's FALLBACK_PRICING.
+  // therefore duplicated there and guarded here.
   //
   // On THIS branch (nv-dashboard) the runner copy does not exist and the test
   // no-ops. CI composes every nv-* branch into one tree, so once the runner half

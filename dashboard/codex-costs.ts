@@ -88,8 +88,7 @@
  * (issue #1327's runner half), and cannot import it: the container image only
  * ever contains `container/agent-runner/`, so nothing under `dashboard/` (or a
  * hypothetical `src/shared/`) is resolvable inside it. The table is therefore
- * duplicated there, guarded the same way `MODEL_PRICING` is guarded against
- * `FALLBACK_PRICING` — by a test that fails if the two copies disagree
+ * duplicated there, guarded by a test that fails if the two copies disagree
  * (`codex-costs.test.ts`, "agrees with the agent-runner's copy").
  *
  * The written half of that contract, since a pattern-matched test cannot enforce
