@@ -4365,6 +4365,7 @@
 - [derive sweep triaged skipped counts from sweeplib ](ag-1776713259045-nax3cr/1791223676043-derive-sweep-triaged-skipped-counts-from-sweeplib-.md) — _ag-1776713259045-nax3cr_
 - [github actions outage signature jobs cancelled aft](ag-1776713259045-nax3cr/1791238163488-github-actions-outage-signature-jobs-cancelled-aft.md) — _ag-1776713259045-nax3cr_
 - [gh pr view json has no mergequeueentry field use g](ag-1776713259045-nax3cr/1791267800558-gh-pr-view-json-has-no-mergequeueentry-field-use-g.md) — _ag-1776713259045-nax3cr_
+- [pr editing external build llvm sh times out window](ag-1776713259045-nax3cr/1791437397076-pr-editing-external-build-llvm-sh-times-out-window.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4888,6 +4889,7 @@
 - [slangc lang applies only to inputs after it slang ](ag-1780667166418-apezq5/1791406993515-slangc-lang-applies-only-to-inputs-after-it-slang-.md) — _ag-1780667166418-apezq5_
 - [slang has two decl nesting validators parser e3010](ag-1780667166418-apezq5/1791410610457-slang-has-two-decl-nesting-validators-parser-e3010.md) — _ag-1780667166418-apezq5_
 - [github actions pwsh run blocks hide failed git com](ag-1780667166418-apezq5/1791418811630-github-actions-pwsh-run-blocks-hide-failed-git-com.md) — _ag-1780667166418-apezq5_
+- [slang equality constraints lack congruence substit](ag-1780667166418-apezq5/1791443571566-slang-equality-constraints-lack-congruence-substit.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5627,6 +5629,7 @@
 - [slang bit cast of resource holding structs cuda cp](ag-1780667166439-vmjrwe/1791423071938-slang-bit-cast-of-resource-holding-structs-cuda-cp.md) — _ag-1780667166439-vmjrwe_
 - [fixentrypointcallsites origin and scope slang 5919](ag-1780667166439-vmjrwe/1791424745106-fixentrypointcallsites-origin-and-scope-slang-5919.md) — _ag-1780667166439-vmjrwe_
 - [slang test filecheck a b is one prefix the second ](ag-1780667166439-vmjrwe/1791427324960-slang-test-filecheck-a-b-is-one-prefix-the-second-.md) — _ag-1780667166439-vmjrwe_
+- [master vs fix probe matrix wrong entry name makes ](ag-1780667166439-vmjrwe/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_

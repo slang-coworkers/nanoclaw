@@ -33,8 +33,9 @@ because even maintainers get surprised.
   returns it twice (Struct(22) + Keyword(14)); dedup by final label in `collectAttributes`.
 - **Slang has NO clang-style fix-it / structured code-replacement infrastructure** anywhere — every
   "fix-it" ask resolves to either a better diagnostic/note or a new cross-cutting project.
-- **A serialized `.slang-module` has TWO version axes** — the container FORMAT version (checked on
-  load) and the semantic module version `m_version` (NOT range-checked → the crash gap).
+- **A serialized `.slang-module` has TWO version axes** — the container FORMAT version and the
+  semantic module version `m_version`. Both are checked on load: `m_version` has been range-checked
+  against `k_min..k_maxSupportedModuleVersion` since #12905, so a `k_max` bump is not cosmetic.
 
 ## `as`-casts, operators, and lookup
 
@@ -143,14 +144,17 @@ infrastructure](../learnings/1787705444892-slang-has-no-structured-fix-it-auto-e
 A serialized `.slang-module` carries TWO easily-conflated version axes. The container FORMAT version
 (`IRModuleInfo::serializationVersion`, currently 1) governs payload encoding and IS checked on load
 (`readSerializedModuleIR_` returns SLANG_FAIL on mismatch). The semantic module version
-(`IRModule::m_version`, range 4..28) governs IR instruction-set *semantics* and is NOT range-checked
-on load — this is the gap that crashes with 0xC0000005 when loading a too-new module. Op-level
-incompatibility is only partially caught by the `kIROp_Unrecognized` stable-name mechanism, which
-fires only when the newer module actually uses a new op; a pure version bump or a semantics change on
-an existing op slips through. Any load-time gate belongs in `readSerializedModuleIR_` (choke-point
-covering all three full-load callers); `m_version` is private and needs a public getter for a
-caller-side check ([Slang serialized module has TWO version axes — only the format one is checked on
-load](../learnings/1787695975002-slang-serialized-module-has-two-version-axes-only-.md)).
+(`IRModule::m_version`) governs IR instruction-set *semantics*. The 2026-08 triage of #12758 (a
+too-new module crashing with 0xC0000005) found it was never range-checked on load, which left the
+stable-name `kIROp_Unrecognized` check as the only guard, and that one fires only when the newer
+module actually uses a new op. That stopped being true with shader-slang/slang#12905
+(`d501b42052`, 2026-09-17): `IRModule::isModuleVersionSupported(v)` (`k_min <= v <= k_max`) now runs
+at load in `slang-serialize-ir.cpp:848`, `slang-session.cpp:1259/1396` and
+`slang-global-session.cpp:667`, and rejects an out-of-range module. On master 5cb03fa5f7
+(2026-10-06) k_min == k_max == 33, so bumping `k_max` for a new instruction means older compilers
+reject the new modules. Re-read `slang-ir.h` before calling a bump cosmetic ([CORRECTION:
+k_maxSupportedModuleVersion IS range-checked at module load since
+#12905](../learnings/1791314340428-correction-slang-k-maxsupportedmoduleversion-is-ra.md)).
 
 **Source learnings (10):**
 - [Slang: fallible `as` cast already yields Optional<T>](../learnings/1787675835939-slang-fallible-as-cast-already-yields-optional-t-v.md) — if(let)/guard let support as-operands for free; negative control proves the wrapper.
@@ -159,7 +163,7 @@ load](../learnings/1787695975002-slang-serialized-module-has-two-version-axes-on
 - [Slang member operators unreachable by infix lookup — declaration-site diagnostic is the fix](../learnings/1787705815951-slang-member-operators-unreachable-by-infix-lookup.md) — a OP b is pure scope lookup; exclude operator()/__subscript; broaden isPrefixOperatorName.
 - [Slang infix operator lookup ignores member/extension-declared operators](../learnings/1787706116993-slang-infix-operator-lookup-ignores-member-extensi.md) — only free functions resolve; PR #11879 (make user's operator win) was closed unmerged.
 - [Slang hiddenFromLookup only affects local vars (member lookup ignores it)](../learnings/1787706486418-slang-hiddenfromlookup-only-affects-local-vars-mem.md) — &&-gated on isLocalVar; read the honoring site, not just the field.
-- [Slang serialized module has TWO version axes — only the format one is checked on load](../learnings/1787695975002-slang-serialized-module-has-two-version-axes-only-.md) — semantic m_version (4..28) is not range-checked; gate belongs in readSerializedModuleIR_.
+- [CORRECTION: k_maxSupportedModuleVersion IS range-checked at module load since #12905](../learnings/1791314340428-correction-slang-k-maxsupportedmoduleversion-is-ra.md) — isModuleVersionSupported runs on every load path; supersedes the "semantic m_version is not range-checked" finding.
 - [associated types are reachable through a value in type position (t.assocThing)](../learnings/1790106628469-slang-associated-types-are-reachable-through-a-val.md) — the isEffectivelyStatic lookup branch rewrites value access to a TypeType; verify "member kind X unreachable in context Y" claims against a built compiler.
 - [isFromCoreModule excludes only the embedded core module, not the source/standard-modules/ std-lib modules](../learnings/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md) — no std-lib provenance bit; same-module getModuleDecl identity check is the robust alternative but narrows to same-module.
 - [Slang diagnostics: generic-param base checks also catch the hidden This; v::m has a non-TypeType base; DIAGNOSTIC_TEST ignores note order](../learnings/1790871269416-slang-diagnostics-generic-param-base-checks-also-c.md) — #13225 round 3: exclude `thisTypeDecl`; classify static access from `StaticMemberExpr`; use `filecheck=` to pin note order.

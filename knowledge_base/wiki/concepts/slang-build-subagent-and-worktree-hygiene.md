@@ -3,7 +3,7 @@ title: "Slang Build Subagent & Worktree Hygiene"
 type: concept
 group: slang-tooling
 tags: [build, subagent, disk, worktree, submodule, staleness, concurrency]
-source_count: 16
+source_count: 17
 ---
 
 # Slang Build Subagent & Worktree Hygiene
@@ -15,7 +15,7 @@ This page covers the build-workflow hazards you hit while iterating on Slang in 
 - **A build subagent that bails mid-build often leaves cmake running** — the detached subshell survives and completes. Before relaunching: `ps ... | grep -E 'ninja|cmake|cc1plus'`, `tail build_out.log` for `BUILD_EXIT=`, check for the binaries. NEVER start a second `cmake --build` on the same dir (two ninjas corrupt object/link state).
 - **A build `Agent` AUTO-RELAUNCHES on any failure** → two concurrent builds on ONE dir corrupt shared archives (`malformed archive` / `FAILED: …libSPIRV-Tools-opt.a`) — this is concurrency, not disk. Prefer `Bash(run_in_background=true)` you OWN over a build subagent; sanity-check dramatic env root causes against a sibling worktree binary mtime.
 - **Shared build volume fills** from accumulated `build/` trees (~6-7G each; the fixer's `/dev/vdb` overlay is 251G and shared with `/`). At ~45 worktrees it hits 98-100% → `cmake --build` fails `No space left on device` on UNRELATED files. Free ONLY your OWN `build/`, never sibling `wt-slang-*/`. Commit + patch-back before a teardown loses work; report `blocked` if a rebuild still won't fit. The reap-merged-worktrees grant often frees nothing — disk self-recovers as sibling builds finish; try an INCREMENTAL rebuild.
-- **`slangc -v` is baked at CONFIGURE time** — never use it to identify a binary's commit; an incremental rebuild leaves the version string stale.
+- **`slangc -v` is baked at CONFIGURE time** — never use it to identify a binary's commit; an incremental rebuild leaves the version string stale. Cite the source commit you built (`git log -1`) instead.
 - **Re-run `git submodule update --init --recursive` after EVERY rebase** (rebase bumps gitlinks but doesn't check them out → cryptic unrelated build errors).
 - **In a worktree whose submodule `.git` files were copied, `git checkout` can exit 0 without moving HEAD** — confirm `git rev-parse HEAD` after switching; if both diffs against the ref are empty, `git update-ref --no-deref HEAD <sha>` finishes it. slang-test runs only paths under `tests/`.
 
@@ -43,7 +43,7 @@ The volume can accumulate ~45 sibling `wt-slang-*` worktrees at ~7G each (~210G)
 
 ## slangc -v version string is stale on incremental builds
 
-`slangc -v` prints a git-describe string (e.g. `2026.10.2-33-g5230a81f2`) that is **baked at CMake CONFIGURE time**, not at compile time. An incremental rebuild (`cmake --build` after new source, without reconfiguring) recompiles the changed code but leaves the version string stale — so never use `slangc -v` to identify which commit a binary was built from ([slangc -v version string is stale on incremental builds — don't use it to identify a binary's commit](../learnings/1782864395490-slangc-v-version-string-is-stale-on-incremental-bu.md)).
+`slangc -v` prints a git-describe string (e.g. `2026.10.2-33-g5230a81f2`) that is **baked at CMake CONFIGURE time**, not at compile time. An incremental rebuild (`cmake --build` after new source, without reconfiguring) recompiles the changed code but leaves the version string stale — so never use `slangc -v` to identify which commit a binary was built from ([slangc -v version string is stale on incremental builds — don't use it to identify a binary's commit](../learnings/1782864395490-slangc-v-version-string-is-stale-on-incremental-bu.md)). It recurred in Oct 2026: a `--target slangc` release rebuild from master `bce8cbefa` still printed `-version` `2026.13.1-50-g3649fb982`, and a codex review flagged an issue draft's "reproduced on master" claim as must-fix. To claim a reproduction on a commit, rebuild and cite the source commit you built (`git log -1`), never the version tag. The same atom records a GPU-free SPIR-V UB signal: `-target spirv -O0 -o x.spv` then `spirv-val`; default `-O` hides the bug behind a spirv-opt error, and `-target spirv-asm -O0` to stdout can exit 0 with empty output ([local slangc -version can be stale after a rebuild; cite the source commit](../learnings/1791334791808-local-slangc-version-string-can-be-stale-after-a-r.md)).
 
 ## Re-run submodule update after every rebase in a worktree (gitlink staleness)
 
@@ -65,7 +65,7 @@ A build subagent asked to run a git-stash "negative drill" (revert the fix → b
 
 Verifying a build-gating change (e.g. #13165 `SLANG_ENABLE_RECORD_REPLAY`) by building both the ON and OFF configs has three traps that cost real time. (1) **Build subagents detach and return early** — a subagent told to "configure + build, then check" may launch `cmake --build … &` (backgrounded) and END its turn before the build finishes, so a *second* verification you start runs `--fresh` on the SAME `build/` dir and the two ninja invocations collide, producing a spurious compile failure in an unrelated file (seen at `slang-serialize-ast.cpp`) — the same one-dir-two-ninjas corruption as above. Own the wait yourself with a `run_in_background` bash `until grep -q BUILD_EXIT= …`; if you must kill a stray build, kill by EXACT pid, NEVER `pkill ninja` (kills sibling worktrees' builds). (2) **`find build -name 'libslang*.so*'` matches the split-debug `.dwarf` file**, so an `nm -D` ABI/export check reads the wrong file and reports 0/8 symbols (false negative) — always exclude `! -name '*.dwarf' ! -name '*.debug'` and pick the real versioned `libslang-compiler.so.*`. (3) **`--fresh` wipes only CMakeCache, not build artifacts** — stale `.o` files and a `slang-replay` binary from a prior ON build survive into an OFF reconfigure, so "0 record-replay objects" / "slang-replay not built" checks give false positives; purge them first (`find build -path '*slang-record-replay*' -name '*.o' -delete`, `rm -f build/Debug/bin/slang-replay`) then build OFF and count. (The disabled-C-API-stub ABI check that matters is `nm -D --defined-only <real .so> | grep -c <exported symbols>` == full count — keep the symbols exported as stubs, never delete them) ([Slang OFF-config build verification: subagent-collision, .dwarf glob, stale artifacts](../learnings/1789717447497-slang-off-config-build-verification-subagent-colli.md)).
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [Build subagent that arms a Monitor and returns early can leave a git-stash unpopped and race your own build — keep a negative/positive drill in ONE synchronous bg job; prefer file-scoped revert over global stash](../learnings/1790049141550-build-subagent-that-arms-a-monitor-and-returns-ear.md)
 - [Independent build of a Slang PR head in a git worktree needs `git submodule update --init` inside the worktree](../learnings/1789231600735-independent-build-of-a-slang-pr-head-in-a-git-work.md)
 - [Build subagent that bails mid-build often leaves its detached cmake running — check before relaunching](../learnings/1781624196085-build-subagent-that-bails-mid-build-often-leaves-i.md)
@@ -82,5 +82,6 @@ Verifying a build-gating change (e.g. #13165 `SLANG_ENABLE_RECORD_REPLAY`) by bu
 - [Copied submodule .git files make `git checkout --detach` exit 0 without moving HEAD; verify with diff --ignore-submodules=all then `git update-ref --no-deref HEAD`; slang-test runs only paths under tests/ (symlink a probe dir).](../learnings/1790627438406-git-checkout-in-slang-wt-worktrees-fails-on-copied.md)
 - [Background drills that verify "tree == saved diff" can revert concurrent edits; keep drill scratch under /workspace/agent.](../learnings/1790646938428-relaxing-a-shared-filestream-gate-audit-every-writ.md)
 - [rebuilding while an A/B run uses the same binary gives spurious exit 127](../learnings/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md)
+- [Local slangc -version string can be stale after a rebuild; trust the source commit, not the version tag](../learnings/1791334791808-local-slangc-version-string-can-be-stale-after-a-r.md) — master `bce8cbefa` build printed `2026.13.1-50-g3649fb982`; cite `git log -1`; SPIR-V UB: `-O0 -o x.spv` + spirv-val
 
 _Catalog: [[wiki/index.md]]_

@@ -3,7 +3,7 @@ title: "Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-v
 type: concept
 group: slang-tooling
 tags: [slang-llvm, llvm, emit-cpu-via-llvm, llvm-host-ir, use-system-llvm, filecheck, dxc, cross-compile, macos, tablegen]
-source_count: 6
+source_count: 7
 ---
 
 ## TL;DR
@@ -29,6 +29,9 @@ module silently, and a universal macOS build that ships x86_64-only host tools w
   `CROSS_TOOLCHAIN_FLAGS_NATIVE` rounds were the wrong layer.
 - **A `.slang` test file is compiled at test time, not baked into the binary** — a test-file edit
   re-runs with NO rebuild (`./build/Debug/bin/slang-test <file>`).
+- **Changing slang-test's `IFileCheck` interface skews against the fetched slang-llvm** — the
+  default build keeps the last release's library, so slang-test fails at startup until a release
+  ships, and most CI legs (from-source slang-llvm) cannot catch the skew.
 
 ## Editing source/slang-llvm needs a from-source build (USE_SYSTEM_LLVM)
 
@@ -54,6 +57,21 @@ green) — and GREEN is CI-gated; say so transparently in the PR/report rather t
 green. A `.slang` test file is compiled at test time by slang-test, NOT baked into the binary, so
 re-running/validating a *test-file* edit needs NO rebuild — just re-run `./build/Debug/bin/slang-test
 <file>`.
+
+The same fetch pins the **slang-test ↔ slang-llvm FileCheck interface**. `FETCH_BINARY_IF_POSSIBLE`
+downloads the slang-llvm from the GitHub release that matches the last git tag
+(`cmake/GitHubRelease.cmake:58`), or builds with LLVM disabled when it can't. So a change to `IFileCheck`
+(`tools/slang-test/filecheck.h`, GUID-checked in `createLLVMFileCheck_V1`) leaves a default local build
+on the old library until the next release ships: with LLVM present, `locateLLVMFileCheck`
+(`test-context.cpp:104-123`) fails and slang-test returns failure at startup
+(`slang-test-main.cpp:7065-7068`). Most CI legs build slang-llvm from source with `USE_SYSTEM_LLVM`, so
+CI won't catch the skew (the Windows debug leg builds it first and then consumes it through
+FETCH_BINARY; some legs disable LLVM). Calling `performTest` once per prefix avoids the interface change
+but loses FileCheck's cross-prefix ordering: FileCheck keeps every prefix's checks in one ordered list, so
+separate calls cannot enforce `A:` before `B:` or limit a `B-NOT:` to the region between two `A:`
+matches. A parser note from the same PR: `StringUtil::split` on an empty slice returns no pieces, so
+`SIMPLE()` creates no empty option key, unlike Python's `''.split(',')` → `['']` (shader-slang/slang#13359)
+([slang-test ↔ slang-llvm FileCheck interface is pinned by the prebuilt release](../learnings/1791326969343-slang-test-slang-llvm-filecheck-interface-is-pinne.md)).
 
 ## Regression-testing the LLVM emitter: -target llvm-host-ir -o -, not host-callable
 
@@ -101,12 +119,13 @@ When adjudicating whether flipping `isSignedType(<type>)` (e.g. adding `kIROp_In
 
 The two-CPU-paths split above (default `-cpu` emits C++ source via the C-family emitter; `-emit-cpu-via-llvm` / `-target llvm` goes through `slang-emit-llvm.cpp`) has a codegen consequence when you gate an *emitted-code* optimization on a Slang target predicate (e.g. "this target can express an `unreachable` terminator, so prune the dead arm"). The C-family source path (`cpp`/`host-cpp`/`torch` + CUDA, `emitRegion` in `slang-emit-c-like.cpp`) picks up a `SLANG_PRELUDE_UNREACHABLE()`-style macro (debug-trap / release-no-return) from the text preludes (`slang-cpp-types-core.h`, `slang-cuda-prelude.h`), but **CPU-via-LLVM** (`emitLLVMForEntryPoints`) maps `kIROp_Unreachable` → a **raw, trap-less** `CreateUnreachable()` and touches no text prelude. So a `CodeGenTarget`-level `isCUDATarget || isCPUTarget` is too broad for the **producer** side: it would let the LLVM-CPU path convert a defined default into untrapped UB. Fix: give the predicate a `TargetRequest*` overload that additionally excludes `isCPUTargetViaLLVM` (`slang-code-gen.cpp`) and keep the LLVM path's defined default; the `CodeGenTarget` overload can't see the LLVM-vs-source distinction, so consult it **only** from the C-like emitter (which never runs for LLVM). The split is gap-free by construction because the same `isCPUTargetViaLLVM` predicate drives both the producer's choice (via the `TargetRequest*` overload) and the LLVM-vs-source emitter routing — so on the LLVM path the producer keeps the default AND the C-like emitter never runs (no stranded marker), and on a source path producer-emits-unreachable ⟺ emitter-emits-marker; verify each overload has exactly one caller. (`isCUDATarget` covers `CUDASource`/`CUDAHeader`/`PTX` but not `CUDAObjectCode` — self-consistent, at most a missed optimization on that payload, never a correctness bug.) Context: #13220 / PR #13228, `doesTargetSupportUnreachableTerminator` ([target-gating an emitted-code optimization: CPU-via-LLVM uses a separate emitter — exclude it](../learnings/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md)).
 
-**Source learnings (6):**
+**Source learnings (7):**
 - [target-gating an emitted-code optimization: CPU-via-LLVM (slang-emit-llvm.cpp, raw trap-less CreateUnreachable) is a separate emitter with no text prelude — a producer predicate must exclude isCPUTargetViaLLVM (#13220/PR #13228)](../learnings/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md)
 - [emitCast int→int widening is SOURCE-signedness-driven (SExt/ZExt from srcIsSigned), not dstIsSigned; dstIsSigned only gates float↔int; default `-cpu` emits C++ (never slang-emit-llvm.cpp); a `-cpu` test of `int→intptr` is false coverage (#13202)](../learnings/1790012965767-slang-llvm-emitcast-int-widening-picks-sext-zext-b.md)
 - [adjudicating an "isSignedType flip = silent cross-backend change" review finding: the genuine GPU-free witnesses are float→intptr on `-target llvm` and `OpSLessThan` on SPIR-V (slang-emit-spirv.cpp:841); verify the target path reaches the emitter before requiring a test](../learnings/1790014783894-adjudicating-issignedtype-flip-changes-cpu-llvm-si.md)
 - [Editing source/slang-llvm requires a from-source build (USE_SYSTEM_LLVM) to test](../learnings/1789619858349-editing-source-slang-llvm-requires-a-from-source-b.md) — default `FETCH_BINARY_IF_POSSIBLE` doesn't compile `source/slang-llvm`; local GREEN needs `USE_SYSTEM_LLVM` + pinned LLVM 21 (expensive); PR CI builds it from source so GREEN is CI-gated; a `.slang` test-file edit needs no rebuild.
 - [Regression-testing Slang's LLVM emitter: use -target llvm-host-ir -o -, not host-callable](../learnings/1789480942899-regression-testing-slang-s-llvm-emitter-use-target.md) — `host-callable` ignores `verifyModule`'s return so an invalid module exits 0 and never reaches FileCheck; `llvm-host-ir -o -` gives red→green; `CHECK-NOT: noinline` false-matches the mangled name; `[ForceInline]` must beat `[noinline]` in both emitters.
 - [CMake: unquoted list expansion consumes \; escapes (#13077 root cause)](../learnings/1790377335548-cmake-unquoted-list-expansion-consumes-escapes-ver.md) — supersedes the LLVM_USE_HOST_TOOLS / NATIVE-flags diagnosis.
+- [slang-test ↔ slang-llvm FileCheck interface is pinned by the prebuilt release in default local builds](../learnings/1791326969343-slang-test-slang-llvm-filecheck-interface-is-pinne.md) — #13359: an `IFileCheck` change fails `locateLLVMFileCheck` at startup until a release ships; per-prefix `performTest` loses cross-prefix ordering
 
 _Catalog: [[wiki/index.md]]_

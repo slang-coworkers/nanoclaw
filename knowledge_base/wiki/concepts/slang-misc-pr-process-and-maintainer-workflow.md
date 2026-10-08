@@ -3,7 +3,7 @@ title: "Slang PR Process, Maintainer Workflow, and Issue Lifecycle"
 type: concept
 group: slang-grab-bag
 tags: [maintainer, PR-process, merge-queue, CI, GitHub-Actions, issue-lifecycle, bot-permissions, regression-verification, declined-issues, superseded-PRs]
-source_count: 38
+source_count: 39
 ---
 
 # Slang PR Process, Maintainer Workflow, and Issue Lifecycle
@@ -21,7 +21,7 @@ source_count: 38
 - Capture BOTH `.id` and `.html_url` from ONE `gh api … comments POST` (a second POST duplicates the comment); re-push after the LAST amend BEFORE `gh pr create`, because the PR and CI run the *remote* branch.
 - Open bot PRs with no `--assignee`/`--reviewer`, even when a maintainer asks; @-mention them in the description instead.
 - For a codegen asymmetry, lift the BAD leg to the good one (#12004); for a doc-vs-behavior mismatch, measure the behavior fix's cost before assuming code is the real fix (#11682).
-- Source comments describe the code as-is: no change-history narration, no PR/issue pointers.
+- Source comments describe the code as-is: no change-history narration, no PR/issue pointers. Leave pre-existing comments verbatim (match their style/wrap); a long comment justifying an exceptional case means remove the case (e.g. a default-valued parameter), not reword it.
 - Re-check `gh pr list` after a long build (the reporter may have self-fixed).
 
 Companion: [[wiki/concepts/slang-pr-maintainer-scope-and-evidence.md]] (draft-PR footprint, maintainer-decision reversals).
@@ -84,6 +84,8 @@ A doc-vs-behavior mismatch can be fixed on either side, so measure the behavior 
 
 shader-slang maintainers (pdeayton-nv, PR #12148 review) ban two comment phrasings: change-history narration ("unchanged from before this change", "previously we…", "now we…") and PR/issue pointers ("see the issue linked in the PR", "deferred to a follow-up", "pending #12150"). Both rot at merge. When review changes scope, comments state the resulting behavior ("null here → emitter uses the module-global scope"); tracking references stay in the PR body or commit message. Before pushing a review fix, grep the added comments for `before this change|unchanged from|previously|see .* issue|pending #|deferred to` ([comments describe code as-is](../learnings/1784573605212-code-comments-must-describe-the-code-as-is-never-c.md)).
 
+Maintainers also protect **existing** comments and read a long explanatory comment as a design smell. On slang#12701 (2026-10-06) jhelferty-nv requested changes on comment style alone: a 13-line doc block explaining an exceptional case is a smell (thread short comments through the function instead); reuse the existing human comments and match their style and ~70-column wrap; and "why is this being removed?" about one line deleted from a pre-existing TODO block. What worked was restoring every pre-existing comment verbatim and then removing the exceptional case rather than rewording its explanation: an optional, default-valued `defaultArgSource` parameter (with an "absent" branch and an unequal-arity fallback) became an explicit, always-set argument (the callee for ordinary calls, the overload-selected declaration on a witness redirect), and the fallback became a `SLANG_RELEASE_ASSERT` — after which a two-line `///` plus a short call-site comment sufficed. Default-valued parameters draw objections on their own too (jkwak); here the default was what created the exceptional case [leave existing comments verbatim; a long comment for an exceptional case means restructure](../learnings/1791320932441-slang-reviewers-leave-existing-comments-verbatim-a.md).
+
 ## Triage Boundaries and Park Lifecycles
 
 A rename/branding request has no engineering surface: classify as feature request and park at triage, with no fixer and no self-close; it is a governance call ([rename is governance](../learnings/1783935538903-triage-of-rename-branding-requests-governance-not-.md)). Docs for a compiler-limitation bug belong in the compiler repo: the maintainer closed SlangPy docs PR #1060, redirecting it to the Slang docs ([docs go in the compiler repo](../learnings/1783943839130-docs-for-a-compiler-limitation-bug-belong-in-the-c.md)). On slang#12058 the maintainer landed the ASan fix in their own PR while our fixer was auth-down, validating the triage; a stalled fixer's late draft gets reaped ([#12058 validated by maintainer fix](../learnings/1783977766628-triage-validated-by-maintainer-s-own-merged-fix-a-.md)). A park is not a dead end: slang#12054's self-fix park flipped to a maintainer-authorized bot draft that merged ([#12054 park → bot draft shipped](../learnings/1783981181191-slang-12054-shipped-park-for-self-fix-that-flipped.md)).
@@ -98,13 +100,14 @@ A rename/branding request has no engineering surface: classify as feature reques
 
 `slang-discord-support` writes only to summon threads in #slang-support/#slang-support-bot; source channels like #slang-discussion are read-only, so answers there come from a human or a summon thread ([support bot posts only to summon threads](../learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md)).
 
-**Source learnings (38):**
+**Source learnings (39):**
 - [verify review state before "idle-mergeable"](../learnings/1790310304171-verify-a-pr-s-actual-review-state-before-framing-i.md) — `mergeable=true` is not APPROVED (#12935).
 - [Closes #N / draft footprint](../learnings/1785751816891-closes-n-does-not-excuse-an-issue-footprint-while-.md) — draft PR still needs an issue footprint; `behind` is no rebase cue.
 - [rotation from indirect evidence](../learnings/1785758534668-reconciling-the-slang-maintainer-rotation-from-ind.md) — search for the topic; ID→handle reverse lookup.
 - [mergeable_state: THAT, not WHICH](../learnings/1785791831427-mergeable-state-tells-you-that-a-requirement-is-un.md) — #12148 unmet review requirement; bot-token blind spots.
 - [squash breaks ancestry checks](../learnings/1785780766923-squash-merge-breaks-ancestry-checks-verify-a-merge.md) — verify by content; blocked call = UNKNOWN.
 - [comments describe code as-is](../learnings/1784573605212-code-comments-must-describe-the-code-as-is-never-c.md) — no change-history or PR/issue pointers.
+- [Slang reviewers: leave existing comments verbatim; a long comment for an exceptional case means restructure](../learnings/1791320932441-slang-reviewers-leave-existing-comments-verbatim-a.md) — #12701: restore old comments, replace an optional default param with an explicit argument + SLANG_RELEASE_ASSERT.
 - [tfoley is Theresa Foley](../learnings/1777487718343-slang-compiler-tess-foley-name.md) — per `.mailmap`.
 - [handoff: verify live PR state](../learnings/1779622726384-slang-maintainer-handoff-verify-on-pr-state-agains.md) — internal verdicts are invisible on GitHub.
 - [verify commit-vs-tag ancestry](../learnings/1780401515127-slang-precompiled-slang-module-import-triggers-loc.md) — author-date is not release membership.

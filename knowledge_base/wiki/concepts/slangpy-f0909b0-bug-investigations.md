@@ -3,7 +3,7 @@ title: SlangPy bug investigations — autodiff atomics (#222), descriptor/pool e
 type: concept
 group: slangpy
 tags: [slangpy, slang-rhi, autodiff, atomics, d3d12, descriptor-heap, cpu-backend, triage, cross-repo]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
@@ -27,7 +27,9 @@ boundary. Recurring findings:
   only backend that never populates `DeviceLimits::maxComputeDispatchThreadGroups`
   (stays `{0,0,0}`); PR #995's large-dispatch clamp computes `min(0, ceiling)=0` →
   throw. Durable fix mirrors Metal's `0xFFFFFFFF` sentinel in slang-rhi; slangpy can
-  carry a defensive fallback (must cover X, Y, and the generator).
+  carry a defensive fallback (must cover X, Y, and the generator). CPU coverage that crosses a
+  physical Y row (~67M threads) is cheap (~3–5 s/case), so parametrize the large-dispatch tests on cpu
+  rather than skipping.
 - **Triage discipline for cross-repo meta-issues**: a vendored dep in `external/`
   is not proof it's integrated (verify call sites); a stale architecture-refactor
   issue is a prime silently-fixed orphan (verify closing PRs + the cross-reference
@@ -151,6 +153,18 @@ CPU backend on linux") — a harness gate, not a slangpy runtime restriction —
 removed, a separate pre-existing CPU defect
 [#1136/#1137 CPU dispatch zero DeviceLimits + pytest classification](../learnings/1788480806317-slangpy-cpu-dispatch-zero-devicelimits-stale-local.md).
 
+Review of #1137 then asked for CPU coverage that crosses into a **second physical Y dispatch row**.
+With the zero-limit fallback (2097151 groups × 32 threads) that needs ~67.1M logical threads, which
+looked too slow for CPU — but the sentinel-marker tests in `test_large_dispatches.py` ran in ~3–5 s
+per case on a CPU debug build. So the simplest fix was adding `DeviceType.cpu` to their
+parametrization, computing the expected row stride with `resolve_max_dispatch_groups_x()`, and
+treating `limits.y == 0` as unbounded instead of skipping. A mutation check (restoring the
+zero-stride generator) made the grid and `call_group` cases fail, confirming the tests pin the
+codegen wiring. The same chain hit delivery-gate limits on the PR body (`gh pr edit --body-file` ≤1000
+chars, ≤2 lines per `##` section); those mechanics are on
+[the delivery-gates page](agent-routing-f0909b2-critique-and-delivery-gates.md)
+[CPU large-dispatch coverage: crossing the Y row is cheap](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md).
+
 That unmasked segfault (slangpy#1138) is a layer-localization exercise. A SlangPy
 functional-API call segfaults on `DeviceType.cpu` but works on every GPU backend
 (`float first(float x[3])` called with a Python list). The static playbook: rule out
@@ -213,7 +227,7 @@ slangpy#886 was ultimately fixed by PR #1182, and the fix confirms the right lay
 
 **Outcome (current truth): PR #1182 was closed unmerged and superseded by PR #1183** ("Add slangpy shader path to devices and sessions by default", Fixes #886 + #1177) — the maintainer-blessed **unified** fix that resolved #886's earlier held design decision in favor of broad default-on (no opt-out kwarg; @ccummingsNV / @kaizhangNV asked for the slangpy module path to be a default include path). #1183 also supersedes the narrow #1177-only PR #1178. Mechanism: a file-local `std::vector<std::filesystem::path> g_default_slang_include_paths` (anon namespace in `src/slangpy_ext/device/device.cpp`) is set once at package import via a new module-level binding `_set_default_slang_include_paths([SHADER_PATH])` called from `slangpy/__init__.py` (SHADER_PATH is a Python-package path unknowable in C++, so Python registers it and core SGL stays package-agnostic); `prepend_default_slang_include_paths()` (dedup via `std::find`, defaults-first) is applied **unconditionally** — not gated on `add_default_include_paths` — at three binding sites: both `Device` ctor bindings (the `DeviceDesc` one takes the desc BY VALUE to avoid mutating a caller-owned desc) and `device.create_slang_session`. The redundant manual prepend in `create_device` (`slangpy/core/utils.py`) is removed for a single source of truth. Sessions get only the global default, not device-specific custom paths; still-uncovered intentional follow-ups are `spy.App()`'s native-factory device and the free-function `spy.create_slang_session()`. **Pyright scope gotcha:** a bare `pyright slangpy/<file>.py` reports `reportUndefinedVariable` for runtime-injected native symbols (`_set_default_slang_include_paths`, `Device`), but CI does **not** fail because `pyproject.toml [tool.pyright] include = ["./src","./tools","./examples"]` excludes the `slangpy/` package entirely — verify CI impact against the pyright `include` roots, not an ad-hoc per-file run ([slangpy #1183 unified SHADER_PATH default-include mechanism supersedes #886/#1177 fixes; pyright scope gotcha](../learnings/1790185684802-slangpy-1183-unified-shader-path-default-include-p.md)).
 
-**Source learnings (15):**
+**Source learnings (16):**
 
 - [slangpy#222 title is wrong — AMD-Windows grads collapse into element 0, not "always 0"](../learnings/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — `[72,0,0,0]` is a scatter-address bug; verify a title against the actual numbers.
 - [slangpy#222 root cause: slang-rhi advertises float-atomic-ADD off the BASE atomics bit](../learnings/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — a capability atom ≠ runtime support; a coarse `Feature::AtomicFloat` guard can't fix it; cross-repo fix.
@@ -229,4 +243,5 @@ slangpy#886 was ultimately fixed by PR #1182, and the fix confirms the right lay
 - [slangpy #1183 unified SHADER_PATH default-include mechanism supersedes #886/#1177 fixes (#1182/#1178 closed)](../learnings/1790185684802-slangpy-1183-unified-shader-path-default-include-p.md) — a file-local `g_default_slang_include_paths` set at import via `_set_default_slang_include_paths`, prepended unconditionally at 3 binding sites; pyright excludes `slangpy/` so bare native-symbol refs don't fail CI.
 - [SlangPy CPU backend: zero device dispatch limit breaks all dispatches (#1136)](../learnings/1788474155417-slangpy-cpu-backend-zero-device-dispatch-limit-bre.md) — CPU never sets maxComputeDispatchThreadGroups; mirror Metal's 0xFFFFFFFF sentinel; a slangpy fallback must cover X, Y, generator.
 - [SlangPy CPU dispatch: zero DeviceLimits + pytest device classification (#1136/#1137)](../learnings/1788480806317-slangpy-cpu-dispatch-zero-devicelimits-stale-local.md) — a device test needs a `device_type` param to run under scoped selections; CPU excluded from DEFAULT_DEVICE_TYPES.
+- [CPU large-dispatch coverage in slangpy: crossing the Y row is cheap (~3-5s)](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md) — #1137 review: add cpu to test_large_dispatches parametrization; limits.y==0 → unbounded; mutation check confirms wiring.
 - [Localizing a CPU-only SlangPy segfault to a layer (#1138)](../learnings/1788481634992-localizing-a-cpu-only-slangpy-segfault-to-a-layer-.md) — GPU-works/CPU-crashes with opaque-bytes RHI + backend-agnostic slangpy ⇒ compiler CPU/host-callable target bug; reflection probe is cheapest.

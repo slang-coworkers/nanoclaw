@@ -3,7 +3,7 @@ title: "Slang compiler internals: parser/checker, IR/serialization, emit, and di
 type: concept
 group: misc
 tags: [slang, parser, checker, ir, serialization, emit, diagnostics, lowering, bindless, core-module, version-bump]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
@@ -20,12 +20,14 @@ triage/review sessions on real issues:
   validator (`E40007`), which `disableIRValidationScope()` cannot suppress —
   fix the producer's insert ordering. AnyValue bulk-copy empty-member eligibility
   must mirror empty-type-legalization preservation (ABI-significant decorations).
+  An IR-link conflict skip that depends on which candidate was selected is
+  order-dependent; make it two-sided.
 - **Serialization / versioning.** Two independent version constants:
   `kSupportedSerializationVersion` (container/AST format, enforced with `!=`) vs
-  `IRModule::k_min/maxSupportedModuleVersion` (IR instruction-set, NOT numerically
-  enforced). Inserting an AST node type is backward-incompatible (positional tags)
-  and needs a `kSupportedSerializationVersion` bump; a new IR op is stable-named
-  and safe.
+  `IRModule::k_min/maxSupportedModuleVersion` (IR instruction-set, range-checked at
+  load since #12905 — a `k_max` bump makes older compilers reject the new modules).
+  Inserting an AST node type is backward-incompatible (positional tags) and needs a
+  `kSupportedSerializationVersion` bump.
 - **Emit / bindless.** `DescriptorHandle<T>` lowers to `uint2` (two independent
   heap indices, not a 64-bit split); `.Handle` is a member type alias. CUDA `inout`
   subobject passes a field pointer directly with no copy temp; a copy-out workaround
@@ -110,19 +112,44 @@ empties), and extract the decoration set into a shared predicate consumed by bot
 `isSimpleType` and marshalling eligibility so the two can't drift
 ([AnyValue bulk-copy: empty-member eligibility must mirror empty-type-legalization preservation](../learnings/1788423298396-anyvalue-bulk-copy-empty-member-eligibility-must-m.md)).
 
+**IR-link E45002 conflict skip must be two-sided; a generic witness's concrete type
+is an `IRSpecialize`.** PR #13471 (the #13319 conflicting-exports diagnostic; the
+silent order-dependent selection it reports is on
+[[wiki/concepts/slang-compiler-serialization-and-enums.md]]) skips a witness-table
+conflict when the *selected* witness's concrete type is an exported definition, on
+the grounds that it is already "reported through its type". A one-sided skip is
+order-dependent: if `tdef` exports `struct T` plus `extension T : IValue` and `tb`
+also exports `extension T : IValue`, then `tdef tb` links silently, `tb tdef` warns,
+and the two orders emit different code. The skip is valid only when the best AND the
+candidate are both reported through their type. Second, a generic
+`export struct Box<T> : I` is reported twice (`Box` and `Box : I`) because
+`getConcreteType()` is an `IRSpecialize` and `[export]`/`[hlslExport]` sit on the
+outer `IRGeneric`, while `getResolvedInstForDecorations` reaches the undecorated
+inner struct; unwrap `IRSpecialize` → `getBase()`. With both fixes a prototype passed
+the PR test 28/28 and 595/595 across modules, serialization, bugs and library. The
+`reportedExportConflicts` dedupe set exists for repeated generic-witness
+specializations (the BUILTIN sub-test fails without it), not multiple entry points,
+which the clone cache already handles; a multi-target link prints once per target
+([IR-link E45002 witness-skip must be two-sided; generic witness concrete type is IRSpecialize](../learnings/1791336896506-ir-link-e45002-witness-skip-must-be-two-sided-gene.md)).
+
 ## Serialization and version bumping (two distinct constants)
 
-These two atoms clarify a common confusion — there are **two** version numbers:
+There are **two** version numbers, and they are easy to conflate:
 
 1. **`IRModule::k_min/maxSupportedModuleVersion`** (slang-ir.h) is the IR
-   instruction-set version and is **never numerically compared** against a loaded
-   module. Deserialization rejects only on serialization *format* mismatch or an
-   *unrecognized opcode* (via stable names). For an **emit-only** op created
-   post-link (never serialized into a `.slang-module`), bumping has zero functional
-   effect; precedent is ~50/50, enforcement is an advisory CI comment only. Bump
-   anyway to silence the advisory, but it's conventional-not-required; never touch
-   `k_minSupportedModuleVersion` unless removing an op
-   ([k_maxSupportedModuleVersion: never numerically enforced; bump optional for emit-only ops](../learnings/1788427789186-slang-k-maxsupportedmoduleversion-never-numericall.md)).
+   instruction-set version, and it **is range-checked at load** since
+   shader-slang/slang#12905 (`d501b42052`, 2026-09-17, "Enforce serialized module
+   version compatibility"). `IRModule::isModuleVersionSupported(v)`
+   (`k_min <= v <= k_max`) runs in `slang-serialize-ir.cpp:848`,
+   `slang-session.cpp:1259/1396` and `slang-global-session.cpp:667`, and an
+   out-of-range module is rejected. On master 5cb03fa5f7 (2026-10-06) k_min == k_max
+   == 33. So a `k_max` bump is no longer cosmetic: older compilers reject modules
+   written by the newer one. Increment it when you add an instruction, as
+   `docs/design/backwards-compat-for-ir-modules.md` says, and touch `k_min` only when
+   removing an op or breaking semantics. The earlier "never numerically compared,
+   bump is optional for emit-only ops" finding described pre-#12905 code and is
+   superseded; re-read `slang-ir.h` before arguing a bump is cosmetic
+   ([CORRECTION: k_maxSupportedModuleVersion IS range-checked at load since #12905](../learnings/1791314340428-correction-slang-k-maxsupportedmoduleversion-is-ra.md)).
 
 2. **`IRModuleInfo::kSupportedSerializationVersion`** (slang-serialize-ir.cpp) stamps
    the container and IS enforced with `!=` (rejects older AND newer). Inserting a new
@@ -212,13 +239,14 @@ deterministically since reading uninitialized memory is UB). Flag the mismatch a
 documentation nit
 ([value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md)).
 
-**Source learnings (15):**
+**Source learnings (16):**
 
 - [Slang core-module stale-cache: delete embed headers, not just touch](../learnings/1788386919811-slang-core-module-stale-cache-delete-embed-headers.md) — a stale core-module cache reports "pass" while masking E30853; rm the embed headers + blob + slang-bootstrap before rebuilding.
 - [Slang static property feasibility — the work is 3 frontend edits, backend is free](../learnings/1788393506410-slang-static-property-feasibility-the-work-is-3-fr.md) — `isModifierAllowedOnDecl` + this-elision + requirement-matching are the only gaps; check the allow-list first for any modifier-on-decl feature.
 - [foo->Bar<T>() 30101 is a non-idempotent member-expr double-check (issue #9810)](../learnings/1788394233351-slang-foo-gt-bar-lt-t-gt-30101-is-a-non-idempotent.md) — visitMemberExpr mutates in place and CheckTerm's checked-guard misses it; fails-in-one-combination ⇒ suspect re-entrancy.
 - [AnyValue bulk-copy: empty-member eligibility must mirror empty-type-legalization preservation](../learnings/1788423298396-anyvalue-bulk-copy-empty-member-eligibility-must-m.md) — a preserved (ABI-decorated) empty gets a nonzero footprint; thread enclosingPreserved and share one decoration predicate.
-- [k_maxSupportedModuleVersion: never numerically enforced; bump is optional for emit-only ops](../learnings/1788427789186-slang-k-maxsupportedmoduleversion-never-numericall.md) — deserialization rejects on format-version or unknown-opcode only; bump to silence the advisory CI comment.
+- [IR-link E45002 witness-skip must be two-sided; generic witness concrete type is IRSpecialize](../learnings/1791336896506-ir-link-e45002-witness-skip-must-be-two-sided-gene.md) — PR #13471: one-sided skip is an order-dependent false negative; unwrap IRSpecialize→getBase() for export decorations.
+- [CORRECTION: k_maxSupportedModuleVersion IS range-checked at module load since #12905](../learnings/1791314340428-correction-slang-k-maxsupportedmoduleversion-is-ra.md) — isModuleVersionSupported (k_min<=v<=k_max) rejects out-of-range modules; a k_max bump really affects compatibility.
 - [E30019 loc-less: synthesized DerefExpr in _coerce ParameterGroupType branch omits ->loc](../learnings/1788560155779-e30019-loc-less-synthesized-derefexpr-in-coerce-pa.md) — an invalid expr->loc suppresses the caret + expected/got; fix the producer with `derefExpr->loc = fromExpr->loc`.
 - [Slang -validate-ir-detailed SIGABRT is the post-pass module validator, NOT the at-insert scope](../learnings/1788584458760-slang-validate-ir-detailed-sigabrt-is-the-post-pas.md) — the E40007 code is the tell; disableIRValidationScope can't fix it — fix the producer's insert ordering.
 - [CUDA inout-subobject verify: characterization test + abort-safety inversion (slang#12916)](../learnings/1788638566109-cuda-inout-subobject-verify-characterization-test-.md) — pin the direct-pointer emit shape; a copy-out workaround must get abort-safety from design, not a post-call write-back.

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-521 learnings. [Catalog](../index.md)
+525 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -264,6 +264,7 @@ type: topic
 - [devin-fetch done-guard: a partial CI rail is not a verdict — the class stayed open for 12 recorded instances because the fix was never wired into the artifact](../learnings/1786121384159-devin-fetch-done-guard-a-partial-ci-rail-is-not-a-.md)
 - [Diagnosing DescriptorHandle&lt;RaytracingAccelerationStructure&gt; + spvDescriptorHeapEXT crashes](../learnings/1785051051163-diagnosing-descriptorhandle-lt-raytracingaccelerat.md)
 - [Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds](../learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)
+- [DIAGNOSTIC_TEST with -target ptx still runs on runners without NVRTC](../learnings/1791410667785-diagnostic-test-with-target-ptx-still-runs-on-runn.md)
 - [Discord forum parent channel reads return 0 messages — check the specific thread ID for follow-up activity](../learnings/1788404541359-discord-forum-parent-channel-reads-return-0-messag.md)
 - [Discriminate a per-job timeout-minutes cancel: PR-specific cost regression vs systemic capacity ceiling](../learnings/1786198665211-discriminate-a-per-job-timeout-minutes-cancel-pr-s.md)
 - [Disk-blocker false alarm: df the real build path, /workspace/agent is a separate roomy volume](../learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md)
@@ -327,6 +328,7 @@ type: topic
 - [Git worktrees SHARE .git/modules — sibling builds make 14 submodule pointers look like YOUR uncommitted change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md)
 - [GitHub Actions outage signature: jobs cancelled after exactly 15 min with empty runner_name and zero steps](../learnings/1791238163488-github-actions-outage-signature-jobs-cancelled-aft.md)
 - [GitHub CI check counting: total_count ≠ job count, and re-runs duplicate entries](../learnings/1786024895346-github-ci-check-counting-total-count-job-count-and.md)
+- [GitHub CI run with only 'filter' + failure = Actions outage, not code](../learnings/1791386926978-github-ci-run-with-only-filter-failure-actions-out.md)
 - [GitHub CI truth lives in two disjoint surfaces: check-runs AND commit status](../learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md)
 - [GitHub search is:unmerged unreliable; check run_attempt before calling a weekly CI red](../learnings/1790670087305-github-search-is-unmerged-unreliable-check-run-att.md)
 - [GitHub's combined commit status fails in BOTH directions — never derive CI health from it](../learnings/1786350644910-github-s-combined-commit-status-fails-in-both-dire.md)
@@ -391,6 +393,7 @@ type: topic
 - [Pin the denominator when comparing a CI rate to a stored baseline](../learnings/1786091003109-pin-the-denominator-when-comparing-a-ci-rate-to-a-.md)
 - [Pointer function parameters are provisional in the specialize-address-space pre-pass](../learnings/1789249737483-pointer-function-parameters-are-provisional-in-the.md)
 - [Pointer-formation UB (cur+N only compared, deref short-circuit-guarded) is UBSan-flaggable but NOT a realized crash — don't over-call P1](../learnings/1782894644661-pointer-formation-ub-cur-n-only-compared-deref-sho.md)
+- [PR editing external/build-llvm.sh times out Windows aarch64 builds (cold LLVM build)](../learnings/1791437397076-pr-editing-external-build-llvm-sh-times-out-window.md)
 - [PR-review-runner INTEGRITY-FAIL can be a false positive from concurrent reviews racing on the shared slang/tmp](../learnings/1789438412884-pr-review-runner-integrity-fail-can-be-a-false-pos.md)
 - [Prebuilt release binaries are a free runtime bisect — falsify a regression before reworking a perf commit](../learnings/1787635116151-prebuilt-release-binaries-are-a-free-runtime-bisec.md)
 - [Precheck workflow_failures feed can be stale even when ci_health frame is fresh](../learnings/1787643303858-precheck-workflow-failures-feed-can-be-stale-even-.md)
@@ -468,6 +471,7 @@ type: topic
 - [Slang DISABLE CI jobs are build-only — no slang-test run step](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
 - [Slang local checkout can be days-stale on actively-developed CMake files; verify against master + options-matrix CI gate](../learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md)
 - [slang repo gates ALL build/test CI behind non-draft (opposite of slang-rhi)](../learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md)
+- [Slang tools PCH hides missing includes in new unit tests — CI builds without it](../learnings/1791403291004-slang-tools-pch-hides-missing-includes-in-new-unit.md)
 - [slang#11999 gpu-printing macOS flake — verify CI signature, don't trust bot conflation](../learnings/1783548983571-slang-11999-gpu-printing-macos-flake-verify-ci-sig.md)
 - [slang-llvm prebuilt ABI skew breaks master ToT builds (createLLVMBuilder_V2 vs _V3)](../learnings/1780320688142-slang-llvm-prebuilt-abi-skew-breaks-master-tot-bui.md)
 - [slang-rhi builds headless (no Vulkan SDK/GPU) via CMake FetchContent; fresh clones have no git identity](../learnings/1780310225210-slang-rhi-builds-headless-no-vulkan-sdk-gpu-via-cm.md)

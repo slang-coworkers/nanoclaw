@@ -3,7 +3,7 @@ title: Correctness-review methodology — coverage lenses, codegen reproduction,
 type: concept
 group: review-process
 tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile]
-source_count: 16
+source_count: 17
 ---
 
 # Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline
@@ -28,6 +28,8 @@ confirming or refuting? Compilation and clean exits prove far less than they app
   produces a false-negative and a wrong shared conclusion. Run the test shape the reviewer
   SUGGESTS, not only its illustrative example, and set `SLANG_RUN_SPIRV_VALIDATION=1` (slangc
   returns 0 on invalid SPIR-V); `-target ptx` (nvrtc) is a real CUDA compile check here.
+  Compile any test snippet a reviewer proposes against head before forwarding it; if it crashes,
+  give a compiling alternative that reaches the same branch.
 - **A static IR gate is necessary but not sufficient.** `as<IRGlobalParam>` gating a
   reflection side-effect does not prove "non-manifesting" — you must craft the repro to
   exercise the SURVIVAL path, or say "unverified" rather than confirm.
@@ -170,6 +172,20 @@ downstream compiler here). Test both a *direct* `fwd_diff`/`bwd_diff(f)` and a *
 caller* of `f`, since they take different paths and only the direct one broke here
 ([run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md)).
 
+The same applies to a test snippet a reviewer offers as the *fix* for a coverage gap: compile it
+against the head build before forwarding it into a verdict. On slang#13468 Reviewer A closed a
+gap with a ready-made snippet using explicit interface specialization `useBar<IFoo<int>>(a)` whose
+body calls a requirement (`t.v()`); it hits internal error E99997 "Unexpected context type for
+parameter info retrieval" (#13469) on head and master alike, so a fixer pasting it would have
+added a crashing test. When the snippet is wrong, supply a compiling alternative that reaches the
+same branch — here the array-argument form `useBar<T>(T[2] t) where T : IBar<int>` called with
+`IFoo<int> arr[2]`, which keeps `T` an interface `DeclRefType`, whereas a plain `IFoo<int>`
+argument is existential-opened and never reaches the `isInterfaceType(sub)` guard. The revert drill
+also answers a reviewer's "is each half of the fix needed?": revert each leg alone in the verify
+worktree (`git show <base>:path > path` is quick; only touched objects rebuild) and rerun the PR's
+tests — on #13468 either single revert failed all 3 tests, disproving the question's premise
+[check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md).
+
 ## Self-raised findings, EXIT=0, and the full file list
 
 As the reviewer, do not close a finding YOU raised on the author's self-reported result you
@@ -202,8 +218,9 @@ A second blind spot of the same stack is **fidelity to a maintainer's written sp
 
 Two durable-text disciplines that cost avoidable review round-trips, both caught by codex OUTPUT_REVIEW: **(1) never cite `file.cpp:NNNN` in source comments, PR descriptions, or review replies** — a maintainer merging master into the branch shifts every line number, so refer to code by **stable symbol names** (`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`); line numbers are fine only in ephemeral scratch/logs. **(2) `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches message text as a plain substring** — `{{.*}}` FileCheck regex is NOT supported and silently fails (0/1) — and the CHECK must be specific enough to reject the buggy variant (`//CHECK: cyclic reference '$inheritance'` naming the symbol, not the loose `//CHECK: cyclic reference` which also matches a wrong `'E'` diagnostic and wouldn't catch a revert) ([never cite file.cpp:line in durable text — merges make it stale; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md)).
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md) — slang#11709 R2: the suggested `no_diff const groupshared` shape was the regression; SLANG_RUN_SPIRV_VALIDATION=1; -target ptx; test direct fwd/bwd_diff and a differentiated caller.
+- [Review: check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md) — #13468: the snippet hit E99997 (#13469); array-argument form keeps `T` an interface DeclRefType; per-leg revert disproved "is each half needed?".
 - [a spec requirement left unimplemented is a merge blocker until the maintainer defers it](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md) — grade spec items met/missed; "partial" is not a severity tier.
 - [Review lens: AnyValue bulk-copy / empty-struct legalize — numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md) — dispatch the target conformer + pin its numeric result; assert the AnyValue invariant so the silent-default doesn't swallow other shapes.
 - [Review lens: a threaded/recursive parameter — revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md) — delete the parameter and check a test fails; the deeper nested path is the untested one; silent miscompile risk.

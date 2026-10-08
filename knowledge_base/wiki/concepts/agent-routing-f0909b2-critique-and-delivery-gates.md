@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 19
+source_count: 20
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -47,7 +47,8 @@ content-based and hash-based, which creates a family of self-inflicted traps:
   with `in_reply_to`, and a refused block is never delivered. A `[Resolution]`
   also needs a codex OUTPUT_REVIEW first.
 - **`--body-file` must be a literal absolute path** (`$VAR` paths and
-  `-F body=@$var` are refused as unresolvable).
+  `-F body=@$var` are refused as unresolvable). The body is capped at ~1000 chars and ≤2 lines per
+  `##` section; put the 5-bullet block before the first `##`.
 - **Comment hygiene is strictly enforced**, even in test files: timeless
   invariants only, no change-history narration, no line-restating comments.
 
@@ -197,6 +198,7 @@ reply with a literal `-F body=@/abs/path.md` [Counting unresolved PR review thre
 The same literal-path rule binds `gh pr edit N --body-file $D/file.md`: it is refused
 with "cannot be resolved (not a literal path…)" even for an OUTPUT_REVIEW-approved file,
 so spell the absolute path out ([`--body-file $VAR` refused](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md)).
+The body itself is size-gated: on slangpy#1137 `gh pr edit --body-file` was capped at 1000 chars with each `##` section at most 2 lines, and the 5-bullet block counts toward whichever section holds it, so put it before the first `##`. The same chain confirmed two recording rules: every PLAN/CODE/OUTPUT_REVIEW prompt needs a `ROUND:` line and a `REQUIREMENTS:` block of verbatim maintainer quotes with anchor URLs or the round is not recorded, and any edit after an OUTPUT_REVIEW approve invalidates it for the next GitHub write ([PR-description gate caps sections at 2 lines](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md)).
 Because a denial rejects the whole Bash call, any other step chained into it
 is silently skipped too; see the push-bundling rule on
 [the gate-mechanics page](agent-routing-f0909b1-critique-gate-mechanics.md).
@@ -320,7 +322,7 @@ entries to HEAD behaviour, against `_claims.md` §1's "doc's own wording", is
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (19):**
+**Source learnings (20):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -341,3 +343,4 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [explain-diff upsert re-appends Fixes/disclaimer; peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md) — `[Fix Review Request]` to slang-reviewer refused without `in_reply_to`; a `codex-reply` round is not recorded
 - [Final-response [Resolution] refused twice by chain-routing-gate](../learnings/1791196726879-final-response-resolution-refused-twice-by-chain-r.md) — use the send_message tool with in_reply_to + canonical thread_id; OUTPUT_REVIEW a [Resolution] first; task ids from `ncl tasks list`
 - [gate-critique-on-deliver refuses gh pr edit --body-file with a $VAR path](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md) — spell the absolute path; upsert_pr_body.py writes one comment, not the description
+- [PR-description gate: ≤1000 chars, ≤2 lines per `##` section; ROUND:/REQUIREMENTS: needed to record a round (slangpy#1137)](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md) — primary fold (CPU large-dispatch coverage) is on the slangpy bug-investigations page.

@@ -3,6 +3,7 @@ title: "Slang k_maxSupportedModuleVersion: never numerically enforced; bump is o
 type: learning
 topic: slang-compiler
 source: learnings/1788427789186-slang-k-maxsupportedmoduleversion-never-numericall.md
+superseded_by: 1791314340428-correction-slang-k-maxsupportedmoduleversion-is-ra
 ---
 
 # Slang k_maxSupportedModuleVersion: never numerically enforced; bump is optional for emit-only ops

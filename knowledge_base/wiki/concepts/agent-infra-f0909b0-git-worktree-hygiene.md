@@ -3,7 +3,7 @@ title: "Git Worktree Hygiene in a Shared-Clone Fleet"
 type: concept
 group: agent-infra
 tags: [git, worktree, submodules, stash, rebase, isolation, fleet]
-source_count: 14
+source_count: 15
 ---
 
 # Git Worktree Hygiene in a Shared-Clone Fleet
@@ -42,6 +42,7 @@ channels silently cross-contaminate.
   force-push. Ask the remote (`git ls-remote origin <branch> refs/pull/<N>/head`) before
   alarming; never "restore" or lease from the stale ref. Lease explicitly
   (`--force-with-lease=<branch>:$(git rev-parse FETCH_HEAD)`) or fetch `+refs/heads/<b>:refs/remotes/origin/<b>`.
+- **`git checkout` moves the source, not the binary.** In a two-state (bisect/A-B) check, `git log -1` + rebuild right before each measurement, and record the commit the binary was built from; a shared worktree can be moved by another session mid-task.
 - **Verify you are editing the worktree, not the base clone** (they share relative
   paths). `cd` in and use worktree-absolute paths; the base clone stays pristine.
 - **To build an isolating control**, worktree the head, `submodule update --init --recursive`,
@@ -175,6 +176,16 @@ base clone pristine as the shared parent. Recovery without commits:
 `git diff` the base's changes to a patch, `git apply` in the worktree, `git checkout --`
 the base ([verify the tree you edit is the worktree](../learnings/1786709099185-git-worktree-edits-verify-the-tree-you-edit-is-the.md)).
 
+The binary is a third tree to keep straight: **`git checkout` moves the source, not the build**.
+While bisecting slang#13464, a first "79ac457f0 still rejects it" reading was wrong because the
+scratch worktree had been checked out at 79ac457f0 but not rebuilt — the binary was still the
+parent's build; after rebuilding each side, 79ac457f0 accepted and b6ca5682d rejected, as
+expected. In any two-state check, run `git log -1` and a rebuild immediately before each
+measurement and record the commit the binary was *built* from, not just the one checked out. A
+shared worktree (e.g. `wt-12131`) can also be moved to a new master by another session mid-task,
+so re-check `git log -1` before citing line numbers
+([a rebuilt scratch worktree can be stale after `git checkout`](../learnings/1791318189564-a-rebuilt-scratch-worktree-can-be-stale-after-git-.md)).
+
 When *reaping* a worktree, establish reachability by querying the REMOTE directly, not
 local remote-tracking refs. `git branch -r --contains <sha>` and `@{u}` answer from your
 local fetch state, so a stale/unconfigured fetch produces a confident "this commit is on
@@ -189,7 +200,7 @@ change for a ~90MB reclaim (use `-BM` and report the `du` size). The general sha
 from a query whose scope cannot cover the target is not a negative — recurs throughout the
 approver and supervisor learnings.
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [Before reaping a worktree, ask the remote if the commit is safe](../learnings/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — local tracking refs give a false "unpushed"; verify reachability via `git ls-remote` + PR headRefOid before deleting.
 - [Git worktrees share .git/modules — sibling builds make submodule pointers look like your change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md) — never `git add -A` in a shared-submodule worktree; discriminate dirty gitlinks with recorded-vs-checked-out SHAs.
 - [git stash is SHARED across all worktrees — pop can steal a sibling's work](../learnings/1786403681699-git-stash-is-shared-across-all-worktrees-of-a-clon.md) — the stash stack is per-repo; use a scratch commit instead. Enumerates the per-worktree vs per-repo state split.
@@ -200,6 +211,7 @@ approver and supervisor learnings.
 - [Build-based challenger control needs full submodule sync in the worktree](../learnings/1786512746751-approver-infra-build-based-challenger-control-need.md) — `git worktree add --detach` doesn't populate submodules; the only valid diff-isolating control is patched-head vs same-head-minus-just-this-diff.
 - [Fresh slang worktree: init submodules, and build the full preset before a full slang-test run](../learnings/1790799614368-fresh-slang-worktree-init-submodules-and-build-the.md) — empty `external/` breaks configure; `--target slangc slang-test` skips standard modules; `ls-remote` before concluding someone pushed.
 - [Slang worktree rebuild after merging master: sync submodules + CUDA stub](../learnings/1790802270657-slang-worktree-rebuild-after-merging-master-sync-s.md) — `+` submodules after `git merge origin/master`; GPU-configured build dir fails in a no-driver container.
+- [A rebuilt scratch worktree can be stale after `git checkout` — always rebuild before reading a two-state result](../learnings/1791318189564-a-rebuilt-scratch-worktree-can-be-stale-after-git-.md) — #13464 bisect misread; record the built-from commit; re-check `git log -1` on shared worktrees.
 - [Stale remote-tracking ref can look like a force-push collision](../learnings/1790802869775-stale-remote-tracking-ref-can-look-like-a-force-pu.md) — check `ls-remote` / PR head / `head_ref_force_pushed` timeline before alarming; never restore from the stale ref.
 - [Shared slang clone fetches master only, so `origin/<branch>` goes stale and can look like a force-push](../learnings/1790802958185-shared-slang-clone-fetches-master-only-so-origin-b.md) — the only refspec is master; fetch with an explicit `+refs/heads/<b>:refs/remotes/origin/<b>`.
 - [GitHub REST via OneCLI is authenticated on /repos even when /rate_limit says 60](../learnings/1790756536090-github-rest-via-onecli-proxy-is-authenticated-on-r.md) — also: a packed ref to a missing object breaks every fetch on the maintainer clone.

@@ -3,7 +3,7 @@ title: "Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
 type: concept
 group: misc
 tags: [ci-health, heartbeat, test-falcor, flake-vs-real, causation, benchview, compile-perf, perf-alerting, master-branch, nightly]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -33,6 +33,8 @@ Operational facts for the Slang CI-health / maintainer / heartbeat roles:
   greenfield; benchview is a downstream-consumer-by-URL (bench.py comments only), and
   MDL benchmark results push to a PRIVATE repo. Source-verify inherited perf
   "facts" — several circulated mislabeled.
+- **Per-pass compile-time A/B:** use phase-scoped callgrind instruction counts
+  (deterministic) plus an ABBA wall-clock run, not wall-clock medians on a shared box.
 
 ## Causation must be read at the failure site
 
@@ -194,11 +196,27 @@ Routing note across these facts: perf-epic sub-tasks are maintainer-curated,
 sprint-planned, no-repro, ops/infra-not-compiler — don't auto-dispatch a fixer;
 triage + 5-bullet + report up.
 
+**Answering "does this pass change regress compile time?" deterministically.** Wall
+clock on a shared 64-core box is too noisy (load swinging 5→119 moved medians ±10%).
+Run callgrind scoped to the phase function instead:
+`valgrind --tool=callgrind --toggle-collect='Slang::linkIR*' slangc ...` gives
+instruction counts that are identical across repeat runs, and
+`callgrind_annotate --inclusive=yes` shows which function absorbed the delta. Build
+Release base and fix from the same tree, differing only in the one file (copy `bin/`
+and `lib/` out; slangc's rpath is `$ORIGIN/../lib`), pair it with an ABBA-interleaved
+wall-clock run, and check the `.spv` output is byte-identical. The tools/compile-perf
+SPIR-V workloads all fail with "failed to load downstream compiler 'spirv-opt'" unless
+you also build `--target slang-glslang` in Release and copy `libslang-glslang-*.so`
+next to `libslang-compiler`. Do not claim "X% of total compile" from phase-share ×
+phase-delta: measure whole-process Ir, and report a paired IQR that sits entirely
+above zero instead of calling everything noise
+([deterministic compile-perf A/B for a Slang pass: callgrind scoped to the phase](../learnings/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md)).
+
 ## Triaging the Nightly MDL Perf Test gate: split resize-noise from real regressions
 
 When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with many workloads/metrics lit at once, don't treat it as one blob — split it. (1) **Check for a disclosed benchmark-methodology change first:** search recently-merged PRs touching `tools/compile-perf/lib/manifest.py` for `default_size`/`sweep_sizes` edits — a human-reviewed PR that changed a workload's `default_size` often *predicts* the expected before/after ratio in its body (e.g. Slang PR #13035 said "one night of movement on those four workloads is expected"), so a flagged workload matching that predicted list+ratio is NOT a regression, just the gate correctly detecting an intentional disclosed change. (2) **What's left after removing resize-explained workloads is the real signal** — look at which *timer* flagged, not just which workload: a genuine localized pass regression shows up in a sub-pass timer (`specializeModule`, `simplifyIR`, `linkAndOptimizeIR`) while the workload's own `compileInner` (full wall-clock) stays clean (the regression is a fraction of total time, below the workload-level ratio threshold); if `compileInner` also moves for every workload, suspect host/runner contention instead. (3) **Narrow suspects to PRs touching `source/slang/core.meta.slang` / `hlsl.meta.slang`** — the shared core/HLSL prelude is checked+specialized on every single compile (`bench.py` spawns a fresh `slangc` per sample, no cross-process module cache), so adding generic functions/overloads there inflates `specializeModule`/`simplifyIR` broadly across unrelated workloads (easy to miss because a title like "Support generic builtin vector dot products" gives no perf hint). (4) Cross-reference self-merge status (author == merged_by, no APPROVED review) on candidate PRs in the window — a fast signal for where review rigor was lowest, not proof of causation. Worked example (2026-09-19): 4 workloads' 2.4-10x jumps → PR #13035 resize (not a regression); a separate ~1.7-2.4x `specializeModule`/`simplifyIR` jump on other workloads → traced to self-merged #13138/#13135 adding new generics to the core/HLSL prelude ([separating disclosed benchmark-resize noise from genuine compiler perf regressions](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md)).
 
-**Source learnings (18):**
+**Source learnings (19):**
 
 - [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check the timeline actor before assuming we readied a PR; a force-push dismissal is expected; don't re-dispatch ci.yml on a ready PR.
 - [Heartbeat: verify the base, not just the deltas, on durations carried across many wakes](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive "since <anchor>, now ~Nh" from the anchor; a base error survives indefinitely under delta-only checks.
@@ -218,3 +236,4 @@ When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with m
 - [Slang "benchview" is a downstream-consumer-by-URL, not in-tree infra; verify audit branches exist](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md) — benchview lives only in bench.py comments; confirm a named audit branch exists (four checks) before auditing.
 - [Slang perf-alerting facts corrected: perf-push-benchmark-results.yml is COMPILE-TIME MDL; benchview IS in-repo (comments only)](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md) — source-verify inherited learnings; a forked Slack template lacks magnitude/PR links and adaptive median misses gradual drift.
 - [separating disclosed benchmark-resize noise from genuine compiler perf regressions (Nightly MDL Perf Test)](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md) — check manifest.py default_size/sweep_sizes edits (PR body predicts the ratio); the real signal is a sub-pass timer moving while compileInner stays clean; narrow to core/hlsl.meta.slang prelude PRs; cross-ref self-merge.
+- [Deterministic compile-perf A/B for a Slang pass: callgrind scoped to the phase](../learnings/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md) — --toggle-collect on the phase gives run-identical Ir; build slang-glslang for SPIR-V workloads; report whole-process Ir, not phase-share x delta (PR #13236).
