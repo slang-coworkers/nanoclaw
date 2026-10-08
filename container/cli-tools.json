@@ -6,7 +6,7 @@
   },
   {
     "name": "@anthropic-ai/claude-code",
-    "version": "2.1.280",
+    "version": "2.1.289",
     "onlyBuilt": true
   },
   {
@@ -16,7 +16,7 @@
   },
   {
     "name": "@openai/codex",
-    "version": "0.156.1"
+    "version": "0.160.0"
   },
   {
     "name": "@earendil-works/pi-coding-agent",
