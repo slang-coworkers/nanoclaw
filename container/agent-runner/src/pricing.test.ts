@@ -69,6 +69,13 @@ describe('normalizeModel', () => {
     expect(priceUsage('aws/anthropic/bedrock-claude-sonnet-5-5', { input_tokens: 1_000_000 })).toBeCloseTo(2, 10);
   });
 
+  it('prices haiku-5-5 on both the Bedrock primary and the Azure backup id (LiteLLM: $0.10/$0.50 per Mtok)', () => {
+    expect(normalizeModel('aws/anthropic/bedrock-claude-haiku-5-5')).toBe('claude-haiku-5-5');
+    expect(normalizeModel('azure/anthropic/claude-haiku-5-5')).toBe('claude-haiku-5-5');
+    expect(priceUsage('aws/anthropic/bedrock-claude-haiku-5-5', { input_tokens: 1_000_000 })).toBeCloseTo(0.1, 10);
+    expect(priceUsage('azure/anthropic/claude-haiku-5-5', { output_tokens: 1_000_000 })).toBeCloseTo(0.5, 10);
+  });
+
   it('returns "" for unknown/synthetic models (treated as unpriced)', () => {
     expect(normalizeModel('<synthetic>')).toBe('');
     expect(normalizeModel(undefined)).toBe('');
