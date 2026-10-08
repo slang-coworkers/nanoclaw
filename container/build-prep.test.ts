@@ -138,6 +138,18 @@ describe('container/build-prep.sh', () => {
     );
   });
 
+  it('retries a mirror pull that fails transiently', () => {
+    const flaky = path.join(tmp, 'flaky-docker');
+    fs.writeFileSync(
+      flaky,
+      `#!/bin/bash\necho "$*" >> "${calls}"\n[ "$1 $2" = "image inspect" ] && exit 1\nif [ "$1" = pull ] && [ ! -f "${tmp}/failed-once" ]; then touch "${tmp}/failed-once"; exit 1; fi\nexit 0\n`,
+      { mode: 0o755 },
+    );
+    const res = run({ NANOCLAW_DOCKERHUB_MIRROR: 'registry.example/hub', CONTAINER_RUNTIME: flaky });
+    expect(res.status).toBe(0);
+    expect(fs.readFileSync(calls, 'utf-8')).toContain('tag registry.example/hub/library/node:22-slim node:22-slim');
+  });
+
   it('reads settings from .env when the environment does not set them', () => {
     const envFile = path.join(tmp, '.env');
     fs.writeFileSync(envFile, 'NANOCLAW_GITHUB_RELEASES_MIRROR="https://mirror.example/gh"\n');

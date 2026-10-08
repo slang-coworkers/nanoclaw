@@ -125,7 +125,12 @@ seed_image() {
     */*) src="$HUB_MIRROR/$ref" ;;
     *) src="$HUB_MIRROR/library/$ref" ;;
   esac
-  sudo -n docker pull -q "$src" >/dev/null || die "could not pull $src"
+  local attempt
+  for attempt in 1 2 3; do # Artifactory answers the odd transient auth error
+    sudo -n docker pull -q "$src" >/dev/null && break
+    [ "$attempt" = 3 ] && die "could not pull $src"
+    sleep $((attempt * 5))
+  done
   sudo -n docker tag "$src" "$ref"
 }
 
