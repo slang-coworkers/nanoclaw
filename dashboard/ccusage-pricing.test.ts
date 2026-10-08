@@ -44,13 +44,13 @@ describe('FALLBACK_PRICING', () => {
       'aws/anthropic/bedrock-claude-opus-5',
       'claude-sonnet-5',
       'aws/anthropic/bedrock-claude-sonnet-5',
-      'claude-sonnet-5-5',
-      'aws/anthropic/bedrock-claude-sonnet-5-5',
-      'azure/anthropic/claude-sonnet-5-5',
       'claude-opus-5-5',
       'aws/anthropic/bedrock-claude-opus-5-5',
       'azure/anthropic/claude-opus-5-5',
       'azure/anthropic/claude-opus-4-8',
+      'claude-haiku-5-5',
+      'aws/anthropic/bedrock-claude-haiku-5-5',
+      'azure/anthropic/claude-haiku-5-5',
     ]) {
       expect(FALLBACK_PRICING[model], `${model} would be silently dropped`).toBeDefined();
     }
@@ -71,6 +71,12 @@ describe('FALLBACK_PRICING', () => {
       cacheCreate: 2.5e-6,
       cacheRead: 2e-7,
     });
+  });
+
+  it('prices haiku-5-5 (Bedrock primary + Azure backup) at the LiteLLM online rate', () => {
+    for (const id of ['claude-haiku-5-5', 'aws/anthropic/bedrock-claude-haiku-5-5', 'azure/anthropic/claude-haiku-5-5']) {
+      expect(FALLBACK_PRICING[id], id).toEqual({ input: 1e-7, output: 5e-7, cacheCreate: 1.25e-7, cacheRead: 1e-8 });
+    }
   });
 
   it('does not price sonnet-5 at sonnet-4-6 rates', () => {
