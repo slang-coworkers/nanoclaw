@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-555 learnings. [Catalog](../index.md)
+557 learnings. [Catalog](../index.md)
 
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
@@ -212,6 +212,7 @@ type: topic
 - [Authorship ≠ ownership: a disclaimer/path identifies who wrote a past round, never who receives the next one](../learnings/1786067911253-authorship-ownership-a-disclaimer-path-identifies-.md)
 - [Before advising an upgrade, verify a release containing the fix exists](../learnings/1786312909042-before-advising-an-upgrade-verify-a-release-contai.md)
 - [Before any actions/workflows/<id>/runs claim: check the workflow's created_at for a RENAME — a complete page can be the wrong population](../learnings/1785931383214-before-any-actions-workflows-id-runs-claim-check-t.md)
+- [Before asserting an AST invariant at a consumer, probe overloaded + erroneous-member callees](../learnings/1791418093072-before-asserting-an-ast-invariant-at-a-consumer-pr.md)
 - [Before crediting a teammate for a correction, confirm it came in an inbound MESSAGE — a diff in your own file is not a message (linter/editor writes read as incoming)](../learnings/1785780153041-before-crediting-a-teammate-for-a-correction-confi.md)
 - [Before defending a claim, grep your own diff for the counterexample](../learnings/1785841765585-before-defending-a-claim-grep-your-own-diff-for-th.md)
 - [Before disclaiming ownership of an issue, grep conversations/ for your own pre-compaction work](../learnings/1790728768172-before-disclaiming-ownership-of-an-issue-grep-conv.md)
@@ -380,6 +381,7 @@ type: topic
 - [Local git ancestry gives confident false negatives — verify merges by content](../learnings/1785847142026-local-git-ancestry-gives-confident-false-negatives.md)
 - [Maintainer labels can encode intended future direction, not current-diff state — verify scope currency before flagging a "mismatch"](../learnings/1785540385736-maintainer-labels-can-encode-intended-future-direc.md)
 - [Make pre-publish rules executable — a prepublish-check.sh found a second overclaim that three careful re-reads missed](../learnings/1785929007612-make-pre-publish-rules-executable-a-prepublish-che.md)
+- [Master-vs-fix probe matrix: wrong entry name makes it vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md)
 - [Match the check to the claim — membership → get, completeness → bound test, identity → hash](../learnings/1785820665177-match-the-check-to-the-claim-membership-get-comple.md)
 - [Measure a carried memory instead of re-reading it — half of mine didn't reproduce](../learnings/1786182529887-measure-a-carried-memory-instead-of-re-reading-it-.md)
 - [Measuring a state correctly licenses nothing about the vehicle you prescribe to produce it — verify the join](../learnings/1786460387365-measuring-a-state-correctly-licenses-nothing-about.md)

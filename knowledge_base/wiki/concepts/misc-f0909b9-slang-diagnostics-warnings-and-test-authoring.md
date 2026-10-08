@@ -3,7 +3,7 @@ title: "Slang diagnostics: the warning mechanism, lossy int→float warnings, an
 type: concept
 group: misc
 tags: [slang, warnings, warning-level, pedantic, diagnostic-test, filecheck, int-to-float, getMaximumTypeBitSize, slang-test, unit-test, lang-server]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
@@ -30,9 +30,10 @@ and exact float representability = odd-part significant-bit count, not raw bit s
 annotated (an un-annotated source line asserts NO diagnostic there — that's how you
 assert absence; there is no `//CHECK-NOT:`). Each rich diagnostic emits TWO
 records. Match by bare code (`30133`) or message substring, never the rendered
-`error[E…]:` header. For real FileCheck (SPIR-V), a bare `CHECK-NOT` only guards a
-bounded region — use a `CHECK-DAG`/`CHECK-NOT`/`CHECK-DAG` barrier and run the
-revert drill on negatives.
+`error[E…]:` header. Matching is a literal substring of ONE field (no `{{.*}}`; code and message are
+never concatenated), and an unlocated `E99997` (location `0:0`) cannot be caret-anchored. For real FileCheck (SPIR-V), a bare `CHECK-NOT` only guards a
+bounded region — use a `CHECK-DAG`/`CHECK-NOT`/`CHECK-DAG` barrier (it guards only the gap
+between groups) or a separate `-NOT`-only run, and run the revert drill on negatives.
 
 **Harness/build facts.** `-warnings-disable` works on SIMPLE but not
 COMPARE_COMPUTE (forward via `-xslang -Wno-<code>`); slang-rhi's CPU backend is
@@ -143,11 +144,34 @@ Boundary tests must use an ODD value (`16777217`) — powers of two strip to one
 significant bit and never exercise the `significantBits <= mantissaBits` compare
 ([IntegerLiteralExpr folds unary ops](../learnings/1788812664549-integerliteralexpr-folds-unary-ops-un-truncated-fo.md)).
 
+Four refinements from #12875. **Diag-mode matching is a literal substring against
+ONE field** (message, severity, code, or severity+code): FileCheck `{{.*}}` is not
+interpreted and code and message are never concatenated, so
+`CHECK: E99997{{.*}}non-simple operand` fails while `CHECK: E99997` passes. A located
+error's two records (an `error` row with code + title, a `span` row with the message)
+both need an annotation at the same caret (`//CHECK: ^ E41202` and
+`//CHECK: ^ <message substring>`), or the run fails "Found 1 diagnostic(s) without
+annotations". **`E99997` (an internal `SLANG_UNEXPECTED` abort) is unlocated** — its
+machine-readable location is `0:0`, so no caret can pin where it lands; if a maintainer
+wants the location tested, the compiler must first emit a real located diagnostic, which
+is a scope question to ask before building it. **Prove the anchor is load-bearing:**
+move the caret one column, then move the annotation to another line (both must fail),
+and do a compiler revert drill (`false &&` the new branch). The same PR showed that a
+user `bit_cast<Word>(Empty{})` never reaches `lowerBitCast`'s located E41202, because
+empty-type legalization removes `Empty` first, so `NotEqualBitCastSize` is reported from
+`legalizeBitCast`; `sourceLoc.isValid()` is not evidence that a cast was user-authored
+(lower-to-ir and inlining give compiler casts locations too), so the provenance argument
+has to come from enumerating the `BitCast` producers
+([DIAGNOSTIC_TEST: annotate every record; unlocated internal errors cannot be caret-anchored](../learnings/1791296982463-slang-diagnostic-test-annotate-every-record-unloca.md)).
+
 For **real FileCheck** (e.g. SPIR-V absence assertions), a bare `CHECK-NOT` only
 guards a bounded region — if the forbidden text appears in the MIDDLE of output, a
 leading/trailing `CHECK-NOT` silently misses it and the test passes vacuously. The
 robust idiom is a `CHECK-DAG`(early anchors) / `CHECK-NOT` / `CHECK-DAG`(late
-anchors) barrier bracketing the target section. Prove the negative has teeth (revert
+anchors) barrier bracketing the target section. That barrier guards only the gap *between* the two DAG
+groups: a `-NOT` beside a DAG group never sees text interleaved among that group's
+matches, so a whole-output absence needs its own `-NOT`-only run
+([FileCheck CHECK-NOT regions](slang-test-filecheck-authoring-and-opt-levels.md)). Prove the negative has teeth (revert
 drill: temporarily assert absence of something that DOES exist, confirm it fails). And
 `-g2` embeds the whole `.slang` source as one `OpString` with escaped quotes, so
 bare-word checks self-match your directives — anchor on real instruction forms with
@@ -202,7 +226,7 @@ convenient local checkout at a different commit. Any claim about what's *present
 target, file, helper) must be checked at the exact reviewed ref
 ([verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md)).
 
-**Source learnings (15):**
+**Source learnings (16):**
 
 - [Slang HAS opt-in default-off warnings (WarningLevel + -W<name>) — wiki "disable-only" is stale](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — full opt-in ladder; use `pedantic` for off-by-default; a sign-change warning needs its own `_coerce` branch.
 - [Slang lossy int→float warning: diagnostic-test annotation mechanics + unsigned-literal & warning-group pitfalls](../learnings/1788797863864-slang-lossy-int-float-warning-diagnostic-test-anno.md) — -Wextra ON / -Wall+-Wpedantic OFF; lossy int→float is an independent `if` in _coerce (cost 400); don't raise conversion cost.
@@ -219,3 +243,4 @@ target, file, helper) must be checked at the exact reviewed ref
 - [Verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md) — a target present on master may 404 on a behind-master PR head; check presence at the exact reviewed ref.
 - [int→half E30081 warning: use round-trip exactness, not a fixed [-2048,2048] range](../learnings/1788945215723-slang-int-half-e30081-warning-use-round-trip-exact.md) — half's exactly-representable integers above 2048 are non-contiguous (…65504); test via `HalfToFloat(FloatToHalf(v))==v`; diagnostic-only, don't touch ConversionCost; shared predicate serves #12929/#12930/#12979.
 - [half int-literal E30081 routes through `_coerce`, not overflow — `getMaximumTypeBitSize`=0 for half](../learnings/1788947867563-half-int-literal-conversion-warning-e30081-getmaxi.md) — the `maxBitSize>0`-guarded IntegerConstantOverflow branch is skipped for half, so every int→half literal (incl. 131072) is diagnosed via E30081; `diag=CHECK` caret width counts the `u` suffix.
+- [DIAGNOSTIC_TEST: annotate every record; unlocated internal errors cannot be caret-anchored](../learnings/1791296982463-slang-diagnostic-test-annotate-every-record-unloca.md) — #12875: E99997 is `0:0`; error+span rows both need carets; literal single-field substring (no `{{.*}}`); caret-move + revert drills; `sourceLoc.isValid()` ≠ user-authored

@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-352 learnings. [Catalog](../index.md)
+358 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
@@ -124,6 +124,7 @@ type: topic
 - [Devin re-scrape recovery: fresh draft PR renders with NO flag anchors; escaped-JSON grep gotcha](../learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md)
 - [Devin Review done-detector races AI-analysis text render](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)
 - [Devin Review is static-only; and don't double-background reviewer dispatch](../learnings/1788341384825-devin-review-is-static-only-and-don-t-double-backg.md)
+- [Devin Review never finishes on a DRAFT PR viewed anonymously — skip B after one timeout instead of burning 2×30 min](../learnings/1791418496634-devin-review-never-finishes-on-a-draft-pr-viewed-a.md)
 - [Devin review on a freshly force-pushed PR can return a STALE false-positive bug — check commit-status + vintage before trusting it](../learnings/1788262022886-devin-review-on-a-freshly-force-pushed-pr-can-retu.md)
 - [Devin Review staleness: discriminate the analyzed commit via the rendered gitlink, not file/line counts](../learnings/1786115970876-devin-review-staleness-discriminate-the-analyzed-c.md)
 - [Devin reviewer (B) can exit rc=0 while analysis is still "Generating" — a false all-clear](../learnings/1781731413287-devin-reviewer-b-can-exit-rc-0-while-analysis-is-s.md)
@@ -140,6 +141,7 @@ type: topic
 - [Don't force-push over a peer-reviewed commit — it strands the reviewed base and blocks a delta re-review](../learnings/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md)
 - [Don't instruct coworkers to mark PRs ready-for-review (drafts-only is admin-set)](../learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md)
 - [Don't relay mid-flight review status upstream as settled — wait for it to stabilize](../learnings/1789445084069-don-t-relay-mid-flight-review-status-upstream-as-s.md)
+- [Don't release a review verdict before every correctness pass lands](../learnings/1791365011484-don-t-release-a-review-verdict-before-every-correc.md)
 - [Empirical "I tested it" probes can miss the wrong sub-case — Devin's persistent flags deserve scrutiny even when initial reading says misread](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
 - [Enumerate every write site before asserting an invariant — grep beats mutual review](../learnings/1785928854026-enumerate-every-write-site-before-asserting-an-inv.md)
 - [explain-diff upsert re-appends Fixes/disclaimer; peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md)
@@ -214,6 +216,7 @@ type: topic
 - [Reviewer A ($30 budget cap) can silently produce no final-review.md](../learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md)
 - [Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
 - [Reviewer A (compose-and-run) aborts at 600s bg-subagent wait — set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790636700676-reviewer-a-compose-and-run-aborts-at-600s-bg-subag.md)
+- [Reviewer A (compose-and-run) can exit before its background subagents finish → REVIEW-GUARD FAIL](../learnings/1791360790085-reviewer-a-compose-and-run-can-exit-before-its-bac.md)
 - [Reviewer A (compose-and-run) can systematically kill its own background subagents — 3/3 failures on one PR; run the REVIEW.md lenses yourself](../learnings/1790924682986-reviewer-a-compose-and-run-can-systematically-kill.md)
 - [Reviewer A (nv-slang-bot) can emit confident false-positive crash bugs whose repros do not compile — always compile the repro](../learnings/1782885111139-reviewer-a-nv-slang-bot-can-emit-confident-false-p.md)
 - [Reviewer A (slang-pr-review-runner) breaks on claude CLI 2.1.285: background subagents are killed and the review is a stub](../learnings/1790765591537-reviewer-a-slang-pr-review-runner-breaks-on-claude.md)
@@ -227,6 +230,7 @@ type: topic
 - [Reviewer A background-subagent orphan recurs; subagent jsonl absent; quarantine + one re-run](../learnings/1790901257688-reviewer-a-background-subagent-orphan-recurs-subag.md)
 - [Reviewer A branch/pr runs share /workspace/agent/slang across sessions — isolate with REPO_ROOT](../learnings/1790762958834-reviewer-a-branch-pr-runs-share-workspace-agent-sl.md)
 - [Reviewer A budget cap 30 can die before writing anything; guard's "zero dispatches" is a false negative](../learnings/1785754065591-reviewer-a-budget-cap-30-can-die-before-writing-an.md)
+- [Reviewer A can exhaust --max-budget-usd 30 on a small PR; reconstruct from task_notification summaries](../learnings/1791423170957-reviewer-a-can-exhaust-max-budget-usd-30-on-a-smal.md)
 - [Reviewer A can silently do a static-only review — verify the build actually ran](../learnings/1787323074074-reviewer-a-can-silently-do-a-static-only-review-ve.md)
 - [Reviewer A diff-integrity guard false-positives when concurrent sessions share /workspace/agent/slang/tmp/pr-diff.patch](../learnings/1790800379153-reviewer-a-diff-integrity-guard-false-positives-wh.md)
 - [Reviewer A empty final-review.md on large diffs = 600s bg-wait timeout, not a clean result — recover subagents from stream.jsonl](../learnings/1789468288728-reviewer-a-empty-final-review-md-on-large-diffs-60.md)
@@ -243,6 +247,7 @@ type: topic
 - [Reviewer A on large Slang PRs: the $30 budget can cut off subagents, and a run can come back empty](../learnings/1791081955973-reviewer-a-on-large-slang-prs-the-30-budget-can-cu.md)
 - [Reviewer A orphan is now 3/3 on claude CLI 2.1.285 even without run_in_background in tool-uses — treat the pipeline as broken, not flaky](../learnings/1790792204414-reviewer-a-orphan-is-now-3-3-on-claude-cli-2-1-285.md)
 - [Reviewer A patch-mode: inner orchestrator can end_turn while background subagents run (review-guard <500B)](../learnings/1790707975468-reviewer-a-patch-mode-inner-orchestrator-can-end-t.md)
+- [Reviewer A re-suggests tint rows that were proven useless in an earlier round — adjudicate across rounds](../learnings/1791393113319-reviewer-a-re-suggests-tint-rows-that-were-proven-.md)
 - [Reviewer A REVIEW-GUARD false positive: 'socket' in a legitimate review](../learnings/1790645552774-reviewer-a-review-guard-false-positive-socket-in-a.md)
 - [Reviewer A shares /workspace/agent/slang/tmp with concurrent runs — isolate with REPO_ROOT=<own worktree>](../learnings/1791205564538-reviewer-a-shares-workspace-agent-slang-tmp-with-c.md)
 - [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md)
@@ -254,6 +259,7 @@ type: topic
 - [Reviewer A/C output files hold only the LAST assistant text block — reconstruct the review from stream.jsonl](../learnings/1785896984738-reviewer-a-c-output-files-hold-only-the-last-assis.md)
 - [Reviewer A: ALWAYS launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 — two consecutive guard-fails on #13410 without it](../learnings/1790970036877-reviewer-a-always-launch-with-claude-code-print-bg.md)
 - [Reviewer A: inner `claude --print` kills background subagents after 600s; set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790757776971-reviewer-a-inner-claude-print-kills-background-sub.md)
+- [Reviewer A: launch with CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 AND an isolated REPO_ROOT every time, not just as recovery](../learnings/1791413704374-reviewer-a-launch-with-claude-code-print-bg-wait-c.md)
 - [Reviewer A: set REPO_ROOT to a private worktree to avoid shared tmp/pr-diff.patch clobbering](../learnings/1790799086877-reviewer-a-set-repo-root-to-a-private-worktree-to-.md)
 - [Reviewer B (Devin) fails at Chrome launch in reviewer container — no dbus](../learnings/1783630449263-reviewer-b-devin-fails-at-chrome-launch-in-reviewe.md)
 - [Reviewer background jobs die at turn end — keep the turn open until they finish](../learnings/1790712733292-reviewer-background-jobs-die-at-turn-end-keep-the-.md)

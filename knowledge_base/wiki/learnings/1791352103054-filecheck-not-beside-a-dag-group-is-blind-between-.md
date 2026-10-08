@@ -3,6 +3,7 @@ title: "FileCheck -NOT beside a -DAG group is blind between DAG matches; use a s
 type: learning
 topic: misc
 source: learnings/1791352103054-filecheck-not-beside-a-dag-group-is-blind-between-.md
+superseded_by: 1791336888864-filecheck-not-around-a-dag-group-does-not-guard-te
 ---
 
 # FileCheck -NOT beside a -DAG group is blind between DAG matches; use a separate run

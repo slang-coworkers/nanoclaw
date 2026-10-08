@@ -3,14 +3,14 @@ title: "Reading GitHub CI run/job state correctly"
 type: concept
 group: ci
 tags: [ci, github-actions, gh-cli, run-state, check-runs, rollup, zombie-runs, force-push]
-source_count: 9
+source_count: 12
 ---
 
 ## TL;DR
 
 A green-looking CI signal is almost never the question you actually asked. The recurring failure is reading a *true* value about the *wrong object* — an endpoint that can't express skipped jobs, a rollup that aggregates unrelated event families, a run pinned to a dead SHA, or a "cancelled" run that hides failing jobs.
 
-- **"No failing checks" ≠ "CI validated this diff."** Compute `non_skipped = total − skipped` and look at *which* jobs ran. If no build/test job is in the non-skipped set, the rollup carries zero signal about the code.
+- **"No failing checks" ≠ "CI validated this diff."** Compute `non_skipped = total − skipped` and look at *which* jobs ran. If no build/test job is in the non-skipped set, the rollup carries zero signal about the code. On a draft slang PR a ~20 s `success` run is a skipped matrix: report "not run (draft-gated)", never green.
 - **Never read CI state from `GET /commits/<sha>/status`** — it reports only legacy commit statuses (often a single CLA check) and is structurally blind to check-runs. Use `/commits/<sha>/check-runs --paginate` and name the non-skipped jobs.
 - **Filter by event class, not by non-skipped-ness.** A slang PR carries `pull_request_target` bookkeeping and `workflow_dispatch` real CI at the same head; pick `workflow_dispatch AND headSha==<pr head>`.
 - **Every push voids a run's identity — including one you didn't make.** A `workflow_dispatch` pins the SHA at dispatch time; a force-push orphans it silently, and a maintainer's "Update branch" merge moves the PR head and restarts CI and CLA there. Re-read `headRefOid` on every PR event before querying status or check-runs; read `headSha` and `run_attempt` before trusting a run; report a run id *with its SHA*. A bot comment that "contradicts" the status usually means the head moved.
@@ -24,6 +24,8 @@ A green-looking CI signal is almost never the question you actually asked. The r
 ## The rollup is not a verdict
 
 The most common trap: `gh pr view --json statusCheckRollup` returns no `FAILURE` rows and that reads as green. It isn't. On a slang draft PR, a 47-check rollup was **42 SKIPPED, 4 SUCCESS, 1 empty** — and the 4 that ran were `board-sync` and `reuse-compliance-check`, pure bookkeeping. Zero build, zero test. Nothing failed because almost nothing executed: slang's `ci.yml` gate (`github.event.pull_request.draft != true`) skips the whole `pull_request` build path on drafts, whose real evidence lives in a separate `workflow_dispatch` run. Compute `non_skipped = total − skipped` and inspect *which* checks those are before reading a rollup as green. Handle the empty/`null`-conclusion bucket explicitly — `group_by(.conclusion)` and `//""` silently launder it into "not failing." A true `mergeStateStatus: BEHIND` is a real fact about base-freshness but lends no credibility to a false "green." [A PR rollup with zero FAILUREs is not green — count the NON-SKIPPED checks (a draft PR's build path is filtered out)](../learnings/1786065130962-a-pr-rollup-with-zero-failures-is-not-green-count-.md)
+
+The same draft gate makes a *run* lie, not just a rollup: a `ci.yml` run dispatched for a draft slang PR can conclude `success` in about 20 s because the build/test matrix was skipped (#13450: `gh pr checks` showed 5 pass, 57 skipping). Report it as "not run (draft-gated)", never as green, and count only local results until a maintainer starts the full matrix. Before writing "CI green" in a `[Fix Report]` or `[Triage Resolution]`, check the skipping count (`gh pr checks <N>`) or the duration (`gh run view <id> --json createdAt,updatedAt`); a 20-second green is a skip, not a pass [A green CI run on a draft slang PR usually means the matrix was skipped](../learnings/1791249794628-a-green-ci-run-on-a-draft-slang-pr-usually-means-t.md).
 
 Worse than a misread rollup is `GET /repos/<o>/<r>/commits/<sha>/status`: it counts only legacy commit statuses (here a single `license/cla`) and is *structurally incapable* of representing the 42 skipped check-runs — the caller gets one reassuring word and nothing to inspect. You cannot notice what the endpoint cannot express. Use `check-runs --paginate` (it truncates at 30 without `--paginate`), census by conclusion, then **name the non-skipped jobs and ask whether any is a build/test job**. Don't report a count — the total drifted 46→47→51 across one head as bookkeeping re-ran while substance never changed; the durable claim is "no build or test job appears in it." [GET /commits/<sha>/status reports success from one CLA check — never read CI state from it](../learnings/1786065560682-get-commits-sha-status-reports-success-from-one-cl.md)
 
@@ -49,7 +51,7 @@ GitHub's `waiting` status means *parked on a deployment-environment approval gat
 
 Zombie `queued` runs poison queue metrics directly. `?status=queued&per_page=100` returned 6 runs, two of them 71–73 days old with `updated_at` never advancing past May — 33% of the "queue" was a permanent constant, dragging max-age to 105983 min and firing a "depth ≥ 3" alarm forever. Before alarming on any count or percentile from a queue endpoint, check that the population *varies*: a row whose `updated_at==created_at` and is days old is a stuck record, not workload. Sort by `created_at` ascending, drop rows older than a sanity bound, and *log how many you dropped*. Corollary for the same repo: `event=dynamic` "pages build and deployment" runs carry a lagged `head_sha`, so join pages runs to commits by `created_at` adjacency, never by SHA. [Zombie queued CI runs poison queue metrics — 33% of a queue was two 71-day-old constants](../learnings/1786134666479-zombie-queued-ci-runs-poison-queue-metrics-33-of-a.md)
 
-**Source learnings (11):**
+**Source learnings (12):**
 - [A PR rollup with zero FAILUREs is not green — count the NON-SKIPPED checks (a draft PR's build path is filtered out)](../learnings/1786065130962-a-pr-rollup-with-zero-failures-is-not-green-count-.md)
 - [GET /commits/<sha>/status reports success from one CLA check — never read CI state from it](../learnings/1786065560682-get-commits-sha-status-reports-success-from-one-cl.md)
 - [A CI probe must filter by event class, not by non-skipped-ness](../learnings/1786065641852-a-ci-probe-must-filter-by-event-class-not-by-non-s.md)
@@ -61,3 +63,4 @@ Zombie `queued` runs poison queue metrics directly. `?status=queued&per_page=100
 - [Run-level CI bucketing hides job-level failures; discriminate `cancelled` by timeout arithmetic](../learnings/1786206264424-run-level-ci-bucketing-hides-job-level-failures-di.md)
 - [A "waiting" run consumes no runners — but a capacity throttle that counts it livelocks the queue](../learnings/1786205852182-a-waiting-run-consumes-no-runners-but-a-capacity-t.md)
 - [Zombie queued CI runs poison queue metrics — 33% of a queue was two 71-day-old constants](../learnings/1786134666479-zombie-queued-ci-runs-poison-queue-metrics-33-of-a.md)
+- [A green CI run on a draft slang PR usually means the matrix was skipped](../learnings/1791249794628-a-green-ci-run-on-a-draft-slang-pr-usually-means-t.md) — ~20 s success with 57 skipping on #13450; report "not run (draft-gated)" until the full matrix runs

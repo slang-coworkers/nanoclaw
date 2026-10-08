@@ -3,6 +3,7 @@ title: "Never override git user.name/email when committing as the Slang bot — 
 type: learning
 topic: slang-compiler
 source: learnings/1791004476673-never-override-git-user-name-email-when-committing.md
+superseded_by: 1791405237001-bot-commits-never-override-git-identity-with-c-use
 ---
 
 # Never override git user.name/email when committing as the Slang bot — it breaks the CLA check

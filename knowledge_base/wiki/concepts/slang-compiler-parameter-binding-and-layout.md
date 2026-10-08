@@ -3,7 +3,7 @@ title: "Slang Parameter Binding and Layout"
 type: concept
 group: slang-grab-bag
 tags: [bitfield, scalar-layout, parameter-binding, vk-binding, layout-kind, entry-point, system-value, SV_Target, SV_Position, validateEntryPoint, type-layout, ir-layout, spirv-layout, descriptor-set, mesh, geometry, E38052]
-source_count: 13
+source_count: 15
 ---
 
 # Slang Parameter Binding and Layout
@@ -19,6 +19,7 @@ source_count: 13
 - Layout POLICY is written **twice**: `slang-type-layout.cpp` and `slang-ir-layout.cpp` share NO code. SPIR-V layout decorations use the **IR path**, not reflection `IRTypeLayout`. The two are not 1:1, so "just unify them" is capped in value.
 - The IR rule `Natural` encodes as the same op as user `ScalarDataLayout`, so a per-target change to scalar rounding also hits natural buffers unless a separate internal op is added. `sizeof`/`alignof` are target-independent AST constants.
 - **Natural layout already rounds array strides** (`S{double;int}`: size 12, stride 16), so only a nested struct moving later fields tells natural from rounded rules; a `LoadAligned` promise must be a power of two (E41301).
+- On CPU/CUDA the varying layout rules ARE the uniform rules, so a global-scope `in`/`out` takes uniform bytes in reflection; the emitted `GlobalParams` must collect it too or every later offset shifts silently. Layout field keys for a global var must be the var itself, not a module-scope load.
 - Bitfield packing is decided at semantic check from the linkage options and baked into a precompiled module; the importing session's flags do not change it.
 - A zero-width bitfield becomes the first member of the next backing group; under MSB-first packing its getter reads -1 when the next field is negative.
 - Check bitfield layout without a GPU or MSVC: `-target cpp` output plus g++ `__attribute__((ms_struct))` as an MSVC-layout emulation.
@@ -53,6 +54,12 @@ The duplication is not just per-fix but architectural, verified by direct source
 
 Testing such a rounding change needs a type whose layout actually differs. `IRTypeLayoutRules::getNatural()` already gives an array stride of alignUp(size, align): `S{double x; int y;}` has size 12 but stride 16, so `S[N]` does NOT distinguish natural from rounded rules. A difference shows only when a nested struct moves later fields — `U{S z; float w;}` (`w`@12 vs @16) or `T{S a; float b[3];}` (stride 24 vs 32). The byte-address aligned-array path (`isWideAccessAligned`) needs `promisedAlignment % (stride*count) == 0`, and E41301 requires the promise to be a power of two, so `LoadAligned<U[2]>` with a rounded 48-byte size can never take the typed path; pick a type whose rounded array size is a power of two. As an oracle, DXC's HLSL `sizeof(T)` (v1.9.2602, `-HV 2021`) includes struct rounding (`sizeof({S; float})` = 24), and DXC runs locally through the `libdxcompiler.so` the Slang build ships in `build/Debug/lib` plus the headers in `build/_deps/dxc_source-src/include` — a 20-line `IDxcCompiler3` driver is enough ([natural layout already rounds array strides; BAB promises must be pow2](../learnings/1790769300394-slang-ir-natural-layout-already-rounds-array-strid.md)).
 
+## Global-Scope Varyings: Layout Field Keys and Uniform Bytes on CPU/CUDA (#9078, PR #13467)
+
+A GLSL global `out vec4 f;` used to abort Metal/CPU/CUDA (and experimental SPIR-V) in `introduceExplicitGlobalContext` with "no outer func at use site for global" (#9078). In `lowerTypeLayout` (slang-lower-to-ir.cpp) the struct-field layout key came from `getSimpleVal(ensureDecl(decl))`, which for a `Flavor::Ptr` global var emits a module-scope `load(%f)` and uses that as the key, while the global-scope layout from `createIRModuleForLayout` keys on `materialize(...).val`, the var itself. The global parameter group's element and offset-element layouts therefore disagreed, and a pass that walks only one of them (`collectGlobalUniformParameters`) missed the load. After the key fix the two `structFieldLayout(%var, L)` insts are identical hoistables and dedupe, so a "re-key all uses" loop is defensive only (check with `-dump-ir-before collectGlobalUniformParameters`). Removing the stray module-scope loads also reorders global declarations in the GLSL/HLSL/WGSL emitters, which can break FileCheck tests that check declaration order ([layout field keys: getSimpleVal on a global var emits a module-scope load](../learnings/1791330554022-slang-ir-layout-field-keys-getsimpleval-on-a-globa.md)).
+
+The fix exposes a second disagreement. On CPU and CUDA, `getVaryingInputRules()`/`getVaryingOutputRules()` return the ordinary uniform rules (slang-type-layout.cpp ~2278, ~2545), so a global `in`/`out` (GLSL `out vec4 o;`, or Slang `in uint3 tid : SV_DispatchThreadID;`) gets Uniform bytes in `ScopeLayoutBuilder::_addParameter`, shifting every later global in reflection, resource handles included. If `collectGlobalUniformParameters` skips the varying, the emitted `GlobalParams` struct uses natural C offsets and silently mismatches reflection. A `COMPARE_COMPUTE(filecheck-buffer=CHECK):-cpu -compute -entry computeMain -source-language glsl -output-using-type` test with `RWStructuredBuffer; out vec4 o; uniform vec4 u;` shows it (reads 0.0 instead of `u`); use `-source-language glsl`, since `-allow-glsl` is deprecated and its warning fails the stderr match. On master these shapes SEGFAULT in Release because `SLANG_ASSERT(globalParam)` is only `SLANG_ASSUME` there ([GLSL global in/out on CPU/CUDA: layout gives uniform bytes, emitted GlobalParams doesn't](../learnings/1791335346005-glsl-global-in-out-on-cpu-cuda-layout-gives-unifor.md)).
+
 ## Bitfields: Packing Is Fixed at Semantic Check and Baked Into Modules
 
 Bitfield offsets are decided at semantic-check time, not per target. `SemanticsDeclAttributesVisitor::visitStructDecl` (`slang-check-decl.cpp` ~20922) reads the packing rule from the *linkage* option set and stores the result in `BitFieldModifier::offset` → `IRBitFieldAccessorDecoration`. Consequently (verified on #13296, where `-msvc-style-bitfield-packing` packs MSB-first although MSVC packs LSB-first), a `.slang-module` built with the flag stays MSB-first when imported into a session that does not pass it. Packing is a property of the module build, so an option change or deprecation warning reaches only whoever builds the module. Any new `CompilerOptionName` also needs its own case in `writeCommandLineArgs` (`slang-compiler-options.cpp`), which re-emits options into the SPIR-V/LLVM debug command line and omits an option by default ([bitfield packing is baked into precompiled modules; gcc ms_struct is a GPU-free MSVC-layout oracle](../learnings/1790625408306-slang-bitfield-packing-is-baked-into-precompiled-m.md)).
@@ -63,7 +70,9 @@ Zero-width fields (`T x : 0`) show how the checker groups backings (`slang-check
 
 ---
 
-**Source learnings (13):**
+**Source learnings (15):**
+- [IR layout field keys: getSimpleVal on a global var emits a module-scope load; element vs offset-element layouts disagree → introduceExplicitGlobalContext abort (#9078, PR #13467)](../learnings/1791330554022-slang-ir-layout-field-keys-getsimpleval-on-a-globa.md)
+- [GLSL global in/out on CPU/CUDA: varying rules are the uniform rules, so reflection counts bytes the emitted GlobalParams doesn't (silent offset shift)](../learnings/1791335346005-glsl-global-in-out-on-cpu-cuda-layout-gives-unifor.md)
 - [vk::binding entry-point diagnostic predicate (AST-type) must match binder's layout-kind contract](../learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md)
 - [slang #11861: vk::binding on struct-of-resources entry param — mirror of #11857, same predicate](../learnings/1782871594193-slang-11861-vk-binding-on-struct-of-resources-entr.md)
 - [Single-kind exclusion guards in slang-parameter-binding are correct-but-fragile; reviewers ask for a shared predicate](../learnings/1782879563848-single-kind-exclusion-guards-in-slang-parameter-bi.md)

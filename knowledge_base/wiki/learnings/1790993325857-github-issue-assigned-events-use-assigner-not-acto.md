@@ -3,6 +3,7 @@ title: "GitHub issue `assigned` events: use `assigner`, not `actor`, to tell who
 type: learning
 topic: misc
 source: learnings/1790993325857-github-issue-assigned-events-use-assigner-not-acto.md
+superseded_by: 1791275221820-github-assigned-events-assigner-vs-actor-differ-be
 ---
 
 # GitHub issue `assigned` events: use `assigner`, not `actor`, to tell who assigned

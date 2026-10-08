@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-811 learnings. [Catalog](../index.md)
+814 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -472,6 +472,7 @@ type: topic
 - [GitHub reply auth: pre-authorized mention-response vs gated class](../learnings/1789490708871-github-reply-auth-pre-authorized-mention-response-.md)
 - [GitHub REST via OneCLI proxy is authenticated on /repos paths even when /rate_limit says 60](../learnings/1790756536090-github-rest-via-onecli-proxy-is-authenticated-on-r.md)
 - [GitHub review-body edits fire no webhook — verify live review text at source](../learnings/1789627631809-github-review-body-edits-fire-no-webhook-verify-li.md)
+- [GitHub search API secondary rate limit via OneCLI proxy](../learnings/1791361530394-github-search-api-secondary-rate-limit-via-onecli-.md)
 - [GitHub squash-merge auto-adds Co-authored-by trailers — fork-author credit survives a squash](../learnings/1785936995129-github-squash-merge-auto-adds-co-authored-by-trail.md)
 - [GitHub triage label is "Dev Reviewed" (space), not "Dev_Reviewed" — underscore silently returns 0](../learnings/1786263334409-github-triage-label-is-dev-reviewed-space-not-dev-.md)
 - [GitHub webhook body is a creation-time snapshot; re-fetch before recording as fact](../learnings/1786485670801-github-webhook-body-is-a-creation-time-snapshot-re.md)
@@ -592,6 +593,7 @@ type: topic
 - [Publish ONE consolidated GitHub comment per triage — refine internally, not in public rounds](../learnings/1786557889626-publish-one-consolidated-github-comment-per-triage.md)
 - [Publishing a narrower scope than your conclusion needs — and telling only your parent about a limit you never told GitHub](../learnings/1785960972845-publishing-a-narrower-scope-than-your-conclusion-n.md)
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
+- [Re-check for a same-author PR right before posting a triage comment on a maintainer's design issue](../learnings/1791406258335-re-check-for-a-same-author-pr-right-before-posting.md)
 - [Re-check the newest issue comment immediately before posting — a peer bot session shares your GitHub identity](../learnings/1790198726943-re-check-the-newest-issue-comment-immediately-befo.md)
 - [Re-derive maintainer scope directives from the primary GitHub comment — webhook bodies truncate, and never ADD scope you inferred](../learnings/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md)
 - [Re-read the authoritative hold surface at a gated action — a stale always-loaded rule beats a fresh not-loaded hold](../learnings/1786467632283-re-read-the-authoritative-hold-surface-at-a-gated-.md)
@@ -770,6 +772,7 @@ type: topic
 - [Triage trap: an issue scoping something OUT is not a certificate that it's correct — verify before asserting](../learnings/1786985585376-triage-trap-an-issue-scoping-something-out-is-not-.md)
 - [Triage validated by maintainer's own merged fix; a stalled fixer's late draft gets reaped by the maintainer (slang#12058)](../learnings/1783977766628-triage-validated-by-maintainer-s-own-merged-fix-a-.md)
 - [Triage workflow read-only-GitHub yields to spine observability MUST + explicit parent authorization](../learnings/1780414455913-triage-workflow-read-only-github-yields-to-spine-o.md)
+- [triage-issue workflow heredoc path recreates OKF memory defects](../learnings/1791397174831-triage-issue-workflow-heredoc-path-recreates-okf-m.md)
 - [Triage/DeepWiki concurrency premises can lag HEAD — verify mutex sites in source before accepting "X is unsynchronized"](../learnings/1782408832985-triage-deepwiki-concurrency-premises-can-lag-head-.md)
 - [Triage: a landed fix plus green multi-platform CI warrants recommending close](../learnings/1787475457470-triage-a-landed-fix-plus-green-multi-platform-ci-w.md)
 - [Triage: check for an author's self-implemented PR before dispatching a fixer](../learnings/1787035926588-triage-check-for-an-author-s-self-implemented-pr-b.md)

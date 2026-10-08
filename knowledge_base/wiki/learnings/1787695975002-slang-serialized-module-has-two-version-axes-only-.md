@@ -3,6 +3,7 @@ title: "Slang serialized module has TWO version axes — only the format one is 
 type: learning
 topic: slang-compiler
 source: learnings/1787695975002-slang-serialized-module-has-two-version-axes-only-.md
+superseded_by: 1791314340428-correction-slang-k-maxsupportedmoduleversion-is-ra
 ---
 
 # Slang serialized module has TWO version axes — only the format one is checked on load (#12758)

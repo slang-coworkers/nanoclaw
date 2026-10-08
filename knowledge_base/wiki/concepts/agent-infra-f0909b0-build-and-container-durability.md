@@ -3,7 +3,7 @@ title: "Slang Build Toolchain and Container-Durability in Agent Sessions"
 type: concept
 group: agent-infra
 tags: [build, ninja, clang-format, filecheck, cost-cap, container-teardown, subagent, durability]
-source_count: 14
+source_count: 16
 ---
 
 # Slang Build Toolchain and Container-Durability in Agent Sessions
@@ -20,10 +20,10 @@ errors. Distinguish the environment from the diff before blaming the diff.
 - **A bare slang-test/slangc build has no FileCheck** (needs `libslang-llvm.so`), so
   `//TEST:SIMPLE(filecheck=...)` tests are **IGNORED** (`0/0, 1 ignored`), not passed.
   Copy the base clone's `libslang-llvm.so` into the worktree lib dir.
-- **`--target slangc slang-test` does not build the standard modules.** A full
-  `slang-test` run then shows ~60 spurious failures (`cannot open file
-  'slang/numerics.slang'`). Build `cmake --build --preset debug` with no target before
-  quoting full-suite numbers.
+- **`--target slangc slang-test` does not build (or refresh) the standard modules.** A
+  full `slang-test` run then shows ~60 spurious numerics/functional failures (missing or
+  stale `slang-standard-module-*`). It is fine for targeted tests; build the preset with
+  no target before quoting full-suite numbers.
 - **Never read a test result off `tail -1`** — a crashed run prints an empty line that
   looks like silence-means-fine. Check exit code or demand a positive `N/N` token.
 - **Background builds die on container teardown / subagent turn-end**, leaving truncated
@@ -39,6 +39,8 @@ errors. Distinguish the environment from the diff before blaming the diff.
   `libcuda.so ... missing` at graph time); a plain `cmake --preset default` keeps the
   stale cached path. Reconfigure with `-DCUDA_cuda_driver_LIBRARY=<cuda>/lib64/stubs/libcuda.so`
   or `-DSLANG_ENABLE_CUDA=OFF`; run `nvidia-smi` first, since GPU availability varies.
+  Even with CUDA OFF the `shader-coverage-backends` example still links libcuda, so a
+  no-target build fails — use `--target slangc slang-test` or `-DSLANG_ENABLE_EXAMPLES=OFF`.
 - **Disk can hit 100%** — ENOSPC at the final link or `index.lock write error` looks like
   a build error. `df -h` shows the truth; never delete sibling worktrees; escalate.
 - **A fresh-worktree cold build recompiles SPIRV-Tools + DXC** (~1142 steps, hours).
@@ -146,6 +148,19 @@ explicitly (`cmake --preset default -DCUDA_cuda_driver_LIBRARY=/usr/local/cuda-1
 or configure with `-DSLANG_ENABLE_CUDA=OFF`, and check `nvidia-smi` before choosing, because
 GPU availability differs between containers
 ([worktree rebuild after merging master: sync submodules + CUDA stub](../learnings/1790802270657-slang-worktree-rebuild-after-merging-master-sync-s.md)).
+Which target needs libcuda depends on the configuration. In a tree configured with
+`-DSLANG_ENABLE_CUDA=OFF`, a no-target `cmake --build --preset debug` still fails before
+compiling anything, because the `examples/shader-coverage-backends` target links
+`/usr/lib/x86_64-linux-gnu/libcuda.so`; there `--target slangc slang-test` exits 0 and is
+enough for targeted slang-test verification. The alternatives are reconfiguring with
+`-DSLANG_ENABLE_EXAMPLES=OFF` or pointing `-DCUDA_cuda_driver_LIBRARY` at the stub (it
+also lives at `/usr/local/cuda/targets/x86_64-linux/lib/stubs/libcuda.so`, which is enough
+for CPU / `-target cpp` tests)
+([full debug build fails on missing libcuda.so even with SLANG_ENABLE_CUDA=OFF](../learnings/1791340353915-slang-full-debug-build-fails-on-missing-libcuda-so.md),
+[DIAGNOSTIC_TEST annotation rules, with the same libcuda reconfigure gotcha](../learnings/1791296982463-slang-diagnostic-test-annotate-every-record-unloca.md)). The same
+atom adds a formatter trap: `./extras/formatting.sh` silently exits 1 when gersemi or shfmt
+is missing, so check C++ formatting directly with
+`/usr/lib/llvm-17/bin/clang-format --dry-run --Werror <files>`.
 
 Target selection is the other way a build quietly under-delivers. Building only
 `--target slangc slang-test` skips the standard modules, so a full `slang-test` run reports
@@ -155,6 +170,17 @@ about 60 failures that are not regressions: 46 in `tests/numerics` with
 before quoting full-suite numbers; after that the only remaining failure in the measured case
 was `gfx-smoke`, which is environmental and also fails on master
 ([fresh slang worktree: build the full preset before a full slang-test run](../learnings/1790799614368-fresh-slang-worktree-init-submodules-and-build-the.md)).
+The same trap recurs in a *reused* worktree, where the modules exist but are stale: after
+a `--target slangc slang-test` Release rebuild on PR #13471 R2,
+`build/Release/lib/slang-standard-module-*/slang/*.slang-module` (numerics, functional,
+neural) kept their old timestamps and the full suite reported ~61 failures across
+`tests/numerics`, `tests/functional`, `tests/dispatcher` and
+`tests/diagnostics/suggest-constraint-imported-standard-module` — empty output, wrong
+interface names such as `'error'`, and "Too many failed tests for retry". A full
+`cmake --build --preset release` brought it back to 7529/7530, matching the fixer. If
+numerics or functional tests fail en masse, check the standard-module mtimes before
+blaming the PR
+([target-only build leaves standard modules stale → ~61 false failures](../learnings/1791353125648-slang-test-target-slangc-slang-test-build-leaves-s.md)).
 
 ### Disk exhaustion and the per-session cost cap look like build failures
 
@@ -180,7 +206,7 @@ near-complete since ninja progress caches across wakes and converges. Host logs 
 actual teardown reason are not reachable from an agent container, so the SIGTERM cause
 stays a hypothesis from the agent side — corroborated, not proven.
 
-**Source learnings (14):**
+**Source learnings (16):**
 - [clang-format not on PATH in slang-fixer container; pip-install 17.x per-session](../learnings/1786489601678-clang-format-not-on-path-in-slang-fixer-container-.md) — install 17.0.6 or symlink `clang-format-17`; bare `formatting.sh` prints usage (false-green); critique gate blocks all `gh`.
 - [slang-test ignores filecheck tests when FileCheck unavailable in worktree builds](../learnings/1786633416035-slang-test-ignores-filecheck-tests-when-filecheck-.md) — `0/0 ignored` is neither pass nor fail; simulate CHECK by hand region-by-region.
 - [Fresh slang worktree: FileCheck unavailable → borrow base build's libslang-llvm.so](../learnings/1787247745831-fresh-slang-worktree-filecheck-unavailable-llvm-of.md) — copy the base `libslang-llvm.so` (runtime-loaded, non-contaminating); don't `-bindir` base slang-test at the worktree.
@@ -195,3 +221,5 @@ stays a hypothesis from the agent side — corroborated, not proven.
 - [Slang worktree rebuild after merging master: sync submodules + CUDA stub](../learnings/1790802270657-slang-worktree-rebuild-after-merging-master-sync-s.md) — plain reconfigure keeps the stale libcuda path; pass the stub or `-DSLANG_ENABLE_CUDA=OFF`; check `nvidia-smi`.
 - [Fresh slang worktree: init submodules, and build the full preset before a full slang-test run](../learnings/1790799614368-fresh-slang-worktree-init-submodules-and-build-the.md) — `--target slangc slang-test` skips standard modules → ~60 spurious full-suite failures.
 - [CLAUDE.md "no AI attribution" overrides the harness Co-Authored-By reminder](../learnings/1790718572444-claude-md-no-ai-attribution-overrides-the-harness-.md) — with libcuda.so missing, `--target slangc` still rebuilds libslang-compiler.so for existing slang-test binaries
+- [Slang full debug build fails on missing libcuda.so even with SLANG_ENABLE_CUDA=OFF](../learnings/1791340353915-slang-full-debug-build-fails-on-missing-libcuda-so.md) — the `shader-coverage-backends` example links libcuda; `--target slangc slang-test` or `-DSLANG_ENABLE_EXAMPLES=OFF`; formatting.sh exits 1 silently without gersemi/shfmt
+- [slang-test: `--target slangc slang-test` build leaves standard modules stale → ~61 false numerics/functional failures](../learnings/1791353125648-slang-test-target-slangc-slang-test-build-leaves-s.md) — PR #13471 R2; full preset build restored 7529/7530; check `slang-standard-module-*` mtimes first

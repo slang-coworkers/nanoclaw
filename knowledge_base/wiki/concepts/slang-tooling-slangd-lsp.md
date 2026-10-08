@@ -3,7 +3,7 @@ title: "Triaging slangd (language-server) crashes: version-triage, direct-LSP re
 type: concept
 group: slang-tooling
 tags: [slangd, language-server, lsp, vscode-extension, completion-mode, triage, crash, groupshared, file-decl]
-source_count: 6
+source_count: 9
 ---
 
 ## TL;DR
@@ -35,6 +35,10 @@ checker strips.
   only via the deprecated single-root field gives slangd zero roots → a search-path include resolves
   only when the target file is already open. Suspect the handshake first for any "slangd doesn't see
   cross-file/include symbols" report.
+- **A JSON `null` config reply silently turns a setting OFF** (Zed answers null for every unset
+  section; `asBool(null)` → false), and because slang-test runs every `LANG_SERVER` test against ONE
+  shared slangd, a config change whose `workspace/*/refresh` calls go unread poisons the NEXT test —
+  end it with a side-effect-free request barrier and read `failed(pending retry)` lines.
 - **Not every "highlighting breaks after editing" report is slangd.** In the C#/VSIX Visual Studio
   extension (`slang-vs-extension`, distinct from the VS *Code* extension and from slangd) the bug is
   almost always the extension's own semantic-token tagger, not the server — rebuilding with newer
@@ -63,9 +67,11 @@ Config-channel corollary (why "just set the setting" fails on non-VSCode editors
 `searchInAllWorkspaceDirectories` are read only via the server→client `workspace/configuration` **pull**
 (15 dotted `slang.*` sections, reply read *positionally*, whole reply DROPPED if the array length ≠ 15)
 or the `didChangeConfiguration` **push** — never from `initializationOptions`. `searchInAllWorkspaceDirectories`
-is pull-only and already default-true, so toggling it is usually a no-op; slangd's config surface is
-VSCode-pull-centric, and Zed/helix/neovim (which rely on `initializationOptions`) cannot configure it
-today. `updateConfigFromJSON` accepts FLAT dotted `slang.*` keys or a single `settings`/`RootElement`
+is pull-only and already default-true — but only when the client supplies a value: a `null` reply turns
+it off (next section). slangd's config surface is VSCode-pull-centric; editors that rely on
+`initializationOptions` cannot reach it, and a Zed user must put the FLAT key
+`"slang.searchInAllWorkspaceDirectories": true` under `lsp.slangd.settings` (nested `{"slang":{…}}` and
+`initialization_options` both fail). `updateConfigFromJSON` accepts FLAT dotted `slang.*` keys or a single `settings`/`RootElement`
 wrapper — NOT a nested `{"slang":{…}}` object; apply `initializationOptions` AFTER sending the
 InitializeResult, and SNAPSHOT the object before iterating (`getObject()` is a view into
 `JSONContainer::m_objectValues`, and serializing an outbound refresh can reallocate that buffer and
@@ -92,6 +98,41 @@ testable precisely because it needs no config change at init and emits no refres
 ([the LANG_SERVER refresh-desync trap](../learnings/1789868223160-slang-test-lang-server-harness-desyncs-if-a-config.md)). FileCheck-dependent
 language-server tests (~41) are ignored when LLVM FileCheck isn't installed, so a clean run reports
 "N/N runnable passed, 41 ignored".
+
+### Null config replies, and the refresh-leak barrier (#13463 / PR #13475)
+
+After `initialized`, slangd pulls its 15 settings with `workspace/configuration` and applies the reply by
+position. The `update*` handlers (e.g. `updateSearchInWorkspace`, `slang-language-server.cpp:2391`) reject
+only *invalid* JSON, so a JSON `null` reaches `JSONValue::asBool` and becomes `false`. LSP 3.17 requires
+the client to put `null` in the array for any setting it cannot provide, and Zed does exactly that
+(`workspace_config.get(section).unwrap_or(Null)`, looking the full dotted name up as one flat key); VS Code
+never does because the extension's `package.json` declares defaults. The result on Zed is
+`searchInWorkspace=false`, so only open documents' folders become include search paths — a different bug
+from #13179's missing rootUri fallback. Probe it over stdio (`initialize`, `initialized`, a scripted
+config reply, `didOpen`, then `textDocument/definition` on the include line) with the include target in a
+*different* folder, since a same-folder include resolves relative to the includer and hides the bug
+([a null workspace/configuration reply disables searchInAllWorkspaceDirectories](../learnings/1791318736825-slangd-a-null-workspace-configuration-reply-disabl.md)). A sibling crash
+on master before #13475: pushing `slang.inlayHints.deducedTypes` (or `parameterNames`) alone made
+`updateInlayHintOptions` call `asBool` on the invalid `JSONValue()` placeholder for the missing sibling,
+which hits SLANG_ASSERT "Not bool convertable" in Debug and throws `InternalError` out of
+`parseNextMessage` (SIGABRT; in slang-test, a test that fails with no output). Diagnose with gdb
+`catch throw` and a pacing Python stdin driver — a plain `< file` makes slangd exit before it processes
+anything.
+
+The harness side of the same PR: slang-test's shared slangd means a test that pushes
+`workspace/didChangeConfiguration` with no request after it leaves the server's `workspace/*/refresh`
+calls unread, and the NEXT test reads one in place of its InitializeResult — an order-dependent failure,
+confirmed both ways with throwaway tests. The fix ends such a test with a side-effect-free request
+(`documentSymbol`) and skips server-to-client calls while waiting for its response; waiting for a fixed
+number of refreshes is wrong because unchanged values and formatting options send none
+([LANG_SERVER config pushes leak refreshes into the next test; inlay push aborts master slangd](../learnings/1791339299959-slangd-lang-server-harness-config-pushes-leak-refr.md)). The
+barrier is keyed on `configChangedSinceLastRequest`, which only `//CONFIG:` and `//CONFIG_REPULL` set —
+the initial config-pull exchange does not, so a `//CONFIG_REPLY:` that changes a setting (e.g.
+`searchInAllWorkspaceDirectories=false`) still leaks 2 refreshes. Revert drill: a pull-only test followed
+by a plain hover test fails at head and passes once the flag is set after the initial
+`answerConfigRequest()`. slang-test's automatic retry hides these cross-test leaks (the failed test passes
+when re-run alone), so look for `failed(pending retry)` lines, not just the final count
+([LANG_SERVER config-pull: an initial reply that changes a setting leaks refreshes](../learnings/1791344121901-lang-server-config-pull-initial-reply-that-changes.md)).
 
 ## "Stuck highlighting" in the VS (VSIX) extension is client-side, not slangd
 
@@ -177,12 +218,15 @@ Triage implications:
   placement-illegal modifiers (which build shapes no stage models) are still stripped, rather than
   guarding every downstream consumer.
 
-**Source learnings (6):**
+**Source learnings (9):**
 - [Triaging slangd crashes: drive LSP directly, and check the extension's bundled slang version](../learnings/1789400009815-triaging-slangd-language-server-crashes-drive-lsp-.md) — `__file_decl`=`FileDecl` (pervasive in VFX flavor); batch slangc skips LSP-only paths; a Python LSP driver reproduces GPU-free (drain stderr in a thread); version-triage first; `0xC0000005` is Windows-only.
 - [slangd Completion checking mode retains placement-illegal modifiers (ignoreUnallowedModifier)](../learnings/1789401281467-slangd-completion-checking-mode-retains-placement-.md) — `checkModifiers` sets `ignoreUnallowedModifier` in Completion mode → keeps a function-local `groupshared` slangc strips (E31201) → IR builds a rated function-local IRVar → consumers assume module-global → AV; stock slangd skips IR lowering so a plain LSP driver may not repro; fix at the producer.
 - [slangd LSP: search-path #include resolution silently fails without workspaceFolders](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md) — no rootUri/rootPath fallback; initializationOptions discarded; config is pull-only/positional; suspect the workspace-root handshake first.
 - [slangd only reads workspaceFolders for #include roots; testing the deprecated handshake via LANG_SERVER](../learnings/1789818601805-slangd-only-reads-workspacefolders-for-include-roo.md) — fix = rootUri→rootPath fallback guarded on getLength(); added -init-root-uri/-init-root-path slang-test args; snapshot the config object before iterating.
 - [slang-test LANG_SERVER harness desyncs if a config change emits a server→client refresh at initialize](../learnings/1789868223160-slang-test-lang-server-harness-desyncs-if-a-config.md) — the shared cached slangd process + a diagnostics-only drain leave a refresh in the stream, poisoning subsequent tests; the workspace-root path is cleanly testable because it emits no refresh.
 - [slang-vs-extension stale-highlight bugs are client-side semantic-token cache/version mismatches, not slangd](../learnings/1789645330820-slang-vs-extension-stale-highlight-bugs-are-client.md) — the C#/VSIX tagger decodes cached tokens with no snapshot-version stamp; rebuilding with newer Slang libs won't fix it; non-repro in vim confirms it's the extension.
+- [slangd: a null workspace/configuration reply disables searchInAllWorkspaceDirectories (Zed)](../learnings/1791318736825-slangd-a-null-workspace-configuration-reply-disabl.md) — `asBool(null)`→false; Zed answers null for unset sections; flat `slang.*` key under `lsp.slangd.settings` works; probe with a cross-folder include
+- [slangd LANG_SERVER harness: config pushes leak refreshes into the next test; inlay push aborts master slangd](../learnings/1791339299959-slangd-lang-server-harness-config-pushes-leak-refr.md) — shared slangd; end with a `documentSymbol` barrier; `asBool(Invalid)` SLANG_ASSERT → InternalError SIGABRT
+- [LANG_SERVER config-pull: initial reply that changes a setting leaks refresh requests into the next test](../learnings/1791344121901-lang-server-config-pull-initial-reply-that-changes.md) — `configChangedSinceLastRequest` not set by the initial pull; retry masks the leak — read `failed(pending retry)`
 
 _Catalog: [[wiki/index.md]]_
