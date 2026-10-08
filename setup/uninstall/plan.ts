@@ -81,6 +81,14 @@ export function buildRemovalPlan(inv: Inventory, d: Decisions): RemovalAction[] 
         unitName: path.basename(s.systemdSystemUnit, '.service'),
       });
     }
+    for (const unit of s.dashboardUnits ?? []) {
+      actions.push({
+        kind: 'unload-service',
+        flavor: unit.flavor,
+        unitPath: unit.path,
+        unitName: path.basename(unit.path, unit.flavor === 'launchd' ? '.plist' : '.service'),
+      });
+    }
     if (s.pidFile) actions.push({ kind: 'kill-pid', pidFile: s.pidFile });
     actions.push({
       kind: 'pkill-host',
