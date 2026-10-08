@@ -251,7 +251,7 @@ class Failures(Base):
         self.assertFalse(self.has_success_receipt(out))
 
     def test_failed_description_cleanup_exits_5(self):
-        fake = FakeGH(body=OLD_SECTION + "\n\nFixes #1\n", fail_pr_patch=True)
+        fake = FakeGH(body=OLD_SECTION + "\n\n" + OK_DESC, fail_pr_patch=True)
         code, out, err = self.run_script(fake)
         self.assertEqual(code, 5)
         self.assertFalse(self.has_success_receipt(out))
@@ -296,7 +296,7 @@ class Failures(Base):
         self.assertIn("moved", err)
 
     def test_description_edited_during_the_run_is_not_overwritten(self):
-        old = OLD_SECTION + "\n\nFixes #1\n"
+        old = OLD_SECTION + "\n\n" + OK_DESC
         edited = old + "\nA maintainer's note added meanwhile.\n"
         fake = FakeGH(bodies=[old, edited])
         code, out, err = self.run_script(fake)
@@ -322,12 +322,40 @@ class Failures(Base):
 
 
 class Description(Base):
-    def test_strips_the_exact_old_block(self):
-        fake = FakeGH(body=OLD_SECTION + "\n\nPart of #13073.\n\n" + DISCLAIMER + "\n")
+    def test_strips_the_exact_old_block_when_a_real_description_remains(self):
+        fake = FakeGH(body=OLD_SECTION + "\n\n" + OK_DESC)
         code, out, _ = self.run_script(fake)
         self.assertEqual(code, 0)
-        self.assertEqual(fake.body, "Part of #13073.\n\n" + DISCLAIMER + "\n")
+        self.assertEqual(fake.body, OK_DESC)
         self.assertEqual(self.receipt(out)["description"], "stripped")
+
+    def assert_block_kept(self, body, why):
+        fake = FakeGH(body=body)
+        code, out, _ = self.run_script(fake)
+        self.assertEqual(code, 0)
+        self.assertEqual(fake.body, body)  # never emptied, never trimmed
+        self.assertFalse(any("pulls/" in " ".join(c) for c in fake.writes()))
+        notes = [line for line in out.splitlines() if line.startswith("NOTE:")]
+        self.assertEqual(len(notes), 1)
+        self.assertIn("never empties", notes[0])
+        self.assertIn("--body-file", notes[0])
+        r = self.receipt(out)  # the receipt is still the last stdout line
+        self.assertTrue(r["updated"])
+        self.assertTrue(r["description"].startswith("kept:"), r["description"])
+        self.assertIn(why, r["description"])
+
+    def test_block_kept_when_nothing_would_remain(self):
+        self.assert_block_kept(OLD_SECTION + "\n\nFixes #1\n", "only 0 chars would remain")
+
+    def test_block_kept_when_only_a_short_remainder_would_remain(self):
+        self.assert_block_kept(OLD_SECTION + "\n\nPart of #13073.\n\n" + DISCLAIMER + "\n", "chars would remain")
+
+    def test_block_kept_when_the_remainder_has_no_summary(self):
+        remainder = ("**Root cause.** add() matched entries by tool name, so later levels replaced earlier ones "
+                     "and only the last level's arguments ever reached the downstream compiler.\n"
+                     "**Tests.** Unit tests cover the merge rules and three NVRTC cases.\n\nFixes #1\n")
+        self.assertGreaterEqual(len(U.description_core(remainder)), U.SHORT_BODY)
+        self.assert_block_kept(OLD_SECTION + "\n\n" + remainder, "no Summary section")
 
     def test_indented_example_at_the_top_is_left_alone(self):
         body = "    " + START + "\n    x\n    " + U.END + "\n\n" + CONCISE
@@ -371,7 +399,7 @@ class Description(Base):
         self.assertIn("o/r#9", out)
 
     def test_short_description_gets_a_note_but_still_succeeds(self):
-        fake = FakeGH(body=OLD_SECTION + "\n\nFixes #1\n")
+        fake = FakeGH(body="Fixes #1\n")
         code, out, _ = self.run_script(fake)
         self.assertEqual(code, 0)
         self.assertEqual(len([line for line in out.splitlines() if line.startswith("NOTE:")]), 1)
