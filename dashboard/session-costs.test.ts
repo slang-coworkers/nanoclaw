@@ -18,6 +18,8 @@ describe('normalizeModel', () => {
     expect(normalizeModel('claude-opus-4-8[1m]')).toBe('claude-opus-4-8');
     expect(normalizeModel('aws/anthropic/claude-haiku-4-5-v1')).toBe('claude-haiku-4-5');
     expect(normalizeModel('claude-haiku-4-5-20251001')).toBe('claude-haiku-4-5');
+    expect(normalizeModel('aws/anthropic/bedrock-claude-haiku-5-5')).toBe('claude-haiku-5-5');
+    expect(normalizeModel('azure/anthropic/claude-haiku-5-5')).toBe('claude-haiku-5-5');
   });
 
   it('returns empty for synthetic/unknown so they price as unpriced, not $0', () => {

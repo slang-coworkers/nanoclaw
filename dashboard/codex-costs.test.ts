@@ -43,6 +43,8 @@ describe('normalizeCodexModel', () => {
   it('strips the doubled gateway prefix the fleet actually emits', () => {
     expect(normalizeCodexModel('azure/openai/gpt-5.6-sol')).toBe('gpt-5.6-sol');
     expect(normalizeCodexModel('openai/openai/gpt-5.5')).toBe('gpt-5.5');
+    expect(normalizeCodexModel('openai/openai/gpt-6.1-sol')).toBe('gpt-6.1-sol');
+    expect(CODEX_MODEL_PRICING['gpt-6.1-sol']).toEqual({ input: 2e-6, output: 1e-5, cacheRead: 1e-7 });
     expect(normalizeCodexModel('gpt-5.2-codex')).toBe('gpt-5.2-codex');
     expect(normalizeCodexModel('GPT-5.1-Codex')).toBe('gpt-5.1-codex');
   });
