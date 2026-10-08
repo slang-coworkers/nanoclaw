@@ -644,7 +644,7 @@ registerResource({
         // it so introspection ("what model am I?") gets a useful answer.
         let effectiveModel = presented.model as string | null;
         if (!effectiveModel && agentProvider === 'codex') {
-          effectiveModel = process.env.CODEX_MODEL ?? 'openai/openai/gpt-5.5';
+          effectiveModel = process.env.CODEX_MODEL ?? 'openai/openai/gpt-6.1-sol';
         }
 
         return {

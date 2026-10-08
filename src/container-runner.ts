@@ -3500,7 +3500,7 @@ function agentEntrypointScript(): string {
   return `git config --global "url.https://x-access-token:placeholder@github.com/.insteadOf" "https://github.com/" 2>/dev/null || true
 mkdir -p ~/.codex && cat > ~/.codex/config.toml <<TOML_EOF
 model_provider = "\${CODEX_MODEL_PROVIDER:-nvinference}"
-model = "\${CODEX_MODEL:-openai/openai/gpt-5.5}"
+model = "\${CODEX_MODEL:-openai/openai/gpt-6.1-sol}"
 model_reasoning_effort = "\${CODEX_REASONING_EFFORT:-xhigh}"
 # Docker is the sandbox; codex's bwrap wrapper is redundant nesting and fails
 # with "No permissions to create a new namespace" because Docker's default

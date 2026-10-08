@@ -6,7 +6,14 @@ import path from 'node:path';
 
 import * as p from '@clack/prompts';
 
-type Method = 'subscription' | 'oauth' | 'api' | 'skip';
+import {
+  customEndpointBaseUrl,
+  endpointFromSecrets,
+  endpointModelDefaults,
+  NVIDIA_INFERENCE_URL,
+} from '../../../../setup/lib/custom-endpoint.js';
+
+type Method = 'subscription' | 'oauth' | 'api' | 'endpoint' | 'skip';
 
 function childEnv(): NodeJS.ProcessEnv {
   const localBin = path.join(os.homedir(), '.local', 'bin');
@@ -16,13 +23,17 @@ function childEnv(): NodeJS.ProcessEnv {
   };
 }
 
+function secretsJson(): string {
+  return execFileSync('onecli', ['secrets', 'list'], {
+    encoding: 'utf8',
+    env: childEnv(),
+    stdio: ['ignore', 'pipe', 'ignore'],
+  });
+}
+
 function hasAnthropicSecret(): boolean {
   try {
-    const raw = execFileSync('onecli', ['secrets', 'list'], {
-      encoding: 'utf8',
-      env: childEnv(),
-      stdio: ['ignore', 'pipe', 'ignore'],
-    });
+    const raw = secretsJson();
     const data = (JSON.parse(raw) as { data?: Array<{ type?: string; name?: string }> }).data ?? [];
     return data.some((secret) => secret.type === 'anthropic' || /anthropic/i.test(secret.name ?? ''));
   } catch {
@@ -66,6 +77,28 @@ function saveEnv(key: string, value: string): void {
       : `${current}${current && !current.endsWith('\n') ? '\n' : ''}${line}\n`,
     { mode: 0o600 },
   );
+}
+
+function envValue(key: string): string | undefined {
+  const file = path.join(process.cwd(), '.env');
+  if (!fs.existsSync(file)) return undefined;
+  return (
+    fs
+      .readFileSync(file, 'utf8')
+      .match(new RegExp(`^${key}=(.*)$`, 'm'))?.[1]
+      ?.trim() || undefined
+  );
+}
+
+/**
+ * Record a custom endpoint in .env: ANTHROPIC_BASE_URL plus the model ids the
+ * endpoint needs (endpointModelDefaults), never over a value already set.
+ */
+function recordEndpoint(baseUrl: string): void {
+  saveEnv('ANTHROPIC_BASE_URL', baseUrl);
+  for (const [key, value] of Object.entries(endpointModelDefaults(baseUrl))) {
+    if (!envValue(key)) saveEnv(key, value);
+  }
 }
 
 function migrateLegacyEnvSecret(): boolean {
@@ -112,7 +145,7 @@ export async function run(): Promise<void> {
   const customToken = process.env.NANOCLAW_ANTHROPIC_AUTH_TOKEN?.trim();
   if (customUrl && customToken) {
     saveSecret(customToken, customUrl);
-    saveEnv('ANTHROPIC_BASE_URL', customUrl);
+    recordEndpoint(customUrl);
     p.log.success('Claude endpoint connected.');
     return;
   }
@@ -120,7 +153,22 @@ export async function run(): Promise<void> {
   if (migrateLegacyEnvSecret()) return;
 
   if (hasAnthropicSecret()) {
-    p.log.success('Claude account is already connected.');
+    // Nothing to ask for, but a custom endpoint still has to reach .env, or
+    // agents call api.anthropic.com where the stored credential is never
+    // injected: from NANOCLAW_ANTHROPIC_BASE_URL, else from the host the
+    // existing secret was stored for (a re-install against an existing vault).
+    let recovered: string | undefined;
+    if (!envValue('ANTHROPIC_BASE_URL')) {
+      try {
+        recovered = customEndpointBaseUrl(customUrl) ?? endpointFromSecrets(secretsJson());
+      } catch {
+        recovered = undefined;
+      }
+    }
+    if (recovered) recordEndpoint(recovered);
+    p.log.success(
+      recovered ? `Claude account is already connected (${recovered}).` : 'Claude account is already connected.',
+    );
     return;
   }
 
@@ -135,6 +183,11 @@ export async function run(): Promise<void> {
         },
         { value: 'oauth', label: 'Paste an OAuth token' },
         { value: 'api', label: 'Paste an Anthropic API key' },
+        {
+          value: 'endpoint',
+          label: 'Use an Anthropic-compatible endpoint',
+          hint: 'e.g. the NVIDIA inference API — you enter its URL and key',
+        },
         { value: 'skip', label: 'Skip for now' },
       ],
     }),
@@ -142,6 +195,27 @@ export async function run(): Promise<void> {
 
   if (method === 'skip') {
     p.log.warn('Claude is not connected. Run setup again before starting an agent.');
+    return;
+  }
+  if (method === 'endpoint') {
+    const url = answer<string>(
+      await p.text({
+        message: 'Endpoint URL',
+        initialValue: NVIDIA_INFERENCE_URL,
+        validate: (raw) => (customEndpointBaseUrl(raw) ? undefined : 'Enter an http(s) URL'),
+      }),
+    );
+    const key = answer<string>(
+      await p.password({
+        message: 'API key for that endpoint (stored in the OneCLI vault, never in .env)',
+        clearOnError: true,
+        validate: (raw) => ((raw ?? '').trim() ? undefined : 'Required'),
+      }),
+    ).replace(/\s+/g, '');
+    const baseUrl = customEndpointBaseUrl(url)!;
+    saveSecret(key, baseUrl);
+    recordEndpoint(baseUrl);
+    p.log.success(`Claude endpoint connected (${baseUrl}).`);
     return;
   }
   if (method === 'subscription') {
