@@ -31,8 +31,13 @@ What a run does:
   - removes the explanation block an earlier version wrote into the description,
     only when it is exactly that block: the start marker for this PR as the very
     first line, and exactly one end-marker line. Anything else is left unchanged
-    with a NOTE. A description shorter than SHORT_BODY characters also gets a NOTE,
-    and so does one over the description limits (see description_problems).
+    with a NOTE. It never empties the description: the block is removed only when
+    what remains (minus the `<sub>` disclaimer and closing-keyword lines) is a real
+    description, at least SHORT_BODY characters with a Summary section; otherwise
+    the block stays and a NOTE asks for the concise description (`gh pr edit
+    --body-file` replaces the whole description, block included). A description
+    shorter than SHORT_BODY characters also gets a NOTE, and so does one over the
+    description limits (see description_problems).
   - prints the receipt line (RECEIPT_PREFIX + JSON) as the last stdout line, only
     after every write succeeded. Any failed write exits 5 without it.
 
@@ -107,13 +112,31 @@ def description_limits() -> tuple[int, int]:
     return _env_int("PR_DESCRIPTION_MAX_CHARS", 1000), _env_int("PR_DESCRIPTION_MAX_SECTION_LINES", 2)
 
 
-def description_problems(body: str, max_chars: int, max_lines: int) -> list[str]:
-    """What in a description breaks the limits, as short phrases; empty when it is fine."""
+def _core_lines(body: str) -> list[str]:
+    """The description's lines without a final `<sub>` disclaimer line and closing-keyword lines."""
     lines = body.replace("\r\n", "\n").split("\n")
     last = max((i for i, ln in enumerate(lines) if ln.strip()), default=-1)
     if last >= 0 and _DISCLAIMER_RE.match(lines[last]):
         lines = lines[:last] + lines[last + 1:]
-    lines = [ln for ln in lines if not _CLOSING_RE.match(ln)]
+    return [ln for ln in lines if not _CLOSING_RE.match(ln)]
+
+
+def description_core(body: str) -> str:
+    return "\n".join(_core_lines(body)).strip()
+
+
+def has_summary(body: str) -> bool:
+    """True when the description has a Summary section (bold label or heading)."""
+    for ln in _core_lines(body):
+        m = _BOLD_LABEL_RE.match(ln) or _HEADING_RE.match(ln)
+        if m and m.group("label").strip().rstrip(".:").lower().startswith("summary"):
+            return True
+    return False
+
+
+def description_problems(body: str, max_chars: int, max_lines: int) -> list[str]:
+    """What in a description breaks the limits, as short phrases; empty when it is fine."""
+    lines = _core_lines(body)
     problems: list[str] = []
     sections: list[list] = []
     for ln in lines:
@@ -382,15 +405,29 @@ def run(a: argparse.Namespace) -> int:
     mine, foreign = split_candidates(list_comments(a.repo, a.pr), a.repo, a.pr, trusted)
     refuse_foreign(foreign, ref, trusted)
     new_desc, desc_status = strip_legacy_section(pr.get("body") or "", a.repo, a.pr)
+    if desc_status == "stripped":
+        # Never empty the description: removing the block before the concise description
+        # exists left PRs with no description (and a squash merge would commit none).
+        core = description_core(new_desc)
+        if len(core) < SHORT_BODY or not has_summary(new_desc):
+            why = (f"only {len(core)} chars would remain" if len(core) < SHORT_BODY
+                   else "what would remain has no Summary section")
+            new_desc, desc_status = pr.get("body") or "", f"kept: {why}"
     notes = []
-    if desc_status.startswith("left:"):
+    if desc_status.startswith("kept:"):
+        notes.append(f"NOTE: the old explanation block stays in the description for now ({desc_status[6:]}); "
+                     "this script never empties a description. Write the concise description (Summary / Root cause / "
+                     "Tests / Risk, at most 2 lines each, no tables, plus the Fixes line) with "
+                     f"`gh pr edit {a.pr} -R {a.repo} --body-file <absolute path>`: that replaces the whole "
+                     "description, old block included.")
+    elif desc_status.startswith("left:"):
         notes.append(f"NOTE: the description still holds an explain-diff block this script will not remove ({desc_status[6:]}); "
                      f"move it out by hand with `gh pr edit {a.pr} -R {a.repo} --body-file <file>`.")
-    if len(new_desc.strip()) < SHORT_BODY:
+    if not desc_status.startswith("kept:") and len(new_desc.strip()) < SHORT_BODY:
         notes.append(f"NOTE: the PR description is {len(new_desc.strip())} chars. Write a concise description "
                      f"(what changed, why, how it was tested, issue links) with `gh pr edit {a.pr} -R {a.repo} --body-file <file>`; "
                      "squash merges copy it into git log, so keep the explanation out of it.")
-    if os.environ.get("PR_DESCRIPTION_GATE", "1") != "0":
+    if not desc_status.startswith("kept:") and os.environ.get("PR_DESCRIPTION_GATE", "1") != "0":
         max_chars, max_lines = description_limits()
         problems = description_problems(new_desc, max_chars, max_lines)
         if problems:

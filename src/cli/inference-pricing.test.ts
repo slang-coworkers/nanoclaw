@@ -35,6 +35,8 @@ describe('rate-table parity with the container copies', () => {
       'aws/anthropic/bedrock-claude-opus-4-8',
       'aws/anthropic/bedrock-claude-sonnet-5',
       'aws/anthropic/bedrock-claude-sonnet-5-5',
+      'aws/anthropic/bedrock-claude-haiku-5-5',
+      'azure/anthropic/claude-haiku-5-5',
       'aws/anthropic/claude-haiku-4-5-v1',
       'claude-opus-4-8[1m]',
       'claude-opus-5',
@@ -48,6 +50,7 @@ describe('rate-table parity with the container copies', () => {
     const codexIds = [
       'azure/openai/gpt-5.6-sol',
       'openai/openai/gpt-6-sol',
+      'openai/openai/gpt-6.1-sol',
       'openai/openai/gpt-5.5',
       'gpt-5.6-luna-20260101',
       'gpt-5.6-latest',
