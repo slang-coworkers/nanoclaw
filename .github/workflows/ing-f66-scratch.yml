@@ -1,0 +1,15 @@
+name: ing-f66-scratch
+on:
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ing-f66-red:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - name: fail while RED exists
+        run: |
+          if [ -f RED ]; then echo "RED flag present: ING-F66 scratch job fails on purpose"; exit 1; fi
+          echo "RED absent: pass"
