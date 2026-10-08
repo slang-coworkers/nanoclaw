@@ -136,6 +136,10 @@ dismissal, so `reviewDecision` is now empty. The fixer's report still said "appr
   - **10-07 00:19Z she chose "parse as `ReadOnlyModifier` first"** ([r4201706513](https://github.com/shader-slang/slang/pull/13406#discussion_r4201706513)). Pushed ~01:49Z: head `d47ae5627d`, App identity.
     The `checkModifiers`/`visitParamDecl` paths turn it into the GLSL form on images, buffers and non-`__ref` declarations. Every unchanged path matches master byte for byte.
     Her CHANGES_REQUESTED still stands; she needs to re-review at `d47ae5627d`.
+  - **10-07 22:45Z: master merged, as jhelferty-nv asked at 21:16Z.** Merge `33c55b8cd4` and test commit `e77f209309`, App identity, no force-push, MERGEABLE.
+    #13232 had **landed on master** and caused all 7 conflicts. Master's code was kept, and the Ref split now lives in its shared helpers.
+    One behavior fix: after #13232, a `readonly __ref` declaration paired with a `__ref` definition hit E39999. It is pinned by a test, and a revert drill confirmed the test fails without the fix.
+    Her CHANGES_REQUESTED still stands.
 
 ## Lessons
 

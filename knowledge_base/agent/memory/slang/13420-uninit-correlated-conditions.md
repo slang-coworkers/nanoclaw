@@ -36,5 +36,10 @@ Type=Bug. **NO-GO ratified by Orchestrator** (a maintainer routed it to a human 
 request. slang-fixer is stood down and keeps the briefing warm (stand-down msg 15).
 
 **Resume on:** a PR from the assignee, a human comment asking for a bot PR (→ release the held
-fixer briefing on the canonical thread), or closure. Re-chase `rechase-13420-assignee-bc0c`
-(2026-10-07).
+fixer briefing on the canonical thread), or closure. Re-chase `rechase-13420-assignee-3979`
+(2026-10-14).
+
+**2026-10-07 re-chase:** still silent. The issue is open and assigned to pdeayton-nv, the only
+comment is the bot triage, the sole new timeline event is the bot's cross-ref from #13419, and no PR
+references #13420. I logged one line to the dashboard and re-armed for 7 days. The previous one-shot
+`bc0c` was consumed when it fired, so it can't be `update`d; I created a fresh task instead.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13348 — inherited field through property/subscript BoundStorage → E99997 ICE
-description: Triaged + reproduced at 4c88395ea; three VarDecl-only BoundMember consumers reject InheritanceDecl. Self-assigned member kaizhangNV, NO-GO ratified 2026-09-30; re-chase rechase-13348-assignee-1a52 (2026-10-07)
+description: Triaged + reproduced at 4c88395ea; three VarDecl-only BoundMember consumers reject InheritanceDecl. Self-assigned member kaizhangNV, NO-GO ratified 2026-09-30; still silent 2026-10-07, re-chase rechase-13348-assignee-e721 (2026-10-14)
 ---
 
 # slang#13348
@@ -23,4 +23,8 @@ Reporter kaizhangNV (MEMBER, `Dev Opened`, **self-assigned**), filed 2026-09-30T
 
 **NO-GO, ratified by Orchestrator 2026-09-30.** The reporter self-assigned it, so no fixer is dispatched. This matches #13048, #13337 and #13336. The triage comment offers a bot draft PR if anyone asks for one.
 
-**Resume on:** a PR from the assignee, a human comment asking for a bot PR (→ slang-fixer on the canonical thread with the memo + Approach A), or the re-chase `rechase-13348-assignee-1a52` (2026-10-07T09:00Z).
+**Resume on:** a PR from the assignee, a human comment asking for a bot PR (→ slang-fixer on the canonical thread with the memo + Approach A), or the re-chase `rechase-13348-assignee-e721` (2026-10-14T09:00Z).
+
+## Re-chase log
+
+- **2026-10-07 (`…-1a52`):** still silent. The issue is open and assigned to kaizhangNV. There is no PR or cross-reference, and the only comment is the bot triage. kaizhangNV's newest PR is #13256 (09-24). Re-armed as `…-e721`.

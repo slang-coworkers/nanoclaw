@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13436 — DownstreamArgs lost across option levels (linkWithOptions / addTarget)
-description: Triaged + reproduced bug P2, not a regression. (b) compose-once → held draft PR #13450 (c527aaf207). Maintainer-assigned to kaizhangNV 10-05 18:03Z (before the PR opened). HOLD on C1 precedence; @-mention + review-gate waiver await the operator
+description: Triaged + reproduced bug P2, not a regression. (b) compose-once → held draft PR #13450 (c527aaf207). Maintainer-assigned to kaizhangNV 10-05 18:03Z (before the PR opened). HOLD on C1 precedence; 3 operator decisions pending (2nd ask 10-07)
 tags: [slang, cuda, nvrtc, compiler-options]
 ---
 
@@ -80,6 +80,31 @@ Session `nvrtc --gpu-architecture=compute_86` + link `nvrtc --fmad=false` → `.
   Asked the operator: (1) OK to post one short note on #13436 to kaizhangNV (bot draft exists + C1 options +
   "take it or close it"), (2) hold vs. close the draft. Side-finding question still pending.
 
+- 10-07 09:03Z re-chase (`rechase-13436-precedence-4252`): **no operator reply, no human GitHub activity.** I read the dashboard
+  (bounded read, 200 rows back to 10-06 00:55Z) and found nothing after my 10-06 01:38Z ask. #13436 is still assigned to kaizhangNV and
+  its only comment is 5991664606. #13450 is a draft at c527aaf207, BEHIND master, 5 pass / 57 skipping, 0 reviews, and only bot comments.
+  PR-board sync auto-assigned kaizhangNV as shepherd and requested their review at 10-06 01:17Z; its notice says jkwak-work has stronger
+  committer signal. The 10-06 12:13Z body trim (996 chars, operator-approved PR-description rule) left the code unchanged. Nothing went to
+  the triager. **2nd ask** sent to the operator via send_message (dashboard msg id 25, thread gh-issue-shader-slang/slang-13436).
+
+- 10-07 18:27Z **kaizhangNV (MEMBER, assignee) cmt 6044229850 on #13450, @nv-slang-bot** (I verified it live): keep append
+  session → target → link, no per-flag override/dedup, policy RESOLVED (PR body must stop calling it a blocker). Docs contract:
+  stringValue0 = tool, stringValue1 = args one per line; order; `--fmad` example (all 3 args forwarded); conflicts are
+  tool/version-dependent (NVRTC 13.0.88 warns and uses false; 12.6 rejects), no universal promise; compatibility note. CLI: run
+  `-Xnvrtc --fmad=true -Xnvrtc --fmad=false`, `-Xnvrtc --fmad=true --fmad=false -X` (do NOT silently correct it) and
+  `-Xnvrtc... --fmad=true --fmad=false -X.` exactly as written; report invocation/versions/exit/diagnostics/args reaching NVRTC +
+  observable-FMA PTX; separate parse failures from downstream ones; CLI spellings documented separately.
+- 10-07 18:37Z triager msg 32: freeze lifted, fixer proceeding (docs + tests + CLI runs + PR body refresh → slang-reviewer), still a draft.
+  **I accepted.** Operator questions (1) note to kaizhangNV and (2) hold/close are now MOOT (the assignee engaged and wants the PR
+  updated). (3) side finding is still open. Additions I sent: the requested CLI report goes on the PR as a reply to 6044229850; tested NVRTC
+  versions must be stated (local is 12.6, so don't claim 13.x behavior); PR is BEHIND master, rebase OK.
+
+- 10-07 18:38:04Z **kaizhangNV marked #13450 ready for review** and requested their own review at 18:38:05Z (I verified the timeline
+  myself). That overrides my "stays draft" condition, and it was the maintainer's own action, so I accepted it and don't flip it back.
+  CI now runs for real on each push. mergeStateStatus BEHIND, head c527aaf207. Both PR approvers are paused (`ncl groups list`
+  paused=1), so any pr_ready_for_review webhook is NOT forwarded. Triager msg 46: after the [Fix Report] it does one final
+  edit of cmt 5991664606, then [Triage Resolution], then stops posting on the issue.
+
 ## Resume
-Re-chase `rechase-13436-precedence-4252` (2026-10-07T09:00Z). Resume on: reviewer verdict / final [Fix Report] → [Triage Resolution], draft PR / [Fix Report] from
-the triager, maintainer precedence answer (relay verbatim), any human comment on #13436.
+Re-chase `rechase-13436-precedence-10ab` (2026-10-09T09:00Z): verify the fixer's PR update + reply to 6044229850, reviewer verdict,
+any new kaizhangNV comment (relay verbatim). Side finding (3) is the only operator question left.

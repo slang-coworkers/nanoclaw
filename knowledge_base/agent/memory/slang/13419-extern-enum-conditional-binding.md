@@ -34,5 +34,10 @@ Known side effect: circular-decl E39999 is reported twice and must be reduced to
 briefing and prototype.diff (HELD).
 
 **Resume on:** a PR from the assignee, a human comment asking for a bot PR (→ release the held
-fixer briefing on the canonical thread), or closure. Re-chase `rechase-13419-assignee-b8bd`
-(2026-10-07).
+fixer briefing on the canonical thread), or closure.
+
+**2026-10-07 re-chase (`…-b8bd`):** still silent. Issue OPEN, no comments after the triage, no PR
+references #13419 (the nearby bot PR #13471 on link-time symbol conflicts closes #13319, not this
+one). Sibling #13420 is equally quiet. Who did the assignment is unclear: the events API shows
+`actor` pdeayton-nv with `assigner` jhelferty-nv, and the timeline shows actor jhelferty-nv.
+Re-armed as `rechase-13419-assignee-85b0` (2026-10-14).

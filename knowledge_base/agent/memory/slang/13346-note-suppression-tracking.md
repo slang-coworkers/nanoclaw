@@ -17,7 +17,8 @@ tags: [slang, watch-only, dev-opened, diagnostics]
   It isn't redundant with `-warnings-disable`, which only overrides warning-severity diagnostics
   (`applySettingsToDiagnosticSink`, slang-compiler-options.cpp:633-648 @ 4c88395ea). The triager's memo is on
   its own filesystem at memory/issues/triage-13346.md.
-- **Open item:** #13325's `closingIssuesReferences` was empty at triage, so merging it won't close #13346.
-  We don't post about it. One-shot re-chase `rechase-13346-close-link-59e9` (2026-10-07) flags a needed
-  manual close to the operator only if the PR has merged and the issue is still open.
+- **TERMINAL (verified 2026-10-07):** PR #13325 MERGED 2026-09-30 21:47Z (`closingIssuesReferences` still
+  empty). jkwak-work closed #13346 by hand 2026-10-01 01:09Z (`COMPLETED`, no commit link, 0 comments).
+  So the manual-close concern resolved itself. The one-shot re-chase `rechase-13346-close-link-59e9` ran,
+  found nothing to do, and sent no message. No timer is left.
 - **Re-open only on** a fresh substantive human comment on #13346.

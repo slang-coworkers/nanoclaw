@@ -22,7 +22,7 @@ tags: [slang-pr-approver, cost-cap, approval-ledger, fork-pr]
 | R8 | `80020d53` | 09-16 | master merge | held by me (churn) |
 | R9 | `0ec118d1` | 09-17 | **real commit**: `_validateBuiltinModuleDependencies` | **sent, never answered** |
 | R10 | `14a2185f` | 10-01 | master merge only | held by me; the PR's own diff is identical to R9's |
-| R11 | `e91d7732` | 10-05 | not assessed | not forwarded: approver `paused=1`; the follow-up task reads the live head |
+| R11 | `e91d7732` | 10-05 | master merge only; PR's own diff matches R10 on 22 of 23 files. In `include/slang.h`, `SaveAutodiffModule`/`…BinSource` moved from 162/163 to 163/164 (master took 162 for `DiagnosticFormat`), so the enum stays append-only | not forwarded: approver `paused=1` + cost-escalated |
 
 **The finding, unchanged since R4:** the language server never learned the new `autodiff`
 module name. Two places: `getBuiltinModuleSource` returns an empty blob with `SLANG_OK`, and the
@@ -56,4 +56,6 @@ for each implementation file and check them against the previous revision's
 
 Re-chases: `rechase-12136-approver-c-c050` (10-04: unchanged, head still `14a2185f`, no operator
 answer; re-pinged as dashboard msg 41 with the pause correction) → `rechase-12136-approver-d-b6d8`
-(10-07 09:00Z).
+(10-07: still paused=1, still escalated with the same figures, no outbound after seq 147, no operator answer
+to msg 29/41 in the 400 most recent dashboard rows; head R11 `e91d7732`; one reminder line sent, msg id 23)
+→ `rechase-12136-approver-e-f511` (10-10 09:00Z).

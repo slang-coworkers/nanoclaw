@@ -51,3 +51,10 @@ Related: [[project_12316_type_layout_policy_duplication_techdebt]].
 
 ### 2026-10-05, #13411: a `pr_mention` webhook can fire for a human @-mentioning another human
 `github.pr_mention` on #13411 (our own docs-regen tracker) carried jhelferty-nv's comment *"@jvepsalainen-nv … I'm assuming it'll be fixed the next time you run the gen?"*. It didn't mention @nv-slang-bot. He had just assigned the issue to jvepsalainen-nv, who owns the regen runs. The procedure's "issue → triager" row would have dispatched a maintainer-to-maintainer question to the triager. ⇒ **Read who the body @-mentions before routing a `pr_mention`.** If it's another human, hold: no dispatch and no bot post. If it's a factual question we can answer, check the facts locally. Here `regenerate.py list-stale` on master already flagged misc.md and its test bundle, because `slang-ir-peephole.cpp` is a watched path. Then offer that answer to the operator, not to GitHub. Recorded the handoff in the owning re-chase task (`rechase-12249-13411-4260`).
+
+### 2026-10-07, #13449: a `pr_mention` comment body is a snapshot too — re-read it before relaying
+saipraveenb25 posted a two-point comment at 16:40:44Z and deleted point (ii) at 16:41:38Z. I quoted the webhook payload verbatim to
+the triager and to the operator, and my report presented (ii) as part of his decision. The triager caught it by re-reading the live
+comment. ⇒ **Before quoting a human comment as "the maintainer's words", `gh api .../issues/comments/<id>` and compare the live body
+and `updated_at` with the payload.** A maintainer's quick self-edit is common and it is precisely the retraction that matters. The
+same check as rung 2 above, aimed at comments instead of issue bodies.

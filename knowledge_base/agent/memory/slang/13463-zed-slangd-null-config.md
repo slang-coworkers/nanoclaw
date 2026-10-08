@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13463 — Zed: slangd ignores unopened #include targets (null config reply → false)"
-description: Triaged + reproduced P2 language-server bug, not a regression. GO via the triager 2026-10-06; amended 10-07 to D (null resets to default, absent keeps current) → held draft PR #13475
+description: Triaged + reproduced P2 language-server bug, not a regression. GO via the triager 2026-10-06; amended 10-07 to D (null resets to default, absent keeps current) → held draft PR #13475; maintainer reassigned to jkiviluoto-nv 10-07, proactive bot work frozen
 tags: [slangd, language-server, zed, workspace-configuration]
 resource: /workspace/inbox/a2a-1791318700177-flswxk/triage-13463.md
 ---
@@ -45,4 +45,25 @@ I verified :2391 and asBool at `20092570c9` myself.
   6024885583 was edited to name the PR + the D rule. Known pre-existing gap: the push path has no handler for
   `slangLanguageServer.trace.server` (noted in the PR, not filed).
 
-**Resume on:** the slang-reviewer verdict → fixer report → triager `[Triage Resolution]`; then CI and a maintainer review (it's a draft).
+- 10-07 16:01Z: **maintainer reassignment.** jkwak-work (who github-actions auto-assigned at 01:59Z when the PR opened) assigned
+  it to **jkiviluoto-nv**, commenting 6041721542: *"Assigning to @jkiviluoto-nv for now because he recently worked on a Zed issue."*
+  I verified this via the timeline. It came **after** #13475 opened (01:59Z); head is now `9abe52d5d3` (3 commits, 2 review-fix commits 03:57/04:07Z),
+  still a draft, BEHIND, 3 pass / 56 skipped, 0 human reviews, review requested from jkwak-work. Unlike #13420/#13436, the bot PR
+  already exists and the comment doesn't decline it. **My decision:** no human ask to act on, so no GitHub reply. Freeze proactive bot
+  work (no un-draft, rebase or new pushes); only finish an in-flight reviewer round as a local verdict. The draft stays as the
+  resumable artifact for jkiviluoto-nv. Any human comment/review is relayed verbatim to slang-triager on the canonical thread.
+  Re-chase `rechase-13463-assignee-731d` (10-09 09:00Z).
+
+- 10-07 16:12Z triager msg 28: freeze acked by the fixer (msg 20). A round-2 reviewer verdict, if it arrives, is recorded locally only.
+  The worktree and branch are kept. I verified on GitHub: cmt 6024885583 was edited in place at 16:11:32Z (nv-slang-bot, 3794 chars, "Handed off" line, 0
+  @-mentions), the issue has 2 comments, and #13475 is still a draft at `9abe52d5d3`.
+
+- 10-07 16:45Z: jkwak-work cmt 6042523452 linked the Discord origin (thread 1549044095580897370, the reporter's msg
+  1557119677551878184). The comment is informational, asks for nothing, and is not a state change. I read the thread myself (12 msgs). The reporter (`micahsc`) asked on
+  09-14. On 09-15 they shared Zed settings using **nested** `settings: {slang: {searchInAllWorkspaceDirectories: true}}` plus
+  `initialization_options`, which is the triager's `zednested` ❌ case (Zed answers null for the dotted section), so D's null→default true covers it.
+  jkiviluoto-nv said 09-21 "I think I have the fix", which became #13192. On 09-25 the reporter said it still failed. jkiviluoto-nv replied 09-28
+  "We'll try to reproduce this issue … on Windows soonish". On 10-06 jkwaknv asked for a GH issue. So jkiviluoto-nv was already engaged, which supports
+  the freeze. No GitHub or Discord reply from us; relayed verbatim to the triager.
+
+**Resume on:** a jkiviluoto-nv / jkwak-work comment or review on #13463/#13475 (relay verbatim), a competing human PR, un-draft, or closure.

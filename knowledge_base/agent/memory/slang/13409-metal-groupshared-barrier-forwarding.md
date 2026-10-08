@@ -91,3 +91,11 @@ Terminal handoff: a draft held pending review. Asked the operator for the ready-
 Fixer `sess-1790967825882-vnvecr`, triager `sess-1790963826393-0y71gs`, reviewer `sess-1791004457668-whh9sf`,
 all on `gh-issue-shader-slang/slang-13409`. The #13412 thread had only my own session as of 10-04.
 Re-chase `rechase-13421-g1g2-13412-4e79` (2026-10-06 19:00Z, done). #13412 chain: triager `sess-1791142972332-o68o4g`, fixer `sess-1791143956141-rpnjyi`, reviewer `sess-1791161961007-ef8i4w`. The earlier `rechase-13409-sibling-7aad` is done.
+
+## 2026-10-07 18:22Z: maintainer direction on #13465
+- tangent-vector (MEMBER) posted comment 6044142513: `inout` is an **unchecked exclusive mutable borrow**. Copy-in/copy-out and pass-by-reference are both the compiler's choice, so the repro's call site is UB and the Metal/CUDA codegen is permitted. Their proposed direction is a **diagnostic**: groupshared storage passed to `inout` is "abundantly likely" UB, so warn, and they argue it should be an error. Interprocedural overlap checks are best-effort. #13465 has picked up assignee jhelferty-nv and label Office-Tess.
+- I routed it to the triager pinned to `sess-1791142972332-o68o4g`, thread `-13465`, msg 65, with the comment quoted verbatim. The triager owns any reply.
+- The fixer hold (wait for #13421/#13431) is relaxed for #13465 only: a front-end diagnostic doesn't touch the shared `slang-ir-util.cpp` predicate. A fix may start only if a maintainer asks for the PR. Changes to `undoParameterCopy` or `slang-ir-util.cpp` still come back to me.
+- Re-chase `c551` updated so it doesn't re-route comment 6044142513.
+- 18:51Z: the triager replied as **comment 6044596724** (I verified it live: bot author, 1258 chars, 2 comments on the issue). The reply accepts the ruling and says the body's "Fix direction" no longer applies. It asks tangent-vector **(Q1)** whether to draft a PR for the call-site check, at whatever severity they choose, and **(Q2)** whether the spec should state the exclusive-borrow rule. **#13465 is parked on those answers.** Re-chase `c551` (10-08 19:00Z) watches for them.
+- Correction: the language reference moved to **shader-slang/spec** in #13439 (merged 10-07 09:06Z), so the right citation is `specification/declarations.md:216-219`. The `docs/language-reference/` path I gave the triager is 404 on master. I shared this as a learning.

@@ -46,3 +46,38 @@ post. I sent nothing new to slang-triager because the hold is unchanged. The des
 tangent-vector. Re-chase `rechase-13427-reporter-1779` (10-09 17:00Z) now also watches tangent-vector's
 reply. If tangent-vector authorizes a bot PR, dispatch the triager first and do cleanup second (see
 [[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]], #12462).
+
+**10-07 18:33Z — maintainer direction.** tangent-vector commented
+[6044320898](https://github.com/shader-slang/slang/issues/13427#issuecomment-6044320898):
+- "yes, this is a bug". The fix applies to **all targets** whose counting rules make 64-bit scalars take
+  two slots, and the full target range must be validated first.
+- For D3D, vertex inputs and fragment outputs must match API-side binding; stage-to-stage locations
+  don't matter there.
+- The patch-constant fix is warranted but lower priority, with no refactor (they dislike that its layout
+  is computed in IR legalization).
+- There was **no ask for a bot PR**.
+
+The comment does not literally mention @nv-slang-bot; the event came from the issue we triaged. I sent
+slang-triager (msg 39) the comment verbatim and asked for the cross-target investigation, a short post,
+and one closing question to tangent-vector about who opens the PR. The fixer stays held. #13078 moved
+to head `3be5ee18c5` on 10-07.
+
+**10-07 19:44Z — cross-target sweep posted.** The triager posted
+[6045519879](https://github.com/shader-slang/slang/issues/13427#issuecomment-6045519879) (1627 chars; I verified it at source).
+- Only SPIR-V/GLSL need the 2-slot count.
+- D3D: DXC rejects 64-bit VS inputs and PS outputs, and DXGI has no R64 VS/RT formats.
+- Metal: `long4` gets 1 index, and `double` hits an internal error.
+- WGSL/C++/CUDA: these varyings fail to compile.
+- The fix site is `GLSLVaryingLayoutRulesImpl` only.
+- #13078 @ `3be5ee18c5` still fails `double3` (leaf `fromRaw(1)` at :1276).
+
+The comment ends with one question to @tangent-vector: should the bot open the PR, or will they or @georgeouzou?
+
+Side findings I held:
+- (a) A 64-bit `SV_Target` compiles with no diagnostic. This is already disclosed in that comment, so I
+  filed no separate issue.
+- (b) In #13078, hull patch-constant Locations start after the control-point outputs, so a float3 gives
+  hull 1/2 vs domain 0/1 (DXC 0/1). I did not post it: it would be an unsolicited review on a community
+  PR under human review. Offer it to georgeouzou if the patch-constant half is routed to #13078.
+
+`SV_Target3` → Location 1 is the existing #11944.
