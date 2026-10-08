@@ -6,15 +6,43 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 668 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 275 |
-| `nv-slang` | slang project spine, skills, workflows | 178 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 103 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 82 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 676 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 280 |
+| `nv-slang` | slang project spine, skills, workflows | 179 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 104 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 83 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-08
+
+### nv-main (8 PRs)
+- **#1903** `explain-diff-html: never empty the PR description`
+- **#1919** `feat(setup): one-command install — endpoint prompt with model defaults, dashboard service, Orchestrator`
+- **#1920** `fix(cost): price claude-haiku-5-5 and gpt-6.1-sol at LiteLLM online rates`
+- **#1922** `fix(setup): retry mirror image pulls on transient registry errors`
+- **#1924** `fix(onecli auth): endpoint prompt, NVIDIA model defaults, endpoint recovery on re-install`
+- **#1927** `fix(cost): sonnet-5-5 cache read at LiteLLM live rate; bump stale model defaults`
+- **#1932** `chore(container): bump claude-code 2.1.289 + agent SDK 0.3.289, codex 0.160.0`
+- **#1929** `chore(skills): remove unused costliest-session-digest skill`
+
+### nv-dashboard (5 PRs)
+- **#1913** `Sync nv-dashboard with upstream/main`
+- **#1923** `sync: nv-main into nv-dashboard (2026-10-08)`
+- **#1925** `fix(dashboard): price claude-haiku-5-5 and gpt-6.1-sol at LiteLLM online rates`
+- **#1928** `sync: nv-main into nv-dashboard (2026-10-08 b)`
+- **#1930** `fix(dashboard): derive skill-transcript pricing from MODEL_PRICING; sonnet-5-5 at LiteLLM live rate`
+
+### nv-slang (1 PRs)
+- **#1914** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#1915** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#1916** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-10-07
 
