@@ -122,7 +122,14 @@ if [ -n "$HUB_MIRROR" ]; then
     fi
     "$RUNTIME" image inspect "${ref%@*}" >/dev/null 2>&1 && continue
     echo "Base image $ref via $HUB_MIRROR" >&2
-    "$RUNTIME" pull -q "$HUB_MIRROR/$path" >&2 || { echo "Could not pull $HUB_MIRROR/$path" >&2; exit 1; }
+    # Mirrors answer the odd transient auth/5xx error ("failed to fetch
+    # anonymous token"); three tries, a few seconds apart, before giving up.
+    pulled=0
+    for attempt in 1 2 3; do
+      "$RUNTIME" pull -q "$HUB_MIRROR/$path" >&2 && { pulled=1; break; }
+      [ "$attempt" -lt 3 ] && sleep $((attempt * 5))
+    done
+    [ "$pulled" = 1 ] || { echo "Could not pull $HUB_MIRROR/$path" >&2; exit 1; }
     # docker cannot tag a digest reference; BuildKit still resolves name:tag@digest
     # against the local image the tag points at.
     "$RUNTIME" tag "$HUB_MIRROR/$path" "${ref%@*}" >&2
