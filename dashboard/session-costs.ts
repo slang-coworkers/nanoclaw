@@ -8,10 +8,9 @@
  * `unit-cost.ts` is the tested core behind the funnel's cost column.
  *
  * Rates are LiteLLM's `model_prices_and_context_window.json` — the SAME source
- * ccusage prices against and the same rates `server.ts`'s FALLBACK_PRICING
- * carries, so a session sum reconciles with the group total on the Overview.
- * A test (session-costs.test.ts) asserts this table agrees with FALLBACK_PRICING
- * on every shared model, so the two can't drift.
+ * ccusage prices against. `server.ts`'s skill-transcript scanner prices through
+ * this table too (`fallbackPricing`), so a session sum reconciles with the group
+ * total on the Overview by construction.
  *
  * This module owns the CLAUDE half only. A session's Codex spend (the
  * `codex-critique` skill's `mcp__codex__codex` tool calls, which never touch a
@@ -52,6 +51,7 @@ export const MODEL_PRICING: Record<string, ModelRate> = {
   'claude-opus-4-8': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
   'claude-opus-4-7': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
   'claude-opus-4-6': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
+  'claude-sonnet-5-5': { input: 2e-6, output: 10e-6, cacheCreate: 2.5e-6, cacheRead: 1e-7 },
   'claude-sonnet-5': { input: 2e-6, output: 10e-6, cacheCreate: 2.5e-6, cacheRead: 2e-7 },
   'claude-sonnet-4-6': { input: 3e-6, output: 15e-6, cacheCreate: 3.75e-6, cacheRead: 3e-7 },
   'claude-haiku-5-5': { input: 1e-7, output: 5e-7, cacheCreate: 1.25e-7, cacheRead: 1e-8 },

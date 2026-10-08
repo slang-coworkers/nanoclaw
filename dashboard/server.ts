@@ -341,7 +341,7 @@ export function titleFromPrompt(prompt: string | null | undefined): string | nul
 /**
  * Fire-and-forget LLM-backed title upgrade. Only runs when
  * DASHBOARD_TITLE_AGENT=anthropic and ANTHROPIC_API_KEY is set — otherwise
- * the heuristic title stays in place. Uses claude-haiku-4-5, 30 tokens,
+ * the heuristic title stays in place. Uses claude-haiku-5-5, 30 tokens,
  * single turn. Failures are swallowed (log only) — the heuristic title
  * the host already wrote is the fallback.
  *
@@ -368,7 +368,7 @@ async function refineTitleWithAgent(heDb: Database.Database, sessionId: string, 
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: 'claude-haiku-4-5',
+        model: 'claude-haiku-5-5',
         max_tokens: 30,
         messages: [
           {
@@ -2023,7 +2023,7 @@ function refreshContextStatsCache(): void {
 //
 // ccusage is per-group-per-day, so a per-SESSION figure is summed from the raw
 // per-message `usage` in each transcript, priced by session-costs.ts (LiteLLM
-// rates, guarded against FALLBACK_PRICING drift). One transcript file under
+// rates, via fallbackPricing). One transcript file under
 // `.claude-shared/projects/` is one SDK session (its basename is the SDK uuid),
 // mapped to the nanoclaw session id via sdk_session_routes so a row can link.
 //
@@ -3133,40 +3133,18 @@ function normalizeCcusageEntry(raw: Record<string, unknown>): CcusageDayEntry {
 // Per-token USD/token pricing for the skill-transcript scanner, which parses
 // raw JSONL and so cannot go through ccusage at all.
 //
-// THIS TABLE IS A DENYLIST IN DISGUISE. `scanSkillTranscriptCosts` does
-// `if (!FALLBACK_PRICING[model]) continue;` — a model missing here is not
-// merely unpriced, it is DROPPED, tokens and all. On slang-coworkers prod
-// 2026-08-11 the skill transcripts held 2,002 `claude-opus-5` entries against
-// 205 `claude-sonnet-5` ones, so the single-entry table was discarding ~90% of
-// the sampled records while reporting the remainder as if it were the total.
-//
-// Rates below are LiteLLM's (`model_prices_and_context_window.json`), the same
-// source ccusage prices against, so the two paths agree. Keeping them in sync
-// matters: the previous `claude-sonnet-5` row carried 3e-6/15e-6/3.75e-6/3e-7,
-// which is `claude-sonnet-4-6`'s price list verbatim — sonnet-5 actually bills
-// at 2e-6/1e-5/2.5e-6/2e-7, so every sonnet-5 skill transcript was marked up
-// 50%. A wrong rate is worse than a missing one: it renders with full
-// confidence and nothing about the output suggests it should be checked.
-//
-// When a new model ships, ADD IT HERE — otherwise its cost silently reads zero.
-export const FALLBACK_PRICING: Record<
-  string,
-  { input: number; output: number; cacheCreate: number; cacheRead: number }
-> = {
-  'claude-opus-5-5': { input: 4e-6, output: 20e-6, cacheCreate: 5e-6, cacheRead: 2e-7 },
-  'aws/anthropic/bedrock-claude-opus-5-5': { input: 4e-6, output: 20e-6, cacheCreate: 5e-6, cacheRead: 2e-7 },
-  'azure/anthropic/claude-opus-5-5': { input: 4e-6, output: 20e-6, cacheCreate: 5e-6, cacheRead: 2e-7 },
-  'azure/anthropic/claude-opus-4-8': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
-  'claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
-  'aws/anthropic/bedrock-claude-opus-5': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
-  'claude-opus-4-8': { input: 5e-6, output: 25e-6, cacheCreate: 6.25e-6, cacheRead: 5e-7 },
-  'claude-sonnet-5': { input: 2e-6, output: 10e-6, cacheCreate: 2.5e-6, cacheRead: 2e-7 },
-  'aws/anthropic/bedrock-claude-sonnet-5': { input: 2e-6, output: 10e-6, cacheCreate: 2.5e-6, cacheRead: 2e-7 },
-  'claude-sonnet-4-6': { input: 3e-6, output: 15e-6, cacheCreate: 3.75e-6, cacheRead: 3e-7 },
-  'claude-haiku-5-5': { input: 1e-7, output: 5e-7, cacheCreate: 1.25e-7, cacheRead: 1e-8 },
-  'aws/anthropic/bedrock-claude-haiku-5-5': { input: 1e-7, output: 5e-7, cacheCreate: 1.25e-7, cacheRead: 1e-8 },
-  'azure/anthropic/claude-haiku-5-5': { input: 1e-7, output: 5e-7, cacheCreate: 1.25e-7, cacheRead: 1e-8 },
-};
+// Derived from session-costs.ts's MODEL_PRICING via its normalizeModel, so a new
+// model is added in ONE dashboard table, not two. This used to be a separate
+// hand-kept table keyed by raw wire id; `scanSkillTranscriptCosts` DROPS a model
+// it cannot price (tokens and all), so every id the copy forgot was silently
+// discarded, and every rate it carried could drift from MODEL_PRICING. Rates are
+// LiteLLM's, the same source ccusage prices against.
+export function fallbackPricing(
+  model: string,
+): { input: number; output: number; cacheCreate: number; cacheRead: number } | undefined {
+  const key = normalizeModel(model);
+  return key && Object.prototype.hasOwnProperty.call(MODEL_PRICING, key) ? MODEL_PRICING[key] : undefined;
+}
 
 function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): CcusageDayEntry[] {
   const skillsDir = join(claudeSharedDir, 'skills');
@@ -3227,7 +3205,7 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
         const r = JSON.parse(line);
         if (r.type !== 'assistant' || !r.message?.usage) continue;
         const model = r.message.model || '';
-        if (!FALLBACK_PRICING[model]) continue;
+        if (!fallbackPricing(model)) continue;
         const ts = r.timestamp;
         let date = '';
         if (typeof ts === 'string' && ts.length >= 10) date = ts.slice(0, 10);
@@ -3257,7 +3235,7 @@ function scanSkillTranscriptCosts(claudeSharedDir: string, since?: string): Ccus
       totalCC = 0,
       totalCR = 0;
     for (const [modelName, tokens] of Object.entries(models)) {
-      const p = FALLBACK_PRICING[modelName];
+      const p = fallbackPricing(modelName)!;
       const cost =
         tokens.input * p.input +
         tokens.output * p.output +

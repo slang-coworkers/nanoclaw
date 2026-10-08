@@ -1,6 +1,5 @@
 import { describe, expect, it } from 'vitest';
 
-import { FALLBACK_PRICING } from './server.js';
 import {
   MODEL_PRICING,
   normalizeModel,
@@ -88,21 +87,10 @@ describe('priceUsage', () => {
   });
 });
 
-describe('MODEL_PRICING agrees with server FALLBACK_PRICING (no drift)', () => {
-  // The two tables must price shared models identically, or a session sum would
-  // disagree with the group total on the Overview. This test is the guard.
-  it('every FALLBACK_PRICING model resolves to the same rates here', () => {
-    for (const [model, rate] of Object.entries(FALLBACK_PRICING)) {
-      const key = normalizeModel(model);
-      expect(MODEL_PRICING[key], `${model} → ${key} missing from MODEL_PRICING`).toBeDefined();
-      expect(MODEL_PRICING[key]).toEqual(rate);
-    }
-  });
-});
-
 describe('resolveSdkSessionId', () => {
   it('uses the file basename for a normal root session transcript', () => {
-    const p = '/data/v2-sessions/ag-1/.claude-shared/projects/-workspace-agent/28e13752-0539-4e03-b4ba-1e23871ba1cc.jsonl';
+    const p =
+      '/data/v2-sessions/ag-1/.claude-shared/projects/-workspace-agent/28e13752-0539-4e03-b4ba-1e23871ba1cc.jsonl';
     expect(resolveSdkSessionId(p)).toBe('28e13752-0539-4e03-b4ba-1e23871ba1cc');
   });
 
