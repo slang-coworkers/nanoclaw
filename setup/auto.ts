@@ -2012,6 +2012,16 @@ async function integrateDashboardChoice(): Promise<typeof BACK_TO_CHANNEL_SELECT
     const port = readEnvKey('DASHBOARD_PORT') || '3737';
     if (service.status === 'installed') {
       p.log.success(`Dashboard running as a service (${service.name}) — http://127.0.0.1:${port}`);
+      // It listens on loopback only; from a laptop it is reached over a tunnel.
+      const target = `${os.userInfo().username}@${os.hostname()}`;
+      p.log.info(
+        brandBody(
+          wrapForGutter(
+            `From your laptop: ssh -L ${port}:127.0.0.1:${port} ${target}  (Teleport: tsh ssh -L ${port}:127.0.0.1:${port} ${target}), then open http://127.0.0.1:${port}`,
+            4,
+          ),
+        ),
+      );
     } else if (service.status === 'skipped') {
       p.log.info(service.hint);
     } else if (service.status === 'failed') {

@@ -53,7 +53,7 @@ $PROMPT
 Respond with ONLY the JSON object, no markdown, no explanation."
 
 # Use Haiku for speed — this should complete in <2s
-MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-claude-haiku-4-5-20251001}"
+MODEL="${ANTHROPIC_DEFAULT_HAIKU_MODEL:-claude-haiku-5-5}"
 API_URL="${ANTHROPIC_BASE_URL:-https://api.anthropic.com}"
 API_KEY="${ANTHROPIC_API_KEY:-}"
 
