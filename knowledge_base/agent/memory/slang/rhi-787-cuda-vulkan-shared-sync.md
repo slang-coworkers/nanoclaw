@@ -8,7 +8,7 @@ resource: https://github.com/shader-slang/slang-rhi/issues/787
 
 # slang-rhi#787 — CUDA↔Vulkan shared-texture missing synchronization
 
-**State (2026-09-30): LIVE, parked on human review. PR #881 is NON-DRAFT — jhelferty flipped it ready themself on 2026-09-28 after accepting the same-encoder proposal, and requested review from skallweitNV. Final head `775f522` is GPU-CI-green and per-test re-verified by me, but **NOT merge-ready**: reviewer REQUEST_CHANGES on R4/R5 until jhelferty answers scope question 5907630393 (see the 2026-09-30 CORRECTION at the end). Re-chase task `rhi-881-review-rechase-5bfe` fires 2026-10-07T09:00Z (10-03 run: both still silent) and checks both 5907630393 and skallweitNV's review.**
+**State (2026-09-30): LIVE, parked on human review. PR #881 is NON-DRAFT — jhelferty flipped it ready themself on 2026-09-28 after accepting the same-encoder proposal, and requested review from skallweitNV. Final head `775f522` is GPU-CI-green and per-test re-verified by me, but **NOT merge-ready**: reviewer REQUEST_CHANGES on R4/R5 until jhelferty answers scope question 5907630393 (see the 2026-09-30 CORRECTION at the end). Re-chase task `rhi-881-review-rechase-755a` fires 2026-10-11T09:00Z (10-07 run: both still silent; operator asked about a reminder) and checks both 5907630393 and skallweitNV's review.**
 #812 (register-all internal design, HEAD `6e040d1`) was CLOSED by jhelferty-nv 2026-09-28 — no longer an open question.
 Canonical thread `gh-issue-shader-slang/slang-rhi-787`; PR review thread `gh-pr-slang-rhi-881-review`.
 Re-opens on jhelferty's webhook. Full review-round history: [[rhi-787-review-history.md]].
@@ -170,4 +170,10 @@ authorize.
   "ask whether to close #812" terminal step is moot; drop it. Operator told (dashboard msg 11). Re-armed as
   `rhi-881-review-rechase-5bfe` for 10-07 09:00Z. If still silent then, ask the operator whether to ping
   out-of-band or post one GitHub reminder.
-
+- **2026-10-07 09:00 re-chase (`rhi-881-review-rechase-5bfe`):** still parked on both inputs. (A) jhelferty has not
+  answered 5907630393 after 7 days (0 reactions, no reply). Head is still `775f522`, CI green. **New on 10-06 21:21Z:**
+  jhelferty-nv removed dshreiner-nv as a reviewer and **assigned skallweitNV** (assignees are now jhelferty-nv +
+  skallweitNV). So they were on the PR and routed the review, but skipped the scope question. (B) skallweitNV has not
+  reviewed yet, though they are active (#660 10-07, #889/#890 10-05). Asked the operator (dashboard msg 15) to choose:
+  1 = slang-fixer posts one GitHub reminder, 2 = operator pings out-of-band, 3 = wait. Nothing posted. Re-armed as
+  `rhi-881-review-rechase-755a` for 10-11 09:00Z; that run checks the dashboard for the answer before acting.

@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13449_generic_ifloat_minmax_not_differentiable
-description: "slang#13449 (bot-filed 10-05 22:38Z by slang-fixer on the #12249 chain, on dashboard-Main order row 455621): min/max inside a [Differentiable] generic over T : IFloat binds the non-differentiable T : IComparable overload -> E41022. Owned, no fixer dispatched; watched by rechase-12249-13411-4260."
+description: "slang#13449 (bot-filed 10-05 22:38Z by slang-fixer on the #12249 chain, on dashboard-Main order row 455621): min/max inside a [Differentiable] generic over T : IFloat binds the non-differentiable T : IComparable overload -> E41022. Owned, no fixer dispatched; watched by rechase-12249-13411-4260. Side crash filed as #13486 (10-07)."
 metadata:
   node_type: memory
   type: project
@@ -39,3 +39,35 @@ body now binds the new `min<T : IFloat>` (hlsl.meta.slang:13838), which calls th
 frozen IFloat), **B** register derivatives on `min<T:IFloat>` (untried; E31148 risk, cf. `pow` in #12591), **C** document
 the working routes. #13139 is related but neither a fix nor a duplicate. **Parked on jhelferty-nv's A/B/C choice.** The
 re-chase task routes that choice to slang-fixer on `-13449`.
+
+**10-07 15:03Z: Sai proposed a 4th direction.** saipraveenb25 (MEMBER; label `Office-Sai` added) replied to the triage
+(issuecomment-6040787091), suggesting `__func_extension` custom derivatives for `min`/`max` under `T : IDifferentiable & IComparable`
+so the primals don't change. The comment has no @-mention but answers our triage on a bot-filed issue, so I treated it as
+addressed to the bot. I added 👀 and dispatched it to **slang-triager** on `-13449` (msg 75) with `<github-post-authorized />`:
+prototype and revert, reply to @saipraveenb25, no PR. My unverified pointers to the triager: `__func_extension` is experimental-gated
+(W30131) but exempt for core-module source; the `T:IFloat` body binds `min<T:IFloat>`, not the IComparable overload, so the key may not
+reach it. `rechase-12249-13411-80aa` (10-09 09:00Z) checks that the reply was posted and routes a PR go-ahead to slang-fixer.
+
+**10-07 16:17Z: prototype reply posted to Sai** (issuecomment-6042004327, verified). The `IDifferentiable & IComparable` target
+can't be written: core bootstrap fails with E33070 because the overload set includes a `vector<T,N>` generic (the diff.meta.slang:1959
+limitation), and it wouldn't reach `T:IFloat` callers anyway. A `min/max<T:IFloat>` target compiles and passes the suites, but
+**vector/matrix gradients are wrong** because IFloat `lessThan` compares lane 0 only. The offered draft PR fixes `__func_extension`
+target resolution for overloaded generic sets first. **Parked on a go-ahead from Sai or jhelferty-nv.** The go-ahead goes to
+slang-triager, which holds the prototype. Side finding: a bare-name `__func_extension` target segfaults slangc (rc 139). I told the
+triager to file it after deduping against #11356 and #11004 (msg 85).
+
+**10-07 16:34Z: side finding filed as #13486** (`__func_extension` segfault). See [[project_13486_func_extension_non_idifferentiable_segfault]].
+
+**10-07 16:34Z: side finding filed as #13486** by slang-triager (`0epj7t`, row 15). The sibling Main (`gm2yvi`, row 103)
+reported it to the operator and extended `rechase-12249-13411-80aa` to route a #13486 triage/fix request to slang-triager on
+`gh-issue-shader-slang/slang-13486`. No fixer without a maintainer request. The `issue_opened` webhook for #13486 was the
+filing echoing back; the owner ladder hit on rung 1, so nothing was dispatched.
+
+**10-07 16:40Z: Sai decided — no workaround.** saipraveenb25 (issuecomment-6042432934) says vector `IComparable` is wrong and
+should be fixed independently (the arithmetic-interface overhaul), and he would rather not hack around it: use
+`__BuiltinFloatingPointType` until the interfaces are fixed. His first version also proposed (ii), `IFloat` adding
+differentiable-function constraints via the associated-type mechanism. **He deleted (ii) at 16:41Z.** I relayed the webhook payload
+with (ii) included before re-reading the live body; the triager caught it. I told the triager (msg 105) to withdraw the PR offer. It
+posted the closing reply (issuecomment-6042521227, verified, 632 chars), which links #12720 (tangent-vector) and #6966 and names
+`__BuiltinFloatingPointType`. **No fixer, no PR; parked on #12720.** If Sai re-raises (ii), the triager's unverified candidate
+mechanism is #11368 (38c853dbe).

@@ -1,6 +1,6 @@
 ---
 name: project_12074_sgl_tests_teardown_exitcode_flake
-description: "SGL sgl_tests exits nonzero AFTER all tests pass (post-main teardown crash) → reddens slang PRs via the cross-repo SlangPy Tests check. Tracking issue slangpy#1062. RESTING/PARKED: PR #1118 (arm Crashpad, diagnostics-only) maintainer-promoted; root-cause fix deferred pending crash data (~20d cadence)."
+description: "SGL sgl_tests exits nonzero AFTER all tests pass (post-main teardown crash) → reddens slang PRs via the cross-repo SlangPy Tests check. Tracking issue slangpy#1062. RESTING/PARKED: PR #1118 (arm Crashpad, diagnostics-only) maintainer-promoted; root-cause fix deferred pending crash data (observed ~5 hits/7wk Aug–Oct)."
 metadata:
   node_type: memory
   type: project
@@ -33,6 +33,7 @@ explicit `#include "sgl/core/config.h"`).
 
 ## Resolution / current state — OPEN but PARKED
 
+- **Recurrence census 2026-10-07** (triager, answering jhelferty-nv; [comment](https://github.com/shader-slang/slangpy/issues/1062#issuecomment-6045994262)): **5 hits 08-19→10-07** (3 cross-repo SlangPy Tests, 2 in-repo `ci.yml`), all win/msvc/Release `nvrgfx`, 4 distinct runners, 3/5 green on rerun. Full scan: 2,116 runs / 282 failed C++-test jobs, grep positive-controlled on the 07-13 hit. Clustered 08-19–09-01, then quiet until 10-07. #1118 still unmerged → none produced a minidump. The 2 pre-08-19 hits were found ad hoc, so this is not proof the rate went up.
 - **[slangpy#1062](https://github.com/shader-slang/slangpy/issues/1062)** tracks it. Auto-close is a **manual GitHub link, not a `Closes #1062` keyword**, so it stays OPEN even post-merge until closed by hand.
 - **[PR #1118](https://github.com/shader-slang/slangpy/pull/1118)** maintainer-promoted (ready-for-review). **Diagnostics-only**: arms Crashpad in `sgl_tests` `main()` (guarded `SGL_HAS_CRASHPAD`, adds the explicit `config.h` include) **and** fixes the cross-repo composite-action dump upload (whole `.crashpad/` DB + `include-hidden-files`, since `upload-artifact` skips dot-dir contents). It **captures the next teardown fault; it does not fix the flake.**
 - **Root-cause fix DEFERRED by the maintainer** pending crash data from the armed build — recurrence cadence ~20d, so data is slow and the chain goes quiet after #1118 lands.

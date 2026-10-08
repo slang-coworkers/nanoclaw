@@ -24,21 +24,32 @@ decay and must be re-read, not remembered.
   **MERGED 2026-10-05** (`e6be8dcdd7`). The producer fix in `makeInfoForConcreteType` replaced a disproven consumer `none()` fix. Holds the overclaim timeline and lessons.
 
 - [slang#13436 — DownstreamArgs lost across option levels (linkWithOptions / addTarget)](13436-downstream-args-cross-level.md) —
-  triaged + reproduced bug P2, not a regression; #12900's deferred cross-level case. (b) compose-once → **held draft PR #13450**
-  (c527aaf207), FROZEN: maintainer-assigned kaizhangNV 10-05 (before the PR opened); C1 precedence open; @-mention OK + side finding await operator.
-  Re-chase `rechase-13436-precedence-4252` (2026-10-07).
+  triaged + reproduced bug P2, not a regression; #12900's deferred cross-level case. (b) compose-once → **PR #13450** (c527aaf207).
+  The assignee kaizhangNV resolved C1 on 10-07 (keep append; docs contract + CLI probes) and marked it READY at 18:38Z. The fixer is updating it. The side finding awaits the operator.
+  Re-chase `rechase-13436-precedence-10ab` (2026-10-09).
 
 - [slang#12627 — CUDA masked RWTexture store, draft PR #13363](12627-cuda-masked-rwtexture-store.md) —
   held on jkwak-work's coherency answer (RMW+warning vs CUDA error; warning scope). Peer review complete (2 rounds, 0 bugs),
   `[Fix Report]` in 10-04 at head `b79ae81e23`. Next re-chase `rechase-12627-jkwak-8576` (2026-10-07). Follow-ups #13361/#13362/#13364/#13365 not dispatched.
 
 - [slang#13428 — local multi-declarator `j < 2` → E30015 (parser declarator registration)](13428-local-multi-declarator-generic-lookahead.md) —
-  regression from #6281. Approach B, plus the DeclGroup hide/unhide miscompile, is in **draft PR #13432** (`fix/issue-13428-b`), waiting on the reviewer and CI.
+  regression from #6281. Approach B, plus the DeclGroup hide/unhide miscompile, **#13428 CLOSED 2026-10-07**: PR #13432 was merged by skiminki-nv (`eaf758404f`).
   Sibling #13430 (local struct `decl has no parent`) is fixed in **draft PR #13434** (Approach B, no semantic visitor in local type bodies). #13433 (interface crash) and #13435 (local-struct static const silent miscompile) are filed and unrouted. Each has a 12h maintainer-reply gate (`i13433-maintainer-gate-6a3c`, `i13435-maintainer-gate-c5d3`).
+
+- [slang#13488: `try` on a non-throwing ctor/subscript not diagnosed](13488-try-non-throwing-ctor-subscript.md) -
+  draft PR #13503 awaiting maintainer review; autodiff-`throws` regression follow-up filed as #13508 (unrouted). Re-chase `rechase-13488-pr13503-73bf` (2026-10-10).
+- [slang#13490: `try` in a lambda checked against the enclosing function](13490-lambda-try-error-context.md) -
+  triaged bug P2, reproduced, not a regression; Approach A recommended. **HOLD**: no fixer until skiminki-nv (self-assigned)
+  asks for a PR. Re-chase `rechase-13490-lambda-try-7f0e` (2026-10-08).
+
+- [slang#13495: HLSL `class` as a value type (`HLSLClassDecl : StructDecl`)](13495-hlsl-class-value-type.md) -
+  tangent-vector's proposal, self-assigned. Triaged and reproduced (enh P2, not a regression, no aliasing; compile failures). The prototype works.
+  Comment 6046775420 asks tangent-vector for a go/no-go on a bot PR; the fixer stays **HELD**. Re-chase `rechase-13495-hlsl-class-e5eb` (2026-10-08).
+  Sibling #13496 (shared parser) has its own Main session.
 
 - [slang#13463 — Zed: slangd null config reply disables workspace include search](13463-zed-slangd-null-config.md) —
   triaged + reproduced P2 LSP bug, not a regression, not a #13179 dup. GO via the triager 10-06, amended 10-07 to D (null → default, absent → keep);
-  #13216 item 3 is out of scope. **Held draft PR #13475** (`fa2b5b9e31`); waiting on the slang-reviewer verdict, then CI and a maintainer.
+  #13216 item 3 is out of scope. **Held draft PR #13475** (`9abe52d5d3`). jkwak-work reassigned the issue to jkiviluoto-nv 10-07 16:01Z, after the PR opened, so bot work is FROZEN; draft kept. Re-chase `rechase-13463-assignee-731d` (10-09).
 
 - [slang#13424 — loops with a constant trip count are not folded at -O3](13424-loop-constant-folding.md) —
   triaged + reproduced, P3 enhancement, SPIR-V only (spirv-opt LoopUnroll declines Slang's loop shape). Option A (1-line BlockMerge) go/no-go: the 10-04
@@ -56,7 +67,7 @@ decay and must be re-read, not remembered.
   triaged + reproduced, P2, not a regression; link-time folding misses checked initializers. The reporter self-assigned it, so NO-GO and the fixer briefing + prototype are HELD; re-chase `rechase-13419-assignee-b8bd` (2026-10-07).
 
 - [slang#13420 — false-positive E41035 for store/read under the same condition (must-init walk is path-insensitive)](13420-uninit-correlated-conditions.md) —
-  triaged + reproduced regression (#11293). jhelferty-nv assigned it to the reporter, so NO-GO and the fixer is stood down; re-chase `rechase-13420-assignee-bc0c` (2026-10-07).
+  triaged + reproduced regression (#11293). jhelferty-nv assigned it to the reporter, so NO-GO and the fixer is stood down; still silent at the 10-07 re-chase; next re-chase `rechase-13420-assignee-3979` (2026-10-14).
 
 - [slang#13409 — Metal groupshared forwarded across barriers; sibling #13412 (all-target pointer roots)](13409-metal-groupshared-barrier-forwarding.md) —
   drafts #13421 (#13409, `c42049e18f`, reviewer jhelferty-nv) and #13431 (#13412, `bf9f3fd05a`, reviewer kaizhangNV) both passed
@@ -86,10 +97,10 @@ decay and must be re-read, not remembered.
 
 - [slang#13348 — inherited field through a property/subscript BoundStorage → E99997 ICE](13348-inherited-field-boundstorage-ice.md) —
   triaged + reproduced; three BoundMember consumers accept VarDecl only and reject InheritanceDecl. The author
-  self-assigned it, so NO-GO and no fixer; re-chase `rechase-13348-assignee-1a52` (2026-10-07).
+  self-assigned it, so NO-GO and no fixer; silent at 10-07 re-chase; next `rechase-13348-assignee-e721` (2026-10-14).
 
 - [slang#13346 — note-suppression tracking issue for maintainer PR #13325](13346-note-suppression-tracking.md) —
-  WATCH-ONLY. The PR has no Closes-link; re-chase `rechase-13346-close-link-59e9` (2026-10-07).
+  TERMINAL. #13325 merged 2026-09-30 and the maintainer closed #13346 by hand on 2026-10-01; the re-chase is done.
 
 - [slang#13337 — stray `;` in an interface → E38100 empty-named member](13337-interface-emptydecl-requirement.md) —
   **CLOSED 2026-10-02.** The author's PR #13367 merged, implementing the triaged Approach A (skip `EmptyDecl` in
@@ -115,7 +126,7 @@ decay and must be re-read, not remembered.
 - [slang-rhi#787 — CUDA↔Vulkan shared-texture missing sync](rhi-787-cuda-vulkan-shared-sync.md) —
   real missing `VK_QUEUE_FAMILY_EXTERNAL` ownership release, not a tolerance flake. Maintainer
   mandated an explicit `handOffShared`/`takeOverShared` API; PR #881 (head `775f522`,
-  GPU-CI-green, per-test verified) is NON-DRAFT since 09-28 (jhelferty flipped it); reviewer REQUEST_CHANGES on R4/R5 only. Parked on jhelferty's R4/R5 answer (5907630393, silent as of 10-03) + skallweitNV review; #812 closed by jhelferty 09-28; re-chase `rhi-881-review-rechase-5bfe` (10-07).
+  GPU-CI-green, per-test verified) is NON-DRAFT since 09-28 (jhelferty flipped it); reviewer REQUEST_CHANGES on R4/R5 only. Parked on jhelferty's R4/R5 answer (5907630393, silent 7d as of 10-07; operator asked re reminder) + skallweitNV review (assigned 10-06); #812 closed by jhelferty 09-28; re-chase `rhi-881-review-rechase-755a` (10-11).
   #812 (register-all) held as the alternative.
   - [PR #881 review-round history (condensed)](rhi-787-review-history.md) — how the design converged
     (#812 forks, the rejected `IExternalMemoryQueue` sketch) and the codex/maintainer/reviewer rounds

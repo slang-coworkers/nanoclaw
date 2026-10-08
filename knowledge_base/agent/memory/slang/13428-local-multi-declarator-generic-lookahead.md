@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13428 — local multi-declarator `int j = …, k = j < 2;` → E30015
-description: Triaged + reproduced regression (2025.4 OK → 2025.5+ fail), parser declarator registration. GO on Approach A through the triager 2026-10-04; draft PR #13432; sibling #13430 released to fixer
+description: #13428 TERMINAL (PR #13432 merged 10-07 eaf758404f); #13434 for #13430 still draft. Triaged + reproduced regression (2025.4 OK → 2025.5+ fail), parser declarator registration. GO on Approach A through the triager 2026-10-04; draft PR #13432; sibling #13430 released to fixer
 ---
 
 # slang#13428 (external reporter andy-slater, 2026-10-04)
@@ -111,4 +111,15 @@ The `S::N < 2` (b) commit stays on the #13432 side and waits for slang-reviewer'
 
 - 10-06 03:00Z re-chase: **nothing changed and the operator hasn't answered** (dashboard rows since 14:20Z show no reply). Both PRs are still drafts at `11711dc20a` / `457ae39a0e`, with 0 GitHub reviews and bot-only comments. skiminki-nv is assigned and review-requested on both. The one new human action: jhelferty-nv put #13428 on milestone Q4 2026 (Fall) at 10-05 17:25Z, with no comment. I checked the dispatch runs' jobs: `wait-for-human-priority` **failed** ("Stop yielded bot CI") and the falcor gate is waiting. No build or test job ran. The 2nd un-draft ask went to the dashboard (thread …-13428). Re-armed as `rechase-13432-13434-undr-e1b5` (10-07 03:00Z).
 
+- 10-07 11:24Z: **maintainer skiminki-nv APPROVED #13432 at `11711dc20a` and marked it ready themselves**, then requested review from dshreiner-nv. I verified it live:
+  OPEN, isDraft=false, closes [13428], mergeState BEHIND, reviewDecision still empty. PR-event CI run 37613848068 is `queued`. ⇒ **The #13432 un-draft ask is withdrawn**
+  (a human did the flip). The ask stays live for **#13434 only** (still a draft at `457ae39a0e`, 0 reviews; skiminki-nv is review-requested there too). The fixer must not rebase
+  #13432 on its own initiative while it's under human review: the maintainer may update the branch, and a fixer push would invalidate the approval.
+
+- 10-07 13:39Z: ✅ **#13432 MERGED** by skiminki-nv at the approved head `11711dc20a` (merge `eaf758404f`), and #13428 auto-closed as completed. CI 37613848068 passed.
+  I verified all of this live. **#13428 is TERMINAL.** The stale `fix/issue-13428` @ `ae10b8b152` still exists; nobody deletes it unless a maintainer asks.
+  The only thing still open in this family is **#13434** (#13430's fix), still a draft at `457ae39a0e` with 0 reviews; the operator un-draft decision is pending.
+
 **Resume on:** the fixer's draft PR / [Fix Report] via the triager, or a human comment on #13428.
+
+- 10-07 03:00Z re-chase: **still no change, and the operator hasn't answered** (no dashboard rows about #13432/#13434 since my 2nd ask, seq 465742). Both PRs are still drafts at `11711dc20a` / `457ae39a0e`, with 0 reviews, bot-only comments on the PRs and on #13428/#13430, and closes still [13428]/[13430]. The stale branch is still `ae10b8b152`. The only activity: on 10-06 12:40Z slang-fixer shortened both PR descriptions for the operator's new PR-description rule (879 and 772 chars, heads unchanged). The `PR Maintenance` board-sync runs explain the 12:39Z updatedAt. CI is the same as before: both dispatch runs are still `waiting`, wait-for-human-priority failed, and no build ran. #13433 got a jkwak-work comment at 10-06 16:27Z, which the bot answered at 18:07Z on its own chain, so it's out of scope here. The 3rd un-draft ask went to the dashboard (thread …-13428). Re-armed +24h as `rechase-13432-13434-undr-cb0f` (2026-10-08 03:00Z).
