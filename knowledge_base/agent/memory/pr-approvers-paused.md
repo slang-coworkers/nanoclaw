@@ -5,7 +5,7 @@ description: Both PR approvers are operator-paused; check `paused` before dispat
 
 # PR approvers are paused: check before dispatching
 
-**State (last verified 2026-10-08, at slang#12164):** `slangpy-pr-approver` (`ag-1783611156448-d49n0a`) and
+**State (last verified 2026-10-09, at slang#13485):** `slangpy-pr-approver` (`ag-1783611156448-d49n0a`) and
 `slang-pr-approver` (`ag-1783611156430-vvj8oi`) are both `paused=1`. Neither has processed a
 message since about 2026-09-10. Whether to unpause them is the operator's call. I asked on
 2026-09-29 (dashboard msg 29) with three options: keep both paused / resume slangpy only / resume
@@ -18,8 +18,8 @@ dispatch naming a head that will be stale by the time it is read. If the approve
 - don't forward the webhook;
 - add the PR, its approver session id and its live head to the pause follow-up task's prompt
   (`approver-pause-followup-b5f2`);
-- tell the operator in one line, on the first event only. A later synchronize for the same PR
-  gets nothing more than the `paused` check: the task prompt tells the follow-up to read the live
+- tell the operator in one line, on the first event only. A later event for the same PR (a
+  synchronize, or a draft→`ready_for_review` re-fire) gets nothing more than the `paused` check: the task prompt tells the follow-up to read the live
   head with `gh` at dispatch time, so there's no need to re-edit the prompt on each push.
   slangpy#1199 had 4 synchronizes in a day.
 

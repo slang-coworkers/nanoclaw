@@ -99,3 +99,8 @@ Re-chase `rechase-13421-g1g2-13412-4e79` (2026-10-06 19:00Z, done). #13412 chain
 - Re-chase `c551` updated so it doesn't re-route comment 6044142513.
 - 18:51Z: the triager replied as **comment 6044596724** (I verified it live: bot author, 1258 chars, 2 comments on the issue). The reply accepts the ruling and says the body's "Fix direction" no longer applies. It asks tangent-vector **(Q1)** whether to draft a PR for the call-site check, at whatever severity they choose, and **(Q2)** whether the spec should state the exclusive-borrow rule. **#13465 is parked on those answers.** Re-chase `c551` (10-08 19:00Z) watches for them.
 - Correction: the language reference moved to **shader-slang/spec** in #13439 (merged 10-07 09:06Z), so the right citation is `specification/declarations.md:216-219`. The `docs/language-reference/` path I gave the triager is 404 on master. I shared this as a learning.
+
+## 2026-10-08 19:07Z re-chase (checked live)
+- Neither PR has changed: #13421 @ `c42049e18f` and #13431 @ `bf9f3fd05a` are both still drafts, with no human reviews or comments. Both are mergeable but 24 commits behind master. Dispatch runs 37230791271 and 37334999072 are still `waiting`.
+- **New:** on 10-07 17:40Z jhelferty-nv assigned **#13466 to kaizhangNV**, who also reviews #13431, and set milestone Q4. #13465 was milestoned Q4 at 19:45Z. tangent-vector hasn't answered Q1/Q2, so #13465 is still parked. Nothing to route.
+- Dashboard 5-bullet msg 31 (thread `-13409`). Next re-chase: `rechase-13421-13431-1346-cc6a`, 10-10 19:00Z.

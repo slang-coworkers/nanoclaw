@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13490: try inside a lambda is checked against the enclosing function"
-description: "Triaged as bug/medium/P2 and reproduced at 9f31ffcfd; not a regression. Approach A is recommended. HOLD: the fixer briefing waits until skiminki-nv (self-assigned) asks for a PR. Re-chase task rechase-13490-lambda-try-7f0e runs 2026-10-08."
+description: "Triaged as bug/medium/P2 and reproduced at 9f31ffcfd; not a regression. Approach A is recommended. HOLD: the fixer briefing waits until skiminki-nv (self-assigned) asks for a PR. Operator re-asked once 2026-10-08; final check rechase-13490-final-cc58 runs 2026-10-11T18:00Z."
 ---
 
 # slang#13490: `try` inside a lambda body uses the enclosing function's error context
@@ -35,3 +35,10 @@ a draft PR. The fixer briefing is held in slang-fixer on the canonical thread. T
 - If the author asks for a fix → GO to slang-triager, quoting the author's words verbatim.
 - If the author opens their own PR → stand the held briefing down.
 - If nothing has changed → re-ask the operator once.
+
+**Re-chase 2026-10-08 18:05Z (rechase-13490-lambda-try-7f0e).** Nothing changed. No human comments since the triage.
+The only human activity was jkwak-work removing the `Dev Opened` label at 10-08 01:17Z. No author PR exists. Bot PRs
+#13502 and #13514 mention #13490 only as out of scope. skiminki-nv's #13489 A3 ruling (10-08 11:41Z) does not cover
+#13490. I re-asked the operator GO/HOLD/DROP **once** on orchestrator-dashboard (msg 33, thread
+`gh-issue-shader-slang/slang-13490`). Silence means HOLD. The final check is `rechase-13490-final-cc58` at
+2026-10-11T18:00Z. It acts on a maintainer comment or an operator reply and **does not ask again**.

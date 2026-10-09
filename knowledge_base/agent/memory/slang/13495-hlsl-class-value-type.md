@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13495: HLSL `class` should be a value type (HLSLClassDecl : StructDecl)"
-description: "Language-lead proposal by tangent-vector (self-assigned, Dev Opened). Routed to slang-triager 2026-10-07 with the fixer HELD pending tangent-vector's go. Sibling #13496 (shared struct/class parser) is handled by its own Main session."
+description: "TERMINAL 2026-10-08: tangent-vector fixed it in their own PR #13497 (merged 2026-10-08T01:38Z, Fixes #13495, issue closed). Fixer never briefed; triager told to stand down. Sibling #13496 still open, own Main session."
 ---
 
 # slang#13495: HLSL `class` parsed as a Slang reference-type `ClassDecl`
@@ -43,4 +43,13 @@ shaders, prototype.diff and matrices are in the triager's `/workspace/agent/scra
 - Re-chase **`rechase-13495-hlsl-class-e5eb`** (2026-10-08 21:00Z) watches for tangent-vector's reply. GO → triager
   releases the fixer with memo, tgz and prototype.diff. Own PR, or folded into #13496 → stand down.
 
-**Next.** Wait for tangent-vector, via the re-chase.
+**TERMINAL (re-chase run 2026-10-08 21:0xZ).** tangent-vector opened **#13497** "Parse HLSL classes as value types"
+at 2026-10-07T20:19:26Z, 42 min *before* our go/no-go comment, and self-merged it at 2026-10-08T01:38:48Z (merge
+`d074e7779e`). It is linked via `Fixes #13495`, which auto-closed the issue at 01:38:50Z. It touches the same 3 files as the triager's
+prototype plus natvis, retargets `tests/diagnostics/hlsl-class-instantiation.slang`, and adds 7 tests. No human comment ever
+landed on the issue. The stand-down went to `slang-triager` (msg 13, pinned to `sess-1791403522823-0tztrc`, thread
+`gh-issue-shader-slang/slang-13495`): close our side, don't post. No reschedule. **Lesson:** the go/no-go question
+was moot when posted. The check-for-the-assignee's-own-PR addendum is in the shared learning
+`1781511232421-daily-report-check-for-a-linked-fix-pr-before-flag.md`.
+Open loose end (operator's call): the triager's unposted side note that Slang-dialect `class` + `new` doesn't alias on `-target cpp`.
+Triager confirmed closure at 2026-10-08 21:10Z (msg 26). It rechecked live that #13497 is merged and the issue is closed/completed, made no GitHub post, never briefed the fixer, and discarded the scratch files. The `[Resolution]` the re-chase sent the operator covers this, so Main sent no second report.

@@ -53,3 +53,13 @@ trigger the chain lacks**. A self-filed decision request waits on a human, so it
 own bot cannot self-trigger it. An issue waiting on an upstream change gates on **that change's
 artifact** too, not only the thread (#13407: `i13407-glslang-bump-gate` also fires when the
 `external/glslang` SHA moves off `d1f52c8`, since the bump can land in someone else's PR silently).
+
+### 2026-10-08, #13531: rung 8 resolved it inside the 5-min cap
+The triager's filing report reached the sibling Main (#13529 session) at 20:08:08Z, a second after the webhook minted
+mine. Polling that session's newest rows returned its 5-bullet to the operator at 20:09:43Z, which already said
+"No fixer unless a maintainer asks". So dispatch nothing and send no duplicate report. The only gap was a resume
+trigger: `i13531-maintainer-gate` (reuses `i13433-decision-gate.sh` with `GATE_ISSUE`/`GATE_SINCE`; controls passed for
+HUMAN_REPLY, CLOSED, bot-only → false, and STALE).
+
+### 2026-10-08, #13533: same shape as #13531, closed by rung 7 then rung 8
+This was the CUDA reflection side finding from #13530, filed 20:43:29Z. Rung 7 (the triager's newest rows) showed the `[Filed]` report at 20:44:55Z. Rung 8 (the sibling Main's `messages_out`) showed its 5-bullet to the operator at 20:46:23Z, "no fixer; the #13530 chain owns it". So nothing was dispatched and no report was duplicated. The sibling hadn't armed a resume gate, so I added `i13533-maintainer-gate` (wraps `i13433-decision-gate.sh`, STALE 10-13T20:44Z). Controls passed: quiet → false, STALE override → true, CLOSED (#12457) → true, HUMAN_REPLY (#13433) → true, bot-only comments (#13530) → false. ⇒ **A sibling Main that reports a park does not arm its gate: check `ncl tasks list | grep <N>` after rung 8, every time.**

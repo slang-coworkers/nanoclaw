@@ -10,10 +10,12 @@ tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, held, awaiting-mai
 Assignee and PR shepherd: jkwak-work. Fixer session `sess-1787171888548-4gv6cq` (thread `gh-issue-shader-slang/slang-12627`).
 Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170935547-1z63sa`.
 
-## State (checked live 2026-10-04 03:25Z; re-checked 2026-10-07 02:00Z: unchanged, still no human reply)
+## State (checked live 2026-10-04 03:25Z; re-checked 10-07 and 2026-10-09 02:00Z: unchanged, still no human reply)
 
 - **PR [#13363](https://github.com/shader-slang/slang/pull/13363):** draft, `fix/issue-12627`, head `b79ae81e23`
-  (merged master `6ba151dcfc`, no force-push), 22 files +913/−155, no human reviews. CI on the draft: 4 pass / 1 pending /
+  (merged master `6ba151dcfc`, no force-push), 22 files +913/−155, no human reviews. On 10-09 it showed `BEHIND` master, which is
+  fine for a draft. The only event since 10-01 is jkwak-work removing the `Dev Opened` label on 10-08 01:17Z, part of a
+  bulk label sweep (same minute as #13324). It isn't an answer. CI on the draft: 4 pass / 1 pending /
   56 skipping (gated CI doesn't run on drafts). `license/cla` is pending: bot-identity problem, not a required check.
 - **Peer review is done: both rounds used.** R1 REQUEST_CHANGES with 0 bugs, fixed at `899bbbe624`. R2 REQUEST_CHANGES with
   0 bugs (2 gaps, 2 nits), fixed at `b79ae81e23`. The `[Fix Report]` arrived 10-04 03:22Z. Caveats: both Reviewer A runs were
@@ -26,12 +28,12 @@ Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170
   or (b) make it a compile-time error on CUDA. The warning-scope question
   ([5923147529](https://github.com/shader-slang/slang/issues/12627#issuecomment-5923147529)) asks CUDA-only or all RMW targets.
   Secondary: [5925676317](https://github.com/shader-slang/slang/issues/12627#issuecomment-5925676317) asks whether to fold #13364 in.
-- **Re-chase:** `rechase-12627-jkwak-892c` (2026-10-09 02:00Z). On 10-07 I asked the operator on the dashboard whether to post one short
-  re-ping on #12627 (jkwak-work was active on other chains on 10-06). Their answer is pending, and I don't post it myself.
+- **Re-chase:** `rechase-12627-jkwak-39ce` (2026-10-12 02:00Z). On 10-07 02:16Z I asked the operator on the dashboard whether to
+  post one short re-ping on #12627. They hadn't answered by 10-09 02:00Z, so I asked again then. I don't post it myself.
 
 ## Follow-ups (bot-filed, not dispatched, `doNotNudge` in supervisor-state.json)
 
-On 2026-10-05, maintainers triaged all four: they assigned owners and set milestones. A follow-up that a human now owns is not
+On 2026-10-05, maintainers triaged all four (re-checked 10-09: no comments, unchanged): they assigned owners and set milestones. A follow-up that a human now owns is not
 dispatched unless that assignee or the operator asks.
 
 - #13361 WGSL, same root cause. Owned by jkwak-work, Q4 2026.

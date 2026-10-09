@@ -105,6 +105,17 @@ Session `nvrtc --gpu-architecture=compute_86` + link `nvrtc --fmad=false` → `.
   paused=1), so any pr_ready_for_review webhook is NOT forwarded. Triager msg 46: after the [Fix Report] it does one final
   edit of cmt 5991664606, then [Triage Resolution], then stops posting on the issue.
 
+- 10-08 04:24Z **[Triage Resolution]** (triager msg 52). I verified it live: head 03de207e8c (master d074e7779e merged in, no force),
+  MERGEABLE / BLOCKED, reviewDecision empty. Reviews: kaizhangNV COMMENTED 10-07 20:54Z (inline thread addressed in a6596fb, left
+  for them to resolve) + bot COMMENTED. CLI report = PR cmt 6045647570 (bot, 4080 chars). Issue cmt 5991664606 got its final edit
+  (04:24:30Z, 3658 chars, no draft/precedence-pending wording). Internal slang-reviewer R2 APPROVE (0 bugs) per the triager.
+  CI run 37724999088 `waiting` (falcor gate), checks 38 pass / 17 pending / 2 skipping / 0 fail. The triager has stopped
+  posting on the issue and sends FINAL on merge only.
+  Operator [Resolution] sent (dashboard id 63) + a correction (id 65), after a post-hoc codex OUTPUT_REVIEW: BLOCKED = approval
+  AND CI; the falcor gate is a `falcor-ci` pending deployment needing `ci-approvers` **approval** (not a rerun); session → target
+  → link is the order Slang COMBINES the lists, and the final NVRTC order can differ (`-I` → include path is emitted first; a6596fb).
+
 ## Resume
-Re-chase `rechase-13436-precedence-10ab` (2026-10-09T09:00Z): verify the fixer's PR update + reply to 6044229850, reviewer verdict,
-any new kaizhangNV comment (relay verbatim). Side finding (3) is the only operator question left.
+Re-chase `rechase-13436-precedence-10ab` (2026-10-09T09:00Z): CI completion (the falcor gate may need a maintainer rerun,
+cf. #13391), kaizhangNV approval/merge, any new human comment (relay verbatim to the triager). Side finding (3) is the only
+operator question left.

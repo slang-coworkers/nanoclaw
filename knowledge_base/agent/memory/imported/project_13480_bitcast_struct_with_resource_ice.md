@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13480_bitcast_struct_with_resource_ice
-description: "slang#13480 (ArmandLfd, 10-07): bit_cast between two structs that hold a resource (slangpy Tensor→PrimalTensor) ICEs E99997 on all 7 targets; not a regression (2024.1.1+). Triaged 14:31Z (cmt 6040166579). Orchestrator GO 10-07 for a draft PR on A′ (opaque-leaf pre-pass; E41205 gated on resource legalization); draft PR #13507 opened 10-08. WGSL POD bit_cast segfault side finding = new symptom of #13380 (fixed by draft #13381), NOT filed separately."
+description: "[RESTING on maintainer review/CI release since 10-08 13:40Z] slang#13480 (ArmandLfd, 10-07): bit_cast between two structs that hold a resource (slangpy Tensor→PrimalTensor) ICEs E99997 on all 7 targets; not a regression (2024.1.1+). Triaged 14:31Z (cmt 6040166579). Orchestrator GO 10-07 for a draft PR on A′ (opaque-leaf pre-pass; E41205 gated on resource legalization); draft PR #13507 opened 10-08. WGSL POD bit_cast segfault side finding = new symptom of #13380 (fixed by draft #13381), NOT filed separately."
 metadata:
   node_type: memory
   type: project
@@ -46,6 +46,24 @@ a handle (or an array of such structs); `[[vk::offset]]` is compared by computed
 verdict → fixer [Fix Report] → triager [Triage Resolution]. **Discord note is deferred to merge**: Orchestrator routes it to
 slang-discord-support (thread 1555956709565145230) when #13507 merges.
 
+**10-08 03:02Z slang-reviewer: REQUEST_CHANGES at c3e4409dfc** (1 bug, 6 gaps, 2 questions; the fixer requested it, the reviewer CC'd Orchestrator).
+Core fix verified: the real slangpy repro compiles on all 7 targets. B1: `bit-cast-resource-array.slang` fails CI spirv-val (handle-array→bytes row,
+pre-existing behaviour now pinned by a test). G1: vacuous checks, including `filecheck=A,B` enforcing only the first prefix, which is the #13359 class.
+G2–G6 cover untested rejection branches, Release-UB `cast<>`, diagnostic text, stale comments and duplication. Q2: struct{SB}→uint4
+still ICEs on cuda/cpp (pre-existing). The fixer reportedly has a local fix 370008fbcc for B1+G1. Devin skipped (timed out twice). The fixer owns the loop.
+
+**10-08 04:26Z round-2 push**: head `579d248d0c` (5 commits after c3e4409dfc, verified live, still a draft, 0 reviews). Fixer's 04:33Z
+[Fix Review Request] reached slang-reviewer `sess-1791423013872-rph0le`, which is **cost-ESCALATED** ($60.97 / cap $50 / ceiling $75) and has been
+silent since. The 13:00Z re-chase nudged the triager; the triager (13:16Z) asked the fixer for a scoped delta review. **13:20Z operator asked** on the dashboard:
+A raise ceiling (set-ceiling → $100; the reviewer group's 30d p95 is $42.61, max $82.41), B fresh reviewer session, C skip peer round 2.
+The ask timed out unanswered and became **moot at 13:26Z**: the reviewer ran the scoped delta review in about $2 ($62.97/$75) → **APPROVE (scoped)** at 579d248d0c, all 9 round-1 items resolved, 42/42 bit-cast tests with spirv-val. Lesson: an escalated session (not stopped) can still finish a small scoped task under its ceiling. Never `continue`/`set-ceiling` without the operator.
+
+**10-08 13:40Z [Triage Resolution]: chain RESTS on humans** (verified live: draft, head `579d248d0c`, 15 files +745/−3, closes 13480,
+0 GitHub reviews, checks 6 success / 56 skipped, dispatch 37727913617 `waiting`). 11 new tests (9 red on master); full suite with spirv-val
+7624/7625; probe matrix 92×8 shows no regressions. Waiting on: (1) a maintainer review plus answers to the 4 merge-blocking questions
+(explanation cmt 6050284690); jhelferty-nv was assigned and review-requested by board-sync; (2) a human to release CI (falcor gate +
+priority gate); (3) the operator's ready flip after CI. On merge: Discord note via slang-discord-support (thread 1555956709565145230).
+
 **10-08 02:02Z jkwak-work asked @nv-slang-bot (cmt 6050655801):** what is the difference between bit_cast and reinterpret, and does
 reinterpret do more processing at runtime? Orchestrator routed it verbatim to slang-triager on the canonical thread with
 `<github-post-authorized />` so the triager can post the answer. **Answered 02:15Z, cmt 6050799354** (verified live: 3910 chars, @jkwak-work, disclaimer; Orchestrator spot-checked processReinterpret against source: max(from,to) size, AnyValue pack/unpack, no equality check). Gist: different lowering; reinterpret emits pack/unpack helpers on HLSL/CUDA, SPIR-V -O3 output nearly identical; on this shape reinterpret is not a working workaround either.
@@ -55,4 +73,11 @@ reinterpret do more processing at runtime? Orchestrator routed it verbatim to sl
 field-by-field workaround and called the ICE a compiler bug. jkwak-work asked for the filing on 10-06; the reporter linked the issue back
 there 10-07 12:36Z. The comment is provenance only, with no ask: no GitHub reply, no Discord post.
 
-**Resume.** Re-chase task `rechase-13480-draft-pr-ace0`. Thread `gh-issue-shader-slang/slang-13480`.
+**10-08 13:00Z re-chase: round 2 stalled.** The fixer pushed 5 commits `370008fbcc`..`579d248d0c` (verified live; head `579d248d0c`, 04:26Z)
+and sent the round-2 [Fix Review Request] at 04:33Z to reviewer `sess-1791423013872-rph0le`. That session never answered: cost `escalated`
+at $60.97 against cap $50 and ceiling $75. Tier-1 is advisory, not blocking, but round 1 cost about $60, so round 2 there is likely to hit the
+ceiling. Orchestrator nudged the triager once (msg 61) and reported it to the dashboard (msg 69). CI dispatch 37727913617 is waiting at the priority gate.
+There were no non-bot comments after 02:02:47Z. #13381 CI (37644780423) has been at the same gate since 10-07 15:33Z.
+
+**Resume.** Re-chase task `rechase-13480-draft-pr-b224` (10-09 13:00Z; the predecessor `-ace0` was a consumed one-shot). If round 2
+still hasn't moved, escalate to the dashboard. Do not nudge the triager a second time. Thread `gh-issue-shader-slang/slang-13480`.
