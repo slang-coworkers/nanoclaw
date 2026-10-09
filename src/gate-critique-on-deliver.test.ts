@@ -757,6 +757,15 @@ describe('fix report / review request waits for the explanation comment refresh'
     expect(denied.stderr).not.toContain('Invoke /codex-critique');
     // Remedy is an upsert, not a critique round: never counted toward escalation.
     expect(readState().critique_gate_denials).toBe(0);
+    // The refusal is logged to the receipts file, next to the pushes it was owed for.
+    const events = (
+      JSON.parse(fs.readFileSync(explainStateFile, 'utf-8')) as { events: { event: string; owed: string[] }[] }
+    ).events;
+    expect(events).toHaveLength(1);
+    expect(events[0]).toMatchObject({
+      event: 'deliver_refusal',
+      owed: ['pushed 555d69c to shader-slang/slang#13213; its explanation comment still explains nothing'],
+    });
 
     explain('555d69c0ffee');
     expect(run(send(RR('shader-slang/slang#13213 ready for review'))).status).toBe(0);

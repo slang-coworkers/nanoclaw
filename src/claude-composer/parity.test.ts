@@ -86,7 +86,9 @@ describe('composed-document byte parity', () => {
       // never told about. Then when `explain-diff-html`'s description grew the
       // collapsed-PR-comment contract (that one `## Skills` line changed), and again
       // when the explanation moved into the PR description (same line), and again
-      // when it moved back out into one explanation comment (same line).
+      // when it moved back out into one explanation comment (same line), and again
+      // when that line stopped promising the comment sits "directly after the
+      // description" (it is found by its marker, usually after the bots' comments).
       // Goldens regenerated in the same commit, visibly, every time: that is
       // the point of pinning the digests here as well as the bytes, since a
       // golden edited alongside a regression would go unnoticed.
@@ -102,8 +104,8 @@ describe('composed-document byte parity', () => {
       // gained a `## Connecting external accounts` section and it is EMITTED, so
       // every composed doc carries it. `section-completeness.test.ts` is what made
       // that a decision instead of a silent drop.
-      'base-common': '43d2150f1ea91f15',
-      'base-common.persona': '8127b011429b44d1',
+      'base-common': '9b28879a188e7579',
+      'base-common.persona': 'dbe1364c6b1688e4',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -111,8 +113,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: 'adefe7bc1240f86d',
-      'default.persona': 'cee1e73a97a57685',
+      default: '906f88860c0c616a',
+      'default.persona': 'f09c8386f6fd1ad5',
     };
 
     const actual: Record<string, string> = {};

@@ -1,14 +1,8 @@
 #!/usr/bin/env bash
 # PreToolUse hook (matcher: Bash), wired for every group: a PR description stays
-# short. Squash merges copy the description into git log, so `gh pr create`,
-# `gh pr edit` and `gh api …/pulls[/N]` may only set a description whose sections
-# (a line starting with a bold label like `**Summary.**`, or a `## Heading`) hold
-# at most PR_DESCRIPTION_MAX_SECTION_LINES non-empty lines each including the
-# label line (default 2), whose total is at most PR_DESCRIPTION_MAX_CHARS
-# characters (default 1000), and that carries no Markdown table. A trailing
-# `<sub>…</sub>` disclaimer and `Fixes|Closes|Resolves #N` lines are not counted.
-# Details, tables and open questions belong in the explanation comment
-# (/explain-diff-html).
+# within the limits stated in container/skills/explain-diff-html/SKILL.md § The PR
+# description, because squash merges copy it into git log. `gh pr create`,
+# `gh pr edit` and `gh api …/pulls[/N]` may only set a description that passes them.
 #
 # The rules and the command parsing live in lib/pr_description.py; this wrapper
 # only skips commands that cannot set a PR description, so python starts only

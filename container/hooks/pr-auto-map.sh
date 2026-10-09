@@ -64,12 +64,20 @@ CREATE_MSG=""
 EXPLAINED=""
 
 # A push to a branch: the PR it backs (if any) now has a new head, and its
-# description (the /explain-diff-html explanation) describes the old one. Read
-# the repo, branch and new head from git's own push report — no network, and it
-# names the ref that actually moved even when the command cd'd into a worktree:
+# explanation comment (the /explain-diff-html explanation) describes the old one.
+# Read the repo, branch and new head from git's own push report — no network, and
+# it names the ref that actually moved even when the command cd'd into a worktree.
+# Git has two report formats and the hook reads both: the human one (stderr),
 #   To https://github.com/<owner>/<repo>.git
 #      1a2b3c4..5d6e7f8  fix/issue-1 -> fix/issue-1      (or: + 1a2b..5d6e (forced update))
 #    * [new branch]      fix/issue-1 -> fix/issue-1
+# and `--porcelain` (stdout), one tab-separated line per ref — flag, from:to, summary:
+#   To https://github.com/<owner>/<repo>.git
+#    <TAB>HEAD:refs/heads/fix/issue-1<TAB>1a2b3c4..5d6e7f8   (flag ` ` fast-forward, `+` forced, `*` new)
+#   Done
+# A silenced push (-q, output piped away) leaves no report; the upsert's head check
+# below is the second chance to record the moved head.
+TAB=$'\t'
 case "$COMMAND" in
   *"git push"* | *"git -C "*" push"*)
     case "$COMMAND" in
@@ -77,8 +85,14 @@ case "$COMMAND" in
       *)
         PUSH_REPO=$(printf '%s\n' "$RESPONSE_TEXT" | sed -n 's#^To .*github\.com[:/]\([^/][^/]*/[^/ ]*\)$#\1#p' | sed 's#\.git$##' | head -n 1)
         PUSH_LINE=$(printf '%s\n' "$RESPONSE_TEXT" | grep -E '^ *[+* ]? *([0-9a-f]{7,}(\.\.\.?)[0-9a-f]{7,}|\[new branch\]) +[^ ]+ -> [^ ]+' | head -n 1 || true)
-        PUSH_BRANCH=$(printf '%s\n' "$PUSH_LINE" | sed -E 's#.* -> ([^ ]+).*#\1#')
-        PUSH_HEAD=$(printf '%s\n' "$PUSH_LINE" | sed -nE 's#^ *[+ ]? *[0-9a-f]{7,}\.\.\.?([0-9a-f]{7,}).*#\1#p')
+        if [ -n "$PUSH_LINE" ]; then
+          PUSH_BRANCH=$(printf '%s\n' "$PUSH_LINE" | sed -E 's#.* -> ([^ ]+).*#\1#')
+          PUSH_HEAD=$(printf '%s\n' "$PUSH_LINE" | sed -nE 's#^ *[+ ]? *[0-9a-f]{7,}\.\.\.?([0-9a-f]{7,}).*#\1#p')
+        else
+          PUSH_LINE=$(printf '%s\n' "$RESPONSE_TEXT" | grep -E "^[ +*]${TAB}[^${TAB}]+:[^${TAB}]+${TAB}([0-9a-f]{7,}\.\.\.?[0-9a-f]{7,}|\[new branch\])" | head -n 1 || true)
+          PUSH_BRANCH=$(printf '%s\n' "$PUSH_LINE" | sed -nE "s#^.${TAB}[^${TAB}]*:([^${TAB}]+)${TAB}.*#\1#p" | sed 's#^refs/heads/##')
+          PUSH_HEAD=$(printf '%s\n' "$PUSH_LINE" | sed -nE "s#^.${TAB}[^${TAB}]+${TAB}[0-9a-f]{7,}\.\.\.?([0-9a-f]{7,}).*#\1#p")
+        fi
         if [ -n "$PUSH_REPO" ] && [ -n "$PUSH_BRANCH" ]; then
           case "$PUSH_BRANCH" in
             refs/tags/* | v[0-9]*) ;;
@@ -140,8 +154,9 @@ if [ "$IS_PR_CREATE" = "true" ]; then
       # (2) produce the HTML explanation that accompanies every PR we open
       # (container/skills/explain-diff-html — in base-common, so every project
       # spine has it). The hookSpecificOutput.additionalContext is injected into
-      # the agent's next turn.
-      CREATE_MSG="PR created: $REPO#$PR_NUM. IMPORTANT: Call report_pr_created(repo=\"$REPO\", pr_number=$PR_NUM) now so webhook events for this PR route to your session. Then run /explain-diff-html for $REPO#$PR_NUM: write the self-contained HTML under /workspace/agent/reports/pr-explanations/, deliver it with send_file to the thread that asked for this PR, make the same content the PR's explanation comment with its upsert_pr_body.py (one comment directly under the description, GitHub-safe Markdown, rewritten for the new head on every later push), keep the PR description itself concise (what changed, why, how tested, issue links: squash merges copy it into git log), and list the file path in the review request or report that follows. Never post the file path or internal URLs to GitHub."
+      # the agent's next turn. The comment lands wherever GitHub's clock puts it —
+      # on a busy repo after the bots' first comments — and is found by its marker.
+      CREATE_MSG="PR created: $REPO#$PR_NUM. IMPORTANT: Call report_pr_created(repo=\"$REPO\", pr_number=$PR_NUM) now so webhook events for this PR route to your session. Then run /explain-diff-html for $REPO#$PR_NUM: write the self-contained HTML under /workspace/agent/reports/pr-explanations/, deliver it with send_file to the thread that asked for this PR, make the same content the PR's explanation comment with its upsert_pr_body.py (one marker-identified comment, usually after the bots' first comments; GitHub-safe Markdown, rewritten for the new head on every later push), keep the PR description itself concise (what changed, why, how tested, issue links: squash merges copy it into git log), and list the file path in the review request or report that follows. Never post the file path or internal URLs to GitHub."
     fi
   fi
 fi
@@ -150,6 +165,12 @@ fi
 # refresh owed by the create / push above. Only a real write counts — a stdout line
 # `EXPLAIN_DIFF_RECEIPT {..."updated": true...}`, which the script prints only after
 # every write succeeded; --dry-run and --quiz-positions write nothing.
+#
+# A head refusal (exit 4) prints `EXPLAIN_DIFF_RECEIPT {"updated": false,
+# "head_mismatch": true, repo, pr, head}` instead, naming the PR's live head. That
+# head is recorded as a push to the PR's branch (or to a `pr#N` placeholder while
+# the branch is unknown, which any-branch matching accepts), so a push whose report
+# this hook never saw still leaves the refresh owed.
 case "$COMMAND" in
   *upsert_pr_body.py*)
     case "$COMMAND" in
@@ -157,6 +178,23 @@ case "$COMMAND" in
       *)
         RESULT=$(printf '%s\n' "$STDOUT_TEXT" | sed -n 's/^EXPLAIN_DIFF_RECEIPT //p' \
           | jq -Rc 'fromjson? | select(type == "object" and .updated == true)' 2>/dev/null | tail -n 1 || true)
+        MISMATCH=$(printf '%s\n' "$STDOUT_TEXT" | sed -n 's/^EXPLAIN_DIFF_RECEIPT //p' \
+          | jq -Rc 'fromjson? | select(type == "object" and .updated == false and .head_mismatch == true)' 2>/dev/null | tail -n 1 || true)
+        if [ -z "$RESULT" ] && [ -n "$MISMATCH" ]; then
+          M_HEAD=$(jq -r '.head // ""' <<< "$MISMATCH" 2>/dev/null || true)
+          M_REPO=$(jq -r '.repo // ""' <<< "$MISMATCH" 2>/dev/null || true)
+          M_PR=$(jq -r '.pr // "" | tostring' <<< "$MISMATCH" 2>/dev/null || true)
+          case "$M_PR" in '' | *[!0-9]*) M_PR="" ;; esac
+          if [ -n "$M_REPO" ] && [ -n "$M_PR" ] && [ -n "$M_HEAD" ]; then
+            record '.seq as $s
+              | (((.prs // {})[$key] // {}).branch // ("pr#" + $num)) as $br
+              | .pushes = ((.pushes // {}) + {($repo + ":" + $br): {repo: $repo, branch: $br, head: $h,
+                  pushed_at: $now, seq: $s, source: "upsert head check"}})
+              | .prs = ((.prs // {}) | .[$key] = (
+                  {repo: $repo, number: ($num | tonumber), branch: null, created_at: null} + (.[$key] // {})))' \
+              --arg key "$M_REPO#$M_PR" --arg repo "$M_REPO" --arg num "$M_PR" --arg h "$M_HEAD"
+          fi
+        fi
         if [ -n "$RESULT" ]; then
           U_HEAD=$(jq -r '.head // ""' <<< "$RESULT" 2>/dev/null || true)
           U_REPO=$(jq -r '.repo // ""' <<< "$RESULT" 2>/dev/null || true)

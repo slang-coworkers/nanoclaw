@@ -84,6 +84,48 @@ describe('pr-auto-map.sh — push reminds the agent to refresh the explanation c
     expect(ctx).toContain('to o/r:feat/x');
   });
 
+  it('--porcelain report (stdout): fast-forward, forced update and new branch', () => {
+    const porcelain = (flag: string, to: string, summary: string) =>
+      `To https://github.com/shader-slang/slang.git\n${flag}\tHEAD:${to}\t${summary}\nDone\n`;
+    expect(
+      hook(
+        'git push --porcelain origin HEAD:fix/issue-1',
+        porcelain(' ', 'refs/heads/fix/issue-1', '84be79e..555d69c'),
+        '',
+      ),
+    ).toContain('Pushed 555d69c to shader-slang/slang:fix/issue-1');
+    expect(receipts().pushes?.['shader-slang/slang:fix/issue-1']).toMatchObject({
+      head: '555d69c',
+      branch: 'fix/issue-1',
+    });
+    expect(
+      hook(
+        'git push --porcelain -f origin HEAD:fix/issue-1',
+        porcelain('+', 'refs/heads/fix/issue-1', '4d0f21d...1902250 (forced update)'),
+        '',
+      ),
+    ).toContain('Pushed 1902250 to shader-slang/slang:fix/issue-1');
+    expect(
+      hook('git push --porcelain -u origin feat/x', porcelain('*', 'refs/heads/feat/x', '[new branch]'), ''),
+    ).toContain('Pushed the new head to shader-slang/slang:feat/x');
+    // Up to date, rejected, and tag refs leave nothing.
+    expect(
+      hook(
+        'git push --porcelain origin HEAD:fix/issue-1',
+        porcelain('=', 'refs/heads/fix/issue-1', '[up to date]'),
+        '',
+      ),
+    ).toBe('');
+    expect(
+      hook(
+        'git push --porcelain origin HEAD:fix/issue-1',
+        porcelain('!', 'refs/heads/fix/issue-1', '[rejected] (fetch first)'),
+        '',
+      ),
+    ).toBe('');
+    expect(hook('git push --porcelain origin v1.2.3', porcelain('*', 'refs/tags/v1.2.3', '[new tag]'), '')).toBe('');
+  });
+
   it('stays silent when nothing moved, on dry runs, tags, and non-GitHub remotes', () => {
     expect(run('git push', 'Everything up-to-date\n')).toBe('');
     expect(run('git push --dry-run origin x', 'To https://github.com/o/r.git\n   1111111..2222222  x -> x\n')).toBe('');
@@ -186,6 +228,31 @@ describe('pr-auto-map.sh — receipts for the explanation comment refresh gates'
     hook(UPSERT, '', 'head mismatch: explanation written from 555d69c0ffee, PR head is 9f8e7d600000');
     hook(UPSERT, '{"updated": false}\n', '');
     expect(fs.existsSync(receiptsFile)).toBe(false);
+  });
+
+  it('a head-mismatch trailer records the live head as a push, so a silenced push still owes a refresh', () => {
+    const mismatch = (head: string) =>
+      `EXPLAIN_DIFF_RECEIPT ${JSON.stringify({ updated: false, head_mismatch: true, repo: 'shader-slang/slang', pr: 13213, head })}\n`;
+    hook('gh pr create --head fix/issue-13073 --fill', 'https://github.com/shader-slang/slang/pull/13213\n', '');
+    // The push itself went unseen (`git push -q`), then the upsert refused the stale head.
+    expect(hook(UPSERT, mismatch('9f8e7d600000'), 'head mismatch on shader-slang/slang#13213: …')).toBe('');
+    const r = receipts();
+    expect(r.pushes?.['shader-slang/slang:fix/issue-13073']).toMatchObject({
+      repo: 'shader-slang/slang',
+      branch: 'fix/issue-13073',
+      head: '9f8e7d600000',
+      seq: 2,
+      source: 'upsert head check',
+    });
+    expect(r.prs?.['shader-slang/slang#13213'].explained_seq).toBeUndefined();
+    // A PR this session never recorded (opened earlier) gets an entry and a placeholder branch.
+    hook(UPSERT.replace('"$N"', '77'), mismatch('abcdef012345').replace('13213', '77'), '');
+    expect(receipts().pushes?.['shader-slang/slang:pr#77']).toMatchObject({ head: 'abcdef012345', branch: 'pr#77' });
+    expect(receipts().prs?.['shader-slang/slang#77']).toMatchObject({ number: 77, branch: null });
+    // A dry run's trailer and a stderr-only message never count.
+    hook(`${UPSERT} --dry-run`, mismatch('1111111aaaaa'), '');
+    hook(UPSERT, '', mismatch('2222222bbbbb'));
+    expect(Object.keys(receipts().pushes ?? {})).toHaveLength(2);
   });
 
   it('a push in the same command as a successful upsert does not re-issue the push reminder', () => {

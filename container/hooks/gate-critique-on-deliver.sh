@@ -403,6 +403,7 @@ if [ -z "$DENIAL_REASON" ] && [ -n "$EXPLAIN_HIT" ]; then
   OWED=$(explain_diff_owed_lines)
   if [ -n "$OWED" ]; then
     OWED_LIST=$(jq -rn --arg o "$OWED" '$o | split("\n") | map(select(length > 0)) | join("; and ")')
+    explain_diff_log_event deliver_refusal "$OWED"
     cat >&2 << EOF
 EXPLANATION COMMENT REFRESH REQUIRED before this $EXPLAIN_HIT: $OWED_LIST.
 
