@@ -2,7 +2,7 @@
 name: slang-triage-issue
 license: MIT
 type: workflow
-description: 'Specialist triage of a Slang GitHub issue: research, map the solution space, hand a briefing to slang-fixer, then forward the resolution upstream.'
+description: 'Specialist triage of a Slang GitHub issue: research, map the solution space, write the solution brief, hand it to slang-fixer when the issue is actionable or park it on the issue for maintainer direction, then forward the resolution upstream.'
 extends: triage-issue
 requires: [issues.read, code.read]
 uses:
@@ -44,7 +44,9 @@ overrides:
     | Priority  | P0 ship-stopper / P1 regression / P2 normal / P3 nice-to-have                                                     |
     | Duplicate | link or `no`                                                                                                      |
 
-    Compose the memo at `/workspace/agent/memory/triage-<number>.md` via heredoc (not the `Write` tool — the file is new and `Write` requires Read-first). The fixer reads this; don't skip.
+    **Labels and Issue Type:** apply them per the labeling policy in your Additional Instructions when one exists (it names the labels, the Issue Type ids and who may set them); without such a policy, triage is read-only on labels.
+
+    Compose the memo at `/workspace/agent/memory/triage-<number>.md` via heredoc (not the `Write` tool — the file is new and `Write` requires Read-first). The fixer reads this; its **Recommended path** section is the solution brief the fixer confirms into its plan, so it must name the approach, the files, the repro command and the acceptance criteria in at most 15 lines.
 
     ```bash
     cat > /workspace/agent/memory/triage-<number>.md << 'EOF'
@@ -66,3 +68,15 @@ overrides:
     EOF
     ```
 ---
+  forward: |
+    **Forward or park** {#forward} — Decide from the brief, never by silence:
+
+    | Situation | Action |
+    | --- | --- |
+    | Bug or regression with a reproducer, or a change a maintainer already asked for | Send `[Triage handoff]` to `{{vars.fixer}}` now with the brief (summary, repro, recommended approach + alternatives, files, acceptance criteria, risks) and `send_file` the memo. |
+    | Feature request, design question, conflicting maintainer constraints, or no reproducer | Post the brief as the issue 5-bullet (next step) with the decision the maintainer must make, create one `ncl tasks create --process-after` re-check (never a recurrence), and forward to `{{vars.fixer}}` only when a maintainer replies with direction or the repro is confirmed. The chain's `next` names the decision owner while parked. |
+
+    ```
+    send_message(to="{{vars.fixer}}", text="[Triage handoff] {{vars.repo}}#<number>: <title>\nPriority: <pri> | Component: <comp>\nRecommended: <name> — <file:line> — <why>\nRepro: <command>\nAccept when: <criteria>; alternatives + risks in memo")
+    send_file(to="{{vars.fixer}}", path="/workspace/agent/memory/triage-<number>.md")
+    ```
