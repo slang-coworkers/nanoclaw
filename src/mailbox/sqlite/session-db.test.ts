@@ -54,10 +54,13 @@ describe('migrateMessagesInTable', () => {
     migrateMessagesInTable(db);
     migrateMessagesInTable(db); // idempotent
 
-    const row = db.prepare('SELECT series_id FROM messages_in WHERE id = ?').get('legacy-1') as {
+    const row = db.prepare('SELECT series_id, gated FROM messages_in WHERE id = ?').get('legacy-1') as {
       series_id: string;
+      gated: number;
     };
     expect(row.series_id).toBe('legacy-1');
+    // Pre-marker rows read as woke: a gated fire used to be a plain completion.
+    expect(row.gated).toBe(0);
     db.close();
   });
 
@@ -180,6 +183,22 @@ describe('syncProcessingAcks — script-skip counter', () => {
     expect(failureClass(inDb, 't1')).toBe('script');
   });
 
+  const gated = (inDb: InstanceType<typeof Database>, id: string) =>
+    (inDb.prepare('SELECT gated FROM messages_in WHERE id = ?').get(id) as { gated: number }).gated;
+
+  // A gated fire is a successful run that cost nothing; it must count as a run
+  // (no backoff, re-arms normally) and still be tellable apart from a woke one.
+  it('script-skip:gated completes the row with gated = 1', () => {
+    const { inDb, outDb } = freshPair();
+    seedTask(inDb, 't1', { prompt: 'p', script: 'x' });
+    ack(outDb, 't1', 'script-skip:gated');
+
+    syncProcessingAcks(inDb, outDb);
+
+    expect(status(inDb, 't1')).toBe('completed');
+    expect(gated(inDb, 't1')).toBe(1);
+  });
+
   it('plain completed ack completes the row as before', () => {
     const { inDb, outDb } = freshPair();
     seedTask(inDb, 't1', { prompt: 'p', script: 'x' });
@@ -188,6 +207,7 @@ describe('syncProcessingAcks — script-skip counter', () => {
     syncProcessingAcks(inDb, outDb);
 
     expect(status(inDb, 't1')).toBe('completed');
+    expect(gated(inDb, 't1')).toBe(0);
   });
 });
 

@@ -96,7 +96,7 @@ export function sqliteMarkScriptSkipped(skips: Array<{ id: string; reason: strin
   );
   db.transaction(() => {
     for (const skip of skips) {
-      statement.run(skip.id, skip.reason === 'error' ? 'script-skip:error' : 'completed', new Date().toISOString());
+      statement.run(skip.id, skip.reason === 'error' ? 'script-skip:error' : 'script-skip:gated', new Date().toISOString());
     }
   })();
 }

@@ -53,6 +53,15 @@ was rejected: `docs/scheduled-tasks.<slug>.json` is a committed path that
 name, and moving it would break both consumers and the `git diff` drift alarm that is the
 whole point of the artifact.
 
+PAUSED OR MISSING GROUPS ARE MARKED, NOT HIDDEN. A paused group's live task rows stay
+`pending` forever — the host refuses to spawn for a paused group, so they are due on every
+sweep and will fire the moment the group is unpaused. Such a definition is real but not
+live, and a reader of this file must be able to tell: each task whose group is paused
+carries `group_paused: true`, and one whose group row no longer exists carries
+`group_missing: true` (the sweep returns before it can fire). The group states come from
+`ncl groups list`; if that call fails the dump exits 2 like a failed task list, because a
+snapshot that cannot tell live from parked definitions would mislead.
+
 Restore is deliberately manual: read the JSON, then `ncl tasks update --id <series>
 --prompt "<prompt>"` (or `ncl tasks create` if the series is gone). Auto-apply is not
 provided — silently rewriting live agent instructions is exactly the failure mode this
@@ -109,6 +118,29 @@ def series_ids(repo):
         if tok and (tok[0].startswith("task-") or "-" in tok[0]):
             ids.append(tok[0])
     return True, ids
+
+
+def group_states(repo):
+    """`ncl groups list` -> (ok, {group_id: paused_bool}). A failed call is a failed
+    list, not an empty one: the caller refuses to write without it."""
+    ok, out = ncl(repo, "groups", "list", "--json")
+    if not ok:
+        return False, out
+    rows = out.get("data") if isinstance(out, dict) else None
+    if not isinstance(rows, list):
+        return False, "no `data` list in `ncl groups list --json` output"
+    return True, {r.get("id"): bool(r.get("paused")) for r in rows if r.get("id")}
+
+
+def mark_group_state(task, groups):
+    """Add `group_paused` / `group_missing` to a task definition whose group is not
+    live. A live group adds nothing, so the dump stays byte-identical for it."""
+    gid = task.get("agent_group_id")
+    if gid not in groups:
+        task["group_missing"] = True
+    elif groups[gid]:
+        task["group_paused"] = True
+    return task
 
 
 def snapshot_id(payload):
@@ -212,7 +244,12 @@ def render_md(slug, tasks, sid):
     for t in tasks:
         L += [f"## `{t.get('series_id')}`", "",
               f"- schedule: `{t.get('recurrence') or 'one-shot'}`",
-              f"- agent group: `{t.get('agent_group_id')}`", ""]
+              f"- agent group: `{t.get('agent_group_id')}`"]
+        if t.get("group_missing"):
+            L += ["- **group missing — the sweep never fires this task**"]
+        elif t.get("group_paused"):
+            L += ["- **group paused — not live; fires as soon as the group is unpaused**"]
+        L += [""]
         if t.get("script"):
             L += ["Pre-task gate:", "", "```bash", str(t["script"]).strip(), "```", ""]
         L += ["Prompt:", "", "```", str(t.get("prompt", "")).strip(), "```", ""]
@@ -369,6 +406,12 @@ def main():
         print(f"ERROR: `ncl tasks list` failed: {ids}", file=sys.stderr)
         print("Refusing to touch the existing snapshot.", file=sys.stderr)
         return 2
+    groups_ok, groups = group_states(args.repo)
+    if not groups_ok:
+        print(f"ERROR: `ncl groups list` failed: {groups}", file=sys.stderr)
+        print("Refusing to touch the existing snapshot — paused groups could not be told apart.",
+              file=sys.stderr)
+        return 2
 
     tasks, failed = [], []
     for sid in ids:
@@ -377,7 +420,7 @@ def main():
         if not d:
             failed.append((sid, got if not ok else "no `data` in response"))
             continue
-        tasks.append({k: v for k, v in sorted(d.items()) if k not in VOLATILE})
+        tasks.append(mark_group_state({k: v for k, v in sorted(d.items()) if k not in VOLATILE}, groups))
 
     # Fail closed. A snapshot missing a task it just listed is indistinguishable in git
     # from that task having been deleted, so a partial read must never be committed.

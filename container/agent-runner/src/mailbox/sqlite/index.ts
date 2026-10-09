@@ -133,6 +133,7 @@ export class SqliteAgentMailbox implements AgentMailbox {
     else if (status === 'completed') sqliteMarkCompleted(ids);
     else if (status === 'failed') ids.forEach(sqliteMarkFailed);
     else if (status === 'bounced-transient' || status === 'bounced-unknown') sqliteMarkBounced(ids, status);
+    else if (status === 'script-skip:gated') sqliteMarkScriptSkipped(ids.map((id) => ({ id, reason: 'gated' })));
     else sqliteMarkScriptSkipped(ids.map((id) => ({ id, reason: 'error' })));
   }
 

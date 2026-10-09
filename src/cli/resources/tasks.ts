@@ -19,10 +19,14 @@ import {
   createScheduledTask,
   enforceRecurrenceLimit,
   makeTaskId,
+  MAX_AGENT_SCRIPT_BYTES,
   MAX_DAILY_FIRES,
   parseProcessAfter,
   prepareScheduledTask,
+  rejectOversizeAgentScript,
+  rejectPerIssueRecurrence,
   type ScheduledTaskRow,
+  taskNameFromSeriesId,
   validateRecurrence,
 } from '../../modules/scheduling/create.js';
 import { destroySessionMailbox, sessionDir, withExistingMailboxSession } from '../../session-manager.js';
@@ -153,6 +157,14 @@ async function createTask(args: Record<string, unknown>, ctx: CallerContext) {
   if (!prompt) throw new Error('--prompt is required');
   const recurrence = normalizeNullableString(args.recurrence) ?? null;
   const script = normalizeNullableString(args.script) ?? null;
+  // Agent callers are held to two rules the operator is not: no recurring
+  // watch on a single issue/PR, and no large inline script (it is copied into
+  // every occurrence row). Both are checked again on update so a one-shot
+  // cannot be turned into a per-issue cron after the fact.
+  if (ctx.caller === 'agent') {
+    rejectPerIssueRecurrence(str(args.name), prompt, recurrence);
+    rejectOversizeAgentScript(script);
+  }
   const prepared = prepareScheduledTask({
     name: str(args.name),
     prompt,
@@ -209,7 +221,7 @@ async function appendTaskLog(
 function seriesStats(
   mailbox: InboundMailbox,
   seriesKey: string,
-): { runs: number; lastRun: string | null; failedRuns: number } {
+): { runs: number; gatedRuns: number; lastRun: string | null; failedRuns: number } {
   return mailbox.getTaskStats(seriesKey);
 }
 
@@ -236,6 +248,7 @@ function enrichListRow(db: InboundMailbox, base: ReturnType<typeof toOutput>) {
     ...base,
     schedule: base.recurrence ?? 'once',
     runs: stats.runs,
+    gated_runs: stats.gatedRuns,
     failed_runs: stats.failedRuns,
     last_run: stats.lastRun,
     next_run: base.process_after,
@@ -270,6 +283,10 @@ async function getTask(args: Record<string, unknown>, ctx: CallerContext) {
         script: content.script,
         origin_session_id: content.originSessionId,
         completed_runs: stats.runs,
+        // A gated series is only worth its gate if most fires stay gated; the
+        // split is the number that shows it.
+        gated_runs: stats.gatedRuns,
+        woke_runs: stats.runs - stats.gatedRuns,
         failed_runs: stats.failedRuns,
         series_key: seriesKey,
       };
@@ -346,12 +363,15 @@ async function updateTaskCommand(args: Record<string, unknown>, ctx: CallerConte
   // recurrence-limit check.
   let ownerGroup: string | undefined;
   let currentScript: string | null = null;
+  let currentPrompt = '';
   if (args.process_after !== undefined || recurrence !== undefined) {
     for (const session of await selectedSessions(args, ctx)) {
       const row = await withInbound(session, (db) => selectTask(db, id));
       if (row) {
         ownerGroup = session.agent_group_id;
-        currentScript = parseTaskContent(row.content).script;
+        const content = parseTaskContent(row.content);
+        currentScript = content.script;
+        currentPrompt = content.prompt;
         break;
       }
     }
@@ -365,9 +385,17 @@ async function updateTaskCommand(args: Record<string, unknown>, ctx: CallerConte
     // (including an explicit clear), else whatever the task already has.
     const scriptAfter: string | null = script !== undefined ? script : currentScript;
     enforceRecurrenceLimit(recurrence, bool(args.dangerously_override_recurrence_limit), scriptAfter != null, tz);
+    // The series id is the slugged name plus a random suffix, so its slug carries
+    // the same issue handle the create-time check reads from --name.
+    if (ctx.caller === 'agent') {
+      rejectPerIssueRecurrence(taskNameFromSeriesId(id), update.prompt ?? currentPrompt, recurrence);
+    }
     update.recurrence = recurrence;
   }
-  if (script !== undefined) update.script = script;
+  if (script !== undefined) {
+    if (ctx.caller === 'agent') rejectOversizeAgentScript(script);
+    update.script = script;
+  }
   const fields = Object.keys(update);
   if (fields.length === 0) throw new Error('nothing to update');
 
@@ -507,6 +535,10 @@ registerResource({
         `carries a --script gate (the script decides whether each fire needs you — a gated fire that\n` +
         `finds nothing costs zero tokens) or you pass --dangerously-override-recurrence-limit after\n` +
         `the user explicitly confirmed they want an ungated frequent task.\n\n` +
+        `Agent callers (inside a container) are also refused: a --recurrence whose --name or prompt targets ONE issue/PR\n` +
+        `(e.g. --name i13435-gate, or a prompt naming exactly one #NNNN) — webhooks already deliver that issue's events,\n` +
+        `so use --process-after for a one-time re-check; and an inline --script over ${MAX_AGENT_SCRIPT_BYTES} bytes — save the\n` +
+        `program under /workspace/agent/ and --script 'exec bash /workspace/agent/gates/<name>.sh'.\n\n` +
         `Failure backoff: a script that ERRORS repeatedly backs the series off (2,4,8,…60 min between fires; each errored fire counts as a failed run); after 8 consecutive failures the series is auto-paused with a note in its run log — fix the script, then \`ncl tasks resume <id>\`. A deliberate wakeAgent=false is a normal run and never backs off. \`ncl tasks get <id>\` shows failed_runs and the run log.`,
       args: [
         {
