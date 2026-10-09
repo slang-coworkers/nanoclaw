@@ -33,6 +33,7 @@ import {
 import { initSessionFolder, sessionDir, withMailboxSession } from '../../session-manager.js';
 import { inboundDbPath, outboundDbPath } from '../../mailbox/sqlite/paths.js';
 import { insertTaskRow } from '../../mailbox/sqlite/tasks.js';
+import { targetsSingleIssue, taskNameFromSeriesId } from '../../modules/scheduling/create.js';
 import { dispatch } from '../dispatch.js';
 import { formatTasksTable } from '../format-tasks.js';
 import type { CallerContext } from '../frame.js';
@@ -253,6 +254,171 @@ describe('tasks CLI resource', () => {
       agentCtx(),
     );
     expect(cleared.ok).toBe(false);
+  });
+
+  // R10 at the CLI: GitHub webhooks already deliver one issue's events, and a
+  // per-issue cron never self-cancels. Only agent callers are bound; the operator
+  // (host caller) keeps full freedom.
+  describe('per-issue recurrence (agent callers)', () => {
+    const script = 'echo \'{"wakeAgent": false}\'';
+
+    it('rejects a recurring task whose name is an issue handle, pointing at --process-after', async () => {
+      const resp = await dispatch(
+        {
+          id: 'pi-1',
+          command: 'tasks-create',
+          args: {
+            prompt: 'wake when the maintainer replies',
+            name: 'i13435-maintainer-gate',
+            recurrence: '0 */12 * * *',
+            script,
+          },
+        },
+        agentCtx(),
+      );
+      expect(resp.ok).toBe(false);
+      if (!resp.ok) {
+        expect(resp.error.message).toContain('single issue/PR');
+        expect(resp.error.message).toContain('--process-after');
+      }
+    });
+
+    it('rejects a recurring task whose prompt names exactly one #NNNN', async () => {
+      const resp = await dispatch(
+        {
+          id: 'pi-2',
+          command: 'tasks-create',
+          args: {
+            prompt: 'Check whether #13433 got a maintainer decision and route it.',
+            name: 'decision gate',
+            recurrence: '0 9 * * *',
+          },
+        },
+        agentCtx(),
+      );
+      expect(resp.ok).toBe(false);
+    });
+
+    it('allows a recurrence over several issues, a per-issue one-shot, and the same create from the host', async () => {
+      const several = await dispatch(
+        {
+          id: 'pi-3',
+          command: 'tasks-create',
+          args: {
+            prompt: 'Re-check #13433 and #13446 for maintainer replies.',
+            name: 'decision sweep',
+            recurrence: '0 9 * * *',
+          },
+        },
+        agentCtx(),
+      );
+      expect(several.ok).toBe(true);
+
+      const oneShot = await dispatch(
+        {
+          id: 'pi-4',
+          command: 'tasks-create',
+          args: { prompt: 'Re-check #13433 once.', name: 'recheck-13433', process_after: '2030-01-15T09:00:00Z' },
+        },
+        agentCtx(),
+      );
+      expect(oneShot.ok).toBe(true);
+
+      const host = await dispatch(
+        {
+          id: 'pi-5',
+          command: 'tasks-create',
+          args: {
+            group: 'ag-1',
+            prompt: 'Operator-owned watch on #13433.',
+            name: 'i13433-watch',
+            recurrence: '0 9 * * *',
+          },
+        },
+        { caller: 'host' },
+      );
+      expect(host.ok).toBe(true);
+    });
+
+    // A series id is `<slug>-<4hex>`; four hex digits are decimal 15% of the time,
+    // so the update path must judge the slug, not the whole id.
+    it('reads the issue handle from the slug of a series id, not its random suffix', () => {
+      expect(taskNameFromSeriesId('watch-1234')).toBe('watch');
+      expect(targetsSingleIssue(taskNameFromSeriesId('watch-1234'), 'triage queue')).toBe(false);
+      expect(targetsSingleIssue(taskNameFromSeriesId('i13435-maintainer-gate-0a9f'), 'x')).toBe(true);
+      expect(targetsSingleIssue(taskNameFromSeriesId('t-1a2b3c'), 'x')).toBe(false);
+    });
+
+    it('also guards update --recurrence, reading the issue handle from the series id', async () => {
+      const created = await dispatch(
+        {
+          id: 'pi-6',
+          command: 'tasks-create',
+          args: { prompt: 'Re-check once.', name: 'recheck-13306', process_after: '2030-01-15T09:00:00Z' },
+        },
+        agentCtx(),
+      );
+      expect(created.ok).toBe(true);
+      if (!created.ok) return;
+      const seriesId = (created.data as { series_id: string }).series_id;
+      const upd = await dispatch(
+        { id: 'pi-7', command: 'tasks-update', args: { id: seriesId, recurrence: '0 9 * * *' } },
+        agentCtx(),
+      );
+      expect(upd.ok).toBe(false);
+      if (!upd.ok) expect(upd.error.message).toContain('--process-after');
+    });
+  });
+
+  // The script text is copied into every occurrence row, so an agent's inline
+  // program is capped; the program belongs in a file the script execs.
+  describe('agent --script size cap', () => {
+    const big = `# nanoclaw-task-timeout: 60\n${'x'.repeat(8192)}`;
+
+    it('refuses an agent script over 8 KB on create and on update, with the exec-a-file hint', async () => {
+      const resp = await dispatch(
+        {
+          id: 'sz-1',
+          command: 'tasks-create',
+          args: { prompt: 'x', name: 'fat', recurrence: '0 9 * * *', script: big },
+        },
+        agentCtx(),
+      );
+      expect(resp.ok).toBe(false);
+      if (!resp.ok) {
+        expect(resp.error.message).toContain('at most 8192 bytes');
+        expect(resp.error.message).toContain('exec bash /workspace/agent/');
+      }
+
+      const slim = await dispatch(
+        {
+          id: 'sz-2',
+          command: 'tasks-create',
+          args: { prompt: 'x', name: 'slim', recurrence: '0 9 * * *', script: 'x'.repeat(8192) },
+        },
+        agentCtx(),
+      );
+      expect(slim.ok).toBe(true);
+      if (!slim.ok) return;
+      const seriesId = (slim.data as { series_id: string }).series_id;
+      const upd = await dispatch(
+        { id: 'sz-3', command: 'tasks-update', args: { id: seriesId, script: big } },
+        agentCtx(),
+      );
+      expect(upd.ok).toBe(false);
+    });
+
+    it('does not bind the host caller', async () => {
+      const resp = await dispatch(
+        {
+          id: 'sz-4',
+          command: 'tasks-create',
+          args: { group: 'ag-1', prompt: 'x', name: 'fat-host', recurrence: '0 9 * * *', script: big },
+        },
+        { caller: 'host' },
+      );
+      expect(resp.ok).toBe(true);
+    });
   });
 
   it('the limit also guards update --recurrence (no create-slow-then-update bypass)', async () => {
@@ -535,6 +701,43 @@ describe('tasks CLI resource', () => {
     expect(String(row?.next_run)).toMatch(/^2026-01-15T09:05:00/); // the live pending occurrence
     expect(row?.schedule).toBe('0 9 * * *');
     expect(row?.log).toBe(`tasks/${series_id}.md`);
+  });
+
+  // Only the gated/woke split says whether a gate script earns its keep; both
+  // come from the `gated` marker the host writes from a script-skip:gated ack.
+  it('get reports gated and woke run counts separately', async () => {
+    const created = await dispatch(
+      {
+        id: 'g-1',
+        command: 'tasks-create',
+        args: { prompt: 'watch', name: 'gatey', recurrence: '0 9 * * *', script: 'true' },
+      },
+      agentCtx(),
+    );
+    expect(created.ok).toBe(true);
+    if (!created.ok) return;
+    const { session_id, series_id } = created.data as { session_id: string; series_id: string };
+
+    const db = new Database(inboundDbPath('ag-1', session_id));
+    const ins = db.prepare(
+      'INSERT INTO messages_in (id, seq, timestamp, status, tries, kind, content, series_id, process_after, gated) ' +
+        "VALUES (?, ?, datetime('now'), 'completed', 0, 'task', '{}', ?, ?, ?)",
+    );
+    ins.run('run-1', 100, series_id, '2026-01-15T09:02:00Z', 1);
+    ins.run('run-2', 102, series_id, '2026-01-15T09:03:00Z', 1);
+    ins.run('run-3', 104, series_id, '2026-01-15T09:04:00Z', 0);
+    db.close();
+
+    const got = await dispatch({ id: 'g-2', command: 'tasks-get', args: { id: series_id } }, agentCtx());
+    expect(got.ok).toBe(true);
+    if (!got.ok) return;
+    expect(got.data).toMatchObject({ completed_runs: 3, gated_runs: 2, woke_runs: 1, failed_runs: 0 });
+
+    const list = await dispatch({ id: 'g-3', command: 'tasks-list', args: {} }, agentCtx());
+    expect(list.ok).toBe(true);
+    if (!list.ok) return;
+    const row = (list.data as Array<Record<string, unknown>>).find((t) => t.series_id === series_id);
+    expect(row).toMatchObject({ runs: 3, gated_runs: 2 });
   });
 
   // The schedule→wake primitive without a container: a task created through the
