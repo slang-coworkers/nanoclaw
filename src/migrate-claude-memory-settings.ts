@@ -1,9 +1,10 @@
-import { randomUUID } from 'crypto';
-import fs from 'fs';
+import path from 'path';
 
+import { AnchoredDir } from './anchored-dir.js';
 import { log } from './log.js';
 import type { ProviderFileDiagnostic, ProviderFileTransformer } from './provider-contracts/registry.js';
 
+const CLAUDE_SETTINGS_FILE = 'settings.json';
 const PRE_COMPACT_COMMAND = 'bun /app/src/compact-instructions.ts';
 const LEGACY_MEMORY_SESSION_START_COMMAND = 'bun /app/src/memory-hook.ts';
 
@@ -57,17 +58,36 @@ export const CLAUDE_DEFAULT_SETTINGS =
     2,
   ) + '\n';
 
-/** Reconcile existing Claude settings with NanoClaw's shared memory system. */
-export function migrateClaudeMemorySettings(settingsFile: string): boolean {
+/**
+ * Seed or reconcile `settings.json` in the Claude state directory. The
+ * directory is a read-write mount, so the file is reached through the
+ * directory's descriptor: a symlink or FIFO planted under its name is refused
+ * and the settings are left alone. Returns what was done.
+ */
+export function prepareClaudeMemorySettings(claudeDir: string): 'created' | 'reconciled' | 'unchanged' {
+  const settingsFile = path.join(claudeDir, CLAUDE_SETTINGS_FILE);
+  let dir: AnchoredDir | null = null;
   try {
-    const result = claudeSettingsTransformer.transform(fs.readFileSync(settingsFile, 'utf-8'), settingsFile);
+    dir = AnchoredDir.open(claudeDir, [], true);
+    if (!dir) throw new Error(`Claude settings directory is missing: '${claudeDir}'`);
+    let current: string;
+    try {
+      current = dir.readFile(CLAUDE_SETTINGS_FILE).toString('utf-8');
+    } catch (err) {
+      if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+      dir.writeNewFile(CLAUDE_SETTINGS_FILE, Buffer.from(CLAUDE_DEFAULT_SETTINGS));
+      return 'created';
+    }
+    const result = claudeSettingsTransformer.transform(current, settingsFile);
     emitDiagnostics(result.diagnostics);
-    if (result.kind === 'unchanged') return false;
-    writeAtomic(settingsFile, result.content);
-    return true;
+    if (result.kind === 'unchanged') return 'unchanged';
+    dir.replaceFile(CLAUDE_SETTINGS_FILE, result.content);
+    return 'reconciled';
   } catch (err) {
     emitDiagnostic(claudeSettingsTransformer.mapIoFailure(err, settingsFile));
-    return false;
+    return 'unchanged';
+  } finally {
+    dir?.close();
   }
 }
 
@@ -167,34 +187,30 @@ function removeLegacyNanoClawMemoryHook(value: unknown): unknown {
 }
 
 /**
- * Same shape as `writeComposedDocument` in group-persona.ts, and for the same
- * reason: `.claude-shared/` is mounted writable into the container, so a
- * reconstructible temp path (`pid` + `Date.now()`) can be pre-created as a
- * symlink pointing at anything the host can write. `randomUUID()` makes the name
- * unguessable and `wx` fails closed rather than following a planted link.
- *
- * Exported because the provider-contract realizer rewrites reconciled provider
- * settings files through it; upstream's export carries the weaker
- * `pid`+`Date.now()` name, so the hardened body is the one that must win.
+ * Reconcile an EXISTING group's Claude settings with NanoClaw's shared memory
+ * system; never creates the file. Fork-only: `/migrate-memory` runs it per group
+ * through `scripts/migrate-claude-memory-settings.ts`, after that group's native
+ * store is staged, and group init deliberately does not (see the script for the
+ * ordering constraint). Same descriptor discipline as
+ * `prepareClaudeMemorySettings`: a symlink or FIFO planted under the name is
+ * refused, never read or written through.
  */
-export function writeAtomic(filePath: string, content: string): void {
-  const tmp = `${filePath}.tmp-${randomUUID()}`;
-  let created = false;
+export function migrateClaudeMemorySettings(settingsFile: string): boolean {
+  let dir: AnchoredDir | null = null;
   try {
-    fs.writeFileSync(tmp, content, { flag: 'wx' });
-    created = true;
-    fs.renameSync(tmp, filePath);
+    dir = AnchoredDir.open(path.dirname(settingsFile), []);
+    if (!dir) throw new Error(`Claude settings directory is missing: '${path.dirname(settingsFile)}'`);
+    const name = path.basename(settingsFile);
+    const result = claudeSettingsTransformer.transform(dir.readFile(name).toString('utf-8'), settingsFile);
+    emitDiagnostics(result.diagnostics);
+    if (result.kind === 'unchanged') return false;
+    dir.replaceFile(name, result.content);
+    return true;
+  } catch (err) {
+    emitDiagnostic(claudeSettingsTransformer.mapIoFailure(err, settingsFile));
+    return false;
   } finally {
-    // Only clean up an entry this call created: on a `wx` failure the path was
-    // someone else's file, and unlinking it would turn a refusal to overwrite
-    // into a deletion.
-    if (created) {
-      try {
-        fs.unlinkSync(tmp);
-      } catch {
-        // Expected: the rename consumed it.
-      }
-    }
+    dir?.close();
   }
 }
 
