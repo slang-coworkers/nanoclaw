@@ -1,13 +1,10 @@
 """PR-description length check behind gate-pr-description.sh (run as `python3 pr_description.py`).
 
-Squash merges copy the PR description into git log, so the description stays
-short: every section (a line starting with a bold label such as `**Summary.**`,
-or a `## Heading`) holds at most PR_DESCRIPTION_MAX_SECTION_LINES non-empty lines
-including the label line (default 2), the whole description holds at most
-PR_DESCRIPTION_MAX_CHARS characters (default 1000), and it carries no Markdown
-table. A final `<sub>…</sub>` disclaimer line and exact `Fixes|Closes|Resolves #N`
-lines are not counted. The full explanation belongs in the explanation comment
-(/explain-diff-html), not here.
+The limits are stated once, in container/skills/explain-diff-html/SKILL.md § The PR
+description, and implemented once, here: `check_body` is what the gate refuses on
+and what explain-diff-html's upsert_pr_body.py imports for its NOTE lines. The env
+knobs PR_DESCRIPTION_MAX_SECTION_LINES (default 2) and PR_DESCRIPTION_MAX_CHARS
+(default 1000) tune them.
 
 Reads the PreToolUse hook JSON on stdin. Finds every `gh pr create`, `gh pr edit`
 and `gh api …/pulls[/N]` in the Bash command that sets a description, resolves
@@ -86,7 +83,7 @@ def limits() -> tuple[int, int]:
     return env_int("PR_DESCRIPTION_MAX_CHARS", 1000), env_int("PR_DESCRIPTION_MAX_SECTION_LINES", 2)
 
 
-# ── the rules (mirrored in explain-diff-html/scripts/upsert_pr_body.py) ──────
+# ── the rules (the one implementation; upsert_pr_body.py imports this module) ──
 
 def counted_lines(body: str) -> list[str]:
     """The body's lines minus a final `<sub>` disclaimer and exact closing-keyword lines."""

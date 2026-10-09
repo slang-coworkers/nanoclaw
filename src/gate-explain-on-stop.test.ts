@@ -59,13 +59,25 @@ function receipts(state: object): void {
 }
 
 describe('gate-explain-on-stop.sh', () => {
-  it('blocks when a created PR was never explained', () => {
+  it('blocks when a created PR was never explained, and logs the block to the receipts file', () => {
     receipts({ seq: 1, prs: { [PR]: created } });
     const r = stop();
     expect(r.status).toBe(0);
     expect(r.decision?.decision).toBe('block');
     expect(r.decision?.reason).toContain(`opened ${PR}; its explanation comment still explains nothing`);
     expect(r.decision?.reason).toContain('upsert_pr_body.py');
+    const state = JSON.parse(fs.readFileSync(receiptsFile, 'utf-8')) as {
+      seq: number;
+      events: { event: string; at: string; seq: number; owed: string[] }[];
+    };
+    expect(state.seq).toBe(1); // the log never bumps the receipt counter
+    expect(state.events).toHaveLength(1);
+    expect(state.events[0]).toMatchObject({ event: 'stop_block', seq: 1 });
+    expect(state.events[0].at).toMatch(/^\d{4}-\d\d-\d\dT\d\d:\d\d:\d\dZ$/);
+    expect(state.events[0].owed).toEqual([`opened ${PR}; its explanation comment still explains nothing`]);
+    // A second stop that passes (stop_hook_active) logs nothing: only firings are counted.
+    stop({ stop_hook_active: true });
+    expect((JSON.parse(fs.readFileSync(receiptsFile, 'utf-8')) as { events: unknown[] }).events).toHaveLength(1);
   });
 
   it('blocks when a push is newer than the explanation, naming both heads', () => {

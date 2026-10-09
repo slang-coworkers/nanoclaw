@@ -12,10 +12,13 @@
 #   { "seq": 7,
 #     "prs":    { "owner/repo#N": { repo, number, branch|null, created_at, created_seq,
 #                                   explained_head, explained_at, explained_seq } },
-#     "pushes": { "owner/repo:branch": { repo, branch, head|null, pushed_at, seq } } }
+#     "pushes": { "owner/repo:branch": { repo, branch, head|null, pushed_at, seq } },
+#     "events": [ { event: "stop_block"|"deliver_refusal", at, seq, owed: [lines] }, … ] }
 #
 # `seq` is a per-file counter bumped on every receipt, so ordering never depends
-# on two events landing in different wall-clock seconds.
+# on two events landing in different wall-clock seconds. `events` (last 100) is the
+# gates' firing log: it does not bump `seq` and nothing reads it but an operator
+# counting how often the once-only Stop block fires or is escaped.
 #
 # A PR owes a refresh when it was never explained, or when a push to its repo
 # (and its branch, when known) is newer than its last explanation and names a
@@ -57,6 +60,27 @@ explain_diff_owed_lines() {
   local f="${1:-$EXPLAIN_DIFF_STATE}"
   [ -f "$f" ] || return 0
   jq -r "$EXPLAIN_DIFF_OWED_JQ" "$f" 2>/dev/null || true
+}
+
+# Append one firing record to `.events` in the receipts file. Never fails the
+# caller (the gates run under set -e) and never bumps `seq`.
+# Usage: explain_diff_log_event <event> "<owed lines>"
+explain_diff_log_event() {
+  local event="$1" owed="${2:-}" f="${3:-$EXPLAIN_DIFF_STATE}" cur='{}' now
+  now=$(date -u +%Y-%m-%dT%H:%M:%SZ)
+  mkdir -p "$(dirname "$f")" 2>/dev/null || return 0
+  if [ -s "$f" ] && jq -e 'type == "object"' "$f" >/dev/null 2>&1; then
+    cur=$(cat "$f")
+  fi
+  if jq --arg event "$event" --arg now "$now" --arg owed "$owed" \
+    '.events = (((.events // []) + [{event: $event, at: $now, seq: (.seq // 0),
+        owed: ($owed | split("\n") | map(select(length > 0)))}]) | .[-100:])' \
+    <<< "$cur" > "$f.tmp.$$" 2>/dev/null; then
+    mv "$f.tmp.$$" "$f" 2>/dev/null || rm -f "$f.tmp.$$" 2>/dev/null || true
+  else
+    rm -f "$f.tmp.$$" 2>/dev/null || true
+  fi
+  return 0
 }
 
 # Same activation rule as gate-critique-on-deliver.sh: the host-injected env var
