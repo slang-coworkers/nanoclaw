@@ -149,3 +149,4 @@ WILL merge into the main session, by design. Use a `/<sub-task>` suffix (or an u
 - [db.md](db.md) — three-DB overview and the single-writer rule.
 - [isolation-model.md](isolation-model.md) — channel isolation levels.
 - [cross-instance-routing.md](cross-instance-routing.md) — how GitHub webhooks pick the owning session.
+- [scheduled-tasks.md](scheduled-tasks.md) — scheduled tasks run an agent prompt at a future time or on a recurring cron schedule, each in its own system session separate from chat sessions.
