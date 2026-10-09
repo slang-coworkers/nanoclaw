@@ -56,7 +56,9 @@ describe('script-skip ack chain (container leg)', () => {
     expect(ackStatus('t-err')).toBe('script-skip:error');
   });
 
-  it('a deliberate wakeAgent=false gate acks plain completed — never backs off', async () => {
+  // The host lands this as a `completed` row with `gated = 1`: a successful run
+  // (no backoff) that `ncl tasks get` can count apart from the fires that woke.
+  it('a deliberate wakeAgent=false gate acks script-skip:gated — never backs off', async () => {
     insertTask('t-gated', 'echo \'{"wakeAgent": false}\'');
     const { keep, skipped } = await applyPreTaskScripts(getPendingMessages());
 
@@ -64,7 +66,7 @@ describe('script-skip ack chain (container leg)', () => {
     expect(skipped).toEqual([{ id: 't-gated', reason: 'gated' }]);
 
     markScriptSkipped(skipped);
-    expect(ackStatus('t-gated')).toBe('completed');
+    expect(ackStatus('t-gated')).toBe('script-skip:gated');
   });
 
   it('wakeAgent=true keeps the task and enriches the prompt with script data', async () => {
