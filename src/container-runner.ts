@@ -3166,16 +3166,11 @@ export function syncSkillSymlinks(
   claudeDir: string,
   containerConfig: import('./container-config.js').ContainerConfig,
 ): void {
-  const skillsDir = path.join(claudeDir, 'skills');
-  if (!fs.existsSync(skillsDir)) {
-    fs.mkdirSync(skillsDir, { recursive: true });
-  }
-
   // Same body as the declared-contract path; real (non-symlink) entries are
   // either a template overlay (intentional; see src/group-skills.ts) or a stale
   // pre-refactor skill copy that shadows the shared skill (#3001), so the
   // skip is surfaced as a warning.
-  syncSharedSkillLinks(skillsDir, selectedSkillNames(containerConfig), true);
+  syncSharedSkillLinks(claudeDir, ['skills'], selectedSkillNames(containerConfig), true);
 }
 
 /**
