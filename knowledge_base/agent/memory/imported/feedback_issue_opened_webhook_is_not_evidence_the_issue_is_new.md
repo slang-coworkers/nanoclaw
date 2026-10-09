@@ -58,3 +58,6 @@ the triager and to the operator, and my report presented (ii) as part of his dec
 comment. ⇒ **Before quoting a human comment as "the maintainer's words", `gh api .../issues/comments/<id>` and compare the live body
 and `updated_at` with the payload.** A maintainer's quick self-edit is common and it is precisely the retraction that matters. The
 same check as rung 2 above, aimed at comments instead of issue bodies.
+
+### 2026-10-08, #13411: a dashboard "New issue to triage" can be about a chain I already hold
+Three days after the hold above, `orchestrator-dashboard` sent a templated *"New issue to triage"* for #13411. The issue has no labels and no bot triage comment, because it's our own tracker and its triage is in the body. ⇒ **Before dispatching the triager, check the canonical-thread session and `ncl tasks list | grep <num>`.** If the chain is already held, answer the operator with the triage verdict from live state (subsystem, severity, owner, next step) and send nothing to the triager or GitHub. A triage comment would land in the middle of an open maintainer-to-maintainer exchange.

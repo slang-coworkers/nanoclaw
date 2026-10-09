@@ -39,7 +39,13 @@ The fixer replied with three answers ([6002744164](https://github.com/shader-sla
 3. Must return a value → narrow the optimization where a sub-set cast feeds the dispatcher. A
    clamp would pick a conformer, which is its own policy question.
 
-Re-chase task: `rechase-13228-kaizhang-a0d7` (2026-10-08).
+## Re-chase log
+
+- 2026-10-08 (`rechase-13228-kaizhang-a0d7`): no reply. Checked PR comments, reviews, inline
+  comments and #13220. Posted the hold to the dashboard and did not ping the maintainer.
+- Next: `rechase-13228-kaizhang-2-93a4`, 2026-10-11 21:00Z. A one-shot can't be
+  `ncl tasks update`d while it is firing ("no live task matched"), so the next re-chase is
+  created as a new task.
 
 ## Lessons
 

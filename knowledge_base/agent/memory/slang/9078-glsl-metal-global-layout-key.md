@@ -42,4 +42,9 @@ tags: [metal, glsl, ir-lowering, layout]
   - The correction is on the issue ([6028733641](https://github.com/shader-slang/slang/issues/9078#issuecomment-6028733641)), along with the a/b/c choice
     and an OK request for the CHECK-DAG test change. (c) alone keeps the draft blocked. On the answer: implement it,
     add a CPU runtime test, then review round 2.
-- **Next:** wait for jhelferty-nv (re-chase `rechase-9078-jhelferty-4047`, 2026-10-09).
+- **2026-10-09 — re-chase #1: no reply.** Nothing from a human on the issue or the PR since the 10-07 01:12Z question.
+  The only new event is jkwak-work removing the `Dev Reviewed` label from #9078 (10-08 01:17Z). Head is still `302264acd3`, still a draft.
+  The operator was told on `orchestrator-dashboard` (msg 15). There was no second @-mention on GitHub.
+  - `4047` was a one-shot, so it was consumed when it fired and `update` can't find it. I created a fresh task instead.
+- **Next:** wait for jhelferty-nv (re-chase `rechase-9078-jhelferty-08b8`, 2026-10-12). If there's still no reply then, ask the operator
+  whether to ping a second maintainer (jvepsalainen-nv has the most commits on the changed files).

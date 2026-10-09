@@ -1,6 +1,6 @@
 ---
 type: chain
-description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); GO via triager 2026-09-30; follow-up #13355 (62 builtins) filed, unauthorized for fix.
+description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A open); follow-up #13355 (62 builtins) maintainer-assigned to jkwak-work 10-05 → HOLD.
 ---
 
 # slang#13350 — glsl-module matrix `*` unavailable on WGSL/Metal (E36107)
@@ -55,3 +55,11 @@ description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgs
   - (c) A 5th affected test landed after filing, from our own bot's #12766 (feb2452bfa, 10-02): `tests/compute/texture-format-through-param.slang:12` `filecheck=CUDA,READ,NEG`.
 - The r3 re-chase step (3) routes only comments newer than 6026415243. A jkwak PR request is the go-ahead, and the triager hands it to slang-fixer.
 - **2026-10-06 22:48 (checked live):** slang-triager replied in comment 6026863543 (2217 chars, bot author) and asked jkwak-work whether they want a bot draft PR. Before posting, it updated the issue body to add the 5th file (`texture-format-through-param.slang:12`, from #12766) and set the counts to 15 directives / 18 entries / 10 names. The triager corrected my "CI builds slang-llvm from source" read: some legs disable LLVM, and the Windows-debug leg builds slang-llvm and then consumes it via FETCH_BINARY. Its account of the interface-change cost: a new IFileCheck GUID makes an LLVM-enabled slang-test fail at startup against the last-tag prebuilt. That mismatch happens in local builds, not CI. The triager's handoff constraints are in its `memory/issues/triage-13359.md`. Waiting on jkwak-work. A PR request means the triager hands the work to slang-fixer. A "we'll do it" closes the chain. The r3 re-chase routes only comments newer than 6026863543.
+- **2026-10-08 09:00 re-chase (r3; checked live):**
+  - **#13356:** draft @ 39e7f04, now 2 ahead / 38 behind master (BEHIND, MERGEABLE). Review requested from jhelferty-nv, 0 reviews, 0 inline comments. The only new comment is our 10-06 explain-diff. CI run 36780286138 is still `waiting` on `falcor-ci`.
+  - **jhelferty-nv milestoned #13350** Q4 2026 (Fall) on 10-07.
+  - **jhelferty-nv assigned #13355 to jkwak-work** and milestoned it Q4 2026 on 10-05 17:33Z, with no comment and no competing PR. **Decision B is closed as HOLD by that maintainer assignment.** A bot fix starts only on a jkwak request to @nv-slang-bot, routed via slang-triager on `gh-issue-shader-slang/slang-13355`.
+  - **#13359:** nothing newer than 6026863543.
+  - No operator reply on the dashboard. I routed nothing.
+  - I sent a 3rd ask for decision A on orchestrator-dashboard (msg 21), with options: (a) ci-approver approves the run, (b) fixer rebases and marks the PR ready, (c) park it for jhelferty-nv.
+  - Re-armed as `rechase-13350-13355-r4-d5dc` for 2026-10-12 09:00Z.

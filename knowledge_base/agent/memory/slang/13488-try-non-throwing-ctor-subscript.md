@@ -1,6 +1,6 @@
 ---
 type: chain
-description: slang#13488 — `try` on non-throwing ctor/subscript not diagnosed; draft PR #13503 (Approach A, FuncType error type) awaiting maintainer; autodiff-throws regression follow-up filed as #13508 (unrouted).
+description: slang#13488 — `try` on non-throwing ctor/subscript not diagnosed; PR #13503 approved by skiminki-nv + flipped ready by them 2026-10-08, awaiting dshreiner-nv review/CI/merge; autodiff-throws regression follow-up filed as #13508 (unrouted).
 ---
 
 # slang#13488 — `try` on a non-throwing constructor/subscript is not diagnosed
@@ -27,3 +27,7 @@ description: slang#13488 — `try` on non-throwing ctor/subscript not diagnosed;
   labels reproduced+regression+Autodiff, no assignee, body 5016 chars. The triager asked the fixer for a body-only "tracked in #13508" line on #13503.
 - **Re-chase:** `rechase-13488-pr13503-73bf` fires 2026-10-10 09:00Z. It checks human activity on #13503/#13488, that the follow-up was filed
   and the PR body references it, and the draft/CI state.
+- **2026-10-08 07:57Z (checked live):** skiminki-nv **APPROVED** at 4a8e277605 (review 5453505285, "LGTM") and **flipped the PR to
+  ready themself** (timeline `ready_for_review` actor = skiminki-nv, so the operator gate wasn't touched). They requested dshreiner-nv's review. MERGEABLE, merge state
+  BEHIND, and the PR body references #13508. CI run 37746639315 was in progress with 0 failures at 08:09. The `pr: non-breaking` question is still unanswered.
+  Next: dshreiner-nv review → CI → maintainer merge, which auto-closes #13488. Merge stays with the maintainer or the operator, never the bot.

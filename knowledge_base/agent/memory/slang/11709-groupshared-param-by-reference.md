@@ -123,8 +123,7 @@ dismissal, so `reviewDecision` is now empty. The fixer's report still said "appr
   - [r4198335992](https://github.com/shader-slang/slang/pull/13406#discussion_r4198335992): witness synthesis should add
     `ReadOnlyModifier` instead of `ConstModifier`.
   - The fixer is planning R6/R7. I checked its summary against her text and it's faithful.
-  - **#11709 rebase impact (open):** with `readonly` as the canonical spelling, `readonly groupshared` → `RefReadOnly` is probably
-    needed alongside `const groupshared`. Ask her when #11709 rebases; don't assume it.
+  - ~~#11709 rebase impact: `readonly groupshared` → RefReadOnly~~ (moot after her 10-08 reversal, see below).
   - **R6/R7 pushed 10-06 ~20:57Z**: head `0843d66c6b`, App identity. Replies [r4200350398](https://github.com/shader-slang/slang/pull/13406#discussion_r4200350398) and [r4200350749](https://github.com/shader-slang/slang/pull/13406#discussion_r4200350749), no pings.
     Both parity checks match master: `readonly image2D` gives byte-identical `NonWritable`, and `readonly uint` without `__ref` still gives E31206.
     Her CHANGES_REQUESTED stands until she re-reviews.
@@ -140,6 +139,27 @@ dismissal, so `reviewDecision` is now empty. The fixer's report still said "appr
     #13232 had **landed on master** and caused all 7 conflicts. Master's code was kept, and the Ref split now lives in its shared helpers.
     One behavior fix: after #13232, a `readonly __ref` declaration paired with a `__ref` definition hit E39999. It is pinned by a test, and a revert drill confirmed the test fails without the fix.
     Her CHANGES_REQUESTED still stands.
+  - **10-08 22:10Z: jhelferty-nv REVERSED the `readonly` design** (review 5463447838, at `797b7e096f`). `readonly`/`writeonly` stay GLSL memory qualifiers.
+    - New keywords `__ref_readonly`/`__ref_writeonly`. `const __ref`/`__ref const` are rewritten to `RefModifier`+`ReadOnlyModifier`.
+    - The reclassify pass from `d47ae5627d` is deleted.
+    - The three Ref modes stay distinct in overload matching, so the e77f209 redeclaration test is deleted.
+    - Reading through `__ref_writeonly` is an error ([6070683551](https://github.com/shader-slang/slang/pull/13406#issuecomment-6070683551)).
+    - Still open with her: A `Access.WriteOnly` vs B separate types, for the `RefWriteOnly` param type ([6070871935](https://github.com/shader-slang/slang/pull/13406#issuecomment-6070871935)).
+    - The fixer's summary matches her text. It holds for one push.
+    - **#11709 impact:** the "`readonly groupshared` → RefReadOnly?" question is moot, because `readonly` is GLSL-only again. Whether `__ref_readonly` should have a groupshared analogue is a question for her at #11709's rebase. Don't assume it.
+  - **10-09 01:13Z: reversal implemented locally, unpushed.** 5 commits on `797b7e096f` (`8a59955b4f`…`fcb2834e14`), suite 7740/7742.
+    It waits on her answers to [6070871935](https://github.com/shader-slang/slang/pull/13406#issuecomment-6070871935) (A/B for the `RefWriteOnly` type) and [6072225296](https://github.com/shader-slang/slang/pull/13406#issuecomment-6072225296):
+    - mangling `r_`/`ro_`/`wo_`. Master mangles every Ref as `r_` (`slang-mangle.cpp:137`), so `__ref` and `__ref_readonly` witnesses collided.
+    - should every read through `__ref_writeonly` be an error? E30119 covers only initializers and assignment right-hand sides; other reads crash later.
+    - **Session budget:** the owner session `sess-1785902924001-jylfb4` is at $284.45 of its $300 ceiling (escalated). Resume in a **fresh session** from `memory/fix-13339.md`.
+      When she answers, dispatch to slang-fixer on thread `gh-issue-shader-slang/slang-11709` **without** pinning that session.
+  - **10-09 02:33Z: she answered everything** (review [5465076473](https://github.com/shader-slang/slang/pull/13406#pullrequestreview-5465076473), at `797b7e096f`). Verified at source; the fixer's R16–R20 summary is faithful.
+    - **A:** append `Access.WriteOnly = 3`, used only as the `RefParam` access for `__ref_writeonly`. No `RefReadOnlyParamType`/`RefWriteOnlyParamType`.
+      Reject `Ptr<T, Access.WriteOnly>` and `Ref<T, Access.WriteOnly>`; the `QualType` switch gets an explicit `WriteOnly` case.
+    - `r_`/`ro_`/`wo_` mangling approved; existing `__ref` stays `r_`.
+    - Every value read of `__ref_writeonly` is E30119, checked in `coerce()`. Binding as a location (`ref`/`out` arg, assignment LHS) is not an error; a by-ref builtin operator like `+=` needs its own check.
+    - The **old session itself** picked this up (02:36Z, still under its ceiling at $288.01/$300) and runs R16–R20 in a fresh-context subagent on `fcb2834e14`. Then: build, suite, CODE_REVIEW, one push.
+      If it stops at the ceiling before pushing, resume in a fresh session from `memory/fix-13339.md` + `reports/slang-13339-r3/impl-notes.md`. Don't dispatch a second implementation while it's still running.
 
 ## Lessons
 

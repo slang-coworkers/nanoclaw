@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13424 — Missing constant folding for loops (constant trip count not folded at -O3)
-description: Triaged + reproduced P3 enhancement; SPIR-V-only gap. Option A (1-line BlockMerge before spirv-opt LoopUnroll) awaiting operator go/no-go (2nd ask 10-05, really the 1st delivered one); HOLD
+description: Triaged + reproduced P3 enhancement; SPIR-V-only gap; assigned saipraveenb25 10-05. Option A (1-line BlockMerge before spirv-opt LoopUnroll) — final operator ask sent 10-08 (row 478682), ask budget exhausted, default HOLD; passive check 10-22
 tags: [slang, spirv, optimization, loop-unroll, spirv-opt, held]
 resource: /workspace/inbox/a2a-1791074879332-d9xk98/triage-13424.md
 ---
@@ -72,7 +72,19 @@ half of the gap (option D's spirv-opt side), and A covers the LoopUnroll half. (
   landed as dashboard row 453608 at 09:04:47Z, reply GO / HOLD / DROP. Nothing went to slang-triager:
   there's no GO, and a cross-ref isn't a comment.
 
-**Resume on:** an operator GO / HOLD / DROP reply, maintainer design input on B/C/D, an assignee, closure,
-or movement on SPIRV-Tools#6930. A GO goes through slang-triager on `gh-issue-shader-slang/slang-13424`
-and releases option A only. Re-chase task `rechase-13424-ask3-d301` (2026-10-08T09:00Z) sends the
-**final** ask (via send_message), then holds by default and stops asking.
+**2026-10-08T09:00Z re-chase (3rd and final ask).** On #13424 there are still no new comments (3), no linked PR,
+and it's still open. Two changes: **jhelferty-nv assigned saipraveenb25** (10-05 17:58Z), and jkwak-work removed the
+`Dev Opened` label (10-08 01:17Z; labels are now reproduced + SPIR-V). SPIRV-Tools#6930 is still open with no
+approval. Its one review, from s-perron (10-07), says it handles only the scalar case and needs vector support
+(otherwise it asserts or dereferences nullptr). The dashboard had **no GO/HOLD/DROP reply** to row 453608: I scanned
+every row from seq 453602 to 478676 with `--since-seq`. I sent the final ask with
+`send_message(orchestrator-dashboard, thread gh-issue-shader-slang/slang-13424)`, which landed as **dashboard row
+478682** at 09:06Z. It recommended HOLD, since a maintainer now owns the issue and nobody has asked for a bot PR.
+**The ask budget is exhausted. The default is HOLD, so do not ask again.** Nothing went to slang-triager: the
+assignment isn't a comment, and there's no GO.
+
+**Resume on:** a late operator GO / HOLD / DROP reply (dashboard rows after 478682), a maintainer comment or
+design input on B/C/D, closure, a linked PR (saipraveenb25 may fix it themselves), or movement on SPIRV-Tools#6930.
+A GO goes through slang-triager on `gh-issue-shader-slang/slang-13424` and releases option A only. The passive
+one-shot task **`passive-13424-d14-de2e`** (2026-10-22T09:00Z) makes no asks, does not reschedule, and stays
+silent if nothing changed. A gate script for it was blocked by a PreToolUse hook, so the task runs ungated.

@@ -20,3 +20,10 @@ rung 1 (canonical thread had the #13166 Main's dispatch task) and rung 4. Live r
 dispatches slang-fixer on `gh-issue-shader-slang/slang-13472` (report E29002 on lookup failure, consume the glsl450
 allowance, add a DIAGNOSTIC_TEST) and tells the #13173 owner; on close-unmerged it tells the operator. Gate verified
 10-07: #13171 open → `false`; same script against merged #12310 → `true`.
+
+**2026-10-08 operator triage ask (msg 36).** Verdict: SPIR-V snippet parser (`SpvSnippet::parse`, target-emit), bug,
+low-medium / P3; still on master `f6238cee3` (:295-301), no linked PR. **New since filing:** 10-07 17:49Z
+jkwak-work self-assigned it (he is also #13171's reviewer) and jhelferty-nv milestoned it Q4 2026. Per the
+assigned-maintainer stand-down rule ([[feedback_deadpromise_check_assignee_before_rewake]]) the gate task's prompt was
+amended: on merge it re-reads assignees and dispatches only on a maintainer ask, operator OK, or no human assignee;
+otherwise it asks the operator. No GitHub post (the bot-filed body already is the triage).
