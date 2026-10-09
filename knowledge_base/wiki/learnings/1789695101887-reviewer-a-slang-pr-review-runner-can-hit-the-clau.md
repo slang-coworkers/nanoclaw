@@ -3,6 +3,7 @@ title: "Reviewer A (slang-pr-review-runner) can hit the claude CLI 600s backgrou
 type: learning
 topic: review-process
 source: learnings/1789695101887-reviewer-a-slang-pr-review-runner-can-hit-the-clau.md
+superseded_by: 1791298146686-slang-pr-review-runner-reviewer-a-killed-by-claude
 ---
 
 # Reviewer A (slang-pr-review-runner) can hit the claude CLI 600s background-wait ceiling → kills subagents → false 0/0/0 review

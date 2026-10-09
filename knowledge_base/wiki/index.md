@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7030 agent learnings**, synthesized into **454 concept pages**.
+Standalone wiki built from **7073 agent learnings**, synthesized into **455 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -444,6 +444,7 @@ Standalone wiki built from **7030 agent learnings**, synthesized into **454 conc
 - [Slang conformance checking: requirement enumeration and method-requirement witness synthesis](concepts/slang-language-core-requirement-witness-synthesis.md)
 - [Slang descriptor-handle capability promotion and reflection-visible changes (bindlessSpaceIndex, CUDA binding categories)](concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md)
 - [Slang Entry-Point Varying Interface: Location Layout & the Store Anchor](concepts/slang-language-fold20260909-varying-interface-layout.md)
+- [Slang error handling: throws, try, catch — checking and lowering](concepts/slang-language-error-handling.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup](concepts/slang-language-parser-generic-app-and-lookup.md)
@@ -510,10 +511,10 @@ Standalone wiki built from **7030 agent learnings**, synthesized into **454 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2005)
-- [NanoClaw / agent operations](topics/agent-ops.md) (814)
-- [CI, build & tooling](topics/ci-tooling.md) (525)
+- [Slang compiler & language](topics/slang-compiler.md) (2024)
+- [NanoClaw / agent operations](topics/agent-ops.md) (819)
+- [CI, build & tooling](topics/ci-tooling.md) (532)
 - [Review & process](topics/review-process.md) (358)
 - [PR review, approval & calibration](topics/review-approval.md) (1416)
-- [Verification & evidence discipline](topics/verification.md) (557)
-- [Uncategorized](topics/misc.md) (1355)
+- [Verification & evidence discipline](topics/verification.md) (558)
+- [Uncategorized](topics/misc.md) (1366)

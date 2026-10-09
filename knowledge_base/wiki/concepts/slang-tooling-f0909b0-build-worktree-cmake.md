@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc,
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, dxc, glibc, asan, valgrind, sccache, ninja]
-source_count: 24
+source_count: 25
 ---
 
 ## TL;DR
@@ -12,7 +12,7 @@ Building Slang in a per-issue `git worktree` over a shared base clone has a smal
 setup traps that, unhandled, each cost 10–40 minutes — and the CMake build graph can go stale
 under you after a rebase.
 
-- **`git worktree add` does NOT populate submodules** (nor *nested* ones), so configure fails with `non-existent target "SPIRV-Headers::SPIRV-Headers"` or `external/<x> does not contain a CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree before the first configure. If that (or `--reference`) fails with "transport 'file' not allowed", copy `external/` from another worktree whose submodule pins match (`git diff --quiet <base> HEAD -- external .gitmodules`).
+- **`git worktree add` does NOT populate submodules** (nor *nested* ones), so configure fails with `non-existent target "SPIRV-Headers::SPIRV-Headers"` or `external/<x> does not contain a CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree before the first configure. If that (or `--reference`) fails with "transport 'file' not allowed" (the URLs are local clones; git ≥2.38 blocks file transport), rerun it as `git -c protocol.file.allow=always submodule update --init --recursive`, then `rm -rf build` and reconfigure; copying `external/` from a worktree with matching pins is the fallback.
 - **A configure that dies on a missing `::` target is almost always an uninitialised nested
   submodule, not a code error** — the nested `external/spirv-tools/external/spirv-headers` is
   the usual culprit even when the top-level shows a SHA.
@@ -88,11 +88,15 @@ submodule init took about 13 s (the main clone already had the objects), and a r
 only the `slangc` and `slang-test` targets finished in roughly 10 minutes on 64 cores, even
 though the configure log said "building DXC from source"
 [init time and slangc/slang-test build time on a fresh worktree](../learnings/1790636604671-fresh-slang-git-worktree-init-submodules-before-cm.md).
-When the init cannot run, because the submodule URLs point at the local base clone and git
-blocks file transport (`submodule update --reference` fails with "transport 'file' not
-allowed"), a populated `external/` copied from another worktree at the same base works. Check
-first that the pins match, with `git diff --quiet <base> HEAD -- external .gitmodules`; on
-#13429 that gave a configure plus `slangc`/`slang-test` build in about 10 min
+When the init fails with "fatal: transport 'file' not allowed" for every submodule, the cause is
+that the submodule URLs resolve to the local `/workspace/agent/slang/external/*` clones and git
+≥2.38 blocks file transport by default (cmake then stops at "Configuring incomplete"). The direct
+fix is to allow it for that one command —
+`git -c protocol.file.allow=always submodule update --init --recursive -q`, then `rm -rf build`
+and reconfigure; a full Release `slangc`+`slang-test` build then took ~6 min at `-j48` on 64 cores
+[protocol.file.allow=always](../learnings/1791414819646-git-worktree-submodule-init-from-local-slang-clone.md).
+The older fallback, copying a populated `external/` from another worktree, still works when its
+pins match (`git diff --quiet <base> HEAD -- external .gitmodules`; ~10 min to a build on #13429)
 [copy external/ from a same-base worktree](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md).
 
 Several of these atoms independently flag a **build-subagent hazard**: a subagent that launches
@@ -309,9 +313,9 @@ break is the *only* remaining one
 
 ## The Xcode Generator Rejects Any `$<CONFIG>` Genex in a Per-Source `COMPILE_OPTIONS` (Presence, Not Value)
 
-`cmake -GXcode` fails at **configure** with "Xcode does not support per-config per-source COMPILE_OPTIONS: <genex> specified for source: X.cpp" whenever a per-source `COMPILE_OPTIONS` (set via `set_source_files_properties`) carries a context-sensitive `$<CONFIG:...>` generator expression. `cmGlobalXCodeGenerator` / `XCodeGeneratorExpressionInterpreter::Evaluate()` errors on the **PRESENCE** of the `$<CONFIG>` condition (`GetHadContextSensitiveCondition()` true), NOT on whether the resolved flags differ across configs — so `$<$<NOT:$<CONFIG:Debug>>:-Os>` that resolves to `-Os` in every config is still hard-rejected. Ninja Multi-Config (Slang's `default` preset, used by every CI job including the macOS `xcode-27` runner — a runner *label*, not the generator) tolerates it, and `CMakePresets.json` defines no Xcode generator, so this regression is **invisible to CI** (slang#13240/#13241). Fix pattern: branch on `CMAKE_CXX_COMPILER_ID` at configure time and emit a plain config-independent flag on the non-MSVC (Clang/AppleClang) path, keeping the `$<CONFIG>` genex only where a real per-config difference exists (MSVC Debug `/RTC1` vs optimization). Two gotchas: (1) match `CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"` (== `$<CXX_COMPILER_ID:MSVC>`), NOT the `MSVC` CMake variable — the latter is also true for clang-cl (compiler id `Clang`), so `if(MSVC)` would silently change clang-cl's flags; (2) to prove old-vs-new flag equivalence without a 20-min slang build, `file(GENERATE)` cannot evaluate `$<CXX_COMPILER_ID>` without a `TARGET` (throws "may only be used with binary targets") — instead compile a trivial 2-target throwaway replicating the `set_source_files_properties(... COMPILE_OPTIONS ...)`, build `--config Debug`/`Release` verbose, and grep the actual `-O` flags per config. Reviewer note: when a PR touches per-source `COMPILE_OPTIONS`, check whether any `$<CONFIG>` genex sits on a non-MSVC path — that is the exact shape that breaks `-GXcode`; a configure-only `buildtool: "Xcode"` macOS job wired into `check-cmake` (mirroring `cmake-options-build.yml`'s `buildtool` → `-G` for the windows-vs jobs) would cheaply guard it ([Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md)).
+`cmake -GXcode` fails at **configure** with "Xcode does not support per-config per-source COMPILE_OPTIONS: <genex> specified for source: X.cpp" whenever a per-source `COMPILE_OPTIONS` (`set_source_files_properties`) carries a `$<CONFIG:...>` generator expression. `XCodeGeneratorExpressionInterpreter::Evaluate()` errors on the **presence** of the context-sensitive condition, not on whether the flags differ by config, so `$<$<NOT:$<CONFIG:Debug>>:-Os>` is rejected even though it yields `-Os` everywhere. Ninja Multi-Config (the `default` preset, used by every CI job including the macOS `xcode-27` runner — a runner label, not the generator) tolerates it, and `CMakePresets.json` has no Xcode generator, so the regression is invisible to CI (slang#13240/#13241). The fix branches on `CMAKE_CXX_COMPILER_ID` at configure time and emits a plain flag on the Clang/AppleClang path, keeping the genex only where a real per-config difference exists (MSVC Debug `/RTC1`). Match `CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"`, not the `MSVC` variable, which is also true for clang-cl. To prove flag equivalence without a full build, compile a trivial two-target project with the same `set_source_files_properties` under `--config Debug`/`Release` verbose and grep the `-O` flags (`file(GENERATE)` can't evaluate `$<CXX_COMPILER_ID>` without a `TARGET`). A configure-only `buildtool: "Xcode"` macOS job in `check-cmake` would guard it ([Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md)).
 
-**Source learnings (24):**
+**Source learnings (25):**
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md) — Full cascade + `ninja: loading build-Debug.ninja: No such file`; explicit external list; a backgrounded subagent build dies — run foreground + Monitor for the artifact.
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md) — #12297 added `slang-rich-diagnostics.cpp`; stale `build.ninja` → hundreds of undefined refs; reconfigure; grep `impl-Debug.ninja` (multi-config), not top-level `build.ninja`.
 - [Slang git worktree needs per-worktree submodule init before cmake configure](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md) — Top-level `--init --depth 1` is enough (no slang-rhi nested / dxc); the `SPIRV-Headers::SPIRV-Headers` `get_target_property` error + leading `-` in `git submodule status` are the tell; first configure also does a ~500 MB DXC clone+build; a Monitor on `build.log` mis-fires when configure (not compile) fails — trust the subagent's completion.
@@ -335,4 +339,5 @@ break is the *only* remaining one
 - [reused worktree's slangc can be a revert drill's build; rebuild after restore; slangc-only configure ~5 min](../learnings/1791180810533-check-a-reused-worktree-s-slangc-provenance-before.md)
 - [file transport blocks submodule init; copy external/ from a same-base worktree (#13429)](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)
 - [after merging master that bumps the IR module version, do a FULL build — targeted slangc/slang-test leaves stale std modules (E00131, 59/60 failures cleared)](../learnings/1791238883748-after-merging-master-that-bumps-the-ir-module-vers.md)
+- [git worktree submodule init from local slang clone needs protocol.file.allow=always](../learnings/1791414819646-git-worktree-submodule-init-from-local-slang-clone.md) — "transport 'file' not allowed" on every submodule; `git -c protocol.file.allow=always submodule update --init --recursive`; ~6 min Release build at -j48
 - [after merging origin/master, sync submodules before the verify build (` M external/...`); codex-reply not recorded as a critique round](../learnings/1791250506095-after-merging-origin-master-sync-submodules-before.md)

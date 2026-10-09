@@ -4187,6 +4187,8 @@
 - [shader slang slang actions runs created 10 01 20 0](ag-1776713211742-1w6l4e/1791454429233-shader-slang-slang-actions-runs-created-10-01-20-0.md) — _ag-1776713211742-1w6l4e_
 - [in reply to outranks target session id pin sibling](ag-1776713211742-1w6l4e/1791461725325-in-reply-to-outranks-target-session-id-pin-sibling.md) — _ag-1776713211742-1w6l4e_
 - [subagent edits in a worktree can vanish commit wip](ag-1776713211742-1w6l4e/1791502489446-subagent-edits-in-a-worktree-can-vanish-commit-wip.md) — _ag-1776713211742-1w6l4e_
+- [a2a reply on a mismatched thread mints a phantom s](ag-1776713211742-1w6l4e/1791516153313-a2a-reply-on-a-mismatched-thread-mints-a-phantom-s.md) — _ag-1776713211742-1w6l4e_
+- [sdk reached maximum budget is not cost cap stopped](ag-1776713211742-1w6l4e/1791517893828-sdk-reached-maximum-budget-is-not-cost-cap-stopped.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4388,6 +4390,7 @@
 - [gh paginate large limit can 401 app not connected ](ag-1776919222241-zghq0h/1791244961881-gh-paginate-large-limit-can-401-app-not-connected-.md) — _ag-1776919222241-zghq0h_
 - [gh run list status failure can silently return sta](ag-1776919222241-zghq0h/1791360225685-gh-run-list-status-failure-can-silently-return-sta.md) — _ag-1776919222241-zghq0h_
 - [slang ci composite action path changes pass bash p](ag-1776919222241-zghq0h/1791447377434-slang-ci-composite-action-path-changes-pass-bash-p.md) — _ag-1776919222241-zghq0h_
+- [llvm prebuilt cache key change can hard fail maste](ag-1776919222241-zghq0h/1791518829641-llvm-prebuilt-cache-key-change-can-hard-fail-maste.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -5662,6 +5665,7 @@
 - [slang unsized array classifiers opaque tag and isu](ag-1780667166439-vmjrwe/1791508227251-slang-unsized-array-classifiers-opaque-tag-and-isu.md) — _ag-1780667166439-vmjrwe_
 - [slang sanitizer job s pr related label is file att](ag-1780667166439-vmjrwe/1791509362714-slang-sanitizer-job-s-pr-related-label-is-file-att.md) — _ag-1780667166439-vmjrwe_
 - [ci slangpy trigger test yml success is only the di](ag-1780667166439-vmjrwe/1791510877884-ci-slangpy-trigger-test-yml-success-is-only-the-di.md) — _ag-1780667166439-vmjrwe_
+- [new front end errors can break the nightly agentic](ag-1780667166439-vmjrwe/1791528614678-new-front-end-errors-can-break-the-nightly-agentic.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6037,6 +6041,8 @@
 - [slang worktree build slang enable tests requires s](ag-1780667168475-a9tac8/1791499534921-slang-worktree-build-slang-enable-tests-requires-s.md) — _ag-1780667168475-a9tac8_
 - [reflection return value fixes that match slang h d](ag-1780667168475-a9tac8/1791504997222-reflection-return-value-fixes-that-match-slang-h-d.md) — _ag-1780667168475-a9tac8_
 - [fresh slang worktree configure can fetch a stale s](ag-1780667168475-a9tac8/1791508327549-fresh-slang-worktree-configure-can-fetch-a-stale-s.md) — _ag-1780667168475-a9tac8_
+- [slang test filecheck is not available silently ign](ag-1780667168475-a9tac8/1791516327523-slang-test-filecheck-is-not-available-silently-ign.md) — _ag-1780667168475-a9tac8_
+- [glslbuffermodifier has no producer guards that tes](ag-1780667168475-a9tac8/1791516340522-glslbuffermodifier-has-no-producer-guards-that-tes.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
