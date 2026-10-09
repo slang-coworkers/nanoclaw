@@ -12,19 +12,14 @@ description: Keep ONE agent group's always-loaded OKF memory bounded. Scans the 
 > general-purpose editor. It keeps the two **always-loaded** memory files inside the
 > per-context budget and folds accumulating issue-knowledge into proper concept files.
 
-It is the ongoing, self-correcting counterpart to root fix **#1208**. #1208 stopped
-*new* bloat (the spine now points the agent at OKF memory, not a re-read-every-turn
-`CLAUDE.local.md`). This skill is the *maintenance* half: a periodic pass that
-consolidates whatever issue-knowledge has piled up into well-formed OKF concept files,
-keeps `index.md` accurate and under budget, and self-corrects — wake on bloat, bounded
-fan-out, escalate if not converging. It is the same shape as
-`/learnings-wiki` and its daily task's BACKLOG GUARD, aimed at per-group OKF memory
-instead of the shared learnings wiki.
+The spine points agents at OKF memory instead of a re-read-every-turn `CLAUDE.local.md`
+(#1208); this skill is the maintenance half — a periodic pass that folds whatever
+issue-knowledge has piled up into concept files, keeps `index.md` accurate and under
+budget, and self-corrects: wake on bloat, bounded fan-out, escalate if not converging.
 
-**No RAG, no embeddings, no MCP, no network.** Inside the container you read and edit
-the files directly. The embedded `okf_synth.py` is a **pure, read-only** measuring tool
-(the one exception: `finalize` records a small convergence log). It never edits memory —
-the synthesis itself is your judgment, guided by the rules below.
+**No RAG, no embeddings, no MCP, no network.** You read and edit the files directly. The
+embedded `okf_synth.py` is a read-only measuring tool (`finalize` alone writes a small
+convergence log); the synthesis itself is your judgment, guided by the rules below.
 
 ## The always-loaded contract (why bounded matters)
 
@@ -159,19 +154,16 @@ OKF_MEMORY_ROOT=/workspace/agent/memory python3 /workspace/agent/tools/okf_synth
 ## Run autonomously — the no-backlog cron (BACKLOG GUARD)
 
 The synthesis is registered as a per-group recurring task with a **pre-task gate script**
-so idle days cost nothing: the gate wakes the agent **only** when there is real backlog.
-This mirrors `/learnings-wiki`'s daily no-backlog guard.
+so idle days cost nothing — the same shape as `/learnings-wiki`'s daily no-backlog guard.
+An operator creates the task **per group, after approval**; this skill never creates live
+tasks itself, and the first run is an operator action.
 
-> **CODE-ONLY NOTE.** The exact `ncl tasks create …` below is **documentation** — an
-> operator applies it **per group, after approval**. This skill does not create live tasks
-> and this repo change does not run any migration. `okf_synth.py` on a live tree is
-> read-only except for `.okf-synth-state.json`; even so, first-run should be an operator
-> action, not an automated one.
-
-**The gate** (`--script`): runs the scanner and emits the one-line `{"wakeAgent": …}` the
-task loop reads (`container/agent-runner/src/scheduling/task-script.ts`). It stays asleep
-when the tree is bounded, and — like the prod `memcheck` gate — **wakes loudly on scanner
-failure** (a crashed probe must never read as "clean"):
+**The gate** (`--script`) runs the scanner and prints the one-line `{"wakeAgent": …}` the
+task loop reads. It wakes **only when `backlog >= GATE_MIN_BACKLOG` (2000)**. Structural
+defects weigh `DEFECT_WEIGHT` (500) each inside that metric, so a lone stale folder index
+does not wake the agent by itself — it is folded in passing once real backlog
+accumulates. Like the `memcheck` gate it **wakes loudly on scanner failure** (a crashed
+probe must never read as "clean"):
 
 ```bash
 OKF_MEMORY_ROOT=/workspace/agent/memory python3 /workspace/agent/tools/okf_synth.py gate \
@@ -190,8 +182,10 @@ ncl tasks create \
   --prompt 'OKF MEMORY SYNTHESIS — the gate fired, so /workspace/agent/memory has backlog (data lists it by class). Load the /okf-synthesis skill and follow it: write /workspace/agent/tools/okf_synth.py, run `okf_synth.py scan`, then fold AT MOST 4 offenders largest-first — distill DOSSIER files into one-concept-per-file OKF pages (type + description + [[links]]), SPLIT any OVERSIZE concept by subtopic, trim INDEX-BLOAT so index.md sits well under the 16k always-loaded budget (move detail into linked concepts, keep the Map accurate), and repair stale indexes / missing frontmatter / dangling links. Reconcile and prune — do NOT append; a smaller, truer memory is the goal. Run `okf_synth.py finalize`; if it prints ESCALATE, message the owner with the stuck offender and why. Reply one line: files scanned, offenders by class, folded, escalated?'
 ```
 
-Cron uses the install timezone. `0 4 * * *` (daily) matches the incremental, cheap shape;
-on a burst you can fire sooner. The gate makes idle days free, so a daily cadence is fine.
+Cron uses the install timezone. **The cadence is daily (`0 4 * * *`)**: each run folds at
+most 4 offenders, so a faster cron (e.g. `*/6` hourly) does not converge faster — it only
+multiplies gate executions and, on a stuck offender, escalations. On a one-off burst use
+`ncl tasks run <id>` rather than raising the cadence.
 
 This skill is **provider-agnostic** (the tool is stdlib Python 3; the prose assumes only
 "read and edit files"), **idempotent** (the tool is read-only; re-running a fold converges
@@ -261,11 +255,11 @@ DEFN_SOFT = 14400         # 0.90*budget: definition is mostly fixed doctrine
 CONCEPT_SOFT = 16000      # a concept over one whole budget is really several
 MULTI_CONCEPT_H2 = 8      # >= this many H2 headers smells like a dossier
 NOFM_MIN = 400            # ignore tiny frontmatter-less stubs (placeholder indexes)
-GATE_MIN_BACKLOG = 2000   # excess chars below which the daily gate stays asleep
+GATE_MIN_BACKLOG = 2000   # backlog below which the gate stays asleep and no escalation fires
 MAX_ITEMS_PER_RUN = 4     # bounded fan-out (advisory; enforced by the SKILL prose)
 STALL_RUNS = 3            # finalize escalates if backlog hasn't shrunk over N runs
 HISTORY_CAP = 30
-DEFECT_WEIGHT = 500       # each structural defect adds this to the backlog metric
+DEFECT_WEIGHT = 500       # each structural defect adds this to the backlog metric (4 defects reach the gate)
 
 # Files that are index-like (no `type:` required) or otherwise exempt from the
 # concept-frontmatter and size rules.
@@ -488,9 +482,11 @@ def record(report):
 def _escalation(state):
     """ESCALATE when the fold has run repeatedly but backlog is not shrinking.
 
-    Two independent triggers, both requiring STALL_RUNS readings:
-      * backlog non-decreasing across the last STALL_RUNS runs and still > gate;
-      * the same top offender (path+size) persists unchanged across them.
+    Two independent triggers, both requiring STALL_RUNS readings AND a latest
+    backlog at or above GATE_MIN_BACKLOG (an offender the gate would not wake
+    for is not worth the owner's attention either):
+      * backlog non-decreasing across the last STALL_RUNS runs;
+      * the same top offender (path+class+size) persists unchanged across them.
     Either means synthesis is stuck -- new bloat outrunning the fold, or a single
     file the agent cannot safely fold without a human call."""
     h = state["history"]
@@ -498,7 +494,9 @@ def _escalation(state):
         return None
     tail = h[-STALL_RUNS:]
     backlogs = [e["backlog"] for e in tail]
-    if backlogs[-1] > GATE_MIN_BACKLOG and all(b >= a for a, b in zip(backlogs, backlogs[1:])):
+    if backlogs[-1] < GATE_MIN_BACKLOG:
+        return None
+    if all(b >= a for a, b in zip(backlogs, backlogs[1:])):
         return (f"backlog not shrinking over {STALL_RUNS} runs "
                 f"({' -> '.join(str(b) for b in backlogs)}); new bloat is outrunning the fold")
     tops = [e.get("top") for e in tail]
@@ -556,14 +554,19 @@ def cmd_finalize():
 
 def cmd_gate():
     """One line of JSON for the pre-task gate. Never raises past here: a crash is
-    caught by the shell `|| echo '{"wakeAgent":true,...}'` fallback in the cron (the JSON MUST be quoted: unquoted, bash strips the
-    double quotes, the task runner rejects the line as invalid JSON, and the task is skipped as an error — so on a group whose
-    tool does not exist yet the agent is never woken to write it; found on prod/lego/hermes 2026-09-30)."""
+    caught by the shell `|| echo '{"wakeAgent":true,...}'` fallback in the cron. That
+    fallback JSON MUST be single-quoted: unquoted, bash strips the double quotes, the
+    task runner rejects the line as invalid JSON, and a group whose tool does not exist
+    yet is never woken to write it.
+
+    Wake on the backlog metric alone. Defects are already weighted into it
+    (DEFECT_WEIGHT each), so a separate `defects > 0` trigger only re-woke the agent
+    every fire for a single stale index it had decided not to repair."""
     report = scan()
     if not report["exists"]:
         print(json.dumps({"wakeAgent": False, "data": {"note": f"no memory root at {report['root']}"}}))
         return 0
-    wake = report["backlog"] >= GATE_MIN_BACKLOG or report["defects"] > 0
+    wake = report["backlog"] >= GATE_MIN_BACKLOG
     if wake:
         by_class = {}
         for o in report["offenders"]:
