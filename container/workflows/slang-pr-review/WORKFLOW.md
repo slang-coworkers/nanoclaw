@@ -62,10 +62,10 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
    Use `Agent(run_in_background=true)` or `Bash(run_in_background=true)`; capture the run-directory path.
 
-   **Reviewer B** — skip if `DEVIN_URL=""`. Else (best-effort; exit 2 = auth-wall, exit 3 = timeout, exit 4 = browser-launch-failure (transient infra — the script already cleared the stale Chrome profile and retried once; retry later, do NOT call it a "deterministic environment failure"), any of 2/3/4 = Reviewer-B-skipped):
+   **Reviewer B** — skip if `DEVIN_URL=""`. Best-effort, one attempt, in the background with a 10-minute cap; it is merged if it finished, otherwise marked skipped (exit 2 = auth-wall, 3 = timeout, 4 = transient browser-launch failure). Never retry within the review; never wait for it before merging A and C.
 
    ```
-   slang-pr-review-runner devin-fetch --url <DEVIN_URL> --out <run_dir>
+   slang-pr-review-runner devin-fetch --url <DEVIN_URL> --out <run_dir> --max-minutes 10
    ```
 
    **Reviewer C** (background, no polling), ~15–25 min — skip only if **Setup** found the clarity skills absent. Runs in all three modes:
@@ -80,7 +80,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 
    Use `Agent(run_in_background=true)` or `Bash(run_in_background=true)`; capture `run_dir_C`. Produces `<run_dir_C>/clarity-review.md`. Never posts.
 
-   **End your turn after dispatching.** Apply the quietness protocol from the spine's **Report shape** rules (`chain-reporting.md`, under Mechanics): substantive inbounds (new patch, abort, completion, error) → respond; status-only → end silently.
+   **End your turn after dispatching.** Substantive inbounds (new patch, abort, completion, error) → respond; status-only → end silently (chain-reporting quietness rule).
 
 5. **Merge + report** {#report} — On all subprocesses finishing (or whichever ran), call `slang-pr-review-runner`'s summarizer on `run_dir_A`. It returns severity counts, per-subagent cost, and a drift signal (must be 0 — nonzero = a non-COMMENT bot review was submitted). Reviewer C must also be drift-free: confirm `<run_dir_C>/tool-uses.jsonl` contains no GitHub-write tool call (no `gh api … --method POST/PUT`).
 
@@ -97,7 +97,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
      echo
      echo "## Reviewer B — Devin Review"
      echo
-     cat "<run_dir_B>/devin-flags.md" 2>/dev/null || echo "_skipped: no Devin URL / auth-wall / timeout / browser-launch (transient)_"
+     cat "<run_dir_B>/devin-flags.md" 2>/dev/null || echo "_skipped: no Devin URL / auth-wall / timeout (10 min) / browser-launch (transient)_"
      echo
      echo "## Reviewer C — Clarity"
      echo
@@ -130,7 +130,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    ```
    # always reply to the requester (parent).
    send_file(to="parent", path="<run_dir_A>/combined-review.md")
-   send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] <repo>#<number> (<mode>)\n\n• Verdict: <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n• Findings: <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>; C clarity: <counts or skipped>)\n• Top concern: <one-line of the highest-severity finding, or 'no bugs'>\n• Test gaps: <one-line of recommended tests, or 'none'>\n• Disagreements: <N A/B/C disagreements — see combined-review.md, or 'none'>\n• Sent to: <parent + fixer | parent only>")
+   send_message(to="parent", in_reply_to=<id-of-review-request>, text="[Review Verdict] <repo>#<number> (<mode>)\n\n- **Verdict:** <APPROVE / APPROVE_WITH_NITS / REQUEST_CHANGES>\n- **Findings:** <X bugs, Y gaps, Z questions> (A: <counts>; B: <counts or skipped>; C clarity: <counts or skipped>)\n- **Top concern:** <one-line of the highest-severity finding, or 'no bugs'>\n- **Test gaps:** <one-line of recommended tests, or 'none'>\n- **Disagreements:** <N A/B/C disagreements — see combined-review.md, or 'none'>\n- **Sent to:** <parent + fixer | parent only>")
 
    # live pr mode: fix loop.
    send_file(to="slang-fixer", path="<run_dir_A>/combined-review.md")
@@ -170,8 +170,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 - **Name any ad-hoc git worktree `wt-<pr-or-issue-num>-<tag>`** under `/workspace/agent/` (e.g. `wt-11544-verify`, not `slang-11544-verify`). The supervisor's worktree GC (supervise-issues §8) reaps by this convention; freehand names still get caught by its name-agnostic backstop, but the `wt-` prefix keeps discovery uniform and unambiguous. Reviewer C's isolation worktree already follows this (`wt-clarity-*`).
 - **Combined report is whole.** A + B + C are concatenated verbatim into `combined-review.md` and sent to the fixer un-summarized — the fixer sees every finding, not a digest. The `[Review Verdict]` message is the only summarized artifact.
 - **Reviewer C drift watch.** C reads the `slang-review-*` skills live from the checkout. If shader-slang/slang renames/restructures them, C breaks at the read step — update `slang-clarity-review-runner`'s wrapper prompt to track the new skill names.
-- **Devin is best-effort.** Page-load / timeout / auth-wall — Reviewer A still produces a valid report; note Devin's failure in the verdict. Keep agent-browser selectors small (heading text + `Flags` button), fail gracefully on DOM shifts. A Chrome-launch failure (exit 4) is **transient** — the script clears the stale `/tmp/agent-browser-*` profile and retries once before giving up; a surviving failure means retry later. Do NOT record it in the merge/verdict notes as a "deterministic environment failure" (Chrome launches fine here without dbus); it is an infra hiccup, and re-running the review usually succeeds.
-- **Devin refresh = auto, login-gated manual.** The bot scrapes Devin anonymously, so it cannot use Devin's (login-only) manual re-run button. Devin auto-re-analyzes the PR head on every new commit; on a follow-up commit the done-check keeps polling until the new analysis settles (the commit-status popover reports up-to-date / out-of-date / behind). There is nothing to "click" to force a refresh anonymously.
+- **Devin is best-effort.** Reviewer A and C always produce the report; a Devin timeout, auth-wall or browser failure is noted in the verdict as skipped, not investigated. The page renders for anonymous viewers, draft PRs included; Devin re-analyzes each new head on its own and there is nothing to click to force a refresh. If `devin-error.txt` shows the done-signals false on a fully rendered page (`devin-page.txt`), the fetch script's selectors are stale: report that upstream instead of retrying.
 - **Disagreement = signal.** When A and B contradict, surface BOTH; let the human adjudicate.
 - **Drift watch (Reviewer A).** The skill's `reference/validate.sh` (CI runs per PR) compares generated prompt + flags against a vendored production run log. Drift = upstream action changed; bump `claude-code-action.lock`.
 

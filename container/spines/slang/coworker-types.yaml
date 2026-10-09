@@ -1,5 +1,5 @@
 slang-common:
-  description: "Slang compiler spine — identity, ABI invariants, repo layout."
+  description: "You work on the Slang shading-language compiler (shader-slang/slang): its public ABI and the `.meta.slang` language surface are stable contracts you never break without maintainer approval."
   project: slang
   extends: base-common
   # Compose-time substitution values for shared workflow bodies (e.g. the base
@@ -8,6 +8,10 @@ slang-common:
     repo: shader-slang/slang
     project: slang
     fixer: slang-fixer
+    # The repo's actual PR labels; hard-coding `pr: breaking` (wrong name) in
+    # fragments caused label failures, so every fragment reads these vars.
+    labelNonBreaking: "pr: non-breaking"
+    labelBreaking: "pr: breaking change"
   skill-source: shader-slang/slang-skills@main
   identity: container/spines/slang/identity/compiler-engineer.md
   invariants:
@@ -37,14 +41,14 @@ slang-common:
     critique: codex-critique
 
 slang-reader:
-  description: "Read-only Slang coworker — plan, investigate, review, research. Cannot edit code or create PRs."
+  description: "You read, investigate and plan; you never edit code, push, or open PRs."
   project: slang
   extends: slang-common
   workflows:
     - slang-plan
 
 slang-writer:
-  description: "Write-capable Slang coworker — plan + implement. Can edit code, write tests, create PRs."
+  description: "You plan and implement changes in a per-task worktree, with a failing test first, and ship them as draft PRs on `fix/issue-<number>` branches."
   project: slang
   extends: slang-common
   invariants:
@@ -68,7 +72,7 @@ slang-writer:
     doc: slang-docs
 
 slang-maintainer:
-  description: "Read-only Slang maintainer — recurring sweeps via /slang-maintain (daily report, release notes, issue prioritization, maintainer personnel). No code changes."
+  description: "You run the recurring maintainer sweeps (daily report, release notes, issue prioritization) via /slang-maintain and deliver reports; you never push, open PRs or write to GitHub."
   project: slang
   extends: slang-reader
   invariants:
@@ -80,7 +84,7 @@ slang-maintainer:
     - slang-maintain
 
 slang-triage:
-  description: "Slang issue triage — read issue, research docs + code, classify severity/priority, report to parent, forward to fixer if actionable. Read-only."
+  description: "You triage Slang issues: research the code and docs, classify, write the solution brief, and always hand the chain to slang-fixer; you never edit code."
   project: slang
   extends: slang-reader
   workflows:
@@ -91,26 +95,39 @@ slang-triage:
   required_critique_stages: [DIAGNOSIS_REVIEW, OUTPUT_REVIEW]
 
 slang-fixer:
-  description: "Slang issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
+  description: "You fix triaged Slang issues: reproduce with a failing test, confirm the triage brief into a plan, fix in a per-issue worktree, verify, open a draft PR on `fix/issue-<number>`, get peer review, report. You never merge, mark ready-for-review, or push to protected branches."
   project: slang
-  extends: slang-writer
+  # Extends slang-common directly rather than slang-writer: a type cannot drop
+  # inherited workflows, and the writer's generic /slang-plan + /slang-implement
+  # (non-draft Ship step) conflicted with /slang-fix-issue, which is the fixer's
+  # only workflow. The writer-side invariants, context, skills and bindings are
+  # declared here explicitly.
+  extends: slang-common
   invariants:
+    - container/spines/slang/invariants/code-changes.md
+    - container/spines/slang/invariants/comments.md
     # Always-in-context so it survives compaction (unlike the workflow step).
-    # Unioned with the inherited slang-writer/slang-common invariants.
     - container/spines/slang/invariants/peer-review.md
-    # Maintainer design direction is the acceptance criteria: verbatim
-    # requirement list, conflicts go back to the maintainer, restatements are
-    # rebuilt from the source and critiqued before posting.
+    # Maintainer design direction is the acceptance criteria.
     - container/spines/slang/invariants/maintainer-direction.md
+  context:
+    - container/spines/slang/context/skill-discovery.md
+  skills:
+    - slang-code-writer
+    - slang-docs
   workflows:
     - slang-fix-issue
+  bindings:
+    code: slang-code-writer
+    test: slang-build
+    doc: slang-docs
   # Fixer reads triage's diagnosis, commits to a plan, edits source, ships
   # a Fix Report. PLAN_REVIEW catches a bad approach before code is written;
   # CODE_REVIEW catches diff issues; OUTPUT_REVIEW vets the report itself.
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
 
 slang-reviewer:
-  description: "Slang PR reviewer — runs the production claude-code-action@v1 + .github/workflows/claude-pr-review.yml protocol locally against a PR, branch, or patch, in parallel with Devin Review. Mirrors production end-to-end: cleanup prior bot reviews → run inner CLI → post merged review as COMMENT-state with prior bot reviews minimized OUTDATED first. The /slang-pr-review workflow gates the post-back step on the orchestrator's <github-post-authorized /> marker (set when a human tagged @nv-slang-bot on the PR). Without that marker — chat invocation, internal coworker handoff, scheduled task — the workflow returns via send_file only. Bot reviews are always event=COMMENT, never APPROVE/CHANGES_REQUESTED; post-review.sh's safety net dismisses any non-COMMENT review the inner CLI accidentally submits. Cleanup targets nv-slang-bot only, so coexists with production's claude-pr-review.yml auto-reviews."
+  description: "You review Slang PRs, branches and patches with three reviewers (correctness, Devin, clarity) and deliver one combined report to the fixer; you post to GitHub only as a COMMENT-state review and only when the dispatch carries `<github-post-authorized />`."
   project: slang
   extends: slang-reader
   invariants:
@@ -135,7 +152,7 @@ slang-reviewer:
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
 
 slang-discord:
-  description: "Slang Discord support — read user questions, research via DeepWiki + GitHub, draft verified answers, send to parent for review. Read-only, no posting."
+  description: "You answer Slang Discord questions by researching DeepWiki and GitHub and sending verified drafts to the parent for review; you never post directly."
   project: slang
   extends: slang-reader
   context:
@@ -148,7 +165,7 @@ slang-discord:
   required_critique_stages: [OUTPUT_REVIEW]
 
 slang-pr-approver:
-  description: "Approval-decision coworker — turns a PR review into one auditable decision each (WOULD_APPROVE | ABSTAIN | BLOCK), critique-gated, shadow-mode. Builds its own review input: harvests the bot review already posted on the PR (github-actions[bot] = production claude-code-action; coderabbitai[bot]) and runs Devin, then decides from it. Inherits slang-common (repo context, deepwiki, slang-github reads, codex-critique binding); agent-browser + slang-pr-review-runner give it Devin. Writing to GitHub is forbidden by invariant and gate."
+  description: "You turn an existing PR review (the posted bot reviews plus Devin) into one auditable shadow decision — WOULD_APPROVE, ABSTAIN or BLOCK — recorded in the ledger; you never write to GitHub."
   project: slang
   extends: slang-common
   skills:
