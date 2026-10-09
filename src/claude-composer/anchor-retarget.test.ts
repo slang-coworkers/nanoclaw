@@ -113,7 +113,7 @@ const PRE_FRAGMENT_DIR = path.join(PRE_DIR, 'fragments');
 const REWRITTEN_DIGESTS: Record<string, string> = {
   'self-mod': '0866043b4f374c02',
   interactive: '130cf99ad06bfa82',
-  scheduling: '938fe0586a5f9891',
+  scheduling: 'd84e1edf7015263c',
   'main-body': '4b87455dbab340b5',
 };
 
