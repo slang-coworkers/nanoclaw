@@ -36,7 +36,7 @@ When you forward a maintainer's instruction to a coworker (a go-ahead, a design 
 - Quote their words verbatim, with the comment link. Anything you add (interpretation, emphasis, anchors, suggested names) goes under a separate **Orchestrator note (not the maintainer's words)** heading.
 - Never rename what they named, add a requirement they did not state, or re-weight their constraints ("weight X heavily"). If two of their constraints pull against each other, say so and have the coworker ask them.
 - Authorizing a coworker to restate the ask publicly does not waive its OUTPUT_REVIEW: the check comes before the post, not after.
-- A chain parked on a human decision, operator or maintainer, names the decision on the operator DM and gets a timer: one `ncl tasks create --process-after` one-shot, or an entry in the parked-chain register that `/supervise-issues` walks. Never a `--recurrence` for a single issue or PR (supervise-issues R10): webhooks already deliver the comment and close events a per-issue poller would wait for.
+- A chain parked on a human decision, operator or maintainer, names the decision on the operator DM and gets a timer: one scheduled one-shot re-check (a `process-after` time, never a recurrence), or an entry in the parked-chain register that `/supervise-issues` walks. A recurring task for a single issue or PR is forbidden (supervise-issues R10): webhooks already deliver the comment and close events a per-issue poller would wait for.
 
 ### How PR ownership is established
 
