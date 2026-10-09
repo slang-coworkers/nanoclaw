@@ -83,10 +83,11 @@ uses:
    - Interpreter: `//TEST:INTERPRET(filecheck=CHECK):`
    - Diagnostic: `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):`
 
-   Confirm it fails:
+   Confirm it fails, then commit the test on its own so the PR's first commit shows the failure the fix removes:
 
    ```bash
    ./build/Debug/bin/slang-test tests/<area>/test-<issue_number>.slang
+   git add tests/<area>/test-<issue_number>.slang && git commit -m "tests: add failing repro for shader-slang/slang#<number>"
    ```
 
    If you can't reproduce, send `[Fix Report]` to parent with status `blocked: cannot reproduce` and stop. Don't guess the fix without a repro.
@@ -96,6 +97,8 @@ uses:
    The plan opens with `## Maintainer requirements (as of <newest maintainer comment URL>)`: one item per requirement, `R<n>. "<verbatim quote>" — <comment URL>`, each marked **planned**, **conflict — asked <link>** or **out of scope — maintainer agreed <link>**; or `none — <reason>`. Pass that section as `REQUIREMENTS:` on every codex critique round (a round without it is not recorded). When a maintainer comments again, refresh it and re-run PLAN_REVIEW before building on it; two conflicting maintainer constraints go back to them on GitHub before you build.
 
 6. **Fix + verify** {#fix} — Use `/slang-code-writer`. Keep the change minimal, follow existing style, stay in one subsystem (parser / semantic checker / IR pass / emitter). Prefer IR pass fixes over emit-level workarounds; when fixing emitters, check sibling `slang-emit-*.cpp` for consistency.
+
+   **One reviewable commit per logical change**, in the order a reviewer should read them: the failing test (step 4), the fix, then any rename/refactor or cleanup the fix needed, then formatting/docs. Each commit builds on its own; its message is `component: imperative summary` plus one paragraph of why. Never a single "fix everything" commit and never a behaviour change mixed with a rename. If the series got messy, `git reset --soft <base>` and re-commit in those slices with `git add <files>` per slice.
 
    After each edit, rebuild and re-run:
 
@@ -117,13 +120,7 @@ uses:
 
    **Simplify before shipping.** Once verify is green, run `/code-review medium`, apply its suggestions, and re-verify (rebuild + re-run the repro and broader suite) so the change stays minimal before you push.
 
-7. **Push + draft PR** {#draft-pr} — Once verify is green:
-
-   ```bash
-   git add -A && git commit -m "Fix shader-slang/slang#<number>: <one-line title>"
-   ```
-
-   Push the branch, then open the PR. Target depends on mode:
+7. **Push + draft PR** {#draft-pr} — Once verify is green and `git log --oneline master..HEAD` reads test → fix → cleanup (step 6), push the branch and open the PR. Target depends on mode:
    - **Triaged-issue mode (default):** push to a writable remote (`origin`, else the `slang-coworkers/slang` fork) and open a **draft PR** against `--repo shader-slang/slang --base master`.
    - **PR-review-fix mode:** deliver into the author's PR per the deltas above (slangbot-style cross-fork PR via the `nv-slang-bot` user PAT, else patch-comment).
 
