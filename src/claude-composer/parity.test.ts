@@ -102,8 +102,14 @@ describe('composed-document byte parity', () => {
       // gained a `## Connecting external accounts` section and it is EMITTED, so
       // every composed doc carries it. `section-completeness.test.ts` is what made
       // that a decision instead of a silent drop.
-      'base-common': '43d2150f1ea91f15',
-      'base-common.persona': '8127b011429b44d1',
+      //
+      // Moved a sixth time by the base-spine trim: the type `description:` now
+      // renders under Identity, Skills lines carry one sentence, `buddy` left
+      // `base-common.skills`, chain-reporting's mechanics moved to
+      // `/base-nanoclaw`, and the contract's Memory and Connecting sections were
+      // rewritten. `anchor-retarget.test.ts` declares each of those.
+      'base-common': '7a5fb3fd5bb57a22',
+      'base-common.persona': '2f83622ec1f6e467',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -111,8 +117,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: 'adefe7bc1240f86d',
-      'default.persona': 'cee1e73a97a57685',
+      default: '63b8f2004e12cc85',
+      'default.persona': '973067cb7b69f05b',
     };
 
     const actual: Record<string, string> = {};
@@ -135,14 +141,15 @@ describe('composed-document byte parity', () => {
     }
   });
 
-  // `main` is the only flat type, and the flat path is the one that treats the
-  // identity body's own `# Title` as structural. An H1 persona therefore yields a
-  // second H1, which must remain legal — see parity.fixtures.ts.
-  it('keeps a second H1 from an operator persona on the flat path', () => {
-    const h1s = compose('main', true)
-      .split('\n')
-      .filter((l) => /^# \S/.test(l));
+  // `main` is the only flat type. Its persona gets the same titled wrapper as a
+  // typed coworker's, so an operator prepend never reads as a continuation of
+  // the section before it (the resident `/onecli-gateway` block, in practice),
+  // and its H1 is re-leveled beneath the wrapper — see parity.fixtures.ts.
+  it('wraps an operator persona in Additional Instructions on the flat path', () => {
+    const out = compose('main', true);
+    const h1s = out.split('\n').filter((l) => /^# \S/.test(l));
 
-    expect(h1s.length).toBeGreaterThan(1);
+    expect(h1s).toEqual(['# Main']);
+    expect(out.endsWith('\n## Additional Instructions\n\n### Persona\n\nBe terse.\n')).toBe(true);
   });
 });

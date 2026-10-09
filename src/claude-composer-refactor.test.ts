@@ -372,7 +372,7 @@ describe('R12: backticked slash refs in bodies are rewritten by kind', () => {
     // Workflow ref in step body rewritten to section pointer. (Route lines
     // in "## How to Work" intentionally still use `/beta` to read naturally
     // as "General task → `/beta` workflow".)
-    expect(spine).toContain('the **beta** workflow section below');
+    expect(spine).toContain('the **beta** workflow section');
     // Overlay ref rewritten to Task subagent
     expect(spine).toContain('the **delta-overlay** subagent (spawn via the Task tool)');
     // Capability skill slash command left literal
@@ -469,7 +469,7 @@ describe('R15: unbackticked /workflow refs in prose are rewritten to section poi
     writeWorkflow(root, 'alpha', '# Alpha\n\n## Steps\n\n1. **A** {#a} — x.');
     writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [entry, alpha]\n');
     const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
-    expect(spine).toContain('Use the **alpha** workflow section below');
+    expect(spine).toContain('Use the **alpha** workflow section');
     expect(spine).not.toMatch(/\sUse \/alpha workflow/);
   });
 });
@@ -499,7 +499,7 @@ describe('R16: unbackticked /skill refs (capability skills) are left literal', (
     );
     const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
     expect(spine).toContain('/gamma-skill');
-    expect(spine).not.toContain('the **gamma-skill** workflow section below');
+    expect(spine).not.toContain('the **gamma-skill** workflow section');
     expect(spine).not.toContain('the **gamma-skill** subagent');
   });
 });
@@ -517,7 +517,7 @@ describe('R17: path-like /foo/bar refs in prose are untouched', () => {
     writeProjectType(root, 'probe:\n  extends: base-common\n  description: "Probe."\n  workflows: [flow, agent]\n');
     const spine = composeCoworkerSpine({ projectRoot: root, coworkerType: 'probe' });
     expect(spine).toContain('/workspace/agent/plans/');
-    expect(spine).not.toContain('/workspacethe **agent** workflow section below');
+    expect(spine).not.toContain('/workspacethe **agent** workflow section');
     expect(spine).not.toContain('workspacethe **agent**');
   });
 });

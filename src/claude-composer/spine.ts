@@ -54,6 +54,30 @@ function extractStepTitle(body: string | undefined, stepId: string): string {
   return humanizeStepId(stepId);
 }
 
+/**
+ * Map every line of a markdown body through `fn`, telling it whether the line
+ * sits inside a fenced code block. Fence delimiter lines themselves pass through
+ * unchanged.
+ *
+ * Every rewrite the composer applies to authored prose (heading demotion,
+ * placeholder and slash-ref rewriting) must leave fenced content alone or treat
+ * it differently, so the fence tracking lives here once instead of being
+ * re-derived — and occasionally forgotten — at each call site.
+ */
+function mapLines(md: string, fn: (line: string, inFence: boolean) => string): string {
+  let inFence = false;
+  return md
+    .split('\n')
+    .map((line) => {
+      if (/^\s*```/.test(line)) {
+        inFence = !inFence;
+        return line;
+      }
+      return fn(line, inFence);
+    })
+    .join('\n');
+}
+
 // Render a single workflow step as a sub-section under the workflow heading.
 // Heading is stable: `#### N. <Step Title>`. The rawBody becomes the prose
 // body below the heading; we strip any leading "N. **Title** — " prefix from
@@ -62,11 +86,14 @@ function extractStepTitle(body: string | undefined, stepId: string): string {
 function renderStepBlock(n: number, stepId: string, rawBody: string, title: string): string {
   const header = `#### ${n}. ${title}`;
   // Step bodies render under `## Workflows → ### /workflow → #### N. Step`.
-  // Any H1 (`# Foo`) inside the raw step body would break the section
-  // hierarchy (top-level heading collision with `# Coworker`). Demote H1
-  // to H5 so it stays within the step's sub-structure. H2/H3 may be
-  // intentional sub-structure in a long step body — leave them.
-  const demotedBody = rawBody.replace(/^# /gm, '##### ');
+  // An H1 (`# Foo`) inside the raw step body would break the section hierarchy
+  // (top-level heading collision with `# Coworker`), so we demote it to H5.
+  // H2/H3 may be intentional sub-structure in a long step body and stay as
+  // written. Only prose is demoted: a `# Title` line inside a fenced block is
+  // content the agent is told to reproduce — the triage workflow's memo
+  // heredoc opens with `# Triage: <repo>#<n> — <title>` — and rewriting it
+  // would instruct the agent to write an H5 as the file's title.
+  const demotedBody = mapLines(rawBody, (line, inFence) => (inFence ? line : line.replace(/^# /, '##### ')));
   const cleaned = stripStepAnchors(demotedBody).trim();
   if (!cleaned) return header;
   const lines = cleaned.split('\n');
@@ -284,27 +311,21 @@ function normalizeFragment(md: string, targetMinLevel: number): string {
 // `params:` frontmatter — that would require runtime binding to the user's
 // request. Converting to `<name>` renders naturally in prose ("read
 // <target>") and avoids confusing the agent with unrendered Jinja/Handlebars
-// syntax.
+// syntax. Backticks were considered but break file paths
+// (`/workspace/plans/`target`.md`); angle brackets render cleanly inline and
+// inside paths.
 //
-// Skips fenced code blocks entirely so that backticked examples of the
-// template syntax itself (e.g. documentation snippets) stay literal.
-function rewritePlaceholders(md: string): string {
-  const lines = md.split('\n');
-  let inCodeFence = false;
-  for (let i = 0; i < lines.length; i++) {
-    const line = lines[i];
-    if (/^\s*```/.test(line)) {
-      inCodeFence = !inCodeFence;
-      continue;
-    }
-    if (inCodeFence) continue;
-    // Render `{{target}}` as `<target>` — the agent reads this as a
-    // placeholder to fill from the user's request at runtime. Backticks
-    // were considered but break file paths (`/workspace/plans/`target`.md`),
-    // angle brackets render cleanly inline and inside paths.
-    lines[i] = line.replace(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}/g, (_m, name) => `<${name}>`);
-  }
-  return lines.join('\n');
+// Outside fences every placeholder is rewritten. Inside a fenced block only the
+// names in `declared` — the vocabulary the rendered workflows declare in their
+// `params:` / `produces:` frontmatter — are rewritten, so a bash example that
+// uses `wt-{{target_slug}}` reads the same as the prose around it
+// (`wt-<target_slug>`), while an undeclared `{{...}}` in a fence stays literal
+// as documentation of the template syntax itself.
+function rewritePlaceholders(md: string, declared: ReadonlySet<string> = new Set()): string {
+  const token = /\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}/g;
+  return mapLines(md, (line, inFence) =>
+    line.replace(token, (m, name: string) => (!inFence || declared.has(name) ? `<${name}>` : m)),
+  );
 }
 
 // Substitute compose-time `{{vars.KEY}}` tokens with the coworker's resolved
@@ -334,7 +355,7 @@ function substituteVars(md: string, vars: Record<string, string>): string {
 // slash commands). Handles both backticked (`` `/alpha` ``) and unbackticked
 // (`Use /alpha for navigation`) source prose.
 //
-//   /alpha where alpha is a workflow         → "the **alpha** workflow section below"
+//   /alpha where alpha is a workflow         → "the **alpha** workflow section"
 //   /beta  where beta  is a capability skill → left literal (real slash command)
 //   /gamma where gamma is an overlay         → "the **gamma** subagent (spawn via the Task tool)"
 //   /delta unknown                           → left literal, warn once at compose time
@@ -356,9 +377,13 @@ function rewriteSlashRefs(
 
   // Resolve a slash ref to its rewritten form, or return null if it should
   // be left literal (skill, unknown, or not rewritable). Logs one warning
-  // per unknown name.
+  // per unknown name. The workflow form names the section without a
+  // direction: the rewrite runs over every workflow block at once, so it
+  // cannot know whether the target renders before or after the reference,
+  // and a hard-coded "below" was wrong whenever a later workflow cited an
+  // earlier one.
   const resolve = (name: string): string | null => {
-    if (workflowNames.has(name)) return `the **${name}** workflow section below`;
+    if (workflowNames.has(name)) return `the **${name}** workflow section`;
     if (overlayNames.has(name)) return `the **${name}** subagent (spawn via the Task tool)`;
     if (capabilitySkillNames.has(name)) return null; // real slash command
     if (!warned.has(name)) {
@@ -408,6 +433,22 @@ function rewriteSlashRefs(
   return lines.join('\n');
 }
 
+/**
+ * Return the first sentence of `text`: everything up to the first `.`, `!` or
+ * `?` that ends a word (followed by whitespace or the end), or the whole text
+ * when it has no such boundary. A `.` inside a token (`slang.h`) does not end
+ * the sentence.
+ *
+ * The composed document lists a workflow or skill by name plus this lead-in;
+ * the full description is the skill's own preamble and loads with it on demand,
+ * so repeating it in the always-resident list only costs context.
+ */
+function firstSentence(text: string): string {
+  const trimmed = text.trim();
+  const m = trimmed.match(/^[\s\S]*?[.!?](?=\s|$)/);
+  return (m ? m[0] : trimmed).trim();
+}
+
 // Category order drives the section layout. "other" is the sink for traits
 // that don't map anywhere, plus entries with no traits at all.
 const CATEGORY_ORDER = ['repo', 'code', 'test', 'ci', 'doc', 'plan', 'critique', 'other'] as const;
@@ -429,6 +470,7 @@ const CATEGORY_HEADINGS: Record<Category, string> = {
 const DOMAIN_TO_CATEGORY: Record<string, Category> = {
   repo: 'repo',
   issues: 'repo',
+  github: 'repo',
   ci: 'ci',
   code: 'code',
   test: 'test',
@@ -722,14 +764,20 @@ export function renderCoworkerSections(
       }
     }
 
+    // The persona is wrapped exactly as on the typed path below: a titled `##
+    // Additional Instructions` section with operator-authored headings nested
+    // under it. Pushed verbatim, a prepend that opens with a paragraph read as a
+    // continuation of whatever `###` preceded it — in practice the resident
+    // `/onecli-gateway` block — so the operator's standing orders appeared to be
+    // credential rules.
     const extra = extraInstructions?.trim();
     if (extra) {
       flatSections.push({
         role: 'persona',
         droppable: false,
         name: 'Additional Instructions',
-        heading: { kind: 'verbatim' },
-        body: extra,
+        heading: { kind: 'titled', level: 2 },
+        body: normalizeFragment(extra, 3),
       });
     }
     // Section boundaries are H2 headings inside each fragment — no `---`
@@ -762,7 +810,13 @@ export function renderCoworkerSections(
   // their ## h2 wrapper regardless of how they were authored. Without this,
   // fragments authored at # or ## (e.g. context/chain-reporting.md, slang's
   // skill-discovery.md) leak their headings out to the top of the document.
-  sections.push(section('Identity', normalizeFragment(manifest.identity, 3)));
+  // The type's `description:` follows the identity fragment: the fragment is
+  // shared along the chain (every slang role reads the same compiler-engineer
+  // identity), so the leaf's one-paragraph statement of what THIS role does and
+  // does not do has nowhere else to reach the agent.
+  sections.push(
+    section('Identity', [normalizeFragment(manifest.identity, 3), manifest.description].filter(Boolean).join('\n\n')),
+  );
 
   if (manifest.invariants.length > 0) {
     sections.push(section('Invariants', manifest.invariants.map((f) => normalizeFragment(f, 3)).join('\n\n')));
@@ -789,6 +843,17 @@ export function renderCoworkerSections(
       cur = catalog[cur.extendsWorkflow];
     }
   }
+  // Placeholder names declared by the rendered workflows and their parents: a
+  // child that inherits `implement`'s steps (or, like `slang-fix-issue`, writes
+  // its own against `implement`'s `target`) uses the parent's vocabulary.
+  const declaredPlaceholders = new Set<string>();
+  for (const w of manifest.workflows) {
+    let cur: SkillMeta | undefined = catalog[w.name];
+    while (cur) {
+      for (const name of cur.placeholders) declaredPlaceholders.add(name);
+      cur = cur.extendsWorkflow ? catalog[cur.extendsWorkflow] : undefined;
+    }
+  }
   const capabilitySkillNames = new Set(manifest.skills.map((s) => s.name));
   const overlayNames = new Set<string>();
   for (const meta of Object.values(catalog) as SkillMeta[]) {
@@ -804,9 +869,7 @@ export function renderCoworkerSections(
   if (manifest.workflows.length > 0) {
     const routeLines: string[] = [];
     for (const w of manifest.workflows) {
-      const desc = (w.description || '').trim();
-      const firstSentenceMatch = desc.match(/^[^.!?]*[.!?]/);
-      let label = (firstSentenceMatch ? firstSentenceMatch[0] : desc).trim().replace(/[.!?]$/, '');
+      let label = firstSentence(w.description || '').replace(/[.!?]$/, '');
       if (label.length > 120) label = label.slice(0, 117).trimEnd() + '…';
       if (!label) label = `Run /${w.name}`;
       routeLines.push(`- ${label} → \`/${w.name}\` workflow`);
@@ -854,15 +917,22 @@ export function renderCoworkerSections(
       const overlays = wfCustomizations.filter((c) => c.kind === 'overlay');
 
       const uses = w.uses.length > 0 ? ` Uses: ${w.uses.join(', ')}.` : '';
-      // Extends-note surfaces the base workflow's literal slash form so the
-      // Workflows listing reads as a cross-reference. An em-dash separator
-      // keeps rewriteSlashRefs pass-2 from matching (its boundary pattern
-      // requires a whitespace/punct/`)` char after the name; U+2014 is none
-      // of those), so no phantom "Unknown slash ref" warnings fire for the
-      // parent workflow name — which isn't in this coworker's own workflow
-      // set. The slash-dash-name shape still reads unambiguously as a
-      // reference to the embedded parent section.
-      const extendsNote = extendsC?.extendsWorkflow ? ` (extends /${extendsC.extendsWorkflow}—see section below)` : '';
+      // The extends-note is a cross-reference to the parent's own `### /parent`
+      // section, so it renders only when the parent is one of this coworker's
+      // rendered workflows, and it says where that section is relative to this
+      // one (workflows render in manifest order). For any other parent — the
+      // implicit `base`, or `plan` for a coworker that lists only `slang-plan` —
+      // the inherited steps already appear inline under this heading, and a
+      // pointer would name a section the document does not have. The em-dash
+      // separator keeps rewriteSlashRefs pass-2 from matching the parent name
+      // (its boundary pattern requires whitespace/punct/`)` after the name;
+      // U+2014 is none of those).
+      const parent = extendsC?.extendsWorkflow;
+      const parentIndex = parent ? manifest.workflows.findIndex((x) => x.name === parent) : -1;
+      const extendsNote =
+        parentIndex === -1
+          ? ''
+          : ` (extends /${parent}—see section ${parentIndex < manifest.workflows.indexOf(w) ? 'above' : 'below'})`;
       let block = `### /${w.name}\n\n${w.description}${uses}${extendsNote}`;
 
       // Prologue: workflow's top-of-doc framing prose (IMPORTANT callouts,
@@ -979,7 +1049,7 @@ export function renderCoworkerSections(
     const wfJoined = wfBlocks.join('\n\n');
     const slashRewritten = rewriteSlashRefs(wfJoined, workflowNames, capabilitySkillNames, overlayNames);
     const wfVarSubbed = substituteVars(slashRewritten, manifest.vars);
-    const wfOutput = rewritePlaceholders(wfVarSubbed);
+    const wfOutput = rewritePlaceholders(wfVarSubbed, declaredPlaceholders);
 
     // Emit shared gate protocols for every staged overlay whose stages
     // appeared as inline anchors above. Each overlay contributes one
@@ -1017,7 +1087,9 @@ export function renderCoworkerSections(
   // via Claude Code's progressive skill discovery). The list is categorized by
   // the skill's `provides:` traits — bound skills land under their domain
   // heading (Repo, Code, Test, …), unbound skills (e.g. `base-nanoclaw` host
-  // tools) land under "Other" so they're still visible to the reader.
+  // tools) land under "Other" so they're still visible to the reader. Each line
+  // carries the description's first sentence only, as the How to Work index
+  // does: the full text loads with the skill itself.
   const describedSkills = manifest.skills.filter((s) => !shadowedSkills.has(s.name));
   if (describedSkills.length > 0) {
     sections.push(
@@ -1026,7 +1098,7 @@ export function renderCoworkerSections(
         renderCategorizedList(
           describedSkills,
           (s) => s.provides,
-          (s) => `- \`/${s.name}\` — ${s.description}`,
+          (s) => `- \`/${s.name}\` — ${firstSentence(s.description)}`,
         ),
       ),
     );

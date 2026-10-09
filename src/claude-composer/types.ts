@@ -60,7 +60,19 @@ export interface PromptTemplateConfig {
 export interface CoworkerTypeEntry {
   extends?: string | string[];
   project?: string;
+
+  // One paragraph on what this role does and does not do. Rendered under
+  // `## Identity` after the identity fragment, so a policy that lives only in
+  // the registry (e.g. "comment-only reviewer, never approve") reaches the
+  // agent. A flat type's identity body is emitted verbatim and never gains it.
   description?: string;
+
+  // Marks a type that exists only to be extended (e.g. `base-common`) and is
+  // never spawned as a coworker on its own. `scripts/validate-templates.ts`
+  // composes every type that does NOT carry this flag, so a type that is both a
+  // parent and a leaf (`slang-reader` is spawned directly as well as extended)
+  // is validated instead of silently skipped. Leaf-wins across merges.
+  abstract?: boolean;
 
   // Display title used as the `# ${title}` heading at the top of the
   // composed CLAUDE.md. When omitted, the composer humanizes the type
@@ -207,6 +219,12 @@ export interface SkillMeta {
   // cross-mode rules survive composition.
   epilogue?: string;
   extendsWorkflow?: string;
+  // Runtime placeholder names this workflow declares: its `params:` keys plus
+  // every `{{name}}` token in its `produces:` paths (that is where derived
+  // names such as `target_slug` are declared). The composer rewrites these to
+  // `<name>` inside fenced blocks too, where undeclared `{{...}}` syntax is
+  // left literal as documentation of the template language.
+  placeholders: string[];
   // Author wrote `extends: none` — opts out of the implicit `extends: base`
   // applied by the post-pass when `extends:` is absent. Honored only on
   // workflows; capability/overlay skills never auto-extend.
@@ -236,6 +254,8 @@ export interface CoworkerManifest {
   typeName: string;
   title: string;
   identity: string;
+  // The leaf type's `description:`, rendered after `identity` (typed path only).
+  description?: string;
   invariants: string[];
   context: string[];
   workflows: {

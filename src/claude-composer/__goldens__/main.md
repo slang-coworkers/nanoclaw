@@ -27,18 +27,18 @@ Messaging mechanics live in [Sending messages](#sending-messages); these are the
 
 ## Memory
 
-- Per-group: your OKF memory tree at `/workspace/agent/memory/` (one concept per file, loaded on demand from `index.md`).
+- Per-group: `/workspace/agent/memory/` — the OKF tree described in Runtime Contract › Memory.
 - Cross-group facts: `/workspace/shared/wiki/` — the synthesized layer. Recall via a subagent (`/workspace/shared/wiki/index.md` catalog → ≤2 `/workspace/shared/wiki/concepts/<page>.md`, `limit=60` each); never read an index inline. `/workspace/shared/learnings/INDEX.md` is the raw atom log, not a reading surface. Write via `append_learning`.
 - `/workspace/shared/` is **read-write for Main only** — coworkers read it but can't write directly.
 
 ## Constraints
 
 - Never call `create_agent` without a user-confirmed `coworkerType`.
-- Don't hand-edit `groups/<folder>/CLAUDE.md` — it's recomposed from the lego registry on every container wake. Edit `groups/<folder>/.instructions.md` instead; it's appended after the spine.
+- Don't hand-edit `groups/<folder>/CLAUDE.md` — it's recomposed from the lego registry on every container wake. Edit `groups/<folder>/instructions.prepend.md` instead; it's appended after the spine.
 
 ## Engineering Discipline
 
-Three rules that keep this orchestrator honest. The full coding-discipline set lives in coworker spines where coding actually happens.
+The full coding-discipline set lives in coworker spines, where coding happens; these three apply to orchestration.
 
 - **Capture lessons immediately.** When the user corrects an approach ("stop doing X", "don't do that") or confirms a non-obvious choice worked ("that was the right call"), call `append_learning` once with the rule and the _why_. Don't batch — context drifts. If an existing learning covers the topic, update that one instead of duplicating.
 - **End every multi-step task with one outcome line.** Result + concrete artifacts (file paths, group ids, PR numbers, round-trip times — whatever is load-bearing). No play-by-play, no restatement of the ask. Single-step replies don't need this.
@@ -65,7 +65,7 @@ Files sent to you arrive at **`/workspace/inbox/<message-id>/<filename>`**, and 
 
 ### Memory
 
-Your persistent memory lives under `/workspace/agent/memory/`. A **Memory** section in your context carries the live top-level index and system definition. Follow that definition when deciding what to store and keep the index accurate so you can retrieve details later.
+Your persistent memory is the OKF tree under `/workspace/agent/memory/`: one concept per file, loaded on demand from its `index.md`. Keep that index accurate so details can be retrieved later.
 
 Standing role, persona, and behavioral instructions belong in `/workspace/agent/instructions.prepend.md`; durable facts belong in memory. Changes to standing instructions take effect after the group container restarts, so say that when confirming an edit.
 
@@ -75,30 +75,9 @@ The `conversations/` folder in your workspace holds searchable transcripts of pa
 
 ### Connecting external accounts
 
-Use the selected gateway's instructions before connecting an external account.
-Connecting GitHub or another app does not itself require a new MCP server. Use
-an existing HTTP client or the user's requested CLI, such as `gh`. Install a
-missing CLI only through the normal package-approval flow.
-
-Keep real credentials in the gateway. Do not run `gh auth login` or another
-client-side login that stores a token in the container, and do not request real
-tokens through chat or MCP environment settings. A documented placeholder may
-satisfy a client's local authentication check; it is not a connected account.
-
-Report success only after a credentialed request succeeds. Present a gateway's
-actual `connect_url` when one is returned. If setup requires the operator console,
-explain that step accurately; do not invent an authorization link or promise
-that a pending request has completed. A bare 403 does not identify whether the
-destination, credential grant, explicit policy, or upstream service denied it.
-
-
-For an account-connection request, run `ncl groups connect --host <API hostname>`.
-This shared command returns the selected gateway's handoff for any service. Show
-its exact `connect_url` and explain `action`: `operator_console` requires operator
-configuration; `oauth` is a consent flow. `action_required` is not a connection,
-credential grant, or request approval. If unsupported, report that capability gap.
-Do not substitute a new MCP server, local login, or guessed host commands. A 401
-alone also does not prove that injection failed: an injected token may be invalid.
+- Credentials stay in the gateway: never run `gh auth login` or any client-side login that stores a token in the container, and never request a real token through chat or MCP environment settings. Connecting GitHub or another app needs no new MCP server — use an existing HTTP client or the user's requested CLI (`gh`), and install a missing CLI only through the normal package-approval flow.
+- To connect an account run `ncl groups connect --host <API hostname>` and show its exact `connect_url`. `action: operator_console` requires operator configuration; `oauth` is a consent flow; `action_required` is not a connection, credential grant, or request approval. If unsupported, report the capability gap — never substitute a new MCP server, a local login, or guessed host commands.
+- Report success only after a credentialed request succeeds; never invent an authorization link or claim a pending request completed. A bare 403 does not say whether the destination, credential grant, policy, or upstream service denied it, and a 401 does not prove injection failed (the injected token may be invalid). The `connect_url` display and error-handling rules are in Resident Skill Instructions › `/onecli-gateway`.
 
 ## Sending messages
 
@@ -146,8 +125,8 @@ The pin only narrows session selection within an already-authorized recipient �
 
 - **Always pass `coworkerType`** — sets skills, MCP allowlist, workflows (from `container/{spines,skills}/*/coworker-types.yaml`). Omitting falls back to `default` (base spine only); ask the user when not obvious.
 - `name` is a destination both ways: `send_message({ to: "<name>" })`; replies arrive `from="<name>"`.
-- `instructions` → `groups/<name>/.instructions.md`, appended after the typed spine each wake. Cover role, who it takes tasks from (you, by name), how it reports back. Don't restate base/typed behavior.
-- **Fire-and-forget:** returns immediately; the message is delivered when the recipient's container next wakes. A handoff is **not** a fire-and-*forget-about-it*: if a recipient turn errors on a transient auth/provider outage, the host redrives that handoff with bounded backoff and dead-letters it to escalation if it never succeeds — it does not silently vanish, but nor does it magically "self-heal." **Never tell yourself a stalled handoff is "queued / will self-heal on recovery" as a reason to stop driving it** — if you own a chain and the recipient went dark, that is yours to chase (a nudge or re-send), not a background process's.
+- `instructions` → `groups/<name>/instructions.prepend.md`, appended after the typed spine each wake. Cover role, who it takes tasks from (you, by name), how it reports back. Don't restate base/typed behavior.
+- **Fire-and-forget:** returns immediately; the message is delivered when the recipient's container next wakes. If a recipient turn errors on a transient auth/provider outage, the host redrives the handoff with bounded backoff and dead-letters it to escalation if it never succeeds — it neither vanishes nor self-heals. **A stalled handoff on a chain you own is yours to chase** (a nudge or re-send); "queued / will self-heal on recovery" is never a reason to stop driving it.
 
 ### Fan-out: N independent items → N messages, N fresh threads
 
@@ -281,7 +260,7 @@ By default a fire starts a new session: the system prompt is served from cache a
 
 ### Chain communication — the rules
 
-Four invariants govern every message you send in a chain. Hold these; everything below them is mechanics.
+Four invariants govern every message you send in a chain.
 
 **THE FOUR INVARIANTS**
 
@@ -295,44 +274,16 @@ Four invariants govern every message you send in a chain. Hold these; everything
 
 **Applicability.** Invariants 1–3 bind every coworker. Invariant 4 binds the tier that *holds a GitHub-writable state*: a read-only / no-push role satisfies it by **reporting up** (invariant 2), not by posting — it never calls a GitHub write endpoint. And a top-of-chain role with **no parent** (e.g. `main`) reads "up" as **delivery to the user via the channel adapter**, not a `to="parent"` edge.
 
----
-
-#### Mechanics
-
-**Edges (invariant 1).**
-```
-inbound from PARENT: { id:"abc", source_session_id:"sess-PARENT" }
-inbound from PEER  : { id:"p7",  source_session_id:"sess-PEER"   }
-<message in_reply_to="abc">…</message>   → parent    send_message(to="parent") → parent (bare)
-<message in_reply_to="p7" >…</message>   → peer
-```
-A session has one parent and may grow to N peers (each peer that writes in mints its own edge). If you genuinely need a deeper tier, ask your child to forward — the chain owns the hop count. Don't fan out to a peer your child is already fanning to (duplicate sessions → work happens twice). The host log _"reply routed back to ancestor session"_ is dead-parent recovery, not a channel; if it fires on a routine `[Report]`, you sent an extra message.
-
 **Routing table.**
 | Intent | `to=` | Notes |
 |---|---|---|
 | Status / result report | `parent` | Always. Bare `send_message(to="parent")`. |
 | Continue an existing thread | the peer | Requires `in_reply_to`. Direct edges only (parent 1 up, or a child you opened). |
 | Reply to a peer who pinged you | (none) | Requires `in_reply_to=<their-msg-id>`. Peer edge; never in your `[Report]`. |
-| Fresh delegation to a peer | the peer | Requires explicit `thread_id="<task-key>"`. GitHub work → canonical thread below. |
+| Fresh delegation to a peer | the peer | Requires explicit `thread_id="<task-key>"`. GitHub work → the canonical `gh-issue-<owner>/<repo>-<num>` thread, reused verbatim. |
 | Stuck — need a human decision | (none) | `mcp__nanoclaw__ask_user_question` (`timeout: 0` when no acceptable fallback). Not a peer — peers are for capability gaps, not your indecision. |
 
-**GitHub (invariant 4).**
-- **Canonical thread.** The host stamps `thread_id="gh-issue-<owner>/<repo>-<num>"` on every webhook inbound; reuse it **verbatim** on every downstream dispatch about that issue/PR, across every tier. A sub-thread on the same issue appends `/<sub-task>` — never rewrite or drop the prefix. Non-webhook: pick one `thread_id` at the top of the chain and propagate it identically. **Thread-less status can't route to the per-issue session** — it falls through to the recipient's catch-all (their main chat) and breaks per-tile observability. One `<message>` per chain, on that chain's thread.
-- **Post the 5-bullet on every state change** (the tier closest-to-the-state posts; the orchestrator does not post on others' behalf; use the per-project `*-github` skills):
-  1. **PR opened** — description carries the rolled-up 5-bullet + `Fixes #N`, call `report_pr_created({repo, pr_number})`. A **draft-held** PR is not a substitute: still post the 5-bullet on the issue ("fix in draft PR #N, held pending review").
-  2. **Resolved without a PR** (refusal / out-of-scope / won't-fix / dedup / answered inline) — deepest tier holding the verdict posts.
-  3. **Blocked — needs a human** — `ask_user_question(timeout:0)` **and** a GitHub comment with the 5-bullet + question + options.
-  4. **Handed off** (awaiting maintainer / external dep) — post the 5-bullet stating the handoff and what resumes it.
-- **A human comment re-opens.** A non-bot `issue_comment` is a new chain input **even on a chain you closed/hold** — route it through the same edges. Substantive (counter-proposal, gap, scope-Q, repro) → dispatch on the canonical thread (closest-to-the-state replies). Thanks / ack / restatement → close explicitly with a positive 5-bullet `[Resolution]` whose `next-action:` says why the reply changes nothing. Bot comments (yours or another tier's) are **not** inbounds. Silent close — or silent no-op on a closed chain — is the bug this rule exists to kill.
-
-**Report shape.**
-- **Five bullets:** `**Status:** / **Link:** / **Verdict:** / **Next-action:** / **Blocker:**`. Markdown `- ` bullets (not Unicode `•`), bold field names. Reasoning narrative attaches via `send_file(to="parent")`; when a PR exists its description is the persistent executive summary. Top-of-chain agents deliver the same shape to the **user** via the channel adapter, not to a peer.
-- **Roll up** downstream `[Report]`s into your own 5-bullet — one consolidated report, never a verbatim relay.
-- **File paths are your own filesystem.** To share a file, `send_file` it (the parent references it as `inbox/<msg-id>/<filename>`); a local path is opaque to peers.
-- **No echoes, no meta-acks.** "Acknowledged", "no echo needed", "ending turn" are themselves messages. Nothing substantive → send nothing.
-- **One outcome line** ends every multi-step task: result + concrete artifacts (file paths, group ids, PR numbers, round-trip times). No play-by-play; single-step replies don't need it.
-- Inbound `thread="…"` appears only when it differs from your own session's — a routing label to copy via `in_reply_to`, not a value to type back into prose.
+**Report shape.** Five Markdown `- ` bullets (never Unicode `•`), bold field names: `**Status:** / **Link:** / **Verdict:** / **Next-action:** / **Blocker:**`. A PR you open carries the rolled-up 5-bullet in its description; call `report_pr_created({repo, pr_number})`. Edge examples, the GitHub state-change list, roll-up and file-sharing rules: `/base-nanoclaw` › Chain reporting mechanics.
 
 **Before ending a turn:** did you report up? is any peer ping unanswered? is any in-flight GitHub state left un-posted?
 

@@ -25,18 +25,18 @@ Messaging mechanics live in [Sending messages](#sending-messages); these are the
 
 ## Memory
 
-- Per-group: your OKF memory tree at `/workspace/agent/memory/` (one concept per file, loaded on demand from `index.md`).
+- Per-group: `/workspace/agent/memory/` — the OKF tree described in Runtime Contract › Memory.
 - Cross-group facts: `/workspace/shared/wiki/` — the synthesized layer. Recall via a subagent (`/workspace/shared/wiki/index.md` catalog → ≤2 `/workspace/shared/wiki/concepts/<page>.md`, `limit=60` each); never read an index inline. `/workspace/shared/learnings/INDEX.md` is the raw atom log, not a reading surface. Write via `append_learning`.
 - `/workspace/shared/` is **read-write for Main only** — coworkers read it but can't write directly.
 
 ## Constraints
 
 - Never call `create_agent` without a user-confirmed `coworkerType`.
-- Don't hand-edit `groups/<folder>/CLAUDE.md` — it's recomposed from the lego registry on every container wake. Edit `groups/<folder>/.instructions.md` instead; it's appended after the spine.
+- Don't hand-edit `groups/<folder>/CLAUDE.md` — it's recomposed from the lego registry on every container wake. Edit `groups/<folder>/instructions.prepend.md` instead; it's appended after the spine.
 
 ## Engineering Discipline
 
-Three rules that keep this orchestrator honest. The full coding-discipline set lives in coworker spines where coding actually happens.
+The full coding-discipline set lives in coworker spines, where coding happens; these three apply to orchestration.
 
 - **Capture lessons immediately.** When the user corrects an approach ("stop doing X", "don't do that") or confirms a non-obvious choice worked ("that was the right call"), call `append_learning` once with the rule and the _why_. Don't batch — context drifts. If an existing learning covers the topic, update that one instead of duplicating.
 - **End every multi-step task with one outcome line.** Result + concrete artifacts (file paths, group ids, PR numbers, round-trip times — whatever is load-bearing). No play-by-play, no restatement of the ask. Single-step replies don't need this.
