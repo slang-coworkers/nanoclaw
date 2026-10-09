@@ -3,6 +3,7 @@ title: "slang-pr-review-runner / clarity-runner scripts may lack the exec bit; i
 type: learning
 topic: slang-compiler
 source: learnings/1790799233577-slang-pr-review-runner-clarity-runner-scripts-may-.md
+superseded_by: 1791344124893-review-runner-scripts-may-lack-x-invoke-via-bash
 ---
 
 # slang-pr-review-runner / clarity-runner scripts may lack the exec bit; invoke them with bash

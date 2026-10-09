@@ -3,7 +3,7 @@ title: "slangc CLI behavior: exit codes, crash semantics, output streams, and op
 type: concept
 group: slang-tooling
 tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf, filestream, fifo, output-paths]
-source_count: 15
+source_count: 17
 ---
 
 ## TL;DR
@@ -29,6 +29,7 @@ several inspection paths silently drop the CLI options you passed.
   mirror seeks per write and hits a Release-UB assert on a FIFO). `getPathType` FAILS on
   FIFOs rather than returning a non-FILE type, and `/dev/null` is seekable so it never
   reproduces a seek bug.
+- **A master-vs-fix probe matrix with the wrong `-entry` fails E38000 on both sides** and reads as "no diff" — grep the matrix for E38000 before trusting it.
 - **`head -N` on a compiler log can hide the ICE** — Slang prints warnings first. Grep for
   outcome classes (`assert failure|E99997`), don't slice by position.
 - **`-dump-ir` writes to stderr, target text to stdout, non-interleaved.** slang-test composes
@@ -39,6 +40,8 @@ several inspection paths silently drop the CLI options you passed.
   linkage's option set into the desc.
 - **`-warnings-as-errors` ALWAYS takes an operand** (`all` or `<id>,...`); it does not prevent
   the module write when a warning escalates at the write site.
+- **`-lang <x>` applies only to inputs AFTER it** — slang-test puts the file path first, so a
+  `.slang` test with `-lang hlsl` in its directive is still parsed as Slang; use a `.hlsl` file.
 - **DXC errors on duplicate `(semantic,index)`; Slang silently re-indexes** the collision.
 - **Target-mode workloads have NO memory reporting** — the `[MEM]` protocol is driver-only.
 
@@ -104,6 +107,14 @@ bucket without reading its members (two "asymmetry" cells were the author's own 
 misuse), that `gh auth status` reporting the App token "invalid" with all-false permissions is
 a known non-gate (reads and comment-POSTs still work), and that `$?` after a pipe measures the
 last stage, not slangc.
+
+A master-vs-fix **probe matrix** has the same failure-shaped-like-data hazard per cell. Each probe
+must be compiled with its own entry point (`-entry main` vs `-entry computeMain`); with the wrong
+name both binaries fail with E38000, and the cell reads "same failure / no diff" — indistinguishable
+from "no regression" but measuring nothing. Grep the matrix for E38000 before trusting it. And
+under `SLANG_RUN_SPIRV_VALIDATION=1`, `-o /dev/null` reports the E00004 "cannot write output file"
+above, which is easy to misread as a spirv-val failure; write each cell to a real temp file
+[wrong entry name makes a probe matrix vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md).
 
 There is, however, a *corrected* premise about output streams worth flagging as a
 supersession. `docs/generated/tests/_meta/prompts/_common.md` long claimed that a `-dump-ir` +
@@ -228,6 +239,21 @@ call, make the case with concrete reasons (scope, ownership, a factual correctio
 reflexively complying — codex accepted "document as a known limitation" once given the
 rationale.
 
+Option *position* matters too. `-lang <x>` (`OptionKind::Language`, `slang-options.cpp`
+~:3616-3640) sets the source language only for the input paths that **follow** it, and the
+parser's dialect (`Parser::getSourceLanguage()`) is that translation unit's language. slang-test's
+SIMPLE/DIAGNOSTIC_TEST runner builds `<filePath> <directive options>` (`slang-test-main.cpp`
+~:3168), so a `.slang` test whose directive says `-lang hlsl` is still parsed as Slang — e.g.
+`tests/diagnostics/hlsl-class-instantiation.slang` (#10305) tests a Slang `class`, not an HLSL
+one. To test HLSL-dialect parsing, give the test a `.hlsl` extension (by hand: put `-lang hlsl`
+before the path); the module-load variant of the same trap is the `-shaderobj` dialect gate on
+[the test-authoring page](slang-tooling-f0909b0-test-authoring-filecheck.md)
+[-lang applies only to later inputs](../learnings/1791406993515-slangc-lang-applies-only-to-inputs-after-it-slang-.md).
+Nested `-X` forwarding has a documented example that does not work: the user guide's
+`-Xgcc -Xlinker --split -X.` fails with error 100003; the working form adds the ellipsis,
+`-Xgcc... -Xlinker --split -X.`
+[user-guide nested -X example](../learnings/1791403291004-slang-tools-pch-hides-missing-includes-in-new-unit.md).
+
 ## Cross-target semantic behavior and profiling
 
 Two facts round out slangc's observable behavior. First, **DXC errors on duplicate semantics
@@ -281,7 +307,9 @@ churn, whereas changing the default to emit column would touch hundreds of `test
 expected-output blocks
 [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md).
 
-**Source learnings (15):**
+**Source learnings (17):**
+- [Master-vs-fix probe matrix: wrong entry name makes it vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md) — both binaries fail E38000 → "no diff"; `-o /dev/null` + validation gives E00004, not a spirv-val failure
+- [slangc -lang applies only to inputs after it; slang-test SIMPLE puts the file path first](../learnings/1791406993515-slangc-lang-applies-only-to-inputs-after-it-slang-.md) — a `.slang` test with `-lang hlsl` is still parsed as Slang; use a `.hlsl` file (#10305, #13495)
 - [slangc -o /dev/null fails in-container; and head -N on a compiler log hides the ICE](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md) — E00004 exit 255 looks like an ICE; byte-count as a second signal; warnings print first so grep outcome classes; don't publish from an unread `rc255` catch-all bucket.
 - [Slang debug build: SLANG_ASSERT does NOT always catch OOB — verify segfault claims empirically](../learnings/1786514794799-slang-debug-build-slang-assert-does-not-always-cat.md) — Null-deref before any List access segfaults (exit 139) in debug; the requested-index-vs-program-count guard; a locally-true mechanism need not be the one in play.
 - [slangc exit 255 is a normal error, not a crash — verify signals + the real null path](../learnings/1786873188157-slangc-exit-255-is-a-normal-error-not-a-crash-veri.md) — 134/139 are real crashes; `SLANG_ASSERT=system` forces SIGABRT; enumerate which producer yields null (multi-declarator, not EOF); shared-clone `git stash pop` hazard.

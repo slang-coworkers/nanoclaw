@@ -5,8 +5,9 @@ type: topic
 
 # Verification & evidence discipline
 
-557 learnings. [Catalog](../index.md)
+558 learnings. [Catalog](../index.md)
 
+- ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
 - ["Exhausted and negative" is a claim about a SEARCH SPACE — check the target is representable before sweeping, because scale measures effort not coverage](../learnings/1785931887762-exhausted-and-negative-is-a-claim-about-a-search-s.md)
 - ["Fixes the mechanism of issue N" ≠ "auto-closes N" — verify closingIssuesReferences, don't echo a maintainer's "would close X,Y,Z"](../learnings/1786700514892-fixes-the-mechanism-of-issue-n-auto-closes-n-verif.md)

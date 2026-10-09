@@ -3,7 +3,7 @@ title: "Slang test authoring: FileCheck efficacy, ignored targets, and confounde
 type: concept
 group: slang-tooling
 tags: [slang-test, filecheck, testing, cuda, metal, target-switch, gpu-less, test-efficacy]
-source_count: 26
+source_count: 28
 ---
 
 # Slang test authoring: FileCheck efficacy, ignored targets, and confounded lanes
@@ -19,7 +19,8 @@ The recurring theme is **test efficacy**: a green test in a GPU-less container r
 - **A cross-target `COMPARE_COMPUTE` listing `-mtl` must not use `double`** (Metal has none;
   emit aborts) — split F64 coverage into a no-Metal file.
 - **CUDA diagnostic tests use `-target cuda`, not `-target ptx`** — ptx needs nvrtc (absent on
-  CPU CI), which aborts before the pre-emit diagnostic pass.
+  CPU CI), which aborts before the pre-emit diagnostic pass. A ptx `DIAGNOSTIC_TEST` still RUNS
+  there (only `TEST:SIMPLE` is ignored), so check a no-backend CI log before calling it skipped.
 - **A `-NOT` on a target the code-under-test never runs on is a tautology** — it can't fail.
   Put positive assertions on the target the pass runs on.
 - **A target-path flag can mask a behavioral lane** (`-target ptx` adds NVRTC `--use_fast_math`, so `.approx` appears regardless of the prelude redirect) — remove every other cause of the signal.
@@ -107,6 +108,17 @@ E55215) never fires. `-target cuda` stops at CUDA *source* emission, still runs 
 diagnostic pass, and needs no nvrtc. This passes locally on a box that has nvrtc (the prod
 L40S container) and only fails in CI — hit on slang#12633/PR #12671
 [CUDA diagnostic tests use -target cuda](../learnings/1787351942939-cuda-diagnostic-tests-use-target-cuda-not-target-p.md).
+The failure is possible at all because a `DIAGNOSTIC_TEST` is **not** skipped for the missing
+backend: `_extractSlangCTestRequirements` maps `-target ptx` to `PassThroughFlag::NVRTC`, which
+makes a `TEST:SIMPLE` lane *ignored* on a runner without nvrtc (`tests/cuda/nvrtc-architecture-override.slang`
+on the macOS debug job), yet on that same job the ptx `DIAGNOSTIC_TEST`
+`tests/diagnostics/command-line/x-arg-trailing-x.slang` *passed* (#13450). So a ptx diagnostic
+test whose diagnostic fires before the downstream load (command-line, front-end) is real CI
+coverage, and one whose diagnostic sits after it fails there. Before calling a test "skipped" or
+"never runs on CI", grep a no-backend job log rather than reading the requirement extractor:
+`gh run view --job <id> --log | sed 's/\x1b\[[0-9;]*m//g' | grep <file>` for `passed test:` /
+`ignored test:`
+[DIAGNOSTIC_TEST -target ptx still runs without NVRTC](../learnings/1791410667785-diagnostic-test-with-target-ptx-still-runs-on-runn.md).
 
 A third "ignored" cause is orthogonal to the target and to the GPU: **any `filecheck=` test is ignored
 when the LLVM FileCheck binary is absent.** A `//TEST:REFLECTION(filecheck=CHECK):-target spirv` (or any
@@ -160,42 +172,32 @@ a scratch `COMPARE_COMPUTE_EX ... -cpu -compute -shaderobj -output-using-type` t
 test's CHECK block into it) and confirming the buggy one FAILS
 [value CHECKs can match the type header](../learnings/1790973538630-output-using-type-value-checks-can-match-the-type-.md),
 [`CHECK: 3` is vacuous; use `CHECK-NEXT: {{^}}N{{$}}`](../learnings/1790980781348-output-using-type-makes-check-3-vacuous-use-check-.md).
-**A full-line CHECK can pin another open PR's bug.** On #13328 (combined-sampler classifier fix)
-a new test checked the whole Metal kernel signature on one line, which also pinned the missing
-`[[texture(n)]]` on resource arrays that open PR #12294 fixes. Applying only #12294's
-`slang-emit-metal.cpp` hunk (`git apply --include=<path> pr.diff`) and rebuilding made the test
-fail on correct output, so whichever PR landed second would break CI. The remedy was
-`MTL: void computeMain(` followed by one `MTL-SAME:` line per parameter, verified three ways:
-it passes with the other PR, passes without it, and still fails on the unfixed `.cpp`. When a
-test matches incidental output that the PR body itself calls a separate known bug, find the
-open PR for that bug and run the test against its diff. The clarity reviewer caught this from
-the test text alone; the correctness pass's test-coverage agent missed it
+**A full-line CHECK can pin another open PR's bug.** On #13328 a new test checked the whole Metal
+kernel signature on one line, which also pinned the missing `[[texture(n)]]` on resource arrays
+that open PR #12294 fixes; applying only #12294's `slang-emit-metal.cpp` hunk
+(`git apply --include=<path> pr.diff`) made it fail on correct output, so whichever PR landed
+second would break CI. The remedy, `MTL: void computeMain(` plus one `MTL-SAME:` per parameter,
+was verified with the other PR, without it, and on the unfixed `.cpp`. When a test matches
+incidental output the PR body calls a separate known bug, run it against that bug's open PR
+(caught by the clarity reviewer, missed by the correctness pass)
 [full-signature CHECK pins another PR's bug](../learnings/1790712737290-a-full-signature-metal-check-can-pin-another-open-.md).
 
 The subtler cousin is a **flag on the target path masking the signal you attribute to your
-change**. Two atoms from the CUDA fast-math redirect work (slang#12619 and its R2/R3 review
-#12872) converge on the identical trap: to prove the prelude's `#if
-SLANG_CUDA_ENABLE_FAST_MATH` redirect *selects* `__cosf`, the intuitive test is a `-target ptx
--fp-mode fast` lane FileChecking for `cos.approx.f32`. But `-target ptx` routes through
-`CUDASource` and compiles with NVRTC, and for `FloatingPointMode::Fast` Slang *also* passes
-NVRTC `--use_fast_math` (`slang-nvrtc-compiler.cpp`), which by itself rewrites `sinf`→`__sinf`
-— so `.approx` appears in the PTX **even if the prelude gate were deleted**. The fast lane
-stays green regardless
+change**. To prove the CUDA prelude's `#if SLANG_CUDA_ENABLE_FAST_MATH` redirect *selects*
+`__cosf` (slang#12619, R2/R3 #12872), the intuitive test is a `-target ptx -fp-mode fast` lane
+FileChecking `cos.approx.f32`. But `-target ptx` compiles with NVRTC, and for
+`FloatingPointMode::Fast` Slang also passes NVRTC `--use_fast_math` (`slang-nvrtc-compiler.cpp`),
+which by itself rewrites `sinf`→`__sinf` — so `.approx` appears **even if the prelude gate were
+deleted**
 [ptx approx confounded by --use_fast_math](../learnings/1788296956279-testing-cuda-fp-mode-fast-redirect-target-ptx-appr.md),
 [a target-path flag masks the behavioral test](../learnings/1788297443087-a-target-path-flag-can-mask-what-a-behavioral-code.md).
-What such lanes *do* catch is the inverted gate (`#ifndef`, or the define leaking into
-non-fast output) — the *default* (no-`-fp-mode fast`) lane gets no `--use_fast_math`, so an
-inverted gate makes its PTX approximate and fails its `-NOT`. What they *miss* is a deleted
-`#if` body (masked by the flag in fast, absent in default → both green). The robust test
-compiles the offline nvcc fixture with the macro on/off **without** `--use_fast_math` and
-FileChecks the preprocessed source (`__cosf` vs `::cosf`) or the PTX instruction patterns —
-pinning behavior to the gate itself. (You can't FileCheck slangc's `-target cuda` emitted
-source directly, because slang-test emits the prelude as an `#include`, so wrapper bodies
-aren't in the textual output.) Both atoms note the masking was caught by the codex critique
-gate's OUTPUT_REVIEW, not the code-focused review, and one records the meta-lesson: when a
-review both suggests a target-X behavioral test and notes target-X applies an independent
-optimization flag, check whether the second confounds the first — and run the critique gate
-*before* emitting a verdict, not after.
+Such lanes catch an inverted gate (the default lane gets no `--use_fast_math`, so its `-NOT`
+fails) but miss a deleted `#if` body. The robust test compiles the offline nvcc fixture with the
+macro on/off **without** `--use_fast_math` and FileChecks the preprocessed source (`__cosf` vs
+`::cosf`) or the PTX patterns; slangc's `-target cuda` text can't be checked directly because
+slang-test emits the prelude as an `#include`. The masking was caught by the codex critique gate's
+OUTPUT_REVIEW, not the code review: when a review suggests a target-X behavioral test and notes
+target-X applies an independent optimization flag, check whether the second confounds the first.
 
 Two more shapes of the same question — *can this check fail when the thing it names is
 wrong?* — came from retargeting stale tests. First, when a compiler change makes an emit test
@@ -292,40 +294,36 @@ test-slang — so "CI was green before" is not evidence if the prior runs were p
 
 **slang-test supports exactly one FileCheck prefix per `//TEST` directive; a comma list does not
 add prefixes.** The text inside a directive's parentheses is split on every `,` into separate
-options (`_parseCommandArguments`, `tools/slang-test/slang-test-main.cpp` :346/:367), so
+options (`_parseCommandArguments`, `slang-test-main.cpp` :346/:367), so
 `//TEST:SIMPLE(filecheck=CHECK,WGSL):` becomes `filecheck=CHECK` plus a valueless option `WGSL`
-that nothing reads. `getFileCheckPrefix` (:96) reads only the `filecheck` key, and
-`slang-llvm-filecheck.cpp:92` passes one prefix (`fcReq.CheckPrefixes = {fileCheckPrefix};`), so
-every `// WGSL:` line is silently dead and the test passes even when those lines are false. On
-#13356, garbage in every `WGSL:`/`METAL:`/`GLSL:` line still passed 3/3, while breaking one `CHECK:`
-line failed; the minimal proof drill is `filecheck=CHECK,EXTRA` with a false `EXTRA:` line
-(passes) against `filecheck=EXTRA` (fails). The legitimate comma use is two *different* options,
-e.g. `filecheck=CHECK,diag=diag`. For lines shared across targets, write a separate
-`filecheck=CHECK` directive per target. Four tests on master use the broken form and are silently
-affected — `tests/spirv/debug-matrix-layout.slang`, `tests/spirv/optional-vertex-output.slang`,
+that nothing reads; `getFileCheckPrefix` (:96) reads only the `filecheck` key and
+`slang-llvm-filecheck.cpp:92` passes one prefix (`fcReq.CheckPrefixes = {fileCheckPrefix};`).
+Every `// WGSL:` line is silently dead: on #13356 garbage in every `WGSL:`/`METAL:`/`GLSL:` line
+still passed 3/3 while breaking one `CHECK:` line failed, and #13507 re-found it
+(`filecheck=CHECK,BYTES`). The legitimate comma use is two *different* options
+(`filecheck=CHECK,diag=diag`); for per-target lines write one `filecheck=` directive per target, and
+mutation-test every new row (a false line under the second prefix, an injected compile error, the
+construct under test removed) before trusting it. Four master tests use the broken form
+(`tests/spirv/debug-matrix-layout.slang`, `tests/spirv/optional-vertex-output.slang`,
 `tests/bugs/gh-11021-dxil-default-profile.slang`,
-`tests/vkray/empty-payload-glsl-noinline-helper-chain.slang` — tracked in shader-slang/slang#13359;
-`git blame` dates the splitting to #2747 (2023), while `git log -L` gave misleading history for
-those lines. The wrong reading ("the form shares `CHECK` lines and adds a per-target second
-prefix") came from treating "an existing test uses the syntax" as proof it works; presence is not a
-mechanism, so read the parser. Activating the dead lines surfaces two latent traps:
-`// METAL: [[kernel]]` parses as a FileCheck variable (`undefined variable: kernel`; escape it as
+`tests/vkray/empty-payload-glsl-noinline-helper-chain.slang`; shader-slang/slang#13359; the
+splitting dates to #2747). The wrong reading ("a second per-target prefix") came from treating an
+existing use of the syntax as proof it works — read the parser. Activating the dead lines surfaces
+two latent traps: `// METAL: [[kernel]]` parses as a FileCheck variable (escape it as
 `{{\[\[}}kernel{{\]\]}}`), and prose such as `// ... only on GLSL: WGSL and Metal ...` becomes a
-`GLSL:` directive. When reviewing a `filecheck=X,Y` test, run the mutation drill
+`GLSL:` directive
 [comma prefixes are dead](../learnings/1790799835281-slang-test-filecheck-check-wgsl-silently-activates.md),
 [CORRECTION: one prefix per directive](../learnings/1790800525677-correction-slang-test-does-not-support-multiple-fi.md),
-[commas separate options](../learnings/1790805124373-slang-test-commas-inside-separate-options-so-filec.md).
+[commas separate options](../learnings/1790805124373-slang-test-commas-inside-separate-options-so-filec.md),
+[filecheck=A,B is ONE prefix](../learnings/1791427324960-slang-test-filecheck-a-b-is-one-prefix-the-second-.md).
 
-Two facts constrain a real multi-prefix fix for #13359. A repeated option key is not a workaround:
-slang-test stores `//TEST(...)` options in a `Dictionary` via `Dictionary::add`, which asserts on a
-duplicate key, so `filecheck=CHECK,filecheck=EXTRA` terminates slang-test with an uncaught
-`Slang::InternalError` in Release as well as Debug. And when several prefixes are passed to
-in-process LLVM FileCheck, the unused-prefix guard ("no check strings found with prefix 'X:'") comes
-free — it runs in the library's `FileCheck::readCheckFile`, and `FileCheckRequest::AllowUnusedPrefixes`
-defaults to false (llvmorg-21.1.2 and main) — but `FileCheck::ValidateCheckPrefixes()` (rejects empty,
-non-`^[a-zA-Z0-9_-]*$` and duplicate prefixes) is called only by the FileCheck tool's `main`
-(`llvm/utils/FileCheck/FileCheck.cpp` ~:1162), so an embedder like slang-llvm must call it itself.
-In the CLI, `--check-prefix` is an alias of the comma-separated `--check-prefixes`
+A real multi-prefix fix for #13359 is constrained twice. A repeated key is no workaround:
+options live in a `Dictionary` via `Dictionary::add`, which asserts on a duplicate, so
+`filecheck=CHECK,filecheck=EXTRA` kills slang-test with an uncaught `Slang::InternalError` (Release
+too). And in-process LLVM FileCheck gives the unused-prefix guard for free (`readCheckFile`,
+`AllowUnusedPrefixes` defaults false), but `FileCheck::ValidateCheckPrefixes()` (empty, invalid
+and duplicate prefixes) runs only in the FileCheck tool's `main`, so slang-llvm must call it
+itself
 [unused-prefix error lives in readCheckFile](../learnings/1790817962233-llvm-filecheck-unused-prefix-error-lives-in-readch.md).
 
 **`COMPARE_COMPUTE(-shaderobj)` can't verify a source-dialect-gated conversion.** When a feature is
@@ -346,11 +344,12 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 `error 1004: unknown command-line option '-stage'`
 [COMPARE_COMPUTE module-load defeats a source-dialect gate](../learnings/1789519401343-slang-test-compare-compute-can-t-verify-a-source-d.md).
 
-**Source learnings (26):**
+**Source learnings (28):**
 - [slang-test harness instrument traps: FAILED-vs-failed, priority-yield red, formatting file-list asymmetry](../learnings/1786405416356-slang-test-harness-instrument-traps-failed-vs-fail.md) — Uppercase `FAILED test:`; exit-0-on-nothing gate; `-explicit-test-order` mandatory; priority-yield red-by-design; plus `git log %B` and `REQUIRED_BY` CMake bonuses.
 - [NVAPI HitObject transform getters (#9257) — textual ABI test masks the DXC-only bug](../learnings/1787226505940-nvapi-hitobject-transform-getters-9257-textual-abi.md) — `//CHECK: .GetX` proves emit, not API membership; only DXC catches it; PR #12089 re-gates but keeps the broken mapping; static_assert on the NVAPI arm.
 - [slang-test bare -target hlsl SIMPLE tests are "ignored" in GPU-less env; unit-test ninja target](../learnings/1787342748842-slang-test-bare-target-hlsl-simple-tests-are-ignor.md) — HLSL/DXC filtered to 0/0; write CPU-compute or `slangi` positive tests; `libslang-unit-test-tool.so`; ninja aborts whole build on one bad target.
 - [CUDA diagnostic tests: use -target cuda not -target ptx (ptx needs nvrtc)](../learnings/1787351942939-cuda-diagnostic-tests-use-target-cuda-not-target-p.md) — ptx aborts before `checkUnsupportedInst` on nvrtc-less CI; `-target cuda` runs the pre-emit diagnostic path; green locally on nvrtc boxes, red in CI.
+- [DIAGNOSTIC_TEST with -target ptx still runs on runners without NVRTC](../learnings/1791410667785-diagnostic-test-with-target-ptx-still-runs-on-runn.md) — macOS job: ptx `TEST:SIMPLE` ignored, ptx `DIAGNOSTIC_TEST` passed (#13450); grep the CI job log, not the requirement extractor
 - [Lifting a per-target emit predicate to the shared base affects every sibling subclass](../learnings/1787580446019-lifting-a-per-target-emit-predicate-to-the-shared-.md) — WGSL fold lifted to `CLikeSourceEmitter` regressed Metal (struct-wrapper array); enumerate subclasses; Metal is CI-only, verify with a g++ proxy.
 - [A FileCheck -NOT on a target the code-under-test never runs on is a tautology](../learnings/1787659385637-a-filecheck-not-on-a-target-the-code-under-test-ne.md) — D3D-only pass + `SPIRV-NOT` can't fail; put positives on the running target; assert only genuine-correctness positives on unaffected targets.
 - [A cross-target COMPARE_COMPUTE test that targets -mtl must not contain a double](../learnings/1787952374955-a-cross-target-compare-compute-test-that-targets-m.md) — Metal has no `double`; emit-time abort is correct; locally-ignored mtl hides it; device-free Metal-source verify + stash control; split F64 into a no-Metal file.
@@ -368,6 +367,7 @@ its own `-compute`/entry, so passing `-entry`/`-stage` in its options fails
 - [tests/glsl/matrix-mul.slang METAL lane is vacuous: its regex matches the E36107 diagnostic's quoted source; SIMPLE+FileCheck ignores exit code](../learnings/1790798404070-glsl-interface-blocks-never-compile-for-metal-std1.md)
 - [`filecheck=CHECK,WGSL` activates only CHECK — extra comma prefixes are dead; `[[kernel]]` needs escaping once activated (#13356)](../learnings/1790799835281-slang-test-filecheck-check-wgsl-silently-activates.md)
 - [CORRECTION: slang-test does not support multiple FileCheck prefixes](../learnings/1790800525677-correction-slang-test-does-not-support-multiple-fi.md) — corrects the "several prefixes per directive" reading; one prefix per `//TEST`; names the 4 affected tests; presence is not a mechanism.
+- [slang-test filecheck=A,B is ONE prefix — the second prefix's lines are never checked](../learnings/1791427324960-slang-test-filecheck-a-b-is-one-prefix-the-second-.md) — re-found on #13507 (`CHECK,BYTES`); mutation-test every row; add `result code = 0` first
 - [slang-test: commas inside `(...)` separate options](../learnings/1790805124373-slang-test-commas-inside-separate-options-so-filec.md) — `_parseCommandArguments` split; `filecheck=CHECK,EXTRA` proof drill; legit `filecheck=CHECK,diag=diag`; #13359; behaviour dates from #2747.
 - [LLVM FileCheck: unused-prefix error lives in readCheckFile, prefix validation only in the tool](../learnings/1790817962233-llvm-filecheck-unused-prefix-error-lives-in-readch.md) — `AllowUnusedPrefixes` defaults false; embedders must call `ValidateCheckPrefixes()`; a repeated slang-test option key asserts in `Dictionary::add`.
 - [A lone `CHECK: 0` over a multi-slot COMPARE_COMPUTE buffer passes vacuously](../learnings/1790799624727-a-lone-check-0-over-a-multi-slot-compare-compute-b.md) — unwritten zero slots match; size the buffer or pin with `CHECK: type: int32_t` + `CHECK-NEXT:`.

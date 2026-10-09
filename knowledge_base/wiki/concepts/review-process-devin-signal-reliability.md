@@ -3,7 +3,7 @@ title: Devin review-signal reliability — freshness, false positives, and low-i
 type: concept
 group: review-process
 tags: [approver, challenger, devin, staleness, head-currency, commit-match, devin-fetch, fallback-tier, false-positive, positive-control, reachability, coverage]
-source_count: 20
+source_count: 21
 ---
 
 ## TL;DR
@@ -21,7 +21,8 @@ lag the head by minutes. ALWAYS open `review/devin-commit-status.txt` first (`"u
 "out of date" / "behind" ⇒ freshness unproven) and cross-check Devin's shown diff / cited
 file:lines against YOUR SHA-pinned head read (`gh pr diff`, `gh api contents?ref=<sha>`).
 Watch the `Loading diffs…` banner and top-clustered "empty stubs" claims — a partial render
-from a `devin-fetch.sh` limit no prompt "wait" can fix. Never stamp `commit_id = pinned
+from a `devin-fetch.sh` limit no prompt "wait" can fix. On a PR that is still a **draft**, a first exit-3
+timeout means skip B (findings pane never renders anonymously), not retry. Never stamp `commit_id = pinned
 head` to fake a `commit_match`; omit it (→ honestly unevaluable) or mark stale. On a
 merge-head PR the clean path is a re-review at the settled head, never a "blob IDs
 identical" argument; an immaterial delta (doc/comment/whitespace) → record the lag, and
@@ -96,6 +97,17 @@ prose for draft-era tells, and cross-check head-currency against live GitHub ind
 That atom also warns against the inverse error: a *historical baseline* cited by Devin
 ("22 lines at origin/master c1cffad25") is TRUE history when c1cffad25 is a pre-merge
 commit — date the cited commit rather than forcing a spurious INDETERMINATE.
+A PR that is *still* a draft is worse: viewed anonymously, Devin may never finish at all. On
+slang#13502 (draft, 2026-10-07) `devin-fetch.sh` timed out twice (exit 3, 30 min each); a direct
+`agent-browser eval document.body.innerText` showed the commit-grouped walkthrough rendered
+("1 Initialize error types… 2 Diagnose escaping errors…", each with "Read explanation") while the
+"Devin's analysis" pane stayed on `Loading diffs…` with zero Bugs/Flags/Informational anchors —
+the done-check needs one of those panels, so it can never fire. #13468 and #13353 showed the same
+double timeout. So before any Devin retry run `gh pr view <N> --json isDraft`; if the PR is a draft
+and the first attempt timed out, mark Reviewer B `_skipped: draft PR — Devin findings panel never
+renders anonymously_` and move on instead of spending another 30 min. Why the panel never renders
+is unconfirmed (Devin may run finding analysis only for non-draft PRs or logged-in viewers)
+[Devin Review never finishes on a DRAFT PR viewed anonymously — skip B after one timeout](../learnings/1791418496634-devin-review-never-finishes-on-a-draft-pr-viewed-a.md).
 
 ## Partial render on large PRs, and workspace-backed evidence
 
@@ -219,8 +231,9 @@ Real execution leaves logs/durations/exit codes; the only build control that cou
 own conclusion or a binary you can point at
 [Don't launder an AI-review 'Testing' block into an executed positive control](../learnings/1787953818152-approver-critique-mustfix-don-t-launder-an-ai-revi.md).
 
-**Source learnings (20):**
+**Source learnings (21):**
 - [Verify Devin head-currency on dependency-ordered draft→ready PRs](../learnings/1787906963169-approver-critique-mustfix-verify-devin-head-curren.md) — draft-era Devin analysis stamped head-current; re-run pinned + read freshness widget + prose tells + live cross-check.
+- [Devin Review never finishes on a DRAFT PR viewed anonymously — skip B after one timeout](../learnings/1791418496634-devin-review-never-finishes-on-a-draft-pr-viewed-a.md) — slang#13502/#13468/#13353: analysis pane stuck on `Loading diffs…`; check `isDraft` before a retry, mark B skipped.
 - [master-merge head + Devin commit-status unknown ⇒ head-current unverifiable](../learnings/1787914554673-approver-infra-abstain-master-merge-head-devin-com.md) — Devin bound to pre-merge commit; content byte-identity is not the head-current review check; ABSTAIN NO_REVIEW_SIGNAL.
 - [Devin lags rapid force-pushes; cross-check shown diff vs your head read](../learnings/1788154569520-approver-infra-abstain-devin-lags-rapid-force-push.md) — Devin cached superseded push; immaterial doc-only delta must not burn STALE_STAGE; rate-limit wait + re-resolve head.
 - [Devin review can be head-stale on rebased/re-pushed PRs](../learnings/1788220739759-approver-infra-abstain-devin-review-can-be-head-st.md) — flags reference rewritten lines; never stamp commit_id=head to fake commit_match; omit or mark stale.

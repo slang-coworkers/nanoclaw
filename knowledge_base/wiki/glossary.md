@@ -433,6 +433,7 @@ type: nav
 - [Slang conformance checking: requirement enumeration and method-requirement witness synthesis](concepts/slang-language-core-requirement-witness-synthesis.md)
 - [Slang descriptor-handle capability promotion and reflection-visible changes (bindlessSpaceIndex, CUDA binding categories)](concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md)
 - [Slang Entry-Point Varying Interface: Location Layout & the Store Anchor](concepts/slang-language-fold20260909-varying-interface-layout.md)
+- [Slang error handling: throws, try, catch — checking and lowering](concepts/slang-language-error-handling.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup](concepts/slang-language-parser-generic-app-and-lookup.md)

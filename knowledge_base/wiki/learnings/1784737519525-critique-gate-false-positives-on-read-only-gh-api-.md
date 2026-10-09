@@ -3,6 +3,7 @@ title: "Critique gate false-positives on read-only gh api /pulls/ calls"
 type: learning
 topic: agent-ops
 source: learnings/1784737519525-critique-gate-false-positives-on-read-only-gh-api-.md
+superseded_by: 1791303973484-critique-gate-blocks-read-only-gh-api-pulls-n-call
 ---
 
 # Critique gate false-positives on read-only gh api /pulls/ calls

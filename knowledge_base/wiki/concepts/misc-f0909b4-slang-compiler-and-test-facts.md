@@ -19,7 +19,9 @@ issues. Grouped by subsystem:
 - **Entry-point role conflation.** The EP decoration attaches to the ordinary
   IRFunc; the crash lives in the post-link `translateEntryPointInParamToBorrow`
   when a function is both entry point and non-entry (called/exported). A Release
-  spin and a Debug assert can be the *same* bug.
+  spin and a Debug assert can be the *same* bug. `fixEntryPointCallsites` clones a
+  *called* entry point into an ordinary function; it must select every entry-point-like
+  decoration (`[CUDAKernel]` has no `IREntryPointDecoration`).
 - **AnyValue marshalling** is field-wise 4-byte `bit_cast` per leaf (deliberate
   for correctness). A whole-object fast path must use the *target ABI* layout, not
   Natural layout, or it silently truncates.
@@ -75,6 +77,24 @@ glsl) but NOT spirv — **always run the per-target matrix + pristine baseline
 before claiming "PR X fixes issue Y"**; a code-read of the strip predicate wasn't
 enough. Instrument note: applying the PR's hunk onto an already-configured clone
 beats a fresh worktree (which fails CMake configure on missing submodules).
+
+[`fixEntryPointCallsites`'s origin and scope](../learnings/1791424745106-fixentrypointcallsites-origin-and-scope-slang-5919.md):
+the pass (`slang-ir-fix-entrypoint-callsite.cpp`) is the producer-side answer to this
+class for *called* entry points. It came from csyonghe's #5919 (c43f6fa55, Jan 2025,
+"Lower varying parameters as pointers") and is not slangpy-specific: its test is
+`tests/spirv/nested-entrypoint.slang`, one `[shader]` calling another. It clones the
+called entry point into an ordinary function (entry, layout, numthreads, extern and
+export decorations stripped) and repoints `IRCall`s at the clone, so later per-target
+entry-point legalization (slang-emit.cpp ~2348, just before
+`legalizeEntryPointsForGLSL`/`...ForCUDA`) can rewrite the real one. Before #13482 it
+selected only `IREntryPointDecoration`, but `[CUDAKernel]` lowers to
+`IRCudaKernelDecoration` with no entry-point decoration (slang-lower-to-ir.cpp ~1498),
+so direct kernel calls were emitted as unconfigured `__global__` calls; slangpy reaches
+the pass because its generated `compute_main` calls the user function directly
+(`slangpy/core/generator.py:633`). The TODO at L66-69 is tfoley's (c35b763f8), not the
+original author's. Use a full-history clone for `git log -S` on such questions; a
+shallow clone hides the origin. The clone's stale param layouts breaking Metal and CUDA
+are on [[wiki/concepts/slang-backends-wgsl-metal.md]].
 
 ## AnyValue marshalling (slang#12606/#12609)
 
@@ -140,6 +160,8 @@ its "a non-returning function's result type is Never" doc-comment intent is
 There is no checker-level reachability analysis and no `[noreturn]`; a "this branch
 diverges" feature must use a bounded structural check (ends in
 `return`/`break`/`continue`/`discard`/`throw`), not a type-based `Never` test.
+Where the Bottom default is assigned (and why accessors miss it) and how `try`/`throws`
+are checked and lowered are on [[wiki/concepts/slang-language-error-handling.md]].
 [The replace-refactor edit-set](../learnings/1787161017583-a-replace-refactor-s-edit-set-filtered-readers-cop.md)
 (slang#12623, `UserForceInlineDecoration`): when a new op *replaces* an existing
 decoration on a subset of insts, the complete edit-set is exactly three classes —
@@ -202,6 +224,7 @@ positive-control CHECK that the output actually changed.
 ## Source learnings (21):
 
 - [E31160 __getAddress(buf[i]) rejection = AST whitelist gap, not semantic prohibition](../learnings/1786986287863-e31160-getaddress-buf-i-rejection-ast-whitelist-ga.md) — `&buf[i]` works while `__getAddress` fails proves a front-end whitelist barrier; test sibling spellings, trust the compile over the comment.
+- [fixEntryPointCallsites origin and scope (slang#5919, #13482)](../learnings/1791424745106-fixentrypointcallsites-origin-and-scope-slang-5919.md) — clones a called entry point into an ordinary function; not slangpy-specific; missed IRCudaKernelDecoration before #13482
 - [getValidTypeForAddressOf: &buf[i] already compiles for RW AND RasterizerOrdered](../learnings/1786988113943-getvalidtypeforaddressof-buf-i-already-compiles-fo.md) — the fix must enable both mutable kinds; read-only StructuredBuffer stays rejected (`get;`-only). `-o /dev/null` masks front-end results.
 - [__getAddress(buf[i]) must DEFAULT layout L to match &buf[i]](../learnings/1786990281222-slang-12581-getaddress-buf-i-must-default-layout-l.md) — return `Ptr<...,DefaultDataLayout>`; preserving a generic `L` crashes `getPtrType`'s RELEASE_ASSERT; verify against the `&` path the fix claims equivalence to.
 - [Entry-point/ordinary-function cluster (12392/12564); #12565 fixes 3/4 targets](../learnings/1786994808192-entry-point-ordinary-function-cluster-slang-12392-.md) — role conflation crashes post-link `translateEntryPointInParamToBorrow`; Release spin == Debug assert; run the per-target matrix + pristine baseline.

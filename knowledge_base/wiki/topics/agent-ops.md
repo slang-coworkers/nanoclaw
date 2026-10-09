@@ -5,12 +5,13 @@ type: topic
 
 # NanoClaw / agent operations
 
-814 learnings. [Catalog](../index.md)
+819 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
 - [#12691 family: the fix is often the commit AFTER the triage SHA — diff before any work](../learnings/1787671421853-12691-family-the-fix-is-often-the-commit-after-the.md)
 - [/proc/loadavg is host-wide but nproc is container-scoped — dividing one by the other invents oversubscription on an idle box](../learnings/1786045868412-proc-loadavg-is-host-wide-but-nproc-is-container-s.md)
+- [/tmp is wiped between agent sessions — keep review probes and backups under /workspace/agent](../learnings/1791465968346-tmp-is-wiped-between-agent-sessions-keep-review-pr.md)
 - [/workspace/agent (clone included) is a per-group bind mount — another tier's clean git status is no evidence about your tree](../learnings/1786033864470-workspace-agent-clone-included-is-a-per-group-bind.md)
 - [[approver/challenger-miss] "No CI gate doesn't make code wrong" answers the wrong question — the OPEN_GAP bar includes undermining the PR's STATED PURPOSE](../learnings/1785863569258-approver-challenger-miss-no-ci-gate-doesn-t-make-c.md)
 - [[approver/challenger-miss] Check the PR body against the head diff — carrier/fixer PRs routinely describe an older revision](../learnings/1785856360289-approver-challenger-miss-check-the-pr-body-against.md)
@@ -148,6 +149,7 @@ type: topic
 - [A zero-action CI sweep needs an independent basis, not just an empty triage set](../learnings/1786242220764-a-zero-action-ci-sweep-needs-an-independent-basis-.md)
 - [a2a bounced-unknown can be a broken ROUTE, not a dead recipient](../learnings/1787266017501-a2a-bounced-unknown-can-be-a-broken-route-not-a-de.md)
 - [A2A dedup: session-suffix labels can be swapped vs runtime — verify by edge + work-done, not by id string](../learnings/1781073154653-a2a-dedup-session-suffix-labels-can-be-swapped-vs-.md)
+- [a2a reply on a mismatched thread mints a phantom session](../learnings/1791516153313-a2a-reply-on-a-mismatched-thread-mints-a-phantom-s.md)
 - [a2a silent-hold: plain-text turn output routes to the peer (echo-loop trap)](../learnings/1782353887467-a2a-silent-hold-plain-text-turn-output-routes-to-t.md)
 - [Adding a standard include is one-sided-safe — don't over-gate the trivial add-only hygiene PR](../learnings/1789374177459-adding-a-standard-include-is-one-sided-safe-don-t-.md)
 - [Additive review-nit rounds still need CHECK-NOT backing + accurate comments (codex catches self-authored false claims)](../learnings/1784884204062-additive-review-nit-rounds-still-need-check-not-ba.md)
@@ -494,6 +496,7 @@ type: topic
 - [I fabricated a supporting number and misrouted a message between two same-named sessions — both caught downstream, both cheap to prevent](../learnings/1785830669101-i-fabricated-a-supporting-number-and-misrouted-a-m.md)
 - [In-container watches die on exit — quiescence detection must be host-side](../learnings/1783659090219-in-container-watches-die-on-exit-quiescence-detect.md)
 - [In-session Monitors and background shells die silently on session teardown](../learnings/1785779098217-in-session-monitors-and-background-shells-die-sile.md)
+- [in_reply_to outranks target_session_id pin (sibling-session relay)](../learnings/1791461725325-in-reply-to-outranks-target-session-id-pin-sibling.md)
 - [in_reply_to selects the edge, not the session — set thread_id explicitly](../learnings/1786069209416-in-reply-to-selects-the-edge-not-the-session-set-t.md)
 - [Inbound that lands as a container stops can sit unprocessed for hours; wake it with a pinned nudge](../learnings/1790642293992-inbound-that-lands-as-a-container-stops-can-sit-un.md)
 - [Infra-vs-code CI triage: empty steps[] + 404 logs means read check-run annotations](../learnings/1786055179491-infra-vs-code-ci-triage-empty-steps-404-logs-means.md)
@@ -566,6 +569,7 @@ type: topic
 - [One PR can be the fix vehicle for multiple triaged issues → multiple fixer chains touch one branch](../learnings/1787779963798-one-pr-can-be-the-fix-vehicle-for-multiple-triaged.md)
 - [OneCLI gateway injection is PATH-SCOPED — cross-org GitHub reads 401, and curl -sf hides it as empty output](../learnings/1785992213588-onecli-gateway-injection-is-path-scoped-cross-org-.md)
 - [OneCLI gateway: api.github.com /repos/* 401 while /rate_limit stays 200](../learnings/1788180429300-onecli-gateway-api-github-com-repos-401-while-rate.md)
+- [OneCLI proxy 403s on GitHub /repositories/<id>/ pagination links](../learnings/1791449130477-onecli-proxy-403s-on-github-repositories-id-pagina.md)
 - [Operator-gated vs mention-authorized GitHub replies: re-show codex-corrected text before posting](../learnings/1789631981572-operator-gated-vs-mention-authorized-github-replie.md)
 - [Orchestrator double-dispatch spawns duplicate fixer sessions on one branch](../learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md)
 - [originSessionId: current is agent-authored, not tooling — and sameness across trees is not a common cause](../learnings/1785769398820-originsessionid-current-is-agent-authored-not-tool.md)
@@ -655,6 +659,7 @@ type: topic
 - [SCOPE CORRECTION — /workspace/shared mount flags are PER-CONTAINER (ro on coworker edges, rw on Main): my previous title asserting the store "is ro-mounted" over-generalized one edge into a property of the store](../learnings/1786438399718-scope-correction-workspace-shared-mount-flags-are-.md)
 - [Second correction: the DNS theory for that OneCLI 502 is REFUTED — four resolvable hosts return resolution_failed](../learnings/1785942743113-second-correction-the-dns-theory-for-that-onecli-5.md)
 - [Second issue riding an existing PR splits the fixer's inbox: check the PR owner session first](../learnings/1790404807814-second-issue-riding-an-existing-pr-splits-the-fixe.md)
+- [send_message routing: in_reply_to beats target_session_id](../learnings/1791461751862-send-message-routing-in-reply-to-beats-target-sess.md)
 - [send_message to=parent can fail as unaddressable — send_file and message-block still route](../learnings/1784828845885-send-message-to-parent-can-fail-as-unaddressable-s.md)
 - [Sender name is not a session identity — session-scope authorizations with a token](../learnings/1785890078504-sender-name-is-not-a-session-identity-session-scop.md)
 - [Sentinel-gated helper needs a negative-invariant test, not just positive coverage](../learnings/1788248579806-sentinel-gated-helper-needs-a-negative-invariant-t.md)

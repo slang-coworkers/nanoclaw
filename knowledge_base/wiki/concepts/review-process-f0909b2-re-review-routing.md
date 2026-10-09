@@ -3,7 +3,7 @@ title: Re-review scope decisions, cross-round adjudication, and reviewer session
 type: concept
 group: review-process
 tags: [slang-pr-review, re-review, round-2, spot-check, diff-hash, cross-round, a2a-redrive, thread-id, synchronize, canonical-thread, overlap-analysis]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -30,7 +30,8 @@ handoff to the wrong session silently strands it. Two clusters:
   diff`, NOT the PR body — a finding resolved by "document as intentional scope in the
   description" is invisible to A on re-review, and Devin's scrape captures only a finding's
   title + file:line, not its reasoning; carry the context and surface FPs with contradicting
-  evidence.
+  evidence. A is also stateless across rounds and will re-suggest what an earlier round
+  disproved — reject such reversals explicitly ("do not re-add") so the fixer doesn't swing.
 - **A reviewer's reused long-lived session is frozen to the FIRST PR's `thread_id`.** A
   fresh Fix Review Request routed there lands unprocessed and an a2a bounce quotes the
   STALE thread — re-drive on the canonical `gh-issue-<owner>/<repo>-<num>` thread, don't
@@ -93,6 +94,18 @@ prior cleared round and A's IR-correctness/test-coverage subagents + C + a passi
 test all converge, treat it as a false positive but still SURFACE it with the contradicting
 evidence and note the scrape didn't capture the reasoning
 [adjudicating Devin bugs + cross-round context (Reviewer A can't see the PR body)](../learnings/1788907887233-slang-pr-review-adjudicating-devin-bugs-cross-roun.md).
+Each Reviewer A run is also stateless across rounds, so it can re-suggest a change an earlier
+round already proved useless. On slang#13381 round-3 A suggested adding `-target wgsl-spirv-asm`
+tint rows "as sibling tests do", but round 1 had shown those rows go through Natural layout and
+never reach the WGSL std140 path the fix is about, which is why the fixer had removed them. The
+reviewer-of-record checks every gap A raises against the earlier rounds' verdicts and rejects a
+reversal explicitly in the combined report ("do not re-add"); otherwise the fixer oscillates.
+Two side facts from that review: upstream `CLAUDE.md` (master, ~line 278) still requires the
+five-part PR description while the coworker rule now asks for a concise description with the
+rationale in the `/explain-diff-html` comment, so Reviewer C flags the conflict — report it to
+the parent rather than blocking the PR on it; and a `/tmp` scratch dir does not survive between
+rounds days apart, so keep A/B snapshot builds under `/workspace/agent/wt-<pr>-snap/`
+[Reviewer A re-suggests tint rows proven useless in an earlier round — adjudicate across rounds](../learnings/1791393113319-reviewer-a-re-suggests-tint-rows-that-were-proven-.md).
 
 ## Reviewer session routing: stale threads and metadata-only re-wakes
 
@@ -126,7 +139,7 @@ and a red downstream check may be a cross-repo release-ordering gate, not a defe
 
 A routing collapse to watch when the reviewer is dispatched **directly by the fixer** (a fixer→reviewer peer-review handoff) rather than by the orchestrator: the `/slang-pr-review` Step-5 "Fix-chain / mention (live pr mode)" template says to *reply to parent AND forward to the fixer*, but that assumes parent ≠ fixer. When the tasking message came from `slang-fixer`, the fixer IS the parent edge (first inbound's `source_session_id`), so "reply to parent" and "forward to fixer" are the same destination — send the `combined-review.md` + `[Review Verdict]` **once** to `slang-fixer` via `in_reply_to=<request-id>`; sending to both `to="parent"` and `to="slang-fixer"` double-delivers to the same agent and reads as a duplicate. (Same run: Devin/Reviewer-B exit `3 = timeout` is a routine best-effort skip — merge proceeds with A + C, set `reviewers_complete=false` when any dispatched reviewer times out/errors/drifts; and the strongest signal in a combined report is **A↔C convergence** — surface an independently-flagged same line as the top consistency item) ([when the fixer is the requester, parent-edge and fixer-forward collapse to one send](../learnings/1789820780649-slang-pr-review-when-the-fixer-is-the-requester-pa.md)).
 
-**Source learnings (9):**
+**Source learnings (10):**
 - [spot-check (not full re-run) for additive nit-fixes; diff_hash goes stale](../learnings/1788198210854-slang-pr-review-spot-check-not-full-re-run-for-add.md) — read-only source spot-check of load-bearing touch points; never hand-fabricate an exact-head diff_hash.
 - [Round-2 re-review of a doc/test/refactor fix = targeted diff, not a full re-run](../learnings/1788381184331-round-2-pr-re-review-of-a-doc-test-refactor-fix-ta.md) — git diff r1..r2 (both objects fetchable); grep the code delta to prove no functional leak.
 - [round-2 delta-verify instead of a full pipeline re-run when the fix logic is unchanged](../learnings/1789491455857-round-2-pr-review-delta-verify-instead-of-full-pip.md) — confirm HEAD + byte-identical fix hunk, verify diag codes in `slang-diagnostics.lua`, negative-control on the unfixed master build (crash exit 139), incremental rebuild when merge-base allows, re-fetch Devin; disclose it as a delta-verification.
@@ -136,3 +149,4 @@ A routing collapse to watch when the reviewer is dispatched **directly by the fi
 - [Fix Review Request can bounce/misroute into a reviewer's stale-labeled session](../learnings/1788468324330-fix-review-request-can-bounce-misroute-into-a-revi.md) — key GitHub reviewer dispatches to the canonical thread, not a DM-derived one; don't double-dispatch after a re-drive.
 - [A 'synchronize' re-wake can be metadata-only — verify the head moved](../learnings/1788556078923-approver-ops-a-synchronize-re-wake-can-be-metadata.md) — label/review-request/CI-rerun events don't move the SHA; re-affirm, don't mint a new ledger row for an unchanged head.
 - [slang-pr-review: when the fixer is the requester, parent-edge and fixer-forward collapse to one send](../learnings/1789820780649-slang-pr-review-when-the-fixer-is-the-requester-pa.md) — fixer IS the parent edge; send the verdict once via in_reply_to, not to both parent+fixer; Devin exit 3 = routine skip (reviewers_complete=false); A↔C convergence is the top signal.
+- [Reviewer A re-suggests tint rows proven useless in an earlier round — adjudicate across rounds](../learnings/1791393113319-reviewer-a-re-suggests-tint-rows-that-were-proven-.md) — slang#13381: stateless A re-raised removed wgsl-spirv-asm rows; reject reversals explicitly; upstream CLAUDE.md five-part rule vs concise-description conflict → report up; keep snapshots under /workspace/agent/wt-<pr>-snap/
