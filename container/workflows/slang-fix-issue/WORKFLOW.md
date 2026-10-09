@@ -98,7 +98,7 @@ uses:
 
 6. **Fix + verify** {#fix} — Use `/slang-code-writer`. Keep the change minimal, follow existing style, stay in one subsystem (parser / semantic checker / IR pass / emitter). Prefer IR pass fixes over emit-level workarounds; when fixing emitters, check sibling `slang-emit-*.cpp` for consistency.
 
-   **One reviewable commit per logical change**, in the order a reviewer should read them: the failing test (step 4), the fix, then any rename/refactor or cleanup the fix needed, then formatting/docs. Each commit builds on its own; its message is `component: imperative summary` plus one paragraph of why. Never a single "fix everything" commit and never a behaviour change mixed with a rename. If the series got messy, `git reset --soft <base>` and re-commit in those slices with `git add <files>` per slice.
+   **Architect the commit series so a reviewer can read the change as steps.** Foundations first: each preparatory refactor, rename, extracted helper or new type is its own commit with no behaviour change, buildable and green on its own. Then the behaviour change, one commit per feature or fix, with the test that proves it (the repro test from step 4 already leads the series). Follow-ups (formatting, docs) last. A commit message is `component: imperative summary` plus one paragraph of why; a reviewer should be able to approve commits one at a time. Never one "fix everything" commit, never a refactor mixed into a behaviour change. When the work landed as a lump, re-split it: `git reset --soft <base>`, then re-commit by slice with `git add <files>` (or `git add -N` + partial commits), and re-verify each slice builds.
 
    After each edit, rebuild and re-run:
 
