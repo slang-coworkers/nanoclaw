@@ -4,6 +4,11 @@
 
 base-common:
   description: "Universal coworker spine — invariants, workspace conventions. Every project type extends this."
+  # Compose-time defaults every typed coworker inherits (leaf-wins). The branch
+  # prefix is shared by the implement workflow and the webhook router, which
+  # recognizes a coworker PR by a `fix/issue-<n>` head branch (container/hooks/pr-auto-map.sh).
+  vars:
+    branchPrefix: fix/issue
   invariants:
     # Each invariant is in its own file so the file path documents the topic.
     # Order is intentional: behavior (principles → safety → truthfulness →

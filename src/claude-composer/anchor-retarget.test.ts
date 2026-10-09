@@ -21,6 +21,9 @@
  * - `### Connecting external accounts`, added to `container/CLAUDE.md` upstream and
  *   EMITTED rather than dropped, so every type carries it. A section strip, rebuilt
  *   from the base document's own section body.
+ * - Three base fragments (principles, scope, workspace) whose lines differ from the
+ *   fixtures' after the ask/proceed, scope and recall rules were consolidated. Line
+ *   substitutions, typed goldens only.
  * - Four fragments whose bodies differ from the fixtures'. Whole-body substitutions
  *   for the ones `main` emits verbatim, line substitutions where typed composition
  *   re-levels headings; the post-edit side is digest-pinned, because reading the
@@ -97,6 +100,22 @@ const REWRITTEN_LINES: readonly { was: string; now: string }[] = [
   {
     was: ' One task per subagent. For recurring/cron work, use `schedule_task` instead.',
     now: ' One task per subagent.',
+  },
+  // Three base fragments edited by the rule-conflict consolidation: the ask/proceed
+  // policy became the single `Ambiguity` principle, the "hacky fix → ask the user"
+  // scope bullet was removed (no user exists in a webhook chain), and the recall
+  // procedure moved into one `Recall rule` block under Workspace.
+  {
+    was: '- Ask when unclear; say "I don\'t know" when you don\'t.',
+    now: '- **Ambiguity:** state your interpretation and proceed, recording the judgment call in your report. Escalate only when a decision blocks you and no acceptable fallback exists — through the `Stuck — need a human decision` row of the **Routing table** (Chain communication › Mechanics); never pause a workflow between steps to ask.',
+  },
+  {
+    was: '- If a fix feels hacky, ask the user whether they want the proper version — skip for trivial/obvious fixes.\n',
+    now: '',
+  },
+  {
+    was: '- `/workspace/shared/` (ro) — cross-group facts. Past-you or a peer may have already solved this. **Recall through a subagent, never inline:** spawn an `Agent` that reads `/workspace/shared/wiki/index.md` (a small catalog of concept pages), picks the ≤2 relevant `/workspace/shared/wiki/concepts/<page>.md`, reads each with `limit=60` — every page opens with a `## TL;DR` — and returns ≤5 bullets. No `wiki/`? Grep `/workspace/shared/learnings/` and read at most 3 hits. **Never read `/workspace/shared/learnings/INDEX.md` inline** — it is the raw atom log (one line per learning, thousands of lines), not a reading surface.\n\nLeave a note in `/workspace/agent/` when a session ends mid-task.',
+    now: '- `/workspace/shared/` (ro) — cross-group facts; past-you or a peer may already have solved this. Reach it only through the recall rule below.\n\nLeave a note in `/workspace/agent/` when a session ends mid-task.\n\n#### Recall rule\n\nBefore investigating or changing anything, spawn one `Agent` subagent with this prompt (substitute `<task>`); never read these files inline:\n\n```\nAgent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it (a small catalog of concept pages; links are relative to /workspace/shared, so `](wiki/concepts/x.md)` means `/workspace/shared/wiki/concepts/x.md`), pick at most 2 concept pages relevant to <task>, read each with limit=60 (every page opens with a `## TL;DR`), and follow their links to cited learnings if needed. If no concept fits, Grep /workspace/shared/wiki/ for keywords. IF NO wiki/ dir: Grep /workspace/shared/learnings/ for keywords and read at most 3 hits. Return ≤5 bullets — title, 1-line summary, file path. No hits → \'no prior hits\'.")\n```\n\nNever read `/workspace/shared/learnings/INDEX.md` — it is the raw atom log (one line per learning, thousands of lines), not a reading surface.',
   },
 ];
 
