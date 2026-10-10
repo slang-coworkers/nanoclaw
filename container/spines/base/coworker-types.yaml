@@ -42,6 +42,13 @@ base-common:
   # active when the `buddy-monitor` overlay is applied, which declares it via
   # `uses.skills`. Listing it on every coworker advertised a skill the agent
   # cannot invoke and that no group had enabled.
+  # Decision rules, rendered as `## Rules` right after Identity (ahead of the
+  # invariants and context): the situation → action table and the exact field
+  # lists of every message and artifact. One statement each; workflows reference
+  # them by name instead of restating field lists.
+  rules:
+    - container/spines/base/context/decision-table.md
+    - container/spines/base/context/report-formats.md
   skills:
     - base-nanoclaw
     - codex-critique

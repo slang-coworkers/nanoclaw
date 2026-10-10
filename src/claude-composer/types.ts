@@ -90,6 +90,12 @@ export interface CoworkerTypeEntry {
   identity?: string;
   invariants?: string[];
   context?: string[];
+  // Decision rules the role applies before it acts: the decision table and the
+  // message/artifact formats. Rendered as `## Rules` right after Identity, ahead
+  // of Invariants and Context, because a reader needs "what do I do when X" and
+  // "what does a report look like" before the platform mechanics that follow.
+  // Append semantics along the chain, like invariants.
+  rules?: string[];
 
   // Catalog references by `name`. Workflows live under container/workflows/,
   // capability skills under container/skills/. See registry.ts.
@@ -258,6 +264,8 @@ export interface CoworkerManifest {
   description?: string;
   invariants: string[];
   context: string[];
+  // Rule fragments (decision table, report formats), rendered under `## Rules`.
+  rules: string[];
   workflows: {
     name: string;
     description: string;

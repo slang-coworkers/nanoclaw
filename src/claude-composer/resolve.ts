@@ -237,6 +237,7 @@ export function resolveCoworkerManifest(
   const identityParts: string[] = [];
   const invariantFiles: string[] = [];
   const contextFiles: string[] = [];
+  const ruleFiles: string[] = [];
   const workflowNames: string[] = [];
   const skillNames: string[] = [];
   const overlayNames: string[] = [];
@@ -270,6 +271,7 @@ export function resolveCoworkerManifest(
       if (entry.identity) leafIdentity = entry.identity;
       if (entry.invariants) invariantFiles.push(...entry.invariants);
       if (entry.context) contextFiles.push(...entry.context);
+      if (entry.rules) ruleFiles.push(...entry.rules);
       if (entry.workflows) workflowNames.push(...entry.workflows);
       if (entry.skills) skillNames.push(...entry.skills);
       if (entry.overlays) overlayNames.push(...entry.overlays);
@@ -335,6 +337,7 @@ export function resolveCoworkerManifest(
       identity: identity || defaultIdentity(title),
       invariants: [],
       context,
+      rules: [],
       workflows: [],
       skills: [],
       tools: [],
@@ -363,6 +366,7 @@ export function resolveCoworkerManifest(
   const identity = readFragments(dedupRelative(identityParts, projectRoot), projectRoot).join('\n\n').trim();
   const invariants = readFragments(dedupRelative(invariantFiles, projectRoot), projectRoot);
   const context = readFragments(filterByCliScope(dedupRelative(contextFiles, projectRoot)), projectRoot);
+  const rules = readFragments(dedupRelative(ruleFiles, projectRoot), projectRoot);
 
   // Classify workflow vs skill by the catalog's declared type. Overlays are
   // not directly invocable; they appear in ## Workflow Customizations only.
@@ -601,6 +605,7 @@ export function resolveCoworkerManifest(
     description: leafEntry?.description?.trim() || undefined,
     invariants,
     context,
+    rules,
     workflows: workflowEntries,
     skills: skillEntries,
     tools: [...tools].sort(),

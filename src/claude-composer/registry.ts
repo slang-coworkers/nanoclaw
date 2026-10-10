@@ -133,6 +133,7 @@ function mergeTypeEntries(base: CoworkerTypeEntry, addon: CoworkerTypeEntry, typ
     identity: addon.identity ?? base.identity,
     invariants: [...(base.invariants || []), ...(addon.invariants || [])],
     context: [...(base.context || []), ...(addon.context || [])],
+    rules: [...(base.rules || []), ...(addon.rules || [])],
     workflows: [...(base.workflows || []), ...(addon.workflows || [])],
     skills: [...(base.skills || []), ...(addon.skills || [])],
     skillSource: addon.skillSource ?? base.skillSource,
