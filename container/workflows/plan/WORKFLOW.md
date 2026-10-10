@@ -22,14 +22,9 @@ Any task ending in a written artifact (plan, investigation, review, research mem
 
 ## Steps
 
-1. **Understand** — restate the ask; identify `mode`. If scope is ambiguous, state your interpretation and proceed — never pause for human confirmation. On restart: if a report exists at `{{report.path}}`, check for a Conclusion/Verdict section — complete → skip to Handoff; partial → resume where it stalled.
-2. **Recall** {#recall} — Before investigating, spawn an `Agent` to scan prior shared learnings (keeps context clean); wiki-first, raw fallback:
-
-   ```
-   Agent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it (it is a small catalog); open at most 2 concept pages with limit=60 to reach their `## TL;DR`. Links inside the wiki are relative to /workspace/shared, so `](wiki/concepts/x.md)` means `/workspace/shared/wiki/concepts/x.md`, identify concept pages relevant to <target>, read up to 2 concept pages and follow their links to cited learnings if needed. If no concept fits, Grep /workspace/shared/wiki/ for keywords. IF NO wiki/ dir: fall back to Grep /workspace/shared/learnings/ for keywords and reading at most 3 hits. Return ≤5 bullets — title, 1-line summary, file path. No hits → 'no prior hits'.")
-   ```
-
+1. **Understand** — restate the ask; identify `mode`. Ambiguous scope → the **Ambiguity** principle (Personality and Principles). On restart: if a report exists at `{{report.path}}`, check for a Conclusion/Verdict section — complete → skip to Handoff; partial → resume where it stalled.
+2. **Recall** {#recall} — Recall per the **Workspace › Recall rule** with `<task>` = `{{target}}`.
 3. **Research** — read code/issues/docs; run Grep, git log; spawn sub-agents for wide scope. Read-only. Send `mcp__nanoclaw__send_message(to="parent")` with a one-line status at the start (use `send_message`, not `<message>`, which only dispatches from the final response).
 4. **Synthesize** {#diagnose} — organize by mode: **plan** = 2–3 approaches with trade-offs; **investigate** = classify + facts vs hypotheses; **review** = findings by severity (must-change / should-change / nit), each file:line; **research** = answer with evidence.
 5. **Deliver** {#deliver} — write to `{{report.path}}` with mode-appropriate sections (status/verdict/conclusion, facts, hypotheses, next, references). Send `mcp__nanoclaw__send_message(to="parent")` with a one-line status when done.
-6. **Handoff** — post a ≤5-bullet summary linking the report. If `plan` and a project implement workflow exists, invoke it immediately; if `review`/`research`, post and stop.
+6. **Handoff** — send a `[Report]` (Report formats) linking `{{report.path}}`. Called from another workflow → return to it. Otherwise: `plan` with a project implement workflow available → invoke it; `review`/`research` → stop.
