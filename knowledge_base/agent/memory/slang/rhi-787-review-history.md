@@ -1,7 +1,7 @@
 ---
 type: project
 title: slang-rhi#787 / PR #881 — review-round history (condensed)
-description: Chronological, condensed record of the #881 explicit-API review rounds (codex OUTPUT_REVIEW + maintainer jhelferty-nv + slang-reviewer) and the superseded #812 forks, kept out of the live parent [[rhi-787-cuda-vulkan-shared-sync.md]] so it stays under budget. Settled history — the current head/gates live in the parent.
+description: Chronological, condensed record of the #881 explicit-API review rounds (codex OUTPUT_REVIEW + maintainer jhelferty-nv + slang-reviewer), the superseded #812 forks, and the 09-24→10-07 ready-flip / re-chase log, kept out of the live parent [[rhi-787-cuda-vulkan-shared-sync.md]] so it stays under budget. Settled history — the current head/gates live in the parent.
 tags: [slang-rhi, synchronization, cuda, vulkan, interop, history]
 resource: https://github.com/shader-slang/slang-rhi/issues/787
 ---
@@ -11,7 +11,7 @@ resource: https://github.com/shader-slang/slang-rhi/issues/787
 Settled history split out of the live parent [[rhi-787-cuda-vulkan-shared-sync.md]] during okf-synthesis
 (2026-09-25). The **current** head, gates, and open items live in the parent; this file preserves how the
 design converged and the review rounds resolved. Head progression on #881:
-`03587b8 → 4b2ba21 → 99263c1 → eaa551f → 6045b8c → 360bd42`.
+`03587b8 → 4b2ba21 → 99263c1 → eaa551f → 6045b8c → 360bd42 → 775f522`.
 
 ## Superseded #812 (register-all internal design) — the other alternative, held
 #812 was the first fix attempt. Its **original create-time approach** (release graphics→EXTERNAL at
@@ -117,6 +117,24 @@ order:
   pointer-caching producers in `m_resourceKeys`; resolve fresh via `getSharedHandleOf` each time (`m_resourceKeys`
   keeps only imported ties). (a) cancel BOTH same-encoder ops (net no-op) + a warning diagnostic. (b) base-path
   graceful `SLANG_E_INVALID_ARG` on out-of-contract operands.
+
+## 360bd42 → ready → 775f522, and the re-chase log (09-24 → 10-07)
+Folded in from the parent by okf-synthesis 2026-10-09.
+- **09-24, `360bd42` per-test clean** (clang Debug `107527665868`, msvc Release `107527665488`): CI 22/22, both
+  round-trips PASSED on both jobs, ray-tracing PASSED, `does not currently own` = 0 (16,361 on `6045b8c`; its top
+  contributors all PASSED, so not a skip artifact). Codex folded `resetForNewSharedResource` dropping the stale tie
+  unconditionally; the residual (a `create*FromNativeHandle` Shared wrapper on a no-export backend) is documented.
+  I held the operator's drafts-only gate (3rd time) and recommended notifying jhelferty rather than flipping.
+- **09-28 the maintainer flipped it.** jhelferty-nv went `ready_for_review` at 19:06:51Z, seconds after "I accept your
+  proposal" (r4126017892, same-encoder fallback), requested skallweitNV, and closed #812 at 19:37Z. We never flipped.
+  Their inline r4124277593 (support table + portability note) and r4124507698 (same-encoder reversal → ERROR) were
+  addressed in `eb5229dfe`, `5f237d8f6`, `775f52231` (debug layer, tests, docs/api.md only).
+- **09-30** reviewer APPROVE_WITH_NITS at 09:00, then **corrected at 09:01 to REQUEST_CHANGES on R4/R5** (session
+  `sess-1785935169470-plpq2f`; its 6taxcp session retracted the APPROVE). A/C runs on 775f522 were lost in the 09-28
+  outage; I declined a bot re-run (small source-verified delta, human review under way).
+- **Re-chases:** 10-02 (`rechase-rhi-881-r4r5-8fb7`), 10-03 (`…-381b`, found #812 already closed, so that terminal step
+  was dropped), 10-07 (`…-5bfe`: jhelferty silent 7 d but reassigned review to skallweitNV on 10-06; the operator was
+  asked 1/2/3). Each run told the operator on the dashboard and re-armed; the current timer is in the parent.
 
 ## Instrument / method lessons that recurred here (folded into the parent's Durable lessons)
 - The **self-hosted-vs-GitHub-hosted** conflation recurred repeatedly: coworkers read the *GitHub-hosted*

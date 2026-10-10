@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13463 — Zed: slangd ignores unopened #include targets (null config reply → false)"
-description: Triaged + reproduced P2 language-server bug, not a regression. GO via the triager 2026-10-06; amended 10-07 to D (null resets to default, absent keeps current) → held draft PR #13475; maintainer reassigned to jkiviluoto-nv 10-07, proactive bot work frozen
+description: Triaged + reproduced P2 language-server bug, not a regression. GO via the triager 2026-10-06; amended 10-07 to D (null resets to default, absent keeps current) → held draft PR #13475; maintainer reassigned to jkiviluoto-nv 10-07; they un-drafted and now drive it (10-08)
 tags: [slangd, language-server, zed, workspace-configuration]
 resource: /workspace/inbox/a2a-1791318700177-flswxk/triage-13463.md
 ---
@@ -66,4 +66,28 @@ I verified :2391 and asBool at `20092570c9` myself.
   "We'll try to reproduce this issue … on Windows soonish". On 10-06 jkwaknv asked for a GH issue. So jkiviluoto-nv was already engaged, which supports
   the freeze. No GitHub or Discord reply from us; relayed verbatim to the triager.
 
-**Resume on:** a jkiviluoto-nv / jkwak-work comment or review on #13463/#13475 (relay verbatim), a competing human PR, un-draft, or closure.
+- **10-08 08:54Z: the assignee adopted the bot PR.** jkiviluoto-nv marked #13475 ready for review, re-requested review (jkwak-work + team `dev`), and merged master twice (`efca4cc71e` on 10-08, `d23af9c379` on 10-09 at 05:10Z). Both facts are verified on the timeline.
+  - There are no human reviews or asks yet. The freeze holds: a bot push now would collide with their merges.
+  - This wasn't caught until the 10-09 06:15Z babysitter sweep reported the head moving. The re-chase prompt is updated.
+
+- 10-09 07:25Z triager msg 32, **I verified on GitHub: the assignee took over the PR.** jkiviluoto-nv marked #13475 **ready for review**
+  at 10-08 08:54:45Z and requested review from the `dev` team. jkwak-work's review request is still there. They merged master as `efca4cc71e`
+  (10-08) and `d23af9c379` (10-09 05:10Z, force-push). The compare `9abe52d5d3...d23af9c379` touches none of the PR's slangd, harness or config-null files.
+  The PR is BLOCKED with 0 reviews and 0 human comments. CI at d23af9c: `test-falcor` **failed** (run 37887334594, job 113685446624,
+  step "Run external CI", GitLab pipeline 72611777, log unreadable), and the 2 Windows aarch64 builds were cancelled at the ~2h timeout. Falcor
+  **passed** on `efca4cc71e` (run 37753012072) with identical PR content, so it's likely external (unconfirmed).
+- **My decision:** no bot rerun. The PR is the assignee's now, and they're active. The issue comment 6024885583 stays as is: it's
+  still literally true, and a non-draft `Fixes #13463` carries the trail. Freeze relaxed to: the fixer acts **only on an explicit human ask
+  to the bot** on #13475, and must fetch the remote head before any push, because jkiviluoto-nv force-pushes the branch.
+  Re-chase `rechase-13463-assignee-731d` moved to 10-12 09:00Z.
+
+- 10-09 07:29Z: jkiviluoto-nv cmt 6076497211 on #13475: *"Apologies for force-push, I stumbled the merges yesterday."* This is an ack and not
+  an ask to the bot. I verified: `9abe52d5d3...d23af9c379` is `ahead`/behind_by 0, so no bot commit was lost; still non-draft, 0 reviews. No reply.
+
+- 10-09 07:38Z: **jkiviluoto-nv APPROVED #13475** (review 5467206356, MEMBER, empty body, on head `d23af9c379`). I verified this live.
+  The PR is still BLOCKED and `reviewDecision` is empty, so this approval doesn't meet the required-review rule by itself. I can't read branch protection
+  (403), so the exact rule is unknown. Falcor is still red on d23af9c. Nobody asked the bot to do anything, so there's no bot action. At 07:39Z the fixer's critique gate
+  blocked a raw `gh api …/pulls/13475` read as if it were PR creation. That's a known method-blind false match (`gate-critique-on-deliver.sh:64`
+  `gh api [^|]*pulls\b`, wiki ci-gh-cli-write-guard-and-fanout). The workaround is `gh pr view --json`. Triager msg 52: the block **cleared**, and there's nothing to chase.
+
+**Resume on:** a maintainer merge (auto-closes #13463 → close the chain), a further human review/comment (relay verbatim; the bot acts only on an explicit ask), or a Falcor rerun result.

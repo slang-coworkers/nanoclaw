@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13480_bitcast_struct_with_resource_ice
-description: "[RESTING on maintainer review/CI release since 10-08 13:40Z] slang#13480 (ArmandLfd, 10-07): bit_cast between two structs that hold a resource (slangpy Tensor→PrimalTensor) ICEs E99997 on all 7 targets; not a regression (2024.1.1+). Triaged 14:31Z (cmt 6040166579). Orchestrator GO 10-07 for a draft PR on A′ (opaque-leaf pre-pass; E41205 gated on resource legalization); draft PR #13507 opened 10-08. WGSL POD bit_cast segfault side finding = new symptom of #13380 (fixed by draft #13381), NOT filed separately."
+description: "[PARKED on maintainer scope decision since 10-09 17:54Z (tangent-vector design note)] slang#13480 (ArmandLfd, 10-07): bit_cast between two structs that hold a resource (slangpy Tensor→PrimalTensor) ICEs E99997 on all 7 targets; not a regression (2024.1.1+). Triaged 14:31Z (cmt 6040166579). Orchestrator GO 10-07 for a draft PR on A′ (opaque-leaf pre-pass; E41205 gated on resource legalization); draft PR #13507 opened 10-08. WGSL POD bit_cast segfault side finding = new symptom of #13380 (fixed by draft #13381), NOT filed separately."
 metadata:
   node_type: memory
   type: project
@@ -63,6 +63,16 @@ The ask timed out unanswered and became **moot at 13:26Z**: the reviewer ran the
 7624/7625; probe matrix 92×8 shows no regressions. Waiting on: (1) a maintainer review plus answers to the 4 merge-blocking questions
 (explanation cmt 6050284690); jhelferty-nv was assigned and review-requested by board-sync; (2) a human to release CI (falcor gate +
 priority gate); (3) the operator's ready flip after CI. On merge: Discord note via slang-discord-support (thread 1555956709565145230).
+
+**10-09 17:54Z tangent-vector design note (cmt 6086339080, no @bot, answers jkwak-work's question):** bit_cast was meant for
+"small" register values with a single target bitcast op; reinterpret (pack/unpack through bytes) was meant for big or user types.
+*Neither was vetted for general use*, and they are "nervous about us just keeping on adding bolted-on functionality here and there"; they want the contracts
+designed and documented first. The type system can't express same-size, has-a-byte-size, or "small". **This bears directly on #13507** (A′ makes new
+struct-with-handle casts legal). Routed verbatim to slang-triager, with a short deferential scope question as the suggested response: keep A′,
+narrow to diagnostic-only (Approach B: ICE → user error, nothing newly legal), or park until the design. #13507 is held, no pushes.
+**Posted 18:03Z, cmt 6086485474** (verified live: 1105 chars, @tangent-vector, cc @jkwak-work, no jhelferty, disclaimer). It asks (a) keep +
+document / (b) diagnostics only / (c) park. The fixer is frozen at 579d248d0c (no pushes, no CI, no body edits). If (b): the triager briefs the fixer to emit E41205 for any
+struct-with-handle cast between different types, keep the CUDA/CPU byte path, and drop the matching tests.
 
 **10-08 02:02Z jkwak-work asked @nv-slang-bot (cmt 6050655801):** what is the difference between bit_cast and reinterpret, and does
 reinterpret do more processing at runtime? Orchestrator routed it verbatim to slang-triager on the canonical thread with

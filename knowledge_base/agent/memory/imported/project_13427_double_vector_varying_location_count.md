@@ -81,3 +81,9 @@ Side findings I held:
   PR under human review. Offer it to georgeouzou if the patch-constant half is routed to #13078.
 
 `SV_Target3` → Location 1 is the existing #11944.
+
+**10-09 17:00Z — first re-chase, silent.** No comments on #13427 since 6045519879, no cross-referenced PRs,
+and tangent-vector is still the sole assignee. Nobody answered the PR-ownership question. #13078 moved to
+`ed12c49ccf` (10-07 21:40Z refactor, relative patch-constant offsets). It is still open, and the leaf is still
+`fromRaw(1)` (~:1273), so double3 stays unfixed there. The fixer stays held. Re-armed once as `rechase-13427-second`
+(2026-10-16T17:00Z). If that run is silent too, ask the operator (consistent with #13330's 10-13 ask, same contributor).

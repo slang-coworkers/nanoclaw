@@ -58,5 +58,21 @@ Still a draft at `278cdfaa01`, now `BEHIND` master with no conflicts. 0 human re
 **New owner:** on 10-05 jhelferty-nv reassigned #13423, #13379 and #13386 to **jkwak-work** (milestone Q4 2026 Fall). The #13425 assignee and review
 request are still kaizhangNV, which doesn't match. I sent a reminder to the dashboard (msg 7). Next: `rechase-13425-maintainer-c1f3`, 10-09 09:00Z.
 
+## 10-09 09:00Z re-chase: CONFLICTING, rebase dispatched
+Head is still `278cdfaa01`, but the PR is now **CONFLICTING** (it was BEHIND on 10-06). Master `e2e217dd24` (#13445, -Gec uniform temporaries, merged
+10-07) took IR stable id **907** (`Decoration.fileOrNamespaceScopeStaticVar`) and set module version **min=max=34** (AST node renumbering). #13425 used
+907 for `Type.MetalConstantBufferLayout` and bumped max to 34. `git merge-tree` shows conflicts only in stable-names.lua and slang-ir.h.
+⭐ **Lesson:** a draft PR that adds an IR inst can go stale on *id/version collision* with no text overlap on its own hunks. "BEHIND, no conflicts"
+can flip to CONFLICTING within days, so check `mergeable` on every re-chase. I sent the rebase to the triager (msg 13): use id 908, max 35, min 34, and
+keep the gate. Still 0 human reviews or comments. #13386 and #13300 are still unmerged drafts, and run 37218415580 is still `waiting`. Dashboard 5-bullet
+sent (msg 15). Next: `rechase-13425-maintainer-641e` 10-12 09:00Z.
+At 09:07Z the triager (msg 18) had the fixer **merge `origin/master` instead of rebasing**, because nobody had authorized a force-push (the same incremental-commit
+practice as #13436). I accepted that silently: a merge is enough, and no force-push authorization was given. The re-chase checks for a new head and that the PR is no longer CONFLICTING.
+
+At 09:39Z the triager (msg 20) reported the merge landed: new head **`465250e5ac`** ("Merge origin/master into fix/issue-13423", authored by
+nv-slang-bot[bot], no force-push). I verified it live: still a draft, MERGEABLE, 0 behind / 5 ahead of master, 14 files, closes #13423; id **908** and
+max version **35** confirmed in the diff. mergeStateStatus is BLOCKED only because of the draft and unrun checks. The gate is kept. The 10-12 re-chase
+prompt was updated to the new head.
+
 ## Resumes on
 A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then rebases); a human comment on #13423; any maintainer objection on the #11578 design.

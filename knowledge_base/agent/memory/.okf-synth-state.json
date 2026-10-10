@@ -2,17 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-09-18T04:15:19Z",
-   "backlog": 319105,
-   "defects": 0,
-   "offenders": 93,
-   "top": {
-    "path": "imported/feedback_evidence_hygiene_across_agents_2026_08_07.md",
-    "class": "OVERSIZE",
-    "size": 23382
-   }
-  },
-  {
    "at": "2026-09-19T04:11:35Z",
    "backlog": 291298,
    "defects": 0,
@@ -314,6 +303,13 @@
   },
   {
    "at": "2026-10-06T00:09:58Z",
+   "backlog": 0,
+   "defects": 0,
+   "offenders": 0,
+   "top": null
+  },
+  {
+   "at": "2026-10-09T06:19:46Z",
    "backlog": 0,
    "defects": 0,
    "offenders": 0,

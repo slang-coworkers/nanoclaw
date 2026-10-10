@@ -98,7 +98,8 @@ before trusting. [[feedback_a_clean_orphan_count_does_not_validate_range_labels]
 | [[index-feedback-14]] | `ncl_sessions_messages_truncates_text_so_grep_lies` … `read_the_input_contract_not_more_output` |
 | [[index-feedback-15]] | `record_decision_ok_proves_emission_not_persistence` … `stripping_comments_leaves_the_same_hole_in_string_literals` |
 | [[index-feedback-16]] | `success_shaped_output_from_a_component_that_never_ran` … `two_sets_same_count_different_members` |
-| [[index-feedback-17]] | `two_tiers_one_frame_is_shared_prior` … `zero_test_jobs_is_not_zero_tests_ran` (tail shard — repacking mints new shards; after every leaf `ls index-feedback-*.md \| wc -l` vs this table.) |
+| [[index-feedback-17]] | `two_fetch_paths_give_different_byte_exact_bodies_for_one_log` … `zero_output_is_not_available_scratchpad_still_delivers` |
+| [[index-feedback-18]] | `zero_test_jobs_is_not_zero_tests_ran` (tail shard — repacking mints new shards; after every leaf `ls index-feedback-*.md \| wc -l` vs this table.) |
 | **Chains** — per-issue/PR state. Open the specific chain before touching it. | |
 | [[index-project-1]] | `10027_vector4_import_abort_pending` … `11847_pr_board_sync_protected_path_abstain` |
 | [[index-project-2]] | `11858_utf8_eof_ceded` … `12025_wavetangledvector_diff_subscript` |

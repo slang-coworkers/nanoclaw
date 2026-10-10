@@ -24,3 +24,5 @@ the one mount detail the spine omits.
 - [Self-modification: packages & MCP servers](self-modification.md) —
   install_packages vs workspace pnpm install; add_mcp_server + the vault
   credential-placeholder flow.
+- [Placeholder one-shot tasks fire immediately](task-one-shot-placeholder.md) — create
+  with the real prompt + future time in one call; read it back before quoting the id.
