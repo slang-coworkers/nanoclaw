@@ -48,7 +48,10 @@ import { composeCoworkerSpine } from '../claude-composer.js';
 import { PARITY_MCP, PARITY_PERSONA } from './parity.fixtures.js';
 import { RUNTIME_CONTRACT_PATH } from './runtime-contract.js';
 
-const GOLDEN_DIR = path.join(import.meta.dirname, '__goldens__');
+// This transform set reproduces the goldens as they stood after the base-spine trim
+// (frozen under `pre-section-reorder/`); the later section re-order, `## Rules` and
+// contract fold are bounded by `section-reorder.test.ts` against the live goldens.
+const GOLDEN_DIR = path.join(import.meta.dirname, '__goldens__', 'pre-section-reorder');
 const PRE_DIR = path.join(import.meta.dirname, '__goldens__', 'pre-anchor-retarget');
 
 const OLD_ANCHOR = '[chain-reporting](#chain-reporting)';
@@ -200,7 +203,17 @@ function applyFragmentRewrites(before: string, fragments: readonly { name: strin
   let out = before;
   for (const { name, file } of fragments) {
     const was = fs.readFileSync(path.join(PRE_FRAGMENT_DIR, `${name}.md`), 'utf-8').trim();
-    const now = fs.readFileSync(path.join(SPINE_DIR, file), 'utf-8').trim();
+    // chain-reporting moved on after this transform set was frozen (the GitHub
+    // invariant gained its own heading); its reviewed post-trim body is the
+    // frozen copy, and `section-reorder.test.ts` bounds the later change.
+    const now = fs
+      .readFileSync(
+        name === 'chain-reporting'
+          ? path.join(PRE_FRAGMENT_DIR, 'chain-reporting.post-trim.md')
+          : path.join(SPINE_DIR, file),
+        'utf-8',
+      )
+      .trim();
     expect(
       crypto.createHash('sha256').update(now).digest('hex').slice(0, 16),
       `${file} changed since it was reviewed — read the diff, regenerate the goldens, ` +
@@ -236,7 +249,17 @@ function substitutionDelta(subs: readonly { was: string; now: string }[]): numbe
 function fragmentDelta(fragments: readonly { name: string; file: string }[]): number {
   return fragments.reduce((sum, { name, file }) => {
     const was = fs.readFileSync(path.join(PRE_FRAGMENT_DIR, `${name}.md`), 'utf-8').trim();
-    const now = fs.readFileSync(path.join(SPINE_DIR, file), 'utf-8').trim();
+    // chain-reporting moved on after this transform set was frozen (the GitHub
+    // invariant gained its own heading); its reviewed post-trim body is the
+    // frozen copy, and `section-reorder.test.ts` bounds the later change.
+    const now = fs
+      .readFileSync(
+        name === 'chain-reporting'
+          ? path.join(PRE_FRAGMENT_DIR, 'chain-reporting.post-trim.md')
+          : path.join(SPINE_DIR, file),
+        'utf-8',
+      )
+      .trim();
     return sum + Buffer.byteLength(now) - Buffer.byteLength(was);
   }, 0);
 }

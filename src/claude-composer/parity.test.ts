@@ -108,8 +108,8 @@ describe('composed-document byte parity', () => {
       // `base-common.skills`, chain-reporting's mechanics moved to
       // `/base-nanoclaw`, and the contract's Memory and Connecting sections were
       // rewritten. `anchor-retarget.test.ts` declares each of those.
-      'base-common': '7a5fb3fd5bb57a22',
-      'base-common.persona': '2f83622ec1f6e467',
+      'base-common': '7f2022b3927e195b',
+      'base-common.persona': 'e7a47de9588765d5',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -117,8 +117,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: '63b8f2004e12cc85',
-      'default.persona': '973067cb7b69f05b',
+      default: '42518a076ccdb4f7',
+      'default.persona': '559d22cd27ec5573',
     };
 
     const actual: Record<string, string> = {};

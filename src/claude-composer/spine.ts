@@ -130,7 +130,7 @@ function renderGateBlock(
   position: 'BEFORE' | 'AFTER' | 'START',
   stepId: string,
 ): string {
-  const label = `${overlayName.toUpperCase().replaceAll('-', ' ')} GATE`;
+  const label = gateLabel(overlayName);
   const where =
     position === 'START' ? 'at workflow start' : position === 'BEFORE' ? `before \`${stepId}\`` : `after \`${stepId}\``;
   const demoted = demoteHeadings(body.trim(), 3);
@@ -798,13 +798,11 @@ export function renderCoworkerSections(
     body: '',
   });
 
-  // Before Identity, matching the §4.3 ownership table and upstream's composer:
-  // the contract states environment facts (where attachments land, where memory
-  // lives) that hold for every coworker, so they precede this type's own
-  // material rather than trailing it.
-  if (contract) {
-    sections.push(section(RUNTIME_CONTRACT_SECTION, contract));
-  }
+  // Fragments are substituted with the manifest's vars before normalization, so
+  // a project spine can write `{{vars.repo}}` in an invariant or a rule exactly as
+  // workflows already can; an undeclared var still throws (substituteVars), which
+  // is the right failure for a fragment that names a value the chain lacks.
+  const frag = (body: string, level: number): string => normalizeFragment(substituteVars(body, manifest.vars), level);
 
   // Fragments are normalized to start at h3 so they nest correctly under
   // their ## h2 wrapper regardless of how they were authored. Without this,
@@ -815,15 +813,33 @@ export function renderCoworkerSections(
   // identity), so the leaf's one-paragraph statement of what THIS role does and
   // does not do has nowhere else to reach the agent.
   sections.push(
-    section('Identity', [normalizeFragment(manifest.identity, 3), manifest.description].filter(Boolean).join('\n\n')),
+    section(
+      'Identity',
+      [frag(manifest.identity, 3), substituteVars(manifest.description ?? '', manifest.vars)]
+        .filter(Boolean)
+        .join('\n\n'),
+    ),
   );
 
-  if (manifest.invariants.length > 0) {
-    sections.push(section('Invariants', manifest.invariants.map((f) => normalizeFragment(f, 3)).join('\n\n')));
+  // Rules (the decision table and the message/artifact formats) come right after
+  // Identity: a reader needs "what do I do when X" and "what does a report look
+  // like" before the invariants and the platform mechanics that follow.
+  if (manifest.rules.length > 0) {
+    sections.push(section('Rules', manifest.rules.map((f) => frag(f, 3)).join('\n\n')));
   }
 
-  if (manifest.context.length > 0) {
-    sections.push(section('Context', manifest.context.map((f) => normalizeFragment(f, 3)).join('\n\n')));
+  if (manifest.invariants.length > 0) {
+    sections.push(section('Invariants', manifest.invariants.map((f) => frag(f, 3)).join('\n\n')));
+  }
+
+  // The runtime contract (attachments, memory, conversation history, account
+  // connection) is environment context like the workspace fragment, so it renders
+  // as the tail of Context rather than as the document's opening section — the
+  // opening belongs to the role.
+  const contextBodies = manifest.context.map((f) => frag(f, 3));
+  if (contract) contextBodies.push(contract);
+  if (contextBodies.length > 0) {
+    sections.push(section('Context', contextBodies.join('\n\n')));
   }
 
   // Build name lookups for slash-rewrite. Three distinct resolutions:
@@ -1220,6 +1236,16 @@ export function asNonEmpty(
 // not the PLAN_REVIEW + DIAGNOSIS_REVIEW + OUTPUT_REVIEW siblings). Shared
 // sections are deduped to a single trailing `## Gate Protocol` block per
 // coworker, collected in `sharedGateSections`.
+/**
+ * Label for an overlay's inline gate block: the overlay name upper-cased with a
+ * " GATE" suffix, unless the name already ends in "gate" (critique-gate,
+ * plan-gate), which otherwise rendered as "PLAN GATE GATE".
+ */
+function gateLabel(overlayName: string): string {
+  const base = overlayName.toUpperCase().replaceAll('-', ' ');
+  return base.endsWith(' GATE') ? base : `${base} GATE`;
+}
+
 function emitGate(
   seen: Map<string, { workflowName: string; stepId: string }>,
   staged: Map<string, StagedOverlay | null>,
@@ -1236,7 +1262,7 @@ function emitGate(
   }
   const parsed = staged.get(overlayName);
 
-  const label = `${overlayName.toUpperCase().replaceAll('-', ' ')} GATE`;
+  const label = gateLabel(overlayName);
   const where =
     position === 'START' ? 'at workflow start' : position === 'BEFORE' ? `before \`${stepId}\`` : `after \`${stepId}\``;
 
