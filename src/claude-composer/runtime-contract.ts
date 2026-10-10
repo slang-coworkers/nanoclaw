@@ -51,10 +51,9 @@ export const EMITTED_CONTRACT_SECTIONS = [
   'Memory',
   'Conversation history',
   // Carried, not dropped: the resident gateway fragment covers `connect_url`
-  // and "never ask for a raw credential", but nothing in the spine says don't
-  // run `gh auth login`, don't invent an authorization link, or that a bare 403
-  // does not name who denied it. Emitting is also the safe direction — an agent
-  // reading credential hygiene twice costs nothing.
+  // display and "never ask for a raw credential"; this section holds the rules
+  // that live nowhere else — no `gh auth login`, `ncl groups connect` and its
+  // `action` semantics, and that a bare 403 does not name who denied it.
   'Connecting external accounts',
 ] as const;
 

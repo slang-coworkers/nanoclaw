@@ -237,6 +237,7 @@ export function resolveCoworkerManifest(
   const identityParts: string[] = [];
   const invariantFiles: string[] = [];
   const contextFiles: string[] = [];
+  const ruleFiles: string[] = [];
   const workflowNames: string[] = [];
   const skillNames: string[] = [];
   const overlayNames: string[] = [];
@@ -270,6 +271,7 @@ export function resolveCoworkerManifest(
       if (entry.identity) leafIdentity = entry.identity;
       if (entry.invariants) invariantFiles.push(...entry.invariants);
       if (entry.context) contextFiles.push(...entry.context);
+      if (entry.rules) ruleFiles.push(...entry.rules);
       if (entry.workflows) workflowNames.push(...entry.workflows);
       if (entry.skills) skillNames.push(...entry.skills);
       if (entry.overlays) overlayNames.push(...entry.overlays);
@@ -335,6 +337,7 @@ export function resolveCoworkerManifest(
       identity: identity || defaultIdentity(title),
       invariants: [],
       context,
+      rules: [],
       workflows: [],
       skills: [],
       tools: [],
@@ -363,6 +366,7 @@ export function resolveCoworkerManifest(
   const identity = readFragments(dedupRelative(identityParts, projectRoot), projectRoot).join('\n\n').trim();
   const invariants = readFragments(dedupRelative(invariantFiles, projectRoot), projectRoot);
   const context = readFragments(filterByCliScope(dedupRelative(contextFiles, projectRoot)), projectRoot);
+  const rules = readFragments(dedupRelative(ruleFiles, projectRoot), projectRoot);
 
   // Classify workflow vs skill by the catalog's declared type. Overlays are
   // not directly invocable; they appear in ## Workflow Customizations only.
@@ -509,16 +513,13 @@ export function resolveCoworkerManifest(
 
   // Collect workflow customizations: extends-chains, overrides, and overlays.
   const customizations: WorkflowCustomization[] = [];
-  const manifestWorkflowSet = new Set(workflowEntries.map((w) => w.name));
   for (const wf of workflowEntries) {
     const meta = catalog[wf.name];
-    // Suppress the visible "(extends /base—see section below)" note when the
-    // parent is the implicit `base` workflow that the coworker didn't actually
-    // include. Without this, every concrete workflow would render a phantom
-    // pointer to a section that doesn't exist in this coworker's spine. If a
-    // coworker DOES list `base` in its workflows, the note still renders.
-    const suppressExtendsNote = meta.extendsWorkflow === 'base' && !manifestWorkflowSet.has('base');
-    if (meta.extendsWorkflow && !suppressExtendsNote) {
+    // Every inheritance is recorded, including the implicit `base` parent: the
+    // manifest states what the workflow derives from, and the renderer decides
+    // whether that is worth a visible cross-reference (only when the parent is
+    // itself one of this coworker's rendered workflows — see spine.ts).
+    if (meta.extendsWorkflow) {
       customizations.push({
         workflow: wf.name,
         kind: 'extends',
@@ -601,8 +602,10 @@ export function resolveCoworkerManifest(
     typeName,
     title,
     identity: identity || defaultIdentity(title),
+    description: leafEntry?.description?.trim() || undefined,
     invariants,
     context,
+    rules,
     workflows: workflowEntries,
     skills: skillEntries,
     tools: [...tools].sort(),

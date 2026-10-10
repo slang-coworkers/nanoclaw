@@ -28,15 +28,16 @@ interface Failure {
   message: string;
 }
 
-// Types that are `extends:`'d by other types are treated as abstract bases —
-// they define shared structure (e.g. base-common) but aren't composed on
-// their own. Composing them directly would fail on unresolved traits the
-// parent intentionally leaves for subtypes to bind.
+// Only a type that declares `abstract: true` in its coworker-types.yaml is
+// skipped; every other type is composed, whether or not something extends it.
+// Being named in another type's `extends:` is not evidence that a type is never
+// spawned: `slang-reader` and `slang-writer` are parents AND are used directly
+// as `coworker_type` in production, and inferring "abstract" from the extends
+// graph left exactly those types unvalidated.
 function findAbstractBases(types: Record<string, CoworkerTypeEntry>): Set<string> {
   const bases = new Set<string>();
-  for (const entry of Object.values(types)) {
-    const parents = entry.extends ? (Array.isArray(entry.extends) ? entry.extends : [entry.extends]) : [];
-    for (const parent of parents) bases.add(parent);
+  for (const [name, entry] of Object.entries(types)) {
+    if (entry.abstract === true) bases.add(name);
   }
   return bases;
 }
@@ -306,11 +307,11 @@ function main(): number {
   const leafCount = typeNames.length - abstractBases.size;
   console.log(
     `Validated ${leafCount} coworker type(s) against ${skillCount} catalog entries ` +
-      `(${abstractBases.size} abstract base(s) skipped).`,
+      `(${abstractBases.size} type(s) marked \`abstract: true\` skipped).`,
   );
   for (const name of typeNames) {
     if (abstractBases.has(name)) {
-      console.log(`  skip  ${name}  (abstract base)`);
+      console.log(`  skip  ${name}  (abstract: true)`);
       continue;
     }
     const ok = !failures.find((f) => f.typeName === name);

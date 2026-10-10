@@ -8,11 +8,11 @@
  */
 
 /**
- * An H1 persona deliberately. On the flat `main` path this makes the document
- * carry TWO H1s — `main.persona.md:3` and the persona's own — which is legal and
- * must stay legal: demoting operator-authored headings would be a behaviour
- * change, and `contract-in-spine.test.ts:75-85` cannot see it because its `out()`
- * helper composes without `extraInstructions`.
+ * An H1 persona deliberately. Both render paths wrap the persona in a titled
+ * `## Additional Instructions` section and re-level its headings beneath it, so
+ * this H1 must come out as `### Persona` on the flat `main` path exactly as on
+ * the typed path — `parity.test.ts` asserts that, and `contract-in-spine.test.ts`
+ * cannot because its `out()` helper composes without `extraInstructions`.
  */
 export const PARITY_PERSONA = '# Persona\n\nBe terse.';
 
