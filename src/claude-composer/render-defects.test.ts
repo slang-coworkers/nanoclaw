@@ -282,3 +282,84 @@ describe('abstract flag', () => {
     expect(types['probe'].abstract).toBeUndefined();
   });
 });
+
+describe('overlay gates render at the step where the hook bites', () => {
+  // The critique and plan gates used to carry empty `applies-to`, so a fixer
+  // learned about the hooks only from refusal messages. The real overlay files
+  // are copied into the fixture so this test fails if their anchors regress.
+  const repoRoot = path.resolve(import.meta.dirname, '..', '..');
+  function writeRealOverlay(root: string, name: string): void {
+    for (const f of ['OVERLAY.md', 'MARKER']) {
+      const src = path.join(repoRoot, 'container', 'overlays', name, f);
+      if (fs.existsSync(src)) write(path.join(root, 'container', 'overlays', name, f), fs.readFileSync(src, 'utf8'));
+    }
+  }
+  function fixerFixture(): string {
+    const root = scratch();
+    writeSpineBase(root);
+    // `applies-to.workflows: [base]` reaches a workflow through its implicit
+    // `extends: base`, which the registry only adds when a `base` workflow exists.
+    writeWorkflow(root, 'base', ['## Steps', '', '1. **Go** {#go} — do the work.'].join('\n'));
+    writeWorkflow(
+      root,
+      'fix-thing',
+      [
+        '## Steps',
+        '',
+        '1. **Setup** {#setup} — claim the work.',
+        '2. **Plan** {#plan} — write the plan.',
+        '3. **Fix** {#fix} — edit source.',
+        '4. **Push + draft PR** {#draft-pr} — open the PR.',
+        '5. **Report** {#report} — send `[Fix Report]`.',
+      ].join('\n'),
+    );
+    writeSkill(root, 'codex-critique', 'Critique stages.', ['critique.review']);
+    writeType(
+      root,
+      [
+        'fixer:',
+        '  extends: base-common',
+        '  identity: container/spines/base/identity/role.md',
+        '  workflows: [fix-thing]',
+        '  skills: [codex-critique]',
+        '',
+      ].join('\n'),
+    );
+    writeRealOverlay(root, 'critique-gate');
+    writeRealOverlay(root, 'plan-gate');
+    return root;
+  }
+
+  it('critique-gate renders before the PR step and the report step, plan-gate after setup', () => {
+    const out = composeCoworkerSpine({
+      projectRoot: fixerFixture(),
+      coworkerType: 'fixer',
+      overlays: ['critique-gate', 'plan-gate'],
+    });
+    const i = (needle: string) => {
+      const at = out.indexOf(needle);
+      expect(at, `missing: ${needle}`).toBeGreaterThan(-1);
+      return at;
+    };
+    const setup = i('#### 1. Setup');
+    const planGate = i('⟐ PLAN GATE (after `setup`)');
+    const plan = i('#### 2. Plan');
+    const critiqueBeforePr = i('⟐ CRITIQUE GATE (before `draft-pr`)');
+    const pr = i('#### 4. Push + draft PR');
+    const critiqueBeforeReport = i('⟐ CRITIQUE GATE (before `report`)');
+    const report = i('#### 5. Report');
+    expect(setup).toBeLessThan(planGate);
+    expect(planGate).toBeLessThan(plan);
+    expect(critiqueBeforePr).toBeLessThan(pr);
+    expect(pr).toBeLessThan(critiqueBeforeReport);
+    expect(critiqueBeforeReport).toBeLessThan(report);
+    expect(out).toContain('.critique-required-stages');
+    expect(out).toContain('/workspace/agent/reports/');
+  });
+
+  it('renders no gate text when the group does not apply the overlays', () => {
+    const out = composeCoworkerSpine({ projectRoot: fixerFixture(), coworkerType: 'fixer' });
+    expect(out).not.toContain('⟐');
+    expect(out).not.toContain('.critique-required-stages');
+  });
+});
