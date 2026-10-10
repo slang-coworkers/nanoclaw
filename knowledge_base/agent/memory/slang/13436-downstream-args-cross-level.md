@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13436 — DownstreamArgs lost across option levels (linkWithOptions / addTarget)
-description: Triaged + reproduced bug P2, not a regression. (b) compose-once → held draft PR #13450 (c527aaf207). Maintainer-assigned to kaizhangNV 10-05 18:03Z (before the PR opened). HOLD on C1 precedence; 3 operator decisions pending (2nd ask 10-07)
+description: Triaged + reproduced bug P2, not a regression. PR #13450 (03de207e8c) is ready for review, owned by assignee kaizhangNV, and policy is resolved (append, no dedup). Waiting on the falcor-ci approval + kaizhangNV approval/merge; side-finding filing question open (3rd ask 10-09)
 tags: [slang, cuda, nvrtc, compiler-options]
 ---
 
@@ -115,7 +115,17 @@ Session `nvrtc --gpu-architecture=compute_86` + link `nvrtc --fmad=false` → `.
   AND CI; the falcor gate is a `falcor-ci` pending deployment needing `ci-approvers` **approval** (not a rerun); session → target
   → link is the order Slang COMBINES the lists, and the final NVRTC order can differ (`-I` → include path is emitted first; a6596fb).
 
+- 10-09 09:05Z re-chase (`rechase-13436-precedence-10ab`), all verified live: **no change.** PR OPEN, ready, head 03de207e8c,
+  MERGEABLE / BLOCKED, reviewDecision empty. Reviews are still kaizhangNV COMMENTED (10-07 20:54Z; the one inline thread is outdated
+  and unresolved) + bot. The last human comment is kaizhangNV's "fix the merge conflict?" (cmt 6051725893, 10-08 03:43Z), already
+  answered by bot cmt 6051742987 (merge d074e7779e → 03de207e8c). Nothing new on #13436 since 04:24Z (still open, assigned kaizhangNV),
+  so nothing went to the triager. CI run 37724999088: 47 jobs success, 0 fail, and `falcor-build-approval-gate` WAITING on the `falcor-ci`
+  pending deployment since 10-08 03:55Z (>24 h; reviewers = ci-approvers; current_user_can_approve=false). Operator told it needs an
+  APPROVAL, not a rerun. Dashboard (bounded read, 200 rows back to 10-07 20:55Z): no answer on the side finding. **3rd ask** sent with
+  the report (dashboard msg id 13), recommending A = triager repro + dup-check + file as its own issue. A search found no existing issue.
+  If there's still no answer, keep holding and do not ask again.
+
 ## Resume
-Re-chase `rechase-13436-precedence-10ab` (2026-10-09T09:00Z): CI completion (the falcor gate may need a maintainer rerun,
-cf. #13391), kaizhangNV approval/merge, any new human comment (relay verbatim to the triager). Side finding (3) is the only
-operator question left.
+Re-chase `rechase-13436-merge-42b1` (2026-10-10T09:00Z): falcor gate approved?, falcor job results, kaizhangNV approval/merge, any new
+human comment (relay verbatim to the triager). If merged, confirm #13436 auto-closed and close this record. Side finding: if the answer is
+A, dispatch slang-triager on `gh-issue-shader-slang/slang-13436/side-link-same-object`; if B or no answer, hold with no 4th ask.

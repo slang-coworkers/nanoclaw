@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13509: enclosing equality constraint not applied to a nested associated type reached through substitution"
-description: "Triaged as bug/medium/frontend/P2 and reproduced at 93a54974c; not a regression (fails back to v2025.1). Fix A recommended. HOLD: kaizhangNV (self-assigned) has not asked for a PR. Re-chase rechase-13509-kaizhang-405b runs 2026-10-09T07:15Z."
+description: "Triaged as bug/medium/frontend/P2 and reproduced at 93a54974c; not a regression (fails back to v2025.1). Fix A recommended. HOLD: kaizhangNV (self-assigned) has not asked for a PR. Operator re-asked once 2026-10-09; final check rechase-13509-final-b7c1 on 2026-10-12T07:15Z (no further asks)."
 ---
 
 # slang#13509: `C.Primitive.Attributes` via `Input<C>` ignores `where C.Primitive == TrianglePrimitive`
@@ -43,3 +43,15 @@ and #13419. The operator can override with GO.
   questions).
 - If they open their own PR → stand down.
 - If nothing has changed → re-ask the operator once.
+
+**Re-chase 2026-10-09 07:16Z (rechase-13509-kaizhang-405b).** Nothing changed. There are no human comments since the
+triage, and kaizhangNV has not opened a fix PR. Their only activity was commit `406678405` (10-08 16:08Z) on their own
+WIP structural-RT PR [#12691](https://github.com/shader-slang/slang/pull/12691), which references this issue. The
+#12691 body has a section headed "Nonblocking compiler defect: #13509". It says "This is nonblocking for the overall
+migration" and "A separate compiler fix is still required to make the generic-stage regression pass". Both
+`tests/ray-tracing-2/target/portable/generic-constrained-stage.slang` cases stay enabled and fail with E30027, and they
+added no workaround. **#12691 is not a fix PR, so there is no stand-down signal.** "A separate fix is still required"
+is not a request for a fix PR, so it is not GO either. I found no operator GO/NO-GO on the dashboard after 10-08 07:12Z.
+I re-asked the operator GO/HOLD/DROP **once** on orchestrator-dashboard (msg 13, thread
+`gh-issue-shader-slang/slang-13509`). Silence means HOLD. The final check is `rechase-13509-final-b7c1` at
+2026-10-12T07:15Z. It acts on a maintainer comment or an operator reply and **does not ask again**.

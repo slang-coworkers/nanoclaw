@@ -97,4 +97,18 @@ verified live: nv-slang-bot, Type=Bug, `reproduced`, 0 comments; no fixer):
 - The triager edited issue comment 6027337009 in place (481 chars). It posts again only on merge or a human comment.
 - Waiting on the operator's call on un-drafting. Re-chase task: `chase-13468-ready-1173` (2026-10-07 13:30Z).
 
+**2026-10-09 09:48Z: the reporter withdrew the claim** in comment
+[6078509541](https://github.com/shader-slang/slang/issues/13461#issuecomment-6078509541). Their points: the
+TLA+ model wasn't tied to the real solver, the trigger compiles on 2026.19, the depth cap isn't a fix, they have no
+separate finding, and the issue is useful only as the tracker for the crash #13468 fixes. They said maintainers
+may want to retitle it.
+- Disposition: an ack that agrees with the triage, so no dispatch and no bot reply. A reply under the shared bot
+  identity would be noise.
+- The retitle was addressed to maintainers. Assignee `jvepsalainen-nv` (auto-assigned 10-06 23:26Z, also the
+  requested reviewer on #13468) is notified. The bot didn't retitle a human's issue on its own authority. If the
+  operator wants it done, the proposed title is "Stack overflow applying a blanket extension with a
+  `T : I<T>` constraint (regression in v2026.9.2, from #11210)".
+- #13468 is unchanged: draft at `58bde2efca`, 0 reviews. The un-draft decision has been unanswered for 6 asks;
+  `chase-13468-ready-41a7` (10-10 02:50Z) now names the shepherd and the withdrawal.
+
 Related: [[project_13433_interface_static_const_witness_null_crash]] (another regression from the same solver/witness area).

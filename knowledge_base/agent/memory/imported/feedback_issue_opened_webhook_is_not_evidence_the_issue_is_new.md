@@ -61,3 +61,10 @@ same check as rung 2 above, aimed at comments instead of issue bodies.
 
 ### 2026-10-08, #13411: a dashboard "New issue to triage" can be about a chain I already hold
 Three days after the hold above, `orchestrator-dashboard` sent a templated *"New issue to triage"* for #13411. The issue has no labels and no bot triage comment, because it's our own tracker and its triage is in the body. ⇒ **Before dispatching the triager, check the canonical-thread session and `ncl tasks list | grep <num>`.** If the chain is already held, answer the operator with the triage verdict from live state (subsystem, severity, owner, next step) and send nothing to the triager or GitHub. A triage comment would land in the middle of an open maintainer-to-maintainer exchange.
+
+### 2026-10-10, #13557: deleted and re-filed as N+1 — the sibling Main owns the new number
+jkwak-work filed #13557 at 23:58Z, deleted it, and re-filed the same body as #13558 at 00:01Z. Each filing minted its own Main
+session. ⚠️ `mcp__slang-mcp__github_get_issue` on a deleted issue returns the opaque `'str' object has no attribute 'get'`,
+not "deleted". Use `gh api repos/<o>/<r>/issues/<N>`, which returns **HTTP 410 "This issue was deleted"**. ⇒ **On a 410, search
+for the re-file by title (`gh search issues "<title words>" --owner <org>`) and check its canonical-thread session.** If a sibling
+Main holds it, dispatch nothing from the deleted number's session; the re-file's session routes it.

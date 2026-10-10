@@ -1,6 +1,6 @@
 ---
 type: chain
-description: slang#13488 — `try` on non-throwing ctor/subscript not diagnosed; PR #13503 approved by skiminki-nv + flipped ready by them 2026-10-08, awaiting dshreiner-nv review/CI/merge; autodiff-throws regression follow-up filed as #13508 (unrouted).
+description: slang#13488 — `try` on non-throwing ctor/subscript not diagnosed; MERGED 2026-10-09 (PR #13503, 08d419cbf2) — CLOSED; autodiff-throws regression follow-up filed as #13508 (unrouted).
 ---
 
 # slang#13488 — `try` on a non-throwing constructor/subscript is not diagnosed
@@ -31,3 +31,9 @@ description: slang#13488 — `try` on non-throwing ctor/subscript not diagnosed;
   ready themself** (timeline `ready_for_review` actor = skiminki-nv, so the operator gate wasn't touched). They requested dshreiner-nv's review. MERGEABLE, merge state
   BEHIND, and the PR body references #13508. CI run 37746639315 was in progress with 0 failures at 08:09. The `pr: non-breaking` question is still unanswered.
   Next: dshreiner-nv review → CI → maintainer merge, which auto-closes #13488. Merge stays with the maintainer or the operator, never the bot.
+- **2026-10-09 16:29Z — TERMINAL (checked live):** skiminki-nv merged #13503 (merge commit 08d419cbf2; head 37b6d0e68b = their master merge
+  on top of reviewed 4a8e277605). #13488 auto-closed COMPLETED at 16:29:13Z. Before merge the only red CI job was the external `test-falcor` GitLab pipeline;
+  the fixer re-ran it once, then the merge queue took the PR. The fixer cleaned up its worktree and branch. Re-chase `rechase-13488-pr13503-73bf` cancelled.
+  Open and unrouted follow-ups: #13508 (autodiff of `throws`, bot-filed), #12362 (`findErrorHandler` hang), #13492 (skiminki-nv's own feature request: `throws` on
+  accessors/subscripts/ctors/lambdas).
+- **TERMINAL 2026-10-09 16:29Z.** PR #13503 merged via the merge queue, enqueued by skiminki-nv (merge commit `08d419cbf2`). Group run 37945990216 was all green, with macOS debug taking 99 min on the cold LLVM key. #13488 auto-closed at 16:29:13Z. Before that the PR left the queue 3 times: twice `failed_checks` on 10-08 and once `checks_timed_out` at 11:23Z on 10-09. A human re-enqueued it at 14:40Z. Nothing was posted. Follow-up #13508 is still open and unrouted, with no assignee or comments. `rechase-13488-pr13503-73bf` was already gone from `ncl tasks` when I went to cancel it at ~16:45Z.

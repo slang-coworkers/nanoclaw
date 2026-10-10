@@ -13,7 +13,7 @@ Tick 257 lost 13 min to it before killing it.
 1. In a fresh `tickNNN/` dir, fetch the inputs once, serially (concurrent `ncl` calls hit "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick271/`; repoint `titles.py` to payload4.json and `sed` any `tickNNN` paths).
+2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick273/`; repoint `titles.py` to payload4.json and `sed` any `tickNNN` paths).
    It reads those three files via `SESSIONS_FILE` / `GROUPS_FILE` / `STOPPED_FILE` env vars and
    stops reading outbound once it reaches sessions older than the newest outbound found so far.
    The cost result is exact: it uses the same predicate as the dashboard.
@@ -65,3 +65,10 @@ a board or wrote state. Wait for the pull inside the turn instead (a foreground 
 A triage that posts between the pull and the scan reads as `silent`. Re-check the issue's last comment before nudging. When a closed chain still has a recurring resume trigger (e.g. `recheck-slang-<n>`), pause it.
 
 **pull.sh cache key must compare SORTED lists (tick 271, 2026-10-09):** `pull.sh:594` compared `_c["sess"]` (pull order, as stored in lo-cache from payload3) to `sorted(sess_ids)`. Nearly every chain missed the cache, so the pull hit its 1,500 s timeout at 1800/1876. Fixed in `tick271/pull.sh` (`sorted(_c["sess"] or [])`), and the rerun finished in about 5 min. This is the same bug as tick 269's `refetch_lo.py`. If a pull is still at <50% after 5 min, check the cache hit rate before waiting it out. The board quotes `[Resolution]` from status text, which trips the codex-gate audit line. That's benign for the supervisor board.
+
+**Read this runbook before the first command (tick 272, 2026-10-09 12:00Z).** Tick 272 started the stock `pull-universe.sh` and lost about 4 min before switching to `tick271/pull.sh`. Once switched, it ran end to end in about 30 min with no cache bug. The cost-notice target is the PR the stopped reviewer was reviewing, which can differ from the chain's own PR: the #13489 chain's PR is #13502, but its reviewer was working on #13514. Read the stopped session's newest inbound `[Fix Review Request]` to find it. The final `<message>` board was not delivered from the cron session ("undelivered_message"). Send the board with `send_message(to="orchestrator-dashboard")` mid-turn instead of relying on the final-response block.
+
+**Tick 273 (2026-10-10 00:00Z), ~75 min; it lost 12 min to the stock pull AGAIN.** The task prompt says "follow SKILL.md", and SKILL.md says "use `scripts/pull-universe.sh` (preferred)". **This runbook overrides that. Never launch the stock script; go straight to `tickNNN/pull.sh`**, which took about 5 min. Lessons from this tick:
+- **`needs_cost_notice` false re-arm:** scan sets it whenever `delta != same`. A PR merge or a moved activity stamp on a chain that is still cost-stopped re-arms it even though it's the same pending episode. Check `ncl cost-cap escalations --group <folder>` for the same `pending` row and a live `costNoticeUrl` in state; if both hold, don't re-post.
+- **Nudge race:** a triager that posts after the pull reads as `silent`. Re-read the issue's comments immediately before sending. The #13555 nudge landed 9 min after the triage comment.
+- **The board renderer is `tick273/board273.py`** (board260 with the paths repointed). Strip the dashboard deep-links from the inline chat board to keep it under ~16 KB; the tracker file keeps them.
