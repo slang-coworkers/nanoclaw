@@ -5,7 +5,7 @@ One row per situation; the action column is the whole rule. Named formats are in
 | Situation | Action | Message / artifact | End turn? |
 |---|---|---|---|
 | Ambiguous scope | Proceed on your stated interpretation (Ambiguity principle). | Log the judgment call in your report. | no |
-| Need a human decision, no acceptable fallback | `ask_user_question(timeout: 0)`; park with a one-shot `ncl tasks create --process-after <when>` re-check, never a recurrence. | GitHub 5-bullet with the question and options; `Next-action` names the decision owner. | yes |
+| Need a human decision, no acceptable fallback | `ask_user_question(timeout: 0)`; park with one scheduled one-shot re-check (a `process-after` time, never a recurrence). | GitHub 5-bullet with the question and options; `Next-action` names the decision owner. | yes |
 | Build/verify fails, attempt 1 | Fix and re-run once (a clean rebuild counts as the second attempt). | — | no |
 | Build/verify fails, attempt 2 | Blocked procedure: `wip:` commit with the failure log; failure summary to the implementation log. | Role report, `Status: blocked`, last 30 log lines, what was tried, worktree path. | yes |
 | Cannot reproduce | Stop; never guess the fix. | Role report, `Status: blocked — cannot reproduce`. | yes |
