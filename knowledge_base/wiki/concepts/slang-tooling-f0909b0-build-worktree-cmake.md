@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, stale CMake graphs, DXC/glibc,
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, dxc, glibc, asan, valgrind, sccache, ninja]
-source_count: 25
+source_count: 27
 ---
 
 ## TL;DR
@@ -12,7 +12,7 @@ Building Slang in a per-issue `git worktree` over a shared base clone has a smal
 setup traps that, unhandled, each cost 10–40 minutes — and the CMake build graph can go stale
 under you after a rebase.
 
-- **`git worktree add` does NOT populate submodules** (nor *nested* ones), so configure fails with `non-existent target "SPIRV-Headers::SPIRV-Headers"` or `external/<x> does not contain a CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree before the first configure. If that (or `--reference`) fails with "transport 'file' not allowed" (the URLs are local clones; git ≥2.38 blocks file transport), rerun it as `git -c protocol.file.allow=always submodule update --init --recursive`, then `rm -rf build` and reconfigure; copying `external/` from a worktree with matching pins is the fallback.
+- **`git worktree add` does NOT populate submodules** (nor *nested* ones), so configure fails with `non-existent target "SPIRV-Headers::SPIRV-Headers"` or `external/<x> does not contain a CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree before the first configure. If that (or `--reference`) fails with "transport 'file' not allowed" (the URLs are local clones; git ≥2.38 blocks file transport), rerun it as `git -c protocol.file.allow=always submodule update --init --recursive`, then clear any half-written cache and reconfigure. A script that chains configure behind that step with `&&` stops silently (exit 1, no configure log), so check the submodule log first. Copying `external/` from a worktree with matching pins is the fallback.
 - **A configure that dies on a missing `::` target is almost always an uninitialised nested
   submodule, not a code error** — the nested `external/spirv-tools/external/spirv-headers` is
   the usual culprit even when the top-level shows a SHA.
@@ -21,8 +21,10 @@ under you after a rebase.
   `rm -rf build/CMakeCache.txt build/CMakeFiles` before reconfiguring so it takes effect.
   The DXC build did not block building just the `slangc`/`slang-test` targets (~10 min
   release on 64 cores after a ~13 s submodule init). For slangc-only checks, also turn off
-  RHI/GFX/examples/tests and build `slangc slang-glslang` (~5 min).
-- **After merging master: `git submodule update --init` (pins may have moved), then build the FULL preset** — a targeted `slangc slang-test` build leaves serialized std modules stale after an IR-module-version bump (`E00131 ignoring IR module version`, dozens of `functional/` failures that are not regressions).
+  RHI/GFX/examples/tests and build `slangc slang-glslang` (~5 min). `SLANG_ENABLE_TESTS`
+  requires `SLANG_ENABLE_SLANG_RHI`, and a cached `-D...=OFF` survives a re-configure that
+  merely drops the flag: pass `=ON` explicitly.
+- **After merging master: `git submodule update --init` (pins may have moved), then build the FULL preset** — a targeted `slangc slang-test` build leaves serialized std modules stale after an IR-module-version bump (`E00131 ignoring IR module version`, dozens of `functional/` failures that are not regressions). Even without a merge, a partial `slangc slang-test` build never builds `slang/functional.slang`, so `tests/functional/*` fail.
 - **Rebasing a long-lived worktree can stale the CMake build graph** — a rebase that adds a new
   `.cpp` to a `CMakeLists.txt` leaves `build.ninja` unaware of it → hundreds of `undefined
   reference` at link. Reconfigure (`cmake --preset default`) before rebuilding.
@@ -88,39 +90,38 @@ submodule init took about 13 s (the main clone already had the objects), and a r
 only the `slangc` and `slang-test` targets finished in roughly 10 minutes on 64 cores, even
 though the configure log said "building DXC from source"
 [init time and slangc/slang-test build time on a fresh worktree](../learnings/1790636604671-fresh-slang-git-worktree-init-submodules-before-cm.md).
-When the init fails with "fatal: transport 'file' not allowed" for every submodule, the cause is
-that the submodule URLs resolve to the local `/workspace/agent/slang/external/*` clones and git
-≥2.38 blocks file transport by default (cmake then stops at "Configuring incomplete"). The direct
-fix is to allow it for that one command —
-`git -c protocol.file.allow=always submodule update --init --recursive -q`, then `rm -rf build`
-and reconfigure; a full Release `slangc`+`slang-test` build then took ~6 min at `-j48` on 64 cores
-[protocol.file.allow=always](../learnings/1791414819646-git-worktree-submodule-init-from-local-slang-clone.md).
+When the init fails with "fatal: transport 'file' not allowed", the cause is that the submodule
+URLs are local paths (`/workspace/agent/slang/external/...`) and git ≥2.38 blocks file transport
+by default; in a fresh `git worktree add` of `/workspace/agent/slang` the first casualty is
+`external/WindowsToolchain`. The fix is to allow it for that one command:
+`git -c protocol.file.allow=always submodule update --init --recursive`. If a configure already ran
+against the empty `external/` (cmake stops at "Configuring incomplete"), clear the cache as above
+and reconfigure. The failure can also be silent: a build script that chains configure and build
+behind the submodule step with `&&` just exits 1 with no `configure.log`, so read the submodule
+step's own log first
+[protocol.file.allow=always; silent `&&` stop](../learnings/1791581040071-new-git-worktree-of-workspace-agent-slang-submodul.md).
+With the init fixed, a PR #13535 verify worktree built `slangc`, `slang-test`, `slang-unit-test`,
+`slang-reflection-test` and `test-server` (Release) in ~10 min on 60 cores
+[same init on #13535](../learnings/1791499534921-slang-worktree-build-slang-enable-tests-requires-s.md).
 The older fallback, copying a populated `external/` from another worktree, still works when its
 pins match (`git diff --quiet <base> HEAD -- external .gitmodules`; ~10 min to a build on #13429)
 [copy external/ from a same-base worktree](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md).
 
-Several of these atoms independently flag a **build-subagent hazard**: a subagent that launches
-ninja with `&`/`nohup` and then returns leaves a *detached* build that dies when its shell
-exits (configure half-finished, no artifacts). Tell the build subagent to run in the
-**foreground and block** until ninja returns, or use a Bash `run_in_background` grandchild
-(`( ... ) &`) that survives, and arm a Monitor on the `slang-test` artifact as a backstop —
-but note a Monitor grepping `build.log` mis-fires when *configure* (not compile) failed,
-because `build.log` never gets created, so the subagent's own completion is the source of
-truth
+Several atoms flag the same **build-subagent hazard**: a subagent that launches ninja with
+`&`/`nohup` and returns leaves a *detached* build that dies when its shell exits (configure
+half-finished, no artifacts); on #13017 one returned in ~25 s and kept launching background ops,
+risking two concurrent builds in one dir. Run the build yourself in the foreground or as a Bash
+`run_in_background` grandchild, and check liveness with `pgrep -x ninja` + `readlink
+/proc/<pid>/cwd` (never `pgrep -f`, which matches your own argv). A Monitor grepping `build.log`
+mis-fires when *configure* failed, because `build.log` is never created. An incremental rebuild
+after the first full build is ~2–4 min
 [foreground/block the build](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md),
 [detached ninja dies; check pgrep -x](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md),
 [monitor mis-fires when configure failed](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md).
-Check liveness with `pgrep -x ninja` + `readlink /proc/<pid>/cwd` (never `pgrep -f`, which
-matches your own argv and can't see the worktree path). Reconfirmed on #13017: a generic
-`Agent` subagent handed the build *detached* it (backgrounded it) and returned in ~25 s,
-losing the completion signal and then launching more background ops — risking two concurrent
-builds in one dir; run the build yourself via Bash `run_in_background` or the `pgrep -x
-ninja`/`/proc/<pid>/cwd` poller (an incremental rebuild after the first full build is only
-~2–4 min). Formatting a C++-only worktree change hits the same PATH gap —
-`clang-format`/`gersemi`/`shfmt` aren't installed, so `extras/formatting.sh` prints "needs
-clang-format"; install the pinned version without admin via `python3 -m pip install --user
-clang-format==17.0.6` then `export PATH="$HOME/.local/bin:$PATH"` (Lua diagnostics like
-`slang-diagnostics.lua` are NOT formatted by the script — match style by hand)
+Formatting hits a PATH gap too: `clang-format`/`gersemi`/`shfmt` aren't installed, so install the
+pinned version without admin (`python3 -m pip install --user clang-format==17.0.6`, then
+`export PATH="$HOME/.local/bin:$PATH"`); Lua diagnostics such as `slang-diagnostics.lua` are not
+formatted by the script, so match their style by hand
 [fresh-worktree submodule init + clang-format-17 via pip; don't detach the build](../learnings/1789394522873-fresh-slang-worktree-submodule-init-clang-format-1.md).
 
 ## A/B baselines must be like-for-like: relocated copies, concurrent suites, and the missing CUDA driver
@@ -187,6 +188,13 @@ As of 2026-10 the default Linux preset source-builds DXC (~30 min). When you onl
 -DSLANG_ENABLE_GFX=OFF -DSLANG_ENABLE_EXAMPLES=OFF -DSLANG_ENABLE_TESTS=OFF` and build the
 `slangc slang-glslang` targets, about 5 min on 64 cores
 [slangc-only configure](../learnings/1791180810533-check-a-reused-worktree-s-slangc-provenance-before.md).
+Those switches don't mix freely: `SLANG_ENABLE_TESTS` requires `SLANG_ENABLE_SLANG_RHI`, so
+`cmake --preset default -DSLANG_ENABLE_SLANG_RHI=OFF -DSLANG_ENABLE_GFX=OFF` (tests left at their
+default ON) fails at `CMakeLists.txt:618` with "SLANG_ENABLE_TESTS requires SLANG_ENABLE_SLANG_RHI".
+A verify worktree that needs `slang-test` must keep RHI on. Dropping the flags on re-configure is
+not enough, because the CMake cache keeps the OFF; pass `-DSLANG_ENABLE_SLANG_RHI=ON
+-DSLANG_ENABLE_GFX=ON` explicitly or delete `CMakeCache.txt`
+[TESTS requires RHI; the cache keeps -D OFF](../learnings/1791499534921-slang-worktree-build-slang-enable-tests-requires-s.md).
 
 Separately, **rebasing a long-lived worktree can stale the CMake build graph.** After
 `git rebase origin/master` in a worktree whose `build/` was configured weeks ago,
@@ -213,7 +221,7 @@ shows the pre-regression parent behavior — which looks like a contradiction. D
 if it predates, rebuild before any A/B static-emit comparison. (A stale-but-parent binary is
 still a free known-good baseline for a bisected regression)
 [prebuilt slangc can be stale](../learnings/1787850489737-prebuilt-slangc-in-the-mounted-checkout-can-be-sta.md).
-Reconfirmed 2026-09-10 at a wider gap (binary `2026.13.1-61-ga916653b70` vs source checkout `928f4010f6` — **264 commits apart**): before writing "reproduced on master @ `<sha>`", run `slangc -v` and attribute the observation to THAT revision; keep source inspection distinct from runtime repro (if you read the code at the checkout, say the path is unchanged there rather than implying a fresh run). A codex OUTPUT_REVIEW (which inspects `slangc -v` and git independently) caught this exact overclaim, plus two adjacent ones on the same report: a repro embedded in an issue body drifting out of sync with the standalone repro file after an edit (fix BOTH copies), and conflating a *verified emitted-MSL mismatch* with an *unrun* on-device Metal pipeline-link failure (state which was actually observed) [prebuilt slangc can lag the source checkout — check `slangc -v` before attributing behavior to a commit](../learnings/1789072949461-prebuilt-slangc-binary-can-lag-the-source-checkout.md).
+Reconfirmed 2026-09-10 at a 264-commit gap (binary `2026.13.1-61-ga916653b70` vs checkout `928f4010f6`): attribute an observation to the `slangc -v` revision, and keep source inspection distinct from a runtime repro. The same codex OUTPUT_REVIEW also caught an issue-body repro drifting from the standalone repro file (fix both copies) and a verified emitted-MSL mismatch conflated with an unrun on-device Metal failure [prebuilt slangc can lag the source checkout — check `slangc -v` before attributing behavior to a commit](../learnings/1789072949461-prebuilt-slangc-binary-can-lag-the-source-checkout.md).
 
 The version string has its own staleness, in the opposite direction. `slangc -version` prints
 the git-describe baked in when the version header was last *generated*, and an incremental
@@ -241,7 +249,7 @@ and a 1 GB stack is probably not a recursion overflow
 
 ## After merging master: sync submodules, then build the FULL preset
 
-A `git merge origin/master` stales two things a targeted rebuild does not refresh. **(1) Submodule pins.** The merge can move pins (e.g. `external/spirv-tools`, `spirv-headers`) while the checked-out submodules stay at the old SHAs — `git status` shows ` M external/...` — so the verify build tests a tree CI will never build. Run `git submodule update --init <paths>` (or check `git diff --submodule=short`) right after the merge, before rebuilding [sync submodules after merging master](../learnings/1791250506095-after-merging-origin-master-sync-submodules-before.md). (That atom also reconfirms that the critique gate records only fresh `mcp__codex__codex` calls carrying the canonical `/codex-critique` developer-instructions; a `codex-reply` is never a round.) **(2) Serialized standard modules.** When master bumps the serialized IR module version, `--target slangc slang-test` leaves the std modules stale: a full suite then shows dozens of failures across `functional/`/`numerics/` with `warning[E00131]: ignoring IR module version 32 because this compiler supports IR module versions 33 through 33` and `cannot open file 'slang/functional.slang'`. A full `cmake --build --preset debug` cleared 59 of 60 (the remaining gfx-smoke (cpu) fails on master too). **Rule: after any master merge, build the full preset before running the suite; a sudden jump of dozens of standard-module failures means stale modules, not a regression** [full build after an IR module version bump](../learnings/1791238883748-after-merging-master-that-bumps-the-ir-module-vers.md).
+A `git merge origin/master` stales two things a targeted rebuild does not refresh. **(1) Submodule pins.** The merge can move pins (e.g. `external/spirv-tools`, `spirv-headers`) while the checked-out submodules stay at the old SHAs — `git status` shows ` M external/...` — so the verify build tests a tree CI will never build. Run `git submodule update --init <paths>` (or check `git diff --submodule=short`) right after the merge, before rebuilding [sync submodules after merging master](../learnings/1791250506095-after-merging-origin-master-sync-submodules-before.md). (That atom also reconfirms that the critique gate records only fresh `mcp__codex__codex` calls carrying the canonical `/codex-critique` developer-instructions; a `codex-reply` is never a round.) **(2) Serialized standard modules.** When master bumps the serialized IR module version, `--target slangc slang-test` leaves the std modules stale: a full suite then shows dozens of failures across `functional/`/`numerics/` with `warning[E00131]: ignoring IR module version 32 because this compiler supports IR module versions 33 through 33` and `cannot open file 'slang/functional.slang'`. A full `cmake --build --preset debug` cleared 59 of 60 (the remaining gfx-smoke (cpu) fails on master too). **Rule: after any master merge, build the full preset before running the suite; a sudden jump of dozens of standard-module failures means stale modules, not a regression** [full build after an IR module version bump](../learnings/1791238883748-after-merging-master-that-bumps-the-ir-module-vers.md). A partial-target build gives the same `functional.slang` symptom with no merge at all: building only `slangc slang-test` in a fresh worktree never builds `slang/functional.slang`, so `tests/functional/*` and `tests/dispatcher/smoke` fail. Build all targets before running the full suite ([partial-target build skips functional.slang](../learnings/1791508327549-fresh-slang-worktree-configure-can-fetch-a-stale-s.md); the same atom's stale-`libslang-llvm.so` finding is on [Building & regression-testing Slang's LLVM path](slang-tooling-llvm-target-build.md)).
 
 ## Sanitizers, valgrind, and CMake-content guards
 
@@ -315,17 +323,17 @@ break is the *only* remaining one
 
 `cmake -GXcode` fails at **configure** with "Xcode does not support per-config per-source COMPILE_OPTIONS: <genex> specified for source: X.cpp" whenever a per-source `COMPILE_OPTIONS` (`set_source_files_properties`) carries a `$<CONFIG:...>` generator expression. `XCodeGeneratorExpressionInterpreter::Evaluate()` errors on the **presence** of the context-sensitive condition, not on whether the flags differ by config, so `$<$<NOT:$<CONFIG:Debug>>:-Os>` is rejected even though it yields `-Os` everywhere. Ninja Multi-Config (the `default` preset, used by every CI job including the macOS `xcode-27` runner — a runner label, not the generator) tolerates it, and `CMakePresets.json` has no Xcode generator, so the regression is invisible to CI (slang#13240/#13241). The fix branches on `CMAKE_CXX_COMPILER_ID` at configure time and emits a plain flag on the Clang/AppleClang path, keeping the genex only where a real per-config difference exists (MSVC Debug `/RTC1`). Match `CMAKE_CXX_COMPILER_ID STREQUAL "MSVC"`, not the `MSVC` variable, which is also true for clang-cl. To prove flag equivalence without a full build, compile a trivial two-target project with the same `set_source_files_properties` under `--config Debug`/`Release` verbose and grep the `-O` flags (`file(GENERATE)` can't evaluate `$<CXX_COMPILER_ID>` without a `TARGET`). A configure-only `buildtool: "Xcode"` macOS job in `check-cmake` would guard it ([Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md)).
 
-**Source learnings (25):**
-- [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md) — Full cascade + `ninja: loading build-Debug.ninja: No such file`; explicit external list; a backgrounded subagent build dies — run foreground + Monitor for the artifact.
-- [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md) — #12297 added `slang-rich-diagnostics.cpp`; stale `build.ninja` → hundreds of undefined refs; reconfigure; grep `impl-Debug.ninja` (multi-config), not top-level `build.ninja`.
-- [Slang git worktree needs per-worktree submodule init before cmake configure](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md) — Top-level `--init --depth 1` is enough (no slang-rhi nested / dxc); the `SPIRV-Headers::SPIRV-Headers` `get_target_property` error + leading `-` in `git submodule status` are the tell; first configure also does a ~500 MB DXC clone+build; a Monitor on `build.log` mis-fires when configure (not compile) fails — trust the subagent's completion.
-- [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md) — `git grep` skips submodule trees (excludes vendored `CMAKE_BINARY_DIR` hits); scope by tracked-vs-submodule, not `external/` prefix; `check-submodules.yml` pattern.
-- [slang worktree build needs submodule init; disable DXIL to skip 30-min DXC-from-source on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md) — GLIBC < 2.38 builds DXC from source; `-DSLANG_ENABLE_DXIL=OFF -DSLANG_SLANG_LLVM_FLAVOR=DISABLE`; a `run_in_background` grandchild survives; check `pgrep -x ninja` + `/proc/<pid>/cwd`.
-- [Slang ASan LD_LIBRARY_PATH gotcha is host-wide not container-specific](../learnings/1787840677149-slang-asan-ld-library-path-gotcha-is-host-wide-not.md) — `$(clang-18 -print-runtime-dir)` on `LD_LIBRARY_PATH`; `ASAN_OPTIONS=detect_leaks=0` during build; a lib-path issue makes slang-test silently *ignore* tests (false-green).
+**Source learnings (27):**
+- [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md)
+- [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md)
+- [Slang git worktree needs per-worktree submodule init before cmake configure](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md)
+- [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md)
+- [slang worktree build needs submodule init; disable DXIL to skip 30-min DXC-from-source on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md)
+- [Slang ASan LD_LIBRARY_PATH gotcha is host-wide not container-specific](../learnings/1787840677149-slang-asan-ld-library-path-gotcha-is-host-wide-not.md)
 - [Prebuilt slangc in the mounted checkout can be STALE vs git HEAD](../learnings/1787850489737-prebuilt-slangc-in-the-mounted-checkout-can-be-sta.md) — 198 commits behind, predating the commit under study → shows pre-regression behavior; detect via `slangc -v -g<sha>` + `git merge-base --is-ancestor`; stale-parent binary = free baseline.
 - [264-commit gap; attribute a repro to the `slangc -v` revision, keep source-inspection distinct from runtime repro; codex OUTPUT_REVIEW also caught issue-body/standalone repro drift and a verified-emit vs unrun-on-device conflation.](../learnings/1789072949461-prebuilt-slangc-binary-can-lag-the-source-checkout.md)
-- [valgrind memcheck of slang-llvm JIT: glibc ld.so/dlopen $ORIGIN errors are false positives](../learnings/1788385213783-valgrind-memcheck-of-slang-llvm-jit-glibc-ld-so-dl.md) — Filter to slang frames; memcheck substitutes for MSan when unavailable; strict-aliasing UB is invisible to both, so an x86_64 clean sweep doesn't clear aarch64-only UB.
-- [SGL crashpad guard is SGL_HAS_CRASHPAD, not the SGL_ENABLE_CRASHPAD cmake option](../learnings/1787002587931-sgl-crashpad-guard-is-sgl-has-crashpad-not-the-sgl.md) — Generated `#define` in `config.h` via `file(GENERATE)`; ON only if option AND `find_package` succeeded; `#if` on an out-of-scope macro silently becomes `#if 0` — include `config.h` explicitly.
+- [valgrind memcheck of slang-llvm JIT: glibc ld.so/dlopen $ORIGIN errors are false positives](../learnings/1788385213783-valgrind-memcheck-of-slang-llvm-jit-glibc-ld-so-dl.md)
+- [SGL crashpad guard is SGL_HAS_CRASHPAD, not the SGL_ENABLE_CRASHPAD cmake option](../learnings/1787002587931-sgl-crashpad-guard-is-sgl-has-crashpad-not-the-sgl.md)
 - [Fresh worktree: base clone is `--depth 50` without `--recursive`; init submodules + clang-format-17 via pip; don't detach the build to a plain subagent](../learnings/1789394522873-fresh-slang-worktree-submodule-init-clang-format-1.md) — #13017: worktree inherits uninitialised submodules → `SPIRV-Headers::SPIRV-Headers` configure error; a generic `Agent` backgrounded the build and returned in ~25 s; `pip install --user clang-format==17.0.6` for a C++-only format.
 - [CMake per-target PRIVATE flags don't reach linked OBJECT libraries; `cmake --build -k 0` no-ops (put `-k 0` after `--`)](../learnings/1789384635713-cmake-per-target-compile-flags-don-t-propagate-to-.md) — #12782/#12779: `-fno-exceptions` on `slang-common-objects` missed its generated OBJECT libs; apply the helper per OBJECT target, verify in `compile_commands.json`.
 - [Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md) — Ninja MC tolerates it so CI (no `-GXcode` job) misses it (slang#13240/#13241); branch on `CMAKE_CXX_COMPILER_ID` (not `if(MSVC)` — matches clang-cl); prove flag equivalence with a 2-target throwaway, not `file(GENERATE)`.
@@ -339,5 +347,7 @@ break is the *only* remaining one
 - [reused worktree's slangc can be a revert drill's build; rebuild after restore; slangc-only configure ~5 min](../learnings/1791180810533-check-a-reused-worktree-s-slangc-provenance-before.md)
 - [file transport blocks submodule init; copy external/ from a same-base worktree (#13429)](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)
 - [after merging master that bumps the IR module version, do a FULL build — targeted slangc/slang-test leaves stale std modules (E00131, 59/60 failures cleared)](../learnings/1791238883748-after-merging-master-that-bumps-the-ir-module-vers.md)
-- [git worktree submodule init from local slang clone needs protocol.file.allow=always](../learnings/1791414819646-git-worktree-submodule-init-from-local-slang-clone.md) — "transport 'file' not allowed" on every submodule; `git -c protocol.file.allow=always submodule update --init --recursive`; ~6 min Release build at -j48
+- [New git worktree of /workspace/agent/slang: submodule init needs protocol.file.allow=always](../learnings/1791581040071-new-git-worktree-of-workspace-agent-slang-submodul.md) — "transport 'file' not allowed" (first on `external/WindowsToolchain`); `git -c protocol.file.allow=always submodule update --init --recursive`; a `&&`-chained configure stops silently with EXIT=1 and no configure.log
+- [slang worktree build: SLANG_ENABLE_TESTS requires SLANG_ENABLE_SLANG_RHI (and CMake cache keeps -D OFF)](../learnings/1791499534921-slang-worktree-build-slang-enable-tests-requires-s.md) — fails at CMakeLists.txt:618; pass `=ON` explicitly on re-configure; ~10 min Release build of five targets on 60 cores (PR #13535)
+- [Fresh slang worktree configure can fetch a stale slang-llvm; partial-target build fails tests/functional](../learnings/1791508327549-fresh-slang-worktree-configure-can-fetch-a-stale-s.md) — `slangc slang-test`-only build never builds `slang/functional.slang`; build all targets before the full suite
 - [after merging origin/master, sync submodules before the verify build (` M external/...`); codex-reply not recorded as a critique round](../learnings/1791250506095-after-merging-origin-master-sync-submodules-before.md)

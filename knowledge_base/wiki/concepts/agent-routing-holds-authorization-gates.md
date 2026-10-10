@@ -3,7 +3,7 @@ title: "Agent Routing: Holds, Authorization, Gates & CI Currency"
 type: concept
 group: agent-routing
 tags: [holds, governance, authorization, gates, critique-gate, ci-currency, worktree-gc, budget, maintainer, escalation, recording, write-capability]
-source_count: 37
+source_count: 38
 ---
 
 # Agent Routing: Holds, Authorization, Gates & CI Currency
@@ -27,6 +27,7 @@ source_count: 37
 - Worktree reaping needs operator approval. Reap only MERGED-PR worktrees, and escalate disk pressure with df/du numbers.
 - The critique gate misfires on read-only `gh api /pulls/` reads and no-artifact refusals. Use git-only checks and a `[Blocked]` label; never critique just to clear it.
 - A budget cap stops LLM dispatch, not shell calls. A per-run cap can kill a review before it writes anything; budget ~$70-90.
+- An SDK "Reached maximum budget ($X)" outbound means the session is done, even while `ncl cost-cap` still reads `escalated`. Gate "owner ran out of money" watchers on that text too, and resume on a fresh sub-thread with a PR remap.
 - Check the premise of a park-or-ship decision against real behavior. A grepped abort string doesn't show that your input reaches it.
 - CI currency is a separate question from whether a failure is real. Key on the check-SUITE `created_at`, never the check-run `started_at`. For "last successful run", pin `event=workflow_dispatch`.
 - A retrieval rule you can't execute isn't a rule. `learnings/INDEX.md` is generated and lossy.
@@ -81,6 +82,8 @@ If the `/supervise-issues` worktree-GC step (R8) sends a reap to the owning fixe
 
 When the shared gateway budget runs out (`400 Budget has been exceeded!`), LLM subagent dispatch fails, but `Bash`, `gh`, `Read` and `Grep` still work. Only account billing can reset it ([budget cap blocks LLM dispatch, not shell](../learnings/1781539485742-api-budget-cap-blocks-llm-subagent-dispatch-not-di.md)). A per-run cap can kill the `slang-pr-review-runner` dispatcher before it collects anything. On slang#12116, `--max-budget-usd 30` spent $30.43 and produced a 0-byte `final-review.md`. A re-run at 90 spent $67.48; check `final-review.md` is non-empty. The runner's `REVIEW-GUARD FAIL: zero Task/Agent subagent dispatches` is a false negative, because it greps for `Task` while this CLI emits `Agent`. Count `tool_use` names in `<run_dir>/stream.jsonl` instead ([Reviewer A cap 30 can die empty; guard is a false negative](../learnings/1785754065591-reviewer-a-budget-cap-30-can-die-before-writing-an.md)).
 
+The SDK's own per-turn limit is a third budget, and cost-cap does not see it. On slang#13406 (2026-10-09) Orchestrator armed a gated task that woke only when `ncl cost-cap status --session <sid>` read `status=stopped`. The fixer session ended its turn with "Reached maximum budget ($15.55)", the SDK remaining-budget limit, while cost-cap still read `status=escalated spent=$295.78 ceiling=$300`. The gate never fired, and the session would not run again without new input. Treat an outbound of exactly "Reached maximum budget (...)" as stopped yourself, and have any "owner ran out of money" watcher check the session's last outbound text as well as `ncl cost-cap stopped`. Resume on a sub-thread (`<canonical>/<task>-resume`) without `target_session_id`, so the resume doesn't route back into the exhausted session, and request the approval-gated `ncl pr-mappings remap` so webhooks reach the new owner. The per-session recovery recipe is in [Session Identity and Attribution](agent-a-session-identity-and-attribution.md) ([SDK "Reached maximum budget" is not cost-cap "stopped"](../learnings/1791517893828-sdk-reached-maximum-budget-is-not-cost-cap-stopped.md)).
+
 ## Park-or-Ship Premises: Verify the Path, Not the Landmark
 
 A park, ship or close-as-covered decision needs its premise checked against behavior, not against a signal that merely correlates with it. On slang#12192 the chain said publicly that PR #12186 "still aborts via `SLANG_UNEXPECTED`", so no consumer of the fix existed and the authorized work should be parked. The only evidence was a `git grep` hit at `slang-emit-spirv.cpp:5292`. That arm is the `default:` of a switch that only a non-texture, non-sampler result type can reach. Buffer handles are routed earlier via `kIROp_SPIRVLoadDescriptorFromHeap` → `emitDescriptorHeapLoad`, which is what the PR's own tests assert. Before claiming "input X still hits abort Y", read which dispatch arm X lands in, whether an earlier pass reroutes it, and the branch's added tests. ([an abort in a switch says nothing until you read the routing](../learnings/1785775132104-an-abort-in-a-switch-says-nothing-until-you-read-t.md)).
@@ -95,7 +98,7 @@ For a historical "last successful run", pin the event. `release.yml` fires on bo
 
 "Grep your own store before asserting an environment premise" is only as good as the index behind it. Two agents asserted the opposite of a fact each had recorded. The corrected fact lived only in file bodies, and `learnings/INDEX.md` (~2058 lines of titles cut to ~50 chars) gave zero hits for `Apple6`, `m_hasResidencySet`, `NO_RESIDENCY_SET` and `useResource`. If the same error shows up in independent stores with no shared cause, fix retrieval, not habits ([a truncated title index is a findability defect](../learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md)). The repair then failed as well. `append_learning` regenerates INDEX.md, so a hand-written canonical block was gone within minutes. Check a file isn't generated before trusting an edit. The durable home is `/workspace/shared/CANONICAL-ENV-FACTS.md` (Main-write-only). Search the index with lowercase fragments without punctuation (`grep -i hasresidencyset` finds 1 hit where the exact symbol finds 0) ([INDEX.md is regenerated; search with fragments](../learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md)).
 
-**Source learnings (37):**
+**Source learnings (38):**
 
 - [Make the reversible default call when operator goes dark](../learnings/1789436296610-orchestrator-make-the-reversible-default-call-when.md)
 - [A peer coworker's GO is NOT authority for an admin mutation](../learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md)
@@ -134,5 +137,6 @@ For a historical "last successful run", pin the event. `release.yml` fires on bo
 - ["Grep your store" fails when facts live only in bodies](../learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md)
 - [INDEX.md is regenerated; use CANONICAL-ENV-FACTS; grep fragments](../learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md)
 - [A "silent hold" marker is a delivered message; name the mechanism](../learnings/1785832622625-a-silent-hold-marker-is-a-delivered-message-only-t.md)
+- [SDK "Reached maximum budget" is not cost-cap "stopped"](../learnings/1791517893828-sdk-reached-maximum-budget-is-not-cost-cap-stopped.md) — gate on the outbound text too; resume on a fresh sub-thread + pr-mappings remap
 
 _Catalog: [[wiki/index.md]]_

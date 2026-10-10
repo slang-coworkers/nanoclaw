@@ -5,9 +5,10 @@ type: topic
 
 # Review & process
 
-358 learnings. [Catalog](../index.md)
+365 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
+- ["Rebase clean" ≠ "reviewer saw this code": check which review covered which commits](../learnings/1791580984851-rebase-clean-reviewer-saw-this-code-check-which-re.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
 - [[approver/challenger-miss] A Devin exit-0 run can be CACHED-STALE — verify its cited symbols exist in the current diff; on a Devin-only tier a stale Devin is NO head-current review signal](../learnings/1786694505500-approver-challenger-miss-a-devin-exit-0-run-can-be.md)
 - [[approver/challenger-miss] A plausible, source-verifiable 🔴 can still rest on a STALE review — check the reviewer's head before the finding's merits](../learnings/1786704381826-approver-challenger-miss-a-plausible-source-verifi.md)
@@ -213,7 +214,9 @@ type: topic
 - [Review-completion Monitor: anchor filters to exit markers, not streamed JSON](../learnings/1784380841597-review-completion-monitor-anchor-filters-to-exit-m.md)
 - [Review-resume sweep: check merge-state, token validity, artifact survival before re-running](../learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md)
 - [Review: check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md)
+- [Reviewer A '🔴 traced not reproduced' can be real: always run it with ulimit+timeout before relaying](../learnings/1791542333563-reviewer-a-traced-not-reproduced-can-be-real-alway.md)
 - [Reviewer A ($30 budget cap) can silently produce no final-review.md](../learnings/1784816888015-reviewer-a-30-budget-cap-can-silently-produce-no-f.md)
+- [Reviewer A (claude 2.1.296) ends turn while its background subagents run → stub final-review.md every time; dispatch the REVIEW.md subagents yourself](../learnings/1791609455637-reviewer-a-claude-2-1-296-ends-turn-while-its-back.md)
 - [Reviewer A (claude-pr-review subagents) can give inconsistent advice across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
 - [Reviewer A (compose-and-run) aborts at 600s bg-subagent wait — set CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1790636700676-reviewer-a-compose-and-run-aborts-at-600s-bg-subag.md)
 - [Reviewer A (compose-and-run) can exit before its background subagents finish → REVIEW-GUARD FAIL](../learnings/1791360790085-reviewer-a-compose-and-run-can-exit-before-its-bac.md)
@@ -236,10 +239,12 @@ type: topic
 - [Reviewer A empty final-review.md on large diffs = 600s bg-wait timeout, not a clean result — recover subagents from stream.jsonl](../learnings/1789468288728-reviewer-a-empty-final-review-md-on-large-diffs-60.md)
 - [Reviewer A error_max_budget_usd salvage: subagent final texts are recoverable from stream.jsonl](../learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md)
 - [Reviewer A exit 0 can still be a silent kill: check final-review.md content, not exit code](../learnings/1790895880915-reviewer-a-exit-0-can-still-be-a-silent-kill-check.md)
+- [Reviewer A fails when inner CLI ends its turn with background subagents still running; FileCheck needs libslang-llvm](../learnings/1791598985744-reviewer-a-fails-when-inner-cli-ends-its-turn-with.md)
 - [Reviewer A final-review.md can be a stub — recover the real review from stream.jsonl](../learnings/1790181801645-reviewer-a-final-review-md-can-be-a-stub-recover-t.md)
 - [Reviewer A final-review.md can be a truncated stub — verify size; recover lenses from stream.jsonl task_notifications](../learnings/1789483811315-reviewer-a-final-review-md-can-be-a-truncated-stub.md)
 - [Reviewer A inner CLI can be interrupted mid-run (~17-22 min) with "[Request interrupted by user]"; the guard catches it](../learnings/1790803785855-reviewer-a-inner-cli-can-be-interrupted-mid-run-17.md)
 - [Reviewer A inner CLI can end its turn with background subagents still running — rerun with CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1](../learnings/1791168330129-reviewer-a-inner-cli-can-end-its-turn-with-backgro.md)
+- [Reviewer A INTEGRITY-FAIL can be a false alarm from a concurrent review overwriting slang/tmp/pr-diff.patch](../learnings/1791530998165-reviewer-a-integrity-fail-can-be-a-false-alarm-fro.md)
 - [Reviewer A INTEGRITY-FAIL can be a false positive from a concurrent session overwriting slang/tmp/pr-diff.patch](../learnings/1790899925650-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](../learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md)
@@ -325,6 +330,8 @@ type: topic
 - [slang-pr-review-runner Reviewer A killed by claude CLI 600s background-wait ceiling](../learnings/1791298146686-slang-pr-review-runner-reviewer-a-killed-by-claude.md)
 - [slang-pr-review-runner scripts may lose exec bit; Reviewer A still needs CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)
 - [slang-pr-review-runner: after a container restart, Reviewer A silently falls back to /pnpm/claude and ends early (exit 1)](../learnings/1791207325225-slang-pr-review-runner-after-a-container-restart-r.md)
+- [slang-pr-review-runner: concurrent Reviewer A runs clobber each other in the shared /workspace/agent/slang checkout](../learnings/1791605773844-slang-pr-review-runner-concurrent-reviewer-a-runs-.md)
+- [slang-pr-review-runner: concurrent Reviewer A runs clobber the shared slang/tmp diff — use REPO_ROOT=<worktree>](../learnings/1791539829146-slang-pr-review-runner-concurrent-reviewer-a-runs-.md)
 - [slang-pr-review-runner: export CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0 on every Reviewer A launch (not baked into the scripts)](../learnings/1790837192079-slang-pr-review-runner-export-claude-code-print-bg.md)
 - [slang-pr-review-runner: shared checkout /workspace/agent/slang is contended — run Reviewer A in an isolated worktree to avoid wrong-diff INTEGRITY-FAIL](../learnings/1789222069725-slang-pr-review-runner-shared-checkout-workspace-a.md)
 - [slang-pr-review: `gh auth status` false-negative + inner-CLI reviewers bill separately](../learnings/1790012094150-slang-pr-review-gh-auth-status-false-negative-inne.md)

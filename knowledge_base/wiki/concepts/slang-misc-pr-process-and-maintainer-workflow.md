@@ -3,7 +3,7 @@ title: "Slang PR Process, Maintainer Workflow, and Issue Lifecycle"
 type: concept
 group: slang-grab-bag
 tags: [maintainer, PR-process, merge-queue, CI, GitHub-Actions, issue-lifecycle, bot-permissions, regression-verification, declined-issues, superseded-PRs]
-source_count: 39
+source_count: 41
 ---
 
 # Slang PR Process, Maintainer Workflow, and Issue Lifecycle
@@ -23,6 +23,7 @@ source_count: 39
 - For a codegen asymmetry, lift the BAD leg to the good one (#12004); for a doc-vs-behavior mismatch, measure the behavior fix's cost before assuming code is the real fix (#11682).
 - Source comments describe the code as-is: no change-history narration, no PR/issue pointers. Leave pre-existing comments verbatim (match their style/wrap); a long comment justifying an exceptional case means remove the case (e.g. a default-valued parameter), not reword it.
 - Re-check `gh pr list` after a long build (the reporter may have self-fixed).
+- **A clean textual merge proves nothing about semantics.** "The conflict with sibling PR #N is textual only" is verified by merging #N in a scratch worktree and running BOTH PRs' new tests (exhaustive `DIAGNOSTIC_TEST`s pin the ABSENCE of diagnostics the sibling adds). Merging master into a long-lived API-changing PR: master's newly ADDED code and tests that use the removed API merge cleanly and then fail — grep master's added files for the old forms, run the full suite, and prove causation against a master control at the merge SHA.
 
 Companion: [[wiki/concepts/slang-pr-maintainer-scope-and-evidence.md]] (draft-PR footprint, maintainer-decision reversals).
 
@@ -70,6 +71,12 @@ The Falcor 3-file YML refactor (dispatcher + build + test reusable workflows) in
 
 **No assignee or reviewer on bot PRs.** When jkwak asked the bot on slang#11967 to "make a PR and assign it to me," the ruling was to open the draft with no `--assignee` and no `--reviewer`. The standing operator/dev-team [MUST NOT] on bot assignee/reviewer mutations (naming a maintainer reads as spam; CODEOWNERS auto-routes shader-slang/dev on ready-flip) outranks a maintainer's mechanical request; a triager or fixer is a peer and neither overrides it nor escalates to lift it. The maintainer's intent is met by @-mentioning them in the description prose. The gate applies even at PR-open time, separately from the operator-gated `gh pr ready`/`gh pr merge` writes (comments and labels are free); the fixer correctly bounced the question to the triager edge ([no-assignee gate beats "assign to me"](../learnings/1784277158125-maintainer-assign-the-pr-to-me-loses-to-standing-o.md)). `Closes/Fixes #N` stays off a draft PR, and a `Closes #N` does not excuse omitting the issue footprint while the PR is a draft; a discharged blocker line is actively wrong and gets PATCHed in place, and a create-only token asks the owning tier (slang-rhi#805 → #806).
 
+## A Clean Textual Merge Is Not a Semantic Merge
+
+**Sibling PRs in one diagnostic family.** On #13514 (#13489 Case 2, nested `try`) the PR description said a conflict with the open #13503 "would be textual only". Merging #13503 into the PR head locally was clean, but after a Release rebuild the new `tests/language-feature/error-handling/try-nested-throwing-call.slang` failed with "Exhaustive check failed: Found 6 diagnostic(s) without annotations". #13503 widened E30091 ("callee in 'try' does not throw") from `FuncDecl` callees to any non-throwing `FuncType` callee, which covers subscript `operator[]` and conversion `float.init`; because `//DIAGNOSTIC_TEST:SIMPLE` is exhaustive by default, #13514's rows for `try s[f()]` and `try (float)f()` had silently asserted that E30091 was absent. When two open PRs touch the same diagnostic family, merge them in a scratch worktree and run both PRs' new tests, then restore with `git checkout --detach <pr-head>` and rebuild. Reviewer C (clarity) raised it as a Medium candidate; checking it empirically made it a must-fix (["textual only" sibling conflict: verify by merging and running the new exhaustive tests](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)).
+
+**Merging master into a long-lived API-changing PR.** Taking over stale #11344 (`_Texture<T:ITexelData>`; texture aliases lost their trailing `let format:int`; `Buffer` arity 2→1), `git merge origin/master` reported only textual conflicts. Code and tests that master ADDED after the PR's base and that use the old API merged cleanly as text and then failed: three new core-module intrinsics (`T:ITexelElement` over `_Texture<T,…>`) and five new tests (`RWTexture2D<uint,0,37>`, `Buffer<>` arity, a generic `let value = tex.Load()`, an inferred-format capability check, a reflection `.expected`). The recipe: after resolving the textual conflicts, grep `git diff --diff-filter=AM <base> origin/master -- source tests tools` for the API forms the PR removed; run the full suite; build a master control at the exact merge SHA in a separate worktree and run each failing test there to prove the merge caused it (gfx-smoke failed on both, so it was environmental); and never cite a test as "passing on the merge" from a run taken after you edited its `.expected` — re-run it against the committed file ([merging master into a long-lived API-changing PR: textual conflicts are half the breakage](../learnings/1791498585662-merging-master-into-a-long-lived-api-changing-pr-t.md)).
+
 ## Regression Verification Discipline
 
 Verifying with `build/Release/bin/slangc` is not verifying checkout HEAD; confirm the binary version string and checkout ancestry before claiming a repro on current code (slang#11483's crash was a stale pre-#11211 build) ([stale build, not master](../learnings/1780648913125-correction-slang-11483-crash-was-a-stale-pre-11211.md)). An author-date inside a [good, bad] window does not put a commit in a given release; check with `git merge-base --is-ancestor` (seen on a precompiled `.slang-module` import emitting location-less diagnostics) ([verify commit-vs-tag ancestry](../learnings/1780401515127-slang-precompiled-slang-module-import-triggers-loc.md)). The #11483 reporter was already on a release containing the #11211 crash fix, so the wrong-data symptom is a distinct defect; a GPU-free spirv-val pass cannot refute a runtime/driver symptom, so the issue stays open for hardware retest ([#11483 wrong-data is distinct](../learnings/1780820664909-slang-11483-reporter-s-release-already-had-11211-w.md)). For coverage-manifest bugs, read the association-copy sites and consumer validity guards before accepting a "not propagated" root cause; on #11629 HEAD contradicted it ([#11629 root cause contradicted at HEAD](../learnings/1781626696031-slang-11629-reporter-s-root-cause-contradicted-by-.md)). A P0 merge-queue stopper can be self-fixed mid-build (#11814: the reporter merged an identical #11817 ~14h into our debug build), so re-check `gh pr list` and the linked-PR timeline after the build, before opening a PR ([P0 stoppers self-fixed mid-build](../learnings/1782867800939-p0-merge-queue-stoppers-can-be-self-fixed-mid-buil.md)).
@@ -100,7 +107,7 @@ A rename/branding request has no engineering surface: classify as feature reques
 
 `slang-discord-support` writes only to summon threads in #slang-support/#slang-support-bot; source channels like #slang-discussion are read-only, so answers there come from a human or a summon thread ([support bot posts only to summon threads](../learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md)).
 
-**Source learnings (39):**
+**Source learnings (41):**
 - [verify review state before "idle-mergeable"](../learnings/1790310304171-verify-a-pr-s-actual-review-state-before-framing-i.md) — `mergeable=true` is not APPROVED (#12935).
 - [Closes #N / draft footprint](../learnings/1785751816891-closes-n-does-not-excuse-an-issue-footprint-while-.md) — draft PR still needs an issue footprint; `behind` is no rebase cue.
 - [rotation from indirect evidence](../learnings/1785758534668-reconciling-the-slang-maintainer-rotation-from-ind.md) — search for the topic; ID→handle reverse lookup.
@@ -140,5 +147,7 @@ A rename/branding request has no engineering surface: classify as feature reques
 - [no-assignee gate beats "assign to me"](../learnings/1784277158125-maintainer-assign-the-pr-to-me-loses-to-standing-o.md) — @-mention in the description instead.
 - [doc-vs-behavior: measure the cost](../learnings/1784844793184-a-doc-vs-behavior-bug-can-fix-either-side-measure-.md) — #11682 chose docs-only.
 - [eviction clears auto-merge](../learnings/1785485875128-merge-queue-failed-checks-eviction-clears-auto-mer.md) — manual requeue.
+- ["conflict with sibling PR is textual only": verify by merging and running the new exhaustive diagnostic tests (#13514/#13503)](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
+- [merging master into a long-lived API-changing PR: textual conflicts are only half the breakage (#11344)](../learnings/1791498585662-merging-master-into-a-long-lived-api-changing-pr-t.md)
 
 _Catalog: [[wiki/index.md]]_

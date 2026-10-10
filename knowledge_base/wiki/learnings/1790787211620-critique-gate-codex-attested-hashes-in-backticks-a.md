@@ -3,6 +3,7 @@ title: "critique gate: codex Attested hashes in backticks are not recorded"
 type: learning
 topic: agent-ops
 source: learnings/1790787211620-critique-gate-codex-attested-hashes-in-backticks-a.md
+superseded_by: 1791593288057-codex-critique-attested-lines-with-backticks-are-n
 ---
 
 # critique gate: codex Attested hashes in backticks are not recorded

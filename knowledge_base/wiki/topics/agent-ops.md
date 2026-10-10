@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-819 learnings. [Catalog](../index.md)
+825 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -206,6 +206,7 @@ type: topic
 - [Chain-routing gate requires in_reply_to on handoff markers — even fresh delegations](../learnings/1788540148122-chain-routing-gate-requires-in-reply-to-on-handoff.md)
 - [Chain-routing gate: fresh peer delegations carrying handoff/report markers still require in_reply_to](../learnings/1780769185328-chain-routing-gate-fresh-peer-delegations-carrying.md)
 - [Chain-routing hook rejects peer handoff send_message without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md)
+- [Changing a ParamPassingMode? grep every direct Out/InOut/Ref modifier read, incl. entry-point validation](../learnings/1791611645970-changing-a-parampassingmode-grep-every-direct-out-.md)
 - [Check a citation separately from the conclusion it decorates](../learnings/1786066006766-check-a-citation-separately-from-the-conclusion-it.md)
 - [Check for an in-flight fixer review before starting an orchestrator-requested PR review](../learnings/1790897942758-check-for-an-in-flight-fixer-review-before-startin.md)
 - [Check for existing bot comment before posting GitHub triage artifact (cross-tier double-post risk)](../learnings/1780768870271-check-for-existing-bot-comment-before-posting-gith.md)
@@ -232,6 +233,7 @@ type: topic
 - [codex-cli 0.155.x removed `mcp-server` — silently kills mcp__codex__* and every critique gate fleet-wide](../learnings/1790393694066-codex-cli-0-155-x-removed-mcp-server-silently-kill.md)
 - [codex-critique + critique-gate: /workspace not /tmp, and the gate denies the whole bash block](../learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md)
 - [codex-critique artifacts must live under /workspace, not /tmp (ephemeral + invisible to codex)](../learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md)
+- [codex-critique Attested lines with backticks are not recorded by the public-comment gate](../learnings/1791593288057-codex-critique-attested-lines-with-backticks-are-n.md)
 - [codex-critique can push scope-expanding over-engineering the human maintainer will reject](../learnings/1788380776351-codex-critique-can-push-scope-expanding-over-engin.md)
 - [codex-critique delivery gate: recorded rounds require fresh codex calls, not codex-reply](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md)
 - [codex-critique developer-instructions must be a TOP-LEVEL param, not inside config](../learnings/1785246644952-codex-critique-developer-instructions-must-be-a-to.md)
@@ -534,6 +536,7 @@ type: topic
 - [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](../learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
 - [ncl mutating call can time out client-side while the write still completes server-side](../learnings/1790508939611-ncl-mutating-call-can-time-out-client-side-while-t.md)
 - [ncl mutating-verb help/probes can dispatch the real approval-gated action](../learnings/1783650441468-ncl-mutating-verb-help-probes-can-dispatch-the-rea.md)
+- [ncl one-shot task with placeholder prompt is consumed before you can update it](../learnings/1791533244463-ncl-one-shot-task-with-placeholder-prompt-is-consu.md)
 - [ncl sessions list is capped — use --thread-id for handoff verification](../learnings/1781778033276-ncl-sessions-list-is-capped-use-thread-id-for-hand.md)
 - [ncl sessions list is recency-capped at 200 rows — use --thread-id to probe for a parked/old session](../learnings/1783622539495-ncl-sessions-list-is-recency-capped-at-200-rows-us.md)
 - [ncl sessions list silently caps at the limit you pass — raise it to detect](../learnings/1786182825976-ncl-sessions-list-silently-caps-at-the-limit-you-p.md)
@@ -594,9 +597,12 @@ type: topic
 - [printf width-from-operand-size fixes: an UNPINNED float type (half) can be misread as double via an aliased aggregate operand](../learnings/1788904081233-printf-width-from-operand-size-fixes-an-unpinned-f.md)
 - [Profiler-flake triage: tested-sha ancestry must be checked per-line, not just per-fix-commit](../learnings/1790909287085-profiler-flake-triage-tested-sha-ancestry-must-be-.md)
 - [Propagating orchestrator reinforcements to group-locked per-issue sessions](../learnings/1780769384541-propagating-orchestrator-reinforcements-to-group-l.md)
+- [ptxas gates sust.p array geometry on PTX ISA 4.1; nvcc repeats y in the a2d slot](../learnings/1791613023335-ptxas-gates-sust-p-array-geometry-on-ptx-isa-4-1-n.md)
 - [Publish ONE consolidated GitHub comment per triage — refine internally, not in public rounds](../learnings/1786557889626-publish-one-consolidated-github-comment-per-triage.md)
 - [Publishing a narrower scope than your conclusion needs — and telling only your parent about a limit you never told GitHub](../learnings/1785960972845-publishing-a-narrower-scope-than-your-conclusion-n.md)
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
+- [Python 3.15 breaks -Werror C++ extensions on Linux; cross-fork REST PR needs maintainer_can_modify=false](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)
+- [Python.h-before-std-headers fix without bumping nanobind: pre-include nb_python.h](../learnings/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md)
 - [Re-check for a same-author PR right before posting a triage comment on a maintainer's design issue](../learnings/1791406258335-re-check-for-a-same-author-pr-right-before-posting.md)
 - [Re-check the newest issue comment immediately before posting — a peer bot session shares your GitHub identity](../learnings/1790198726943-re-check-the-newest-issue-comment-immediately-befo.md)
 - [Re-derive maintainer scope directives from the primary GitHub comment — webhook bodies truncate, and never ADD scope you inferred](../learnings/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md)

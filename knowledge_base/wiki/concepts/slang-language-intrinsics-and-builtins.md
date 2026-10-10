@@ -3,7 +3,7 @@ title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
 tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector, capability-atoms, texture-shadow, prefix-expander, min-max]
-source_count: 26
+source_count: 27
 ---
 
 # Slang Intrinsics & Builtins
@@ -34,6 +34,7 @@ Slang exposes GPU intrinsics and builtin types as core-module declarations (`cor
 - **Derive a family's latest-version atom with `getElements()[count-2]`**; `-1` is the stage atom. Internal capability predicates lack `SLANG_API`, so test them through `.slang` behavior.
 - **Statement-level `__requireCapability` and compound `alias` capabilities already exist; there is no generic `IRRequireTargetCapability` op**, and generic-parameter-dependent `[require]` is unsupported. A capability RFC under owner debate is not fix-eligible.
 - **On CPU/LLVM, `half` is always the fallback `struct half` with only `explicit operator float()`**, so `(int8_t)half` fails. Add explicit scalar conversion operators; do not switch to native `_Float16`.
+- **A new texture access kind needs an explicit case in EVERY emitter**: GLSL and WGSL fall into their sampled-`texture` branch, and the SPIR-V `Sampled` switch has no default (its `SLANG_ASSERT` is compiled out in Release). GLSL `image2D` IS `RWTexture2D<float>` (same `_Texture`, access 1), so a diagnostic about a spelled alias must key on the alias, not the canonical type; `readonly` on `RWTexture*` only emits `NonWritable` and is not enforced.
 
 ## `__intrinsic_asm` markers and dot-form methods
 
@@ -66,6 +67,10 @@ Binary `|`, `&`, `^` work on `[Flags]` enums because enums conform to `ILogical`
 ## `static_assert` is function-body only (#13208)
 
 `static_assert(cond, msg)` is a builtin intrinsic function (`core.meta.slang:493`, `__intrinsic_op(kIROp_StaticAssert)`, marked `@experimetal`), not a parser keyword, so it is valid only as an expression-statement inside a function body. At module scope the parser accepts only declarations (`parseDecls`→`ParseDeclWithModifiers`): `static_assert` is consumed as a type name, `(` commits to a function declarator, and the arguments fail the parameter grammar with a misleading `unexpected '(', expected ')'`. Module scope has no decl→expr backtrack (function bodies get one via `parseStatement`), so any global `ident(...)` mis-parses this way; `ident` directly followed by `(` never starts a valid declaration, a usable signal for a tailored diagnostic. Any-scope support is #6136 (register a syntax-decl plus a module-level `kIROp_StaticAssert`; the emit-time checker already recurses the module inst) ([static_assert is function-body only](../learnings/1790019025315-slang-static-assert-is-a-builtin-intrinsic-fn-func.md)).
+
+## Texture access kinds: every emitter, and aliases that share a type (#13536)
+
+Texture access is a core-module int, `kCoreModule_ResourceAccess*` 0-4 (`slang-type-system-shared.h:99-103`), mapped to the public `SlangResourceAccess` in `slang-ir.h:1416` and `slang-ast-type.cpp:2356`. Several emitters have no error for a value they do not handle: GLSL (`slang-emit-glsl.cpp:3735`) and WGSL (`slang-emit-wgsl.cpp:636`) fall into their sampled-`texture` branch, and the SPIR-V `Sampled` switch (`slang-emit-spirv.cpp:3331`) has no default; its only guard, a `SLANG_ASSERT` at :3404, becomes `SLANG_ASSUME` in Release. Adding an access kind (as #13536's `RTexture*` would) therefore needs an explicit case in each emitter. GLSL `image2D` is the same type as `RWTexture2D<float>` (both `_Texture` with access 1, `glsl.meta.slang:4622`), so a diagnostic about `readonly RWTexture*` must key on the spelled alias; keying on the canonical type would also fire on GLSL images. `readonly` on `RWTexture2D` is not enforced: it only emits `NonWritable`, stores still compile on every target, and HLSL, Metal, WGSL and reflection do not change. The texture alias generator's multisample filter (`hlsl.meta.slang:6130`) compares `access >= kCoreModule_ShapeIndex3D`, an access value against a shape constant, which is why `WTexture2DMS` does not exist. #13536 was retitled and widened ten minutes after its webhook fired, so re-read an issue before posting a triage ([texture access kinds: adding one needs every emitter; image2D == RWTexture2D](../learnings/1791500273983-slang-texture-access-kinds-adding-one-needs-every-.md)).
 
 ## Texture gather: `ConstOffset` vs `Offset` (#9382)
 
@@ -103,7 +108,7 @@ Facts that shape any capability RFC triage (#9210, verified @33f9ed0ce): stateme
 
 Falsified earlier claims: vectors take the abstract-type ctor path (#11730); a negated constant gather offset stays a runtime `OpSNegate` (#9382); extending `specializeAddressSpace` to DXIL fixes groupshared params (#10641).
 
-**Source learnings (26):**
+**Source learnings (27):**
 - [static_assert is function-body only](../learnings/1790019025315-slang-static-assert-is-a-builtin-intrinsic-fn-func.md) — global-scope `ident(...)` mis-parses as a decl; any-scope support is #6136 (#13208)
 - [latest-version atom = getElements()[count-2]](../learnings/1784424625402-slang-capability-latest-version-atom-helper-must-u.md) — `-1` is the stage atom; scans are wrong or segfault; no `SLANG_API`
 - [float4(float2,1.f) splat vs tail-pad](../learnings/1784281175141-slang-rhi-798-float4-float2-1-f-splat-vs-tail-pad-.md) — resolves (vec2,vec2) to (x,y,1,1); fix adds explicit w (slang-rhi#798)
@@ -130,5 +135,6 @@ Falsified earlier claims: vectors take the abstract-type ctor path (#11730); a n
 - [E55215 misses prefix-having element types](../learnings/1785214611295-slang-12249-round-2-e55215-diagnostic-misses-prefi.md) — IPTR/UPTR/narrow-int slip past `default:` (#12249)
 - [$TR marker emits the call return type](../learnings/1785372605179-intrinsic-asm-tr-marker-emits-the-call-return-type.md) — fixes `tex2Dgather<$T0>`; full marker list (#12276)
 - [broad generic scalar-decomposition overload loses native aggregate ops for generic callers; use a shared target-aware worker (#13139)](../learnings/1790642295187-slang-core-module-a-broad-generic-overload-that-de.md)
+- [texture access kinds: adding one needs every emitter; image2D == RWTexture2D; readonly RWTexture unenforced (#13536)](../learnings/1791500273983-slang-texture-access-kinds-adding-one-needs-every-.md)
 
 _Catalog: [[wiki/index.md]]_

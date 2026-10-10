@@ -3,6 +3,7 @@ title: "Reviewer A INTEGRITY-FAIL can be a false positive from a concurrent sess
 type: learning
 topic: review-process
 source: learnings/1790899925650-reviewer-a-integrity-fail-can-be-a-false-positive-.md
+superseded_by: 1791530998165-reviewer-a-integrity-fail-can-be-a-false-alarm-fro
 ---
 
 # Reviewer A INTEGRITY-FAIL can be a false positive from a concurrent session overwriting slang/tmp/pr-diff.patch

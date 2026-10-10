@@ -3,7 +3,7 @@ title: "Bot Operational Protocols and Maintainer Interactions"
 type: concept
 group: general-misc
 tags: [operational, maintainer, triage, pr-watcher, scheduling, design-discussion, latent-defect, tracking-issues]
-source_count: 30
+source_count: 31
 ---
 
 # Bot Operational Protocols and Maintainer Interactions
@@ -29,6 +29,7 @@ source_count: 30
 - `append_learning`: never start `content` with a heading. INDEX titles are lowercased, stripped of punctuation and cut to ~50 chars, so search on fragments and put word stems early.
 - A standing gap note's severity depends on which targets it breaks, not on the syntax it names. Recompute its counts before quoting them.
 - If a Discord summon thread drifts off-lane, still answer a fresh in-lane question from the summoner.
+- When a Discord diagnosis is a compiler bug (any ICE/E99997), line 1 says "This is a Slang compiler bug, not your code. Please file it" with the issues link, then a ready-to-paste minimal repro, then workarounds.
 
 How the bot deals with maintainers and contributors and runs recurring work: PR-watcher design, design-discussion etiquette, dedup before filing or fixing, PR iteration, GitHub posting authority, bot identity, correction hygiene, and shared-learnings write mechanics.
 
@@ -108,7 +109,9 @@ Two ownership facts shape repairs. `/workspace/shared/` is writable only by Main
 
 Standing down from off-lane drift on a handled thread (say, a trusted maintainer answering general C++ questions) doesn't mean leaving the thread for good. When the summoner posts a real in-lane question that nobody has answered, answer it ([answer a fresh in-lane question from the summoner](../learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md)).
 
-**Source learnings (30):**
+A correct bug diagnosis still fails if the user can't tell it is a bug. In the 2026-10-08 sweep a #slang-support user with a `bit_cast`→`PrimalTensor` ICE (later slang#13480, reproduced on 7 targets) said the bot "could not resolve it well, but I wasn't sure if it was a bug/issue or a coding error from my side". The bot's "worth filing" sat in a sub-bullet below the workarounds, and the user filed only after a maintainer nudged them 3 days later; the user in a `[Differentiable]` no-op thread still hadn't filed after 16 days. So when the diagnosis is a compiler bug (any E99997 or ICE), make line 1 "This is a Slang compiler bug, not your code. Please file it at github.com/shader-slang/slang/issues", follow with a ready-to-paste minimal repro, and give the workarounds after that ([Discord bug answers: lead with "this is a compiler bug, please file"](../learnings/1791448038149-discord-bug-answers-lead-with-this-is-a-compiler-b.md)).
+
+**Source learnings (31):**
 - [Obsidian-link gap is nav-only; triage by target, recompute counts](../learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md)
 - [A correction isn't applied until every surface is fixed; grep old+new](../learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md)
 - [append_learning injects title as H1; never start content with one](../learnings/1785774989369-append-learning-injects-the-title-as-h1-never-star.md)
@@ -135,6 +138,7 @@ Standing down from off-lane drift on a handled thread (say, a trusted maintainer
 - [Persist parent-agreed timing gates; flag before acting early](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)
 - [Edit in place when last commenter; persist parent ownership claims](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
 - [Off-lane summon thread: still answer a fresh in-lane question](../learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md)
+- [Discord bug answers: lead with "this is a compiler bug, please file"](../learnings/1791448038149-discord-bug-answers-lead-with-this-is-a-compiler-b.md) — #13480 user filed only after a maintainer nudge; repro first, workarounds after
 - [Check a chat-reported bug against GitHub before calling it new](../learnings/1785831640500-resolve-a-chat-reported-bug-against-github-before-.md)
 - [Search issue comments, not just issues, before calling a bug 'untracked'](../learnings/1791148129234-search-issue-comments-not-just-issues-before-calli.md) — the #13421 "untracked" bug was already a comment on #13412; list candidate issues' comments before saying "should be filed".
 - [they/them until stated; fix live misgendering via PATCH](../learnings/1790197020671-default-to-they-them-for-a-person-until-pronouns-a.md)
