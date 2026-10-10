@@ -3,7 +3,7 @@ title: "Slang Parameter Binding and Layout"
 type: concept
 group: slang-grab-bag
 tags: [bitfield, scalar-layout, parameter-binding, vk-binding, layout-kind, entry-point, system-value, SV_Target, SV_Position, validateEntryPoint, type-layout, ir-layout, spirv-layout, descriptor-set, mesh, geometry, E38052]
-source_count: 15
+source_count: 18
 ---
 
 # Slang Parameter Binding and Layout
@@ -21,6 +21,9 @@ source_count: 15
 - **Natural layout already rounds array strides** (`S{double;int}`: size 12, stride 16), so only a nested struct moving later fields tells natural from rounded rules; a `LoadAligned` promise must be a power of two (E41301).
 - On CPU/CUDA the varying layout rules ARE the uniform rules, so a global-scope `in`/`out` takes uniform bytes in reflection; the emitted `GlobalParams` must collect it too or every later offset shifts silently. Layout field keys for a global var must be the var itself, not a module-scope load.
 - Bitfield packing is decided at semantic check from the linkage options and baked into a precompiled module; the importing session's flags do not change it.
+- E31215 (unsized type in a constant buffer) checks only EXPLICIT `ConstantBuffer`/`ParameterBlock` elements, so an unsized `uniform T x[]` at global or entry-point scope lands in the implicit GlobalParams/EntryPointParams with infinite size: the next field gets Offset 0 and SPIR-V fails VUID-04680 (#13530).
+- No existing classifier answers "does this element carry ordinary uniform bytes?": the `Opaque` tag fires on any resource field (mixed structs slip through), `isUniformParameterType` accepts pointers, `isOpaqueHandleType` misses `__DynamicResource`/`SubpassInput`, interface elements are existential data, and a generic `T` is decidable only after entry-point specialization.
+- `GLSLBufferModifier` has no producer (GLSL `buffer` parses to a `GLSLShaderStorageBuffer<…>` var), so every guard testing it is dead code; ask for a reaching test or its removal.
 - A zero-width bitfield becomes the first member of the next backing group; under MSB-first packing its getter reads -1 when the next field is negative.
 - Check bitfield layout without a GPU or MSVC: `-target cpp` output plus g++ `__attribute__((ms_struct))` as an MSVC-layout emulation.
 
@@ -60,6 +63,21 @@ A GLSL global `out vec4 f;` used to abort Metal/CPU/CUDA (and experimental SPIR-
 
 The fix exposes a second disagreement. On CPU and CUDA, `getVaryingInputRules()`/`getVaryingOutputRules()` return the ordinary uniform rules (slang-type-layout.cpp ~2278, ~2545), so a global `in`/`out` (GLSL `out vec4 o;`, or Slang `in uint3 tid : SV_DispatchThreadID;`) gets Uniform bytes in `ScopeLayoutBuilder::_addParameter`, shifting every later global in reflection, resource handles included. If `collectGlobalUniformParameters` skips the varying, the emitted `GlobalParams` struct uses natural C offsets and silently mismatches reflection. A `COMPARE_COMPUTE(filecheck-buffer=CHECK):-cpu -compute -entry computeMain -source-language glsl -output-using-type` test with `RWStructuredBuffer; out vec4 o; uniform vec4 u;` shows it (reads 0.0 instead of `u`); use `-source-language glsl`, since `-allow-glsl` is deprecated and its warning fails the stderr match. On master these shapes SEGFAULT in Release because `SLANG_ASSERT(globalParam)` is only `SLANG_ASSUME` there ([GLSL global in/out on CPU/CUDA: layout gives uniform bytes, emitted GlobalParams doesn't](../learnings/1791335346005-glsl-global-in-out-on-cpu-cuda-layout-gives-unifor.md)).
 
+## Unsized Arrays in Implicit Uniform Buffers: the E31215 Gate and Its Classifiers (#13530, PR #13538)
+
+At master f6238cee3 the E31215 check (`slang-check-decl.cpp:3805-3824`) is gated on `getConstantBufferElementType` (`slang-check-conformance.cpp:635`), which matches only an explicit `ConstantBuffer` or `ParameterBlock`. So `uniform float4 x[]` at global scope, or as an entry-point `uniform` parameter, is never checked. It is packed into the implicit GlobalParams/EntryPointParams buffer with infinite layout size: the next field lands at Offset 0, reflection reports an "unbounded" offset, and SPIR-V fails VUID-04680 (#13530). DeepWiki wrongly claims E31215 already covers GlobalParams ([E31215 skips implicit global/entry-point uniform buffers](../learnings/1791490940298-slang-e31215-unsized-type-in-constant-buffer-skips.md)).
+
+Extending the check needs a predicate for "does this element hold ordinary uniform bytes?", and none of the existing classifiers answers it. `isOpaqueHandleType` as the resource exemption misses `__DynamicResource[]` and `SubpassInput[]` (5 tests regress). The first proposed replacement, `isUniformParameterType(elem) || doesTypeHaveTag(elem, TypeTag::Opaque)`, misclassifies in both directions:
+
+- `Opaque` is set if ANY field is a resource, so `struct M { Texture2D t; float4 v; }` is exempted while `v` stays in GlobalParams as `M_0 m_0[]` (VUID-04680; DXC "array dimensions must be explicit").
+- `isUniformParameterType` returns true for `PtrType`, but `float4* ps[]` is an unsized array of addresses in uniform memory and asserts in SPIR-V emit (`slang-emit-spirv.cpp` ~8953).
+- Interface-typed elements are existentials, i.e. ordinary data: unsized `uniform IFoo xs[]` asserts `!isInfinite()` in type layout.
+- A generic `T` element can only be classified after entry-point specialization, where `EntryPoint::_validateSpecializationArgsImpl` holds the specialized DeclRef.
+
+The same PR fixed two crashes in `getTrailingUnsizedArrayElement` (`slang-check-decl.cpp`): it null-derefs for a struct whose own members are all static (`struct D : Base { static int k; }` in a cbuffer segfaults) and loops forever when the last field has an error type (`struct S { float4 x[]; Undefined y; }` in a cbuffer hangs) ([unsized-array classifiers: Opaque tag and isUniformParameterType misclassify mixed structs and pointers](../learnings/1791508227251-slang-unsized-array-classifiers-opaque-tag-and-isu.md)).
+
+A review of #13538 also found a dead guard. `GLSLBufferModifier` (`slang-ast-modifier.h`) is never created: there is no `_makeParseModifier("buffer", …)` entry and no meta-file syntax produces it. The GLSL `buffer` keyword goes through `parseGLSLShaderStorageBufferDecl` (`slang-parser.cpp` ~6164), which builds a `GLSLShaderStorageBuffer<…>`-typed variable instead; `getConstantBufferElementType` already excludes that type and `isUniformParameterType` treats it as a resource. A revert drill that removed the PR's new `!varDecl->hasModifier<GLSLBufferModifier>()` conjunct passed 378/378 (tests/glsl-intrinsic, tests/glsl, tests/bugs/13306 and the PR tests), and the pre-existing checks at `slang-check-decl.cpp:3051` and `slang-lower-to-ir.cpp:12507` are equally unreachable under current parsing. A new guard on this modifier needs a test that reaches it, or removal ([GLSLBufferModifier has no producer — guards that test it are dead code](../learnings/1791516340522-glslbuffermodifier-has-no-producer-guards-that-tes.md)).
+
 ## Bitfields: Packing Is Fixed at Semantic Check and Baked Into Modules
 
 Bitfield offsets are decided at semantic-check time, not per target. `SemanticsDeclAttributesVisitor::visitStructDecl` (`slang-check-decl.cpp` ~20922) reads the packing rule from the *linkage* option set and stores the result in `BitFieldModifier::offset` → `IRBitFieldAccessorDecoration`. Consequently (verified on #13296, where `-msvc-style-bitfield-packing` packs MSB-first although MSVC packs LSB-first), a `.slang-module` built with the flag stays MSB-first when imported into a session that does not pass it. Packing is a property of the module build, so an option change or deprecation warning reaches only whoever builds the module. Any new `CompilerOptionName` also needs its own case in `writeCommandLineArgs` (`slang-compiler-options.cpp`), which re-emits options into the SPIR-V/LLVM debug command line and omits an option by default ([bitfield packing is baked into precompiled modules; gcc ms_struct is a GPU-free MSVC-layout oracle](../learnings/1790625408306-slang-bitfield-packing-is-baked-into-precompiled-m.md)).
@@ -70,7 +88,7 @@ Zero-width fields (`T x : 0`) show how the checker groups backings (`slang-check
 
 ---
 
-**Source learnings (15):**
+**Source learnings (18):**
 - [IR layout field keys: getSimpleVal on a global var emits a module-scope load; element vs offset-element layouts disagree → introduceExplicitGlobalContext abort (#9078, PR #13467)](../learnings/1791330554022-slang-ir-layout-field-keys-getsimpleval-on-a-globa.md)
 - [GLSL global in/out on CPU/CUDA: varying rules are the uniform rules, so reflection counts bytes the emitted GlobalParams doesn't (silent offset shift)](../learnings/1791335346005-glsl-global-in-out-on-cpu-cuda-layout-gives-unifor.md)
 - [vk::binding entry-point diagnostic predicate (AST-type) must match binder's layout-kind contract](../learnings/1782864612564-vk-binding-entry-point-diagnostic-predicate-ast-ty.md)
@@ -86,3 +104,6 @@ Zero-width fields (`T x : 0`) show how the checker groups backings (`slang-check
 - [Natural and user ScalarDataLayout share one IR op; DX-layout pointer rule; sizeof/alignof target-independent](../learnings/1790635577609-slang-layout-ir-rule-natural-doubles-as-user-scala.md)
 - [Slang IR natural layout already rounds array strides; BAB alignment promises must be powers of two](../learnings/1790769300394-slang-ir-natural-layout-already-rounds-array-strid.md) — `S[N]` can't tell natural from rounded; use `U{S z; float w;}`; E41301 pow2; local DXC `sizeof` oracle.
 - [GLSLVaryingLayoutRulesImpl inherits a type-blind GetVectorLayout: double3/4 get 1 Location (08721/08722); hull patch-constant output layout is a separate IR path (#13427)](../learnings/1791134194001-vulkan-64-bit-varying-location-counts-slang-glsl-v.md)
+- [E31215 (unsized type in constant buffer) skips implicit global/entry-point uniform buffers (#13530)](../learnings/1791490940298-slang-e31215-unsized-type-in-constant-buffer-skips.md)
+- [unsized-array classifiers: Opaque tag and isUniformParameterType misclassify mixed structs and pointers; getTrailingUnsizedArrayElement crashes (PR #13538)](../learnings/1791508227251-slang-unsized-array-classifiers-opaque-tag-and-isu.md)
+- [GLSLBufferModifier has no producer — guards that test it are dead code (revert drill on #13538)](../learnings/1791516340522-glslbuffermodifier-has-no-producer-guards-that-tes.md)

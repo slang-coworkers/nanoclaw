@@ -3,7 +3,7 @@ title: Classifying red Slang CI — infra/flake vs. real regression
 type: concept
 group: ci-tooling
 tags: [slang-ci, test-falcor, flake, infra, rerun, ci-triage, gpu-jobs, regression]
-source_count: 15
+source_count: 17
 ---
 
 # Classifying red Slang CI — infra/flake vs. real regression
@@ -12,6 +12,7 @@ source_count: 15
 
 - **Read the fresh failing-job log before touching code.** Most single-job reds on `shader-slang/slang` are infra/flake, not your diff — but the log line is what tells the two apart, and the cause varies run-to-run.
 - **`test-falcor / Test (Falcor)` is an external-CI bridge**, not a test runner. It fails on infra (`run-external-ci: trigger failed: HTTP Error 403: Forbidden`, or an expired Slang artifact) far more often than on a real regression. A bail in ~15s with no shader diagnostics ⇒ infra, your compiler change is cleared. It is typically **non-required**.
+- **`test-falcor` is not required and is not in `check-ci`'s `needs`, and on `merge_group` it always skips** (its approval-gate grand-parent is skipped there), so the merge queue never runs the Falcor bridge test. Read required contexts from `branches/master`, not the 403ing `/protection` endpoint.
 - Falcor has **≥2 distinct infra modes** (403 auth wall, expired artifact). Don't propagate "artifact-TTL is THE Falcor cause" — re-read the log each time. A `--failed` rerun does NOT regenerate an expired artifact; a full `gh run rerun <id>` does. A 403 wall is not rerun-fixable — stop after ~2 attempts.
 - GPU jobs (`test-windows-*-gpu-vk / test-slang`) flake/timeout: a step stuck `in_progress` at completion with an empty `--log-failed` is a timeout/cancellation, not an assertion failure. React to the current head only (a new push auto-cancels prior runs).
 - **Uniform** failure across *every* `test-slang` job (all OSes/arches, incl. CPU) ⇒ a deterministic `.slang` failure. Separate three causes: the PR's own new test, a PR-introduced regression of a pre-existing test, or inherited master-side breakage.
@@ -62,10 +63,25 @@ STOP, don't burn a 3rd rerun. Escalate to the CI team, since it's likely systemi
 PR running test-falcor); if test-falcor is required it shows `mergeStateStatus=BLOCKED`
 ([don't rerun past 2×](../learnings/1788220633639-test-falcor-ci-failure-with-external-ci-trigger-40.md)).
 Verify required-status membership with
-`gh api repos/shader-slang/slang/branches/master/protection --jq '.required_status_checks.checks[]?.context'`;
-if `falcor` isn't listed, a persistent red there does not block merge. Don't reproduce/fix code
+`gh api repos/shader-slang/slang/branches/master --jq '.protection.required_status_checks.contexts'`
+(the `/branches/master/protection` endpoint returns 403 for the app token); the required contexts
+are `check-formatting`, `check-ci` and `SlangPy Tests`. `test-falcor` is neither a required context
+nor in `check-ci`'s `needs`, so a persistent Falcor red does not block merge. Don't reproduce/fix code
 and don't post a GitHub bot comment for it (noise on a human-shepherded PR)
-([non-required, classify as infra](../learnings/1788206678107-test-falcor-ci-failures-are-usually-external-bridg.md)).
+([non-required, classify as infra](../learnings/1788206678107-test-falcor-ci-failures-are-usually-external-bridg.md),
+[test-falcor is not in check-ci's needs](../learnings/1791509362714-slang-sanitizer-job-s-pr-related-label-is-file-att.md)).
+
+**On `merge_group` runs `test-falcor` always skips, although the Falcor-only build runs.**
+`falcor-build-approval-gate` is skipped on merge_group (#12770).
+`build-windows-release-cl-x86_64-gpu-falcor` still runs because its `if` uses `always()`, but
+`test-falcor` uses the default status check, so the skipped grand-parent skips it as well. Across the
+15 latest successful merge_group runs (2026-10-08), `test-falcor` was skipped in all 15, while the
+build and `test-falcor-perf` ran in 14 (the 15th was docs-only). So the merge queue never runs the
+Falcor bridge test and the build there is wasted. #12770's justification ("check-ci includes
+test-falcor") is stale: PRs #13183 and #12844 merged while their final-head gate was still
+`waiting`. To see which environment a stuck run is waiting on, use
+`gh api repos/<r>/actions/runs/<id>/pending_deployments`
+([on merge_group test-falcor always skips](../learnings/1791462328513-slang-ci-yml-on-merge-group-test-falcor-always-ski.md)).
 
 **Falcor has multiple infra modes — don't fixate on one cause.** Beyond the 403 wall, the bridge
 also fails when the prebuilt **Slang artifact is expired/unavailable**:
@@ -233,7 +249,7 @@ first failed line, so later CHECK directives were never exercised on the failing
 pass there is predicted, not proven; confirm via a CI re-run
 ([reviewing a descope CI fix](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)).
 
-**Source learnings (15):**
+**Source learnings (17):**
 - [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md) — slang#13352: no `set -E` = top-level only; `$BASH_COMMAND` splits annotations; `exit 0` ≈ `|| true`, below `continue-on-error`; `gh api --allow-escape-sequences` for job logs.
 
 - [gh run rerun has hard age limits — old CI failures on stale PRs cannot be rerun](../learnings/1788199935009-gh-run-rerun-has-hard-age-limits-old-ci-failures-o.md) — >30d "over a month ago", >~1wk "cannot be retried", "already running"; classification moot for stale PRs.
@@ -247,6 +263,8 @@ pass there is predicted, not proven; confirm via a CI re-run
 - [Triaging uniform CI test failures: new-test vs PR-regression vs inherited master breakage](../learnings/1788474162476-triaging-uniform-ci-test-failures-new-test-vs-pr-r.md) — uniform red = deterministic .slang failure; separate three causes; overload-ambiguous-2.slang canary.
 - [test-falcor CI failures have multiple infra modes — re-read the fresh log each time](../learnings/1788545708307-test-falcor-ci-failures-have-multiple-infra-modes-.md) — expired artifact vs 403; --failed rerun won't regenerate; full rerun does; no shader diag = infra.
 - [Manually dispatching ci.yml on a DRAFT slang PR yields a spurious test-falcor missing-artifact red](../learnings/1789147576274-manually-dispatching-ci-yml-on-a-draft-slang-pr-pr.md) — draft-gated build jobs skipped, Falcor bails ~15s with artifact-unavailable; failed_steps:[]; clears on gh pr ready, not on rerun.
+- [Slang ci.yml: on merge_group test-falcor always skips even though the Falcor-only build runs](../learnings/1791462328513-slang-ci-yml-on-merge-group-test-falcor-always-ski.md) — skipped approval gate skips `test-falcor` (default status check) in 15/15 merge_group runs; #12770's rationale is stale.
+- [Slang sanitizer job's "PR-related" label is file-attribution, not causation](../learnings/1791509362714-slang-sanitizer-job-s-pr-related-label-is-file-att.md) — also notes `test-falcor` is not in `check-ci`'s `needs`.
 - [verify-documented-compiler-version.sh exit-4 on windows-aarch64 is a set-e/pipefail trip, NOT a stale docs allowlist](../learnings/1789252710427-verify-documented-compiler-version-sh-exit-4-on-wi.md) — cl.exe exits 4 with no sources; VAR=$(pipeline) under set -e aborts before the empty-version guard; fix with || true.
 - [Slang CI verify-documented-compiler-version.sh exit 4 is a set -e/pipefail shell bug (reproduced, fixed #13042)](../learnings/1789254176751-slang-ci-verify-documented-compiler-version-sh-exi.md) — all branches exit 0; a never-fail script exiting non-zero = command-substitution trip, not business logic.
 - [Reviewing `|| true` CI-tolerance shell PRs: check every same-scope VAR=$(pipeline); errexit is OFF in command-substitution subshells](../learnings/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md) — enumerate structurally-identical substitutions; $(...) subshells safe unless inherit_errexit.

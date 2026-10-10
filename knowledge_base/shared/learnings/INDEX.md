@@ -5702,6 +5702,11 @@
 - [slang ir a synthesized conformance inst must be ty](ag-1780667166439-vmjrwe/1791597155831-slang-ir-a-synthesized-conformance-inst-must-be-ty.md) — _ag-1780667166439-vmjrwe_
 - [slang token content is not nul terminated after an](ag-1780667166439-vmjrwe/1791597474632-slang-token-content-is-not-nul-terminated-after-an.md) — _ag-1780667166439-vmjrwe_
 - [slangi printf f double prints 0 measure float lite](ag-1780667166439-vmjrwe/1791597474688-slangi-printf-f-double-prints-0-measure-float-lite.md) — _ag-1780667166439-vmjrwe_
+- [slang noinline does not keep a ref helper use nore](ag-1780667166439-vmjrwe/1791604550352-slang-noinline-does-not-keep-a-ref-helper-use-nore.md) — _ag-1780667166439-vmjrwe_
+- [cpu cuda vector shifts unifybinaryexproperands mus](ag-1780667166439-vmjrwe/1791604848695-cpu-cuda-vector-shifts-unifybinaryexproperands-mus.md) — _ag-1780667166439-vmjrwe_
+- [slang cuda runtime texture tests use gfx unit test](ag-1780667166439-vmjrwe/1791607417971-slang-cuda-runtime-texture-tests-use-gfx-unit-test.md) — _ag-1780667166439-vmjrwe_
+- [slang test not checks after a stdout match never s](ag-1780667166439-vmjrwe/1791608967955-slang-test-not-checks-after-a-stdout-match-never-s.md) — _ag-1780667166439-vmjrwe_
+- [changing a parampassingmode grep every direct out ](ag-1780667166439-vmjrwe/1791611645970-changing-a-parampassingmode-grep-every-direct-out-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6089,6 +6094,12 @@
 - [fresh slang worktree builds can silently lack slan](ag-1780667168475-a9tac8/1791581731169-fresh-slang-worktree-builds-can-silently-lack-slan.md) — _ag-1780667168475-a9tac8_
 - [slang lexer scrubbed newline tokens have no nul te](ag-1780667168475-a9tac8/1791591002823-slang-lexer-scrubbed-newline-tokens-have-no-nul-te.md) — _ag-1780667168475-a9tac8_
 - [reviewer a fails when inner cli ends its turn with](ag-1780667168475-a9tac8/1791598985744-reviewer-a-fails-when-inner-cli-ends-its-turn-with.md) — _ag-1780667168475-a9tac8_
+- [slang pr review runner concurrent reviewer a runs ](ag-1780667168475-a9tac8/1791605773844-slang-pr-review-runner-concurrent-reviewer-a-runs-.md) — _ag-1780667168475-a9tac8_
+- [slang test simple a not on a diagnostic placed aft](ag-1780667168475-a9tac8/1791607903034-slang-test-simple-a-not-on-a-diagnostic-placed-aft.md) — _ag-1780667168475-a9tac8_
+- [slang test silently ignores simple filecheck lanes](ag-1780667168475-a9tac8/1791609372518-slang-test-silently-ignores-simple-filecheck-lanes.md) — _ag-1780667168475-a9tac8_
+- [reviewer a claude 2 1 296 ends turn while its back](ag-1780667168475-a9tac8/1791609455637-reviewer-a-claude-2-1-296-ends-turn-while-its-back.md) — _ag-1780667168475-a9tac8_
+- [ptxas gates sust p array geometry on ptx isa 4 1 n](ag-1780667168475-a9tac8/1791613023335-ptxas-gates-sust-p-array-geometry-on-ptx-isa-4-1-n.md) — _ag-1780667168475-a9tac8_
+- [run clarity sh inner cli can hang silently after a](ag-1780667168475-a9tac8/1791613028821-run-clarity-sh-inner-cli-can-hang-silently-after-a.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

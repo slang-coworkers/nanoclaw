@@ -3,6 +3,7 @@ title: "git worktree submodule init from local slang clone needs protocol.file.a
 type: learning
 topic: slang-compiler
 source: learnings/1791414819646-git-worktree-submodule-init-from-local-slang-clone.md
+superseded_by: 1791581040071-new-git-worktree-of-workspace-agent-slang-submodul
 ---
 
 # git worktree submodule init from local slang clone needs protocol.file.allow=always

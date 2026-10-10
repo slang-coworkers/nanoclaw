@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-532 learnings. [Catalog](../index.md)
+538 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -265,6 +265,7 @@ type: topic
 - [Depfile-aarch64 systemic CI regression (#12666) — fix landed, PRs just need rebase](../learnings/1787898092490-depfile-aarch64-systemic-ci-regression-12666-fix-l.md)
 - [DescriptorHandle to ConstantBuffer implicit conversion blocked by ParameterGroupType target guard in _coerce](../learnings/1782145502619-descriptorhandle-to-constantbuffer-implicit-conver.md)
 - [devin-fetch done-guard: a partial CI rail is not a verdict — the class stayed open for 12 recorded instances because the fix was never wired into the artifact](../learnings/1786121384159-devin-fetch-done-guard-a-partial-ci-rail-is-not-a-.md)
+- [Diagnosing a case-less __target_switch must happen after the FINAL DCE, not in specializeTargetSwitch](../learnings/1791593675740-diagnosing-a-case-less-target-switch-must-happen-a.md)
 - [Diagnosing DescriptorHandle&lt;RaytracingAccelerationStructure&gt; + spvDescriptorHeapEXT crashes](../learnings/1785051051163-diagnosing-descriptorhandle-lt-raytracingaccelerat.md)
 - [Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds](../learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)
 - [DIAGNOSTIC_TEST with -target ptx still runs on runners without NVRTC](../learnings/1791410667785-diagnostic-test-with-target-ptx-still-runs-on-runn.md)
@@ -291,6 +292,7 @@ type: topic
 - [Equivalence-to-incumbent is circular: a byte-for-byte review can pass a real bug](../learnings/1785767751083-equivalence-to-incumbent-is-circular-a-byte-for-by.md)
 - [Establish an intermittent CI failure's BASE RATE before accepting a regression window (annotations outlive expired logs)](../learnings/1785746835066-establish-an-intermittent-ci-failure-s-base-rate-b.md)
 - [Evicted-PR requeue decision needs three independent surfaces, each alone misleading](../learnings/1786494014693-evicted-pr-requeue-decision-needs-three-independen.md)
+- [Failed merge-group check-ci does not imply eviction: a stacked later entry's green run merges earlier entries](../learnings/1791564244082-failed-merge-group-check-ci-does-not-imply-evictio.md)
 - [Falcor #12145 crash code is emitted in DECIMAL only — a hex grep is a false-negative trap](../learnings/1785910460636-falcor-12145-crash-code-is-emitted-in-decimal-only.md)
 - [Falcor bridge-403 confirmation must also check build-artifact age, not just bridge health](../learnings/1788589902152-falcor-bridge-403-confirmation-must-also-check-bui.md)
 - [Falcor CI build/test split (slang#11495): Approach C over windows-latest — CUDA is the blocker, LLVM-from-GCS is a public bucket](../learnings/1780769330979-falcor-ci-build-test-split-slang-11495-approach-c-.md)
@@ -355,7 +357,9 @@ type: topic
 - [learnings-wiki footer counts drift chronically — the generator should recompute N, and duplicate citation rows hide inside it](../learnings/1785825237204-learnings-wiki-footer-counts-drift-chronically-the.md)
 - [learnings-wiki obsidian-link gap is nav-only, not broken citations — characterize before scoping a fix](../learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md)
 - [Link-time associated types: extern-side vs export-side lookup are different layout gaps (#12131 fixes only export-side)](../learnings/1790573149484-link-time-associated-types-extern-side-vs-export-s.md)
+- [LLVM prebuilt cache key moves at reseed: probe both 6bf2a1a7 and dfeb31f6](../learnings/1791549704518-llvm-prebuilt-cache-key-moves-at-reseed-probe-both.md)
 - [LLVM prebuilt cache-key change can hard-fail master-ref cold builds in release.yml](../learnings/1791518829641-llvm-prebuilt-cache-key-change-can-hard-fail-maste.md)
+- [LLVM prebuilt reseed publishes linux only: smoke test sets no C++ standard](../learnings/1791563376870-llvm-prebuilt-reseed-publishes-linux-only-smoke-te.md)
 - [LLVM_USE_HOST_TOOLS alone won't force host-native tools when CMAKE_OSX_ARCHITECTURES is an env var](../learnings/1789507360762-llvm-use-host-tools-alone-won-t-force-host-native-.md)
 - [Local Slang Debug preset builds CMAKE_BUILD_TYPE=Release → SLANG_ASSERT is inert (compiles to __builtin_assume); test assert logic in _DEBUG or by reasoning](../learnings/1785342311498-local-slang-debug-preset-builds-cmake-build-type-r.md)
 - [Look for a sibling run at the SAME commit before reasoning about a CI failure's cause — and a rerun only informs if the step under test actually ran](../learnings/1786041527710-look-for-a-sibling-run-at-the-same-commit-before-r.md)
@@ -407,6 +411,7 @@ type: topic
 - [Public Falcor has FALCOR_LOCAL_SLANG CMake hook for a custom Slang build](../learnings/1781366574564-public-falcor-has-falcor-local-slang-cmake-hook-fo.md)
 - [pulls-N-files is cumulative, commits-sha is what the push wrote — never cite one for the other](../learnings/1785847094771-pulls-n-files-is-cumulative-commits-sha-is-what-th.md)
 - [Pushing code commits is NOT a user-facing write — it's always allowed, draft or ready](../learnings/1780726000000-pushing-commits-is-not-a-user-facing-write.md)
+- [Python 3.15 pyconfig.h breaks -Werror builds of nanobind<2.12 extensions on Linux (_POSIX_C_SOURCE/_XOPEN_SOURCE redefined)](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)
 - [Query PR CI/CLA status on the live head SHA, never a remembered one](../learnings/1790704110591-query-pr-ci-cla-status-on-the-live-head-sha-never-.md)
 - [Rank a flake's LIVE cost from an independent live cross-section, not your own rerun ledger](../learnings/1786162703275-rank-a-flake-s-live-cost-from-an-independent-live-.md)
 - [Re-check isDraft at the moment of CI dispatch — a human ready-flip between pushes turns the drafts-only manual dispatch into a cosmetic-red false alarm](../learnings/1786606902247-re-check-isdraft-at-the-moment-of-ci-dispatch-a-hu.md)
@@ -446,6 +451,7 @@ type: topic
 - [Run-level CI bucketing hides job-level failures; discriminate `cancelled` by timeout arithmetic](../learnings/1786206264424-run-level-ci-bucketing-hides-job-level-failures-di.md)
 - [Runner-scoped CI defect: a rerun is a pool lottery, not a futile reland](../learnings/1785838439742-runner-scoped-ci-defect-a-rerun-is-a-pool-lottery-.md)
 - [Same-test-every-time vs different-test-each-time distinguishes a new regression from a tracked xdist flake](../learnings/1787022191042-same-test-every-time-vs-different-test-each-time-d.md)
+- [Seeded LLVM prebuilt can download fine yet break CMake configure (zstd)](../learnings/1791542291163-seeded-llvm-prebuilt-can-download-fine-yet-break-c.md)
 - [setsid + run_in_background makes "exit code 0" report the WRAPPER, not your build — and a half-linked tree looks like a broken build](../learnings/1785988615115-setsid-run-in-background-makes-exit-code-0-report-.md)
 - [setup-sccache action hard-rejects Windows ARM64 runners](../learnings/1787336678361-setup-sccache-action-hard-rejects-windows-arm64-ru.md)
 - [SGL crashpad guard is SGL_HAS_CRASHPAD, not the SGL_ENABLE_CRASHPAD cmake option](../learnings/1787002587931-sgl-crashpad-guard-is-sgl-has-crashpad-not-the-sgl.md)

@@ -3,7 +3,7 @@ title: "slangc Target Output & Obfuscation"
 type: concept
 group: slang-tooling
 tags: [targets, output, obfuscate, cuda, spirv, metal, slangpy, triage, reflection, falcor, vcpkg]
-source_count: 14
+source_count: 15
 ---
 
 # slangc Target Output & Obfuscation
@@ -18,7 +18,7 @@ This page covers what `slangc` actually writes per target and why output can be 
 - **CUDA WMMA/coopmat emit is unconditional** but the prelude namespace is CUDA-12.5-guarded — gate `emitWMMAFragmentType` on `nvrtcVersion` or NVRTC <12.5 fails cryptically. CUDA prelude bugs ARE GPU-free reproducible (nvcc 12.6 installed, compile-only).
 - **slangpy functional-API textures emit no `[format]`** → CUDA UNORM/SNORM writes silently corrupt (even post-#11090); slangpy must thread `self.format` onto the `value` field.
 - **`-fvk-bind-globals <binding> <set>` with set≠0** collides a split-out sampler/texture onto the `$Globals` CB binding (flag path skips the shared-bucket +1 bump) — repro via `-target spirv-asm`.
-- **Triage:** `slangc -emit-spirv-via-glsl` DOES run via direct slangc in-container (only the slang-test harness crashes); when glslang won't load, triage SPIR-V binding/layout via `-target spirv -O0 -reflection-json`; SPIR-V delta-checks need the `slang-glslang` target built. Bisect Falcor CI regressions by `merged_at` with an emit-diff arbiter; suspect a stale vcpkg 2024 build (`slangc -version`) when nothing reproduces; a follow-up-refactor's target code may live only on the still-open originating PR branch.
+- **Triage:** `slangc -emit-spirv-via-glsl` DOES run via direct slangc in-container (only the slang-test harness crashes); when glslang won't load, triage SPIR-V binding/layout via `-target spirv -O0 -reflection-json`; SPIR-V delta-checks need the `slang-glslang` target built. A "newly failing" `SLANG_RUN_SPIRV_VALIDATION` VUID on old output is often the validator's target env (Universal 1.6 → Vulkan 1.4 since v2025.20) catching an always-invalid module, not a regression. Bisect Falcor CI regressions by `merged_at` with an emit-diff arbiter; suspect a stale vcpkg 2024 build (`slangc -version`) when nothing reproduces; a follow-up-refactor's target code may live only on the still-open originating PR branch.
 
 ## `-target hpp/cpp` no-output: suspect a crash from graphics-stage entry points
 
@@ -56,6 +56,8 @@ Correcting an earlier "glslang load fails in-container" note: `slangc -emit-spir
 
 Relatedly, SPIR-V delta-checks need the `slang-glslang` target built, not just `slangc`: `-target spirv`/`spirv-asm` with `SLANG_RUN_SPIRV_VALIDATION=1` loads downstream `spirv-opt`/`spirv-dis`/spirv-val from `libslang-glslang-<ver>.so`; building only `slangc` yields `error[E00100]: failed to load downstream compiler 'spirv-opt'` — a BUILD-SCOPE artifact, NOT a fix defect and NOT E38029 ([SPIR-V delta-check needs slang-glslang target, not just slangc](../learnings/1784006352650-spir-v-delta-check-needs-slang-glslang-target-not-.md)).
 
+The validator's verdict also depends on the **target env** that embedded spirv-val runs under, not only on the spirv-tools version. #8752 (2495e0880, first shipped in v2025.20) switched `glslang_validateSPIRV` (`source/slang-glslang/slang-glslang.cpp:178`) from `SPV_ENV_UNIVERSAL_1_6` to `SPV_ENV_VULKAN_1_4`. Some spirv-tools memory-semantics checks fire only under a Vulkan env: VUID 10866 (SeqCst, e.g. `MemoryOrder.SeqCst` lowered to `SequentiallyConsistent`) is gated on `spvIsVulkanEnv || memory_model == VulkanKHR` (`validate_memory_semantics.cpp:35/:90`). Others fire under any env (10867/10868 load/store order, 10875/10876 CAS unequal semantics). So when output "passed `SLANG_RUN_SPIRV_VALIDATION=1` in 2025.12 but fails now", the module was usually always invalid and is only now being caught; it is not a codegen regression. Check which env each release used with `git show vX:source/slang-glslang/slang-glslang.cpp | grep target_env` before bisecting the compiler (found triaging #13519) ([VUID 10866+ on old output: check the validator env](../learnings/1791460646597-vulkan-vuids-10866-firing-on-old-slang-output-chec.md)).
+
 ## Falcor CI regression triage: bisect by merged_at, use emit diff as arbiter
 
 Falcor CI runs against a pre-built Falcor with fresh Slang binaries copied on top. Falcor is fixed; only Slang changes between runs. A numeric regression LOOKS like Slang codegen, but:
@@ -77,7 +79,7 @@ When triaging a "follow-up from PR #X" refactor issue, verify where the target c
 
 ---
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [slang -target hpp/cpp "no output file" is usually a crash from a graphics-stage entry point](../learnings/1781783056677-slang-target-hpp-cpp-no-output-file-is-usually-a-c.md)
 - [Slang library code compiles to empty output without -whole-program + public](../learnings/1783369782920-slang-library-code-compiles-to-empty-output-withou.md)
 - [Slang cannot minify/obfuscate-locals its own source text — no Slang-source target (emit-slang is a stub), -obfuscate mangles all names, text emit is post-preprocess (#12313)](../learnings/1785581285717-slang-cannot-minify-obfuscate-locals-its-own-sourc.md)
@@ -90,6 +92,7 @@ When triaging a "follow-up from PR #X" refactor issue, verify where the target c
 - [-emit-spirv-via-glsl runs via direct slangc in a freshly-built worktree](../learnings/1782821414217-emit-spirv-via-glsl-does-run-via-direct-slangc-in-.md)
 - [Triage SPIR-V binding/layout bugs via -target spirv -O0 -reflection-json when glslang is unavailable](../learnings/1782865769198-triage-spir-v-binding-layout-bugs-via-target-spirv.md)
 - [SPIR-V delta-check needs slang-glslang target, not just slangc](../learnings/1784006352650-spir-v-delta-check-needs-slang-glslang-target-not-.md)
+- [Vulkan VUIDs 10866+ firing on old Slang output: check validator env, not just spirv-tools version](../learnings/1791460646597-vulkan-vuids-10866-firing-on-old-slang-output-chec.md) — #8752 switched embedded spirv-val to `SPV_ENV_VULKAN_1_4` (v2025.20); 10866 is Vulkan-env-gated; "worked in 2025.12" = always invalid, now caught (#13519)
 - [-fvk-bind-globals with set!=0 collides split-out globals resources onto the $Globals CB binding (#10668); flag path skips the shared-bucket +1 bump — repro via spirv-asm, no test coverage exists](../learnings/1784754402921-fvk-bind-globals-non-default-set-collides-split-ou.md)
 - [Follow-up refactor issues may target code not yet on master](../learnings/1781606753707-follow-up-refactor-issues-may-target-code-not-yet-.md)
 

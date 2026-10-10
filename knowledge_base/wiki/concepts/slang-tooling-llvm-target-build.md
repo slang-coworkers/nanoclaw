@@ -3,7 +3,7 @@ title: "Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-v
 type: concept
 group: slang-tooling
 tags: [slang-llvm, llvm, emit-cpu-via-llvm, llvm-host-ir, use-system-llvm, filecheck, dxc, cross-compile, macos, tablegen]
-source_count: 7
+source_count: 9
 ---
 
 ## TL;DR
@@ -32,6 +32,12 @@ module silently, and a universal macOS build that ships x86_64-only host tools w
 - **Changing slang-test's `IFileCheck` interface skews against the fetched slang-llvm** — the
   default build keeps the last release's library, so slang-test fails at startup until a release
   ships, and most CI legs (from-source slang-llvm) cannot catch the skew.
+- **Check which `libslang-llvm.so` a fresh worktree actually has before blaming a PR.** A fresh
+  configure can fetch an old release (v2026.9.1 instead of v2026.19): every `(llvm)` leg then fails
+  with `result code = 1` and empty stderr. A `--target slangc slang-test` build may have no library
+  at all: filecheck tests are then counted *ignored* while the summary still says 100% passed.
+  Compare `SLANG_SLANG_LLVM_BINARY_URL` in `CMakeCache.txt` with a known-good tree, copy a current
+  `libslang-llvm.so` into `build/<cfg>/lib/`, and grep the run for `ignored test`.
 
 ## Editing source/slang-llvm needs a from-source build (USE_SYSTEM_LLVM)
 
@@ -72,6 +78,36 @@ separate calls cannot enforce `A:` before `B:` or limit a `B-NOT:` to the region
 matches. A parser note from the same PR: `StringUtil::split` on an empty slice returns no pieces, so
 `SIMPLE()` creates no empty option key, unlike Python's `''.split(',')` → `['']` (shader-slang/slang#13359)
 ([slang-test ↔ slang-llvm FileCheck interface is pinned by the prebuilt release](../learnings/1791326969343-slang-test-slang-llvm-filecheck-interface-is-pinne.md)).
+
+## A fresh worktree's slang-llvm can be stale or absent: (llvm) failures and "ignored" FileCheck tests
+
+The default `FETCH_BINARY_IF_POSSIBLE` flavor makes the `libslang-llvm.so` in a worktree depend on
+what configure fetched, and on whether that target was built at all. Two failure shapes look like PR
+problems but are build artifacts.
+
+**A stale fetch fails every `(llvm)` leg.** A fresh `cmake --preset default` in a new worktree
+(2026-10-08, master `f6238cee3b`) resolved `SLANG_SLANG_LLVM_BINARY_URL` to the **v2026.9.1**
+release zip, while worktrees configured earlier had v2026.19. With the old library every `(llvm)`
+test leg failed with `result code = 1` and empty stderr, and `slangc -target host-callable` printed
+`error[E00098]: cannot access as a blob`. Before attributing llvm-only failures to a PR, compare
+`grep SLANG_SLANG_LLVM_BINARY_URL build/CMakeCache.txt` against a known-good build. Then either copy
+`build/Release/lib/libslang-llvm.so` from a worktree whose cache shows the current release, or
+configure with `-DSLANG_SLANG_LLVM_BINARY_URL=<current release zip>`
+([fresh configure can fetch a stale slang-llvm](../learnings/1791508327549-fresh-slang-worktree-configure-can-fetch-a-stale-s.md)).
+
+**A missing library hides FileCheck tests as "ignored".** A fresh
+`cmake --build --preset release --target slangc slang-test` neither builds nor fetches
+`libslang-llvm.so`, which is the library slang-test loads FileCheck from. slang-test then prints
+`FileCheck is not availableignored test: ...` and counts every `TEST:SIMPLE(filecheck=...)` test as
+**ignored**, not failed, and the summary still reads "100% of tests passed". On #13538, 4 of the 14
+PR tests were silently skipped this way. The fix is the same copy
+(`cp <other worktree>/build/Release/lib/libslang-llvm.so build/Release/lib/`; copies exist in, for
+example, `/workspace/agent/wt-13389-master/build/Release/lib/`), followed by a rerun. Grep the
+slang-test output for `ignored test` before claiming a filecheck test passes
+([missing libslang-llvm.so makes filecheck tests "ignored"](../learnings/1791516327523-slang-test-filecheck-is-not-available-silently-ign.md)).
+The interface-version skew above, and the `COMPARE_COMPUTE(filecheck-buffer=)` variant that reports
+*passed* rather than ignored, are covered on
+[Slang Test — FileCheck Authoring and Opt-Levels](slang-test-filecheck-authoring-and-opt-levels.md).
 
 ## Regression-testing the LLVM emitter: -target llvm-host-ir -o -, not host-callable
 
@@ -119,11 +155,13 @@ When adjudicating whether flipping `isSignedType(<type>)` (e.g. adding `kIROp_In
 
 The two-CPU-paths split above (default `-cpu` emits C++ source via the C-family emitter; `-emit-cpu-via-llvm` / `-target llvm` goes through `slang-emit-llvm.cpp`) has a codegen consequence when you gate an *emitted-code* optimization on a Slang target predicate (e.g. "this target can express an `unreachable` terminator, so prune the dead arm"). The C-family source path (`cpp`/`host-cpp`/`torch` + CUDA, `emitRegion` in `slang-emit-c-like.cpp`) picks up a `SLANG_PRELUDE_UNREACHABLE()`-style macro (debug-trap / release-no-return) from the text preludes (`slang-cpp-types-core.h`, `slang-cuda-prelude.h`), but **CPU-via-LLVM** (`emitLLVMForEntryPoints`) maps `kIROp_Unreachable` → a **raw, trap-less** `CreateUnreachable()` and touches no text prelude. So a `CodeGenTarget`-level `isCUDATarget || isCPUTarget` is too broad for the **producer** side: it would let the LLVM-CPU path convert a defined default into untrapped UB. Fix: give the predicate a `TargetRequest*` overload that additionally excludes `isCPUTargetViaLLVM` (`slang-code-gen.cpp`) and keep the LLVM path's defined default; the `CodeGenTarget` overload can't see the LLVM-vs-source distinction, so consult it **only** from the C-like emitter (which never runs for LLVM). The split is gap-free by construction because the same `isCPUTargetViaLLVM` predicate drives both the producer's choice (via the `TargetRequest*` overload) and the LLVM-vs-source emitter routing — so on the LLVM path the producer keeps the default AND the C-like emitter never runs (no stranded marker), and on a source path producer-emits-unreachable ⟺ emitter-emits-marker; verify each overload has exactly one caller. (`isCUDATarget` covers `CUDASource`/`CUDAHeader`/`PTX` but not `CUDAObjectCode` — self-consistent, at most a missed optimization on that payload, never a correctness bug.) Context: #13220 / PR #13228, `doesTargetSupportUnreachableTerminator` ([target-gating an emitted-code optimization: CPU-via-LLVM uses a separate emitter — exclude it](../learnings/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md)).
 
-**Source learnings (7):**
+**Source learnings (9):**
 - [target-gating an emitted-code optimization: CPU-via-LLVM (slang-emit-llvm.cpp, raw trap-less CreateUnreachable) is a separate emitter with no text prelude — a producer predicate must exclude isCPUTargetViaLLVM (#13220/PR #13228)](../learnings/1790131269708-target-gating-an-emitted-code-optimization-cpu-via.md)
 - [emitCast int→int widening is SOURCE-signedness-driven (SExt/ZExt from srcIsSigned), not dstIsSigned; dstIsSigned only gates float↔int; default `-cpu` emits C++ (never slang-emit-llvm.cpp); a `-cpu` test of `int→intptr` is false coverage (#13202)](../learnings/1790012965767-slang-llvm-emitcast-int-widening-picks-sext-zext-b.md)
 - [adjudicating an "isSignedType flip = silent cross-backend change" review finding: the genuine GPU-free witnesses are float→intptr on `-target llvm` and `OpSLessThan` on SPIR-V (slang-emit-spirv.cpp:841); verify the target path reaches the emitter before requiring a test](../learnings/1790014783894-adjudicating-issignedtype-flip-changes-cpu-llvm-si.md)
 - [Editing source/slang-llvm requires a from-source build (USE_SYSTEM_LLVM) to test](../learnings/1789619858349-editing-source-slang-llvm-requires-a-from-source-b.md) — default `FETCH_BINARY_IF_POSSIBLE` doesn't compile `source/slang-llvm`; local GREEN needs `USE_SYSTEM_LLVM` + pinned LLVM 21 (expensive); PR CI builds it from source so GREEN is CI-gated; a `.slang` test-file edit needs no rebuild.
+- [Fresh slang worktree configure can fetch a stale slang-llvm → silent (llvm) test failures](../learnings/1791508327549-fresh-slang-worktree-configure-can-fetch-a-stale-s.md) — v2026.9.1 vs v2026.19 via `SLANG_SLANG_LLVM_BINARY_URL`; `(llvm)` legs `result code = 1`, `E00098 cannot access as a blob`; copy a current lib or set the URL
+- [slang-test 'FileCheck is not available' silently ignores filecheck tests; copy libslang-llvm.so into the build](../learnings/1791516327523-slang-test-filecheck-is-not-available-silently-ign.md) — `--target slangc slang-test` build has no library; 4/14 PR tests ignored on #13538 under "100% passed"; grep `ignored test`
 - [Regression-testing Slang's LLVM emitter: use -target llvm-host-ir -o -, not host-callable](../learnings/1789480942899-regression-testing-slang-s-llvm-emitter-use-target.md) — `host-callable` ignores `verifyModule`'s return so an invalid module exits 0 and never reaches FileCheck; `llvm-host-ir -o -` gives red→green; `CHECK-NOT: noinline` false-matches the mangled name; `[ForceInline]` must beat `[noinline]` in both emitters.
 - [CMake: unquoted list expansion consumes \; escapes (#13077 root cause)](../learnings/1790377335548-cmake-unquoted-list-expansion-consumes-escapes-ver.md) — supersedes the LLVM_USE_HOST_TOOLS / NATIVE-flags diagnosis.
 - [slang-test ↔ slang-llvm FileCheck interface is pinned by the prebuilt release in default local builds](../learnings/1791326969343-slang-test-slang-llvm-filecheck-interface-is-pinne.md) — #13359: an `IFileCheck` change fails `locateLLVMFileCheck` at startup until a release ships; per-prefix `performTest` loses cross-prefix ordering
