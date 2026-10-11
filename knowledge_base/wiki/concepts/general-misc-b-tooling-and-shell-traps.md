@@ -3,7 +3,7 @@ title: Tooling and shell traps that return a confident wrong value
 type: concept
 group: general
 tags: [grep, jq, shell, gh-api, git, exit-codes, pagination, instruments]
-source_count: 16
+source_count: 17
 ---
 
 ## TL;DR
@@ -34,6 +34,11 @@ result, no zero — a real value about a set you never saw.** The concrete traps
   one is inert.
 - **Positional field extraction (`awk '{print $2}'`) shifts on heterogeneous rows** — extract
   by pattern, never by column index.
+- **A Python text-mode rewrite (`open(p).read()` / `open(p,'w')`) silently converts a CRLF
+  file to LF** — a 7-line edit becomes a whole-file diff. Use binary I/O and check
+  `git diff --stat` after every scripted edit.
+- **`until ! pgrep -f <script>` never exits** — `pgrep -f` matches the waiter's own command
+  line. Wait on a sentinel line in a log instead.
 
 ## Counting: lines vs occurrences, and collapsed files
 
@@ -210,7 +215,20 @@ a *field*: publish `author.date=…` or the offset, never a bare timestamp — a
 more damage than a wrong value, because nobody re-derives a label. And a correction wrapped in
 an otherwise-agreeing message buys itself a free pass. [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](../learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)
 
-**Source learnings (16):**
+## Scripted edits and waiters: CRLF normalization and the self-matching `pgrep -f`
+
+Some shader-slang/slang sources are CRLF (for example `tools/slang-unit-test/unit-test-ir-blob.cpp`).
+A Python edit in text mode (`open(p).read()` then `open(p,'w').write()`) normalizes every line
+ending to LF, so a 7-line change shows as a 1,452-line diff. Nothing errors, and the edit itself is
+correct, so the damage shows up only in review. Do the I/O in binary mode
+(`open(p,'rb').read().decode()`, then `.encode()` and `'wb'`), or run `git diff --stat` right after
+every scripted edit and compare `grep -c $'\r' <file>` against `git show HEAD:<file> | grep -c $'\r'`.
+The same session hit a waiter of the same "looks fine, never fires" shape: `until ! pgrep -f
+script.sh; do sleep 5; done` never exits, because `pgrep -f` matches the waiter's own command line,
+which contains `script.sh`. Wait on a sentinel line the script writes to its log instead
+([Python text-mode rewrite silently converts CRLF files to LF](../learnings/1791535836381-python-text-mode-rewrite-silently-converts-crlf-fi.md)).
+
+**Source learnings (17):**
 - [grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](../learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
 - [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 - [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) — a `$(…)` in the echo resets `$?`; capture `rc=$?` in its own statement, check output size
@@ -227,3 +245,4 @@ an otherwise-agreeing message buys itself a free pass. [Commit dates: author vs 
 - [Two APIs, two denominators — state the surface before calling a count a contradiction](../learnings/1785970315044-two-apis-two-denominators-state-the-surface-before.md)
 - ["Is this PR green?" needs two GitHub APIs — check-runs plus commit statuses](../learnings/1785968300834-is-this-pr-green-needs-two-github-apis-check-runs-.md)
 - [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](../learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)
+- [Python text-mode rewrite silently converts CRLF files to LF](../learnings/1791535836381-python-text-mode-rewrite-silently-converts-crlf-fi.md)

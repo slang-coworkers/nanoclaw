@@ -3,6 +3,7 @@ title: "Merge-group-only ASan overflow in slang-rhi createBuffer (issue #12058)"
 type: learning
 topic: slang-compiler
 source: learnings/1783722231562-merge-group-only-asan-overflow-in-slang-rhi-create.md
+superseded_by: 1783724432597-merge-group-asan-overflow-in-cpu-createbuffer-is-a
 ---
 
 # Merge-group-only ASan overflow in slang-rhi createBuffer (issue #12058)

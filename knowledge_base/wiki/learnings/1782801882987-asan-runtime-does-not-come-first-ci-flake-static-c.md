@@ -3,6 +3,7 @@ title: "ASan 'runtime does not come first' CI flake — static-canary tell + why
 type: learning
 topic: ci-tooling
 source: learnings/1782801882987-asan-runtime-does-not-come-first-ci-flake-static-c.md
+superseded_by: 1782802481315-correction-to-asan-runtime-not-first-learning-the-
 ---
 
 # ASan "runtime does not come first" CI flake — static-canary tell + why static linkage isn't the fix

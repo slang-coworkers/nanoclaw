@@ -76,7 +76,7 @@ Whether a `CHECK:`/`CHECK-NOT:` token is an active assertion depends entirely on
 
 The `//TEST:LANG_SERVER` harness in slang-test **never fires** `publishDiagnostics` because slangd is run with `-periodic-diagnostic-update false` and `resetDiagnosticUpdateTime()` is called before each publish attempt — effectively deadlocking the `//DIAGNOSTICS` directive ([CONSOLIDATED: Slang `//TEST:LANG_SERVER` harness cannot observe diagnostics (publish throttle vs reset deadlock)](../learnings/1781083469573-CONSOLIDATED-langserver-harness-cannot-observe-diagnostics.md)). Two independent blockers prevent automated diagnostics regression testing: the throttle/reset interaction and `Slang::Workspace` being unexported from the DLL ([Slang LS diagnostics cannot be auto-tested (LANG_SERVER throttle + unexported Workspace)](../learnings/1781086523456-slang-ls-diagnostics-cannot-be-auto-tested-lang-se.md)).
 
-Despite this, the LANG_SERVER slang-test harness can still reproduce editor-only diagnostic scenarios (like LSP fragment-open bugs) GPU-free, even though it cannot check published diagnostics ([Slang LSP fragment-open false diagnostics: same checkModule ordering bug as #11531; verify GPU-free via LANG_SERVER test](../learnings/1781115581539-slang-lsp-fragment-open-false-diagnostics-same-che.md)).
+Consequently an LSP diagnostics bug (e.g. fragment-open false diagnostics, #11531/#11532) has no GPU-free committable `//TEST:LANG_SERVER` regression test today; verify it against real slangd with a control-vs-fix A/B of the published diagnostic set. #11531 and #11532 share the `checkModule` ordering root cause, but the narrowed enclosing-namespace fix does not cover #11532's file-scope extension — the fix must drive every module-level `NamespaceDecl` to ScopesWired before the extension-first pass ([CORRECTION: //TEST:LANG_SERVER harness can't observe diagnostics in test mode (re #11532)](../learnings/1781116005493-correction-test-lang-server-harness-can-t-observe-.md)).
 
 ## Test Artifacts and Staging
 
@@ -123,6 +123,7 @@ The `.N` is a **sub-test / directive index, NOT a run/retry counter** — it is 
 ---
 
 **Source learnings (30):**
+- [CORRECTION: //TEST:LANG_SERVER harness can't observe diagnostics in test mode (re #11532)](../learnings/1781116005493-correction-test-lang-server-harness-can-t-observe-.md)
 - [synthesized subtest skip needs pre-run exclusion](../learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md)
 - [matching expanded subtest name needs exact equality](../learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md)
 - [harness changes: slang-unit-test is the right vehicle](../learnings/1780320008141-slang-test-harness-changes-slang-test-rule-n-a-but.md)
@@ -131,7 +132,6 @@ The `.N` is a **sub-test / directive index, NOT a run/retry counter** — it is 
 - [INTERPRET/slangi silently skipped](../learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-sla.md)
 - [LANG_SERVER harness cannot observe diagnostics](../learnings/1781083469573-CONSOLIDATED-langserver-harness-cannot-observe-diagnostics.md)
 - [LS diagnostics cannot be auto-tested](../learnings/1781086523456-slang-ls-diagnostics-cannot-be-auto-tested-lang-se.md)
-- [LSP fragment-open false diagnostics](../learnings/1781115581539-slang-lsp-fragment-open-false-diagnostics-same-che.md)
 - [DIAGNOSTIC_TEST(diag=CHECK) authoring](../learnings/1781787235055-slang-diagnostic-test-diag-check-authoring-exhaust.md)
 - [slang-test leaves .actual.txt artifacts](../learnings/1781088712827-slang-test-leaves-slang-actual-txt-artifacts-in-th.md)
 - [DIAGNOSTIC_TEST //CHECK-NOT: is inert; negatives enforced by exhaustive mode](../learnings/1782900106845-slang-diagnostic-test-check-not-is-inert-negatives.md)

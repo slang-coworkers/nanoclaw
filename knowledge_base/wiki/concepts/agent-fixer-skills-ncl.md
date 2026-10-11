@@ -3,7 +3,7 @@ title: "Skills, ncl CLI, and Slang-Specific Mechanics"
 type: concept
 group: agent-fixer-codex-skills
 tags: [ncl, cli, slang-rhi, ci, zero-initialize, include-cycle, coworker-lifecycle]
-source_count: 19
+source_count: 20
 ---
 
 # Skills, ncl CLI, and Slang-Specific Mechanics
@@ -18,6 +18,7 @@ Operational notes for the `ncl` admin CLI (group lifecycle, task lifecycle, scop
 - Prefer plain `ncl groups restart --id <target>` over `--message`: `--message` writes `on_wake` to every running session in the group and can clobber an unrelated one. Re-hand resume context over normal a2a on the canonical thread instead.
 - A one-shot scheduled task has two independently-live parts — trigger and payload. `cancel` retires only the trigger; the prompt survives and is immutable.
 - Never re-arm a one-shot. Re-arming supplies the missing trigger to a live instruction whose side effects (a maintainer nudge, a comment, a push) are not idempotent.
+- Create a one-shot in ONE call with its real `--prompt` and a FUTURE `--process-after`, then read it back before quoting its id. A placeholder prompt with a past due time fires within minutes and is consumed; `update` cannot revive it.
 - A spent one-shot is byte-identical in `ncl tasks list` to an orphan: `status: pending`, `process_after` in the past, `completed_runs: 0` forever — because `runs` increments on completion. A past `process_after` is necessary but never sufficient evidence that a task still needs to run.
 - Never build a repair/watchdog mechanism whose predicate is "looks unfinished." Ask what a SUCCESSFUL run leaves behind on the row you inspect; if the answer is "nothing," that row cannot drive the repair.
 - The run log (`ncl tasks append-log --id <t> --msg "…"`; the flag is `--msg`, not `--note`) is the only writable layer on a completed row and the thing a re-armed session reads. Never `delete` — it hard-deletes the series and its history, destroying that record.
@@ -52,6 +53,8 @@ Use `mcp__nanoclaw__create_agent` (admin-only) for new agents instead. The MCP p
 A one-shot scheduled task has **two independently-live parts — the trigger and the payload — and `cancel` reaches only the first** ([Cancelling a one-shot scheduled task removes the trigger, not the payload — and a spent row is immutable](../learnings/1786073581086-cancelling-a-one-shot-scheduled-task-removes-the-t.md)). The prompt survives cancellation, and on a spent row it is **immutable**: `ncl tasks update --id <spent> --prompt '<defused>'` refuses with `no live task matched: <spent>`, while a fabricated id returns the distinct `task not found` — two error strings proving the row still *exists* and is merely not *live*. The refusal is state-based, not a wrong-flag error, and that distinction must be earned with a positive control: run the same verb and flags against a *live* row (a no-op prompt rewrite returned `{"touched":1,"fields":["prompt"]}`) so the failure cannot be confused with `ncl`'s known silent wrong-flag no-op.
 
 **A spent one-shot is byte-identical to an orphaned one in `ncl tasks list`.** It stays `status: pending`, with `process_after` in the past and `completed_runs: 0`, *forever* — because `runs` increments on **completion**, so a successful fire leaves nothing on the row it inspected. A past `process_after` is therefore necessary but not sufficient evidence that a task still needs to run; consult the run log, or resolve the session, before concluding anything. The operational consequence is absolute: **never re-arm a one-shot.** Re-arming supplies the one missing part — the trigger — to a live instruction whose side effects (a maintainer nudge, a comment, a push) are not idempotent, which is how a watchdog keyed on "looks unfinished" becomes the live path to a duplicate action someone explicitly forbade.
+
+The same two-part structure makes a one-shot impossible to fix after it has fired, so **create it in a single call with its real `--prompt` and a future `--process-after`, then read it back (`ncl tasks list | grep <key>`) before quoting its series id to anyone.** On 2026-10-09 Main created a one-shot with `--prompt "x"` and a past due time, intending to pause and update it right after. The host fired it about two minutes later, the run saw the placeholder and did nothing, and the one-shot was consumed. The later `update` printed what looked like success, but `get` then returned `task not found`. The operator had already been given that id as the chain's re-chase timer, so the chain went untimed for about four hours. A one-shot that has to re-arm must say so in its own prompt ("create a fresh one-shot"), because nothing outside the fired run can restore it ([ncl one-shot task with placeholder prompt is consumed before you can update it](../learnings/1791533244463-ncl-one-shot-task-with-placeholder-prompt-is-consu.md)).
 
 Two corollaries follow. First, the only writable layer on a completed row is the run log (`ncl tasks append-log --id <t> --msg "…"` — the flag is `--msg`; `--note` is rejected), and it is what a re-armed session actually reads, so a defusing note goes there and never through `delete`, which hard-deletes the series *and its history* along with the very record that says "already fired." Second, put the guard in the **re-arming mechanism**, not the task — and remember that a guard which has never had to fire has never been tested: a real watchdog's self-exclusion matched the substring `scheduler-watchdog` while the actual series ids were `task-<digits>-<suffix>`, so it was dead across all 126 runs and read as coverage the whole time.
 
@@ -99,7 +102,7 @@ Fix: put `#include "slang.h"` **before** the new header's own `#ifndef` guard. T
 **[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL** — **Symptom:** On slang#12118 I copied the bundled `APPROVAL_POLICY.json` (`v0-shadow`, the conservative default next to `eval-clauses.py`) into the per-PR workspace `work/<pr>/policy/` during staging. [[approver/critique-mustfix] Do not stage the bundled v0-shadow policy into the workspace policy/ dir — it shadows the mounted v0-shadow-relaxed and flips clauses to FAIL](../learnings/1784117125434-approver-critique-mustfix-do-not-stage-the-bundled.md)
 
 ---
-**Source learnings (19):**
+**Source learnings (20):**
 - [ncl groups-create produces zombie groups; cross-group --id is parse-time-blocked](../learnings/1779254262878-ncl-groups-create-produces-zombie-groups-cross-gro.md)
 - [agent ncl restart can't target another group](../learnings/1783913779722-agent-ncl-restart-can-t-target-another-group.md)
 - [slang-rhi runs full CI matrix (incl. tests) on draft PRs](../learnings/1781175866294-slang-rhi-runs-full-ci-matrix-incl-tests-on-draft-.md)
@@ -120,4 +123,5 @@ Fix: put `#include "slang.h"` **before** the new header's own `#ifndef` guard. T
 - [FOURTH presentation: swallowed `--id=` + auto-fill returns a valid record for the WRONG identity, exit 0](../learnings/1786243869582-fourth-presentation-of-the-ncl-equals-form-defect-.md)
 - [CORRECTION: the "assert returned id == passed id" guard is unsound under auto-fill — the remedy is the syntax rule, not a detector](../learnings/1786244050796-correction-my-assert-returned-id-passed-id-guard-i.md)
 - [designed-and-approved fix ≠ deployed fix — a scheduled task's `script` and `prompt` are separate fields, both must be pushed; verify with `ncl tasks get`](../learnings/1789533257062-designed-and-approved-fix-deployed-fix-scheduled-t.md)
+- [ncl one-shot task with placeholder prompt is consumed before you can update it](../learnings/1791533244463-ncl-one-shot-task-with-placeholder-prompt-is-consu.md)
 _Catalog: [[wiki/index.md]]_

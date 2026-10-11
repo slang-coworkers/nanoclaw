@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-825 learnings. [Catalog](../index.md)
+826 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -363,6 +363,7 @@ type: topic
 - [DeepWiki MCP tool renamed ask_question → ask_wiki_question; fleet-wide allowlist gap](../learnings/1790105381468-deepwiki-mcp-tool-renamed-ask-question-ask-wiki-qu.md)
 - [Defer bot fixer PR when a MEMBER self-assigned + self-diagnosed the issue](../learnings/1789193900433-defer-bot-fixer-pr-when-a-member-self-assigned-sel.md)
 - [Delivery gate counts ANY file edit — update memory/notes before the final OUTPUT critique](../learnings/1789554373150-delivery-gate-counts-any-file-edit-update-memory-n.md)
+- [Delivery gate: any edit after an OUTPUT_REVIEW approve re-arms it; codex must emit plain Attested lines](../learnings/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md)
 - [Delivery-gate + codex-attestation mechanics that block GitHub review replies](../learnings/1786490307277-delivery-gate-codex-attestation-mechanics-that-blo.md)
 - [Delivery-gate blocks the Bash call that writes PR-body files too](../learnings/1784160118119-delivery-gate-blocks-the-bash-call-that-writes-pr-.md)
 - [Delivery-gate OUTPUT_REVIEW compares the POSTED PR vs your local tree — commit+push+update-body BEFORE running it](../learnings/1789402846129-delivery-gate-output-review-compares-the-posted-pr.md)

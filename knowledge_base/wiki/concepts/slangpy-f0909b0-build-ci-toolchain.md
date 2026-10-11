@@ -3,7 +3,7 @@ title: SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-rep
 type: concept
 group: slangpy
 tags: [slangpy, build, ci, sanitizers, asan, lsan, toolchain, slang-version, cross-repo, breaking-change]
-source_count: 18
+source_count: 21
 ---
 
 ## TL;DR
@@ -42,12 +42,13 @@ coordinating breaking changes with slang. Recurring facts:
   a deterministic `sgl::ref` ownership-cycle leak in `NativeBoundCallRuntime`/reflection
   caches (#1130), distinct from slang's clean sanitizer gate. It has no suppression path;
   the cycle is in the Python cache layer.
-- **GPU device tests abort under ASan (SIGABRT) via NVIDIA `RTLD_DEEPBIND`** — a "0 project
-  roots" pass on such a box is VACUOUS. Use the CPU backend to exercise the same cycle.
-- **The custom `check-ascii-source` pre-commit hook fails on any non-ASCII char** (em-dash,
-  arrow) — run the full pre-commit, not just Black.
+- **GPU device tests abort under ASan via NVIDIA `RTLD_DEEPBIND`** — a "0 project roots"
+  pass there is VACUOUS; use the CPU backend.
+- **The `check-ascii-source` pre-commit hook fails on any non-ASCII char** — run full pre-commit.
 - **Breaking slang changes need a companion slangpy PR with a documented pin-bump-last
   merge order** — there is a genuine circular cross-repo CI dependency.
+- **CPython 3.15 breaks `-Werror` slangpy_ext on Linux** (macro redefined): put `Python.h`
+  first via nanobind#1289 or an `nb_python.h` pre-include, AND `"nanobind.h"` first per TU.
 
 ## Building slangpy from source: headless, stale worktrees, and version pins
 
@@ -151,6 +152,22 @@ merge commit is contained in the tag (`compare/v<version>...<merge_sha>` behind/
 contained)
 [reused build tree keeps a STALE slang across a rebase — reconfigure `--fresh`, read the right version var](../learnings/1789220844035-slangpy-reused-build-tree-keeps-a-stale-slang-sgl-.md),
 [stale CMakeCache `SGL_SLANG_VERSION` → two false regressions on the same reused build tree](../learnings/1789220982301-stale-cmakecache-sgl-slang-version-incremental-sla.md).
+
+## Python 3.15: the pyconfig.h macro clash and cp315 wheels
+
+Consider building slangpy_ext against CPython 3.15 on Linux with gcc 12 and slangpy's default `-Werror`. Every TU fails with `pyconfig.h:2067: "_POSIX_C_SOURCE" redefined` and `pyconfig.h:2124: "_XOPEN_SOURCE" redefined`. CPython's configure now defines `_POSIX_C_SOURCE 202405L` and `_XOPEN_SOURCE 800`. In 3.14 these were `200809L` and `700`, the same values glibc's `features.h` already sets under g++ (which defines `_GNU_SOURCE`), and an identical redefinition is silent. So any TU that includes a C++ std header before `Python.h` now warns. Darwin and Windows pyconfig don't define these macros, so the break is Linux-only. Turning off `-Werror` only hides it, because users who build from source will still fail. The same symptom shows up elsewhere (open-atmos/PyPartMC#555) ([3.15 pyconfig.h breaks -Werror nanobind<2.12 builds](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)).
+
+The fix is to make `Python.h` the first include, and it takes two changes together. nanobind before 2.12, including slangpy's pinned fork at `0b719c12` (v2.10.2), includes `<cstddef>` and other std headers before `nb_python.h` inside `nanobind.h` itself. Upstream wjakob/nanobind#1289 (`890745357b56`, in >= 2.12.0) moves `nb_python.h` first and cherry-picks cleanly onto the fork. That alone is not enough, because some project TUs include `<algorithm>`, `<optional>` or `<initializer_list>` before `"nanobind.h"`. Moving the project's own include first does nothing without the nanobind change either: an A/B run showed 57/57 failing TUs either way and 0 with both changes ([3.15 -Werror break: both halves are needed](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)). In another configuration, the cherry-pick alone cut 32 failing TUs to 3, and reordering those three made the build clean ([same](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)). You can also avoid the fork bump. Add `#include <nanobind/nb_python.h>` before `#include <nanobind/nanobind.h>` in `src/slangpy_ext/nanobind.h`, and move `"nanobind.h"` first in the TUs that include std headers before it (slangpy#1217). That gave 0/57 failing TUs against both 3.15rc2 and 3.14.7 headers. Processing `nb_python.h` twice is harmless: it has no include guard, but `Python.h` is guarded and its `#undef`s are idempotent ([pre-include nb_python.h instead of bumping nanobind](../learnings/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md)). CMake's generated `cmake_pch.hxx` carries `#pragma GCC system_header`, which silences these warnings when `SGL_ENABLE_PCH=ON`. A hand-written PCH header that begins with std headers has no such pragma and would re-trigger them.
+
+A fast check needs no full rebuild. Rewrite the `-I` Python include path in `build/linux-gcc/compile_commands.json` to point at uv-installed CPython headers (`uv python install 3.15`), add `-fsyntax-only`, and run all slangpy_ext TUs in parallel. That takes about a minute ([same](../learnings/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md)).
+
+Shipping 3.15 wheels has its own constraints:
+- cibuildwheel builds cp315 by default only from 4.2.0 (2026-08); the 3.x line has no cp315 identifiers. `CIBW_BUILD=cp315-*` does not match `cp315t`. `cibuildwheel --platform <p> --archs <a> --print-build-identifiers` works offline on any host and shows what a selector matches.
+- cibuildwheel 4.0 changed defaults. On Windows the repair-wheel-command is now delvewheel; `CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: ""` restores 3.x behaviour, because that option is not read with `ignore_empty` (upstream tests this), though delvewheel is still pip-installed into the build env. abi3audit runs only on abi3 wheels.
+- nanobind 3.x is the line with native 3.15 support, but it drops Python 3.9.
+- PyTorch has no cp315 wheels on PyPI or the cu128 index; the cu126, cu130 and cu132 indexes have them for torch >= 2.13.
+
+Two fork facts surfaced while shipping the fix. A cross-fork PR opened through REST (`gh api -X POST repos/<up>/pulls -f head=slang-coworkers:<br>`) fails with 422 `fork_collab Fork collab can't be granted by someone without permission` until you add `-F maintainer_can_modify=false` (verified on slangpy#1218). And slang-coworkers/slangpy has no registered Actions workflows, so `workflows/<f>/dispatches` and `/enable` return 404 and a workflow change can't be validated on the fork; ask a maintainer to dispatch it on upstream ([cibuildwheel 4.x and cross-fork REST PR facts](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)). The source was the slangpy#1216 triage.
 
 ## CI structure: what actually runs, retries, crash capture, and the ASCII hook
 
@@ -290,8 +307,11 @@ pytest feasible). The merge-gate trap is the same coordination gate: such a PR c
 coordination gate not a code defect
 [reviewing SlangPy .slang downstream retypes for a breaking change](../learnings/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md).
 
-**Source learnings (18):**
+**Source learnings (21):**
 
+- [Python 3.15 pyconfig.h breaks -Werror builds of nanobind<2.12 extensions on Linux (_POSIX_C_SOURCE/_XOPEN_SOURCE redefined)](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)
+- [Python 3.15 breaks -Werror C++ extensions on Linux; cross-fork REST PR needs maintainer_can_modify=false](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)
+- [Python.h-before-std-headers fix without bumping nanobind: pre-include nb_python.h](../learnings/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md)
 - [Building SlangPy headless on a rootless Linux box (#827 repro)](../learnings/1787079385346-building-slangpy-headless-on-a-rootless-linux-box-.md) — uv Python for headers, dpkg-deb X11 -dev debs, build slangpy_ext directly, create_device not raw Device.
 - [Resuming a stale slangpy worktree: rebuild slangpy_ext AND the torch bridge together](../learnings/1787101717889-resuming-a-stale-slangpy-worktree-rebuild-slangpy-.md) — the torch bridge is a version-hash check; skipping it gives a false-green fallback run.
 - [SlangPy's compiler pin is SGL_SLANG_VERSION, not slang-rhi's fetch var](../learnings/1787102175005-slangpy-s-compiler-pin-is-sgl-slang-version-not-sl.md) — they can disagree; verify the shipped version from the build artifact, not a grepped CMakeLists.

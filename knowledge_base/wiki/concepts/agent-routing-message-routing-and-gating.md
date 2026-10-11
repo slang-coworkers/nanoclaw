@@ -3,7 +3,7 @@ title: "Agent Routing: Message Routing & Gating"
 type: concept
 group: agent-routing
 tags: [routing, chain, dispatch, in_reply_to, a2a, orchestrator, triage, fixer, provenance, echo-loop, credit]
-source_count: 43
+source_count: 42
 ---
 
 # Agent Routing: Message Routing & Gating
@@ -26,7 +26,7 @@ source_count: 43
 
 The canonical 4-tier shape is `Orchestrator → Triage → Fixer → Reviewer`. Replies must hop back along the dispatch path one tier at a time: Reviewer → Fixer → Triage → Orchestrator. A fixer's `[Fix Report]` naturally flows upstream to the orchestrator (parent), not back across the peer triager→fixer edge — monitoring only the direct edge misses the actual outcome ([slang triage [Fix Report] may route via parent, not direct to triager](../learnings/1779884965191-slang-triage-fix-report-may-route-via-parent-not-d.md)).
 
-The "direct edges only" rule means each coworker can reach its parent (the edge minted at session birth) and children it opened itself. Peer coworkers on separate A2A wiring are NOT directly reachable without risking the ancestor-edge hazard ([Strict reply-routing in 4-tier issue chain](../learnings/legoop-feedback_chain_shape_strict.md)). After a retraction, the slang-triager→slang-fixer edge IS real and deliverable via `send_message(to="slang-fixer")`; the triager owns the spawned fixer session as a child and forwards `[Triage Resolution]` to parent ([RETRACTION: triager→slang-fixer edge DOES work — real lesson is no double-dispatch](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)). An earlier learning claiming "no wired edge" was wrong ([slang-triager has no deliverable edge to slang-fixer](../learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-fix.md)).
+The "direct edges only" rule means each coworker can reach its parent (the edge minted at session birth) and children it opened itself. Peer coworkers on separate A2A wiring are NOT directly reachable without risking the ancestor-edge hazard ([Strict reply-routing in 4-tier issue chain](../learnings/legoop-feedback_chain_shape_strict.md)). The slang-triager→slang-fixer edge IS real and deliverable via `send_message(to="slang-fixer")`; the triager owns the spawned fixer session as a child and forwards `[Triage Resolution]` to parent ([RETRACTION: triager→slang-fixer edge DOES work — real lesson is no double-dispatch](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)). The real hazard is the inverse: once the triager has handed off, the orchestrator must not also dispatch the same fix (double-dispatch spawns a duplicate fixer session).
 
 ## Chain-Routing Gate and `in_reply_to`
 
@@ -103,7 +103,7 @@ Two routing/gating facts. **A bare `send_message` (no `in_reply_to`) is refused 
 
 **Distinguish mention-authorized from operator-gated GitHub replies when a codex OUTPUT_REVIEW gate changes your drafted text.** When a maintainer @-mentions the bot with a question/task, the reply is mention-authorized: you may post the codex-corrected accurate version directly (the mention is the authorization, not the exact words). But when a reply is operator-gated (the operator approved *specific text*) and the OUTPUT_REVIEW gate then MATERIALLY changes the content (facts, claims, scope), you must re-show the corrected version to the operator before posting — they approved words, not a moving target; only cosmetic/format changes can go without re-approval. Why it matters: running codex OUTPUT_REVIEW before posting routinely catches real errors — on #12443/PR #12479 it caught a genuine code bug plus 3 false factual claims in the drafted maintainer reply before any reached the maintainer. So always run the gate first, then branch on mention-authorized (post corrected) vs operator-gated (re-show if materially changed). ([Operator-gated vs mention-authorized GitHub replies: re-show codex-corrected text before posting](../learnings/1789631981572-operator-gated-vs-mention-authorized-github-replie.md))
 
-**Source learnings (43):**
+**Source learnings (42):**
 - [Operator-gated vs mention-authorized GitHub replies: post codex-corrected text directly if mention-authorized; re-show to operator if operator-gated and materially changed](../learnings/1789631981572-operator-gated-vs-mention-authorized-github-replie.md)
 - [bare send_message is refused on a long-lived cron session (677 unresponded inbounds) — pass in_reply_to](../learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md)
 - [Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)
@@ -119,7 +119,6 @@ Two routing/gating facts. **A bare `send_message` (no `in_reply_to`) is refused 
 - [ncl approval gate non-functional — no admin configured](../learnings/1781102520887-ncl-approval-gate-non-functional-no-admin-configur.md)
 - [Orchestrator double-dispatch spawns duplicate fixer sessions](../learnings/1781117092067-orchestrator-double-dispatch-spawns-duplicate-fixe.md)
 - [Fresh peer delegation with chain-delivery marker needs in_reply_to](../learnings/1781713187860-fresh-peer-delegation-carrying-a-chain-delivery-ma.md)
-- [(RETRACTED) slang-triager no deliverable edge to slang-fixer](../learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-fix.md)
 - [Retraction: triager→slang-fixer edge does work](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)
 - [Duplicate dispatch peer live-writes into your shared worktree](../learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
 - [Parallel fix/issue chains can grab the same enum value](../learnings/1782535868213-parallel-fix-issue-chains-can-grab-the-same-option.md)

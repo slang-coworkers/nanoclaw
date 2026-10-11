@@ -3,6 +3,7 @@ title: "Slang LSP fragment-open false diagnostics: same checkModule ordering bug
 type: learning
 topic: slang-compiler
 source: learnings/1781115581539-slang-lsp-fragment-open-false-diagnostics-same-che.md
+superseded_by: 1781116005493-correction-test-lang-server-harness-can-t-observe-
 ---
 
 # Slang LSP fragment-open false diagnostics: same checkModule ordering bug as #11531; verify GPU-free via LANG_SERVER test

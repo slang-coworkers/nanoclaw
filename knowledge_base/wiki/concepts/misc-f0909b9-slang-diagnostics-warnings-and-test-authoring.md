@@ -3,7 +3,7 @@ title: "Slang diagnostics: the warning mechanism, lossy int→float warnings, an
 type: concept
 group: misc
 tags: [slang, warnings, warning-level, pedantic, diagnostic-test, filecheck, int-to-float, getMaximumTypeBitSize, slang-test, unit-test, lang-server]
-source_count: 16
+source_count: 18
 ---
 
 ## TL;DR
@@ -31,7 +31,7 @@ annotated (an un-annotated source line asserts NO diagnostic there — that's ho
 assert absence; there is no `//CHECK-NOT:`). Each rich diagnostic emits TWO
 records. Match by bare code (`30133`) or message substring, never the rendered
 `error[E…]:` header. Matching is a literal substring of ONE field (no `{{.*}}`; code and message are
-never concatenated), and an unlocated `E99997` (location `0:0`) cannot be caret-anchored. For real FileCheck (SPIR-V), a bare `CHECK-NOT` only guards a
+never concatenated), and an unlocated `E99997` (location `0:0`) cannot be caret-anchored. Rich diagnostics take a code line plus a message line; legacy lexer diagnostics (E10002/E10003) take exactly one (`^ error E10003`). For real FileCheck (SPIR-V), a bare `CHECK-NOT` only guards a
 bounded region — use a `CHECK-DAG`/`CHECK-NOT`/`CHECK-DAG` barrier (it guards only the gap
 between groups) or a separate `-NOT`-only run, and run the revert drill on negatives.
 
@@ -164,6 +164,24 @@ empty-type legalization removes `Empty` first, so `NotEqualBitCastSize` is repor
 has to come from enumerating the `BitCast` producers
 ([DIAGNOSTIC_TEST: annotate every record; unlocated internal errors cannot be caret-anchored](../learnings/1791296982463-slang-diagnostic-test-annotate-every-record-unloca.md)).
 
+**How many annotations a diagnostic takes depends on how many records it emits.** A rich
+diagnostic (E41407, E15501) emits a code row and a message row, so a lone `//CHECK: ^ E41407`
+still leaves "Found N diagnostic(s) without annotations"; add `//CHECK: ^ <message substring>`
+at the same column, or mark the directive `non-exhaustive`. Lexer diagnostics
+(`slang-lexer-diagnostic-defs.h`: 10002 octal, 10003 invalid digit) print in the legacy format
+(`error 10003: invalid digit…`) with no separate span row, so each matches exactly ONE
+annotation, and a second line at the same caret fails "(already matched)". Pin the code with a
+single `//CHECK: ^ error E10003`, which matches through `severity errorCode` with the `E` prefix
+even though the output prints `10003`; a control edit to `E10004` fails, so the code really is
+checked. The octal warning 10002 on a token like `07_9` spans the whole token (`^^^^`). This is
+the opposite of checker-legacy diagnostics such as E30047, whose span row has different text
+and needs a second line (on [[wiki/concepts/slang-b-test-harness.md]]), so copy the runner's
+suggested annotations rather than a rule. A related producer bug: a CAS-style op whose two
+order operands are reported at the same `sourceLoc` can emit two identical diagnostics (both
+`(MemoryOrder)7`); dedupe when both fail the same way and pin it with a test row
+[exhaustive DIAGNOSTIC_TEST: annotate code AND message](../learnings/1791550646372-slang-exhaustive-diagnostic-test-annotate-code-and.md)
+[legacy lexer diagnostics: one annotation per diag](../learnings/1791572293591-slang-legacy-lexer-diagnostics-one-annotation-per-.md).
+
 For **real FileCheck** (e.g. SPIR-V absence assertions), a bare `CHECK-NOT` only
 guards a bounded region — if the forbidden text appears in the MIDDLE of output, a
 leading/trailing `CHECK-NOT` silently misses it and the test passes vacuously. The
@@ -226,7 +244,7 @@ convenient local checkout at a different commit. Any claim about what's *present
 target, file, helper) must be checked at the exact reviewed ref
 ([verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md)).
 
-**Source learnings (16):**
+**Source learnings (18):**
 
 - [Slang HAS opt-in default-off warnings (WarningLevel + -W<name>) — wiki "disable-only" is stale](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — full opt-in ladder; use `pedantic` for off-by-default; a sign-change warning needs its own `_coerce` branch.
 - [Slang lossy int→float warning: diagnostic-test annotation mechanics + unsigned-literal & warning-group pitfalls](../learnings/1788797863864-slang-lossy-int-float-warning-diagnostic-test-anno.md) — -Wextra ON / -Wall+-Wpedantic OFF; lossy int→float is an independent `if` in _coerce (cost 400); don't raise conversion cost.
@@ -244,3 +262,5 @@ target, file, helper) must be checked at the exact reviewed ref
 - [int→half E30081 warning: use round-trip exactness, not a fixed [-2048,2048] range](../learnings/1788945215723-slang-int-half-e30081-warning-use-round-trip-exact.md) — half's exactly-representable integers above 2048 are non-contiguous (…65504); test via `HalfToFloat(FloatToHalf(v))==v`; diagnostic-only, don't touch ConversionCost; shared predicate serves #12929/#12930/#12979.
 - [half int-literal E30081 routes through `_coerce`, not overflow — `getMaximumTypeBitSize`=0 for half](../learnings/1788947867563-half-int-literal-conversion-warning-e30081-getmaxi.md) — the `maxBitSize>0`-guarded IntegerConstantOverflow branch is skipped for half, so every int→half literal (incl. 131072) is diagnosed via E30081; `diag=CHECK` caret width counts the `u` suffix.
 - [DIAGNOSTIC_TEST: annotate every record; unlocated internal errors cannot be caret-anchored](../learnings/1791296982463-slang-diagnostic-test-annotate-every-record-unloca.md) — #12875: E99997 is `0:0`; error+span rows both need carets; literal single-field substring (no `{{.*}}`); caret-move + revert drills; `sourceLoc.isValid()` ≠ user-authored
+- [Slang exhaustive DIAGNOSTIC_TEST: annotate code AND message per diagnostic](../learnings/1791550646372-slang-exhaustive-diagnostic-test-annotate-code-and.md) — rich diagnostics need a code line plus a message line at one caret; dedupe CAS two-operand duplicates.
+- [Slang legacy lexer diagnostics: one annotation per diag; pin code as `^ error E10003`](../learnings/1791572293591-slang-legacy-lexer-diagnostics-one-annotation-per-.md) — no span row, a second annotation fails "(already matched)"; `E` prefix matches output `10003`.
