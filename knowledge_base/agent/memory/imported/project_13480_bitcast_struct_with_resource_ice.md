@@ -89,5 +89,4 @@ at $60.97 against cap $50 and ceiling $75. Tier-1 is advisory, not blocking, but
 ceiling. Orchestrator nudged the triager once (msg 61) and reported it to the dashboard (msg 69). CI dispatch 37727913617 is waiting at the priority gate.
 There were no non-bot comments after 02:02:47Z. #13381 CI (37644780423) has been at the same gate since 10-07 15:33Z.
 
-**Resume.** Re-chase task `rechase-13480-draft-pr-b224` (10-09 13:00Z; the predecessor `-ace0` was a consumed one-shot). If round 2
-still hasn't moved, escalate to the dashboard. Do not nudge the triager a second time. Thread `gh-issue-shader-slang/slang-13480`.
+**Resume.** Re-chase task `rechase-13480-draft-pr-5891` (10-12 13:00Z; predecessors `-ace0`, `-b224` were consumed one-shots; 10-10 13:00Z check found no change: draft, head 579d248d0c, 0 reviews, CI 37727913617 still waiting, no non-bot comment after 10-09 18:03:19Z). Resume trigger: a tangent-vector or maintainer scope answer on cmt 6086485474 → route it verbatim to slang-triager. If none by 10-16, ask the operator once whether to nudge. Thread `gh-issue-shader-slang/slang-13480`.

@@ -58,4 +58,4 @@ Re-chases: `rechase-12136-approver-c-c050` (10-04: unchanged, head still `14a218
 answer; re-pinged as dashboard msg 41 with the pause correction) → `rechase-12136-approver-d-b6d8`
 (10-07: still paused=1, still escalated with the same figures, no outbound after seq 147, no operator answer
 to msg 29/41 in the 400 most recent dashboard rows; head R11 `e91d7732`; one reminder line sent, msg id 23)
-→ `rechase-12136-approver-e-f511` (10-10 09:00Z).
+→ `rechase-12136-approver-e-f511` (10-10: no change: paused=1, escalated with the same figures, no outbound after seq 147, no operator answer in dashboard rows from 10-07 09:00Z up to 10-10 08:33Z. Head still R11 `e91d7732`, so the PR's own diff is unchanged. The PR is now `CONFLICTING` with master, and tangent-vector's 09-02 CHANGES_REQUESTED still stands. 4th ask sent as orchestrator-dashboard msg id 25) → `rechase-12136-approver-f-e742` (10-13 09:00Z; after that, weekly cadence).

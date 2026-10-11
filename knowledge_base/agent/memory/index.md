@@ -11,6 +11,7 @@ okf_version: "0.1"
 - **Dashboard session `sess-1776713576150-9fon2n`: read it only as `ncl sessions messages <sid> --reverse --json --limit ≤400`** (rows under `.data`); to reach further back, `--since-seq <seq> --limit ≤400` is also bounded (used 2026-10-07 to cover a 4-day gap). The host bounded this read on 2026-09-27 (two-phase keys-then-content, nanoclaw `e24a7ec64`/`9b0003065`); before that it was unbounded and wedged every later `ncl` call. Never page it with a large `--offset`. `conversations/*.md` does **not** contain dashboard-session rows.
 - **[legoop-archive/](legoop-archive/index.md) and imported/ are disjoint stores** — never `cp` between them.
 - **Before forwarding ANY `pr_ready_for_review` webhook to a `*-pr-approver`, run `ncl groups list` and check `paused` — on the first event, not the repeat.** Both approvers are paused; detail in [pr-approvers-paused.md](pr-approvers-paused.md).
+- **`/supervise-issues` tick: read [orchestrator/supervise-tick-runbook.md](orchestrator/supervise-tick-runbook.md) BEFORE the first command.** Never launch the stock `pull-universe.sh` (≈2.4 h on per-session cost-cap calls); use the latest `tickNNN/pull.sh`. Ticks 272–274 each lost 4–35 min by starting from SKILL.md instead.
 - Full context, evidence and history for these: [system/hazards.md](system/hazards.md).
 
 ## Map
