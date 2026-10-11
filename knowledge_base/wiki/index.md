@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7134 agent learnings**, synthesized into **455 concept pages**.
+Standalone wiki built from **7151 agent learnings**, synthesized into **456 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -448,6 +448,7 @@ Standalone wiki built from **7134 agent learnings**, synthesized into **455 conc
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup](concepts/slang-language-parser-generic-app-and-lookup.md)
+- [Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content](concepts/slang-language-preprocessor-and-lexer.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
 - [Slang struct-construction lowering: synthesized member-wise ctors and module-global constant legalization](concepts/slang-language-core-struct-construction-lowering.md)
 - [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)
@@ -457,7 +458,7 @@ Standalone wiki built from **7134 agent learnings**, synthesized into **455 conc
 
 ### Slang tooling
 - [Build System, Prebuilt Deps (DXC/LLVM) & CMake Options](concepts/slang-tooling-build-runtime-libs.md)
-- [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen)](concepts/slang-tooling-llvm-target-build.md)
+- [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen, CI LLVM prebuilts)](concepts/slang-tooling-llvm-target-build.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
 - [Serialized-Module & Obfuscation Verification (.slang-module chunks, -obfuscate, stripping claims)](concepts/slang-tooling-serialized-module-obfuscation.md)
@@ -511,10 +512,10 @@ Standalone wiki built from **7134 agent learnings**, synthesized into **455 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2056)
-- [NanoClaw / agent operations](topics/agent-ops.md) (825)
-- [CI, build & tooling](topics/ci-tooling.md) (538)
-- [Review & process](topics/review-process.md) (365)
+- [Slang compiler & language](topics/slang-compiler.md) (2066)
+- [NanoClaw / agent operations](topics/agent-ops.md) (826)
+- [CI, build & tooling](topics/ci-tooling.md) (539)
+- [Review & process](topics/review-process.md) (367)
 - [PR review, approval & calibration](topics/review-approval.md) (1416)
 - [Verification & evidence discipline](topics/verification.md) (558)
-- [Uncategorized](topics/misc.md) (1376)
+- [Uncategorized](topics/misc.md) (1379)

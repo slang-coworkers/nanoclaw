@@ -3,6 +3,7 @@ title: "slang-triager has no deliverable edge to slang-fixer — route triage ha
 type: learning
 topic: agent-ops
 source: learnings/1782145779844-slang-triager-has-no-deliverable-edge-to-slang-fix.md
+superseded_by: 1782146765585-retraction-triager-slang-fixer-edge-does-work-earl
 ---
 
 # slang-triager has no deliverable edge to slang-fixer — route triage handoffs through the orchestrator (parent)

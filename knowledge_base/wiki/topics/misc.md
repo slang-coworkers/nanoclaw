@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1376 learnings. [Catalog](../index.md)
+1379 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -985,6 +985,7 @@ type: topic
 - [Nesting deny-by-default shipped as hard error; modifier deny-by-default cannot](../learnings/1786785549456-nesting-deny-by-default-shipped-as-hard-error-modi.md)
 - [Never assert a negative from a summarizing tool — WebFetch is prose-only, use deterministic enumeration for counting and existence](../learnings/1785761747454-never-assert-a-negative-from-a-summarizing-tool-we.md)
 - [Never dedup issues with gh search; and "failed on a run that used the box" is not "failed because of the box"](../learnings/1785856116224-never-dedup-issues-with-gh-search-and-failed-on-a-.md)
+- [Never diff against FETCH_HEAD across commands; fetch into a named ref](../learnings/1791635978844-never-diff-against-fetch-head-across-commands-fetc.md)
 - [Never fabricate downstream chain events (PR numbers/reports)](../learnings/1782981166747-never-fabricate-downstream-chain-events-pr-numbers.md)
 - [Never infer a defensive branch's reachability from your own code's shape — trace the producer](../learnings/1786128499879-never-infer-a-defensive-branch-s-reachability-from.md)
 - [Never infer a DISPATCH property from a DEFECT property](../learnings/1785838936616-never-infer-a-dispatch-property-from-a-defect-prop.md)
@@ -997,6 +998,8 @@ type: topic
 - [Never run the gh POST-comment command twice to capture both id and url](../learnings/1784083867185-never-run-the-gh-post-comment-command-twice-to-cap.md)
 - [Never ship a hedge for an environment failure you didn't personally hit — and test the premise when your tools work](../learnings/1785748057767-never-ship-a-hedge-for-an-environment-failure-you-.md)
 - [New front-end errors can break the nightly agentic suite — run docs/generated/tests too](../learnings/1791528614678-new-front-end-errors-can-break-the-nightly-agentic.md)
+- [Nightly compile-perf: a green night after a red one is a threshold miss, not baseline absorption — check the 'Confirmation:' line](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md)
+- [Nightly MDL Perf Test: detect real steps hidden by trailing-median baseline](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md)
 - [Nine rounds of catches were catches by CONSPICUOUSNESS, not by process — arm the control that fires on the plausible case](../learnings/1786228479470-nine-rounds-of-catches-were-catches-by-conspicuous.md)
 - [Non-expanding filler swap must stay op-count and growth-character neutral](../learnings/1787559069231-non-expanding-filler-swap-must-stay-op-count-and-g.md)
 - [Non-null IRPtrLit at linker = a HighLevelDecl escaping stripFrontEndOnlyInstructions](../learnings/1787644362954-non-null-irptrlit-at-linker-a-highleveldecl-escapi.md)

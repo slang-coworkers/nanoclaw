@@ -3,7 +3,7 @@ title: "Slang markdown & generated docs: prettier is unenforced, generators own 
 type: concept
 group: slang-tooling
 tags: [markdown, prettier, generated-docs, ci, slangc-help, byte-exact, docs]
-source_count: 12
+source_count: 15
 ---
 
 ## TL;DR
@@ -30,6 +30,8 @@ PR red or balloons a minimal diff into a rejected reformat.
 - **A `docs/generated/tests` bundle's `_prompt.md` can contradict its own tests** ("do not
   test X", "compute-only") or restate the old claim. Fix the prompt when you touch the bundle,
   or regeneration (`mark-fresh`) reverts the retarget; lint catches neither.
+- **PR CI never runs `docs/generated/tests` (nightly only).** A behaviour-changing PR runs it on
+  head and base and diffs FAILED; fix by regeneration or a linked `expected-failures.txt` entry.
 - **README coverage rows often do NOT equal `//META: purpose` verbatim** (15/72 in one bundle),
   despite `_common.md`'s rule; a single mismatch is a nit. Script a bundle-wide check before
   asserting any convention.
@@ -172,6 +174,28 @@ That atom also warns that `strings <binary> | grep "<phrase>"` can return 0 even
 help-string change *is* in the binary (the C++ compiler re-chunks adjacent string literals);
 confirm with `slangc -h | grep "<phrase>"`, which is authoritative.
 
+**PR CI never runs `docs/generated/tests`, so a behaviour-changing compiler PR has to run it
+itself.** Only `nightly-slang-test.yml` runs these doc-anchored bundles, so a PR can merge green
+and turn the nightly red. Two October 2026 cases: a new front-end error E31215 for
+`uniform float4 x[]` broke `design/ir-reference/types/array-unsized.slang`, which declares exactly
+that shape, and PR #13546's widening of `#if` to int64 broke
+`design/pipeline/01-lex-preprocess/if-expression-signed-overflow-wraps.slang`, which pins the old
+32-bit wraparound. The check takes about 2 minutes with 16 servers:
+`slang-test -test-dir docs/generated/tests -expected-failure-list docs/generated/tests/_meta/expected-failures.txt -use-test-server -server-count 16`,
+run on the PR head and on the base, then diff the FAILED lines; append one bundle path to check
+just that bundle, where an expected-failure entry reports `failed(expected)`. The `.slang` files
+fall under `_meta/regenerate.md`'s hand-edit policy, so the compliant fixes are regenerating the
+bundle or adding the path to `_meta/expected-failures.txt` under a `#` comment carrying an issue
+link (lint enforces the link); stale tests have also been retargeted directly after intentional
+changes (#13454, #13317, #13282, #12464), following the retarget rules below. Whole-tree
+`regenerate.py lint` has hundreds of pre-existing errors on master, so compare error counts with
+and without your edit (or lint only the bundle) instead of expecting zero. In a fresh worktree
+build, INTERPRET/FileCheck tests are silently `ignored` ("FileCheck is not available") unless
+`libslang-llvm.so` is in `build/Release/lib`; copy it from an older tree before trusting the run
+[new front-end errors break the nightly agentic suite](../learnings/1791528614678-new-front-end-errors-can-break-the-nightly-agentic.md)
+[behaviour-changing PRs must run docs/generated/tests](../learnings/1791580515115-compiler-prs-that-change-behavior-must-also-run-do.md)
+[semantic changes break nightly tests PR CI never runs](../learnings/1791583400841-slang-semantic-changes-can-break-docs-generated-ni.md).
+
 The agentic test bundles under `docs/generated/tests/` have the same owner problem one level
 up: each bundle is regenerated from its `_prompt.md` checklist, and lines like "Do not test X"
 or "compute-only / no DXR" can contradict tests the bundle already has. When a compiler change
@@ -199,7 +223,7 @@ check
 [retarget: update `_prompt.md`](../learnings/1790756499500-retargeting-a-docs-generated-agentic-test-also-upd.md)
 [correction: README rows often differ from `//META: purpose`](../learnings/1790759833171-correction-docs-generated-tests-readme-rows-often-.md).
 
-**Source learnings (12):**
+**Source learnings (15):**
 - [A generated doc checked byte-exact by CI must NOT be run through prettier — and CI's formatting.sh never reaches markdown](../learnings/1786409326017-a-generated-doc-checked-byte-exact-by-ci-must-not-.md) — Two conflicting contracts on `command-line-slangc-reference.md`; the trailing-space generator output; regenerate from your own build after a merge (empty diff = proof).
 - [slang formatting.sh does NOT check markdown in CI's run_all path](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md) — The `((run_markdown))` dispatch asymmetry; 237/413 `docs/generated/**` `.md` fail prettier@3.3.3 on master while CI is green; only make authored lines conformant.
 - [formatting.sh --check-only SKIPS markdown (run_markdown not gated by run_all)](../learnings/1786987129465-formatting-sh-check-only-skips-markdown-run-markdo.md) — The full dispatch block; normalize-both-and-diff to prove a docs edit is neutral; fenced code blocks pass through verbatim; draft PRs skip check-formatting.
@@ -211,4 +235,7 @@ check
 - [prettier --write churns Slang user-guide markdown (setext→ATX) — never blanket-format a doc](../learnings/1789652649573-prettier-write-churns-slang-user-guide-markdown-se.md) — setext headings get rewritten to ATX across untouched sections; revert unrelated churn; formatters are `clang-format-17` not on PATH, so `--check-only` exits 1 on tool-missing not real errors.
 - [Stale docs/generated/tests retarget: prettier 3.3.3 pin, closing-keyword trap, invariant CHECKs](../learnings/1790673868800-stale-docs-generated-tests-retarget-prettier-3-3-3.md) — install prettier@3.3.3 in /tmp for `--md` checks; fix a bundle's contradictory `_prompt.md` when retargeting its tests.
 - [Retargeting a docs/generated agentic test: also update the bundle _prompt.md and keep the README row Claim equal to META purpose, word for word](../learnings/1790756499500-retargeting-a-docs-generated-agentic-test-also-upd.md) — `_prompt.md` restating the old claim makes regeneration revert the fix (#13282; precedents #13150/#13172); its verbatim-row half is corrected by the next atom.
+- [New front-end errors can break the nightly agentic suite — run docs/generated/tests too](../learnings/1791528614678-new-front-end-errors-can-break-the-nightly-agentic.md) — E31215 broke `array-unsized.slang`; diff against master; recursion guards key on instantiated `Type*`.
+- [Compiler PRs that change behavior must also run docs/generated/tests (nightly-only suite)](../learnings/1791580515115-compiler-prs-that-change-behavior-must-also-run-do.md) — #13546 broke `if-expression-signed-overflow-wraps.slang`; head-vs-base FAILED diff; `libslang-llvm.so` needed for FileCheck.
+- [Slang semantic changes can break docs/generated nightly tests that PR CI never runs](../learnings/1791583400841-slang-semantic-changes-can-break-docs-generated-ni.md) — regenerate or linked expected-failures entry; `failed(expected)`; lint has hundreds of pre-existing errors.
 - [Correction: docs/generated/tests README rows often do NOT equal //META purpose verbatim](../learnings/1790759833171-correction-docs-generated-tests-readme-rows-often-.md) — 15/72 rows differ; the `_common.md` rule is unenforced, so a mismatch is a nit; script bundle-wide checks.

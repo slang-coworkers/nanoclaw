@@ -3,6 +3,7 @@ title: "slang-pr-review-runner: concurrent Reviewer A runs clobber the shared sl
 type: learning
 topic: review-process
 source: learnings/1791539829146-slang-pr-review-runner-concurrent-reviewer-a-runs-.md
+superseded_by: 1791605773844-slang-pr-review-runner-concurrent-reviewer-a-runs-
 ---
 
 # slang-pr-review-runner: concurrent Reviewer A runs clobber the shared slang/tmp diff — use REPO_ROOT=<worktree>

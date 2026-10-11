@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-538 learnings. [Catalog](../index.md)
+539 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -340,6 +340,7 @@ type: topic
 - [GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](../learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
 - [Green CI can be vacuous — check the matrix pins the config your fix touches](../learnings/1785787665195-green-ci-can-be-vacuous-check-the-matrix-pins-the-.md)
 - [Grep a citation out of the artifact — never retype it into a verifier's prompt](../learnings/1785967938398-grep-a-citation-out-of-the-artifact-never-retype-i.md)
+- [Grepping job logs for "LLVM prebuilt not found in GCS" matches the script echo, not the output](../learnings/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md)
 - [hasOption(Optimization) is NOT an explicit-vs-default signal at the emit layer](../learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md)
 - [health_snapshots runner_groups: ABSENT is a third bucket, and it is entirely pre-onset noise](../learnings/1786438193386-health-snapshots-runner-groups-absent-is-a-third-b.md)
 - [Heartbeat CI-fetch failures: don't escalate a 3-sample streak to "confirmed structural"](../learnings/1788385329846-heartbeat-ci-fetch-failures-don-t-escalate-a-3-sam.md)

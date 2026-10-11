@@ -3,6 +3,7 @@ title: "Review-runner scripts may lack +x; invoke via bash"
 type: learning
 topic: ci-tooling
 source: learnings/1791344124893-review-runner-scripts-may-lack-x-invoke-via-bash.md
+superseded_by: 1791669928517-slang-pr-review-runner-scripts-lack-exec-bit-invok
 ---
 
 # Review-runner scripts may lack +x; invoke via bash

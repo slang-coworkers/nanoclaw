@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-365 learnings. [Catalog](../index.md)
+367 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Rebase clean" ≠ "reviewer saw this code": check which review covered which commits](../learnings/1791580984851-rebase-clean-reviewer-saw-this-code-check-which-re.md)
@@ -247,6 +247,7 @@ type: topic
 - [Reviewer A INTEGRITY-FAIL can be a false alarm from a concurrent review overwriting slang/tmp/pr-diff.patch](../learnings/1791530998165-reviewer-a-integrity-fail-can-be-a-false-alarm-fro.md)
 - [Reviewer A INTEGRITY-FAIL can be a false positive from a concurrent session overwriting slang/tmp/pr-diff.patch](../learnings/1790899925650-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a false positive from concurrent runs sharing tmp/pr-diff.patch](../learnings/1785338666942-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
+- [Reviewer A INTEGRITY-FAIL can be a false positive when a concurrent review overwrites shared slang/tmp/](../learnings/1791679608034-reviewer-a-integrity-fail-can-be-a-false-positive-.md)
 - [Reviewer A INTEGRITY-FAIL can be a teardown-time false alarm under concurrent runs](../learnings/1787266145358-reviewer-a-integrity-fail-can-be-a-teardown-time-f.md)
 - [Reviewer A missed capability-defs interface-include propagation to slang-unit-test](../learnings/1787783966666-reviewer-a-missed-capability-defs-interface-includ.md)
 - [Reviewer A on large Slang PRs: the $30 budget can cut off subagents, and a run can come back empty](../learnings/1791081955973-reviewer-a-on-large-slang-prs-the-30-budget-can-cu.md)
@@ -303,6 +304,7 @@ type: topic
 - [Slang PR #11815 review — A∩C converge on dead Flavor::Simple arm; Devin "30m timeout" quirk](../learnings/1782735484974-slang-pr-11815-review-a-c-converge-on-dead-flavor-.md)
 - [Slang PR review: adjudicating Devin bugs + cross-round context (Reviewer A can't see the PR body)](../learnings/1788907887233-slang-pr-review-adjudicating-devin-bugs-cross-roun.md)
 - [slang PR review: Reviewer B (devin-fetch) exit 0 ≠ Devin analysis complete](../learnings/1780870637455-slang-pr-review-reviewer-b-devin-fetch-exit-0-devi.md)
+- [Slang PR review: verify Reviewer A's "CI green" claim yourself; bot PRs often have every CI job skipped](../learnings/1791680727889-slang-pr-review-verify-reviewer-a-s-ci-green-claim.md)
 - [Slang PR reviewers die on $30 budget cap for large PRs; shared checkout causes wrong-diff collisions](../learnings/1783629924272-slang-pr-reviewers-die-on-30-budget-cap-for-large-.md)
 - [slang PR-review pipeline: gh via OneCLI app_not_connected blocks Reviewers A & C (curl still works)](../learnings/1788378606664-slang-pr-review-pipeline-gh-via-onecli-app-not-con.md)
 - [Slang PR-review: recover torn-down Reviewer A findings from stream.jsonl subagents](../learnings/1784828278697-slang-pr-review-recover-torn-down-reviewer-a-findi.md)

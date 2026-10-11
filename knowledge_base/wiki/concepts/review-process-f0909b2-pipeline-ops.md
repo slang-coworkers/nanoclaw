@@ -3,7 +3,7 @@ title: /slang-pr-review pipeline operations (dispatch, run-dir, budget, env, int
 type: concept
 group: review-process
 tags: [slang-pr-review, reviewer-a, reviewer-b, reviewer-c, background-dispatch, monitor, run-dir, integrity-fail, max-budget-usd, onecli, drift-check, slang-rhi]
-source_count: 11
+source_count: 13
 ---
 
 # /slang-pr-review pipeline operations (dispatch, run-dir, budget, env, integrity, drift)
@@ -63,7 +63,7 @@ The third recording (PR #12899) adds two specifics: `run-clarity.sh` is not exec
 patterns must live in a script file so the watcher's own argv doesn't self-match, since
 `pgrep -f`/`pkill -f` are guard-blocked
 [Dispatching /slang-pr-review reviewers in background: two gotchas](../learnings/1788446192623-dispatching-slang-pr-review-reviewers-in-backgroun.md).
-The exec-bit loss is not specific to Reviewer C, and it recurs. On 2026-09-30 and again on 2026-10-07, `compose-and-run.sh`, `devin-fetch.sh` and `run-clarity.sh` under `~/.claude/skills/*/scripts/` (`/home/node/.claude/…`) all failed at once with exit 126 "Permission denied", and the background dispatch hid it because the background job (a wrapper `echo "exit=$?"`) still reported exit 0. So invoke all three as `bash <script> …`, and judge a run by each reviewer log's own content rather than the background task's status: a "completed (exit 0)" notification within seconds of dispatch means nothing ran, and the positive liveness check is a `>>> repro.sh:` line at the head of the reviewer log. The same 2026-10-07 session's first Reviewer A run on #13475 had its 5 subagents "interrupted by user" when the lead ended its turn, and the re-run with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` succeeded, so that variable belongs on every A launch, not only the retry ([review-runner scripts may lack +x; invoke via bash](../learnings/1791344124893-review-runner-scripts-may-lack-x-invoke-via-bash.md)). The full survival launch line (variable plus a private `REPO_ROOT` worktree) is on [reviewer-runner infra](review-process-f0909b1-reviewer-runner-infra.md).
+The exec-bit loss is not specific to Reviewer C, and it keeps recurring (2026-09-30, 10-07, 10-10). Every script under `~/.claude/skills/slang-pr-review-runner/scripts/` (`compose-and-run.sh`, `devin-fetch.sh`, …) and `slang-clarity-review-runner/scripts/run-clarity.sh` has been found at mode 0664, so calling one by path, as the workflow prose shows, fails at once with exit 126 "Permission denied". That looks like an instant completion, and a background wrapper (`echo "exit=$?"`) still reports exit 0. Always launch them as `bash <script> …`; their internal sub-calls already use `bash "$HERE/repro.sh"`. After a background dispatch, read the `.done` exit code and the head of the reviewer log before you wait on it: a "completed" notification seconds after dispatch means nothing ran, and a `>>> repro.sh:` line at the log head is the positive liveness check ([log done-markers are the authoritative completion signal](../learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md); [slang-pr-review-runner scripts lack exec bit — invoke via bash](../learnings/1791669928517-slang-pr-review-runner-scripts-lack-exec-bit-invok.md); [also seen 2026-10-10 alongside the concurrent-run clobber](../learnings/1791605773844-slang-pr-review-runner-concurrent-reviewer-a-runs-.md)). Every A launch also needs `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` and a private `REPO_ROOT` worktree; the full survival launch line is on [reviewer-runner infra](review-process-f0909b1-reviewer-runner-infra.md). The 10-10 note also records an unrelated docs-link fact: ReadTheDocs `docs.shader-slang.org/en/latest/external/stdlib-reference/` returns 404, while `external/core-module-reference/` is live and is what shader-slang.org/docs/ links, so docs PRs should use core-module-reference.
 
 ## Run-dir selection, integrity, budget, and drift
 
@@ -131,7 +131,7 @@ the pre-`final-review.md` abort on a larger diff. And on a fixer PEER-REVIEW han
 slang-rhi is also typically App-write-limited, so `post-back.sh` would 403→exit 3
 [running /slang-pr-review on a non-compiler repo (slang-rhi)](../learnings/1789377211919-running-slang-pr-review-on-a-non-compiler-repo-sla.md).
 
-**Source learnings (11):**
+**Source learnings (13):**
 - [Reviewer run-dir selection: never pick by mtime when reviews share transcripts](../learnings/1788160503888-reviewer-run-dir-selection-never-pick-by-mtime-whe.md) — pick by RUN_DIR from task .output or PR/head-SHA in dir name; INTEGRITY-FAIL.txt is a hard stop.
 - [Dispatching background reviewers: nohup & inside run_in_background double-backgrounds](../learnings/1788203787495-dispatching-background-reviewers-nohup-inside-run-.md) — run scripts directly or arm a Monitor kill-0 waiter; guard hook blocks pgrep -f.
 - [Devin Review is static-only; and don't double-background reviewer dispatch](../learnings/1788341384825-devin-review-is-static-only-and-don-t-double-backg.md) — Devin never builds/runs; CI is the only oracle for arch-dependent runtime bugs; PID-wait monitor.
@@ -142,4 +142,6 @@ slang-rhi is also typically App-write-limited, so `post-back.sh` would 403→exi
 - [Reviewer A --max-budget-usd must be ≥20 or it cuts off before final-review.md](../learnings/1788751025464-slang-pr-review-reviewer-a-max-budget-usd-must-be-.md) — cap covers whole run (~$14); a low cap yields a 0-byte review; inner CLI billed separately from harness.
 - [re-review gotchas: benign INTEGRITY-FAIL from concurrent A+C, stale Devin panel](../learnings/1788769244100-slang-pr-review-re-review-gotchas-benign-integrity.md) — trust pr-diff.reference sha + review body over the file-list; cross-check Devin line numbers on force-push.
 - [Reviewer C drift check: a Read of slang-review-post-github/SKILL.md is NOT drift](../learnings/1788810108542-reviewer-c-drift-check-a-read-of-slang-review-post.md) — a Read of the post skill is benign; tighten the drift grep to Bash command bodies only.
-- [Review-runner scripts may lack +x; invoke via bash](../learnings/1791344124893-review-runner-scripts-may-lack-x-invoke-via-bash.md) — all three runner scripts exit 126 (2026-09-30, again 2026-10-07) while the background job reports 0; check the log head for `>>> repro.sh:`; #13475 needed the bg-wait variable
+- [slang-pr-review-runner scripts lack exec bit — invoke via bash](../learnings/1791669928517-slang-pr-review-runner-scripts-lack-exec-bit-invok.md) — every runner script has been found at 0664 (09-30, 10-07, 10-10); exit 126 reads as an instant completion; launch via `bash`, check `.done` and the log head
+- [Verifying detached background PR-reviewer completion (Monitor + pgrep gotchas)](../learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md)
+- [slang-pr-review-runner: concurrent Reviewer A runs clobber each other in the shared /workspace/agent/slang checkout](../learnings/1791605773844-slang-pr-review-runner-concurrent-reviewer-a-runs-.md)

@@ -3,6 +3,7 @@ title: "SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is Op
 type: learning
 topic: misc
 source: learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md
+superseded_by: 1782251874470-correction-abort-message-is-a-runtime-composite-ru
 ---
 
 # SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is OpConstantDataKHR not a runtime composite

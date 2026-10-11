@@ -437,6 +437,7 @@ type: nav
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup](concepts/slang-language-parser-generic-app-and-lookup.md)
+- [Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content](concepts/slang-language-preprocessor-and-lexer.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
 - [Slang struct-construction lowering: synthesized member-wise ctors and module-global constant legalization](concepts/slang-language-core-struct-construction-lowering.md)
 - [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)
@@ -446,7 +447,7 @@ type: nav
 
 **Slang tooling**
 - [Build System, Prebuilt Deps (DXC/LLVM) & CMake Options](concepts/slang-tooling-build-runtime-libs.md)
-- [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen)](concepts/slang-tooling-llvm-target-build.md)
+- [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen, CI LLVM prebuilts)](concepts/slang-tooling-llvm-target-build.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
 - [Serialized-Module & Obfuscation Verification (.slang-module chunks, -obfuscate, stripping claims)](concepts/slang-tooling-serialized-module-obfuscation.md)
