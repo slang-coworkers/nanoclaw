@@ -25,10 +25,10 @@ decay and must be re-read, not remembered.
   **CLOSED 2026-10-09** by saipraveenb25 (fixed by #13234). slangpy#1167 still waits on the CUDA grad_sum=320 check (slangpy-fixer). #13301 is tracked by `rechase-slang-13301-huma-3af4`.
 
 - [slang#13555 — `-ignore-capabilities` + case-less `__target_switch` → silent UB](13555-ignore-capabilities-caseless-target-switch.md) —
-  external bug P2, long-standing. GO 2026-10-10 (draft, `Fixes #13555`): a new error for a target switch with no case that survives the final DCE. Routed via slang-triager.
+  external bug P2, long-standing. Draft PR #13564 (head 19b0b2e3ac) in slang-reviewer review; maintainers to decide breaking? and cpp `Buffer<T>.Load` case. Two unfiled pre-existing rc-139 crashes noted.
 
 - [slang#13556 — CUDA/PTX `SampleGrad` via `tex*Grad`](13556-cuda-samplegrad.md) —
-  external feature request, P2. Draft PR #13559 in peer review; CI gated on falcor-ci approval.
+  external feature request, P2. Draft PR #13559 reviewed internally; waits on falcor-ci approval + kaizhangNV review. Re-chase `rechase-13556-samplegrad-d1aa` (2026-10-12).
 - [slang#13544 — C++14 `'` digit separators](13544-digit-separators.md) —
   external feature request, P3. GO (drafts) on a separate `#if` literal-decoding bug issue (#13545 → draft PR #13546) + finishing `_` for floats (draft PR #13547); CI waits on a falcor-ci approval. `'` is HELD on a maintainer/spec decision. Re-chase `rechase-13544-sep-271e` (2026-10-12).
 
@@ -55,16 +55,18 @@ decay and must be re-read, not remembered.
 - [slang#13436 — DownstreamArgs lost across option levels (linkWithOptions / addTarget)](13436-downstream-args-cross-level.md) —
   triaged + reproduced bug P2, not a regression; #12900's deferred cross-level case. (b) compose-once → **PR #13450** (c527aaf207).
   kaizhangNV resolved C1 on 10-07 (keep append) and marked it READY. [Triage Resolution] 10-08 at 03de207e8c: reviewer R2 APPROVE,
-  CI waiting on the falcor gate (0 fail), awaiting maintainer approve/merge. 10-09: unchanged; the falcor-ci gate (>24 h) needs a ci-approvers
-  approval (operator told). Side finding: 3rd and final ask sent. Re-chase `rechase-13436-merge-42b1` (2026-10-10).
+  awaiting maintainer approve/merge. 10-09 17:10Z kaizhangNV approved the falcor gate and CI is 50/50 green, but the merge queue
+  dropped the PR at 19:11Z on its 2 h check timeout (slow macOS); needs a human re-enqueue (operator told 10-10). Side finding held
+  (3 asks, no 4th). Re-chase `rechase-13436-requeue-e876` (2026-10-12).
 
 - [slang#12627 — CUDA masked RWTexture store, draft PR #13363](12627-cuda-masked-rwtexture-store.md) —
   held on jkwak-work's coherency answer (RMW+warning vs CUDA error; warning scope). Peer review complete (2 rounds, 0 bugs),
   `[Fix Report]` in 10-04 at head `b79ae81e23`. Next re-chase `rechase-12627-jkwak-39ce` (2026-10-12); operator re-ping decision pending since 10-07. Follow-ups #13361/#13362/#13364/#13365 not dispatched.
 
 - [slang#13554 — CUDA layered `_convert` surface write is an empty stub](13554-cuda-layered-convert-write-stub.md) —
-  external, unassigned, P2 bug, reproduced. **GO 2026-10-10** on Approach A (inline `sust.p.a{1d,2d}`, prelude-only) as a draft PR;
-  triager releases the fixer. Couples to #13363's `isConversionAvailable = !isLayered`.
+  external, unassigned, P2 bug, reproduced. **GO 2026-10-10** on Approach A (inline `sust.p.a{1d,2d}`, prelude-only) as a draft PR:
+  **draft PR #13563** (`508fb1b3b2`), peer review **APPROVE_WITH_NITS** 10-10 06:16Z (0 bugs, 2 gaps); fixups pushed at **e2eaf72e2a** 08:17Z. No GPU CI at that head; the operator
+  decides dispatch-at-e2eaf72 vs. approve the old run. Re-chase `rechase-13563-fixups-2-e3ad` (10-11 08:00Z). Couples to #13363's `isConversionAvailable = !isLayered`.
 
 - [slang#13428 — local multi-declarator `j < 2` → E30015 (parser declarator registration)](13428-local-multi-declarator-generic-lookahead.md) —
   **#13428 TERMINAL**: PR #13432 merged 10-07 (`eaf758404f`). Still live: sibling #13430's **draft PR #13434** (`457ae39a0e`); the operator un-draft decision is pending (4 asks), re-chase `rechase-13434-undraft-d613` (2026-10-11). Side findings #13433/#13435 have their own gates.
@@ -111,7 +113,7 @@ decay and must be re-read, not remembered.
 
 - [slang#13409 — Metal groupshared forwarded across barriers; sibling #13412 (all-target pointer roots)](13409-metal-groupshared-barrier-forwarding.md) —
   drafts #13421 (#13409, `c42049e18f`, reviewer jhelferty-nv) and #13431 (#13412, `bf9f3fd05a`, reviewer kaizhangNV) both passed
-  internal review; CI has never run (bot dispatches stuck `waiting`). Out-of-scope follow-ups filed 10-06 as #13465 + #13466 (filing only, no fix until both PRs land). Re-chase `rechase-13421-13431-revi-c551` (10-08).
+  internal review; CI has never run, and since 10-10 none is pending: the old dispatch runs were deleted in the repo-wide Actions purge, so only an un-draft or a fresh dispatch starts CI. Out-of-scope follow-ups filed 10-06 as #13465 + #13466 (filing only, no fix until both PRs land; #13465 is parked on tangent-vector). Re-chase `rechase-13421-13431-1346-19cf` (10-12).
 
 - [slang PR #12136 — lazy autodiff builtins, fork PR approver loop](12136-lazy-autodiff-approver-loop.md) —
   re-pushed 10 times. R10 (`14a2185f`) is only a master merge, so I held it. The R9 real commit was never decided: the approver session has been in cost escalation since Sep 14, and its dispatches go unanswered. The ledger is also unset. All of this is with the operator; re-chase `rechase-12136-approver-c-c050` (2026-10-04).
@@ -131,7 +133,7 @@ decay and must be re-read, not remembered.
   three post-fix hits (two in merge_group, 09-28/29, plus #11709 on 09-30). Diagnostic draft #13352 is waiting on the operator ready-flip and on jvepsalainen-nv choosing exit semantics; re-chase `rechase-13352-exit-seman-440c` (10-03).
 
 - [slang PR #11709 — groupshared parameters by reference](11709-groupshared-param-by-reference.md) —
-  owned by slang-fixer, CHANGES_REQUESTED. HELD until #13406 (the #13339 Ref split) lands; then one rebase-and-rework push with the unpushed P1 fix. jhelferty-nv answered every #13406 question 10-09 02:33Z; the original owner ran out of budget, so the work resumed in a fresh session on `…-11709/13406-resume`. **r5 pushed 10-09 08:49Z** (`4e2603652e`); she answered all five on 10-09 14:06Z (review 5471154778), and that went to the resume session `dth1ak` for one push together with the round-2 review items. Re-chase `rechase-13406-r5-qs` (10-11) checks for the push and the merge that lifts the hold.
+  owned by slang-fixer, CHANGES_REQUESTED. HELD until #13406 (the #13339 Ref split) lands; then one rebase-and-rework push with the unpushed P1 fix. jhelferty-nv answered every #13406 question 10-09 02:33Z; the original owner ran out of budget, so the work resumed in a fresh session on `…-11709/13406-resume`. **r5 pushed 10-09 08:49Z** (`4e2603652e`); **round 3 pushed 10-10 05:52Z (`7e683a211b`)**: her five answers, tangent-vector's no-rewrite `const __ref` direction (she deferred to him) and the round-2 review items. Waiting on slang-reviewer round 3 and her re-review. Re-chase `rechase-13406-r5-qs` (10-11) checks for the push and the merge that lifts the hold.
   - [#13406 review-round history](11709-13406-ref-split-review-rounds.md) — tangent-vector's round, the `readonly` rounds and reversal, the 10-09 budget/phantom-session incident.
 
 - [slang#13348 — inherited field through a property/subscript BoundStorage → E99997 ICE](13348-inherited-field-boundstorage-ice.md) —

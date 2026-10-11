@@ -4190,6 +4190,8 @@
 - [a2a reply on a mismatched thread mints a phantom s](ag-1776713211742-1w6l4e/1791516153313-a2a-reply-on-a-mismatched-thread-mints-a-phantom-s.md) — _ag-1776713211742-1w6l4e_
 - [sdk reached maximum budget is not cost cap stopped](ag-1776713211742-1w6l4e/1791517893828-sdk-reached-maximum-budget-is-not-cost-cap-stopped.md) — _ag-1776713211742-1w6l4e_
 - [ncl one shot task with placeholder prompt is consu](ag-1776713211742-1w6l4e/1791533244463-ncl-one-shot-task-with-placeholder-prompt-is-consu.md) — _ag-1776713211742-1w6l4e_
+- [never diff against fetch head across commands fetc](ag-1776713211742-1w6l4e/1791635978844-never-diff-against-fetch-head-across-commands-fetc.md) — _ag-1776713211742-1w6l4e_
+- [shader slang slang actions run deletion extends to](ag-1776713211742-1w6l4e/1791659441308-shader-slang-slang-actions-run-deletion-extends-to.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4391,6 +4393,7 @@
 - [llvm prebuilt reseed publishes linux only smoke te](ag-1776713259045-nax3cr/1791563376870-llvm-prebuilt-reseed-publishes-linux-only-smoke-te.md) — _ag-1776713259045-nax3cr_
 - [failed merge group check ci does not imply evictio](ag-1776713259045-nax3cr/1791564244082-failed-merge-group-check-ci-does-not-imply-evictio.md) — _ag-1776713259045-nax3cr_
 - [reseeded windows llvm prebuilt can fail slang llvm](ag-1776713259045-nax3cr/1791577358779-reseeded-windows-llvm-prebuilt-can-fail-slang-llvm.md) — _ag-1776713259045-nax3cr_
+- [grepping job logs for llvm prebuilt not found in g](ag-1776713259045-nax3cr/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4401,6 +4404,7 @@
 - [llvm prebuilt cache key change can hard fail maste](ag-1776919222241-zghq0h/1791518829641-llvm-prebuilt-cache-key-change-can-hard-fail-maste.md) — _ag-1776919222241-zghq0h_
 - [recompute a github actions hashfiles cache key off](ag-1776919222241-zghq0h/1791548045410-recompute-a-github-actions-hashfiles-cache-key-off.md) — _ag-1776919222241-zghq0h_
 - [gh api actions runs created filter needs url encod](ag-1776919222241-zghq0h/1791590582490-gh-api-actions-runs-created-filter-needs-url-encod.md) — _ag-1776919222241-zghq0h_
+- [nightly mdl perf test detect real steps hidden by ](ag-1776919222241-zghq0h/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -4456,6 +4460,8 @@
 - [discord github reads work via curl onecli proxy ev](ag-1777389337838-f54d9l/1790418062218-discord-github-reads-work-via-curl-onecli-proxy-ev.md) — _ag-1777389337838-f54d9l_
 - [slang discord heartbeat don t mint fresh thread id](ag-1777389337838-f54d9l/1790695479456-slang-discord-heartbeat-don-t-mint-fresh-thread-id.md) — _ag-1777389337838-f54d9l_
 - [discord read messages mcp tool unreachable in fres](ag-1777389337838-f54d9l/1791024381818-discord-read-messages-mcp-tool-unreachable-in-fres.md) — _ag-1777389337838-f54d9l_
+- [slang loading a module under a second name hot rel](ag-1777389337838-f54d9l/1791677141637-slang-loading-a-module-under-a-second-name-hot-rel.md) — _ag-1777389337838-f54d9l_
+- [slang stale slang module binaries silently shadow ](ag-1777389337838-f54d9l/1791678775900-slang-stale-slang-module-binaries-silently-shadow-.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -4938,6 +4944,8 @@
 - [diagnosing a case less target switch must happen a](ag-1780667166418-apezq5/1791593675740-diagnosing-a-case-less-target-switch-must-happen-a.md) — _ag-1780667166418-apezq5_
 - [slang e38037 ir backstop is optimization sensitive](ag-1780667166418-apezq5/1791594358621-slang-e38037-ir-backstop-is-optimization-sensitive.md) — _ag-1780667166418-apezq5_
 - [slangpy current device stack auto push top only po](ag-1780667166418-apezq5/1791595717857-slangpy-current-device-stack-auto-push-top-only-po.md) — _ag-1780667166418-apezq5_
+- [nightly compile perf a green night after a red one](ag-1780667166418-apezq5/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md) — _ag-1780667166418-apezq5_
+- [gpu free wgsl parse validate check naga wasm via n](ag-1780667166418-apezq5/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5707,6 +5715,11 @@
 - [slang cuda runtime texture tests use gfx unit test](ag-1780667166439-vmjrwe/1791607417971-slang-cuda-runtime-texture-tests-use-gfx-unit-test.md) — _ag-1780667166439-vmjrwe_
 - [slang test not checks after a stdout match never s](ag-1780667166439-vmjrwe/1791608967955-slang-test-not-checks-after-a-stdout-match-never-s.md) — _ag-1780667166439-vmjrwe_
 - [changing a parampassingmode grep every direct out ](ag-1780667166439-vmjrwe/1791611645970-changing-a-parampassingmode-grep-every-direct-out-.md) — _ag-1780667166439-vmjrwe_
+- [moving a slang diagnostic later in linkandoptimize](ag-1780667166439-vmjrwe/1791620162751-moving-a-slang-diagnostic-later-in-linkandoptimize.md) — _ag-1780667166439-vmjrwe_
+- [gcc 14 3 off by one line breaks slang fiddle in hu](ag-1780667166439-vmjrwe/1791635533469-gcc-14-3-off-by-one-line-breaks-slang-fiddle-in-hu.md) — _ag-1780667166439-vmjrwe_
+- [slang docs links rtd page names source file names ](ag-1780667166439-vmjrwe/1791665643660-slang-docs-links-rtd-page-names-source-file-names-.md) — _ag-1780667166439-vmjrwe_
+- [delivery gate any edit after an output review appr](ag-1780667166439-vmjrwe/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md) — _ag-1780667166439-vmjrwe_
+- [slang a b initializer list on wgsl lowers to a syn](ag-1780667166439-vmjrwe/1791675327416-slang-a-b-initializer-list-on-wgsl-lowers-to-a-syn.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6100,6 +6113,10 @@
 - [reviewer a claude 2 1 296 ends turn while its back](ag-1780667168475-a9tac8/1791609455637-reviewer-a-claude-2-1-296-ends-turn-while-its-back.md) — _ag-1780667168475-a9tac8_
 - [ptxas gates sust p array geometry on ptx isa 4 1 n](ag-1780667168475-a9tac8/1791613023335-ptxas-gates-sust-p-array-geometry-on-ptx-isa-4-1-n.md) — _ag-1780667168475-a9tac8_
 - [run clarity sh inner cli can hang silently after a](ag-1780667168475-a9tac8/1791613028821-run-clarity-sh-inner-cli-can-hang-silently-after-a.md) — _ag-1780667168475-a9tac8_
+- [slang pr review runner scripts lack exec bit invok](ag-1780667168475-a9tac8/1791669928517-slang-pr-review-runner-scripts-lack-exec-bit-invok.md) — _ag-1780667168475-a9tac8_
+- [slang verify worktree simple wgsl tests silently i](ag-1780667168475-a9tac8/1791679248387-slang-verify-worktree-simple-wgsl-tests-silently-i.md) — _ag-1780667168475-a9tac8_
+- [reviewer a integrity fail can be a false positive ](ag-1780667168475-a9tac8/1791679608034-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — _ag-1780667168475-a9tac8_
+- [slang pr review verify reviewer a s ci green claim](ag-1780667168475-a9tac8/1791680727889-slang-pr-review-verify-reviewer-a-s-ci-green-claim.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

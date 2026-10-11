@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13436 — DownstreamArgs lost across option levels (linkWithOptions / addTarget)
-description: Triaged + reproduced bug P2, not a regression. PR #13450 (03de207e8c) is ready for review, owned by assignee kaizhangNV, and policy is resolved (append, no dedup). Waiting on the falcor-ci approval + kaizhangNV approval/merge; side-finding filing question open (3rd ask 10-09)
+description: Triaged + reproduced bug P2, not a regression. PR #13450 (03de207e8c) is ready, owned by assignee kaizhangNV, policy resolved (append, no dedup). Falcor gate approved and CI 50/50 green, but the merge queue dropped it on a 2 h timeout (10-09); waiting on a human re-enqueue. Side finding held (3 asks, no answer, no 4th)
 tags: [slang, cuda, nvrtc, compiler-options]
 ---
 
@@ -125,7 +125,18 @@ Session `nvrtc --gpu-architecture=compute_86` + link `nvrtc --fmad=false` → `.
   the report (dashboard msg id 13), recommending A = triager repro + dup-check + file as its own issue. A search found no existing issue.
   If there's still no answer, keep holding and do not ask again.
 
+- 10-10 09:00Z re-chase (`rechase-13436-merge-42b1`), all verified live: **the gate was approved and CI is green, but the queue timed out.**
+  kaizhangNV approved the `falcor-ci` deployment at 10-09 17:10Z (run approvals API). PR run 37724999088 finished 50/50 success, falcor jobs
+  included. kaizhangNV enqueued the PR at 17:10:34Z; `github-merge-queue[bot]` removed it at 19:11:25Z (2 h 00 m 51 s). Queue run 37964430461
+  (`gh-readonly-queue/master/pr-13450-08d419cbf2`, sha b05a37c0cd) had no failures (48 ok, 2 skipped), but required `check-ci` only went green
+  at 20:01:31Z. Merge-queue `checkResponseTimeout` = 7200 s (GraphQL mergeQueue config), so this is a **timeout, not a code failure**. GitHub
+  records no reason; this is my inference from the timings. The cause was slow macOS runners (release build 1 h 44 m). Required checks:
+  check-formatting, check-ci, SlangPy Tests. The PR is still OPEN/BLOCKED with reviewDecision empty and 10 commits behind master. No new
+  human comments or reviews since 10-09 09:05Z; #13436 is unchanged, so nothing went to the triager. Dashboard (bounded read, 200 rows to
+  10-08 21:51Z): no answer on the side finding, so it stays **held, no 4th ask**. Operator told (dashboard msg id 11) that a human re-enqueue
+  is needed. Nothing was posted on GitHub.
+
 ## Resume
-Re-chase `rechase-13436-merge-42b1` (2026-10-10T09:00Z): falcor gate approved?, falcor job results, kaizhangNV approval/merge, any new
-human comment (relay verbatim to the triager). If merged, confirm #13436 auto-closed and close this record. Side finding: if the answer is
-A, dispatch slang-triager on `gh-issue-shader-slang/slang-13436/side-link-same-object`; if B or no answer, hold with no 4th ask.
+Re-chase `rechase-13436-requeue-e876` (2026-10-12T09:00Z): was it re-enqueued, did it merge, was it removed again (and why)? Relay any
+new human comment verbatim to the triager. If merged, confirm #13436 auto-closed and close this record + the index entry. Side finding:
+dispatch only on an explicit A (thread `gh-issue-shader-slang/slang-13436/side-link-same-object`); otherwise hold silently.

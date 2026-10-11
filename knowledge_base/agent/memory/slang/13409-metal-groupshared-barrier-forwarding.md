@@ -87,6 +87,11 @@ Terminal handoff: a draft held pending review. Asked the operator for the ready-
 - slang-triager filed **#13465** (`undoParameterCopy`: inout groupshared passed by address on Metal/CUDA) and **#13466** (dead-store removal drops a store a side-effect-free callee reads through a pointer; the CPU lane gives 0, not 1; `-g2` hides it). Both are bot-authored and `reproduced`, both still fail with #13431 applied, and both leave the fix direction open. Report: triager row 33.
 - The `issue_opened` webhook for #13466 reached a fresh Main session (`sess-1791318403627-u82a8r`). It was owned, so I dispatched nothing. `rechase-13421-13431-revi-c551` now also watches #13465/#13466 for human comments (routed to the triager, pinned) and asks the operator about routing fixes once both PRs merge.
 
+## 2026-10-10 19:10Z re-chase (checked live)
+- Neither PR has changed: #13421 @ `c42049e18f` and #13431 @ `bf9f3fd05a` are still drafts, with no human reviews or comments, and both are 32 behind master. #13465 and #13466 are unchanged too, and #13465 is still parked on tangent-vector's Q1/Q2.
+- **The dispatch runs 37230791271 and 37334999072 are DELETED (404).** Repo-wide, Actions history from about 10-01 20:05Z to 10-05 19:34Z is gone: 10-04 has 3 runs and 10-05 before 18:22Z has 0. That is wider than the 10-01→10-03 window in the existing shared learning. The only runs left on either head are PR Maintenance, so **no CI is pending at all**. The ready-flip gate "not re-asked until CI green" is therefore circular. I reported this once to the dashboard (msg 19, thread `-13409`) and did not re-ask.
+- Next re-chase: `rechase-13421-13431-1346-19cf`, 10-12 19:00Z.
+
 ## Sessions / tasks
 Fixer `sess-1790967825882-vnvecr`, triager `sess-1790963826393-0y71gs`, reviewer `sess-1791004457668-whh9sf`,
 all on `gh-issue-shader-slang/slang-13409`. The #13412 thread had only my own session as of 10-04.

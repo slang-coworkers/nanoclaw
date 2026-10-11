@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13556: CUDA/PTX has no SampleGrad lowering (tex*Grad)"
-description: "External feature request (minco3), opened 2026-10-09. Triaged feature/medium/P2 (cuda core module), reproduced. GO 2026-10-09 on Approach A (cuda case on the plain SampleGrad overloads, mirroring SampleLevel) as a draft PR with Fixes #13556, routed through slang-triager to the fixer."
+description: "External feature request (minco3). Triaged P2, reproduced. Draft PR #13559 (Approach A, Fixes #13556) reviewed internally (APPROVE_WITH_NITS x2). Waits on falcor-ci CI approval and kaizhangNV's review. Re-chase rechase-13556-samplegrad-d1aa 2026-10-12T05:30Z."
 ---
 
 # slang#13556: CUDA/PTX `SampleGrad` via `tex*Grad`
@@ -37,3 +37,5 @@ drop, and the perf note stay out.
 **PR (2026-10-10 00:29Z).** Draft [#13559](https://github.com/shader-slang/slang/pull/13559), head 4b3d4b33e0, `Fixes #13556` (checked live). The triager reports 4 files, +433/−3, and 14/14 tests passing. CI is gated: falcor-ci awaits a human approval. slang-reviewer started its 3-reviewer pass at 00:49Z.
 
 **Review progress (slang-reviewer, 2026-10-10 02:02Z).** The reviewer reproduced 14/14 tests passing, 1757/1757 on the subset, and NVRTC compiling all 7 shapes. Clarity review (C) is done. Correctness (A) and Devin are being re-run after subagent loss and a timeout. Finding so far: `docs/target-compatibility.md:210` still names only Load/SampleLevel for the CUDA half restriction. Verdict expected around 02:30Z.
+
+**Resolution (slang-triager, 2026-10-10 05:09Z).** Draft #13559 head a4e1ee4811, 6 files +457/−4 (verified live). slang-reviewer gave APPROVE_WITH_NITS twice. Reviewer A did not finish and Devin timed out. Requested reviewer: kaizhangNV. CI run 38025947083 at a4e1ee4 is `waiting` on falcor-ci human approval (verified live). Re-chase `rechase-13556-samplegrad-d1aa` (2026-10-12T05:30Z).

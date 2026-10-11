@@ -13,7 +13,7 @@ Tick 257 lost 13 min to it before killing it.
 1. In a fresh `tickNNN/` dir, fetch the inputs once, serially (concurrent `ncl` calls hit "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick273/`; repoint `titles.py` to payload4.json and `sed` any `tickNNN` paths).
+2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick275/`; repoint `titles.py` to payload4.json and `sed` any `tickNNN` paths).
    It reads those three files via `SESSIONS_FILE` / `GROUPS_FILE` / `STOPPED_FILE` env vars and
    stops reading outbound once it reaches sessions older than the newest outbound found so far.
    The cost result is exact: it uses the same predicate as the dashboard.
@@ -72,3 +72,11 @@ A triage that posts between the pull and the scan reads as `silent`. Re-check th
 - **`needs_cost_notice` false re-arm:** scan sets it whenever `delta != same`. A PR merge or a moved activity stamp on a chain that is still cost-stopped re-arms it even though it's the same pending episode. Check `ncl cost-cap escalations --group <folder>` for the same `pending` row and a live `costNoticeUrl` in state; if both hold, don't re-post.
 - **Nudge race:** a triager that posts after the pull reads as `silent`. Re-read the issue's comments immediately before sending. The #13555 nudge landed 9 min after the triage comment.
 - **The board renderer is `tick273/board273.py`** (board260 with the paths repointed). Strip the dashboard deep-links from the inline chat board to keep it under ~16 KB; the tracker file keeps them.
+
+**Tick 274 (2026-10-10 12:00Z), ~110 min: it launched the stock pull a THIRD time and lost ~35 min.** The failure isn't a missing rule. This runbook is linked only from `orchestrator/index.md`, and the tick reads SKILL.md first, so the rule is never seen. ⇒ **The first command of every tick is `cat memory/orchestrator/supervise-tick-runbook.md`, before SKILL.md's procedure.** At ~2 s per `cost-cap status` the stock pull is ~2.4 h. A one-call `ncl cost-cap stopped` patch (`tick274/pull-universe-fast.sh`) still took 53 min, because it has no outbound cache; `tick273/pull.sh` with `LO_CACHE` is the ~5 min path. Two new false-positive shapes:
+- **`botbind.py` is not optional.** Without it, 10 of 13 raw nudges were PR-bearing chains (`dev/slangpy-fixer/*`, reused `fix/issue-<other>` branches) read as fixer-owned with no PR.
+- **`github-actions[bot]` counts as a "human":** scan's `is_bot` misses it, so a PR-board-sync notice as the last comment reads as human-last → `awaiting_us` (#13544).
+
+**Tick 275 (2026-10-11 00:00Z), ~25 min. The runbook was read first and `tick275/pull.sh` was cached (LO_CACHE from tick 274's payload3), so the pull took 4 min.** Latest helpers are in `tick275/`. `blind.py` there sorts rows by timestamp and reads 20 rows, because `--reverse` row order is by seq and is not reliable. Two lessons:
+- **Scan blind spot: the owning session is on a sub-thread.** The #13406 fixer work runs on `gh-issue-shader-slang/slang-11709/13406-resume`. That session belongs to neither the #13406 nor the #11709 chain's session set, so jhelferty's split-PR ask sat unanswered in it for 9 h while scan read `cost_stopped`/`awaiting_human`. Detector: for every chain whose newest human comment is an instruction the bot acked ("On it"), find the PR's `pr-mappings` row and grep `ncl sessions list` for `thread_id` values with `/` after the issue number. If the newest row there is an unanswered `in`, nudge with `target_session_id` pinned.
+- **`needs_cost_notice` re-arms on a stamp move** (#13555 again). The escalation was still the same `pending` `cst-…` row and the notice was still live, so I did not re-post.

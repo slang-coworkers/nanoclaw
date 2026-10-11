@@ -33,3 +33,12 @@ and open PR #11225 touches only `slang-check-shader.cpp`. Routed through the tri
   `Load` should get a case instead of the error.
 - My test note: draft #13559 adds a cuda `SampleGrad` case, so don't rely on it as the case-less repro. Use a
   user-code `__target_switch` or `Buffer<T>`.
+
+**PR (2026-10-10 ~07:54Z).** Draft [#13564](https://github.com/shader-slang/slang/pull/13564).
+
+Checked live: draft, `fix/issue-13555` → master, head `19b0b2e3ac`, 3 commits all by the bot, `pr: non-breaking`, closes 13555, 12 files +348/−4. The PR mapping goes to slang-fixer `sess-1791593655069-w74ros`. The PR body and the explanation comment carry both maintainer questions.
+- **Design change, which the triager accepted:** on SPIR-V/GLSL/WGSL, E41037 now replaces E41009 inside `checkForMissingReturns`; every other target reports after the final DCE. The triager's reason: with only the late check, a case-less function returning `Texture2D` segfaulted in `specializeResourceUsage`.
+- **Two pre-existing crashes, out of scope and unfiled:** the triager reports both on master 08d419cbf. spirv with `-disable-non-essential-validations` gives rc 139, and hlsl with `-ignore-capabilities` gives rc 139. Both are only mentioned in the PR's explanation comment.
+- **Fixer's numbers:** 30/30 new tests; 13 of the 18 positive cases are silent on master. Full suite 7785/7786, the one failure being gfx-smoke, which needs a GPU. CI has not run yet (draft-gated).
+- **Breaking-change exposure, per the fixer:** cpp `Buffer<T>` loads; exported / `[DllExport]` functions on cpp; built-ins that were no-ops under the flag (`GroupMemoryBarrierWithGroupSync` on cpp, `debugBreak` on metal).
+- **Next:** slang-reviewer is reviewing, then the fixer's [Fix Report], then the triager's [Triage Resolution]. Ready/merge is operator-gated, and the label decision belongs to the maintainers.
