@@ -169,3 +169,26 @@ slang-pr-approver:
   required_critique_stages: [DECISION_REVIEW, OUTPUT_REVIEW]
   delivery_markers:
     - Approval Decision
+
+slang-perf-analyst:
+  description: "Compile-perf analyst — turns a confirmed nightly perf regression into one auditable finding: attribute it to a commit, read what that PR was for, classify the cost (accidental / avoidable-overhead / inherent / unclear), and file at most one issue only when the cost is a defect. Shadow-mode by default."
+  project: slang
+  extends: slang-common
+  invariants:
+    # Narrow write exception to slang-common's read-mostly posture: one issue per
+    # night, comments on its own issue, nothing else. Always in context.
+    - container/spines/slang/invariants/perf-filing.md
+  skills:
+    - slang-perf-analyst
+    # Issue conventions (templates, labels, disclaimer); invoked only when filing.
+    - slang-create-issue
+  workflows:
+    - slang-perf-regression
+  # DIAGNOSIS_REVIEW vets the attribution and the mechanism (the nightly ranking
+  # has misled before); DECISION_REVIEW vets the class and the file/don't-file
+  # decision against the policy; OUTPUT_REVIEW vets the finding and issue text.
+  required_critique_stages: [DIAGNOSIS_REVIEW, DECISION_REVIEW, OUTPUT_REVIEW]
+  # The terminal artifact is the finding. Declared here so the same token drives
+  # routing and gating, as for the PR approver's decision.
+  delivery_markers:
+    - Perf Finding
