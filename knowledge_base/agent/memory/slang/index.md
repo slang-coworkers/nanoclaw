@@ -12,6 +12,8 @@ decay and must be re-read, not remembered.
 
 ## Map
 
+- [slang#13571 — WGSL matrix negation emitted as `matNxM<f32>(0) - m`](13571-wgsl-matrix-negation.md) —
+  human-filed (andy-slater) WGSL emit bug (`kIROp_Neg` matrix `T(0)-x`). Triaged 10-11 (cmt 6113276208), P2; draft PR #13572 (fix A `T(-1)*x`) awaiting reviewer. Scalar-uint sibling unfiled (operator call). Re-chase `rechase-13571-wgsl-matne-de5e` (10-13).
 - [slang#13558 — SlangPy ARM64 segfault draining the current-device stack](13558-slangpy-arm64-current-device-stack-segfault.md) —
   maintainer-owned (jkwak, self-assigned) cross-repo slangpy CI crash. Triaged 10-10 (cmt 6092160118): slangpy lifetime UB, trigger slangpy#1199 test, also hits x86_64 nightly ASan. HELD on jkwak fix A/B/C; re-chase `rechase-13558-device-sta-f70c` (10-14).
 
@@ -39,11 +41,11 @@ decay and must be re-read, not remembered.
   maintainer-authored and self-assigned feature (step 1 of 2). Triaged and reproduced, P2. The fixer is HELD until the author makes the HLSL choice (reject vs lower with loss); re-chase `rechase-13536-hlsl-choic-afe9` (2026-10-11).
 
 - [slang#13515 — Windows aarch64 builds hit the 120-min limit after #13139 changed the LLVM prebuilt key](13515-windows-aarch64-llvm-prebuilt.md) —
-  maintainer-owned infra; no master-ref run seeds the prebuilt. The Windows jobs are noise, but macOS debug aarch64 (in `check-ci` needs) races the 120-min limit and can block merges. **10-09: master's key `6bf2a1a7` can't be fixed by seeding. The zstd-free reseed publishes under #13526's key `dfeb31f6`, so only merging #13526 unblocks linux x86_64 and the queue.** Re-chase check 2/3 `rechase-13515-check2-4715` (2026-10-11).
+  maintainer-owned infra; no master-ref run seeds the prebuilt. **10-11 (check 2): Windows aarch64 is resolved (`6bf2a1a7` is 200, builds take about 27 min).** `macos-clang-aarch64` and `linux-gcc-x86_64` are still 404 at `6bf2a1a7`. The macOS cold build (80–104 min) has caused 3 `checks_timed_out` queue evictions since 10-08 (#13479, #13503, #13450). It is fixed by merging #13526 (`dfeb31f6` is seeded, but its Windows x86_64 builds fail with LNK2019) or by a master dispatch. Final check: `rechase-13515-check3-26d2` (2026-10-13), with no reschedule after it.
 
 - [slang#9078 — GLSL→Metal global varying layout-key crash](9078-glsl-metal-global-layout-key.md) —
   **draft PR #13467** (`302264acd3`) implements jhelferty-nv's producer-side design. `[Fix Report]` Partial. Reviewer REQUEST_CHANGES (1/2):
-  on CPU/CUDA every global after a user in/out is mis-offset (wrong data, where master asserted). Held on jhelferty-nv's a/b/c; the reviewer recommends (a). No reply at the 10-09 re-chase; next re-chase is `rechase-9078-jhelferty-08b8` (2026-10-12).
+  on CPU/CUDA every global after a user in/out is mis-offset (wrong data, where master asserted). Held on jhelferty-nv's a/b/c; the reviewer recommends (a). No reply at the 10-09 or 10-12 re-chases. The operator was asked 10-12 about pinging jvepsalainen-nv; next re-chase is `rechase-9078-jhelferty-602a` (2026-10-15).
 
 - [slang#13220 — CUDA interface dispatch unreachable default, draft PR #13228](13220-cuda-dispatch-unreachable-default.md) —
   held draft `842ea5d5c1`. kaizhangNV accepts the `s_dispatch_*` fix; waiting on their 3-way answer for force-unwrap of `none` `Optional<Interface>`
@@ -61,12 +63,12 @@ decay and must be re-read, not remembered.
 
 - [slang#12627 — CUDA masked RWTexture store, draft PR #13363](12627-cuda-masked-rwtexture-store.md) —
   held on jkwak-work's coherency answer (RMW+warning vs CUDA error; warning scope). Peer review complete (2 rounds, 0 bugs),
-  `[Fix Report]` in 10-04 at head `b79ae81e23`. Next re-chase `rechase-12627-jkwak-39ce` (2026-10-12); operator re-ping decision pending since 10-07. Follow-ups #13361/#13362/#13364/#13365 not dispatched.
+  `[Fix Report]` in 10-04 at head `b79ae81e23`. Next re-chase `rechase-12627-jkwak-2929` (2026-10-15); operator re-ping decision pending since 10-07 (asked 3×). Interacts with draft #13563 (layered `_convert` writes). Follow-ups #13361/#13362/#13364/#13365 not dispatched.
 
 - [slang#13554 — CUDA layered `_convert` surface write is an empty stub](13554-cuda-layered-convert-write-stub.md) —
   external, unassigned, P2 bug, reproduced. **GO 2026-10-10** on Approach A (inline `sust.p.a{1d,2d}`, prelude-only) as a draft PR:
   **draft PR #13563** (`508fb1b3b2`), peer review **APPROVE_WITH_NITS** 10-10 06:16Z (0 bugs, 2 gaps); fixups pushed at **e2eaf72e2a** 08:17Z. No GPU CI at that head; the operator
-  decides dispatch-at-e2eaf72 vs. approve the old run. Re-chase `rechase-13563-fixups-2-e3ad` (10-11 08:00Z). Couples to #13363's `isConversionAvailable = !isLayered`.
+  decides dispatch-at-e2eaf72 vs. approve the old run. 10-11: no answer, last ask sent. Final check `rechase-13563-final-95f1` (10-14 08:00Z), then park. Couples to #13363's `isConversionAvailable = !isLayered`.
 
 - [slang#13428 — local multi-declarator `j < 2` → E30015 (parser declarator registration)](13428-local-multi-declarator-generic-lookahead.md) —
   **#13428 TERMINAL**: PR #13432 merged 10-07 (`eaf758404f`). Still live: sibling #13430's **draft PR #13434** (`457ae39a0e`); the operator un-draft decision is pending (4 asks), re-chase `rechase-13434-undraft-d613` (2026-10-11). Side findings #13433/#13435 have their own gates.
@@ -78,7 +80,7 @@ decay and must be re-read, not remembered.
   PR 1, #13502, MERGED 10-09 14:38Z. Draft #13514 waits on spec#63 and the stopped reviewer session; re-chase `rechase-13489-gates-ddd2` (2026-10-11).
 - [slang#13490: `try` in a lambda checked against the enclosing function](13490-lambda-try-error-context.md) -
   triaged bug P2, reproduced, not a regression; Approach A recommended. **HOLD**: no fixer until skiminki-nv (self-assigned)
-  asks for a PR. Operator re-asked once on 10-08 (no reply = HOLD); final check `rechase-13490-final-cc58` (2026-10-11).
+  asks for a PR. Operator re-asked once on 10-08, no reply; the final check on 10-11 found no change. No timer left: it resumes only on a human comment or an operator GO/DROP.
 
 - [slang#13495: HLSL `class` as a value type (`HLSLClassDecl : StructDecl`)](13495-hlsl-class-value-type.md) -
   **TERMINAL 2026-10-08.** tangent-vector fixed it in their own PR #13497 (merged 10-08 01:38Z, `Fixes #13495`), already open
@@ -133,7 +135,7 @@ decay and must be re-read, not remembered.
   three post-fix hits (two in merge_group, 09-28/29, plus #11709 on 09-30). Diagnostic draft #13352 is waiting on the operator ready-flip and on jvepsalainen-nv choosing exit semantics; re-chase `rechase-13352-exit-seman-440c` (10-03).
 
 - [slang PR #11709 — groupshared parameters by reference](11709-groupshared-param-by-reference.md) —
-  owned by slang-fixer, CHANGES_REQUESTED. HELD until #13406 (the #13339 Ref split) lands; then one rebase-and-rework push with the unpushed P1 fix. jhelferty-nv answered every #13406 question 10-09 02:33Z; the original owner ran out of budget, so the work resumed in a fresh session on `…-11709/13406-resume`. **r5 pushed 10-09 08:49Z** (`4e2603652e`); **round 3 pushed 10-10 05:52Z (`7e683a211b`)**: her five answers, tangent-vector's no-rewrite `const __ref` direction (she deferred to him) and the round-2 review items. Waiting on slang-reviewer round 3 and her re-review. Re-chase `rechase-13406-r5-qs` (10-11) checks for the push and the merge that lifts the hold.
+  owned by slang-fixer, CHANGES_REQUESTED. HELD until #13406 (the #13339 Ref split) lands; then one rebase-and-rework push with the unpushed P1 fix. jhelferty-nv answered every #13406 question 10-09 02:33Z; the original owner ran out of budget, so the work resumed in a fresh session on `…-11709/13406-resume`. **r5 pushed 10-09 08:49Z** (`4e2603652e`); **round 3 pushed 10-10 05:52Z (`7e683a211b`)**: her five answers, tangent-vector's no-rewrite `const __ref` direction (she deferred to him) and the round-2 review items. The GCC `-flarge-source-files` fix is split out to draft **#13570** (APPROVE_WITH_NITS; un-drafting is the operator's call), so SlangPy on #13406 is red by design until #13570 merges. Still waiting on her re-review. Re-chase `rechase-13406-r6-a54e` (10-14).
   - [#13406 review-round history](11709-13406-ref-split-review-rounds.md) — tangent-vector's round, the `readonly` rounds and reversal, the 10-09 budget/phantom-session incident.
 
 - [slang#13348 — inherited field through a property/subscript BoundStorage → E99997 ICE](13348-inherited-field-boundstorage-ice.md) —
@@ -167,6 +169,6 @@ decay and must be re-read, not remembered.
 - [slang-rhi#787 — CUDA↔Vulkan shared-texture missing sync](rhi-787-cuda-vulkan-shared-sync.md) —
   real missing `VK_QUEUE_FAMILY_EXTERNAL` ownership release, not a tolerance flake. PR #881 implements the maintainer-mandated
   `handOffShared`/`takeOverShared` API; non-draft (jhelferty flipped it 09-28), head `775f522` GPU-CI-green. Parked on jhelferty's
-  R4/R5 answer (5907630393) + skallweitNV's review; operator reminder question open. Re-chase `rhi-881-review-rechase-755a` (10-11).
+  R4/R5 answer (5907630393) + skallweitNV's review; CONFLICTING with main since #900 (fixer merging main 10-11); operator reminder question open. Re-chase `rhi-881-review-rechase-cf3b` (10-15).
   - [PR #881 review-round history (condensed)](rhi-787-review-history.md) — design convergence (#812 forks, the rejected
-    `IExternalMemoryQueue` sketch), the review rounds, and the 09-24 → 10-07 ready/re-chase log.
+    `IExternalMemoryQueue` sketch), the review rounds, and the 09-24 → 10-11 ready/re-chase log.

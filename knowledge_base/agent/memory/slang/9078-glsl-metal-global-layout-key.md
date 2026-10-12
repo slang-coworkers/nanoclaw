@@ -46,5 +46,10 @@ tags: [metal, glsl, ir-lowering, layout]
   The only new event is jkwak-work removing the `Dev Reviewed` label from #9078 (10-08 01:17Z). Head is still `302264acd3`, still a draft.
   The operator was told on `orchestrator-dashboard` (msg 15). There was no second @-mention on GitHub.
   - `4047` was a one-shot, so it was consumed when it fired and `update` can't find it. I created a fresh task instead.
-- **Next:** wait for jhelferty-nv (re-chase `rechase-9078-jhelferty-08b8`, 2026-10-12). If there's still no reply then, ask the operator
-  whether to ping a second maintainer (jvepsalainen-nv has the most commits on the changed files).
+- **2026-10-12 — re-chase #2: still no reply (5 days).** No human comment, review, or reaction on #9078 or #13467 since 10-07 01:12Z.
+  Head is still `302264acd3`, still a draft. jhelferty-nv is still the assigned shepherd and requested reviewer.
+  - **Ping question sent to the operator** on `orchestrator-dashboard` (msg 7): may we @-mention a second maintainer? Suggested
+    **jvepsalainen-nv**: 8 human commits on the two changed source files since 2026-04, and the only author recent in both files.
+    csyonghe is the long-run owner (14 commits in the last 100 on `slang-lower-to-ir.cpp`). Nothing posted on GitHub.
+- **Next:** re-chase #3 `rechase-9078-jhelferty-602a` (2026-10-15). It checks for a GitHub reply, then reads the dashboard session for the
+  operator's ping answer. If approved, slang-fixer posts the ping; otherwise no second @-mention.

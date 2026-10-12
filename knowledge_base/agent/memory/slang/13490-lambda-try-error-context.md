@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13490: try inside a lambda is checked against the enclosing function"
-description: "Triaged as bug/medium/P2 and reproduced at 9f31ffcfd; not a regression. Approach A is recommended. HOLD: the fixer briefing waits until skiminki-nv (self-assigned) asks for a PR. Operator re-asked once 2026-10-08; final check rechase-13490-final-cc58 runs 2026-10-11T18:00Z."
+description: "Triaged as bug/medium/P2 and reproduced at 9f31ffcfd; not a regression. Approach A is recommended. HOLD (terminal for scheduled re-chases): the fixer briefing waits until skiminki-nv (self-assigned) asks for a PR. Operator re-asked once 2026-10-08, no reply; final check 2026-10-11 found no change. No timer left — resumes only on a human comment webhook or an operator GO/DROP."
 ---
 
 # slang#13490: `try` inside a lambda body uses the enclosing function's error context
@@ -42,3 +42,14 @@ The only human activity was jkwak-work removing the `Dev Opened` label at 10-08 
 #13490. I re-asked the operator GO/HOLD/DROP **once** on orchestrator-dashboard (msg 33, thread
 `gh-issue-shader-slang/slang-13490`). Silence means HOLD. The final check is `rechase-13490-final-cc58` at
 2026-10-11T18:00Z. It acts on a maintainer comment or an operator reply and **does not ask again**.
+
+**Final re-chase 2026-10-11 18:00Z (rechase-13490-final-cc58).** Nothing changed. The issue is open, assigned to
+skiminki-nv, and labelled `reproduced`. The bot triage is still the only comment. No author PR exists: the only
+cross-references are bot PRs #13502 (merged) and #13514 (open), both treating #13490 as out of scope. The
+dashboard session (400 rows, 10-08 04:34Z → 10-11 18:01Z) has no operator GO/HOLD/DROP after msg 33 (seq 480030).
+I sent one final HOLD 5-bullet to orchestrator-dashboard (id 7, thread `gh-issue-shader-slang/slang-13490`)
+saying I've stopped asking. **No re-chase timer remains; that is deliberate.** The issue is self-assigned by a
+maintainer, the operator has been asked once and reminded once, and the chain resumes from the issue's own
+`issue_comment` webhook. When it resumes, these sessions hold the context: slang-triager
+`sess-1791394722850-r9i7ic` and slang-fixer `sess-1791398525126-258sd9`, both on the canonical thread. On a GO,
+release Approach A plus the 2 constraints. On an author PR or a DROP, stand the briefing down.
