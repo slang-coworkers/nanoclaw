@@ -13,7 +13,7 @@ Tick 257 lost 13 min to it before killing it.
 1. In a fresh `tickNNN/` dir, fetch the inputs once, serially (concurrent `ncl` calls hit "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick275/`; repoint `titles.py` to payload4.json and `sed` any `tickNNN` paths).
+2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick277/`; `board274.py` also hardcodes `supervisor-state.pre-tickNNN.json`; repoint `titles.py` to payload5.json and `sed` any `tickNNN` paths).
    It reads those three files via `SESSIONS_FILE` / `GROUPS_FILE` / `STOPPED_FILE` env vars and
    stops reading outbound once it reaches sessions older than the newest outbound found so far.
    The cost result is exact: it uses the same predicate as the dashboard.
@@ -80,3 +80,9 @@ A triage that posts between the pull and the scan reads as `silent`. Re-check th
 **Tick 275 (2026-10-11 00:00Z), ~25 min. The runbook was read first and `tick275/pull.sh` was cached (LO_CACHE from tick 274's payload3), so the pull took 4 min.** Latest helpers are in `tick275/`. `blind.py` there sorts rows by timestamp and reads 20 rows, because `--reverse` row order is by seq and is not reliable. Two lessons:
 - **Scan blind spot: the owning session is on a sub-thread.** The #13406 fixer work runs on `gh-issue-shader-slang/slang-11709/13406-resume`. That session belongs to neither the #13406 nor the #11709 chain's session set, so jhelferty's split-PR ask sat unanswered in it for 9 h while scan read `cost_stopped`/`awaiting_human`. Detector: for every chain whose newest human comment is an instruction the bot acked ("On it"), find the PR's `pr-mappings` row and grep `ncl sessions list` for `thread_id` values with `/` after the issue number. If the newest row there is an unanswered `in`, nudge with `target_session_id` pinned.
 - **`needs_cost_notice` re-arms on a stamp move** (#13555 again). The escalation was still the same `pending` `cst-…` row and the notice was still live, so I did not re-post.
+
+**Tick 276 (2026-10-11 12:00Z), ~30 min, clean.** I followed the runbook from the first command: tick275 helpers, `sed tick275→tick276`, then `lo-cache.json` built from payload3. The pull took 4 min, `refetch_lo` re-fetched 1 chain and `refetch_none` 0. When `disp-overrides.json` is empty, `payload5 = payload3` and `scan-out3 = scan-out1`; the renderer reads both names. Write `notes.json` and `real-updates.json` for every 🔼 row after checking GitHub. scan's `updated` count (6 this tick) can be entirely real.
+
+**Tick 277 (2026-10-12 00:00Z), ~20 min, clean.** tick276 helpers, cached pull 4 min. Two lessons:
+- **Scan blind spot: a reviewer that acked and then died silently.** The #13518 reviewer said "verdict in ~45 min" (an `out`, so `blind.py`'s newest-row-is-`in` test misses it), its A/B/C sub-runs then failed (A ran out of its inner $30 budget, C hit ECONNREFUSED), and no verdict ever went out — 11 h idle. Detector: a stopped reviewer session whose newest row is an `out` containing a promised ETA ("verdict in", "I'll send") older than ~2× that ETA. Corroborate with `A-/B-/C-<pr>-r<N>.done` files in `/workspace/extra/ephemeral/prod-groups/slang-reviewer/` (`.done` = rc). Nudge pinned; it acked in 2 min.
+- **A tracked CI run can 404.** A `waiting` run deleted by GitHub (#13171's `37543892402`) makes `ci.py` fall back to an older cancelled run → `❌(recheck)`. Check that the PR's `statusCheckRollup` is empty before treating it as a rebase-nudge case.

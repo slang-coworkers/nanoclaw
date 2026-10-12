@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13530_uniform_unsized_array_spirv_invalid
-description: "slang#13530 (JackOfBlades232, external, 10-08): a global/entry-point `uniform float4[]` compiles without any diagnostic into an invalid implicit uniform buffer (SPIR-V VUID-04680 whole-RTA OpLoad, both members at Offset 0; DXC/glslang reject the output). Triaged 20:20Z (cmt 6068316405, bug/medium/P2, front end). Orchestrator GO 10-08 for a draft PR on Approach A (extend E31215 to implicit GlobalParams/EntryPointParams). Sibling of #13529. Side finding filed as #13533 (CUDA reflection offsets). Draft PR #13538 opened 10-09 00:56Z (pr: breaking change provisional), held on two maintainer questions; re-chase task rechase-13530-pr13538 on 10-12."
+description: "slang#13530 (JackOfBlades232, external, 10-08): a global/entry-point `uniform float4[]` compiles without any diagnostic into an invalid implicit uniform buffer (SPIR-V VUID-04680 whole-RTA OpLoad, both members at Offset 0; DXC/glslang reject the output). Triaged 20:20Z (cmt 6068316405, bug/medium/P2, front end). Orchestrator GO 10-08 for a draft PR on Approach A (extend E31215 to implicit GlobalParams/EntryPointParams). Sibling of #13529. Side finding filed as #13533 (CUDA reflection offsets). Draft PR #13538 opened 10-09 00:56Z (pr: breaking change provisional), held on two maintainer questions; re-chased 10-12 (no maintainer reply; reviewer cost-stopped); next re-chase 10-15."
 metadata:
   node_type: memory
   type: project
@@ -42,6 +42,18 @@ still the only comment). New helper `isTypeKnownToHoldOrdinaryData`; 10 diagnost
 suite 7738/7739 (gfx-smoke fails in the container only). CI is skipped behind the draft gate. Next: slang-reviewer peer review →
 fixer [Fix Report] → triager [Triage Resolution]. Held on the two maintainer questions (all targets vs GPU-only; label).
 Re-chase task `rechase-13530-pr13538` fires 2026-10-12T01:00Z.
+
+**10-12 01:00Z re-chase (rechase-13530-pr13538-3067).** No maintainer activity on #13538, #13530 or #13533; both held
+questions are still open. jkwak-work is assigned and review-requested only through the bot shepherd (10-09 00:41Z). The PR is still a
+draft. Head `1ce058b72e`, after 10 more nv-slang-bot review-iteration commits on 10-09 (last 11:22Z); label unchanged. slang-reviewer
+`sess-1791508094533-ee79ml` delivered rounds 1–3 (round 3 on af4e00cb, 10:39Z), then went **cost-stopped** ($91.30 vs $75 ceiling,
+pending operator Continue/Stop since 10-09, flagged on the dashboard then and again 10-12). The fixer's round-4 [Fix Review Request]
+on 1ce058b72e (12:02Z) is unanswered. No [Fix Report] or [Triage Resolution] yet. Triager nudged once (a2a id 37). Next re-chase is
+`rechase-13530-pr13538-r2` at 10-15T01:00Z; it must not nudge the triager again and should escalate instead.
+
+**10-12 ~01:15Z (Main, verified live).** Same state as the re-chase block above. The reviewer's $91.30 is above slang-reviewer's
+30-day max of $83 (p95 $43). The operator Continue/Stop/Hold `ask_user_question` timed out after 300s, so the default is **HOLD**. That is
+the third time the cost stop has been raised. Do not Continue on my own authority; r2 escalates if it is still unanswered.
 
 **Side findings.** (1) **FILED as [#13533](https://github.com/shader-slang/slang/issues/13533)** 10-08 ~20:4xZ
 (verified live: nv-slang-bot author, 4437 chars, labels cuda/reflection/reproduced, no @). It has two causes: the

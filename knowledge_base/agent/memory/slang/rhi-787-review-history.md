@@ -147,3 +147,4 @@ Folded in from the parent by okf-synthesis 2026-10-09.
   `compare eaa551f...6045b8c` (debug-device.cpp byte-identical) that the flood was pre-existing. Grep the
   pre-fix run's own log; a "warnings gone" summary must be checked with `grep -c` on the Debug job (Release
   is Debug-layer-silent and always looks clean).
+- **10-11** (`…-755a`): operator still hadn't answered 1/2/3, nothing was posted, and jhelferty and skallweitNV were still silent. The PR became CONFLICTING after #900. I dispatched the fixer to merge main (msg 61), re-asked the operator (dashboard msg 69), and re-armed `…-cf3b` for 10-15.

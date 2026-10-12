@@ -1,26 +1,34 @@
 ---
 type: project
 title: slang-rhi#787 CUDA↔Vulkan shared-texture missing sync
-description: Real missing cross-API ownership bug (not tolerance). jhelferty-nv mandated their own explicit API (handOffShared/takeOverShared on ICommandEncoder), implemented in PR #881. jhelferty flipped it READY on 2026-09-28. Final head 775f522 is GPU-CI-green and per-test re-verified. NOT merge-ready — reviewer REQUEST_CHANGES on R4/R5 pending jhelferty's answer to 5907630393, plus skallweitNV's review. Review rounds and the ready/re-chase log are in [[rhi-787-review-history.md]].
+description: Real missing cross-API ownership bug (not tolerance). jhelferty-nv mandated their own explicit API (handOffShared/takeOverShared on ICommandEncoder), implemented in PR #881. jhelferty flipped it READY on 2026-09-28. Final head 775f522 is GPU-CI-green and per-test re-verified. NOT merge-ready — reviewer REQUEST_CHANGES on R4/R5 pending jhelferty's answer to 5907630393, plus skallweitNV's review; CONFLICTING with main since ~10-10 (fixer merging main 10-11). Review rounds and the ready/re-chase log are in [[rhi-787-review-history.md]].
 tags: [slang-rhi, synchronization, cuda, vulkan, interop, live-chain]
 resource: https://github.com/shader-slang/slang-rhi/issues/787
 ---
 
 # slang-rhi#787: CUDA↔Vulkan shared-texture missing synchronization
 
-**State (2026-10-07): LIVE, parked on human review.** PR #881 is non-draft at head `775f522` (GPU-CI-green,
-per-test re-verified by me), but it is **not merge-ready**. It is parked on two inputs:
+**State (2026-10-11): LIVE, parked on human review, plus a merge conflict with main.** PR #881 is non-draft at head
+`775f522` (GPU-CI-green, per-test re-verified by me), but it is **not merge-ready**. It is parked on two inputs:
 - **(A)** jhelferty's answer to scope question [5907630393](https://github.com/shader-slang/slang-rhi/pull/881#issuecomment-5907630393)
-  (09-30 08:48Z, silent 7+ days). Until then the reviewer verdict is REQUEST_CHANGES on R4/R5:
+  (09-30 08:48Z; still silent and unreacted at 10-11, 11 days). Until then the reviewer verdict is REQUEST_CHANGES on R4/R5:
   - **R4:** AS/micromap build-input buffers aren't validated as uses. Spec 5798248018 line 31 counts "AS/micromap
     ops on the buffer" as uses, but only scratch buffers are checked.
   - **R5:** the same-device operand precondition (spec line 11) isn't validated.
   - The PR body lists both as "Known partials".
-- **(B)** skallweitNV's review. jhelferty-nv assigned them on 10-06 21:21Z and removed dshreiner-nv. They're active in
-  the repo but haven't reviewed.
-- **Operator question (dashboard msg 15, 10-07):** 1 = slang-fixer posts one GitHub reminder, 2 = operator pings
-  out-of-band, 3 = wait. Nothing has been posted. Re-chase `rhi-881-review-rechase-755a` (2026-10-11 09:00Z) checks
-  the dashboard for the answer before acting.
+- **(B)** skallweitNV's review. jhelferty-nv assigned them on 10-06 21:21Z and removed dshreiner-nv. Between 10-01 and
+  10-10 they merged 7 slang-rhi PRs, but they haven't touched #881.
+- **10-11, CONFLICTING:** main moved 17 commits past merge-base `82c03494b` (#884–#900, #739, #891). A trial merge gives
+  **one** conflict: `DebugCommandEncoder::clearBuffer`, #900's D3D11 structured-clear block vs our `checkUse` line.
+  slang-fixer (session `sess-1783020456108-7pll4g`, msg 61) was sent to do the following, with no GitHub post and no
+  R4/R5 work:
+  - merge `origin/main` (merge commit, no force-push, so the inline anchors survive)
+  - audit #739/#900 for a Shared-binding path that bypasses `checkUse`
+  - push and re-verify per-test
+  - get the reviewer's delta-confirm
+- **Operator question (dashboard row 467072 on 10-07, re-asked 10-11 as msg 69):** 1 = slang-fixer posts one GitHub
+  reminder, 2 = operator pings out-of-band, 3 = wait. Still unanswered, and nothing has been posted. At the 3rd
+  unanswered ask, default to (3). Re-chase `rhi-881-review-rechase-cf3b` is at 10-15 09:00Z.
 
 Canonical thread `gh-issue-shader-slang/slang-rhi-787`; PR review thread `gh-pr-slang-rhi-881-review`. The chain
 re-opens on jhelferty's webhook. #812 (the register-all alternative) was CLOSED by jhelferty-nv on 2026-09-28, so it

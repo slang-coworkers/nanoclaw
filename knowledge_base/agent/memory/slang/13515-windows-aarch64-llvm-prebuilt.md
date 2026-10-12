@@ -76,3 +76,23 @@ deciding who seeds it after future `build-llvm.sh` edits. The bot doesn't push w
   - Prebuilts: `linux-gcc-x86_64` is 404 at `6bf2a1a7` and 200 at `dfeb31f6`. `macos-clang-aarch64` is still 404 at `6bf2a1a7`.
   - #13540 is open and unassigned, with no human comments. #13526 is open and BEHIND at `04430e75`, with Windows x86_64 LNK2019 still red.
   - Reported to the dashboard, msg 7. Next re-chase is `rechase-13540-release-gc-acf7` at 10-11 01:45Z.
+- **2026-10-11 09:01Z, re-chase check 2 of 3 (live, read-only). Windows aarch64 is resolved. macOS is not, and it is still evicting PRs.**
+  - Key at `6bf2a1a7`: no recipe change on master since `e83310cf26` (`compare` shows no `build-llvm.sh` or `llvm-*.patch` files).
+    - 200: `windows-cl-aarch64` (new since check 1), `windows-cl-x86_64`, `linux-gcc-aarch64`.
+    - 404: `macos-clang-aarch64`, `linux-gcc-x86_64`, `macos-clang-x86_64` (unused).
+  - Key at `dfeb31f6`: everything is 200 except `macos-clang-x86_64`.
+  - The 2 newest merge_group runs, 37964430461 and 37945990216, both succeeded.
+    - `build-windows-{debug,release}-cl-aarch64`: 25–29 min.
+    - `build-macos-debug-clang-aarch64`: 80 and 99 min. `build-macos-release-clang-aarch64`: 104 and 94 min.
+    - Pre-#13139 baseline (runs 37707401035 and 37699801869): macOS 14–41 min, Windows aarch64 27–28 min.
+  - **Queue evictions caused by the macOS cold build since 10-08: 3, all `checks_timed_out`.** In each, the macOS build→test chain was the last thing running at the 2h queue timeout.
+    - #13479: 10-08 17:48Z.
+    - #13503: 10-09 11:23Z. Run 37910924430: macOS debug finished at 12:02Z, `check-ci` at 12:43Z.
+    - #13450: 10-09 19:11Z. Run 37964430461: macOS release took 104 min, and `check-ci` went green at 20:01Z.
+
+    Not counted: #13481's 10-09 02:47Z timeout (run 37866163638), where a Windows x86_64 GPU test was last, and all the `failed_checks` evictions, which came from SlangPy or zstd. There were 0 macOS `failed_checks` evictions.
+  - #13450 is still open with its PR checks green and needs a human requeue (chain [13436](13436-downstream-args-cross-level.md)). There have been no merge_group runs since 10-09 17:10Z.
+  - #13515 is open, assigned to jkiviluoto-nv, with 0 non-bot comments.
+  - #13526 is open and BEHIND at `04430e751f`, unapproved, with no commits since 10-09 18:56Z. jkwak-work asked about "skip" semantics and jkiviluoto-nv answered. Run 37976785880 still fails the 3 Windows x86_64 GPU builds plus `check-ci`.
+  - No `workflow_dispatch` of ci.yml on master since the key moved.
+  - Dashboard msg 11. **Next and final check:** `rechase-13515-check3-26d2` at 10-13 09:00Z, CHECK 3 of 3, with no reschedule after it.

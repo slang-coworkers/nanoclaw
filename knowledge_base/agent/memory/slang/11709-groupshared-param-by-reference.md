@@ -15,7 +15,7 @@ CHANGES_REQUESTED by jhelferty-nv (review 5354344993). Companion issue
 by slang-fixer and is fixed by PR **#13406**. Older history lives in the imported leaf
 [[imported/project_11709_groupshared_byref.md]].
 
-## Current state (2026-10-09)
+## Current state (2026-10-11)
 
 - **The hold.** jhelferty-nv decided on 10-01 to implement the split on #13339
   ([5932748637](https://github.com/shader-slang/slang/issues/13339#issuecomment-5932748637)). On 10-02 she said to
@@ -40,8 +40,8 @@ by slang-fixer and is fixed by PR **#13406**. Older history lives in the importe
       4. a write-only argument to a `__ref_readonly` param;
       5. the `t.Load()` gap.
     - Her CHANGES_REQUESTED still stands. The branch is BEHIND master, and CI is running.
-- **Timer.** `rechase-13406-r2-9164` fired 10-09 09:00Z. The next one is `rechase-13406-r5-qs` (10-11 09:00Z), which watches her 5 answers and the merge, and lifts the #11709 hold
-  through slang-fixer. Otherwise it sends the operator one table.
+- **10-11 state.** Round 3 (`7e683a211b`) is pushed, and the GCC flag is split out to draft **#13570**. #13406 head `2781df933e` reverts the flag, so SlangPy is red there **by design** until #13570 merges and the owner merges master. #13570 has slang-reviewer APPROVE_WITH_NITS (nits applied, `bffd07cc1b`). **Un-drafting #13570 is the operator's call** (named 10-11, dashboard msg 19). The remap `iwgn54` is still pending. Detail is in the review-rounds file.
+- **Timer.** `rechase-13406-r5-qs-7621` fired 10-11 09:00Z (case c, silent). The next one is **`rechase-13406-r6-a54e` (10-14 09:00Z)**. If #13406 merged, it lifts the #11709 hold through slang-fixer. If only #13570 merged, it tells `dth1ak` to merge master. If a maintainer replied, it relays the text verbatim. Otherwise it sends the operator one table.
 
 ## What #11709 does when the hold lifts
 

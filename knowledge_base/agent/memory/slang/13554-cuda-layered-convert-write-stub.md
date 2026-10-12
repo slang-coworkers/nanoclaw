@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13554 — CUDA/PTX formatted RWTexture{1D,2D}Array store silently dropped (empty `_convert` prelude stub)
-description: External report (minco3), unassigned. Triaged P2 bug, reproduced. GO 2026-10-10 on Approach A as a draft PR; draft PR #13563 got APPROVE_WITH_NITS (0 bugs, 2 gaps) at 06:16Z; the fixer has been silent since, so the triager was nudged at 08:0xZ; GPU CI is gated on ci-approvers.
+description: External report (minco3), unassigned. Triaged P2 bug, reproduced. Draft PR #13563 got APPROVE_WITH_NITS, and the fixups are at e2eaf72e2a. It has never run GPU CI (draft, and the falcor gate needs ci-approvers). The last operator ask went out 10-11; the final check is 10-14 08:00Z, after which the chain parks.
 tags: [slang, cuda, ptx, rwtexture, prelude, go, draft-pr]
 ---
 
@@ -69,6 +69,11 @@ Main session `sess-1791587497477-4u2mkp`.
   `falcor-build-approval-gate`. **Operator decision asked 10-10 08:3xZ:** (a) dispatch at e2eaf72 and get it approved [recommended, covers the
   uint lane] / (b) approve the old run / (c) leave it. Re-chase `rechase-13563-fixups-2-e3ad` repurposed → 10-11 08:00Z. The triager rests;
   it sends only a final note on merge. PR stays draft until GPU CI has run.
+- **Re-chase 10-11 08:0xZ: no operator answer, nothing moved.** No reply on the dashboard since the 10-10 08:30Z ask (msg 492300). I checked live: head is still `e2eaf72e2a`, still a
+  draft, 0 reviews, bot-only comments, and #13554 has no new comments. **No run exists at e2eaf72** other than the skipped pull_request CI (0 workflow_dispatch
+  runs). 38024444265 (508fb1b) is still `waiting` at `falcor-build-approval-gate`, 27 h old, `can_approve=false`. So `cudaLayeredFormatWriteCUDA` has **never run
+  on a GPU**. I sent the 2nd and **LAST** ask to orchestrator-dashboard (msg 7) with the same (a), (b) and (c) options. The final check is `rechase-13563-final-95f1` on 10-14 at 08:00Z.
+  If there's still no answer then, park the chain as draft-held: no more asks and no timer.
 - **Triager check, 04:49Z:** within scope (prelude +129/−14, a PTX FileCheck, a CUDA gfx-unit-test that reads texels back, a docs
   line). Issue cmt 6091397893 was edited in place. **GPU CI is gated:** dispatch run 38024444265 (head 508fb1b3b2) is `waiting` at
   `falcor-build-approval-gate`, and check-ci failed downstream (I checked it live 04:5xZ). Releasing it needs a ci-approvers human

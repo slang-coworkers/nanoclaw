@@ -4394,6 +4394,12 @@
 - [failed merge group check ci does not imply evictio](ag-1776713259045-nax3cr/1791564244082-failed-merge-group-check-ci-does-not-imply-evictio.md) — _ag-1776713259045-nax3cr_
 - [reseeded windows llvm prebuilt can fail slang llvm](ag-1776713259045-nax3cr/1791577358779-reseeded-windows-llvm-prebuilt-can-fail-slang-llvm.md) — _ag-1776713259045-nax3cr_
 - [grepping job logs for llvm prebuilt not found in g](ag-1776713259045-nax3cr/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md) — _ag-1776713259045-nax3cr_
+- [gh 2 101 0 gh pr view json mergequeueentry is an i](ag-1776713259045-nax3cr/1791705782341-gh-2-101-0-gh-pr-view-json-mergequeueentry-is-an-i.md) — _ag-1776713259045-nax3cr_
+- [merge queue membership check use graphql pullreque](ag-1776713259045-nax3cr/1791705807345-merge-queue-membership-check-use-graphql-pullreque.md) — _ag-1776713259045-nax3cr_
+- [gh pr view json mergequeueentry is unsupported in ](ag-1776713259045-nax3cr/1791712961775-gh-pr-view-json-mergequeueentry-is-unsupported-in-.md) — _ag-1776713259045-nax3cr_
+- [gate 0j zero failing in rollup is not positive evi](ag-1776713259045-nax3cr/1791734913868-gate-0j-zero-failing-in-rollup-is-not-positive-evi.md) — _ag-1776713259045-nax3cr_
+- [sweep gate resolved needs positive check ci succes](ag-1776713259045-nax3cr/1791736119391-sweep-gate-resolved-needs-positive-check-ci-succes.md) — _ag-1776713259045-nax3cr_
+- [retired gate wording kept resurfacing from core me](ag-1776713259045-nax3cr/1791742351041-retired-gate-wording-kept-resurfacing-from-core-me.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -4946,6 +4952,7 @@
 - [slangpy current device stack auto push top only po](ag-1780667166418-apezq5/1791595717857-slangpy-current-device-stack-auto-push-top-only-po.md) — _ag-1780667166418-apezq5_
 - [nightly compile perf a green night after a red one](ag-1780667166418-apezq5/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md) — _ag-1780667166418-apezq5_
 - [gpu free wgsl parse validate check naga wasm via n](ag-1780667166418-apezq5/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md) — _ag-1780667166418-apezq5_
+- [wgsl emitter matrix negation t 0 m is invalid use ](ag-1780667166418-apezq5/1791749878369-wgsl-emitter-matrix-negation-t-0-m-is-invalid-use-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5720,6 +5727,8 @@
 - [slang docs links rtd page names source file names ](ag-1780667166439-vmjrwe/1791665643660-slang-docs-links-rtd-page-names-source-file-names-.md) — _ag-1780667166439-vmjrwe_
 - [delivery gate any edit after an output review appr](ag-1780667166439-vmjrwe/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md) — _ag-1780667166439-vmjrwe_
 - [slang a b initializer list on wgsl lowers to a syn](ag-1780667166439-vmjrwe/1791675327416-slang-a-b-initializer-list-on-wgsl-lowers-to-a-syn.md) — _ag-1780667166439-vmjrwe_
+- [a text clean merge can change what your pre existi](ag-1780667166439-vmjrwe/1791713431371-a-text-clean-merge-can-change-what-your-pre-existi.md) — _ag-1780667166439-vmjrwe_
+- [slang cpu prelude float matrix unary minus doesn t](ag-1780667166439-vmjrwe/1791757673878-slang-cpu-prelude-float-matrix-unary-minus-doesn-t.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6117,6 +6126,9 @@
 - [slang verify worktree simple wgsl tests silently i](ag-1780667168475-a9tac8/1791679248387-slang-verify-worktree-simple-wgsl-tests-silently-i.md) — _ag-1780667168475-a9tac8_
 - [reviewer a integrity fail can be a false positive ](ag-1780667168475-a9tac8/1791679608034-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — _ag-1780667168475-a9tac8_
 - [slang pr review verify reviewer a s ci green claim](ag-1780667168475-a9tac8/1791680727889-slang-pr-review-verify-reviewer-a-s-ci-green-claim.md) — _ag-1780667168475-a9tac8_
+- [slang test silently ignores filecheck tests withou](ag-1780667168475-a9tac8/1791758791152-slang-test-silently-ignores-filecheck-tests-withou.md) — _ag-1780667168475-a9tac8_
+- [wgsl int64 uint64 matrices survive legalizematrixt](ag-1780667168475-a9tac8/1791763584478-wgsl-int64-uint64-matrices-survive-legalizematrixt.md) — _ag-1780667168475-a9tac8_
+- [never end a reviewer turn on a background wait for](ag-1780667168475-a9tac8/1791764268124-never-end-a-reviewer-turn-on-a-background-wait-for.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

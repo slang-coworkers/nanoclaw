@@ -36,6 +36,11 @@ or lower with explicit loss. Kept out of the public comment and left for the PR 
 maintainer self-assigned and the design choice is open. Re-chase task `rechase-13536-hlsl-choic-afe9`
 fires 2026-10-11T22:00Z.
 
+**2026-10-11 22:00Z re-chase: still silent.** Checked live: the issue is open, no human comment since the
+triage, and no PR references #13536. The author was active on PR #13406 on 10-08 through 10-10 but
+never touched this question. The fixer is still HELD and the author has not been re-asked. Re-armed as
+`rechase-13536-hlsl-choic-dfd2`, firing 2026-10-18T22:00Z.
+
 **Resume:**
 - The author answers and asks for a bot PR → the triager releases the fixer (Approach A plus the
   chosen HLSL lowering, GPU-free FileCheck tests, a DIAGNOSTIC_TEST that includes silence for
