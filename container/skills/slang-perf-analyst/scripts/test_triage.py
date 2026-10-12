@@ -319,6 +319,37 @@ class BundleTests(unittest.TestCase):
         self.assertIn("What the candidate PRs were for", md)
         self.assertIn("acknowledges a cost", md)
 
+    def test_untrusted_text_is_withheld_and_the_trusted_set_comes_from_the_policy(self):
+        pr2 = {"number": 2, "title": "Add builtins", "user": {"login": "author"}, "labels": [],
+               "merged_at": "2026-01-02T00:00:00Z", "body": "## Motivation\n\nNeeded."}
+        comments = [{"user": {"login": "rando"}, "author_association": "NONE", "body": "The overhead is huge."},
+                    {"user": {"login": "owner"}, "author_association": "OWNER",
+                     "body": "Accepting the compile-time cost."}]
+
+        class Gh:
+            def get(self, path, accept=None):
+                return json.dumps({"pulls/2": pr2, "issues/2/comments": comments}.get(path.split("?")[0], []))
+        default = self.bundle(gh=Gh())["intent"]["2"]
+        self.assertEqual(default["ignored_untrusted"]["comment"], 1)
+        self.assertTrue(default["acknowledged_tradeoff"])
+        narrowed = self.bundle(gh=Gh(), policy={"trust": {"intent_text_associations": []}})["intent"]["2"]
+        self.assertEqual(narrowed["ignored_untrusted"]["comment"], 2)
+        self.assertFalse(narrowed["acknowledged_tradeoff"])
+        md = triage.render_markdown(self.bundle(gh=Gh()))
+        self.assertIn("withheld as untrusted", md)
+        self.assertIn("1 comment", md)
+
+    def test_a_pr_that_is_not_merged_is_a_note_not_evidence(self):
+        class Gh:
+            def get(self, path, accept=None):
+                if path == "pulls/2":
+                    return json.dumps({"number": 2, "title": "Add", "user": {"login": "a"}, "labels": [],
+                                       "merged_at": None, "body": ""})
+                return "[]"
+        b = self.bundle(gh=Gh())
+        self.assertEqual(b["intent"], {})
+        self.assertTrue(any("is not merged" in n for n in b["notes"]))
+
     def test_a_failed_intent_fetch_is_a_note_not_a_failure(self):
         class Gh:
             def get(self, path, accept=None):

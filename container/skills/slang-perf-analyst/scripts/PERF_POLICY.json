@@ -11,24 +11,49 @@
     "api_module_graph|apiGetCode": "bimodal: about 21 ms normally, with isolated samples near 31 ms on 4 of the 7 nights from 2026-09-30 to 2026-10-06; a rerun whose five samples all land in the slow mode is not by itself a regression"
   },
   "classes": {
-    "accidental": {"file": true, "issue_template": "bug", "meaning": "cost unrelated to the PR's purpose"},
-    "avoidable-overhead": {"file": true, "issue_template": "improvement", "meaning": "the functionality is needed but the implementation cost can shrink"},
-    "inherent": {"file": false, "meaning": "cost scales with the new functionality, or the PR acknowledged it; record as an accepted delta"},
-    "unclear": {"file": false, "meaning": "intent or mechanism could not be established; internal report only"}
+    "accidental": {
+      "file": true,
+      "issue_template": "bug",
+      "meaning": "cost unrelated to the PR's purpose"
+    },
+    "avoidable-overhead": {
+      "file": true,
+      "issue_template": "improvement",
+      "meaning": "the functionality is needed but the implementation cost can shrink"
+    },
+    "inherent": {
+      "file": false,
+      "meaning": "cost scales with the new functionality, or the PR acknowledged it; record as an accepted delta"
+    },
+    "unclear": {
+      "file": false,
+      "meaning": "intent or mechanism could not be established; internal report only"
+    }
   },
   "filing": {
     "max_issues_per_night": 1,
     "min_reproduced_effect_pct": 3.0,
-    "labels": ["perf"],
-    "labels_if_present": ["Perf Agent Finding"],
+    "labels": [
+      "perf"
+    ],
+    "labels_if_present": [
+      "Perf Agent Finding"
+    ],
     "title_style": "neutral",
     "assign": null,
     "mention_bot_for_fix": false,
     "mention_people": false,
-    "required_critique_stages": ["DIAGNOSIS_REVIEW", "DECISION_REVIEW", "OUTPUT_REVIEW"]
+    "required_critique_stages": [
+      "DIAGNOSIS_REVIEW",
+      "DECISION_REVIEW",
+      "OUTPUT_REVIEW"
+    ]
   },
   "dedupe": {
-    "search_labels": ["perf", "regression"],
+    "search_labels": [
+      "perf",
+      "regression"
+    ],
     "lookback_days": 60,
     "same_culprit_action": "comment"
   },
@@ -38,5 +63,14 @@
     "ab_rounds": 12,
     "workload_scale": 10,
     "note": "If the A/A spread on this host exceeds aa_max_spread_pct, wall-clock attribution is not trustworthy here: use instruction counts if available, otherwise the class is `unclear`."
+  },
+  "trust": {
+    "require_merged": true,
+    "intent_text_associations": [
+      "OWNER",
+      "MEMBER",
+      "COLLABORATOR"
+    ],
+    "note": "The analysis reads merged PRs only. Comments, reviews and linked-issue bodies are read only from the PR's author and these GitHub author_association values; anything else is counted and withheld, because anyone can comment on a merged PR."
   }
 }

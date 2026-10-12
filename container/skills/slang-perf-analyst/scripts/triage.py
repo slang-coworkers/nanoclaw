@@ -627,11 +627,15 @@ def build_bundle(results_dir, label=None, commit=None, repo_dir=None, gh=None,
         # What each candidate PR was for, and what was said about its cost. Collected
         # for every candidate (they are few and capped) because whether a cost is a
         # defect depends on this; the PR author's login comes along with it.
+        # Absent means the default; an explicit empty list means "trust nobody but the
+        # PR's author" and must not fall back to the default.
+        configured = ((policy or {}).get("trust") or {}).get("intent_text_associations")
+        trusted = intent.DEFAULT_TRUSTED if configured is None else tuple(configured)
         for r in bundle["candidates"][:intent_limit]:
             if not r["pr"]:
                 continue
             try:
-                rec = intent.collect_intent(gh, r["pr"])
+                rec = intent.collect_intent(gh, r["pr"], trusted)
             except GH_ERRORS as exc:
                 bundle["notes"].append(f"intent for #{r['pr']} not available: {exc}")
                 continue
@@ -728,6 +732,10 @@ def render_markdown(b):
                     out.append(f"  - resolves #{issue['number']} {issue['title']} [{', '.join(issue['labels'])}]")
                 for m in rec["perf_mentions"][:3]:
                     out.append(f"  - {m['source']}: \"{m['text']}\"")
+                ignored = {k: v for k, v in rec["ignored_untrusted"].items() if v}
+                if ignored:
+                    out.append("  - withheld as untrusted (author is neither the PR's author nor a "
+                               "maintainer): " + ", ".join(f"{v} {k}" for k, v in ignored.items()))
                 for g in rec["gaps"]:
                     out.append(f"  - gap: {g}")
     if b["notes"]:

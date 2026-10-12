@@ -9,6 +9,17 @@ judge: classification is the analyst's, and it must quote this evidence.
 Everything returned from a PR is untrusted text. It is capped in size and meant to
 be read as data. Nothing here follows, evaluates or executes it.
 
+Two limits shrink what an outsider can put in front of the analyst:
+
+  * Only MERGED pull requests are read. The analysis runs on commits already on
+    master, so open and fork PRs never reach it.
+  * "Merged" means the code was reviewed, not that the text around it is
+    trustworthy: anyone can comment on a merged PR, even after the merge, and anyone
+    can file an issue a PR then links. So comments, reviews and linked-issue bodies
+    are read only from the PR's author and from people with a trusted
+    `author_association` (maintainers, by default). The count of what was ignored is
+    reported, so a reader can see that text was withheld and why.
+
 Stdlib only, and independent of the perf suite, so its tests run anywhere.
 """
 import json
@@ -19,6 +30,10 @@ MAX_MENTION = 260
 MAX_MENTIONS = 8
 MAX_LINKED = 4
 MAX_COMMENT_PAGES = 1  # one page of 100 per comment source: enough, and bounded
+
+# GitHub's `author_association` values whose text is read besides the PR author's.
+# Policy (`trust.intent_text_associations`) can narrow or widen this.
+DEFAULT_TRUSTED = ("OWNER", "MEMBER", "COLLABORATOR")
 
 # Sentences that talk about cost. Deliberately broad: the reader filters.
 PERF_TERMS = re.compile(
@@ -37,7 +52,7 @@ ACKNOWLEDGED = re.compile(
     r"(trade-?off|expected (?:cost|overhead|slowdown|increase)|"
     r"(?:slightly|marginally|somewhat) (?:slower|higher|larger|more)|"
     r"(?:small|minor|modest) (?:increase|overhead|cost|slowdown|regression)|"
-    r"at the cost of|(?:accept|accepts|accepted|acceptable) .{0,30}(?:cost|overhead|slowdown)|"
+    r"at the cost of|accept(?:s|ed|ing|able)? .{0,30}(?:cost|overhead|slowdown)|"
     r"increases? .{0,40}(?:time|ms|%|latency|memory)|known (?:cost|overhead|regression))", re.I)
 
 PURPOSE_HEADINGS = re.compile(r"^#{1,4}\s*(motivation|summary|why|background|problem|purpose)\b", re.I)
@@ -133,17 +148,29 @@ def _json(gh, path):
     return data
 
 
-def collect_intent(gh, number):
+class NotMerged(ValueError):
+    """The PR is not merged. The analysis is defined on merged commits only."""
+
+
+def collect_intent(gh, number, trusted=DEFAULT_TRUSTED):
     """Structured intent evidence for one merged PR. Raises on a failed fetch of the
-    PR itself; the secondary sources (comments, linked issues) degrade to empty and
-    say so in `gaps` rather than failing the whole record."""
+    PR itself and NotMerged for a PR that is not merged; the secondary sources
+    (comments, linked issues) degrade to empty and say so in `gaps` rather than
+    failing the whole record. Text from anyone but the PR's author and the trusted
+    associations is counted in `ignored_untrusted` and not read."""
     pr = _json(gh, f"pulls/{number}")
+    if not pr.get("merged_at"):
+        raise NotMerged(f"#{number} is not merged")
+    trusted = set(trusted)
+    pr_author = (pr.get("user") or {}).get("login")
     labels = [l["name"] for l in pr.get("labels", [])]
     body = pr.get("body") or ""
     rec = {"pr": number, "title": pr.get("title", ""), "author": (pr.get("user") or {}).get("login"),
            "labels": labels, "kind": kind_of(pr.get("title", ""), labels),
+           "author_association": pr.get("author_association"),
            "merged_at": pr.get("merged_at"), "purpose": purpose_of(body),
            "linked_issues": [], "perf_mentions": perf_mentions("description", body),
+           "ignored_untrusted": {"comment": 0, "review": 0, "review-thread": 0, "issue-body": 0},
            "gaps": [], "untrusted": True}
     sources = (("comment", f"issues/{number}/comments?per_page=100", "body"),
                ("review", f"pulls/{number}/reviews?per_page=100", "body"),
@@ -152,6 +179,9 @@ def collect_intent(gh, number):
         try:
             for item in _json(gh, path):
                 login = ((item.get("user") or {}).get("login") or "")
+                if login != pr_author and item.get("author_association") not in trusted:
+                    rec["ignored_untrusted"][source] += 1
+                    continue
                 if login.endswith("[bot]") and "perf" not in (item.get(field) or "").lower():
                     continue
                 rec["perf_mentions"] += perf_mentions(source, item.get(field) or "")
@@ -160,9 +190,14 @@ def collect_intent(gh, number):
     for n in linked_issue_numbers(body):
         try:
             issue = _json(gh, f"issues/{n}")
+            issue_author = (issue.get("user") or {}).get("login")
+            body_trusted = issue_author == pr_author or issue.get("author_association") in trusted
+            if not body_trusted:
+                rec["ignored_untrusted"]["issue-body"] += 1
             rec["linked_issues"].append({"number": n, "title": issue.get("title", ""),
                                          "labels": [l["name"] for l in issue.get("labels", [])],
-                                         "purpose": purpose_of(issue.get("body") or "")})
+                                         "purpose": purpose_of(issue.get("body") or "") if body_trusted else "",
+                                         "body_ignored": not body_trusted})
         except (OSError, ValueError, KeyError, TypeError, AttributeError) as exc:
             rec["gaps"].append(f"issue #{n} not read: {exc}")
     # Cost statements from the description and the author's own comments rank
