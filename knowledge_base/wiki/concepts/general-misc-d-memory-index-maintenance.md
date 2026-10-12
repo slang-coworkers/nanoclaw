@@ -3,7 +3,7 @@ title: "Memory-Index Maintenance: Truncation Bounds, Reachability Checkers, and 
 type: concept
 group: general
 tags: [memory, index, reachability, truncation, checker, corrections, append-only, suppression]
-source_count: 19
+source_count: 21
 ---
 
 # Memory-Index Maintenance: Truncation Bounds, Reachability Checkers, and Corrections
@@ -32,6 +32,7 @@ functionally absent.*
 - **okf_synth never checks bare-stem `[[name]]` links**, so before deleting a merged page, grep for its stem and repoint every hit and folder-index row. Its DANGLING-LINK hits on code or pasted logs are scanner artifacts until the upstream regex fix lands.
 - **Before moving or deleting memory file X, run `find memory -name X`.** The checkers fall back to unique-basename resolution, which hides same-name twins; merge the stale copy's facts (often a newer status) into the canonical one before deleting it.
 - **When you fix a script, fix every copy of it.** A stale `imported/reindex.sh` left beside a fixed root copy regrew the offender files it was fixed to prevent.
+- **Retiring a rule means rewriting its index line**, not adding a dated "RETIRED" note in a leaf — the always-loaded line is what the next session reads.
 - **A correction in an append-only store is a sibling, not a successor** — the corrected
   entry's index row needs a second write that only Main can make.
 
@@ -99,6 +100,16 @@ retraction is discoverable, never advertised; cheap test for any "I'll fix it th
 instrument-vs-explanation lesson they came with are cited in full on the false-negatives
 page.)
 
+The always-loaded index line is also what keeps a **retired** rule alive. An LLVM-prebuilt gate
+("requeue only after #13526 merged AND dfeb31f6 200", retired 10-09 16:39Z) kept reappearing in
+sweep reports because the Core Memory index line still carried its text; the dated "RETIRED" note
+deep in the topic file did nothing, because the next session reads the index line, not the leaf.
+When a rule or gate is retired or its condition is met, rewrite the index line itself: state the
+current mechanism plus the retired wording to avoid. Then probe the live condition instead of
+repeating remembered state ([retired gate wording kept resurfacing from Core Memory — fix the index line](../learnings/1791742351041-retired-gate-wording-kept-resurfacing-from-core-me.md)).
+
+When a status-partitioned index outgrows its cap, split by the population that turns over at a different rate, not by age. slang-fixer's `active-fixlog-index.md` crossed the 16k cap twice (10-09, 10-12): moving terminal (merged/closed) rows out bought only 3 days, because the in-flight bucket mixed rows with an open PR (fast churn) and HELD / NO-GO / local-only rows that wait weeks for a GO. Splitting the second group into its own `active-fixlog-held-index.md` is what bounded it ([status-partitioned fix-log index: split by "has an open PR", not by age](../learnings/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md)).
+
 ## A correction is a sibling, not a successor
 
 In an append-only store, a correction posted as a separate entry lands as a *flat sibling* of
@@ -156,7 +167,8 @@ The gate's other false alarm is `SCANNER_FAILED` on a group's **first** okf-memo
 
 A fold distils old memory into durable concepts, so the inputs are snapshots and must be re-verified before they are copied. Before folding a loose `triage-*.md` memo, fetch the issue's current state (`gh issue view N --json state,stateReason,closedAt` plus the last comments) and grep the tree (`imported/` especially) for a same-issue concept to merge. On 2026-10-01 all four memos folded were stale: every issue had since closed, and slangpy#1059's memo carried a float3-CUDA-layout root cause that the upstream triage later refuted (the swizzle base was re-evaluated per component, fixed by slang#12078); copying its frontmatter forward would have preserved a wrong root cause, and `imported/` held a second #886 concept ([OKF synthesis: re-check GitHub state before distilling an old triage memo](../learnings/1790828410686-okf-synthesis-re-check-github-state-before-distill.md)). A memo's *own* status line is one of those snapshots. One labelled "DRAFT — upstream issue, do not file" may already have been filed by another tier: slangpy#222's slang-rhi atomic-add draft had become slang-rhi#833, with fix draft PR #834. Before folding such a draft, search the target repo (`gh search issues --repo <upstream> "<title keywords>"`), record the filed issue/PR number and its current state as the fact, and delete the draft text; keeping it preserves a stale "not yet filed" claim that invites a later reader to file a duplicate ([check upstream before folding a 'draft upstream issue' memo](../learnings/1790900359762-check-upstream-before-folding-a-draft-upstream-iss.md)). Stale operational logs (months-old hourly heartbeat/CI/Discord snapshots) usually fail NO-FRONTMATTER + INDEX-STALE, and adding a `type:` line just keeps untrue "latest" state in memory. Move the raw files out of `memory/` (e.g. `/workspace/agent/archive/memory-raw-<yyyy-mm>/`, reversible and lossless), then distil only the durable bits (lessons, unfiled bugs marked "status unverified since <date>", one historical takeaway) into typed concepts that point at the archive with `resource:` ([okf-synthesis gate SCANNER_FAILED on first run = tool not yet written](../learnings/1790830957687-okf-synthesis-gate-scanner-failed-on-first-run-too.md)).
 
-**Source learnings (19):**
+**Source learnings (21):**
+- [Status-partitioned fix-log index: split by "has an open PR", not by age](../learnings/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md) — terminal-row split bought 3 days; split held/NO-GO rows into their own index
 - [a rule past the index's readable bound is functionally absent.](../learnings/1786200228435-a-stored-rule-past-the-index-s-readable-bound-is-f.md)
 - [`ORPHANED=0` can coexist with a dropped live directive; read a gate's full output.](../learnings/1786132403123-a-reachable-leaf-is-not-a-delivered-warning-an-ind.md)
 - [a 2-hop checker's bug is the lossy `basename()` in its link extractor.](../learnings/1786131676782-a-2-hop-index-checker-s-real-bug-is-usually-the-lo.md)
@@ -176,3 +188,4 @@ A fold distils old memory into durable concepts, so the inputs are snapshots and
 - [okf-synthesis gate SCANNER_FAILED on first run = tool not yet written](../learnings/1790830957687-okf-synthesis-gate-scanner-failed-on-first-run-too.md) — expected `|| echo` fallback; archive stale raw logs outside memory/ and distil durable bits; a directory link reads as DANGLING-LINK
 - [OKF fold: re-point stem-form slug links before deleting a merged page](../learnings/1790835786980-okf-fold-re-point-stem-form-slug-links-before-dele.md) — third instance: grep the bare stem, sed-rewrite to the new path, then delete
 - [Check upstream before folding a 'draft upstream issue' memo](../learnings/1790900359762-check-upstream-before-folding-a-draft-upstream-iss.md) — slangpy#222's draft was already slang-rhi#833 (+ fix draft #834); search the upstream repo, record the filed number + state, delete the draft
+- [Retired gate wording kept resurfacing from Core Memory — fix the index line, not just the dated note](../learnings/1791742351041-retired-gate-wording-kept-resurfacing-from-core-me.md) — a retired LLVM-prebuilt gate kept reappearing in sweeps; rewrite the index line with the current mechanism and probe live state.

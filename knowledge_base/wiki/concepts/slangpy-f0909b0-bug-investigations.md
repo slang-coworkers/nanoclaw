@@ -3,7 +3,7 @@ title: SlangPy bug investigations — autodiff atomics (#222), descriptor/pool e
 type: concept
 group: slangpy
 tags: [slangpy, slang-rhi, autodiff, atomics, d3d12, descriptor-heap, cpu-backend, triage, cross-repo]
-source_count: 16
+source_count: 17
 ---
 
 ## TL;DR
@@ -30,6 +30,10 @@ boundary. Recurring findings:
   carry a defensive fallback (must cover X, Y, and the generator). CPU coverage that crosses a
   physical Y row (~67M threads) is cheap (~3–5 s/case), so parametrize the large-dispatch tests on cpu
   rather than skipping.
+- **Current-device stack (slang#13558)**: `Device::publish()` pushes every device but
+  `shutdown()` pops only the top, so closing the older of two live devices first leaves a
+  dangling `Device*` that nanobind later dereferences (UBSan invalid vptr / segfault). It only
+  reproduces in serial pytest (nightly sanitizers), not xdist CI; read that job's log first.
 - **Triage discipline for cross-repo meta-issues**: a vendored dep in `external/`
   is not proof it's integrated (verify call sites); a stale architecture-refactor
   issue is a prime silently-fixed orphan (verify closing PRs + the cross-reference
@@ -181,6 +185,27 @@ backend-agnostic slangpy path" strongly implicates a compiler CPU/host-callable 
 bug — fix CPU crashes at the legalizer/consumer, not by rejecting the shape upstream
 [#1138 localizing a CPU-only segfault to a layer](../learnings/1788481634992-localizing-a-cpu-only-slangpy-segfault-to-a-layer-.md).
 
+## Current-device stack: auto-push plus top-only pop leaves a dangling `Device*` (slang#13558)
+
+SlangPy (main ce68ef8) keeps a thread-local `std::vector<Device*>` current-device stack, and
+the push and pop sides are asymmetric. `Device::publish()` pushes *every* created device, but
+`Device::shutdown()` pops only when `back() == this`. So whenever two devices are live and the
+OLDER one is closed first, its raw pointer stays in the stack after the device is freed. That is
+exactly what `helpers.close_leaked_devices` does, because it walks `get_created_devices()` in
+creation order. The next `spy.pop_current_device()` / `current_device()` hands the stale pointer to
+nanobind, which runs `typeid(*ptr)` in `type_caster_base<sgl::Device>::from_cpp` (`nb_cast.h:492`).
+The result is a UBSan "invalid vptr", a segfault, or an `Object::set_self_py ... already present`
+abort. The concrete trigger is `test_compiler_profiles.py::test_cuda_profile_cache` (two
+`with spy.Device()` in a loop), which then crashes in `test_device_api.py`'s `empty_device_stack`.
+A first device also survives Python rebinding, because its default `SlangSession` holds a strong
+`ref<Device>` until `close()`.
+
+The crash shows up only in **serial** pytest runs (the nightly `sanitizers.yml` job, or a local
+`pytest slangpy/tests`). Regular GPU CI runs xdist `--parallel`, which puts the two tests in
+different processes. Triage rule: when a SlangPy crash looks platform-specific, read the nightly
+serial asan-ubsan job log first. It carries a symbolized UBSan frame and the exact stop point
+([current-device stack: auto-push + top-only pop → dangling Device*](../learnings/1791595717857-slangpy-current-device-stack-auto-push-top-only-po.md)).
+
 ## Triage discipline: silently-fixed orphans, unintegrated vendored deps, and DeepWiki
 
 Three triage learnings share a theme — verify against primary source before treating an
@@ -227,7 +252,7 @@ slangpy#886 was ultimately fixed by PR #1182, and the fix confirms the right lay
 
 **Outcome (current truth): PR #1182 was closed unmerged and superseded by PR #1183** ("Add slangpy shader path to devices and sessions by default", Fixes #886 + #1177) — the maintainer-blessed **unified** fix that resolved #886's earlier held design decision in favor of broad default-on (no opt-out kwarg; @ccummingsNV / @kaizhangNV asked for the slangpy module path to be a default include path). #1183 also supersedes the narrow #1177-only PR #1178. Mechanism: a file-local `std::vector<std::filesystem::path> g_default_slang_include_paths` (anon namespace in `src/slangpy_ext/device/device.cpp`) is set once at package import via a new module-level binding `_set_default_slang_include_paths([SHADER_PATH])` called from `slangpy/__init__.py` (SHADER_PATH is a Python-package path unknowable in C++, so Python registers it and core SGL stays package-agnostic); `prepend_default_slang_include_paths()` (dedup via `std::find`, defaults-first) is applied **unconditionally** — not gated on `add_default_include_paths` — at three binding sites: both `Device` ctor bindings (the `DeviceDesc` one takes the desc BY VALUE to avoid mutating a caller-owned desc) and `device.create_slang_session`. The redundant manual prepend in `create_device` (`slangpy/core/utils.py`) is removed for a single source of truth. Sessions get only the global default, not device-specific custom paths; still-uncovered intentional follow-ups are `spy.App()`'s native-factory device and the free-function `spy.create_slang_session()`. **Pyright scope gotcha:** a bare `pyright slangpy/<file>.py` reports `reportUndefinedVariable` for runtime-injected native symbols (`_set_default_slang_include_paths`, `Device`), but CI does **not** fail because `pyproject.toml [tool.pyright] include = ["./src","./tools","./examples"]` excludes the `slangpy/` package entirely — verify CI impact against the pyright `include` roots, not an ad-hoc per-file run ([slangpy #1183 unified SHADER_PATH default-include mechanism supersedes #886/#1177 fixes; pyright scope gotcha](../learnings/1790185684802-slangpy-1183-unified-shader-path-default-include-p.md)).
 
-**Source learnings (16):**
+**Source learnings (17):**
 
 - [slangpy#222 title is wrong — AMD-Windows grads collapse into element 0, not "always 0"](../learnings/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — `[72,0,0,0]` is a scatter-address bug; verify a title against the actual numbers.
 - [slangpy#222 root cause: slang-rhi advertises float-atomic-ADD off the BASE atomics bit](../learnings/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — a capability atom ≠ runtime support; a coarse `Feature::AtomicFloat` guard can't fix it; cross-repo fix.
@@ -244,4 +269,5 @@ slangpy#886 was ultimately fixed by PR #1182, and the fix confirms the right lay
 - [SlangPy CPU backend: zero device dispatch limit breaks all dispatches (#1136)](../learnings/1788474155417-slangpy-cpu-backend-zero-device-dispatch-limit-bre.md) — CPU never sets maxComputeDispatchThreadGroups; mirror Metal's 0xFFFFFFFF sentinel; a slangpy fallback must cover X, Y, generator.
 - [SlangPy CPU dispatch: zero DeviceLimits + pytest device classification (#1136/#1137)](../learnings/1788480806317-slangpy-cpu-dispatch-zero-devicelimits-stale-local.md) — a device test needs a `device_type` param to run under scoped selections; CPU excluded from DEFAULT_DEVICE_TYPES.
 - [CPU large-dispatch coverage in slangpy: crossing the Y row is cheap (~3-5s)](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md) — #1137 review: add cpu to test_large_dispatches parametrization; limits.y==0 → unbounded; mutation check confirms wiring.
+- [SlangPy current-device stack: auto-push + top-only pop makes creation-order close leave a dangling Device*](../learnings/1791595717857-slangpy-current-device-stack-auto-push-top-only-po.md) — slang#13558; serial-only crash (xdist hides it); check the nightly asan-ubsan log first.
 - [Localizing a CPU-only SlangPy segfault to a layer (#1138)](../learnings/1788481634992-localizing-a-cpu-only-slangpy-segfault-to-a-layer-.md) — GPU-works/CPU-crashes with opaque-bytes RHI + backend-agnostic slangpy ⇒ compiler CPU/host-callable target bug; reflection probe is cheapest.

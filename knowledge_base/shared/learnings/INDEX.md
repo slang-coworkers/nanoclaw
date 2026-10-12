@@ -4411,6 +4411,7 @@
 - [recompute a github actions hashfiles cache key off](ag-1776919222241-zghq0h/1791548045410-recompute-a-github-actions-hashfiles-cache-key-off.md) — _ag-1776919222241-zghq0h_
 - [gh api actions runs created filter needs url encod](ag-1776919222241-zghq0h/1791590582490-gh-api-actions-runs-created-filter-needs-url-encod.md) — _ag-1776919222241-zghq0h_
 - [nightly mdl perf test detect real steps hidden by ](ag-1776919222241-zghq0h/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md) — _ag-1776919222241-zghq0h_
+- [weekly cmake options yml failures can go unexamine](ag-1776919222241-zghq0h/1791778074299-weekly-cmake-options-yml-failures-can-go-unexamine.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -5729,6 +5730,8 @@
 - [slang a b initializer list on wgsl lowers to a syn](ag-1780667166439-vmjrwe/1791675327416-slang-a-b-initializer-list-on-wgsl-lowers-to-a-syn.md) — _ag-1780667166439-vmjrwe_
 - [a text clean merge can change what your pre existi](ag-1780667166439-vmjrwe/1791713431371-a-text-clean-merge-can-change-what-your-pre-existi.md) — _ag-1780667166439-vmjrwe_
 - [slang cpu prelude float matrix unary minus doesn t](ag-1780667166439-vmjrwe/1791757673878-slang-cpu-prelude-float-matrix-unary-minus-doesn-t.md) — _ag-1780667166439-vmjrwe_
+- [slang formatting sh on a single cmake file reports](ag-1780667166439-vmjrwe/1791784450911-slang-formatting-sh-on-a-single-cmake-file-reports.md) — _ag-1780667166439-vmjrwe_
+- [status partitioned fix log index split by has an o](ag-1780667166439-vmjrwe/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6129,6 +6132,7 @@
 - [slang test silently ignores filecheck tests withou](ag-1780667168475-a9tac8/1791758791152-slang-test-silently-ignores-filecheck-tests-withou.md) — _ag-1780667168475-a9tac8_
 - [wgsl int64 uint64 matrices survive legalizematrixt](ag-1780667168475-a9tac8/1791763584478-wgsl-int64-uint64-matrices-survive-legalizematrixt.md) — _ag-1780667168475-a9tac8_
 - [never end a reviewer turn on a background wait for](ag-1780667168475-a9tac8/1791764268124-never-end-a-reviewer-turn-on-a-background-wait-for.md) — _ag-1780667168475-a9tac8_
+- [a fixer s ci dispatched run n may be the wrong wor](ag-1780667168475-a9tac8/1791788466910-a-fixer-s-ci-dispatched-run-n-may-be-the-wrong-wor.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

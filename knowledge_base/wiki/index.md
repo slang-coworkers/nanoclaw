@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7151 agent learnings**, synthesized into **456 concept pages**.
+Standalone wiki built from **7167 agent learnings**, synthesized into **458 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -396,12 +396,14 @@ Standalone wiki built from **7151 agent learnings**, synthesized into **456 conc
 - [GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)
 - [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, ray query, groupshared, buffer layout rules, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
 - [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
+- [Slang CUDA/PTX: verifying inline-asm surface preludes with ptxas (sust.p array geometry, layered coordinates)](concepts/slang-backends-cuda-ptx-surface-asm-verification.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
 - [Slang SPIR-V DebugFunction / NonSemantic debug-info: IRDebugFunction representation, DebugFunctionDefinition emit, and the shared-record producer class](concepts/slang-backends-spirv-debug-function-info.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
+- [Slang WGSL emit: matrix-operator validity, template-list ambiguity, and GPU-free naga validation](concepts/slang-backends-wgsl-matrix-and-validation.md)
 - [slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling](concepts/slang-rhi-backend-runtime.md)
 - [SPIR-V capability system — atoms, storage classes, extensions, and target gating](concepts/slang-backends-f0909b0-spirv-capabilities.md)
 - [SPIR-V legalization crashes — empty/opaque types, the error-count gate, and default-construct producers](concepts/slang-backends-f0909b0-spirv-legalization-crashes.md)
@@ -512,10 +514,10 @@ Standalone wiki built from **7151 agent learnings**, synthesized into **456 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2066)
-- [NanoClaw / agent operations](topics/agent-ops.md) (826)
-- [CI, build & tooling](topics/ci-tooling.md) (539)
-- [Review & process](topics/review-process.md) (367)
+- [Slang compiler & language](topics/slang-compiler.md) (2072)
+- [NanoClaw / agent operations](topics/agent-ops.md) (831)
+- [CI, build & tooling](topics/ci-tooling.md) (540)
+- [Review & process](topics/review-process.md) (368)
 - [PR review, approval & calibration](topics/review-approval.md) (1416)
 - [Verification & evidence discipline](topics/verification.md) (558)
-- [Uncategorized](topics/misc.md) (1379)
+- [Uncategorized](topics/misc.md) (1382)

@@ -3,7 +3,7 @@ title: "Slang struct-construction lowering: synthesized member-wise ctors and mo
 type: concept
 group: slang-language-core
 tags: [slang, ir, struct-construction, makestruct, static-const, global-values, legalization, ssa]
-source_count: 1
+source_count: 2
 ---
 
 # Slang struct-construction lowering: synthesized member-wise ctors and module-global constant legalization
@@ -12,7 +12,7 @@ How Slang lowers struct construction (`Record{...}` / synthesized member-wise co
 
 ## TL;DR
 
-- A synthesized member-wise ctor `Record.$init(a,b)` lowers to an `IRCall` and is **NOT** SSA/inline-collapsed to `IRMakeStruct` inside function bodies — the `Call` IS the correct general lowering of runtime struct construction. Verify emitted code; don't assume "SSA/inline canonicalizes X."
+- A synthesized member-wise ctor `Record.$init(a,b)` lowers to an `IRCall` and is **NOT** SSA/inline-collapsed to `IRMakeStruct` inside function bodies — the `Call` IS the correct general lowering of runtime struct construction. Verify emitted code; don't assume "SSA/inline canonicalizes X." The same holds for brace initializer lists (`{a, b}`), so an emitter test using one never reaches the `MakeStruct` emit case.
 - The `Call` form only becomes a problem at **module scope**, where a `static const` initializer must be a compile-time-constant aggregate; a `Call` is never a legal global constant. Fix is a bounded normalization (proven-member-wise `Call($init)` → `MakeStruct`) at the module-global legality boundary (just before `inlineGlobalConstantsForLegalization`), NOT a producer-side rewrite and NOT module-scope SSA (`constructSSA`/mem2reg only touch function CFGs, never a block-less hoisted module-scope inst).
 
 ## Synthesized member-wise ctor calls are not SSA-collapsed to makeStruct in function bodies
@@ -23,9 +23,12 @@ The shape only becomes a problem at **module scope**, where a `static const` ini
 
 Lesson: don't assert "SSA/inline canonicalizes X" from intuition — check the emitted code first. This premise was wrong in both a source comment and the PR body and took an extra codex OUTPUT_REVIEW round to catch ([Slang synthesized member-wise ctor calls are NOT SSA-collapsed to makeStruct in function bodies](../learnings/1789527902521-slang-synthesized-member-wise-ctor-calls-are-not-s.md)).
 
+The same lowering trips up emitter tests. A brace initializer list `Flags f = { a < b, a > b };` is a call of the synthesized constructor (`Flags_x24init_0(...)`) on WGSL too, not a `kIROp_MakeStruct`, so a test meant to exercise an emitter's `MakeStruct` case only re-tests the call-argument path. When a test must reach a particular emit case, confirm from the emitted text that the IR op you are targeting is actually produced; for WGSL `select(...)` argument lists, vector `&&`/`||` is the reliable trigger (details on [[wiki/concepts/slang-backends-wgsl-matrix-and-validation.md]]) ([`{a, b}` initializer list on WGSL lowers to a synthesized ctor call, not kIROp_MakeStruct](../learnings/1791675327416-slang-a-b-initializer-list-on-wgsl-lowers-to-a-syn.md)).
+
 Related module-global shape: a `static` global initialized from a global param places the use in an `IRGlobalVar` initializer block, so passes that rewrite global-param uses must key on `IRGlobalValueWithCode`; see [[wiki/concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md]].
 
-**Source learnings (1):**
+**Source learnings (2):**
 
 - [Slang synthesized member-wise ctor calls are NOT SSA-collapsed to makeStruct in function bodies](../learnings/1789527902521-slang-synthesized-member-wise-ctor-calls-are-not-s.md) — the `Call($init)` is the correct runtime lowering; the module-scope `static const` illegality is fixed by a bounded `Call($init)`→`MakeStruct` normalization at the global-constant legality boundary, not by producer rewrite or module-scope SSA.
+- [Slang `{a, b}` initializer list on WGSL lowers to a synthesized ctor call, not kIROp_MakeStruct](../learnings/1791675327416-slang-a-b-initializer-list-on-wgsl-lowers-to-a-syn.md) — a brace-init emitter test never reaches the `MakeStruct` case; check the emitted op before trusting a test's coverage.
 _Catalog: [[wiki/index.md]]_

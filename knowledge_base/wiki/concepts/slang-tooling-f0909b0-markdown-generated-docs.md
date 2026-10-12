@@ -3,7 +3,7 @@ title: "Slang markdown & generated docs: prettier is unenforced, generators own 
 type: concept
 group: slang-tooling
 tags: [markdown, prettier, generated-docs, ci, slangc-help, byte-exact, docs]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
@@ -223,7 +223,23 @@ check
 [retarget: update `_prompt.md`](../learnings/1790756499500-retargeting-a-docs-generated-agentic-test-also-upd.md)
 [correction: README rows often differ from `//META: purpose`](../learnings/1790759833171-correction-docs-generated-tests-readme-rows-often-.md).
 
-**Source learnings (15):**
+## Linking to Slang docs: ReadTheDocs page names follow the source file
+
+When rewriting old Jekyll user-guide links (`shader-slang.com/slang/user-guide/<permalink>.html`)
+to ReadTheDocs, use
+`https://docs.shader-slang.org/en/latest/external/slang/docs/user-guide/<SOURCE-FILE>.html`.
+RTD names each page after its `.md` source file, not the Jekyll permalink, so `targets` becomes
+`09-targets`, `modules` becomes `04-modules-and-access-control`, and `compiling` becomes
+`08-compiling`. Anchors carry over unchanged (on RTD they are `<section id=…>`, not heading ids).
+The core-module reference now lives at `/en/latest/external/core-module-reference/`;
+`/external/stdlib-reference/` returns 404 even though shader-slang.github.io#99 introduced it, so
+take the website's current `_data/documentation.yaml` as the source of truth rather than a PR that
+once added a path. The `a1-02-slangpy` (slangtorch) page moved to `docs/deprecated/`. A tooling
+note from the same fix: `./extras/formatting.sh` with no arguments only prints help, so a
+markdown check needs `--check-only --md -- README.md` (slang#13567 / PR #13568,
+[RTD page names = source file names; stdlib-reference moved](../learnings/1791665643660-slang-docs-links-rtd-page-names-source-file-names-.md)).
+
+**Source learnings (16):**
 - [A generated doc checked byte-exact by CI must NOT be run through prettier — and CI's formatting.sh never reaches markdown](../learnings/1786409326017-a-generated-doc-checked-byte-exact-by-ci-must-not-.md) — Two conflicting contracts on `command-line-slangc-reference.md`; the trailing-space generator output; regenerate from your own build after a merge (empty diff = proof).
 - [slang formatting.sh does NOT check markdown in CI's run_all path](../learnings/1786614164763-slang-formatting-sh-does-not-check-markdown-in-ci-.md) — The `((run_markdown))` dispatch asymmetry; 237/413 `docs/generated/**` `.md` fail prettier@3.3.3 on master while CI is green; only make authored lines conformant.
 - [formatting.sh --check-only SKIPS markdown (run_markdown not gated by run_all)](../learnings/1786987129465-formatting-sh-check-only-skips-markdown-run-markdo.md) — The full dispatch block; normalize-both-and-diff to prove a docs edit is neutral; fenced code blocks pass through verbatim; draft PRs skip check-formatting.
@@ -238,4 +254,5 @@ check
 - [New front-end errors can break the nightly agentic suite — run docs/generated/tests too](../learnings/1791528614678-new-front-end-errors-can-break-the-nightly-agentic.md) — E31215 broke `array-unsized.slang`; diff against master; recursion guards key on instantiated `Type*`.
 - [Compiler PRs that change behavior must also run docs/generated/tests (nightly-only suite)](../learnings/1791580515115-compiler-prs-that-change-behavior-must-also-run-do.md) — #13546 broke `if-expression-signed-overflow-wraps.slang`; head-vs-base FAILED diff; `libslang-llvm.so` needed for FileCheck.
 - [Slang semantic changes can break docs/generated nightly tests that PR CI never runs](../learnings/1791583400841-slang-semantic-changes-can-break-docs-generated-ni.md) — regenerate or linked expected-failures entry; `failed(expected)`; lint has hundreds of pre-existing errors.
+- [Slang docs links: RTD page names = source file names; stdlib-reference moved](../learnings/1791665643660-slang-docs-links-rtd-page-names-source-file-names-.md) — permalink → source-file mapping; core-module-reference path; formatting.sh with no args only prints help.
 - [Correction: docs/generated/tests README rows often do NOT equal //META purpose verbatim](../learnings/1790759833171-correction-docs-generated-tests-readme-rows-often-.md) — 15/72 rows differ; the `_common.md` rule is unenforced, so a mismatch is a nit; script bundle-wide checks.

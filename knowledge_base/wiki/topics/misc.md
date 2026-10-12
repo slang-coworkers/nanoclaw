@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1379 learnings. [Catalog](../index.md)
+1382 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -746,6 +746,7 @@ type: topic
 - [getMaximumTypeBitSize returns 64 for IntPtr/UIntPtr — the MAX, not the target width](../learnings/1788817928259-getmaximumtypebitsize-returns-64-for-intptr-uintpt.md)
 - [getValidTypeForAddressOf: &buf[i] already compiles for RW AND RasterizerOrdered buffers](../learnings/1786988113943-getvalidtypeforaddressof-buf-i-already-compiles-fo.md)
 - [gh .user.login omits the [bot] suffix — edit-if-self guards must compare bare login](../learnings/1783935090568-gh-user-login-omits-the-bot-suffix-edit-if-self-gu.md)
+- [gh 2.101.0: `gh pr view --json mergeQueueEntry` is an invalid field](../learnings/1791705782341-gh-2-101-0-gh-pr-view-json-mergequeueentry-is-an-i.md)
 - [gh api --jq does not accept jq's --arg (silent zero rows)](../learnings/1786091512952-gh-api-jq-does-not-accept-jq-s-arg-silent-zero-row.md)
 - [gh api --jq writes the error object to stdout on 4xx, so emptiness guards are unreachable dead code](../learnings/1786051213646-gh-api-jq-writes-the-error-object-to-stdout-on-4xx.md)
 - [gh api --paginate can return partial results after a mid-run 401](../learnings/1791039860997-gh-api-paginate-can-return-partial-results-after-a.md)
@@ -960,6 +961,7 @@ type: topic
 - [Merge-queue eviction reason checks_timed_out = group ran 2h; look for a ceiling-bound job, not a red one](../learnings/1791484800264-merge-queue-eviction-reason-checks-timed-out-group.md)
 - [Merge-queue failed_checks eviction can come from a COMMIT STATUS, not a check-run — check both surfaces](../learnings/1785874799588-merge-queue-failed-checks-eviction-can-come-from-a.md)
 - [Merge-queue failed_checks eviction CLEARS auto-merge — post-eviction autoMergeRequest=null is not "never had it"](../learnings/1785485875128-merge-queue-failed-checks-eviction-clears-auto-mer.md)
+- [Merge-queue membership check: use GraphQL PullRequest.mergeQueueEntry (follow-up to gh --json gap)](../learnings/1791705807345-merge-queue-membership-check-use-graphql-pullreque.md)
 - [Merge-queue sweeps: payload `evicted` can be stale, and evictions can be commit-status-only](../learnings/1791469815689-merge-queue-sweeps-payload-evicted-can-be-stale-an.md)
 - [mergeable_state tells you THAT a requirement is unmet, never WHICH one](../learnings/1785791831427-mergeable-state-tells-you-that-a-requirement-is-un.md)
 - [Merging master after a refactor can silently change overload identity of split enum modes](../learnings/1791413169329-merging-master-after-a-refactor-can-silently-chang.md)
@@ -1234,6 +1236,7 @@ type: topic
 - [static-const-matrix-array .3 syn(llvm) RPC drop: harness-retry is NOT a fix; #11951 is the Signature-B tracking issue](../learnings/1783340384337-static-const-matrix-array-3-syn-llvm-rpc-drop-harn.md)
 - [static_assert as a decl: module-scope conditions need a carrier IRFunc](../learnings/1790123003621-static-assert-as-a-decl-module-scope-conditions-ne.md)
 - [Stating a limit satisfies the impulse to honour it — the caveat that is correct, aimed, adjacent, and contradicted anyway](../learnings/1785961669163-stating-a-limit-satisfies-the-impulse-to-honour-it.md)
+- [Status-partitioned fix-log index: split by "has an open PR", not by age](../learnings/1791785854151-status-partitioned-fix-log-index-split-by-has-an-o.md)
 - [std140: row-major float2x4 and float4[2] are byte-identical — matrix mode doesn't touch arrays](../learnings/1785073305394-std140-row-major-float2x4-and-float4-2-are-byte-id.md)
 - [Stopping at the branch that confirms your hypothesis: how I published a false root cause four times over](../learnings/1786420900027-stopping-at-the-branch-that-confirms-your-hypothes.md)
 - [Structural RT primitive markers must be sealed — open marker + open Custom bucket = target-lowering SIGSEGV](../learnings/1787669679140-structural-rt-primitive-markers-must-be-sealed-ope.md)
