@@ -3,7 +3,7 @@ title: Green CI carries zero bits — positive controls, check-runs vs status, c
 type: concept
 group: ci-tooling
 tags: [approver, ci-green, positive-control, check-runs, ci_green_on_sha, coverage, could-it-come-out-otherwise]
-source_count: 17
+source_count: 19
 ---
 
 ## TL;DR
@@ -24,6 +24,7 @@ no evidence. This bites approvers constantly, in several concrete shapes:
   combined-status endpoint (blind to GitHub Actions check-runs = the real build matrix), and
   under `require_ci_green:false` it passes VACUOUSLY with evidence string "policy does not
   require CI green." Read the evidence string; a vacuous pass carries zero bits.
+- **Zero failing in a rollup is not "CI passed".** A fork PR with no dispatched CI has 3 contexts and no `check-ci`, and reads SUCCESS. A `resolved` verdict needs `check-ci` SUCCESS on the current head (prefer the `pull_request` suite, highest id), enforced in the tracker writer; record `no-ci` otherwise.
 - **check-runs and commit statuses are two disjoint surfaces.** Combined `/status` over-scopes
   down (CLA+bot statuses only) AND you can miss cross-repo integration statuses (`SlangPy
   Tests`) if you read only check-runs. Read BOTH; use `gh pr checks` (de-duped current rollup)
@@ -96,6 +97,10 @@ insight that a red `review` check = the production "Claude PR Review" automation
 which is exactly the expected Devin-only fallback trigger (`collect-reviews.sh` exit 20), not a
 PR defect.
 
+## A rollup with zero failures is vacuous when CI never ran
+
+The babysitter's sweep made the same zero-bits mistake about a whole PR. A head that never had CI dispatched (a fork PR with only bridge, board-sync and Claude-assistant runs: 3 rollup contexts, no `check-ci`) reads as rollup SUCCESS with zero failing. Gate 0j logged `resolved` on shader-slang/slang#13453 15 times between 10-06 and 10-11 off exactly that ([zero failing in rollup is not positive evidence](../learnings/1791734913868-gate-0j-zero-failing-in-rollup-is-not-positive-evi.md)). A `resolved` or green verdict therefore needs a positive control: a `check-ci` check-run on the current head with conclusion SUCCESS. Probe it live (`commits/<sha>/check-runs?filter=all`), and treat a rollup of under ~10 contexts on a code PR as a flag; `actions/runs?head_sha=<sha>` and GraphQL `contexts.totalCount` cross-check it. The requirement is enforced in code, in the one sanctioned tracker writer, not only in prompt prose. A separate non-terminal verdict, `no-ci`, keeps "CI never ran" apart from "logs expired". One refinement: `check-ci` can appear in several check suites, such as a stray `workflow_dispatch` suite in `waiting` or an older draft-time `skipped` suite. Requiring every suite green wrongly refused 3 healthy PRs. Prefer the `pull_request`-event suite (map `check_suite_id` to event via `/actions/runs?head_sha=`) and take the highest id ([resolved needs positive check-ci SUCCESS, enforced in code](../learnings/1791736119391-sweep-gate-resolved-needs-positive-check-ci-succes.md)).
+
 ## Pagination silently truncates the CI claim
 
 Even reading the right endpoint, a single page hides failures.
@@ -145,8 +150,10 @@ names both over- and under-abstain: for a behavioral dep bump, line up what the 
 the consumer usually does NOT build the dependency's own regression test, so the trigger-present
 control for the changed behavior can be absent even when basic integration is green.
 
-**Source learnings (17):**
+**Source learnings (19):**
 
+- [Gate 0j: zero failing in rollup is not positive evidence — require check-ci present and SUCCESS](../learnings/1791734913868-gate-0j-zero-failing-in-rollup-is-not-positive-evi.md) — #13453 logged resolved 15 times with 3 contexts and no check-ci; a rollup under ~10 contexts on a code PR is a flag.
+- [Sweep gate: resolved needs positive check-ci SUCCESS, enforced in code](../learnings/1791736119391-sweep-gate-resolved-needs-positive-check-ci-succes.md) — enforce in the tracker writer; `no-ci` verdict; prefer the pull_request suite's check-ci, highest id.
 - [A changed .github/workflows/*.yml can be 100% unexercised by PR CI](../learnings/1786378582184-approver-challenger-miss-a-changed-ci-config-is-un.md) — a workflow_call-only workflow behind a cron caller is green by construction; enumerate the caller's triggers and check the head's check-runs by name.
 - [Green CI does not prove a new conditional path ran — grep the job log for the test NAME](../learnings/1786381632620-approver-challenger-green-ci-does-not-prove-a-new-.md) — a check-run success aggregates a job; a silently-skipped test leaves it green; cite the PASSED log line as the positive control.
 - [CI force-flag PRs: green carries zero bits — get the runner-log token on the same pool](../learnings/1786387985233-ci-force-flag-prs-green-carries-zero-bits-get-the-.md) — a flag the runner ignores is a green no-op; runs-on is a request, actions/jobs/<id> is what ran; bind evidence to the executing pool.

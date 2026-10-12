@@ -3,7 +3,7 @@ title: "Slang formatting.sh: false-greens, tool install, and safe scoping"
 type: concept
 group: slang-tooling
 tags: [formatting, clang-format, gersemi, shfmt, prettier, ci, false-green, worktree]
-source_count: 14
+source_count: 15
 ---
 
 ## TL;DR
@@ -39,6 +39,9 @@ prints a diff you never see) in exactly the states where it has verified nothing
   makes `--check` a false positive; normalize-and-diff (format both master and head copies,
   diff the results) to isolate the PR's true delta. Never commit an `--in-place` reflow from
   a mismatched local tool — CI may reject it.
+- **Never check one CMake file in isolation.** `formatting.sh --check-only --cmake -- <file>`
+  hides the custom commands from gersemi and reports false diffs; run the whole-tree
+  `--check-only --cmake` that CI runs.
 - **A backup taken before a format run is stale.** Restore from the git index
   (`git checkout -- <path>`), not from `/tmp`.
 - **In a shared base clone, scope everything.** Unscoped `formatting.sh --cpp` + `git add -A`
@@ -180,7 +183,21 @@ Two things matter: invoke gersemi *faithfully* (the way `formatting.sh` does —
 `--definitions` it warns `unknown command 'glob_append'` from `cmake/Glob.cmake` and
 misformats); and **normalize-and-diff** — `gersemi --in-place` a copy of the master version
 and a copy of the head version with the same definitions, then `diff` the results. If the
-only difference is the PR's intended additions, the PR introduces no drift of its own. The
+only difference is the PR's intended additions, the PR introduces no drift of its own.
+`formatting.sh` itself produces the same false positive when given one file:
+`./extras/formatting.sh --check-only --cmake -- source/slang-core-module/CMakeLists.txt`
+flagged 27 "would be reformatted" lines outside the PR's hunk, and the same lines show on
+unmodified master. The script passes `--definitions "${files[@]}"`, so with a single file
+gersemi never sees the custom commands in `cmake/*.cmake` (`slang_add_target` and others) and
+reformats their calls as generic ones. The whole-tree `./extras/formatting.sh --check-only
+--cmake` is what CI's `check-formatting.yml` runs, and it exits 0. So check CMake formatting
+with the whole-tree run, or compare a single-file result against master
+[single-file gersemi false diffs](../learnings/1791784450911-slang-formatting-sh-on-a-single-cmake-file-reports.md).
+The same atom records an unrelated build trap: in a Linux ASan build
+(`SLANG_ENABLE_ASAN=ON`) the ASan-built `slang-fiddle` fails the `.fiddle.stamp` step on
+LeakSanitizer leaks, and `slang-capability-generator` can spin on
+`AddressSanitizer:DEADLYSIGNAL` (ninja grew to about 9 GB). Build with
+`ASAN_OPTIONS=detect_leaks=0`, as `ci-slang-sanitizer.yml:144` does, and with a timeout. The
 same pattern applies to clang-format: pip `clang-format==17.0.6` reported a pre-existing
 `#include`-order "violation" on `slang-end-to-end-request.cpp` that is identical on master.
 **Never** run `formatting.sh --cmake --in-place` with a mismatched local gersemi and commit
@@ -218,7 +235,7 @@ yours), avoid bare `git add -A`, and evict a stray file by restoring it to the c
 parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- <file>`
 (origin/master may have advanced, reintroducing it as a spurious modification).
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [clang-format for slang: 17.x ONLY (repo docs say 17-18 and are wrong) — install via venv](../learnings/1786381193362-clang-format-for-slang-17-x-only-repo-docs-say-17-.md) — The `[17,18)` bound, the PEP-668 venv install, and two positive-control traps (`--check-only` exit 0 masks a silent no-op; type flags narrow the file set to 5 extensions).
 - [formatting.sh --check-only exits 0 when its tools are missing — a green that checked nothing](../learnings/1786424195348-formatting-sh-check-only-exits-0-when-its-tools-ar.md) — On slang#12454 all four formatters were absent; the grep-for-missing-tool-lines gate, plus the same-session `xxd`-missing false negative.
 - [slang formatting.sh --check-only EXITS 0 WHILE CHECKING NOTHING — and pip clang-format vanishes across a restart](../learnings/1786424384200-slang-formatting-sh-check-only-exits-0-while-check.md) — Two-container measurement; the require-both-exit-0-and-zero-missing gate; the `[17,18)` bound; the install disappearing later the same day.
@@ -233,3 +250,4 @@ parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- 
 - [formatting.sh needs a bare `clang-format` name — shim clang-format-17 via a /tmp symlink; codex-reply rounds are not recorded by the critique gate](../learnings/1790692417192-formatting-sh-needs-a-clang-format-binary-name-shi.md)
 - [extras/formatting.sh exits 0 without formatting when only clang-format-17 is installed (#13332)](../learnings/1790719063408-extras-formatting-sh-exits-0-without-formatting-wh.md) — shim or per-file `clang-format-17 --style=file | diff -q`; `--check-only` rc 1 from missing gersemi/shfmt
 - [slang-test from a -bindir binary copy fails ~31 CUDA/OptiX tests](../learnings/1790714053699-slang-test-from-a-bindir-binary-copy-fails-31-cuda.md) — formatting aside: bare `formatting.sh` prints usage and exits 0; keep scratch out of `/tmp`
+- [slang formatting.sh on a single CMake file reports false gersemi diffs; use the whole-tree --cmake run](../learnings/1791784450911-slang-formatting-sh-on-a-single-cmake-file-reports.md) — `--definitions` gets only the one file; ASan builds need `ASAN_OPTIONS=detect_leaks=0`

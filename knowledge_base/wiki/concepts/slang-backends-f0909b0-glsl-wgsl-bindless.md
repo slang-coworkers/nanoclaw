@@ -3,7 +3,7 @@ title: GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer lay
 type: concept
 group: slang-backends
 tags: [glsl, wgsl, tint, wgsl-spirv, bindless, descriptor-heap, nonuniform, buffer-layout, std430, overload, dxc, reflection, cross-module]
-source_count: 23
+source_count: 24
 ---
 
 ## TL;DR
@@ -96,6 +96,10 @@ Ways to capture the WGSL that Slang hands to Tint, on any platform and without a
   and naga, `request_adapter_sync()` finds llvmpipe, and `create_shader_module(code=...)` raises
   with naga's validation error
   [stub slang-tint to see the WGSL passed to tint](../learnings/1790932425083-slang-to-see-the-wgsl-that-target-wgsl-spirv-asm-p.md).
+  A lighter node-only oracle is `npm install naga-wasm@30.2.0` + `validate(parseWgsl(src))`, no GPU,
+  adapter or Rust toolchain needed
+  [GPU-free WGSL check via naga-wasm](../learnings/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md);
+  see [[wiki/concepts/slang-backends-wgsl-matrix-and-validation.md]].
 Metal's constant-buffer path through the same `getTypeLayoutRuleNameForBuffer` is covered on [Metal backend](../concepts/slang-backends-f0909b0-metal.md).
 
 ## Bindless descriptor heaps and the "Test Slang via glsl" CI leg
@@ -168,7 +172,7 @@ the `glsl.meta.slang` `default:` branch, then `cmake -E touch` the meta file and
 per-form tests failed
 [combined-sampler parens; profile caps don't emit `#extension`](../learnings/1790724590745-glsl-emit-combined-sampler-calls-are-texture-name-.md).
 
-**Source learnings (23):**
+**Source learnings (24):**
 
 - [WGSL emit has TWO type paths — a grep hit in one is not coverage in the other](../learnings/1786706500522-wgsl-emit-has-two-type-paths-emittype-routing-vs-e.md) — `_emitType` routes, `emitSimpleTypeImpl` names; a new IR type usually needs a case in the latter; identify the enclosing function after a grep hit.
 - [internal modifier breaks cross-builtin-module calls — GLSL is a separate module from Core](../learnings/1786522969053-internal-modifier-breaks-cross-builtin-module-call.md) — `internal` = same-module only; GLSL is a separate builtin module; measure with a core-module rebuild; alternatives are `[require(spirv)]` (necessary-not-sufficient) or relocating the decl.
@@ -193,3 +197,4 @@ per-form tests failed
 - [WGSL-via-tint bugs: check the REQUESTED target, not the codegen sub-context format](../learnings/1790934790391-wgsl-via-tint-bugs-check-the-requested-target-not-.md) — exact `getTarget()` comparisons are the bug class (layout rule, `emitEntryPoints`, ir-link); fix with `isWGPUTarget()`.
 - [Capture the WGSL Slang hands to Tint without tint (any platform)](../learnings/1790957231882-capture-the-wgsl-slang-hands-to-tint-without-tint-.md) — CLI stub or in-process `setSharedLibraryLoader` fake; E99997 swallow and raw `Linkage*` gotchas.
 - [Tint-path layout fixes also change matrix storage on wgsl-spirv(-asm)](../learnings/1790962008492-tint-path-layout-fixes-also-change-matrix-storage-.md) — Natural→Std430 routes matrices through `shouldLowerMatrixType`; stub returning real SPIR-V makes wgsl-spirv rows FileCheckable.
+- [GPU-free WGSL parse/validate check: naga-wasm via npm (node)](../learnings/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md) — node-only alternative to wgpu-py for validating emitted WGSL; main write-up on the WGSL matrix/validation page

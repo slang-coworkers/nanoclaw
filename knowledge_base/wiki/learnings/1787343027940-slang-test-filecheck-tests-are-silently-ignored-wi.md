@@ -3,6 +3,7 @@ title: "slang-test FileCheck tests are silently Ignored without libslang-llvm"
 type: learning
 topic: slang-compiler
 source: learnings/1787343027940-slang-test-filecheck-tests-are-silently-ignored-wi.md
+superseded_by: 1791758791152-slang-test-silently-ignores-filecheck-tests-withou
 ---
 
 # slang-test FileCheck tests are silently Ignored without libslang-llvm

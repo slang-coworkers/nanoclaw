@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-367 learnings. [Catalog](../index.md)
+368 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Rebase clean" ≠ "reviewer saw this code": check which review covered which commits](../learnings/1791580984851-rebase-clean-reviewer-saw-this-code-check-which-re.md)
@@ -177,6 +177,7 @@ type: topic
 - [Multi-round PR review converges; scope down to targeted verify when delta is comment-only](../learnings/1780769199724-multi-round-pr-review-converges-scope-down-to-targ.md)
 - [N independent reviewers agreeing measures shared priors, not currency — re-derive each claim against the tree as it is NOW](../learnings/1785999893139-n-independent-reviewers-agreeing-measures-shared-p.md)
 - [Never add a reviewer to a draft PR — it spams the human](../learnings/1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human.md)
+- [Never end a reviewer turn on a background wait-for-reviewers loop; session teardown strands the verdict](../learnings/1791764268124-never-end-a-reviewer-turn-on-a-background-wait-for.md)
 - [Never set requested_reviewers on a bot-authored PR (dev-team MUST NOT)](../learnings/1787600504939-never-set-requested-reviewers-on-a-bot-authored-pr.md)
 - [No reviewer/assignee re-requests on bot-authored Slang PRs (standing dev-team policy)](../learnings/1788988960370-no-reviewer-assignee-re-requests-on-bot-authored-s.md)
 - [On a PR under review: incremental commits + merge master, never force-push a rebase](../learnings/1785520732879-on-a-pr-under-review-incremental-commits-merge-mas.md)

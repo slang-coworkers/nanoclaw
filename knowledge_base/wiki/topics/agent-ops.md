@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-826 learnings. [Catalog](../index.md)
+831 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -82,6 +82,7 @@ type: topic
 - [A fix to your local artifact is NOT a fix to the published copy — a gate-blocked delivery is an outstanding action](../learnings/1785992450842-a-fix-to-your-local-artifact-is-not-a-fix-to-the-p.md)
 - [A fix/issue-N branch on a FORK is not ours: resolve PR ownership by head_repo + author, never by branch name](../learnings/1785803367777-a-fix-issue-n-branch-on-a-fork-is-not-ours-resolve.md)
 - [A fixer "budget-stop" is often a per-session cap, not a funding gap — re-dispatch fresh on the canonical thread](../learnings/1789146576052-a-fixer-budget-stop-is-often-a-per-session-cap-not.md)
+- [A fixer's "CI dispatched: run N" may be the wrong workflow — check .path before accepting it as verification](../learnings/1791788466910-a-fixer-s-ci-dispatched-run-n-may-be-the-wrong-wor.md)
 - [A fixer's hold-ack doesn't guarantee it stopped — verify branch/worktree state](../learnings/1781366452370-a-fixer-s-hold-ack-doesn-t-guarantee-it-stopped-ve.md)
 - [A forked Agent (no subagent_type) inherits full context and may run the whole task, not the scoped prompt](../learnings/1781716274142-a-forked-agent-no-subagent-type-inherits-full-cont.md)
 - [A format string from docs is not emitted bytes — two prefix false-negatives in one gate](../learnings/1785979302017-a-format-string-from-docs-is-not-emitted-bytes-two.md)
@@ -431,6 +432,7 @@ type: topic
 - [FOURTH presentation of the ncl equals-form defect: swallowed `--id=` + auto-fill returns a valid record for the WRONG identity, exit 0](../learnings/1786243869582-fourth-presentation-of-the-ncl-equals-form-defect-.md)
 - [Fresh git worktree lacks submodules; critique gate re-hashes the PR body at send](../learnings/1787818646140-fresh-git-worktree-lacks-submodules-critique-gate-.md)
 - [Fresh-worktree Slang builds can hit the per-session cost cap and look like container churn](../learnings/1787277018261-fresh-worktree-slang-builds-can-hit-the-per-sessio.md)
+- [Gate 0j: 'zero failing in rollup' is not positive evidence — require check-ci present and SUCCESS](../learnings/1791734913868-gate-0j-zero-failing-in-rollup-is-not-positive-evi.md)
 - [Gate a post that exceeds a tightly-bounded pre-clearance; honest after-the-fact flag is the right recovery](../learnings/1789765970729-gate-a-post-that-exceeds-a-tightly-bounded-pre-cle.md)
 - [Gate event-waiting scheduled tasks with a pre-agent wakeAgent script](../learnings/1781193788875-gate-event-waiting-scheduled-tasks-with-a-pre-agen.md)
 - [Gate on evidence on disk, not on intention — the frozen-artifact invariant](../learnings/1785824548562-gate-on-evidence-on-disk-not-on-intention-the-froz.md)
@@ -452,6 +454,7 @@ type: topic
 - [gh CLI refuses job logs on gate-wedged runs — bypass via raw REST API curl](../learnings/1788848145158-gh-cli-refuses-job-logs-on-gate-wedged-runs-bypass.md)
 - [gh CLI works for repo-scoped writes despite "invalid token" — GH_TOKEN is a OneCLI routing sentinel](../learnings/1789099182120-gh-cli-works-for-repo-scoped-writes-despite-invali.md)
 - [gh GH_TOKEN can be stale while gateway curl still posts to GitHub](../learnings/1788089811545-gh-gh-token-can-be-stale-while-gateway-curl-still-.md)
+- [gh pr view --json mergeQueueEntry is unsupported in the babysitter container](../learnings/1791712961775-gh-pr-view-json-mergequeueentry-is-unsupported-in-.md)
 - [gh pulls?head=owner:branch is blind to fork PRs; index head.ref over the full open-PR list instead](../learnings/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md)
 - [gh read paths work despite OneCLI "invalid token" preflight warning](../learnings/1790009814074-gh-read-paths-work-despite-onecli-invalid-token-pr.md)
 - [gh run rerun --failed is blocked while a bot-PR CI run waits on the priority-yield gate](../learnings/1789265883183-gh-run-rerun-failed-is-blocked-while-a-bot-pr-ci-r.md)
@@ -649,6 +652,7 @@ type: topic
 - [Restarting nanoclaw main service triggers initGroupFilesystem → skill refresh → CLAUDE.md recompose → claude-md-stale kills all running containers. Avoid restarts during active sessions.](../learnings/legoop-feedback_service_restart_kills_containers.md)
 - [Restarting nanoclaw service kills all running containers and their in-progress work; restart only the specific MCP subprocess instead](../learnings/legoop-feedback_no_service_restart_for_mcp.md)
 - [Resuming a paused peer session from a fresh retry-check: must in_reply_to an unresponded inbound](../learnings/1781084626230-resuming-a-paused-peer-session-from-a-fresh-retry-.md)
+- [Retired gate wording kept resurfacing from Core Memory — fix the index line, not just the dated note](../learnings/1791742351041-retired-gate-wording-kept-resurfacing-from-core-me.md)
 - [RETRACTION: triager→slang-fixer edge DOES work — earlier "no wired edge" learning was wrong; real lesson is no double-dispatch](../learnings/1782146765585-retraction-triager-slang-fixer-edge-does-work-earl.md)
 - [Review gates validate the shape you chose, not whether a better mechanism exists — breadth-of-mechanism is yours to check first](../learnings/1785769682134-review-gates-validate-the-shape-you-chose-not-whet.md)
 - [Right evidence, conclusion one axis wider — name what the measurement rules out before publishing](../learnings/1786086589671-right-evidence-conclusion-one-axis-wider-name-what.md)
@@ -756,6 +760,7 @@ type: topic
 - [supervisor tick blocks when gh 401s on OneCLI GitHub disconnect](../learnings/1787832314750-supervisor-tick-blocks-when-gh-401s-on-onecli-gith.md)
 - [Supervisor: record NO-GO/parked disposition or it re-pages the fixer as false-positive-silent](../learnings/1789651416238-supervisor-record-no-go-parked-disposition-or-it-r.md)
 - [Surface-and-defer on maintainer design forks: never merge an intermediate approach; a docs-vs-compiler triage call can be right even after a long compiler detour](../learnings/1785469148746-surface-and-defer-on-maintainer-design-forks-never.md)
+- [Sweep gate: resolved needs positive check-ci SUCCESS, enforced in code; .mjs deployed in a bash string must have no double quotes](../learnings/1791736119391-sweep-gate-resolved-needs-positive-check-ci-succes.md)
 - [Switching a gate macro #ifdef→#if leaves stale prose; sweep comments+docs+PR-body](../learnings/1788296573909-switching-a-gate-macro-ifdef-if-leaves-stale-prose.md)
 - [synchronize-webhook-can-fire-on-comment-updated-at-bump](../learnings/1784269837644-synchronize-webhook-can-fire-on-comment-updated-at.md)
 - [Teardown kills the delivery mechanism, not necessarily the work — and persistent:true does not rescue an in-session monitor](../learnings/1785867828535-teardown-kills-the-delivery-mechanism-not-necessar.md)

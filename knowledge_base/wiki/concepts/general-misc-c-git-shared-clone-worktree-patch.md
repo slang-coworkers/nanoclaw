@@ -3,7 +3,7 @@ title: Git in a shared clone — worktrees, co-tenant resets, and patch-handoff 
 type: concept
 group: general
 tags: [git, worktree, shared-clone, concurrency, patch, format-patch, stash]
-source_count: 12
+source_count: 16
 ---
 
 # Git in a shared clone — worktrees, co-tenant resets, and patch-handoff traps
@@ -22,6 +22,7 @@ source_count: 12
 - **A patch from `git diff` silently omits untracked test files.** `git add -N` first; assert `grep -c '^+++'` equals your file count.
 - **Never restore an uncommitted file from a committed ref** — `git checkout HEAD -- <path>` reverts uncommitted work. Take a byte copy first.
 - **A diff against a base newer than your branch's base reverts upstream work.** `reset --soft origin/master` after a sibling fetch, or stacking a branch as `<fixed-base>..HEAD`, silently undoes every master change since you branched. Diff only your own commits (`merge-base`) and check `--stat` for files you never touched.
+- **Never diff against `FETCH_HEAD` in a later command** — any intervening fetch repoints it and the diff silently compares the wrong commits. Fetch into a named ref and diff that.
 
 ## The shared clone has two seats, and the victim has no defense
 
@@ -71,13 +72,15 @@ A refinement on *which instrument answers which question*: a diffstat counts **c
 
 `git ls-files $@` (unquoted) lets the shell glob-expand any pattern matching something in the repo root *before* git sees it: `'*.md'` degrades from a repo-wide pathspec (574 files) to the six top-level `.md` files. Everything still exits 0 and prints its stage banner; nothing distinguishes "checked 6" from "checked 574." The detector is not reading the code — instrument the tool it invokes: a stub `prettier` on `PATH` logging its filename args, then count what reached the formatter. Two independent defects masked each other's magnitude (a missing `run_all ||` meant the markdown stage never ran in default mode; the quoting bug meant it saw 6 of 574 when it did) — publicly-filed drift estimate 4 files, real figure 442. Grep for unquoted `$@`/`$*` feeding any glob-taking tool. [git ls-files $@ unquoted silently narrows a repo-wide pathspec to top-level files](../learnings/1786023595379-git-ls-files-unquoted-silently-narrows-a-repo-wide.md)
 
-## `git reset --soft origin/master` in a shared-clone worktree can silently revert upstream
+## Moving refs: `git reset --soft origin/master`, stacked diffs and `FETCH_HEAD`
 
 Git worktrees under `/workspace/agent/wt-*` share the base clone's `.git` refs, so a sibling fixer session running `git fetch origin master` advances the SHARED `refs/remotes/origin/master` for ALL worktrees. Hazard: `git reset --soft origin/master` to squash your branch may now point HEAD at a commit NEWER than your branch's base while keeping your stale index — so the diff between that index and the advanced `origin/master` REVERTS every upstream commit landed since you branched, and a following `git add <your files> && git commit` silently reverts unrelated upstream work (observed: reverting a feature, deleting other people's test files). Guards that worked: `git push --force-with-lease` REJECTED the bad push ("stale info") — use it, never bare `--force`; recover with `git reset --hard <explicit-good-SHA>` (your last good pushed commit), not any `origin/*` ref that may have moved; to rebase, prefer `git fetch && git rebase origin/master` (which reports conflicts) over `reset --soft origin/master`. A maintainer squash-merge collapses commits anyway, so don't chase clean single-commit history at this risk. [git reset --soft origin/master in a shared-clone worktree can silently revert upstream](../learnings/1789619873780-git-reset-soft-origin-master-in-a-shared-clone-wor.md)
 
 The same inversion corrupts a **stacked test build**. To test how two fixes interact, a session generated the #13322 layer as `git -C wt-13322 diff a05023cd30 HEAD`, where `a05023cd30` was the newer base it was stacking onto. `wt-13322` had branched from an older master, so the diff also reverted every master change in between (meta.slang, capdef, metal tests: +702/-814 across 19 files). It built fine and produced a typeflow segfault that looked like a real interaction between the fixes. The cause is the same in both cases: a two-point diff between your HEAD and any base you did not branch from carries the base delta as well as your work. Take only the branch's own commits (`git diff <first-own>^ <last-own>`, or `git diff $(git merge-base <base> HEAD) HEAD`), and after stacking run `git diff <your-head> HEAD --stat`; any file you did not expect means the stack is contaminated ([stacking a fix branch: diff its own commits, not <fixed-base>..HEAD](../learnings/1790773012843-stacking-a-fix-branch-diff-its-own-commits-not-fix.md)).
 
-**Source learnings (15):**
+`FETCH_HEAD` is the same hazard inside a single session. Every `git fetch` overwrites it, including a quick `git fetch origin master` run for an unrelated check, so a later `git diff <sha> FETCH_HEAD` quietly compares against whatever was fetched last. It still prints a plausible diff and gives no error. On slang#13406 the Orchestrator ran `git diff 4e2603652e FETCH_HEAD` to see what round 3 changed in the AST headers; by then `FETCH_HEAD` pointed at master, so the diff showed `ReadOnlyModifier`/`WriteOnlyModifier` "deleted", and the Orchestrator told the fixer and the operator that round 3 removed two FIDDLE classes. The real diff between the two PR heads for that file was empty (the actual break was a GCC `__LINE__` bug, PR108900, per the fixer), and the false lead cost a detour. Fetch into a named ref (`git fetch origin <branch>:refs/remotes/origin/<name>`) and diff that ref, never `FETCH_HEAD` in a later command. The check is the same as for a stacked diff: if a PR's diff touches files outside the PR's own file list, suspect the ref before the code ([never diff against FETCH_HEAD across commands](../learnings/1791635978844-never-diff-against-fetch-head-across-commands-fetc.md)).
+
+**Source learnings (16):**
 - [Victim-seat rule for the shared group clone: you cannot prevent a co-tenant reset, so never hold a working tree there](../learnings/1785998884009-victim-seat-rule-for-the-shared-group-clone-you-ca.md)
 - [An artifact you don't remember creating means a concurrent writer — shared bot identities are last-write-wins](../learnings/1786026421791-an-artifact-you-don-t-remember-creating-means-a-co.md)
 - [A clean git status in a shared clone does not mean your patch is still there — diff the hunk, not the status](../learnings/1786042035892-a-clean-git-status-in-a-shared-clone-does-not-mean.md)
@@ -93,3 +96,4 @@ The same inversion corrupts a **stacked test build**. To test how two fixes inte
 - [git ls-files $@ unquoted silently narrows a repo-wide pathspec to top-level files](../learnings/1786023595379-git-ls-files-unquoted-silently-narrows-a-repo-wide.md)
 - [git reset --soft origin/master in a shared-clone worktree can silently revert upstream](../learnings/1789619873780-git-reset-soft-origin-master-in-a-shared-clone-wor.md)
 - [stacking a fix branch: diff its own commits, not <fixed-base>..HEAD](../learnings/1790773012843-stacking-a-fix-branch-diff-its-own-commits-not-fix.md)
+- [Never diff against FETCH_HEAD across commands; fetch into a named ref](../learnings/1791635978844-never-diff-against-fetch-head-across-commands-fetc.md) — slang#13406: a stale FETCH_HEAD showed two FIDDLE classes "deleted"; a file outside the PR's list means suspect the ref.

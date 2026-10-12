@@ -27,6 +27,8 @@ The WGSL (`slang-emit-wgsl.cpp`) backend is a textual target that, unlike HLSL, 
 - Metal `[[stage_in]]` on a non-entry function is a former entry point that `lowerOutParameters` never inlined: an entry-point uniform's `IREntryPointParamDecoration` counted as a second use (#13271). Retarget before the inline decision, re-read `entryPointDecor` from the wrapper, and test with a user-semantic input, since SV_* inputs have no VaryingInput layout.
 - `fixEntryPointCallsites` clones of a called entry point keep each param's `IRLayoutDecoration`, which breaks Metal (`[[stage_in]]`) AND CUDA (system-value params dropped from the declaration but still passed at the call) — strip at the producer. Listing the callee entry point first (`-entry vsB -entry vsA`) hangs HLSL/GLSL/WGSL on master; wrap slangc in `timeout`.
 
+Companion page [[wiki/concepts/slang-backends-wgsl-matrix-and-validation.md]] covers WGSL matrix-operator validity (negation, int64 matrices), the §3.9 template-list ambiguity in argument lists, and GPU-free naga-wasm validation.
+
 ## Static-Const Arrays Must Be var<private> for Runtime Indexing
 
 In WGSL, a `const` is a compile-time value (≈C++ constexpr); the spec only lets a *value* of array type be indexed by a const-expression. A `static const` array indexed by a runtime value (e.g. `positions[SV_VertexID]`) emitted as WGSL `const` is rejected by naga/tint. The fix in `emitVarKeywordImpl` flips the keyword `const`→`var<private>` for module-scope array/matrix constants — yielding a runtime-indexable private var with a const-expression initializer ([WGSL emit: static-const arrays must be var<private> (not const) for runtime indexing](../learnings/1781624737396-wgsl-emit-static-const-arrays-must-be-var-private-.md)).
