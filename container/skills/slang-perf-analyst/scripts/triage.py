@@ -64,6 +64,10 @@ _suite = os.environ.get(SUITE_ENV, "")
 if _suite:
     sys.path.insert(0, _suite)
 sys.path.insert(0, HERE)
+# The skill's own module is imported BEFORE the suite's: importing the suite (bench.py) puts
+# the suite's directory first on sys.path, and a same-named suite module must not shadow ours.
+import intent
+
 try:
     import confirm
     from lib import analyze
@@ -71,8 +75,6 @@ except ImportError as exc:
     raise ImportError(
         f"triage.py needs the perf suite: set {SUITE_ENV} to a slang checkout's "
         f"tools/compile-perf (could not import: {exc})") from exc
-
-import intent
 
 SCHEMA_VERSION = 2
 
@@ -155,10 +157,10 @@ def pick_point(points, label=None, commit=None):
                                                       or commit.startswith(p["commit"]))]
         if not hits:
             raise TriageError(f"no daily point for commit {commit}")
-        return sorted(hits, key=lambda p: (p["date"], p["label"]))[-1]
+        return max(hits, key=lambda p: (p["date"], p["label"]))
     if not points:
         raise TriageError("no daily points in the results directory")
-    return sorted(points, key=lambda p: (p["date"], p["label"]))[-1]
+    return max(points, key=lambda p: (p["date"], p["label"]))
 
 
 def comparable(a, b):
@@ -698,8 +700,8 @@ def render_markdown(b):
             f" (null max {_f(t['null_max'], 3)})" for t in b["top_movers"][:5]]
     if b.get("real_world"):
         out += ["", "## Real-world workloads (whole-compile effect)", "",
-                "Ratios are from the original sweep only. Check any flagged counter of the same "
-                "workload against its rerun before relying on a single-night ratio.", "",
+                ("Ratios are from the original sweep only. Check any flagged counter of the same "
+                 "workload against its rerun before relying on a single-night ratio."), "",
                 "| workload | compileInner | wall | front end share | semantic checking share | semantic ratio |",
                 "|---|---|---|---|---|---|"]
         for r in b["real_world"]:
@@ -713,10 +715,10 @@ def render_markdown(b):
     elif cr:
         out.append(f"{cr['base_commit'][:9]} ({cr['base_label']}) .. {cr['head_commit'][:9]}: "
                    f"{len(b['commits'])} commits")
-        out += ["", "Ordered by changed lines in files that can move the flagged and shifted timers. "
-                    "This is a weak signal: line count cannot tell a plain overload from a new "
-                    "interface, so the first entry is not necessarily the cause. Build the suggested "
-                    "points to attribute a step; do not name a culprit from this list alone.", ""]
+        out += ["", ("Ordered by changed lines in files that can move the flagged and shifted timers. "
+                     "This is a weak signal: line count cannot tell a plain overload from a new "
+                     "interface, so the first entry is not necessarily the cause. Build the suggested "
+                     "points to attribute a step; do not name a culprit from this list alone."), ""]
         for r in b["candidates"]:
             pr = f"#{r['pr']}" if r["pr"] else r["sha"][:9]
             who = r.get("pr_author") or r["author"]

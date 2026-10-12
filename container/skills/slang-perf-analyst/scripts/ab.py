@@ -80,7 +80,7 @@ def spread_pct(summary, label_a, label_b):
 def run_bench(bench, slangc, label, out_dir, corpus, only, samples):
     cmd = [sys.executable, bench, "--slangc", slangc, "--label", label, "--out", out_dir,
            "--samples", str(samples), "--only", only, "--corpus", corpus]
-    return subprocess.run(cmd, capture_output=True, text=True)
+    return subprocess.run(cmd, capture_output=True, text=True, check=False)
 
 
 def find_results(out_dir):

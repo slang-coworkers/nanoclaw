@@ -44,7 +44,7 @@ PERF_TERMS = re.compile(
     r"|\b(?:perf(?:ormance)?|compile[- ]time|speed|latency|memory|startup|throughput)"
     r"\s+(?:regress(?:ion|ions|ed)?|impact|cost|hit|penalty)\b"
     r"|\b(?:regress(?:ion|ed|es)?|degrad(?:e|es|ed|ation))\s+(?:in\s+)?"
-    r"(?:perf(?:ormance)?|compile[- ]time|speed|latency|memory|startup)\b", re.I)
+    r"(?:perf(?:ormance)?|compile[- ]time|speed|latency|memory|startup)\b", re.IGNORECASE)
 
 # Phrases that say the author knew about a cost and accepted it. A subset of the
 # above; a hit means "acknowledged", not "justified".
@@ -53,31 +53,31 @@ ACKNOWLEDGED = re.compile(
     r"(?:slightly|marginally|somewhat) (?:slower|higher|larger|more)|"
     r"(?:small|minor|modest) (?:increase|overhead|cost|slowdown|regression)|"
     r"at the cost of|accept(?:s|ed|ing|able)? .{0,30}(?:cost|overhead|slowdown)|"
-    r"increases? .{0,40}(?:time|ms|%|latency|memory)|known (?:cost|overhead|regression))", re.I)
+    r"increases? .{0,40}(?:time|ms|%|latency|memory)|known (?:cost|overhead|regression))", re.IGNORECASE)
 
-PURPOSE_HEADINGS = re.compile(r"^#{1,4}\s*(motivation|summary|why|background|problem|purpose)\b", re.I)
+PURPOSE_HEADINGS = re.compile(r"^#{1,4}\s*(motivation|summary|why|background|problem|purpose)\b", re.IGNORECASE)
 HEADING = re.compile(r"^#{1,4}\s")
 LINK = re.compile(r"\b(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?|implements?|related to|part of)\s+"
-                  r"(?:[\w.-]+/[\w.-]+)?#(\d+)", re.I)
+                  r"(?:[\w.-]+/[\w.-]+)?#(\d+)", re.IGNORECASE)
 
 # Label text that tells what kind of change this is. First match wins.
 KIND_RULES = [
-    ("breaking", re.compile(r"(?<!non-)(?<!non )breaking", re.I)),
-    ("feature", re.compile(r"new feature|feature|enhancement", re.I)),
-    ("fix", re.compile(r"\bbug\b|\bfix\b|regression fix", re.I)),
-    ("refactor", re.compile(r"refactor|cleanup|clean-up|chore", re.I)),
-    ("docs-tests", re.compile(r"\bdocs?\b|documentation|\btests?\b|\bci\b", re.I)),
+    ("breaking", re.compile(r"(?<!non-)(?<!non )breaking", re.IGNORECASE)),
+    ("feature", re.compile(r"new feature|feature|enhancement", re.IGNORECASE)),
+    ("fix", re.compile(r"\bbug\b|\bfix\b|regression fix", re.IGNORECASE)),
+    ("refactor", re.compile(r"refactor|cleanup|clean-up|chore", re.IGNORECASE)),
+    ("docs-tests", re.compile(r"\bdocs?\b|documentation|\btests?\b|\bci\b", re.IGNORECASE)),
 ]
 TITLE_KIND_RULES = [
-    ("fix", re.compile(r"^\s*fix\b|\bfix(?:es)?\s+#\d+", re.I)),
-    ("feature", re.compile(r"^\s*(?:add|support|implement|introduce|enable|allow)\b", re.I)),
-    ("refactor", re.compile(r"^\s*(?:refactor|clean ?up|move|rename|simplify|remove)\b", re.I)),
+    ("fix", re.compile(r"^\s*fix\b|\bfix(?:es)?\s+#\d+", re.IGNORECASE)),
+    ("feature", re.compile(r"^\s*(?:add|support|implement|introduce|enable|allow)\b", re.IGNORECASE)),
+    ("refactor", re.compile(r"^\s*(?:refactor|clean ?up|move|rename|simplify|remove)\b", re.IGNORECASE)),
 ]
 
 
 def sentences(text):
     """Split prose into sentences well enough to excerpt; code fences are dropped."""
-    text = re.sub(r"```.*?```", " ", text or "", flags=re.S)
+    text = re.sub(r"```.*?```", " ", text or "", flags=re.DOTALL)
     text = re.sub(r"`[^`]*`", lambda m: m.group(0).strip("`"), text)
     out = []
     for line in re.split(r"\n+", text):

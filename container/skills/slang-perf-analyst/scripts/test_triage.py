@@ -11,14 +11,23 @@ interface drift in the suite fails loudly instead of producing wrong numbers.
 """
 import json
 import os
+import sys
 import tempfile
 import unittest
 
-if not os.environ.get("SLANG_COMPILE_PERF_DIR"):
+SUITE = os.environ.get("SLANG_COMPILE_PERF_DIR")
+if not SUITE:
     raise unittest.SkipTest("SLANG_COMPILE_PERF_DIR is not set (needs a slang checkout)")
+sys.path.insert(0, SUITE)  # bench, confirm and lib.analyze come from the slang checkout
+HERE = os.path.dirname(os.path.abspath(__file__))
 
-import triage  # noqa: E402  (puts the suite on sys.path)
-import bench  # noqa: E402
+import bench
+
+# bench.py puts the suite's own directory first on sys.path when it is imported, so the skill's
+# directory goes first again here: a module of the same name in the suite must never shadow the
+# skill's own triage.py or intent.py.
+sys.path.insert(0, HERE)
+import triage
 
 
 def row(workload, size=64, sampling="interleaved", **timers):
@@ -239,7 +248,7 @@ class RangeTests(unittest.TestCase):
 class BundleTests(unittest.TestCase):
     """The whole path on a small results tree, with a fake commit source."""
 
-    LABELS = [f"2026-01-0{i}-sha{i}" for i in range(1, 8)]
+    LABELS = tuple(f"2026-01-0{i}-sha{i}" for i in range(1, 8))
 
     def write_tree(self, root, candidate=True, confirmation=True, same_commit=False):
         for i, label in enumerate(self.LABELS):

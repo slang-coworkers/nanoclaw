@@ -68,7 +68,7 @@ class GateTests(unittest.TestCase):
     def fire(self, **env):
         e = dict(os.environ, PATH=f"{self.bin}:{os.environ['PATH']}", GH_FIXTURES=self.fix,
                  PERF_STATE_DIR=self.state, **env)
-        p = subprocess.run(["bash", GATE], capture_output=True, text=True, env=e, timeout=30)
+        p = subprocess.run(["bash", GATE], capture_output=True, text=True, env=e, timeout=30, check=False)
         self.assertEqual(p.returncode, 0, p.stderr)  # the contract: exit 0 on every path
         last = p.stdout.strip().splitlines()[-1]
         payload = json.loads(last)                    # the contract: last line is JSON
