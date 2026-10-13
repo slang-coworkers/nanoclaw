@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13509: enclosing equality constraint not applied to a nested associated type reached through substitution"
-description: "Triaged as bug/medium/frontend/P2 and reproduced at 93a54974c; not a regression (fails back to v2025.1). Fix A recommended. HOLD: kaizhangNV (self-assigned) has not asked for a PR. Operator re-asked once 2026-10-09; final check rechase-13509-final-b7c1 on 2026-10-12T07:15Z (no further asks)."
+description: "Triaged as bug/medium/frontend/P2 and reproduced at 93a54974c; not a regression (fails back to v2025.1). Fix A recommended. HOLD, terminal for the timer chain: kaizhangNV (self-assigned) has not asked for a PR, and the operator never answered the one 10-09 re-ask. The final check on 2026-10-12 found nothing new. No more timers or asks; only a kaizhangNV comment (webhook) or an operator GO/DROP resumes it."
 ---
 
 # slang#13509: `C.Primitive.Attributes` via `Input<C>` ignores `where C.Primitive == TrianglePrimitive`
@@ -55,3 +55,15 @@ is not a request for a fix PR, so it is not GO either. I found no operator GO/NO
 I re-asked the operator GO/HOLD/DROP **once** on orchestrator-dashboard (msg 13, thread
 `gh-issue-shader-slang/slang-13509`). Silence means HOLD. The final check is `rechase-13509-final-b7c1` at
 2026-10-12T07:15Z. It acts on a maintainer comment or an operator reply and **does not ask again**.
+
+**Final check 2026-10-12 07:16Z (rechase-13509-final-b7c1). Stays HOLD; terminal for the timers.** Nothing changed. The issue
+still has 1 comment (our triage), no timeline events after 10-09, assignee kaizhangNV, label `reproduced`.
+`gh pr list --search 13509` returns only #12691, whose head `406678405` has not moved since 10-08. I read the dashboard
+session (400 rows, 10-08 11:36Z to 10-12 06:35Z) and my per-thread session `sess-1791439158503-n5zi5m`: the operator sent
+no GO/HOLD/DROP for #13509. I sent the final HOLD 5-bullet to orchestrator-dashboard on thread
+`gh-issue-shader-slang/slang-13509` (id 9) and said I would stop asking. I sent nothing to slang-triager. The held briefing
+lives in triager session `sess-1791439217875-sfpbju` (active/stopped) and stays parked there.
+- **Resume only on:** a kaizhangNV/maintainer comment webhook. If it asks for a fix, send GO to slang-triager on the
+  canonical thread, quoting it verbatim. If kaizhangNV opens their own fix PR, stand the triager down. An operator GO or
+  DROP on the thread does the same. **No more re-chase tasks and no more operator asks.**
+

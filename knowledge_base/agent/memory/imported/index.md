@@ -1040,6 +1040,8 @@ Migrated 2026-08-30; /okf-synthesis distills over time.
 - [project_13529_reflection_unsized_array_element_count](project_13529_reflection_unsized_array_element_count.md)
 - [project_13530_uniform_unsized_array_spirv_invalid](project_13530_uniform_unsized_array_spirv_invalid.md)
 - [project_13550_intrinsic_annotation_application_policy](project_13550_intrinsic_annotation_application_policy.md)
+- [project_13578_slang_relation_to_hlsl_cpp_policy](project_13578_slang_relation_to_hlsl_cpp_policy.md)
+- [project_13579_generic_struct_capability_outside_entrypoint](project_13579_generic_struct_capability_outside_entrypoint.md)
 - [project_6319_dup_sysval_pr11885](project_6319_dup_sysval_pr11885.md)
 - [project_6434_nthsetbit_intrinsic_scrub](project_6434_nthsetbit_intrinsic_scrub.md)
 - [project_6471_combined_sampler_register_space](project_6471_combined_sampler_register_space.md)

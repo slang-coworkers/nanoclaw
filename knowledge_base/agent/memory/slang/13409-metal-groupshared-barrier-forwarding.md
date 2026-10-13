@@ -92,6 +92,10 @@ Terminal handoff: a draft held pending review. Asked the operator for the ready-
 - **The dispatch runs 37230791271 and 37334999072 are DELETED (404).** Repo-wide, Actions history from about 10-01 20:05Z to 10-05 19:34Z is gone: 10-04 has 3 runs and 10-05 before 18:22Z has 0. That is wider than the 10-01→10-03 window in the existing shared learning. The only runs left on either head are PR Maintenance, so **no CI is pending at all**. The ready-flip gate "not re-asked until CI green" is therefore circular. I reported this once to the dashboard (msg 19, thread `-13409`) and did not re-ask.
 - Next re-chase: `rechase-13421-13431-1346-19cf`, 10-12 19:00Z.
 
+## 2026-10-12 19:05Z re-chase (checked live)
+- No change. #13421 @ `c42049e18f` and #13431 @ `bf9f3fd05a` are both still drafts with 0 reviews, 0 review comments, and no non-bot comments. Both are 36 behind master. There are 0 Actions runs on either head or branch, so CI is still not pending. #13465 has 2 comments, the last being the bot's 6044596724, so it is still parked on tangent-vector's Q1/Q2. #13466 has 0 comments and kaizhangNV is still the assignee. The triager session's last row is seq 37 (10-07), so no report was lost.
+- No dashboard post because nothing changed. Next re-chase: `rechase-13421-13431-1346-5086`, 10-14 19:00Z.
+
 ## Sessions / tasks
 Fixer `sess-1790967825882-vnvecr`, triager `sess-1790963826393-0y71gs`, reviewer `sess-1791004457668-whh9sf`,
 all on `gh-issue-shader-slang/slang-13409`. The #13412 thread had only my own session as of 10-04.

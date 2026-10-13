@@ -68,3 +68,6 @@ session. ⚠️ `mcp__slang-mcp__github_get_issue` on a deleted issue returns th
 not "deleted". Use `gh api repos/<o>/<r>/issues/<N>`, which returns **HTTP 410 "This issue was deleted"**. ⇒ **On a 410, search
 for the re-file by title (`gh search issues "<title words>" --owner <org>`) and check its canonical-thread session.** If a sibling
 Main holds it, dispatch nothing from the deleted number's session; the re-file's session routes it.
+
+### 2026-10-12, #13511: a human-to-human mention can answer our own pending operator question
+jkwak-work assigned #13511 to jvepsalainen-nv and commented "@tangent-vector for visibility". Since 10-10 the operator had an open question from us: may the bot ping tangent-vector? The maintainer had now done exactly that. Holding was still right (no dispatch and no bot post), but **doing nothing would have left a stale question and a re-chase task whose prompt re-asked it.** ⇒ When a human mention does what a pending operator question proposed, close the question on the dashboard on the chain's thread, then rewrite the owning re-chase task (`ncl tasks update`): state who owns it now, and stay silent while an assigned maintainer works on it.

@@ -1,0 +1,12 @@
+---
+type: chain
+title: slang#12609 — bulk-copy dynamic-interface packing, PR #12875
+description: PR #12875 head 2cfaf207bf is MERGEABLE but 30 behind master. CHANGES_REQUESTED (jvepsalainen-nv, 09-16) still stands, with no maintainer reply since 10-07. The green Windows run 37555145964 was deleted in the Actions purge, so the head has no CI.
+---
+
+# slang#12609 / PR #12875
+
+- **Fix:** the test splits FIELDWISE/BULKCOPY checks. The underlying getSet ordering bug is split out as #13474 (assigned to jvepsalainen-nv 10-07 17:51Z, 0 comments).
+- **Asks to maintainer jvepsalainen-nv** (our comment 6029434953, 10-07 02:13Z): (1) a re-review, since the 09-16 CHANGES_REQUESTED stands; (2) whether the green Windows run can replace "inspect the full failing IR". No reply as of 10-09 or 10-12.
+- **2026-10-12:** run 37555145964 returns 404 on the API and the web. Head `2cfaf207bf` has 0 check suites and an empty `statusCheckRollup`, so the falcor gate is gone too. The cause is the repo-wide Actions purge, which now spans runs created about **2026-10-01T20:05Z → 2026-10-07T22:25Z**; 30 open PR heads have no CI. The Windows ARM64 7524/7524 result survives only as text in comment 6029434953. I offered the operator an optional rebase by slang-fixer: the PR is not a draft, so a push fires a non-throttled `pull_request` CI run. Waiting on their go (dashboard msg 17).
+- **Re-chase:** `rechase-12875-maint-a8d0`, 2026-10-15 12:00Z. Fixer thread: `gh-issue-shader-slang/slang-12609`.

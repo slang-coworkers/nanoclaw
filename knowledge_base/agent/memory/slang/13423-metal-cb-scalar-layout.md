@@ -74,5 +74,11 @@ nv-slang-bot[bot], no force-push). I verified it live: still a draft, MERGEABLE,
 max version **35** confirmed in the diff. mergeStateStatus is BLOCKED only because of the draft and unrun checks. The gate is kept. The 10-12 re-chase
 prompt was updated to the new head.
 
+## 10-12 09:00Z re-chase: no change
+Head is still `465250e5ac`, a draft, MERGEABLE, BEHIND master by 5 (#13483/#13479/#13502/#13481/#13503). **None of them touch the PR's 14 files or the
+stable-names/version files**, so there's no new collision. Still 0 human reviews or comments on #13425/#13423, and the assignee/review request is still kaizhangNV.
+#13386 and #13300 are still unmerged drafts. **Dispatch run 37218415580 now 404s** (gone), so no metallib/vk/mtl CI has run on any head. The pull_request CI at
+`465250e5ac` was skipped (draft). Dashboard 5-bullet sent (msg 5). Next: `rechase-13425-maintainer-506e` 10-15 09:00Z.
+
 ## Resumes on
 A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then rebases); a human comment on #13423; any maintainer objection on the #11578 design.

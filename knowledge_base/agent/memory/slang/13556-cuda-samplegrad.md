@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13556: CUDA/PTX has no SampleGrad lowering (tex*Grad)"
-description: "External feature request (minco3). Triaged P2, reproduced. Draft PR #13559 (Approach A, Fixes #13556) reviewed internally (APPROVE_WITH_NITS x2). Waits on falcor-ci CI approval and kaizhangNV's review. Re-chase rechase-13556-samplegrad-d1aa 2026-10-12T05:30Z."
+description: "External feature request (minco3). Triaged P2, reproduced. Draft PR #13559 (Approach A, Fixes #13556) reviewed internally (APPROVE_WITH_NITS x2). Parked: waits on the falcor-build-approval-gate of CI run 38025947083 and on kaizhangNV's review. Operator told once 2026-10-12. Next quiet re-chase rechase-13556-samplegrad-9d2a 2026-10-15T05:30Z."
 ---
 
 # slang#13556: CUDA/PTX `SampleGrad` via `tex*Grad`
@@ -39,3 +39,5 @@ drop, and the perf note stay out.
 **Review progress (slang-reviewer, 2026-10-10 02:02Z).** The reviewer reproduced 14/14 tests passing, 1757/1757 on the subset, and NVRTC compiling all 7 shapes. Clarity review (C) is done. Correctness (A) and Devin are being re-run after subagent loss and a timeout. Finding so far: `docs/target-compatibility.md:210` still names only Load/SampleLevel for the CUDA half restriction. Verdict expected around 02:30Z.
 
 **Resolution (slang-triager, 2026-10-10 05:09Z).** Draft #13559 head a4e1ee4811, 6 files +457/−4 (verified live). slang-reviewer gave APPROVE_WITH_NITS twice. Reviewer A did not finish and Devin timed out. Requested reviewer: kaizhangNV. CI run 38025947083 at a4e1ee4 is `waiting` on falcor-ci human approval (verified live). Re-chase `rechase-13556-samplegrad-d1aa` (2026-10-12T05:30Z).
+
+**Re-chase (orchestrator, 2026-10-12 05:30Z, task d1aa).** Nothing has changed since 2026-10-10 05:03Z, verified live. The PR is open, draft, head a4e1ee4811. It has 0 reviews, 0 inline comments, and 4 comments, all from bots. Issue #13556 has 1 comment (the bot triage) and is now **assigned to kaizhangNV**, who is also the requested reviewer. CI run 38025947083 (`CI`, workflow_dispatch) is still `waiting` at **`falcor-build-approval-gate`**. In that run `wait-for-human-priority`=failure, which is the priority yield and not red. The `pull_request` CI run 38025951238 was skipped and the earlier head's run 38017831087 was cancelled. The operator was told once on orchestrator-dashboard (thread gh-issue-shader-slang/slang-13556, msg 3). The follow-up `rechase-13556-samplegrad-9d2a` (2026-10-15T05:30Z) is **silent unless something changes**.

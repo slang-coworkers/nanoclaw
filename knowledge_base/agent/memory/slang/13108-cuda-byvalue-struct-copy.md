@@ -1,13 +1,13 @@
 ---
 type: chain
 title: slang#13108 — CUDA by-value struct arg copies an unread large array
-description: External enhancement (missed optimization), P2. HELD, no bot PR. Reporter minco3 closed their PRs #13110/#13178 on 10-09 (root cause in their workload is NVRTC's inliner budget). Issue stays open for the [noinline] case. Maintainers split on Slang IR pass vs downstream; the assignee (jkwak-work) leans downstream. Operator decision open.
+description: External enhancement (missed optimization), P2. HANDED OFF 10-12 to minco3's draft PR #13583 (Closes #13108), which implements tangent-vector's cross-target field-promotion pass. No bot PR; the operator fixer decision is moot. Maintainers (assignee jkwak-work leans downstream) decide on the PR.
 tags: [slang, cuda, nvrtc, ir, transform-params-to-constref, optix]
 ---
 
 # slang#13108 — by-value struct arg copies an unread large array
 
-Reporter **minco3** (external). Canonical thread `gh-issue-shader-slang/slang-13108`. Owner: slang-triager (HELD).
+Reporter **minco3** (external). Canonical thread `gh-issue-shader-slang/slang-13108`. Owner: slang-triager (handed off to contributor PR #13583).
 
 ## Facts (verified on GitHub)
 
@@ -24,4 +24,7 @@ Reporter **minco3** (external). Canonical thread `gh-issue-shader-slang/slang-13
 - 10-09: triager `[Resolution]` received (no GitHub post). Re-check confirmed the reporter's explanation: removing `__noinline__` from the emitted CUDA lets NVRTC 12.6 inline `readFields_0`, and the frame drops to 0. The 4-/9-field cutoff is a separate mechanism (argument promotion behind an explicit `__noinline__`, which needs no-alias and was seen only up to 3 fields). Both mechanisms point to the same Slang-side copy whenever the callee stays outlined.
 - Issue assigned to **jkwak-work**, the maintainer who leans toward a downstream fix (#13177 cmt 6026301449); labels cuda/reproduced/Office-Tess. Resume on a maintainer decision about which layer owns the fix, or on a substantive human comment.
 - Separate chain: bot draft #13115 (Closes #13107, static const struct tables) is idle since 09-16 and tracked by `chase-13107-design-direc-1be8`.
-- Re-chase: `rechase-13108-noinline-p-c69e` (2026-10-16). The earlier `rechase-13108-field-prom-1f13` ran and is gone.
+- **10-12 minco3** (6134454346, no bot @-mention): opened **draft PR #13583** (`minco3:minco3/large-param-field-promotion`, +820/−0, 4 files, Closes #13108). It promotes large aggregate in-params to just the fields read through field and constant-index accesses, on all targets. It skips functions whose signature can't change and also promotes params that are only forwarded to a promoted callee. Repro PTX local memory drops from 8208 to 4104 B (the remaining 4104 B is the inout `original`). Size cutoffs are a first guess. At 23:17Z: no reviews, only a coderabbit comment. The bot's review triggers when the PR goes ready-for-review; the approvers are paused.
+- 10-12 triager `[Resolution]` (memo §Update 2026-10-12; a skim, not a review): head a1291eab7f. New `promoteParamFields` pass at -O≥1, placed before the target switch that holds both `transformParamsToConstRef` call sites. It covers **in-params only**: the #13177 pointer-param half is NOT covered. It adds no write-back, so it avoids the IgnoreHit hazard. Cutoffs: aggregate ≥64 B, promoted fields ≤½ of it, ≤16 params. Reviewer checks: the layer decision; the cutoffs; skip-list gaps (autodiff, OptiX callables, debug info, module-IR boundary); callee-first order on recursion; `getSize` per target; signature changes on HLSL/SPIR-V/Metal; dynamic-index reads still copy everything; overlap with #13115 and #12620.
+- With a contributor PR in flight, the operator's keep-held vs fixer decision is moot: a fixer PR would duplicate it.
+- Re-chase: `rechase-13108-noinline-p-c69e` (2026-10-16), repurposed to watch #13583. The earlier `rechase-13108-field-prom-1f13` ran and is gone.

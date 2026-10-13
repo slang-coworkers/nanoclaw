@@ -50,3 +50,14 @@ base, on master `6ba151dcf` and on the PR head; only #12131's head passes it. #1
 #8957 on CUDA fails on every build, including a plain vertex shader, so it's unrelated. Open operator call: file the
 E38100 nested case as its own issue? (Main's default is not to file. #12131 already has a regression test for it, and the
 issue comment already raises it for maintainers.) Re-chase `rechase-slang-13276-pr13-36e0` is set for 10-12.
+
+**10-12 re-chase — still HANDED OFF, nothing new from humans.** Triager reported on 10-05 06:13 and its issue comment
+5864017861 is still the only comment on #13276; nothing for it to do. #13370 is OPEN, non-draft, head `3c85a6cfa7`
+(pushed 10-02 05:37), no human review, `reviewDecision` empty, 44 commits BEHIND master. On 10-05 jvepsalainen-nv
+answered all 6 bot-review threads ("Addressed in 3c85a6cfa") and asked saipraveenb25 to review (dshreiner-nv also
+requested since 10-01). ⚠️ **No CI ran on head `3c85a6cfa7`**: 0 check-suites, 0 workflow runs, empty rollup. The
+"CI green" seen earlier was on the previous head `0b5fe56b3d` (62 contexts SUCCESS). It's a human PR, so we only report
+this and don't act. #10877/#12131 unchanged; #8957: jkwak-work removed the `Dev Reviewed` label 10-08 with no comment.
+The operator never answered the E38100 filing question; Main keeps its default (don't file). Next re-chase 10-19.
+⭐ Lesson: "CI green" has to be checked against the **current head SHA** (`commits(last:1).statusCheckRollup`), not the
+PR-level rollup from an earlier read, because a push can land and trigger no CI at all.

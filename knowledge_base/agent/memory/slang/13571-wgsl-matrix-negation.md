@@ -39,3 +39,15 @@ triage comment. Not filed. Whether to file it is the operator's call.
 new `tests/wgsl/matrix-negation.slang`, updated `neg-vector-precedence.slang`). The pr-mapping goes to the fixer session.
 The fixer is waiting on the slang-reviewer verdict before sending its final [Fix Report]. The triager edited its comment to say "fix in draft PR #13572". Re-chase: `rechase-13571-wgsl-matne-de5e` (10-13 16:00Z),
 which also re-asks the operator about the scalar-uint sibling if it's still open.
+
+**2026-10-12 14:00Z, triage resolved** (verified live). Draft #13572 is at head `46ac7f64a7`: 9 bot commits, 5 files
++160/−17. It adds `legalizeMatrixTypes` (`slang-ir-legalize-matrix-types.{cpp,h}`), which lowers every non-float matrix on WGPU so that
+int64/int16/uint8 never reach the float-only Neg branch. Master already rejects those types with E38203, and the test pins it.
+Internal slang-reviewer ran 2 rounds, both REQUEST_CHANGES with 0 bugs and 2 gaps each. All gaps are fixed, but the round-2 fixes
+weren't re-reviewed because of the 2-round cap. Devin timed out in both rounds. The PR description uses the repo hook's 4-section format, not the CLAUDE.md 5-part one
+(rationale: explain cmt 6114547878). jkwak-work is assignee and requested reviewer, with 0 GitHub reviews so far. CI run 38259151868 is
+`waiting` on the workflow_dispatch approval gate. Re-chase `rechase-13571-wgsl-matne-de5e` has been refreshed.
+
+**Unfiled follow-ups (operator call, asked 10-11 / 10-12):** (1) scalar `uint` `-u` emits `- x` on WGSL; (2) the CPU
+prelude `SLANG_MATRIX_UNARY_OP` indexes `result[i].rows[i][j]` (wrong index), so float-matrix `-m` breaks on `-cpu`;
+(3) double matrices ICE on WGSL and BFloat16 matrices emit invalid WGSL; (4) float-matrix `%` emits invalid WGSL.

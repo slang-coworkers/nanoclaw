@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13544: C++14 ' digit separators in numeric literals"
-description: "Feature request from an external reporter, unassigned. Triaged P3, frontend lexer + preprocessor. GO on (1) a separate #if literal-decoding bug (filed as #13545) and (2) finishing _ for floats, both as drafts: PRs #13546 / #13547, CI gated on a falcor-ci approval. ' (3) is HELD on a maintainer/spec decision. Re-chase rechase-13544-sep-271e on 2026-10-12."
+description: "Feature request from an external reporter, unassigned. Triaged P3, frontend lexer + preprocessor. GO on (1) a separate #if literal-decoding bug (filed as #13545) and (2) finishing _ for floats, both as drafts: PRs #13546 / #13547, CI gated on a falcor-ci approval. ' (3) REFUSED by tangent-vector 10-12 18:33Z ('close this issue, since _ is already supported'); terminal. #13547's fate is the operator's call. 10-12 16:00Z re-chase found no change. FINAL re-chase rechase-13544-tv-6b49 on 2026-10-16T16:00Z; after it the chain parks on an inbound."
 ---
 
 # slang#13544: `'` digit separators
@@ -70,4 +70,54 @@ dispatched nothing. The owner is the #13544 chain: the fixer acked the GO at 16:
   nothing was re-dispatched as of 02:0xZ. The fixer is expected to dispatch it after round 3. Dashboard msg 51 calls the PR Maintenance
   runs "lighter checks"; next time, call them what they are.
 
-**Resume.** `rechase-13544-sep-271e` (2026-10-12T16:00Z).
+**10-12 09:34–09:39Z, skiminki-nv (MEMBER, assigned to #13544 and #13547) commented three times. I read each one live, unedited.**
+- [6121589625](https://github.com/shader-slang/slang/issues/13544#issuecomment-6121589625) says the spec `_` text is not normative
+  ("aspirational"). It lists the decisions still open: which character, whether separators may only sit between digits or may trail, and
+  which language versions get them. Their preference is the C++ rule (`'`, only between digits, all versions 2018-202c), and the decision
+  is **deferred to tangent-vector**. ⇒ **Classification: discussion/deferral, not a decision.** `'` stays HELD.
+- 6121612803 on **PR #13547**: "Marking this as blocked by …6121589625". ⇒ #13547 is a maintainer-blocked draft. Make no pushes or
+  review asks on it.
+- [6121664877](https://github.com/shader-slang/slang/issues/13544#issuecomment-6121664877) says `0b1_2`→4 and `07_9`→65 "looks like a
+  lexer bug, and neither literal should be accepted". ⇒ They agree on the E10003 change on its merits. It is still not a GO.
+- **Their premise 3a is wrong, as I measured on ae6d69935 Release.** `123_` compiles to 123 with rc 0, and `1_000_000`, `1__0`, `0x_FF` are
+  all accepted. `123'` gives 10005. The lexer has `// TODO: need to decide on digit separator characters` at `slang-lexer.cpp:703`. So a
+  between-digits-only or `'`-only rule *would* break code that compiles today. Our own triage line, "the spec already allows `_`",
+  overstated a non-normative page.
+- #13546/#13545 were not mentioned and are unaffected. CI on both PRs is still `waiting` on falcor-ci (#13546 run 38010557763, #13547 run
+  38014317927).
+- Dispatched slang-triager (msgs 61 + 63) with the comments verbatim. It may post **one** factual reply covering the measurements on master
+  and the latest release, the lexer TODO, a self-correction, and #13547 staying blocked. It may optionally *offer* to split out the
+  invalid-digit fix (default: no action). No @-mentions and no advocating for `_`.
+
+**10-12 09:53Z, the triager's single reply [6121884514](https://github.com/shader-slang/slang/issues/13544#issuecomment-6121884514) (I checked it live).**
+Bot author, 1294 chars, no @-mentions, disclaimer present, the only bot comment since the maintainer's. The triager re-measured on master
+f7e14a1a6 and v2026.19 and got the same results on both. The reply contains the 3a counter-measurements, the `:703` TODO, a correction of
+our "spec already allows `_`" line, the note that #13547 stays a blocked draft with no position taken, and the split-out offer as a
+question ("We'll take no action unless asked"). **The offer is still unanswered, so it is NOT a request.** The fixer is holding #13547 at
+`6c65eea6c4`. #13546 is unchanged.
+
+**10-12 16:00Z, re-chase `rechase-13544-sep-271e` (I checked everything live).** No human activity on #13544, #13545, #13546 or #13547
+since 09:40Z. The only new rows are our bot reply 6121884514 (single, no @-mentions, disclaimer present) and the fixer's hold ack
+[6121887855](https://github.com/shader-slang/slang/pull/13547#issuecomment-6121887855) on #13547. #13546 (`911a570b41`, jkwak-work) has no
+reviews. CI runs 38010557763 and 38014317927 are still `waiting` on falcor-ci. No GitHub post. Sent a 5-bullet to orchestrator-dashboard
+(thread `gh-issue-shader-slang/slang-13544`).
+
+**10-12 18:33Z, tangent-vector (MEMBER, the person skiminki-nv deferred to): [6130273967](https://github.com/shader-slang/slang/issues/13544#issuecomment-6130273967).**
+I read it live at 18:33:48Z. It is identical to the payload, unedited, and has no @-mentions. Key sentence: *"My strong preference would be to
+close this issue, since `_` as a digit separator is already supported."* The reasoning is that any separator meets the stated need and `_` is
+less of an eyesore. clang-format compatibility should be fixed in the tooling, not by making Slang more like C++. "Slang is not C++. Slang is
+not HLSL."
+- ⇒ **Classification: REFUSAL of `'`, so (3) is TERMINAL.** The issue is still open (assignee skiminki-nv, label Office-Tess), so the close
+  is theirs to do.
+- **No GitHub post.** There is no bot mention, so nothing authorizes a post. The facts are already on the record (including that floats
+  reject `_` today, in 6084601764 / 6121884514).
+- **#13547:** still held at `6c65eea6c4`. skiminki-nv's block stands. Nobody said anything about extending `_` to floats, placement, or the
+  base-digit miscompile, which skiminki-nv called "a lexer bug". **Whether to close, keep, or narrow it is the operator's call.** I asked
+  on the dashboard.
+- **#13546 / #13545** continue. They are unaffected and consistent with "`_` is supported".
+- Sent the comment verbatim to slang-triager (msg 77), as a refusal. Instructions: no post, no #13547 action, report a close or a new
+  maintainer comment.
+
+**Resume.** `rechase-13544-tv-6b49` (2026-10-16T16:00Z) is the **FINAL** re-chase and repeats the polarity triage. If nothing has changed by
+then, it sends one dashboard 5-bullet and creates no further re-chase: the chain parks on an inbound (a tangent-vector decision or a
+falcor-ci approval).

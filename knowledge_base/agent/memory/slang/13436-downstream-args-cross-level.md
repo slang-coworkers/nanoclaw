@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13436 — DownstreamArgs lost across option levels (linkWithOptions / addTarget)
-description: Triaged + reproduced bug P2, not a regression. PR #13450 (03de207e8c) is ready, owned by assignee kaizhangNV, policy resolved (append, no dedup). Falcor gate approved and CI 50/50 green, but the merge queue dropped it on a 2 h timeout (10-09); waiting on a human re-enqueue. Side finding held (3 asks, no answer, no 4th)
+description: CLOSED 2026-10-12. Fixed by PR #13450 (append session → target → link, no override/dedup), merged by kaizhangNV (e4d92bf0bb); #13436 auto-closed COMPLETED. Side finding (linkWithOptions mutates caller composite) still held, unfiled
 tags: [slang, cuda, nvrtc, compiler-options]
 ---
 
@@ -136,7 +136,20 @@ Session `nvrtc --gpu-architecture=compute_86` + link `nvrtc --fmad=false` → `.
   10-08 21:51Z): no answer on the side finding, so it stays **held, no 4th ask**. Operator told (dashboard msg id 11) that a human re-enqueue
   is needed. Nothing was posted on GitHub.
 
-## Resume
-Re-chase `rechase-13436-requeue-e876` (2026-10-12T09:00Z): was it re-enqueued, did it merge, was it removed again (and why)? Relay any
-new human comment verbatim to the triager. If merged, confirm #13436 auto-closed and close this record + the index entry. Side finding:
-dispatch only on an explicit A (thread `gh-issue-shader-slang/slang-13436/side-link-same-object`); otherwise hold silently.
+- 10-12 09:00Z re-chase (`rechase-13436-requeue-e876`), all verified live: **not re-enqueued, no change.** PR OPEN, head 03de207e8c,
+  MERGEABLE / BLOCKED, reviewDecision empty, 10 behind master. GraphQL `RemovedFromMergeQueueEvent.reason` = **`checks_timed_out`**
+  (10-09 19:11:25Z), so the timeout is now GitHub's own recorded reason and no longer just my inference. The timeline has no queue
+  event after it. Queue config is unchanged: checkResponseTimeout 7200 s, SQUASH, maxBuild 2. The queue run needed ~2 h 50 m, so a
+  plain re-enqueue can time out again if macOS is slow. Master has been unmoved since 08d419cbf2 (10-09 14:40Z), and the queue now holds
+  only #13526 (enqueued 10-12 08:00Z). Nothing new from a human on #13450 since 10-08 03:43Z or on #13436 since 04:24Z, so nothing went to
+  the triager. Dashboard (bounded read, 150 rows back to 10-10 08:22Z): no answer on the side finding, so it stays held and gets no 4th ask.
+  Operator reported (dashboard msg id 19). Nothing posted on GitHub.
+
+- 10-12 22:16:35Z **MERGED** by kaizhangNV: merge commit e4d92bf0bb, head 03de207e8c (same as the [Fix Report]). #13436 closed
+  22:16:36Z, state_reason completed. I verified both live. Triager FINAL msg 64; fixer worktree removed. Re-chase
+  `rechase-13436-requeue2-4cbc` cancelled.
+
+## Closed
+Terminal. Re-open only on a fresh substantive human comment on #13436/#13450 (route through slang-triager on the canonical
+thread). Side finding is **held, unfiled** (3 operator asks, no answer). Dispatch only on an explicit operator A, on thread
+`gh-issue-shader-slang/slang-13436/side-link-same-object`.

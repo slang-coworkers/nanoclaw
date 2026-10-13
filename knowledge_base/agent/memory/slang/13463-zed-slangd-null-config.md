@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13463 — Zed: slangd ignores unopened #include targets (null config reply → false)"
-description: Triaged + reproduced P2 language-server bug, not a regression. GO via the triager 2026-10-06; amended 10-07 to D (null resets to default, absent keeps current) → held draft PR #13475; maintainer reassigned to jkiviluoto-nv 10-07; they un-drafted and now drive it (10-08)
+description: MERGED 2026-10-12 (PR #13475, squash fac7213eba, merged by assignee jkiviluoto-nv). Approach D — a null slangd setting restores its default, an absent one keeps current. Terminal record.
 tags: [slangd, language-server, zed, workspace-configuration]
 resource: /workspace/inbox/a2a-1791318700177-flswxk/triage-13463.md
 ---
@@ -90,4 +90,30 @@ I verified :2391 and asBool at `20092570c9` myself.
   blocked a raw `gh api …/pulls/13475` read as if it were PR creation. That's a known method-blind false match (`gate-critique-on-deliver.sh:64`
   `gh api [^|]*pulls\b`, wiki ci-gh-cli-write-guard-and-fanout). The workaround is `gh pr view --json`. Triager msg 52: the block **cleared**, and there's nothing to chase.
 
-**Resume on:** a maintainer merge (auto-closes #13463 → close the chain), a further human review/comment (relay verbatim; the bot acts only on an explicit ask), or a Falcor rerun result.
+- 10-12 09:00Z re-chase, **I verified live:** #13475 is still OPEN, non-draft, BLOCKED, `reviewDecision` empty, head `d23af9c379`, and `diverged` 5/5 from master.
+  Nothing human has happened since jkiviluoto-nv's 10-09 07:38Z APPROVE: no new reviews, 0 inline comments, and #13463 has 3 comments, the last from 10-07.
+  **Falcor is resolved:** jkiviluoto-nv re-ran run 37887334594 (attempt 2, 07:37Z), and `test-falcor` **passed** (08:20Z), so it was external.
+  The only red checks left are the 2 Windows aarch64 builds, cancelled at the 120-min ceiling. That's the CI-wide #13515 (the bot cross-referenced it 10-08),
+  not the PR. No relay to the triager, since nothing human is new. No bot action. Re-armed as `rechase-13463-assignee-d621` (10-15 09:00Z; the fired `-731d` one-shot is gone).
+
+- 10-12 12:10Z: **jkiviluoto-nv verified #13475 in real Zed on macOS** (cmt 6123990567, 1984 chars). Setup: Zed 1.23.2, extension 0.1.1,
+  reduced `src/main.slang` + `lib/helper.slang` project with no settings. The traced JSON-RPC shows Zed answering all 15 sections with `null`.
+  Unpatched `2026.17-135`: include fails. PR CI build `2026.19-58-ga1a35b79` (head d23af9c): it resolves, and hover finds `helperValue` in lib/helper.slang.
+  They didn't test Windows/Linux or the reporter's project. This independently confirms the triager's probe. Right after, they merged master again: head
+  `a742eeb6de` (12:10:35Z), 7 ahead of d23af9c and 0 behind, with no PR files touched. CI is re-running. The APPROVE still stands (REST reports it on a742eeb6de). Not
+  an ask to the bot → relayed verbatim to the triager, no bot post. Re-chase `rechase-13463-assignee-d621` (10-15) unchanged.
+
+- 10-12 13:32Z triager msg 62, **I verified live:** `test-falcor` **failed again** on head `a742eeb6de` (run 38247385602, job 114809675986,
+  step "Run external CI", GitLab pipeline 73252433 `failed`, 12:47Z). The other 49 checks pass, and the PR is BLOCKED and OPEN. Falcor history on this branch: efca4cc ✅,
+  d23af9c ❌ then ✅ on the assignee's re-run, a742eeb ❌. Other CI runs today were ✅ (38213210800, 38226351392). The PR touches only slangd, the harness and tests,
+  so a flake is likely, but the GitLab log can't be reached, so that's unconfirmed. **No bot re-run** (the assignee owns the PR and re-ran it last time). One-line FYI to the dashboard.
+
+- 10-12 16:12:41Z: **MERGED.** jkiviluoto-nv merged #13475 (squash `fac7213eba`), and #13463 closed COMPLETED at 16:12:42Z via `Fixes`.
+  I verified both live. The a742eeb Falcor failure passed on run 38247385602 attempt 2 (verified), so it was transient. Triager FINAL (msg 64): no issue
+  post, cmt 6024885583 left as is, fixer worktree cleaned. I cancelled re-chase `rechase-13463-assignee-d621`. **Chain terminal.**
+
+## Lessons
+- **A maintainer reassigning after a bot PR exists is not a NO-GO.** Freezing proactive bot work, keeping the draft, and relaying verbatim let
+  the assignee adopt the bot PR (un-draft → approve → real-editor verify → merge) in 5 days, with no bot push after the reassignment.
+- **A fixer's counter-proposal (A → D) was worth checking against the code instead of holding the original GO.** The audit found a 3rd
+  outlier (`fallbackStyle`) that neither proposal had named.
