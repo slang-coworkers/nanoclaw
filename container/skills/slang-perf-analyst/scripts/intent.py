@@ -20,10 +20,17 @@ Two limits shrink what an outsider can put in front of the analyst:
     `author_association` (maintainers, by default). The count of what was ignored is
     reported, so a reader can see that text was withheld and why.
 
+Run only after bisect and parent verification identify the responsible PR:
+    python3 intent.py --pr <number> --policy <policy.json> --out <intent.json>
+
 Stdlib only, and independent of the perf suite, so its tests run anywhere.
 """
+import argparse
 import json
 import re
+import subprocess
+import sys
+from pathlib import Path
 
 MAX_PURPOSE = 700
 MAX_MENTION = 260
@@ -207,3 +214,45 @@ def collect_intent(gh, number, trusted=DEFAULT_TRUSTED):
     rec["perf_mentions"] = rec["perf_mentions"][:MAX_MENTIONS]
     rec["acknowledged_tradeoff"] = any(m["acknowledges_cost"] for m in rec["perf_mentions"])
     return rec
+
+
+class GitHub:
+    """Read the attributed PR through the container's brokered gh credential."""
+
+    def __init__(self, repo):
+        self.repo = repo
+
+    def get(self, path):
+        try:
+            return subprocess.run(["gh", "api", f"repos/{self.repo}/{path}"],
+                                  capture_output=True, text=True, check=True, timeout=120).stdout
+        except subprocess.SubprocessError as exc:
+            raise OSError(f"GitHub read failed for {path}: {exc}") from exc
+
+
+def main(argv=None):
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--pr", type=int, required=True, help="PR identified by measured attribution")
+    parser.add_argument("--github-repo", default="shader-slang/slang")
+    mounted = Path("/workspace/extra/perf-policy/PERF_POLICY.json")
+    parser.add_argument("--policy", type=Path, default=mounted if mounted.exists()
+                        else Path(__file__).with_name("PERF_POLICY.json"))
+    parser.add_argument("--out", type=Path, required=True)
+    args = parser.parse_args(argv)
+    if args.pr <= 0:
+        parser.error("--pr must be positive")
+    try:
+        policy = json.loads(args.policy.read_text())
+        configured = (policy.get("trust") or {}).get("intent_text_associations")
+        # An empty list explicitly excludes everyone except the PR's author.
+        trusted = DEFAULT_TRUSTED if configured is None else tuple(configured)
+        record = collect_intent(GitHub(args.github_repo), args.pr, trusted)
+        args.out.write_text(json.dumps(record, indent=2) + "\n", encoding="utf-8")
+    except (OSError, ValueError, KeyError, TypeError) as exc:
+        print(f"intent: {exc}", file=sys.stderr)
+        return 1
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main())

@@ -2,8 +2,13 @@
 
 No network and no suite checkout needed.
 """
+import contextlib
+import io
 import json
+import tempfile
 import unittest
+from pathlib import Path
+from unittest.mock import patch
 
 import intent
 
@@ -215,6 +220,35 @@ class CollectTests(unittest.TestCase):
         rec = intent.collect_intent(gh, 1)
         self.assertLessEqual(len(rec["purpose"]), intent.MAX_PURPOSE)
         self.assertTrue(rec["untrusted"])
+
+
+class CommandTests(unittest.TestCase):
+    def test_collects_only_the_attributed_pr_and_honors_policy_trust(self):
+        for configured, expected in ((None, 0), ([], 1)):
+            with self.subTest(trust=configured), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                policy, out = root / "policy.json", root / "intent.json"
+                policy.write_text(json.dumps({} if configured is None else
+                                            {"trust": {"intent_text_associations": configured}}))
+                gh = TrustTests().gh([{"user": {"login": "owner"}, "author_association": "OWNER",
+                                       "body": "Accepting the compile-time cost here."}], pr_body="Add x")
+                with patch.object(intent, "GitHub", return_value=gh) as client:
+                    code = intent.main(["--pr", "1", "--policy", str(policy), "--out", str(out)])
+                self.assertEqual(code, 0)
+                client.assert_called_once_with("shader-slang/slang")
+                data = json.loads(out.read_text())
+                self.assertEqual(data["pr"], 1)
+                self.assertEqual(data["ignored_untrusted"]["comment"], expected)
+
+    def test_unmerged_pr_cannot_produce_an_intent_file(self):
+        with tempfile.TemporaryDirectory() as directory:
+            out = Path(directory) / "intent.json"
+            with patch.object(intent, "GitHub", return_value=TrustTests().gh(merged=False)), \
+                    contextlib.redirect_stderr(io.StringIO()):
+                code = intent.main(["--pr", "1", "--policy", str(Path(intent.__file__).with_name("PERF_POLICY.json")),
+                                    "--out", str(out)])
+            self.assertEqual(code, 1)
+            self.assertFalse(out.exists())
 
 
 if __name__ == "__main__":

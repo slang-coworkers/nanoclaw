@@ -53,33 +53,16 @@ fail() { # fail <reason>
 command -v jq >/dev/null 2>&1 || { printf '{"wakeAgent":true,"data":{"error":"jq_missing"}}\n'; exit 0; }
 command -v gh >/dev/null 2>&1 || fail "gh_missing"
 
+runs=$(gh run list --repo "$REPO" --workflow "$WORKFLOW" --limit 6 \
+  --json databaseId,conclusion,status,createdAt,headSha,event,url 2>/dev/null) || fail "run_list_failed"
+printf '%s' "$runs" | jq -e 'type == "array" and all(.[]; type == "object" and (.databaseId | type == "number"))' \
+  >/dev/null 2>&1 || fail "run_list_unparseable"
+
 seen='[]'
 if [ -f "$LEDGER" ]; then
   seen=$(jq -c 'if type == "array" then . else [] end' "$LEDGER" 2>/dev/null) || seen='[]'
 fi
 now=$(date +%s)
-
-# Reports already prepared remain actionable after the nightly ages out of the
-# run-list window. The helper checks receipts; a retry never grants another send.
-for receipt in "$STATE"/perf-deliveries/[0-9]*.json; do
-  [ -f "$receipt" ] || continue
-  pending=$(cat "$receipt") || fail "delivery_state_unreadable"
-  printf '%s' "$pending" | jq -e '(.run_id | type == "number") and
-    (.created_at | type == "string") and
-    (.status | IN("reserved", "queued", "failed", "delivered")) and
-    (.run_url == ("https://github.com/shader-slang/slang/actions/runs/" + (.run_id | tostring))) and
-    ((.check_after // 0) | type == "number")' >/dev/null 2>&1 || fail "delivery_state_unparseable"
-  id=$(printf '%s' "$pending" | jq -r '.run_id')
-  printf '%s' "$seen" | jq -e --argjson id "$id" 'index($id) != null' >/dev/null 2>&1 && continue
-  after=$(printf '%s' "$pending" | jq -r '.check_after // 0')
-  [ "$now" -ge "$after" ] || continue
-  emit true "$(printf '%s' "$pending" | jq -c '{run_id, run_url, created_at, delivery_status: .status, kind: "delivery-retry"}')"
-done
-
-runs=$(gh run list --repo "$REPO" --workflow "$WORKFLOW" --limit 6 \
-  --json databaseId,conclusion,status,createdAt,headSha,event,url 2>/dev/null) || fail "run_list_failed"
-printf '%s' "$runs" | jq -e 'type == "array" and all(.[]; type == "object" and (.databaseId | type == "number"))' \
-  >/dev/null 2>&1 || fail "run_list_unparseable"
 
 # Newest first (gh run list order). Walk until one needs the agent.
 count=$(printf '%s' "$runs" | jq 'length')
@@ -94,9 +77,6 @@ while [ "$i" -lt "$count" ]; do
   [ "$status" = "completed" ] || continue
   [ "$conclusion" = "failure" ] || continue
   printf '%s' "$seen" | jq -e --argjson id "$id" 'index($id) != null' >/dev/null 2>&1 && continue
-  # A reserved report whose receipt check is deferred must not fall through to
-  # reanalysis just because its original nightly is still listed.
-  [ -f "$STATE/perf-deliveries/$id.json" ] && continue
   created_s=$(date -u -d "$created" +%s 2>/dev/null || date -u -j -f "%Y-%m-%dT%H:%M:%SZ" "$created" +%s 2>/dev/null) || continue
   [ $((now - created_s)) -le $((MAX_AGE_H * 3600)) ] || continue
 

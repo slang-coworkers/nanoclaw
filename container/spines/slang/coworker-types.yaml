@@ -201,8 +201,8 @@ slang-perf-analyst:
     - slang-create-issue
   workflows:
     - slang-perf-regression
-  # DIAGNOSIS_REVIEW vets the attribution and the mechanism (the nightly ranking
-  # has misled before); DECISION_REVIEW vets the class and the file/don't-file
+  # DIAGNOSIS_REVIEW vets the measured attribution and the mechanism;
+  # DECISION_REVIEW vets the class and the file/don't-file
   # decision against the policy; OUTPUT_REVIEW vets the finding and issue text.
   required_critique_stages: [DIAGNOSIS_REVIEW, DECISION_REVIEW, OUTPUT_REVIEW]
   # The terminal artifact is the finding. Declared here so the same token drives

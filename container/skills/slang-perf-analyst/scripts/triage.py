@@ -5,9 +5,8 @@ When the nightly confirms a regression, someone has to answer the same
 questions every time: is it real or noise, which counters moved and across how
 many workloads, and which commits between last night's build and tonight's could
 have caused it. This script answers the measurable parts deterministically and
-writes them as one JSON bundle (plus a Markdown rendering), so a person -- or the
-analysis agent described in AGENT-ANALYSIS.md -- starts from numbers instead of
-redoing the arithmetic by hand.
+writes them as one JSON bundle (plus a Markdown rendering), so the analyst
+starts from numbers instead of redoing the arithmetic by hand.
 
 It consumes what the nightly already produced and never re-derives the alert:
 
@@ -30,22 +29,18 @@ Across the whole sweep:
     reported as a shift). One timer moving ~8% in nearly every workload while
     its neighbours stay flat is the signature of a fixed per-compile cost, as
     opposed to a defect in one workload's code path.
-Across the commit range between the last differing baseline commit and tonight's:
-  - each commit's author, PR number and changed files, mapped to the compiler
-    components (and so the timers) those files can affect, ranked by changed
-    lines. This is a heuristic for choosing what to bisect or read first; it
-    does not establish causation.
+For attribution it supplies the full base/head commit range from the archived
+metadata. The agent bisects that range and verifies the culprit against its
+parent before collecting PR intent or diffs. Triage never fetches candidate PRs.
 
-This copy lives in the slang-perf-triage skill and runs inside the coworker
+This copy lives in the slang-perf-analyst skill and runs inside the coworker
 container. It reads the perf suite's own modules (confirm.py, lib/analyze.py) from
 a slang checkout, so "flagged", "confirmed" and "comparable" always mean what the
 suite at that revision means. Point SLANG_COMPILE_PERF_DIR at the checkout's
 tools/compile-perf. The module refuses to import without it rather than carry a
 second copy of the suite's logic that could drift.
 
-Commit data comes from a local git checkout when it has both commits, otherwise
-from `gh api` (the container's GitHub credential is brokered by OneCLI; this script
-never reads a token). Standard library only.
+All inputs are staged files; this script makes no network or git calls.
 
     SLANG_COMPILE_PERF_DIR=<slang>/tools/compile-perf \\
       python3 triage.py --results <perf-results> --out-json bundle.json --out-md bundle.md
@@ -53,9 +48,7 @@ never reads a token). Standard library only.
 import argparse
 import json
 import os
-import re
 import statistics
-import subprocess
 import sys
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -64,10 +57,6 @@ _suite = os.environ.get(SUITE_ENV, "")
 if _suite:
     sys.path.insert(0, _suite)
 sys.path.insert(0, HERE)
-# The skill's own module is imported BEFORE the suite's: importing the suite (bench.py) puts
-# the suite's directory first on sys.path, and a same-named suite module must not shadow ours.
-import intent
-
 try:
     import confirm
     from lib import analyze
@@ -76,7 +65,7 @@ except ImportError as exc:
         f"triage.py needs the perf suite: set {SUITE_ENV} to a slang checkout's "
         f"tools/compile-perf (could not import: {exc})") from exc
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 3
 
 # Provenance a baseline night must share with tonight's row before the two are
 # compared. Same rule as trend.py: a missing field is never evidence of equality.
@@ -96,37 +85,6 @@ TAIL_NIGHT_RATIO = 1.25  # a night's max over its own median marks a slow tail
 TAIL_FRACTION_BIMODAL = 0.3
 MIN_SHIFT_RATIO = 1.03
 TAIL_REACHED = 0.95
-
-MAX_COMMITS = 80
-MAX_FILES_PER_COMMIT = 12
-MAX_DIFF_BYTES = 80_000
-MAX_BODY_BYTES = 12_000
-
-# Map changed paths to the compiler component, and so to the timers, they can
-# move. First match wins, so the specific rules come before the broad ones.
-# `None` marks paths that cannot change compile time at all.
-_FRONT = {"frontEndExecute", "compileInner"}
-_BACK = {"linkAndOptimizeIR", "generateOutput", "compileInner"}
-COMPONENT_RULES = [
-    (r"^(docs|tests|\.github|examples|external|extras|\.claude)/|\.md$", None, set()),
-    (r"^source/slang/.*\.meta\.slang$|^source/standard-modules/", "builtin-module",
-     {"loadBuiltinModule", "readSerializedModuleAST", "readSerializedModuleIR",
-      "SemanticChecking"} | _FRONT),
-    (r"^source/slang/(slang-serialize|slang-fossil)", "serialization",
-     {"loadBuiltinModule", "readSerializedModuleAST", "readSerializedModuleIR"} | _FRONT),
-    (r"^source/slang/slang-(parser|lexer|preprocessor|token)", "parse",
-     {"parseTranslationUnit"} | _FRONT),
-    (r"^source/slang/slang-(check|ast|lookup|syntax|name|visitor)", "semantic-checking",
-     {"SemanticChecking"} | _FRONT),
-    (r"^source/slang/slang-lower-to-ir", "ast-to-ir",
-     {"generateIRForTranslationUnit"} | _FRONT),
-    (r"^source/slang/slang-(ir|emit|legalize|spirv|glsl|hlsl|metal|wgsl|cuda)", "ir-and-emit",
-     {"simplifyIR", "specializeModule", "legalizeResourceTypes"} | _BACK),
-    (r"^source/(core|compiler-core)/", "core-library", _FRONT | _BACK),
-    (r"^(source|include|tools)/", "other-compiler-source", _FRONT | _BACK),
-]
-_COMPILED_RULES = [(re.compile(p), c, t) for p, c, t in COMPONENT_RULES]
-
 
 class TriageError(Exception):
     """A condition the caller should report, not a bug."""
@@ -399,165 +357,9 @@ def resolve_range(points_by_label, current, baseline_labels):
     return None
 
 
-def component_of(path):
-    for rx, comp, timers in _COMPILED_RULES:
-        if rx.search(path):
-            return comp, timers
-    return None, set()
-
-
-PR_RE = re.compile(r"\(#(\d+)\)\s*$")
-
-
-def score_commits(commits, story_timers):
-    """Rank commits by changed lines in files that can move the story timers."""
-    ranked = []
-    for c in commits:
-        by_comp, total, why = {}, 0, []
-        for f in c["files"]:
-            comp, timers = component_of(f["path"])
-            if not comp or not (timers & story_timers):
-                continue
-            n = f["additions"] + f["deletions"]
-            by_comp[comp] = by_comp.get(comp, 0) + n
-            total += n
-            why.append(f["path"])
-        c["relevant_lines"], c["components"] = total, by_comp
-        if total:
-            ranked.append({"sha": c["sha"], "pr": c["pr"], "author": c["author"],
-                           "subject": c["subject"], "relevant_lines": total,
-                           "components": by_comp, "files": why[:5]})
-    ranked.sort(key=lambda r: r["relevant_lines"], reverse=True)
-    return ranked
-
-
-def git_commits(repo_dir, base, head):
-    def run(*args):
-        return subprocess.run(["git", "-C", repo_dir, *args], capture_output=True, text=True,
-                              check=True, encoding="utf-8", errors="replace").stdout
-    for sha in (base, head):
-        subprocess.run(["git", "-C", repo_dir, "cat-file", "-e", f"{sha}^{{commit}}"],
-                       capture_output=True, check=True)
-    log = run("log", "--reverse", f"--max-count={MAX_COMMITS}", "--format=%H%x1f%an%x1f%cI%x1f%s",
-              f"{base}..{head}")
-    commits = []
-    for line in log.splitlines():
-        sha, author, date, subject = line.split("\x1f", 3)
-        files = []
-        for nl in run("show", "--numstat", "--format=", sha).splitlines():
-            a, d, path = nl.split("\t", 2)
-            files.append({"path": path, "additions": int(a) if a.isdigit() else 0,
-                          "deletions": int(d) if d.isdigit() else 0})
-        commits.append({"sha": sha, "author": author, "date": date, "subject": subject,
-                        "files": files})
-    return commits
-
-
-GH_ERRORS = (subprocess.CalledProcessError, subprocess.TimeoutExpired, OSError, ValueError,
-             KeyError, TypeError)
-
-
-class GitHub:
-    """The few REST calls triage needs, made through `gh api`.
-
-    `gh` carries the container's brokered credential, so no token is read here. A
-    non-zero exit raises, and callers also treat a body that parses but is not the
-    expected shape as a failure: `gh api` can print an error body, and an unchecked
-    read of it looks like valid empty data.
-    """
-
-    def __init__(self, repo):
-        self.repo = repo
-
-    def get(self, path, accept=None):
-        cmd = ["gh", "api", f"repos/{self.repo}/{path}"]
-        if accept:
-            cmd += ["-H", f"Accept: {accept}"]
-        return subprocess.run(cmd, capture_output=True, text=True, check=True, timeout=120,
-                              encoding="utf-8", errors="replace").stdout
-
-    def commits(self, base, head):
-        data = json.loads(self.get(f"compare/{base}...{head}"))
-        out = []
-        for c in data.get("commits", [])[:MAX_COMMITS]:
-            detail = json.loads(self.get(f"commits/{c['sha']}"))
-            author = (c.get("author") or {}).get("login") or c["commit"]["author"]["name"]
-            out.append({"sha": c["sha"], "author": author, "date": c["commit"]["committer"]["date"],
-                        "subject": c["commit"]["message"].split("\n", 1)[0],
-                        "files": [{"path": f["filename"], "additions": f.get("additions", 0),
-                                   "deletions": f.get("deletions", 0)}
-                                  for f in detail.get("files", [])]})
-        return out
-
-    def commit_diff(self, sha):
-        return self.get(f"commits/{sha}", accept="application/vnd.github.diff")
-
-    def pull(self, number):
-        """{'author': GitHub login, 'text': title and body} for a pull request."""
-        data = json.loads(self.get(f"pulls/{number}"))
-        return {"author": (data.get("user") or {}).get("login"),
-                "text": f"# {data.get('title', '')}\n\n{data.get('body') or ''}"}
-
-
-def fetch_commits(base, head, repo_dir, gh):
-    """Commits oldest-first, from local git when possible, else the GitHub API."""
-    notes = []
-    if repo_dir:
-        try:
-            return git_commits(repo_dir, base, head), notes
-        except (subprocess.CalledProcessError, OSError) as exc:
-            notes.append(f"local git could not supply {base[:9]}..{head[:9]} ({exc}); trying the GitHub API")
-    if gh:
-        try:
-            return gh.commits(base, head), notes
-        except GH_ERRORS as exc:
-            notes.append(f"GitHub API could not supply the commit range: {exc}")
-    else:
-        notes.append("no commit source configured (pass --repo-dir or --github-repo)")
-    return [], notes
-
-
-def save_evidence(directory, ranked, commits_by_sha, gh, repo_dir, limit):
-    """Write the diff and PR text of the top candidates for a reader to open.
-
-    Both are untrusted text (a merged PR's description, a diff): they are data for
-    whoever analyzes them, never instructions. Each is size-capped.
-    """
-    os.makedirs(directory, exist_ok=True)
-    saved, notes = [], []
-    for r in ranked[:limit]:
-        sha, pr = r["sha"], r["pr"]
-        try:
-            diff = None
-            if repo_dir:
-                try:
-                    diff = subprocess.run(["git", "-C", repo_dir, "show", "--format=fuller", sha],
-                                          capture_output=True, text=True, check=True,
-                                          encoding="utf-8", errors="replace").stdout
-                except (subprocess.CalledProcessError, OSError):
-                    diff = None
-            if diff is None and gh:
-                diff = gh.commit_diff(sha)
-            if diff is not None:
-                path = os.path.join(directory, f"commit-{sha[:9]}.patch")
-                with open(path, "w", encoding="utf-8") as fh:
-                    fh.write(diff[:MAX_DIFF_BYTES])
-                saved.append(path)
-            if pr and gh:
-                path = os.path.join(directory, f"pr-{pr}.md")
-                with open(path, "w", encoding="utf-8") as fh:
-                    fh.write(gh.pull(pr)["text"][:MAX_BODY_BYTES])
-                saved.append(path)
-        except GH_ERRORS as exc:
-            notes.append(f"evidence for {sha[:9]} not saved: {exc}")
-    return saved, notes
-
-
 # ---------------------------------------------------------------------- driver
 
-def build_bundle(results_dir, label=None, commit=None, repo_dir=None, gh=None,
-                 known_flaky=None, evidence_dir=None, evidence_limit=3, intent_limit=6, policy=None,
-                 fetch=fetch_commits):
+def build_bundle(results_dir, label=None, commit=None, known_flaky=None, policy=None):
     points = daily_points(results_dir)
     cur = pick_point(points, label, commit)
     label = cur["label"]
@@ -565,8 +367,7 @@ def build_bundle(results_dir, label=None, commit=None, repo_dir=None, gh=None,
     bundle = {"schema": SCHEMA_VERSION, "policy_version": (policy or {}).get("policy_version"), "label": label, "commit": cur["commit"],
               "date": cur["date"], "has_candidates": False, "flagged": [],
               "global_shifts": [], "top_movers": [], "buckets": [], "real_world": [],
-              "commit_range": None, "commits": [],
-              "candidates": [], "intent": {}, "bisect_points": [], "evidence_files": [], "notes": []}
+              "commit_range": None, "bisect_points": [], "notes": []}
     cpath = os.path.join(ddir, "confirmation.json")
     if not os.path.exists(cpath):
         bundle["notes"].append("no confirmation.json for this night: nothing was flagged, or the "
@@ -613,49 +414,8 @@ def build_bundle(results_dir, label=None, commit=None, repo_dir=None, gh=None,
         return bundle
     bundle["commit_range"] = {"same_commit": False, "base_label": base_pt["label"],
                               "base_commit": base_pt["commit"], "head_commit": cur["commit"]}
-    commits, notes = fetch(base_pt["commit"], cur["commit"], repo_dir, gh)
-    bundle["notes"] += notes
-    for c in commits:
-        m = PR_RE.search(c["subject"])
-        c["pr"] = int(m.group(1)) if m else None
-        c["short"] = c["sha"][:9]
-        c["files"] = sorted(c["files"], key=lambda f: f["additions"] + f["deletions"],
-                            reverse=True)
-    story = {f["counter"] for f in flagged if f["outcome"] in ("error", "warning")}
-    story |= {t["timer"] for t in bundle["global_shifts"]}
-    ranked = score_commits(commits, story)
-    bundle["candidates"] = ranked[:8]
-    if not ranked:
-        bundle["notes"].append("the ranking has no matches for these counters; this is not evidence "
-                               "of noise. Bisect the full commit range, or report insufficient evidence")
-    if gh:
-        # What each candidate PR was for, and what was said about its cost. Collected
-        # for every candidate (they are few and capped) because whether a cost is a
-        # defect depends on this; the PR author's login comes along with it.
-        # Absent means the default; an explicit empty list means "trust nobody but the
-        # PR's author" and must not fall back to the default.
-        configured = ((policy or {}).get("trust") or {}).get("intent_text_associations")
-        trusted = intent.DEFAULT_TRUSTED if configured is None else tuple(configured)
-        for r in bundle["candidates"][:intent_limit]:
-            if not r["pr"]:
-                continue
-            try:
-                rec = intent.collect_intent(gh, r["pr"], trusted)
-            except GH_ERRORS as exc:
-                bundle["notes"].append(f"intent for #{r['pr']} not available: {exc}")
-                continue
-            bundle["intent"][str(r["pr"])] = rec
-            r["pr_author"] = rec["author"]
-    for c in commits:
-        c["files"] = c["files"][:MAX_FILES_PER_COMMIT]
-    bundle["commits"] = commits
-    # Ranking may omit the actual cause. Establish the full range's effect first,
-    # then git-bisect it and verify the culprit against its immediate parent.
+    # Every intervening commit remains eligible; git bisect selects builds.
     bundle["bisect_points"] = [base_pt["commit"], cur["commit"]]
-    if evidence_dir and ranked:
-        bundle["evidence_files"], notes = save_evidence(evidence_dir, ranked, {c["sha"]: c for c in commits},
-                                                        gh, repo_dir, evidence_limit)
-        bundle["notes"] += notes
     return bundle
 
 
@@ -714,34 +474,10 @@ def render_markdown(b):
     if cr.get("same_commit"):
         out.append("Same commit as every baseline night: a measurement difference, not a code change.")
     elif cr:
-        out.append(f"{cr['base_commit'][:9]} ({cr['base_label']}) .. {cr['head_commit'][:9]}: "
-                   f"{len(b['commits'])} commits")
-        out += ["", ("Ordered by changed lines in files that can move the flagged and shifted timers. "
-                     "This is a weak signal: line count cannot tell a plain overload from a new "
-                     "interface, so the first entry is not necessarily the cause. Build the suggested "
-                     "endpoints, then bisect the full range and verify the culprit against its "
-                     "immediate parent; do not name a culprit from this list alone."), ""]
-        for r in b["candidates"]:
-            pr = f"#{r['pr']}" if r["pr"] else r["sha"][:9]
-            who = r.get("pr_author") or r["author"]
-            comps = ", ".join(f"{k} {v}" for k, v in r["components"].items())
-            out.append(f"- {pr} ({who}): {r['subject']} -- {comps}")
-        out += ["", "Bisect endpoints (not adjacent-commit attribution): " + ", ".join(s[:9] for s in b["bisect_points"])]
-        if b.get("intent"):
-            out += ["", "## What the candidate PRs were for (excerpts of untrusted text)", ""]
-            for pr, rec in b["intent"].items():
-                flag = "acknowledges a cost" if rec["acknowledged_tradeoff"] else "no stated cost"
-                out.append(f"- #{pr} ({rec['author']}, {rec['kind']}, {flag}): {rec['purpose'] or 'no description'}")
-                for issue in rec["linked_issues"]:
-                    out.append(f"  - resolves #{issue['number']} {issue['title']} [{', '.join(issue['labels'])}]")
-                for m in rec["perf_mentions"][:3]:
-                    out.append(f"  - {m['source']}: \"{m['text']}\"")
-                ignored = {k: v for k, v in rec["ignored_untrusted"].items() if v}
-                if ignored:
-                    out.append("  - withheld as untrusted (author is neither the PR's author nor a "
-                               "maintainer): " + ", ".join(f"{v} {k}" for k, v in ignored.items()))
-                for g in rec["gaps"]:
-                    out.append(f"  - gap: {g}")
+        out.append(f"{cr['base_commit'][:9]} ({cr['base_label']}) .. {cr['head_commit'][:9]}")
+        out += ["", "Bisect endpoints: " + ", ".join(s[:9] for s in b["bisect_points"]),
+                ("Measure these endpoints, bisect the full interval, and verify the culprit "
+                 "against its immediate parent before collecting PR intent.")]
     if b["notes"]:
         out += ["", "## Notes", ""] + [f"- {n}" for n in b["notes"]]
     return "\n".join(out) + "\n"
@@ -756,23 +492,14 @@ def main(argv=None):
     ap.add_argument("--results", required=True, help="perf-results checkout")
     ap.add_argument("--label", help="daily label to analyze (default: newest)")
     ap.add_argument("--commit", help="analyze the newest night built from this commit")
-    ap.add_argument("--repo-dir", help="slang checkout used to read commits and diffs")
-    ap.add_argument("--github-repo", default="shader-slang/slang",
-                    help="repository for the GitHub API fallback ('' disables it)")
     ap.add_argument("--policy", default=os.path.join(HERE, "PERF_POLICY.json"),
                     help="signed policy (known-flaky counters, filing rules); an absent file is {}")
-    ap.add_argument("--intent-limit", type=int, default=6, help="candidate PRs to collect intent for")
-    ap.add_argument("--evidence-dir", help="write the top candidates' diffs and PR text here")
-    ap.add_argument("--evidence-limit", type=int, default=3)
     ap.add_argument("--out-json")
     ap.add_argument("--out-md")
     args = ap.parse_args(argv)
-    gh = GitHub(args.github_repo) if args.github_repo else None
     policy = load_policy(args.policy)
     try:
-        bundle = build_bundle(args.results, args.label, args.commit, args.repo_dir, gh,
-                              known_flaky_of(policy), args.evidence_dir,
-                              args.evidence_limit, args.intent_limit, policy)
+        bundle = build_bundle(args.results, args.label, args.commit, known_flaky_of(policy), policy)
     except TriageError as exc:
         print(f"triage: {exc}", file=sys.stderr)
         return 2

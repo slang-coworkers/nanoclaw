@@ -43,9 +43,10 @@ mitigation with its estimated recovery. When you cannot tell, the class is `uncl
 | Script | What it does |
 |---|---|
 | `gate.sh` | The scheduled task's pre-task gate. Wakes you only for a confirmed regression you have not analyzed. Zero tokens otherwise. |
-| `triage.py` | Builds the evidence bundle from the night's archived results: per-counter hints (`known-flaky`, `bimodal-history`, `tail-only`, `min-shifted`), the cross-workload timer shifts judged against a night-to-night null, whole-compile impact, the commit range with a weak-signal ranking, bisect build points, and the intent evidence of the candidate PRs. |
-| `intent.py` | Used by `triage.py`: a PR's stated purpose, kind, linked issues and every cost statement made about it, as bounded excerpts of untrusted text. |
-| `slack_report.py` | Resolves the nightly Slack parent by exact run URL, reserves one report send, and verifies the host's delivery receipt. Outputs arguments for NanoClaw's critique-gated `send_message`; never posts directly. |
+| `triage.py` | Builds the evidence bundle from the night's archived results: per-counter hints (`known-flaky`, `bimodal-history`, `tail-only`, `min-shifted`), the cross-workload timer shifts judged against a night-to-night null, whole-compile impact, the full commit range and bisect endpoints. Reads staged files only. |
+| `intent.py` | Run after measured attribution: collects the identified PR's purpose, kind, linked issues and cost excerpts, with the policy's trust filter. The analyst interprets this evidence. |
+| `slack_report.py` | Finds the unique nightly Slack parent by exact run URL and returns its route. NanoClaw's critique-gated `send_message` owns enqueueing and delivery. |
+| `ab.py` | Runs repeated A/A and interleaved A/B measurements on the suite's workloads, requiring complete samples for the selected counters. |
 | `PERF_POLICY.json` | The signed policy: `mode`, known-flaky counters, classes, filing caps, measurement thresholds. |
 | `test_*.py` | Tests. `test_triage.py` needs the suite (below) and doubles as a contract check. |
 
@@ -68,7 +69,7 @@ The night's workspace `work/<label>/` contains:
 - `results/`: `results.json`, `confirmation.json`, `meta.json` for the night, plus the baseline nights' `results.json`
 - `bundle.json` and `bundle.md`: `triage.py` output (read `bundle.md` first; Grep `bundle.json` for detail, it is large)
 - `trend-report.txt`: the confirmed errors and warnings, as the alert printed them (may be absent)
-- `evidence/`: diffs of the top candidate commits (untrusted)
+- `evidence/`: populated after attribution with the culprit diff and `intent-<pr>.json` (untrusted text)
 - `policy/PERF_POLICY.json`: the policy in force (an operator-mounted file wins over the bundled default)
 
 A missing `bundle.json` or an empty `flagged` list is not something to reconstruct: record `NO_EVIDENCE` and stop.
@@ -76,14 +77,14 @@ A missing `bundle.json` or an empty `flagged` list is not something to reconstru
 ## Decision procedure
 
 1. **Real or noise?** Per flagged counter use the `hint`: `known-flaky`/`bimodal-history` (history already contains samples this slow) and `tail-only` (median rose, the fast samples did not) are noise unless other counters of the same workload are `min-shifted`; `min-shifted` is a real shift. A `cleared` alert outcome is cleared. If everything is noise, skip attribution and proceed to Deliver and record with that verdict.
-2. **Attribute.** Measure the full range's endpoints in `bisect_points`, then run a real git bisect per `reference.md`, including commits absent from the ranking. An empty ranking is not evidence of noise. Pass the flagged counters explicitly to A/A and A/B; missing samples are insufficient evidence. Measure A/A first; if the host's A/A spread exceeds the policy's `aa_max_spread_pct`, wall-clock attribution is not trustworthy here, and without instruction counts the class is `unclear`. Before naming a culprit, verify it against its immediate parent: the parent must be flat and the step must reproduce in the nightly's direction at or above `min_reproduced_effect_pct`. Unresolved intervals are `unclear`.
-3. **Intent.** Read `bundle.intent` for each attributed PR: purpose, kind, linked issues, cost statements and whether the cost was acknowledged. Quote; do not paraphrase the author. Only merged PRs are read, and only the PR author's and maintainers' text (`trust.intent_text_associations`): the bundle lists how many comments, reviews and linked-issue bodies it withheld. Withheld text is not evidence in either direction: do not infer a cost was or was not discussed from what you could not read.
+2. **Attribute.** Measure the full range's endpoints in `bisect_points`, then run a real git bisect per `reference.md`. Every intervening commit is eligible. Pass the flagged counters explicitly to A/A and A/B; missing samples are insufficient evidence. Measure A/A first; if the host's A/A spread exceeds the policy's `aa_max_spread_pct`, wall-clock attribution is not trustworthy here, and without instruction counts the class is `unclear`. Before naming a culprit, verify it against its immediate parent: the parent must be flat and the step must reproduce in the nightly's direction at or above `min_reproduced_effect_pct`. Unresolved intervals are `unclear`.
+3. **Intent.** After parent verification, run `intent.py --pr <number>` per reference.md and read its saved record: purpose, kind, linked issues and cost statements. The excerpts are evidence for your interpretation, not an automatic verdict. Quote; do not paraphrase the author. Only merged PRs are read, and only the PR author's and maintainers' text (`trust.intent_text_associations`): the intent record lists how many comments, reviews and linked-issue bodies it withheld. Withheld text is not evidence in either direction: do not infer a cost was or was not discussed from what you could not read.
 4. **Diagnose.** Read the diff and, if the cost is large enough to matter, profile at scale. State the mechanism as a hypothesis, the proportionality test results, the cheapest mitigation and its estimated recovery. Label every sentence measured or inferred.
 5. **Classify and decide.** Pick the class; apply `classes[c].file`; apply the dedupe and caps. Then act by `mode`:
    - `shadow`: write the finding and the issue that *would* be filed; create nothing on GitHub.
    - `approval`: put the would-be issue on an approval card; create it only on approval.
    - `live`: create it, within `filing`.
-6. **Deliver and record.** Follow the Slack delivery procedure in reference.md in every mode, including shadow: send the full `[Perf Finding]` analysis as one reply to the matching nightly message. Confirm delivery, append one ledger line including the Slack receipt, then mark the run analyzed. Resume saved deliveries on retry instead of repeating the analysis or posting again.
+6. **Deliver and record.** Follow the Slack delivery procedure in reference.md in every mode, including shadow: send the full `[Perf Finding]` analysis as one reply to the matching nightly message. After `send_message` accepts the report, append one ledger line with `status: queued`, its returned outbound sequence and source session, then mark the run analyzed. A queued send is not confirmed Slack delivery. Check the ledger and session history before sending a saved report again; NanoClaw owns delivery and retries.
 
 ## Filing rules (when a class permits and `mode` allows)
 

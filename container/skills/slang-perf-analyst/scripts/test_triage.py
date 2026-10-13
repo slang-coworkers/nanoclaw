@@ -1,5 +1,5 @@
 """Test the nightly alert triage: evidence for flagged counters, cross-workload
-shifts judged against a night-to-night null, provenance, and commit-range ranking.
+shifts judged against a night-to-night null, provenance, and full commit-range endpoints.
 
 Fixtures are synthetic; nothing here touches the network or a git checkout.
 
@@ -29,7 +29,7 @@ import bench
 
 # bench.py puts the suite's own directory first on sys.path when it is imported, so the skill's
 # directory goes first again here: a module of the same name in the suite must never shadow the
-# skill's own triage.py or intent.py.
+# skill's own triage.py.
 sys.path.insert(0, HERE)
 import triage
 
@@ -208,42 +208,6 @@ class BucketSummaryTests(unittest.TestCase):
         self.assertEqual(detail, [])
 
 
-class CommitMappingTests(unittest.TestCase):
-    def test_paths_map_to_components(self):
-        for path, expected in (
-                ("source/slang/hlsl.meta.slang", "builtin-module"),
-                ("source/slang/slang-check-overload.cpp", "semantic-checking"),
-                ("source/slang/slang-ast-type.cpp", "semantic-checking"),
-                ("source/slang/slang-parser.cpp", "parse"),
-                ("source/slang/slang-lower-to-ir.cpp", "ast-to-ir"),
-                ("source/slang/slang-ir-link.cpp", "ir-and-emit"),
-                ("source/slang/slang-serialize-ast.cpp", "serialization"),
-                ("docs/user-guide/intro.md", None),
-                ("tests/language-feature/x.slang", None),
-                (".github/workflows/ci.yml", None)):
-            self.assertEqual(triage.component_of(path)[0], expected, path)
-
-    def commit(self, sha, pr, *files):
-        return {"sha": sha, "pr": pr, "author": "a", "subject": f"s ({'#'}{pr})",
-                "files": [{"path": p, "additions": a, "deletions": d} for p, a, d in files]}
-
-    def test_only_files_that_can_move_the_story_timers_score(self):
-        commits = [
-            self.commit("c1", 1, ("source/slang/slang-check-decl.cpp", 100, 50),
-                        ("tests/a.slang", 500, 0)),
-            self.commit("c2", 2, ("source/slang/hlsl.meta.slang", 30, 0)),
-            self.commit("c3", 3, ("docs/a.md", 900, 0)),
-            self.commit("c4", 4, ("source/slang/slang-ir-link.cpp", 40, 0))]
-        ranked = triage.score_commits(commits, {"SemanticChecking"})
-        self.assertEqual([(r["pr"], r["relevant_lines"]) for r in ranked], [(1, 150), (2, 30)])
-        self.assertEqual([r["pr"] for r in triage.score_commits(commits, {"loadBuiltinModule"})], [2])
-        self.assertEqual(triage.score_commits(commits, {"generateOutput"})[0]["pr"], 4)
-
-    def test_pr_number_is_read_from_a_squash_subject(self):
-        self.assertEqual(triage.PR_RE.search("Fix a thing (#13232)").group(1), "13232")
-        self.assertIsNone(triage.PR_RE.search("Revert (#1) of a thing"))
-
-
 class RangeTests(unittest.TestCase):
     def points(self, *spec):
         return {label: {"label": label, "date": label[:10], "commit": commit}
@@ -264,7 +228,7 @@ class RangeTests(unittest.TestCase):
 
 
 class BundleTests(unittest.TestCase):
-    """The whole path on a small results tree, with a fake commit source."""
+    """The whole path on a small staged results tree."""
 
     LABELS = tuple(f"2026-01-0{i}-sha{i}" for i in range(1, 8))
 
@@ -297,47 +261,32 @@ class BundleTests(unittest.TestCase):
         with open(os.path.join(directory, name), "w", encoding="utf-8") as fh:
             json.dump(data, fh)
 
-    @staticmethod
-    def fake_commits(base, head, repo_dir, gh):
-        return ([{"sha": "a" * 40, "author": "x", "date": "d", "subject": "Docs (#1)",
-                  "files": [{"path": "docs/a.md", "additions": 9, "deletions": 0}]},
-                 {"sha": "b" * 40, "author": "y", "date": "d", "subject": "Add builtins (#2)",
-                  "files": [{"path": "source/slang/core.meta.slang", "additions": 80, "deletions": 1}]},
-                 {"sha": "c" * 40, "author": "z", "date": "d", "subject": "Tweak ir (#3)",
-                  "files": [{"path": "source/slang/slang-ir-link.cpp", "additions": 5, "deletions": 5}]}],
-                [])
-
     def bundle(self, **kw):
         with tempfile.TemporaryDirectory() as root:
             self.write_tree(root, **{k: v for k, v in kw.items() if k in
                                      ("candidate", "confirmation", "same_commit")})
-            return triage.build_bundle(root, label=self.LABELS[-1], fetch=self.fake_commits,
-                                       gh=kw.get("gh"), policy=kw.get("policy"))
+            return triage.build_bundle(root, label=self.LABELS[-1], policy=kw.get("policy"))
 
-    def test_a_confirmed_shift_is_attributed_to_the_builtin_change(self):
+    def test_a_confirmed_shift_supplies_evidence_and_full_bisect_endpoints(self):
         b = self.bundle()
         self.assertTrue(b["has_candidates"])
         self.assertEqual([(f["counter"], f["outcome"]) for f in b["flagged"]],
                          [("readSerializedModuleAST", "warning")])
         self.assertEqual([t["timer"] for t in b["global_shifts"]], ["readSerializedModuleAST"])
-        self.assertEqual([c["pr"] for c in b["candidates"]], [2])
         self.assertEqual(b["commit_range"]["base_commit"], "sha6")
-        # Endpoints come from the full range, not the heuristic's selected commits.
+        # Endpoints come from the archived metadata; no commit is preselected.
         self.assertEqual(b["bisect_points"], ["sha6", "sha7"])
 
-    def test_low_ranked_commits_remain_inside_the_bisect_range(self):
-        def commits(*args):
-            return ([{"sha": f"commit{i}", "author": "a", "date": "d", "subject": f"Change (#{i})",
-                      "files": [{"path": "source/slang/core.meta.slang", "additions": i, "deletions": 0}]}
-                     for i in range(1, 9)], [])
-        with tempfile.TemporaryDirectory() as root:
-            self.write_tree(root)
-            b = triage.build_bundle(root, label=self.LABELS[-1], fetch=commits)
-        self.assertEqual(b["candidates"][0]["sha"], "commit8")
+    def test_triage_is_offline_and_does_not_preselect_prs(self):
+        with patch("subprocess.run", side_effect=AssertionError("triage must use staged files only")):
+            b = self.bundle(policy={"policy_version": "test-policy"})
+        self.assertEqual(b["policy_version"], "test-policy")
+        self.assertEqual(b["schema"], 3)
+        for field in ("intent", "candidates", "commits", "evidence_files"):
+            self.assertNotIn(field, b)
         self.assertEqual(b["bisect_points"], ["sha6", "sha7"])
-        self.assertEqual(b["commits"][0]["sha"], "commit1")
 
-    def test_api_only_shift_keeps_the_full_range_when_ranking_has_no_matches(self):
+    def test_api_only_shift_keeps_the_full_bisect_range(self):
         with tempfile.TemporaryDirectory() as root:
             self.write_tree(root)
             for directory, _, files in os.walk(root):
@@ -348,79 +297,9 @@ class BundleTests(unittest.TestCase):
                             data = fh.read().replace("readSerializedModuleAST", "apiCreateGlobalSession")
                         with open(path, "w") as fh:
                             fh.write(data)
-            b = triage.build_bundle(root, label=self.LABELS[-1], fetch=self.fake_commits)
+            b = triage.build_bundle(root, label=self.LABELS[-1])
         self.assertEqual(b["flagged"][0]["outcome"], "warning")
-        self.assertEqual(b["candidates"], [])
-        self.assertEqual(len(b["commits"]), 3)
         self.assertEqual(b["bisect_points"], ["sha6", "sha7"])
-        self.assertTrue(any("not evidence of noise" in note for note in b["notes"]))
-
-    def test_missing_commit_source_does_not_erase_bisect_endpoints(self):
-        with tempfile.TemporaryDirectory() as root:
-            self.write_tree(root)
-            b = triage.build_bundle(root, label=self.LABELS[-1], fetch=lambda *args: ([], ["source unavailable"]))
-        self.assertEqual(b["bisect_points"], ["sha6", "sha7"])
-        self.assertIn("source unavailable", b["notes"])
-
-    def test_intent_of_the_candidate_prs_is_collected_and_rendered(self):
-        class Gh:
-            def get(self, path, accept=None):
-                if path == "pulls/2":
-                    return json.dumps({"number": 2, "title": "Add builtins", "user": {"login": "tangent"},
-                                       "labels": [{"name": "pr: new feature"}], "merged_at": "2026-01-02T00:00:00Z",
-                                       "body": "## Motivation\n\nNeeded for the thing.\n\n"
-                                               "There is a tradeoff: compile time increases 2%.\n\nFixes #7"})
-                if path == "issues/7":
-                    return json.dumps({"number": 7, "title": "The thing", "labels": [], "body": "Please."})
-                return "[]"
-        b = self.bundle(gh=Gh(), policy={"policy_version": "vtest"})
-        rec = b["intent"]["2"]
-        self.assertEqual((rec["kind"], rec["author"], rec["acknowledged_tradeoff"]), ("feature", "tangent", True))
-        self.assertEqual(rec["linked_issues"][0]["number"], 7)
-        self.assertEqual(b["candidates"][0]["pr_author"], "tangent")
-        self.assertEqual(b["policy_version"], "vtest")
-        md = triage.render_markdown(b)
-        self.assertIn("What the candidate PRs were for", md)
-        self.assertIn("acknowledges a cost", md)
-
-    def test_untrusted_text_is_withheld_and_the_trusted_set_comes_from_the_policy(self):
-        pr2 = {"number": 2, "title": "Add builtins", "user": {"login": "author"}, "labels": [],
-               "merged_at": "2026-01-02T00:00:00Z", "body": "## Motivation\n\nNeeded."}
-        comments = [{"user": {"login": "rando"}, "author_association": "NONE", "body": "The overhead is huge."},
-                    {"user": {"login": "owner"}, "author_association": "OWNER",
-                     "body": "Accepting the compile-time cost."}]
-
-        class Gh:
-            def get(self, path, accept=None):
-                return json.dumps({"pulls/2": pr2, "issues/2/comments": comments}.get(path.split("?")[0], []))
-        default = self.bundle(gh=Gh())["intent"]["2"]
-        self.assertEqual(default["ignored_untrusted"]["comment"], 1)
-        self.assertTrue(default["acknowledged_tradeoff"])
-        narrowed = self.bundle(gh=Gh(), policy={"trust": {"intent_text_associations": []}})["intent"]["2"]
-        self.assertEqual(narrowed["ignored_untrusted"]["comment"], 2)
-        self.assertFalse(narrowed["acknowledged_tradeoff"])
-        md = triage.render_markdown(self.bundle(gh=Gh()))
-        self.assertIn("withheld as untrusted", md)
-        self.assertIn("1 comment", md)
-
-    def test_a_pr_that_is_not_merged_is_a_note_not_evidence(self):
-        class Gh:
-            def get(self, path, accept=None):
-                if path == "pulls/2":
-                    return json.dumps({"number": 2, "title": "Add", "user": {"login": "a"}, "labels": [],
-                                       "merged_at": None, "body": ""})
-                return "[]"
-        b = self.bundle(gh=Gh())
-        self.assertEqual(b["intent"], {})
-        self.assertTrue(any("is not merged" in n for n in b["notes"]))
-
-    def test_a_failed_intent_fetch_is_a_note_not_a_failure(self):
-        class Gh:
-            def get(self, path, accept=None):
-                raise OSError("rate limited")
-        b = self.bundle(gh=Gh())
-        self.assertEqual(b["intent"], {})
-        self.assertTrue(any("intent for #2 not available" in n for n in b["notes"]))
 
     def test_a_night_without_candidates_says_so_and_stops(self):
         b = self.bundle(candidate=False)
@@ -435,13 +314,13 @@ class BundleTests(unittest.TestCase):
     def test_a_night_built_from_the_baselines_commit_is_a_measurement_difference(self):
         b = self.bundle(same_commit=True)
         self.assertTrue(b["commit_range"]["same_commit"])
-        self.assertEqual(b["commits"], [])
+        self.assertEqual(b["bisect_points"], [])
         self.assertTrue(any("measurement variation" in n for n in b["notes"]))
 
     def test_markdown_renders_each_section(self):
         md = triage.render_markdown(self.bundle())
         for text in ("## Flagged counters", "readSerializedModuleAST", "## Commit range",
-                     "#2", "Bisect endpoints", "weak signal"):
+                     "sha6", "Bisect endpoints", "immediate parent"):
             self.assertIn(text, md)
 
     def test_pick_point_by_label_commit_and_default(self):

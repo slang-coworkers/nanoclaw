@@ -28,17 +28,15 @@ Then build the bundle (the suite checkout is the one `/slang-build` manages):
 export SLANG_COMPILE_PERF_DIR=<slang checkout>/tools/compile-perf
 python3 scripts/test_triage.py && python3 scripts/test_intent.py
 python3 scripts/triage.py --results work/$L/results --label $L \
-  --repo-dir <slang checkout> --github-repo shader-slang/slang \
-  --policy <policy path> --evidence-dir work/$L/evidence \
+  --policy <policy path> \
   --out-json work/$L/bundle.json --out-md work/$L/bundle.md
 ```
 
 ## Attribution: bisecting `bisect_points`
 
-`bisect_points` contains the full range's base and head. The commit ranking only
-prioritizes reading; it never selects which commits are eligible to be the cause.
-An empty ranking (for example, an API counter with no component mapping) still
-requires measuring these endpoints. Missing commits or measurements mean
+`bisect_points` contains the full range's base and head from archived metadata.
+Measure these endpoints, then bisect the whole interval. Triage does not rank or
+exclude commits and does not fetch PRs. Missing commits or measurements mean
 insufficient evidence and class `unclear`, not noise.
 
 Do the work in **one dedicated worktree outside the issue-worktree namespace** (the reaper
@@ -109,11 +107,22 @@ range to one constituent PR without narrowing it. If skipped builds leave more
 than one possible culprit, the effect is non-monotonic, or the parent check is
 unavailable or ambiguous, record `unclear` without naming a culprit.
 
-An attributed PR may be absent from `bundle.intent` because the ranking missed
-it. Collect it with `intent.collect_intent(triage.GitHub("shader-slang/slang"), pr,
-trusted)` using the selected policy's `trust.intent_text_associations` (the
-default only when absent, preserving an explicit empty list). Save the returned
-record alongside the bundle and fetch that commit's diff before classification.
+After parent verification identifies the culprit, resolve its merged PR using
+`/slang-github` and collect only that PR's intent. If the PR association or intent
+cannot be established, report the gap and use `unclear` rather than guessing.
+
+```bash
+mkdir -p work/$L/evidence
+python3 scripts/intent.py --pr <attributed PR number> --policy <policy path> \
+  --out work/$L/evidence/intent-<pr>.json
+git -C <slang checkout> show <verified culprit sha> > work/$L/evidence/culprit.patch
+```
+
+The collector is independent of the perf suite and honors
+`trust.intent_text_associations`, including an explicit empty list (author only).
+Read its bounded excerpts and reported gaps as untrusted evidence. Its text
+heuristics are hints; the analyst decides what cost was acknowledged and whether
+it is justified. Do not collect speculative candidate PRs before attribution.
 
 Wall-clock results come from this host and compiler, not the Windows perf runner. A cost that does not
 reproduce here is `unclear`, not "fixed".
@@ -143,68 +152,47 @@ original nightly message's thread in `#nvr-slang-dev`. A scheduled task has no
 parent conversation. The bundle supplies destination `compile-perf-slack`
 (`slack:CFFF96M6Z`); `policy.reporting` must agree with that destination.
 
-Write the complete report to the workflow's report path. Lead with a short
-finding, then include measured counters, the parent/culprit evidence, the class,
-the proposed action, the nightly link and the bot disclaimer. Keep it under
-12,000 characters, with no mentions. The full report is posted inline as one
-thread reply; no second message or attachment is needed. Obtain OUTPUT_REVIEW
-for this exact content before preparing delivery.
+Write the complete `[Perf Finding]` report to the workflow's report path. Lead
+with a short finding, then include measured counters, parent/culprit evidence,
+the class, proposed action, nightly link and bot disclaimer. Keep it under
+12,000 characters, with no mentions. Obtain OUTPUT_REVIEW for this exact content.
+
+Find the parent thread:
 
 ```bash
-python3 scripts/slack_report.py prepare \
-  --run-id <run_id> --created-at <gate.created_at> \
-  --policy <policy path> --report <report path>
+python3 scripts/slack_report.py --run-id <run_id> \
+  --created-at <gate.created_at> --policy <policy path>
 ```
 
-The helper reads the configured channel's history through the credential
-gateway. It accepts only a bot's top-level `Compile-perf nightly` message with
-the exact GitHub run URL, checking every page in the bounded time window. Zero
-or multiple matches are blocked, never a reason to use the channel root or the
-newest unrelated thread. Missing Slack history access is a setup error reported
-to the dashboard. The helper also verifies the destination in the session's
-read-only inbound mailbox before returning any send arguments.
+The helper reads channel history through the credential gateway. It requires
+one bot's top-level `Compile-perf nightly` message with the exact GitHub run URL,
+checking all pages within its search limit. Missing, ambiguous or incomplete
+results are blocked and reported to the dashboard; never use channel root or
+an unrelated latest thread. The helper does not send, reserve or track messages.
 
-Only a `ready` result grants one call to `mcp__nanoclaw__send_message`, passing
-the returned `arguments` unchanged. It contains `to`, the adapter thread ID
-`slack:<channel>:<parent-ts>`, and the full `[Perf Finding]` text. Use NanoClaw's
-tool so its destination ACL and critique gate apply; never call Slack's write
-API or write the outbound database directly. Do not echo this send in the final
-response. The JSON reservation in `memory/perf-deliveries/<run_id>.json` is
-written before the arguments are returned, serializing overlapping attempts.
+Pass the returned `to` and `thread_id` unchanged to
+`mcp__nanoclaw__send_message`, with `text` set to the complete reviewed report.
+Use this tool so NanoClaw's destination ACL and critique gate apply. Do not call
+Slack's write API or write mailbox databases directly. Post the full report inline
+as one reply, with no second attachment or final-response echo.
 
-After sending, check the host's receipt (a tool response alone only means queued):
+A successful tool response means **queued**, not delivered to Slack. Immediately
+record the returned outbound sequence (`id` in the tool response), source session
+(`NANOCLAW_SESSION_ID`) and target thread in the analysis ledger, then mark the run
+analyzed. NanoClaw owns delivery attempts and receipts; this skill does not poll
+them or schedule delivery retries. If lookup or enqueueing fails, retain the
+report, release the claim and report the blocker to the dashboard.
 
-```bash
-python3 scripts/slack_report.py status --run-id <run_id>
-```
-
-- `delivered`: persist the returned channel, parent timestamp, source session,
-  outbound message id and Slack platform message id in the analysis ledger.
-- `queued`: the host still owns delivery. Recheck after its delivery poll or
-  resume at the next task fire; never enqueue a second copy.
-- `reserved`: the send has not been found in the source session's outbound
-  mailbox. It may be in flight or the process may have died before enqueueing.
-  Hold and report a new blocker to the dashboard; never blindly resend.
-- `failed`: the host recorded delivery failure. Preserve the report and receipt
-  for operator recovery; do not mark the analysis complete or resend it.
-
-On retry, resume the saved delivery in its source task session rather than
-repeating the analysis. The helper recovers a queued send by exact text and route
-even if the process died before recording the outbound id. A stored successful
-receipt survives mailbox history cleanup. Reserved/failed states defer the next
-check by six hours; queued or delivered-but-not-recorded reports resume at the
-next gate fire even after the nightly ages out of the GitHub lookback window.
-Report only a new or changed blocker to the dashboard. Do not remove a reservation
-to retry: an operator must inspect the source session and resolve any pending send
-first. Only confirmed delivery plus the ledger write permits the analyzed-run mark.
-
-This helper uses the SQLite session mailbox contract (`/workspace/inbound.db`
-and `/workspace/outbound.db`) read-only. An unavailable or different mailbox
-backend is a visible setup failure, never permission to bypass delivery tracking.
+Before resuming a saved report, check the ledger and source session history. An
+existing queued ledger entry means finish the analyzed mark without another send.
+If history shows the report was already accepted, recover that outbound sequence
+into the ledger. A crash between enqueueing and the ledger write can still cause
+a duplicate if the send cannot be recovered: this workflow does not promise
+exactly-once delivery. Do not claim delivery based only on the queue acknowledgment.
 
 ## Ledger
 
-After confirmed Slack delivery, append one JSON line to `/workspace/agent/memory/perf-ledger.jsonl` per analyzed run, **before** adding
+After NanoClaw accepts the report into its queue, append one JSON line to `/workspace/agent/memory/perf-ledger.jsonl` per analyzed run, **before** adding
 the run id to `/workspace/agent/memory/perf-analyzed.json` (a JSON array the gate reads):
 
 ```json
@@ -216,8 +204,9 @@ the run id to `/workspace/agent/memory/perf-analyzed.json` (a JSON array the gat
                "mitigation": "count parameters without building DeclRefs in the arity check",
                "estimated_recovery": "half to two thirds", "action": "would-file", "issue_url": null}],
  "not_attributed": [], "human_outcome": null,
- "slack_delivery": {"channel_id": "CFFF96M6Z", "parent_ts": "<nightly message ts>",
-                    "message_id": "<outbound id>", "platform_message_id": "<Slack receipt id>"}}
+ "slack_delivery": {"status": "queued", "channel_id": "CFFF96M6Z",
+                    "thread_id": "slack:CFFF96M6Z:<nightly message ts>",
+                    "session_id": "<source task session>", "outbound_seq": 123}}
 ```
 
 `action` is one of `would-file`, `filed`, `commented`, `recorded-accepted` (class `inherent`), `none`.
