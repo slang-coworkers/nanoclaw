@@ -21,14 +21,19 @@
  * - `### Connecting external accounts`, added to `container/CLAUDE.md` upstream and
  *   EMITTED rather than dropped, so every type carries it. A section strip, rebuilt
  *   from the base document's own section body.
- * - Three base fragments (principles, scope, workspace) whose lines differ from the
- *   fixtures' after the ask/proceed, scope and recall rules were consolidated. Line
- *   substitutions, typed goldens only.
- * - Four fragments whose bodies differ from the fixtures'. Whole-body substitutions
- *   for the ones `main` emits verbatim, line substitutions where typed composition
+ * - Fragments whose bodies differ from the fixtures'. Whole-body substitutions
+ *   for the ones composition emits verbatim (`main`'s flat fragments, and
+ *   `chain-reporting.md`, whose top heading is already `###` so typed composition
+ *   leaves it byte-identical too), line substitutions where typed composition
  *   re-levels headings; the post-edit side is digest-pinned, because reading the
  *   live file alone would let the next edit launder itself through a regenerated
  *   golden.
+ * - The base-spine trim, declared item by item: the contract's `### Memory`
+ *   paragraph (a line substitution, every type), the type `description:` now
+ *   rendered under Identity (a paragraph strip, typed goldens), Skills lines cut
+ *   to the first sentence (line substitutions), the `buddy` skill line that left
+ *   `base-common.skills` (a line strip from the FIXTURE side — it is the one
+ *   declared removal), and the flat path's persona wrapper (`main.persona` only).
  *
  * Each transform asserts exact cardinality before applying, so a substitution
  * applied twice, or a second edit that happens to cancel out, still fails.
@@ -43,7 +48,10 @@ import { composeCoworkerSpine } from '../claude-composer.js';
 import { PARITY_MCP, PARITY_PERSONA } from './parity.fixtures.js';
 import { RUNTIME_CONTRACT_PATH } from './runtime-contract.js';
 
-const GOLDEN_DIR = path.join(import.meta.dirname, '__goldens__');
+// This transform set reproduces the goldens as they stood after the base-spine trim
+// (frozen under `pre-section-reorder/`); the later section re-order, `## Rules` and
+// contract fold are bounded by `section-reorder.test.ts` against the live goldens.
+const GOLDEN_DIR = path.join(import.meta.dirname, '__goldens__', 'pre-section-reorder');
 const PRE_DIR = path.join(import.meta.dirname, '__goldens__', 'pre-anchor-retarget');
 
 const OLD_ANCHOR = '[chain-reporting](#chain-reporting)';
@@ -82,6 +90,16 @@ const REWRITTEN_FRAGMENTS: readonly { name: string; file: string }[] = [
   { name: 'interactive', file: 'tool-instructions/interactive.md' },
   { name: 'scheduling', file: 'tool-instructions/scheduling.md' },
   { name: 'main-body', file: 'identity/main-body.md' },
+  { name: 'agents', file: 'tool-instructions/agents.md' },
+];
+
+/**
+ * Fragments every type binds AND emits byte-identically: `chain-reporting.md`'s
+ * top heading is already `###`, so `normalizeFragment(…, 3)` is the identity on
+ * it and one whole-body substitution serves the flat and typed goldens alike.
+ */
+const SHARED_FRAGMENTS: readonly { name: string; file: string }[] = [
+  { name: 'chain-reporting', file: 'context/chain-reporting.md' },
 ];
 
 /**
@@ -101,23 +119,65 @@ const REWRITTEN_LINES: readonly { was: string; now: string }[] = [
     was: ' One task per subagent. For recurring/cron work, use `schedule_task` instead.',
     now: ' One task per subagent.',
   },
-  // Three base fragments edited by the rule-conflict consolidation: the ask/proceed
-  // policy became the single `Ambiguity` principle, the "hacky fix → ask the user"
-  // scope bullet was removed (no user exists in a webhook chain), and the recall
-  // procedure moved into one `Recall rule` block under Workspace.
+  // `invocation.md`: the composer rewrites `{{name}}` to `<name>` before the agent
+  // sees it, so the note now describes the syntax the reader actually meets.
   {
-    was: '- Ask when unclear; say "I don\'t know" when you don\'t.',
-    now: '- **Ambiguity:** state your interpretation and proceed, recording the judgment call in your report. Escalate only when a decision blocks you and no acceptable fallback exists — through the `Stuck — need a human decision` row of the **Routing table** (Chain communication › Mechanics); never pause a workflow between steps to ask.',
+    was: '- `{{name}}` parameters are placeholders — ask when ambiguous.',
+    now: '- `<name>` parameters are placeholders — ask when ambiguous.',
+  },
+  // `workspace.md`: the OKF memory rule is stated once, in the contract's Memory
+  // section; this bullet now points there.
+  {
+    was: '- `/workspace/agent/` (rw) — your dir. Your memory is the OKF `memory/` tree (one concept per file, loaded on demand from its `index.md`). When wired to a project, the project clone lives at `/workspace/agent/<project>/`.',
+    now: '- `/workspace/agent/` (rw) — your dir; `memory/` is your OKF memory tree (Runtime Contract › Memory). When wired to a project, the project clone lives at `/workspace/agent/<project>/`.',
+  },
+  // Skills lines carry the description's first sentence only.
+  {
+    was: '- `/codex-critique` — Independent second-opinion review by codex. You call mcp__codex__codex directly — no subagent. Read-only — produces a structured critique, never modifies files.',
+    now: '- `/codex-critique` — Independent second-opinion review by codex.',
   },
   {
-    was: '- If a fix feels hacky, ask the user whether they want the proper version — skip for trivial/obvious fixes.\n',
-    now: '',
-  },
-  {
-    was: '- `/workspace/shared/` (ro) — cross-group facts. Past-you or a peer may have already solved this. **Recall through a subagent, never inline:** spawn an `Agent` that reads `/workspace/shared/wiki/index.md` (a small catalog of concept pages), picks the ≤2 relevant `/workspace/shared/wiki/concepts/<page>.md`, reads each with `limit=60` — every page opens with a `## TL;DR` — and returns ≤5 bullets. No `wiki/`? Grep `/workspace/shared/learnings/` and read at most 3 hits. **Never read `/workspace/shared/learnings/INDEX.md` inline** — it is the raw atom log (one line per learning, thousands of lines), not a reading surface.\n\nLeave a note in `/workspace/agent/` when a session ends mid-task.',
-    now: '- `/workspace/shared/` (ro) — cross-group facts; past-you or a peer may already have solved this. Reach it only through the recall rule below.\n\nLeave a note in `/workspace/agent/` when a session ends mid-task.\n\n#### Recall rule\n\nBefore investigating or changing anything, spawn one `Agent` subagent with this prompt (substitute `<task>`); never read these files inline:\n\n```\nAgent(prompt="Check if /workspace/shared/wiki/index.md exists. IF YES: read it (a small catalog of concept pages; links are relative to /workspace/shared, so `](wiki/concepts/x.md)` means `/workspace/shared/wiki/concepts/x.md`), pick at most 2 concept pages relevant to <task>, read each with limit=60 (every page opens with a `## TL;DR`), and follow their links to cited learnings if needed. If no concept fits, Grep /workspace/shared/wiki/ for keywords. IF NO wiki/ dir: Grep /workspace/shared/learnings/ for keywords and read at most 3 hits. Return ≤5 bullets — title, 1-line summary, file path. No hits → \'no prior hits\'.")\n```\n\nNever read `/workspace/shared/learnings/INDEX.md` — it is the raw atom log (one line per learning, thousands of lines), not a reading surface.',
+    was: '- `/base-nanoclaw` — NanoClaw host tools — send messages, schedule tasks, ask the user questions, append durable learnings. Trigger whenever you need to communicate mid-work, schedule recurring checks, or record something for other coworkers.',
+    now: '- `/base-nanoclaw` — NanoClaw host tools — send messages, schedule tasks, ask the user questions, append durable learnings.',
   },
 ];
+
+/**
+ * The contract's `### Memory` paragraph, rewritten in `container/CLAUDE.md` and
+ * therefore present in every golden at the same `###` level. Declared as exact
+ * text, not read from the live file, for the laundering reason above.
+ */
+const MEMORY_LINE = {
+  was: 'Your persistent memory lives under `/workspace/agent/memory/`. A **Memory** section in your context carries the live top-level index and system definition. Follow that definition when deciding what to store and keep the index accurate so you can retrieve details later.',
+  now: 'Your persistent memory is the OKF tree under `/workspace/agent/memory/`: one concept per file, loaded on demand from its `index.md`. Keep that index accurate so details can be retrieved later.',
+};
+
+/**
+ * The flat path now wraps the persona exactly as the typed path does. Only
+ * `main.persona` carries a persona among the flat goldens.
+ */
+const FLAT_PERSONA = {
+  was: '\n# Persona\n\nBe terse.\n',
+  now: '\n## Additional Instructions\n\n### Persona\n\nBe terse.\n',
+};
+
+/**
+ * The one declared REMOVAL: `buddy` left `base-common.skills` (it is activated by
+ * the `buddy-monitor` overlay, which already `uses` it). Full reviewed text, and
+ * stripped from the fixture side so the shipped golden must simply not have it.
+ */
+const BUDDY_LINE =
+  '- `/buddy` — Background companion monitor — watches the session via PostToolUse hooks and prepends codex-flagged concerns as <buddy-note> on the next turn. Activated by overlays: [buddy-monitor]; the hook chain (spawn-buddy.sh + buddy-call.sh + buddy-inject.sh) runs autonomously without agent invocation.\n';
+
+/**
+ * The type `description:` each typed golden now renders under `## Identity`,
+ * after the identity fragment. Exact text per type; a changed description fails
+ * here instead of passing through a heading-delimited strip.
+ */
+const IDENTITY_DESCRIPTIONS: Record<string, string> = {
+  'base-common': 'Universal coworker spine — invariants, workspace conventions. Every project type extends this.',
+  default: 'Untyped fallback coworker — base spine only, no project skills or workflows.',
+};
 
 const SPINE_DIR = path.join(process.cwd(), 'container', 'spines', 'base');
 const PRE_FRAGMENT_DIR = path.join(PRE_DIR, 'fragments');
@@ -132,16 +192,35 @@ const PRE_FRAGMENT_DIR = path.join(PRE_DIR, 'fragments');
 const REWRITTEN_DIGESTS: Record<string, string> = {
   'self-mod': '0866043b4f374c02',
   interactive: '130cf99ad06bfa82',
-  scheduling: 'd84e1edf7015263c',
-  'main-body': '4b87455dbab340b5',
+  scheduling: '938fe0586a5f9891',
+  'main-body': '807e443bd18b37b6',
+  agents: 'f0b1f01b4a9ca877',
+  'chain-reporting': 'a16b8f4e6213e769',
 };
 
+/**
+ * Fragments that moved on AFTER this transform set was frozen: chain-reporting (the
+ * GitHub invariant gained its own heading) and scheduling (the per-issue-recurrence
+ * rule and the standing-order prose from nv-main). Their reviewed post-trim bodies
+ * are the frozen `<name>.post-trim.md` copies, which is what the frozen goldens carry;
+ * `section-reorder.test.ts` bounds each later change against the live goldens.
+ */
+const FROZEN_POST_TRIM: ReadonlySet<string> = new Set(['chain-reporting', 'scheduling']);
+
+/** The reviewed post-edit body of a fragment: the frozen copy where it moved on later, else the live file. */
+function postEditBody(name: string, file: string): string {
+  const source = FROZEN_POST_TRIM.has(name)
+    ? path.join(PRE_FRAGMENT_DIR, `${name}.post-trim.md`)
+    : path.join(SPINE_DIR, file);
+  return fs.readFileSync(source, 'utf-8').trim();
+}
+
 /** Replace each pre-edit fragment body with the reviewed post-edit body. */
-function applyFragmentRewrites(before: string): string {
+function applyFragmentRewrites(before: string, fragments: readonly { name: string; file: string }[]): string {
   let out = before;
-  for (const { name, file } of REWRITTEN_FRAGMENTS) {
+  for (const { name, file } of fragments) {
     const was = fs.readFileSync(path.join(PRE_FRAGMENT_DIR, `${name}.md`), 'utf-8').trim();
-    const now = fs.readFileSync(path.join(SPINE_DIR, file), 'utf-8').trim();
+    const now = postEditBody(name, file);
     expect(
       crypto.createHash('sha256').update(now).digest('hex').slice(0, 16),
       `${file} changed since it was reviewed — read the diff, regenerate the goldens, ` +
@@ -156,14 +235,43 @@ function applyFragmentRewrites(before: string): string {
   return out;
 }
 
-/** Apply the line-level rewrites the typed goldens carry. */
-function applyLineRewrites(before: string): string {
+/** Apply exact-once substitutions, each asserted before it is applied. */
+function applySubstitutions(before: string, subs: readonly { was: string; now: string }[]): string {
   let out = before;
-  for (const { was, now } of REWRITTEN_LINES) {
-    expect(out.split(was).length - 1, `a rewritten line must appear once in the fixture: ${was.slice(0, 60)}`).toBe(1);
+  for (const { was, now } of subs) {
+    expect(out.split(was).length - 1, `a rewritten passage must appear once in the fixture: ${was.slice(0, 60)}`).toBe(
+      1,
+    );
     out = out.replace(was, now);
   }
   return out;
+}
+
+/** Byte delta a set of substitutions accounts for. */
+function substitutionDelta(subs: readonly { was: string; now: string }[]): number {
+  return subs.reduce((sum, { was, now }) => sum + Buffer.byteLength(now) - Buffer.byteLength(was), 0);
+}
+
+/** Byte delta the fragment rewrites account for. */
+function fragmentDelta(fragments: readonly { name: string; file: string }[]): number {
+  return fragments.reduce((sum, { name, file }) => {
+    const was = fs.readFileSync(path.join(PRE_FRAGMENT_DIR, `${name}.md`), 'utf-8').trim();
+    const now = postEditBody(name, file);
+    return sum + Buffer.byteLength(now) - Buffer.byteLength(was);
+  }, 0);
+}
+
+/** Remove the rendered type description, byte for byte and exactly once. */
+function stripIdentityDescription(doc: string, type: string): string {
+  const block = `\n${IDENTITY_DESCRIPTIONS[type]}\n`;
+  expect(doc.split(block).length - 1, `${type}'s description must appear once under Identity`).toBe(1);
+  return doc.replace(block, '');
+}
+
+/** Remove the retired skill line from the fixture side, exactly once. */
+function stripBuddyLine(fixture: string): string {
+  expect(fixture.split(BUDDY_LINE).length - 1, 'the fixture must carry the retired `/buddy` line once').toBe(1);
+  return fixture.replace(BUDDY_LINE, '');
 }
 
 /**
@@ -242,7 +350,12 @@ describe('composed-document content changes are bounded to the declared set', ()
       // second unrelated edit happened to cancel out.
       expect(before.split(OLD_ANCHOR).length - 1).toBe(1);
 
-      const transformed = applyFragmentRewrites(before.replaceAll(OLD_ANCHOR, NEW_ANCHOR));
+      const flatFragments = [...REWRITTEN_FRAGMENTS, ...SHARED_FRAGMENTS];
+      const subs = [MEMORY_LINE, ...(name === 'main.persona' ? [FLAT_PERSONA] : [])];
+      const transformed = applySubstitutions(
+        applyFragmentRewrites(before.replaceAll(OLD_ANCHOR, NEW_ANCHOR), flatFragments),
+        subs,
+      );
 
       expect(before).not.toContain(RESIDENT_HEADING);
 
@@ -250,14 +363,12 @@ describe('composed-document content changes are bounded to the declared set', ()
 
       expect(transformed).toBe(stripConnectSection(stripResidentSection(golden(GOLDEN_DIR, name))));
       // Byte delta accounts for every declared change and nothing else: the anchor
-      // string's length difference plus each rewritten fragment's.
-      const fragmentDelta = REWRITTEN_FRAGMENTS.reduce((sum, { name, file }) => {
-        const was = fs.readFileSync(path.join(PRE_FRAGMENT_DIR, `${name}.md`), 'utf-8').trim();
-        const now = fs.readFileSync(path.join(SPINE_DIR, file), 'utf-8').trim();
-        return sum + Buffer.byteLength(now) - Buffer.byteLength(was);
-      }, 0);
+      // string's length difference plus each rewritten fragment's and passage's.
       expect(Buffer.byteLength(transformed) - Buffer.byteLength(before)).toBe(
-        Buffer.byteLength(NEW_ANCHOR) - Buffer.byteLength(OLD_ANCHOR) + fragmentDelta,
+        Buffer.byteLength(NEW_ANCHOR) -
+          Buffer.byteLength(OLD_ANCHOR) +
+          fragmentDelta(flatFragments) +
+          substitutionDelta(subs),
       );
     });
   }
@@ -282,9 +393,18 @@ describe('composed-document content changes are bounded to the declared set', ()
 
       expect(before).not.toContain(CONNECT_HEADING);
 
-      let stripped = stripConnectSection(stripResidentSection(shipped)).replace(SKILL_LINE_RE, '');
+      let stripped = stripIdentityDescription(
+        stripConnectSection(stripResidentSection(shipped)),
+        name.split('.')[0],
+      ).replace(SKILL_LINE_RE, '');
       for (const row of NCL_ROWS) stripped = stripped.replace(row, '');
-      expect(stripped).toBe(applyLineRewrites(before));
+      expect(shipped).not.toContain('`/buddy`');
+      expect(stripped).toBe(
+        applySubstitutions(applyFragmentRewrites(stripBuddyLine(before), SHARED_FRAGMENTS), [
+          ...REWRITTEN_LINES,
+          MEMORY_LINE,
+        ]),
+      );
     });
   }
 

@@ -1,6 +1,6 @@
 ### Workspace
 
-- `/workspace/agent/` (rw) — your dir. Your memory is the OKF `memory/` tree (one concept per file, loaded on demand from its `index.md`). When wired to a project, the project clone lives at `/workspace/agent/<project>/`.
+- `/workspace/agent/` (rw) — your dir; `memory/` is your OKF memory tree (Runtime Contract › Memory). When wired to a project, the project clone lives at `/workspace/agent/<project>/`.
 - `/workspace/shared/` (ro) — cross-group facts; past-you or a peer may already have solved this. Reach it only through the recall rule below.
 
 Leave a note in `/workspace/agent/` when a session ends mid-task.
