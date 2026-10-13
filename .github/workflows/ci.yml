@@ -345,6 +345,14 @@ jobs:
       - name: Container skill tests (Python)
         run: python3 container/skills/learnings-wiki/test_learnings_wiki.py
 
+      # explain-diff-html's upsert imports the PR-description rules from
+      # container/hooks/lib/pr_description.py — one implementation, shared with
+      # the PreToolUse gate — and its suite FAILS (not skips) when that import
+      # cannot resolve, so a tree where the skill and the hooks drift apart goes
+      # red here instead of silently judging descriptions two ways in prod.
+      - name: explain-diff-html upsert tests (Python)
+        run: python3 -m unittest discover -s container/skills/explain-diff-html/scripts -p 'test_*.py'
+
       # The KB observability producers are Python too, and their suite ran NOWHERE:
       # #1124 added 32 tests and CI never executed one of them, so the review's
       # "32/32 passed" was a hand-run that nothing repeats. These two tools decide

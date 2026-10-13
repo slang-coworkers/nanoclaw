@@ -9,7 +9,7 @@ import fs from 'fs';
 
 import Database from 'better-sqlite3';
 
-import { createInboundRecord, failureClassOf, isFailedAck } from '../model.js';
+import { createInboundRecord, failureClassOf, isFailedAck, isGatedAck } from '../model.js';
 import type { InboundWrite } from '../model.js';
 import { INBOUND_SCHEMA, OUTBOUND_SCHEMA } from './schema.js';
 
@@ -269,7 +269,7 @@ export function getMessageForRetry(
 export function syncProcessingAcks(inDb: Database.Database, outDb: Database.Database): void {
   const completed = outDb
     .prepare(
-      "SELECT message_id, status FROM processing_ack WHERE status IN ('completed', 'failed', 'script-skip:error')",
+      "SELECT message_id, status FROM processing_ack WHERE status IN ('completed', 'failed', 'script-skip:error', 'script-skip:gated')",
     )
     .all() as Array<{ message_id: string; status: string }>;
 
@@ -281,7 +281,7 @@ export function syncProcessingAcks(inDb: Database.Database, outDb: Database.Data
   // counter). The SELECT above has always fetched `failed`; mapping it to
   // `completed` threw away the runner's own verdict.
   const completeStmt = inDb.prepare(
-    "UPDATE messages_in SET status = 'completed' WHERE id = ? AND status NOT IN ('completed', 'failed')",
+    "UPDATE messages_in SET status = 'completed', gated = ? WHERE id = ? AND status NOT IN ('completed', 'failed')",
   );
   const failStmt = inDb.prepare(
     `UPDATE messages_in SET status = 'failed', failure_class = ?
@@ -290,7 +290,7 @@ export function syncProcessingAcks(inDb: Database.Database, outDb: Database.Data
   inDb.transaction(() => {
     for (const { message_id, status } of completed) {
       if (isFailedAck(status)) failStmt.run(failureClassOf(status), message_id);
-      else completeStmt.run(message_id);
+      else completeStmt.run(isGatedAck(status) ? 1 : 0, message_id);
     }
   })();
 }
@@ -647,6 +647,13 @@ export function migrateMessagesInTable(db: Database.Database): void {
     // historical failure was necessarily a script failure, but leaving it NULL
     // means an old streak cannot resurrect a pause; see trailingFailedRuns.
     db.prepare('ALTER TABLE messages_in ADD COLUMN failure_class TEXT').run();
+  }
+  if (!cols.has('gated')) {
+    // 1 = the pre-task script answered wakeAgent:false, so this completed
+    // occurrence never woke the agent. Existing rows default to 0 (woke):
+    // before the marker a gated fire was acked as a plain completion, so the
+    // history cannot be reconstructed; counts are honest from the deploy on.
+    db.prepare('ALTER TABLE messages_in ADD COLUMN gated INTEGER NOT NULL DEFAULT 0').run();
   }
 }
 
