@@ -1,5 +1,5 @@
 slangpy-common:
-  description: "SlangPy spine — identity, repo layout."
+  description: "SlangPy spine: the identity and repository layout every SlangPy coworker shares."
   project: slangpy
   extends: base-common
   # Compose-time substitution values for shared workflow bodies (e.g. the base
@@ -14,8 +14,6 @@ slangpy-common:
   context:
     - container/spines/slangpy/context/layout.md
     - container/spines/slangpy/context/bot-disclaimer.md
-    # skill-discovery moved to slangpy-writer's context — only writers need
-    # to install new skills; readers don't pay for the registry instructions.
   skills:
     - slangpy-build
     - slangpy-code-reader
@@ -36,14 +34,14 @@ slangpy-common:
     critique: codex-critique
 
 slangpy-reader:
-  description: "Read-only SlangPy coworker — plan, investigate, review, research. Cannot edit code or create PRs."
+  description: "Read-only SlangPy coworker that plans, investigates, reviews and researches. It never edits code or opens PRs."
   project: slangpy
   extends: slangpy-common
   workflows:
     - slangpy-plan
 
 slangpy-writer:
-  description: "Write-capable SlangPy coworker — plan + implement. Can edit code, write tests, create PRs."
+  description: "Write-capable SlangPy coworker that plans and implements: edits code, writes tests, opens draft PRs. It never merges or marks a PR ready for review."
   project: slangpy
   extends: slangpy-common
   invariants:
@@ -52,8 +50,8 @@ slangpy-writer:
     # Code-comment discipline (add value, be concise, comment ≠ commit message).
     - container/spines/slangpy/invariants/comments.md
   context:
-    # Pulled in here so writers can install additional skills, but readers
-    # don't pay for the registry instructions.
+    # Only writers install additional skills, so readers don't pay for the
+    # registry instructions.
     - container/spines/slangpy/context/skill-discovery.md
   skills:
     - slangpy-code-writer
@@ -67,7 +65,7 @@ slangpy-writer:
     doc: slangpy-docs
 
 slangpy-triage:
-  description: "SlangPy issue triage — specialist first-line investigator. Read issue, fan out research (DeepWiki + local code + gh CLI), map solution space, hand off rich briefing to slangpy-fixer. Always forward; never drop the chain. Read-only."
+  description: "Read-only first-line investigator for SlangPy issues: reads the issue, researches it (local code, DeepWiki, gh CLI), maps the solution space and hands slangpy-fixer a briefing. It never edits code; its only GitHub write is its own triage comment."
   project: slangpy
   extends: slangpy-reader
   workflows:
@@ -75,7 +73,7 @@ slangpy-triage:
   required_critique_stages: [DIAGNOSIS_REVIEW, OUTPUT_REVIEW]
 
 slangpy-fixer:
-  description: "SlangPy issue fixer — clone repo, write repro test, implement fix, verify, report. A/B test mode: no push, no PR."
+  description: "Fixes a triaged SlangPy issue end to end: repro test, fix, verify, draft PR with explanation comment, peer review, report. It never merges, marks a PR ready for review, or pushes to protected branches."
   project: slangpy
   extends: slangpy-writer
   invariants:
@@ -87,7 +85,7 @@ slangpy-fixer:
   required_critique_stages: [PLAN_REVIEW, CODE_REVIEW, OUTPUT_REVIEW]
 
 slangpy-reviewer:
-  description: "SlangPy PR reviewer — correctness + clarity verdict on a PR / branch / patch via /slangpy-pr-review. Inherits slangpy-reader's investigation toolkit. Returns the review via send_file; posts back to GitHub as a COMMENT-state review ONLY when the dispatch carries the <github-post-authorized /> marker (a human tagged @nv-slang-bot)."
+  description: "Reviews a SlangPy PR, branch or patch for correctness and clarity via /slangpy-pr-review and returns the verdict through send_file. It never approves or requests changes on GitHub, and posts there only when the dispatch carries the <github-post-authorized /> marker."
   project: slangpy
   extends: slangpy-reader
   invariants:
@@ -103,7 +101,7 @@ slangpy-reviewer:
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
 
 slangpy-pr-approver:
-  description: "Approval-decision coworker — turns a PR review into one auditable decision each (WOULD_APPROVE | ABSTAIN | BLOCK), critique-gated, shadow-mode. Builds its own review input: harvests the bot review already posted on the PR (github-actions[bot] = production claude-code-action; coderabbitai[bot]) and runs Devin, then decides from it. Inherits slangpy-common (repo context, deepwiki, slangpy-github reads, codex-critique binding); agent-browser + slang-pr-review-runner give it Devin. Writing to GitHub is forbidden by invariant and gate."
+  description: "Turns the bot reviews already on a PR (github-actions[bot], coderabbitai[bot]) plus its own Devin run into one auditable, critique-gated decision — WOULD_APPROVE, ABSTAIN or BLOCK — in shadow mode. It never writes to GitHub."
   project: slangpy
   extends: slangpy-common
   skills:
