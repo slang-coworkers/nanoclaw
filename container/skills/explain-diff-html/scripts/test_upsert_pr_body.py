@@ -23,27 +23,40 @@ CONCISE = (
 START = "<!-- explain-diff-html:start o/r#1 head=000000000000 -->"
 OLD_SECTION = START + "\n\n## 📖 Explanation\n\nA very long explanation.\n\n" + U.END
 EXPL = "## 📖 Explanation\n\n### Background\nx\n"
-WANT = U.explanation_comment(EXPL, "o/r#1", H12)
+
+
+def want(disclaimer=DISCLAIMER, explanation=EXPL):
+    """The sealed comment a run writes for `explanation` on a PR whose description ends with `disclaimer`."""
+    return U.explanation_comment(explanation, "o/r#1", H12, disclaimer)
+
+
+WANT = want()
 
 
 def cur(head="000000000000", ref="o/r#1", text="old"):
     return f"<!-- explain-diff-html:comment {ref} head={head} -->\n\n{text}"
 
 
-def comment(cid, body, at, login=BOT):
-    return {"id": cid, "created_at": at, "html_url": f"https://github.com/o/r/pull/1#issuecomment-{cid}", "body": body, "login": login}
+def comment(cid, body, at, login=BOT, updated_at=None, editor=None):
+    return {"id": cid, "node_id": f"IC_{cid}", "created_at": at, "updated_at": updated_at or at,
+            "html_url": f"https://github.com/o/r/pull/1#issuecomment-{cid}", "body": body, "login": login, "editor": editor}
+
+
+def notes(out):
+    return [line for line in out.splitlines() if line.startswith("NOTE:")]
 
 
 class FakeGH:
-    """Records gh calls; serves a PR, its comments, and accepts edits."""
+    """Records gh calls; serves a PR, its comments and their edit history, and accepts edits."""
 
-    def __init__(self, body="", comments=None, live=HEAD, me="", fail_patch=(), fail_pr_patch=False, on_post=None, heads=None, bodies=None):
+    def __init__(self, body="", comments=None, live=HEAD, me="", fail_patch=(), fail_pr_patch=False, on_post=None,
+                 heads=None, bodies=None, fail_graphql=False):
         self.body, self.me = body, me
         self.bodies = list(bodies) if bodies else None
         self.heads = list(heads) if heads else None
         self.live = live
         self.comments = {c["id"]: dict(c) for c in (comments or [])}
-        self.fail_patch, self.fail_pr_patch = set(fail_patch), fail_pr_patch
+        self.fail_patch, self.fail_pr_patch, self.fail_graphql = set(fail_patch), fail_pr_patch, fail_graphql
         self.on_post = on_post
         self.calls, self.next_id = [], 900
 
@@ -58,15 +71,26 @@ class FakeGH:
     def writes(self):
         return [c for c in self.calls if "-X" in c]
 
+    def listed(self, c):
+        return {k: v for k, v in c.items() if k != "editor"}
+
     def __call__(self, args):
         self.calls.append(args)
         if args[:2] == ["api", "user"]:
             return (True, self.me + "\n") if self.me else (False, "HTTP 403: Resource not accessible by integration")
+        if args[:2] == ["api", "graphql"]:
+            if self.fail_graphql:
+                return False, "HTTP 403: Resource not accessible by integration"
+            node_id = next(x for x in args if x.startswith("id=IC_"))[3:]
+            c = next(c for c in self.comments.values() if c["node_id"] == node_id)
+            editor = c.get("editor")
+            return True, json.dumps({"editor": {"login": editor} if editor else None,
+                                     "lastEditedAt": c["updated_at"] if editor else None})
         path = next(x for x in args if x.startswith("repos/"))
         method = args[args.index("-X") + 1] if "-X" in args else "GET"
         if method == "GET" and path.endswith("/comments"):
             ordered = sorted(self.comments.values(), key=lambda c: (c["created_at"], c["id"]))
-            return True, "\n".join(json.dumps(c) for c in ordered)
+            return True, "\n".join(json.dumps(self.listed(c)) for c in ordered)
         if method == "GET" and "/pulls/" in path:
             head = self.heads.pop(0) if self.heads else self.live
             if self.bodies:
@@ -76,7 +100,7 @@ class FakeGH:
             cid = int(path.rsplit("/", 1)[1])
             if cid in self.fail_patch:
                 return False, "HTTP 502: Bad Gateway"
-            self.comments[cid]["body"] = self._body(args)
+            self.comments[cid].update(body=self._body(args), updated_at="2026-10-05T00:00:07Z", editor=BOT)
             return True, ""
         if method == "POST" and path.endswith("/comments"):
             self.next_id += 1
@@ -97,9 +121,10 @@ class Base(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.actors = os.path.join(self.tmp.name, "actors.json")
-        self._env = {k: os.environ.get(k) for k in ("EXPLAIN_DIFF_ACTORS_FILE", "EXPLAIN_DIFF_ACTOR")}
+        self._env = {k: os.environ.get(k) for k in ("EXPLAIN_DIFF_ACTORS_FILE", "EXPLAIN_DIFF_ACTOR", "EXPLAIN_DIFF_DISCLAIMER")}
         os.environ["EXPLAIN_DIFF_ACTORS_FILE"] = self.actors
         os.environ.pop("EXPLAIN_DIFF_ACTOR", None)
+        os.environ.pop("EXPLAIN_DIFF_DISCLAIMER", None)
 
     def tearDown(self):
         for k, v in self._env.items():
@@ -195,6 +220,7 @@ class Comments(Base):
         r = self.receipt(out)
         self.assertEqual((code, r["comment"], r["pointers"]), (0, 30, [31]))
         self.assertTrue(fake.comments[31]["body"].startswith("<!-- explain-diff-html:pointer o/r#1 -->"))
+        self.assertTrue(U.seal_state(fake.comments[31]["body"]))
         fake.calls.clear()
         code, out, _ = self.run_script(fake)
         self.assertEqual((code, self.receipt(out)["pointers"]), (0, []))
@@ -230,6 +256,123 @@ class Ownership(Base):
         self.assertEqual((code, self.receipt(out)["comment_action"]), (0, "created"))
         self.assertEqual(fake.comments[43]["body"], cur(ref="o/r#2"))
         self.assertEqual(fake.comments[44]["body"], "Look at this:\n" + cur())
+
+
+class HumanEdits(Base):
+    """A human's edit to our comment survives every later run; our own stale comment is rewritten."""
+
+    def setUp(self):
+        super().setUp()
+        self.know(BOT)
+        self.ours = U.explanation_comment("## 📖 Explanation — head 0000000\n\nold text\n", "o/r#1", "000000000000", DISCLAIMER)
+        self.assertTrue(U.seal_state(self.ours))
+
+    def assert_untouched(self, fake, cid, body, who):
+        code, out, err = self.run_script(fake)
+        self.assertEqual(code, 5)
+        self.assertFalse(self.has_success_receipt(out))
+        self.assertEqual(fake.writes(), [])
+        self.assertEqual(fake.comments[cid]["body"], body)
+        self.assertTrue(err.startswith("NOTE: "), err)
+        self.assertIn(f"comment {cid} on o/r#1", err)
+        self.assertIn(who, err)
+        self.assertIn("Never edit or delete it yourself", err)
+
+    def test_maintainer_edit_of_our_comment_is_untouched_and_names_the_editor(self):
+        edited = self.ours.replace("old text", "old text\n\n> maintainer: this paragraph is wrong, see below")
+        fake = FakeGH(body=CONCISE, comments=[comment(70, edited, "2026-10-01T00:00:00Z",
+                                                      updated_at="2026-10-03T12:00:00Z", editor="maintainer")])
+        self.assert_untouched(fake, 70, edited, "edited by maintainer at 2026-10-03T12:00:00Z")
+
+    def test_our_own_stale_comment_is_updated(self):
+        fake = FakeGH(body=CONCISE, comments=[comment(71, self.ours, "2026-10-01T00:00:00Z",
+                                                      updated_at="2026-10-02T00:00:00Z", editor=BOT)])
+        code, out, _ = self.run_script(fake)
+        self.assertEqual((code, self.receipt(out)["comment_action"]), (0, "updated"))
+        self.assertEqual(fake.comments[71]["body"], WANT)
+        self.assertTrue(U.seal_state(WANT))
+        # The seal settles it without consulting the edit history.
+        self.assertFalse(any(c[:2] == ["api", "graphql"] for c in fake.calls))
+
+    def test_edited_duplicate_stops_the_run_before_any_write(self):
+        edited = self.ours + "\nkeep this\n"
+        fake = FakeGH(body=CONCISE, comments=[comment(72, self.ours, "2026-10-01T00:00:00Z"),
+                                              comment(73, edited, "2026-10-02T00:00:00Z", editor="maintainer")])
+        self.assert_untouched(fake, 73, edited, "maintainer")
+        self.assertEqual(fake.comments[72]["body"], self.ours)
+
+    def test_pre_seal_comment_never_edited_or_edited_only_by_us_is_updated(self):
+        fake = FakeGH(body=CONCISE, comments=[comment(74, cur(), "2026-10-01T00:00:00Z")])
+        self.assertEqual(self.run_script(fake)[0], 0)
+        self.assertEqual(fake.comments[74]["body"], WANT)
+        fake = FakeGH(body=CONCISE, comments=[comment(75, cur(), "2026-10-01T00:00:00Z", updated_at="2026-10-02T00:00:00Z", editor=BOT)])
+        self.assertEqual(self.run_script(fake)[0], 0)
+        self.assertEqual(fake.comments[75]["body"], WANT)
+
+    def test_pre_seal_comment_edited_by_a_human_is_untouched(self):
+        body = cur(text="old\n\nmaintainer's note")
+        fake = FakeGH(body=CONCISE, comments=[comment(76, body, "2026-10-01T00:00:00Z", updated_at="2026-10-02T00:00:00Z", editor="maintainer")])
+        self.assert_untouched(fake, 76, body, "edited by maintainer")
+
+    def test_when_the_edit_history_is_unavailable_only_a_never_edited_pre_seal_comment_is_rewritten(self):
+        fake = FakeGH(body=CONCISE, fail_graphql=True, comments=[comment(77, cur(), "2026-10-01T00:00:00Z")])
+        self.assertEqual(self.run_script(fake)[0], 0)
+        self.assertEqual(fake.comments[77]["body"], WANT)
+        body = cur()
+        fake = FakeGH(body=CONCISE, fail_graphql=True, comments=[comment(78, body, "2026-10-01T00:00:00Z", updated_at="2026-10-02T00:00:00Z")])
+        self.assert_untouched(fake, 78, body, "could not identify")
+        edited = self.ours + "\nx\n"
+        fake = FakeGH(body=CONCISE, fail_graphql=True, comments=[comment(79, edited, "2026-10-01T00:00:00Z")])
+        self.assert_untouched(fake, 79, edited, "could not identify")
+
+    def test_a_dry_run_refuses_the_same_way(self):
+        edited = self.ours + "\nkeep this\n"
+        fake = FakeGH(body=CONCISE, comments=[comment(80, edited, "2026-10-01T00:00:00Z", editor="maintainer")])
+        code, out, err = self.run_script(fake, extra=["--dry-run"])
+        self.assertEqual((code, fake.writes()), (5, []))
+        self.assertIn("maintainer", err)
+        self.assertNotIn("[dry-run]", err)
+        self.assertEqual(out, "")
+
+
+class Disclaimer(Base):
+    def test_explanation_without_a_disclaimer_gets_the_descriptions_one(self):
+        fake = FakeGH(body=CONCISE)
+        code, out, _ = self.run_script(fake)
+        self.assertEqual((code, self.receipt(out)["disclaimer"]), (0, "appended"))
+        body = fake.comments[901]["body"]
+        self.assertIn("\n" + DISCLAIMER + "\n", body)
+        self.assertLess(body.index(DISCLAIMER), body.index("<!-- explain-diff-html:written"))
+        self.assertEqual(notes(out), [])
+
+    def test_explanation_with_a_disclaimer_is_kept_as_is(self):
+        fake = FakeGH(body=CONCISE)
+        expl = EXPL + "\n" + DISCLAIMER + "\n"
+        code, out, _ = self.run_script(fake, explanation=expl)
+        self.assertEqual((code, self.receipt(out)["disclaimer"]), (0, "kept"))
+        self.assertEqual(fake.comments[901]["body"], U.explanation_comment(expl, "o/r#1", H12))
+        self.assertEqual(fake.comments[901]["body"].count("<sub>"), 1)
+
+    def test_flag_and_env_beat_the_description_and_the_default_closes_the_gap(self):
+        fake = FakeGH(body=CONCISE)
+        self.run_script(fake, extra=["--disclaimer", "<sub>flag</sub>"])
+        self.assertIn("\n<sub>flag</sub>\n", fake.comments[901]["body"])
+        os.environ["EXPLAIN_DIFF_DISCLAIMER"] = "<sub>env</sub>"
+        fake = FakeGH(body=CONCISE)
+        self.run_script(fake)
+        self.assertIn("\n<sub>env</sub>\n", fake.comments[901]["body"])
+        os.environ.pop("EXPLAIN_DIFF_DISCLAIMER")
+        fake = FakeGH(body="**Summary.** No disclaimer here.\n\nFixes #1\n")
+        code, out, _ = self.run_script(fake)
+        self.assertEqual(code, 0)
+        self.assertIn("\n" + U.DEFAULT_DISCLAIMER + "\n", fake.comments[901]["body"])
+        self.assertEqual(len([n for n in notes(out) if "no bot disclaimer" in n]), 1)
+
+    def test_a_description_with_the_disclaimer_gets_no_disclaimer_note(self):
+        self.know(BOT)
+        fake = FakeGH(body=OK_DESC, comments=[comment(60, cur(), "2026-10-01T00:00:00Z")])
+        code, out, _ = self.run_script(fake)
+        self.assertEqual((code, notes(out)), (0, []))
 
 
 class Failures(Base):
@@ -288,12 +431,13 @@ class Failures(Base):
         self.assertEqual(code, 5)
         self.assertFalse(self.has_success_receipt(out))
 
-    def test_head_moving_during_the_run_exits_4_without_receipt(self):
+    def test_head_moving_during_the_run_exits_4_with_a_head_trailer_not_a_receipt(self):
         fake = FakeGH(body=CONCISE, heads=[HEAD, "f" * 40])
         code, out, err = self.run_script(fake)
         self.assertEqual(code, 4)
         self.assertFalse(self.has_success_receipt(out))
         self.assertIn("moved", err)
+        self.assertEqual(self.receipt(out), {"updated": False, "head_mismatch": True, "repo": "o/r", "pr": 1, "head": "f" * 12})
 
     def test_description_edited_during_the_run_is_not_overwritten(self):
         old = OLD_SECTION + "\n\n" + OK_DESC
@@ -306,12 +450,14 @@ class Failures(Base):
         self.assertEqual(fake.body, edited)
         self.assertFalse(any("pulls/" in " ".join(c) for c in fake.writes()))
 
-    def test_head_mismatch_writes_nothing(self):
+    def test_head_mismatch_writes_nothing_and_names_the_live_head_on_stdout(self):
         fake = FakeGH(body=CONCISE, live="f" * 40)
-        code, _out, err = self.run_script(fake)
+        code, out, err = self.run_script(fake)
         self.assertEqual(code, 4)
-        self.assertIn("head mismatch", err)
+        self.assertIn("head mismatch on o/r#1", err)
         self.assertEqual(fake.writes(), [])
+        self.assertFalse(self.has_success_receipt(out))
+        self.assertEqual(self.receipt(out), {"updated": False, "head_mismatch": True, "repo": "o/r", "pr": 1, "head": "f" * 12})
 
     def test_refuses_an_oversized_explanation(self):
         fake = FakeGH(body=CONCISE)
@@ -335,10 +481,11 @@ class Description(Base):
         self.assertEqual(code, 0)
         self.assertEqual(fake.body, body)  # never emptied, never trimmed
         self.assertFalse(any("pulls/" in " ".join(c) for c in fake.writes()))
-        notes = [line for line in out.splitlines() if line.startswith("NOTE:")]
-        self.assertEqual(len(notes), 1)
-        self.assertIn("never empties", notes[0])
-        self.assertIn("--body-file", notes[0])
+        # One NOTE asks for the whole concise description, disclaimer included; no separate disclaimer NOTE.
+        self.assertEqual(len(notes(out)), 1)
+        self.assertIn("never empties", notes(out)[0])
+        self.assertIn("--body-file", notes(out)[0])
+        self.assertIn("<sub> disclaimer", notes(out)[0])
         r = self.receipt(out)  # the receipt is still the last stdout line
         self.assertTrue(r["updated"])
         self.assertTrue(r["description"].startswith("kept:"), r["description"])
@@ -402,7 +549,7 @@ class Description(Base):
         fake = FakeGH(body="Fixes #1\n")
         code, out, _ = self.run_script(fake)
         self.assertEqual(code, 0)
-        self.assertEqual(len([line for line in out.splitlines() if line.startswith("NOTE:")]), 1)
+        self.assertEqual(len([n for n in notes(out) if "is 8 chars" in n]), 1)
         self.assertTrue(self.receipt(out)["updated"])
 
 
@@ -434,21 +581,28 @@ OK_DESC = (
 
 
 class DescriptionLimits(Base):
-    def test_same_rules_as_the_hook(self):
-        # The PreToolUse gate keeps its own copy (container/hooks/lib/pr_description.py):
-        # both must judge every description the same way.
-        import importlib.util
-        hook = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "hooks", "lib", "pr_description.py")
-        if not os.path.isfile(hook):
-            self.skipTest("hook lib not in this tree")
-        spec = importlib.util.spec_from_file_location("pr_description", hook)
-        mod = importlib.util.module_from_spec(spec)
-        spec.loader.exec_module(mod)
-        corpus = [LONG_DESC, OK_DESC, "A | B\n--- | ---\n1 | 2", "| a |\n|---|", "**Summary.** a | b, then ---.",
-                  f"<sub>{'x' * 1200}</sub>\n**Summary.** s", f"Fixes the analysis in #1 {'y' * 1200}",
-                  "**Summary.** s\n\nFixes #1, closes o/r#2.\n\n<sub>bot</sub>", "## Summary\none\ntwo"]
-        for body in corpus:
+    def test_the_rules_are_the_hooks_module_not_a_copy(self):
+        # The PreToolUse gate's module (container/hooks/lib/pr_description.py) is the one
+        # implementation; this test FAILS, not skips, when the script cannot find it.
+        hook = os.path.normpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "..", "..", "hooks", "lib", "pr_description.py"))
+        self.assertTrue(os.path.isfile(hook), f"hook lib missing at {hook}")
+        U._rules = None
+        mod = U.rules()
+        self.assertEqual(os.path.realpath(mod.__file__), os.path.realpath(hook))
+        for body in [LONG_DESC, OK_DESC, "A | B\n--- | ---\n1 | 2", "## Summary\none\ntwo"]:
             self.assertEqual(U.description_problems(body, 1000, 2), mod.check_body(body, 1000, 2), body[:40])
+
+    def test_a_tree_without_the_hook_lib_exits_5_naming_the_paths(self):
+        saved, saved_paths = U._rules, U.RULES_PATHS
+        U._rules, U.RULES_PATHS = None, ("/nonexistent/a.py", "/nonexistent/b.py")
+        try:
+            code, out, err = self.run_script(FakeGH(body=CONCISE))
+        finally:
+            U._rules, U.RULES_PATHS = saved, saved_paths
+        self.assertEqual(code, 5)
+        self.assertIn("/nonexistent/a.py, /nonexistent/b.py", err)
+        self.assertIn("carries no copy", err)
+        self.assertFalse(self.has_success_receipt(out))
 
     def test_rules(self):
         problems = U.description_problems(LONG_DESC, 1000, 2)
@@ -465,10 +619,9 @@ class DescriptionLimits(Base):
         fake = FakeGH(body=LONG_DESC, comments=[comment(60, cur(), "2026-10-01T00:00:00Z")])
         code, out, _ = self.run_script(fake)
         self.assertEqual(code, 0)
-        notes = [line for line in out.splitlines() if line.startswith("NOTE:")]
-        self.assertEqual(len(notes), 1)
-        self.assertIn("over the limits", notes[0])
-        self.assertIn("Risk has 8 lines, max 2", notes[0])
+        over = [n for n in notes(out) if "over the limits" in n]
+        self.assertEqual(len(over), 1)
+        self.assertIn("Risk has 8 lines, max 2", over[0])
         self.assertTrue(self.receipt(out)["updated"])
 
     def test_compliant_description_gets_no_note(self):
@@ -476,7 +629,7 @@ class DescriptionLimits(Base):
         fake = FakeGH(body=OK_DESC, comments=[comment(60, cur(), "2026-10-01T00:00:00Z")])
         code, out, _ = self.run_script(fake)
         self.assertEqual(code, 0)
-        self.assertEqual([line for line in out.splitlines() if line.startswith("NOTE:")], [])
+        self.assertEqual(notes(out), [])
 
     def test_limits_follow_the_env_knobs(self):
         self.know(BOT)
@@ -492,10 +645,12 @@ class DescriptionLimits(Base):
                 else:
                     os.environ[k] = v
         self.assertEqual(code, 0)
-        self.assertEqual([line for line in out.splitlines() if line.startswith("NOTE:")], [])
+        self.assertEqual([n for n in notes(out) if "over the limits" in n], [])
 
 
 class DryRun(Base):
+    LONG = "## 📖 Explanation\n\n### Background\n" + "\n".join(f"paragraph {i}" for i in range(40)) + "\n"
+
     def test_dry_run_writes_nothing_and_its_stdout_is_never_a_receipt(self):
         self.know(BOT)
         fake = FakeGH(body=OLD_SECTION, comments=[comment(60, cur(), "2026-10-01T00:00:00Z")])
@@ -506,7 +661,30 @@ class DryRun(Base):
         self.assertFalse(self.has_success_receipt(out))
         self.assertEqual(self.receipt(out), {"updated": False, "dry_run": True})
         self.assertIn('"update 60"', err)
-        self.assertIn(fake_receipt, err)
+
+    def test_dry_run_previews_three_lines_and_the_size_not_the_whole_comment(self):
+        self.know(BOT)
+        fake = FakeGH(body=CONCISE, comments=[comment(60, cur(), "2026-10-01T00:00:00Z")])
+        code, _out, err = self.run_script(fake, explanation=self.LONG, extra=["--dry-run"])
+        self.assertEqual(code, 0)
+        lines = err.splitlines()
+        self.assertTrue(lines[0].startswith("<!-- explain-diff-html:comment o/r#1 head="), lines[0])
+        self.assertEqual(lines[1:3], ["## 📖 Explanation", "### Background"])
+        self.assertNotIn("paragraph 0", err)
+        comment_len = len(want(explanation=self.LONG))
+        self.assertIn(f"… {comment_len:,} chars in all", err)
+        plan = json.loads(next(line for line in lines if line.startswith("[dry-run] "))[len("[dry-run] "):])
+        self.assertEqual((plan["comment"], plan["chars"], plan["disclaimer"]), ("update 60", comment_len, "appended"))
+
+    def test_quiet_dry_run_prints_only_the_plan_and_notes(self):
+        self.know(BOT)
+        fake = FakeGH(body="Fixes #1\n", comments=[comment(60, cur(), "2026-10-01T00:00:00Z")])
+        code, _out, err = self.run_script(fake, explanation=self.LONG, extra=["--dry-run", "--quiet"])
+        self.assertEqual(code, 0)
+        lines = err.splitlines()
+        self.assertTrue(lines[0].startswith("[dry-run] {"), lines[0])
+        self.assertTrue(all(line.startswith("NOTE:") for line in lines[1:]), lines)
+        self.assertNotIn("chars in all", err)
 
 
 class QuizPositions(unittest.TestCase):

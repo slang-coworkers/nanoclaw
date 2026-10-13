@@ -15,9 +15,9 @@
  *   workspace consolidation (one `Ambiguity` principle, one `Recall rule` block;
  *   typed documents) and the scheduler's standing-order prose (flat `main`). Each
  *   is declared as its frozen `*.post-trim.md` body versus its live, digest-pinned
- *   body (`REWRITTEN_AFTER_FREEZE`);
- * - the `/explain-diff-html` Skills line, whose description stopped promising the
- *   comment sits directly after the PR description (typed documents) — exact text.
+ *   body (`REWRITTEN_AFTER_FREEZE`). (nv-main's later edit to the `explain-diff-html`
+ *   description does not reach these goldens: Skills lines carry the first sentence
+ *   only, and that sentence did not change.)
  *
  * Because a re-order moves whole blocks, the bound is stated on LINES: the multiset
  * of lines in the shipped golden equals the pre golden's multiset plus the declared
@@ -64,21 +64,29 @@ const REWRITTEN_AFTER_FREEZE: readonly {
   typed: boolean;
   flat: boolean;
 }[] = [
-  { file: 'invariants/principles.md', frozen: 'principles.post-trim.md', digest: 'ac614cdef172a900', typed: true, flat: false },
+  {
+    file: 'invariants/principles.md',
+    frozen: 'principles.post-trim.md',
+    digest: 'ac614cdef172a900',
+    typed: true,
+    flat: false,
+  },
   { file: 'invariants/scope.md', frozen: 'scope.post-trim.md', digest: '607f98fb6d8eca59', typed: true, flat: false },
-  { file: 'context/workspace.md', frozen: 'workspace.post-trim.md', digest: 'b9d0270a9d83651f', typed: true, flat: false },
-  { file: 'tool-instructions/scheduling.md', frozen: 'scheduling.post-trim.md', digest: 'c4424e984d9d1619', typed: false, flat: true },
+  {
+    file: 'context/workspace.md',
+    frozen: 'workspace.post-trim.md',
+    digest: 'b9d0270a9d83651f',
+    typed: true,
+    flat: false,
+  },
+  {
+    file: 'tool-instructions/scheduling.md',
+    frozen: 'scheduling.post-trim.md',
+    digest: 'c4424e984d9d1619',
+    typed: false,
+    flat: true,
+  },
 ];
-
-/**
- * The one Skills line that changed after the freeze: `explain-diff-html`'s description
- * no longer promises the explanation comment sits directly after the PR description.
- * Declared as exact text so a different edit to that line cannot pass through.
- */
-const SKILL_LINE = {
-  was: '__EXPLAIN_DIFF_WAS__',
-  now: '__EXPLAIN_DIFF_NOW__',
-};
 
 const TYPED_ORDER = [
   'Identity',
@@ -146,15 +154,11 @@ describe('composed-document section re-order is bounded to the declared set', ()
       const shipped = fs.readFileSync(path.join(GOLDEN_DIR, `${name}.md`), 'utf-8');
       // Typed composition re-levels each fragment so its top heading is `###`.
       const typedRewrites = REWRITTEN_AFTER_FREEZE.filter((e) => e.typed).map(rewritten);
-      expect(shipped.split(SKILL_LINE.now).length - 1, 'the rewritten Skills line must appear once').toBe(1);
-      expect(before.split(SKILL_LINE.was).length - 1, 'the fixture must carry the old Skills line once').toBe(1);
       const added = lines(
-        ['## Rules', rules(), chainNew(), ...typedRewrites.map((r) => normalized(r.live)), SKILL_LINE.now].join('\n'),
+        ['## Rules', rules(), chainNew(), ...typedRewrites.map((r) => normalized(r.live))].join('\n'),
       );
       const removed = lines(
-        ['## NanoClaw Runtime Contract', chainOld(), ...typedRewrites.map((r) => normalized(r.frozen)), SKILL_LINE.was].join(
-          '\n',
-        ),
+        ['## NanoClaw Runtime Contract', chainOld(), ...typedRewrites.map((r) => normalized(r.frozen))].join('\n'),
       );
       // Blank lines move with the blocks; they are not content.
       const strip = (m: Map<string, number>) => {
@@ -179,7 +183,9 @@ describe('composed-document section re-order is bounded to the declared set', ()
       const shipped = fs.readFileSync(path.join(GOLDEN_DIR, `${name}.md`), 'utf-8');
       // Flat bodies render fragments verbatim, so the fragment's own heading levels apply.
       const flatRewrites = REWRITTEN_AFTER_FREEZE.filter((e) => e.flat).map(rewritten);
-      const added = lines([fragment('chain-reporting.md').trim(), ...flatRewrites.map((r) => r.live.trim())].join('\n'));
+      const added = lines(
+        [fragment('chain-reporting.md').trim(), ...flatRewrites.map((r) => r.live.trim())].join('\n'),
+      );
       const removed = lines(
         [fs.readFileSync(OLD_CHAIN_REPORTING, 'utf-8').trim(), ...flatRewrites.map((r) => r.frozen.trim())].join('\n'),
       );

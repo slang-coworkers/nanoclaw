@@ -86,7 +86,9 @@ describe('composed-document byte parity', () => {
       // never told about. Then when `explain-diff-html`'s description grew the
       // collapsed-PR-comment contract (that one `## Skills` line changed), and again
       // when the explanation moved into the PR description (same line), and again
-      // when it moved back out into one explanation comment (same line).
+      // when it moved back out into one explanation comment (same line), and again
+      // when that line stopped promising the comment sits "directly after the
+      // description" (it is found by its marker, usually after the bots' comments).
       // Goldens regenerated in the same commit, visibly, every time: that is
       // the point of pinning the digests here as well as the bytes, since a
       // golden edited alongside a regression would go unnoticed.
