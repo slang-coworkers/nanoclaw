@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 
+import { AnchoredDir } from './anchored-dir.js';
 import { resolveMirroredSkillScope } from './claude-composer.js';
 import { DATA_DIR, DEFAULT_AGENT_PROVIDER, GROUPS_DIR } from './config.js';
 import { getDb } from './db/connection.js';
@@ -221,9 +222,12 @@ export async function initGroupFilesystem(
       initialized.push('.claude-shared');
     }
 
+    // Fork divergence: init seeds a missing file and backfills the PreCompact
+    // hook and cleanupPeriodDays, but never runs upstream's memory reconcile
+    // (`prepareClaudeMemorySettings`) — `/migrate-memory` does that per group,
+    // after staging the native store (scripts/migrate-claude-memory-settings.ts).
     const settingsFile = path.join(claudeDir, 'settings.json');
-    if (!fs.existsSync(settingsFile)) {
-      fs.writeFileSync(settingsFile, CLAUDE_DEFAULT_SETTINGS);
+    if (seedClaudeSettings(settingsFile)) {
       initialized.push('settings.json');
     } else {
       ensurePreCompactHook(settingsFile, initialized);
@@ -409,12 +413,54 @@ export async function initGroupFilesystem(
 const PRE_COMPACT_COMMAND = 'bun /app/src/compact-instructions.ts';
 
 /**
+ * `.claude-shared` is the container's read-write mount, so `settings.json` is
+ * reached only through its directory's descriptor (as upstream's
+ * `prepareClaudeMemorySettings` does): a symlink or FIFO planted under the name
+ * is refused, never read, created or written through.
+ */
+function withClaudeSettingsDir<T>(settingsFile: string, fn: (dir: AnchoredDir, name: string) => T): T {
+  const dir = AnchoredDir.open(path.dirname(settingsFile), [], true);
+  if (!dir) throw new Error(`Claude settings directory is missing: '${path.dirname(settingsFile)}'`);
+  try {
+    return fn(dir, path.basename(settingsFile));
+  } finally {
+    dir.close();
+  }
+}
+
+/** Create `settings.json` with the defaults. False when anything already holds the name. */
+function seedClaudeSettings(settingsFile: string): boolean {
+  try {
+    withClaudeSettingsDir(settingsFile, (dir, name) => dir.writeNewFile(name, Buffer.from(CLAUDE_DEFAULT_SETTINGS)));
+    return true;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'EEXIST') warnSettingsUnpatched(settingsFile, err);
+    return false;
+  }
+}
+
+function readClaudeSettings(settingsFile: string): string {
+  return withClaudeSettingsDir(settingsFile, (dir, name) => dir.readFile(name).toString('utf-8'));
+}
+
+function replaceClaudeSettings(settingsFile: string, content: string): void {
+  withClaudeSettingsDir(settingsFile, (dir, name) => dir.replaceFile(name, content));
+}
+
+function warnSettingsUnpatched(settingsFile: string, err: unknown): void {
+  log.warn('Claude settings not patched; leaving them unchanged', {
+    settingsFile,
+    error: err instanceof Error ? err.message : String(err),
+  });
+}
+
+/**
  * Patch an existing settings.json to add the PreCompact hook if missing.
  * Runs on every group init so pre-existing groups pick up the hook.
  */
 function ensurePreCompactHook(settingsFile: string, initialized: string[]): void {
   try {
-    const raw = fs.readFileSync(settingsFile, 'utf-8');
+    const raw = readClaudeSettings(settingsFile);
     const settings = JSON.parse(raw);
 
     // Check if there's already a PreCompact hook with our command.
@@ -428,10 +474,11 @@ function ensurePreCompactHook(settingsFile: string, initialized: string[]): void
       hooks: [{ type: 'command', command: PRE_COMPACT_COMMAND }],
     });
 
-    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+    replaceClaudeSettings(settingsFile, JSON.stringify(settings, null, 2) + '\n');
     initialized.push('settings.json (added PreCompact hook)');
-  } catch {
-    // Don't break init if settings.json is malformed — it'll use whatever's there.
+  } catch (err) {
+    // Don't break init if settings.json is malformed or refused — it'll use whatever's there.
+    warnSettingsUnpatched(settingsFile, err);
   }
 }
 
@@ -445,7 +492,7 @@ function ensurePreCompactHook(settingsFile: string, initialized: string[]): void
  */
 export function ensureCleanupPeriodDays(settingsFile: string, initialized: string[]): void {
   try {
-    const raw = fs.readFileSync(settingsFile, 'utf-8');
+    const raw = readClaudeSettings(settingsFile);
     const settings = JSON.parse(raw);
 
     // Only a JSON object can carry a cleanupPeriodDays key. A non-object root
@@ -459,9 +506,10 @@ export function ensureCleanupPeriodDays(settingsFile: string, initialized: strin
     if (typeof current === 'number' && current >= CLEANUP_PERIOD_DAYS_NEVER) return;
 
     settings.cleanupPeriodDays = CLEANUP_PERIOD_DAYS_NEVER;
-    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+    replaceClaudeSettings(settingsFile, JSON.stringify(settings, null, 2) + '\n');
     initialized.push(`settings.json (cleanupPeriodDays -> ${CLEANUP_PERIOD_DAYS_NEVER})`);
-  } catch {
-    // Don't break init if settings.json is malformed — it'll use whatever's there.
+  } catch (err) {
+    // Don't break init if settings.json is malformed or refused — it'll use whatever's there.
+    warnSettingsUnpatched(settingsFile, err);
   }
 }

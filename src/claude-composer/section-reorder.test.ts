@@ -3,14 +3,21 @@
  *
  * `pre-section-reorder/` holds the goldens as they stood after the base-spine trim
  * (the set `anchor-retarget.test.ts` reproduces). Between that state and the shipped
- * goldens three things changed, and only those three:
+ * goldens these things changed, and only these:
  *
  * - typed documents gain `## Rules` right after `## Identity`, composed from the
  *   two rule fragments (decision table, report formats) — digest-pinned here;
  * - the `## NanoClaw Runtime Contract` section stops leading the typed document
  *   and its body becomes the tail of `## Context` (flat `main` keeps its section);
  * - `chain-reporting.md` carries the GitHub invariant under its own
- *   `### GitHub as primary observability` heading (every document) — digest-pinned.
+ *   `### GitHub as primary observability` heading (every document) — digest-pinned;
+ * - four fragments rewritten on nv-main and merged in: the principles, scope and
+ *   workspace consolidation (one `Ambiguity` principle, one `Recall rule` block;
+ *   typed documents) and the scheduler's standing-order prose (flat `main`). Each
+ *   is declared as its frozen `*.post-trim.md` body versus its live, digest-pinned
+ *   body (`REWRITTEN_AFTER_FREEZE`);
+ * - the `/explain-diff-html` Skills line, whose description stopped promising the
+ *   comment sits directly after the PR description (typed documents) — exact text.
  *
  * Because a re-order moves whole blocks, the bound is stated on LINES: the multiset
  * of lines in the shipped golden equals the pre golden's multiset plus the declared
@@ -40,6 +47,39 @@ const FRAGMENT_DIGESTS: Record<string, string> = {
 /** The chain-reporting fragment as it stood before the heading was added. */
 const OLD_CHAIN_REPORTING = path.join(GOLDEN_DIR, 'pre-anchor-retarget', 'fragments', 'chain-reporting.post-trim.md');
 
+const BASE_DIR = path.join(process.cwd(), 'container', 'spines', 'base');
+const FROZEN_FRAGMENT_DIR = path.join(GOLDEN_DIR, 'pre-anchor-retarget', 'fragments');
+
+/**
+ * Fragments rewritten after the freeze and merged in from nv-main. `frozen` is the
+ * body the pre goldens carry (a `*.post-trim.md` copy, so a later edit to the live
+ * file cannot move the "before" side); `digest` pins the reviewed live body; `typed`
+ * and `flat` say which goldens bind the fragment, because the flat `main` document
+ * composes the scheduling prose and none of the three base invariants.
+ */
+const REWRITTEN_AFTER_FREEZE: readonly {
+  file: string;
+  frozen: string;
+  digest: string;
+  typed: boolean;
+  flat: boolean;
+}[] = [
+  { file: 'invariants/principles.md', frozen: 'principles.post-trim.md', digest: 'ac614cdef172a900', typed: true, flat: false },
+  { file: 'invariants/scope.md', frozen: 'scope.post-trim.md', digest: '607f98fb6d8eca59', typed: true, flat: false },
+  { file: 'context/workspace.md', frozen: 'workspace.post-trim.md', digest: 'b9d0270a9d83651f', typed: true, flat: false },
+  { file: 'tool-instructions/scheduling.md', frozen: 'scheduling.post-trim.md', digest: 'c4424e984d9d1619', typed: false, flat: true },
+];
+
+/**
+ * The one Skills line that changed after the freeze: `explain-diff-html`'s description
+ * no longer promises the explanation comment sits directly after the PR description.
+ * Declared as exact text so a different edit to that line cannot pass through.
+ */
+const SKILL_LINE = {
+  was: '__EXPLAIN_DIFF_WAS__',
+  now: '__EXPLAIN_DIFF_NOW__',
+};
+
 const TYPED_ORDER = [
   'Identity',
   'Rules',
@@ -60,6 +100,14 @@ function fragment(name: string): string {
   const text = fs.readFileSync(path.join(SPINE_DIR, name), 'utf-8');
   expect(digest(text), `${name} differs from the reviewed bytes`).toBe(FRAGMENT_DIGESTS[name]);
   return text;
+}
+/** A fragment rewritten after the freeze: its live body (digest-checked) and its frozen body. */
+function rewritten(entry: (typeof REWRITTEN_AFTER_FREEZE)[number]): { live: string; frozen: string } {
+  const live = fs.readFileSync(path.join(BASE_DIR, entry.file), 'utf-8');
+  expect(digest(live), `${entry.file} differs from the reviewed bytes`).toBe(entry.digest);
+  const frozen = fs.readFileSync(path.join(FROZEN_FRAGMENT_DIR, entry.frozen), 'utf-8');
+  expect(frozen, `${entry.frozen} matches the live fragment — retire this entry`).not.toBe(live);
+  return { live, frozen };
 }
 function lines(text: string): Map<string, number> {
   const m = new Map<string, number>();
@@ -93,11 +141,21 @@ describe('composed-document section re-order is bounded to the declared set', ()
   const chainOld = () => normalized(fs.readFileSync(OLD_CHAIN_REPORTING, 'utf-8'));
 
   for (const name of TYPED) {
-    it(`${name}: same lines as before plus Rules and the GitHub heading, minus the contract heading`, () => {
+    it(`${name}: same lines as before plus Rules, the GitHub heading and the merged rewrites, minus the contract heading`, () => {
       const before = fs.readFileSync(path.join(PRE_DIR, `${name}.md`), 'utf-8');
       const shipped = fs.readFileSync(path.join(GOLDEN_DIR, `${name}.md`), 'utf-8');
-      const added = lines(['## Rules', rules(), chainNew()].join('\n'));
-      const removed = lines(['## NanoClaw Runtime Contract', chainOld()].join('\n'));
+      // Typed composition re-levels each fragment so its top heading is `###`.
+      const typedRewrites = REWRITTEN_AFTER_FREEZE.filter((e) => e.typed).map(rewritten);
+      expect(shipped.split(SKILL_LINE.now).length - 1, 'the rewritten Skills line must appear once').toBe(1);
+      expect(before.split(SKILL_LINE.was).length - 1, 'the fixture must carry the old Skills line once').toBe(1);
+      const added = lines(
+        ['## Rules', rules(), chainNew(), ...typedRewrites.map((r) => normalized(r.live)), SKILL_LINE.now].join('\n'),
+      );
+      const removed = lines(
+        ['## NanoClaw Runtime Contract', chainOld(), ...typedRewrites.map((r) => normalized(r.frozen)), SKILL_LINE.was].join(
+          '\n',
+        ),
+      );
       // Blank lines move with the blocks; they are not content.
       const strip = (m: Map<string, number>) => {
         m.delete('');
@@ -116,12 +174,15 @@ describe('composed-document section re-order is bounded to the declared set', ()
   }
 
   for (const name of FLAT) {
-    it(`${name}: differs from before only by the chain-reporting rewrite`, () => {
+    it(`${name}: differs from before only by the chain-reporting and scheduling rewrites`, () => {
       const before = fs.readFileSync(path.join(PRE_DIR, `${name}.md`), 'utf-8');
       const shipped = fs.readFileSync(path.join(GOLDEN_DIR, `${name}.md`), 'utf-8');
       // Flat bodies render fragments verbatim, so the fragment's own heading levels apply.
-      const added = lines(fragment('chain-reporting.md').trim());
-      const removed = lines(fs.readFileSync(OLD_CHAIN_REPORTING, 'utf-8').trim());
+      const flatRewrites = REWRITTEN_AFTER_FREEZE.filter((e) => e.flat).map(rewritten);
+      const added = lines([fragment('chain-reporting.md').trim(), ...flatRewrites.map((r) => r.live.trim())].join('\n'));
+      const removed = lines(
+        [fs.readFileSync(OLD_CHAIN_REPORTING, 'utf-8').trim(), ...flatRewrites.map((r) => r.frozen.trim())].join('\n'),
+      );
       const strip = (m: Map<string, number>) => {
         m.delete('');
         return m;

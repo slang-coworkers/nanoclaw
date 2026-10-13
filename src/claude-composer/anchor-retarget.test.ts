@@ -198,22 +198,29 @@ const REWRITTEN_DIGESTS: Record<string, string> = {
   'chain-reporting': 'a16b8f4e6213e769',
 };
 
+/**
+ * Fragments that moved on AFTER this transform set was frozen: chain-reporting (the
+ * GitHub invariant gained its own heading) and scheduling (the per-issue-recurrence
+ * rule and the standing-order prose from nv-main). Their reviewed post-trim bodies
+ * are the frozen `<name>.post-trim.md` copies, which is what the frozen goldens carry;
+ * `section-reorder.test.ts` bounds each later change against the live goldens.
+ */
+const FROZEN_POST_TRIM: ReadonlySet<string> = new Set(['chain-reporting', 'scheduling']);
+
+/** The reviewed post-edit body of a fragment: the frozen copy where it moved on later, else the live file. */
+function postEditBody(name: string, file: string): string {
+  const source = FROZEN_POST_TRIM.has(name)
+    ? path.join(PRE_FRAGMENT_DIR, `${name}.post-trim.md`)
+    : path.join(SPINE_DIR, file);
+  return fs.readFileSync(source, 'utf-8').trim();
+}
+
 /** Replace each pre-edit fragment body with the reviewed post-edit body. */
 function applyFragmentRewrites(before: string, fragments: readonly { name: string; file: string }[]): string {
   let out = before;
   for (const { name, file } of fragments) {
     const was = fs.readFileSync(path.join(PRE_FRAGMENT_DIR, `${name}.md`), 'utf-8').trim();
-    // chain-reporting moved on after this transform set was frozen (the GitHub
-    // invariant gained its own heading); its reviewed post-trim body is the
-    // frozen copy, and `section-reorder.test.ts` bounds the later change.
-    const now = fs
-      .readFileSync(
-        name === 'chain-reporting'
-          ? path.join(PRE_FRAGMENT_DIR, 'chain-reporting.post-trim.md')
-          : path.join(SPINE_DIR, file),
-        'utf-8',
-      )
-      .trim();
+    const now = postEditBody(name, file);
     expect(
       crypto.createHash('sha256').update(now).digest('hex').slice(0, 16),
       `${file} changed since it was reviewed — read the diff, regenerate the goldens, ` +
@@ -249,17 +256,7 @@ function substitutionDelta(subs: readonly { was: string; now: string }[]): numbe
 function fragmentDelta(fragments: readonly { name: string; file: string }[]): number {
   return fragments.reduce((sum, { name, file }) => {
     const was = fs.readFileSync(path.join(PRE_FRAGMENT_DIR, `${name}.md`), 'utf-8').trim();
-    // chain-reporting moved on after this transform set was frozen (the GitHub
-    // invariant gained its own heading); its reviewed post-trim body is the
-    // frozen copy, and `section-reorder.test.ts` bounds the later change.
-    const now = fs
-      .readFileSync(
-        name === 'chain-reporting'
-          ? path.join(PRE_FRAGMENT_DIR, 'chain-reporting.post-trim.md')
-          : path.join(SPINE_DIR, file),
-        'utf-8',
-      )
-      .trim();
+    const now = postEditBody(name, file);
     return sum + Buffer.byteLength(now) - Buffer.byteLength(was);
   }, 0);
 }
