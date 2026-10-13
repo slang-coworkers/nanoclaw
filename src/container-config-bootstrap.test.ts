@@ -34,8 +34,9 @@ vi.mock('./config.js', async () => {
 const { initTestDb, closeDb } = await import('./db/connection.js');
 const { runMigrations } = await import('./db/index.js');
 const { createAgentGroup } = await import('./db/agent-groups.js');
-const { ensureContainerConfig, getContainerConfig, updateContainerConfigScalars } =
-  await import('./db/container-configs.js');
+const { ensureContainerConfig, getContainerConfig, updateContainerConfigScalars } = await import(
+  './db/container-configs.js'
+);
 const { materializeContainerJson } = await import('./container-config.js');
 
 async function makeGroup(id: string, folder: string) {

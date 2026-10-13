@@ -783,8 +783,9 @@ describe('router — channel instances', () => {
 
   it('routes by receiving instance: named instance lands in its own mg/agent, default in the default', async () => {
     const { routeInbound } = await import('./router.js');
-    const { registerChannelAdapter, initChannelAdapters, teardownChannelAdapters } =
-      await import('./channels/channel-registry.js');
+    const { registerChannelAdapter, initChannelAdapters, teardownChannelAdapters } = await import(
+      './channels/channel-registry.js'
+    );
     const { getSessionsByAgentGroup } = await import('./db/sessions.js');
 
     // Default 'slack' adapter is THREADED; the named instance is NOT.
@@ -955,8 +956,9 @@ describe('router — per-wiring thread policy', () => {
   });
 
   async function withThreadedAdapter(fn: () => Promise<void>): Promise<void> {
-    const { registerChannelAdapter, initChannelAdapters, teardownChannelAdapters } =
-      await import('./channels/channel-registry.js');
+    const { registerChannelAdapter, initChannelAdapters, teardownChannelAdapters } = await import(
+      './channels/channel-registry.js'
+    );
     registerChannelAdapter('tp-slack', { factory: makeThreadedAdapter });
     await initChannelAdapters(() => ({
       onInbound: () => {},

@@ -19,8 +19,9 @@ vi.mock('./log.js', () => ({
   log: { info: vi.fn(), warn: vi.fn(), error: vi.fn(), debug: vi.fn() },
 }));
 
-const { parseAllowlistFlag, parseStoredAllowlist, resolveMcpAllowlist, UNRESTRICTED } =
-  await import('./mcp-allowlist.js');
+const { parseAllowlistFlag, parseStoredAllowlist, resolveMcpAllowlist, UNRESTRICTED } = await import(
+  './mcp-allowlist.js'
+);
 
 type Group = Parameters<typeof resolveMcpAllowlist>[0];
 

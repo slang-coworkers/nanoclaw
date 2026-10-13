@@ -84,8 +84,9 @@ describe('channel registry', () => {
   });
 
   it('should register and retrieve channel adapters', async () => {
-    const { registerChannelAdapter, getRegisteredChannelNames, getChannelContainerConfig } =
-      await import('./channel-registry.js');
+    const { registerChannelAdapter, getRegisteredChannelNames, getChannelContainerConfig } = await import(
+      './channel-registry.js'
+    );
 
     registerChannelAdapter('test-channel', {
       factory: () => createMockAdapter('test'),

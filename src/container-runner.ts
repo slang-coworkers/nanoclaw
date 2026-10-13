@@ -2148,6 +2148,10 @@ export function upsertGuardHook(entries: HookEntry[], matcher: string, marker: s
 
 export const PR_DESCRIPTION_GATE_CMD = 'bash /app/hooks/gate-pr-description.sh';
 export const STE_WRITING_GATE_CMD = 'bash /app/hooks/gate-ste-writing.sh';
+export const STE_WRITING_GATE_MCP_MATCHERS = [
+  'mcp__slang-mcp__(discord_send_message|slack_post_message|slack_reply_to_thread)',
+  'mcp__github__.*',
+];
 
 /**
  * Register gate-pr-description.sh as a PreToolUse Bash hook in a group's
@@ -2172,10 +2176,12 @@ export function ensurePrDescriptionGate(settingsFile: string): void {
 }
 
 /**
- * Register gate-ste-writing.sh as a PreToolUse Bash hook in a group's
- * settings.json, once. The gate checks PR and issue text against the
- * slang-ste-writing skill's checker and is a no-op in groups without that
- * skill, so it is wired for every group like the description gate.
+ * Register gate-ste-writing.sh as a PreToolUse hook in a group's settings.json,
+ * once, for Bash (gh PR, issue, comment and review text), the GitHub MCP write
+ * tools, and the Discord and Slack send tools. The gate checks text against the
+ * slang-ste-writing skill's checker and refuses a numbered part of a split chat
+ * post; without the skill only that refusal applies, so it is wired for every
+ * group like the description gate.
  */
 export function ensureSteWritingGate(settingsFile: string): void {
   if (!fs.existsSync(path.join(process.cwd(), 'container', 'hooks', 'gate-ste-writing.sh'))) return;
@@ -2189,6 +2195,16 @@ export function ensureSteWritingGate(settingsFile: string): void {
     'gate-ste-writing.sh',
     STE_WRITING_GATE_CMD,
   );
+  // Chat posts and GitHub MCP writes go through the same gate (the matcher is a
+  // regex over tool names, as Claude Code hooks define it).
+  for (const matcher of STE_WRITING_GATE_MCP_MATCHERS) {
+    settings.hooks.PreToolUse = upsertGuardHook(
+      settings.hooks.PreToolUse,
+      matcher,
+      'gate-ste-writing.sh',
+      STE_WRITING_GATE_CMD,
+    );
+  }
   if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
   }
