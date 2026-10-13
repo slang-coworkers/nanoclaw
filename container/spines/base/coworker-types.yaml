@@ -1,8 +1,15 @@
 # Base coworker types: the universal spine every typed coworker extends,
 # plus the two top-level types — `main` (flat admin orchestrator) and
 # `default` (untyped fallback when no coworker_type is set).
+#
+# `abstract: true` marks a type that is only ever extended, never spawned as a
+# coworker. `scripts/validate-templates.ts` composes every type WITHOUT the
+# flag, so a type that is both a parent and a leaf (prod spawns `slang-reader`
+# directly as well as extending it) is validated rather than skipped. Being
+# named in an `extends:` is not what makes a type abstract; this flag is.
 
 base-common:
+  abstract: true
   description: "Universal coworker spine — invariants, workspace conventions. Every project type extends this."
   invariants:
     # Each invariant is in its own file so the file path documents the topic.
@@ -31,10 +38,20 @@ base-common:
     - container/spines/base/tool-instructions/ncl-group.md
     - container/spines/base/tool-instructions/ncl-global.md
     - container/spines/base/context/chain-reporting.md
+  # `buddy` is not listed here: it runs through the hook chain and is only
+  # active when the `buddy-monitor` overlay is applied, which declares it via
+  # `uses.skills`. Listing it on every coworker advertised a skill the agent
+  # cannot invoke and that no group had enabled.
+  # Decision rules, rendered as `## Rules` right after Identity (ahead of the
+  # invariants and context): the situation → action table and the exact field
+  # lists of every message and artifact. One statement each; workflows reference
+  # them by name instead of restating field lists.
+  rules:
+    - container/spines/base/context/decision-table.md
+    - container/spines/base/context/report-formats.md
   skills:
     - base-nanoclaw
     - codex-critique
-    - buddy
     # Every PR a coworker opens gets a self-contained HTML explanation
     # (background → intuition → code walkthrough → quiz). The PR-created
     # PostToolUse hook (container/hooks/pr-auto-map.sh) asks for it right
