@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-540 learnings. [Catalog](../index.md)
+543 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -246,6 +246,7 @@ type: topic
 - [CORRECTION to "grep which emitter consumes it" — locating the consumer is NOT enough; enumerate its arms against your specific input](../learnings/1786007575112-correction-to-grep-which-emitter-consumes-it-locat.md)
 - [CORRECTION to my normalizer recipe - do NOT strip underscore, it silently mangles wikilinks and slugs](../learnings/1785962321997-correction-to-my-normalizer-recipe-do-not-strip-un.md)
 - [CORRECTION to the prepublish-check learning: specificity is per-corpus and does not transfer — RATIO went 0 FP on one store, 183 on another](../learnings/1785929481448-correction-to-the-prepublish-check-learning-specif.md)
+- [Correction: a PR whose check-ci disappears with no push is "ci-vanished", not a missed classification](../learnings/1791807339120-correction-a-pr-whose-check-ci-disappears-with-no-.md)
 - [CORRECTION: CMAKE_&lt;LANG&gt;_FLAGS_&lt;CONFIG&gt;_INIT seeding does NOT let env CXXFLAGS override an -O default](../learnings/1785768108214-correction-cmake-lt-lang-gt-flags-lt-config-gt-ini.md)
 - [Correction: gh CLI App-installation token is fine for actions/PR endpoints — don't over-generalize from auth-status/rate_limit failures](../learnings/1788205146208-correction-gh-cli-app-installation-token-is-fine-f.md)
 - [Correction: ps process COUNTS are unstable — cite the zero, not the number](../learnings/1785842778615-correction-ps-process-counts-are-unstable-cite-the.md)
@@ -371,6 +372,7 @@ type: topic
 - [Measure a Slang perf regression with official release binaries, not a local build — plus the three-platform trap](../learnings/1785930383942-measure-a-slang-perf-regression-with-official-rele.md)
 - [Measure CI freshness by failing-check started_at, not just head commit date](../learnings/1785809336773-measure-ci-freshness-by-failing-check-started-at-n.md)
 - [Merge-group build break with green head = merge-time collision, legitimate not flake](../learnings/1782533107353-merge-group-build-break-with-green-head-merge-time.md)
+- [Merge-queue checks_timed_out can be a self-hosted sm80 runner queue wait, not a code/LLVM issue](../learnings/1791873086822-merge-queue-checks-timed-out-can-be-a-self-hosted-.md)
 - [Merge-queue failure:1 can be a same-run GPU-flake auto-retry, not a stall](../learnings/1787581056199-merge-queue-failure-1-can-be-a-same-run-gpu-flake-.md)
 - [METHOD: verifying a negative — reproducible recipes for sweeps, GitHub reads, rewritten history, and "is my green real?"](../learnings/1785936194762-method-verifying-a-negative-reproducible-recipes-f.md)
 - [MSVC /WX C4456 shadow: Linux Debug build can't catch it](../learnings/1789493968162-msvc-wx-c4456-shadow-linux-debug-build-can-t-catch.md)
@@ -481,6 +483,7 @@ type: topic
 - [Slang CI: windows-11-vs2026-arm64 runner image not yet in docs/building.md compiler-version allowlist](../learnings/1788242807926-slang-ci-windows-11-vs2026-arm64-runner-image-not-.md)
 - [Slang CMake: SLANG_BUILD_MIMALLOC is unreachable at top-level scope (PARENT_SCOPE trap)](../learnings/1789247912043-slang-cmake-slang-build-mimalloc-is-unreachable-at.md)
 - [Slang DISABLE CI jobs are build-only — no slang-test run step](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
+- [Slang LLVM prebuilt GCS key moves with ANY edit to external/build-llvm.sh, even a comment](../learnings/1791792494149-slang-llvm-prebuilt-gcs-key-moves-with-any-edit-to.md)
 - [Slang local checkout can be days-stale on actively-developed CMake files; verify against master + options-matrix CI gate](../learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md)
 - [slang repo gates ALL build/test CI behind non-draft (opposite of slang-rhi)](../learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md)
 - [Slang tools PCH hides missing includes in new unit tests — CI builds without it](../learnings/1791403291004-slang-tools-pch-hides-missing-includes-in-new-unit.md)

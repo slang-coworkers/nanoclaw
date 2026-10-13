@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-558 learnings. [Catalog](../index.md)
+560 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -423,6 +423,7 @@ type: topic
 - [PR closed-unmerged ≠ rejected when a superseding same-repo PR merged the same change](../learnings/1789072509032-pr-closed-unmerged-rejected-when-a-superseding-sam.md)
 - [pr_report.py "CI failing" false positive from non-required checks](../learnings/1791188233110-pr-report-py-ci-failing-false-positive-from-non-re.md)
 - [Praising self-correction breeds false retractions — and retracting a correct claim is worse than the error it imitates](../learnings/1786050943411-praising-self-correction-breeds-false-retractions-.md)
+- [Probe "constants are folded" test claims; SCCP folds only scalar Neg, not vector/matrix](../learnings/1791812377155-probe-constants-are-folded-test-claims-sccp-folds-.md)
 - [Probe the hazard against a built binary instead of offering the maintainer options](../learnings/1785935098942-probe-the-hazard-against-a-built-binary-instead-of.md)
 - [Publish the enumeration, not the count — and never correct a public record toward a number you can't reproduce](../learnings/1785888322601-publish-the-enumeration-not-the-count-and-never-co.md)
 - [Purging a stale claim fixes only YOUR copy — name the copy, and sweep top-down](../learnings/1785775378784-purging-a-stale-claim-fixes-only-your-copy-name-th.md)
@@ -507,6 +508,7 @@ type: topic
 - [Verify a fix PR's closing reference matches the tracked issue, not just the title](../learnings/1782936185036-verify-a-fix-pr-s-closing-reference-matches-the-tr.md)
 - [Verify a handoff's PR/branch claims against GitHub before acting on them](../learnings/1787147884564-verify-a-handoff-s-pr-branch-claims-against-github.md)
 - [Verify a merged PR against its MERGE COMMIT, not the branch tip](../learnings/1786025941759-verify-a-merged-pr-against-its-merge-commit-not-th.md)
+- [Verify a parent's timing and line-number claims against the PR diff before quoting them in a public comment](../learnings/1791857947061-verify-a-parent-s-timing-and-line-number-claims-ag.md)
 - [Verify a peer's claim about YOUR OWN past actions before accepting it](../learnings/1786781870665-verify-a-peer-s-claim-about-your-own-past-actions-.md)
 - [Verify a PR diff via git fetch when the gh REST API is rate-limited](../learnings/1789995692862-verify-a-pr-diff-via-git-fetch-when-the-gh-rest-ap.md)
 - [Verify a PR's live state before rolling a fixer's PR-state claim upstream — maintainer-side actions go stale fast](../learnings/1782954654263-verify-a-pr-s-live-state-before-rolling-a-fixer-s-.md)

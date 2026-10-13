@@ -3,6 +3,7 @@ title: "gh pr view --json mergeQueueEntry is unsupported in the babysitter conta
 type: learning
 topic: agent-ops
 source: learnings/1791712961775-gh-pr-view-json-mergequeueentry-is-unsupported-in-.md
+superseded_by: 1791705782341-gh-2-101-0-gh-pr-view-json-mergequeueentry-is-an-i
 ---
 
 # gh pr view --json mergeQueueEntry is unsupported in the babysitter container

@@ -3,7 +3,7 @@ title: "Slang WGSL emit: matrix-operator validity, template-list ambiguity, and 
 type: concept
 group: slang-backends
 tags: [wgsl, naga, naga-wasm, validation, matrix, negation, int64, legalizeMatrixTypes, template-list, emit, slang]
-source_count: 4
+source_count: 5
 ---
 
 # Slang WGSL emit: matrix-operator validity, template-list ambiguity, and GPU-free naga validation
@@ -19,6 +19,7 @@ Slang's WGSL emitter (`slang-emit-wgsl.cpp`) can produce text that compiles with
 - **WGSL has no unary `-` on matrices and no single-scalar matrix constructor.** `matCxR<T>(0) - m` is invalid (`vecN<T>(0)` is a valid splat). Emit `T(-1) * m` (keeps IEEE -0) or `matCxR<T>() - m`. Scalar `uint` `- x` is also naga-rejected (#13571).
 - **int64/uint64 matrices survive `legalizeMatrixTypes` on WGSL** (only 32-bit `IRIntType`/`IRUIntType`/`IRBoolType` are lowered) and emit `mat2x2<i64>`, which naga rejects. A WGSL emitter `SLANG_ASSERT(isFloatingType(matrixElt))` is reachable from user code, and in Release it is `[[assume]]` UB.
 - **Probe more than one source spelling before calling a shape unreachable** — `int64_t2x2(...)` gave E38203 where `matrix<int64_t,2,2>(...)` compiled.
+- **The #13572 fix lowers every non-float matrix on WGPU** (`return !isFloatingType(elementType)`), and the existing 32-bit vector-width validation then reports E38203. A regression test built from int64 *scalars* is vacuous, because AST lowering already makes an int64 vector and E38203 fires on the old build too. Build the matrix from a float-matrix cast, and write location-less annotations (the lowered vector has no source location).
 
 ## GPU-free WGSL validation with naga-wasm
 
@@ -49,10 +50,13 @@ Int, uint and bool matrices are unaffected, because `legalizeMatrixTypes` turns 
 
 For review this means any WGSL emitter code that does `SLANG_ASSERT(isFloatingType(matrixElt))` on the grounds that integer matrices are lowered is reachable from user code, and in Release `SLANG_ASSERT` is `SLANG_ASSUME` (`[[assume]]`), so the violation is UB rather than a clean failure (found on #13572). When probing such a claim, try more than one source spelling: `int64_t2x2(buf[0],...)` with a `RWStructuredBuffer<int64_t>` gave E38203 in one probe, while `matrix<int64_t,2,2>(b[0],b[1],b[2],b[3])` with an `o[0] = float2x2(-m)[0][0]` consumer compiled cleanly [int64/uint64 matrices survive legalizeMatrixTypes on WGSL](../learnings/1791763584478-wgsl-int64-uint64-matrices-survive-legalizematrixt.md).
 
-**Source learnings (4):**
+**The fix and its test (#13572).** On WGPU targets `shouldLowerMatrixType` now lowers every non-float matrix (`return !isFloatingType(elementType)`), so the WGPU vector-width validation in `slang-ir-validate.cpp` (allowedWidths = 32) reports E38203 instead of the emitter ICEing on `-m` or printing `mat3x3<i64>`. The first regression test built the matrix from int64 scalars, `matrix<int64_t,2,2>(b[0],b[1],b[2],b[3])`; AST lowering already creates an int64 *vector* there, so E38203 fired on the unfixed build too and the test proved nothing. Converting a float matrix (`matrix<int64_t,2,2>(floatMat)`) means no 64-bit vector exists until matrix lowering, and the old build fails the row. The diagnostic then has no source location, so the DIAGNOSTIC_TEST annotations must be location-less, without carets. This is the same spelling sensitivity as the probe above, and the general rule is to run every new diagnostic or negative row against the unfixed build before trusting it [a diagnostic test for WGSL matrix lowering can be vacuous](../learnings/1791809366702-slang-wgsl-a-diagnostic-test-for-matrix-lowering-c.md).
+
+**Source learnings (5):**
 - [GPU-free WGSL parse/validate check: naga-wasm via npm (node)](../learnings/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md) — `validate(parseWgsl(src))`; caught the §3.9 template-list mis-parse of `vec2<bool>(a < b, a > b)` (#13566)
 - [Slang `{a, b}` initializer list on WGSL lowers to a synthesized ctor call, not kIROp_MakeStruct](../learnings/1791675327416-slang-a-b-initializer-list-on-wgsl-lowers-to-a-syn.md) — use vector `&&`/`||` to reach `select(...)` lists; wrap `defaultEmitInstExpr` in parens rather than copying it
 - [WGSL emitter: matrix negation `T(0) - m` is invalid; use `T(-1) * m`](../learnings/1791749878369-wgsl-emitter-matrix-negation-t-0-m-is-invalid-use-.md) — no matrix unary minus or scalar matrix ctor in WGSL; never valid, not a regression (#13571)
 - [WGSL: int64/uint64 matrices survive legalizeMatrixTypes and reach the emitter as IRMatrixType](../learnings/1791763584478-wgsl-int64-uint64-matrices-survive-legalizematrixt.md) — `mat2x2<i64>` emitted with rc 0; float-only emitter asserts are reachable (Release UB) (#13572)
+- [Slang WGSL: a diagnostic test for matrix lowering can be vacuous — build the int64 matrix from a float-matrix cast](../learnings/1791809366702-slang-wgsl-a-diagnostic-test-for-matrix-lowering-c.md) — #13572 lowers all non-float matrices on WGPU → E38203; scalar-built test fires on the old build; location-less annotations
 
 _Catalog: [[wiki/index.md]]_

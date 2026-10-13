@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1382 learnings. [Catalog](../index.md)
+1388 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -620,6 +620,7 @@ type: topic
 - [Diagnostic no-loc on ConstantBuffer descriptor-handle: loc dropped by std140 re-synthesis, not frontend](../learnings/1784762842417-diagnostic-no-loc-on-constantbuffer-descriptor-han.md)
 - [DIAGNOSTIC_TEST caret columns: use /*CHECK: blocks for indented code; output-using-type header matches bare CHECK digits](../learnings/1791411328355-diagnostic-test-caret-columns-use-check-blocks-for.md)
 - [DIAGNOSTIC_TEST carets align to the immediately-preceding non-annotation line — never insert a comment between source and its CHECK carets](../learnings/1786606749394-diagnostic-test-carets-align-to-the-immediately-pr.md)
+- [DIAGNOSTIC_TEST has no -NOT directive: `//PREFIX-NOT:` lines are silently inert](../learnings/1791842377952-diagnostic-test-has-no-not-directive-prefix-not-li.md)
 - [DIAGNOSTIC_TEST SIMPLE diag=CHECK: E-code row count = 2× diagnostics (title+span), deduped only if identical](../learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md)
 - [Diff size: state the question and the notation — two-dot against a moved base folds upstream drift into your number](../learnings/1785969302800-diff-size-state-the-question-and-the-notation-two-.md)
 - [Differentiable property accessor segfaults getFuncType — PropertyDecl is not a CallableDecl](../learnings/1784883686572-differentiable-property-accessor-segfaults-getfunc.md)
@@ -897,6 +898,7 @@ type: topic
 - [Human-cred PR merge during actions:write outage ≠ bot write recovery](../learnings/1784736496164-human-cred-pr-merge-during-actions-write-outage-bo.md)
 - [I endorsed as proof-of-X the exact signature my own published comment characterised as proof-of-NOT-X — a direction test read in the direction expected](../learnings/1785992935123-i-endorsed-as-proof-of-x-the-exact-signature-my-ow.md)
 - [ICE on unsupported-but-formable type construct → recommend a front-end diagnostic, not "make lookup succeed"](../learnings/1788316685226-ice-on-unsupported-but-formable-type-construct-rec.md)
+- [Identity-guard hook: fail closed when git var can't resolve the ident](../learnings/1791865446442-identity-guard-hook-fail-closed-when-git-var-can-t.md)
 - [if constexpr does NOT discard branches in a non-template function (dead-code-to-type-checked conversions)](../learnings/1783059299573-if-constexpr-does-not-discard-branches-in-a-non-te.md)
 - [Image-subscript RMW shortcut: compare a swizzle against the image op's texel width, not the element type](../learnings/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md)
 - [Implementation gap in WIP draft-PR code is not a Bug — don't set Issue Type=Bug on dev tracking issues](../learnings/1788367478397-implementation-gap-in-wip-draft-pr-code-is-not-a-b.md)
@@ -947,6 +949,7 @@ type: topic
 - [macOS: hidden visibility breaks cross-dylib typed catch of C++ exceptions (libc++abi RTTI-identity)](../learnings/1783011716114-macos-hidden-visibility-breaks-cross-dylib-typed-c.md)
 - [Maintainer "strictly additive" means byte-identical existing branches, not behavior-equivalent](../learnings/1787024450636-maintainer-strictly-additive-means-byte-identical-.md)
 - [Maintainer feedback: our GitHub comments are too verbose — length is a cost we impose, not thoroughness we display](../learnings/1786460449898-maintainer-feedback-our-github-comments-are-too-ve.md)
+- [Maintainer reassign after a bot PR exists: freeze, don't stand down](../learnings/1791822138397-maintainer-reassign-after-a-bot-pr-exists-freeze-d.md)
 - [Maintainer report: nightly failure list and assigner provenance via REST](../learnings/1791188469337-maintainer-report-nightly-failure-list-and-assigne.md)
 - [Map each failing run to its HEAD BRANCH before naming a cause — a shared test name is not a shared cause](../learnings/1786367635970-map-each-failing-run-to-its-head-branch-before-nam.md)
 - [Marked-block sha256 pattern for cross-file drift detection](../learnings/1779985772055-marked-block-sha256-pattern-for-cross-file-drift-d.md)
@@ -955,6 +958,7 @@ type: topic
 - [MEMORY.md is concurrently written by the fleet — measure before/after every compaction edit](../learnings/1785829144701-memory-md-is-concurrently-written-by-the-fleet-mea.md)
 - [Merge hazard: two branches bumping a shared version counter collapse to one value (git can't see it)](../learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md)
 - [Merge-queue "auto-recovery window" is only valid while auto-merge survives the eviction](../learnings/1786004759300-merge-queue-auto-recovery-window-is-only-valid-whi.md)
+- [Merge-queue "evicted" lists can be one poisoned head plus collateral; check RemovedFromMergeQueueEvent](../learnings/1791836334459-merge-queue-evicted-lists-can-be-one-poisoned-head.md)
 - [merge-queue branch name is pr-N-BASEsha, not the PR's own sha — and the batch tip becoming the next batch's base proves the queue ADVANCED](../learnings/1786105103694-merge-queue-branch-name-is-pr-n-basesha-not-the-pr.md)
 - [Merge-queue checks_timed_out: an outage evicts PRs with zero failing checks](../learnings/1786054584563-merge-queue-checks-timed-out-an-outage-evicts-prs-.md)
 - [Merge-queue duplicate-case enum collision: two concurrent PRs appending to the same public enum](../learnings/1782535032557-merge-queue-duplicate-case-enum-collision-two-conc.md)
@@ -1216,9 +1220,11 @@ type: topic
 - [Singleton-designed class with no-op refcount LEAKS if heap-allocated (NULLFileSystem #12865)](../learnings/1788257348928-singleton-designed-class-with-no-op-refcount-leaks.md)
 - [Six instruments, one shape: a correct answer to a narrower question than you asked](../learnings/1785891882057-six-instruments-one-shape-a-correct-answer-to-a-na.md)
 - [Six ways a grep/count returns a false zero — and the four-leg test that makes a zero mean something](../learnings/1785889928610-six-ways-a-grep-count-returns-a-false-zero-and-the.md)
+- [Skip-now-catch-later guard branches must survive what runs between checks](../learnings/1791855993192-skip-now-catch-later-guard-branches-must-survive-w.md)
 - [SKIP_PRECOMPILE_HEADERS is per-TU, not "exclude a header from the PCH"](../learnings/1785019137366-skip-precompile-headers-is-per-tu-not-exclude-a-he.md)
 - [small exceptional set: switch from cluster-property to per-file predicate, then check the predicate measures the mechanism](../learnings/1785873466872-small-exceptional-set-switch-from-cluster-property.md)
 - [Source-field Internal/Community derivation lives in pr-board-sync.yml (two sites)](../learnings/1785290345255-source-field-internal-community-derivation-lives-i.md)
+- [Splitting byte-address vectors into sub-vectors: never group bool](../learnings/1791869567632-splitting-byte-address-vectors-into-sub-vectors-ne.md)
 - [SPV_EXT_descriptor_heap: OpTypeBufferEXT and OpBufferPointerEXT storage classes are INDEPENDENT (no matching rule); DeepWiki wrong](../learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbuff.md)
 - [SPV_KHR_abort transitively requires SPV_KHR_constant_data; message is OpConstantDataKHR not a runtime composite](../learnings/1782248897717-spv-khr-abort-transitively-requires-spv-khr-consta.md)
 - [spvdb unique_id_ assertion on macos-debug-aarch64 — real bug, flaky trigger, already tracked as #13024](../learnings/1789179963682-spvdb-unique-id-assertion-on-macos-debug-aarch64-r.md)

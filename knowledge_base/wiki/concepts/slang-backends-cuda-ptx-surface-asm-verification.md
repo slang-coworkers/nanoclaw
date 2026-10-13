@@ -3,7 +3,7 @@ title: "Slang CUDA/PTX: verifying inline-asm surface preludes with ptxas (sust.p
 type: concept
 group: slang-backends
 tags: [cuda, ptx, ptxas, nvcc, nvrtc, inline-asm, prelude, surface, sust, layered, review-method, revert-drill]
-source_count: 1
+source_count: 2
 ---
 
 # Slang CUDA/PTX: verifying inline-asm surface preludes with ptxas
@@ -16,6 +16,7 @@ Slang's CUDA prelude implements some surface operations as inline PTX asm, so a 
 - **nvcc fills the ignored 4th coordinate of a layered 2D store with y, not 0**: `surf2DLayeredwrite(v, s, x, y, l)` emits `sust.b.a2d ... [s, {l, x, y, y}]`.
 - **Review inline-asm prelude PRs by assembling the slangc PTX with `ptxas -arch=sm_XX`**, then map each data and coordinate register back to its `mov` immediate. That checks operand order for every specialization without a GPU.
 - **Revert-drill trap:** a `-target cuda` FileCheck on a prelude-only fix passes on master too, because the call text is unchanged. Only the PTX lane discriminates.
+- **`slangc -target cuda` exits 0 while emitting calls the prelude never defines.** Use `-target ptx` (local NVRTC) to see the failure. As of b00d9e482 `surf{1,2,3}Dwrite_convert` is specialized only for float/uint/int and their 2/4-vectors, and converting reads exist only for half formats under `SLANG_CUDA_ENABLE_HALF` (#13581 writes, #11088 reads).
 
 ## `sust.p` array geometry and layered coordinate order
 
@@ -29,7 +30,12 @@ For coordinate order, nvcc is the reference. `nvcc -arch=sm_86` on `surf2DLayere
 
 When doing the revert drill for such a fix, pick the lane carefully. A `-target cuda` FileCheck on a prelude-only change passes on master as well, because the generated call text (`surf2DLayeredwrite(...)` or the prelude helper name) is unchanged; only the prelude body differs. The PTX lane, assembled or register-traced as above, is the one that tells the fixed build from master [same](../learnings/1791613023335-ptxas-gates-sust-p-array-geometry-on-ptx-isa-4-1-n.md).
 
-**Source learnings (1):**
+## `-target cuda` exit 0 is not a compile check; `-target ptx` is
+
+`slangc -target cuda` only emits CUDA source, so it exits 0 even when the emitted call has no prelude specialization, for example `surf2Dwrite_convert<ulonglong>` for an `RWTexture` of a 64-bit format. `-target ptx` runs the local NVRTC (12.6 here) and shows the real failure: "extern inline function … was referenced but not defined" for writes, and `identifier "surf2Dread_convert" is undefined` for reads. On master b00d9e482 the CUDA prelude specializes `surf{1,2,3}Dwrite_convert` only for float/uint/int and their 2- and 4-vectors, and the converting reads exist only for half formats under `SLANG_CUDA_ENABLE_HALF` (tracked as #13581 for writes and #11088 for reads). Separately, `[format]` recovery on CUDA misses array elements even with direct access, because `_findImageFormatDecoration` only handles `load(field_addr)` (#13580) [slangc -target cuda exit 0 hides NVRTC failures](../learnings/1791840267130-cuda-rwtexture-slangc-target-cuda-exit-0-hides-nvr.md). NVRTC still does not assemble inline asm, so for asm preludes the `ptxas` method above remains the check.
+
+**Source learnings (2):**
 - [ptxas gates sust.p array geometry on PTX ISA 4.1; nvcc repeats y in the a2d slot](../learnings/1791613023335-ptxas-gates-sust-p-array-geometry-on-ptx-isa-4-1-n.md) — `sust.p.a1d/.a2d` supported from PTX 4.1 (sm_50–90 on ptxas 12.6); review asm preludes by `ptxas` + register-to-`mov` tracing; `-target cuda` FileCheck can't discriminate a prelude-only fix (PR #13563)
+- [CUDA RWTexture: slangc -target cuda exit 0 hides NVRTC failures; check with -target ptx](../learnings/1791840267130-cuda-rwtexture-slangc-target-cuda-exit-0-hides-nvr.md) — missing `surf*Dwrite_convert`/`surf*Dread_convert` specializations (#13581, #11088); `[format]` misses array elements (#13580)
 
 _Catalog: [[wiki/index.md]]_

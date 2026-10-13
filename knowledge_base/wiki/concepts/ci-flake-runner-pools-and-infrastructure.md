@@ -3,7 +3,7 @@ title: "CI Flake Triage — Runner Pools and Infrastructure"
 type: concept
 group: ci-tooling
 tags: [ci, flakes, runners, runner-pools, self-hosted, gpu, disk-space, queue-timeout, pool-lottery, slang]
-source_count: 11
+source_count: 12
 ---
 
 # CI Flake Triage — Runner Pools and Infrastructure
@@ -23,6 +23,7 @@ The self-hosted GPU/perf fleet that shader-slang/slang CI actually runs on, how 
   - **The defect can be one mechanism on an otherwise-healthy box** — check for a within-window, same-box success on a *sibling* job before asking to recycle the runner, or the escalation is rejected as unfounded.
   - **Prove attribution with a differential over `runner_name`, not over time** — tabulate every instance of the failing job repo-wide in the window by runner; a clean split (one box N/N failing, siblings M/M green on the identical job) is far stronger than "it failed twice in a row."
 - **`test-falcor` routes through a self-hosted `falcor-bridge` runner for EVERY PR now** (PR #11915, merged 2026-08-07) — so its opaque ~2–4 KB / 3-step GH Actions log is universal, not branch-specific; the real result lives in an unreachable NVIDIA-internal GitLab pipeline. Before encoding a standing "defer this opaque class" rule, pull a second example's `runner_name` + `steps` count to confirm the signature is universal (this exact signature had a prior *retracted* over-generalization), and still verify per-occurrence in case a rare real ~309 KB / 10-step log resurfaces.
+- **A merge-queue `checks_timed_out` removal can be a self-hosted SM80Plus queue wait**, not a code or LLVM failure: measure `created_at` vs `started_at` per job from `actions/runs/<id>/jobs`. The bot cannot requeue (`gh pr merge` and GraphQL `enqueuePullRequest` both refuse), so a maintainer must.
 
 ## Runner Pools and Infrastructure
 
@@ -46,7 +47,9 @@ When a job shows `runner_name == ""` and `steps == []` with elapsed time exactly
 
 **GitHub-hosted `ubuntu-22.04` is deprecated (labels removed 2027-04-17), and slang's Linux release binaries build natively on it.** Per actions/runner-images (checked 2026-09-28, issue #14254), `ubuntu-22.04` and `22.04-arm` have been deprecated since 2026-09-17, with brownouts in March–April 2027; `ubuntu-latest` moves 24.04→26.04 between 2026-10-19 and 11-19. In shader-slang/slang, `release.yml:24/30/36` builds the x86_64/aarch64/wasm release packages directly on `ubuntu-22.04` with no container, so the host glibc (2.35) is the floor for shipped binaries, and moving the host to 24.04 raises it to 2.39. That is a user-facing decision; a manylinux container, as in `release-linux-glibc-2-28.yml`, avoids it. In `ci.yml`, `ubuntu-22.04` appears only as the `LINUX_BUILD_RUNS_ON` fallback while live jobs run on the self-hosted GCP pool, so read a recent run's job labels rather than trusting the YAML default (DeepWiki was stale on this). The formatting check pins clang-format via slang-binaries, so image clang-format changes don't matter, but it pip-installs gersemi into the image's system Python (3.12→3.14 on 26.04) ([ubuntu-22.04 is deprecated; Linux release binaries build natively on it](../learnings/1790611288369-shader-slang-ci-ubuntu-22-04-is-deprecated-removed.md)).
 
-**Source learnings (11):**
+**`checks_timed_out` from a runner-pool queue wait (2026-10-12).** `test-linux-release-gcc-x86_64-sm80 / test-slang` runs on the self-hosted SM80Plus pool and normally waits 0–14 minutes. #13371's merge-group run had that job QUEUED for 143 minutes (22:26Z → 00:49Z); the PR was removed from the queue as `checks_timed_out` at 00:18Z, and the group run later finished SUCCESS. Measure the wait from `actions/runs/<id>/jobs` (`created_at` vs `started_at` for jobs named like sm80) before blaming code or LLVM. The wake payload's `evicted` list missed this removal, so re-derive evictions from `RemovedFromMergeQueueEvent`. The bot still cannot requeue: `gh pr merge <n>` and GraphQL `enqueuePullRequest` were both refused, and `gh pr merge` has no `--merge-queue` flag, so a maintainer must requeue [merge-queue checks_timed_out can be a self-hosted sm80 runner queue wait](../learnings/1791873086822-merge-queue-checks-timed-out-can-be-a-self-hosted-.md).
+
+**Source learnings (12):**
 - [Runner-scoped CI defect: a rerun is a POOL LOTTERY, not a futile reland — the defect can be job-scoped; prove attribution by a differential over runner_name](../learnings/1785838439742-runner-scoped-ci-defect-a-rerun-is-a-pool-lottery-.md)
 - [Windows disk-space cluster flake](../learnings/1780200309948-slang-ci-windows-disk-space-cluster-flake.md)
 - [Two distinct self-hosted runner pools (perf vs benchmark)](../learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md)
@@ -58,5 +61,6 @@ When a job shows `runner_name == ""` and `steps == []` with elapsed time exactly
 - [slang-rhi CI runs CUDA interop tests on self-hosted nvrgfx-kernelvm-bridge GPU runners (auto-CI, draft PRs) — verify by the per-test PASSED line, not the "GitHub-hosted skips" summary](../learnings/1790197692432-slang-rhi-ci-runs-cuda-interop-tests-on-self-hoste.md)
 - [GitHub Actions outage signature: jobs cancelled after exactly 15 min with empty runner_name and zero steps](../learnings/1791238163488-github-actions-outage-signature-jobs-cancelled-aft.md) — hosted `ubuntu-latest` never got a runner; check githubstatus incidents, then `rerun --failed`; differs from timeout-minutes and cancel-in-progress.
 - [GitHub CI run with only 'filter' + failure = Actions outage, not code](../learnings/1791386926978-github-ci-run-with-only-filter-failure-actions-out.md) — cause only on the HTML run page ("Internal server error"); rerun/dispatch 500; wait for githubstatus `operational`, don't push code.
+- [Merge-queue checks_timed_out can be a self-hosted sm80 runner queue wait, not a code/LLVM issue](../learnings/1791873086822-merge-queue-checks-timed-out-can-be-a-self-hosted-.md) — #13371 queued 143 min, removed at 00:18Z, group run later green; bot cannot requeue
 
 _Catalog: [[wiki/index.md]]_

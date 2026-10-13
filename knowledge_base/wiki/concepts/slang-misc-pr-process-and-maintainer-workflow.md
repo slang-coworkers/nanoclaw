@@ -3,7 +3,7 @@ title: "Slang PR Process, Maintainer Workflow, and Issue Lifecycle"
 type: concept
 group: slang-grab-bag
 tags: [maintainer, PR-process, merge-queue, CI, GitHub-Actions, issue-lifecycle, bot-permissions, regression-verification, declined-issues, superseded-PRs]
-source_count: 42
+source_count: 43
 ---
 
 # Slang PR Process, Maintainer Workflow, and Issue Lifecycle
@@ -26,6 +26,7 @@ source_count: 42
 - **A clean textual merge proves nothing about semantics.** "The conflict with sibling PR #N is textual only" is verified by merging #N in a scratch worktree and running BOTH PRs' new tests (exhaustive `DIAGNOSTIC_TEST`s pin the ABSENCE of diagnostics the sibling adds). Merging master into a long-lived API-changing PR: master's newly ADDED code and tests that use the removed API merge cleanly and then fail — grep master's added files for the old forms, run the full suite, and prove causation against a master control at the merge SHA.
 
 Companion: [[wiki/concepts/slang-pr-maintainer-scope-and-evidence.md]] (draft-PR footprint, maintainer-decision reversals).
+- **Reassignment to a human after the bot's draft PR exists → freeze, don't stand down** (#13463/#13475): keep the draft, stop proactive bot work, relay human comments verbatim, and later act only on an explicit ask, fetching before any push.
 
 ## Maintainer Identity and Rotation
 
@@ -99,6 +100,8 @@ The same PR settled the doc-comment shape. Any comment directly on a function, `
 
 A rename/branding request has no engineering surface: classify as feature request and park at triage, with no fixer and no self-close; it is a governance call ([rename is governance](../learnings/1783935538903-triage-of-rename-branding-requests-governance-not-.md)). Docs for a compiler-limitation bug belong in the compiler repo: the maintainer closed SlangPy docs PR #1060, redirecting it to the Slang docs ([docs go in the compiler repo](../learnings/1783943839130-docs-for-a-compiler-limitation-bug-belong-in-the-c.md)). On slang#12058 the maintainer landed the ASan fix in their own PR while our fixer was auth-down, validating the triage; a stalled fixer's late draft gets reaped ([#12058 validated by maintainer fix](../learnings/1783977766628-triage-validated-by-maintainer-s-own-merged-fix-a-.md)). A park is not a dead end: slang#12054's self-fix park flipped to a maintainer-authorized bot draft that merged ([#12054 park → bot draft shipped](../learnings/1783981181191-slang-12054-shipped-park-for-self-fix-that-flipped.md)).
 
+**A maintainer reassignment after the bot's draft PR exists is a freeze, not a stand-down.** The stand-down precedent (#13420/#13436) covers reassignment *before* a PR exists. On slang#13463 (PR #13475), jkwak-work reassigned the issue to jkiviluoto-nv 14 hours after the bot draft opened, without declining the PR. The assignee adopted the draft, un-drafted it, merged master, approved it, verified it in real Zed and merged it five days later (fac7213eba); the bot made no pushes after the reassignment. So when the reassigning comment does not decline the PR, keep the draft, freeze proactive bot work (no un-draft, rebase, push, re-run or @-mention), and relay every human comment or review verbatim on the canonical thread. Then relax the freeze to "act only on an explicit human ask to the bot, and fetch before any push", because the assignee may force-push the branch. When a fixer counter-proposes a different approach from the GO, check it against the code before deciding: auditing every setting's null path at the base commit found a third outlier (`clangFormatFallbackStyle` null → "" → clang-format silently falls back to LLVM style) that neither proposal named [maintainer reassign after a bot PR exists: freeze, don't stand down](../learnings/1791822138397-maintainer-reassign-after-a-bot-pr-exists-freeze-d.md).
+
 ## Declined Issues, Reversals, and Superseded PRs
 
 - **#11568 (ResourceDescriptorHeap/SamplerDescriptorHeap)**: initially declined by jkwak-work in favor of `DescriptorHandle<T>`, later reversed: the maintainer team is implementing csyonghe's `UntypedResourceHandle`/`UntypedSamplerHandle` proxy types that implicit-cast to resource types ([#11568 reversed](../learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md)). The unified descriptor-heap stride work (#11718, PR #11723) changes only SPIR-V emit/CLI/diagnostics and does not remove the E39999 front-end blocker ([#11718 is backend-only](../learnings/1782339425194-slang-11568-corollary-11718-unified-descriptor-hea.md)).
@@ -109,7 +112,7 @@ A rename/branding request has no engineering surface: classify as feature reques
 
 `slang-discord-support` writes only to summon threads in #slang-support/#slang-support-bot; source channels like #slang-discussion are read-only, so answers there come from a human or a summon thread ([support bot posts only to summon threads](../learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md)).
 
-**Source learnings (42):**
+**Source learnings (43):**
 - [Slang doc comments: one-sentence 'what it does' brief, blank line, then contract; name params by role](../learnings/1791566071976-slang-doc-comments-one-sentence-what-it-does-brief.md) — #12701: a one-detail comment fails; `funcDeclRefForDefaultArgs`, not `defaultArgsDeclRef`.
 - [verify review state before "idle-mergeable"](../learnings/1790310304171-verify-a-pr-s-actual-review-state-before-framing-i.md) — `mergeable=true` is not APPROVED (#12935).
 - [Closes #N / draft footprint](../learnings/1785751816891-closes-n-does-not-excuse-an-issue-footprint-while-.md) — draft PR still needs an issue footprint; `behind` is no rebase cue.
@@ -152,5 +155,6 @@ A rename/branding request has no engineering surface: classify as feature reques
 - [eviction clears auto-merge](../learnings/1785485875128-merge-queue-failed-checks-eviction-clears-auto-mer.md) — manual requeue.
 - ["conflict with sibling PR is textual only": verify by merging and running the new exhaustive diagnostic tests (#13514/#13503)](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - [merging master into a long-lived API-changing PR: textual conflicts are only half the breakage (#11344)](../learnings/1791498585662-merging-master-into-a-long-lived-api-changing-pr-t.md)
+- [Maintainer reassign after a bot PR exists: freeze, don't stand down](../learnings/1791822138397-maintainer-reassign-after-a-bot-pr-exists-freeze-d.md) — #13475 adopted and merged by the new assignee; stand-down precedent is pre-PR only; audit counter-proposals against the code
 
 _Catalog: [[wiki/index.md]]_

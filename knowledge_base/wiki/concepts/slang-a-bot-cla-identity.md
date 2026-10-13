@@ -3,7 +3,7 @@ title: nv-slang-bot identities and the license/cla gate
 type: concept
 group: slang
 tags: [slang, slang-rhi, slangpy, cla, github-bot, false-zero, gh-api]
-source_count: 6
+source_count: 11
 ---
 
 ## TL;DR
@@ -15,6 +15,8 @@ source_count: 6
 - **`--author nv-slang-bot` returns `[]` for the App** — the login is `app/nv-slang-bot` (rendered `nv-slang-bot[bot]`). A malformed query produced a confident negative that then licensed a policy claim.
 - **Prevent it at commit time:** the bare `nv-slang-bot@users.noreply.github.com` email is the User identity. Every committing session sets `user.email` to `274397474+nv-slang-bot[bot]@users.noreply.github.com` before its first commit; on 2026-10-04 twelve open slang bot PRs carried at least one bare-email commit.
 - **It does NOT necessarily block merge:** `license/cla` sits at `enforcement_level: non_admins` on these repos — advisory for admins. A maintainer merged rhi#808 with it still pending. "Required" names a check's membership in a list, not the population it binds.
+- **Never pass `git -c user.name/user.email` on a slang bot commit.** The repo-local config already sets the App identity; the override authors as the CLA-unsigned User and flips `license/cla` to pending (undoing it needs an operator-gated force-push). Check `git log -1 --format='%an <%ae>'` before pushing.
+- **An identity-guard hook must fail closed when `git var` cannot resolve the ident** (exit 128 in a clone with no `user.name`); `|| continue` lets every override through.
 
 ## The two identities and where the state lives
 
@@ -60,7 +62,15 @@ The two identities show up in commit metadata as two emails. `274397474+nv-slang
 
 Two method lessons worth carrying: **an empty result from a filter whose value you guessed is a fact about your filter, not about the world** (positive-control any zero before citing it — the control here was one unfiltered `gh pr list` + grep); and **two of three false claims rode in the "strengthening" message** (a follow-up sent to raise rigor, email→ids), because an improvement claim gets its *change* audited while the claims riding alongside it do not. When relaying a hunch, mark it as a hunch and name the check that would settle it — one sentence would have turned three retractions into one open question. [slang-rhi bot PRs CAN pass license/cla — check the specific PR, don't assume blocked](../learnings/1785851267810-slang-rhi-bot-prs-are-blocked-by-an-unsigned-licen.md)
 
-**Source learnings (9):**
+## Never override the identity on a bot commit, and guard it fail-closed
+
+On shader-slang/slang worktrees the repo-local git config already sets the CLA-signed App identity `nv-slang-bot[bot] <274397474+nv-slang-bot[bot]@users.noreply.github.com>`. Passing `git -c user.name=nv-slang-bot -c user.email=nv-slang-bot@users.noreply.github.com`, for example for a merge commit, authors as the *User* account, and CLA assistant marks the PR `license/cla: pending` and posts a "please sign" comment. Undoing it needs a history rewrite and force-push, which is operator-gated. Run `git commit` / `git merge` with no identity override and check `git log -1 --format='%an <%ae>'` before pushing. This was hit twice (hold-13348, fix-12821) [never pass -c user.name/email on slang bot commits](../learnings/1791864867562-never-pass-c-user-name-email-on-slang-bot-commits-.md).
+
+A pre-commit / pre-merge-commit hook that checks `git var GIT_AUTHOR_IDENT` / `GIT_COMMITTER_IDENT` for the bare noreply email must fail closed. In a clone with no `user.name` (seen in slang-11225, slang-master-1181 and wt-samples-46 under slangpy-fixer), `GIT_COMMITTER_EMAIL=<bad> git var GIT_COMMITTER_IDENT` exits 128 ("empty ident name not allowed"), so `ident=$(git var …) || continue` passes silently and the smoke test reads as "override accepted". Treating an unresolvable ident as a reject makes the guard refuse every override variant (`-c user.email`, `--author`, `GIT_AUTHOR_EMAIL`, `GIT_COMMITTER_EMAIL`, and a `--no-ff` merge with an override) in every clone. A rejected pre-merge-commit leaves MERGE_HEAD pending, so run `git merge --abort` between test cases; `git hook run pre-commit` (git ≥ 2.36) smoke-tests a hook without committing. Email variants, checked on the slangpy PR commits API on 2026-10-13: `274397474+nv-slang-bot@…`, `274397474+nv-slang-bot[bot]@…` and `nv-slang-bot[bot]@…` all map to the App (id 274397474, CLA ok); `nv-slang-bot@…` maps to User id 286953280 (CLA pending); `174632915+nv-slang-bot[bot]@…` is linked to no account (a stale App id, seen on slangpy#1118) [identity-guard hook: fail closed when git var can't resolve the ident](../learnings/1791865446442-identity-guard-hook-fail-closed-when-git-var-can-t.md).
+
+**Source learnings (11):**
+- [Never pass -c user.name/email on slang bot commits — it flips license/cla](../learnings/1791864867562-never-pass-c-user-name-email-on-slang-bot-commits-.md) — repo-local config already has the App identity; override authors as the User; force-push is operator-gated
+- [Identity-guard hook: fail closed when git var can't resolve the ident](../learnings/1791865446442-identity-guard-hook-fail-closed-when-git-var-can-t.md) — exit 128 with no `user.name`; `|| continue` passes silently; email-variant → account mapping
 
 - [Two GitHub identities named nv-slang-bot — the User one is CLA-unsigned and invisible on check-runs](../learnings/1785883269148-two-github-identities-named-nv-slang-bot-the-user-.md)
 - [Two nv-slang-bot identities gate CLA — test ALL commits, never a single index (HEAD-only returns false clean)](../learnings/1785888345635-two-nv-slang-bot-identities-gate-cla-test-all-comm.md)
