@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, it } from 'bun:test';
 import { initTestSessionDb, closeSessionDb, getInboundDb } from './mailbox/sqlite/connection.js';
-import { getUndeliveredMessages } from './db/messages-out.js';
+import { getUndeliveredMessages, writeMessageOut } from './db/messages-out.js';
 import { getCurrentReplyRoute } from './db/session-state.js';
 import { processQuery } from './poll-loop.js';
 import type { RoutingContext } from './formatter.js';
@@ -90,6 +90,52 @@ it('routes B then the retry of A in provider FIFO order, with matching exchange 
   );
   expect(exchanges.map((e) => (e.prompt.includes('question B') ? 'B' : 'A'))).toEqual(['A', 'B', 'A']);
 });
+
+// Fork divergence: mid-turn only. In result mode the fork's auto-route gate
+// delivers turn A's bare 'Sent.' to the channel instead of nudging, so no
+// retry is queued (see TOOL_SEND_MODES in poll-loop.midturn-resultdoor.test.ts).
+it.each([true])(
+  'a retry queued behind a follow-up skips what its own turn sent; the follow-up may repeat it (mid-turn: %p)',
+  async (midTurn) => {
+    const pushed: string[] = [];
+    const query: AgentQuery = {
+      push: (prompt) => {
+        pushed.push(prompt);
+      },
+      end() {},
+      abort() {},
+      events: {
+        async *[Symbol.asyncIterator](): AsyncGenerator<ProviderEvent> {
+          // Turn A replies in full through the tool, then closes with bare prose.
+          writeMessageOut({
+            id: 'tool-A',
+            in_reply_to: 'm-A',
+            kind: 'chat',
+            platform_id: 'C123',
+            channel_type: 'slack',
+            thread_id: 'thread-A',
+            content: JSON.stringify({ text: 'same body' }),
+          });
+          insert('B');
+          await waitFor(() => pushed.length === 1);
+          yield { type: 'result', text: 'Sent.' };
+          expect(pushed[1]).toContain('<undelivered_text>Sent.</undelivered_text>');
+          // B genuinely answers with the same body, then A's retry re-wraps its own.
+          for (let turn = 0; turn < 2; turn++) {
+            yield { type: 'text', text: block('same body') };
+            yield { type: 'result', text: block('same body') };
+          }
+        },
+      },
+    };
+    await processQuery(query, route('A'), [], 'mock', undefined, 'question A', undefined, midTurn);
+    expect(getUndeliveredMessages().map((m) => [JSON.parse(m.content).text, m.thread_id])).toEqual([
+      ['same body', 'thread-A'],
+      ['same body', 'thread-B'],
+    ]);
+    expect(pushed).toHaveLength(2);
+  },
+);
 
 // INTENTIONAL FORK DIVERGENCE (upstream #3738 acceptance test, deliberately skipped).
 //

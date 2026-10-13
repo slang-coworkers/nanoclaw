@@ -36,8 +36,21 @@ export type ProcessingStatus =
   | 'completed'
   | 'failed'
   | 'script-skip:error'
+  | 'script-skip:gated'
   | 'bounced-transient'
   | 'bounced-unknown';
+
+/**
+ * A pre-task script answered `wakeAgent:false`. The occurrence is a successful
+ * run that cost no model tokens, so it lands as `completed` like any other, but
+ * with `gated = 1` on the row: without the marker a gated fire and a woke fire
+ * were the same `completed` row, and the wake ratio of every gated series — the
+ * number that says whether its gate is doing anything — could not be read from
+ * the data at all.
+ */
+export function isGatedAck(status: string): boolean {
+  return status === 'script-skip:gated';
+}
 /**
  * Ack statuses that make the occurrence row a FAILED run rather than a completed
  * one. Both host sync paths (`applyProcessingAcks`, `syncProcessingAcks`) read
@@ -501,7 +514,13 @@ export function parseProcessingAckRecord(value: unknown): ProcessingAckRecord {
   const record = strictRecord(value, 'ProcessingAckRecord', ['messageId', 'status', 'statusChanged']);
   return {
     messageId: text(record, 'messageId'),
-    status: oneOf(record, 'status', ['processing', 'completed', 'failed', 'script-skip:error'] as const),
+    status: oneOf(record, 'status', [
+      'processing',
+      'completed',
+      'failed',
+      'script-skip:error',
+      'script-skip:gated',
+    ] as const),
     statusChanged: timestamp(record, 'statusChanged'),
   };
 }
