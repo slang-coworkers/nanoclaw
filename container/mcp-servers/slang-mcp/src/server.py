@@ -942,8 +942,10 @@ def main(port: int, transport: str) -> int:
                             name="discord_send_message",
                             description=(
                                 "Send a message to a Discord channel, thread, or forum. "
-                                "For forums, creates a new thread/post. "
-                                "Restricted to allowed channels."
+                                "For forums, creates a new thread/post. On a text channel, "
+                                "thread_name opens a thread on the message and returns thread_id; "
+                                "send follow-ups to that thread_id. One message per topic, never "
+                                "numbered parts. Restricted to allowed channels."
                             ),
                             inputSchema={
                                 "type": "object",
@@ -959,8 +961,9 @@ def main(port: int, transport: str) -> int:
                                     "thread_name": {
                                         "type": "string",
                                         "description": (
-                                            "For forum channels: title for the new thread/post. "
-                                            "Ignored for text channels and threads."
+                                            "Forum channel: title of the new post. Text channel: opens a "
+                                            "thread on the posted message (result has thread_id). "
+                                            "Ignored inside an existing thread."
                                         ),
                                     },
                                     "add_feedback_buttons": {
