@@ -2,7 +2,7 @@ import fs from 'fs';
 import type Database from 'better-sqlite3';
 
 import { log } from '../../log.js';
-import { failureClassOf, isFailedAck } from '../model.js';
+import { failureClassOf, isFailedAck, isGatedAck } from '../model.js';
 import { sessionMailboxDir, sessionMailboxPath } from './paths.js';
 export { inboundDbPath, outboundDbPath, sessionMailboxDir, sessionMailboxPath } from './paths.js';
 import {
@@ -77,7 +77,7 @@ function sqliteTimestamp(value: string): string {
 function applyProcessingAcks(db: Database.Database, acks: ProcessingAck[]): void {
   if (acks.length === 0) return;
   const complete = db.prepare(
-    "UPDATE messages_in SET status = 'completed' WHERE id = ? AND status NOT IN ('completed', 'failed')",
+    "UPDATE messages_in SET status = 'completed', gated = ? WHERE id = ? AND status NOT IN ('completed', 'failed')",
   );
   const fail = db.prepare(
     `UPDATE messages_in SET status = 'failed', failure_class = ?
@@ -90,7 +90,7 @@ function applyProcessingAcks(db: Database.Database, acks: ProcessingAck[]): void
     // a fire that never ran still counted as a run.
     for (const ack of acks) {
       if (isFailedAck(ack.status)) fail.run(failureClassOf(ack.status), ack.messageId);
-      else complete.run(ack.messageId);
+      else complete.run(isGatedAck(ack.status) ? 1 : 0, ack.messageId);
     }
   })();
 }
@@ -170,14 +170,16 @@ function getTaskStats(db: Database.Database, seriesId: string): TaskStats {
     .prepare(
       `SELECT
          COUNT(*) FILTER (WHERE status = 'completed') AS runs,
+         COUNT(*) FILTER (WHERE status = 'completed' AND gated = 1) AS gated_runs,
          MAX(process_after) FILTER (WHERE status = 'completed') AS last_run,
          COUNT(*) FILTER (WHERE status = 'failed') AS failed_runs
        FROM messages_in
       WHERE kind = 'task' AND (id = ? OR series_id = ?)`,
     )
-    .get(seriesId, seriesId) as { runs: number; last_run: string | null; failed_runs: number };
+    .get(seriesId, seriesId) as { runs: number; gated_runs: number; last_run: string | null; failed_runs: number };
   return {
     runs: row.runs,
+    gatedRuns: row.gated_runs,
     lastRun: row.last_run === null ? null : sqliteTimestamp(row.last_run),
     failedRuns: row.failed_runs,
   };
@@ -337,7 +339,7 @@ export function wrapSqliteOutbound(
       (
         readable()
           .prepare(
-            "SELECT message_id, status, status_changed FROM processing_ack WHERE status IN ('completed', 'failed', 'script-skip:error')",
+            "SELECT message_id, status, status_changed FROM processing_ack WHERE status IN ('completed', 'failed', 'script-skip:error', 'script-skip:gated')",
           )
           .all() as Array<{ message_id: string; status: ProcessingAck['status']; status_changed: string }>
       ).map((row) =>

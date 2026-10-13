@@ -172,9 +172,47 @@ class GateAndConvergence(unittest.TestCase):
         self.assertTrue(obj["wakeAgent"])
         self.assertIn("by_class", obj["data"])
 
+    def stale_folder(self, name):
+        """One INDEX-STALE defect: a concept its folder index does not link."""
+        write(self.root, f"{name}/a.md", concept("A"))
+        write(self.root, f"{name}/index.md", "# notes\n\n(nothing linked yet)\n")
+
+    def gate(self):
+        out = _capture(self.mod.cmd_gate)
+        return json.loads(out.strip().splitlines()[-1])
+
+    # Defects are weighted into the backlog metric; a lone stale index (500) sits
+    # under the 2000 floor and must not wake a container every fire.
+    def test_gate_sleeps_on_a_lone_defect_under_the_floor(self):
+        self.stale_folder("notes")
+        report = self.mod.scan()
+        self.assertEqual(report["defects"], 1)
+        self.assertLess(report["backlog"], self.mod.GATE_MIN_BACKLOG)
+        self.assertFalse(self.gate()["wakeAgent"])
+
+    def test_gate_wakes_once_defects_reach_the_floor(self):
+        for i in range(self.mod.GATE_MIN_BACKLOG // self.mod.DEFECT_WEIGHT):
+            self.stale_folder(f"notes{i}")
+        self.assertTrue(self.gate()["wakeAgent"])
+
+    # The same under-floor offender repeated across runs is not an escalation
+    # either: the gate would not have woken for it.
+    def test_unchanged_offender_under_the_floor_never_escalates(self):
+        self.stale_folder("notes")
+        for _ in range(self.mod.STALL_RUNS + 2):
+            out = _capture(self.mod.cmd_finalize)
+        self.assertNotIn("ESCALATE", out)
+
+    def test_unchanged_top_offender_escalates_only_after_stall_runs(self):
+        write(self.root, "topics/big.md", concept("Big", body="y" * 19000))
+        for _ in range(self.mod.STALL_RUNS - 1):
+            self.assertNotIn("ESCALATE", _capture(self.mod.cmd_finalize))
+        self.assertIn("ESCALATE", _capture(self.mod.cmd_finalize))
+
     def test_finalize_escalates_when_not_shrinking(self):
-        # three finalize runs with a persistent, non-shrinking offender -> ESCALATE
-        write(self.root, "topics/big.md", concept("Big", body="y" * 17000))
+        # three finalize runs with a persistent, non-shrinking offender above the
+        # gate floor -> ESCALATE
+        write(self.root, "topics/big.md", concept("Big", body="y" * 19000))
         out = ""
         for _ in range(self.mod.STALL_RUNS):
             out = _capture(self.mod.cmd_finalize)
@@ -213,8 +251,8 @@ class CliSmoke(unittest.TestCase):
         r = subprocess.run([sys.executable, script, "scan"], env=env, capture_output=True, text=True, check=False)
         self.assertEqual(r.returncode, 0, r.stdout + r.stderr)
 
-        # add a dossier -> scan exits 3
-        write(root, "CLAUDE.local.md", "# pile\n\nissue notes\n")
+        # add a dossier large enough to clear the gate floor -> scan exits 3
+        write(root, "CLAUDE.local.md", "# pile\n\n" + "issue notes\n" * 300)
         r = subprocess.run([sys.executable, script, "scan"], env=env, capture_output=True, text=True, check=False)
         self.assertEqual(r.returncode, 3, r.stdout + r.stderr)
 
