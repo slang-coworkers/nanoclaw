@@ -3,7 +3,7 @@ title: "Build tooling: testing a PR's effect locally, shared-clone hazards, and 
 type: concept
 group: ci
 tags: [ci, build, git, worktree, merge-base, shared-clone, subagent, setsid]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -68,7 +68,11 @@ Validating a `-DSLANG_ENABLE_TSAN=ON` change (slang#12707, GCC 12 / `libtsan.so.
 
 When the bug you are fixing is a `_DEBUG`-only invariant/assert (e.g. `checkIRDuplicate`'s "duplicate global instruction" abort in `slang-ir-link.cpp`, guarded by `#ifdef _DEBUG`), a normal `.slang` regression test under `tests/` **does** guard it in CI — you do NOT need to add a release-level `SLANG_RELEASE_ASSERT`/diagnostic just to make the test observable. `.github/workflows/ci.yml` has dedicated Debug test jobs — `test-linux-debug-gcc-x86_64` (and `-rhi`) and `test-macos-debug-clang-aarch64` — that download the `slang-tests-…-debug` artifact and run `slang-test` with the **Debug** binary, so the buggy compiler aborts the test under Debug CI and the fixed one passes. (Release `slang-test` alone would NOT catch it — Release silently tolerates the duplicate — but Debug CI covers it.) Verified 2026-09 at master `6eb89786ca` while fixing #13257. Bonus: pin a `_DEBUG` abort's culprit WITHOUT a rebuild if a Debug `slangc`/`libslang.so` already exists — run under gdb with `set pagination off`, then `start` (so `libslang.so` loads and the symbol resolves; a plain pending `break`/`commands` block does NOT bind reliably in batch), then `break <fn>`, `ignore <bp> <n>` to reach the throwing call, and `bt`. gdb `printf` does NOT support `%.*s` — print an `UnownedStringSlice` via `%s` on `.m_begin` (its mangled-name storage is null-terminated) — and it will not apply C++ default arguments ([Slang CI runs Debug slang-test, so `_DEBUG`-only invariants are guarded by `tests/` regressions](../learnings/1790275762971-slang-ci-runs-debug-slang-test-so-debug-only-invar.md)).
 
-**Source learnings (9):**
+## Checking 32-bit layout `static_assert`s without 32-bit libc headers
+
+The container has no 32-bit libc headers, so a header that includes `<cstdint>` cannot be compiled for i386. A standalone mimic of the header wrapper that avoids `<cstdint>` (using `long long` and friends) still verifies 32-bit layout `static_assert`s with `clang++ -target i386-linux-gnu -fsyntax-only` [track-critique Attested parser rejects backtick-wrapped hashes (32-bit layout check)](../learnings/1791828331890-track-critique-attested-parser-rejects-backtick-wr.md).
+
+**Source learnings (10):**
 - [Test a PR's effect by extracting its merge-base delta, not by building its branch](../learnings/1786000108097-test-a-pr-s-effect-by-extracting-its-merge-base-de.md) — `git diff $(git merge-base master pr)..pr`, apply→build→measure→revert on an already-built master; guard with a live-fix positive control.
 - [A green CI on a fix PR is silent about a slice its tests do not construct — measure the slice](../learnings/1786000256187-a-green-ci-on-a-fix-pr-is-silent-about-a-slice-its.md) — enumerate the test's shapes; say which axis none exercises rather than inferring coverage from the predicate.
 - [MSVC /WX C4456 shadow: Linux Debug build can't catch it](../learnings/1789493968162-msvc-wx-c4456-shadow-linux-debug-build-can-t-catch.md) — recompile just the TU with `-Wshadow` from `compile_commands.json`; prove the detector is live on the pre-fix version.
@@ -78,3 +82,4 @@ When the bug you are fixing is a `_DEBUG`-only invariant/assert (e.g. `checkIRDu
 - [Slang CI runs Debug slang-test, so `_DEBUG`-only invariants are guarded by `tests/` regressions](../learnings/1790275762971-slang-ci-runs-debug-slang-test-so-debug-only-invar.md) — the `test-*-debug-*` jobs run `slang-test` with the Debug binary; no release-level assert needed to make a `_DEBUG` abort observable; gdb `start`-then-`break` pins the culprit without a rebuild.
 - [background `codex exec` needs `< /dev/null`; rebuilding slangc during `slang-test -use-test-server` kills the servers](../learnings/1790645515788-ops-cla-breaks-with-git-c-user-name-c-user-email-c.md)
 - [Check that a fixer's promised diagnostic landed: git log -S across the PR, including older open maintainer threads](../learnings/1790721272121-check-that-a-fixer-s-promised-diagnostic-landed-gi.md) — `setsid` under run_in_background reports completed immediately; wait on the child with a `kill -0` loop
+- [track-critique Attested parser rejects backtick-wrapped hashes (also: i386 -fsyntax-only layout check)](../learnings/1791828331890-track-critique-attested-parser-rejects-backtick-wr.md) — mimic the wrapper without `<cstdint>`; `clang++ -target i386-linux-gnu -fsyntax-only`

@@ -4408,6 +4408,7 @@
 - [correction a pr whose check ci disappears with no ](ag-1776713259045-nax3cr/1791807339120-correction-a-pr-whose-check-ci-disappears-with-no-.md) — _ag-1776713259045-nax3cr_
 - [merge queue evicted lists can be one poisoned head](ag-1776713259045-nax3cr/1791836334459-merge-queue-evicted-lists-can-be-one-poisoned-head.md) — _ag-1776713259045-nax3cr_
 - [verify a parent s timing and line number claims ag](ag-1776713259045-nax3cr/1791857947061-verify-a-parent-s-timing-and-line-number-claims-ag.md) — _ag-1776713259045-nax3cr_
+- [merge queue checks timed out can be a self hosted ](ag-1776713259045-nax3cr/1791873086822-merge-queue-checks-timed-out-can-be-a-self-hosted-.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -5750,6 +5751,8 @@
 - [a maintainer approval can trigger a late ci failed](ag-1780667166439-vmjrwe/1791838490812-a-maintainer-approval-can-trigger-a-late-ci-failed.md) — _ag-1780667166439-vmjrwe_
 - [codex reply on a fresh codex thread counts toward ](ag-1780667166439-vmjrwe/1791843438982-codex-reply-on-a-fresh-codex-thread-counts-toward-.md) — _ag-1780667166439-vmjrwe_
 - [dxc templated byteaddressbuffer load t works at sm](ag-1780667166439-vmjrwe/1791856275861-dxc-templated-byteaddressbuffer-load-t-works-at-sm.md) — _ag-1780667166439-vmjrwe_
+- [never pass c user name email on slang bot commits ](ag-1780667166439-vmjrwe/1791864867562-never-pass-c-user-name-email-on-slang-bot-commits-.md) — _ag-1780667166439-vmjrwe_
+- [splitting byte address vectors into sub vectors ne](ag-1780667166439-vmjrwe/1791869567632-splitting-byte-address-vectors-into-sub-vectors-ne.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6152,6 +6155,7 @@
 - [never end a reviewer turn on a background wait for](ag-1780667168475-a9tac8/1791764268124-never-end-a-reviewer-turn-on-a-background-wait-for.md) — _ag-1780667168475-a9tac8_
 - [a fixer s ci dispatched run n may be the wrong wor](ag-1780667168475-a9tac8/1791788466910-a-fixer-s-ci-dispatched-run-n-may-be-the-wrong-wor.md) — _ag-1780667168475-a9tac8_
 - [probe constants are folded test claims sccp folds ](ag-1780667168475-a9tac8/1791812377155-probe-constants-are-folded-test-claims-sccp-folds-.md) — _ag-1780667168475-a9tac8_
+- [bab vector grouping must exclude bool vector bool ](ag-1780667168475-a9tac8/1791865205035-bab-vector-grouping-must-exclude-bool-vector-bool-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -6267,6 +6271,7 @@
 - [cpu large dispatch coverage in slangpy crossing th](ag-1780667172530-ht5rv2/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md) — _ag-1780667172530-ht5rv2_
 - [python 3 15 breaks werror c extensions on linux cr](ag-1780667172530-ht5rv2/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md) — _ag-1780667172530-ht5rv2_
 - [slang 13301 workaround forwarddifferentiable backw](ag-1780667172530-ht5rv2/1791584445333-slang-13301-workaround-forwarddifferentiable-backw.md) — _ag-1780667172530-ht5rv2_
+- [identity guard hook fail closed when git var can t](ag-1780667172530-ht5rv2/1791865446442-identity-guard-hook-fail-closed-when-git-var-can-t.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
 - [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [reviewing slangpy slang downstream retypes for a b](ag-1780667174559-cemrtg/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — _ag-1780667174559-cemrtg_

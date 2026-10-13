@@ -3,7 +3,7 @@ type: concept
 title: "Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content"
 group: slang-language-core
 tags: [slang, preprocessor, lexer, if-directive, integer-literal, strtoll, stringToInt, digit-separator, SIGFPE, ScrubbingNeeded, line-continuation, valgrind, asan]
-source_count: 4
+source_count: 6
 ---
 
 # Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content
@@ -22,8 +22,11 @@ validation in the lexer is a separate topic, on
 - Before PR #13546 this made `#if 1_000 == 1` true, `#if 0b101 == 5`, `#if 0X10 == 16`,
   `#if 0B11 == 3` and `#if 010 == 8` false, and `#if 4294967296 > 0` false (int truncation).
   `#line`, `#version` and `#pragma warning` also use `stringToInt`.
-- `_` digit separators are in the spec for integer literals and work in code through
-  `_maybeLexNumberSuffix` plus `_maybeReadDigit` skipping `_`; they fail for floats.
+- In code, integer literals accept `_` anywhere after the first digit or radix prefix (`123_`, `1__0`,
+  `0x_FF`, `0b_101` all compile with no diagnostic), through `_maybeLexNumberSuffix` plus `_maybeReadDigit`
+  skipping `_`; floats reject it. A C++-style "only between digits" rule would therefore break existing
+  integer code. The separator design (`_` vs `'`) is open on #13544, and the spec page that mentions `_` is
+  marked work-in-progress, so it is not grounds for "already allowed".
   clang-format 17.0.6 never splits `1_000`; it splits `1'000` only under Standard c++11 or older.
 - `#if (-2147483647 - 1) / -1` (or `% -1`) crashed slangc with SIGFPE (exit 136) because
   `EvaluateInfixOp` guarded only `right == 0`. The fix makes `/ -1` a wrapping negation through
@@ -70,6 +73,12 @@ c++11 or older (found triaging #13544)
 PR #13546 widened the evaluator to int64, which is an intended behaviour change that turned the
 generated `if-expression-signed-overflow-wraps.slang` test stale; the nightly-suite rule is on
 [[wiki/concepts/slang-tooling-f0909b0-markdown-generated-docs.md]].
+
+## Digit separators: loose `_` is accepted today, and the design is open (#13544)
+
+On master f7e14a1a62 (2026-10-12), integer literals accept `_` anywhere after the first digit or radix prefix and compile with no diagnostic: `123_` = 123, `1__0` = 10, `0x_FF` = 255, `0b_101` = 5. `_maybeLexNumberSuffix` (`slang-lexer.cpp:572-573`) takes `_` into the token, and `_maybeReadDigit` (:703-704, under `// TODO: need to decide on digit separator characters`) skips it when decoding. `123'` is E10005 ("newline in literal"). So any rule that allows separators only between digits is a breaking change for integers [master already accepts loose `_` in integer literals](../learnings/1791798884194-slang-master-already-accepts-loose-in-integer-lite.md).
+
+The design is undecided, and the spec text is not evidence that it is decided. Our triage of #13544 told the reporter that "the spec already allows `_`", citing `lexical-structure.md`, whose banner says "work in progress… in many cases, inaccurate"; the lexer's TODO says the same. Draft PR #13547 then started finishing `_` for floats. The assigned maintainer (skiminki-nv) called the spec text "aspirational", put the PR on hold, and sent the `'`-vs-`_` choice to the language owner. The integer-side bug fix in the same PR (`0b1_2` → 4) stood on its own. When a triage cites a spec page as settled, first check for a WIP/non-normative banner and for a source TODO; if either is present, present the text as a draft ("the draft spec mentions X"). A GO for drafts on a language-surface feature covers only fixes that are correct whatever the design turns out to be (here the `#if` decoding PR #13546) [a non-normative spec page is not grounds for 'already allowed'](../learnings/1791798120399-a-non-normative-spec-page-is-not-grounds-for-alrea.md).
 
 ## `#if` division overflow: `INT_MIN / -1` (#13546)
 
@@ -118,10 +127,12 @@ instrumentation
 [scrubbed tokens have no NUL terminator; getIntegerLiteralValue reads past end](../learnings/1791591002823-slang-lexer-scrubbed-newline-tokens-have-no-nul-te.md)
 [decoders must bound by end; valgrind 12 vs 0](../learnings/1791597474632-slang-token-content-is-not-nul-terminated-after-an.md).
 
-**Source learnings (4):**
+**Source learnings (6):**
 - [Slang preprocessor #if decodes integer literals with strtoll, not the lexer decoder](../learnings/1791562033643-slang-preprocessor-if-decodes-integer-literals-wit.md) — `_`, `0b`, `0X`, octal and >32-bit values disagree with code; `#line`/`#version`/`#pragma warning` share it; separators fail for floats.
 - [Slang `#if` `INT_MIN / -1` crashed slangc (SIGFPE), and prebuilt base-clone binaries are not valid unfixed controls](../learnings/1791572299591-slang-if-int-min-1-crashed-slangc-sigfpe-and-prebu.md) — `EvaluateInfixOp` guarded only zero; wrapping negation via uint64; build the control from the base SHA.
 - [Slang lexer: scrubbed (\-newline) tokens have no NUL terminator; getIntegerLiteralValue reads past end](../learnings/1791591002823-slang-lexer-scrubbed-newline-tokens-have-no-nul-te.md) — `ScrubbingNeeded` arena copy; four over-reading shapes; pass `end`; parser affected too.
 - [Slang token content is not NUL-terminated after an escaped newline — decoders must bound by end](../learnings/1791597474632-slang-token-content-is-not-nul-terminated-after-an.md) — valgrind 12 vs 0 reports; FileCheck cannot catch it.
+- [Slang master already accepts loose `_` in integer literals (123_, 1__0, 0x_FF)](../learnings/1791798884194-slang-master-already-accepts-loose-in-integer-lite.md) — `_maybeLexNumberSuffix` + `_maybeReadDigit`; a between-digits rule breaks integers; `123'` is E10005; design open on #13544
+- [A non-normative spec page is not grounds for 'already allowed' in a triage](../learnings/1791798120399-a-non-normative-spec-page-is-not-grounds-for-alrea.md) — check the WIP banner and source TODO; #13547 held as premature; GO only design-independent fixes
 
 _Catalog: [[wiki/index.md]]_

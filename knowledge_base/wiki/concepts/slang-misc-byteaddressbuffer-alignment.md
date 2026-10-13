@@ -3,7 +3,7 @@ title: "Slang ByteAddressBuffer Alignment and Legalization"
 type: concept
 group: slang-grab-bag
 tags: [ByteAddressBuffer, LoadAligned, StoreAligned, alignment, stride, float3, vec3, pow2, WGSL, SPIR-V, scalar-block-layout, codegen, IR]
-source_count: 10
+source_count: 13
 ---
 
 # Slang ByteAddressBuffer Alignment and Legalization
@@ -16,6 +16,8 @@ The `ByteAddressBuffer` family has subtle alignment semantics that differ by ove
 - Scalar block layout changes `ArrayStride`; a fix validated only under the default layout can regress under it.
 - Verify byte-address / HLSL-profile changes at an explicit `-profile cs_5_0`, not just `-target hlsl` — the profile, not the target, selects the code path.
 - The #11545 work was staged in four slices; a change touching one slice needs the others re-checked before it is called complete.
+- **Never group `bool` when splitting byte-address vectors** (#11803): `vector<bool,N>` sub-access is invalid SPIR-V (`OpTypeBool` in StorageBuffer, E99999) and silently wrong on CPU/CUDA (2-byte `sizeof` vs 4-byte BAB stride). Return width 1 for `IRBoolType` in the group-width chooser, and probe new splits per element type with a `-cpu` readback.
+- **Templated `ByteAddressBuffer.Load<T>` works at SM 6.0 with `-HV 2018`** (DXC's own `raw_buf3.hlsl` RUN line). SM 6.2 is the 16-bit-types boundary, which search summaries conflate with it. Take capability boundaries from a primary source.
 
 ## Alignment Semantics by Form
 
@@ -55,7 +57,20 @@ A byte-address (or any HLSL-profile-sensitive) codegen change can pass all `-tar
 
 A distinct byte-address legalization bug (#12265): `InterlockedAdd` on a `RWByteAddressBuffer` passed into a helper silently corrupts `Load`/`Store` indexing on CPU/C++. `getEquivalentStructuredBuffer`'s IRParam branch does `babType->replaceUsesWith(structuredBufferType)` — but Slang IR types are **deduplicated**, so that one shared `RWByteAddressBuffer` type inst is flipped to `RWStructuredBuffer<uint32_t>` **module-wide**, leaving byte-address `Load`/`Store` with offsets never divided by the element stride. C++/CPU-only because the byte-offset→element-index `÷ stride` rewrite is gated off for that target (GLSL/SPIRV/Metal rewrite correctly); the global-param branch, which creates a *separate* structured-buffer global instead of mutating in place, is the contrast that pins it. General rule: never `replaceUsesWith` on a shared *type* inst to convert one value's type — build a per-use cast/view at the use site ([RWByteAddressBuffer atomic-via-helper flips whole-module buffer type via shared dedup type-inst mutation](../learnings/1785339952123-rwbyteaddressbuffer-atomic-via-helper-flips-whole-.md)).
 
-**Source learnings (10):**
+## Splitting byte-address vectors: never group `bool` (#11803)
+
+PR #11803 groups partially aligned ByteAddressBuffer accesses into typed sub-vectors (for example `float4`@8 → 2×`float2`, via `emitLegalGroupedVectorLoad/Store` and `chooseGroupWidth`). `bool` must stay per-component, because it is a logical type with a 4-byte BAB stride. All three automated reviewers missed this; it was found only by probing `bool` element types and running a CPU runtime test.
+
+- **SPIR-V:** `vector<bool,2>` becomes a `StructuredBuffer<bool2>` that `KhronosTargetBufferElementTypeLoweringPolicy::needsElementLowering` (`slang-ir-lower-buffer-element-type.cpp`) never lowers, since it matches only *scalar* `IRBoolType`. The result is `OpTypeBool` in `StorageBuffer`: E99999 under `SLANG_RUN_SPIRV_VALIDATION=1`, and rc 0 with invalid output without it.
+- **CPU:** `Load<Vector<bool,2>>` reads `sizeof` = 2 bytes, so the buffer `[1 0 1 1 | 0 1 0 1]` read back as `1 0 1 0 0 0 0 0`. **CUDA:** `Load<bool2>` does `memcpy(2)`, the same mismatch.
+
+The fix is at the producer: return width 1 for `IRBoolType` in the group-width chooser. Fully wide `LoadAligned<bool4>(loc, 16)` and `RWStructuredBuffer<bool2>` are already invalid SPIR-V on master; unwrapping vectors in `needsElementLowering` fixes SPIR-V but not CPU or CUDA. For any BAB width or vectorization change, probe `bool4` at a partial alignment (8), plain `Load<bool4>(8)`, `bool2x4`, `bool4[2]` and bool struct fields with SPIR-V validation, plus half and 64-bit types, and add a `COMPARE_COMPUTE -cpu` test with asymmetric per-component data. FileCheck tests that count `Load<float2>` cannot catch wrong offsets or order [BAB vector grouping must exclude bool](../learnings/1791865205035-bab-vector-grouping-must-exclude-bool-vector-bool-.md) [splitting byte-address vectors: never group bool](../learnings/1791869567632-splitting-byte-address-vectors-into-sub-vectors-ne.md).
+
+## Templated `Load<T>` is SM 6.0, not SM 6.2
+
+A web-search summary claimed templated `ByteAddressBuffer.Load<T>()` needs Shader Model 6.2, and it nearly went to a maintainer as a gap in Slang's fxc gate. It is false: DXC's own test `tools/clang/test/HLSLFileCheck/hlsl/objects/ByteAddressBuffer/raw_buf3.hlsl` runs `%dxc -E main -T ps_6_0 -HV 2018` with `.Load<float>`, `.Load<float2>`, `.Load<float4>` and `.Load<double2>`. SM 6.2 is the boundary for 16-bit scalar types (`-enable-16bit-types`), which the snippet conflated with templated loads. So the `useBitCastFromUInt` path described above (DX ≤ 5.0) is the right split for SM 6.x; whether SM 5.1 is right is a separate, unverified fxc question. Take a capability boundary ("needs SM X") from a primary source, such as the compiler's own test RUN line or its release notes. When a critique cites a counterexample test, fetch it, and when a premise collapses, re-audit what you already changed because of it [DXC templated Load<T> works at SM 6.0](../learnings/1791856275861-dxc-templated-byteaddressbuffer-load-t-works-at-sm.md).
+
+**Source learnings (13):**
 - [verify byte-address/HLSL-profile codegen at `-profile cs_5_0` (fxc has no templated `.Load<T>`); scalarize (not chunk) when `useBitCastFromUInt` is set; add a cs_5_0 regression test](../learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md)
 - [single-arg aligned forms use natural stride](../learnings/1780768566167-slang-byteaddressbuffer-single-arg-aligned-forms-u.md)
 - [implicit LoadAligned passes STRIDE as alignment](../learnings/1781030980541-slang-byteaddressbuffer-implicit-loadaligned-t-off.md)
@@ -66,5 +81,8 @@ A distinct byte-address legalization bug (#12265): `InterlockedAdd` on a `RWByte
 - [prior 41303-to-Slice-3 ruling re-verified](../learnings/1781776078394-slang-11591-11590-prior-41303-to-slice-3-ruling-17.md)
 - [scalar block layout forced by ArrayStride](../learnings/1782722840826-slang-scalar-block-layout-is-forced-by-the-arrayst.md)
 - [#12265 `RWByteAddressBuffer` atomic-via-helper: `replaceUsesWith` on the shared deduplicated *type* inst flips every such buffer module-wide → CPU/C++ Load/Store lose the `÷stride`; build a per-use view, never mutate a shared type](../learnings/1785339952123-rwbyteaddressbuffer-atomic-via-helper-flips-whole-.md)
+- [BAB vector grouping must exclude bool: vector<bool,N> sub-access breaks SPIR-V and silently corrupts CPU values](../learnings/1791865205035-bab-vector-grouping-must-exclude-bool-vector-bool-.md) — #11803; `needsElementLowering` matches scalar bool only; CPU/CUDA 2-byte reads; width 1 for IRBoolType; probe list
+- [Splitting byte-address vectors into sub-vectors: never group bool](../learnings/1791869567632-splitting-byte-address-vectors-into-sub-vectors-ne.md) — same #11803 finding; probe per element type; asymmetric `-cpu` COMPARE_COMPUTE test
+- [DXC templated ByteAddressBuffer Load<T> works at SM 6.0 (with -HV 2018) — not SM 6.2+](../learnings/1791856275861-dxc-templated-byteaddressbuffer-load-t-works-at-sm.md) — `raw_buf3.hlsl` RUN line; SM 6.2 is 16-bit types; capability boundaries need a primary source
 
 _Catalog: [[wiki/index.md]]_

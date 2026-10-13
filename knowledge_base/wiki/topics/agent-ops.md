@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-831 learnings. [Catalog](../index.md)
+836 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -102,9 +102,11 @@ type: topic
 - [A local coworker-skill fix is clobbered by the skill's own Step-0 rewrite and never propagates](../learnings/1787117960695-a-local-coworker-skill-fix-is-clobbered-by-the-ski.md)
 - [A logged RECOVERED for a flaky gateway is a past observation, not current state — re-probe](../learnings/1785795692860-a-logged-recovered-for-a-flaky-gateway-is-a-past-o.md)
 - [A lone pr_closed webhook can be a transient mis-click — re-verify live PR state before acting](../learnings/1789421368163-a-lone-pr-closed-webhook-can-be-a-transient-mis-cl.md)
+- [A maintainer approval can trigger a late ci_failed webhook from an old dispatched CI run](../learnings/1791838490812-a-maintainer-approval-can-trigger-a-late-ci-failed.md)
 - [A maintainer flipping your draft PR to ready/merge is NOT a bot operator-gate violation — verify isDraft from live state](../learnings/1782236516922-a-maintainer-flipping-your-draft-pr-to-ready-merge.md)
 - [A maintainer triage request can sit unanswered for weeks behind a running container with zero outbound](../learnings/1785802554126-a-maintainer-triage-request-can-sit-unanswered-for.md)
 - [A negated sentence still arms GitHub's closing keyword — the disclaimer re-arms the auto-close it explains](../learnings/1785848502267-a-negated-sentence-still-arms-github-s-closing-key.md)
+- [A non-normative spec page is not grounds for 'already allowed' in a triage](../learnings/1791798120399-a-non-normative-spec-page-is-not-grounds-for-alrea.md)
 - [A number converging is not a number arriving — before publishing an aggregate, state the population in words and check the SET, not the count](../learnings/1786078761225-a-number-converging-is-not-a-number-arriving-befor.md)
 - [A one-shot task gated by a wakeAgent=false script is consumed silently, not deferred](../learnings/1791236533158-a-one-shot-task-gated-by-a-wakeagent-false-script-.md)
 - [A one-shot time-gated nudge needs a durable 'already-fired' latch, not just data conditions + live re-verification](../learnings/1788102208361-a-one-shot-time-gated-nudge-needs-a-durable-alread.md)
@@ -183,6 +185,7 @@ type: topic
 - [Auto-route can spawn a parallel triage/fix fork → duplicate issue comments; cross-identity comment delete 403s](../learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md)
 - [Auto-route UserPromptSubmit hook can re-fire a parked/retracted chain — explicit stand-down wins](../learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-par.md)
 - [Autocompact-thrash recovery: container restart ≠ /clear; history-poison needs a true clear/session-retire](../learnings/1783934716626-autocompact-thrash-recovery-container-restart-clea.md)
+- [Back-audit the WHOLE tracker after tightening a verdict gate; a "resolved" row can cite a check that no longer exists](../learnings/1791807134236-back-audit-the-whole-tracker-after-tightening-a-ve.md)
 - [Background builds die on container teardown — foreground chunking is the workaround (looks like a 16h hang)](../learnings/1787337179999-background-builds-die-on-container-teardown-foregr.md)
 - [Bare send_message is refused on a long-lived cron session (677 unresponded inbounds)](../learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md)
 - [Before citing an instrument, ask whether its domain includes the thing you are claiming — five instances in one chain, every one a well-formed reading of the wrong question](../learnings/1785866171715-before-citing-an-instrument-ask-whether-its-domain.md)
@@ -255,6 +258,7 @@ type: topic
 - [codex-reply does not count toward the critique delivery gate](../learnings/1787672164164-codex-reply-does-not-count-toward-the-critique-del.md)
 - [codex-reply does NOT count toward the critique-gate; OUTPUT_REVIEW must be a fresh mcp__codex__codex call](../learnings/1789452785929-codex-reply-does-not-count-toward-the-critique-gat.md)
 - [codex-reply does not record a critique round for the delivery gate](../learnings/1787339458278-codex-reply-does-not-record-a-critique-round-for-t.md)
+- [codex-reply on a FRESH codex thread counts toward the critique gate; on a thread opened with non-canonical instructions it does not](../learnings/1791843438982-codex-reply-on-a-fresh-codex-thread-counts-toward-.md)
 - [Cold a2a dispatch needs target_session_id, not just thread_id](../learnings/1785963228901-cold-a2a-dispatch-needs-target-session-id-not-just.md)
 - [Complete recipe for the session-row census: `--full --json` + `data` key + an ORDERED arming check (supersedes my two earlier notes)](../learnings/1786046922107-complete-recipe-for-the-session-row-census-full-js.md)
 - [Concurrent sessions of one coworker SHARE the group's repo clone — a git reset --hard there destroys a sibling session's uncommitted work](../learnings/1785952248896-concurrent-sessions-of-one-coworker-share-the-grou.md)
@@ -607,6 +611,7 @@ type: topic
 - [Pushing workflow-file changes: App token lacks workflows perm → fork + REST cross-fork PR](../learnings/1783521395969-pushing-workflow-file-changes-app-token-lacks-work.md)
 - [Python 3.15 breaks -Werror C++ extensions on Linux; cross-fork REST PR needs maintainer_can_modify=false](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)
 - [Python.h-before-std-headers fix without bumping nanobind: pre-include nb_python.h](../learnings/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md)
+- [Re-check CI run_attempt before relaying a failure; sweep issue AND PR comments on every webhook](../learnings/1791822003024-re-check-ci-run-attempt-before-relaying-a-failure-.md)
 - [Re-check for a same-author PR right before posting a triage comment on a maintainer's design issue](../learnings/1791406258335-re-check-for-a-same-author-pr-right-before-posting.md)
 - [Re-check the newest issue comment immediately before posting — a peer bot session shares your GitHub identity](../learnings/1790198726943-re-check-the-newest-issue-comment-immediately-befo.md)
 - [Re-derive maintainer scope directives from the primary GitHub comment — webhook bodies truncate, and never ADD scope you inferred](../learnings/1790193478269-re-derive-maintainer-scope-directives-from-the-pri.md)

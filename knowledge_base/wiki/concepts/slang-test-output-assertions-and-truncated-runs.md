@@ -3,7 +3,7 @@ title: "Slang Test — Output Assertions and Truncated Runs"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, FileCheck, output-path, result-code, metallib, success-only-pattern, dev-null, OpString, self-match, whole-program, truncated-run, pending-retry, denominator, vacuous-assertion, output-using-type, bindir]
-source_count: 16
+source_count: 17
 ---
 
 # Slang Test — Output Assertions and Truncated Runs
@@ -29,6 +29,7 @@ This page covers the ways a slang-test run can go **green while asserting nothin
 - **Under `-output-using-type`, anchor buffer checks to the value line.** The dump opens `type: uint32_t`, so a bare `// BUF: 2` matches the `2` inside `uint32_t` and passes when the real value is `1`. Write `// BUF: type: uint32_t` then `// BUF-NEXT: {{^}}2{{$}}`.
 - **Prove a regression test fails on master with master's own `slang-test`, run from that tree's root.** `-bindir <other>/bin` does not switch the compiler under test.
 - **Ask of every new test: what would have to break for this to stay green?** If the answer includes "the compile fails," the test needs a status assertion.
+- **DIAGNOSTIC_TEST has no negative directive.** `parseAnnotations` recognizes only `//PREFIX:` and `/*PREFIX:`, so `//PREFIX-NOT: E36107` is silently inert and a `non-exhaustive` test passes while the diagnostic fires (17 test files carried such lines on 2026-10-12). Assert absence with an exhaustive DIAGNOSTIC_TEST that has no annotations, or with a filecheck test.
 
 ## Output paths and status assertions: `-o /dev/null` passes on a failing compile; `-g` makes `result code = 0` self-match (2026-08-04 fold)
 
@@ -68,7 +69,11 @@ The same gap has two more shapes, both measured. **(a) A failing slangc is not a
 
 The positive match lands in stdout, so the `-NOT` scans only the stdout after it and never reaches the stderr above, where the diagnostic would print. A real `static_assert` failure would also suppress the positive match, so the pair can never fail on the NOT. The vacuous pattern sits in `tests/diagnostics/cuda-half-texture-sample-level.slang` and was copied into #13559's SampleGrad test. To assert "no diagnostics", use an annotation-free `//DIAGNOSTIC_TEST:SIMPLE(diag=X):` on the same entry point; exhaustive mode fails on any unannotated diagnostic. The other option is to move the `-NOT` above the first stdout match so its region covers stderr. A leading `-NOT` only scans up to the first positive match, so a whole-file negative needs its own `filecheck=` prefix ([`[noRefInline]` test: whole-file negatives need their own prefix](../learnings/1791604550352-slang-noinline-does-not-keep-a-ref-helper-use-nore.md)). The same sibling test cites "#12185", an unrelated spvBindlessTextureNV issue, so check a citation with `gh api` before copying it into a new test. On #13559 the slang-pr-review-runner Reviewer A CLI also died three runs in a row (it ends its turn with background subagents still running, and they get stopped); running the read-only cross-backend, documentation-accuracy, and test-coverage reviewers directly on a saved diff was a workable stand-in ([a `-NOT` after a stdout match never checks stderr](../learnings/1791607903034-slang-test-simple-a-not-on-a-diagnostic-placed-aft.md); [`-NOT` after stdout never sees diagnostics; verify copied citations](../learnings/1791608967955-slang-test-not-checks-after-a-stdout-match-never-s.md)).
 
-**Source learnings (16):**
+## DIAGNOSTIC_TEST `-NOT` lines are silently inert
+
+`parseAnnotations` in `tools/slang-test/diagnostic-annotation-util.cpp` looks only for `//PREFIX:` and `/*PREFIX:` markers (the colon is required) and has no negative-check handling. A line like `//SCOPE-NOT: E36107` is therefore ignored, and under `non-exhaustive` the test passes even when the diagnostic fires. In `tests/diagnostics/capability-generic-struct-entrypoint-param.slang` the SCOPE case passes on master although slangc emits E36107 for `mainScope` (via `Foo.init`). The #13579 triage found 17 test files with inert `-NOT` lines under DIAGNOSTIC_TEST prefixes. To assert that a diagnostic is absent, use an exhaustive DIAGNOSTIC_TEST with no annotations (any diagnostic then fails it), or a filecheck-based test [DIAGNOSTIC_TEST has no -NOT directive](../learnings/1791842377952-diagnostic-test-has-no-not-directive-prefix-not-li.md). The capability-propagation finding from the same triage is on [[wiki/concepts/slangc-target-coverage-and-capabilities.md]].
+
+**Source learnings (17):**
 - [SIMPLE+filecheck never gates on the result code, so a metallib `LIB: computeMain` check passes on a failed compile; use `define void @computeMain` (#12294 R2)](../learnings/1790702677475-slang-test-simple-filecheck-never-gates-on-the-res.md)
 - [SIMPLE+FileCheck ignores the compile result; downstream errors quote the source line, so use success-only patterns (slang-reviewer, #12294)](../learnings/1790704590796-slang-test-simple-filecheck-ignores-the-compile-re.md)
 - [FileCheck tests that pass without testing anything: bounded `CHECK-NOT` + `-g2` `OpString` self-match; never count with bare `grep -c '<Op>'` (#10918)](../learnings/1785779116844-filecheck-tests-that-pass-without-testing-anything.md)
@@ -85,5 +90,6 @@ The positive match lands in stdout, so the `-NOT` scans only the stdout after it
 - [slang-test: `-NOT` checks after a stdout match never see diagnostics (stderr prints first)](../learnings/1791608967955-slang-test-not-checks-after-a-stdout-match-never-s.md) — `cuda-half-texture-sample-level.slang` still vacuous; its #12185 citation is wrong
 - [Slang: [noinline] does not keep a __ref helper; use [noRefInline]](../learnings/1791604550352-slang-noinline-does-not-keep-a-ref-helper-use-nore.md) — a leading `X-NOT:` scans only up to the first `X:`; whole-file negatives need their own prefix
 - [slang-test silently ignores SIMPLE(filecheck=...) lanes without libslang-llvm.so](../learnings/1791609372518-slang-test-silently-ignores-simple-filecheck-lanes.md) — fresh worktree builds lack the lib; copy it into `build/<cfg>/lib/`
+- [DIAGNOSTIC_TEST has no -NOT directive: `//PREFIX-NOT:` lines are silently inert](../learnings/1791842377952-diagnostic-test-has-no-not-directive-prefix-not-li.md) — `parseAnnotations` sees only `//PREFIX:`/`/*PREFIX:`; 17 files affected; use exhaustive-with-no-annotations or filecheck
 
 _Catalog: [[wiki/index.md]]_
