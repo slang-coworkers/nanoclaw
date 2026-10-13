@@ -24,6 +24,11 @@ case "$1 $2" in
   "run view")
     [ -n "${GH_VIEW_FAIL:-}" ] && exit 1
     cat "$GH_FIXTURES/view-$3.json" ;;
+  "api repos/shader-slang/slang/actions/jobs/123")
+    cat "$GH_FIXTURES/job.json" ;;
+  "api repos/shader-slang/slang/check-runs/456/annotations?per_page=100")
+    [ -n "${GH_ANNOTATIONS_FAIL:-}" ] && exit 1
+    cat "$GH_FIXTURES/annotations.json" ;;
   *) exit 2 ;;
 esac
 """
@@ -41,7 +46,9 @@ def run(id, conclusion="failure", status="completed", hours_ago=1):
 def jobs(nightly, analyze):
     out = [{"name": "nightly", "conclusion": nightly}]
     if analyze is not None:
-        out.append({"name": "analyze", "conclusion": analyze})
+        out.append({"name": "analyze", "conclusion": analyze, "databaseId": 123,
+                    "steps": [{"name": "Report confirmed trend (fail on confirmed regression)",
+                               "conclusion": analyze}]})
     return {"jobs": out}
 
 
@@ -57,6 +64,9 @@ class GateTests(unittest.TestCase):
         with open(stub, "w") as fh:
             fh.write(STUB)
         os.chmod(stub, os.stat(stub).st_mode | stat.S_IEXEC)
+        self.put("job.json", {"check_run_url": "https://api.github.com/repos/shader-slang/slang/check-runs/456"})
+        self.put("annotations.json", [[{"annotation_level": "failure",
+                                       "title": "Perf regressions overload_resolution/SemanticChecking"}]])
 
     def tearDown(self):
         shutil.rmtree(self.dir)
@@ -87,6 +97,42 @@ class GateTests(unittest.TestCase):
         out = self.fire()
         self.assertFalse(out["wakeAgent"])
         self.assertEqual(out["data"]["checked_runs"], 1)
+
+    def test_an_analyze_checkout_failure_is_a_throttled_error(self):
+        self.put("list.json", [run(11)])
+        data = jobs("success", "failure")
+        data["jobs"][1]["steps"][0]["conclusion"] = "skipped"
+        self.put("view-11.json", data)
+        first = self.fire()
+        self.assertEqual(first["data"]["error"], "trend_not_evaluated")
+        self.assertNotIn("kind", first["data"])
+        self.assertFalse(self.fire()["wakeAgent"])
+
+    def test_an_evaluation_failure_is_not_a_regression(self):
+        self.put("list.json", [run(11)])
+        self.put("view-11.json", jobs("success", "failure"))
+        self.put("annotations.json", [[{"annotation_level": "failure", "title": None,
+                                       "message": "Process completed with exit code 2."},
+                                      {"annotation_level": "warning", "title": "Perf warnings w/c"}]])
+        self.assertEqual(self.fire()["data"]["error"], "regression_not_confirmed")
+        self.assertFalse(self.fire()["wakeAgent"])
+
+    def test_regression_annotations_on_later_pages_are_read(self):
+        self.put("list.json", [run(11)])
+        self.put("view-11.json", jobs("success", "failure"))
+        self.put("annotations.json", [[], [{"annotation_level": "failure", "title": "Perf regressions w/c"}]])
+        self.assertEqual(self.fire()["data"]["kind"], "regression")
+
+    def test_annotation_api_failures_are_errors(self):
+        self.put("list.json", [run(11)])
+        self.put("view-11.json", jobs("success", "failure"))
+        self.assertEqual(self.fire(GH_ANNOTATIONS_FAIL="1")["data"]["error"], "annotations_failed")
+
+    def test_annotation_error_bodies_are_not_evidence(self):
+        self.put("list.json", [run(11)])
+        self.put("view-11.json", jobs("success", "failure"))
+        self.put("annotations.json", [{"message": "Not Found"}])
+        self.assertEqual(self.fire()["data"]["error"], "annotations_unparseable")
 
     def test_a_run_still_in_progress_stays_quiet(self):
         self.put("list.json", [run(11, conclusion=None, status="in_progress")])

@@ -9,9 +9,9 @@
 # reported through the payload, never through the exit code.
 #
 # Wake only for a CONFIRMED REGRESSION: the nightly job succeeded (the sweep ran and
-# was archived) and its analyze job failed (the trend step found a regression that
-# reproduced on rerun). A failed sweep is an infrastructure problem the CI
-# maintainer already covers; there is nothing to analyze.
+# was archived), its trend step failed, and that job has a Perf regressions error
+# annotation from the suite's confirmation reporter. A failed sweep is an
+# infrastructure problem the CI maintainer already covers; there is nothing to analyze.
 #
 # State lives under the group workspace, and the agent, not this script, marks a run
 # analyzed (ledger below): a wake that dies before finishing is retried at the next
@@ -85,6 +85,23 @@ while [ "$i" -lt "$count" ]; do
   nightly=$(printf '%s' "$jobs" | jq -r '[.jobs[] | select(.name == "nightly")][0].conclusion // "missing"')
   analyze=$(printf '%s' "$jobs" | jq -r '[.jobs[] | select(.name == "analyze")][0].conclusion // "missing"')
   if [ "$nightly" = "success" ] && [ "$analyze" = "failure" ]; then
+    trend=$(printf '%s' "$jobs" | jq -r '[.jobs[] | select(.name == "analyze") | .steps[]? |
+      select(.name == "Report confirmed trend (fail on confirmed regression)")][0].conclusion // "missing"')
+    [ "$trend" = "failure" ] || fail "trend_not_evaluated"
+    job_id=$(printf '%s' "$jobs" | jq -r '[.jobs[] | select(.name == "analyze")][0].databaseId')
+    case "$job_id" in '' | *[!0-9]*) fail "analyze_job_id_missing" ;; esac
+    job=$(gh api "repos/$REPO/actions/jobs/$job_id" 2>/dev/null) || fail "analyze_job_failed"
+    check_id=$(printf '%s' "$job" | jq -er '.check_run_url | capture("/check-runs/(?<id>[0-9]+)$").id' 2>/dev/null) || fail "check_run_missing"
+    annotations=$(gh api "repos/$REPO/check-runs/$check_id/annotations?per_page=100" --paginate --slurp 2>/dev/null) || fail "annotations_failed"
+    printf '%s' "$annotations" | jq -e 'type == "array" and length > 0 and
+      all(.[]; type == "array" and all(.[]; type == "object" and
+        (.annotation_level | type == "string") and (.title == null or (.title | type == "string"))))' \
+      >/dev/null 2>&1 || fail "annotations_unparseable"
+    # The reporter emits this only after validating the original and rerun.
+    # An ordinary step error (or a warning-tier annotation) is not a regression.
+    printf '%s' "$annotations" | jq -e 'any(.[][];
+      .annotation_level == "failure" and ((.title // "") | startswith("Perf regressions ")))' \
+      >/dev/null 2>&1 || fail "regression_not_confirmed"
     emit true "$(printf '%s' "$run" | jq -c '{run_id: .databaseId, run_url: .url, created_at: .createdAt, head_sha: .headSha, event: .event, kind: "regression"}')"
   fi
   # nightly failed or analyze never ran: a sweep problem, not a regression. Not ours.

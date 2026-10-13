@@ -625,6 +625,9 @@ def build_bundle(results_dir, label=None, commit=None, repo_dir=None, gh=None,
     story |= {t["timer"] for t in bundle["global_shifts"]}
     ranked = score_commits(commits, story)
     bundle["candidates"] = ranked[:8]
+    if not ranked:
+        bundle["notes"].append("the ranking has no matches for these counters; this is not evidence "
+                               "of noise. Bisect the full commit range, or report insufficient evidence")
     if gh:
         # What each candidate PR was for, and what was said about its cost. Collected
         # for every candidate (they are few and capped) because whether a cost is a
@@ -646,11 +649,9 @@ def build_bundle(results_dir, label=None, commit=None, repo_dir=None, gh=None,
     for c in commits:
         c["files"] = c["files"][:MAX_FILES_PER_COMMIT]
     bundle["commits"] = commits
-    order = {c["sha"]: i for i, c in enumerate(commits)}
-    points_to_build = [base_pt["commit"]] + [r["sha"] for r in sorted(ranked[:6], key=lambda r: order[r["sha"]])]
-    if commits and commits[-1]["sha"] not in points_to_build:
-        points_to_build.append(commits[-1]["sha"])
-    bundle["bisect_points"] = points_to_build
+    # Ranking may omit the actual cause. Establish the full range's effect first,
+    # then git-bisect it and verify the culprit against its immediate parent.
+    bundle["bisect_points"] = [base_pt["commit"], cur["commit"]]
     if evidence_dir and ranked:
         bundle["evidence_files"], notes = save_evidence(evidence_dir, ranked, {c["sha"]: c for c in commits},
                                                         gh, repo_dir, evidence_limit)
@@ -718,13 +719,14 @@ def render_markdown(b):
         out += ["", ("Ordered by changed lines in files that can move the flagged and shifted timers. "
                      "This is a weak signal: line count cannot tell a plain overload from a new "
                      "interface, so the first entry is not necessarily the cause. Build the suggested "
-                     "points to attribute a step; do not name a culprit from this list alone."), ""]
+                     "endpoints, then bisect the full range and verify the culprit against its "
+                     "immediate parent; do not name a culprit from this list alone."), ""]
         for r in b["candidates"]:
             pr = f"#{r['pr']}" if r["pr"] else r["sha"][:9]
             who = r.get("pr_author") or r["author"]
             comps = ", ".join(f"{k} {v}" for k, v in r["components"].items())
             out.append(f"- {pr} ({who}): {r['subject']} -- {comps}")
-        out += ["", "Suggested build points for a bisect: " + ", ".join(s[:9] for s in b["bisect_points"])]
+        out += ["", "Bisect endpoints (not adjacent-commit attribution): " + ", ".join(s[:9] for s in b["bisect_points"])]
         if b.get("intent"):
             out += ["", "## What the candidate PRs were for (excerpts of untrusted text)", ""]
             for pr, rec in b["intent"].items():

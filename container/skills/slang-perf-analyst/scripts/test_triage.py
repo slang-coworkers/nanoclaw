@@ -9,11 +9,15 @@ mean. They need a slang checkout: set SLANG_COMPILE_PERF_DIR to its
 tools/compile-perf. The workflow's first step runs them as a contract check, so
 interface drift in the suite fails loudly instead of producing wrong numbers.
 """
+import contextlib
+import io
 import json
 import os
 import sys
 import tempfile
 import unittest
+from types import SimpleNamespace
+from unittest.mock import patch
 
 SUITE = os.environ.get("SLANG_COMPILE_PERF_DIR")
 if not SUITE:
@@ -28,6 +32,20 @@ import bench
 # skill's own triage.py or intent.py.
 sys.path.insert(0, HERE)
 import triage
+
+
+class GateContractTests(unittest.TestCase):
+    def test_confirmation_reporter_emits_the_gates_regression_annotation(self):
+        trend = triage.confirm.trend
+        limits = SimpleNamespace(rel=1.1, warn_rel=1.05, abs=2.0, no_fail=False)
+        change = trend.MetricChange("w", "compileInner", 100, 120)
+        output = io.StringIO()
+        with patch.dict(os.environ, {"GITHUB_ACTIONS": "true", "GITHUB_OUTPUT": "",
+                                     "GITHUB_STEP_SUMMARY": ""}), contextlib.redirect_stdout(output), \
+                self.assertRaises(SystemExit) as stopped:
+            trend.report_changes(limits, "night", "runner", "base", 7, [change], [], 1)
+        self.assertEqual(stopped.exception.code, trend.EXIT_REGRESSION)
+        self.assertIn("::error title=Perf regressions w/compileInner::", output.getvalue())
 
 
 def row(workload, size=64, sampling="interleaved", **timers):
@@ -304,8 +322,45 @@ class BundleTests(unittest.TestCase):
         self.assertEqual([t["timer"] for t in b["global_shifts"]], ["readSerializedModuleAST"])
         self.assertEqual([c["pr"] for c in b["candidates"]], [2])
         self.assertEqual(b["commit_range"]["base_commit"], "sha6")
-        # The base and the candidate are both build points; so is the head.
-        self.assertEqual(b["bisect_points"], ["sha6", "b" * 40, "c" * 40])
+        # Endpoints come from the full range, not the heuristic's selected commits.
+        self.assertEqual(b["bisect_points"], ["sha6", "sha7"])
+
+    def test_low_ranked_commits_remain_inside_the_bisect_range(self):
+        def commits(*args):
+            return ([{"sha": f"commit{i}", "author": "a", "date": "d", "subject": f"Change (#{i})",
+                      "files": [{"path": "source/slang/core.meta.slang", "additions": i, "deletions": 0}]}
+                     for i in range(1, 9)], [])
+        with tempfile.TemporaryDirectory() as root:
+            self.write_tree(root)
+            b = triage.build_bundle(root, label=self.LABELS[-1], fetch=commits)
+        self.assertEqual(b["candidates"][0]["sha"], "commit8")
+        self.assertEqual(b["bisect_points"], ["sha6", "sha7"])
+        self.assertEqual(b["commits"][0]["sha"], "commit1")
+
+    def test_api_only_shift_keeps_the_full_range_when_ranking_has_no_matches(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.write_tree(root)
+            for directory, _, files in os.walk(root):
+                for name in files:
+                    if name in ("results.json", "confirmation.json"):
+                        path = os.path.join(directory, name)
+                        with open(path) as fh:
+                            data = fh.read().replace("readSerializedModuleAST", "apiCreateGlobalSession")
+                        with open(path, "w") as fh:
+                            fh.write(data)
+            b = triage.build_bundle(root, label=self.LABELS[-1], fetch=self.fake_commits)
+        self.assertEqual(b["flagged"][0]["outcome"], "warning")
+        self.assertEqual(b["candidates"], [])
+        self.assertEqual(len(b["commits"]), 3)
+        self.assertEqual(b["bisect_points"], ["sha6", "sha7"])
+        self.assertTrue(any("not evidence of noise" in note for note in b["notes"]))
+
+    def test_missing_commit_source_does_not_erase_bisect_endpoints(self):
+        with tempfile.TemporaryDirectory() as root:
+            self.write_tree(root)
+            b = triage.build_bundle(root, label=self.LABELS[-1], fetch=lambda *args: ([], ["source unavailable"]))
+        self.assertEqual(b["bisect_points"], ["sha6", "sha7"])
+        self.assertIn("source unavailable", b["notes"])
 
     def test_intent_of_the_candidate_prs_is_collected_and_rendered(self):
         class Gh:
@@ -386,7 +441,7 @@ class BundleTests(unittest.TestCase):
     def test_markdown_renders_each_section(self):
         md = triage.render_markdown(self.bundle())
         for text in ("## Flagged counters", "readSerializedModuleAST", "## Commit range",
-                     "#2", "Suggested build points", "weak signal"):
+                     "#2", "Bisect endpoints", "weak signal"):
             self.assertIn(text, md)
 
     def test_pick_point_by_label_commit_and_default(self):

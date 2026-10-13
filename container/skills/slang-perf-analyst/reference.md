@@ -35,6 +35,12 @@ python3 scripts/triage.py --results work/$L/results --label $L \
 
 ## Attribution: bisecting `bisect_points`
 
+`bisect_points` contains the full range's base and head. The commit ranking only
+prioritizes reading; it never selects which commits are eligible to be the cause.
+An empty ranking (for example, an API counter with no component mapping) still
+requires measuring these endpoints. Missing commits or measurements mean
+insufficient evidence and class `unclear`, not noise.
+
 Do the work in **one dedicated worktree outside the issue-worktree namespace** (the reaper
 treats `wt-slang-<n>` as an issue's tree and deletes it when the issue goes terminal):
 
@@ -66,16 +72,48 @@ Write one corpus so every build compiles identical sources, then measure. **A/A 
 
 ```bash
 python3 $SLANG_COMPILE_PERF_DIR/bench.py --prepare corpus --only <flagged workloads>
-python3 scripts/ab.py --aa --corpus corpus --only <workloads> --rounds <measurement.aa_rounds> base=snap/<base>/bin/slangc
-python3 scripts/ab.py     --corpus corpus --only <workloads> --rounds <measurement.ab_rounds> \
-  base=snap/<base>/bin/slangc c1=snap/<c1>/bin/slangc ... head=snap/<head>/bin/slangc --json work/$L/ab.json
+python3 scripts/ab.py --aa --corpus corpus --only <workloads> --counters <flagged counters> \
+  --rounds <measurement.aa_rounds> base=snap/<base>/bin/slangc
+python3 scripts/ab.py --corpus corpus --only <workloads> --counters <flagged counters> \
+  --rounds <measurement.ab_rounds> base=snap/<base>/bin/slangc head=snap/<head>/bin/slangc --json work/$L/ab.json
 ```
 
-Read the **step** column (each build against the previous): a regression is a step at one commit, and
-the commit before it must be flat. If A/A spread exceeds the policy's `aa_max_spread_pct`, say the host
-is too noisy for wall-clock attribution; use instruction counts if `perf`/`valgrind` work in the
-container, otherwise the class is `unclear`. When a step lands on a commit that touches only a few
-files, bisect inside a squashed range only if its parent builds are cheap; do not guess.
+Pass the same explicit counters to A/A and A/B. Every selected workload must supply
+every requested counter in every round; group workloads with different counters
+into separate invocations. For example, `api_session_create` needs
+`--counters apiCreateGlobalSession,apiCreateSession`, not compiler-phase counters.
+Missing or invalid samples stop the script; they never mean zero noise.
+
+If A/A spread exceeds the policy's `aa_max_spread_pct`, the host is too noisy for
+wall-clock attribution; use instruction counts if available, otherwise the class
+is `unclear`. Only start a bisect when the endpoints reproduce the nightly effect:
+
+```bash
+git -C /workspace/agent/wt-perf-bisect bisect start <head> <base>
+# Build and snapshot the selected midpoint with the same configuration above.
+# Run ab.py against base and midpoint with the same corpus and counters.
+git -C /workspace/agent/wt-perf-bisect bisect good  # only for a measured flat midpoint
+# OR: git ... bisect bad  # only for a reproduced regression
+# OR: git ... bisect skip # build failure or an ambiguous measurement
+# Repeat until git identifies one first-bad commit; preserve the bisect log.
+git -C /workspace/agent/wt-perf-bisect bisect log > work/$L/bisect.log
+git -C /workspace/agent/wt-perf-bisect bisect reset
+```
+
+A step between nonadjacent builds identifies an interval, not a culprit. After
+bisecting, build the first-bad commit and its immediate parent and run another
+A/A and interleaved A/B on the flagged counters. The parent must be flat against
+the baseline and the parent-to-commit effect must meet the policy threshold.
+For a merge, verify the relevant parents; do not attribute a multi-commit merged
+range to one constituent PR without narrowing it. If skipped builds leave more
+than one possible culprit, the effect is non-monotonic, or the parent check is
+unavailable or ambiguous, record `unclear` without naming a culprit.
+
+An attributed PR may be absent from `bundle.intent` because the ranking missed
+it. Collect it with `intent.collect_intent(triage.GitHub("shader-slang/slang"), pr,
+trusted)` using the selected policy's `trust.intent_text_associations` (the
+default only when absent, preserving an explicit empty list). Save the returned
+record alongside the bundle and fetch that commit's diff before classification.
 
 Wall-clock results come from this host and compiler, not the Windows perf runner. A cost that does not
 reproduce here is `unclear`, not "fixed".

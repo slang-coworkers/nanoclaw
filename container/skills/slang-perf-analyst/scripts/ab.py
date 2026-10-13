@@ -22,6 +22,7 @@ Needs SLANG_COMPILE_PERF_DIR (a slang checkout's tools/compile-perf) for bench.p
 """
 import argparse
 import json
+import math
 import os
 import statistics
 import subprocess
@@ -29,17 +30,27 @@ import sys
 import tempfile
 
 
-def collect(results_json, counters, into):
-    """Pool each counter's raw samples from one bench.py results.json into `into`."""
+def collect(results_json, counters, into, workloads=None):
+    """Pool a complete batch, rejecting absent or unusable requested measurements."""
     with open(results_json, encoding="utf-8") as fh:
         rows = json.load(fh)
+    batch = {}
     for row in rows:
         if not row.get("ok") or not row.get("timers"):
             continue
         for counter in counters:
             st = row["timers"].get(counter)
             if st and st.get("samples"):
-                into.setdefault((row["workload"], counter), []).extend(st["samples"])
+                samples = st["samples"]
+                if any(not isinstance(s, (int, float)) or not math.isfinite(s) or s <= 0 for s in samples):
+                    raise ValueError(f"invalid samples: {row['workload']}/{counter}")
+                batch.setdefault((row["workload"], counter), []).extend(samples)
+    if workloads is not None:
+        missing = {(w, c) for w in workloads for c in counters} - batch.keys()
+        if missing:
+            raise ValueError("missing measurements: " + ", ".join(f"{w}/{c}" for w, c in sorted(missing)))
+    for key, samples in batch.items():
+        into.setdefault(key, []).extend(samples)
 
 
 def summarize(pooled, labels):
@@ -69,6 +80,8 @@ def summarize(pooled, labels):
 
 def spread_pct(summary, label_a, label_b):
     """Largest |median ratio - 1| between two labels of the same binary, in percent."""
+    if not summary:
+        raise ValueError("no comparable measurements for A/A")
     worst = 0.0
     for row in summary:
         a, b = row["per_label"][label_a]["median"], row["per_label"][label_b]["median"]
@@ -104,12 +117,14 @@ def main(argv=None):
     ap.add_argument("builds", nargs="+", help="label=path/to/slangc, in commit order (first is the base)")
     ap.add_argument("--corpus", required=True, help="directory written by bench.py --prepare")
     ap.add_argument("--only", required=True, help="comma-separated workloads")
-    ap.add_argument("--counters", default="SemanticChecking,frontEndExecute,compileInner")
+    ap.add_argument("--counters", required=True, help="comma-separated counters required for every selected workload")
     ap.add_argument("--rounds", type=int, default=12)
     ap.add_argument("--samples", type=int, default=5, help="samples per bench.py run")
     ap.add_argument("--aa", action="store_true", help="run the first build twice as base and base-again")
     ap.add_argument("--json", dest="json_out")
     args = ap.parse_args(argv)
+    if args.rounds < 1 or args.samples < 1:
+        ap.error("--rounds and --samples must be positive")
 
     suite = os.environ.get("SLANG_COMPILE_PERF_DIR")
     if not suite:
@@ -120,7 +135,12 @@ def main(argv=None):
     if args.aa:
         builds = [(builds[0][0], builds[0][1]), (builds[0][0] + "-again", builds[0][1])]
     labels = [l for l, _ in builds]
-    counters = args.counters.split(",")
+    if len(labels) < 2 or len(set(labels)) != len(labels):
+        ap.error("provide at least two distinct build labels (or use --aa)")
+    counters = [c.strip() for c in args.counters.split(",") if c.strip()]
+    workloads = [w.strip() for w in args.only.split(",") if w.strip()]
+    if not counters or not workloads:
+        ap.error("--counters and --only must not be empty")
     pooled = {l: {} for l in labels}
     with tempfile.TemporaryDirectory() as scratch:
         for rnd in range(args.rounds):
@@ -130,8 +150,13 @@ def main(argv=None):
                 path = find_results(out)
                 if proc.returncode != 0 or not path:
                     sys.exit(f"ab.py: bench failed for {label} round {rnd}:\n{proc.stdout[-400:]}{proc.stderr[-400:]}")
-                collect(path, counters, pooled[label])
+                try:
+                    collect(path, counters, pooled[label], workloads)
+                except ValueError as exc:
+                    sys.exit(f"ab.py: {label} round {rnd}: {exc}")
     summary = summarize(pooled, labels)
+    if not summary:
+        sys.exit("ab.py: no comparable measurements")
     print(render(summary, labels))
     result = {"labels": labels, "rounds": args.rounds, "summary": summary}
     if args.aa:

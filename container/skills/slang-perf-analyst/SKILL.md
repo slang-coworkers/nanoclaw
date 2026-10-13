@@ -75,7 +75,7 @@ A missing `bundle.json` or an empty `flagged` list is not something to reconstru
 ## Decision procedure
 
 1. **Real or noise?** Per flagged counter use the `hint`: `known-flaky`/`bimodal-history` (history already contains samples this slow) and `tail-only` (median rose, the fast samples did not) are noise unless other counters of the same workload are `min-shifted`; `min-shifted` is a real shift. A `cleared` alert outcome is cleared. If everything is noise: ledger it, report, stop.
-2. **Attribute.** Run the bisect in `reference.md` on the bundle's `bisect_points`. Measure A/A first; if the host's A/A spread exceeds the policy's `aa_max_spread_pct`, wall-clock attribution is not trustworthy here, and without instruction counts the class is `unclear`. Attribution is a measured step that reproduces in the nightly's direction at or above `min_reproduced_effect_pct`. The ranking is not attribution.
+2. **Attribute.** Measure the full range's endpoints in `bisect_points`, then run a real git bisect per `reference.md`, including commits absent from the ranking. An empty ranking is not evidence of noise. Pass the flagged counters explicitly to A/A and A/B; missing samples are insufficient evidence. Measure A/A first; if the host's A/A spread exceeds the policy's `aa_max_spread_pct`, wall-clock attribution is not trustworthy here, and without instruction counts the class is `unclear`. Before naming a culprit, verify it against its immediate parent: the parent must be flat and the step must reproduce in the nightly's direction at or above `min_reproduced_effect_pct`. Unresolved intervals are `unclear`.
 3. **Intent.** Read `bundle.intent` for each attributed PR: purpose, kind, linked issues, cost statements and whether the cost was acknowledged. Quote; do not paraphrase the author. Only merged PRs are read, and only the PR author's and maintainers' text (`trust.intent_text_associations`): the bundle lists how many comments, reviews and linked-issue bodies it withheld. Withheld text is not evidence in either direction: do not infer a cost was or was not discussed from what you could not read.
 4. **Diagnose.** Read the diff and, if the cost is large enough to matter, profile at scale. State the mechanism as a hypothesis, the proportionality test results, the cheapest mitigation and its estimated recovery. Label every sentence measured or inferred.
 5. **Classify and decide.** Pick the class; apply `classes[c].file`; apply the dedupe and caps. Then act by `mode`:
@@ -112,7 +112,7 @@ ncl tasks create \
 ```
 
 Test the gate first with `bash -c "$(cat scripts/gate.sh)"`. It always exits 0 and prints the JSON last; an API
-failure wakes you once per six hours with `data.error` so an outage is visible. When that is what woke you,
+failure or an unconfirmed analyze failure wakes you once per six hours with `data.error` so an outage is visible. The gate requires the suite's `Perf regressions` error annotation from the failed trend job, not just a red job. When an error is what woke you,
 report the error on the parent channel and stop.
 
 ## Operator notes
