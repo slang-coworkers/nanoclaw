@@ -95,6 +95,68 @@ export function enforceRecurrenceLimit(
 }
 
 /**
+ * A recurring task that watches ONE issue or PR. Recognized by a name that is an
+ * issue handle (`i13435-maintainer-gate`, `pr12200-verdict-guard`, `watch-13261-dep`,
+ * `dispatch-13472-after-131`) or by a prompt whose opening mentions exactly one
+ * `#NNNN` and no other issue number.
+ */
+const PER_ISSUE_NAME = /^(i|issue|pr|gh|recheck|watch|dispatch)[-_]?\d{3,6}/i;
+const ISSUE_REF = /#(\d{3,6})\b/g;
+const PROMPT_SCAN_CHARS = 200;
+
+/**
+ * The name half of a series id: `makeTaskId` appends `-<4hex>` to the slug, and
+ * four hex digits can all be decimal (`watch-1234`), which would read as an issue
+ * handle. Stripping the suffix recovers the slug for the per-issue check on update.
+ */
+export function taskNameFromSeriesId(seriesId: string): string {
+  return seriesId.replace(/-[0-9a-f]{4}$/, '');
+}
+
+export function targetsSingleIssue(name: string | undefined, prompt: string): boolean {
+  if (name && PER_ISSUE_NAME.test(name)) return true;
+  const refs = new Set<string>();
+  for (const m of prompt.slice(0, PROMPT_SCAN_CHARS).matchAll(ISSUE_REF)) refs.add(m[1]);
+  return refs.size === 1;
+}
+
+/**
+ * Refuse an agent-created recurrence that targets a single issue/PR. GitHub
+ * webhooks already deliver `issues` / `issue_comment` / `pull_request` events to
+ * the install, and a per-issue cron never self-cancels: it wakes a fresh container
+ * on every fire until someone deletes it. The host CLI (an operator) is not
+ * restricted — the check is only applied to agent callers.
+ */
+export function rejectPerIssueRecurrence(name: string | undefined, prompt: string, recurrence: string | null): void {
+  if (!recurrence || !targetsSingleIssue(name, prompt)) return;
+  throw new Error(
+    'Refusing a recurring task that targets a single issue/PR (the name or prompt names exactly one #NNNN). ' +
+      "A per-issue cron never self-cancels; webhooks already deliver that issue's events. " +
+      'For a one-time future check use --process-after <ISO timestamp> (no --recurrence); ' +
+      'for a chain parked on a human, record a parked-chain entry that the daily re-chase tick reads.',
+  );
+}
+
+/**
+ * Upper bound on an agent-supplied `--script`. The script text is copied into every
+ * occurrence row of the series, so a large program stored inline is duplicated on
+ * each fire; a program belongs in a file under the group workspace that the script
+ * execs. Host callers are not bound by this limit.
+ */
+export const MAX_AGENT_SCRIPT_BYTES = 8 * 1024;
+
+export function rejectOversizeAgentScript(script: string | null): void {
+  if (script === null) return;
+  const bytes = Buffer.byteLength(script, 'utf8');
+  if (bytes <= MAX_AGENT_SCRIPT_BYTES) return;
+  throw new Error(
+    `--script is ${bytes} bytes; an agent-created script may be at most ${MAX_AGENT_SCRIPT_BYTES} bytes. ` +
+      'Save the program under /workspace/agent/ and make the script exec it, e.g. ' +
+      "--script 'exec bash /workspace/agent/gates/<name>.sh'.",
+  );
+}
+
+/**
  * Validate task semantics and derive its first run without writing anything.
  * `timezone` grounds wall-clock interpretation (cron grid, naive
  * --process-after) — pass the owning group's effective timezone
