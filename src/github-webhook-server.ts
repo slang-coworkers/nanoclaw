@@ -20,6 +20,7 @@ import {
   INSTANCE_FORWARD_TARGETS,
   INSTANCE_SLUG,
   INTERNAL_REGISTER_SECRET,
+  ISSUE_BOT_OK_LABEL,
   ROUTE_ISSUES_TO,
 } from './config.js';
 import { getDb } from './db/connection.js';
@@ -279,7 +280,14 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
   // Issues: action must be 'opened'; no mention check (a fresh issue
   // can't tag the bot — the bot is the audience here, not the actor).
   if (eventType === 'issues') {
-    if (payload.action !== 'opened') {
+    // `labeled` is accepted only for the bot-ok label: a maintainer releasing a
+    // parked human issue to the bot early (contributor standard R6).
+    const labeledName =
+      payload.action === 'labeled' && typeof (payload.label as Record<string, unknown> | undefined)?.name === 'string'
+        ? String((payload.label as Record<string, unknown>).name).toLowerCase()
+        : '';
+    const botOkLabeled = payload.action === 'labeled' && labeledName === ISSUE_BOT_OK_LABEL;
+    if (payload.action !== 'opened' && !botOkLabeled) {
       return { status: 200, body: { ok: true, skipped: true, reason: 'issues action not opened' } };
     }
     const issue = payload.issue as Record<string, unknown> | undefined;
@@ -310,6 +318,7 @@ export async function processGitHubDelivery(input: GitHubDeliveryInput): Promise
       rawBody,
       eventType: String(eventType),
       deliveryId: deliveryId,
+      botOkLabeled,
     });
     return { status: 200, body: { ok: true, outcome } };
   }

@@ -62,6 +62,9 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -186,6 +189,9 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -255,6 +261,9 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -325,6 +334,9 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'lego', // receiver: ROUTE_ISSUES_TO !== own slug guard not triggered
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -388,6 +400,9 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -445,6 +460,9 @@ describe('deliverGitHubMention — owner_instance routing', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -502,6 +520,9 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -573,6 +594,9 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: true,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -635,6 +659,9 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: true,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -700,6 +727,9 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -768,6 +798,9 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -831,6 +864,9 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -894,6 +930,9 @@ describe('deliverGitHubPrEvent — review/CI routing (no orchestrator fallback)'
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -951,6 +990,9 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -1011,6 +1053,9 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -1086,6 +1131,9 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -1145,6 +1193,9 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -1203,6 +1254,9 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -1256,6 +1310,9 @@ describe('deliverGitHubIssueOpened', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: 'lego',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
     }));
@@ -1311,6 +1368,9 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
       ROUTE_READY_PRS_TO: 'lego',
@@ -1361,6 +1421,9 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'prod',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
       ROUTE_READY_PRS_TO: 'lego',
@@ -1410,6 +1473,9 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
       ROUTE_READY_PRS_TO: '', // consumer: handle locally
@@ -1473,6 +1539,9 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
       ROUTE_READY_PRS_TO: '', // consumer: handle locally
@@ -1550,6 +1619,9 @@ describe('deliverGitHubPrReviewable', () => {
       INSTANCE_SLUG: 'lego',
       INTERNAL_REGISTER_SECRET: SECRET,
       ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 0,
+      ISSUE_NEWCOMER_LABELS: [],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
       APPROVER_CI_GATE: false,
       CI_GATE_REQUIRED_SUITE: '',
       ROUTE_READY_PRS_TO: '',
@@ -1610,5 +1682,114 @@ describe('deliverGitHubPrReviewable', () => {
       'gh-pr-ready-shader-slang/slang-321-d-1',
       'gh-pr-ready-shader-slang/slang-321-d-2',
     ]);
+  });
+});
+
+describe('deliverGitHubIssueOpened — the bot leaves room for people (R6)', () => {
+  const event = (over: Partial<Parameters<typeof import('./webhook-github.js').deliverGitHubIssueOpened>[0]>) => ({
+    repo: 'shader-slang/slang',
+    issueNumber: 4321,
+    issueUrl: 'https://github.com/shader-slang/slang/issues/4321',
+    title: 'Wrong result from reflection',
+    body: 'Steps: ...',
+    author: 'newcomer',
+    labels: [] as string[],
+    deliveryId: 'd-issues-r6',
+    ...over,
+  });
+  const setup = () => {
+    const insertCalls: unknown[] = [];
+    const scheduled: unknown[] = [];
+    vi.doMock('./config.js', () => ({
+      INSTANCE_FORWARD_TARGETS: {},
+      INSTANCE_SLUG: 'prod',
+      INTERNAL_REGISTER_SECRET: SECRET,
+      ROUTE_ISSUES_TO: '',
+      ISSUE_BOT_WAIT_DAYS: 4,
+      ISSUE_NEWCOMER_LABELS: ['goodfirstbug', 'helpwanted', 'no-bot'],
+      ISSUE_BOT_OK_LABEL: 'bot-ok',
+      APPROVER_CI_GATE: false,
+      CI_GATE_REQUIRED_SUITE: '',
+    }));
+    vi.doMock('./db/connection.js', () => ({
+      getDb: () => ({ get: async () => undefined }),
+    }));
+    vi.doMock('./db/sessions.js', () => ({
+      findSessionByAgentGroup: () => ({ id: 'sess-orch' }),
+      findSessionByAgentThread: () => ({ id: 'sess-orch' }),
+      getSession: async () => undefined,
+      createSession: async () => undefined,
+      updateSessionTitle: async () => true,
+    }));
+    vi.doMock('./db/agent-groups.js', () => ({
+      getAdminAgentGroup: async () => ({ id: 'g-admin', name: 'orchestrator' }),
+      getAgentGroupByFolder: async () => undefined,
+    }));
+    vi.doMock('./mailbox/sqlite/session-db.js', () => ({
+      openInboundDb: () => ({
+        prepare: () => ({ get: () => undefined, run: () => undefined }),
+        close: () => undefined,
+      }),
+      insertMessage: (_db: unknown, msg: unknown) => insertCalls.push(msg),
+    }));
+    vi.doMock('./mailbox/sqlite/paths.js', () => ({ inboundDbPath: () => '/tmp/orch.db' }));
+    vi.doMock('./session-manager.js', () => ({
+      inboundDbPath: () => '/tmp/orch.db',
+      initSessionFolder: () => undefined,
+    }));
+
+    vi.doMock('./modules/scheduling/create.js', () => ({
+      prepareScheduledTask: (input: unknown) => input,
+      createScheduledTask: async (_g: string, task: unknown) => {
+        scheduled.push(task);
+        return { session: { id: 's', agent_group_id: 'g-admin' }, row: {} };
+      },
+    }));
+    return { insertCalls, scheduled };
+  };
+
+  it('never delivers an issue that carries a newcomer label', async () => {
+    const { insertCalls, scheduled } = setup();
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    expect(await deliverGitHubIssueOpened(event({ labels: ['GoodFirstBug'] }))).toBe('skipped');
+    expect(insertCalls).toHaveLength(0);
+    expect(scheduled).toHaveLength(0);
+  });
+
+  it('parks a fresh human-filed issue behind a one-shot re-check task', async () => {
+    const { insertCalls, scheduled } = setup();
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    const before = Date.now();
+    expect(await deliverGitHubIssueOpened(event({}))).toBe('parked');
+    expect(insertCalls).toHaveLength(0);
+    expect(scheduled).toHaveLength(1);
+    const task = scheduled[0] as { name: string; prompt: string; processAfter: string };
+    expect(task.name).toBe('issue-wait shader-slang/slang#4321');
+    expect(task.prompt).toContain('gh issue view 4321 -R shader-slang/slang');
+    const dueIn = Date.parse(task.processAfter) - before;
+    expect(dueIn).toBeGreaterThan(4 * 86_400_000 - 5_000);
+    expect(dueIn).toBeLessThan(4 * 86_400_000 + 60_000);
+  });
+
+  it('delivers at once when a maintainer added bot-ok, for a bot filer, or for a crash with a reproducer', async () => {
+    const { insertCalls, scheduled } = setup();
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    expect(await deliverGitHubIssueOpened(event({ labels: ['bot-ok'] }))).toBe('local');
+    expect(await deliverGitHubIssueOpened(event({ issueNumber: 4322, botOkLabeled: true }))).toBe('local');
+    expect(await deliverGitHubIssueOpened(event({ issueNumber: 4323, author: 'nv-slang-bot[bot]' }))).toBe('local');
+    expect(
+      await deliverGitHubIssueOpened(
+        event({ issueNumber: 4324, title: 'Crash in lowerGenerics', body: 'Repro:\n```slang\nvoid main() {}\n```' }),
+      ),
+    ).toBe('local');
+    expect(insertCalls).toHaveLength(4);
+    expect(scheduled).toHaveLength(0);
+  });
+
+  it('a crash word without a code block is not a reproducer and still waits', async () => {
+    const { scheduled } = setup();
+    const { deliverGitHubIssueOpened } = await import('./webhook-github.js');
+    expect(await deliverGitHubIssueOpened(event({ title: 'Crash on startup', body: 'It crashes.' }))).toBe('parked');
+    expect(scheduled).toHaveLength(1);
   });
 });
