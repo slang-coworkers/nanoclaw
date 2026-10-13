@@ -104,8 +104,12 @@ describe('composed-document byte parity', () => {
       // gained a `## Connecting external accounts` section and it is EMITTED, so
       // every composed doc carries it. `section-completeness.test.ts` is what made
       // that a decision instead of a silent drop.
-      'base-common': '9b28879a188e7579',
-      'base-common.persona': 'dbe1364c6b1688e4',
+      //
+      // Moved a sixth time when the base principles/scope/workspace fragments were
+      // consolidated (one `Ambiguity` principle, one `Recall rule` block); the line
+      // deltas are declared in `anchor-retarget.test.ts`.
+      'base-common': '880899d27f7396ca',
+      'base-common.persona': '331773652eb62e39',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -113,8 +117,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: '906f88860c0c616a',
-      'default.persona': 'f09c8386f6fd1ad5',
+      default: '65790e21963d36c9',
+      'default.persona': '06a996eff27f7e3b',
     };
 
     const actual: Record<string, string> = {};
