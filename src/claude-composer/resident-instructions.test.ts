@@ -294,6 +294,7 @@ describe('resident selection', () => {
       identity: '',
       invariants: [],
       context: [],
+      rules: [],
       workflows: [],
       skills: [],
       tools: [],

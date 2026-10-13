@@ -31,8 +31,13 @@ const TYPES = ['main', 'default'] as const;
 describe.each(TYPES)('coworker type: %s', (coworkerType) => {
   const out = (): string => composeCoworkerSpine({ coworkerType, projectRoot: ROOT });
 
-  it('carries the runtime contract section', () => {
-    expect(out()).toContain(`## ${RUNTIME_CONTRACT_SECTION}`);
+  it('carries the runtime contract', () => {
+    // Flat mode keeps the contract as its own `##` section; typed mode folds it
+    // into `## Context` (environment facts sit with the workspace fragment), so
+    // the shared assertion is on the kept `###` sections, checked below.
+    const doc = out();
+    if (coworkerType === 'main') expect(doc).toContain(`## ${RUNTIME_CONTRACT_SECTION}`);
+    else expect(doc).not.toContain(`## ${RUNTIME_CONTRACT_SECTION}`);
   });
 
   it('carries every kept section', () => {
@@ -86,19 +91,20 @@ describe.each(TYPES)('coworker type: %s', (coworkerType) => {
 });
 
 describe('typed mode placement', () => {
-  // Before Identity: the contract states environment facts true for every
-  // coworker, so they precede this type's own material. Matches §4.3 and
-  // upstream's composer, which emits the base document before capabilities.
-  it('precedes Identity', () => {
+  // The contract is environment context, so it renders as the tail of `## Context`
+  // — after the role's own identity, rules and invariants, before the workflows.
+  it('renders inside Context, after Identity and before How to Work', () => {
     const doc = composeCoworkerSpine({ coworkerType: 'default', projectRoot: ROOT });
-
-    expect(doc.indexOf(`## ${RUNTIME_CONTRACT_SECTION}`)).toBeLessThan(doc.indexOf('## Identity'));
+    const memory = doc.indexOf('### Memory');
+    expect(memory).toBeGreaterThan(doc.indexOf('## Identity'));
+    expect(memory).toBeGreaterThan(doc.indexOf('## Context'));
+    expect(memory).toBeLessThan(
+      doc.indexOf('## How to Work') === -1 ? doc.indexOf('## Skills') : doc.indexOf('## How to Work'),
+    );
   });
-
   it('follows the document title', () => {
     const doc = composeCoworkerSpine({ coworkerType: 'default', projectRoot: ROOT });
-
-    expect(doc.indexOf('\n# ')).toBeLessThan(doc.indexOf(`## ${RUNTIME_CONTRACT_SECTION}`));
+    expect(doc.indexOf('\n# ')).toBeLessThan(doc.indexOf('### Memory'));
   });
 });
 

@@ -127,11 +127,13 @@ function mergeTypeEntries(base: CoworkerTypeEntry, addon: CoworkerTypeEntry, typ
     extends: addon.extends ?? base.extends,
     project: addon.project ?? base.project,
     description: addon.description ?? base.description,
+    abstract: addon.abstract ?? base.abstract,
     title: addon.title ?? base.title,
     flat: addon.flat ?? base.flat,
     identity: addon.identity ?? base.identity,
     invariants: [...(base.invariants || []), ...(addon.invariants || [])],
     context: [...(base.context || []), ...(addon.context || [])],
+    rules: [...(base.rules || []), ...(addon.rules || [])],
     workflows: [...(base.workflows || []), ...(addon.workflows || [])],
     skills: [...(base.skills || []), ...(addon.skills || [])],
     skillSource: addon.skillSource ?? base.skillSource,
@@ -246,6 +248,8 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
   const rawExtends = typeof fm.extends === 'string' ? fm.extends.trim() : '';
   const extendsExplicitNone = rawExtends.toLowerCase() === 'none';
   const extendsWorkflow = rawExtends && !extendsExplicitNone ? rawExtends : undefined;
+
+  const placeholders = declaredPlaceholders(fm);
 
   const overridesRaw =
     fm.overrides && typeof fm.overrides === 'object' ? (fm.overrides as Record<string, unknown>) : {};
@@ -431,9 +435,32 @@ function parseSkillMeta(filePath: string, forcedType?: SkillMeta['type']): Skill
     requires,
     extendsWorkflow,
     extendsExplicitNone: extendsExplicitNone || undefined,
+    placeholders,
     overrides,
     overlay,
   };
+}
+
+/**
+ * Collect the runtime placeholder names a workflow's frontmatter declares: the
+ * keys of `params:` plus every `{{name}}` token inside `produces:` values.
+ *
+ * `produces:` is where derived names are declared — `plan` takes a `target`
+ * param and writes its report to `/workspace/agent/reports/{{target_slug}}.md`,
+ * so `target_slug` is part of the workflow's vocabulary even though no param
+ * carries that name. Reading both fields keeps the vocabulary declared data
+ * rather than a suffix convention hard-coded in the composer.
+ */
+function declaredPlaceholders(fm: Record<string, unknown>): string[] {
+  const names = new Set<string>();
+  if (fm.params && typeof fm.params === 'object') {
+    for (const key of Object.keys(fm.params as Record<string, unknown>)) names.add(key);
+  }
+  const produces = Array.isArray(fm.produces) ? fm.produces : [];
+  for (const entry of JSON.stringify(produces).matchAll(/\{\{\s*([a-zA-Z_][a-zA-Z0-9_.]*)\s*\}\}/g)) {
+    names.add(entry[1]);
+  }
+  return [...names].sort();
 }
 
 function extractAllowedTools(raw: unknown): string[] {
