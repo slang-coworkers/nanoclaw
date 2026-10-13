@@ -16,6 +16,7 @@ slang-common:
   identity: container/spines/slang/identity/compiler-engineer.md
   invariants:
     - container/spines/slang/invariants/abi-stability.md
+    - container/spines/slang/invariants/writing.md
   context:
     - container/spines/slang/context/layout.md
     - container/spines/slang/context/bot-disclaimer.md
@@ -26,6 +27,7 @@ slang-common:
     - slang-code-reader
     - slang-github
     - slang-github-webhook
+    - slang-ste-writing   # writing rules for PR, issue, comment and chat text; gate-ste-writing.sh runs its checker
   workflows: []
   mcpServers:
     deepwiki:
