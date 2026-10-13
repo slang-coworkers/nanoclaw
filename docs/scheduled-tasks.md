@@ -45,12 +45,17 @@ A scheduled task has no chat attached to it. If its result should reach a
 user, the prompt must tell the agent where to send it. Use a destination name
 available to that agent, such as `telegram` or `team-slack`.
 
-NanoClaw also asks the agent to append a short work-log entry after each agent
-run. View run counts, failures, and recent log entries with:
+Each agent run appends its final text to the series run log. View run counts,
+failures, and recent log entries with:
 
 ```bash
 ncl tasks get <task-id> --group <agent-group-id>
 ```
+
+`completed_runs` counts every successful fire; `gated_runs` are the fires a
+script gate answered `wakeAgent: false` (no model call) and `woke_runs` the
+rest. A gated series whose `woke_runs` approaches `completed_runs` has a gate
+that is not gating.
 
 ## Manage and test tasks
 
@@ -92,12 +97,12 @@ or:
 { "wakeAgent": true, "data": { "alerts": 2 } }
 ```
 
-- `wakeAgent: false` completes the run without calling the model.
+- `wakeAgent: false` completes the run without calling the model and marks the
+  occurrence gated (`gated_runs` in `ncl tasks get`).
 - `wakeAgent: true` wakes the agent and adds `data` to its prompt.
 
-Scripts run with Bash, a 30-second timeout, and a 1 MB output limit. The JSON
-decision must be the final line written to standard output. Keep `data` small
-and include only what the agent needs.
+Scripts run with Bash, a 30-second timeout, and a 1 MB output limit. Keep
+`data` small and include only what the agent needs.
 
 For example, save this as `check-marker.sh`:
 
@@ -126,10 +131,12 @@ ncl tasks create \
 ```
 
 Store state that must survive between runs under `/workspace/agent`, the agent
-group workspace.
+group workspace. Keep secrets out of scripts; the credential gateway injects
+them at runtime.
 
-Avoid putting secrets directly in task scripts. Prefer runtime credential
-injection through the installed credential gateway so credentials are not stored in the task definition.
+A script created from inside a container may be at most 8 KB: the text is
+copied into every occurrence row of the series. Put a larger program in a file
+under `/workspace/agent/` and make the script `exec` it.
 
 ## Frequency limit
 
@@ -140,6 +147,11 @@ because `wakeAgent: false` uses no model tokens.
 For an intentionally frequent task that has no script, see the explicit
 override in `ncl tasks create --help` and confirm the token and quota cost
 before using it.
+
+Agent callers are also refused a `--recurrence` that targets a single issue or
+PR (a name such as `i13435-gate`, or a prompt naming exactly one `#NNNN`): the
+webhooks already deliver that issue's events, and a per-issue cron never
+self-cancels. Use `--process-after` for a one-time re-check.
 
 ## Script failures
 
@@ -156,6 +168,29 @@ ncl tasks resume <task-id> --group <agent-group-id>
 
 A valid `wakeAgent: false` decision is a successful run. It does not trigger
 failure backoff.
+
+## Snapshot and drift check
+
+Task definitions live only in per-session `inbound.db` rows, so
+`scripts/dump-scheduled-tasks.py` exports them to
+`docs/scheduled-tasks.<instance>.json` plus a Markdown mirror. Definitions only —
+runtime state is excluded, so a `git diff` on the file is the drift alarm. Tasks
+whose group is paused or deleted are kept but marked `group_paused` /
+`group_missing`; they are not live.
+
+Regenerate and commit after editing any task, and run both from the host
+crontab daily so drift surfaces within a day:
+
+```cron
+# ~/slang-coworkers-prod/nanoclaw — re-dump, then fail loudly on drift or a torn pair
+20 6 * * * cd ~/slang-coworkers-prod/nanoclaw && python3 scripts/dump-scheduled-tasks.py --md docs/scheduled-tasks.slang-coworkers-prod.md && git diff --quiet -- docs/scheduled-tasks.*.json || echo "scheduled-task snapshot drifted: review and commit docs/scheduled-tasks.*"
+25 6 * * * cd ~/slang-coworkers-prod/nanoclaw && bash scripts/check-task-snapshots.sh
+```
+
+`--check` (what `check-task-snapshots.sh` runs, also in CI) verifies the
+committed JSON/Markdown pair against its own `snapshot_id` without touching the
+host; it catches a torn or hand-edited pair, not drift from the live rows — the
+re-dump above does that.
 
 ## Template tasks
 
