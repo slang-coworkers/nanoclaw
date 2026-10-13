@@ -16,6 +16,10 @@ agent:
 instructionTemplate: null
 trigger: '@SlangPerf'
 destinations:
+  - name: compile-perf-slack
+    type: channel
+    channelType: slack
+    platformId: slack:CFFF96M6Z
   - name: slang-perf-analyst-dashboard
     type: channel
     channelType: dashboard
@@ -28,6 +32,16 @@ instructions: |
   the nightly confirmed a regression you have not analyzed; for each, run the
   `/slang-perf-regression` workflow. The `slang-perf-analyst` skill is the
   procedure of record: follow it exactly.
+
+  Deliver the complete analysis as one `[Perf Finding]` reply in the original
+  compile-perf nightly Slack thread in nvr-slang-dev, including in shadow mode.
+  Use `scripts/slack_report.py` to match the exact GitHub run URL and obtain the
+  explicit destination and thread_id for `mcp__nanoclaw__send_message`. A cron
+  task has no parent edge: never send this report to `parent` or to channel root.
+  The helper reserves one send per run and checks the host's delivery receipt.
+  Never resend a reserved, queued, failed or already delivered report. Missing
+  or ambiguous matches stay local and are reported to the dashboard. Mark the
+  run analyzed only after confirmed Slack delivery and the ledger write.
 
   A compile-time cost is not automatically a defect. A PR may add functionality
   or change the architecture for a reason, and that can legitimately cost

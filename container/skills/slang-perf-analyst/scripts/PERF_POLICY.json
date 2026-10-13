@@ -2,6 +2,11 @@
   "policy_version": "v0-shadow",
   "_comment": "Human-signed policy for slang-perf-analyst. Bundled default; an operator-mounted policy/PERF_POLICY.json wins over it (same mechanism as the PR approver's APPROVAL_POLICY.json). Every ledger line records the policy_version it was decided under. Only a human widens this: `mode` in particular is never changed by the agent.",
   "mode": "shadow",
+  "reporting": {
+    "destination": "compile-perf-slack",
+    "slack_channel_id": "CFFF96M6Z",
+    "note": "Reply to the bot's Compile-perf nightly message in nvr-slang-dev whose run URL exactly matches this run. Applies in every mode, including shadow. Never post at channel root or select an unrelated thread."
+  },
   "mode_values": {
     "shadow": "Decide and record what WOULD be filed; file nothing. Compare the ledger with what humans did.",
     "approval": "A human approves each filing through an approval card before anything is created.",

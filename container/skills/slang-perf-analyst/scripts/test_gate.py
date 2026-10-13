@@ -196,6 +196,37 @@ class GateTests(unittest.TestCase):
             fh.write("{not json")
         self.assertTrue(self.fire()["wakeAgent"])
 
+    def pending_report(self, status="queued", check_after=0):
+        directory = os.path.join(self.state, "perf-deliveries")
+        os.makedirs(directory, exist_ok=True)
+        with open(os.path.join(directory, "11.json"), "w") as fh:
+            json.dump({"run_id": 11, "created_at": iso(80), "status": status,
+                       "check_after": check_after,
+                       "run_url": "https://github.com/shader-slang/slang/actions/runs/11"}, fh)
+
+    def test_saved_delivery_is_resumed_after_the_nightly_ages_out(self):
+        self.pending_report()
+        result = self.fire(GH_LIST_FAIL="1")
+        self.assertEqual(result["data"]["kind"], "delivery-retry")
+        self.assertEqual(result["data"]["run_id"], 11)
+
+    def test_delivered_report_without_final_ledger_mark_resumes_recording(self):
+        self.pending_report("delivered")
+        self.assertEqual(self.fire()["data"]["delivery_status"], "delivered")
+
+    def test_completed_report_does_not_wake_again(self):
+        self.pending_report("delivered")
+        self.put("list.json", [])
+        with open(os.path.join(self.state, "perf-analyzed.json"), "w") as fh:
+            json.dump([11], fh)
+        self.assertFalse(self.fire()["wakeAgent"])
+
+    def test_deferred_delivery_cannot_fall_through_to_reanalysis(self):
+        self.pending_report("reserved", int(time.time()) + 3600)
+        self.put("list.json", [run(11)])
+        self.put("view-11.json", jobs("success", "failure"))
+        self.assertFalse(self.fire()["wakeAgent"])
+
 
 if __name__ == "__main__":
     unittest.main()

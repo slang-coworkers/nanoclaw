@@ -45,6 +45,7 @@ mitigation with its estimated recovery. When you cannot tell, the class is `uncl
 | `gate.sh` | The scheduled task's pre-task gate. Wakes you only for a confirmed regression you have not analyzed. Zero tokens otherwise. |
 | `triage.py` | Builds the evidence bundle from the night's archived results: per-counter hints (`known-flaky`, `bimodal-history`, `tail-only`, `min-shifted`), the cross-workload timer shifts judged against a night-to-night null, whole-compile impact, the commit range with a weak-signal ranking, bisect build points, and the intent evidence of the candidate PRs. |
 | `intent.py` | Used by `triage.py`: a PR's stated purpose, kind, linked issues and every cost statement made about it, as bounded excerpts of untrusted text. |
+| `slack_report.py` | Resolves the nightly Slack parent by exact run URL, reserves one report send, and verifies the host's delivery receipt. Outputs arguments for NanoClaw's critique-gated `send_message`; never posts directly. |
 | `PERF_POLICY.json` | The signed policy: `mode`, known-flaky counters, classes, filing caps, measurement thresholds. |
 | `test_*.py` | Tests. `test_triage.py` needs the suite (below) and doubles as a contract check. |
 
@@ -74,15 +75,15 @@ A missing `bundle.json` or an empty `flagged` list is not something to reconstru
 
 ## Decision procedure
 
-1. **Real or noise?** Per flagged counter use the `hint`: `known-flaky`/`bimodal-history` (history already contains samples this slow) and `tail-only` (median rose, the fast samples did not) are noise unless other counters of the same workload are `min-shifted`; `min-shifted` is a real shift. A `cleared` alert outcome is cleared. If everything is noise: ledger it, report, stop.
+1. **Real or noise?** Per flagged counter use the `hint`: `known-flaky`/`bimodal-history` (history already contains samples this slow) and `tail-only` (median rose, the fast samples did not) are noise unless other counters of the same workload are `min-shifted`; `min-shifted` is a real shift. A `cleared` alert outcome is cleared. If everything is noise, skip attribution and proceed to Deliver and record with that verdict.
 2. **Attribute.** Measure the full range's endpoints in `bisect_points`, then run a real git bisect per `reference.md`, including commits absent from the ranking. An empty ranking is not evidence of noise. Pass the flagged counters explicitly to A/A and A/B; missing samples are insufficient evidence. Measure A/A first; if the host's A/A spread exceeds the policy's `aa_max_spread_pct`, wall-clock attribution is not trustworthy here, and without instruction counts the class is `unclear`. Before naming a culprit, verify it against its immediate parent: the parent must be flat and the step must reproduce in the nightly's direction at or above `min_reproduced_effect_pct`. Unresolved intervals are `unclear`.
 3. **Intent.** Read `bundle.intent` for each attributed PR: purpose, kind, linked issues, cost statements and whether the cost was acknowledged. Quote; do not paraphrase the author. Only merged PRs are read, and only the PR author's and maintainers' text (`trust.intent_text_associations`): the bundle lists how many comments, reviews and linked-issue bodies it withheld. Withheld text is not evidence in either direction: do not infer a cost was or was not discussed from what you could not read.
 4. **Diagnose.** Read the diff and, if the cost is large enough to matter, profile at scale. State the mechanism as a hypothesis, the proportionality test results, the cheapest mitigation and its estimated recovery. Label every sentence measured or inferred.
 5. **Classify and decide.** Pick the class; apply `classes[c].file`; apply the dedupe and caps. Then act by `mode`:
-   - `shadow`: write the finding and the issue that *would* be filed; create nothing.
+   - `shadow`: write the finding and the issue that *would* be filed; create nothing on GitHub.
    - `approval`: put the would-be issue on an approval card; create it only on approval.
    - `live`: create it, within `filing`.
-6. **Record.** Append one ledger line (reference.md), then mark the run analyzed. In that order: a wake that dies in between is retried, not lost.
+6. **Deliver and record.** Follow the Slack delivery procedure in reference.md in every mode, including shadow: send the full `[Perf Finding]` analysis as one reply to the matching nightly message. Confirm delivery, append one ledger line including the Slack receipt, then mark the run analyzed. Resume saved deliveries on retry instead of repeating the analysis or posting again.
 
 ## Filing rules (when a class permits and `mode` allows)
 
@@ -113,9 +114,10 @@ ncl tasks create \
 
 Test the gate first with `bash -c "$(cat scripts/gate.sh)"`. It always exits 0 and prints the JSON last; an API
 failure or an unconfirmed analyze failure wakes you once per six hours with `data.error` so an outage is visible. The gate requires the suite's `Perf regressions` error annotation from the failed trend job, not just a red job. When an error is what woke you,
-report the error on the parent channel and stop.
+report the error to `slang-perf-analyst-dashboard` and stop; a scheduled task has no parent edge.
 
 ## Operator notes
 
 - The signed policy is mounted read-only at `/workspace/extra/perf-policy/PERF_POLICY.json` (same mechanism as the PR approver's policy). Without it the bundled `scripts/PERF_POLICY.json` applies and `policy_version` says so in every ledger line.
 - GitHub writes go through the shared bot credential. Narrowing it to issue creation only is a credential change in OneCLI, not something a prompt can enforce; until that is done, the write boundary in `perf-filing.md` is prompt-level.
+- The bundle authorizes Slack destination `compile-perf-slack` in `nvr-slang-dev` (`CFFF96M6Z`). The host's Slack adapter sends the report. The container needs gateway-brokered `conversations.history` read access to that channel to locate the parent; it never needs a local Slack token or direct Slack write access. If the mounted policy predates `reporting`, add that configuration before scheduling. Report lookup/permission failures to the dashboard, never fall back to channel root.

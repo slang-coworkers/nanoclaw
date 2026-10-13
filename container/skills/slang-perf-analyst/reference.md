@@ -136,9 +136,75 @@ only in the later build: their cost is directly attributable. Self-time diffs of
 noise at this scale. Check `command -v perf valgrind` first; if neither can run, say so and rely on the
 step table and the diff.
 
+## Replying to the nightly Slack message
+
+Every analysis, including a shadow finding or a noise verdict, goes to the
+original nightly message's thread in `#nvr-slang-dev`. A scheduled task has no
+parent conversation. The bundle supplies destination `compile-perf-slack`
+(`slack:CFFF96M6Z`); `policy.reporting` must agree with that destination.
+
+Write the complete report to the workflow's report path. Lead with a short
+finding, then include measured counters, the parent/culprit evidence, the class,
+the proposed action, the nightly link and the bot disclaimer. Keep it under
+12,000 characters, with no mentions. The full report is posted inline as one
+thread reply; no second message or attachment is needed. Obtain OUTPUT_REVIEW
+for this exact content before preparing delivery.
+
+```bash
+python3 scripts/slack_report.py prepare \
+  --run-id <run_id> --created-at <gate.created_at> \
+  --policy <policy path> --report <report path>
+```
+
+The helper reads the configured channel's history through the credential
+gateway. It accepts only a bot's top-level `Compile-perf nightly` message with
+the exact GitHub run URL, checking every page in the bounded time window. Zero
+or multiple matches are blocked, never a reason to use the channel root or the
+newest unrelated thread. Missing Slack history access is a setup error reported
+to the dashboard. The helper also verifies the destination in the session's
+read-only inbound mailbox before returning any send arguments.
+
+Only a `ready` result grants one call to `mcp__nanoclaw__send_message`, passing
+the returned `arguments` unchanged. It contains `to`, the adapter thread ID
+`slack:<channel>:<parent-ts>`, and the full `[Perf Finding]` text. Use NanoClaw's
+tool so its destination ACL and critique gate apply; never call Slack's write
+API or write the outbound database directly. Do not echo this send in the final
+response. The JSON reservation in `memory/perf-deliveries/<run_id>.json` is
+written before the arguments are returned, serializing overlapping attempts.
+
+After sending, check the host's receipt (a tool response alone only means queued):
+
+```bash
+python3 scripts/slack_report.py status --run-id <run_id>
+```
+
+- `delivered`: persist the returned channel, parent timestamp, source session,
+  outbound message id and Slack platform message id in the analysis ledger.
+- `queued`: the host still owns delivery. Recheck after its delivery poll or
+  resume at the next task fire; never enqueue a second copy.
+- `reserved`: the send has not been found in the source session's outbound
+  mailbox. It may be in flight or the process may have died before enqueueing.
+  Hold and report a new blocker to the dashboard; never blindly resend.
+- `failed`: the host recorded delivery failure. Preserve the report and receipt
+  for operator recovery; do not mark the analysis complete or resend it.
+
+On retry, resume the saved delivery in its source task session rather than
+repeating the analysis. The helper recovers a queued send by exact text and route
+even if the process died before recording the outbound id. A stored successful
+receipt survives mailbox history cleanup. Reserved/failed states defer the next
+check by six hours; queued or delivered-but-not-recorded reports resume at the
+next gate fire even after the nightly ages out of the GitHub lookback window.
+Report only a new or changed blocker to the dashboard. Do not remove a reservation
+to retry: an operator must inspect the source session and resolve any pending send
+first. Only confirmed delivery plus the ledger write permits the analyzed-run mark.
+
+This helper uses the SQLite session mailbox contract (`/workspace/inbound.db`
+and `/workspace/outbound.db`) read-only. An unavailable or different mailbox
+backend is a visible setup failure, never permission to bypass delivery tracking.
+
 ## Ledger
 
-Append one JSON line to `/workspace/agent/memory/perf-ledger.jsonl` per analyzed run, **before** adding
+After confirmed Slack delivery, append one JSON line to `/workspace/agent/memory/perf-ledger.jsonl` per analyzed run, **before** adding
 the run id to `/workspace/agent/memory/perf-analyzed.json` (a JSON array the gate reads):
 
 ```json
@@ -149,7 +215,9 @@ the run id to `/workspace/agent/memory/perf-analyzed.json` (a JSON array the gat
                "aa_spread_pct": 1.9, "acknowledged_tradeoff": false,
                "mitigation": "count parameters without building DeclRefs in the arity check",
                "estimated_recovery": "half to two thirds", "action": "would-file", "issue_url": null}],
- "not_attributed": [], "human_outcome": null}
+ "not_attributed": [], "human_outcome": null,
+ "slack_delivery": {"channel_id": "CFFF96M6Z", "parent_ts": "<nightly message ts>",
+                    "message_id": "<outbound id>", "platform_message_id": "<Slack receipt id>"}}
 ```
 
 `action` is one of `would-file`, `filed`, `commented`, `recorded-accepted` (class `inherent`), `none`.
