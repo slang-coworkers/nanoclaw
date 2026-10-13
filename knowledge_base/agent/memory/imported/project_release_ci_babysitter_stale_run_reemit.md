@@ -135,3 +135,13 @@ health and asserting nothing; the invariant to test is "can this path report a d
 wasn't?", not any individual branch.**
 
 Also relevant: [[feedback_verify_pushed_state_by_branch_not_sha]], [[feedback_never_fabricate_events_between_turns]].
+
+## 2026-10-13 — in-flight-at-01:30 hole (4 red nights unreported)
+
+**What happened:** Oct 9–12 nightlies (37862468754, 38007081169, 38096916300, 38186342253) all failed (only `release (linux, release, x86_64)`, LLVM prebuilt 404 → ~94 min cold build → unauthenticated `Upload LLVM to GCS`; #13540 / healed by #13526). They finished 01:34/01:58/02:01/01:53Z, **after** the 01:30 check. The guard returned `wakeAgent:false` for any non-completed pin, assuming the stale-pin branch would catch it next day — but the 00:00 trigger **overwrites the pin first**, so that branch was unreachable for this case. Zero reports for 4 nights; caught by slang-release-regression-check noticing the gap. Lateness and failure share a cause (cold build), so the hole opens on exactly the runs most likely to be red.
+
+**Fix (task-1777346910467-p0dxfu):** recurrence `30 1 * * *` → `30 1-23 * * *`; every wake goes through `emit_once <key>` (marker files in `/workspace/agent/release-ci/marks/<date>.<key>`, 14-day prune) so each finding wakes once/day. New shapes: `in_flight_overdue` (≥85 min, partial census with still-running step + failed_so_far), `in_flight_unresolved` (still running at 23:30Z fire). Pinned-run fetch failure (`status=unknown`) now → `query_failed` instead of silent. Script/prompt sources + originals: `/workspace/agent/release-ci/checker{,.orig}.sh`, `checker.prompt{,.orig}.txt`. Test hooks: `RELEASE_CI_STATE`, `RELEASE_CI_MARKS`, `RELEASE_CI_HOUR` env overrides.
+
+**Durable lesson:** a "skip now, the next check will catch it" branch must be checked against what runs *between* the checks — here the next-day trigger destroyed the state the next check needed.
+
+**Unexplained (as of 10-13):** release runs for Oct 2–8 (e.g. 36943726394, 37705358834) return 404 and are absent from the workflow run list (list jumps Oct 1 → Oct 9); they were verified when reported. Cause unknown (deletion?).

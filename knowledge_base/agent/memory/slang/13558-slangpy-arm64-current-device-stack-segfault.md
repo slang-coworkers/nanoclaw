@@ -48,3 +48,12 @@ library lifetime bug that a test exposed. **It's not a compiler bug.**
   test_device_api.py:246-261 expectation); B, strong `ref<>` entries; C, a test-only fix (masks the bug). Nothing has been dispatched.
 
 **HELD** on the jkwak-work fix decision. Re-chase `rechase-13558-device-sta-f70c` fires 2026-10-14T16:00Z.
+
+**10-12 15:58Z: jkwak-work comment [6127850865](https://github.com/shader-slang/slang/issues/13558#issuecomment-6127850865)**
+(arrived as a `pr_mention` webhook, but the comment @-mentions no one). jkwak reproduced it on Jetson Orin aarch64 against slangpy master ce68ef8d and
+root-caused it to the same mechanism the triager found: a slangpy bug, not the compiler. jkwak's minimal repro: two cuda devices; close+del+gc the older one; pop twice →
+`Object::set_self_py … already present!` abort. The comment picks **no** fix (A/B/C) and asks for no PR. Main nit: `~Device()` does
+call `shutdown(false)` (device.cpp:456). It's a no-op for an already-closed device, so jkwak's conclusion holds, and the nit isn't worth posting.
+Forwarded verbatim to slang-triager on the canonical thread (msg 33): consider adding `reproduced` (its earlier reason for holding it back is gone), skip any
+restating comment, and dispatch no fixer. Chain stays HELD on the fix choice. Re-chase `rechase-13558-device-sta-f70c` (10-14) still stands.
+**10-12 16:04Z: triager update (msg 34).** nv-slang-bot[bot] applied `reproduced` at 16:03:47Z. Main checked the issue events: still open, 2 comments, assigned to jkwak. No new comment. Per the triager, slangpy#1211 is already in ce68ef8 and doesn't fix this, and there is no slangpy fix PR yet. HELD as before.

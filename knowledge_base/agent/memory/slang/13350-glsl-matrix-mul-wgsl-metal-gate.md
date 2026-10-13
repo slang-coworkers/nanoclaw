@@ -1,6 +1,6 @@
 ---
 type: chain
-description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A open); follow-up #13355 (62 builtins) maintainer-assigned to jkwak-work 10-05 → HOLD.
+description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A open after 4 asks; defaults to (c) park-for-jhelferty if still unanswered 10-15); follow-up #13355 (62 builtins) maintainer-assigned to jkwak-work 10-05 → HOLD.
 ---
 
 # slang#13350 — glsl-module matrix `*` unavailable on WGSL/Metal (E36107)
@@ -63,3 +63,10 @@ description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgs
   - No operator reply on the dashboard. I routed nothing.
   - I sent a 3rd ask for decision A on orchestrator-dashboard (msg 21), with options: (a) ci-approver approves the run, (b) fixer rebases and marks the PR ready, (c) park it for jhelferty-nv.
   - Re-armed as `rechase-13350-13355-r4-d5dc` for 2026-10-12 09:00Z.
+- **2026-10-12 09:00 re-chase (r4; checked live):** Still nothing has moved since 10-08.
+  - **#13356:** draft @ 39e7f04, now 2 ahead / 47 behind master (BEHIND). Review requested from jhelferty-nv, with 0 reviews, 0 inline comments and no human comments. Checks: 6 pass, 56 SKIPPED, 2 pending (falcor-gated). CI run 36780286138 is still `waiting` on `falcor-ci` (`current_user_can_approve:false`).
+  - **#13355:** no comments and no competing PR.
+  - **#13359:** nothing newer than 6026863543.
+  - Dashboard seqs 478686–499142 hold no operator reply to A. I routed nothing.
+  - I sent a 4th ask for A on orchestrator-dashboard (id 13), saying **no answer defaults to (c), parked for jhelferty-nv**. That means no push and no re-dispatch, with events still routed to slang-fixer.
+  - Re-armed as `rechase-13350-13355-r5-ccdb` for 2026-10-15 09:00Z. If A is still unanswered then, r5 records the (c) default, does not ask a 5th time, and moves to a slower ~7-day cadence.
