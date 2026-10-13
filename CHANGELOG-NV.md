@@ -6,15 +6,39 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 679 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 284 |
-| `nv-slang` | slang project spine, skills, workflows | 183 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 108 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 87 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 685 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 285 |
+| `nv-slang` | slang project spine, skills, workflows | 185 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 110 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 88 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-13
+
+### nv-main (6 PRs)
+- **#1982** `Sync nv-main with upstream/main`
+- **#1946** `base spine: resolve conflicting ask/proceed, blocked, PR-mode and recall rules at the producer`
+- **#1948** `scheduler: reject per-issue recurrences, fix okf-synthesis wake loop, record gated runs, keep the task snapshot honest`
+- **#1947** `explain-diff-html: protect human-edited comments, quiet dry-run, truthful comment-position text, enforced disclaimer, single-sourced limits`
+- **#1851** `docs: add Developer references section to docs/README.md`
+- **#1959** `composer: render type description, fix fence/cross-ref/heading defects, role-first order, rule fragments, overlay gates`
+
+### nv-dashboard (1 PRs)
+- **#1984** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#1985** `Sync nv-slang with upstream/main`
+- **#1944** `slang: fix Devin fetch wiring, label names, review bullets, routing R10 and fixer/triage rule conflicts`
+
+### nv-slangpy (2 PRs)
+- **#1986** `Sync nv-slangpy with upstream/main`
+- **#1945** `slangpy: align comment invariant and fix workflow with the explanation-comment model; tighten type descriptions`
+
+### nv-nanoclaw (1 PRs)
+- **#1987** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-10-12
 
