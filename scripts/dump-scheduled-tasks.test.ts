@@ -28,6 +28,10 @@ interface Fixture {
   listFails?: boolean;
   /** extra fields merged into each task definition. */
   extra?: Record<string, unknown>;
+  /** rows `ncl groups list --json` reports; defaults to the one live group `grp`. */
+  groups?: Array<{ id: string; paused: number }>;
+  /** make `ncl groups list` itself fail. */
+  groupsListFails?: boolean;
 }
 
 /**
@@ -44,6 +48,10 @@ function makeRepo(fx: Fixture): string {
   fs.writeFileSync(
     path.join(fxDir, 'list.json'),
     JSON.stringify({ ok: true, data: fx.ids.map((series_id) => ({ series_id })) }),
+  );
+  fs.writeFileSync(
+    path.join(fxDir, 'groups.json'),
+    JSON.stringify({ ok: true, data: fx.groups ?? [{ id: 'grp', paused: 0 }] }),
   );
   for (const id of fx.gettable ?? fx.ids) {
     fs.writeFileSync(
@@ -74,6 +82,9 @@ function makeRepo(fx: Fixture): string {
       `FX=${JSON.stringify(fxDir)}`,
       'if [ "${1:-}" = "tasks" ] && [ "${2:-}" = "list" ]; then',
       fx.listFails ? '  echo "Error: database is locked" >&2; exit 1' : '  cat "$FX/list.json"; exit 0',
+      'fi',
+      'if [ "${1:-}" = "groups" ] && [ "${2:-}" = "list" ]; then',
+      fx.groupsListFails ? '  echo "Error: database is locked" >&2; exit 1' : '  cat "$FX/groups.json"; exit 0',
       'fi',
       'if [ "${1:-}" = "tasks" ] && [ "${2:-}" = "get" ]; then',
       '  f="$FX/get-${4:-}.json"',
@@ -208,6 +219,63 @@ describe('scripts/dump-scheduled-tasks.py', () => {
     expect(r.status).toBe(2);
     expect(r.stderr).toContain('Refusing to touch the existing snapshot');
     expect(fs.existsSync(r.out)).toBe(false);
+  });
+});
+
+// A paused group's rows are due forever and fire the moment it is unpaused; a
+// snapshot that listed them like any live series read as 20 live okf copies when
+// 7 belonged to archived groups.
+describe('dump-scheduled-tasks.py — paused and missing groups', () => {
+  it('marks a series whose group is paused, and one whose group row is gone', () => {
+    const repo = makeRepo({
+      ids: ['live-a', 'parked-b', 'orphan-c'],
+      groups: [
+        { id: 'grp', paused: 0 },
+        { id: 'grp-paused', paused: 1 },
+      ],
+    });
+    // Point two of the three definitions at other groups.
+    const fxDir = path.join(repo, 'fixtures');
+    for (const [id, group] of [
+      ['parked-b', 'grp-paused'],
+      ['orphan-c', 'grp-deleted'],
+    ] as const) {
+      const f = path.join(fxDir, `get-${id}.json`);
+      const d = JSON.parse(fs.readFileSync(f, 'utf-8'));
+      d.data.agent_group_id = group;
+      fs.writeFileSync(f, JSON.stringify(d));
+    }
+
+    const r = dump(repo);
+    expect(r.status, r.stderr).toBe(0);
+    const tasks = JSON.parse(fs.readFileSync(r.out, 'utf-8')).tasks as Array<Record<string, unknown>>;
+    const byId = Object.fromEntries(tasks.map((t) => [t.series_id, t]));
+    expect(byId['live-a']).not.toHaveProperty('group_paused');
+    expect(byId['live-a']).not.toHaveProperty('group_missing');
+    expect(byId['parked-b']).toMatchObject({ group_paused: true });
+    expect(byId['orphan-c']).toMatchObject({ group_missing: true });
+
+    const md = fs.readFileSync(r.md, 'utf-8');
+    expect(md).toContain('group paused — not live');
+    expect(md).toContain('group missing');
+  });
+
+  it('a failed `groups list` exits 2 and leaves the prior snapshot intact', () => {
+    const repo = makeRepo({ ids: ['a'] });
+    expect(dump(repo).status).toBe(0);
+    const before = fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8');
+
+    fs.writeFileSync(
+      path.join(repo, 'bin', 'ncl'),
+      fs
+        .readFileSync(path.join(repo, 'bin', 'ncl'), 'utf-8')
+        .replace('cat "$FX/groups.json"; exit 0', 'echo "Error: database is locked" >&2; exit 1'),
+      { mode: 0o755 },
+    );
+    const r = dump(repo);
+    expect(r.status).toBe(2);
+    expect(r.stderr).toContain('ncl groups list');
+    expect(fs.readFileSync(path.join(repo, 'docs', 'snap.json'), 'utf-8')).toBe(before);
   });
 });
 

@@ -270,10 +270,16 @@ ncl tasks delete briefing-a25c
 Frequent recurring tasks burn API credits. A bash `--script` runs before each fire and decides whether you wake:
 
 1. The script prints `{ "wakeAgent": true|false, "data": {...} }`.
-2. `false` → the fire is skipped and you are never invoked.
+2. `false` → the fire is skipped and you are never invoked (`ncl tasks get` counts it under `gated_runs`).
 3. `true` → you wake with `data` alongside the prompt.
 
-Test the script directly before scheduling it. Skip the gate for tasks that need judgment every fire (briefings, reports).
+Test the script directly before scheduling it. Skip the gate for tasks that need judgment every fire (briefings, reports). Keep the inline script under 8 KB — a larger program lives in a file under `/workspace/agent/` that the script `exec`s.
+
+A recurring task watches a *class* of things (a queue, CI, a repo), never one issue or PR: webhooks already deliver that issue's events, and a per-issue cron never self-cancels. `ncl tasks create` rejects such a `--recurrence`; use `--process-after` for a one-time re-check.
+
+### Write the prompt as a standing order
+
+A task prompt is read by a fresh session every fire, so it carries exactly: the objective; the inputs (which `data` fields the script hands over); a decision table (situation → action); the delivery target and thread key; the budget (turns, tokens, or wall-clock); and a pointer to the memory file that holds history. History itself — past incidents, dated post-mortems, why a rule was added — goes in `/workspace/agent/memory/` or the owning skill, never in the prompt.
 
 ### Each fire is a fresh session
 
