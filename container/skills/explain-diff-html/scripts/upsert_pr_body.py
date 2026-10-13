@@ -2,10 +2,12 @@
 """Keep ONE PR comment as the explanation of the PR's current head.
 
 The explanation (GitHub-safe Markdown written by /explain-diff-html) lives in a
-single PR comment, marked with COMMENT_MARKER, edited in place on every push. The
-PR description stays the author's own concise text (what changed, why, how it was
-tested, issue links): squash merges copy the description into git log, so it must
-not carry the explanation.
+single PR comment, marked with COMMENT_MARKER and edited in place on every push.
+The PR description stays the author's own concise text (what changed, why, how it
+was tested, issue links): squash merges copy the description into git log, so it
+must not carry the explanation. GitHub orders comments by creation time and cannot
+move them, so the comment sits wherever it was created — on a busy repo, after the
+bots' first comments — and is found by its marker, never by its position.
 
 Which comments are ours. A comment is a candidate only when it STARTS with an exact
 marker for this repo#pr (the current `:comment` marker, or the
@@ -22,9 +24,23 @@ Never the PR's author, never "any bot". If a candidate comment exists that is NO
 ours, nothing is written and the run exits 5: someone else's comment carries our
 marker, and only a human or an explicit adoption can resolve it.
 
+Which of ours we may overwrite. Every body this script writes ends with a seal
+line (SEAL_MARKER) carrying the sha256 of the lines above it. Before overwriting one
+of our comments the script checks that seal: intact means the body is our last
+write; a mismatch means someone edited it since, and GitHub's edit history (GraphQL
+`editor`) names who. A comment edited by anyone outside our identities is never
+overwritten: the run exits 5 with a NOTE naming the editor and writes nothing, so a
+maintainer's annotation survives every later push. A comment from before seals
+existed is judged by its edit history alone (never edited, or edited only by us,
+may be overwritten).
+
 What a run does:
   - updates the oldest of our comments in place, or creates one when there is no
     candidate at all. Our other candidate comments become a one-line pointer to it.
+  - appends the bot disclaimer when the explanation has no `<sub>…</sub>` line:
+    --disclaimer / EXPLAIN_DIFF_DISCLAIMER, else the description's own final
+    `<sub>` line (the spine mandates it there too), else DEFAULT_DISCLAIMER. A
+    description without one gets a NOTE.
   - re-reads the comments and succeeds only when exactly one of ours carries the
     current marker, the explained head and the requested body; and re-reads the PR
     head and refuses (exit 4) if it moved during the run.
@@ -37,13 +53,14 @@ What a run does:
     the block stays and a NOTE asks for the concise description (`gh pr edit
     --body-file` replaces the whole description, block included). A description
     shorter than SHORT_BODY characters also gets a NOTE, and so does one over the
-    description limits (see description_problems).
+    description limits.
   - prints the receipt line (RECEIPT_PREFIX + JSON) as the last stdout line, only
     after every write succeeded. Any failed write exits 5 without it.
 
-Comment order: GitHub lists comments by creation time and cannot reorder them. The
-explanation sits directly after the description when it is the PR's first comment
-(run this right after `gh pr create`); otherwise our oldest comment keeps its place.
+The description limits are stated once, in SKILL.md § The PR description, and
+implemented once, in container/hooks/lib/pr_description.py (the PreToolUse gate).
+This script imports that module — from /app/hooks inside the container, from the
+repo tree, or from PR_DESCRIPTION_LIB — and carries no copy of the rules.
 
 Head check: the caller passes the commit the explanation was written from
 (`git -C <worktree> rev-parse HEAD`). If the PR's live head is a different
@@ -51,18 +68,27 @@ commit, the explanation is stale (or the push has not landed) and nothing is
 written.
 
 Usage:
-  upsert_pr_body.py --repo OWNER/REPO --pr N --head SHA --explanation FILE [--dry-run]
+  upsert_pr_body.py --repo OWNER/REPO --pr N --head SHA --explanation FILE
+                    [--dry-run] [--quiet] [--disclaimer TEXT]
   upsert_pr_body.py --quiz-positions --head SHA [--questions 5] [--options 4]
 
+--dry-run writes nothing. stderr gets the comment's first three non-empty lines
+and its character count (not with --quiet), the plan JSON and the NOTE lines;
+stdout gets a trailer that is not a receipt.
+
 Exit codes: 0 written (or dry-run printed), 2 usage, 3 over the size limit,
-4 head mismatch (before or after writing), 5 gh failure, a comment carrying our
-marker that is not ours, or the comments did not converge to one.
+4 head mismatch (before or after writing; stdout then carries a
+`{"updated": false, "head_mismatch": true, …}` trailer naming the live head, which
+pr-auto-map.sh records as a push so the refresh stays owed), 5 gh failure, a
+comment carrying our marker that is not ours, one of ours edited by someone else,
+or the comments did not converge to one.
 """
 
 from __future__ import annotations
 
 import argparse
 import hashlib
+import importlib.util
 import json
 import os
 import re
@@ -72,6 +98,9 @@ import tempfile
 
 COMMENT_MARKER = "<!-- explain-diff-html:comment {ref} head={sha} -->"
 POINTER_MARKER = "<!-- explain-diff-html:pointer {ref} -->"
+# The seal closes every body this script writes; its digest covers everything before it.
+SEAL_MARKER = "<!-- explain-diff-html:written sha256={digest} -->"
+SEAL_RE = re.compile(r"(?m)^<!-- explain-diff-html:written sha256=([0-9a-f]{64}) -->[ \t]*$")
 _REF = r"([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)#(\d+)"
 CURRENT_RE = re.compile(r"<!-- explain-diff-html:comment " + _REF + r" head=([0-9a-f]{7,40}) -->(?:\r?\n|$)")
 LEGACY_RE = re.compile(r"<!-- explain-diff-html " + _REF + r" -->(?:\r?\n|$)")
@@ -83,84 +112,92 @@ END = "<!-- explain-diff-html:end -->"
 RECEIPT_PREFIX = "EXPLAIN_DIFF_RECEIPT "
 MAX_COMMENT = 60_000  # GitHub rejects comment bodies over 65,536 characters.
 SHORT_BODY = 200
+DEFAULT_DISCLAIMER = "<sub>🤖 Generated by an automated coworker — may be inaccurate. A human maintainer should verify.</sub>"
 
-# Description limits: the same rules and env knobs as the PreToolUse gate
-# (container/hooks/lib/pr_description.py); keep the two in step. Squash merges copy
-# the description into git log, so each section (a line starting with a bold label
-# or a `## Heading`) holds at most 2 non-empty lines, the whole description at most
-# 1,000 characters, and no table. A final `<sub>` disclaimer line and exact
-# `Fixes|Closes|Resolves #N` lines are not counted. test_upsert_pr_body.py checks
-# this copy against the hook's on a shared corpus.
-_ISSUE_REF = r"(?:(?:[\w.-]+/[\w.-]+)?#\d+|https://github\.com/[\w.-]+/[\w.-]+/(?:issues|pull)/\d+)"
-_CLOSING_WORD = r"(?:fix(?:es|ed)?|close[sd]?|resolve[sd]?)"
-_CLOSING_RE = re.compile(
-    rf"^\s*{_CLOSING_WORD}\s*:?\s+{_ISSUE_REF}(?:\s*(?:,|and)\s*(?:{_CLOSING_WORD}\s*:?\s+)?{_ISSUE_REF})*\s*\.?\s*$",
-    re.IGNORECASE,
+HERE = os.path.dirname(os.path.abspath(__file__))
+# Where the PR-description rules module lives: the container mounts the hooks at
+# /app/hooks; a repo checkout has them three directories up from this script.
+RULES_PATHS = (
+    "/app/hooks/lib/pr_description.py",
+    os.path.normpath(os.path.join(HERE, "..", "..", "..", "hooks", "lib", "pr_description.py")),
 )
-_DISCLAIMER_RE = re.compile(r"^\s*<sub>.*</sub>\s*$", re.IGNORECASE)
-_BOLD_LABEL_RE = re.compile(r"^\s*(\*\*|__)\s*(?P<label>[^*_\n]{1,80}?)\s*[.:]?\s*\1[.:]?(\s|$)")
-_HEADING_RE = re.compile(r"^\s{0,3}#{1,6}\s+(?P<label>.+?)\s*#*\s*$")
-_TABLE_SEP_RE = re.compile(r"^\s*\|?\s*:?-+:?\s*(\|\s*:?-+:?\s*)*\|?\s*$")
+_rules = None
 
 
-def _env_int(name: str, default: int) -> int:
-    v = os.environ.get(name, "")
-    return int(v) if v.isdigit() and int(v) > 0 else default
+class GhError(Exception):
+    pass
+
+
+class Refused(Exception):
+    """A refusal with its exit code; `trailer`, when set, is a non-receipt JSON line for stdout."""
+
+    def __init__(self, code: int, msg: str, trailer: dict | None = None):
+        super().__init__(msg)
+        self.code = code
+        self.trailer = trailer
+
+
+def rules():
+    """The PR-description rules module (container/hooks/lib/pr_description.py), loaded once.
+
+    The limits have one implementation, shared with the PreToolUse gate, so the gate
+    and this script's NOTEs can never disagree. PR_DESCRIPTION_LIB overrides the
+    search; a tree without the module is a broken deployment, reported as exit 5.
+    """
+    global _rules
+    if _rules is None:
+        paths = [p for p in (os.environ.get("PR_DESCRIPTION_LIB", ""), *RULES_PATHS) if p]
+        path = next((p for p in paths if os.path.isfile(p)), None)
+        if path is None:
+            raise Refused(5, (
+                f"cannot find hooks/lib/pr_description.py (looked in {', '.join(paths)}): the PR-description "
+                "rules live there and this script carries no copy. The hooks and this skill ship together — "
+                "report it to your parent."
+            ))
+        spec = importlib.util.spec_from_file_location("pr_description", path)
+        mod = importlib.util.module_from_spec(spec)
+        spec.loader.exec_module(mod)
+        _rules = mod
+    return _rules
 
 
 def description_limits() -> tuple[int, int]:
-    return _env_int("PR_DESCRIPTION_MAX_CHARS", 1000), _env_int("PR_DESCRIPTION_MAX_SECTION_LINES", 2)
+    return rules().limits()
 
 
-def _core_lines(body: str) -> list[str]:
-    """The description's lines without a final `<sub>` disclaimer line and closing-keyword lines."""
-    lines = body.replace("\r\n", "\n").split("\n")
-    last = max((i for i, ln in enumerate(lines) if ln.strip()), default=-1)
-    if last >= 0 and _DISCLAIMER_RE.match(lines[last]):
-        lines = lines[:last] + lines[last + 1:]
-    return [ln for ln in lines if not _CLOSING_RE.match(ln)]
+def description_problems(body: str, max_chars: int, max_lines: int) -> list[str]:
+    """What in a description breaks the limits, as short phrases; empty when it is fine.
+
+    The hook's check_body, kept under this name as the offline pre-check entry point
+    (`python3 -c "import upsert_pr_body as u; print(u.description_problems(open(F).read(), 1000, 2))"`).
+    """
+    return rules().check_body(body, max_chars, max_lines)
 
 
 def description_core(body: str) -> str:
-    return "\n".join(_core_lines(body)).strip()
+    """The description without its final `<sub>` disclaimer and closing-keyword lines."""
+    return "\n".join(rules().counted_lines(body)).strip()
 
 
 def has_summary(body: str) -> bool:
     """True when the description has a Summary section (bold label or heading)."""
-    for ln in _core_lines(body):
-        m = _BOLD_LABEL_RE.match(ln) or _HEADING_RE.match(ln)
+    r = rules()
+    for ln in r.counted_lines(body):
+        m = r.BOLD_LABEL_RE.match(ln) or r.HEADING_RE.match(ln)
         if m and m.group("label").strip().rstrip(".:").lower().startswith("summary"):
             return True
     return False
 
 
-def description_problems(body: str, max_chars: int, max_lines: int) -> list[str]:
-    """What in a description breaks the limits, as short phrases; empty when it is fine."""
-    lines = _core_lines(body)
-    problems: list[str] = []
-    sections: list[list] = []
-    for ln in lines:
-        if not ln.strip():
-            continue
-        m = _BOLD_LABEL_RE.match(ln) or _HEADING_RE.match(ln)
-        if m:
-            sections.append([m.group("label").strip().rstrip(".:"), 1])
-        elif sections:
-            sections[-1][1] += 1
-    for label, n in sections:
-        if n > max_lines:
-            problems.append(f"{label} has {n} lines, max {max_lines}")
-    prev = ""
-    for ln in lines:
-        if ln.strip() and "|" in ln and "-" in ln and _TABLE_SEP_RE.match(ln) and "|" in prev:
-            problems.append("it contains a table")
-            break
-        if ln.strip():
-            prev = ln
-    total = len("\n".join(lines).strip())
-    if total > max_chars:
-        problems.append(f"total {total:,} chars, max {max_chars:,}")
-    return problems
+def has_disclaimer(text: str) -> bool:
+    """True when any line of `text` is a `<sub>…</sub>` disclaimer line."""
+    return any(rules().DISCLAIMER_RE.match(ln) for ln in (text or "").splitlines())
+
+
+def description_disclaimer(body: str) -> str:
+    """The description's final `<sub>…</sub>` line (the spine puts the bot disclaimer there), or ''."""
+    lines = [ln for ln in (body or "").splitlines() if ln.strip()]
+    return lines[-1].strip() if lines and rules().DISCLAIMER_RE.match(lines[-1]) else ""
 
 
 def actors_file() -> str:
@@ -243,12 +280,35 @@ def strip_legacy_section(body: str, repo: str, pr: int) -> tuple[str, str]:
     return rest[ends[0].end():].lstrip("\r\n"), "stripped"
 
 
-def explanation_comment(explanation: str, ref: str, sha: str) -> str:
-    return COMMENT_MARKER.format(ref=ref, sha=sha) + "\n\n" + explanation.strip() + "\n"
+def digest(text: str) -> str:
+    return hashlib.sha256(text.encode("utf-8")).hexdigest()
+
+
+def sealed(text: str) -> str:
+    """`text` closed by the seal line, so a later run can tell our last write from an edit."""
+    text = text.rstrip("\n") + "\n"
+    return text + SEAL_MARKER.format(digest=digest(text)) + "\n"
+
+
+def seal_state(body: str) -> bool | None:
+    """True when `body` is exactly what this script wrote, False when it changed since, None when it has no seal."""
+    m = SEAL_RE.search(body or "")
+    if not m:
+        return None
+    # Text after the seal line is an edit too: a note a human appended at the end.
+    return digest(body[:m.start()]) == m.group(1) and not body[m.end():].strip()
+
+
+def explanation_comment(explanation: str, ref: str, sha: str, disclaimer: str = "") -> str:
+    text = COMMENT_MARKER.format(ref=ref, sha=sha) + "\n\n" + explanation.strip() + "\n"
+    if disclaimer:
+        text += "\n" + disclaimer.strip() + "\n"
+    return sealed(text)
 
 
 def pointer_body(ref: str, keep_url: str) -> str:
-    return POINTER_MARKER.format(ref=ref) + f"\n_Superseded: the explanation of this PR is in [this comment]({keep_url}), updated on every push._"
+    return sealed(POINTER_MARKER.format(ref=ref)
+                  + f"\n_Superseded: the explanation of this PR is in [this comment]({keep_url}), updated on every push._\n")
 
 
 def quiz_positions(sha: str, questions: int = 5, options: int = 4) -> list[str]:
@@ -270,16 +330,6 @@ def quiz_positions(sha: str, questions: int = 5, options: int = 4) -> list[str]:
         if spread and capped:
             return picks
         counter += 1
-
-
-class GhError(Exception):
-    pass
-
-
-class Refused(Exception):
-    def __init__(self, code: int, msg: str):
-        super().__init__(msg)
-        self.code = code
 
 
 def gh_try(args: list[str]) -> tuple[bool, str]:
@@ -309,12 +359,72 @@ def with_body(text: str, args_before: list[str], args_after: list[str] | None = 
 
 def list_comments(repo: str, pr: int) -> list[dict]:
     out = gh(["api", f"repos/{repo}/issues/{pr}/comments", "--paginate",
-              "--jq", ".[] | {id, created_at, html_url, body, login: .user.login}"])
+              "--jq", ".[] | {id, node_id, created_at, updated_at, html_url, body, login: .user.login}"])
     return [json.loads(line) for line in out.splitlines() if line.strip()]
 
 
 def live_pr(repo: str, pr: int) -> dict:
     return json.loads(gh(["api", f"repos/{repo}/pulls/{pr}", "--jq", "{body: .body, head: .head.sha}"]))
+
+
+def last_editor(c: dict) -> tuple[str, str] | None:
+    """(login, when) of the comment's last editor from GitHub's edit history; ('', '') when never edited.
+
+    None when the lookup failed. The REST comment carries no editor, so this is one
+    GraphQL query by node id.
+    """
+    node_id = c.get("node_id") or ""
+    if not node_id:
+        return None
+    ok, out = gh_try(["api", "graphql", "-f", f"id={node_id}",
+                      "-f", "query=query($id: ID!) { node(id: $id) { ... on IssueComment { editor { login } lastEditedAt } } }",
+                      "--jq", ".data.node"])
+    if not ok:
+        return None
+    try:
+        node = json.loads(out)
+    except ValueError:
+        return None
+    if not isinstance(node, dict):
+        return None
+    return str((node.get("editor") or {}).get("login") or ""), str(node.get("lastEditedAt") or "")
+
+
+def assert_unedited(c: dict, ref: str, trusted: set[str]) -> None:
+    """Refuse (exit 5) to overwrite one of our comments that someone else edited after our last write.
+
+    An intact seal proves the body is ours. Otherwise GitHub's edit history decides:
+    an edit by one of our own identities (or no edit at all) is fine; a human's edit
+    is kept, and so is a body whose editor cannot be established.
+    """
+    body = c.get("body") or ""
+    state = seal_state(body)
+    if state is True:
+        return
+    info = last_editor(c)
+    if info is None:
+        if state is None and (c.get("updated_at") or "") == (c.get("created_at") or ""):
+            return  # never edited since it was created
+        who, when = "someone this run could not identify (the edit-history lookup failed)", ""
+    else:
+        who, when = info
+        if not who or who in trusted:
+            return
+    raise Refused(5, (
+        f"NOTE: comment {c['id']} on {ref} ({c.get('html_url') or 'our explanation comment'}) was edited by {who}"
+        f"{' at ' + when if when else ''} after this script last wrote it; nothing was written, so that edit "
+        "stays. Tell your parent: a human can revert the edit or delete the comment to let the explanation be "
+        "refreshed. Never edit or delete it yourself, and never adopt a human's login."
+    ))
+
+
+def patch_comment(repo: str, c: dict, body: str, ref: str, trusted: set[str]) -> bool:
+    """PATCH comment `c` to `body` unless it already reads so; refuses first when someone else edited it."""
+    if (c.get("body") or "").rstrip() == body.rstrip():
+        return False
+    assert_unedited(c, ref, trusted)
+    with_body(body, ["api", "-X", "PATCH", f"repos/{repo}/issues/comments/{c['id']}"], ["--silent"])
+    return True
 
 
 def trusted_identities() -> set[str]:
@@ -351,11 +461,15 @@ def converge(repo: str, pr: int, ref: str, comment: str, sha: str, trusted: set[
             return keep
         if attempt == 1:
             break
-        if (keep["body"] or "").rstrip() != want:
-            with_body(comment, ["api", "-X", "PATCH", f"repos/{repo}/issues/comments/{keep['id']}"], ["--silent"])
+        patch_comment(repo, keep, comment, ref, trusted)
         for d in mine[1:]:
-            with_body(pointer_body(ref, keep.get("html_url") or ""), ["api", "-X", "PATCH", f"repos/{repo}/issues/comments/{d['id']}"], ["--silent"])
+            patch_comment(repo, d, pointer_body(ref, keep.get("html_url") or ""), ref, trusted)
     raise GhError(f"our explanation comments on {ref} did not converge to one (a concurrent writer?); re-run")
+
+
+def head_trailer(a: argparse.Namespace, live: str) -> dict:
+    """The non-receipt stdout line of a head refusal: names the live head for pr-auto-map.sh."""
+    return {"updated": False, "head_mismatch": True, "repo": a.repo, "pr": a.pr, "head": live[:12]}
 
 
 def main(argv: list[str]) -> int:
@@ -364,7 +478,9 @@ def main(argv: list[str]) -> int:
     p.add_argument("--pr", type=int)
     p.add_argument("--head", required=True, help="commit the explanation was written from")
     p.add_argument("--explanation", help="GitHub-safe Markdown file")
+    p.add_argument("--disclaimer", default="", help="bot disclaimer `<sub>…</sub>` line to append when the explanation has none")
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--quiet", action="store_true", help="no comment preview on a dry run")
     p.add_argument("--quiz-positions", action="store_true")
     p.add_argument("--questions", type=int, default=5)
     p.add_argument("--options", type=int, default=4)
@@ -382,6 +498,8 @@ def main(argv: list[str]) -> int:
         return run(a)
     except Refused as e:
         print(str(e), file=sys.stderr)
+        if e.trailer:
+            print(RECEIPT_PREFIX + json.dumps(e.trailer))
         return e.code
     except GhError as e:
         print(str(e), file=sys.stderr)
@@ -389,22 +507,40 @@ def main(argv: list[str]) -> int:
 
 
 def run(a: argparse.Namespace) -> int:
+    ref = f"{a.repo}#{a.pr}"
     pr = live_pr(a.repo, a.pr)
     live = pr.get("head") or ""
     if not live or not live.startswith(a.head):
-        raise Refused(4, f"head mismatch: explanation written from {a.head[:12]}, PR head is {live[:12]} — "
-                         "push first, or re-run against the PR's current head")
+        raise Refused(4, f"head mismatch on {ref}: explanation written from {a.head[:12]}, PR head is {live[:12]} — "
+                         "push first, or re-run against the PR's current head", head_trailer(a, live))
 
-    ref = f"{a.repo}#{a.pr}"
+    description = pr.get("body") or ""
     with open(a.explanation, encoding="utf-8") as fh:
-        comment = explanation_comment(fh.read(), ref, live[:12])
+        explanation = fh.read()
+    disclaimer, disclaimer_status = "", "kept"
+    if not has_disclaimer(explanation):
+        disclaimer = (a.disclaimer or os.environ.get("EXPLAIN_DIFF_DISCLAIMER", "") or description_disclaimer(description)
+                      or DEFAULT_DISCLAIMER)
+        disclaimer_status = "appended"
+    comment = explanation_comment(explanation, ref, live[:12], disclaimer)
     if len(comment) > MAX_COMMENT:
         raise Refused(3, f"explanation comment is {len(comment)} chars, over {MAX_COMMENT}: shrink the explanation and re-run")
 
     trusted = trusted_identities()
     mine, foreign = split_candidates(list_comments(a.repo, a.pr), a.repo, a.pr, trusted)
     refuse_foreign(foreign, ref, trusted)
-    new_desc, desc_status = strip_legacy_section(pr.get("body") or "", a.repo, a.pr)
+    # Every comment this run would rewrite is checked before anything is written, so a
+    # human's edit to any of them stops the whole run, not just its own PATCH.
+    targets = {}
+    if mine:
+        targets[mine[0]["id"]] = comment
+        for d in mine[1:]:
+            targets[d["id"]] = pointer_body(ref, mine[0].get("html_url") or "")
+        for c in mine:
+            if (c.get("body") or "").rstrip() != targets[c["id"]].rstrip():
+                assert_unedited(c, ref, trusted)
+
+    new_desc, desc_status = strip_legacy_section(description, a.repo, a.pr)
     if desc_status == "stripped":
         # Never empty the description: removing the block before the concise description
         # exists left PRs with no description (and a squash merge would commit none).
@@ -412,14 +548,14 @@ def run(a: argparse.Namespace) -> int:
         if len(core) < SHORT_BODY or not has_summary(new_desc):
             why = (f"only {len(core)} chars would remain" if len(core) < SHORT_BODY
                    else "what would remain has no Summary section")
-            new_desc, desc_status = pr.get("body") or "", f"kept: {why}"
+            new_desc, desc_status = description, f"kept: {why}"
     notes = []
     if desc_status.startswith("kept:"):
         notes.append(f"NOTE: the old explanation block stays in the description for now ({desc_status[6:]}); "
                      "this script never empties a description. Write the concise description (Summary / Root cause / "
-                     "Tests / Risk, at most 2 lines each, no tables, plus the Fixes line) with "
-                     f"`gh pr edit {a.pr} -R {a.repo} --body-file <absolute path>`: that replaces the whole "
-                     "description, old block included.")
+                     "Tests / Risk, within the limits in SKILL.md § The PR description, plus the Fixes line and the "
+                     f"<sub> disclaimer) with `gh pr edit {a.pr} -R {a.repo} --body-file <absolute path>`: that replaces "
+                     "the whole description, old block included.")
     elif desc_status.startswith("left:"):
         notes.append(f"NOTE: the description still holds an explain-diff block this script will not remove ({desc_status[6:]}); "
                      f"move it out by hand with `gh pr edit {a.pr} -R {a.repo} --body-file <file>`.")
@@ -435,14 +571,20 @@ def run(a: argparse.Namespace) -> int:
                          f"{max_lines} lines and the whole description under {max_chars:,} chars with no tables; "
                          f"rewrite it with `gh pr edit {a.pr} -R {a.repo} --body-file <file>` and leave details, "
                          "tables and open questions in the explanation comment.")
+    if not desc_status.startswith("kept:") and not description_disclaimer(new_desc):
+        notes.append(f"NOTE: the PR description has no bot disclaimer: make `{disclaimer or DEFAULT_DISCLAIMER}` its last "
+                     f"line with `gh pr edit {a.pr} -R {a.repo} --body-file <file>` (that line is not counted toward the limits).")
 
+    plan = {"comment": f"update {mine[0]['id']}" if mine else "create", "pointers": [d["id"] for d in mine[1:]],
+            "description": desc_status, "disclaimer": disclaimer_status, "writes_as": sorted(trusted), "chars": len(comment)}
     if a.dry_run:
         # Everything human-readable goes to stderr; stdout carries only a non-success trailer,
-        # so nothing a dry run prints can be read as a receipt.
-        sys.stderr.write(comment)
-        plan = {"comment": f"update {mine[0]['id']}" if mine else "create", "pointers": [d["id"] for d in mine[1:]],
-                "description": desc_status, "writes_as": sorted(trusted), "chars": len(comment)}
-        print(f"\n[dry-run] {json.dumps(plan)}", file=sys.stderr)
+        # so nothing a dry run prints can be read as a receipt. The preview is three lines:
+        # echoing the whole comment put 4–8k tokens back into the agent's context per dry run.
+        if not a.quiet:
+            preview = [ln for ln in comment.splitlines() if ln.strip()][:3]
+            sys.stderr.write("\n".join(preview) + f"\n… {len(comment):,} chars in all\n")
+        print(f"[dry-run] {json.dumps(plan)}", file=sys.stderr)
         for n in notes:
             print(n, file=sys.stderr)
         print(RECEIPT_PREFIX + json.dumps({"updated": False, "dry_run": True}))
@@ -450,10 +592,8 @@ def run(a: argparse.Namespace) -> int:
 
     action = "updated"
     if mine:
-        if (mine[0]["body"] or "").rstrip() != comment.rstrip():
-            with_body(comment, ["api", "-X", "PATCH", f"repos/{a.repo}/issues/comments/{mine[0]['id']}"], ["--silent"])
-        for d in mine[1:]:
-            with_body(pointer_body(ref, mine[0].get("html_url") or ""), ["api", "-X", "PATCH", f"repos/{a.repo}/issues/comments/{d['id']}"], ["--silent"])
+        for c in mine:
+            patch_comment(a.repo, c, targets[c["id"]], ref, trusted)
     else:
         made = json.loads(with_body(comment, ["api", "-X", "POST", f"repos/{a.repo}/issues/{a.pr}/comments"],
                                     ["--jq", "{id, login: .user.login}"]))
@@ -467,17 +607,17 @@ def run(a: argparse.Namespace) -> int:
     latest = live_pr(a.repo, a.pr)
     now = latest.get("head") or ""
     if now != live:
-        raise Refused(4, f"the PR head moved from {live[:12]} to {now[:12]} during this run; "
-                         "re-run /explain-diff-html for the new head")
+        raise Refused(4, f"the PR head of {ref} moved from {live[:12]} to {now[:12]} during this run; "
+                         "re-run /explain-diff-html for the new head", head_trailer(a, now))
     if desc_status == "stripped":
         # Edit only the description we inspected: if anyone changed it meanwhile, write nothing to it.
-        if (latest.get("body") or "") != (pr.get("body") or ""):
+        if (latest.get("body") or "") != description:
             raise Refused(5, "the PR description changed during this run; nothing was written to it — re-run")
         with_body(new_desc, ["api", "-X", "PATCH", f"repos/{a.repo}/pulls/{a.pr}"], ["--silent"])
         after = live_pr(a.repo, a.pr).get("head") or ""
         if after != live:
-            raise Refused(4, f"the PR head moved from {live[:12]} to {after[:12]} during this run; "
-                             "re-run /explain-diff-html for the new head")
+            raise Refused(4, f"the PR head of {ref} moved from {live[:12]} to {after[:12]} during this run; "
+                             "re-run /explain-diff-html for the new head", head_trailer(a, after))
 
     for n in notes:
         print(n)
@@ -486,7 +626,7 @@ def run(a: argparse.Namespace) -> int:
     print(RECEIPT_PREFIX + json.dumps({
         "updated": True, "repo": a.repo, "pr": a.pr, "head": live[:12], "chars": len(comment),
         "comment": kept["id"], "comment_action": action, "comment_url": kept.get("html_url") or "",
-        "pointers": [d["id"] for d in mine[1:]], "description": desc_status,
+        "pointers": [d["id"] for d in mine[1:]], "description": desc_status, "disclaimer": disclaimer_status,
     }))
     return 0
 
