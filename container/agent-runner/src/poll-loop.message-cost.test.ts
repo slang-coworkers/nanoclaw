@@ -793,7 +793,7 @@ describe('#1327 — persistence + respawn', () => {
     H.recordMessageCost(messageUsage('m1'));
 
     const persisted = getCostCap();
-    expect(persisted?.accountingVersion).toBe(2);
+    expect(persisted?.accountingVersion).toBe(3);
     expect(persisted?.codexLedger).toEqual({ 'a.jsonl 2026-08-18': 1.25 });
     expect(persisted?.codexBaselinePending).toBe(false);
     expect(persisted?.codexUsd).toBeCloseTo(1.25, 8);
