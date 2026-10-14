@@ -76,6 +76,16 @@ describe('max-budget result translation', () => {
     expect('maxBudgetExceeded' in r).toBe(false);
   });
 
+  it("forwards the SDK's queued_turn_count, and nothing when it is absent", async () => {
+    sdkMessages.push({ type: 'result', subtype: 'success', is_error: false, result: 'a', queued_turn_count: 0 });
+    sdkMessages.push({ type: 'result', subtype: 'success', is_error: false, result: 'b', queued_turn_count: 2 });
+    sdkMessages.push({ type: 'result', subtype: 'success', is_error: false, result: 'c' });
+    const [a, b, c] = await results();
+    expect(a.queuedTurnCount).toBe(0);
+    expect(b.queuedTurnCount).toBe(2);
+    expect('queuedTurnCount' in c).toBe(false);
+  });
+
   it('does not flag a successful result', async () => {
     sdkMessages.push({ type: 'result', subtype: 'success', is_error: false, result: 'done' });
     const [r] = await results();

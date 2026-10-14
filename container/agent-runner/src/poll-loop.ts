@@ -90,6 +90,10 @@ const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
 // Shorter than IDLE_END_MS on purpose: with nothing in flight the only thing the
 // wait protects is an agent that is between turns waiting for subagent or system
 // notifications, and those arrive within minutes. Floor 60s.
+// Quiet period after a result whose provider reported nothing queued, before a
+// stale-budget query is ended although the local input count is above zero
+// (queued sends coalesced into fewer turns). See the follow-up poller.
+const PROVIDER_QUEUE_QUIET_MS = 30_000;
 const FRESH_SESSION_IDLE_END_MS = process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS
   ? Math.max(60_000, parseInt(process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS, 10))
   : 300_000;
@@ -3277,9 +3281,16 @@ export async function processQuery(
   // zero: ending the input stream while an input is queued or running would
   // deny its tool calls. Counted only after the push succeeds.
   let inputsOutstanding = initialPrompt !== '' ? 1 : 0;
+  // The provider reported nothing queued at the last result (Claude
+  // `queued_turn_count: 0`). Queued sends may coalesce into fewer turns, which
+  // leaves the local count above zero; this lets the stale/spent end proceed
+  // after a short quiet period instead of the plain idle end. Any later push
+  // makes the report stale.
+  let providerQueueEmpty = false;
   const pushQueryInput = (message: string): void => {
     query.push(message);
     inputsOutstanding += 1;
+    providerQueueEmpty = false;
   };
   // A retry is another provider input, behind any follow-ups already pushed.
   // Preserve its original route, prompt and retry guards until it is answered.
@@ -3491,12 +3502,19 @@ export async function processQuery(
               : describeStaleBudget(stale!);
             const idleMs = Date.now() - lastEventTime;
             // End at once only when every input has been answered and nothing
-            // runs in the background. While any input is unanswered (or the SDK
-            // did not answer inputs 1:1), only the plain idle end applies: a
-            // slow end, never a cut-short turn.
-            const settled =
+            // runs in the background. If the local count is off because the
+            // provider coalesced queued sends, its own "nothing queued" report
+            // (with no event since that result) allows the end after a short
+            // quiet period: a send it had not read yet would start a turn, and
+            // any event clears turnComplete. Otherwise only the plain idle end
+            // applies: a slow end, never a cut-short turn.
+            const strict =
               turnComplete && bgTasks === 0 && !answering && queuedTurns.length === 0 && inputsOutstanding === 0;
-            if (freshSessionArrivalAction(idleMs, settled, idleEndLimit(bgTasks), 0) === 'end') {
+            const byProvider = !strict && turnComplete && bgTasks === 0 && providerQueueEmpty;
+            const afterResultMs = strict ? 0 : PROVIDER_QUEUE_QUIET_MS;
+            if (
+              freshSessionArrivalAction(idleMs, strict || byProvider, idleEndLimit(bgTasks), afterResultMs) === 'end'
+            ) {
               log(`${why} — ending the query; ${newMessages.length} follow-up message(s) stay pending for a fresh one`);
               idleEndedAt = Date.now();
               query.end();
@@ -3684,6 +3702,7 @@ export async function processQuery(
       else if (event.type !== 'usage' && event.type !== 'message_usage') turnComplete = false;
       if (event.type === 'result') {
         inputsOutstanding = Math.max(0, inputsOutstanding - 1);
+        providerQueueEmpty = event.queuedTurnCount === 0;
         if (isMaxBudgetStop(event)) budgetExhausted = true;
       }
       if (event.type === 'progress' && event.task === 'started') bgTasks += 1;

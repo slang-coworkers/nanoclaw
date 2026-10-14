@@ -465,6 +465,80 @@ describe('an unanswered correction is never cut short', () => {
   }, 20_000);
 });
 
+describe('queued sends that coalesce into fewer turns', () => {
+  afterEach(() => setSystemTime());
+
+  // Two follow-ups pushed while turn 1 runs, answered by ONE coalesced turn: the
+  // local count stays at 1 although nothing is queued.
+  function coalescing(lastResult: ProviderEvent) {
+    let endedInsideWindow: boolean | undefined;
+    let neededIdleEnd = false;
+    const q = controllableQuery(async function* ({ pushes, ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      insertFollowUp('m2', 'first queued');
+      await until(() => pushes.some((p) => p.includes('first queued')));
+      insertFollowUp('m3', 'second queued');
+      await until(() => pushes.some((p) => p.includes('second queued')));
+      yield { type: 'result', text: 'turn one', queuedTurnCount: 2 };
+      yield lastResult;
+      setCeiling(720);
+      insertFollowUp('m4', 'after the raise');
+      setSystemTime(new Date(Date.now() + 20_000)); // inside the 30s quiet period
+      await sleep(10 * POLL_MS);
+      endedInsideWindow = ended();
+      setSystemTime(new Date(Date.now() + 15_000)); // now 35s quiet
+      await until(() => ended(), 1500);
+      if (!ended()) {
+        // Without the provider's count only the plain idle end applies.
+        neededIdleEnd = true;
+        setSystemTime(new Date(Date.now() + 21 * 60_000));
+        await until(() => ended(), 3000);
+      }
+    });
+    return { q, endedInsideWindow: () => endedInsideWindow, neededIdleEnd: () => neededIdleEnd };
+  }
+
+  it('ends after a short quiet period when the provider reports nothing queued', async () => {
+    costHooks.startQueryBudget();
+    const { q, endedInsideWindow, neededIdleEnd } = coalescing({
+      type: 'result',
+      text: 'both, together',
+      queuedTurnCount: 0,
+    });
+    await run(q.query);
+    expect(endedInsideWindow()).toBe(false);
+    expect(neededIdleEnd()).toBe(false); // ended by the 30s rule, not the 20-minute idle end
+    expect(q.endCalls()).toBe(1);
+    expect(q.pushes.some((p) => p.includes('after the raise'))).toBe(false);
+    expect(isPending('m4')).toBe(true);
+  }, 20_000);
+
+  it('without the provider count, only the plain idle end applies (slow, never early)', async () => {
+    costHooks.startQueryBudget();
+    let endedAt35s: boolean | undefined;
+    const q = controllableQuery(async function* ({ pushes, ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      insertFollowUp('m2', 'first queued');
+      await until(() => pushes.some((p) => p.includes('first queued')));
+      insertFollowUp('m3', 'second queued');
+      await until(() => pushes.some((p) => p.includes('second queued')));
+      yield { type: 'result', text: 'turn one' };
+      yield { type: 'result', text: 'both, together' }; // no queuedTurnCount
+      setCeiling(720);
+      insertFollowUp('m4', 'after the raise');
+      setSystemTime(new Date(Date.now() + 35_000));
+      await sleep(10 * POLL_MS);
+      endedAt35s = ended();
+      setSystemTime(new Date(Date.now() + 21 * 60_000));
+      await until(() => ended(), 3000);
+    });
+    await run(q.query);
+    expect(endedAt35s).toBe(false);
+    expect(q.endCalls()).toBe(1);
+    expect(isPending('m4')).toBe(true);
+  }, 20_000);
+});
+
 describe('no ceiling: identical to before', () => {
   it('cost tracking off: follow-ups are pushed and acked at push; the query is never ended for budget', async () => {
     costHooks.setState({ costEnabled: false });
