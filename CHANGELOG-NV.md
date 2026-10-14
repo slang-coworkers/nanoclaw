@@ -6,15 +6,38 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 685 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 285 |
-| `nv-slang` | slang project spine, skills, workflows | 185 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 110 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 88 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 691 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 286 |
+| `nv-slang` | slang project spine, skills, workflows | 187 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 111 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 89 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-14
+
+### nv-main (6 PRs)
+- **#2000** `Sync nv-main with upstream/main`
+- **#1998** `feat(a2a): one owner per GitHub issue/PR — refuse a second session for an owned item`
+- **#2008** `fix(a2a): an approved held message keeps its thread and session pin`
+- **#2010** `docs: list mcp-allowlist.md under Developer references in docs/README.md`
+- **#1831** `fix(runner): a live ceiling raise reaches a session whose query is already open`
+- **#2013** `fix(cost): charge each Claude call at its final usage, settle the rest from modelUsage`
+
+### nv-dashboard (1 PRs)
+- **#2002** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (2 PRs)
+- **#2003** `Sync nv-slang with upstream/main`
+- **#2012** `slang-clarity-review-runner: keep the coworker document out of Reviewer C; prefer the image's claude`
+
+### nv-slangpy (1 PRs)
+- **#2004** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2005** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-10-13
 
