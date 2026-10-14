@@ -124,7 +124,9 @@ export function priceTokens(e: CostEvent, table: LiteLLMRateTable): PricedEvent 
   }
   const cacheRead = r.cache_read_input_token_cost ?? 0;
   const cacheWriteBase = r.cache_creation_input_token_cost ?? 0;
-  const hasSplit = e.cacheWrite5mTokens > 0 || e.cacheWrite1hTokens > 0;
+  // Signed rows (an append-only correction) carry negative fields; any non-zero
+  // TTL field marks the row as split.
+  const hasSplit = e.cacheWrite5mTokens !== 0 || e.cacheWrite1hTokens !== 0;
   const usd =
     e.inputTokens * r.input_cost_per_token +
     e.outputTokens * r.output_cost_per_token +
@@ -179,6 +181,17 @@ export function createCostEventsTable(db: Database): void {
   }
   if (!columns.has('window_gen')) {
     db.exec('ALTER TABLE cost_events ADD COLUMN window_gen INTEGER NOT NULL DEFAULT 0');
+  }
+  // Exact Claude accounting: a message row is also the DURABLE per-message
+  // dedup record (which accounting segment charged it, at which result epoch,
+  // and whether its model was a configured-model guess), so a report that
+  // arrives after a respawn tops up instead of re-charging.
+  for (const [col, ddl] of [
+    ['acct_seg', 'ALTER TABLE cost_events ADD COLUMN acct_seg INTEGER'],
+    ['acct_epoch', 'ALTER TABLE cost_events ADD COLUMN acct_epoch INTEGER'],
+    ['acct_cfg_model', 'ALTER TABLE cost_events ADD COLUMN acct_cfg_model INTEGER'],
+  ] as const) {
+    if (!columns.has(col)) db.exec(ddl);
   }
   db.exec('CREATE INDEX IF NOT EXISTS cost_events_gen_ts ON cost_events(window_gen, ts)');
 }
@@ -235,6 +248,116 @@ export function recordCostEvent(
       $now: nowIso,
     });
   return info.changes > 0;
+}
+
+/** Accounting identity stored on a Claude row (see createCostEventsTable). */
+export interface ClaudeRowAccounting {
+  seg: number;
+  epoch: number;
+  /** The row's model was the configured model, not one the provider reported. */
+  cfgModel: boolean;
+}
+
+/**
+ * Append ONE Claude ledger row — a call's first report, a later top-up or
+ * model correction of it (`<id>#<seq>`), a backstop residual, or a residual
+ * claimed back by a call (negative). APPEND-ONLY and SIGNED: a correction is a
+ * new row stamped with the time it was charged, so each row lands in the same
+ * budget window the counter charged it to; nothing is ever rewritten. Plain
+ * INSERT: a duplicate id throws, and the caller's transaction rolls the whole
+ * accounting event back.
+ */
+export function recordClaudeRow(
+  db: Database,
+  e: CostEvent,
+  acct: ClaudeRowAccounting | null,
+  rateVersion: number,
+  table: LiteLLMRateTable,
+  nowIso: string,
+  windowGen: number,
+): void {
+  const adjustment = e.adjustmentUsd ?? 0;
+  db.prepare(
+    `INSERT INTO cost_events
+     (id, ts, provider, model, input_tokens, cache_read_tokens, cache_write_tokens,
+      cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, reasoning_tokens,
+      priced_usd, rate_version, adjustment_usd, window_gen, thread_id, gh_ref, created_at,
+      acct_seg, acct_epoch, acct_cfg_model)
+     VALUES ($id, $ts, $provider, $model, $input, $cacheRead, $cacheWrite,
+      $cw5, $cw1, $output, 0, $priced, $rv, $adj, $gen, NULL, NULL, $now, $seg, $epoch, $cfg)`,
+  ).run({
+    $id: e.id,
+    $ts: e.ts,
+    $provider: e.provider,
+    $model: e.model,
+    $input: e.inputTokens,
+    $cacheRead: e.cacheReadTokens,
+    $cacheWrite: e.cacheWriteTokens,
+    $cw5: e.cacheWrite5mTokens,
+    $cw1: e.cacheWrite1hTokens,
+    $output: e.outputTokens,
+    $priced: priceTokens(e, table).usd + adjustment,
+    $rv: rateVersion,
+    $adj: adjustment,
+    $gen: windowGen,
+    $now: nowIso,
+    $seg: acct ? acct.seg : null,
+    $epoch: acct ? acct.epoch : null,
+    $cfg: acct ? (acct.cfgModel ? 1 : 0) : null,
+  });
+}
+
+/**
+ * A call's DURABLE accounting state, rebuilt from its rows: the base row
+ * `<baseId>` plus its corrections `<baseId>#<seq>`. The call's model is the
+ * latest row's; its usage is the sum of its rows under that model (a model
+ * correction appends a negative row under the old model and a positive one
+ * under the new). Null when the call has no row.
+ */
+export function loadClaudeMessage(
+  db: Database,
+  baseId: string,
+): { model: string; event: CostEvent; acct: ClaudeRowAccounting | null } | null {
+  const rows = db
+    .prepare(
+      `SELECT * FROM cost_events WHERE id = $id OR substr(id, 1, length($id) + 1) = $id || '#' ORDER BY rowid`,
+    )
+    .all({ $id: baseId }) as Array<Record<string, unknown>>;
+  if (rows.length === 0) return null;
+  const last = rows[rows.length - 1];
+  const model = String(last.model);
+  const sum = rowToEvent(rows[0]);
+  sum.id = baseId;
+  sum.model = model;
+  for (const f of [
+    'inputTokens',
+    'outputTokens',
+    'cacheReadTokens',
+    'cacheWriteTokens',
+    'cacheWrite5mTokens',
+    'cacheWrite1hTokens',
+  ] as const)
+    sum[f] = 0;
+  for (const row of rows) {
+    if (String(row.model) !== model) continue;
+    const e = rowToEvent(row);
+    sum.inputTokens += e.inputTokens;
+    sum.outputTokens += e.outputTokens;
+    sum.cacheReadTokens += e.cacheReadTokens;
+    sum.cacheWriteTokens += e.cacheWriteTokens;
+    sum.cacheWrite5mTokens += e.cacheWrite5mTokens;
+    sum.cacheWrite1hTokens += e.cacheWrite1hTokens;
+  }
+  const seg = last.acct_seg;
+  const epoch = last.acct_epoch;
+  return {
+    model,
+    event: sum,
+    acct:
+      typeof seg === 'number' && typeof epoch === 'number'
+        ? { seg, epoch, cfgModel: Number(last.acct_cfg_model ?? 0) === 1 }
+        : null,
+  };
 }
 
 /**

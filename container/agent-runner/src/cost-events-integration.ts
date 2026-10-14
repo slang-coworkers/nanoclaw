@@ -28,7 +28,7 @@ export function claudeMessageToEvent(
   const hasSplit = e.ephemeral1hInputTokens > 0 || e.ephemeral5mInputTokens > 0;
   return {
     // GEN-SCOPED identity. A wire `message.id` is deduped within a budget window
-    // by the counter's `seenMessageIds`, which is CLEARED on `/clear`/new_session —
+    // by the counter's `chargedMessages`, which is CLEARED on `/clear`/new_session —
     // so a replayed/reused id after a reset is charged AGAIN. A global `claude:<id>`
     // would `INSERT OR IGNORE`-dedup against the prior window's row and leave the
     // ledger BELOW the counter. Scoping the id to the generation re-admits it in the
