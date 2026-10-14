@@ -3277,11 +3277,11 @@ export async function processQuery(
   // zero: ending the input stream while an input is queued or running would
   // deny its tool calls. Counted only after the push succeeds.
   let inputsOutstanding = initialPrompt !== '' ? 1 : 0;
-  // The count is exact: the last result carried the provider's own count
-  // (Claude echoes the uuids each turn consumed). Queued sends may fold into
-  // one turn, so one result can answer several inputs and leave reply-routing
-  // entries behind; without the provider's count, each result answers one
-  // input and the routing queue must be empty too.
+  // The count is exact: a result carried the provider's own count (Claude
+  // echoes the uuids each turn consumed). Queued sends may fold into one turn,
+  // so one result can answer several inputs and leave reply-routing entries
+  // behind; until the provider gives a count, each result answers one input
+  // and the routing queue must be empty too.
   let inputsExact = false;
   const pushQueryInput = (message: string): void => {
     query.push(message);
@@ -3695,8 +3695,14 @@ export async function processQuery(
       if (event.type === 'result') turnComplete = true;
       else if (event.type !== 'usage' && event.type !== 'message_usage') turnComplete = false;
       if (event.type === 'result') {
-        inputsExact = event.unansweredInputs !== undefined;
-        inputsOutstanding = inputsExact ? event.unansweredInputs! : Math.max(0, inputsOutstanding - 1);
+        if (event.unansweredInputs !== undefined) {
+          inputsExact = true;
+          inputsOutstanding = event.unansweredInputs;
+        } else if (!inputsExact) {
+          inputsOutstanding = Math.max(0, inputsOutstanding - 1);
+        }
+        // Once exact, a result echoing none of our inputs (a turn the CLI
+        // started itself) answered none of them: the count stands.
         if (isMaxBudgetStop(event)) budgetExhausted = true;
       }
       if (event.type === 'progress' && event.task === 'started') bgTasks += 1;

@@ -532,6 +532,37 @@ describe('queued sends folded into one turn', () => {
     expect(isPending('m4')).toBe(true);
   }, 20_000);
 
+  it('once the count is exact, a result echoing none of our inputs does not spend it', async () => {
+    costHooks.startQueryBudget();
+    let endedAfterForeignResult: boolean | undefined;
+    let endedAfterItsResult: boolean | undefined;
+    const q = controllableQuery(async function* ({ pushes, ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      insertFollowUp('m2', 'queued');
+      await until(() => pushes.some((p) => p.includes('queued')));
+      yield { type: 'result', text: 'turn one', unansweredInputs: 1 }; // m2 not answered yet
+      setCeiling(720);
+      insertFollowUp('m4', 'after the raise');
+      // A turn the CLI started itself: no echo of ours. The routing queue is now
+      // empty, so only the exact count still holds the end.
+      yield { type: 'result', text: 'system turn' };
+      await sleep(10 * POLL_MS);
+      endedAfterForeignResult = ended();
+      yield { type: 'result', text: 'answer to m2', unansweredInputs: 0 };
+      await until(() => ended(), 1500);
+      endedAfterItsResult = ended();
+      if (!ended()) {
+        setSystemTime(new Date(Date.now() + 21 * 60_000));
+        await until(() => ended(), 3000);
+      }
+    });
+    await run(q.query);
+    expect(endedAfterForeignResult).toBe(false);
+    expect(endedAfterItsResult).toBe(true);
+    expect(q.endCalls()).toBe(1);
+    expect(isPending('m4')).toBe(true);
+  }, 20_000);
+
   it('without the provider count, only the plain idle end applies (slow, never early)', async () => {
     costHooks.startQueryBudget();
     let endedAt35s: boolean | undefined;
