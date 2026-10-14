@@ -551,3 +551,25 @@ export function getCodexChild(): CodexChildState | undefined {
     return undefined;
   }
 }
+
+/**
+ * Exact Claude usage accounting state (see `claude-usage.ts`): per-model
+ * per-message tokens, unclaimed backstop credit and the SDK `modelUsage`
+ * baseline of the current SDK session. Its own key, not part of `cost_cap`:
+ * the host and dashboard read `cost_cap`, and this is runner-private.
+ */
+const CLAUDE_BACKSTOP_KEY = 'cost_claude_backstop';
+
+export function getClaudeBackstop(): unknown {
+  const raw = getValue(CLAUDE_BACKSTOP_KEY);
+  if (!raw) return undefined;
+  try {
+    return JSON.parse(raw) as unknown;
+  } catch {
+    return undefined;
+  }
+}
+
+export function setClaudeBackstop(state: unknown): void {
+  setValue(CLAUDE_BACKSTOP_KEY, JSON.stringify(state));
+}

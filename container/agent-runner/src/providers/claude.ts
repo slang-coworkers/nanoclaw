@@ -1,4 +1,6 @@
 import { randomUUID } from 'crypto';
+import fs from 'fs';
+import path from 'path';
 
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
@@ -24,9 +26,23 @@ import {
 } from './claude-config.js';
 // Transcript archiving and rotation are this provider's own concern: both
 // read the SDK's on-disk .jsonl, which no other provider has.
-import { archiveClaudeTranscript, rotateClaudeContinuation } from './claude-history.js';
+import {
+  archiveClaudeTranscript,
+  claudeConfigDirectory,
+  readRestoredModelUsage,
+  rotateClaudeContinuation,
+} from './claude-history.js';
+import { cleanCount } from '../claude-usage.js';
 import { registerProvider } from './provider-registry.js';
-import type { AgentProvider, AgentQuery, ProviderEvent, ProviderOptions, QueryInput } from './types.js';
+import type {
+  AgentProvider,
+  AgentQuery,
+  ProviderEvent,
+  ProviderOptions,
+  QueryInput,
+  UsageAccounting,
+  UsageAccountingModel,
+} from './types.js';
 
 function log(msg: string): void {
   console.error(`[claude-provider] ${msg}`);
@@ -73,6 +89,366 @@ export function classifyRateLimitEvent(
     message: `${outOfCredits ? 'Out of credits' : 'Rate limit'}${window}${detail}`,
     classification: outOfCredits ? 'quota' : 'rate_limit',
   };
+}
+
+// --- Final per-call usage (cost accounting) ----------------------------------
+//
+// The assistant messages the SDK streams carry the `message_start` usage
+// SNAPSHOT: input and cache fields are final, `output_tokens` is not. Charging
+// that alone kept ~1% of output tokens fleet-wide (prod, 2026-10). The two
+// helpers below recover each call's FINAL usage as a second `message_usage`
+// report (`final: true`) for the same id; poll-loop charges only the increase.
+
+type MessageUsageEvent = Extract<ProviderEvent, { type: 'message_usage' }>;
+
+interface SdkUsageShape {
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  cache_creation_input_tokens?: number | null;
+  cache_read_input_tokens?: number | null;
+  cache_creation?: { ephemeral_1h_input_tokens?: number | null; ephemeral_5m_input_tokens?: number | null } | null;
+  iterations?: Array<{
+    cache_creation?: { ephemeral_1h_input_tokens?: number | null; ephemeral_5m_input_tokens?: number | null } | null;
+  }> | null;
+}
+
+/** The message a stream is currently on, keyed by `parent_tool_use_id ?? 'main'`. */
+export type StreamHeads = Map<string, { id: string; model?: string; usage: SdkUsageShape }>;
+
+function cacheSplit(u: SdkUsageShape): { h1: number; m5: number } | null {
+  if (
+    u.cache_creation &&
+    (u.cache_creation.ephemeral_1h_input_tokens != null || u.cache_creation.ephemeral_5m_input_tokens != null)
+  ) {
+    return { h1: u.cache_creation.ephemeral_1h_input_tokens ?? 0, m5: u.cache_creation.ephemeral_5m_input_tokens ?? 0 };
+  }
+  const its = (u.iterations ?? []).filter((i) => i?.cache_creation);
+  if (its.length === 0) return null;
+  return {
+    h1: its.reduce((s, i) => s + (i.cache_creation?.ephemeral_1h_input_tokens ?? 0), 0),
+    m5: its.reduce((s, i) => s + (i.cache_creation?.ephemeral_5m_input_tokens ?? 0), 0),
+  };
+}
+
+/**
+ * Track `message_start` and turn a `message_delta` into the call's FINAL usage.
+ *
+ * `message_delta.usage` carries the final `output_tokens`; newer API shapes
+ * repeat input/cache there too, the classic shape does not. Each field takes
+ * the larger of start and delta, so either shape yields the full final usage.
+ * Returns null for every other stream event (and for a delta whose start we
+ * never saw — there is no id to attach it to).
+ */
+export function finalUsageFromStreamEvent(
+  msg: {
+    event?: {
+      type?: string;
+      message?: { id?: string; model?: string; usage?: SdkUsageShape };
+      usage?: SdkUsageShape | null;
+    };
+    parent_tool_use_id?: string | null;
+  },
+  heads: StreamHeads,
+): MessageUsageEvent | null {
+  const ev = msg.event;
+  if (!ev) return null;
+  const key = msg.parent_tool_use_id ?? 'main';
+  if (ev.type === 'message_start') {
+    if (ev.message?.id) heads.set(key, { id: ev.message.id, model: ev.message.model, usage: ev.message.usage ?? {} });
+    return null;
+  }
+  if (ev.type === 'message_stop') {
+    heads.delete(key);
+    return null;
+  }
+  if (ev.type !== 'message_delta' || !ev.usage) return null;
+  const head = heads.get(key);
+  if (!head) return null;
+  const s = head.usage;
+  const d = ev.usage;
+  const split = cacheSplit(d) ?? cacheSplit(s);
+  return {
+    type: 'message_usage',
+    messageId: head.id,
+    model: head.model,
+    inputTokens: Math.max(s.input_tokens ?? 0, d.input_tokens ?? 0),
+    outputTokens: d.output_tokens ?? s.output_tokens ?? 0,
+    cacheCreationInputTokens: Math.max(s.cache_creation_input_tokens ?? 0, d.cache_creation_input_tokens ?? 0),
+    cacheReadInputTokens: Math.max(s.cache_read_input_tokens ?? 0, d.cache_read_input_tokens ?? 0),
+    ephemeral1hInputTokens: split?.h1 ?? 0,
+    ephemeral5mInputTokens: split?.m5 ?? 0,
+    isSubagent: key !== 'main',
+    final: true,
+  };
+}
+
+interface SdkResultShape {
+  session_id?: string;
+  duration_ms?: number;
+  total_cost_usd?: number;
+  num_turns?: number;
+  modelUsage?: Record<string, UsageAccountingModel>;
+  usage?: {
+    input_tokens?: number;
+    output_tokens?: number;
+    cache_creation_input_tokens?: number;
+    cache_read_input_tokens?: number;
+    cache_creation?: { ephemeral_1h_input_tokens?: number; ephemeral_5m_input_tokens?: number };
+  };
+}
+
+/** The result's accounting payload, or null when it carries neither `usage` nor `modelUsage`. */
+export function resultAccounting(r: SdkResultShape, isError: boolean): UsageAccounting | null {
+  const mu = r.modelUsage && typeof r.modelUsage === 'object' ? pickModelUsage(r.modelUsage) : undefined;
+  if (!r.usage && !mu) return null;
+  const u = r.usage ?? {};
+  return {
+    inputTokens: cleanCount(u.input_tokens),
+    outputTokens: cleanCount(u.output_tokens),
+    cacheCreationInputTokens: cleanCount(u.cache_creation_input_tokens),
+    cacheReadInputTokens: cleanCount(u.cache_read_input_tokens),
+    ephemeral1hInputTokens: cleanCount(u.cache_creation?.ephemeral_1h_input_tokens),
+    ephemeral5mInputTokens: cleanCount(u.cache_creation?.ephemeral_5m_input_tokens),
+    durationMs: r.duration_ms ?? 0,
+    totalCostUsd: typeof r.total_cost_usd === 'number' && Number.isFinite(r.total_cost_usd) ? r.total_cost_usd : 0,
+    numTurns: r.num_turns ?? 0,
+    sessionId: r.session_id ?? null,
+    ...(mu ? { modelUsage: mu } : {}),
+    ...(isError ? { isError: true } : {}),
+  };
+}
+
+/** Keep only the token/cost fields of `result.modelUsage` (it also carries context-window metadata). */
+function pickModelUsage(mu: Record<string, UsageAccountingModel>): Record<string, UsageAccountingModel> {
+  const out: Record<string, UsageAccountingModel> = {};
+  for (const [model, u] of Object.entries(mu)) {
+    if (!u || typeof u !== 'object') continue;
+    out[model] = {
+      inputTokens: cleanCount(u.inputTokens),
+      outputTokens: cleanCount(u.outputTokens),
+      cacheReadInputTokens: cleanCount(u.cacheReadInputTokens),
+      cacheCreationInputTokens: cleanCount(u.cacheCreationInputTokens),
+      costUSD: typeof u.costUSD === 'number' && Number.isFinite(u.costUSD) && u.costUSD > 0 ? u.costUSD : 0,
+    };
+  }
+  return out;
+}
+
+/**
+ * FINAL usage of every API call in a subagent transcript (`agent-*.jsonl`).
+ * Claude Code writes each content block as its own line with the call's final
+ * usage; lines repeating one id collapse to one event. Malformed lines and
+ * calls without usage are skipped.
+ */
+export function finalUsageFromTranscript(text: string): MessageUsageEvent[] {
+  const byId = new Map<string, MessageUsageEvent>();
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    let j: { type?: string; timestamp?: unknown; message?: { id?: unknown; model?: unknown; usage?: SdkUsageShape } };
+    try {
+      j = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const m = j?.message;
+    if (j?.type !== 'assistant' || typeof m?.id !== 'string' || !m.id || !m.usage || typeof m.usage !== 'object')
+      continue;
+    const u = m.usage;
+    const split = cacheSplit(u);
+    const ev: MessageUsageEvent = {
+      type: 'message_usage',
+      messageId: m.id,
+      model: typeof m.model === 'string' ? m.model : undefined,
+      inputTokens: cleanCount(u.input_tokens),
+      outputTokens: cleanCount(u.output_tokens),
+      cacheCreationInputTokens: cleanCount(u.cache_creation_input_tokens),
+      cacheReadInputTokens: cleanCount(u.cache_read_input_tokens),
+      ephemeral1hInputTokens: cleanCount(split?.h1),
+      ephemeral5mInputTokens: cleanCount(split?.m5),
+      isSubagent: true,
+      final: true,
+      // Canonical ISO, so it compares as an instant with the runner's own stamps.
+      ...(typeof j.timestamp === 'string' && Number.isFinite(Date.parse(j.timestamp))
+        ? { callTs: new Date(j.timestamp).toISOString() }
+        : {}),
+    };
+    const prev = byId.get(m.id);
+    if (!prev || ev.outputTokens >= prev.outputTokens)
+      byId.set(m.id, prev?.callTs && !ev.callTs ? { ...ev, callTs: prev.callTs } : ev);
+  }
+  return [...byId.values()];
+}
+
+/** Bytes read per chunk; a transcript of any size is read in these, never whole. */
+const SUBAGENT_READ_CHUNK_BYTES = 4 * 1024 * 1024;
+/** A single JSONL line longer than this is skipped (logged), not buffered. */
+const SUBAGENT_MAX_LINE_BYTES = 16 * 1024 * 1024;
+/**
+ * Work per cooperative read slice. SubagentStop is not guaranteed to re-fire, so
+ * one invocation must reach EOF; it yields to the event loop between slices so an
+ * enormous transcript never starves the runner.
+ */
+// A non-positive or non-numeric override would make the slice loop yield forever.
+const positiveOr = (n: number, fallback: number): number => (Number.isFinite(n) && n > 0 ? n : fallback);
+const SUBAGENT_READ_BUDGET_BYTES = positiveOr(Number(process.env.NANOCLAW_SUBAGENT_READ_BUDGET_BYTES), 256 * 1024 * 1024);
+const SUBAGENT_READ_BUDGET_MS = 10_000;
+
+/** Where each subagent transcript was read up to, so a re-fired hook reads only what was appended. */
+const subagentReadCursors = new Map<
+  string,
+  { dev: number; ino: number; offset: number; carry: string; skipping: boolean }
+>();
+
+/**
+ * Resolve `p` and accept it only as `<project>/<session>/subagents/agent-<id>.jsonl`
+ * NEXT TO this hook's own session transcript (`<project>/<session>.jsonl`, the
+ * hook input's `transcript_path`), under the real Claude projects root. A path
+ * into another session's directory, a symlink out, or any other file is refused.
+ */
+export function validateSubagentTranscriptPath(p: string, projectsRoot: string, transcriptPath: string): string | null {
+  try {
+    const root = fs.realpathSync(projectsRoot);
+    const real = fs.realpathSync(p);
+    const rel = path.relative(root, real);
+    if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
+    const parts = rel.split(path.sep);
+    if (parts.length !== 4 || parts[2] !== 'subagents' || !/^agent-[A-Za-z0-9_-]+\.jsonl$/.test(parts[3])) return null;
+    // Bind to the session the hook fired for. The transcript may not exist yet
+    // (a session's first turn), so resolve its directory, not the file.
+    if (!transcriptPath.endsWith('.jsonl')) return null;
+    const projectDir = fs.realpathSync(path.dirname(transcriptPath));
+    const session = path.basename(transcriptPath, '.jsonl');
+    if (path.join(root, parts[0]) !== projectDir || parts[1] !== session) return null;
+    return real;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * `SubagentStop` hook: read the finished subagent's transcript and queue each
+ * call's FINAL usage. A subagent's calls never reach the stream as
+ * `message_delta`, so this is the only place their real output tokens appear
+ * per message — and for a background subagent that finishes after its parent's
+ * last result, there may be no later result to back it up. The compaction
+ * sidechain also fires this hook, with a path that does not exist.
+ *
+ * Defensive: the hook's `session_id`, its `transcript_path` and the session
+ * the running query announced must agree, and the path must be a regular
+ * `agent-*.jsonl` in that session's subagents directory; it is opened without
+ * following a symlink and the open descriptor must be the file validated (same
+ * device and inode, and on Linux the same resolved path). Read asynchronously
+ * in bounded chunks — never whole — to EOF, yielding to the event loop between
+ * slices, and incrementally (a re-fired hook reads only appended lines). The
+ * transcript is complete when the hook fires, so a final record without a
+ * trailing newline is parsed too. Every failure is logged and swallowed:
+ * accounting must never break a turn, and whatever is not read here is in the
+ * turn's cumulative `modelUsage`, which the backstop settles.
+ */
+export function createSubagentUsageHook(
+  sink: (e: MessageUsageEvent) => void,
+  opts: { projectsRoot: string; sessionId?: () => string | undefined; budgetBytes?: number },
+): HookCallback {
+  return async (input) => {
+    const p = (input as { agent_transcript_path?: unknown }).agent_transcript_path;
+    const transcriptPath = (input as { transcript_path?: unknown }).transcript_path;
+    const hookSession = (input as { session_id?: unknown }).session_id;
+    if (typeof p !== 'string' || !p) return {};
+    // Bound to the RUNNING query: the hook's session, its transcript's name and
+    // the session this query's `init` announced must all be the same.
+    const querySession = opts.sessionId?.();
+    const bound =
+      typeof transcriptPath === 'string' &&
+      typeof hookSession === 'string' &&
+      path.basename(transcriptPath, '.jsonl') === hookSession &&
+      // A runtime caller fails closed until the query's `init` names its session.
+      (opts.sessionId === undefined || (querySession !== undefined && querySession === hookSession));
+    const real = bound ? validateSubagentTranscriptPath(p, opts.projectsRoot, transcriptPath) : null;
+    if (!real) {
+      if (fs.existsSync(p)) log(`subagent usage: ignoring a transcript outside this query's session: ${p}`);
+      return {};
+    }
+    let fh: fs.promises.FileHandle | undefined;
+    try {
+      const expected = fs.statSync(real);
+      fh = await fs.promises.open(real, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
+      const st = await fh.stat();
+      if (!st.isFile() || st.ino !== expected.ino || st.dev !== expected.dev || !openedAt(fh.fd, real)) {
+        log(`subagent usage: ${real} changed between validation and open — not read`);
+        return {};
+      }
+      let cur = subagentReadCursors.get(real);
+      if (!cur || cur.ino !== st.ino || cur.dev !== st.dev || st.size < cur.offset) {
+        cur = { dev: st.dev, ino: st.ino, offset: 0, carry: '', skipping: false };
+      }
+      const buf = Buffer.alloc(Math.min(SUBAGENT_READ_CHUNK_BYTES, Math.max(1, st.size - cur.offset)));
+      const budgetBytes = positiveOr(opts.budgetBytes ?? SUBAGENT_READ_BUDGET_BYTES, SUBAGENT_READ_BUDGET_BYTES);
+      let sliceOffset = cur.offset;
+      let sliceStartedAt = Date.now();
+      while (cur.offset < st.size) {
+        if (cur.offset - sliceOffset >= budgetBytes || Date.now() - sliceStartedAt >= SUBAGENT_READ_BUDGET_MS) {
+          subagentReadCursors.set(real, cur);
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+          sliceOffset = cur.offset;
+          sliceStartedAt = Date.now();
+        }
+        const { bytesRead } = await fh.read(buf, 0, Math.min(buf.length, st.size - cur.offset), cur.offset);
+        if (bytesRead <= 0) break;
+        cur.offset += bytesRead;
+        const text = cur.carry + buf.subarray(0, bytesRead).toString('utf8');
+        const lastNl = text.lastIndexOf('\n');
+        let complete = lastNl === -1 ? '' : text.slice(0, lastNl);
+        cur.carry = lastNl === -1 ? text : text.slice(lastNl + 1);
+        if (cur.skipping && lastNl !== -1) {
+          // Drop the rest of an over-long line, up to its newline.
+          const nl = complete.indexOf('\n');
+          complete = nl === -1 ? '' : complete.slice(nl + 1);
+          cur.skipping = false;
+        } else if (cur.skipping) {
+          complete = '';
+        }
+        if (cur.carry.length > SUBAGENT_MAX_LINE_BYTES) {
+          log(`subagent usage: a line in ${real} exceeds ${SUBAGENT_MAX_LINE_BYTES} bytes — skipped`);
+          cur.carry = '';
+          cur.skipping = true;
+        }
+        for (const ev of finalUsageFromTranscript(complete)) sink(ev);
+      }
+      // The subagent has stopped: its transcript is complete, so a last record
+      // without a newline is final, not partial.
+      if (cur.carry.trim() && !cur.skipping) {
+        const tail = finalUsageFromTranscript(cur.carry);
+        if (tail.length > 0) {
+          for (const ev of tail) sink(ev);
+          cur.carry = '';
+        }
+      }
+      subagentReadCursors.set(real, cur);
+    } catch (err) {
+      log(`subagent usage read failed: ${err instanceof Error ? err.message : String(err)}`);
+    } finally {
+      await fh?.close().catch(() => undefined);
+    }
+    return {};
+  };
+}
+
+/**
+ * Is the open descriptor the file that was validated? Resolves the descriptor's
+ * own path (Linux `/proc/self/fd`), so a parent directory swapped for a symlink
+ * after validation is caught. Without `/proc` the device/inode check stands.
+ */
+function openedAt(fd: number, real: string): boolean {
+  try {
+    return fs.realpathSync(`/proc/self/fd/${fd}`) === real;
+  } catch {
+    return !fs.existsSync('/proc/self/fd');
+  }
+}
+
+/** Test seam: forget the incremental read positions. */
+export function __resetSubagentReadCursors(): void {
+  subagentReadCursors.clear();
 }
 
 // Re-exported because callers still import these from here; both are read by this
@@ -557,6 +933,12 @@ export class ClaudeProvider implements AgentProvider {
     return rotateClaudeContinuation({ continuation, assistantName: this.assistantName, log }, REAL_CLOCK);
   }
 
+  /** The `modelUsage` Claude Code restores on resume — its transcript's last `cost-state`. */
+  readRestoredUsage(continuation: string): Record<string, UsageAccountingModel> | null {
+    const mu = readRestoredModelUsage(continuation);
+    return mu ? pickModelUsage(mu as Record<string, UsageAccountingModel>) : null;
+  }
+
   query(input: QueryInput): AgentQuery {
     const stream = new MessageStream();
     stream.push(input.prompt);
@@ -574,6 +956,16 @@ export class ClaudeProvider implements AgentProvider {
     // Only kill() aborts this. The SDK then closes its process: stdin end,
     // SIGTERM, then SIGKILL.
     const sdkAbort = new AbortController();
+
+    // Final per-call usage of subagent calls, queued by the SubagentStop hook
+    // (which runs outside the message loop) and drained into the event stream
+    // before the next event — so it is accounted before the turn's `result`
+    // when the subagent finished inside the turn, and on the next event (or at
+    // stream end) when a background subagent finished after it.
+    const pendingUsage: Extract<ProviderEvent, { type: 'message_usage' }>[] = [];
+    // The SDK session this query runs as (from its `init`); the usage hook only
+    // reads transcripts of this session.
+    let querySessionId: string | undefined;
 
     const sdkResult = sdkQuery({
       prompt: stream,
@@ -646,6 +1038,21 @@ export class ClaudeProvider implements AgentProvider {
           PostToolUse: [{ hooks: [postToolUseHook] }],
           PostToolUseFailure: [{ hooks: [postToolUseHook] }],
           PreCompact: [{ hooks: [createPreCompactHook(this.assistantName)] }],
+          // Only when the consumer meters spend: the transcript read is pure accounting.
+          ...(input.usageTracking
+            ? {
+                SubagentStop: [
+                  {
+                    hooks: [
+                      createSubagentUsageHook((e) => pendingUsage.push(e), {
+                        projectsRoot: path.join(claudeConfigDirectory(), 'projects'),
+                        sessionId: () => querySessionId,
+                      }),
+                    ],
+                  },
+                ],
+              }
+            : {}),
         },
       },
     });
@@ -655,13 +1062,22 @@ export class ClaudeProvider implements AgentProvider {
     async function* translateEvents(): AsyncGenerator<ProviderEvent> {
       let messageCount = 0;
       let lastStreamActivityAt = 0;
+      const streamHeads: StreamHeads = new Map();
       for await (const message of sdkResult) {
         if (aborted) return;
+        while (pendingUsage.length > 0) yield pendingUsage.shift()!;
 
         // Yield activity for every SDK event so the poll loop knows the agent
         // is working. Deltas arrive per token and carry no content for us, so
-        // they count at most once per second, and not as messages.
+        // they count at most once per second, and not as messages — except a
+        // `message_delta`, which carries the call's FINAL usage (the assistant
+        // messages only ever carry the start-of-stream snapshot).
         if (message.type === 'stream_event') {
+          const finalUsage = finalUsageFromStreamEvent(
+            message as Parameters<typeof finalUsageFromStreamEvent>[0],
+            streamHeads,
+          );
+          if (finalUsage) yield finalUsage;
           const now = Date.now();
           if (now - lastStreamActivityAt < STREAM_ACTIVITY_INTERVAL_MS) continue;
           lastStreamActivityAt = now;
@@ -672,6 +1088,7 @@ export class ClaudeProvider implements AgentProvider {
         yield { type: 'activity' };
 
         if (message.type === 'system' && message.subtype === 'init') {
+          querySessionId = message.session_id;
           yield { type: 'init', continuation: message.session_id };
         } else if (message.type === 'assistant') {
           // Surface each assistant message's text as it streams in. The final
@@ -727,8 +1144,10 @@ export class ClaudeProvider implements AgentProvider {
           }
           // PER-MESSAGE usage — the cost cap's accounting basis (issue #1327).
           // One assistant message per content block, all blocks of one API
-          // response repeating the same `message.id` and the same `usage`, so
-          // the consumer dedupes by id; see the ProviderEvent doc comment.
+          // response repeating the same `message.id` and the same usage — the
+          // `message_start` SNAPSHOT (final input/cache, partial output). The
+          // consumer charges the id once and tops it up when the final usage
+          // arrives (stream `message_delta` above, or the SubagentStop hook).
           const mu = asst.message?.usage;
           if (mu) {
             yield {
@@ -772,6 +1191,12 @@ export class ClaudeProvider implements AgentProvider {
           // Notice first, hint on its own line: setup's ping shows only the first line.
           const hint = SDK_NOTICES.get(candidate);
           const resultAsError = hint ? `${candidate}\n${hint}` : '';
+          // Per-turn accounting, whenever the result carries EITHER the main-loop
+          // `usage` or the cumulative `modelUsage` (an error result can have only
+          // the latter, and its billed calls must still be settled). It rides on
+          // the `result` itself so the consumer settles it before any delivery
+          // step can throw; the `usage` event after it is the log line.
+          const accounting = resultAccounting(message as SdkResultShape, isError);
           yield {
             type: 'result',
             text: resultAsError ? null : (m.result ?? null),
@@ -781,43 +1206,9 @@ export class ClaudeProvider implements AgentProvider {
             ...(m.subtype === 'error_max_budget_usd' ? { maxBudgetExceeded: true } : {}),
             // Exact count from the SDK's uuid echo; coalesced sends settle together.
             ...(unansweredInputs !== undefined ? { unansweredInputs } : {}),
+            ...(accounting ? { accounting } : {}),
           };
-          // Emit structured per-turn usage so the poll-loop can log
-          // a grep-friendly line. Fields come from the SDK's result
-          // message (shape: { usage: { input_tokens, cache_*_input_tokens,
-          // output_tokens, cache_creation: { ephemeral_*_input_tokens } },
-          // duration_ms, total_cost_usd, num_turns, session_id }).
-          const r = message as {
-            session_id?: string;
-            duration_ms?: number;
-            total_cost_usd?: number;
-            num_turns?: number;
-            usage?: {
-              input_tokens?: number;
-              output_tokens?: number;
-              cache_creation_input_tokens?: number;
-              cache_read_input_tokens?: number;
-              cache_creation?: {
-                ephemeral_1h_input_tokens?: number;
-                ephemeral_5m_input_tokens?: number;
-              };
-            };
-          };
-          if (r.usage) {
-            yield {
-              type: 'usage',
-              inputTokens: r.usage.input_tokens ?? 0,
-              outputTokens: r.usage.output_tokens ?? 0,
-              cacheCreationInputTokens: r.usage.cache_creation_input_tokens ?? 0,
-              cacheReadInputTokens: r.usage.cache_read_input_tokens ?? 0,
-              ephemeral1hInputTokens: r.usage.cache_creation?.ephemeral_1h_input_tokens ?? 0,
-              ephemeral5mInputTokens: r.usage.cache_creation?.ephemeral_5m_input_tokens ?? 0,
-              durationMs: r.duration_ms ?? 0,
-              totalCostUsd: r.total_cost_usd ?? 0,
-              numTurns: r.num_turns ?? 0,
-              sessionId: r.session_id ?? null,
-            };
-          }
+          if (accounting) yield { type: 'usage', ...accounting };
         } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'api_retry') {
           yield { type: 'error', message: 'API retry', retryable: true };
         } else if (message.type === 'rate_limit_event') {
@@ -885,6 +1276,8 @@ export class ClaudeProvider implements AgentProvider {
           yield { type: 'activity' };
         }
       }
+      // A background subagent that finished after the last SDK message.
+      while (pendingUsage.length > 0) yield pendingUsage.shift()!;
       log(`Query completed after ${messageCount} SDK messages`);
     }
 
@@ -892,6 +1285,7 @@ export class ClaudeProvider implements AgentProvider {
       push: (msg) => stream.push(msg),
       end: () => stream.end(),
       events: translateEvents(),
+      drainPendingUsage: () => pendingUsage.splice(0),
       abort: () => {
         aborted = true;
         stream.end();
