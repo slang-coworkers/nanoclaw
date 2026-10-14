@@ -230,8 +230,21 @@ export type ProviderEvent =
    * `text` is model output; `error` is an optional user-facing provider error
    * (e.g. a billing/quota notice), kept separate from model scratchpad and
    * raw diagnostics. Failures without `error` receive a generic notice.
+   * `maxBudgetExceeded` marks the SDK's own max-budget stop (Claude result
+   * subtype `error_max_budget_usd`): the query's fixed budget is spent.
+   * `unansweredInputs`: inputs pushed into this query that no completed turn
+   * has consumed yet, exact from the provider's own echo (Claude
+   * `user_message_uuids`; queued sends may fold into one turn). Absent when the
+   * result echoes none of this query's inputs.
    */
-  | { type: 'result'; text: string | null; isError?: boolean; error?: string }
+  | {
+      type: 'result';
+      text: string | null;
+      isError?: boolean;
+      error?: string;
+      maxBudgetExceeded?: boolean;
+      unansweredInputs?: number;
+    }
   /**
    * An assistant text segment emitted mid-turn (e.g. between tool calls).
    * The SDK's final `result` carries only the LAST assistant text, so a

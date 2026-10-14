@@ -709,6 +709,63 @@ function costCeilingRemainingUsd(): number | undefined {
   return Math.max(0.01, costCeilingUsd - costSpentUsd);
 }
 
+/**
+ * The `maxBudgetUsd` the ACTIVE query was created with (undefined = no budget),
+ * and the ceiling it was computed from. The SDK fixes a query's budget for the
+ * query's lifetime, but the loop keeps that query open and pushes later messages
+ * into it, so a live ceiling change never reaches it: a raise is ignored until
+ * the old budget runs out, and after that the SDK stops every pushed message at
+ * once ("Reached maximum budget ($X)", no tokens). Seen on lego 2026-10-01: a
+ * query opened under a $50 ceiling with $37.69 spent kept a $12.31 budget through
+ * raises to $220 and $720, and only a container restart recovered it.
+ *
+ * `stale` latches when an applied cost control changed the query's effective
+ * budget (headroom) in either direction. Ordinary spend accrual does not set it,
+ * nor does a rejected or no-op control. The follow-up poller then stops pushing
+ * into the query and ends it once nothing is in flight; the next query is
+ * created from the live ceiling.
+ */
+let activeQueryBudget: { budgetUsd: number | undefined; ceilingUsd: number; stale: boolean } | undefined;
+
+/** The budget for a query about to be created; records it as the active query's basis. */
+function startQueryBudget(): number | undefined {
+  const budgetUsd = costCeilingRemainingUsd();
+  activeQueryBudget = { budgetUsd, ceilingUsd: costCeilingUsd, stale: false };
+  return budgetUsd;
+}
+
+/** Latch the active query stale if a cost control just changed its headroom (either direction). */
+function noteBudgetControl(headroomBeforeUsd: number | undefined): void {
+  if (!activeQueryBudget || activeQueryBudget.stale) return;
+  const before = headroomBeforeUsd ?? Number.POSITIVE_INFINITY;
+  const after = costCeilingRemainingUsd() ?? Number.POSITIVE_INFINITY;
+  if (before !== after && Math.abs(after - before) > 1e-9) activeQueryBudget.stale = true;
+}
+
+/**
+ * The active query's budget basis when it is stale, else null. Besides the latch,
+ * live headroom above the start budget also means the budget was widened (no
+ * control path is needed for that to be true: spend accrual only shrinks it).
+ */
+function staleQueryBudget(): { budgetUsd: number | undefined; ceilingUsd: number; headroomUsd: number } | null {
+  if (!activeQueryBudget) return null;
+  const headroomUsd = costCeilingRemainingUsd() ?? Number.POSITIVE_INFINITY;
+  const widened = activeQueryBudget.budgetUsd !== undefined && headroomUsd > activeQueryBudget.budgetUsd + 1e-9;
+  if (!activeQueryBudget.stale && !widened) return null;
+  return { budgetUsd: activeQueryBudget.budgetUsd, ceilingUsd: activeQueryBudget.ceilingUsd, headroomUsd };
+}
+
+function describeStaleBudget(s: { budgetUsd: number | undefined; headroomUsd: number }): string {
+  const was = s.budgetUsd === undefined ? 'no budget' : `a $${s.budgetUsd.toFixed(2)} budget`;
+  const now = Number.isFinite(s.headroomUsd) ? `$${s.headroomUsd.toFixed(2)} headroom` : 'no ceiling';
+  return `cost ceiling changed since this query started (${was}, now ${now})`;
+}
+
+/** The SDK's max-budget stop (the Claude provider's structured `error_max_budget_usd` flag). */
+function isMaxBudgetStop(event: { maxBudgetExceeded?: boolean }): boolean {
+  return event.maxBudgetExceeded === true;
+}
+
 /** Current status band from spent/cap/escalation/stop state. */
 function computeCostStatus(): CostCapStatus {
   // Tier-2 hard ceiling: a non-immortal session past the ceiling reads 'stopped'
@@ -1533,6 +1590,17 @@ interface CostOverrideContent {
  * exact-value request in ways neither path was designed to fence against.
  */
 function applyCostOverride(msg: MessageInRow): void {
+  // An open query's SDK budget cannot follow this control: latch it stale if
+  // the headroom moved (see activeQueryBudget).
+  const headroomBefore = costCeilingRemainingUsd();
+  try {
+    applyCostOverrideInner(msg);
+  } finally {
+    noteBudgetControl(headroomBefore);
+  }
+}
+
+function applyCostOverrideInner(msg: MessageInRow): void {
   let parsed: CostOverrideContent;
   try {
     parsed = JSON.parse(msg.content) as CostOverrideContent;
@@ -2067,6 +2135,12 @@ export const __costCapTestHooks = {
   foldCodexCost,
   computeCostStatus,
   costCeilingRemainingUsd,
+  startQueryBudget,
+  staleQueryBudget,
+  getActiveQueryBudget: () => activeQueryBudget,
+  clearActiveQueryBudget: (): void => {
+    activeQueryBudget = undefined;
+  },
   applyCostOverride,
   resetCostForNewSession,
   initCostTracking,
@@ -2795,8 +2869,9 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
       continuation: newSessionBatch ? undefined : continuation,
       cwd: config.cwd,
       systemContext: config.systemContext,
-      // Tier-2 ceiling soft-brake for THIS turn (undefined when no ceiling applies).
-      maxBudgetUsd: costCeilingRemainingUsd(),
+      // Tier-2 ceiling soft-brake for THIS query (undefined when no ceiling applies),
+      // recorded as the query's budget basis (see activeQueryBudget).
+      maxBudgetUsd: startQueryBudget(),
     });
     // Process the query while concurrently polling for new messages
     const skippedSet = new Set(skipped.map((s) => s.id));
@@ -3195,10 +3270,27 @@ export async function processQuery(
     publishReplyRoute(routing);
     answering = true;
   };
+  // Provider inputs given to this query and not yet answered by a result: the
+  // initial prompt plus every push. Every push goes through pushQueryInput so
+  // each site is counted (follow-ups, corrective retries, and mid-turn gate
+  // refusals, which are not queued turns). The stale/spent-budget end waits for
+  // zero: ending the input stream while an input is queued or running would
+  // deny its tool calls. Counted only after the push succeeds.
+  let inputsOutstanding = initialPrompt !== '' ? 1 : 0;
+  // The count is exact: a result carried the provider's own count (Claude
+  // echoes the uuids each turn consumed). Queued sends may fold into one turn,
+  // so one result can answer several inputs and leave reply-routing entries
+  // behind; until the provider gives a count, each result answers one input
+  // and the routing queue must be empty too.
+  let inputsExact = false;
+  const pushQueryInput = (message: string): void => {
+    query.push(message);
+    inputsOutstanding += 1;
+  };
   // A retry is another provider input, behind any follow-ups already pushed.
   // Preserve its original route, prompt and retry guards until it is answered.
   const pushRetry = (prompt: string, archiveAgainst?: string, retryOf?: SeqWindow): void => {
-    query.push(prompt);
+    pushQueryInput(prompt);
     queuedTurns.push({ routing: { ...routing }, unwrappedNudged, taskBlockNudged, nudgedWindow: retryOf });
     archivePrompts.push(archiveAgainst ?? archivePrompts[0] ?? initialPrompt);
   };
@@ -3255,6 +3347,10 @@ export async function processQuery(
   // Fired when an idle-ended stream stays silent past IDLE_END_GRACE_MS.
   const abandonStream = new AbortController();
   let freshSessionDeferLogged = false;
+  // Set by the SDK's max-budget stop: this query's fixed budget is spent, and
+  // anything pushed into it from now on fails at once (see activeQueryBudget).
+  let budgetExhausted = false;
+  let budgetDeferLogged = false;
   // True once the SDK has emitted a `result` for the current turn and nothing has
   // been pushed since; cleared by the next push. Post-turn accounting events keep it.
   let turnComplete = false;
@@ -3384,6 +3480,48 @@ export async function processQuery(
           return;
         }
 
+        // Stale or spent query budget (Claude: see activeQueryBudget). The SDK fixed
+        // this query's maxBudgetUsd when it was created, so a ceiling change since
+        // cannot reach it, and after a max-budget stop anything pushed fails at once
+        // with no tokens. Claim nothing: the rows stay pending. Turns already pushed
+        // finish as usual; once nothing is in flight, end the query (as the idle
+        // end does: dead to the poller, abandoned if it never closes) and the outer
+        // loop starts a fresh query whose budget comes from the live ceiling. Same
+        // in-flight rule as the fresh-session path below: never end a query that is
+        // still working, or its tool calls are denied.
+        if (providerName === 'claude') {
+          const stale = staleQueryBudget();
+          if (stale || budgetExhausted) {
+            const why = budgetExhausted
+              ? "this query's budget is spent (SDK max-budget stop)"
+              : describeStaleBudget(stale!);
+            const idleMs = Date.now() - lastEventTime;
+            // End at once only when every input has been answered and nothing
+            // runs in the background. With the provider's exact count, folded
+            // sends cannot hold the end back through leftover routing entries;
+            // without it the routing queue must be empty too. Otherwise only
+            // the plain idle end applies: a slow end, never a cut-short turn.
+            const settled =
+              turnComplete &&
+              bgTasks === 0 &&
+              inputsOutstanding === 0 &&
+              (inputsExact || (!answering && queuedTurns.length === 0));
+            if (
+              freshSessionArrivalAction(idleMs, settled, idleEndLimit(bgTasks), 0) === 'end'
+            ) {
+              log(`${why} — ending the query; ${newMessages.length} follow-up message(s) stay pending for a fresh one`);
+              idleEndedAt = Date.now();
+              query.end();
+              return;
+            }
+            if (!budgetDeferLogged) {
+              budgetDeferLogged = true;
+              log(`${why} — leaving ${newMessages.length} follow-up message(s) pending until the active turn ends`);
+            }
+            return;
+          }
+        }
+
         // new_session bypass guard: if any arriving task defaults to fresh
         // session (a task kind with no `new_session: false` opt-out), DO NOT
         // push into the active query — that would resume the stored
@@ -3507,7 +3645,7 @@ export async function processQuery(
         const destNote = refreshDestinations();
         if (destNote) routedPrompt = destNote + routedPrompt;
         log(`Pushing ${keep.length} follow-up message(s) into active query`);
-        query.push(routedPrompt);
+        pushQueryInput(routedPrompt);
         archivePrompts.push(prompt);
         const next: QueuedTurn = {
           routing: extractRouting(keep),
@@ -3556,6 +3694,17 @@ export async function processQuery(
       // else means the SDK is working again.
       if (event.type === 'result') turnComplete = true;
       else if (event.type !== 'usage' && event.type !== 'message_usage') turnComplete = false;
+      if (event.type === 'result') {
+        if (event.unansweredInputs !== undefined) {
+          inputsExact = true;
+          inputsOutstanding = event.unansweredInputs;
+        } else if (!inputsExact) {
+          inputsOutstanding = Math.max(0, inputsOutstanding - 1);
+        }
+        // Once exact, a result echoing none of our inputs (a turn the CLI
+        // started itself) answered none of them: the count stands.
+        if (isMaxBudgetStop(event)) budgetExhausted = true;
+      }
       if (event.type === 'progress' && event.task === 'started') bgTasks += 1;
       else if (event.type === 'progress' && event.task === 'finished') bgTasks = Math.max(0, bgTasks - 1);
       handleEvent(event, routing);
@@ -3630,7 +3779,7 @@ export async function processQuery(
           // re-sends correctly, same contract as the result door. The gates'
           // own 3-denial soft-cap bounds the re-send loop.
           if (scan.gateRefusals?.length) {
-            query.push(`<system>${scan.gateRefusals.join('\n\n')}</system>`);
+            pushQueryInput(`<system>${scan.gateRefusals.join('\n\n')}</system>`);
           }
         }
       } else if (event.type === 'result') {
