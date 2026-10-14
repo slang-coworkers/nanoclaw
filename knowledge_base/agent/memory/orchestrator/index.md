@@ -19,8 +19,11 @@ the one mount detail the spine omits.
   collaborator framing; when to reach for a stateless subagent instead.
 - [Interactive prompts: ask_user_question vs send_card](interactive-prompts.md) —
   which tool blocks, which returns immediately, and the card-routing caveat.
-- [/supervise-issues tick runbook](supervise-tick-runbook.md) — fast patched pull
-  (skip the 80-min per-session cost-cap loop), false-positive shapes, pinned-nudge fallback.
+- [/supervise-issues tick runbook](supervise-tick-runbook.md) — **read first every tick**:
+  cached `tickNNN/pull.sh` fast path, helper pipeline, delivery/turn discipline, pull/cache pitfalls.
+  - [False-positive shapes](supervise-tick-false-positives.md) — rows scan flags that aren't real, with disposition tokens.
+  - [Scan blind spots](supervise-tick-blind-spots.md) — real stalls scan misreads, with detectors.
+  - [Scheduler: gated-series stall (open)](scheduler-gated-series-stall.md) — false-gate recurring series stopped advancing after 10-13 14:03Z; watchdog must not re-arm; re-check each tick.
 - [Self-modification: packages & MCP servers](self-modification.md) —
   install_packages vs workspace pnpm install; add_mcp_server + the vault
   credential-placeholder flow.

@@ -46,6 +46,8 @@ Run the rungs cheapest first. **Any hit means it is owned: dispatch nothing.**
 
 ## When it is owned but parked
 
+⛔ **Superseded 2026-10-13: never arm a *recurring* per-issue gate.** CLAUDE.md now forbids it (supervise-issues R10), because webhooks already deliver that issue's comment and close events, and a per-issue cron never cancels itself. Use one `--process-after` re-check, or an entry in the parked-chain register. The recurring `iNNNNN-*-gate` tasks described below come from before the rule. #13560's gate was cancelled once jkwak-work's comment arrived as a webhook.
+
 "Not a triage" is not "nothing to do". The answers are dispatch / no-op / **build the resume
 trigger the chain lacks**. A self-filed decision request waits on a human, so it needs a gate
 ([[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]); #12462 got
@@ -80,3 +82,6 @@ Neither `13581` nor `13580` matched any coworker session. Grepping `ncl sessions
 
 ### 2026-10-12, #13582: filed on a maintainer's order inside a PR review. Rung 7 found it; rung 8 timed out
 slang-fixer filed #13582 at 21:22:28Z on jkwak-work's #13378 R7 order ("file a new issue … this PR should stay away from `in/out/inout`"). Its `[Filed]` report (row 153, 21:23Z) went to the dashboard Main, which was busy with #13580/#13581 and still hadn't decided after a 5-min poll. So this session armed `i13582-maintainer-gate` (STALE 10-17T21:22Z) and reported. ⚠️ **A HUMAN_REPLY control needs a cutoff earlier than a known human comment.** Using #13433 with its own gate's SINCE (the bot's reply time) returns `false`, which is correct, because no human has commented since. That reads like a broken gate. Use `GATE_SINCE=2026-10-01` → `true`.
+
+### 2026-10-13, #13560: the maintainer's question came in as a webhook, so the gate was redundant
+jkwak-work asked "Is this dup to #13323?" (cmt 6151135410). I added 👀, cancelled `i13560-maintainer-gate-e1cc`, and sent the question to slang-triager on `gh-issue-shader-slang/slang-13560`, pinned to its #13321-thread session `ll0lo2`, which holds the dedup package. The note I sent with it, which I hadn't verified: #13323 crashes *after* E38037, and #13560 never reaches E38037. They share a backstop, so they're likely related but not duplicates.

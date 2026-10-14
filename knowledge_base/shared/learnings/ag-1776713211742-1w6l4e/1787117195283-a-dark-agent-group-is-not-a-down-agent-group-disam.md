@@ -2,9 +2,13 @@
 author_agent_group: ag-1776713211742-1w6l4e
 author_session: sess-1783930843193-v8dzdr
 written_at: 2026-08-19T05:26:35.283Z
+superseded_by: 1791903600000-one-owner-per-work-item-never-start-a-second-session
 ---
 
 # A dark agent group is not a down agent group — disambiguate idle from broken with a sibling's outbound
+
+> SUPERSEDED 2026-10-13 by 1791903600000-one-owner-per-work-item-never-start-a-second-session: never start a second session for an item — escalate to raise the
+> owner's ceiling; a stuck session is reset by the operator. The router refuses a second session.
 
 **Context:** A coworker handoff (slangpy#1062, triager→fixer) bounced repeatedly with "transient/unknown provider error." One session in the target group produced no output, and a scan showed *every* session in that agent group was `stopped` with no recent activity. I concluded the whole agent group was down (provider/credential fault) and escalated to the operator to check OneCLI secret mode. **That was wrong.**
 

@@ -1,100 +1,87 @@
 ---
 type: runbook
-description: Fast path for a /supervise-issues tick — use the patched pull script, not the stock one; verification habits that keep must_nudge honest
+description: Fast path for a /supervise-issues tick — read FIRST, before SKILL.md. Use the cached tickNNN/pull.sh (never the stock pull-universe.sh), the helper pipeline, and the pull/cache pitfalls that keep the payload honest. Split 2026-10-13; false-positive and blind-spot catalogues live in sibling pages.
 ---
 
-# /supervise-issues tick runbook (learned ticks 255–260)
+# /supervise-issues tick runbook (learned ticks 255–279)
 
-**Don't run the stock `scripts/pull-universe.sh` as is.** Its step 1b calls
-`ncl cost-cap status` once per gh-issue session. That is ~1.2 s × ~4,100 sessions ≈ 80 min.
-Tick 257 lost 13 min to it before killing it.
+**This runbook overrides SKILL.md's "use `scripts/pull-universe.sh` (preferred)".** Never launch the stock
+script: its step 1b calls `ncl cost-cap status` once per gh-issue session (~1.2–2 s × ~4,100 sessions ≈ 80 min–2.4 h),
+and it has no outbound cache. Ticks 257, 272, 273 and 274 each lost 4–35 min by starting there (274 because this page
+was only linked from the orchestrator index — hence the Core Memory pointer). A one-call `cost-cap stopped` patch
+without the outbound cache (`tick274/pull-universe-fast.sh`) still took 53 min. The cached `tickNNN/pull.sh` takes ~4–6 min.
+A clean tick runs ~20–30 min end to end.
 
-**Fast path (tick 256/257, ~20 min total):**
-1. In a fresh `tickNNN/` dir, fetch the inputs once, serially (concurrent `ncl` calls hit "database is locked"):
+Companion pages: [[orchestrator/supervise-tick-false-positives.md]] (rows scan flags that aren't real) and
+[[orchestrator/supervise-tick-blind-spots.md]] (real stalls scan misses). Delivery rule:
+[[project_supervise_tick_no_cc_discord.md]].
+
+## Fast path
+
+1. New `tickNNN/` dir. Fetch inputs once, **serially** (concurrent `ncl` → "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy the patched `pull.sh` + helpers from the previous tick dir (latest: `/workspace/agent/tick279/`; `board274.py` also hardcodes `supervisor-state.pre-tickNNN.json`; repoint `titles.py` to payload5.json and `sed` any `tickNNN` paths).
-   It reads those three files via `SESSIONS_FILE` / `GROUPS_FILE` / `STOPPED_FILE` env vars and
-   stops reading outbound once it reaches sessions older than the newest outbound found so far.
-   The cost result is exact: it uses the same predicate as the dashboard.
-3. `prfix.py payload1.json payload2.json` (live fix/issue-N PR over a CLOSED first cross-ref), then
-   `botprs.py` + `botbind.py payload2.json payload2b.json` (bind via closingIssuesReferences), then
-   `apply_disp.py payload2b.json payload3.json` (this tick's verified dispositions from
-   `disp-overrides.json`), then `scan.py`. `apply_disp.py` must NOT create state keys for chains that
-   have none, or brand-new chains lose their 🆕 delta.
-4. In parallel: `runs.py` → `ci.py` (CI cells) and `titles.py`; `gc/gc_resolve.py` → `worktree-gc.py`.
-5. Verify every `action=nudge` / `escalate` row against GitHub and transcripts before acting.
-   Record a disposition for each false positive in the payload, then re-run scan so state persists.
-6. `board256.py` (notes.json / nudged.json / real-updates.json / art-override.json) → tracker rows + inline board.
+2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick281/`**) and `sed` every `tickNNN` path.
+   `board274.py` hardcodes `supervisor-state.pre-tickNNN.json`; repoint `titles.py` to payload5.json.
+   Build `lo-cache.json` from the **previous `payload3.json`** (not payload1, so last tick's re-fetch fixes carry
+   forward) and `prev-la.json` from the previous `sessions.json`. Run `pull.sh` with env
+   `SESSIONS_FILE GROUPS_FILE STOPPED_FILE LO_CACHE PREV_LA` and args `--state supervisor-state.pre-tickNNN.json --include-closed > payload1.json 2> pull.err`
+   (lo-cache = `{key:{ts,text,sess}}` from prev payload3 chains; prev-la = `{sid:last_active}` from prev `sessions2.json`); it reuses `our_last_outbound`/`last_outbound_text` for any
+   chain whose session set and per-session `last_active` are unchanged (typically ~15 of ~4,200 sessions change).
+   Its cost result uses the dashboard's own predicate, so it is exact.
+3. On payload1: `refetch_lo.py` + `refetch_none.py` (retrying, 90 s timeout), then normalize naive
+   `YYYY-MM-DD HH:MM:SS` stamps to ISO `Z`.
+4. `prfix.py payload1.json payload2.json` (live `fix/issue-N` PR over a CLOSED first cross-ref) →
+   `botprs.py` + **`botbind.py payload2.json payload2b.json`** (bind via closingIssuesReferences; not optional — without
+   it `dev/slangpy-fixer/*` and reused `fix/issue-<other>` branches read as fixer-owned with no PR) →
+   `apply_disp.py payload2b.json payload3.json` (verified dispositions from `disp-overrides.json`; it must NOT create
+   state keys for chains that have none, or new chains lose their 🆕 delta) → `scan.py`. With empty overrides,
+   `payload5 = payload3` and `scan-out3 = scan-out1`; the renderer reads both names.
+5. In parallel: `runs.py` → `ci.py` (CI cells) and `titles.py`; `gc_resolve.py` → `worktree-gc.py`. scan.py and
+   worktree-gc.py live at `/home/node/.claude/skills/supervise-issues/scripts/` (scan reads stdin: `scan.py < payload3.json`).
+6. Re-list sessions just before the final scan (a chain can get its first session mid-tick, e.g. #13469/#13470).
+   Verify **every** `action=nudge`/`escalate` row against GitHub and transcripts; record a disposition for each false
+   positive (tokens scan.py recognizes are `advisory:…`; re-tokenize `watch:`/`handed-off:`), then re-run scan so state
+   persists.
+7. Render with `board274.py` (notes.json / nudged.json / real-updates.json / art-override.json). Write `notes.json` and
+   `real-updates.json` for every 🔼 row after checking GitHub. Strip dashboard deep-links from the inline chat board to
+   stay under ~16 KB; the tracker file keeps them.
 
-**Recurring false-positive shapes:**
-- Bot-filed follow-up issues whose only session is Main's. A nudge would go back to me.
-  Record `advisory:maintainer-driving` or `triaged:awaiting-pickup`.
-- A human PR author reclaiming their PR ("picking it back up").
-- `watch:` / `handed-off:` dispositions aren't tokens scan.py recognizes. Re-tokenize to `advisory:…`.
+## Delivery and turn discipline
 
-**Recurring REAL shape (tick 264):** a round-2 `[Fix Review Request]` lands in a slang-reviewer session whose
-container then stops without processing it. scan.py flags the chain `awaiting_us` against the *fixer*, but the
-stalled tier is the reviewer. Check the reviewer session's newest row: an unanswered `in` after its last `out`
-means nudge **slang-reviewer** (pinned `target_session_id`), not the fixer.
+- **Send the board mid-turn with `send_message(to="orchestrator-dashboard")`.** A final-response `<message>` block from
+  the cron session came back `undelivered_message` (tick 272).
+- **Never end the turn while the pull is running.** A cron session that yields has no follow-up turn (tick 259 never
+  posted or wrote state; caught when `_meta.tick` was still stale). Wait in-turn with a foreground
+  `until [ -f pull.done ]` loop (≤10 min per call).
+- **Nudges:** a thread-keyed `send_message` can be refused ("without in_reply_to … has received messages on it"). Pin
+  `target_session_id=<owning session>` instead, then read the recipient's rows to confirm the `direction=in` landed.
+  Re-read the issue's comments immediately before sending — a triager that posts after the pull reads as `silent`
+  (the #13555 nudge landed 9 min after the triage comment).
+- When a closed chain still has a recurring resume trigger (e.g. `recheck-slang-<n>`), pause it.
 
-**Sending a nudge:** a thread-keyed `send_message` can be refused with "without in_reply_to … has received messages
-on it". Pin it with `target_session_id=<owning session>` instead, then read the recipient's rows to confirm
-`direction=in` arrived.
+## Pull / cache pitfalls
 
-**Never end the turn while the pull is still running.** Tick 259 (2026-10-03 00:00Z) said "I'll continue when
-the monitor fires" and ended its turn. A cron session that yields has no follow-up turn, so it never posted
-a board or wrote state. Wait for the pull inside the turn instead (a foreground `until [ -f pull.done ]` loop,
-≤10 min per call). Tick 260 caught it because `_meta.tick` was still 258 and the 00:00Z tick dir had no
-`board-msg.md`.
-
-**Go straight to the cached pull (tick 268, 2026-10-07):** the stock skill `pull-universe.sh` has no outbound cache and passed 600 s without finishing, while the cached `tickNNN/pull.sh` (env `SESSIONS_FILE GROUPS_FILE STOPPED_FILE LO_CACHE PREV_LA`) finished in about 6 min. Build `lo-cache.json` from the previous `payload3.json`, not payload1, so that last tick's re-fetch fixes carry forward. scan.py's `silent` flags on bot-filed follow-ups with 0 comments are usually false positives: check the assignee (assigned to a human → `advisory:maintainer-driving`) and any gated dispatch task before nudging.
-
-**pull.sh drops last-outbound (tick 267, 2026-10-07):** `ncl sessions messages` was fast again (~1.5 s), but pull.sh still returned `our_last_outbound=None` for 31 of the 53 open chains it re-fetched. 72 more carried a stale `None` in the cache. Run `tick267/refetch_lo.py` and `refetch_none.py` (retrying, 90 s timeout) on payload1 before prfix, then fix naive `YYYY-MM-DD HH:MM:SS` stamps to ISO `Z`. Also re-list sessions just before the final scan: a chain can get its first session mid-tick (#13469/#13470).
-
-**Scan blind spot (tick 267):** a PR-bearing chain where a human `@bot` asks for work, the bot posts "On it", and then the owning container stops. The bot spoke last, so scan.py says `awaiting_human`. Detector: the owning session's newest row is an `in` webhook with no `out` after it, and the PR head hasn't moved. That was #12875: a 9 h stall, and the fixer had lost context.
-
-**Slow `ncl sessions messages` (tick 266, 2026-10-06):** each call took ~30 s, and some hit the 30 s ncl timeout, so the stock outbound pass would take hours. Fix: in `tick266/pull.sh`, `LO_CACHE` and `PREV_LA` env vars reuse the previous tick's `our_last_outbound` and `last_outbound_text` for any chain whose session set and per-session `last_active` are unchanged. Build `lo-cache.json` from the previous `payload1.json` and `prev-la.json` from the previous `sessions.json`. Only about 15 of 4,234 sessions changed between ticks, so the pull took 6 min. Also filter `wt-dirs.txt` to drop submodule `.git` files (gitdir containing `/modules/`, e.g. slangpy `data`/`samples`).
-
-**refetch_lo.py must compare SORTED session lists (tick 269, 2026-10-08):** the copied `refetch_lo.py` compared `lo[t]['sess']` (pull order) to `sorted(ss)`, so 503 unchanged chains looked changed. It re-fetched 530 chains instead of 27 and hit the 590 s timeout. Fixed in `tick269/refetch_lo.py` (`sorted(lo[t]['sess'] or [])`). Also: scan's `delta=updated` counts last-outbound stamps that the cache refresh moved backwards in time (59 raw → 20 real). Filter real updates by activity after the previous pull's start time (`real-why.json`). False-positive shape: brand-new chains whose fixer acked `[Ack — HELD]` while a maintainer self-assigned → `advisory:maintainer-driving`.
-
-**Tick 270 (2026-10-08 12:00Z), about 50 min end to end:** the stock `pull-universe.sh` still produced no output after 10 min, so go straight to the cached `tickNNN/pull.sh`, which finished in 4 min. With `refetch_lo.py` sorted, only 19 chains needed a re-fetch and it finished instantly. Two false-positive shapes again:
-- **Silent with zero activity by us, Main-only session:** a bot-filed follow-up that is unrouted by design. Record `advisory:unrouted-bot-filed`.
-- **Human-last, a maintainer APPROVED and flipped ready:** no ask of the bot, so it is not owed a reply. Record `advisory:maintainer-driving`.
-
-A triage that posts between the pull and the scan reads as `silent`. Re-check the issue's last comment before nudging. When a closed chain still has a recurring resume trigger (e.g. `recheck-slang-<n>`), pause it.
-
-**pull.sh cache key must compare SORTED lists (tick 271, 2026-10-09):** `pull.sh:594` compared `_c["sess"]` (pull order, as stored in lo-cache from payload3) to `sorted(sess_ids)`. Nearly every chain missed the cache, so the pull hit its 1,500 s timeout at 1800/1876. Fixed in `tick271/pull.sh` (`sorted(_c["sess"] or [])`), and the rerun finished in about 5 min. This is the same bug as tick 269's `refetch_lo.py`. If a pull is still at <50% after 5 min, check the cache hit rate before waiting it out. The board quotes `[Resolution]` from status text, which trips the codex-gate audit line. That's benign for the supervisor board.
-
-**Read this runbook before the first command (tick 272, 2026-10-09 12:00Z).** Tick 272 started the stock `pull-universe.sh` and lost about 4 min before switching to `tick271/pull.sh`. Once switched, it ran end to end in about 30 min with no cache bug. The cost-notice target is the PR the stopped reviewer was reviewing, which can differ from the chain's own PR: the #13489 chain's PR is #13502, but its reviewer was working on #13514. Read the stopped session's newest inbound `[Fix Review Request]` to find it. The final `<message>` board was not delivered from the cron session ("undelivered_message"). Send the board with `send_message(to="orchestrator-dashboard")` mid-turn instead of relying on the final-response block.
-
-**Tick 273 (2026-10-10 00:00Z), ~75 min; it lost 12 min to the stock pull AGAIN.** The task prompt says "follow SKILL.md", and SKILL.md says "use `scripts/pull-universe.sh` (preferred)". **This runbook overrides that. Never launch the stock script; go straight to `tickNNN/pull.sh`**, which took about 5 min. Lessons from this tick:
-- **`needs_cost_notice` false re-arm:** scan sets it whenever `delta != same`. A PR merge or a moved activity stamp on a chain that is still cost-stopped re-arms it even though it's the same pending episode. Check `ncl cost-cap escalations --group <folder>` for the same `pending` row and a live `costNoticeUrl` in state; if both hold, don't re-post.
-- **Nudge race:** a triager that posts after the pull reads as `silent`. Re-read the issue's comments immediately before sending. The #13555 nudge landed 9 min after the triage comment.
-- **The board renderer is `tick273/board273.py`** (board260 with the paths repointed). Strip the dashboard deep-links from the inline chat board to keep it under ~16 KB; the tracker file keeps them.
-
-**Tick 274 (2026-10-10 12:00Z), ~110 min: it launched the stock pull a THIRD time and lost ~35 min.** The failure isn't a missing rule. This runbook is linked only from `orchestrator/index.md`, and the tick reads SKILL.md first, so the rule is never seen. ⇒ **The first command of every tick is `cat memory/orchestrator/supervise-tick-runbook.md`, before SKILL.md's procedure.** At ~2 s per `cost-cap status` the stock pull is ~2.4 h. A one-call `ncl cost-cap stopped` patch (`tick274/pull-universe-fast.sh`) still took 53 min, because it has no outbound cache; `tick273/pull.sh` with `LO_CACHE` is the ~5 min path. Two new false-positive shapes:
-- **`botbind.py` is not optional.** Without it, 10 of 13 raw nudges were PR-bearing chains (`dev/slangpy-fixer/*`, reused `fix/issue-<other>` branches) read as fixer-owned with no PR.
-- **`github-actions[bot]` counts as a "human":** scan's `is_bot` misses it, so a PR-board-sync notice as the last comment reads as human-last → `awaiting_us` (#13544).
-
-**Tick 275 (2026-10-11 00:00Z), ~25 min. The runbook was read first and `tick275/pull.sh` was cached (LO_CACHE from tick 274's payload3), so the pull took 4 min.** Latest helpers are in `tick275/`. `blind.py` there sorts rows by timestamp and reads 20 rows, because `--reverse` row order is by seq and is not reliable. Two lessons:
-- **Scan blind spot: the owning session is on a sub-thread.** The #13406 fixer work runs on `gh-issue-shader-slang/slang-11709/13406-resume`. That session belongs to neither the #13406 nor the #11709 chain's session set, so jhelferty's split-PR ask sat unanswered in it for 9 h while scan read `cost_stopped`/`awaiting_human`. Detector: for every chain whose newest human comment is an instruction the bot acked ("On it"), find the PR's `pr-mappings` row and grep `ncl sessions list` for `thread_id` values with `/` after the issue number. If the newest row there is an unanswered `in`, nudge with `target_session_id` pinned.
-- **`needs_cost_notice` re-arms on a stamp move** (#13555 again). The escalation was still the same `pending` `cst-…` row and the notice was still live, so I did not re-post.
-
-**Tick 276 (2026-10-11 12:00Z), ~30 min, clean.** I followed the runbook from the first command: tick275 helpers, `sed tick275→tick276`, then `lo-cache.json` built from payload3. The pull took 4 min, `refetch_lo` re-fetched 1 chain and `refetch_none` 0. When `disp-overrides.json` is empty, `payload5 = payload3` and `scan-out3 = scan-out1`; the renderer reads both names. Write `notes.json` and `real-updates.json` for every 🔼 row after checking GitHub. scan's `updated` count (6 this tick) can be entirely real.
-
-**Tick 277 (2026-10-12 00:00Z), ~20 min, clean.** tick276 helpers, cached pull 4 min. Two lessons:
-- **Scan blind spot: a reviewer that acked and then died silently.** The #13518 reviewer said "verdict in ~45 min" (an `out`, so `blind.py`'s newest-row-is-`in` test misses it), its A/B/C sub-runs then failed (A ran out of its inner $30 budget, C hit ECONNREFUSED), and no verdict ever went out — 11 h idle. Detector: a stopped reviewer session whose newest row is an `out` containing a promised ETA ("verdict in", "I'll send") older than ~2× that ETA. Corroborate with `A-/B-/C-<pr>-r<N>.done` files in `/workspace/extra/ephemeral/prod-groups/slang-reviewer/` (`.done` = rc). Nudge pinned; it acked in 2 min.
-- **A tracked CI run can 404.** (The purge window reached runs created ~10-01T20:05Z→10-07T22:25Z as of 10-12; 30 open PR heads have 0 check suites.) A `waiting` run deleted by GitHub (#13171's `37543892402`) makes `ci.py` fall back to an older cancelled run → `❌(recheck)`. Check that the PR's `statusCheckRollup` is empty before treating it as a rebase-nudge case.
-
-**Tick 278 (2026-10-12 12:00Z), ~25 min. tick277 helpers, cached pull 4 min.** Four lessons:
-- **A GraphQL 504 on one repo batch silently strips that repo's data.** `pull.err` showed `graphql error: gh: HTTP 504` → `graphql fallback for shader-slang/slang-rhi batch 0`, and the fallback left `pr`/`comments` empty on 50 rhi chains. The first scan read that as 2 nudges and 3 escalations, all false. Detector: grep `pull.err` for `HTTP 5` / `fallback`, and compare per-repo `with pr` / `with comments` counts against the previous payload3. Fix: confirm nothing moved with `gh api repos/<o>/<r>/issues?state=all&since=<prev tick>`, carry the previous tick's fields forward for that repo (`payload3r.json`), then re-scan.
-- **`ci.py` merge=UNKNOWN is GitHub computing mergeStateStatus lazily, not a change.** 207 rows flipped `BEHIND/BLOCKED/DIRTY → UNKNOWN`, which drops the ⤵️ marker. When the run id is unchanged, carry the prior cell and merge.
-- **Scan blind spot: a fixer that never processed the reviewer's verdict.** The #13571 fixer's newest row was an inbound `[Review Verdict]` REQUEST_CHANGES (00:06Z) with its container stopped and the PR head unmoved for 12 h. `blind.py` catches this (newest row `in`, container not running). Check the PR head before nudging; it acked a pinned nudge in 1 min.
-- `worktree-gc.py` reads **stdin only**: `--in` is ignored, and it hangs waiting for input.
-
-**Tick 279 (2026-10-13 00:00Z), ~25 min, clean.** tick278 helpers, cached pull 4 min, no 5xx. Lessons:
-- **A coworker can lose an inbound to compaction while its container stays `running`.** #13579: the triager's session showed `running` with the 22:33Z relay as its newest row, but `.claude-trace/session-<sid>.jsonl` showed its last model request at 22:02Z. The trace's newest `logged_at` lied (00:11Z): its final line was a long-lived SSE stream from 21:20Z that was only flushed later. **Read `request.timestamp` across the last ~25 lines**, not the file mtime or the last `logged_at`. scan's `running` = live assumption is wrong here; nudge pinned and it acked in 3 min ("lost the relay when my context was compacted").
-- **Silent processing is not a stall:** blind.py flagged #13544's triager (newest row = Main's directive). The trace's last response was an `<internal>` "no reply owed" turn at 18:36Z, so it was correctly silent. Check the trace's final response text before nudging a newest-row-`in` session.
-- **GC payload: use `wt-resolved.json`'s `path` field, not `dir`** (`dir` is the basename). With `dir`, every size lookup against the prior gc-payload missed (0 G) and the REAP list printed bare names. Merged-PR reviewer worktrees (`wt-<pr>-verify/-revA/-base/-master`) are the common new REAP shape; the owning reviewer session is the one on the chain whose `pr.number` matches, or for nightly-PR chains the `slang-ci-nightly-*` thread. All 4 dispatches came back `gc done` within 2 min.
-- **5 raw nudges were the known shapes again:** maintainer-filed self-assigned issue (Main-only session), bot-filed follow-ups with a `iNNNNN-maintainer-gate-*` task (read `ncl tasks get` to confirm), and a human APPROVE as last activity.
+- **Cache keys must compare SORTED session lists.** Stored lists are in pull order; comparing to `sorted(...)` misses
+  almost every chain. Bit `refetch_lo.py` (tick 269: 530 re-fetches instead of 27) and `pull.sh:594` (tick 271: timed
+  out at 1800/1876). Both fixed (`sorted(x or [])`) and carried in the copied helpers. If a pull is <50% after 5 min,
+  check the cache hit rate before waiting it out.
+- **`pull.sh` can drop last-outbound** (tick 267: `None` for 31 of 53 re-fetched chains) — that's what step 3 repairs.
+- **A GraphQL 5xx silently strips a repo batch.** `pull.err` showing `HTTP 504` → `graphql fallback for <repo> batch N`
+  left `pr`/`comments` empty on 50 rhi chains (tick 278: 2 false nudges + 3 false escalations). Grep `pull.err` for
+  `HTTP 5`/`fallback` and compare per-repo `with pr`/`with comments` counts against the previous payload3. Fix: confirm
+  nothing moved (`gh api repos/<o>/<r>/issues?state=all&since=<prev tick>`), carry the previous fields forward for that
+  repo (`payload3r.json`), re-scan.
+- **scan's `delta=updated` overcounts** when a cache refresh moves stamps backwards (tick 269: 59 raw → 20 real). Filter
+  real updates by activity after the previous pull's start (`real-why.json`). It can also be entirely real (tick 276).
+- **`ci.py` merge=UNKNOWN is GitHub computing mergeStateStatus lazily**, not a change (tick 278: 207 rows flipped, ⤵️
+  dropped). When the run id is unchanged, carry the prior cell and merge state.
+- **A tracked CI run can 404** (GitHub purged runs created ~10-01T20:05Z→10-07T22:25Z; 30 open PR heads had 0 check
+  suites as of 10-12). `ci.py` then falls back to an older cancelled run → `❌(recheck)`. Check the PR's
+  `statusCheckRollup` is empty before treating it as a rebase-nudge case.
+- **Worktree GC:** build `wt-dirs.txt` with `find /workspace/extra/ephemeral/prod-groups -maxdepth 3 -mindepth 3 -name .git -type f` (worktrees sit at `prod-groups/<folder>/<wt>/.git`; `-maxdepth 2` finds 0 — tick 280). `worktree-gc.py` reads **stdin only** (`--in` is ignored; it hangs). Build the GC payload from
+  `wt-resolved.json`'s `path` field, not `dir` (the basename — every size lookup missed). Filter `wt-dirs.txt` to drop
+  submodule `.git` files (gitdir containing `/modules/`). Common REAP shape: merged-PR reviewer worktrees
+  (`wt-<pr>-verify/-revA/-base/-master`), owned by the reviewer session on the chain whose `pr.number` matches (or the
+  `slang-ci-nightly-*` thread for nightly-PR chains).
+- The board quotes `[Resolution]` from status text, which trips the codex-gate audit line; benign here.

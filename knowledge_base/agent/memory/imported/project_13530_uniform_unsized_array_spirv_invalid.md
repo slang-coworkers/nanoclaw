@@ -59,7 +59,11 @@ the third time the cost stop has been raised. Do not Continue on my own authorit
 (verified live: nv-slang-bot author, 4437 chars, labels cuda/reflection/reproduced, no @). It has two causes: the
 CUDA-only #8380 unsized-last reorder never reaches reflection, and type-layout.cpp:808
 `(CUDAPtr) + sizeof(CUDACount)` parses as a cast of unary `+sizeof`, so it gives 8 instead of 16. Orchestrator
-confirmed that line at origin/master. The typo dates from #1881 (2021). This chain owns it; no fixer. Resume gate `i13533-maintainer-gate-12a3` (12 h, STALE 10-13T20:44Z). (2)
+confirmed that line at origin/master. The typo dates from #1881 (2021). This chain owns it; no fixer. Resume gate `i13533-maintainer-gate-12a3` (12 h, STALE 10-13T20:44Z).
+**10-12 16:24–16:30Z, verified live 10-13 14:1xZ:** jkwak-work milestoned #13530 and #13533 as Q4 2026 (Fall) and
+self-assigned #13533. Neither issue has a comment, and #13538 has no new activity. The comment-only gate can't see
+assign or milestone events, so it stays quiet. I edited the gate's STALE branch to report the assignee and ask
+whether to ping them on GitHub or release a fixer, instead of asking the operator to name a maintainer. (2)
 `isTypePreferrableToDeferLoad` treats kIndeterminateSize as a tiny size. A makes that unreachable on this
 path, so it is noted in the PR process report and not filed.
 

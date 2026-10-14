@@ -57,3 +57,31 @@ on the fork (`slang.raytracing`, also upstream draft #12691), so an upstream fix
 it via raw.githubusercontent (gh/MCP give 401 on the fork = token scope). Routed to triager on the canonical thread,
 NO post authorization (no bot @-mention). Open question for it: does prototype E4 catch this type, or is it
 magic/intrinsic and therefore excluded? Re-chase `be6d` is still valid.
+
+**10-13 00:40Z — triager cmt 6135433965** (Main read it): the fork test's `rt::MultiLevelAccelerationStructure` is
+`[require(metal)] __intrinsic_type(...)` (`ray-types.slang:239-241`), so prototype E4 would NOT re-enable it. Variant E5
+(exclusion limited to core-module decls) fixes that test but changes 4 other `tests/ray-tracing-2/` results (one loses
+E36107; others gain or move E36100), so intrinsic-generic propagation is a design decision.
+
+**10-13 17:10Z — AUTHOR GO-AHEAD, park released.** kaizhangNV cmt 6150995602 (live = payload, no literal @-mention):
+*"My disabled test won't impact your fix, can you propose a fix for this issue?"* Routed to slang-triager on the
+canonical thread (the triager owns the fixer handoff, ANCHOR H) with `<github-post-authorized />`: the comment
+answers the bot's own question, on a chain the author opened by @-mentioning the bot (6132482141). Scope ambiguity
+("this issue" = whole issue, or the user-aggregate part?) is left to the triager to resolve or ask. Re-chase
+`be6d` was rewritten to check whether a PR landed by 10-19.
+
+**10-13 17:22Z — fixer handoff made (triager).** The triager released slang-fixer: one fixer session
+`sess-1791911926955-vychna` on the canonical thread, worktree `wt-slang-13579`, branch `fix/issue-13579` at
+`5841033344`. Handoff comment **6151193271** (Main read it: bot, 1413 chars, 17:21:38Z, no pronouns) covers the E4
+scope, excludes intrinsic/magic generics (RWSB, CoopVec, CoopMat, TensorLayout, fork MLAS), states the behaviour change
+(new E36107/E36104), and asks the author whether the intrinsic-generic part stays on #13579 or is tracked separately.
+The PR will be a draft saying "Part of #13579". Next: fixer [Fix Report] → triager edits 6151193271 with the PR link and
+sends a [Triage Resolution]. Re-chase `be6d` (10-19) is still the backstop.
+
+**10-13 23:12Z — DRAFT PR #13616 opened** ("Infer [require] of generic structs used outside entry-point signatures").
+Main checked it live: draft, head `fix/issue-13579` @ `2b008602e4`, bot author, 5 files +300/−50, label `pr: breaking change`.
+E4 scope; intrinsic/magic generics excluded. Triager reports 10/10 on the new test (master 1/10) and 7828/7829 on the
+full suite (gfx-smoke = env). **Body defect, triager-caught and Main-confirmed:** body line 5 "Open question (blocks
+merge): Fixes #13579, or keep…" makes `closingIssuesReferences` = [13579], so merging would close the issue despite
+"Part of". The fix (reword the body with no close verb before #13579, then confirm the list is empty) went to the fixer.
+CI is draft-gated. Next: fixer [Fix Report] → [Triage Resolution]. Re-chase `be6d` (10-19): the PR exists, so its branch (a) applies.

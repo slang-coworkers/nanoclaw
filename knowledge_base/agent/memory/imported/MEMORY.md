@@ -102,19 +102,20 @@ before trusting. [[feedback_a_clean_orphan_count_does_not_validate_range_labels]
 | [[index-feedback-18]] | `zero_test_jobs_is_not_zero_tests_ran` (tail shard — repacking mints new shards; after every leaf `ls index-feedback-*.md \| wc -l` vs this table.) |
 | **Chains** — per-issue/PR state. Open the specific chain before touching it. | |
 | [[index-project-1]] | `10027_vector4_import_abort_pending` … `11847_pr_board_sync_protected_path_abstain` |
-| [[index-project-2]] | `11858_utf8_eof_ceded` … `12025_wavetangledvector_diff_subscript` |
-| [[index-project-3]] | `12029_lifted_diff_constraint_arithmetic` … `12132_analyzemakestruct_positional_oob` |
+| [[index-project-2]] | `11858_utf8_eof_ceded` … `12029_lifted_diff_constraint_arithmetic` |
+| [[index-project-3]] | `12031_autodiff_ref_accessor_silent_wrong_grad` … `12132_analyzemakestruct_positional_oob` |
 | [[index-project-4]] | `12134_base_interface_assoc_type_followup` … `12260_enum_bool_switch_e39999` |
 | [[index-project-5]] | `12261_statement_labels_non_breakable` … `12356_default_value_blob_c_abi_gap` |
 | [[index-project-6]] | `12360_assoc_type_dyndispatch_specialize_av` … `12430_existential_static_requirement_ice` |
-| [[index-project-7]] | `12430_pr12555_existentialtype_saga` … `8681_debuginfo_strip_spiropt` |
-| [[index-project-8]] | `8785_amplification_shader_payload_docs_wrong` … `discord_gateway_401_outage` |
-| [[index-project-9]] | `discord_support_heartbeat_dead` … `nanoclaw_1096_funnel_review_cycles` |
-| [[index-project-10]] | `nanoclaw_1097_codex_one_copy` … `nanoclaw_1154_ownership_one_matcher` |
-| [[index-project-11]] | `nanoclaw_1157_mcp_allowlist_failopen` … `nanoclaw_pr875_approver_mounted_policy` |
-| [[index-project-12]] | `nanoclaw_pr876_slangpy_approver_mounted_policy` … `slangpy_1001_build_time_kernel_compilation_scrub` |
-| [[index-project-13]] | `slangpy_1001_triager_memo_verbatim` … `upstream_sync_incident` |
-| [[index-project-14]] | `workspace_deletion_incident` … `workspace_deletion_incident` (tail shard — repacking mints new shards; after every leaf `ls index-project-*.md \| wc -l` vs this table.) |
+| [[index-project-7]] | `12430_pr12555_existentialtype_saga` … `13498_breaking_change_label_policy` |
+| [[index-project-8]] | `13499_decl_nesting_validation_to_semantic_check` … `8785_amplification_shader_payload_docs_wrong` |
+| [[index-project-9]] | `9062_diffptr_array_spirv_validation_parked` … `discord_gateway_401_outage` |
+| [[index-project-10]] | `discord_support_heartbeat_dead` … `nanoclaw_1096_funnel_review_cycles` |
+| [[index-project-11]] | `nanoclaw_1097_codex_one_copy` … `nanoclaw_1154_ownership_one_matcher` |
+| [[index-project-12]] | `nanoclaw_1157_mcp_allowlist_failopen` … `nanoclaw_pr875_approver_mounted_policy` |
+| [[index-project-13]] | `nanoclaw_pr876_slangpy_approver_mounted_policy` … `slang_triager_auth_outage` |
+| [[index-project-14]] | `slangpy_1001_build_time_kernel_compilation_scrub` … `track_critique_verdict_field_untrustworthy` |
+| [[index-project-15]] | `triager_clone_nine_concurrent_writers` … `workspace_deletion_incident` (tail shard — repacking mints new shards; after every leaf `ls index-project-*.md \| wc -l` vs this table.) |
 | [[index-technique]] | Reusable measurement/tooling procedures. |
 | [[index-reference]] | Pointers to external resources. |
 | [[index-command]] | Exact command invocations with their traps. |

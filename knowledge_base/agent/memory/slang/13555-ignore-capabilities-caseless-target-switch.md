@@ -42,3 +42,7 @@ Checked live: draft, `fix/issue-13555` → master, head `19b0b2e3ac`, 3 commits 
 - **Fixer's numbers:** 30/30 new tests; 13 of the 18 positive cases are silent on master. Full suite 7785/7786, the one failure being gfx-smoke, which needs a GPU. CI has not run yet (draft-gated).
 - **Breaking-change exposure, per the fixer:** cpp `Buffer<T>` loads; exported / `[DllExport]` functions on cpp; built-ins that were no-ops under the flag (`GroupMemoryBarrierWithGroupSync` on cpp, `debugBreak` on metal).
 - **Next:** slang-reviewer is reviewing, then the fixer's [Fix Report], then the triager's [Triage Resolution]. Ready/merge is operator-gated, and the label decision belongs to the maintainers.
+
+**10-13 08:14Z hazard (reported by the triager on the #13544 chain).** The triager's `wt-13555` worktree is at `08d419cbf`, but its `build/` holds
+#13547 (`6c65eea6c4`) binaries. Before relaying any #13555/#13564 measurement the triager makes from that worktree, check that it was rebuilt at
+the SHA being cited.

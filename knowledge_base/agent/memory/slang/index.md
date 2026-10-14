@@ -12,6 +12,10 @@ decay and must be re-read, not remembered.
 
 ## Map
 
+- [slang#13591 R-series — contributor standards for AI assistants](13591-authorship-rules-r-series.md) —
+  szihs's umbrella + R1–R10 sub-issues (#13592–#13602), self-assigned, each with its own PR. Not dispatched.
+- [slang#13590 — WGSL emits `bool` members in `var<uniform>` structs](13590-wgsl-bool-uniform-host-shareable.md) —
+  human-filed (j8asic) WGSL bug: bool in host-shareable address spaces isn't lowered to int (SPIR-V-only `lowerLeafLogicalType` case). slangpy#787 (same author) works around it with `uniform uint`. Triaged 10-13 (cmt 6144341398), P2, 3 gaps; fixer released for draft PR. Triage resolved 10-13 20:49Z; HELD on kaizhangNV review + CI. 2 follow-ups unfiled (push-constant no-@binding; bool2 varyings), operator call. DRAFT PR #13607 @7851898586 (10-13, internal review R1 APPROVE_WITH_NITS applied), kaizhangNV assigned, CI not run (draft). Re-chase `rechase-13590-wgsl-bool-87c3` (10-14 16:00Z).
 - [slang#13571 — WGSL matrix negation emitted as `matNxM<f32>(0) - m`](13571-wgsl-matrix-negation.md) —
   human-filed (andy-slater) WGSL emit bug (`kIROp_Neg` matrix `T(0)-x`). Triaged 10-11 (cmt 6113276208), P2; triage resolved 10-12; draft PR #13572 @46ac7f64a7 awaiting jkwak-work, CI gated. 4 follow-ups unfiled (operator call). Re-chase `rechase-13571-wgsl-matne-de5e` (10-13).
 - [slang#13558 — SlangPy ARM64 segfault draining the current-device stack](13558-slangpy-arm64-current-device-stack-segfault.md) —
@@ -35,7 +39,7 @@ decay and must be re-read, not remembered.
 - [slang#13556 — CUDA/PTX `SampleGrad` via `tex*Grad`](13556-cuda-samplegrad.md) —
   external feature request, P2. Draft PR #13559 reviewed internally; parked on falcor-ci approval + kaizhangNV review (operator told 2026-10-12). Quiet re-chase `rechase-13556-samplegrad-9d2a` (2026-10-15).
 - [slang#13544 — C++14 `'` digit separators](13544-digit-separators.md) —
-  external feature request, P3. **10-12 18:33Z: tangent-vector refused `'` ("close this issue, since `_` … is already supported"); terminal, the issue is still open.** Draft #13546 (`#if` decoding, Fixes #13545) continues. Draft #13547 (float `_`) is blocked by skiminki-nv; whether to close or keep it is the operator's call. CI on both waits on falcor-ci. Final re-chase `rechase-13544-tv-6b49` (10-16).
+  **CLOSED 10-13 by the reporter (completed).** tangent-vector refused `'` ("`_` … is already supported"), and skiminki-nv and the reporter agreed. Still live: draft #13547 (float `_`, `Part of #13544`), blocked until skiminki-nv lifts it, though they suggested this exact scope; and draft #13546 (`#if` decoding, `Fixes #13545`). CI on both waits on falcor-ci. Final re-chase `rechase-13544-tv-6b49` (10-16).
 
 - [slangpy#1214: SlangPy Tests red on every Slang PR since slangpy#1199](slangpy-1214-cuda-cap-ci-latest-slang.md) —
   **an outage of a required check that blocks all Slang merges.** The one-line fix is in slangpy `ci-latest-slang.yml` and belongs to the maintainers. Escalated to the operator 10-08.
@@ -44,7 +48,7 @@ decay and must be re-read, not remembered.
   maintainer-authored and self-assigned feature (step 1 of 2). Triaged and reproduced, P2. The fixer is HELD until the author makes the HLSL choice (reject vs lower with loss); re-chase `rechase-13536-hlsl-choic-afe9` (2026-10-11).
 
 - [Yield-retry bot starved by `waiting` runs](ci-retry-yielded-bot-starved-by-waiting-runs.md) — `retry-yielded-bot-ci.py` counts approval-parked `waiting` runs as active (105 of them, oldest 09-15), so it never retries yielded bot CI. Maintainer decision, raised with the operator 10-12.
-- [Actions run history gap 10-01→10-07](actions-run-history-gap-2026-10-01-07.md) — about 6 days of workflow runs and check-runs are missing from the API, and known run ids return 404. Cause unknown; operator asked 10-12. PRs with heads in the window look like `no-ci`.
+- [Actions run history gap 10-01→10-07](actions-run-history-gap-2026-10-01-07.md) — **ongoing, oldest-first deletion of workflow runs and their check-runs.** It started at 10-01 20:05Z; on 10-13 06:33Z the front was at 10-08 06:37Z, moving about 1h of history per hour. Cause unknown; re-raised with the operator 10-13. PRs with heads in the window look like `no-ci`.
 
 - [slang#13515 — LLVM prebuilt key change after #13139 (cold builds, 120-min cancels)](13515-windows-aarch64-llvm-prebuilt.md) —
   **TERMINAL 2026-10-12.** #13526 merged at 09:07Z (`f7e14a1a62`) and #13515 auto-closed. Master's key is now `b3ad5163`, with prebuilts live. 8 human fork PRs still need a master merge from their authors. Lessons: a comment edit moves the key, and a seed counts only once a consumer has linked against it.
@@ -68,9 +72,9 @@ decay and must be re-read, not remembered.
   `[Fix Report]` in 10-04 at head `b79ae81e23`. Next re-chase `rechase-12627-jkwak-2929` (2026-10-15); operator re-ping decision pending since 10-07 (asked 3×). Interacts with draft #13563 (layered `_convert` writes). Follow-ups #13361/#13362/#13364/#13365 not dispatched.
 
 - [slang#13554 — CUDA layered `_convert` surface write is an empty stub](13554-cuda-layered-convert-write-stub.md) —
-  external, unassigned, P2 bug, reproduced. **GO 2026-10-10** on Approach A (inline `sust.p.a{1d,2d}`, prelude-only) as a draft PR:
-  **draft PR #13563** (`508fb1b3b2`), peer review **APPROVE_WITH_NITS** 10-10 06:16Z (0 bugs, 2 gaps); fixups pushed at **e2eaf72e2a** 08:17Z. No GPU CI at that head; the operator
-  decides dispatch-at-e2eaf72 vs. approve the old run. 10-11: no answer, last ask sent. Final check `rechase-13563-final-95f1` (10-14 08:00Z), then park. Couples to #13363's `isConversionAvailable = !isLayered`.
+  external report, assignee **jkwak-work** (auto, 10-10). P2. jkwak-work labelled it `regression` (#8863) on 10-14 and it was routed to the triager. **Draft PR #13563**
+  at `e2eaf72e2a` (APPROVE_WITH_NITS, fixups in); it has never run GPU CI. Re-chase `rechase-13563-final-95f1` (10-16 08:00Z); no more operator asks.
+  Couples to #13363's `isConversionAvailable = !isLayered`.
 
 - [slang#13428 — local multi-declarator `j < 2` → E30015 (parser declarator registration)](13428-local-multi-declarator-generic-lookahead.md) —
   **#13428 TERMINAL**: PR #13432 merged 10-07 (`eaf758404f`). Still live: sibling #13430's **draft PR #13434** (`457ae39a0e`); the operator un-draft decision is pending (4 asks), re-chase `rechase-13434-undraft-d613` (2026-10-11). Side findings #13433/#13435 have their own gates.
@@ -137,7 +141,7 @@ decay and must be re-read, not remembered.
 
 - [slang PR #11709 — groupshared parameters by reference](11709-groupshared-param-by-reference.md) —
   owned by slang-fixer, CHANGES_REQUESTED. HELD until #13406 (the #13339 Ref split) lands; then one rebase-and-rework push with the unpushed P1 fix. jhelferty-nv answered every #13406 question 10-09 02:33Z; the original owner ran out of budget, so the work resumed in a fresh session on `…-11709/13406-resume`. **r5 pushed 10-09 08:49Z** (`4e2603652e`); **round 3 pushed 10-10 05:52Z (`7e683a211b`)**: her five answers, tangent-vector's no-rewrite `const __ref` direction (she deferred to him) and the round-2 review items. The GCC `-flarge-source-files` fix is split out to draft **#13570** (APPROVE_WITH_NITS; un-drafting is the operator's call), so SlangPy on #13406 is red by design until #13570 merges. Still waiting on her re-review. Re-chase `rechase-13406-r6-a54e` (10-14).
-  - [#13406 review-round history](11709-13406-ref-split-review-rounds.md) — tangent-vector's round, the `readonly` rounds and reversal, the 10-09 budget/phantom-session incident.
+  - [#13406 review-round history](11709-13406-ref-split-review-rounds.md) — tangent-vector's round, the `readonly` rounds and reversal, the effective-mode settlement, round 3 + the GCC/FIDDLE split to #13570, the 10-09 budget/phantom-session/misrouted-webhook incident.
 
 - [slang#13348 — inherited field through a property/subscript BoundStorage → E99997 ICE](13348-inherited-field-boundstorage-ice.md) —
   triaged + reproduced; three BoundMember consumers accept VarDecl only and reject InheritanceDecl. The author
@@ -165,7 +169,7 @@ decay and must be re-read, not remembered.
 
 - [slang#13330 — array-of-struct shader IO crashes SPIR-V/GLSL](13330-array-of-struct-shader-io.md) —
   triaged; two legalize-pass defects (write-path void store + overlapping input Locations). Fixer
-  HELD: external reporter co-assigned; re-chase 1 silent (10-06); re-chase 2 `rechase-13330-second-f513` (2026-10-13).
+  HELD: external reporter co-assigned; re-chase 1 silent (10-06); re-chase 2 silent (10-13), operator asked; recheck `rechase-13330-third-94a1` (10-16).
 
 - [slang-rhi#787 — CUDA↔Vulkan shared-texture missing sync](rhi-787-cuda-vulkan-shared-sync.md) —
   real missing `VK_QUEUE_FAMILY_EXTERNAL` ownership release, not a tolerance flake. PR #881 implements the maintainer-mandated

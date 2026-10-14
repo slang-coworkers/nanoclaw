@@ -1,7 +1,7 @@
 ---
 type: chain
 title: "slang#13544: C++14 ' digit separators in numeric literals"
-description: "Feature request from an external reporter, unassigned. Triaged P3, frontend lexer + preprocessor. GO on (1) a separate #if literal-decoding bug (filed as #13545) and (2) finishing _ for floats, both as drafts: PRs #13546 / #13547, CI gated on a falcor-ci approval. ' (3) REFUSED by tangent-vector 10-12 18:33Z ('close this issue, since _ is already supported'); terminal. #13547's fate is the operator's call. 10-12 16:00Z re-chase found no change. FINAL re-chase rechase-13544-tv-6b49 on 2026-10-16T16:00Z; after it the chain parks on an inbound."
+description: "Feature request from an external reporter, unassigned. Triaged P3, frontend lexer + preprocessor. GO on (1) a separate #if literal-decoding bug (filed as #13545) and (2) finishing _ for floats, both as drafts: PRs #13546 / #13547, CI gated on a falcor-ci approval. ' (3) REFUSED by tangent-vector 10-12 18:33Z ('close this issue, since _ is already supported'); terminal. 10-13: skiminki-nv agreed, and suggested float _ (exactly #13547's scope); the triager is posting one pointer. #13547 is still blocked until skiminki-nv lifts it. 10-12 16:00Z re-chase found no change. 10-13 09:07Z: the REPORTER CLOSED #13544 (completed, agreeing with _ only); terminal. Still live: drafts #13547 (blocked by skiminki-nv) and #13546. FINAL re-chase rechase-13544-tv-6b49 on 2026-10-16T16:00Z covers only those; after it the chain parks on an inbound."
 ---
 
 # slang#13544: `'` digit separators
@@ -117,6 +117,36 @@ not HLSL."
 - **#13546 / #13545** continue. They are unaffected and consistent with "`_` is supported".
 - Sent the comment verbatim to slang-triager (msg 77), as a refusal. Instructions: no post, no #13547 action, report a close or a new
   maintainer comment.
+
+**10-13 07:51–07:53Z, skiminki-nv commented twice more. I read both live; neither has been edited.**
+- [6140927891](https://github.com/shader-slang/slang/issues/13544#issuecomment-6140927891), quoting tangent-vector: *"I agree. I thought digit
+  separators weren't supported at all. Sorry about that."* ⇒ This agrees with the refusal of `'`. Both maintainers now want #13544 closed. It is
+  still open, and the close is theirs to make. Triager msg 91: no post.
+- [6140951497](https://github.com/shader-slang/slang/issues/13544#issuecomment-6140951497): *"... although maybe we should still consider adding
+  the support for floating point literals."* It comes with a `1_23.3` → E20001 repro. ⇒ **This is discussion, not a GO, but it is exactly
+  #13547's scope.** The block on #13547 was over which separator to use, and that is now settled as `_`.
+- Triager msg 93: authorized to post ONE decision-supporting reply. It points to draft #13547, gives the measured result for their exact snippet
+  at `6c65eea6c4` alongside master's E20001, names the open questions (placement, and E10003 for `0b1_2`/`07_9`), and says it stays a blocked
+  draft. No @-mentions, no review ask. Unblocking or marking ready is skiminki-nv's decision.
+- My CLOSE/NARROW/KEEP ask to the operator (dashboard msg 83) is **superseded**. The maintainer is now steering toward KEEP. The operator has not
+  answered as of 07:52Z.
+
+**10-13 08:13Z, the triager posted the single authorized pointer [6141277564](https://github.com/shader-slang/slang/issues/13544#issuecomment-6141277564). I checked it live.**
+Bot author, 1079 chars, no @-mentions, disclaimer present; the issue now has 8 comments. It shows skiminki-nv's exact snippet measured on `6c65eea6c4`:
+rc 0, `int(123)` plus the E30081 float→int warning (a float buffer gives `123.30000305175781f`), versus master f7e14a1a6's E20001. It lists both open
+questions (placement: `1._5`/`1e_5`/`1.5_` accepted, `1e_+5`/`1.5f_` rejected; E10003 for `0b1_2`/`07_9`) and says the PR stays a blocked draft and
+that this is not a review request. #13547 is untouched (draft, `6c65eea6c4`). **Nothing more for us to do:** closing #13544 and unblocking or readying
+#13547 belong to skiminki-nv.
+- Side note: the triager's `wt-13555` worktree is back at `08d419cbf`, but its `build/` holds 6c65eea binaries. Any later #13555 measurement there
+  needs a rebuild first. (Round 1 of this chain was rejected for citing a binary from the wrong SHA.)
+
+**10-13 09:07Z, the reporter closed #13544 (I checked it live).** damster101 (NONE) commented
+[6142173332](https://github.com/shader-slang/slang/issues/13544#issuecomment-6142173332): *"I agree with the points raised. It is better to have only one
+way to separate digits."* They then closed the issue themselves (`closed_by` damster101, `state_reason: completed`). ⇒ **#13544 is TERMINAL.** The
+reporter accepted the maintainers' refusal of `'`. This was an acknowledgement, so no GitHub post (no bot mention, and nothing to add).
+- **Still live:** draft **#13547** (float `_`, `Part of #13544`, no closing keyword, so the close did not touch it) is held at `6c65eea6c4` and stays
+  blocked until skiminki-nv lifts it (their 6140951497 suggested this exact scope). Draft **#13546** (`Fixes #13545`, issue still open) is unchanged.
+  CI on both is still waiting on falcor-ci.
 
 **Resume.** `rechase-13544-tv-6b49` (2026-10-16T16:00Z) is the **FINAL** re-chase and repeats the polarity triage. If nothing has changed by
 then, it sends one dashboard 5-bullet and creates no further re-chase: the chain parks on an inbound (a tangent-vector decision or a
