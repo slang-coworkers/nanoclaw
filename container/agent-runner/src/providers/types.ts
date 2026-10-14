@@ -69,6 +69,14 @@ export interface AgentProvider {
    * before it ever replies. Providers without an on-disk transcript omit this.
    */
   maybeRotateContinuation?(continuation: string, cwd: string): string | null;
+
+  /**
+   * The cumulative per-model usage the provider's SDK will RESTORE when it
+   * resumes `continuation` (Claude: the last `cost-state` entry of the session
+   * transcript). Read before the query starts, so the cost backstop can
+   * difference the first result exactly. Null when unknown.
+   */
+  readRestoredUsage?(continuation: string): Record<string, UsageAccountingModel> | null;
 }
 
 /** One prompt/result round-trip, as reported to `onExchangeComplete`. */
@@ -144,7 +152,25 @@ export interface QueryInput {
    * which is never hard-stopped).
    */
   maxBudgetUsd?: number;
+
+  /**
+   * The consumer meters this query's spend. A provider may skip usage-only
+   * work (Claude: the SubagentStop transcript read) when false.
+   */
+  usageTracking?: boolean;
 }
+
+/** One model's cumulative usage (`result.modelUsage[model]`). */
+export interface UsageAccountingModel {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadInputTokens?: number;
+  cacheCreationInputTokens?: number;
+  costUSD?: number;
+}
+
+/** Per-turn accounting payload — the `usage` event's fields, also attached to `result`. */
+export type UsageAccounting = Omit<Extract<ProviderEvent, { type: 'usage' }>, 'type'>;
 
 /**
  * MCP server config — stdio OR streamable HTTP.
@@ -216,6 +242,13 @@ export interface AgentQuery {
   abort(): void;
 
   /**
+   * Accounting events the provider has received but not yet yielded (Claude:
+   * subagent final usage queued by the SubagentStop hook). The consumer drains
+   * them when it stops reading early (a cost hard stop), so they are charged.
+   */
+  drainPendingUsage?(): ProviderEvent[];
+
+  /**
    * Hard teardown: terminate whatever runs the query (e.g. the SDK's CLI
    * process). Used only after the caller has stopped reading `events` because
    * the stream never closed. Optional; providers without a process omit it.
@@ -230,8 +263,27 @@ export type ProviderEvent =
    * `text` is model output; `error` is an optional user-facing provider error
    * (e.g. a billing/quota notice), kept separate from model scratchpad and
    * raw diagnostics. Failures without `error` receive a generic notice.
+   * `maxBudgetExceeded` marks the SDK's own max-budget stop (Claude result
+   * subtype `error_max_budget_usd`): the query's fixed budget is spent.
+   * `unansweredInputs`: inputs pushed into this query that no completed turn
+   * has consumed yet, exact from the provider's own echo (Claude
+   * `user_message_uuids`; queued sends may fold into one turn). Absent when the
+   * result echoes none of this query's inputs.
    */
-  | { type: 'result'; text: string | null; isError?: boolean; error?: string }
+  | {
+      type: 'result';
+      text: string | null;
+      isError?: boolean;
+      error?: string;
+      maxBudgetExceeded?: boolean;
+      unansweredInputs?: number;
+      /**
+       * The turn's accounting, when the provider has any. The consumer settles it
+       * at the START of result handling — before delivery or acks can throw — and
+       * the `usage` event that follows only logs it.
+       */
+      accounting?: UsageAccounting;
+    }
   /**
    * An assistant text segment emitted mid-turn (e.g. between tool calls).
    * The SDK's final `result` carries only the LAST assistant text, so a
@@ -269,23 +321,34 @@ export type ProviderEvent =
       totalCostUsd: number;
       numTurns: number;
       sessionId: string | null;
+      /**
+       * The SDK's per-model totals (`result.modelUsage`): every call through the
+       * query pipeline — main loop, Task subagents, compaction, Claude Code's
+       * helper calls. CUMULATIVE per SDK session (across turns, and restored on
+       * resume), so a consumer must difference it. Absent when the provider has
+       * none. The token fields above are main-loop-only and per turn.
+       */
+      modelUsage?: Record<string, UsageAccountingModel>;
+      /** The turn's `result` was an error (e.g. `error_max_budget_usd`, a crash). */
+      isError?: boolean;
     }
   /**
-   * PER-MESSAGE usage — one per assistant message the provider streams, carrying
-   * that message's OWN `usage` and the wire id that identifies it.
+   * PER-MESSAGE usage — one per report of an API call's usage, carrying the
+   * wire id that identifies the call.
    *
-   * This is the cost-cap's primary accounting basis (issue #1327). The
-   * end-of-turn `usage` event above is NOT a safe basis: the underlying stream
+   * This is the cost-cap's primary accounting basis (issue #1327). The stream
    * emits one assistant message per CONTENT BLOCK (thinking / text / tool_use
    * are separate messages) and every block of one API response repeats the same
-   * `message.id` AND the same message-level `usage`. Measured on real prod
-   * transcripts, summing those without deduplication double- to triple-counts
-   * (1.7x–2.8x; the reported session ran 2.1x over its true cost and enforced
-   * its ceiling that much too early).
+   * `message.id` and the same usage — the `message_start` SNAPSHOT, whose
+   * `output_tokens` is only what was generated before the first block closed.
+   * The call's FINAL usage arrives later as a second report for the same id
+   * (`final: true`): from the stream's `message_delta` for the main thread, and
+   * from the subagent transcript (`SubagentStop`) for a Task subagent.
    *
-   * `messageId` is the dedup key. A consumer MUST ignore a repeat of an id it
-   * already charged, and MUST NOT charge an event whose id is null (it cannot be
-   * deduplicated) — see `recordMessageCost` in poll-loop.ts.
+   * `messageId` is the dedup key. A consumer MUST charge an id at most once in
+   * total — the first report, then only the increase a later report adds (see
+   * `recordMessageCost` in poll-loop.ts) — and MUST NOT charge an event whose id
+   * is null (it cannot be deduplicated).
    *
    * `model` is the model that actually served THIS message, which is not
    * necessarily the configured one (fallback model, a subagent on a cheaper
@@ -306,6 +369,14 @@ export type ProviderEvent =
       ephemeral5mInputTokens: number;
       /** True when this message was produced by a Task-tool subagent. */
       isSubagent: boolean;
+      /** This report carries the call's FINAL usage (not the block snapshot). */
+      final?: boolean;
+      /**
+       * When the call completed, if the source knows (a transcript entry's
+       * timestamp). Used only to tell whether the SDK's turn totals already
+       * counted a call first reported after that turn's result.
+       */
+      callTs?: string;
     }
   /**
    * A genuine assistant message the provider could NOT attach per-message
