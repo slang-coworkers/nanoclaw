@@ -1,3 +1,4 @@
+import { randomUUID } from 'crypto';
 import fs from 'fs';
 import path from 'path';
 
@@ -567,24 +568,46 @@ interface SDKUserMessage {
   message: { role: 'user'; content: string };
   parent_tool_use_id: null;
   session_id: string;
+  uuid: ReturnType<typeof randomUUID>;
 }
 
 /**
  * Push-based async iterable for streaming user messages to the Claude SDK.
  */
-class MessageStream {
+export class MessageStream {
   private queue: SDKUserMessage[] = [];
   private waiting: (() => void) | null = null;
   private done = false;
+  // Uuids of pushed messages no completed turn has consumed yet, in push order.
+  private unconsumed: string[] = [];
 
   push(text: string): void {
+    const uuid = randomUUID();
+    this.unconsumed.push(uuid);
     this.queue.push({
       type: 'user',
       message: { role: 'user', content: text },
       parent_tool_use_id: null,
       session_id: '',
+      uuid,
     });
     this.waiting?.();
+  }
+
+  /**
+   * Settle a result's uuid echo (`user_message_uuids`, else `user_message_uuid`)
+   * and return how many pushed messages are still unconsumed. The SDK consumes
+   * sends in push order and may fold several into one turn, so every message up
+   * to the last one echoed is consumed. Undefined when the result echoes none of
+   * ours (no echo, an older producer, or a turn our sends did not start).
+   */
+  settleEcho(uuids: readonly string[] | undefined, uuid: string | undefined): number | undefined {
+    const echoed = uuids?.length ? uuids : uuid ? [uuid] : [];
+    let last = -1;
+    for (const id of echoed) last = Math.max(last, this.unconsumed.indexOf(id));
+    if (last < 0) return undefined;
+    this.unconsumed.splice(0, last + 1);
+    return this.unconsumed.length;
   }
 
   end(): void {
@@ -1151,7 +1174,15 @@ export class ClaudeProvider implements AgentProvider {
           // (e.g. a non-retryable 403 billing_error) carry their message in
           // `errors[]` instead. Keep that actionable notice separate from
           // model output so the poll-loop can deliver it without scratchpad.
-          const m = message as { result?: string; is_error?: boolean; errors?: string[] };
+          const m = message as {
+            result?: string;
+            is_error?: boolean;
+            errors?: string[];
+            subtype?: string;
+            user_message_uuid?: string;
+            user_message_uuids?: string[];
+          };
+          const unansweredInputs = stream.settleEcho(m.user_message_uuids, m.user_message_uuid);
           const isError = m.is_error === true;
           // Some failures (e.g. an invalid API key) leave errors[] empty and put
           // the SDK's own notice in `result`. Other result text can echo upstream
@@ -1171,6 +1202,10 @@ export class ClaudeProvider implements AgentProvider {
             text: resultAsError ? null : (m.result ?? null),
             isError,
             error: m.errors?.length ? m.errors.join('\n') : resultAsError || undefined,
+            // The SDK's structured max-budget stop; the poll-loop stops pushing into this query.
+            ...(m.subtype === 'error_max_budget_usd' ? { maxBudgetExceeded: true } : {}),
+            // Exact count from the SDK's uuid echo; coalesced sends settle together.
+            ...(unansweredInputs !== undefined ? { unansweredInputs } : {}),
             ...(accounting ? { accounting } : {}),
           };
           if (accounting) yield { type: 'usage', ...accounting };
