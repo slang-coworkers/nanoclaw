@@ -20,7 +20,7 @@
  * Same convention as poll-loop.message-cost.test.ts: no module mocks, a real
  * in-memory session DB, real pricing.
  */
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, setSystemTime } from 'bun:test';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -30,7 +30,7 @@ import { getClaudeBackstop, getCostCap } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';
 import { __costCapTestHooks as H, processQuery } from './poll-loop.js';
 import { __resetCodexCostMemo } from './codex-cost.js';
-import { createCostEventsTable, sumWindow } from './cost-events.js';
+import { createCostEventsTable, loadClaudeMessage, sumWindow } from './cost-events.js';
 import { RATE_TABLE } from './cost-rate-table.js';
 import { newBackstopState, priceVec, zeroVec, type TokenVec } from './claude-usage.js';
 import type { RunnerConfig } from './config.js';
@@ -163,6 +163,8 @@ const spent = () => H.getState().costSpentUsd;
 const ledger = () => sumWindow(getOutboundDb(), RATE_TABLE, '0000-00-00', '9999-99-99', H.getState().ledgerGen).usd;
 const ledgerRows = () =>
   getOutboundDb().prepare('SELECT * FROM cost_events ORDER BY rowid').all() as Array<Record<string, number | string>>;
+/** A call's durable state: its base row plus its append-only corrections. */
+const message = (id: string) => loadClaudeMessage(getOutboundDb(), `claude:1:${id}`);
 
 /** Everything durable an accounting event may touch. */
 function durable() {
@@ -218,9 +220,9 @@ describe('final per-call usage — charged once, at its final value', () => {
     H.recordMessageCost(call('msg_1', SNAP));
     H.recordMessageCost(call('msg_1', FINAL, { final: true }));
     expect(spent()).toBeCloseTo(priceOf(FINAL), 10);
-    const rows = ledgerRows();
-    expect(rows).toHaveLength(1); // rewritten in place, not a second row
-    expect(rows[0].output_tokens).toBe(8_178);
+    // Append-only: the base row keeps the snapshot, one correction row adds the rest.
+    expect(ledgerRows().map((r) => r.output_tokens)).toEqual([8, 8_170]);
+    expect(message('msg_1')?.event.outputTokens).toBe(8_178);
     expect(ledger()).toBeCloseTo(spent(), 10);
   });
 
@@ -268,7 +270,8 @@ describe('model of a call — priced by the model that served it (item 5)', () =
     expect(spent()).toBeCloseTo(priceOf({ output: 5 }), 12); // configured Opus
     H.recordMessageCost(call('m1', { output: 300 }, { model: HAIKU, final: true }));
     expect(spent()).toBeCloseTo(priceOf({ output: 300 }, HAIKU), 12); // the Opus guess is refunded
-    expect(ledgerRows()[0].model).toBe(HAIKU);
+    expect(message('m1')?.model).toBe(HAIKU);
+    expect(message('m1')?.event.outputTokens).toBe(300);
     // The SDK puts the call under Haiku; nothing is charged twice.
     H.recordTurnCost(result({ [HAIKU]: { in: 2, out: 300 } }));
     expect(spent()).toBeCloseTo(priceOf({ output: 300 }, HAIKU), 12);
@@ -459,16 +462,29 @@ describe('durable dedup across a respawn (item 2)', () => {
     respawn();
     H.recordMessageCost(call('sub_x', FINAL, { isSubagent: true, final: true, callTs: new Date().toISOString() }));
     expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
-    expect(ledgerRows()).toHaveLength(1);
+    expect(message('sub_x')?.event.outputTokens).toBe(124);
   });
 
-  it('a report for a call charged by an EARLIER process (segment) is ignored', () => {
-    H.recordMessageCost(call('sub_y', SNAP, { isSubagent: true }));
+  it('an earlier process that died BEFORE settling the call: its final is topped up directly (round-2 item 2)', () => {
+    H.recordMessageCost(call('sub_y', SNAP, { isSubagent: true })); // no result settled after it
     respawn();
     resumeQuery(null); // the new process's query
     H.recordMessageCost(call('sub_y', FINAL, { isSubagent: true, final: true }));
-    expect(spent()).toBeCloseTo(priceOf(SNAP), 12);
+    expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
+    H.recordMessageCost(call('sub_y', FINAL, { isSubagent: true, final: true })); // and only once
+    expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
     expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+
+  it('an earlier process that DID settle a result after the call: its own settlement owned it', () => {
+    H.recordMessageCost(call('sub_z', SNAP, { isSubagent: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 124, cw: 15_691 } })); // the SDK counted the final; residual paid
+    const paid = spent();
+    expect(paid).toBeCloseTo(priceOf(FINAL), 12);
+    respawn();
+    resumeQuery(null);
+    H.recordMessageCost(call('sub_z', FINAL, { isSubagent: true, final: true }));
+    expect(spent()).toBeCloseTo(paid, 12);
   });
 });
 
@@ -645,5 +661,138 @@ describe('result accounting is settled before result handling (item 6)', () => {
       'hi',
     );
     expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ input: 900, output: 10 }, HAIKU), 12);
+  });
+});
+
+describe('round 2 — fail closed, window stamps, model move, timestamps, daily rows, hard-stop drain', () => {
+  it('accounting that cannot commit HALTS the session (never drops); it resumes when storage does (item 1)', () => {
+    H.setFailPoint('msg:after-spend');
+    for (let i = 0; i < 5; i++) H.recordMessageCost(call(`m${i}`, { output: 100 }, { final: true }));
+    expect(H.pendingCostEventCount()).toBe(5);
+    expect(H.costAccountingHalted()).toBe(true);
+    expect(spent()).toBe(0);
+    H.setFailPoint(undefined);
+    expect(H.costAccountingHalted()).toBe(false); // the check retries
+    expect(spent()).toBeCloseTo(5 * priceOf({ output: 100 }), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+
+  it('an immortal group is never halted by its bookkeeping', () => {
+    H.setState({ costImmortal: true });
+    H.setFailPoint('msg:after-spend');
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    expect(H.costAccountingHalted()).toBe(false);
+  });
+
+  it('a /clear with events still unrecorded discards them — they never charge the new window (item 4)', () => {
+    H.setFailPoint('msg:after-spend');
+    H.recordMessageCost(call('m_old', { output: 1_000 }, { final: true }));
+    H.resetCostForNewSession(); // still failing: deliberately dropped
+    H.setFailPoint(undefined);
+    expect(H.pendingCostEventCount()).toBe(0);
+    freshQuery('sess-B');
+    H.recordMessageCost(call('m_new', { output: 10 }, { final: true }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 10 }), 12);
+  });
+
+  it('a pending event from a closed UTC day is discarded, not billed to the new day (item 4)', () => {
+    H.setState({ costImmortal: true, costWindow: 'daily', costDayKey: '2026-10-13' });
+    setSystemTime(new Date('2026-10-13T23:59:00Z'));
+    H.setFailPoint('msg:after-spend');
+    H.recordMessageCost(call('m_late', { output: 1_000 }, { final: true }));
+    H.setFailPoint(undefined);
+    setSystemTime(new Date('2026-10-14T00:01:00Z'));
+    H.recordMessageCost(call('m_today', { output: 10 }, { final: true }));
+    expect(H.pendingCostEventCount()).toBe(0);
+    expect(spent()).toBeCloseTo(priceOf({ output: 10 }), 12);
+    setSystemTime();
+  });
+
+  it('a daily window: a final after midnight lands in the NEW day, in the counter and the ledger alike (item 9)', () => {
+    H.setState({ costImmortal: true, costWindow: 'daily', costDayKey: '2026-10-13' });
+    setSystemTime(new Date('2026-10-13T23:59:00Z'));
+    H.recordMessageCost(call('m1', { output: 8 }));
+    setSystemTime(new Date('2026-10-14T00:01:00Z'));
+    H.recordMessageCost(call('m1', { output: 8_178 }, { final: true }));
+    const today = sumWindow(getOutboundDb(), RATE_TABLE, '2026-10-14', '2026-10-15', H.getState().ledgerGen).usd;
+    expect(spent()).toBeCloseTo(priceOf({ input: 0, output: 8_170 }), 12); // the new day holds only the top-up
+    expect(today).toBeCloseTo(spent(), 12);
+    setSystemTime();
+  });
+
+  it('moving a call AFTER a result re-settles the bucket its snapshot was offsetting (item 3)', () => {
+    // A model-less snapshot is priced as configured Opus; the result shows an
+    // Opus compaction (off-stream) and the call itself under Haiku.
+    H.recordMessageCost(call('m1', { output: 5 }, { model: undefined }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 50 }, [HAIKU]: { in: 2, out: 300 } }));
+    H.recordMessageCost(call('m1', { output: 300 }, { model: HAIKU, final: true }));
+    // Owed now: the Opus compaction (2 in, 50 out) and the Haiku call — nothing twice.
+    expect(spent()).toBeCloseTo(priceOf({ input: 2, output: 50 }) + priceOf({ output: 300 }, HAIKU), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 50 }, [HAIKU]: { in: 2, out: 300 } }));
+    expect(spent()).toBeCloseTo(priceOf({ input: 2, output: 50 }) + priceOf({ output: 300 }, HAIKU), 12);
+  });
+
+  it('a non-canonical transcript timestamp before the result still consumes credit (item 8)', () => {
+    setSystemTime(new Date('2026-10-14T10:00:00.000Z'));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 124 } })); // SDK counted the call
+    // 11:59:59+02:00 = 09:59:59Z — before the result, though it sorts after it as text.
+    H.recordMessageCost(
+      call('sub_tz', { output: 124 }, { isSubagent: true, final: true, callTs: '2026-10-14T11:59:59+02:00' }),
+    );
+    expect(spent()).toBeCloseTo(priceOf({ output: 124 }), 12);
+    setSystemTime();
+  });
+
+  it('a hard stop keeps reading the stream for accounting only: a late subagent final is charged (item 5)', async () => {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, kind, timestamp, status, content, seq) VALUES ('h1','chat',?, 'pending', ?, 2)`,
+      )
+      .run(new Date().toISOString(), JSON.stringify({ sender: 'admin', text: 'hi' }));
+    H.setState({ costCeilingUsd: 0.0001, costCeilingAllotmentUsd: 0.0001 });
+    const acc: UsageAccounting = {
+      inputTokens: 0,
+      outputTokens: 0,
+      cacheCreationInputTokens: 0,
+      cacheReadInputTokens: 0,
+      ephemeral1hInputTokens: 0,
+      ephemeral5mInputTokens: 0,
+      durationMs: 0,
+      totalCostUsd: 0,
+      numTurns: 1,
+      sessionId: SID,
+      modelUsage: modelUsage({ [OPUS]: { in: 2, out: 100 } }),
+    };
+    let ended = false;
+    const query: AgentQuery = {
+      push() {},
+      end() {
+        ended = true;
+      },
+      abort() {},
+      drainPendingUsage: () => [call('sub_q', { output: 20 }, { isSubagent: true, final: true })],
+      events: {
+        async *[Symbol.asyncIterator]() {
+          yield { type: 'init', continuation: SID };
+          yield call('m1', { output: 100 }, { final: true });
+          yield { type: 'result', text: 'done', accounting: acc };
+          yield { type: 'usage', ...acc };
+          // Read after the hard stop, accounting only:
+          yield call('sub_late', { output: 50 }, { isSubagent: true, final: true });
+          yield { type: 'text', text: 'never delivered' };
+        },
+      },
+    };
+    await processQuery(
+      query,
+      { platformId: 'dashboard:admin', channelType: 'dashboard', threadId: null, inReplyTo: undefined, taskRun: false },
+      ['h1'],
+      'claude',
+      undefined,
+      'hi',
+    );
+    expect(ended).toBe(true);
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 20 }) + priceOf({ output: 50 }), 12);
   });
 });

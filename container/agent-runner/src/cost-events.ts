@@ -124,7 +124,9 @@ export function priceTokens(e: CostEvent, table: LiteLLMRateTable): PricedEvent 
   }
   const cacheRead = r.cache_read_input_token_cost ?? 0;
   const cacheWriteBase = r.cache_creation_input_token_cost ?? 0;
-  const hasSplit = e.cacheWrite5mTokens > 0 || e.cacheWrite1hTokens > 0;
+  // Signed rows (an append-only correction) carry negative fields; any non-zero
+  // TTL field marks the row as split.
+  const hasSplit = e.cacheWrite5mTokens !== 0 || e.cacheWrite1hTokens !== 0;
   const usd =
     e.inputTokens * r.input_cost_per_token +
     e.outputTokens * r.output_cost_per_token +
@@ -248,7 +250,7 @@ export function recordCostEvent(
   return info.changes > 0;
 }
 
-/** Accounting identity stored on a Claude message row (see createCostEventsTable). */
+/** Accounting identity stored on a Claude row (see createCostEventsTable). */
 export interface ClaudeRowAccounting {
   seg: number;
   epoch: number;
@@ -257,30 +259,36 @@ export interface ClaudeRowAccounting {
 }
 
 /**
- * Write ONE Claude message row: inserted at the call's first report, then
- * rewritten in place (tokens AND model) as later reports raise it to the
- * final usage — one row per call, never two. Generation, created_at and any
- * adjustment of an existing row are kept. Throws on a DB error: the caller
- * runs it inside the same transaction as the spend it accompanies.
+ * Append ONE Claude ledger row — a call's first report, a later top-up or
+ * model correction of it (`<id>#<seq>`), a backstop residual, or a residual
+ * claimed back by a call (negative). APPEND-ONLY and SIGNED: a correction is a
+ * new row stamped with the time it was charged, so each row lands in the same
+ * budget window the counter charged it to; nothing is ever rewritten. Plain
+ * INSERT: a duplicate id throws, and the caller's transaction rolls the whole
+ * accounting event back.
  */
-export function upsertClaudeMessageRow(
+export function recordClaudeRow(
   db: Database,
   e: CostEvent,
-  acct: ClaudeRowAccounting,
+  acct: ClaudeRowAccounting | null,
   rateVersion: number,
   table: LiteLLMRateTable,
   nowIso: string,
   windowGen: number,
 ): void {
-  recordCostEvent(db, e, rateVersion, table, nowIso, windowGen);
+  const adjustment = e.adjustmentUsd ?? 0;
   db.prepare(
-    `UPDATE cost_events SET model = $model, input_tokens = $input, cache_read_tokens = $cacheRead,
-       cache_write_tokens = $cacheWrite, cache_write_5m_tokens = $cw5, cache_write_1h_tokens = $cw1,
-       output_tokens = $output, priced_usd = $priced + adjustment_usd, rate_version = $rv,
-       acct_seg = $seg, acct_epoch = $epoch, acct_cfg_model = $cfg
-     WHERE id = $id`,
+    `INSERT INTO cost_events
+     (id, ts, provider, model, input_tokens, cache_read_tokens, cache_write_tokens,
+      cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, reasoning_tokens,
+      priced_usd, rate_version, adjustment_usd, window_gen, thread_id, gh_ref, created_at,
+      acct_seg, acct_epoch, acct_cfg_model)
+     VALUES ($id, $ts, $provider, $model, $input, $cacheRead, $cacheWrite,
+      $cw5, $cw1, $output, 0, $priced, $rv, $adj, $gen, NULL, NULL, $now, $seg, $epoch, $cfg)`,
   ).run({
     $id: e.id,
+    $ts: e.ts,
+    $provider: e.provider,
     $model: e.model,
     $input: e.inputTokens,
     $cacheRead: e.cacheReadTokens,
@@ -288,101 +296,68 @@ export function upsertClaudeMessageRow(
     $cw5: e.cacheWrite5mTokens,
     $cw1: e.cacheWrite1hTokens,
     $output: e.outputTokens,
-    $priced: priceTokens(e, table).usd,
+    $priced: priceTokens(e, table).usd + adjustment,
     $rv: rateVersion,
-    $seg: acct.seg,
-    $epoch: acct.epoch,
-    $cfg: acct.cfgModel ? 1 : 0,
+    $adj: adjustment,
+    $gen: windowGen,
+    $now: nowIso,
+    $seg: acct ? acct.seg : null,
+    $epoch: acct ? acct.epoch : null,
+    $cfg: acct ? (acct.cfgModel ? 1 : 0) : null,
   });
 }
 
-/** Read back a Claude message row written by `upsertClaudeMessageRow` (null if absent). */
-export function getClaudeMessageRow(
+/**
+ * A call's DURABLE accounting state, rebuilt from its rows: the base row
+ * `<baseId>` plus its corrections `<baseId>#<seq>`. The call's model is the
+ * latest row's; its usage is the sum of its rows under that model (a model
+ * correction appends a negative row under the old model and a positive one
+ * under the new). Null when the call has no row.
+ */
+export function loadClaudeMessage(
   db: Database,
-  id: string,
-): { event: CostEvent; acct: ClaudeRowAccounting | null } | null {
-  const row = db.prepare('SELECT * FROM cost_events WHERE id = $id').get({ $id: id }) as
-    | Record<string, unknown>
-    | null
-    | undefined;
-  if (!row) return null;
-  const seg = row.acct_seg;
-  const epoch = row.acct_epoch;
+  baseId: string,
+): { model: string; event: CostEvent; acct: ClaudeRowAccounting | null } | null {
+  const rows = db
+    .prepare(
+      `SELECT * FROM cost_events WHERE id = $id OR substr(id, 1, length($id) + 1) = $id || '#' ORDER BY rowid`,
+    )
+    .all({ $id: baseId }) as Array<Record<string, unknown>>;
+  if (rows.length === 0) return null;
+  const last = rows[rows.length - 1];
+  const model = String(last.model);
+  const sum = rowToEvent(rows[0]);
+  sum.id = baseId;
+  sum.model = model;
+  for (const f of [
+    'inputTokens',
+    'outputTokens',
+    'cacheReadTokens',
+    'cacheWriteTokens',
+    'cacheWrite5mTokens',
+    'cacheWrite1hTokens',
+  ] as const)
+    sum[f] = 0;
+  for (const row of rows) {
+    if (String(row.model) !== model) continue;
+    const e = rowToEvent(row);
+    sum.inputTokens += e.inputTokens;
+    sum.outputTokens += e.outputTokens;
+    sum.cacheReadTokens += e.cacheReadTokens;
+    sum.cacheWriteTokens += e.cacheWriteTokens;
+    sum.cacheWrite5mTokens += e.cacheWrite5mTokens;
+    sum.cacheWrite1hTokens += e.cacheWrite1hTokens;
+  }
+  const seg = last.acct_seg;
+  const epoch = last.acct_epoch;
   return {
-    event: rowToEvent(row),
+    model,
+    event: sum,
     acct:
       typeof seg === 'number' && typeof epoch === 'number'
-        ? { seg, epoch, cfgModel: Number(row.acct_cfg_model ?? 0) === 1 }
+        ? { seg, epoch, cfgModel: Number(last.acct_cfg_model ?? 0) === 1 }
         : null,
   };
-}
-
-/** Tokens to take out of backstop residual rows, by exact field. */
-export interface ResidualTokens {
-  input: number;
-  output: number;
-  cacheRead: number;
-  cw5: number;
-  cw1h: number;
-  cwFlat: number;
-}
-
-/**
- * Move tokens OUT of backstop residual rows (`<idPrefix>…<idSuffix>`, newest
- * first) because a message row now claims them, removing exactly the fields
- * and cache-write TTL buckets the counter's credit consumption took — so the
- * ledger keeps summing to what was charged. Throws on a DB error (the caller's
- * transaction rolls the whole event back). Returns what was removed.
- */
-export function consumeResidualTokens(
-  db: Database,
-  idPrefix: string,
-  idSuffix: string,
-  consume: ResidualTokens,
-  table: LiteLLMRateTable,
-): ResidualTokens {
-  const cols: Array<[keyof ResidualTokens, keyof CostEvent]> = [
-    ['input', 'inputTokens'],
-    ['output', 'outputTokens'],
-    ['cacheRead', 'cacheReadTokens'],
-    ['cw5', 'cacheWrite5mTokens'],
-    ['cw1h', 'cacheWrite1hTokens'],
-    ['cwFlat', 'cacheWriteTokens'],
-  ];
-  const left = { ...consume };
-  const removed: ResidualTokens = { input: 0, output: 0, cacheRead: 0, cw5: 0, cw1h: 0, cwFlat: 0 };
-  const rows = db
-    .prepare(`SELECT * FROM cost_events WHERE id LIKE $like ORDER BY created_at DESC, rowid DESC`)
-    .all({ $like: `${idPrefix}%${idSuffix}` }) as Array<Record<string, unknown>>;
-  for (const row of rows) {
-    if (cols.every(([k]) => left[k] <= 0)) break;
-    const e = rowToEvent(row);
-    let touched = false;
-    for (const [k, f] of cols) {
-      const take = Math.min(left[k], e[f] as number);
-      if (take <= 0) continue;
-      (e[f] as number) -= take;
-      left[k] -= take;
-      removed[k] += take;
-      touched = true;
-    }
-    if (!touched) continue;
-    db.prepare(
-      `UPDATE cost_events SET input_tokens = $input, output_tokens = $output, cache_read_tokens = $cacheRead,
-         cache_write_tokens = $cw, cache_write_5m_tokens = $cw5, cache_write_1h_tokens = $cw1,
-         priced_usd = $priced + adjustment_usd WHERE id = $id`,
-    ).run({
-      $id: e.id,
-      $input: e.inputTokens,
-      $output: e.outputTokens,
-      $cacheRead: e.cacheReadTokens,
-      $cw: e.cacheWriteTokens,
-      $cw5: e.cacheWrite5mTokens,
-      $cw1: e.cacheWrite1hTokens,
-      $priced: priceTokens(e, table).usd,
-    });
-  }
-  return removed;
 }
 
 /**

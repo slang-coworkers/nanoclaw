@@ -242,6 +242,13 @@ export interface AgentQuery {
   abort(): void;
 
   /**
+   * Accounting events the provider has received but not yet yielded (Claude:
+   * subagent final usage queued by the SubagentStop hook). The consumer drains
+   * them when it stops reading early (a cost hard stop), so they are charged.
+   */
+  drainPendingUsage?(): ProviderEvent[];
+
+  /**
    * Hard teardown: terminate whatever runs the query (e.g. the SDK's CLI
    * process). Used only after the caller has stopped reading `events` because
    * the stream never closed. Optional; providers without a process omit it.

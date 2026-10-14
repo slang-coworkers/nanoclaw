@@ -45,7 +45,12 @@ mock.module('@anthropic-ai/claude-agent-sdk', () => ({
           const hook = lastOptions?.hooks?.SubagentStop?.[0]?.hooks?.[0];
           if (hook) {
             await hook(
-              { ...input, agent_transcript_path: input.agent_transcript_path?.replace('__FIXTURE__', subagentDir) },
+              {
+                ...input,
+                agent_transcript_path: input.agent_transcript_path?.replace('__FIXTURE__', subagentDir),
+                // The session transcript the subagents directory sits next to.
+                transcript_path: `${path.dirname(subagentDir)}.jsonl`,
+              },
               undefined,
               { signal: new AbortController().signal },
             );
@@ -334,27 +339,35 @@ describe('provider: final usage from the stream', () => {
   });
 });
 
-describe('SubagentStop transcript read — defensive (item 7)', () => {
+describe('SubagentStop transcript read — defensive (items 6, 7)', () => {
   const SINK = () => {
     const got: Array<Record<string, unknown>> = [];
     return { got, sink: (e: unknown) => got.push(e as Record<string, unknown>) };
   };
   const signal = { signal: new AbortController().signal };
   const projectsRoot = () => path.join(tmp, '.claude', 'projects');
+  const transcript = () => path.join(projectDir, `${SUB_SID}.jsonl`);
   const realFile = () => path.join(subagentDir, 'agent-a2d3a5720f1e5a422.jsonl');
-
-  it('reads a regular agent-*.jsonl under the projects tree', async () => {
+  const fire = async (p: string, opts: { transcriptPath?: string } = {}) => {
     const { got, sink } = SINK();
     await createSubagentUsageHook(sink, { projectsRoot: projectsRoot() })(
-      { agent_transcript_path: realFile() } as never,
+      { agent_transcript_path: p, transcript_path: opts.transcriptPath ?? transcript() } as never,
       undefined,
       signal,
     );
+    return got;
+  };
+
+  it("reads a regular agent-*.jsonl in THIS session's subagents directory", async () => {
+    const got = await fire(realFile());
     expect(got).toHaveLength(1);
     expect(got[0]).toMatchObject({ outputTokens: 124, ephemeral5mInputTokens: 15_691, isSubagent: true, final: true });
   });
 
-  it('rejects a symlink that leaves the tree, a wrong name, a wrong depth, and a missing file', async () => {
+  it("rejects another session's transcript, a symlink out, a wrong name or depth, and a missing file", async () => {
+    const other = path.join(projectDir, 'sess-other', 'subagents');
+    fs.mkdirSync(other, { recursive: true });
+    fs.copyFileSync(realFile(), path.join(other, 'agent-a2d3a5720f1e5a422.jsonl'));
     const outside = path.join(tmp, 'outside.jsonl');
     fs.copyFileSync(realFile(), outside);
     const link = path.join(subagentDir, 'agent-evil.jsonl');
@@ -363,46 +376,41 @@ describe('SubagentStop transcript read — defensive (item 7)', () => {
     fs.copyFileSync(realFile(), wrongName);
     const wrongDepth = path.join(projectDir, 'agent-x.jsonl');
     fs.copyFileSync(realFile(), wrongDepth);
-    for (const p of [link, wrongName, wrongDepth, path.join(subagentDir, 'agent-missing.jsonl')]) {
-      expect(validateSubagentTranscriptPath(p, projectsRoot())).toBeNull();
-      const { got, sink } = SINK();
-      await createSubagentUsageHook(sink, { projectsRoot: projectsRoot() })(
-        { agent_transcript_path: p } as never,
-        undefined,
-        signal,
-      );
-      expect(got).toHaveLength(0);
+    for (const p of [
+      path.join(other, 'agent-a2d3a5720f1e5a422.jsonl'),
+      link,
+      wrongName,
+      wrongDepth,
+      path.join(subagentDir, 'agent-missing.jsonl'),
+    ]) {
+      expect(validateSubagentTranscriptPath(p, projectsRoot(), transcript())).toBeNull();
+      expect(await fire(p)).toHaveLength(0);
     }
   });
 
-  it('skips a file over the size bound (the result backstop covers it)', async () => {
-    const { got, sink } = SINK();
-    await createSubagentUsageHook(sink, { projectsRoot: projectsRoot(), maxBytes: 10 })(
-      { agent_transcript_path: realFile() } as never,
-      undefined,
-      signal,
-    );
-    expect(got).toHaveLength(0);
+  it('reads a transcript of any size completely, in bounded chunks (no size skip)', async () => {
+    const big = path.join(subagentDir, 'agent-big.jsonl');
+    const pad = `${JSON.stringify({ type: 'user', pad: 'x'.repeat(1_000_000) })}\n`;
+    fs.writeFileSync(big, pad.repeat(6) + fs.readFileSync(realFile(), 'utf8'));
+    expect(fs.statSync(big).size).toBeGreaterThan(4 * 1024 * 1024);
+    expect((await fire(big)).map((e) => e.outputTokens)).toEqual([124]);
+  });
+
+  it('a final record without a trailing newline is read — the transcript is complete at SubagentStop', async () => {
+    const noNl = path.join(subagentDir, 'agent-nonl.jsonl');
+    fs.writeFileSync(noNl, fs.readFileSync(realFile(), 'utf8').trimEnd());
+    expect((await fire(noNl)).map((e) => e.outputTokens)).toEqual([124]);
   });
 
   it('a re-fired hook reads only what was appended', async () => {
-    const hook = createSubagentUsageHook(SINK().sink, { projectsRoot: projectsRoot() });
-    await hook({ agent_transcript_path: realFile() } as never, undefined, signal);
-    const line = JSON.parse(fs.readFileSync(realFile(), 'utf8').trim()) as {
-      message: { id: string; usage: Record<string, number> };
-    };
+    await fire(realFile());
+    const line = JSON.parse(fs.readFileSync(realFile(), 'utf8').trim()) as { message: { id: string } };
     line.message.id = 'msg_appended';
     fs.appendFileSync(realFile(), `${JSON.stringify(line)}\n`);
-    const { got, sink } = SINK();
-    await createSubagentUsageHook(sink, { projectsRoot: projectsRoot() })(
-      { agent_transcript_path: realFile() } as never,
-      undefined,
-      signal,
-    );
-    expect(got.map((e) => e.messageId)).toEqual(['msg_appended']);
+    expect((await fire(realFile())).map((e) => e.messageId)).toEqual(['msg_appended']);
   });
 
-  it('drops invalid numbers and malformed lines', () => {
+  it('drops invalid numbers and malformed lines; canonicalizes timestamps', () => {
     const evs = finalUsageFromTranscript(
       [
         'not json',
@@ -415,11 +423,17 @@ describe('SubagentStop transcript read — defensive (item 7)', () => {
           message: { id: 'm2', usage: { output_tokens: 7 } },
           timestamp: 'not a date',
         }),
+        JSON.stringify({
+          type: 'assistant',
+          message: { id: 'm3', usage: { output_tokens: 1 } },
+          timestamp: '2026-10-14T11:59:59+02:00',
+        }),
       ].join('\n'),
     );
     expect(evs.map((e) => [e.messageId, e.inputTokens, e.outputTokens, e.cacheReadInputTokens, e.callTs])).toEqual([
       ['m1', 0, 0, 0, undefined],
       ['m2', 0, 7, 0, undefined],
+      ['m3', 0, 1, 0, '2026-10-14T09:59:59.000Z'],
     ]);
   });
 

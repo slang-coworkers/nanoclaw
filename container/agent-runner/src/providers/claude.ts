@@ -266,7 +266,10 @@ export function finalUsageFromTranscript(text: string): MessageUsageEvent[] {
       ephemeral5mInputTokens: cleanCount(split?.m5),
       isSubagent: true,
       final: true,
-      ...(typeof j.timestamp === 'string' && !Number.isNaN(Date.parse(j.timestamp)) ? { callTs: j.timestamp } : {}),
+      // Canonical ISO, so it compares as an instant with the runner's own stamps.
+      ...(typeof j.timestamp === 'string' && Number.isFinite(Date.parse(j.timestamp))
+        ? { callTs: new Date(j.timestamp).toISOString() }
+        : {}),
     };
     const prev = byId.get(m.id);
     if (!prev || ev.outputTokens >= prev.outputTokens)
@@ -275,17 +278,24 @@ export function finalUsageFromTranscript(text: string): MessageUsageEvent[] {
   return [...byId.values()];
 }
 
-/** Largest subagent transcript the SubagentStop read will touch; beyond it the result backstop covers the spend. */
-export const MAX_SUBAGENT_TRANSCRIPT_BYTES = 64 * 1024 * 1024;
+/** Bytes read per chunk; a transcript of any size is read in these, never whole. */
+const SUBAGENT_READ_CHUNK_BYTES = 4 * 1024 * 1024;
+/** A single JSONL line longer than this is skipped (logged), not buffered. */
+const SUBAGENT_MAX_LINE_BYTES = 16 * 1024 * 1024;
 
 /** Where each subagent transcript was read up to, so a re-fired hook reads only what was appended. */
-const subagentReadCursors = new Map<string, { ino: number; offset: number; carry: string }>();
+const subagentReadCursors = new Map<
+  string,
+  { dev: number; ino: number; offset: number; carry: string; skipping: boolean }
+>();
 
 /**
- * Resolve `p` and accept it only as `<projects>/<project>/<session>/subagents/agent-<id>.jsonl`
- * under the real Claude projects root — no symlink out, no other file.
+ * Resolve `p` and accept it only as `<project>/<session>/subagents/agent-<id>.jsonl`
+ * NEXT TO this hook's own session transcript (`<project>/<session>.jsonl`, the
+ * hook input's `transcript_path`), under the real Claude projects root. A path
+ * into another session's directory, a symlink out, or any other file is refused.
  */
-export function validateSubagentTranscriptPath(p: string, projectsRoot: string): string | null {
+export function validateSubagentTranscriptPath(p: string, projectsRoot: string, transcriptPath: string): string | null {
   try {
     const root = fs.realpathSync(projectsRoot);
     const real = fs.realpathSync(p);
@@ -293,6 +303,12 @@ export function validateSubagentTranscriptPath(p: string, projectsRoot: string):
     if (!rel || rel.startsWith('..') || path.isAbsolute(rel)) return null;
     const parts = rel.split(path.sep);
     if (parts.length !== 4 || parts[2] !== 'subagents' || !/^agent-[A-Za-z0-9_-]+\.jsonl$/.test(parts[3])) return null;
+    // Bind to the session the hook fired for. The transcript may not exist yet
+    // (a session's first turn), so resolve its directory, not the file.
+    if (!transcriptPath.endsWith('.jsonl')) return null;
+    const projectDir = fs.realpathSync(path.dirname(transcriptPath));
+    const session = path.basename(transcriptPath, '.jsonl');
+    if (path.join(root, parts[0]) !== projectDir || parts[1] !== session) return null;
     return real;
   } catch {
     return null;
@@ -303,47 +319,77 @@ export function validateSubagentTranscriptPath(p: string, projectsRoot: string):
  * `SubagentStop` hook: read the finished subagent's transcript and queue each
  * call's FINAL usage. A subagent's calls never reach the stream as
  * `message_delta`, so this is the only place their real output tokens appear
- * per message. The compaction sidechain also fires this hook, with a path that
- * does not exist.
+ * per message — and for a background subagent that finishes after its parent's
+ * last result, there may be no later result to back it up. The compaction
+ * sidechain also fires this hook, with a path that does not exist.
  *
- * Defensive: the path must resolve to a regular `agent-*.jsonl` under the real
- * projects root; files over `maxBytes` are skipped; reads are async and
- * incremental (a re-fired hook reads only appended lines); every failure is
- * logged and swallowed — accounting must never break a turn, and anything
- * missed here is still caught by the result's `modelUsage` backstop.
+ * Defensive: the path must be a regular `agent-*.jsonl` in THIS session's
+ * subagents directory; it is opened without following a symlink and the open
+ * file must be the one validated (same device and inode). Read asynchronously
+ * in bounded chunks — any size, never whole — and incrementally (a re-fired
+ * hook reads only appended lines). The transcript is complete when the hook
+ * fires, so a final record without a trailing newline is parsed too. Every
+ * failure is logged and swallowed: accounting must never break a turn.
  */
 export function createSubagentUsageHook(
   sink: (e: MessageUsageEvent) => void,
-  opts: { projectsRoot: string; maxBytes?: number },
+  opts: { projectsRoot: string },
 ): HookCallback {
-  const maxBytes = opts.maxBytes ?? MAX_SUBAGENT_TRANSCRIPT_BYTES;
   return async (input) => {
     const p = (input as { agent_transcript_path?: unknown }).agent_transcript_path;
+    const transcriptPath = (input as { transcript_path?: unknown }).transcript_path;
     if (typeof p !== 'string' || !p) return {};
-    const real = validateSubagentTranscriptPath(p, opts.projectsRoot);
+    const real =
+      typeof transcriptPath === 'string' ? validateSubagentTranscriptPath(p, opts.projectsRoot, transcriptPath) : null;
     if (!real) {
-      if (fs.existsSync(p)) log(`subagent usage: ignoring transcript outside the projects tree: ${p}`);
+      if (fs.existsSync(p)) log(`subagent usage: ignoring a transcript outside this session's subagents: ${p}`);
       return {};
     }
     let fh: fs.promises.FileHandle | undefined;
     try {
-      fh = await fs.promises.open(real, 'r');
+      const expected = fs.statSync(real);
+      fh = await fs.promises.open(real, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
       const st = await fh.stat();
-      if (!st.isFile()) return {};
-      if (st.size > maxBytes) {
-        log(`subagent usage: transcript ${real} is ${st.size} bytes (> ${maxBytes}); left to the result backstop`);
+      if (!st.isFile() || st.ino !== expected.ino || st.dev !== expected.dev) {
+        log(`subagent usage: ${real} changed between validation and open — not read`);
         return {};
       }
       let cur = subagentReadCursors.get(real);
-      if (!cur || cur.ino !== st.ino || st.size < cur.offset) cur = { ino: st.ino, offset: 0, carry: '' };
-      if (st.size > cur.offset) {
-        const buf = Buffer.alloc(st.size - cur.offset);
-        const { bytesRead } = await fh.read(buf, 0, buf.length, cur.offset);
+      if (!cur || cur.ino !== st.ino || cur.dev !== st.dev || st.size < cur.offset) {
+        cur = { dev: st.dev, ino: st.ino, offset: 0, carry: '', skipping: false };
+      }
+      const buf = Buffer.alloc(Math.min(SUBAGENT_READ_CHUNK_BYTES, Math.max(1, st.size - cur.offset)));
+      while (cur.offset < st.size) {
+        const { bytesRead } = await fh.read(buf, 0, Math.min(buf.length, st.size - cur.offset), cur.offset);
+        if (bytesRead <= 0) break;
+        cur.offset += bytesRead;
         const text = cur.carry + buf.subarray(0, bytesRead).toString('utf8');
         const lastNl = text.lastIndexOf('\n');
-        const complete = lastNl === -1 ? '' : text.slice(0, lastNl);
-        cur = { ino: st.ino, offset: cur.offset + bytesRead, carry: lastNl === -1 ? text : text.slice(lastNl + 1) };
+        let complete = lastNl === -1 ? '' : text.slice(0, lastNl);
+        cur.carry = lastNl === -1 ? text : text.slice(lastNl + 1);
+        if (cur.skipping && lastNl !== -1) {
+          // Drop the rest of an over-long line, up to its newline.
+          const nl = complete.indexOf('\n');
+          complete = nl === -1 ? '' : complete.slice(nl + 1);
+          cur.skipping = false;
+        } else if (cur.skipping) {
+          complete = '';
+        }
+        if (cur.carry.length > SUBAGENT_MAX_LINE_BYTES) {
+          log(`subagent usage: a line in ${real} exceeds ${SUBAGENT_MAX_LINE_BYTES} bytes — skipped`);
+          cur.carry = '';
+          cur.skipping = true;
+        }
         for (const ev of finalUsageFromTranscript(complete)) sink(ev);
+      }
+      // The subagent has stopped: its transcript is complete, so a last record
+      // without a newline is final, not partial.
+      if (cur.carry.trim() && !cur.skipping) {
+        const tail = finalUsageFromTranscript(cur.carry);
+        if (tail.length > 0) {
+          for (const ev of tail) sink(ev);
+          cur.carry = '';
+        }
       }
       subagentReadCursors.set(real, cur);
     } catch (err) {
@@ -1155,6 +1201,7 @@ export class ClaudeProvider implements AgentProvider {
       push: (msg) => stream.push(msg),
       end: () => stream.end(),
       events: translateEvents(),
+      drainPendingUsage: () => pendingUsage.splice(0),
       abort: () => {
         aborted = true;
         stream.end();

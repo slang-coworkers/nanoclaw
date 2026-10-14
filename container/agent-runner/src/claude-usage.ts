@@ -295,12 +295,18 @@ export interface ClaudeBackstopState {
    */
   mainCw5?: number;
   mainCw1h?: number;
+  /**
+   * Results settled by each recent CLOSED segment (by id). A call first seen in
+   * a closed segment at an epoch below this was covered by a committed result
+   * there; one at or above it died unsettled with its process.
+   */
+  settledEpochs?: Record<string, number>;
 }
 
 const MAX_CHECKPOINTS = 16;
 
 export function newBackstopState(): ClaudeBackstopState {
-  return { v: 2, segSeq: 0, segment: null, checkpoints: {}, mainCw5: 0, mainCw1h: 0 };
+  return { v: 2, segSeq: 0, segment: null, checkpoints: {}, mainCw5: 0, mainCw1h: 0, settledEpochs: {} };
 }
 
 /**
@@ -313,6 +319,7 @@ export function startSegment(
   source: SegmentBaseSource,
   restored: Record<string, CumVec> | null,
 ): Segment {
+  closeSegment(state);
   const seg: Segment = { id: ++state.segSeq, sessionId, baseSource: source, epoch: 0, lastResultAt: null, models: {} };
   for (const [key, c] of Object.entries(restored ?? {})) {
     const m = segmentModel(seg, key);
@@ -321,6 +328,27 @@ export function startSegment(
   }
   state.segment = seg;
   return seg;
+}
+
+/** Close the open segment, remembering how many results it settled. */
+export function closeSegment(state: ClaudeBackstopState): void {
+  const closed = state.segment;
+  if (!closed) return;
+  const se = (state.settledEpochs ??= {});
+  se[String(closed.id)] = closed.epoch;
+  const ids = Object.keys(se).sort((a, b) => Number(a) - Number(b));
+  for (const id of ids.slice(0, Math.max(0, ids.length - 64))) delete se[id];
+  state.segment = null;
+}
+
+/**
+ * Was a call first seen in segment `segId` at `epoch` covered by a result that
+ * segment committed? Unknown segments (pruned, or rows from before segments
+ * existed) count as covered — the safe direction.
+ */
+export function coveredByClosedSegment(state: ClaudeBackstopState, segId: number, epoch: number): boolean {
+  const settled = state.settledEpochs?.[String(segId)];
+  return settled === undefined || epoch < settled;
 }
 
 export function segmentModel(seg: Segment, key: string): SegmentModel {
@@ -467,32 +495,52 @@ export function settleSegment(
       };
       out.rebased.push(key);
     }
-    const s = subCum(c, m.base);
     m.lastCum = { ...c };
-
-    if (priced) {
-      const r = zeroVec();
-      r.input = Math.max(0, s.input - m.p.input - m.credit.input);
-      r.output = Math.max(0, s.output - m.p.output - m.credit.output);
-      r.cacheRead = Math.max(0, s.cacheRead - m.p.cacheRead - m.credit.cacheRead);
-      r[residualTtl(seg, m, fallbackTtl)] = Math.max(0, s.cacheWrite - cwTotal(m.p) - cwTotal(m.credit));
-      const usd = priceVec(key, r);
-      if (usd > 0) {
-        m.credit = addVec(m.credit, r);
-        out.residuals.push({ key, tokens: r, usd, unpriced: false });
-      }
-    } else {
-      const usd = Math.max(0, s.costUsd - m.unpricedUsd);
-      if (usd > 0) {
-        m.unpricedUsd += usd;
-        out.residuals.push({ key, tokens: zeroVec(), usd, unpriced: true });
-      }
-    }
+    const r = residualFor(seg, key, m, fallbackTtl);
+    if (r) out.residuals.push(r);
     m.pAtLastResult = { ...m.p };
   }
   seg.epoch += 1;
   seg.lastResultAt = nowIso;
   return out;
+}
+
+/**
+ * What the backstop owes for one model right now, from its last settled
+ * cumulative: `max(0, S - P - credit)` per token field (priced) or the SDK
+ * cost not yet charged (unpriced). Adds what it returns to the model's credit
+ * (or `unpricedUsd`). Null when nothing is owed or no result has been settled.
+ */
+function residualFor(seg: Segment, key: string, m: SegmentModel, fallbackTtl?: 'cw5' | 'cw1h'): Residual | null {
+  if (!m.lastCum || !m.base) return null;
+  const s = subCum(m.lastCum, m.base);
+  if (isPricedKey(key)) {
+    const r = zeroVec();
+    r.input = Math.max(0, s.input - m.p.input - m.credit.input);
+    r.output = Math.max(0, s.output - m.p.output - m.credit.output);
+    r.cacheRead = Math.max(0, s.cacheRead - m.p.cacheRead - m.credit.cacheRead);
+    r[residualTtl(seg, m, fallbackTtl)] = Math.max(0, s.cacheWrite - cwTotal(m.p) - cwTotal(m.credit));
+    const usd = priceVec(key, r);
+    if (!(usd > 0)) return null;
+    m.credit = addVec(m.credit, r);
+    return { key, tokens: r, usd, unpriced: false };
+  }
+  const usd = Math.max(0, s.costUsd - m.unpricedUsd);
+  if (!(usd > 0)) return null;
+  m.unpricedUsd += usd;
+  return { key, tokens: zeroVec(), usd, unpriced: true };
+}
+
+/**
+ * Re-settle one model against its LAST settled cumulative, between results.
+ * Needed when a call is moved OUT of a model's per-message tokens after a
+ * result already used them to offset that model's residual (a model-less
+ * snapshot priced as the configured model, whose final names another): the
+ * offset it provided is now owed.
+ */
+export function resettleModel(seg: Segment, key: string, fallbackTtl?: 'cw5' | 'cw1h'): Residual | null {
+  const m = seg.models[key];
+  return m ? residualFor(seg, key, m, fallbackTtl) : null;
 }
 
 /** Remember the SDK cumulative a session reached — the fallback baseline for its next resume. */

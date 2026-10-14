@@ -59,25 +59,28 @@ import { MISSING_DAY_KEY, ledgerKey, scanCodexRollouts } from './codex-cost.js';
 // #65 durable cost ledger — DUAL-RUN (additive; writes cost_events alongside the
 // live counter, changes no enforcement).
 import {
-  consumeResidualTokens,
   createCostEventsTable,
-  getClaudeMessageRow,
+  loadClaudeMessage,
+  recordClaudeRow,
   recordCostEvent,
   sumWindow,
-  upsertClaudeMessageRow,
+  type ClaudeRowAccounting,
   type CostEvent,
 } from './cost-events.js';
 import {
   addVec,
+  closeSegment,
   consumeCredit,
+  coveredByClosedSegment,
   cumFromModelUsage,
+  historicalTtl,
   isZeroCum,
   isZeroVec,
   mergeUsage,
   newBackstopState,
   priceVec,
   pricingKey,
-  historicalTtl,
+  resettleModel,
   saveCheckpoint,
   segmentModel,
   settleSegment,
@@ -87,6 +90,7 @@ import {
   vecTokens,
   zeroVec,
   type ClaudeBackstopState,
+  type Residual,
   type SdkModelUsage,
   type Segment,
   type TokenVec,
@@ -296,8 +300,10 @@ let claudeBackstop: ClaudeBackstopState = newBackstopState();
 // Accounting events whose transaction failed (rolled back, in-memory state
 // restored). Retried in order before the next event, so a transient DB error
 // neither drops nor double-counts spend.
-const pendingCostEvents: Array<{ label: string; msgId?: string; run: () => void }> = [];
-const MAX_PENDING_COST_EVENTS = 1000;
+// Each is stamped with the budget window it belongs to and never runs against
+// another one (a /clear or a UTC rollover in between discards it). Never
+// dropped otherwise: while any is pending the session takes no new work.
+const pendingCostEvents: Array<{ label: string; msgId?: string; run: () => void; gen: number; day: string }> = [];
 // Open accounting transactions, and the escalation rows waiting for their commit.
 let costTxnDepth = 0;
 const deferredEscalationRows: string[] = [];
@@ -732,6 +738,14 @@ function performLedgerMigrationBaseline(): void {
  */
 function resetCostForNewSession(): void {
   if (!costEnabled || costWindow !== 'lifetime') return;
+  // Pending accounting events of the window being zeroed: commit them now if
+  // storage is back, otherwise drop them deliberately — they must never run
+  // against the new window.
+  flushPendingCostEvents();
+  if (pendingCostEvents.length > 0) {
+    log(`Cost accounting: discarding ${pendingCostEvents.length} unrecorded event(s) of the window being reset`);
+    pendingCostEvents.length = 0;
+  }
   costSpentUsd = 0;
   // A fresh window must not re-charge spend the old one already paid for.
   // Codex: re-baseline on the next fold so the rollout files that exist right
@@ -739,7 +753,7 @@ function resetCostForNewSession(): void {
   // The query that charged the old window has ended (a reset is followed by a
   // FRESH query): close its segment, and forget per-message state — a report
   // in the new window belongs to the new window (the ledger id is gen-scoped).
-  claudeBackstop.segment = null;
+  closeSegment(claudeBackstop);
   chargedMessages.clear();
   resetTurnAccountingState();
   codexLedgerBaselinePending = true;
@@ -1067,6 +1081,13 @@ function tryCostTransaction(label: string, msgId: string | undefined, run: () =>
 function flushPendingCostEvents(): void {
   while (pendingCostEvents.length > 0) {
     const e = pendingCostEvents[0];
+    if (e.gen !== ledgerGen || (costWindow === 'daily' && e.day !== utcDayKey())) {
+      // Its budget window is gone (a /clear, or the UTC day it belongs to has
+      // closed): charging it now would bill the wrong window.
+      log(`Cost accounting: discarding a pending ${e.label} event from a closed budget window`);
+      pendingCostEvents.shift();
+      continue;
+    }
     if (!tryCostTransaction(e.label, e.msgId, e.run)) return;
     pendingCostEvents.shift();
   }
@@ -1076,12 +1097,30 @@ function flushPendingCostEvents(): void {
 function runCostEvent(label: string, msgId: string | undefined, run: () => void): void {
   flushPendingCostEvents();
   if (pendingCostEvents.length === 0 && tryCostTransaction(label, msgId, run)) return;
-  if (pendingCostEvents.length >= MAX_PENDING_COST_EVENTS) {
-    const dropped = pendingCostEvents.shift();
-    log(`Cost accounting queue full — dropped a pending ${dropped?.label} event`);
-  }
-  pendingCostEvents.push({ label, msgId, run });
+  pendingCostEvents.push({ label, msgId, run, gen: ledgerGen, day: utcDayKey() });
 }
+
+/**
+ * FAIL CLOSED: accounting that cannot commit must not let spend run on. While
+ * any event is still unrecorded the session takes no new work and ends its
+ * stream at the next turn boundary; each poll retries. Immortal groups are
+ * never blocked on spend, so not on its bookkeeping either.
+ */
+function costAccountingHalted(): boolean {
+  if (pendingCostEvents.length === 0 || costImmortal) return false;
+  flushPendingCostEvents();
+  return pendingCostEvents.length > 0;
+}
+
+let lastCostHaltLogAt = 0;
+function logCostHalt(what: string): void {
+  if (Date.now() - lastCostHaltLogAt < 60_000) return;
+  lastCostHaltLogAt = Date.now();
+  log(`Cost accounting: ${pendingCostEvents.length} event(s) not yet recorded (storage failing) — ${what}`);
+}
+
+/** How long a hard-stopped query is still read for accounting-only events (late subagent finals). */
+const COST_STOP_DRAIN_MS = Number(process.env.NANOCLAW_COST_STOP_DRAIN_MS) || 120_000;
 
 /** The open segment, or one opened on the spot (absorbing) when no query start announced it. */
 function currentSegment(): Segment {
@@ -1188,18 +1227,18 @@ function recordMessageCost(event: Extract<ProviderEvent, { type: 'message_usage'
   runCostEvent('message', id, () => applyMessageUsage(id, event));
 }
 
-/** Look a message up in memory, then in its durable ledger row (after a respawn). */
+/** Look a message up in memory, then in its durable ledger rows (after a respawn). */
 function loadChargedMessage(id: string): ChargedMessage | undefined {
   const cached = chargedMessages.get(id);
   if (cached) return cached;
-  const row = getClaudeMessageRow(getOutboundDb(), `claude:${ledgerGen}:${id}`);
+  const row = loadClaudeMessage(getOutboundDb(), `claude:${ledgerGen}:${id}`);
   if (!row) return undefined;
   const e = row.event;
   const entry: ChargedMessage = {
-    // A row without accounting columns predates this version: treat it as another segment's.
+    // Rows without accounting columns predate segments: an unknown, covered segment.
     segId: row.acct?.seg ?? -1,
     epoch: row.acct?.epoch ?? -1,
-    model: e.model,
+    model: row.model,
     cfgModel: row.acct?.cfgModel ?? false,
     usage: {
       input: e.inputTokens,
@@ -1214,6 +1253,86 @@ function loadChargedMessage(id: string): ChargedMessage | undefined {
   return entry;
 }
 
+/** Next id suffix for an append-only correction / residual row (persisted with the spend). */
+function nextLedgerSeq(): number {
+  return ++ledgerAdjSeq;
+}
+
+/** Append one signed Claude ledger row (inside the accounting transaction). */
+function appendClaudeRow(id: string, model: string, v: TokenVec, acct: ClaudeRowAccounting | null): void {
+  recordClaudeRow(
+    getOutboundDb(),
+    claudeVecToEvent(id, model, v),
+    acct,
+    RATE_VERSION,
+    RATE_TABLE,
+    ledgerNow(),
+    ledgerGen,
+  );
+}
+
+/** Record a backstop residual: a token row, or for an unpriced model a dollar adjustment row. */
+function appendResidualRow(seg: Segment, tag: string, r: Residual): void {
+  if (r.unpriced) {
+    recordClaudeRow(
+      getOutboundDb(),
+      {
+        ...claudeVecToEvent(`adj:${process.env.NANOCLAW_SESSION_ID || ''}:${nextLedgerSeq()}`, r.key, zeroVec()),
+        adjustmentUsd: r.usd,
+      },
+      null,
+      RATE_VERSION,
+      RATE_TABLE,
+      ledgerNow(),
+      ledgerGen,
+    );
+  } else {
+    appendClaudeRow(`claude:${ledgerGen}:residual:${seg.id}:${tag}:${r.key}`, r.key, r.tokens, null);
+  }
+}
+
+/**
+ * The call's ledger rows after a report: the first report is the base row;
+ * every later change is a SIGNED correction row — the usage increase, or for a
+ * model correction the old usage taken out under the old model and the full
+ * usage put back under the new one.
+ */
+function appendMessageRows(
+  id: string,
+  prev: ChargedMessage | undefined,
+  entry: ChargedMessage,
+  delta: TokenVec,
+  moved: boolean,
+): void {
+  const acct = { seg: entry.segId, epoch: entry.epoch, cfgModel: entry.cfgModel };
+  const base = `claude:${ledgerGen}:${id}`;
+  if (!prev) {
+    appendClaudeRow(base, entry.model, entry.usage, acct);
+  } else if (moved) {
+    appendClaudeRow(`${base}#${nextLedgerSeq()}`, prev.model, subVec(zeroVec(), prev.usage), acct);
+    appendClaudeRow(`${base}#${nextLedgerSeq()}`, entry.model, entry.usage, acct);
+  } else {
+    appendClaudeRow(`${base}#${nextLedgerSeq()}`, entry.model, delta, acct);
+  }
+}
+
+/** The model a report moves a call to, and whether the call's model is still a configured-model guess. */
+function resolveCallModel(
+  prev: ChargedMessage | undefined,
+  reported: string,
+  final: boolean | undefined,
+): { model: string; cfgModel: boolean } {
+  let model = prev?.model ?? (reported || getConfig().model || '');
+  let cfgModel = prev?.cfgModel ?? !reported;
+  if (reported && (cfgModel || final) && pricingKey(reported) !== pricingKey(model)) {
+    model = reported;
+    cfgModel = false;
+  } else if (reported && cfgModel) {
+    cfgModel = false; // the reported model confirms the guess
+  }
+  return { model, cfgModel };
+}
+
 function applyMessageUsage(id: string, event: Extract<ProviderEvent, { type: 'message_usage' }>): void {
   const seg = currentSegment();
   const incoming = vecFromUsage(event);
@@ -1221,23 +1340,15 @@ function applyMessageUsage(id: string, event: Extract<ProviderEvent, { type: 'me
   const prev = loadChargedMessage(id);
   if (prev?.opaque) return;
   if (prev && prev.segId !== seg.id) {
-    log(`Cost accounting: ignoring a late report for ${id} from an earlier segment`);
+    applyEarlierSegmentReport(id, prev, event, incoming, reported);
     return;
   }
   const isNew = !prev;
   const isOld = isNew ? isLateFirstReport(event, seg) : prev.epoch < seg.epoch;
   const prevUsage = prev?.usage ?? zeroVec();
-  const prevModel = prev?.model ?? '';
   const merged = isNew ? incoming : mergeUsage(prevUsage, incoming);
-  let model = prev?.model ?? (reported || getConfig().model || '');
-  let cfgModel = prev?.cfgModel ?? !reported;
-  if (reported && (cfgModel || event.final) && pricingKey(reported) !== pricingKey(model)) {
-    model = reported;
-    cfgModel = false;
-  } else if (reported && cfgModel) {
-    cfgModel = false; // the reported model confirms the guess
-  }
-  const moved = !isNew && pricingKey(model) !== pricingKey(prevModel);
+  const { model, cfgModel } = resolveCallModel(prev, reported, event.final);
+  const moved = !isNew && pricingKey(model) !== pricingKey(prev.model);
   const delta = subVec(merged, prevUsage);
   if (!isNew && !moved && isZeroVec(delta) && cfgModel === prev.cfgModel) return; // a repeated block
 
@@ -1245,15 +1356,23 @@ function applyMessageUsage(id: string, event: Extract<ProviderEvent, { type: 'me
   const m = segmentModel(seg, key);
   let claimed: TokenVec;
   let usd: number;
+  const resettled: Residual[] = [];
   if (moved) {
-    // The call was charged under another model: take it out of that bucket
-    // (and its dollars), then charge its full usage under the real one.
-    const om = segmentModel(seg, pricingKey(prevModel));
+    // Charged under another model: take it out of that bucket (and its dollars),
+    // then charge its full usage under the real one.
+    const oldKey = pricingKey(prev.model);
+    const om = segmentModel(seg, oldKey);
     om.p = subVec(om.p, prevUsage);
     m.p = addVec(m.p, merged);
     const c = isOld ? consumeCredit(m, merged) : { charge: merged, consumed: zeroVec() };
     claimed = c.consumed;
-    usd = priceVec(model, c.charge) - priceVec(prevModel, prevUsage);
+    usd = priceVec(model, c.charge) - priceVec(prev.model, prevUsage);
+    // A settled result already let the wrong bucket's P offset its residual:
+    // that offset is owed now, not at some later result that may never come.
+    if (isOld) {
+      const r = resettleModel(seg, oldKey, historicalTtl(claudeBackstop));
+      if (r) resettled.push(r);
+    }
   } else {
     m.p = addVec(m.p, delta);
     const c = isOld ? consumeCredit(m, delta) : { charge: delta, consumed: zeroVec() };
@@ -1279,23 +1398,58 @@ function applyMessageUsage(id: string, event: Extract<ProviderEvent, { type: 'me
   failAt('msg:after-mutate');
 
   if (isNew && priceVec(model, merged) <= 0 && vecTokens(merged) > 0) turnUnpricedCount++;
-  const db = getOutboundDb();
-  upsertClaudeMessageRow(
-    db,
-    claudeVecToEvent(`claude:${ledgerGen}:${id}`, model, merged),
-    { seg: seg.id, epoch: entry.epoch, cfgModel },
-    RATE_VERSION,
-    RATE_TABLE,
-    ledgerNow(),
-    ledgerGen,
-  );
+  appendMessageRows(id, prev, entry, delta, moved);
   failAt('msg:after-ledger-row');
   if (!isZeroVec(claimed)) {
-    // Move exactly the claimed tokens (by field and TTL bucket) out of the
-    // residual rows, so the ledger keeps summing to what was charged.
-    consumeResidualTokens(db, `claude:${ledgerGen}:residual:${seg.id}:`, `:${key}`, claimed, RATE_TABLE);
+    // The claimed tokens leave the residual — exactly these fields and TTL
+    // buckets — as a negative residual row, so the ledger sums to the charge.
+    appendClaudeRow(
+      `claude:${ledgerGen}:residual:${seg.id}:c${nextLedgerSeq()}:${key}`,
+      key,
+      subVec(zeroVec(), claimed),
+      null,
+    );
+  }
+  for (const r of resettled) {
+    appendResidualRow(seg, `r${nextLedgerSeq()}`, r);
+    usd += r.usd;
   }
   failAt('msg:after-residual');
+  turnMessageCostUsd += usd;
+  applySignedCost(usd);
+  failAt('msg:after-spend');
+}
+
+/**
+ * A report for a call charged by an EARLIER segment (another Claude Code
+ * process — e.g. a SubagentStop re-fired after a respawn). If a result that
+ * segment committed came after the call was first seen, that settlement owned
+ * it: ignore. If the process died before any result covered it, the call's
+ * final was never paid by anyone and the current segment's restored totals
+ * do not contain it: top it up directly, outside any segment's buckets.
+ */
+function applyEarlierSegmentReport(
+  id: string,
+  prev: ChargedMessage,
+  event: Extract<ProviderEvent, { type: 'message_usage' }>,
+  incoming: TokenVec,
+  reported: string,
+): void {
+  if (coveredByClosedSegment(claudeBackstop, prev.segId, prev.epoch)) {
+    log(`Cost accounting: a late report for ${id} was covered by its own process's settlement — ignored`);
+    return;
+  }
+  const merged = mergeUsage(prev.usage, incoming);
+  const { model, cfgModel } = resolveCallModel(prev, reported, event.final);
+  const moved = pricingKey(model) !== pricingKey(prev.model);
+  const delta = subVec(merged, prev.usage);
+  if (!moved && isZeroVec(delta)) return;
+  const entry: ChargedMessage = { ...prev, model, cfgModel, usage: merged };
+  chargedMessages.set(id, entry);
+  failAt('msg:after-mutate');
+  appendMessageRows(id, prev, entry, delta, moved);
+  failAt('msg:after-ledger-row');
+  const usd = priceVec(model, merged) - priceVec(prev.model, prev.usage);
   turnMessageCostUsd += usd;
   applySignedCost(usd);
   failAt('msg:after-spend');
@@ -1305,13 +1459,15 @@ function applyMessageUsage(id: string, event: Extract<ProviderEvent, { type: 'me
  * Is a FIRST report for this id about a call the SDK's last turn totals already
  * counted? Only a transcript-sourced report (a subagent's final usage, read at
  * SubagentStop) can be: a live stream event is always newer than the last
- * `result`. Decided by the call's own timestamp; when it has none, assume it was
- * counted — the safe direction (the next settlement re-charges anything this
- * wrongly holds back; nothing can un-charge a double count).
+ * `result`. Decided by the call's own timestamp (compared as an instant, not as
+ * text); when it has none, assume it was counted — the safe direction (the next
+ * settlement re-charges anything this wrongly holds back; nothing can un-charge
+ * a double count).
  */
 function isLateFirstReport(event: Extract<ProviderEvent, { type: 'message_usage' }>, seg: Segment): boolean {
   if (!event.final || seg.lastResultAt === null) return false;
-  if (event.callTs) return event.callTs <= seg.lastResultAt;
+  const callMs = event.callTs ? Date.parse(event.callTs) : NaN;
+  if (Number.isFinite(callMs)) return callMs <= Date.parse(seg.lastResultAt);
   return event.isSubagent;
 }
 
@@ -1324,9 +1480,9 @@ function ledgerNow(): string {
   return new Date().toISOString();
 }
 
-/** A Claude token vector as a ledger row. Mixed split/unsplit cache writes price identically as 5m. */
+/** A Claude token vector (possibly signed) as a ledger row. Unsplit writes beside split ones price as 5m. */
 function claudeVecToEvent(id: string, model: string, v: TokenVec): CostEvent {
-  const split = v.cw5 > 0 || v.cw1h > 0;
+  const split = v.cw5 !== 0 || v.cw1h !== 0;
   return {
     id,
     ts: ledgerNow(),
@@ -1585,36 +1741,12 @@ function applySettlement(
   const outcome = settleSegment(seg, cums, now, historicalTtl(claudeBackstop));
   if (seg.sessionId) saveCheckpoint(claudeBackstop, seg.sessionId, cums, now);
   failAt('settle:after-mutate');
-  const db = getOutboundDb();
   let total = 0;
   for (const r of outcome.residuals) {
     total += r.usd;
-    if (r.unpriced) {
-      // An adjustment row: dollars from the SDK's own cost for a model the rate
-      // table cannot price. Written here (not via the best-effort helper) so a
-      // failure rolls the whole settlement back.
-      const seq = ++ledgerAdjSeq;
-      recordCostEvent(
-        db,
-        {
-          ...claudeVecToEvent(`adj:${process.env.NANOCLAW_SESSION_ID || ''}:${seq}`, r.key, zeroVec()),
-          adjustmentUsd: r.usd,
-        },
-        RATE_VERSION,
-        RATE_TABLE,
-        now,
-        ledgerGen,
-      );
-    } else {
-      recordCostEvent(
-        db,
-        claudeVecToEvent(`claude:${ledgerGen}:residual:${seg.id}:${seg.epoch}:${r.key}`, r.key, r.tokens),
-        RATE_VERSION,
-        RATE_TABLE,
-        now,
-        ledgerGen,
-      );
-    }
+    // Plain inserts inside the settlement's transaction: a failure rolls the
+    // whole settlement back (unpriced models get a dollar adjustment row).
+    appendResidualRow(seg, String(seg.epoch), r);
   }
   failAt('settle:after-ledger');
   if (outcome.absorbed.length) {
@@ -2562,6 +2694,7 @@ export const __costCapTestHooks = {
     costFailPoint = name;
   },
   pendingCostEventCount: (): number => pendingCostEvents.length,
+  costAccountingHalted,
   forgetChargedMessages: (): void => {
     chargedMessages.clear();
   },
@@ -3142,6 +3275,14 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     // rows `pending`, and the ceiling headroom handed to the provider
     // (`maxBudgetUsd`) is computed from a spend figure that includes codex.
     foldCodexCost();
+
+    // Fail closed: an accounting event that could not be recorded holds the
+    // session — no new work — until it commits (retried here every poll).
+    if (costAccountingHalted()) {
+      logCostHalt('not starting new work');
+      await sleep(POLL_INTERVAL_MS);
+      continue;
+    }
 
     // Cost-cap quiesce (NanoClaw #1): after a 'stop' override, take no NEW
     // work — but still process any `cost_override` control rows so a later
@@ -3902,6 +4043,10 @@ export async function processQuery(
           log(`Cost ceiling crossed — not claiming ${newMessages.length} follow-up message(s); leaving them pending`);
           return;
         }
+        if (costAccountingHalted()) {
+          logCostHalt(`not claiming ${newMessages.length} follow-up message(s)`);
+          return;
+        }
 
         // new_session bypass guard: if any arriving task defaults to fresh
         // session (a task kind with no `new_session: false` opt-out), DO NOT
@@ -4070,8 +4215,26 @@ export async function processQuery(
 
   // The current turn's accounting was already settled from its `result`.
   let turnAccountingSettled = false;
+  // After a cost hard stop: the query's input is ended, and the rest of its
+  // stream is read for ACCOUNTING ONLY (a background subagent can still report
+  // its final usage) until it ends or COST_STOP_DRAIN_MS passes.
+  let costDrainOnly = false;
+  let costDrainTimer: ReturnType<typeof setTimeout> | undefined;
   try {
     for await (const event of untilAbandoned(query.events, abandonStream.signal)) {
+      if (costDrainOnly) {
+        touchHeartbeat();
+        if (event.type === 'message_usage') recordMessageCost(event);
+        else if (event.type === 'result' && event.accounting) {
+          foldCodexCost();
+          recordTurnCost({ type: 'usage', ...event.accounting });
+          turnAccountingSettled = true;
+        } else if (event.type === 'usage') {
+          if (turnAccountingSettled) turnAccountingSettled = false;
+          else recordTurnCost(event);
+        }
+        continue;
+      }
       lastEventTime = Date.now();
       // `result` closes a turn; usage events are post-turn accounting; anything
       // else means the SDK is working again.
@@ -4126,14 +4289,32 @@ export async function processQuery(
         // earlier would leave an inbound message claimed, unanswered, and then
         // marked completed by the end-of-batch fallback. Per-turn overshoot is
         // the SDK's `maxBudgetUsd` brake's job, not this check's.
-        if (costCeilingHardStop) {
+        const halted = costAccountingHalted();
+        if (costCeilingHardStop || halted) {
           log(
-            `Cost ceiling $${costCeilingUsd.toFixed(2)} reached — ending stream to ` +
-              `hard-stop (spent=$${costSpentUsd.toFixed(2)})`,
+            halted
+              ? `Cost accounting could not be recorded — ending stream (fail closed)`
+              : `Cost ceiling $${costCeilingUsd.toFixed(2)} reached — ending stream to ` +
+                  `hard-stop (spent=$${costSpentUsd.toFixed(2)})`,
           );
           endedForCommand = true;
           query.end();
-          break;
+          // Charge what the provider already holds, then keep reading the rest
+          // of the stream for accounting only, bounded.
+          for (const ev of query.drainPendingUsage?.() ?? []) {
+            if (ev.type === 'message_usage') recordMessageCost(ev);
+          }
+          costDrainOnly = true;
+          costDrainTimer = setTimeout(() => {
+            if (abandonStream.signal.aborted) return;
+            log(
+              `Hard-stopped query still open after ${COST_STOP_DRAIN_MS / 1000}s of accounting drain — abandoning it`,
+            );
+            abandonStream.abort();
+            query.abort();
+            query.kill?.();
+          }, COST_STOP_DRAIN_MS);
+          continue;
         }
       }
 
@@ -4617,6 +4798,7 @@ export async function processQuery(
   } finally {
     done = true;
     clearInterval(pollHandle);
+    if (costDrainTimer) clearTimeout(costDrainTimer);
     signal?.removeEventListener('abort', onSignalAbort);
   }
 
