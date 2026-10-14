@@ -413,6 +413,15 @@ describe('SubagentStop transcript read — defensive (items 6, 7)', () => {
     // A hook naming another session than its own transcript, or than this query.
     expect(await fire(realFile(), { sessionId: 'sess-forged' })).toHaveLength(0);
     expect(await fire(realFile(), { querySession: 'sess-other-query' })).toHaveLength(0);
+    // The query's own session id cannot vouch for another session's transcript.
+    const otherDir = path.join(projectDir, 'sess-other2', 'subagents');
+    fs.mkdirSync(otherDir, { recursive: true });
+    fs.copyFileSync(realFile(), path.join(otherDir, 'agent-a2d3a5720f1e5a422.jsonl'));
+    expect(
+      await fire(path.join(otherDir, 'agent-a2d3a5720f1e5a422.jsonl'), {
+        transcriptPath: path.join(projectDir, 'sess-other2.jsonl'),
+      }),
+    ).toHaveLength(0);
     // Before the query's init has named its session, nothing is trusted.
     expect(await fire(realFile(), { beforeInit: true })).toHaveLength(0);
     // Both paths of another session agreeing with each other are still not this query's.
