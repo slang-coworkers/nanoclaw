@@ -27,7 +27,10 @@
 #   - Skips step 11 (`slang-review-post-github`); we never post from here.
 
 set -euo pipefail
-export PATH="$HOME/.local/bin:$PATH"
+# ~/.local/bin is the fallback slang-pr-review-runner's install.sh uses when the
+# environment ships no claude CLI; it goes last so the NanoClaw image's
+# /pnpm/claude is the one run (same order as compose-and-run.sh).
+export PATH="$PATH:$HOME/.local/bin"
 
 SKILL_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 REPO_ROOT="${REPO_ROOT:-/workspace/agent/slang}"
