@@ -13,6 +13,7 @@ import { getUndeliveredMessages } from './db/messages-out.js';
 import { setCostCap } from './db/session-state.js';
 import { __setConfigForTest, type RunnerConfig } from './config.js';
 import { __costCapTestHooks as H, runPollLoop } from './poll-loop.js';
+import { claudeRuntimeContract } from './provider-contracts/claude.js';
 import type { AgentProvider, AgentQuery, ProviderEvent, QueryInput } from './providers/types.js';
 
 type Script = (q: { ended: () => boolean; pushes: string[] }) => AsyncGenerator<ProviderEvent>;
@@ -20,6 +21,7 @@ type Script = (q: { ended: () => boolean; pushes: string[] }) => AsyncGenerator<
 /** A provider whose Nth query runs scripts[N], recording each query's input and pushes. */
 class ScriptedProvider implements AgentProvider {
   inputs: QueryInput[] = [];
+  createdAt: number[] = [];
   pushes: string[][] = [];
   constructor(private scripts: Script[]) {}
   registerMemorySessionHook(): boolean {
@@ -31,6 +33,7 @@ class ScriptedProvider implements AgentProvider {
   query(input: QueryInput): AgentQuery {
     const n = this.inputs.length;
     this.inputs.push(input);
+    this.createdAt.push(Date.now());
     const pushes: string[] = [];
     this.pushes.push(pushes);
     let closed = false;
@@ -71,6 +74,7 @@ function cfg(): RunnerConfig {
 
 let savedState: ReturnType<typeof H.getState>;
 let savedCodexHome: string | undefined;
+let savedGateState: string | undefined;
 let codexHome: string;
 
 beforeEach(() => {
@@ -78,6 +82,8 @@ beforeEach(() => {
   savedCodexHome = process.env.CODEX_HOME;
   codexHome = fs.mkdtempSync(path.join(os.tmpdir(), 'stale-budget-loop-codex-'));
   process.env.CODEX_HOME = codexHome; // the poll-boundary codex fold scans an empty dir
+  savedGateState = process.env.ROUTING_GATE_STATE_PATH;
+  process.env.ROUTING_GATE_STATE_PATH = path.join(codexHome, 'workflow-state.json');
   savedState = H.getState();
   __setConfigForTest(cfg());
   setCostCap({
@@ -104,6 +110,8 @@ afterEach(() => {
   __setConfigForTest(null);
   if (savedCodexHome === undefined) delete process.env.CODEX_HOME;
   else process.env.CODEX_HOME = savedCodexHome;
+  if (savedGateState === undefined) delete process.env.ROUTING_GATE_STATE_PATH;
+  else process.env.ROUTING_GATE_STATE_PATH = savedGateState;
   fs.rmSync(codexHome, { recursive: true, force: true });
   closeSessionDb();
 });
@@ -157,22 +165,39 @@ async function* holdOpen(ended: () => boolean): AsyncGenerator<ProviderEvent> {
   while (!ended()) await new Promise((r) => setTimeout(r, 10));
 }
 
+/** Claude delivers mid-turn: a reply is a `text` event; the `result` repeats it and never delivers. */
+function* reply(text: string): Generator<ProviderEvent> {
+  yield { type: 'text', text };
+  yield { type: 'result', text };
+}
+
 async function runLoop(provider: ScriptedProvider, body: () => Promise<void>): Promise<void> {
   const controller = new AbortController();
+  let settledEarly: unknown = null;
   const loop = runPollLoop({
     provider,
+    providerContract: claudeRuntimeContract, // production Claude: mid-turn-complete delivery
     providerName: 'claude',
     cwd: '/tmp',
     signal: controller.signal,
     activePollIntervalMs: 10,
   });
-  loop.catch(() => {});
+  const settled = loop.then(
+    () => 'settled',
+    (err) => {
+      if (!controller.signal.aborted) settledEarly = err ?? new Error('loop rejected');
+      return 'settled';
+    },
+  );
   try {
     await body();
+    if (settledEarly) throw settledEarly;
   } finally {
     controller.abort();
-    await Promise.race([loop.catch(() => {}), new Promise((r) => setTimeout(r, 3000))]);
   }
+  // The loop must actually stop, so it can never poll a later test's database.
+  const outcome = await Promise.race([settled, new Promise((r) => setTimeout(() => r('still running'), 5000))]);
+  expect(outcome).toBe('settled');
 }
 
 describe('runPollLoop: a ceiling change reaches the next query', () => {
@@ -185,12 +210,12 @@ describe('runPollLoop: a ceiling change reaches the next query', () => {
       const provider = new ScriptedProvider([
         async function* ({ ended }) {
           yield { type: 'init', continuation: 'sess-1' };
-          yield { type: 'result', text: '<message to="discord-test">reply 1</message>' };
+          yield* reply('<message to="discord-test">reply 1</message>');
           yield* holdOpen(ended);
         },
         async function* ({ ended }) {
           yield { type: 'init', continuation: 'sess-1' };
-          yield { type: 'result', text: '<message to="discord-test">reply 2</message>' };
+          yield* reply('<message to="discord-test">reply 2</message>');
           yield* holdOpen(ended);
         },
       ]);
@@ -214,6 +239,57 @@ describe('runPollLoop: a ceiling change reaches the next query', () => {
   }
 });
 
+describe('runPollLoop: a mid-turn gate refusal is still answered before a stale query ends', () => {
+  it('the corrective input (pushed outside the queued turns) finishes; only then does the fresh query start', async () => {
+    insertChat('m1', 'first task', DISCORD);
+    let m2Inserted = false;
+    let endedBeforeCorrection: boolean | undefined;
+    let correctionDoneAt = 0;
+    const provider = new ScriptedProvider([
+      async function* ({ ended, pushes }) {
+        yield { type: 'init', continuation: 'sess-1' };
+        // One block delivers; the other carries a delivery marker without
+        // in_reply_to, so the routing gate refuses it and the runner pushes a
+        // correction straight into the query (not a queued turn).
+        yield {
+          type: 'text',
+          text: '<message to="discord-test">reply 1</message><message to="discord-test">[Resolution] done</message>',
+        };
+        while (!pushes.some((p) => p.includes('chain-routing-gate'))) await new Promise((r) => setTimeout(r, 10));
+        while (!m2Inserted) await new Promise((r) => setTimeout(r, 10)); // ceiling raised, follow-up pending
+        yield { type: 'result', text: null };
+        await new Promise((r) => setTimeout(r, 400)); // many poller ticks with the correction unanswered
+        endedBeforeCorrection = ended();
+        yield* reply('<message to="discord-test" in_reply_to="m1">[Resolution] done</message>');
+        correctionDoneAt = Date.now();
+        yield* holdOpen(ended);
+      },
+      async function* ({ ended }) {
+        yield { type: 'init', continuation: 'sess-1' };
+        yield* reply('<message to="discord-test">reply 2</message>');
+        yield* holdOpen(ended);
+      },
+    ]);
+
+    await runLoop(provider, async () => {
+      await waitFor(() => outTexts().includes('reply 1'), 6000, 'reply 1');
+      insertSetCeiling(72000);
+      await waitFor(() => Math.abs(H.getState().costCeilingUsd - 720) < 1e-6, 6000, 'control applied');
+      insertChat('m2', 'second task', DISCORD);
+      m2Inserted = true;
+      await waitFor(() => outTexts().includes('reply 2'), 10000, 'reply 2');
+    });
+
+    expect(endedBeforeCorrection).toBe(false);
+    expect(outTexts().filter((t) => t === '[Resolution] done')).toHaveLength(1);
+    expect(provider.inputs).toHaveLength(2);
+    expect(provider.createdAt[1]).toBeGreaterThanOrEqual(correctionDoneAt);
+    expect(provider.pushes[0].some((p) => p.includes('second task'))).toBe(false);
+    expect(provider.inputs[1].prompt).toContain('second task');
+    expect(provider.inputs[1].maxBudgetUsd).toBeCloseTo(682.31, 2);
+  }, 30_000);
+});
+
 describe("runPollLoop: the SDK's max-budget stop", () => {
   const stop: ProviderEvent = {
     type: 'result',
@@ -233,7 +309,7 @@ describe("runPollLoop: the SDK's max-budget stop", () => {
       },
       async function* ({ ended }) {
         yield { type: 'init', continuation: 'sess-1' };
-        yield { type: 'result', text: '<message to="discord-test">reply 2</message>' };
+        yield* reply('<message to="discord-test">reply 2</message>');
         yield* holdOpen(ended);
       },
     ]);
@@ -261,7 +337,7 @@ describe("runPollLoop: the SDK's max-budget stop", () => {
       },
       async function* ({ ended }) {
         yield { type: 'init', continuation: 'sess-1' };
-        yield { type: 'result', text: '<message to="discord-test">reply 2</message>' };
+        yield* reply('<message to="discord-test">reply 2</message>');
         yield* holdOpen(ended);
       },
     ]);
