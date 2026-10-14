@@ -5,7 +5,7 @@ import type { ApprovalHandler } from '../approvals/index.js';
 import { routeAgentMessage, type RoutableAgentMessage } from './agent-route.js';
 
 export const applyA2aMessageGate: ApprovalHandler = async ({ session, payload, approval, notify }) => {
-  const { id, platform_id, content, in_reply_to } = payload;
+  const { id, platform_id, content, in_reply_to, thread_id, target_session_id } = payload;
   if (typeof platform_id !== 'string' || !platform_id) {
     await notify('Message approved but the target agent group was missing from the request.');
     log.warn('a2a_message_gate apply: missing target', { sessionId: session.id });
@@ -17,6 +17,14 @@ export const applyA2aMessageGate: ApprovalHandler = async ({ session, payload, a
     platform_id,
     content: typeof content === 'string' ? content : '',
     in_reply_to: typeof in_reply_to === 'string' ? in_reply_to : null,
+    // Replay with the sender's routing inputs, so it resolves exactly as the
+    // held send did. A row held before these were recorded has neither and
+    // replays as before: the sender's own thread, no pin. A pin that is no
+    // longer valid (session closed, deleted, or in another group) is dropped
+    // with a warning by the router, as on a live send, and the replay routes
+    // unpinned on the stored thread — guard checks included.
+    thread_id: typeof thread_id === 'string' ? thread_id : null,
+    target_session_id: typeof target_session_id === 'string' ? target_session_id : null,
   };
 
   // One replay semantics: re-enter the guarded route carrying the approval
