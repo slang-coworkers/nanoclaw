@@ -437,14 +437,12 @@ describe('SubagentStop transcript read — defensive (items 6, 7)', () => {
     ).toHaveLength(0);
   });
 
-  it('a read budget yields the hook; a re-fire continues from the cursor (R3-6)', async () => {
+  it('a read slice yields cooperatively, but the same invocation still reaches EOF (R5b-1)', async () => {
     const big = path.join(subagentDir, 'agent-budget.jsonl');
     const pad = `${JSON.stringify({ type: 'user', pad: 'x'.repeat(1_000_000) })}\n`;
     fs.writeFileSync(big, pad.repeat(6) + fs.readFileSync(realFile(), 'utf8').trimEnd());
-    // 4 MiB budget: the first invocation stops before the record (and never
-    // mistakes its partial carry for the final record).
-    expect(await fire(big, { budgetBytes: 4 * 1024 * 1024 })).toHaveLength(0);
-    expect((await fire(big)).map((e) => e.outputTokens)).toEqual([124]);
+    // 4 MiB slices: SubagentStop is one-shot, so the tail must not wait for a re-fire.
+    expect((await fire(big, { budgetBytes: 4 * 1024 * 1024 })).map((e) => e.outputTokens)).toEqual([124]);
   });
 
   it('reads a transcript of any size completely, in bounded chunks (no size skip)', async () => {

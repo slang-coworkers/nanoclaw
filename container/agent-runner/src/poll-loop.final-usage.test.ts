@@ -729,6 +729,18 @@ describe("round 3 — closing a segment settles it against its session's final c
     expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }), 12);
   });
 
+  it('a cost-state newer for one model but stale for another that charged since: settles and covers nothing', () => {
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 900, out: 10 } }));
+    H.recordMessageCost(call('m2', { output: 7 })); // Opus, after the result
+    resumeQuery({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 1_800, out: 20 } });
+    const paid = priceOf({ output: 100 }) + priceOf({ input: 900, output: 10 }, HAIKU) + priceOf({ output: 7 });
+    expect(spent()).toBeCloseTo(paid, 12);
+    H.recordMessageCost(call('m2', { output: 30 }, { final: true })); // still topped up, never ignored
+    expect(spent()).toBeCloseTo(paid + priceOf({ input: 0, output: 23 }), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+
   it('a cost-state EQUAL to the last result, with a call after it, is stale: settles and covers nothing (R4-3)', () => {
     H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
     H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } }));
@@ -927,32 +939,35 @@ describe('round 4 — startup recovery and the segment-start gate', () => {
     expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }), 12);
   });
 
-  it('a query never starts without a durable segment: the runner gives the batch back (R4-1)', async () => {
-    const prev = process.env.NANOCLAW_COST_SEGMENT_RETRY_MS;
-    process.env.NANOCLAW_COST_SEGMENT_RETRY_MS = '20';
-    getInboundDb()
-      .prepare(
-        `INSERT INTO messages_in (id, kind, timestamp, status, content, seq) VALUES ('s1','chat',?, 'pending', ?, 2)`,
-      )
-      .run(new Date().toISOString(), JSON.stringify({ sender: 'admin', text: 'hi' }));
-    const provider = providerWithFinal(null, () => null);
-    let started = false;
-    provider.query = () => {
-      started = true;
-      throw new Error('must not start');
-    };
-    H.setFailPoint('segment:after-start');
-    try {
-      await expect(runPollLoop({ provider, providerName: 'claude', cwd: '/tmp' })).rejects.toThrow(
-        'the query segment could not be recorded',
-      );
-    } finally {
-      H.setFailPoint(undefined);
-      if (prev === undefined) delete process.env.NANOCLAW_COST_SEGMENT_RETRY_MS;
-      else process.env.NANOCLAW_COST_SEGMENT_RETRY_MS = prev;
-    }
-    expect(started).toBe(false);
-  });
+  for (const immortal of [false, true]) {
+    it(`a query never starts without a durable segment: the runner gives the batch back (R4-1${immortal ? ', immortal too' : ''})`, async () => {
+      if (immortal) __setConfigForTest(cfg({ immortal: true }));
+      const prev = process.env.NANOCLAW_COST_SEGMENT_RETRY_MS;
+      process.env.NANOCLAW_COST_SEGMENT_RETRY_MS = '20';
+      getInboundDb()
+        .prepare(
+          `INSERT INTO messages_in (id, kind, timestamp, status, content, seq) VALUES ('s1','chat',?, 'pending', ?, 2)`,
+        )
+        .run(new Date().toISOString(), JSON.stringify({ sender: 'admin', text: 'hi' }));
+      const provider = providerWithFinal(null, () => null);
+      let started = false;
+      provider.query = () => {
+        started = true;
+        throw new Error('must not start');
+      };
+      H.setFailPoint('segment:after-start');
+      try {
+        await expect(runPollLoop({ provider, providerName: 'claude', cwd: '/tmp' })).rejects.toThrow(
+          'the query segment could not be recorded',
+        );
+      } finally {
+        H.setFailPoint(undefined);
+        if (prev === undefined) delete process.env.NANOCLAW_COST_SEGMENT_RETRY_MS;
+        else process.env.NANOCLAW_COST_SEGMENT_RETRY_MS = prev;
+      }
+      expect(started).toBe(false);
+    });
+  }
 });
 
 describe('round 2 — fail closed, window stamps, model move, timestamps, daily rows, hard-stop drain', () => {

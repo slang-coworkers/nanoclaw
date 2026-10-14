@@ -531,13 +531,18 @@ export function settleClosingSegment(
   fallbackTtl?: 'cw5' | 'cw1h',
 ): { residuals: Residual[]; settled: boolean; skipped: string[] } {
   const out = { residuals: [] as Residual[], settled: false, skipped: [] as string[] };
-  const advanced = Object.entries(cums).some(([key, c]) => {
-    const m = seg.models[key];
-    const before = m ? (m.lastCum ?? m.base) : seg.baseSource === 'absorb' && seg.epoch === 0 ? null : zeroCum();
-    if (!before || decreased(c, before, isPricedKey(key))) return false;
-    return isPricedKey(key) ? CUM_TOKEN_FIELDS.some((f) => c[f] > before[f]) : c.costUsd > before.costUsd;
-  });
-  if (!advanced) return out;
+  const advancedKeys = Object.entries(cums)
+    .filter(([key, c]) => {
+      const m = seg.models[key];
+      const before = m ? (m.lastCum ?? m.base) : seg.baseSource === 'absorb' && seg.epoch === 0 ? null : zeroCum();
+      if (!before || decreased(c, before, isPricedKey(key))) return false;
+      return isPricedKey(key) ? CUM_TOKEN_FIELDS.some((f) => c[f] > before[f]) : c.costUsd > before.costUsd;
+    })
+    .map(([key]) => key);
+  // Every model that charged calls since its last settlement must be newer too;
+  // otherwise the state is stale for that model and nothing may be covered.
+  const active = Object.entries(seg.models).filter(([, m]) => FIELDS.some((f) => m.p[f] > m.pAtLastResult[f]));
+  if (advancedKeys.length === 0 || active.some(([key]) => !advancedKeys.includes(key))) return out;
   for (const [key, c] of Object.entries(cums)) {
     const m = segmentModel(seg, key);
     if (!m.base || (m.lastCum && decreased(c, m.lastCum, isPricedKey(key)))) {

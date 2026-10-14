@@ -283,10 +283,9 @@ const SUBAGENT_READ_CHUNK_BYTES = 4 * 1024 * 1024;
 /** A single JSONL line longer than this is skipped (logged), not buffered. */
 const SUBAGENT_MAX_LINE_BYTES = 16 * 1024 * 1024;
 /**
- * What one hook invocation may read before it yields: the SDK awaits the hook,
- * so an enormous transcript must not hold the turn. The rest is read by a
- * re-fired hook (the cursor is kept), and the subagent's calls are in the turn's
- * cumulative `modelUsage` either way — the backstop settles what is not read.
+ * Work per cooperative read slice. SubagentStop is not guaranteed to re-fire, so
+ * one invocation must reach EOF; it yields to the event loop between slices so an
+ * enormous transcript never starves the runner.
  */
 const SUBAGENT_READ_BUDGET_BYTES = Number(process.env.NANOCLAW_SUBAGENT_READ_BUDGET_BYTES) || 256 * 1024 * 1024;
 const SUBAGENT_READ_BUDGET_MS = 10_000;
@@ -336,8 +335,8 @@ export function validateSubagentTranscriptPath(p: string, projectsRoot: string, 
  * `agent-*.jsonl` in that session's subagents directory; it is opened without
  * following a symlink and the open descriptor must be the file validated (same
  * device and inode, and on Linux the same resolved path). Read asynchronously
- * in bounded chunks — never whole — and incrementally (a re-fired hook reads
- * only appended lines), up to a per-invocation byte/time budget. The
+ * in bounded chunks — never whole — to EOF, yielding to the event loop between
+ * slices, and incrementally (a re-fired hook reads only appended lines). The
  * transcript is complete when the hook fires, so a final record without a
  * trailing newline is parsed too. Every failure is logged and swallowed:
  * accounting must never break a turn, and whatever is not read here is in the
@@ -381,16 +380,14 @@ export function createSubagentUsageHook(
       }
       const buf = Buffer.alloc(Math.min(SUBAGENT_READ_CHUNK_BYTES, Math.max(1, st.size - cur.offset)));
       const budgetBytes = opts.budgetBytes ?? SUBAGENT_READ_BUDGET_BYTES;
-      const startOffset = cur.offset;
-      const startedAt = Date.now();
+      let sliceOffset = cur.offset;
+      let sliceStartedAt = Date.now();
       while (cur.offset < st.size) {
-        if (cur.offset - startOffset >= budgetBytes || Date.now() - startedAt >= SUBAGENT_READ_BUDGET_MS) {
-          log(
-            `subagent usage: ${real} read budget reached at byte ${cur.offset} of ${st.size} — the rest is ` +
-              `settled from the turn's cumulative usage`,
-          );
+        if (cur.offset - sliceOffset >= budgetBytes || Date.now() - sliceStartedAt >= SUBAGENT_READ_BUDGET_MS) {
           subagentReadCursors.set(real, cur);
-          return {};
+          await new Promise<void>((resolve) => setTimeout(resolve, 0));
+          sliceOffset = cur.offset;
+          sliceStartedAt = Date.now();
         }
         const { bytesRead } = await fh.read(buf, 0, Math.min(buf.length, st.size - cur.offset), cur.offset);
         if (bytesRead <= 0) break;

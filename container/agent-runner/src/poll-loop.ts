@@ -3611,10 +3611,15 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
         // FAIL CLOSED: no API call starts without a durable accounting segment —
         // a query whose segment is lost with this process could never be
         // settled. Retry briefly (a transient lock), then give the batch back:
-        // the runner exits, and the next one clears its processing acks.
+        // the runner exits, and the next one clears its processing acks. This
+        // holds for immortal groups too: it is bookkeeping integrity, not spend.
+        const unrecorded = () => {
+          flushPendingCostEvents();
+          return pendingCostEvents.length > 0;
+        };
         const deadline = Date.now() + costSegmentRetryMs();
-        while (costAccountingHalted() && Date.now() < deadline) await sleep(POLL_INTERVAL_MS);
-        if (costAccountingHalted()) {
+        while (unrecorded() && Date.now() < deadline) await sleep(POLL_INTERVAL_MS);
+        if (unrecorded()) {
           throw new Error('Cost accounting: the query segment could not be recorded — not starting the query');
         }
       }
