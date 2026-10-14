@@ -269,23 +269,43 @@ export type ProviderEvent =
       totalCostUsd: number;
       numTurns: number;
       sessionId: string | null;
+      /**
+       * The SDK's per-model totals (`result.modelUsage`): every call through the
+       * query pipeline — main loop, Task subagents, compaction, Claude Code's
+       * helper calls. CUMULATIVE per SDK session (across turns, and restored on
+       * resume), so a consumer must difference it. Absent when the provider has
+       * none. The token fields above are main-loop-only and per turn.
+       */
+      modelUsage?: Record<
+        string,
+        {
+          inputTokens?: number;
+          outputTokens?: number;
+          cacheReadInputTokens?: number;
+          cacheCreationInputTokens?: number;
+          costUSD?: number;
+        }
+      >;
+      /** The turn's `result` was an error (e.g. `error_max_budget_usd`, a crash). */
+      isError?: boolean;
     }
   /**
-   * PER-MESSAGE usage — one per assistant message the provider streams, carrying
-   * that message's OWN `usage` and the wire id that identifies it.
+   * PER-MESSAGE usage — one per report of an API call's usage, carrying the
+   * wire id that identifies the call.
    *
-   * This is the cost-cap's primary accounting basis (issue #1327). The
-   * end-of-turn `usage` event above is NOT a safe basis: the underlying stream
+   * This is the cost-cap's primary accounting basis (issue #1327). The stream
    * emits one assistant message per CONTENT BLOCK (thinking / text / tool_use
    * are separate messages) and every block of one API response repeats the same
-   * `message.id` AND the same message-level `usage`. Measured on real prod
-   * transcripts, summing those without deduplication double- to triple-counts
-   * (1.7x–2.8x; the reported session ran 2.1x over its true cost and enforced
-   * its ceiling that much too early).
+   * `message.id` and the same usage — the `message_start` SNAPSHOT, whose
+   * `output_tokens` is only what was generated before the first block closed.
+   * The call's FINAL usage arrives later as a second report for the same id
+   * (`final: true`): from the stream's `message_delta` for the main thread, and
+   * from the subagent transcript (`SubagentStop`) for a Task subagent.
    *
-   * `messageId` is the dedup key. A consumer MUST ignore a repeat of an id it
-   * already charged, and MUST NOT charge an event whose id is null (it cannot be
-   * deduplicated) — see `recordMessageCost` in poll-loop.ts.
+   * `messageId` is the dedup key. A consumer MUST charge an id at most once in
+   * total — the first report, then only the increase a later report adds (see
+   * `recordMessageCost` in poll-loop.ts) — and MUST NOT charge an event whose id
+   * is null (it cannot be deduplicated).
    *
    * `model` is the model that actually served THIS message, which is not
    * necessarily the configured one (fallback model, a subagent on a cheaper
@@ -306,6 +326,14 @@ export type ProviderEvent =
       ephemeral5mInputTokens: number;
       /** True when this message was produced by a Task-tool subagent. */
       isSubagent: boolean;
+      /** This report carries the call's FINAL usage (not the block snapshot). */
+      final?: boolean;
+      /**
+       * When the call completed, if the source knows (a transcript entry's
+       * timestamp). Used only to tell whether the SDK's turn totals already
+       * counted a call first reported after that turn's result.
+       */
+      callTs?: string;
     }
   /**
    * A genuine assistant message the provider could NOT attach per-message

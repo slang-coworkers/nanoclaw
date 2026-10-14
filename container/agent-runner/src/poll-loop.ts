@@ -40,6 +40,8 @@ import {
   setCurrentReplyRoute,
   getCostCap,
   setCostCap,
+  getClaudeBackstop,
+  setClaudeBackstop,
   setCostControlProtocol,
   setCodexChild,
   commitCostCeilingAdjustmentOutcome,
@@ -56,8 +58,34 @@ import { priceUsage } from './pricing.js';
 import { MISSING_DAY_KEY, ledgerKey, scanCodexRollouts } from './codex-cost.js';
 // #65 durable cost ledger — DUAL-RUN (additive; writes cost_events alongside the
 // live counter, changes no enforcement).
-import { createCostEventsTable, recordCostEvent, sumWindow } from './cost-events.js';
-import { claudeMessageToEvent, codexCallToEvent } from './cost-events-integration.js';
+import {
+  consumeResidualTokens,
+  createCostEventsTable,
+  recordCostEvent,
+  sumWindow,
+  upsertCostEventTokens,
+  type CostEvent,
+} from './cost-events.js';
+import {
+  addVec,
+  consumeCredit,
+  cumFromModelUsage,
+  isZeroCum,
+  isZeroVec,
+  mergeUsage,
+  modelState,
+  newBackstopState,
+  priceVec,
+  pricingKey,
+  settleResult,
+  subVec,
+  vecFromUsage,
+  vecTokens,
+  zeroVec,
+  type ClaudeBackstopState,
+  type TokenVec,
+} from './claude-usage.js';
+import { codexCallToEvent } from './cost-events-integration.js';
 import { RATE_TABLE, RATE_VERSION } from './cost-rate-table.js';
 import { getOutboundDb } from './mailbox/sqlite/connection.js';
 import {
@@ -219,22 +247,38 @@ let costEpisodeId: string | undefined;
 // genuine message instead). Cleared on consumption and on a fresh session.
 let pendingCostNudge: string | undefined;
 
-// --- Per-message Claude accounting (issue #1327) -----------------------------
+// --- Per-message Claude accounting (issue #1327, final-usage fix) -------------
 //
-// Wire message ids already charged. The provider emits ONE assistant message per
-// content block and every block of an API response repeats the same id and the
-// same message-level usage, so without this set the same response is charged
-// two to three times (measured 1.7x–2.8x on real prod transcripts).
+// What each wire message id has been charged so far. The provider reports one
+// call several times: once per content block (all repeating the message_start
+// SNAPSHOT — final input/cache, partial output) and then once more with the
+// FINAL usage (stream `message_delta`, or a subagent transcript). The first
+// report is charged in full; every later one only for the increase. Charging
+// the first report alone — the #1327 behaviour — kept ~1% of output tokens
+// (prod 2026-10: a call recorded as 8 output tokens that the transcript and the
+// gateway both record as 8,178). See claude-usage.ts.
 //
 // In-memory and EXACT — no eviction. An LRU would re-charge an evicted id, and
 // under-enforcement by memory is not a trade worth making at this scale
 // (~850 ids for a 17MB, week-long transcript). It is not persisted because a
 // resumed stream does not re-emit historical assistant messages: `SDKMessage`
 // has a replay variant for USER messages (`SDKUserMessageReplay`) and none for
-// assistant ones, and the observed inflation on a 48-resume session was ~2.1x —
-// the block-duplication factor — not the ~24x whole-history replay would give.
-// Cleared only when the spend window itself resets.
-const seenMessageIds = new Set<string>();
+// assistant ones, and a final report always arrives in the same process as its
+// snapshot. Cleared only when the spend window itself resets.
+interface ChargedMessage {
+  model: string;
+  /** Best-known usage of the call (what has been charged for it). */
+  usage: TokenVec;
+  /** `claudeBackstop.epoch` when first seen — older than the current epoch = the SDK's totals already counted it. */
+  epoch: number;
+  /** Seeded by a test with unknown usage: never charge it again. */
+  opaque?: boolean;
+}
+const chargedMessages = new Map<string, ChargedMessage>();
+// Per-SDK-session accounting against the result's cumulative `modelUsage`
+// (claude-usage.ts): per-message tokens, unclaimed backstop credit, baseline.
+// Persisted under its own session_state key so a respawn keeps the baseline.
+let claudeBackstop: ClaudeBackstopState = newBackstopState(0, null, true);
 // Per-turn accounting state, reset at every aggregate `usage` event. Explicit
 // counters rather than "did we charge anything": `recordTurnCost` has to tell a
 // provider that emits no per-message usage from one whose messages were all
@@ -343,12 +387,17 @@ const LEDGER_BASELINE_GEN = -1;
 const LEDGER_BASELINE_VERSION = 1;
 
 /**
- * Cost-accounting schema generation stamped into the persisted state. Bumped by
- * #1327: v1 summed the provider's end-of-turn aggregate once per query() call
- * (block-duplicated, 1.7x–2.8x over), v2 sums per assistant message deduped by
- * wire id and folds codex tool spend.
+ * Cost-accounting schema generation stamped into the persisted state.
+ *  - v1 charged the provider's end-of-turn figures once per query() call; the
+ *    SDK's `total_cost_usd` is cumulative across turns and resumes, so it
+ *    over-counted (#1327: 2.11x on the reported session).
+ *  - v2 (#1327) charged the first content block of each wire id and folded
+ *    codex tool spend. Every block carries the `message_start` snapshot, so v2
+ *    kept ~1% of output tokens and never saw compaction or helper calls.
+ *  - v3 tops each id up to its final usage and settles the rest against the
+ *    SDK's cumulative `modelUsage` (claude-usage.ts).
  */
-const COST_ACCOUNTING_VERSION = 2;
+const COST_ACCOUNTING_VERSION = 3;
 
 /**
  * Set-ceiling control wire-protocol version this runner build speaks (NanoClaw
@@ -533,18 +582,23 @@ function initCostTracking(providerName: string): void {
   ledgerAdjSeq = persisted?.ledgerAdjSeq ?? 0;
   ledgerBaselinePending = persisted?.ledgerBaselinePending ?? false;
   ledgerBaselineVersion = persisted?.ledgerBaselineVersion;
+  claudeBackstop = loadClaudeBackstop();
   if (costWindow === 'daily' && !(persisted?.dayKey === costDayKey)) {
     // A stale day's spend is discarded, so the codex figure attributed to it is
     // too — the ledger keeps the per-day watermarks, this is only the display total.
     codexUsdCharged = 0;
   }
-  if (persisted && (persisted.accountingVersion ?? 1) < COST_ACCOUNTING_VERSION) {
+  const persistedVersion = persisted ? (persisted.accountingVersion ?? 1) : COST_ACCOUNTING_VERSION;
+  if (persistedVersion < COST_ACCOUNTING_VERSION) {
     log(
-      `Cost accounting upgraded to v${COST_ACCOUNTING_VERSION} (issue #1327). The persisted ` +
-        `spend of $${costSpentUsd.toFixed(2)} was accumulated by the pre-fix basis, which counted each ` +
-        `API response once per content block (measured 1.7x-2.8x over). It is RETAINED, not rescaled — ` +
-        `the factor is per-session and unknowable, and lowering recorded spend is the unsafe direction. ` +
-        `It clears at the next window reset (UTC rollover for daily, /clear or new_session for lifetime).`,
+      `Cost accounting upgraded v${persistedVersion} -> v${COST_ACCOUNTING_VERSION}. The persisted spend of ` +
+        `$${costSpentUsd.toFixed(2)} was accumulated by the older basis — ` +
+        (persistedVersion < 2
+          ? `v1 charged cumulative SDK totals per turn (over-counted, #1327)`
+          : `v2 charged only each call's start-of-stream snapshot (under-counted output tokens)`) +
+        `. It is RETAINED, not rescaled: the factor is per-session and unknowable, and changing a ` +
+        `recorded spend retroactively could hard-stop or free a live session on deploy. New spend is ` +
+        `exact from here; the window resets at UTC rollover (daily) or /clear / new_session (lifetime).`,
     );
   }
 
@@ -653,10 +707,13 @@ function resetCostForNewSession(): void {
   if (!costEnabled || costWindow !== 'lifetime') return;
   costSpentUsd = 0;
   // A fresh window must not re-charge spend the old one already paid for.
-  // Per-message ids: the new conversation gets new ids, so the set is only
-  // holding memory — drop it. Codex: re-baseline on the next fold so the
-  // rollout files that exist right now are absorbed, not billed again.
-  seenMessageIds.clear();
+  // Per-message ids: the new conversation gets new ids, so the map is only
+  // holding memory — drop it. The SDK-totals backstop restarts ABSORBING: the
+  // first result of the new window treats everything the SDK already counted
+  // as the old window's (paid) history. Codex: re-baseline on the next fold so
+  // the rollout files that exist right now are absorbed, not billed again.
+  chargedMessages.clear();
+  claudeBackstop = newBackstopState(claudeBackstop.epoch, claudeBackstop.sessionId, true);
   resetTurnAccountingState();
   codexLedgerBaselinePending = true;
   codexUsdCharged = 0;
@@ -782,6 +839,14 @@ function buildCostCapState(): CostCapState {
 function persistCostCap(): void {
   if (!costEnabled) return;
   setCostCap(buildCostCapState());
+  setClaudeBackstop(claudeBackstop);
+}
+
+/** Load the persisted backstop, or start absorbing (never charge history we cannot see). */
+function loadClaudeBackstop(): ClaudeBackstopState {
+  const raw = getClaudeBackstop() as ClaudeBackstopState | undefined;
+  if (raw && raw.v === 1 && typeof raw.epoch === 'number' && raw.models && typeof raw.models === 'object') return raw;
+  return newBackstopState(0, null, true);
 }
 
 /**
@@ -877,55 +942,40 @@ function applyCostDelta(delta: number): void {
 }
 
 /**
- * Price ONE streamed assistant message and accrue it — the cost cap's primary
- * basis since #1327.
+ * Price ONE report of an API call's usage and accrue it — the cost cap's
+ * primary basis since #1327.
  *
  * WHY PER MESSAGE, AND WHY DEDUPED. The provider stream emits one assistant
  * message per CONTENT BLOCK (thinking / text / tool_use are separate messages),
  * and every block of one API response repeats the same wire `message.id` AND the
- * same message-level `usage`. Summing the end-of-turn aggregate instead
- * double- to triple-counted: measured across 8 real prod transcripts the
- * non-deduped sum ran 1.7x–2.8x the deduped one, and the session that motivated
- * the issue carried a live counter of $166.00 against a true $78.69 — so its
- * ceiling fired at less than half the spend it was configured for. Deduping by
- * `message.id` reproduces, to the cent, the figure the dashboard's transcript
- * scanner already computes (`dashboard/server.ts` `scanFileCost`), which is the
- * number a human sees and the one reconciled against ccusage.
+ * same usage. Charging every block double- to triple-counted (#1327: measured
+ * 1.7x–2.8x), so an id is charged once.
+ *
+ * WHY TOPPED UP. That repeated usage is the `message_start` SNAPSHOT: input and
+ * cache fields are final, `output_tokens` is not. The provider reports the
+ * call's FINAL usage as a later event for the same id (`final: true`), and only
+ * the increase over what was already charged is added here. Before this, the
+ * first block's snapshot was the whole charge, and the ledger kept ~1% of output
+ * tokens (prod, 2026-10).
+ *
+ * LATE REPORTS. A report for a call the SDK's turn totals already counted (a
+ * background subagent's transcript read after the turn's `result`) first
+ * consumes the backstop credit that `settleClaudeTurn` charged for exactly that
+ * gap, so it is never paid twice.
  *
  * A null id is NOT charged here: without an id the event cannot be deduplicated,
  * so charging it risks re-charging the same API response once per block. It is
- * counted instead, and the end-of-turn fallback settles the residual.
+ * counted instead; the end-of-turn settlement picks it up.
  */
 function recordMessageCost(event: Extract<ProviderEvent, { type: 'message_usage' }>): void {
   if (!costEnabled) return;
   turnSawMessageUsage = true;
 
   if (!event.messageId) {
-    // Undedupable — see the doc comment. `recordTurnCost` picks up the residual.
+    // Undedupable — see the doc comment. The end-of-turn settlement picks up the residual.
     turnMissingIdCount++;
     return;
   }
-  if (seenMessageIds.has(event.messageId)) return;
-  seenMessageIds.add(event.messageId);
-
-  // Prefer the per-TTL cache-write split (authoritative for this fleet, which
-  // runs 1h prompt caching); fall back to the flat cache_creation field only
-  // when no split is reported, matching the dashboard's priceUsage semantics.
-  const hasSplit = event.ephemeral1hInputTokens > 0 || event.ephemeral5mInputTokens > 0;
-  const usage = {
-    input_tokens: event.inputTokens,
-    output_tokens: event.outputTokens,
-    cache_read_input_tokens: event.cacheReadInputTokens,
-    cache_creation_input_tokens: event.cacheCreationInputTokens,
-    ...(hasSplit
-      ? {
-          cache_creation: {
-            ephemeral_1h_input_tokens: event.ephemeral1hInputTokens,
-            ephemeral_5m_input_tokens: event.ephemeral5mInputTokens,
-          },
-        }
-      : {}),
-  };
   // Price by the model that actually served THIS message. Two DISTINCT cases,
   // deliberately not collapsed:
   //   - event.model ABSENT: the provider didn't say which model served the
@@ -934,22 +984,79 @@ function recordMessageCost(event: Extract<ProviderEvent, { type: 'message_usage'
   //   - event.model PRESENT but unpriced: a real, named model the rate table
   //     doesn't know (e.g. a newly-released, possibly pricier model). Repricing
   //     it at the CONFIGURED model's rate would silently bill a new model at an
-  //     old (often cheaper) rate AND mark the turn fully accounted, so the
-  //     aggregate residual never corrects it. Instead count it unpriced and let
-  //     recordTurnCost settle the residual from the SDK's own totalCostUsd,
-  //     which reflects the true rate.
-  const reportedModel = event.model?.trim();
-  const delta = priceUsage(reportedModel || getConfig().model, usage);
-  if (delta <= 0) {
-    const tokens = event.inputTokens + event.outputTokens + event.cacheCreationInputTokens + event.cacheReadInputTokens;
+  //     old (often cheaper) rate AND mark the turn fully accounted. Instead count
+  //     it unpriced and let the end-of-turn settlement charge it from the SDK's
+  //     own cost figure for that model.
+  const incoming = vecFromUsage(event);
+  const prev = chargedMessages.get(event.messageId);
+  if (prev?.opaque) return;
+
+  let entry: ChargedMessage;
+  let delta: TokenVec;
+  let isOld: boolean;
+  if (!prev) {
+    isOld = isLateFirstReport(event);
+    entry = {
+      model: event.model?.trim() || getConfig().model || '',
+      usage: incoming,
+      epoch: isOld ? claudeBackstop.epoch - 1 : claudeBackstop.epoch,
+    };
+    chargedMessages.set(event.messageId, entry);
+    delta = incoming;
+  } else {
+    const merged = mergeUsage(prev.usage, incoming);
+    delta = subVec(merged, prev.usage);
+    if (isZeroVec(delta)) return; // another block repeating the snapshot
+    prev.usage = merged;
+    entry = prev;
+    isOld = prev.epoch < claudeBackstop.epoch;
+  }
+
+  const ms = modelState(claudeBackstop, pricingKey(entry.model));
+  ms.p = addVec(ms.p, delta);
+  const { charge, consumed } = isOld ? consumeCredit(ms, delta) : { charge: delta, consumed: zeroVec() };
+
+  if (priceVec(entry.model, entry.usage) <= 0) {
     // Zero-token messages price to $0 legitimately; only a message that billed
     // tokens with no known rate is a real accounting hole.
-    if (tokens > 0) turnUnpricedCount++;
+    if (!prev && vecTokens(incoming) > 0) turnUnpricedCount++;
+    persistCostCap();
     return;
   }
-  turnMessageCostUsd += delta;
-  applyCostDelta(delta);
-  recordClaudeLedger(event);
+  recordClaudeLedger(event.messageId, entry, consumed);
+  const usd = priceVec(entry.model, charge);
+  if (usd > 0) {
+    turnMessageCostUsd += usd;
+    applyCostDelta(usd);
+  } else {
+    persistCostCap();
+  }
+}
+
+/**
+ * Is a FIRST report for this id about a call the SDK's last turn totals already
+ * counted? Only a transcript-sourced report (a subagent's final usage, read at
+ * SubagentStop) can be: a live stream event is always newer than the last
+ * `result`. Decided by the call's own timestamp; when it has none, assume it was
+ * counted — the safe direction (the next settlement re-charges anything this
+ * wrongly holds back; nothing can un-charge a double count).
+ */
+function isLateFirstReport(event: Extract<ProviderEvent, { type: 'message_usage' }>): boolean {
+  if (!event.final || claudeBackstop.lastResultAt === null) return false;
+  if (event.callTs) return event.callTs <= claudeBackstop.lastResultAt;
+  return event.isSubagent;
+}
+
+/**
+ * The SDK session (Claude continuation) a query runs in — from its `init`.
+ * Switching sessions starts fresh backstop state. Only a query started WITHOUT
+ * resume is known to begin at zero SDK totals; anything else (a resume, a
+ * fork, a /clear mid-query) absorbs its first result's history.
+ */
+function noteClaudeContinuation(sessionId: string, freshQuery: boolean): void {
+  if (!costEnabled || !sessionId || claudeBackstop.sessionId === sessionId) return;
+  claudeBackstop = newBackstopState(claudeBackstop.epoch, sessionId, !freshQuery);
+  persistCostCap();
 }
 
 // ── #65 durable cost ledger — DUAL-RUN writers ─────────────────────────────
@@ -961,18 +1068,53 @@ function recordMessageCost(event: Extract<ProviderEvent, { type: 'message_usage'
 function ledgerNow(): string {
   return new Date().toISOString();
 }
-function recordClaudeLedger(event: Extract<ProviderEvent, { type: 'message_usage' }>): void {
+function recordClaudeLedger(messageId: string, entry: ChargedMessage, consumed: TokenVec): void {
   if (!costEnabled) return;
-  // Same effective model the counter priced (recordMessageCost:
-  // `reportedModel || getConfig().model`), so an absent model reprices at the
-  // configured model in the ledger too (finding 3).
-  const ev = claudeMessageToEvent(event, ledgerNow(), event.model?.trim() || getConfig().model || '', ledgerGen);
-  if (!ev) return; // null-id message — the counter skips it too
   try {
-    recordCostEvent(getOutboundDb(), ev, RATE_VERSION, RATE_TABLE, ledgerNow(), ledgerGen);
+    const db = getOutboundDb();
+    // Same effective model the counter priced, so an absent model reprices at
+    // the configured model in the ledger too (#65 finding 3). One row per call,
+    // rewritten as the usage is topped up to its final value.
+    upsertCostEventTokens(
+      db,
+      claudeVecToEvent(`claude:${ledgerGen}:${messageId}`, entry.model, entry.usage),
+      RATE_VERSION,
+      RATE_TABLE,
+      ledgerNow(),
+      ledgerGen,
+    );
+    // A late final that consumed backstop credit: move those tokens out of the
+    // residual rows so the ledger still sums to exactly what was charged.
+    if (!isZeroVec(consumed)) {
+      consumeResidualTokens(
+        db,
+        `claude:${ledgerGen}:residual:${claudeBackstop.sessionId ?? ''}:`,
+        `:${pricingKey(entry.model)}`,
+        { ...consumed, cacheWrite: consumed.cw5 + consumed.cw1h + consumed.cwFlat },
+        RATE_TABLE,
+      );
+    }
   } catch {
     /* best-effort */
   }
+}
+
+/** A Claude token vector as a ledger row. Mixed split/unsplit cache writes price identically as 5m. */
+function claudeVecToEvent(id: string, model: string, v: TokenVec): CostEvent {
+  const split = v.cw5 > 0 || v.cw1h > 0;
+  return {
+    id,
+    ts: ledgerNow(),
+    provider: 'claude',
+    model,
+    inputTokens: v.input,
+    cacheReadTokens: v.cacheRead,
+    cacheWriteTokens: split ? 0 : v.cwFlat,
+    cacheWrite5mTokens: split ? v.cw5 + v.cwFlat : 0,
+    cacheWrite1hTokens: split ? v.cw1h : 0,
+    outputTokens: v.output,
+    reasoningTokens: 0,
+  };
 }
 /**
  * Persist ONE synthetic ADJUSTMENT row (#65 finding 2): a dollar charge the live
@@ -1076,9 +1218,12 @@ function reconcileLedger(): { ledgerUsd: number; counterUsd: number; delta: numb
 /**
  * End-of-turn settlement for the provider's aggregate `usage` event.
  *
- * Since #1327 this is a FALLBACK, not the primary basis (see
- * `recordMessageCost`). Three cases, decided from explicit per-turn state rather
- * than from "did we charge anything", which conflates far too much:
+ * With `modelUsage` (every current Claude result carries it) this is the
+ * BACKSTOP — see `settleClaudeTurn`. Without it (an older CLI, another
+ * provider) the legacy fallback below runs. Since #1327 neither is the primary
+ * basis (see `recordMessageCost`). The legacy cases, decided from explicit
+ * per-turn state rather than from "did we charge anything", which conflates
+ * far too much:
  *
  *  1. No `message_usage` at all — a provider that reports only an end-of-turn
  *     aggregate. Charge exactly as before: reprice the tokens, and fall back to
@@ -1087,13 +1232,17 @@ function reconcileLedger(): { ledgerUsd: number; counterUsd: number; delta: numb
  *  3. DEGRADED: some message priced, but at least one message was undedupable
  *     (null id), billed tokens at an unknown rate, or arrived with no `usage`
  *     object at all (`noUsage`). Charge the residual `totalCostUsd - <already
- *     charged>` and log it. `totalCostUsd` carries the same block inflation, so
- *     the residual is an over-estimate — deliberately: in a path we cannot
- *     account exactly, erring toward charging more is the money-safe direction,
- *     and silently dropping the unpriced part is not acceptable.
+ *     charged>` and log it. The SDK documents `totalCostUsd` as cumulative
+ *     across turns and resumes, so the residual is an over-estimate — accepted
+ *     only on this legacy path (no `modelUsage`): erring toward charging more is
+ *     the money-safe direction, and silently dropping the unpriced part is not.
  */
 function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void {
   if (!costEnabled) return;
+  if (event.modelUsage && Object.keys(event.modelUsage).length > 0) {
+    settleClaudeTurn(event);
+    return;
+  }
   const sawMessages = turnSawMessageUsage;
   const messageCost = turnMessageCostUsd;
   const unpriced = turnUnpricedCount;
@@ -1110,8 +1259,8 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
   if (sawMessages && unpriced === 0 && missingId === 0 && noUsage === 0) return; // case 2
 
   // The pre-#1327 basis: reprice the turn's aggregate tokens at the configured
-  // model. Block-inflated (that is the bug), so it is an OVER-estimate of the
-  // turn — which is exactly what a degraded path wants as an upper bound.
+  // model. The SDK reports these for the MAIN LOOP only, per turn; repricing
+  // them at the configured model is a rough bound the legacy path accepts.
   const hasSplit = event.ephemeral1hInputTokens > 0 || event.ephemeral5mInputTokens > 0;
   const aggregateUsd = priceUsage(getConfig().model, {
     input_tokens: event.inputTokens,
@@ -1156,6 +1305,78 @@ function recordTurnCost(event: Extract<ProviderEvent, { type: 'usage' }>): void 
   // rows behind them; record the exact charge as an adjustment so the reconcile
   // matches. No-op when nothing was charged.
   recordLedgerAdjustment(delta);
+}
+
+/**
+ * The BACKSTOP: settle a turn against the SDK's own cumulative `modelUsage`.
+ *
+ * The per-message path is exact for every call that reaches the stream, but some
+ * billed calls never do: compaction (the SDK reports it nowhere but here),
+ * Claude Code's helper calls (a Haiku call on most turns), a null-id message, a
+ * model the rate table cannot price. `modelUsage` covers all of them. It is
+ * cumulative per SDK session — across turns of one query and restored from the
+ * transcript on resume — so `settleResult` differences it against a persisted
+ * baseline, and charges only what the per-message path has not
+ * (`max(0, S - P - credit)` per field). Never double-counts the restored
+ * history: see the baseline rules on `settleResult`.
+ *
+ * Replaces the legacy degraded-turn fallback, which charged `totalCostUsd` — a
+ * figure the SDK documents as cumulative across turns and resumes — as if it
+ * were one turn's spend.
+ */
+function settleClaudeTurn(event: Extract<ProviderEvent, { type: 'usage' }>): void {
+  const unpriced = turnUnpricedCount;
+  const missingId = turnMissingIdCount;
+  const noUsage = turnNoUsageCount;
+  resetTurnAccountingState();
+  const cums = cumFromModelUsage(event.modelUsage);
+  // Crash/startup-error results may carry zeroed totals (SDK docs). Settling one
+  // would rebase every model to zero and let the next resumed result re-charge
+  // the whole restored history.
+  if (event.isError && isZeroCum(cums)) {
+    log('Cost backstop: zeroed error result — not settled');
+    return;
+  }
+  if (event.sessionId && claudeBackstop.sessionId !== event.sessionId) {
+    claudeBackstop = newBackstopState(claudeBackstop.epoch, event.sessionId, true);
+  }
+  const residuals = settleResult(claudeBackstop, cums, ledgerNow());
+  let total = 0;
+  for (const r of residuals) {
+    total += r.usd;
+    if (r.unpriced) {
+      recordLedgerAdjustment(r.usd);
+    } else {
+      try {
+        recordCostEvent(
+          getOutboundDb(),
+          claudeVecToEvent(
+            `claude:${ledgerGen}:residual:${claudeBackstop.sessionId ?? ''}:${claudeBackstop.epoch}:${r.key}`,
+            r.key,
+            r.tokens,
+          ),
+          RATE_VERSION,
+          RATE_TABLE,
+          ledgerNow(),
+          ledgerGen,
+        );
+      } catch {
+        /* best-effort */
+      }
+    }
+  }
+  if (total > 0) {
+    log(
+      `Cost backstop: charged $${total.toFixed(4)} the stream did not report ` +
+        `(${residuals.map((r) => `${r.key}${r.unpriced ? ' [sdk cost]' : ''} $${r.usd.toFixed(4)}`).join(', ')})` +
+        (unpriced || missingId || noUsage
+          ? `; ${unpriced} unpriced, ${missingId} id-less, ${noUsage} usage-less message(s)`
+          : ''),
+    );
+    applyCostDelta(total);
+  } else {
+    persistCostCap();
+  }
 }
 
 /**
@@ -2062,6 +2283,7 @@ function applyReconcileOverride(msg: MessageInRow, parsed: CostOverrideContent):
 export const __costCapTestHooks = {
   recordTurnCost,
   recordMessageCost,
+  noteClaudeContinuation,
   noteMessageMissingUsage,
   resetTurnAccountingState,
   foldCodexCost,
@@ -2100,7 +2322,9 @@ export const __costCapTestHooks = {
     ledgerAdjSeq,
     ledgerBaselinePending,
     ledgerBaselineVersion,
-    seenMessageIdCount: seenMessageIds.size,
+    seenMessageIdCount: chargedMessages.size,
+    chargedMessages: Object.fromEntries([...chargedMessages].map(([k, v]) => [k, { ...v, usage: { ...v.usage } }])),
+    claudeBackstop: JSON.parse(JSON.stringify(claudeBackstop)) as ClaudeBackstopState,
     turnSawMessageUsage,
     turnMessageCostUsd,
     turnUnpricedCount,
@@ -2135,6 +2359,7 @@ export const __costCapTestHooks = {
     ledgerBaselinePending?: boolean;
     ledgerBaselineVersion?: number | undefined;
     seenMessageIds?: string[];
+    claudeBackstop?: ClaudeBackstopState;
     turnSawMessageUsage?: boolean;
     turnMessageCostUsd?: number;
     turnUnpricedCount?: number;
@@ -2168,9 +2393,11 @@ export const __costCapTestHooks = {
     if ('ledgerBaselinePending' in p) ledgerBaselinePending = p.ledgerBaselinePending!;
     if ('ledgerBaselineVersion' in p) ledgerBaselineVersion = p.ledgerBaselineVersion;
     if ('seenMessageIds' in p) {
-      seenMessageIds.clear();
-      for (const id of p.seenMessageIds!) seenMessageIds.add(id);
+      chargedMessages.clear();
+      for (const id of p.seenMessageIds!)
+        chargedMessages.set(id, { model: '', usage: zeroVec(), epoch: 0, opaque: true });
     }
+    if ('claudeBackstop' in p) claudeBackstop = JSON.parse(JSON.stringify(p.claudeBackstop)) as ClaudeBackstopState;
     if ('turnSawMessageUsage' in p) turnSawMessageUsage = p.turnSawMessageUsage!;
     if ('turnMessageCostUsd' in p) turnMessageCostUsd = p.turnMessageCostUsd!;
     if ('turnUnpricedCount' in p) turnUnpricedCount = p.turnUnpricedCount!;
@@ -3606,6 +3833,9 @@ export async function processQuery(
 
       if (event.type === 'init') {
         queryContinuation = event.continuation;
+        // The SDK session this query's spend belongs to (cost backstop baseline).
+        if (providerName === 'claude')
+          noteClaudeContinuation(event.continuation, skipPersistContinuation || !initialContinuation);
         // Persist immediately so a mid-turn container crash still lets the
         // next wake resume the conversation. Without this, the session id
         // was only written after the full stream completed — if the

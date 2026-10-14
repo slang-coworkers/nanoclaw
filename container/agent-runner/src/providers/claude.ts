@@ -1,3 +1,5 @@
+import fs from 'fs';
+
 import { query as sdkQuery, type HookCallback, type PreCompactHookInput } from '@anthropic-ai/claude-agent-sdk';
 
 import { clearContainerToolInFlight, setContainerToolInFlight } from '../db/container-state.js';
@@ -70,6 +72,184 @@ export function classifyRateLimitEvent(
   return {
     message: `${outOfCredits ? 'Out of credits' : 'Rate limit'}${window}${detail}`,
     classification: outOfCredits ? 'quota' : 'rate_limit',
+  };
+}
+
+// --- Final per-call usage (cost accounting) ----------------------------------
+//
+// The assistant messages the SDK streams carry the `message_start` usage
+// SNAPSHOT: input and cache fields are final, `output_tokens` is not. Charging
+// that alone kept ~1% of output tokens fleet-wide (prod, 2026-10). The two
+// helpers below recover each call's FINAL usage as a second `message_usage`
+// report (`final: true`) for the same id; poll-loop charges only the increase.
+
+type MessageUsageEvent = Extract<ProviderEvent, { type: 'message_usage' }>;
+
+interface SdkUsageShape {
+  input_tokens?: number | null;
+  output_tokens?: number | null;
+  cache_creation_input_tokens?: number | null;
+  cache_read_input_tokens?: number | null;
+  cache_creation?: { ephemeral_1h_input_tokens?: number | null; ephemeral_5m_input_tokens?: number | null } | null;
+  iterations?: Array<{
+    cache_creation?: { ephemeral_1h_input_tokens?: number | null; ephemeral_5m_input_tokens?: number | null } | null;
+  }> | null;
+}
+
+/** The message a stream is currently on, keyed by `parent_tool_use_id ?? 'main'`. */
+export type StreamHeads = Map<string, { id: string; model?: string; usage: SdkUsageShape }>;
+
+function cacheSplit(u: SdkUsageShape): { h1: number; m5: number } | null {
+  if (
+    u.cache_creation &&
+    (u.cache_creation.ephemeral_1h_input_tokens != null || u.cache_creation.ephemeral_5m_input_tokens != null)
+  ) {
+    return { h1: u.cache_creation.ephemeral_1h_input_tokens ?? 0, m5: u.cache_creation.ephemeral_5m_input_tokens ?? 0 };
+  }
+  const its = (u.iterations ?? []).filter((i) => i?.cache_creation);
+  if (its.length === 0) return null;
+  return {
+    h1: its.reduce((s, i) => s + (i.cache_creation?.ephemeral_1h_input_tokens ?? 0), 0),
+    m5: its.reduce((s, i) => s + (i.cache_creation?.ephemeral_5m_input_tokens ?? 0), 0),
+  };
+}
+
+/**
+ * Track `message_start` and turn a `message_delta` into the call's FINAL usage.
+ *
+ * `message_delta.usage` carries the final `output_tokens`; newer API shapes
+ * repeat input/cache there too, the classic shape does not. Each field takes
+ * the larger of start and delta, so either shape yields the full final usage.
+ * Returns null for every other stream event (and for a delta whose start we
+ * never saw — there is no id to attach it to).
+ */
+export function finalUsageFromStreamEvent(
+  msg: {
+    event?: {
+      type?: string;
+      message?: { id?: string; model?: string; usage?: SdkUsageShape };
+      usage?: SdkUsageShape | null;
+    };
+    parent_tool_use_id?: string | null;
+  },
+  heads: StreamHeads,
+): MessageUsageEvent | null {
+  const ev = msg.event;
+  if (!ev) return null;
+  const key = msg.parent_tool_use_id ?? 'main';
+  if (ev.type === 'message_start') {
+    if (ev.message?.id) heads.set(key, { id: ev.message.id, model: ev.message.model, usage: ev.message.usage ?? {} });
+    return null;
+  }
+  if (ev.type === 'message_stop') {
+    heads.delete(key);
+    return null;
+  }
+  if (ev.type !== 'message_delta' || !ev.usage) return null;
+  const head = heads.get(key);
+  if (!head) return null;
+  const s = head.usage;
+  const d = ev.usage;
+  const split = cacheSplit(d) ?? cacheSplit(s);
+  return {
+    type: 'message_usage',
+    messageId: head.id,
+    model: head.model,
+    inputTokens: Math.max(s.input_tokens ?? 0, d.input_tokens ?? 0),
+    outputTokens: d.output_tokens ?? s.output_tokens ?? 0,
+    cacheCreationInputTokens: Math.max(s.cache_creation_input_tokens ?? 0, d.cache_creation_input_tokens ?? 0),
+    cacheReadInputTokens: Math.max(s.cache_read_input_tokens ?? 0, d.cache_read_input_tokens ?? 0),
+    ephemeral1hInputTokens: split?.h1 ?? 0,
+    ephemeral5mInputTokens: split?.m5 ?? 0,
+    isSubagent: key !== 'main',
+    final: true,
+  };
+}
+
+/** Keep only the token/cost fields of `result.modelUsage` (it also carries context-window metadata). */
+function pickModelUsage(
+  mu: Record<
+    string,
+    {
+      inputTokens?: number;
+      outputTokens?: number;
+      cacheReadInputTokens?: number;
+      cacheCreationInputTokens?: number;
+      costUSD?: number;
+    }
+  >,
+): NonNullable<Extract<ProviderEvent, { type: 'usage' }>['modelUsage']> {
+  const out: NonNullable<Extract<ProviderEvent, { type: 'usage' }>['modelUsage']> = {};
+  for (const [model, u] of Object.entries(mu)) {
+    out[model] = {
+      inputTokens: u.inputTokens ?? 0,
+      outputTokens: u.outputTokens ?? 0,
+      cacheReadInputTokens: u.cacheReadInputTokens ?? 0,
+      cacheCreationInputTokens: u.cacheCreationInputTokens ?? 0,
+      costUSD: u.costUSD ?? 0,
+    };
+  }
+  return out;
+}
+
+/**
+ * FINAL usage of every API call in a subagent transcript (`agent-*.jsonl`).
+ * Claude Code writes each content block as its own line with the call's final
+ * usage; lines repeating one id collapse to one event. Malformed lines and
+ * calls without usage are skipped.
+ */
+export function finalUsageFromTranscript(text: string): MessageUsageEvent[] {
+  const byId = new Map<string, MessageUsageEvent>();
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    let j: { type?: string; timestamp?: string; message?: { id?: string; model?: string; usage?: SdkUsageShape } };
+    try {
+      j = JSON.parse(line);
+    } catch {
+      continue;
+    }
+    const m = j.message;
+    if (j.type !== 'assistant' || !m?.id || !m.usage) continue;
+    const u = m.usage;
+    const split = cacheSplit(u);
+    const ev: MessageUsageEvent = {
+      type: 'message_usage',
+      messageId: m.id,
+      model: m.model,
+      inputTokens: u.input_tokens ?? 0,
+      outputTokens: u.output_tokens ?? 0,
+      cacheCreationInputTokens: u.cache_creation_input_tokens ?? 0,
+      cacheReadInputTokens: u.cache_read_input_tokens ?? 0,
+      ephemeral1hInputTokens: split?.h1 ?? 0,
+      ephemeral5mInputTokens: split?.m5 ?? 0,
+      isSubagent: true,
+      final: true,
+      ...(j.timestamp ? { callTs: j.timestamp } : {}),
+    };
+    const prev = byId.get(m.id);
+    if (!prev || ev.outputTokens >= prev.outputTokens)
+      byId.set(m.id, prev?.callTs && !ev.callTs ? { ...ev, callTs: prev.callTs } : ev);
+  }
+  return [...byId.values()];
+}
+
+/**
+ * `SubagentStop` hook: read the finished subagent's transcript and queue each
+ * call's FINAL usage. A subagent's calls never reach the stream as
+ * `message_delta`, so this is the only place their real output tokens appear
+ * per message. Fails soft — accounting must never break a turn; anything missed
+ * here is still caught by the result's `modelUsage` backstop. The compaction
+ * sidechain also fires this hook, with a transcript path that does not exist.
+ */
+export function createSubagentUsageHook(sink: (e: MessageUsageEvent) => void): HookCallback {
+  return async (input) => {
+    try {
+      const p = (input as { agent_transcript_path?: string }).agent_transcript_path;
+      if (p && fs.existsSync(p)) for (const ev of finalUsageFromTranscript(fs.readFileSync(p, 'utf8'))) sink(ev);
+    } catch (err) {
+      log(`subagent usage read failed: ${err instanceof Error ? err.message : String(err)}`);
+    }
+    return {};
   };
 }
 
@@ -551,6 +731,13 @@ export class ClaudeProvider implements AgentProvider {
     // SIGTERM, then SIGKILL.
     const sdkAbort = new AbortController();
 
+    // Final per-call usage of subagent calls, queued by the SubagentStop hook
+    // (which runs outside the message loop) and drained into the event stream
+    // before the next event — so it is accounted before the turn's `result`
+    // when the subagent finished inside the turn, and on the next event (or at
+    // stream end) when a background subagent finished after it.
+    const pendingUsage: Extract<ProviderEvent, { type: 'message_usage' }>[] = [];
+
     const sdkResult = sdkQuery({
       prompt: stream,
       options: {
@@ -622,6 +809,7 @@ export class ClaudeProvider implements AgentProvider {
           PostToolUse: [{ hooks: [postToolUseHook] }],
           PostToolUseFailure: [{ hooks: [postToolUseHook] }],
           PreCompact: [{ hooks: [createPreCompactHook(this.assistantName)] }],
+          SubagentStop: [{ hooks: [createSubagentUsageHook((e) => pendingUsage.push(e))] }],
         },
       },
     });
@@ -631,13 +819,22 @@ export class ClaudeProvider implements AgentProvider {
     async function* translateEvents(): AsyncGenerator<ProviderEvent> {
       let messageCount = 0;
       let lastStreamActivityAt = 0;
+      const streamHeads: StreamHeads = new Map();
       for await (const message of sdkResult) {
         if (aborted) return;
+        while (pendingUsage.length > 0) yield pendingUsage.shift()!;
 
         // Yield activity for every SDK event so the poll loop knows the agent
         // is working. Deltas arrive per token and carry no content for us, so
-        // they count at most once per second, and not as messages.
+        // they count at most once per second, and not as messages — except a
+        // `message_delta`, which carries the call's FINAL usage (the assistant
+        // messages only ever carry the start-of-stream snapshot).
         if (message.type === 'stream_event') {
+          const finalUsage = finalUsageFromStreamEvent(
+            message as Parameters<typeof finalUsageFromStreamEvent>[0],
+            streamHeads,
+          );
+          if (finalUsage) yield finalUsage;
           const now = Date.now();
           if (now - lastStreamActivityAt < STREAM_ACTIVITY_INTERVAL_MS) continue;
           lastStreamActivityAt = now;
@@ -703,8 +900,10 @@ export class ClaudeProvider implements AgentProvider {
           }
           // PER-MESSAGE usage — the cost cap's accounting basis (issue #1327).
           // One assistant message per content block, all blocks of one API
-          // response repeating the same `message.id` and the same `usage`, so
-          // the consumer dedupes by id; see the ProviderEvent doc comment.
+          // response repeating the same `message.id` and the same usage — the
+          // `message_start` SNAPSHOT (final input/cache, partial output). The
+          // consumer charges the id once and tops it up when the final usage
+          // arrives (stream `message_delta` above, or the SubagentStop hook).
           const mu = asst.message?.usage;
           if (mu) {
             yield {
@@ -756,6 +955,16 @@ export class ClaudeProvider implements AgentProvider {
             duration_ms?: number;
             total_cost_usd?: number;
             num_turns?: number;
+            modelUsage?: Record<
+              string,
+              {
+                inputTokens?: number;
+                outputTokens?: number;
+                cacheReadInputTokens?: number;
+                cacheCreationInputTokens?: number;
+                costUSD?: number;
+              }
+            >;
             usage?: {
               input_tokens?: number;
               output_tokens?: number;
@@ -780,6 +989,8 @@ export class ClaudeProvider implements AgentProvider {
               totalCostUsd: r.total_cost_usd ?? 0,
               numTurns: r.num_turns ?? 0,
               sessionId: r.session_id ?? null,
+              ...(r.modelUsage ? { modelUsage: pickModelUsage(r.modelUsage) } : {}),
+              ...(isError ? { isError: true } : {}),
             };
           }
         } else if (message.type === 'system' && (message as { subtype?: string }).subtype === 'api_retry') {
@@ -849,6 +1060,8 @@ export class ClaudeProvider implements AgentProvider {
           yield { type: 'activity' };
         }
       }
+      // A background subagent that finished after the last SDK message.
+      while (pendingUsage.length > 0) yield pendingUsage.shift()!;
       log(`Query completed after ${messageCount} SDK messages`);
     }
 

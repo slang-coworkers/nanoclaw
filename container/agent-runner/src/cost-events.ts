@@ -238,6 +238,103 @@ export function recordCostEvent(
 }
 
 /**
+ * Insert-or-REPLACE the token fields of one Claude message row. A message is
+ * first written from its block snapshot and later rewritten with its final
+ * usage (the stream's `message_delta`, or a subagent transcript), so the row
+ * always holds the call's best-known tokens — one row per call, never two.
+ * Generation, created_at and any adjustment of an existing row are kept.
+ */
+export function upsertCostEventTokens(
+  db: Database,
+  e: CostEvent,
+  rateVersion: number,
+  table: LiteLLMRateTable,
+  nowIso: string,
+  windowGen = 0,
+): void {
+  if (!recordCostEvent(db, e, rateVersion, table, nowIso, windowGen)) {
+    db.prepare(
+      `UPDATE cost_events SET input_tokens = $input, cache_read_tokens = $cacheRead,
+         cache_write_tokens = $cacheWrite, cache_write_5m_tokens = $cw5, cache_write_1h_tokens = $cw1,
+         output_tokens = $output, priced_usd = $priced + adjustment_usd, rate_version = $rv
+       WHERE id = $id`,
+    ).run({
+      $id: e.id,
+      $input: e.inputTokens,
+      $cacheRead: e.cacheReadTokens,
+      $cacheWrite: e.cacheWriteTokens,
+      $cw5: e.cacheWrite5mTokens,
+      $cw1: e.cacheWrite1hTokens,
+      $output: e.outputTokens,
+      $priced: priceTokens(e, table).usd,
+      $rv: rateVersion,
+    });
+  }
+}
+
+/**
+ * Move tokens OUT of backstop residual rows (`<idPrefix>…<idSuffix>`, newest
+ * first) because a message row now claims them. Keeps the ledger equal to the
+ * counter when a late final usage consumes residual credit instead of being
+ * charged. Returns the tokens actually removed.
+ */
+export function consumeResidualTokens(
+  db: Database,
+  idPrefix: string,
+  idSuffix: string,
+  consume: { input: number; output: number; cacheRead: number; cacheWrite?: number },
+  table: LiteLLMRateTable,
+): { input: number; output: number; cacheRead: number; cacheWrite: number } {
+  const left = { input: consume.input, output: consume.output, cacheRead: consume.cacheRead, cacheWrite: consume.cacheWrite ?? 0 };
+  const removed = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+  const rows = db
+    .prepare(`SELECT * FROM cost_events WHERE id LIKE $like ORDER BY created_at DESC, rowid DESC`)
+    .all({ $like: `${idPrefix}%${idSuffix}` }) as Array<Record<string, unknown>>;
+  for (const row of rows) {
+    if (left.input <= 0 && left.output <= 0 && left.cacheRead <= 0 && left.cacheWrite <= 0) break;
+    const e = rowToEvent(row);
+    const take = {
+      input: Math.min(left.input, e.inputTokens),
+      output: Math.min(left.output, e.outputTokens),
+      cacheRead: Math.min(left.cacheRead, e.cacheReadTokens),
+      cacheWrite: 0,
+    };
+    // Cache writes are one pool across the row's TTL fields.
+    let cw = left.cacheWrite;
+    for (const f of ['cacheWrite5mTokens', 'cacheWrite1hTokens', 'cacheWriteTokens'] as const) {
+      const c = Math.min(cw, e[f]);
+      if (c <= 0) continue;
+      e[f] -= c;
+      cw -= c;
+      take.cacheWrite += c;
+    }
+    if (take.input <= 0 && take.output <= 0 && take.cacheRead <= 0 && take.cacheWrite <= 0) continue;
+    e.inputTokens -= take.input;
+    e.outputTokens -= take.output;
+    e.cacheReadTokens -= take.cacheRead;
+    db.prepare(
+      `UPDATE cost_events SET input_tokens = $input, output_tokens = $output, cache_read_tokens = $cacheRead,
+         cache_write_tokens = $cw, cache_write_5m_tokens = $cw5, cache_write_1h_tokens = $cw1,
+         priced_usd = $priced + adjustment_usd WHERE id = $id`,
+    ).run({
+      $id: e.id,
+      $input: e.inputTokens,
+      $output: e.outputTokens,
+      $cacheRead: e.cacheReadTokens,
+      $cw: e.cacheWriteTokens,
+      $cw5: e.cacheWrite5mTokens,
+      $cw1: e.cacheWrite1hTokens,
+      $priced: priceTokens(e, table).usd,
+    });
+    for (const f of ['input', 'output', 'cacheRead', 'cacheWrite'] as const) {
+      left[f] -= take[f];
+      removed[f] += take[f];
+    }
+  }
+  return removed;
+}
+
+/**
  * Sum the window's spend by RE-PRICING each row's stored tokens at the CURRENT
  * rate snapshot — this is what makes a rate correction reprice history for free.
  *

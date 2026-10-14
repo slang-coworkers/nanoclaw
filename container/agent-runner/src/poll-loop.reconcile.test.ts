@@ -337,7 +337,7 @@ describe('reconcile — preserves an explicit human stop (does not resurrect it)
 });
 
 describe('reconcile — preserves the #1327 accounting version + #65 ledger identity in the persisted blob', () => {
-  it('the committed cost_cap keeps accountingVersion:2 and the ledger identity (not the minimal set-ceiling blob)', () => {
+  it('the committed cost_cap keeps the current accountingVersion and the ledger identity (not the minimal set-ceiling blob)', () => {
     seed({
       costCeilingUsd: 150,
       costBudgetGen: 1,
@@ -356,7 +356,7 @@ describe('reconcile — preserves the #1327 accounting version + #65 ledger iden
       }),
     );
     const blob = getCostCap();
-    expect(blob?.accountingVersion).toBe(2); // NOT dropped -> no spurious re-upgrade log on respawn
+    expect(blob?.accountingVersion).toBe(3); // NOT dropped -> no spurious re-upgrade log on respawn
     expect(blob?.ledgerGen).toBe(4); // #65 identity preserved
     expect(blob?.ledgerBaselineVersion).toBe(1); // NOT re-seeded on respawn
     expect(blob?.protocolVersion).toBe(2);
