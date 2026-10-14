@@ -277,9 +277,35 @@ ALLOWED="$(echo "$ALLOWED" | tr -d '\n' | tr -s ' ' | sed 's/, /,/g')"
 MCP_CONFIG="$(cd "$SKILL_DIR/.." && pwd)/slang-pr-review-runner/prompt-templates/mcp.dryrun.json"
 [ -f "$MCP_CONFIG" ] || { echo "error: dry-run MCP config not found at $MCP_CONFIG (is slang-pr-review-runner installed?)" >&2; exit 1; }
 
+# --- Instruction-file parity ----------------------------------------------
+# Upstream runs the clarity pipeline in a bare checkout, so the inner CLI sees
+# only the checkout's own CLAUDE.md (plus imports) and .claude/skills. Here the
+# worktree lives under the coworker's group directory, and Claude Code also
+# loads CLAUDE.md from every parent directory of the cwd — which would hand the
+# inner reviewer and every subagent it spawns the coworker document at
+# /workspace/agent/CLAUDE.md. Exclude everything above the worktree, nothing
+# inside it. Same computation as slang-pr-review-runner/scripts/
+# claude-md-excludes.sh (Reviewer A); kept inline so this runner does not
+# depend on the sibling skill's version.
+claude_md_excludes() {
+  local dir items=""
+  dir="$(cd "$1" && pwd -P)"
+  dir="$(dirname "$dir")"
+  while :; do
+    for f in CLAUDE.md CLAUDE.local.md .claude/CLAUDE.md; do
+      items="$items,\"${dir%/}/$f\""
+    done
+    [ "$dir" = "/" ] && break
+    dir="$(dirname "$dir")"
+  done
+  printf '{"claudeMdExcludes":[%s]}' "${items#,}"
+}
+INNER_SETTINGS="${INNER_CLAUDE_SETTINGS:-$(claude_md_excludes "$REPO_ROOT")}"
+
 echo ">>> run-clarity.sh: pr=${PROMPT_PR} repo=${PROMPT_REPO} mode=${MODE}"
 echo ">>> REPO_ROOT=$REPO_ROOT"
 echo ">>> mcp-config=$MCP_CONFIG"
+echo ">>> settings=$INNER_SETTINGS"
 echo ">>> output → $RUN_DIR"
 
 cd "$REPO_ROOT"
@@ -291,6 +317,7 @@ claude \
   --max-turns "${MAX_TURNS:-500}" \
   --max-budget-usd "${MAX_BUDGET_USD:-30}" \
   --setting-sources project \
+  --settings "$INNER_SETTINGS" \
   --mcp-config "$MCP_CONFIG" \
   --allowed-tools "$ALLOWED" \
   --output-format stream-json \
