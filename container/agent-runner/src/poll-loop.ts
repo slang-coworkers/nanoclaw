@@ -83,6 +83,7 @@ import {
   resettleModel,
   saveCheckpoint,
   segmentModel,
+  settleClosingSegment,
   settleSegment,
   startSegment,
   subVec,
@@ -286,6 +287,8 @@ interface ChargedMessage {
   cfgModel: boolean;
   /** Best-known usage of the call (what has been charged for it). */
   usage: TokenVec;
+  /** Daily window only: the UTC day it was first charged to. */
+  day?: string;
   /** Seeded by a test with unknown usage: never charge it again. */
   opaque?: boolean;
 }
@@ -995,8 +998,44 @@ function applySignedCost(usd: number): void {
     applyCostDelta(usd);
     return;
   }
+  // Roll first, as a charge does, so the counter and the ledger row (stamped now) agree on the day.
+  maybeRollDailyWindow();
   if (usd < 0) costSpentUsd = Math.max(0, costSpentUsd + usd);
   persistCostCap();
+}
+
+/** Daily window: today's key, rolled first (undefined for a lifetime window). */
+function chargeDayKey(): string | undefined {
+  if (costWindow !== 'daily') return undefined;
+  maybeRollDailyWindow();
+  return costDayKey;
+}
+
+/**
+ * A correction that LOWERS what was charged — a model or cache-TTL re-price of
+ * a call, or a late call claiming residual credit at a cheaper TTL — must not
+ * refund today for money charged to a daily window that has since closed.
+ * `chargedDay` is the day the corrected charge landed on (the call's, or for
+ * claimed credit the day of the settlement that charged it). Today's counter
+ * keeps it, and an adjustment row cancels the correction in today's ledger.
+ * Returns what to apply to the counter.
+ */
+function clampClosedDayRefund(chargedDay: string | undefined, usd: number, model: string): number {
+  if (!(usd < 0) || !chargedDay || chargedDay === chargeDayKey()) return usd;
+  recordClaudeRow(
+    getOutboundDb(),
+    {
+      ...claudeVecToEvent(`adj:${process.env.NANOCLAW_SESSION_ID || ''}:${nextLedgerSeq()}`, model, zeroVec()),
+      adjustmentUsd: -usd,
+    },
+    null,
+    RATE_VERSION,
+    RATE_TABLE,
+    ledgerNow(),
+    ledgerGen,
+  );
+  log(`Cost accounting: a $${(-usd).toFixed(4)} correction of a ${chargedDay} charge is not refunded today`);
+  return 0;
 }
 
 /** Everything one accounting event can change, so a failed transaction leaves memory = DB. */
@@ -1098,7 +1137,28 @@ function runCostEvent(label: string, msgId: string | undefined, run: () => void)
   flushPendingCostEvents();
   if (pendingCostEvents.length === 0 && tryCostTransaction(label, msgId, run)) return;
   pendingCostEvents.push({ label, msgId, run, gen: ledgerGen, day: utcDayKey() });
+  // Only an immortal group keeps running while accounting cannot commit, so only
+  // its queue can grow without bound. Past the bound the oldest per-call report
+  // goes: its call is in the SDK session's cumulative, which the turn's result
+  // or the next query start settles (settleClosingClaudeSegment). Segment and
+  // settlement events are never dropped.
+  if (costImmortal && pendingCostEvents.length > COST_PENDING_MAX) {
+    const i = pendingCostEvents.findIndex((e) => e.label === 'message');
+    if (i !== -1) {
+      pendingCostEvents.splice(i, 1);
+      if (Date.now() - lastCostHaltLogAt >= 60_000) {
+        lastCostHaltLogAt = Date.now();
+        log(
+          `Cost accounting: over ${COST_PENDING_MAX} events unrecorded — dropping the oldest per-call report; ` +
+            `the backstop settles its call from the session's cumulative`,
+        );
+      }
+    }
+  }
 }
+
+/** Unrecorded accounting events an immortal group may hold (only it keeps running while they pile up). */
+const COST_PENDING_MAX = 10_000;
 
 /**
  * FAIL CLOSED: accounting that cannot commit must not let spend run on. While
@@ -1136,9 +1196,22 @@ function currentSegment(): Segment {
  * without it, the checkpoint saved at that session's last settled result is
  * the baseline. Only with neither is the first result absorbed — logged.
  */
-function beginClaudeSegment(resumeId: string | undefined, restored: Record<string, unknown> | null): void {
+function beginClaudeSegment(
+  resumeId: string | undefined,
+  restored: Record<string, unknown> | null,
+  readFinal?: (sessionId: string) => Record<string, unknown> | null,
+): void {
   if (!costEnabled) return;
+  // The segment being replaced, and the cumulative its session ended at (read
+  // here, outside the transaction: it is file IO).
+  const prev = claudeBackstop.segment;
+  const prevId = prev?.id;
+  const prevSession = prev?.sessionId ?? null;
+  const prevFinal =
+    prevSession === null ? null : prevSession === resumeId ? restored : (readFinal?.(prevSession) ?? null);
   runCostEvent('segment', undefined, () => {
+    const old = claudeBackstop.segment;
+    if (old && old.id === prevId) settleClosingClaudeSegment(old, prevFinal);
     const fromTranscript = resumeId && restored ? cumFromModelUsage(restored as Record<string, SdkModelUsage>) : null;
     const checkpoint = resumeId ? claudeBackstop.checkpoints[resumeId]?.cum : undefined;
     const source = !resumeId ? 'fresh' : fromTranscript ? 'transcript' : checkpoint ? 'checkpoint' : 'absorb';
@@ -1157,6 +1230,51 @@ function beginClaudeSegment(resumeId: string | undefined, restored: Record<strin
     failAt('segment:after-start');
     persistCostCap();
   });
+}
+
+/**
+ * Settle the segment a new query replaces against the cumulative its session
+ * ended at (`settleClosingSegment`), inside the new segment's transaction. This
+ * is what makes accounting whole across a process boundary: a final the runner
+ * never read, a background subagent finishing after the last result, or a
+ * settlement that could not commit before a restart are all in that total.
+ * Without it (no readable `cost-state` — the process was killed outright), the
+ * spend since the segment's last result is logged as unsettled.
+ */
+function settleClosingClaudeSegment(old: Segment, final: Record<string, unknown> | null): void {
+  if (!final) {
+    if (old.sessionId && Object.values(old.models).some((m) => !isZeroVec(subVec(m.p, m.pAtLastResult)))) {
+      log(
+        `WARNING cost backstop: no final cost-state for ${old.sessionId} — its off-stream spend after its ` +
+          `last result (segment ${old.id}) cannot be settled`,
+      );
+    }
+    return;
+  }
+  const cums = cumFromModelUsage(final as Record<string, SdkModelUsage>);
+  const now = ledgerNow();
+  const out = settleClosingSegment(old, cums, now, historicalTtl(claudeBackstop));
+  if (out.settled && old.sessionId) saveCheckpoint(claudeBackstop, old.sessionId, cums, now);
+  failAt('close:after-mutate');
+  let total = 0;
+  for (const r of out.residuals) {
+    total += r.usd;
+    appendResidualRow(old, 'close', r);
+  }
+  failAt('close:after-ledger');
+  if (out.skipped.length) {
+    log(
+      `Cost backstop: closing segment ${old.id} — final cost-state not newer than its last result for ` +
+        `${out.skipped.join(', ')}; left as settled`,
+    );
+  }
+  if (total > 0) {
+    log(
+      `Cost backstop: charged $${total.toFixed(4)} segment ${old.id} spent after its last settled result ` +
+        `(${out.residuals.map((r) => `${r.key} $${r.usd.toFixed(4)}`).join(', ')})`,
+    );
+  }
+  applySignedCost(total);
 }
 
 /**
@@ -1248,6 +1366,7 @@ function loadChargedMessage(id: string): ChargedMessage | undefined {
       cw1h: e.cacheWrite1hTokens,
       cwFlat: e.cacheWriteTokens,
     },
+    ...(costWindow === 'daily' ? { day: e.ts.slice(0, 10) } : {}),
   };
   chargedMessages.set(id, entry);
   return entry;
@@ -1387,12 +1506,14 @@ function applyMessageUsage(id: string, event: Extract<ProviderEvent, { type: 'me
     claudeBackstop.mainCw5 = (claudeBackstop.mainCw5 ?? 0) + add5;
     claudeBackstop.mainCw1h = (claudeBackstop.mainCw1h ?? 0) + add1h;
   }
+  const day = prev ? prev.day : chargeDayKey();
   const entry: ChargedMessage = {
     segId: seg.id,
     epoch: prev?.epoch ?? (isOld ? seg.epoch - 1 : seg.epoch),
     model,
     cfgModel,
     usage: merged,
+    ...(day ? { day } : {}),
   };
   chargedMessages.set(id, entry);
   failAt('msg:after-mutate');
@@ -1415,6 +1536,8 @@ function applyMessageUsage(id: string, event: Extract<ProviderEvent, { type: 'me
     usd += r.usd;
   }
   failAt('msg:after-residual');
+  const chargedDay = prev ? prev.day : costWindow === 'daily' ? seg.lastResultAt?.slice(0, 10) : undefined;
+  usd = clampClosedDayRefund(chargedDay, usd, model);
   turnMessageCostUsd += usd;
   applySignedCost(usd);
   failAt('msg:after-spend');
@@ -1449,7 +1572,7 @@ function applyEarlierSegmentReport(
   failAt('msg:after-mutate');
   appendMessageRows(id, prev, entry, delta, moved);
   failAt('msg:after-ledger-row');
-  const usd = priceVec(model, merged) - priceVec(prev.model, prev.usage);
+  const usd = clampClosedDayRefund(prev.day, priceVec(model, merged) - priceVec(prev.model, prev.usage), model);
   turnMessageCostUsd += usd;
   applySignedCost(usd);
   failAt('msg:after-spend');
@@ -3446,7 +3569,8 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     const meterClaude = costEnabled && config.providerName === 'claude';
     if (meterClaude) {
       const resumeId = newSessionBatch ? undefined : continuation;
-      beginClaudeSegment(resumeId, resumeId ? (config.provider.readRestoredUsage?.(resumeId) ?? null) : null);
+      const readRestored = config.provider.readRestoredUsage?.bind(config.provider);
+      beginClaudeSegment(resumeId, resumeId ? (readRestored?.(resumeId) ?? null) : null, readRestored);
     }
 
     const query = config.provider.query({
@@ -4796,6 +4920,12 @@ export async function processQuery(
     // in the exchange archive and runner log, never in the channel notice.
     throw err;
   } finally {
+    // Finals the provider queued but never yielded — a background subagent that
+    // stopped as the stream was aborted (a slash command), abandoned, or failed.
+    // Charged on every exit, not only after a hard stop.
+    for (const ev of query.drainPendingUsage?.() ?? []) {
+      if (ev.type === 'message_usage') recordMessageCost(ev);
+    }
     done = true;
     clearInterval(pollHandle);
     if (costDrainTimer) clearTimeout(costDrainTimer);

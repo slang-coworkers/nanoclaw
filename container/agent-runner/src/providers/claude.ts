@@ -282,6 +282,14 @@ export function finalUsageFromTranscript(text: string): MessageUsageEvent[] {
 const SUBAGENT_READ_CHUNK_BYTES = 4 * 1024 * 1024;
 /** A single JSONL line longer than this is skipped (logged), not buffered. */
 const SUBAGENT_MAX_LINE_BYTES = 16 * 1024 * 1024;
+/**
+ * What one hook invocation may read before it yields: the SDK awaits the hook,
+ * so an enormous transcript must not hold the turn. The rest is read by a
+ * re-fired hook (the cursor is kept), and the subagent's calls are in the turn's
+ * cumulative `modelUsage` either way — the backstop settles what is not read.
+ */
+const SUBAGENT_READ_BUDGET_BYTES = Number(process.env.NANOCLAW_SUBAGENT_READ_BUDGET_BYTES) || 256 * 1024 * 1024;
+const SUBAGENT_READ_BUDGET_MS = 10_000;
 
 /** Where each subagent transcript was read up to, so a re-fired hook reads only what was appended. */
 const subagentReadCursors = new Map<
@@ -323,26 +331,38 @@ export function validateSubagentTranscriptPath(p: string, projectsRoot: string, 
  * last result, there may be no later result to back it up. The compaction
  * sidechain also fires this hook, with a path that does not exist.
  *
- * Defensive: the path must be a regular `agent-*.jsonl` in THIS session's
- * subagents directory; it is opened without following a symlink and the open
- * file must be the one validated (same device and inode). Read asynchronously
- * in bounded chunks — any size, never whole — and incrementally (a re-fired
- * hook reads only appended lines). The transcript is complete when the hook
- * fires, so a final record without a trailing newline is parsed too. Every
- * failure is logged and swallowed: accounting must never break a turn.
+ * Defensive: the hook's `session_id`, its `transcript_path` and the session
+ * the running query announced must agree, and the path must be a regular
+ * `agent-*.jsonl` in that session's subagents directory; it is opened without
+ * following a symlink and the open descriptor must be the file validated (same
+ * device and inode, and on Linux the same resolved path). Read asynchronously
+ * in bounded chunks — never whole — and incrementally (a re-fired hook reads
+ * only appended lines), up to a per-invocation byte/time budget. The
+ * transcript is complete when the hook fires, so a final record without a
+ * trailing newline is parsed too. Every failure is logged and swallowed:
+ * accounting must never break a turn, and whatever is not read here is in the
+ * turn's cumulative `modelUsage`, which the backstop settles.
  */
 export function createSubagentUsageHook(
   sink: (e: MessageUsageEvent) => void,
-  opts: { projectsRoot: string },
+  opts: { projectsRoot: string; sessionId?: () => string | undefined; budgetBytes?: number },
 ): HookCallback {
   return async (input) => {
     const p = (input as { agent_transcript_path?: unknown }).agent_transcript_path;
     const transcriptPath = (input as { transcript_path?: unknown }).transcript_path;
+    const hookSession = (input as { session_id?: unknown }).session_id;
     if (typeof p !== 'string' || !p) return {};
-    const real =
-      typeof transcriptPath === 'string' ? validateSubagentTranscriptPath(p, opts.projectsRoot, transcriptPath) : null;
+    // Bound to the RUNNING query: the hook's session, its transcript's name and
+    // the session this query's `init` announced must all be the same.
+    const querySession = opts.sessionId?.();
+    const bound =
+      typeof transcriptPath === 'string' &&
+      typeof hookSession === 'string' &&
+      path.basename(transcriptPath, '.jsonl') === hookSession &&
+      (querySession === undefined || querySession === hookSession);
+    const real = bound ? validateSubagentTranscriptPath(p, opts.projectsRoot, transcriptPath) : null;
     if (!real) {
-      if (fs.existsSync(p)) log(`subagent usage: ignoring a transcript outside this session's subagents: ${p}`);
+      if (fs.existsSync(p)) log(`subagent usage: ignoring a transcript outside this query's session: ${p}`);
       return {};
     }
     let fh: fs.promises.FileHandle | undefined;
@@ -350,7 +370,7 @@ export function createSubagentUsageHook(
       const expected = fs.statSync(real);
       fh = await fs.promises.open(real, fs.constants.O_RDONLY | (fs.constants.O_NOFOLLOW ?? 0));
       const st = await fh.stat();
-      if (!st.isFile() || st.ino !== expected.ino || st.dev !== expected.dev) {
+      if (!st.isFile() || st.ino !== expected.ino || st.dev !== expected.dev || !openedAt(fh.fd, real)) {
         log(`subagent usage: ${real} changed between validation and open — not read`);
         return {};
       }
@@ -359,7 +379,18 @@ export function createSubagentUsageHook(
         cur = { dev: st.dev, ino: st.ino, offset: 0, carry: '', skipping: false };
       }
       const buf = Buffer.alloc(Math.min(SUBAGENT_READ_CHUNK_BYTES, Math.max(1, st.size - cur.offset)));
+      const budgetBytes = opts.budgetBytes ?? SUBAGENT_READ_BUDGET_BYTES;
+      const startOffset = cur.offset;
+      const startedAt = Date.now();
       while (cur.offset < st.size) {
+        if (cur.offset - startOffset >= budgetBytes || Date.now() - startedAt >= SUBAGENT_READ_BUDGET_MS) {
+          log(
+            `subagent usage: ${real} read budget reached at byte ${cur.offset} of ${st.size} — the rest is ` +
+              `settled from the turn's cumulative usage`,
+          );
+          subagentReadCursors.set(real, cur);
+          return {};
+        }
         const { bytesRead } = await fh.read(buf, 0, Math.min(buf.length, st.size - cur.offset), cur.offset);
         if (bytesRead <= 0) break;
         cur.offset += bytesRead;
@@ -399,6 +430,19 @@ export function createSubagentUsageHook(
     }
     return {};
   };
+}
+
+/**
+ * Is the open descriptor the file that was validated? Resolves the descriptor's
+ * own path (Linux `/proc/self/fd`), so a parent directory swapped for a symlink
+ * after validation is caught. Without `/proc` the device/inode check stands.
+ */
+function openedAt(fd: number, real: string): boolean {
+  try {
+    return fs.realpathSync(`/proc/self/fd/${fd}`) === real;
+  } catch {
+    return !fs.existsSync('/proc/self/fd');
+  }
 }
 
 /** Test seam: forget the incremental read positions. */
@@ -896,6 +940,9 @@ export class ClaudeProvider implements AgentProvider {
     // when the subagent finished inside the turn, and on the next event (or at
     // stream end) when a background subagent finished after it.
     const pendingUsage: Extract<ProviderEvent, { type: 'message_usage' }>[] = [];
+    // The SDK session this query runs as (from its `init`); the usage hook only
+    // reads transcripts of this session.
+    let querySessionId: string | undefined;
 
     const sdkResult = sdkQuery({
       prompt: stream,
@@ -976,6 +1023,7 @@ export class ClaudeProvider implements AgentProvider {
                     hooks: [
                       createSubagentUsageHook((e) => pendingUsage.push(e), {
                         projectsRoot: path.join(claudeConfigDirectory(), 'projects'),
+                        sessionId: () => querySessionId,
                       }),
                     ],
                   },
@@ -1017,6 +1065,7 @@ export class ClaudeProvider implements AgentProvider {
         yield { type: 'activity' };
 
         if (message.type === 'system' && message.subtype === 'init') {
+          querySessionId = message.session_id;
           yield { type: 'init', continuation: message.session_id };
         } else if (message.type === 'assistant') {
           // Surface each assistant message's text as it streams in. The final

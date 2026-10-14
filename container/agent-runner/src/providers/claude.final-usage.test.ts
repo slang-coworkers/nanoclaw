@@ -48,8 +48,10 @@ mock.module('@anthropic-ai/claude-agent-sdk', () => ({
               {
                 ...input,
                 agent_transcript_path: input.agent_transcript_path?.replace('__FIXTURE__', subagentDir),
-                // The session transcript the subagents directory sits next to.
+                // The session transcript the subagents directory sits next to, and
+                // its session (the fixture's sanitized inputs dropped both).
                 transcript_path: `${path.dirname(subagentDir)}.jsonl`,
+                session_id: path.basename(path.dirname(subagentDir)),
               },
               undefined,
               { signal: new AbortController().signal },
@@ -348,10 +350,21 @@ describe('SubagentStop transcript read — defensive (items 6, 7)', () => {
   const projectsRoot = () => path.join(tmp, '.claude', 'projects');
   const transcript = () => path.join(projectDir, `${SUB_SID}.jsonl`);
   const realFile = () => path.join(subagentDir, 'agent-a2d3a5720f1e5a422.jsonl');
-  const fire = async (p: string, opts: { transcriptPath?: string } = {}) => {
+  const fire = async (
+    p: string,
+    opts: { transcriptPath?: string; sessionId?: string; querySession?: string; budgetBytes?: number } = {},
+  ) => {
     const { got, sink } = SINK();
-    await createSubagentUsageHook(sink, { projectsRoot: projectsRoot() })(
-      { agent_transcript_path: p, transcript_path: opts.transcriptPath ?? transcript() } as never,
+    await createSubagentUsageHook(sink, {
+      projectsRoot: projectsRoot(),
+      sessionId: () => opts.querySession,
+      ...(opts.budgetBytes ? { budgetBytes: opts.budgetBytes } : {}),
+    })(
+      {
+        agent_transcript_path: p,
+        transcript_path: opts.transcriptPath ?? transcript(),
+        session_id: opts.sessionId ?? SUB_SID,
+      } as never,
       undefined,
       signal,
     );
@@ -386,6 +399,35 @@ describe('SubagentStop transcript read — defensive (items 6, 7)', () => {
       expect(validateSubagentTranscriptPath(p, projectsRoot(), transcript())).toBeNull();
       expect(await fire(p)).toHaveLength(0);
     }
+  });
+
+  it("is bound to the RUNNING query: the hook's session, its transcript and the query's init must agree (R3-5)", async () => {
+    expect(await fire(realFile(), { querySession: SUB_SID })).toHaveLength(1);
+    __resetSubagentReadCursors();
+    // A hook naming another session than its own transcript, or than this query.
+    expect(await fire(realFile(), { sessionId: 'sess-forged' })).toHaveLength(0);
+    expect(await fire(realFile(), { querySession: 'sess-other-query' })).toHaveLength(0);
+    // Both paths of another session agreeing with each other are still not this query's.
+    const otherSub = path.join(projectDir, 'sess-other', 'subagents');
+    fs.mkdirSync(otherSub, { recursive: true });
+    fs.copyFileSync(realFile(), path.join(otherSub, 'agent-a2d3a5720f1e5a422.jsonl'));
+    expect(
+      await fire(path.join(otherSub, 'agent-a2d3a5720f1e5a422.jsonl'), {
+        transcriptPath: path.join(projectDir, 'sess-other.jsonl'),
+        sessionId: 'sess-other',
+        querySession: SUB_SID,
+      }),
+    ).toHaveLength(0);
+  });
+
+  it('a read budget yields the hook; a re-fire continues from the cursor (R3-6)', async () => {
+    const big = path.join(subagentDir, 'agent-budget.jsonl');
+    const pad = `${JSON.stringify({ type: 'user', pad: 'x'.repeat(1_000_000) })}\n`;
+    fs.writeFileSync(big, pad.repeat(6) + fs.readFileSync(realFile(), 'utf8').trimEnd());
+    // 4 MiB budget: the first invocation stops before the record (and never
+    // mistakes its partial carry for the final record).
+    expect(await fire(big, { budgetBytes: 4 * 1024 * 1024 })).toHaveLength(0);
+    expect((await fire(big)).map((e) => e.outputTokens)).toEqual([124]);
   });
 
   it('reads a transcript of any size completely, in bounded chunks (no size skip)', async () => {

@@ -19,6 +19,7 @@ import {
   pricingKey,
   saveCheckpoint,
   segmentModel,
+  settleClosingSegment,
   settleSegment,
   startSegment,
   subVec,
@@ -258,6 +259,37 @@ describe('settleSegment — the modelUsage backstop', () => {
     const seg = startSegment(newBackstopState(), 's', 'fresh', null);
     settleSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0)), 'T1');
     expect(settleSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0)), 'T2').residuals).toHaveLength(0);
+  });
+});
+
+describe('settleClosingSegment — the replaced segment against its final cost-state', () => {
+  it('a normal end: the cost-state equals the last result, nothing more is owed', () => {
+    const seg = startSegment(newBackstopState(), 's', 'fresh', null);
+    segmentModel(seg, OPUS).p = vec({ output: 100 });
+    settleSegment(seg, cumFromModelUsage(cum(0, 130, 0, 0)), 'T1'); // 30 residual
+    const out = settleClosingSegment(seg, cumFromModelUsage(cum(0, 130, 0, 0)), 'T2');
+    expect(out).toMatchObject({ residuals: [], settled: true, skipped: [] });
+  });
+
+  it('a process that died before its result: charges the final it never reported, once', () => {
+    const seg = startSegment(newBackstopState(), 's', 'transcript', cumFromModelUsage(cum(2, 100, 0, 0)));
+    segmentModel(seg, OPUS).p = vec({ input: 2, output: 7 }); // the snapshot
+    const out = settleClosingSegment(seg, cumFromModelUsage(cum(4, 1_100, 0, 0)), 'T');
+    expect(out.residuals[0].tokens).toEqual(vec({ output: 993 }));
+    expect(seg.epoch).toBe(1);
+  });
+
+  it('a cost-state older than the last result, or no baseline at all, settles nothing', () => {
+    const seg = startSegment(newBackstopState(), 's', 'fresh', null);
+    settleSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0)), 'T1');
+    const stale = settleClosingSegment(seg, cumFromModelUsage(cum(0, 60, 0, 0)), 'T2');
+    expect(stale).toMatchObject({ residuals: [], settled: false, skipped: [OPUS] });
+    expect(seg.epoch).toBe(1);
+    const absorbing = startSegment(newBackstopState(), 's', 'absorb', null);
+    expect(settleClosingSegment(absorbing, cumFromModelUsage(cum(0, 999, 0, 0)), 'T')).toMatchObject({
+      residuals: [],
+      settled: false,
+    });
   });
 });
 

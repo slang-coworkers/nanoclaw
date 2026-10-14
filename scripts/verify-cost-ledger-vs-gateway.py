@@ -8,12 +8,18 @@ share no id, but each Claude call has a near-unique (input, cache-read,
 cache-write) token tuple, so a ledger row joins to the gateway call with the same
 tuple within +/- WINDOW seconds.
 
+The ledger is append-only: a call's first report is its base row `<id>` and
+every later top-up or model correction is a signed row `<id>#<seq>`. This script
+folds each call's rows back into one (tokens summed under the call's latest
+model, dollars summed over all rows) before joining.
+
 Reports, for the session:
-  - ledger message rows matched / unmatched to a gateway call
+  - ledger calls matched / unmatched to a gateway call
   - output tokens: ledger vs gateway on the matched rows (the #1329 bug: the
     ledger kept the start-of-stream snapshot, ~1% of output)
   - dollars: ledger vs gateway tokens priced with the runner's own rate table
-  - backstop residual rows (modelUsage settlement) and adjustments, separately
+  - backstop residual rows (modelUsage settlement; signed: a call that reports
+    after its turn settled claims its share back) and adjustments, separately
 
 Exit status 0 = every matched ledger row carries the gateway's exact tokens.
 
@@ -103,6 +109,24 @@ def price(
     )
 
 
+def fold_call(base: str, rs: list[tuple]) -> tuple:
+    """One call's append-only rows -> one row, like loadClaudeMessage() in cost-events.ts.
+
+    Rows arrive in rowid order. Tokens are summed over the rows under the call's
+    latest model (a model correction appends a negative row under the old model
+    and the full usage under the new one); dollars are summed over every row; the
+    timestamp is the first report's.
+    """
+    model = rs[-1][2]
+    tok = [0] * 6
+    for r in rs:
+        if r[2] != model:
+            continue
+        for i in range(6):
+            tok[i] += r[3 + i] or 0
+    return (base, rs[0][1], model, *tok, sum(r[9] or 0 for r in rs), 0, len(rs))
+
+
 def find_session_db(checkout: str, session: str) -> tuple[str, str]:
     hits = glob.glob(
         os.path.join(checkout, "data/v2-sessions", "*", session, "outbound.db")
@@ -157,10 +181,12 @@ def main() -> int:
     if a.since:
         q += " and ts >= ?"
         params = (a.since,)
+    q += " order by rowid"
     rows = con.execute(q, params).fetchall()
     con.close()
 
-    messages, residual, adjustments = [], [], []
+    residual, adjustments = [], []
+    calls: dict[str, list[tuple]] = {}
     for r in rows:
         rid = r[0]
         if rid.startswith("adj:") or (r[10] or 0) != 0:
@@ -168,7 +194,8 @@ def main() -> int:
         elif ":residual:" in rid:
             residual.append(r)
         else:
-            messages.append(r)
+            calls.setdefault(rid.split("#", 1)[0], []).append(r)
+    messages = [fold_call(base, rs) for base, rs in calls.items()]
     if not messages:
         print("no Claude message rows in the ledger for this session")
         return 1
@@ -230,7 +257,8 @@ def main() -> int:
     report = {
         "session": a.session,
         "agent_group": group,
-        "ledger_message_rows": len(messages),
+        "ledger_calls": len(messages),
+        "ledger_call_rows": sum(m[11] for m in messages),
         "matched": len(matched),
         "unmatched_ledger_rows": len(unmatched),
         "matched_rows_with_exact_output": exact,

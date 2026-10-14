@@ -506,6 +506,48 @@ export function settleSegment(
 }
 
 /**
+ * Settle a segment that is being CLOSED against the cumulative its SDK session
+ * ended at: the transcript's last `cost-state`, which Claude Code writes as its
+ * process exits (equal to the last result's `modelUsage` when nothing ran after
+ * it). It covers what the process spent after its last settled result, or all
+ * of it when no result was ever settled: a main-thread call whose final the
+ * runner never read, a background subagent, a helper call, an accounting event
+ * that never committed before a restart. Differenced like a result
+ * (`max(0, S - P - credit)`), so nothing already charged is charged again.
+ *
+ * A model with no baseline (an absorbing segment that never saw its first
+ * result) or whose total is BELOW its last settled one (the cost-state predates
+ * that result — the process was killed before it could write a newer one) is
+ * left alone: nothing newer is known. `settled` says whether any model was
+ * settled; only then do the segment's calls count as covered by it.
+ */
+export function settleClosingSegment(
+  seg: Segment,
+  cums: Record<string, CumVec>,
+  nowIso: string,
+  fallbackTtl?: 'cw5' | 'cw1h',
+): { residuals: Residual[]; settled: boolean; skipped: string[] } {
+  const out = { residuals: [] as Residual[], settled: false, skipped: [] as string[] };
+  for (const [key, c] of Object.entries(cums)) {
+    const m = segmentModel(seg, key);
+    if (!m.base || (m.lastCum && decreased(c, m.lastCum, isPricedKey(key)))) {
+      out.skipped.push(key);
+      continue;
+    }
+    m.lastCum = { ...c };
+    const r = residualFor(seg, key, m, fallbackTtl);
+    if (r) out.residuals.push(r);
+    m.pAtLastResult = { ...m.p };
+    out.settled = true;
+  }
+  if (out.settled) {
+    seg.epoch += 1;
+    seg.lastResultAt = nowIso;
+  }
+  return out;
+}
+
+/**
  * What the backstop owes for one model right now, from its last settled
  * cumulative: `max(0, S - P - credit)` per token field (priced) or the SDK
  * cost not yet charged (unpriced). Adds what it returns to the model's credit

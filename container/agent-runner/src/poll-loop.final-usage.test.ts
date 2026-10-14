@@ -334,6 +334,7 @@ describe('resume baselines — established BEFORE the query (item 4)', () => {
   const AFTER: MUIn = { [OPUS]: { in: 6 + 245_000, out: 589 + 6_000, cr: 50_316, cw: 26_698 + 525_000 } };
 
   it('from the transcript cost-state: a compaction in the FIRST turn of a resumed query is charged', () => {
+    H.setState({ claudeBackstop: newBackstopState() }); // first run after deploy: no earlier segment
     resumeQuery(BEFORE);
     H.recordTurnCost(result(AFTER));
     expect(spent()).toBeCloseTo(priceVec(OPUS, { ...zeroVec(), ...COMPACTION }), 10);
@@ -553,6 +554,7 @@ describe('atomicity — failure injected at every statement boundary (items 1, 2
   }
 
   it('a failed segment start is retried before the next event', () => {
+    H.setState({ claudeBackstop: newBackstopState() }); // no earlier segment to close
     H.setFailPoint('segment:after-start');
     resumeQuery({ [OPUS]: { in: 2, out: 100 } });
     H.setFailPoint(undefined);
@@ -661,6 +663,192 @@ describe('result accounting is settled before result handling (item 6)', () => {
       'hi',
     );
     expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ input: 900, output: 10 }, HAIKU), 12);
+  });
+});
+
+describe("round 3 — closing a segment settles it against its session's final cost-state", () => {
+  function respawn(): void {
+    H.forgetChargedMessages();
+    H.initCostTracking('claude');
+  }
+
+  it('a process that died mid-call: the next query charges the final it never read (R3-2)', () => {
+    H.recordMessageCost(call('m1', { output: 7 })); // snapshot only, then the process dies
+    respawn();
+    // Claude Code wrote the call's final into the cost-state as it exited.
+    resumeQuery({ [OPUS]: { in: 2, out: 1_000 } });
+    expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+    // The new segment starts from that total: only its own calls count.
+    H.recordMessageCost(call('m2', { output: 50 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 4, out: 1_050 } }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }) + priceOf({ output: 50 }), 12);
+    // A late report for the dead process's call is covered by that settlement.
+    H.recordMessageCost(call('m1', { output: 1_000 }, { final: true }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }) + priceOf({ output: 50 }), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+
+  it('a settlement that never committed before a restart is recovered at the next query start (R3-1)', () => {
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    H.setFailPoint('settle:after-spend');
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 900, out: 10 } }));
+    H.setFailPoint(undefined);
+    H.setState({ seenMessageIds: [] }); // the restart: memory and the retry queue are gone
+    respawn();
+    resumeQuery({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 900, out: 10 } });
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ input: 900, output: 10 }, HAIKU), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+
+  it('a normal end settles nothing more: the cost-state equals the last result (no double count)', () => {
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 900, out: 10 } }));
+    const paid = spent();
+    resumeQuery({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 900, out: 10 } });
+    expect(spent()).toBeCloseTo(paid, 12);
+    expect(ledger()).toBeCloseTo(paid, 12);
+  });
+
+  it('a background subagent that finished after the last result is settled when the query is replaced', () => {
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } }));
+    H.recordMessageCost(call('sub_bg', { output: 6 }, { isSubagent: true })); // its final was never read
+    resumeQuery({ [OPUS]: { in: 4, out: 224 } });
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 124 }), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+
+  it("a fresh next query reads the replaced session's own final cost-state", () => {
+    H.recordMessageCost(call('m1', { output: 7 }));
+    H.beginClaudeSegment(undefined, null, (sid) =>
+      sid === SID ? modelUsage({ [OPUS]: { in: 2, out: 1_000 } }) : null,
+    );
+    H.noteClaudeContinuation('sess-B', true);
+    expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }), 12);
+  });
+
+  it('a cost-state OLDER than the last result (process killed outright) settles nothing', () => {
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } }));
+    H.recordMessageCost(call('m2', { output: 7 }));
+    resumeQuery({ [OPUS]: { in: 2, out: 60 } });
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 7 }), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+    // Nothing settled m2, so a late final for it still tops it up.
+    H.recordMessageCost(call('m2', { output: 30 }, { final: true }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 30 }), 12);
+  });
+
+  for (const point of ['close:after-mutate', 'close:after-ledger']) {
+    it(`closing failing at ${point}: rolled back whole with the segment start, retried once`, () => {
+      H.recordMessageCost(call('m1', { output: 7 }));
+      const before = durable();
+      H.setFailPoint(point);
+      resumeQuery({ [OPUS]: { in: 2, out: 1_000 } });
+      expect(durable()).toBe(before);
+      H.setFailPoint(undefined);
+      H.flushPendingCostEvents();
+      expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }), 12);
+      expect(ledger()).toBeCloseTo(spent(), 12);
+    });
+  }
+
+  it('an immortal group keeps at most a bounded queue; settlements are never the ones dropped', () => {
+    H.setState({ costImmortal: true });
+    H.setFailPoint('msg:after-spend');
+    for (let i = 0; i < 10_005; i++) H.recordMessageCost(call(`m${i}`, { output: 1 }, { final: true }));
+    expect(H.pendingCostEventCount()).toBe(10_000);
+    H.setFailPoint(undefined);
+    H.flushPendingCostEvents();
+    expect(H.pendingCostEventCount()).toBe(0);
+  });
+
+  it('a negative correction for a call charged on a closed day does not refund today (R3-8)', () => {
+    H.setState({ costImmortal: true, costWindow: 'daily', costDayKey: '2026-10-13' });
+    setSystemTime(new Date('2026-10-13T23:59:00Z'));
+    H.recordMessageCost(call('m1', { output: 1_000 }, { model: undefined })); // priced as configured Opus
+    setSystemTime(new Date('2026-10-14T00:01:00Z'));
+    H.recordMessageCost(call('m2', { output: 10 }, { final: true }));
+    const todayBefore = spent();
+    H.recordMessageCost(call('m1', { output: 1_000 }, { model: HAIKU, final: true })); // cheaper: negative
+    expect(spent()).toBeCloseTo(todayBefore, 12);
+    const today = sumWindow(getOutboundDb(), RATE_TABLE, '2026-10-14', '2026-10-15', H.getState().ledgerGen).usd;
+    expect(today).toBeCloseTo(spent(), 12);
+    expect(message('m1')?.model).toBe(HAIKU);
+    setSystemTime();
+  });
+
+  it('…also when nothing has rolled the window into the new day yet', () => {
+    H.setState({ costImmortal: true, costWindow: 'daily', costDayKey: '2026-10-13' });
+    setSystemTime(new Date('2026-10-13T23:59:00Z'));
+    H.recordMessageCost(call('m1', { output: 1_000 }, { model: undefined }));
+    setSystemTime(new Date('2026-10-14T00:01:00Z'));
+    H.recordMessageCost(call('m1', { output: 1_000 }, { model: HAIKU, final: true }));
+    expect(H.getState().costDayKey).toBe('2026-10-14');
+    expect(spent()).toBe(0);
+    const today = sumWindow(getOutboundDb(), RATE_TABLE, '2026-10-14', '2026-10-15', H.getState().ledgerGen).usd;
+    expect(today).toBeCloseTo(0, 12);
+    setSystemTime();
+  });
+
+  it("a late call claiming yesterday's residual at a cheaper TTL does not refund today either", () => {
+    H.setState({ costImmortal: true, costWindow: 'daily', costDayKey: '2026-10-13' });
+    setSystemTime(new Date('2026-10-13T23:00:00Z'));
+    H.recordMessageCost(call('m1', { output: 10, cw1h: 1_000 }, { final: true })); // main thread writes 1h
+    H.recordTurnCost(result({ [OPUS]: { in: 4, out: 10, cw: 21_000 } })); // 20,000 residual, guessed 1h
+    setSystemTime(new Date('2026-10-14T00:01:00Z'));
+    // The subagent call behind it, dated before that result: 5m writes, cheaper than the 1h guess.
+    H.recordMessageCost(
+      call('sub', { output: 0, cw5: 20_000 }, { isSubagent: true, final: true, callTs: '2026-10-13T22:59:00.000Z' }),
+    );
+    expect(H.getState().costDayKey).toBe('2026-10-14');
+    expect(spent()).toBe(0);
+    const today = sumWindow(getOutboundDb(), RATE_TABLE, '2026-10-14', '2026-10-15', H.getState().ledgerGen).usd;
+    expect(today).toBeCloseTo(0, 12);
+    setSystemTime();
+  });
+
+  it('a negative correction on the SAME day lowers it, counter and ledger alike', () => {
+    H.setState({ costImmortal: true, costWindow: 'daily', costDayKey: '2026-10-14' });
+    setSystemTime(new Date('2026-10-14T10:00:00Z'));
+    H.recordMessageCost(call('m1', { output: 1_000 }, { model: undefined }));
+    H.recordMessageCost(call('m1', { output: 1_000 }, { model: HAIKU, final: true }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }, HAIKU), 12);
+    const today = sumWindow(getOutboundDb(), RATE_TABLE, '2026-10-14', '2026-10-15', H.getState().ledgerGen).usd;
+    expect(today).toBeCloseTo(spent(), 12);
+    setSystemTime();
+  });
+
+  it('an aborted stream still charges the finals the provider queued (R3-7)', async () => {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, kind, timestamp, status, content, seq) VALUES ('a1','chat',?, 'pending', ?, 2)`,
+      )
+      .run(new Date().toISOString(), JSON.stringify({ sender: 'admin', text: 'hi' }));
+    const queued = [call('sub_q', { output: 20 }, { isSubagent: true, final: true })];
+    const query: AgentQuery = {
+      push() {},
+      end() {},
+      abort() {},
+      drainPendingUsage: () => queued.splice(0),
+      events: {
+        async *[Symbol.asyncIterator]() {
+          yield { type: 'init', continuation: SID };
+          yield call('m1', { output: 100 }, { final: true });
+          // the stream ends without a result (aborted for a slash command)
+        },
+      },
+    };
+    await processQuery(
+      query,
+      { platformId: 'dashboard:admin', channelType: 'dashboard', threadId: null, inReplyTo: undefined, taskRun: false },
+      ['a1'],
+      'claude',
+      undefined,
+      'hi',
+    );
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 20 }), 12);
   });
 });
 
