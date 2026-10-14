@@ -131,9 +131,11 @@ function controllableQuery(script: (q: { pushes: string[]; ended: () => boolean 
   return { query, pushes, endCalls: () => endCalls, abortCalls: () => abortCalls };
 }
 
+// performance.now, not Date.now: setSystemTime freezes Date, and a frozen
+// deadline would spin forever on a failing condition.
 async function until(cond: () => boolean, ms = 4000): Promise<void> {
-  const deadline = Date.now() + ms;
-  while (!cond() && Date.now() < deadline) await new Promise((r) => setTimeout(r, 10));
+  const deadline = performance.now() + ms;
+  while (!cond() && performance.now() < deadline) await new Promise((r) => setTimeout(r, 10));
 }
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
@@ -465,51 +467,68 @@ describe('an unanswered correction is never cut short', () => {
   }, 20_000);
 });
 
-describe('queued sends that coalesce into fewer turns', () => {
+describe('queued sends folded into one turn', () => {
   afterEach(() => setSystemTime());
 
-  // Two follow-ups pushed while turn 1 runs, answered by ONE coalesced turn: the
-  // local count stays at 1 although nothing is queued.
-  function coalescing(lastResult: ProviderEvent) {
-    let endedInsideWindow: boolean | undefined;
-    let neededIdleEnd = false;
+  // Real SDK 0.3.289: follow-ups pushed while a turn runs are folded into it,
+  // and its ONE result echoes every send it consumed. The provider turns that
+  // echo into `unansweredInputs`; leftover reply-routing entries must not hold
+  // the end back.
+  it("ends at once when the provider's exact count says every input is answered", async () => {
+    costHooks.startQueryBudget();
+    let endedPromptly: boolean | undefined;
     const q = controllableQuery(async function* ({ pushes, ended }) {
       yield { type: 'init', continuation: 'sess-1' };
       insertFollowUp('m2', 'first queued');
       await until(() => pushes.some((p) => p.includes('first queued')));
       insertFollowUp('m3', 'second queued');
       await until(() => pushes.some((p) => p.includes('second queued')));
-      yield { type: 'result', text: 'turn one', queuedTurnCount: 2 };
-      yield lastResult;
+      yield { type: 'result', text: 'all three, together', unansweredInputs: 0 };
       setCeiling(720);
       insertFollowUp('m4', 'after the raise');
-      setSystemTime(new Date(Date.now() + 20_000)); // inside the 30s quiet period
-      await sleep(10 * POLL_MS);
-      endedInsideWindow = ended();
-      setSystemTime(new Date(Date.now() + 15_000)); // now 35s quiet
       await until(() => ended(), 1500);
+      endedPromptly = ended();
       if (!ended()) {
-        // Without the provider's count only the plain idle end applies.
-        neededIdleEnd = true;
+        setSystemTime(new Date(Date.now() + 21 * 60_000)); // let the plain idle end finish the test
+        await until(() => ended(), 3000);
+      }
+    });
+    await run(q.query);
+    expect(endedPromptly).toBe(true);
+    expect(q.endCalls()).toBe(1);
+    expect(q.pushes.some((p) => p.includes('after the raise'))).toBe(false);
+    expect(isPending('m4')).toBe(true);
+  }, 20_000);
+
+  it('a send the SDK took but has not answered holds the end, however long it stays silent', async () => {
+    costHooks.startQueryBudget();
+    let endedWhileSilent: boolean | undefined;
+    let endedAfterItsResult: boolean | undefined;
+    const q = controllableQuery(async function* ({ pushes, ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      insertFollowUp('m2', 'queued');
+      await until(() => pushes.some((p) => p.includes('queued')));
+      // Turn one did not consume m2; m2's turn has started but emits nothing yet
+      // (e.g. a slow first token on a large context).
+      yield { type: 'result', text: 'turn one', unansweredInputs: 1 };
+      setCeiling(720);
+      insertFollowUp('m4', 'after the raise');
+      setSystemTime(new Date(Date.now() + 10 * 60_000));
+      await sleep(10 * POLL_MS);
+      endedWhileSilent = ended();
+      yield { type: 'result', text: 'answer to m2', unansweredInputs: 0 };
+      setSystemTime(new Date(Date.now() + 1000)); // the frozen clock moves past the result
+      await until(() => ended(), 1500);
+      endedAfterItsResult = ended();
+      if (!ended()) {
         setSystemTime(new Date(Date.now() + 21 * 60_000));
         await until(() => ended(), 3000);
       }
     });
-    return { q, endedInsideWindow: () => endedInsideWindow, neededIdleEnd: () => neededIdleEnd };
-  }
-
-  it('ends after a short quiet period when the provider reports nothing queued', async () => {
-    costHooks.startQueryBudget();
-    const { q, endedInsideWindow, neededIdleEnd } = coalescing({
-      type: 'result',
-      text: 'both, together',
-      queuedTurnCount: 0,
-    });
     await run(q.query);
-    expect(endedInsideWindow()).toBe(false);
-    expect(neededIdleEnd()).toBe(false); // ended by the 30s rule, not the 20-minute idle end
+    expect(endedWhileSilent).toBe(false);
+    expect(endedAfterItsResult).toBe(true);
     expect(q.endCalls()).toBe(1);
-    expect(q.pushes.some((p) => p.includes('after the raise'))).toBe(false);
     expect(isPending('m4')).toBe(true);
   }, 20_000);
 
@@ -523,7 +542,7 @@ describe('queued sends that coalesce into fewer turns', () => {
       insertFollowUp('m3', 'second queued');
       await until(() => pushes.some((p) => p.includes('second queued')));
       yield { type: 'result', text: 'turn one' };
-      yield { type: 'result', text: 'both, together' }; // no queuedTurnCount
+      yield { type: 'result', text: 'both, together' }; // no uuid echo: no exact count
       setCeiling(720);
       insertFollowUp('m4', 'after the raise');
       setSystemTime(new Date(Date.now() + 35_000));

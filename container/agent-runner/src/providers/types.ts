@@ -232,7 +232,10 @@ export type ProviderEvent =
    * raw diagnostics. Failures without `error` receive a generic notice.
    * `maxBudgetExceeded` marks the SDK's own max-budget stop (Claude result
    * subtype `error_max_budget_usd`): the query's fixed budget is spent.
-   * `queuedTurnCount`: sends the provider still has queued (coalesced sends count once).
+   * `unansweredInputs`: inputs pushed into this query that no completed turn
+   * has consumed yet, exact from the provider's own echo (Claude
+   * `user_message_uuids`; queued sends may fold into one turn). Absent when the
+   * result echoes none of this query's inputs.
    */
   | {
       type: 'result';
@@ -240,8 +243,7 @@ export type ProviderEvent =
       isError?: boolean;
       error?: string;
       maxBudgetExceeded?: boolean;
-      /** User sends still queued in the provider when this result was produced (Claude `queued_turn_count`). */
-      queuedTurnCount?: number;
+      unansweredInputs?: number;
     }
   /**
    * An assistant text segment emitted mid-turn (e.g. between tool calls).

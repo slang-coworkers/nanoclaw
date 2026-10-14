@@ -90,10 +90,6 @@ const IDLE_END_MS = process.env.NANOCLAW_IDLE_END_MS
 // Shorter than IDLE_END_MS on purpose: with nothing in flight the only thing the
 // wait protects is an agent that is between turns waiting for subagent or system
 // notifications, and those arrive within minutes. Floor 60s.
-// Quiet period after a result whose provider reported nothing queued, before a
-// stale-budget query is ended although the local input count is above zero
-// (queued sends coalesced into fewer turns). See the follow-up poller.
-const PROVIDER_QUEUE_QUIET_MS = 30_000;
 const FRESH_SESSION_IDLE_END_MS = process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS
   ? Math.max(60_000, parseInt(process.env.NANOCLAW_FRESH_SESSION_IDLE_END_MS, 10))
   : 300_000;
@@ -3281,16 +3277,15 @@ export async function processQuery(
   // zero: ending the input stream while an input is queued or running would
   // deny its tool calls. Counted only after the push succeeds.
   let inputsOutstanding = initialPrompt !== '' ? 1 : 0;
-  // The provider reported nothing queued at the last result (Claude
-  // `queued_turn_count: 0`). Queued sends may coalesce into fewer turns, which
-  // leaves the local count above zero; this lets the stale/spent end proceed
-  // after a short quiet period instead of the plain idle end. Any later push
-  // makes the report stale.
-  let providerQueueEmpty = false;
+  // The count is exact: the last result carried the provider's own count
+  // (Claude echoes the uuids each turn consumed). Queued sends may fold into
+  // one turn, so one result can answer several inputs and leave reply-routing
+  // entries behind; without the provider's count, each result answers one
+  // input and the routing queue must be empty too.
+  let inputsExact = false;
   const pushQueryInput = (message: string): void => {
     query.push(message);
     inputsOutstanding += 1;
-    providerQueueEmpty = false;
   };
   // A retry is another provider input, behind any follow-ups already pushed.
   // Preserve its original route, prompt and retry guards until it is answered.
@@ -3502,18 +3497,17 @@ export async function processQuery(
               : describeStaleBudget(stale!);
             const idleMs = Date.now() - lastEventTime;
             // End at once only when every input has been answered and nothing
-            // runs in the background. If the local count is off because the
-            // provider coalesced queued sends, its own "nothing queued" report
-            // (with no event since that result) allows the end after a short
-            // quiet period: a send it had not read yet would start a turn, and
-            // any event clears turnComplete. Otherwise only the plain idle end
-            // applies: a slow end, never a cut-short turn.
-            const strict =
-              turnComplete && bgTasks === 0 && !answering && queuedTurns.length === 0 && inputsOutstanding === 0;
-            const byProvider = !strict && turnComplete && bgTasks === 0 && providerQueueEmpty;
-            const afterResultMs = strict ? 0 : PROVIDER_QUEUE_QUIET_MS;
+            // runs in the background. With the provider's exact count, folded
+            // sends cannot hold the end back through leftover routing entries;
+            // without it the routing queue must be empty too. Otherwise only
+            // the plain idle end applies: a slow end, never a cut-short turn.
+            const settled =
+              turnComplete &&
+              bgTasks === 0 &&
+              inputsOutstanding === 0 &&
+              (inputsExact || (!answering && queuedTurns.length === 0));
             if (
-              freshSessionArrivalAction(idleMs, strict || byProvider, idleEndLimit(bgTasks), afterResultMs) === 'end'
+              freshSessionArrivalAction(idleMs, settled, idleEndLimit(bgTasks), 0) === 'end'
             ) {
               log(`${why} — ending the query; ${newMessages.length} follow-up message(s) stay pending for a fresh one`);
               idleEndedAt = Date.now();
@@ -3701,8 +3695,8 @@ export async function processQuery(
       if (event.type === 'result') turnComplete = true;
       else if (event.type !== 'usage' && event.type !== 'message_usage') turnComplete = false;
       if (event.type === 'result') {
-        inputsOutstanding = Math.max(0, inputsOutstanding - 1);
-        providerQueueEmpty = event.queuedTurnCount === 0;
+        inputsExact = event.unansweredInputs !== undefined;
+        inputsOutstanding = inputsExact ? event.unansweredInputs! : Math.max(0, inputsOutstanding - 1);
         if (isMaxBudgetStop(event)) budgetExhausted = true;
       }
       if (event.type === 'progress' && event.task === 'started') bgTasks += 1;
