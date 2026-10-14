@@ -786,7 +786,7 @@ describe("round 3 — closing a segment settles it against its session's final c
     H.setFailPoint(undefined);
     H.flushPendingCostEvents();
     expect(H.pendingCostEventCount()).toBe(0);
-  });
+  }, 30_000); // 10,005 transactions: 6 s on a slow CI runner, past bun's 5 s default
 
   it('a negative correction for a call charged on a closed day does not refund today (R3-8)', () => {
     H.setState({ costImmortal: true, costWindow: 'daily', costDayKey: '2026-10-13' });
