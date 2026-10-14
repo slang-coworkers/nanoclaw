@@ -575,6 +575,10 @@ export async function routeAgentMessage(
         platform_id: targetAgentGroupId,
         content: msg.content,
         in_reply_to: msg.in_reply_to,
+        // Routing inputs the approved replay must reuse (message-gate.ts):
+        // without them it falls back to the sender's thread and drops the pin.
+        thread_id: msg.thread_id ?? null,
+        target_session_id: msg.target_session_id ?? null,
       },
     });
     log.info('Agent message held for approval', {
