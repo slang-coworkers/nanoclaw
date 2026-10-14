@@ -336,3 +336,59 @@ function resolveContainedPath(root: string, relativePath: string, errorPrefix: s
   }
   return target;
 }
+
+/**
+ * The cumulative per-model usage Claude Code will RESTORE when it resumes
+ * `continuation`: the `modelUsage` of the last `cost-state` entry in the
+ * session transcript. Claude Code appends one when each process ends, and a
+ * resumed process continues its `result.modelUsage` totals from it — so the
+ * cost backstop reads it BEFORE the query to difference the first result
+ * exactly (a compaction in that first turn is then charged, not absorbed).
+ *
+ * Reads backwards from the end in bounded chunks (`maxBytes` total). Returns
+ * null when there is no transcript, no `cost-state`, or anything is unreadable.
+ */
+export function readRestoredModelUsage(
+  continuation: string,
+  maxBytes = 32 * 1024 * 1024,
+): Record<string, unknown> | null {
+  const file = findContinuationFile(path.join(claudeConfigDirectory(), 'projects'), `${continuation}.jsonl`);
+  if (!file) return null;
+  let fd: number | undefined;
+  try {
+    fd = fs.openSync(file, 'r');
+    const size = fs.fstatSync(fd).size;
+    const chunk = 256 * 1024;
+    let pos = size;
+    let tail = Buffer.alloc(0);
+    while (pos > 0 && size - pos < maxBytes) {
+      const len = Math.min(chunk, pos);
+      pos -= len;
+      const buf = Buffer.alloc(len);
+      fs.readSync(fd, buf, 0, len, pos);
+      tail = Buffer.concat([buf, tail]);
+      // Every line after the first newline in `tail` is complete; scan them newest first.
+      const firstNl = pos === 0 ? -1 : tail.indexOf(0x0a);
+      const complete = firstNl === -1 ? tail : tail.subarray(firstNl + 1);
+      const lines = complete.toString('utf8').split('\n');
+      for (let i = lines.length - 1; i >= 0; i--) {
+        const line = lines[i];
+        if (!line.includes('"cost-state"')) continue;
+        try {
+          const j = JSON.parse(line) as { type?: string; modelUsage?: unknown };
+          if (j.type === 'cost-state' && j.modelUsage && typeof j.modelUsage === 'object') {
+            return j.modelUsage as Record<string, unknown>;
+          }
+        } catch {
+          // A malformed line is skipped like everywhere else in this module.
+        }
+      }
+      tail = firstNl === -1 ? Buffer.alloc(0) : tail.subarray(0, firstNl + 1);
+    }
+    return null;
+  } catch {
+    return null;
+  } finally {
+    if (fd !== undefined) fs.closeSync(fd);
+  }
+}
