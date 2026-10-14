@@ -729,12 +729,12 @@ describe("round 3 — closing a segment settles it against its session's final c
     expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }), 12);
   });
 
-  it('a cost-state newer for one model but stale for another that charged since: settles and covers nothing', () => {
+  it('a cost-state newer for an inactive model but stale for another that charged since: settles only the inactive model', () => {
     H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
     H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 900, out: 10 } }));
     H.recordMessageCost(call('m2', { output: 7 })); // Opus, after the result
     resumeQuery({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 1_800, out: 20 } });
-    const paid = priceOf({ output: 100 }) + priceOf({ input: 900, output: 10 }, HAIKU) + priceOf({ output: 7 });
+    const paid = priceOf({ output: 100 }) + priceOf({ input: 1_800, output: 20 }, HAIKU) + priceOf({ output: 7 });
     expect(spent()).toBeCloseTo(paid, 12);
     H.recordMessageCost(call('m2', { output: 30 }, { final: true })); // still topped up, never ignored
     expect(spent()).toBeCloseTo(paid + priceOf({ input: 0, output: 23 }), 12);
@@ -877,10 +877,11 @@ describe("round 3 — closing a segment settles it against its session's final c
 });
 
 describe('round 4 — startup recovery and the segment-start gate', () => {
+  // performance.now: setSystemTime freezes Date, and a frozen deadline never passes.
   async function waitFor(cond: () => boolean, ms = 3_000): Promise<void> {
-    const end = Date.now() + ms;
+    const end = performance.now() + ms;
     while (!cond()) {
-      if (Date.now() > end) throw new Error('timed out');
+      if (performance.now() > end) throw new Error('timed out');
       await new Promise((r) => setTimeout(r, 10));
     }
   }
@@ -968,6 +969,39 @@ describe('round 4 — startup recovery and the segment-start gate', () => {
       expect(started).toBe(false);
     });
   }
+
+  it('a failed segment start stays pending across UTC rollover, so the query never starts (R6a-2)', async () => {
+    __setConfigForTest(cfg({ immortal: true }));
+    H.setState({ costImmortal: true, costWindow: 'daily', costDayKey: '2026-10-13' });
+    setSystemTime(new Date('2026-10-13T23:59:00Z'));
+    const prev = process.env.NANOCLAW_COST_SEGMENT_RETRY_MS;
+    process.env.NANOCLAW_COST_SEGMENT_RETRY_MS = '20';
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, kind, timestamp, status, content, seq) VALUES ('s2','chat',?, 'pending', ?, 2)`,
+      )
+      .run(new Date().toISOString(), JSON.stringify({ sender: 'admin', text: 'hi' }));
+    const provider = providerWithFinal(null, () => null);
+    let started = false;
+    provider.query = () => {
+      started = true;
+      throw new Error('must not start');
+    };
+    H.setFailPoint('segment:after-start');
+    const loop = runPollLoop({ provider, providerName: 'claude', cwd: '/tmp' });
+    try {
+      await waitFor(() => H.pendingCostEventCount() > 0);
+      H.setFailPoint(undefined);
+      setSystemTime(new Date('2026-10-14T00:01:00Z'));
+      await expect(loop).rejects.toThrow('the query segment could not be recorded');
+    } finally {
+      H.setFailPoint(undefined);
+      setSystemTime();
+      if (prev === undefined) delete process.env.NANOCLAW_COST_SEGMENT_RETRY_MS;
+      else process.env.NANOCLAW_COST_SEGMENT_RETRY_MS = prev;
+    }
+    expect(started).toBe(false);
+  });
 });
 
 describe('round 2 — fail closed, window stamps, model move, timestamps, daily rows, hard-stop drain', () => {

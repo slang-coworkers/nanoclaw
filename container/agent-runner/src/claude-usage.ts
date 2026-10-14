@@ -542,7 +542,23 @@ export function settleClosingSegment(
   // Every model that charged calls since its last settlement must be newer too;
   // otherwise the state is stale for that model and nothing may be covered.
   const active = Object.entries(seg.models).filter(([, m]) => FIELDS.some((f) => m.p[f] > m.pAtLastResult[f]));
-  if (advancedKeys.length === 0 || active.some(([key]) => !advancedKeys.includes(key))) return out;
+  if (advancedKeys.length === 0) return out;
+  const activeKeys = new Set(active.map(([key]) => key));
+  const staleActive = active.filter(([key]) => !advancedKeys.includes(key));
+  if (staleActive.length > 0) {
+    // Do not advance the segment-wide epoch: stale active calls must remain
+    // uncovered. Spend proved for inactive models is nevertheless safe to charge.
+    for (const key of advancedKeys) {
+      if (activeKeys.has(key)) continue;
+      const m = segmentModel(seg, key);
+      m.lastCum = { ...cums[key] };
+      const r = residualFor(seg, key, m, fallbackTtl);
+      if (r) out.residuals.push(r);
+      m.pAtLastResult = { ...m.p };
+    }
+    out.skipped.push(...staleActive.map(([key]) => key));
+    return out;
+  }
   for (const [key, c] of Object.entries(cums)) {
     const m = segmentModel(seg, key);
     if (!m.base || (m.lastCum && decreased(c, m.lastCum, isPricedKey(key)))) {

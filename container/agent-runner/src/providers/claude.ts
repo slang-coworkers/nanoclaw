@@ -287,7 +287,9 @@ const SUBAGENT_MAX_LINE_BYTES = 16 * 1024 * 1024;
  * one invocation must reach EOF; it yields to the event loop between slices so an
  * enormous transcript never starves the runner.
  */
-const SUBAGENT_READ_BUDGET_BYTES = Number(process.env.NANOCLAW_SUBAGENT_READ_BUDGET_BYTES) || 256 * 1024 * 1024;
+// A non-positive or non-numeric override would make the slice loop yield forever.
+const positiveOr = (n: number, fallback: number): number => (Number.isFinite(n) && n > 0 ? n : fallback);
+const SUBAGENT_READ_BUDGET_BYTES = positiveOr(Number(process.env.NANOCLAW_SUBAGENT_READ_BUDGET_BYTES), 256 * 1024 * 1024);
 const SUBAGENT_READ_BUDGET_MS = 10_000;
 
 /** Where each subagent transcript was read up to, so a re-fired hook reads only what was appended. */
@@ -379,7 +381,7 @@ export function createSubagentUsageHook(
         cur = { dev: st.dev, ino: st.ino, offset: 0, carry: '', skipping: false };
       }
       const buf = Buffer.alloc(Math.min(SUBAGENT_READ_CHUNK_BYTES, Math.max(1, st.size - cur.offset)));
-      const budgetBytes = opts.budgetBytes ?? SUBAGENT_READ_BUDGET_BYTES;
+      const budgetBytes = positiveOr(opts.budgetBytes ?? SUBAGENT_READ_BUDGET_BYTES, SUBAGENT_READ_BUDGET_BYTES);
       let sliceOffset = cur.offset;
       let sliceStartedAt = Date.now();
       while (cur.offset < st.size) {

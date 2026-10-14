@@ -1121,6 +1121,10 @@ function flushPendingCostEvents(): void {
   while (pendingCostEvents.length > 0) {
     const e = pendingCostEvents[0];
     if (e.gen !== ledgerGen || (costWindow === 'daily' && e.day !== utcDayKey())) {
+      // A segment is structural, not merely spend from the closed window.
+      // Keep it pending so the query-start gate fails and a fresh runner
+      // reconstructs the segment before making an API call.
+      if (e.label === 'segment') return;
       // Its budget window is gone (a /clear, or the UTC day it belongs to has
       // closed): charging it now would bill the wrong window.
       log(`Cost accounting: discarding a pending ${e.label} event from a closed budget window`);

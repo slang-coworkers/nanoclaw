@@ -445,6 +445,21 @@ describe('SubagentStop transcript read — defensive (items 6, 7)', () => {
     expect((await fire(big, { budgetBytes: 4 * 1024 * 1024 })).map((e) => e.outputTokens)).toEqual([124]);
   });
 
+  it('a non-positive read budget falls back to the default (R6a-3): reads to EOF without yielding per chunk', async () => {
+    const originalSetTimeout = globalThis.setTimeout;
+    let yields = 0;
+    globalThis.setTimeout = ((callback: () => void, delay?: number) => {
+      if (delay === 0) yields += 1;
+      return originalSetTimeout(callback, delay);
+    }) as typeof setTimeout;
+    try {
+      expect((await fire(realFile(), { budgetBytes: -1 })).map((e) => e.outputTokens)).toEqual([124]);
+    } finally {
+      globalThis.setTimeout = originalSetTimeout;
+    }
+    expect(yields).toBe(0); // a -1 budget taken literally yields before every chunk
+  });
+
   it('reads a transcript of any size completely, in bounded chunks (no size skip)', async () => {
     const big = path.join(subagentDir, 'agent-big.jsonl');
     const pad = `${JSON.stringify({ type: 'user', pad: 'x'.repeat(1_000_000) })}\n`;
