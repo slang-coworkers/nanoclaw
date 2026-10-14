@@ -1132,10 +1132,13 @@ function flushPendingCostEvents(): void {
   }
 }
 
-/** Apply an accounting event now, or queue it (in order) behind earlier failed ones. */
-function runCostEvent(label: string, msgId: string | undefined, run: () => void): void {
+/**
+ * Apply an accounting event now, or queue it (in order) behind earlier failed
+ * ones. Returns whether it committed now.
+ */
+function runCostEvent(label: string, msgId: string | undefined, run: () => void): boolean {
   flushPendingCostEvents();
-  if (pendingCostEvents.length === 0 && tryCostTransaction(label, msgId, run)) return;
+  if (pendingCostEvents.length === 0 && tryCostTransaction(label, msgId, run)) return true;
   pendingCostEvents.push({ label, msgId, run, gen: ledgerGen, day: utcDayKey() });
   // Only an immortal group keeps running while accounting cannot commit, so only
   // its queue can grow without bound. Past the bound the oldest per-call report
@@ -1155,6 +1158,7 @@ function runCostEvent(label: string, msgId: string | undefined, run: () => void)
       }
     }
   }
+  return false;
 }
 
 /** Unrecorded accounting events an immortal group may hold (only it keeps running while they pile up). */
@@ -1200,8 +1204,8 @@ function beginClaudeSegment(
   resumeId: string | undefined,
   restored: Record<string, unknown> | null,
   readFinal?: (sessionId: string) => Record<string, unknown> | null,
-): void {
-  if (!costEnabled) return;
+): boolean {
+  if (!costEnabled) return true;
   // The segment being replaced, and the cumulative its session ended at (read
   // here, outside the transaction: it is file IO).
   const prev = claudeBackstop.segment;
@@ -1209,7 +1213,7 @@ function beginClaudeSegment(
   const prevSession = prev?.sessionId ?? null;
   const prevFinal =
     prevSession === null ? null : prevSession === resumeId ? restored : (readFinal?.(prevSession) ?? null);
-  runCostEvent('segment', undefined, () => {
+  return runCostEvent('segment', undefined, () => {
     const old = claudeBackstop.segment;
     if (old && old.id === prevId) settleClosingClaudeSegment(old, prevFinal);
     const fromTranscript = resumeId && restored ? cumFromModelUsage(restored as Record<string, SdkModelUsage>) : null;
@@ -1275,6 +1279,32 @@ function settleClosingClaudeSegment(old: Segment, final: Record<string, unknown>
     );
   }
   applySignedCost(total);
+}
+
+/**
+ * At startup, settle and close the previous process's open Claude segment
+ * while its transcript still exists: the continuation rotation that follows
+ * may delete the transcript, and with it the final `cost-state` the closing
+ * settlement reads. Returns whether that committed; when it did not, the caller
+ * keeps the transcript (no rotation this start) so the retry, or the next
+ * start, can still read it.
+ */
+function closeClaudeSegmentAtStartup(readFinal?: (sessionId: string) => Record<string, unknown> | null): boolean {
+  const old = claudeBackstop.segment;
+  if (!costEnabled || !old) return true;
+  const final = old.sessionId ? (readFinal?.(old.sessionId) ?? null) : null;
+  return runCostEvent('close', undefined, () => {
+    const cur = claudeBackstop.segment;
+    if (!cur || cur.id !== old.id) return;
+    settleClosingClaudeSegment(cur, final);
+    closeSegment(claudeBackstop);
+    persistCostCap();
+  });
+}
+
+/** How long a query waits for its accounting segment to commit before the runner gives the batch back. */
+function costSegmentRetryMs(): number {
+  return Number(process.env.NANOCLAW_COST_SEGMENT_RETRY_MS) || 30_000;
 }
 
 /**
@@ -3274,11 +3304,25 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // a Codex thread id never gets handed to Claude or vice versa.
   let continuation: string | undefined = migrateLegacyContinuation(config.providerName);
 
+  // Cost cap (NanoClaw #1): load persisted spend so the cap survives respawns,
+  // and publish the current cap state for the dashboard. Provider name gates
+  // enablement — Claude (usage events + codex fold) and native codex (rollout
+  // fold at the poll and result boundaries) are metered; any other provider has
+  // no accounting source and stays disabled. Loaded BEFORE the rotation below:
+  // the previous process's open Claude segment is settled from its transcript,
+  // which rotation may delete.
+  initCostTracking(config.providerName);
+  const accountingClosed =
+    config.providerName !== 'claude' ||
+    closeClaudeSegmentAtStartup(config.provider.readRestoredUsage?.bind(config.provider));
+
   // Before resuming, drop a session whose on-disk transcript has grown too
   // large/old to cold-resume within the host's idle ceiling. Without this a
   // long-lived hub keeps trying to reload an ever-growing .jsonl, hangs the
   // first turn, and gets killed before it can reply (then repeats forever).
-  if (continuation) {
+  if (continuation && !accountingClosed) {
+    log('Cost accounting: the previous segment is not yet settled — keeping its transcript (no rotation this start)');
+  } else if (continuation) {
     let rotateReason = config.provider.maybeRotateContinuation?.(continuation, config.cwd);
     // Providers whose history lives server-side legitimately omit that hook
     // (providers/types.ts) — there is no local transcript to measure. They were
@@ -3341,13 +3385,6 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // it as soon as possible.
   publishRunnerReadiness();
   publishCodexChild();
-
-  // Cost cap (NanoClaw #1): load persisted spend so the cap survives respawns,
-  // and publish the current cap state for the dashboard. Provider name gates
-  // enablement — Claude (usage events + codex fold) and native codex (rollout
-  // fold at the poll and result boundaries) are metered; any other provider has
-  // no accounting source and stays disabled.
-  initCostTracking(config.providerName);
 
   const refreshDestinations = makeDestinationsRefresher(config.systemContext);
 
@@ -3570,7 +3607,17 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     if (meterClaude) {
       const resumeId = newSessionBatch ? undefined : continuation;
       const readRestored = config.provider.readRestoredUsage?.bind(config.provider);
-      beginClaudeSegment(resumeId, resumeId ? (readRestored?.(resumeId) ?? null) : null, readRestored);
+      if (!beginClaudeSegment(resumeId, resumeId ? (readRestored?.(resumeId) ?? null) : null, readRestored)) {
+        // FAIL CLOSED: no API call starts without a durable accounting segment —
+        // a query whose segment is lost with this process could never be
+        // settled. Retry briefly (a transient lock), then give the batch back:
+        // the runner exits, and the next one clears its processing acks.
+        const deadline = Date.now() + costSegmentRetryMs();
+        while (costAccountingHalted() && Date.now() < deadline) await sleep(POLL_INTERVAL_MS);
+        if (costAccountingHalted()) {
+          throw new Error('Cost accounting: the query segment could not be recorded — not starting the query');
+        }
+      }
     }
 
     const query = config.provider.query({

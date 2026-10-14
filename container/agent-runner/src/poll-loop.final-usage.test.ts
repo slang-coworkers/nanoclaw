@@ -26,9 +26,10 @@ import os from 'os';
 import path from 'path';
 
 import { closeSessionDb, getInboundDb, getOutboundDb, initTestSessionDb } from './mailbox/sqlite/connection.js';
-import { getClaudeBackstop, getCostCap } from './db/session-state.js';
+import { getClaudeBackstop, getCostCap, setContinuation } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';
-import { __costCapTestHooks as H, processQuery } from './poll-loop.js';
+import { __costCapTestHooks as H, processQuery, runPollLoop } from './poll-loop.js';
+import { MockProvider } from './providers/mock.js';
 import { __resetCodexCostMemo } from './codex-cost.js';
 import { createCostEventsTable, loadClaudeMessage, sumWindow } from './cost-events.js';
 import { RATE_TABLE } from './cost-rate-table.js';
@@ -728,6 +729,17 @@ describe("round 3 — closing a segment settles it against its session's final c
     expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }), 12);
   });
 
+  it('a cost-state EQUAL to the last result, with a call after it, is stale: settles and covers nothing (R4-3)', () => {
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } }));
+    H.recordMessageCost(call('m2', { output: 7 })); // after the result; then killed outright
+    resumeQuery({ [OPUS]: { in: 2, out: 100 } }); // the last cost-state is no newer than that result
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 7 }), 12);
+    H.recordMessageCost(call('m2', { output: 30 }, { final: true })); // its final is still topped up
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 30 }), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+
   it('a cost-state OLDER than the last result (process killed outright) settles nothing', () => {
     H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
     H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } }));
@@ -849,6 +861,97 @@ describe("round 3 — closing a segment settles it against its session's final c
       'hi',
     );
     expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 20 }), 12);
+  });
+});
+
+describe('round 4 — startup recovery and the segment-start gate', () => {
+  async function waitFor(cond: () => boolean, ms = 3_000): Promise<void> {
+    const end = Date.now() + ms;
+    while (!cond()) {
+      if (Date.now() > end) throw new Error('timed out');
+      await new Promise((r) => setTimeout(r, 10));
+    }
+  }
+
+  /** A provider whose transcript holds the previous process's final cost-state. */
+  function providerWithFinal(final: MUIn | null, onRotate: () => string | null) {
+    const provider = new MockProvider({}, () => 'ok') as MockProvider & {
+      readRestoredUsage?: (sid: string) => Record<string, unknown> | null;
+      maybeRotateContinuation?: (c: string, cwd: string) => string | null;
+    };
+    provider.readRestoredUsage = (sid) => (sid === SID && final ? modelUsage(final) : null);
+    provider.maybeRotateContinuation = () => onRotate();
+    return provider;
+  }
+
+  it('startup settles the previous segment from its transcript BEFORE rotation can delete it (R4-2)', async () => {
+    H.recordMessageCost(call('m1', { output: 7 })); // the previous process died mid-call
+    setContinuation('claude', SID);
+    let spentAtRotation: number | undefined;
+    const provider = providerWithFinal({ [OPUS]: { in: 2, out: 1_000 } }, () => {
+      spentAtRotation = spent();
+      return 'transcript too large';
+    });
+    const controller = new AbortController();
+    const loop = runPollLoop({ provider, providerName: 'claude', cwd: '/tmp', signal: controller.signal });
+    try {
+      await waitFor(() => spentAtRotation !== undefined);
+    } finally {
+      controller.abort();
+      await loop.catch(() => {});
+    }
+    expect(spentAtRotation).toBeCloseTo(priceOf({ output: 1_000 }), 12);
+    expect(getClaudeBackstop()?.segment ?? null).toBeNull();
+  });
+
+  it('when that settlement cannot commit, the transcript is kept: no rotation this start', async () => {
+    H.recordMessageCost(call('m1', { output: 7 }));
+    setContinuation('claude', SID);
+    let rotated = false;
+    const provider = providerWithFinal({ [OPUS]: { in: 2, out: 1_000 } }, () => {
+      rotated = true;
+      return 'transcript too large';
+    });
+    H.setFailPoint('close:after-ledger');
+    const controller = new AbortController();
+    const loop = runPollLoop({ provider, providerName: 'claude', cwd: '/tmp', signal: controller.signal });
+    try {
+      await waitFor(() => H.pendingCostEventCount() > 0);
+    } finally {
+      controller.abort();
+      await loop.catch(() => {});
+    }
+    expect(rotated).toBe(false);
+    H.setFailPoint(undefined);
+    H.flushPendingCostEvents(); // the retry still has the final it read
+    expect(spent()).toBeCloseTo(priceOf({ output: 1_000 }), 12);
+  });
+
+  it('a query never starts without a durable segment: the runner gives the batch back (R4-1)', async () => {
+    const prev = process.env.NANOCLAW_COST_SEGMENT_RETRY_MS;
+    process.env.NANOCLAW_COST_SEGMENT_RETRY_MS = '20';
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, kind, timestamp, status, content, seq) VALUES ('s1','chat',?, 'pending', ?, 2)`,
+      )
+      .run(new Date().toISOString(), JSON.stringify({ sender: 'admin', text: 'hi' }));
+    const provider = providerWithFinal(null, () => null);
+    let started = false;
+    provider.query = () => {
+      started = true;
+      throw new Error('must not start');
+    };
+    H.setFailPoint('segment:after-start');
+    try {
+      await expect(runPollLoop({ provider, providerName: 'claude', cwd: '/tmp' })).rejects.toThrow(
+        'the query segment could not be recorded',
+      );
+    } finally {
+      H.setFailPoint(undefined);
+      if (prev === undefined) delete process.env.NANOCLAW_COST_SEGMENT_RETRY_MS;
+      else process.env.NANOCLAW_COST_SEGMENT_RETRY_MS = prev;
+    }
+    expect(started).toBe(false);
   });
 });
 

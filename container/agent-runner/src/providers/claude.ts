@@ -359,7 +359,8 @@ export function createSubagentUsageHook(
       typeof transcriptPath === 'string' &&
       typeof hookSession === 'string' &&
       path.basename(transcriptPath, '.jsonl') === hookSession &&
-      (querySession === undefined || querySession === hookSession);
+      // A runtime caller fails closed until the query's `init` names its session.
+      (opts.sessionId === undefined || (querySession !== undefined && querySession === hookSession));
     const real = bound ? validateSubagentTranscriptPath(p, opts.projectsRoot, transcriptPath) : null;
     if (!real) {
       if (fs.existsSync(p)) log(`subagent usage: ignoring a transcript outside this query's session: ${p}`);

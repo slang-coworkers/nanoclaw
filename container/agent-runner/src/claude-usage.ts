@@ -518,8 +518,11 @@ export function settleSegment(
  * A model with no baseline (an absorbing segment that never saw its first
  * result) or whose total is BELOW its last settled one (the cost-state predates
  * that result — the process was killed before it could write a newer one) is
- * left alone: nothing newer is known. `settled` says whether any model was
- * settled; only then do the segment's calls count as covered by it.
+ * left alone: nothing newer is known. A cost-state that is nowhere AHEAD of
+ * what the segment last settled tells nothing new either — after a normal end
+ * that is simply all of it, after a kill it is stale — so it settles nothing
+ * and covers nothing. `settled` says whether any model was settled; only then
+ * do the segment's calls count as covered by it.
  */
 export function settleClosingSegment(
   seg: Segment,
@@ -528,6 +531,13 @@ export function settleClosingSegment(
   fallbackTtl?: 'cw5' | 'cw1h',
 ): { residuals: Residual[]; settled: boolean; skipped: string[] } {
   const out = { residuals: [] as Residual[], settled: false, skipped: [] as string[] };
+  const advanced = Object.entries(cums).some(([key, c]) => {
+    const m = seg.models[key];
+    const before = m ? (m.lastCum ?? m.base) : seg.baseSource === 'absorb' && seg.epoch === 0 ? null : zeroCum();
+    if (!before || decreased(c, before, isPricedKey(key))) return false;
+    return isPricedKey(key) ? CUM_TOKEN_FIELDS.some((f) => c[f] > before[f]) : c.costUsd > before.costUsd;
+  });
+  if (!advanced) return out;
   for (const [key, c] of Object.entries(cums)) {
     const m = segmentModel(seg, key);
     if (!m.base || (m.lastCum && decreased(c, m.lastCum, isPricedKey(key)))) {

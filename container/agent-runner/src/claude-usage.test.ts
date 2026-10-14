@@ -267,8 +267,10 @@ describe('settleClosingSegment — the replaced segment against its final cost-s
     const seg = startSegment(newBackstopState(), 's', 'fresh', null);
     segmentModel(seg, OPUS).p = vec({ output: 100 });
     settleSegment(seg, cumFromModelUsage(cum(0, 130, 0, 0)), 'T1'); // 30 residual
+    // Nothing newer than that result: nothing owed, and nothing newly covered.
     const out = settleClosingSegment(seg, cumFromModelUsage(cum(0, 130, 0, 0)), 'T2');
-    expect(out).toMatchObject({ residuals: [], settled: true, skipped: [] });
+    expect(out).toMatchObject({ residuals: [], settled: false });
+    expect(seg.epoch).toBe(1);
   });
 
   it('a process that died before its result: charges the final it never reported, once', () => {
@@ -279,11 +281,22 @@ describe('settleClosingSegment — the replaced segment against its final cost-s
     expect(seg.epoch).toBe(1);
   });
 
+  it('a cost-state no newer than the last result settles and covers nothing, even with calls after it', () => {
+    const seg = startSegment(newBackstopState(), 's', 'fresh', null);
+    settleSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0)), 'T1');
+    segmentModel(seg, OPUS).p = vec({ output: 107 }); // a snapshot after the result
+    expect(settleClosingSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0)), 'T2')).toMatchObject({
+      residuals: [],
+      settled: false,
+    });
+    expect(seg.epoch).toBe(1);
+  });
+
   it('a cost-state older than the last result, or no baseline at all, settles nothing', () => {
     const seg = startSegment(newBackstopState(), 's', 'fresh', null);
     settleSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0)), 'T1');
     const stale = settleClosingSegment(seg, cumFromModelUsage(cum(0, 60, 0, 0)), 'T2');
-    expect(stale).toMatchObject({ residuals: [], settled: false, skipped: [OPUS] });
+    expect(stale).toMatchObject({ residuals: [], settled: false });
     expect(seg.epoch).toBe(1);
     const absorbing = startSegment(newBackstopState(), 's', 'absorb', null);
     expect(settleClosingSegment(absorbing, cumFromModelUsage(cum(0, 999, 0, 0)), 'T')).toMatchObject({

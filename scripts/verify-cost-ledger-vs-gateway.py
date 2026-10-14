@@ -109,13 +109,21 @@ def price(
     )
 
 
-def fold_call(base: str, rs: list[tuple]) -> tuple:
+def row_usd(r: tuple, rates: dict) -> float:
+    """A ledger row's dollars at the CURRENT rates (priced_usd is a write-time cache)."""
+    return price(
+        rates, r[2], r[3] or 0, r[4] or 0, r[5] or 0, r[6] or 0, r[7] or 0, r[8] or 0
+    ) + (r[10] or 0)
+
+
+def fold_call(base: str, rs: list[tuple], rates: dict) -> tuple:
     """One call's append-only rows -> one row, like loadClaudeMessage() in cost-events.ts.
 
     Rows arrive in rowid order. Tokens are summed over the rows under the call's
     latest model (a model correction appends a negative row under the old model
     and the full usage under the new one); dollars are summed over every row; the
-    timestamp is the first report's.
+    timestamp is the first report's. Dollars are repriced at the current rates,
+    like sumWindow() reprices token rows.
     """
     model = rs[-1][2]
     tok = [0] * 6
@@ -124,7 +132,7 @@ def fold_call(base: str, rs: list[tuple]) -> tuple:
             continue
         for i in range(6):
             tok[i] += r[3 + i] or 0
-    return (base, rs[0][1], model, *tok, sum(r[9] or 0 for r in rs), 0, len(rs))
+    return (base, rs[0][1], model, *tok, sum(row_usd(r, rates) for r in rs), 0, len(rs))
 
 
 def find_session_db(checkout: str, session: str) -> tuple[str, str]:
@@ -195,7 +203,7 @@ def main() -> int:
             residual.append(r)
         else:
             calls.setdefault(rid.split("#", 1)[0], []).append(r)
-    messages = [fold_call(base, rs) for base, rs in calls.items()]
+    messages = [fold_call(base, rs, rates) for base, rs in calls.items()]
     if not messages:
         print("no Claude message rows in the ledger for this session")
         return 1
@@ -269,13 +277,13 @@ def main() -> int:
         },
         "residual_rows": {
             "count": len(residual),
-            "usd": round(sum(r[9] for r in residual), 6),
+            "usd": round(sum(row_usd(r, rates) for r in residual), 6),
         },
         "adjustment_rows": {
             "count": len(adjustments),
-            "usd": round(sum(r[9] for r in adjustments), 6),
+            "usd": round(sum(row_usd(r, rates) for r in adjustments), 6),
         },
-        "ledger_total_usd": round(sum(r[9] for r in rows), 6),
+        "ledger_total_usd": round(sum(row_usd(r, rates) for r in rows), 6),
         "gateway_rows_in_range_for_group": len(gw),
         "note": "gateway rows in range include the group's other sessions and nested CLI runs; only matched rows are this session's",
     }

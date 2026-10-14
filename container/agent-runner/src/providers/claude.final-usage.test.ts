@@ -352,12 +352,18 @@ describe('SubagentStop transcript read — defensive (items 6, 7)', () => {
   const realFile = () => path.join(subagentDir, 'agent-a2d3a5720f1e5a422.jsonl');
   const fire = async (
     p: string,
-    opts: { transcriptPath?: string; sessionId?: string; querySession?: string; budgetBytes?: number } = {},
+    opts: {
+      transcriptPath?: string;
+      sessionId?: string;
+      querySession?: string;
+      beforeInit?: boolean;
+      budgetBytes?: number;
+    } = {},
   ) => {
     const { got, sink } = SINK();
     await createSubagentUsageHook(sink, {
       projectsRoot: projectsRoot(),
-      sessionId: () => opts.querySession,
+      sessionId: () => (opts.beforeInit ? undefined : (opts.querySession ?? SUB_SID)),
       ...(opts.budgetBytes ? { budgetBytes: opts.budgetBytes } : {}),
     })(
       {
@@ -407,6 +413,8 @@ describe('SubagentStop transcript read — defensive (items 6, 7)', () => {
     // A hook naming another session than its own transcript, or than this query.
     expect(await fire(realFile(), { sessionId: 'sess-forged' })).toHaveLength(0);
     expect(await fire(realFile(), { querySession: 'sess-other-query' })).toHaveLength(0);
+    // Before the query's init has named its session, nothing is trusted.
+    expect(await fire(realFile(), { beforeInit: true })).toHaveLength(0);
     // Both paths of another session agreeing with each other are still not this query's.
     const otherSub = path.join(projectDir, 'sess-other', 'subagents');
     fs.mkdirSync(otherSub, { recursive: true });
