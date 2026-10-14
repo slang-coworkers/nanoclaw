@@ -16,6 +16,16 @@
  * denies — the destination check precedes the policy check, exactly today's
  * outcome. Policy rows can only tighten (hold), never allow: absence of a
  * row falls through to the structural checks.
+ *
+ * One owner per GitHub item: when the router reports the delivery would mint
+ * a FRESH session (`resource.route === 'fresh'`) on a GitHub thread whose item
+ * the recipient group already owns through another live session, a2a.send
+ * DENIES — including self-sends, since a group dispatching to itself on a new
+ * sub-thread would mint the same second budget. A second session per item
+ * starts with a fresh budget and none of the owner's context, which is how
+ * per-session cost caps were routed around (#13406). Policy: raise the owner's
+ * ceiling or don't run; there is no approval path for a second session. The
+ * deny precedes the policy hold, so no grant can satisfy it.
  */
 import { isAncestorGroup } from '../../db/a2a-session-sources.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
@@ -23,6 +33,7 @@ import { getContainerConfig } from '../../db/container-configs.js';
 import { ALLOW, DENY, HOLD, defineGuardedAction } from '../../guard/index.js';
 import { hasDestination } from './db/agent-destinations.js';
 import { getMessagePolicy } from './db/agent-message-policies.js';
+import { findItemOwnerConflict } from './item-ownership.js';
 
 /**
  * pending_approvals action string for held a2a messages. Lives here (not in
@@ -30,6 +41,9 @@ import { getMessagePolicy } from './db/agent-message-policies.js';
  * consult site guarantees its catalog entry is registered — without a cycle.
  */
 export const A2A_MESSAGE_GATE_ACTION = 'a2a_message_gate';
+
+/** Reason prefix of the one-owner-per-item deny — the router keys its sender notice on it. */
+export const ITEM_OWNER_DENY_PREFIX = 'one owner per item:';
 
 export const agentsCreate = defineGuardedAction({
   action: 'agents.create',
@@ -93,6 +107,15 @@ export const a2aSend = defineGuardedAction({
     }
     if (!(await getAgentGroup(to))) {
       return DENY(`target agent group ${to} not found for message ${String(input.payload.id)}`);
+    }
+    if (input.resource?.route === 'fresh') {
+      const conflict = await findItemOwnerConflict(to, input.resource.thread);
+      if (conflict) {
+        return DENY(
+          `${ITEM_OWNER_DENY_PREFIX} ${conflict.item.key} already has ${to} session(s) ` +
+            `${conflict.owners.map((s) => s.id).join(', ')}; refusing a second on ${conflict.requestedThread}`,
+        );
+      }
     }
     if (isSelf) return ALLOW('self-send');
     // The per-edge message policy holds even an authorized send (lineage or

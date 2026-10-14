@@ -85,7 +85,10 @@ describe('composed-document byte parity', () => {
       // `pr-mappings` rows — two resources agents could already reach and were
       // never told about. Then when `explain-diff-html`'s description grew the
       // collapsed-PR-comment contract (that one `## Skills` line changed), and again
-      // when the explanation moved into the PR description (same line).
+      // when the explanation moved into the PR description (same line), and again
+      // when it moved back out into one explanation comment (same line), and again
+      // when that line stopped promising the comment sits "directly after the
+      // description" (it is found by its marker, usually after the bots' comments).
       // Goldens regenerated in the same commit, visibly, every time: that is
       // the point of pinning the digests here as well as the bytes, since a
       // golden edited alongside a regression would go unnoticed.
@@ -101,8 +104,20 @@ describe('composed-document byte parity', () => {
       // gained a `## Connecting external accounts` section and it is EMITTED, so
       // every composed doc carries it. `section-completeness.test.ts` is what made
       // that a decision instead of a silent drop.
-      'base-common': '8c8ad204d97ae56e',
-      'base-common.persona': '72a5d1d460c1b9a7',
+      //
+      // Moved a sixth time by the base-spine trim: the type `description:` now
+      // renders under Identity, Skills lines carry one sentence, `buddy` left
+      // `base-common.skills`, chain-reporting's mechanics moved to
+      // `/base-nanoclaw`, and the contract's Memory and Connecting sections were
+      // rewritten. `anchor-retarget.test.ts` declares each of those.
+      //
+      // Moved a seventh time when nv-main's consolidation of the base
+      // principles/scope/workspace fragments (one `Ambiguity` principle, one
+      // `Recall rule` block) and the scheduler's standing-order prose were merged
+      // in. Those deltas are declared in `section-reorder.test.ts`, which bounds the
+      // live goldens; `anchor-retarget.test.ts` reproduces the frozen pre-reorder set.
+      'base-common': '39145a29df39fd5d',
+      'base-common.persona': '545d883934c209a7',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -110,8 +125,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: 'da7cade266ccdbc3',
-      'default.persona': '0f73f114a1ae41b2',
+      default: '4dafc046b0d039a2',
+      'default.persona': 'b4a83fdc874ece94',
     };
 
     const actual: Record<string, string> = {};
@@ -134,14 +149,15 @@ describe('composed-document byte parity', () => {
     }
   });
 
-  // `main` is the only flat type, and the flat path is the one that treats the
-  // identity body's own `# Title` as structural. An H1 persona therefore yields a
-  // second H1, which must remain legal — see parity.fixtures.ts.
-  it('keeps a second H1 from an operator persona on the flat path', () => {
-    const h1s = compose('main', true)
-      .split('\n')
-      .filter((l) => /^# \S/.test(l));
+  // `main` is the only flat type. Its persona gets the same titled wrapper as a
+  // typed coworker's, so an operator prepend never reads as a continuation of
+  // the section before it (the resident `/onecli-gateway` block, in practice),
+  // and its H1 is re-leveled beneath the wrapper — see parity.fixtures.ts.
+  it('wraps an operator persona in Additional Instructions on the flat path', () => {
+    const out = compose('main', true);
+    const h1s = out.split('\n').filter((l) => /^# \S/.test(l));
 
-    expect(h1s.length).toBeGreaterThan(1);
+    expect(h1s).toEqual(['# Main']);
+    expect(out.endsWith('\n## Additional Instructions\n\n### Persona\n\nBe terse.\n')).toBe(true);
   });
 });

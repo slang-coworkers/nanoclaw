@@ -17,6 +17,11 @@ container/build.sh
 container/pull.sh
 container/Dockerfile.derived
 container/build-derived.sh
+container/build-prep.sh
+container/build-prep.test.ts
+container/sync-agent-runtime.sh
+container/sync-agent-runtime.test.ts
+container/extra-ca/**
 container/entrypoint.sh
 container/config/**
 

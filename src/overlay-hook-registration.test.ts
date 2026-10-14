@@ -17,7 +17,7 @@ vi.mock('./log.js', () => ({
 
 import { DATA_DIR, GROUPS_DIR } from './config.js';
 import type { ContainerConfig } from './container-config.js';
-import { buildMounts } from './container-runner.js';
+import { buildMounts, ensurePrDescriptionGate } from './container-runner.js';
 import type { AgentGroup, Session } from './types.js';
 
 const GROUP_ID = 'ag-overlay-hook-registration';
@@ -71,6 +71,30 @@ describe('overlay hook registration', () => {
     // Respawn: the hasCmd guard keeps it single.
     hooks = await settingsAfterSpawn();
     expect(count(hooks.Stop, 'gate-explain-on-stop.sh')).toBe(1);
+  });
+
+  it('registers gate-pr-description.sh as a PreToolUse Bash hook for every group, once', async () => {
+    let hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-pr-description.sh')).toBe(1);
+    const entry = hooks.PreToolUse.find((e) => e.hooks?.some((h) => h.command?.includes('gate-pr-description.sh')));
+    expect(entry?.matcher).toBe('Bash');
+    expect(entry?.hooks?.[0].command).toBe('bash /app/hooks/gate-pr-description.sh');
+    hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-pr-description.sh')).toBe(1);
+    // Not an overlay gate: a group with overlays disabled still keeps descriptions short.
+    hooks = await settingsAfterSpawn({ disable_overlays: 1 });
+    expect(count(hooks.PreToolUse, 'gate-pr-description.sh')).toBe(1);
+  });
+
+  it('registers the description gate without the dashboard hook block (DASHBOARD_PORT=0 path)', () => {
+    // buildMounts calls ensurePrDescriptionGate outside the dashboard block; a bare
+    // settings.json (what a group has when the dashboard hooks never ran) gets it.
+    fs.writeFileSync(settingsFile, '{}');
+    ensurePrDescriptionGate(settingsFile);
+    ensurePrDescriptionGate(settingsFile);
+    const hooks = (JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as { hooks: Record<string, HookEntry[]> }).hooks;
+    expect(count(hooks.PreToolUse, 'gate-pr-description.sh')).toBe(1);
+    expect(hooks.PreToolUse[0]).toMatchObject({ matcher: 'Bash' });
   });
 
   it('is not registered when overlays are disabled for the group', async () => {

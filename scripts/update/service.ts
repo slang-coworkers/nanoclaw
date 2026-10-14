@@ -67,6 +67,8 @@ export interface ServiceEnvironment {
   sleep(ms: number): Promise<void>;
   /** Progress line for a wait the operator would otherwise read as a hang. */
   log?(message: string): void;
+  /** procfs mount for nohup host identity checks; tests point it at a fixture. */
+  procRoot?: string;
 }
 
 export function defaultServiceEnvironment(runner = createCommandRunner()): ServiceEnvironment {
@@ -144,6 +146,57 @@ function escapeRegex(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 }
 
+function nohupPidFile(projectRoot: string): string {
+  return path.join(projectRoot, 'nanoclaw.pid');
+}
+
+function readNohupPid(projectRoot: string): number | undefined {
+  try {
+    const text = fs.readFileSync(nohupPidFile(projectRoot), 'utf8').trim();
+    // Positive only: `kill` with 0 or a negative pid signals a process group.
+    return /^[1-9][0-9]*$/.test(text) ? Number(text) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+function realpathOr(value: string): string {
+  try {
+    return fs.realpathSync(value);
+  } catch {
+    return value;
+  }
+}
+
+// start-nanoclaw.sh's is_previous_host (argv[1] is this checkout's entrypoint),
+// by realpath so a symlinked checkout matches. A recorded pid may be reused.
+function isNohupHost(pid: number, projectRoot: string, env: ServiceEnvironment): boolean {
+  try {
+    const script = fs.readFileSync(path.join(env.procRoot ?? '/proc', String(pid), 'cmdline'), 'utf8').split('\0')[1];
+    const entrypoint = realpathOr(path.join(projectRoot, 'dist', 'index.js'));
+    return !!script && path.isAbsolute(script) && realpathOr(script) === entrypoint;
+  } catch {
+    return false;
+  }
+}
+
+// The launcher records every start in nanoclaw.pid, so a handle captured
+// before a later start must be re-pointed at the host recorded now.
+export function withRecordedNohupHost(
+  handle: ServiceHandle,
+  projectRoot: string,
+  env: ServiceEnvironment,
+): ServiceHandle {
+  if (handle.mode !== 'nohup') return handle;
+  const pid = readNohupPid(projectRoot);
+  if (pid !== undefined && isNohupHost(pid, projectRoot, env)) {
+    env.log?.(`Found running NanoClaw host (PID ${pid}); stopping it`);
+    return { ...handle, pid, active: true };
+  }
+  env.log?.('No running NanoClaw host found for this checkout; nothing to stop');
+  return { ...handle, pid: undefined, active: false };
+}
+
 export function detectService(projectRoot: string, env: ServiceEnvironment): ServiceHandle {
   const slug = getInstallSlug(projectRoot);
   if (env.platform === 'darwin') {
@@ -189,15 +242,9 @@ export function detectService(projectRoot: string, env: ServiceEnvironment): Ser
     }
 
     const definition = path.join(projectRoot, 'start-nanoclaw.sh');
-    const pidFile = path.join(projectRoot, 'nanoclaw.pid');
-    if (fs.existsSync(definition) && fs.existsSync(pidFile)) {
-      const pid = Number.parseInt(fs.readFileSync(pidFile, 'utf8').trim(), 10);
-      return {
-        mode: 'nohup',
-        definition,
-        pid: Number.isFinite(pid) ? pid : undefined,
-        active: Number.isFinite(pid) && processExists(pid),
-      };
+    if (fs.existsSync(definition) && fs.existsSync(nohupPidFile(projectRoot))) {
+      const pid = readNohupPid(projectRoot);
+      return { mode: 'nohup', definition, pid, active: pid !== undefined && isNohupHost(pid, projectRoot, env) };
     }
   }
 
@@ -229,10 +276,38 @@ export function detectService(projectRoot: string, env: ServiceEnvironment): Ser
 export async function stopService(handle: ServiceHandle, env: ServiceEnvironment): Promise<void> {
   if (!handle.active) return;
   if (handle.mode === 'launchd') {
+    const target = `gui/${env.uid}/${handle.name}`;
+    // Every PID the job reports: KeepAlive can swap the host between probes.
+    const pids = new Set<number>();
+    const loaded = () => {
+      const job = probe(
+        env,
+        'launchctl',
+        ['print', target],
+        [113],
+        'Run the update from a login session of this user.',
+      );
+      const pid = Number(/^\s*pid = (\d+)/m.exec(job?.stdout ?? '')?.[1]);
+      if (pid) pids.add(pid);
+      return job !== undefined;
+    };
+    loaded();
     try {
-      env.runner.run('launchctl', ['bootout', `gui/${env.uid}/${handle.name}`]);
+      env.runner.run('launchctl', ['bootout', target]);
     } catch (err) {
       if (!/No such process/i.test(err instanceof Error ? err.message : String(err))) throw err;
+    }
+    // bootout returns while the host still runs its shutdown handlers. Wait for
+    // the job to leave the domain and the process to exit, or the snapshot races
+    // the shutdown and the next bootstrap fails with "5: Input/output error".
+    const stopping = () => loaded() || [...pids].some(processExists);
+    for (let i = 0; i < 60 && stopping(); i += 1) await env.sleep(500);
+    if (stopping()) {
+      const start = startCommand(handle, env.uid);
+      throw new Error(
+        `NanoClaw service ${handle.name} did not stop (PID ${[...pids].join(', ') || 'unknown'}). ` +
+          `Once it has exited, start it again with: ${start}`,
+      );
     }
   } else if (handle.mode === 'systemd-user') {
     adoptUserRuntimeDir(env.uid);
@@ -253,6 +328,26 @@ export async function stopService(handle: ServiceHandle, env: ServiceEnvironment
       `NanoClaw is running outside a supported service wrapper (PID ${handle.name}). Stop it, then retry cutover`,
     );
   }
+}
+
+// For commands printed to an operator: quotes only what a shell would misread.
+export function shellQuote(value: string): string {
+  return /^[\w@%+=:,./-]+$/.test(value) ? value : "'" + value.replace(/'/g, "'\\''") + "'";
+}
+
+/** What `startService` runs, for an operator finishing a failed rollback by hand. */
+export function startCommand(handle: ServiceHandle, uid: number): string | undefined {
+  if (handle.mode === 'launchd') {
+    // `;`: on a second try the job is already bootstrapped and only needs the kickstart.
+    return `launchctl bootstrap gui/${uid} ${shellQuote(handle.definition!)}; launchctl kickstart gui/${uid}/${handle.name}`;
+  }
+  if (handle.mode === 'systemd-user') {
+    // startService adopts this runtime dir; a `su -` or cron shell lacks it.
+    return `XDG_RUNTIME_DIR="\${XDG_RUNTIME_DIR:-/run/user/${uid}}" systemctl --user start ${handle.name}`;
+  }
+  if (handle.mode === 'systemd-system') return `systemctl start ${handle.name}`;
+  if (handle.mode === 'nohup') return `bash ${shellQuote(handle.definition!)}`;
+  return undefined;
 }
 
 export function startService(handle: ServiceHandle, projectRoot: string, env: ServiceEnvironment): void {
@@ -344,7 +439,7 @@ export async function drainContainers(projectRoot: string, env: ServiceEnvironme
   // One deadline for stop AND poll: the clock starts before the stop call, so
   // a slow or stalled stop eats into the bound instead of extending it.
   const started = Date.now();
-  env.log?.(`Stopping ${initial.ids.length} NanoClaw container(s) for cutover: ${initial.ids.join(', ')}`);
+  env.log?.(`Stopping ${initial.ids.length} NanoClaw container(s): ${initial.ids.join(', ')}`);
   const stopped = env.runner.tryRun(
     runtime,
     ['stop', '-t', String(CUTOVER_STOP_GRACE_SECONDS), ...initial.ids],
@@ -401,6 +496,17 @@ export function restartGatewayContainers(projectRoot: string, env: ServiceEnviro
   if (!restarted.ok) {
     env.log?.(`Gateway restart failed (${restarted.stdout || 'no output'}); re-run the gateway's setup script.`);
   }
+}
+
+/**
+ * The same restart as a shell command, for an operator finishing a rollback by
+ * hand. Only a gateway's own setup sets the gateway role, always without a
+ * session, so the two label filters select what the list above selects.
+ */
+export function gatewayRestartCommand(projectRoot: string): string {
+  const runtime = shellQuote(process.env.CONTAINER_RUNTIME ?? 'docker');
+  const labels = `--filter label=nanoclaw-install=${getInstallSlug(projectRoot)} --filter label=nanoclaw-role=${CONTROLLER_GATEWAY_ROLE}`;
+  return `ids=$(${runtime} ps -aq ${labels}) && { [ -z "$ids" ] || ${runtime} restart -t ${CUTOVER_STOP_GRACE_SECONDS} $ids; }`;
 }
 
 export async function verifyServiceHealth(

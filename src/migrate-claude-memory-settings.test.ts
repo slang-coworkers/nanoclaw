@@ -161,67 +161,47 @@ describe('migrateClaudeMemorySettings', () => {
 });
 
 /**
- * `.claude-shared/` is mounted writable into the container, so its temp paths are
- * attacker-reachable in the same way `groups/<folder>/` is — which is why this
- * publishes through the same `randomUUID()` + `wx` shape as
- * `writeComposedDocument`. The test can't predict the name, so it intercepts the
- * write to learn it.
+ * `.claude-shared/` is mounted writable into the container, so any name in it —
+ * `settings.json` itself or the temp name the rewrite goes through — may be a
+ * planted symlink. The file is reached through the directory's descriptor
+ * (AnchoredDir, `O_NOFOLLOW` + exclusive create), so a planted entry is refused
+ * rather than followed, and is never deleted.
  */
-describe('temp-path hardening', () => {
-  it('refuses to write through a symlink planted at its own temp path', () => {
+describe('entries planted by the container', () => {
+  it('refuses a symlink planted at settings.json: nothing read or written through it', () => {
+    const victim = path.join(dir, 'victim.json');
+    const hostile = JSON.stringify({ autoMemoryEnabled: true }) + '\n';
+    fs.writeFileSync(victim, hostile);
+    fs.symlinkSync(victim, settingsFile);
+
+    // Caught and logged, not thrown: this function's contract is "leave the
+    // settings unchanged on any failure".
+    expect(migrateClaudeMemorySettings(settingsFile)).toBe(false);
+
+    expect(fs.readFileSync(victim, 'utf-8')).toBe(hostile);
+    expect(fs.lstatSync(settingsFile).isSymbolicLink()).toBe(true);
+  });
+
+  // A refused temp name must not become a deletion: the colliding entry is
+  // someone else's, and an unconditional cleanup would remove it.
+  it('leaves a symlink planted at its temp name alone and writes nothing through it', () => {
     write({});
+    const before = fs.readFileSync(settingsFile, 'utf-8');
     const victim = path.join(dir, 'victim.txt');
     fs.writeFileSync(victim, 'untouched\n');
-    const before = fs.readFileSync(settingsFile, 'utf-8');
-
-    const real = fs.writeFileSync;
-    const spy = vi.spyOn(fs, 'writeFileSync').mockImplementation(((p: fs.PathOrFileDescriptor, ...rest) => {
-      spy.mockRestore();
-      fs.symlinkSync(victim, p as string);
-      return (real as (...a: unknown[]) => void)(p, ...rest);
-    }) as typeof fs.writeFileSync);
+    const now = Date.now();
+    const spy = vi.spyOn(Date, 'now').mockReturnValue(now);
+    const tmp = path.join(dir, `settings.json.tmp-${process.pid}-${now}`);
+    fs.symlinkSync(victim, tmp);
 
     try {
-      // Caught and logged, not thrown: this function's contract is "leave the
-      // settings unchanged on any failure".
       expect(migrateClaudeMemorySettings(settingsFile)).toBe(false);
     } finally {
       spy.mockRestore();
     }
 
     expect(fs.readFileSync(victim, 'utf-8')).toBe('untouched\n');
+    expect(fs.lstatSync(tmp).isSymbolicLink()).toBe(true);
     expect(fs.readFileSync(settingsFile, 'utf-8')).toBe(before);
-  });
-
-  // A `wx` refusal must not become a deletion: the colliding entry is someone
-  // else's file, and an unconditional cleanup would remove it.
-  it('does not delete the colliding entry when its temp path already exists', () => {
-    write({});
-
-    let occupied: string | undefined;
-    const spy = vi.spyOn(fs, 'writeFileSync').mockImplementation(((p: fs.PathOrFileDescriptor) => {
-      spy.mockRestore();
-      occupied = p as string;
-      fs.writeFileSync(occupied, 'not mine\n');
-      throw Object.assign(new Error(`EEXIST: file already exists, open '${occupied}'`), { code: 'EEXIST' });
-    }) as typeof fs.writeFileSync);
-
-    try {
-      expect(migrateClaudeMemorySettings(settingsFile)).toBe(false);
-    } finally {
-      spy.mockRestore();
-    }
-
-    expect(occupied).toBeDefined();
-    expect(fs.readFileSync(occupied!, 'utf-8')).toBe('not mine\n');
-  });
-
-  it('derives the temp name from randomUUID, not pid/timestamp', () => {
-    const source = fs.readFileSync(new URL('./migrate-claude-memory-settings.ts', import.meta.url), 'utf-8');
-    const body = source.slice(source.indexOf('function writeAtomic'));
-    const fn = body.slice(0, body.indexOf('\n}\n') + 3);
-
-    expect(fn).toContain('randomUUID()');
-    expect(fn).not.toMatch(/process\.pid|Date\.now\(\)/);
   });
 });

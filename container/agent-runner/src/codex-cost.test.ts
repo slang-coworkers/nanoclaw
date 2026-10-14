@@ -103,6 +103,7 @@ describe('codex rate table (anti-drift vs the ccusage-derived rates)', () => {
   const EXPECTED: Record<string, { input: number; output: number; cacheRead: number }> = {
     // LiteLLM online rate for the gateway's openai/openai/gpt-6-sol.
     'gpt-6-sol': { input: 2e-6, output: 10e-6, cacheRead: 0.2e-6 },
+    'gpt-6.1-sol': { input: 2e-6, output: 10e-6, cacheRead: 0.1e-6 },
     // ccusage-fitted (prod-observed).
     'gpt-5.6-sol': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
     'gpt-5.5': { input: 5e-6, output: 30e-6, cacheRead: 0.5e-6 },
@@ -146,6 +147,7 @@ describe('normalizeCodexModel', () => {
     expect(normalizeCodexModel('gpt-5.6-sol')).toBe('gpt-5.6-sol');
     expect(normalizeCodexModel('azure/openai/gpt-5.6-sol')).toBe('gpt-5.6-sol');
     expect(normalizeCodexModel('openai/openai/gpt-6-sol')).toBe('gpt-6-sol');
+    expect(normalizeCodexModel('openai/openai/gpt-6.1-sol')).toBe('gpt-6.1-sol');
     expect(normalizeCodexModel('openai/openai/gpt-5.5')).toBe('gpt-5.5');
     expect(normalizeCodexModel('  AZURE/OpenAI/GPT-5.6-SOL ')).toBe('gpt-5.6-sol');
   });

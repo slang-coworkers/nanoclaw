@@ -2146,6 +2146,30 @@ export function upsertGuardHook(entries: HookEntry[], matcher: string, marker: s
   return kept;
 }
 
+export const PR_DESCRIPTION_GATE_CMD = 'bash /app/hooks/gate-pr-description.sh';
+
+/**
+ * Register gate-pr-description.sh as a PreToolUse Bash hook in a group's
+ * settings.json, once. Independent of the dashboard hook block, which only runs
+ * when DASHBOARD_PORT is set. No-op when the script or the settings file is absent.
+ */
+export function ensurePrDescriptionGate(settingsFile: string): void {
+  if (!fs.existsSync(path.join(process.cwd(), 'container', 'hooks', 'gate-pr-description.sh'))) return;
+  if (!fs.existsSync(settingsFile)) return;
+  const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+  if (!settings.hooks) settings.hooks = {};
+  const before = JSON.stringify(settings.hooks.PreToolUse ?? []);
+  settings.hooks.PreToolUse = upsertGuardHook(
+    settings.hooks.PreToolUse ?? [],
+    'Bash',
+    'gate-pr-description.sh',
+    PR_DESCRIPTION_GATE_CMD,
+  );
+  if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+  }
+}
+
 export async function buildMounts(
   agentGroup: AgentGroup,
   session: Session,
@@ -2597,6 +2621,14 @@ export async function buildMounts(
 
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
   }
+  // gate-pr-description.sh: a PR description set by `gh pr create|edit` or
+  // `gh api …/pulls` stays short (2 lines per section, ≤1,000 chars, no tables),
+  // because squash merges copy it into git log; the explanation lives in the
+  // explanation comment. Registered for every Claude-surface group, outside the
+  // dashboard block above so DASHBOARD_PORT=0 cannot switch it off. Codex groups
+  // (container/codex-hooks.toml) do not get it yet: their PreToolUse deny path
+  // is not exercised anywhere in this repo.
+  if (defaultSurfaces) ensurePrDescriptionGate(settingsFile);
   // Claude state dir — only for providers using the default Claude surfaces.
   // Under `dataRoot/v2-sessions/<group>`, so 'group-state' is what the policy
   // requires here.
@@ -3134,16 +3166,11 @@ export function syncSkillSymlinks(
   claudeDir: string,
   containerConfig: import('./container-config.js').ContainerConfig,
 ): void {
-  const skillsDir = path.join(claudeDir, 'skills');
-  if (!fs.existsSync(skillsDir)) {
-    fs.mkdirSync(skillsDir, { recursive: true });
-  }
-
   // Same body as the declared-contract path; real (non-symlink) entries are
   // either a template overlay (intentional; see src/group-skills.ts) or a stale
   // pre-refactor skill copy that shadows the shared skill (#3001), so the
   // skip is surfaced as a warning.
-  syncSharedSkillLinks(skillsDir, selectedSkillNames(containerConfig), true);
+  syncSharedSkillLinks(claudeDir, ['skills'], selectedSkillNames(containerConfig), true);
 }
 
 /**
@@ -3256,6 +3283,12 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'ANTHROPIC_DEFAULT_OPUS_MODEL',
     'ANTHROPIC_DEFAULT_SONNET_MODEL',
     'ANTHROPIC_DEFAULT_HAIKU_MODEL',
+    // The Claude SDK's fallback model after a primary-model error or overload.
+    // Unset, the SDK uses its built-in default, which an inference key scoped to
+    // specific models refuses (403 "key not allowed to access model"); the turn
+    // bounces and the session goes quiet. The agent-runner reads it in config.ts
+    // (a container.json `fallbackModel` still wins). Must differ from the main model.
+    'ANTHROPIC_FALLBACK_MODEL',
     'ENABLE_PROMPT_CACHING_1H',
     // Separate Bedrock-specific toggle read by the Claude Code SDK when
     // requests route through an aws/anthropic/bedrock-* model. All three
@@ -3287,6 +3320,10 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'PI_MODEL',
     'PI_PROVIDER',
     'PI_THINKING_LEVEL',
+    // gate-pr-description.sh knobs (off switch + limits), read inside the container.
+    'PR_DESCRIPTION_GATE',
+    'PR_DESCRIPTION_MAX_CHARS',
+    'PR_DESCRIPTION_MAX_SECTION_LINES',
   ]) {
     const value = process.env[key];
     if (value) env[key] = value;
@@ -3458,7 +3495,7 @@ function agentEntrypointScript(): string {
   return `git config --global "url.https://x-access-token:placeholder@github.com/.insteadOf" "https://github.com/" 2>/dev/null || true
 mkdir -p ~/.codex && cat > ~/.codex/config.toml <<TOML_EOF
 model_provider = "\${CODEX_MODEL_PROVIDER:-nvinference}"
-model = "\${CODEX_MODEL:-openai/openai/gpt-5.5}"
+model = "\${CODEX_MODEL:-openai/openai/gpt-6.1-sol}"
 model_reasoning_effort = "\${CODEX_REASONING_EFFORT:-xhigh}"
 # Docker is the sandbox; codex's bwrap wrapper is redundant nesting and fails
 # with "No permissions to create a new namespace" because Docker's default

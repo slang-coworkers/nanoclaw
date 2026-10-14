@@ -18,6 +18,7 @@ import os from 'os';
 import path from 'path';
 
 import { getContainerImageBase, getInstallSlug, getLaunchdLabel, getSystemdUnit } from '../../src/install-slug.js';
+import { dashboardServicePaths } from '../dashboard-service.js';
 export type RunCommand = (command: string, args: string[]) => { status: number | null; stdout: string };
 
 export interface PathItem {
@@ -33,6 +34,8 @@ export interface ServiceInventory {
   launchdPlist?: string;
   systemdUserUnit?: string;
   systemdSystemUnit?: string;
+  /** This install's dashboard service (setup/dashboard-service.ts), when registered. */
+  dashboardUnits?: { flavor: 'launchd' | 'systemd-user' | 'systemd-system'; path: string }[];
   pidFile?: string;
   containerIds: string[];
   image?: string;
@@ -168,6 +171,18 @@ function scanService(deps: ScanDeps, slug: string, containerRuntime: string, not
     const pidFile = path.join(projectRoot, 'nanoclaw.pid');
     if (fs.existsSync(pidFile)) service.pidFile = pidFile;
   }
+
+  const dash = dashboardServicePaths(projectRoot, home);
+  const dashboardUnits = (
+    [
+      ['launchd', dash.launchdPlist],
+      ['systemd-user', dash.systemdUserUnit],
+      ['systemd-system', dash.systemdSystemUnit],
+    ] as const
+  )
+    .filter(([, file]) => fs.existsSync(file))
+    .map(([flavor, file]) => ({ flavor, path: file }));
+  if (dashboardUnits.length) service.dashboardUnits = dashboardUnits;
 
   // Container label matches what container-runner.ts stamps at spawn time.
   const installLabel = `nanoclaw-install=${slug}`;

@@ -525,6 +525,31 @@ describe('composeSessionSpec', () => {
     expect((await compose()).containers[0].env.NANOCLAW_MAILBOX_BACKEND).toBe('sqlite');
   });
 
+  it('forwards the host fallback model so the SDK never falls back to its built-in default', async () => {
+    vi.stubEnv('ANTHROPIC_FALLBACK_MODEL', 'aws/anthropic/bedrock-claude-sonnet-5-5');
+    try {
+      expect((await compose()).containers[0].env.ANTHROPIC_FALLBACK_MODEL).toBe(
+        'aws/anthropic/bedrock-claude-sonnet-5-5',
+      );
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
+  it('forwards the PR-description gate knobs into the container', async () => {
+    vi.stubEnv('PR_DESCRIPTION_GATE', '0');
+    vi.stubEnv('PR_DESCRIPTION_MAX_CHARS', '1500');
+    vi.stubEnv('PR_DESCRIPTION_MAX_SECTION_LINES', '3');
+    try {
+      const env = (await compose()).containers[0].env;
+      expect(env.PR_DESCRIPTION_GATE).toBe('0');
+      expect(env.PR_DESCRIPTION_MAX_CHARS).toBe('1500');
+      expect(env.PR_DESCRIPTION_MAX_SECTION_LINES).toBe('3');
+    } finally {
+      vi.unstubAllEnvs();
+    }
+  });
+
   it('the gateway contribution fills the contributed lane last and wins a collision', async () => {
     const spec = await compose({
       contribution: { env: { HTTPS_PROXY: 'http://provider:1' } },
@@ -920,6 +945,17 @@ describe('syncSkillSymlinks', () => {
       expect.stringContaining('Shared skill not symlinked'),
       expect.objectContaining({ skill: 'welcome' }),
     );
+  });
+
+  it('leaves a host directory alone when the skills dir is a symlink to it', () => {
+    const dir = tmpClaudeDir();
+    const hostDir = fs.mkdtempSync(path.join(os.tmpdir(), 'ncl-host-'));
+    fs.symlinkSync('/somewhere', path.join(hostDir, 'stale-link'));
+    fs.symlinkSync(hostDir, path.join(dir, 'skills'));
+
+    syncSkillSymlinks(dir, { ...containerConfig, skills: ['welcome'] } as ContainerConfig);
+
+    expect(fs.readdirSync(hostDir).sort()).toEqual(['stale-link']);
   });
 });
 

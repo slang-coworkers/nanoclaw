@@ -18,11 +18,8 @@
  * `channel_type === 'agent'` check. When the module is absent the check in
  * core throws with a "module not installed" message so retry → mark failed.
  */
-import fs from 'fs';
-import path from 'path';
-
+import { AnchoredDir, copyRegularFile } from '../../anchored-dir.js';
 import { isSafeAttachmentName } from '../../attachment-safety.js';
-import { ensureContainedInboxDir, isPathInside } from '../../inbox-safety.js';
 import { findAncestorSource, recordSource, type A2aSessionSource } from '../../db/a2a-session-sources.js';
 import { getAgentGroup } from '../../db/agent-groups.js';
 import { recordDroppedMessage } from '../../db/dropped-messages.js';
@@ -38,9 +35,11 @@ import { log } from '../../log.js';
 import { resolveSession, sessionDir, withExistingMailboxSession, writeSessionMessage } from '../../session-manager.js';
 import { GuardDenyError, guard } from '../../guard/index.js';
 import type { PendingApproval, Session } from '../../types.js';
-import { requestApproval } from '../approvals/index.js';
+import { readSessionCostCapStatus } from '../../cli/session-cost-cap.js';
+import { notifyAgent, requestApproval } from '../approvals/index.js';
 import { evaluateEchoDrop, extractText } from '../runaway/echo-drop.js';
-import { A2A_MESSAGE_GATE_ACTION, a2aSend } from './guard.js';
+import { A2A_MESSAGE_GATE_ACTION, ITEM_OWNER_DENY_PREFIX, a2aSend } from './guard.js';
+import { findItemOwnerConflict } from './item-ownership.js';
 
 /**
  * Ensure a per-(source, recipient) messaging_group exists with a per-thread
@@ -138,106 +137,69 @@ export function forwardAttachedFiles(
     return [];
   }
 
-  const sourceDir = path.join(sessionDir(source.agentGroupId, source.sessionId), 'outbox', source.messageId);
-  if (!fs.existsSync(sourceDir)) {
-    log.warn('agent-route: source outbox dir missing, no files forwarded', {
-      sourceMsgId: source.messageId,
-      sourceDir,
-    });
+  // Both agents can write their own session folders, so either could turn
+  // `outbox`, `inbox` or a message dir into a symlink at any time. Each side is
+  // opened as an AnchoredDir (symlinks refused) and used only through it, the
+  // same way as the channel-inbound path (#2828, CWE-59).
+  let sourceDir: AnchoredDir | null;
+  try {
+    sourceDir = AnchoredDir.open(sessionDir(source.agentGroupId, source.sessionId), ['outbox', source.messageId]);
+  } catch (err) {
+    log.warn('agent-route: rejecting unsafe source outbox dir', { sourceMsgId: source.messageId, err });
+    return [];
+  }
+  if (!sourceDir) {
+    log.warn('agent-route: source outbox dir missing, no files forwarded', { sourceMsgId: source.messageId });
     return [];
   }
 
-  let realSourceDir: string;
+  let targetDir: AnchoredDir | null = null;
   try {
-    const sourceDirStat = fs.lstatSync(sourceDir);
-    if (!sourceDirStat.isDirectory() || sourceDirStat.isSymbolicLink()) {
-      log.warn('agent-route: rejecting unsafe source outbox dir', {
-        sourceMsgId: source.messageId,
-        sourceDir,
-      });
-      return [];
-    }
-    realSourceDir = fs.realpathSync(sourceDir);
+    targetDir = AnchoredDir.open(sessionDir(target.agentGroupId, target.sessionId), ['inbox', target.messageId], true);
   } catch (err) {
-    log.warn('agent-route: failed to inspect source outbox dir', {
-      sourceMsgId: source.messageId,
-      sourceDir,
+    log.warn('agent-route: rejecting unsafe target inbox dir', {
+      targetGroup: target.agentGroupId,
+      targetSession: target.sessionId,
+      targetMsgId: target.messageId,
       err,
     });
-    return [];
-  }
-
-  // Target-side containment — shared with the channel-inbound path. A
-  // compromised target agent can write inside its own session dir, so it could
-  // pre-place `inbox` (or `inbox/<future-msgId>`) as a symlink pointing
-  // anywhere host-writable; ensureContainedInboxDir refuses the symlink before
-  // any copy lands outside the sandbox (#2828, CWE-59).
-  const inboxRoot = path.join(sessionDir(target.agentGroupId, target.sessionId), 'inbox');
-  const targetInboxDir = ensureContainedInboxDir(inboxRoot, target.messageId, {
-    targetGroup: target.agentGroupId,
-    targetSession: target.sessionId,
-    targetMsgId: target.messageId,
-  });
-  if (!targetInboxDir) {
-    return [];
   }
 
   const attachments: ForwardedAttachment[] = [];
-  for (const filename of source.filenames) {
-    if (!isSafeAttachmentName(filename)) {
-      log.warn('agent-route: rejecting unsafe attachment filename (path traversal attempt?)', {
-        sourceMsgId: source.messageId,
-        filename,
-      });
-      continue;
-    }
-    const src = path.join(sourceDir, filename);
-    let realSrc: string;
-    try {
-      const srcStat = fs.lstatSync(src);
-      if (!srcStat.isFile() || srcStat.isSymbolicLink()) {
-        log.warn('agent-route: rejecting unsafe source outbox file', {
+  try {
+    if (!targetDir) return [];
+    for (const filename of source.filenames) {
+      if (!isSafeAttachmentName(filename)) {
+        log.warn('agent-route: rejecting unsafe attachment filename (path traversal attempt?)', {
           sourceMsgId: source.messageId,
           filename,
         });
         continue;
       }
-      realSrc = fs.realpathSync(src);
-    } catch {
-      log.warn('agent-route: referenced file missing in source outbox, skipped', {
-        sourceMsgId: source.messageId,
+      try {
+        // Stream source → target through both descriptors. Exclusive create on
+        // the target never follows or overwrites a pre-placed entry; neither
+        // side is addressed by path after its dir was opened.
+        copyRegularFile(sourceDir, filename, targetDir, filename);
+      } catch (err) {
+        log.warn('agent-route: skipped forwarding file (missing, unsafe, or already present)', {
+          sourceMsgId: source.messageId,
+          targetMsgId: target.messageId,
+          filename,
+          err,
+        });
+        continue;
+      }
+      attachments.push({
+        name: filename,
         filename,
+        type: 'file',
+        localPath: `inbox/${target.messageId}/${filename}`,
       });
-      continue;
     }
-    if (!isPathInside(realSourceDir, realSrc)) {
-      log.warn('agent-route: rejecting source file outside source outbox dir', {
-        sourceMsgId: source.messageId,
-        filename,
-      });
-      continue;
-    }
-    const dst = path.join(targetInboxDir, filename);
-    try {
-      // COPYFILE_EXCL: fail with EEXIST rather than follow or overwrite a
-      // pre-placed symlink / existing file at dst — the host is the sole
-      // writer of these attachments.
-      fs.copyFileSync(realSrc, dst, fs.constants.COPYFILE_EXCL);
-    } catch (err) {
-      log.warn('agent-route: refusing to write target inbox file', {
-        sourceMsgId: source.messageId,
-        targetMsgId: target.messageId,
-        filename,
-        err,
-      });
-      continue;
-    }
-    attachments.push({
-      name: filename,
-      filename,
-      type: 'file',
-      localPath: `inbox/${target.messageId}/${filename}`,
-    });
+  } finally {
+    sourceDir.close();
+    targetDir?.close();
   }
   return attachments;
 }
@@ -521,6 +483,40 @@ async function deliverAncestorReply(
   if (freshAncestor) await requestWake(freshAncestor, 'inbound-message');
 }
 
+/**
+ * Where a cross-session a2a message will land, decided BEFORE the guard so the
+ * guard can tell an existing-session delivery from one that mints a fresh
+ * session (the one-owner-per-GitHub-item refusal). Layer order is unchanged:
+ * explicit in_reply_to / peer-affinity (Layer 1) beats the sender pin (Layer 0),
+ * the ancestor walk (Layer 2) runs only when neither resolved, and everything
+ * else is a fresh per-thread / per-source delivery (Layer 3).
+ */
+export type AgentRouteResolution =
+  | { kind: 'explicit'; session: Session }
+  | { kind: 'pinned'; session: Session }
+  | { kind: 'ancestor'; route: A2aSessionSource }
+  | { kind: 'fresh'; threadId: string | null };
+
+export async function resolveAgentRoute(
+  msg: RoutableAgentMessage,
+  session: Session,
+  targetAgentGroupId: string,
+): Promise<AgentRouteResolution> {
+  const pinnedTarget = await resolvePinnedTarget(msg, session, targetAgentGroupId);
+  const explicitTarget = await resolveExplicitReplyTarget(msg, session, targetAgentGroupId);
+  if (explicitTarget) return { kind: 'explicit', session: explicitTarget };
+  if (pinnedTarget) return { kind: 'pinned', session: pinnedTarget };
+  const ancestorRoute = await findAncestorRoute(session.id, targetAgentGroupId);
+  if (ancestorRoute) return { kind: 'ancestor', route: ancestorRoute };
+  //  - thread_id present → per-thread session keyed on (recipient,
+  //    agent:<source>:<recipient> mg, thread_id).
+  //  - thread_id null but source session has one → inherit it, so outbound
+  //    from a threaded session stays scoped (Slack-style DM isolation).
+  //  - both null → per-source shared.
+  const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
+  return { kind: 'fresh', threadId: explicitThread || session.thread_id || null };
+}
+
 export async function routeAgentMessage(
   msg: RoutableAgentMessage,
   session: Session,
@@ -531,26 +527,36 @@ export async function routeAgentMessage(
     throw new Error(`agent-to-agent message ${msg.id} is missing a target agent group id`);
   }
 
+  // Resolve the landing spot first (read-only): the guard needs to know whether
+  // this delivery would mint a fresh session, and on which thread.
+  const resolution = await resolveAgentRoute(msg, session, targetAgentGroupId);
+  const routeThread = resolution.kind === 'fresh' ? (resolution.threadId ?? '') : '';
+
   // Authorization + per-edge gate go through the guard seam (guard.ts a2aSend).
   // Its decision carries the full a2a contract: self-send allow, LINEAGE allow
   // (child→ancestor with no destination row — see isAncestorGroup), destination
-  // ACL deny, target-exists deny, message-policy hold. An approved replay
-  // carries the grant (opts.grant) — the policy hold is satisfied, but the
-  // structural checks re-run live, so revoking a destination between hold and
-  // approve still blocks delivery.
+  // ACL deny, target-exists deny, one-owner-per-GitHub-item deny, message-policy
+  // hold. An approved replay carries the grant (opts.grant) — the policy hold is
+  // satisfied, but the structural checks re-run live, so revoking a destination
+  // between hold and approve still blocks delivery.
   //
-  // Session resolution + delivery stay in performAgentRoute (the fork's layered
-  // Layer-0..3 routing). Because the guard has already authorized here, it is
-  // called with enforceGate=false so its own (now-redundant) inline gate never
-  // double-fires.
+  // Delivery stays in performAgentRoute (the fork's layered Layer-0..3
+  // routing), handed the resolution computed above so it is not re-derived.
   const decision = await guard(a2aSend, {
     actor: { kind: 'agent', agentGroupId: session.agent_group_id, sessionId: session.id },
-    resource: { from: session.agent_group_id, to: targetAgentGroupId },
+    resource: { from: session.agent_group_id, to: targetAgentGroupId, route: resolution.kind, thread: routeThread },
     payload: { id: msg.id, platform_id: targetAgentGroupId, content: msg.content, in_reply_to: msg.in_reply_to ?? '' },
     grant: opts.grant ?? null,
   });
 
   if (decision.effect === 'deny') {
+    if (decision.reason.startsWith(ITEM_OWNER_DENY_PREFIX)) {
+      // Refused, not retried: the conflict is deterministic, so throwing would
+      // only re-run it MAX_DELIVERY_ATTEMPTS times and fail silently. Tell the
+      // sender exactly once why, and who to send to instead.
+      await refuseSecondItemSession(msg, session, targetAgentGroupId, routeThread);
+      return;
+    }
     throw new GuardDenyError(decision.reason);
   }
 
@@ -579,7 +585,54 @@ export async function routeAgentMessage(
     return;
   }
 
-  await performAgentRoute(msg, session, targetAgentGroupId, false);
+  await performAgentRoute(msg, session, targetAgentGroupId, false, resolution);
+}
+
+/**
+ * The sender asked for a second session on a GitHub item the recipient group
+ * already owns. Policy: raise the owner's ceiling or don't run — never a second
+ * session. Name the owner(s) and their live cost state so the sender can send
+ * to the owner or escalate to a human instead of retrying on another thread.
+ */
+async function refuseSecondItemSession(
+  msg: RoutableAgentMessage,
+  session: Session,
+  targetAgentGroupId: string,
+  routeThread: string,
+): Promise<void> {
+  const conflict = await findItemOwnerConflict(targetAgentGroupId, routeThread);
+  const targetName = (await getAgentGroup(targetAgentGroupId))?.name ?? targetAgentGroupId;
+  const item = conflict?.item.key ?? routeThread;
+  const owners = conflict ? await Promise.all(conflict.owners.map(describeOwner)) : [];
+  log.warn('a2a second session for an owned GitHub item refused', {
+    from: session.agent_group_id,
+    to: targetAgentGroupId,
+    msgId: msg.id,
+    item,
+    thread: routeThread,
+    owners: conflict?.owners.map((s) => s.id) ?? [],
+  });
+  await notifyAgent(
+    session,
+    `${item} already has a ${targetName} session ${owners.join('; ')}. ` +
+      'A second session for the same item is not allowed. ' +
+      'Send to that session (target_session_id) or ask the operator to raise its ceiling.',
+  );
+}
+
+/** `<id> (thread …, cost <status> $spent of $ceiling)` — cost only when the runner has published it. */
+async function describeOwner(s: Session): Promise<string> {
+  const parts = [`thread ${s.thread_id ?? '(none)'}`];
+  try {
+    const view = await readSessionCostCapStatus(s.id);
+    if (view.status !== 'unknown') {
+      const spent = typeof view.spent_usd === 'number' ? `$${view.spent_usd.toFixed(2)}` : '$?';
+      parts.push(`cost ${view.status} ${spent}${view.ceiling_usd ? ` of $${view.ceiling_usd.toFixed(2)}` : ''}`);
+    }
+  } catch {
+    /* cost state is best-effort detail */
+  }
+  return `${s.id} (${parts.join(', ')})`;
 }
 
 // Re-exported for back-compat: callers (index.ts, tests) import the gate
@@ -625,7 +678,12 @@ export async function performAgentRoute(
   session: Session,
   targetAgentGroupId: string,
   enforceGate = false,
+  resolved?: AgentRouteResolution,
 ): Promise<void> {
+  // routeAgentMessage resolves the route before consulting the guard and hands
+  // it down; a direct caller (tests) gets the same layered resolution here.
+  const resolution = resolved ?? (await resolveAgentRoute(msg, session, targetAgentGroupId));
+
   // Layer 0: sender-pinned recipient session id.
   //
   // When `msg.target_session_id` is set, the sender has explicitly chosen
@@ -643,7 +701,7 @@ export async function performAgentRoute(
   // names a specific inbound, which is more semantic than a structural
   // session id; if both are set and they disagree, the inbound being
   // replied-to is the better signal of intent.
-  const pinnedTarget = await resolvePinnedTarget(msg, session, targetAgentGroupId);
+  const pinnedTarget = resolution.kind === 'pinned' ? resolution.session : null;
 
   // Layer 1: explicit in_reply_to / peer-affinity wins.
   //
@@ -658,7 +716,7 @@ export async function performAgentRoute(
   //
   // resolveExplicitReplyTarget already filters to active sessions of the
   // target agent group, so a hit is always a valid delivery target.
-  const explicitTarget = await resolveExplicitReplyTarget(msg, session, targetAgentGroupId);
+  const explicitTarget = resolution.kind === 'explicit' ? resolution.session : null;
 
   // Layer 2: ancestor walk through a2a_session_sources.
   //
@@ -692,12 +750,9 @@ export async function performAgentRoute(
   // specific session id has overridden the ancestor heuristic — if the pin
   // happens to be the ancestor session anyway, the result is the same;
   // if it's a different session, the pin is what the sender meant.
-  if (!explicitTarget && !pinnedTarget) {
-    const ancestorRoute = await findAncestorRoute(session.id, targetAgentGroupId);
-    if (ancestorRoute) {
-      await deliverAncestorReply(msg, session, ancestorRoute);
-      return;
-    }
+  if (resolution.kind === 'ancestor') {
+    await deliverAncestorReply(msg, session, resolution.route);
+    return;
   }
 
   // Authorization + the per-edge message gate are enforced by the guard seam
@@ -742,8 +797,7 @@ export async function performAgentRoute(
     //    from a threaded session stays scoped (Slack-style DM isolation).
     //  - both null → per-source shared (each source↔recipient pair gets its
     //    own session, not a global agent-shared that collapses all sources).
-    const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
-    threadId = explicitThread || session.thread_id || null;
+    threadId = resolution.kind === 'fresh' ? resolution.threadId : null;
     const a2aMgId = await ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
     ({ session: targetSession } = await resolveSession(
       targetAgentGroupId,

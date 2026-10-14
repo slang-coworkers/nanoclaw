@@ -144,7 +144,7 @@ export function markScriptSkipped(skips: Array<{ id: string; reason: string }>):
  * no delivered output, so the handoff was NOT actioned. We write a distinct
  * processing_ack status instead of 'completed' so:
  *   - the host's syncProcessingAcks (which only maps completed/failed/
- *     script-skip:error) leaves the trigger `messages_in` row PENDING, and
+ *     script-skip:error/script-skip:gated) leaves the trigger `messages_in` row PENDING, and
  *   - the host redrive sweep (redriveBouncedA2a) can find these rows by status
  *     and re-arm them with an outage-scale backoff, or dead-letter on exhaustion.
  * `status` is 'bounced-transient' (long retry budget) or 'bounced-unknown'

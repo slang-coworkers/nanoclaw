@@ -2758,7 +2758,7 @@ describe('forwardAttachedFiles — file-forwarding security guard', () => {
   it('SECURITY (#2828): skips a symlinked TARGET inbox dir — writes nothing outside', () => {
     // A compromised recipient can write inside its own session dir; pre-placing
     // its whole `inbox` as a symlink must not redirect a forwarded attachment
-    // outside the sandbox. ensureContainedInboxDir rejects the symlinked root.
+    // outside the sandbox. AnchoredDir refuses the symlinked root.
     const canaryDir = path.join(tempDir, 'canary-outside-inbox');
     fs.mkdirSync(canaryDir, { recursive: true });
 
@@ -2778,5 +2778,25 @@ describe('forwardAttachedFiles — file-forwarding security guard', () => {
     expect(attachments).toHaveLength(0);
     // Nothing written through the symlink to the canary location.
     expect(fs.readdirSync(canaryDir)).toHaveLength(0);
+  });
+
+  it('SECURITY: refuses a symlinked source outbox root, copies nothing', () => {
+    // A host directory shaped like an outbox message dir.
+    const hostDir = path.join(tempDir, 'host-outside');
+    fs.mkdirSync(path.join(hostDir, 'msg-root'), { recursive: true });
+    fs.writeFileSync(path.join(hostDir, 'msg-root', 'secret.txt'), 'host-secret-bytes');
+
+    // Source replaces its whole `outbox` with a symlink to it.
+    const srcSessDir = sessionDir('ag-src', 'sess-src');
+    fs.mkdirSync(srcSessDir, { recursive: true });
+    fs.symlinkSync(hostDir, path.join(srcSessDir, 'outbox'));
+
+    const attachments = forwardAttachedFiles(
+      { agentGroupId: 'ag-src', sessionId: 'sess-src', messageId: 'msg-root', filenames: ['secret.txt'] },
+      { agentGroupId: 'ag-tgt', sessionId: 'sess-tgt', messageId: 'fwd-root' },
+    );
+
+    expect(attachments).toHaveLength(0);
+    expect(fs.existsSync(path.join(sessionDir('ag-tgt', 'sess-tgt'), 'inbox', 'fwd-root', 'secret.txt'))).toBe(false);
   });
 });
