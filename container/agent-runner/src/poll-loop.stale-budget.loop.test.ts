@@ -173,7 +173,9 @@ function* reply(text: string): Generator<ProviderEvent> {
 
 async function runLoop(provider: ScriptedProvider, body: () => Promise<void>): Promise<void> {
   const controller = new AbortController();
-  let settledEarly: unknown = null;
+  // Any settlement (fulfilled or rejected) before the helper asks the loop to
+  // stop is a failure: the real loop runs until it is aborted.
+  let settledBeforeAbort: { ok: boolean; err?: unknown } | null = null;
   const loop = runPollLoop({
     provider,
     providerContract: claudeRuntimeContract, // production Claude: mid-turn-complete delivery
@@ -183,20 +185,26 @@ async function runLoop(provider: ScriptedProvider, body: () => Promise<void>): P
     activePollIntervalMs: 10,
   });
   const settled = loop.then(
-    () => 'settled',
+    () => {
+      if (!controller.signal.aborted) settledBeforeAbort = { ok: true };
+      return 'settled';
+    },
     (err) => {
-      if (!controller.signal.aborted) settledEarly = err ?? new Error('loop rejected');
+      if (!controller.signal.aborted) settledBeforeAbort = { ok: false, err };
       return 'settled';
     },
   );
   try {
     await body();
-    if (settledEarly) throw settledEarly;
   } finally {
     controller.abort();
   }
-  // The loop must actually stop, so it can never poll a later test's database.
   const outcome = await Promise.race([settled, new Promise((r) => setTimeout(() => r('still running'), 5000))]);
+  if (settledBeforeAbort) {
+    const early = settledBeforeAbort as { ok: boolean; err?: unknown };
+    throw early.ok ? new Error('runPollLoop returned before it was aborted') : early.err;
+  }
+  // The loop must actually stop, so it can never poll a later test's database.
   expect(outcome).toBe('settled');
 }
 

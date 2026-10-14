@@ -3270,10 +3270,21 @@ export async function processQuery(
     publishReplyRoute(routing);
     answering = true;
   };
+  // Provider inputs given to this query and not yet answered by a result: the
+  // initial prompt plus every push. Every push goes through pushQueryInput so
+  // each site is counted (follow-ups, corrective retries, and mid-turn gate
+  // refusals, which are not queued turns). The stale/spent-budget end waits for
+  // zero: ending the input stream while an input is queued or running would
+  // deny its tool calls. Counted only after the push succeeds.
+  let inputsOutstanding = initialPrompt !== '' ? 1 : 0;
+  const pushQueryInput = (message: string): void => {
+    query.push(message);
+    inputsOutstanding += 1;
+  };
   // A retry is another provider input, behind any follow-ups already pushed.
   // Preserve its original route, prompt and retry guards until it is answered.
   const pushRetry = (prompt: string, archiveAgainst?: string, retryOf?: SeqWindow): void => {
-    query.push(prompt);
+    pushQueryInput(prompt);
     queuedTurns.push({ routing: { ...routing }, unwrappedNudged, taskBlockNudged, nudgedWindow: retryOf });
     archivePrompts.push(archiveAgainst ?? archivePrompts[0] ?? initialPrompt);
   };
@@ -3334,18 +3345,6 @@ export async function processQuery(
   // anything pushed into it from now on fails at once (see activeQueryBudget).
   let budgetExhausted = false;
   let budgetDeferLogged = false;
-  // Provider inputs given to this query and not yet answered by a result: the
-  // initial prompt plus every push. Counted at the push seam so every push site
-  // is covered (follow-ups, corrective retries, mid-turn gate refusals, which
-  // are not tracked as queued turns). The stale/spent-budget end below waits for
-  // zero before ending at once: ending the input stream while an input is
-  // queued or running would deny its tool calls.
-  let inputsOutstanding = initialPrompt !== '' ? 1 : 0;
-  const pushInput = query.push.bind(query);
-  query.push = (message: string): void => {
-    inputsOutstanding += 1;
-    pushInput(message);
-  };
   // True once the SDK has emitted a `result` for the current turn and nothing has
   // been pushed since; cleared by the next push. Post-turn accounting events keep it.
   let turnComplete = false;
@@ -3491,12 +3490,13 @@ export async function processQuery(
               ? "this query's budget is spent (SDK max-budget stop)"
               : describeStaleBudget(stale!);
             const idleMs = Date.now() - lastEventTime;
-            const settled = turnComplete && bgTasks === 0 && !answering && queuedTurns.length === 0;
-            // Every input answered: end now. An input still unanswered (or a
-            // count the SDK did not answer 1:1): fall back to the fresh-session
-            // quiet period after the last result, else the plain idle end.
-            const afterResultMs = inputsOutstanding === 0 ? 0 : FRESH_SESSION_IDLE_END_MS;
-            if (freshSessionArrivalAction(idleMs, settled, idleEndLimit(bgTasks), afterResultMs) === 'end') {
+            // End at once only when every input has been answered and nothing
+            // runs in the background. While any input is unanswered (or the SDK
+            // did not answer inputs 1:1), only the plain idle end applies: a
+            // slow end, never a cut-short turn.
+            const settled =
+              turnComplete && bgTasks === 0 && !answering && queuedTurns.length === 0 && inputsOutstanding === 0;
+            if (freshSessionArrivalAction(idleMs, settled, idleEndLimit(bgTasks), 0) === 'end') {
               log(`${why} — ending the query; ${newMessages.length} follow-up message(s) stay pending for a fresh one`);
               idleEndedAt = Date.now();
               query.end();
@@ -3633,7 +3633,7 @@ export async function processQuery(
         const destNote = refreshDestinations();
         if (destNote) routedPrompt = destNote + routedPrompt;
         log(`Pushing ${keep.length} follow-up message(s) into active query`);
-        query.push(routedPrompt);
+        pushQueryInput(routedPrompt);
         archivePrompts.push(prompt);
         const next: QueuedTurn = {
           routing: extractRouting(keep),
@@ -3760,7 +3760,7 @@ export async function processQuery(
           // re-sends correctly, same contract as the result door. The gates'
           // own 3-denial soft-cap bounds the re-send loop.
           if (scan.gateRefusals?.length) {
-            query.push(`<system>${scan.gateRefusals.join('\n\n')}</system>`);
+            pushQueryInput(`<system>${scan.gateRefusals.join('\n\n')}</system>`);
           }
         }
       } else if (event.type === 'result') {

@@ -8,7 +8,7 @@
 // the headroom) or spent (a max-budget stop), the poller claims nothing more and
 // ends the query when nothing is in flight; the next query gets a fresh budget.
 // Follow-up acknowledgement is unchanged (acked at push).
-import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import { describe, it, expect, beforeEach, afterEach, setSystemTime } from 'bun:test';
 import fs from 'fs';
 import os from 'os';
 import path from 'path';
@@ -407,6 +407,61 @@ describe('open query after an SDK max-budget stop', () => {
 
     expect(q.pushes.some((p) => p.includes('after an unrelated error'))).toBe(true);
     expect(q.endCalls()).toBe(0);
+  }, 20_000);
+});
+
+describe('an unanswered correction is never cut short', () => {
+  let savedGateState: string | undefined;
+  beforeEach(() => {
+    savedGateState = process.env.ROUTING_GATE_STATE_PATH;
+    process.env.ROUTING_GATE_STATE_PATH = path.join(codexHome, 'workflow-state.json');
+    getInboundDb()
+      .prepare(
+        `INSERT INTO destinations (name, display_name, type, channel_type, platform_id, agent_group_id)
+         VALUES ('peer', 'peer', 'agent', NULL, NULL, 'ag-peer')`,
+      )
+      .run();
+  });
+  afterEach(() => {
+    setSystemTime();
+    if (savedGateState === undefined) delete process.env.ROUTING_GATE_STATE_PATH;
+    else process.env.ROUTING_GATE_STATE_PATH = savedGateState;
+  });
+
+  it('a mid-turn gate correction keeps a stale query open past the fresh-session quiet period', async () => {
+    costHooks.startQueryBudget();
+    let endedAfterQuietClock: boolean | undefined;
+    const q = controllableQuery(async function* ({ pushes, ended }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      setCeiling(720);
+      insertFollowUp('m2', 'waits for the correction');
+      // One block delivers; the marked one without in_reply_to is refused and its
+      // correction is pushed straight into the query (not a queued turn).
+      yield {
+        type: 'text',
+        text: '<message to="peer">ok</message><message to="peer">[Resolution] done</message>',
+      };
+      await until(() => pushes.some((p) => p.includes('chain-routing-gate')));
+      yield { type: 'result', text: null };
+      // The correction's tool call is silent for 6 minutes: past the 5-minute
+      // fresh-session quiet period, under the 20-minute idle end.
+      setSystemTime(new Date(Date.now() + 6 * 60_000));
+      await sleep(15 * POLL_MS);
+      endedAfterQuietClock = ended();
+      setSystemTime();
+      yield { type: 'text', text: '<message to="peer" in_reply_to="m1">[Resolution] done</message>' };
+      yield { type: 'result', text: null };
+      await until(() => ended());
+    });
+
+    await processQuery(q.query, ROUTE, ['m1'], 'claude', undefined, 'prompt', undefined, true, undefined, POLL_MS);
+
+    expect(endedAfterQuietClock).toBe(false);
+    expect(outboundTexts().filter((t) => t === '[Resolution] done')).toHaveLength(1);
+    expect(q.pushes.some((p) => p.includes('waits for the correction'))).toBe(false);
+    expect(isPending('m2')).toBe(true);
+    expect(q.endCalls()).toBe(1);
+    expect(q.abortCalls()).toBe(0);
   }, 20_000);
 });
 
