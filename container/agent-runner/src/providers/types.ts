@@ -69,6 +69,14 @@ export interface AgentProvider {
    * before it ever replies. Providers without an on-disk transcript omit this.
    */
   maybeRotateContinuation?(continuation: string, cwd: string): string | null;
+
+  /**
+   * The cumulative per-model usage the provider's SDK will RESTORE when it
+   * resumes `continuation` (Claude: the last `cost-state` entry of the session
+   * transcript). Read before the query starts, so the cost backstop can
+   * difference the first result exactly. Null when unknown.
+   */
+  readRestoredUsage?(continuation: string): Record<string, UsageAccountingModel> | null;
 }
 
 /** One prompt/result round-trip, as reported to `onExchangeComplete`. */
@@ -144,7 +152,25 @@ export interface QueryInput {
    * which is never hard-stopped).
    */
   maxBudgetUsd?: number;
+
+  /**
+   * The consumer meters this query's spend. A provider may skip usage-only
+   * work (Claude: the SubagentStop transcript read) when false.
+   */
+  usageTracking?: boolean;
 }
+
+/** One model's cumulative usage (`result.modelUsage[model]`). */
+export interface UsageAccountingModel {
+  inputTokens?: number;
+  outputTokens?: number;
+  cacheReadInputTokens?: number;
+  cacheCreationInputTokens?: number;
+  costUSD?: number;
+}
+
+/** Per-turn accounting payload — the `usage` event's fields, also attached to `result`. */
+export type UsageAccounting = Omit<Extract<ProviderEvent, { type: 'usage' }>, 'type'>;
 
 /**
  * MCP server config — stdio OR streamable HTTP.
@@ -231,7 +257,18 @@ export type ProviderEvent =
    * (e.g. a billing/quota notice), kept separate from model scratchpad and
    * raw diagnostics. Failures without `error` receive a generic notice.
    */
-  | { type: 'result'; text: string | null; isError?: boolean; error?: string }
+  | {
+      type: 'result';
+      text: string | null;
+      isError?: boolean;
+      error?: string;
+      /**
+       * The turn's accounting, when the provider has any. The consumer settles it
+       * at the START of result handling — before delivery or acks can throw — and
+       * the `usage` event that follows only logs it.
+       */
+      accounting?: UsageAccounting;
+    }
   /**
    * An assistant text segment emitted mid-turn (e.g. between tool calls).
    * The SDK's final `result` carries only the LAST assistant text, so a
@@ -276,16 +313,7 @@ export type ProviderEvent =
        * resume), so a consumer must difference it. Absent when the provider has
        * none. The token fields above are main-loop-only and per turn.
        */
-      modelUsage?: Record<
-        string,
-        {
-          inputTokens?: number;
-          outputTokens?: number;
-          cacheReadInputTokens?: number;
-          cacheCreationInputTokens?: number;
-          costUSD?: number;
-        }
-      >;
+      modelUsage?: Record<string, UsageAccountingModel>;
       /** The turn's `result` was an error (e.g. `error_max_budget_usd`, a crash). */
       isError?: boolean;
     }

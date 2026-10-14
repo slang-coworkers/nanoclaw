@@ -1,23 +1,29 @@
 /**
  * The token math behind exact Claude accounting (claude-usage.ts): merging a
- * snapshot with its final usage, credit consumption, and the `modelUsage`
- * backstop's baseline rules. Every rule that decides "charge or not" has a case
- * here; the end-to-end replay of real SDK captures lives in
- * providers/claude.final-usage.replay.test.ts.
+ * snapshot with its final usage, credit consumption, and the per-query segment
+ * backstop against the SDK's cumulative `modelUsage`. Every rule that decides
+ * "charge or not" has a case here; the transactional poll-loop side lives in
+ * poll-loop.final-usage.test.ts and the real-capture replay in
+ * providers/claude.final-usage.test.ts.
  */
 import { describe, it, expect } from 'bun:test';
 
 import {
+  cleanCount,
   consumeCredit,
   cumFromModelUsage,
+  decreased,
   mergeUsage,
-  modelState,
   newBackstopState,
   priceVec,
   pricingKey,
-  settleResult,
+  saveCheckpoint,
+  segmentModel,
+  settleSegment,
+  startSegment,
   subVec,
   vecFromUsage,
+  zeroCum,
   zeroVec,
   type TokenVec,
 } from './claude-usage.js';
@@ -30,6 +36,16 @@ function vec(p: Partial<TokenVec>): TokenVec {
   return { ...zeroVec(), ...p };
 }
 
+const cum = (input: number, output: number, cacheRead: number, cacheWrite: number, costUSD = 0) => ({
+  [OPUS]: {
+    inputTokens: input,
+    outputTokens: output,
+    cacheReadInputTokens: cacheRead,
+    cacheCreationInputTokens: cacheWrite,
+    costUSD,
+  },
+});
+
 describe('mergeUsage — snapshot → final', () => {
   it('takes the final output while keeping input/cache (the prod shape: 8 → 8,178)', () => {
     const snap = vec({ input: 78, output: 8, cacheRead: 419_091, cw5: 683 });
@@ -39,16 +55,18 @@ describe('mergeUsage — snapshot → final', () => {
 
   it('never goes down: an older report after the final changes nothing', () => {
     const fin = vec({ input: 2, output: 283, cw1h: 18_197, cacheRead: 11_672 });
-    const snap = vec({ input: 2, output: 7, cw1h: 18_197, cacheRead: 11_672 });
-    expect(mergeUsage(fin, snap)).toEqual(fin);
+    expect(mergeUsage(fin, vec({ input: 2, output: 7, cw1h: 18_197, cacheRead: 11_672 }))).toEqual(fin);
   });
 
-  it('does not double a cache write reported once split and once unsplit', () => {
-    const split = vec({ cw1h: 1_000 });
+  it('a cache write reported once unsplit and once split is ONE write — and the split wins on equal totals', () => {
     const flat = vec({ cwFlat: 1_000 });
-    const merged = mergeUsage(split, flat);
-    expect(merged.cw1h + merged.cw5 + merged.cwFlat).toBe(1_000);
-    expect(mergeUsage(flat, split).cw1h + mergeUsage(flat, split).cwFlat).toBe(1_000);
+    const split = vec({ cw1h: 1_000 });
+    expect(mergeUsage(flat, split)).toEqual(split); // authoritative TTL replaces the 5m-priced guess
+    expect(mergeUsage(split, flat)).toEqual(split);
+    expect(priceVec(OPUS, subVec(mergeUsage(flat, split), flat))).toBeCloseTo(
+      1_000 * (2 * R.input - R.cacheCreate),
+      12,
+    );
   });
 
   it('a zero-output call merges to itself', () => {
@@ -57,10 +75,11 @@ describe('mergeUsage — snapshot → final', () => {
   });
 });
 
-describe('priceVec / pricingKey', () => {
-  it('prices like priceUsage: 1h write = 2x input, 5m and unsplit = cacheCreate', () => {
+describe('priceVec / pricingKey / input hygiene', () => {
+  it('prices like priceUsage: 1h write = 2x input, 5m and unsplit = cacheCreate; signed', () => {
     const v = vec({ input: 1, output: 1, cacheRead: 1, cw5: 1, cw1h: 1, cwFlat: 1 });
     expect(priceVec(OPUS, v)).toBeCloseTo(R.input + R.output + R.cacheRead + 2 * R.cacheCreate + 2 * R.input, 15);
+    expect(priceVec(OPUS, vec({ output: -10 }))).toBeCloseTo(-10 * R.output, 15);
   });
 
   it('keys wire variants together and unpriced models apart', () => {
@@ -69,6 +88,15 @@ describe('priceVec / pricingKey', () => {
     expect(pricingKey('claude-haiku-4-5-20251001')).toBe('claude-haiku-4-5');
     expect(pricingKey('claude-future-9')).toBe('raw:claude-future-9');
     expect(priceVec('claude-future-9', vec({ input: 1_000 }))).toBe(0);
+  });
+
+  it('drops non-finite, negative and non-numeric counts', () => {
+    expect([cleanCount(NaN), cleanCount(-5), cleanCount('7'), cleanCount(Infinity), cleanCount(3.9)]).toEqual([
+      0, 0, 0, 0, 3,
+    ]);
+    expect(cumFromModelUsage({ x: { inputTokens: -1, outputTokens: Number.NaN, costUSD: -2 } })['raw:x']).toEqual(
+      zeroCum(),
+    );
   });
 
   it('vecFromUsage keeps the TTL split, or the flat figure when there is none', () => {
@@ -80,12 +108,19 @@ describe('priceVec / pricingKey', () => {
       vecFromUsage({ ...base, cacheCreationInputTokens: 10, ephemeral1hInputTokens: 0, ephemeral5mInputTokens: 0 }),
     ).toEqual(vec({ input: 1, output: 2, cacheRead: 3, cwFlat: 10 }));
   });
+
+  it('a decrease is per token field; a costUSD revision of a priced model is not one', () => {
+    const a = { input: 10, output: 10, cacheRead: 10, cacheWrite: 10, costUsd: 5 };
+    expect(decreased({ ...a, costUsd: 4 }, a, true)).toBe(false);
+    expect(decreased({ ...a, output: 9 }, a, true)).toBe(true);
+    expect(decreased({ ...a, costUsd: 4 }, a, false)).toBe(true);
+  });
 });
 
 describe('consumeCredit — a late final is not paid twice', () => {
   it('consumes credit field by field and charges only the rest', () => {
-    const st = newBackstopState(1, 's', false);
-    const m = modelState(st, OPUS);
+    const st = newBackstopState();
+    const m = segmentModel(startSegment(st, 's', 'fresh', null), OPUS);
     m.credit = vec({ output: 100, cw1h: 50 });
     const { charge, consumed } = consumeCredit(m, vec({ output: 150, cw1h: 10 }));
     expect(consumed).toEqual(vec({ output: 100, cw1h: 10 }));
@@ -93,119 +128,151 @@ describe('consumeCredit — a late final is not paid twice', () => {
     expect(m.credit).toEqual(vec({ cw1h: 40 }));
   });
 
-  it('cache writes are one pool: a never-streamed call claims a residual written at the other TTL', () => {
-    const st = newBackstopState(1, 's', false);
-    const m = modelState(st, OPUS);
+  it('cache writes are one pool: a call claiming a residual guessed at the other TTL is re-priced, signed', () => {
+    const st = newBackstopState();
+    const m = segmentModel(startSegment(st, 's', 'fresh', null), OPUS);
     m.credit = vec({ cw1h: 15_691 }); // residual guessed 1h
     const { charge, consumed } = consumeCredit(m, vec({ cw5: 15_691 })); // the call was 5m
-    expect(consumed.cw1h).toBe(15_691);
-    expect(charge.cw5 + charge.cw1h + charge.cwFlat).toBe(0); // nothing more in tokens
-    expect(m.credit.cw1h).toBe(0);
+    expect(consumed).toEqual(vec({ cw1h: 15_691 }));
+    expect(charge).toEqual(vec({ cw5: 15_691, cw1h: -15_691 }));
+    expect(priceVec(OPUS, charge)).toBeCloseTo(15_691 * (R.cacheCreate - 2 * R.input), 12); // a refund
+  });
+
+  it('the same TTL bucket is consumed first', () => {
+    const st = newBackstopState();
+    const m = segmentModel(startSegment(st, 's', 'fresh', null), OPUS);
+    m.credit = vec({ cw5: 10, cw1h: 10 });
+    expect(consumeCredit(m, vec({ cw1h: 10 })).consumed).toEqual(vec({ cw1h: 10 }));
   });
 
   it('a pure shape change (unsplit → split, same total) consumes nothing', () => {
-    const st = newBackstopState(1, 's', false);
-    const m = modelState(st, OPUS);
+    const st = newBackstopState();
+    const m = segmentModel(startSegment(st, 's', 'fresh', null), OPUS);
     m.credit = vec({ cw5: 100 });
-    const { consumed } = consumeCredit(m, vec({ cw5: 100, cwFlat: -100 }));
-    expect(consumed).toEqual(zeroVec());
+    expect(consumeCredit(m, vec({ cw5: 100, cwFlat: -100 })).consumed).toEqual(zeroVec());
     expect(m.credit.cw5).toBe(100);
   });
 });
 
-describe('settleResult — the modelUsage backstop', () => {
-  const cum = (input: number, output: number, cacheRead: number, cacheWrite: number, costUSD = 0) => ({
-    [OPUS]: {
-      inputTokens: input,
-      outputTokens: output,
-      cacheReadInputTokens: cacheRead,
-      cacheCreationInputTokens: cacheWrite,
-      costUSD,
-    },
-  });
-
+describe('settleSegment — the modelUsage backstop', () => {
   it('fresh session: charges exactly what the stream did not report (a helper/compaction call)', () => {
-    const st = newBackstopState(0, 's', false);
-    modelState(st, OPUS).p = vec({ input: 10, output: 500, cacheRead: 1_000, cw1h: 200 });
-    const r = settleResult(st, cumFromModelUsage(cum(12, 700, 1_500, 250)), 'T1');
-    expect(r).toHaveLength(1);
-    expect(r[0].tokens).toEqual(vec({ input: 2, output: 200, cacheRead: 500, cw1h: 50 }));
-    expect(r[0].usd).toBeCloseTo(priceVec(OPUS, r[0].tokens), 12);
-    expect(st.epoch).toBe(1);
-    expect(st.lastResultAt).toBe('T1');
+    const st = newBackstopState();
+    const seg = startSegment(st, 's', 'fresh', null);
+    const m = segmentModel(seg, OPUS);
+    m.p = vec({ input: 10, output: 500, cacheRead: 1_000, cw1h: 200 });
+    m.mainCw1h = 200;
+    const out = settleSegment(seg, cumFromModelUsage(cum(12, 700, 1_500, 250)), 'T1');
+    expect(out.residuals).toHaveLength(1);
+    expect(out.residuals[0].tokens).toEqual(vec({ input: 2, output: 200, cacheRead: 500, cw1h: 50 }));
+    expect(seg.epoch).toBe(1);
+    expect(seg.lastResultAt).toBe('T1');
   });
 
   it('nothing to settle when per-message already covers the totals', () => {
-    const st = newBackstopState(0, 's', false);
-    modelState(st, OPUS).p = vec({ input: 12, output: 700, cacheRead: 1_500, cw5: 250 });
-    expect(settleResult(st, cumFromModelUsage(cum(12, 700, 1_500, 250)), 'T')).toHaveLength(0);
+    const st = newBackstopState();
+    const seg = startSegment(st, 's', 'fresh', null);
+    segmentModel(seg, OPUS).p = vec({ input: 12, output: 700, cacheRead: 1_500, cw5: 250 });
+    expect(settleSegment(seg, cumFromModelUsage(cum(12, 700, 1_500, 250)), 'T').residuals).toHaveLength(0);
   });
 
   it('cumulative across turns: the second result only charges its own increase', () => {
-    const st = newBackstopState(0, 's', false);
-    settleResult(st, cumFromModelUsage(cum(0, 100, 0, 0)), 'T1');
-    const r2 = settleResult(st, cumFromModelUsage(cum(0, 130, 0, 0)), 'T2');
-    expect(r2[0].tokens.output).toBe(30);
+    const seg = startSegment(newBackstopState(), 's', 'fresh', null);
+    settleSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0)), 'T1');
+    expect(settleSegment(seg, cumFromModelUsage(cum(0, 130, 0, 0)), 'T2').residuals[0].tokens.output).toBe(30);
   });
 
-  it('a resumed session we were not tracking ABSORBS its restored history', () => {
-    const st = newBackstopState(0, 's', true);
-    modelState(st, OPUS).p = vec({ output: 40 });
-    expect(settleResult(st, cumFromModelUsage(cum(5_000, 90_000, 1e7, 1e5)), 'T')).toHaveLength(0);
-    // From then on, increases are exact.
-    const r = settleResult(st, cumFromModelUsage(cum(5_000, 90_100, 1e7, 1e5)), 'T2');
-    expect(r[0].tokens.output).toBe(100);
+  it('a resumed segment differences against the RESTORED totals: a compaction in its first turn is charged', () => {
+    const st = newBackstopState();
+    const restored = cumFromModelUsage(cum(6, 589, 50_316, 26_698));
+    const seg = startSegment(st, 's', 'transcript', restored);
+    // The prod shape of an isolated compaction call: no stream events at all.
+    const out = settleSegment(seg, cumFromModelUsage(cum(6 + 245_000, 589 + 6_000, 50_316, 26_698 + 525_000)), 'T');
+    expect(out.residuals[0].tokens).toEqual(vec({ input: 245_000, output: 6_000, cw5: 525_000 }));
+    expect(out.absorbed).toEqual([]);
   });
 
-  it('a full restore on resume (cum ≥ last seen) charges only the new turn', () => {
-    const st = newBackstopState(0, 's', false);
-    settleResult(st, cumFromModelUsage(cum(10, 500, 0, 0)), 'T1'); // charged 500 out as residual
-    // New query resumes the same session: the SDK restores 10/500 and adds 0/20.
-    const r = settleResult(st, cumFromModelUsage(cum(10, 520, 0, 0)), 'T2');
-    expect(r[0].tokens).toEqual(vec({ output: 20 }));
-  });
-
-  it('a PARTIAL or absent restore never double-counts (totals went backwards → rebase, no residual)', () => {
-    const st = newBackstopState(0, 's', false);
-    settleResult(st, cumFromModelUsage(cum(10, 500, 0, 0)), 'T1');
-    // Restore lost everything: the new query reports only its own 30.
-    expect(settleResult(st, cumFromModelUsage(cum(0, 30, 0, 0)), 'T2')).toHaveLength(0);
-    // The next turn in that query is exact again.
-    expect(settleResult(st, cumFromModelUsage(cum(0, 45, 0, 0)), 'T3')[0].tokens.output).toBe(15);
-  });
-
-  it('a model first seen mid-session has no history: base 0', () => {
-    const st = newBackstopState(0, 's', true);
-    settleResult(st, cumFromModelUsage(cum(1, 1, 1, 1)), 'T1'); // absorbed
-    const r = settleResult(
-      st,
-      cumFromModelUsage({ ...cum(1, 1, 1, 1), 'claude-haiku-4-5-20251001': { inputTokens: 900, outputTokens: 12 } }),
-      'T2',
+  it('an ABSORBING segment (no baseline at all) absorbs only its first result', () => {
+    const seg = startSegment(newBackstopState(), 's', 'absorb', null);
+    segmentModel(seg, OPUS).p = vec({ output: 40 });
+    const out = settleSegment(seg, cumFromModelUsage(cum(5_000, 90_000, 1e7, 1e5)), 'T');
+    expect(out.residuals).toHaveLength(0);
+    expect(out.absorbed).toEqual([OPUS]);
+    expect(settleSegment(seg, cumFromModelUsage(cum(5_000, 90_100, 1e7, 1e5)), 'T2').residuals[0].tokens.output).toBe(
+      100,
     );
-    expect(r.map((x) => x.key)).toEqual(['claude-haiku-4-5']);
-    expect(r[0].tokens).toEqual(vec({ input: 900, output: 12 }));
   });
 
-  it('an unpriced model is charged from the SDK cost figure, cumulatively', () => {
-    const st = newBackstopState(0, 's', false);
+  it('totals going BACKWARDS restart from the spend since the last result — earlier p cannot mask later spend', () => {
+    // The codex scenario: S=500=p; a partial restore returns 50 = 30 streamed + 20 helper.
+    const seg = startSegment(newBackstopState(), 's', 'checkpoint', cumFromModelUsage(cum(0, 0, 0, 0)));
+    const m = segmentModel(seg, OPUS);
+    m.p = vec({ output: 500 });
+    settleSegment(seg, cumFromModelUsage(cum(0, 500, 0, 0)), 'T1');
+    m.p = vec({ output: 530 }); // 30 streamed since
+    const out = settleSegment(seg, cumFromModelUsage(cum(0, 50, 0, 0)), 'T2');
+    expect(out.rebased).toEqual([OPUS]);
+    expect(out.residuals).toHaveLength(0); // the unobservable part of that one result
+    expect(m.p).toEqual(vec({ output: 30 }));
+    // The next helper call (+20) is charged in full — not masked by the old 500.
+    expect(settleSegment(seg, cumFromModelUsage(cum(0, 70, 0, 0)), 'T3').residuals[0].tokens.output).toBe(20);
+  });
+
+  it('a costUSD-only revision does not rebase a priced model', () => {
+    const seg = startSegment(newBackstopState(), 's', 'fresh', null);
+    settleSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0, 0.5)), 'T1');
+    const out = settleSegment(seg, cumFromModelUsage(cum(0, 110, 0, 0, 0.4)), 'T2');
+    expect(out.rebased).toEqual([]);
+    expect(out.residuals[0].tokens.output).toBe(10);
+  });
+
+  it('a model first seen in a known-base segment has no history: base 0', () => {
+    const seg = startSegment(newBackstopState(), 's', 'transcript', cumFromModelUsage(cum(1, 1, 1, 1)));
+    const out = settleSegment(
+      seg,
+      cumFromModelUsage({ ...cum(1, 1, 1, 1), 'claude-haiku-4-5-20251001': { inputTokens: 900, outputTokens: 12 } }),
+      'T',
+    );
+    expect(out.residuals.map((x) => x.key)).toEqual(['claude-haiku-4-5']);
+    expect(out.residuals[0].tokens).toEqual(vec({ input: 900, output: 12 }));
+  });
+
+  it('an unpriced model is charged from the SDK cost figure, cumulatively, against the restored cost', () => {
     const mu = (c: number) => ({ 'claude-future-9': { inputTokens: 100, outputTokens: 10, costUSD: c } });
-    const r1 = settleResult(st, cumFromModelUsage(mu(0.5)), 'T1');
-    expect(r1[0]).toMatchObject({ key: 'raw:claude-future-9', unpriced: true, usd: 0.5 });
-    expect(settleResult(st, cumFromModelUsage(mu(0.75)), 'T2')[0].usd).toBeCloseTo(0.25, 12);
+    const seg = startSegment(newBackstopState(), 's', 'transcript', cumFromModelUsage(mu(2)));
+    expect(settleSegment(seg, cumFromModelUsage(mu(2.5)), 'T1').residuals[0]).toMatchObject({
+      unpriced: true,
+      usd: 0.5,
+    });
+    expect(settleSegment(seg, cumFromModelUsage(mu(2.75)), 'T2').residuals[0].usd).toBeCloseTo(0.25, 12);
   });
 
-  it('residual cache writes take the session TTL for that model', () => {
-    const st = newBackstopState(0, 's', false);
-    modelState(st, OPUS).p = vec({ cw5: 10 });
-    expect(settleResult(st, cumFromModelUsage(cum(0, 0, 0, 30)), 'T')[0].tokens).toEqual(vec({ cw5: 20 }));
-    const st2 = newBackstopState(0, 's', false);
-    modelState(st2, OPUS).p = vec({ cw1h: 10 });
-    expect(settleResult(st2, cumFromModelUsage(cum(0, 0, 0, 30)), 'T')[0].tokens).toEqual(vec({ cw1h: 20 }));
+  it('residual cache writes take the main-thread TTL of the model, else of the segment, else 5m', () => {
+    const seg = startSegment(newBackstopState(), 's', 'fresh', null);
+    segmentModel(seg, 'claude-sonnet-5-5').mainCw1h = 100; // another model's main thread writes 1h
+    expect(settleSegment(seg, cumFromModelUsage(cum(0, 0, 0, 30)), 'T').residuals[0].tokens).toEqual(vec({ cw1h: 30 }));
+    const seg2 = startSegment(newBackstopState(), 's', 'fresh', null);
+    expect(settleSegment(seg2, cumFromModelUsage(cum(0, 0, 0, 30)), 'T').residuals[0].tokens).toEqual(vec({ cw5: 30 }));
   });
 
   it('credit counts as charged: a later settle does not re-charge it', () => {
-    const st = newBackstopState(0, 's', false);
-    settleResult(st, cumFromModelUsage(cum(0, 100, 0, 0)), 'T1');
-    expect(settleResult(st, cumFromModelUsage(cum(0, 100, 0, 0)), 'T2')).toHaveLength(0);
+    const seg = startSegment(newBackstopState(), 's', 'fresh', null);
+    settleSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0)), 'T1');
+    expect(settleSegment(seg, cumFromModelUsage(cum(0, 100, 0, 0)), 'T2').residuals).toHaveLength(0);
+  });
+});
+
+describe('checkpoints', () => {
+  it('keeps the latest cumulative per session, bounded', () => {
+    const st = newBackstopState();
+    for (let i = 0; i < 20; i++)
+      saveCheckpoint(
+        st,
+        `s${i}`,
+        cumFromModelUsage(cum(i, i, 0, 0)),
+        `2026-10-14T00:00:${String(i).padStart(2, '0')}Z`,
+      );
+    expect(Object.keys(st.checkpoints)).toHaveLength(16);
+    expect(st.checkpoints.s0).toBeUndefined();
+    expect(st.checkpoints.s19.cum[OPUS].output).toBe(19);
   });
 });

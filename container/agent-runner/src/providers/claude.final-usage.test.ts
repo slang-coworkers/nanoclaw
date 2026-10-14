@@ -11,6 +11,9 @@
  *   resume-compact         resume of main-two-turns + /compact (the compaction
  *                          call is visible ONLY in modelUsage)
  *   resume-after-compact   resume again, one call
+ * Between processes the harness appends the `cost-state` entry Claude Code
+ * writes into the session transcript when a process ends (its `modelUsage` is
+ * the last result's), exactly as the real CLI did.
  *
  * The REGRESSION GUARD: replaying a session through the provider and the
  * poll-loop must leave a ledger whose tokens equal the SDK's own `modelUsage`
@@ -26,6 +29,7 @@ import path from 'path';
 const FX = path.join(import.meta.dir, '__fixtures__', 'claude-usage');
 
 let script: Array<Record<string, unknown>> = [];
+let subagentDir = '';
 let lastOptions:
   | { hooks?: Record<string, Array<{ hooks: Array<(i: unknown, t: unknown, o: unknown) => Promise<unknown>> }>> }
   | undefined;
@@ -38,12 +42,14 @@ mock.module('@anthropic-ai/claude-agent-sdk', () => ({
         if (m.__hook === 'SubagentStop') {
           // Fire the hook where the CLI fired it, as the SDK does (between messages).
           const input = m.input as { agent_transcript_path?: string };
-          const hook = lastOptions!.hooks!.SubagentStop[0].hooks[0];
-          await hook(
-            { ...input, agent_transcript_path: input.agent_transcript_path?.replace('__FIXTURE__', FX) },
-            undefined,
-            { signal: new AbortController().signal },
-          );
+          const hook = lastOptions?.hooks?.SubagentStop?.[0]?.hooks?.[0];
+          if (hook) {
+            await hook(
+              { ...input, agent_transcript_path: input.agent_transcript_path?.replace('__FIXTURE__', subagentDir) },
+              undefined,
+              { signal: new AbortController().signal },
+            );
+          }
           continue;
         }
         if (m.__hook) continue;
@@ -57,7 +63,15 @@ await import('./index.js');
 await import('../provider-contracts/index.js');
 const { createProvider } = await import('./factory.js');
 const { MEMORY_SESSION_HOOK } = await import('../memory/session-hook.js');
-const { finalUsageFromStreamEvent, finalUsageFromTranscript, createSubagentUsageHook } = await import('./claude.js');
+const {
+  __resetSubagentReadCursors,
+  createSubagentUsageHook,
+  finalUsageFromStreamEvent,
+  finalUsageFromTranscript,
+  resultAccounting,
+  validateSubagentTranscriptPath,
+} = await import('./claude.js');
+const { readRestoredModelUsage } = await import('./claude-history.js');
 const { closeSessionDb, getOutboundDb, initTestSessionDb } = await import('../mailbox/sqlite/connection.js');
 const { __setConfigForTest } = await import('../config.js');
 const { __costCapTestHooks: H } = await import('../poll-loop.js');
@@ -75,13 +89,25 @@ function load(name: string): Array<Record<string, unknown>> {
     .map((l) => JSON.parse(l) as Record<string, unknown>);
 }
 
+const MAIN_SID = (load('main-two-turns.jsonl').find((m) => m.type === 'result') as { session_id: string }).session_id;
+const SUB_SID = (load('background-subagents.jsonl').find((m) => m.type === 'result') as { session_id: string })
+  .session_id;
+
 let tmp: string;
 let prevHome: string | undefined;
+let projectDir: string;
 
 beforeEach(() => {
   tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'claude-finalusage-'));
   prevHome = process.env.HOME;
   process.env.HOME = tmp;
+  projectDir = path.join(tmp, '.claude', 'projects', '-ws');
+  subagentDir = path.join(projectDir, SUB_SID, 'subagents');
+  fs.mkdirSync(subagentDir, { recursive: true });
+  for (const f of fs.readdirSync(FX).filter((x) => x.startsWith('agent-'))) {
+    fs.copyFileSync(path.join(FX, f), path.join(subagentDir, f));
+  }
+  __resetSubagentReadCursors();
   initTestSessionDb();
   createCostEventsTable(getOutboundDb());
   __setConfigForTest({
@@ -109,8 +135,9 @@ beforeEach(() => {
     codexUsdCharged: 0,
     codexLedgerBaselinePending: false,
     ledgerGen: 1,
+    ledgerBaselineVersion: 1,
     seenMessageIds: [],
-    claudeBackstop: newBackstopState(0, null, true),
+    claudeBackstop: newBackstopState(),
   });
 });
 
@@ -128,22 +155,44 @@ function provider() {
   return p;
 }
 
-/** Run one fixture through the provider; drive the poll-loop's cost path exactly as processQuery does. */
-async function replay(name: string, continuation?: string): Promise<Ev[]> {
+/** The `cost-state` Claude Code appends to the session transcript when a process ends. */
+function endProcess(sid: string, fixture: string): void {
+  const last = load(fixture)
+    .filter((m) => m.type === 'result')
+    .pop() as { modelUsage: Record<string, unknown> };
+  fs.appendFileSync(
+    path.join(projectDir, `${sid}.jsonl`),
+    `${JSON.stringify({ type: 'user', sessionId: sid })}\n${JSON.stringify({ type: 'cost-state', sessionId: sid, modelUsage: last.modelUsage })}\n`,
+  );
+}
+
+/** Run one fixture as one query — open its segment first, exactly as runPollLoop does. */
+async function replay(name: string, continuation?: string, usageTracking = true): Promise<Ev[]> {
   script = load(name);
-  const q = provider().query({ prompt: 'x', cwd: tmp, continuation });
+  const p = provider();
+  if (usageTracking)
+    H.beginClaudeSegment(continuation, continuation ? (p.readRestoredUsage?.(continuation) ?? null) : null);
+  const q = p.query({ prompt: 'x', cwd: tmp, continuation, usageTracking });
   const out: Ev[] = [];
+  let settled = false;
   for await (const e of q.events) {
     const ev = e as unknown as Ev;
     out.push(ev);
     if (ev.type === 'init') H.noteClaudeContinuation(ev.continuation as string, !continuation);
     if (ev.type === 'message_usage') H.recordMessageCost(e as never);
-    if (ev.type === 'usage') H.recordTurnCost(e as never);
+    if (ev.type === 'result' && ev.accounting) {
+      H.recordTurnCost({ type: 'usage', ...(ev.accounting as object) } as never);
+      settled = true;
+    }
+    if (ev.type === 'usage') {
+      if (!settled) H.recordTurnCost(e as never);
+      settled = false;
+    }
   }
   return out;
 }
 
-/** Ledger tokens per pricing key (residual rows included). */
+/** Ledger tokens per model family (residual rows included). */
 function ledgerTokens(): Record<string, { input: number; output: number; cacheRead: number; cacheWrite: number }> {
   const rows = getOutboundDb().prepare('SELECT * FROM cost_events WHERE window_gen = 1').all() as Array<
     Record<string, number | string>
@@ -254,25 +303,6 @@ describe('provider: final usage from the stream', () => {
     expect([fa?.messageId, fa?.isSubagent, fb?.messageId]).toEqual(['a', true, 'b']);
   });
 
-  it('reads a subagent transcript: one final per id, with its timestamp; bad lines skipped', () => {
-    const text = fs.readFileSync(path.join(FX, 'agent-a2d3a5720f1e5a422.jsonl'), 'utf8') + '\nnot json\n';
-    const evs = finalUsageFromTranscript(text + text);
-    expect(evs).toHaveLength(1);
-    expect(evs[0]).toMatchObject({ outputTokens: 124, ephemeral5mInputTokens: 15_691, isSubagent: true, final: true });
-    expect(typeof evs[0].callTs).toBe('string');
-  });
-
-  it('the SubagentStop hook fails soft on a missing transcript (the compaction sidechain)', async () => {
-    const got: unknown[] = [];
-    const hook = createSubagentUsageHook((e) => got.push(e));
-    await expect(
-      hook({ agent_transcript_path: path.join(FX, 'missing.jsonl') } as never, undefined, {
-        signal: new AbortController().signal,
-      }),
-    ).resolves.toEqual({});
-    expect(got).toHaveLength(0);
-  });
-
   it('a subagent final read inside the turn is emitted BEFORE that turn result', async () => {
     const evs = await replay('background-subagents.jsonl');
     const heapFinal = evs.findIndex(
@@ -283,11 +313,135 @@ describe('provider: final usage from the stream', () => {
     expect(heapFinal).toBeLessThan(firstResult);
   });
 
-  it('the usage event carries modelUsage (helper calls included) and the error flag', async () => {
+  it('the result carries the accounting (helper calls included); a usage event follows', async () => {
     const evs = await replay('main-two-turns.jsonl');
-    const u = evs.find((e) => e.type === 'usage') as { modelUsage?: Record<string, unknown>; isError?: boolean };
-    expect(Object.keys(u.modelUsage ?? {}).sort()).toEqual(['claude-haiku-4-5-20251001', 'claude-sonnet-5-5[1m]']);
-    expect(u.isError).toBeUndefined();
+    const r = evs.find((e) => e.type === 'result') as { accounting?: { modelUsage?: Record<string, unknown> } };
+    expect(Object.keys(r.accounting?.modelUsage ?? {}).sort()).toEqual([
+      'claude-haiku-4-5-20251001',
+      'claude-sonnet-5-5[1m]',
+    ]);
+    expect(evs.filter((e) => e.type === 'usage')).toHaveLength(2);
+  });
+
+  it('an error result with ONLY modelUsage still produces accounting (item 6)', () => {
+    const acc = resultAccounting({ modelUsage: { 'claude-sonnet-5-5': { inputTokens: 5, outputTokens: 7 } } }, true);
+    expect(acc).toMatchObject({
+      isError: true,
+      inputTokens: 0,
+      modelUsage: { 'claude-sonnet-5-5': { inputTokens: 5, outputTokens: 7 } },
+    });
+    expect(resultAccounting({}, false)).toBeNull();
+  });
+});
+
+describe('SubagentStop transcript read — defensive (item 7)', () => {
+  const SINK = () => {
+    const got: Array<Record<string, unknown>> = [];
+    return { got, sink: (e: unknown) => got.push(e as Record<string, unknown>) };
+  };
+  const signal = { signal: new AbortController().signal };
+  const projectsRoot = () => path.join(tmp, '.claude', 'projects');
+  const realFile = () => path.join(subagentDir, 'agent-a2d3a5720f1e5a422.jsonl');
+
+  it('reads a regular agent-*.jsonl under the projects tree', async () => {
+    const { got, sink } = SINK();
+    await createSubagentUsageHook(sink, { projectsRoot: projectsRoot() })(
+      { agent_transcript_path: realFile() } as never,
+      undefined,
+      signal,
+    );
+    expect(got).toHaveLength(1);
+    expect(got[0]).toMatchObject({ outputTokens: 124, ephemeral5mInputTokens: 15_691, isSubagent: true, final: true });
+  });
+
+  it('rejects a symlink that leaves the tree, a wrong name, a wrong depth, and a missing file', async () => {
+    const outside = path.join(tmp, 'outside.jsonl');
+    fs.copyFileSync(realFile(), outside);
+    const link = path.join(subagentDir, 'agent-evil.jsonl');
+    fs.symlinkSync(outside, link);
+    const wrongName = path.join(subagentDir, 'notes.jsonl');
+    fs.copyFileSync(realFile(), wrongName);
+    const wrongDepth = path.join(projectDir, 'agent-x.jsonl');
+    fs.copyFileSync(realFile(), wrongDepth);
+    for (const p of [link, wrongName, wrongDepth, path.join(subagentDir, 'agent-missing.jsonl')]) {
+      expect(validateSubagentTranscriptPath(p, projectsRoot())).toBeNull();
+      const { got, sink } = SINK();
+      await createSubagentUsageHook(sink, { projectsRoot: projectsRoot() })(
+        { agent_transcript_path: p } as never,
+        undefined,
+        signal,
+      );
+      expect(got).toHaveLength(0);
+    }
+  });
+
+  it('skips a file over the size bound (the result backstop covers it)', async () => {
+    const { got, sink } = SINK();
+    await createSubagentUsageHook(sink, { projectsRoot: projectsRoot(), maxBytes: 10 })(
+      { agent_transcript_path: realFile() } as never,
+      undefined,
+      signal,
+    );
+    expect(got).toHaveLength(0);
+  });
+
+  it('a re-fired hook reads only what was appended', async () => {
+    const hook = createSubagentUsageHook(SINK().sink, { projectsRoot: projectsRoot() });
+    await hook({ agent_transcript_path: realFile() } as never, undefined, signal);
+    const line = JSON.parse(fs.readFileSync(realFile(), 'utf8').trim()) as {
+      message: { id: string; usage: Record<string, number> };
+    };
+    line.message.id = 'msg_appended';
+    fs.appendFileSync(realFile(), `${JSON.stringify(line)}\n`);
+    const { got, sink } = SINK();
+    await createSubagentUsageHook(sink, { projectsRoot: projectsRoot() })(
+      { agent_transcript_path: realFile() } as never,
+      undefined,
+      signal,
+    );
+    expect(got.map((e) => e.messageId)).toEqual(['msg_appended']);
+  });
+
+  it('drops invalid numbers and malformed lines', () => {
+    const evs = finalUsageFromTranscript(
+      [
+        'not json',
+        JSON.stringify({
+          type: 'assistant',
+          message: { id: 'm1', usage: { input_tokens: -5, output_tokens: 'x', cache_read_input_tokens: 1e400 } },
+        }),
+        JSON.stringify({
+          type: 'assistant',
+          message: { id: 'm2', usage: { output_tokens: 7 } },
+          timestamp: 'not a date',
+        }),
+      ].join('\n'),
+    );
+    expect(evs.map((e) => [e.messageId, e.inputTokens, e.outputTokens, e.cacheReadInputTokens, e.callTs])).toEqual([
+      ['m1', 0, 0, 0, undefined],
+      ['m2', 0, 7, 0, undefined],
+    ]);
+  });
+
+  it('is not registered when the consumer does not meter usage', async () => {
+    await replay('background-subagents.jsonl', undefined, false);
+    expect(lastOptions?.hooks?.SubagentStop).toBeUndefined();
+  });
+});
+
+describe('restore baseline from the transcript', () => {
+  it('reads the LAST cost-state, scanning backwards across chunks', () => {
+    const file = path.join(projectDir, 'sess-r.jsonl');
+    const filler = `${JSON.stringify({ type: 'user', pad: 'x'.repeat(300_000) })}\n`;
+    fs.writeFileSync(
+      file,
+      `${JSON.stringify({ type: 'cost-state', modelUsage: { a: { outputTokens: 1 } } })}\n` +
+        filler +
+        `${JSON.stringify({ type: 'cost-state', modelUsage: { a: { outputTokens: 2 } } })}\n` +
+        filler,
+    );
+    expect(readRestoredModelUsage('sess-r')).toEqual({ a: { outputTokens: 2 } });
+    expect(readRestoredModelUsage('sess-none')).toBeNull();
   });
 });
 
@@ -316,9 +470,10 @@ describe('REGRESSION GUARD — replayed sessions are accounted exactly', () => {
 
   it('resume + /compact + resume: the compaction call is charged, the restored history is not', async () => {
     await replay('main-two-turns.jsonl');
-    const sid = (load('main-two-turns.jsonl').find((m) => m.type === 'result') as { session_id: string }).session_id;
-    await replay('resume-compact.jsonl', sid);
-    await replay('resume-after-compact.jsonl', sid);
+    endProcess(MAIN_SID, 'main-two-turns.jsonl');
+    await replay('resume-compact.jsonl', MAIN_SID);
+    endProcess(MAIN_SID, 'resume-compact.jsonl');
+    await replay('resume-after-compact.jsonl', MAIN_SID);
     expect(ledgerTokens()).toEqual(lastModelUsage('resume-after-compact.jsonl'));
     const exact =
       price(SONNET, { input: 2_044, output: 1_783, cacheRead: 87_746, cw1h: 41_240 }) +
@@ -327,12 +482,19 @@ describe('REGRESSION GUARD — replayed sessions are accounted exactly', () => {
     expect(ledgerUsd()).toBeCloseTo(exact, 12);
   });
 
-  it('first run after deploy on a resumed session: history absorbed, only new calls charged', async () => {
-    const sid = (load('main-two-turns.jsonl').find((m) => m.type === 'result') as { session_id: string }).session_id;
-    await replay('resume-compact.jsonl', sid); // untracked → absorbed (incl. this compaction)
-    expect(spent()).toBe(0);
-    await replay('resume-after-compact.jsonl', sid);
-    expect(spent()).toBeCloseTo(price(SONNET, { input: 2, output: 4, cacheRead: 11_062, cw1h: 14_253 }), 12);
+  it('first run after deploy: the transcript cost-state baselines even the first turn — its compaction is charged', async () => {
+    // No runner state at all for this session, but the transcript has the saved totals.
+    endProcess(MAIN_SID, 'main-two-turns.jsonl');
+    await replay('resume-compact.jsonl', MAIN_SID);
+    const compaction = price(SONNET, { input: 2_036, output: 1_190, cacheRead: 26_368, cw5: 289 });
+    expect(spent()).toBeCloseTo(compaction, 12); // 5m: no main-thread TTL observed yet
     expect(ledgerUsd()).toBeCloseTo(spent(), 12);
+  });
+
+  it('only with neither a transcript cost-state nor a checkpoint is the first result absorbed', async () => {
+    await replay('resume-compact.jsonl', MAIN_SID); // no transcript written for this session
+    expect(spent()).toBe(0);
+    await replay('resume-after-compact.jsonl', MAIN_SID); // checkpoint from the absorbed result now exists
+    expect(spent()).toBeCloseTo(price(SONNET, { input: 2, output: 4, cacheRead: 11_062, cw1h: 14_253 }), 12);
   });
 });

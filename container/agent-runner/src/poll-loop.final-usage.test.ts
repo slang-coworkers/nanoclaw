@@ -1,6 +1,8 @@
 /**
- * Exact Claude accounting in the live counter: final per-call usage and the
- * `modelUsage` backstop (claude-usage.ts, recordMessageCost, settleClaudeTurn).
+ * Exact Claude accounting in the live counter: final per-call usage, the
+ * per-query segment backstop against the SDK's cumulative `modelUsage`, and the
+ * transaction that commits each accounting event (claude-usage.ts,
+ * recordMessageCost, settleClaudeTurn, beginClaudeSegment, runCostEvent).
  *
  * THE BUG THIS PINS. The SDK streams each content block of a call as its own
  * assistant message, all carrying the `message_start` SNAPSHOT — final input
@@ -8,27 +10,31 @@
  * id and ignored the rest, so the counter (and the cost_events ledger) kept ~1%
  * of output tokens: on prod session sess-1785902924001-jylfb4 a call the
  * transcript and the OneCLI gateway both record as 8,178 output tokens was
- * charged as 8. Calls the stream never shows (compaction, Claude Code's helper
- * calls) were not charged at all.
+ * charged as 8. Calls the stream never shows were not charged at all —
+ * slang-triager's isolated compaction calls alone were 15.7% of its spend.
  *
  * Every case asserts BOTH the counter and that the ledger sums to it — the
- * ledger is what the gateway acceptance check (scripts/verify-cost-ledger-vs-
- * gateway.py) compares against prod billing.
+ * ledger is what the gateway acceptance check compares against prod billing,
+ * and it is the durable per-message dedup record.
  *
  * Same convention as poll-loop.message-cost.test.ts: no module mocks, a real
  * in-memory session DB, real pricing.
  */
 import { describe, it, expect, beforeEach, afterEach } from 'bun:test';
+import fs from 'fs';
+import os from 'os';
+import path from 'path';
 
-import { closeSessionDb, getOutboundDb, initTestSessionDb } from './mailbox/sqlite/connection.js';
+import { closeSessionDb, getInboundDb, getOutboundDb, initTestSessionDb } from './mailbox/sqlite/connection.js';
+import { getClaudeBackstop, getCostCap } from './db/session-state.js';
 import { __setConfigForTest } from './config.js';
-import { __costCapTestHooks as H } from './poll-loop.js';
+import { __costCapTestHooks as H, processQuery } from './poll-loop.js';
 import { __resetCodexCostMemo } from './codex-cost.js';
 import { createCostEventsTable, sumWindow } from './cost-events.js';
 import { RATE_TABLE } from './cost-rate-table.js';
 import { newBackstopState, priceVec, zeroVec, type TokenVec } from './claude-usage.js';
 import type { RunnerConfig } from './config.js';
-import type { ProviderEvent } from './providers/types.js';
+import type { AgentQuery, ProviderEvent, UsageAccounting } from './providers/types.js';
 
 const OPUS = 'aws/anthropic/bedrock-claude-opus-5-5';
 const HAIKU = 'azure/anthropic/claude-haiku-4-5';
@@ -69,19 +75,21 @@ function seed(): void {
     codexUsdCharged: 0,
     codexLedgerBaselinePending: false,
     ledgerGen: 1,
+    ledgerBaselineVersion: 1,
     seenMessageIds: [],
     turnSawMessageUsage: false,
     turnMessageCostUsd: 0,
     turnUnpricedCount: 0,
     turnMissingIdCount: 0,
     turnNoUsageCount: 0,
-    claudeBackstop: newBackstopState(0, null, true),
+    claudeBackstop: newBackstopState(),
   });
+  H.setFailPoint(undefined);
 }
 
-/** One report of a call. `cw1h` is the call's (1-hour) cache write. */
+/** One report of a call. */
 function call(
-  id: string,
+  id: string | null,
   u: { input?: number; output: number; cacheRead?: number; cw1h?: number; cw5?: number },
   over: Partial<MU> = {},
 ): MU {
@@ -115,11 +123,25 @@ function priceOf(
   return priceVec(model, v);
 }
 
-/** A `result`'s usage event with cumulative modelUsage (main-loop fields zero — they are not used). */
-function result(
-  modelUsage: Record<string, { in?: number; out?: number; cr?: number; cw?: number; cost?: number }>,
-  over: Partial<UsageEv> = {},
-): UsageEv {
+type MUIn = Record<string, { in?: number; out?: number; cr?: number; cw?: number; cost?: number }>;
+
+function modelUsage(mu: MUIn): NonNullable<UsageEv['modelUsage']> {
+  return Object.fromEntries(
+    Object.entries(mu).map(([m, u]) => [
+      m,
+      {
+        inputTokens: u.in ?? 0,
+        outputTokens: u.out ?? 0,
+        cacheReadInputTokens: u.cr ?? 0,
+        cacheCreationInputTokens: u.cw ?? 0,
+        costUSD: u.cost ?? 0,
+      },
+    ]),
+  );
+}
+
+/** A `result`'s accounting with cumulative modelUsage (main-loop fields unused). */
+function result(mu: MUIn, over: Partial<UsageEv> = {}): UsageEv {
   return {
     type: 'usage',
     inputTokens: 0,
@@ -132,53 +154,59 @@ function result(
     totalCostUsd: 999, // cumulative SDK figure — must never be charged as a turn
     numTurns: 1,
     sessionId: SID,
-    modelUsage: Object.fromEntries(
-      Object.entries(modelUsage).map(([m, u]) => [
-        m,
-        {
-          inputTokens: u.in ?? 0,
-          outputTokens: u.out ?? 0,
-          cacheReadInputTokens: u.cr ?? 0,
-          cacheCreationInputTokens: u.cw ?? 0,
-          costUSD: u.cost ?? 0,
-        },
-      ]),
-    ),
+    modelUsage: modelUsage(mu),
     ...over,
   };
 }
 
-function spent(): number {
-  return H.getState().costSpentUsd;
+const spent = () => H.getState().costSpentUsd;
+const ledger = () => sumWindow(getOutboundDb(), RATE_TABLE, '0000-00-00', '9999-99-99', H.getState().ledgerGen).usd;
+const ledgerRows = () =>
+  getOutboundDb().prepare('SELECT * FROM cost_events ORDER BY rowid').all() as Array<Record<string, number | string>>;
+
+/** Everything durable an accounting event may touch. */
+function durable() {
+  return JSON.stringify({
+    cap: getCostCap()?.spentUsd ?? 0,
+    backstop: getClaudeBackstop() ?? null,
+    rows: ledgerRows(),
+  });
 }
 
-function ledger(): number {
-  return sumWindow(getOutboundDb(), RATE_TABLE, '0000-00-00', '9999-99-99', H.getState().ledgerGen).usd;
+/** A query start: a fresh SDK session, or a resume with what the SDK will restore. */
+function freshQuery(sid = SID): void {
+  H.beginClaudeSegment(undefined, null);
+  H.noteClaudeContinuation(sid, true);
+}
+function resumeQuery(restored: MUIn | null, sid = SID): void {
+  H.beginClaudeSegment(sid, restored ? modelUsage(restored) : null);
+  H.noteClaudeContinuation(sid, false);
 }
 
-function ledgerRows(): Array<{ id: string; output_tokens: number; input_tokens: number }> {
-  return getOutboundDb()
-    .prepare('SELECT id, output_tokens, input_tokens FROM cost_events ORDER BY rowid')
-    .all() as Array<{
-    id: string;
-    output_tokens: number;
-    input_tokens: number;
-  }>;
-}
+let codexHome: string;
+let prevCodexHome: string | undefined;
 
 beforeEach(() => {
+  // The result-time settlement folds codex rollouts: point it at an empty home.
+  codexHome = fs.mkdtempSync(path.join(os.tmpdir(), 'finalusage-codex-'));
+  prevCodexHome = process.env.CODEX_HOME;
+  process.env.CODEX_HOME = codexHome;
   initTestSessionDb();
   __setConfigForTest(cfg());
   __resetCodexCostMemo();
   createCostEventsTable(getOutboundDb());
   seed();
-  H.noteClaudeContinuation(SID, true); // a fresh SDK session
+  freshQuery();
 });
 
 afterEach(() => {
+  H.setFailPoint(undefined);
   __setConfigForTest(null);
   closeSessionDb();
   __resetCodexCostMemo();
+  if (prevCodexHome === undefined) delete process.env.CODEX_HOME;
+  else process.env.CODEX_HOME = prevCodexHome;
+  fs.rmSync(codexHome, { recursive: true, force: true });
 });
 
 describe('final per-call usage — charged once, at its final value', () => {
@@ -186,12 +214,12 @@ describe('final per-call usage — charged once, at its final value', () => {
   const FINAL = { output: 8_178, cacheRead: 419_091, cw1h: 683 };
 
   it('snapshot blocks then the message_delta final: charges the FINAL once (prod: 8 → 8,178)', () => {
-    H.recordMessageCost(call('msg_1', SNAP)); // text block
-    H.recordMessageCost(call('msg_1', SNAP)); // tool_use block, same snapshot
+    H.recordMessageCost(call('msg_1', SNAP));
+    H.recordMessageCost(call('msg_1', SNAP));
     H.recordMessageCost(call('msg_1', FINAL, { final: true }));
     expect(spent()).toBeCloseTo(priceOf(FINAL), 10);
     const rows = ledgerRows();
-    expect(rows).toHaveLength(1); // updated in place, not a second row
+    expect(rows).toHaveLength(1); // rewritten in place, not a second row
     expect(rows[0].output_tokens).toBe(8_178);
     expect(ledger()).toBeCloseTo(spent(), 10);
   });
@@ -226,11 +254,30 @@ describe('final per-call usage — charged once, at its final value', () => {
     expect(ledger()).toBeCloseTo(spent(), 10);
   });
 
-  it('a fallback / switched model is priced by the model that served each call', () => {
+  it('an unsplit snapshot then an equal 1h-split final re-prices the write at 1h', () => {
+    H.recordMessageCost({ ...call('m_ttl', { output: 1 }), cacheCreationInputTokens: 1_000 }); // flat
+    H.recordMessageCost(call('m_ttl', { output: 1, cw1h: 1_000 }, { final: true }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 1, cw1h: 1_000 }), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+});
+
+describe('model of a call — priced by the model that served it (item 5)', () => {
+  it('a model-less snapshot priced as the configured model MOVES to the model the final names', () => {
+    H.recordMessageCost(call('m1', { output: 5 }, { model: undefined }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 5 }), 12); // configured Opus
+    H.recordMessageCost(call('m1', { output: 300 }, { model: HAIKU, final: true }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 300 }, HAIKU), 12); // the Opus guess is refunded
+    expect(ledgerRows()[0].model).toBe(HAIKU);
+    // The SDK puts the call under Haiku; nothing is charged twice.
+    H.recordTurnCost(result({ [HAIKU]: { in: 2, out: 300 } }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 300 }, HAIKU), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+
+  it('a fallback / switched model is priced per call and settled per model', () => {
     H.recordMessageCost(call('m_opus', { output: 100 }, { final: true }));
     H.recordMessageCost(call('m_haiku', { output: 100 }, { model: HAIKU, final: true }));
-    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 100 }, HAIKU), 12);
-    // The backstop buckets per model too: totals equal to the per-message figures → nothing extra.
     H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 2, out: 100 } }));
     expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 100 }, HAIKU), 12);
   });
@@ -248,51 +295,8 @@ describe('modelUsage backstop — calls the stream never reports', () => {
     expect(ledger()).toBeCloseTo(spent(), 10);
   });
 
-  it('charges a compaction call in a resumed session we track, but not the restored history', () => {
-    H.recordMessageCost(call('m1', { output: 589, cacheRead: 50_316, cw1h: 26_698, input: 6 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 6, out: 589, cr: 50_316, cw: 26_698 } }));
-    const before = spent();
-    // New query resumes the same session and runs /compact: no stream events, totals jump.
-    H.noteClaudeContinuation(SID, false);
-    H.recordTurnCost(result({ [OPUS]: { in: 2_042, out: 1_779, cr: 76_684, cw: 26_987 } }));
-    const compaction = priceVec(OPUS, { ...zeroVec(), input: 2_036, output: 1_190, cacheRead: 26_368, cw1h: 289 });
-    expect(spent() - before).toBeCloseTo(compaction, 12);
-    expect(ledger()).toBeCloseTo(spent(), 10);
-  });
-
-  it('a resumed session with no tracking state (first run after deploy) ABSORBS its history', () => {
-    H.noteClaudeContinuation('sess-old', false);
-    H.recordMessageCost(call('m1', { output: 50 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 9_000, out: 400_000, cr: 9e7, cw: 9e5 } }, { sessionId: 'sess-old' }));
-    expect(spent()).toBeCloseTo(priceOf({ output: 50 }), 12); // only what this query streamed
-  });
-
-  it('a PARTIAL restore never double-counts', () => {
-    H.recordMessageCost(call('m1', { output: 500 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 500 } }));
-    H.noteClaudeContinuation(SID, false);
-    H.recordMessageCost(call('m2', { output: 30 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 30 } })); // restore lost the 500
-    expect(spent()).toBeCloseTo(priceOf({ output: 500 }) + priceOf({ output: 30 }), 12);
-  });
-
-  it('a zeroed error result is skipped and does not rebase (no re-charge of history afterwards)', () => {
-    H.recordMessageCost(call('m1', { output: 500 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 500 } }));
-    H.recordTurnCost(result({ [OPUS]: { in: 0, out: 0 } }, { isError: true }));
-    H.noteClaudeContinuation(SID, false);
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 500 } })); // restored total, nothing new
-    expect(spent()).toBeCloseTo(priceOf({ output: 500 }), 12);
-  });
-
-  it('an SDK max-budget stop (error result WITH totals) still settles its off-stream spend', () => {
-    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 500, out: 5 } }, { isError: true }));
-    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ input: 500, output: 5 }, HAIKU), 12);
-  });
-
   it('never charges the cumulative totalCostUsd as one turn (the old degraded path)', () => {
-    H.recordMessageCost(call(null as unknown as string, { output: 100 }, { messageId: null }));
+    H.recordMessageCost(call(null, { output: 100 }));
     H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } })); // totalCostUsd = 999 in the helper
     expect(spent()).toBeCloseTo(priceOf({ output: 100 }), 12); // the id-less call, via the backstop
   });
@@ -304,89 +308,342 @@ describe('modelUsage backstop — calls the stream never reports', () => {
     expect(spent()).toBeCloseTo(0.42, 12);
     expect(ledger()).toBeCloseTo(spent(), 10);
   });
+
+  it('an SDK max-budget stop (error result WITH totals) still settles its off-stream spend', () => {
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 500, out: 5 } }, { isError: true }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ input: 500, output: 5 }, HAIKU), 12);
+  });
+
+  it('a zeroed error result is skipped and keeps the baseline', () => {
+    H.recordMessageCost(call('m1', { output: 500 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 500 } }));
+    H.recordTurnCost(result({ [OPUS]: { in: 0, out: 0 } }, { isError: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 520 } }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 500 }) + priceOf({ input: 0, output: 20 }), 12);
+  });
+});
+
+describe('resume baselines — established BEFORE the query (item 4)', () => {
+  // The prod shape of an isolated compaction: ~245K uncached input, ~525K cache write, ~6K output.
+  const COMPACTION = { input: 245_000, output: 6_000, cw5: 525_000 };
+  const BEFORE: MUIn = { [OPUS]: { in: 6, out: 589, cr: 50_316, cw: 26_698 } };
+  const AFTER: MUIn = { [OPUS]: { in: 6 + 245_000, out: 589 + 6_000, cr: 50_316, cw: 26_698 + 525_000 } };
+
+  it('from the transcript cost-state: a compaction in the FIRST turn of a resumed query is charged', () => {
+    resumeQuery(BEFORE);
+    H.recordTurnCost(result(AFTER));
+    expect(spent()).toBeCloseTo(priceVec(OPUS, { ...zeroVec(), ...COMPACTION }), 10);
+    expect(ledger()).toBeCloseTo(spent(), 10);
+  });
+
+  it('from the checkpoint of the previous process when the transcript has none', () => {
+    H.recordMessageCost(call('m1', { input: 6, output: 589, cacheRead: 50_316, cw1h: 26_698 }, { final: true }));
+    H.recordTurnCost(result(BEFORE)); // checkpoint saved
+    const before = spent();
+    resumeQuery(null); // no transcript cost-state readable
+    H.recordTurnCost(result(AFTER));
+    expect(spent() - before).toBeCloseTo(
+      priceVec(OPUS, { ...zeroVec(), input: 245_000, output: 6_000, cw1h: 525_000 }),
+      10,
+    );
+  });
+
+  it('absorbs ONLY with no baseline at all — the restored history is never charged', () => {
+    resumeQuery(null, 'sess-never-seen');
+    H.recordMessageCost(call('m1', { output: 50 }, { final: true }));
+    H.recordTurnCost(
+      result({ [OPUS]: { in: 9_000, out: 400_000, cr: 9e7, cw: 9e5 } }, { sessionId: 'sess-never-seen' }),
+    );
+    expect(spent()).toBeCloseTo(priceOf({ output: 50 }), 12);
+    expect(getClaudeBackstop()).toMatchObject({ segment: { baseSource: 'absorb' } });
+  });
+
+  it('a restore SMALLER than the baseline (killed process) restarts accounting — no masking, no double count (item 3)', () => {
+    H.recordMessageCost(call('m1', { output: 500 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 500 } }));
+    resumeQuery(null); // checkpoint says 500, but the SDK restores less
+    H.recordMessageCost(call('m2', { output: 30 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 50 } })); // 0 restored + 30 streamed + 20 helper
+    const afterReset = spent();
+    expect(afterReset).toBeCloseTo(priceOf({ output: 500 }) + priceOf({ output: 30 }), 12);
+    // The next helper call is charged in full — the old 500 cannot mask it.
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 70 } }));
+    expect(spent() - afterReset).toBeCloseTo(priceOf({ input: 0, output: 20 }), 12);
+  });
+
+  it('an aborted turn keeps what streamed; the next query differences against the restored totals', () => {
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } }));
+    H.recordMessageCost(call('m_aborted', { output: 7 })); // the process died mid-call
+    // The dead process saved no cost-state: the SDK restores the last one (100).
+    resumeQuery({ [OPUS]: { in: 2, out: 100 } });
+    H.recordMessageCost(call('m3', { output: 50 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 4, out: 150 } }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 7 }) + priceOf({ output: 50 }), 10);
+    expect(ledger()).toBeCloseTo(spent(), 10);
+  });
+
+  it('a /clear window reset: the fresh query after it starts from zero, history never re-charged', () => {
+    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } }));
+    H.resetCostForNewSession();
+    expect(spent()).toBe(0);
+    freshQuery('sess-B');
+    H.recordMessageCost(call('m2', { output: 10 }, { final: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 10 } }, { sessionId: 'sess-B' }));
+    expect(spent()).toBeCloseTo(priceOf({ output: 10 }), 12);
+  });
 });
 
 describe('subagents — final usage from the transcript, never double-counted', () => {
   const SNAP = { output: 6, cw5: 15_691, cacheRead: 6_379 };
   const FINAL = { output: 124, cw5: 15_691, cacheRead: 6_379 };
+  const SDK_COUNTS_IT: MUIn = { [OPUS]: { in: 2, out: 124, cr: 6_379, cw: 15_691 } };
 
-  it('sync subagent: snapshot then transcript final before the result → charged once, backstop adds nothing', () => {
+  it('sync subagent: snapshot then transcript final before the result → charged once', () => {
     H.recordMessageCost(call('sub_1', SNAP, { isSubagent: true }));
     H.recordMessageCost(call('sub_1', FINAL, { isSubagent: true, final: true, callTs: new Date().toISOString() }));
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 124, cr: 6_379, cw: 15_691 } }));
+    H.recordTurnCost(result(SDK_COUNTS_IT));
     expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
     expect(ledger()).toBeCloseTo(spent(), 10);
   });
 
-  it('background subagent: result counted the call, transcript final arrives AFTER → consumes credit, no double count', () => {
+  it('background subagent: result counted the call, transcript final arrives AFTER → consumes credit', () => {
     H.recordMessageCost(call('sub_bg', SNAP, { isSubagent: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 124, cr: 6_379, cw: 15_691 } })); // residual: 118 output
+    H.recordTurnCost(result(SDK_COUNTS_IT)); // residual: 118 output
     expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
     H.recordMessageCost(call('sub_bg', FINAL, { isSubagent: true, final: true, callTs: new Date().toISOString() }));
-    expect(spent()).toBeCloseTo(priceOf(FINAL), 12); // unchanged: the residual already paid it
-    expect(ledger()).toBeCloseTo(spent(), 10); // residual row shrank as the message row grew
-    // And the next result does not charge it again.
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 124, cr: 6_379, cw: 15_691 } }));
+    expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
+    expect(ledger()).toBeCloseTo(spent(), 10); // residual row shrank exactly as the message row grew
+    H.recordTurnCost(result(SDK_COUNTS_IT));
     expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
   });
 
   it('background subagent whose call completes after the result: charged when its final arrives', () => {
-    H.recordTurnCost(result({ [OPUS]: { in: 0, out: 0 } })); // turn ends, subagent still running
+    H.recordTurnCost(result({ [OPUS]: { in: 0, out: 0 } }));
     H.recordMessageCost(call('sub_late', SNAP, { isSubagent: true }));
     H.recordMessageCost(
-      call('sub_late', FINAL, { isSubagent: true, final: true, callTs: new Date(Date.now() + 1000).toISOString() }),
+      call('sub_late', FINAL, { isSubagent: true, final: true, callTs: new Date(Date.now() + 1_000).toISOString() }),
     );
     expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 124, cr: 6_379, cw: 15_691 } }));
+    H.recordTurnCost(result(SDK_COUNTS_IT));
     expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
     expect(ledger()).toBeCloseTo(spent(), 10);
   });
 
-  it('a transcript call never seen on the stream, dated before the last result, consumes credit', () => {
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 124, cr: 6_379, cw: 15_691 } })); // SDK counted it
+  it('a transcript call never seen on the stream, dated before the last result, consumes credit (all fields)', () => {
+    H.recordTurnCost(result(SDK_COUNTS_IT));
     H.recordMessageCost(
       call('sub_unseen', FINAL, { isSubagent: true, final: true, callTs: '2000-01-01T00:00:00.000Z' }),
     );
-    expect(spent()).toBeCloseTo(priceOf(FINAL), 12); // once, via the residual
+    expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
     expect(ledger()).toBeCloseTo(spent(), 10);
   });
 });
 
-describe('aborts, resets and respawn', () => {
-  it('an aborted turn keeps what streamed, and its resumed result does not re-charge it', () => {
-    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } }));
-    H.recordMessageCost(call('m_aborted', { output: 7 })); // snapshot only — the turn died mid-call
-    H.resetTurnAccountingState(); // the next query's defensive reset
-    H.noteClaudeContinuation(SID, false);
-    H.recordMessageCost(call('m3', { output: 50 }, { final: true }));
-    // Restored totals include the aborted call's real (final) usage.
-    H.recordTurnCost(result({ [OPUS]: { in: 6, out: 100 + 400 + 50 } }));
-    // m_aborted was charged its snapshot (7 out); the resumed totals carry its
-    // real 400 — the backstop charges the missing 393 and nothing else.
-    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ output: 400 }) + priceOf({ output: 50 }), 10);
-    expect(ledger()).toBeCloseTo(spent(), 10);
+describe('durable dedup across a respawn (item 2)', () => {
+  const SNAP = { output: 6, cw5: 15_691 };
+  const FINAL = { output: 124, cw5: 15_691 };
+
+  function respawn(): void {
+    H.forgetChargedMessages(); // a new container: no in-memory state
+    H.initCostTracking('claude'); // reload spend + backstop from the DB
+  }
+
+  it('a re-fired SubagentStop after a respawn tops up from the ledger row, never re-charges', () => {
+    H.recordMessageCost(call('sub_x', SNAP, { isSubagent: true }));
+    respawn();
+    H.recordMessageCost(call('sub_x', FINAL, { isSubagent: true, final: true, callTs: new Date().toISOString() }));
+    expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
+    respawn();
+    H.recordMessageCost(call('sub_x', FINAL, { isSubagent: true, final: true, callTs: new Date().toISOString() }));
+    expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
+    expect(ledgerRows()).toHaveLength(1);
   });
 
-  it('a /clear window reset absorbs the pre-reset history on the next result', () => {
-    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 } }));
-    H.resetCostForNewSession();
-    expect(spent()).toBe(0);
-    H.recordMessageCost(call('m2', { output: 10 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 4, out: 110 } }));
-    expect(spent()).toBeCloseTo(priceOf({ output: 10 }), 12);
+  it('a report for a call charged by an EARLIER process (segment) is ignored', () => {
+    H.recordMessageCost(call('sub_y', SNAP, { isSubagent: true }));
+    respawn();
+    resumeQuery(null); // the new process's query
+    H.recordMessageCost(call('sub_y', FINAL, { isSubagent: true, final: true }));
+    expect(spent()).toBeCloseTo(priceOf(SNAP), 12);
+    expect(ledger()).toBeCloseTo(spent(), 12);
+  });
+});
+
+describe('atomicity — failure injected at every statement boundary (items 1, 2, 9)', () => {
+  const SNAP = { output: 6, cw5: 15_691, cacheRead: 6_379 };
+  const FINAL = { output: 124, cw5: 15_691, cacheRead: 6_379 };
+
+  // A late final that rewrites its message row AND consumes residual rows — the
+  // longest write path.
+  function setUpLateFinal(): MU {
+    H.recordMessageCost(call('sub_bg', SNAP, { isSubagent: true }));
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 124, cr: 6_379, cw: 15_691 } }));
+    return call('sub_bg', FINAL, { isSubagent: true, final: true, callTs: new Date().toISOString() });
+  }
+
+  for (const point of ['msg:after-mutate', 'msg:after-ledger-row', 'msg:after-residual', 'msg:after-spend']) {
+    it(`message event failing at ${point}: nothing durable changes, memory matches, the retry charges once`, () => {
+      const ev = setUpLateFinal();
+      const before = durable();
+      const mem = spent();
+      H.setFailPoint(point);
+      H.recordMessageCost(ev);
+      expect(durable()).toBe(before);
+      expect(spent()).toBe(mem);
+      expect(H.pendingCostEventCount()).toBe(1);
+      H.setFailPoint(undefined);
+      H.flushPendingCostEvents();
+      expect(H.pendingCostEventCount()).toBe(0);
+      expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
+      expect(ledger()).toBeCloseTo(spent(), 10);
+      expect(getCostCap()?.spentUsd).toBeCloseTo(spent(), 12);
+    });
+
+    it(`message event failing at ${point} then a CRASH: the redelivered report charges once`, () => {
+      const ev = setUpLateFinal();
+      H.setFailPoint(point);
+      H.recordMessageCost(ev);
+      H.setFailPoint(undefined);
+      H.setState({ seenMessageIds: [] }); // the crash: memory and the retry queue are gone
+      H.initCostTracking('claude');
+      H.recordMessageCost(ev);
+      H.recordMessageCost(ev);
+      expect(spent()).toBeCloseTo(priceOf(FINAL), 12);
+      expect(ledger()).toBeCloseTo(spent(), 10);
+    });
+  }
+
+  for (const point of ['settle:after-mutate', 'settle:after-ledger', 'settle:after-spend']) {
+    it(`settlement failing at ${point}: rolled back whole, retried once`, () => {
+      H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
+      const before = durable();
+      H.setFailPoint(point);
+      H.recordTurnCost(
+        result({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 900, out: 10 }, 'claude-future-9': { cost: 0.5 } }),
+      );
+      expect(durable()).toBe(before);
+      expect(H.pendingCostEventCount()).toBe(1);
+      H.setFailPoint(undefined);
+      H.recordMessageCost(call('m2', { output: 1 }, { final: true })); // the next event flushes the queue first
+      expect(spent()).toBeCloseTo(
+        priceOf({ output: 100 }) + priceOf({ input: 900, output: 10 }, HAIKU) + 0.5 + priceOf({ output: 1 }),
+        10,
+      );
+      expect(ledger()).toBeCloseTo(spent(), 10);
+    });
+  }
+
+  it('a failed segment start is retried before the next event', () => {
+    H.setFailPoint('segment:after-start');
+    resumeQuery({ [OPUS]: { in: 2, out: 100 } });
+    H.setFailPoint(undefined);
+    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 130 } }));
+    expect(spent()).toBeCloseTo(priceOf({ input: 0, output: 30 }), 12);
   });
 
-  it('respawn: the backstop baseline survives initCostTracking', () => {
-    H.recordMessageCost(call('m1', { output: 100 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 900, out: 10 } }));
-    const before = spent();
-    H.initCostTracking('claude'); // a new container adopting the persisted state
-    expect(H.getState().claudeBackstop.sessionId).toBe(SID);
-    H.noteClaudeContinuation(SID, false);
-    H.recordMessageCost(call('m2', { output: 20 }, { final: true }));
-    H.recordTurnCost(result({ [OPUS]: { in: 4, out: 120 }, [HAIKU]: { in: 1_800, out: 20 } }));
-    expect(spent() - before).toBeCloseTo(priceOf({ output: 20 }) + priceOf({ input: 900, output: 10 }, HAIKU), 10);
+  it('a ceiling escalation is written only after its charge commits', () => {
+    seed();
+    H.setState({ costCeilingUsd: 0.001, costCeilingAllotmentUsd: 0.001 });
+    freshQuery();
+    H.setFailPoint('msg:after-spend');
+    H.recordMessageCost(call('m1', { output: 1_000 }, { final: true }));
+    const escalations = () =>
+      getOutboundDb()
+        .prepare("SELECT COUNT(*) AS n FROM messages_out WHERE content LIKE '%cost_escalation%'")
+        .get() as {
+        n: number;
+      };
+    expect(escalations().n).toBe(0);
+    expect(H.getState().costStopRequested).toBe(false);
+    H.setFailPoint(undefined);
+    H.flushPendingCostEvents();
+    expect(H.getState().costStopRequested).toBe(true);
+    expect(escalations().n).toBe(1);
+  });
+});
+
+describe('result accounting is settled before result handling (item 6)', () => {
+  function queryWith(events: ProviderEvent[]): AgentQuery {
+    return {
+      push() {},
+      end() {},
+      abort() {},
+      events: {
+        async *[Symbol.asyncIterator]() {
+          for (const e of events) yield e;
+        },
+      },
+    };
+  }
+  const acc: UsageAccounting = {
+    inputTokens: 0,
+    outputTokens: 0,
+    cacheCreationInputTokens: 0,
+    cacheReadInputTokens: 0,
+    ephemeral1hInputTokens: 0,
+    ephemeral5mInputTokens: 0,
+    durationMs: 0,
+    totalCostUsd: 0,
+    numTurns: 1,
+    sessionId: SID,
+    modelUsage: modelUsage({ [OPUS]: { in: 2, out: 100 }, [HAIKU]: { in: 900, out: 10 } }),
+  };
+  const routing = {
+    platformId: 'dashboard:admin',
+    channelType: 'dashboard' as const,
+    threadId: null,
+    inReplyTo: undefined,
+    taskRun: false,
+  };
+
+  it('the residual is already charged when the result branch runs, even with no usage event after it', async () => {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, kind, timestamp, status, content, seq) VALUES ('q1','chat',?, 'pending', ?, 2)`,
+      )
+      .run(new Date().toISOString(), JSON.stringify({ sender: 'admin', text: 'hi' }));
+    let spentInResultBranch = -1;
+    await processQuery(
+      queryWith([
+        { type: 'init', continuation: SID },
+        call('m1', { output: 100 }, { final: true }),
+        { type: 'result', text: 'done', accounting: acc },
+      ]),
+      routing,
+      ['q1'],
+      'claude',
+      () => {
+        spentInResultBranch = spent();
+      },
+      'hi',
+    );
+    const expected = priceOf({ output: 100 }) + priceOf({ input: 900, output: 10 }, HAIKU);
+    expect(spentInResultBranch).toBeCloseTo(expected, 12);
+    expect(spent()).toBeCloseTo(expected, 12);
+  });
+
+  it('a usage event after a settled result does not settle twice', async () => {
+    getInboundDb()
+      .prepare(
+        `INSERT INTO messages_in (id, kind, timestamp, status, content, seq) VALUES ('q2','chat',?, 'pending', ?, 2)`,
+      )
+      .run(new Date().toISOString(), JSON.stringify({ sender: 'admin', text: 'hi' }));
+    await processQuery(
+      queryWith([
+        { type: 'init', continuation: SID },
+        call('m1', { output: 100 }, { final: true }),
+        { type: 'result', text: 'done', accounting: acc },
+        { type: 'usage', ...acc },
+      ]),
+      routing,
+      ['q2'],
+      'claude',
+      undefined,
+      'hi',
+    );
+    expect(spent()).toBeCloseTo(priceOf({ output: 100 }) + priceOf({ input: 900, output: 10 }, HAIKU), 12);
   });
 });

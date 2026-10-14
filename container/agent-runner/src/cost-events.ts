@@ -180,6 +180,17 @@ export function createCostEventsTable(db: Database): void {
   if (!columns.has('window_gen')) {
     db.exec('ALTER TABLE cost_events ADD COLUMN window_gen INTEGER NOT NULL DEFAULT 0');
   }
+  // Exact Claude accounting: a message row is also the DURABLE per-message
+  // dedup record (which accounting segment charged it, at which result epoch,
+  // and whether its model was a configured-model guess), so a report that
+  // arrives after a respawn tops up instead of re-charging.
+  for (const [col, ddl] of [
+    ['acct_seg', 'ALTER TABLE cost_events ADD COLUMN acct_seg INTEGER'],
+    ['acct_epoch', 'ALTER TABLE cost_events ADD COLUMN acct_epoch INTEGER'],
+    ['acct_cfg_model', 'ALTER TABLE cost_events ADD COLUMN acct_cfg_model INTEGER'],
+  ] as const) {
+    if (!columns.has(col)) db.exec(ddl);
+  }
   db.exec('CREATE INDEX IF NOT EXISTS cost_events_gen_ts ON cost_events(window_gen, ts)');
 }
 
@@ -237,81 +248,125 @@ export function recordCostEvent(
   return info.changes > 0;
 }
 
+/** Accounting identity stored on a Claude message row (see createCostEventsTable). */
+export interface ClaudeRowAccounting {
+  seg: number;
+  epoch: number;
+  /** The row's model was the configured model, not one the provider reported. */
+  cfgModel: boolean;
+}
+
 /**
- * Insert-or-REPLACE the token fields of one Claude message row. A message is
- * first written from its block snapshot and later rewritten with its final
- * usage (the stream's `message_delta`, or a subagent transcript), so the row
- * always holds the call's best-known tokens — one row per call, never two.
- * Generation, created_at and any adjustment of an existing row are kept.
+ * Write ONE Claude message row: inserted at the call's first report, then
+ * rewritten in place (tokens AND model) as later reports raise it to the
+ * final usage — one row per call, never two. Generation, created_at and any
+ * adjustment of an existing row are kept. Throws on a DB error: the caller
+ * runs it inside the same transaction as the spend it accompanies.
  */
-export function upsertCostEventTokens(
+export function upsertClaudeMessageRow(
   db: Database,
   e: CostEvent,
+  acct: ClaudeRowAccounting,
   rateVersion: number,
   table: LiteLLMRateTable,
   nowIso: string,
-  windowGen = 0,
+  windowGen: number,
 ): void {
-  if (!recordCostEvent(db, e, rateVersion, table, nowIso, windowGen)) {
-    db.prepare(
-      `UPDATE cost_events SET input_tokens = $input, cache_read_tokens = $cacheRead,
-         cache_write_tokens = $cacheWrite, cache_write_5m_tokens = $cw5, cache_write_1h_tokens = $cw1,
-         output_tokens = $output, priced_usd = $priced + adjustment_usd, rate_version = $rv
-       WHERE id = $id`,
-    ).run({
-      $id: e.id,
-      $input: e.inputTokens,
-      $cacheRead: e.cacheReadTokens,
-      $cacheWrite: e.cacheWriteTokens,
-      $cw5: e.cacheWrite5mTokens,
-      $cw1: e.cacheWrite1hTokens,
-      $output: e.outputTokens,
-      $priced: priceTokens(e, table).usd,
-      $rv: rateVersion,
-    });
-  }
+  recordCostEvent(db, e, rateVersion, table, nowIso, windowGen);
+  db.prepare(
+    `UPDATE cost_events SET model = $model, input_tokens = $input, cache_read_tokens = $cacheRead,
+       cache_write_tokens = $cacheWrite, cache_write_5m_tokens = $cw5, cache_write_1h_tokens = $cw1,
+       output_tokens = $output, priced_usd = $priced + adjustment_usd, rate_version = $rv,
+       acct_seg = $seg, acct_epoch = $epoch, acct_cfg_model = $cfg
+     WHERE id = $id`,
+  ).run({
+    $id: e.id,
+    $model: e.model,
+    $input: e.inputTokens,
+    $cacheRead: e.cacheReadTokens,
+    $cacheWrite: e.cacheWriteTokens,
+    $cw5: e.cacheWrite5mTokens,
+    $cw1: e.cacheWrite1hTokens,
+    $output: e.outputTokens,
+    $priced: priceTokens(e, table).usd,
+    $rv: rateVersion,
+    $seg: acct.seg,
+    $epoch: acct.epoch,
+    $cfg: acct.cfgModel ? 1 : 0,
+  });
+}
+
+/** Read back a Claude message row written by `upsertClaudeMessageRow` (null if absent). */
+export function getClaudeMessageRow(
+  db: Database,
+  id: string,
+): { event: CostEvent; acct: ClaudeRowAccounting | null } | null {
+  const row = db.prepare('SELECT * FROM cost_events WHERE id = $id').get({ $id: id }) as
+    | Record<string, unknown>
+    | null
+    | undefined;
+  if (!row) return null;
+  const seg = row.acct_seg;
+  const epoch = row.acct_epoch;
+  return {
+    event: rowToEvent(row),
+    acct:
+      typeof seg === 'number' && typeof epoch === 'number'
+        ? { seg, epoch, cfgModel: Number(row.acct_cfg_model ?? 0) === 1 }
+        : null,
+  };
+}
+
+/** Tokens to take out of backstop residual rows, by exact field. */
+export interface ResidualTokens {
+  input: number;
+  output: number;
+  cacheRead: number;
+  cw5: number;
+  cw1h: number;
+  cwFlat: number;
 }
 
 /**
  * Move tokens OUT of backstop residual rows (`<idPrefix>…<idSuffix>`, newest
- * first) because a message row now claims them. Keeps the ledger equal to the
- * counter when a late final usage consumes residual credit instead of being
- * charged. Returns the tokens actually removed.
+ * first) because a message row now claims them, removing exactly the fields
+ * and cache-write TTL buckets the counter's credit consumption took — so the
+ * ledger keeps summing to what was charged. Throws on a DB error (the caller's
+ * transaction rolls the whole event back). Returns what was removed.
  */
 export function consumeResidualTokens(
   db: Database,
   idPrefix: string,
   idSuffix: string,
-  consume: { input: number; output: number; cacheRead: number; cacheWrite?: number },
+  consume: ResidualTokens,
   table: LiteLLMRateTable,
-): { input: number; output: number; cacheRead: number; cacheWrite: number } {
-  const left = { input: consume.input, output: consume.output, cacheRead: consume.cacheRead, cacheWrite: consume.cacheWrite ?? 0 };
-  const removed = { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 };
+): ResidualTokens {
+  const cols: Array<[keyof ResidualTokens, keyof CostEvent]> = [
+    ['input', 'inputTokens'],
+    ['output', 'outputTokens'],
+    ['cacheRead', 'cacheReadTokens'],
+    ['cw5', 'cacheWrite5mTokens'],
+    ['cw1h', 'cacheWrite1hTokens'],
+    ['cwFlat', 'cacheWriteTokens'],
+  ];
+  const left = { ...consume };
+  const removed: ResidualTokens = { input: 0, output: 0, cacheRead: 0, cw5: 0, cw1h: 0, cwFlat: 0 };
   const rows = db
     .prepare(`SELECT * FROM cost_events WHERE id LIKE $like ORDER BY created_at DESC, rowid DESC`)
     .all({ $like: `${idPrefix}%${idSuffix}` }) as Array<Record<string, unknown>>;
   for (const row of rows) {
-    if (left.input <= 0 && left.output <= 0 && left.cacheRead <= 0 && left.cacheWrite <= 0) break;
+    if (cols.every(([k]) => left[k] <= 0)) break;
     const e = rowToEvent(row);
-    const take = {
-      input: Math.min(left.input, e.inputTokens),
-      output: Math.min(left.output, e.outputTokens),
-      cacheRead: Math.min(left.cacheRead, e.cacheReadTokens),
-      cacheWrite: 0,
-    };
-    // Cache writes are one pool across the row's TTL fields.
-    let cw = left.cacheWrite;
-    for (const f of ['cacheWrite5mTokens', 'cacheWrite1hTokens', 'cacheWriteTokens'] as const) {
-      const c = Math.min(cw, e[f]);
-      if (c <= 0) continue;
-      e[f] -= c;
-      cw -= c;
-      take.cacheWrite += c;
+    let touched = false;
+    for (const [k, f] of cols) {
+      const take = Math.min(left[k], e[f] as number);
+      if (take <= 0) continue;
+      (e[f] as number) -= take;
+      left[k] -= take;
+      removed[k] += take;
+      touched = true;
     }
-    if (take.input <= 0 && take.output <= 0 && take.cacheRead <= 0 && take.cacheWrite <= 0) continue;
-    e.inputTokens -= take.input;
-    e.outputTokens -= take.output;
-    e.cacheReadTokens -= take.cacheRead;
+    if (!touched) continue;
     db.prepare(
       `UPDATE cost_events SET input_tokens = $input, output_tokens = $output, cache_read_tokens = $cacheRead,
          cache_write_tokens = $cw, cache_write_5m_tokens = $cw5, cache_write_1h_tokens = $cw1,
@@ -326,10 +381,6 @@ export function consumeResidualTokens(
       $cw1: e.cacheWrite1hTokens,
       $priced: priceTokens(e, table).usd,
     });
-    for (const f of ['input', 'output', 'cacheRead', 'cacheWrite'] as const) {
-      left[f] -= take[f];
-      removed[f] += take[f];
-    }
   }
   return removed;
 }

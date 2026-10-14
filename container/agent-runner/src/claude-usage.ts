@@ -2,12 +2,12 @@
  * Exact Claude usage accounting for the live cost counter — the token math.
  *
  * Pure functions and plain state. `poll-loop.ts` owns the module singletons,
- * the charging (`applyCostDelta`) and the ledger writes; this module only
- * decides HOW MANY tokens each event is worth. Kept separate so every rule
- * below has a direct unit test (`claude-usage.test.ts`).
+ * the charging (one outbound.db transaction per accounting event) and the
+ * ledger writes; this module only decides HOW MANY tokens each event is worth.
+ * Every rule below has a direct unit test (`claude-usage.test.ts`).
  *
  * WHAT THE SDK ACTUALLY REPORTS (captured from real runs, Agent SDK 0.3.289 /
- * Claude Code 2.1.296; fixtures in `__fixtures__/claude-usage/`):
+ * Claude Code 2.1.296; fixtures in `providers/__fixtures__/claude-usage/`):
  *
  *  - Each content block of one API response arrives as its own `assistant`
  *    message, and every one of them carries the SAME usage: the `message_start`
@@ -20,26 +20,32 @@
  *    transcript, whose path the `SubagentStop` hook hands us.
  *  - Calls that never reach the stream at all — compaction, Claude Code's own
  *    helper calls (a Haiku call on most turns) — appear only in the result's
- *    `modelUsage`, which is cumulative per SDK session: across turns of one
- *    query, and restored from the transcript on resume.
+ *    `modelUsage`, which is cumulative per SDK session: across the turns of one
+ *    query, and restored on resume from the `cost-state` entry Claude Code
+ *    writes into the session transcript when its process ends.
  *
  * Measured on prod before this fix (session sess-1785902924001-jylfb4): the
  * ledger recorded 8 output tokens for a call the transcript and the gateway
  * both record as 8,178; fleet-wide since #1329 the ledger kept ~1% of output
- * tokens.
+ * tokens. Compaction calls were never charged (slang-triager: 112 calls, $293,
+ * 15.7% of its spend since 2026-10-06).
  *
- * THE MODEL. Two sources per SDK session, per model, in TOKENS:
- *  - P: the per-message tokens charged so far (snapshot, then topped up to the
- *    final usage when it arrives). Real-time and attributable to a message id.
- *  - S: the SDK's own cumulative `modelUsage`, rebased to this session's
- *    tracking start. Complete (includes compaction / helper calls) but only
- *    known at a turn's `result`.
- * At each result the BACKSTOP charges `max(0, S - P - credit)` per field and
- * remembers it as `credit`: residual tokens no message has claimed yet. A later
- * top-up for a message the SDK had already counted (a background subagent
- * whose transcript arrives after the result) consumes that credit instead of
- * being charged again. Charged = P + credit at all times, so nothing is
- * charged twice and nothing the SDK counted is left uncharged.
+ * THE MODEL. Accounting runs in SEGMENTS, one per `query()` — one Claude Code
+ * process, within which `modelUsage` only grows. A segment starts with the
+ * cumulative totals the SDK is about to restore (read BEFORE the query from the
+ * transcript's last `cost-state`, else from the checkpoint this runner saved at
+ * the previous process's last result; only with neither is the first result
+ * absorbed). Per model and token field:
+ *  - P: the per-message tokens charged in this segment (snapshot, then topped
+ *    up to the final usage). Real-time and attributable to a message id.
+ *  - S: `modelUsage` minus the segment base. Complete (includes compaction and
+ *    helper calls) but only known at a `result`.
+ * At each result the BACKSTOP charges `max(0, S - P - credit)` and adds it to
+ * `credit`: residual tokens no message has claimed yet. A later top-up for a
+ * message the SDK had already counted (a background subagent whose transcript
+ * arrives after the result) consumes that credit instead of being charged
+ * again. Charged = P + credit at all times, so nothing is charged twice and
+ * nothing the SDK counted is left uncharged.
  */
 import { MODEL_PRICING, normalizeModel } from './pricing.js';
 
@@ -56,19 +62,16 @@ export interface TokenVec {
   cwFlat: number;
 }
 
-export const ZERO_VEC: Readonly<TokenVec> = Object.freeze({
-  input: 0,
-  output: 0,
-  cacheRead: 0,
-  cw5: 0,
-  cw1h: 0,
-  cwFlat: 0,
-});
-
 const FIELDS: Array<keyof TokenVec> = ['input', 'output', 'cacheRead', 'cw5', 'cw1h', 'cwFlat'];
+const CW_FIELDS = ['cw5', 'cw1h', 'cwFlat'] as const;
 
 export function zeroVec(): TokenVec {
-  return { ...ZERO_VEC };
+  return { input: 0, output: 0, cacheRead: 0, cw5: 0, cw1h: 0, cwFlat: 0 };
+}
+
+/** A usage figure the SDK or a transcript can hand us: finite, non-negative, integral. */
+export function cleanCount(n: unknown): number {
+  return typeof n === 'number' && Number.isFinite(n) && n > 0 ? Math.floor(n) : 0;
 }
 
 /** The usage fields of a `message_usage` event, as a vector. */
@@ -80,14 +83,16 @@ export function vecFromUsage(u: {
   ephemeral1hInputTokens: number;
   ephemeral5mInputTokens: number;
 }): TokenVec {
-  const split = u.ephemeral1hInputTokens > 0 || u.ephemeral5mInputTokens > 0;
+  const h1 = cleanCount(u.ephemeral1hInputTokens);
+  const m5 = cleanCount(u.ephemeral5mInputTokens);
+  const split = h1 > 0 || m5 > 0;
   return {
-    input: u.inputTokens || 0,
-    output: u.outputTokens || 0,
-    cacheRead: u.cacheReadInputTokens || 0,
-    cw5: split ? u.ephemeral5mInputTokens || 0 : 0,
-    cw1h: split ? u.ephemeral1hInputTokens || 0 : 0,
-    cwFlat: split ? 0 : u.cacheCreationInputTokens || 0,
+    input: cleanCount(u.inputTokens),
+    output: cleanCount(u.outputTokens),
+    cacheRead: cleanCount(u.cacheReadInputTokens),
+    cw5: split ? m5 : 0,
+    cw1h: split ? h1 : 0,
+    cwFlat: split ? 0 : cleanCount(u.cacheCreationInputTokens),
   };
 }
 
@@ -115,16 +120,22 @@ export function vecTokens(v: TokenVec): number {
   return FIELDS.reduce((s, f) => s + v[f], 0);
 }
 
+function hasSplit(v: TokenVec): boolean {
+  return v.cw5 > 0 || v.cw1h > 0;
+}
+
 /**
  * Combine what was already charged for a message with a newer report of the
  * same message. Usage only ever grows (snapshot → final), so each plain field
  * takes the max. The three cache-write fields are ONE quantity reported in two
- * shapes (with or without a TTL split); taking a field-wise max across shapes
- * would count it twice, so the triple with the larger total wins as a unit
- * (the earlier one on a tie).
+ * shapes (with or without a TTL split); a field-wise max across shapes would
+ * count it twice, so the triple with the larger total wins as a unit. On equal
+ * totals a TTL split wins over an unsplit figure — it is the authoritative
+ * shape — otherwise the earlier triple is kept.
  */
 export function mergeUsage(prev: TokenVec, next: TokenVec): TokenVec {
-  const cwFromNext = cwTotal(next) > cwTotal(prev);
+  const cwFromNext =
+    cwTotal(next) > cwTotal(prev) || (cwTotal(next) === cwTotal(prev) && hasSplit(next) && !hasSplit(prev));
   return {
     input: Math.max(prev.input, next.input),
     output: Math.max(prev.output, next.output),
@@ -155,8 +166,7 @@ export function isPricedKey(key: string): boolean {
  * Dollar cost of a token vector. Same rates and TTL rule as `priceUsage`
  * (1h write = 2x input, 5m and unsplit writes = `cacheCreate`), but a vector
  * may carry split AND unsplit writes, which `priceUsage` cannot express.
- * Accepts negative fields (a cache-write shape change in `mergeUsage`); the
- * caller only ever charges a non-negative total. Unknown model → 0.
+ * SIGNED: a negative field prices negative (a correction). Unknown model → 0.
  */
 export function priceVec(model: string | undefined, v: TokenVec): number {
   const rate = MODEL_PRICING[normalizeModel(model)] ?? MODEL_PRICING[model ?? ''];
@@ -179,7 +189,7 @@ export interface CumVec {
   costUsd: number;
 }
 
-const CUM_FIELDS: Array<keyof CumVec> = ['input', 'output', 'cacheRead', 'cacheWrite', 'costUsd'];
+const CUM_TOKEN_FIELDS: Array<keyof CumVec> = ['input', 'output', 'cacheRead', 'cacheWrite'];
 
 export function zeroCum(): CumVec {
   return { input: 0, output: 0, cacheRead: 0, cacheWrite: 0, costUsd: 0 };
@@ -194,117 +204,179 @@ export interface SdkModelUsage {
 }
 
 /**
- * Group a result's `modelUsage` by pricing key. `claude-sonnet-5-5[1m]` and a
- * dated alias of the same model land in one bucket, matching how the
- * per-message side keys its own tokens.
+ * Group a `modelUsage` map by pricing key. `claude-sonnet-5-5[1m]` and a dated
+ * alias of the same model land in one bucket, matching how the per-message
+ * side keys its own tokens. Non-finite or negative figures read as 0.
  */
-export function cumFromModelUsage(modelUsage: Record<string, SdkModelUsage> | undefined): Record<string, CumVec> {
+export function cumFromModelUsage(
+  modelUsage: Record<string, SdkModelUsage> | undefined | null,
+): Record<string, CumVec> {
   const out: Record<string, CumVec> = {};
   for (const [raw, u] of Object.entries(modelUsage ?? {})) {
+    if (!u || typeof u !== 'object') continue;
     const key = pricingKey(raw);
     const c = (out[key] ??= zeroCum());
-    c.input += u.inputTokens ?? 0;
-    c.output += u.outputTokens ?? 0;
-    c.cacheRead += u.cacheReadInputTokens ?? 0;
-    c.cacheWrite += u.cacheCreationInputTokens ?? 0;
-    c.costUsd += u.costUSD ?? 0;
+    c.input += cleanCount(u.inputTokens);
+    c.output += cleanCount(u.outputTokens);
+    c.cacheRead += cleanCount(u.cacheReadInputTokens);
+    c.cacheWrite += cleanCount(u.cacheCreationInputTokens);
+    c.costUsd += typeof u.costUSD === 'number' && Number.isFinite(u.costUSD) && u.costUSD > 0 ? u.costUSD : 0;
   }
   return out;
 }
 
 export function isZeroCum(cums: Record<string, CumVec>): boolean {
-  return Object.values(cums).every((c) => CUM_FIELDS.every((f) => c[f] === 0));
+  return Object.values(cums).every((c) => CUM_TOKEN_FIELDS.every((f) => c[f] === 0) && c.costUsd === 0);
 }
 
 function subCum(a: CumVec, b: CumVec): CumVec {
-  const out = zeroCum();
-  for (const f of CUM_FIELDS) out[f] = a[f] - b[f];
-  return out;
+  return {
+    input: a.input - b.input,
+    output: a.output - b.output,
+    cacheRead: a.cacheRead - b.cacheRead,
+    cacheWrite: a.cacheWrite - b.cacheWrite,
+    costUsd: a.costUsd - b.costUsd,
+  };
 }
 
-function anyDecrease(now: CumVec, before: CumVec): boolean {
-  return CUM_FIELDS.some((f) => now[f] < before[f]);
+/**
+ * Did the SDK's cumulative total go BACKWARDS? Per token field for a priced
+ * model; a `costUSD` revision there is the SDK re-estimating, not a reset. For
+ * an unpriced model the dollar figure is all we account by, so it decides.
+ */
+export function decreased(now: CumVec, before: CumVec, priced: boolean): boolean {
+  return priced ? CUM_TOKEN_FIELDS.some((f) => now[f] < before[f]) : now.costUsd < before.costUsd;
 }
 
-/** Per-model accounting for the current SDK session. */
-export interface ModelBackstop {
-  /** Per-message tokens charged (snapshots topped up to finals). */
+/** Per-model accounting inside one segment. */
+export interface SegmentModel {
+  /** Per-message tokens charged in this segment. */
   p: TokenVec;
   /** Residual tokens the backstop charged that no message has claimed yet. */
   credit: TokenVec;
-  /** SDK cumulative at the last settled result, and the offset that makes S = cum - base. */
-  lastCum?: CumVec;
-  base?: CumVec;
+  /** SDK cumulative at the segment start; null until known (an absorbing segment's first result). */
+  base: CumVec | null;
+  /** SDK cumulative at the last settled result. */
+  lastCum: CumVec | null;
+  /** `p` at the last settled result — a reset restarts from here. */
+  pAtLastResult: TokenVec;
+  /** Main-thread cache writes seen per TTL (residual writes take the dominant one). */
+  mainCw5: number;
+  mainCw1h: number;
   /** Dollars charged from `costUSD` for a model the rate table cannot price. */
   unpricedUsd: number;
 }
 
-export interface ClaudeBackstopState {
-  v: 1;
-  /** SDK session id (the Claude continuation) this state belongs to. */
+export type SegmentBaseSource = 'fresh' | 'transcript' | 'checkpoint' | 'absorb';
+
+/** One `query()` — one Claude Code process. */
+export interface Segment {
+  id: number;
+  /** SDK session id; null until the fresh query's `init`. */
   sessionId: string | null;
-  /**
-   * True unless the session is KNOWN to have started empty (a fresh query with
-   * no resume). On the first settled result an absorbing session treats every
-   * SDK-reported token it has not seen per message as history — never charged.
-   */
-  absorbOnFirstResult: boolean;
-  /** At least one result has been settled for this session. */
-  tracked: boolean;
-  /** Results settled so far, monotonic across sessions — the old/new boundary for messages. */
+  baseSource: SegmentBaseSource;
+  /** Results settled in this segment — the old/new boundary for messages. */
   epoch: number;
-  /** When the last result was settled (ISO). */
   lastResultAt: string | null;
-  models: Record<string, ModelBackstop>;
+  models: Record<string, SegmentModel>;
 }
 
-export function newBackstopState(
-  epoch: number,
+export interface ClaudeBackstopState {
+  v: 2;
+  /** Last segment id issued (monotonic). */
+  segSeq: number;
+  segment: Segment | null;
+  /** SDK cumulative at each session's last settled result — the fallback restore baseline. */
+  checkpoints: Record<string, { at: string; cum: Record<string, CumVec> }>;
+  /**
+   * Main-thread cache writes seen per TTL across segments. The TTL is a Claude
+   * Code setting, so it outlives a segment: a resumed query's first residual
+   * (a compaction before any streamed call) takes it.
+   */
+  mainCw5?: number;
+  mainCw1h?: number;
+}
+
+const MAX_CHECKPOINTS = 16;
+
+export function newBackstopState(): ClaudeBackstopState {
+  return { v: 2, segSeq: 0, segment: null, checkpoints: {}, mainCw5: 0, mainCw1h: 0 };
+}
+
+/**
+ * Open a segment. `restored` is the cumulative the SDK will restore (null for a
+ * fresh session: base 0). `absorb` means the restore is unknown.
+ */
+export function startSegment(
+  state: ClaudeBackstopState,
   sessionId: string | null,
-  absorbOnFirstResult: boolean,
-): ClaudeBackstopState {
-  return { v: 1, sessionId, absorbOnFirstResult, tracked: false, epoch, lastResultAt: null, models: {} };
+  source: SegmentBaseSource,
+  restored: Record<string, CumVec> | null,
+): Segment {
+  const seg: Segment = { id: ++state.segSeq, sessionId, baseSource: source, epoch: 0, lastResultAt: null, models: {} };
+  for (const [key, c] of Object.entries(restored ?? {})) {
+    const m = segmentModel(seg, key);
+    m.base = { ...c };
+    m.lastCum = { ...c };
+  }
+  state.segment = seg;
+  return seg;
 }
 
-export function modelState(state: ClaudeBackstopState, key: string): ModelBackstop {
-  return (state.models[key] ??= { p: zeroVec(), credit: zeroVec(), unpricedUsd: 0 });
+export function segmentModel(seg: Segment, key: string): SegmentModel {
+  let m = seg.models[key];
+  if (!m) {
+    m = {
+      p: zeroVec(),
+      credit: zeroVec(),
+      // A model not in the restored totals has no history in this session —
+      // except in an absorbing segment before its first result, where nothing
+      // is known yet.
+      base: seg.baseSource === 'absorb' && seg.epoch === 0 ? null : zeroCum(),
+      lastCum: null,
+      pAtLastResult: zeroVec(),
+      mainCw5: 0,
+      mainCw1h: 0,
+      unpricedUsd: 0,
+    };
+    seg.models[key] = m;
+  }
+  return m;
 }
 
 /**
  * Split a per-message increase into the part to charge and the part an earlier
- * backstop residual already paid for. Input, output and cache-read are
- * consumed field by field. Cache writes are ONE pool across TTLs: a residual
- * write was assigned a TTL by guess (the session's dominant one), so a call
- * that later claims it may carry the other TTL. Consumption uses the NET
- * cache-write increase, so a report that only changes shape (unsplit → split,
- * same total) consumes nothing. A field of `charge` can go negative when the
- * TTLs differ; the caller never charges a negative total.
+ * backstop residual already paid for. Plain fields are consumed field by field.
+ * Cache writes are one pool: a residual write was assigned a TTL by estimate,
+ * so the same TTL bucket is consumed first, then the others, up to the NET
+ * cache-write increase (a pure shape change consumes nothing). `charge` is
+ * SIGNED — when the call's real TTL differs from the estimate, pricing it
+ * corrects the earlier estimate in either direction.
  */
-export function consumeCredit(m: ModelBackstop, delta: TokenVec): { charge: TokenVec; consumed: TokenVec } {
-  const charge = { ...delta };
+export function consumeCredit(m: SegmentModel, delta: TokenVec): { charge: TokenVec; consumed: TokenVec } {
   const consumed = zeroVec();
   for (const f of ['input', 'output', 'cacheRead'] as const) {
     if (delta[f] <= 0 || m.credit[f] <= 0) continue;
-    const c = Math.min(delta[f], m.credit[f]);
-    m.credit[f] -= c;
-    consumed[f] = c;
-    charge[f] -= c;
+    consumed[f] = Math.min(delta[f], m.credit[f]);
   }
   let need = Math.max(0, cwTotal(delta));
-  // The call's own TTL first, so a correct guess is consumed like-for-like.
-  const order: Array<'cw5' | 'cw1h' | 'cwFlat'> = [...(['cw5', 'cw1h', 'cwFlat'] as const)].sort(
-    (a, b) => delta[b] - delta[a],
-  );
-  for (const f of order) {
-    if (need <= 0) break;
-    const c = Math.min(need, m.credit[f]);
-    if (c <= 0) continue;
-    m.credit[f] -= c;
+  for (const f of CW_FIELDS) {
+    if (need <= 0 || delta[f] <= 0) continue;
+    const c = Math.min(need, delta[f], m.credit[f]);
     consumed[f] += c;
-    charge[f] -= c;
     need -= c;
   }
-  return { charge, consumed };
+  for (const f of CW_FIELDS) {
+    if (need <= 0) break;
+    const c = Math.min(need, m.credit[f] - consumed[f]);
+    if (c <= 0) continue;
+    consumed[f] += c;
+    need -= c;
+  }
+  m.credit = subVec(m.credit, consumed);
+  // Tokens consumed from another TTL bucket are charged back at the call's
+  // own TTL: charge = delta - consumed, field by field (signed).
+  return { charge: subVec(delta, consumed), consumed };
 }
 
 export interface Residual {
@@ -316,71 +388,127 @@ export interface Residual {
   unpriced: boolean;
 }
 
-/**
- * Settle one result against the SDK's cumulative `modelUsage`. Mutates `state`
- * (credit, baselines, epoch) and returns what to charge.
- *
- * Baseline rules — the restored portion of a resumed session is NEVER charged:
- *  - First result of a session we are not tracking yet: base 0 when the session
- *    is known to be fresh; otherwise ABSORB (base = cum - P), so only what this
- *    query charged per message counts.
- *  - A model seen for the first time in a session we already track: base 0
- *    (the SDK had no history for it).
- *  - Any field went BACKWARDS (a resume that restored less than we last saw, a
- *    reset): rebase so S stays where it was. No residual from this result for
- *    that model; later results count from here. Under-counts at most that one
- *    turn's off-stream calls — never double-counts.
- */
-export function settleResult(state: ClaudeBackstopState, cums: Record<string, CumVec>, nowIso: string): Residual[] {
-  const residuals: Residual[] = [];
-  for (const [key, c] of Object.entries(cums)) {
-    const m = modelState(state, key);
-    let base: CumVec;
-    if (!m.lastCum || !m.base) {
-      if (!state.tracked && state.absorbOnFirstResult) {
-        base = {
-          input: Math.max(0, c.input - m.p.input),
-          output: Math.max(0, c.output - m.p.output),
-          cacheRead: Math.max(0, c.cacheRead - m.p.cacheRead),
-          cacheWrite: Math.max(0, c.cacheWrite - cwTotal(m.p)),
-          costUsd: c.costUsd,
-        };
-      } else {
-        base = zeroCum();
-      }
-    } else if (anyDecrease(c, m.lastCum)) {
-      base = subCum(c, subCum(m.lastCum, m.base));
-    } else {
-      base = m.base;
-    }
-    const s = subCum(c, base);
-    m.lastCum = { ...c };
-    m.base = base;
+export interface SettleOutcome {
+  residuals: Residual[];
+  /** Models whose first result was absorbed (no baseline known). */
+  absorbed: string[];
+  /** Models whose cumulative went backwards (restore smaller than the baseline). */
+  rebased: string[];
+}
 
-    if (isPricedKey(key)) {
+/**
+ * The TTL residual cache writes take: the model's main-thread TTL in this
+ * segment, else the segment's, else `fallback` (the session's history), else 5m.
+ */
+function residualTtl(seg: Segment, m: SegmentModel, fallback?: 'cw5' | 'cw1h'): 'cw5' | 'cw1h' {
+  if (m.mainCw1h + m.mainCw5 > 0) return m.mainCw1h > m.mainCw5 ? 'cw1h' : 'cw5';
+  let h1 = 0;
+  let m5 = 0;
+  for (const x of Object.values(seg.models)) {
+    h1 += x.mainCw1h;
+    m5 += x.mainCw5;
+  }
+  if (h1 + m5 > 0) return h1 > m5 ? 'cw1h' : 'cw5';
+  return fallback ?? 'cw5';
+}
+
+/** The TTL the state's cross-segment history points to, if any. */
+export function historicalTtl(state: ClaudeBackstopState): 'cw5' | 'cw1h' | undefined {
+  const h1 = state.mainCw1h ?? 0;
+  const m5 = state.mainCw5 ?? 0;
+  if (h1 + m5 === 0) return undefined;
+  return h1 > m5 ? 'cw1h' : 'cw5';
+}
+
+/**
+ * Settle one result against the SDK's cumulative `modelUsage`. Mutates the
+ * segment (credit, baselines, epoch) and returns what to charge.
+ *
+ *  - Known base: S = cum - base, exact — including compaction and helper calls
+ *    made in this turn.
+ *  - Absorbing segment, first result: base = cum - P, so only what this query
+ *    charged per message counts (reported in `absorbed`).
+ *  - A field went BACKWARDS (the restore was smaller than the baseline, or a
+ *    reset): restart the model's accounting from this result with only the
+ *    per-message spend since the last result — p and credit re-zeroed, base =
+ *    cum - p. That one result's off-stream calls are not chargeable (they are
+ *    indistinguishable from the restore); every later result is exact again,
+ *    and per-message spend from before the reset can never mask later spend.
+ */
+export function settleSegment(
+  seg: Segment,
+  cums: Record<string, CumVec>,
+  nowIso: string,
+  fallbackTtl?: 'cw5' | 'cw1h',
+): SettleOutcome {
+  const out: SettleOutcome = { residuals: [], absorbed: [], rebased: [] };
+  for (const [key, c] of Object.entries(cums)) {
+    const m = segmentModel(seg, key);
+    const priced = isPricedKey(key);
+    if (!m.base) {
+      m.base = {
+        input: Math.max(0, c.input - m.p.input),
+        output: Math.max(0, c.output - m.p.output),
+        cacheRead: Math.max(0, c.cacheRead - m.p.cacheRead),
+        cacheWrite: Math.max(0, c.cacheWrite - cwTotal(m.p)),
+        costUsd: c.costUsd,
+      };
+      out.absorbed.push(key);
+    } else if (m.lastCum && decreased(c, m.lastCum, priced)) {
+      m.p = subVec(m.p, m.pAtLastResult);
+      m.credit = zeroVec();
+      m.unpricedUsd = 0;
+      m.base = {
+        input: c.input - m.p.input,
+        output: c.output - m.p.output,
+        cacheRead: c.cacheRead - m.p.cacheRead,
+        cacheWrite: c.cacheWrite - cwTotal(m.p),
+        costUsd: c.costUsd,
+      };
+      out.rebased.push(key);
+    }
+    const s = subCum(c, m.base);
+    m.lastCum = { ...c };
+
+    if (priced) {
       const r = zeroVec();
       r.input = Math.max(0, s.input - m.p.input - m.credit.input);
       r.output = Math.max(0, s.output - m.p.output - m.credit.output);
       r.cacheRead = Math.max(0, s.cacheRead - m.p.cacheRead - m.credit.cacheRead);
-      const rcw = Math.max(0, s.cacheWrite - cwTotal(m.p) - cwTotal(m.credit));
-      // Residual writes take the session's dominant TTL for this model.
-      if (m.p.cw1h > m.p.cw5 + m.p.cwFlat) r.cw1h = rcw;
-      else r.cw5 = rcw;
+      r[residualTtl(seg, m, fallbackTtl)] = Math.max(0, s.cacheWrite - cwTotal(m.p) - cwTotal(m.credit));
       const usd = priceVec(key, r);
       if (usd > 0) {
         m.credit = addVec(m.credit, r);
-        residuals.push({ key, tokens: r, usd, unpriced: false });
+        out.residuals.push({ key, tokens: r, usd, unpriced: false });
       }
     } else {
       const usd = Math.max(0, s.costUsd - m.unpricedUsd);
       if (usd > 0) {
         m.unpricedUsd += usd;
-        residuals.push({ key, tokens: zeroVec(), usd, unpriced: true });
+        out.residuals.push({ key, tokens: zeroVec(), usd, unpriced: true });
       }
     }
+    m.pAtLastResult = { ...m.p };
   }
-  state.tracked = true;
-  state.epoch += 1;
-  state.lastResultAt = nowIso;
-  return residuals;
+  seg.epoch += 1;
+  seg.lastResultAt = nowIso;
+  return out;
+}
+
+/** Remember the SDK cumulative a session reached — the fallback baseline for its next resume. */
+export function saveCheckpoint(
+  state: ClaudeBackstopState,
+  sessionId: string,
+  cums: Record<string, CumVec>,
+  nowIso: string,
+): void {
+  const prev = state.checkpoints[sessionId]?.cum ?? {};
+  state.checkpoints[sessionId] = { at: nowIso, cum: { ...prev, ...cums } };
+  const ids = Object.keys(state.checkpoints);
+  if (ids.length > MAX_CHECKPOINTS) {
+    ids
+      .sort((a, b) => state.checkpoints[a].at.localeCompare(state.checkpoints[b].at))
+      .slice(0, ids.length - MAX_CHECKPOINTS)
+      .forEach((id) => delete state.checkpoints[id]);
+  }
 }
