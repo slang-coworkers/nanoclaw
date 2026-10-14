@@ -731,7 +731,7 @@ export class ClaudeProvider implements AgentProvider {
           // (e.g. a non-retryable 403 billing_error) carry their message in
           // `errors[]` instead. Keep that actionable notice separate from
           // model output so the poll-loop can deliver it without scratchpad.
-          const m = message as { result?: string; is_error?: boolean; errors?: string[] };
+          const m = message as { result?: string; is_error?: boolean; errors?: string[]; subtype?: string };
           const isError = m.is_error === true;
           // Some failures (e.g. an invalid API key) leave errors[] empty and put
           // the SDK's own notice in `result`. Other result text can echo upstream
@@ -745,6 +745,8 @@ export class ClaudeProvider implements AgentProvider {
             text: resultAsError ? null : (m.result ?? null),
             isError,
             error: m.errors?.length ? m.errors.join('\n') : resultAsError || undefined,
+            // The SDK's structured max-budget stop; the poll-loop stops pushing into this query.
+            ...(m.subtype === 'error_max_budget_usd' ? { maxBudgetExceeded: true } : {}),
           };
           // Emit structured per-turn usage so the poll-loop can log
           // a grep-friendly line. Fields come from the SDK's result

@@ -761,9 +761,9 @@ function describeStaleBudget(s: { budgetUsd: number | undefined; headroomUsd: nu
   return `cost ceiling changed since this query started (${was}, now ${now})`;
 }
 
-/** The SDK's max-budget stop, as the Claude provider surfaces it on a `result`. */
-function isMaxBudgetStop(event: { isError?: boolean; error?: string; text: string | null }): boolean {
-  return event.isError === true && /reached maximum budget/i.test(event.error ?? event.text ?? '');
+/** The SDK's max-budget stop (the Claude provider's structured `error_max_budget_usd` flag). */
+function isMaxBudgetStop(event: { maxBudgetExceeded?: boolean }): boolean {
+  return event.maxBudgetExceeded === true;
 }
 
 /** Current status band from spent/cap/escalation/stop state. */

@@ -155,6 +155,7 @@ const maxBudgetStop: ProviderEvent = {
   text: null,
   isError: true,
   error: 'Reached maximum budget ($12.31)',
+  maxBudgetExceeded: true,
 };
 
 describe('budget basis (unit)', () => {
@@ -390,6 +391,22 @@ describe('open query after an SDK max-budget stop', () => {
     expect(q.pushes.some((p) => p.includes('after a real stop'))).toBe(false);
     expect(isPending('m2')).toBe(true);
     expect(q.endCalls()).toBe(1);
+  }, 20_000);
+  it('an ordinary error that merely mentions the phrase does not retire the query', async () => {
+    costHooks.startQueryBudget();
+    const q = controllableQuery(async function* ({ pushes }) {
+      yield { type: 'init', continuation: 'sess-1' };
+      // No structured flag: e.g. a tool error quoting someone else's budget message.
+      yield { type: 'result', text: null, isError: true, error: 'tool said: Reached maximum budget ($1.00)' };
+      insertFollowUp('m2', 'after an unrelated error', CHAT);
+      await until(() => pushes.some((p) => p.includes('after an unrelated error')));
+      yield { type: 'result', text: null, isError: true, error: 'second error' };
+    });
+
+    await run(q.query, CHAT);
+
+    expect(q.pushes.some((p) => p.includes('after an unrelated error'))).toBe(true);
+    expect(q.endCalls()).toBe(0);
   }, 20_000);
 });
 
