@@ -18,6 +18,7 @@ vi.mock('./log.js', () => ({
 import { closeDb, createAgentGroup, initTestDb, runMigrations } from './db/index.js';
 import { initGroupFilesystem } from './group-init.js';
 import { log } from './log.js';
+import { SCRATCH_WORKTREE_CLAUDE_MD_EXCLUDES } from './migrate-claude-memory-settings.js';
 import type { AgentGroup } from './types.js';
 
 async function makeGroup(id: string): Promise<AgentGroup> {
@@ -74,6 +75,46 @@ describe('default settings.json for new groups', () => {
     const after = JSON.parse(fs.readFileSync(file, 'utf-8'));
     expect(after.disableWorkflows).toBeUndefined();
     expect(after.env.CLAUDE_CODE_EXPERIMENTAL_AGENT_TEAMS).toBe('1');
+  });
+});
+
+describe('claudeMdExcludes for scratch worktrees', () => {
+  const settingsPath = (ag: AgentGroup) =>
+    path.join(TEST_ROOT, 'data', 'v2-sessions', ag.id, '.claude-shared', 'settings.json');
+
+  it('a new group excludes the auxiliary worktrees and keeps the primary tree', async () => {
+    const ag = await makeGroup('ag-excl-new');
+    await initGroupFilesystem(ag, {});
+    const settings = JSON.parse(fs.readFileSync(settingsPath(ag), 'utf-8'));
+    expect(settings.claudeMdExcludes).toEqual(SCRATCH_WORKTREE_CLAUDE_MD_EXCLUDES);
+    expect(settings.claudeMdExcludes).toContain('/workspace/agent/wt-*[0-9]-verify/CLAUDE.md');
+    expect(settings.claudeMdExcludes.some((p: string) => p.includes('wt-slang-'))).toBe(false);
+  });
+
+  it('a pre-existing group without the key is backfilled on its next init', async () => {
+    const ag = await makeGroup('ag-excl-backfill');
+    await initGroupFilesystem(ag, {});
+    const edited = JSON.parse(fs.readFileSync(settingsPath(ag), 'utf-8'));
+    delete edited.claudeMdExcludes;
+    fs.writeFileSync(settingsPath(ag), JSON.stringify(edited, null, 2) + '\n');
+
+    await initGroupFilesystem(ag, {}); // next spawn
+
+    const after = JSON.parse(fs.readFileSync(settingsPath(ag), 'utf-8'));
+    expect(after.claudeMdExcludes).toEqual(SCRATCH_WORKTREE_CLAUDE_MD_EXCLUDES);
+    expect(after.disableWorkflows).toBe(true); // nothing else touched
+  });
+
+  it("an operator's own list is never replaced, even when empty", async () => {
+    const ag = await makeGroup('ag-excl-custom');
+    await initGroupFilesystem(ag, {});
+    const edited = JSON.parse(fs.readFileSync(settingsPath(ag), 'utf-8'));
+    edited.claudeMdExcludes = [];
+    fs.writeFileSync(settingsPath(ag), JSON.stringify(edited, null, 2) + '\n');
+
+    await initGroupFilesystem(ag, {});
+
+    expect(JSON.parse(fs.readFileSync(settingsPath(ag), 'utf-8')).claudeMdExcludes).toEqual([]);
   });
 });
 
