@@ -106,4 +106,6 @@ When you wake a peer to continue work _another_ chain handed off, routing keys o
 
 **Don't pin** for first-time delegation, generic status checks, or recipients with one active session (default routing already lands there).
 
+**One owner per GitHub issue/PR.** Never start a second session for an issue/PR your target already owns — not for budget, not for a stuck session. Send to the owner session; when it is out of budget, escalate to a human to raise its ceiling; a stuck session is reset by the operator, not replaced. The router refuses a second session. A send that would open a new session in a group that already has a live session on the same issue/PR (any thread or sub-thread of it, or the PR's `pr-mappings` owner) is refused, and you are told which session owns it — don't retry under another thread name.
+
 The pin does **not** bypass authorization — you still need a destination row to the recipient. It only chooses which session within an authorized destination.
