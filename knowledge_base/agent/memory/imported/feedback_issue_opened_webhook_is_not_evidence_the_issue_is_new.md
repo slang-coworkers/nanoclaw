@@ -71,3 +71,11 @@ Main holds it, dispatch nothing from the deleted number's session; the re-file's
 
 ### 2026-10-12, #13511: a human-to-human mention can answer our own pending operator question
 jkwak-work assigned #13511 to jvepsalainen-nv and commented "@tangent-vector for visibility". Since 10-10 the operator had an open question from us: may the bot ping tangent-vector? The maintainer had now done exactly that. Holding was still right (no dispatch and no bot post), but **doing nothing would have left a stale question and a re-chase task whose prompt re-asked it.** ⇒ When a human mention does what a pending operator question proposed, close the question on the dashboard on the chain's thread, then rewrite the owning re-chase task (`ncl tasks update`): state who owns it now, and stay silent while an assigned maintainer works on it.
+
+### 2026-10-13, #13591–#13602: a maintainer's self-assigned tracker batch is not a triage queue
+szihs filed 12 issues in ~16 s (11:07:06–11:07:23Z): epic #13591 "Contributor standards for AI coding assistants" plus one
+sub-issue per rule (R1–R10, review length, replay eval). Each is self-assigned and carries a "Done when" that names his own PR
+(#13592 → his draft #13584). Every rung above passes them (open, 0 comments, body = payload, human author), so rung 4 is the one
+that decides: a **maintainer-filed, self-assigned issue whose body is a plan with its own PR is a work item he owns, not a report**.
+⇒ Dispatch nothing and post nothing. The batch's own R6 (#13596) asks the bot to stay off new human issues; triaging the batch
+that proposes that rule would be the noise the epic measures. Twelve webhooks mint twelve Main sessions, so one report covers it.

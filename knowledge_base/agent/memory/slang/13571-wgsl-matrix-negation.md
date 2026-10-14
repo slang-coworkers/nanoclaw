@@ -51,3 +51,9 @@ weren't re-reviewed because of the 2-round cap. Devin timed out in both rounds. 
 **Unfiled follow-ups (operator call, asked 10-11 / 10-12):** (1) scalar `uint` `-u` emits `- x` on WGSL; (2) the CPU
 prelude `SLANG_MATRIX_UNARY_OP` indexes `result[i].rows[i][j]` (wrong index), so float-matrix `-m` breaks on `-cpu`;
 (3) double matrices ICE on WGSL and BFloat16 matrices emit invalid WGSL; (4) float-matrix `%` emits invalid WGSL.
+
+**2026-10-13 16:00Z, re-chase (no change).** Verified live: draft #13572 is still at head `46ac7f64a7`, last updated 10-12 13:55Z, with 0 reviews
+and no human comments on #13571 or #13572. The only event is jkwak-work milestoning #13571 to "Q4 2026 (Fall)" (10-12 16:22Z). CI run 38259151868
+is still `waiting`, and the pull_request CI jobs are SKIPPED because the PR is a draft. The status went to orchestrator-dashboard only. The 4 follow-ups
+were re-asked there (3rd ask, msg id 11); none is filed (search confirmed). Next one-shot is `rechase-13571-wgsl-matne-7189` at 10-16 16:00Z.
+If that ask is still unanswered then, park it and don't re-ask.

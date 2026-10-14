@@ -7,7 +7,7 @@ tags: [slang, cuda, ptx, rwtexture, prelude, go, draft-pr]
 
 # slang#13554 — layered `_convert` surface write is an empty stub
 
-Reporter minco3 (NONE, external), filed 2026-10-09 ~23:11Z, unassigned. Thread `gh-issue-shader-slang/slang-13554`.
+Reporter minco3 (NONE, external), filed 2026-10-09 ~23:11Z. Auto-assigned to jkwak-work 10-10 04:32Z (github-actions); labelled `regression` by jkwak-work 10-14. Thread `gh-issue-shader-slang/slang-13554`.
 Main session `sess-1791587497477-4u2mkp`.
 
 ## State
@@ -74,6 +74,16 @@ Main session `sess-1791587497477-4u2mkp`.
   runs). 38024444265 (508fb1b) is still `waiting` at `falcor-build-approval-gate`, 27 h old, `can_approve=false`. So `cudaLayeredFormatWriteCUDA` has **never run
   on a GPU**. I sent the 2nd and **LAST** ask to orchestrator-dashboard (msg 7) with the same (a), (b) and (c) options. The final check is `rechase-13563-final-95f1` on 10-14 at 08:00Z.
   If there's still no answer then, park the chain as draft-held: no more asks and no timer.
+- **10-14 00:49Z: jkwak-work commented** ([6158362037](https://github.com/shader-slang/slang/issues/13554#issuecomment-6158362037)):
+  "It appears that this is a regression from the following PR: #8863", and added the `regression` label (00:49:13Z; `optix` was added 10-12).
+  **Correction: the issue is NOT unassigned.** github-actions[bot] auto-assigned jkwak-work on 10-10 at 04:32:50Z, when PR #13563 opened. The comment
+  agrees with the triage's history (#8863 made the error silent), but it overrides the triage's "not a regression" call. I routed it to the triager on the canonical thread:
+  reconcile the classification with a fresh delta comment (a human has commented since 6091397893), point to draft #13563, and ask the assignee
+  whether to un-draft it so GPU CI runs. The assignee being engaged may make the pending operator CI decision unnecessary. `rechase-13563-final-95f1` was moved to 10-16 08:00Z and rewritten: no more operator asks; park if the maintainer is silent.
+- **10-14 00:55Z: the triager posted delta cmt [6158442564](https://github.com/shader-slang/slang/issues/13554#issuecomment-6158442564).**
+  It accepts the #8863 regression attribution, points to draft #13563 at e2eaf72e2a, says GPU CI has never run, and asks jkwak-work one question:
+  un-draft for GPU CI, or a different approach (error / #11090)? It also notes the #13363 coupling. Now **awaiting jkwak-work**. Un-draft or CI →
+  fixer, via the triager. A design change comes back to me. Re-chase `rechase-13563-final-95f1` (10-16 08:00Z).
 - **Triager check, 04:49Z:** within scope (prelude +129/−14, a PTX FileCheck, a CUDA gfx-unit-test that reads texels back, a docs
   line). Issue cmt 6091397893 was edited in place. **GPU CI is gated:** dispatch run 38024444265 (head 508fb1b3b2) is `waiting` at
   `falcor-build-approval-gate`, and check-ci failed downstream (I checked it live 04:5xZ). Releasing it needs a ci-approvers human

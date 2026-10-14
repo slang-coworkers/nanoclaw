@@ -40,4 +40,12 @@ pinged them on #13078 on 10-06. Dashboard told. **Re-chase 2 `rechase-13330-seco
 2026-10-13T21:00Z.** If that one is also silent, it asks the operator (ask_user_question) whether to ask
 on the issue.
 
+**Re-chase 2 (2026-10-13T21:00Z, `rechase-13330-second-f513`): silent again.** No comments, no #13330 PR,
+same assignees. #13078 was APPROVED by jhelferty-nv at 10-13 19:35Z and is about to merge (desc updated 20:10Z,
+BEHIND master). It didn't take on #13330 scope beyond the TODO, so the reporter will be free soon.
+I sent the operator a 3-way ask (ask on issue via triager / hold +14d / release fixer). The `ask_user_question`
+(timeout 0) aborted at the 1800 s MCP idle limit, so in practice timeout 0 means 30 min. The ask went
+to `orchestrator-dashboard` msg 9, thread `gh-issue-shader-slang/slang-13330`. Fixer is still HELD.
+**One-shot recheck `rechase-13330-third-94a1` fires 2026-10-16T21:00Z.** It acts on the operator's answer.
+
 Unverified side note (triager, not posted): WGSL/Metal emit `array<Nested,2>` user IO, likely invalid there.

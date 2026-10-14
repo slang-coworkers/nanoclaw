@@ -45,7 +45,9 @@ Assignee and requested reviewer on #13115: **jkwak-work**.
 2. **Operator:** the `falcor-ci` CI deadlock, and whether to flip #13115 to ready for the full CI
    matrix.
 
-Re-chase task: `chase-13107-design-direc-1be8` (2026-10-10 17:15Z).
+Re-chase task: rescheduled daily; latest check 2026-10-13 20:20Z (no human reply; head `04d59c59`, 169 behind master; 104 runs repo-wide `waiting`).
+
+- **falcor-ci gate isn't a hard bot-only block (10-13 finding).** Of the last 100 `falcor-ci` deployments, 58 of 59 bot-created ones are `waiting` (27) or `error` (31). The exception is #13171 (`fix/issue-13166`): jkwak-work approved the PR at 10-12T20:31Z, and jkiviluoto-nv approved its dispatch run 38305371148's `falcor-ci` gate 14 s after it was created (20:37Z). So `ci-approvers` will approve a bot run once a maintainer has engaged with the PR. For #13115, that points to the maintainer decision as the unblock, not an infra fix.
 
 ## Lessons from this chain
 
