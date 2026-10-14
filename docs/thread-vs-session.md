@@ -141,6 +141,15 @@ shared issue thread AND a private sub-thread at once and each reply still lands 
 The one thing to avoid: deliberately reusing the *exact* canonical id for an unrelated side-conversation — that
 WILL merge into the main session, by design. Use a `/<sub-task>` suffix (or an unrelated named thread) instead.
 
+**One owner per item.** Because a sub-thread gets its own session, it also gets its own cost budget. An a2a send
+that would create a session in group G on a GitHub thread whose item (`<owner>/<repo>#<n>`, issue or PR, any
+sub-thread spelling, plus the PR's `pr_session_mappings` owner) already has a live session in G on a different
+thread is **refused** by `a2a.send` (`src/modules/agent-to-agent/item-ownership.ts`); the sender is told which
+session owns the item. There is no approval path: raise the owner's ceiling or don't run. Exempt: delivery that
+lands in an existing session (same thread, `in_reply_to`, `target_session_id`, ancestor reply), items whose
+sessions are all closed, non-GitHub threads, and a group's first session for an item. This closes the route where
+a budget-exhausted owner was replaced by a fresh `…/<n>-resume` session (shader-slang/slang#13406).
+
 ---
 
 ## See also

@@ -35,9 +35,11 @@ import { log } from '../../log.js';
 import { resolveSession, sessionDir, withExistingMailboxSession, writeSessionMessage } from '../../session-manager.js';
 import { GuardDenyError, guard } from '../../guard/index.js';
 import type { PendingApproval, Session } from '../../types.js';
-import { requestApproval } from '../approvals/index.js';
+import { readSessionCostCapStatus } from '../../cli/session-cost-cap.js';
+import { notifyAgent, requestApproval } from '../approvals/index.js';
 import { evaluateEchoDrop, extractText } from '../runaway/echo-drop.js';
-import { A2A_MESSAGE_GATE_ACTION, a2aSend } from './guard.js';
+import { A2A_MESSAGE_GATE_ACTION, ITEM_OWNER_DENY_PREFIX, a2aSend } from './guard.js';
+import { findItemOwnerConflict } from './item-ownership.js';
 
 /**
  * Ensure a per-(source, recipient) messaging_group exists with a per-thread
@@ -481,6 +483,40 @@ async function deliverAncestorReply(
   if (freshAncestor) await requestWake(freshAncestor, 'inbound-message');
 }
 
+/**
+ * Where a cross-session a2a message will land, decided BEFORE the guard so the
+ * guard can tell an existing-session delivery from one that mints a fresh
+ * session (the one-owner-per-GitHub-item refusal). Layer order is unchanged:
+ * explicit in_reply_to / peer-affinity (Layer 1) beats the sender pin (Layer 0),
+ * the ancestor walk (Layer 2) runs only when neither resolved, and everything
+ * else is a fresh per-thread / per-source delivery (Layer 3).
+ */
+export type AgentRouteResolution =
+  | { kind: 'explicit'; session: Session }
+  | { kind: 'pinned'; session: Session }
+  | { kind: 'ancestor'; route: A2aSessionSource }
+  | { kind: 'fresh'; threadId: string | null };
+
+export async function resolveAgentRoute(
+  msg: RoutableAgentMessage,
+  session: Session,
+  targetAgentGroupId: string,
+): Promise<AgentRouteResolution> {
+  const pinnedTarget = await resolvePinnedTarget(msg, session, targetAgentGroupId);
+  const explicitTarget = await resolveExplicitReplyTarget(msg, session, targetAgentGroupId);
+  if (explicitTarget) return { kind: 'explicit', session: explicitTarget };
+  if (pinnedTarget) return { kind: 'pinned', session: pinnedTarget };
+  const ancestorRoute = await findAncestorRoute(session.id, targetAgentGroupId);
+  if (ancestorRoute) return { kind: 'ancestor', route: ancestorRoute };
+  //  - thread_id present → per-thread session keyed on (recipient,
+  //    agent:<source>:<recipient> mg, thread_id).
+  //  - thread_id null but source session has one → inherit it, so outbound
+  //    from a threaded session stays scoped (Slack-style DM isolation).
+  //  - both null → per-source shared.
+  const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
+  return { kind: 'fresh', threadId: explicitThread || session.thread_id || null };
+}
+
 export async function routeAgentMessage(
   msg: RoutableAgentMessage,
   session: Session,
@@ -491,26 +527,36 @@ export async function routeAgentMessage(
     throw new Error(`agent-to-agent message ${msg.id} is missing a target agent group id`);
   }
 
+  // Resolve the landing spot first (read-only): the guard needs to know whether
+  // this delivery would mint a fresh session, and on which thread.
+  const resolution = await resolveAgentRoute(msg, session, targetAgentGroupId);
+  const routeThread = resolution.kind === 'fresh' ? (resolution.threadId ?? '') : '';
+
   // Authorization + per-edge gate go through the guard seam (guard.ts a2aSend).
   // Its decision carries the full a2a contract: self-send allow, LINEAGE allow
   // (child→ancestor with no destination row — see isAncestorGroup), destination
-  // ACL deny, target-exists deny, message-policy hold. An approved replay
-  // carries the grant (opts.grant) — the policy hold is satisfied, but the
-  // structural checks re-run live, so revoking a destination between hold and
-  // approve still blocks delivery.
+  // ACL deny, target-exists deny, one-owner-per-GitHub-item deny, message-policy
+  // hold. An approved replay carries the grant (opts.grant) — the policy hold is
+  // satisfied, but the structural checks re-run live, so revoking a destination
+  // between hold and approve still blocks delivery.
   //
-  // Session resolution + delivery stay in performAgentRoute (the fork's layered
-  // Layer-0..3 routing). Because the guard has already authorized here, it is
-  // called with enforceGate=false so its own (now-redundant) inline gate never
-  // double-fires.
+  // Delivery stays in performAgentRoute (the fork's layered Layer-0..3
+  // routing), handed the resolution computed above so it is not re-derived.
   const decision = await guard(a2aSend, {
     actor: { kind: 'agent', agentGroupId: session.agent_group_id, sessionId: session.id },
-    resource: { from: session.agent_group_id, to: targetAgentGroupId },
+    resource: { from: session.agent_group_id, to: targetAgentGroupId, route: resolution.kind, thread: routeThread },
     payload: { id: msg.id, platform_id: targetAgentGroupId, content: msg.content, in_reply_to: msg.in_reply_to ?? '' },
     grant: opts.grant ?? null,
   });
 
   if (decision.effect === 'deny') {
+    if (decision.reason.startsWith(ITEM_OWNER_DENY_PREFIX)) {
+      // Refused, not retried: the conflict is deterministic, so throwing would
+      // only re-run it MAX_DELIVERY_ATTEMPTS times and fail silently. Tell the
+      // sender exactly once why, and who to send to instead.
+      await refuseSecondItemSession(msg, session, targetAgentGroupId, routeThread);
+      return;
+    }
     throw new GuardDenyError(decision.reason);
   }
 
@@ -539,7 +585,54 @@ export async function routeAgentMessage(
     return;
   }
 
-  await performAgentRoute(msg, session, targetAgentGroupId, false);
+  await performAgentRoute(msg, session, targetAgentGroupId, false, resolution);
+}
+
+/**
+ * The sender asked for a second session on a GitHub item the recipient group
+ * already owns. Policy: raise the owner's ceiling or don't run — never a second
+ * session. Name the owner(s) and their live cost state so the sender can send
+ * to the owner or escalate to a human instead of retrying on another thread.
+ */
+async function refuseSecondItemSession(
+  msg: RoutableAgentMessage,
+  session: Session,
+  targetAgentGroupId: string,
+  routeThread: string,
+): Promise<void> {
+  const conflict = await findItemOwnerConflict(targetAgentGroupId, routeThread);
+  const targetName = (await getAgentGroup(targetAgentGroupId))?.name ?? targetAgentGroupId;
+  const item = conflict?.item.key ?? routeThread;
+  const owners = conflict ? await Promise.all(conflict.owners.map(describeOwner)) : [];
+  log.warn('a2a second session for an owned GitHub item refused', {
+    from: session.agent_group_id,
+    to: targetAgentGroupId,
+    msgId: msg.id,
+    item,
+    thread: routeThread,
+    owners: conflict?.owners.map((s) => s.id) ?? [],
+  });
+  await notifyAgent(
+    session,
+    `${item} already has a ${targetName} session ${owners.join('; ')}. ` +
+      'A second session for the same item is not allowed. ' +
+      'Send to that session (target_session_id) or ask the operator to raise its ceiling.',
+  );
+}
+
+/** `<id> (thread …, cost <status> $spent of $ceiling)` — cost only when the runner has published it. */
+async function describeOwner(s: Session): Promise<string> {
+  const parts = [`thread ${s.thread_id ?? '(none)'}`];
+  try {
+    const view = await readSessionCostCapStatus(s.id);
+    if (view.status !== 'unknown') {
+      const spent = typeof view.spent_usd === 'number' ? `$${view.spent_usd.toFixed(2)}` : '$?';
+      parts.push(`cost ${view.status} ${spent}${view.ceiling_usd ? ` of $${view.ceiling_usd.toFixed(2)}` : ''}`);
+    }
+  } catch {
+    /* cost state is best-effort detail */
+  }
+  return `${s.id} (${parts.join(', ')})`;
 }
 
 // Re-exported for back-compat: callers (index.ts, tests) import the gate
@@ -585,7 +678,12 @@ export async function performAgentRoute(
   session: Session,
   targetAgentGroupId: string,
   enforceGate = false,
+  resolved?: AgentRouteResolution,
 ): Promise<void> {
+  // routeAgentMessage resolves the route before consulting the guard and hands
+  // it down; a direct caller (tests) gets the same layered resolution here.
+  const resolution = resolved ?? (await resolveAgentRoute(msg, session, targetAgentGroupId));
+
   // Layer 0: sender-pinned recipient session id.
   //
   // When `msg.target_session_id` is set, the sender has explicitly chosen
@@ -603,7 +701,7 @@ export async function performAgentRoute(
   // names a specific inbound, which is more semantic than a structural
   // session id; if both are set and they disagree, the inbound being
   // replied-to is the better signal of intent.
-  const pinnedTarget = await resolvePinnedTarget(msg, session, targetAgentGroupId);
+  const pinnedTarget = resolution.kind === 'pinned' ? resolution.session : null;
 
   // Layer 1: explicit in_reply_to / peer-affinity wins.
   //
@@ -618,7 +716,7 @@ export async function performAgentRoute(
   //
   // resolveExplicitReplyTarget already filters to active sessions of the
   // target agent group, so a hit is always a valid delivery target.
-  const explicitTarget = await resolveExplicitReplyTarget(msg, session, targetAgentGroupId);
+  const explicitTarget = resolution.kind === 'explicit' ? resolution.session : null;
 
   // Layer 2: ancestor walk through a2a_session_sources.
   //
@@ -652,12 +750,9 @@ export async function performAgentRoute(
   // specific session id has overridden the ancestor heuristic — if the pin
   // happens to be the ancestor session anyway, the result is the same;
   // if it's a different session, the pin is what the sender meant.
-  if (!explicitTarget && !pinnedTarget) {
-    const ancestorRoute = await findAncestorRoute(session.id, targetAgentGroupId);
-    if (ancestorRoute) {
-      await deliverAncestorReply(msg, session, ancestorRoute);
-      return;
-    }
+  if (resolution.kind === 'ancestor') {
+    await deliverAncestorReply(msg, session, resolution.route);
+    return;
   }
 
   // Authorization + the per-edge message gate are enforced by the guard seam
@@ -702,8 +797,7 @@ export async function performAgentRoute(
     //    from a threaded session stays scoped (Slack-style DM isolation).
     //  - both null → per-source shared (each source↔recipient pair gets its
     //    own session, not a global agent-shared that collapses all sources).
-    const explicitThread = msg.thread_id && msg.thread_id.trim() !== '' ? msg.thread_id : null;
-    threadId = explicitThread || session.thread_id || null;
+    threadId = resolution.kind === 'fresh' ? resolution.threadId : null;
     const a2aMgId = await ensureA2aWiring(targetAgentGroupId, session.agent_group_id);
     ({ session: targetSession } = await resolveSession(
       targetAgentGroupId,
