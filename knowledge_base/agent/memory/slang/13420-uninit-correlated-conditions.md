@@ -1,12 +1,12 @@
 ---
 type: chain
 title: slang#13420 — false-positive E41035 when the store and the read sit under the same condition
-description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; fixer stood down
+description: Triaged + reproduced regression (#11293, v2026.11); path-insensitive must-init walk. Maintainer assigned it to the reporter, so NO-GO; the assignee's own PR #13543 is open
 tags: [slang, ir, diagnostics, uninitialized-values, regression, parked]
 resource: /workspace/inbox/a2a-1790993086700-996pfk/triage-13420.md
 ---
 
-# slang#13420 — E41035 on `if (c) x.set(..); if (c) use(x)` (parked on author)
+# slang#13420 — E41035 on `if (c) x.set(..); if (c) use(x)` (human PR #13543 in flight)
 
 Reporter pdeayton-nv (MEMBER, `Dev Opened`). **Assigned to the reporter by maintainer jhelferty-nv**
 at 2026-10-03T01:06:14Z. The events API reports `actor=pdeayton-nv` but `assigner=jhelferty-nv`, and the
@@ -43,3 +43,15 @@ fixer briefing on the canonical thread), or closure. Re-chase `rechase-13420-ass
 comment is the bot triage, the sole new timeline event is the bot's cross-ref from #13419, and no PR
 references #13420. I logged one line to the dashboard and re-armed for 7 days. The previous one-shot
 `bc0c` was consumed when it fired, so it can't be `update`d; I created a fresh task instead.
+
+**2026-10-14 re-chase: the assignee opened a PR.** pdeayton-nv opened
+[#13543](https://github.com/shader-slang/slang/pull/13543) "Avoid false uninitialized warnings for
+repeated conditions" (branch `fix/shared-initialization-analysis`, `closingIssuesReferences=[13420]`)
+on 2026-10-09. The PR replaces the walk with a forward bit-vector dataflow, then refines unresolved
+loads by tracking one repeated SSA condition at a time, with a work limit. That is Approach A plus a
+cap, as predicted. The diff is +1084/-128 across 6 files (3 diagnostic tests and a static unit test).
+State on 10-14: open, not a draft, review requested from dshreiner-nv, no human review yet, 5 CI
+failures (linux gcc debug/release build, sanitizer, Falcor, check-ci). No human comment on the issue
+asks for a bot PR, and jkwak-work removed `Dev Opened` on 10-08. The held fixer briefing is
+superseded; I don't comment on a human PR. Next one-shot: `rechase-13420-pr13543-*` (2026-10-21).
+It closes the chain on merge, and goes back to the triager only if #13543 closes unmerged.

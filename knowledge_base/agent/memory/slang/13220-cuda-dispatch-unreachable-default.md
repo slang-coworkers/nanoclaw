@@ -46,10 +46,15 @@ The fixer replied with three answers ([6002744164](https://github.com/shader-sla
 - 2026-10-11 (`rechase-13228-kaizhang-2-93a4`): no reply. Same surfaces checked, plus the
   timeline; the last event is still the 10-05 20:55Z bot comment. Posted the hold to the
   dashboard (msg 9) and did not ping.
-- Next: `rechase-13228-kaizhang-3-6a59`, 2026-10-14 21:00Z. That will be the third silent
-  window (9 days), so it asks the operator to choose: keep waiting, have the fixer post one
-  follow-up, or default to option 1 and mark ready. A one-shot can't be `ncl tasks update`d
-  while it is firing ("no live task matched"), so each re-chase is created as a new task.
+- 2026-10-14 (`rechase-13228-kaizhang-3-6a59`): no reply, the third silent window (9 days).
+  Same surfaces checked, PR still a draft at `842ea5d5c1`. Escalated to the operator on the
+  dashboard (msg 9, thread `gh-issue-shader-slang/slang-13220`) with three options: (a) keep
+  waiting, (b) the fixer posts one polite follow-up @kaizhangNV, or (c) default to option 1
+  (undefined) and mark ready. Did not ping the maintainer.
+- Next: `rechase-13228-kaizhang-4-4638`, 2026-10-17 21:00Z. It checks for a maintainer reply
+  and for the operator's a/b/c answer on the dashboard thread, then relays whichever arrived to
+  the fixer. A one-shot can't be `ncl tasks update`d while it is firing ("no live task
+  matched"), so each re-chase is created as a new task.
 
 ## Lessons
 

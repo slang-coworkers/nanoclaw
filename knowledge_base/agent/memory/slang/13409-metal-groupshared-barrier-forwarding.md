@@ -96,6 +96,10 @@ Terminal handoff: a draft held pending review. Asked the operator for the ready-
 - No change. #13421 @ `c42049e18f` and #13431 @ `bf9f3fd05a` are both still drafts with 0 reviews, 0 review comments, and no non-bot comments. Both are 36 behind master. There are 0 Actions runs on either head or branch, so CI is still not pending. #13465 has 2 comments, the last being the bot's 6044596724, so it is still parked on tangent-vector's Q1/Q2. #13466 has 0 comments and kaizhangNV is still the assignee. The triager session's last row is seq 37 (10-07), so no report was lost.
 - No dashboard post because nothing changed. Next re-chase: `rechase-13421-13431-1346-5086`, 10-14 19:00Z.
 
+## 2026-10-14 19:01Z re-chase (checked live)
+- No change. #13421 @ `c42049e18f` and #13431 @ `bf9f3fd05a` (head branch `fix/issue-13412-v2`) are both still drafts with 0 reviews, 0 review comments, and no non-bot comments. Both are 50 behind master. There are 0 Actions runs on either head SHA or branch. #13465 is still at 2 comments (last is the bot's 6044596724), so it is still parked on tangent-vector's Q1/Q2. #13466 has 0 comments, assignee kaizhangNV. The triager session's last row is still seq 37 (10-07).
+- No dashboard post. Next re-chase: `rechase-13421-13431-1346-b02d`, 10-16 19:00Z.
+
 ## Sessions / tasks
 Fixer `sess-1790967825882-vnvecr`, triager `sess-1790963826393-0y71gs`, reviewer `sess-1791004457668-whh9sf`,
 all on `gh-issue-shader-slang/slang-13409`. The #13412 thread had only my own session as of 10-04.

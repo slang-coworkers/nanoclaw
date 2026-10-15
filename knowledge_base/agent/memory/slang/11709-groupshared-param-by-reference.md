@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang PR #11709 — groupshared parameters by reference (fix for #10641)
-description: HELD until #13406 (the #13339 ParameterPassingMode Ref split) lands; then one rebase-and-rework push carrying the unpushed P1 autodiff fix, then a delta review. Owned by slang-fixer; jhelferty-nv CHANGES_REQUESTED. The #13406 review rounds live in [[slang/11709-13406-ref-split-review-rounds.md]].
+description: HELD until #13406 (the #13339 ParameterPassingMode Ref split) lands — as of 10-14 #13406 is green and waits only on jhelferty-nv re-review; then one rebase-and-rework push carrying the unpushed P1 autodiff fix, then a delta review. Owned by slang-fixer; jhelferty-nv CHANGES_REQUESTED. The #13406 review rounds live in [[slang/11709-13406-ref-split-review-rounds.md]].
 tags: [slang, frontend, param-passing-mode, groupshared, parked]
 resource: /workspace/extra/ephemeral/prod-groups/slang-fixer/reports/comments/11709-vs-13339-plan-report.md
 ---
@@ -28,7 +28,8 @@ by slang-fixer and is fixed by PR **#13406**. Older history lives in the importe
   - The work resumed in a fresh session, `sess-1791517792695-dth1ak`, on sub-thread `…-11709/13406-resume`
     (msg 2239). It got her review verbatim and a 9-item checklist; items 1, 7 and 8 are still open (module version,
     commit order, `const` reflection).
-  - `pr-mappings remap` for #13406 (`appr-1791517835370-iwgn54`) is waiting on admin approval. Both #13406 and #11709 still map to `jylfb4`.
+  - `pr-mappings remap` for #13406 (`appr-1791517835370-iwgn54`) still reads `pending` on 10-14, but the #13406 mapping row
+    already points at `dth1ak` (row dated 10-13 15:14Z), so the approval is effectively moot. #11709 still maps to `jylfb4`.
   - **r5 PUSHED 10-09 08:49Z**, head `4e2603652e`. Verified on GitHub:
     - A fast-forward of 5 commits on `797b7e096f`, with no force-push and every commit under App identity `274397474`. The 7 local commits were rewritten into 5 before the push.
     - All checklist items are resolved: module v35, reflection `const`, commit order, and the R19 read gaps (swizzles, `switch`, receivers, the `__subscript` getter).
@@ -41,7 +42,14 @@ by slang-fixer and is fixed by PR **#13406**. Older history lives in the importe
       5. the `t.Load()` gap.
     - Her CHANGES_REQUESTED still stands. The branch is BEHIND master, and CI is running.
 - **10-11 state.** Round 3 (`7e683a211b`) is pushed, and the GCC flag is split out to draft **#13570**. #13406 head `2781df933e` reverts the flag, so SlangPy is red there **by design** until #13570 merges and the owner merges master. #13570 has slang-reviewer APPROVE_WITH_NITS (nits applied, `bffd07cc1b`). **Un-drafting #13570 is the operator's call** (named 10-11, dashboard msg 19). The remap `iwgn54` is still pending. Detail is in the review-rounds file.
-- **Timer.** `rechase-13406-r5-qs-7621` fired 10-11 09:00Z (case c, silent). The next one is **`rechase-13406-r6-a54e` (10-14 09:00Z)**. If #13406 merged, it lifts the #11709 hold through slang-fixer. If only #13570 merged, it tells `dth1ak` to merge master. If a maintainer replied, it relays the text verbatim. Otherwise it sends the operator one table.
+- **10-14 state (verified with gh at 09:00Z).**
+  - The operator decision went away on its own: jhelferty-nv merged master into #13570, readied it 10-13 19:47Z, and merged it at 22:16Z (`7d7ad3bbfe`); jkwak-work APPROVED (5509318075).
+  - Within a minute the Orchestrator dashboard session dispatched a **sibling** slang-fixer session, `sess-1791929861310-3xpxb6` (thread `gh-issue-shader-slang/slang-13406`, not `dth1ak`'s), to merge master. It pushed **`7c962f27a7`** at 22:18Z: a fast-forward, App identity, no conflicts.
+  - At that head: SlangPy Tests green, all ci.yml jobs green, `check-ci` rerun green at 23:30Z, mergeState BLOCKED only on her CHANGES_REQUESTED, 2 behind master.
+  - 4 open threads (4168522180, 4168540023, 4198094764, 4198335992), all with our reply last. No maintainer review or comment since 10-11 00:26Z apart from one thread resolve on 10-13.
+  - `dth1ak` is cost-escalated ($160.75 / cap 150 / ceiling 300). I told it (pinned, msg 59) the merge was done and to fast-forward its worktree without pushing.
+  - ⇒ **#13406 now waits only on jhelferty-nv's re-review.**
+- **Timer.** `rechase-13406-r6-a54e` fired 10-14 09:00Z (case b, already done; worktree sync sent to `dth1ak`). The next one is **`rechase-13406-r7-c566` (10-17 09:00Z)**. If #13406 merged, it lifts the #11709 hold. If a maintainer replied, it relays the text verbatim to `dth1ak`. Otherwise it sends the operator one table.
 
 ## What #11709 does when the hold lifts
 
@@ -91,6 +99,11 @@ and only for `groupshared` params (`slang-check-decl.cpp:5437-5445`), so the spl
 call belonged to the maintainers, not the operator.
 
 ## Lessons
+
+- A re-chase timer's premise can be overtaken by another Orchestrator session. On 10-13 the dashboard session handled
+  #13570's merge and the #13406 master merge live, three days before `r6` fired. Before acting on a timer's case, check
+  the head's commit log and find which session pushed it (`ncl sessions list --agent-group-id <fixer>` around the
+  commit time). Don't redo the work.
 
 - My earlier "no other session holds the reversal" was wrong. `ncl sessions list --limit 2000` truncated away the
   owner, which was created 2026-08-05. Look up a known owner with `ncl sessions get <sid>`, and check that a reply

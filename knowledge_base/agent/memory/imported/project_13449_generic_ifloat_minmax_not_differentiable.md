@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13449_generic_ifloat_minmax_not_differentiable
-description: "slang#13449 (bot-filed 10-05 22:38Z by slang-fixer on the #12249 chain, on dashboard-Main order row 455621): min/max inside a [Differentiable] generic over T : IFloat binds the non-differentiable T : IComparable overload -> E41022. Owned, no fixer dispatched; watched by rechase-12249-13411-4260. Side crash filed as #13486 (10-07)."
+description: "slang#13449 (bot-filed 10-05 22:38Z by slang-fixer on the #12249 chain, on dashboard-Main order row 455621): min/max inside a [Differentiable] generic over T : IFloat binds the non-differentiable T : IComparable overload -> E41022. CLOSED 10-14 as will-not-fix by jhelferty-nv after discussion with Tess; recommended route is slang.numerics.differentiable. Side crash #13486 stays open. Terminal."
 metadata:
   node_type: memory
   type: project
@@ -71,3 +71,19 @@ with (ii) included before re-reading the live body; the triager caught it. I tol
 posted the closing reply (issuecomment-6042521227, verified, 632 chars), which links #12720 (tangent-vector) and #6966 and names
 `__BuiltinFloatingPointType`. **No fixer, no PR; parked on #12720.** If Sai re-raises (ii), the triager's unverified candidate
 mechanism is #11368 (38c853dbe).
+
+**10-14 16:32Z: jkwak-work asked on #13486 for user-facing `__func_extension` docs** (issuecomment-6173218119, @nv-slang-bot).
+#13486 is assigned to saipraveenb25 (`Office-Sai`). From my pre-check, not yet verified by the triager: master's `docs/user-guide` has no
+`__func_extension` mention. The only design doc is spec proposal SP #039 (`shader-slang/spec` `proposals/039-extended-custom-derivatives.md`,
+marked experimental), implemented by #10827 (saipraveenb25, merged 05-26). Some `docs/generated/design` pages mention it.
+I added 👀 and dispatched to slang-triager on `-13486` (answer only). `rechase-12249-13411-147b` checks that the reply was posted.
+**10-14 16:42Z: answered** (issuecomment-6173405645, verified as nv-slang-bot, mentions only @jkwak-work). No user-guide page exists
+on master f6a839924, which is a doc gap. SP #039 is stale: it says "Implementation: Pending" and spells `apply(foo)` where the code uses
+`__apply`. Minimal example: `tests/autodiff/func-extension/apply-basic.slang`. No docs PR or issue was filed, since nobody asked.
+
+**10-14 17:04Z: CLOSED, will not fix (terminal).** jhelferty-nv closed it (state_reason COMPLETED) with issuecomment-6173834301:
+"As discussed with Tess, will not fix. Users are recommended to use slang.numerics.differentiable instead." That is the triage's
+control route (`IDifferentiableRealOrderingFunctions`), not the bot's interim `__BuiltinFloatingPointType` suggestion; the
+maintainer's later word stands, so no bot correction was posted. The comment wasn't bot-addressed, so nothing was dispatched or posted. The
+re-chase task (`rechase-12249-13411-147b`) dropped the watch and re-engages only on a reopen or a bot @-mention. #13486 stays open,
+assigned to saipraveenb25.

@@ -83,3 +83,11 @@ state (head, owner session, timer `rechase-13406-r6-a54e`) is in the parent; thi
 - Because remap `appr-…iwgn54` stayed pending, every maintainer webhook (14:06Z review, 15:24Z "poke", tangent-vector
   18:15Z, the 10-10 split ask) reached `jylfb4`, whose ceiling someone else raised to $400. It posted only accurate
   status replies/acks and touched no code; I relayed each text verbatim, pinned, to `dth1ak` and never replied to `jylfb4`.
+
+## #13570 lands, #13406 goes green (10-13)
+
+- jhelferty-nv merged master into #13570, readied it (19:47Z), and merged it at 22:16Z as `7d7ad3bbfe` after jkwak-work
+  APPROVED (5509318075, noting build memory and time cost). The "un-draft is the operator's call" gate was overtaken.
+- The dashboard Orchestrator session had sibling slang-fixer session `3xpxb6` merge master into #13406 →
+  `7c962f27a7` (no force-push, no conflicts), and SlangPy went green, confirming the PR108900 split. The PR's own diff is
+  unchanged, and her CHANGES_REQUESTED is untouched.

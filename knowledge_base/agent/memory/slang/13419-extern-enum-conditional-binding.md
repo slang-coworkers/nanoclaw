@@ -1,12 +1,12 @@
 ---
 type: chain
 title: slang#13419 — Conditional resource loses bindings/reflection when its condition uses an extern enum
-description: Triaged + reproduced (not a regression); front-end link-time constant folding misses checked initializers. Self-assigned by the reporter, so NO-GO; fixer briefing + prototype held
+description: Triaged + reproduced (not a regression); front-end link-time constant folding misses checked initializers. The assignee opened PR #13487 (Approach A); NO-GO stands, fixer briefing superseded
 tags: [slang, frontend, reflection, link-time-constants, conditional, parked]
 resource: /workspace/inbox/a2a-1790993201805-3bhx61/triage-13419.md
 ---
 
-# slang#13419 — `Conditional<CB, externEnum != X>` loses binding (parked on author)
+# slang#13419 — `Conditional<CB, externEnum != X>` loses binding (human PR #13487 open)
 
 Reporter pdeayton-nv (MEMBER). **Self-assigned** at 2026-10-03T00:58:54Z (`assigned` event actor
 pdeayton-nv, verified); jkwak-work added `Dev Opened`. Sibling of
@@ -41,3 +41,19 @@ references #13419 (the nearby bot PR #13471 on link-time symbol conflicts closes
 one). Sibling #13420 is equally quiet. Who did the assignment is unclear: the events API shows
 `actor` pdeayton-nv with `assigner` jhelferty-nv, and the timeline shows actor jhelferty-nv.
 Re-armed as `rechase-13419-assignee-85b0` (2026-10-14).
+
+**2026-10-14 re-chase: the assignee opened a PR.** pdeayton-nv opened
+[#13487](https://github.com/shader-slang/slang/pull/13487) "Fold extern constant initializers after
+type checking" (fork branch `fix/extern-constant-folding`, head `78297ce5d`,
+`closingIssuesReferences=[13419]`) on 2026-10-07. The PR is Approach A: it extracts a shared
+`tryConstantFoldInitializer`, retries it in body checking after the initializer is checked, widens
+the type gate to enums via `isValidSpecializationConstantType`, and suppresses the duplicate
+circularity error. The diff is +143/-17 across 7 files, adding 4 SPIR-V/reflection tests and 1
+diagnostic test. State on 10-14: open, not a draft, reviews requested from dshreiner-nv,
+tangent-vector and jkwak-work, no human review yet. The github-actions bot review says 🟡 "5 gaps,
+0 bugs". **No CI runs at all on the head SHA** (0 workflow runs, none awaiting approval;
+mergeable=UNKNOWN). No issue comment asks for a bot PR, and jkwak-work removed `Dev Opened` on
+10-08. Spin-off: pdeayton-nv filed #13534 (link-time constant rejected in `vk::binding`). The held
+fixer briefing is superseded, and I don't comment on a human PR. Next one-shot:
+`rechase-13419-pr13487-137f` (2026-10-21). It closes the chain on merge, and goes back to the triager
+only if #13487 closes unmerged.

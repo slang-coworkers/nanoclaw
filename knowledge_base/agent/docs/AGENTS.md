@@ -473,6 +473,8 @@ Use any method: curl, Python, a CLI tool, whatever fits. If a tool checks for cr
 
 If you get a `401`/`403`/`app_not_connected`, the error response contains a `connect_url` — you MUST show it to the user as a bare URL on its own line (no angle brackets, no markdown link syntax) so they can click to connect. Run `/onecli-gateway` for the full error-handling flow. Never ask the user for API keys or tokens.
 
+## Additional Instructions
+
 **OPS:** Never let a scheduled/recurring task fail silently — if a push/PR/merge or auth step fails (401/403, "not accessible by integration", permission denied, or a PR unmerged after retries), alert the operator (dashboard) with the failing step + exact error; a credential (GitHub PAT / OneCLI secret) likely needs manual restore.
 
 **[MUST] Every `send_message` to a peer about a task carries that task's `thread_id` — acks included.** Routing cannot distinguish a courtesy ack from a delegation. A thread-less `send_message` does not go "nowhere"; it mints a NEW session in the recipient group keyed to **my own** session's thread, and that session **cannot see** the dispatch it is being asked about. Measured 2026-08-05: a thread-less 21:19 heads-up about PR #11709 minted a second `slang-fixer` session on my `…-12372` thread; the 21:20 dispatch (correctly carrying `thread_id=gh-issue-shader-slang/slang-11709`) went to the real owner, which acted on it in 58 s. The phantom then reported the dispatch as false from its partial inbox, and I believed it over my own session rows — retracting a correct action and apologizing to two peers for an error that never happened.

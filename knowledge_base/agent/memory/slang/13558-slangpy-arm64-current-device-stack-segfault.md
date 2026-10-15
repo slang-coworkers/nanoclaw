@@ -57,3 +57,12 @@ call `shutdown(false)` (device.cpp:456). It's a no-op for an already-closed devi
 Forwarded verbatim to slang-triager on the canonical thread (msg 33): consider adding `reproduced` (its earlier reason for holding it back is gone), skip any
 restating comment, and dispatch no fixer. Chain stays HELD on the fix choice. Re-chase `rechase-13558-device-sta-f70c` (10-14) still stands.
 **10-12 16:04Z: triager update (msg 34).** nv-slang-bot[bot] applied `reproduced` at 16:03:47Z. Main checked the issue events: still open, 2 comments, assigned to jkwak. No new comment. Per the triager, slangpy#1211 is already in ce68ef8 and doesn't fix this, and there is no slangpy fix PR yet. HELD as before.
+
+**10-14 16:00Z re-chase: TERMINAL (fixed upstream, CLOSED).** jkwak-work fixed it in slangpy
+[#1219](https://github.com/shader-slang/slangpy/pull/1219) ("Remove destroyed devices from the current-device stack"). The PR opened 10-12 16:03Z and merged 16:50:53Z as
+`fb1bca1`. Its body says `Fixes shader-slang/slang#13558`, and the merge closed #13558 at 16:50:55Z. The fix is a variant of option A: `~Device()` erases every remaining stack entry for
+`this`. A closed device that is still alive keeps its entry, which is the documented behavior. Main checked the post-fix nightly `sanitizers` run 38510239778 @fb1bca1 (10-14):
+`test_push_pop_current_device[vulkan|cuda]` PASSED on linux x86_64 asan-ubsan (job 115676835403), and d3d12, vulkan and cuda PASSED on Windows (115676835412). There were
+0 `invalid vptr` / `set_self_py` hits. The asan-ubsan jobs are still red, but for unrelated reasons that were already there before the fix: 6 cuda ray-tracing tests fail with `createRayTracingPipeline … SLANG_FAIL`
+(already failing in the 10-12 run), and linux reports 2 LSan leak roots (`NativeBoundVariableRuntime` vectors). Neither is #13558. No GitHub post: the maintainer closed it with
+a linked fix. No triager wake. The issue still carries only the triage and jkwak comments, which is a sufficient artifact.

@@ -85,3 +85,12 @@ full suite (gfx-smoke = env). **Body defect, triager-caught and Main-confirmed:*
 merge): Fixes #13579, or keep…" makes `closingIssuesReferences` = [13579], so merging would close the issue despite
 "Part of". The fix (reword the body with no close verb before #13579, then confirm the list is empty) went to the fixer.
 CI is draft-gated. Next: fixer [Fix Report] → [Triage Resolution]. Re-chase `be6d` (10-19): the PR exists, so its branch (a) applies.
+
+**10-14 05:01Z — [Triage Resolution]: PARKED on the maintainer's scope decision + a human CI release.** Main checked
+PR #13616 live: draft, head `bd38ff9e97`, 12 commits all `nv-slang-bot[bot]`, 6 files +674/−86, `pr: breaking change`,
+**closingIssuesReferences = [] (body defect fixed)**, 0 reviews. CI run 38512747808 (workflow_dispatch) is `waiting` at
+`bd38ff9e97`, so a human must approve it. Issue comment 6151193271 was edited in place at 05:01:33Z, and it is still the last
+comment. Fixer figures (theirs): 35/35 touched directives with the fix vs 20/35 on master; 997/997 capability + diagnostics;
+7837/7838 full suite. The internal slang-reviewer went REQUEST_CHANGES (R1) then APPROVE_WITH_NITS (R2 @ 783c433). The nits
+were applied at bd38ff9 and the byte-compare was NOT rerun. Scope grew to user enums/interfaces as well as structs.
+Resumes on: kaizhangNV answering the intrinsic-generic question, or a CI release. Re-chase `be6d` 10-19 17:00Z.

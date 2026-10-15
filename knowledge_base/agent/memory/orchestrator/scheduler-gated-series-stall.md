@@ -1,9 +1,9 @@
 ---
 type: incident
-description: 2026-10-13/14 — script-gated recurring series whose gate returns wakeAgent=false stopped advancing after the 14:03Z instruction-update restart; gates that wake advance normally. Open, reported to operator at tick 281. Watchdog must not re-arm these.
+description: 2026-10-13/14 — script-gated recurring series whose gate returns wakeAgent=false stopped advancing after the 14:03Z restart. CLOSED at tick 282 — cleared by the 10-14 06:06Z restart; the 11 i1xxxx per-issue gates were deleted (R10 cleanup, nanoclaw PR #1948), not stuck.
 ---
 
-# Script-gated recurring series stall (open, first seen tick 281)
+# Script-gated recurring series stall (CLOSED tick 282; first seen tick 281)
 
 **Symptom (measured 2026-10-14 00:00–00:33Z, Main's group):** recurring series with a `--script` whose gate
 returns `{"wakeAgent": false}` keep their past `process_after` and never mint the next occurrence.
@@ -21,3 +21,15 @@ isn't being synced/recorded, or the containers are marked running but not pollin
 completion bug. Re-check each tick; if the next tick shows them advanced, close this note.
 
 Related: [[orchestrator/supervise-tick-runbook.md]].
+
+## Resolution (tick 282, 2026-10-14 12:30Z)
+
+- `okf-memory-synthesis-4fba` and `dispatch-13472-after-131-0e0a` fired at 12:00Z with `gated_runs` 2 and next 18:00Z, so the
+  stall cleared after the 06:06Z instruction-update restart. Root cause never confirmed.
+- All 11 recurring `i1xxxx-*-gate` series (the 8 stuck ones + i13531/13533/13464) return `task not found` from `ncl tasks get`
+  and are absent from `ncl tasks list`. Their `system:tasks:` sessions were all `closed` at 06:06:41Z. That matches the
+  operator's merged nanoclaw PR #1948 (`cb13820d8`: "reject agent per-issue recurrences … Ten such gates are live on prod").
+  I read it as a deliberate R10 cleanup and did **not** re-create them; the operator was asked which, if any, need one-shot
+  `--process-after` re-checks. Their issues stay on the board with dispositions; webhooks still deliver replies.
+- Watchdog consequence: a missing series is not "stalled". Never re-create a deleted per-issue recurrence (R10, and the
+  CLI now rejects it for agent callers anyway).

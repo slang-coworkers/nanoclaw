@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13480_bitcast_struct_with_resource_ice
-description: "[PARKED on maintainer scope decision since 10-09 17:54Z (tangent-vector design note)] slang#13480 (ArmandLfd, 10-07): bit_cast between two structs that hold a resource (slangpy Tensor→PrimalTensor) ICEs E99997 on all 7 targets; not a regression (2024.1.1+). Triaged 14:31Z (cmt 6040166579). Orchestrator GO 10-07 for a draft PR on A′ (opaque-leaf pre-pass; E41205 gated on resource legalization); draft PR #13507 opened 10-08. WGSL POD bit_cast segfault side finding = new symptom of #13380 (fixed by draft #13381), NOT filed separately."
+description: "[PARKED on maintainer scope decision; 10-14 jhelferty-nv↔skiminki-nv discussing bit_cast/reinterpret semantics, Tess leans narrow] slang#13480 (ArmandLfd, 10-07): bit_cast between two structs that hold a resource (slangpy Tensor→PrimalTensor) ICEs E99997 on all 7 targets; not a regression (2024.1.1+). Triaged 14:31Z (cmt 6040166579). Orchestrator GO 10-07 for a draft PR on A′ (opaque-leaf pre-pass; E41205 gated on resource legalization); draft PR #13507 opened 10-08. WGSL POD bit_cast segfault side finding = new symptom of #13380 (fixed by draft #13381), NOT filed separately."
 metadata:
   node_type: memory
   type: project
@@ -74,6 +74,12 @@ narrow to diagnostic-only (Approach B: ICE → user error, nothing newly legal),
 document / (b) diagnostics only / (c) park. The fixer is frozen at 579d248d0c (no pushes, no CI, no body edits). If (b): the triager briefs the fixer to emit E41205 for any
 struct-with-handle cast between different types, keep the CUDA/CPU byte path, and drop the matching tests.
 
+**10-14 17:16Z jhelferty-nv (assignee/shepherd, cmt 6174071727), addressed to @skiminki-nv, not the bot:** "As a heads-up, would like
+to talk with you about what the semantics of the `bit_cast` and `reinterpret` should be. (Tess prefers to default them as narrow as
+possible.)" Label `Office-Tess` added. It's a maintainer-to-maintainer discussion that leans narrow, but it does NOT pick (a)/(b)/(c). Closed as
+[Resolution] with no dispatch and no GitHub post (interjecting would be noise; 6086485474 is still accurate). #13507 stays held. The operator-nudge
+ask was dropped because the maintainers are actively on it. Resume = their outcome comment.
+
 **10-08 02:02Z jkwak-work asked @nv-slang-bot (cmt 6050655801):** what is the difference between bit_cast and reinterpret, and does
 reinterpret do more processing at runtime? Orchestrator routed it verbatim to slang-triager on the canonical thread with
 `<github-post-authorized />` so the triager can post the answer. **Answered 02:15Z, cmt 6050799354** (verified live: 3910 chars, @jkwak-work, disclaimer; Orchestrator spot-checked processReinterpret against source: max(from,to) size, AnyValue pack/unpack, no equality check). Gist: different lowering; reinterpret emits pack/unpack helpers on HLSL/CUDA, SPIR-V -O3 output nearly identical; on this shape reinterpret is not a working workaround either.
@@ -89,4 +95,4 @@ at $60.97 against cap $50 and ceiling $75. Tier-1 is advisory, not blocking, but
 ceiling. Orchestrator nudged the triager once (msg 61) and reported it to the dashboard (msg 69). CI dispatch 37727913617 is waiting at the priority gate.
 There were no non-bot comments after 02:02:47Z. #13381 CI (37644780423) has been at the same gate since 10-07 15:33Z.
 
-**Resume.** Re-chase task `rechase-13480-draft-pr-5891` (10-12 13:00Z; predecessors `-ace0`, `-b224` were consumed one-shots; 10-10 13:00Z check found no change: draft, head 579d248d0c, 0 reviews, CI 37727913617 still waiting, no non-bot comment after 10-09 18:03:19Z). Resume trigger: a tangent-vector or maintainer scope answer on cmt 6086485474 → route it verbatim to slang-triager. If none by 10-16, ask the operator once whether to nudge. Thread `gh-issue-shader-slang/slang-13480`.
+**Resume.** Re-chase task `rechase-13480-draft-pr-0cf6` (10-16 13:00Z; predecessors `-ace0`, `-b224`, `-5891`, `-9dca` were consumed one-shots). The 10-10, 10-12 and 10-14 checks found no change: draft, head 579d248d0c, 0 reviews, rr+assignee jhelferty-nv, no non-bot comment after 10-09 18:03:19Z, mergeState BEHIND. **10-14: CI dispatch 37727913617 now 404s** and the head has 0 runs/checks, because it was swept by the repo-wide Actions run-history deletion (operator told 10-13 06:34Z). No CI is pending; never re-dispatch. Resume trigger: a tangent-vector or maintainer scope answer on cmt 6086485474 → route it verbatim to slang-triager. If none by 10-16, ask the operator once whether to nudge. Thread `gh-issue-shader-slang/slang-13480`.

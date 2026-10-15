@@ -1,13 +1,13 @@
 ---
 type: chain
 title: slang#13108 — CUDA by-value struct arg copies an unread large array
-description: External enhancement (missed optimization), P2. HANDED OFF 10-12 to minco3's draft PR #13583 (Closes #13108), which implements tangent-vector's cross-target field-promotion pass. No bot PR; the operator fixer decision is moot. Maintainers (assignee jkwak-work leans downstream) decide on the PR.
+description: External enhancement (missed optimization). DEPRIORITIZED 10-14 by assignee jkwak-work, who says Slang won't adopt the heuristic field-promotion approach. Chain closed for the bot; no bot PR. minco3's draft #13583 is still open, and its fate is for the maintainers.
 tags: [slang, cuda, nvrtc, ir, transform-params-to-constref, optix]
 ---
 
 # slang#13108 — by-value struct arg copies an unread large array
 
-Reporter **minco3** (external). Canonical thread `gh-issue-shader-slang/slang-13108`. Owner: slang-triager (handed off to contributor PR #13583).
+Reporter **minco3** (external). Canonical thread `gh-issue-shader-slang/slang-13108`. Owner: slang-triager. **Closed for the bot 10-14** (maintainer deprioritized).
 
 ## Facts (verified on GitHub)
 
@@ -33,4 +33,6 @@ Reporter **minco3** (external). Canonical thread `gh-issue-shader-slang/slang-13
   - The temp is conservative when `captured` is a distinct, unmodified local. Hand-passing `&captured` takes the frame from 11432 B (3112 B spills) to 8208 B (no spills).
   - Options offered, not recommended: (1) skip the temp for an unmodified, non-escaping, non-aliased local root; this does nothing for the repro. (2) `__restrict__` on the param takes the frame 8208 → 4104 B, but needs a general aliasing guarantee, and NVVM stops promoting at ≥4 fields read.
   - #13583 is mentioned only as the alternative. Chain stays handed off.
+- **10-13 jkwak-work review on #13583** (inline, promote-param-fields.cpp:56): the size cutoffs are a heuristic that won't work in some cases; they're "not comfortable" with this kind of optimization and will discuss it with tangent-vector this week. **10-14 minco3** pushed 0a69664bab, which removes the cutoffs: a param is promoted only when the fields passed are strictly smaller than the aggregate.
+- **10-14 jkwak-work** (6177930943, no bot @-mention): Slang already optimizes this, but it doesn't apply here because a snapshot copy is required. Slang "will not optimize the code generation as proposed" because it's a heuristic approach. They're lowering the priority. Labels are now optix/cuda/reproduced; Office-Tess was removed. Issue still OPEN. → The triager sent its closing `[Resolution]` (10-14 20:44Z; no GitHub post). Its memo marks the chain CLOSED. We re-engage only on a substantive webhook comment. If #13583 merges, it auto-closes the issue and only a FINAL note is needed.
 - Re-chase: `rechase-13108-noinline-p-c69e` (2026-10-16), repurposed to watch #13583. The earlier `rechase-13108-field-prom-1f13` ran and is gone.

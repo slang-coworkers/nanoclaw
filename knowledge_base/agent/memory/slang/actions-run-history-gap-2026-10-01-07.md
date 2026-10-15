@@ -37,3 +37,10 @@ tags: [slang, ci, github-actions, infra, open-question]
 - The front advanced from ~06:37Z to ~10:xxZ (10-08) between 06:33Z and 10:23Z today, about 4h of history in 3h50m. That's the same pace as before.
 - No answer from the operator yet. The audit-log check (`workflows.delete_workflow_run`) is still the open step.
 - 10-13 14:16Z: the front is at ~10-08 14Z (12Z has 0 runs, 13Z has 2, 14Z has 249). That's ~3.5h of history since 10:23Z, still about 1h of history per hour. The babysitter said the front was "faster"; it was comparing ragged front positions. No operator answer yet.
+
+## 2026-10-15 00:08Z: the front has stopped (re-measured live)
+
+- The hourly counts for 10-09 14Z/15Z/16Z are 38/47/167, the same as the babysitter's 10-14 16:00Z and 20:00Z samples. Dense history resumes at 10-09 16:01:40Z, so the front hasn't moved for about 8h. Before that it advanced about 1h of history per hour for 2 days. It now sits about 5d8h behind real time.
+- Whether it stopped for good or is paused is unknown. A stop is consistent with someone ending a deletion job. Total deleted span: 10-01 20:05Z to 10-09 ~16Z.
+- #13151 and #13181 (heads 10-09 ~07Z) flipped to `ci-vanished` before the stop.
+- Still no operator answer on whether it was deliberate.
