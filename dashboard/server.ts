@@ -3882,8 +3882,9 @@ async function refreshCcusageCacheInner(): Promise<void> {
   // Previously: 4 calls × 13 ag-dirs + 4 calls × 70 codex sessions = 332 npx subprocesses
   // per refresh, never finishing before the next refresh kicked in. New shape on lego:
   // 13 Claude + 15 Codex sessions-with-rollouts = ~28 sequential ccusage calls.
+  // No early return when the dir is absent: the gateway can still carry every
+  // group's spend (agDirs is just empty below).
   const sessionsDir = join(getDataDir(), 'v2-sessions');
-  if (!existsSync(sessionsDir)) return;
 
   const nameMap = new Map<string, string>();
   // Opened lazily elsewhere; the gateway overlay needs the id list to decide
@@ -3900,7 +3901,7 @@ async function refreshCcusageCacheInner(): Promise<void> {
 
   let agDirs: string[];
   try {
-    agDirs = readdirSync(sessionsDir).filter((d) => d.startsWith('ag-'));
+    agDirs = existsSync(sessionsDir) ? readdirSync(sessionsDir).filter((d) => d.startsWith('ag-')) : [];
   } catch {
     return;
   }
