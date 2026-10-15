@@ -28,6 +28,7 @@ vi.mock('./modules/cost-approval/index.js', () => ({ reconcileCostCards: vi.fn()
 vi.mock('./modules/cost-ceiling-adjustment/index.js', () => ({
   reconcileCostCeilingAdjustments: vi.fn(),
 }));
+vi.mock('./modules/cost-drift-check/index.js', () => ({ maybeStartCostDriftCheck: vi.fn() }));
 vi.mock('./container-runner.js', () => ({ stopOrphanedSessions: vi.fn() }));
 
 import { stopOrphanedSessions } from './container-runner.js';

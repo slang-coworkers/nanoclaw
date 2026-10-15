@@ -23,7 +23,7 @@ function normalizeList<T>(v: T | T[] | undefined | null): T[] {
 // `implement` — not just the direct child. Without this, project workflows
 // that go `slang-fix-issue → implement → base` skip cross-cutting overlays
 // targeted at `implement`.
-function collectWorkflowExtendsChain(workflowName: string, catalog: Record<string, SkillMeta>): string[] {
+export function collectWorkflowExtendsChain(workflowName: string, catalog: Record<string, SkillMeta>): string[] {
   const chain: string[] = [];
   const seen = new Set<string>();
   let cur: SkillMeta | undefined = catalog[workflowName];

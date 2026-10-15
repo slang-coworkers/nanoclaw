@@ -345,6 +345,19 @@ jobs:
       - name: Container skill tests (Python)
         run: python3 container/skills/learnings-wiki/test_learnings_wiki.py
 
+      # supervise-issues runs on the orchestrator's cron: scan.py classifies every
+      # chain, worktree-gc reaps tier disks, task-hygiene cancels re-chase tasks.
+      # Their suites (stdlib unittest, no deps) ran only by hand until now.
+      - name: supervise-issues script tests (Python)
+        run: python3 -m unittest discover -s container/skills/supervise-issues/scripts -p 'test_*.py'
+      # The okf-synthesis gate is the zero-token pre-check that decides whether a
+      # group's memory synthesis ever runs; its scanner is Python embedded in
+      # SKILL.md and the suite below extracts it from there. A scanner that stops
+      # seeing an offender does not fail anything in prod, it just keeps answering
+      # "bounded" while the file it was built for regrows.
+      - name: okf-synthesis scanner tests (Python)
+        run: python3 container/skills/okf-synthesis/test_okf_synth.py
+
       # explain-diff-html's upsert imports the PR-description rules from
       # container/hooks/lib/pr_description.py — one implementation, shared with
       # the PreToolUse gate — and its suite FAILS (not skips) when that import
@@ -360,6 +373,33 @@ jobs:
       # build, it just starts saying everything is fine.
       - name: KB observability tests (Python)
         run: python3 scripts/test_kb_observability.py
+
+      # The ci-babysitter pre-task gate (nv-slang) is a Node script the host runs
+      # every two hours; its wake decision is a pure function with a node:test
+      # suite beside it. The skill is only present in the composed tree, so a
+      # standalone nv-main checkout skips the step instead of failing on a
+      # missing path.
+      - name: ci-babysitter sweep-gate tests (node:test)
+        run: |
+          dir=container/skills/slang-ci-babysitter/scripts
+          if [ -f "$dir/sweep-gate.mjs" ]; then
+            node --check "$dir/sweep-gate.mjs"
+            node --test "$dir"/*.test.mjs
+          else
+            echo "skip: $dir not in this tree"
+          fi
+
+      # The daily cost-ledger drift check (scripts/verify-cost-ledger-vs-gateway.py
+      # --fleet) is what notices the cost cap counting less than the gateway saw;
+      # a regression in it does not fail anything, it just stops alerting.
+      - name: Cost ledger drift check tests (Python)
+        run: python3 -m unittest scripts/test_verify_cost_ledger.py
+
+      # The hourly practices check (ops/practices-check/) decides which fleet
+      # operating faults Grafana alerts on; a regression there does not fail a
+      # build, it just stops counting a class of finding.
+      - name: Practices check tests (Python)
+        run: python3 -m unittest discover -s ops/practices-check -p 'test_*.py'
 
       # The committed scheduled-task snapshot is the only record of what the live
       # agents are standing-instructed to do, and its whole value is that `git diff`
