@@ -361,6 +361,12 @@ jobs:
       - name: KB observability tests (Python)
         run: python3 scripts/test_kb_observability.py
 
+      # The daily cost-ledger drift check (scripts/verify-cost-ledger-vs-gateway.py
+      # --fleet) is what notices the cost cap counting less than the gateway saw;
+      # a regression in it does not fail anything, it just stops alerting.
+      - name: Cost ledger drift check tests (Python)
+        run: python3 -m unittest scripts/test_verify_cost_ledger.py
+
       # The committed scheduled-task snapshot is the only record of what the live
       # agents are standing-instructed to do, and its whole value is that `git diff`
       # is a drift alarm. It is a PAIR — JSON plus Markdown mirror, stamped with a
