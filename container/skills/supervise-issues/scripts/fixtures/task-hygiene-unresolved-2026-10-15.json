@@ -1,0 +1,367 @@
+[
+ {
+  "series_id": "rhi-881-review-rechase-5a7c",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang-rhi#881 (explicit handOffShared/takeOverShared). As of 2026-10-15 09:00Z: OPEN, non-draft, head 00fb748 (8b8b372 = merge of 775f522 + main 242091b, then 00fb748 = drop retained peer queue after #884; no force-push), MERGEABLE, mergeStateStatus BEHIND (main +6: #901-#906, trial merge 0 conflicts, none touch HandOff/TakeOver; do NOT ask for another main merge until a human engages or GitHub reports CONFLICTING). CI on 00fb748: 26/26 success; per-test verified on self-hosted msvc Release job 114444678277 and windows clang Debug 114444678190 (buffer/texture-shared-cuda .vulkan/.d3d12 PASSED, does-not-own=0). slang-reviewer delta-confirmed 10-11 10:28Z: REQUEST_CHANGES"
+ },
+ {
+  "series_id": "rechase-13438-optc-r6-45ea",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13438 (OpacityMicromapIdKHR for RayQuery; thread gh-issue-shader-slang/slang-13438). WEEKLY cadence. Operator go/no-go on option C: asked 10-05 (timed out -> HOLD), re-asked on orchestrator-dashboard 10-06, 10-07, 10-08 (dashboard row seq 478678), and 10-15 09:05Z (5th ask, weekly; dashboard msg id 13). The 10-15 check found no operator reply on dashboard rows 478680-502204 (10-08 09:05Z..10-15 08:54Z). Option C = small draft PR fixing the spirv_asm 'OpExecutionModeId __entryPoint' E99997 ICE: in source/slang/slang-emit-spirv.cpp (emitSPIRVAsm, ~line 11973 on master 6597ec9202) the __entryPoint fan-out special-cases only 'case SpvOpExecutionMode:', so OpExecutionM"
+ },
+ {
+  "series_id": "rechase-12779-followups-e9af",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#12779 (SLANG_DISABLE_EXCEPTIONS). PR #12782 (core/compiler-core) and PR #13244 (front-end guards) are merged. Two follow-ups are queued in slang-fixer (its #12779 session is sess-1787782142029-2tt9v8), waiting to be told to start: (a) the SLANG_DISABLE_EXCEPTIONS CMake option plus a -fno-exceptions CI compile job, which needs nv-slang-bot to get 'workflows' permission or a maintainer to apply the workflow change; (b) the parser PR (TokenReader sticky-error conversion plus the SpvSnippet::parse consumer). The operator was asked on 2026-09-29 16:05Z, 10-03, 10-07, 10-11 and 10-15 09:02Z (orchestrator-dashboard, thread gh-issue-shader-slang/slang-12779; the 10-15 ask"
+ },
+ {
+  "series_id": "rechase-12249-13411-a72c",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase the follow-ups of MERGED shader-slang/slang PR #12249 (issue #11075, closed COMPLETED; merged 10-06 by jhelferty-nv as 5cb03fa5f7). Don't chase #12249 re-review, its CHANGES_REQUESTED, Q3 (#12249 vs #13139), or tangent-vector's two post-merge inline questions (4168275578, 4168296783). Report those only if a human reopens them. If a revert PR for #12249 appears, report it and hold, since that is the maintainer's call.\nHistory: memory/imported/project_13486_func_extension_non_idifferentiable_segfault.md and project_13449_generic_ifloat_minmax_not_differentiable.md. Previous run logs: tasks/rechase-12249-13411-147b.md and earlier rechase-12249-13411-*.md.\nWATCH (a) #13486: bot-filed si"
+ },
+ {
+  "series_id": "rechase-13331-ready-6a0b",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase: shader-slang/slang draft PR #13331 (issue #13329, thread gh-issue-shader-slang/slang-11225/descriptor-handle-promotion, slang-fixer session sess-1790706670377-hdr6ms). The A/B decision is A: mark ready, or B: keep draft until zangold-nv answers the 'Open question' in the #13329 body about profile-less HLSL order dependence. It was posted on orchestrator-dashboard 09-29 22:34Z and re-posted 10-01, 10-03, 10-05, 10-07 (5th), 10-09 (6th), 10-11 (7th), 10-13 (8th) and 10-15 09:0xZ (9th ask, dashboard msg 7; each recent ask suggested the operator ping zangold-nv/jkwak-work directly on #13329). No answer yet; my lean is A. Head 1bc4028b2c; round 2 REQUEST_CHANGES with 0 bugs, both test g"
+ },
+ {
+  "series_id": "rechase-13263-maintainer-1924",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13263 (thread gh-issue-shader-slang/slang-13263). Two humans are pending. (1) Draft PR #13342 'Fold swizzles of makeVector whose operands are vectors' (option A, 'Related to #13263', head ab27fed2ed, unchanged 2026-10-07, 2026-10-11 and 2026-10-15, mergeStateStatus BEHIND master) waits on review by jkwak-work (assignee and requested reviewer); zero reviews as of 2026-10-15. The triager's [Triage Resolution] landed 2026-09-30 12:51Z: 2 slang-reviewer rounds addressed, codex approved; the one open gap is the untested MetalPackedVectorType-result branch, disclosed in the PR body. As of 2026-10-15 CI run 36714329032 (workflow_dispatch) was still 'waiting' on human gat"
+ },
+ {
+  "series_id": "rechase-13272-pr10607-de-5937",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13272 (thread gh-issue-shader-slang/slang-13272). Fix is pushed+verified on fix/issue-13272 @ b1fab5e41b (no PR; 1 ahead / 100 behind master 6597ec9202 at 10-15 08:30Z; master last touched slang-ir-lower-combined-texture-sampler.cpp at 43f979ad08 on 08-01, before merge-base 6eb89786ca); re-verify branch sha/ahead-behind live (gh api compare \u2014 local origin/ refs are not fetched). jhelferty-nv self-assigned #13272 at 09-28 17:31:06Z and milestoned it \"Q4 2026 (Fall)\" at 09-29 14:32Z, with no comment or event since (as of 10-15 08:30Z; they were active elsewhere 10-14 on #13548/#13480/#13449/#13622). They also authored open fork PR #10607 (idle since 07-08 @ 5d01da16"
+ },
+ {
+  "series_id": "13046-post-merge-recheck-d5bc",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-check shader-slang/slang#13046, which is on HOLD pending an operator decision. Background: #12935 (fix/issue-12934) MERGED 2026-10-05T14:25Z as master e6be8dcdd7, closing #12934 and #13259. Master now carries the same producer-side isRefinedInfoType / makeInfoForConcreteType fix as fix/issue-13046 @ 7a053f3bb7, so that branch's source change is redundant and only its three tests/bugs/13046-*.slang tests add anything. #13046 is still OPEN (assignee jvepsalainen-nv). Nobody has verified that master fixes #13046, including tdavidovicNV's 09-25 nested-properties repro. slang-fixer session sess-1789325371322-b21c9o (thread gh-issue-shader-slang/slang-13046) is on HOLD: no PR and no #13046 comm"
+ },
+ {
+  "series_id": "i13628-triage-recheck-93ff",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "One-shot re-check of shader-slang/slang#13628 (regression: texture/buffer aliases reject the integer format arg since #13537, merge a5a87a1236). Filed by slang-fixer 2026-10-15 06:30Z on the dashboard Main's order; the dashboard Main reported it terminal for the bot at 06:32Z ('maintainers triage and assign'). As of 10-15 06:35Z: open, unassigned, 0 comments, latest release v2026.19 (09-29) does NOT contain a5a87a1236. Inputs: gh issue view 13628 -R shader-slang/slang --json state,assignees,comments,labels; gh release list -R shader-slang/slang --limit 3; and, if a release newer than v2026.19 exists, whether a5a87a1236 is its ancestor (gh api repos/shader-slang/slang/compare/<tag>...a5a87a12"
+ },
+ {
+  "series_id": "chase-13468-ready-14b9",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase the operator on whether to un-draft shader-slang/slang PR #13468 (thread gh-issue-shader-slang/slang-13461). It fixes the #13461 stack overflow, a regression from #11210 first shipped in v2026.9.2 (last good: v2026.9.1). At 2026-10-07 01:40Z it was converged at head 58bde2efca: 3 nv-slang-bot commits, 7 files +422/-3, pr: non-breaking, closes #13461 only. slang-reviewer gave APPROVE_WITH_NITS with 0 bugs. The nit commits cc4624aa66 and 58bde2efca change comments, one variable rename and tests only; Orchestrator read the 4571b12664..58bde2efca source diff. Devin timed out twice, so reviewers_complete=false. CI run 37557512981 on 58bde2efca was 'waiting' (wait-for-human-priority) and "
+ },
+ {
+  "series_id": "rechase-slang-13295-read-ae4f",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13294 / draft PR #13295 (head b27873f7cc). Parked 2026-09-29 on an OPERATOR decision: flip #13295 draft\u2192ready (gh pr ready is operator-gated; if the operator says ready, Orchestrator may run it) so full CI runs (build/test jobs all SKIPPED on draft; only board-sync/reuse/CodeRabbit/CLA ran). As of 2026-10-15 02:35Z: still draft, 0 reviews (jkwak-work review-requested + assignee), no human comments on PR or #13294 (the 2026-10-06T12:29Z PR comment is our own nv-slang-bot explain-diff comment, not a human), 94 behind / 3 ahead of master; 56 checks SKIPPED, 8 non-skipped (board-sync x4, reuse x2 SUCCESS; CodeRabbit + license/cla are status contexts reported as SUCCES"
+ },
+ {
+  "series_id": "rechase-13529-pr13535-r3-bd63",
+  "reason": "unresolved: bare #ref outside the 3-6 digit issue shape",
+  "prompt": "Re-chase #3 for shader-slang/slang#13529 / draft PR #13535 (head cd83af94c3, branch fix/issue-13529, label pr: breaking change chosen by Orchestrator; maintainers may override). Assignee/requested reviewer jkwak-work since 10-08 21:07Z, 0 reviews. Re-chases #1 (10-12) and #2 (10-15) found no PR activity. jkwak-work milestoned #13529 and #13531 to \"Q4 2026 (Fall)\" and self-assigned #13531 on 10-12 16:1x-16:29Z, with no comment. On 10-15 the operator was asked to nudge jkwak-work. The draft is held for maintainers on: (1) confirm or override the breaking label; (2) how to coordinate downstream guards at 5 sites (slang-rhi metal-shader-object-layout.cpp:22; slangpy refl/type.cpp:601, shader_cur"
+ },
+ {
+  "series_id": "rechase-13530-pr13538-r3-f51e",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13530 / draft PR #13538. State at 10-15 10:58Z: head 8f894f0501, branch fix/issue-13530, label pr: breaking change, draft, 0 GitHub reviews, assignee jkwak-work. The chain is RESTING: the triager sent [Triage Resolution] 10-15 10:55Z (internal review: slang-reviewer round 4 APPROVE_WITH_NITS; the reviewer was Continued and is no longer cost-stopped). It is waiting on a maintainer for three things: (1) E31215 on all targets vs GPU-only (CPU/CUDA Array<T> uniforms compile today); (2) confirm pr: breaking change or change it to pr: non-breaking; (3) approve CI dispatch 38721513672, which is waiting at the approval gate. Decision table: a new non-bot comment or review"
+ },
+ {
+  "series_id": "rechase-9078-jhelferty-242d",
+  "reason": "unresolved: bare #ref outside the 3-6 digit issue shape",
+  "prompt": "Maintainer re-chase #4 for shader-slang/slang#9078 / draft PR #13467 (slang-fixer, thread gh-issue-shader-slang/slang-9078, head 302264acd3 as of 10-15). The fix is parked on jhelferty-nv's choice for CPU/CUDA: user global in/out still take uniform space, so every global declared after one, resources included, is mis-offset in GlobalParams relative to reflection. A -cpu run reads wrong data, where master asserted. Options: (a) give global in/out no uniform space in parameter binding (the reviewer recommends this); (b) reject them on CPU/CUDA; (c) follow-up only, which keeps the draft blocked. A second ask is whether CHECK-DAG in global-uniform-with-varyings.slang is OK. The questions are in "
+ },
+ {
+  "series_id": "rechase-13326-pr13328-4b5f",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13326 / PR #13328 (thread gh-issue-shader-slang/slang-13326). Parked on human review since 2026-09-29 21:30Z (review requested ~09-29 19:31Z); re-chases 09-30 through 10-14 21:30Z found no human activity: reviewers jhelferty-nv (shepherd) + dshreiner-nv requested, head fe1e33a01b, no reviews/inline comments, slang-reviewer R2 APPROVE, CI 57 pass / 2 skipping / 1 waiting at 10-14 (falcor-build-approval-gate, needs maintainer approval, not a failure), mergeStateStatus BLOCKED (review + gate). Last PR activity: nv-slang-bot explain-diff comment 10-06 12:31Z (head unchanged); #13326 no human comments since 09-29. slang-pr-approver is paused, so no approver review will"
+ },
+ {
+  "series_id": "rechase-13228-kaizhang-4-4638",
+  "reason": "unresolved: bare #ref outside the 3-6 digit issue shape",
+  "prompt": "Maintainer/operator re-chase (#4) for shader-slang/slang#13220 / draft PR #13228 (thread gh-issue-shader-slang/slang-13220). On 2026-10-14 the third silent window (9 days since slang-fixer's 10-05 20:55Z three-choice answer, issuecomment-6002744164, to kaizhangNV's question issuecomment-6002151425) was escalated to the operator on orchestrator-dashboard (msg 9) asking: (a) keep waiting, (b) have the fixer post one polite follow-up @kaizhangNV, or (c) default to option 1 (undefined) and mark ready. PR head 842ea5d5c1, draft. Owning fixer session sess-1790092897972-cuygfq. Steps: (1) Check for a maintainer reply: gh api repos/shader-slang/slang/issues/13228/comments --jq \".[] | select(.created"
+ },
+ {
+  "series_id": "rechase-13421-13431-1346-b02d",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13409 (draft PR #13421, head c42049e18f) and #13412 (draft PR #13431, head bf9f3fd05a), plus the two follow-ups filed from #13412: #13465 (undoParameterCopy passes groupshared by address for inout on Metal/CUDA) and #13466 (tryRemoveRedundantStore drops a store that a side-effect-free callee reads through a pointer). State on 2026-10-14 19:01Z (unchanged since 10-06 except where noted; 10-12 and 10-14 re-chases found no change): both drafts have passed internal review, and neither has a human review. Reviewers: jhelferty-nv on #13421, kaizhangNV on #13431, both assigned by jhelferty-nv on 10-05. The two PRs conflict in the same slang-ir-util.cpp hunks, so they are"
+ },
+ {
+  "series_id": "rechase-cla-bot-identity-c8f7",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase (15th ask) the operator decision on the unsigned nv-slang-bot USER identity (id 286953280). Sent to orchestrator-dashboard 2026-10-02 ~10:15Z; reminders 10-03 05:27Z, 10-03 15:00Z, 10-04 15:00Z, 10-05 15:00Z, 10-06 18:07Z, 10-07 18:05Z, 10-08 18:00Z, 10-09 18:00Z, 10-10 18:00Z (msg 7), 10-11 18:00Z (msg 5), 10-12 18:00Z (msg 7), 10-13 18:00Z (msg 9), 10-14 18:00Z (msg 7). Slang Maintainer/supervisor reports re-asking the same question are NOT answers, and neither are Orchestrator's own \"no force-push\" verdicts. Options: (a) have that account sign the CLA at https://cla-assistant.io/shader-slang/slang?pullRequest=12674, or (b) switch the fixer commit path to the App identity 27439747"
+ },
+ {
+  "series_id": "rechase-13273-review-r11-5857",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13273 / PR #13283 (canonical thread gh-issue-shader-slang/slang-13273). State at 2026-10-14 18:00Z: PR is OUT OF DRAFT (jkwak-work ready_for_review 2026-10-13T22:02Z), head e07080197c, OPEN, MERGEABLE, reviewDecision empty. jkwak-work left a COMMENTED review (2026-10-14T00:35Z, 9 inline clarity comments); slang-fixer (owning session sess-1790497061487-675dqo, mapped via pr-mappings) addressed all 9 in 36d9552 and left threads unresolved for him. pdeayton-nv (2026-10-14T17:26Z) asked to also cover #13548; fixer added tests/bugs/gh-13548.slang + PR-body mention in e070801. CI run 38607855962 (pull_request on e070801) PASSED wait-for-human-priority; falcor-build-appr"
+ },
+ {
+  "series_id": "recheck-12528-7ac8",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "One-shot re-check for shader-slang/slang#12528 (CUDA/OptiX PayloadRegisters OOB). The chain is parked on a maintainer decision. The fix exists only as commit 46b011766 'Pass exact OptiX payload register counts' inside draft PR #12691 by kaizhangNV, and that PR does not reference #12528, so its merge will NOT fire an issue webhook. Check: (1) is #12691 merged, or has any merged PR on master changed optixTraceWithRegs/optixTraverseWithRegs/optixInvokeWithRegs in prelude/slang-cuda-prelude.h to expand exactly N pr.regs operands? (2) is #12528 still open? Decision table: fixed on master and issue open \u2192 send slang-triager on thread_id gh-issue-shader-slang/slang-12528 a note to post the fixing P"
+ },
+ {
+  "series_id": "recheck-13548-decision-1125",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "One-shot re-check for shader-slang/slang#13548 (thread gh-issue-shader-slang/slang-13548). Parked on an operator decision: should slang-fixer add #13548's swap reproducer as a regression test on PR #13283 (fix/issue-13273) and add 'Fixes #13548' to its description? Context: pdeayton-nv's #13539 dropped its NonUniformResourceIndex emission fix (commit 2d2f0e84e), and the reporter said on 2026-10-14 (comment 6174249351): 'Not in progress yet, since existing draft PR #13283 will fix this.' slang-triager was asked to re-verify #13283 at head 36d9552a5 and post the result on #13548. Check: (1) gh issue view 13548 for new human comments or a close; (2) whether #13283's body or tests now cover #135"
+ },
+ {
+  "series_id": "rechase-13491-try-covera-ad54",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13491 (one try covers every throwing call in its operand). PARKED on a maintainer design decision; slang-triager recommended NO-GO on 2026-10-07 (https://github.com/shader-slang/slang/issues/13491#issuecomment-6044579342). History: /workspace/agent/memory/slang/13491-try-covers-nested-calls.md (read first). Open decisions: (1) adopt the coverage model Tess (tessfactor/tangent-vector) proposed: a try scopes all nested throwing calls, lambdas do not inherit it, E30091 stays an error; (2) the policy for a redundant nested try g(try f()): error, valid, or lint. The author skiminki-nv wants to wait for Yong. Merged spec#63 (2026-10-14) documents the CURRENT rule (\"A tr"
+ },
+ {
+  "series_id": "rechase-13250-varptr-563d",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Maintainer re-chase for shader-slang/slang#13250 (thread gh-issue-shader-slang/slang-13250). On 2026-09-30 at 16:24Z, slang-fixer posted a design question to saipraveenb25 at https://github.com/shader-slang/slang/issues/13250#issuecomment-5915339952. It offered three options for pre-1.4 SPIR-V, where the RWStructuredBuffer pointee is Uniform and no capability makes a Function pointer var legal: (1) emit SSBOs in the StorageBuffer class on SPIR-V 1.3; (2) avoid the pointer variable on the autodiff side; (3) emit a diagnostic that points users to spirv_1_4+. Draft PR #13253 is held with Refs #13250 (head 8c1356df, last updated 2026-09-24). The owning fixer session is sess-1790222977537-lguwns."
+ },
+ {
+  "series_id": "rechase-12630-cuda-ci-b1fb",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#12630 / draft PR #13377 (Approach A, Texture1D.Load for CUDA/PTX; fixer session sess-1787171558661-q4gptw, thread gh-issue-shader-slang/slang-12630). The chain is parked on two maintainer (jkwak-work) decisions, which the triager asked on #12630 on 2026-10-02 00:23Z: (1) CUDA CI: no CUDA GPU job has ever run on #13377. (2) Does the OptiX bring-up bind raw 1D CUtexObjects over linear memory? The 2D lowering doesn't support that.\nState as of the 2026-10-14 16:00Z check (the FIFTH no-change check in a row, after 10-02 22:40Z, 10-05, 10-08 and 10-11 16:00Z): the PR is still a draft at head 2042d2c with no reviews and no new non-bot comments. Head 2042d2c has ZERO Acti"
+ },
+ {
+  "series_id": "rechase-13518-memorder-q-473f",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13518 (MemoryOrder validation; triage cmt 6059782185, PR-opened cmt 6076770596). DRAFT PR #13541 (fix/issue-13518, head f961d32f0b as of 2026-10-14, 6 commits, label pr: non-breaking, BEHIND master) implements Approach A (IR check after constant folding; E41405/E41406 all targets, E41407/E41408 SPIR-V + non-texture Metal). Internal pipeline DONE: triager [Triage Resolution] 2026-10-12, slang-reviewer round-2 APPROVE_WITH_NITS (0 bugs, 5/6 nits folded). Merge-blocking open questions in PR body: Q1 (error vs warning + pr: breaking change?) and Q2 (CAS(Release,Acquire) reject vs allow). Issue assignee changed 2026-10-12 to @jkwak-work (was kaizhangNV), milestone Q4 2"
+ },
+ {
+  "series_id": "rechase-13519-seqcst-a-b-40d6",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13519 (MemoryOrder.SeqCst -> VUID-10866 on Vulkan SPIR-V). Triaged 2026-10-08 (comment 6059304356); parked on a maintainer decision: A = per-op downgrade (Load/CAS-fail->Acquire, Store->Release, RMW/CAS-success->AcqRel) vs B = SPIR-V diagnostic in validateAtomicOperations. slang-fixer holds a briefing. Assignee since 2026-10-12: @jkwak-work (self-assigned, milestone Q4 2026; same on #13518), no comment yet. Read the issue live (comments + timeline): if a maintainer picked A or B, dispatch slang-fixer on thread gh-issue-shader-slang/slang-13519 with the maintainer's words quoted verbatim + link. If still no decision, tell the operator on orchestrator-dashboard that"
+ },
+ {
+  "series_id": "rechase-13271-followups-c8c3",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13271 / draft PR #13284 (thread gh-issue-shader-slang/slang-13271). (1) Did the operator answer on orchestrator-dashboard (asked 09-30 11:39Z, re-asked daily 10-01..10-13 ~12:0xZ, 15th ask 10-14 12:0xZ (msg id 9), which offered replies 'file' / 'skip' / 'file a,c' / 'same rule' (= the 'filing a reproduced bug doesn't need sign-off' rule from #12249->#13449 and #12875->#13474) / 'weekly' (slow re-ask cadence to weekly)) whether to FILE or SKIP the 3 pre-existing master crashes slang-fixer reported: (a) -entry vsB -entry vsA (callee first) hangs at 100% CPU on HLSL/GLSL/WGSL; (b) uniform-bearing entry point called by another EP segfaults on SPIR-V/CUDA/Metal, ICEs a"
+ },
+ {
+  "series_id": "rechase-slangpy-1204-pr1-708e",
+  "reason": "unresolved: bare #ref outside the 3-6 digit issue shape",
+  "prompt": "Re-chase shader-slang/slangpy#1204 / draft PR #1206 (thread gh-issue-shader-slang/slangpy-1204). State at 2026-10-14 10:30Z: nothing has changed since 10-11. Draft PR #1206 is at head 27ddfd3b (10-09). It is a 4-attribute workaround for slang#13301: the DiffTensor/WDiffTensor/RWDiffTensor load/store witnesses use [ForwardDifferentiable] + [BackwardDerivative] instead of [Differentiable] + [BackwardDerivative], +8/-4 in slangpy/slang/difftensor.slang. CI is green, 18/18 checks. There are no GitHub reviews and no inline comments. #1206 is assigned to jkwak-work, with a review request to jkwak-work. #1204 is assigned to saipraveenb25. ccummingsNV asked a question on 2026-10-07 13:31Z. The bot a"
+ },
+ {
+  "series_id": "rechase-13406-r7-c566",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "[UPDATE 2026-10-15 08:15Z: jhelferty-nv TOOK OVER #13406 \u2014 self-assigned, retitled, 13 own commits 10-14 15:05Z..10-15 06:18Z (head 671215f5de), incl. deferring __ref_writeonly read check behind -experimental-feature and spelling ref readonly/ref writeonly. Owner dth1ak told to stand down (msg 2591). So: do NOT nudge dth1ak to push; only relay a jhelferty/tangent-vector ASK verbatim. If MERGED, the #11709 rebase must target HER final spellings; read merged head first.] Re-chase shader-slang/slang PR #13406 (#13339 Ref access modes), which parks #11709. Memory: /workspace/agent/memory/slang/11709-groupshared-param-by-reference.md (read 'Current state' and '10-14 state' first) and 11709-13406-"
+ },
+ {
+  "series_id": "rechase-12549-design-dec-29b6",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase the operator decision for shader-slang/slang#12549 / PR #12583 (countof for enums). Canonical thread: gh-issue-shader-slang/slang-12549. slang-fixer session: sess-1786741961625-fo2c0x. This is the 7th re-chase on a WEEKLY cadence. Asks went to orchestrator-dashboard on 2026-09-27 13:28Z and at 09:00Z on 09-28, 09-29, 09-30, 10-07 (dashboard msg id 17) and 10-14 (6th ask, dashboard msg id 27). None has an answer. The chain is treated as C (hold) until the operator answers. State at 2026-10-14 09:00Z: no maintainer comments, reviews or review comments since tangent-vector on 09-17. The only activity was jkwak-work removing the 'Dev Opened' label from #12549 at 10-08 01:17Z. 'Office-Te"
+ },
+ {
+  "series_id": "rechase-13419-pr13487-137f",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13419 (thread gh-issue-shader-slang/slang-13419): Conditional<ConstantBuffer<T>, cond> loses bindings/reflection when cond uses an extern enum. Assignee pdeayton-nv opened PR #13487 'Fold extern constant initializers after type checking' (Fixes #13419, fork branch fix/extern-constant-folding, opened 2026-10-07). This is Approach A. On 2026-10-14 the PR was open and not a draft, with reviews requested from dshreiner-nv, tangent-vector and jkwak-work. It had no human review, a github-actions bot review of 'minor, 5 gaps, 0 bugs', and NO CI runs on head 78297ce5d (0 workflow runs, none awaiting approval). NO-GO stands; slang-fixer's held briefing is superseded by the"
+ },
+ {
+  "series_id": "rechase-slang-13301-huma-d01c",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13301 (thread gh-issue-shader-slang/slang-13301). Parked on a maintainer decision. On 2026-10-09 at 21:56Z our reply (https://github.com/shader-slang/slang/issues/13301#issuecomment-6089916124, posted by slang-fixer session sess-1789716207340-dwbdoz) answered saipraveenb25's question about removing [Differentiable]. It said: partly. The workaround works with both custom derivatives, or with a custom backward derivative plus [ForwardDifferentiable]. A custom forward derivative plus [BackwardDifferentiable] still silently uses the auto derivative through interface callers. It recommended (i): open the header-time guard as a PR marked 'Part of #13301', and asked 'Sha"
+ },
+ {
+  "series_id": "rechase-triage-memo-path-c30b",
+  "reason": "no target reference",
+  "prompt": "Re-chase (operator action parked since 2026-09-12, re-surfaced 2026-09-30, 2026-10-07, 2026-10-14): the composed slang-triager spine (/workspace/extra/ephemeral/prod-groups/slang-triager/CLAUDE.md, /slang-triage-issue step 6) still writes triage memos to /workspace/agent/memory/triage-<number>.md instead of memory/issues/triage-<number>.md. The gate only wakes you if that is still true. Re-verify with grep, then send ONE short 5-bullet reminder to orchestrator-dashboard naming the decision (edit the slang project's slang-triage-issue WORKFLOW.md step-6 heredoc + the send_file paths; do NOT change base container/workflows/triage-issue alone because slangpy-triager still uses root memos), incl"
+ },
+ {
+  "series_id": "rechase-13206-pr13305-1485",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13206 / draft PR #13305 (fix/issue-13206-typelegal, owner slang-fixer, canonical thread gh-issue-shader-slang/slang-13206). The chain is parked on a maintainer decision: the PR's 'Open scope question for the maintainer: array-valued logical pointers' asks to pick A (extend type legalization to scalarize array values of special leaves, the #9062 path), B (reject array-valued logical pointers on SPIR-V with a diagnostic in this PR), or C (land for struct members, track arrays under #9062). Check PR #13305 and issue #13206 comments/reviews/inline comments with gh for a human (tangent-vector, jkwak-work, or another maintainer) answer since 2026-09-29T01:21Z. Also chec"
+ },
+ {
+  "series_id": "rechase-13348-assignee-5d97",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13348 (thread gh-issue-shader-slang/slang-13348): ICE E99997 'unexpected member flavor' when an inherited field is accessed through a property/subscript-backed BoundStorage. NO-GO ratified 2026-09-30: self-assigned member kaizhangNV owns it, no fixer dispatched. Prior re-chases rechase-13348-assignee-1a52 (2026-10-07) and rechase-13348-assignee-e721 (2026-10-14) found it silent (milestoned Q4 2026 on 10-07, Dev Opened label removed 10-08 \u2014 housekeeping only). Read memory/slang/13348-inherited-field-boundstorage-ice.md first. Check GitHub live for a PR from the assignee referencing #13348, a human comment asking for a bot PR, or closure. PR merged/closed as fixed \u2192"
+ },
+ {
+  "series_id": "rechase-13434-undraft-f9a2",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase the un-draft decision for shader-slang/slang draft PR #13434 (#13430, branch fix/issue-13430, head 457ae39a0e; canonical thread gh-issue-shader-slang/slang-13430). Its pr-mapping is on fixer session sess-1791148592366-vqg8p2 (thread gh-issue-shader-slang/slang-13428). Triager session for 13430: sess-1791173244200-mu85w4. Chain memory: memory/slang/13428-local-multi-declarator-generic-lookahead.md. #13428/#13432 are TERMINAL (merged 10-07 13:39Z, eaf758404f), so skip them.\nState as of 10-14 03:00Z: draft at 457ae39a0e, 4 files +198/-2, closes [13430] only, 0 GitHub reviews, bot-only comments on the PR and on #13430, no timeline events since 10-07. skiminki-nv is assigned and review-r"
+ },
+ {
+  "series_id": "rechase-13471-severity-2-892c",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "SECOND AND FINAL re-chase of shader-slang/slang PR #13471 (draft, fixes #13319: E45002 warning for conflicting link-time exports; head fix/issue-13319 @c9253fee5f as of 10-14). Parked on kaizhangNV's error-vs-warning decision (open question at the end of the PR body; error => flip E45002 to error + label 'pr: breaking change'), and on a human releasing draft-gated CI (as of 10-14 the head had zero CI runs; old dispatch run 37551523524 returns 404). Owner session: slang-fixer sess-1790691096900-1m4j24 (pr-mappings); triager chain on thread gh-issue-shader-slang/slang-13319. Check with gh (read-only): PR reviews/comments/inline comments since 2026-10-14T01:00Z, issue #13319 comments, draft sta"
+ },
+ {
+  "series_id": "rechase-13553-weekly-r5-e171",
+  "reason": "unresolved: bare #ref outside the 3-6 digit issue shape",
+  "prompt": "Weekly re-chase #5 for shader-slang/slang#13553 (thread gh-issue-shader-slang/slang-13553). Chain moved to WEEKLY cadence on 10-14 after both operator decisions went unanswered for 4-6 asks. STATE AT 10-14 00:05Z (Main-verified via gh): Draft PR #13562 head 70e2e2390f (unchanged since 10-11 00:53Z), 0 reviews, jkwak-work requested; CI run 38099996278 (workflow_dispatch @70e2e23) still 'waiting' (priority-yield), never CI-tested. Issue #13553: 1 bot comment; jkwak-work added labels Office-Tess + optix 10-12 16:15Z (no comment). Internal chain complete (slang-reviewer R2 APPROVE_WITH_NITS; nits applied in 70e2e23). CHECK: (1) Operator decisions on orchestrator-dashboard (last weekly ask 10-14 "
+ },
+ {
+  "series_id": "chase-13561-ci-deadlock-96d6",
+  "reason": "unresolved: bare #ref outside the 3-6 digit issue shape",
+  "prompt": "Re-chase draft PR shader-slang/slang#13561 (fixes #13551, Metal atomic on a vector element emitting &vec[i]; thread gh-issue-shader-slang/slang-13551). Owners: slang-fixer session sess-1791581280715-xso1dz (PR side), slang-triager session sess-1791579517692-bz9t5a (issue side).\n\nSTATE at 2026-10-13 22:30Z (checked live): head unchanged 543c82d237 (draft, nv-slang-bot author, pr: non-breaking, closes #13551, 3 files +147/-0), 0 reviews, no human comments (only coderabbitai/github-actions/nv-slang-bot 10-10 03:4xZ), now 2 ahead / 14 behind master (diverged; was 0 behind on 10-11), mergeable UNKNOWN, updatedAt 10-10 09:22Z. slang-reviewer: APPROVE_WITH_NITS, 0 bugs; nits fixed in 543c82d; Devin"
+ },
+ {
+  "series_id": "rechase-13333-ready-flip-a279",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase: shader-slang/slang draft PR #13333 (tests-only follow-up to merged #9085, thread gh-issue-shader-slang/slang-9085). As of 10-13 21:00Z: still draft, head d374fa39aa, no human review/comment (only bot explain-diff comment 10-06), slang-reviewer R2 APPROVE_WITH_NITS (budget spent), slang-fixer [Fix Report] sent 09-30 00:21Z. Operator asked on orchestrator-dashboard 10-01 21:04Z, 10-05 21:00Z, 10-09 21:00Z and 10-13 21:00Z (4 asks), no reply yet; options offered: ready / hold / close / weekly. Parked on the OPERATOR's decision to mark it ready for review (drafts-only guardrail: never flip it yourself or direct the fixer to). No real CI yet: pull_request CI skipped while draft (56 skip"
+ },
+ {
+  "series_id": "rechase-11669-load-decis-f5d4",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-check the open operator decision from the 2026-10-13 orchestrator-dashboard question (msg id 33): should slang-triager file a new shader-slang/slang issue for the combined-sampler Load miscompile found while verifying #11669? On master, WGSL/Metal read the sampler as the Load coordinate and DXC rejects the HLSL. The offer to file is comment 6024039658. The options given were (a) triager files it, linking #11669 and #10522, (b) drop it, (c) add the findings to #10522 instead. Check the dashboard session (bounded: ncl sessions messages sess-1776713576150-9fon2n --reverse --json --limit 400) for an operator reply. Also search shader-slang/slang for a new issue about combined-sampler Load, an"
+ },
+ {
+  "series_id": "rechase-13605-maintainer-6647",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13605 (HLSL CoopVec.store to groupshared lowers to a dynamically indexed loop, so DXC spills; maintainer jkwak-work, self-filed and self-assigned; parked 2026-10-13 after triage comment 6151925637, which gave options (a) case hlsl: -> __Store [ForceInline][ForceUnroll] or (b) [ForceUnroll] on the default arm). jkwak-work replied 6152084172 (18:11Z, no bot mention): unsure [ForceInline] is a good idea because N can be large; DXC should decide. slang-triager holds an UNPOSTED draft reply (its /workspace/agent/.gh-comments/draft-13605-reply-unroll-hint.md: asks which attribute they meant, plus N=1024 [unroll] vs [ForceUnroll] vs none DXIL measurements), HELD pending "
+ },
+ {
+  "series_id": "rechase-13596-r6-gate-f5e7",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13596 (R6: bot skips newcomer issues, waits 4 days on human-filed issues; thread gh-issue-shader-slang/slang-13596). Read /workspace/agent/memory/imported/project_13591_ai_contributor_standards_batch.md (sections 'Disposition' and 'R6 (#13596)') first. Pending operator decision: whether Main sends the R6 webhook gate (defer human-filed issues 4 days; skip GoodFirstBug/HelpWanted/no-bot; pass bot-ok or a crash with a reproducer) to a nanoclaw builder, or szihs builds it. Check live state first: #13596 comments and state, any slang-coworkers/nanoclaw PR by szihs or anyone implementing the R6 gate (search 'r6', 'bot-ok', 'no-bot', 'defer human'), and whether labels n"
+ },
+ {
+  "series_id": "slangpy-1190-rechase-2489",
+  "reason": "unresolved: bare #ref outside the 3-6 digit issue shape",
+  "prompt": "Re-chase shader-slang/slangpy#1190 (shader coverage tracking issue). The gate is cleared: slang-rhi#739 merged 2026-10-06 as b856e635, and #1189 already pins it. slangpy-triager edited our triage comment 5890380114 at 2026-10-13T12:50Z (triager session sess-1790684373816-hwlelh, thread gh-issue-shader-slang/slangpy-1190). That comment was the only comment on #1190. State of slangpy PR #1189 as of 10-13: OPEN, not draft, includes Fixes #1190, Slang pin 2026.19. It has merge conflicts with main fb1bca1e in docs/index.rst and src/sgl/device/{device.cpp,device.h,shader.cpp}, caused by #1186, #1199, #1208, #1211 and #1219. #1211 and #1219 touch the device-close path, so the rebase probably needs "
+ },
+ {
+  "series_id": "rechase-11387-lookup-ab-b8bd",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang PR #11387 (autodiff readNone carry gate, thread gh-issue-shader-slang/slang-11387). As of 10-13 12:00Z: head ec449cee89 unchanged since the 10-08 12:30Z master merge, MERGEABLE/BEHIND (20 behind, no file overlap). CI on ec449cee89 has 52 pass and 3 red, none from PR code: (i) 'SlangPy Tests' = 6 CUDA raytracing tests 'ptx2llvm: Failed to translate PTX' = slangpy#1214 (fixed 10-08 18:03Z, after this run); a plain rerun reuses the old workflow file, so a fresh dispatch or new push is needed. (ii) build-windows-{release,debug}-cl-aarch64 cancelled at the 2h job limit: a fleet-wide runner problem on 10-08 that hit every PR run that day; it cleared by 10-12, when build"
+ },
+ {
+  "series_id": "rechase-13600-r10-pr-rep-9fef",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13600 (R10: Discord posts in one thread, no 1/N messages; thread gh-issue-shader-slang/slang-13600). Read the 'R10 (#13600) prod audit' section of /workspace/agent/memory/imported/project_13591_ai_contributor_standards_batch.md first. The 1/N source is Slang Maintainer's weekly task slang-pr-report-committe-83e0 (cron 0 5 * * 1), and it next fires 2026-10-19 05:00Z. Pending operator decisions: (1) post the audit on #13600, (2) change that task's STEP 3 before the fire. Check the live state first: #13600 comments, slang-coworkers/nanoclaw#1672 (discord_create_thread) and any szihs R10 nanoclaw PR. If the operator has decided or the task is already fixed, record tha"
+ },
+ {
+  "series_id": "rechase-13565-assignee-p-067f",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13565 (SemanticChecking ~7.5% compile-time step since 2026-10-07, windows d307206d..bce8cbef and bce8cbef..d074e777; suspects #13232/#13445 and core-module growth #12249/#13270). Assigned 2026-10-12 to jvepsalainen-nv by jkwak-work; as of 10-13 no comment, no plan, no bisect. Nightly flags cleared 10-12/10-13 only because the trailing-7 baseline (10-06..10-12) is now mostly post-step, so a green nightly is NOT evidence of a fix. Check live with gh (read-only, never post): (1) #13565 state, assignee, any comments; (2) any workflow_dispatch run of nightly-mdl-perf-test.yml since 2026-10-12 (gh run list --workflow nightly-mdl-perf-test.yml --event workflow_dispatch) "
+ },
+ {
+  "series_id": "rechase-slang-13308-c86e",
+  "reason": "unresolved: bare #ref outside the 3-6 digit issue shape",
+  "prompt": "Re-chase shader-slang/slang#13308 (S-Lang install collision; libslang.so + slang.h). Parked 2026-09-29 on a MAINTAINER decision for the HEADER layout: (A) make all header install paths follow CMAKE_INSTALL_INCLUDEDIR (drop/redirect duplicate install(DIRECTORY include DESTINATION .) at CMakeLists.txt:849-853, derive slang-compiler.pc includedir) - non-breaking; (B) install headers under include/slang/ by default - breaking; (C) document only. Triage comment: https://github.com/shader-slang/slang/issues/13308#issuecomment-5887005676. ALREADY ROUTED (do not re-route): 5897663143 (jhelferty-nv 2026-09-29T20:00Z, library half only), 5907338642 (reporter jengelh 2026-09-30T08:31Z, 'Yeah, that leav"
+ },
+ {
+  "series_id": "rechase-slang-12621-d2a6",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#12621 (closed by reporter jvepsalainen-nv 2026-09-29 as COMPLETED while fix PR #12677 was still OPEN, unmerged, CONFLICTING/dirty, head 42baf8d unchanged since 2026-08-24; as of 2026-10-13 master 07cfeed8a gen_codegen (workloads.py:714) still uses sin/cos filler at workloads.py:727; no commits to workloads.py/manifest.py since #13285 on 09-29; merged compile-perf PRs #13009/#13035/#13186/#13187/#13285 did not replace it; #13525 closed unmerged, triage-only). Check: is #12621 reopened, #12677 merged/rebased/closed, did the work land in another PR, or did the reporter reply to the triager's flag comment https://github.com/shader-slang/slang/issues/12621#issuecomment"
+ },
+ {
+  "series_id": "rechase-12629-maintainer-1bfc",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#12629 (fourth check). The chain is parked waiting for maintainer jkwak-work to answer three design questions in issuecomment-5923238146: (1) is named OptiX-constant emission added alongside the 0x100/0x200 diagnostic, or does it replace it; (2) should it be a constant-only emission (#11437 pattern), or a CUDA prelude helper that translates the bits at runtime; (3) if it's the runtime helper, what happens to 0x100/0x200 when they appear in a runtime value. Draft PR #12644 (fix/issue-12629, head edc771c) stays on hold until they answer; as of 2026-10-13 it CONFLICTS with master (dirty, 309 behind; rebase once the design is answered, not before). Re-chases on 2026-10"
+ },
+ {
+  "series_id": "rechase-slangpy-1216-d77f",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slangpy#1216 (Python 3.15 wheels). PRs #1217 (source, head 3e54e5e7) and #1218 (cross-fork workflow, head 28289ae7) are drafts with reviewer verdict APPROVE_WITH_NITS on both. NEW GATE (2026-10-14 17:07): assignee/author jhelferty-nv asked on the issue '@kaizhangNV can you check with Chris if this is needed?' (https://github.com/shader-slang/slangpy/issues/1216#issuecomment-6173896811). That is a human-to-human scope question, and the bot did not reply. Still open under it: the (a)/(b) nanobind question at https://github.com/shader-slang/slangpy/pull/1217#issuecomment-6091068142, where (a) is cherry-picking wjakob/nanobind 890745357b56 onto skallweitNV/nanobind v2.10.2-"
+ },
+ {
+  "series_id": "rechase-13440-coherent-c2f4",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Maintainer re-chase for shader-slang/slang#13440 (thread gh-issue-shader-slang/slang-13440): external feature request (OppositeNor) for globallycoherent on ResourceDescriptorHeap / DescriptorHandle resources. slang-triager posted triage cmt 5998682239 on 2026-10-05T16:30Z (labels SPIR-V + reproduced, Type=Feature, workaround loadCoherent/storeCoherent(&buf[i]) + -capability vk_mem_model). NO fixer dispatched: design-gated on where coherence lives (type-level, i.e. reviving #10852; csyonghe on closed PR #11460 favored encoding coherence in the resource type). State as of 2026-10-12 re-chase: jhelferty-nv on 2026-10-05 assigned #13440 -> jkwak-work and #13442 -> jhelferty-nv+jkwak-work, both m"
+ },
+ {
+  "series_id": "rechase-13011-c6ab",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13011 (thread gh-issue-shader-slang/slang-13011; sibling #13061, same root cause). Parked on the bot's offer comment 5915974415 (2026-09-30): it asks saipraveenb25 (assignee) whether nv-slang-bot should open a DRAFT PR (Fixes #13011 + #13061) and which layer, and asks jvepsalainen-nv (#13061 assignee) whether a fix is in progress. Round 5. Rounds 1-4 (10-03, 10-06, 10-09, 10-12) were all silent on GitHub. On 10-09 the operator got an A/B decision on orchestrator-dashboard (msg id 17): A = release slang-fixer for a draft PR (Orchestrator recommended this; 10-09 and 10-12 checks found no overlapping PRs from either assignee), B = slang-triager posts one follow-up pi"
+ },
+ {
+  "series_id": "rechase-12714-layout-rul-8923",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#12714 / draft PR #13300 (-layout-rules-version). State as of 2026-10-12 16:00Z (verified on GitHub): no comment on #13300 or #12714 since bot cmt 5940330895 (2026-10-01 20:53Z); no reviews, no inline comments. Still waiting on @jkwak-work to pick a GLSL+202c option: (1) accept 202c on GLSL but unrounded [exception to round-up; caveat: direct SPIR-V rounds while -emit-spirv-via-glsl would not \u2014 same flags, two layouts] or (2) synthesize tail-padding members so GLSL rounds. Operator asked on orchestrator-dashboard (msg id 9 on 10-05, then msg id 31 on 10-12, 2nd ask, no reply to the first) with options (A) triager re-pings jkwak on #13300, (B) fixer rebases now, (C)"
+ },
+ {
+  "series_id": "rechase-13292-precise-1c87",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13292 (precise on HLSL outputs + GLSL gl_Position). The chain is parked NO-GO on a bot PR: jkwak-work authored the issue, is assigned (by jhelferty-nv), milestone Q4 2026 (Fall), and wrote #13290 (MERGED 2026-09-29). The topic is also part of the umbrella #13324 (assigned to jkwak-work and tangent-vector). There, jkwak-work said on 10-01 'do not make a PR with my idea' (a precise<T> generic type, pending discussion with tangent-vector), and tangent-vector proposed a makePrecise IR design on 10-02 that leaves HLSL/GLSL text emit open. The 10-08 'Dev Opened' label removals were bulk cleanup from #13500 and do not signal anything. Check: (1) Has jkwak-work or another"
+ },
+ {
+  "series_id": "rechase-13544-tv-6b49",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "[UPDATED 10-13 09:10Z: #13544 is CLOSED by the reporter damster101 (state_reason completed, 09:07:34Z; cmt 6142173332 \"It is better to have only one way to separate digits.\"). This is TERMINAL. Do not post on #13544 and do not reopen it. This re-chase now covers only the two live drafts: #13547 (blocked by skiminki-nv, who suggested float _ in 6140951497; did they lift the block or comment on #13547?) and #13546 (Fixes #13545; reviews and CI). The #13544 close-watch in step 3 is already satisfied.] FINAL re-chase of shader-slang/slang#13544 (' digit separators; assignee skiminki-nv). Read /workspace/agent/memory/slang/13544-digit-separators.md first.\nSTATE at 2026-10-12 18:40Z:\n- tangent-vec"
+ },
+ {
+  "series_id": "chase-13343-naming-19b3",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13343 (thread gh-issue-shader-slang/slang-13343). The module-naming direction is parked on a maintainer design call: N-A, name the module after the resolved file; N-B, loader-side identity (changes the serialized format); N-C, a detect-only diagnostic plus a stale check in isBinaryModuleUpToDate. The question was raised in bot triage comment 5912705781 on 2026-09-30. As of 2026-10-12 14:12Z there were still no maintainer comments or reactions (2 comments, both bot; 0 reactions on 5912705781). The only human signal was jhelferty-nv setting milestone 'Q1 2027 (Winter)' on 09-30. The last issue comment was the bot's at 2026-09-30T15:45Z. The K-A crash-fix PR #13345 w"
+ },
+ {
+  "series_id": "rechase-12875-maint-a8d0",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang PR #12875 (issue #12609, bulk-copy dynamic-interface packing). Head 2cfaf207bf (10-07 01:03Z; 30 behind master, MERGEABLE, not draft). Its green Windows ARM64+x86_64 run 37555145964 was DELETED (404 as of 10-12) in the repo-wide Actions purge: every run created 2026-10-01T20:05Z..2026-10-07T22:25Z is gone, and the window was still growing as of 10-12. The head now has 0 check suites, so there is no CI and no falcor gate; the pass counts survive only as text in https://github.com/shader-slang/slang/pull/12875#issuecomment-6029434953. The test fix splits FIELDWISE/BULKCOPY checks; the underlying getSet ordering bug is #13474 (assigned to jvepsalainen-nv 10-07 17:51Z"
+ },
+ {
+  "series_id": "rechase-13402-tint-ci-f-3c94",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang draft PR #13402 (fixes #13391 + #8323, WGSL-via-Tint std140; slang-fixer session sess-1790934848504-cxpbfi, thread gh-issue-shader-slang/slang-13391). Cadence is now WEEKLY (moved unilaterally 10-12 after 8 unanswered asks; 8th sent 10-12 ~10:10Z to orchestrator-dashboard). As of 10-12 10:00Z: head fa23079922, draft, 0 CI runs on the head (run 37055310934 deleted, 404); option A is dead. ci.yml's only change since 10-07 is #13526 (10-12, adds build-llvm:false to the wasm job); IS_THROTTLED_BOT (line 101) = workflow_dispatch && triggering_actor nv-slang-bot[bot] is unchanged, so a non-draft pull_request run is not throttled. Pending operator decision: B = slang-fix"
+ },
+ {
+  "series_id": "rechase-13198-cuda-arch-e876",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13198 (CUDA host-selected targets). State at 2026-10-12: #13286 merged 2026-09-28 (fixed explicit -Xnvrtc arch override / double -arch). Issue still OPEN, assigned kaizhangNV, labeled RTR+cuda+reproduced; last activity 2026-10-05 (no maintainer reply). Open maintainer question from reporter tdavidovicNV (comment 5991067025): should an explicit NVRTC arch override still diagnose a shader's higher minimum requirement (e.g. __cuda_sm_version(9.0) with compute_75 currently emits sm_75 silently), or is bypassing that check the intended raw-downstream-arg contract? And does it need its own issue? Note: #13436 (linkWithOptions drops session NVRTC args; fix PR #13450) is "
+ },
+ {
+  "series_id": "rechase-slang-13276-pr13-86c3",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13276 (thread gh-issue-shader-slang/slang-13276). The chain is HANDED OFF to human PR #13370 (jvepsalainen-nv, Fixes #13276). As of 10-12: open, non-draft, head 3c85a6cfa7, no human review, reviews requested from saipraveenb25 and dshreiner-nv, 44 behind master, and NO CI has run on head 3c85a6cfa7 (the earlier green was on 0b5fe56b3d). slang-triager (sess-1790571496244-95dzlc) already confirmed with/without that #13370 fixes #13276 and also passes #8957 (SPIR-V) and #12134, and its issue comment 5864017861 is current. Check: (1) #13370 state: merged / closed / review activity / new head / whether CI ran on the current head SHA (use commits(last:1).statusCheckRoll"
+ },
+ {
+  "series_id": "rechase-13536-hlsl-choic-dfd2",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13536 (thread gh-issue-shader-slang/slang-13536). The feature adds RTexture* and warns on readonly/writeonly applied to RWTexture*. Author and self-assignee is maintainer jhelferty-nv. The triage comment 6070650634 (2026-10-08) asks a single question: on HLSL, should RTexture* be rejected or lowered with an explicit loss of the read-only restriction? Read memory/slang/13536-rtexture-deprecate-readonly-rwtexture.md first. Check GitHub live for: a human comment answering the HLSL question or asking for a bot PR, a PR from the author that references #13536, or closure. If the author answered and asked for a bot PR, tell slang-triager on the canonical thread to releas"
+ },
+ {
+  "series_id": "rechase-slangpy-1195-fin-4f54",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slangpy#1195 (EXR decoding bug), FIFTH and LAST scheduled check, GitHub only. The chain is parked on the assignee (tdavidovicNV) answering the bot fix offer https://github.com/shader-slang/slangpy/issues/1195#issuecomment-5915782072 (posted 2026-09-30T16:53Z): (a) they fix it themselves, (b) the bot opens a draft PR, (c) the bot posts a patch. At the 10-02, 10-05, 10-08 and 10-11 checks there was no answer, no reaction, no PR referencing #1195, and no commit touching src/sgl/core/bitmap.cpp on main after 27bbc1dad2 (#1193, merged 2026-10-05T10:55Z). The operator never answered the ping question (asked 10-02/10-05/10-08); the decision is standing: NO ping, and do NOT ask"
+ },
+ {
+  "series_id": "rechase-12628-weekly-505e",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Weekly parked re-chase: shader-slang/slang#12628 / draft PR #12646 (Part B: global shaderRecordEXT ConstantBuffer read from the OptiX SBT on CUDA). Owner slang-fixer, session sess-1787171470890-8cjj6a, thread gh-issue-shader-slang/slang-12628. Compiler side done at head b6364faa59; slang-reviewer round-2 APPROVE_WITH_NITS.\n\nHeld on Q1 (https://github.com/shader-slang/slang/issues/12628#issuecomment-5923279786: shader-record global + entry-point uniforms both read SBT offset 0 \u2014 (1) reject, (2) lay entry-point params after the global's data, (3) keep overlap as Vulkan) and Q2 (https://github.com/shader-slang/slang/issues/12628#issuecomment-5924091966: OK to open slang-rhi CUDA host-binding ch"
+ },
+ {
+  "series_id": "rechase-slangpy-1167-gpu-fd27",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slangpy#1167 (thread gh-issue-shader-slang/slang-13169). Upstream slang#13169 was closed 2026-10-09 by saipraveenb25 as fixed by #13234. slangpy#1167 can only close after slangpy-fixer (session sess-1789719798342-ukgccz) runs the CUDA check: the runtime variant must print 'bwds ok grad_sum=320' against Slang >= 5df49668a. On 10-09 20:48Z it reported no GPU in its container. Steps: (1) Read slangpy#1167's state and comments with gh api. If it is closed, or a maintainer verified it, stop. (2) Check whether slangpy-fixer has a GPU now: read its latest rows with ncl sessions messages sess-1789719798342-ukgccz --reverse --json --limit 20. If it does, have it run the check wi"
+ },
+ {
+  "series_id": "rechase-13549-llvm-22971-1d4f",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13549 (LLVM pin bump to drop external/llvm-coff-pageoffset12l.patch). The gate fired because llvm/llvm-project#229712 is no longer OPEN (state in data). If MERGED: find the first llvm tag/release containing the merge commit (gh api compare or tags). If it is in a release, dispatch slang-triager on thread_id=gh-issue-shader-slang/slang-13549 to update the issue with the release that has the fix. Remind it of the caveats: draft #11017 targets 22.x, which lacks the fix, and the static_assert(LLVM_VERSION_MAJOR < 23) at slang-llvm-jit-shared-library.cpp:27. If it is not yet in a release, re-schedule a check for the next release. If CLOSED unmerged: tell the operator o"
+ },
+ {
+  "series_id": "rechase-13427-second-8966",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Second re-chase of shader-slang/slang#13427 (64-bit vector varyings get ONE Location on SPIR-V/GLSL; double3/double4/int64_t3 overlap the next varying, spirv-val 08722/08721). History: triage cmt 5982448861 (10-04). tangent-vector (maintainer, sole assignee) said in cmt 6044320898 (10-07 18:33Z): it is a bug, fix all targets whose counting rules give 64-bit scalars two slots, validate D3D VS inputs/PS outputs, patch-constant fix warranted but lower priority, no refactor. The triager's cross-target sweep cmt 6045519879 (10-07 19:44Z) found that only SPIR-V/GLSL need it, at GLSLVaryingLayoutRulesImpl (slang-type-layout.cpp:1048). It ends by asking @tangent-vector whether nv-slang-bot should op"
+ },
+ {
+  "series_id": "chase-13413-ready-4e45",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase the operator on whether to un-draft shader-slang/slang PR #13413 (thread gh-issue-shader-slang/slang-13408), the Metal RAY_FLAG_ACCEPT_FIRST_HIT_AND_END_SEARCH (0x04) fix for #13408. CADENCE IS NOW WEEKLY (announced in the 12th ask, applied after the 13th timed out 2026-10-09). Converged head e4beadee05: slang-reviewer R2 = APPROVE_WITH_NITS (0 bugs/gaps), nits applied in comment-only commits e49ae38241+e4beadee05 (Orchestrator read the c3194e5976...e4beadee05 diff: comments only). reviewers_complete=false (Devin timed out both rounds). Draft skips most CI lanes; the macOS metallib lane (only Apple-toolchain check) has not run. As of 2026-10-09 02:46Z the PR was OPEN draft, head e4b"
+ },
+ {
+  "series_id": "rechase-12564-export-ent-f7fb",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#12564 (draft PR #12565 @ ddbbe4289, on hold; owner slang-fixer session sess-1790818045985-5hh6ju, thread gh-issue-shader-slang/slang-12564). State as of 2026-10-08: the fixer answered tangent-vector's 10-02 direction on 2026-10-02 (https://github.com/shader-slang/slang/issues/12564#issuecomment-5957009672). Its findings: omitting 'export' avoids the hang (importer-only SPIR-V then gives E57004); the hang is in translateEntryPointInParamToBorrow (slang-emit.cpp:1098), BEFORE the split pass fixEntryPointCallsites (:2333), which falls into tangent-vector's 'investigate more' branch; fixEntryPointCallsites only splits on an IRCall and currently puts export on the entr"
+ },
+ {
+  "series_id": "rechase-13496-maintainer-2a24",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13496 (unify struct/class parsing; maintainer tangent-vector, self-assigned; parked 2026-10-07 after triage comment 6046591267; baseline PR #13497 Fixes #13495). Live-read #13496 and #13497 and search tangent-vector's open PRs for one touching ParseClass/ParseStruct. If #13496 closed or a PR addresses it: update memory/imported/project_13496_unify_struct_class_parsing.md to terminal, no GitHub post. If a new human comment exists that no chain answered: route it to slang-triager on thread gh-issue-shader-slang/slang-13496. Otherwise: one 5-bullet to orchestrator-dashboard only (thread gh-issue-shader-slang/slang-13496). Also re-raise the UNFILED side finding (class"
+ },
+ {
+  "series_id": "rechase-slang-13251-pr13-3253",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Re-chase shader-slang/slang#13251 (canonical thread gh-issue-shader-slang/slang-13251). State at 2026-10-05: jkwak-work silently adopted the issue 2026-09-28 (unassigned jhelferty-nv -> sole assignee, milestoned Q4 2026, due 2026-12-31), no comment. Bot draft PR #13252 (fix/issue-13251, head 98bbd9c8d7) untouched since 2026-09-24, review requested from jhelferty-nv + jkwak-work; sibling draft PR #13239 (#13238) likewise untouched. On 2026-10-05 the operator was asked on orchestrator-dashboard: keep holding / have slang-triager ping jkwak-work / close #13252. Check with gh: issue + PR #13252/#13239 state, any new human comment or review, and whether the operator answered (search conversations"
+ },
+ {
+  "series_id": "watch-13261-dep-67ac",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "Dependency watch for shader-slang/slang#13261 (is/as on inferred associated result \u2014 front-end fix HELD). #13261's full fix is staged on branch fix/issue-13261 but held: it depends on (1) PR #12935 merging AND (2) a deeper multi-element-untagged-union ICE fix in #13046 territory (slang-ir.h:861 cast assert), which was unfixed with no PR/branch as of 2026-09-25. All owned by jvepsalainen-nv. ACTION: using the github MCP tools, check whether PR #12935 is merged AND whether any PR fixing issue #13046 / the multi-element-untagged-union ICE has merged. If BOTH have landed, dispatch slang-fixer on thread_id=gh-issue-shader-slang/slang-13261 to resume: rebase fix/issue-13261 on master, re-validate "
+ },
+ {
+  "series_id": "i12092-scope-guard-7eb8",
+  "reason": "ambiguous: bare #refs alongside another repo",
+  "prompt": "ISSUE #12092 \u2014 DEFERRED by maintainer, dormant backstop only. STATE (09-11): jkwak-work decided (comment 5637624052) NOT to authorize the refactor now \u2014 'This appears to require a big refactoring... Please use a workaround by explicitly setting [anyValueSize(N)] until it gets resolved.' Bug stays OPEN as known/deferred; workaround is the interim answer; NO work authorized. Analysis already delivered (5543984361). This guard is now a RE-ENGAGEMENT backstop \u2014 silence is the EXPECTED state, do NOT nudge. ACT ON guard reason ONLY IF it fires: NEW_HUMAN_COMMENT = a maintainer re-engaged; read it \u2014 if they NOW authorize the refactor, relay to slang-triager on thread gh-issue-shader-slang/slang-120"
+ }
+]

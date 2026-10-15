@@ -157,6 +157,17 @@ export function startHostSweep(): void {
           log.error('Cost-ceiling-adjustment reconcile failed', { err });
         }
       },
+      // Daily cost-ledger vs gateway drift check (opt-in, NANOCLAW_COST_DRIFT_CHECK).
+      // Only decides whether a run is due; the run is detached and single-flight,
+      // so it never holds a tick open. Read-only against every DB.
+      'singleton:cost-drift-check': async () => {
+        try {
+          const { maybeStartCostDriftCheck } = await import('./modules/cost-drift-check/index.js');
+          maybeStartCostDriftCheck();
+        } catch (err) {
+          log.error('Cost drift check scheduling failed', { err });
+        }
+      },
     },
   });
   // Event feeds — additive over the resync floor: mail writes and runtime
@@ -214,6 +225,7 @@ async function sweep(): Promise<void> {
   tickQueue.add('singleton:approvals-scan');
   tickQueue.add('singleton:cost-cards');
   tickQueue.add('singleton:cost-ceiling-adjustments');
+  tickQueue.add('singleton:cost-drift-check');
   tickQueue.add('singleton:orphan-containers');
 
   // The tick ends — and the next one is armed — only after everything this

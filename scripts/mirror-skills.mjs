@@ -1,33 +1,48 @@
 #!/usr/bin/env node
 /**
- * Mirror `container/skills/` into every initialized group's `.claude-shared/`,
+ * Link `container/skills/` into every initialized group's `.claude-shared/`,
  * WITHOUT restarting anything.
  *
- * WHY A COPY IS REQUIRED (this is the whole point of the script)
- * -------------------------------------------------------------
- * `container/skills/` is NOT bind-mounted into containers. The only mount that
- * touches it is a single file — `container/skills/buddy/CHARTER.md` →
- * `/app/skills/buddy/CHARTER.md` (src/container-runner.ts). Refreshing
- * `container/skills/` therefore does nothing at all for a running agent.
+ * HOW A GROUP SEES A SHARED SKILL
+ * -------------------------------
+ * Two bind mounts meet inside the container (src/container-runner.ts):
+ *   container/skills/                            →  /app/skills          (ro)
+ *   data/v2-sessions/<AG-ID>/.claude-shared/     →  /home/node/.claude   (rw)
  *
- * What IS mounted is the group's own state directory:
- *   data/v2-sessions/<AG-ID>/.claude-shared  →  /home/node/.claude   (rw)
- * (src/container-runner.ts, guarded by `defaultSurfaces`.)
+ * On every spawn the host's `syncSkillSymlinks` → `syncSharedSkillLinks`
+ * (src/provider-contracts/realize.ts) reconciles `.claude-shared/skills/`: each
+ * selected shared skill is a SYMLINK `<skill> → /app/skills/<skill>`, dangling
+ * on the host and valid inside the container. The container therefore reads
+ * the host's `container/skills/<skill>` bytes live, so refreshing that
+ * directory propagates to a running agent with no copy and no restart.
  *
- * And skills get into that directory by being COPIED there —
- * src/group-init.ts mirrors `container/skills/<name>` →
- * `.claude-shared/skills/<name>` via `refreshMirror()`, on every wake.
+ * The host accepts exactly one shape for a shared skill's entry: a symlink
+ * (`lstat().isSymbolicLink()`). A real directory under that name is left in
+ * place but logged as "Shared skill not symlinked" on every spawn, and it
+ * shadows the live skill with whatever bytes it held when it was copied. An
+ * older revision of this script produced such copies, so this script now owns
+ * two things the spawn path does not cover:
  *
- * Put those together and the zero-downtime path falls out: replicate that same
- * copy on the host, into the directory that is already bind-mounted. The
- * container sees the new bytes on its next read — no restart, no kill, no
- * re-spawn. The agent picks the skill up the next time it loads one.
+ *   1. Replacing a stale real-directory copy of a shared skill with the link,
+ *      so live agents stop reading frozen bytes and the host stops warning.
+ *   2. Adding links for skills fetched since the group last spawned, so a
+ *      long-running container can load a brand-new skill before its next wake.
  *
- * We deliberately call the SAME `refreshMirror` the supported wake path calls
- * (imported from the built dist) rather than reimplementing `cp -r` with our
- * own staleness rule. Identical semantics is the point: recursive-max-mtime
- * comparison, destination removed first so files deleted upstream do not
- * linger, no-op when the mirror is already current (hence idempotent).
+ * A template's own skills are stamped into the SAME directory as real
+ * directories (src/templates/create-agent.ts) and must stay real: the template
+ * is their only source in the group. We cannot map a session id to its group
+ * folder without the database, so a name that any template under `groups/`
+ * stamps is treated as template-owned everywhere and never replaced. That
+ * over-approximates ownership (a stale copy of a catalog skill that merely
+ * shares a name with some template's skill keeps warning), but a destructive
+ * step errs toward leaving a directory alone.
+ *
+ * Subagent definitions (`agent.md` siblings) are still copied: the host mirrors
+ * them to `.claude-shared/agents/<entry>.md` as real files, and there is no
+ * container path for a link to point at.
+ *
+ * Idempotent: an existing symlink is left as-is, whatever its target, exactly
+ * as the host's own sync does.
  *
  * Usage:
  *   node scripts/mirror-skills.mjs [--root <repo>] [--dry-run] [--quiet]
@@ -45,6 +60,10 @@ const root = rootIdx >= 0 && argv[rootIdx + 1] ? path.resolve(argv[rootIdx + 1])
 const skillsSrc = path.join(root, 'container', 'skills');
 const overlaysSrc = path.join(root, 'container', 'overlays');
 const sessionsDir = path.join(root, 'data', 'v2-sessions');
+const groupsDir = path.join(root, 'groups');
+
+/** The container-side path of `container/skills/<skill>`; the link target the host itself plants. */
+const CONTAINER_SKILLS_DIR = '/app/skills';
 
 if (!fs.existsSync(skillsSrc)) {
   console.error(`✗ ${skillsSrc} does not exist — wrong --root?`);
@@ -54,8 +73,6 @@ if (!fs.existsSync(sessionsDir)) {
   console.log('No data/v2-sessions — no groups to mirror into.');
   process.exit(0);
 }
-
-const { refreshMirror } = await import(path.join(root, 'dist', 'group-init.js'));
 
 /** Recursive newest-mtime, same rule group-init uses for the agents/ mirror. */
 function latestMtimeMs(p) {
@@ -83,7 +100,51 @@ const dirsIn = (p) =>
     }
   });
 
+/**
+ * Skill names stamped by any template under `groups/<folder>/plugins/<plugin>/skills/`.
+ * Enumerated by directory rather than through the validated plugin reader so
+ * that an unvalidated stamp is still protected: this set only ever widens what
+ * we refuse to replace.
+ */
+function templateStampedSkillNames() {
+  const names = new Set();
+  if (!fs.existsSync(groupsDir)) return names;
+  for (const folder of dirsIn(groupsDir)) {
+    const pluginsRoot = path.join(groupsDir, folder, 'plugins');
+    if (!fs.existsSync(pluginsRoot)) continue;
+    for (const plugin of dirsIn(pluginsRoot)) {
+      const pluginSkills = path.join(pluginsRoot, plugin, 'skills');
+      if (!fs.existsSync(pluginSkills)) continue;
+      for (const skill of dirsIn(pluginSkills)) names.add(skill);
+    }
+  }
+  return names;
+}
+
+/**
+ * Make `dst` the symlink the host's spawn-time sync expects for `skill`, or in
+ * dry-run mode only say what would be done. Returns a verb for the change, or
+ * null when `dst` is already a symlink (any target: the host's own sync also
+ * leaves an existing link alone). A real entry is removed first; the caller has
+ * already excluded template-owned names, so what remains under a shared
+ * skill's name is a stale copy.
+ */
+function linkSharedSkill(skill, dst, dryRun) {
+  let st;
+  try {
+    st = fs.lstatSync(dst);
+  } catch {
+    st = undefined;
+  }
+  if (st?.isSymbolicLink()) return null;
+  if (dryRun) return st ? 'would replace copy with link' : 'would link';
+  if (st) fs.rmSync(dst, { recursive: true, force: true });
+  fs.symlinkSync(path.posix.join(CONTAINER_SKILLS_DIR, skill), dst);
+  return st ? 'replaced copy with link' : 'linked';
+}
+
 const skillNames = dirsIn(skillsSrc);
+const templateOwned = templateStampedSkillNames();
 
 // A group counts as mirror-eligible when it has a .claude-shared — that is what
 // group-init creates for default-surfaces groups, and what container-runner
@@ -91,6 +152,7 @@ const skillNames = dirsIn(skillsSrc);
 const groups = dirsIn(sessionsDir).filter((id) => fs.existsSync(path.join(sessionsDir, id, '.claude-shared')));
 
 const changes = [];
+const skipped = [];
 let groupsTouched = 0;
 
 for (const groupId of groups) {
@@ -99,21 +161,33 @@ for (const groupId of groups) {
   const agentsDst = path.join(claudeDir, 'agents');
   let touched = false;
 
+  // The host refuses a skills directory that is itself a symlink (the
+  // container owns every name under the mount, so a planted link could redirect
+  // the sync anywhere). We refuse it the same way rather than write through it.
+  let skillsDstIsLink = false;
+  try {
+    skillsDstIsLink = fs.lstatSync(skillsDst).isSymbolicLink();
+  } catch {
+    // absent — created below
+  }
+  if (skillsDstIsLink) {
+    skipped.push(`${groupId}: skills/ is a symlink — left alone`);
+    continue;
+  }
+
   if (!dryRun) fs.mkdirSync(skillsDst, { recursive: true });
 
   for (const skill of skillNames) {
-    const src = path.join(skillsSrc, skill);
     const dst = path.join(skillsDst, skill);
-    const existed = fs.existsSync(dst);
-    if (dryRun) {
-      if (latestMtimeMs(dst) < latestMtimeMs(src)) {
-        changes.push(`${groupId}: skills/${skill} ${existed ? 'would refresh' : 'would add'}`);
-        touched = true;
-      }
+    // A template-stamped name is the template's to manage; we neither replace
+    // a stamped directory nor plant a link under a name the template owns.
+    if (templateOwned.has(skill)) {
+      if (fs.existsSync(dst)) skipped.push(`${groupId}: skills/${skill} is template-owned — left alone`);
       continue;
     }
-    if (refreshMirror(src, dst)) {
-      changes.push(`${groupId}: skills/${skill} ${existed ? 'refreshed' : 'added'}`);
+    const verb = linkSharedSkill(skill, dst, dryRun);
+    if (verb) {
+      changes.push(`${groupId}: skills/${skill} ${verb}`);
       touched = true;
     }
   }
@@ -149,6 +223,9 @@ for (const groupId of groups) {
 
 if (!quiet || changes.length > 0) {
   for (const line of changes) console.log(`  ${line}`);
+}
+if (!quiet) {
+  for (const line of skipped) console.log(`  ${line}`);
 }
 console.log(
   `Mirror${dryRun ? ' (dry-run)' : ''}: ${skillNames.length} skill(s) → ${groups.length} group(s); ` +
