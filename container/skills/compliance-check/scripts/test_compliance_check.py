@@ -6,21 +6,25 @@ file lives in a temporary directory. No test spawns `gh`, opens a socket or read
 production path; the module under test is imported with NANOCLAW_DIR pointing at the
 fixture so its defaults resolve there too.
 
-Runs under both `python3 -m unittest discover -s ops/compliance-check -p 'test_*.py'`
-(what CI runs) and `python3 -m pytest ops/compliance-check -q`.
+Runs under both `python3 -m unittest discover -s container/skills/compliance-check/scripts -p 'test_*.py'`
+(what CI runs) and `python3 -m pytest container/skills/compliance-check/scripts -q`.
 """
 
+import contextlib
 import datetime as dt
 import importlib.util
+import io
 import json
 import os
 import shutil
+import ssl
+import subprocess
 import sys
 import tempfile
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(os.path.dirname(HERE))
+REPO = os.path.dirname(os.path.dirname(os.path.dirname(os.path.dirname(HERE))))
 NOW = dt.datetime(2026, 10, 15, 12, 0, tzinfo=dt.timezone.utc)
 SINCE = NOW - dt.timedelta(days=7)
 BOT = "nv-slang-bot[bot]"
@@ -166,7 +170,7 @@ class ComplianceCheckTest(unittest.TestCase):
         self.mod = load_module(
             "compliance_check_under_test",
             os.path.join(HERE, "compliance_check.py"),
-            {"NANOCLAW_DIR": self.root, "COMPLIANCE_CHECK_OUT": "", "COMPLIANCE_DISCORD_EXPORT": "", "ANTHROPIC_API_KEY": "", "ANTHROPIC_AUTH_TOKEN": ""},
+            {"NANOCLAW_DIR": self.root, "COMPLIANCE_CHECK_OUT": "", "COMPLIANCE_DISCORD_EXPORT": "", "ANTHROPIC_API_KEY": "", "ANTHROPIC_AUTH_TOKEN": "", "ANTHROPIC_BASE_URL": ""},
         )
         self.fake = FakeGitHub()
         self.gh = self.mod.GitHub(fetch=self.fake)
@@ -277,7 +281,7 @@ class ComplianceCheckTest(unittest.TestCase):
         rep, doc, _ = self.run_all()
         r = self.rule(rep, "discord-thread")
         self.assertEqual(r["state"], "UNKNOWN")
-        self.assertIn("COMPLIANCE_DISCORD_EXPORT", r["reason"])
+        self.assertIn("--discord-export", r["reason"])
         self.assertFalse(doc["complete"])
 
     def test_r10_from_export(self):
@@ -316,7 +320,7 @@ class ComplianceCheckTest(unittest.TestCase):
         self.assertEqual(r["results"][0]["reason"], "no judge credentials")
         docs = self.rule(rep, "docs-updated")
         self.assertEqual({x["id"]: x["verdict"] for x in docs["results"]}, {"slang#10": "unknown", "slang#11": "pass"})
-        self.assertEqual(doc["judge"], {"impl": "null"})
+        self.assertEqual(doc["judge"]["impl"], "null")
 
     def test_added_comment_excerpts_follow_language_syntax(self):
         ex = self.mod.added_comment_excerpts(self.fake.files[10])
@@ -398,12 +402,97 @@ class ComplianceCheckTest(unittest.TestCase):
     def test_judge_from_env(self):
         m = self.mod
         self.assertIsInstance(m.judge_from_env({}), m.NullJudge)
+        self.assertIn("ANTHROPIC_BASE_URL", m.judge_from_env({}).reason)
+        # Credentials without an endpoint: there is no default endpoint in the container.
+        no_base = m.judge_from_env({"ANTHROPIC_AUTH_TOKEN": "t", "HTTPS_PROXY": "http://x:aoc@host.docker.internal:10255"})
+        self.assertIsInstance(no_base, m.NullJudge)
+        self.assertEqual(no_base.judge("docs-updated", {})["reason"], no_base.reason)
+        only_base = m.judge_from_env({"ANTHROPIC_BASE_URL": "https://g.example"})
+        self.assertIsInstance(only_base, m.NullJudge)
+        self.assertIn("credentials", only_base.reason)
         j = m.judge_from_env({"ANTHROPIC_AUTH_TOKEN": "t", "ANTHROPIC_BASE_URL": "https://p.example/", "COMPLIANCE_JUDGE_MODEL": "claude-sonnet-5-5"})
         self.assertIsInstance(j, m.AnthropicMessagesJudge)
         self.assertEqual((j.base_url, j.model, j.token), ("https://p.example", "claude-sonnet-5-5", "t"))
-        k = m.judge_from_env({"ANTHROPIC_API_KEY": "k"})
+        k = m.judge_from_env({"ANTHROPIC_BASE_URL": "https://p.example", "ANTHROPIC_API_KEY": "k"})
         self.assertEqual(k.headers().get("x-api-key"), "k")
         self.assertNotIn("authorization", k.headers())
+
+    def test_judge_from_container_environment_uses_placeholder_bearer_and_gateway_model(self):
+        """The prod container's shape: a gateway URL, a placeholder bearer token the
+        gateway replaces, a placeholder API key, a proxy, and deployment model names."""
+        m = self.mod
+        env = {
+            "ANTHROPIC_BASE_URL": "https://inference-api.example/v1/anthropic",
+            "ANTHROPIC_AUTH_TOKEN": "gateway-managed-placeholder",
+            "ANTHROPIC_API_KEY": "placeholder",
+            "HTTPS_PROXY": "http://x:aoc_secret@host.docker.internal:10255",
+            "ANTHROPIC_MODEL": "aws/anthropic/sonnet",
+            "ANTHROPIC_DEFAULT_OPUS_MODEL": "aws/anthropic/opus",
+        }
+        sent = []
+
+        def transport(url, headers, body, timeout):
+            sent.append((url, headers, json.loads(body)))
+            return self.reply('{"verdict":"pass","reason":"ok"}')
+
+        j = m.judge_from_env(env, transport=transport)
+        self.assertIsInstance(j, m.AnthropicMessagesJudge)
+        self.assertEqual(j.judge("docs-updated", {"title": "t"})["verdict"], "pass")
+        url, headers, body = sent[0]
+        self.assertEqual(url, "https://inference-api.example/v1/anthropic/v1/messages")
+        self.assertEqual(headers["authorization"], "Bearer gateway-managed-placeholder")
+        self.assertNotIn("x-api-key", headers)  # the bearer wins; the key is a placeholder
+        self.assertEqual(body["model"], "aws/anthropic/opus")  # the Opus deployment outranks ANTHROPIC_MODEL
+        self.assertEqual(j.describe()["endpoint"], "https://inference-api.example/v1/anthropic")
+        fallback = m.judge_from_env(dict(env, ANTHROPIC_DEFAULT_OPUS_MODEL=""), transport=transport)
+        self.assertEqual(fallback.model, "aws/anthropic/sonnet")
+        explicit = m.judge_from_env(dict(env, COMPLIANCE_JUDGE_MODEL="claude-opus-5-5"), transport=transport)
+        self.assertEqual(explicit.model, "claude-opus-5-5")
+
+    def test_opener_honours_proxy_and_ca_bundle(self):
+        m = self.mod
+        plain = m.make_opener({})
+        self.assertNotIn("ProxyHandler", [type(h).__name__ for h in plain.handlers])
+        self.assertEqual([type(h).__name__ for h in plain.handlers].count("HTTPSHandler"), 1)  # urllib's default only
+        proxied = m.make_opener({"HTTPS_PROXY": "http://x:aoc_secret@host.docker.internal:10255"})
+        proxy = [h for h in proxied.handlers if type(h).__name__ == "ProxyHandler"]
+        self.assertEqual(len(proxy), 1)
+        self.assertEqual(proxy[0].proxies, {"https": "http://x:aoc_secret@host.docker.internal:10255"})
+        system_ca = ssl.get_default_verify_paths().cafile
+        if system_ca and os.path.isfile(system_ca):
+            with_ca = m.make_opener({"SSL_CERT_FILE": system_ca})
+            custom = [h for h in with_ca.handlers if type(h).__name__ == "HTTPSHandler" and getattr(h, "_context", None) is not None]
+            self.assertEqual(len(custom), 1)
+            self.assertGreater(custom[0]._context.cert_store_stats()["x509_ca"], 0)  # the bundle was loaded
+        with self.assertRaises(FileNotFoundError):
+            m.make_opener({"SSL_CERT_FILE": os.path.join(self.root, "missing-ca.pem")})
+        with self.assertRaises(ValueError):
+            m.AnthropicMessagesJudge("", token="t")
+
+    def test_default_out_dir(self):
+        m = self.mod
+        group = os.path.join(self.root, "workspace-agent")
+        self.assertEqual(m.default_out_dir({"COMPLIANCE_CHECK_OUT": "/x"}, group_dir=group), "/x")
+        self.assertEqual(m.default_out_dir({"NANOCLAW_DIR": "/nc"}, group_dir=group), "/nc/data/shared/compliance")
+        os.makedirs(group)
+        self.assertEqual(m.default_out_dir({"NANOCLAW_DIR": "/nc"}, group_dir=group), os.path.join(group, "reports", "compliance"))
+
+    def test_cli_discord_export_flag(self):
+        m = self.mod
+        path = os.path.join(self.root, "d.jsonl")
+        with open(path, "w") as fh:
+            fh.write(json.dumps({"id": "1", "channel_id": "c", "channel_type": "text", "thread_id": None, "created_at": ts(1), "content": "(part 1/2) hi"}) + "\n")
+        saved = m._gh_fetch
+        m._gh_fetch = self.fake
+        try:
+            buf = io.StringIO()
+            with contextlib.redirect_stdout(buf):
+                code = m.main(["--no-report", "--quiet", "--since-days", "7", "--repos", FakeGitHub.REPO, "--discord-export", path])
+        finally:
+            m._gh_fetch = saved
+        self.assertEqual(code, 1)
+        self.assertIn("discord-thread", buf.getvalue())
+        self.assertIn("1 of 1 item(s) fail", buf.getvalue())
 
     # ---- states, document, exit code ----
 
@@ -460,7 +549,7 @@ class ComplianceCheckTest(unittest.TestCase):
             page = fh.read()
         self.assertIn("0% → 67%", page)
         self.assertIn("https://github.com/shader-slang/slang/pull/10", page)
-        self.assertIn("COMPLIANCE_DISCORD_EXPORT", page)
+        self.assertIn("--discord-export", page)
         self.assertNotIn("<script", page)
         self.assertNotIn("http://", page.replace("https://", ""))  # no external resources
         self.assertIn("prefers-color-scheme", page)
@@ -480,6 +569,99 @@ class ComplianceCheckTest(unittest.TestCase):
         self.assertIn("&lt;b&gt;bad&lt;/b&gt;", page)
 
 
+class DiscordExportConverterTest(unittest.TestCase):
+    """discord_export_from_json.py turns saved tool output into the export shape without
+    the agent typing a record."""
+
+    SCRIPT = os.path.join(HERE, "discord_export_from_json.py")
+
+    def setUp(self):
+        self.root = tempfile.mkdtemp(prefix="discord-export-test.")
+        self.conv = load_module("discord_export_under_test", self.SCRIPT, {})
+
+    def tearDown(self):
+        shutil.rmtree(self.root, ignore_errors=True)
+
+    def messages(self):
+        return [
+            {"id": "100", "channel_id": "c1", "timestamp": "2026-10-13T09:00:12.000000+00:00", "content": "Weekly report", "author": {"id": "7", "username": "nv-slang-bot", "bot": True}, "jump_url": "https://discord.com/channels/g/c1/100"},
+            {"id": "101", "channel_id": "c1", "timestamp": "2026-10-13T09:00:40Z", "content": "a human reply", "author": {"id": "8", "username": "alice", "bot": False}},
+            {"id": "102", "channelId": "c1", "createdAt": "2026-10-13T09:01:00Z", "text": "in a thread", "thread": {"id": "t100"}, "author": "nv-slang-bot"},
+        ]
+
+    def write(self, obj, name="raw.json", raw=None):
+        path = os.path.join(self.root, name)
+        with open(path, "w") as fh:
+            fh.write(raw if raw is not None else json.dumps(obj))
+        return path
+
+    def run_conv(self, *argv):
+        out, err = io.StringIO(), io.StringIO()
+        with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+            code = self.conv.main(list(argv))
+        return code, [json.loads(ln) for ln in out.getvalue().splitlines() if ln.strip()], err.getvalue()
+
+    def test_array_wrapper_and_mcp_shapes(self):
+        for shape in (self.messages(), {"messages": self.messages()}, {"content": [{"type": "text", "text": json.dumps(self.messages())}]}):
+            path = self.write(shape)
+            code, recs, _ = self.run_conv(path, "--guild-id", "g")
+            self.assertEqual(code, 0)
+            self.assertEqual([r["id"] for r in recs], ["100", "102"])  # alice's post is not the bot's
+            self.assertEqual(recs[0]["url"], "https://discord.com/channels/g/c1/100")
+            self.assertEqual(recs[1]["thread_id"], "t100")
+            self.assertIsNone(recs[0]["thread_id"])
+            self.assertEqual(recs[1]["url"], "https://discord.com/channels/g/c1/102")
+            self.assertEqual(recs[0]["coworker"], "maintainer")
+            for key in ("id", "channel_id", "channel_type", "created_at", "content"):
+                self.assertIn(key, recs[0])
+
+    def test_jsonl_input_and_bot_flag_author(self):
+        path = self.write(None, raw="\n".join(json.dumps(m) for m in self.messages()) + "\n")
+        code, recs, _ = self.run_conv(path, "--author", "bot", "--channel-type", "forum")
+        self.assertEqual(code, 0)
+        self.assertEqual([r["id"] for r in recs], ["100"])  # only the author.bot flag qualifies
+        self.assertEqual(recs[0]["channel_type"], "forum")
+
+    def test_missing_fields_are_errors_not_guesses(self):
+        path = self.write([{"id": "1", "content": "x", "timestamp": "2026-10-13T00:00:00Z", "author": "nv-slang-bot"}])
+        code, recs, err = self.run_conv(path)
+        self.assertEqual((code, recs), (1, []))
+        self.assertIn("channel id", err)
+        code, recs, _ = self.run_conv(path, "--channel-id", "c9")
+        self.assertEqual(code, 0)
+        self.assertEqual(recs[0]["channel_id"], "c9")
+        path = self.write([{"id": "1", "channel_id": "c", "content": "x", "author": "nv-slang-bot"}])
+        self.assertEqual(self.run_conv(path)[0], 1)
+        self.assertEqual(self.run_conv(os.path.join(self.root, "nope.json"))[0], 2)
+        self.assertEqual(self.run_conv(self.write(None, raw="{not json"))[0], 2)
+
+    def test_inspect_writes_nothing(self):
+        path = self.write(self.messages())
+        out = io.StringIO()
+        with contextlib.redirect_stdout(out):
+            code = self.conv.main([path, "--inspect"])
+        self.assertEqual(code, 0)
+        self.assertIn("3 message(s)", out.getvalue())
+        self.assertNotIn('"channel_type"', out.getvalue())  # no records written
+
+    def test_export_feeds_the_checker(self):
+        path = self.write(self.messages())
+        _, recs, _ = self.run_conv(path, "--channel-type", "text")
+        export = os.path.join(self.root, "export.jsonl")
+        with open(export, "w") as fh:
+            fh.write("".join(json.dumps(r) + "\n" for r in recs))
+        checker = load_module("compliance_for_export_test", os.path.join(HERE, "compliance_check.py"), {"NANOCLAW_DIR": self.root, "COMPLIANCE_CHECK_OUT": ""})
+        posts = checker.load_discord_export(export)
+        self.assertEqual(len(posts), 2)
+        self.assertIsNotNone(checker.parse_ts(posts[0]["created_at"]))
+
+    def test_script_runs_as_a_process(self):
+        path = self.write(self.messages())
+        r = subprocess.run([sys.executable, self.SCRIPT, path, "--channel-id", "c1"], capture_output=True, text=True, check=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(len(r.stdout.strip().splitlines()), 2)
+
+
 class MetricsTest(unittest.TestCase):
     """The nanoclaw_compliance measurement re-emits latest.json without re-deriving
     any rule, and a missing report is an error, not zero."""
@@ -496,7 +678,7 @@ class MetricsTest(unittest.TestCase):
         shutil.rmtree(self.root, ignore_errors=True)
 
     def test_emits_per_rule_rates_and_totals(self):
-        out_dir = os.path.join(self.root, "data", "shared", "compliance")
+        out_dir = os.path.join(self.root, "groups", "eval-compliance", "reports", "compliance")
         os.makedirs(out_dir)
         doc = {
             "status": "findings", "complete": False, "exitCode": 1,

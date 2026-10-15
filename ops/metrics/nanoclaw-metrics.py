@@ -757,19 +757,26 @@ def collect_practices():
     emit("nanoclaw_practices", fields, {"status": d.get("status") or "unknown"})
 
 
-COMPLIANCE = os.path.join(NC, "data", "shared", "compliance", "latest.json")
+# The compliance check runs inside the eval-compliance coworker's container and writes
+# into its group directory, which the host sees under groups/<folder>/. The directory is
+# configurable because the group folder is an operator choice.
+COMPLIANCE = os.path.join(
+    os.environ.get("COMPLIANCE_REPORT_DIR") or os.path.join(NC, "groups", "eval-compliance", "reports", "compliance"),
+    "latest.json",
+)
 
 
 def collect_compliance():
-    """Per-rule pass rates from the compliance check's last run (ops/compliance-check/).
+    """Per-rule pass rates from the compliance check's last run
+    (container/skills/compliance-check/).
 
-    The check runs on its own weekly timer and writes latest.json; this collector only
+    The check runs as a weekly task of the eval-compliance coworker and writes latest.json; this collector only
     re-emits what that file says, so there is exactly one place that decides what a
     rule failure is. Emits nanoclaw_compliance with the failing-item total, the number
     of rules that could not be scored, the item count, and per rule `r_<check>_pass`,
     `r_<check>_fail`, `r_<check>_total` and `r_<check>_rate` (the rate is left out
     when the rule had no items, so an empty week never reads as 0%). `age_sec` is the
-    watchdog for the weekly timer. A missing file is reported through
+    watchdog for the weekly task. A missing file is reported through
     nanoclaw_collector.errors rather than as zero findings, because "the check never
     ran" must not read as "compliant".
     """

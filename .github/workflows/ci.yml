@@ -401,12 +401,13 @@ jobs:
       - name: Practices check tests (Python)
         run: python3 -m unittest discover -s ops/practices-check -p 'test_*.py'
 
-      # The weekly compliance check (ops/compliance-check/) scores what the bot
-      # posts against the contributor standard; its suite runs on in-memory
-      # fakes (no `gh`, no network, no model call), so it is cheap here and a
-      # regression there would otherwise show up only as a wrong weekly number.
+      # The weekly compliance check (container/skills/compliance-check/, run by
+      # the eval-compliance coworker) scores what the bot posts against the
+      # contributor standard; its suite runs on in-memory fakes (no `gh`, no
+      # network, no model call), so it is cheap here and a regression there
+      # would otherwise show up only as a wrong weekly number.
       - name: Compliance check tests (Python)
-        run: python3 -m unittest discover -s ops/compliance-check -p 'test_*.py'
+        run: python3 -m unittest discover -s container/skills/compliance-check/scripts -p 'test_*.py'
 
       # The committed scheduled-task snapshot is the only record of what the live
       # agents are standing-instructed to do, and its whole value is that `git diff`

@@ -47,6 +47,10 @@ container/skills/base/**
 container/skills/frontend-engineer/**
 container/skills/vercel-cli/**
 
+# Fleet-wide measurement skill run by the eval-compliance coworker; it scores every
+# project's bot output, so no project overlay owns it:
+container/skills/compliance-check/**
+
 # Agent-runner mcp-tool instruction docs:
 container/agent-runner/src/mcp-tools/**.md
 

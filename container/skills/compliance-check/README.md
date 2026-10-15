@@ -1,17 +1,12 @@
-# ops/compliance-check — read-only score against the Contributor AI Standard
+# compliance-check — read-only score against the Contributor AI Standard
 
-`compliance_check.py` reads what the coworker fleet posted to GitHub in a window, scores
-each item against the ten rules of the Contributor AI Standard (tracking issue
+`scripts/compliance_check.py` reads what the coworker fleet posted to GitHub in a window,
+scores each item against the ten rules of the Contributor AI Standard (tracking issue
 shader-slang/slang#13591), attributes each item to a coworker role, and writes a report.
-It costs no agent tokens except for the two rules a judge model reads. Its only output
-is the report under `data/shared/compliance/`, which `ops/metrics/nanoclaw-metrics.py`
-re-emits as the `nanoclaw_compliance` measurement.
-
-| File | Deployed to | Runs as |
-|---|---|---|
-| `compliance_check.py` + `vendor/` | `/usr/local/bin/compliance-check/` (the directory; the vendored checkers are imported by path) | `ubuntu` (owner of the data tree) |
-| `nanoclaw-compliance-check.service` | `/etc/systemd/system/` | systemd, `Type=oneshot` |
-| `nanoclaw-compliance-check.timer` | `/etc/systemd/system/` | weekly, Monday 06:00 UTC, randomized by up to 10 min |
+It runs as a weekly task of the dedicated read-only `eval-compliance` coworker group;
+[SKILL.md](./SKILL.md) is the agent's procedure. `ops/metrics/nanoclaw-metrics.py` reads
+the report from the group directory and re-emits it as the `nanoclaw_compliance`
+measurement.
 
 ## Guarantees
 
@@ -19,16 +14,20 @@ The tool only reads. These hold by construction, not by convention:
 
 - GitHub is queried through `gh api --method GET`. `gh_command()` pins the verb and
   refuses any path that is not a bare REST path (no `graphql`, no flags, no mutation
-  fields). There is no code path that posts, labels, comments, edits or reacts.
+  fields). There is no code path that posts, labels, comments, edits or reacts. In the
+  container `gh` is routed through the OneCLI proxy (`GH_TOKEN` is the proxy's placeholder);
+  the verb pin applies the same.
 - Production SQLite is not opened at all. If a future rule needs it, open it as
   `file:...?mode=ro` with `PRAGMA query_only`, as `ops/practices-check` does.
-- The Discord export is a file opened for reading. The tool never talks to Discord.
-- The judge, when configured, is a POST of item text to the model endpoint. It changes
+- The Discord export is a file opened for reading. The script never talks to Discord;
+  the agent produces the export with the group's one Discord tool, which reads.
+- The judge, when configured, is a POST of item text to the model gateway. It changes
   nothing anywhere.
 - The only writes are `latest.json`, `latest.html`, `history.log` and `runs/<date>.json`
-  under the report directory (`COMPLIANCE_CHECK_OUT`, default
-  `<NANOCLAW_DIR>/data/shared/compliance/`). The unit's `ProtectSystem=strict` makes that
-  directory the only writable path.
+  under the report directory: `COMPLIANCE_CHECK_OUT` if set, else
+  `/workspace/agent/reports/compliance/` when `/workspace/agent` exists (the group
+  directory, `groups/eval-compliance/reports/compliance/` on the host), else
+  `<NANOCLAW_DIR>/data/shared/compliance/`.
 - Exit codes: `0` clean (every rule scored, no failing item), `1` findings, `2` at least one
   rule could not be scored, or the report could not be written.
 
@@ -44,8 +43,8 @@ turns every OK GitHub rule UNKNOWN, because that OK would describe a sample.
 
 ## What is scored
 
-Every item the bot (`nv-slang-bot[bot]`, `COMPLIANCE_BOT_LOGIN`) posted in the window
-(`--since-days`, default 30) in `--repos` (default `shader-slang/slang`,
+Every item the bot (`nv-slang-bot[bot]`, `COMPLIANCE_BOT_LOGIN` or `--bot`) posted in the
+window (`--since-days`, default 30) in `--repos` (default `shader-slang/slang`,
 `shader-slang/slangpy`, `shader-slang/slang-rhi`):
 
 | Kind | Source | Attributed to |
@@ -76,7 +75,7 @@ decisions taken for the standard.
 | R7 | `docs-updated` | bot PRs that touch behaviour paths (`source/`, `src/`, `include/`, `prelude/`, `slangpy/`, `lib/`, `container/`, `scripts/`) | passes mechanically when the PR also touches a documentation file (`docs/`, `*.md`, README, changelog); otherwise the judge decides from the description and file list whether documentation should have changed | `COMPLIANCE_JUDGE_MAX_ITEMS` | 40 |
 | R8 | `simple-english` | every text item, with the disclaimer line and HTML comments removed | `vendor/ste_check.check_text` findings at most `max(1, ceil(words/100 × N))` | `COMPLIANCE_STE_MAX_PER_100_WORDS` | 2 |
 | R9 | `bot-label` | bot PRs and bot issues | the `bot` label is on the item at run time | — | — |
-| R10 | `discord-thread` | posts in `COMPLIANCE_DISCORD_EXPORT` | no `(part k/N)` or `k/N` counter on the first line; no top-level post on a text channel within N minutes of the previous top-level post in that channel (it belongs in that post's thread) | `COMPLIANCE_DISCORD_THREAD_WINDOW_MIN` | 10 |
+| R10 | `discord-thread` | posts in the export (`--discord-export` or `COMPLIANCE_DISCORD_EXPORT`) | no `(part k/N)` or `k/N` counter on the first line; no top-level post on a text channel within N minutes of the previous top-level post in that channel (it belongs in that post's thread) | `COMPLIANCE_DISCORD_THREAD_WINDOW_MIN` | 10 |
 
 The R8 allowance tolerates one finding in any text because the checker is heuristic
 (its sentence splitter and noun-cluster regex misfire on identifiers and proper nouns)
@@ -94,15 +93,15 @@ hits the cap is a source problem and turns OK rules UNKNOWN.
 
 ## Vendored checkers
 
-`vendor/pr_text_lint.py` and `vendor/ste_check.py` are copied verbatim from the pull
-requests that propose them (the header of each names the PR, branch and commit). The
-checker scores with the standard's own code so that it cannot disagree with it. To
-refresh one, fetch the file at the new ref, replace the code below the header, update
-the header, and run both self-tests:
+`scripts/vendor/pr_text_lint.py` and `scripts/vendor/ste_check.py` are copied verbatim
+from the pull requests that propose them (the header of each names the PR, branch and
+commit). The checker scores with the standard's own code so that it cannot disagree with
+it. To refresh one, fetch the file at the new ref, replace the code below the header,
+update the header, and run both self-tests:
 
 ```bash
-python3 ops/compliance-check/vendor/pr_text_lint.py --self-test
-python3 ops/compliance-check/vendor/ste_check.py --self-test
+python3 container/skills/compliance-check/scripts/vendor/pr_text_lint.py --self-test
+python3 container/skills/compliance-check/scripts/vendor/ste_check.py --self-test
 ```
 
 ## Judge
@@ -113,18 +112,25 @@ implementations, chosen from the environment by `judge_from_env()`:
 
 | Implementation | When | Behaviour |
 |---|---|---|
-| `AnthropicMessagesJudge` | `ANTHROPIC_AUTH_TOKEN` (sent as `Authorization: Bearer`) or `ANTHROPIC_API_KEY` (sent as `x-api-key`) is set | `POST <ANTHROPIC_BASE_URL>/v1/messages` (default `https://api.anthropic.com`), model `COMPLIANCE_JUDGE_MODEL` (default `claude-opus-5-5`), one request per item with the rule's rubric as the system prompt and the item as JSON. 429 and 5xx are retried three times with backoff; any other failure, a refusal, or a reply without a `{"verdict", "reason"}` object makes that item `unknown`. Stops after `COMPLIANCE_JUDGE_MAX_ITEMS` items per run; the rest are `unknown` with the reason "judge budget exhausted". |
-| `NullJudge` | no credentials | every judge item is `unknown` with the reason "no judge credentials", so both rules are UNKNOWN |
+| `AnthropicMessagesJudge` | `ANTHROPIC_BASE_URL` is set and so is `ANTHROPIC_AUTH_TOKEN` or `ANTHROPIC_API_KEY` | `POST $ANTHROPIC_BASE_URL/v1/messages`. `ANTHROPIC_AUTH_TOKEN` goes out as `Authorization: Bearer …` even when it is the gateway's placeholder (the OneCLI gateway replaces it); otherwise `ANTHROPIC_API_KEY` goes out as `x-api-key`. Model: first of `COMPLIANCE_JUDGE_MODEL`, `ANTHROPIC_DEFAULT_OPUS_MODEL`, `ANTHROPIC_MODEL`, then `claude-opus-5-5`. The request honours `HTTPS_PROXY`/`https_proxy` (urllib's proxy handler, CONNECT tunnel) and trusts `SSL_CERT_FILE` when set. One request per item with the rule's rubric as the system prompt and the item as JSON; 429 and 5xx are retried three times with backoff; any other failure, a refusal, or a reply without a `{"verdict", "reason"}` object makes that item `unknown`. Stops after `COMPLIANCE_JUDGE_MAX_ITEMS` items per run; the rest are `unknown` with the reason "judge budget exhausted". |
+| `NullJudge` | no `ANTHROPIC_BASE_URL`, or no credential | every judge item is `unknown` with that reason, so both rules are UNKNOWN. There is no default endpoint: inside the container the only model service is the one the host configured. |
 
 The verdict and one-line reason are stored per item in the report. The judge reads the
 material in the report's own words (added comment excerpts capped at 6,000 characters;
 the description capped at 4,000 characters plus the file list) and sees nothing else.
 
+In the prod container the variables already exist: `ANTHROPIC_BASE_URL` names the
+inference gateway, `ANTHROPIC_AUTH_TOKEN` is the gateway-managed placeholder,
+`ANTHROPIC_DEFAULT_OPUS_MODEL` names the Opus deployment, `HTTPS_PROXY` points at the
+OneCLI proxy and `SSL_CERT_FILE` at its combined CA bundle. Nothing needs to be added for
+the judge to run; set `COMPLIANCE_JUDGE_MODEL` or `COMPLIANCE_JUDGE_MAX_ITEMS` in the group
+environment to change the model or the per-run cap.
+
 ## Discord export (R10)
 
-Production keeps no store of sent Discord posts and the Discord token belongs to the
-slang-mcp server, so this tool does not query Discord. Point `COMPLIANCE_DISCORD_EXPORT`
-at a JSONL file with one object per bot post:
+The script does not query Discord. The agent exports the bot's posts with
+`mcp__slang-mcp__discord_read_messages`, saves the raw output, and converts it with
+`scripts/discord_export_from_json.py` (see SKILL.md) into one JSON object per bot post:
 
 ```json
 {"id": "1427", "channel_id": "123", "channel_type": "text", "thread_id": null,
@@ -135,12 +141,18 @@ at a JSONL file with one object per bot post:
 `id`, `channel_id`, `channel_type` (`text`, `forum` or `thread`), `created_at` (RFC 3339)
 and `content` are required; `thread_id` is the thread the post went to or `null` for a
 top-level post; `url` and `coworker` are optional. A line that does not parse makes the
-rule UNKNOWN rather than scoring the lines that did. Without the variable the rule is
-UNKNOWN with that reason, which keeps the run at exit 2 until an export is wired in.
+rule UNKNOWN rather than scoring the lines that did. Without an export the rule is
+UNKNOWN with that reason.
+
+The converter reads the saved tool output as a JSON array, an object holding the array
+under `messages`/`result`/`data`/`items`, an MCP result wrapper (`content[].text`), or
+JSONL, under Discord's field names and common aliases; `--inspect` prints what it sees.
+Values the output lacks are given as flags (`--channel-id`, `--channel-type`,
+`--guild-id`, `--coworker`); `--author` keeps only the bot's posts.
 
 ## Output
 
-`COMPLIANCE_CHECK_OUT` (default `<NANOCLAW_DIR>/data/shared/compliance/`) holds:
+The report directory holds:
 
 - `latest.json` — the full report: per-rule state and every scored item (link, kind,
   coworker, verdict, reason), `counts.perRule` with pass/fail/unknown/total/rate,
@@ -155,50 +167,31 @@ UNKNOWN with that reason, which keeps the run at exit 2 until an export is wired
 - `history.log` — one line per run: timestamp, status, failing-item and unknown counts,
   item count, exit code.
 
-## Run it on the prod host
+## Metrics
+
+`ops/metrics/nanoclaw-metrics.py` reads `latest.json` from `COMPLIANCE_REPORT_DIR`
+(default `<NANOCLAW_DIR>/groups/eval-compliance/reports/compliance`) and emits
+`nanoclaw_compliance`: `findings`, `unknown`, `ok`, `drift`, `items`, `exit_code`,
+`complete`, `age_sec`, and per rule `r_<check>_pass`, `r_<check>_fail`, `r_<check>_total`
+and `r_<check>_rate` (omitted when the rule had no items). A missing report is a
+collector error, never zero findings. Alert on `findings > 0`, `unknown > 0`, and
+`age_sec > 8 days` (the weekly task stopped producing reports).
+
+## Run it by hand
+
+From a host with `gh` logged in, read-only, writing nothing:
 
 ```bash
-NANOCLAW_DIR=/home/ubuntu/slang-coworkers-prod/nanoclaw \
-  python3 /home/ubuntu/slang-coworkers-prod/nanoclaw/ops/compliance-check/compliance_check.py
+python3 container/skills/compliance-check/scripts/compliance_check.py --no-report --since-days 7 --repos shader-slang/slang
 ```
 
-Add `--no-report` to print without touching `data/shared/compliance/`, `--out <dir>` to
-write somewhere else, `--since-days 7` for a week, `--repos shader-slang/slang` for one
-repository. `gh` must be logged in as a user that can read the repositories; the tool
-inherits that login and issues GET requests only. A 30-day run over the three
-repositories makes a few hundred REST calls, well inside the 5,000 per hour limit.
-
-## Install the timer
-
-```bash
-cd /home/ubuntu/slang-coworkers-prod/nanoclaw
-sudo install -d -m 0755 /usr/local/bin/compliance-check/vendor
-sudo install -m 0755 ops/compliance-check/compliance_check.py /usr/local/bin/compliance-check/
-sudo install -m 0644 ops/compliance-check/vendor/*.py /usr/local/bin/compliance-check/vendor/
-sudo install -m 0644 ops/compliance-check/nanoclaw-compliance-check.service /etc/systemd/system/
-sudo install -m 0644 ops/compliance-check/nanoclaw-compliance-check.timer /etc/systemd/system/
-sudo systemctl daemon-reload
-sudo systemctl enable --now nanoclaw-compliance-check.timer
-sudo systemctl start nanoclaw-compliance-check.service   # first run now, not next Monday
-systemctl list-timers nanoclaw-compliance-check.timer
-journalctl -u nanoclaw-compliance-check.service -n 30
-```
-
-Put the judge credentials and any threshold override in
-`/etc/nanoclaw-compliance-check.env` (`ANTHROPIC_BASE_URL=…`, `ANTHROPIC_AUTH_TOKEN=…`,
-`COMPLIANCE_JUDGE_MAX_ITEMS=60`); the unit reads that file when it exists, and without
-credentials the judge rules stay UNKNOWN.
-
-Then redeploy the metrics collector so the `nanoclaw_compliance` measurement starts
-flowing: `sudo install -m 0755 ops/metrics/nanoclaw-metrics.py /usr/local/bin/nanoclaw-metrics.py`.
-Alert on `findings > 0`, on `unknown > 0`, and on `age_sec > 8 days` (the timer has stopped
-producing reports). A missing report is a collector error, never zero findings.
+Add `--out <dir>` to write a report somewhere, `--discord-export <file>` to score R10.
 
 ## Tests
 
 ```bash
-python3 -m unittest discover -s ops/compliance-check -p 'test_*.py'
-python3 -m pytest ops/compliance-check -q
+python3 -m unittest discover -s container/skills/compliance-check/scripts -p 'test_*.py'
+python3 -m pytest container/skills/compliance-check/scripts -q
 ```
 
 The suite feeds the collector an in-memory GitHub fake, the judge a fake transport, and

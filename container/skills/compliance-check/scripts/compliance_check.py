@@ -22,12 +22,20 @@ It is modelled on ops/practices-check/practices_check.py:
                               file opened for reading, the judge through POST to the
                               model endpoint, which sends text and changes nothing.
 
-The only writes are the report under `<NANOCLAW_DIR>/data/shared/compliance/` (or
-COMPLIANCE_CHECK_OUT): `latest.json`, `latest.html`, `runs/<date>.json` and one appended
-line per run in `history.log`. `ops/metrics/nanoclaw-metrics.py` reads `latest.json`
-and emits it as the `nanoclaw_compliance` measurement.
+The only writes are the report: `latest.json`, `latest.html`, `runs/<date>.json` and one
+appended line per run in `history.log`, under COMPLIANCE_CHECK_OUT, which defaults to
+`/workspace/agent/reports/compliance/` inside a coworker container (the group's own
+directory, which the host sees as `groups/<folder>/reports/compliance/`) and to
+`<NANOCLAW_DIR>/data/shared/compliance/` elsewhere. `ops/metrics/nanoclaw-metrics.py`
+reads `latest.json` from the group directory and emits it as `nanoclaw_compliance`.
 
-  python3 compliance_check.py [--since-days N] [--repos a/b,c/d] [--no-report] [--out DIR]
+The tool runs as a weekly task of a dedicated read-only coworker group. In that
+container GitHub is reached through the OneCLI proxy (`gh` is already configured) and
+the judge through the gateway named by ANTHROPIC_BASE_URL, whose credential header is a
+placeholder the gateway replaces; HTTPS_PROXY and SSL_CERT_FILE are honoured.
+
+  python3 compliance_check.py [--since-days N] [--repos a/b,c/d] [--discord-export F]
+                              [--no-report] [--out DIR]
 
 Exit codes: 0 = clean, 1 = findings, 2 = at least one rule could not be scored.
 Findings outrank UNKNOWN because a finding is actionable now; the report carries both.
@@ -46,6 +54,7 @@ import json
 import math
 import os
 import re
+import ssl
 import subprocess
 import sys
 import tempfile
@@ -61,7 +70,24 @@ OK, DRIFT, UNKNOWN = "OK", "DRIFT", "UNKNOWN"
 PASS, FAIL, UNJUDGED = "pass", "fail", "unknown"
 
 NC = os.environ.get("NANOCLAW_DIR", "/home/ubuntu/slang-coworkers-prod/nanoclaw")
-OUT_DIR = os.environ.get("COMPLIANCE_CHECK_OUT", os.path.join(NC, "data", "shared", "compliance"))
+CONTAINER_GROUP_DIR = "/workspace/agent"
+
+
+def default_out_dir(env=None, group_dir=CONTAINER_GROUP_DIR):
+    """Where the report goes. Inside a coworker container the group directory is the
+    one writable place that survives the session and that the host can read, so the
+    report lives there; on a host the practices-check layout under data/shared applies.
+    COMPLIANCE_CHECK_OUT overrides both."""
+    env = os.environ if env is None else env
+    explicit = env.get("COMPLIANCE_CHECK_OUT")
+    if explicit:
+        return explicit
+    if os.path.isdir(group_dir):
+        return os.path.join(group_dir, "reports", "compliance")
+    return os.path.join(env.get("NANOCLAW_DIR", NC), "data", "shared", "compliance")
+
+
+OUT_DIR = default_out_dir()
 HERE = os.path.dirname(os.path.abspath(__file__))
 VENDOR_DIR = os.path.join(HERE, "vendor")
 
@@ -682,7 +708,7 @@ def check_discord(rep, export_path, since):
     which should have gone into that post's thread. Without an export the rule is
     UNKNOWN: prod keeps no store of sent posts and this tool does not talk to Discord."""
     if not export_path:
-        rep.unknown("discord-thread", "no Discord export", "COMPLIANCE_DISCORD_EXPORT unset; prod keeps no store of sent Discord posts and this tool does not query Discord")
+        rep.unknown("discord-thread", "no Discord export", "no export given (--discord-export / COMPLIANCE_DISCORD_EXPORT); the task exports the bot's posts with the Discord read tool first, this script never queries Discord")
         return
     try:
         posts = load_discord_export(export_path)
@@ -837,19 +863,43 @@ class Judge:
 
 
 class NullJudge(Judge):
-    """No credentials: every judge rule stays UNKNOWN with that reason. This is what
-    runs on a host without a model endpoint, and it is deliberately not a pass."""
+    """No usable model endpoint: every judge rule stays UNKNOWN with the reason the
+    environment gave (no base URL, or no credential). It is deliberately not a pass."""
 
     name = "null"
 
+    def __init__(self, reason="no judge credentials"):
+        self.reason = reason
+
+    def describe(self):
+        return {"impl": self.name, "reason": self.reason}
+
     def judge(self, rule, item):
-        return {"verdict": UNJUDGED, "reason": "no judge credentials"}
+        return {"verdict": UNJUDGED, "reason": self.reason}
+
+
+def make_opener(env=None):
+    """An opener that goes through HTTPS_PROXY (urllib's ProxyHandler reads the proxy
+    variables from the environment and tunnels https with CONNECT) and trusts the CA
+    bundle in SSL_CERT_FILE when one is set. The coworker container reaches the model
+    gateway only through the OneCLI proxy with its own CA, so both matter there."""
+    env = os.environ if env is None else env
+    proxies = {}
+    for scheme in ("https", "http"):
+        value = env.get(scheme.upper() + "_PROXY") or env.get(scheme + "_proxy")
+        if value:
+            proxies[scheme] = value
+    handlers = [urllib.request.ProxyHandler(proxies)] if proxies else []
+    cafile = env.get("SSL_CERT_FILE")
+    if cafile:
+        handlers.append(urllib.request.HTTPSHandler(context=ssl.create_default_context(cafile=cafile)))
+    return urllib.request.build_opener(*handlers)
 
 
 def _urllib_transport(url, headers, body, timeout):
     req = urllib.request.Request(url, data=body, headers=headers, method="POST")
     try:
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
+        with make_opener().open(req, timeout=timeout) as resp:
             return resp.status, resp.read().decode("utf-8", "replace")
     except urllib.error.HTTPError as e:
         return e.code, e.read().decode("utf-8", "replace")
@@ -865,7 +915,9 @@ class AnthropicMessagesJudge(Judge):
     DEFAULT_MODEL = "claude-opus-5-5"
 
     def __init__(self, base_url, token=None, api_key=None, model=None, max_items=None, transport=None, sleep=time.sleep, retries=3, timeout=120):
-        self.base_url = (base_url or "https://api.anthropic.com").rstrip("/")
+        if not base_url:
+            raise ValueError("AnthropicMessagesJudge needs a base URL")
+        self.base_url = base_url.rstrip("/")
         self.token = token
         self.api_key = api_key
         self.model = model or self.DEFAULT_MODEL
@@ -878,7 +930,7 @@ class AnthropicMessagesJudge(Judge):
         self.failures = 0
 
     def describe(self):
-        return {"impl": self.name, "model": self.model, "budget": self.max_items, "used": self.used, "transport_failures": self.failures}
+        return {"impl": self.name, "endpoint": self.base_url, "model": self.model, "budget": self.max_items, "used": self.used, "transport_failures": self.failures}
 
     def headers(self):
         h = {"content-type": "application/json", "anthropic-version": "2023-06-01"}
@@ -940,20 +992,26 @@ class AnthropicMessagesJudge(Judge):
 
 
 def judge_from_env(env=None, transport=None):
-    """The configured judge. Credentials select the Anthropic implementation; without
-    them the NullJudge runs and the judge rules are UNKNOWN."""
+    """The configured judge, from the container's environment.
+
+    ANTHROPIC_BASE_URL names the gateway and is required: there is no default endpoint,
+    because inside the container the only reachable model service is the one the host
+    configured. ANTHROPIC_AUTH_TOKEN is sent as a Bearer token even when it is the
+    gateway's placeholder, since the OneCLI gateway replaces it with the real credential
+    on the way out; ANTHROPIC_API_KEY is the fallback header. The model is the first of
+    COMPLIANCE_JUDGE_MODEL, ANTHROPIC_DEFAULT_OPUS_MODEL, ANTHROPIC_MODEL, then the
+    built-in default. Without a base URL or any credential the NullJudge runs and the
+    judge rules are UNKNOWN with that reason."""
     env = os.environ if env is None else env
+    base = env.get("ANTHROPIC_BASE_URL") or None
     token = env.get("ANTHROPIC_AUTH_TOKEN") or None
     key = env.get("ANTHROPIC_API_KEY") or None
+    if not base:
+        return NullJudge("no judge endpoint (ANTHROPIC_BASE_URL unset)")
     if not token and not key:
-        return NullJudge()
-    return AnthropicMessagesJudge(
-        env.get("ANTHROPIC_BASE_URL"),
-        token=token,
-        api_key=key,
-        model=env.get("COMPLIANCE_JUDGE_MODEL") or None,
-        transport=transport,
-    )
+        return NullJudge("no judge credentials (ANTHROPIC_AUTH_TOKEN/ANTHROPIC_API_KEY unset)")
+    model = env.get("COMPLIANCE_JUDGE_MODEL") or env.get("ANTHROPIC_DEFAULT_OPUS_MODEL") or env.get("ANTHROPIC_MODEL") or None
+    return AnthropicMessagesJudge(base, token=token, api_key=key, model=model, transport=transport)
 
 
 def check_judge_rules(rep, items, judge):
@@ -1228,6 +1286,7 @@ def main(argv=None):
     ap.add_argument("--quiet", action="store_true", help="print only non-OK rules plus the summary")
     ap.add_argument("--no-report", action="store_true", help="skip writing latest.json/latest.html/runs/history.log")
     ap.add_argument("--out", default=None, help=f"report directory (default {OUT_DIR})")
+    ap.add_argument("--discord-export", default=None, help="JSONL export of the bot's Discord posts for R10 (default $COMPLIANCE_DISCORD_EXPORT)")
     args = ap.parse_args(argv)
 
     started = time.time()
@@ -1236,7 +1295,8 @@ def main(argv=None):
     rep = Report()
     gh = GitHub()
     judge = judge_from_env()
-    items, problems = run_all(rep, gh, repos, since, judge, os.environ.get("COMPLIANCE_DISCORD_EXPORT") or None, args.bot)
+    discord_export = args.discord_export or os.environ.get("COMPLIANCE_DISCORD_EXPORT") or None
+    items, problems = run_all(rep, gh, repos, since, judge, discord_export, args.bot)
     doc = build_document(rep, started, since, repos, items, problems, judge, gh, args.bot)
     code = doc["exitCode"]
 
