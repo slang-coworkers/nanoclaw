@@ -152,8 +152,9 @@ if [ "$IS_PR_CREATE" = "true" ]; then
         --arg key "$REPO#$PR_NUM" --arg repo "$REPO" --arg num "$PR_NUM" --arg branch "$BRANCH"
       # Output instruction for the agent: (1) claim the PR for webhook routing,
       # (2) produce the HTML explanation that accompanies every PR we open
-      # (container/skills/explain-diff-html — in base-common, so every project
-      # spine has it). The hookSpecificOutput.additionalContext is injected into
+      # (container/skills/explain-diff-html — declared by the `implement`
+      # workflow's `uses.skills`, so every coworker type whose workflow opens
+      # PRs has it). The hookSpecificOutput.additionalContext is injected into
       # the agent's next turn. The comment lands wherever GitHub's clock puts it —
       # on a busy repo after the bots' first comments — and is found by its marker.
       CREATE_MSG="PR created: $REPO#$PR_NUM. IMPORTANT: Call report_pr_created(repo=\"$REPO\", pr_number=$PR_NUM) now so webhook events for this PR route to your session. Then run /explain-diff-html for $REPO#$PR_NUM: write the self-contained HTML under /workspace/agent/reports/pr-explanations/, deliver it with send_file to the thread that asked for this PR, make the same content the PR's explanation comment with its upsert_pr_body.py (one marker-identified comment, usually after the bots' first comments; GitHub-safe Markdown, rewritten for the new head on every later push), keep the PR description itself concise (what changed, why, how tested, issue links: squash merges copy it into git log), and list the file path in the review request or report that follows. Never post the file path or internal URLs to GitHub."

@@ -122,3 +122,53 @@ GROUP BY 1;
 
 Downstream precedence: body usage → priced cost (NanoClaw table); non-streamed header cost = comparison
 only; streamed header cost = informational; no usage → **UNKNOWN, never 0**.
+
+## v1.42.0 re-cut (2026-10-14): `*-v1.42.0.patch`
+
+NanoClaw 2026.10.0 asks OneCLI installs to run gateway **1.42.0** (closes the credential-injection
+host-enforcement bypass, onecli/onecli#438). 1.42.0 also replaces the policy engine with a unified
+first-match engine plus an automatic migration (#436), so the upgrade is a behaviour change for
+credential matching, not only a security patch; verify injection after the swap (below).
+
+The two v1.41.0 patches do not apply to v1.42.0: every `RequestEvent` literal gained a
+`matched_rule` field exactly where the header patch adds `captured_headers`, and
+`telemetry_core.rs` gained the matching `matched_rule_logical_ids` batch column. The re-cut keeps
+both fields side by side; the body-usage tap conflicted only in `hooks.rs` (same cause). Nothing
+else changed, and `usage_tap.rs` is byte-identical to the v1.41.0 version.
+
+**Build (v1.42.0):**
+
+```bash
+git clone --depth 1 --branch v1.42.0 https://github.com/onecli/onecli onecli-src && cd onecli-src
+git apply /path/to/gateway-response-header-capture-v1.42.0.patch
+git apply /path/to/gateway-body-usage-tap-v1.42.0.patch
+docker build -f docker/Dockerfile -t onecli-cost:v3 .   # ~9 min on lego
+```
+
+**Swap (health-gated, keep the old compose file as rollback):**
+
+```bash
+cp -p docker-compose.yml docker-compose.yml.bak-pre-v3
+sed -i 's|image: onecli-cost:v2|image: onecli-cost:v3|' docker-compose.yml
+docker compose up -d onecli            # Prisma applies the 1.42.0 migrations on first start
+# wait for `docker inspect --format '{{.State.Health.Status}}' <container>` = healthy, then
+curl -s http://127.0.0.1:<api-port>/api/health  # {"status":"ok","version":"1.42.0",...}
+```
+
+If the container does not reach `healthy`, set the image back to `onecli-cost:v2` and `up -d` again.
+
+**Verify after the swap, from inside a coworker container** (the policy migration must not have
+changed what gets injected):
+
+```bash
+curl -s -o /dev/null -w '%{http_code}\n' -H 'User-Agent: curl/8' https://api.github.com/repos/<org>/<repo>      # 200
+curl -s -o /dev/null -w '%{http_code}\n' 'https://github.com/<org>/<repo>.git/info/refs?service=git-receive-pack' # 200 = push token injected
+```
+
+then one non-streamed inference call and the `request_logs` row for its `x-litellm-call-id` must
+carry `usage_source` = `json` with the token counts.
+
+**Verified on lego 2026-10-14:** health `1.42.0` after 10 s; 82 Prisma migrations applied; GitHub
+API and push-probe 200 from a coworker container; oracle call `7bc32ef2-…` captured with
+`usage_input_tokens: 14`, `usage_output_tokens: 4`, cost header `0.000136`; `ncl cost-cap coworkers`
+unchanged. Prod (`onecli-cost:v2`, 1.41.0) not yet swapped.

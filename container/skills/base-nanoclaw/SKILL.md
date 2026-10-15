@@ -36,6 +36,29 @@ Cross-cutting tools for status updates, scheduling, elicitation, and durable lea
 - **Builds and compilation:** delegate to an `Agent` subagent — never `run_in_background` or a scheduled task for builds. The scheduling bullets above are the whole contract for a typed coworker; only `main` also carries a `## Task scheduling` section.
 - **append_learning.** Include a one-line summary, the evidence, and the file/path that proves it.
 
+## `ncl` surface (group scope)
+
+| Resource       | Verbs                                                                                        | Notes                                                                                             |
+| -------------- | -------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| `groups`       | `get`, `config get`, `config update`, `restart`                                              | Inspect or tweak your own container config. Cannot change `cli_scope`.                            |
+| `sessions`     | `list`, `get`, `messages`                                                                    | List your own sessions; read transcripts.                                                         |
+| `destinations` | `list`, `add`, `remove`                                                                      | Where you can send messages.                                                                      |
+| `members`      | `list`, `add`, `remove`                                                                      | Who can access your group.                                                                        |
+| `wirings`      | `get`, `update`                                                                              | Engagement for THIS conversation only (engage_mode / engage_pattern). `update` needs human approval. |
+| `tasks`        | `list`, `get`, `create`, `update`, `cancel`, `pause`, `resume`, `delete`, `run`, `append-log` | Your scheduled tasks; the gate-script and fresh-session rules are above.                          |
+| `pr-mappings`  | `list`                                                                                       | Which PR routes to which of your sessions. Claim a mapping with `report_pr_created`; `remap` is approval-gated. |
+
+```bash
+ncl groups config get                       # current container config (model, packages, MCP, etc.)
+ncl groups config update --provider codex   # switch agent provider — needs admin approval
+ncl sessions list                           # your active sessions
+ncl sessions messages <session-id>          # full transcript
+ncl destinations list                       # who you can send_message to
+ncl wirings update --engage-mode mention    # change when you engage in this chat
+```
+
+Mutating (approval-gated) verbs trigger the same admin-approval flow as the MCP self-mod tools. Accessing another group is rejected.
+
 ## Chain reporting mechanics
 
 The four invariants, the applicability note and the routing table are resident in your CLAUDE.md (Chain communication — the rules); this section carries the mechanics behind them.

@@ -5,6 +5,10 @@
  * wrong in a direction that flatters the bot. That is exactly the kind of bug a
  * dashboard never surfaces on its own, so it gets a test.
  */
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+
 import { describe, expect, it } from 'vitest';
 
 import {
@@ -18,6 +22,8 @@ import {
   type TerminalLookup,
   aggregateApproverWeekly,
   aggregateReviewCycles,
+  collectRoutedFromLine,
+  collectRoutedIssues,
   countHumanReview,
   diskCacheTtl,
   fetchAllReviewsWith,
@@ -666,5 +672,32 @@ describe('aggregateApproverWeekly — bucketing + agreement math', () => {
     expect(w.agreedApprove).toBe(1);
     expect(w.falseApprove).toBe(1);
     expect(w.agreementPct).toBe(50); // 1 agreed / 2 with-verdict
+  });
+});
+
+describe('collectRoutedIssues (streamed host log)', () => {
+  it('finds routed issues line by line, through ANSI colour codes, deduplicated', async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'funnel-log-'));
+    const p = path.join(dir, 'nanoclaw.log');
+    fs.writeFileSync(
+      p,
+      [
+        '[01:00:00.000] \x1b[32mINFO\x1b[39m dev-routed issue to peer repo="shader-slang/slang" issue=101',
+        '[01:00:01.000] INFO something else repo="shader-slang/slang" issue=999',
+        '[01:00:02.000] INFO dev-routed issue comment to peer peer="lego" repo="shader-slang/slangpy" issue=7',
+        '[01:00:03.000] INFO dev-routed issue to peer repo="shader-slang/slang" issue=101',
+        '',
+      ].join('\n'),
+    );
+    const got = await collectRoutedIssues(p);
+    expect([...got].sort()).toEqual(['shader-slang/slang#101', 'shader-slang/slangpy#7']);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it('never matches across a line break (same as the old whole-file regex)', () => {
+    const s = new Set<string>();
+    collectRoutedFromLine('dev-routed issue to peer', s);
+    collectRoutedFromLine('repo="a/b" issue=1', s);
+    expect(s.size).toBe(0);
   });
 });
