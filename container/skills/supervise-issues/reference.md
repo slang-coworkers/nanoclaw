@@ -495,15 +495,22 @@ the task script carries `# nanoclaw-task-timeout: 300`).
 |---|---|
 | Allow | name slug `rechase*` / `re-chase*` / `recheck*` / `re-check*`, `watch-<n>*`, `i<n>-*` / `issue<n>-*` / `pr<n>-*`, or a prompt opening "Re-chase"/"Re-check". `CORE_GUARD` (supervise, okf, synthesis, worktree, nightly, kb-sync, release, report, heartbeat, watchdog, hygiene, memory, digest, babysit, scan) vetoes on top. A one-shot is a `rechase`; a recurring match is a `watch` (closed-GC only, no cap). |
 | Prompt | `ncl tasks list` truncates prompts at 120 chars; full prompts come from `ncl tasks get`, cached in state by series id + listed prefix. Fetches past the time budget defer to the next fire. |
-| Targets | Structured first: `gh-issue-<owner>/<repo>-<n>`, `gh-pr-…`, `owner/repo#n`, github.com issue/pull URLs; the first is the chain key. Bare `#n` resolve against the chain's repo unless another known repo (slangpy, slang-rhi, slang-vscode-extension) is named — then the task is ambiguous and kept. No structured ref: bare refs (or the name's number) against the one repo the text names, else `shader-slang/slang`. |
+| Targets | Structured first: `gh-issue-<owner>/<repo>-<n>`, `gh-pr-…`, `owner/repo#n`, github.com issue/pull URLs; the first is the chain key. Bare `#n` resolve against the chain's repo unless any other repo appears (another structured ref's repo, any `owner/repo` text, or slangpy / slang-rhi / slang-vscode-extension) — then the task is ambiguous and kept. A bare `#n` that is not 3–6 digits (`#77`, `#4`) also keeps the task. No structured ref: bare refs (or the name's number) against the one repo the text names, else `shader-slang/slang`. |
 | Closed | One GraphQL `issueOrPullRequest` batch per 40 refs. Cancel only when every target is CLOSED/MERGED; any OPEN keeps it; unknown state with none OPEN is reported `unresolved` and kept. |
 | Cap | Ordinal per re-chase series, assigned on first sight and never lowered: declared (`-r<k>` in the name; `(r<k>)`, "<k>th re-chase", "re-chase #k" in the prompt) else chain max + 1. Ordinal − chain `base` > `MAX_RECHASES` → cancel + park. `unpark` sets `base` to the current max (a fresh allowance; names keep counting). |
 | Digest | Parked chains whose targets close drop out. With parked chains present and the last digest ≥ 7 days old, the gate wakes the agent with `data.digest`; `reports/parked-chains.md` is rewritten every fire either way. |
 
 The orchestrator's side (R11): `task-hygiene.py next <ref>` prints `{allowed, count, name,
-prompt_prefix, thread_id}` and exits 3 at the cap, parking the chain on the spot. The gate is the
-backstop for re-chases scheduled without it; a one-shot that fires within the hour it was created
-is never seen by the gate, so `next` is what keeps the count exact.
+prompt_prefix, thread_id}` and exits 3 at the cap, parking the chain on the spot. An allowed
+answer **reserves** the ordinal in the state file at once, so call `next` only when about to
+schedule and reuse the returned name if the create must be retried. The gate is the backstop for
+re-chases scheduled without `next`; a one-shot that fires within the hour it was created is never
+seen by the gate, so `next` is what keeps the count exact.
+
+Fail-safe behaviour: cached prompts only plan — a cancel re-fetches the full prompt first and
+defers if its targets changed; GitHub lookups, prompt fetches and cancels are admitted only while
+one more 40 s call fits the budget (the rest retries next fire); a corrupt state file is never
+reset — the gate wakes the agent with `state unreadable` and does nothing until it is fixed.
 
 Operator commands (inside the orchestrator container): `task-hygiene.py --dry-run` (plan only),
 `task-hygiene.py unpark <ref>`; `/workspace/agent/.task-hygiene/history.log` lists every

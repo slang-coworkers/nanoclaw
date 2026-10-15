@@ -66,6 +66,7 @@ MAX_RECHASES = int(os.environ.get("TASK_HYGIENE_MAX_RECHASES", "3"))
 DIGEST_EVERY_DAYS = 7
 GATE_BUDGET_S = float(os.environ.get("TASK_HYGIENE_BUDGET_S", "240"))
 GH_BATCH = 40
+OP_TIMEOUT_S = 40  # per ncl / gh call; work is admitted only while one more fits the budget
 
 AGENT = os.environ.get("TASK_HYGIENE_AGENT_DIR", "/workspace/agent")
 STATE_PATH = os.path.join(AGENT, ".task-hygiene", "state.json")
@@ -96,10 +97,13 @@ CORE_GUARD = re.compile(
 
 # --- Reference grammar ---------------------------------------------------------
 _SEG = r"[A-Za-z0-9_.-]+"
-THREAD_REF = re.compile(rf"\bgh-(?:issue|pr)-({_SEG})/({_SEG}?)-(\d+)\b")
+# Greedy repo: the LAST `-<digits>` is the number (`gh-issue-o/slang-2026-tools-13230`).
+THREAD_REF = re.compile(rf"\bgh-(?:issue|pr)-({_SEG})/({_SEG})-(\d+)\b")
 URL_REF = re.compile(rf"github\.com/({_SEG})/({_SEG})/(?:issues|pull)/(\d+)\b")
 SLASH_REF = re.compile(rf"(?<![\w/.-])({_SEG})/({_SEG})#(\d+)\b")
 BARE_REF = re.compile(r"(?<![\w/.#-])#(\d{3,6})\b")
+ANY_BARE_REF = re.compile(r"(?<![\w/.#-])#(\d+)\b")
+OWNER_REPO = re.compile(rf"(?<![\w/.-])({_SEG})/({_SEG})(?![\w/.-])")
 NAME_NUM = re.compile(r"(?<!\d)(\d{3,6})(?!\d)")
 ORDINAL_PATTERNS = (
     re.compile(r"(?:^|[-_])r(\d{1,3})(?:[-_]|$)", re.IGNORECASE),               # name: rechase-…-r4
@@ -169,13 +173,19 @@ def parse_refs(prompt: str, name: str = "") -> tuple[list[str], str | None]:
         if r not in refs:
             refs.append(r)
 
+    # A bare `#n` outside the issue-number shape (`#77`, `#4`) may be a real
+    # dependency we cannot place or an ordinal we cannot tell from one: keep.
+    if any(not 3 <= len(n) <= 6 for n in ANY_BARE_REF.findall(masked)):
+        return [], "unresolved: bare #ref outside the 3-6 digit issue shape"
     bare = [m.group(1) for m in BARE_REF.finditer(masked)]
     hinted = _hinted_repos(masked)
     if refs:
         if bare:
             base = refs[0].split("#")[0]
-            if hinted - {base}:
-                return [], "ambiguous: bare #refs alongside another repo name"
+            others = {r.split("#")[0] for r in refs} | hinted
+            others |= {f"{a.lower()}/{b.lower()}" for a, b in OWNER_REPO.findall(masked)}
+            if others - {base}:
+                return [], "ambiguous: bare #refs alongside another repo"
             for n in bare:
                 r = f"{base}#{int(n)}"
                 if r not in refs:
@@ -256,14 +266,20 @@ def empty_state() -> dict:
 
 def load_state(path: str | None = None) -> dict:
     path = path or STATE_PATH
+    # Only a missing file initializes: a corrupt or unreadable one raises, so a
+    # bad write can never silently reset every chain's count.
     try:
         with open(path) as f:
             st = json.load(f)
-    except (OSError, ValueError):
+    except FileNotFoundError:
         return empty_state()
+    if not isinstance(st, dict):
+        raise TypeError(f"invalid task-hygiene state {path}: expected an object")
+    for key in ("chains", "ordinals", "parked", "prompts"):
+        if key in st and not isinstance(st[key], dict):
+            raise TypeError(f"invalid task-hygiene state {path}: {key} is not an object")
     base = empty_state()
-    if isinstance(st, dict):
-        base.update({k: v for k, v in st.items() if k in base})
+    base.update({k: v for k, v in st.items() if k in base})
     return base
 
 
@@ -365,8 +381,11 @@ def plan(tasks: list[dict], gh_states: dict[str, str | None], st: dict, now: dt.
             unparked.append(chain)
             del parked[chain]
             closed_chains.add(chain)
-    # A closed chain's count is no longer needed; keep the state file bounded.
-    for chain in closed_chains:
+    # A closed chain's count is no longer needed; keep the state file bounded —
+    # unless another live task still names that chain first (multi-ref tasks).
+    live_chains = {r["refs"][0] for r in keep + unresolved if r.get("refs")}
+    live_chains |= {c["refs"][0] for c in cancel if c["reason"] == "cap"}
+    for chain in closed_chains - live_chains:
         if chain in parked:
             continue
         rec = st.get("chains", {}).pop(chain, None) or {}
@@ -380,26 +399,35 @@ def plan(tasks: list[dict], gh_states: dict[str, str | None], st: dict, now: dt.
             "parked": digest, "digest_due": digest_due}
 
 
-def next_rechase(chain_ref: str, st: dict, live_tasks: list[dict], cap: int = MAX_RECHASES) -> dict:
-    """What the orchestrator should name its next re-chase — or that it must not."""
+def next_rechase(chain_ref: str, st: dict, live_tasks: list[dict], cap: int = MAX_RECHASES,
+                 reserve: bool = False) -> dict:
+    """What the orchestrator should name its next re-chase — or that it must not.
+
+    Live re-chases of the chain are assigned durable ordinals here too. With
+    `reserve`, an allowed answer bumps the chain's count immediately, so a
+    re-chase that fires (and leaves the live list) before the hourly gate sees
+    it still counts: call `next` only when about to schedule, and reuse the
+    returned name if the create has to be retried.
+    """
     refs, err = parse_refs(chain_ref)
     if err or not refs:
         raise ValueError(f"cannot parse chain ref {chain_ref!r}: {err}")
     chain = refs[0]
-    rec = st.get("chains", {}).get(chain) or {}
-    count = int(rec.get("max_ordinal", 0))
-    base = int(rec.get("base", 0))
     for t in live_tasks:
         if task_kind(t) != "rechase":
             continue
-        trefs, terr = parse_refs(t.get("prompt") or "", t.get("series_id") or "")
+        sid = t.get("series_id") or ""
+        trefs, terr = parse_refs(t.get("prompt") or "", sid)
         if terr or not trefs or trefs[0] != chain:
             continue
-        sid = t.get("series_id") or ""
-        k = st.get("ordinals", {}).get(sid) or declared_ordinal(sid, t.get("prompt") or "") or count + 1
-        count = max(count, int(k))
+        assign_ordinal(st, chain, sid, declared_ordinal(sid, t.get("prompt") or ""))
+    rec = st.setdefault("chains", {}).setdefault(chain, {"max_ordinal": 0, "series": []})
+    count = int(rec.get("max_ordinal", 0))
+    base = int(rec.get("base", 0))
     nxt = count + 1
     used = count - base
+    if reserve and used + 1 <= cap:
+        rec["max_ordinal"] = nxt
     repo, num = chain.split("#")
     short = repo.split("/", 1)[1]
     return {
@@ -434,7 +462,7 @@ def render_report(parked: list[dict], now: dt.datetime, cap: int) -> str:
 
 # --- IO (ncl + gh) -----------------------------------------------------------------
 
-def _ncl(args: list[str], timeout: float = 40) -> dict:
+def _ncl(args: list[str], timeout: float = OP_TIMEOUT_S) -> dict:
     out = subprocess.run(["ncl", *args, "--json"], capture_output=True, text=True, timeout=timeout, check=False)
     payload = json.loads(out.stdout or "{}")
     if payload.get("ok") is not True:
@@ -468,7 +496,7 @@ class Io:
                              f'{{ issueOrPullRequest(number:{int(num)}) {{ __typename '
                              f'... on Issue {{ state }} ... on PullRequest {{ state }} }} }}')
             res = subprocess.run(["gh", "api", "graphql", "-f", "query={" + " ".join(parts) + "}"],
-                                 capture_output=True, text=True, timeout=40, check=False)
+                                 capture_output=True, text=True, timeout=OP_TIMEOUT_S, check=False)
             try:
                 data = (json.loads(res.stdout or "{}") or {}).get("data") or {}
             except ValueError:
@@ -499,9 +527,11 @@ def hydrate_prompts(tasks: list[dict], st: dict, io: Io, deadline: float) -> tup
             continue
         hit = cache.get(sid)
         if hit and hit.get("prefix") == listed:
-            ready.append({**t, "prompt": hit["prompt"]})
+            # Cached prompts plan only; run_once re-fetches before cancelling,
+            # since `tasks update --prompt` can change the tail invisibly.
+            ready.append({**t, "prompt": hit["prompt"], "_cached": True})
             continue
-        if time.monotonic() > deadline:
+        if time.monotonic() + OP_TIMEOUT_S > deadline:
             deferred += 1
             continue
         try:
@@ -526,16 +556,41 @@ def run_once(io: Io, st: dict, now: dt.datetime, dry: bool = False, cap: int = M
             refs.update(r)
     for e in st.get("parked", {}).values():
         refs.update(e.get("refs") or [])
-    gh = io.gh_states(sorted(refs)) if refs else {}
+    gh: dict[str, str | None] = {}
+    ordered = sorted(refs)
+    for i in range(0, len(ordered), GH_BATCH):
+        if time.monotonic() + OP_TIMEOUT_S > deadline:
+            break  # unqueried targets stay unknown → kept
+        try:
+            gh.update(io.gh_states(ordered[i:i + GH_BATCH]))
+        except Exception:  # noqa: BLE001 — a failed lookup keeps, never cancels
+            break
     p = plan(ready, gh, st, now, cap)
+    cached = {t["series_id"] for t in ready if t.get("_cached")}
     cancelled, errors = [], []
     if not dry:
         for c in p["cancel"]:
+            # Each step below is one ncl call; stop while the gate timeout still
+            # leaves room to save state. What is left retries next fire.
+            if time.monotonic() + OP_TIMEOUT_S > deadline:
+                deferred += 1
+                continue
+            sid = c["series_id"]
+            if sid in cached:
+                try:
+                    full = io.get_prompt(sid)
+                except Exception:  # noqa: BLE001
+                    deferred += 1
+                    continue
+                st["prompts"][sid]["prompt"] = full
+                if parse_refs(full, sid) != (c["refs"], None):
+                    deferred += 1  # prompt changed since cached: re-plan next fire
+                    continue
             try:
-                io.cancel(c["series_id"])
+                io.cancel(sid)
                 cancelled.append(c)
             except Exception as e:  # noqa: BLE001
-                errors.append(f"cancel {c['series_id']}: {e}")
+                errors.append(f"cancel {sid}: {e}")
         if p["digest_due"]:
             st["last_digest_at"] = iso(now)
     return {**p, "cancelled": cancelled, "errors": errors, "deferred": deferred,
@@ -593,14 +648,14 @@ def main(argv: list[str]) -> int:
                 live = Io().list_tasks()
             except Exception:  # noqa: BLE001 — state alone still bounds the count
                 live = []
-            res = next_rechase(args[1], st, live, cap)
+            res = next_rechase(args[1], st, live, cap, reserve=True)
             if not res["allowed"] and res["chain"] not in st["parked"]:
                 refs, _ = parse_refs(args[1])
                 st["parked"][res["chain"]] = {"parked_at": iso(now), "thread_id": res["thread_id"],
                                               "count": res["count"], "last_series": None,
                                               "prompt_head": "cap reached at scheduling time", "refs": refs}
-                save_state(st)
                 res["parked"] = True
+            save_state(st)
         print(json.dumps(res))
         return 0 if res["allowed"] else 3
     if args and args[0] == "unpark":
@@ -628,7 +683,14 @@ def main(argv: list[str]) -> int:
         print(f"unknown argument(s): {unknown}", file=sys.stderr)
         return 2
     with state_lock():
-        st = load_state()
+        try:
+            st = load_state()
+        except (OSError, ValueError, TypeError) as e:
+            # Loud, not silent: a reset would forget every chain's count. The
+            # agent reports it; the gate does nothing until the file is fixed.
+            print(json.dumps({"wakeAgent": True, "data": {"errors": [f"state unreadable: {e}"[:300]],
+                                                          "digest": [], "cancelled": []}}))
+            return 0
         try:
             result = run_once(Io(), st, now, dry=dry, cap=cap)
         except Exception as e:  # noqa: BLE001 — a broken gate must not read as "clean"

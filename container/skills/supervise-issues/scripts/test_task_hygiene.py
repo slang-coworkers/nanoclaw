@@ -91,6 +91,22 @@ class TestRefs(unittest.TestCase):
         self.assertEqual(refs, [])
         self.assertTrue(err)
 
+    def test_numeric_segment_in_repo_name(self):
+        refs, _ = th.parse_refs("Re-chase gh-issue-acme/slang-2026-tools-13230 now")
+        self.assertEqual(refs, ["acme/slang-2026-tools#13230"])
+
+    def test_short_bare_ref_keeps(self):
+        refs, err = th.parse_refs("Re-chase shader-slang/slang#13230; blocked on PR #77.")
+        self.assertEqual(refs, [])
+        self.assertIn("unresolved", err)
+
+    def test_bare_ref_with_second_structured_repo_ambiguous(self):
+        refs, err = th.parse_refs("Re-chase shader-slang/slang#13230; shader-slang/slangpy#700 waits on PR #712.")
+        self.assertEqual(refs, [])
+        self.assertIn("ambiguous", err)
+        refs, err = th.parse_refs("Re-chase shader-slang/slang#13230; NVIDIA/foo PR #712 first.")
+        self.assertIn("ambiguous", err)
+
     def test_ordinal_sources(self):
         self.assertEqual(th.declared_ordinal("rechase-slang-13230-r4-9b92", ""), 4)
         self.assertEqual(th.declared_ordinal("rechase-13230-ab12", "Re-chase x (r7) —"), 7)
@@ -205,6 +221,23 @@ class TestCap(unittest.TestCase):
         self.assertFalse(res["allowed"])
         self.assertEqual(res["count"], 3)
 
+    def test_next_reserves_so_fast_firing_rechases_count(self):
+        st = th.empty_state()
+        names = [th.next_rechase("shader-slang/slang#13306", st, [], reserve=True) for _ in range(4)]
+        self.assertEqual([n["allowed"] for n in names], [True, True, True, False])
+        self.assertEqual(names[2]["name"], "rechase-slang-13306-r3")
+
+    def test_multi_ref_task_keeps_chain_history(self):
+        st = th.empty_state()
+        gh = {"shader-slang/slang#13230": "OPEN", "shader-slang/slang#14000": "OPEN"}
+        b = task("rechase-slang-13230-r3-bbbb",
+                 "Re-chase shader-slang/slang#13230; blocked on shader-slang/slang#14000")
+        th.plan([b], gh, st, NOW)
+        gh["shader-slang/slang#13230"] = "CLOSED"
+        a = task("rechase-slang-13230-aaaa", "Re-chase shader-slang/slang#13230 again")
+        th.plan([a, b], gh, st, NOW)
+        self.assertEqual(st["chains"]["shader-slang/slang#13230"]["max_ordinal"], 3)
+
     def test_next_names_structured(self):
         st = th.empty_state()
         res = th.next_rechase("shader-slang/slang-rhi#77", st, [rechase(77, k=1, repo="shader-slang/slang-rhi")])
@@ -288,6 +321,29 @@ class TestRunOnce(unittest.TestCase):
         res = th.run_once(io, th.empty_state(), NOW, budget_s=-1)
         self.assertEqual(res["deferred"], 1)
         self.assertEqual(io.cancelled, [])
+
+    def test_cached_prompt_reverified_before_cancel(self):
+        head = "Re-chase shader-slang/slang#13230. " + "context " * 20
+        t = task("rechase-slang-13230-9b92", head + "Wait for shader-slang/slang#13251.")
+        gh = {"shader-slang/slang#13230": "OPEN", "shader-slang/slang#13251": "OPEN",
+              "shader-slang/slang#14000": "OPEN"}
+        io = FakeIo([t], gh, truncate=True)
+        st = th.empty_state()
+        th.run_once(io, st, NOW)  # caches the full prompt
+        t["prompt"] = head + "Wait for shader-slang/slang#14000."  # update --prompt, same listed prefix
+        gh["shader-slang/slang#13230"] = gh["shader-slang/slang#13251"] = "CLOSED"
+        res = th.run_once(io, st, NOW)
+        self.assertEqual(io.cancelled, [])
+        self.assertEqual(res["deferred"], 1)
+        res = th.run_once(io, st, NOW)  # re-planned on the fresh prompt: #14000 open
+        self.assertEqual(io.cancelled, [])
+        self.assertEqual(res["cancel"], [])
+
+    def test_corrupt_state_raises(self):
+        os.makedirs(os.path.dirname(th.STATE_PATH))
+        Path(th.STATE_PATH).write_text('{"version":1,"chains":')
+        with self.assertRaises(ValueError):
+            th.load_state()
 
     def test_state_roundtrip(self):
         st = th.empty_state()

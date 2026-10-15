@@ -77,7 +77,8 @@ These hold across every step below; the steps reference them by number rather th
   `task-hygiene` gate (below).
 - **R11 — A re-chase is structured and capped.** Before scheduling a one-shot re-chase/re-check
   for a parked chain, run `python3 /app/skills/supervise-issues/scripts/task-hygiene.py next
-  <thread_id>` and use its `name` and `prompt_prefix` verbatim (`--name rechase-<repo>-<n>-r<k>`,
+  <thread_id>` (it reserves the slot — run it only when about to schedule; reuse the name on a
+  retry) and use its `name` and `prompt_prefix` verbatim (`--name rechase-<repo>-<n>-r<k>`,
   prompt opening `Re-chase gh-issue-<owner>/<repo>-<n> (r<k>):`). Exit code 3 / `allowed: false`
   means the chain has used its `MAX_RECHASES` (3) re-chases: **do not schedule another** — it is
   parked and goes into the weekly parked-chains digest. Name every other issue/PR the re-chase
