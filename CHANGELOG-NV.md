@@ -6,15 +6,53 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 691 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 286 |
-| `nv-slang` | slang project spine, skills, workflows | 187 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 111 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 89 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 708 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 289 |
+| `nv-slang` | slang project spine, skills, workflows | 196 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 114 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 90 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-15
+
+### nv-main (17 PRs)
+- **#2038** `Mirror shared skills as symlinks, not directory copies`
+- **#2039** `Scan the group root for injected dossiers in the okf-synthesis gate`
+- **#2047** `ops: add a read-only practices check for the coworker fleet`
+- **#2046** `supervise-issues: cancel re-chases for closed items and cap chains at 3 re-chases`
+- **#2045** `Scope explain-diff-html to the implement workflow`
+- **#2048** `supervise-issues: task-hygiene resolves real re-chase prompts (65/73, was 0)`
+- **#2050** `funnel-cron: one scheduler, a run lock, and a longer log`
+- **#2051** `ci: run the ci-babysitter sweep-gate node tests in the composed tree`
+- **#2053** `critique-gate: name [Approval Decision] among the gated deliveries`
+_+8 more: #2036, #2031, #2030, #2027, #2024, #2017, #2015, #2011_
+
+### nv-dashboard (3 PRs)
+- **#2019** `Sync nv-dashboard with upstream/main`
+- **#2029** `fix(dashboard): price /admin/sessions cost from the exact session ledger`
+- **#2035** `fix(dashboard): price fleet cost views from the OneCLI gateway request log`
+
+### nv-slang (9 PRs)
+- **#2020** `Sync nv-slang with upstream/main`
+- **#2028** `slang spine: comment discipline and skill discovery move to the skills`
+- **#2033** `slang spine: task gate scripts live in skills; a slang-ci-babysitter type`
+- **#2037** `slang spine: reviewers flag comment noise; fixers resume a reaped worktree`
+- **#2040** `slang-pr-approve: give every step an explicit id so the critique gate renders`
+- **#2043** `slang: declare explain-diff-html where the fix workflow invokes it`
+- **#2042** `slang-pr-review: launch Reviewer A and C detached and poll`
+- **#2049** `slang-ci-babysitter: wake the sweep gate only on actionable CI state`
+- **#2052** `run-clarity: stage files a patch adds before the temporary commit`
+
+### nv-slangpy (3 PRs)
+- **#2021** `Sync nv-slangpy with upstream/main`
+- **#2041** `slangpy-pr-approve: give every step an explicit id so the critique gate renders`
+- **#2044** `slangpy comments invariant: name the PR explanation comment, not the skill`
+
+### nv-nanoclaw (1 PRs)
+- **#2022** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-10-14
 
