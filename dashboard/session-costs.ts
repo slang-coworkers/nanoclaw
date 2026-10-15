@@ -130,6 +130,12 @@ export interface SessionCostEntry {
   tokens: number;
   lastActiveMs: number;
   unpriced: boolean; // saw usage from a model MODEL_PRICING doesn't know
+  /**
+   * Where `cost` came from: the session's `cost_events` ledger (outbound.db) when
+   * it has rows, else the transcript + codex-rollout walk. Never a mix — a
+   * ledger session's transcripts and rollouts are skipped (session-ledger-cost.ts).
+   */
+  costSource?: 'ledger' | 'transcript';
 }
 
 /** Sort by cost desc, then most-recent, and cap to `limit`. */
