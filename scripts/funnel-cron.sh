@@ -1,8 +1,15 @@
 #!/usr/bin/env bash
 # Funnel snapshot refresh for the dashboard's /api/funnel panel.
-# Run by system crontab (see `crontab -l`). Writes reports/funnel.json which
-# dashboard/server.ts serves cached (it never recomputes — keeps ~180 gh calls
-# out of the request path).
+# Run by the user crontab every 30 minutes (see `crontab -l` and
+# ops/slang-coworkers-prod/HOST-MOVE-CHECKLIST.md); that is the only scheduler.
+# Writes reports/funnel.json which dashboard/server.ts serves cached (it never
+# recomputes — keeps ~180 gh calls out of the request path).
+#
+# A full run takes 10–17 minutes, so two schedulers or a slow run can overlap
+# the next fire; overlapping runs write the same report files and read each
+# other's half-written caches. We hold an exclusive lock for the whole run and
+# a fire that finds the lock taken logs that and exits 0: the running instance
+# produces the same reports, so skipping is the correct outcome, not a failure.
 #
 # Cron has a minimal environment: set PATH and strip any proxy vars (the funnel
 # makes direct gh-API curls with --noproxy '*'; a leaked http_proxy would tunnel
@@ -18,6 +25,12 @@ export no_proxy='*' NO_PROXY='*'
 cd "$REPO" || exit 1
 LOG="$REPO/logs/funnel-cron.log"
 mkdir -p "$REPO/logs"
+LOCK="$REPO/logs/funnel-cron.lock"
+exec 9>"$LOCK"
+if ! flock -n 9; then
+  echo "[$(date -u +%Y-%m-%dT%H:%M:%SZ)] skipped: a previous run still holds $LOCK" >> "$LOG"
+  exit 0
+fi
 # Every writer below targets reports/. A fresh checkout has no such directory and
 # the writers do not create one, so without this the whole run fails on ENOENT
 # with nothing but a stack trace to show for it.
@@ -109,7 +122,9 @@ if [ -f "$REPO/reports/review-rounds.json" ]; then
 fi
 
 # Keep the log bounded.
-tail -200 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"
+# A run writes ~40 lines and failures are rare, so 2,000 lines keep several
+# days of history; 200 lost the failing step's output before anyone read it.
+tail -2000 "$LOG" > "$LOG.tmp" 2>/dev/null && mv "$LOG.tmp" "$LOG"
 
 # Surface the aggregate to cron (which mails/records a nonzero exit) rather than
 # always reporting success because the last command happened to be `mv`.
