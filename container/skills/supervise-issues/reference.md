@@ -258,169 +258,53 @@ PRs and for `not_planned` closes without a PR (maintainer wontfix — note and c
 
 ## Worktree GC (Step 8)
 
-Disk-pressure check runs every tick before the per-chain pass. The worktree volume is mounted
-read-only at `/workspace/extra/ephemeral` (host `/ephemeral`). Do not trust `df -h /workspace` —
-that is a different, always-healthy disk.
+Every tier (slang-fixer, slang-reviewer, slang-triager, slangpy-fixer, slangpy-reviewer,
+slangpy-triager) runs `scripts/worktree-gc-run.sh` as the pre-task gate of an hourly task inside
+its own container, where its group directory is writable. The script discovers the tier's
+worktrees, measures idleness, resolves issue/PR state with `gh`, classifies with
+`scripts/worktree-gc.py`, acts within the gate's time box, and writes
+`/workspace/agent/.worktree-gc/last-run.json` plus a line in `history.log`. It wakes the agent
+only when an action errored or less than 10% of the volume is free.
+
+Tiers (thresholds live in `worktree-gc.py`; reference them by name):
+
+| Tier | What | Action |
+|---|---|---|
+| REAP | primary fix tree whose PR is MERGED/CLOSED or whose issue is CLOSED with no PR; primary tree with no PR idle > `NOPR_IDLE_DAYS`; scratch tree (`wt-<n>-verify`, `-master`, `-revA`, `wt-clarity-*`, any non-primary name) whose PR is final or that is idle > `SCRATCH_IDLE_DAYS` | uncommitted work committed to a local `wip/reap/<name>` branch, then `git worktree remove --force`; `active-work/<slug>` removed |
+| STALE-OPEN | primary tree, PR OPEN but idle > `STALE_OPEN_IDLE_DAYS` | `rm -rf <worktree>/build` only; tree, branch and PR stay |
+| KEEP | running session, anything touched within `MIN_IDLE_DAYS`, active open PR, scratch in use | nothing; when free space is below `PRESSURE_GATE_PCT` of the volume, builds of KEEP trees whose PR is idle > `PRESSURE_IDLE_DAYS` are reclaimed too, until `TARGET_FREE_PCT` is free |
+| NO-PR | primary tree, issue open, no PR yet | nothing until idle > `NOPR_IDLE_DAYS` |
+
+Resume a reaped tree with `git worktree add <dir> wip/reap/<dir>` from the base clone.
+
+Create or repair a tier's task (host shell):
 
 ```bash
-df -BG --output=avail /workspace/extra/ephemeral | tail -1 | tr -dc '0-9'   # GB free
-# Reap candidates: EVERY worktree in EVERY tier, name-agnostic. A worktree's .git is a
-# FILE (gitdir pointer); a base clone's .git is a DIR — so `-name .git -type f` finds
-# exactly the worktrees and never the base checkouts. Do NOT use a `wt-*` glob: fixer
-# worktrees are named `wt-slang-<n>`, but reviewer ones are freehand (`slang-<n>-verify`,
-# `slang-prNNNNN-r2`, `slang-clarity-*`, `wt-<n>-review`) and a glob silently misses them.
-#
-# Measure BOTH: the whole worktree (reporting only) and `build/` (what a reclaim
-# actually deletes). Reporting the whole-worktree `du` as the reclaimable amount is
-# what let the GC claim the target was met after freeing a fraction of it.
-# Emits: <size_gb>\t<build_size_gb>\t<dir>, biggest build first.
-find /workspace/extra/ephemeral/prod-groups -mindepth 2 -maxdepth 3 -name .git -type f \
-  -not -path '*/.*/*' 2>/dev/null | sed 's#/\.git$##' | while read -r wt; do
-    tot=$(du -sk "$wt" 2>/dev/null | cut -f1)
-    bld=0; [ -d "$wt/build" ] && bld=$(du -sk "$wt/build" 2>/dev/null | cut -f1)
-    awk -v t="${tot:-0}" -v b="${bld:-0}" -v d="$wt" \
-      'BEGIN { printf "%.1f\t%.1f\t%s\n", t/1048576, b/1048576, d }'
-  done | sort -rn -k2
+./bin/ncl tasks create --group <ag-id> --name worktree-gc --recurrence "7 * * * *" \
+  --script 'exec bash /app/skills/supervise-issues/scripts/worktree-gc-run.sh --gate' \
+  --prompt 'The worktree GC gate woke you: data.errors > 0 or less than 10% of the volume is free. Read /workspace/agent/.worktree-gc/last-run.json; fix what blocks a removal (a locked worktree, a failed commit) or, below 10% free, report disk pressure to the orchestrator with the free figure.'
 ```
 
-- Surface `worktree-vol: <N>GB free` in every board rollup.
-- **Every tick**: run the GC scan. Resolve worktree issue+PR states, pass them to
-  `scripts/worktree-gc.py`, and dispatch save-then-remove for the REAP set plus build-only reclaim
-  for anything the script puts in `reclaim`. This is lightweight (a few
-  `gh` calls) and prevents closed-issue worktrees — and dead-open build trees — from accumulating
-  between pressure events.
-- **The script's `reclaim` list widens with pressure — always dispatch the whole list.** Below
-  `PRESSURE_GATE_GB` it holds STALE-OPEN (idle > 14d) builds; below `CRITICAL_GATE_GB`
-  (`summary.critical: true`, ENOSPC-imminent) it also includes **idle KEEP builds** — open PRs
-  touched within 14d but idle > `CRITICAL_IDLE_DAYS` with no running session, i.e. the 7 GB fixer
-  builds a routine tick can't touch. These are still **build-only** reclaims: dispatch
-  `rm -rf <dir>/build` to the owning coworker (below); the worktree, branch, and PR survive and the
-  coworker rebuilds on resume. Do NOT hand-judge which to spare — the script already excluded
-  running sessions and too-fresh chains.
-- **Free < 10 GB** → disk pressure: escalate to the operator immediately in addition to the
-  routine GC. If the reclaim list is empty or too small to clear the pressure, the escalation **must**
-  say so and point at the operator-only docker reclaim (below) — worktrees are usually not the
-  largest lever, and silence reads as "nothing more to reclaim" when there is.
+One-time catch-up on a tier (host shell, runs the same script without the time box):
+
+```bash
+docker run --rm --entrypoint bash -e GH_TOKEN="$(gh auth token)" \
+  -v /ephemeral/prod-groups/<folder>:/workspace/agent -v "$PWD/container/skills:/app/skills:ro" \
+  nanoclaw-agent:prod /app/skills/supervise-issues/scripts/worktree-gc-run.sh --sweep
+```
 
 ### Operator-only reclaim (escalate, never attempt)
 
-The worktree GC is the **only** disk lever you can pull from inside the container. The bigger one —
-the docker data-root at `/ephemeral/docker` (per-group image layers + build cache) — is
-`drwx--x--- root`, so a container **cannot `du`, list, or prune it**. On this host the docker
-footprint has been the dominant consumer (tens of GB reclaimable at a time) and an unattended fill
-there once crashed the host with `ENOSPC`. A daily host timer (`nanoclaw-docker-gc.timer`,
-`~/.config/nanoclaw/docker-gc.sh`) already prunes **dangling images + build cache** (never `-a`, so
-tagged per-group `ag-*` images survive), but that timer cannot free tagged-but-unused images — only
-an operator can, with a deliberate `docker image prune -a`.
+The worktree GC is the only disk lever available from inside a container. The docker data-root at
+`/ephemeral/docker` (image layers + build cache) is `drwx--x--- root`: a container cannot list or
+prune it. A daily host timer (`nanoclaw-docker-gc.timer`, `~/.config/nanoclaw/docker-gc.sh`) prunes
+dangling images and build cache; tagged-but-unused images need an operator's deliberate
+`docker image prune -a`. When less than 10% of the volume is free and the tiers' reports show nothing left
+to reclaim, say so explicitly:
 
-So when `worktree-vol` free < 10 GB **and** the reap set can't clear it, the operator escalation must
-name this explicitly, e.g.:
-
-> Disk pressure: `worktree-vol` NN GB free, worktree reap {empty | frees only ~MM GB}. The remaining
-> reclaim is docker images/build-cache under `/ephemeral/docker`, which I cannot reach from the
-> container. The daily `nanoclaw-docker-gc.timer` handles dangling images + cache; freeing more needs
-> a host-side `docker image prune -a` (operator-only — verify no idle group needs its `ag-*` image
-> first). Last ENOSPC there crashed the host.
-
-Discover the reap set from disk across **all tiers** (orphans outlive their session). Two things
-per worktree from the `find` above:
-
-- **Issue number** = the first ≥ 4-digit run in the dir basename (`basename "$wt" | grep -oE
-  '[0-9]{4,}' | head -1`). This survives every naming style — `wt-slang-11982`, `slang-11544-verify`,
-  `slang-pr11511-r2`, `wt-12037-A`. A worktree whose name yields **no** number is the **NO-PR** case
-  below → wake the owner to confirm, never blind-delete.
-- **Owning coworker** = the tier folder the path lives under (`prod-groups/<folder>/…`):
-  `slang-reviewer/…` → dispatch to **slang-reviewer**, `slang-fixer/…` → slang-fixer, `slangpy-*`
-  likewise. It is **not always a fixer** — reviewer worktrees are the ones the old `wt-*` glob missed.
-
-Resolve each to **both** its issue state (`gh issue view <num> --json state`) and PR state (`gh pr
-list --head fix/issue-<num>` for slang fixer branches, or the dir's own branch for reviewer/slangpy).
-For an OPEN PR also read its idle age (`gh pr view <pr> --json updatedAt` → days since last touch).
-**Don't judge the tier by hand — feed the resolved set to `scripts/worktree-gc.py`** (pure, tested
-by `test_worktree_gc.py`), which owns the thresholds and the pressure math in one place:
-
-```bash
-# payload: {free_gb, running_dirs:[...],
-#           worktrees:[{dir,size_gb,build_size_gb,has_build,issue_state,pr_state,pr_idle_days},...]}
-# size_gb is the whole worktree and is reported only; build_size_gb (from the `du -sk
-# "$wt/build"` above) is the ONLY figure the reclaim math uses, because build/ is all a
-# reclaim deletes. Omit build_size_gb and it counts as 0 — the script then under-projects
-# and keeps selecting, which is the safe direction.
-python3 scripts/worktree-gc.py < payload.json > gc-out.json   # → {tiers, reclaim, summary}
-```
-
-`summary.projected_free_gb` is a LOWER BOUND, not a result (`projection_is_lower_bound:
-true`). **After each build deletion, re-measure free space with `df` and decide on the
-MEASURED number** — stop when measured free ≥ `TARGET_FREE_GB`, and if the list runs out
-before that, say so and escalate rather than reporting the target met. Trusting the
-projection is exactly how a run stopped deleting while the volume was still near ENOSPC.
-`summary.unmeasured_builds` > 0 means `reclaim_gb` understates the total further still.
-
-`summary.projected_sufficient_count` is how far down `reclaim` the projection *expects* to
-get. It is a hint, **not a limit** — dispatch past it whenever measured free is still short.
-`select()` used to enforce that number by truncating the list, which contradicted the rule
-above: the executor stops on measured `df`, so any estimate that ran optimistic left it out
-of list with eligible builds it was never handed, escalating for disk it already had the
-answer to.
-
-The four tiers it returns (semantics, not numbers — the numbers live in the script):
-
-- **REAP** = PR `MERGED`/`CLOSED`, OR issue `CLOSED` (work done or abandoned, even if a draft PR
-  lingers). → save-then-remove (below); this is the only path that pushes `wip/reap/<branch>`.
-- **KEEP** = issue `OPEN` + PR `OPEN` recently active, or a `running` session. Leave untouched.
-- **STALE-OPEN** = issue `OPEN` + PR `OPEN` but idle beyond the script's threshold with no running
-  session. Under disk pressure the script lists these in `reclaim` (oldest-PR-first, only enough to
-  clear the pressure). → **build-only reclaim**: dispatch `rm -rf /workspace/agent/<dir>/build`.
-  `build/` is gitignored regenerable cmake output — source, branch, uncommitted work, and the PR are
-  untouched; the coworker re-runs cmake on resume. **NEVER `git worktree remove` a STALE-OPEN chain**
-  (the PR may still land). If it later goes REAP, it flows through save-then-remove.
-- **NO-PR** = issue `OPEN` with no PR found (or no number in the name) → wake to confirm, never
-  blind-delete.
-
-Dispatch only the tiers that need action: every `REAP` (save-then-remove), and every worktree in
-`reclaim` (build-only). `KEEP` / `NO-PR` need no build churn.
-
-`git worktree list` from a base clone shows every worktree as `prunable` over the read-only mount
-(their live sessions live elsewhere) — `prunable` is **not** a reap signal (R8); reap is decided by
-issue+PR state only.
-
-Dispatch one a2a per worktree on its canonical thread (R5, R8). `<dir>` is the worktree's own
-directory name (whatever it's called); `<base-clone>` is the tier's main checkout the worktree was
-derived from (`slang` for slang-*, `slangpy` for slangpy-*) — remove from the base clone, never from
-inside the worktree:
-
-> [Supervisor — worktree GC — gh-issue-X/Y-N] Issue #<num> is `<issue_state>`; PR #<pr> is `<pr_state>`; reclaim `<dir>` (~<size>G).
-> **Save-then-remove:** `cd /workspace/agent/<dir>`; if `git status --porcelain` non-empty or
-> ahead of upstream → `git add -A && git commit -m "wip(reap): <branch> @ <sha>" && git push -u origin HEAD:wip/reap/<branch>`
-> (resume via `git worktree add <dir> wip/reap/<branch>`). THEN
-> `git -C /workspace/agent/<base-clone> worktree remove --force /workspace/agent/<dir> && rm -rf /workspace/agent/active-work/<slug>`.
-> Reply 'gc done <freed>G', or 'active' to keep it.
-
-For each worktree `scripts/worktree-gc.py` puts in `reclaim` (STALE-OPEN under pressure), the
-dispatch reclaims the regenerable build only — the worktree, branch, and PR stay. Quote
-`build_size_gb`, never the worktree size: the coworker is being asked to delete `build/`, and
-naming the larger number both misstates the ask and inflates the reclaim you expect back.
-
-> [Supervisor — build-reclaim — gh-issue-X/Y-N] Issue #<num> `OPEN`, PR #<pr> `OPEN` but idle <days>d; reclaiming regenerable `build/` in `<dir>` (~<build_size>G of a <size>G worktree) under disk pressure.
-> Run `rm -rf /workspace/agent/<dir>/build` (gitignored cmake output — source, branch, uncommitted
-> work, and the PR are untouched; rebuild on resume). Do **not** remove the worktree.
-> Reply 'reclaimed <freed>G', or 'active' to keep the build.
-
-After each `reclaimed` reply, re-run the `df` above. Continue down the `reclaim` list until the
-MEASURED free reaches `TARGET_FREE_GB` or the list is exhausted — never stop on
-`projected_free_gb`.
-
-Save-then-remove is mandatory — even merged-PR worktrees often hold untracked files that
-`remove --force` would destroy (reviewer worktrees in particular carry ad-hoc review notes). Track
-`gcRequestedAt` per worktree; if still on disk after 2 clean dispatches, escalate with the `du`/`df`
-numbers + the worktree list. A woken long-idle coworker may reply `Error: No conversation found with
-session ID …` on its first turn — this specific stale-continuation case self-heals (the runner
-clears the stale continuation and the host re-delivers); treat as "in progress, recheck next tick,"
-not as `gc done`. **This is the only "self-healing" error** — do not generalize it: a handoff that
-bounced on a transient auth/provider outage surfaces as a `stopped` container with an error-class
-last outbound and is a **nudge row** (see the bounce limb above), not a self-healer to wait out. The
-host-side a2a redrive (when deployed) handles bounces in the session layer; the supervisor still
-nudges the ones that surface as chains.
+> Disk pressure: `worktree-vol` NN GB free; the tiers' GC reports show MM GB left to reclaim. The
+> remaining lever is docker images/build-cache under `/ephemeral/docker`, which needs a host-side
+> `docker image prune -a` (operator-only; verify no idle group needs its `ag-*` image first).
 
 ## CI status + rebase nudge
 
@@ -594,3 +478,41 @@ incidents live in operator memory.
   mount nearly every worktree shows `prunable` — a wrong-namespace artifact, not a reap signal.
   Decide and dispatch to the owning fixer (a `stopped` session wakes on the inbound); reap by `gh`
   issue state + PR state (issue CLOSED → reap regardless of PR state).
+- **R11 — re-chase cap.** A parked chain's one-shot re-chase scheduled its successor on every
+  fire, and nothing cancelled it when the issue closed: on 2026-10-15 the orchestrator held ~110
+  live re-chases (several for closed #13230/#13338/#13306) and chains on their 4th/7th/15th
+  round. A chain re-chased three times without movement needs a human decision, not a fourth
+  ping — hence the weekly parked-chains digest.
+
+## Re-chase hygiene (R11)
+
+`scripts/task-hygiene.py` is the gate of the orchestrator's hourly `task-hygiene` task (creation
+command in SKILL.md → *Re-chase one-shots*). Constants live in the script: `MAX_RECHASES` (3;
+env `TASK_HYGIENE_MAX_RECHASES` or `--cap N`), `DIGEST_EVERY_DAYS` (7), `GATE_BUDGET_S` (240 —
+the task script carries `# nanoclaw-task-timeout: 300`).
+
+| Step | Rule |
+|---|---|
+| Allow | name slug `rechase*` / `re-chase*` / `recheck*` / `re-check*`, `watch-<n>*`, `i<n>-*` / `issue<n>-*` / `pr<n>-*`, or a prompt opening "Re-chase"/"Re-check". `CORE_GUARD` (supervise, okf, synthesis, worktree, nightly, kb-sync, release, report, heartbeat, watchdog, hygiene, memory, digest, babysit, scan) vetoes on top — anywhere in the name, or as a whole word in the prompt's first line (so keep those words out of a re-chase's opening line). A one-shot is a `rechase`; a recurring match is a `watch` (closed-GC only, no cap). |
+| Prompt | `ncl tasks list` truncates prompts at 120 chars; full prompts come from `ncl tasks get`, cached in state by series id + listed prefix. Fetches past the time budget defer to the next fire. |
+| Targets | Structured refs: `gh-issue-<owner>/<repo>-<n>`, `gh-pr-…`, `owner/repo#n`, github.com issue/pull URLs, `owner/repo [draft] PR #n`, and the shader-slang short forms `slang#n` / `slangpy#n` / `slang-rhi#n` (also `slangpy PR #n`). The first shader-slang ref is the **primary** (chain key); every shader-slang ref is a target; other orgs (llvm/…, KhronosGroup/…) are informational — never targets, never ambiguity. Bare `#n` (3–6 digits) join the primary's repo when every shader-slang ref is in that repo and no other shader-slang repo is named in words; otherwise the task is ambiguous and kept. Ranges (`#901-#906`) and short numbers (`#4`, `#77`) are context and ignored. No structured ref: bare refs (the name's number first) against the one repo the text names, else `shader-slang/slang`. Measured on the 73 prod prompts the first release left unresolved: 65 now resolve (`scripts/fixtures/`). |
+| Ordinal names | A name ordinal counts only as the LAST slug segment (`rechase-…-r4`) and not when the prompt carries a capital `R<k>` label — `rechase-13596-r6-gate` is rule R6, not round 6. |
+| Closed | One GraphQL `issueOrPullRequest` batch per 40 refs. Cancel only when every target is CLOSED/MERGED; any OPEN keeps it; unknown state with none OPEN is reported `unresolved` and kept. |
+| Cap | Ordinal per re-chase series, assigned on first sight and never lowered: declared (`-r<k>` in the name; `(r<k>)`, "<k>th re-chase", "re-chase #k" in the prompt) else chain max + 1. Ordinal − chain `base` > `MAX_RECHASES` → cancel + park. `unpark` sets `base` to the current max (a fresh allowance; names keep counting). |
+| Digest | Parked chains whose targets close drop out. With parked chains present and the last digest ≥ 7 days old, the gate wakes the agent with `data.digest`; `reports/parked-chains.md` is rewritten every fire either way. |
+
+The orchestrator's side (R11): `task-hygiene.py next <ref>` prints `{allowed, count, name,
+prompt_prefix, thread_id}` and exits 3 at the cap, parking the chain on the spot. An allowed
+answer **reserves** the ordinal in the state file at once, so call `next` only when about to
+schedule and reuse the returned name if the create must be retried. The gate is the backstop for
+re-chases scheduled without `next`; a one-shot that fires within the hour it was created is never
+seen by the gate, so `next` is what keeps the count exact.
+
+Fail-safe behaviour: cached prompts only plan — a cancel re-fetches the full prompt first and
+defers if its targets changed; GitHub lookups, prompt fetches and cancels are admitted only while
+one more 40 s call fits the budget (the rest retries next fire); a corrupt state file is never
+reset — the gate wakes the agent with `state unreadable` and does nothing until it is fixed.
+
+Operator commands (inside the orchestrator container): `task-hygiene.py --dry-run` (plan only),
+`task-hygiene.py unpark <ref>`; `/workspace/agent/.task-hygiene/history.log` lists every
+cancellation with its reason.

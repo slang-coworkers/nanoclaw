@@ -1,0 +1,21 @@
+[Unit]
+Description=NanoClaw coworker-fleet practices check (read-only audit, writes a report)
+# The report is read by nanoclaw-metrics.py, which runs on its own timer; there is
+# no ordering dependency because a stale report is itself a signal (age_sec).
+
+[Service]
+Type=oneshot
+# Runs as the nanoclaw owner: the only write is the report under the data tree,
+# which that user owns. Every other path is opened read-only.
+User=ubuntu
+Group=ubuntu
+EnvironmentFile=-/etc/nanoclaw-practices-check.env
+Environment=NANOCLAW_DIR=/home/ubuntu/slang-coworkers-prod/nanoclaw
+ExecStart=/usr/bin/python3 /usr/local/bin/practices_check.py --quiet
+# Exit 1 (findings) and 2 (indeterminate) are the tool's report, not a crash;
+# the journal keeps the summary line and the metrics carry the counts.
+SuccessExitStatus=1 2
+ProtectSystem=strict
+ReadWritePaths=/home/ubuntu/slang-coworkers-prod/nanoclaw/data/shared/practices-check
+PrivateTmp=true
+NoNewPrivileges=true
