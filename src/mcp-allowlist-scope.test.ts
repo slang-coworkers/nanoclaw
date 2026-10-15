@@ -25,8 +25,9 @@ vi.mock('./mcp-auth-proxy.js', () => ({
 // Imported by name so this file COMPILES AND RUNS on the #1157 tree and its
 // failures are behavioural, not "symbol is undefined". The two describes that
 // necessarily touch new API are labelled where they appear.
-const { isMcpToolPermitted, resolveMcpAllowlist, serverHasAllowedTools, toMcpPolicyWire } =
-  await import('./mcp-allowlist.js');
+const { isMcpToolPermitted, resolveMcpAllowlist, serverHasAllowedTools, toMcpPolicyWire } = await import(
+  './mcp-allowlist.js'
+);
 type Group = Parameters<typeof resolveMcpAllowlist>[0];
 
 /** Local, so the boundary assertions do not depend on the helper under test. */

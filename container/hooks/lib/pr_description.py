@@ -68,6 +68,10 @@ API_FLAGS_WITH_VALUE = {
     "-t", "--template", "--hostname", "-p", "--preview", "--cache",
 }
 PULLS_ENDPOINT_RE = re.compile(r"(^|/)repos/[^/]+/[^/]+/pulls(/\d+)?/?$")
+# Issue comments, PR review comments, PR reviews, and issue creation: text other people read.
+COMMENT_ENDPOINT_RE = re.compile(
+    r"(^|/)repos/[^/]+/[^/]+/(issues/\d+/comments(/\d+)?|pulls/\d+/(comments|reviews)(/\d+)?(/comments)?|issues)/?$"
+)
 
 
 class Unreadable(Exception):
@@ -301,10 +305,10 @@ def gh_pr_body(reader: Reader, segs: list, si: int, verb: str, args: list[str]) 
     return body
 
 
-def gh_api_body(reader: Reader, segs: list, si: int, args: list[str]) -> str | None:
+def gh_api_body(reader: Reader, segs: list, si: int, args: list[str], endpoint_re=PULLS_ENDPOINT_RE) -> str | None:
     flags, pos = parse_flags(args, API_FLAGS_WITH_VALUE)
     endpoint = (pos[0] if pos else "").split("?")[0]
-    if not PULLS_ENDPOINT_RE.search(endpoint):
+    if not endpoint_re.search(endpoint):
         return None
     body = None
     for name, val in flags:
@@ -327,8 +331,15 @@ def gh_api_body(reader: Reader, segs: list, si: int, args: list[str]) -> str | N
     return body
 
 
-def bodies(reader: Reader) -> list[tuple[str, str]]:
-    """(what, body) for every description this command sets."""
+def bodies(reader: Reader, kinds: tuple[str, ...] = ("pr", "api")) -> list[tuple[str, str]]:
+    """(what, body) for every description this command sets.
+
+    `kinds` selects the commands read: "pr" (`gh pr create|edit`), "api" (`gh api …/pulls`),
+    "issue" (`gh issue create|edit|comment`), "comment" (`gh pr comment|review`) and
+    "api-comment" (`gh api` to issue/PR comment and review endpoints); the gh verbs share
+    the body flags. The description gate reads PR text only; the writing gate
+    (gate-ste-writing.sh) reads every kind.
+    """
     found: list[tuple[str, str]] = []
     segs = segments(tokenize(reader.cmd))
     for si, (_sep, seg) in enumerate(segs):
@@ -336,14 +347,27 @@ def bodies(reader: Reader) -> list[tuple[str, str]]:
         if gi is None or (seg[gi] != "gh" and not seg[gi].endswith("/gh")):
             continue
         rest = [t for t in seg[gi + 1:] if not PLACEHOLDER_RE.fullmatch(t)]
-        if len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("create", "edit"):
+        if "pr" in kinds and len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("create", "edit"):
+            body = gh_pr_body(reader, segs, si, rest[1], rest[2:])
+            if body is not None:
+                found.append((f"gh pr {rest[1]}", body))
+        elif "issue" in kinds and len(rest) >= 2 and rest[0] == "issue" and rest[1] in ("create", "edit", "comment"):
+            body = gh_pr_body(reader, segs, si, rest[1], rest[2:])
+            if body is not None:
+                found.append((f"gh issue {rest[1]}", body))
+        elif "comment" in kinds and len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("comment", "review"):
             body = gh_pr_body(reader, segs, si, rest[1], rest[2:])
             if body is not None:
                 found.append((f"gh pr {rest[1]}", body))
         elif rest and rest[0] == "api":
-            body = gh_api_body(reader, segs, si, rest[1:])
-            if body is not None:
-                found.append(("gh api …/pulls", body))
+            if "api" in kinds:
+                body = gh_api_body(reader, segs, si, rest[1:])
+                if body is not None:
+                    found.append(("gh api …/pulls", body))
+            if "api-comment" in kinds:
+                body = gh_api_body(reader, segs, si, rest[1:], COMMENT_ENDPOINT_RE)
+                if body is not None:
+                    found.append(("gh api …/comments", body))
     return found
 
 

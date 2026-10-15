@@ -30,8 +30,9 @@ vi.mock('./mcp-auth-proxy.js', () => ({
   },
 }));
 
-const { isMcpToolPermitted, resolveMcpAllowlist, serverHasAllowedTools, toMcpPolicyWire } =
-  await import('./mcp-allowlist.js');
+const { isMcpToolPermitted, resolveMcpAllowlist, serverHasAllowedTools, toMcpPolicyWire } = await import(
+  './mcp-allowlist.js'
+);
 type Group = Parameters<typeof resolveMcpAllowlist>[0];
 
 /** Every tool an agent might reach for, across every surface. */
