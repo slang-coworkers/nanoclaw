@@ -3,10 +3,11 @@
  *
  * cost per PR opened, by ISO week = (triager + fixer + reviewer spend) / (PRs opened)
  *
- * The cost side is NOT recomputed here. `refreshCcusageCache` already resolves
- * ccusage (pinned 20.0.19, never npx) and produces per-group daily totals; this
- * module only selects, buckets and divides. Adding a second cost path would be
- * a second thing to keep correct.
+ * The cost side is NOT recomputed here. `refreshCcusageCache` already produces
+ * per-group daily totals — exact OneCLI gateway spend from the day body-usage
+ * capture began (dashboard/gateway-costs.ts), transcript-priced ccusage before
+ * that, one source per group-day — and this module only selects, buckets and
+ * divides. Adding a second cost path would be a second thing to keep correct.
  *
  * TWO THINGS THIS DELIBERATELY REFUSES TO DO
  *
@@ -94,6 +95,12 @@ export interface UnitCostWeek {
   costPerPr: number | null;
   /** False when no transcript data covers this week at all. */
   hasCost: boolean;
+  /**
+   * Where the week's spend came from: 'gateway' (OneCLI request log, exact),
+   * 'ccusage' (transcripts), 'mixed' (the week straddles a cutover — each
+   * group-day is still one source), or null when the week has no cost data.
+   */
+  source: string | null;
 }
 
 export interface UnitCostResult {
@@ -108,7 +115,7 @@ export interface UnitCostResult {
 
 export interface CostGroupInput {
   groupName: string;
-  daily: { date: string; totalCost: number }[];
+  daily: { date: string; totalCost: number; source?: string }[];
 }
 
 /**
@@ -139,10 +146,14 @@ export function unitCostByWeek(
   }
 
   const costByWeek = new Map<string, number>();
+  const sourceByWeek = new Map<string, string>();
   for (const g of matched) {
     for (const d of g.daily) {
       const w = isoWeekStart(d.date);
       costByWeek.set(w, (costByWeek.get(w) ?? 0) + (Number(d.totalCost) || 0));
+      const src = d.source ?? 'ccusage';
+      const prev = sourceByWeek.get(w);
+      sourceByWeek.set(w, prev === undefined || prev === src ? src : 'mixed');
     }
   }
 
@@ -167,6 +178,7 @@ export function unitCostByWeek(
       // report a confident 0 for a week we simply have no transcripts for.
       costPerPr: hasCost && prs > 0 ? cost / prs : null,
       hasCost,
+      source: sourceByWeek.get(week) ?? null,
     };
   });
 

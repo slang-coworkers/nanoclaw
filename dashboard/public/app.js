@@ -739,7 +739,25 @@ function unitCostHtml(uc) {
       ' — numerator is understated.</div>';
   }
 
-  return head + bars + spendTotal + trend + gaps;
+  // Where the weekly spend came from. Gateway weeks are exact OneCLI spend and
+  // include nested `claude --print` review runs (real spend); transcript
+  // (ccusage) weeks can run low once old transcripts are cleaned up.
+  let src = '';
+  const cs = uc.costSource;
+  if (cs) {
+    const tags = weeks.filter((w) => w.hasCost && w.source).map((w) => w.week + ': ' + w.source);
+    src =
+      '<div style="font-size:11px;margin-top:4px;color:var(--text-muted)">Source: ' +
+      (cs.gatewayAvailable
+        ? 'OneCLI gateway (exact; includes nested claude --print review runs) for days after capture began (' +
+          esc(cs.fleetFirstDay || '?') +
+          '), transcripts (ccusage) before'
+        : 'transcripts (ccusage) only — gateway unavailable') +
+      (tags.length ? ' &middot; ' + esc(tags.join(', ')) : '') +
+      '</div>';
+  }
+
+  return head + bars + spendTotal + trend + gaps + src;
 }
 
 // KB doctor — the `doctor` block of /api/kb-health (scripts/kb-doctor.py writes
@@ -11968,6 +11986,46 @@ function contextCellHtml(cs) {
     </div>`;
 }
 
+// One-line caption under a fleet cost view saying where its dollars came from.
+// Gateway days are exact OneCLI spend (and INCLUDE nested `claude --print`
+// review runs + codex calls — real spend that transcripts never show);
+// transcript (ccusage) days can run low once old transcripts are cleaned up.
+function costSourceCaptionHtml(cs, days) {
+  if (!cs) return '';
+  const list = Array.isArray(days) ? days : [];
+  const gw = list.filter((d) => d && d.source === 'gateway').length;
+  const cc = list.filter((d) => d && (d.source || 'ccusage') === 'ccusage').length;
+  let text;
+  if (!cs.gatewayAvailable) {
+    text = 'Cost source: transcripts (ccusage) only — OneCLI gateway unavailable';
+  } else if (gw && cc) {
+    text =
+      gw +
+      ' day' +
+      (gw === 1 ? '' : 's') +
+      ' from the OneCLI gateway (exact), ' +
+      cc +
+      ' earlier from transcripts (ccusage)';
+  } else if (gw) {
+    text = 'Cost source: OneCLI gateway (exact)';
+  } else {
+    text = 'Cost source: transcripts (ccusage)';
+  }
+  if (cs.gatewayAvailable) text += ' · includes nested `claude --print` review runs';
+  const unpriced =
+    Array.isArray(cs.unpricedModels) && cs.unpricedModels.length
+      ? ' · unpriced models (tokens counted, $ unknown): ' + cs.unpricedModels.join(', ')
+      : '';
+  const title = (cs.note || '') + (cs.unavailable && !cs.gatewayAvailable ? ' — ' + cs.unavailable : '');
+  return (
+    '<div style="color:var(--text-muted);font-size:11px;margin:6px 0 0" title="' +
+    escAttr(title) +
+    '">' +
+    esc(text + unpriced) +
+    '</div>'
+  );
+}
+
 function renderMetricsTokens(el, data) {
   // The cost CLI is a locked dependency and is never installed at read time, so
   // "cannot resolve it" is a real state the panel has to show. Rendering the
@@ -12041,6 +12099,7 @@ function renderMetricsTokens(el, data) {
       <div class="admin-stat-card"><div class="num">${fmtNum(totalCacheRead)}</div><div class="label">Cache Read</div></div>
       <div class="admin-stat-card"><div class="num">${cacheHitPct}%</div><div class="label">Cache Hit Rate</div></div>
     </div>`;
+  html += costSourceCaptionHtml(data.costSource, days);
 
   // By Model table
   const models = Object.entries(modelAgg);
@@ -12056,9 +12115,9 @@ function renderMetricsTokens(el, data) {
   // Daily breakdown table
   if (days.length > 0) {
     html += `<h4 style="margin:16px 0 8px;color:#94A3B8">Daily Breakdown</h4>
-    <table class="admin-table"><thead><tr><th>Date</th><th>Cost</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Create</th><th>Total</th><th>Models</th></tr></thead><tbody>`;
+    <table class="admin-table"><thead><tr><th>Date</th><th>Cost</th><th>Input</th><th>Output</th><th>Cache Read</th><th>Cache Create</th><th>Total</th><th>Models</th><th title="gateway = exact OneCLI request log; ccusage = transcripts (runs low where transcripts were cleaned up); mixed = different coworkers on different sources that day">Source</th></tr></thead><tbody>`;
     for (const day of [...days].reverse()) {
-      html += `<tr><td>${esc(day.date)}</td><td style="color:#10B981">${fmtUsd(day.totalCost)}</td><td>${fmtNum(day.inputTokens)}</td><td>${fmtNum(day.outputTokens)}</td><td>${fmtNum(day.cacheReadTokens)}</td><td>${fmtNum(day.cacheCreationTokens)}</td><td>${fmtNum(day.totalTokens)}</td><td><code style="font-size:10px">${esc((day.modelsUsed || []).join(', '))}</code></td></tr>`;
+      html += `<tr><td>${esc(day.date)}</td><td style="color:#10B981">${fmtUsd(day.totalCost)}</td><td>${fmtNum(day.inputTokens)}</td><td>${fmtNum(day.outputTokens)}</td><td>${fmtNum(day.cacheReadTokens)}</td><td>${fmtNum(day.cacheCreationTokens)}</td><td>${fmtNum(day.totalTokens)}</td><td><code style="font-size:10px">${esc((day.modelsUsed || []).join(', '))}</code></td><td style="color:var(--text-muted);font-size:11px">${esc(day.source || 'ccusage')}</td></tr>`;
     }
     html += '</tbody></table>';
   }

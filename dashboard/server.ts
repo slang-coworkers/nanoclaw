@@ -54,6 +54,16 @@ import { approverPolicyCheck, type ApproverPolicyCheck } from './approver-policy
 import { rowLabelForThread } from './row-label.js';
 import { isoWeekStart, isoWeekStartFromMs, sessionIdMs, unitCostByWeek, UNIT_COST_GROUPS } from './unit-cost.js';
 import {
+  costSourceMeta,
+  createGatewayCostSource,
+  mergeSource,
+  overlayGatewayDays,
+  type CostDayEntry,
+  type GatewayDaily,
+  type GatewayFetch,
+  type PsqlRunner,
+} from './gateway-costs.js';
+import {
   priceUsage,
   normalizeModel,
   MODEL_PRICING,
@@ -2447,16 +2457,26 @@ function getTraceDirListing(traceDir: string): { name: string; mtimeMs: number }
  * excluded), matching the per-group `/api/sessions` attribution. On-demand walk
  * with NO 31d mtime cutoff so historical windows resolve — bounded only by
  * transcript retention on disk (older files may have been rotated away).
+ *
+ * With `gateway` (OneCLI request_logs, bucketed in the same timezone), each
+ * group's days on/after its gateway cutover come ONLY from the gateway — exact,
+ * and immune to transcript cleanup — and earlier days ONLY from transcripts.
+ * `sources` records which one each day key came from; a day is never both.
  */
-function computeCostHistoryByGroup(
+type CostHistoryAcc = {
+  folder: string;
+  name: string;
+  claude: Map<string, number>;
+  codex: Map<string, number>;
+  sources: Map<string, 'gateway' | 'transcript' | 'mixed'>;
+};
+export function computeCostHistoryByGroup(
   fromKey: string,
   toKey: string,
   timezone = 'UTC',
-): Map<string, { folder: string; name: string; claude: Map<string, number>; codex: Map<string, number> }> {
-  const out = new Map<
-    string,
-    { folder: string; name: string; claude: Map<string, number>; codex: Map<string, number> }
-  >();
+  gateway: GatewayDaily | null = null,
+): Map<string, CostHistoryAcc> {
+  const out = new Map<string, CostHistoryAcc>();
   if (!db) return out;
   const inRange = (k: string) => k !== MISSING_TS_KEY && k >= fromKey && k <= toKey;
   const sessionsDir = join(getDataDir(), 'v2-sessions');
@@ -2466,11 +2486,21 @@ function computeCostHistoryByGroup(
     name: string;
   }[];
   for (const group of groups) {
-    const acc = out.get(group.folder) ?? {
+    const acc: CostHistoryAcc = out.get(group.folder) ?? {
       folder: group.folder,
       name: group.name,
       claude: new Map<string, number>(),
       codex: new Map<string, number>(),
+      sources: new Map(),
+    };
+    const gwGroup = gateway?.groups.get(group.id);
+    const cutKey = gwGroup ? gwGroup.cutover.replace(/-/g, '') : null;
+    // Transcript days: only before this group's gateway cutover.
+    const fromTranscript = (k: string) => inRange(k) && (cutKey === null || k < cutKey);
+    // Folder-level (several groups can share one) — 'mixed' if they disagree.
+    const mark = (k: string, src: 'gateway' | 'transcript') => {
+      const prev = acc.sources.get(k);
+      acc.sources.set(k, prev === undefined || prev === src ? src : 'mixed');
     };
     // Claude — projects-only transcripts, priced per day.
     const claudeShared = join(sessionsDir, group.id, '.claude-shared');
@@ -2483,7 +2513,11 @@ function computeCostHistoryByGroup(
       }
       const fc = scanFileCost(f, m, timezone);
       if (!fc.hadSignal) continue;
-      for (const [key, d] of fc.days) if (inRange(key)) acc.claude.set(key, (acc.claude.get(key) ?? 0) + d.cost);
+      for (const [key, d] of fc.days) {
+        if (!fromTranscript(key)) continue;
+        acc.claude.set(key, (acc.claude.get(key) ?? 0) + d.cost);
+        mark(key, 'transcript');
+      }
     }
     // Codex — per session dir's rollout, priced per day.
     let sessDirs: string[] = [];
@@ -2495,7 +2529,21 @@ function computeCostHistoryByGroup(
     for (const sessId of sessDirs) {
       const cc = scanSessionCodexCost(join(sessionsDir, group.id, sessId, 'codex'), timezone);
       if (!cc.hadSignal) continue;
-      for (const [key, d] of cc.days) if (inRange(key)) acc.codex.set(key, (acc.codex.get(key) ?? 0) + d.cost);
+      for (const [key, d] of cc.days) {
+        if (!fromTranscript(key)) continue;
+        acc.codex.set(key, (acc.codex.get(key) ?? 0) + d.cost);
+        mark(key, 'transcript');
+      }
+    }
+    // Gateway days: on/after the cutover, exact (includes nested review runs).
+    if (gwGroup && cutKey) {
+      for (const [day, d] of gwGroup.days) {
+        const key = day.replace(/-/g, '');
+        if (!inRange(key) || key < cutKey) continue;
+        if (d.claudeUsd > 0) acc.claude.set(key, (acc.claude.get(key) ?? 0) + d.claudeUsd);
+        if (d.codexUsd > 0) acc.codex.set(key, (acc.codex.get(key) ?? 0) + d.codexUsd);
+        if (d.claudeUsd > 0 || d.codexUsd > 0) mark(key, 'gateway');
+      }
     }
     if (acc.claude.size || acc.codex.size) out.set(group.folder, acc);
   }
@@ -3067,24 +3115,9 @@ if (!process.env.VITEST) {
 // reintroducing a full-fleet whole-file re-parse on a timer.
 
 // ---------- Token metrics via ccusage (container data only) ----------
-interface CcusageDayEntry {
-  date: string;
-  inputTokens: number;
-  outputTokens: number;
-  cacheCreationTokens: number;
-  cacheReadTokens: number;
-  totalTokens: number;
-  totalCost: number;
-  modelsUsed: string[];
-  modelBreakdowns: {
-    modelName: string;
-    inputTokens: number;
-    outputTokens: number;
-    cacheCreationTokens: number;
-    cacheReadTokens: number;
-    cost: number;
-  }[];
-}
+// One day of spend. Shared with gateway-costs.ts so a gateway day and a
+// transcript (ccusage) day are the same shape; `source` says which one it is.
+type CcusageDayEntry = CostDayEntry;
 interface CcusageGroupData {
   groupId: string;
   groupName: string;
@@ -3763,6 +3796,9 @@ function mergeDailyEntries(allDays: CcusageDayEntry[][]): CcusageDayEntry[] {
         t.cacheReadTokens += d.cacheReadTokens;
         t.totalTokens += d.totalTokens;
         t.totalCost += d.totalCost;
+        // Each input day is single-source; a merged (multi-group) day records
+        // 'mixed' when its inputs disagree, so a chart can say so.
+        t.source = mergeSource(t.source, d.source);
         for (const m of models) {
           if (!t.modelsUsed.includes(m)) t.modelsUsed.push(m);
         }
@@ -3794,6 +3830,38 @@ function mergeDailyEntries(allDays: CcusageDayEntry[][]): CcusageDayEntry[] {
 // is not.
 let ccusageRefreshInFlight = false;
 
+// OneCLI gateway spend (dashboard/gateway-costs.ts). One instance, so the
+// ~10-min psql cache is shared by the ccusage refresh and /api/cost-history.
+let gatewayCosts = createGatewayCostSource();
+
+/** Tests: route the gateway read through a stub psql runner (null = real docker exec). */
+export function setGatewayPsqlRunnerForTests(runPsql: PsqlRunner | null): void {
+  gatewayCosts = createGatewayCostSource(runPsql ? { runPsql } : {});
+}
+
+/** Tests: run one full cost-cache refresh (ccusage + gateway) and wait for it. */
+export async function refreshCcusageCacheForTests(): Promise<void> {
+  await refreshCcusageCache();
+}
+
+/** The gateway state the cost cache was last built from (UTC). */
+function gatewayCostMeta() {
+  return costSourceMeta(gatewayCosts.peek('UTC'));
+}
+
+/**
+ * The "metric unavailable" reason for a fleet cost view: only when NEITHER
+ * source can produce numbers. With ccusage missing but the gateway up, the
+ * gateway days still render (earlier days are simply absent, and the
+ * costSource block says why).
+ */
+function fleetCostUnavailable(): string | null {
+  const reason = ccusageUnavailable();
+  if (!reason) return null;
+  const gw = gatewayCosts.peek('UTC');
+  return gw && gw.ok ? null : reason;
+}
+
 async function refreshCcusageCache(): Promise<void> {
   if (ccusageRefreshInFlight) return;
   ccusageRefreshInFlight = true;
@@ -3818,6 +3886,9 @@ async function refreshCcusageCacheInner(): Promise<void> {
   if (!existsSync(sessionsDir)) return;
 
   const nameMap = new Map<string, string>();
+  // Opened lazily elsewhere; the gateway overlay needs the id list to decide
+  // which OneCLI agents belong to THIS install.
+  if (!db) db = openDb();
   if (db) {
     try {
       const groups = db.prepare('SELECT id, name FROM agent_groups').all() as { id: string; name: string }[];
@@ -3888,6 +3959,10 @@ async function refreshCcusageCacheInner(): Promise<void> {
   const perGroup = new Map<string, CcusageDayEntry[][]>();
   for (const agDir of agDirs) perGroup.set(agDir, []);
 
+  // Exact spend from the OneCLI gateway, fetched alongside (cached ~10 min,
+  // fail-soft). Started now so the psql round-trip overlaps the ccusage fan-out.
+  const gatewayPromise = gatewayCosts.get('UTC');
+
   // Bounded-concurrency runner. Cap to CPU threads (minus a couple reserved for
   // the event loop + other work), floored at 2 and ceilinged at 8 — a single
   // `npx ccusage` is CPU-light but the npm-exec resolution it does per call is
@@ -3929,10 +4004,21 @@ async function refreshCcusageCacheInner(): Promise<void> {
     '30d': [],
     all: [],
   };
-  for (const agDir of agDirs) {
-    const slices = perGroup.get(agDir)!;
-    if (slices.length === 0) continue;
-    const merged = mergeDailyEntries(slices);
+  // Per group: transcript days before the group's gateway cutover, gateway
+  // days on/after it (overlayGatewayDays — one source per group-day, never
+  // both). A group the gateway saw but that has no transcript dir left (all
+  // cleaned up) still counts, as long as it belongs to THIS install — the
+  // OneCLI vault can be shared with another instance whose agents we must not
+  // claim.
+  const gw = await gatewayPromise;
+  const gwGroups = gw.ok ? gw.data.groups : null;
+  const groupIds = [...agDirs];
+  if (gwGroups) {
+    for (const id of gwGroups.keys()) if (!groupIds.includes(id) && nameMap.has(id)) groupIds.push(id);
+  }
+  for (const agDir of groupIds) {
+    const slices = perGroup.get(agDir) ?? [];
+    const merged = overlayGatewayDays(mergeDailyEntries(slices), gwGroups?.get(agDir));
     if (merged.length === 0) continue;
     const groupName = nameMap.get(agDir) || agDir;
     const daily30 = merged.filter((e) => within(e, today30));
@@ -5763,6 +5849,7 @@ export function resetTransientDashboardStateForTests(): void {
   writeDb = null;
   hookEventsDb = null;
   approverPolicyMemo = null;
+  gatewayCosts.reset();
   ccusageCache = {
     '1d': { ...emptyCcusagePeriod },
     '7d': { ...emptyCcusagePeriod },
@@ -9765,7 +9852,8 @@ export async function handleRequest(
         }),
         period,
         lastRefresh: ccusageCache.lastRefresh,
-        unavailable: ccusageUnavailable(),
+        unavailable: fleetCostUnavailable(),
+        costSource: gatewayCostMeta(),
       }),
     );
     return;
@@ -9800,12 +9888,20 @@ export async function handleRequest(
       date: d.date,
       totalCost: d.totalCost,
       totalTokens: d.totalTokens,
+      source: d.source ?? 'ccusage',
     }));
     res.writeHead(200, {
       'Content-Type': 'application/json',
       'Cache-Control': 'no-store',
     });
-    res.end(JSON.stringify({ dailyCosts, lastRefresh: ccusageCache.lastRefresh, unavailable: ccusageUnavailable() }));
+    res.end(
+      JSON.stringify({
+        dailyCosts,
+        lastRefresh: ccusageCache.lastRefresh,
+        unavailable: fleetCostUnavailable(),
+        costSource: gatewayCostMeta(),
+      }),
+    );
     return;
   }
 
@@ -9817,7 +9913,7 @@ export async function handleRequest(
   if (url.pathname === '/api/unit-cost') {
     if (!requireAuth(req, res)) return;
     const weeksWanted = Math.min(Math.max(Number(url.searchParams.get('weeks')) || 4, 1), 26);
-    const unavailable = ccusageUnavailable();
+    const unavailable = fleetCostUnavailable();
     let payload: Record<string, unknown>;
     if (unavailable) {
       // Say why, and emit NO weeks — a caller must not be able to read this as
@@ -9921,6 +10017,7 @@ export async function handleRequest(
             fellBackToCreatedAt: unparseableSessionIds,
           },
           lastRefresh: ccusageCache.lastRefresh,
+          costSource: gatewayCostMeta(),
         };
       }
     }
@@ -10273,18 +10370,24 @@ export async function handleRequest(
         : by === 'week'
           ? weekKeyFromDayKey(dayKey)
           : `${dayKey.slice(0, 4)}-${dayKey.slice(4, 6)}-${dayKey.slice(6, 8)}`;
-    const byGroup = computeCostHistoryByGroup(fromKey, toKey, timezone);
+    // Exact gateway spend in the caller's timezone (cached per zone, fail-soft:
+    // unreachable ⇒ every day stays transcript-priced and `costSource` says why).
+    const gwFetch: GatewayFetch = await gatewayCosts.get(timezone);
+    if (!db) db = openDb();
+    const byGroup = computeCostHistoryByGroup(fromKey, toKey, timezone, gwFetch.ok ? gwFetch.data : null);
     const groups: any[] = [];
     let grand = 0;
+    let overallSource: string | undefined;
     for (const [folder, acc] of byGroup) {
       if (groupFilter && folder !== groupFilter && acc.name !== groupFilter) continue;
-      const buckets = new Map<string, { usd: number; claudeUsd: number; codexUsd: number }>();
+      const buckets = new Map<string, { usd: number; claudeUsd: number; codexUsd: number; source?: string }>();
       let total = 0;
       let claudeTot = 0;
       let codexTot = 0;
       const add = (dayKey: string, usd: number, provider: 'claude' | 'codex') => {
         const k = bucketOf(dayKey);
         const b = buckets.get(k) ?? { usd: 0, claudeUsd: 0, codexUsd: 0 };
+        b.source = mergeSource(b.source, acc.sources.get(dayKey) ?? 'transcript');
         b.usd += usd;
         if (provider === 'codex') b.codexUsd += usd;
         else b.claudeUsd += usd;
@@ -10304,15 +10407,24 @@ export async function handleRequest(
         codexUsd: codexTot,
         buckets: [...buckets.entries()]
           .sort((a, b) => (a[0] < b[0] ? -1 : a[0] > b[0] ? 1 : 0))
-          .map(([bucket, v]) => ({ bucket, usd: v.usd, claudeUsd: v.claudeUsd, codexUsd: v.codexUsd })),
+          .map(([bucket, v]) => ({
+            bucket,
+            usd: v.usd,
+            claudeUsd: v.claudeUsd,
+            codexUsd: v.codexUsd,
+            source: v.source ?? 'transcript',
+          })),
       });
+      for (const b of buckets.values()) overallSource = mergeSource(overallSource, b.source);
       grand += total;
     }
     groups.sort((a, b) => b.total_usd - a.total_usd);
     res.writeHead(200, { 'Content-Type': 'application/json' });
     res.end(
       JSON.stringify({
-        source: 'transcript',
+        // 'gateway' | 'transcript' | 'mixed' (some buckets each); per-bucket `source` is authoritative.
+        source: overallSource ?? (gwFetch.ok ? 'gateway' : 'transcript'),
+        costSource: costSourceMeta(gwFetch),
         from: fromRaw,
         to: toRaw,
         timezone,
@@ -10589,13 +10701,16 @@ export async function handleRequest(
       ccusageCache.lastRefresh,
       folderById,
     );
-    if (ccusageUnavailable() == null && ccusageIsStale(ccusageCache.lastRefresh)) void refreshCcusageCache();
+    // Kick even when ccusage itself is unavailable: the refresh also reads the
+    // OneCLI gateway, which can carry every day since capture began on its own.
+    if (ccusageIsStale(ccusageCache.lastRefresh)) void refreshCcusageCache();
     res.end(
       JSON.stringify({
         sessions,
         period,
         costTotals,
-        costUnavailable: ccusageUnavailable(),
+        costUnavailable: fleetCostUnavailable(),
+        costSource: gatewayCostMeta(),
         // Base URL of the per-session transcript archive (build-transcripts-archive.ts,
         // served separately). When set, the Sessions tab links each row to
         // `<base>/<group-folder>/<session-id>/index.html`. Install-specific, so it's
