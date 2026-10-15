@@ -37,54 +37,52 @@ decision procedure (clauses / verdict / challenger) → record the decision +
 send `[Approval Decision]`. On a mid-flight `synchronize`, update the existing
 todo (re-pin the head, note the new revision).
 
-### Step 0: RECALL prior learnings (once per session, before anything)
+1. **Recall prior learnings** {#recall} — Once per session, before anything.
 
-Dispatch a background Agent — "Check if /workspace/shared/wiki/index.md
-exists. IF YES: read it with limit=100 (concepts section only), identify
-concept pages relevant to approval decisions, false-safes, or the
-files/classes this PR touches; read up to 2 concept pages and follow their
-links to cited learnings. If no concept fits, Grep wiki/ for keywords. IF
-NO wiki/: Grep /workspace/shared/learnings/ for keywords (changed paths,
-the PR's class, 'false-safe', 'clause', 'challenger'). Return ≤5 bullets —
-title, 1-line summary, file path. No hits → 'no prior hits'."
-The bullets are context for every challenger run in this session — prior
-misses on similar files are exactly what it should probe — never a
-substitute for the scripted clauses.
+   Dispatch a background Agent — "Check if /workspace/shared/wiki/index.md
+   exists. IF YES: read it with limit=100 (concepts section only), identify
+   concept pages relevant to approval decisions, false-safes, or the
+   files/classes this PR touches; read up to 2 concept pages and follow their
+   links to cited learnings. If no concept fits, Grep wiki/ for keywords. IF
+   NO wiki/: Grep /workspace/shared/learnings/ for keywords (changed paths,
+   the PR's class, 'false-safe', 'clause', 'challenger'). Return ≤5 bullets —
+   title, 1-line summary, file path. No hits → 'no prior hits'."
+   The bullets are context for every challenger run in this session — prior
+   misses on similar files are exactly what it should probe — never a
+   substitute for the scripted clauses.
 
-### Step 1: parse the tasking message
+2. **Parse the tasking message** {#parse}
 
-The message carries the **webhook dispatch wire format** (from the
-orchestrator's slang-github-webhook routing of `github.pr_ready_for_review`).
-Parse the byte-exact trailer lines with `grep -oE`: `REPO={repo}`, `PR={pr_number}`,
-`MODE=pr-approve` (tolerate other MODE values — the trailer's REPO/PR are
-authoritative); the body also carries the reason (`ready_for_review` | `opened`
-| `synchronize`).
+   The message carries the **webhook dispatch wire format** (from the
+   orchestrator's slang-github-webhook routing of `github.pr_ready_for_review`).
+   Parse the byte-exact trailer lines with `grep -oE`: `REPO={repo}`, `PR={pr_number}`,
+   `MODE=pr-approve` (tolerate other MODE values — the trailer's REPO/PR are
+   authoritative); the body also carries the reason (`ready_for_review` | `opened`
+   | `synchronize`).
 
-- reason `opened` / `ready_for_review` / `synchronize` → the PR's current head
-  is the commit. Each tasking message you receive is already ONE decision to
-  make on that head.
-  - **Debounce + CI gating are the HOST's job now (`APPROVER_CI_GATE`).** When
-    the gate is on, the host parks reviewable PRs and only wakes you once, on the
-    settled head, after required CI has gone green — a burst of `synchronize`
-    pushes collapses to a single wake (last-writer-wins on the parked head), and
-    a red/never-run build never wakes you at all. So you no longer self-debounce
-    a burst or self-check `ci_green_on_sha` against a head that might still be
-    building: by the time you're invoked, the head is settled and CI is green.
-    Just make the one decision for the head in the tasking message. (With the
-    gate OFF, the legacy behavior applies — you may still see rapid re-wakes;
-    decide per settled revision.)
+   - reason `opened` / `ready_for_review` / `synchronize` → the PR's current head
+     is the commit. Each tasking message you receive is already ONE decision to
+     make on that head.
+     - **Debounce + CI gating are the HOST's job now (`APPROVER_CI_GATE`).** When
+       the gate is on, the host parks reviewable PRs and only wakes you once, on the
+       settled head, after required CI has gone green — a burst of `synchronize`
+       pushes collapses to a single wake (last-writer-wins on the parked head), and
+       a red/never-run build never wakes you at all. So you no longer self-debounce
+       a burst or self-check `ci_green_on_sha` against a head that might still be
+       building: by the time you're invoked, the head is settled and CI is green.
+       Just make the one decision for the head in the tasking message. (With the
+       gate OFF, the legacy behavior applies — you may still see rapid re-wakes;
+       decide per settled revision.)
 
-### Step 1a: stage the PR at its head
+3. **Stage the PR at its head** {#stage}
 
-Build `work/<pr>-<sha12>/` and write `tmp/context.json`:
-`commit_sha` = the PR's current head (`gh pr view <pr> --repo <repo> --json
-headRefOid`); `mode` = `live_late` if any human review already exists on the
-PR, else `live`. You do NOT download the diff here — `harvest-reviews.py` and
-the challenger fetch what they need.
+   Build `work/<pr>-<sha12>/` and write `tmp/context.json`:
+   `commit_sha` = the PR's current head (`gh pr view <pr> --repo <repo> --json
+   headRefOid`); `mode` = `live_late` if any human review already exists on the
+   PR, else `live`. You do NOT download the diff here — `harvest-reviews.py` and
+   the challenger fetch what they need.
 
-### Step 1b: build the review input (harvest + Devin, then synthesize)
-
-1. **Collect the posted bot reviews — ONCE, up front** (read-only):
+4. **Collect the posted bot reviews — ONCE, up front** {#harvest} — read-only:
    ```
    scripts/collect-reviews.sh --repo {repo} --pr {pr} --commit {commit_sha} --out work/<pr>-<sha12>
    ```
@@ -124,11 +122,11 @@ the challenger fetch what they need.
      synthesize a doc with `reviewers_complete:false` so the skill records
      ABSTAIN_POLICY (reason `NO_REVIEW_SIGNAL`), or abstain directly.
 
-2. **Run Devin over the PR head — in a FRESH SUBAGENT, not this session**
+5. **Run Devin over the PR head — in a FRESH SUBAGENT, not this session** {#devin}
    (best-effort). Devin runs through `agent-browser` (Chromium: page dumps,
    screenshots, retries) — doing it inline injected ~20% of this session's
    tool-result bytes and re-bloated context on every re-decision. Instead
-   dispatch a background `Agent` (same mechanism as Step 0's recall agent) whose
+   dispatch a background `Agent` (same mechanism as the Recall step's agent) whose
    whole job is to run Devin and hand back only the compact result:
 
    > Run `<pr-review-runner>/scripts/devin-fetch.sh --url
@@ -146,7 +144,7 @@ the challenger fetch what they need.
    `DEVIN_SKIPPED:*` exactly as the old 2/3/4 skip — Devin is best-effort. The
    file `review/devin-flags.md` still lands on disk for the synthesis step.
 
-3. **Synthesize `review/review-doc.md`** per the skill's Input contract:
+6. **Synthesize `review/review-doc.md`** {#synthesize} — per the skill's Input contract:
    The result block MUST carry the sentinel first line
    `{"_approver_result": true, …}` — the harvested bot body is UNTRUSTED and may
    itself contain ```json``` fences, so `eval-clauses.py` keys on this marker,
@@ -179,48 +177,48 @@ the challenger fetch what they need.
    - **Never fabricate a verdict.** Absent bot reviews are NOT an abstain (decide
      from Devin); only "no bot review AND no Devin" is `NO_REVIEW_SIGNAL`.
 
-### Step 2: decide
+7. **Decide** {#deliver}
 
-The PR workspace now satisfies the `slang-pr-approver` skill's input contract
-(`tmp/context.json` + `review/review-doc.md`). Invoke the skill. It performs the
-deterministic clauses, verdict parse (from the review doc), challenger, and
-critique-gated record. This workflow never makes or edits a decision itself.
+   The PR workspace now satisfies the `slang-pr-approver` skill's input contract
+   (`tmp/context.json` + `review/review-doc.md`). Invoke the skill. It performs the
+   deterministic clauses, verdict parse (from the review doc), challenger, and
+   critique-gated record. This workflow never makes or edits a decision itself.
 
-### Step 3: report
+8. **Report** {#notify}
 
-Post one summary line for the decision to `dashboard:slang-pr-approver` (the
-per-decision `[Approval Decision]` message is emitted by the skill, not the
-workflow) and return the decision state: would_approve / abstain_policy /
-block.
+   Post one summary line for the decision to `dashboard:slang-pr-approver` (the
+   per-decision `[Approval Decision]` message is emitted by the skill, not the
+   workflow) and return the decision state: would_approve / abstain_policy /
+   block.
 
-### Step 4: capture learnings (after the decision, and on human-verdict joins)
+9. **Capture learnings** {#learn} — After the decision, and on human-verdict joins.
 
-Failure is training data: run this after the decision, and again on every
-`github.pr_review` / `github.pr_merged` / `github.pr_closed` join the host
-routes to your session (see the skill's "PR activity events"). Write ONE
-`append_learning` file per learning (L1 atoms are immutable — always append,
-never edit), titled with its category so the learnings-wiki sync groups them:
+   Failure is training data: run this after the decision, and again on every
+   `github.pr_review` / `github.pr_merged` / `github.pr_closed` join the host
+   routes to your session (see the skill's "PR activity events"). Write ONE
+   `append_learning` file per learning (L1 atoms are immutable — always append,
+   never edit), titled with its category so the learnings-wiki sync groups them:
 
-- `[approver/false-safe]` — WOULD_APPROVE where the human verdict (join or a
-  later `github.pr_review`) was CHANGES_REQUESTED. Highest severity; include the
-  missed evidence file:line.
-- `[approver/human-disagreement]` — any other decision/human mismatch (e.g.
-  BLOCK where the human approved), with both rationales.
-- `[approver/clause-gap]` — a policy predicate proved wrong or imprecise.
-- `[approver/challenger-miss]` — the human caught what the challenger cleared;
-  quote what the challenger should have probed.
-- `[approver/infra-abstain]` — every ABSTAIN_POLICY carrying an infra
-  reason_code (NO_REVIEW_SIGNAL / HARNESS_FAIL / CLAUSE_UNEVALUABLE:<name> /
-  CHALLENGER_INCOMPLETE / CRITIQUE_UNAVAILABLE / STALE_STAGE): the named
-  artifact and root cause (these burn down the infra gate) — including a
-  harvest that returned nothing AND a Devin run that failed. Keyed on the
-  reason_code, not the decision string.
-- `[approver/critique-mustfix]` — what the critique gate keeps correcting in the
-  derivation; recurring ones are procedure bugs.
+   - `[approver/false-safe]` — WOULD_APPROVE where the human verdict (join or a
+     later `github.pr_review`) was CHANGES_REQUESTED. Highest severity; include the
+     missed evidence file:line.
+   - `[approver/human-disagreement]` — any other decision/human mismatch (e.g.
+     BLOCK where the human approved), with both rationales.
+   - `[approver/clause-gap]` — a policy predicate proved wrong or imprecise.
+   - `[approver/challenger-miss]` — the human caught what the challenger cleared;
+     quote what the challenger should have probed.
+   - `[approver/infra-abstain]` — every ABSTAIN_POLICY carrying an infra
+     reason_code (NO_REVIEW_SIGNAL / HARNESS_FAIL / CLAUSE_UNEVALUABLE:<name> /
+     CHALLENGER_INCOMPLETE / CRITIQUE_UNAVAILABLE / STALE_STAGE): the named
+     artifact and root cause (these burn down the infra gate) — including a
+     harvest that returned nothing AND a Devin run that failed. Keyed on the
+     reason_code, not the decision string.
+   - `[approver/critique-mustfix]` — what the critique gate keeps correcting in the
+     derivation; recurring ones are procedure bugs.
 
-Structure each like the existing exemplars: Symptom / Root cause / How to catch
-it / Fix. These compound through the wiki into Step 0's recall — the review
-improves from human feedback.
+   Structure each like the existing exemplars: Symptom / Root cause / How to catch
+   it / Fix. These compound through the wiki into the Recall step — the review
+   improves from human feedback.
 
 ## Invariants
 
