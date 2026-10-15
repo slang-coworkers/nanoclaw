@@ -10,7 +10,7 @@ import path from 'path';
 import { type ComposedSectionInput, renderProjectDoc } from './project-doc.js';
 import { readCoworkerTypes, readSkillCatalog } from './registry.js';
 import { residentSkillInstructions } from './skill-scope.js';
-import { injectOverlays, resolveCoworkerManifest } from './resolve.js';
+import { collectWorkflowExtendsChain, injectOverlays, resolveCoworkerManifest } from './resolve.js';
 import { RUNTIME_CONTRACT_SECTION, renderRuntimeContract } from './runtime-contract.js';
 import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js';
 import { COMPOSED_DOC_MARKER } from '../group-persona.js';
@@ -465,6 +465,11 @@ const CATEGORY_HEADINGS: Record<Category, string> = {
   other: 'Other',
 };
 
+// The baseline read-only workflow every project's planning workflow extends
+// (`slang-plan → plan`). Like the implicit `base` parent in registry.ts, it is
+// a fixed name of the workflow library, not a per-project choice.
+const BASELINE_PLAN_WORKFLOW = 'plan';
+
 // Maps trait domains to display categories. Qualified traits (repo.pr, code.edit)
 // are resolved by extracting the domain prefix before the dot.
 const DOMAIN_TO_CATEGORY: Record<string, Category> = {
@@ -890,15 +895,28 @@ export function renderCoworkerSections(
       if (!label) label = `Run /${w.name}`;
       routeLines.push(`- ${label} → \`/${w.name}\` workflow`);
     }
+    // "Always start with a workflow" presumes a workflow for the role's job. A
+    // role whose only workflows are the baseline planning one (or children of
+    // it) has none: its job is its standing orders — ci-babysitter and
+    // release-regression-check are shaped this way — so the footer points at
+    // those orders and keeps the planning workflow for tasks that want its
+    // deliverable. A role with a job-specific workflow (review, triage, fix),
+    // or without standing orders, keeps the original footer.
+    const isBaselinePlan = (name: string): boolean =>
+      collectWorkflowExtendsChain(name, catalog).includes(BASELINE_PLAN_WORKFLOW);
+    const ordersDriven = !!extraInstructions?.trim() && manifest.workflows.every((w) => isBaselinePlan(w.name));
+    const footer = ordersDriven
+      ? '\n\nYour procedure is your standing orders in [Additional Instructions](#additional-instructions); run the planning workflow when a task calls for its written deliverable.'
+      : '\n\nAlways start with a workflow. Never jump straight to code.' +
+        (extraInstructions?.trim()
+          ? '\nYour role-specific standing orders: [Additional Instructions](#additional-instructions)'
+          : '');
     sections.push(
       section(
         'How to Work',
         routeLines.join('\n') +
-          '\n\nAlways start with a workflow. Never jump straight to code.' +
-          '\nWorkflow bodies are embedded below — follow the steps inline. Workflows are not slash commands.' +
-          (extraInstructions?.trim()
-            ? '\nYour role-specific standing orders: [Additional Instructions](#additional-instructions)'
-            : ''),
+          footer +
+          '\nWorkflow bodies are embedded below — follow the steps inline. Workflows are not slash commands.',
       ),
     );
   }
