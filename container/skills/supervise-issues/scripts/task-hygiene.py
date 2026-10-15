@@ -94,6 +94,8 @@ CORE_GUARD = re.compile(
     r"hygiene|memory|report|digest|babysit|scan",
     re.IGNORECASE,
 )
+# Same belt for prompt text, whole words only ("reporter"/"scanner" are not core).
+CORE_GUARD_WORDS = re.compile(rf"\b(?:{CORE_GUARD.pattern})\b", re.IGNORECASE)
 
 # --- Reference grammar ---------------------------------------------------------
 _SEG = r"[A-Za-z0-9_.-]+"
@@ -193,7 +195,9 @@ def parse_refs(prompt: str, name: str = "") -> tuple[list[str], str | None]:
         return refs, None
 
     # Fallback — no structured ref anywhere: bare refs (or the name's number)
-    # against the one repo the text names, else the default repo.
+    # against the one repo the text names, else the default repo. Any explicit
+    # `owner/repo` counts as named, so "NVIDIA/foo PR #712" never reads as slang#712.
+    hinted |= {f"{a.lower()}/{b.lower()}" for a, b in OWNER_REPO.findall(masked)}
     if len(hinted) > 1:
         return [], "ambiguous: several repos named, no structured ref"
     base = next(iter(hinted)) if hinted else DEFAULT_REPO
@@ -239,10 +243,10 @@ def task_kind(task: dict) -> str | None:
         kind = "watch"
     else:
         return None
-    # The prompt head must not be a core job either (a re-check that opens by
-    # naming the supervisor tick, say) — belt on the first line.
+    # The prompt head must not be a core job either ("Re-check nightly release
+    # report for …") — whole-word belt on the first line, no exemptions.
     first_line = prompt.strip().split("\n", 1)[0][:160]
-    if CORE_GUARD.search(first_line) and not (THREAD_REF.search(first_line) or SLASH_REF.search(first_line)):
+    if CORE_GUARD_WORDS.search(first_line):
         return None
     return kind
 
@@ -336,7 +340,6 @@ def plan(tasks: list[dict], gh_states: dict[str, str | None], st: dict, now: dt.
     keep: list[dict] = []
     unresolved: list[dict] = []
     parked = st.setdefault("parked", {})
-    closed_chains: set[str] = set()
 
     for t in tasks:
         kind = task_kind(t)
@@ -354,7 +357,6 @@ def plan(tasks: list[dict], gh_states: dict[str, str | None], st: dict, now: dt.
         row["states"] = states
         if all(c is True for c in closed):
             cancel.append({**row, "reason": "closed", "why": ", ".join(f"{r} {s}" for r, s in states.items())})
-            closed_chains.add(refs[0])
             continue
         if any(c is None for c in closed) and not any(c is False for c in closed):
             unresolved.append({**row, "reason": "github state unknown"})
@@ -380,17 +382,9 @@ def plan(tasks: list[dict], gh_states: dict[str, str | None], st: dict, now: dt.
         if refs and all(is_closed(gh_states.get(r)) is True for r in refs):
             unparked.append(chain)
             del parked[chain]
-            closed_chains.add(chain)
-    # A closed chain's count is no longer needed; keep the state file bounded —
-    # unless another live task still names that chain first (multi-ref tasks).
-    live_chains = {r["refs"][0] for r in keep + unresolved if r.get("refs")}
-    live_chains |= {c["refs"][0] for c in cancel if c["reason"] == "cap"}
-    for chain in closed_chains - live_chains:
-        if chain in parked:
-            continue
-        rec = st.get("chains", {}).pop(chain, None) or {}
-        for sid in rec.get("series", []):
-            st.get("ordinals", {}).pop(sid, None)
+    # Chain counts are never pruned: a task whose prompt failed to hydrate this
+    # fire may still depend on the chain, and a reset count is a fresh allowance.
+    # The state grows by a few bytes per re-chase — bounded enough.
 
     last = parse_iso(st.get("last_digest_at"))
     digest_due = bool(parked) and (last is None or (now - last).days >= DIGEST_EVERY_DAYS)

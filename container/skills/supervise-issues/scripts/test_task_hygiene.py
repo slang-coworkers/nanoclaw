@@ -135,6 +135,22 @@ class TestAllowPattern(unittest.TestCase):
         for t in core:
             self.assertIsNone(th.task_kind(t), t["series_id"])
 
+    def test_core_prompt_with_structured_ref_not_allowed(self):
+        t = task("task-1783328238990-qikxwn", "Re-check nightly release report for shader-slang/slang#13230",
+                 "0 9 * * *")
+        self.assertIsNone(th.task_kind(t))
+        # Whole words only: "reporter" is not the report job.
+        self.assertEqual(th.task_kind(rechase(13230, extra="")), "rechase")
+        self.assertEqual(th.task_kind(task("rechase-13230-ab12",
+                                           "Re-chase shader-slang/slang#13230: ask the reporter")), "rechase")
+
+    def test_fallback_honours_explicit_owner_repo(self):
+        refs, err = th.parse_refs("Re-check NVIDIA/foo PR #712", "recheck-712-abcd")
+        self.assertIsNone(err)
+        self.assertEqual(refs, ["nvidia/foo#712"])
+        refs, err = th.parse_refs("Re-check NVIDIA/foo and acme/bar PR #712", "recheck-712-abcd")
+        self.assertIn("ambiguous", err)
+
 
 class TestPlanClosed(unittest.TestCase):
     def test_closed_issue_cancelled(self):
@@ -237,6 +253,9 @@ class TestCap(unittest.TestCase):
         a = task("rechase-slang-13230-aaaa", "Re-chase shader-slang/slang#13230 again")
         th.plan([a, b], gh, st, NOW)
         self.assertEqual(st["chains"]["shader-slang/slang#13230"]["max_ordinal"], 3)
+        # Same when B's prompt failed to hydrate this fire (absent from the plan).
+        th.plan([a], gh, st, NOW)
+        self.assertEqual(st["chains"]["shader-slang/slang#13230"]["max_ordinal"], 3)
 
     def test_next_names_structured(self):
         st = th.empty_state()
@@ -254,7 +273,8 @@ class TestCap(unittest.TestCase):
         p = th.plan([], {"shader-slang/slang#13306": "CLOSED"}, st, NOW)
         self.assertEqual(p["unparked"], ["shader-slang/slang#13306"])
         self.assertEqual(st["parked"], {})
-        self.assertNotIn("shader-slang/slang#13306", st["chains"])
+        # The count survives (never pruned): reopening does not grant a fresh allowance.
+        self.assertEqual(st["chains"]["shader-slang/slang#13306"]["max_ordinal"], 5)
 
     def test_digest_weekly(self):
         st = th.empty_state()
