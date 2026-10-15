@@ -16,6 +16,7 @@ import {
   _costDriftInFlight,
   _resetCostDriftCheckForTesting,
   DRIFT_CHECK_INTERVAL_MS,
+  MAX_LOOKBACK_MS,
   maybeStartCostDriftCheck,
   type DriftCheckDeps,
   type DriftCheckState,
@@ -138,6 +139,45 @@ describe('cost drift check', () => {
     const u = makeDeps({ code: 0, stdout: fleet('PASS'), stderr: '' }, { state: { lastRunAt: old } });
     expect(maybeStartCostDriftCheck(u.deps)).toBe('started');
     expect(u.writes[0]).toEqual({ lastRunAt: new Date(NOW).toISOString() });
+    // No cursor yet: the first run looks back 24 h.
+    expect(u.runCheck).toHaveBeenCalledWith(new Date(NOW - DRIFT_CHECK_INTERVAL_MS).toISOString());
+    await settle();
+    expect(u.state()?.checkedThrough).toBe(new Date(NOW).toISOString());
+  });
+
+  it('starts at the coverage cursor so late runs leave no gap', async () => {
+    const cursor = new Date(NOW - DRIFT_CHECK_INTERVAL_MS - 90_000).toISOString();
+    const t = makeDeps(
+      { code: 2, stdout: fleet('FAIL', ['x']), stderr: '' },
+      { state: { lastRunAt: cursor, checkedThrough: cursor } },
+    );
+    maybeStartCostDriftCheck(t.deps);
+    expect(t.runCheck).toHaveBeenCalledWith(cursor);
+    await settle();
+    // A completed run (FAIL included) advances the cursor to its own start.
+    expect(t.state()?.checkedThrough).toBe(new Date(NOW).toISOString());
+  });
+
+  it('an ERROR run keeps the cursor, so its window is re-checked next time', async () => {
+    const cursor = new Date(NOW - DRIFT_CHECK_INTERVAL_MS).toISOString();
+    const t = makeDeps(
+      { code: 1, stdout: '{"verdict":"ERROR","error":"down"}', stderr: '' },
+      { state: { lastRunAt: cursor, checkedThrough: cursor } },
+    );
+    maybeStartCostDriftCheck(t.deps);
+    await settle();
+    expect(t.state()?.checkedThrough).toBe(cursor);
+    expect(t.state()?.lastVerdict).toBe('ERROR');
+  });
+
+  it('caps the catch-up window at 7 days', async () => {
+    const ancient = new Date(NOW - 30 * DRIFT_CHECK_INTERVAL_MS).toISOString();
+    const t = makeDeps(
+      { code: 0, stdout: fleet('PASS'), stderr: '' },
+      { state: { lastRunAt: ancient, checkedThrough: ancient } },
+    );
+    maybeStartCostDriftCheck(t.deps);
+    expect(t.runCheck).toHaveBeenCalledWith(new Date(NOW - MAX_LOOKBACK_MS).toISOString());
     await settle();
   });
 

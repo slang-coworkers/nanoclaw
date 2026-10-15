@@ -4,7 +4,8 @@
  * The runner's `cost_events` ledger is what the cost cap enforces. For weeks it
  * kept ~1% of each call's output tokens (#1329, fixed by #2013) and nothing
  * noticed. This runs `scripts/verify-cost-ledger-vs-gateway.py --fleet` once a
- * day over the sessions active in the last 24 h — every ledger call joined to
+ * day over the calls first reported since the last completed run (the first
+ * run looks back 24 h, a catch-up at most 7 days) — every ledger call joined to
  * the OneCLI gateway's own record of it — and DMs the operator when the two
  * disagree (or when the check cannot run: a check that silently stops running
  * is the failure it exists to prevent). A PASS is logged, not sent.
@@ -31,11 +32,19 @@ import { log } from '../../log.js';
 import { pickApprovalDelivery, pickApprover } from '../approvals/primitive.js';
 
 export const DRIFT_CHECK_INTERVAL_MS = 24 * 60 * 60 * 1000;
+/** Longest catch-up window after an outage or a run of ERRORs. */
+export const MAX_LOOKBACK_MS = 7 * DRIFT_CHECK_INTERVAL_MS;
 const RUN_TIMEOUT_MS = 15 * 60 * 1000;
 const MAX_ALERT_LINES = 10;
 
 export interface DriftCheckState {
   lastRunAt: string;
+  /**
+   * Coverage cursor: calls first reported before this were checked by a run
+   * that completed (PASS or FAIL). The next run starts here, so scheduling
+   * delays leave no gap and an ERROR run's window is re-checked next time.
+   */
+  checkedThrough?: string;
   lastVerdict?: 'PASS' | 'FAIL' | 'ERROR';
   lastFinishedAt?: string;
   alerts?: string[];
@@ -53,7 +62,8 @@ export interface DriftCheckDeps {
   now(): number;
   readState(): DriftCheckState | null;
   writeState(state: DriftCheckState): void;
-  runCheck(): Promise<DriftRunResult>;
+  /** Run the fleet check over calls first reported at or after `since` (ISO). */
+  runCheck(since: string): Promise<DriftRunResult>;
   /** DM the operator; false when nobody is reachable. */
   notifyOperator(text: string): Promise<boolean>;
 }
@@ -98,11 +108,11 @@ export const defaultDriftCheckDeps: DriftCheckDeps = {
     fs.writeFileSync(tmp, JSON.stringify(state, null, 1));
     fs.renameSync(tmp, STATE_PATH);
   },
-  runCheck() {
+  runCheck(since) {
     return new Promise((resolve) => {
       execFile(
         'python3',
-        [SCRIPT_PATH, '--fleet', '--hours', '24', '--json', '--checkout', process.cwd()],
+        [SCRIPT_PATH, '--fleet', '--since', since, '--json', '--checkout', process.cwd()],
         { timeout: RUN_TIMEOUT_MS, maxBuffer: 64 * 1024 * 1024 },
         (err, stdout, stderr) => {
           const code = err ? (typeof err.code === 'number' ? err.code : null) : 0;
@@ -142,9 +152,14 @@ export function maybeStartCostDriftCheck(
   const lastMs = last?.lastRunAt ? Date.parse(last.lastRunAt) : NaN;
   const now = deps.now();
   if (Number.isFinite(lastMs) && now - lastMs < DRIFT_CHECK_INTERVAL_MS && lastMs <= now) return 'not-due';
+  const cursorMs = last?.checkedThrough ? Date.parse(last.checkedThrough) : NaN;
+  const sinceMs = Number.isFinite(cursorMs)
+    ? Math.min(Math.max(cursorMs, now - MAX_LOOKBACK_MS), now)
+    : now - DRIFT_CHECK_INTERVAL_MS;
+  const startedAt = new Date(now).toISOString();
   // Stamp first: a run that crashes the host must not restart every tick.
-  deps.writeState({ ...(last ?? {}), lastRunAt: new Date(now).toISOString() });
-  inFlight = runCostDriftCheck(deps)
+  deps.writeState({ ...(last ?? {}), lastRunAt: startedAt });
+  inFlight = runCostDriftCheck(deps, { since: new Date(sinceMs).toISOString(), startedAt })
     .catch((err) => log.error('Cost drift check failed', { err }))
     .finally(() => {
       inFlight = null;
@@ -153,8 +168,11 @@ export function maybeStartCostDriftCheck(
 }
 
 /** One run: execute the script, record the verdict, DM the operator unless PASS. */
-export async function runCostDriftCheck(deps: DriftCheckDeps = defaultDriftCheckDeps): Promise<void> {
-  const res = await deps.runCheck();
+export async function runCostDriftCheck(
+  deps: DriftCheckDeps,
+  window: { since: string; startedAt: string },
+): Promise<void> {
+  const res = await deps.runCheck(window.since);
   let report: FleetReport | null = null;
   /* eslint-disable no-catch-all/no-catch-all -- unparseable output is an ERROR verdict, alerted below */
   try {
@@ -172,7 +190,9 @@ export async function runCostDriftCheck(deps: DriftCheckDeps = defaultDriftCheck
 
   const prev = deps.readState();
   deps.writeState({
-    lastRunAt: prev?.lastRunAt ?? new Date(deps.now()).toISOString(),
+    lastRunAt: prev?.lastRunAt ?? window.startedAt,
+    // A completed check covers its window; an ERROR leaves the cursor for the next run.
+    checkedThrough: verdict === 'ERROR' ? prev?.checkedThrough : window.startedAt,
     lastFinishedAt: new Date(deps.now()).toISOString(),
     lastVerdict: verdict,
     alerts: report?.alerts ?? [],
