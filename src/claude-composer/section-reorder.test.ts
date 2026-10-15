@@ -42,7 +42,7 @@ const FLAT = ['main', 'main.persona'] as const;
 const FRAGMENT_DIGESTS: Record<string, string> = {
   'decision-table.md': '66ea8a0e1438a818',
   'report-formats.md': 'd1c3c15359a95792',
-  'chain-reporting.md': 'bb04e4ba676253be',
+  'chain-reporting.md': 'a10b38b57f0bb269',
 };
 /** The chain-reporting fragment as it stood before the heading was added. */
 const OLD_CHAIN_REPORTING = path.join(GOLDEN_DIR, 'pre-anchor-retarget', 'fragments', 'chain-reporting.post-trim.md');
@@ -67,7 +67,7 @@ const REWRITTEN_AFTER_FREEZE: readonly {
   {
     file: 'invariants/principles.md',
     frozen: 'principles.post-trim.md',
-    digest: 'ac614cdef172a900',
+    digest: '980ea64975ddda00',
     typed: true,
     flat: false,
   },
@@ -76,6 +76,13 @@ const REWRITTEN_AFTER_FREEZE: readonly {
     file: 'context/workspace.md',
     frozen: 'workspace.post-trim.md',
     digest: 'b9d0270a9d83651f',
+    typed: true,
+    flat: false,
+  },
+  {
+    file: 'tool-instructions/ncl-group.md',
+    frozen: 'ncl-group.post-trim.md',
+    digest: '5303444d1cbe1c9f',
     typed: true,
     flat: false,
   },
