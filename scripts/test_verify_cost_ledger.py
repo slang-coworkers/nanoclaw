@@ -243,6 +243,12 @@ class FleetDriftCheck(unittest.TestCase):
         self.assertEqual(rep["sessions_checked"], 0)
         self.assertEqual(self.fx.queries, [], "no gateway query without sessions in the window")
 
+    def test_offset_since_queries_gateway_in_utc(self):
+        self.fx.session("sess-a", [call(i) for i in range(2)])
+        self.fx.run("--since", "2026-10-15T01:00:00+02:00")  # = 2026-10-14T23:00Z
+        self.assertEqual(len(self.fx.queries), 1)
+        self.assertIn("between '2026-10-14 22:50:00'", self.fx.queries[0])
+
     def test_check_is_read_only(self):
         calls = [call(i) for i in range(12)]
         path = self.fx.session("sess-a", calls)
@@ -265,7 +271,10 @@ class FleetDriftCheck(unittest.TestCase):
         out = io.StringIO()
         try:
             with contextlib.redirect_stdout(out):
-                rc = vcl.main(["--fleet", "--checkout", self.fx.dir, "--json"])
+                # Pin the window to the fixtures: the real clock moves past NOW.
+                rc = vcl.main(
+                    ["--fleet", "--checkout", self.fx.dir, "--json", "--since", iso(NOW - timedelta(hours=24))]
+                )
         finally:
             vcl.psql = orig
         self.assertEqual(rc, 1)

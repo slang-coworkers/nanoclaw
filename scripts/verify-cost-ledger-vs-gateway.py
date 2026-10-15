@@ -219,6 +219,10 @@ def split_ledger(rows: list[tuple], rates: dict, since_ms: int | None = None):
 def gateway_sql(group: str, t0: datetime, t1: datetime) -> str:
     if not GROUP_RE.fullmatch(group):
         raise CheckError(f"unexpected agent group id {group!r}")
+    # created_at is a UTC `timestamp` (no zone): format the bounds in UTC, or an
+    # offset-bearing --since shifts the query window by the offset.
+    t0 = t0.astimezone(timezone.utc)
+    t1 = t1.astimezone(timezone.utc)
     return (
         "select (extra_data->>'usage_observed_at_ms')::bigint, extra_data->>'usage_model', "
         "coalesce((extra_data->>'usage_input_tokens')::bigint,0), coalesce((extra_data->>'usage_output_tokens')::bigint,0), "
