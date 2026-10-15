@@ -1,5 +1,7 @@
 import fs from 'node:fs';
+import path from 'node:path';
 import crypto from 'node:crypto';
+import { pathToFileURL } from 'node:url';
 
 const REPO_OWNER = 'shader-slang';
 const REPO_NAME = 'slang';
@@ -109,6 +111,11 @@ const GATE_JOB_NAMES = new Set(['falcor-build-approval-gate']);
 const EXCLUSIONS_PATH = '/workspace/agent/memory/ci-babysitter/tracked-regressions.json';
 const BASE_SKEW_PATH = '/workspace/agent/memory/ci-babysitter/base-skew-signatures.json';
 const SELF_PATH = '/workspace/agent/memory/ci-babysitter/sweep-script-v2.mjs';
+// Where the gate remembers what it reported on the previous fire, so decideWake
+// can tell a change (new head, new blocked gate, new eviction) from steady
+// state. Lives beside the two ledgers above because it is the same kind of
+// per-group babysitter memory; see loadPreviousState/saveState for the shape.
+const STATE_PATH = '/workspace/agent/memory/ci-babysitter/sweep-gate-state.json';
 
 // Baked in by stamp-hash.mjs at deploy time -- see checkDeploymentDrift() below.
 // Placeholder value here means 'never stamped'; stamp-hash.mjs overwrites this
@@ -917,353 +924,540 @@ const verifyRollupUnexplained = async (headSha) => {
   }
 };
 
-let driftCheck = checkDeploymentDrift();
+// ---------------------------------------------------------------------------
+// Wake decision. Everything above gathers facts; this section decides whether
+// those facts are worth a model turn. It is pure (no I/O, no clock) so the
+// sibling test file can drive it with fixture payloads.
+// ---------------------------------------------------------------------------
 
-try {
-  const nowUtcHour = new Date().getUTCHours();
-  const isFullScan = FULL_SCAN_HOURS.includes(nowUtcHour);
+const STATE_VERSION = 1;
 
-  const baseSkewEntries = loadBaseSkewSignatures();
-  const { openEntries: exclusionEntries, loadError: exclusionsLoadError, needsBaseSkewGuardCount } =
-    await loadAndRefreshExclusions(baseSkewEntries);
-  const excludedJobNames = new Set(exclusionEntries.map((e) => e.job));
-  const issueForJob = new Map(exclusionEntries.map((e) => [e.job, e.issue]));
-  const signatureForJob = new Map(exclusionEntries.map((e) => [e.job, e.logGrep]));
+const sortedNames = (list) => (list || []).map((c) => (typeof c === 'string' ? c : c.name)).sort();
 
-  const prs = await fetchAllPages(
-    '/pulls?state=open&sort=updated&direction=desc',
-    100,
-    function (raw) { return raw; }
-  );
-  const nonDraft = prs.filter((p) => !p.draft);
-  const openNums = new Set(nonDraft.map((p) => p.number));
+// The part of a PR entry that decideWake compares across fires: which checks
+// are still red and unexplained, which are stalled on a human, and whether the
+// rollup is non-green for a reason this script could not name. Together with
+// headSha this is all the state the gate persists per PR.
+export const fingerprintPr = (pr) => ({
+  headSha: pr.headSha || null,
+  failing: sortedNames(pr.actionableFailingChecks),
+  blocked: sortedNames(pr.blockedChecks),
+  rollupUnexplained: !!pr.rollupUnexplained,
+});
 
-  const floor = nonDraft.slice(0, PRS_CAP);
-  const floorNums = new Set(floor.map((p) => p.number));
+// Decide whether the sweep agent has anything to do, given the payload this
+// script built (`summary`: driftCheck, prs, evicted) and the state saved on the
+// previous fire. Returns the verdict, the reasons (one per PR and cause, so
+// the agent knows what to look at), and the state to persist for next time.
+//
+// The sweep prompt asks the agent, for each PR with failures, to classify the
+// failure, rerun intermittent ones and requeue merge-queue evictions. So a PR
+// is actionable while it carries a failing check that neither the
+// tracked-regression ledger nor the base-skew registry explains -- and it
+// stays actionable on every fire until that list is empty, because a failure
+// that is still red two hours later is exactly what the agent should look at
+// again (the agent's own rerun-tracker bounds how often it actually reruns).
+// Blocked checks are different: a gate waiting on a human stays waiting for
+// days and the babysitter cannot approve it, so it wakes the agent once, when
+// it first appears, not on every fire. The same once-per-event rule applies to
+// a merge-queue eviction, keyed by its run id, since the requeue decision is
+// made once per eviction. A tracked PR whose head or failure set moved since
+// the previous fire wakes the agent even if nothing is red now, so it can
+// close out whatever it recorded about that PR. Deployment drift wakes on
+// every fire on purpose: a skipped redeploy must stay loud until fixed.
+export const decideWake = (summary, previousState) => {
+  const prevPrs = (previousState && previousState.prs) || {};
+  const prevEvicted = new Set((previousState && previousState.evictedRunIds) || []);
+  const wakeReasons = [];
+  const nextState = { version: STATE_VERSION, prs: {}, evictedRunIds: [] };
 
-  // Floor coverage is mandatory in BOTH modes (the freshness floor is unioned
-  // into a full-scan fire too, via the floor merge below) -- fetch check-runs
-  // for it unconditionally, before branching on isFullScan. Bounded to
-  // PRS_CAP (20) parallel calls regardless of mode.
-  const floorCheckRuns = new Map();
-  let floorCheckRunErrors = 0;
-  // Fetched alongside check-runs, same unconditional per-floor-PR-call
-  // precedent -- see actionRequiredBlocksFromRuns's comment above for why
-  // this is floor-only, not extended to the full-scan tail. Fails open to [] (never
-  // throws into the outer Promise.all) so an Actions-API hiccup degrades to
-  // 'no action_required blocks seen' rather than losing check-run coverage
-  // for the PR too.
-  const floorActionRequiredBlocks = new Map();
-  // check_suite_id -> event, derived from the same Actions-runs fetch as
-  // floorActionRequiredBlocks (no extra API call) -- see checkSuiteEventMap.
-  const floorCheckSuiteEvents = new Map();
-  // See fetchMergeStateStatus's comment -- same unconditional per-floor-PR
-  // call precedent as the other two fetches in this loop.
-  const floorMergeState = new Map();
-  await Promise.all(floor.map(async (p) => {
-    try {
-      floorCheckRuns.set(p.number, await fetchCheckRuns(p.head.sha));
-    } catch (e) {
-      floorCheckRunErrors++;
+  if (summary.driftCheck && summary.driftCheck.status === 'drift') {
+    wakeReasons.push({ number: null, reason: 'deployment-drift' });
+  }
+
+  for (const pr of summary.prs || []) {
+    const fp = fingerprintPr(pr);
+    const prev = prevPrs[String(pr.number)] || null;
+
+    if (fp.failing.length > 0) {
+      wakeReasons.push({ number: pr.number, reason: 'failing-unexcluded', checks: fp.failing });
     }
-    try {
-      const runs = await fetchRunsForSha(p.head.sha);
-      floorActionRequiredBlocks.set(p.number, actionRequiredBlocksFromRuns(runs));
-      floorCheckSuiteEvents.set(p.number, checkSuiteEventMap(runs));
-    } catch (e) {
-      floorActionRequiredBlocks.set(p.number, []);
-      floorCheckSuiteEvents.set(p.number, new Map());
+    if (fp.rollupUnexplained) {
+      wakeReasons.push({ number: pr.number, reason: 'rollup-unexplained' });
     }
-    try {
-      floorMergeState.set(p.number, await fetchMergeStateStatus(p.number));
-    } catch (e) {
-      floorMergeState.set(p.number, 'UNKNOWN');
+    const newlyBlocked = fp.blocked.filter((name) => !prev || !(prev.blocked || []).includes(name));
+    if (newlyBlocked.length > 0) {
+      wakeReasons.push({ number: pr.number, reason: 'newly-blocked', checks: newlyBlocked });
     }
-  }));
-  const floorHeadShaByNumber = new Map(floor.map((p) => [p.number, p.head.sha]));
-  const exclusionFieldsForFloor = async (number) => {
-    const checkRuns = floorCheckRuns.get(number);
-    if (!checkRuns) return { exclusionChecked: false, mergeStateStatus: floorMergeState.get(number) || 'UNKNOWN' };
-    const { excludedChecks, actionableFailingChecks, signatureMismatches, blockedChecks: checkRunBlocked } =
-      await splitExclusions(checkRuns, excludedJobNames, issueForJob, signatureForJob, floorCheckSuiteEvents.get(number));
-    const { baseSkewChecks, remainingActionable, verificationSkipped: baseSkewVerificationSkipped } =
-      await classifyBaseSkew(actionableFailingChecks, floorHeadShaByNumber.get(number), baseSkewEntries);
-    // Merge in the Actions-runs-sourced blocks (see actionRequiredBlocksFromRuns);
-    // dedup by name defensively even though the two sources shouldn't collide
-    // in practice (an action_required workflow run has zero check-runs).
-    const blockedByName = new Map(checkRunBlocked.map((b) => [b.name, b]));
-    for (const b of floorActionRequiredBlocks.get(number) || []) {
-      if (!blockedByName.has(b.name)) blockedByName.set(b.name, b);
-    }
-    const blockedChecks = [...blockedByName.values()];
-    return {
-      exclusionChecked: true,
-      mergeStateStatus: floorMergeState.get(number) || 'UNKNOWN',
-      checkCi: checkCiFromRuns(checkRuns, floorCheckSuiteEvents.get(number)),
-      excludedChecks,
-      signatureMismatches,
-      baseSkewChecks,
-      baseSkewVerificationSkipped,
-      blockedChecks,
-      allFailuresExcluded: (excludedChecks.length > 0 || baseSkewChecks.length > 0) && remainingActionable.length === 0,
-      // Mirrors allFailuresExcluded's shape for the third (blocked) state --
-      // true only when blocked is the ENTIRE story (nothing excluded,
-      // base-skewed, or still actionable), so this PR can be reported as
-      // 'wedged, not failing' rather than folded into either of the other
-      // two summary buckets.
-      onlyBlocked: blockedChecks.length > 0 && excludedChecks.length === 0 && baseSkewChecks.length === 0 && remainingActionable.length === 0,
-    };
-  };
-
-  let unionAll;
-  let scanTruncated = false;
-  let activityErrors = 0;
-  let activePrCount = 0;
-  let nonGreenCount = null;
-
-  if (isFullScan) {
-    const nonGreen = await fetchNonGreenRollups();
-    nonGreenCount = nonGreen.length;
-    // Union with the floor too -- a freshly-opened/pushed PR can be green so
-    // far but still deserves its normal freshness-floor visibility. Deferred:
-    // per-PR check-run fetch for the broader nonGreen tail (not in floor) --
-    // that population is uncapped and only appears twice a day, so extending
-    // Fix 2's log-verified exclusion coverage to it risks the 30s/1MB script
-    // budget for a case that hasn't yet shown a real miss. Those entries
-    // carry exclusionChecked:false and rely on the agent's own step-0
-    // cross-check. Base-skew classification (Fix 1) is the exception: it's
-    // already covered for the tail via fetchNonGreenRollups's inline
-    // failingContextNames/headSha (no extra REST call), so a tail-only PR
-    // still gets baseSkewChecks populated even though exclusionChecked stays
-    // false -- see the fetchNonGreenRollups comment for why this one case is
-    // cheap enough to not defer.
-    const merged = new Map();
-    for (const p of nonGreen) {
-      const entry = { number: p.number, title: p.title, updatedAt: p.updatedAt, inFloor: floorNums.has(p.number), hasNewActivity: false, fullScan: true, rollup: p.rollup, headSha: p.headSha, ...(await exclusionFieldsForFloor(p.number)) };
-      if (!entry.exclusionChecked && p.headSha && p.failingContextNames?.length) {
-        const { baseSkewChecks, verificationSkipped } = await classifyBaseSkew(p.failingContextNames, p.headSha, baseSkewEntries);
-        if (baseSkewChecks.length > 0) entry.baseSkewChecks = baseSkewChecks;
-        if (verificationSkipped.length > 0) entry.baseSkewVerificationSkipped = verificationSkipped;
+    if (prev) {
+      if (prev.headSha && fp.headSha && prev.headSha !== fp.headSha) {
+        wakeReasons.push({ number: pr.number, reason: 'tracked-head-changed', from: prev.headSha, to: fp.headSha });
+      } else if ((prev.failing || []).length > 0 && fp.failing.length === 0) {
+        // Same head, failures gone: a rerun passed or is in flight (a
+        // superseded failure disappears from the deduped list as soon as the
+        // new attempt starts). The agent checks checkCi/mergeStateStatus to
+        // tell the two apart.
+        wakeReasons.push({ number: pr.number, reason: 'tracked-failures-cleared', checks: prev.failing });
       }
-      // Tail-only (not floor-covered): the REST-based splitExclusions never
-      // ran, so blockedChecks/rollupUnexplained come straight from the
-      // GraphQL tail's own fields instead. rollupUnexplained is the signal
-      // Gate 0f (below) is wired to act on -- it must survive onto the
-      // entry unconditionally, not just when something else is empty.
-      if (!entry.exclusionChecked) {
-        if (p.blockedContextNames?.length) {
-          entry.blockedChecks = p.blockedContextNames.map((name) => ({ name, status: 'unknown-see-rollup', id: null }));
-          entry.onlyBlocked = !entry.baseSkewChecks?.length && p.failingContextNames?.length === 0;
-        }
-        entry.rollupUnexplained = !!p.rollupUnexplained;
-        // #13032 fix (parent, 2026-09-30): a rollupUnexplained:true reading is
-        // re-verified via REST + the floor's own dedup helpers before being
-        // trusted -- see verifyRollupUnexplained's comment for the false
-        // positive this closes. Only ever clears the flag on POSITIVE
-        // evidence (reverified && clean); an error or a genuinely-still-bad
-        // deduped result leaves it set.
-        if (entry.rollupUnexplained && p.headSha) {
-          const { reverified, reverifiedClean } = await verifyRollupUnexplained(p.headSha);
-          entry.rollupReverified = reverified;
-          if (reverified && reverifiedClean) entry.rollupUnexplained = false;
-        }
-        // Not floor-covered, so exclusionFieldsForFloor's early return left
-        // this 'UNKNOWN' (no REST call made for this number) -- the GraphQL
-        // tail already carries the real value for free (see
-        // fetchNonGreenRollups's query), so prefer it here.
-        entry.mergeStateStatus = p.mergeStateStatus || 'UNKNOWN';
-      }
-      merged.set(p.number, entry);
     }
-    for (const p of floor) {
-      if (!merged.has(p.number)) merged.set(p.number, { number: p.number, title: p.title, updatedAt: p.updated_at, inFloor: true, hasNewActivity: false, fullScan: true, rollup: 'SUCCESS_OR_UNKNOWN', headSha: p.head.sha, ...(await exclusionFieldsForFloor(p.number)) });
-    }
-    unionAll = [...merged.values()];
-  } else {
-    const remainderAll = nonDraft.slice(PRS_CAP);
-    scanTruncated = remainderAll.length > CHECKRUN_SCAN_CAP;
-    const remainder = remainderAll.slice(0, CHECKRUN_SCAN_CAP);
 
-    const cutoffIso = new Date(Date.now() - ACTIVITY_WINDOW_HOURS * 3600 * 1000).toISOString();
-    const REMAINDER_CONCURRENCY = 15; // bounded: fast enough for the 30s budget, low enough to stay under GitHub's secondary rate limit
-    const remainderResults = await mapWithConcurrency(remainder, REMAINDER_CONCURRENCY, async (p) => {
+    const tracked = fp.failing.length > 0 || fp.blocked.length > 0 || fp.rollupUnexplained;
+    if (tracked) nextState.prs[String(pr.number)] = fp;
+  }
+
+  for (const e of summary.evicted || []) {
+    if (e.error) {
+      wakeReasons.push({ number: null, reason: 'evicted-scan-error', error: e.error });
+      continue;
+    }
+    nextState.evictedRunIds.push(e.mergeGroupRunId);
+    if (prevEvicted.has(e.mergeGroupRunId)) continue;
+    // An eviction whose jobs could not be fetched (exclusionChecked:false) is
+    // treated as actionable: the requeue decision needs a look, and failing
+    // open here costs one wake per eviction at most.
+    const actionable = e.exclusionChecked === false || (e.actionableFailingChecks || []).length > 0;
+    if (actionable) {
+      wakeReasons.push({ number: e.number, reason: 'evicted-from-merge-queue', runId: e.mergeGroupRunId, checks: sortedNames(e.actionableFailingChecks) });
+    }
+  }
+
+  return { wakeAgent: wakeReasons.length > 0, wakeReasons, nextState };
+};
+
+// The counts-only payload printed when the gate stays asleep. The host logs
+// this line, so it carries enough to see at a glance what the sweep saw
+// without reproducing the per-PR detail the agent would need.
+export const sleepSummary = (data, nextState) => ({
+  totalNonDraft: data.totalNonDraft,
+  prCount: data.prCount,
+  mode: data.mode,
+  prsWithFailures: (data.prs || []).filter((p) =>
+    (p.excludedChecks || []).length > 0 || (p.baseSkewChecks || []).length > 0 || (p.actionableFailingChecks || []).length > 0).length,
+  prsAllFailuresExcluded: (data.prs || []).filter((p) => p.allFailuresExcluded).length,
+  prsWithBlockedChecks: data.exclusions.prsWithBlockedChecks,
+  evictedCount: (data.evicted || []).length,
+  trackedPrs: Object.keys(nextState.prs).length,
+  driftStatus: data.driftCheck ? data.driftCheck.status : 'unknown',
+  exclusionsActive: data.exclusions.activeCount,
+  exclusionsLoadError: data.exclusions.loadError,
+  floorCheckRunErrors: data.floorCheckRunErrors,
+  activityErrors: data.activityErrors,
+});
+
+// The line printed when the sweep itself failed. Waking here is deliberate:
+// a gate that cannot evaluate must hand the problem to the agent, never go
+// quiet.
+export const errorGate = (driftCheck, error) => ({ wakeAgent: true, data: { driftCheck, error: error.message } });
+
+// Previous-fire state, or null when there is none or it cannot be read. A
+// missing or corrupt file degrades to 'everything is new', which only means
+// one extra wake, never a missed one.
+const loadPreviousState = () => {
+  try {
+    const doc = JSON.parse(fs.readFileSync(STATE_PATH, 'utf8'));
+    return doc && doc.version === STATE_VERSION ? doc : null;
+  } catch (e) {
+    return null;
+  }
+};
+
+// Write the state through a temp file and rename, so a fire killed mid-write
+// (the host enforces a hard timeout) leaves the previous state intact rather
+// than a truncated document. Returns an error message instead of throwing
+// because a state-write failure must not turn a computed verdict into the
+// error path.
+const saveState = (state) => {
+  try {
+    fs.mkdirSync(path.dirname(STATE_PATH), { recursive: true });
+    const tmp = STATE_PATH + '.tmp.' + process.pid;
+    fs.writeFileSync(tmp, JSON.stringify({ ...state, updatedAt: new Date().toISOString() }, null, 2) + '\n');
+    fs.renameSync(tmp, STATE_PATH);
+    return null;
+  } catch (e) {
+    return e.message;
+  }
+};
+
+const main = async () => {
+  let driftCheck = checkDeploymentDrift();
+
+  try {
+    const nowUtcHour = new Date().getUTCHours();
+    const isFullScan = FULL_SCAN_HOURS.includes(nowUtcHour);
+
+    const baseSkewEntries = loadBaseSkewSignatures();
+    const { openEntries: exclusionEntries, loadError: exclusionsLoadError, needsBaseSkewGuardCount } =
+      await loadAndRefreshExclusions(baseSkewEntries);
+    const excludedJobNames = new Set(exclusionEntries.map((e) => e.job));
+    const issueForJob = new Map(exclusionEntries.map((e) => [e.job, e.issue]));
+    const signatureForJob = new Map(exclusionEntries.map((e) => [e.job, e.logGrep]));
+
+    const prs = await fetchAllPages(
+      '/pulls?state=open&sort=updated&direction=desc',
+      100,
+      function (raw) { return raw; }
+    );
+    const nonDraft = prs.filter((p) => !p.draft);
+    const openNums = new Set(nonDraft.map((p) => p.number));
+
+    const floor = nonDraft.slice(0, PRS_CAP);
+    const floorNums = new Set(floor.map((p) => p.number));
+
+    // Floor coverage is mandatory in BOTH modes (the freshness floor is unioned
+    // into a full-scan fire too, via the floor merge below) -- fetch check-runs
+    // for it unconditionally, before branching on isFullScan. Bounded to
+    // PRS_CAP (20) parallel calls regardless of mode.
+    const floorCheckRuns = new Map();
+    let floorCheckRunErrors = 0;
+    // Fetched alongside check-runs, same unconditional per-floor-PR-call
+    // precedent -- see actionRequiredBlocksFromRuns's comment above for why
+    // this is floor-only, not extended to the full-scan tail. Fails open to [] (never
+    // throws into the outer Promise.all) so an Actions-API hiccup degrades to
+    // 'no action_required blocks seen' rather than losing check-run coverage
+    // for the PR too.
+    const floorActionRequiredBlocks = new Map();
+    // check_suite_id -> event, derived from the same Actions-runs fetch as
+    // floorActionRequiredBlocks (no extra API call) -- see checkSuiteEventMap.
+    const floorCheckSuiteEvents = new Map();
+    // See fetchMergeStateStatus's comment -- same unconditional per-floor-PR
+    // call precedent as the other two fetches in this loop.
+    const floorMergeState = new Map();
+    await Promise.all(floor.map(async (p) => {
       try {
-        const checkRuns = await fetchCheckRuns(p.head.sha);
-        return { p, checkRuns, maxTs: maxCompletedAt(checkRuns) };
+        floorCheckRuns.set(p.number, await fetchCheckRuns(p.head.sha));
       } catch (e) {
-        return { p, error: e };
+        floorCheckRunErrors++;
       }
-    });
-    const activeExtra = [];
-    for (const r of remainderResults) {
-      if (r.error) { activityErrors++; continue; }
-      if (r.maxTs && r.maxTs > cutoffIso) {
-        activeExtra.push({ number: r.p.number, title: r.p.title, updatedAt: r.p.updated_at, lastCheckRunCompletedAt: r.maxTs, checkRuns: r.checkRuns, headSha: r.p.head.sha });
-      }
-    }
-    activePrCount = activeExtra.length;
-
-    const floorOut = await Promise.all(floor.map(async (p) => ({ number: p.number, title: p.title, updatedAt: p.updated_at, inFloor: true, hasNewActivity: false, fullScan: false, headSha: p.head.sha, ...(await exclusionFieldsForFloor(p.number)) })));
-    const activeOut = await Promise.all(activeExtra.map(async (p) => {
-      // Same merge as exclusionFieldsForFloor's floorActionRequiredBlocks --
-      // activeExtra is bounded by the activity window (typically small), so
-      // the extra per-PR Actions-runs call is cheap here too, and skipping it
-      // would leave the identical wedge invisible the moment a PR ages out of
-      // the top-20 floor while still showing recent check-run activity. Also
-      // yields the check_suite_id -> event map for dedupeByLatestAttempt
-      // (see checkSuiteEventMap), from the same call.
-      let runs = [];
       try {
-        runs = await fetchRunsForSha(p.headSha);
+        const runs = await fetchRunsForSha(p.head.sha);
+        floorActionRequiredBlocks.set(p.number, actionRequiredBlocksFromRuns(runs));
+        floorCheckSuiteEvents.set(p.number, checkSuiteEventMap(runs));
       } catch (e) {
-        runs = [];
+        floorActionRequiredBlocks.set(p.number, []);
+        floorCheckSuiteEvents.set(p.number, new Map());
       }
-      // Same rationale as floorMergeState -- activeExtra is bounded by the
-      // activity window, so this extra per-PR call is cheap here too.
-      let mergeStateStatus = 'UNKNOWN';
       try {
-        mergeStateStatus = await fetchMergeStateStatus(p.number);
+        floorMergeState.set(p.number, await fetchMergeStateStatus(p.number));
       } catch (e) {
-        mergeStateStatus = 'UNKNOWN';
+        floorMergeState.set(p.number, 'UNKNOWN');
       }
-      const actionRequiredBlocks = actionRequiredBlocksFromRuns(runs);
-      const suiteEventById = checkSuiteEventMap(runs);
+    }));
+    const floorHeadShaByNumber = new Map(floor.map((p) => [p.number, p.head.sha]));
+    const exclusionFieldsForFloor = async (number) => {
+      const checkRuns = floorCheckRuns.get(number);
+      if (!checkRuns) return { exclusionChecked: false, mergeStateStatus: floorMergeState.get(number) || 'UNKNOWN' };
       const { excludedChecks, actionableFailingChecks, signatureMismatches, blockedChecks: checkRunBlocked } =
-        await splitExclusions(p.checkRuns, excludedJobNames, issueForJob, signatureForJob, suiteEventById);
+        await splitExclusions(checkRuns, excludedJobNames, issueForJob, signatureForJob, floorCheckSuiteEvents.get(number));
       const { baseSkewChecks, remainingActionable, verificationSkipped: baseSkewVerificationSkipped } =
-        await classifyBaseSkew(actionableFailingChecks, p.headSha, baseSkewEntries);
+        await classifyBaseSkew(actionableFailingChecks, floorHeadShaByNumber.get(number), baseSkewEntries);
+      // Merge in the Actions-runs-sourced blocks (see actionRequiredBlocksFromRuns);
+      // dedup by name defensively even though the two sources shouldn't collide
+      // in practice (an action_required workflow run has zero check-runs).
       const blockedByName = new Map(checkRunBlocked.map((b) => [b.name, b]));
-      for (const b of actionRequiredBlocks) {
+      for (const b of floorActionRequiredBlocks.get(number) || []) {
         if (!blockedByName.has(b.name)) blockedByName.set(b.name, b);
       }
       const blockedChecks = [...blockedByName.values()];
       return {
-        number: p.number, title: p.title, updatedAt: p.updatedAt, inFloor: false, hasNewActivity: true, fullScan: false,
-        headSha: p.headSha,
-        exclusionChecked: true, mergeStateStatus, checkCi: checkCiFromRuns(p.checkRuns, suiteEventById), excludedChecks, signatureMismatches, baseSkewChecks, baseSkewVerificationSkipped, blockedChecks,
+        exclusionChecked: true,
+        mergeStateStatus: floorMergeState.get(number) || 'UNKNOWN',
+        checkCi: checkCiFromRuns(checkRuns, floorCheckSuiteEvents.get(number)),
+        excludedChecks,
+        signatureMismatches,
+        baseSkewChecks,
+        baseSkewVerificationSkipped,
+        blockedChecks,
+        // The failing checks that nothing above explains -- the list the sweep
+        // prompt's 'rerun or investigate' step is about, and the input
+        // decideWake reads. allFailuresExcluded/onlyBlocked below are derived
+        // from the same list, so exposing it keeps the gate decision and the
+        // agent's view of the PR on one source of truth.
+        actionableFailingChecks: remainingActionable,
         allFailuresExcluded: (excludedChecks.length > 0 || baseSkewChecks.length > 0) && remainingActionable.length === 0,
+        // Mirrors allFailuresExcluded's shape for the third (blocked) state --
+        // true only when blocked is the ENTIRE story (nothing excluded,
+        // base-skewed, or still actionable), so this PR can be reported as
+        // 'wedged, not failing' rather than folded into either of the other
+        // two summary buckets.
         onlyBlocked: blockedChecks.length > 0 && excludedChecks.length === 0 && baseSkewChecks.length === 0 && remainingActionable.length === 0,
       };
-    }));
-    unionAll = floorOut.concat(activeOut);
-  }
+    };
 
-  unionAll.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  const cap = isFullScan ? FULL_SCAN_CAP : UNION_CAP;
-  const unionTruncated = unionAll.length > cap;
-  const unionCapped = unionAll.slice(0, cap);
-  // Bare PR numbers cut off the payload by the cap slice above -- exposed so
-  // the agent can feed them to sweeplib.never_classified_among() and catch a
-  // never-triaged PR the same sweep it drops out of view, rather than only
-  // via the whole-tracker drain. Free: unionAll is already fully computed
-  // above; this is exposition of existing data, no new API calls. Computed
-  // in both modes (not just isFullScan) since UNION_CAP=40 can truncate too,
-  // though that population (floor + active-in-last-3h) is small enough that
-  // it rarely does.
-  const truncatedTailNumbers = unionAll.slice(cap).map((p) => p.number);
+    let unionAll;
+    let scanTruncated = false;
+    let activityErrors = 0;
+    let activePrCount = 0;
+    let nonGreenCount = null;
 
-  const sinceMs = Date.now() - 24 * 3600 * 1000;
-  const evicted = [];
-  try {
-    const runs = await fetchAllPages(
-      '/actions/runs?event=merge_group',
-      100,
-      function (raw) { return raw.workflow_runs; },
-      function (items) {
-        const oldest = items[items.length - 1];
-        const ts = new Date(oldest.run_started_at || oldest.created_at).getTime();
-        return ts < sinceMs;
+    if (isFullScan) {
+      const nonGreen = await fetchNonGreenRollups();
+      nonGreenCount = nonGreen.length;
+      // Union with the floor too -- a freshly-opened/pushed PR can be green so
+      // far but still deserves its normal freshness-floor visibility. Deferred:
+      // per-PR check-run fetch for the broader nonGreen tail (not in floor) --
+      // that population is uncapped and only appears twice a day, so extending
+      // Fix 2's log-verified exclusion coverage to it risks the 30s/1MB script
+      // budget for a case that hasn't yet shown a real miss. Those entries
+      // carry exclusionChecked:false and rely on the agent's own step-0
+      // cross-check. Base-skew classification (Fix 1) is the exception: it's
+      // already covered for the tail via fetchNonGreenRollups's inline
+      // failingContextNames/headSha (no extra REST call), so a tail-only PR
+      // still gets baseSkewChecks populated even though exclusionChecked stays
+      // false -- see the fetchNonGreenRollups comment for why this one case is
+      // cheap enough to not defer.
+      const merged = new Map();
+      for (const p of nonGreen) {
+        const entry = { number: p.number, title: p.title, updatedAt: p.updatedAt, inFloor: floorNums.has(p.number), hasNewActivity: false, fullScan: true, rollup: p.rollup, headSha: p.headSha, ...(await exclusionFieldsForFloor(p.number)) };
+        if (!entry.exclusionChecked && p.headSha && p.failingContextNames?.length) {
+          const { baseSkewChecks, verificationSkipped } = await classifyBaseSkew(p.failingContextNames, p.headSha, baseSkewEntries);
+          if (baseSkewChecks.length > 0) entry.baseSkewChecks = baseSkewChecks;
+          if (verificationSkipped.length > 0) entry.baseSkewVerificationSkipped = verificationSkipped;
+        }
+        // Tail-only (not floor-covered): the REST-based splitExclusions never
+        // ran, so blockedChecks/rollupUnexplained come straight from the
+        // GraphQL tail's own fields instead. rollupUnexplained is the signal
+        // Gate 0f (below) is wired to act on -- it must survive onto the
+        // entry unconditionally, not just when something else is empty.
+        if (!entry.exclusionChecked) {
+          // The tail never ran splitExclusions (no REST check-runs call, see
+          // above), so its actionable list is the GraphQL failing names minus
+          // tracked-regression job names (matched by name only, with no log
+          // verification) and minus the base-skew matches classified just
+          // above. Name-only is the same cross-check the agent's own step 0
+          // performs for these entries; the gate accepts that leniency because
+          // the alternative is waking on every full scan for every stale PR
+          // carrying a known regression.
+          const baseSkewNames = new Set((entry.baseSkewChecks || []).map((b) => b.name));
+          entry.actionableFailingChecks = (p.failingContextNames || [])
+            .filter((name) => !excludedJobNames.has(name) && !baseSkewNames.has(name))
+            .map((name) => ({ name, id: null, target_url: null }));
+          if (p.blockedContextNames?.length) {
+            entry.blockedChecks = p.blockedContextNames.map((name) => ({ name, status: 'unknown-see-rollup', id: null }));
+            entry.onlyBlocked = !entry.baseSkewChecks?.length && p.failingContextNames?.length === 0;
+          }
+          entry.rollupUnexplained = !!p.rollupUnexplained;
+          // #13032 fix (parent, 2026-09-30): a rollupUnexplained:true reading is
+          // re-verified via REST + the floor's own dedup helpers before being
+          // trusted -- see verifyRollupUnexplained's comment for the false
+          // positive this closes. Only ever clears the flag on POSITIVE
+          // evidence (reverified && clean); an error or a genuinely-still-bad
+          // deduped result leaves it set.
+          if (entry.rollupUnexplained && p.headSha) {
+            const { reverified, reverifiedClean } = await verifyRollupUnexplained(p.headSha);
+            entry.rollupReverified = reverified;
+            if (reverified && reverifiedClean) entry.rollupUnexplained = false;
+          }
+          // Not floor-covered, so exclusionFieldsForFloor's early return left
+          // this 'UNKNOWN' (no REST call made for this number) -- the GraphQL
+          // tail already carries the real value for free (see
+          // fetchNonGreenRollups's query), so prefer it here.
+          entry.mergeStateStatus = p.mergeStateStatus || 'UNKNOWN';
+        }
+        merged.set(p.number, entry);
       }
-    );
-    const seen = new Set();
-    for (const r of runs) {
-      if (!FAIL.has(r.conclusion)) continue;
-      if (new Date(r.run_started_at || r.created_at).getTime() < sinceMs) continue;
-      const m = /pr-(\d+)-/.exec(r.head_branch || '');
-      if (!m) continue;
-      const num = Number(m[1]);
-      if (!openNums.has(num)) continue;
-      if (seen.has(num)) continue;
-      seen.add(num);
-      evicted.push({
-        number: num, mergeGroupRunId: r.id, workflow: r.name,
-        headBranch: r.head_branch, conclusion: r.conclusion,
-        runStartedAt: r.run_started_at, runUrl: r.html_url,
+      for (const p of floor) {
+        if (!merged.has(p.number)) merged.set(p.number, { number: p.number, title: p.title, updatedAt: p.updated_at, inFloor: true, hasNewActivity: false, fullScan: true, rollup: 'SUCCESS_OR_UNKNOWN', headSha: p.head.sha, ...(await exclusionFieldsForFloor(p.number)) });
+      }
+      unionAll = [...merged.values()];
+    } else {
+      const remainderAll = nonDraft.slice(PRS_CAP);
+      scanTruncated = remainderAll.length > CHECKRUN_SCAN_CAP;
+      const remainder = remainderAll.slice(0, CHECKRUN_SCAN_CAP);
+
+      const cutoffIso = new Date(Date.now() - ACTIVITY_WINDOW_HOURS * 3600 * 1000).toISOString();
+      const REMAINDER_CONCURRENCY = 15; // bounded: fast enough for the 30s budget, low enough to stay under GitHub's secondary rate limit
+      const remainderResults = await mapWithConcurrency(remainder, REMAINDER_CONCURRENCY, async (p) => {
+        try {
+          const checkRuns = await fetchCheckRuns(p.head.sha);
+          return { p, checkRuns, maxTs: maxCompletedAt(checkRuns) };
+        } catch (e) {
+          return { p, error: e };
+        }
       });
-    }
-  } catch (e) { evicted.push({ error: e.message }); }
+      const activeExtra = [];
+      for (const r of remainderResults) {
+        if (r.error) { activityErrors++; continue; }
+        if (r.maxTs && r.maxTs > cutoffIso) {
+          activeExtra.push({ number: r.p.number, title: r.p.title, updatedAt: r.p.updated_at, lastCheckRunCompletedAt: r.maxTs, checkRuns: r.checkRuns, headSha: r.p.head.sha });
+        }
+      }
+      activePrCount = activeExtra.length;
 
-  // Evicted entries are bounded (24h window, matched to an open PR) and are
-  // exactly where PR #12910's incident wasn't -- covering them is cheap and
-  // was explicitly in scope alongside the floor.
-  await Promise.all(evicted.filter((e) => !e.error).map(async (e) => {
+      const floorOut = await Promise.all(floor.map(async (p) => ({ number: p.number, title: p.title, updatedAt: p.updated_at, inFloor: true, hasNewActivity: false, fullScan: false, headSha: p.head.sha, ...(await exclusionFieldsForFloor(p.number)) })));
+      const activeOut = await Promise.all(activeExtra.map(async (p) => {
+        // Same merge as exclusionFieldsForFloor's floorActionRequiredBlocks --
+        // activeExtra is bounded by the activity window (typically small), so
+        // the extra per-PR Actions-runs call is cheap here too, and skipping it
+        // would leave the identical wedge invisible the moment a PR ages out of
+        // the top-20 floor while still showing recent check-run activity. Also
+        // yields the check_suite_id -> event map for dedupeByLatestAttempt
+        // (see checkSuiteEventMap), from the same call.
+        let runs = [];
+        try {
+          runs = await fetchRunsForSha(p.headSha);
+        } catch (e) {
+          runs = [];
+        }
+        // Same rationale as floorMergeState -- activeExtra is bounded by the
+        // activity window, so this extra per-PR call is cheap here too.
+        let mergeStateStatus = 'UNKNOWN';
+        try {
+          mergeStateStatus = await fetchMergeStateStatus(p.number);
+        } catch (e) {
+          mergeStateStatus = 'UNKNOWN';
+        }
+        const actionRequiredBlocks = actionRequiredBlocksFromRuns(runs);
+        const suiteEventById = checkSuiteEventMap(runs);
+        const { excludedChecks, actionableFailingChecks, signatureMismatches, blockedChecks: checkRunBlocked } =
+          await splitExclusions(p.checkRuns, excludedJobNames, issueForJob, signatureForJob, suiteEventById);
+        const { baseSkewChecks, remainingActionable, verificationSkipped: baseSkewVerificationSkipped } =
+          await classifyBaseSkew(actionableFailingChecks, p.headSha, baseSkewEntries);
+        const blockedByName = new Map(checkRunBlocked.map((b) => [b.name, b]));
+        for (const b of actionRequiredBlocks) {
+          if (!blockedByName.has(b.name)) blockedByName.set(b.name, b);
+        }
+        const blockedChecks = [...blockedByName.values()];
+        return {
+          number: p.number, title: p.title, updatedAt: p.updatedAt, inFloor: false, hasNewActivity: true, fullScan: false,
+          headSha: p.headSha,
+          exclusionChecked: true, mergeStateStatus, checkCi: checkCiFromRuns(p.checkRuns, suiteEventById), excludedChecks, signatureMismatches, baseSkewChecks, baseSkewVerificationSkipped, blockedChecks,
+          actionableFailingChecks: remainingActionable,
+          allFailuresExcluded: (excludedChecks.length > 0 || baseSkewChecks.length > 0) && remainingActionable.length === 0,
+          onlyBlocked: blockedChecks.length > 0 && excludedChecks.length === 0 && baseSkewChecks.length === 0 && remainingActionable.length === 0,
+        };
+      }));
+      unionAll = floorOut.concat(activeOut);
+    }
+
+    unionAll.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    const cap = isFullScan ? FULL_SCAN_CAP : UNION_CAP;
+    const unionTruncated = unionAll.length > cap;
+    const unionCapped = unionAll.slice(0, cap);
+    // Bare PR numbers cut off the payload by the cap slice above -- exposed so
+    // the agent can feed them to sweeplib.never_classified_among() and catch a
+    // never-triaged PR the same sweep it drops out of view, rather than only
+    // via the whole-tracker drain. Free: unionAll is already fully computed
+    // above; this is exposition of existing data, no new API calls. Computed
+    // in both modes (not just isFullScan) since UNION_CAP=40 can truncate too,
+    // though that population (floor + active-in-last-3h) is small enough that
+    // it rarely does.
+    const truncatedTailNumbers = unionAll.slice(cap).map((p) => p.number);
+
+    const sinceMs = Date.now() - 24 * 3600 * 1000;
+    const evicted = [];
     try {
-      const jobs = await fetchRunJobs(e.mergeGroupRunId);
-      const { excludedChecks, actionableFailingChecks, signatureMismatches, blockedChecks } =
-        await splitExclusions(jobs, excludedJobNames, issueForJob, signatureForJob);
-      e.exclusionChecked = true;
-      e.excludedChecks = excludedChecks;
-      e.signatureMismatches = signatureMismatches;
-      e.blockedChecks = blockedChecks;
-      e.allFailuresExcluded = excludedChecks.length > 0 && actionableFailingChecks.length === 0;
-      e.onlyBlocked = blockedChecks.length > 0 && excludedChecks.length === 0 && actionableFailingChecks.length === 0;
-    } catch (err) {
-      e.exclusionChecked = false;
-      e.jobsError = err.message;
+      const runs = await fetchAllPages(
+        '/actions/runs?event=merge_group',
+        100,
+        function (raw) { return raw.workflow_runs; },
+        function (items) {
+          const oldest = items[items.length - 1];
+          const ts = new Date(oldest.run_started_at || oldest.created_at).getTime();
+          return ts < sinceMs;
+        }
+      );
+      const seen = new Set();
+      for (const r of runs) {
+        if (!FAIL.has(r.conclusion)) continue;
+        if (new Date(r.run_started_at || r.created_at).getTime() < sinceMs) continue;
+        const m = /pr-(\d+)-/.exec(r.head_branch || '');
+        if (!m) continue;
+        const num = Number(m[1]);
+        if (!openNums.has(num)) continue;
+        if (seen.has(num)) continue;
+        seen.add(num);
+        evicted.push({
+          number: num, mergeGroupRunId: r.id, workflow: r.name,
+          headBranch: r.head_branch, conclusion: r.conclusion,
+          runStartedAt: r.run_started_at, runUrl: r.html_url,
+        });
+      }
+    } catch (e) { evicted.push({ error: e.message }); }
+
+    // Evicted entries are bounded (24h window, matched to an open PR) and are
+    // exactly where PR #12910's incident wasn't -- covering them is cheap and
+    // was explicitly in scope alongside the floor.
+    await Promise.all(evicted.filter((e) => !e.error).map(async (e) => {
+      try {
+        const jobs = await fetchRunJobs(e.mergeGroupRunId);
+        const { excludedChecks, actionableFailingChecks, signatureMismatches, blockedChecks } =
+          await splitExclusions(jobs, excludedJobNames, issueForJob, signatureForJob);
+        e.exclusionChecked = true;
+        e.excludedChecks = excludedChecks;
+        e.signatureMismatches = signatureMismatches;
+        e.blockedChecks = blockedChecks;
+        e.actionableFailingChecks = actionableFailingChecks;
+        e.allFailuresExcluded = excludedChecks.length > 0 && actionableFailingChecks.length === 0;
+        e.onlyBlocked = blockedChecks.length > 0 && excludedChecks.length === 0 && actionableFailingChecks.length === 0;
+      } catch (err) {
+        e.exclusionChecked = false;
+        e.jobsError = err.message;
+      }
+    }));
+
+    const prsWithExcludedChecks = unionCapped.filter((p) => (p.excludedChecks || []).length > 0).length;
+    const evictedWithExcludedChecks = evicted.filter((e) => (e.excludedChecks || []).length > 0).length;
+    const prsWithBlockedChecks = unionCapped.filter((p) => (p.blockedChecks || []).length > 0).length;
+    const evictedWithBlockedChecks = evicted.filter((e) => (e.blockedChecks || []).length > 0).length;
+    const prsWithRollupUnexplained = unionCapped.filter((p) => p.rollupUnexplained).length;
+    // Visible counter for resolveExclusionVerdict's skipped:true verdict -- an
+    // entry that declared logGrep but had no id/target_url to check it
+    // against, so it fell through to actionable rather than being trusted on
+    // name+ancestry alone (see resolveExclusionVerdict's own comment for why
+    // this must never be silent). Rolls up both registries: signatureMismatches
+    // (tracked-regressions.json, via splitExclusions) and
+    // baseSkewVerificationSkipped (base-skew-signatures.json, via
+    // classifyBaseSkew) across PRs and evicted entries alike.
+    const skippedCountFor = (list) =>
+      list.reduce((n, e) => n + (e.signatureMismatches || []).filter((m) => m.skipped).length + (e.baseSkewVerificationSkipped || []).length, 0);
+    const verificationSkippedCount = skippedCountFor(unionCapped) + skippedCountFor(evicted);
+
+    const data = {
+        driftCheck: driftCheck,
+        totalNonDraft: nonDraft.length,
+        prCount: unionCapped.length,
+        mode: isFullScan ? 'full-scan' : 'floor+activity',
+        prsCap: PRS_CAP,
+        prsTruncated: nonDraft.length > PRS_CAP,
+        unionCap: cap,
+        unionTruncated: unionTruncated,
+        truncatedTailNumbers: truncatedTailNumbers,
+        nonGreenCount: nonGreenCount,
+        activityWindowHours: isFullScan ? null : ACTIVITY_WINDOW_HOURS,
+        checkRunScanCap: isFullScan ? null : CHECKRUN_SCAN_CAP,
+        checkRunScanTruncated: isFullScan ? null : scanTruncated,
+        activityErrors: isFullScan ? null : activityErrors,
+        activePrCount: isFullScan ? null : activePrCount,
+        floorCheckRunErrors: floorCheckRunErrors,
+        exclusions: {
+          activeCount: excludedJobNames.size,
+          loadError: exclusionsLoadError,
+          needsBaseSkewGuardCount: needsBaseSkewGuardCount,
+          verificationSkippedCount: verificationSkippedCount,
+          prsWithExcludedChecks: prsWithExcludedChecks,
+          evictedWithExcludedChecks: evictedWithExcludedChecks,
+          prsWithBlockedChecks: prsWithBlockedChecks,
+          evictedWithBlockedChecks: evictedWithBlockedChecks,
+          prsWithRollupUnexplained: prsWithRollupUnexplained,
+        },
+        prs: unionCapped,
+        evicted: evicted,
+    };
+
+    const { wakeAgent, wakeReasons, nextState } = decideWake(data, loadPreviousState());
+    const stateWriteError = saveState(nextState);
+    if (wakeAgent) {
+      console.log(JSON.stringify({ wakeAgent: true, data: { ...data, wakeReasons, stateWriteError } }));
+    } else {
+      console.log(JSON.stringify({ wakeAgent: false, data: { ...sleepSummary(data, nextState), stateWriteError } }));
     }
-  }));
+  } catch (e) {
+    console.log(JSON.stringify(errorGate(driftCheck, e)));
+  }
+};
 
-  const prsWithExcludedChecks = unionCapped.filter((p) => (p.excludedChecks || []).length > 0).length;
-  const evictedWithExcludedChecks = evicted.filter((e) => (e.excludedChecks || []).length > 0).length;
-  const prsWithBlockedChecks = unionCapped.filter((p) => (p.blockedChecks || []).length > 0).length;
-  const evictedWithBlockedChecks = evicted.filter((e) => (e.blockedChecks || []).length > 0).length;
-  const prsWithRollupUnexplained = unionCapped.filter((p) => p.rollupUnexplained).length;
-  // Visible counter for resolveExclusionVerdict's skipped:true verdict -- an
-  // entry that declared logGrep but had no id/target_url to check it
-  // against, so it fell through to actionable rather than being trusted on
-  // name+ancestry alone (see resolveExclusionVerdict's own comment for why
-  // this must never be silent). Rolls up both registries: signatureMismatches
-  // (tracked-regressions.json, via splitExclusions) and
-  // baseSkewVerificationSkipped (base-skew-signatures.json, via
-  // classifyBaseSkew) across PRs and evicted entries alike.
-  const skippedCountFor = (list) =>
-    list.reduce((n, e) => n + (e.signatureMismatches || []).filter((m) => m.skipped).length + (e.baseSkewVerificationSkipped || []).length, 0);
-  const verificationSkippedCount = skippedCountFor(unionCapped) + skippedCountFor(evicted);
-
-  console.log(JSON.stringify({
-    wakeAgent: nonDraft.length > 0,
-    data: {
-      driftCheck: driftCheck,
-      totalNonDraft: nonDraft.length,
-      prCount: unionCapped.length,
-      mode: isFullScan ? 'full-scan' : 'floor+activity',
-      prsCap: PRS_CAP,
-      prsTruncated: nonDraft.length > PRS_CAP,
-      unionCap: cap,
-      unionTruncated: unionTruncated,
-      truncatedTailNumbers: truncatedTailNumbers,
-      nonGreenCount: nonGreenCount,
-      activityWindowHours: isFullScan ? null : ACTIVITY_WINDOW_HOURS,
-      checkRunScanCap: isFullScan ? null : CHECKRUN_SCAN_CAP,
-      checkRunScanTruncated: isFullScan ? null : scanTruncated,
-      activityErrors: isFullScan ? null : activityErrors,
-      activePrCount: isFullScan ? null : activePrCount,
-      floorCheckRunErrors: floorCheckRunErrors,
-      exclusions: {
-        activeCount: excludedJobNames.size,
-        loadError: exclusionsLoadError,
-        needsBaseSkewGuardCount: needsBaseSkewGuardCount,
-        verificationSkippedCount: verificationSkippedCount,
-        prsWithExcludedChecks: prsWithExcludedChecks,
-        evictedWithExcludedChecks: evictedWithExcludedChecks,
-        prsWithBlockedChecks: prsWithBlockedChecks,
-        evictedWithBlockedChecks: evictedWithBlockedChecks,
-        prsWithRollupUnexplained: prsWithRollupUnexplained,
-      },
-      prs: unionCapped,
-      evicted: evicted,
-    },
-  }));
-} catch (e) {
-  console.log(JSON.stringify({ wakeAgent: true, data: { driftCheck: driftCheck, error: e.message } }));
+// The decision helpers above are importable by the test file; the sweep
+// itself only runs when this file is the program node was started with.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  await main();
 }
