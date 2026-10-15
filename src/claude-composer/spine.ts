@@ -9,7 +9,7 @@ import path from 'path';
 
 import { type ComposedSectionInput, renderProjectDoc } from './project-doc.js';
 import { readCoworkerTypes, readSkillCatalog } from './registry.js';
-import { residentSkillInstructions } from './skill-scope.js';
+import { coworkerSkillClosure, residentSkillInstructions } from './skill-scope.js';
 import { collectWorkflowExtendsChain, injectOverlays, resolveCoworkerManifest } from './resolve.js';
 import { RUNTIME_CONTRACT_SECTION, renderRuntimeContract } from './runtime-contract.js';
 import type { CoworkerManifest, CoworkerTypeEntry, SkillMeta } from './types.js';
@@ -875,7 +875,11 @@ export function renderCoworkerSections(
       cur = cur.extendsWorkflow ? catalog[cur.extendsWorkflow] : undefined;
     }
   }
-  const capabilitySkillNames = new Set(manifest.skills.map((s) => s.name));
+  // A capability skill reaches the coworker either from the type's own
+  // `skills:` list or through a rendered workflow's `uses.skills` (along its
+  // extends chain); the mirror ships both, so a `/skill` reference in a
+  // workflow body resolves against the same closure the mirror uses.
+  const capabilitySkillNames = coworkerSkillClosure(manifest, catalog);
   const overlayNames = new Set<string>();
   for (const meta of Object.values(catalog) as SkillMeta[]) {
     if (meta.type === 'overlay') overlayNames.add(meta.name);
