@@ -1,0 +1,14 @@
+[Unit]
+Description=Run the NanoClaw practices check hourly
+
+[Timer]
+OnBootSec=5min
+OnCalendar=hourly
+# Spread the start so it does not coincide with the top-of-hour cron tasks the
+# coworkers themselves run; the check reads the same mailboxes they write.
+RandomizedDelaySec=300
+Persistent=true
+Unit=nanoclaw-practices-check.service
+
+[Install]
+WantedBy=timers.target
