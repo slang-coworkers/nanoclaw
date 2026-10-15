@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13530_uniform_unsized_array_spirv_invalid
-description: "slang#13530 (JackOfBlades232, external, 10-08): a global/entry-point `uniform float4[]` compiles without any diagnostic into an invalid implicit uniform buffer (SPIR-V VUID-04680 whole-RTA OpLoad, both members at Offset 0; DXC/glslang reject the output). Triaged 20:20Z (cmt 6068316405, bug/medium/P2, front end). Orchestrator GO 10-08 for a draft PR on Approach A (extend E31215 to implicit GlobalParams/EntryPointParams). Sibling of #13529. Side finding filed as #13533 (CUDA reflection offsets). Draft PR #13538 opened 10-09 00:56Z (pr: breaking change provisional), held on two maintainer questions; re-chased 10-12 (no maintainer reply; reviewer cost-stopped); next re-chase 10-15."
+description: "slang#13530 (JackOfBlades232, external, 10-08): a global/entry-point `uniform float4[]` compiles without any diagnostic into an invalid implicit uniform buffer (SPIR-V VUID-04680 whole-RTA OpLoad, both members at Offset 0; DXC/glslang reject the output). Triaged 20:20Z (cmt 6068316405, bug/medium/P2, front end). Orchestrator GO 10-08 for a draft PR on Approach A (extend E31215 to implicit GlobalParams/EntryPointParams). Sibling of #13529. Side finding filed as #13533 (CUDA reflection offsets). Draft PR #13538 opened 10-09 00:56Z (pr: breaking change provisional), held on two maintainer questions; re-chased 10-12 and 10-15 (no maintainer reply; reviewer cost-stopped; escalated to the dashboard 10-15); next re-chase 10-18."
 metadata:
   node_type: memory
   type: project
@@ -54,6 +54,13 @@ on 1ce058b72e (12:02Z) is unanswered. No [Fix Report] or [Triage Resolution] yet
 **10-12 ~01:15Z (Main, verified live).** Same state as the re-chase block above. The reviewer's $91.30 is above slang-reviewer's
 30-day max of $83 (p95 $43). The operator Continue/Stop/Hold `ask_user_question` timed out after 300s, so the default is **HOLD**. That is
 the third time the cost stop has been raised. Do not Continue on my own authority; r2 escalates if it is still unanswered.
+
+**10-15 01:00Z re-chase r2 (rechase-13530-pr13538-r2-ce45, verified live).** Nothing has changed since 10-12. Head is still `1ce058b72e`, the PR is
+still a draft, and the label is unchanged. #13538, #13530 and #13533 have no non-bot comment or review. The PR was last updated 10-09 12:21Z. The reviewer
+`ee79ml` is still `stopped` at $91.30, with its escalation `[pending]`. A 10-13 instruction-restart woke it, but it emitted nothing. The triager's only
+reply to nudge 37 was a [Triage Status] (10-12 01:07Z), and there is no [Triage Resolution]. As instructed, I escalated to orchestrator-dashboard
+(msg 23) instead of nudging again. That is the 4th time the cost stop has been raised. The message also asks whether to ping jkwak-work on GitHub.
+Next is a one-shot `rechase-13530-pr13538-r3` at 10-18T01:00Z. It must not nudge the triager, and it should act only on an explicit operator answer.
 
 **Side findings.** (1) **FILED as [#13533](https://github.com/shader-slang/slang/issues/13533)** 10-08 ~20:4xZ
 (verified live: nv-slang-bot author, 4437 chars, labels cuda/reflection/reproduced, no @). It has two causes: the

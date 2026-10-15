@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13446_spirv_int_matrix_column_major_layout_ignored
-description: "slang#13446 (bot-filed 10-05 ~20:10Z by slang-fixer on the #13378 chain): on SPIR-V, legalizeMatrixTypes lowers int/uint/bool matrices to row vectors regardless of layout while reflection honours column-major -> silent wrong value on Vulkan. The array form is the FOURTH #12992 regression. Maintainer A/B fix choice; owned by the #12992 chain; NO fixer dispatched; covered by rechase-13376-13375-05dc. 10-06 16:32Z jkwak-work asked @nv-slang-bot to triage; dispatched to slang-triager; triaged 18:06Z (cmt 6022423678, rec option 1 via pass order); waits on jkwak-work; gate i13446-decision-gate-162d."
+description: "slang#13446 (bot-filed 10-05 ~20:10Z by slang-fixer on the #13378 chain): on SPIR-V, legalizeMatrixTypes lowers int/uint/bool matrices to row vectors regardless of layout while reflection honours column-major -> silent wrong value on Vulkan. The array form is the FOURTH #12992 regression. Maintainer A/B fix choice; owned by the #12992 chain; NO fixer dispatched; covered by rechase-13376-13375-05dc. 10-06 16:32Z jkwak-work asked @nv-slang-bot to triage; dispatched to slang-triager; triaged 18:06Z (cmt 6022423678, rec option 1 via pass order); waits on jkwak-work; 10-15 jkwak-work asked float-too? + SPIR-V-only?; answered 01:46Z cmt 6182493567 (float fine everywhere; int wrong on SPIR-V/GLSL/WGSL/Metal). Waits on jkwak-work option 1 vs 2."
 metadata:
   node_type: memory
   type: project
@@ -57,3 +57,35 @@ The memo is at `inbox/a2a-1791310117663-c42qw9/triage-13446.md`. slang-fixer ses
 `i13446-decision-gate-162d` checks every 12h via `gates/i13446-decision-gate.sh`, firing on a non-bot comment after 18:06:51Z
 or on close. Controls were proven: an earlier SINCE gives HUMAN_REPLY, closed #12990 gives CLOSED, and the live run gives
 false. The #13446 entry was taken out of `rechase-13376-13375-be74`.
+
+**10-15 00:55Z: two follow-up questions from the maintainer.** No option was picked; these are questions, not a
+go-ahead.
+- Comment 6181868795: is it limited to int/bool, or does float have it too?
+- Comment 6181881584: is it limited to SPIR-V, or do other targets have it too?
+
+I added 👀 to both and sent both to slang-triager, pinned to `1mhykc` on the -13446 thread with in_reply_to 46 and
+post-authorized, to be answered in one reply. The brief asks for a single matrix covering float vs int/bool across every
+target, buffer kind and shape, checked at HEAD, with the evidence for each cell (emitted code inspected vs. run).
+- **Background:** `i13446-decision-gate-162d` is gone (removed when the recurring per-issue gate was retired under R10,
+  10-13). #13378 merged at 22:41Z on 10-14, so the cleanup in comment 6002335255 now applies to master.
+- **Timer:** `rechase-13446-float-targ-4206`, a one-shot at 03:00Z 10-15. It checks for the reply, nudges once, then
+  alerts.
+- **send_message hazard:** the triager thread held 2 unanswered inbound rows (#42, #46), and send_message refused to send
+  without `in_reply_to`. Pass the newest one.
+
+**10-15 01:46Z: both questions answered.** slang-triager posted comment 6182493567, measured on master `0b8d2df75`.
+- **Float:** not affected on any target. Readbacks match reflection on lavapipe (direct and via GLSL) and on CPU. Other
+  targets were checked from emitted output. The mechanism differs by target: decorations on SPIR-V, `layout(row_major)`
+  on GLSL, `_MatrixStorage` on WGSL, Metal and CUDA.
+- **Int:** wrong on SPIR-V direct and via GLSL (runtime), and on GLSL, WGSL and Metal (emitted). Correct on HLSL/DXIL and
+  CUDA (offsets checked) and on CPU (run). Square int3x3 on Vulkan and Metal int buffers have matching offsets but rows
+  in the wrong order.
+- **Two side findings, unfiled, for the operator to decide:** (a) LLVM ConstantBuffer reads disagree with reflection for
+  any struct, including ones with no matrix. (b) Reflection gives `column_major bool2x3` 6 bytes on CPU but 24 on
+  LLVM/SPIR-V.
+- **Correction of my 10-15 00:58Z note:** #13378 merged as `d81979f84` with **no** int test and **no** expected-failure
+  entries; comment 6002335255 was already edited on 10-12 to say so. There is nothing to clean up. The fix has to add its
+  own Vulkan value test.
+
+I cancelled `rechase-13446-float-targ-4206` because the question was answered. Waits on jkwak-work choosing option 1 or
+2. No timer is armed: the maintainer's next comment arrives as a webhook, and the fixer stays on hold.

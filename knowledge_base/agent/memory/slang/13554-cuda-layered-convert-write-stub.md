@@ -1,8 +1,8 @@
 ---
 type: chain
 title: slang#13554 — CUDA/PTX formatted RWTexture{1D,2D}Array store silently dropped (empty `_convert` prelude stub)
-description: External report (minco3), unassigned. Triaged P2 bug, reproduced. Draft PR #13563 got APPROVE_WITH_NITS, and the fixups are at e2eaf72e2a. It has never run GPU CI (draft, and the falcor gate needs ci-approvers). The last operator ask went out 10-11; the final check is 10-14 08:00Z, after which the chain parks.
-tags: [slang, cuda, ptx, rwtexture, prelude, go, draft-pr]
+description: TERMINAL 2026-10-15. PR #13563 (prelude-only inline sust.p.a{1d,2d}) was MERGED by jkwak-work at 02:16Z (788be3144e), and #13554 closed COMPLETED. GPU CI proved the conversion on hardware. The stale #13363 rule is owned by the #12627 chain.
+tags: [slang, cuda, ptx, rwtexture, prelude, terminal, merged]
 ---
 
 # slang#13554 — layered `_convert` surface write is an empty stub
@@ -11,6 +11,17 @@ Reporter minco3 (NONE, external), filed 2026-10-09 ~23:11Z. Auto-assigned to jkw
 Main session `sess-1791587497477-4u2mkp`.
 
 ## State
+
+- **TERMINAL, 2026-10-15.** jkwak-work merged PR #13563 at 02:16:36Z (merge `788be3144e`, head `43aa85e7d5`), and #13554 closed
+  COMPLETED at 02:16:38Z via `Fixes` (I checked both live). The triager's final note made no issue post, and the fixer removed its worktree. I cancelled
+  `rechase-13563-final-95f1`. The stale #13363 `isConversionAvailable = !isLayered` rule belongs to the #12627 chain
+  (`rechase-12627-13563-merg-058d`), not this one.
+- **Lessons.** (1) Check the assignee live before a GO that rests on "unassigned". github-actions auto-assigns on PR open, and it
+  had already happened by the time I recorded the basis. (2) A maintainer engaging overrides an operator CI question that is still pending: re-ask the
+  assignee on GitHub, not the operator. (3) A row in `messages_in` doesn't mean the agent saw it. The fixer's 06:28Z inbound sat unprocessed
+  until a re-wake.
+
+### History
 
 - **Triage** (slang-triager, cmt [6091397893](https://github.com/shader-slang/slang/issues/13554#issuecomment-6091397893), labels
   `reproduced`+`cuda`, Type=Bug): reproduced on master 08d419cbf. `surf{1D,2D}Layeredwrite_convert` stubs at
@@ -84,6 +95,15 @@ Main session `sess-1791587497477-4u2mkp`.
   It accepts the #8863 regression attribution, points to draft #13563 at e2eaf72e2a, says GPU CI has never run, and asks jkwak-work one question:
   un-draft for GPU CI, or a different approach (error / #11090)? It also notes the #13363 coupling. Now **awaiting jkwak-work**. Un-draft or CI →
   fixer, via the triager. A design change comes back to me. Re-chase `rechase-13563-final-95f1` (10-16 08:00Z).
+- **10-14 ~15:5xZ: jkwak-work APPROVED #13563** ([review 5520520698](https://github.com/shader-slang/slang/pull/13563#pullrequestreview-5520520698))
+  at head `43aa85e7d5` (their own master merge, no PR-file change) and **un-drafted it**, which answers cmt 6158442564. I checked it live: OPEN, not a draft,
+  BLOCKED, reviewDecision empty. pull_request CI 38590660077 is **queued** on 43aa85e. The fixer answered their `a1d` question in
+  [6172423229](https://github.com/shader-slang/slang/pull/13563#issuecomment-6172423229): ptxas CUDA 11.7–13.4 on sm_50–120, PTX ISA ≥4.1, NVVM IR spec §15.5.3.
+  The operator CI decision is moot. Next: the fixer handles CI webhooks, and a human merges. `rechase-13563-final-95f1` (10-16 08:00Z) was rewritten for the CI/merge check.
+- **10-14 16:51Z: GPU CI passed the conversion.** I checked live: in run 38590660077, `test-windows-{release,debug}-cl-x86_64-gpu-cuda` both succeeded
+  (they include `cudaLayeredFormatWriteCUDA` and `rw-texture-layered-format-write.slang`), and release `gpu-rhi` succeeded. Debug `gpu-rhi` failed on an infra error
+  (the runner couldn't reach github.com during the Vulkan-Headers submodule checkout). The fixer queued rerun attempt 2. **This closes the "hardware conversion unverified" caveat.**
+  Next: a maintainer merges. The triager sends a final note on merge.
 - **Triager check, 04:49Z:** within scope (prelude +129/−14, a PTX FileCheck, a CUDA gfx-unit-test that reads texels back, a docs
   line). Issue cmt 6091397893 was edited in place. **GPU CI is gated:** dispatch run 38024444265 (head 508fb1b3b2) is `waiting` at
   `falcor-build-approval-gate`, and check-ci failed downstream (I checked it live 04:5xZ). Releasing it needs a ci-approvers human

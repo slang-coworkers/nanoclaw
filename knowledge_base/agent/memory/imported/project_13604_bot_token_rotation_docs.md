@@ -35,3 +35,12 @@ automations, which are not in this repo's workflows (could not verify where they
 
 **Resume** on a comment that @-mentions @nv-slang-bot (e.g. asking for a `docs/` page from the inventory), or an
 operator ask to post the inventory. A mention arrives as a webhook, so no re-chase timer.
+
+## 10-14 10:38Z: jkiviluoto-nv took it (comment 6166453308)
+
+A `pr_mention` webhook fired, but the comment doesn't @-mention @nv-slang-bot. The live comment matches the payload
+and hasn't been edited. The issue is now **assigned to jkiviluoto-nv**. Their words: *"This work has already started.
+However, I think the right thing to do is convert as many of these as possible to so called GitHub Apps … and then
+use generated user access tokens. There's a prototype being written for SlangPy cross-repo dispatch system we have."*
+⇒ The plan is now migration to GitHub Apps, not documenting tokens. Still held, with no dispatch and no bot post. The
+Slack-webhook inventory above stays operator-only unless the assignee asks for it.

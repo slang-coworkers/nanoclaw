@@ -34,7 +34,22 @@ tick after the scan. Procedure: [[orchestrator/supervise-tick-runbook.md]]. The 
    was a long-lived SSE stream flushed later (00:11Z). Nudged pinned; it acked "lost the relay when my context was
    compacted".
 
+Shape 3 recurred at tick 282 (#13537): owning fixer `rt7qwx` sits on `gh-pr-shader-slang/slang-11344` (a takeover PR's
+old-PR thread — `ncl pr-mappings list` names it), died 06:48Z mid-prototype after promising a #13537 report; scan read
+`awaiting_human` and blind.py only saw the chain's own sessions. For every 🔼 row with a fresh human instruction, look up
+the PR's `pr-mappings` session and check its `.claude-trace` last `request.timestamp`. Pinned nudge → working in <1 min.
+
 Shape 1 recurred at tick 280 (#11803 R2 request, reviewer `bokz3c` stopped 6.7 h); blind.py caught it and the
 pinned nudge acked in under a minute.
+
+7. **Approved + auto-merge armed, but the PR is `DIRTY`** (tick 283, #13537). A maintainer approves and enables
+   auto-merge, then master moves and the branch conflicts; auto-merge silently never fires. scan reads `awaiting_us`
+   as "human spoke last" and `ci.py` shows ✅ (DIRTY isn't BEHIND, so no rebase-nudge cell). Detector: for every
+   open PR with `autoMergeRequest != null`, check `mergeStateStatus == DIRTY`. Nudge the `pr-mappings` owner pinned
+   to merge master (merge commit, keep the approver's commits). Fixer acked in 2 min. Sweep, since `gh pr list` GraphQL
+   502s often: `gh api 'repos/<o>/<r>/pulls?state=open&per_page=100&page=N' --jq '.[]|select(.auto_merge!=null)|.number'`,
+   then `pulls/<n>` → `mergeable_state` (`dirty`/`behind`). Tick 283's first sweep found 2 more bot PRs: #13171
+   (behind 66, its only CI run yielded at the priority gate 2 days earlier and was never retried) and #12820 (approved
+   09-03, dirty, 281 behind) — both invisible to scan for weeks.
 
 Typical outcome: every pinned nudge above acked within 1–3 min.

@@ -10,7 +10,7 @@ tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, held, awaiting-mai
 Assignee and PR shepherd: jkwak-work. Fixer session `sess-1787171888548-4gv6cq` (thread `gh-issue-shader-slang/slang-12627`).
 Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170935547-1z63sa`.
 
-## State (checked live 2026-10-04 03:25Z; re-checked 10-07, 10-09 and 2026-10-12 02:00Z: unchanged, still no human reply)
+## State (checked live 2026-10-04 03:25Z; re-checked 10-07, 10-09, 10-12 and 2026-10-15 02:00Z: #13363 unchanged, still no human reply)
 
 - **PR [#13363](https://github.com/shader-slang/slang/pull/13363):** draft, `fix/issue-12627`, head `b79ae81e23`
   (merged master `6ba151dcfc`, no force-push), 22 files +913/−155, no human reviews. On 10-09 it showed `BEHIND` master, which is
@@ -28,17 +28,27 @@ Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170
   or (b) make it a compile-time error on CUDA. The warning-scope question
   ([5923147529](https://github.com/shader-slang/slang/issues/12627#issuecomment-5923147529)) asks CUDA-only or all RMW targets.
   Secondary: [5925676317](https://github.com/shader-slang/slang/issues/12627#issuecomment-5925676317) asks whether to fold #13364 in.
-- **Re-chase:** `rechase-12627-jkwak-2929` (2026-10-15 02:00Z). I asked the operator on the dashboard whether slang-fixer should
-  post one short re-ping on #12627: 10-07 02:16Z, 10-09 02:00Z, and 10-12 02:0xZ (3rd ask). No answer yet. I don't post it myself.
+- **Re-chase:** `rechase-12627-13563-merg-058d` (2026-10-15 08:00Z; short because #13563 is about to merge). Operator re-ping ask
+  sent 10-07 02:16Z, 10-09 02:00Z, 10-12 02:0xZ and 10-15 02:1xZ (4th, dashboard msg 39). The 4th ask reframes it as: after
+  #13563 merges, may the fixer reconcile #13363 and post one comment on #12627 that reports the update and re-asks (a)/(b)? Still no answer. I don't post it myself.
 - **Interacts with #13563 (new 10-10).** minco3 filed #13554: a formatted `RWTexture2DArray` store is silently dropped on CUDA.
   Bot draft PR [#13563](https://github.com/shader-slang/slang/pull/13563) (`e2eaf72e2a`, assigned jkwak-work) implements the
   layered `_convert` writes with inline `sust.p.a1d`/`a2d`. That makes #13363's write rule `isConversionAvailable = !isLayered`
-  (E56007 on a layered converting write) stale. Whichever PR merges second has to reconcile the rule. Both are drafts, so there's
-  nothing to dispatch yet. I flagged it to the operator on 10-12.
+  (E56007 on a layered converting write) stale. The two PRs share **no files**, so the clash is semantic, not textual.
+  **2026-10-15:** jkwak-work readied #13563 (10-14 15:35Z), approved it (review 5520520698, asking about `a1d` compatibility,
+  which the bot answered: CUDA 11.7–13.4, sm_50–120 OK, GPU CI passed) and queued it at 10-15 01:07Z (pos 1, `AWAITING_CHECKS`),
+  so #13363 is the one that reconciles. At 02:10Z I told the fixer (pinned send, its row 65 acked at 02:06Z) to do a read-only
+  impact check, with no push, master merge or post until #13563 merges and I confirm. **Fixer's answer (row 67, 02:11Z):**
+  #13554's `t[i] = v` lowers via the `set` accessor and never reaches `isConversionAvailable`, so it isn't broken (inferred
+  from code, not re-run). What goes stale is swizzle-spelled whole-texel layered converting writes (`a2[i].xyzw = v`), which
+  would raise a false E56007. The planned reconcile is ~1 commit and 4 files: writes become `isConversionAvailable = true`, the
+  E56007 text says "no converting read for arrays", one test moves out of UNSUPPORTED, and a positive
+  `surf2DLayeredwrite_convert` CHECK is added. Done as a `git merge origin/master`. `image-swizzle-write.slang` is NOT affected
+  (that was my mistake). I corrected it to the operator in dashboard msg 145.
 
 ## Follow-ups (bot-filed, not dispatched, `doNotNudge` in supervisor-state.json)
 
-On 2026-10-05, maintainers triaged all four (re-checked 10-09 and 10-12: no comments, unchanged): they assigned owners and set milestones. A follow-up that a human now owns is not
+On 2026-10-05, maintainers triaged all four (re-checked 10-09, 10-12 and 10-15: no comments, unchanged): they assigned owners and set milestones. A follow-up that a human now owns is not
 dispatched unless that assignee or the operator asks.
 
 - #13361 WGSL, same root cause. Owned by jkwak-work, Q4 2026.

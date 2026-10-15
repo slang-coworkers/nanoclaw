@@ -51,5 +51,10 @@ tags: [metal, glsl, ir-lowering, layout]
   - **Ping question sent to the operator** on `orchestrator-dashboard` (msg 7): may we @-mention a second maintainer? Suggested
     **jvepsalainen-nv**: 8 human commits on the two changed source files since 2026-04, and the only author recent in both files.
     csyonghe is the long-run owner (14 commits in the last 100 on `slang-lower-to-ir.cpp`). Nothing posted on GitHub.
-- **Next:** re-chase #3 `rechase-9078-jhelferty-602a` (2026-10-15). It checks for a GitHub reply, then reads the dashboard session for the
-  operator's ping answer. If approved, slang-fixer posts the ping; otherwise no second @-mention.
+- **2026-10-15 — re-chase #3: still no reply (8 days).** No human comment, review, timeline event or reaction on #9078 or #13467 since
+  10-07 01:12Z (last event: the 10-08 unlabel). Head is still `302264acd3`, still a draft.
+  - **Operator hasn't answered the ping question.** Dashboard rows seq 498527–501682 (10-11 00:15Z → 10-15 00:00Z) hold only the 10-12
+    question itself (seq 498888). The 300-row `--reverse` window started at 10-13 04:15Z, so I reached back with `--since-seq 498500 --limit 400`.
+  - Status and a brief re-ask went to `orchestrator-dashboard` (msg 15). There was no second @-mention on GitHub.
+- **Next:** re-chase #4 `rechase-9078-jhelferty-242d` (2026-10-18). It checks for a reply on the same two surfaces. If nothing has changed, it asks
+  the operator whether to keep a 3-day cadence or park the chain on the supervise-issues register.

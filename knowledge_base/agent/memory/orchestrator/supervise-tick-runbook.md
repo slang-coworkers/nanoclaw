@@ -3,7 +3,7 @@ type: runbook
 description: Fast path for a /supervise-issues tick — read FIRST, before SKILL.md. Use the cached tickNNN/pull.sh (never the stock pull-universe.sh), the helper pipeline, and the pull/cache pitfalls that keep the payload honest. Split 2026-10-13; false-positive and blind-spot catalogues live in sibling pages.
 ---
 
-# /supervise-issues tick runbook (learned ticks 255–279)
+# /supervise-issues tick runbook (learned ticks 255–283)
 
 **This runbook overrides SKILL.md's "use `scripts/pull-universe.sh` (preferred)".** Never launch the stock
 script: its step 1b calls `ncl cost-cap status` once per gh-issue session (~1.2–2 s × ~4,100 sessions ≈ 80 min–2.4 h),
@@ -21,7 +21,7 @@ Companion pages: [[orchestrator/supervise-tick-false-positives.md]] (rows scan f
 1. New `tickNNN/` dir. Fetch inputs once, **serially** (concurrent `ncl` → "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick281/`**) and `sed` every `tickNNN` path.
+2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick283/`**) and `sed` every `tickNNN` path.
    `board274.py` hardcodes `supervisor-state.pre-tickNNN.json`; repoint `titles.py` to payload5.json.
    Build `lo-cache.json` from the **previous `payload3.json`** (not payload1, so last tick's re-fetch fixes carry
    forward) and `prev-la.json` from the previous `sessions.json`. Run `pull.sh` with env
@@ -37,12 +37,16 @@ Companion pages: [[orchestrator/supervise-tick-false-positives.md]] (rows scan f
    `apply_disp.py payload2b.json payload3.json` (verified dispositions from `disp-overrides.json`; it must NOT create
    state keys for chains that have none, or new chains lose their 🆕 delta) → `scan.py`. With empty overrides,
    `payload5 = payload3` and `scan-out3 = scan-out1`; the renderer reads both names.
-5. In parallel: `runs.py` → `ci.py` (CI cells) and `titles.py`; `gc_resolve.py` → `worktree-gc.py`. scan.py and
+5. In parallel: `runs.py` → `ci.py` (CI cells) and `titles.py`; `gc_resolve.py` → `worktree-gc.py`. **Launch them with
+   Bash `run_in_background: true`, not `( … ) &` inside a foreground call** — tick 282's `&`-detached runs/ci/titles died
+   with that call's shell (no `ci.json`/`titles.json`, ~10 min lost); gc survived only by luck. scan.py and
    worktree-gc.py live at `/home/node/.claude/skills/supervise-issues/scripts/` (scan reads stdin: `scan.py < payload3.json`).
 6. Re-list sessions just before the final scan (a chain can get its first session mid-tick, e.g. #13469/#13470).
    Verify **every** `action=nudge`/`escalate` row against GitHub and transcripts; record a disposition for each false
    positive (tokens scan.py recognizes are `advisory:…`; re-tokenize `watch:`/`handed-off:`), then re-run scan so state
    persists.
+6b. **Auto-merge sweep (every tick):** list open PRs with `auto_merge` armed and check `mergeable_state` — an approved
+   bot PR that's `dirty`/`behind` never merges and scan can't see it ([[orchestrator/supervise-tick-blind-spots.md]] shape 7).
 7. Render with `board274.py` (notes.json / nudged.json / real-updates.json / art-override.json). Write `notes.json` and
    `real-updates.json` for every 🔼 row after checking GitHub. Strip dashboard deep-links from the inline chat board to
    stay under ~16 KB; the tracker file keeps them.

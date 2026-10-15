@@ -23,7 +23,7 @@ the one mount detail the spine omits.
   cached `tickNNN/pull.sh` fast path, helper pipeline, delivery/turn discipline, pull/cache pitfalls.
   - [False-positive shapes](supervise-tick-false-positives.md) — rows scan flags that aren't real, with disposition tokens.
   - [Scan blind spots](supervise-tick-blind-spots.md) — real stalls scan misreads, with detectors.
-  - [Scheduler: gated-series stall (open)](scheduler-gated-series-stall.md) — false-gate recurring series stopped advancing after 10-13 14:03Z; watchdog must not re-arm; re-check each tick.
+  - [Scheduler: gated-series stall (closed tick 282)](scheduler-gated-series-stall.md) — false-gate stall cleared after the 10-14 06:06Z restart; the 11 per-issue i1xxxx gates were deleted (R10 cleanup, nanoclaw PR #1948) — never re-create them.
 - [Self-modification: packages & MCP servers](self-modification.md) —
   install_packages vs workspace pnpm install; add_mcp_server + the vault
   credential-placeholder flow.

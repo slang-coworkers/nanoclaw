@@ -87,3 +87,10 @@ SPIR-V-only), and a fix to the peephole's scalar-swizzle result type. Fixer-repo
 (dispatch 38462553148 yielded on priority, auto-retry). When it merges, `Fixes` auto-closes the issue and the triager sends a final note only.
 Unfiled follow-ups (operator call): (1) WGSL `[vk::push_constant]` emits no `@binding`; (2) `bool2` user varyings stay
 `vec2<bool>` at `@location`. #10207 already tracks the ByteAddressBuffer path.
+
+**2026-10-14 16:00Z, re-chase `-87c3` (case c).** No change since 10-13 20:48Z. PR #13607 is still OPEN and a draft at
+7851898586, 9 commits, 6 files, +424/−57, with 0 human reviews or comments (last update 20:39Z). #13590 has no human comment.
+Dispatch run 38462553148 has been `waiting` on the approval gate since 10-13 20:24Z, and the `pull_request` CI jobs are SKIPPED (draft).
+Status line sent to orchestrator-dashboard (msg 7). The follow-ups question (push-constant `@binding`, `bool2` varyings) was re-asked for the
+**final** time. The operator hasn't answered since 10-13, and later re-chases must not ask again. Next one-shot is armed for 10-15 16:00Z.
+After 3 unchanged re-chases it moves to the parked-chain register instead of re-arming.

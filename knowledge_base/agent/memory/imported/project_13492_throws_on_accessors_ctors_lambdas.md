@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13492_throws_on_accessors_ctors_lambdas
-description: "slang#13492 (skiminki-nv, self-assigned, opened 2026-10-07): feature request for `throws` on accessors, subscripts, __init and lambdas. Triaged by slang-triager as feature/medium/P2, design-gated, NO fixer (comment 6043910204). It is an umbrella over siblings #13488-#13491, which are all self-assigned by the same author. Open operator decision: should we file the generic error-type bug (E30095/E30093) on its own? Re-chase task rechase-13492-throws-des-d113 runs 2026-10-14."
+description: "slang#13492 (skiminki-nv, self-assigned, opened 2026-10-07): feature request for `throws` on accessors, subscripts, __init and lambdas. Triaged by slang-triager as feature/medium/P2, design-gated, NO fixer (comment 6043910204). It is an umbrella over siblings #13488-#13491, which are all self-assigned by the same author. The generic error-type bug (E30095/E30093) was FIXED by #13503 (merged 2026-10-09 by skiminki-nv), so the filing decision is moot. Re-chased 2026-10-14: no non-bot comments; parked on maintainer design."
 metadata:
   node_type: memory
   type: project
@@ -34,7 +34,7 @@ slang-triager workspace).
 **Disposition: design-gated, maintainer-owned, NO fixer.** The design questions are: setters in or out, the accessor
 conformance rule, the lambda error type, the clause order, and throwing `IFunc` variants.
 
-**Open operator decision: file the generic error-type bug separately?** When a callee is generic over its error
+**Generic error-type bug: RESOLVED (moot), no filing needed.** When a callee is generic over its error
 type, `int f<E>(int) throws E`, then `try f<MyError>(x)` gives E30095, and under a matching `catch` it gives E30093.
 I verified the cause at 9f31ffcfd: `visitTryExpr` (slang-check-expr.cpp:7782-7817) compares
 `funcCallee->errorType` unsubstituted, where it should use `getErrorCodeType(astBuilder, declRef)`
@@ -43,6 +43,16 @@ search on E30095 or on generic error types. It is already described in the #1349
 I asked the operator via ask_user_question at 2026-10-07 ~18:15Z and it timed out after 600s with no answer. The
 triager was told to hold, so nothing has been filed.
 
-**Resume path.** `rechase-13492-throws-des-d113` (once, 2026-10-14 18:00Z) checks for non-bot comments, relays any
+**2026-10-14 re-chase.** The bug was fixed in the course of sibling work. PR #13503 (nv-slang-bot, closes #13488,
+merged 2026-10-09 by skiminki-nv, merge commit 08d419cbf) rewrote `visitTryExpr` to read the error type from the
+callee's substituted `FuncType` (`calleeFuncType->getErrorType()`). The regression test is
+`tests/language-feature/error-handling/try-generic-error-type.slang`, and both are confirmed on master. Point 2 of
+triage comment 6043910204 is therefore stale. There are still no non-bot comments on #13492, and the
+`Dev Opened` label was added and then removed. skiminki-nv merged spec PR shader-slang/spec#63 ("Language
+reference: try expressions", 2026-10-14). Remark 1 in that PR says #13492 "tracks enabling error handling for all
+types of callable objects". That is a tracking note, not design direction. Sibling PR #13514 (#13491/#13489
+nested-try) is still open.
+
+**Resume path (superseded).** `rechase-13492-throws-des-d113` (once, 2026-10-14 18:00Z) checks for non-bot comments, relays any
 maintainer direction to slang-triager on `gh-issue-shader-slang/slang-13492`, and re-asks the filing question if it
 is still open. Resume early on a non-bot comment or an operator answer.
