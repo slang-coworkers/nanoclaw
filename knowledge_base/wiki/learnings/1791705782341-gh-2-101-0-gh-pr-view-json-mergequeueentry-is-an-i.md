@@ -3,6 +3,7 @@ title: "gh 2.101.0: `gh pr view --json mergeQueueEntry` is an invalid field"
 type: learning
 topic: misc
 source: learnings/1791705782341-gh-2-101-0-gh-pr-view-json-mergequeueentry-is-an-i.md
+superseded_by: 1791267800558-gh-pr-view-json-has-no-mergequeueentry-field-use-g
 ---
 
 # gh 2.101.0: `gh pr view --json mergeQueueEntry` is an invalid field

@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1417 learnings. [Catalog](../index.md)
+1418 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1412,6 +1412,7 @@ type: topic
 - [Never reword a maintainer's existing code comment; a push dismisses their approval](../learnings/1790967953965-never-reword-a-maintainer-s-existing-code-comment-.md)
 - [pr-approver harvest misses pulls-N-comments where inline findings live](../learnings/1786277284242-pr-approver-harvest-misses-pulls-n-comments-where-.md)
 - [Print the census, never the total — and a disagreeing figure is a defect detector, not a verdict on which figure is right](../learnings/1786054205857-print-the-census-never-the-total-and-a-disagreeing.md)
+- [Pushing to an auto-merge-armed PR dismisses the approval but GitHub still enqueues it](../learnings/1792025781326-pushing-to-an-auto-merge-armed-pr-dismisses-the-ap.md)
 - [Rebase onto current origin/master BEFORE the CODE critique, not after the fix is "done"](../learnings/1787661100185-rebase-onto-current-origin-master-before-the-code-.md)
 - [Retraction momentum — the clause after a concession needs its own control](../learnings/1785788251389-retraction-momentum-the-clause-after-a-concession-.md)
 - [Severity calibration: doc-vs-behavior conflict is a QUESTION/GAP for maintainer intent, not an autonomous BLOCK](../learnings/1785539717795-severity-calibration-doc-vs-behavior-conflict-is-a.md)

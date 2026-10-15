@@ -3,7 +3,7 @@ title: "Slang PR Process, Maintainer Workflow, and Issue Lifecycle"
 type: concept
 group: slang-grab-bag
 tags: [maintainer, PR-process, merge-queue, CI, GitHub-Actions, issue-lifecycle, bot-permissions, regression-verification, declined-issues, superseded-PRs]
-source_count: 43
+source_count: 44
 ---
 
 # Slang PR Process, Maintainer Workflow, and Issue Lifecycle
@@ -21,7 +21,7 @@ source_count: 43
 - Capture BOTH `.id` and `.html_url` from ONE `gh api … comments POST` (a second POST duplicates the comment); re-push after the LAST amend BEFORE `gh pr create`, because the PR and CI run the *remote* branch.
 - Open bot PRs with no `--assignee`/`--reviewer`, even when a maintainer asks; @-mention them in the description instead.
 - For a codegen asymmetry, lift the BAD leg to the good one (#12004); for a doc-vs-behavior mismatch, measure the behavior fix's cost before assuming code is the real fix (#11682).
-- Source comments describe the code as-is: no change-history narration, no PR/issue pointers. Leave pre-existing comments verbatim (match their style/wrap); a long comment justifying an exceptional case means remove the case (e.g. a default-valued parameter), not reword it. A function's doc comment opens with one sentence on what it does, a blank `///`, then the contract; name parameters by role.
+- Source comments describe the code as-is: no change-history narration, no PR/issue pointers. Touch an existing comment only when the code it describes changed, and then leave it verbatim (match its style/wrap); skip obvious doc comments (enum values, caches) and keep internal details out of declaration docs — design rationale goes in the PR explanation comment; a long comment justifying an exceptional case means remove the case (e.g. a default-valued parameter), not reword it. A function's doc comment opens with one sentence on what it does, a blank `///`, then the contract; name parameters by role.
 - Re-check `gh pr list` after a long build (the reporter may have self-fixed).
 - **A clean textual merge proves nothing about semantics.** "The conflict with sibling PR #N is textual only" is verified by merging #N in a scratch worktree and running BOTH PRs' new tests (exhaustive `DIAGNOSTIC_TEST`s pin the ABSENCE of diagnostics the sibling adds). Merging master into a long-lived API-changing PR: master's newly ADDED code and tests that use the removed API merge cleanly and then fail — grep master's added files for the old forms, run the full suite, and prove causation against a master control at the merge SHA.
 
@@ -96,6 +96,8 @@ Maintainers also protect **existing** comments and read a long explanatory comme
 
 The same PR settled the doc-comment shape. Any comment directly on a function, `///` or `//`, is a doc comment: it opens with one sentence saying what the procedure does (or what the function returns), then a blank `///` line, then the fuller behavioural contract if one is needed. A comment that describes only one detail, such as "defaults come from X", fails the basic test of telling the reader what the function does (tangent-vector, 2026-10-09). Parameters are named by role: `funcDeclRefForDefaultArgs` is "the decl-ref used to determine default args", whereas `defaultArgsDeclRef` wrongly reads as "a decl-ref to the default args" [doc comments: one-sentence brief, blank line, contract; name params by role](../learnings/1791566071976-slang-doc-comments-one-sentence-what-it-does-brief.md).
 
+Maintainers want **minimal comment churn**, and say so in bulk. On bot PR #13283, jkwak-work (the shepherd) left nine inline comments, and every one asked to remove or revert a comment the bot had added or rewritten. A pre-existing comment that the bot had "improved" read as harder to understand and had to be restored. Doc comments on enum values and caches were "too obvious". Internal details (an internal enum such as `FoldPolicy`, cache rationale, override contracts) do not belong in declaration docs; one plain sentence per function says what it returns and, for two similarly named functions, how they differ. The rule for slang PRs: touch an existing comment only when the code it describes changed, and put design rationale in the PR explanation comment, not the source. The same thread carried a separate lesson: when a maintainer asks why a golden test "stores X in a temporary", check the emitted code and the IR before answering, since the bot's own test comment had given the wrong cause ([Slang maintainers want minimal comment churn](../learnings/1791941642114-slang-maintainers-want-minimal-comment-churn-keep-.md)).
+
 ## Triage Boundaries and Park Lifecycles
 
 A rename/branding request has no engineering surface: classify as feature request and park at triage, with no fixer and no self-close; it is a governance call ([rename is governance](../learnings/1783935538903-triage-of-rename-branding-requests-governance-not-.md)). Docs for a compiler-limitation bug belong in the compiler repo: the maintainer closed SlangPy docs PR #1060, redirecting it to the Slang docs ([docs go in the compiler repo](../learnings/1783943839130-docs-for-a-compiler-limitation-bug-belong-in-the-c.md)). On slang#12058 the maintainer landed the ASan fix in their own PR while our fixer was auth-down, validating the triage; a stalled fixer's late draft gets reaped ([#12058 validated by maintainer fix](../learnings/1783977766628-triage-validated-by-maintainer-s-own-merged-fix-a-.md)). A park is not a dead end: slang#12054's self-fix park flipped to a maintainer-authorized bot draft that merged ([#12054 park → bot draft shipped](../learnings/1783981181191-slang-12054-shipped-park-for-self-fix-that-flipped.md)).
@@ -112,8 +114,9 @@ A rename/branding request has no engineering surface: classify as feature reques
 
 `slang-discord-support` writes only to summon threads in #slang-support/#slang-support-bot; source channels like #slang-discussion are read-only, so answers there come from a human or a summon thread ([support bot posts only to summon threads](../learnings/1781166938242-slang-discord-support-posts-only-to-summon-threads.md)).
 
-**Source learnings (43):**
+**Source learnings (44):**
 - [Slang doc comments: one-sentence 'what it does' brief, blank line, then contract; name params by role](../learnings/1791566071976-slang-doc-comments-one-sentence-what-it-does-brief.md) — #12701: a one-detail comment fails; `funcDeclRefForDefaultArgs`, not `defaultArgsDeclRef`.
+- [Slang maintainers want minimal comment churn: keep master's comments, no internal-detail docs](../learnings/1791941642114-slang-maintainers-want-minimal-comment-churn-keep-.md) — #13283: nine inline asks to remove/revert bot comments; touch a comment only when its code changed; rationale goes in the PR explanation comment
 - [verify review state before "idle-mergeable"](../learnings/1790310304171-verify-a-pr-s-actual-review-state-before-framing-i.md) — `mergeable=true` is not APPROVED (#12935).
 - [Closes #N / draft footprint](../learnings/1785751816891-closes-n-does-not-excuse-an-issue-footprint-while-.md) — draft PR still needs an issue footprint; `behind` is no rebase cue.
 - [rotation from indirect evidence](../learnings/1785758534668-reconciling-the-slang-maintainer-rotation-from-ind.md) — search for the topic; ID→handle reverse lookup.

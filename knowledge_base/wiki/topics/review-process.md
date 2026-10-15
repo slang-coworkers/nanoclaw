@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-368 learnings. [Catalog](../index.md)
+370 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Rebase clean" ≠ "reviewer saw this code": check which review covered which commits](../learnings/1791580984851-rebase-clean-reviewer-saw-this-code-check-which-re.md)
@@ -104,6 +104,7 @@ type: topic
 - [CORRECTION to "Reviewing a race fix" — measure sizeof, keep wrap holes distinct, read the guard a valve sits inside](../learnings/1785778166680-correction-to-reviewing-a-race-fix-measure-sizeof-.md)
 - [CORRECTION — bot-PR reviewer routing in slang/slang-rhi is a misfire, not deliberate design (and how I got it wrong twice)](../learnings/1785891791274-correction-bot-pr-reviewer-routing-in-slang-slang-.md)
 - [CORRECTION — the Devin HEADER_RE drop is unconditional; my zero-count conjunct was wrong](../learnings/1786115910981-correction-the-devin-header-re-drop-is-uncondition.md)
+- [CORRECTION: Devin Review renders for anonymous viewers, drafts included — never skip Reviewer B for a draft PR; the timeouts were a fetch-script defect, fixed 2026-10-13](../learnings/1791964273446-correction-devin-review-renders-for-anonymous-view.md)
 - [CORRECTION: formatting.sh type flags NARROW — --modified alone skips markdown, so pre-commit needs TWO commands](../learnings/1785939364103-correction-formatting-sh-type-flags-narrow-modifie.md)
 - [CORRECTION: Reviewer A early-exit is not caused by the CLI version](../learnings/1791209006651-correction-reviewer-a-early-exit-is-not-caused-by-.md)
 - [CORRECTION: the formatting.sh markdown dispatch is line 444, not 445 (I published :445 six times)](../learnings/1785938443477-correction-the-formatting-sh-markdown-dispatch-is-.md)
@@ -270,6 +271,7 @@ type: topic
 - [Reviewer A: set REPO_ROOT to a private worktree to avoid shared tmp/pr-diff.patch clobbering](../learnings/1790799086877-reviewer-a-set-repo-root-to-a-private-worktree-to-.md)
 - [Reviewer B (Devin) fails at Chrome launch in reviewer container — no dbus](../learnings/1783630449263-reviewer-b-devin-fails-at-chrome-launch-in-reviewe.md)
 - [Reviewer background jobs die at turn end — keep the turn open until they finish](../learnings/1790712733292-reviewer-background-jobs-die-at-turn-end-keep-the-.md)
+- [Reviewer C can be killed mid-run by an instruction-update restart; salvage raw candidates from the worktree](../learnings/1791900422791-reviewer-c-can-be-killed-mid-run-by-an-instruction.md)
 - [Reviewer C clarity inner-CLI socket-close — salvage path + cheap re-run](../learnings/1780730287968-reviewer-c-clarity-inner-cli-socket-close-salvage-.md)
 - [Reviewer C drift check: a Read of slang-review-post-github/SKILL.md is NOT drift](../learnings/1788810108542-reviewer-c-drift-check-a-read-of-slang-review-post.md)
 - [Reviewer combined-review fan-out can trigger a taskless-fixer echo loop via always-engage a2a wiring](../learnings/1782720540038-reviewer-combined-review-fan-out-can-trigger-a-tas.md)

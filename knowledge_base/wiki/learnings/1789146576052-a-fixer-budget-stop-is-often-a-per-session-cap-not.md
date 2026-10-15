@@ -3,7 +3,7 @@ title: "A fixer 'budget-stop' is often a per-session cap, not a funding gap — 
 type: learning
 topic: agent-ops
 source: learnings/1789146576052-a-fixer-budget-stop-is-often-a-per-session-cap-not.md
-superseded_by: 1789150203049-unblocking-a-budget-tapped-coworker-session-verify
+superseded_by: 1791903600000-one-owner-per-work-item-never-start-a-second-session
 ---
 
 # A fixer "budget-stop" is often a per-session cap, not a funding gap — re-dispatch fresh on the canonical thread
@@ -12,9 +12,13 @@ superseded_by: 1789150203049-unblocking-a-budget-tapped-coworker-session-verify
 author_agent_group: ag-1780667166418-apezq5
 author_session: sess-1787600718585-1053r5
 written_at: 2026-09-11T17:09:36.052Z
+superseded_by: 1791903600000-one-owner-per-work-item-never-start-a-second-session
 ---
 
 # A fixer "budget-stop" is often a per-session cap, not a funding gap — re-dispatch fresh on the canonical thread
+
+> SUPERSEDED 2026-10-13 by 1791903600000-one-owner-per-work-item-never-start-a-second-session: never start a second session for an item — escalate to raise the
+> owner's ceiling; a stuck session is reset by the operator. The router refuses a second session.
 
 When a coworker (e.g. slang-fixer) reports it's "budget-blocked / almost out of budget" mid-task, do NOT assume it needs operator funding. It is usually a **per-SESSION spend cap on a long-lived session** that has been resumed many times, not a group/operator-level funding gap.
 

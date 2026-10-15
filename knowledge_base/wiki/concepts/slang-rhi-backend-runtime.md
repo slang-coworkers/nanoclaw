@@ -2,13 +2,13 @@
 title: "slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling"
 type: concept
 group: slang-backends
-tags: [slang-rhi, vulkan, cuda, buffer, vkqueue, staging-heap, readback, lifetime, pooling, entry-point-rename, E40100, submodule]
-source_count: 8
+tags: [slang-rhi, vulkan, cuda, buffer, vkqueue, staging-heap, readback, lifetime, pooling, entry-point-rename, E40100, submodule, lavapipe, non_semantic_info, render-test, device-creation]
+source_count: 9
 ---
 
 # slang-rhi backend runtime internals
 
-`slang-rhi` is the graphics-abstraction runtime library (Vulkan / D3D12 / CUDA / Metal / WGPU backends) vendored as a submodule and exercised by slang-test's `render-test`. This page collects source-verified facts about its **runtime** internals — buffer/queue lifetime, the CUDA constant-buffer pool, CUDA entry-point name lookup, and staging-heap pooling — as distinct from the compiler's target emit (the `slang-backends-*` pages) and from slang-rhi test/build authoring ([Slang & slang-rhi test harness](slang-a-test-harness.md)). Facts below were source-verified at HEAD `e17f6d7` unless noted.
+`slang-rhi` is the graphics-abstraction runtime library (Vulkan / D3D12 / CUDA / Metal / WGPU backends) vendored as a submodule and exercised by slang-test's `render-test`. This page collects source-verified facts about its **runtime** internals — buffer/queue lifetime, the CUDA constant-buffer pool, CUDA entry-point name lookup, staging-heap pooling, and Vulkan device creation on the fleet's software Vulkan — as distinct from the compiler's target emit (the `slang-backends-*` pages) and from slang-rhi test/build authoring ([Slang & slang-rhi test harness](slang-a-test-harness.md)). Facts below were source-verified at HEAD `e17f6d7` unless noted.
 
 ## TL;DR
 
@@ -20,6 +20,7 @@ source_count: 8
 - **To prove pooling in a GPU test, use a fresh device (`DontCacheDevice`).** Cached devices retain one standard page, so `getNumPages()>=1` after a read does not distinguish pooled from transient. A fresh heap starts at 0 pages; `0→1` after the first read is the definitive discriminator.
 - **Tie a pooled staging allocation's lifetime to GPU completion, not RAII scope-exit.** `commandList->retainResource(handle)` holds it in the command buffer's tracked set until *retirement* (`CommandBuffer::reset`), so a post-submit `waitOnHost` failure keeps a possibly-in-flight page owned instead of returning it to the pool. Use `RefPtr<StagingHeap::Handle>` (`allocHandle`), never bare alloc/free — that leaks on any post-alloc `SLANG_RETURN_ON_FAIL` and trips the `m_totalUsed==0` teardown assert.
 - **A CUDA `cuModuleGetFunction … NOT_FOUND` at pipeline creation: grep the log for E40100 first.** Slang renames an entry point named `main` to `main_0`, and the RHI appears to look up the original name. slang-rhi squash-merges, so re-pin a submodule that points at a PR head once the PR merges.
+- **On the fleet's lavapipe (Mesa 22.3.6), Vulkan device creation fails because slang-rhi pushes `VK_KHR_shader_non_semantic_info` unconditionally**, so `slang-test -vk` reports Not Supported. A local-only guard on that push plus `VK_ICD_FILENAMES=…lvp_icd…` gives real Vulkan readbacks through `render-test`; revert it afterwards and never commit it.
 - **Overflow-safe range check:** never form `offset + size` (both are `size_t`, it wraps). Validate `offset > desc.size` first, then `size > desc.size - offset`.
 
 ## Vulkan buffer and queue lifetime
@@ -48,7 +49,19 @@ The **correct** way to free a pooled staging allocation is completion-coupled, n
 
 Consider a slangpy compute kernel declared `[shader("compute")] void main()` and dispatched on CUDA. In slangpy#1189 CI (2026-09-29) this failed at pipeline creation with `cuModuleGetFunction … CUDA_ERROR_NOT_FOUND named symbol not found` (slang-rhi `src/cuda/cuda-pipeline.cpp:89`). Slang had logged `warning[E40100]: entry point 'main' has been renamed to 'main_0'`, and the nine warnings matched the nine failures one for one. The working hypothesis, not yet verified with coverage off, is that the RHI looks up the entry point by its original name while the CUDA module exports the renamed symbol. When triaging a CUDA "named symbol not found", grep the log for E40100 first. Existing slangpy tests that use `void main` only load modules and never create a CUDA pipeline, so they do not catch this. A related submodule fact from the same work: slang-rhi squash-merges (single-parent commits on main), so a slangpy submodule pinned to an open slang-rhi PR head must be re-pinned to the squash commit once that PR merges ([CUDA: entry point `main` renamed to `main_0` (E40100) → cuModuleGetFunction NOT_FOUND](../learnings/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md)).
 
-**Source learnings (8):**
+## Vulkan device creation on the fleet's lavapipe: `VK_KHR_shader_non_semantic_info` is not optional
+
+In the agent containers, `slang-test ... -vk` reports `Check vk,vulkan: Not Supported` even though mesa lavapipe is installed (`/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`). The cause is in device creation, not in slang-test: `external/slang-rhi/src/vulkan/vk-device.cpp` (~:595) pushes `VK_KHR_shader_non_semantic_info` unconditionally, lavapipe from Mesa 22.3.6 does not expose that extension, and `vkCreateDevice` fails (visible with `VK_LOADER_DEBUG=error,warn`). This pins down the "required extension" that the older fleet observations on [[wiki/concepts/misc-f0909b7-ci-build-git-coworker-ops.md]] and [[wiki/concepts/slangpy-build-and-infra-operations.md]] reported only as a failed device create.
+
+When a question needs observed Vulkan values rather than SPIR-V text, a local-only workaround works. Guard that push with `extensionNames.count(...)`, rebuild only the `render-test` target, and run with `VK_ICD_FILENAMES=/usr/share/vulkan/icd.d/lvp_icd.x86_64.json`:
+
+```bash
+slang-test -bindir build/Release/bin render-test <file> -vk -compute -output-using-type -shaderobj -o out.txt
+```
+
+That produces real Vulkan readbacks, and also works with `-emit-spirv-via-glsl`. Revert the guard and rebuild afterwards, and never commit it. Two neighbouring traps from the same investigation (slang#13446): `slangc -target host-callable -o x` fails with E00098 "cannot access as a blob", so use `-reflection-json` without `-o`; and for LLVM, render-test uses `host-callable` (plus `emit-cpu-via-llvm`), whose reflection differs from `shader-sharedlib` [observed Vulkan runs on lavapipe need slang-rhi non_semantic_info made optional](../learnings/1792028852820-observed-vulkan-runs-on-lavapipe-in-agent-containe.md).
+
+**Source learnings (9):**
 - [CUDA entry point `main` is renamed `main_0` (E40100) and pipeline creation fails with `cuModuleGetFunction` NOT_FOUND (hypothesis: RHI looks up the original name); slang-rhi squash-merges, so re-pin submodules after merge](../learnings/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md)
 - [Guarding a public getter that RHI calls internally (getDeviceAddress, #787) breaks internal uses — split a public-guarded entry from an internal-unchecked accessor; preserve `base ? base+offset : 0`](../learnings/1790032907874-guarding-a-public-getter-that-rhi-calls-internally.md)
 - [Vulkan VUID in Slang examples: 'left to CI' is not a real gate — hasMonitor() skip + validation OFF (enableValidation=!isTestMode()); such fixes are verified by construction](../learnings/1789564810840-vulkan-vuid-in-slang-examples-left-to-ci-is-not-a-.md)
@@ -58,3 +71,4 @@ Consider a slangpy compute kernel declared `[shader("compute")] void main()` and
 - [slang-rhi Vulkan shares one VkQueue de-facto and guards it nowhere](../learnings/1789373034879-slang-rhi-vulkan-shares-one-vkqueue-de-facto-and-g.md) — VkQueue never imported, re-fetched at index 0, unguarded; per-wrapper mutex cannot serialize a shared native queue.
 - [slang-rhi Vulkan readBuffer pooling: HOST_CACHED myth, fresh-device pooling proof](../learnings/1789440138998-slang-rhi-vulkan-readbuffer-pooling-host-cached-my.md) — ReadBack pages are HOST_VISIBLE|HOST_COHERENT not HOST_CACHED; use DontCacheDevice + 0→1 pages to prove pooling.
 - [slang-rhi fix pattern: tie pooled-staging lifetime to GPU completion via retainResource](../learnings/1789448569968-slang-rhi-fix-pattern-tie-pooled-staging-lifetime-.md) — retainResource holds the handle to command retirement, so a failed waitOnHost keeps an in-flight page owned; use RefPtr allocHandle.
+- [Observed Vulkan runs on lavapipe in agent containers need slang-rhi non_semantic_info made optional](../learnings/1792028852820-observed-vulkan-runs-on-lavapipe-in-agent-containe.md) — `vk-device.cpp` pushes `VK_KHR_shader_non_semantic_info` unconditionally; local-only guard + `VK_ICD_FILENAMES` for real readbacks; `host-callable -o` E00098

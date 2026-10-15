@@ -8,14 +8,25 @@ source_count: 27
 
 # CI Build Tooling & Workflow Structure
 
-# CI Build Tooling & Workflow Structure
-
 Concrete facts about how the Slang CI build system is structured: workflow files and their scope, GPU test silencing with expected-failure lists, DISABLE-build-only jobs, Falcor build/test split, compile-time perf-CI, the check-cmdline-ref consolidation, and the bot's workflow-permission constraint. Also the local **checkout** hazards that corrupt every downstream measurement: shallow-clone graft lies, shallow submodule fetches against pinned SHAs, and build trees mutated mid-build.
 
 > **This page is part 1 of 3** of the CI Build Tooling & Workflow Structure synthesis (split 2026-08-11 to stay under the 40 KB read cap). Siblings: [part 2](ci-build-tooling-2.md), [part 3](ci-build-tooling-3.md). The TL;DR below is shared across all parts.
 
 ## TL;DR
 
+- **`nv-slang-bot[bot]` cannot push `.github/workflows/*.yml`** (no App `workflows` permission; rejected at push time, even on its own branch), and maintainers close cross-fork workaround PRs on security policy. Plan a CI change from triage: ship source/tests/docs, hand the workflow edit up as a `git format-patch` or proposed YAML.
+- **A check is "required" by being in `ci.yml`'s `check-ci.needs`**, not by branch-protection settings. Add a `pull_request` job that exits 1, then list it in `needs`; the `ci.yml` edit itself is maintainer-applied.
+- **Draft PRs get no `pull_request` CI** (`filter` is gated on `draft != true`); marking ready runs full CI. A `workflow_dispatch` runs `filter` but classifies only the head commit, so a docs-only or big merge-commit head skips the whole matrix and still reads `success`.
+- **GPU-test silencing is layered `-expected-failure-list` files**, matched by exact normalized path. An expected failure reclassifies a clean `SLANG_FAIL`; it cannot suppress a crash.
+- **`-DSLANG_SLANG_LLVM_FLAVOR=DISABLE` jobs are build-only**, so "CI on a DISABLE configuration confirms it" is illusory for slang-test fixes.
+- **`download-artifact@v4` is attempt-scoped**: `gh run rerun --failed` on a split build/test workflow reports "Artifact not found"; recover with a full rerun or a push.
+- **Do not fold `regenerate-cmdline-ref.yml` into `ci.yml`**; its generate/apply split is a fork-security boundary.
+- **`ci-examples.sh` grades on exit code only**, and whole-repo `pre-commit` reds can be inherited from a red `main`; check `git diff --name-only origin/main` before owning a lint failure.
+- **COMPARE_COMPUTE `filecheck-buffer` tests need `-output-using-type`**, or CI's cpu+llvm backend dumps hex while local gcc dumps decimal.
+- **A clean git merge of `slang-diagnostics.lua` can still collide on a numeric code** and break every platform build; renumber above master's current max.
+- **Before calling a build disk-blocked, `df` the actual build path** (`/workspace/agent` is a separate, larger volume than `/workspace`).
+- **Missing release assets on one arch: trace the exact failing command** and bisect the workflow file's own history; macOS configure failures can come from slang-rhi's own network `FetchContent` of Vulkan-Headers.
+- **nanoclaw `nv-*` sync-PR CI tests the composed state of every `nv-*` branch**, so an owned-set rename breaks every leaf sync PR until the nv-main sync lands.
 
 ## Workflow Permission Constraint
 
@@ -76,7 +87,7 @@ Relevant in-tree infrastructure already exists: `-dump-repro`, `-load-repro`, `-
 
 ## Bot Draft PRs and CI
 
-`ci.yml`'s `filter` job is gated `if: github.event_name != 'pull_request' || github.event.pull_request.draft != true`. On a draft PR, `filter` skips, `should-run` is never set, and every build/test job skips. Draft PRs sit with `skipped` CI until a human marks them ready-for-review — the `pull_request` `ready_for_review` event type fires a fresh `draft=false` event, which triggers full CI. `workflow_dispatch` does NOT bypass the filter's draft-gate ([Bot draft PRs get ZERO CI on shader-slang/slang (filter job skips drafts)](../learnings/1781663343829-bot-draft-prs-get-zero-ci-on-shader-slang-slang-fi.md)).
+`ci.yml`'s `filter` job is gated `if: github.event_name != 'pull_request' || github.event.pull_request.draft != true`. On a draft PR, `filter` skips, `should-run` is never set, and every build/test job skips. Draft PRs sit with `skipped` CI until a human marks them ready-for-review — the `pull_request` `ready_for_review` event type fires a fresh `draft=false` event, which triggers full CI. The draft gate excludes only draft *pull_request* events, so a `workflow_dispatch` does run `filter`, but it then classifies only the head commit (`BASE=HEAD^1`): a docs-only or big merge-commit head still skips the whole matrix with a `success` conclusion (see [CI Build Process Detection and Concurrency](ci-build-process-detection-and-concurrency.md)) ([Bot draft PRs get ZERO CI on shader-slang/slang (filter job skips drafts)](../learnings/1781663343829-bot-draft-prs-get-zero-ci-on-shader-slang-slang-fi.md), [a docs-only head commit makes a dispatched run skip the whole matrix](../learnings/1791961955700-slang-ci-workflow-dispatch-skips-the-whole-matrix-.md)).
 
 
 ## Example-Grading and Whole-Repo Lint CI

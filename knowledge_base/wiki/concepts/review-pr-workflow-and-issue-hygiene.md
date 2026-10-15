@@ -3,7 +3,7 @@ title: "PR Review Workflow and Issue Hygiene"
 type: concept
 group: review-process
 tags: [pr-review, github, draft-pr, a2a-review, slang-reviewer, fleet-contention, repo-root-isolation, reviewer-a, reviewer-b, reviewer-c, head-pinning, markdown-links, community-fix, sibling-stack]
-source_count: 34
+source_count: 35
 ---
 
 # PR Review Workflow and Issue Hygiene
@@ -97,7 +97,7 @@ On PR #11628 (WGSL emitter), a maintainer suggested simplifying a predicate. The
 **Salvage before re-running.**
 - **Budget kill.** On `Run state: error_max_budget_usd`, `final-review.md` is missing. Keep the last substantive `stream.jsonl` text per `subagent_type`, plus the orchestrator's own blocks, which often hold the strongest lead (#11945). Hand-write `final-review.md` with a partial-run banner, and mark concerns traced in source but not verified as "VERIFY" ([budget salvage](../learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md)).
 - **Recap capture.** When the coordinator adds a turn after a subagent stops, `final-review.md` holds a ~1 KB recap (1156B vs an 11K review on #11921). Take the largest of the last ~6 top-level assistant text blocks, and cross-check it against `summarize.py` counts ([recap capture](../learnings/1783042659846-slang-pr-review-runner-final-review-md-can-capture.md)).
-- **Container restart.** A restart wipes `/tmp`, which silently kills a `run_in_background` waiter. Rebuild state from `ps aux` and the log mtimes under `/workspace/agent/review-<PR>/`. A's `transcripts/pr-<TS>/final-review.md` and B's `--out` dir survive. C's run dir may not, but `slang-clarity/tmp/review-candidates/pr-<PR>-clarity-workflow.md` does ([restart kills the waiter](../learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md)).
+- **Container restart.** A restart wipes `/tmp`, which silently kills a `run_in_background` waiter and any scratch you kept there, so keep review drafts under `/workspace/agent/review-<PR>/`. Rebuild state from `ps aux` and the log mtimes in that directory. A's `transcripts/pr-<TS>/final-review.md` and B's `--out` dir survive. C's run dir may not, but its candidate files under the clarity worktree's `tmp/review-candidates/` do (`slang-clarity/…/pr-<PR>-clarity-workflow.md`, or `/workspace/agent/wt-clarity-pr-pr<N>-<head>-*/tmp/review-candidates/pr-<N>-clarity.md` for a private worktree) ([restart kills the waiter](../learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md)). The restart need not be yours: an instruction update (system notice "Your instructions were updated. Container restarted") killed a detached `run-clarity.sh` on #11803 R2 about 1h45m in, leaving no `.done` file and no `clarity-review.md`. Rather than spend another 90+ minutes re-running, include the raw high-level candidate file in the combined report labeled PARTIAL (not consolidated or scope-filtered) and set `reviewers_complete=false` ([Reviewer C killed by an instruction-update restart](../learnings/1791900422791-reviewer-c-can-be-killed-mid-run-by-an-instruction.md)).
 - **Post-back.** `cleanup.sh` and `post-review.sh` lack the execute bit, so run them with `bash` ([no execute bit](../learnings/1782986622527-slang-pr-review-runner-post-back-scripts-lack-exec.md)).
 
 **Devin on a fresh draft.** `devin-fetch.sh` can exit 0 while `## AI Analysis` still reads "Generating…" and shows no flag anchors. A "Bugs (none)" at that point is a false all-clear. Re-open the page in the same agent-browser session, poll `innerText` until the "Generating…" text clears (~30s), click the Bugs/Flags toggles, and re-scrape (#11839). `agent-browser eval` escapes its JSON, so a `grep -q '"gen":false'` never matches; use `json.loads` ([Devin re-scrape](../learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md)).
@@ -138,7 +138,7 @@ Under debounce, A can finish on an older commit while only C re-runs after a pus
 
 The COMMENT-state post in `/slangpy-pr-review` and `/slang-pr-review` runs only when the dispatch contains the literal `<github-post-authorized />` marker. The marker is machine-checkable proof that a human tagged `@nv-slang-bot`. A prose "go ahead, post it" is not proof, so the reviewer skips the post; re-send with the marker. Runners post `event=COMMENT` only (slangpy-samples#52). For a Git-LFS asset, the diff and `gh api …/contents` show only the pointer. Fetch the object via the LFS batch API (`…/info/lfs/objects/batch`, `operation:download`) and check its sha256 against the oid ([marker gate](../learnings/1783639327701-slangpy-pr-review-github-post-gates-on-literal-mar.md)).
 
-**Source learnings (34):**
+**Source learnings (35):**
 
 - [a2a review ≠ reviewDecision](../learnings/1782148692608-internal-a2a-review-github-reviewdecision.md) — internal APPROVE leaves PR REVIEW_REQUIRED; report live state
 - [Verify "N reviewers APPROVE"](../learnings/1782465056185-verify-n-reviewers-approve-against-github-reviewde.md) — check reviews API; post only what GitHub supports
@@ -160,6 +160,7 @@ The COMMENT-state post in `/slangpy-pr-review` and `/slang-pr-review` runs only 
 - [A budget-kill salvage](../learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md) — last text per role; partial banner; label unverified VERIFY
 - [final-review.md recap capture](../learnings/1783042659846-slang-pr-review-runner-final-review-md-can-capture.md) — take the largest recent top-level text block
 - [Restart kills the waiter](../learnings/1782829576352-slang-pr-review-a-container-restart-kills-the-comp.md) — recover reviewer outputs from persistent paths
+- [Reviewer C can be killed mid-run by an instruction-update restart; salvage raw candidates from the worktree](../learnings/1791900422791-reviewer-c-can-be-killed-mid-run-by-an-instruction.md) — #11803 R2: ship the raw `pr-<N>-clarity.md` as PARTIAL with `reviewers_complete=false`; /tmp drafts were lost, keep them under `/workspace/agent/review-<N>/`
 - [post-back lacks execute bit](../learnings/1782986622527-slang-pr-review-runner-post-back-scripts-lack-exec.md) — invoke sub-steps with bash
 - [Devin re-scrape](../learnings/1782820288016-devin-re-scrape-recovery-fresh-draft-pr-renders-wi.md) — poll until "Generating…" clears; eval JSON is escaped
 - [Clobbered shared staging](../learnings/1783635509659-slang-pr-review-runner-fleet-contention-clobbers-s.md) — private REPO_ROOT for A; gh auth/format-patch quirks

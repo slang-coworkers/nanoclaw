@@ -3,7 +3,7 @@ title: "Critique Gate and Decision Recording"
 type: concept
 group: review-process
 tags: [critique-gate, record-decision, fails-open, fails-closed, human-agreement, approver, codex, verdict, delivery-gate, workflow-state, false-abstain, published-vs-local]
-source_count: 16
+source_count: 17
 ---
 
 # Critique Gate and Decision Recording
@@ -15,7 +15,7 @@ source_count: 16
 - A PR is an issue: `gh api repos/O/R/issues/<n>` serves the same `body`/`labels`/`state`/`author_association` and passes the gate, as do `gh pr view --json` and `gh pr diff`. Author files that quote triggers with the Write tool.
 - Whether an approve still binds is answered by re-hashing `.critique_attested.OUTPUT_REVIEW`, not by the edit counter. `### Attested` re-hashes at send, so editing after an approve denies delivery.
 - Only a fresh `mcp__codex__codex` call with a `STAGE:` tag and the verbatim `/codex-critique` developer-instructions counts as a round; `codex-reply` and freeform calls are never recorded. The prompt must also carry, right after `ROUND:`, either `REQUIREMENTS: none — <reason>` or a multi-line `R<n>. "<verbatim maintainer quote>" — <full comment URL>` list; a one-line summary is "round NOT recorded".
-- The verdict recorder fails OPEN: an MCP-array `tool_response` parses to empty and the guarded write keeps the previous value, so a stale `approve` survives a `must-fix`. Read codex's own `### Verdict`; a never-changing or session-inherited verdict is the tell.
+- The verdict recorder fails OPEN: an MCP-array `tool_response` parses to empty and the guarded write keeps the previous value, so a stale `approve` survives a `must-fix`; a codex reply that is not a review at all (wiki-recall bullets, no `### Verdict`) is also recorded `approve`. Read codex's own output: no `### Verdict` / `### Attested` sections means no review happened.
 - Audit any control by asking what it records when it cannot tell; "the previous answer" means it fails open. Fails-closed defects cost friction; fails-open defects ship must-fixes.
 - The gate keys off delivery markers (`[Resolution]`, `[Report]`, `[Review Verdict]`), not diffs: a no-code close still needs every required stage plus `OUTPUT_REVIEW=approve`.
 - Abstain `[Approval Decision]` text must avoid whole-word uppercase `BLOCK`/`WOULD_APPROVE` or the abstain fast-path is skipped; every delivery-marker send needs `in_reply_to`.
@@ -90,6 +90,8 @@ Neither `critique_verdicts[STAGE]` in the workflow-state file nor the `Critique 
 
 The hook's header notes this defect class was fixed once before (*"45% of June must-fix verdicts were lost that way, and a lost must-fix downgrades the delivery gate to count-only"*), with a different input shape. On #12089, reading codex directly is the only reason a public comment with a false claim ("the patch is below the fold") never shipped to a maintainer's PR. Tells: a verdict that never changes across rounds that returned must-fix items, and a stale `approve` inherited from a previous session (the state file is workspace-scoped).
 
+The same fail-open path accepts output that is not a review at all. On 2026-10-15 two fresh canonical `mcp__codex__codex` OUTPUT_REVIEW calls came back with two wiki-recall bullets ("- **Git worktree hygiene** — … /workspace/shared/wiki/concepts/…") and no `### Verdict` block, and `track-critique.sh` recorded both rounds as `OUTPUT_REVIEW=approve`. A recorded approve therefore proves only that a call was made: if the output lacks the `### Verdict` and `### Attested` sections, treat the round as no review. A third call with "Do not summarize wiki pages or learnings … Return ONLY the structured review format" at the top of the prompt produced a real review ([codex OUTPUT_REVIEW can return wiki recall bullets and still record approve](../learnings/1792025053096-codex-output-review-can-return-wiki-recall-bullets.md)).
+
 ## A gate-blocked delivery is an outstanding action
 
 On slang PR #12378 a reviewer reported the same stale figure (`742/742`) in the PR body for eight consecutive rounds. Each round it was fixed locally and reported fixed; `grep -c '742/742'` on the local artifact returned 0, yet the posted body was byte-identical to a version from eight rounds earlier. Both parties were right: the corrections were real and never delivered ([a fix to your local artifact is not a fix to the published copy](../learnings/1785992450842-a-fix-to-your-local-artifact-is-not-a-fix-to-the-p.md)). The loop: reviewer reports → edit local artifact → `gh` body update → hook denies → satisfy the gate (fix, re-critique, approve) → never return to the update. Satisfying the gate feels like completing the work because it ends in an approval, and to the reader "corrected but undelivered" is indistinguishable from "never corrected".
@@ -137,7 +139,7 @@ The second resolved prediction is a negative calibration datapoint: the PR descr
 `nv-slang-bot[bot]` commented 2026-08-05T02:14:48Z that #12322 had been evicted from the merge queue at 2026-08-05T00:09:14Z (`reason: failed_checks`) by the tracked Falcor flake #12145 (`test_GBufferRTTexGrads_d3d12`, `0xC0000005` access violation). It was non-causal (the diff is a slang-test harness file not linked into `Mogwai.exe`), head stayed green, and the PR merged. It was a no-op for two independent reasons: the comment is bot-authored (not a routing inbound), and the head never moved (no new revision, no re-gate). A combined-status failure from a non-causal flake is not a blocker.
 
 ---
-**Source learnings (16):**
+**Source learnings (17):**
 - [critique-gate counts only exact-format codex calls; `### Attested` re-hashes at send](../learnings/1790016287155-critique-gate-resolution-pr-delivery-only-counts-c.md) — STAGE tag + verbatim instructions.
 - [verdict-bearing chain-close messages trip the critique-gate `[GATE AUDIT]`](../learnings/1790042386094-verdict-bearing-chain-close-messages-resolution-re.md) — all stages ≥1 + OUTPUT_REVIEW=approve.
 - [abstain `[Approval Decision]`: avoid whole-word BLOCK/WOULD_APPROVE; set in_reply_to](../learnings/1789057110525-approver-infra-abstain-approval-decision-abstain-m.md) — fast-path skip; `gate-chain-routing.sh` needs `in_reply_to`.
@@ -146,6 +148,7 @@ The second resolved prediction is a negative calibration datapoint: the PR descr
 - [universal rationale claims need whole-function evidence](../learnings/1789058775886-approver-critique-mustfix-universal-safety-claims-.md) — not a `grep|head` slice.
 - [critique-gate false positives: GET vs POST, container-wide counter, command text](../learnings/1785992478312-critique-gate-false-positives-it-cannot-tell-a-get.md) — re-hash the attested set before re-reviewing.
 - [the critique-gate verdict recorder fails OPEN](../learnings/1785989503064-the-critique-gate-verdict-recorder-fails-open-a-mu.md) — empty parse keeps the previous verdict.
+- [codex OUTPUT_REVIEW can return wiki recall bullets instead of a review — and the gate still records it as approve](../learnings/1792025053096-codex-output-review-can-return-wiki-recall-bullets.md) — no `### Verdict`/`### Attested` ⇒ no review; prefix "Return ONLY the structured review format"; sub-1,000-char comments skip the attested-hash check.
 - [a fix to your local artifact is not a fix to the published copy](../learnings/1785992450842-a-fix-to-your-local-artifact-is-not-a-fix-to-the-p.md) — a gate-blocked delivery is outstanding; re-fetch and diff.
 - [slang#12322 joined MERGED + formally APPROVED at the decided SHA](../learnings/1785987292855-approver-human-agreement-slang-12322-joined-merged.md) — score off `head.sha`; record declined checks.
 - [the critique gate fires on no-code triage-confirmations](../learnings/1783523465568-critique-gate-fires-on-no-code-triage-confirmation.md) — keys off delivery markers, not diffs; all three stages needed.

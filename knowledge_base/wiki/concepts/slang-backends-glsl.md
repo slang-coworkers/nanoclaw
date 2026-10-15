@@ -3,7 +3,7 @@ title: "Slang GLSL Backend: Emission, Legalization, and glslang Integration"
 type: concept
 group: slang-backends
 tags: [glsl, glslang, legalization, system-values, array-init, bootstrap]
-source_count: 27
+source_count: 26
 ---
 
 # Slang GLSL Backend: Emission, Legalization, and glslang Integration
@@ -46,7 +46,7 @@ Slang hard-floors the emitted `#version` at 450 (460 when draw-param/extension f
 
 ## Array Initialization Bug
 
-Slang's GLSL text emitter falls through to the C-like base class for `kIROp_MakeArray` / `kIROp_MakeArrayFromElement`, which emits C-style brace initializers `{ a, b }`. C-style braces are invalid GLSL in versions before 4.20; the portable form is the array-constructor syntax `elemType[]( a, b )`. The fix is to add cases for these ops to `GLSLSourceEmitter::tryEmitInstExprImpl` in `slang-emit-glsl.cpp`, mirroring the WGSL emitter at `slang-emit-wgsl.cpp:1531-1572` ([GLSL target emits invalid C-style brace array initializers; WGSL already has the constructor-syntax override GLSL lacks](../learnings/1782632216704-glsl-target-emits-invalid-c-style-brace-array-init.md)).
+Slang's GLSL text emitter falls through to the C-like base class for `kIROp_MakeArray` / `kIROp_MakeArrayFromElement`, which emits C-style brace initializers `{ a, b }`. C-style braces are valid only from GLSL 4.20 (`GL_ARB_shading_language_420pack`) and are rejected by earlier profiles such as `glsl_330`, so the bug is portability, not universal invalidity. Slang itself emits `#version 460`, where the braces compile; the reporter hit it by compiling the output in a 330 context. The portable form is the array-constructor syntax `elemType[]( a, b )`, so the fix adds cases for these ops to `GLSLSourceEmitter::tryEmitInstExprImpl` in `slang-emit-glsl.cpp`, mirroring the WGSL emitter at `slang-emit-wgsl.cpp:1531-1572` ([GLSL brace array-init is valid in 4.20+](../learnings/1782737319266-correction-glsl-brace-array-init-is-valid-in-4-20-.md)). Don't copy a triage memo's version claims into a PR without checking them.
 
 The correct nested bracket order for `int[2][3]` is `int[][3](...)` — outermost dim unsized, inner dims sized. NOT `int[3][]` ([CORRECTION: GLSL brace array-init is valid in 4.20+; the bug is portability, not universal invalidity](../learnings/1782737319266-correction-glsl-brace-array-init-is-valid-in-4-20-.md)).
 
@@ -133,7 +133,7 @@ Lifting a standalone GLSL `layout(...) in;` qualifier onto an entry point (the `
 
 Testing both SPIR-V emit paths for such an entry-point attribute: the `-target spirv` default is the DIRECT backend, and only the via-glsl path renames the entry point. A `//TEST:SIMPLE: -target spirv` directive uses the direct SPIR-V backend (output shows `OpSource Slang`, entry point kept as e.g. `%csMain`), so pairing bare `-target spirv` with `-target spirv -emit-spirv-directly` exercises the direct backend TWICE — to also cover glslang, one directive must use `-emit-spirv-via-glsl` (output shows `OpSource GLSL`, entry point renamed to `%main`). Because via-glsl renames the entry point, an `OpExecutionMode` CHECK on that path must WILDCARD the entry-point operand (`// CHECKGLSL: OpExecutionMode {{.*}} EarlyFragmentTests`, precedent `tests/glsl/fragment-depth-greater-less.slang`) or use a `%{{.*}}` wildcard for the shared name — a literal `%main` assertion produces a false CI failure even when the compiler is correct, while the direct path legitimately keeps `%main`/`%csMain`. (Relatedly, a new nullary `GLSLLayout*Attribute` AST class inserted mid-header is NOT an ABI/enum break — `ASTNodeType` is FIDDLE-regenerated from declaration order each build, so the append-only rule for `include/` enums does not apply.) ([default SPIR-V backend is direct; -target spirv + -emit-spirv-directly test the same path](../learnings/1789231961570-slang-default-spir-v-backend-is-direct-target-spir.md), [via-glsl OpExecutionMode CHECK must wildcard the entry-point operand](../learnings/1789224142753-via-glsl-opexecutionmode-check-must-wildcard-the-e.md)).
 
-**Source learnings (27):**
+**Source learnings (26):**
 - [GLSL layout-qualifier lift must gate on direction (InModifier), not just the marker](../learnings/1789222923705-glsl-layout-qualifier-lift-must-gate-on-direction-.md)
 - [GLSL layout→entry-point lift must use getParentDecl; the local_size lift has a latent generic bug](../learnings/1789227359016-glsl-layout-entry-point-lift-must-use-getparentdec.md)
 - [Default SPIR-V backend is direct; -target spirv + -emit-spirv-directly test the same path — use -emit-spirv-via-glsl for glslang](../learnings/1789231961570-slang-default-spir-v-backend-is-direct-target-spir.md)
@@ -146,7 +146,6 @@ Testing both SPIR-V emit paths for such an entry-point attribute: the `-target s
 - [vk::location on a cbuffer is silently dropped → GLSL binding follows declaration order](../learnings/1782215284222-vk-location-on-a-cbuffer-is-silently-dropped-glsl-.md)
 - [slang bootstrap eagerly recompiles core+GLSL at session creation (EMBED_CORE_MODULE=OFF)](../learnings/1782261706992-slang-bootstrap-eagerly-recompiles-core-glsl-at-se.md)
 - [slang-glslang leaks: LeakSanitizer nightly is NOT a valid verification net](../learnings/1782353151387-slang-glslang-leaks-leaksanitizer-nightly-is-not-a.md)
-- [GLSL target emits invalid C-style brace array initializers; WGSL already has the constructor-syntax override](../learnings/1782632216704-glsl-target-emits-invalid-c-style-brace-array-init.md)
 - [Slang floors GLSL #version at 450 — "invalid in old GLSL" bugs are usually valid-as-emitted](../learnings/1782721748193-slang-floors-glsl-version-at-450-invalid-in-old-gl.md)
 - [CORRECTION: GLSL brace array-init is valid in 4.20+; the bug is portability, not universal invalidity](../learnings/1782737319266-correction-glsl-brace-array-init-is-valid-in-4-20-.md)
 - [GLSL MakeArrayFromElement IS reachable in text emit (default-init global const array)](../learnings/1782739391257-glsl-makearrayfromelement-is-reachable-in-text-emi.md)

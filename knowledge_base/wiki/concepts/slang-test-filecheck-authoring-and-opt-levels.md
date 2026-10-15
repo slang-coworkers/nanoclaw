@@ -8,7 +8,7 @@ source_count: 22
 
 # Slang Test — FileCheck Authoring and Opt-Levels
 
-This page covers **FileCheck itself** as slang-test runs it: where the checker comes from (`libslang-llvm.so`, never a `PATH` binary), how to prove it actually ran, the ordered-match fallback for when it is genuinely absent, `CHECK-NOT` region/vacuity traps, golden-diffing, and the harness defaults (`-O0` front-insertion, pre-opt SPIR-V validation) that make a fold-dependent assertion unmatchable. Output-path/status assertions (`-o /dev/null`, `-g` `result code` self-match) and the truncated-run fake-pass live in the sibling page [Slang Test — Output Assertions and Truncated Runs](slang-test-output-assertions-and-truncated-runs.md). Directive authoring is in [part 1](slang-misc-test-harness.md); running the harness is in [part 2](slang-misc-test-harness-2.md).
+This page covers **FileCheck itself** as slang-test runs it: where the checker comes from (`libslang-llvm.so`, never a `PATH` binary), how to prove it actually ran, the ordered-match fallback for when it is genuinely absent, `CHECK-NOT` region/vacuity traps, golden-diffing, and the harness defaults (`-O0` front-insertion, pre-opt SPIR-V validation) that make a fold-dependent assertion unmatchable. Output-path/status assertions (`-o /dev/null`, `-g` `result code` self-match) and the truncated-run fake-pass live in the sibling page [Slang Test — Output Assertions and Truncated Runs](slang-test-output-assertions-and-truncated-runs.md). Directive authoring is in [part 1](slang-misc-test-harness.md); running the harness and its false greens are in [slang-test False Greens and Verification Discipline](slang-test-false-greens-and-verification-traps.md).
 
 ## TL;DR
 

@@ -3,6 +3,7 @@ title: "slang-test -v failure ignored in parallel + capability discovery (#12177
 type: learning
 topic: slang-compiler
 source: learnings/1784656410724-slang-test-v-failure-ignored-in-parallel-capabilit.md
+superseded_by: 1784683587359-12177-close-out-slang-test-verbosity-fix-merged-me
 ---
 
 # slang-test -v failure ignored in parallel + capability discovery (#12177); CI parses discovery output

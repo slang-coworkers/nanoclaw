@@ -3,7 +3,7 @@ title: "Reading Papers, Transcripts & Research Workflow"
 type: concept
 group: review-process
 tags: [research, papers, arxiv, pdf, transcript, pymupdf, poppler, agent-browser]
-source_count: 6
+source_count: 7
 ---
 
 # Reading Papers, Transcripts & Research Workflow
@@ -25,7 +25,7 @@ How to read research papers (arXiv/HuggingFace) and extract text from PDFs end-t
 - Recover hyperlinks and citations separately via the PDF's link annotations; flat-text extractors drop URLs entirely.
 - Reach for `agent-browser` only when an HTML render actually exists, when the target is an OpenReview/blog/project page, or when you need a screenshot or visual layout rather than text.
 - A review runner can exit 0 and still fail to produce its deliverable. Check the output artifact's size and content, never the exit code alone.
-- An external review service may never settle on a DRAFT PR and will burn its full timeout. Budget for that, and prefer running it against a non-draft when the choice exists.
+- A review-service timeout is an instrument question, not a property of the PR: Devin renders for anonymous viewers on drafts too, so never skip or re-time a reviewer by draft status — read the fetcher's error file and suspect stale selectors.
 - When a documented delegate path and the deployed skill disagree, the contradiction itself is usually the root cause of a contract gap — resolve which one is authoritative before treating downstream symptoms.
 
 ## Reading arXiv / HuggingFace Papers with the Read Tool
@@ -93,18 +93,19 @@ For tables, layer `pdftotext -layout` or a dedicated tool (`camelot`, `tabula`) 
 
 **slang-pr-review Reviewer A can complete analysis but fail to write final-review.md** — **Symptom:** `slang-pr-review-runner compose-and-run.sh` (Reviewer A) exits 0 but `final-review.md` is tiny (e.g. [slang-pr-review Reviewer A can complete analysis but fail to write final-review.md](../learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md)
 
-**Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles** — On slang#12131 (a DRAFT PR), `devin-fetch.sh` hit its 30m timeout (exit 3) with `devin-error.txt: "Devin did not reach a stable done state within 30m"` — the anonymous scrape of app.devin.ai/review never reached a settled commit-status. [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
+**Devin (Reviewer B) timeouts on DRAFT PRs were a fetch-script defect, not a draft property** — On slang#12131 (a DRAFT PR), `devin-fetch.sh` hit its 30m timeout (exit 3, "Devin did not reach a stable done state within 30m"), and the July reading was that Devin's anonymous view of a draft never settles [Devin (Reviewer B) may time out on DRAFT PRs](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md). The operator's 2026-10-13 check refuted the draft hypothesis: Devin renders fully for anonymous viewers, drafts included, and the timeouts measured since 2026-09-17 came from the done-check (a heading rename and findings hidden behind an unclicked "View results"), fixed in slang-skills #62 [CORRECTION: Devin Review renders for anonymous viewers, drafts included](../learnings/1791964273446-correction-devin-review-renders-for-anonymous-view.md). What survives from the older note: on exit 3 mark B `_skipped_`, set `reviewers_complete:false`, say A+C covered the diff, and don't block on Devin — but never suggest "re-run once it is non-draft", and never consult `isDraft` at all.
 
 **Devin's done-detector races the AI-analysis text render — a settled page can still contain "Generating…"** — The opposite failure to a timeout: `devin-fetch.sh` can declare Devin *done* too early. Its `DONE_EXPR` (`scripts/devin-fetch.sh:64-69`) treats the page as complete when three predicates go true — not "PR analysis in progress", contains "Devin's AI analysis", and matches one of `\d+ Flags?` / "No flags" / "All checks passed" / "checks failed". On shader-slang/slang#11218 (captured 2026-05-20) all three settled — the "37/37 All checks passed" banner, the "2 Flags" toggle, and the right-rail "Analysis complete" — while the middle-pane analysis paragraph was still rendering the literal string `"Generating..."`, so `devin-flags.md`'s `## AI Analysis` captured "Devin's AI analysis\nGenerating..." instead of the narrative [Devin's done-detector races the AI-analysis text render](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md). The checks pipeline and Devin's analysis hydrate independently, so "All checks passed" alone is not a done signal — the detector should additionally require that the paragraph following the "Devin's AI analysis" heading is not `Generating...` (`const idx = t.indexOf("Devin's AI analysis"); if (/Generating\.\.\./.test(t.slice(idx, idx+600))) return false;`) and that the right-rail reads `Analysis complete`. Practical guard: when a run's `## AI Analysis` shows only "Generating..." or a short stub, do not trust the Flags section as exhaustive — re-scrape via agent-browser (click "View results", open the `^\d+\s+Flags?$` toggle, expand each flag's `cursor-pointer` ancestor, re-read `document.body.innerText`) before reporting upstream. On #11218 this didn't change the verdict (the fully-extracted Devin report still aligned with Reviewer A: 0 bugs, 2 flags, no blockers) — it only affects the runner's reliability.
 
 **[approver/infra-abstain] Verity delegate-path vs deployed harvest+Devin skill contradiction — the real root of the contract-block gap** — **Builds on** the earlier `[approver/infra-abstain] reviewer-coworker review-doc omits commit_id/_approver_result` atom (slang#12055). [[approver/infra-abstain] Verity delegate-path vs deployed harvest+Devin skill contradiction — the real root of the contract-block gap](../learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-dep.md)
 
 ---
-**Source learnings (6):**
+**Source learnings (7):**
 - [Reading arXiv/HF papers end-to-end with the Read tool](../learnings/1778494512351-reading-arxiv-hf-papers-end-to-end-with-the-read-t.md)
 - [PDF transcript extraction: pymupdf blocks beats llama-index](../learnings/1779350236903-pdf-transcript-extraction-pymupdf-blocks-beats-lla.md)
 - [slang-pr-review Reviewer A can complete analysis but fail to write final-review.md](../learnings/1784148145296-slang-pr-review-reviewer-a-can-complete-analysis-b.md)
-- [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md)
+- [Devin (Reviewer B) may time out on DRAFT PRs — anonymous analysis never settles](../learnings/1784173916549-devin-reviewer-b-may-time-out-on-draft-prs-anonymo.md) — draft hypothesis refuted 2026-10-13; the skip/`reviewers_complete:false` mechanics still apply
+- [CORRECTION: Devin Review renders for anonymous viewers, drafts included](../learnings/1791964273446-correction-devin-review-renders-for-anonymous-view.md) — exit-3 timeouts were `devin-fetch.sh` done-check defects (fixed slang-skills #62); never gate B on `isDraft`
 - [[approver/infra-abstain] Verity delegate-path vs deployed harvest+Devin skill contradiction — the real root of the contract-block gap](../learnings/1784187372743-approver-infra-abstain-verity-delegate-path-vs-dep.md)
 - [Devin's done-detector races the AI-analysis text render (false positive on "All checks passed")](../learnings/1779298338813-devin-review-done-detector-false-positives-on-all-.md)
 _Catalog: [[wiki/index.md]]_

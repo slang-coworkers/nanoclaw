@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-543 learnings. [Catalog](../index.md)
+546 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -130,6 +130,7 @@ type: topic
 - [A vendored dependency header in build/_deps is the authoritative spelling source — and it may disagree with the spec proposal](../learnings/1786049836308-a-vendored-dependency-header-in-build-deps-is-the-.md)
 - [A wrong diagnostic-emission-site cite is not stale, it was wrong when written — and -skip-codegen is the discriminator](../learnings/1786454619306-a-wrong-diagnostic-emission-site-cite-is-not-stale.md)
 - [A wrong-unit read can make a peer's reproducible figure look unreproducible](../learnings/1786184395044-a-wrong-unit-read-can-make-a-peer-s-reproducible-f.md)
+- [A yielded bot CI run older than 16h is never auto-retried — push or re-dispatch instead](../learnings/1792045779452-a-yielded-bot-ci-run-older-than-16h-is-never-auto-.md)
 - [A zero-capacity alarm needs the CONJUNCTION with demand, not the zero](../learnings/1786438759188-a-zero-capacity-alarm-needs-the-conjunction-with-d.md)
 - [A zero-delta CI sweep needs a run-creation positive control before you report "quiet"](../learnings/1786177488079-a-zero-delta-ci-sweep-needs-a-run-creation-positiv.md)
 - [A zero-diff CI sweep needs a liveness control before you call it "stable"](../learnings/1786191548885-a-zero-diff-ci-sweep-needs-a-liveness-control-befo.md)
@@ -232,6 +233,7 @@ type: topic
 - [Classify-only CI subagent fabricated a cross-repo finding, not just risked over-acting](../learnings/1786969122532-classify-only-ci-subagent-fabricated-a-cross-repo-.md)
 - [Classifying a batch of CI failures: aggregator checks, signature-not-job-name, and the nest-check](../learnings/1786005268785-classifying-a-batch-of-ci-failures-aggregator-chec.md)
 - [Clearing mergeStateStatus=BEHIND on an approved PR: merge master in (don't rebase) — preserves approval, no force-push, auto-reruns CI](../learnings/1789535383508-clearing-mergestatestatus-behind-on-an-approved-pr.md)
+- [Clustering needs denominators: a hit count alone can't show a runner-class cluster](../learnings/1792023938017-clustering-needs-denominators-a-hit-count-alone-ca.md)
 - [CMake -Og Debug default: per-config _INIT seeding cannot be overridden by env CXXFLAGS](../learnings/1785767705338-cmake-og-debug-default-per-config-init-seeding-can.md)
 - [CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative](../learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md)
 - [CMake file(DOWNLOAD): EXPECTED_HASH is deferred-fatal in configure mode and defeats STATUS-based retry/fallback](../learnings/1785765561771-cmake-file-download-expected-hash-is-deferred-fata.md)
@@ -259,6 +261,7 @@ type: topic
 - [Cross-check your CI red set against statusCheckRollup — it found 2 more holes in my already-fixed filter](../learnings/1786028676488-cross-check-your-ci-red-set-against-statuscheckrol.md)
 - [Cross-repo integration CI red on a bot PR is usually version skew, not a code bug](../learnings/1789151785364-cross-repo-integration-ci-red-on-a-bot-pr-is-usual.md)
 - [CUDA diagnostic tests: use -target cuda not -target ptx (ptx needs nvrtc, absent on CPU CI runners)](../learnings/1787351942939-cuda-diagnostic-tests-use-target-cuda-not-target-p.md)
+- [CUDA texture lowering must not silently drop an explicit SamplerState (maintainer direction)](../learnings/1791995178600-cuda-texture-lowering-must-not-silently-drop-an-ex.md)
 - [D3D12 device-removal cascade can masquerade as CI infra flake — trace the FIRST failure, not a spot-check](../learnings/1785359117251-d3d12-device-removal-cascade-can-masquerade-as-ci-.md)
 - [Daily-report CI health: WebFetch can't reach the tail of health_snapshots.jsonl](../learnings/1789719726999-daily-report-ci-health-webfetch-can-t-reach-the-ta.md)
 - [Daily-report CI: health_snapshots.jsonl last line can be badly stale — cross-check with Actions API](../learnings/1784017364046-daily-report-ci-health-snapshots-jsonl-last-line-c.md)

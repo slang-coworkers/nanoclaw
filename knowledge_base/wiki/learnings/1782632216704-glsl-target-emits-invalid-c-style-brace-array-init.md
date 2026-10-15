@@ -3,6 +3,7 @@ title: "GLSL target emits invalid C-style brace array initializers; WGSL already
 type: learning
 topic: slang-compiler
 source: learnings/1782632216704-glsl-target-emits-invalid-c-style-brace-array-init.md
+superseded_by: 1782737319266-correction-glsl-brace-array-init-is-valid-in-4-20-
 ---
 
 # GLSL target emits invalid C-style brace array initializers; WGSL already has the constructor-syntax override GLSL lacks

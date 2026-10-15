@@ -3,7 +3,7 @@ title: Slang Compiler Crash & Legalization Probes — Front-End Fall-Throughs, T
 type: concept
 group: slang-grab-bag
 tags: [slang, ir-lowering, codegen, legalization, glsl-legalize, cuda, spirv, byte-address-buffer, producer-fix]
-source_count: 17
+source_count: 18
 ---
 
 # Slang Compiler Crash & Legalization Probes
@@ -15,10 +15,9 @@ producer/IR layer rather than by masking in emit. Common shape: an early classif
 mishandles an input shape, and the crash surfaces far downstream in codegen or the linker.
 
 - **`if(decoration){ if(sv_){...} }` with the real work in the sibling `else` silently drops the
-  middle case** — a user semantic (not `sv_`) enters the outer `if`, does nothing, and never reaches
-  the `else`'s allocator. This is the tess patch-constant Location-0 collision (a classification
-  fall-through, NOT a shared-counter race); fix = add the `kIROp_PatchDecoration` so per-patch vars
-  occupy a separate location set. Verify a "defaults to 0 / missing offset" symptom by IR dump.
+  middle case** — a user semantic enters the outer `if` and never reaches the `else`'s allocator: the
+  tess patch-constant Location-0 collision (a fall-through, NOT a shared-counter race); fix = add
+  `kIROp_PatchDecoration` so per-patch vars get a separate location set. Verify by IR dump.
 - **A zero-size/void struct field has no byte-address skip** → `.Load<void>` emitted, DXIL/SPIRV/GLSL
   fail. Add a natural-size-0 skip in the `emitLegalLoad`/`emitLegalStore` field loops, mirroring the
   void-field skip already in buffer-element-type lowering.
@@ -41,6 +40,7 @@ mishandles an input shape, and the crash surfaces far downstream in codegen or t
   `.setCount`) plus a by-value lambda output param (should be `auto&`).
 - **A full-coverage texture swizzle store (`t[i].xyzw = v`) is lowered as read-modify-write** — fix in
   `legalizeStore`, but measure coverage against the image op's texel (4-wide on Metal/GLSL/SPIR-V, `T` on CUDA).
+  A plain `t[i] = v` never reaches that pass (it lowers through the `set` accessor), so test both spellings.
 - **Inherited-field access through a BoundMember/BoundStorage base (#13348) needs `InheritanceDecl`
   at all three `BoundMemberInfo` consumers** — fixing `materialize` alone is insufficient.
 - **An entry point with a `uniform` param, called by another compiled entry point, segfaults on
@@ -200,8 +200,18 @@ coverage would zero `.zw` of the wider backing format; on CUDA the texel is the 
 directions with GLSL, Metal and SPIR-V CHECKs, and test a non-self-inverse swizzle (`.yzwx` must
 become `v.wxyz`): `.wzyx` and `.yx` pass even when the component mapping is reversed
 [image-subscript RMW shortcut: compare against the image op's texel width](../learnings/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md).
+Both fixes live in the image-subscript pass, which sees only some texture stores. Assignment through
+a bound subscript in `slang-lower-to-ir.cpp` tries the `set` accessor before `ref`, so a whole-texel
+store such as `t[i] = v` or `t.Store(i, v)` becomes the `Store` intrinsic (spelled on CUDA through
+`$C`/`$E` in hlsl.meta.slang). Only swizzle or member writes (`t[i].x = v`, `t[i].xyzw = v`) go
+through `ref` and produce the `kIROp_ImageSubscript` + `Store`/`SwizzledStore` that
+`legalizeImageSubscript` rewrites. A rule in that pass, such as #13363's E56007 conversion check,
+therefore never sees plain stores, and the two spellings can diverge, with one compiling and the
+other erroring. Before claiming a pass "rejects store X", run master slangc with `-dump-ir`, count
+`imageSubscript` insts, and compare `t[i] = v` with `t[i].x = v`
+[plain `tex[i] = v` lowers via the setter, not kIROp_ImageSubscript](../learnings/1792030315427-slang-plain-tex-i-v-lowers-via-the-setter-not-kiro.md).
 
-**Source learnings (17):**
+**Source learnings (18):**
 - [ParseModifiers on a decl whose name can be a bareword keyword breaks previously-valid code](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md) — use bracket-only ParseSquareBracketAttributes; test with a case/field named `point`/`linear`.
 - [ByteAddressBuffer.Load of struct with empty/zero-size field emits Load<void>](../learnings/1787580105549-byteaddressbuffer-load-of-struct-with-empty-zero-s.md) — add a natural-size-0 skip in emitLegalLoad/Store field loops.
 - [getDefaultVal on AssocTypeDecl built an empty IRMakeStruct](../learnings/1787585281811-slang-getdefaultval-on-assoctypedecl-built-an-empt.md) — producer-side emitDefaultConstruct; assert consumer with EXACT ==, not min-bound.
@@ -219,3 +229,4 @@ become `v.wxyz`): `.wzyx` and `.yx` pass even when the component mapping is reve
 - [Inherited-field access through BoundStorage/BoundMember ICEs at three VarDecl-only consumers (#13348)](../learnings/1790788517757-inherited-field-access-through-boundstorage-boundm.md) — materialize/tryGetAddress/assign all need `InheritanceDecl` (struct bases only); `buf[0].baseField` fails too; `ref` accessors confounded by #9636.
 - [Full-coverage swizzle on RWTexture goes through the RMW path (false E56006 / E55204 on CUDA)](../learnings/1790832459014-full-coverage-swizzle-on-rwtexture-goes-through-th.md) — fix in `legalizeStore`: a component permutation becomes a plain imageStore.
 - [skip the texel read only when the swizzle covers the image op's texel (4-vector on Metal/GLSL/SPIR-V, element type on CUDA); test a non-self-inverse swizzle; don't rebuild during an A/B run (exit 127)](../learnings/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md)
+- [Slang: plain `tex[i] = v` lowers via the setter, not kIROp_ImageSubscript](../learnings/1792030315427-slang-plain-tex-i-v-lowers-via-the-setter-not-kiro.md) — `set` before `ref`; only swizzle/member writes reach `legalizeImageSubscript`, so image-subscript rules (#13363 E56007) miss plain stores; count `imageSubscript` in `-dump-ir` two-sided

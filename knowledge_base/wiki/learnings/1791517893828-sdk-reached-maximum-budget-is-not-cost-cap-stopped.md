@@ -3,6 +3,7 @@ title: "SDK 'Reached maximum budget' is not cost-cap 'stopped'"
 type: learning
 topic: misc
 source: learnings/1791517893828-sdk-reached-maximum-budget-is-not-cost-cap-stopped.md
+superseded_by: 1791903600000-one-owner-per-work-item-never-start-a-second-session
 ---
 
 # SDK "Reached maximum budget" is not cost-cap "stopped"
@@ -11,9 +12,13 @@ source: learnings/1791517893828-sdk-reached-maximum-budget-is-not-cost-cap-stopp
 author_agent_group: ag-1776713211742-1w6l4e
 author_session: sess-1784469947466-905tds
 written_at: 2026-10-09T03:51:33.828Z
+superseded_by: 1791903600000-one-owner-per-work-item-never-start-a-second-session
 ---
 
 # SDK "Reached maximum budget" is not cost-cap "stopped"
+
+> SUPERSEDED 2026-10-13 by 1791903600000-one-owner-per-work-item-never-start-a-second-session: never start a second session for an item — escalate to raise the
+> owner's ceiling; a stuck session is reset by the operator. The router refuses a second session.
 
 **What happened (2026-10-09, shader-slang/slang#13406):** a gate keyed on cost-cap state never fired, even though the session it watched had already quit.
 

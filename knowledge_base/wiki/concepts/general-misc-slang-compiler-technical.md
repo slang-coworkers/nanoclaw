@@ -3,7 +3,7 @@ title: "Slang Compiler Technical Findings"
 type: concept
 group: general-misc
 tags: [slang, compiler, spirv, ir, descriptor-heap, coopmat, deepwiki, rebase, expected-failure, uninit-checker, macro, diagnostics, slang-test, expected-baseline, filecheck, slang-module, import-resolution, sourceloc, isession, composite-component-type, threading]
-source_count: 20
+source_count: 21
 ---
 
 # Slang Compiler Technical Findings
@@ -55,7 +55,7 @@ For `kIROp_SPIRVLoadDescriptorFromHeap` through function-call specialization (th
 
 ## ResourceDescriptorHeap/SamplerDescriptorHeap Is Front-End Surface Work
 
-The entire descriptor-heap backend already exists and is reachable via `DescriptorHandle<T>`. `ResourceDescriptorHeap` and `SamplerDescriptorHeap` are not input-language builtins — they appear only as HLSL emission output (`slang-emit-hlsl.cpp:1328-1345`). A request to support this input syntax is front-end surface-syntax work, not new codegen. The recommended implementation is to declare magic globals in `hlsl.meta.slang` whose `operator[]` yields `DescriptorHandle<T>`, riding the existing handle→T implicit-conversion and lowering. ([ResourceDescriptorHeap/SamplerDescriptorHeap input syntax is front-end-only — backend already exists](../learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md))
+The entire descriptor-heap backend already exists and is reachable via `DescriptorHandle<T>`. `ResourceDescriptorHeap` and `SamplerDescriptorHeap` are not input-language builtins — they appear only as HLSL emission output (`slang-emit-hlsl.cpp:1328-1345`) — so supporting them as input (slang#11568) is front-end surface-syntax work, not new codegen. The first proposal, magic globals whose generic `operator[]` returns `DescriptorHandle<T>`, is a dead end: Slang solves a generic subscript's type parameter from the index arguments only, so a return-position-only `T` fails with E39999 ([Approach A is a dead end](../learnings/1781222607198-correction-resourcedescriptorheap-approach-a-retur.md)). The maintainer team chose the concrete-proxy design instead: builtin `UntypedResourceHandle` / `UntypedSamplerHandle` types that `ResourceDescriptorHeap[i]` returns and that implicitly convert to a resource, a sampler, or their handle types. The general rule for a context-typed builtin is to return a concrete proxy, never a return-only generic ([#11568 now implemented via UntypedResourceHandle](../learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md)).
 
 ## E31106/E31107 Fire on Compiler-Synthesized Entry-Point Uniform Groups
 
@@ -115,14 +115,13 @@ The bottom-right is the one worth warning about explicitly: "this is unsupported
 When documenting a guard/predicate that is provenance-agnostic (rejects X regardless of how X arrived), document what it **guarantees** — not a specific enumeration of how the bad input arrives. Enumerating arrival paths is fragile: the claim is a checkable assertion about compiler behavior that can be wrong even when the guard is correct. In one three-round review, three separate mechanistic explanations for why a foreign-FileDecl case was supposedly impossible were each wrong, while the guard conjunct itself was always correct. Prefer "this drops X regardless of provenance" over "X can only arrive via Y." ([Document a guard's guarantee, not the enumeration of how the bad input arrives](../learnings/1780493380222-document-a-guard-s-guarantee-not-the-enumeration-o.md))
 
 ---
-**Source learnings (20):**
+**Source learnings (21):**
 - [Blender→glTF PBR too-bright + gamma mismatch: candela units, energy/(4π)×683 Spec-mode export, AgX default view transform; Slang has no built-in PBR/tonemap/gamma helpers](../learnings/1784300430455-blender-gltf-pbr-too-bright-gamma-mismatch-candela.md)
 - [Slang normal-map/TBN debugging: mul arg-order (mul(v,m) vs mul(m,v)) + NaN-tangent (black=normalize(0)=unbound attr) diagnostic ladder](../learnings/1784305210428-slang-normal-map-tbn-debugging-mul-arg-order-nan-t.md)
 - [DeepWiki can miss files in large or vendored codebases](../learnings/1779621016571-deepwiki-can-miss-files-in-large-or-vendored-codeb.md)
 - [CoopMat vs CoopVec linalg InterlockedAccumulate — DeepWiki conflates them](../learnings/1781544794615-coopmat-vs-coopvec-linalg-interlockedaccumulate-de.md)
 - [Don't trust the stack-trace-implied fix site alone — dump-IR the repro](../learnings/1780683697167-don-t-trust-the-stack-trace-implied-fix-site-alone.md)
 - [Approach-A fix for descriptor-heap [noinline] texture params](../learnings/1780769595819-approach-a-fix-for-descriptor-heap-noinline-textur.md)
-- [ResourceDescriptorHeap/SamplerDescriptorHeap input syntax is front-end-only](../learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md)
 - [E31106/E31107 also fire on the SYNTHESIZED entry-point uniform param group](../learnings/1782751325517-e31106-e31107-also-fire-on-the-synthesized-entry-p.md)
 - [Controlled-rebase experiments mislead when the isolated change is cross-cutting](../learnings/1781841056611-controlled-rebase-experiments-mislead-when-the-iso.md)
 - [Expected-failure list only reclassifies a Fail — never reddens a passing listed test](../learnings/1781641446803-expected-failure-list-only-reclassifies-a-fail-nev.md)
@@ -136,4 +135,7 @@ When documenting a guard/predicate that is provenance-agnostic (rejects X regard
 - [A gitignored .expected can be missing from the commit while git status says clean](../learnings/1785987524819-a-gitignored-expected-can-be-missing-from-the-comm.md) — `*.expected` needs `git add -f` and `git ls-tree` verification; generate baselines by promoting `.actual`, never hand-write them.
 - [Two ways a slang-test assertion lies: prelude-matched names, and exit codes no harness checks](../learnings/1785987113227-two-ways-a-slang-test-assertion-lies-prelude-match.md) — a prelude-defined symbol makes a bare FileCheck anchor vacuous, and only `//TEST:SIMPLE:` with a `.expected` pins the result code.
 - [Unsupported-and-unchecked is the dangerous quadrant — cross-session `CompositeComponentType` (slang#8437, csyonghe) returns `SLANG_OK` then crashes; grep for the linkage-identity check, not the diagnostic; serialize+deserialize to reuse a module across sessions](../learnings/1786245351511-unsupported-and-unchecked-is-the-dangerous-quadran.md)
+- [UPDATE slang#11568: UntypedResourceHandle proxy design](../learnings/1782422418340-update-slang-11568-maintainer-team-now-implementin.md) — concrete proxy sidesteps return-only generic inference
+- [CORRECTION: ResourceDescriptorHeap Approach A is a dead end — E39999](../learnings/1781222607198-correction-resourcedescriptorheap-approach-a-retur.md) — return-position-only generic subscript cannot be inferred
+
 _Catalog: [[wiki/index.md]]_

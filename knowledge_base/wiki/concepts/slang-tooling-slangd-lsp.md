@@ -3,7 +3,7 @@ title: "Triaging slangd (language-server) crashes: version-triage, direct-LSP re
 type: concept
 group: slang-tooling
 tags: [slangd, language-server, lsp, vscode-extension, completion-mode, triage, crash, groupshared, file-decl]
-source_count: 9
+source_count: 10
 ---
 
 ## TL;DR
@@ -39,6 +39,8 @@ checker strips.
   section; `asBool(null)` → false), and because slang-test runs every `LANG_SERVER` test against ONE
   shared slangd, a config change whose `workspace/*/refresh` calls go unread poisons the NEXT test —
   end it with a side-effect-free request barrier and read `failed(pending retry)` lines.
+- **slangd cannot import `slang.numerics` and the other `[ExperimentalModule]` std modules (E00104):** it has no
+  way to set `ExperimentalFeature`, and the VSIX packages ship no `slang-standard-module-<ver>/` directory.
 - **Not every "highlighting breaks after editing" report is slangd.** In the C#/VSIX Visual Studio
   extension (`slang-vs-extension`, distinct from the VS *Code* extension and from slangd) the bug is
   almost always the extension's own semantic-token tagger, not the server — rebuilding with newer
@@ -163,6 +165,24 @@ slangd, before spending on a code-level null-deref hunt or filing upstream. Note
 `0xC0000005` is a Windows access violation, so a Linux Debug build may never surface a Windows-specific
 segfault [drive LSP directly, check the bundled version](../learnings/1789400009815-triaging-slangd-language-server-crashes-drive-lsp-.md).
 
+## slangd cannot import `[ExperimentalModule]` standard modules
+
+At slang 6d38185bc / v2026.19 slangd always rejects `import slang.numerics` (and `neural`, `functional`,
+`workgraph`) with E00104, for two independent reasons. First, the experimental gate
+(`slang-session.cpp:1636-1646`) reads the session option `ExperimentalFeature`, and slangd has no way to
+set it: its CLI parses only `-vs` and `-periodic-diagnostic-update` (`slang-language-server.cpp:3300`)
+and silently ignores `-experimental-feature`, none of the 15 `slang.*` config keys covers it, and
+`createWorkspaceVersion` (`slang-workspace-version.cpp:549-561`) injects only `LanguageVersion`. Second,
+neither the VS nor the VS Code VSIX bundles the `slang-standard-module-<ver>/` directory (the release zips
+do), so the bundled slangd reports `cannot open file 'slang/numerics.slang'` instead. A prototype that
+forces `ExperimentalFeature`, paired with a version-matched standard-module directory, makes numerics
+resolve and hover. The modules must come from the same build as slangd: a newer slangd with release
+modules gives E00131 (IR version mismatch). A 60-line Python LSP driver (`didOpen` + `hover`, answering
+`workspace/configuration` with nulls) is enough to reproduce
+[slangd cannot import [ExperimentalModule] standard modules — two independent blockers](../learnings/1792010479468-slangd-cannot-import-experimentalmodule-standard-m.md).
+How the same modules escape `isFromCoreModule` is on
+[[wiki/concepts/slang-compiler-casts-lookup-and-language-server.md]].
+
 ## Reproducing a slangd-only crash without a GPU
 
 A language-server crash lives on paths batch compile skips — semantic tokens (syntax highlighting),
@@ -218,12 +238,13 @@ Triage implications:
   placement-illegal modifiers (which build shapes no stage models) are still stripped, rather than
   guarding every downstream consumer.
 
-**Source learnings (9):**
+**Source learnings (10):**
 - [Triaging slangd crashes: drive LSP directly, and check the extension's bundled slang version](../learnings/1789400009815-triaging-slangd-language-server-crashes-drive-lsp-.md) — `__file_decl`=`FileDecl` (pervasive in VFX flavor); batch slangc skips LSP-only paths; a Python LSP driver reproduces GPU-free (drain stderr in a thread); version-triage first; `0xC0000005` is Windows-only.
 - [slangd Completion checking mode retains placement-illegal modifiers (ignoreUnallowedModifier)](../learnings/1789401281467-slangd-completion-checking-mode-retains-placement-.md) — `checkModifiers` sets `ignoreUnallowedModifier` in Completion mode → keeps a function-local `groupshared` slangc strips (E31201) → IR builds a rated function-local IRVar → consumers assume module-global → AV; stock slangd skips IR lowering so a plain LSP driver may not repro; fix at the producer.
 - [slangd LSP: search-path #include resolution silently fails without workspaceFolders](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md) — no rootUri/rootPath fallback; initializationOptions discarded; config is pull-only/positional; suspect the workspace-root handshake first.
 - [slangd only reads workspaceFolders for #include roots; testing the deprecated handshake via LANG_SERVER](../learnings/1789818601805-slangd-only-reads-workspacefolders-for-include-roo.md) — fix = rootUri→rootPath fallback guarded on getLength(); added -init-root-uri/-init-root-path slang-test args; snapshot the config object before iterating.
 - [slang-test LANG_SERVER harness desyncs if a config change emits a server→client refresh at initialize](../learnings/1789868223160-slang-test-lang-server-harness-desyncs-if-a-config.md) — the shared cached slangd process + a diagnostics-only drain leave a refresh in the stream, poisoning subsequent tests; the workspace-root path is cleanly testable because it emits no refresh.
+- [slangd cannot import [ExperimentalModule] standard modules (slang.numerics etc.) — two independent blockers](../learnings/1792010479468-slangd-cannot-import-experimentalmodule-standard-m.md) — no CLI/config path to `ExperimentalFeature` (E00104); VSIX lacks the std-module dir; modules must be version-matched (E00131)
 - [slang-vs-extension stale-highlight bugs are client-side semantic-token cache/version mismatches, not slangd](../learnings/1789645330820-slang-vs-extension-stale-highlight-bugs-are-client.md) — the C#/VSIX tagger decodes cached tokens with no snapshot-version stamp; rebuilding with newer Slang libs won't fix it; non-repro in vim confirms it's the extension.
 - [slangd: a null workspace/configuration reply disables searchInAllWorkspaceDirectories (Zed)](../learnings/1791318736825-slangd-a-null-workspace-configuration-reply-disabl.md) — `asBool(null)`→false; Zed answers null for unset sections; flat `slang.*` key under `lsp.slangd.settings` works; probe with a cross-folder include
 - [slangd LANG_SERVER harness: config pushes leak refreshes into the next test; inlay push aborts master slangd](../learnings/1791339299959-slangd-lang-server-harness-config-pushes-leak-refr.md) — shared slangd; end with a `documentSymbol` barrier; `asBool(Invalid)` SLANG_ASSERT → InternalError SIGABRT

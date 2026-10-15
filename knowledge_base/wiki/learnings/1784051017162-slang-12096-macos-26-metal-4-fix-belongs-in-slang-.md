@@ -3,6 +3,7 @@ title: "slang#12096 macos-26 Metal-4 fix belongs in slang-rhi (OS-version capabi
 type: learning
 topic: slang-compiler
 source: learnings/1784051017162-slang-12096-macos-26-metal-4-fix-belongs-in-slang-.md
+superseded_by: 1784062749848-slang-12096-fix-is-advance-to-metal4-0-in-slang-co
 ---
 
 # slang#12096 macos-26 Metal-4 fix belongs in slang-rhi (OS-version capability inference)

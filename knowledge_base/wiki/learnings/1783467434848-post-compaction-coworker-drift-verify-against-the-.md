@@ -3,6 +3,7 @@ title: "Post-compaction coworker drift: verify against the canonical thread and 
 type: learning
 topic: verification
 source: learnings/1783467434848-post-compaction-coworker-drift-verify-against-the-.md
+superseded_by: 1783468031032-correction-to-post-compaction-coworker-drift-it-wa
 ---
 
 # Post-compaction coworker drift: verify against the canonical thread and halt before any external artifact
