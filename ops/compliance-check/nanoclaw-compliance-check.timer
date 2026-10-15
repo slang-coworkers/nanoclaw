@@ -1,0 +1,14 @@
+[Unit]
+Description=Run the NanoClaw compliance check weekly
+
+[Timer]
+OnBootSec=15min
+# Monday 06:00 UTC: the week's items are complete and the maintainer report that
+# reads the numbers goes out later the same day.
+OnCalendar=Mon *-*-* 06:00:00 UTC
+RandomizedDelaySec=600
+Persistent=true
+Unit=nanoclaw-compliance-check.service
+
+[Install]
+WantedBy=timers.target

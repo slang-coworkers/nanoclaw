@@ -757,6 +757,49 @@ def collect_practices():
     emit("nanoclaw_practices", fields, {"status": d.get("status") or "unknown"})
 
 
+COMPLIANCE = os.path.join(NC, "data", "shared", "compliance", "latest.json")
+
+
+def collect_compliance():
+    """Per-rule pass rates from the compliance check's last run (ops/compliance-check/).
+
+    The check runs on its own weekly timer and writes latest.json; this collector only
+    re-emits what that file says, so there is exactly one place that decides what a
+    rule failure is. Emits nanoclaw_compliance with the failing-item total, the number
+    of rules that could not be scored, the item count, and per rule `r_<check>_pass`,
+    `r_<check>_fail`, `r_<check>_total` and `r_<check>_rate` (the rate is left out
+    when the rule had no items, so an empty week never reads as 0%). `age_sec` is the
+    watchdog for the weekly timer. A missing file is reported through
+    nanoclaw_collector.errors rather than as zero findings, because "the check never
+    ran" must not read as "compliant".
+    """
+    st = os.stat(COMPLIANCE)
+    with open(COMPLIANCE) as fh:
+        d = json.load(fh)
+    counts = d.get("counts") or {}
+    fields = {
+        "age_sec": int(time.time() - st.st_mtime),
+        "findings": int(counts.get("findings") or 0),
+        "unknown": int(counts.get("unknown") or 0),
+        "ok": int(counts.get("ok") or 0),
+        "drift": int(counts.get("drift") or 0),
+        "items": int(counts.get("items") or 0),
+        "exit_code": int(d.get("exitCode") or 0),
+        "complete": bool(d.get("complete", False)),
+    }
+    for check, c in (counts.get("perRule") or {}).items():
+        key = "r_" + str(check).replace("-", "_").replace("/", "_")
+        fields[key + "_pass"] = int(c.get("pass") or 0)
+        fields[key + "_fail"] = int(c.get("fail") or 0)
+        fields[key + "_total"] = int(c.get("total") or 0)
+        if c.get("rate") is not None:
+            fields[key + "_rate"] = float(c["rate"])
+    emit("nanoclaw_compliance", fields, {
+        "status": d.get("status") or "unknown",
+        "judge": (d.get("judge") or {}).get("impl") or "unknown",
+    })
+
+
 def main():
     t0 = time.time()
     now_ms = int(t0 * 1000)
@@ -769,7 +812,8 @@ def main():
                      ("host", lambda: collect_host(state)),
                      ("codex", collect_codex),
                      ("cost", collect_cost),
-                     ("practices", collect_practices)):
+                     ("practices", collect_practices),
+                     ("compliance", collect_compliance)):
         try:
             fn()
         except Exception as exc:  # noqa: BLE001 - a collector must never crash the metrics pipeline
