@@ -5,7 +5,7 @@ type: workflow
 description: 'Fix a triaged Slang issue: worktree, repro test, fix, verify, draft PR, peer review, report.'
 requires: [code.edit, test.run]
 uses:
-  skills: [slang-build, slang-code-writer, slang-code-reader]
+  skills: [slang-build, slang-code-writer, slang-code-reader, explain-diff-html]
   workflows: []
 ---
 
