@@ -367,6 +367,12 @@ jobs:
       - name: Cost ledger drift check tests (Python)
         run: python3 -m unittest scripts/test_verify_cost_ledger.py
 
+      # The hourly practices check (ops/practices-check/) decides which fleet
+      # operating faults Grafana alerts on; a regression there does not fail a
+      # build, it just stops counting a class of finding.
+      - name: Practices check tests (Python)
+        run: python3 -m unittest discover -s ops/practices-check -p 'test_*.py'
+
       # The committed scheduled-task snapshot is the only record of what the live
       # agents are standing-instructed to do, and its whole value is that `git diff`
       # is a drift alarm. It is a PAIR — JSON plus Markdown mirror, stamped with a
