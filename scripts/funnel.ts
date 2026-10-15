@@ -310,7 +310,14 @@ async function main() {
 
   // ── Routed head (window-bound): distinct (repo, issue#) from prod dev-route log ──
   // Streamed: the host log outgrows Node's 512 MB string limit (see collectRoutedIssues).
-  const routedSet = !SKIP_ROUTED && fs.existsSync(PROD_LOG) ? await collectRoutedIssues(PROD_LOG) : new Set<string>(); // `${repo}#${issue}`
+  // The rotated predecessor (`nanoclaw.log.1`) is read too, so a rotation does not
+  // drop the routed issues logged before it.
+  const routedSet = new Set<string>(); // `${repo}#${issue}`
+  if (!SKIP_ROUTED) {
+    for (const f of [`${PROD_LOG}.1`, PROD_LOG]) {
+      if (fs.existsSync(f)) for (const k of await collectRoutedIssues(f)) routedSet.add(k);
+    }
+  }
 
   // ── Approver ledger: Verity's shadow-mode decisions, keyed by (repo, pr) ──
   // One query, latest decision per PR (a PR can be decided at multiple commits;
