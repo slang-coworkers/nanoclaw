@@ -82,7 +82,7 @@ const REWRITTEN_AFTER_FREEZE: readonly {
   {
     file: 'tool-instructions/ncl-group.md',
     frozen: 'ncl-group.post-trim.md',
-    digest: '0aebba335f4acad5',
+    digest: '5303444d1cbe1c9f',
     typed: true,
     flat: false,
   },

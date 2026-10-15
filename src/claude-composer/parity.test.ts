@@ -121,8 +121,8 @@ describe('composed-document byte parity', () => {
       // context for `/base-nanoclaw`, the Ambiguity principle stopped pointing at the
       // retired Mechanics section, and chain-reporting's report-shape line deferred
       // to Report formats. Declared in `section-reorder.test.ts`.
-      'base-common': '946fb6c580e3840f',
-      'base-common.persona': 'e637e361241f53e6',
+      'base-common': '5c1c8dede4b71127',
+      'base-common.persona': 'f03e1ea1d24c49d4',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -130,8 +130,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: '1e52f48189f15698',
-      'default.persona': '3ccb3438e00d5446',
+      default: '16ea42448d29903c',
+      'default.persona': 'de7b3ed8a56be370',
     };
 
     const actual: Record<string, string> = {};
