@@ -41,7 +41,7 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     strategy:
       matrix:
         node-version: [22, 24]
@@ -423,7 +423,7 @@ jobs:
       - name: Compose paths resolve modify/delete conflicts
         run: bash scripts/check-compose-conflict-resolution.sh
   iron-front:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -454,7 +454,7 @@ jobs:
   # Skill pins sit outside the lockfile; .github/skill-pins mirrors them so
   # Dependabot and audit tools can see them. Red when the mirror is stale.
   skill-pins:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
     steps:
@@ -474,7 +474,7 @@ jobs:
     if: always()
     needs: [test, iron-front, skill-pins]
     permissions: {}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     steps:
       - run: |
           test "${{ needs.test.result }}" = success
@@ -490,7 +490,7 @@ jobs:
     if: always()
     needs: [test, iron-front, skill-pins, ci]
     permissions: {}
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 5
     steps:
       - name: every needed job succeeded
