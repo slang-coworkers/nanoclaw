@@ -374,6 +374,21 @@ jobs:
       - name: KB observability tests (Python)
         run: python3 scripts/test_kb_observability.py
 
+      # The ci-babysitter pre-task gate (nv-slang) is a Node script the host runs
+      # every two hours; its wake decision is a pure function with a node:test
+      # suite beside it. The skill is only present in the composed tree, so a
+      # standalone nv-main checkout skips the step instead of failing on a
+      # missing path.
+      - name: ci-babysitter sweep-gate tests (node:test)
+        run: |
+          dir=container/skills/slang-ci-babysitter/scripts
+          if [ -f "$dir/sweep-gate.mjs" ]; then
+            node --check "$dir/sweep-gate.mjs"
+            node --test "$dir"/*.test.mjs
+          else
+            echo "skip: $dir not in this tree"
+          fi
+
       # The daily cost-ledger drift check (scripts/verify-cost-ledger-vs-gateway.py
       # --fleet) is what notices the cost cap counting less than the gateway saw;
       # a regression in it does not fail anything, it just stops alerting.
