@@ -3,7 +3,7 @@ title: "PR Review Practices"
 type: concept
 group: review-process
 tags: [pr-review, slang-reviewer, devin, reviewer-a, reviewer-b, reviewer-c, github, draft-pr, convergence, false-positives, a2a-review, fleet-contention, repo-root-isolation, pr-approver, shadow-mode, clause-gap, challenger, critique-gate, abstain-infra, head-pinning, human-calibration, memoization-safety]
-source_count: 31
+source_count: 32
 ---
 
 # PR Review Practices
@@ -45,7 +45,7 @@ Devin (Reviewer B) is best-effort and must be self-verified before it contribute
 
 **Stale-across-a-push.** A re-run after a new commit can return the analysis of the PREVIOUS head — Devin's async re-analysis may not have settled, and the bot can't force a refresh (the manual re-run button is login-gated). `devin-commit-status.txt` is useless here (frequently `"unknown"`); the reliable staleness probe is a **renamed-symbol check** — grep `devin-page.txt`/`devin-flags.md` for a symbol you KNOW changed this round (a renamed function, changed diagnostic id/range, deleted constant) and confirm it's absent at the new HEAD (observed #12202 r2: notes still cited `emitCoreOpSource`, renamed to `emitOpSource` that round). A stale Devin pass corroborates the OLD findings were real, NOT the new code — lean on your own source-read of the delta and mark Devin "stale/not usable this round" rather than folding its clean-looking old result into approval [Devin re-run after a push can return STALE cached analysis — detect via renamed-symbol probe, not just commit-status](../learnings/1784827155083-devin-re-run-after-a-push-can-return-stale-cached-.md).
 
-**Draft PRs.** Devin analysis is typically inconclusive on draft PRs — the page shows "Generating...", commit-status "unknown." Treat B as best-effort-skipped on any draft [slang-pr-review: Reviewer A budget-cap mid-analysis hypotheses are NOT findings — re-run + independently verify](../learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md), [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md).
+**Draft PRs.** Draft status does not affect Devin: its page renders for anonymous viewers on drafts too, and the "Generating..."/`unknown`/exit-3 results once blamed on drafts trace to `devin-fetch.sh` done-check defects (an early done-detector race, then from 2026-09-17 a renamed heading and an unclicked "View results", fixed in slang-skills #62). A 0/0 scrape whose `## AI Analysis` echoes the PR description is still not an all-clear, on any PR [slang-pr-review: Reviewer A budget-cap mid-analysis hypotheses are NOT findings — re-run + independently verify](../learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md), [Stacked-PR review: Reviewer A checks out master, producing predictable false positives + a missed-drop; coordinator must self-verify against the real base/head](../learnings/1781324278003-stacked-pr-review-reviewer-a-checks-out-master-pro.md), [CORRECTION: Devin Review renders for anonymous viewers, drafts included](../learnings/1791964273446-correction-devin-review-renders-for-anonymous-view.md).
 
 **Healthy Devin scrape signals:** `## AI Analysis` has synthesized prose (not diff fragments); `## Flags` explicitly says "no flags" (not blank); the PR number in the analysis text matches the URL; `devin-commit-status.txt` says "Analysis is up to date" [Devin reviewer scrape reliability](../learnings/devin-reviewer-scrape-reliability.md).
 
@@ -151,7 +151,7 @@ Two traps when monitoring nohup-background reviewer jobs [Verifying detached bac
 1. **Context compaction kills in-flight Monitor.** A large compaction event can fire Monitor's timeout early. After any compaction, re-check process/output state directly rather than trusting the monitor.
 2. **`pgrep -fc 'pattern'` false counts.** The pattern string appears in your own command pipeline → pgrep counts your own shell invocation. Use `ps aux | grep <pat> | grep -v grep` instead. Better still, treat the authoritative completion signal as the wrapper's done-marker in its log plus a non-empty output file: A = `>>> repro.sh: done` + `final-review.md`; C = `>>> run-clarity.sh: done (rc=0)` + `clarity-review.md`; B = `>>> devin-fetch: …/devin-flags.md (N lines)` + `devin-flags.md`.
 
-**Source learnings (31):**
+**Source learnings (32):**
 
 - [Empirical "I tested it" probes can miss the wrong sub-case](../learnings/1779434309171-empirical-i-tested-it-probes-can-miss-the-wrong-su.md)
 - [Reviewer A flip-flops across rounds — log signed-off positions per round](../learnings/1779437432996-reviewer-a-claude-pr-review-subagents-can-give-inc.md)
@@ -184,3 +184,4 @@ Two traps when monitoring nohup-background reviewer jobs [Verifying detached bac
 - [Devin re-run after a push can return stale cached analysis — detect via renamed-symbol probe, not commit-status; don't fold a stale pass into approval](../learnings/1784827155083-devin-re-run-after-a-push-can-return-stale-cached-.md)
 - [recover a dead clarity/correctness run's candidates by replaying Write/Edit tool calls from stream.jsonl](../learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md)
 - [a "proves the gate works" negative test is vacuous unless the tested path feeds the gated input — would it pass with the guard removed?](../learnings/1784857152467-a-proves-the-gate-works-test-is-vacuous-unless-the.md)
+- [CORRECTION: Devin renders for anonymous viewers, drafts included](../learnings/1791964273446-correction-devin-review-renders-for-anonymous-view.md) — draft status does not affect Devin; the "inconclusive on drafts" pattern was a `devin-fetch.sh` defect.

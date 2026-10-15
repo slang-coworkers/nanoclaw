@@ -1,14 +1,14 @@
 ---
-title: "Slang WGSL emit: matrix-operator validity, template-list ambiguity, and GPU-free naga validation"
+title: "Slang WGSL emit: matrix-operator validity, template-list ambiguity, buffer-element bool/reshape gaps, enable directives, and GPU-free naga validation"
 type: concept
 group: slang-backends
-tags: [wgsl, naga, naga-wasm, validation, matrix, negation, int64, legalizeMatrixTypes, template-list, emit, slang]
-source_count: 5
+tags: [wgsl, naga, naga-wasm, validation, matrix, negation, int64, legalizeMatrixTypes, template-list, emit, bool, host-shareable, lower-buffer-element-type, std140, VectorReshape, peephole, enable, primitive_index, subgroups, slang]
+source_count: 9
 ---
 
-# Slang WGSL emit: matrix-operator validity, template-list ambiguity, and GPU-free naga validation
+# Slang WGSL emit: matrix-operator validity, template-list ambiguity, buffer-element gaps, enable directives, and GPU-free naga validation
 
-Slang's WGSL emitter (`slang-emit-wgsl.cpp`) can produce text that compiles with rc 0 but is rejected by wgpu/naga. Two families recur: expressions that are legal in the Metal/HLSL shapes the emitter mirrors but not in WGSL (matrix negation, non-float matrices), and comma-separated lists that WGSL's template-list grammar mis-parses. Both can be checked without a GPU. The broader WGSL backend lives on [[wiki/concepts/slang-backends-wgsl-metal.md]]; WGSL via Tint is on [[wiki/concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md]].
+Slang's WGSL emitter (`slang-emit-wgsl.cpp`) can produce text that compiles with rc 0 but is rejected by wgpu/naga. The recurring families are expressions that are legal in the Metal/HLSL shapes the emitter mirrors but not in WGSL (matrix negation, non-float matrices), comma-separated lists that WGSL's template-list grammar mis-parses, buffer-element lowering that leaves non-host-shareable or untyped values behind, and built-ins whose `enable` directive is never requested. All of them can be checked without a GPU. The broader WGSL backend lives on [[wiki/concepts/slang-backends-wgsl-metal.md]]; WGSL via Tint is on [[wiki/concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md]].
 
 ## TL;DR
 
@@ -19,6 +19,10 @@ Slang's WGSL emitter (`slang-emit-wgsl.cpp`) can produce text that compiles with
 - **WGSL has no unary `-` on matrices and no single-scalar matrix constructor.** `matCxR<T>(0) - m` is invalid (`vecN<T>(0)` is a valid splat). Emit `T(-1) * m` (keeps IEEE -0) or `matCxR<T>() - m`. Scalar `uint` `- x` is also naga-rejected (#13571).
 - **int64/uint64 matrices survive `legalizeMatrixTypes` on WGSL** (only 32-bit `IRIntType`/`IRUIntType`/`IRBoolType` are lowered) and emit `mat2x2<i64>`, which naga rejects. A WGSL emitter `SLANG_ASSERT(isFloatingType(matrixElt))` is reachable from user code, and in Release it is `[[assume]]` UB.
 - **Probe more than one source spelling before calling a shape unreachable** — `int64_t2x2(...)` gave E38203 where `matrix<int64_t,2,2>(...)` compiled.
+- **`bool` inside `var<uniform>`/`var<storage>` is emitted with rc 0 but is not host-shareable (#13590).** Three gaps in `slang-ir-lower-buffer-element-type.cpp` must be fixed together: the bool→int leaf mapping exists only in the Khronos policy (all WGSL targets, Tint ones included, use `WGSLBufferElementTypeLoweringPolicy`); the std140 array-element widening replaces the leaf's cast with `VectorReshape` instead of composing the two; and `needsElementLowering` skips top-level `vector<bool,N>`.
+- **A bare WGSL expression statement (`x.data_0[i32(N)].x;`) usually means an IR inst with a null type, not an emitter bug.** The `kIROp_VectorReshape`→scalar peephole built its swizzle with a null `resultType`; the fix is `emitSwizzle(inst->getDataType(), …)` (#13607).
+- **When a PR turns an ICE into rc 0, validate the new output with naga or spirv-val**, on shapes beyond the PR's own type.
+- **`@builtin(primitive_index)` needs `enable primitive_index;` (naga ≥29, Tint/Chrome 142), and the WGSL varying legalizer cannot request enables.** The producer-side hook is a required-extension field on `SystemValueInfo` plus `addRequireWGSLExtensionDecoration`. A raw `SV_WaveLaneIndex` parameter likewise omits `enable subgroups;`.
 - **The #13572 fix lowers every non-float matrix on WGPU** (`return !isFloatingType(elementType)`), and the existing 32-bit vector-width validation then reports E38203. A regression test built from int64 *scalars* is vacuous, because AST lowering already makes an int64 vector and E38203 fires on the old build too. Build the matrix from a float-matrix cast, and write location-less annotations (the lowered vector has no source location).
 
 ## GPU-free WGSL validation with naga-wasm
@@ -52,11 +56,47 @@ For review this means any WGSL emitter code that does `SLANG_ASSERT(isFloatingTy
 
 **The fix and its test (#13572).** On WGPU targets `shouldLowerMatrixType` now lowers every non-float matrix (`return !isFloatingType(elementType)`), so the WGPU vector-width validation in `slang-ir-validate.cpp` (allowedWidths = 32) reports E38203 instead of the emitter ICEing on `-m` or printing `mat3x3<i64>`. The first regression test built the matrix from int64 scalars, `matrix<int64_t,2,2>(b[0],b[1],b[2],b[3])`; AST lowering already creates an int64 *vector* there, so E38203 fired on the unfixed build too and the test proved nothing. Converting a float matrix (`matrix<int64_t,2,2>(floatMat)`) means no 64-bit vector exists until matrix lowering, and the old build fails the row. The diagnostic then has no source location, so the DIAGNOSTIC_TEST annotations must be location-less, without carets. This is the same spelling sensitivity as the probe above, and the general rule is to run every new diagnostic or negative row against the unfixed build before trusting it [a diagnostic test for WGSL matrix lowering can be vacuous](../learnings/1791809366702-slang-wgsl-a-diagnostic-test-for-matrix-lowering-c.md).
 
-**Source learnings (5):**
+## Buffer-element lowering: `bool` is not host-shareable (#13590)
+
+Consider `struct P { bool b; bool a[2]; }; ConstantBuffer<P> gC;`, or a `StructuredBuffer<bool2>`, compiled with `-target wgsl`. WGSL forbids `bool` inside `var<uniform>`/`var<storage>` because it is not host-shareable, yet Slang emits it and exits 0, so the error surfaces only downstream: naga reports "The type is not host-shareable", and Tint/Chrome reject it as well. The bug dates back to at least v2025.1. It comes from three coupled gaps in `slang-ir-lower-buffer-element-type.cpp`, and fixing any one alone does not help:
+
+1. The only bool→int leaf mapping is in `KhronosTargetBufferElementTypeLoweringPolicy::lowerLeafLogicalType`, behind `shouldEmitSPIRVDirectly`. Every WGSL target, including the Tint WGSL→SPIR-V ones (`isWGPUTarget`), uses `WGSLBufferElementTypeLoweringPolicy`, so a WGSL case added to the Khronos switch has no effect.
+2. The WGSL std140 array-element widening in `getLoweredTypeInfoImpl` overwrites the leaf's `convertLoweredToOriginal` with `VectorReshape`. With a leaf-only fix, `bool[N]` and bool matrices (already arrays of bool vectors after `legalizeMatrixTypes`) then use a `u32` as an `if` condition, so the reshape and the cast have to be composed.
+3. `needsElementLowering` accepts scalar `bool` but not a top-level `vector<bool,N>`, so `StructuredBuffer<bool2>` is skipped. On SPIR-V the same shape fails spirv-val (`OpTypeBool` in StorageBuffer).
+
+An 88-line prototype covering all three made 14 of 16 shapes pass naga with reflection unchanged. The other two are `ByteAddressBuffer` (#10207, a separate path) and push constants, which get no `@binding` on WGSL at all [WGSL bool in uniform/storage buffers: 3 coupled gaps](../learnings/1791890303067-wgsl-bool-in-uniform-storage-buffers-3-coupled-gap.md).
+
+## A null-typed `VectorReshape` swizzle prints as a dangling statement (#13607)
+
+The same std140 widening leads to the next silent failure. Consider:
+
+```slang
+struct S { float a[3]; };
+ConstantBuffer<S> gC;
+RWStructuredBuffer<S> gOut;
+gOut[0].a = gC.a;   // invalid WGSL on master
+// gOut[0] = gC;    // invalid WGSL once #13607 fixes the CopyLogical ICE
+```
+
+Unpacking a std140-widened scalar-array element uses the opcode conversion `ConversionMethod = kIROp_VectorReshape`. In `slang-ir-peephole.cpp` (~:1556), the `kIROp_VectorReshape` case folds a vector→scalar reshape into a swizzle by calling `builder.emitSwizzle(resultType, …)`, where `resultType = as<IRVectorType>(inst->getDataType())` is null whenever the result is a scalar. The untyped swizzle is printed as a bare expression statement such as `gC_0.a_0.data_0[i32(N)].x;`, and a later use refers to an undeclared `_S1`. slangc exits 0 and naga fails with "expected assignment or increment/decrement, found ';'". The fix is `emitSwizzle(inst->getDataType(), …)`; `builder.emitVectorReshape(type, v)` is already typed and safe. The regression test is `tests/wgsl/uniform-array-copy-to-storage.slang` in PR #13607 [VectorReshape→scalar peephole emits a typeless swizzle](../learnings/1791921698811-vectorreshape-scalar-peephole-emits-a-typeless-swi.md), [VectorReshape-to-scalar swizzle was built with a null result type](../learnings/1791924339218-slang-peephole-vectorreshape-to-scalar-swizzle-was.md).
+
+Two review lessons follow. A bare expression statement in WGSL output usually points to an IR inst with a null type, so check the IR before blaming the emitter. And #13607 turned a master ICE (the cross-layout `CopyLogical` on [[wiki/concepts/slang-backends-f0909b0-spirv-legalization-crashes.md]]) into rc 0. When a PR does that, validate the new output with naga or spirv-val and probe shapes beyond the PR's own type: probing only `bool` missed the float arrays that now reached the broken peephole.
+
+## Required `enable` directives: the varying legalizer cannot request them (#13617)
+
+WGSL `@builtin(primitive_index)` is a fragment-only `u32` input. Since wgpu/naga 29.0.0 (and Tint/Chrome 142), a module that uses it must declare `enable primitive_index;`, and the host must request the "primitive-index" device feature. Measured on naga 30.0.1: no enable gives a parse error, an `i32` type gives a validation error, and a vertex-stage use is invalid. On master 8230cdaeb, Slang marks `SV_PrimitiveID` unsupported on WGSL (E55202) in `LegalizeWGSLEntryPointContext::getSystemValueInfo` (slang-ir-legalize-varying-params.cpp ~:5260), and `SystemValueInfo` has no field for a required extension.
+
+The clean producer-side hook is to add that field and have `legalizeSystemValue` attach `addRequireWGSLExtensionDecoration(entryPointFunc, ext)`. The emitter already consumes the decoration: `emitGlobalInstImpl` → `handleRequiredCapabilitiesImpl` (slang-emit-wgsl.cpp ~:1905) feeds the extension tracker, and `emitFrontMatterImpl` writes `enable X;`. Front matter is emitted after the body, so a request made while emitting the body still lands. A prototype validated under naga. A related gap: a raw `uint l : SV_WaveLaneIndex` entry parameter emits `@builtin(subgroup_invocation_id)` without `enable subgroups;`, because only the Wave* intrinsics call `__requireTargetExtension("subgroups")`. The spec requires the enable for subgroup built-in values, even though naga 30.0.1 accepts its absence [WGSL primitive_index needs `enable primitive_index;`](../learnings/1791954062918-wgsl-primitive-index-needs-enable-primitive-index-.md).
+
+**Source learnings (9):**
 - [GPU-free WGSL parse/validate check: naga-wasm via npm (node)](../learnings/1791663423398-gpu-free-wgsl-parse-validate-check-naga-wasm-via-n.md) — `validate(parseWgsl(src))`; caught the §3.9 template-list mis-parse of `vec2<bool>(a < b, a > b)` (#13566)
 - [Slang `{a, b}` initializer list on WGSL lowers to a synthesized ctor call, not kIROp_MakeStruct](../learnings/1791675327416-slang-a-b-initializer-list-on-wgsl-lowers-to-a-syn.md) — use vector `&&`/`||` to reach `select(...)` lists; wrap `defaultEmitInstExpr` in parens rather than copying it
 - [WGSL emitter: matrix negation `T(0) - m` is invalid; use `T(-1) * m`](../learnings/1791749878369-wgsl-emitter-matrix-negation-t-0-m-is-invalid-use-.md) — no matrix unary minus or scalar matrix ctor in WGSL; never valid, not a regression (#13571)
 - [WGSL: int64/uint64 matrices survive legalizeMatrixTypes and reach the emitter as IRMatrixType](../learnings/1791763584478-wgsl-int64-uint64-matrices-survive-legalizematrixt.md) — `mat2x2<i64>` emitted with rc 0; float-only emitter asserts are reachable (Release UB) (#13572)
 - [Slang WGSL: a diagnostic test for matrix lowering can be vacuous — build the int64 matrix from a float-matrix cast](../learnings/1791809366702-slang-wgsl-a-diagnostic-test-for-matrix-lowering-c.md) — #13572 lowers all non-float matrices on WGPU → E38203; scalar-built test fires on the old build; location-less annotations
+- [WGSL bool in uniform/storage buffers: 3 coupled gaps in lower-buffer-element-type](../learnings/1791890303067-wgsl-bool-in-uniform-storage-buffers-3-coupled-gap.md) — Khronos-only bool leaf, std140 reshape overwrites the cast, `needsElementLowering` skips `vector<bool,N>`; 14/16 shapes pass naga (#13590)
+- [VectorReshape→scalar peephole emits a typeless swizzle → silent invalid WGSL](../learnings/1791921698811-vectorreshape-scalar-peephole-emits-a-typeless-swi.md) — null `resultType` swizzle reached via std140 scalar-array unpack; validate output when a PR turns an ICE into rc 0
+- [Slang peephole: VectorReshape-to-scalar swizzle was built with a null result type](../learnings/1791924339218-slang-peephole-vectorreshape-to-scalar-swizzle-was.md) — fix `emitSwizzle(inst->getDataType(), …)`; test `tests/wgsl/uniform-array-copy-to-storage.slang` (PR #13607)
+- [WGSL primitive_index needs `enable primitive_index;` and the legalizer can't request enables today](../learnings/1791954062918-wgsl-primitive-index-needs-enable-primitive-index-.md) — naga ≥29/Tint; `SystemValueInfo` extension field + `addRequireWGSLExtensionDecoration`; `SV_WaveLaneIndex` omits `enable subgroups;` (#13617)
 
 _Catalog: [[wiki/index.md]]_

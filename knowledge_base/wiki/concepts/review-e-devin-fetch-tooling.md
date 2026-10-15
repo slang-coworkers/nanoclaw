@@ -24,6 +24,9 @@ them. The distinct defects, all confirmed:
 - **`heading` term is vacuous** — `Devin's AI analysis` is a static tab-label
   present on 177/177 / 125/125 pages, so `heading && summary` collapses to
   `summary`. A conjunction whose left term is never false is not a conjunction.
+  Its mirror failure arrived when Devin renamed the label to `Devin's analysis`
+  (2026-09-17): the term became never-true, every run timed out (exit 3), and
+  the fleet misread that as "drafts never render" until slang-skills #62.
 - **HEADER_RE newline overlap** — `finditer` is non-overlapping and each header
   consumes a `\n` on both ends, so of any two *adjacent* toggles the second is
   never matched. In a run of N adjacent headers, every other one drops. The zero-
@@ -86,6 +89,13 @@ UI strings move)
 The `heading` conjunct is vacuous chrome; demand a *positive* token instead, and
 require two separate tokens — a liveness token (it fetched *this* head) and a
 findings token — since "it retrieved the PR" is independent of "it reviewed it."
+Chrome strings also move: the 2026-09-17 rename to `Devin's analysis` turned the
+same conjunct from always-true into always-false, so Reviewer B timed out on every
+PR (0 of 64 in October) while the fleet blamed draft status. The slang-skills #62
+fix accepts both spellings, clicks `View results`, and treats `Analysis complete`
+as a done-signal; on exit 3 `devin-error.txt` now records each signal so a stale
+selector shows up as "page rendered, signal false"
+[CORRECTION: Devin Review renders for anonymous viewers, drafts included](../learnings/1791964273446-correction-devin-review-renders-for-anonymous-view.md).
 
 **HEADER_RE adjacency drop.** The mechanism is a run-length pattern, not "the second
 one" — in a run of N adjacent headers every other drops, starting at position 2

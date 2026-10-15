@@ -3,12 +3,12 @@ title: "Slang Autodiff: Target Bugs, Diagnostics, Testing, and Loop-Carried Reco
 type: concept
 group: slang-autodiff-ir
 tags: [autodiff, differentiation, conditional, byte-address-buffer, diagnostics, testing, silent-gradient, member-methods, loop-carried, primal-hoist]
-source_count: 22
+source_count: 23
 ---
 
 # Slang Autodiff: Target Bugs, Diagnostics, Testing, and Loop-Carried Reconstruction
 
-Companion to [[wiki/concepts/slang-autodiff-ir-autodiff-differentiation.md]] (internals and design rules). This page collects the target-specific and conditional-type crashes, the ByteAddressBuffer alignment-diagnostic interactions, autodiff test conventions and silent-wrong-gradient verification, the member-method `this`-threading contract, and the 2026-07 loop-carried reverse-reconstruction incident folds.
+Companion to [[wiki/concepts/slang-autodiff-ir-autodiff-differentiation.md]] (internals and design rules). This page collects the target-specific and conditional-type crashes, the ByteAddressBuffer alignment-diagnostic interactions, autodiff test conventions and silent-wrong-gradient verification, the member-method `this`-threading contract, the false E50101 that reverse-mode CFG normalization produces, and the 2026-07 loop-carried reverse-reconstruction incident folds.
 
 ## TL;DR
 
@@ -21,6 +21,7 @@ Companion to [[wiki/concepts/slang-autodiff-ir-autodiff-differentiation.md]] (in
 - **#12070:** RUNTIME-non-constant loop induction start dangles `counterOffset` — a primal-scope inst fed directly to `emitAdd` with no remap. Fix: add non-constant offset to `storeSet` (never bare-`continue`). The const-only exit-value sibling is NOT a materialization template.
 - **#12071:** vector-by-scalar divide loses gradients only inside a loop; the `Div` transpose is fine (unrolled is exact). Same primal-hoist subsystem; `detach(den)` recovers the pure-vector channels.
 - **`E41901` then `E99999`** means `eliminateAddressInsts` diagnosed an unknown address user but returned OK, and the forward transcriber then had no case for the inst. Fix by adding the inst family to both the addr-elim skip list and `translateNonDiffInst`.
+- **A false E50101 under `bwd_diff` comes from `normalizeCFG`'s final `constructSSA`,** which emits `LoadFromUninitializedMemory` on an infeasible `_runFlag` edge. Fix it at that producer (keep undefined stores in cfg-norm's phi elimination and Poison the undefined values it creates), not in path-insensitive typeflow. Releases up to ~v2026.3 print `error 50101`.
 - **slangpy#1167's `bwds()` "hang" is a compile-time target-specialization fixpoint, not a GPU reverse loop.** When a SlangPy call hangs, establish compile vs dispatch first (was the backward kernel ever generated?) before blaming primal-hoist.
 
 ## Conditional Type Differentiation: Missing Conditional Intrinsics
@@ -73,12 +74,20 @@ Durable testing consequences of the re-diagnosis: the early "no minimal pure-Sla
 
 Fwd/bwd differentiation through **interface (existential) types** surfaced simultaneously as four separate-looking reports that are one root theme — worth clustering under a single owner rather than fixing independently: slang **#13226** (`slangc` HANGS in `specializeModule` on `bwd_diff` of interface-typed `[Differentiable]` params — the canonicalization ping-pong, see [[wiki/concepts/slang-autodiff-performance-and-passes.md]]); slang **#13230** (`spirv-opt` `MergeReturnPass` SIGABRT, #11146-class UAF, on the SlangPy fwd+bwd kernel); slang **#13233** (fwd-diff of an imported `IDifferentiable` struct with an explicit ctor + `no_diff` field emits invalid CUDA/HLSL + wrong SPIR-V — the IR-link annotation drop, see [[wiki/concepts/slang-autodiff-ir-autodiff-differentiation.md]]); slangpy **#1181** (nightly `ci-latest-slang` deterministically crashes the Vulkan xdist worker in `test_differentiable_interface_parameters`). Triage lesson: **a slangpy nightly-integration failure ("Slang branch: master" leg) is frequently the CI *face* of a slang-side compiler bug filed the same day** — cross-reference slangpy CI reds against new slang autodiff/SPIR-V issues before treating them as independent. Several members were UNTRIAGED (no `Dev Reviewed`, no assignee: #13230, #13233) even though a dev-owned sibling (#13226) existed — the cluster view catches the orphans ([Autodiff-through-interface cluster (Sep 2026): one root cause, four issue faces across two repos](../learnings/1790151331446-autodiff-through-interface-cluster-sep-2026-one-ro.md)). A later member of the same theme, #13301 (a custom `[BackwardDerivative]`/`[ForwardDerivative]` silently replaced by the auto-derivative through interface calls), and the higher-order `fwd_diff`/`bwd_diff` composition crashes found while fixing it (#13320-#13323) are on [[wiki/concepts/slang-autodiff-custom-derivatives-and-higher-order.md]].
 
+## False E50101 from reverse-mode `normalizeCFG` (#13612)
+
+Under `bwd_diff`, an interface factory with early returns reports a false E50101 ("dispatch on potentially uninitialized interface"). The undefined value is produced by the final `constructSSA` inside `normalizeCFG` (`slang-ir-autodiff-cfg-norm.cpp:765`), not by `convertFuncToSingleReturnForm` or break elimination. `eliminatePhisInFunc` first turns the return-value phi into a var; region normalization then moves the second return under `if (_runFlag)`; and `readVar` (`slang-ir-ssa.cpp:1121`) emits `LoadFromUninitializedMemory` on the empty false edge, a path that is infeasible because `_runFlag` is true there.
+
+Two tempting fixes hide real errors. Typeflow merges witness sets path-insensitively, so the uninitialized element reaches `analyzeExtractExistentialWitnessTable`; dropping it there whenever a concrete table is also present also silences genuine uninitialized dispatch. Replacing only the newly created undefined values with Poison is not enough either, because `eliminatePhisInFunc` skips stores of `IRUndefined` arguments (`eliminate-phis.cpp:1041`), so `constructSSA` re-creates the user's own undefined value as a fresh inst that looks new. The prototype that works does both at the producer: keep undefined stores in the phi elimination that cfg-norm runs, and Poison the undefined values that appear during it. Every reported shape then compiles, a true-positive control still gets E50101, and 1996/1996 tests pass [reverse-AD normalizeCFG creates undef on infeasible _runFlag paths](../learnings/1791926539548-reverse-ad-normalizecfg-creates-undef-on-infeasibl.md).
+
+Release-sweep notes from the same investigation: releases up to about v2026.3 print `error 50101`, not `E50101`, so grep for `50101`; in a shell loop capture `rc=$?` before any `$(...)` substitution, which resets `$?`; a minimal `-DSLANG_ENABLE_TESTS=OFF` build lacks `slang-glslang`, so `-target spirv` fails with E00100 (spirv-opt) unless that target is built too; and a fresh worktree initializes submodules with `git -c protocol.file.allow=always submodule update --init --recursive` [same](../learnings/1791926539548-reverse-ad-normalizecfg-creates-undef-on-infeasibl.md).
+
 ## slangi Autodiff NativeString into Custom bwd Derivative (#12124)
 
 Passing a `NativeString` into a custom `bwd` derivative under `slangi` faults with a VM constants-OOB (shader-slang/slang#12124). The cause is two independent bugs, not the first-guessed `canTypeBeStored`/`addConstantValue` pair (the fixer applied both of those edits and got zero change): (1) the VM `Call` handler sizes each argument by the callee's parameter-slot size, so it over-reads the deliberate size-0 `VoidLit` placeholder emitted at constants-section end for the custom derivative's non-differentiable param; (2) once that is fixed, the captured `NativeString` is stored into the caller's context but the nested backward-derivative sub-context is extracted at a different offset (an `int` happens to align, an 8-byte pointer does not). The producer fix landed as #12127. The durable lesson: a root cause is only confirmed when applying its fix changes the symptom ([CORRECTION #12124: real cause is VM Call param-slot over-read + producer fix #12127](../learnings/1784149366096-correction-12124-my-slangi-autodiff-nativestring-r.md)).
 
 ---
-**Source learnings (22):**
+**Source learnings (23):**
 - [slang autodiff wires Optional intrinsics but omits the parallel Conditional family](../learnings/1782490233144-slang-autodiff-wires-optional-intrinsics-but-omits.md)
 - [slang #11782: conditional autodiff crash is flag-independent](../learnings/1782488412008-slang-11782-conditional-autodiff-crash-is-flag-ind.md)
 - [slang #11590: 41303 can't live in validation-only slice-1](../learnings/1781318517600-slang-11590-41303-can-t-live-in-validation-only-sl.md)
@@ -101,4 +110,6 @@ Passing a `NativeString` into a custom `bwd` derivative under `slangi` faults wi
 - [autodiff-through-interface cluster (#13226/#13230/#13233/slangpy#1181): one root theme, four faces; a slangpy nightly red is often the CI face of a same-day slang autodiff bug](../learnings/1790151331446-autodiff-through-interface-cluster-sep-2026-one-ro.md)
 - [E41901+E99999 pair: addr-elim returns OK after diagnosing, fwd transcriber has no case; add to both skip lists](../learnings/1790589819865-autodiff-e41901-followed-by-e99999-eliminateaddres.md)
 - [CORRECTION: slangpy#1167 bwds() hang is a compile-time specialization fixpoint, not reverse-loop reconstruction; check hang stage first](../learnings/1790637519259-correction-slangpy-1167-bwds-hang-is-a-slang-compi.md)
+- [Reverse-AD normalizeCFG creates undef on infeasible _runFlag paths (false E50101); old releases print 'error 50101'](../learnings/1791926539548-reverse-ad-normalizecfg-creates-undef-on-infeasibl.md) — #13612 producer is cfg-norm constructSSA; typeflow and Poison-only fixes hide real errors; release-sweep pitfalls
+
 _Catalog: [[wiki/index.md]]_

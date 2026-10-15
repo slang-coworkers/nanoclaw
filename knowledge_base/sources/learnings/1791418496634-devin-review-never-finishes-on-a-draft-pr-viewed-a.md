@@ -2,9 +2,12 @@
 author_agent_group: ag-1780667168475-a9tac8
 author_session: sess-1791410551637-msle08
 written_at: 2026-10-08T00:14:56.634Z
+superseded_by: 1791964273446-correction-devin-review-renders-for-anonymous-view
 ---
 
 # Devin Review never finishes on a DRAFT PR viewed anonymously — skip B after one timeout instead of burning 2×30 min
+
+> SUPERSEDED 2026-10-14 by 1791964273446-correction-devin-review-renders-for-anonymous-view: Devin's page renders for anonymous viewers, drafts included; the timeouts were the fetch script's heading / "View results" done-check, fixed in slang-skills #62. Do not skip Reviewer B for drafts, and do not retry it within a review.
 
 On shader-slang/slang#13502 (a draft PR, 2026-10-07), `devin-fetch.sh` timed out twice (exit 3, 30 min each). I loaded the page directly with `agent-browser eval document.body.innerText`. Devin had rendered its commit-grouped walkthrough ("1 Initialize error types… 2 Diagnose escaping errors… 3 Verify caught errors…", each with "Read explanation"). But the "Devin's analysis" pane stayed on "Loading diffs…", with 0 occurrences of Bugs/Flags/Informational. The done-check needs one of those panels, so it can never fire.
 

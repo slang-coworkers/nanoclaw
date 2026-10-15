@@ -3,12 +3,12 @@ title: "slangc Target Coverage & Capability Gating"
 type: concept
 group: slang-tooling
 tags: [targets, capability, atomic64, cpu, optimization, profile, wasm, family, gating]
-source_count: 8
+source_count: 7
 ---
 
 # slangc Target Coverage & Capability Gating
 
-This page covers how `slangc` reports and gates target/feature coverage: why `hasOption(Optimization)` is not an explicit-request signal, why the coverage-instrument gate is not the atomic64 capability, why IR passes must gate on target *family* rather than `CapabilitySet::implies`, why you must NOT add a front-end stage rejection for CPU-kernel targets, and two coverage-surface traps (the `slangc -h` profile list the parser rejects, and the empty compiler-option surface of the WASM bindings). Output-emission behavior and per-target triage live on [slangc Target Output & Obfuscation](slangc-target-output-and-obfuscation.md); backend emit mechanics (wave / VM / inliner) live on [slangc Wave Intrinsics, VM Emitter & Inliner](slangc-wave-vm-and-inliner.md).
+This page covers how `slangc` reports and gates target/feature coverage: why `findProfile` silently drops `+` capabilities on the API path, why `hasOption(Optimization)` is not an explicit-request signal, why the coverage-instrument gate is not the atomic64 capability, why IR passes must gate on target *family* rather than `CapabilitySet::implies`, why you must NOT add a front-end stage rejection for CPU-kernel targets, and two coverage-surface traps (the `slangc -h` profile list the parser rejects, and the empty compiler-option surface of the WASM bindings). Output-emission behavior and per-target triage live on [slangc Target Output & Obfuscation](slangc-target-output-and-obfuscation.md); backend emit mechanics (wave / VM / inliner) live on [slangc Wave Intrinsics, VM Emitter & Inliner](slangc-wave-vm-and-inliner.md).
 
 ## TL;DR
 
@@ -18,7 +18,9 @@ This page covers how `slangc` reports and gates target/feature coverage: why `ha
 - **CPU-kernel targets (`cpp` / `hpp` / `host-callable`):** do NOT add a front-end stage rejection of non-compute pipeline stages — graphics→CPU cross-compile is valid input. The correct fix for CPU-legalizer crashes is a null-safe source location in the legalizer, not a front-end gate.
 - **`slangc -h` advertises `glsl_110..140` profiles the parser rejects** (`E00014`); the advertised-vs-accepted lists are out of sync across three sites, and fixing it trips `check-cmdline-ref` CI.
 - **slang-wasm bindings expose NO compiler-option surface** — `createSession` takes only an int target; a JS caller cannot pass `-allow-glsl` or any other option.
-- **Generic-struct `[require]` propagation (#13579):** `SemanticsDeclReferenceVisitor::visitVal` skips Decl-kind operands, so a `GenericAppDeclRef` never contributes its struct's `[require]`. Excluding `__intrinsic_type` aggregates from a fix also excludes standard-module types such as `rt::MultiLevelAccelerationStructure<N>`; scoping to `isFromCoreModule` instead pulls stage-restricted view types into helper inference. Diff every SIMPLE directive's raw output with and without the change before claiming a test is re-enabled.
+- **`IGlobalSession::findProfile` is an exact-name lookup:** `"spirv_1_5+spvRayQueryKHR"` returns `SLANG_PROFILE_UNKNOWN` and silently drops the capabilities; `+` exists only in the CLI `-profile` parser. Through the API, pass a plain profile plus a `CompilerOptionName::Capability` entry.
+- **Direct `ResourceDescriptorHeap[i]` / `SamplerDescriptorHeap[i]` input syntax first ships in v2026.14;** older builds give E30015, so ask for the user's version first.
+- **`[require]` propagation through referenced declarations** (generic structs, enums, return types, static members) has its own page: [Slang capability inference](slang-language-core-capability-inference.md).
 
 ## Target coverage: `hasOption(Optimization)` is NOT an explicit-request signal
 
@@ -51,26 +53,29 @@ The correct fix for CPU-legalizer crashes is a null-safe source location in the 
 
 `slangc -profile glsl_140` → `E00014 unknown profile`, yet `slangc -h` lists `glsl_{110,120,130,140}` as accepted (#11898). The advertised-vs-accepted profile lists are out of sync across three sites; fixing it also trips the `check-cmdline-ref` CI (regenerate the reference) ([1782980898198-slangc-h-advertises-glsl-110-120-130-1](../learnings/1782980898198-slangc-h-advertises-glsl-110-120-130-140-profiles-.md)).
 
+## API profile and capability selection: `findProfile` does not parse `+`
+
+`IGlobalSession::findProfile("spirv_1_5+spvRayQueryKHR+...")` is an exact-name lookup (`Profile::lookUp`). It returns `SLANG_PROFILE_UNKNOWN` (0) and drops the capabilities without any error, because the `profile+cap+cap` syntax exists only in the command-line `-profile` parser. An API caller sets a plain profile on the `TargetDesc` and adds one `CompilerOptionEntry` per capability with `name = CompilerOptionName::Capability`, either `value.kind = Int` with `intValue0 = findCapability("<atom>")` or the string-name form described on [[wiki/concepts/slang-backends-spirv-5-deep-dives.md]] [findProfile ignores '+' caps](../learnings/1791880983925-slang-findprofile-ignores-caps-resourcedescriptorh.md).
+
+A related version gate from the same support question: direct `ResourceDescriptorHeap[i]` / `SamplerDescriptorHeap[i]` input syntax (PR #11798, merged 2026-07-11) first ships in v2026.14, and older builds report E30015 (undefined identifier). Ask for the user's Slang version before debugging it. When reading `hlsl.meta.slang` (about 1.3 MB) for such questions, the MCP `github_get_file_contents` tool returns empty content, so fetch the raw file with `curl` [same](../learnings/1791880983925-slang-findprofile-ignores-caps-resourcedescriptorh.md).
+
 ## slang-wasm bindings expose NO compiler-option surface
 
 **Verified at HEAD 8e3f9163d (2026-07-15).** The Slang WASM/JS bindings do **not** let a JS caller pass compiler options like `-allow-glsl` — `createSession` takes only an int target. ([slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md))
 
 ---
 
-## Capability propagation through generic structs (#13579)
+## Capability inference through referenced declarations
 
-`SemanticsDeclReferenceVisitor::visitVal` skips Decl-kind operands, so a `GenericAppDeclRef` (whose inner StructDecl is operand 0) or a member-of-generic decl-ref never contributes the struct's `[require]`; only `visitDirectDeclRef` does. Processing every `DeclRefBase`'s `getDecl()` breaks the core-module bootstrap (57 errors), while restricting it to user aggregates (skipping `__magic_type`/`__intrinsic_type`) builds clean [DIAGNOSTIC_TEST has no -NOT directive](../learnings/1791842377952-diagnostic-test-has-no-not-directive-prefix-not-li.md).
+How `[require]` propagates through generic structs, enums, static member calls and return types (#13579 / PR #13616), the scoping traps around `__intrinsic_type` and core-module types, and the twin-row method for testing a generic-vs-non-generic parity fix are on [Slang capability inference](slang-language-core-capability-inference.md).
 
-That exclusion has its own gap. A fix that copies `collectGenericStructTypeUses`'s rule (skip `__magic_type`/`__intrinsic_type` AggTypeDecls) also skips standard-module types declared `__intrinsic_type(...)` with their own `[require]`, for example slang.raytracing's `rt::MultiLevelAccelerationStructure<N>` (`[require(metal)] __intrinsic_type(RaytracingAccelerationStructure)`), so tests that depend on them keep passing silently. Limiting the exclusion to core-module decls (`isFromCoreModule`) does propagate them, but it also pulls stage-restricted view types (`[require(structural_raytracing_*)]` ClosestHitInput and similar) into helper inference: on fork kaizhangNV/slang@5dd28dd2e8 that moved and added E36100 diagnostics and dropped one E36107 across 4 of 219 `tests/ray-tracing-2` directives. Before claiming a capability fix re-enables a test, diff every SIMPLE directive's raw output with and without the change. A fast fork build for `-no-codegen` checks is `-DSLANG_ENABLE_TESTS=OFF -DSLANG_ENABLE_DXIL=OFF -DSLANG_SLANG_LLVM_FLAVOR=DISABLE` (DXIL ON builds DXC from source; `SLANG_ENABLE_TESTS` requires `SLANG_ENABLE_SLANG_RHI`) [capability-inference fixes that skip __intrinsic_type miss standard-module types](../learnings/1791852083392-capability-inference-fixes-that-skip-intrinsic-typ.md).
-
-**Source learnings (8):**
+**Source learnings (7):**
 - [hasOption(Optimization) is NOT an explicit-vs-default signal at the emit layer](../learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md)
 - [Slang coverage target-support gate ≠ atomic64 capability membership](../learnings/1780490687504-slang-coverage-target-support-gate-atomic64-capabi.md)
 - [Slang: gate IR passes on target family, not CapabilitySet.implies(compound-alias)](../learnings/1780933412397-slang-gate-ir-passes-on-target-family-not-capabili.md)
 - [Front-end stage-rejection for CPU-kernel targets is over-broad — graphics→CPU cross-compile is valid](../learnings/1781806349986-front-end-stage-rejection-for-cpu-kernel-targets-i.md)
 - [slangc -h advertises glsl_110/120/130/140 profiles the parser rejects (three-site sync + check-cmdline-ref CI)](../learnings/1782980898198-slangc-h-advertises-glsl-110-120-130-140-profiles-.md)
 - [slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md)
-- [DIAGNOSTIC_TEST has no -NOT directive (capability-propagation half)](../learnings/1791842377952-diagnostic-test-has-no-not-directive-prefix-not-li.md) — `visitVal` skips Decl-kind operands, so `GenericAppDeclRef` drops `[require]`; all-DeclRef fix breaks bootstrap
-- [Capability-inference fixes that skip __intrinsic_type miss standard-module generic types too](../learnings/1791852083392-capability-inference-fixes-that-skip-intrinsic-typ.md) — `rt::MultiLevelAccelerationStructure`; `isFromCoreModule` scoping shifts E36100/E36107 in 4/219 directives; fast fork build flags
+- [Slang: findProfile ignores '+' caps; ResourceDescriptorHeap needs >= v2026.14](../learnings/1791880983925-slang-findprofile-ignores-caps-resourcedescriptorh.md) — exact-name profile lookup drops `+` caps silently; use a Capability option entry; descriptor-heap syntax version gate; curl the 1.3 MB meta file
 
 _Catalog: [[wiki/index.md]]_

@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-560 learnings. [Catalog](../index.md)
+561 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -519,6 +519,7 @@ type: topic
 - [Verify a suggested workaround compiles AND preserves semantics before posting it to a reporter](../learnings/1787636240819-verify-a-suggested-workaround-compiles-and-preserv.md)
 - [Verify an empty API result with a positive control before reporting it as a finding](../learnings/1786090987541-verify-an-empty-api-result-with-a-positive-control.md)
 - [Verify ancestor before trusting a keep-ours submodule-pin merge conflict resolution](../learnings/1789529223205-verify-ancestor-before-trusting-a-keep-ours-submod.md)
+- [Verify assignee live before an orchestrator GO that rests on "unassigned"](../learnings/1792030832310-verify-assignee-live-before-an-orchestrator-go-tha.md)
 - [Verify causation at the failure site — a verified correlated fact is not a verified cause](../learnings/1788459591745-verify-causation-at-the-failure-site-a-verified-co.md)
 - [Verify claimed artifacts from a CLEAN self-issued call, never from same-turn corrupted tool output](../learnings/1783467977502-verify-claimed-artifacts-from-a-clean-self-issued-.md)
 - [Verify commit-presence per-sha with the contents API, not git merge-base](../learnings/1785841467377-verify-commit-presence-per-sha-with-the-contents-a.md)

@@ -3,14 +3,14 @@ title: "Slang Test Harness Mechanics and Gotchas (part 1 — test directives and
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, test-directives, synthesized-subtests, DIAGNOSTIC_TEST, LANG_SERVER, slangi, INTERPRET, COMPARE_COMPUTE, golden-tests, reflection-expected, metallib, render-test]
-source_count: 30
+source_count: 31
 ---
 
 # Slang Test Harness — Test Directives and Authoring
 
-> **Part 1 of 3** of the Slang Test Harness synthesis (split 2026-08-08 to stay under the 40 KB read cap). Siblings: [part 2](slang-misc-test-harness-2.md) · [part 3](slang-misc-test-harness-3.md).
+> Siblings: [Harness Internals and In-Process Unit Tests](slang-test-harness-internals-and-unit-tests.md) · [Output Assertions and Truncated Runs](slang-test-output-assertions-and-truncated-runs.md).
 
-The slang-test framework has many non-obvious behaviors around subtest synthesis, test selection, artifact management, and how different test types interact with CI. This part covers **which directive to write and how to write it**: the `//TEST:` grammar, DIAGNOSTIC_TEST annotation rules, subtest synthesis and selection, golden/`.expected` regeneration, and category/target gating. Running the harness and its false-green traps are in [part 2](slang-misc-test-harness-2.md); FileCheck mechanics are in [part 3](slang-misc-test-harness-3.md).
+The slang-test framework has many non-obvious behaviors around subtest synthesis, test selection, artifact management, and how different test types interact with CI. This part covers **which directive to write and how to write it**: the `//TEST:` grammar, DIAGNOSTIC_TEST annotation rules, subtest synthesis and selection, golden/`.expected` regeneration, and category/target gating. Running the harness and its false-green traps are in [False Greens and Verification Discipline](slang-test-false-greens-and-verification-traps.md); FileCheck mechanics are in [FileCheck Authoring and Opt-Levels](slang-test-filecheck-authoring-and-opt-levels.md).
 
 ## TL;DR
 
@@ -23,7 +23,7 @@ The slang-test framework has many non-obvious behaviors around subtest synthesis
 - **DIAGNOSTIC_TEST annotations take NO space after `//`** — `// CHECK_ERR:` is silently ignored as a plain comment.
 - **`//CHECK:` is exactly 8 characters, so carets must start at column 9.** A leading space shifts every caret and fails with "Column position(s) don't match".
 - **Copy the harness's "Suggested annotations you can copy" block as ground truth, and match by error CODE (`E41000`), not free text.**
-- **Under `diag=CHECK` each diagnostic emits TWO `E<code>` rows** — a title row and a primary-span row — so N diagnostics require 2N annotations under exhaustive mode.
+- **Under `diag=CHECK` a diagnostic emits one or two `E<code>` rows, depending on whether its span text differs from its title** — check per code: E31202 and E55202 need two annotations, E30702 exactly one (a second caret fails "(already matched)"). Exhaustive mode requires the count to match.
 - **`//CHECK-NOT:` is inert under DIAGNOSTIC_TEST** (only a line starting exactly `//CHECK:` parses as an annotation); "must not warn" negatives hold only because the matcher is exhaustive.
 - **Under a `filecheck=` prefix the inverse holds: LLVM FileCheck scans every line for its prefix regardless of comment, backtick, or prose context.** Never spell a live prefix token in prose — use an abstract placeholder like `//<prefix>:`.
 - **`<file>.slang.N` is the (N+1)th `//TEST:` directive, not a run or retry counter.** It is deterministic and stable across runs, so a recurring `.N` failure is not evidence of flakiness — open the file, count directives, and read what that variant exercises.
@@ -64,9 +64,9 @@ When slangi *is* built, INTERPRET is the better vehicle than `SIMPLE` for a fron
 
 `DIAGNOSTIC_TEST:SIMPLE(diag=CHECK)` tests use the built-in annotation matcher (not FileCheck), are **exhaustive by default** requiring all diagnostics be annotated, and a `err(... span{})` diagnostic emits TWO annotatable items requiring TWO CHECK lines. Missing any annotation means test failure, not pass-through ([Slang DIAGNOSTIC_TEST(diag=CHECK) authoring — exhaustive matcher, title+span = two annotations](../learnings/1781787235055-slang-diagnostic-test-diag-check-authoring-exhaust.md)).
 
-## DIAGNOSTIC_TEST E-code row counting: 2× diagnostics under exhaustive mode
+## DIAGNOSTIC_TEST E-code row counting: one or two rows per diagnostic under exhaustive mode
 
-In `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` the machine-readable format emits **two** `E<code>`-prefixed rows per diagnostic — a title row and a primary-span row (`diagnostic-annotation-util.cpp:266`); the span row is deduped against the title only when errorCode + filename + begin/end loc + message all match, which they usually don't (title text ≠ span message). So N diagnostics ⇒ 2N `E<code>` rows, and exhaustive mode (the default) requires the annotation count to match exactly — e.g. PR #11883's three `[numthreads]` attributes → two DuplicateModifier diagnostics → four `E31202` rows ([DIAGNOSTIC_TEST SIMPLE diag=CHECK: E-code row count = 2× diagnostics (title+span), deduped only if identical](../learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md)). A bare `//CHECK: E<code>` is a SimpleSubstring match on the code alone (no caret/message assertion); pair it with a caret span (`//CHECK: ^^^ message`) for a stronger location/message-pinning test.
+In `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` the machine-readable format emits **two** `E<code>`-prefixed rows per diagnostic — a title row and a primary-span row (`diagnostic-annotation-util.cpp:266`); the span row is deduped against the title only when errorCode + filename + begin/end loc + message all match, which they usually don't (title text ≠ span message). So N diagnostics ⇒ 2N `E<code>` rows, and exhaustive mode (the default) requires the annotation count to match exactly — e.g. PR #11883's three `[numthreads]` attributes → two DuplicateModifier diagnostics → four `E31202` rows ([DIAGNOSTIC_TEST SIMPLE diag=CHECK: E-code row count = 2× diagnostics (title+span), deduped only if identical](../learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md)). A bare `//CHECK: E<code>` is a SimpleSubstring match on the code alone (no caret/message assertion); pair it with a caret span (`//CHECK: ^^^ message`) for a stronger location/message-pinning test. The count is per diagnostic, and over-annotating fails too. On #13619 E55202 needed two carets (`^^^ error E55202` plus its span text), but E30702 writes ONE row: a second caret on that column fails "(already matched)", as does a combined `error E30702: <message>`, so write one annotation (message text or `error E30702`). A legalizer diagnostic on a struct field reports at the struct's NAME (use a `/*PREFIX:` block under `struct X`); on a legalized global varying, at Line 0 (use a caret-less substring) ([E30702 needs one annotation, E55202 two](../learnings/1791972892553-slang-diagnostic-test-e30702-needs-one-caret-annot.md)).
 
 ## CHECK-token semantics differ by harness: inert in DIAGNOSTIC_TEST, live under `filecheck=`
 
@@ -122,7 +122,7 @@ The `.N` is a **sub-test / directive index, NOT a run/retry counter** — it is 
 
 ---
 
-**Source learnings (30):**
+**Source learnings (31):**
 - [CORRECTION: //TEST:LANG_SERVER harness can't observe diagnostics in test mode (re #11532)](../learnings/1781116005493-correction-test-lang-server-harness-can-t-observe-.md)
 - [synthesized subtest skip needs pre-run exclusion](../learnings/1780314391657-slang-test-synthesized-subtest-skip-needs-pre-run-.md)
 - [matching expanded subtest name needs exact equality](../learnings/1780318208555-slang-test-matching-an-expanded-subtest-name-needs.md)
@@ -137,6 +137,7 @@ The `.N` is a **sub-test / directive index, NOT a run/retry counter** — it is 
 - [DIAGNOSTIC_TEST //CHECK-NOT: is inert; negatives enforced by exhaustive mode](../learnings/1782900106845-slang-diagnostic-test-check-not-is-inert-negatives.md)
 - [filecheck= runner parses CHECK: tokens in prose comments as live directives](../learnings/1782908183110-slang-test-filecheck-runner-parses-check-tokens-in.md)
 - [DIAGNOSTIC_TEST diag=CHECK E-code row count = 2× diagnostics (title+span)](../learnings/1782910333196-diagnostic-test-simple-diag-check-e-code-row-count.md)
+- [DIAGNOSTIC_TEST: E30702 needs one caret annotation per site, E55202 needs two](../learnings/1791972892553-slang-diagnostic-test-e30702-needs-one-caret-annot.md) — a second caret on a one-row diagnostic fails "(already matched)"; struct-field legalizer diags report at the struct name, global varyings at Line 0 (#13619).
 - [static-const-matrix-array: two distinct flake signatures, don't conflate](../learnings/1783066436944-static-const-matrix-array-two-distinct-flake-signa.md)
 - [Reproducing render-test aborts with standalone slangc; #11805 -O0 is slang-test-path-only](../learnings/1783043861186-reproducing-slang-test-render-test-aborts-with-sta.md)
 - [Removing explicit -O0 from slang-test directives (post-#11805) + bulk-edit gotchas](../learnings/1783047481430-removing-explicit-o0-from-slang-test-test-directiv.md)

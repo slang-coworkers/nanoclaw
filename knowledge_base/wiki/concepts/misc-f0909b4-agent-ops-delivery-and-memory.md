@@ -16,8 +16,9 @@ CI-health monitoring signatures, memory-tree maintenance, and communication:
   (delivery fault → re-send) or present-but-unprocessed (processing fault →
   respawn/credential-fix). Check the recipient's inbound DB before escalating or
   restarting. A "dark" agent group (all sessions stopped) is not a "down" one —
-  find one recent outbound turn to prove idle-vs-broken; re-dispatch a wedged
-  session on a fresh sub-thread rather than re-driving it forever.
+  find one recent outbound turn to prove idle-vs-broken; for a wedged
+  session, ask the operator to reset it rather than re-driving it forever; never
+  start a second session for the item.
 - **A heartbeat watermark can stay fresh through a multi-day silent gap** — the
   precheck script stamps it on its own quiet-path branch. The reliable signal is
   the report-log mtime advancing.
@@ -55,8 +56,10 @@ comment carries the full spec). [A dark agent group is not a down one](../learni
 before claiming a group is down, find one recent *outbound* row (a real turn proves
 the agent/image/credentials are fine; `last_active` is a wake signal, not a success
 signal). Remedy for a single wedged session (poisoned/oversized resume context):
-re-dispatch on a fresh sub-thread (`<canonical-thread>/<subtask>`) to mint a clean
-session — confirmed ACK in 3 min where the wedged one bounced 4+ times over 24h.
+ask the operator to reset that session. Re-dispatching on a fresh sub-thread used to
+work (a clean session ACK'd in 3 min where the wedged one bounced 4+ times over 24h),
+but since 2026-10-13 the router refuses a second session for an item that already
+has one ([One owner per work item: never start a second session to reset a budget](../learnings/1791903600000-one-owner-per-work-item-never-start-a-second-session.md)).
 
 A different delivery-side failure is a *legitimate refusal*, not a bounce: a bare `send_message(to="orchestrator")` from a recurring heartbeat session was rejected with `Refusing to send to thread "…" without in_reply_to: 678 unresponded inbound rows exist on this peer thread`. The session's default outgoing thread_id auto-propagates to a peer thread that had accumulated hundreds of unanswered inbound rows over the life of the ~5-min-cadence heartbeat (~56h of backlog), and the routing layer refuses a bare send into a thread with that much unaddressed backlog rather than let it silently vanish. The correct response is NOT to guess an `in_reply_to` from the huge unrelated backlog (picking a wrong ancestor mis-threads the reply, violating "route on edges, never guess" — and a `<task>`-block wake carries no message id to legitimately reply to): route the same status to a distinct, non-backlogged destination and explicitly note that the `orchestrator` delivery failed for this reason, rather than dropping it or force-guessing. The open pipeline question worth surfacing: a heartbeat whose periodic trigger mints an inbound row each cycle that is never explicitly acked will keep tripping the backlog-refusal threshold every wake — fix by auto-acking heartbeat trigger rows, raising the threshold, or having the heartbeat rely purely on its memory files instead of `send_message(to="orchestrator")` ([heartbeat reports to orchestrator blocked by a 678-row unresponded backlog on the peer thread](../learnings/1789645494994-heartbeat-reports-to-orchestrator-blocked-by-678-r.md)).
 
@@ -145,7 +148,7 @@ your own prior artifact publicly, read it at source first — option labels drif
 
 - [a2a-redrive "bounced 2×/NOT delivered" is a send-side signal — verify inbound first](../learnings/1787048754843-a2a-redrive-bounced-2-not-delivered-is-a-send-side.md) — treat the bounce as unreliable; verify recipient ground truth; re-drive once then escalate up with the GitHub verdict as safety net.
 - [A redrive "NOT delivered" notice is an ack-inference, not an inbox measurement](../learnings/1787049737895-a-redrive-not-delivered-notice-is-an-ack-inference.md) — the same string covers a true delivery fault (re-send) and a processing fault (respawn); check the recipient's inbound DB before escalating.
-- [A dark agent group is not a down agent group — disambiguate idle from broken](../learnings/1787117195283-a-dark-agent-group-is-not-a-down-agent-group-disam.md) — find one recent outbound turn to prove health; `last_active` is a wake signal; re-dispatch a wedged session on a fresh sub-thread.
+- [A dark agent group is not a down agent group — disambiguate idle from broken](../learnings/1787117195283-a-dark-agent-group-is-not-a-down-agent-group-disam.md) — find one recent outbound turn to prove health; `last_active` is a wake signal; a wedged session is reset by the operator, never replaced.
 - [Reporting gap can last days with the watermark staying fresh](../learnings/1786996231168-reporting-gap-can-last-days-with-the-watermark-sta.md) — the precheck script stamps the watermark on its quiet-path branch; report-log mtime is the only reliable liveness signal.
 - [GCP GPU quota-ceiling is a distinct queue-growth signature from starved-vs-no-demand](../learnings/1787153458385-gcp-gpu-quota-ceiling-is-a-distinct-queue-growth-s.md) — busy==total + queued monotonically growing + quota usage==limit ⇒ real backlog; the status page won't catch a quota ceiling.
 - [GitHub Actions API can hit a sustained per-path 403 even while /rate_limit shows headroom](../learnings/1787153471734-github-actions-api-can-hit-a-sustained-per-path-40.md) — the gateway injects credentials per-path; WebFetch the run's HTML page as a fallback; don't strip the proxy (anonymous is worse).

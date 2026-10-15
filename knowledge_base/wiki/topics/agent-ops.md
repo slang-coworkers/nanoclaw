@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-836 learnings. [Catalog](../index.md)
+842 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -234,11 +234,14 @@ type: topic
 - [codex danger-full-access can mutate your worktree and amend your commit](../learnings/1788103140445-codex-danger-full-access-can-mutate-your-worktree-.md)
 - [Codex MCP down fleet-wide: CLI review works but does not satisfy the critique gate](../learnings/1790406041194-codex-mcp-down-fleet-wide-cli-review-works-but-doe.md)
 - [codex MCP silently missing: codex-cli 0.155.1 has no mcp-server subcommand](../learnings/1790409761238-codex-mcp-silently-missing-codex-cli-0-155-1-has-n.md)
+- [codex OUTPUT_REVIEW can return wiki recall bullets instead of a review — and the gate still records it as approve](../learnings/1792025053096-codex-output-review-can-return-wiki-recall-bullets.md)
+- [codex STAGE prompts can return wiki recall instead of a verdict — re-ask; don't count it](../learnings/1791912236710-codex-stage-prompts-can-return-wiki-recall-instead.md)
 - [codex-cli 0.155.x removed `mcp-server` — silently kills mcp__codex__* and every critique gate fleet-wide](../learnings/1790393694066-codex-cli-0-155-x-removed-mcp-server-silently-kill.md)
 - [codex-critique + critique-gate: /workspace not /tmp, and the gate denies the whole bash block](../learnings/1781222707210-codex-critique-critique-gate-workspace-not-tmp-and.md)
 - [codex-critique artifacts must live under /workspace, not /tmp (ephemeral + invisible to codex)](../learnings/1782156860693-codex-critique-artifacts-must-live-under-workspace.md)
 - [codex-critique Attested lines with backticks are not recorded by the public-comment gate](../learnings/1791593288057-codex-critique-attested-lines-with-backticks-are-n.md)
 - [codex-critique can push scope-expanding over-engineering the human maintainer will reject](../learnings/1788380776351-codex-critique-can-push-scope-expanding-over-engin.md)
+- [codex-critique can return a wiki recall instead of the review — the tracker may record it as approve](../learnings/1791904796575-codex-critique-can-return-a-wiki-recall-instead-of.md)
 - [codex-critique delivery gate: recorded rounds require fresh codex calls, not codex-reply](../learnings/1788800125011-codex-critique-delivery-gate-recorded-rounds-requi.md)
 - [codex-critique developer-instructions must be a TOP-LEVEL param, not inside config](../learnings/1785246644952-codex-critique-developer-instructions-must-be-a-to.md)
 - [codex-critique gate records stage verdicts only from a fresh staged codex call, not from codex-reply](../learnings/1781775272408-codex-critique-gate-records-stage-verdicts-only-fr.md)
@@ -408,6 +411,7 @@ type: topic
 - [Fact-check a fixer's "pre-existing fleet infra" CI escalation against sibling PRs before escalating to operator](../learnings/1784307076980-fact-check-a-fixer-s-pre-existing-fleet-infra-ci-e.md)
 - [Failing check ≠ real blocker on fork-based PRs (triage to watch-only)](../learnings/1780903795100-failing-check-real-blocker-on-fork-based-prs-triag.md)
 - [Failing CI checks on our own bot PRs don't webhook the fixer — surface them](../learnings/1782907713547-failing-ci-checks-on-our-own-bot-prs-don-t-webhook.md)
+- [Falcor CI job log is opaque; codex Attested must be unquoted for comment gate](../learnings/1792009185155-falcor-ci-job-log-is-opaque-codex-attested-must-be.md)
 - [Falcor CI tracking issues from jkiviluoto-nv: park at triaged, cross-link the family](../learnings/1782222346038-falcor-ci-tracking-issues-from-jkiviluoto-nv-park-.md)
 - [Falcor gate CANCELLED (not WAITING) is invisible to blockedChecks — caused a false 'resolved'](../learnings/1790755755702-falcor-gate-cancelled-not-waiting-is-invisible-to-.md)
 - [Falcor gate latency compounds with 1-day artifact retention into unrecoverable failures](../learnings/1787077102662-falcor-gate-latency-compounds-with-1-day-artifact-.md)
@@ -477,6 +481,7 @@ type: topic
 - [GitHub Actions runs API: URL-encode created>= filter via OneCLI proxy](../learnings/1790842481850-github-actions-runs-api-url-encode-created-filter-.md)
 - [GitHub auto-close keywords fire regardless of surrounding "not" context — never write "Closes #N" even to negate it](../learnings/1786773657574-github-auto-close-keywords-fire-regardless-of-surr.md)
 - [GitHub baseRefOid is the base-branch tip, not the PR fork point — and the MatrixLayoutMode base-skew signature](../learnings/1789436666000-github-baserefoid-is-the-base-branch-tip-not-the-p.md)
+- [GitHub closing keywords match anywhere in a PR body — including inside an "Open question: Fixes #N, or …?" line](../learnings/1791933455627-github-closing-keywords-match-anywhere-in-a-pr-bod.md)
 - [GitHub comment EDITs don't notify — human questions get stranded by PATCH-first webhook flow](../learnings/1789477835098-github-comment-edits-don-t-notify-human-questions-.md)
 - [GitHub gateway 401 split: actions+GraphQL down, REST reads OK (diagnostic)](../learnings/1784216892956-github-gateway-401-split-actions-graphql-down-rest.md)
 - [GitHub GraphQL / ProjectsV2 access needs a per-project grant (often unavailable to the bot)](../learnings/legoop-project_graphql_path_routing.md)
@@ -577,6 +582,7 @@ type: topic
 - [okf-synthesis gate SCANNER_FAILED on first run = tool not yet written](../learnings/1790830957687-okf-synthesis-gate-scanner-failed-on-first-run-too.md)
 - [Onboard-repo-to-dashboard issues are ops/infra, not code triage](../learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-not.md)
 - [One destination name can be N concurrent sessions — a filesystem path carries zero attribution](../learnings/1786035415029-one-destination-name-can-be-n-concurrent-sessions-.md)
+- [One owner per work item: never start a second session to reset a budget](../learnings/1791903600000-one-owner-per-work-item-never-start-a-second-session.md)
 - [One PR can be the fix vehicle for multiple triaged issues → multiple fixer chains touch one branch](../learnings/1787779963798-one-pr-can-be-the-fix-vehicle-for-multiple-triaged.md)
 - [OneCLI gateway injection is PATH-SCOPED — cross-org GitHub reads 401, and curl -sf hides it as empty output](../learnings/1785992213588-onecli-gateway-injection-is-path-scoped-cross-org-.md)
 - [OneCLI gateway: api.github.com /repos/* 401 while /rate_limit stays 200](../learnings/1788180429300-onecli-gateway-api-github-com-repos-401-while-rate.md)

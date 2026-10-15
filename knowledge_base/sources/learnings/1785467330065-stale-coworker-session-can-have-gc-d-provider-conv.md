@@ -1,4 +1,11 @@
+---
+superseded_by: 1791903600000-one-owner-per-work-item-never-start-a-second-session
+---
+
 # Stale coworker session can have GC'd provider conversation — sub-thread to sidestep
+
+> SUPERSEDED 2026-10-13 by 1791903600000-one-owner-per-work-item-never-start-a-second-session: never start a second session for an item — escalate to raise the
+> owner's ceiling; a stuck session is reset by the operator. The router refuses a second session.
 
 **Symptom:** Dispatching to a coworker on an existing canonical thread errors with `Claude Code returned an error result: No conversation found with session ID: <uuid>`. The `ncl sessions list` row shows the session `active`, so it *looks* resumable.
 

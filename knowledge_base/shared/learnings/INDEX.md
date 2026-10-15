@@ -4413,6 +4413,7 @@
 - [merge queue evicted lists can be one poisoned head](ag-1776713259045-nax3cr/1791836334459-merge-queue-evicted-lists-can-be-one-poisoned-head.md) — _ag-1776713259045-nax3cr_
 - [verify a parent s timing and line number claims ag](ag-1776713259045-nax3cr/1791857947061-verify-a-parent-s-timing-and-line-number-claims-ag.md) — _ag-1776713259045-nax3cr_
 - [merge queue checks timed out can be a self hosted ](ag-1776713259045-nax3cr/1791873086822-merge-queue-checks-timed-out-can-be-a-self-hosted-.md) — _ag-1776713259045-nax3cr_
+- [payload evicted list misses status only evictions ](ag-1776713259045-nax3cr/1792039063028-payload-evicted-list-misses-status-only-evictions-.md) — _ag-1776713259045-nax3cr_
 - [release ci zero lag now the modal case not the exc](ag-1776919222241-zghq0h/1786671463195-release-ci-zero-lag-now-the-modal-case-not-the-exc.md) — _ag-1776919222241-zghq0h_
 - [first real release ci failure verified runner infr](ag-1776919222241-zghq0h/1786930405064-first-real-release-ci-failure-verified-runner-infr.md) — _ag-1776919222241-zghq0h_
 - [slang nightly agentic tests failures are advisory ](ag-1776919222241-zghq0h/1789142798536-slang-nightly-agentic-tests-failures-are-advisory-.md) — _ag-1776919222241-zghq0h_
@@ -5798,6 +5799,8 @@
 - [associated type alias in core module breaks static](ag-1780667166439-vmjrwe/1792025326251-associated-type-alias-in-core-module-breaks-static.md) — _ag-1780667166439-vmjrwe_
 - [pushing to an auto merge armed pr dismisses the ap](ag-1780667166439-vmjrwe/1792025781326-pushing-to-an-auto-merge-armed-pr-dismisses-the-ap.md) — _ag-1780667166439-vmjrwe_
 - [slang plain tex i v lowers via the setter not kiro](ag-1780667166439-vmjrwe/1792030315427-slang-plain-tex-i-v-lowers-via-the-setter-not-kiro.md) — _ag-1780667166439-vmjrwe_
+- [a yielded bot ci run older than 16h is never auto ](ag-1780667166439-vmjrwe/1792045779452-a-yielded-bot-ci-run-older-than-16h-is-never-auto-.md) — _ag-1780667166439-vmjrwe_
+- [slang internal only texture repro may be public vi](ag-1780667166439-vmjrwe/1792045881495-slang-internal-only-texture-repro-may-be-public-vi.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6328,6 +6331,7 @@
 - [no gpu slangpy validation compile the generated ke](ag-1780667172530-ht5rv2/1791933953974-no-gpu-slangpy-validation-compile-the-generated-ke.md) — _ag-1780667172530-ht5rv2_
 - [downstream slangpy failures can hide later regress](ag-1780667172530-ht5rv2/1791941484429-downstream-slangpy-failures-can-hide-later-regress.md) — _ag-1780667172530-ht5rv2_
 - [slangpy test type resolution texture on device typ](ag-1780667172530-ht5rv2/1791958376051-slangpy-test-type-resolution-texture-on-device-typ.md) — _ag-1780667172530-ht5rv2_
+- [slangpy to ndarray struct innermost exposed as uin](ag-1780667172530-ht5rv2/1792033380879-slangpy-to-ndarray-struct-innermost-exposed-as-uin.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
 - [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [reviewing slangpy slang downstream retypes for a b](ag-1780667174559-cemrtg/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — _ag-1780667174559-cemrtg_
@@ -6346,6 +6350,7 @@
 - [slangpy ci per job test logs while a workflow run ](ag-1780667174559-cemrtg/1791194997507-slangpy-ci-per-job-test-logs-while-a-workflow-run-.md) — _ag-1780667174559-cemrtg_
 - [python h before std headers fix without bumping na](ag-1780667174559-cemrtg/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md) — _ag-1780667174559-cemrtg_
 - [verify a slangpy companion pr against an unmerged ](ag-1780667174559-cemrtg/1791935481120-verify-a-slangpy-companion-pr-against-an-unmerged-.md) — _ag-1780667174559-cemrtg_
+- [read per job github actions logs while the run is ](ag-1780667174559-cemrtg/1792034153195-read-per-job-github-actions-logs-while-the-run-is-.md) — _ag-1780667174559-cemrtg_
 - [approver challenger miss is it reachable is a ques](ag-1783611156430-vvj8oi/1786367763472-approver-challenger-miss-is-it-reachable-is-a-ques.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain record decision returns dec](ag-1783611156430-vvj8oi/1786367859537-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger miss no in tree caller does x ](ag-1783611156430-vvj8oi/1786368454060-approver-challenger-miss-no-in-tree-caller-does-x-.md) — _ag-1783611156430-vvj8oi_

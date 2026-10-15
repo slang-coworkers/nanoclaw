@@ -3,7 +3,7 @@ title: "Reviewer-Run Survival & Review-Tool Operational Infra"
 type: concept
 group: review-process
 tags: [pr-review, pr-approver, reviewer-a, devin, session-teardown, background-wait, budget-cap, critique-gate, runner-ops, infra-abstain]
-source_count: 56
+source_count: 57
 ---
 
 # Reviewer-Run Survival & Review-Tool Operational Infra
@@ -22,7 +22,7 @@ Keeping reviewer and Devin runs alive, invoking them without false skips, postin
 - **A's merge step can drop a subagent's verified crash.** Grep the per-subagent summaries for crash/null/SIGSEGV and reproduce any hit.
 - **Isolate and identify your run.** Launch every A run in a private `REPO_ROOT` worktree and take the run dir from the runner's echo, never newest-mtime. INTEGRITY-FAIL and REVIEW-GUARD FAIL both false-trip: adjudicate by sha match and content.
 - **Run the runner scripts from `/home/node/.claude/skills/`, not read-only `/app/skills`**, and invoke them and `devin-fetch.sh` via `bash` (no exec bit; a by-path call exits 126 with "Permission denied", which a background wrapper reports as a clean exit, so tail each log right after dispatch).
-- **A first Devin timeout (exit 3) means "not done yet."** On the Devin-only tier retry once before NO_REVIEW_SIGNAL; never wrap `devin-fetch.sh` in an outer `timeout` shorter than `--max-minutes`.
+- **A first Devin timeout (exit 3) means "not done yet."** On the approver's Devin-only tier retry once before NO_REVIEW_SIGNAL; in `/slang-pr-review` B runs once and is never retried or gated on `isDraft`. Never wrap `devin-fetch.sh` in an outer `timeout` shorter than `--max-minutes`.
 - **Reconcile `devin-page.txt` against `devin-flags.md`** (the extractor drops Flags). Commit status "unknown" means verify on the pinned head, not abstain.
 - **Never pre-fill `reviewers_complete:true`** before Devin reaches a terminal state.
 - **The critique gate counts only exact `/codex-critique` calls**; DECISION_REVIEW and OUTPUT_REVIEW are separate calls. Read PR data with `gh pr view --json`/`gh graphql`, never `gh api .../pulls`.
@@ -120,7 +120,7 @@ A normal `final-review.md` is ~8–20 KB; a few hundred bytes to ~1.5 KB is a st
 2. Reap the orphaned Chromium (`pkill -f agent-browser`), clear `/tmp/agent-browser-chrome-*`, and delete the stale `devin-error.txt`.
 3. Retry once with a wider window, e.g. `--max-minutes 18 --poll-seconds 45`. On #12107 that returned a full analysis.
 
-Never retry past a `synchronize`; exit 2 (auth wall) and exit 4 (browser launch, self-retried) differ. Checkpoint the pinned commit and clause/challenger state to `tmp/STATE.md` early. A retry is not a guarantee: on #13425 (725-line layout diff) Devin timed out three times (30, 20 and 30 min, exit 3) ([#13425](../learnings/1791132067717-reviewer-a-slang-pr-review-runner-runs-out-of-budg.md)). On the primary harvest tier Devin is best-effort, no retry ([#12107 retry](../learnings/1784074357103-approver-infra-abstain-devin-timeout-on-the-sole-s.md), [reap + retry](../learnings/1783993723797-approver-infra-abstain-devin-only-tier-retry-a-tim.md)).
+Never retry past a `synchronize`; exit 2 (auth wall) and exit 4 (browser launch, self-retried) differ. Checkpoint the pinned commit and clause/challenger state to `tmp/STATE.md` early. A retry is not a guarantee: on #13425 (725-line layout diff) Devin timed out three times (30, 20 and 30 min, exit 3) ([#13425](../learnings/1791132067717-reviewer-a-slang-pr-review-runner-runs-out-of-budg.md)). In the `/slang-pr-review` reviewer workflow B runs once (15-min cap) and is never retried or gated on `isDraft`; from 2026-09-17 to 2026-10-13 every B run failed on the `devin-fetch.sh` done-check defect fixed in slang-skills #62, so on exit 3 read `devin-error.txt` before blaming the PR ([Devin renders for anonymous viewers, drafts included](../learnings/1791964273446-correction-devin-review-renders-for-anonymous-view.md)). On the primary harvest tier Devin is best-effort, no retry ([#12107 retry](../learnings/1784074357103-approver-infra-abstain-devin-timeout-on-the-sole-s.md), [reap + retry](../learnings/1783993723797-approver-infra-abstain-devin-only-tier-retry-a-tim.md)).
 
 **Invocation.** Invoke `bash devin-fetch.sh`; a by-path call exits 126 and fakes a Devin skip ([exec bit](../learnings/1783997801258-approver-devin-fetch-sh-missing-exec-bit-false-ski.md)). Never wrap it in an outer `timeout` shorter than `--max-minutes` (default 30). Exit 124/137 is the wrapper, not the script's 0/2/3/4, and fakes ABSTAIN_INFRA:NO_REVIEW_SIGNAL. On the Devin-only tier, running Devin also makes `commit_match` PASS rather than UNEVALUABLE ([outer timeout](../learnings/1783934997171-approver-infra-abstain-devin-fetch-sh-never-wrap-i.md)). Invoke approver scripts via `python3`/`bash` ([invocation](../learnings/1783960724921-approver-ops-invoke-approver-scripts-via-python3-b.md)).
 
@@ -142,7 +142,7 @@ The gate records a round only when the codex call uses the exact `/codex-critiqu
 
 `reviewers_complete:true` is a harness-integrity assertion checked against disk: true only when `devin-flags.md` exists or a bot review was harvested. Never pre-fill it before Devin is terminal ([reviewers_complete](../learnings/1784049951184-approver-critique-mustfix-never-set-reviewers-comp.md)).
 
-**Source learnings (56):**
+**Source learnings (57):**
 - [run runner scripts from writable /home/node/.claude/skills](../learnings/1789621947264-slang-pr-review-runner-scripts-must-run-from-home-.md)
 - [verify runs survived and cleared the guard](../learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md)
 - [600s stub: recover synthesis from stream.jsonl](../learnings/1783983883017-slang-pr-review-reviewer-a-600s-bg-wait-ceiling-tr.md)
@@ -199,3 +199,4 @@ The gate records a round only when the codex call uses the exact `/codex-critiqu
 - [#13431 lead ends turn; CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1](../learnings/1791168330129-reviewer-a-inner-cli-can-end-its-turn-with-backgro.md)
 - [CORRECTION: #13432 early exit is not the CLI version; stop after one](../learnings/1791209006651-correction-reviewer-a-early-exit-is-not-caused-by-.md)
 - [never end on a background wait loop; #13541 stranded ~11 h](../learnings/1791764268124-never-end-a-reviewer-turn-on-a-background-wait-for.md)
+- [CORRECTION: Devin renders for anonymous viewers, drafts included](../learnings/1791964273446-correction-devin-review-renders-for-anonymous-view.md) — exit-3 timeouts were fetch-script done-check defects (slang-skills #62); reviewer B runs once, never gated on `isDraft`.

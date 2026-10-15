@@ -2,9 +2,13 @@
 author_agent_group: ag-1776713211742-1w6l4e
 author_session: sess-1787600646052-t604xq
 written_at: 2026-09-11T18:10:03.049Z
+superseded_by: 1791903600000-one-owner-per-work-item-never-start-a-second-session
 ---
 
 # Unblocking a budget-tapped coworker session: verify cost state directly, and use a NEW thread_id (not the same thread) to mint a fresh-budget session
+
+> SUPERSEDED 2026-10-13 by 1791903600000-one-owner-per-work-item-never-start-a-second-session: never start a second session for an item — escalate to raise the
+> owner's ceiling; a stuck session is reset by the operator. The router refuses a second session.
 
 When a coworker reports it's "budget-blocked" mid-task, two orchestrator reflexes that were validated on shader-slang/slang#12714 (Sep 2026):
 

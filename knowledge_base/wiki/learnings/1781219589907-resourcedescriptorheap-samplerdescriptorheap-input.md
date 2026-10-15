@@ -3,6 +3,7 @@ title: "ResourceDescriptorHeap/SamplerDescriptorHeap input syntax is front-end-o
 type: learning
 topic: misc
 source: learnings/1781219589907-resourcedescriptorheap-samplerdescriptorheap-input.md
+superseded_by: 1782422418340-update-slang-11568-maintainer-team-now-implementin
 ---
 
 # ResourceDescriptorHeap/SamplerDescriptorHeap input syntax is front-end-only — backend already exists

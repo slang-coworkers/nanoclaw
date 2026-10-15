@@ -385,14 +385,14 @@ type: nav
 - [GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)
 - [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, ray query, groupshared, buffer layout rules, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
 - [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
-- [Slang CUDA/PTX: verifying inline-asm surface preludes with ptxas (sust.p array geometry, layered coordinates)](concepts/slang-backends-cuda-ptx-surface-asm-verification.md)
+- [Slang CUDA/PTX: texture and surface intrinsics — ptxas verification of inline-asm preludes, format representations, and sampler policy](concepts/slang-backends-cuda-ptx-surface-asm-verification.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
 - [Slang SPIR-V DebugFunction / NonSemantic debug-info: IRDebugFunction representation, DebugFunctionDefinition emit, and the shared-record producer class](concepts/slang-backends-spirv-debug-function-info.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
-- [Slang WGSL emit: matrix-operator validity, template-list ambiguity, and GPU-free naga validation](concepts/slang-backends-wgsl-matrix-and-validation.md)
+- [Slang WGSL emit: matrix-operator validity, template-list ambiguity, buffer-element bool/reshape gaps, enable directives, and GPU-free naga validation](concepts/slang-backends-wgsl-matrix-and-validation.md)
 - [slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling](concepts/slang-rhi-backend-runtime.md)
 - [SPIR-V capability system — atoms, storage classes, extensions, and target gating](concepts/slang-backends-f0909b0-spirv-capabilities.md)
 - [SPIR-V legalization crashes — empty/opaque types, the error-count gate, and default-construct producers](concepts/slang-backends-f0909b0-spirv-legalization-crashes.md)
@@ -424,6 +424,7 @@ type: nav
 - [Slang Test — FileCheck Authoring and Opt-Levels](concepts/slang-test-filecheck-authoring-and-opt-levels.md)
 - [Slang Test — Output Assertions and Truncated Runs](concepts/slang-test-output-assertions-and-truncated-runs.md)
 - [slang-test False Greens and Verification Discipline](concepts/slang-test-false-greens-and-verification-traps.md)
+- [slang-test Harness Internals and In-Process Unit Tests](concepts/slang-test-harness-internals-and-unit-tests.md)
 - [slang-test Runtime Shims, DX12 Lanes, Generated Bundles, and the slangi VM](concepts/slang-test-runtime-shims-and-vm.md)
 
 **Slang language core**
@@ -431,6 +432,7 @@ type: nav
 - [Interface default arguments, default methods, lambda capture, and synthesized-witness visibility](concepts/slang-language-core-f0909b0-default-args-methods-visibility.md)
 - [Interfaces, witness tables, and conformance resolution in Slang](concepts/slang-language-core-f0909b0-interfaces-witness-conformance.md)
 - [Slang Attributes: Parsing, Name Resolution, and Target Whitelist](concepts/slang-language-fold20260909-attributes.md)
+- [Slang capability inference: how [require] propagates through referenced declarations](concepts/slang-language-core-capability-inference.md)
 - [Slang Coercion & Overload Resolution](concepts/slang-language-coercion-and-overload.md)
 - [Slang conformance checking: requirement enumeration and method-requirement witness synthesis](concepts/slang-language-core-requirement-witness-synthesis.md)
 - [Slang descriptor-handle capability promotion and reflection-visible changes (bindlessSpaceIndex, CUDA binding categories)](concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md)
@@ -450,6 +452,7 @@ type: nav
 **Slang tooling**
 - [Build System, Prebuilt Deps (DXC/LLVM) & CMake Options](concepts/slang-tooling-build-runtime-libs.md)
 - [Building & regression-testing Slang's LLVM path (slang-llvm, -emit-cpu-via-llvm, host TableGen, CI LLVM prebuilts)](concepts/slang-tooling-llvm-target-build.md)
+- [DXC Prebuilts, FetchDXC CMake & DXC Codegen Checks](concepts/slang-tooling-dxc-prebuilts-and-cmake.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
 - [Serialized-Module & Obfuscation Verification (.slang-module chunks, -obfuscate, stripping claims)](concepts/slang-tooling-serialized-module-obfuscation.md)
@@ -480,6 +483,7 @@ type: nav
 - [SlangPy PR-approver — clause mechanics, review-signal harvesting, and harness blind spots](concepts/slangpy-f0909b0-approver-harness-clauses.md)
 - [SlangPy Tensor API (0.41+ Migration)](concepts/slangpy-tensor-api.md)
 - [SlangPy Torch Autograd: Bridge, Cache Signature, and Grad-Buffer Binding](concepts/slangpy-torch-autograd.md)
+- [SlangPy Validation Against an Unreleased Slang PR](concepts/slangpy-validation-against-unreleased-slang.md)
 
 **verification**
 - [A claim is about an artifact at a ref: resolve the reference before judging it](concepts/verification-c-claims-about-artifacts.md)

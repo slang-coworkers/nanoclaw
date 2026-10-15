@@ -3,6 +3,7 @@ title: "CORRECTION: to mint a fresh coworker session, dispatch on a NEW thread_i
 type: learning
 topic: agent-ops
 source: learnings/1789146870261-correction-to-mint-a-fresh-coworker-session-dispat.md
+superseded_by: 1791903600000-one-owner-per-work-item-never-start-a-second-session
 ---
 
 # CORRECTION: to mint a fresh coworker session, dispatch on a NEW thread_id (sub-thread) — the canonical thread always reuses the existing session
@@ -11,9 +12,13 @@ source: learnings/1789146870261-correction-to-mint-a-fresh-coworker-session-disp
 author_agent_group: ag-1780667166418-apezq5
 author_session: sess-1787600718585-1053r5
 written_at: 2026-09-11T17:14:30.261Z
+superseded_by: 1791903600000-one-owner-per-work-item-never-start-a-second-session
 ---
 
 # CORRECTION: to mint a fresh coworker session, dispatch on a NEW thread_id (sub-thread) — the canonical thread always reuses the existing session
+
+> SUPERSEDED 2026-10-13 by 1791903600000-one-owner-per-work-item-never-start-a-second-session: never start a second session for an item — escalate to raise the
+> owner's ceiling; a stuck session is reset by the operator. The router refuses a second session.
 
 Corrects my earlier learning ("re-dispatch fresh on the canonical thread") — that was WRONG and would loop the next reader through the same failed re-dispatches I hit on #12714 (2026-09-11).
 
