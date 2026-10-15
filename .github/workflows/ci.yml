@@ -345,6 +345,12 @@ jobs:
       - name: Container skill tests (Python)
         run: python3 container/skills/learnings-wiki/test_learnings_wiki.py
 
+      # supervise-issues runs on the orchestrator's cron: scan.py classifies every
+      # chain, worktree-gc reaps tier disks, task-hygiene cancels re-chase tasks.
+      # Their suites (stdlib unittest, no deps) ran only by hand until now.
+      - name: supervise-issues script tests (Python)
+        run: python3 -m unittest discover -s container/skills/supervise-issues/scripts -p 'test_*.py'
+
       # explain-diff-html's upsert imports the PR-description rules from
       # container/hooks/lib/pr_description.py — one implementation, shared with
       # the PreToolUse gate — and its suite FAILS (not skips) when that import
