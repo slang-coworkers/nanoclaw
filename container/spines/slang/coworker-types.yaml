@@ -19,8 +19,6 @@ slang-common:
   context:
     - container/spines/slang/context/layout.md
     - container/spines/slang/context/bot-disclaimer.md
-    # skill-discovery is moved to slang-writer's context — only writers/fixer
-    # need to install new skills. Readers / triagers / reviewers don't.
   skills:
     - slang-build
     - slang-code-reader
@@ -54,12 +52,6 @@ slang-writer:
   invariants:
     # Writer-only ABI/PR/commit rules. Inherited by slang-fixer.
     - container/spines/slang/invariants/code-changes.md
-    # Code-comment discipline (add value, be concise, comment ≠ commit message).
-    - container/spines/slang/invariants/comments.md
-  context:
-    # Pulled in here so writers/fixer can install additional skills, but
-    # readers/triagers/reviewers don't pay for the registry instructions.
-    - container/spines/slang/context/skill-discovery.md
   skills:
     - slang-code-writer
     - slang-docs
@@ -105,13 +97,10 @@ slang-fixer:
   extends: slang-common
   invariants:
     - container/spines/slang/invariants/code-changes.md
-    - container/spines/slang/invariants/comments.md
     # Always-in-context so it survives compaction (unlike the workflow step).
     - container/spines/slang/invariants/peer-review.md
     # Maintainer design direction is the acceptance criteria.
     - container/spines/slang/invariants/maintainer-direction.md
-  context:
-    - container/spines/slang/context/skill-discovery.md
   skills:
     - slang-code-writer
     - slang-docs
@@ -133,8 +122,6 @@ slang-reviewer:
   invariants:
     # Reviewers enforce code-change rules during PR review.
     - container/spines/slang/invariants/code-changes.md
-    # Reviewers flag comment noise / commit-message prose leaking into source.
-    - container/spines/slang/invariants/comments.md
     # Review-output rules — only loaded for slang-reviewer (not slang-fixer
     # or other writers, who don't post reviews).
     - container/spines/slang/invariants/review-output.md
