@@ -2622,7 +2622,7 @@ export async function buildMounts(
     fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
   }
   // gate-pr-description.sh: a PR description set by `gh pr create|edit` or
-  // `gh api …/pulls` stays short (2 lines per section, ≤1,000 chars, no tables),
+  // `gh api …/pulls` stays short (3 lines per section, ≤1,500 chars, no tables),
   // because squash merges copy it into git log; the explanation lives in the
   // explanation comment. Registered for every Claude-surface group, outside the
   // dashboard block above so DASHBOARD_PORT=0 cannot switch it off. Codex groups
