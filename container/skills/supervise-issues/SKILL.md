@@ -73,7 +73,16 @@ These hold across every step below; the steps reference them by number rather th
 - **R10 — Never schedule a recurring task for a single issue/PR.** R1's scan and GitHub webhooks
   already cover state changes, and a per-issue cron never self-cancels — it wakes a fresh container
   forever. For a one-time future check use `--process-after` (no `--recurrence`); for a human blocker,
-  escalate (R7). The only recurrence you schedule is this skill's own 12h cron (below).
+  escalate (R7). The only recurrences you schedule are this skill's own 12h cron and the hourly
+  `task-hygiene` gate (below).
+- **R11 — A re-chase is structured and capped.** Before scheduling a one-shot re-chase/re-check
+  for a parked chain, run `python3 /app/skills/supervise-issues/scripts/task-hygiene.py next
+  <thread_id>` (it reserves the slot — run it only when about to schedule; reuse the name on a
+  retry) and use its `name` and `prompt_prefix` verbatim (`--name rechase-<repo>-<n>-r<k>`,
+  prompt opening `Re-chase gh-issue-<owner>/<repo>-<n> (r<k>):`). Exit code 3 / `allowed: false`
+  means the chain has used its `MAX_RECHASES` (3) re-chases: **do not schedule another** — it is
+  parked and goes into the weekly parked-chains digest. Name every other issue/PR the re-chase
+  depends on as `owner/repo#n`. See *Re-chase one-shots* below.
 
 ## Procedure
 
@@ -339,6 +348,36 @@ GATE
 (On a `ncl`/`python3` error the script exits non-zero → the agent-runner fail-closes and skips the
 tick rather than burning a model tick on a broken gate; the next cron fire retries.)
 
+### Re-chase one-shots (`task-hygiene` gate)
+
+Re-chases used to leak: nothing cancelled one when its issue/PR closed, and each chain scheduled
+the next one forever (2026-10-15: ~110 live one-shots, chains on their 15th re-chase). The
+`task-hygiene` task enforces R11 deterministically with zero model tokens. Its gate,
+`scripts/task-hygiene.py`, runs hourly and:
+
+1. Considers only allow-listed tasks — names `rechase-*` / `re-chase-*` / `recheck-*` /
+   `re-check-*`, per-issue watches (`watch-<n>-*`, `i<n>-*`, `pr<n>-*`), or prompts that open with
+   "Re-chase"/"Re-check". Anything shaped like a core job (supervise, OKF synthesis, worktree GC,
+   nightly, KB sync, release/report, heartbeat, watchdog) is never touched.
+2. Cancels (`ncl tasks cancel --id`) a task when **all** issues/PRs it names are closed or
+   merged. Unknown GitHub state, or a target it cannot parse, keeps the task.
+3. Gives every re-chase of a chain a durable ordinal (the `-r<k>` in its name, else first-seen
+   order in `/workspace/agent/.task-hygiene/state.json`) and cancels one past `MAX_RECHASES`,
+   parking the chain.
+4. Writes `/workspace/agent/reports/parked-chains.md` and `.task-hygiene/{last-run.json,history.log}`
+   (every cancellation is logged there), and wakes you once a week with the digest.
+
+Create it once on the orchestrator (host shell; inside the orchestrator container drop `--group`):
+
+```bash
+ncl tasks create --group <orchestrator-ag-id> --name task-hygiene --recurrence "23 * * * *" \
+  --script $'# nanoclaw-task-timeout: 300\nexec python3 /app/skills/supervise-issues/scripts/task-hygiene.py --gate' \
+  --prompt 'The task-hygiene gate woke you. If data.digest is non-empty, send ONE message to="orchestrator-dashboard" headed "Parked chains (weekly)": one line per entry with thread_id, re-chase count, parked_at and prompt_head, then ask the operator per chain: close it, hand it off, or allow another round (python3 /app/skills/supervise-issues/scripts/task-hygiene.py unpark <thread_id>). If data.errors is non-empty, report them in the same message. Do not schedule any re-chase from this task.'
+```
+
+Preview first with `python3 /app/skills/supervise-issues/scripts/task-hygiene.py --dry-run`
+(no cancels, no state writes). Details: reference.md → *Re-chase hygiene*.
+
 Any custom prompt attached to the scheduled task must keep a `DISCOVER` step (live `ncl sessions
 list`, per R1) *ahead* of any "refresh from tracker" step, and must scope the tracker to "prior
 snapshot for deltas," never "the list of chains."
@@ -362,6 +401,10 @@ Per chain (`threadId` key):
 
 Invariant: every routed+triaged `gh-issue-` chain is in the in-flight set OR `_archived`, never
 absent from both.
+
+Re-chase counts and parked chains live in a separate file owned by `task-hygiene.py`:
+`/workspace/agent/.task-hygiene/state.json` (`chains`, `ordinals`, `parked`, `last_digest_at`).
+Do not edit it by hand; use `task-hygiene.py next|unpark`.
 
 ## When called manually
 
