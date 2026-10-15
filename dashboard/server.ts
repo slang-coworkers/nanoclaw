@@ -2559,13 +2559,15 @@ function refreshSessionCostCache(): void {
     const liveCodexFiles = new Set<string>();
     const liveLedgerPaths = new Set<string>();
 
-    // Ledger pre-pass. A session whose outbound.db `cost_events` has rows is
-    // priced ONLY from that ledger (session-ledger-cost.ts): transcript rotation
-    // deletes large/old transcripts, so the walk below under-reports long
-    // sessions. The source is chosen per SESSION (not per period) and its
-    // transcripts + codex rollouts are then skipped entirely, so a session's
-    // cost is never ledger + transcript. Sessions with no ledger rows (older
-    // runners) keep the transcript/rollout pricing below.
+    // Ledger pre-pass. A session whose outbound.db `cost_events` is EXACT —
+    // every row written by the exact-accounting runner (#2013; see
+    // session-ledger-cost.ts isExactRow) — is priced ONLY from that ledger:
+    // transcript rotation deletes large/old transcripts, so the walk below
+    // under-reports long sessions. The source is chosen per SESSION (not per
+    // period) and its transcripts + codex rollouts are then skipped entirely, so
+    // a session's cost is never ledger + transcript. Sessions with no ledger rows
+    // or with ANY pre-#2013 row (which kept ~1% of output tokens) keep the
+    // transcript/rollout pricing below, exactly as before.
     const ledgerBySession = new Map<string, SessionLedgerCost & { mtimeMs: number }>();
     // Sessions whose outbound.db could not be read this tick (e.g. the runner
     // held the write lock) and that already have a published figure: the
@@ -2586,7 +2588,7 @@ function refreshSessionCostCache(): void {
         const outPath = join(sessionsDir, group.id, sessId, 'outbound.db');
         liveLedgerPaths.add(outPath);
         const lc = getSessionLedgerCost(outPath);
-        if (lc.hasRows) ledgerBySession.set(sessId, lc);
+        if (lc.hasRows && lc.exact) ledgerBySession.set(sessId, lc);
         else if (!lc.ok && sessionCostCache.all.has(sessId)) carrySessions.add(sessId);
       }
     }

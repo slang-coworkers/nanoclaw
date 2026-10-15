@@ -132,7 +132,8 @@ export interface SessionCostEntry {
   unpriced: boolean; // saw usage from a model MODEL_PRICING doesn't know
   /**
    * Where `cost` came from: the session's `cost_events` ledger (outbound.db) when
-   * it has rows, else the transcript + codex-rollout walk. Never a mix — a
+   * every row in it was written by the exact-accounting runner (#2013), else the
+   * transcript + codex-rollout walk. Never a mix — a
    * ledger session's transcripts and rollouts are skipped (session-ledger-cost.ts).
    */
   costSource?: 'ledger' | 'transcript';

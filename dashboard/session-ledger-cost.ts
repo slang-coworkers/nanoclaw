@@ -1,7 +1,7 @@
 /**
  * Per-session cost from the runner's cost LEDGER (`cost_events` in each
  * session's `outbound.db`) — the primary source for the Sessions tab's cost
- * column whenever a session has ledger rows.
+ * column whenever the session's ledger is EXACT (see below).
  *
  * Why: the transcript walk in server.ts (`scanFileCost`) can only price what is
  * still on disk, and transcript rotation deletes large/old transcripts, so a
@@ -23,18 +23,24 @@
  *     copy of session-costs.ts), 1h cache write = 2x input, then add the row's
  *     stored `adjustment_usd`. Unknown model with billed tokens → $0 + unpriced.
  *   - Codex rows: keep `priced_usd` (it already includes `adjustment_usd`).
- *   - One documented exception to "sum every row": when the session carries the
- *     one-time migration seed `adj:<session>:base:<seq>`, rows stamped at the
- *     runner's LEDGER_BASELINE_GEN (-1) and dated at or before that seed are
- *     left out. That seed is the counter's
- *     pre-ledger spend, and the runner stamps the pre-existing codex history at
- *     gen -1 precisely because "its dollars are already inside the single
- *     adjustment; re-counting the repriced tokens would double it"
- *     (poll-loop.ts performLedgerMigrationBaseline). Gen -1 rows dated after
- *     the seed, or in a session with no seed, are history no adjustment covers
- *     (a native-codex session's first metering, a later /clear re-baseline) and
- *     they count. (Codex rows carry a day-granular `ts` — `<day>T00:00:00.000Z`
- *     — so a call from the migration day itself is treated as pre-seed.)
+ *
+ * EXACT-ONLY (no accounting regression). Ledger rows written before the exact
+ * Claude accounting (PR #2013, runner COST_ACCOUNTING_VERSION 3) kept each
+ * call's start-of-stream usage — ~1% of output tokens — so a ledger holding ANY
+ * such row under-reports, and that session keeps the transcript pricing. The
+ * marker is per ROW: since #2013 every Claude call row (base `<id>` and its
+ * `<id>#<seq>` corrections) is written by poll-loop.ts `appendMessageRows` →
+ * `recordClaudeRow` with a non-null accounting identity, stamping `acct_seg`
+ * (column added by #2013's createCostEventsTable). The pre-#2013 path
+ * (`claudeMessageToEvent` → `recordCostEvent`) never sets it. So a ledger is
+ * exact iff (isExactLedger):
+ *   1. the table has the `acct_seg` column (a fixed runner opened it), and
+ *   2. every Claude call row has `acct_seg` set — rows that legitimately carry
+ *      no accounting identity are `adj:` adjustments, `…:residual:…` backstop
+ *      rows and codex rows, whose shapes did not change, and
+ *   3. there is no `adj:<session>:base:<n>` migration seed: it carries the old
+ *      counter's pre-ledger spend (inexact by construction).
+ * A session that fails any test is priced exactly as before this change.
  *
  * Read-only: the DB is opened `readonly` + `fileMustExist`; nothing here writes.
  */
@@ -48,8 +54,8 @@ import { MODEL_PRICING, normalizeModel } from './session-costs.js';
 /** The `cost_events` columns this module reads (one row). */
 export interface LedgerRow {
   id: string;
-  /** `window_gen`; the runner's LEDGER_BASELINE_GEN is -1. Absent on early tables (= 0). */
-  window_gen?: number;
+  /** `acct_seg` — set on every Claude call row by a #2013+ runner; null/absent before. */
+  acct_seg?: number | null;
   ts: string;
   provider: string;
   model: string;
@@ -129,37 +135,63 @@ export interface LedgerDay {
 }
 
 export interface SessionLedgerCost {
-  /** The session has at least one `cost_events` row → the ledger is its cost source. */
+  /** The session has at least one `cost_events` row. */
   hasRows: boolean;
+  /**
+   * Every row was written by the exact-accounting runner (see isExactLedger).
+   * The ledger is the session's cost source only when `hasRows && exact`.
+   */
+  exact: boolean;
   /** The read completed (a failed read is never cached). */
   ok: boolean;
   days: Map<string, LedgerDay>;
   unpriced: boolean;
+  /** Rows folded (stops at the first non-exact row). */
   rowCount: number;
 }
 
-/** The runner's sentinel generation for baselined (pre-existing) codex history. */
-export const LEDGER_BASELINE_GEN = -1;
 /** The runner's one-time migration seed id: `adj:<session>:base:<seq>` (poll-loop.ts). */
 export function isMigrationBaseRow(id: string): boolean {
   return id.startsWith('adj:') && id.includes(':base:');
 }
 
-/** Fold a session's ledger rows into per-day buckets. Pure — the unit under test. */
-export function foldLedgerRows(input: Iterable<LedgerRow>): SessionLedgerCost {
-  const out: SessionLedgerCost = { hasRows: false, ok: true, days: new Map(), unpriced: false, rowCount: 0 };
-  const rows = Array.isArray(input) ? (input as LedgerRow[]) : [...input];
-  // See the module header: the migration seed already holds the dollars of the
-  // history the runner stamped at LEDGER_BASELINE_GEN.
-  // Earliest seed ts ('' = no seed). ISO-8601 Z strings order lexically.
-  let seedTs = '';
-  for (const r of rows) {
-    if (isMigrationBaseRow(String(r.id)) && (seedTs === '' || String(r.ts) < seedTs)) seedTs = String(r.ts);
-  }
-  for (const row of rows) {
+/**
+ * Whether ONE row is consistent with the exact-accounting (#2013+) runner: a
+ * Claude call row must carry `acct_seg`; a migration seed never is; adjustment,
+ * residual and codex rows carry no accounting identity in either version.
+ */
+export function isExactRow(row: LedgerRow): boolean {
+  const id = String(row.id);
+  if (isMigrationBaseRow(id)) return false;
+  if (row.provider === 'codex' || id.startsWith('adj:') || id.includes(':residual:')) return true;
+  return row.acct_seg !== null && row.acct_seg !== undefined;
+}
+
+/**
+ * Fold a session's ledger rows into per-day buckets. Pure — the unit under test.
+ * `hasAcctColumn` is whether the table carries `acct_seg` at all (test 1 of the
+ * module header); a table without it was never opened by a fixed runner.
+ */
+export function foldLedgerRows(input: Iterable<LedgerRow>, hasAcctColumn = true): SessionLedgerCost {
+  const out: SessionLedgerCost = {
+    hasRows: false,
+    exact: hasAcctColumn,
+    ok: true,
+    days: new Map(),
+    unpriced: false,
+    rowCount: 0,
+  };
+  for (const row of input) {
     out.hasRows = true;
     out.rowCount++;
-    if (seedTs && Number(row.window_gen ?? 0) === LEDGER_BASELINE_GEN && String(row.ts) <= seedTs) continue;
+    if (!out.exact || !isExactRow(row)) {
+      // Not this session's cost source (it keeps transcript pricing): stop here
+      // rather than price rows nobody will read — most pre-#2013 sessions land here.
+      out.exact = false;
+      out.days.clear();
+      out.unpriced = false;
+      break;
+    }
     const p = priceLedgerRow(row);
     if (p.unpriced) out.unpriced = true;
     const key = ledgerDayKey(row.ts);
@@ -175,6 +207,15 @@ export function foldLedgerRows(input: Iterable<LedgerRow>): SessionLedgerCost {
 
 const LEDGER_BUSY_TIMEOUT_MS = 100;
 
+const NO_LEDGER: SessionLedgerCost = {
+  hasRows: false,
+  exact: false,
+  ok: true,
+  days: new Map(),
+  unpriced: false,
+  rowCount: 0,
+};
+
 /** Read + fold one outbound.db's ledger. Throws on a read failure (caller decides). */
 export function readLedgerFromDb(dbPath: string): SessionLedgerCost {
   // Short busy timeout: this runs synchronously on the dashboard's event loop,
@@ -183,21 +224,22 @@ export function readLedgerFromDb(dbPath: string): SessionLedgerCost {
   const db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: LEDGER_BUSY_TIMEOUT_MS });
   try {
     const hasTable = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'cost_events'").get();
-    if (!hasTable) return { hasRows: false, ok: true, days: new Map(), unpriced: false, rowCount: 0 };
+    if (!hasTable) return { ...NO_LEDGER, days: new Map() };
     // An early cost_events (pre-adjustment_usd) still prices: the column defaults to 0.
     const cols = new Set(
       (db.prepare("PRAGMA table_info('cost_events')").all() as { name: string }[]).map((c) => c.name),
     );
     const adj = cols.has('adjustment_usd') ? 'adjustment_usd' : '0 AS adjustment_usd';
-    const gen = cols.has('window_gen') ? 'window_gen' : '0 AS window_gen';
+    const hasAcct = cols.has('acct_seg');
+    const acct = hasAcct ? 'acct_seg' : 'NULL AS acct_seg';
     const rows = db
       .prepare(
         `SELECT id, ts, provider, model, input_tokens, cache_read_tokens, cache_write_tokens,
-                cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, priced_usd, ${adj}, ${gen}
+                cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, priced_usd, ${adj}, ${acct}
            FROM cost_events`,
       )
       .iterate() as Iterable<LedgerRow>;
-    return foldLedgerRows(rows);
+    return foldLedgerRows(rows, hasAcct);
   } finally {
     db.close();
   }
@@ -210,16 +252,14 @@ interface CachedLedger {
 }
 const ledgerCache = new Map<string, CachedLedger>();
 
-const NO_LEDGER: SessionLedgerCost = { hasRows: false, ok: true, days: new Map(), unpriced: false, rowCount: 0 };
-
 /**
  * A session's ledger cost, cached per outbound.db keyed on mtime+size (the DB
  * runs journal_mode=DELETE, so every committed write bumps the main file).
  *
  * Missing outbound.db → no ledger (a stat miss is already cheap). A failed read
- * (e.g. the runner holds the write lock) serves the last good LEDGER value for the
- * path; otherwise — no cache, or a cached "no rows" that may since have gained
- * rows — it reports `ok:false`: the source is UNKNOWN this tick, and the caller
+ * (e.g. the runner holds the write lock) serves the last good EXACT-ledger value
+ * for the path; otherwise — no cache, or a cached non-ledger result that may since
+ * have changed — it reports `ok:false`: the source is UNKNOWN this tick, and the caller
  * must not treat that as "no ledger, use the transcript" when it has a previous
  * figure to keep. Failures are never cached.
  */
@@ -240,7 +280,7 @@ export function getSessionLedgerCost(dbPath: string): SessionLedgerCost & { mtim
     ledgerCache.set(dbPath, { mtimeMs: st.mtimeMs, size: st.size, value });
     return { ...value, mtimeMs: st.mtimeMs };
   } catch {
-    if (cached?.value.hasRows) return { ...cached.value, mtimeMs: cached.mtimeMs };
+    if (cached?.value.hasRows && cached.value.exact) return { ...cached.value, mtimeMs: cached.mtimeMs };
     return { ...NO_LEDGER, ok: false, mtimeMs: st.mtimeMs };
   }
 }

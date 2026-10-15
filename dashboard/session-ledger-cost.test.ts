@@ -20,6 +20,7 @@ import {
   resetTransientDashboardStateForTests,
   startServer,
 } from './server.js';
+import { priceCodexUsage } from './codex-costs.js';
 import { MODEL_PRICING, priceUsage } from './session-costs.js';
 import {
   clearLedgerCacheForTests,
@@ -69,7 +70,8 @@ function row(p: Partial<LedgerRow> & { id: string }): LedgerRow {
     // Deliberately WRONG write-time cache on Claude rows: reads must reprice from tokens.
     priced_usd: 999,
     adjustment_usd: 0,
-    window_gen: 1,
+    // A #2013+ runner stamps the accounting segment on every Claude call row.
+    acct_seg: 1,
     ...p,
   };
 }
@@ -80,7 +82,7 @@ function row(p: Partial<LedgerRow> & { id: string }): LedgerRow {
  *  - msg_B: first reported under sonnet, model-corrected to opus (`#1` negative
  *    under sonnet, `#2` full usage under opus) — net = the opus usage only
  *  - a backstop residual and a negative residual claimed back by a late call
- *  - an `adj:` adjustment (dollars, zero tokens) and the migration `adj:…:base:` seed
+ *  - an `adj:` adjustment (dollars, zero tokens)
  *  - a codex call (priced_usd kept)
  *  - one older msg_C (3 days ago) to exercise the period windows
  */
@@ -112,7 +114,6 @@ function fixtureRows(): LedgerRow[] {
     row({ id: 'claude:1:residual:seg1:t1:claude-opus-5-5', output_tokens: 3000, cache_write_tokens: 400 }),
     row({ id: 'claude:1:residual:seg1:c7:claude-opus-5-5', output_tokens: -1000 }),
     row({ id: 'adj:sess-ledger:3', model: 'claude-opus-5-5', adjustment_usd: 2.5, priced_usd: 2.5 }),
-    row({ id: 'adj:sess-ledger:base:1', model: '', adjustment_usd: 10, priced_usd: 10 }),
     row({
       id: 'codex:rollout-x#call-1',
       provider: 'codex',
@@ -129,7 +130,7 @@ function fixtureRows(): LedgerRow[] {
 const msgA = 1000 * OPUS.input + 1000 * OPUS.output + 50_000 * OPUS.cacheRead + 2000 * OPUS.input * 2;
 const msgB = 500 * OPUS.input + 200 * OPUS.output + 100 * OPUS.cacheCreate;
 const residual = 2000 * OPUS.output + 400 * OPUS.cacheCreate;
-const adjustments = 2.5 + 10;
+const adjustments = 2.5;
 const codex = 0.42;
 const msgC = 100 * OPUS.input + 1000 * OPUS.output;
 const TODAY_CLAUDE = msgA + msgB + residual + adjustments;
@@ -141,11 +142,11 @@ function writeLedger(dbPath: string, rows: LedgerRow[]): void {
   db.exec(COST_EVENTS_DDL);
   const ins = db.prepare(
     `INSERT INTO cost_events (id, ts, provider, model, input_tokens, cache_read_tokens, cache_write_tokens,
-       cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, priced_usd, rate_version, adjustment_usd, window_gen, created_at)
+       cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, priced_usd, rate_version, adjustment_usd, acct_seg, created_at)
      VALUES (@id, @ts, @provider, @model, @input_tokens, @cache_read_tokens, @cache_write_tokens,
-       @cache_write_5m_tokens, @cache_write_1h_tokens, @output_tokens, @priced_usd, 1, @adjustment_usd, @window_gen, @ts)`,
+       @cache_write_5m_tokens, @cache_write_1h_tokens, @output_tokens, @priced_usd, 1, @adjustment_usd, @acct_seg, @ts)`,
   );
-  for (const r of rows) ins.run(r);
+  for (const r of rows) ins.run({ ...r, acct_seg: r.acct_seg ?? null });
   db.close();
 }
 
@@ -201,7 +202,8 @@ describe('foldLedgerRows — session total = sum of every row', () => {
   it('folds base + top-up + model correction + residual + adj + codex rows', () => {
     const f = foldLedgerRows(fixtureRows());
     expect(f.hasRows).toBe(true);
-    expect(f.rowCount).toBe(11);
+    expect(f.exact).toBe(true);
+    expect(f.rowCount).toBe(10);
     let total = 0;
     let claude = 0;
     let codexUsd = 0;
@@ -217,53 +219,33 @@ describe('foldLedgerRows — session total = sum of every row', () => {
     expect(f.days.get(THREE_DAYS_AGO.slice(0, 10).replace(/-/g, ''))!.cost).toBeCloseTo(msgC, 12);
   });
 
-  it('drops LEDGER_BASELINE_GEN (-1) rows when the migration seed covers them', () => {
-    // poll-loop.ts performLedgerMigrationBaseline: the seed `adj:<sess>:base:<n>`
-    // holds the counter's pre-ledger spend; the codex history that existed then is
-    // stamped at gen -1 because its dollars are already inside the seed.
-    const rows = [
-      row({ id: 'adj:s:base:1', model: '', adjustment_usd: 10, priced_usd: 10, window_gen: 2 }),
-      row({ id: 'codex:old#1', provider: 'codex', model: 'gpt-5.5', input_tokens: 5, priced_usd: 4, window_gen: -1 }),
-      row({ id: 'codex:new#1', provider: 'codex', model: 'gpt-5.5', input_tokens: 5, priced_usd: 1, window_gen: 2 }),
-    ];
-    const total = [...foldLedgerRows(rows).days.values()].reduce((s, d) => s + d.cost, 0);
-    expect(total).toBeCloseTo(11, 12);
+  it('a ledger with ANY pre-#2013 Claude call row (no acct_seg) is not exact', () => {
+    // A session that ran under the old runner and then the fixed one: mixed.
+    const f = foldLedgerRows([...fixtureRows(), row({ id: 'claude:0:msg_old', output_tokens: 12, acct_seg: null })]);
+    expect(f.hasRows).toBe(true);
+    expect(f.exact).toBe(false);
+    // Order does not matter — a leading pre-fix row is caught as well.
+    expect(foldLedgerRows([row({ id: 'claude:0:msg_old', acct_seg: null }), ...fixtureRows()]).exact).toBe(false);
   });
 
-  it('keeps gen -1 rows dated AFTER the migration seed (a later /clear re-baseline)', () => {
-    const seedTs = '2026-10-01T12:00:00.000Z';
-    const rows = [
-      row({ id: 'adj:s:base:1', ts: seedTs, model: '', adjustment_usd: 10, priced_usd: 10, window_gen: 2 }),
-      row({
-        id: 'codex:pre#1',
-        ts: '2026-10-01T00:00:00.000Z',
-        provider: 'codex',
-        model: 'gpt-5.5',
-        input_tokens: 5,
-        priced_usd: 3,
-        window_gen: -1,
-      }),
-      row({
-        id: 'codex:post#1',
-        ts: '2026-10-05T00:00:00.000Z',
-        provider: 'codex',
-        model: 'gpt-5.5',
-        input_tokens: 5,
-        priced_usd: 4,
-        window_gen: -1,
-      }),
-    ];
-    const total = [...foldLedgerRows(rows).days.values()].reduce((s, d) => s + d.cost, 0);
-    expect(total).toBeCloseTo(14, 12);
+  it('a migration seed (old counter spend) makes the ledger inexact', () => {
+    expect(foldLedgerRows([...fixtureRows(), row({ id: 'adj:s:base:1', model: '', adjustment_usd: 10 })]).exact).toBe(
+      false,
+    );
   });
 
-  it('keeps gen -1 rows when no migration seed covers them (first metering / clear re-baseline)', () => {
-    const rows = [
-      row({ id: 'codex:old#1', provider: 'codex', model: 'gpt-5.5', input_tokens: 5, priced_usd: 4, window_gen: -1 }),
-      row({ id: 'adj:s:3', adjustment_usd: 1, priced_usd: 1 }),
-    ];
-    const total = [...foldLedgerRows(rows).days.values()].reduce((s, d) => s + d.cost, 0);
-    expect(total).toBeCloseTo(5, 12);
+  it('a table without the acct_seg column was never opened by a fixed runner', () => {
+    expect(foldLedgerRows(fixtureRows(), false).exact).toBe(false);
+  });
+
+  it('adj, residual and codex rows need no acct_seg in an exact ledger', () => {
+    const f = foldLedgerRows([
+      row({ id: 'adj:s:3', adjustment_usd: 1, priced_usd: 1, acct_seg: null }),
+      row({ id: 'claude:2:residual:seg1:t1:claude-opus-5-5', output_tokens: 10, acct_seg: null }),
+      row({ id: 'codex:k#1', provider: 'codex', model: 'gpt-5.5', input_tokens: 5, priced_usd: 4, acct_seg: null }),
+    ]);
+    expect(f.exact).toBe(true);
+    expect([...f.days.values()].reduce((t, d) => t + d.cost, 0)).toBeCloseTo(5 + 10 * OPUS.output, 12);
   });
 
   it('an empty ledger is not a ledger session', () => {
@@ -278,8 +260,28 @@ describe('readLedgerFromDb / getSessionLedgerCost', () => {
   it('reads a fixture outbound.db read-only', () => {
     const p = path.join(dir, 'a', 'outbound.db');
     writeLedger(p, fixtureRows());
-    const total = [...readLedgerFromDb(p).days.values()].reduce((s, d) => s + d.cost, 0);
+    const read = readLedgerFromDb(p);
+    expect(read.exact).toBe(true);
+    const total = [...read.days.values()].reduce((s, d) => s + d.cost, 0);
     expect(total).toBeCloseTo(LIFETIME, 9);
+  });
+
+  it('a pre-#2013 table (no acct_seg column) reads as not exact', () => {
+    const p = path.join(dir, 'pre', 'outbound.db');
+    mkdirSync(path.dirname(p), { recursive: true });
+    const db = new Database(p);
+    db.exec(`CREATE TABLE cost_events (id TEXT PRIMARY KEY, ts TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
+      input_tokens INTEGER NOT NULL DEFAULT 0, cache_read_tokens INTEGER NOT NULL DEFAULT 0,
+      cache_write_tokens INTEGER NOT NULL DEFAULT 0, cache_write_5m_tokens INTEGER NOT NULL DEFAULT 0,
+      cache_write_1h_tokens INTEGER NOT NULL DEFAULT 0, output_tokens INTEGER NOT NULL DEFAULT 0,
+      reasoning_tokens INTEGER NOT NULL DEFAULT 0, priced_usd REAL NOT NULL, rate_version INTEGER NOT NULL,
+      adjustment_usd REAL NOT NULL DEFAULT 0, window_gen INTEGER NOT NULL DEFAULT 0, thread_id TEXT, gh_ref TEXT,
+      created_at TEXT NOT NULL)`);
+    db.prepare(
+      "INSERT INTO cost_events (id, ts, provider, model, output_tokens, priced_usd, rate_version, created_at) VALUES ('claude:0:m', ?, 'claude', 'claude-opus-5-5', 10, 0, 1, ?)",
+    ).run(TODAY, TODAY);
+    db.close();
+    expect(readLedgerFromDb(p)).toMatchObject({ hasRows: true, exact: false });
   });
 
   it('reports no ledger for an outbound.db without cost_events, or no file at all', () => {
@@ -405,10 +407,12 @@ describe('GET /api/sessions — ledger is primary, transcript is the fallback, n
       CREATE TABLE sdk_session_routes (sdk_session_id TEXT PRIMARY KEY, nanoclaw_session_id TEXT);
     `);
     db.prepare("INSERT INTO agent_groups (id, name, folder, created_at) VALUES ('ag-1', 'cw', 'cw', ?)").run(TODAY);
-    for (const id of ['sess-ledger', 'sess-old']) {
+    for (const id of ['sess-ledger', 'sess-old', 'sess-mixed']) {
       db.prepare("INSERT INTO sessions (id, agent_group_id, created_at) VALUES (?, 'ag-1', ?)").run(id, TODAY);
     }
-    db.prepare("INSERT INTO sdk_session_routes VALUES ('sdk-ledger', 'sess-ledger'), ('sdk-old', 'sess-old')").run();
+    db.prepare(
+      "INSERT INTO sdk_session_routes VALUES ('sdk-ledger', 'sess-ledger'), ('sdk-old', 'sess-old'), ('sdk-mixed', 'sess-mixed')",
+    ).run();
     db.close();
   }
 
@@ -450,6 +454,29 @@ describe('GET /api/sessions — ledger is primary, transcript is the fallback, n
     const s1 = await getSessions('1d');
     expect(s1['sess-ledger'].cost).toBeCloseTo(TODAY_CLAUDE + codex, 9);
     expect(s1['sess-ledger'].costSource).toBe('ledger');
+  });
+
+  it('a session whose ledger holds ANY pre-#2013 row keeps transcript + rollout pricing, exactly as before', async () => {
+    seedCentral();
+    // Ran under the old runner (one call row without acct_seg), then the fixed one.
+    writeLedger(path.join(DATA_DIR, 'v2-sessions', 'ag-1', 'sess-mixed', 'outbound.db'), [
+      row({ id: 'claude:0:msg_pre', output_tokens: 7, acct_seg: null }),
+      ...fixtureRows(),
+    ]);
+    const transcriptCost = writeTranscript('ag-1', 'sdk-mixed', 'msg_m', 3000);
+    writeCodexRollout('ag-1', 'sess-mixed');
+    const rolloutCost = priceCodexUsage('gpt-5.5', {
+      input_tokens: 1_000_000,
+      cached_input_tokens: 0,
+      output_tokens: 1_000_000,
+    });
+    forceOpenDbForTests();
+    refreshSessionCostsForTests();
+    const mixed = (await getSessions('30d'))['sess-mixed'];
+    expect(mixed.costSource).toBe('transcript');
+    expect(mixed.claudeUsd).toBeCloseTo(transcriptCost, 12);
+    expect(mixed.codexUsd).toBeCloseTo(rolloutCost, 9);
+    expect(mixed.cost).toBeCloseTo(transcriptCost + rolloutCost, 9);
   });
 
   it('keeps the last published figure while a session ledger is unreadable — never a transcript fallback mix', async () => {
