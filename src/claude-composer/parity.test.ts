@@ -116,8 +116,19 @@ describe('composed-document byte parity', () => {
       // `Recall rule` block) and the scheduler's standing-order prose were merged
       // in. Those deltas are declared in `section-reorder.test.ts`, which bounds the
       // live goldens; `anchor-retarget.test.ts` reproduces the frozen pre-reorder set.
-      'base-common': '39145a29df39fd5d',
-      'base-common.persona': '545d883934c209a7',
+      //
+      // Moved an eighth time when the group-scope `ncl` table left the always-loaded
+      // context for `/base-nanoclaw`, the Ambiguity principle stopped pointing at the
+      // retired Mechanics section, and chain-reporting's report-shape line deferred
+      // to Report formats. Declared in `section-reorder.test.ts`.
+      //
+      // Moved a ninth time when `explain-diff-html` left `base-common.skills` for
+      // the `implement` workflow's `uses.skills`: only coworkers whose workflow opens
+      // PRs can act on it, so the one `## Skills` line it added to every typed
+      // document is gone from these goldens. Declared as the one removed line in
+      // `section-reorder.test.ts`.
+      'base-common': 'b07950edefd94e65',
+      'base-common.persona': 'f04669e32f7932a8',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -125,8 +136,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: '4dafc046b0d039a2',
-      'default.persona': 'b4a83fdc874ece94',
+      default: 'c8cbac0602dc8494',
+      'default.persona': '252f553100b930b4',
     };
 
     const actual: Record<string, string> = {};

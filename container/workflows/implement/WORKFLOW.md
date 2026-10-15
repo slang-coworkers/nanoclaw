@@ -5,7 +5,10 @@ type: workflow
 description: 'Execute a plan — make the change, verify, ship. Use after /plan.'
 requires: [code.read, code.edit, test.run, test.gen, repo.pr]
 uses:
-  skills: []
+  # The Ship step's `gh pr create` triggers the PR-created hook, which asks for
+  # the PR's explanation comment via /explain-diff-html; declaring the skill on
+  # the workflow that opens PRs keeps it off read-only coworker types.
+  skills: [explain-diff-html]
   workflows: [plan]
 params:
   target: { type: string, required: true }
@@ -43,4 +46,4 @@ These invariants are part of every workflow that extends this one, whatever step
 3. **Reproduce** {#reproduce} — Bug fixes: failing test. Features: skeleton showing the gap. Commit separately so CI shows the delta. Cannot reproduce → the **blocked procedure** (Invariants).
 4. **Change** {#change} — Minimum edit matching the plan; one subsystem, existing style. Doc-only: edit existing files before creating new. **Architect the commit series so a reviewer can read the change as steps.** Foundations first: each preparatory refactor, rename, extracted helper or new type is its own commit with no behaviour change, buildable and green on its own. Then the behaviour change, one commit per feature or fix, with the test that proves it (the Reproduce commit already leads the series). Follow-ups (formatting, docs) last. Message: `component: imperative summary` + one paragraph of why; a reviewer should be able to approve commits one at a time. Never one "fix everything" commit, never a refactor mixed into a behaviour change. When the work landed as a lump, re-split it: `git reset --soft <base>`, re-commit by slice with `git add <files>`, and re-verify each slice builds.
 5. **Verify** {#verify} — Build per **Build delegation** (Invariants); run full test suite + format + lint + typecheck. PR update: address review feedback first. Failure → **Two attempts, then the blocked procedure** (Invariants).
-6. **Ship** {#ship} — Check the commit series reads in review order (test → fix → cleanup, each buildable), push the branch, open or update the PR as a **draft** (`gh pr create --draft`) with summary + test plan; never mark it ready-for-review or merge it. Notify parent: `PR opened: <url>`.
+6. **Ship** {#ship} — Check the commit series reads in review order (test → fix → cleanup, each buildable), push the branch, open or update the PR as a **draft** (`gh pr create --draft`) with summary + test plan; never mark it ready-for-review or merge it. The PR-created hook then asks for `/explain-diff-html`, which writes the PR's explanation comment for the pushed head. Notify parent: `PR opened: <url>`.
