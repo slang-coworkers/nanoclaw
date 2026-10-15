@@ -327,8 +327,14 @@ def gh_api_body(reader: Reader, segs: list, si: int, args: list[str]) -> str | N
     return body
 
 
-def bodies(reader: Reader) -> list[tuple[str, str]]:
-    """(what, body) for every description this command sets."""
+def bodies(reader: Reader, kinds: tuple[str, ...] = ("pr", "api")) -> list[tuple[str, str]]:
+    """(what, body) for every description this command sets.
+
+    `kinds` selects the commands read: "pr" (`gh pr create|edit`), "api" (`gh api …/pulls`)
+    and "issue" (`gh issue create|edit|comment`, same body flags as `gh pr`). The
+    description gate reads PR text only; the writing gate (gate-ste-writing.sh) reads
+    PR and issue text.
+    """
     found: list[tuple[str, str]] = []
     segs = segments(tokenize(reader.cmd))
     for si, (_sep, seg) in enumerate(segs):
@@ -336,11 +342,15 @@ def bodies(reader: Reader) -> list[tuple[str, str]]:
         if gi is None or (seg[gi] != "gh" and not seg[gi].endswith("/gh")):
             continue
         rest = [t for t in seg[gi + 1:] if not PLACEHOLDER_RE.fullmatch(t)]
-        if len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("create", "edit"):
+        if "pr" in kinds and len(rest) >= 2 and rest[0] == "pr" and rest[1] in ("create", "edit"):
             body = gh_pr_body(reader, segs, si, rest[1], rest[2:])
             if body is not None:
                 found.append((f"gh pr {rest[1]}", body))
-        elif rest and rest[0] == "api":
+        elif "issue" in kinds and len(rest) >= 2 and rest[0] == "issue" and rest[1] in ("create", "edit", "comment"):
+            body = gh_pr_body(reader, segs, si, rest[1], rest[2:])
+            if body is not None:
+                found.append((f"gh issue {rest[1]}", body))
+        elif "api" in kinds and rest and rest[0] == "api":
             body = gh_api_body(reader, segs, si, rest[1:])
             if body is not None:
                 found.append(("gh api …/pulls", body))
