@@ -114,7 +114,7 @@ function unclaimedSkillNames(types: Record<string, CoworkerTypeEntry>, catalog: 
  *                            Walked transitively through `uses.workflows` and
  *                            `extends:` parents, matching `collectTools`.
  */
-function coworkerSkillClosure(manifest: CoworkerManifest, catalog: Record<string, SkillMeta>): Set<string> {
+export function coworkerSkillClosure(manifest: CoworkerManifest, catalog: Record<string, SkillMeta>): Set<string> {
   const names = new Set<string>();
   for (const s of manifest.skills) names.add(s.name);
   for (const bound of Object.values(manifest.bindings)) names.add(bound);

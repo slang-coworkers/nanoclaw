@@ -7,6 +7,9 @@
  * the traps documented below.
  */
 
+import fs from 'node:fs';
+import readline from 'node:readline';
+
 // ── bot identity ─────────────────────────────────────────────────────────────
 // GitHub suffixes App identities with "[bot]", but the SAME actor also appears
 // bare: the reviews API returns `nv-slang-bot[bot]` while other payloads (and
@@ -443,9 +446,32 @@ export function aggregateApproverWeekly(decisions: ApproverWeeklyInput[]): Appro
   for (const w of weeks) {
     // Round to 1 decimal so small-N weeks still show movement without noise.
     w.agreementPct =
-      w.withHumanVerdict > 0
-        ? Math.round(((w.agreedApprove + w.agreedBlock) / w.withHumanVerdict) * 1000) / 10
-        : null;
+      w.withHumanVerdict > 0 ? Math.round(((w.agreedApprove + w.agreedBlock) / w.withHumanVerdict) * 1000) / 10 : null;
   }
   return weeks;
+}
+
+// ── routed head from the host log ───────────────────────────────────────────
+// The host log is one multi-day file and passes 512 MB, Node's string ceiling;
+// a whole-file readFileSync then throws ERR_STRING_TOO_LONG and the funnel
+// stops refreshing. Stream it line by line instead. The match never spans a
+// line (no `s` flag), so per-line matching finds exactly what the whole-file
+// regex did.
+const ROUTED_RE = /dev-routed issue(?: comment)? to peer.*?repo="([^"]+)".*?issue=(\d+)/g;
+
+export function collectRoutedFromLine(line: string, into: Set<string>): void {
+  // eslint-disable-next-line no-control-regex
+  const clean = line.replace(/\x1b\[[0-9;]*m/g, '');
+  ROUTED_RE.lastIndex = 0;
+  let m: RegExpExecArray | null;
+  while ((m = ROUTED_RE.exec(clean))) into.add(`${m[1]}#${m[2]}`);
+}
+
+export async function collectRoutedIssues(logPath: string): Promise<Set<string>> {
+  const out = new Set<string>();
+  const rl = readline.createInterface({ input: fs.createReadStream(logPath, 'utf-8'), crlfDelay: Infinity });
+  for await (const line of rl) {
+    if (line.includes('dev-routed issue')) collectRoutedFromLine(line, out);
+  }
+  return out;
 }

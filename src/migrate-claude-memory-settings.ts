@@ -18,10 +18,31 @@ const LEGACY_MEMORY_SESSION_START_COMMAND = 'bun /app/src/memory-hook.ts';
 // sweep) kept full history back to April. See issue #1327.
 export const CLEANUP_PERIOD_DAYS_NEVER = 3650;
 
+// Claude Code loads a subdirectory's CLAUDE.md the first time the agent reads a
+// file under it. A coworker's auxiliary worktrees (the `-master` base of an
+// issue, the `-verify` build tree, a reviewer's `-revA` checkout, a clarity
+// run's `wt-clarity-*`) each carry the same 36 KB repository CLAUDE.md as the
+// primary tree the agent edits in, so a session that touches two or three of
+// them pays for the same instructions two or three times. These patterns drop
+// the duplicates; the primary tree (`wt-slang-<n>`, `wt-<n>`) is not matched,
+// so the repository's instructions still load once.
+export const SCRATCH_WORKTREE_CLAUDE_MD_EXCLUDES = [
+  '/workspace/agent/wt-*[0-9]-master/CLAUDE.md',
+  '/workspace/agent/wt-*[0-9]-base/CLAUDE.md',
+  '/workspace/agent/wt-*[0-9]-verify/CLAUDE.md',
+  '/workspace/agent/wt-*[0-9]-review/CLAUDE.md',
+  '/workspace/agent/wt-*[0-9]-rev*/CLAUDE.md',
+  '/workspace/agent/wt-*[0-9]-drill*/CLAUDE.md',
+  '/workspace/agent/wt-*[0-9]-r[0-9]*/CLAUDE.md',
+  '/workspace/agent/wt-*[0-9]-ctl/CLAUDE.md',
+  '/workspace/agent/wt-clarity-*/CLAUDE.md',
+];
+
 export const CLAUDE_DEFAULT_SETTINGS =
   JSON.stringify(
     {
       cleanupPeriodDays: CLEANUP_PERIOD_DAYS_NEVER,
+      claudeMdExcludes: SCRATCH_WORKTREE_CLAUDE_MD_EXCLUDES,
       sandbox: {
         enabled: false,
       },
