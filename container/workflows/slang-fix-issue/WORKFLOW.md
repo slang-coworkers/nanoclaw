@@ -65,6 +65,8 @@ uses:
    cd /workspace/agent/wt-{{target_slug}}
    ```
 
+   If the branch already exists, an earlier worktree was reclaimed by the GC: its uncommitted work is on the local branch `wip/reap/wt-{{target_slug}}` in the base clone. Recreate with `git worktree add /workspace/agent/wt-{{target_slug}} wip/reap/wt-{{target_slug}}` and continue from there.
+
    **[MUST NOT] Worktree isolation.** Sibling fixers' `wt-<other-target>/` dirs share this filesystem; you can SEE them but **never read, write, mv, rm, or `git worktree remove`** them. On disk-full, **report `blocked` to parent** with `df -h /workspace/agent` (the worktree volume — a separate, larger disk than the always-healthy root mount) — never reclaim space from sibling dirs.
    - **YOU own (rw):** `wt-{{target_slug}}/`, `active-work/{{target_slug}}/`, `memory/fix-<number>.md`, `patches/fix-<number>.patch`.
    - **Shared (read-only):** `/workspace/agent/slang/` base clone — `git fetch` only.
