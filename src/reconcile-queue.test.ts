@@ -21,6 +21,7 @@ const noopSingletons: Record<SingletonKey, () => Promise<void>> = {
   'singleton:orphan-containers': async () => {},
   'singleton:cost-cards': async () => {},
   'singleton:cost-ceiling-adjustments': async () => {},
+  'singleton:cost-drift-check': async () => {},
 };
 
 beforeEach(() => {
@@ -196,6 +197,7 @@ describe('reconcile queue', () => {
         'singleton:cost-ceiling-adjustments': async () => {
           calls.push('cost-ceiling');
         },
+        'singleton:cost-drift-check': async () => {},
       },
     });
 

@@ -722,6 +722,41 @@ def collect_codex():
     emit("nanoclaw_codex", fields)
 
 
+PRACTICES = os.path.join(NC, "data", "shared", "practices-check", "latest.json")
+
+
+def collect_practices():
+    """Finding counts from the practices check's last run (ops/practices-check/).
+
+    The checks themselves run on their own hourly timer and write latest.json; this
+    collector only re-emits what that file says, so there is exactly one place that
+    decides what a finding is. Emits nanoclaw_practices with the actionable total,
+    the number of checks that could not run, one `c_<check>` field per check, the
+    branch-drift commit count, and the report's age -- a panel of age_sec is the
+    watchdog for the practices timer, the same way heartbeat_unixtime is for this
+    collector. A missing file is reported through nanoclaw_collector.errors rather
+    than as zero findings, because "the check never ran" must not read as "clean".
+    """
+    st = os.stat(PRACTICES)
+    with open(PRACTICES) as fh:
+        d = json.load(fh)
+    counts = d.get("counts") or {}
+    fields = {
+        "age_sec": int(time.time() - st.st_mtime),
+        "findings": int(counts.get("findings") or 0),
+        "unknown": int(counts.get("unknown") or 0),
+        "ok": int(counts.get("ok") or 0),
+        "exit_code": int(d.get("exitCode") or 0),
+        "complete": bool(d.get("complete", False)),
+    }
+    for check, n in (counts.get("perCheck") or {}).items():
+        fields["c_" + str(check).replace("-", "_")] = int(n)
+    for c in d.get("checks") or []:
+        if c.get("check") == "branch-drift" and isinstance(c.get("value"), int):
+            fields["branch_ahead_commits"] = c["value"]
+    emit("nanoclaw_practices", fields, {"status": d.get("status") or "unknown"})
+
+
 def main():
     t0 = time.time()
     now_ms = int(t0 * 1000)
@@ -733,7 +768,8 @@ def main():
                      ("health", collect_health),
                      ("host", lambda: collect_host(state)),
                      ("codex", collect_codex),
-                     ("cost", collect_cost)):
+                     ("cost", collect_cost),
+                     ("practices", collect_practices)):
         try:
             fn()
         except Exception as exc:  # noqa: BLE001 - a collector must never crash the metrics pipeline

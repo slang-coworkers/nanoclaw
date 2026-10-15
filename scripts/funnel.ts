@@ -41,6 +41,7 @@ import {
   type TerminalLookup,
   aggregateApproverWeekly,
   aggregateReviewCycles,
+  collectRoutedIssues,
   countHumanReview,
   diskCacheTtl,
   fetchAllReviewsWith,
@@ -268,11 +269,6 @@ function ghPaged(repo: string, apiPathNoPage: string, perPage = 100): any[] {
   return out;
 }
 
-function stripAnsi(s: string): string {
-  // eslint-disable-next-line no-control-regex
-  return s.replace(/\x1b\[[0-9;]*m/g, '');
-}
-
 interface Row {
   repo: string;
   issue: number | null;
@@ -313,12 +309,14 @@ async function main() {
   mappings = mappings.filter((m) => orgAllowed(m.repo));
 
   // ── Routed head (window-bound): distinct (repo, issue#) from prod dev-route log ──
+  // Streamed: the host log outgrows Node's 512 MB string limit (see collectRoutedIssues).
+  // The rotated predecessor (`nanoclaw.log.1`) is read too, so a rotation does not
+  // drop the routed issues logged before it.
   const routedSet = new Set<string>(); // `${repo}#${issue}`
-  if (!SKIP_ROUTED && fs.existsSync(PROD_LOG)) {
-    const log = stripAnsi(fs.readFileSync(PROD_LOG, 'utf-8'));
-    const re = /dev-routed issue(?: comment)? to peer.*?repo="([^"]+)".*?issue=(\d+)/g;
-    let m: RegExpExecArray | null;
-    while ((m = re.exec(log))) routedSet.add(`${m[1]}#${m[2]}`);
+  if (!SKIP_ROUTED) {
+    for (const f of [`${PROD_LOG}.1`, PROD_LOG]) {
+      if (fs.existsSync(f)) for (const k of await collectRoutedIssues(f)) routedSet.add(k);
+    }
   }
 
   // ── Approver ledger: Verity's shadow-mode decisions, keyed by (repo, pr) ──
@@ -383,9 +381,7 @@ async function main() {
          FROM approval_decisions
          ${provenanceFiltered ? 'WHERE provenance = ?' : ''}
          ORDER BY datetime(decided_at) ASC, rowid ASC`;
-      const decisions = (provenanceFiltered
-        ? await db.all(sql, TRUSTED_PROVENANCE)
-        : await db.all(sql)) as Array<{
+      const decisions = (provenanceFiltered ? await db.all(sql, TRUSTED_PROVENANCE) : await db.all(sql)) as Array<{
         repo: string;
         pr: number;
         decision: string;

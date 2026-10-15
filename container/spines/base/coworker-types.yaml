@@ -10,7 +10,7 @@
 
 base-common:
   abstract: true
-  description: "Universal coworker spine — invariants, workspace conventions. Every project type extends this."
+  description: 'Universal coworker spine — invariants, workspace conventions. Every project type extends this.'
   invariants:
     # Each invariant is in its own file so the file path documents the topic.
     # Order is intentional: behavior (principles → safety → truthfulness →
@@ -52,12 +52,16 @@ base-common:
   skills:
     - base-nanoclaw
     - codex-critique
-    # Every PR a coworker opens gets a self-contained HTML explanation
-    # (background → intuition → code walkthrough → quiz). The PR-created
-    # PostToolUse hook (container/hooks/pr-auto-map.sh) asks for it right
-    # after report_pr_created, so it is part of opening a PR on every
-    # project spine — slang, hermes, and whatever comes next.
-    - explain-diff-html
+  # `explain-diff-html` is not listed here. Its only invocation is the
+  # PR-created hook (container/hooks/pr-auto-map.sh) asking for the PR's
+  # explanation comment right after `gh pr create`, and only the `implement`
+  # workflow opens PRs, so that workflow declares the skill in its
+  # `uses.skills`. Readers, reviewers and triagers never open a PR, and listing
+  # it on every typed coworker cost them a `## Skills` line plus a mirrored
+  # skill dir they could not use. A project workflow that opens PRs without
+  # extending `implement` declares the skill in its own `uses.skills`;
+  # `scripts/validate-templates.ts` fails any type whose rendered body says
+  # `/explain-diff-html` without the skill in reach.
   # Standard chain-role delivery vocabulary — declared ONCE here and inherited
   # by every coworker type via `extends:` (the composer unions delivery_markers
   # across the chain into .critique-delivery-markers; all three gates —
@@ -78,7 +82,7 @@ base-common:
 
 main:
   flat: true
-  description: "Admin orchestrator — slim manager body plus per-project main fragments contributed by project skills."
+  description: 'Admin orchestrator — slim manager body plus per-project main fragments contributed by project skills.'
   identity: container/spines/base/identity/main-body.md
   context:
     # Admin-specific tool guidance (create_agent, wire_agents,
@@ -105,7 +109,7 @@ main:
     - container/spines/base/tool-instructions/ncl-global.md
 
 default:
-  title: "Coworker"
-  description: "Untyped fallback coworker — base spine only, no project skills or workflows."
+  title: 'Coworker'
+  description: 'Untyped fallback coworker — base spine only, no project skills or workflows.'
   extends: base-common
   identity: container/spines/base/identity/default-identity.md
