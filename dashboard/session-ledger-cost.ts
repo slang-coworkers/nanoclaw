@@ -25,13 +25,16 @@
  *   - Codex rows: keep `priced_usd` (it already includes `adjustment_usd`).
  *   - One documented exception to "sum every row": when the session carries the
  *     one-time migration seed `adj:<session>:base:<seq>`, rows stamped at the
- *     runner's LEDGER_BASELINE_GEN (-1) are left out. That seed is the counter's
+ *     runner's LEDGER_BASELINE_GEN (-1) and dated at or before that seed are
+ *     left out. That seed is the counter's
  *     pre-ledger spend, and the runner stamps the pre-existing codex history at
  *     gen -1 precisely because "its dollars are already inside the single
  *     adjustment; re-counting the repriced tokens would double it"
- *     (poll-loop.ts performLedgerMigrationBaseline). Without the seed, gen -1
- *     rows are history no adjustment covers (a native-codex session's first
- *     metering, a /clear re-baseline) and they count.
+ *     (poll-loop.ts performLedgerMigrationBaseline). Gen -1 rows dated after
+ *     the seed, or in a session with no seed, are history no adjustment covers
+ *     (a native-codex session's first metering, a later /clear re-baseline) and
+ *     they count. (Codex rows carry a day-granular `ts` — `<day>T00:00:00.000Z`
+ *     — so a call from the migration day itself is treated as pre-seed.)
  *
  * Read-only: the DB is opened `readonly` + `fileMustExist`; nothing here writes.
  */
@@ -148,11 +151,15 @@ export function foldLedgerRows(input: Iterable<LedgerRow>): SessionLedgerCost {
   const rows = Array.isArray(input) ? (input as LedgerRow[]) : [...input];
   // See the module header: the migration seed already holds the dollars of the
   // history the runner stamped at LEDGER_BASELINE_GEN.
-  const migrated = rows.some((r) => isMigrationBaseRow(String(r.id)));
+  // Earliest seed ts ('' = no seed). ISO-8601 Z strings order lexically.
+  let seedTs = '';
+  for (const r of rows) {
+    if (isMigrationBaseRow(String(r.id)) && (seedTs === '' || String(r.ts) < seedTs)) seedTs = String(r.ts);
+  }
   for (const row of rows) {
     out.hasRows = true;
     out.rowCount++;
-    if (migrated && Number(row.window_gen ?? 0) === LEDGER_BASELINE_GEN) continue;
+    if (seedTs && Number(row.window_gen ?? 0) === LEDGER_BASELINE_GEN && String(row.ts) <= seedTs) continue;
     const p = priceLedgerRow(row);
     if (p.unpriced) out.unpriced = true;
     const key = ledgerDayKey(row.ts);

@@ -230,6 +230,33 @@ describe('foldLedgerRows — session total = sum of every row', () => {
     expect(total).toBeCloseTo(11, 12);
   });
 
+  it('keeps gen -1 rows dated AFTER the migration seed (a later /clear re-baseline)', () => {
+    const seedTs = '2026-10-01T12:00:00.000Z';
+    const rows = [
+      row({ id: 'adj:s:base:1', ts: seedTs, model: '', adjustment_usd: 10, priced_usd: 10, window_gen: 2 }),
+      row({
+        id: 'codex:pre#1',
+        ts: '2026-10-01T00:00:00.000Z',
+        provider: 'codex',
+        model: 'gpt-5.5',
+        input_tokens: 5,
+        priced_usd: 3,
+        window_gen: -1,
+      }),
+      row({
+        id: 'codex:post#1',
+        ts: '2026-10-05T00:00:00.000Z',
+        provider: 'codex',
+        model: 'gpt-5.5',
+        input_tokens: 5,
+        priced_usd: 4,
+        window_gen: -1,
+      }),
+    ];
+    const total = [...foldLedgerRows(rows).days.values()].reduce((s, d) => s + d.cost, 0);
+    expect(total).toBeCloseTo(14, 12);
+  });
+
   it('keeps gen -1 rows when no migration seed covers them (first metering / clear re-baseline)', () => {
     const rows = [
       row({ id: 'codex:old#1', provider: 'codex', model: 'gpt-5.5', input_tokens: 5, priced_usd: 4, window_gen: -1 }),
