@@ -1,68 +1,59 @@
 #!/usr/bin/env python3
-"""worktree-gc.py — deterministic worktree reclaim classifier for §8.
+"""worktree-gc.py — deterministic worktree reclaim classifier.
 
-§8's reap decision used to be a hard binary (REAP if PR merged/closed OR issue
-closed; else KEEP). That binary is *why* the slang-fixer volume once filled to
-ENOSPC: an OPEN PR that has been dead for a month is indistinguishable from one
-merging today, so nothing between pressure events is ever reclaimable. This
-script carves a third tier — STALE-OPEN — out of KEEP, and it is the single
-source of truth for the thresholds (SKILL.md / reference.md reference these
-constants by name and MUST NOT restate the numbers as prose).
+Every tier (fixer, reviewer, triager, slangpy-*) runs `worktree-gc-run.sh` as a
+gated task inside its own container; that script discovers the tier's worktrees,
+resolves issue/PR state with `gh`, and hands the set to this module. The
+supervisor's §8 only reads the reports. The thresholds below are the single
+source of truth: SKILL.md / reference.md reference them by name and never
+restate the numbers.
 
-Four tiers (see reference.md → *Worktree GC*):
+Four tiers:
 
-  REAP       PR MERGED/CLOSED, or issue CLOSED       → save-then-remove worktree
-  KEEP       issue OPEN + PR OPEN active, or running → leave untouched
-  STALE-OPEN issue OPEN + PR OPEN idle > N days,     → reclaim regenerable build/
-             no running session, under disk pressure   IN PLACE (never the worktree)
-  NO-PR      issue OPEN, no PR / no number in name   → wake owner to confirm
+  REAP        remove the worktree (after saving uncommitted work to a local
+              `wip/reap/<name>` branch). Primary fix trees whose PR is
+              MERGED/CLOSED, or whose issue is CLOSED with no PR; primary trees
+              with no PR idle > NOPR_IDLE_DAYS; every scratch tree whose PR is
+              MERGED/CLOSED or that is idle > SCRATCH_IDLE_DAYS.
+  STALE-OPEN  primary tree whose PR is OPEN but idle > STALE_OPEN_IDLE_DAYS:
+              reclaim the regenerable `build/` in place, never the worktree.
+  KEEP        anything with a running session, anything touched within
+              MIN_IDLE_DAYS, scratch trees still in use, open PRs still active.
+  NO-PR       primary tree, issue OPEN, no PR yet, not idle enough to reap.
 
-STALE-OPEN reclaims only the gitignored `build/` cmake output — source, branch,
-uncommitted work, and the PR are untouched, so a still-live PR can still land
-(the worktree survives). It fires only under pressure and only until the target
-free is met, oldest-PR-first, so a healthy disk churns nothing.
+`kind` tells primary from scratch. A primary tree is a tier's fix checkout
+(`wt-slang-<n>`, `wt-slangpy-<n>`, `wt-slang-pr-<n>`, …); everything else —
+`wt-<n>-verify`, `wt-<n>-master`, `wt-<n>-revA`, `wt-clarity-*`, nested or
+freehand names — is scratch that holds no work the PR does not already hold.
+`idle_days` is filesystem idleness (index, build log, directory mtimes);
+`pr_idle_days` is GitHub idleness of the open PR.
 
-CRITICAL tier: below CRITICAL_GATE_GB (ENOSPC-imminent) the build-reclaim pool
-widens to also include idle KEEP builds — open PRs touched within 14d but idle
-> CRITICAL_IDLE_DAYS with no running session (the 7GB fixer builds routine
-pressure can't touch). Still build-only, still never the worktree. This is the
-lever the 2026-07-13 emergency lacked: at <5GB free the crash risk outweighs
-one rebuild's churn.
+`reclaim` (build-only) always holds every STALE-OPEN tree with a build. Under
+disk pressure (free below PRESSURE_GATE_PCT of the volume) it widens to KEEP
+trees whose open PR is idle > PRESSURE_IDLE_DAYS, and below CRITICAL_GATE_PCT to
+idle > CRITICAL_IDLE_DAYS, most-idle first; the projection aims at
+TARGET_FREE_PCT free. Without `total_gb` in the payload the share is unknown and
+only STALE-OPEN builds are reclaimed. Reclaim deletes `<worktree>/build` and nothing else, so
+`build_size_gb` — never `size_gb` — is what the projection adds; an unmeasured
+build counts as 0 (under-projecting keeps the executor going, over-projecting
+made a run stop with the disk still full). `summary.projected_free_gb` is a
+lower bound: the executor re-measures with `df` and stops on that.
 
-MEASURE `build/`, NOT THE WORKTREE. Every reclaim deletes `<worktree>/build` and
-nothing else, so `build_size_gb` — not `size_gb` — is what a reclaim frees.
-Discovery used to report the whole-worktree `du` as the reclaimable amount, and
-the projection added that, so a plan could claim it had reached TARGET_FREE_GB
-after deleting a fraction of it and STOP while the filesystem was still under
-ENOSPC pressure. A worktree whose `build/` was never measured counts as ZERO
-here: under-projecting keeps the supervisor deleting, over-projecting is what
-made it stop early.
-
-The projection is a LOWER BOUND, never a result. `summary.projected_free_gb`
-says what the plan would free if every build is exactly its measurement; the
-caller must re-measure ACTUAL free space with `df` after each deletion and stop
-on that, never on the projection (see reference.md → *Worktree GC*).
-
-Pure I/O split (mirrors pull-universe.sh → scan.py): the caller resolves each
-worktree's gh state and passes it in as JSON; `classify()` and `select()` are
-pure and tested by test_worktree_gc.py. Input schema (stdin or --in):
+Input (stdin):
 
   {
-    "free_gb": 2,
-    "running_dirs": ["wt-slang-12073", ...],   # dirs with a live/running session
+    "free_gb": 2, "total_gb": 2481,
+    "running_dirs": ["wt-slang-12073", ...],
     "worktrees": [
-      {"dir": "wt-slang-11511", "size_gb": 6.7, "build_size_gb": 4.1,
-       "has_build": true, "issue_state": "OPEN", "pr_state": "OPEN",
-       "pr_idle_days": 34},
+      {"dir": "wt-slang-11511", "kind": "primary", "idle_days": 3,
+       "size_gb": 6.7, "build_size_gb": 4.1, "has_build": true,
+       "issue_state": "OPEN", "pr_state": "OPEN", "pr_idle_days": 34},
       ...
     ]
   }
 
-`size_gb` is the whole worktree and is reported only. `build_size_gb` is the
-`build/` directory alone and is the ONLY figure the reclaim math uses.
-
-Output: {"tiers": {...}, "reclaim": [...], "summary": {...}} — `reclaim` is the
-ordered STALE-OPEN build-reclaim dispatch list (empty unless under pressure).
+Output: {"tiers": {...}, "reclaim": [...], "summary": {...}}. Each worktree
+gets a `gc_reason` string explaining its tier.
 
 Run: python3 scripts/worktree-gc.py < payload.json
 Test: python3 scripts/test_worktree_gc.py
@@ -72,55 +63,73 @@ import json
 import sys
 
 # ─── Thresholds — the ONLY place these live. Markdown references them by name. ───
-STALE_OPEN_IDLE_DAYS = 14   # PR untouched longer than this + no running session → STALE-OPEN
-PRESSURE_GATE_GB = 150      # only reclaim STALE-OPEN builds when free < this
-TARGET_FREE_GB = 170        # stop reclaiming once free would reach this
-CRITICAL_GATE_GB = 5        # below this = ENOSPC-imminent: widen reclaim to idle KEEP builds too
+STALE_OPEN_IDLE_DAYS = 14   # open PR untouched longer than this → STALE-OPEN (build/ reclaimed)
+SCRATCH_IDLE_DAYS = 2       # scratch tree idle longer than this → REAP
+NOPR_IDLE_DAYS = 30         # primary tree with no PR idle longer than this → REAP
+MIN_IDLE_DAYS = 1           # nothing touched within this many days is reaped or reclaimed
+PRESSURE_GATE_PCT = 25      # free below this share of the volume → idle KEEP builds join the reclaim list
+PRESSURE_IDLE_DAYS = 7      # under pressure, a KEEP build whose PR is idle > this is reclaimable
+TARGET_FREE_PCT = 30        # projection target once under pressure (hysteresis above the gate)
+CRITICAL_GATE_PCT = 2       # free below this share → ENOSPC-imminent
 CRITICAL_IDLE_DAYS = 2      # under critical pressure, a KEEP build idle > this is reclaimable
+
+FINAL_PR_STATES = ("MERGED", "CLOSED")
+
+
+def _idle(wt):
+    v = wt.get("idle_days")
+    return float(v) if isinstance(v, (int, float)) and not isinstance(v, bool) else None
 
 
 def classify(wt, running_dirs):
-    """Pure per-worktree tier decision. `wt` is one worktree dict; returns a tier
-    string. No pressure/size logic here — that's select()'s job."""
+    """Pure per-worktree tier decision; also sets wt["gc_reason"]. No pressure or
+    size logic here — that is select()'s job."""
     issue = (wt.get("issue_state") or "").upper()
     pr = (wt.get("pr_state") or "").upper()
-    running = wt.get("dir") in running_dirs
+    running = wt.get("dir") in running_dirs or bool(wt.get("running"))
+    idle = _idle(wt)
+    scratch = (wt.get("kind") or "primary") == "scratch"
 
-    # REAP: PR merged/closed, OR issue closed (work done or abandoned).
-    if pr in ("MERGED", "CLOSED") or issue == "CLOSED":
-        return "REAP"
-    # NO-PR: issue open, no PR discovered (or no issue number in the name).
-    if issue == "OPEN" and not pr:
-        return "NO-PR"
-    # From here issue OPEN + PR OPEN.
+    def tier(name, why):
+        wt["gc_reason"] = why
+        return name
+
     if running:
-        return "KEEP"
-    idle = wt.get("pr_idle_days")
-    if idle is not None and idle > STALE_OPEN_IDLE_DAYS:
-        return "STALE-OPEN"
-    return "KEEP"
+        return tier("KEEP", "running session")
+    if idle is not None and idle < MIN_IDLE_DAYS:
+        return tier("KEEP", f"touched {idle:g}d ago")
+
+    if scratch:
+        if pr in FINAL_PR_STATES:
+            return tier("REAP", f"scratch, PR {pr}")
+        if idle is not None and idle > SCRATCH_IDLE_DAYS:
+            return tier("REAP", f"scratch, idle {idle:g}d")
+        return tier("KEEP", "scratch, recently used")
+
+    if pr in FINAL_PR_STATES:
+        return tier("REAP", f"PR {pr}")
+    if not pr:
+        if issue == "CLOSED":
+            return tier("REAP", "issue CLOSED, no PR")
+        if idle is not None and idle > NOPR_IDLE_DAYS:
+            return tier("REAP", f"no PR, idle {idle:g}d")
+        return tier("NO-PR", "issue open, no PR")
+    # PR OPEN (the issue may already be closed; the PR can still land).
+    pr_idle = wt.get("pr_idle_days")
+    if pr_idle is not None and pr_idle > STALE_OPEN_IDLE_DAYS:
+        return tier("STALE-OPEN", f"open PR idle {pr_idle}d")
+    return tier("KEEP", "open PR, active")
 
 
 def build_measured(wt):
-    """Was this worktree's `build/` actually measured?
-
-    Separate from `build_gb() == 0.0` because a genuinely-measured empty build
-    and an unmeasured one are different facts that happened to share a number.
-    `unmeasured_builds` exists to tell an operator "the projection understates";
-    counting a real 0.0 there reports missing data that is not missing."""
+    """Was this worktree's `build/` actually measured? A genuinely measured empty
+    build and an unmeasured one are different facts that share a number."""
     v = wt.get("build_size_gb")
     return isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0
 
 
 def build_gb(wt):
-    """GB a reclaim of this worktree actually frees: its `build/` directory ONLY.
-
-    `size_gb` is the whole worktree — source, .git, and build — and deleting
-    `build/` frees none of the rest. An UNMEASURED build counts as 0.0 rather
-    than falling back to `size_gb`, because the two errors are not symmetric:
-    under-projecting only makes the supervisor keep deleting, while
-    over-projecting makes it declare the target met and stop with the disk still
-    full. That asymmetry is the whole finding."""
+    """GB a reclaim frees: the `build/` directory only. Unmeasured counts as 0."""
     v = wt.get("build_size_gb")
     if isinstance(v, (int, float)) and not isinstance(v, bool) and v >= 0:
         return float(v)
@@ -128,10 +137,11 @@ def build_gb(wt):
 
 
 def select(payload):
-    """Classify every worktree, then — only under disk pressure — pick the
-    STALE-OPEN build-reclaim set oldest-PR-first until the PROJECTED free would
-    reach TARGET_FREE_GB. Pure: no filesystem, no gh calls."""
+    """Classify every worktree, then build the build-only reclaim list: every
+    STALE-OPEN build, plus idle KEEP builds under pressure. Pure: no filesystem,
+    no gh calls."""
     free = payload.get("free_gb", 0)
+    total = payload.get("total_gb") or 0
     running = set(payload.get("running_dirs", []))
     worktrees = payload.get("worktrees", [])
 
@@ -139,83 +149,57 @@ def select(payload):
     for wt in worktrees:
         tiers[classify(wt, running)].append(wt)
 
-    reclaim = []
-    projected_cutoff = 0
-    projected = free
-    under_pressure = free < PRESSURE_GATE_GB
-    critical = free < CRITICAL_GATE_GB
-    if under_pressure:
-        # Build-reclaim pool, oldest-PR-first (chains most likely truly abandoned
-        # go first). Under routine pressure: only STALE-OPEN (idle > 14d) builds.
-        # Under CRITICAL pressure (ENOSPC-imminent): also include idle KEEP builds
-        # — an open PR touched within 14d but idle > CRITICAL_IDLE_DAYS with no
-        # running session. This is the 7GB-fixer-build case a routine tick can't
-        # touch; at <5GB free the crash risk outweighs the churn of one rebuild.
-        # Reclaim is ALWAYS build/-only — the worktree, branch, PR are untouched;
-        # cmake regenerates on resume. select() stays pure; the caller dispatches
-        # the rm to the owning fixer.
-        cands = [w for w in tiers["STALE-OPEN"] if w.get("has_build")]
-        if critical:
-            idle_keep = [
-                w for w in tiers["KEEP"]
-                if w.get("has_build")
-                and w.get("dir") not in running
-                and (w.get("pr_idle_days") or 0) > CRITICAL_IDLE_DAYS
-            ]
-            cands += idle_keep
-        cands.sort(key=lambda w: w.get("pr_idle_days") or 0, reverse=True)
+    free_pct = round(free * 100.0 / total, 1) if total else None
+    under_pressure = free_pct is not None and free_pct < PRESSURE_GATE_PCT
+    critical = free_pct is not None and free_pct < CRITICAL_GATE_PCT
+    target_gb = total * TARGET_FREE_PCT / 100.0 if total else None
 
-        # EVERY eligible candidate is returned, in priority order. The projected
-        # cutoff is recorded as an INDEX, not enforced by truncating the list.
-        #
-        # This used to `break` once `projected >= TARGET_FREE_GB`, which made the
-        # projection decide the list while the execution instructions
-        # (reference.md) correctly tell the executor to stop on the MEASURED `df`.
-        # Those two rules only agree while every estimate is exact. When a
-        # deletion frees less than its `du` said — open file handles, hard links,
-        # a build still growing — measured free stays under target and the
-        # executor runs out of list, with eligible builds it was never given.
-        # It then escalates to a human for disk it was holding the answer to.
-        #
-        # Returning the full list cannot over-delete: the executor re-measures
-        # after each deletion and stops at the target. The projection's only job
-        # is to say "this many should be enough", and it says so below.
-        reclaim.extend(cands)
-        projected_cutoff = len(cands)
-        for i, w in enumerate(cands):
-            if projected >= TARGET_FREE_GB:
-                projected_cutoff = i
-                break
-            # build/ only — the reclaim deletes nothing else.
-            projected += build_gb(w)
+    cands = [w for w in tiers["STALE-OPEN"] if w.get("has_build")]
+    if under_pressure:
+        floor = CRITICAL_IDLE_DAYS if critical else PRESSURE_IDLE_DAYS
+        cands += [
+            w for w in tiers["KEEP"]
+            if w.get("has_build")
+            and w.get("dir") not in running
+            and not w.get("running")
+            and (w.get("pr_idle_days") or 0) > floor
+        ]
+    cands.sort(key=lambda w: w.get("pr_idle_days") or 0, reverse=True)
+
+    # Every eligible candidate is returned, most idle first. The projected
+    # cutoff is an index, never a truncation: the executor stops on measured df.
+    reclaim = list(cands)
+    projected = free
+    projected_cutoff = len(cands)
+    for i, w in enumerate(cands):
+        if target_gb is not None and projected >= target_gb:
+            projected_cutoff = i
+            break
+        projected += build_gb(w)
 
     summary = {
         "free_gb": free,
+        "total_gb": total,
+        "free_pct": free_pct,
+        "target_free_gb": round(target_gb, 1) if target_gb is not None else None,
         "under_pressure": under_pressure,
         "critical": critical,
         "counts": {k: len(v) for k, v in tiers.items()},
         "reclaim_count": len(reclaim),
-        # Sum of build/ sizes — what deleting this list would actually free.
         "reclaim_gb": round(sum(build_gb(w) for w in reclaim), 1),
-        # Reclaims whose build/ was never measured. They are still dispatched
-        # (deleting them can only help); they simply contribute 0 to the
-        # projection, so a non-zero count here means reclaim_gb understates.
         "unmeasured_builds": sum(1 for w in reclaim if not build_measured(w)),
-        # How far down `reclaim` the PROJECTION expects to get. Advisory only:
-        # the executor walks the list until MEASURED `df` reaches target, which
-        # may be sooner (estimates were conservative) or later (they were not).
-        # Everything past this index is eligible headroom, not padding.
         "projected_sufficient_count": projected_cutoff,
-        # A LOWER BOUND on where free space lands, never a result: re-measure
-        # with `df` after each deletion and stop on the MEASURED number. Trusting
-        # this figure is how a run stopped while still under ENOSPC pressure.
         "projected_free_gb": round(projected, 1),
         "projection_is_lower_bound": True,
         "thresholds": {
             "STALE_OPEN_IDLE_DAYS": STALE_OPEN_IDLE_DAYS,
-            "PRESSURE_GATE_GB": PRESSURE_GATE_GB,
-            "TARGET_FREE_GB": TARGET_FREE_GB,
-            "CRITICAL_GATE_GB": CRITICAL_GATE_GB,
+            "SCRATCH_IDLE_DAYS": SCRATCH_IDLE_DAYS,
+            "NOPR_IDLE_DAYS": NOPR_IDLE_DAYS,
+            "MIN_IDLE_DAYS": MIN_IDLE_DAYS,
+            "PRESSURE_GATE_PCT": PRESSURE_GATE_PCT,
+            "PRESSURE_IDLE_DAYS": PRESSURE_IDLE_DAYS,
+            "TARGET_FREE_PCT": TARGET_FREE_PCT,
+            "CRITICAL_GATE_PCT": CRITICAL_GATE_PCT,
             "CRITICAL_IDLE_DAYS": CRITICAL_IDLE_DAYS,
         },
     }
