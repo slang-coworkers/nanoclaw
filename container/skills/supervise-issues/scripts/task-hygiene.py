@@ -26,14 +26,13 @@ allow-list of re-chase / re-check / per-issue watch shapes — never a deny-list
 of core jobs); CORE_GUARD is a second, independent belt that vetoes anything
 that looks like a core recurring job even if it slipped through ALLOW.
 
-Target extraction (`parse_refs`): a structured reference is preferred — the
-canonical thread id `gh-issue-<owner>/<repo>-<n>` / `gh-pr-<owner>/<repo>-<n>`,
-`<owner>/<repo>#<n>`, or a github.com issue/pull URL. The FIRST structured ref
-is the chain key. Bare `#<n>` refs are resolved against the chain's repo only
-when the prompt names no other known repo; otherwise the task is ambiguous and
-kept. A task with no resolvable target is kept and reported as `unresolved`.
-A task referencing several items is cancelled only when ALL are closed. Any
-GitHub lookup failure leaves the task alone.
+Target extraction (`parse_refs`, rules in its docstring): structured refs
+(thread ids, `owner/repo#n`, URLs, `owner/repo PR #n`, `slang#n`-style short
+forms) come first; the first shader-slang one is the primary and chain key.
+Other-org refs are informational. Bare `#n` join the primary's repo when no
+other shader-slang repo appears; ranges and short numbers are ignored. A task
+is cancelled only when the primary AND every other shader-slang target are
+closed/merged. Any GitHub lookup failure leaves the task alone.
 
 Per-chain re-chase count — durable, two sources, max wins:
   * the declared ordinal: the name `rechase-<repo>-<n>-r<k>` (or `-r<k>` /
@@ -103,12 +102,27 @@ _SEG = r"[A-Za-z0-9_.-]+"
 THREAD_REF = re.compile(rf"\bgh-(?:issue|pr)-({_SEG})/({_SEG})-(\d+)\b")
 URL_REF = re.compile(rf"github\.com/({_SEG})/({_SEG})/(?:issues|pull)/(\d+)\b")
 SLASH_REF = re.compile(rf"(?<![\w/.-])({_SEG})/({_SEG})#(\d+)\b")
-BARE_REF = re.compile(r"(?<![\w/.#-])#(\d{3,6})\b")
+# `shader-slang/slang PR #13471`, `shader-slang/slang draft PR #13331`, `NVIDIA/foo issue #7`.
+OWNER_REPO_WORD_REF = re.compile(
+    rf"(?<![\w/.-])({_SEG})/({_SEG})\s+(?:(?:draft|merged|open|closed)\s+)?(?:PR|pull request|issue)\s+#(\d+)\b",
+    re.IGNORECASE,
+)
+# shader-slang short forms: `slang#13169`, `slang-rhi#739`, `slangpy#1167`.
+_SHORT = r"(slang-vscode-extension|slang-rhi|slangpy|slang)"
+SHORT_REF = re.compile(rf"(?<![\w/.-]){_SHORT}#(\d+)\b", re.IGNORECASE)
+SHORT_WORD_REF = re.compile(
+    rf"(?<![\w/.-]){_SHORT}\s+(?:(?:draft|merged|open|closed)\s+)?(?:PR|pull request|issue)\s+#(\d+)\b",
+    re.IGNORECASE,
+)
+# `#901-#906` / `#901–906`: a span of context, not targets.
+RANGE_REF = re.compile(r"(?<![\w/.#-])#\d+\s*[-–]\s*#?\d+\b")
 ANY_BARE_REF = re.compile(r"(?<![\w/.#-])#(\d+)\b")
 OWNER_REPO = re.compile(rf"(?<![\w/.-])({_SEG})/({_SEG})(?![\w/.-])")
 NAME_NUM = re.compile(r"(?<!\d)(\d{3,6})(?!\d)")
 ORDINAL_PATTERNS = (
-    re.compile(r"(?:^|[-_])r(\d{1,3})(?:[-_]|$)", re.IGNORECASE),               # name: rechase-…-r4
+    # name: `rechase-…-r4` — only as the LAST slug segment; `rechase-13596-r6-gate`
+    # names rule R6, not a 6th round.
+    re.compile(r"[-_]r(\d{1,3})$", re.IGNORECASE),
     re.compile(r"\(r(\d{1,3})(?:/\d+)?\)", re.IGNORECASE),                        # prompt: (r4/3)
     re.compile(r"\b(\d{1,3})(?:st|nd|rd|th)\s+re-?(?:chase|check)", re.IGNORECASE),  # prompt: 4th re-chase
     re.compile(r"\bre-?(?:chase|check)\s*(?:no\.?\s*|number\s*|#)(\d{1,2})\b", re.IGNORECASE),  # re-chase #4
@@ -156,38 +170,61 @@ def _hinted_repos(text: str) -> set[str]:
     return found
 
 
-def parse_refs(prompt: str, name: str = "") -> tuple[list[str], str | None]:
-    """Ordered, de-duplicated `owner/repo#n` targets of a task, and an error.
-
-    Returns (refs, None) on success, ([], reason) when the target cannot be
-    resolved safely. refs[0] is the chain key.
-    """
-    text = prompt or ""
+def _structured(text: str) -> tuple[list[tuple[int, str]], str]:
+    """Every structured ref as (position, `owner/repo#n`), and the text with
+    those spans blanked so later passes cannot re-read them."""
     spans: list[tuple[int, str]] = []
     masked = text
-    for pat in (THREAD_REF, URL_REF, SLASH_REF):
+    for pat in (THREAD_REF, URL_REF, SLASH_REF, OWNER_REPO_WORD_REF):
         for m in pat.finditer(masked):
             spans.append((m.start(), norm(m.group(1), m.group(2), m.group(3))))
         masked = pat.sub(lambda m: " " * len(m.group(0)), masked)
+    for pat in (SHORT_REF, SHORT_WORD_REF):
+        for m in pat.finditer(masked):
+            spans.append((m.start(), norm(DEFAULT_OWNER, m.group(1), m.group(2))))
+        masked = pat.sub(lambda m: " " * len(m.group(0)), masked)
     spans.sort()
-    refs: list[str] = []
-    for _, r in spans:
-        if r not in refs:
-            refs.append(r)
+    return spans, masked
 
-    # A bare `#n` outside the issue-number shape (`#77`, `#4`) may be a real
-    # dependency we cannot place or an ordinal we cannot tell from one: keep.
-    if any(not 3 <= len(n) <= 6 for n in ANY_BARE_REF.findall(masked)):
-        return [], "unresolved: bare #ref outside the 3-6 digit issue shape"
-    bare = [m.group(1) for m in BARE_REF.finditer(masked)]
+
+def parse_refs(prompt: str, name: str = "") -> tuple[list[str], str | None]:
+    """The targets a cancel must see closed, primary first, and an error.
+
+    Returns (refs, None) on success, ([], reason) when the target cannot be
+    resolved safely. refs[0] is the chain key (the primary target).
+
+    * Structured refs — `owner/repo#n`, `gh-issue-`/`gh-pr-` thread ids,
+      github.com URLs, `owner/repo [draft] PR #n`, and the shader-slang short
+      forms `slang#n` / `slangpy#n` / `slang-rhi#n` / `slang-vscode-extension#n`.
+    * The primary is the first shader-slang structured ref (else the first of
+      any org). Every shader-slang structured ref is a target; refs into other
+      orgs (llvm/…, KhronosGroup/…) are informational and never targets.
+    * A bare `#n` (3–6 digits) is a target in the primary's repo when every
+      shader-slang structured ref is in that repo and no other shader-slang
+      repo is named in words; otherwise the task is ambiguous and kept.
+    * Ranges (`#901-#906`) and short numbers (`#4`, `#77`) are context, not
+      targets: they are ignored.
+    """
+    text = prompt or ""
+    spans, masked = _structured(text)
+    ordered: list[str] = []
+    for _, r in spans:
+        if r not in ordered:
+            ordered.append(r)
+    ours = [r for r in ordered if r.startswith(f"{DEFAULT_OWNER}/")]
+
+    masked = RANGE_REF.sub(lambda m: " " * len(m.group(0)), masked)
+    bare = [n for n in ANY_BARE_REF.findall(masked) if 3 <= len(n) <= 6]
     hinted = _hinted_repos(masked)
-    if refs:
+
+    if ordered:
+        primary = ours[0] if ours else ordered[0]
+        base = primary.split("#")[0]
+        refs = [primary] + [r for r in ours if r != primary]
         if bare:
-            base = refs[0].split("#")[0]
-            others = {r.split("#")[0] for r in refs} | hinted
-            others |= {f"{a.lower()}/{b.lower()}" for a, b in OWNER_REPO.findall(masked)}
-            if others - {base}:
-                return [], "ambiguous: bare #refs alongside another repo"
+            repos = {r.split("#")[0] for r in refs} | hinted
+            if repos - {base}:
+                return [], "ambiguous: bare #refs alongside another shader-slang repo"
             for n in bare:
                 r = f"{base}#{int(n)}"
                 if r not in refs:
@@ -196,12 +233,17 @@ def parse_refs(prompt: str, name: str = "") -> tuple[list[str], str | None]:
 
     # Fallback — no structured ref anywhere: bare refs (or the name's number)
     # against the one repo the text names, else the default repo. Any explicit
-    # `owner/repo` counts as named, so "NVIDIA/foo PR #712" never reads as slang#712.
+    # `owner/repo` text counts as named, so "NVIDIA/foo and #712" never reads
+    # as slang#712.
     hinted |= {f"{a.lower()}/{b.lower()}" for a, b in OWNER_REPO.findall(masked)}
     if len(hinted) > 1:
         return [], "ambiguous: several repos named, no structured ref"
     base = next(iter(hinted)) if hinted else DEFAULT_REPO
-    nums = bare
+    nums = list(bare)
+    name_num = NAME_NUM.findall(slug_of(name))[:1]
+    if nums and name_num and name_num[0] in nums:
+        nums.remove(name_num[0])  # the task's own name picks the primary
+        nums.insert(0, name_num[0])
     if not nums:
         slug = slug_of(name)
         slug_hint = _hinted_repos(slug.replace("_", "-"))
@@ -225,6 +267,10 @@ def declared_ordinal(name: str, prompt: str) -> int | None:
         hay = slug if i == 0 else (prompt or "")
         for m in pat.finditer(hay):
             k = int(m.group(1))
+            # A capital `R<k>` label in the prompt ("R6: bot skips …") means the
+            # name's r<k> is that rule, not a round count.
+            if i == 0 and re.search(rf"\bR{k}\b", prompt or ""):
+                continue
             if 0 < k < 1000:
                 best = k if best is None else max(best, k)
     return best

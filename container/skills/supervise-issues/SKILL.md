@@ -359,8 +359,9 @@ the next one forever (2026-10-15: ~110 live one-shots, chains on their 15th re-c
    `re-check-*`, per-issue watches (`watch-<n>-*`, `i<n>-*`, `pr<n>-*`), or prompts that open with
    "Re-chase"/"Re-check". Anything shaped like a core job (supervise, OKF synthesis, worktree GC,
    nightly, KB sync, release/report, heartbeat, watchdog) is never touched.
-2. Cancels (`ncl tasks cancel --id`) a task when **all** issues/PRs it names are closed or
-   merged. Unknown GitHub state, or a target it cannot parse, keeps the task.
+2. Cancels (`ncl tasks cancel --id`) a task when its primary target (the first shader-slang
+   ref) **and** every other shader-slang issue/PR it names are closed or merged; refs into
+   other orgs are informational. Unknown GitHub state, or a target it cannot place, keeps it.
 3. Gives every re-chase of a chain a durable ordinal (the `-r<k>` in its name, else first-seen
    order in `/workspace/agent/.task-hygiene/state.json`) and cancels one past `MAX_RECHASES`,
    parking the chain.

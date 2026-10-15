@@ -76,10 +76,45 @@ class TestRefs(unittest.TestCase):
                                 "https://github.com/shader-slang/slangpy/pull/712")
         self.assertEqual(refs, ["shader-slang/slangpy#700", "shader-slang/slangpy#712"])
 
-    def test_bare_ref_ambiguous_with_other_repo(self):
+    def test_short_repo_word_ref_is_structured_target(self):
         refs, err = th.parse_refs("Re-chase shader-slang/slang#13230; slangpy PR #712 pending")
+        self.assertIsNone(err)
+        self.assertEqual(refs, ["shader-slang/slang#13230", "shader-slang/slangpy#712"])
+        refs, _ = th.parse_refs("Re-chase shader-slang/slangpy#1167. Upstream slang#13169 closed.")
+        self.assertEqual(refs, ["shader-slang/slangpy#1167", "shader-slang/slang#13169"])
+
+    def test_bare_ref_ambiguous_with_other_repo_word(self):
+        refs, err = th.parse_refs("Re-chase shader-slang/slang#13230; the slangpy fix #712 is pending")
         self.assertEqual(refs, [])
         self.assertIn("ambiguous", err)
+
+    def test_owner_repo_pr_word_form(self):
+        refs, _ = th.parse_refs("SECOND re-chase of shader-slang/slang PR #13471 (draft, fixes #13319)")
+        self.assertEqual(refs, ["shader-slang/slang#13471", "shader-slang/slang#13319"])
+        refs, _ = th.parse_refs("Re-chase: shader-slang/slang draft PR #13331 (issue #13329)")
+        self.assertEqual(refs, ["shader-slang/slang#13331", "shader-slang/slang#13329"])
+
+    def test_ranges_and_short_numbers_are_context(self):
+        refs, err = th.parse_refs("Re-chase shader-slang/slang-rhi#881 after #884; main +6: #901-#906, "
+                                  "Re-chases #1 and #2 found nothing")
+        self.assertIsNone(err)
+        self.assertEqual(refs, ["shader-slang/slang-rhi#881", "shader-slang/slang-rhi#884"])
+
+    def test_other_org_refs_are_informational(self):
+        refs, err = th.parse_refs("Re-chase shader-slang/slang#13549: llvm/llvm-project#229712 gates the bump; "
+                                  "see #11017")
+        self.assertIsNone(err)
+        self.assertEqual(refs, ["shader-slang/slang#13549", "shader-slang/slang#11017"])
+
+    def test_primary_is_first_shader_slang_ref(self):
+        refs, _ = th.parse_refs("Blocked by KhronosGroup/SPIRV-Tools#6000; re-chase shader-slang/slang#13230")
+        self.assertEqual(refs, ["shader-slang/slang#13230"])
+
+    def test_fallback_name_number_is_primary(self):
+        refs, _ = th.parse_refs("ISSUE #12092 deferred; see #11900", "i12092-scope-guard-7eb8")
+        self.assertEqual(refs[0], "shader-slang/slang#12092")
+        refs, _ = th.parse_refs("Watch #11900 and ISSUE #12092", "i12092-scope-guard-7eb8")
+        self.assertEqual(refs[0], "shader-slang/slang#12092")
 
     def test_fallback_name_number(self):
         refs, err = th.parse_refs("Re-chase the spirv-tools bump; ask again", "rechase-13230-spirv-tool-9b92")
@@ -95,23 +130,66 @@ class TestRefs(unittest.TestCase):
         refs, _ = th.parse_refs("Re-chase gh-issue-acme/slang-2026-tools-13230 now")
         self.assertEqual(refs, ["acme/slang-2026-tools#13230"])
 
-    def test_short_bare_ref_keeps(self):
+    def test_short_bare_number_ignored(self):
         refs, err = th.parse_refs("Re-chase shader-slang/slang#13230; blocked on PR #77.")
-        self.assertEqual(refs, [])
-        self.assertIn("unresolved", err)
+        self.assertIsNone(err)
+        self.assertEqual(refs, ["shader-slang/slang#13230"])
 
     def test_bare_ref_with_second_structured_repo_ambiguous(self):
         refs, err = th.parse_refs("Re-chase shader-slang/slang#13230; shader-slang/slangpy#700 waits on PR #712.")
         self.assertEqual(refs, [])
         self.assertIn("ambiguous", err)
+        # Another ORG is informational: #712 is not placed there, and it is not a target.
         refs, err = th.parse_refs("Re-chase shader-slang/slang#13230; NVIDIA/foo PR #712 first.")
-        self.assertIn("ambiguous", err)
+        self.assertIsNone(err)
+        self.assertEqual(refs, ["shader-slang/slang#13230"])
 
     def test_ordinal_sources(self):
         self.assertEqual(th.declared_ordinal("rechase-slang-13230-r4-9b92", ""), 4)
         self.assertEqual(th.declared_ordinal("rechase-13230-ab12", "Re-chase x (r7) —"), 7)
         self.assertEqual(th.declared_ordinal("rechase-13230-ab12", "This is the 15th re-chase"), 15)
         self.assertIsNone(th.declared_ordinal("rechase-13230-ab12", "Re-chase shader-slang/slang#13230"))
+
+
+FIXTURE = Path(__file__).with_name("fixtures") / "task-hygiene-unresolved-2026-10-15.json"
+
+
+class TestProdFixture(unittest.TestCase):
+    """The 73 prod re-chase prompts (first 700 chars) that the first release
+    could not resolve (dry-run 2026-10-15: 0 cancels, 73/149 unresolved)."""
+
+    def setUp(self):
+        self.tasks = json.loads(FIXTURE.read_text())
+
+    def test_fixture_size(self):
+        self.assertEqual(len(self.tasks), 73)
+
+    def test_most_resolve(self):
+        resolved = [t for t in self.tasks if th.parse_refs(t["prompt"], t["series_id"])[1] is None]
+        self.assertGreaterEqual(len(resolved), 65)
+
+    def test_every_resolved_primary_is_shader_slang(self):
+        for t in self.tasks:
+            refs, err = th.parse_refs(t["prompt"], t["series_id"])
+            if err is None:
+                self.assertTrue(refs[0].startswith("shader-slang/"), (t["series_id"], refs))
+
+    def test_rule_labels_are_not_ordinals(self):
+        by_id = {t["series_id"]: t for t in self.tasks}
+        for sid in ("rechase-13596-r6-gate-f5e7", "rechase-13600-r10-pr-rep-9fef"):
+            self.assertIsNone(th.declared_ordinal(sid, by_id[sid]["prompt"]), sid)
+        self.assertEqual(th.declared_ordinal("rechase-13406-r7-c566", by_id["rechase-13406-r7-c566"]["prompt"]), 7)
+        self.assertEqual(th.declared_ordinal("rechase-9078-jhelferty-242d",
+                                             by_id["rechase-9078-jhelferty-242d"]["prompt"]), 4)
+
+    def test_closed_primary_with_open_dependency_kept(self):
+        by_id = {t["series_id"]: t for t in self.tasks}
+        t = {**by_id["rechase-slang-12621-d2a6"], "recurrence": None}
+        refs, _ = th.parse_refs(t["prompt"], t["series_id"])
+        gh = dict.fromkeys(refs, "CLOSED")
+        gh["shader-slang/slang#12677"] = "OPEN"  # fix PR still open when the issue was closed
+        p = th.plan([t], gh, th.empty_state(), NOW)
+        self.assertEqual(p["cancel"], [])
 
 
 class TestAllowPattern(unittest.TestCase):
@@ -148,7 +226,7 @@ class TestAllowPattern(unittest.TestCase):
         refs, err = th.parse_refs("Re-check NVIDIA/foo PR #712", "recheck-712-abcd")
         self.assertIsNone(err)
         self.assertEqual(refs, ["nvidia/foo#712"])
-        refs, err = th.parse_refs("Re-check NVIDIA/foo and acme/bar PR #712", "recheck-712-abcd")
+        refs, err = th.parse_refs("Re-check NVIDIA/foo and acme/bar #712", "recheck-712-abcd")
         self.assertIn("ambiguous", err)
 
 
