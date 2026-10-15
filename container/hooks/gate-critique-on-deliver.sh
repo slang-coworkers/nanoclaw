@@ -11,6 +11,7 @@
 #
 # Delivery markers (text-prefix on send_message):
 #   [Fix Report] [Resolution] [Triage Resolution] [Review Verdict] [handoff]
+#   [Approval Decision] (PR-approver types; see delivery_markers in their yaml)
 # PR commands (Bash):
 #   gh pr create
 #   gh api .../pulls

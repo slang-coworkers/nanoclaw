@@ -9,6 +9,9 @@ Covers the deterministic parts a synthesis agent must be able to trust:
   * budget detection (INDEX-BLOAT / DEFN-BLOAT / OVERSIZE)
   * dossier detection (name-based, frontmatter-less, many-H2) -- the classic
     triager issue-knowledge dump
+  * the injected group-root dossier (../CLAUDE.local.md): detected once it regrows
+    past a stub, ignored while it is a thin pointer, and its cold-storage copies
+    (*.premigration-*.md / *.archive-*.md) are never offenders
   * the memcheck false-positive trap: a bare [[nodiscard]] attribute is NOT a
     dangling link; a real [[missing.md]] IS
   * stale folder-index detection
@@ -107,6 +110,99 @@ class ScanBasics(unittest.TestCase):
         write(self.root, "issues/knowledge.md", "---\ntype: note\n---\n\n# knowledge\n\n" + body + ("pad " * 4000))
         report = self.mod.scan()
         self.assertIn("DOSSIER", self.classes(report))
+
+
+class GroupRootDossier(unittest.TestCase):
+    """The provider-injected CLAUDE.local.md lives one level ABOVE the memory root.
+    A scan confined to the memory tree never sees it, which is how a dossier can
+    regrow for months under a gate that keeps reporting only a stale index."""
+
+    def setUp(self):
+        self.tmp = tempfile.mkdtemp()
+        self.group = os.path.join(self.tmp, "agent")
+        self.root = os.path.join(self.group, "memory")
+        os.makedirs(self.root)
+        scaffold(self.root)
+        os.environ.pop("OKF_GROUP_ROOT", None)
+        self.mod = load_tool(self.root)
+
+    def dossiers(self, report):
+        return {o["path"]: o["size"] for o in report["offenders"] if o["class"] == "DOSSIER"}
+
+    def regrown(self):
+        """A CLAUDE.local.md that has filled back up with dated per-issue entries."""
+        return "# Issue knowledge\n\n" + "".join(
+            f"## 2026-09-{i % 28 + 1:02d} slang#{12000 + i}\n\nnotes about the issue\n\n" for i in range(160))
+
+    def test_group_root_defaults_to_parent_of_memory_root(self):
+        self.assertEqual(os.path.realpath(self.mod.GROUP_ROOT), os.path.realpath(self.group))
+
+    def test_regrown_claude_local_is_a_dossier_with_its_size(self):
+        text = self.regrown()
+        write(self.group, "CLAUDE.local.md", text)
+        report = self.mod.scan()
+        self.assertEqual(self.dossiers(report), {"../CLAUDE.local.md": len(text)})
+        self.assertGreaterEqual(report["backlog"], self.mod.GATE_MIN_BACKLOG)
+
+    def test_other_local_md_at_group_root_is_a_dossier(self):
+        write(self.group, "triage.local.md", self.regrown())
+        self.assertIn("../triage.local.md", self.dossiers(self.mod.scan()))
+
+    def test_stub_pointer_is_not_a_dossier(self):
+        stub = "# Memory\n\nPer-group memory lives in `memory/`; start at `memory/index.md`.\n"
+        self.assertLessEqual(len(stub), self.mod.GROUP_DOSSIER_STUB_MAX)
+        write(self.group, "CLAUDE.local.md", stub)
+        report = self.mod.scan()
+        self.assertEqual(report["offenders"], [], f"unexpected offenders: {report['offenders']}")
+
+    def test_pointer_exactly_at_stub_max_is_not_a_dossier(self):
+        write(self.group, "CLAUDE.local.md", "x" * self.mod.GROUP_DOSSIER_STUB_MAX)
+        self.assertEqual(self.dossiers(self.mod.scan()), {})
+        write(self.group, "CLAUDE.local.md", "x" * (self.mod.GROUP_DOSSIER_STUB_MAX + 1))
+        self.assertIn("../CLAUDE.local.md", self.dossiers(self.mod.scan()))
+
+    def test_cold_storage_copies_are_never_offenders(self):
+        write(self.group, "CLAUDE.local.premigration-2026-08-18.md", self.regrown() * 3)
+        write(self.group, "issue-knowledge.archive-2026-08.md", self.regrown() * 3)
+        report = self.mod.scan()
+        self.assertEqual(report["offenders"], [], f"unexpected offenders: {report['offenders']}")
+
+    def test_group_root_scan_is_not_recursive(self):
+        # A dossier-named file in a sibling directory of the memory tree is not
+        # injected and is nobody's memory; only the top level of the group root counts.
+        write(self.group, "plugins/vendor/CLAUDE.local.md", self.regrown())
+        self.assertEqual(self.dossiers(self.mod.scan()), {})
+
+    def test_memory_tree_is_not_rescanned_through_the_group_root(self):
+        write(self.root, "CLAUDE.local.md", "# scratch\n\nrandom pile of issue notes\n")
+        report = self.mod.scan()
+        self.assertEqual(sum(1 for o in report["offenders"] if o["class"] == "DOSSIER"), 1)
+
+    def test_explicit_group_root_env_overrides_the_default(self):
+        other = os.path.join(self.tmp, "elsewhere")
+        os.makedirs(other)
+        write(other, "CLAUDE.local.md", self.regrown())
+        write(self.group, "CLAUDE.local.md", self.regrown())
+        os.environ["OKF_GROUP_ROOT"] = other
+        try:
+            mod = load_tool(self.root)
+        finally:
+            os.environ.pop("OKF_GROUP_ROOT", None)
+        self.assertEqual(set(self.dossiers(mod.scan())), {"../../elsewhere/CLAUDE.local.md"})
+
+    def test_gate_wakes_and_names_the_dossier(self):
+        text = self.regrown()
+        write(self.group, "CLAUDE.local.md", text)
+        out = _capture(self.mod.cmd_gate)
+        obj = json.loads(out.strip().splitlines()[-1])
+        self.assertTrue(obj["wakeAgent"])
+        self.assertEqual(obj["data"]["by_class"], {"DOSSIER": 1})
+        self.assertEqual(obj["data"]["dossiers"], [f"../CLAUDE.local.md ({len(text)}B)"])
+
+    def test_gate_stays_asleep_on_a_stub(self):
+        write(self.group, "CLAUDE.local.md", "# Memory\n\nsee memory/index.md\n")
+        out = _capture(self.mod.cmd_gate)
+        self.assertFalse(json.loads(out.strip().splitlines()[-1])["wakeAgent"])
 
 
 class Links(unittest.TestCase):

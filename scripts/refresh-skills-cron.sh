@@ -4,14 +4,17 @@
 #
 # Two steps:
 #   1. scripts/fetch-skills.sh   — pull upstream changes into container/skills/.
-#   2. scripts/mirror-skills.mjs — copy those into every group's .claude-shared/,
-#                                  which is already bind-mounted at
-#                                  /home/node/.claude in every running container.
+#   2. scripts/mirror-skills.mjs — make sure every group's .claude-shared/skills/
+#                                  holds the symlink `<skill> -> /app/skills/<skill>`
+#                                  that the host plants at spawn time, replacing
+#                                  the real-directory copies an older revision
+#                                  of the script left behind.
 #
-# Step 2 is what makes this zero-downtime, and it is not optional:
-# `container/skills/` is not mounted into containers, so step 1 alone changes
-# nothing for a live agent. See the header of scripts/mirror-skills.mjs for the
-# full mount/copy chain.
+# container/skills/ is bind-mounted read-only at /app/skills in every container,
+# so step 1 already changes the bytes a live agent reads through such a link.
+# Step 2 is what makes a skill that is NEW since the group last spawned, or one
+# shadowed by a stale copy, reachable without a restart. See the header of
+# scripts/mirror-skills.mjs for the full mount/link chain.
 #
 # Install (do NOT run from a deploy — this is a standalone cron):
 #   lego:  37 * * * * /home/ubuntu/haaggarwal/lego-nanoclaw/scripts/refresh-skills-cron.sh
