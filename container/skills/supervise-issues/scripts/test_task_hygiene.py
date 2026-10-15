@@ -100,6 +100,18 @@ class TestRefs(unittest.TestCase):
         self.assertIsNone(err)
         self.assertEqual(refs, ["shader-slang/slang-rhi#881", "shader-slang/slang-rhi#884"])
 
+    def test_list_and_count_are_not_ranges(self):
+        refs, _ = th.parse_refs("Re-chase shader-slang/slang#13230. Still waiting on:\n- PR #13471\n- #13500")
+        self.assertEqual(refs, ["shader-slang/slang#13230", "shader-slang/slang#13471", "shader-slang/slang#13500"])
+        refs, _ = th.parse_refs("Re-chase shader-slang/slang#13230; wait for PR #13471 – 2 approvals still needed.")
+        self.assertEqual(refs, ["shader-slang/slang#13230", "shader-slang/slang#13471"])
+        refs, _ = th.parse_refs("Re-chase shader-slang/slang#13230; main +3: #901–906")
+        self.assertEqual(refs, ["shader-slang/slang#13230"])
+
+    def test_capital_rule_label_never_an_ordinal(self):
+        self.assertIsNone(th.declared_ordinal("rechase-13596-r6", "Re-chase shader-slang/slang#13596; rule (R6): x"))
+        self.assertEqual(th.declared_ordinal("rechase-13596-ab12", "Re-chase x (r6):"), 6)
+
     def test_other_org_refs_are_informational(self):
         refs, err = th.parse_refs("Re-chase shader-slang/slang#13549: llvm/llvm-project#229712 gates the bump; "
                                   "see #11017")

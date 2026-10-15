@@ -115,7 +115,9 @@ SHORT_WORD_REF = re.compile(
     re.IGNORECASE,
 )
 # `#901-#906` / `#901–906`: a span of context, not targets.
-RANGE_REF = re.compile(r"(?<![\w/.#-])#\d+\s*[-–]\s*#?\d+\b")
+# Same line only, and an unprefixed end must look like an issue number, so a
+# list ("- PR #13471\n- #13500") or a count ("#13471 – 2 approvals") is not a range.
+RANGE_REF = re.compile(r"(?<![\w/.#-])#\d+[ \t]*[-–][ \t]*(?:#\d+|\d{3,6})\b")
 ANY_BARE_REF = re.compile(r"(?<![\w/.#-])#(\d+)\b")
 OWNER_REPO = re.compile(rf"(?<![\w/.-])({_SEG})/({_SEG})(?![\w/.-])")
 NAME_NUM = re.compile(r"(?<!\d)(\d{3,6})(?!\d)")
@@ -123,7 +125,7 @@ ORDINAL_PATTERNS = (
     # name: `rechase-…-r4` — only as the LAST slug segment; `rechase-13596-r6-gate`
     # names rule R6, not a 6th round.
     re.compile(r"[-_]r(\d{1,3})$", re.IGNORECASE),
-    re.compile(r"\(r(\d{1,3})(?:/\d+)?\)", re.IGNORECASE),                        # prompt: (r4/3)
+    re.compile(r"\(r(\d{1,3})(?:/\d+)?\)"),  # prompt: (r4) / (r4/3) — lowercase only; "(R6)" is a rule label
     re.compile(r"\b(\d{1,3})(?:st|nd|rd|th)\s+re-?(?:chase|check)", re.IGNORECASE),  # prompt: 4th re-chase
     re.compile(r"\bre-?(?:chase|check)\s*(?:no\.?\s*|number\s*|#)(\d{1,2})\b", re.IGNORECASE),  # re-chase #4
 )
