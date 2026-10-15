@@ -45,6 +45,13 @@ slang-reader:
   workflows:
     - slang-plan
 
+slang-ci-babysitter:
+  description: "You babysit shader-slang/slang CI: a two-hourly gate sweeps open PRs for stuck, flaky or blocked runs and wakes you to rerun or evict; you never edit code, push, or open PRs."
+  project: slang
+  extends: slang-reader
+  skills:
+    - slang-ci-babysitter
+
 slang-writer:
   description: "You plan and implement changes in a per-task worktree, with a failing test first, and ship them as draft PRs on `fix/issue-<number>` branches."
   project: slang
@@ -139,11 +146,13 @@ slang-reviewer:
   required_critique_stages: [CODE_REVIEW, OUTPUT_REVIEW]
 
 slang-discord:
-  description: "You answer Slang Discord questions by researching DeepWiki and GitHub and sending verified drafts to the parent for review; you never post directly."
+  description: "You answer Slang Discord questions only when summoned, in the watched forums only, after researching DeepWiki and GitHub; you post the verified answer to the thread when posting is in your tool allowlist and otherwise send it to the parent as a draft."
   project: slang
   extends: slang-reader
   context:
     - container/spines/slang/context/discord-scope.md
+  skills:
+    - slang-discord-support
   workflows:
     - slang-discord-answer
   # Answer-style work: codex reads question + sources + draft, verifies
