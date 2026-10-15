@@ -67,7 +67,10 @@ export interface TaskUpdate {
 export type TaskRecord = CanonicalTaskRecord;
 
 export interface TaskStats {
+  /** Completed occurrences, gated and woke alike. */
   runs: number;
+  /** Completed occurrences whose pre-task script answered wakeAgent:false. */
+  gatedRuns: number;
   lastRun: string | null;
   failedRuns: number;
 }

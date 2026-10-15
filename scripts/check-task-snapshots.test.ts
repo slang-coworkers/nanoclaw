@@ -51,6 +51,7 @@ function publish(root: string, slug: string, ids: string[]): { json: string; md:
       'set -u',
       `FX=${JSON.stringify(fx)}`,
       'if [ "${1:-}" = "tasks" ] && [ "${2:-}" = "list" ]; then cat "$FX/list.json"; exit 0; fi',
+      'if [ "${1:-}" = "groups" ] && [ "${2:-}" = "list" ]; then echo \'{"ok":true,"data":[{"id":"grp","paused":0}]}\'; exit 0; fi',
       'if [ "${1:-}" = "tasks" ] && [ "${2:-}" = "get" ]; then cat "$FX/get-${4:-}.json"; exit 0; fi',
       'exit 1',
     ].join('\n'),
