@@ -70,6 +70,7 @@ import {
   priceCodexUsage,
 } from './codex-costs.js';
 import { ccusageIsStale, computeSessionsCostTotals } from './session-cost-totals.js';
+import { getSessionLedgerCost, pruneLedgerCache, type SessionLedgerCost } from './session-ledger-cost.js';
 import {
   parseCostCapBlob,
   buildCostCapEntry,
@@ -2556,6 +2557,41 @@ function refreshSessionCostCache(): void {
     const livePaths = new Set<string>();
     const liveCodexHomes = new Set<string>();
     const liveCodexFiles = new Set<string>();
+    const liveLedgerPaths = new Set<string>();
+
+    // Ledger pre-pass. A session whose outbound.db `cost_events` is EXACT —
+    // every row written by the exact-accounting runner (#2013; see
+    // session-ledger-cost.ts isExactRow) — is priced ONLY from that ledger:
+    // transcript rotation deletes large/old transcripts, so the walk below
+    // under-reports long sessions. The source is chosen per SESSION (not per
+    // period) and its transcripts + codex rollouts are then skipped entirely, so
+    // a session's cost is never ledger + transcript. Sessions with no ledger rows
+    // or with ANY pre-#2013 row (which kept ~1% of output tokens) keep the
+    // transcript/rollout pricing below, exactly as before.
+    const ledgerBySession = new Map<string, SessionLedgerCost & { mtimeMs: number }>();
+    // Sessions whose outbound.db could not be read this tick (e.g. the runner
+    // held the write lock) and that already have a published figure: the
+    // source is unknown, so keep last tick's entries rather than silently
+    // falling back to the (possibly rotated) transcript. With no previous
+    // figure, the transcript fallback below applies as for any non-ledger session.
+    const carrySessions = new Set<string>();
+    const sessDirsByGroup = new Map<string, string[] | null>();
+    for (const group of groups) {
+      let dirs: string[] | null;
+      try {
+        dirs = readdirSync(join(sessionsDir, group.id)).filter((d) => d.startsWith('sess-'));
+      } catch {
+        dirs = null; // group has no session dir yet
+      }
+      sessDirsByGroup.set(group.id, dirs);
+      for (const sessId of dirs ?? []) {
+        const outPath = join(sessionsDir, group.id, sessId, 'outbound.db');
+        liveLedgerPaths.add(outPath);
+        const lc = getSessionLedgerCost(outPath);
+        if (lc.hasRows && lc.exact) ledgerBySession.set(sessId, lc);
+        else if (!lc.ok && sessionCostCache.all.has(sessId)) carrySessions.add(sessId);
+      }
+    }
 
     for (const group of groups) {
       const claudeShared = join(sessionsDir, group.id, '.claude-shared');
@@ -2591,6 +2627,9 @@ function refreshSessionCostCache(): void {
         if (!fc.hadSignal) continue;
         const sdkId = resolveSdkSessionId(f);
         const nanoId = sdkToNano.get(sdkId) || '';
+        // Ledger-priced session: its cost comes from cost_events below, never
+        // from this transcript too (no double count).
+        if (nanoId && (ledgerBySession.has(nanoId) || carrySessions.has(nanoId))) continue;
         for (const period of CONTEXT_PERIODS) {
           const since = cutoffs[period];
           let cost = 0;
@@ -2627,6 +2666,7 @@ function refreshSessionCostCache(): void {
               tokens,
               lastActiveMs: m,
               unpriced: fc.unpriced,
+              costSource: 'transcript',
             });
           }
         }
@@ -2636,13 +2676,56 @@ function refreshSessionCostCache(): void {
       // it merges onto the Claude row for the same session when there is one and
       // stands up its own row when there isn't — a session that ONLY ever called
       // `mcp__codex__codex` used to report a confident $0 (issue #1327).
-      let sessDirs: string[];
-      try {
-        sessDirs = readdirSync(join(sessionsDir, group.id)).filter((d) => d.startsWith('sess-'));
-      } catch {
-        continue; // group has no session dir yet
-      }
+      const sessDirs = sessDirsByGroup.get(group.id);
+      if (!sessDirs) continue; // group has no session dir yet
       for (const sessId of sessDirs) {
+        if (carrySessions.has(sessId)) {
+          for (const period of CONTEXT_PERIODS) {
+            const prev = sessionCostCache[period].get(sessId);
+            if (prev) next[period].set(sessId, { ...prev });
+          }
+          continue;
+        }
+        const ledger = ledgerBySession.get(sessId);
+        if (ledger) {
+          // Ledger session: both halves (Claude + codex) come from cost_events;
+          // the rollout walk is skipped so codex is not counted twice. Same 31d
+          // file-mtime bound as the transcript/rollout walks (outbound.db mtime).
+          if (ledger.mtimeMs < cutoffMs) continue;
+          for (const period of CONTEXT_PERIODS) {
+            const since = cutoffs[period];
+            let cost = 0;
+            let claudeUsd = 0;
+            let codexUsd = 0;
+            let tokens = 0;
+            let inWindow = false;
+            for (const [key, d] of ledger.days) {
+              if (period !== 'all' && !(key >= since)) continue;
+              inWindow = true;
+              cost += d.cost;
+              claudeUsd += d.claudeUsd;
+              codexUsd += d.codexUsd;
+              tokens += d.tokens;
+            }
+            if (!inWindow) continue;
+            // Fresh row: the transcript walk skipped this session, so nothing
+            // else is keyed by sessId (unmapped transcripts key by SDK uuid).
+            next[period].set(sessId, {
+              sessionId: sessId,
+              sdkSessionId: '',
+              groupFolder: group.folder,
+              groupName: group.name,
+              cost,
+              claudeUsd,
+              codexUsd,
+              tokens,
+              lastActiveMs: ledger.mtimeMs,
+              unpriced: ledger.unpriced,
+              costSource: 'ledger',
+            });
+          }
+          continue;
+        }
         const codexHome = join(sessionsDir, group.id, sessId, 'codex');
         liveCodexHomes.add(codexHome);
         const cc = scanSessionCodexCost(codexHome);
@@ -2687,6 +2770,7 @@ function refreshSessionCostCache(): void {
               tokens,
               lastActiveMs: cc.lastActiveMs,
               unpriced: cc.unpriced,
+              costSource: 'transcript',
             });
           }
         }
@@ -2704,6 +2788,7 @@ function refreshSessionCostCache(): void {
     if (codexFileEventCache.size > liveCodexFiles.size * 2 + 1000) {
       for (const k of codexFileEventCache.keys()) if (!liveCodexFiles.has(k)) codexFileEventCache.delete(k);
     }
+    pruneLedgerCache(liveLedgerPaths);
     writeCostThresholdFile(next);
     // Snapshot the freshly-updated + pruned per-file cache so the next process
     // start is warm (see loadPerFileCostCache). Fail-soft; advisory only.
@@ -5721,6 +5806,15 @@ export function forceOpenDbForTests(): void {
  */
 export function refreshCostCapsForTests(): void {
   refreshMessageTimestamps();
+}
+
+/**
+ * Run one synchronous pass of the per-session cost scan (transcripts, codex
+ * rollouts, cost ledger) for tests. Its timer only starts with the server's
+ * background loops, so without this a test would wait on the 6s/60s ticks.
+ */
+export function refreshSessionCostsForTests(): void {
+  refreshSessionCostCache();
 }
 
 /**
@@ -10375,6 +10469,12 @@ export async function handleRequest(
       s.codexUsd = c ? c.codexUsd : 0;
       s.costTokens = c ? c.tokens : 0;
       s.costUnpriced = c ? c.unpriced : false;
+      // Which source priced this row: 'ledger' (outbound.db cost_events) or
+      // 'transcript' (transcript + codex-rollout walk). Chosen per session, so
+      // the lifetime row answers it when the period window holds no spend.
+      // Absent when the session has no priced cost at all.
+      const costSource = c?.costSource ?? (s.session_id ? costByNanoAll.get(s.session_id)?.costSource : undefined);
+      if (costSource) s.costSource = costSource;
       // p99 threshold this row is judged against for pill color — the group's own
       // (statistically meaningful sample) or the fleet's. Independent of the cap
       // read below: a non-Claude-provider session (no cost_cap row at all) still
