@@ -34,6 +34,9 @@ import {
   INSTANCE_FORWARD_TARGETS,
   INSTANCE_SLUG,
   INTERNAL_REGISTER_SECRET,
+  ISSUE_BOT_OK_LABEL,
+  ISSUE_BOT_WAIT_DAYS,
+  ISSUE_NEWCOMER_LABELS,
   ROUTE_ISSUES_TO,
   ROUTE_READY_PRS_TO,
 } from './config.js';
@@ -119,6 +122,8 @@ export interface GitHubIssueOpenedEvent {
   eventType?: string;
   /** GitHub delivery id (idempotency tag). */
   deliveryId?: string;
+  /** True when this delivery is an `issues.labeled` event that added the bot-ok label. */
+  botOkLabeled?: boolean;
 }
 
 /**
@@ -156,6 +161,7 @@ export type DeliveryOutcome =
   | 'local'
   | 'forwarded'
   | 'dropped'
+  | 'skipped'
   | 'no-session'
   | 'no-admin-group'
   | 'parked'
@@ -553,6 +559,72 @@ export async function deliverGitHubMention(event: GitHubMentionEvent): Promise<D
 }
 
 /**
+ * Decide whether the bot may see a new issue now, later, or never (contributor
+ * standard R6: the bot leaves room for people).
+ *
+ * - `skip`: the issue carries a newcomer label (GoodFirstBug, HelpWanted, no-bot
+ *   by default). People own it; the bot never sees it.
+ * - `now`: the wait is disabled, a maintainer added the bot-ok label, the filer
+ *   is itself a bot, or the issue reads as a crash or regression with a
+ *   reproducer (a crash word in the title or body plus a fenced code block).
+ * - `wait`: a fresh human-filed issue; the orchestrator sees it after
+ *   ISSUE_BOT_WAIT_DAYS days unless a maintainer labels it bot-ok first.
+ */
+export function classifyIssueForBot(event: GitHubIssueOpenedEvent): 'skip' | 'now' | 'wait' {
+  const labels = (event.labels ?? []).map((l) => l.toLowerCase());
+  if (labels.some((l) => (ISSUE_NEWCOMER_LABELS ?? []).includes(l))) return 'skip';
+  if (!ISSUE_BOT_WAIT_DAYS || ISSUE_BOT_WAIT_DAYS <= 0) return 'now';
+  if (event.botOkLabeled || labels.includes(ISSUE_BOT_OK_LABEL)) return 'now';
+  if (/\[bot\]$/i.test(event.author)) return 'now';
+  if (isCrashWithReproducer(event.title, event.body)) return 'now';
+  return 'wait';
+}
+
+const CRASH_RE =
+  /\b(crash(es|ed)?|segfault|segmentation fault|assert(ion)? fail|internal compiler error|ICE|stack overflow|regression)\b/i;
+
+/** A crash or regression report that includes a fenced code block counts as "with a reproducer". */
+export function isCrashWithReproducer(title: string, body: string): boolean {
+  return CRASH_RE.test(`${title}\n${body}`) && /```/.test(body);
+}
+
+/**
+ * Park a human-filed issue: a one-shot scheduled task in the orchestrator's
+ * group fires after ISSUE_BOT_WAIT_DAYS days and asks it to re-check the issue
+ * (closed, newcomer-labeled or already handled → do nothing; otherwise treat it
+ * as a fresh `github.issue_opened`). Returns false when there is no admin
+ * group to park under.
+ */
+async function parkIssueForBotWait(event: GitHubIssueOpenedEvent): Promise<boolean> {
+  const group = await getAdminAgentGroup();
+  if (!group) return false;
+  const processAfter = new Date(Date.now() + ISSUE_BOT_WAIT_DAYS * 86_400_000).toISOString();
+  const newcomer = (ISSUE_NEWCOMER_LABELS ?? []).join(', ');
+  const prompt = [
+    `Re-check ${event.issueUrl} (filed by ${event.author}, parked ${ISSUE_BOT_WAIT_DAYS} days ago so people could pick it up).`,
+    `Run: gh issue view ${event.issueNumber} -R ${event.repo} --json state,labels,assignees,comments`,
+    `Do nothing, and say why, if the issue is closed, is assigned, carries one of the labels ${newcomer}, or already has a comment from the bot.`,
+    `Otherwise handle it exactly as a github.issue_opened event for ${event.repo}#${event.issueNumber} ("${event.title}") and route it per routing.md.`,
+  ].join('\n');
+  // Loaded on demand: the scheduler pulls in the session manager, which the
+  // webhook path does not otherwise need.
+  const { createScheduledTask, prepareScheduledTask } = await import('./modules/scheduling/create.js');
+  const task = prepareScheduledTask({
+    name: `issue-wait ${event.repo}#${event.issueNumber}`,
+    prompt,
+    processAfter,
+  });
+  await createScheduledTask(group.id, task);
+  log.info('github-webhook: human-filed issue parked for the bot wait', {
+    repo: event.repo,
+    issue: event.issueNumber,
+    author: event.author,
+    processAfter,
+  });
+  return true;
+}
+
+/**
  * Deliver a GitHub `issues` event (action=opened) to the orchestrator —
  * or forward to a peer instance when ROUTE_ISSUES_TO is set.
  *
@@ -598,6 +670,21 @@ export async function deliverGitHubIssueOpened(event: GitHubIssueOpenedEvent): P
       haveBody: Boolean(event.rawBody),
     });
     return 'dropped';
+  }
+
+  const verdict = classifyIssueForBot(event);
+  if (verdict === 'skip') {
+    log.info('github-webhook: issue carries a newcomer label — left for people', {
+      repo: event.repo,
+      issue: event.issueNumber,
+      labels: event.labels,
+    });
+    return 'skipped';
+  }
+  if (verdict === 'wait') {
+    const parked = await parkIssueForBotWait(event);
+    if (parked) return 'parked';
+    // No admin group to park under: fall through and deliver as before.
   }
 
   const eventContent = JSON.stringify({

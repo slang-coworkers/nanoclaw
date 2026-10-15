@@ -27,6 +27,9 @@ const envConfig = readEnvFile([
   'INTERNAL_REGISTER_SECRET',
   'INSTANCE_FORWARD_TARGETS',
   'ROUTE_ISSUES_TO',
+  'ISSUE_BOT_WAIT_DAYS',
+  'ISSUE_NEWCOMER_LABELS',
+  'ISSUE_BOT_OK_LABEL',
   'ROUTE_READY_PRS_TO',
   'APPROVER_CI_GATE',
   'APPROVAL_LEDGER_WRITERS',
@@ -329,6 +332,28 @@ export const INSTANCE_FORWARD_TARGETS = parseForwardTargets(
 //
 // On lego (or any non-canonical instance), leave unset.
 export const ROUTE_ISSUES_TO = (process.env.ROUTE_ISSUES_TO || envConfig.ROUTE_ISSUES_TO || '').trim();
+
+// The bot leaves room for people on new issues (contributor standard R6).
+// A human-filed issue waits ISSUE_BOT_WAIT_DAYS days before the orchestrator
+// sees it, unless a maintainer adds ISSUE_BOT_OK_LABEL or the issue is a crash
+// or regression with a reproducer. Issues carrying one of ISSUE_NEWCOMER_LABELS
+// are never delivered. 0 days disables the wait (every issue is delivered at
+// once, as before); the label lists are comma-separated and case-insensitive.
+export const ISSUE_BOT_WAIT_DAYS = Math.max(
+  0,
+  Number.parseInt((process.env.ISSUE_BOT_WAIT_DAYS || envConfig.ISSUE_BOT_WAIT_DAYS || '0').trim(), 10) || 0,
+);
+export const ISSUE_NEWCOMER_LABELS = (
+  process.env.ISSUE_NEWCOMER_LABELS ||
+  envConfig.ISSUE_NEWCOMER_LABELS ||
+  'GoodFirstBug,HelpWanted,no-bot'
+)
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+export const ISSUE_BOT_OK_LABEL = (process.env.ISSUE_BOT_OK_LABEL || envConfig.ISSUE_BOT_OK_LABEL || 'bot-ok')
+  .trim()
+  .toLowerCase();
 
 // Dev-route PR `ready_for_review` (draft→ready) events to a peer instance,
 // which hands them to a PR-approver coworker. Same trust-channel mechanism as
