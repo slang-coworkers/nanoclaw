@@ -23,7 +23,7 @@ Four invariants govern every message you send in a chain.
 | Fresh delegation to a peer | the peer | Requires explicit `thread_id="<task-key>"`. GitHub work → the canonical `gh-issue-<owner>/<repo>-<num>` thread, reused verbatim. |
 | Stuck — need a human decision | (none) | `mcp__nanoclaw__ask_user_question` (`timeout: 0` when no acceptable fallback). Not a peer — peers are for capability gaps, not your indecision. |
 
-**Report shape.** Five Markdown `- ` bullets (never Unicode `•`), bold field names: `**Status:** / **Link:** / **Verdict:** / **Next-action:** / **Blocker:**`. A PR you open carries the rolled-up 5-bullet in its description; call `report_pr_created({repo, pr_number})`. Edge examples, the GitHub state-change list, roll-up and file-sharing rules: `/base-nanoclaw` › Chain reporting mechanics.
+**Report shape.** The GitHub 5-bullet (Report formats). A PR you open carries the rolled-up 5-bullet in its description; call `report_pr_created({repo, pr_number})`. Edge examples, the GitHub state-change list, roll-up and file-sharing rules: `/base-nanoclaw` › Chain reporting mechanics.
 
 **Before ending a turn:** did you report up? is any peer ping unanswered? is any in-flight GitHub state left un-posted?
 
