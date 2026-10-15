@@ -69,6 +69,7 @@ function row(p: Partial<LedgerRow> & { id: string }): LedgerRow {
     // Deliberately WRONG write-time cache on Claude rows: reads must reprice from tokens.
     priced_usd: 999,
     adjustment_usd: 0,
+    window_gen: 1,
     ...p,
   };
 }
@@ -140,9 +141,9 @@ function writeLedger(dbPath: string, rows: LedgerRow[]): void {
   db.exec(COST_EVENTS_DDL);
   const ins = db.prepare(
     `INSERT INTO cost_events (id, ts, provider, model, input_tokens, cache_read_tokens, cache_write_tokens,
-       cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, priced_usd, rate_version, adjustment_usd, created_at)
+       cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, priced_usd, rate_version, adjustment_usd, window_gen, created_at)
      VALUES (@id, @ts, @provider, @model, @input_tokens, @cache_read_tokens, @cache_write_tokens,
-       @cache_write_5m_tokens, @cache_write_1h_tokens, @output_tokens, @priced_usd, 1, @adjustment_usd, @ts)`,
+       @cache_write_5m_tokens, @cache_write_1h_tokens, @output_tokens, @priced_usd, 1, @adjustment_usd, @window_gen, @ts)`,
   );
   for (const r of rows) ins.run(r);
   db.close();
@@ -216,6 +217,28 @@ describe('foldLedgerRows — session total = sum of every row', () => {
     expect(f.days.get(THREE_DAYS_AGO.slice(0, 10).replace(/-/g, ''))!.cost).toBeCloseTo(msgC, 12);
   });
 
+  it('drops LEDGER_BASELINE_GEN (-1) rows when the migration seed covers them', () => {
+    // poll-loop.ts performLedgerMigrationBaseline: the seed `adj:<sess>:base:<n>`
+    // holds the counter's pre-ledger spend; the codex history that existed then is
+    // stamped at gen -1 because its dollars are already inside the seed.
+    const rows = [
+      row({ id: 'adj:s:base:1', model: '', adjustment_usd: 10, priced_usd: 10, window_gen: 2 }),
+      row({ id: 'codex:old#1', provider: 'codex', model: 'gpt-5.5', input_tokens: 5, priced_usd: 4, window_gen: -1 }),
+      row({ id: 'codex:new#1', provider: 'codex', model: 'gpt-5.5', input_tokens: 5, priced_usd: 1, window_gen: 2 }),
+    ];
+    const total = [...foldLedgerRows(rows).days.values()].reduce((s, d) => s + d.cost, 0);
+    expect(total).toBeCloseTo(11, 12);
+  });
+
+  it('keeps gen -1 rows when no migration seed covers them (first metering / clear re-baseline)', () => {
+    const rows = [
+      row({ id: 'codex:old#1', provider: 'codex', model: 'gpt-5.5', input_tokens: 5, priced_usd: 4, window_gen: -1 }),
+      row({ id: 'adj:s:3', adjustment_usd: 1, priced_usd: 1 }),
+    ];
+    const total = [...foldLedgerRows(rows).days.values()].reduce((s, d) => s + d.cost, 0);
+    expect(total).toBeCloseTo(5, 12);
+  });
+
   it('an empty ledger is not a ledger session', () => {
     expect(foldLedgerRows([]).hasRows).toBe(false);
   });
@@ -241,6 +264,30 @@ describe('readLedgerFromDb / getSessionLedgerCost', () => {
     clearLedgerCacheForTests();
     expect(getSessionLedgerCost(p).hasRows).toBe(false);
     expect(getSessionLedgerCost(path.join(dir, 'missing', 'outbound.db')).hasRows).toBe(false);
+  });
+
+  it('a locked DB serves the last good ledger value, and reports UNKNOWN (ok:false) without one', () => {
+    const p = path.join(dir, 'd', 'outbound.db');
+    writeLedger(p, [row({ id: 'adj:s:1', adjustment_usd: 4, priced_usd: 4 })]);
+    clearLedgerCacheForTests();
+    expect(getSessionLedgerCost(p).hasRows).toBe(true);
+    // A writer mid-commit: EXCLUSIVE lock, and a change in size/mtime forces a re-read.
+    const w = new Database(p);
+    w.prepare(
+      "INSERT INTO cost_events (id, ts, provider, model, priced_usd, rate_version, created_at) VALUES ('adj:s:2', ?, 'claude', '', 0, 1, ?)",
+    ).run(TODAY, TODAY);
+    w.exec('BEGIN EXCLUSIVE');
+    try {
+      const stale = getSessionLedgerCost(p);
+      expect(stale.ok).toBe(true);
+      expect([...stale.days.values()][0].cost).toBeCloseTo(4, 12);
+      clearLedgerCacheForTests();
+      const cold = getSessionLedgerCost(p);
+      expect(cold).toMatchObject({ ok: false, hasRows: false });
+    } finally {
+      w.exec('ROLLBACK');
+      w.close();
+    }
   });
 
   it('re-reads when the outbound.db changes (mtime/size-keyed cache)', () => {
@@ -376,5 +423,42 @@ describe('GET /api/sessions — ledger is primary, transcript is the fallback, n
     const s1 = await getSessions('1d');
     expect(s1['sess-ledger'].cost).toBeCloseTo(TODAY_CLAUDE + codex, 9);
     expect(s1['sess-ledger'].costSource).toBe('ledger');
+  });
+
+  it('keeps the last published figure while a session ledger is unreadable — never a transcript fallback mix', async () => {
+    seedCentral();
+    const oldOut = path.join(DATA_DIR, 'v2-sessions', 'ag-1', 'sess-old', 'outbound.db');
+    mkdirSync(path.dirname(oldOut), { recursive: true });
+    const odb = new Database(oldOut);
+    odb.exec('CREATE TABLE session_state (key TEXT PRIMARY KEY, value TEXT)');
+    odb.close();
+    const oldCost = writeTranscript('ag-1', 'sdk-old', 'msg_old', 2000);
+    forceOpenDbForTests();
+    refreshSessionCostsForTests();
+    expect((await getSessions('30d'))['sess-old'].cost).toBeCloseTo(oldCost, 12);
+
+    // The runner starts writing a ledger AND makes a codex call; the dashboard's
+    // next read hits the write lock. The source is unknown → keep last figure
+    // (adding the new rollout on top of the transcript would be a mixed number).
+    writeLedger(oldOut, [row({ id: 'adj:sess-old:1', adjustment_usd: 7, priced_usd: 7 })]);
+    writeCodexRollout('ag-1', 'sess-old');
+    const w = new Database(oldOut);
+    w.exec('BEGIN EXCLUSIVE');
+    try {
+      refreshSessionCostsForTests();
+      const locked = (await getSessions('30d'))['sess-old'];
+      expect(locked.cost).toBeCloseTo(oldCost, 12);
+      expect(locked.costSource).toBe('transcript');
+    } finally {
+      w.exec('ROLLBACK');
+      w.close();
+    }
+
+    // Lock released → the ledger is the only source.
+    refreshSessionCostsForTests();
+    const after = (await getSessions('30d'))['sess-old'];
+    expect(after.cost).toBeCloseTo(7, 12);
+    expect(after.codexUsd).toBe(0);
+    expect(after.costSource).toBe('ledger');
   });
 });

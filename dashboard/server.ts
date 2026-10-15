@@ -2567,6 +2567,12 @@ function refreshSessionCostCache(): void {
     // cost is never ledger + transcript. Sessions with no ledger rows (older
     // runners) keep the transcript/rollout pricing below.
     const ledgerBySession = new Map<string, SessionLedgerCost & { mtimeMs: number }>();
+    // Sessions whose outbound.db could not be read this tick (e.g. the runner
+    // held the write lock) and that already have a published figure: the
+    // source is unknown, so keep last tick's entries rather than silently
+    // falling back to the (possibly rotated) transcript. With no previous
+    // figure, the transcript fallback below applies as for any non-ledger session.
+    const carrySessions = new Set<string>();
     const sessDirsByGroup = new Map<string, string[] | null>();
     for (const group of groups) {
       let dirs: string[] | null;
@@ -2581,6 +2587,7 @@ function refreshSessionCostCache(): void {
         liveLedgerPaths.add(outPath);
         const lc = getSessionLedgerCost(outPath);
         if (lc.hasRows) ledgerBySession.set(sessId, lc);
+        else if (!lc.ok && sessionCostCache.all.has(sessId)) carrySessions.add(sessId);
       }
     }
 
@@ -2620,7 +2627,7 @@ function refreshSessionCostCache(): void {
         const nanoId = sdkToNano.get(sdkId) || '';
         // Ledger-priced session: its cost comes from cost_events below, never
         // from this transcript too (no double count).
-        if (nanoId && ledgerBySession.has(nanoId)) continue;
+        if (nanoId && (ledgerBySession.has(nanoId) || carrySessions.has(nanoId))) continue;
         for (const period of CONTEXT_PERIODS) {
           const since = cutoffs[period];
           let cost = 0;
@@ -2670,6 +2677,13 @@ function refreshSessionCostCache(): void {
       const sessDirs = sessDirsByGroup.get(group.id);
       if (!sessDirs) continue; // group has no session dir yet
       for (const sessId of sessDirs) {
+        if (carrySessions.has(sessId)) {
+          for (const period of CONTEXT_PERIODS) {
+            const prev = sessionCostCache[period].get(sessId);
+            if (prev) next[period].set(sessId, { ...prev });
+          }
+          continue;
+        }
         const ledger = ledgerBySession.get(sessId);
         if (ledger) {
           // Ledger session: both halves (Claude + codex) come from cost_events;

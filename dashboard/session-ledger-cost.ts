@@ -23,6 +23,15 @@
  *     copy of session-costs.ts), 1h cache write = 2x input, then add the row's
  *     stored `adjustment_usd`. Unknown model with billed tokens → $0 + unpriced.
  *   - Codex rows: keep `priced_usd` (it already includes `adjustment_usd`).
+ *   - One documented exception to "sum every row": when the session carries the
+ *     one-time migration seed `adj:<session>:base:<seq>`, rows stamped at the
+ *     runner's LEDGER_BASELINE_GEN (-1) are left out. That seed is the counter's
+ *     pre-ledger spend, and the runner stamps the pre-existing codex history at
+ *     gen -1 precisely because "its dollars are already inside the single
+ *     adjustment; re-counting the repriced tokens would double it"
+ *     (poll-loop.ts performLedgerMigrationBaseline). Without the seed, gen -1
+ *     rows are history no adjustment covers (a native-codex session's first
+ *     metering, a /clear re-baseline) and they count.
  *
  * Read-only: the DB is opened `readonly` + `fileMustExist`; nothing here writes.
  */
@@ -36,6 +45,8 @@ import { MODEL_PRICING, normalizeModel } from './session-costs.js';
 /** The `cost_events` columns this module reads (one row). */
 export interface LedgerRow {
   id: string;
+  /** `window_gen`; the runner's LEDGER_BASELINE_GEN is -1. Absent on early tables (= 0). */
+  window_gen?: number;
   ts: string;
   provider: string;
   model: string;
@@ -124,12 +135,24 @@ export interface SessionLedgerCost {
   rowCount: number;
 }
 
+/** The runner's sentinel generation for baselined (pre-existing) codex history. */
+export const LEDGER_BASELINE_GEN = -1;
+/** The runner's one-time migration seed id: `adj:<session>:base:<seq>` (poll-loop.ts). */
+export function isMigrationBaseRow(id: string): boolean {
+  return id.startsWith('adj:') && id.includes(':base:');
+}
+
 /** Fold a session's ledger rows into per-day buckets. Pure — the unit under test. */
-export function foldLedgerRows(rows: Iterable<LedgerRow>): SessionLedgerCost {
+export function foldLedgerRows(input: Iterable<LedgerRow>): SessionLedgerCost {
   const out: SessionLedgerCost = { hasRows: false, ok: true, days: new Map(), unpriced: false, rowCount: 0 };
+  const rows = Array.isArray(input) ? (input as LedgerRow[]) : [...input];
+  // See the module header: the migration seed already holds the dollars of the
+  // history the runner stamped at LEDGER_BASELINE_GEN.
+  const migrated = rows.some((r) => isMigrationBaseRow(String(r.id)));
   for (const row of rows) {
     out.hasRows = true;
     out.rowCount++;
+    if (migrated && Number(row.window_gen ?? 0) === LEDGER_BASELINE_GEN) continue;
     const p = priceLedgerRow(row);
     if (p.unpriced) out.unpriced = true;
     const key = ledgerDayKey(row.ts);
@@ -143,9 +166,14 @@ export function foldLedgerRows(rows: Iterable<LedgerRow>): SessionLedgerCost {
   return out;
 }
 
+const LEDGER_BUSY_TIMEOUT_MS = 100;
+
 /** Read + fold one outbound.db's ledger. Throws on a read failure (caller decides). */
 export function readLedgerFromDb(dbPath: string): SessionLedgerCost {
-  const db = new Database(dbPath, { readonly: true, fileMustExist: true });
+  // Short busy timeout: this runs synchronously on the dashboard's event loop,
+  // and better-sqlite3's default (5s) would stall every request each time the
+  // runner holds the write lock. A busy read fails fast and is retried next tick.
+  const db = new Database(dbPath, { readonly: true, fileMustExist: true, timeout: LEDGER_BUSY_TIMEOUT_MS });
   try {
     const hasTable = db.prepare("SELECT 1 FROM sqlite_master WHERE type = 'table' AND name = 'cost_events'").get();
     if (!hasTable) return { hasRows: false, ok: true, days: new Map(), unpriced: false, rowCount: 0 };
@@ -154,10 +182,11 @@ export function readLedgerFromDb(dbPath: string): SessionLedgerCost {
       (db.prepare("PRAGMA table_info('cost_events')").all() as { name: string }[]).map((c) => c.name),
     );
     const adj = cols.has('adjustment_usd') ? 'adjustment_usd' : '0 AS adjustment_usd';
+    const gen = cols.has('window_gen') ? 'window_gen' : '0 AS window_gen';
     const rows = db
       .prepare(
         `SELECT id, ts, provider, model, input_tokens, cache_read_tokens, cache_write_tokens,
-                cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, priced_usd, ${adj}
+                cache_write_5m_tokens, cache_write_1h_tokens, output_tokens, priced_usd, ${adj}, ${gen}
            FROM cost_events`,
       )
       .iterate() as Iterable<LedgerRow>;
@@ -180,10 +209,12 @@ const NO_LEDGER: SessionLedgerCost = { hasRows: false, ok: true, days: new Map()
  * A session's ledger cost, cached per outbound.db keyed on mtime+size (the DB
  * runs journal_mode=DELETE, so every committed write bumps the main file).
  *
- * Missing outbound.db → no ledger (cached negative is unnecessary: a stat miss is
- * already cheap). A transient read failure (e.g. the runner holds the write lock)
- * serves the last good value for that path, else reports `ok:false, hasRows:false`
- * so the caller falls back to the transcript for this tick only — never caches it.
+ * Missing outbound.db → no ledger (a stat miss is already cheap). A failed read
+ * (e.g. the runner holds the write lock) serves the last good LEDGER value for the
+ * path; otherwise — no cache, or a cached "no rows" that may since have gained
+ * rows — it reports `ok:false`: the source is UNKNOWN this tick, and the caller
+ * must not treat that as "no ledger, use the transcript" when it has a previous
+ * figure to keep. Failures are never cached.
  */
 export function getSessionLedgerCost(dbPath: string): SessionLedgerCost & { mtimeMs: number } {
   let st: { mtimeMs: number; size: number };
@@ -202,7 +233,7 @@ export function getSessionLedgerCost(dbPath: string): SessionLedgerCost & { mtim
     ledgerCache.set(dbPath, { mtimeMs: st.mtimeMs, size: st.size, value });
     return { ...value, mtimeMs: st.mtimeMs };
   } catch {
-    if (cached) return { ...cached.value, mtimeMs: cached.mtimeMs };
+    if (cached?.value.hasRows) return { ...cached.value, mtimeMs: cached.mtimeMs };
     return { ...NO_LEDGER, ok: false, mtimeMs: st.mtimeMs };
   }
 }
