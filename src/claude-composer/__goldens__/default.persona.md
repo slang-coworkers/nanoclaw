@@ -211,7 +211,6 @@ The `conversations/` folder in your workspace holds searchable transcripts of pa
 **Other**
 
 - `/base-nanoclaw` — NanoClaw host tools — send messages, schedule tasks, ask the user questions, append durable learnings.
-- `/explain-diff-html` — Rich, self-contained HTML explanation of a code change (PR, branch, or diff): Background → Intuition → Code walkthrough → five-question interactive quiz.
 
 ## Resident Skill Instructions
 

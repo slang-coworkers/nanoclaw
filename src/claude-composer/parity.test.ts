@@ -121,8 +121,14 @@ describe('composed-document byte parity', () => {
       // context for `/base-nanoclaw`, the Ambiguity principle stopped pointing at the
       // retired Mechanics section, and chain-reporting's report-shape line deferred
       // to Report formats. Declared in `section-reorder.test.ts`.
-      'base-common': '5c1c8dede4b71127',
-      'base-common.persona': 'f03e1ea1d24c49d4',
+      //
+      // Moved a ninth time when `explain-diff-html` left `base-common.skills` for
+      // the `implement` workflow's `uses.skills`: only coworkers whose workflow opens
+      // PRs can act on it, so the one `## Skills` line it added to every typed
+      // document is gone from these goldens. Declared as the one removed line in
+      // `section-reorder.test.ts`.
+      'base-common': 'b07950edefd94e65',
+      'base-common.persona': 'f04669e32f7932a8',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -130,8 +136,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: '16ea42448d29903c',
-      'default.persona': 'de7b3ed8a56be370',
+      default: 'c8cbac0602dc8494',
+      'default.persona': '252f553100b930b4',
     };
 
     const actual: Record<string, string> = {};
