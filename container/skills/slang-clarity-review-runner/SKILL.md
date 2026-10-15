@@ -15,9 +15,9 @@ Bridges the `/slang-pr-review` workflow's *what* (also clarity-review this PR) t
 
 | Script | Used in workflow Step | What it does |
 |---|---|---|
-| `scripts/run-clarity.sh` | Reviewer C (#dispatch) | Top-level entry. Prepares the `slang/` checkout for the input mode, then invokes `claude --print` to apply the checkout's `.claude/skills/slang-review-clarity-workflow` pipeline (clarity → fine-grained → consolidate → scope-filter → resolve-judgment-calls). Captures the canonical candidate file as `clarity-review.md`. Never posts. |
+| `scripts/run-clarity.sh` | Reviewer C (#dispatch) | Top-level entry. Prepares the `slang/` checkout for the input mode, then invokes `claude --print` to apply the checkout's `.claude/skills/slang-review-clarity-workflow` pipeline (clarity → fine-grained → consolidate → scope-filter → resolve-judgment-calls). Captures the canonical candidate file as `clarity-review.md`. Never posts. With `--detach` it validates the flags, starts the run through the sibling skill's `detach.sh`, prints the run directory and returns at once; await it with that skill's `wait-run.sh <run-dir>`. |
 
-Reviewer C reuses `slang-pr-review-runner`'s installer (claude CLI + `/workspace/agent/slang` checkout) and its dry-run MCP config (`prompt-templates/mcp.dryrun.json`, deepwiki only). The `/slang-pr-review` workflow runs that installer in preflight; this skill only adds the clarity wrapper on top.
+Reviewer C reuses `slang-pr-review-runner`'s installer (claude CLI + `/workspace/agent/slang` checkout), its dry-run MCP config (`prompt-templates/mcp.dryrun.json`, deepwiki only) and its `scripts/detach.sh` / `scripts/wait-run.sh` pair, so A and C are started and awaited the same way. The `/slang-pr-review` workflow runs that installer in preflight; this skill only adds the clarity wrapper on top.
 
 ## Modes
 
@@ -44,6 +44,8 @@ What the wrapper deliberately diverges on:
 ## Gotchas
 
 - **Checkout must post-date shader-slang/slang#11340 (merged 2026-05-29).** `run-clarity.sh` hard-fails if `.claude/skills/slang-review-clarity-workflow/` is missing rather than silently degrading — re-run `slang-pr-review-runner`'s `install.sh` to refresh the checkout.
+- **Long runs are detached; the caller polls.** A clarity pass takes longer than one Bash tool call may last, and a backgrounded job dies with its process group at the tool's timeout. Start it with `--detach` and wait with `slang-pr-review-runner/scripts/wait-run.sh <run-dir> --timeout 1200` in a loop until the exit code is not 124 (125 = the run died without a status; anything else is `run-clarity.sh`'s own code). The run's stdout/stderr is `<run-dir>/run.log`; read `clarity-review.md` only after exit 0.
+- **Subagents run in the foreground.** `run-clarity.sh` exports `CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1`, as Reviewer A's `repro.sh` does, so print mode cannot end the session while a quiet subagent is still working; the byte-floor guard stays as the backstop.
 - **Reads only.** The tool allowlist permits `gh pr diff`/`gh pr view`/`gh api repos/*/pulls/*` for reads but no GitHub-write. `tool-uses.jsonl` is emitted so the workflow can assert no write was attempted.
 - **Clarity is advisory.** Lower bar than correctness — expect more, softer findings. The `/slang-pr-review` workflow folds C into the combined report sent to the fixer, but does not auto-post C to GitHub.
 - **Upstream drift.** If shader-slang/slang renames or restructures the `slang-review-*` skills, update this skill's wrapper prompt (`scripts/run-clarity.sh`) to track the new names. The skill reads them live from the checkout, so a rename breaks the pipeline at the read step.
