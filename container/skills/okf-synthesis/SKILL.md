@@ -1,13 +1,15 @@
 ---
 name: okf-synthesis
 license: MIT
-description: Keep ONE agent group's always-loaded OKF memory bounded. Scans the group's memory tree (`/workspace/agent/memory/`), detects when index.md or definition.md near the 16k always-loaded budget or when un-synthesized issue-knowledge (a CLAUDE.local-style dossier, an oversize catch-all concept) has accumulated, and folds it into well-formed one-concept-per-file OKF pages. Self-correcting — a daily cron gate wakes only on real backlog, fan-out is bounded, and it escalates to the owner when not converging. Triggers on "synthesize memory", "okf synthesis", "memory too big", "trim memory index".
+description: Keep ONE agent group's always-loaded OKF memory bounded. Scans the group's memory tree (`/workspace/agent/memory/`) plus the injected dossier files at the group root (`/workspace/agent/CLAUDE.local.md` and kin), detects when index.md or definition.md near the 16k always-loaded budget or when un-synthesized issue-knowledge (a CLAUDE.local-style dossier, an oversize catch-all concept) has accumulated, and folds it into well-formed one-concept-per-file OKF pages. Self-correcting — a daily cron gate wakes only on real backlog, fan-out is bounded, and it escalates to the owner when not converging. Triggers on "synthesize memory", "okf synthesis", "memory too big", "trim memory index".
 ---
 
 # okf-synthesis
 
 > **Scope:** this skill is **only** for a single agent group's **Open Knowledge
-> Format (OKF) memory tree** under `/workspace/agent/memory/`. It is not the shared
+> Format (OKF) memory tree** under `/workspace/agent/memory/` and the **injected
+> dossier files** beside it at the group root (`/workspace/agent/CLAUDE.local.md`,
+> `*.local.md`). It is not the shared
 > learnings wiki (`/workspace/shared/` — that is `/learnings-wiki`), and it is not a
 > general-purpose editor. It keeps the two **always-loaded** memory files inside the
 > per-context budget and folds accumulating issue-knowledge into proper concept files.
@@ -35,9 +37,14 @@ the model's view** — so an index that drifts over budget quietly loses its tai
 when the agent most needs it. Keeping those two lean, and pushing detail into linked
 concept files, is the entire objective.
 
-## Layout (memory root = `/workspace/agent/memory`)
+## Layout (memory root = `/workspace/agent/memory`, group root = its parent)
 
 ```
+../CLAUDE.local.md       GROUP ROOT, INJECTED EVERY TURN by the provider. Not memory: the
+../*.local.md            fold leaves at most a thin pointer (<= 4k) here; anything larger is
+                         un-synthesized issue-knowledge paid for on every turn.
+../*.premigration-*.md   cold storage parked beside the dossier by a migration; never
+../*.archive-*.md        injected, never an offender, left alone.
 index.md                 ALWAYS-LOADED. okf_version + Core Memory + Map. Small by design:
                          O(topics), not one line per fact. Detail lives in linked files.
 system/
@@ -67,8 +74,15 @@ The scanner classifies exactly these, largest-first:
 - **`DOSSIER`** — a `CLAUDE.local.md` / `*.local.md` / `*issue-knowledge*` / `*dossier*`
   file, **or** any large non-index `.md` with no `type` frontmatter, **or** a file with
   many H2 sections (`>= MULTI_CONCEPT_H2`) that reads like a pile of per-issue notes. This
-  is the classic triager growth: an issue-knowledge dump re-read every turn before #1208,
-  now sitting inert in the tree and never distilled.
+  is the classic triager growth: an issue-knowledge dump that the provider injects into
+  every turn, or that sits inert in the tree and is never distilled. The scanner looks
+  for it in **two places**: anywhere in the memory tree (by name regardless of size), and
+  **non-recursively at the group root** (`OKF_GROUP_ROOT`, default the parent of the
+  memory root — where the provider-injected `/workspace/agent/CLAUDE.local.md` lives),
+  where only a file over `GROUP_DOSSIER_STUB_MAX` (4k) counts, because a pointer-sized
+  dossier is the fold's intended end state. Cold-storage copies named
+  `*.premigration-*.md` / `*.archive-*.md` are never offenders: a migration parks them
+  beside the live dossier, and the spliced tag means no provider injects them.
 - **`INDEX-STALE`** — a folder `index.md` that misses a sibling concept, or links a file
   that no longer exists.
 - **`NO-FRONTMATTER`** — a non-exempt concept `.md` missing its `type` line. (Deep
@@ -95,6 +109,9 @@ OKF_MEMORY_ROOT=/workspace/agent/memory python3 /workspace/agent/tools/okf_synth
 ```
 It prints every offender by class with sizes, the backlog metric, and the convergence
 state, then exits `0` (bounded — **nothing to do, stop**) or `3` (backlog to fold).
+Group-root dossiers are reported relative to the memory root (`../CLAUDE.local.md`);
+set `OKF_GROUP_ROOT` only when the injected files do not live in the memory root's
+parent.
 
 ## Synthesize (the LLM step — your judgment)
 
@@ -107,7 +124,10 @@ GUARD — fold **at most `MAX_ITEMS_PER_RUN` (4) offenders this run**. Growth be
   first). Give each new file `type` + a one-line `description`; cross-link related
   concepts with `[[…]]`. If the raw dump is worth returning to, save it once and point
   `resource:` at it. Then **delete or reduce the dossier to a thin pointer** — do not leave
-  the un-synthesized copy behind, or it bloats again next scan.
+  the un-synthesized copy behind, or it bloats again next scan. For an injected group-root
+  dossier (`../CLAUDE.local.md`) the pointer must end up **under 4k** (a paragraph saying
+  memory lives in `memory/`, plus links); keep the raw copy, if any, as
+  `CLAUDE.local.archive-<date>.md` beside it so it is retained but never injected.
 - **`OVERSIZE`** → **split by subtopic** into several one-concept files; replace the fat
   file with the split (or a short index of them). Never keep appending to a file at the cap.
 - **`INDEX-BLOAT`** → cut Core Memory back to the few facts that matter in *nearly every*
@@ -139,8 +159,9 @@ OKF_MEMORY_ROOT=/workspace/agent/memory python3 /workspace/agent/tools/okf_synth
 `finalize` re-scans, appends this run's `(backlog, defects)` reading to
 `/workspace/agent/memory/.okf-synth-state.json`, and prints the convergence verdict:
 
-- **exit 0** — bounded: index & definition under budget, 0 oversize, 0 dossiers, indexes
-  accurate, 0 dangling memory links. Done.
+- **exit 0** — bounded: index & definition under budget, 0 oversize, 0 dossiers (in the
+  tree or over the stub size at the group root), indexes accurate, 0 dangling memory
+  links. Done.
 - **exit 3** — residual backlog. Normal on a large backlog: you folded your 4 this run, the
   cron fires again tomorrow. **But if it prints `ESCALATE`**, the backlog has **not shrunk
   across the last `STALL_RUNS` (3) runs** (or the same top offender has persisted
@@ -159,7 +180,9 @@ An operator creates the task **per group, after approval**; this skill never cre
 tasks itself, and the first run is an operator action.
 
 **The gate** (`--script`) runs the scanner and prints the one-line `{"wakeAgent": …}` the
-task loop reads. It wakes **only when `backlog >= GATE_MIN_BACKLOG` (2000)**. Structural
+task loop reads. It wakes **only when `backlog >= GATE_MIN_BACKLOG` (2000)**, and when it
+wakes, `data.dossiers` names each DOSSIER offender with its size so the prompt can point
+at the injected `../CLAUDE.local.md` directly. Structural
 defects weigh `DEFECT_WEIGHT` (500) each inside that metric, so a lone stale folder index
 does not wake the agent by itself — it is folded in passing once real backlog
 accumulates. Like the `memcheck` gate it **wakes loudly on scanner failure** (a crashed
@@ -179,7 +202,7 @@ ncl tasks create \
   --name "okf-memory-synthesis" \
   --recurrence "0 4 * * *" \
   --script 'OKF_MEMORY_ROOT=/workspace/agent/memory python3 /workspace/agent/tools/okf_synth.py gate || echo '"'"'{"wakeAgent":true,"data":{"SCANNER_FAILED":"okf_synth.py did not run - investigate, do NOT assume clean"}}'"'"'' \
-  --prompt 'OKF MEMORY SYNTHESIS — the gate fired, so /workspace/agent/memory has backlog (data lists it by class). Load the /okf-synthesis skill and follow it: write /workspace/agent/tools/okf_synth.py, run `okf_synth.py scan`, then fold AT MOST 4 offenders largest-first — distill DOSSIER files into one-concept-per-file OKF pages (type + description + [[links]]), SPLIT any OVERSIZE concept by subtopic, trim INDEX-BLOAT so index.md sits well under the 16k always-loaded budget (move detail into linked concepts, keep the Map accurate), and repair stale indexes / missing frontmatter / dangling links. Reconcile and prune — do NOT append; a smaller, truer memory is the goal. Run `okf_synth.py finalize`; if it prints ESCALATE, message the owner with the stuck offender and why. Reply one line: files scanned, offenders by class, folded, escalated?'
+  --prompt 'OKF MEMORY SYNTHESIS — the gate fired, so /workspace/agent/memory or the injected /workspace/agent/CLAUDE.local.md has backlog (data lists it by class and names each dossier). Load the /okf-synthesis skill and follow it: write /workspace/agent/tools/okf_synth.py, run `okf_synth.py scan`, then fold AT MOST 4 offenders largest-first — distill DOSSIER files into one-concept-per-file OKF pages (type + description + [[links]]) and reduce an injected ../CLAUDE.local.md to a pointer under 4k, SPLIT any OVERSIZE concept by subtopic, trim INDEX-BLOAT so index.md sits well under the 16k always-loaded budget (move detail into linked concepts, keep the Map accurate), and repair stale indexes / missing frontmatter / dangling links. Reconcile and prune — do NOT append; a smaller, truer memory is the goal. Run `okf_synth.py finalize`; if it prints ESCALATE, message the owner with the stuck offender and why. Reply one line: files scanned, offenders by class, folded, escalated?'
 ```
 
 Cron uses the install timezone. **The cadence is daily (`0 4 * * *`)**: each run folds at
@@ -212,6 +235,9 @@ is the LLM step in SKILL.md. The one thing it writes is a small convergence log
 NO RAG, NO embeddings, NO MCP, NO network. Pure filesystem, stdlib only.
 
 Memory root: $OKF_MEMORY_ROOT, else /workspace/agent/memory, else CWD.
+Group root:  $OKF_GROUP_ROOT, else the parent of the memory root. Only its
+             top-level dossier files are examined (CLAUDE.local.md and kin);
+             nothing under it is walked.
 
 Always-loaded contract (mirrors container/agent-runner/src/memory/context.ts):
   memory/index.md and memory/system/definition.md load on EVERY context window
@@ -247,6 +273,10 @@ ROOT = os.environ.get("OKF_MEMORY_ROOT") or (
     "/workspace/agent/memory" if os.path.isdir("/workspace/agent/memory") else os.getcwd()
 )
 STATE = os.path.join(ROOT, ".okf-synth-state.json")
+# The group root holds the per-group files a provider injects into every context
+# window (CLAUDE.local.md and kin). They live one level ABOVE the memory tree, so
+# a scan confined to ROOT never sees the file the DOSSIER class exists for.
+GROUP_ROOT = os.environ.get("OKF_GROUP_ROOT") or os.path.dirname(os.path.abspath(ROOT))
 
 # --- budget constants (keep BUDGET in sync with MEMORY_FILE_BUDGET_CHARS) -----
 BUDGET = 16000            # container/agent-runner/src/memory/context.ts
@@ -260,12 +290,26 @@ MAX_ITEMS_PER_RUN = 4     # bounded fan-out (advisory; enforced by the SKILL pro
 STALL_RUNS = 3            # finalize escalates if backlog hasn't shrunk over N runs
 HISTORY_CAP = 30
 DEFECT_WEIGHT = 500       # each structural defect adds this to the backlog metric (4 defects reach the gate)
+# A group-root dossier at or under this size is the thin pointer the fold leaves
+# behind, not backlog. A one-paragraph "memory lives in memory/" note with a few
+# links fits in about 1k; 4k allows a generous pointer while still costing the
+# context only ~1k tokens per turn. Anything larger is per-issue notes
+# accumulating again, and because a group-root dossier counts its whole size
+# toward the backlog, the first reading over this threshold already clears the
+# gate floor (GATE_MIN_BACKLOG) and wakes the agent.
+GROUP_DOSSIER_STUB_MAX = 4096
 
 # Files that are index-like (no `type:` required) or otherwise exempt from the
 # concept-frontmatter and size rules.
 EXEMPT_NAMES = {"index.md", "log.md"}
 # Filenames that ARE the classic un-synthesized dossier, regardless of size.
 DOSSIER_RX = re.compile(r"(?:\.local\.md$)|issue[-_ ]?knowledge|dossier", re.I)
+# Cold-storage copies a migration parks beside the live dossier. The migration
+# names them by splicing a dated tag between the stem and `.md`
+# (CLAUDE.local.premigration-<date>.md, <stem>.archive-<date>.md), so the name no
+# longer ends in `.local.md` and no provider injects it. Such a copy is retained
+# on purpose and is never an offender, whatever its size.
+COLD_STORAGE_RX = re.compile(r"\.(?:premigration|archive)-[^/]+\.md$", re.I)
 # Path-form memory links only -- ends in .md or contains a slash. A bare
 # `[[nodiscard]]` (a C++/HLSL attribute) is NOT a link and must never be flagged:
 # that false positive is exactly what the memcheck task documents.
@@ -325,6 +369,31 @@ def _excess(size, soft):
     return max(0, size - soft)
 
 
+def _iter_group_root_dossiers():
+    """Yield (path, size) for every injected dossier at the group root that has
+    regrown past a thin pointer.
+
+    Only the top level of GROUP_ROOT is listed: the group root also holds the
+    memory tree itself, the composed CLAUDE.md, plugins and tools, none of which
+    are dossiers, and a recursive walk would re-scan the memory tree. A name
+    qualifies when DOSSIER_RX matches it (CLAUDE.local.md, *.local.md, the
+    issue-knowledge / dossier spellings) and COLD_STORAGE_RX does not. The stub
+    threshold applies here and not inside the memory tree because an injected
+    file is the one place where the fold's prescribed end state -- a thin pointer
+    -- is a success rather than an un-synthesized remnant."""
+    if not os.path.isdir(GROUP_ROOT) or os.path.realpath(GROUP_ROOT) == os.path.realpath(ROOT):
+        return
+    for name in sorted(os.listdir(GROUP_ROOT)):
+        if not name.endswith(".md") or not DOSSIER_RX.search(name) or COLD_STORAGE_RX.search(name):
+            continue
+        p = os.path.join(GROUP_ROOT, name)
+        if not os.path.isfile(p):
+            continue
+        size = len(_read(p))
+        if size > GROUP_DOSSIER_STUB_MAX:
+            yield p, size
+
+
 def scan():
     """Return (report_dict). Pure: reads the tree, writes nothing."""
     offenders = []  # list of {class, path, size, detail}
@@ -347,6 +416,15 @@ def scan():
         offenders.append({"class": "DEFN-BLOAT", "path": "system/definition.md",
                           "size": defn_size, "detail": f"{sev}; soft {DEFN_SOFT}"})
         backlog += _excess(defn_size, DEFN_SOFT)
+
+    # Injected group-root dossiers. These are the files the DOSSIER class exists
+    # for, and they sit outside the memory tree, so they get their own pass and
+    # count toward the backlog exactly like an in-tree dossier.
+    for p, size in _iter_group_root_dossiers():
+        offenders.append({"class": "DOSSIER", "path": _rel(p), "size": size,
+                          "detail": f"injected every turn (group root); distil into "
+                                    f"memory/ concepts and reduce to a <= {GROUP_DOSSIER_STUB_MAX}B pointer"})
+        backlog += min(size, CONCEPT_SOFT)
 
     # Concept files: oversize / dossier / missing-frontmatter.
     present = set()
@@ -416,8 +494,9 @@ def scan():
     defects += sum(1 for o in offenders if o["class"] == "NO-FRONTMATTER")
     backlog += defects * DEFECT_WEIGHT
     offenders.sort(key=lambda o: (-o["size"], o["class"], o["path"]))
-    return {"root": ROOT, "exists": True, "index_size": index_size, "defn_size": defn_size,
-            "budget": BUDGET, "offenders": offenders, "backlog": backlog, "defects": defects}
+    return {"root": ROOT, "group_root": GROUP_ROOT, "exists": True, "index_size": index_size,
+            "defn_size": defn_size, "budget": BUDGET, "offenders": offenders,
+            "backlog": backlog, "defects": defects}
 
 
 # ------------------------------------------------------------------ state / convergence
@@ -513,7 +592,7 @@ def _print_report(report):
     if not report["exists"]:
         print(f"okf memory root {report['root']} does not exist")
         return
-    print(f"memory root: {report['root']}")
+    print(f"memory root: {report['root']}  |  group root (dossiers): {report['group_root']}")
     print(f"index.md {report['index_size']}/{BUDGET}  |  system/definition.md "
           f"{report['defn_size']}/{BUDGET}  |  budget {BUDGET}")
     print(f"backlog {report['backlog']} chars | {report['defects']} structural defect(s) | "
@@ -571,9 +650,16 @@ def cmd_gate():
         by_class = {}
         for o in report["offenders"]:
             by_class[o["class"]] = by_class.get(o["class"], 0) + 1
+        # Dossiers are named individually: the woken agent's prompt is built from
+        # this data, and "DOSSIER: 1" does not tell it whether the offender is an
+        # in-tree dump or the injected ../CLAUDE.local.md it must fold first.
+        dossiers = [f"{o['path']} ({o['size']}B)"
+                    for o in report["offenders"] if o["class"] == "DOSSIER"][:MAX_ITEMS_PER_RUN]
         data = {"backlog": report["backlog"], "defects": report["defects"],
                 "offenders": len(report["offenders"]), "by_class": by_class,
                 "index_size": report["index_size"], "budget": BUDGET}
+        if dossiers:
+            data["dossiers"] = dossiers
         print(json.dumps({"wakeAgent": True, "data": data}))
     else:
         print(json.dumps({"wakeAgent": False,
