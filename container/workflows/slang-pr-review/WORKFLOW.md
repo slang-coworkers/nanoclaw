@@ -48,41 +48,47 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    - Reviewer C: shares A's checkout + claude CLI (no separate install). Verify the clarity skills are present: `test -d /workspace/agent/slang/.claude/skills/slang-review-clarity-workflow`. Missing = checkout predates shader-slang/slang#11340; re-run A's installer to refresh, else skip Reviewer C.
    - `pr`/`branch`: `gh auth status` must read the target repo (read-only OK). Devin draft-PR creation also needs `pull_requests: write` on the fork.
 
-4. **Dispatch both reviewers in parallel** {#dispatch}
+4. **Dispatch the reviewers detached, then wait** {#dispatch}
 
-   **Reviewer A** (background, no polling), ~20–30 min:
+   A and C each take 60–95 minutes. One Bash tool call cannot last that long, and a job started with `run_in_background=true` is killed with its process group when its call times out, so both run **detached** (`--detach`: own session, output in `<run_dir>/run.log`, `exit-status` written when done) and are awaited with the runner's `wait-run.sh` in calls that each stay well inside the tool limit. Do not use `Agent(run_in_background=true)` or `Bash(run_in_background=true)` for A or C.
+
+   **Reviewer A** — prints `run_dir_A` and returns at once:
 
    ```
-   slang-pr-review-runner compose-and-run \
+   slang-pr-review-runner compose-and-run --detach \
      --mode {pr|branch|patch} \
      --pr <N> | --branch <ref> | --patch <path> \
      --repo <owner/repo>    [for pr/branch] \
      [--max-budget-usd 30]
    ```
 
-   Use `Agent(run_in_background=true)` or `Bash(run_in_background=true)`; capture the run-directory path.
+   **Reviewer C** — skip only if **Setup** found the clarity skills absent; runs in all three modes, prints `run_dir_C` and returns at once. Produces `<run_dir_C>/clarity-review.md`. Never posts.
 
-   **Reviewer B** — skip if `DEVIN_URL=""`. Best-effort, one attempt, in the background with a 15-minute cap (the reviewer's first visit is what starts Devin's analysis, which took 6–11 minutes on the PRs measured so far; a shorter cap skips B on larger PRs); it is merged if it finished, otherwise marked skipped (exit 2 = auth-wall, 3 = timeout, 4 = transient browser-launch failure). Never retry within the review; never wait for it before merging A and C.
+   ```
+   slang-clarity-review-runner run-clarity --detach \
+     --mode {pr|branch|patch} \
+     --pr <N> | --branch <ref> | --patch <path> \
+     --repo <owner/repo>    [for pr/branch] \
+     [--max-budget-usd 30]
+   ```
+
+   **Reviewer B** — skip if `DEVIN_URL=""`. Best-effort, one attempt, 15-minute cap (the reviewer's first visit is what starts Devin's analysis, which took 6–11 minutes on the PRs measured so far; a shorter cap skips B on larger PRs). Run it as one foreground Bash call with the tool's timeout above the cap; it is merged if it finished, otherwise marked skipped (exit 2 = auth-wall, 3 = timeout, 4 = transient browser-launch failure). Never retry within the review.
 
    ```
    slang-pr-review-runner devin-fetch --url <DEVIN_URL> --out <run_dir> --max-minutes 15
    ```
 
-   **Reviewer C** (background, no polling), ~15–25 min — skip only if **Setup** found the clarity skills absent. Runs in all three modes:
+   **Wait for A and C.** `wait-run.sh` blocks until `<run_dir>/exit-status` exists and exits with that code; it exits **124** when `--timeout` passes with the run still going, **125** when the run died without writing a status, and prints the tail of `run.log` on any nonzero code. Call it with `--timeout 1200` (20 minutes) and a Bash tool timeout of 25 minutes, and repeat while it returns 124, up to 6 calls (2 hours) per reviewer. Wait for A first, then C; if a reviewer is still running after the sixth call, treat it as failed (`reviewers_complete=false`) and continue with the other's output.
 
-   ```
-   slang-clarity-review-runner run-clarity \
-     --mode {pr|branch|patch} \
-     --pr <N> | --branch <ref> | --patch <path> \
-     --repo <owner/repo>    [for pr/branch] \
-     [--max-budget-usd 30]
+   ```bash
+   SKILL_DIR=/path/to/slang-pr-review-runner   # resolve via skill registry
+   "$SKILL_DIR/scripts/wait-run.sh" "$run_dir_A" --timeout 1200   # 0 = done; 124 = call again; other = failed
+   "$SKILL_DIR/scripts/wait-run.sh" "$run_dir_C" --timeout 1200
    ```
 
-   Use `Agent(run_in_background=true)` or `Bash(run_in_background=true)`; capture `run_dir_C`. Produces `<run_dir_C>/clarity-review.md`. Never posts.
+   A reviewer whose final `wait-run.sh` exit is nonzero has no usable output — do not read `final-review.md` / `clarity-review.md` from it; record it as failed in the result block. Inbound messages that arrive while you wait: substantive (new patch, abort) → respond; status-only → ignore (chain-reporting quietness rule).
 
-   **End your turn after dispatching.** Substantive inbounds (new patch, abort, completion, error) → respond; status-only → end silently (chain-reporting quietness rule).
-
-5. **Merge + report** {#report} — On all subprocesses finishing (or whichever ran), call `slang-pr-review-runner`'s summarizer on `run_dir_A`. It returns severity counts, per-subagent cost, and a drift signal (must be 0 — nonzero = a non-COMMENT bot review was submitted). Reviewer C must also be drift-free: confirm `<run_dir_C>/tool-uses.jsonl` contains no GitHub-write tool call (no `gh api … --method POST/PUT`).
+5. **Merge + report** {#report} — Once `wait-run.sh` has returned 0 for every detached reviewer (or failed as above) and Devin has finished or been skipped, call `slang-pr-review-runner`'s summarizer on `run_dir_A`. It returns severity counts, per-subagent cost, and a drift signal (must be 0 — nonzero = a non-COMMENT bot review was submitted). Reviewer C must also be drift-free: confirm `<run_dir_C>/tool-uses.jsonl` contains no GitHub-write tool call (no `gh api … --method POST/PUT`).
 
    **Build one combined report — all three reviews WHOLE, verbatim** — so the fixer gets every finding in a single file, plus a machine-readable result block at the end so the **PR-approver can parse a verdict without re-reading prose**. Concatenate in order, each section the full file contents (or an explicit `_skipped: <reason>_` line if that reviewer didn't run), then append one ` ```json ` result block:
 
@@ -120,7 +126,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
    - `verdict` — the same verdict as the `[Review Verdict]` message below.
    - `bugs`/`gaps`/`questions` — Reviewer A's severity counts from the summarizer (🔴 bugs, 🟡 gaps, questions).
    - `diff_hash` — the diff-integrity marker the runner recorded for what it actually reviewed (`pr` mode: the head diff hash; `patch` mode: the patch hash).
-   - `reviewers_complete` — `true` only if every dispatched reviewer finished and drift==0; `false` if any errored, timed out, or drift was nonzero.
+   - `reviewers_complete` — `true` only if every dispatched reviewer finished (`wait-run.sh` exit 0) and drift==0; `false` if any errored, timed out, died (`wait-run.sh` 124 after the last call, or 125), or drift was nonzero.
 
    **Route the combined report by the request mode**, read from **the tasking message that started this review** (it arrived via `send_message` and is in your context — do not read any file). One live shape plus patch/branch:
 
@@ -172,6 +178,7 @@ Use when asked to review a Slang PR, branch, or patch. Runs **three reviewers co
 - **Reviewer C drift watch.** C reads the `slang-review-*` skills live from the checkout. If shader-slang/slang renames/restructures them, C breaks at the read step — update `slang-clarity-review-runner`'s wrapper prompt to track the new skill names.
 - **Devin is best-effort.** Reviewer A and C always produce the report; a Devin timeout, auth-wall or browser failure is noted in the verdict as skipped, not investigated. The page renders for anonymous viewers, draft PRs included; the first anonymous visit is what starts Devin's analysis, and when it finishes while the page is open Devin shows an "Analysis complete / View results" card that the fetch script clicks itself; Devin re-analyzes each new head on its own and there is nothing to click to force a refresh. If `devin-error.txt` shows the done-signals false on a fully rendered page (`devin-page.txt`), the fetch script's selectors are stale: report that upstream instead of retrying.
 - **Disagreement = signal.** When A and B contradict, surface BOTH; let the human adjudicate.
+- **Detached runs, short waits.** A and C are started with `--detach` and awaited only through `wait-run.sh`, each call bounded by `--timeout` below the Bash tool limit. The tool's timeout never reaches the inner run; a review that outlives the wait budget is reported as incomplete, never silently truncated.
 - **Drift watch (Reviewer A).** The skill's `reference/validate.sh` (CI runs per PR) compares generated prompt + flags against a vendored production run log. Drift = upstream action changed; bump `claude-code-action.lock`.
 
 ## Operator notes (A/B testing)

@@ -18,6 +18,12 @@
 #   run-clarity.sh --mode pr     --pr <N>        --repo <owner/repo> [--max-budget-usd $]
 #   run-clarity.sh --mode branch --branch <ref>  --repo <owner/repo>
 #   run-clarity.sh --mode patch  --patch <path>  [--base <ref>]
+#   run-clarity.sh ... --detach
+#
+# With --detach the run starts in its own session through the sibling
+# slang-pr-review-runner's scripts/detach.sh and this script prints the run
+# directory and returns at once; that skill's scripts/wait-run.sh <run-dir>
+# blocks until <run-dir>/exit-status appears and exits with the run's code.
 #
 # Output: <run_dir>/clarity-review.md  (the canonical clarity candidates file,
 #         verbatim — same lower-bar clarity feedback upstream would post).
@@ -44,8 +50,19 @@ REPO=""
 MAX_BUDGET_USD="${CLARITY_MAX_BUDGET_USD:-30}"
 MAX_TURNS="${CLARITY_MAX_TURNS:-500}"
 MODEL="${CLARITY_MODEL:-${ANTHROPIC_DEFAULT_OPUS_MODEL:-opus}}"
+DETACH=0
+# Every flag except --detach is kept so the detached re-exec sees the same
+# request this invocation validated.
+RUN_ARGS=()
 
 while (($#)); do
+  case "$1" in
+    --detach) DETACH=1; shift; continue ;;
+    -h|--help) sed -n '2,36p' "$0"; exit 0 ;;
+    --mode|--pr|--branch|--base|--patch|--repo|--max-budget-usd|--max-turns|--model)
+      [ $# -ge 2 ] || { echo "error: $1 needs a value" >&2; exit 1; }
+      RUN_ARGS+=("$1" "$2") ;;
+  esac
   case "$1" in
     --mode) MODE="$2"; shift 2 ;;
     --pr) PR_NUMBER="$2"; shift 2 ;;
@@ -56,7 +73,6 @@ while (($#)); do
     --max-budget-usd) MAX_BUDGET_USD="$2"; shift 2 ;;
     --max-turns) MAX_TURNS="$2"; shift 2 ;;
     --model) MODEL="$2"; shift 2 ;;
-    -h|--help) sed -n '2,30p' "$0"; exit 0 ;;
     *) echo "error: unknown flag $1" >&2; exit 1 ;;
   esac
 done
@@ -87,6 +103,13 @@ esac
 # Tooling sanity
 command -v claude >/dev/null || { echo "error: claude CLI not in PATH. Run slang-pr-review-runner's install.sh." >&2; exit 1; }
 command -v gh     >/dev/null || { echo "error: gh CLI missing." >&2; exit 1; }
+
+# Reviewer A's skill is installed beside this one; Reviewer C borrows its
+# dry-run MCP config and its detach.sh / wait-run.sh pair so both reviewers are
+# started and awaited the same way.
+RUNNER_SKILL_DIR="$(cd "$SKILL_DIR/.." && pwd)/slang-pr-review-runner"
+[ -d "$RUNNER_SKILL_DIR/scripts" ] \
+  || { echo "error: sibling skill not found at $RUNNER_SKILL_DIR (is slang-pr-review-runner installed?)" >&2; exit 1; }
 
 [ -f "$REPO_ROOT/REVIEW.md" ] \
   || { echo "error: $REPO_ROOT/REVIEW.md not found. Run slang-pr-review-runner's install.sh." >&2; exit 1; }
@@ -132,7 +155,27 @@ case "$MODE" in
 esac
 [ -n "${RUN_HEAD:-}" ]   || RUN_HEAD="nohead"
 [ -n "${BUNDLE_HASH:-}" ] || BUNDLE_HASH="nobundle"
-RUN_KEY="$(printf '%s' "${MODE}-${RUN_ID}-${RUN_HEAD}-${BUNDLE_HASH}-$$" | tr -c 'A-Za-z0-9._-' '_')"
+# A detached child inherits the key and run directory its parent fixed
+# (CLARITY_RUN_KEY / CLARITY_RUN_DIR below) so the directory wait-run.sh polls
+# is the one the run writes to; callers never set these themselves.
+RUN_KEY="${CLARITY_RUN_KEY:-$(printf '%s' "${MODE}-${RUN_ID}-${RUN_HEAD}-${BUNDLE_HASH}-$$" | tr -c 'A-Za-z0-9._-' '_')}"
+
+TS="$(date -u +%Y%m%dT%H%M%SZ)"
+# The run dir is keyed on the full RUN_KEY (mode, repo, pr/branch, head sha,
+# bundle hash, pid) so artifacts can never be cross-attributed between
+# concurrent runs.
+RUN_DIR="${CLARITY_RUN_DIR:-$SKILL_DIR/transcripts/${RUN_KEY}-${TS}}"
+mkdir -p "$RUN_DIR"
+
+# --- Detach ----------------------------------------------------------------
+# The inputs are validated and the run key is fixed, so the detached child
+# re-runs this script in the foreground mode with the same flags. The worktree,
+# repo prep and the inner CLI all happen in the child; this process only prints
+# the run directory for wait-run.sh.
+if [ "$DETACH" -eq 1 ]; then
+  CLARITY_RUN_KEY="$RUN_KEY" CLARITY_RUN_DIR="$RUN_DIR" \
+    exec bash "$RUNNER_SKILL_DIR/scripts/detach.sh" "$RUN_DIR" -- bash "$0" "${RUN_ARGS[@]}"
+fi
 
 # `wt-` prefix so the supervisor's worktree GC (supervise-issues §8) discovers and
 # reaps this on the uniform convention; RUN_KEY still keys the isolation per run.
@@ -201,12 +244,6 @@ case "$MODE" in
 esac
 
 # --- Run -------------------------------------------------------------------
-
-TS="$(date -u +%Y%m%dT%H%M%SZ)"
-# Key the run dir on the full RUN_KEY (mode, repo, pr/branch, head sha, bundle
-# hash, pid) so artifacts can never be cross-attributed between concurrent runs.
-RUN_DIR="$SKILL_DIR/transcripts/${RUN_KEY}-${TS}"
-mkdir -p "$RUN_DIR"
 
 # Durable run-key marker. The reliability lab's telemetry survives past the
 # dashboard's 7-day hook_events prune because it also lives here in the run dir
@@ -277,7 +314,7 @@ ALLOWED="$(echo "$ALLOWED" | tr -d '\n' | tr -s ' ' | sed 's/, /,/g')"
 
 # Reuse the sibling skill's dry-run MCP config (deepwiki only, no
 # mcp-server-github) so Reviewer C sees the same MCP surface as Reviewer A.
-MCP_CONFIG="$(cd "$SKILL_DIR/.." && pwd)/slang-pr-review-runner/prompt-templates/mcp.dryrun.json"
+MCP_CONFIG="$RUNNER_SKILL_DIR/prompt-templates/mcp.dryrun.json"
 [ -f "$MCP_CONFIG" ] || { echo "error: dry-run MCP config not found at $MCP_CONFIG (is slang-pr-review-runner installed?)" >&2; exit 1; }
 
 # --- Instruction-file parity ----------------------------------------------
@@ -312,6 +349,15 @@ echo ">>> settings=$INNER_SETTINGS"
 echo ">>> output → $RUN_DIR"
 
 cd "$REPO_ROOT"
+
+# The clarity skills dispatch subagents. In print mode the CLI waits for a
+# backgrounded subagent only up to an idle ceiling
+# (CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS, ten minutes by default) and then ends
+# the session with whatever text exists, which is how a quiet subagent once
+# turned a run into a 113-byte review. Foreground subagents block the main
+# agent until each returns, so the session cannot end before the pipeline does.
+# Same setting as Reviewer A's repro.sh.
+export CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1
 
 set +e
 claude \
