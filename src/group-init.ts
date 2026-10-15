@@ -8,7 +8,11 @@ import { getDb } from './db/connection.js';
 import { ensureContainerConfig } from './db/container-configs.js';
 import { PERSONA_PREPEND_FILE, stageGroupPersona } from './group-persona.js';
 import { log } from './log.js';
-import { CLAUDE_DEFAULT_SETTINGS, CLEANUP_PERIOD_DAYS_NEVER } from './migrate-claude-memory-settings.js';
+import {
+  CLAUDE_DEFAULT_SETTINGS,
+  CLEANUP_PERIOD_DAYS_NEVER,
+  SCRATCH_WORKTREE_CLAUDE_MD_EXCLUDES,
+} from './migrate-claude-memory-settings.js';
 import { getProviderHostContract } from './provider-contracts/registry.js';
 import { readPluginSkills } from './templates/skills.js';
 import { initializeProviderGroupSurfaces } from './provider-contracts/realize.js';
@@ -232,6 +236,7 @@ export async function initGroupFilesystem(
     } else {
       ensurePreCompactHook(settingsFile, initialized);
       ensureCleanupPeriodDays(settingsFile, initialized);
+      ensureClaudeMdExcludes(settingsFile, initialized);
     }
 
     // mtime-based mirror: re-copy any skill whose source tree is newer than
@@ -510,6 +515,27 @@ export function ensureCleanupPeriodDays(settingsFile: string, initialized: strin
     initialized.push(`settings.json (cleanupPeriodDays -> ${CLEANUP_PERIOD_DAYS_NEVER})`);
   } catch (err) {
     // Don't break init if settings.json is malformed or refused — it'll use whatever's there.
+    warnSettingsUnpatched(settingsFile, err);
+  }
+}
+
+/**
+ * Patch an existing settings.json to add the scratch-worktree CLAUDE.md
+ * exclusions when the file carries no `claudeMdExcludes` at all. A group that
+ * already has the key, in any form, keeps it: an operator's own list is theirs.
+ * Runs on every group init so pre-existing groups pick the exclusions up.
+ */
+export function ensureClaudeMdExcludes(settingsFile: string, initialized: string[]): void {
+  try {
+    const raw = readClaudeSettings(settingsFile);
+    const settings = JSON.parse(raw);
+    if (settings === null || typeof settings !== 'object' || Array.isArray(settings)) return;
+    if ('claudeMdExcludes' in settings) return;
+
+    settings.claudeMdExcludes = [...SCRATCH_WORKTREE_CLAUDE_MD_EXCLUDES];
+    replaceClaudeSettings(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+    initialized.push('settings.json (added claudeMdExcludes for scratch worktrees)');
+  } catch (err) {
     warnSettingsUnpatched(settingsFile, err);
   }
 }

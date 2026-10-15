@@ -18,6 +18,10 @@
  *   body (`REWRITTEN_AFTER_FREEZE`). (nv-main's later edit to the `explain-diff-html`
  *   description does not reach these goldens: Skills lines carry the first sentence
  *   only, and that sentence did not change.)
+ * - typed documents lose the `/explain-diff-html` Skills line (`REMOVED_SKILL_LINE`):
+ *   the skill moved from `base-common.skills` to the `implement` workflow's
+ *   `uses.skills`, because only a coworker whose workflow opens PRs can act on it,
+ *   and none of the in-tree types declares a workflow.
  *
  * Because a re-order moves whole blocks, the bound is stated on LINES: the multiset
  * of lines in the shipped golden equals the pre golden's multiset plus the declared
@@ -42,8 +46,15 @@ const FLAT = ['main', 'main.persona'] as const;
 const FRAGMENT_DIGESTS: Record<string, string> = {
   'decision-table.md': '66ea8a0e1438a818',
   'report-formats.md': 'd1c3c15359a95792',
-  'chain-reporting.md': 'bb04e4ba676253be',
+  'chain-reporting.md': 'a10b38b57f0bb269',
 };
+/**
+ * The one Skills line the typed pre goldens carry and the shipped goldens do not,
+ * in its full reviewed text: a pattern would strip any later rewording of the line
+ * as readily as this one, leaving the removal unbounded while appearing declared.
+ */
+const REMOVED_SKILL_LINE =
+  '- `/explain-diff-html` — Rich, self-contained HTML explanation of a code change (PR, branch, or diff): Background → Intuition → Code walkthrough → five-question interactive quiz.';
 /** The chain-reporting fragment as it stood before the heading was added. */
 const OLD_CHAIN_REPORTING = path.join(GOLDEN_DIR, 'pre-anchor-retarget', 'fragments', 'chain-reporting.post-trim.md');
 
@@ -67,7 +78,7 @@ const REWRITTEN_AFTER_FREEZE: readonly {
   {
     file: 'invariants/principles.md',
     frozen: 'principles.post-trim.md',
-    digest: 'ac614cdef172a900',
+    digest: '980ea64975ddda00',
     typed: true,
     flat: false,
   },
@@ -76,6 +87,13 @@ const REWRITTEN_AFTER_FREEZE: readonly {
     file: 'context/workspace.md',
     frozen: 'workspace.post-trim.md',
     digest: 'b9d0270a9d83651f',
+    typed: true,
+    flat: false,
+  },
+  {
+    file: 'tool-instructions/ncl-group.md',
+    frozen: 'ncl-group.post-trim.md',
+    digest: '5303444d1cbe1c9f',
     typed: true,
     flat: false,
   },
@@ -149,7 +167,7 @@ describe('composed-document section re-order is bounded to the declared set', ()
   const chainOld = () => normalized(fs.readFileSync(OLD_CHAIN_REPORTING, 'utf-8'));
 
   for (const name of TYPED) {
-    it(`${name}: same lines as before plus Rules, the GitHub heading and the merged rewrites, minus the contract heading`, () => {
+    it(`${name}: same lines as before plus Rules, the GitHub heading and the merged rewrites, minus the contract heading and the explain-diff-html skill line`, () => {
       const before = fs.readFileSync(path.join(PRE_DIR, `${name}.md`), 'utf-8');
       const shipped = fs.readFileSync(path.join(GOLDEN_DIR, `${name}.md`), 'utf-8');
       // Typed composition re-levels each fragment so its top heading is `###`.
@@ -158,8 +176,17 @@ describe('composed-document section re-order is bounded to the declared set', ()
         ['## Rules', rules(), chainNew(), ...typedRewrites.map((r) => normalized(r.live))].join('\n'),
       );
       const removed = lines(
-        ['## NanoClaw Runtime Contract', chainOld(), ...typedRewrites.map((r) => normalized(r.frozen))].join('\n'),
+        [
+          '## NanoClaw Runtime Contract',
+          chainOld(),
+          ...typedRewrites.map((r) => normalized(r.frozen)),
+          REMOVED_SKILL_LINE,
+        ].join('\n'),
       );
+      // The removal is asserted on both sides, so a shipped golden that still
+      // carried the line would fail here instead of passing as "nothing removed".
+      expect(before).toContain(REMOVED_SKILL_LINE);
+      expect(shipped).not.toContain(REMOVED_SKILL_LINE);
       // Blank lines move with the blocks; they are not content.
       const strip = (m: Map<string, number>) => {
         m.delete('');
