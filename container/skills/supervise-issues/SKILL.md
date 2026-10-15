@@ -59,10 +59,10 @@ These hold across every step below; the steps reference them by number rather th
 - **R7 — Deliver once, `to="orchestrator-dashboard"`, verbatim from the on-disk tracker.** One
   session, one complete board, posted as the last step. Inline board first, file second. (A
   delegated supervisor uses `to="parent"`.) See reference.md → *Delivery*.
-- **R8 — Never `git worktree remove` from the supervisor session.** Worktrees belong to the
-  fixers. Decide the reap set by `gh` issue state + PR state (issue CLOSED → reap regardless of
-  PR state) and dispatch the deletion to the owning fixer (a `stopped` session wakes on the
-  inbound). Never reap on the `prunable` flag your read-only mount shows.
+- **R8 — Never remove worktrees or builds from the supervisor session.** Each tier reclaims its
+  own through its hourly `worktree-gc` task (`scripts/worktree-gc-run.sh`, zero tokens). You read
+  the reports and escalate; you do not dispatch removals and never reap on the `prunable` flag
+  your read-only mount shows.
 - **R9 — Read CI yourself; nudge the fixer to rebase, never re-dispatch CI.** The orchestrator
   computes each PR-bearing chain's CI from its own container (`gh` works there) — no dependency on
   the babysitter, which keeps its own separate rerun/eviction job. Our PRs sit in draft and drive
@@ -273,20 +273,19 @@ working on, possibly better. Fires once per chain. Detect command, gap analysis,
 and draft-close steps are in reference.md → *Superseded-PR postmortem*. Skip for our own merged PRs
 and for `not_planned` closes without a PR.
 
-### 8. Worktree GC sweep
+### 8. Worktree GC check
 
-Reclaim abandoned worktrees across **all tiers** (fixer *and* reviewer/triager/slangpy — reviewer
-worktrees are freehand-named and a `wt-*` glob silently misses them; discover name-agnostically by
-`.git`-as-file, see reference.md). Run the GC scan every tick *before* the per-chain pass, and
-surface `worktree-vol: <N>GB free` in the rollup. Discover the reap set from disk, resolve each
-worktree's issue + PR state, and hand the set to `scripts/worktree-gc.py` for the deterministic tier
-decision (`REAP` / `KEEP` / `STALE-OPEN` / `NO-PR`) — don't re-derive the thresholds in-context; the
-script owns them. Dispatch the matching action to the owning coworker — the tier the worktree lives
-under, not always a fixer (R8): save-then-remove for `REAP`, build-only reclaim for `STALE-OPEN` —
-never delete from this session. Escalate to operator when free < 10 GB — and when the reap set can't clear the pressure,
-the escalation must name the operator-only docker reclaim (`/ephemeral/docker` is root-only, the
-supervisor can't prune it) rather than implying worktrees are the whole story. Commands, the
-dispatch body, and the docker-escalation wording are in reference.md → *Worktree GC*.
+Each tier reclaims its own worktrees hourly (R8). Your job is the readout:
+
+1. Read `/workspace/extra/ephemeral/prod-groups/*/.worktree-gc/last-run.json`.
+2. Put `worktree-vol: <N>GB free` (`df -BG --output=avail /workspace/extra/ephemeral`) and the
+   per-tier counts (`reaped`, `build_reclaimed`, `left_for_next_run`) in the rollup.
+3. Escalate to the operator when less than 10% of the volume is free, when a tier's report is
+   older than 24 h or missing (its task is not firing: `ncl tasks list --group <tier>`), or when a
+   report lists `errors`. Below 10%, name the operator-only docker reclaim (reference.md →
+   *Worktree GC*).
+
+Never dispatch removals to coworkers and never delete anything yourself.
 
 ## Scheduling
 
