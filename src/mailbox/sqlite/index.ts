@@ -7,6 +7,7 @@ import { sessionMailboxDir, sessionMailboxPath } from './paths.js';
 export { inboundDbPath, outboundDbPath, sessionMailboxDir, sessionMailboxPath } from './paths.js';
 import {
   countDueMessages,
+  expireOrphanedCliResponses,
   deleteOrphanProcessingClaims,
   ensureSchema,
   getContainerState,
@@ -195,6 +196,7 @@ export function wrapSqliteInbound(
 ): InboundMailbox {
   return {
     gcHistory: (cutoffIso) => gcInboundHistory(db, { cutoffIso, outboundPath: opts.outboundPath }),
+    expireOrphanedCliResponses: (cutoffIso) => expireOrphanedCliResponses(db, cutoffIso),
     setRouting: (routing) => {
       const record = parseSessionRoutingRecord(routing);
       upsertSessionRouting(db, {
