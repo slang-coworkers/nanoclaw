@@ -505,6 +505,35 @@ export function gcInboundHistory(
   return { systemRows, deliveredRows };
 }
 
+/**
+ * Close `ncl` replies nobody is waiting for any more.
+ *
+ * The host answers an in-container `ncl` call by writing a pending
+ * `cli-resp-<requestId>` system row (trigger=0); the requester polls for it and
+ * acks it `completed` through processing_ack. When the requester has already
+ * given up (its poll timed out, the container restarted, the turn aborted) the
+ * reply lands with no reader and stays `pending` forever — prod 2026-10-16: 412
+ * such rows in one session over 19 days, counted as "blocked" by operators.
+ *
+ * A reply's `timestamp` is written AFTER dispatch, and its requester started
+ * polling BEFORE the request was even sent, so once a reply is older than the
+ * requester's whole poll window no live requester can still read it. The caller
+ * passes that window (plus a margin) as the cutoff. Only pending `system` rows
+ * whose id carries the `cli-resp-` prefix are touched; a re-run finds nothing
+ * new (idempotent). Rows are marked `completed`, so the regular history GC
+ * reclaims them like any consumed reply.
+ */
+export function expireOrphanedCliResponses(db: Database.Database, cutoffIso: string): number {
+  const cutoff = cutoffIso.replace('T', ' ').replace('Z', '').slice(0, 19);
+  return db
+    .prepare(
+      `UPDATE messages_in SET status = 'completed'
+       WHERE kind = 'system' AND status = 'pending' AND id LIKE 'cli-resp-%'
+         AND SUBSTR(REPLACE(REPLACE(timestamp, 'T', ' '), 'Z', ''), 1, 19) < ?`,
+    )
+    .run(cutoff).changes;
+}
+
 export interface DueOutboundOptions {
   /**
    * This session's inbound.db. When given, rows already recorded in its

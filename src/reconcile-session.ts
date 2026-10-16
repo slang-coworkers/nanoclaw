@@ -413,7 +413,39 @@ async function maintainSessionMailbox(
   }
   // MODULE-HOOK:cross-session-echo-prune:end
 
+  expireOrphanedCliResponses(mailbox, session);
+
   gcMailboxHistory(mailbox, session);
+}
+
+// --- orphaned ncl replies ------------------------------------------------------
+// The in-container `ncl` polls its own inbound.db for `cli-resp-<requestId>` and
+// gives up after NCL_RESPONSE_TIMEOUT_MS (container/agent-runner/src/cli/
+// timeout.ts — no shared modules across the runtime split, so it is mirrored
+// here and pinned by reconcile-session.cli-orphans.test.ts). A reply written
+// after its requester gave up stays `pending` forever (prod 2026-10-16: 412
+// rows in the Orchestrator session). Past the poll window plus a margin no live
+// requester can read it, so the host — inbound.db's only writer — closes it.
+export const CONTAINER_NCL_RESPONSE_TIMEOUT_MS = 30_000;
+export const CLI_RESPONSE_ORPHAN_MARGIN_MS = 5 * 60_000;
+export const CLI_RESPONSE_ORPHAN_MS = CONTAINER_NCL_RESPONSE_TIMEOUT_MS + CLI_RESPONSE_ORPHAN_MARGIN_MS;
+
+export function expireOrphanedCliResponses(
+  mailbox: Pick<InboundMailbox, 'expireOrphanedCliResponses'>,
+  session: Pick<Session, 'id'>,
+  nowMs: number = Date.now(),
+): number {
+  if (!mailbox.expireOrphanedCliResponses) return 0;
+  try {
+    const closed = mailbox.expireOrphanedCliResponses(new Date(nowMs - CLI_RESPONSE_ORPHAN_MS).toISOString());
+    if (closed > 0) {
+      log.info('Closed orphaned ncl replies', { sessionId: session.id, closed, olderThanMs: CLI_RESPONSE_ORPHAN_MS });
+    }
+    return closed;
+  } catch (err) {
+    log.warn('Closing orphaned ncl replies failed — will retry next pass', { sessionId: session.id, err });
+    return 0;
+  }
 }
 
 // --- mailbox history GC --------------------------------------------------------
