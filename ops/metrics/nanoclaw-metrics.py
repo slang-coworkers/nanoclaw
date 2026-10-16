@@ -9,6 +9,8 @@ Failures are contained: any section that throws is skipped and counted in
 nanoclaw_collector.errors, so telegraf keeps getting the sections that work.
 """
 
+from __future__ import annotations
+
 import glob
 import json
 import os
@@ -451,9 +453,12 @@ def collect_health():
 #   spawns / wake_failed   0 spawns + rising wake failures = the event loop is frozen
 #   quarantined        #1733 fired: a system action that killed the host was parked
 #   stale_restarts     containers respawned because their composed CLAUDE.md changed (a deploy side effect)
+#   host_up_n          1/0 integer twin of the boolean host_up (alerts must use host_up_n, see collect_host)
 #   host_restart / host_uptime_s   the crash loop showed as a pid that never got old
 #   breaker_attempt    data/circuit-breaker.json: attempt 1 is written at EVERY start and removed on clean shutdown,
-#                      so 1 = normal; >= 2 = the host has crashed and is being restarted by the breaker
+#                      and the count only carries over when the previous start was < 1 h ago. So 1 = normal;
+#                      2 = ONE unclean exit (a SIGKILL'd restart also leaves 2, and it stays 2 while the healthy
+#                      host runs on); >= 3 = repeated unclean starts within the hour = a crash loop.
 #   inbox_*            webhook_inbox rows by state; parked > 0 = a GitHub delivery needs an operator
 #   mailbox_bytes_*    session DB growth (2.6 GB in one session was the root cause)
 # The log-derived counters are per collector run (60 s); the rest are gauges.
@@ -522,10 +527,23 @@ def collect_host(state):
     fields = {}
     # -- host process liveness / restarts
     pid = _host_pid()
+    # host_up is a BOOLEAN field (the shard's type is fixed; InfluxDB rejects a type change), and
+    # Grafana's alerting expressions cannot reduce or threshold a boolean: every rule on it sat in
+    # NoData and could never fire (found 2026-10-16). host_up_n is the same fact as an integer 1/0;
+    # alerts and panels read host_up_n. host_up stays for anything that still queries it.
     fields["host_up"] = pid is not None
+    fields["host_up_n"] = 1 if pid is not None else 0
+    # host_crash_loop_uptime_s is the crash-loop rule's uptime input and is written on EVERY run: the rule
+    # combines it with the breaker attempt, and one absent input turns a Grafana math expression into NoData.
+    # 0 = no live process. A live pid whose age cannot be read counts as old (1200 = outside the rule's
+    # "young" window): unknown uptime is not evidence of a restart, and the down branch does not need it.
+    # host_uptime_s keeps its meaning for the dashboard: present only when the age was read.
+    fields["host_crash_loop_uptime_s"] = 0
     if pid is not None:
+        fields["host_crash_loop_uptime_s"] = 1200
         try:
             fields["host_uptime_s"] = _pid_uptime_s(pid)
+            fields["host_crash_loop_uptime_s"] = fields["host_uptime_s"]
         except Exception as exc:  # noqa: BLE001 - /proc shape; the gauge is just absent this run
             _errors.append(f"host.uptime:{exc}")
         prev = state.get("host_pid")
@@ -757,6 +775,56 @@ def collect_practices():
     emit("nanoclaw_practices", fields, {"status": d.get("status") or "unknown"})
 
 
+# The compliance check runs inside the eval-compliance coworker's container and writes
+# into its group directory, which the host sees under groups/<folder>/. The directory is
+# configurable because the group folder is an operator choice.
+COMPLIANCE = os.path.join(
+    os.environ.get("COMPLIANCE_REPORT_DIR") or os.path.join(NC, "groups", "eval-compliance", "reports", "compliance"),
+    "latest.json",
+)
+
+
+def collect_compliance():
+    """Per-rule pass rates from the compliance check's last run
+    (container/skills/compliance-check/).
+
+    The check runs as a weekly task of the eval-compliance coworker and writes latest.json; this collector only
+    re-emits what that file says, so there is exactly one place that decides what a
+    rule failure is. Emits nanoclaw_compliance with the failing-item total, the number
+    of rules that could not be scored, the item count, and per rule `r_<check>_pass`,
+    `r_<check>_fail`, `r_<check>_total` and `r_<check>_rate` (the rate is left out
+    when the rule had no items, so an empty week never reads as 0%). `age_sec` is the
+    watchdog for the weekly task. A missing file is reported through
+    nanoclaw_collector.errors rather than as zero findings, because "the check never
+    ran" must not read as "compliant".
+    """
+    st = os.stat(COMPLIANCE)
+    with open(COMPLIANCE) as fh:
+        d = json.load(fh)
+    counts = d.get("counts") or {}
+    fields = {
+        "age_sec": int(time.time() - st.st_mtime),
+        "findings": int(counts.get("findings") or 0),
+        "unknown": int(counts.get("unknown") or 0),
+        "ok": int(counts.get("ok") or 0),
+        "drift": int(counts.get("drift") or 0),
+        "items": int(counts.get("items") or 0),
+        "exit_code": int(d.get("exitCode") or 0),
+        "complete": bool(d.get("complete", False)),
+    }
+    for check, c in (counts.get("perRule") or {}).items():
+        key = "r_" + str(check).replace("-", "_").replace("/", "_")
+        fields[key + "_pass"] = int(c.get("pass") or 0)
+        fields[key + "_fail"] = int(c.get("fail") or 0)
+        fields[key + "_total"] = int(c.get("total") or 0)
+        if c.get("rate") is not None:
+            fields[key + "_rate"] = float(c["rate"])
+    emit("nanoclaw_compliance", fields, {
+        "status": d.get("status") or "unknown",
+        "judge": (d.get("judge") or {}).get("impl") or "unknown",
+    })
+
+
 def main():
     t0 = time.time()
     now_ms = int(t0 * 1000)
@@ -769,7 +837,8 @@ def main():
                      ("host", lambda: collect_host(state)),
                      ("codex", collect_codex),
                      ("cost", collect_cost),
-                     ("practices", collect_practices)):
+                     ("practices", collect_practices),
+                     ("compliance", collect_compliance)):
         try:
             fn()
         except Exception as exc:  # noqa: BLE001 - a collector must never crash the metrics pipeline
