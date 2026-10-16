@@ -73,6 +73,12 @@ describe('reclaimFreePages (outbound.db)', () => {
     expect(r2.action).toBe('incremental');
     expect(r2.fileBytesAfter).toBeLessThan(r2.fileBytesBefore);
     expect(sqliteSpace(db).freeBytes).toBe(0);
+
+    fill(db, 400, 3000);
+    db.exec("DELETE FROM processing_ack WHERE message_id <> 'm-7'");
+    const freeBefore = sqliteSpace(db).freeBytes;
+    expect(reclaimFreePages(db, p, { ...SMALL, maxIncrementalPagesPerCall: 64 }).action).toBe('incremental');
+    expect(freeBefore - sqliteSpace(db).freeBytes).toBe(64 * sqliteSpace(db).pageSize);
     db.close();
   });
 

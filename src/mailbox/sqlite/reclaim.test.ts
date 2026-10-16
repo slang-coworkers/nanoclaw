@@ -83,6 +83,15 @@ describe('reclaimFreePages', () => {
     expect(r2.action).toBe('incremental');
     expect(r2.fileBytesAfter).toBeLessThan(r2.fileBytesBefore);
     expect(sqliteSpace(db).freeBytes).toBe(0);
+
+    // Per-call budget: a big freelist is drained over several passes, not one.
+    fill(db, 400, 3000);
+    db.exec('DELETE FROM messages_in WHERE seq >= 6002');
+    const freeBefore = sqliteSpace(db).freeBytes;
+    const r3 = reclaimFreePages(db, { ...SMALL, maxIncrementalPagesPerCall: 64 });
+    expect(r3.action).toBe('incremental');
+    const pageSize = Number(db.pragma('page_size', { simple: true }));
+    expect(freeBefore - sqliteSpace(db).freeBytes).toBe(64 * pageSize);
     db.close();
   });
 

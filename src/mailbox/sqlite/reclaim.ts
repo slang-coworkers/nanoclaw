@@ -40,6 +40,11 @@ export interface ReclaimOptions {
   maxFullVacuumLiveBytes: number;
   /** Pages per incremental_vacuum step (each step is its own short transaction). */
   incrementalStepPages?: number;
+  /**
+   * Cap on pages released per call (the work is synchronous — on the host it
+   * blocks the event loop for every session). The rest goes on later passes.
+   */
+  maxIncrementalPagesPerCall?: number;
   /** Free bytes on the filesystem holding `dir`; null when unknown (→ no full VACUUM). Injectable for tests. */
   freeDiskBytes?: (dir: string) => number | null;
 }
@@ -62,6 +67,7 @@ export const DEFAULT_RECLAIM_OPTIONS: ReclaimOptions = {
   minFreeRatio: 0.25,
   maxFullVacuumLiveBytes: 256 * 1024 * 1024,
   incrementalStepPages: 4096,
+  maxIncrementalPagesPerCall: 16384, // 64 MiB at the default 4 KiB page size
 };
 
 /**
@@ -139,11 +145,14 @@ export function reclaimFreePages(db: Database.Database, opts: ReclaimOptions = D
 
   if (before.autoVacuum === SQLITE_AUTO_VACUUM_INCREMENTAL) {
     const step = Math.max(1, opts.incrementalStepPages ?? 4096);
-    // Each PRAGMA is its own autocommit transaction: the lock is released
-    // between steps. Bounded by the freelist size it started with.
-    let guard = Math.ceil(before.freeBytes / before.pageSize / step) + 1;
-    while (pragmaNumber(db, 'freelist_count') > 0 && guard-- > 0) {
-      db.exec(`PRAGMA incremental_vacuum(${step})`);
+    // Each PRAGMA is its own autocommit transaction (lock released between
+    // steps), but the calls are synchronous, so the total per call is capped;
+    // what is left is reclaimed on the next pass.
+    let budget = Math.max(step, opts.maxIncrementalPagesPerCall ?? 16384);
+    while (budget > 0 && pragmaNumber(db, 'freelist_count') > 0) {
+      const n = Math.min(step, budget);
+      db.exec(`PRAGMA incremental_vacuum(${n})`);
+      budget -= n;
     }
     return done('incremental');
   }
