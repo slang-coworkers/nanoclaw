@@ -111,6 +111,12 @@ export interface InboundMailbox {
    * cutoff (host-owned history; see gcInboundHistory). Optional for fakes.
    */
   gcHistory?(cutoffIso: string): { systemRows: number; deliveredRows: number };
+  /**
+   * Mark pending `cli-resp-*` replies written before the cutoff `completed`
+   * (their requester has given up; see expireOrphanedCliResponses). Returns
+   * the number of rows closed. Optional for fakes.
+   */
+  expireOrphanedCliResponses?(cutoffIso: string): number;
   markMessageFailed(messageId: string): void;
   retryWithBackoff(messageId: string, backoffSec: number): void;
   getMessageForRetry(messageId: string, status: 'pending' | 'processing'): MessageRetry | undefined;
