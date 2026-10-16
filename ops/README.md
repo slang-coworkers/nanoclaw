@@ -108,7 +108,8 @@ Two honesty caveats, same spirit as the rest of this file:
 
 The collector now also emits **`nanoclaw_host`** (one point per run) and
 **`nanoclaw_host_mailbox`** (largest session DB, tagged by session). Fields:
-`host_up`, `host_uptime_s`, `host_restart`, `host_restarts_total`, `breaker_attempt`,
+`host_up` (boolean), `host_up_n` (integer 1/0), `host_uptime_s` (only while a pid is live),
+`host_restart`, `host_restarts_total`, `breaker_attempt`,
 `sweep_tick_ms` / `sweep_tick_ms_max` / `sweep_full_passes` / `sweep_quiet_skips` / `sweep_ticks`,
 `spawns`, `wakes`, `wake_failed`, `quarantined`, `stale_restarts`, `fatal`, `heap_oom`,
 `inbox_pending` / `inbox_done` / `inbox_failed` / `inbox_parked` / `inbox_replays` / `inbox_parked_events`,
@@ -117,11 +118,29 @@ Log-derived counters are per collector run (60 s); the collector keeps its own l
 (`host_log_off`, `host_errlog_off`) so they do not interfere with `collect_logs`.
 Set `NANOCLAW_DIR` to point the collector at another install (tests, lego).
 
+**Query `host_up_n`, never `host_up`, in alert rules.** `host_up` is a boolean field, and Grafana's
+alerting expressions cannot reduce or threshold a boolean: "host down" and "sweep stopped ticking"
+were written on it and sat in NoData from 2026-09-28 until 2026-10-16 — they could never fire.
+InfluxDB fixes a field's type per shard, so `host_up` cannot become an integer; `host_up_n` is the
+same fact as 1/0 and `host_up` stays for compatibility. `python3 ops/grafana/check_dashboard.py`
+fails on any panel or rule that reads a boolean field (CI runs it).
+
+**`breaker_attempt` is sticky.** `data/circuit-breaker.json` is written at every start (the count
+carries over only when the previous start was under an hour ago) and removed on a clean shutdown.
+One unclean exit — including a restart whose old process was SIGKILLed — leaves `2`, and it stays `2`
+while the new process runs perfectly well. The crash-loop rule therefore fires only on
+`breaker_attempt >= 3` while the current process is under 20 min old (longer than the 15 min maximum
+breaker backoff) or down, or on `breaker_attempt >= 2` while the host is down.
+
+**No-data policy.** Host down, crash loop and sweep stopped read fields written on every collector run,
+so their "no data" means the collector stopped. That is owned by *metrics collector not reporting*
+(`noDataState: Alerting`); the three host rules use `noDataState: OK` so one cause pages once.
+
 The dashboard gained a row **"Incident signals"** (last row) and an alert-list panel.
 
 | File | Deployed to | Notes |
 |---|---|---|
-| `grafana/alerting/nanoclaw-alerts.yaml` | `/etc/grafana/provisioning/alerting/` | 11 rules in folder *NanoClaw* (host down, crash loop, restarts, sweep slow / stalled, wake failures, quarantine, webhook port, inbox parked, mailbox > 1 GB, collector stale) + contact point `nanoclaw-ops` (Slack) + policy on `team=nanoclaw`. Read at Grafana start: `sudo systemctl restart grafana-server`. |
+| `grafana/alerting/nanoclaw-alerts.yaml` | `/etc/grafana/provisioning/alerting/` | 14 rules in folder *NanoClaw* (host down, crash loop, restarts, sweep slow / stalled, wake failures, quarantine, webhook port, inbox parked, mailbox > 1 GB, codex tool missing, gateway stops, gateway probe misses, collector stale). No contact point is provisioned yet (see the file header). Read at Grafana start: `sudo systemctl restart grafana-server`. |
 
 The Slack destination is the environment variable **`NANOCLAW_ALERT_SLACK_WEBHOOK`** for the
 grafana-server process (`/etc/default/grafana-server`). Until it is set the rules still evaluate

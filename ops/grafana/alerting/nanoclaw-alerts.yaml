@@ -4,6 +4,15 @@
 # ops/metrics/nanoclaw-metrics.py every 60 s. Thresholds come from the 2026-09-26 outage
 # (reports/prod-outage-2026-09-26-postmortem.html): each rule would have fired hours before a human noticed.
 #
+# Liveness rules read `host_up_n` (integer 1/0), NEVER `host_up`: host_up is a boolean field, and Grafana's
+# server-side expressions cannot reduce or threshold a boolean, so a rule on it sits in NoData forever and
+# can never fire ("host down" and "sweep stopped" did exactly that until 2026-10-16).
+#
+# No-data policy: the host-liveness rules (host down, crash loop, sweep stopped) read fields the collector
+# writes on every run, so "no data" there means the collector stopped, not that the host did. That has ONE
+# owner, nc-collector-stale (noDataState: Alerting); those rules set noDataState: OK so one cause does not
+# page several times as DatasourceNoData. The other rules keep Grafana's default (NoData).
+#
 # Notifications: none yet (see below). Rules still evaluate and show as Firing on the dashboard's
 # "Firing NanoClaw alerts" panel and under Alerting → Alert rules.
 apiVersion: 1
@@ -23,6 +32,9 @@ groups:
         title: NanoClaw host down
         condition: C
         for: 2m
+        # Collector silent = nc-collector-stale's alarm (see the no-data policy at the top).
+        noDataState: OK
+        execErrState: Error
         labels: { team: nanoclaw, severity: critical }
         annotations:
           summary: 'The host process is not running (no live pidfile) for 2 minutes.'
@@ -31,7 +43,7 @@ groups:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: PF3A0F3054C0DA367
-            model: { refId: A, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_up") FROM "nanoclaw_host" WHERE $timeFilter' }
+            model: { refId: A, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_up_n") FROM "nanoclaw_host" WHERE $timeFilter' }
           - refId: B
             datasourceUid: __expr__
             model: { refId: B, type: reduce, expression: A, reducer: last, settings: { mode: dropNN } }
@@ -42,21 +54,47 @@ groups:
         title: NanoClaw crash loop (circuit breaker armed)
         condition: C
         for: 1m
+        noDataState: OK
+        execErrState: Error
         labels: { team: nanoclaw, severity: critical }
         annotations:
-          summary: 'data/circuit-breaker.json shows repeated failed startups (attempt {{ $values.B }}; 1 is a normal start).'
-          runbook: 'The host dies on every start. Read the FATAL line in logs/nanoclaw.error.log; if it names a cli_request, #1733 should have quarantined it; if "No gateway provider", installed.ts lost its onecli import.'
+          summary: 'Repeated unclean host starts: breaker attempt {{ $values.B }}, host up {{ $values.H }}, uptime {{ $values.U }} s.'
+          runbook: 'The host keeps dying on start. Read the FATAL line in logs/nanoclaw.error.log; if it names a cli_request, #1733 should have quarantined it; if "No gateway provider", installed.ts lost its onecli import. Attempt 2 alone is ONE unclean exit (a SIGKILL during a restart leaves it, and it stays 2 while the host runs fine), so it only counts here while the host is down.'
+        # data/circuit-breaker.json is written at every start (attempt carries over only if the previous start
+        # was < 1 h ago) and removed on a clean shutdown, so the value is STICKY: after one SIGKILL'd restart it
+        # reads 2 until the next start, however healthy the host is (2026-10-16: fired 35 min after one such
+        # restart). A loop is therefore:
+        #   attempt >= 3 (two unclean exits within the hour) while the current process is young or gone --
+        #     uptime < 1200 s outlasts the longest breaker backoff (900 s; the pidfile is written before the
+        #     backoff sleep), so a looping host never ages past it and a recovered one clears within 20 min;
+        #   or attempt >= 2 while the host is down (it died again before it could write attempt 3).
         data:
           - refId: A
             relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: PF3A0F3054C0DA367
             model: { refId: A, rawQuery: true, resultFormat: time_series, query: 'SELECT last("breaker_attempt") FROM "nanoclaw_host" WHERE $timeFilter' }
+          - refId: D
+            relativeTimeRange: { from: 300, to: 0 }
+            datasourceUid: PF3A0F3054C0DA367
+            model: { refId: D, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_up_n") FROM "nanoclaw_host" WHERE $timeFilter' }
+          # host_uptime_s is only written while a pid is live: look back an hour so a host that is down right
+          # now still has a value (its last one) instead of turning the whole rule into NoData.
+          - refId: F
+            relativeTimeRange: { from: 3600, to: 0 }
+            datasourceUid: PF3A0F3054C0DA367
+            model: { refId: F, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_uptime_s") FROM "nanoclaw_host" WHERE $timeFilter' }
           - refId: B
             datasourceUid: __expr__
             model: { refId: B, type: reduce, expression: A, reducer: last, settings: { mode: dropNN } }
+          - refId: H
+            datasourceUid: __expr__
+            model: { refId: H, type: reduce, expression: D, reducer: last, settings: { mode: dropNN } }
+          - refId: U
+            datasourceUid: __expr__
+            model: { refId: U, type: reduce, expression: F, reducer: last, settings: { mode: dropNN } }
           - refId: C
             datasourceUid: __expr__
-            model: { refId: C, type: threshold, expression: B, conditions: [ { evaluator: { type: gt, params: [1] } } ] }
+            model: { refId: C, type: math, expression: '($B >= 3 && ($U < 1200 || $H < 1)) || ($B >= 2 && $H < 1)' }
       - uid: nc-host-restarts
         title: NanoClaw host restarted more than twice in an hour
         condition: C
@@ -100,6 +138,9 @@ groups:
         title: NanoClaw sweep stopped ticking
         condition: C
         for: 5m
+        # sweep_ticks and host_up_n are written on every collector run (0 when absent): no data = collector down.
+        noDataState: OK
+        execErrState: Error
         labels: { team: nanoclaw, severity: critical }
         annotations:
           summary: 'No "Sweep tick" log line in 5 minutes while the host is up — the event loop is frozen or the sweep is stuck.'
@@ -112,7 +153,7 @@ groups:
           - refId: D
             relativeTimeRange: { from: 600, to: 0 }
             datasourceUid: PF3A0F3054C0DA367
-            model: { refId: D, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_up") FROM "nanoclaw_host" WHERE $timeFilter' }
+            model: { refId: D, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_up_n") FROM "nanoclaw_host" WHERE $timeFilter' }
           - refId: B
             datasourceUid: __expr__
             model: { refId: B, type: reduce, expression: A, reducer: last, settings: { mode: dropNN } }
@@ -281,6 +322,10 @@ groups:
         title: NanoClaw metrics collector not reporting
         condition: C
         for: 5m
+        # Absence IS this rule's signal: count() over an empty window returns no rows, not 0, so without this
+        # the rule could only ever reach NoData. It owns "collector down" for every nanoclaw_host rule above.
+        noDataState: Alerting
+        execErrState: Error
         labels: { team: nanoclaw, severity: warning }
         annotations:
           summary: 'No nanoclaw_collector point in 5 minutes — every other rule here is blind.'
