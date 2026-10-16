@@ -1,0 +1,81 @@
+{
+  "policy_version": "v0-shadow",
+  "_comment": "Human-signed policy for slang-perf-analyst. Bundled default; an operator-mounted policy/PERF_POLICY.json wins over it (same mechanism as the PR approver's APPROVAL_POLICY.json). Every ledger line records the policy_version it was decided under. Only a human widens this: `mode` in particular is never changed by the agent.",
+  "mode": "shadow",
+  "reporting": {
+    "destination": "compile-perf-slack",
+    "slack_channel_id": "CFFF96M6Z",
+    "note": "Reply to the bot's Compile-perf nightly message in nvr-slang-dev whose run URL exactly matches this run. Applies in every mode, including shadow. Never post at channel root or select an unrelated thread."
+  },
+  "mode_values": {
+    "shadow": "Decide and record what WOULD be filed; file nothing. Compare the ledger with what humans did.",
+    "approval": "A human approves each filing through an approval card before anything is created.",
+    "live": "File without a human gate, within the caps below."
+  },
+  "known_flaky": {
+    "api_module_graph|apiGetCode": "bimodal: about 21 ms normally, with isolated samples near 31 ms on 4 of the 7 nights from 2026-09-30 to 2026-10-06; a rerun whose five samples all land in the slow mode is not by itself a regression"
+  },
+  "classes": {
+    "accidental": {
+      "file": true,
+      "issue_template": "bug",
+      "meaning": "cost unrelated to the PR's purpose"
+    },
+    "avoidable-overhead": {
+      "file": true,
+      "issue_template": "improvement",
+      "meaning": "the functionality is needed but the implementation cost can shrink"
+    },
+    "inherent": {
+      "file": false,
+      "meaning": "cost scales with the new functionality, or the PR acknowledged it; record as an accepted delta"
+    },
+    "unclear": {
+      "file": false,
+      "meaning": "intent or mechanism could not be established; internal report only"
+    }
+  },
+  "filing": {
+    "max_issues_per_night": 1,
+    "min_reproduced_effect_pct": 3.0,
+    "labels": [
+      "perf"
+    ],
+    "labels_if_present": [
+      "Perf Agent Finding"
+    ],
+    "title_style": "neutral",
+    "assign": null,
+    "mention_bot_for_fix": false,
+    "mention_people": false,
+    "required_critique_stages": [
+      "DIAGNOSIS_REVIEW",
+      "DECISION_REVIEW",
+      "OUTPUT_REVIEW"
+    ]
+  },
+  "dedupe": {
+    "search_labels": [
+      "perf",
+      "regression"
+    ],
+    "lookback_days": 60,
+    "same_culprit_action": "comment"
+  },
+  "measurement": {
+    "aa_rounds": 20,
+    "aa_max_spread_pct": 2.0,
+    "ab_rounds": 12,
+    "workload_scale": 10,
+    "note": "If the A/A spread on this host exceeds aa_max_spread_pct, wall-clock attribution is not trustworthy here: use instruction counts if available, otherwise the class is `unclear`."
+  },
+  "trust": {
+    "require_merged": true,
+    "intent_text_associations": [
+      "OWNER",
+      "MEMBER",
+      "COLLABORATOR"
+    ],
+    "note": "The analysis reads merged PRs only. Comments, reviews and linked-issue bodies are read only from the PR's author and these GitHub author_association values; anything else is counted and withheld, because anyone can comment on a merged PR."
+  }
+}
