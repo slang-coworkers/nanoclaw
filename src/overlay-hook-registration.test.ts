@@ -17,7 +17,13 @@ vi.mock('./log.js', () => ({
 
 import { DATA_DIR, GROUPS_DIR } from './config.js';
 import type { ContainerConfig } from './container-config.js';
-import { buildMounts, ensurePrDescriptionGate } from './container-runner.js';
+import {
+  EVAL_SANDBOX_GATE_CMD,
+  EVAL_SANDBOX_GATE_MATCHER,
+  buildMounts,
+  ensureEvalSandboxGate,
+  ensurePrDescriptionGate,
+} from './container-runner.js';
 import type { AgentGroup, Session } from './types.js';
 
 const GROUP_ID = 'ag-overlay-hook-registration';
@@ -95,6 +101,31 @@ describe('overlay hook registration', () => {
     const hooks = (JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as { hooks: Record<string, HookEntry[]> }).hooks;
     expect(count(hooks.PreToolUse, 'gate-pr-description.sh')).toBe(1);
     expect(hooks.PreToolUse[0]).toMatchObject({ matcher: 'Bash' });
+  });
+
+  it('registers gate-eval-sandbox.sh as a PreToolUse hook for every group, once', async () => {
+    // Self-scoped by the eval-sandbox marker, so every group carries it and only an
+    // evaluation group feels it; the matcher names Bash plus the two MCP writes.
+    let hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-eval-sandbox.sh')).toBe(1);
+    const entry = hooks.PreToolUse.find((e) => e.hooks?.some((h) => h.command?.includes('gate-eval-sandbox.sh')));
+    expect(entry?.matcher).toBe(EVAL_SANDBOX_GATE_MATCHER);
+    expect(entry?.matcher).toContain('mcp__slang-mcp__discord_send_message');
+    expect(entry?.matcher).toContain('mcp__slang-mcp__github_create_or_update_file');
+    expect(entry?.hooks?.[0].command).toBe(EVAL_SANDBOX_GATE_CMD);
+    hooks = await settingsAfterSpawn();
+    expect(count(hooks.PreToolUse, 'gate-eval-sandbox.sh')).toBe(1);
+    hooks = await settingsAfterSpawn({ disable_overlays: 1 });
+    expect(count(hooks.PreToolUse, 'gate-eval-sandbox.sh')).toBe(1);
+  });
+
+  it('registers the eval-sandbox gate without the dashboard hook block, idempotently', () => {
+    fs.writeFileSync(settingsFile, '{}');
+    ensureEvalSandboxGate(settingsFile);
+    ensureEvalSandboxGate(settingsFile);
+    const hooks = (JSON.parse(fs.readFileSync(settingsFile, 'utf-8')) as { hooks: Record<string, HookEntry[]> }).hooks;
+    expect(count(hooks.PreToolUse, 'gate-eval-sandbox.sh')).toBe(1);
+    expect(hooks.PreToolUse[0]).toMatchObject({ matcher: EVAL_SANDBOX_GATE_MATCHER });
   });
 
   it('is not registered when overlays are disabled for the group', async () => {

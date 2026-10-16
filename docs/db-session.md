@@ -203,6 +203,23 @@ CREATE TABLE container_state (
 
 ---
 
+## 4.5 History retention and space reclaim
+
+Each side prunes and vacuums **only the file it writes** — the single-writer rule holds for GC too.
+
+| | Host (`inbound.db`) | Runner (`outbound.db`) |
+|---|---|---|
+| When | once a day per session, on a full sweep pass (`gcMailboxHistory`, `src/reconcile-session.ts`) | at runner start, before the first turn (`poll-loop.ts`) |
+| Pruned (older than the window) | consumed `kind='system'` rows (`completed`/`failed`); `delivered` rows whose `messages_out` row is gone | delivered `kind='system'` `messages_out` rows; `processing_ack` rows whose `messages_in` row is gone |
+| Never pruned | chat/task/webhook rows (incl. recurring tasks), anything `pending`/`processing`/`paused`, the newest row (seq allocation) | chat replies, undelivered rows, the newest row |
+| Reclaim | `reclaimMailboxSpace` — only while no container runs, no session claim is held and nothing is due | `reclaimOutboundSpace` at start |
+
+- **Bounded work:** host GC deletes in chunks (2 × 2000 rows per table per call; a bigger backlog stays due and continues on later ticks). Across all sessions the host does at most 3 GC/reclaim calls or ~400 ms of measured work per 60 s window. A reclaim only starts in a window nothing else used. After a restart, sessions become due spread over 6 h (GC) / 1 h (reclaim). The runner examines at most 5000 rows per table per step: one step at start, the rest every 10 idle polls.
+- **Window:** `NANOCLAW_MAILBOX_RETENTION_DAYS`, default **30**; `0` turns GC and reclaim off. The host forwards it to containers.
+- **Reclaim:** files created since 2026-10-16 are `auto_vacuum = INCREMENTAL`, so reclaim is a `PRAGMA incremental_vacuum` loop capped at 64 MB per call (the rest goes on later passes). Older files (`auto_vacuum = NONE`) get **one** full `VACUUM`, which also switches them to INCREMENTAL. It runs only when ≥ 64 MB and ≥ 25 % of the file is free, the live content is ≤ `NANOCLAW_MAILBOX_VACUUM_MAX_LIVE_MB` (default 256; `0` = never run a full VACUUM), and both the DB filesystem and the temp dir have ~2× live bytes free. A full VACUUM holds an exclusive lock and blocks its process for roughly the time it takes to copy the live bytes twice. Otherwise the reclaim is skipped with a log line.
+- `journal_mode` stays `DELETE` throughout.
+- **Logs:** host `Mailbox history GC` (rows) and `Mailbox space reclaimed` (`bytesReclaimed`, `durationMs`); runner `Outbound history GC` / `Outbound reclaim`.
+
 ## 5. Schema evolution
 
 Unlike the central DB, session DBs do **not** go through numbered migrations. Both schemas in `src/mailbox/sqlite/schema.ts` use `CREATE TABLE IF NOT EXISTS`; older files are patched lazily by the SQLite driver.
