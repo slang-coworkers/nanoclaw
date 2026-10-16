@@ -807,6 +807,59 @@ def collect_compliance():
     })
 
 
+# The eval runner (container/skills/eval-runner/) runs inside the eval-compliance
+# coworker's container too and writes its job summary beside the compliance report.
+EVALS = os.path.join(
+    os.environ.get("EVALS_REPORT_DIR") or os.path.join(NC, "groups", "eval-compliance", "reports", "evals"),
+    "latest.json",
+)
+
+
+def collect_evals():
+    """Summary of the last coworker evaluation job (container/skills/eval-runner/).
+
+    The runner scores each task and writes latest.json; this collector only re-emits
+    what that file says, so the runner is the one place that decides what a reward is.
+    Emits nanoclaw_evals tagged by kind / variant / status / resolved model id with the
+    task and trial counts (every task runs several repeats), the mean of the per-task
+    mean rewards, pass@k and pass rate (left out when no task was scored, so an empty
+    job never reads as 0), the number of low-signal tasks, the cost when the cost
+    signal was available, the budget, and the job id as a string field. `age_sec` is the watchdog for the eval cadence. A missing file
+    is reported through nanoclaw_collector.errors rather than as zero tasks, because
+    "no eval ran" must not read as "all tasks passed".
+    """
+    st = os.stat(EVALS)
+    with open(EVALS) as fh:
+        d = json.load(fh)
+    fields = {
+        "age_sec": int(time.time() - st.st_mtime),
+        "job_id": str(d.get("job_id") or ""),
+        "tasks": int(d.get("tasks") or 0),
+        "trials": int(d.get("trials") or 0),
+        "repeats": int(d.get("repeats") or 0),
+        "low_signal_tasks": int(d.get("low_signal_tasks") or 0),
+        "dispatched": int(d.get("dispatched") or 0),
+        "scored": int(d.get("scored") or 0),
+        "unknown": int(d.get("unknown") or 0),
+        "timeouts": int(d.get("timeouts") or 0),
+        "errors": int(d.get("errors") or 0),
+        "skipped": int(d.get("skipped") or 0),
+        "duration_sec": int(d.get("duration_sec") or 0),
+        "cost_known_sessions": int(d.get("cost_known_sessions") or 0),
+        "stopped_for_budget": bool(d.get("stopped_for_budget", False)),
+    }
+    for key in ("mean_reward", "pass_at_k", "pass_rate", "cost_usd", "budget_usd"):
+        if isinstance(d.get(key), (int, float)):
+            fields[key] = float(d[key])
+    model = (((d.get("frozen") or {}).get("group") or {}).get("model") or {}).get("model_id")
+    emit("nanoclaw_evals", fields, {
+        "kind": d.get("kind") or "unknown",
+        "model": model or "unresolved",
+        "variant": d.get("variant") or "unknown",
+        "status": d.get("status") or "unknown",
+    })
+
+
 def main():
     t0 = time.time()
     now_ms = int(t0 * 1000)
@@ -820,7 +873,8 @@ def main():
                      ("codex", collect_codex),
                      ("cost", collect_cost),
                      ("practices", collect_practices),
-                     ("compliance", collect_compliance)):
+                     ("compliance", collect_compliance),
+                     ("evals", collect_evals)):
         try:
             fn()
         except Exception as exc:  # noqa: BLE001 - a collector must never crash the metrics pipeline

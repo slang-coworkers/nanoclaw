@@ -409,6 +409,14 @@ jobs:
       - name: Compliance check tests (Python)
         run: python3 -m unittest discover -s container/skills/compliance-check/scripts -p 'test_*.py'
 
+      # The eval runner (container/skills/eval-runner/, run by the eval-compliance
+      # coworker) dispatches evaluation tasks to the eval coworker groups and
+      # scores them; its suite runs on fakes (no `ncl`, no `gh`, no network), so
+      # it is cheap here and a regression would otherwise show up only as a wrong
+      # reward on the next paid job.
+      - name: Eval runner tests (Python)
+        run: python3 -m unittest discover -s container/skills/eval-runner/scripts -p 'test_*.py'
+
       # The committed scheduled-task snapshot is the only record of what the live
       # agents are standing-instructed to do, and its whole value is that `git diff`
       # is a drift alarm. It is a PAIR — JSON plus Markdown mirror, stamped with a
