@@ -191,6 +191,24 @@ describe('spec realization', () => {
     expect(image).toBeGreaterThan(network);
   });
 
+  it('passes the GPU lane to the agent container it actually creates, before the env lanes', async () => {
+    // Regression: the GPU flags were only added to an argv that was never sent,
+    // so every agent container came up without a GPU on a GPU host.
+    const d = new DockerSessionDriver({
+      ...FIXTURE_POLICY,
+      cli,
+      hostDeviceArgs: () => ['--runtime=nvidia', '-e', 'NVIDIA_VISIBLE_DEVICES=all'],
+    });
+    await d.prepare(fixtureSpec());
+    const args = createArgs();
+    const runtime = args.indexOf('--runtime=nvidia');
+    expect(runtime).toBeGreaterThan(-1);
+    expect(args).toContain('NVIDIA_VISIBLE_DEVICES=all');
+    const firstEnv = args.findIndex((a, i) => a === '-e' && args[i + 1] !== 'NVIDIA_VISIBLE_DEVICES=all');
+    expect(firstEnv === -1 || runtime < firstEnv).toBe(true);
+    expect(args.indexOf('nanoclaw-agent:spike-p0')).toBeGreaterThan(runtime);
+  });
+
   it('emits contributed env after composed env, so the contributed value wins last-wins', async () => {
     // The contract's override rule (ContainerSpec.contributedEnv), realized in
     // Docker vocabulary: the later `-e` wins.
