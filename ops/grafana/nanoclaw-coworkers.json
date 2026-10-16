@@ -3677,7 +3677,7 @@
       "id": 58,
       "type": "stat",
       "title": "Host up",
-      "description": "pidfile PID alive. false = the host process is down (crash loop, tripwire, deploy).",
+      "description": "pidfile PID alive (host_up_n, 1/0). DOWN = the host process is down (crash loop, tripwire, deploy).",
       "datasource": {
         "type": "influxdb",
         "uid": "PF3A0F3054C0DA367"
@@ -3695,7 +3695,7 @@
             "type": "influxdb",
             "uid": "PF3A0F3054C0DA367"
           },
-          "query": "SELECT last(\"host_up\") FROM \"nanoclaw_host\" WHERE $timeFilter",
+          "query": "SELECT last(\"host_up_n\") FROM \"nanoclaw_host\" WHERE $timeFilter",
           "rawQuery": true,
           "resultFormat": "time_series"
         }
@@ -3716,6 +3716,23 @@
       "fieldConfig": {
         "defaults": {
           "noValue": "no data",
+          "mappings": [
+            {
+              "type": "value",
+              "options": {
+                "0": {
+                  "text": "DOWN",
+                  "color": "red",
+                  "index": 1
+                },
+                "1": {
+                  "text": "UP",
+                  "color": "green",
+                  "index": 0
+                }
+              }
+            }
+          ],
           "thresholds": {
             "mode": "absolute",
             "steps": [

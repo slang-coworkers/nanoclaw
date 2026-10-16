@@ -171,6 +171,15 @@ function dockerGpuArgs(): string[] {
   ];
 }
 
+/**
+ * Whether spawns on this host get GPU passthrough: the default Docker driver is
+ * in use and `dockerGpuArgs()` is non-empty. The host sweep compares this with
+ * each container's own measured `gpu_probe` (src/gpu-probe-check.ts).
+ */
+export function hostGpuPassthroughApplied(env: NodeJS.ProcessEnv = process.env): boolean {
+  return configuredDriverKind(env) === DEFAULT_DRIVER_KIND && dockerGpuArgs().length > 0;
+}
+
 /** Reset the cached GPU probe. Tests only. */
 export function resetGpuModeCacheForTests(): void {
   gpuModeCache = null;

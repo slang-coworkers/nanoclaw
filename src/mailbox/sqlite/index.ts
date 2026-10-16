@@ -4,9 +4,11 @@ import type Database from 'better-sqlite3';
 import { log } from '../../log.js';
 import { failureClassOf, isFailedAck, isGatedAck } from '../model.js';
 import { sessionMailboxDir, sessionMailboxPath } from './paths.js';
+import { mailboxReclaimOptions, reclaimFreePages } from './reclaim.js';
 export { inboundDbPath, outboundDbPath, sessionMailboxDir, sessionMailboxPath } from './paths.js';
 import {
   countDueMessages,
+  expireOrphanedCliResponses,
   deleteOrphanProcessingClaims,
   ensureSchema,
   getContainerState,
@@ -45,10 +47,13 @@ import {
   cancelAllTasks,
   cancelTask,
   clearRecurrence,
+  copyHeldTaskRows,
   deleteTask,
   getCompletedRecurring,
+  holdTaskSeries,
   insertTaskRow,
   pauseTask,
+  releaseHeldTaskRows,
   resumeTask,
   trailingFailedRuns,
   updateTask,
@@ -192,6 +197,8 @@ export function wrapSqliteInbound(
 ): InboundMailbox {
   return {
     gcHistory: (cutoffIso) => gcInboundHistory(db, { cutoffIso, outboundPath: opts.outboundPath }),
+    reclaimSpace: () => reclaimFreePages(db, mailboxReclaimOptions()),
+    expireOrphanedCliResponses: (cutoffIso) => expireOrphanedCliResponses(db, cutoffIso),
     setRouting: (routing) => {
       const record = parseSessionRoutingRecord(routing);
       upsertSessionRouting(db, {
@@ -244,6 +251,9 @@ export function wrapSqliteInbound(
         clearRecurrence(db, originalId);
       })();
     },
+    holdTaskSeries: (seriesId) => holdTaskSeries(db, seriesId),
+    releaseHeldTaskRows: (ids) => releaseHeldTaskRows(db, ids),
+    copyHeldTaskRows: (rows) => copyHeldTaskRows(db, rows, nextSequence),
     cancelTask: (taskId) => (taskId === undefined ? cancelAllTasks(db) : cancelTask(db, taskId)),
     pauseTask: (taskId) => pauseTask(db, taskId),
     resumeTask: (taskId) => resumeTask(db, taskId),
