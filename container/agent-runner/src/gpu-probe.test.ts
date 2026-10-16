@@ -204,6 +204,17 @@ describe('renderGpuContextLine', () => {
       ),
     );
     expect(renderGpuContextLine(failed)).toContain('Vulkan probe failed: exit 1');
+    // A device name printed before a failure/timeout is not a positive signal.
+    const partialOut = await probeGpu(
+      deps({
+        smi: { ok: false, stdout: '', error: 'enoent' },
+        cuda: { ok: false, stdout: '', error: 'timeout' },
+        vk: { ok: false, stdout: VK_SUMMARY, error: 'timeout' },
+      }),
+    );
+    expect(partialOut.gpu).toBe(false);
+    expect(partialOut.vulkan.devices).toEqual([]);
+    expect(renderGpuContextLine(partialOut)).toContain('Vulkan probe failed: timeout');
     const cpuOnly = await probeGpu(
       deps(
         {

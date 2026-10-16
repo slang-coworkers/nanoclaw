@@ -196,7 +196,7 @@ export async function probeGpu(deps: ProbeDeps = defaultDeps): Promise<GpuProbe>
   const vkTool = vk.error !== 'enoent';
   const vulkan: GpuProbe['vulkan'] = {
     tool: vkTool,
-    devices: vk.ok || vk.stdout ? parseVulkanSummary(vk.stdout) : [],
+    devices: vk.ok ? parseVulkanSummary(vk.stdout) : [],
     nvidiaIcd,
     ...(vkTool && !vk.ok ? { error: vk.error } : {}),
   };
