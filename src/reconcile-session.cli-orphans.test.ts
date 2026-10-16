@@ -104,4 +104,29 @@ describe('expireOrphanedCliResponses', () => {
     expect(Number(m![1].replace(/_/g, ''))).toBe(CONTAINER_NCL_RESPONSE_TIMEOUT_MS);
     expect(CLI_RESPONSE_ORPHAN_MS).toBeGreaterThan(CONTAINER_NCL_RESPONSE_TIMEOUT_MS);
   });
+
+  it('every host writer stamps a cli-resp reply at insertion time', () => {
+    // The age gate is only safe if a reply's timestamp is when it was WRITTEN
+    // (after its requester started polling). A writer that copied the request's
+    // own timestamp could hand a still-polling requester an already-expired row.
+    const writers = ['src/cli/delivery-action.ts', 'src/delivery.ts'];
+    for (const file of writers) {
+      const src = fs.readFileSync(path.join(process.cwd(), file), 'utf8');
+      const sites = src.split('id: `cli-resp-${requestId}`').slice(1);
+      expect(sites.length, file).toBeGreaterThan(0);
+      for (const after of sites) {
+        expect(after.split('\n').slice(0, 4).join('\n'), file).toContain('timestamp: new Date().toISOString()');
+      }
+    }
+    // A new writer elsewhere must be added to the list above.
+    const all = fs
+      .readdirSync(path.join(process.cwd(), 'src'), { recursive: true, encoding: 'utf8' })
+      .filter((f) => f.endsWith('.ts') && !f.endsWith('.test.ts'))
+      .filter((f) =>
+        fs.readFileSync(path.join(process.cwd(), 'src', f), 'utf8').includes('id: `cli-resp-${requestId}`'),
+      )
+      .map((f) => `src/${f}`)
+      .sort();
+    expect(all).toEqual([...writers].sort());
+  });
 });
