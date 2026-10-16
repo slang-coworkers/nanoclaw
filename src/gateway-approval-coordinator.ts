@@ -251,6 +251,9 @@ function restoreAvailability(gatewayProvider: string): void {
   if (!healthSource) reportAvailable();
 }
 
+/** Cap on waiting for the aborted subscription + final health publish at stop. */
+const STOP_SETTLE_TIMEOUT_MS = 3_000;
+
 export async function stopGatewayApprovalCoordinator(): Promise<void> {
   const activeController = controller;
   const activeSubscription = subscription;
@@ -268,25 +271,19 @@ export async function stopGatewayApprovalCoordinator(): Promise<void> {
   initialReady?.();
   initialReady = undefined;
   await denyAll('host restarted');
-  if (activeSubscription) {
-    let timer: NodeJS.Timeout | undefined;
-    await Promise.race([
-      activeSubscription.catch(() => {}),
-      new Promise<void>((resolve) => {
-        timer = setTimeout(resolve, 5_000);
-        timer.unref();
-      }),
-    ]);
-    if (timer) clearTimeout(timer);
-  }
-  let healthDeadline: NodeJS.Timeout | undefined;
+  // Wait for the aborted subscription and the final health publish TOGETHER
+  // under one short cap. They used to be awaited one after the other at 5 s
+  // each — up to 10 s, the whole systemd TimeoutStopSec budget on their own,
+  // so a slow long-poll abort got the host SIGKILLed mid-shutdown.
+  let stopDeadline: NodeJS.Timeout | undefined;
   await Promise.race([
-    stoppedHealth,
+    Promise.all([activeSubscription?.catch(() => {}), stoppedHealth]),
     new Promise<void>((resolve) => {
-      healthDeadline = setTimeout(resolve, 5_000);
+      stopDeadline = setTimeout(resolve, STOP_SETTLE_TIMEOUT_MS);
+      stopDeadline.unref();
     }),
   ]);
-  if (healthDeadline) clearTimeout(healthDeadline);
+  if (stopDeadline) clearTimeout(stopDeadline);
   if (controller === activeController) {
     controller = null;
     subscription = null;

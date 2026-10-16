@@ -15,6 +15,7 @@ import {
   auxiliaryNetworkArgs,
   dockerEventToSessionEvent,
   ensureDockerRunning,
+  waitForDockerRunning,
 } from './docker-driver.js';
 import { FakeCli } from './fake-cli.js';
 import { withSessionEvents } from './session-events.js';
@@ -777,6 +778,47 @@ describe('ensureDockerRunning', () => {
     cli.responses = [{ match: /^info$/, throws: new Error('Cannot connect to the Docker daemon') }];
     expect(() => ensureDockerRunning(cli)).toThrow('Container runtime is required but failed to start');
     expect(log.error).toHaveBeenCalled();
+  });
+});
+
+describe('waitForDockerRunning (startup retry)', () => {
+  function clock() {
+    let t = 0;
+    return { now: () => t, sleep: vi.fn(async (ms: number) => void (t += ms)) };
+  }
+
+  it('succeeds on a later attempt while the daemon restarts at boot', async () => {
+    cli.responses = [{ match: /^info$/, throws: new Error('Cannot connect to the Docker daemon') }];
+    const c = clock();
+    let sleeps = 0;
+    const sleep = vi.fn(async (ms: number) => {
+      await c.sleep(ms);
+      if (++sleeps === 2) cli.responses = []; // daemon back after ~10 s
+    });
+    await expect(waitForDockerRunning(cli, { timeoutMs: 60_000, intervalMs: 5_000, now: c.now, sleep })).resolves.toBe(
+      undefined,
+    );
+    expect(cli.joined().filter((a) => a === 'info')).toHaveLength(3);
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(log.warn).toHaveBeenCalledTimes(2);
+    expect(log.error).not.toHaveBeenCalled();
+  });
+
+  it('gives up with the fatal startup error once the bound is spent', async () => {
+    cli.responses = [{ match: /^info$/, throws: new Error('Cannot connect to the Docker daemon') }];
+    const c = clock();
+    await expect(waitForDockerRunning(cli, { timeoutMs: 20_000, intervalMs: 5_000, ...c })).rejects.toThrow(
+      'Container runtime is required but failed to start',
+    );
+    // Probes at t=0,5,10,15,20 s; the 5th fails and 20+5 > 20 → give up.
+    expect(cli.joined().filter((a) => a === 'info')).toHaveLength(5);
+    expect(c.now()).toBe(20_000);
+    expect(log.error).toHaveBeenCalledTimes(1);
+  });
+
+  it('is what the driver runs for ensureReady', async () => {
+    await expect(driver().ensureReady()).resolves.toBeUndefined();
+    expect(cli.joined()).toContain('info');
   });
 });
 
