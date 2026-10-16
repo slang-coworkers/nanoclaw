@@ -1,0 +1,53 @@
+---
+title: "Slang IR: phi block parameters and where inlined global values land"
+type: concept
+group: slang-grab-bag
+tags: [slang, ir, ssa, phi, IRParam, isFirstBlock, LoadFromUninitializedMemory, E56004, eliminatePhis, GlobalInstInlining, getOutsideASM, wgsl, static-const]
+---
+
+# Slang IR: phi block parameters and where inlined global values land
+
+This page covers two IR shapes that downstream code often gets wrong. The first is SSA block parameters (phis): they are `IRParam`s just like function parameters, and a phi whose incoming values are all undefined is never folded. The second is where `GlobalInstInlining` puts the clone of a module-scope value that is illegal at module scope for the target, which on WGSL can be inside a loop body.
+
+## TL;DR
+
+- **Phi block parameters are `IRParam`s.** A walk that treats every `IRParam` as a function parameter also reports at phis, which take their source location from the promoted variable or the `?:` expression. To match only function parameters, test `as<IRParam>(user) && isFirstBlock(user->getParent())` (slang-ir-util.h).
+- **Probe a user-walking diagnostic with a ternary and a loop-reassigned local**, not only a helper call. Those two shapes create phis.
+- **When reviewing a "newly rejected shape" list, check what master emits, not only its exit code.** A shape master silently miscompiles (for example Metal `{ return; }`) is a fix when rejected, not a break.
+- **No simplifier folds a phi whose incoming values are all undefined.** The peephole skips undefined args but needs one defined value, `tryRemoveTrivialPhi` has a TODO for the case, and `removeTrivialPhiParams` needs identical args. An opaque-typed phi of that shape survives to `eliminatePhis` and gives E56004 (E56019 on Metal).
+- **E56004 triage:** dump IR after the `simplifyIR` that follows `legalizeResourceTypes`. If every incoming value of the opaque phi is `LoadFromUninitializedMemory` or `Poison`, the bug is the missing all-undefined fold, not the real-resource-selection family (#10526/#13248).
+- **`LoadFromUninitializedMemory` behaves like freeze(undef).** A phi of two such values may be refined to a fresh one, but never to `Poison`.
+- **`GlobalInstInlining` inserts each clone at `getOutsideASM(user)`, and on WGSL that is the user itself.** A `static const` table used only inside a loop is rebuilt on every iteration at every -O level, and no later pass hoists it. Later uses in the same dominance region share the clone.
+- **Placing the clone in the function entry block is safe only for side-effect-free values**, because `isInlinableGlobalInst` also sinks `Load` and `Call`.
+- **Struct-typed tables reach WGSL legalization as `S_x24init` calls, not `MakeStruct`.** Check `-dump-ir-before legalizeIRForWGSL` before trusting an "untested arm" finding.
+
+## Phis are `IRParam`s: filter with `isFirstBlock`
+
+A diagnostic that walks an IR value's users to report at "declarations" (`IRGlobalParam`, `IRGlobalVar`, `IRParam`, `IRStructField`) also hits SSA block parameters, because a phi is an `IRParam` too. Consider `b = c ? m1 : m2`. SSA construction gives the merge block a parameter whose source location is the `?`, so the diagnostic reports there as well. On #13681 this produced 5 Metal E38204 reports where SPIR-V gave 2. The filter for function parameters only is `as<IRParam>(user) && isFirstBlock(user->getParent())`. Probe such a walk with a ternary and a loop-reassigned local, since a plain helper call creates no phi.
+
+The same review produced a rule for "newly rejected shape" inventories: check what master actually emits, not only its exit code. On #13681, master's Metal output for `SB<ConstantBuffer<S{Tex}>>`, nested or static structured buffers, and mixed structs was `{ return; }`, a silent miscompile, so rejecting those shapes is a fix rather than a break [phi block params are IRParams: filter with isFirstBlock](../learnings/1792101219732-phi-block-params-are-irparams-filter-with-isfirstb.md).
+
+## A phi whose incoming values are all undefined is never folded (#13685)
+
+Consider a struct with a `Texture2D` field that is never written, where the struct is conditionally reassigned. `legalizeResourceTypes` splits the field into its own variable, and SSA gives each variable its own `LoadFromUninitializedMemory`. The merge block then gets a `Texture2D` parameter with incoming values (undef#1, undef#2). A plain `Texture2D t; if (c) { Texture2D r; t = r; }` reproduces it with no struct. Three simplifiers miss the shape:
+
+- the peephole for `kIROp_Param` (slang-ir-peephole.cpp ~1665-1731) skips undefined args and folds to the one remaining value, so it does nothing when every arg is undefined;
+- `tryRemoveTrivialPhi` (slang-ir-ssa.cpp ~795) has a TODO for exactly this case;
+- `removeTrivialPhiParams` (simplify-cfg) requires identical args.
+
+`eliminatePhis` then creates an opaque-typed variable, and `checkUnsupportedInst` reports E56004 (also on GLSL and WGSL; Metal gives E56019). The fix is semantic: `LoadFromUninitializedMemory` behaves like freeze(undef), so refining phi(freeze1, freeze2) to a fresh freeze is valid, while refining it to `Poison` is not.
+
+For triage, when E56004 appears, look at the `-dump-ir` "AFTER simplifyIR" output right after `legalizeResourceTypes`. If every incoming value of the opaque parameter is `LoadFromUninitializedMemory` or `Poison`, this missing fold is the bug, not the real-resource selection case of #10526/#13248 [phi with all-undefined incoming args is never folded](../learnings/1792135170279-slang-ir-phi-with-all-undefined-incoming-args-is-n.md).
+
+## Where `GlobalInstInlining` puts a sunk module-scope value
+
+When `GlobalInstInliningContextGeneric::inlineGlobalValuesAndRemoveIfUnused` sinks a module-scope aggregate that is illegal at module scope for the target, such as a `static const` table on WGSL, it inserts each clone at `getOutsideASM(user)`. WGSL returns the user itself. A table used only inside a loop is therefore materialized as `var t = array<...>(...)` inside the `loop {}` and rebuilt on every iteration, at -O0 through -O3. No later pass hoists it, since `hoistLoopInvariantInsts` is autodiff-only. Uses after the first one in the same dominance region share the clone, so the behaviour is not strictly one clone per use site. Master's struct-typed tables already behave this way.
+
+Placing the clone at the first ordinary instruction of the function's entry block fixes it for `Make*` values and constants (verified on #13669: tests/wgsl 64/64, corpus byte-identical). That placement is unsafe as written, because `isInlinableGlobalInst` also sinks `Load` and `Call`, so gate entry-block placement on side-effect-free ops.
+
+A reviewer on #13669 claimed that a struct table with a NaN field reached WGSL legalization as a module-scope `makeStruct`. It does not: struct tables arrive as `S_x24init` calls, so the `MakeStruct` arm of WGSL `isLegalGlobalInstForTarget` is unreachable from user source. Check `-dump-ir-before legalizeIRForWGSL` before trusting an "untested arm" finding [GlobalInstInlining clones land at the first use, which can be inside a loop body](../learnings/1792094646121-globalinstinlining-clones-land-at-the-first-use-wh.md).
+
+**Source learnings (3):**
+- [Phi block params are IRParams: filter with isFirstBlock when walking to "declarations"](../learnings/1792101219732-phi-block-params-are-irparams-filter-with-isfirstb.md) — extra report at `?:`; check what master emits before calling a rejection a break
+- [Slang IR: phi with all-undefined incoming args is never folded (E56004 on uninit texture fields)](../learnings/1792135170279-slang-ir-phi-with-all-undefined-incoming-args-is-n.md) — three simplifiers miss it; freeze semantics; E56004 triage shortcut
+- [GlobalInstInlining clones land at the first use, which can be inside a loop body (WGSL getOutsideASM = user)](../learnings/1792094646121-globalinstinlining-clones-land-at-the-first-use-wh.md) — per-iteration rebuild; entry placement needs a side-effect gate; struct tables are `$init` calls

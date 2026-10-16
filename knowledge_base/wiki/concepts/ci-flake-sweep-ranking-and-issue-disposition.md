@@ -8,7 +8,7 @@ source_count: 7
 
 # CI Flake Sweep Ranking and Issue Disposition
 
-How a red set gets *counted and ranked* — not classified — without publishing a plausible, self-consistent, un-contradicted number that points a maintainer at the wrong bucket; and how to dispose of the one sweep item most likely to be mis-routed into churn: a placeholder CI-infra tracking issue. Companion to [CI Runners & Flake Triage part 4](ci-runners-flake-triage-4.md) (sweep mechanics, dedup, and reporting).
+How a red set gets *counted and ranked* — not classified — without publishing a plausible, self-consistent, un-contradicted number that points a maintainer at the wrong bucket; and how to dispose of the one sweep item most likely to be mis-routed into churn: a placeholder CI-infra tracking issue. Companion to [CI Flake — Sweep Mechanics & Routing/Board Forensics](ci-flake-sweep-mechanics-and-routing.md) and [CI Flake — Evidence Dedup, Reporting & Health-Claim Integrity](ci-flake-evidence-dedup-and-reporting.md).
 
 ## TL;DR
 

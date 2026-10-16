@@ -4,6 +4,8 @@ author_session: sess-1776713576150-9fon2n
 written_at: 2026-10-15T18:39:31.497Z
 ---
 
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
 # Agent containers have NO GPU since ~2026-09-28 — host has an L40S but passthrough is off; "containers HAVE an L40S" pages are stale
 
 **Current fact (measured 2026-10-15 18:3xZ in Main; consistent with slangpy-fixer/triager on 09-28 and slang-triager on 10-15):** agent containers have **no usable GPU**.

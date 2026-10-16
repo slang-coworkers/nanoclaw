@@ -2,7 +2,7 @@
 title: "Slang test authoring: FileCheck efficacy, ignored targets, and confounded lanes"
 type: concept
 group: slang-tooling
-tags: [slang-test, filecheck, testing, cuda, metal, target-switch, gpu-less, test-efficacy]
+tags: [slang-test, filecheck, testing, cuda, metal, target-switch, ignored-targets, test-efficacy]
 source_count: 28
 ---
 
@@ -10,11 +10,11 @@ source_count: 28
 
 ## TL;DR
 
-The recurring theme is **test efficacy**: a green test in a GPU-less container routinely proves nothing, because the target it exercises is silently ignored, or an independent flag produces the signal you attribute to your change, or a `-NOT` sits on a target the code never runs on.
+The recurring theme is **test efficacy**: a green test in a local container (Linux, no DXC/Metal toolchain) routinely proves nothing, because the target it exercises is silently ignored, or an independent flag produces the signal you attribute to your change, or a `-NOT` sits on a target the code never runs on.
 
 - **`slang-test` exits 0 when nothing matched** (filter typo, positional path arg, `-test-dir` + trailing filter) — gate on `[0-9]+% of tests passed (n/m)` appearing.
 - **The failure marker is `FAILED test:` (UPPERCASE)**; `grep -c '^failed test:'` reports 0 failures on a failing log.
-- **A `-target hlsl`/`-mtl` subtest is "ignored" (0/0), not run,** in a GPU-less/toolchain-less
+- **A `-target hlsl`/`-mtl` subtest is "ignored" (0/0), not run,** in a toolchain-less (no DXC/Metal)
   sandbox — an *untested* target; macOS CI runs the mtl subtest.
 - **A cross-target `COMPARE_COMPUTE` listing `-mtl` must not use `double`** (Metal has none;
   emit aborts) — split F64 coverage into a no-Metal file.
@@ -78,7 +78,7 @@ every ancestor (a 6.7 MB commit message), and `REQUIRED_BY` in
 ## Ignored targets: a locally-green test that tested nothing
 
 A `//TEST:SIMPLE(filecheck=CHECK):-target hlsl` test is reported **"ignored" (0/0, not
-pass/fail)** in the GPU-less coworker sandbox — the HLSL/DXC codegen path is filtered out — so
+pass/fail)** in the Linux coworker sandbox, which has no DXC — the HLSL/DXC codegen path is filtered out — so
 "ignored" ≠ broken (a known-good sibling is also ignored for its `.1` hlsl variant while its
 cpu/cuda variants pass). To make a parse/compile-level fix actually verifiable locally, write
 the positive test as CPU compute
@@ -106,7 +106,9 @@ which is absent on CPU CI runners, so the compile aborts with "failed to load do
 compiler 'nvrtc'" *before* reaching `checkUnsupportedInst` — the expected diagnostic (e.g.
 E55215) never fires. `-target cuda` stops at CUDA *source* emission, still runs the pre-emit
 diagnostic pass, and needs no nvrtc. This passes locally on a box that has nvrtc (the prod
-L40S container) and only fails in CI — hit on slang#12633/PR #12671
+agent containers ship CUDA 12.6 NVRTC whether or not a GPU is passed through; they have an L40S,
+missing only during the 09-28→10-16 host outage — [no GPU since ~09-28 (historical: 09-28→10-16 outage)](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md))
+and only fails in CI — hit on slang#12633/PR #12671
 [CUDA diagnostic tests use -target cuda](../learnings/1787351942939-cuda-diagnostic-tests-use-target-cuda-not-target-p.md).
 The failure is possible at all because a `DIAGNOSTIC_TEST` is **not** skipped for the missing
 backend: `_extractSlangCTestRequirements` maps `-target ptx` to `PassThroughFlag::NVRTC`, which
@@ -256,7 +258,7 @@ path (DXC), not just the emit.
 
 ## Authoring diagnostic tests, FileCheck prefixes, and COMPARE_COMPUTE lanes
 
-Authoring rules for tests that pass in CI, not just in a GPU-less sandbox.
+Authoring rules for tests that pass in CI, not just in a local sandbox.
 
 **`non-exhaustive` is a two-sided contract — rejected when redundant, required when a real extra
 fires.** `slang-test` errors `Unnecessary 'non-exhaustive': All N diagnostic(s) were matched by

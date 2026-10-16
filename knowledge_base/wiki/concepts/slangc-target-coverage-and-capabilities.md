@@ -3,7 +3,7 @@ title: "slangc Target Coverage & Capability Gating"
 type: concept
 group: slang-tooling
 tags: [targets, capability, atomic64, cpu, optimization, profile, wasm, family, gating]
-source_count: 7
+source_count: 8
 ---
 
 # slangc Target Coverage & Capability Gating
@@ -21,6 +21,7 @@ This page covers how `slangc` reports and gates target/feature coverage: why `fi
 - **`IGlobalSession::findProfile` is an exact-name lookup:** `"spirv_1_5+spvRayQueryKHR"` returns `SLANG_PROFILE_UNKNOWN` and silently drops the capabilities; `+` exists only in the CLI `-profile` parser. Through the API, pass a plain profile plus a `CompilerOptionName::Capability` entry.
 - **Direct `ResourceDescriptorHeap[i]` / `SamplerDescriptorHeap[i]` input syntax first ships in v2026.14;** older builds give E30015, so ask for the user's version first.
 - **`[require]` propagation through referenced declarations** (generic structs, enums, return types, static members) has its own page: [Slang capability inference](slang-language-core-capability-inference.md).
+- **embind overloads by argument count, not type**: widening `createSession(int)` to accept an object needs one `emscripten::val` method that branches at runtime (and `EMSCRIPTEN_DECLARE_VAL_TYPE` to keep TS typing).
 
 ## Target coverage: `hasOption(Optimization)` is NOT an explicit-request signal
 
@@ -65,11 +66,13 @@ A related version gate from the same support question: direct `ResourceDescripto
 
 ---
 
+Widening the bindings has a constraint of its own: embind overloads by argument **count** only, not type (embind docs, "Overloaded functions"), so `createSession(emscripten::val)` cannot sit beside `createSession(int)` (#13642). The options are one method taking `emscripten::val` that branches at runtime (`val.isNumber()` vs object), or a new method name. With `emscripten::val` the `--emit-tsd` `interface.d.ts` shows `any` unless you add `EMSCRIPTEN_DECLARE_VAL_TYPE` + `register_type<T>(name, tsDef)`, so the first option can lose today's `number` typing for TS users. On the native side, `CompilerOptionSet::load` (`slang-compiler-options.cpp:11-24`) copies option strings into `String`, and SessionDesc searchPaths/macros become Include/MacroDefine entries (`slang-global-session.cpp:837-862`), so JS-side `std::string` storage only has to outlive the `createSession` call; there is no in-tree string→`CompilerOptionName` table. A source-rewriting workaround (prepended `#define`s) keeps diagnostics on the original lines with `#line 1 "<file>.slang"` after the prepended block [embind overloads by arg count only](../learnings/1792071361108-embind-overloads-by-arg-count-only-backward-compat.md).
+
 ## Capability inference through referenced declarations
 
 How `[require]` propagates through generic structs, enums, static member calls and return types (#13579 / PR #13616), the scoping traps around `__intrinsic_type` and core-module types, and the twin-row method for testing a generic-vs-non-generic parity fix are on [Slang capability inference](slang-language-core-capability-inference.md).
 
-**Source learnings (7):**
+**Source learnings (8):**
 - [hasOption(Optimization) is NOT an explicit-vs-default signal at the emit layer](../learnings/1781818384239-hasoption-optimization-is-not-an-explicit-vs-defau.md)
 - [Slang coverage target-support gate ≠ atomic64 capability membership](../learnings/1780490687504-slang-coverage-target-support-gate-atomic64-capabi.md)
 - [Slang: gate IR passes on target family, not CapabilitySet.implies(compound-alias)](../learnings/1780933412397-slang-gate-ir-passes-on-target-family-not-capabili.md)
@@ -77,5 +80,6 @@ How `[require]` propagates through generic structs, enums, static member calls a
 - [slangc -h advertises glsl_110/120/130/140 profiles the parser rejects (three-site sync + check-cmdline-ref CI)](../learnings/1782980898198-slangc-h-advertises-glsl-110-120-130-140-profiles-.md)
 - [slang-wasm bindings expose NO compiler-option surface (createSession takes only an int target)](../learnings/1784153472052-slang-wasm-bindings-expose-no-compiler-option-surf.md)
 - [Slang: findProfile ignores '+' caps; ResourceDescriptorHeap needs >= v2026.14](../learnings/1791880983925-slang-findprofile-ignores-caps-resourcedescriptorh.md) — exact-name profile lookup drops `+` caps silently; use a Capability option entry; descriptor-heap syntax version gate; curl the 1.3 MB meta file
+- [embind overloads by arg COUNT only — backward-compatible number|object API needs one emscripten::val method](../learnings/1792071361108-embind-overloads-by-arg-count-only-backward-compat.md) — `val.isNumber()` branch; `EMSCRIPTEN_DECLARE_VAL_TYPE` for TS; `#line 1` after prepended defines (#13642)
 
 _Catalog: [[wiki/index.md]]_

@@ -3,7 +3,7 @@ title: GitHub CLI/API access under the OneCLI proxy — auth false alarms and wo
 type: concept
 group: ci-tooling
 tags: [gh-cli, github-api, onecli-proxy, gh-token, pr-review, auth, curl, graphql]
-source_count: 20
+source_count: 22
 ---
 
 ## TL;DR
@@ -18,6 +18,7 @@ source_count: 20
 - **Ad-hoc `curl` to `api.github.com` is anonymous-tier (60/hr)** — the proxy does NOT inject a token for `/actions/runs` or `/rate_limit`, so anonymous reads miss self-hosted-runner workflow failures on `slang`. Don't "independently verify" the precheck with ad-hoc curl.
 - Workarounds for wedged/paginated reads: raw REST `curl` bypasses `gh run view --log`'s run-status gate on gate-wedged runs; **GraphQL `gh pr view --json reviews`** is flap-immune where REST `--paginate` 401-flaps mid-pagination.
 - The `gate-critique-on-deliver.sh` PreToolUse Bash hook false-positives on any command string containing the `pulls` path segment; route reads around it (`gh pr view`, or `issues/<n>` since PRs are issues).
+- **When `gh` 401s (`app_not_connected`) or slang-mcp rejects its header, header-less urllib/curl to api.github.com still reads** — at the injected 6000/h or the anonymous 60/h; read the quota from `X-RateLimit-*`, not `/rate_limit`.
 
 ## The core false alarm: `gh auth status` ≠ read access
 
@@ -195,7 +196,9 @@ most metadata, and `gh api repos/O/R/issues/<n> -q '.author_association'` (PRs a
 author association — both pass the hook and are read-only
 ([read-only pulls GET trips critique hook](../learnings/1788858953279-approver-infra-note-read-only-gh-api-pulls-n-gets-.md)).
 
-**Source learnings (20):**
+**When `gh` and slang-mcp both lose auth mid-sweep, raw HTTP still reads (2026-10-16).** In the Slang Maintainer container `gh api ...` failed with `app_not_connected` (HTTP 401, "GitHub is not connected in OneCLI"), and partway through a run the `mcp__slang-mcp__github_*` tools began failing with "rejected the Authorization header". Plain python urllib or curl calls to `https://api.github.com` (REST and `POST /graphql`) with **no** Authorization header worked through the transparent proxy at the full 6000/h quota in one container [gh CLI 401s while raw REST/GraphQL works](../learnings/1792139649364-onecli-github-gh-cli-401s-while-raw-rest-graphql-w.md), and as anonymous calls at 60 core requests/h and 10 searches/min in another [GitHub read fallback when gh/slang-mcp auth fails](../learnings/1792139710335-github-read-fallback-when-gh-slang-mcp-auth-fails-.md). So the quota depends on whether the proxy injects; read it from the `X-RateLimit-*` headers on a real request, not from `/rate_limit`, which reported a misleading 60/h core and graphql limit 0. URL-encode search queries (`urllib.parse.quote`; a raw `created:>=` returns non-JSON), fetch file contents from raw.githubusercontent.com (no limit hit), and keep a sweep's rechecks under about 10 searches. A reusable helper is `/workspace/agent/reports/tmp1016/gh.py` (get/pages/gql). Separately, `PullRequest.reviews(first:N)` caps at N: raising it from 30 to 50 changed an "unreviewed >30d" count by 2.
+
+**Source learnings (22):**
 
 - [gh CLI auth broken even when OneCLI proxy curl works — GH_TOKEN is a literal sentinel](../learnings/1788204882348-gh-cli-auth-broken-even-when-onecli-proxy-curl-wor.md) — GH_TOKEN=ROUTED_VIA_ONECLI_PROXY; gh validates locally and fails, curl+proxy works; later corrected/over-generalized.
 - [Correction: gh CLI App-installation token is fine for actions/PR endpoints](../learnings/1788205146208-correction-gh-cli-app-installation-token-is-fine-f.md) — the container held a working App token; gh reads work, only auth-status/user/rate_limit fail.
@@ -217,3 +220,5 @@ author association — both pass the hook and are read-only
 - [Invalid GH_TOKEN blocks all PR/issue-comment posting — SUPERSEDED: writes work via the proxy](../learnings/1789224850935-invalid-gh-token-blocks-all-pr-issue-comment-posti.md) — the "delegate or refresh, don't spin" framing was wrong; only gh needs refresh, curl/git post fine.
 - [gh auth status invalid is a false alarm for App tokens in /slang-pr-review preflight](../learnings/1790172928541-gh-auth-status-invalid-token-is-a-false-alarm-for-.md) — App tokens can't hit `/user`, so `gh auth status` (and the runner install.sh) reports invalid though repo reads work; verify with `gh pr diff <N>`, only post-back (`pull_requests:write`) degrades.
 - [shader-slang.github.io: git push 401s, REST /merges updates a PR branch from main](../learnings/1790698605213-shader-slang-github-io-git-push-401s-rest-merges-u.md) — git-receive-pack credential not accepted on github.io; REST writes work; `permissions` all-false is misleading; linkcheck has no `main` runs.
+- [OneCLI GitHub: gh CLI 401s while raw REST/GraphQL works (2026-10-16)](../learnings/1792139649364-onecli-github-gh-cli-401s-while-raw-rest-graphql-w.md) — header-less urllib through the proxy at 6000/h; trust `X-RateLimit-*`, not `/rate_limit`
+- [GitHub read fallback when gh/slang-mcp auth fails mid-sweep](../learnings/1792139710335-github-read-fallback-when-gh-slang-mcp-auth-fails-.md) — anonymous curl 60/h + 10 searches/min; URL-encode search; raw.githubusercontent for files

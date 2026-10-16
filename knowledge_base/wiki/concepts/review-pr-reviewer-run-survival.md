@@ -3,12 +3,12 @@ title: "Reviewer-Run Survival & Review-Tool Operational Infra"
 type: concept
 group: review-process
 tags: [pr-review, pr-approver, reviewer-a, devin, session-teardown, background-wait, budget-cap, critique-gate, runner-ops, infra-abstain]
-source_count: 57
+source_count: 58
 ---
 
 # Reviewer-Run Survival & Review-Tool Operational Infra
 
-Keeping reviewer and Devin runs alive, invoking them without false skips, posting, and the critique gate. Decision framework: [approver decision & shadow-mode](review-pr-approver-decision-and-shadow-mode.md); harvested signal: [harvest tiers & verdict reporting](review-pr-harvest-tiers-and-verdict-reporting.md).
+Keeping reviewer and Devin runs alive, invoking them without false skips, posting, and the critique gate. Decision framework: [approver decision & shadow-mode](review-pr-approver-decision-and-shadow-mode.md); harvested signal: [harvest tiers & verdict reporting](review-pr-harvest-tiers-and-verdict-reporting.md); 30-min Bash cap and container restarts: [runner reliability](agent-infra-f0909b0-codex-and-pr-review-runners.md).
 
 ## TL;DR
 - **Every reviewer fails toward CLEAN.** A dead or stubbed run can show `Run state: success`, 0/0/0 and even exit 0. Before trusting "no findings", check the artifact size, a leading review heading, the REVIEW-GUARD line, and `stream.jsonl` for `"status": "killed"`/`stopped`.
@@ -80,9 +80,9 @@ If that orphans too, stop rerunning: run the `.claude/agents/*` lenses (security
 
 **A run can report success and be empty.** On #13363 R2 (~900 diff lines, 19 files) the first run had all 7 subagents at 0 tool uses and a "still running" placeholder as `final-review.md`, yet `summarize.py` printed `Run state: success`. So after every run, check that each row of the per-subagent table shows tool uses > 0 and open `final-review.md` for an "incomplete" header ([#13363](../learnings/1791081955973-reviewer-a-on-large-slang-prs-the-30-budget-can-cu.md)).
 
-**$30 does not cover a large diff, and removing the wall-clock bound moves the cut to the budget.** #13363's second run hit `--max-budget-usd 30` with 3 of 7 lenses unreturned (code-quality, security, cross-backend), and #13541's 16-file rework delta finished only 3 of 7. On #13425 (725-line layout diff) both $30 rounds were incomplete: in round 1 the 600 s ceiling killed code-quality and documentation; in round 2, with the ceiling removed, ir-correctness and cross-backend ran past 25 min and were stopped to stay under the cap. `final-review.md` then says "Review incomplete", and the draft filter table is left at `slang/tmp/review-candidates/pr-<N>/partial-findings-NOT-FOR-POSTING.md`. Give large PRs at least 45–60; the [fleet-contention budget table](review-pr-workflow-and-issue-hygiene.md) goes to 120–150 above ~15 files or ~2k lines ([#13425](../learnings/1791132067717-reviewer-a-slang-pr-review-runner-runs-out-of-budg.md)).
+**$30 does not cover a large diff, and removing the wall-clock bound moves the cut to the budget.** #13363 and #13541 each ended 3 of 7 lenses short; on #13425 (725 lines) the 600 s ceiling killed two lenses in round 1, and with it removed two more were stopped under the cap in round 2. On #13564 (heavy C++ IR, ceiling removed) the inner CLI itself stopped 6 of 7 subagents at ~$25 of $30. `final-review.md` then says "Review incomplete" (draft at `slang/tmp/review-candidates/pr-<N>/partial-findings-NOT-FOR-POSTING.md`). Stopped subagents' jsonl transcripts are deleted (only `.meta.json` stays), but a completed one's text survives in its `task_notification` `<result>` in `stream.jsonl`, and C's in the `C-<pr>.log` stream (strip `N\t` line prefixes). Give large or heavy-IR PRs 45–60; the [fleet-contention budget table](review-pr-workflow-and-issue-hygiene.md) goes to 120–150 above ~15 files or ~2k lines ([#13425](../learnings/1791132067717-reviewer-a-slang-pr-review-runner-runs-out-of-budg.md), [#13564 $30 stopped 6/7](../learnings/1792060963846-slang-pr-review-reviewer-a-30-budget-can-stop-6-7-.md)).
 
-**Close the gap with the missing lenses only.** What worked on #13425 was dispatching just the unreturned reviewers from the coordinator: `Agent` with `subagent_type` `ir-correctness-reviewer` or `cross-backend-reviewer`, pointed at a worktree of the PR head plus a saved diff file, and handed your own probe results so they confirm or refute instead of re-deriving. Each took 45–95 min but completed. Keep `reviewers_complete=false` in the JSON block anyway and say in the report that the coordinator closed the gap. This is the same substitution as for the 2.1.285 orphan above, scoped to the lenses that did not return. Separately, the #13363 review recorded a real finding: `doesSwizzleWriteWholeTexel(…, imageElementType)` must be passed `texelType`, because the GLSL/Metal/SPIR-V image op is always 4-wide and `.yx` on an `RWTexture2D<float2>` with `[format("rgba32f")]` otherwise zeroes `.zw`.
+**Close the gap with the missing lenses only.** On #13425 the coordinator dispatched just the unreturned reviewers (`Agent` with the lens's `subagent_type`, e.g. `ir-correctness-reviewer`), pointed at a PR-head worktree plus a saved diff and handed its own probe results to confirm or refute. Each took 45–95 min but completed. Keep `reviewers_complete=false` and say the coordinator closed the gap (the 2.1.285-orphan substitution, scoped to the missing lenses). Separately, #13363 found that `doesSwizzleWriteWholeTexel(…, imageElementType)` must get `texelType`: the GLSL/Metal/SPIR-V image op is 4-wide, so `.yx` on an `RWTexture2D<float2>` with `[format("rgba32f")]` otherwise zeroes `.zw`.
 
 ## Reviewer A: recovering a stub from stream.jsonl
 
@@ -142,7 +142,7 @@ The gate records a round only when the codex call uses the exact `/codex-critiqu
 
 `reviewers_complete:true` is a harness-integrity assertion checked against disk: true only when `devin-flags.md` exists or a bot review was harvested. Never pre-fill it before Devin is terminal ([reviewers_complete](../learnings/1784049951184-approver-critique-mustfix-never-set-reviewers-comp.md)).
 
-**Source learnings (57):**
+**Source learnings (58):**
 - [run runner scripts from writable /home/node/.claude/skills](../learnings/1789621947264-slang-pr-review-runner-scripts-must-run-from-home-.md)
 - [verify runs survived and cleared the guard](../learnings/1783971373048-slang-pr-review-verify-reviewer-runs-survived-clea.md)
 - [600s stub: recover synthesis from stream.jsonl](../learnings/1783983883017-slang-pr-review-reviewer-a-600s-bg-wait-ceiling-tr.md)
@@ -195,6 +195,7 @@ The gate records a round only when the codex call uses the exact `/codex-critiqu
 - [#13363: success with 0-tool-use subagents; $30 cut 3/7](../learnings/1791081955973-reviewer-a-on-large-slang-prs-the-30-budget-can-cu.md)
 - [full subagent text lives in reviewerA.log; extracts truncate](../learnings/1791094754719-reviewer-a-subagent-outputs-recover-full-text-from.md)
 - [#13425 budget cut; re-dispatch missing lenses via Agent](../learnings/1791132067717-reviewer-a-slang-pr-review-runner-runs-out-of-budg.md)
+- [#13564: $30 budget stops 6/7 subagents; dyn-dispatch & export trip the post-DCE no-case error](../learnings/1792060963846-slang-pr-review-reviewer-a-30-budget-can-stop-6-7-.md) — inner CLI self-stops at ~$25; recover completed results from `task_notification`; use 60 on heavy IR PRs
 - [#13429 exec bit lost; bg-wait variable still not baked in](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md)
 - [#13431 lead ends turn; CLAUDE_CODE_DISABLE_BACKGROUND_TASKS=1](../learnings/1791168330129-reviewer-a-inner-cli-can-end-its-turn-with-backgro.md)
 - [CORRECTION: #13432 early exit is not the CLI version; stop after one](../learnings/1791209006651-correction-reviewer-a-early-exit-is-not-caused-by-.md)

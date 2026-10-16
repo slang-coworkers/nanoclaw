@@ -24,7 +24,7 @@
 - Check that a decoration is produced on the same IR module (codegen vs layout/reflection) that its consumer reads.
 - A runtime test for a new Vulkan extension needs a slang-rhi `SLANG_RHI_FEATURES` entry first. The order is: slang-rhi PR → pin bump → slang test PR.
 - Local verification: put `build/Debug/lib` first in `LD_LIBRARY_PATH`, and write binary SPIR-V to a real temp path (not `/dev/null`).
-- Containers have an NVIDIA GPU for compute only: installing `libvulkan1` gives software llvmpipe, so Vulkan execution belongs in CI. RHI builds need `libx11-dev`.
+- Agent containers have an NVIDIA L40S with CUDA and NVIDIA Vulkan, so Vulkan execution can run locally; probe `nvidia-smi -L` each session (the 2026-09-28→10-16 no-GPU window was a host passthrough outage). RHI builds need `libx11-dev`.
 
 ## spirv-opt / slang-glslang Integration
 
@@ -91,7 +91,7 @@ Triaging "add a SPIR-V capability bit" (#11538): grep `external/spirv-headers/in
 
 **Local verify:** `build/Debug/lib` first in `LD_LIBRARY_PATH`; the staging `build/slang-<ver>-linux-x86_64/lib/` has a stale `libslang-compiler.so`, and disassembly needs its slang-glslang ([LD_LIBRARY_PATH trap](../learnings/1782733787106-slang-local-spirv-asm-verify-put-build-debug-lib-f.md)).
 
-**Containers.** Building RHI targets on Linux needs `libx11-dev`, even headless, because the fetched Vulkan-Headers include `X11/Xlib.h` ([libx11-dev](../learnings/1780330247261-CONSOLIDATED-slang-rhi-vulkan-build-needs-libx11-dev.md)). `nvidia-smi` shows a GPU, so don't claim "no GPU". The container is provisioned for compute only (`NVIDIA_VISIBLE_DEVICES=void`), and CUDA is still Not Supported in slang-test because nvrtc is missing ([GPU present, no Vulkan loader](../learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md)). Installing `libvulkan1` gives software llvmpipe only, and the NVIDIA ICD fails with `ERROR_INCOMPATIBLE_DRIVER`, so `vk` stays Not Supported. Real-GPU Vulkan needs host-side device injection ([libvulkan1 does NOT enable NVIDIA Vulkan](../learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md)).
+**Containers.** Building RHI targets on Linux needs `libx11-dev`, even headless, because the fetched Vulkan-Headers include `X11/Xlib.h` ([libx11-dev](../learnings/1780330247261-CONSOLIDATED-slang-rhi-vulkan-build-needs-libx11-dev.md)). The containers now have the L40S with CUDA and the NVIDIA Vulkan ICD (every container runs with `--runtime=nvidia`); during the 2026-09-28→10-16 host passthrough outage the only Vulkan ICD was lavapipe (software, CPU) ([no GPU since ~09-28 (historical: 09-28→10-16 outage)](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md)). History: in June `nvidia-smi` showed a GPU, so "no GPU" was wrong then; the container was provisioned for compute only (`NVIDIA_VISIBLE_DEVICES=void`), and CUDA was still Not Supported in slang-test because nvrtc was missing ([GPU present, no Vulkan loader](../learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md)). Installing `libvulkan1` gives software llvmpipe only, and the NVIDIA ICD fails with `ERROR_INCOMPATIBLE_DRIVER`, so `vk` stays Not Supported. Real-GPU Vulkan needed host-side device injection, which `--runtime=nvidia` now provides ([libvulkan1 does NOT enable NVIDIA Vulkan](../learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md)).
 
 **Runtime tests for a new Vulkan extension:** slang-rhi's `SLANG_RHI_FEATURES` X-macro (`include/slang-rhi.h`) must have the feature: it generates the `rhi::Feature` entry and makes `-render-feature <name>` valid (render-test skips with `SLANG_E_NOT_AVAILABLE` if absent). The feature must also fit dispatch→readback→compare; `abort` (#11790) causes device loss and can't ([X-macro bridge](../learnings/1780969782467-slang-rhi-feature-gate-disabled-vulkan-runtime-tes.md), [fp16-vector atomics gate + Vulkan-Headers v1.4.318 caveat](../learnings/1780970406624-slang-rhi-nv-extension-feature-gate-fp16-vector-at.md), [gated on slang-rhi harness](../learnings/1782515089370-runtime-slang-test-for-a-new-vulkan-extension-is-g.md)).
 
@@ -105,7 +105,7 @@ Triaging "add a SPIR-V capability bit" (#11538): grep `external/spirv-headers/in
 - DeepWiki said user-defined varying suffixes set the location; refuted by code trace and spirv-dis.
 - **RETRACTED (public, #12186):** "`OpConvertUTo*NV` need a 64-bit scalar." `SPV_NV_bindless_texture` allows uint64 OR uint2, so `tests/bugs/gh-9916.slang` is valid.
 
-**Source learnings (41):**
+**Source learnings (40):**
 - [-g0/DebugInfoLevel::None emits EXACTLY OpSource/OpName/OpMemberName in SPIR-V (not OpLine/OpString/OpModuleProcessed)](../learnings/1784828289031-g0-debuginfolevel-none-emits-exactly-opsource-opna.md)
 - [granular SpvOpt pass selection: RegisterPassesFromFlags is the clean primitive; no hand-maintained flag→pass table (#12204)](../learnings/1784829679560-granular-spvopt-pass-selection-registerpassesfromf.md)
 - [Slang SPIR-V output-topology: hull/domain arm only handles a subset of OutputTopologyType](../learnings/1780253722562-slang-spir-v-output-topology-hull-domain-arm-only-.md)
@@ -121,8 +121,7 @@ Triaging "add a SPIR-V capability bit" (#11538): grep `external/spirv-headers/in
 - [getNameForNameHint feeds C-like emitter identifiers; ExtensionDecl is anonymous](../learnings/1781267563910-getnamefornamehint-feeds-c-like-emitter-identifier.md)
 - [SPIR-V DebugScope must be variable-arity (null IR operand crashes buildEntryPointReferenceGraph)](../learnings/1781568128097-spir-v-debugscope-must-be-variable-arity-null-ir-o.md)
 - [CORRECTION to #11631 version root cause: require atom stamped only on layout IR module](../learnings/1781643037138-correction-to-11631-version-root-cause-require-ato.md)
-- [This environment HAS an NVIDIA GPU despite CLAUDE.md saying "no GPU"](../learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md)
-- [Correction: installing libvulkan1 does NOT enable NVIDIA-GPU Vulkan](../learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md)
+- [This environment HAS an NVIDIA GPU despite CLAUDE.md saying "no GPU" (June; current again after the 09-28→10-16 outage)](../learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md)
 - [SPIR-V function-static state loss = SPIRV-Tools private-to-local](../learnings/1781713084820-spir-v-function-static-state-loss-spirv-tools-priv.md)
 - [slangc -target spirv-asm at default opt DOES run spirv-opt (private-to-local)](../learnings/1781714495665-slangc-target-spirv-asm-at-default-opt-does-run-sp.md)
 - [slang downstream-compiler load: optional spirv-opt is fatal via real sink](../learnings/1781799089141-slang-downstream-compiler-load-optional-spirv-opt-.md)

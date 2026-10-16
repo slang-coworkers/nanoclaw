@@ -3,7 +3,7 @@ title: "SlangPy Crashing Tests, Native-SIGSEGV Testing, and sgl_tests / CI Flake
 type: concept
 group: slangpy
 tags: [slangpy, ci, flake, crash, sigsegv, sgl-tests, profiler]
-source_count: 16
+source_count: 17
 ---
 
 # SlangPy Crashing Tests, Native-SIGSEGV Testing, and sgl_tests / CI Flake
@@ -21,6 +21,7 @@ How deliberately-crashing tests interact with Crashpad and wedge CI, the pattern
 - **The reorder does NOT make `flush()` deterministic — the barrier covers only 1 of the collector's 3 input channels** (per-thread rings; not `sealed_frame_events` / `pending_gpu_results`).
 - **SlangPy macOS wheels link via nanobind's curated symbol allow-list, not libpython** — a LINK-time `Undefined symbols ... "_PySomething"` is almost always a CPython C-API symbol missing from that allow-list, NOT a missing libpython link.
 - **A native pytest-xdist WORKER crash with no traceback and an empty `.crashpad/reports/` is NOT proof crashpad missed it, and NOT proof of an uncatchable signal.** In the Python test harness crashpad IS armed in every worker (`start_handler`); the controller-only `setup()` is just shared-DB cleanup. Re-run the one test with `-p no:xdist` under `gdb`: slangpy#1181's "Vulkan worker crashed" was a catchable **compile-time SIGABRT in Slang's bundled SPIRV-Tools** (slang#13226), not a driver/GPU/uncatchable bug.
+- **A local L40S pass does not predict CI's Vulkan lanes** (different drivers, model not logged): review against the PR's own CI and assert gradients per element, never by sum.
 
 
 ## Recent operational learnings (incremental fold 2026-07-17)
@@ -52,8 +53,12 @@ The `sgl_tests` teardown exit-code flake (#1062) is a distinct class: doctest pr
 
 **slangpy#1181's Vulkan-only `test_differentiable_interface_parameters[vulkan]` "worker crashed, no traceback, no crashpad dump" is a Slang compiler bug, not an environment/driver bug.** The issue's own triage first concluded an environmental Vulkan ICD change and an uncatchable SIGKILL/GPU-hang that no code could capture ([original #1181 triage — later corrected](../learnings/1790126928369-slangpy-vulkan-xdist-worker-crashed-no-traceback-c.md)); building fresh Slang `master` Debug + SlangPy Debug and reproducing under `-p no:xdist`/gdb proved both wrong. It is an intermittent (~25% isolated, ~100% under the full parallel run) **catchable SIGABRT at COMPILE time** in Slang's bundled SPIRV-Tools optimizer — `spirv-tools/source/opt/instruction.h:251: unique_id() Assertion 'unique_id_ != 0' failed` in `MergeReturnPass::BranchToBlock` → `DefUseManager::EraseUseRecordsOfOperandIds`, a def-use `std::set` ordering hazard over a cleared/zeroed inst — reached via `glslang_optimizeSPIRV` → `GlslangDownstreamCompiler::_invoke` → `emitSPIRVForEntryPointsDirectly`. Vulkan-only because only the SPIR-V target runs SPIRV-Tools; CUDA emits C++/PTX and never runs `MergeReturnPass`. It is on the `bwd_diff`-through-`IDiffTensor` path and ties to already-open **shader-slang/slang#13226** (autodiff regression bisected to #9808). Playbook lessons: verify the agent box actually lacks a GPU (`nvidia-smi` / `ls /etc/vulkan/icd.d/`) before a "needs a GPU we lack" close; a stack in `spvtools::opt::*`/`glslang_*`/`emitSPIRV*` is a Slang crash, not slangpy/rhi/driver; and hedge across the coverage/config gap (the failing CI job is `-DSGL_ENABLE_COVERAGE=ON` and deterministic, a ~25% non-coverage repro may be a related-but-not-identical manifestation) ([#1181 correction: Vulkan worker crash is a catchable SPIRV-Tools SIGABRT tied to slang#13226](../learnings/1790127518160-slangpy-1181-correction-the-vulkan-worker-crash-is.md)).
 
+## A local L40S pass does not predict the CI Vulkan lanes
 
-**Source learnings (16):**
+On slangpy#1225 (2026-10-16) a test for #1167 (a runtime-bounded `[MaxIters]` loop over an `IDiffTensor`, then `.bwds()`) passed 6/6 on the coworker L40S (driver 595.91.07, vulkan + cuda) and failed every Vulkan parameter on all four CI GPU lanes (linux-gcc and windows-msvc, Debug and Release), while CUDA and D3D12 passed there. In CI the whole gradient landed in `src.grad[0,0]` with the correct total (320), so a `grad.sum()` assert passed and only the per-element `np.array_equal` caught it. Review against the PR's own CI (`gh pr checks <n>`, then `gh run view --job <id> --log-failed`), because a fixer can send a review request before CI finishes, and assert gradients per element, since a sum hides index collapse. The CI logs print neither GPU model nor driver. `SLANGPY_DUMP_SLANG_INTERMEDIATES=1` writes `<func>N.spv-asm` to the cwd; here the runtime-loop backward kernels declared `OpCapability VariablePointersStorageBuffer` and kept a Function-scope variable holding a StorageBuffer pointer that is `OpConstantNull` on one path, a likely driver-sensitive pattern. `helpers.get_device` passes `enable_debug_layers=True`, which is a silent no-op locally because the container has no `VK_LAYER_KHRONOS_validation` [a local L40S 6/6 can fail Vulkan in CI](../learnings/1792142945880-slangpy-test-passing-on-coworker-l40s-can-fail-vul.md).
+
+
+**Source learnings (17):**
 
 - [SlangPy macOS wheels link via nanobind curated symbol allow-list, not libpython](../learnings/1784158586412-slangpy-macos-wheels-link-via-nanobind-curated-sym.md)
 - [a test that deliberately crashes (SIGSEGV) hangs SlangPy CI because Crashpad intercepts it](../learnings/1783909321657-a-test-that-deliberately-crashes-sigsegv-hangs-sla.md)
@@ -71,3 +76,4 @@ The `sgl_tests` teardown exit-code flake (#1062) is a distinct class: doctest pr
 - [profiler `flush()` barrier covers only 1 of 3 collector input channels (rings only; not `sealed_frame_events` / `pending_gpu_results`) — the #1072 reorder does NOT make it deterministic](../learnings/1785769306938-slangpy-profiler-flush-barrier-covers-only-1-of-3-.md)
 - [crashpad IS armed on pytest-xdist workers — controller-only `setup()` is just shared-DB cleanup, `start_handler()` arms every worker; a missing dump ≠ workers un-armed](../learnings/1790066499859-slangpy-crashpad-is-armed-on-xdist-workers-setup-i.md)
 - [#1181 Vulkan "worker crashed, no traceback" is a catchable compile-time SIGABRT in Slang's bundled SPIRV-Tools (MergeReturnPass/DefUseManager), tied to slang#13226 — not driver/GPU/uncatchable](../learnings/1790127518160-slangpy-1181-correction-the-vulkan-worker-crash-is.md)
+- [slangpy test passing on coworker L40S can fail Vulkan in CI: check the PR's own CI before trusting a local 6/6](../learnings/1792142945880-slangpy-test-passing-on-coworker-l40s-can-fail-vul.md) — per-element grad asserts; `SLANGPY_DUMP_SLANG_INTERMEDIATES`; no local validation layer (slangpy#1225)

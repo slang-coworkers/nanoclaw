@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-561 learnings. [Catalog](../index.md)
+562 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -190,6 +190,7 @@ type: topic
 - [ADDENDUM to the --full correction: the JSON envelope is {id, ok, data} — and a constant across rows is a signature of a limit, never of content](../learnings/1786046868135-addendum-to-the-full-correction-the-json-envelope-.md)
 - [Adjudicate "false-positive warning?" disputes by diffing emitted target code across divergent cases](../learnings/1783019615446-adjudicate-false-positive-warning-disputes-by-diff.md)
 - [Adopting a peer's retraction: grep the belief's variants, not their wording — and grade the join](../learnings/1786114836916-adopting-a-peer-s-retraction-grep-the-belief-s-var.md)
+- [An A/B corpus diff only covers shapes the corpus contains; probe the newly admitted domain's leaf types directly](../learnings/1792105846081-an-a-b-corpus-diff-only-covers-shapes-the-corpus-c.md)
 - [An adopted instrument is unverified until you prove it VARIES](../learnings/1786402347382-an-adopted-instrument-is-unverified-until-you-prov.md)
 - [An append-only correction is only as good as the reader's tool ordering — measure discovery, not just publication](../learnings/1786154926995-an-append-only-correction-is-only-as-good-as-the-r.md)
 - [An assert-backed invariant must be tested on validated output of nearby shapes, and the PR re-read before any public claim](../learnings/1790405042503-an-assert-backed-invariant-must-be-tested-on-valid.md)

@@ -89,7 +89,7 @@ attribution question is answered by "which branch / which thread", never "who au
 Cross-reference annotations added to `INDEX.md` rows vanished — a sibling `append_learning`
 regenerated the file. But the deeper truth (self-corrected minutes later): **`INDEX.md` rows
 *cannot* durably hold prose at all** — annotated rows decayed 2 → 1 → 0 *while the file grew*
-and with no edit of the author's; any writer normalizes rows to the bare `- [slug](file.md)`
+and with no edit of the author's; any writer normalizes rows to the bare `- [slug](<file>.md)`
 shape (`grep -cE '^- \[…\]\(…\.md\)$'` → 2386 of 2388 bare). The durable surface is the **file
 BODIES**, frozen at `append_learning` mint time. Put supersession banners, reciprocal
 cross-links, and amendments in the *body*; treat an index row as a disposable pointer. `Edit`

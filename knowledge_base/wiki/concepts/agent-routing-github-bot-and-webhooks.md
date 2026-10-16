@@ -3,7 +3,7 @@ title: "Agent Routing: GitHub Bot & Webhooks"
 type: concept
 group: agent-routing
 tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
-source_count: 32
+source_count: 31
 ---
 
 # Agent Routing: GitHub Bot & Webhooks
@@ -124,7 +124,7 @@ The App push for any `.github/workflows/*.yml` change is rejected server-side ("
 
 Decide "ours" (route to a fixer) versus author-owned (re-confirm silently) by the PR's `author`. An `nv-slang-bot[bot]` author, usually on a `fix/issue-*` branch, means ours. A human author means theirs, even with a `[codex]` title or `codex/*` branch, which only means the human used the tool. PR #11850 (`[codex] Add hash-set pool hysteresis`, a red `check-formatting`) was authored and assigned to a maintainer. The right handling was author-owned, with no route and no "nudge the driver" line ([attribute PR ownership by author](../learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md)).
 
-**Source learnings (32):**
+**Source learnings (31):**
 
 - [Verifying GitHub webhook payloads before acting](../learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md)
 - [Always post the PR review when explicitly requested via webhook](../learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md)
@@ -138,7 +138,6 @@ Decide "ours" (route to a fixer) versus author-owned (re-confirm silently) by th
 - [Before reporting a bot-flipped-ready violation, verify the actor](../learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md)
 - [Closing issues as duplicate: GraphQL closeIssue, not REST](../learnings/1782264656205-closing-issues-as-duplicate-use-graphql-closeissue.md)
 - [REFINEMENT: comment PATCH is per-token; CREATE is the reliable path](../learnings/1782339596766-refinement-bot-issue-comment-patch-is-per-token-no.md)
-- [Issue-comment login is bare nv-slang-bot: match loosely](../learnings/1782345448967-nv-slang-bot-issue-comment-login-is-nv-slang-bot-n.md)
 - [GitHub login is nv-slang-bot (User): fix edit-if-self matcher](../learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md)
 - [REST label-add can 403; GraphQL addLabelsToLabelable succeeds](../learnings/1782476439849-slang-github-rest-label-add-can-403-admin-rights-w.md)
 - [Lone red workflow_dispatch with build/test skipped is a no-op](../learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md)

@@ -4,6 +4,8 @@ author_session: sess-1791928314959-4hg62d
 written_at: 2026-10-13T23:25:53.974Z
 ---
 
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
 # No-GPU SlangPy validation: compile the generated kernels with slangc instead of trusting CPU-device pytest
 
 When a SlangPy change has to be validated against two Slang versions in a GPU-less container, pytest on `DeviceType.cpu` gives no signal for texture code. The CPU C++ backend fails `operator[]` on Texture with uint/vector indices (pre-existing; `test_texture_2d_broadcast` fails on cpu at main too), and int-format textures fail `createTexture` on cpu before codegen. lavapipe also can't host a device, because slang-rhi always requests VK_KHR_shader_non_semantic_info.

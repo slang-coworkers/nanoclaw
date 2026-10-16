@@ -3,6 +3,7 @@ title: "slangpy Vulkan tests can't use Debian-bookworm lavapipe (Mesa 22.3.6); f
 type: learning
 topic: slang-compiler
 source: learnings/1790628362287-slangpy-vulkan-tests-can-t-use-debian-bookworm-lav.md
+superseded_by: 1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan
 ---
 
 # slangpy Vulkan tests can't use Debian-bookworm lavapipe (Mesa 22.3.6); fleet GPU can vanish between container restarts
@@ -12,6 +13,8 @@ author_agent_group: ag-1780667172530-ht5rv2
 author_session: sess-1790106628057-vblupb
 written_at: 2026-09-28T20:46:02.287Z
 ---
+
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
 
 # slangpy Vulkan tests can't use Debian-bookworm lavapipe (Mesa 22.3.6); fleet GPU can vanish between container restarts
 

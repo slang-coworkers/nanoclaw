@@ -12,7 +12,7 @@ Concrete pitfalls and correct patterns for using the `gh` CLI in the Slang proje
 
 **Split 2026-08-05 at the 40 KB page cap.** Everything about *how `gh`/git readings lie* — collection caps, silently-truncated arrays, endpoint splits, path-classed 401s, and the control shapes that catch them — moved to [GitHub/git Instrument Limits — Caps, Silent Truncation & Endpoint Splits](../concepts/ci-github-instrument-limits.md). This page keeps *how to drive* the tools.
 
-> **This page is part 1 of the gh CLI Usage & PR/Issue Mechanics synthesis** (split 2026-08-07, re-split 2026-08-17 to stay under the 40 KB read cap). Siblings: [part 2](ci-gh-cli-usage-2.md), [part 3](ci-gh-cli-usage-3.md), [part 4 — instrument-lie incident folds](ci-gh-cli-usage-4.md). The TL;DR below is shared across all parts.
+> Related pages: [gh CLI CI Status & Merge Signals](ci-gh-cli-status-and-merge-signals.md) · [gh CLI Write-Guard & Fan-Out Folds](ci-gh-cli-write-guard-and-fanout.md) · [gh CLI Output Channels & Filter Encodings](ci-gh-cli-output-channels-and-filters.md) · [gh CLI Control Design & Over-Claim Origins](ci-gh-cli-control-design-and-overclaims.md).
 
 ## TL;DR
 - **`gh search` is not an existence or merge oracle.** `gh search prs`/`issues` have index lag and return false zeroes; `is:merged` has returned 0 while PRs demonstrably merge, and `is:unmerged` returned 0 even for known closed-unmerged PRs. Use the timeline, `closingIssuesReferences`, a `--head fix/issue-<n>` list, or a direct `pulls/<n>` read; for a period census, take the complete `is:merged merged:>=<ts>` list cross-checked against master commits since `<ts>`, and treat anything outside both as not merged. A PR closed in the last few hours can be missing from `closed:`/`merged:` date queries, so report it unverified until `pulls/<n>` is read.
@@ -25,7 +25,7 @@ Concrete pitfalls and correct patterns for using the `gh` CLI in the Slang proje
 - **An infra-unblock nudge is not a decision override**: being told "you're unblocked" restores capability, not authority to change a verdict.
 - **A `gh` selector that resolves is not the population you meant** — a wrong `--workflow` filename silently serves a *retired* workflow's old runs; enumerate paths, never type one from memory.
 - **`actions/runs?event=schedule` is not "the latest nightlies"** — it can serve months-old runs of unrelated scheduled workflows. Read each nightly's own `actions/workflows/<id>/runs`; "nightly green" means all 8 nightlies plus the weekly CMake Options run.
-- **`gh run rerun` rc=0 is not proof it fired, and an unchanged `run_attempt` is not proof it didn't** (proof is a second rerun's 403 "already running"); key reruns on `(workflow_id, event, name)`, a `success` conclusion can mean *declined to act*, and a red is classified by terminal outcome, never by signature-string presence. See [part 4](ci-gh-cli-usage-4.md) for the rerun/red-classification/GraphQL-401/critique-gate incident folds.
+- **`gh run rerun` rc=0 is not proof it fired, and an unchanged `run_attempt` is not proof it didn't** (proof is a second rerun's 403 "already running"); key reruns on `(workflow_id, event, name)`, a `success` conclusion can mean *declined to act*, and a red is classified by terminal outcome, never by signature-string presence. See [gh CLI CI Status & Merge Signals](ci-gh-cli-status-and-merge-signals.md) for the rerun/red-classification/GraphQL-401 folds and [gh CLI Write-Guard & Fan-Out Folds](ci-gh-cli-write-guard-and-fanout.md) for the critique-gate folds.
 
 ## gh search prs Is Unreliable for Recent PRs
 
@@ -125,7 +125,7 @@ For the `shader-slang/shader-slang.github.io` Sphinx site using the Furo theme, 
 
 ---
 
-> **Instrument-lie incident folds moved to [part 4](ci-gh-cli-usage-4.md)** (2026-08-17): the critique-gate `gh api` write-guard false-match, the `[bot]`-suffix guard, the GraphQL-401-while-REST-healthy phantom-green, `is:merged` breakage, `gh run rerun` timing, red-classification by terminal outcome, and the associated corrections/supersessions.
+> **Instrument-lie incident folds live on** [gh CLI CI Status & Merge Signals](ci-gh-cli-status-and-merge-signals.md) and [gh CLI Write-Guard & Fan-Out Folds](ci-gh-cli-write-guard-and-fanout.md): the critique-gate `gh api` write-guard false-match, the `[bot]`-suffix guard, the GraphQL-401-while-REST-healthy phantom-green, `is:merged` breakage, `gh run rerun` timing, red-classification by terminal outcome, and the associated corrections/supersessions.
 
 ## The unauthenticated Actions API `?event=schedule` can serve a stale cached page — filter master by name instead
 

@@ -3,7 +3,7 @@ title: Reviewer-A wrapper integrity & concurrency — INTEGRITY-FAIL, shared tmp
 type: concept
 group: review-process
 tags: [reviewer-a, integrity-fail, shared-tmp, concurrent-review, stream-jsonl, wrapper-success, in-thread-reply, delivery, slang-pr-review]
-source_count: 26
+source_count: 25
 ---
 
 ## TL;DR
@@ -167,7 +167,7 @@ leaves review threads empty/unresolvable in the Files Changed view". Note the cr
 gate re-fires on ANY GitHub write once N edits have happened since the last OUTPUT_REVIEW
 — budget a fresh review round before the push+reply [a code Edit is not delivered until built+committed+pushed; and reply IN-THREAD on PR review comments](../learnings/1786616755173-a-code-edit-is-not-delivered-until-built-committed.md).
 
-**Source learnings (26):**
+**Source learnings (25):**
 
 - [a reviewer wrapper can report success with a 96-byte error-string artifact](../learnings/1786388990762-a-reviewer-wrapper-can-report-success-with-a-96-by.md) — gate at merge on size floor + content sniff; recover from `stream.jsonl` Write/Edit payloads (apply later Edits); report `reviewers_complete:false`; guard `isinstance(x, dict)`.
 - [Reviewer-A INTEGRITY-FAIL can be a false positive from a clobbered SHARED tmp/pr-files.txt](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — adjudicate by content (sha256 `pr-diff.reference` vs live diff, footer head, per-PR symbol hits), not the model's self-report or the guard headline.
@@ -178,7 +178,6 @@ gate re-fires on ANY GitHub write once N edits have happened since the last OUTP
 - [patch-mode `git apply` + `git commit -am` drops untracked NEW files from the reviewed diff → false Reviewer-A "no test" gap (tell: tests show `??`); Reviewer C's worktree sees them, so discount the gap; runner should `git add -A` before commit.](../learnings/1789333359114-patch-mode-pr-review-git-commit-am-drops-new-test-.md)
 - [isolated REPO_ROOT worktree prevents the PR-review shared-tmp race; verify reviewed-commit vs current head](../learnings/1789479957663-isolated-repo-root-worktree-prevents-the-pr-review.md) — a `wt-<pr>-revA` worktree of origin/master (with REVIEW.md + `.claude/agents`) gives Reviewer A its own `tmp/`; also re-read `headRefOid` after the pass and judge any mid-review delta.
 - [slang-pr-review-runner INTEGRITY-FAIL self-heals via tmp/iso-<pr>/ while the post-run net still trips](../learnings/1789506920553-slang-pr-review-runner-integrity-fail-can-be-a-fal.md) — the CLI isolates the correct diff into `tmp/iso-<pr>-review/` and re-runs the affected subagents, so the review is grounded correctly even though the post-run guard re-reads the still-clobbered shared file.
-- [the sandbox denies tmp/pr-diff.patch redirects so subagents review via live gh pr diff](../learnings/1789441851541-slang-pr-review-runner-integrity-fail-can-be-a-fal.md) — reviewer subagents can't `> tmp/pr-diff.patch`, so they fall back to a live bare `gh pr diff <N>`; another reason review content stays correct under a clobbered shared tmp.
 - [concurrent runner sessions collide on shared tmp → do all four checks before overriding rc=1](../learnings/1789518412257-concurrent-slang-pr-review-runner-sessions-collide.md) — footer sha vs headRefOid, footer diff sha256 vs `pr-diff.reference`, findings cite the requested PR, `summarize.py` drift==0; Reviewer B and C are immune, only A is exposed.
 - [REVIEW-GUARD FAIL false-trips on infra-error wording inside a valid review](../learnings/1789512038521-slang-pr-review-runner-review-guard-fail-can-false.md) — the "looks like an infrastructure error" guard pattern-matches a review's own coverage note; read `final-review.md` (full Verdict + Findings = false trip; <500 B stub = real failure).
 - [the infra-error guard greps a bare `socket`, so a valid 12 KB review about file types tripped it; grep the hit before re-running; narrow to `socket connection( was)? closed` as run-clarity.sh does.](../learnings/1790645552774-reviewer-a-review-guard-false-positive-socket-in-a.md)

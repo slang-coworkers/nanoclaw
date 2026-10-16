@@ -3,12 +3,12 @@ title: "GitHub Auth and Operations in Agent Containers"
 type: concept
 group: agent-infra
 tags: [github, onecli, gh-cli, nv-slang-bot, workflows, pr-mapping, auth, proxy, credentials]
-source_count: 31
+source_count: 30
 ---
 
 # GitHub Auth and Operations in Agent Containers
 
-> **Split 2026-08-17 at the 40 KB read cap.** The later incremental folds — the (resolved) 07-16/07-17 auth-outage diagnostics, the empty-list-looks-like-success trap, the Discussions write-block, PR-review-under-invalid-token, fork-PR takeover mechanics, and the third workflow-push boundary — moved to [part 2](agent-infra-github-auth-operations-2.md).
+> Related pages: [Agent GitHub Token Boundaries and Write-Blocks](agent-github-token-boundaries-and-write-blocks.md) (the resolved 07-16/07-17 auth-outage diagnostics, the empty-list-looks-like-success trap, the Discussions and workflow-push write-blocks, review/triage under an invalid token, human-cred-merge ≠ bot-write-recovery) · [Agent GitHub Fork-Takeover and Rebase Mechanics](agent-github-fork-takeover-and-rebase.md) (PR takeover from a contributor's personal fork, App-token rebase mechanics, the unauth REST fallback).
 
 ## TL;DR
 
@@ -120,9 +120,9 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 
 ---
 
-> **Later incremental folds moved to [part 2](agent-infra-github-auth-operations-2.md)** (2026-08-17): the resolved 07-16/07-17 auth-outage diagnostics, the empty-list-looks-like-success trap + unauth REST fallback, the Discussions write-block, reviewing/triaging under an invalid token, PR takeover from a contributor's personal fork, human-cred-merge ≠ bot-write-recovery, and the third `.github/workflows/*` push boundary.
+> **Later incremental folds live on** [Agent GitHub Token Boundaries and Write-Blocks](agent-github-token-boundaries-and-write-blocks.md) (auth-outage diagnostics, empty-list trap, Discussions/workflow write-blocks, invalid-token review, human-cred merge) and [Agent GitHub Fork-Takeover and Rebase Mechanics](agent-github-fork-takeover-and-rebase.md) (fork takeover, unauth REST fallback).
 
-**Source learnings (31):**
+**Source learnings (30):**
 - [gh api search/issues with inline query string can fail; use gh search issues](../learnings/1790842344778-gh-api-search-issues-with-inline-query-string-can-.md) — search works through the proxy; the inline query string is what breaks.
 - [gh auth invalid ≠ pr-review blocked: public-repo diff reads work unauthenticated; inner claude reviewer cost bills to a separate pool](../learnings/1790039629115-gh-auth-invalid-pr-review-blocked-public-repo-diff.md)
 - [gh preflight 401 app_not_connected is an App-token quirk — real gh writes still work; remove the read-only local-git gh shim before posting](../learnings/1785467915354-gh-preflight-401-app-not-connected-is-an-app-token.md)
@@ -144,7 +144,6 @@ Extends the "gh auth status lies" finding above with a concrete bypass. When `gh
 - [slang #11568: maintainer "base PR on #11723" is a layer-mismatch](../learnings/1782579642375-slang-11568-maintainer-base-pr-on-11723-is-a-layer.md)
 - [edit-if-self check: nv-slang-bot login has NO [bot] suffix via gh — match by substring](../learnings/1782857315349-edit-if-self-check-nv-slang-bot-login-has-no-bot-s.md)
 - [GH labels: if POST issues/:n/labels 403s, fall back to gh issue edit --add-label](../learnings/1782866408005-gh-labels-if-post-issues-n-labels-403s-fall-back-t.md)
-- [gh auth status false-negative with App installation token (gh api still works)](../learnings/1782895550564-gh-auth-status-false-negative-with-app-installatio.md)
 - [Re-pushing a fix branch: check the remote tip's AUTHOR first — never force over a maintainer push](../learnings/1783038459347-re-pushing-a-fix-branch-check-the-remote-tip-s-aut.md)
 - [Merge hazard: two branches bumping a shared version counter collapse to one value (git can't see it)](../learnings/1783089145425-merge-hazard-two-branches-bumping-a-shared-version.md)
 - [gh auth status 401 is a FALSE NEGATIVE for nv-slang-bot App token — verify via a real write, never a probe](../learnings/1783388957871-gh-auth-status-401-is-a-false-negative-for-nv-slan.md)

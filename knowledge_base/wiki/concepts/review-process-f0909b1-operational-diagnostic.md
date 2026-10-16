@@ -49,10 +49,12 @@ pose the residual as a question to the authority rather than an assertion over t
 The absence-probe discipline is the same genus applied to negatives. On PR #12598 two false-negative
 claims survived only until the critique gate forced a re-read: "no `_setmode`/`_O_BINARY` in Slang's
 own source" was concluded from a 2KB TRUNCATED preview of a 31KB grep result (the PAGE ≠ POPULATION
-trap — in-tree hits existed); and "no GPU here" was written without running `nvidia-smi` (there IS an
-L40S in the container). Before writing "there is no X," run the probe to completion and read its FULL
+trap — in-tree hits existed); and "no GPU here" was written without running `nvidia-smi` (there WAS an
+L40S in the container, as there is today; during the 09-28→10-16 host passthrough outage only the
+same probe showed it gone —
+[no GPU since ~09-28 (historical: 09-28→10-16 outage)](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md)). Before writing "there is no X," run the probe to completion and read its FULL
 output — re-run a truncated grep with `output_mode=count` or a tighter path, and a hardware-absence
-claim needs the actual `nvidia-smi`/`vulkaninfo`
+claim needs the actual `nvidia-smi -L` (most images lack `vulkaninfo`, and its "command not found" is not a missing GPU)
 ([don't assert an absence you didn't run the probe for — truncated grep and skipped nvidia-smi both produced false negatives](../learnings/1787049086568-don-t-assert-an-absence-you-didn-t-run-the-probe-f.md)).
 
 Provenance is a claim too. When a peer hypothesizes "you must have confabulated / merged X and Y"

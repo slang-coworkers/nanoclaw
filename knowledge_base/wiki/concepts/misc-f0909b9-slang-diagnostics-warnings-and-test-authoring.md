@@ -3,7 +3,7 @@ title: "Slang diagnostics: the warning mechanism, lossy int→float warnings, an
 type: concept
 group: misc
 tags: [slang, warnings, warning-level, pedantic, diagnostic-test, filecheck, int-to-float, getMaximumTypeBitSize, slang-test, unit-test, lang-server]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -190,7 +190,11 @@ anchors) barrier bracketing the target section. That barrier guards only the gap
 groups: a `-NOT` beside a DAG group never sees text interleaved among that group's
 matches, so a whole-output absence needs its own `-NOT`-only run
 ([FileCheck CHECK-NOT regions](slang-test-filecheck-authoring-and-opt-levels.md)). Prove the negative has teeth (revert
-drill: temporarily assert absence of something that DOES exist, confirm it fails). And
+drill: temporarily assert absence of something that DOES exist, confirm it fails).
+The same gap rule applies to plain `CHECK` sequences: a `-NOT` covers only the span between
+its neighbouring positive matches, so interleave one between every pair of positive lines,
+add a `-NOT`-only row that scans the whole output, and drill each by emitting the forbidden
+string inside the gap it is meant to guard ([community-PR dedup + FileCheck `-NOT` gaps, #13650](../learnings/1792079739619-search-for-a-community-pr-on-the-issue-before-open.md)). And
 `-g2` embeds the whole `.slang` source as one `OpString` with escaped quotes, so
 bare-word checks self-match your directives — anchor on real instruction forms with
 bare quotes
@@ -244,7 +248,7 @@ convenient local checkout at a different commit. Any claim about what's *present
 target, file, helper) must be checked at the exact reviewed ref
 ([verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md)).
 
-**Source learnings (18):**
+**Source learnings (19):**
 
 - [Slang HAS opt-in default-off warnings (WarningLevel + -W<name>) — wiki "disable-only" is stale](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — full opt-in ladder; use `pedantic` for off-by-default; a sign-change warning needs its own `_coerce` branch.
 - [Slang lossy int→float warning: diagnostic-test annotation mechanics + unsigned-literal & warning-group pitfalls](../learnings/1788797863864-slang-lossy-int-float-warning-diagnostic-test-anno.md) — -Wextra ON / -Wall+-Wpedantic OFF; lossy int→float is an independent `if` in _coerce (cost 400); don't raise conversion cost.
@@ -264,3 +268,4 @@ target, file, helper) must be checked at the exact reviewed ref
 - [DIAGNOSTIC_TEST: annotate every record; unlocated internal errors cannot be caret-anchored](../learnings/1791296982463-slang-diagnostic-test-annotate-every-record-unloca.md) — #12875: E99997 is `0:0`; error+span rows both need carets; literal single-field substring (no `{{.*}}`); caret-move + revert drills; `sourceLoc.isValid()` ≠ user-authored
 - [Slang exhaustive DIAGNOSTIC_TEST: annotate code AND message per diagnostic](../learnings/1791550646372-slang-exhaustive-diagnostic-test-annotate-code-and.md) — rich diagnostics need a code line plus a message line at one caret; dedupe CAS two-operand duplicates.
 - [Slang legacy lexer diagnostics: one annotation per diag; pin code as `^ error E10003`](../learnings/1791572293591-slang-legacy-lexer-diagnostics-one-annotation-per-.md) — no span row, a second annotation fails "(already matched)"; `E` prefix matches output `10003`.
+- [Search for a community PR before opening a bot fix PR; FileCheck `-NOT` covers only its gap](../learnings/1792079739619-search-for-a-community-pr-on-the-issue-before-open.md) — interleave a `-NOT` between every positive line, add a whole-output `-NOT`-only row, drill each gap

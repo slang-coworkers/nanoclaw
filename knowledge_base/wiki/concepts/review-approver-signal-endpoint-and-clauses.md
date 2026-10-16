@@ -3,7 +3,7 @@ title: "PR-Approver: Endpoint-Split Review Signal & Proxy-Reading Clauses"
 type: concept
 group: review-process
 tags: [approver, endpoint-split, clauses, ci-green, commit-match, tier-eligible, github-api, evidence-discipline]
-source_count: 18
+source_count: 17
 ---
 
 # PR-Approver: Endpoint-Split Review Signal & Proxy-Reading Clauses
@@ -68,7 +68,7 @@ Three of the six mechanical clauses evaluate a *proxy* for the thing they name, 
 
 **Count check-runs by predicate, and reconcile the parts against `total_count`.** Two reviewers independently miscounted the same 16-entry response on slangpy#1090 while both arguing correctly about it: "16 real build check-runs" conflated all check-runs with build check-runs, and the correction's "13 `build (...)` legs" was self-detectably wrong (13+1+1+2 = **17** against a stated total of 16). Ground truth by `jq` predicate: `total_count` 16, `startswith("build (")` → **12**, remainder `pre-commit` + `add-to-project` + `Claude Code Assistant` ×2 **skipped**. Summing components against `total_count` catches an off-by-one for free — do it before transmitting any breakdown — and watch pagination (`check-runs` pages at 30; `total_count > (.check_runs|length)` means your count is short). The substantive detail both counts buried: the 2 `skipped` runs are the **review bot**, never a skipped build, and must not be cited as missing build coverage; while the macOS legs are **present and `success`** yet executed no Metal GPU test because the job runs on paravirtual `macos-latest`. So a green macOS check-run is affirmative evidence *for* the Metal coverage gap, not against it — the "builds but does not execute" signature that a reviewer skimming for a red or skipped entry reads backwards ([[approver/clause-gap] count check-runs by predicate, not by eyeball — and green ≠ exercised on accelerator-gated paths](../learnings/1785787407011-approver-clause-gap-count-check-runs-by-predicate-.md)).
 
-**Source learnings (18):**
+**Source learnings (17):**
 - [harvest exit-10 "stale" is false when the synchronize was a main-merge not touching reviewed files; diff the reviewed blobs between heads and treat identical-blob findings as live rather than falling to Devin-only.](../learnings/1789057105461-approver-clause-gap-harvest-exit-10-stale-is-a-fal.md)
 
 - [an empty-body `COMMENTED` review is a wrapper, not silence — substance lives on `pulls/N/comments`; classify by audience (`in_reply_to_id` at a bot ⇒ informational)](../learnings/1785761437816-approver-clause-gap-an-empty-body-commented-review.md)
@@ -80,7 +80,6 @@ Three of the six mechanical clauses evaluate a *proxy* for the thing they name, 
 - [an artifact-level defect is not a decision-level harm — open `review-doc.md` (the decision input of record) before crying false-safe; over-claiming in the alarming direction is also miscalibration](../learnings/1785780014953-approver-critique-mustfix-an-artifact-level-defect.md)
 - [maintainer directives arrive on `issues/N/comments` with NO review state — union all three endpoints, take authority from `author_association`, and record which endpoint each directive came from](../learnings/1785780753487-approver-clause-gap-maintainer-directive-on-issues.md)
 - [score a join with `issues/N/timeline` — the only endpoint interleaving force-pushes, reviews and merges in one ordering; maintainer vetoes arrive as plain issue comments](../learnings/1785782777239-approver-clause-gap-score-a-join-with-issues-n-tim.md)
-- [`ci_green_on_sha` reports success while 6 of 12 builds are `in_progress` — combined status and check-runs are disjoint surfaces; non-terminal runs ⇒ unevaluable, not pass](../learnings/1785786196856-approver-clause-gap-ci-green-on-sha-reads-combined.md)
 - [`commit_match` reads `reviews[].commit_id`, which GitHub retroactively rewrites to the head — it passed on a 5-day-stale approval; compare `submitted_at` against commit author dates instead](../learnings/1785786613151-approver-clause-gap-commit-match-reads-reviews-com.md)
 - [`ci_green_on_sha` reads the Status API, blind to in-progress check-runs — APPROVER_CI_GATE covers it only when ON; treat non-completed check-runs as pending](../learnings/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md)
 - [count check-runs by predicate and reconcile the parts against `total_count` (12 build legs, not 16 or 13); the 2 skipped runs are the review bot, and green macOS legs BUILT without executing Metal](../learnings/1785787407011-approver-clause-gap-count-check-runs-by-predicate-.md)

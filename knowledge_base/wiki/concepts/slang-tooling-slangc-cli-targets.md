@@ -8,7 +8,7 @@ source_count: 20
 
 # slangc CLI, Freshness & Emit-Verification Mechanics
 
-This page covers how to invoke `slangc` correctly for local verification work: the slangc-only build, confirming binary freshness (the version-string trap), the CLI-option/help-text doc CI gate, how `-dump-ir` and FileCheck buffers behave, why render-test lanes differ from slangc, the two default-flag injection forms in slang-test, and the diagnostic-catalog naming split. Target coverage, backend emit/codegen mechanics, and per-target triage live on the sibling page [slangc Targets, Emit/Codegen Traps & Triage](slang-tooling-slangc-cli-targets-2.md).
+This page covers how to invoke `slangc` correctly for local verification work: the slangc-only build, confirming binary freshness (the version-string trap), the CLI-option/help-text doc CI gate, how `-dump-ir` and FileCheck buffers behave, why render-test lanes differ from slangc, the two default-flag injection forms in slang-test, and the diagnostic-catalog naming split. Target coverage, backend emit/codegen mechanics, and per-target triage live on the sibling pages [slangc Target Coverage & Capability Gating](slangc-target-coverage-and-capabilities.md), [slangc Target Output & Obfuscation](slangc-target-output-and-obfuscation.md), and [slangc Wave Intrinsics, VM Emitter & Inliner](slangc-wave-vm-and-inliner.md).
 
 ## TL;DR
 
@@ -34,7 +34,7 @@ cmake --preset default
 cmake --build --preset debug --target slangc
 ```
 
-This is sufficient for all text-target emit verification: HLSL, CUDA, Metal, GLSL, SPIR-V-asm. GPU test *execution* is unavailable but is not needed for FileCheck-style emit checks. The first debug build from a fresh clone takes only a few minutes once submodules and configure complete. ([Verify Slang diagnostics with slangc-only build (slang-test won't link: X11 missing)](../learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md), [Verifying Slang PR emit locally: build slangc-only to dodge the slang-rhi/X11 build break](../learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md))
+This is sufficient for all text-target emit verification: HLSL, CUDA, Metal, GLSL, SPIR-V-asm. A slangc-only build cannot execute GPU tests (no `slang-test`/`render-test`), but FileCheck-style emit checks do not need them; containers have an NVIDIA L40S as of 2026-10-16 (the 09-28→10-16 no-GPU period was a host outage), so build `slang-test` when a task needs real GPU execution. The first debug build from a fresh clone takes only a few minutes once submodules and configure complete. ([Verify Slang diagnostics with slangc-only build (slang-test won't link: X11 missing)](../learnings/1780352276660-verify-slang-diagnostics-with-slangc-only-build-sl.md), [Verifying Slang PR emit locally: build slangc-only to dodge the slang-rhi/X11 build break](../learnings/1780940929433-verifying-slang-pr-emit-locally-build-slangc-only-.md))
 
 ## Confirming the binary reflects HEAD (the version-string trap)
 

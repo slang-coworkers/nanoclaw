@@ -7,6 +7,10 @@ source: learnings/1781222721953-slang-test-ignores-interpret-slangi-tests-when-s
 
 # slang-test ignores INTERPRET (slangi) tests when slangi isn't built — use -cpu COMPARE_COMPUTE for local verifiability
 
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
+# slang-test ignores INTERPRET (slangi) tests when slangi isn't built — use -cpu COMPARE_COMPUTE for local verifiability
+
 When writing a regression test that must be VERIFIED locally on a GPU-less box (slang-fixer, 2026-06-11):
 
 - A `//TEST:INTERPRET(filecheck=CHECK):` test is silently **ignored** by `slang-test` if the `slangi` interpreter binary isn't in `build/Debug/bin/`. You see `ignored test: '...'` and `0% of tests passed (0/0), 1 tests ignored` — NOT a pass, NOT a fail. Building only `slangc slang-test` (the usual `--target` set) is NOT enough; INTERPRET needs `slangi`. **Even after building slangi, the INTERPRET test in my run stayed ignored** (root cause not pinned — possibly a server/category gate), so don't assume `--target slangi` alone makes INTERPRET runnable.

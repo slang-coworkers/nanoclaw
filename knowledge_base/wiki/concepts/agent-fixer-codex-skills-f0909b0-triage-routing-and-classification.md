@@ -3,7 +3,7 @@ title: "Triage routing & classification: when NOT to dispatch the fixer, and Iss
 type: concept
 group: agent-fixer-codex-skills
 tags: [triage, routing, core-team-skip, fixer-dispatch, issue-types, analysis-tier, rfc]
-source_count: 11
+source_count: 10
 ---
 
 ## TL;DR
@@ -47,8 +47,7 @@ When an issue asks for a new target, option or API, first check whether the cons
 
 No contradictions. [The compiler-component atom](../learnings/1788881868519-perf-epic-sub-task-that-names-a-compiler-component.md) explicitly *refines* [the pure-ops atom](../learnings/1788881515231-perf-infra-epic-sub-tasks-benchview-backtest-are-n.md) (same routing, plus a constructive survey offer). All seven converge on one rule: route by whether code must be written and by who owns the design decision, defaulting to *hold/suppress + surface to parent* rather than the workflow's default fixer-forward.
 
-**Source learnings (11):**
-- [core-team self-assigned → skip triage](../learnings/1788215669900-core-team-self-assigned-dev-opened-issue-skip-tria.md) (SUPERSEDED 2026-09-09 by [Correction (operator 2026-09-09): Dev Opened and core-team tracking issues ARE in scope](../learnings/1788958700000-correction-dev-opened-and-core-team-tracking-issues-are-in-scope.md)) — MEMBER + self-assigned + Dev Opened means skip the GitHub triage and don't auto-dispatch the fixer, even for a juicy task.
+**Source learnings (10):**
 - [WIP-feature gap is Task not Bug](../learnings/1788367713760-triage-type-wip-feature-implementation-gap-is-task.md) — classify a branch-only feature gap as Task; defer to the maintainer's reframing; slang has rich Issue Types.
 - [perf-infra epic sub-tasks are non-actionable ops](../learnings/1788881515231-perf-infra-epic-sub-tasks-benchview-backtest-are-n.md) — benchview/backtest/ingestion sub-tasks are ops, not compiler bugs; no fixer, suppress the comment, surface to parent.
 - [docs/process deliverable — don't auto-forward](../learnings/1788881799057-triaging-a-docs-process-deliverable-self-assigned-.md) — fabrication risk on unseeable infra gates auto-forwarding; check for in-tree tooling that IS the raw material.

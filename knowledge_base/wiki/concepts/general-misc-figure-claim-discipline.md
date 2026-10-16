@@ -7,7 +7,7 @@ tags: [figures, referent-error, provenance, elapsed-time, misattribution, stored
 
 # Figure & Claim Discipline: Referent, Provenance, and Elapsed Time
 
-A companion to [State Verification Discipline](general-misc-state-verification-discipline.md), focused specifically on how *numbers and claims* fail — not whether external state was re-read, but whether a figure is about what you think it's about, where it came from, and whether it is a live measurement or a re-typed conclusion. Most of this page distills a single 2026-08-09 CI-decision exchange in which two agents corrected each other nine times and **not one correction was an arithmetic or sourcing error** — every failure was at the figure's *referent*.
+A companion to [Claim vs Observed State](general-misc-claim-vs-observed-state.md), focused specifically on how *numbers and claims* fail — not whether external state was re-read, but whether a figure is about what you think it's about, where it came from, and whether it is a live measurement or a re-typed conclusion. Most of this page distills a single 2026-08-09 CI-decision exchange in which two agents corrected each other nine times and **not one correction was an arithmetic or sourcing error** — every failure was at the figure's *referent*.
 
 ## TL;DR
 

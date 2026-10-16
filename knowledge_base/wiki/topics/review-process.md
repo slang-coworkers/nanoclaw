@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-370 learnings. [Catalog](../index.md)
+375 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Rebase clean" ≠ "reviewer saw this code": check which review covered which commits](../learnings/1791580984851-rebase-clean-reviewer-saw-this-code-check-which-re.md)
@@ -90,6 +90,7 @@ type: topic
 - [approver: reviewer runs are session-teardown-fragile — a synchronize burst can cost whole review rounds (R3 of slang#12023 died with no doc)](../learnings/1783969636640-approver-reviewer-runs-are-session-teardown-fragil.md)
 - [approver: reviewers_complete field is authoritative — B/Devin infra-skip alone is not a harness-fail](../learnings/1783707333659-approver-reviewers-complete-field-is-authoritative.md)
 - [Audit the change made in response to your own review the hardest — compliance reads as already-validated](../learnings/1785877575418-audit-the-change-made-in-response-to-your-own-revi.md)
+- [Before reviewing a bot fix PR, search for a community duplicate PR on the same issue](../learnings/1792078760588-before-reviewing-a-bot-fix-pr-search-for-a-communi.md)
 - [Clarity reviewer (C) can hit reproducible API-400 payload-overflow; 3rd retry may still under-produce](../learnings/1787322332417-clarity-reviewer-c-can-hit-reproducible-api-400-pa.md)
 - [Clarity reviewer (C) exhausts turn budget before canonical write — recover raw candidates from stream](../learnings/1785339114704-clarity-reviewer-c-exhausts-turn-budget-before-can.md)
 - [Clarity reviewer (Reviewer C) fails when inner CLI sandbox blocks file writes](../learnings/1783627611526-clarity-reviewer-reviewer-c-fails-when-inner-cli-s.md)
@@ -101,6 +102,7 @@ type: topic
 - [Compile to settle a reviewer's static-trace vs a prior-learning assumption](../learnings/1789507586451-compile-to-settle-a-reviewer-s-static-trace-vs-a-p.md)
 - [Concurrent Reviewer A runs clobber the shared slang/tmp/pr-diff.patch (INTEGRITY-FAIL); also: widening _canLValueCoerce reaches layout-blind _canReinterpretCast](../learnings/1790904342903-concurrent-reviewer-a-runs-clobber-the-shared-slan.md)
 - [Concurrent reviews race on shared slang/tmp/pr-diff.patch; Reviewer A integrity guard false-positives](../learnings/1790716418006-concurrent-reviews-race-on-shared-slang-tmp-pr-dif.md)
+- [Container restart mid-review kills Reviewer A/C and wipes /tmp — recover A's subagent verdicts from stream.jsonl task_notification summaries](../learnings/1792058636644-container-restart-mid-review-kills-reviewer-a-c-an.md)
 - [CORRECTION to "Reviewing a race fix" — measure sizeof, keep wrap holes distinct, read the guard a valve sits inside](../learnings/1785778166680-correction-to-reviewing-a-race-fix-measure-sizeof-.md)
 - [CORRECTION — bot-PR reviewer routing in slang/slang-rhi is a misfire, not deliberate design (and how I got it wrong twice)](../learnings/1785891791274-correction-bot-pr-reviewer-routing-in-slang-slang-.md)
 - [CORRECTION — the Devin HEADER_RE drop is unconditional; my zero-count conjunct was wrong](../learnings/1786115910981-correction-the-devin-header-re-drop-is-uncondition.md)
@@ -205,6 +207,7 @@ type: topic
 - [Record-facts (who said what, when) need timestamps and the primary artifact — they're the claims reviewers wave through](../learnings/1786025583315-record-facts-who-said-what-when-need-timestamps-an.md)
 - [Recover a clarity-reviewer's work from stream.jsonl after its auto-removed worktree takes the files](../learnings/1785937628299-recover-a-clarity-reviewer-s-work-from-stream-json.md)
 - [Recover a dead clarity/correctness review run's candidates from stream.jsonl](../learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md)
+- [Recover a dead Reviewer C run from its wt-clarity worktree candidate files](../learnings/1792132307982-recover-a-dead-reviewer-c-run-from-its-wt-clarity-.md)
 - [Recovering a teardown-stranded PR-review pass without a full re-run](../learnings/1784536666918-recovering-a-teardown-stranded-pr-review-pass-with.md)
 - [Reproduce a reviewer's EXACT codegen scenario before disputing — effects can be use/lowering-dependent](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md)
 - [Resolving a self-contradictory review finding: measure a third quantity, don't adjudicate the prose](../learnings/1785891049289-resolving-a-self-contradictory-review-finding-meas.md)
@@ -257,6 +260,7 @@ type: topic
 - [Reviewer A patch-mode: inner orchestrator can end_turn while background subagents run (review-guard <500B)](../learnings/1790707975468-reviewer-a-patch-mode-inner-orchestrator-can-end-t.md)
 - [Reviewer A re-suggests tint rows that were proven useless in an earlier round — adjudicate across rounds](../learnings/1791393113319-reviewer-a-re-suggests-tint-rows-that-were-proven-.md)
 - [Reviewer A REVIEW-GUARD false positive: 'socket' in a legitimate review](../learnings/1790645552774-reviewer-a-review-guard-false-positive-socket-in-a.md)
+- [Reviewer A runs exceed the 30-min Bash background cap — recover subagent reports from stream.jsonl](../learnings/1792058631652-reviewer-a-runs-exceed-the-30-min-bash-background-.md)
 - [Reviewer A shares /workspace/agent/slang/tmp with concurrent runs — isolate with REPO_ROOT=<own worktree>](../learnings/1791205564538-reviewer-a-shares-workspace-agent-slang-tmp-with-c.md)
 - [Reviewer A stream going static is NOT death — subagents run silent for minutes](../learnings/1786670080197-reviewer-a-stream-going-static-is-not-death-subage.md)
 - [Reviewer A subagent outputs: recover full text from reviewerA.log, not extracts](../learnings/1791094754719-reviewer-a-subagent-outputs-recover-full-text-from.md)
@@ -345,6 +349,7 @@ type: topic
 - [slang-pr-review: cross-check Reviewer C clarity findings against A and for internal consistency before forwarding](../learnings/1781627346796-slang-pr-review-cross-check-reviewer-c-clarity-fin.md)
 - [slang-pr-review: Devin can report 0 bugs while analysis still "Generating…" — treat as weak signal](../learnings/1782761345395-slang-pr-review-devin-can-report-0-bugs-while-anal.md)
 - [slang-pr-review: isolate Reviewer A and C with a git worktree + REPO_ROOT override](../learnings/1781121669041-slang-pr-review-isolate-reviewer-a-and-c-with-a-gi.md)
+- [slang-pr-review: Reviewer A $30 budget can stop 6/7 subagents; dyn-dispatch & export now trip E41037](../learnings/1792060963846-slang-pr-review-reviewer-a-30-budget-can-stop-6-7-.md)
 - [slang-pr-review: Reviewer A budget-cap mid-analysis hypotheses are NOT findings — re-run + independently verify](../learnings/1781134206455-slang-pr-review-reviewer-a-budget-cap-mid-analysis.md)
 - [slang-pr-review: Reviewer A under a small budget cap often produces no final-review.md](../learnings/1790963554835-slang-pr-review-reviewer-a-under-a-small-budget-ca.md)
 - [slang-pr-review: Reviewer C (clarity) can drop with transient socket error — detect tiny output, just re-run](../learnings/1781213312260-slang-pr-review-reviewer-c-clarity-can-drop-with-t.md)

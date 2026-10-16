@@ -8,9 +8,9 @@ source_count: 85
 
 # CI Runners & Flake Triage
 
-> **Part 1 of 4** of the CI Runners & Flake Triage synthesis (split 2026-08-08 to stay under the 40 KB read cap). Siblings: [part 2](ci-runners-flake-triage-2.md) · [part 3](ci-runners-flake-triage-3.md) · [part 4](ci-runners-flake-triage-4.md).
+> Related pages: [Classification and Known Signatures](ci-flake-known-signatures-and-classification.md) · [Rerun Decision Rules](ci-flake-rerun-decision-rules.md) · [Runner Pools and Infrastructure](ci-flake-runner-pools-and-infrastructure.md) · [Real-Regression Signatures](ci-flake-real-regression-signatures.md) · [Sweep Mechanics & Routing](ci-flake-sweep-mechanics-and-routing.md) · [Evidence Dedup & Reporting](ci-flake-evidence-dedup-and-reporting.md) · [Sweep Rigor & Base Rates](ci-flake-sweep-rigor-and-base-rates.md).
 
-How to decide whether a Slang CI run is still the answer. Two orthogonal questions run through this synthesis: **is this failure a flake?** (classification — part 2) and **is this run still the verdict?** (currency — this part). Passing the first tells you nothing about the second: `filter=latest` emits one run per check-*suite*, four timestamp fields invert on a re-run, and a superseded suite can carry the freshest failing timestamp in an entire sweep.
+How to decide whether a Slang CI run is still the answer. Two orthogonal questions run through this synthesis: **is this failure a flake?** (classification — [Classification and Known Signatures](ci-flake-known-signatures-and-classification.md)) and **is this run still the verdict?** (currency — this page). Passing the first tells you nothing about the second: `filter=latest` emits one run per check-*suite*, four timestamp fields invert on a re-run, and a superseded suite can carry the freshest failing timestamp in an entire sweep.
 
 ## TL;DR
 
@@ -44,7 +44,7 @@ The last line of `health_snapshots.jsonl` (shader-slang/slang-ci-analytics) can 
 
 ## Currency Is Independent of Classification — Is This Run Even the Verdict? (2026-08-04 fold)
 
-Every classification rule in [part 2](ci-runners-flake-triage-2.md) answers *"is this failure a flake?"* This section answers the orthogonal question *"is this run still the answer?"* — and **passing the first check tells you nothing about the second.**
+Every classification rule in [CI Flake Triage — Classification and Known Signatures](ci-flake-known-signatures-and-classification.md) answers *"is this failure a flake?"* This section answers the orthogonal question *"is this run still the answer?"* — and **passing the first check tells you nothing about the second.**
 
 **A stale `workflow_dispatch` suite makes a GREEN PR look red.** `GET /commits/<sha>/check-runs?filter=latest` returns the latest run **per check-suite**, and a single PR head can carry **two CI suites at the same sha** — one from `pull_request`, one from `workflow_dispatch`. `filter=latest` does not prefer the newer suite; it emits both, so a stale *failed* dispatch suite stays in your red list permanently even when a later `pull_request` run at the identical sha is fully green. On slang#12186 the Falcor log carried a correctly-identified, known-tracked flake signature (`renderpasses/test_GBufferRTTexGrads_d3d12` FAILED, `Mogwai.exe` return code `3221225477` = 0xC0000005) with the usual discriminator holding — one step from `gh run rerun --failed`. That run was `event=workflow_dispatch, run_attempt=2`; the `pull_request` run at the same head was **36 success / 1 skipped**, with `test-falcor` and `check-ci` both success. **Signature validity does not establish that the run is the live verdict.** Second instance in the same sweep: #12208's red `build-linux-debug-gcc-x86_64` was a 07-24 dispatch suite (logs since 410-expired) while the `pull_request` run at the identical sha had that job *and* `check-ci` green — 2 of 29 red PRs affected in that sweep (the rate across sweeps is higher, 5–6 of 29; see the currency section below). Recipe before **any** rerun:
 

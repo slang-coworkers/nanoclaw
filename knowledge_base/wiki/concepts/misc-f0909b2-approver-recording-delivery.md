@@ -3,7 +3,7 @@ title: "PR-Approver Recording & Delivery: the ledger-write false-success family,
 type: concept
 group: misc
 tags: [pr-approver, record_decision, approval-ledger, APPROVAL_LEDGER_WRITERS, send_file, delivery, routing, infra-abstain]
-source_count: 13
+source_count: 10
 ---
 
 ## TL;DR
@@ -50,13 +50,10 @@ Two delivery traps close the loop. First, **"durable copy" is ambiguous and only
 
 Second, **never route a "post the verdict to the PR" instruction to a `*-pr-approver`** [[never instruct the pr-approver to post to GitHub]](../learnings/1786489442083-never-instruct-the-pr-approver-to-post-to-github.md). The approver's hard invariant is: it never writes to GitHub (no comments/reviews/labels) and never dispatches another coworker. A posting instruction arrives as routing context, does not grant that authority, and the approver correctly refuses — costing a round-trip (measured on slang#12477, where it also abstained on `CLAUSE_FAIL:tier_eligible` for a 14,344-line diff). If a public footprint is wanted, route posting to the reviewer/fixer tier; for a shadow-mode ABSTAIN on an already-ready human PR, no forced comment is usually needed — shadow mode is non-gating telemetry and the production review bot's own review is the public footprint.
 
-**Source learnings (13):**
+**Source learnings (10):**
 - [record_decision returns "recorded" while host DENIES the append (slang#12446, APPROVAL_LEDGER_WRITERS unset)](../learnings/1786436608459-approver-infra-abstain-record-decision-returns-dec.md) — the tool string is a request ACK, not a write ACK; denial arrives out-of-band; probe the sink not the send.
-- [record_decision success string is not evidence the row landed (slang-rhi#598, BLOCK)](../learnings/1786436642533-approver-infra-abstain-record-decision-returns-dec.md) — three calls all "recorded", only the last denied; no read-back ⇒ say "submitted"; a pipeline you can't read back can't be trusted to record.
 - [record_decision reports success in-band while host denies write (slangpy#1099)](../learnings/1786437439516-approver-infra-abstain-record-decision-reports-suc.md) — a control that fails to record is indistinguishable from one that permits; report submitted-pending; APPROVAL_LEDGER_WRITERS prerequisite for a batch run.
 - [record_decision returns a success string while host denies (slang#12439)](../learnings/1786455704768-approver-infra-abstain-record-decision-returns-a-s.md) — two surfaces disagree, host authoritative; retry safe once configured (append-only, first-write-wins); do not launder into an ABSTAIN_INFRA about the PR.
-- [record_decision success but host denies when writers unset (slangpy#1100)](../learnings/1786463030860-approver-infra-abstain-record-decision-returns-a-s.md) — fired for both ABSTAIN and WOULD_APPROVE same session; report must say "derived; not persisted" unmissably.
-- [record_decision echoes success but host denies (slang#12449)](../learnings/1786466412759-approver-infra-abstain-record-decision-echoes-succ.md) — same-turn contradicting notification; belt-and-suspenders ledger read-back; blocks the whole loop's auditability, not one PR.
 - [record_human_verdict vanished from the approver allowlist mid-flight](../learnings/1786454952360-approver-infra-abstain-record-human-verdict-vanish.md) — a published re-stamp mitigation is now non-executable; probe repair tools first; availability is per-session state; embed the verdict in the correction payload.
 - [A decision isn't delivered until record_decision + [Approval Decision] both fire](../learnings/1786461685033-approver-process-a-decision-isn-t-delivered-until-.md) — a synchronize push strands the prior revision; record+report is the atomic commit boundary; a turn error is evidence about the turn, not the work.
 - [I re-committed the delivery error I just wrote the learning about — a rule filed is not a rule wired to a trigger](../learnings/1786454258490-approver-critique-mustfix-i-re-committed-the-deliv.md) — "durable" is ambiguous; bind the rule to "did it leave my filesystem?"; a peer's path is not a shared location.

@@ -3,7 +3,7 @@ title: "Slang formatting.sh: false-greens, tool install, and safe scoping"
 type: concept
 group: slang-tooling
 tags: [formatting, clang-format, gersemi, shfmt, prettier, ci, false-green, worktree]
-source_count: 15
+source_count: 16
 ---
 
 ## TL;DR
@@ -23,14 +23,14 @@ prints a diff you never see) in exactly the states where it has verified nothing
   the max as exclusive: `[17, 18)`. The repo/copilot docs saying "17-18" are wrong; 18.x
   fails. Install `clang-format==17.0.6` via pip/venv; the npm package ships v15 (rejects the
   repo `.clang-format`) — never use it.
-- **clang-format is often present as `clang-format-17`, unsymlinked** (the expected
-  `slang-fixer` container shape). `formatting.sh` looks up bare `clang-format` and stops with
-  "needs clang-format". Shim it into a writable dir with no install:
-  `mkdir -p /tmp/cf17 && ln -sf /usr/bin/clang-format-17 /tmp/cf17/clang-format` then
-  `PATH=/tmp/cf17:$PATH ./extras/formatting.sh --check-only --cpp`, or run
-  `/usr/bin/clang-format-17 -i` / `--dry-run --Werror` directly. With the shim, a full
-  `--check-only` still exits 1 if gersemi/shfmt are absent; for C++ diff
-  `clang-format-17 --style=file $f` against each changed file instead.
+- **clang-format is present only as `clang-format-17`, unsymlinked** (the fleet container
+  shape). `formatting.sh` looks up bare `clang-format`, skips C++ and still exits 0, so
+  "fmt=0" proves nothing. Shim it: `ln -sf /usr/bin/clang-format-17 /tmp/cf17/clang-format`,
+  then `PATH=/tmp/cf17:$PATH ./extras/formatting.sh --check-only --cpp`, or run
+  `clang-format-17 -i` / `--dry-run --Werror` directly. With the shim, a full `--check-only`
+  still exits 1 if gersemi/shfmt are absent; for C++ diff `clang-format-17 --style=file $f`
+  per changed file. Guard an empty file list: `clang-format --dry-run $(git diff …)` with
+  no files (tests-only commit) reads stdin forever.
 - **An edit after a critique approve needs a fresh `mcp__codex__codex` round.** A
   `codex-reply` follow-up carries no developer-instructions, so the gate does not record it.
 - **pip-installed tools vanish across a container restart.** An earlier real green does not
@@ -152,7 +152,13 @@ refinements follow. With the shim in place, `--check-only` still returns rc 1 be
 shfmt are missing, so for C++ use a direct per-file diff, which needs no shim at all; and a `/tmp`
 shim dir vanishes on container restart, so keep it under `/workspace/agent/`
 [formatting.sh exits 0 without formatting when only clang-format-17 is installed](../learnings/1790719063408-extras-formatting-sh-exits-0-without-formatting-wh.md),
-[bare formatting.sh prints usage and exits 0](../learnings/1790714053699-slang-test-from-a-bindir-binary-copy-fails-31-cuda.md):
+[bare formatting.sh prints usage and exits 0](../learnings/1790714053699-slang-test-from-a-bindir-binary-copy-fails-31-cuda.md).
+The trap keeps shipping defects: on #13654 a doc comment over 100 columns passed the silent run,
+and on #13679 an unformatted hunk was committed after a plain "fmt=0" check. Gate on the shimmed
+`--cpp` run or on a direct `clang-format-17 --dry-run --Werror` over the changed `.cpp`/`.h`
+files, and check that file list is non-empty first: with no file arguments (a tests-only commit)
+clang-format reads stdin and never returns
+([formatting.sh exits 0 and silently skips C++ when clang-format is not on PATH](../learnings/1792108914830-slang-extras-formatting-sh-exits-0-and-silently-sk.md)):
 
 ```bash
 for f in $(git diff --name-only BASE..HEAD -- '*.cpp' '*.h'); do
@@ -235,7 +241,7 @@ yours), avoid bare `git add -A`, and evict a stray file by restoring it to the c
 parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- <file>`
 (origin/master may have advanced, reintroducing it as a spurious modification).
 
-**Source learnings (15):**
+**Source learnings (16):**
 - [clang-format for slang: 17.x ONLY (repo docs say 17-18 and are wrong) — install via venv](../learnings/1786381193362-clang-format-for-slang-17-x-only-repo-docs-say-17-.md) — The `[17,18)` bound, the PEP-668 venv install, and two positive-control traps (`--check-only` exit 0 masks a silent no-op; type flags narrow the file set to 5 extensions).
 - [formatting.sh --check-only exits 0 when its tools are missing — a green that checked nothing](../learnings/1786424195348-formatting-sh-check-only-exits-0-when-its-tools-ar.md) — On slang#12454 all four formatters were absent; the grep-for-missing-tool-lines gate, plus the same-session `xxd`-missing false negative.
 - [slang formatting.sh --check-only EXITS 0 WHILE CHECKING NOTHING — and pip clang-format vanishes across a restart](../learnings/1786424384200-slang-formatting-sh-check-only-exits-0-while-check.md) — Two-container measurement; the require-both-exit-0-and-zero-missing gate; the `[17,18)` bound; the install disappearing later the same day.
@@ -251,3 +257,4 @@ parent (`git restore --source=HEAD^ ...`), never `git checkout origin/master -- 
 - [extras/formatting.sh exits 0 without formatting when only clang-format-17 is installed (#13332)](../learnings/1790719063408-extras-formatting-sh-exits-0-without-formatting-wh.md) — shim or per-file `clang-format-17 --style=file | diff -q`; `--check-only` rc 1 from missing gersemi/shfmt
 - [slang-test from a -bindir binary copy fails ~31 CUDA/OptiX tests](../learnings/1790714053699-slang-test-from-a-bindir-binary-copy-fails-31-cuda.md) — formatting aside: bare `formatting.sh` prints usage and exits 0; keep scratch out of `/tmp`
 - [slang formatting.sh on a single CMake file reports false gersemi diffs; use the whole-tree --cmake run](../learnings/1791784450911-slang-formatting-sh-on-a-single-cmake-file-reports.md) — `--definitions` gets only the one file; ASan builds need `ASAN_OPTIONS=detect_leaks=0`
+- [Slang: ./extras/formatting.sh exits 0 and silently skips C++ when clang-format is not on PATH](../learnings/1792108914830-slang-extras-formatting-sh-exits-0-and-silently-sk.md) — fleet containers have only `/usr/bin/clang-format-17`; #13679 shipped an unformatted hunk; shim fix; an empty file list makes `clang-format --dry-run` read stdin forever

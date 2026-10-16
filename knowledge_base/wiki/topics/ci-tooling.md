@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-546 learnings. [Catalog](../index.md)
+550 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -180,6 +180,7 @@ type: topic
 - [Case-less __target_switch: the enforcing [require] is on the resource TYPE, not the method](../learnings/1785418069559-case-less-target-switch-the-enforcing-require-is-o.md)
 - [CHANGES_REQUESTED ≠ edit list — read the review body + inline count, not just reviewDecision](../learnings/1783731922642-changes-requested-edit-list-read-the-review-body-i.md)
 - [Check check-ci's needs before calling a CI red merge-blocking or an eviction risk](../learnings/1791456069310-check-check-ci-s-needs-before-calling-a-ci-red-mer.md)
+- [Check issue timeline for cross-referenced PRs before building a fix](../learnings/1792076007832-check-issue-timeline-for-cross-referenced-prs-befo.md)
 - [Check rerun-tracker.json's existing verdict before re-deriving a fresh classification from raw CI logs](../learnings/1790021540897-check-rerun-tracker-json-s-existing-verdict-before.md)
 - [Check the build graph before recommending a test shape](../learnings/1785840792663-check-the-build-graph-before-recommending-a-test-s.md)
 - [Check the BUILD graph, not just the call graph, before recommending a test shape](../learnings/1785840805944-check-the-build-graph-not-just-the-call-graph-befo.md)
@@ -187,6 +188,7 @@ type: topic
 - [Check-runs pagination silently truncates at 100 — reconcile total_count with >=](../learnings/1786018770807-check-runs-pagination-silently-truncates-at-100-re.md)
 - [CI babysitter tracker migration — independent diff caught a data-loss bug the script's own success output would have hidden](../learnings/1789792535428-ci-babysitter-tracker-migration-independent-diff-c.md)
 - [CI babysitter wake payload prCount can mismatch both its own prs array and live gh pr list](../learnings/1786918074939-ci-babysitter-wake-payload-prcount-can-mismatch-bo.md)
+- [CI babysitter wake with GitHub 403 payload: wait for reset, rerun sweep script by hand](../learnings/1792058825118-ci-babysitter-wake-with-github-403-payload-wait-fo.md)
 - [CI babysitter: author-owned red disposition and clean-sweep silence, now persisted](../learnings/1786918293889-ci-babysitter-author-owned-red-disposition-and-cle.md)
 - [CI babysitter: classify-only subagent scope violation recurred (2nd time) — needs a structural fix, not just prose instructions](../learnings/1788287467646-ci-babysitter-classify-only-subagent-scope-violati.md)
 - [CI babysitter: CPU-job failure is the tell for real regression vs GPU flake](../learnings/1782296288354-ci-babysitter-cpu-job-failure-is-the-tell-for-real.md)
@@ -500,6 +502,7 @@ type: topic
 - [Slang: IRBuilder source-loc RAII may already stamp struct keys — explicit sourceLoc= can be redundant](../learnings/1780416359939-slang-irbuilder-source-loc-raii-may-already-stamp-.md)
 - [SlangPy CI flake: shared nvrgfx GPU runner CUDA OOM](../learnings/1781122096821-slangpy-ci-flake-shared-nvrgfx-gpu-runner-cuda-oom.md)
 - [Source doc comments: client-facing, no off-github refs, no change-narration](../learnings/1787573555990-source-doc-comments-client-facing-no-off-github-re.md)
+- [specializeAddressSpace: cache keyed on current callee re-clones; worklist dedup alone doesn't fix it](../learnings/1792078260077-specializeaddressspace-cache-keyed-on-current-call.md)
 - [SplitBuffer ByteBuffer Vulkan GPU-hang flake (Falcor)](../learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md)
 - [spvDescriptorHeapEXT path — fix function-call specialization allowlists, not the downstream pass](../learnings/1780733286644-spvdescriptorheapext-path-fix-function-call-specia.md)
 - [spvDescriptorHeapEXT specialization fix: don't parameterize the heap global](../learnings/1780734760813-spvdescriptorheapext-specialization-fix-don-t-para.md)
@@ -524,6 +527,7 @@ type: topic
 - [Two concurrent cmake --build runs on one tree corrupt static archives — `ranlib: malformed archive` is a race, not a bad patch](../learnings/1786044235419-two-concurrent-cmake-build-runs-on-one-tree-corrup.md)
 - [Two correct CI scans can disagree on failure count — reconcile the UNIT (current vs completed) before conceding or disputing](../learnings/1786164106546-two-correct-ci-scans-can-disagree-on-failure-count.md)
 - [Two top CI infra buckets are distinct: external Falcor pipeline vs own-fleet runner preemption](../learnings/1786494033565-two-top-ci-infra-buckets-are-distinct-external-fal.md)
+- [Two-commit build bisect is cheap when the suspect touches one .cpp](../learnings/1792065111999-two-commit-build-bisect-is-cheap-when-the-suspect-.md)
 - [Untracking a checked-in build binary is safe only if nothing consumes the tracked copy](../learnings/1784595515240-untracking-a-checked-in-build-binary-is-safe-only-.md)
 - [Validate must-fail repro against CURRENT source, not a stale prebuilt binary — lowering drifts](../learnings/1786636025197-validate-must-fail-repro-against-current-source-no.md)
 - [Verify a "green once PR X lands" dependency by applying X's actual diff — #12935 is insufficient for genuinely-multi-type is/as (#13261)](../learnings/1790318063842-verify-a-green-once-pr-x-lands-dependency-by-apply.md)

@@ -6,15 +6,15 @@ tags: [slangpy, ci, triage, flake, build, runtime, buffer, imodule, version, inf
 source_count: 22
 ---
 
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
 # SlangPy CI, Triage, Build, and Runtime
 
 # SlangPy CI, Triage, Build, and Runtime
 
 Operational knowledge for working with slangpy's CI system, triaging GitHub issues, understanding runtime/API behavior, and building from source. Covers flake patterns, rerun authority, the slang bundling model, buffer layout gotchas, and the fixer-container build environment.
 
-⚠️ **This page is over the 40 KB page cap (~81 KB) and its tail may be truncated on read.** The TL;DR below carries the durable rules so they survive a bounded read; a subtopic split is pending.
-
-> **This page is part 1 of 3** of the SlangPy CI, Triage, Build, and Runtime synthesis (split 2026-08-11 to stay under the 40 KB read cap). Siblings: [part 2](slangpy-ci-triage-2.md), [part 3](slangpy-ci-triage-3.md). The TL;DR below is shared across all parts.
+> Related pages: [Crashing Tests & CI Flake](slangpy-test-crashes-and-ci-flake.md) · [Build from Source & Infra/Ops](slangpy-build-and-infra-operations.md) · [Build, CI Structure & Toolchain](slangpy-f0909b0-build-ci-toolchain.md) · [GPU Validation & Cross-Repo Guards](slangpy-gpu-validation-and-cross-repo-guards.md) · [Bug Investigations](slangpy-f0909b0-bug-investigations.md).
 
 ## TL;DR
 - **SUPERSEDED (2026-08-03): cross-repo `gh run rerun <id> --repo shader-slang/slangpy --failed` now WORKS** — the old "Must have admin rights to Repository" block no longer reproduces, so rerun slangpy reds yourself under the normal 3/PR/day cap.
@@ -40,7 +40,7 @@ Operational knowledge for working with slangpy's CI system, triaging GitHub issu
 - **"Deferred until the upstream Slang fix ships" gates on the `SGL_SLANG_VERSION` pin (`external/CMakeLists.txt:85`), not on a wheel release** — check three stages: merge, a tag CONTAINING the commit (`compare/<tag>...<sha> --jq '.status'` must be `behind`/`identical`, never `ahead`), then the pin bump. The pin lagged five releases.
 - **The cheapest proof a slang fix works with slangpy is an existing cross-repo `ci-latest-slang` run** (nightly 01:00 UTC, `workflow_dispatch` with `slang_branch`, `repository_dispatch` per slang PR) — but `build-pr` is a reduced Linux+Windows Release matrix: real evidence, not full-matrix evidence.
 - **`updatedAt - createdAt` from `gh run list` is NOT job duration** — a re-run keeps the original `created_at` while jobs start at `run_started_at`, so a `success` run can show 1255 min. Confirm with per-job durations.
-- **Never call this environment "GPU-less" without checking — when the NVIDIA L40S is present, compute/Vulkan `cooperative_matrix` run** (presence is not stable across restarts; re-check `ls /dev/nvidia*` each session). Cooperative-VECTOR does not (driver 565.x lacks `VK_NV_cooperative_vector`), and **coop-vec kernels still COMPILE (slangc exit 0), so compile-only checks give false confidence** — dispatch is where it dies.
+- **Measure GPU presence each session; it is not stable across restarts.** Coworker containers have an NVIDIA L40S (CUDA + NVIDIA Vulkan) as of 2026-10-16, and compute/Vulkan `cooperative_matrix` runs on it. 2026-09-28→10-16 was a host passthrough outage (lavapipe only, CPU Vulkan; GPU repros needed a CI runner) ([no GPU since ~09-28](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md)). Re-check `ls /dev/nvidia*; nvidia-smi -L`. Cooperative-VECTOR does not (driver 565.x lacks `VK_NV_cooperative_vector`), and **coop-vec kernels still COMPILE (slangc exit 0), so compile-only checks give false confidence** — dispatch is where it dies.
 - **NVRTC/CUDA downstream compilation is deferred to the first `kernel.dispatch(...)`, so a test stopping at `create_compute_kernel` never runs NVRTC** — dispatch with a real output buffer and expect `RuntimeError`; `downstream_args` reach only DXC and NVRTC, silently dropped elsewhere.
 - **A test that deliberately crashes (SIGSEGV/SIGABRT) HANGS the "Unit Tests (Python)" step for hours** because Crashpad intercepts it, while passing locally where crashpad is off — hard-guard on the CI env.
 - **On slangpy-samples, `pre-commit run --all-files` means one pre-existing violation anywhere reds the `pre-commit` job on EVERY PR**, and **`PATCH` of an existing bot issue comment 403s while `POST` works** — design status updates as append-only fresh comments.
