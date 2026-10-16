@@ -231,8 +231,8 @@ export function renderGpuContextLine(probe: GpuProbe | null | undefined): string
   if (!probe.gpu) {
     return (
       `Environment: no NVIDIA GPU detected in this container (probe at container start: ${probe.reason ?? 'no GPU listed'}; CUDA ${probe.cuda}; ${vulkanFact(probe)}). ` +
-      'GPU tests (slang-test -api vk/cuda, SlangPy GPU devices) cannot run here — say so explicitly instead of reporting them as passed, ' +
-      'and report it to the operator as an infra problem; do not record it as an environment fact in learnings or memory.'
+      'GPU tests (slang-test -api vk/cuda, SlangPy GPU devices) cannot run here — say so explicitly instead of reporting them as passed; ' +
+      'on a GPU host (e.g. prod) report it to the operator as an infra problem; do not record it as an environment fact in learnings or memory.'
     );
   }
   const cudaFact = probe.cuda === 'ok' ? 'CUDA driver init OK' : `CUDA ${probe.cuda}`;

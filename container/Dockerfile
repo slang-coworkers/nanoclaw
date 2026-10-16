@@ -171,6 +171,7 @@ RUN if [ "$ENABLE_GPU" = "1" ]; then \
         libvulkan1 \
         libvulkan-dev \
         vulkan-tools \
+        pciutils \
         libglvnd0 \
         libx11-dev \
         libxrandr-dev \

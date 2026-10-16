@@ -127,7 +127,7 @@ function digest(text: string): string {
  * typed coworker after the freeze. Digest-pinned like the fragments above.
  */
 const GPU_FRAGMENT = path.join(process.cwd(), 'container', 'spines', 'base', 'invariants', 'gpu.md');
-const GPU_FRAGMENT_DIGEST = '32b27079c4f3eb65';
+const GPU_FRAGMENT_DIGEST = '9f82bc7f4cc1f602';
 function gpuFragment(): string {
   const text = fs.readFileSync(GPU_FRAGMENT, 'utf-8');
   expect(digest(text), 'gpu.md differs from the reviewed bytes').toBe(GPU_FRAGMENT_DIGEST);

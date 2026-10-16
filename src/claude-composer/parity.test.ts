@@ -131,8 +131,8 @@ describe('composed-document byte parity', () => {
       // Moved a tenth time when base-common gained the `invariants/gpu.md`
       // fragment (the standing GPU fact; the live measurement arrives as the
       // runner's `Environment:` system-prompt line).
-      'base-common': 'a9c836f504127c8b',
-      'base-common.persona': '1975f1d02192cecf',
+      'base-common': '42da875582235947',
+      'base-common.persona': '5fbde05b0437b53b',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -140,8 +140,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: 'bf4798723dad2070',
-      'default.persona': '10217dbb493d11bc',
+      default: 'e92237bc9e1a2177',
+      'default.persona': 'a9ebdeb27db2dc58',
     };
 
     const actual: Record<string, string> = {};
