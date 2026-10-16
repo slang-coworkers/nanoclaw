@@ -51,7 +51,7 @@ These hold across every step below; the steps reference them by number rather th
   event *starts* our responsiveness clock; it never resets it.
 - **R5 — Route by `thread_id`, never `in_reply_to`.** Set `thread_id="gh-issue-<owner>/<repo>-<num>"`
   on every nudge/dispatch and add nothing else. `in_reply_to` overrides `thread_id` and can land
-  the message in a reused session for a different issue. One `<message>` per chain on its canonical
+  the message in a reused session for a different issue. One `send_message` per chain on its canonical
   key — never a consolidated dump from a thread-less session.
 - **R6 — Closest-to-the-state authors; the supervisor enforces, never substitutes.** The coworker
   holding a verdict writes the GitHub comment for it. You verify the comment exists and nudge if it
@@ -161,8 +161,11 @@ A nudge is a message back into the assigned coworker's session, not a fresh disp
 cases are containers that exited mid-task and need a wake. Route by `thread_id` (R5):
 
 ```
-<message to="<coworker>" thread_id="gh-issue-<owner>/<repo>-<num>">[Supervisor nudge — gh-issue-X/Y-N] No outbound for {duration}. Are you blocked? Reply: status, blocker, ETA. If your container restarted and you lost context, re-read your task memory and resume.</message>
+send_message(to="<coworker>", thread_id="gh-issue-<owner>/<repo>-<num>", text="[Supervisor nudge — gh-issue-X/Y-N] No outbound for {duration}. Are you blocked? Reply: status, blocker, ETA. If your container restarted and you lost context, re-read your task memory and resume.")
 ```
+
+Send every nudge with the `send_message` tool. A tick runs as a scheduled task in its own
+`system:tasks:<series>` session, where `<message>` blocks in your output are not delivered.
 
 **[MUST] Act on `scan.py`'s `action` field — it is mechanically enforced, not advisory.** Each row
 carries `action: 'nudge' | 'none'`. `action` is a strict 1:1 with `needs_nudge` — there is **no
@@ -246,7 +249,7 @@ it in chat is noise, not help.
 CI rebase nudge (from Step 2b — to the fixer, keyed on the chain's thread):
 
 ```
-<message to="<fixer>" thread_id="gh-issue-<owner>/<repo>-<num>">[Supervisor — CI — gh-issue-X/Y-N] PR #<pr>'s last workflow_dispatch ended <failure|cancelled> and hasn't re-run (likely external: flake/cancel/eviction). main is stable now — rebase/merge master to re-dispatch CI on a clean base. Once it goes green, mark ready for review.</message>
+send_message(to="<fixer>", thread_id="gh-issue-<owner>/<repo>-<num>", text="[Supervisor — CI — gh-issue-X/Y-N] PR #<pr>'s last workflow_dispatch ended <failure|cancelled> and hasn't re-run (likely external: flake/cancel/eviction). main is stable now — rebase/merge master to re-dispatch CI on a clean base. Once it goes green, mark ready for review.")
 ```
 
 Don't open new threads, don't multi-cast, and don't escalate before nudging. `scan.py` does not
