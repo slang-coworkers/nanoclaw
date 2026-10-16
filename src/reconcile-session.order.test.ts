@@ -72,6 +72,10 @@ vi.mock('./session-manager.js', () => ({
       retryWithBackoff: vi.fn(),
       deleteOrphanProcessingClaims: vi.fn(() => 0),
       countLiveTasks: vi.fn(() => 0),
+      expireOrphanedCliResponses: vi.fn(() => {
+        order.push('expire-cli');
+        return 0;
+      }),
     });
   }),
   writeSessionMessage: vi.fn(),
@@ -117,5 +121,20 @@ describe('reconcileSession duty ordering', () => {
     // The redrive DELETEs from outbound.db; exactly-one-writer per file is what
     // makes the two-DB split safe, so a live container must lock it out.
     expect(order).not.toContain('redrive:open-inbound');
+  });
+
+  // Orphaned ncl replies must be closed on both sweep paths: a live container
+  // (maintenance runs every tick) and a dead one with due mail (maintenance runs
+  // after the wake).
+  it('closes orphaned ncl replies whether or not the container is alive', async () => {
+    containerRunning = true;
+    await reconcileSession('s-1');
+    expect(order).toContain('expire-cli');
+
+    order.length = 0;
+    containerRunning = false;
+    await reconcileSession('s-1');
+    expect(order).toContain('expire-cli');
+    expect(order.indexOf('expire-cli')).toBeGreaterThan(order.indexOf('wake'));
   });
 });

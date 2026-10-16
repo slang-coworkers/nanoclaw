@@ -1,4 +1,5 @@
-import { getInboundDb, getOutboundDb, openInboundDb } from './connection.js';
+import { getInboundDb, getOutboundDb, openInboundDb, outboundDbPath } from './connection.js';
+import { mailboxReclaimOptions, reclaimFreePages, type ReclaimResult } from './reclaim.js';
 import type { MessageInRow } from '../../db/messages-in.js';
 import type { MessageOutRow } from '../../db/messages-out.js';
 import {
@@ -96,7 +97,11 @@ export function sqliteMarkScriptSkipped(skips: Array<{ id: string; reason: strin
   );
   db.transaction(() => {
     for (const skip of skips) {
-      statement.run(skip.id, skip.reason === 'error' ? 'script-skip:error' : 'script-skip:gated', new Date().toISOString());
+      statement.run(
+        skip.id,
+        skip.reason === 'error' ? 'script-skip:error' : 'script-skip:gated',
+        new Date().toISOString(),
+      );
     }
   })();
 }
@@ -464,37 +469,90 @@ export function sqliteFindByRouting(channelType: string, platformId: string): De
  *   2. processing_ack rows older than the cutoff whose inbound message no
  *      longer exists (the host GC'd it); an ack for a live row is kept.
  *
- * Runs on container start; containers respawn often enough (absolute
- * ceiling) that this bounds the tables without a timer.
+ * Bounded per call: at most `maxRows` candidate rows are EXAMINED per table
+ * (paged by seq / rowid with an in-process cursor), so a 250k-row backlog is
+ * worked off over several calls — the first at runner start, the rest from
+ * the idle poll loop — instead of one long synchronous pass before the first
+ * turn. `more` says the cursor has not reached the end yet.
  */
-export function sqliteGcOutboundHistory(cutoffIso: string): { messagesOut: number; acks: number } {
+export interface GcOutboundResult {
+  messagesOut: number;
+  acks: number;
+  more: boolean;
+}
+
+const gcCursor = { outSeq: 0, ackRowid: 0, outDone: false, ackDone: false };
+
+export function _resetOutboundGcCursorForTesting(): void {
+  gcCursor.outSeq = 0;
+  gcCursor.ackRowid = 0;
+  gcCursor.outDone = false;
+  gcCursor.ackDone = false;
+}
+
+export function sqliteGcOutboundHistory(cutoffIso: string, maxRows = 5000): GcOutboundResult {
   const inbound = getInboundDb();
   const outbound = getOutboundDb();
   const norm = (col: string) => `SUBSTR(REPLACE(REPLACE(${col}, 'T', ' '), 'Z', ''), 1, 19)`;
   const cutoff = cutoffIso.replace('T', ' ').replace('Z', '').slice(0, 19);
+  const limit = Math.max(1, maxRows);
+  // A finished pass starts over on the next call (new rows aged past the cutoff).
+  if (gcCursor.outDone && gcCursor.ackDone) _resetOutboundGcCursorForTesting();
 
-  const delivered = inbound
-    .prepare(`SELECT message_out_id FROM delivered WHERE ${norm('delivered_at')} < ?`)
-    .all(cutoff) as Array<{ message_out_id: string }>;
-  const deleteOut = outbound.prepare(
-    `DELETE FROM messages_out WHERE id = ? AND kind = 'system' AND ${norm('timestamp')} < ?`,
-  );
   let messagesOut = 0;
-  outbound.transaction(() => {
-    for (const row of delivered) messagesOut += deleteOut.run(row.message_out_id, cutoff).changes;
-  })();
+  if (!gcCursor.outDone) {
+    const page = outbound
+      .prepare(
+        `SELECT id, seq FROM messages_out
+          WHERE kind = 'system' AND seq > ? AND ${norm('timestamp')} < ?
+            AND seq < (SELECT MAX(seq) FROM messages_out)
+          ORDER BY seq LIMIT ?`,
+      )
+      .all(gcCursor.outSeq, cutoff, limit) as Array<{ id: string; seq: number }>;
+    // Delivered per the host's ledger, and delivered before the cutoff too.
+    const delivered = inbound.prepare(
+      `SELECT 1 AS x FROM delivered WHERE message_out_id = ? AND ${norm('delivered_at')} < ?`,
+    );
+    // Never the newest row: seq allocation reads MAX(seq) of this table.
+    const deleteOut = outbound.prepare(
+      `DELETE FROM messages_out WHERE id = ? AND kind = 'system' AND seq < (SELECT MAX(seq) FROM messages_out)`,
+    );
+    outbound.transaction(() => {
+      for (const row of page) {
+        if (delivered.get(row.id, cutoff)) messagesOut += deleteOut.run(row.id).changes;
+      }
+    })();
+    if (page.length > 0) gcCursor.outSeq = page[page.length - 1].seq;
+    if (page.length < limit) gcCursor.outDone = true;
+  }
 
-  const acks = outbound
-    .prepare(`SELECT message_id FROM processing_ack WHERE ${norm('status_changed')} < ?`)
-    .all(cutoff) as Array<{ message_id: string }>;
-  const stillExists = inbound.prepare('SELECT 1 AS x FROM messages_in WHERE id = ?');
-  const deleteAck = outbound.prepare('DELETE FROM processing_ack WHERE message_id = ?');
   let ackRows = 0;
-  outbound.transaction(() => {
-    for (const ack of acks) {
-      if (!stillExists.get(ack.message_id)) ackRows += deleteAck.run(ack.message_id).changes;
-    }
-  })();
+  if (!gcCursor.ackDone) {
+    const page = outbound
+      .prepare(
+        `SELECT rowid AS rid, message_id FROM processing_ack
+          WHERE rowid > ? AND ${norm('status_changed')} < ?
+          ORDER BY rowid LIMIT ?`,
+      )
+      .all(gcCursor.ackRowid, cutoff, limit) as Array<{ rid: number; message_id: string }>;
+    const stillExists = inbound.prepare('SELECT 1 AS x FROM messages_in WHERE id = ?');
+    const deleteAck = outbound.prepare('DELETE FROM processing_ack WHERE message_id = ?');
+    outbound.transaction(() => {
+      for (const ack of page) {
+        if (!stillExists.get(ack.message_id)) ackRows += deleteAck.run(ack.message_id).changes;
+      }
+    })();
+    if (page.length > 0) gcCursor.ackRowid = page[page.length - 1].rid;
+    if (page.length < limit) gcCursor.ackDone = true;
+  }
 
-  return { messagesOut, acks: ackRows };
+  return { messagesOut, acks: ackRows, more: !(gcCursor.outDone && gcCursor.ackDone) };
+}
+
+/**
+ * Give outbound.db's free pages back to the filesystem. The runner is this
+ * file's only writer, so only the runner may vacuum it (see reclaim.ts).
+ */
+export function sqliteReclaimOutboundSpace(): ReclaimResult {
+  return reclaimFreePages(getOutboundDb(), outboundDbPath(), mailboxReclaimOptions());
 }

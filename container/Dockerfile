@@ -163,11 +163,15 @@ RUN if curl -fsSL --max-time 30 "${LLVM_APT_KEY_URL}" -o /usr/share/keyrings/apt
 # ERROR_INCOMPATIBLE_DRIVER / "found no drivers". It's pulled in transitively
 # by libgl1-mesa-dev today; list it explicitly so a future dep change can't
 # silently break GPU Vulkan.
+# vulkan-tools ships `vulkaninfo`: without it an agent's natural Vulkan check
+# is "command not found", which agents misread as "no GPU here".
 RUN if [ "$ENABLE_GPU" = "1" ]; then \
       apt-get update && apt-get install -y \
         cuda-toolkit-12-6 \
         libvulkan1 \
         libvulkan-dev \
+        vulkan-tools \
+        pciutils \
         libglvnd0 \
         libx11-dev \
         libxrandr-dev \
