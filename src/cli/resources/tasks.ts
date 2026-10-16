@@ -72,9 +72,18 @@ function statusFilter(args: Record<string, unknown>): TaskStatus | undefined {
   return status;
 }
 
-function groupArg(args: Record<string, unknown>, ctx: CallerContext): string | undefined {
-  if (ctx.caller === 'agent') return ctx.agentGroupId;
-  return str(args.group) ?? str(args.agent_group_id);
+/**
+ * The agent group a task command acts on. Host callers name it with `--group`.
+ * An agent caller may name one too: the dispatcher's scope guard has already
+ * refused any `--group` outside the caller's `cli_scope` before this runs, so a
+ * foreign group that reaches here belongs to a `cli_scope: global` caller such
+ * as the Orchestrator or the eval driver scheduling work for a sibling group.
+ * Without `--group` an agent acts on its own group.
+ */
+async function groupArg(args: Record<string, unknown>, ctx: CallerContext): Promise<string | undefined> {
+  const requested = str(args.group) ?? str(args.agent_group_id);
+  if (ctx.caller !== 'agent') return requested;
+  return requested ?? ctx.agentGroupId;
 }
 
 async function ownSession(sessionId: string, ctx: CallerContext): Promise<ScopedSession> {
@@ -94,7 +103,7 @@ async function selectedSessions(
   const sessionId = str(args.session);
   if (sessionId) return [await ownSession(sessionId, ctx)];
 
-  const group = groupArg(args, ctx);
+  const group = await groupArg(args, ctx);
   if (group) {
     // Every active session in the group — the loops below filter to kind='task'
     // rows per inbound mailbox. Deliberately NOT findTaskSessions() alone: that only
@@ -151,7 +160,7 @@ function taskId(args: Record<string, unknown>): string {
 }
 
 async function createTask(args: Record<string, unknown>, ctx: CallerContext) {
-  const group = groupArg(args, ctx);
+  const group = await groupArg(args, ctx);
   if (!group) throw new Error('--group is required');
   const prompt = str(args.prompt);
   if (!prompt) throw new Error('--prompt is required');
@@ -195,7 +204,7 @@ async function appendTaskLog(
   if (!msg) throw new Error('--msg is required');
 
   let series = str(args.id);
-  let group = groupArg(args, ctx);
+  let group = await groupArg(args, ctx);
   if (!series && ctx.caller === 'agent' && ctx.sessionId) {
     const sess = await getSession(ctx.sessionId);
     if (sess && sess.thread_id && isTaskThread(sess.thread_id)) {
@@ -505,7 +514,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
         { name: 'session', type: 'string', description: 'Limit to one task session id.' },
         {
@@ -528,7 +538,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
         { name: 'session', type: 'string', description: 'Limit to one task session id.' },
       ],
@@ -590,7 +601,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
       ],
       examples: [
@@ -623,7 +635,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
       ],
       handler: async (args, ctx) => appendTaskLog(args, ctx),
@@ -646,7 +659,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
         { name: 'session', type: 'string', description: 'Limit to one task session id.' },
       ],
@@ -661,7 +675,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
         { name: 'session', type: 'string', description: 'Limit to one task session id.' },
       ],
@@ -676,7 +691,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
         { name: 'session', type: 'string', description: 'Limit to one task session id.' },
       ],
@@ -691,7 +707,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
         { name: 'session', type: 'string', description: 'The shared session that holds the series.' },
       ],
@@ -708,7 +725,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
         { name: 'session', type: 'string', description: 'Limit to one task session id.' },
       ],
@@ -722,7 +740,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
         { name: 'session', type: 'string', description: 'Limit to one task session id.' },
       ],
@@ -736,7 +755,8 @@ registerResource({
         {
           name: 'group',
           type: 'string',
-          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+          description:
+            'Agent group id. Host callers and cli_scope=global agents may name any group; other agents act on their own group and may omit it.',
         },
         { name: 'session', type: 'string', description: 'Limit to one task session id.' },
       ],
