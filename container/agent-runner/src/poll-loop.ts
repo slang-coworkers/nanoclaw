@@ -3449,31 +3449,15 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   // Orchestrator's outbound.db.
   // ON by default (30 d, same as the host — src/reconcile-session.ts
   // resolveMailboxRetentionDays); NANOCLAW_MAILBOX_RETENTION_DAYS overrides,
-  // 0 = off (GC and reclaim). Then reclaim this runner's own outbound.db free
-  // pages — the runner is that file's only writer, so the host never does —
-  // here, at start, before the first turn and before readiness is published.
-  try {
-    const retentionDays = resolveMailboxRetentionDays(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS);
-    if (retentionDays > 0) {
-      const gc = gcOutboundHistory(new Date(Date.now() - retentionDays * 86_400_000).toISOString());
-      if (gc.messagesOut > 0 || gc.acks > 0) {
-        log(
-          `Outbound history GC: removed ${gc.messagesOut} delivered system messages_out rows, ${gc.acks} orphan acks (>${retentionDays}d)`,
-        );
-      }
-      const r = reclaimOutboundSpace();
-      if (r && r.action !== 'none') {
-        log(
-          `Outbound reclaim: ${r.action}${r.reason ? ` (${r.reason})` : ''} — ` +
-            `${r.fileBytesBefore} → ${r.fileBytesAfter} bytes ` +
-            `(reclaimed ${r.fileBytesBefore - r.fileBytesAfter}, free before ${r.freeBytesBefore}, live ${r.liveBytes}) ` +
-            `in ${r.durationMs} ms`,
-        );
-      }
-    }
-  } catch (err) {
-    log(`Outbound history GC/reclaim skipped: ${err instanceof Error ? err.message : String(err)}`);
-  }
+  // 0 = off (GC and reclaim). After the GC, reclaim this runner's own
+  // outbound.db free pages — the runner is that file's only writer, so the
+  // host never does. Every step is bounded (GC: OUTBOUND_GC_ROWS_PER_STEP rows
+  // examined per table; reclaim: 64 MB incremental or one capped VACUUM): one
+  // step runs here at start, the rest from the idle branch of the poll loop.
+  const outboundMaintenance = makeOutboundMaintenance(
+    resolveMailboxRetentionDays(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS),
+  );
+  outboundMaintenance.step();
 
   // Runner-instance readiness handshake (NanoClaw #1, "set ceiling v2") —
   // publish before anything else so the host's post-wake readiness poll finds
@@ -3505,6 +3489,9 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
     }
 
     if (messages.length === 0) {
+      if (outboundMaintenance.pending() && pollCount % OUTBOUND_MAINT_EVERY_IDLE_POLLS === 0) {
+        outboundMaintenance.step();
+      }
       await sleep(POLL_INTERVAL_MS);
       continue;
     }
@@ -6637,4 +6624,71 @@ function publishReplyRoute(routing: RoutingContext): void {
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Rows examined per table per outbound GC step (bounded synchronous work). */
+export const OUTBOUND_GC_ROWS_PER_STEP = 5000;
+/** Idle polls between outbound maintenance steps while a backlog remains. */
+export const OUTBOUND_MAINT_EVERY_IDLE_POLLS = 10;
+
+/**
+ * Outbound mailbox maintenance as a sequence of bounded steps: history GC until
+ * its cursor is exhausted, then free-page reclaim until a pass finds nothing
+ * (or skips). Each `step()` does at most one bounded unit of work and never
+ * throws. Retention 0 = nothing pending from the start.
+ */
+export function makeOutboundMaintenance(
+  retentionDays: number,
+  deps: {
+    gc?: typeof gcOutboundHistory;
+    reclaim?: typeof reclaimOutboundSpace;
+    now?: () => number;
+    rowsPerStep?: number;
+  } = {},
+): { step(): void; pending(): boolean } {
+  const gc = deps.gc ?? gcOutboundHistory;
+  const reclaim = deps.reclaim ?? reclaimOutboundSpace;
+  const now = deps.now ?? Date.now;
+  let gcPending = retentionDays > 0;
+  let reclaimPending = retentionDays > 0;
+  return {
+    pending: () => gcPending || reclaimPending,
+    step() {
+      try {
+        if (gcPending) {
+          const started = now();
+          const r = gc(
+            new Date(now() - retentionDays * 86_400_000).toISOString(),
+            deps.rowsPerStep ?? OUTBOUND_GC_ROWS_PER_STEP,
+          );
+          gcPending = r.more === true;
+          if (r.messagesOut > 0 || r.acks > 0) {
+            log(
+              `Outbound history GC: removed ${r.messagesOut} delivered system messages_out rows, ${r.acks} orphan acks ` +
+                `(>${retentionDays}d) in ${now() - started} ms${gcPending ? ' — more on later idle polls' : ''}`,
+            );
+          }
+          return;
+        }
+        if (reclaimPending) {
+          const r = reclaim();
+          // An incremental pass is capped per call; keep going until one finds
+          // nothing to do. none / skipped / a full VACUUM end it.
+          reclaimPending = r?.action === 'incremental';
+          if (r && r.action !== 'none') {
+            log(
+              `Outbound reclaim: ${r.action}${r.reason ? ` (${r.reason})` : ''} — ` +
+                `${r.fileBytesBefore} → ${r.fileBytesAfter} bytes ` +
+                `(reclaimed ${r.fileBytesBefore - r.fileBytesAfter}, free before ${r.freeBytesBefore}, live ${r.liveBytes}) ` +
+                `in ${r.durationMs} ms`,
+            );
+          }
+        }
+      } catch (err) {
+        gcPending = false;
+        reclaimPending = false;
+        log(`Outbound history GC/reclaim skipped: ${err instanceof Error ? err.message : String(err)}`);
+      }
+    },
+  };
 }

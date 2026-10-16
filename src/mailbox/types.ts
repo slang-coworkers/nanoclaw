@@ -126,7 +126,7 @@ export interface InboundMailbox {
    * Drop consumed system frames and orphan `delivered` rows older than the
    * cutoff (host-owned history; see gcInboundHistory). Optional for fakes.
    */
-  gcHistory?(cutoffIso: string): { systemRows: number; deliveredRows: number };
+  gcHistory?(cutoffIso: string): { systemRows: number; deliveredRows: number; more?: boolean };
   /**
    * Give freed pages of the HOST-OWNED inbound file back to the filesystem
    * (incremental_vacuum, or a bounded one-time VACUUM on legacy files). Only

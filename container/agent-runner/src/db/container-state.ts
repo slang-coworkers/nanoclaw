@@ -13,8 +13,11 @@ export function clearStaleProcessingAcks(): void {
   getAgentMailbox().operations.clearStaleProcessingAcks();
 }
 
-export function gcOutboundHistory(cutoffIso: string): { messagesOut: number; acks: number } {
-  return getAgentMailbox().operations.gcOutboundHistory(cutoffIso);
+export function gcOutboundHistory(
+  cutoffIso: string,
+  maxRows?: number,
+): { messagesOut: number; acks: number; more?: boolean } {
+  return getAgentMailbox().operations.gcOutboundHistory(cutoffIso, maxRows);
 }
 
 /** Null when the active mailbox has no on-disk file to reclaim. */

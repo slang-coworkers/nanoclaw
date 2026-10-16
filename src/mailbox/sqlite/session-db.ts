@@ -463,6 +463,20 @@ export interface GcInboundOptions {
   cutoffIso: string;
   /** This session's outbound.db; needed to tell an orphan `delivered` row from a live one. */
   outboundPath?: string;
+  /**
+   * Rows deleted per DELETE statement and statements per call (per table).
+   * Bounds the synchronous work one call does on a huge mailbox; `more` in the
+   * result says another call has work left. Defaults: 2000 × 2.
+   */
+  chunkRows?: number;
+  maxChunks?: number;
+}
+
+export interface GcInboundResult {
+  systemRows: number;
+  deliveredRows: number;
+  /** True when a chunk budget ran out before the backlog did. */
+  more: boolean;
 }
 
 /**
@@ -482,36 +496,53 @@ export interface GcInboundOptions {
  *   - the newest messages_in row (MAX(seq)) is never deleted: the host
  *     allocates the next inbound seq from MAX(seq) of this table alone, so
  *     dropping it would hand out a seq an agent may still reference.
+ *   - deletes are chunked (`rowid IN (SELECT … LIMIT n)`), at most
+ *     `maxChunks` per table per call, so a 70k-row backlog is worked off over
+ *     several calls instead of one long synchronous statement.
  */
-export function gcInboundHistory(
-  db: Database.Database,
-  opts: GcInboundOptions,
-): { systemRows: number; deliveredRows: number } {
+export function gcInboundHistory(db: Database.Database, opts: GcInboundOptions): GcInboundResult {
   const norm = (col: string) => `SUBSTR(REPLACE(REPLACE(${col}, 'T', ' '), 'Z', ''), 1, 19)`;
   const cutoff = opts.cutoffIso.replace('T', ' ').replace('Z', '').slice(0, 19);
-  const systemRows = db
-    .prepare(
-      `DELETE FROM messages_in
-       WHERE kind = 'system' AND status IN ('completed', 'failed') AND ${norm('timestamp')} < ?
-         AND seq < (SELECT MAX(seq) FROM messages_in)`,
-    )
-    .run(cutoff).changes;
+  const chunk = Math.max(1, opts.chunkRows ?? 2000);
+  const maxChunks = Math.max(1, opts.maxChunks ?? 2);
+  let more = false;
+  const drain = (run: () => number): number => {
+    let total = 0;
+    for (let i = 0; i < maxChunks; i++) {
+      const n = run();
+      total += n;
+      if (n < chunk) return total;
+    }
+    more = true;
+    return total;
+  };
+  // Rowid order is insertion order, so the oldest (deletable) rows come first
+  // and each chunk's scan stops early.
+  const delSystem = db.prepare(
+    `DELETE FROM messages_in WHERE rowid IN (
+       SELECT rowid FROM messages_in
+        WHERE kind = 'system' AND status IN ('completed', 'failed') AND ${norm('timestamp')} < ?
+          AND seq < (SELECT MAX(seq) FROM messages_in)
+        LIMIT ?)`,
+  );
+  const systemRows = drain(() => delSystem.run(cutoff, chunk).changes);
   let deliveredRows = 0;
   if (opts.outboundPath && fs.existsSync(opts.outboundPath)) {
     db.prepare('ATTACH DATABASE ? AS outb').run(opts.outboundPath);
     try {
-      deliveredRows = db
-        .prepare(
-          `DELETE FROM delivered
-           WHERE ${norm('delivered_at')} < ?
-             AND NOT EXISTS (SELECT 1 FROM outb.messages_out m WHERE m.id = delivered.message_out_id)`,
-        )
-        .run(cutoff).changes;
+      const delDelivered = db.prepare(
+        `DELETE FROM delivered WHERE rowid IN (
+           SELECT rowid FROM delivered
+            WHERE ${norm('delivered_at')} < ?
+              AND NOT EXISTS (SELECT 1 FROM outb.messages_out m WHERE m.id = delivered.message_out_id)
+            LIMIT ?)`,
+      );
+      deliveredRows = drain(() => delDelivered.run(cutoff, chunk).changes);
     } finally {
       db.exec('DETACH DATABASE outb');
     }
   }
-  return { systemRows, deliveredRows };
+  return { systemRows, deliveredRows, more };
 }
 
 /**

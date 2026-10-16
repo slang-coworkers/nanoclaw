@@ -9,6 +9,10 @@ import { ensureSchema, openInboundDb } from './mailbox/sqlite/session-db.js';
 import type { MailboxReclaimResult } from './mailbox/types.js';
 import {
   DEFAULT_MAILBOX_RETENTION_DAYS,
+  MAILBOX_GC_COLD_START_SPREAD_MS,
+  MAILBOX_MAINT_BUDGET_MS,
+  MAILBOX_MAINT_MAX_SESSIONS,
+  MAILBOX_MAINT_WINDOW_MS,
   _resetMailboxGcForTesting,
   gcMailboxHistory,
   reclaimMailboxSpace,
@@ -79,7 +83,7 @@ describe('gcMailboxHistory (default retention)', () => {
     const db = openInboundDb(inboundPath);
     const result = gcMailboxHistory(wrapSqliteInbound(db), { id: 's1' }, resolveMailboxRetentionDays(undefined), NOW);
     db.close();
-    expect(result).toEqual({ systemRows: 2, deliveredRows: 0 });
+    expect(result).toEqual({ systemRows: 2, deliveredRows: 0, more: false });
     expect(ids()).toEqual([
       'sys-20d-done',
       'sys-45d-pending',
@@ -105,6 +109,82 @@ describe('gcMailboxHistory (default retention)', () => {
     expect(gcMailboxHistory({ gcHistory }, { id: 's1' }, 30, NOW + 60_000)).toBeNull();
     expect(gcMailboxHistory({ gcHistory }, { id: 's1' }, 30, NOW + 25 * 3_600_000)).not.toBeNull();
     expect(gcHistory).toHaveBeenCalledTimes(2);
+  });
+});
+
+describe('global maintenance budget (all sessions, per sweep window)', () => {
+  const ok = () => ({ systemRows: 0, deliveredRows: 0 });
+
+  it('caps GC calls per window when many sessions are due at once (cold start); the rest run on later ticks', () => {
+    const gcHistory = vi.fn(ok);
+    const ran = (t: number) =>
+      Array.from({ length: 100 }, (_, i) => gcMailboxHistory({ gcHistory }, { id: `s${i}` }, 30, t)).filter(
+        (r) => r !== null,
+      ).length;
+    expect(ran(NOW)).toBe(MAILBOX_MAINT_MAX_SESSIONS);
+    expect(ran(NOW + 1_000)).toBe(0); // same window
+    expect(ran(NOW + MAILBOX_MAINT_WINDOW_MS)).toBe(MAILBOX_MAINT_MAX_SESSIONS);
+    let t = NOW + MAILBOX_MAINT_WINDOW_MS;
+    for (let tick = 0; tick < 40; tick++) ran((t += MAILBOX_MAINT_WINDOW_MS));
+    expect(gcHistory).toHaveBeenCalledTimes(100); // everyone reached, each once
+  });
+
+  it('stops for the window once the time budget is spent', () => {
+    let clock = NOW;
+    const spy = vi.spyOn(Date, 'now').mockImplementation(() => clock);
+    const slow = vi.fn(() => {
+      clock += MAILBOX_MAINT_BUDGET_MS + 1;
+      return { systemRows: 1, deliveredRows: 0 };
+    });
+    expect(gcMailboxHistory({ gcHistory: slow }, { id: 'a' }, 30, NOW)).not.toBeNull();
+    expect(gcMailboxHistory({ gcHistory: slow }, { id: 'b' }, 30, NOW)).toBeNull();
+    expect(slow).toHaveBeenCalledTimes(1);
+    spy.mockRestore();
+  });
+
+  it('a session with backlog left (`more`) stays due without waiting 24 h', () => {
+    const gcHistory = vi.fn(() => ({ systemRows: 4000, deliveredRows: 0, more: true }));
+    expect(gcMailboxHistory({ gcHistory }, { id: 'big' }, 30, NOW)).not.toBeNull();
+    expect(gcMailboxHistory({ gcHistory }, { id: 'big' }, 30, NOW + MAILBOX_MAINT_WINDOW_MS)).not.toBeNull();
+    expect(gcHistory).toHaveBeenCalledTimes(2);
+  });
+
+  it('spreads first sightings over the cold-start window instead of making everyone due at once', () => {
+    let i = 0;
+    _resetMailboxGcForTesting({ jitter: () => (i++ % 8) / 8 }); // 0, 1/8, … 7/8 (exact in binary)
+    const gcHistory = vi.fn(ok);
+    const due = Array.from({ length: 8 }, (_, k) => gcMailboxHistory({ gcHistory }, { id: `c${k}` }, 30, NOW));
+    expect(due.filter((r) => r !== null)).toHaveLength(1); // only jitter 0 is due now
+    // Each becomes due at its own offset within the spread.
+    let t = NOW;
+    for (let k = 1; k < 8; k++) {
+      t = NOW + (k / 8) * MAILBOX_GC_COLD_START_SPREAD_MS;
+      gcMailboxHistory({ gcHistory }, { id: `c${k}` }, 30, t - 1);
+      expect(gcHistory).toHaveBeenCalledTimes(k);
+      gcMailboxHistory({ gcHistory }, { id: `c${k}` }, 30, t);
+      expect(gcHistory).toHaveBeenCalledTimes(k + 1);
+    }
+  });
+
+  it('a reclaim only starts in a window no GC has used', async () => {
+    const reclaimSpace = vi.fn(() => ({
+      action: 'none' as const,
+      fileBytesBefore: 0,
+      fileBytesAfter: 0,
+      freeBytesBefore: 0,
+      liveBytes: 0,
+      durationMs: 0,
+    }));
+    const deps = { retentionDays: 30, now: NOW, containerRunning: () => false, sessionClaimed: async () => false };
+    gcMailboxHistory({ gcHistory: vi.fn(ok) }, { id: 'g' }, 30, NOW);
+    expect(await reclaimMailboxSpace({ reclaimSpace, countDueMessages: () => 0 }, { id: 'r' }, deps)).toBeNull();
+    expect(
+      await reclaimMailboxSpace(
+        { reclaimSpace, countDueMessages: () => 0 },
+        { id: 'r' },
+        { ...deps, now: NOW + MAILBOX_MAINT_WINDOW_MS },
+      ),
+    ).not.toBeNull();
   });
 });
 
@@ -182,8 +262,17 @@ describe('reclaimMailboxSpace (inbound.db, host = sole writer)', () => {
 
     const db = openInboundDb(legacy);
     const mailbox = wrapSqliteInbound(db);
-    expect(gcMailboxHistory(mailbox, { id: 'e2e' }, 30, NOW)).toEqual({ systemRows: 6000, deliveredRows: 0 });
-    const r = await reclaimMailboxSpace(mailbox, { id: 'e2e' }, { ...quiet, now: NOW });
+    // Chunked: 4000 rows per call by default, one call per maintenance window.
+    let t = NOW;
+    expect(gcMailboxHistory(mailbox, { id: 'e2e' }, 30, t)).toEqual({ systemRows: 4000, deliveredRows: 0, more: true });
+    t += MAILBOX_MAINT_WINDOW_MS;
+    expect(gcMailboxHistory(mailbox, { id: 'e2e' }, 30, t)).toEqual({
+      systemRows: 2000,
+      deliveredRows: 0,
+      more: false,
+    });
+    t += MAILBOX_MAINT_WINDOW_MS;
+    const r = await reclaimMailboxSpace(mailbox, { id: 'e2e' }, { ...quiet, now: t });
     expect(r?.action).toBe('vacuum');
     expect(db.pragma('auto_vacuum', { simple: true })).toBe(2);
     expect(db.pragma('journal_mode', { simple: true })).toBe('delete');

@@ -55,7 +55,7 @@ describe('gcInboundHistory', () => {
   it('drops only consumed system frames and orphan delivered rows older than the cutoff', () => {
     const db = openInboundDb(inboundPath);
     const result = gcInboundHistory(db, { cutoffIso: CUTOFF, outboundPath });
-    expect(result).toEqual({ systemRows: 2, deliveredRows: 1 });
+    expect(result).toEqual({ systemRows: 2, deliveredRows: 1, more: false });
     const left = (db.prepare('SELECT id FROM messages_in ORDER BY seq').all() as Array<{ id: string }>).map(
       (r) => r.id,
     );
@@ -67,14 +67,18 @@ describe('gcInboundHistory', () => {
     ).map((r) => r.message_out_id);
     expect(delivered).toEqual(['out-new-gone', 'out-old-present']);
     // Idempotent.
-    expect(gcInboundHistory(db, { cutoffIso: CUTOFF, outboundPath })).toEqual({ systemRows: 0, deliveredRows: 0 });
+    expect(gcInboundHistory(db, { cutoffIso: CUTOFF, outboundPath })).toEqual({
+      systemRows: 0,
+      deliveredRows: 0,
+      more: false,
+    });
     db.close();
   });
 
   it('never touches delivered rows when the outbound side cannot be consulted', () => {
     const db = openInboundDb(inboundPath);
     const result = gcInboundHistory(db, { cutoffIso: CUTOFF, outboundPath: path.join(dir, 'missing.db') });
-    expect(result).toEqual({ systemRows: 2, deliveredRows: 0 });
+    expect(result).toEqual({ systemRows: 2, deliveredRows: 0, more: false });
     expect(db.prepare('SELECT COUNT(*) AS n FROM delivered').get()).toEqual({ n: 3 });
     expect(fs.existsSync(path.join(dir, 'missing.db'))).toBe(false);
     db.close();
@@ -105,6 +109,30 @@ describe('gcInboundHistory', () => {
       'chat-failed',
       'sys-newest-old-done',
     ]);
+    db.close();
+  });
+
+  it('deletes in bounded chunks: progress on every call, `more` until the backlog is gone', () => {
+    const db = openInboundDb(inboundPath);
+    const ins = db.prepare(
+      "INSERT INTO messages_in (id, seq, kind, timestamp, status, content) VALUES (?, ?, 'system', ?, 'completed', '{}')",
+    );
+    db.transaction(() => {
+      for (let i = 0; i < 1050; i++) ins.run(`bulk-${i}`, 1000 + i * 2, OLD);
+    })();
+    db.prepare(
+      "INSERT INTO messages_in (id, seq, kind, timestamp, status, content) VALUES ('top', 99999, 'chat', ?, 'completed', '{}')",
+    ).run(NEW);
+    const counts: number[] = [];
+    let r;
+    do {
+      r = gcInboundHistory(db, { cutoffIso: CUTOFF, chunkRows: 100, maxChunks: 2 });
+      counts.push(r.systemRows);
+    } while (r.more && counts.length < 20);
+    // 1050 bulk + 2 old system rows from the fixture = 1052, 200 per call.
+    expect(counts).toEqual([200, 200, 200, 200, 200, 52]);
+    expect(r.more).toBe(false);
+    expect(db.prepare("SELECT COUNT(*) AS n FROM messages_in WHERE id LIKE 'bulk-%'").get()).toEqual({ n: 0 });
     db.close();
   });
 });

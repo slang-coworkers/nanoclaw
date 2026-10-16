@@ -483,9 +483,58 @@ export const MAILBOX_RETENTION_DAYS = resolveMailboxRetentionDays();
 const MAILBOX_GC_INTERVAL_MS = 24 * 60 * 60_000;
 const lastMailboxGc = new Map<string, number>();
 
-export function _resetMailboxGcForTesting(): void {
+// --- global maintenance budget ---------------------------------------------------
+// The per-session interval says how OFTEN one session is cleaned; this says how
+// MUCH synchronous cleanup the host does per sweep window across ALL sessions.
+// Without it a host restart (empty lastMailboxGc) would make every active
+// session due in the first tick and block the event loop — webhooks, delivery,
+// the sweep itself — for the sum of their DELETEs. Per window: at most
+// MAILBOX_MAINT_MAX_SESSIONS GC/reclaim calls and, once MAILBOX_MAINT_BUDGET_MS
+// of measured work is spent, none until the next window. Sessions not reached
+// stay due and are picked up on later ticks. Each call is itself bounded (GC:
+// chunked deletes; reclaim: 64 MB incremental, or one capped VACUUM).
+export const MAILBOX_MAINT_WINDOW_MS = 60_000;
+export const MAILBOX_MAINT_MAX_SESSIONS = 3;
+export const MAILBOX_MAINT_BUDGET_MS = 400;
+// A session seen for the first time (cold start) becomes due at a random point
+// in this spread instead of all at once.
+export const MAILBOX_GC_COLD_START_SPREAD_MS = 6 * 60 * 60_000;
+export const MAILBOX_RECLAIM_COLD_START_SPREAD_MS = 60 * 60_000;
+
+const maintBudget = { windowStart: -Infinity, calls: 0, spentMs: 0 };
+let jitter: () => number = Math.random;
+
+function budgetAvailable(now: number): boolean {
+  if (now - maintBudget.windowStart >= MAILBOX_MAINT_WINDOW_MS) {
+    maintBudget.windowStart = now;
+    maintBudget.calls = 0;
+    maintBudget.spentMs = 0;
+  }
+  return maintBudget.calls < MAILBOX_MAINT_MAX_SESSIONS && maintBudget.spentMs < MAILBOX_MAINT_BUDGET_MS;
+}
+
+function chargeBudget(ms: number): void {
+  maintBudget.calls += 1;
+  maintBudget.spentMs += ms;
+}
+
+/** Remaining due time for a session; a first sighting is spread over `spreadMs`. */
+function dueAt(last: Map<string, number>, id: string, now: number, intervalMs: number, spreadMs: number): number {
+  let prev = last.get(id);
+  if (prev === undefined) {
+    prev = now - intervalMs + Math.floor(jitter() * spreadMs);
+    last.set(id, prev);
+  }
+  return prev + intervalMs;
+}
+
+export function _resetMailboxGcForTesting(opts: { jitter?: () => number } = {}): void {
   lastMailboxGc.clear();
   lastMailboxReclaim.clear();
+  maintBudget.windowStart = -Infinity;
+  maintBudget.calls = 0;
+  maintBudget.spentMs = 0;
+  jitter = opts.jitter ?? (() => 0);
 }
 
 export function gcMailboxHistory(
@@ -493,14 +542,18 @@ export function gcMailboxHistory(
   session: Pick<Session, 'id'>,
   retentionDays: number = MAILBOX_RETENTION_DAYS,
   now: number = Date.now(),
-): { systemRows: number; deliveredRows: number } | null {
+): { systemRows: number; deliveredRows: number; more?: boolean } | null {
   if (!mailbox.gcHistory || retentionDays <= 0) return null;
-  if (now - (lastMailboxGc.get(session.id) ?? 0) < MAILBOX_GC_INTERVAL_MS) return null;
+  if (now < dueAt(lastMailboxGc, session.id, now, MAILBOX_GC_INTERVAL_MS, MAILBOX_GC_COLD_START_SPREAD_MS)) return null;
+  if (!budgetAvailable(now)) return null; // stays due; a later tick picks it up
   lastMailboxGc.set(session.id, now);
   const cutoff = new Date(now - retentionDays * 86_400_000).toISOString();
+  const started = Date.now();
   try {
-    const started = Date.now();
     const result = mailbox.gcHistory(cutoff);
+    // Backlog left (chunk budget ran out): due again right away — the global
+    // budget, not the 24 h interval, paces the rest.
+    if (result.more) lastMailboxGc.set(session.id, now - MAILBOX_GC_INTERVAL_MS);
     if (result.systemRows > 0 || result.deliveredRows > 0) {
       log.info('Mailbox history GC', {
         sessionId: session.id,
@@ -513,6 +566,8 @@ export function gcMailboxHistory(
   } catch (err) {
     log.warn('Mailbox history GC failed — will retry tomorrow', { sessionId: session.id, err });
     return null;
+  } finally {
+    chargeBudget(Date.now() - started);
   }
 }
 
@@ -542,14 +597,23 @@ export async function reclaimMailboxSpace(
   const retentionDays = deps.retentionDays ?? MAILBOX_RETENTION_DAYS;
   const now = deps.now ?? Date.now();
   if (!mailbox.reclaimSpace || retentionDays <= 0) return null;
-  if (now - (lastMailboxReclaim.get(session.id) ?? 0) < MAILBOX_RECLAIM_INTERVAL_MS) return null;
+  if (
+    now < dueAt(lastMailboxReclaim, session.id, now, MAILBOX_RECLAIM_INTERVAL_MS, MAILBOX_RECLAIM_COLD_START_SPREAD_MS)
+  ) {
+    return null;
+  }
+  // A reclaim may be the one-time full VACUUM (seconds, not ms), so it only
+  // starts in a window nothing else has used yet.
+  if (!budgetAvailable(now) || maintBudget.calls > 0) return null;
   const running = deps.containerRunning ?? isContainerRunning;
   const claimed = deps.sessionClaimed ?? (async (id: string) => Boolean((await getSessionClaim(id))?.claimed_by));
   // Claim lookup is async; re-check the in-process state after it so the
   // synchronous reclaim starts from a fresh "quiet" reading.
   if (running(session.id) || (await claimed(session.id))) return null;
   if (running(session.id) || mailbox.countDueMessages() > 0) return null;
+  if (!budgetAvailable(now) || maintBudget.calls > 0) return null; // spent while awaiting the claim
   lastMailboxReclaim.set(session.id, now);
+  const started = Date.now();
   try {
     const result = mailbox.reclaimSpace();
     if (result.action === 'incremental' || result.action === 'vacuum') {
@@ -568,6 +632,8 @@ export async function reclaimMailboxSpace(
   } catch (err) {
     log.warn('Mailbox space reclaim failed — will retry later', { sessionId: session.id, err });
     return null;
+  } finally {
+    chargeBudget(Date.now() - started);
   }
 }
 

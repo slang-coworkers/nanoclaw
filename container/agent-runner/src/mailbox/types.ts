@@ -112,7 +112,7 @@ export interface MailboxOperations {
    * messages_out rows the host has already delivered and processing_ack rows
    * whose inbound message no longer exists, both older than the cutoff.
    */
-  gcOutboundHistory(cutoffIso: string): { messagesOut: number; acks: number };
+  gcOutboundHistory(cutoffIso: string, maxRows?: number): { messagesOut: number; acks: number; more?: boolean };
   /**
    * Reclaim outbound.db free pages (incremental_vacuum, or a bounded one-time
    * VACUUM on a legacy file). Runner-owned file only. Optional: a mailbox
