@@ -64,7 +64,7 @@ class HostUpN(unittest.TestCase):
         f = _fields(_host_line(self.mod))
         self.assertEqual(f["host_up"], "false")
         self.assertEqual(f["host_up_n"], "0i")
-        self.assertNotIn("host_uptime_s", f)
+        self.assertEqual(f["host_uptime_s"], "0i")  # always present: the crash-loop math needs every input
         self.assertEqual(f["breaker_attempt"], "0i")
 
 

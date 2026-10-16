@@ -533,10 +533,14 @@ def collect_host(state):
     # alerts and panels read host_up_n. host_up stays for anything that still queries it.
     fields["host_up"] = pid is not None
     fields["host_up_n"] = 1 if pid is not None else 0
+    # host_uptime_s is written on EVERY run (0 = no live process / unreadable) because the crash-loop rule
+    # combines it with the breaker attempt, and one absent input turns a Grafana math expression into NoData.
+    # Unreadable reads as 0 ("young") on purpose: it can only make the crash-loop rule fire, never mute it.
+    fields["host_uptime_s"] = 0
     if pid is not None:
         try:
             fields["host_uptime_s"] = _pid_uptime_s(pid)
-        except Exception as exc:  # noqa: BLE001 - /proc shape; the gauge is just absent this run
+        except Exception as exc:  # noqa: BLE001 - /proc shape; reported, gauge stays 0 this run
             _errors.append(f"host.uptime:{exc}")
         prev = state.get("host_pid")
         restarted = prev is not None and prev != pid

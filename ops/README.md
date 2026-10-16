@@ -108,7 +108,7 @@ Two honesty caveats, same spirit as the rest of this file:
 
 The collector now also emits **`nanoclaw_host`** (one point per run) and
 **`nanoclaw_host_mailbox`** (largest session DB, tagged by session). Fields:
-`host_up` (boolean), `host_up_n` (integer 1/0), `host_uptime_s` (only while a pid is live),
+`host_up` (boolean), `host_up_n` (integer 1/0), `host_uptime_s` (0 when no live pid),
 `host_restart`, `host_restarts_total`, `breaker_attempt`,
 `sweep_tick_ms` / `sweep_tick_ms_max` / `sweep_full_passes` / `sweep_quiet_skips` / `sweep_ticks`,
 `spawns`, `wakes`, `wake_failed`, `quarantined`, `stale_restarts`, `fatal`, `heap_oom`,
@@ -132,9 +132,11 @@ while the new process runs perfectly well. The crash-loop rule therefore fires o
 `breaker_attempt >= 3` while the current process is under 20 min old (longer than the 15 min maximum
 breaker backoff) or down, or on `breaker_attempt >= 2` while the host is down.
 
-**No-data policy.** Host down, crash loop and sweep stopped read fields written on every collector run,
-so their "no data" means the collector stopped. That is owned by *metrics collector not reporting*
-(`noDataState: Alerting`); the three host rules use `noDataState: OK` so one cause pages once.
+**No-data policy.** Host down, crash loop and sweep stopped read fields written on every collector run
+and use `noDataState: OK`. Missing host telemetry is owned by *metrics collector not reporting*, which
+counts `nanoclaw_host.host_up_n` points (`noDataState: Alerting`). That covers both a stopped collector
+and one whose host section throws every run while its `nanoclaw_collector` heartbeat continues, and one
+cause pages once.
 
 The dashboard gained a row **"Incident signals"** (last row) and an alert-list panel.
 

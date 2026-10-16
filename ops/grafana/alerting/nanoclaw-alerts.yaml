@@ -9,9 +9,10 @@
 # can never fire ("host down" and "sweep stopped" did exactly that until 2026-10-16).
 #
 # No-data policy: the host-liveness rules (host down, crash loop, sweep stopped) read fields the collector
-# writes on every run, so "no data" there means the collector stopped, not that the host did. That has ONE
-# owner, nc-collector-stale (noDataState: Alerting); those rules set noDataState: OK so one cause does not
-# page several times as DatasourceNoData. The other rules keep Grafana's default (NoData).
+# writes on every run, so "no data" there means host telemetry stopped (collector down, or its host section
+# throwing), not that the host did. That has ONE owner, nc-collector-stale, which counts nanoclaw_host points
+# (noDataState: Alerting); those rules set noDataState: OK so one cause does not page several times as
+# DatasourceNoData. The other rules keep Grafana's default (NoData).
 #
 # Notifications: none yet (see below). Rules still evaluate and show as Firing on the dashboard's
 # "Firing NanoClaw alerts" panel and under Alerting → Alert rules.
@@ -77,10 +78,10 @@ groups:
             relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: PF3A0F3054C0DA367
             model: { refId: D, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_up_n") FROM "nanoclaw_host" WHERE $timeFilter' }
-          # host_uptime_s is only written while a pid is live: look back an hour so a host that is down right
-          # now still has a value (its last one) instead of turning the whole rule into NoData.
+          # host_uptime_s is written on every run (0 = no live pid): every input must have a value, since one
+          # absent input makes the whole math expression NoData.
           - refId: F
-            relativeTimeRange: { from: 3600, to: 0 }
+            relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: PF3A0F3054C0DA367
             model: { refId: F, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_uptime_s") FROM "nanoclaw_host" WHERE $timeFilter' }
           - refId: B
@@ -321,20 +322,22 @@ groups:
       - uid: nc-collector-stale
         title: NanoClaw metrics collector not reporting
         condition: C
-        for: 5m
+        for: 1m
         # Absence IS this rule's signal: count() over an empty window returns no rows, not 0, so without this
-        # the rule could only ever reach NoData. It owns "collector down" for every nanoclaw_host rule above.
+        # the rule could only ever reach NoData. It owns "no host data" for the host rules above, which use
+        # noDataState: OK. It counts nanoclaw_host.host_up_n, not the nanoclaw_collector heartbeat: a collector
+        # whose host section throws every run still heartbeats, and the host rules would be silently blind.
         noDataState: Alerting
         execErrState: Error
         labels: { team: nanoclaw, severity: warning }
         annotations:
-          summary: 'No nanoclaw_collector point in 5 minutes — every other rule here is blind.'
-          runbook: 'systemctl status nanoclaw-metrics.timer; journalctl -u nanoclaw-metrics -n 20; /tmp/nanoclaw-metrics.collector.err'
+          summary: 'No nanoclaw_host point in 5 minutes: the collector stopped, or its host section fails every run. Host down / crash loop / sweep stopped are blind.'
+          runbook: 'systemctl status nanoclaw-metrics.timer; journalctl -u nanoclaw-metrics -n 20; /tmp/nanoclaw-metrics.collector.err; a "host:" entry in nanoclaw_collector.detail = collect_host is throwing.'
         data:
           - refId: A
             relativeTimeRange: { from: 600, to: 0 }
             datasourceUid: PF3A0F3054C0DA367
-            model: { refId: A, rawQuery: true, resultFormat: time_series, query: 'SELECT count("points") FROM "nanoclaw_collector" WHERE time > now() - 5m' }
+            model: { refId: A, rawQuery: true, resultFormat: time_series, query: 'SELECT count("host_up_n") FROM "nanoclaw_host" WHERE time > now() - 5m' }
           - refId: B
             datasourceUid: __expr__
             model: { refId: B, type: reduce, expression: A, reducer: last, settings: { mode: dropNN } }

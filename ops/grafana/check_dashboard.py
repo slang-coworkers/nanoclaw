@@ -21,7 +21,8 @@ DS_UID = "PF3A0F3054C0DA367"
 # Fields ops/metrics/nanoclaw-metrics.py emits as booleans, mapped to their integer twin. InfluxDB fixes
 # a field's type per shard, so these cannot simply be turned into integers.
 BOOLEAN_FIELDS = {"host_up": "host_up_n"}
-_BOOL_RE = re.compile('"(' + "|".join(map(re.escape, BOOLEAN_FIELDS)) + ')"')
+# Quoted or bare identifier (InfluxQL accepts both); host_up_n does not match.
+_BOOL_RE = re.compile(r"(?<![A-Za-z0-9_])(" + "|".join(map(re.escape, BOOLEAN_FIELDS)) + r")(?![A-Za-z0-9_])")
 here = os.path.dirname(os.path.abspath(__file__))
 path = os.path.join(here, "nanoclaw-coworkers.json")
 alerts_path = os.path.join(here, "alerting", "nanoclaw-alerts.yaml")
