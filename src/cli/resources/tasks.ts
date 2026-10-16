@@ -28,6 +28,7 @@ import {
   taskNameFromSeriesId,
   validateRecurrence,
 } from '../../modules/scheduling/create.js';
+import { isolateTaskSeries } from '../../modules/scheduling/isolate.js';
 import { destroySessionMailbox, sessionDir, withExistingMailboxSession } from '../../session-manager.js';
 import { registerResource } from '../crud.js';
 import { appendRunLog, deleteRunLog, readRunLogTail } from '../../modules/scheduling/run-log.js';
@@ -250,8 +251,14 @@ async function listTasks(args: Record<string, unknown>, ctx: CallerContext) {
   const status = statusFilter(args);
   const rows = [];
   for (const session of await selectedSessions(args, ctx)) {
+    const threadId = (await getSession(session.id))?.thread_id ?? null;
     const sessionRows = await withInbound(session, (db) =>
-      selectLiveTasks(db, status).map((row) => enrichListRow(db, toOutput(session, row))),
+      selectLiveTasks(db, status).map((row) => {
+        const enriched = enrichListRow(db, toOutput(session, row));
+        // false = the series shares a session with chat or other tasks
+        // (pre-isolation rows); `ncl tasks isolate` moves it to its own lane.
+        return { ...enriched, isolated: threadId === taskThreadId(enriched.series_id) };
+      }),
     );
     if (sessionRows) rows.push(...sessionRows);
   }
@@ -438,6 +445,27 @@ async function runTaskCommand(args: Record<string, unknown>, ctx: CallerContext)
     if (fired) return fired;
   }
   throw new Error(`task not found: ${id}`);
+}
+
+/**
+ * `ncl tasks isolate <id>` — move a series that still re-arms inside a shared
+ * session (a group's chat session or the legacy `system:tasks` thread) into its
+ * own `system:tasks:<series>` lane, so a long run no longer blocks chat or other
+ * tasks there. Same series id, prompt, script, schedule and run log.
+ */
+async function isolateTaskCommand(args: Record<string, unknown>, ctx: CallerContext) {
+  const id = taskId(args);
+  for (const session of await selectedSessions(args, ctx)) {
+    const row = await withInbound(session, (db) => {
+      const found = db.getTask(id);
+      return found && (found.status === 'pending' || found.status === 'paused') ? found : undefined;
+    });
+    if (!row) continue;
+    const full = await getSession(session.id);
+    if (full?.thread_id === taskThreadId(row.seriesId ?? row.id)) continue;
+    return isolateTaskSeries(session.agent_group_id, session.id, row.seriesId ?? row.id);
+  }
+  throw new Error(`no live task in a shared session matched: ${id} (already isolated, or not live)`);
 }
 
 registerResource({
@@ -653,6 +681,24 @@ registerResource({
         { name: 'session', type: 'string', description: 'Limit to one task session id.' },
       ],
       handler: async (args, ctx) => runTaskCommand(args, ctx),
+    },
+    isolate: {
+      access: 'open',
+      description:
+        'Move a task series that still runs inside a shared session (a chat session or the legacy system:tasks thread) into its own system:tasks:<series> session, so a long run no longer delays chat or other tasks there. Keeps the series id, prompt, script, schedule, status and run log; completed-run history stays behind. Refused while an occurrence is running — retry after it finishes. Tasks created with `tasks create` already get their own session.',
+      args: [
+        { name: 'id', type: 'string', description: 'Task series id.', required: true },
+        {
+          name: 'group',
+          type: 'string',
+          description: 'Agent group id (host callers; auto-filled to your own group inside a container).',
+        },
+        { name: 'session', type: 'string', description: 'The shared session that holds the series.' },
+      ],
+      examples: [
+        `# Find series still in a shared session (session_id is not a system:tasks one), then move each:\nncl tasks list --group <ag-id> --json\nncl tasks isolate --id <series-id> --group <ag-id>`,
+      ],
+      handler: async (args, ctx) => isolateTaskCommand(args, ctx),
     },
     pause: {
       access: 'open',

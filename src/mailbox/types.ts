@@ -66,6 +66,12 @@ export interface TaskUpdate {
 
 export type TaskRecord = CanonicalTaskRecord;
 
+/** A live occurrence captured by `holdTaskSeries`, with the status it had before the hold. */
+export type HeldTaskRow = TaskWrite & { status: 'pending' | 'paused' };
+
+/** `inFlight`: the series' recurrence sits on a running or not-yet-re-armed row, so it cannot move now. */
+export type HeldTaskSeries = { inFlight: true } | { inFlight: false; rows: HeldTaskRow[] };
+
 export interface TaskStats {
   /** Completed occurrences, gated and woke alike. */
   runs: number;
@@ -147,6 +153,10 @@ export interface InboundMailbox {
    * resolves, like insertTask.
    */
   armNextTask(originalId: string, task: Task): Promise<void>;
+  /** Pause a series' live rows in one step, returning them with their prior status (see `ncl tasks isolate`). */
+  holdTaskSeries(seriesId: string): HeldTaskSeries;
+  /** Return rows paused by `holdTaskSeries` to pending. */
+  releaseHeldTaskRows(ids: readonly string[]): number;
   countLiveTasks(): number;
   prunePendingMessages(channelType: string, before: string, keep: number): number;
   getInboundHistory(limit: number): MailboxHistoryMessage[];

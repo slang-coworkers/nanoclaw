@@ -47,8 +47,10 @@ import {
   clearRecurrence,
   deleteTask,
   getCompletedRecurring,
+  holdTaskSeries,
   insertTaskRow,
   pauseTask,
+  releaseHeldTaskRows,
   resumeTask,
   trailingFailedRuns,
   updateTask,
@@ -244,6 +246,8 @@ export function wrapSqliteInbound(
         clearRecurrence(db, originalId);
       })();
     },
+    holdTaskSeries: (seriesId) => holdTaskSeries(db, seriesId),
+    releaseHeldTaskRows: (ids) => releaseHeldTaskRows(db, ids),
     cancelTask: (taskId) => (taskId === undefined ? cancelAllTasks(db) : cancelTask(db, taskId)),
     pauseTask: (taskId) => pauseTask(db, taskId),
     resumeTask: (taskId) => resumeTask(db, taskId),
