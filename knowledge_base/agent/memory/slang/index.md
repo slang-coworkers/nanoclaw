@@ -16,10 +16,36 @@ decay and must be re-read, not remembered.
   bot-triaged missing diagnostic. DRAFT PR #13541 @f961d32f0b; internal review done (R2 APPROVE_WITH_NITS). HELD on maintainer Q1 (error/warning, which decides the breaking label) and Q2 (CAS Release/Acquire); CI is waiting on falcor-ci approval. jkwak-work assigned. Coupled to #13519.
 - [slang#13591 R-series — contributor standards for AI assistants](13591-authorship-rules-r-series.md) —
   szihs's umbrella + R1–R10 sub-issues (#13592–#13602), self-assigned, each with its own PR. Not dispatched.
+- [slang#13631 — `workgroupUniformLoad` synchronizes only on WGSL](13631-workgroup-uniform-load-barrier.md) —
+  human-filed (albertrodriguezclo) cross-target race: plain load off WGSL. Triaged 10-15 (cmt 6193295113), P2. DRAFT PR #13659 shipped @c136bcb after 2 REQUEST_CHANGES rounds (cap); unreviewed `specializeStageSwitch` change; gaps filed #13675 + #13683, both OWNED by this chain (dispatch nothing on their webhooks). PARKED on shepherd kaizhangNV accepting the semantics (also answers reporter cmt 6194249872). CI approval-gated. Re-check `rechase-13631-pr13659-se-8806` 10-20.
+- [slang#13634 — WGSL BAB `Load<half>` → E56103](13634-wgsl-bab-load-half-int16.md) —
+  human-filed (albertrodriguezclo) bug: byte-address `Load<half>` lowers via a u16 intermediate WGSL rejects (+ lowerBitCast 2nd producer). Triaged 10-15 13:42Z P2. Fixer STOOD DOWN 17:33Z; reporter PR #13647 covers loads. Stores are out of scope (#13661). Gaps checked 17:49Z: gap 1 (PR takes element 0 without masking the neighbour half) → #13647 review input; gaps 2/3 (struct `bit_cast`, any-value marshalling with half) pre-existing, unfiled, operator call. One-shot `rechase-13634-pr13647-297e` 10-16 18:00Z.
+- [slang#13661 — WGSL BAB `Store<half>` rejected; atomic view?](13661-wgsl-bab-store-half-atomic-view.md) —
+  human-filed (albertrodriguezclo) design question, the store follow-up to #13634/#13647. Triaged 10-15 17:15Z (cmt 6197941951), P2, reproduced. PARKED on maintainer choice of (a)/(b)/(c); re-check `i13661-recheck-6b22` 10-22. Unfiled Metal sub-word store hypothesis is waiting on the operator.
+- [slang#13654 — Metal `StructuredBuffer<S>` with a `Texture2D` field aborts slangc](13654-metal-structuredbuffer-texture-field-abort.md) —
+  human-filed (albertrodriguezclo) Metal ICE: texture method on a structured-buffer element field drops its `this` operand → release assert `slang-intrinsic-expand.cpp:406`. Triaged 10-15 15:03Z (cmt 6195242328), P2: Metal wrongly exempt from E38204 + `legalizeResourceTypes` leaves SB<tuple> simple; fixer moved the decision into the legalizer (E38204 at `slang-legalize-types.cpp:1416`, validator unchanged) → DRAFT PR #13681 @500a07ba31, `pr: non-breaking`, jkwak-work assigned; internal R1 addressed, R2 (last) with slang-reviewer; CI run 38817384046 waiting on approval. #12529 ruled out. Side bug (`uniform Material*` assert, Metal+SPIR-V) unfiled, operator call.
+- [slang#13643 — WGSL address-space specialization re-clones its own clones](13643-wgsl-address-space-specialization-reclone.md) —
+  human-filed (albertrodriguezclo) WGSL code-size bug: `specializeAddressSpace` keys its cache on the current callee, so per-call-site revisits re-clone (N identical copies). Triaged 10-15 P2 (shared pass, not WGSL-only). Fix = reporter PR #13648 (verified by triager; CI awaiting fork approval); watch-only, re-check 10-22. #12563 conflicts.
+- [slang#13642 — slang-wasm `createSession` macros/search paths/options](13642-slang-wasm-createsession-options.md) —
+  human-filed (albertrodriguezclo) feature request: wasm `createSession` takes only a target. Triaged 10-15 (cmt 6193362000), Feature/P2. Reporter then opened PR #13651 (shape A, `Fixes #13642`, fork-CI action_required), so the shape decision now sits in maintainer review; re-check `rechase-13642-wasm-sessi-cbbe` 10-22.
+- [slang#13662 — slang-wasm `loadModuleFromIRBlob` + `Module.serialize`](13662-slang-wasm-load-module-ir-blob.md) —
+  human-filed (albertrodriguezclo) feature request: wasm offers only `loadModuleFromSource`. Triaged 10-15 17:14Z Feature/P3; dup of older #8744. Reporter PR #13663 is the fix (watch-only, fork-CI action_required); issue post held for operator GO; re-check t-ea7eeb 10-22.
+- [slang#13676 — SPIR-V `float(sign(x))` redundant FToS→SToF round-trip](13676-spirv-sign-float-int-float-roundtrip.md) —
+  human-filed (HildarTheDorf) missed optimization: SPIR-V `sign` on float is opaque `spirv_asm` FSign+ConvertFToS, so `float(sign(x))` round-trips. Triaged 10-15 20:17Z (cmt 6201414239), P3; parked on maintainer OK of approach A; 2 operator decisions (GO A / file GLSL `sign`→int bug).
+- [slang#13664 — `getBuiltinModuleSource` null-deref without embedded source](13664-getbuiltinmodulesource-null-without-embedded-source.md) —
+  human-filed (albertrodriguezclo) bug: null blobs dereferenced when `SLANG_EMBED_CORE_MODULE_SOURCE=OFF`. Triaged 10-15 17:26Z (cmt 6198150215), P3. The fix is reporter PR #13665 (CI green, but it leaves the compile path silently empty; follow-up B suggested). Parked on shepherd kaizhangNV; triager re-check `t-3606e0` 10-19.
+- [slang#13635 cluster — WGSL NaN/Inf const-expressions Tint rejects](13635-wgsl-nonfinite-const-expr-cluster.md) —
+  human-filed #13635 fixed by reporter PR #13645 (bot stood down). Bot follow-ups all resolved to drafts (10-15 22:50Z): #13657 → #13670, #13658 → #13669, #13672 → #13680, each held for operator un-draft. Parked: #13671 (maintainer design, re-check 10-17), #13682 (P3 perf).
+- [slang#13639 — WGSL push constants as `var<immediate>`](13639-wgsl-push-constant-immediate.md) —
+  human-filed (albertrodriguezclo). Triaged 10-15 (cmt 6193417129); fix owned by reporter's community PR #13646 (shepherd jkwak-work); slang-fixer held, no PR. PARKED on operator (gap comment / follow-up diagnostics PR); re-check `rechase-13639-pr13646-cdc2` 10-17. Follow-on design question #13666 (reporter, 10-15 17:05Z; arrays/matrices in `var<immediate>`) → slang-triager. Side segfault filed as #13656 (bot, unrouted; `__constref P` ← `ConstantBuffer<P>`, typeflow BorrowIn null cast).
+- [slang#13640 — WGSL `diagnostic(...)` directive emission](13640-wgsl-diagnostic-directive.md) —
+  human-filed (albertrodriguezclo) feature request: Tint rejects subgroup ops in divergent flow; asks for a way to emit
+  `diagnostic(off, subgroup_uniformity)`. Triaged 10-15 (cmt 6193536016), P2, reproduced; recommends a compiler option (A).
+  HANDED OFF 10-15: jkwak-work assigned, reporter opening an option-A PR; re-check `recheck-13640-diag-surfa-f817` 10-22.
 - [slang#13617 — WGSL fragment `SV_PrimitiveID`](13617-wgsl-fragment-primitive-id.md) —
-  human-filed (rhendry) feature request: WGSL marks PrimitiveID unsupported (`isUnsupported` in `LegalizeWGSLEntryPointContext`); wgpu has `primitive_index`. Triaged 10-14 (cmt 6161247791), P2; GO on Approach A → DRAFT PR #13619 @b5340af7ab, triage resolved 10-14 10:18Z (internal R2 APPROVE_WITH_NITS); CI at priority gate; parked on maintainer + operator ready; re-chase 10-15 10:30Z; jkwak-work assigned. Side ICE (WGSL nested-struct `int` SV field, E99999) filed as #13620; global-`in` SV stage-check gap filed as #13622 (both bot, unrouted; their issue_opened webhooks are self-echoes). SV_WaveLaneIndex no-`enable subgroups` side note unfiled, operator call.
+  human-filed (rhendry) feature request: WGSL marks PrimitiveID unsupported (`isUnsupported` in `LegalizeWGSLEntryPointContext`); wgpu has `primitive_index`. Triaged 10-14 (cmt 6161247791), P2; GO on Approach A → DRAFT PR #13619 @b5340af7ab, triage resolved 10-14 10:18Z (internal R2 APPROVE_WITH_NITS); CI at priority gate; parked on maintainer + operator ready; re-chased 10-15 (no human activity; jkwak-work milestoned #13617 Q4 2026; operator asks re-asked once), next re-chase 10-17 10:30Z; jkwak-work assigned. Side ICE (WGSL nested-struct `int` SV field, E99999) filed as #13620; global-`in` SV stage-check gap filed as #13622 (both bot, unrouted; their issue_opened webhooks are self-echoes). SV_WaveLaneIndex no-`enable subgroups` side note unfiled, operator call.
 - [slang#13590 — WGSL emits `bool` members in `var<uniform>` structs](13590-wgsl-bool-uniform-host-shareable.md) —
-  human-filed (j8asic) WGSL bug: bool in host-shareable address spaces isn't lowered to int (SPIR-V-only `lowerLeafLogicalType` case). slangpy#787 (same author) works around it with `uniform uint`. Triaged 10-13 (cmt 6144341398), P2, 3 gaps; fixer released for draft PR. Triage resolved 10-13 20:49Z; HELD on kaizhangNV review + CI. 2 follow-ups unfiled (push-constant no-@binding; bool2 varyings), operator call. DRAFT PR #13607 @7851898586 (10-13, internal review R1 APPROVE_WITH_NITS applied), kaizhangNV assigned, CI not run (draft). Re-chase `rechase-13590-wgsl-bool-87c3` (10-14 16:00Z).
+  human-filed (j8asic) WGSL bug: bool in host-shareable address spaces isn't lowered to int (SPIR-V-only `lowerLeafLogicalType` case). slangpy#787 (same author) works around it with `uniform uint`. Triaged 10-13 (cmt 6144341398), P2, 3 gaps; fixer released for draft PR. Triage resolved 10-13 20:49Z; HELD on kaizhangNV review + CI. 2 follow-ups unfiled (push-constant no-@binding; bool2 varyings), operator call. DRAFT PR #13607 @7851898586 (10-13, internal review R1 APPROVE_WITH_NITS applied), PR assignee kaizhangNV; issue reassigned to jkwak-work + milestone Q4 2026 (10-14). CI not run (draft). Unchanged re-chases: 10-14, 10-15. Next `rechase-13590-wgsl-bool-56bf` (10-16 16:00Z); if unchanged, park it.
 - [slang#13571 — WGSL matrix negation emitted as `matNxM<f32>(0) - m`](13571-wgsl-matrix-negation.md) —
   human-filed (andy-slater) WGSL emit bug (`kIROp_Neg` matrix `T(0)-x`). Triaged 10-11 (cmt 6113276208), P2; triage resolved 10-12; draft PR #13572 @46ac7f64a7 awaiting jkwak-work, CI gated. 4 follow-ups unfiled (operator call). Re-chase `rechase-13571-wgsl-matne-de5e` (10-13).
 - [slang#13558 — SlangPy ARM64 segfault draining the current-device stack](13558-slangpy-arm64-current-device-stack-segfault.md) —
@@ -31,7 +57,7 @@ decay and must be re-read, not remembered.
   waiting on maintainer jvepsalainen-nv (re-review + Windows-run question). The green CI run was deleted in the Actions purge, so the head has no CI; a rebase is offered as an operator option. Re-chase `rechase-12875-maint-a8d0` (10-15).
 
 - [slang#13107 — static const struct arrays rebuilt per invocation](13107-cuda-static-const-struct-array.md) —
-  external P2, all-targets fix in DRAFT PR #13115 (held). The reporter confirmed it on-target on 10-09 and closed their own #13109 in favor of it. Merge is waiting on maintainers picking a direction (tangent-vector, 10-02) and on CI, which has never run (falcor-ci deadlock). Re-chase `chase-13107-design-direc-1be8`.
+  external P2, all-targets fix in DRAFT PR #13115 (held). The reporter confirmed it on-target on 10-09 and closed their own #13109 in favor of it. jkwak-work (assigned reviewer) is assessing side effects (10-15); the fixer is building a target-output-diff inventory. tangent-vector's 10-02 direction question is still open; CI has never run. Re-chase `chase-13107-design-direc-941b`.
 
 - [slang#13108 — CUDA by-value struct copies an unread array](13108-cuda-byvalue-struct-copy.md) —
   external enhancement. **Closed for the bot 10-14**: assignee jkwak-work deprioritized it and rejected the heuristic field-promotion approach. minco3's draft #13583 is still open, and its fate is the maintainers' call. Final check `rechase-13108-noinline-p-c69e` (10-16).
@@ -40,7 +66,7 @@ decay and must be re-read, not remembered.
   **CLOSED 2026-10-09** by saipraveenb25 (fixed by #13234). slangpy#1167 still waits on the CUDA grad_sum=320 check (slangpy-fixer). #13301 waits on saipraveenb25's answer to our 10-09 guard-PR ask (silent as of 10-14); it is tracked by `rechase-slang-13301-huma-d01c` (10-17).
 
 - [slang#13555 — `-ignore-capabilities` + case-less `__target_switch` → silent UB](13555-ignore-capabilities-caseless-target-switch.md) —
-  external bug P2, long-standing. Draft PR #13564 (head 19b0b2e3ac) in slang-reviewer review; maintainers to decide breaking? and cpp `Buffer<T>.Load` case. Two unfiled pre-existing rc-139 crashes noted.
+  external bug P2, long-standing. Draft PR #13564 (head eac83d94ed, round-2 fixes pushed). Round-2 review done; [Triage Resolution] 10-15. PARKED on maintainers (breaking? cpp `Buffer<T>.Load` case) + operator (ready/merge). ⚠ Opcode 909 / module version 36 collide with draft #13425. Re-chase `rechase-13564-maintainer-b2f8` (10-22).
 
 - [slang#13556 — CUDA/PTX `SampleGrad` via `tex*Grad`](13556-cuda-samplegrad.md) —
   **MERGED 2026-10-15** (#13559, combined-sampler only; separate-sampler stays E36107 per jkwak-work). Possible unfiled follow-up: separate-sampler `Sample`/`SampleLevel` on CUDA.
@@ -74,8 +100,9 @@ decay and must be re-read, not remembered.
   **CLOSED 10-12**: PR #13450 merged by kaizhangNV (e4d92bf0bb), issue auto-closed. Side finding held, unfiled (explicit operator A only).
 
 - [slang#12627 — CUDA masked RWTexture store, draft PR #13363](12627-cuda-masked-rwtexture-store.md) —
-  held on jkwak-work's coherency answer (RMW+warning vs CUDA error; warning scope). Peer review complete (2 rounds, 0 bugs),
-  `[Fix Report]` in 10-04 at head `b79ae81e23`. Next re-chase `rechase-12627-13563-merg-058d` (2026-10-15 08:00Z); operator re-ping/reconcile decision pending since 10-07. #13563 (layered `_convert` writes) is approved and in the merge queue, so #13363 must reconcile its `!isLayered` E56007 rule. Follow-ups #13361/#13362/#13364/#13365 not dispatched.
+  held on jkwak-work's coherency answer (RMW+warning vs CUDA error; warning scope). Reconciled with #13563 on 10-15 (head `6f4e01b249`,
+  codes now E56020–E56022), then made `dirty` again by #13537. The fixer is holding, and the operator's merge-again/re-ask decision is open.
+  Next re-chase `rechase-12627-13537-conf-14f1` (2026-10-18 08:00Z). Follow-ups #13361/#13362/#13364/#13365 not dispatched.
 
 - [slang#13554 — CUDA layered `_convert` surface write is an empty stub](13554-cuda-layered-convert-write-stub.md) —
   **TERMINAL 2026-10-15**: PR #13563 was merged by jkwak-work (`788be3144e`), and the issue closed COMPLETED. GPU CI proved `sust.p.a{1d,2d}` on hardware.
@@ -129,7 +156,8 @@ decay and must be re-read, not remembered.
 
 - [slang#13409 — Metal groupshared forwarded across barriers; sibling #13412 (all-target pointer roots)](13409-metal-groupshared-barrier-forwarding.md) —
   drafts #13421 (#13409, `c42049e18f`, reviewer jhelferty-nv) and #13431 (#13412, `bf9f3fd05a`, reviewer kaizhangNV) both passed
-  internal review; CI has never run, and since 10-10 none is pending: the old dispatch runs were deleted in the repo-wide Actions purge, so only an un-draft or a fresh dispatch starts CI. Out-of-scope follow-ups filed 10-06 as #13465 + #13466 (filing only, no fix until both PRs land; #13465 is parked on tangent-vector). Re-chase `rechase-13421-13431-1346-19cf` (10-12).
+  internal review; CI has never run, and since 10-10 none is pending: the old dispatch runs were deleted in the repo-wide Actions purge, so only an un-draft or a fresh dispatch starts CI. Out-of-scope follow-ups filed 10-06 as #13465 + #13466 (filing only, no fix until both PRs land; #13465 is parked on tangent-vector). Re-chase `rechase-13421-13431-1346-b02d` (10-16).
+  - [#13409/#13412 decisions, review rounds and re-chase log](13409-history-decisions-and-rechases.md) — Approach A + emitter guard, G1/G2, corrected B + escape check, finding 3 per target, the 10-05 lost reports, #13465/#13466 filings and tangent-vector's `inout` ruling, 10-08→10-14 re-chases.
 
 - [slang PR #12136 — lazy autodiff builtins, fork PR approver loop](12136-lazy-autodiff-approver-loop.md) —
   re-pushed 10 times. R10 (`14a2185f`) is only a master merge, so I held it. The R9 real commit was never decided: the approver session has been in cost escalation since Sep 14, and its dispatches go unanswered. The ledger is also unset. All of this is with the operator; re-chase `rechase-12136-approver-c-c050` (2026-10-04).
@@ -143,13 +171,13 @@ decay and must be re-read, not remembered.
   Bare-matrix gap #13388 belongs to jkwak-work (Q4 milestone), unrouted, with the go/no-go on the operator. Re-chase `rechase-13386-13388-c681` (2026-10-12).
 
 - [slang#13350 — glsl-module matrix `operator*`/`*=` gated off wgsl+metal (E36107)](13350-glsl-matrix-mul-wgsl-metal-gate.md) —
-  triaged + reproduced; not a regression. draft PR #13356 open (7 gates); follow-ups #13355 (62 gated builtins) + #13359 (`filecheck=A,B` checks only A) filed. #13355 + #13359 are assigned to jkwak-work (HOLD unless jkwak asks the bot). #13356 CI gate is with the operator (4 asks; defaults to park-for-jhelferty if unanswered). Re-chase `rechase-13350-13355-r5-ccdb` (2026-10-15).
+  triaged + reproduced; not a regression. draft PR #13356 open (7 gates); follow-ups #13355 (62 gated builtins) + #13359 (`filecheck=A,B` checks only A) filed. #13355 + #13359 are assigned to jkwak-work (HOLD unless jkwak asks the bot). #13356 CI gate: operator decision A defaulted 10-15 to (c), parked for jhelferty-nv (don't re-ask). Re-chase `rechase-13350-13355-r6-96e2` (2026-10-22, 7-day cadence).
 
 - [slang#13041 — verify-documented-compiler-version.sh exit 4 (windows-aarch64); bot fix #13042 incomplete](13041-verify-compiler-version-exit4.md) —
   three post-fix hits (two in merge_group, 09-28/29, plus #11709 on 09-30). Diagnostic draft #13352 is waiting on the operator ready-flip and on jvepsalainen-nv choosing exit semantics; re-chase `rechase-13352-exit-seman-440c` (10-03).
 
 - [slang PR #11709 — groupshared parameters by reference](11709-groupshared-param-by-reference.md) —
-  owned by slang-fixer, CHANGES_REQUESTED. HELD until #13406 (the #13339 Ref split) lands; then one rebase-and-rework push with the unpushed P1 fix. jhelferty-nv answered every #13406 question 10-09 02:33Z; the original owner ran out of budget, so the work resumed in a fresh session on `…-11709/13406-resume`. **r5 pushed 10-09 08:49Z** (`4e2603652e`); **round 3 pushed 10-10 05:52Z (`7e683a211b`)**: her five answers, tangent-vector's no-rewrite `const __ref` direction (she deferred to him) and the round-2 review items. The GCC `-flarge-source-files` fix split out as **#13570**, which jhelferty-nv merged 10-13; #13406 merged master (`7c962f27a7`) and is green, including SlangPy. It waits only on her re-review. Re-chase `rechase-13406-r7-c566` (10-17).
+  owned by slang-fixer, CHANGES_REQUESTED. HELD until #13406 (the #13339 Ref split) lands; then one rebase-and-rework push with the unpushed P1 fix. jhelferty-nv answered every #13406 question 10-09 02:33Z; the original owner ran out of budget, so the work resumed in a fresh session on `…-11709/13406-resume`. **r5 pushed 10-09 08:49Z** (`4e2603652e`); **round 3 pushed 10-10 05:52Z (`7e683a211b`)**: her five answers, tangent-vector's no-rewrite `const __ref` direction (she deferred to him) and the round-2 review items. The GCC `-flarge-source-files` fix split out as **#13570**, which jhelferty-nv merged 10-13; **10-14/15: jhelferty-nv took #13406 over**: self-assigned, retitled "Split the Ref passing mode by access", 13 commits of her own (head `671215f5de`), with the `__ref_writeonly` read check deferred behind `-experimental-feature`. The bot stands down. #11709 rebases onto her final spellings when #13406 merges. Re-chase `rechase-13406-r7-c566` (10-17).
   - [#13406 review-round history](11709-13406-ref-split-review-rounds.md) — tangent-vector's round, the `readonly` rounds and reversal, the effective-mode settlement, round 3 + the GCC/FIDDLE split to #13570 and its 10-13 landing, the 10-09 budget/phantom-session/misrouted-webhook incident.
 
 - [slang#13348 — inherited field through a property/subscript BoundStorage → E99997 ICE](13348-inherited-field-boundstorage-ice.md) —
@@ -182,7 +210,9 @@ decay and must be re-read, not remembered.
 
 - [slang-rhi#787 — CUDA↔Vulkan shared-texture missing sync](rhi-787-cuda-vulkan-shared-sync.md) —
   real missing `VK_QUEUE_FAMILY_EXTERNAL` ownership release, not a tolerance flake. PR #881 implements the maintainer-mandated
-  `handOffShared`/`takeOverShared` API; non-draft (jhelferty flipped it 09-28), head `775f522` GPU-CI-green. Parked on jhelferty's
-  R4/R5 answer (5907630393) + skallweitNV's review; CONFLICTING with main since #900 (fixer merging main 10-11); operator reminder question open. Re-chase `rhi-881-review-rechase-cf3b` (10-15).
+  `handOffShared`/`takeOverShared` API; non-draft (jhelferty flipped it 09-28), head `00fb748` (main merged 10-11) GPU-CI-green.
+  Parked on jhelferty's R4/R5 answer (5907630393) + skallweitNV's review; operator reminder question unanswered 3× → default
+  (3) wait. Re-chase `rhi-881-review-rechase-5a7c` (10-19).
   - [PR #881 review-round history (condensed)](rhi-787-review-history.md) — design convergence (#812 forks, the rejected
     `IExternalMemoryQueue` sketch), the review rounds, and the 09-24 → 10-11 ready/re-chase log.
+- [slang#13565 — SemanticChecking compile-time step since 10-07](13565-semcheck-compile-perf-step.md) — OPEN, maintainer-owned (jvepsalainen-nv); green nightlies = baseline absorption, re-measure from absolute daily medians

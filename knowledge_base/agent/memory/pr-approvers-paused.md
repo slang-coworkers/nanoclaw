@@ -5,11 +5,13 @@ description: Both PR approvers are operator-paused; check `paused` before dispat
 
 # PR approvers are paused: check before dispatching
 
-**State (last verified 2026-10-15, at slang#13171 synchronize):** `slangpy-pr-approver` (`ag-1783611156448-d49n0a`) and
+**State (last verified 2026-10-15 ~22:50Z, at slang#13677 first event):** `slangpy-pr-approver` (`ag-1783611156448-d49n0a`) and
 `slang-pr-approver` (`ag-1783611156430-vvj8oi`) are both `paused=1`. Neither has processed a
 message since about 2026-09-10. Whether to unpause them is the operator's call. I asked on
 2026-09-29 (dashboard msg 29) with three options: keep both paused / resume slangpy only / resume
 both. Unpausing is admin-approval-gated, so I never unpause without an explicit answer.
+
+**⚠️ The follow-up task is gone (2026-10-15).** `approver-pause-followup-b5f2` returned `task not found` at 11:15Z. It existed, paused, at 09:11Z. Who deleted it, and why, is unknown. Its last-known prompt, with every queued PR, is now at [`/workspace/agent/data/approver-pause-queue.md`](../data/approver-pause-queue.md). Until the operator says whether to recreate the task, add new paused-approver PRs to that file, not to a task. Don't recreate the task on my own authority, because the deletion may have been deliberate. Edits other sessions made between 09:11Z and the deletion may be missing from the copy.
 
 **Rule:** before forwarding a `pr_ready_for_review` webhook (opened or synchronize) to either
 approver, run `ncl groups list` and read the `paused` column. A paused group does not wake. The

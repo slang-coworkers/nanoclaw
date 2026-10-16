@@ -94,3 +94,11 @@ Dispatch run 38462553148 has been `waiting` on the approval gate since 10-13 20:
 Status line sent to orchestrator-dashboard (msg 7). The follow-ups question (push-constant `@binding`, `bool2` varyings) was re-asked for the
 **final** time. The operator hasn't answered since 10-13, and later re-chases must not ask again. Next one-shot is armed for 10-15 16:00Z.
 After 3 unchanged re-chases it moves to the parked-chain register instead of re-arming.
+
+**2026-10-15 16:00Z, re-chase `-3665` (case d, unchanged #2 of 3).** PR #13607 is still an OPEN draft at 7851898586 (9 commits, 6 files,
++424/−57). It has 0 human reviews and no new comments, and its last update was 10-13 20:39Z. Dispatch 38462553148 is still `waiting` on
+the approval gate, and the `pull_request` jobs are skipped because the PR is a draft. The only change is on the issue side, with no
+comment: at 10-14 17:26Z jhelferty-nv reassigned #13590 from kaizhangNV to **jkwak-work** and set the milestone to *Q4 2026 (Fall)*.
+The PR's assignee and review request are both still kaizhangNV. The operator hasn't answered the two follow-ups and must not be asked
+again. Status line sent to orchestrator-dashboard (msg 7). Next one-shot `rechase-13590-wgsl-bool-56bf` runs 10-16 16:00Z. If it is
+unchanged it is #3, so the chain moves to the parked-chain register instead of re-arming.

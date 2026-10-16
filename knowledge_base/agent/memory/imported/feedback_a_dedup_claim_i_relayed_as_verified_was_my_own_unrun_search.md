@@ -41,3 +41,9 @@ The triager hit the same shape from the other side and named it better than I di
 ✅**Check that discharges it:** after any retraction, ask *what else did I derive the same way, in the same message?* — and sweep those, including the ones nobody flagged.
 
 **Related:** [[feedback_published_negative_env_claims_need_rederivation]] (capability-negatives have no failure signature), and the store's standing rule that a tool which silently collapses output reports a true number about a set you never saw — same shape, applied to search rather than traversal.
+
+## Addendum 2026-10-15, slang#13662: a live instrument can still miss with a multi-term query
+My three dedup queries ("loadModuleFromIRBlob wasm", ...) returned `[]`. The instrument was alive (`wasm` alone
+returned rows), so this was a true no-match. But `loadModuleFromIRBlob` **alone** returns the duplicate #8744
+("Web/WASM: Enable loading IR binary modules"); the extra term ANDed it out. The triager found it.
+⇒ Search the issue's most distinctive identifier (API name, diagnostic code) **alone** before any combination.

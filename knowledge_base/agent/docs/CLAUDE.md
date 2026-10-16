@@ -289,7 +289,7 @@ Four invariants govern every message you send in a chain.
 | Fresh delegation to a peer | the peer | Requires explicit `thread_id="<task-key>"`. GitHub work → the canonical `gh-issue-<owner>/<repo>-<num>` thread, reused verbatim. |
 | Stuck — need a human decision | (none) | `mcp__nanoclaw__ask_user_question` (`timeout: 0` when no acceptable fallback). Not a peer — peers are for capability gaps, not your indecision. |
 
-**Report shape.** Five Markdown `- ` bullets (never Unicode `•`), bold field names: `**Status:** / **Link:** / **Verdict:** / **Next-action:** / **Blocker:**`. A PR you open carries the rolled-up 5-bullet in its description; call `report_pr_created({repo, pr_number})`. Edge examples, the GitHub state-change list, roll-up and file-sharing rules: `/base-nanoclaw` › Chain reporting mechanics.
+**Report shape.** The GitHub 5-bullet (Report formats). A PR you open carries the rolled-up 5-bullet in its description; call `report_pr_created({repo, pr_number})`. Edge examples, the GitHub state-change list, roll-up and file-sharing rules: `/base-nanoclaw` › Chain reporting mechanics.
 
 **Before ending a turn:** did you report up? is any peer ping unanswered? is any in-flight GitHub state left un-posted?
 
@@ -405,6 +405,8 @@ When you wake a peer to continue work _another_ chain handed off, routing keys o
 
 **Don't pin** for first-time delegation, generic status checks, or recipients with one active session (default routing already lands there).
 
+**One owner per GitHub issue/PR.** Never start a second session for an issue/PR your target already owns — not for budget, not for a stuck session. Send to the owner session; when it is out of budget, escalate to a human to raise its ceiling; a stuck session is reset by the operator, not replaced. The router refuses a second session. A send that would open a new session in a group that already has a live session on the same issue/PR (any thread or sub-thread of it, or the PR's `pr-mappings` owner) is refused, and you are told which session owns it — don't retry under another thread name.
+
 The pin does **not** bypass authorization — you still need a destination row to the recipient. It only chooses which session within an authorized destination.
 
 ## GitHub webhook routing
@@ -458,7 +460,7 @@ You don't write to this table — it's container-side only via `report_pr_create
 | Project | Types | Workflows |
 |---|---|---|
 | **nanoclaw** | `nanoclaw-reader`, `nanoclaw-reviewer`, `nanoclaw-writer` | `nanoclaw-implement`, `nanoclaw-plan`, `nanoclaw-pr-review` |
-| **slang** | `slang-discord`, `slang-fixer`, `slang-maintainer`, `slang-pr-approver`, `slang-reader`, `slang-reviewer`, `slang-triage`, `slang-writer` | `slang-discord-answer`, `slang-fix-issue`, `slang-implement`, `slang-maintain`, `slang-plan`, `slang-pr-approve`, `slang-pr-review`, `slang-triage-issue` |
+| **slang** | `slang-ci-babysitter`, `slang-discord`, `slang-fixer`, `slang-maintainer`, `slang-pr-approver`, `slang-reader`, `slang-reviewer`, `slang-triage`, `slang-writer` | `slang-discord-answer`, `slang-fix-issue`, `slang-implement`, `slang-maintain`, `slang-plan`, `slang-pr-approve`, `slang-pr-review`, `slang-triage-issue` |
 | **slangpy** | `slangpy-fixer`, `slangpy-pr-approver`, `slangpy-reader`, `slangpy-reviewer`, `slangpy-triage`, `slangpy-writer` | `slangpy-implement`, `slangpy-plan`, `slangpy-pr-approve`, `slangpy-pr-review`, `slangpy-triage-issue` |
 
 ## Resident Skill Instructions

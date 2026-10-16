@@ -52,4 +52,12 @@ pinned nudge acked in under a minute.
    (behind 66, its only CI run yielded at the priority gate 2 days earlier and was never retried) and #12820 (approved
    09-03, dirty, 281 behind) — both invisible to scan for weeks.
 
+8. **Approved bot PR evicted from the merge queue** (tick 284, #13171). After the shape-7 fix the maintainer
+   queued it, and the merge-group CI lost 3 Windows debug GPU runners ("runner lost communication", infra). The
+   queue removed it, which also drops auto-merge. The PR is now `BLOCKED` with green PR CI and no `auto_merge`,
+   so the shape-7 sweep no longer sees it either. The babysitter reports evictions to the dashboard, but the bot
+   can't re-enqueue, so the PR waits silently for a human. Detector: for each open approved bot PR, read
+   `issues/<n>/timeline` for a trailing `removed_from_merge_queue` with no later `added_to_merge_queue`. This
+   needs no nudge to a coworker; it goes on the board as an operator call (requeue, or ask the approver).
+
 Typical outcome: every pinned nudge above acked within 1–3 min.

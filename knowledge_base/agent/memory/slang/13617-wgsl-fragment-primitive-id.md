@@ -75,3 +75,8 @@ Whole-module shared-global-`in` var<private> note: noted only, not filed.
 making it an error to use both forms, warning on global `SV_` varyings, and diagnosing global varyings outside GLSL mode.
 The bot does nothing on #13622. **For #13619:** its legalizer stage check for global `in` (`checkSystemValueUse`) is a backend backstop that
 this front-end direction would likely supersede. I flagged it to the operator only. No action unless a maintainer raises it on #13619.
+**2026-10-15 10:31Z, re-chase (case d).** Checked live: #13619 is still an open draft @ b5340af7ab, 0 reviews, and no human comments on
+#13617 or #13619 since 10-14 10:18Z. One human event: **jkwak-work milestoned #13617 "Q4 2026 (Fall)"** at 10-14 17:08Z (no comment).
+CI dispatch 38546790314 is still `waiting` at the priority gate. Both operator decisions (`gh pr ready`, SV_WaveLaneIndex file-or-leave)
+were unanswered on the dashboard, so I re-asked **once** (dashboard msg 5, canonical thread). Next ask: don't re-ask again, list it as pending.
+Re-armed one-shot `rechase-13617-primitive-3ec6` (2026-10-17T10:30Z). No GitHub posts.

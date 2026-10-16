@@ -58,3 +58,12 @@ Two scheduled tasks post to #slang-committers (`1352357976878481468`). Both belo
 
 The audit went to the operator only. Nothing was posted to GitHub and nothing was dispatched, per the batch hold above.
 
+
+### 10-15 15:37Z: jkwak-work review comment on #13593 (cmt 6195975283), held
+`github.pr_mention` webhook, but the body @-mentions nobody, the bot included. It is review feedback to szihs: *"comment"*
+is too vague (GitHub, Slack, Discord, source code comment); be specific. Live body matched the payload (`updated_at` =
+`created_at`). It is still the only human comment in the batch (#13591–#13602, #13585 has no reviews); #13585 is still a draft.
+Where the PR's wording actually exposes the ambiguity: `docs/design/coding-conventions.md` sits in its "Comments and
+Documentation" section, so there "comment" is source code. But the `AGENTS.md` line ("Comments state contracts...") and the
+skill's "every touched name and comment" don't say so, and the batch also sets rules for PR descriptions, reviews and
+Discord. **Held: no dispatch, no bot post.** szihs owns the issue and the PR, so the reply is theirs. These facts went to the operator only.

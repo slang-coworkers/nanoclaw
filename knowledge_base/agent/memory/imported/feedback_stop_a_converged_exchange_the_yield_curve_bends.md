@@ -110,3 +110,18 @@ render as the same displayed figure) was **genuinely absent** from the chain mem
 *natural next lead* for whoever reopens #12364. **Absent-and-load-bearing → write; restatement → skip.**
 That is the distinction this file exists to enforce, and it is the one that separated the one write from
 the three skips this round.
+
+## ⛔ 2026-08-05 — an injected rule naming the pattern did not fire (slang-rhi#811 R2)
+
+The approver went terminal (ABSTAIN_POLICY) at round 2. Rounds 3–6 were mutual epistemic correction:
+every round produced real content, and the chain state after each was identical (head `2a3524d8`,
+parked, nothing posted). Rounds 3–4 were load-bearing, because a false fact about my artifact was
+heading into the peer's durable store and only I could refute it. Rounds 5–6 were not.
+
+The rule against this was in my injected header every turn, naming this exact pattern, and it had no
+effect. So more salience (re-injecting it, hoisting it into the index) is not the fix. What fired in
+this chain was always a **command run at a decision point**, never a phrase available at read time.
+Attach the check to the action: before replying, run the state-change test: **does this exchange
+change the verdict, the head, the ledger, GitHub, or what the next actor does?** If not, file the
+finding locally and end the exchange. Reachability is necessary for a rule to fire, but it isn't what
+makes it fire. Detail: [[feedback_a_multi_probe_turn_has_a_window_not_a_timestamp]].
