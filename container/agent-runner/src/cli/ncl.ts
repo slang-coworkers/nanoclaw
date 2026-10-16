@@ -13,6 +13,7 @@ import { getAgentMailbox, readMailboxContext } from '../mailbox/index.js';
 import type { AgentMailbox } from '../mailbox/types.js';
 
 import { readStdinJsonArgs, StdinJsonInputError } from './stdin-json.js';
+import { NCL_RESPONSE_TIMEOUT_MS } from './timeout.js';
 
 // ---------------------------------------------------------------------------
 // Frame types (mirrors src/cli/frame.ts on the host)
@@ -255,10 +256,10 @@ async function main(): Promise<void> {
   try {
     const requestId = generateId();
     await writeRequest(mailbox, { id: requestId, command, args: requestArgs });
-    const resp = await pollResponse(mailbox, requestId, 30_000);
+    const resp = await pollResponse(mailbox, requestId, NCL_RESPONSE_TIMEOUT_MS);
 
     if (!resp) {
-      process.stderr.write('ncl: command timed out after 30s\n');
+      process.stderr.write(`ncl: command timed out after ${NCL_RESPONSE_TIMEOUT_MS / 1000}s\n`);
       process.exitCode = 2;
       return;
     }

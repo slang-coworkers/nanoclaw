@@ -16,6 +16,7 @@ import { nextEvenSeq } from './session-db.js';
 import { createTaskInboundRecord } from '../model.js';
 import type { TaskWrite } from '../model.js';
 import type { FailureClass } from '../model.js';
+import type { HeldTaskRow, HeldTaskSeries } from '../types.js';
 
 /**
  * Insert one pending task occurrence. `seriesId` is the series join key — equal
@@ -220,4 +221,83 @@ export function insertRecurrence(
 
 export function clearRecurrence(db: Database.Database, messageId: string): void {
   db.prepare('UPDATE messages_in SET recurrence = NULL WHERE id = ?').run(messageId);
+}
+
+/**
+ * Freeze a series' live rows so they can be copied to another mailbox without
+ * firing in between. One transaction: refuse when the series' recurrence is
+ * carried by a non-live row (an occurrence that is running, or completed/failed
+ * and not yet re-armed by the sweep — moving now would leave that row to re-arm
+ * the series here as well); otherwise capture every pending/paused row with the
+ * status it had and pause the pending ones. A paused row is never claimed, so
+ * nothing in the series starts until `releaseHeldTaskRows` or `cancelTask`.
+ */
+export function holdTaskSeries(db: Database.Database, seriesId: string): HeldTaskSeries {
+  return db.transaction((): HeldTaskSeries => {
+    const carrier = db
+      .prepare(
+        `SELECT 1 FROM messages_in
+          WHERE (id = ? OR series_id = ?) AND kind = 'task'
+            AND recurrence IS NOT NULL AND status NOT IN ('pending', 'paused')
+          LIMIT 1`,
+      )
+      .get(seriesId, seriesId);
+    if (carrier) return { inFlight: true };
+    const rows = db
+      .prepare(
+        `SELECT id, series_id, status, process_after, recurrence, content FROM messages_in
+          WHERE (id = ? OR series_id = ?) AND kind = 'task' AND status IN ('pending', 'paused')
+          ORDER BY seq ASC`,
+      )
+      .all(seriesId, seriesId) as Array<{
+      id: string;
+      series_id: string | null;
+      status: 'pending' | 'paused';
+      process_after: string | null;
+      recurrence: string | null;
+      content: string;
+    }>;
+    pauseTask(db, seriesId);
+    return {
+      inFlight: false,
+      rows: rows.map((r) => ({
+        id: r.id,
+        seriesId: r.series_id ?? r.id,
+        status: r.status,
+        processAfter: r.process_after,
+        recurrence: r.recurrence,
+        content: r.content,
+      })),
+    };
+  })();
+}
+
+/**
+ * Copy held rows into this mailbox in one transaction, skipping any row id already
+ * present (a re-run after a crash). All-or-nothing, so a failed copy leaves no
+ * partial target state and releasing the source hold cannot double-fire a row.
+ */
+export function copyHeldTaskRows(
+  db: Database.Database,
+  rows: readonly HeldTaskRow[],
+  nextSequence: () => number = () => nextEvenSeq(db),
+): number {
+  const exists = db.prepare('SELECT 1 FROM messages_in WHERE id = ?');
+  return db.transaction(() => {
+    let copied = 0;
+    for (const row of rows) {
+      if (exists.get(row.id)) continue;
+      insertTaskRow(db, row, nextSequence());
+      copied++;
+    }
+    return copied;
+  })();
+}
+
+/** Undo a hold: put the given rows (paused by `holdTaskSeries`) back to pending. */
+export function releaseHeldTaskRows(db: Database.Database, ids: readonly string[]): number {
+  const stmt = db.prepare(
+    "UPDATE messages_in SET status = 'pending' WHERE id = ? AND kind = 'task' AND status = 'paused'",
+  );
+  return db.transaction(() => ids.reduce((n, id) => n + stmt.run(id).changes, 0))();
 }
