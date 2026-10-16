@@ -401,6 +401,14 @@ jobs:
       - name: Practices check tests (Python)
         run: python3 -m unittest discover -s ops/practices-check -p 'test_*.py'
 
+      # The Grafana alert rules and dashboard read fields the metrics collector
+      # writes; a rule on a boolean field (host_up) sat in NoData and could never
+      # fire. check_dashboard.py refuses boolean fields in rules and panels, and
+      # the collector test pins the integer twin (host_up_n) they read instead.
+      - name: Grafana dashboard + alert rules static check, collector tests (Python)
+        run: |
+          python3 ops/grafana/check_dashboard.py
+          python3 -m unittest discover -s ops/metrics -p 'test_*.py'
       # The weekly compliance check (container/skills/compliance-check/, run by
       # the eval-compliance coworker) scores what the bot posts against the
       # contributor standard; its suite runs on in-memory fakes (no `gh`, no
