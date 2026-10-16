@@ -4206,6 +4206,7 @@
 - [cross chain relay to a peer needs pin in reply to ](ag-1776713211742-1w6l4e/1792086034901-cross-chain-relay-to-a-peer-needs-pin-in-reply-to-.md) — _ag-1776713211742-1w6l4e_
 - [agent containers have no gpu since 2026 09 28 host](ag-1776713211742-1w6l4e/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md) — _ag-1776713211742-1w6l4e_
 - [an a b corpus diff only covers shapes the corpus c](ag-1776713211742-1w6l4e/1792105846081-an-a-b-corpus-diff-only-covers-shapes-the-corpus-c.md) — _ag-1776713211742-1w6l4e_
+- [correction gpu passthrough restored 2026 10 16 con](ag-1776713211742-1w6l4e/1792142517350-correction-gpu-passthrough-restored-2026-10-16-con.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4265,6 +4266,10 @@
 - [low slang merge count can be merge queue infra not](ag-1776713258088-r8pp2t/1791534530291-low-slang-merge-count-can-be-merge-queue-infra-not.md) — _ag-1776713258088-r8pp2t_
 - [slang ci analytics merge queue counter misreports ](ag-1776713258088-r8pp2t/1791534536175-slang-ci-analytics-merge-queue-counter-misreports-.md) — _ag-1776713258088-r8pp2t_
 - [multi day maintainer catch up sweeps cap subagent ](ag-1776713258088-r8pp2t/1792062546507-multi-day-maintainer-catch-up-sweeps-cap-subagent-.md) — _ag-1776713258088-r8pp2t_
+- [merge queue eviction reason use graphql removedfro](ag-1776713258088-r8pp2t/1792139409374-merge-queue-eviction-reason-use-graphql-removedfro.md) — _ag-1776713258088-r8pp2t_
+- [onecli github gh cli 401s while raw rest graphql w](ag-1776713258088-r8pp2t/1792139649364-onecli-github-gh-cli-401s-while-raw-rest-graphql-w.md) — _ag-1776713258088-r8pp2t_
+- [github read fallback when gh slang mcp auth fails ](ag-1776713258088-r8pp2t/1792139710335-github-read-fallback-when-gh-slang-mcp-auth-fails-.md) — _ag-1776713258088-r8pp2t_
+- [gap catch up runs must state check every watch lis](ag-1776713258088-r8pp2t/1792139950368-gap-catch-up-runs-must-state-check-every-watch-lis.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -4436,6 +4441,7 @@
 - [nightly mdl perf test detect real steps hidden by ](ag-1776919222241-zghq0h/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md) — _ag-1776919222241-zghq0h_
 - [weekly cmake options yml failures can go unexamine](ag-1776919222241-zghq0h/1791778074299-weekly-cmake-options-yml-failures-can-go-unexamine.md) — _ag-1776919222241-zghq0h_
 - [subagents spawned by a coworker inherit its claude](ag-1776919222241-zghq0h/1791993826760-subagents-spawned-by-a-coworker-inherit-its-claude.md) — _ag-1776919222241-zghq0h_
+- [mdl perf nightly size a front end step with per ti](ag-1776919222241-zghq0h/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md) — _ag-1776919222241-zghq0h_
 - [never judge github api quota from rate limit the g](ag-1777389337838-f54d9l/1786381107939-never-judge-github-api-quota-from-rate-limit-the-g.md) — _ag-1777389337838-f54d9l_
 - [a cited error line number that doesn t match the f](ag-1777389337838-f54d9l/1786381124227-a-cited-error-line-number-that-doesn-t-match-the-f.md) — _ag-1777389337838-f54d9l_
 - [fork pr ci rows commits sha pulls returns 0 and br](ag-1777389337838-f54d9l/1786382020324-fork-pr-ci-rows-commits-sha-pulls-returns-0-and-br.md) — _ag-1777389337838-f54d9l_
@@ -5026,6 +5032,22 @@
 - [12874 minimal shape 12835 on demand resolution doe](ag-1780667166418-apezq5/1792093093563-12874-minimal-shape-12835-on-demand-resolution-doe.md) — _ag-1780667166418-apezq5_
 - [experimentalfeature gates syntax too not just expe](ag-1780667166418-apezq5/1792094430929-experimentalfeature-gates-syntax-too-not-just-expe.md) — _ag-1780667166418-apezq5_
 - [float int fsign x fsign x 0 0 exactly spirv opt fo](ag-1780667166418-apezq5/1792095513009-float-int-fsign-x-fsign-x-0-0-exactly-spirv-opt-fo.md) — _ag-1780667166418-apezq5_
+- [slang function params are visible to sibling defau](ag-1780667166418-apezq5/1792134928808-slang-function-params-are-visible-to-sibling-defau.md) — _ag-1780667166418-apezq5_
+- [ptrlit nullptr ice on hlsl wgsl userpointer gate m](ag-1780667166418-apezq5/1792135032187-ptrlit-nullptr-ice-on-hlsl-wgsl-userpointer-gate-m.md) — _ag-1780667166418-apezq5_
+- [slang ir phi with all undefined incoming args is n](ag-1780667166418-apezq5/1792135170279-slang-ir-phi-with-all-undefined-incoming-args-is-n.md) — _ag-1780667166418-apezq5_
+- [triager never report labels or handoff as done bef](ag-1780667166418-apezq5/1792135473963-triager-never-report-labels-or-handoff-as-done-bef.md) — _ag-1780667166418-apezq5_
+- [fresh codex sessions in workspace agent run the ag](ag-1780667166418-apezq5/1792136592884-fresh-codex-sessions-in-workspace-agent-run-the-ag.md) — _ag-1780667166418-apezq5_
+- [metal target ignores fp mode entirely msl safe mat](ag-1780667166418-apezq5/1792136773455-metal-target-ignores-fp-mode-entirely-msl-safe-mat.md) — _ag-1780667166418-apezq5_
+- [spirv val v2026 4 rejects a constant force omm 2 s](ag-1780667166418-apezq5/1792136825210-spirv-val-v2026-4-rejects-a-constant-force-omm-2-s.md) — _ag-1780667166418-apezq5_
+- [12691 adds metal intersector only for the structur](ag-1780667166418-apezq5/1792136833198-12691-adds-metal-intersector-only-for-the-structur.md) — _ag-1780667166418-apezq5_
+- [codex critique can return a recall summary or an e](ag-1780667166418-apezq5/1792137757087-codex-critique-can-return-a-recall-summary-or-an-e.md) — _ag-1780667166418-apezq5_
+- [dawn node webgpu on the l40s vulkan backend works ](ag-1780667166418-apezq5/1792137779204-dawn-node-webgpu-on-the-l40s-vulkan-backend-works-.md) — _ag-1780667166418-apezq5_
+- [dawn on nvidia vulkan hides shader f16 unless togg](ag-1780667166418-apezq5/1792137941807-dawn-on-nvidia-vulkan-hides-shader-f16-unless-togg.md) — _ag-1780667166418-apezq5_
+- [metal intersection query curves need assume geomet](ag-1780667166418-apezq5/1792138014602-metal-intersection-query-curves-need-assume-geomet.md) — _ag-1780667166418-apezq5_
+- [probe new spir v glsl cuda intrinsic requests with](ag-1780667166418-apezq5/1792138323224-probe-new-spir-v-glsl-cuda-intrinsic-requests-with.md) — _ag-1780667166418-apezq5_
+- [four concurrent release slangc worktree builds tak](ag-1780667166418-apezq5/1792138931353-four-concurrent-release-slangc-worktree-builds-tak.md) — _ag-1780667166418-apezq5_
+- [groupshared write read races are deterministic on ](ag-1780667166418-apezq5/1792138991574-groupshared-write-read-races-are-deterministic-on-.md) — _ag-1780667166418-apezq5_
+- [nvidia vulkan driver segfaults on tint spir v for ](ag-1780667166418-apezq5/1792141095836-nvidia-vulkan-driver-segfaults-on-tint-spir-v-for-.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5864,6 +5886,18 @@
 - [diagnostic test caret annotations a separate check](ag-1780667166439-vmjrwe/1792102157772-diagnostic-test-caret-annotations-a-separate-check.md) — _ag-1780667166439-vmjrwe_
 - [emitter rules keyed on an intrinsic string prefix ](ag-1780667166439-vmjrwe/1792104381131-emitter-rules-keyed-on-an-intrinsic-string-prefix-.md) — _ag-1780667166439-vmjrwe_
 - [slang extras formatting sh exits 0 and silently sk](ag-1780667166439-vmjrwe/1792108914830-slang-extras-formatting-sh-exits-0-and-silently-sk.md) — _ag-1780667166439-vmjrwe_
+- [slang test a b in one worktree shared tests slang ](ag-1780667166439-vmjrwe/1792134757564-slang-test-a-b-in-one-worktree-shared-tests-slang-.md) — _ag-1780667166439-vmjrwe_
+- [slang test wgpu rows are ignored on gpu hosts beca](ag-1780667166439-vmjrwe/1792137484938-slang-test-wgpu-rows-are-ignored-on-gpu-hosts-beca.md) — _ag-1780667166439-vmjrwe_
+- [fresh slang worktree needs submodule init before c](ag-1780667166439-vmjrwe/1792139289864-fresh-slang-worktree-needs-submodule-init-before-c.md) — _ag-1780667166439-vmjrwe_
+- [slang cuda device constant tables must have plain ](ag-1780667166439-vmjrwe/1792139832211-slang-cuda-device-constant-tables-must-have-plain-.md) — _ag-1780667166439-vmjrwe_
+- [run gpu slang test jobs serially concurrent vk cud](ag-1780667166439-vmjrwe/1792140793972-run-gpu-slang-test-jobs-serially-concurrent-vk-cud.md) — _ag-1780667166439-vmjrwe_
+- [slang re run also fails on master failures on the ](ag-1780667166439-vmjrwe/1792140798870-slang-re-run-also-fails-on-master-failures-on-the-.md) — _ag-1780667166439-vmjrwe_
+- [orphaned slang test test servers hog gpu vram and ](ag-1780667166439-vmjrwe/1792140853317-orphaned-slang-test-test-servers-hog-gpu-vram-and-.md) — _ag-1780667166439-vmjrwe_
+- [running emitted wgsl on the real gpu node webgpu d](ag-1780667166439-vmjrwe/1792141095957-running-emitted-wgsl-on-the-real-gpu-node-webgpu-d.md) — _ag-1780667166439-vmjrwe_
+- [correction wgpu f16 tests on the l40s fleet vk cud](ag-1780667166439-vmjrwe/1792141636725-correction-wgpu-f16-tests-on-the-l40s-fleet-vk-cud.md) — _ag-1780667166439-vmjrwe_
+- [correction wgsl f16 on nvidia l40s slang test s da](ag-1780667166439-vmjrwe/1792142246327-correction-wgsl-f16-on-nvidia-l40s-slang-test-s-da.md) — _ag-1780667166439-vmjrwe_
+- [critique gate refuses resolution on non code chain](ag-1780667166439-vmjrwe/1792142514567-critique-gate-refuses-resolution-on-non-code-chain.md) — _ag-1780667166439-vmjrwe_
+- [wgsl nan inf build from let bound bit patterns not](ag-1780667166439-vmjrwe/1792146020374-wgsl-nan-inf-build-from-let-bound-bit-patterns-not.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6293,6 +6327,14 @@
 - [don t recommend asserting arity after an intrinsic](ag-1780667168475-a9tac8/1792102706863-don-t-recommend-asserting-arity-after-an-intrinsic.md) — _ag-1780667168475-a9tac8_
 - [chain routing gate send review verdict via send me](ag-1780667168475-a9tac8/1792103692562-chain-routing-gate-send-review-verdict-via-send-me.md) — _ag-1780667168475-a9tac8_
 - [bit cast out of descriptorhandle on non bindless t](ag-1780667168475-a9tac8/1792105624149-bit-cast-out-of-descriptorhandle-on-non-bindless-t.md) — _ag-1780667168475-a9tac8_
+- [recover a dead reviewer c run from its wt clarity ](ag-1780667168475-a9tac8/1792132307982-recover-a-dead-reviewer-c-run-from-its-wt-clarity-.md) — _ag-1780667168475-a9tac8_
+- [container restarts kill detach review runs github ](ag-1780667168475-a9tac8/1792136253875-container-restarts-kill-detach-review-runs-github-.md) — _ag-1780667168475-a9tac8_
+- [slang test wgpu rows read ignored because the buil](ag-1780667168475-a9tac8/1792137700764-slang-test-wgpu-rows-read-ignored-because-the-buil.md) — _ag-1780667168475-a9tac8_
+- [dawn webgpu never exposes shader f16 on nvidia vul](ag-1780667168475-a9tac8/1792139532226-dawn-webgpu-never-exposes-shader-f16-on-nvidia-vul.md) — _ag-1780667168475-a9tac8_
+- [dawn node on nvidia l40s vulkan hides shader f16 f](ag-1780667168475-a9tac8/1792140675641-dawn-node-on-nvidia-l40s-vulkan-hides-shader-f16-f.md) — _ag-1780667168475-a9tac8_
+- [don t run two gpu slang test suites concurrently o](ag-1780667168475-a9tac8/1792140794509-don-t-run-two-gpu-slang-test-suites-concurrently-o.md) — _ag-1780667168475-a9tac8_
+- [dawn 138 on nvidia vulkan l40s segfaults on array ](ag-1780667168475-a9tac8/1792143127973-dawn-138-on-nvidia-vulkan-l40s-segfaults-on-array-.md) — _ag-1780667168475-a9tac8_
+- [wgsl nan inf bitcast of a u32 must go through a le](ag-1780667168475-a9tac8/1792143602803-wgsl-nan-inf-bitcast-of-a-u32-must-go-through-a-le.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -6363,6 +6405,8 @@
 - [slangpy layout triage wgsl ignores forced scalar l](ag-1780667169498-sqxdef/1792031278588-slangpy-layout-triage-wgsl-ignores-forced-scalar-l.md) — _ag-1780667169498-sqxdef_
 - [slangpy fast fresh main build repro in the triage ](ag-1780667169498-sqxdef/1792064521058-slangpy-fast-fresh-main-build-repro-in-the-triage-.md) — _ag-1780667169498-sqxdef_
 - [slangpy detecting static struct members type field](ag-1780667169498-sqxdef/1792065039736-slangpy-detecting-static-struct-members-type-field.md) — _ag-1780667169498-sqxdef_
+- [slangpy triage re probe the gpu every session a no](ag-1780667169498-sqxdef/1792136253471-slangpy-triage-re-probe-the-gpu-every-session-a-no.md) — _ag-1780667169498-sqxdef_
+- [slangpy wheels are locked to one slang version at ](ag-1780667169498-sqxdef/1792145562307-slangpy-wheels-are-locked-to-one-slang-version-at-.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_
@@ -6417,6 +6461,7 @@
 - [downstream slangpy failures can hide later regress](ag-1780667172530-ht5rv2/1791941484429-downstream-slangpy-failures-can-hide-later-regress.md) — _ag-1780667172530-ht5rv2_
 - [slangpy test type resolution texture on device typ](ag-1780667172530-ht5rv2/1791958376051-slangpy-test-type-resolution-texture-on-device-typ.md) — _ag-1780667172530-ht5rv2_
 - [slangpy to ndarray struct innermost exposed as uin](ag-1780667172530-ht5rv2/1792033380879-slangpy-to-ndarray-struct-innermost-exposed-as-uin.md) — _ag-1780667172530-ht5rv2_
+- [slangpy local builds all report the same version s](ag-1780667172530-ht5rv2/1792136974641-slangpy-local-builds-all-report-the-same-version-s.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
 - [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [reviewing slangpy slang downstream retypes for a b](ag-1780667174559-cemrtg/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — _ag-1780667174559-cemrtg_
@@ -6436,6 +6481,8 @@
 - [python h before std headers fix without bumping na](ag-1780667174559-cemrtg/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md) — _ag-1780667174559-cemrtg_
 - [verify a slangpy companion pr against an unmerged ](ag-1780667174559-cemrtg/1791935481120-verify-a-slangpy-companion-pr-against-an-unmerged-.md) — _ag-1780667174559-cemrtg_
 - [read per job github actions logs while the run is ](ag-1780667174559-cemrtg/1792034153195-read-per-job-github-actions-logs-while-the-run-is-.md) — _ag-1780667174559-cemrtg_
+- [building slangpy in a non root coworker container ](ag-1780667174559-cemrtg/1792142268329-building-slangpy-in-a-non-root-coworker-container-.md) — _ag-1780667174559-cemrtg_
+- [slangpy test passing on coworker l40s can fail vul](ag-1780667174559-cemrtg/1792142945880-slangpy-test-passing-on-coworker-l40s-can-fail-vul.md) — _ag-1780667174559-cemrtg_
 - [approver challenger miss is it reachable is a ques](ag-1783611156430-vvj8oi/1786367763472-approver-challenger-miss-is-it-reachable-is-a-ques.md) — _ag-1783611156430-vvj8oi_
 - [approver infra abstain record decision returns dec](ag-1783611156430-vvj8oi/1786367859537-approver-infra-abstain-record-decision-returns-dec.md) — _ag-1783611156430-vvj8oi_
 - [approver challenger miss no in tree caller does x ](ag-1783611156430-vvj8oi/1786368454060-approver-challenger-miss-no-in-tree-caller-does-x-.md) — _ag-1783611156430-vvj8oi_
@@ -7319,6 +7366,8 @@
 - [approver clause gap a synchronize re decide can ch](ag-1783611156448-d49n0a/1789119022538-approver-clause-gap-a-synchronize-re-decide-can-ch.md) — _ag-1783611156448-d49n0a_
 - [approver human disagreement calibration bot compan](ag-1783611156448-d49n0a/1789119636798-approver-human-disagreement-calibration-bot-compan.md) — _ag-1783611156448-d49n0a_
 - [okf synthesis gate scanner failed on first run too](ag-1784817548863-w25tbu/1790830957687-okf-synthesis-gate-scanner-failed-on-first-run-too.md) — _ag-1784817548863-w25tbu_
+- [compliance check discord export from json py canno](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792145488222-compliance-check-discord-export-from-json-py-canno.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
+- [compliance check py github searches return http 40](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792145809721-compliance-check-py-github-searches-return-http-40.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_
@@ -7340,3 +7389,4 @@
 - [correction dev opened and core team tracking issues are in scope](operator/1788958700000-correction-dev-opened-and-core-team-tracking-issues-are-in-scope.md) — _operator_
 - [one owner per work item never start a second session](operator/1791903600000-one-owner-per-work-item-never-start-a-second-session.md) — _operator_
 - [correction devin review renders for anonymous view](operator/1791964273446-correction-devin-review-renders-for-anonymous-view.md) — _operator_
+- [coworker containers have an nvidia l40s gpu cuda vulkan](operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md) — _operator_

@@ -7,6 +7,10 @@ source: learnings/1786279519823-approver-calibration-consequence-severity-scales
 
 # [approver/calibration] Consequence severity scales urgency, not epistemic class — I drafted BLOCK on an unmeasured trigger and wrote the refutation into my own rationale
 
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
+# [approver/calibration] Consequence severity scales urgency, not epistemic class — I drafted BLOCK on an unmeasured trigger and wrote the refutation into my own rationale
+
 ## Symptom
 
 slang-rhi#817 R2 (`4a9c1adea5d3`). I found a provably wrong predicate: a new

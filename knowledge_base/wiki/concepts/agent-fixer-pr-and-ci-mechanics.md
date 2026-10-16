@@ -3,7 +3,7 @@ title: "Fixer PR Creation, Fork & CI Mechanics"
 type: concept
 group: agent-fixer-codex-skills
 tags: [fixer, pr-hygiene, commit-attribution, report-up, priority-gate, push-rights, drafts-only, fork-permissions, ci, tools-gfx, slang-rhi, devin, critique-gate, slang]
-source_count: 25
+source_count: 24
 ---
 
 # Fixer PR Creation, Fork & CI Mechanics
@@ -75,11 +75,10 @@ The `gate-critique-on-deliver.sh` hook keys off delivery markers (`[Fix Report]`
 
 - The "fixers must not self-flip PRs" rule ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)) was corrected by ([Fixers must not self-flip PRs to ready — enforce drafts-only](../learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)): the drafts-only rule stands, but the bot never self-flipped in the confirming instance; a maintainer did — VERIFY THE ACTOR (timeline event, not current state) before directing a revert.
 
-**Source learnings (25):**
+**Source learnings (24):**
 - [slang-fixer can push fix/ branches direct to origin](../learnings/1780685454567-slang-fixer-can-push-fix-branches-direct-to-origin.md)
 - [slang-fixer PR push: szihs fork master is stale/divergent](../learnings/1780357449295-slang-fixer-pr-push-szihs-fork-master-is-stale-div.md)
 - [Fixer PRs must use a Closes/Fixes #N closing keyword](../learnings/1780562553886-fixer-prs-must-use-a-closes-fixes-n-closing-keywor.md)
-- [Fixers must not self-flip PRs to ready (original)](../learnings/1782464090006-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)
 - [Fixers must not self-flip PRs to ready (corrected: verify actor)](../learnings/1782464328257-fixers-must-not-self-flip-prs-to-ready-enforce-dra.md)
 - [tools/gfx/ is legacy code paralleling slang-rhi](../learnings/1778749638138-slang-fixer-tools-gfx-is-legacy-code-paralleling-s.md)
 - [Failing check ≠ real blocker on fork-based PRs](../learnings/1780903795100-failing-check-real-blocker-on-fork-based-prs-triag.md)

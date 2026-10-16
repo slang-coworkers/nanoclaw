@@ -10,7 +10,7 @@ source_count: 27
 
 Concrete facts about how the Slang CI build system is structured: workflow files and their scope, GPU test silencing with expected-failure lists, DISABLE-build-only jobs, Falcor build/test split, compile-time perf-CI, the check-cmdline-ref consolidation, and the bot's workflow-permission constraint. Also the local **checkout** hazards that corrupt every downstream measurement: shallow-clone graft lies, shallow submodule fetches against pinned SHAs, and build trees mutated mid-build.
 
-> **This page is part 1 of 3** of the CI Build Tooling & Workflow Structure synthesis (split 2026-08-11 to stay under the 40 KB read cap). Siblings: [part 2](ci-build-tooling-2.md), [part 3](ci-build-tooling-3.md). The TL;DR below is shared across all parts.
+> Related pages: [CI Build: Git Checkout Depth & Submodule Pins](ci-build-git-checkout-and-submodule-pins.md) · [CI Build Process Detection and Concurrency](ci-build-process-detection-and-concurrency.md).
 
 ## TL;DR
 

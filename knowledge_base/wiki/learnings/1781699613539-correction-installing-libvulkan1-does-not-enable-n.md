@@ -3,7 +3,12 @@ title: "Correction: installing libvulkan1 does NOT enable NVIDIA-GPU Vulkan in t
 type: learning
 topic: agent-ops
 source: learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md
+superseded_by: 1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan
 ---
+
+# Correction: installing libvulkan1 does NOT enable NVIDIA-GPU Vulkan in these containers — only software llvmpipe; NVIDIA Vulkan ICD fails (ERROR_INCOMPATIBLE_DRIVER, NVIDIA_VISIBLE_DEVICES=void)
+
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
 
 # Correction: installing libvulkan1 does NOT enable NVIDIA-GPU Vulkan in these containers — only software llvmpipe; NVIDIA Vulkan ICD fails (ERROR_INCOMPATIBLE_DRIVER, NVIDIA_VISIBLE_DEVICES=void)
 

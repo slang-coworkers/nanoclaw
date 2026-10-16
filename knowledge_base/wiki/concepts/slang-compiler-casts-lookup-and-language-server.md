@@ -3,7 +3,7 @@ title: Slang Compiler Casts, Lookup & Language Server — Operator Resolution, D
 type: concept
 group: slang-grab-bag
 tags: [slang, name-resolution, operators, lookup, optional, language-server, module-serialization, diagnostics]
-source_count: 10
+source_count: 13
 ---
 
 ## TL;DR
@@ -29,6 +29,8 @@ because even maintainers get surprised.
 - **`Decl::hiddenFromLookup` only affects LOCAL vars** — it's `&&`-gated on `isLocalVar`, so setting
   it on a container member (struct/type/func) has no effect. Read the *honoring* site, not just the
   field definition, before trusting "set this flag."
+- **Function parameters are visible to sibling default arguments** (one `FuncDecl` scope; `_isUncheckedLocalVar` never filters a `ParamDecl`), and any call using such a default ICEs in lowering. DeepWiki says otherwise and is wrong.
+- **`-experimental-feature` gates `__func_extension` and `__apply` syntax as well as `[ExperimentalModule]` imports**, so enabling it in slangd changes the whole session's syntax handling.
 - **A `[__AttributeUsage]` struct produces a synthesized mirror `AttributeDecl`**, so completion
   returns it twice (Struct(22) + Keyword(14)); dedup by final label in `collectAttributes`.
 - **Slang has NO clang-style fix-it / structured code-replacement infrastructure** anywhere — every
@@ -120,6 +122,24 @@ module at once — but also excludes the user's own *imported* modules, narrowin
 "same-module" ([isFromCoreModule excludes only the embedded core module, not standard-library
 modules](../learnings/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md)).
 
+Function parameters are visible to sibling default arguments, in either order. The parser pushes
+ONE scope, owned by the `FuncDecl`, for both the parameter list and the body
+(slang-parser.cpp:2466/2489), and the only declaration-order filter in lookup,
+`_isUncheckedLocalVar` (slang-lookup.cpp:174), requires `isLocalVar` → `VarDecl`, so a `ParamDecl`
+is never filtered. `void g(int x = y, int y = x)` and `static int y; void f(int x = y, int y = -1)`
+both check with no diagnostic, and the inner `y` binds to the sibling parameter, shadowing the
+global. Any call that relies on such a default ICEs with E99997 "unimplemented: decl catch-all"
+(slang-lower-to-ir.cpp:10385), because default arguments are lowered in the CALLER's context
+(lower-to-ir:4614), where a `ParamDecl` has no lowering; even `int g(int x, int y = x); g(3)` ICEs.
+A default that uses `this.m` or `m` on a non-static member segfaults in the prelinking peephole
+(slang-ir-peephole.cpp:853), even with `-no-codegen`. DeepWiki says parameters are not visible to
+later defaults; that is false, so do not trust it for scope-order questions. Debugging tip for a
+container without gdb: `LD_PRELOAD` a small SIGSEGV handler (`sigaltstack` +
+`backtrace_symbols_fd`), then run `addr2line -f -C -i -e build/Debug/lib/libslang-compiler.so.0.<ver>
+<offsets>` for a symbolized stack (verified at master e49310561, #13674 survey)
+([function params are visible to sibling defaults; using such a default crashes in
+lowering](../learnings/1792134928808-slang-function-params-are-visible-to-sibling-defau.md)).
+
 ## Language server, diagnostics infra, and module versioning
 
 Attribute-list completion returns a `[__AttributeUsage]` struct twice — once Struct(22), once
@@ -141,6 +161,22 @@ loop-variable scoping keys off the `.hlsl` file extension, not `-lang`; the lang
 is `-std`/`#language slang <year>`) ([Slang has no structured fix-it / auto-edit diagnostic
 infrastructure](../learnings/1787705444892-slang-has-no-structured-fix-it-auto-edit-diagnosti.md)).
 
+`CompilerOptionName::ExperimentalFeature` (slangc `-experimental-feature`) gates syntax, not only
+imports. At master 6597ec920 it has three consumers: the `[ExperimentalModule]` import gate
+(slang-session.cpp:1636-1646, E00104), user `__func_extension` (slang-check-decl.cpp:17274-17280,
+W30131, the decl is dropped) and `__apply` (slang-check-expr.cpp:6276-6286, W30132, replaced by a
+placeholder). Nothing in IR or codegen reads it. A slangd/editor setting that enables it (#13678)
+therefore changes syntax handling for the whole workspace session, and triage or PR text should say
+so. Separately, `IGlobalSession::parseCommandLineArguments` ignores the `SlangResult` of
+`processCommandLineArguments` (slang-global-session.cpp:1156), so a generic `compilerOptions:
+string[]` LSP setting built on it would silently swallow bad arguments and needs its own error
+reporting. Two tooling notes from the same session: the critique-gate hook records a codex round
+only when the developer-instructions are the `/codex-critique` block verbatim and the prompt carries
+`STAGE: OUTPUT_REVIEW` (an ad-hoc codex review records "stages: none"), and `gh api .../comments
+--jq '.[-1] | ...'` on an empty list yields `null\tnull` rather than empty output, so guard on
+`.comments == 0` ([ExperimentalFeature gates syntax too, not just [ExperimentalModule]
+imports](../learnings/1792094430929-experimentalfeature-gates-syntax-too-not-just-expe.md)).
+
 A serialized `.slang-module` carries TWO easily-conflated version axes. The container FORMAT version
 (`IRModuleInfo::serializationVersion`, currently 1) governs payload encoding and IS checked on load
 (`readSerializedModuleIR_` returns SLANG_FAIL on mismatch). The semantic module version
@@ -156,7 +192,11 @@ reject the new modules. Re-read `slang-ir.h` before calling a bump cosmetic ([CO
 k_maxSupportedModuleVersion IS range-checked at module load since
 #12905](../learnings/1791314340428-correction-slang-k-maxsupportedmoduleversion-is-ra.md)).
 
-**Source learnings (10):**
+**IntelliSense for `[ExperimentalModule]` std modules works today through a gate-stripped source shim.** The experimental-module gate (`Linkage::_getImportableModuleOrDiagnose`, `slang-session.cpp` ~1636) reads the ModuleDecl's `[ExperimentalModule]` attribute, and user search paths are tried before the std-module fallback dir (~1951). So until slangd gets an ExperimentalFeature setting, `import slang.numerics` resolves in the editor if you copy the module *sources* from the matching tag into `<shim>/slang/{numerics,interfaces,*-conformances,wrappers}.slang` and `<shim>/slang/numerics/{__builtin,__builtin_differentiable,differentiable*}.slang` (mirroring the CMake staging in `numerics/CMakeLists.txt`; `__builtin-differentiable` is renamed), delete the `[ExperimentalModule]` line, and add `<shim>` to `slang.additionalSearchPaths`; verified with the v2026.19 slangd over an LSP stdio driver (no diagnostics, hover resolves, real errors still reported). The slangd version must match the sources: VS Code extension v2.0.10 bundles slangd 2026.8, which reports ~170 diagnostics on them, so point `slang.slangdLocation` at a matching release. The shim bypasses the gate for slangc too if it lands on a build `-I` path, so keep it outside the project and out of compiler search paths (codex must-fix; slang-vscode-extension#78) [editor-only workaround for [ExperimentalModule] std modules in slangd](../learnings/1792083766359-editor-only-workaround-for-experimentalmodule-std-.md).
+
+**Source learnings (13):**
+- [Slang: function params are visible to sibling defaults; using such a default crashes in lowering (DeepWiki says otherwise — wrong)](../learnings/1792134928808-slang-function-params-are-visible-to-sibling-defau.md) — one FuncDecl scope; E99997 decl catch-all in caller-context lowering; LD_PRELOAD SIGSEGV + addr2line
+- [ExperimentalFeature gates syntax too, not just [ExperimentalModule] imports — matters for slangd settings](../learnings/1792094430929-experimentalfeature-gates-syntax-too-not-just-expe.md) — three consumers; `parseCommandLineArguments` swallows errors; critique-gate recording rule
 - [Slang: fallible `as` cast already yields Optional<T>](../learnings/1787675835939-slang-fallible-as-cast-already-yields-optional-t-v.md) — if(let)/guard let support as-operands for free; negative control proves the wrapper.
 - [User-defined attribute completion duplicates (struct + synthesized mirror AttributeDecl)](../learnings/1787700311108-user-defined-attribute-completion-duplicates-struc.md) — dedup by final label in collectAttributes with a deterministic kind tie-break.
 - [Slang has no structured fix-it / auto-edit diagnostic infrastructure](../learnings/1787705444892-slang-has-no-structured-fix-it-auto-edit-diagnosti.md) — every fix-it ask is either a better diagnostic/note or a new cross-cutting project.
@@ -167,3 +207,4 @@ k_maxSupportedModuleVersion IS range-checked at module load since
 - [associated types are reachable through a value in type position (t.assocThing)](../learnings/1790106628469-slang-associated-types-are-reachable-through-a-val.md) — the isEffectivelyStatic lookup branch rewrites value access to a TypeType; verify "member kind X unreachable in context Y" claims against a built compiler.
 - [isFromCoreModule excludes only the embedded core module, not the source/standard-modules/ std-lib modules](../learnings/1790111599486-isfromcoremodule-excludes-only-the-embedded-core-m.md) — no std-lib provenance bit; same-module getModuleDecl identity check is the robust alternative but narrows to same-module.
 - [Slang diagnostics: generic-param base checks also catch the hidden This; v::m has a non-TypeType base; DIAGNOSTIC_TEST ignores note order](../learnings/1790871269416-slang-diagnostics-generic-param-base-checks-also-c.md) — #13225 round 3: exclude `thisTypeDecl`; classify static access from `StaticMemberExpr`; use `filecheck=` to pin note order.
+- [Editor-only workaround for [ExperimentalModule] std modules in slangd: gate-stripped source shim on additionalSearchPaths](../learnings/1792083766359-editor-only-workaround-for-experimentalmodule-std-.md) — match slangd version; keep the shim off compiler `-I` paths (vscode-ext#78)

@@ -33,6 +33,7 @@ Rules for running the GitHub side and the `/slang-pr-review` pipeline. The bot t
 - **B (Devin, no dbus) or C (sandbox write denial) can be blocked by the environment.** Mark it `_skipped`, don't retry, and set `reviewers_complete=false`.
 - **Under debounce, expect a mid-iteration `diff_hash` mismatch.** Name each reviewer's SHA. Re-run A only for a material delta.
 - **A GitHub post needs the literal `<github-post-authorized />` marker; prose isn't enough.** Post in COMMENT state only.
+- **Before reviewing a bot fix PR, search for a community PR on the same issue** (`gh pr list --state all --search "<issue#>"`); a duplicate is the top concern even when the code is fine.
 
 ## GitHub State vs Internal Review
 
@@ -77,6 +78,8 @@ Sometimes slang-fixer gets a combined verdict for a contributor-owned PR, and th
 4. Note in the body that the sibling merges first.
 
 The recursion is then a faithful subset by construction. **Tell:** your code reuses X, X is too permissive, and another open PR is already fixing X ([stack on a sibling](../learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md)).
+
+**Search for a community duplicate before reviewing a bot fix PR.** On shader-slang/slang#13650 (bot fix for #13636), the issue reporter had opened a non-draft community PR (#13644, `Fixes #13636`, CLA signed, the same deletion) 12 minutes before the bot PR, and the fixer's `[Fix Review Request]` did not mention it; it surfaced only through a CI run on branch `fix/wgsl-subgroups-f16-enable` in `gh run list`. At review start run `gh pr list -R <repo> --state all --search "<issue#> OR <key symbol>"` and check `closingIssuesReferences` on open PRs. A duplicate is a shepherd decision, so it is the top concern even when the code is fine; fixers should run the same search before opening a PR [search for a community duplicate PR before reviewing a bot fix](../learnings/1792078760588-before-reviewing-a-bot-fix-pr-search-for-a-communi.md).
 
 ## Applying Maintainer Suggestions Safely
 
@@ -154,7 +157,6 @@ The COMMENT-state post in `/slangpy-pr-review` and `/slang-pr-review` runs only 
 - [Stack on a sibling PR](../learnings/1782882818697-stack-a-pr-on-a-sibling-instead-of-duplicating-its.md) — --base the sibling branch; faithful subset by construction
 - [Literal suggestion can be unsafe](../learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md) — enumerate every read site of a reused predicate
 - [run-clarity.sh takes flags](../learnings/1787167494708-slang-clarity-review-runner-run-clarity-sh-takes-m.md) — a leading run-clarity word exits 1 at once
-- [Capture the run dir](../learnings/1783663020500-slang-clarity-review-runner-script-takes-flags-dir.md) — use the `>>> output →` line, not ls -t
 - [A premature termination](../learnings/1782878676585-reviewer-a-slang-pr-review-runner-premature-termin.md) — exit 0, <500B, no subagent_type, ~13 turns; re-run once
 - [A background-subagent orphan](../learnings/1784339218928-slang-pr-review-reviewer-a-can-exit-0-yet-be-incom.md) — "I'll wait for the background agents" = orphaned; re-run
 - [A budget-kill salvage](../learnings/1783266318751-reviewer-a-error-max-budget-usd-salvage-subagent-f.md) — last text per role; partial banner; label unverified VERIFY
@@ -175,3 +177,4 @@ The COMMENT-state post in `/slangpy-pr-review` and `/slang-pr-review` runs only 
 - [reviewers_complete=false on any skip](../learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md) — add a reviewer_status sub-object
 - [Mid-iteration diff_hash mismatch](../learnings/1783631632879-mid-iteration-pr-combined-review-diff-hash-reviewe.md) — expected under debounce; call out each reviewer's SHA
 - [Marker gate, not prose](../learnings/1783639327701-slangpy-pr-review-github-post-gates-on-literal-mar.md) — re-send with the marker; verify LFS objects by oid
+- [Before reviewing a bot fix PR, search for a community duplicate PR on the same issue](../learnings/1792078760588-before-reviewing-a-bot-fix-pr-search-for-a-communi.md) — `gh pr list --search`, `closingIssuesReferences`; #13644 vs #13650

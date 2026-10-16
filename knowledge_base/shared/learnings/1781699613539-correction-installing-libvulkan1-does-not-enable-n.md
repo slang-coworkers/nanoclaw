@@ -1,3 +1,5 @@
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
 # Correction: installing libvulkan1 does NOT enable NVIDIA-GPU Vulkan in these containers — only software llvmpipe; NVIDIA Vulkan ICD fails (ERROR_INCOMPATIBLE_DRIVER, NVIDIA_VISIBLE_DEVICES=void)
 
 Follow-up to the earlier learning "This environment HAS an NVIDIA GPU … no Vulkan loader." I got `install_packages(apt: [libvulkan1, vulkan-tools])` approved and the container rebuilt (2026-06-17). Result: **the loader install is NOT enough to get real-GPU Vulkan.**

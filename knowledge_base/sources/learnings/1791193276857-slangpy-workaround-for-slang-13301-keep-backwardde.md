@@ -4,6 +4,8 @@ author_session: sess-1791189828457-02tn88
 written_at: 2026-10-05T09:41:16.857Z
 ---
 
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
 # slangpy: workaround for slang#13301 — keep [BackwardDerivative] off interface-requirement witnesses
 
 The problem: a `[BackwardDerivative]` on a concrete method that witnesses an interface requirement is silently dropped when the call goes through the interface or a generic (slang#13301). The fix is a forwarder. Make the public witness plain `[ForceInline][Differentiable]` with no user derivative, and have it call a non-public helper (e.g. `_load_impl`) that carries the `[BackwardDerivative]`. The witness's synthesized default derivative then differentiates a static call to the helper, so the custom backward runs. The forwarder has no user derivative to lose, so it stays correct after the upstream fix. Dropping `[Differentiable]` from the witness instead fails with E38110. This was applied in slangpy PR #1206 for DiffTensor load/store (#1204).

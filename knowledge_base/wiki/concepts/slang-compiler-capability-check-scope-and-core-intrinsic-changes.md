@@ -1,0 +1,83 @@
+---
+title: "Slang capability-check scope and the blast radius of core-intrinsic changes"
+type: concept
+group: slang-grab-bag
+tags: [slang, capability, require, E36100, E36104, E36107, E41011, E99999, stage_switch, target_switch, barrier, loadModule, slangvm, CudaDeviceExport, PtrLit, breaking-change]
+---
+
+# Slang capability-check scope and the blast radius of core-intrinsic changes
+
+This page covers when Slang's capability and stage checks fire: per function, per auto-discovered entry point, and per session target. It also covers how changing the body of a public core-module intrinsic (adding a barrier, a `__stage_switch`, or a `__target_switch` case) breaks callers that compiled before, and what happens when a gate is missing altogether. How `[require]` propagates through referenced declarations (generic structs, enums, return types) is on [Slang capability inference](slang-language-core-capability-inference.md).
+
+## TL;DR
+
+- **E36100/36101/36102 (conflicting capability) fire eagerly per function at `CapabilityChecked`, not per reachable entry point.** A never-called helper that calls a wgsl-only and a spirv-only function breaks every compile of its module (any `-entry`, any `-target`, even `-o x.slang-module`), and importers get E39999. `-ignore-capabilities` suppresses it; `-restrictive-capability-check` does not. The fix is to move the dispatch into the helper with `__target_switch`, which makes the requirement a satisfiable disjunction.
+- **`ISession::loadModule` validates every auto-discovered entry point against every session target.** With no explicit entry points, every `[shader]` function (and every bare `[numthreads]` function on non-CUDA targets) goes through `validateEntryPoint` over `linkage->targets`. E36107 is fatal and `loadModule` returns null. slangc without `-entry` behaves the same way. A per-target IgnoreCapabilities does not help, because the check reads the session option set.
+- **When a public core-module function's body starts calling something with a stronger `[require]`, that is a source break.** Callers annotated only with a bare target (`[require(spirv)]`) newly get E36104. Test a bare-target caller on the old and new binaries, and label the PR `pr: breaking change`.
+- **A barrier's `[require(..., memorybarrier)]` carries no stage.** Adding a workgroup barrier to a stage-agnostic intrinsic therefore silently emits invalid fragment/vertex code: SPIR-V `OpControlBarrier` exits 0 unless SPIR-V validation is on. Wrap the barrier form in `__stage_switch { case compute: case _mesh: case _amplification: ...; default: ... }`.
+- **A barrier form in `default:` needs explicit CPU cases** (`c`, `cpp`, `llvm`, `slangvm`), because the barrier has no CPU implementation.
+- **`specializeStageSwitch` only touches functions that an entry point or CUDA kernel reaches.** An unrooted `[CudaDeviceExport]` caller keeps `GetCurrentStage` and hits E99999 at emit. Probe one whenever you add a `__stage_switch` to a core function.
+- **`-target slangvm` has an empty target capability set.** Any `__target_switch` that slangvm reaches and that lacks a `default:` gives E41011, even when the reaching case is dead. Inverting the switch does not help, and adding slangvm to `getTargetCaps` breaks the INTERPRET suite.
+- **A missing `[require]` lets an unsupported shape reach the emitter.** `Ptr<T>` ops have none, so user pointers on HLSL/WGSL either emit invalid code or ICE on `nullptr` (no `PtrLit` case). Fix it with an upstream capability or IR check, not an emitter case.
+- **Before calling a target "already broken on master", compile a minimal entry point**, not the PR's test file.
+- **Prototype a requested intrinsic as a user-level `__target_switch` function** before touching the core module; never mark a void hint `[__readNone]`, or DCE deletes it.
+
+## Conflicting capabilities are checked per function, eagerly (E36100)
+
+`_propagateRequirement` (slang-check-decl.cpp ~:21880) emits E36100/E36101/E36102 the first time a function's inferred capability set becomes invalid during semantic checking (`DeclCheckState::CapabilityChecked`). The checker has no entry-point or reachability information at that point. Consider a helper that nobody calls:
+
+```slang
+[require(wgsl)]  uint wgslOnly(uint i);
+[require(spirv)] uint spirvOnly(uint i);
+uint helper(uint i) { return wgslOnly(i) + spirvOnly(i); }
+```
+
+Every compile of the module fails, for any `-entry` and any `-target`, even `-o x.slang-module`, and modules that import it get E39999. `__target_switch` is not the trigger, since plain `[require]` callees do the same. `-restrictive-capability-check` does not change the outcome and `-ignore-capabilities` suppresses it. The clean workaround moves the dispatch into the helper itself, `__target_switch { case wgsl: return wgslOnly(i); case spirv: return spirvOnly(i); }`, which yields a satisfiable disjunction. The same triage hit a side trap: `case spirv: __intrinsic_asm "Op..."` ICEs (E99997 "Unhandled local inst in spirv-emit"), and the working form is `spirv_asm { result:$$uint = OpIAdd $i $i; }` [E36100 is eager per-function, not reachability-scoped](../learnings/1792071882191-e36100-conflicting-capability-is-eager-per-functio.md).
+
+## `loadModule` validates every discovered entry point against every target (E36107)
+
+`FrontEndCompileRequest::checkEntryPoints` (slang-check-shader.cpp ~:3228) validates only the explicit entry points when any exist (slangc `-entry`). Otherwise it auto-discovers them through `Module::_discoverEntryPoints`. `ISession::loadModule` never has explicit requests, so every `[shader]` function, and every bare `[numthreads]` function on non-CUDA targets, goes through `validateEntryPoint`. That function loops over `linkage->targets` (~:2552) and raises E36107 as a hard error, after which `loadSourceModuleImpl` returns nullptr.
+
+The consequences: a SPIR-V+WGSL session fails `loadModule` when a single kernel is WGSL-incompatible, and slangc without `-entry` fails the same way, so the CLI and the API agree. The check reads the session option set (`linkage->m_optionSet`), so an IgnoreCapabilities entry in a per-target `TargetDesc::compilerOptionEntries` does not suppress it. A session-wide IgnoreCapabilities does suppress it, but then WGSL for `RWByteAddressBuffer.InterlockedAdd` is `atomicAdd` on a plain `array<u32>`, which is invalid WGSL.
+
+Three workarounds are verified: use `RWStructuredBuffer<Atomic<uint>>` with `.add()`; put an `#if` around the kernel and set the macro only in the WGSL session's `SessionDesc::preprocessorMacros`; or split the incompatible kernels into a separate module [loadModule validates every auto-discovered entry point against every session target](../learnings/1792071692150-loadmodule-validates-every-auto-discovered-shader-.md).
+
+## Adding a barrier to a stage-agnostic core intrinsic
+
+One change produced two independent failures. PR #13659 (for #13631) made `workgroupUniformLoad` in hlsl.meta.slang call `GroupMemoryBarrierWithGroupSync()` in its `default:` case.
+
+**Capability side.** The barrier is `[require(cuda_glsl_hlsl_metal_spirv_wgsl, memorybarrier)]`, and inference propagates `memorybarrier` (sm_5_0_version, meaning spirv_1_0 / _GLSL_330 / _cuda_sm_6_0 depending on the target) to every caller. A user function annotated only `[require(spirv)]`, `[require(glsl)]`, `[require(cuda)]` or `[require(hlsl, compute)]` now fails with E36104 "uses undeclared capability", although master compiled it. `[require(spirv, memorybarrier)]` fixes the caller, and unannotated callers are unaffected. This is a source break, so the PR takes `pr: breaking change`. Test a bare-target caller on the old and new binaries before choosing the label. Because the barrier has no CPU case, a barrier form placed in `default:` (the fallback rather than a GPU allowlist) also needs an explicit `case c: case cpp: case llvm: case slangvm: return v;` [a core intrinsic that calls a barrier inherits its capability](../learnings/1792078114722-a-core-module-intrinsic-that-newly-calls-a-barrier.md).
+
+**Stage side.** The `memorybarrier` requirement carries no stage, so capability checking cannot see that fragment and vertex callers now emit `OpControlBarrier Workgroup`. That SPIR-V is invalid (VUID-04682, 04637 and 07321), yet slangc exits 0 unless `SLANG_RUN_SPIRV_VALIDATION=1` is set. DXC rejects ps_6_0 ("sync in a non-Compute/Amplification/Mesh/Node Shader"), and Metal gets `threadgroup_barrier` in a vertex function. To check, compile one fragment and one vertex caller with SPIR-V validation on and with `-target dxil -profile ps_6_0`. The fix that works wraps the barrier form in `__stage_switch { case compute: case _mesh: case _amplification: <barriers>; default: <plain form>; }`. Fragment and vertex callers then validate, mesh keeps both barriers, and the FileCheck lanes still pass. The prior art for `__stage_switch` is `__targetHasImplicitDerivatives` in hlsl.meta.slang [a core intrinsic that gains a workgroup barrier breaks non-compute callers](../learnings/1792082137751-a-core-module-intrinsic-that-gains-a-workgroup-bar.md).
+
+## `__stage_switch` and unrooted exports (E99999)
+
+`specializeStageSwitch` (slang-ir-specialize-stage-switch.cpp:136-138) specializes only the stage-specific functions that an entry point or a CUDA kernel can reach (`buildEntryPointReferenceGraph`). A `[CudaDeviceExport]` function that no kernel calls therefore keeps `GetCurrentStage` until emit, where it fails with E99999 "unexpected IR opcode during code emit". The gap predates #13659: `WaveGetNumWaves` in an export already fails on master, with E41400. Adding a `__stage_switch` to an intrinsic that used to be stage-independent exposes the gap for that intrinsic's callers too, so probe an exported caller that no entry point calls whenever you add one.
+
+The same review also produced a baseline rule. Before calling a target "already broken on master", compile a minimal entry point for it. A host-cpp hang turned out to come from the PR's test file rather than the target, and that wrong baseline hid a real host-cpp regression for one round [a __stage_switch in a core intrinsic breaks unrooted CudaDeviceExport callers](../learnings/1792098552809-a-stage-switch-in-a-core-intrinsic-breaks-unrooted.md).
+
+## Empty-capability targets: `slangvm` and E41011
+
+`-target slangvm` (HostVM) has an empty target capability set, because `getTargetCaps` has no HostVM arm, so `case slangvm:` in core-module code is never selected. `specializeTargetSwitch(TargetRequest*, IRModule*)` specializes every function in the linked module, including callees that only a dead case references. If any case of a `__target_switch` reaches `GroupMemoryBarrierWithGroupSync`, whose own switch has no `default:`, a slangvm compute entry point gets `E41011 __target_switch has no compatible target with current profile '{}'`.
+
+Moving the barrier into an explicit `case hlsl:` with `default: return v;` does not help, and master reproduces the error with user code. Adding `HostVM→slangvm` to `getTargetCaps` fixes that probe but breaks 7 INTERPRET/slangvm suite tests with E36107, because `any_target` and the other aliases do not include slangvm. Run a probe and the full suite before proposing either change (confirmed on #13659 @3f73000) [inverting a __target_switch does not stop E41011 on slangvm](../learnings/1792087031963-inverting-a-target-switch-does-not-stop-e41011-on-.md).
+
+## A missing gate: user pointers on HLSL/WGSL (#13632)
+
+The reverse failure is a requirement that should exist and does not. On HLSL and WGSL, three spellings abort with E99999 because neither emitter has a `case kIROp_PtrLit`: `p != nullptr`, `if (p)` (the peephole turns `CastPtrToBool` into a not-equal compare against a `PtrLit`, slang-ir-peephole.cpp:1187), and `static T* g = nullptr`. The cause is upstream. `Ptr<T>` operations in core.meta.slang carry no `[require]`, and no IR check rejects `AddressSpace::UserPointer` (0x100000001) on these targets. Without `nullptr` the same code exits 0 and emits invalid `ptr<, f32>` / `Ptr<float, 0ULL, 4294967297ULL, DefaultLayout >`, so adding an emitter case would only move the failure. This is not #12386's root cause, which is legalize-types E99997 on an empty-struct pointee.
+
+A check that walks only `IRFunc` bodies misses `PtrLit` uses in `IRGlobalVar` initializer blocks, so walk `IRGlobalValueWithCode` instead. Worktree build notes from the same session: `git submodule update --reference /workspace/agent/slang` fails because the main clone is shallow; copying the main clone's `external/*` into the worktree and deleting the copied `.git` gitlink files works; and `SLANG_ENABLE_TESTS=OFF` is required when `SLANG_ENABLE_SLANG_RHI=OFF` [PtrLit nullptr ICE on HLSL/WGSL: UserPointer gate missing](../learnings/1792135032187-ptrlit-nullptr-ice-on-hlsl-wgsl-userpointer-gate-m.md).
+
+## Probing a requested intrinsic with a user-level `__target_switch` prototype
+
+A feature request for a new core-module intrinsic can be tested for feasibility without building Slang. Write the intrinsic as a user-level function in the `.slang` file, `__target_switch { case spirv: spirv_asm { OpCapability X; OpExtension "..."; OpFoo $c }; case glsl: __requireTargetExtension("GL_..."); __intrinsic_asm "foo($0)"; case cuda: __intrinsic_asm "..."; default: return; }`, and compile it with the release slangc for every target under `SLANG_RUN_SPIRV_VALIDATION=1`. `spirv_asm` accepts any opcode in the embedded SPIRV-Headers grammar, so this shows whether "no IR or emitter change needed" is true. Opt-in gating is expressible today: `case <capatom>:` plus `default: return;` emits the capability only when `-capability <capatom>` is passed. The DCE pitfall: marking a void hint intrinsic `[__readNone]` makes the call side-effect-free and DCE deletes it on every target, so leave it unmarked. `spirv_asm` and GenericAsm count as side-effecting, an empty default body is inferred NoSideEffect (the no-op behaviour), and argument side effects survive. An unknown `[[attr(...)]]` before a statement is only warning E31000 [probe intrinsic requests with a __target_switch prototype](../learnings/1792138323224-probe-new-spir-v-glsl-cuda-intrinsic-requests-with.md).
+
+**Source learnings (8):**
+- [E36100 (conflicting capability) is eager per-function, not reachability-scoped](../learnings/1792071882191-e36100-conflicting-capability-is-eager-per-functio.md) — an uncalled wgsl+spirv helper breaks every compile; `__target_switch` in the helper is the fix; `__intrinsic_asm "Op..."` ICEs on spirv
+- [loadModule validates every auto-discovered [shader]/[numthreads] entry point against EVERY session target (fatal E36107)](../learnings/1792071692150-loadmodule-validates-every-auto-discovered-shader-.md) — session option set, per-target IgnoreCapabilities ineffective; three verified workarounds
+- [A core-module intrinsic that newly calls a barrier inherits its capability, so callers with a target-only [require] get E36104](../learnings/1792078114722-a-core-module-intrinsic-that-newly-calls-a-barrier.md) — `memorybarrier` propagates; `pr: breaking change`; explicit CPU cases for a `default:` barrier
+- [A core-module intrinsic that gains a workgroup barrier breaks non-compute callers silently](../learnings/1792082137751-a-core-module-intrinsic-that-gains-a-workgroup-bar.md) — stage-less `[require]`; invalid SPIR-V exits 0; `__stage_switch` fix
+- [A __stage_switch in a core intrinsic breaks unrooted [CudaDeviceExport] callers (E99999)](../learnings/1792098552809-a-stage-switch-in-a-core-intrinsic-breaks-unrooted.md) — `specializeStageSwitch` is reachability-scoped; minimal-entry-point baseline before "broken on master"
+- [Inverting a __target_switch does not stop E41011 on empty-caps targets (slangvm)](../learnings/1792087031963-inverting-a-target-switch-does-not-stop-e41011-on-.md) — no HostVM arm in `getTargetCaps`; adding one breaks 7 suite tests
+- [PtrLit nullptr ICE on HLSL/WGSL: UserPointer gate missing](../learnings/1792135032187-ptrlit-nullptr-ice-on-hlsl-wgsl-userpointer-gate-m.md) — `Ptr<T>` ops have no `[require]`; walk `IRGlobalValueWithCode`; shallow-clone submodule workaround
+- [Probe new SPIR-V/GLSL/CUDA intrinsic requests with a user-level __target_switch prototype](../learnings/1792138323224-probe-new-spir-v-glsl-cuda-intrinsic-requests-with.md) — `spirv_asm` takes any grammar opcode; `[__readNone]` void hint is DCE'd

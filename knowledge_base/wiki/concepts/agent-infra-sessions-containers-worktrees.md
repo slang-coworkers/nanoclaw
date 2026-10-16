@@ -3,7 +3,7 @@ title: "Sessions, Containers, and Worktrees in Agent Infrastructure"
 type: concept
 group: agent-infra
 tags: [sessions, containers, worktrees, disk, build, ncl, nanoclaw, agent-runner, onecli, scheduled-task, cron, observability]
-source_count: 41
+source_count: 43
 ---
 
 # Sessions, Containers, and Worktrees in Agent Infrastructure
@@ -26,7 +26,7 @@ Runtime mechanics of NanoClaw agent containers: restarts and reaps, container co
 - **Isolate parallel reviewers and builds in their own worktrees.** Shared checkouts race on `.git/index.lock` and clobber staging paths, so a reviewer can read the wrong PR's diff.
 - **A container reset can corrupt submodule trees** while HEAD and gitlink look fine: run `git submodule update --init --recursive --force`, not CMake debugging; re-install pip tools.
 - **`ncl sessions list` is a capped, oldest-first page.** Verify handoffs with `--thread-id`. A cron fire is its own row with empty `messaging_group_id` and `created_at` on the cron boundary.
-- **Verify container capabilities empirically.** Containers have an NVIDIA GPU despite docs, yet Vulkan and CUDA `slang-test` paths do not work.
+- **Verify container capabilities empirically, every session.** Agent containers have an NVIDIA L40S (CUDA + NVIDIA Vulkan); the 2026-09-28→10-16 no-GPU window was a host passthrough outage, now fixed. Probe with `nvidia-smi -L` (not `vulkaninfo`, absent from most images), run GPU-executing work on the GPU, and report a missing GPU to the operator as infra rather than recording it as a fact.
 - **Remove broken container-config entries in one batch**; each rebuild burns an approval, and a `--rebuild` racing pending approvals uses the stale snapshot.
 - **A mirror copies whatever is in the source now.** Assert no nested VCS/scratch dirs and compare file counts before publishing; a redaction check validates only the encoding it can read.
 
@@ -44,7 +44,11 @@ From the May 14 2026 session: the composer's step parser matches only numbered-l
 
 Per-group config lives in `container_configs`, managed via `ncl groups config` ([Bookworm gaps + approval sequencing](../learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md)). Bookworm's standard repos ship no `clang-format`; 17/18 need the `apt.llvm.org` repo or a Dockerfile change, not just `add-package`. Broken entries (bad apt packages, 404 npm packages) stay dormant until the first rebuild, so read `ncl groups config get --id <gid>` and remove all of them in one batch. Never fire `ncl groups restart --rebuild` alongside pending config approvals; it can build from the stale snapshot.
 
-Slang coworker containers have an NVIDIA L40S (driver 565.57.01, CUDA 12.7, ~46 GB VRAM), verified in Main and slang-fixer on 2026-06-17; "no GPU" docs are stale ([containers have an L40S](../learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md)). It is not turnkey for `slang-test`: `NVIDIA_VISIBLE_DEVICES=void` injects compute but not graphics, so real-GPU Vulkan needs a host runtime change beyond `install_packages`, and CUDA reports `cuda: Not Supported` (no nvrtc).
+**Agent containers have an NVIDIA L40S (CUDA + NVIDIA Vulkan).** Measured 2026-10-16 in one container of each of the 11 groups: every coworker container runs with `--runtime=nvidia` (host driver 595.91.07), `nvidia-smi -L` lists the L40S, `/dev/nvidia0` exists, `python3 -c "import ctypes; print(ctypes.CDLL('libcuda.so.1').cuInit(0))"` prints 0, and the NVIDIA Vulkan ICD is in `/usr/share/vulkan/icd.d/` or `/etc/vulkan/icd.d/`. Probe with those, not `vulkaninfo`: most group images lack it, and "command not found" is a missing tool, not a missing GPU. When a task needs real GPU execution (slang-test `-api vk`/`-api cuda` lines, SlangPy on `DeviceType.vulkan`/`cuda`, render/compute repros), run it on the GPU; the image's CUDA 12.6 `nvcc`/`ptxas`/`cuobjdump`, emit/FileCheck, `-target ptx` and naga/Tint checks complement that, they don't replace it ([containers have an NVIDIA L40S](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md)).
+
+**The 2026-09-28→10-16 no-GPU window was a host passthrough outage.** nanoclaw `src/drivers/index.ts` `detectGpuMode` adds `--gpus`/`--runtime=nvidia` only when the host process has `ENABLE_GPU=1` in `process.env` or `/usr/bin/nvidia-smi` exists; `.env`'s `ENABLE_GPU` is read by `readEnvFile`, never exported, and the result is cached per host process, so the fix needed a host restart (2026-10-16) plus a fresh-container re-check. During the window only lavapipe (Mesa 22.3.6, CPU Vulkan, which cannot create a slang-rhi device) was visible ([Agent containers have no GPU since ~2026-09-28 (historical: 09-28→10-16 outage)](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md)). If a probe ever shows no GPU again, report it to the operator as an infra problem; never record "containers have no GPU" as a durable fact, and in public comments name the evidence precisely ("CPU device", "emitted output only") rather than a bare "ran on Vulkan".
+
+**History:** GPU presence has changed over time. 06-16..09-22 an L40S was passed through (driver 565.57.01, CUDA 12.7, ~46 GB VRAM, verified in Main and slang-fixer on 2026-06-17; later driver 595.91.07), and "no GPU" docs were stale then ([containers have an L40S](../learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md)); it was gone during the 09-28→10-16 outage and is back. Both kinds of doc go stale, so measure each session. Even when present (June) it was not turnkey for `slang-test`: `NVIDIA_VISIBLE_DEVICES=void` injected compute but not graphics, so real-GPU Vulkan needed a host runtime change beyond `install_packages`, and CUDA reported `cuda: Not Supported` (no nvrtc then; the image now ships CUDA 12.6 NVRTC).
 
 ## Filesystem Layout and Disk Management
 
@@ -100,7 +104,8 @@ No remote branch and no tagged session are weak stall signals, since fixers work
 
 A nested `.git` in a tree about to be published is a scrub bypass no text check can see. On 2026-08-06 the nightly `knowledge_base` sync (slang-coworkers/nanoclaw to `nv-coworkers`) found the auto-memory source `/home/node/.claude/projects/-workspace-agent/memory/` had become a git repo after the recipe was written, and `cp -rL <src>/. <dest>/` copied its `.git/`. `scrub_kb_pii.py` rewrites working-tree text only, so zlib-compressed `.git/objects` pass it and the `grep -rhoE '<email regex>'` check by construction, and committing them publishes the unscrubbed history. The tell was a count: ~520 files expected, 10,011 mirrored, 772 under `knowledge_base/auto-memory/.git`. Compare against `git ls-tree -r --name-only HEAD <path> | wc -l` before staging. The fix (PR #1094) removes `auto-memory/.git` and `__pycache__` dirs after the mirror and before the scrub. The exclusion belongs in the mirror step, not in an operator's memory, and every publish-to-public job asserts `find <dest> -type d \( -name .git -o -name node_modules -o -name __pycache__ -o -name .venv \)` is empty ([nested .git is a scrub bypass](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md)).
 
-**Source learnings (41):**
+**Source learnings (43):**
+- [Coworker containers HAVE an NVIDIA L40S (CUDA + NVIDIA Vulkan), measured 2026-10-16](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md) — current: `--runtime=nvidia` in every group; probe `nvidia-smi -L` + `cuInit`, not `vulkaninfo`; run GPU work on the GPU; report a missing GPU as infra.
 - [Nested .git is a PII-scrub bypass](../learnings/1785985612990-a-nested-git-in-a-mirrored-tree-is-a-pii-scrub-byp.md) — prune VCS dirs in the mirror; gate on file count.
 - [Resolving is not belonging](../learnings/1786280483668-resolving-is-not-belonging-sibling-worktrees-share.md) — shared object store; test ancestry.
 - [GC dirname can diverge from branch](../learnings/1785716211648-worktree-gc-dirname-issue-number-can-diverge-from-.md) — wt-slang-12244-doc held PR #12309's branch.
@@ -110,7 +115,8 @@ A nested `.git` in a tree about to be published is a scrub bypass no text check 
 - [Service restart kills all containers](../learnings/legoop-feedback_service_restart_kills_containers.md) — CLAUDE.md recompose → `claude-md-stale`.
 - [Reviewer split-brain after restart](../learnings/1780488405089-resolving-reviewer-split-brain-after-a-container-r.md) — recovery fork; defer to primary.
 - [Bookworm gaps + approval sequencing](../learnings/1780060974231-ncl-group-container-fixes-bookworm-package-gaps-ap.md) — batch removals; no racing rebuild.
-- [Containers have an NVIDIA L40S](../learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md) — docs stale; Vulkan/CUDA unusable.
+- [CORRECTION: GPU passthrough restored 2026-10-16 — never record 'no GPU' as a fact](../learnings/1792142517350-correction-gpu-passthrough-restored-2026-10-16-con.md) — supersedes the 09-28→10-16 outage atom; GPU presence is infra state
+- [Containers have an NVIDIA L40S](../learnings/1781698400173-slang-coworker-containers-have-an-nvidia-gpu-l40s-.md) — history (06-17): L40S present then; Vulkan/CUDA not turnkey.
 - [df the real build path](../learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md) — /workspace/agent is a separate volume.
 - [Disk fills from build/ trees](../learnings/1782151736391-fixer-container-disk-fills-from-accumulated-build-.md) — ~6–7.6 GB per Debug build.
 - [Reap safe-execution facts](../learnings/1782710777380-worktree-gc-reap-safe-execution-facts-branch-refs-.md) — refs survive; workflows-perm blocks wip/reap.

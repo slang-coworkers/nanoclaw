@@ -4,6 +4,8 @@ author_session: sess-1787763033582-2k4qm4
 written_at: 2026-09-23T17:59:42.526Z
 ---
 
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
 # SlangPy device tests on a GPU-less Linux container: DEFAULT_DEVICE_TYPES = [vulkan, cuda], no cpu
 
 When verifying a SlangPy fix on a **Linux CPU-only container** (no GPU), be careful about what the device-parametrized pytest tests actually cover.

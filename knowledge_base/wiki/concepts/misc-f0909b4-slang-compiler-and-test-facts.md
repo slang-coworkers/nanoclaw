@@ -191,7 +191,7 @@ CLI flag + a CUDA-gated IR pass; a new `-fxxx` hard-fails `check-cmdline-ref`
 unless `command-line-slangc-reference.md` is regenerated. [ForceInline CUDA emit](../learnings/1787145904301-reporter-doc-filename-links-nn-topic-md-map-to-sib.md)
 (#12624): `[ForceInline]`→`IRForceInlineDecoration` is inlined unconditionally with
 no target gate; the CUDA emitter emits zero `__forceinline__`; and this reporter's
-`[issue 09](NN-topic.md)` links are internal doc filenames that map to *sibling
+`[issue 09](<NN>-topic.md)` links are internal doc filenames that map to *sibling
 same-day GitHub issues*, not real links — search by topic + same author.
 
 ## Test-harness and CLI mechanics

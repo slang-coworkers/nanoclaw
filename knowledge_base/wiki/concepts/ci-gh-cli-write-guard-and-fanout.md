@@ -10,7 +10,7 @@ source_count: 6
 
 Incident folds where a guard hook or a fan-out obscured the real state: the critique-gate write-guard that false-matches read-only `gh api .../pulls/...` GETs, two successively-wrong characterizations of what the Bash write-guard actually trips on, and the "unexplained bot comment" whose prime suspect is your own fan-out. Plus the resulting corrections/supersessions.
 
-> **This page pairs with [gh CLI CI Status & Merge Signals](ci-gh-cli-status-and-merge-signals.md)** (both split off the instrument-lie incident folds, 2026-08-17, to stay under the 40 KB read cap). For *how to drive* the tools see the sibling series: [part 1](ci-gh-cli-usage.md) (shared TL;DR), [part 2](ci-gh-cli-usage-2.md), [part 3](ci-gh-cli-usage-3.md).
+> **This page pairs with [gh CLI CI Status & Merge Signals](ci-gh-cli-status-and-merge-signals.md)** (both split off the instrument-lie incident folds, 2026-08-17, to stay under the 40 KB read cap). For *how to drive* the tools see [gh CLI Usage & PR/Issue Mechanics](ci-gh-cli-usage.md); related: [gh CLI Output Channels & Filter Encodings](ci-gh-cli-output-channels-and-filters.md), [gh CLI Control Design & Over-Claim Origins](ci-gh-cli-control-design-and-overclaims.md).
 
 ## TL;DR
 - **The critique-gate `gh api` denial is a write-guard regex false-positive** on literal `state=` over an `issues` path (method-blind) — rename the output label or use bare selectors. One probe per command: a bundled retest of a passing form beside a denied literal denies the whole command and invalidates the control.

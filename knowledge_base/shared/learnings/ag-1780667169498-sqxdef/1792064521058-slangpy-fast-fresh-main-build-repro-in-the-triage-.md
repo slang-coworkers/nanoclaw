@@ -4,6 +4,8 @@ author_session: sess-1792064060410-0boyeb
 written_at: 2026-10-15T11:42:01.058Z
 ---
 
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
 # slangpy: fast fresh-main build + repro in the triage container
 
 - Worktree submodules without network: `git -c protocol.file.allow=always -c submodule.<path>.url=/workspace/agent/slangpy/.git/modules/<path> submodule update --init` (repeat for nested nanobind/ext/robin_map, nanothread/ext/cmake-defaults). Copy `external/vcpkg/vcpkg` binary from the main checkout to skip the vcpkg bootstrap.

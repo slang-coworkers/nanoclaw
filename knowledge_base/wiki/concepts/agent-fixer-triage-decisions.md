@@ -3,7 +3,7 @@ title: "Triage Decisions: Artifact Policy, Root-Cause Discipline & Routing"
 type: concept
 group: agent-fixer-codex-skills
 tags: [triage, github, artifact-policy, root-cause, severity, cross-ref, dependency-graph, release-gap, version-check, watch-only, tracking-placeholder, slang]
-source_count: 29
+source_count: 28
 ---
 
 # Triage Decisions: Artifact Policy, Root-Cause Discipline & Routing
@@ -106,7 +106,7 @@ A triage recommendation that picks the fastest-looking fix can silently delete l
 
 **A reported "bug" on a DEPRECATED Slang feature (compiler emits a deprecation warning like E30816) is often working-as-specified — run two cheap grounding checks before mapping fix approaches.** (1) Read the formal spec proposal: feature semantics live in `external/spec/proposals/00N-*.md` (mirrored in `docs/proposals/`) and may document the behavior as intended — e.g. #13064, where a derived struct whose base has a user `__init` gets NO synthesized ctor (so `Derived x = {}` fails E30513), is exactly what `proposals/004-initialization.md:149-162` states, and the suppression is a deliberate early-return in `_synthesizeCtorSignature` citing that proposal. (2) Grep `tests/` for an intentional locking `//DIAGNOSTIC_TEST` asserting the exact error on the reported shape; if one exists, the behavior is deliberately locked and any "fix" is a language-design decision, not a routine bug fix. ([A reported bug on a deprecated Slang feature is often working-as-specified — check the spec proposal + a locking diagnostic test](../learnings/1789395604535-a-reported-bug-on-a-deprecated-slang-feature-is-of.md))
 
-**Source learnings (29):**
+**Source learnings (28):**
 - [A reported bug on a deprecated Slang feature is often working-as-specified — check the spec proposal + a locking diagnostic test](../learnings/1789395604535-a-reported-bug-on-a-deprecated-slang-feature-is-of.md)- [before triaging a version-bearing bug report, check whether the reporter's release predates the fix (`git tag --contains`); use a same-image CI A/B as a controlled experiment](../learnings/1785764482879-before-triaging-a-bug-report-check-whether-the-rep.md) — release-gap triage, controlled CI comparison, stale sibling-verdict trap
 - [check the reporter's version before root-causing; never ship a hunch with a suggested disposition; refresh a posted verdict when someone acts on its text](../learnings/1785765561758-check-the-reporter-s-version-before-root-causing-a.md) — #12325 verdict inversion, dependency-pin hash coupling, dispatch-side prior hygiene
 - [onboard-repo-to-dashboard issues are ops/infra not code triage; slangpy likely already onboarded (slang-pr-report DEFAULT_REPOS="" + existing pipeline)](../learnings/1784913528281-onboard-repo-to-dashboard-issues-are-ops-infra-not.md)
@@ -134,6 +134,5 @@ A triage recommendation that picks the fastest-looking fix can silently delete l
 - [fold a follow-up that edits an open PR's newly-introduced file INTO that PR (Closes #N), not a rival PR off master; re-check draft/ready state at triage](../learnings/1784758259762-a-follow-up-issue-editing-a-file-only-introduced-b.md)
 - [contributor-assigned issue: flag to parent first, don't auto-dispatch the fixer (check assignees)](../learnings/1784793724947-triage-handoff-to-a-contributor-assigned-issue-fla.md)
 - [test re-enable follow-ups can be doubly-gated (disabling PR + fix PR both unmerged) — resolve the full dependency graph](../learnings/1785162937774-test-re-enable-follow-ups-can-be-doubly-gated-disa.md)
-- [maintainer-authored tracking/placeholder issue = watch-only, no GitHub post, no fixer](../learnings/1785183281472-maintainer-authored-tracking-placeholder-issue-wat.md) (SUPERSEDED 2026-09-09 by [Correction (operator 2026-09-09): Dev Opened and core-team tracking issues ARE in scope](../learnings/1788958700000-correction-dev-opened-and-core-team-tracking-issues-are-in-scope.md))
 - [slang#12797: "drop the runtime read, keep the reflection assertion" gutted the lowering/set-placement coverage; a triage recommendation must name the coverage it removes.](../learnings/1788208011018-triage-drop-the-runtime-read-keep-the-reflection-a.md)
 _Catalog: [[wiki/index.md]]_

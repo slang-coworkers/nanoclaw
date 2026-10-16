@@ -8,7 +8,7 @@ source_count: 27
 
 # Supervisor Operations, Sweep Suppression, and Nudge Discipline
 
-> **Split 2026-08-12** out of the over-cap *Multi-Session Coordination* page; re-split 2026-08-17. Siblings: [Multi-Session Coordination, A2A Routing, and Session Handoff](agent-infra-multi-session-coordination.md) and [scan.py Health, Watchdog No-Op Controls, and Ledger Guards](agent-infra-supervisor-operations-2.md). This page owns nudge discipline, artifact checks, staleness triggers, and dashboard/CI-health reporting. The `-2` sibling owns `scan.py` over-flag root causes, the draft→non-draft CI-cell trap, watchdog no-op controls, and ledger guards. The coordination sibling owns A2A edges, dedup, empty-ack loops, and session handoff.
+> **Split 2026-08-12** out of the over-cap *Multi-Session Coordination* page; re-split 2026-08-17. Related pages: [Multi-Session Coordination, A2A Routing, and Session Handoff](agent-infra-multi-session-coordination.md), [Supervisor CI-Cell Staleness and scan.py Over-Flag Root Causes](agent-supervisor-staleness-and-overflag.md), and [Watchdog No-Op Controls, Blocker-Identity Monitoring, and Ledger Guards](agent-supervisor-watchdog-and-ledger-guards.md). This page owns nudge discipline, artifact checks, staleness triggers, and dashboard/CI-health reporting. The staleness page owns `scan.py` over-flag root causes and the draft→non-draft CI-cell trap; the watchdog page owns watchdog no-op controls and ledger guards. The coordination sibling owns A2A edges, dedup, empty-ack loops, and session handoff.
 
 ## TL;DR
 - **A supervisor/cron/tooling nudge states CLAIMS, not facts.** Verify its premises against live GitHub state before acting — and always before an outward-facing or irreversible write. ~89% of artifact-less flags measured false; a false flag pressures a coworker into spamming a maintainer's issue with an un-retractable comment.
@@ -21,7 +21,7 @@ source_count: 27
 - **An approver torn down one CI-leg from recording loses its verdict with no ledger row** — on any teardown signal near the record step, independently verify CI terminal state and ask "did you record on `<sha>`?".
 - **Sweep coworkers stay silent on re-confirmation** — ping the parent only on a delta (new signature, state change, actionable item). Recurring diagnostic tasks re-derive from scratch each fire (`new_session:true`) — anchor on a canonical report file.
 - **Dashboard channels render markdown** — every ref is a clickable `[label](url)`; inline the body AND attach the `.md`; Unicode emoji, not shortcodes; URL-encode search queries.
-- See the [`-2` sibling](agent-infra-supervisor-operations-2.md) for `scan.py` over-flag root causes, the draft→non-draft CI-cell staleness trap, watchdog no-op controls, and append-only-ledger guard construction.
+- See [Supervisor CI-Cell Staleness and scan.py Over-Flag Root Causes](agent-supervisor-staleness-and-overflag.md) for `scan.py` over-flag root causes and the draft→non-draft CI-cell staleness trap, and [Watchdog No-Op Controls, Blocker-Identity Monitoring, and Ledger Guards](agent-supervisor-watchdog-and-ledger-guards.md) for watchdog no-op controls and append-only-ledger guard construction.
 
 ## Sweep Coworkers: Suppress Re-Confirmation Reports
 

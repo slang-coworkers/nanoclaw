@@ -3,7 +3,7 @@ title: "Codex-Critique Hazards and PR-Review Runner Reliability"
 type: concept
 group: agent-infra
 tags: [codex, danger-full-access, codex-mcp, critique-gate, pr-review-runner, clarity-runner, integrity-fail, worktree, restart]
-source_count: 10
+source_count: 14
 ---
 
 ## TL;DR
@@ -25,10 +25,11 @@ restarts and can pick up a concurrent run's leftovers. Verify state, don't trust
   vanish (looks like "someone keeps resetting my files"). The pushed origin commit is the source
   of truth; write a `RESUME.md` naming the verified, PUSHED sha. Always
   `git push --force-with-lease` (its "stale info" rejection is a feature that protected shipped state).
-- **Detached `nohup ... &` review runs die on container restart with NO final artifact** —
-  Reviewer A/C (~15-30 min) leave only a partial `stream.jsonl`, no auto-resume. Check for
-  `final-review.md` (≥500B) / `clarity-review.md`, never just the run dir. Reviewer B (Devin,
-  ~3-4 min) usually finishes first.
+- **`--detach`/`setsid nohup` beats the 30-min Bash background cap (A/C runs take 60-100 min),
+  not a container restart.** A restart kills A/C with no artifact and wipes `/tmp`, Monitors and
+  often `transcripts/`; only `/workspace` is safe. Copy each artifact to
+  `/workspace/agent/review-<pr>/rN/` as it lands, check `exit-status` + `/proc/<pid>` after a
+  restart, recover from `stream.jsonl` before re-running; on a post-restart 401 use patch mode.
 - **Two concurrent `/slang-pr-review` runs can cross-contaminate** — the second can pick up the
   first's stale `tmp/pr-diff.patch`. Verify the reviewed diff's sha256 equals the live
   `gh pr diff | sha256sum`; capture YOUR run dir from the driver's log line, never `ls -dt`.
@@ -132,13 +133,47 @@ around the gate (no manual PR creation): push the branch, hold, write a RESUME n
 
 ### PR-review runner reliability in a shared, restart-prone container
 
-The `/slang-pr-review` runners are long jobs (Reviewer A `slang-pr-review-runner` and Reviewer C
-`slang-clarity-review-runner` take ~15-30 min; Reviewer B / Devin ~3-4 min). Two failure modes
-recur. First, **detached `nohup ... &` runs are killed by a container restart** (an instructions
-update / recompose mid-run) and leave NO `final-review.md` / `clarity-review.md`, only a partial
-`stream.jsonl`, with no auto-resume — so treat an in-flight A/C run as disposable across a likely
-restart, and don't infer success from the run dir existing; check for the final artifact
-specifically (`final-review.md` ≥ 500B) ([detached nohup PR-review runs are killed by container restart](../learnings/1788159236458-detached-nohup-pr-review-runs-are-killed-by-contai.md)).
+The `/slang-pr-review` runners are long jobs: Reviewer A `slang-pr-review-runner` and Reviewer C
+`slang-clarity-review-runner` now take 60-100 min on a mid-size PR, Reviewer B / Devin a few
+minutes. Two things kill them, and only one has a defense.
+
+The first is the **Bash tool's 30-minute background cap**. On slang#13538 R4 a
+`compose-and-run.sh` launched with `Bash(run_in_background=true)` was killed at 30 min with 5 of 6
+subagents finished and no `final-review.md`. Pass a long `timeout` (up to 7200000 ms), or launch
+with `--detach` (`setsid nohup`) and poll it in-turn, and export
+`CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` as well
+([Reviewer A runs exceed the 30-min Bash background cap](../learnings/1792058631652-reviewer-a-runs-exceed-the-30-min-bash-background-.md)).
+
+The second is a **container restart** (an instructions update or recompose mid-run), and nothing
+survives it: `--detach` runs die too, leaving NO `final-review.md` / `clarity-review.md`, only a
+partial `stream.jsonl`, with no auto-resume and no `exit-status` (pid gone, so `wait-run.sh` would
+return 125). Don't infer success from the run dir existing; check for the final artifact
+specifically (`final-review.md` ≥ 500B) ([detached nohup PR-review runs are killed by container restart](../learnings/1788159236458-detached-nohup-pr-review-runs-are-killed-by-contai.md),
+[container restarts kill --detach review runs](../learnings/1792136253875-container-restarts-kill-detach-review-runs-github-.md)).
+The restart also wipes everything under `/tmp` (build `.done` sentinels, probe sources, regression
+logs) and kills Monitors; on slang#13514 R2 one hit 30 min into the review
+([container restart mid-review kills Reviewer A/C and wipes /tmp](../learnings/1792058636644-container-restart-mid-review-kills-reviewer-a-c-an.md)).
+`~/.claude/skills/slang-*-runner/transcripts/<run>/` survived that restart but not two others,
+which deleted a finished `clarity-review.md` and the `wt-<pr>-verify` worktree; only
+`/workspace/agent/review-<pr>/` was intact
+([copy reviewer artifacts out of transcripts/ immediately](../learnings/1792056693233-slang-review-copy-reviewer-artifacts-out-of-skill-.md)).
+The rules that follow:
+- `cp` each reviewer's `final-review.md` / `clarity-review.md` / `devin-flags.md` into
+  `/workspace/agent/review-<pr>/rN/` as soon as it finishes, and keep sentinels, logs and probe
+  sources under `/workspace/agent/` (e.g. `wt-<N>-*/`), never `/tmp`.
+- After a restart, check `<run_dir>/exit-status` and whether `/proc/<pid>` exists before trusting
+  a pending wait, then recover from `stream.jsonl` before re-running anything: each finished A
+  subagent's whole report is the `summary` of its `system/task_notification` record (map
+  `tool_use_id` to the dispatching `Agent` call for the lens); #13514 recovered 4 of 6 this way.
+  Label the result partial. C writes nothing until its end, so a dead C run leaves only its
+  worktree candidate files (see [run recovery](review-pr-run-recovery-and-polling.md)).
+- Re-check `gh pr view --json headRefOid` before sending the verdict, because the head may have
+  moved many commits past what you reviewed; scope the verdict to the reviewed SHA and ask for a
+  fresh request.
+- If `gh`/`git` return 401 after the restart (OneCLI; it lasted ~6 h on 2026-10-16), PR-mode
+  prestage cannot fetch the diff. Write `git diff <base>..<head>` from an existing local worktree
+  of the PR head and dispatch A and C with `--mode patch --patch <file>`; A's `final-review.md`
+  then records the patch hash.
 On a slang-rhi (non-compiler) PR the runners still work in `pr` mode (the diff is fetched via
 `gh pr diff -R shader-slang/slang-rhi`), but the subagent checkout is the slang COMPILER tree, so
 subagents can't navigate unchanged slang-rhi surrounding source — degraded, not broken; supplement
@@ -172,10 +207,14 @@ BOTH the fix build and the master control — a probe "clean on fix" only proves
 upstream IR-legalization fix; and the clarity runner is invoked `bash run-clarity.sh --mode pr ...`
 (passing a leading `run-clarity` positional errors "unknown flag").
 
-**Source learnings (10):**
+**Source learnings (14):**
 - [codex danger-full-access can mutate your worktree and amend your commit](../learnings/1788103140445-codex-danger-full-access-can-mutate-your-worktree-.md) — codex re-injects deferred advisories and amends HEAD, then flags the mismatch as must-fix; `git reset --hard <verified-sha>` from reflog, a naive `git restore` keeps the creep.
 - [codex danger-full-access can amend your branch + worktree resyncs to origin on restart](../learnings/1788103619006-codex-danger-full-access-can-amend-your-branch-wor.md) — restart re-syncs to pushed origin (local amends vanish); write a RESUME.md with the pushed sha; `--force-with-lease`'s "stale info" rejection is a feature.
 - [Detached nohup PR-review runs are killed by container restart with no artifacts](../learnings/1788159236458-detached-nohup-pr-review-runs-are-killed-by-contai.md) — check for `final-review.md`≥500B, not the run dir; A/C are disposable across a likely restart; on slang-rhi the subagent tree is the compiler, degraded.
+- [Reviewer A runs exceed the 30-min Bash background cap — recover subagent reports from stream.jsonl](../learnings/1792058631652-reviewer-a-runs-exceed-the-30-min-bash-background-.md) — #13538 R4 killed at 30 min with 5/6 subagents done; long `timeout` or `nohup` + poll; a Security 🔴 null-ASTBuilder claim did not reproduce.
+- [Container restart mid-review kills Reviewer A/C and wipes /tmp](../learnings/1792058636644-container-restart-mid-review-kills-reviewer-a-c-an.md) — setsid nohup does not help; recover A's lenses from `task_notification` summaries; keep sentinels/probes under `/workspace/agent/`; `[GATE AUDIT]` false trigger on "[Fix Report]".
+- [Copy reviewer artifacts out of skill transcripts/ immediately — container restarts wipe them](../learnings/1792056693233-slang-review-copy-reviewer-artifacts-out-of-skill-.md) — only `/workspace/agent/review-<pr>/` survived two restarts; re-check `headRefOid` and scope the verdict to the reviewed SHA.
+- [Container restarts kill --detach review runs; GitHub 401 after restart → re-run A/C in patch mode](../learnings/1792136253875-container-restarts-kill-detach-review-runs-github-.md) — `--detach` beats Bash timeouts, not restarts; check `exit-status` and `/proc/<pid>`; patch mode from a local worktree diff.
 - [slang-pr-review: shared-container stale pre-staged diff → INTEGRITY-FAIL, verify before trusting counts](../learnings/1788161056956-slang-pr-review-shared-container-stale-pre-staged-.md) — verify reviewed-diff sha256 == live `gh pr diff` sha256; capture your run dir from the driver log, never `ls -dt`.
 - [Verify a PR fix on a build FROM the PR head, with master as control — worktree needs submodule init](../learnings/1787626975022-verify-a-pr-fix-on-a-build-from-the-pr-head-with-m.md) — the base binary is master; calibrate and run every probe on both builds; worktree slangc lacks SPIR-V libs but HLSL codegen is decisive.
 - [codex-critique sandbox cannot read /tmp — put review artifacts under /workspace/agent](../learnings/1789374218965-codex-critique-sandbox-cannot-read-tmp-put-review-.md) — codex's separate sandbox reads `/workspace/agent` (incl. worktrees) but not `/tmp`; a `/tmp/foo.md` OUTPUT_REVIEW target returns must-fix and burns a round.

@@ -3,12 +3,12 @@ title: "SlangPy Validation Against an Unreleased Slang PR"
 type: concept
 group: slangpy
 tags: [slangpy, cross-repo, validation, no-gpu, slangc, companion-pr, ci-latest-slang, cpu-device, regression-masking]
-source_count: 0
+source_count: 5
 ---
 
 # SlangPy Validation Against an Unreleased Slang PR
 
-How to prove that a SlangPy change, or a SlangPy companion PR that pre-adapts `slangpy/slang/*.slang`, behaves correctly against a Slang compiler that is not released yet, without a GPU, and how to read the downstream "SlangPy Tests" signal without being misled by import-time masking, CPU-backend noise, or a swapped library. The `SGL_LOCAL_SLANG` A/B mechanics for the C++ `sgl_tests` side live on [SlangPy GPU Validation and Cross-Repo Guards](slangpy-gpu-validation-and-cross-repo-guards.md); companion-PR merge order lives on [SlangPy build/CI toolchain](slangpy-f0909b0-build-ci-toolchain.md).
+How to prove that a SlangPy change, or a SlangPy companion PR that pre-adapts `slangpy/slang/*.slang`, behaves correctly against a Slang compiler that is not released yet, with GPU-free checks that complement GPU runs on the container's L40S, and how to read the downstream "SlangPy Tests" signal without being misled by import-time masking, CPU-backend noise, or a swapped library. The `SGL_LOCAL_SLANG` A/B mechanics for the C++ `sgl_tests` side live on [SlangPy GPU Validation and Cross-Repo Guards](slangpy-gpu-validation-and-cross-repo-guards.md); companion-PR merge order lives on [SlangPy build/CI toolchain](slangpy-f0909b0-build-ci-toolchain.md).
 
 ## TL;DR
 
@@ -24,6 +24,8 @@ How to prove that a SlangPy change, or a SlangPy companion PR that pre-adapts `s
 - **Reverting the fix is not a valid control on the new compiler**, because the module then fails to import. Use "the same tests pass on the pinned compiler with the fix" plus a standalone `slangc` repro.
 - **To get a GPU tally from PR CI,** grep `gh run view <id> --log` for the test name with `PASSED|SKIPPED` and group by job and `DeviceType`. Linux runs vulkan+cuda, Windows runs d3d12+vulkan+cuda, macOS runs metal.
 - **Before trusting a "no difference" result, prove which library each arm loads.** A shared `LD_LIBRARY_PATH` makes a local slangc load the release `libslang-compiler` (`ldd`). Pointing `SGL_LOCAL_SLANG_BUILD_DIR` at the downloaded release artifact does the same thing on the SlangPy side.
+- **`slangpy.__version__` names the source tree, not the build** — identify each A/B arm by `ldd slangpy_ext*.so | grep libslang-compiler` and `slangpy.__file__`.
+- **A SlangPy wheel binary-links against a newer Slang, but its shipped `.slang` modules do not compile there**; read the bundled version from `slangpy.SLANG_BUILD_TAG`.
 
 ## Building just enough Slang from the PR head
 
@@ -42,7 +44,7 @@ One build-flake note. A slang-rhi FetchContent download of `Vulkan-Headers v1.4.
 
 ## The no-GPU kernel-compile differential
 
-In a GPU-less container, pytest on `DeviceType.cpu` tells you nothing about texture code (see the next section), and lavapipe can't stand in for a GPU (see [SlangPy build & infra](slangpy-build-and-infra-operations.md)). Codegen still runs on cpu, though. So the reliable signal is to compile the kernels SlangPy actually generates:
+On `DeviceType.cpu` (the only device when no GPU is available, as during the 2026-09-28→10-16 host passthrough outage; containers otherwise have an L40S, so also run the vulkan/cuda devices), pytest tells you nothing about texture code (see the next section), and lavapipe can't stand in for a GPU (see [SlangPy build & infra](slangpy-build-and-infra-operations.md)). Codegen still runs on cpu, though. So the reliable signal is to compile the kernels SlangPy actually generates:
 
 1. Run the test on cpu with `SLANGPY_PRINT_GENERATED_SHADERS=1 pytest ... -s`. Every kernel is printed between the `*/` line and the `====` line. Extract each one and truncate it after `compute_main`'s closing `}`, because log lines (with ANSI escapes) get interleaved into the dump.
 2. Compile each kernel with `slangc k.slang -I <slangpy>/slangpy/slang -I <tests dir> -target spirv -entry compute_main -stage compute`. Do this for {pinned release, PR-head build} × {unpatched, patched module dir}. That gives a 2×2 differential: the patch should be a no-op on the pinned compiler and a fix on the PR compiler.
@@ -80,9 +82,14 @@ For the GPU half from ordinary PR CI, tally the new test per backend. `gh run vi
 
 The same slang#13537 regression was hidden a second time by a library swap. One `LD_LIBRARY_PATH=<release>/lib` exported for every arm of an A/B loop made the locally built slangc load the release `libslang-compiler` (the sonames matched), so the PR arm behaved exactly like the release. Run `ldd <slangc> | grep slang` with the loop's environment whenever an A/B shows "no difference". The full rule is on [Build System, Prebuilt Deps & CMake Options](slang-tooling-build-runtime-libs.md). The SlangPy-side version of the trap is `-DSGL_LOCAL_SLANG_BUILD_DIR` pointed at the downloaded `build/slang-<ver>-linux-x86_64/` release artifact instead of `build/Release`, which makes both arms come back clean. Its `strings`/`ldd` proof is on [SlangPy GPU Validation and Cross-Repo Guards](slangpy-gpu-validation-and-cross-repo-guards.md).
 
-**Source learnings (4):**
+**Every local SlangPy build reports the same `__version__`.** A local `pip install /workspace/agent/slangpy` reports the version string of the source tree, so on 2026-10-16 main b89a3827 (Slang 2026.19) and an older local build (Slang 2026.17.1) both printed `slangpy=0.43.0`; `dist-info/direct_url.json` reading `file:///…` marks a local build, not the PyPI release. Name each arm of a with/without-fix A/B by its Slang instead, `ldd <slangpy>/slangpy_ext*.so | grep libslang-compiler` plus `python -c 'import slangpy; print(slangpy.__file__)'`, and put both in the run log; Codex OUTPUT_REVIEW blocked a public comment until the log carried that provenance. SlangPy main pins its Slang as `SGL_SLANG_VERSION` in `external/CMakeLists.txt`, so when the fix is already in that release the stock main build suffices and no `SGL_LOCAL_SLANG` rebuild is needed [local SlangPy builds all report the same __version__](../learnings/1792136974641-slangpy-local-builds-all-report-the-same-version-s.md).
 
-- [No-GPU SlangPy validation: compile the generated kernels with slangc instead of trusting CPU-device pytest](../learnings/1791933953974-no-gpu-slangpy-validation-compile-the-generated-ke.md) — `SLANGPY_PRINT_GENERATED_SHADERS` dump → 2×2 {pinned, PR} × {unpatched, patched} slangc differential; CPU backend texture limits; grep `error[E3`
+**A wheel is locked to one Slang at the `.slang` level, not the binary level (slangpy#1226).** The stock 0.43.1 wheel (built for Slang 2026.12) links and runs against Slang 2026.19 when that library is forced in with an `RTLD_GLOBAL` preload or an `LD_LIBRARY_PATH` symlink: all 103 imported symbols resolve and `SLANG_BUILD_TAG` reports 2026.19. The shipped `.slang` modules then fail (`slangpy/slang/staticarray.slang:10`, `E30019 expected 'MatrixLayoutMode'`, from slang#12986), and main's copy fails on 2026.12 (E30015). So "run a wheel against a newer external Slang" needs `.slang` sources that compile on several Slang versions plus CI against newer Slang, not documentation. Two Slangs can share one Linux process, because `libslang-compiler.so.0.<ver>` has a versioned SONAME: with another Slang already loaded `RTLD_LOCAL`, SlangPy still binds its bundled copy, and it breaks only when the other library is loaded `RTLD_GLOBAL` before slangpy is imported (Windows DLL names carry no version, so the first loaded wins; untested). Release bodies are empty; the bundled Slang version appears only in `docs/changelog.rst` or at runtime as `slangpy.SLANG_BUILD_TAG` [SlangPy wheels are locked to one Slang version at the .slang level](../learnings/1792145562307-slangpy-wheels-are-locked-to-one-slang-version-at-.md).
+
+**Source learnings (5):**
+
 - [Verify a slangpy companion PR against an unmerged Slang PR's compiler locally (no GPU)](../learnings/1791935481120-verify-a-slangpy-companion-pr-against-an-unmerged-.md) — slangc + slang-glslang minimal build; harness across 4 targets; spirv-asm no-op diff; PR-CI tally by DeviceType; ci-latest-slang branch dispatch
 - [Downstream SlangPy failures can hide later regressions](../learnings/1791941484429-downstream-slangpy-failures-can-hide-later-regress.md) — import failure = unknown beyond; slang#13537 `Texture2D<T>` inference regression surfaced only after slangpy#1220; revert is not a valid control
 - [SlangPy test_type_resolution_texture on --device-types=cpu: 5 Texture1D sint cases always fail](../learnings/1791958376051-slangpy-test-type-resolution-texture-on-device-typ.md) — compiler-independent rhi `createTexture` failures; only "could not match the function signature" is signal; transient Vulkan-Headers SHA256 mismatch + local-URL pin
+- [SlangPy local builds all report the same __version__, so name a regression control by its bundled libslang-compiler version (ldd)](../learnings/1792136974641-slangpy-local-builds-all-report-the-same-version-s.md) — `direct_url.json` file://; `SGL_SLANG_VERSION` pin
+- [SlangPy wheels are locked to one Slang version at the .slang level, not the binary level](../learnings/1792145562307-slangpy-wheels-are-locked-to-one-slang-version-at-.md) — symbols resolve on 2026.19, `staticarray.slang` E30019; versioned SONAME coexistence (slangpy#1226)

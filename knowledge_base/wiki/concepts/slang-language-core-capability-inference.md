@@ -8,7 +8,7 @@ source_count: 6
 
 # Slang capability inference: how [require] propagates through referenced declarations
 
-Slang infers a function's capability requirements by walking the declarations it references and joining their `[require(...)]` sets. A `[require]` that the walk never reaches is silently dropped: the code compiles for a target the type or function was restricted away from, with no E36107. This page covers the decl-ref walk in `slang-check-decl.cpp`, the generic-struct gap fixed for #13579 by PR #13616, the traps in hooking a new reference path, the walks inference still does not make, and how to test a fix that removes a generic-vs-non-generic difference. Target-family gating of IR passes and other target-coverage questions are on [slangc Target Coverage & Capability Gating](slangc-target-coverage-and-capabilities.md); derivative `[require]` threading is on [[wiki/concepts/slang-autodiff-require-and-variants.md]]; the descriptor-handle capability promotion is on [[wiki/concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md]].
+Slang infers a function's capability requirements by walking the declarations it references and joining their `[require(...)]` sets. A `[require]` that the walk never reaches is silently dropped: the code compiles for a target the type or function was restricted away from, with no E36107. This page covers the decl-ref walk in `slang-check-decl.cpp`, the generic-struct gap fixed for #13579 by PR #13616, the traps in hooking a new reference path, the walks inference still does not make, and how to test a fix that removes a generic-vs-non-generic difference. Target-family gating of IR passes and other target-coverage questions are on [slangc Target Coverage & Capability Gating](slangc-target-coverage-and-capabilities.md); derivative `[require]` threading is on [[wiki/concepts/slang-autodiff-require-and-variants.md]]; the descriptor-handle capability promotion is on [[wiki/concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md]]. See also [Slang capability-check scope and the blast radius of core-intrinsic changes](slang-compiler-capability-check-scope-and-core-intrinsic-changes.md) for when E36100/E36107 fire (per function, per discovered entry point, per session target) and how a new barrier or `__stage_switch` in a core intrinsic breaks callers.
 
 ## TL;DR
 
@@ -23,6 +23,7 @@ Slang infers a function's capability requirements by walking the declarations it
 - **After any visitor change, rebuild the core module and diff its log for `(error|warning)[E…]`,** and diff every SIMPLE directive's raw output with and without the change before claiming a test is re-enabled.
 - **Pin a parity fix with twin rows:** each generic row next to its non-generic twin in one exhaustive DIAGNOSTIC_TEST, master failing exactly the generic rows. Before calling a changed diagnostic a regression, run the non-generic twin on master.
 - **A debug-only `SLANG_ASSERT` on a guard that a counting probe never hits beats a silent skip.**
+- **Where the checks fire, and core-intrinsic body changes** (E36100 per function, `loadModule` E36107 per target, barrier/`__stage_switch` source breaks): [capability-check scope](slang-compiler-capability-check-scope-and-core-intrinsic-changes.md).
 
 ## The walk, and the generic decl-ref gap (#13579)
 

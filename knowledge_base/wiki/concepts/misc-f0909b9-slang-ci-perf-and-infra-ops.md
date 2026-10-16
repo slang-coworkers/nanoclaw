@@ -3,7 +3,7 @@ title: "Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
 type: concept
 group: misc
 tags: [ci-health, heartbeat, test-falcor, flake-vs-real, causation, benchview, compile-perf, perf-alerting, master-branch, nightly]
-source_count: 22
+source_count: 23
 ---
 
 ## TL;DR
@@ -41,6 +41,7 @@ Operational facts for the Slang CI-health / maintainer / heartbeat roles:
   geomean against a fixed green night.
 - **A job-log grep can match the step's own echoed source** (`##[group]Run …`), e.g.
   "LLVM prebuilt not found in GCS" on a cache hit — drop `echo ` lines first.
+- **Size a nightly front-end step by per-timer geomeans over size-matched workloads from `perf-confirmation-*` artifacts**, not by the `analyze` flags; download them within a week.
 
 ## Causation must be read at the failure site
 
@@ -226,7 +227,9 @@ When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with m
 
 **A green night after a red one is usually a threshold miss, not baseline absorption, so read the `Confirmation:` line before explaining it.** The `analyze` step compares each night against a trailing-7 median, and it is tempting to say a real step was absorbed into the baseline when the next night goes green. After a 10-07 step on shader-slang/slang, 10-09 went green and one reading blamed absorption ([trailing-median baseline hides real steps](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md)). The logs showed otherwise: the median was still 45.9 ms on 10-09 and 10-10 (only 2 of the 7 trailing nights were post-step), and 10-09 passed because confirmation found 0 regressions. Conformance measured 1.08×, under the 1.10× ERROR threshold, so it only raised a warning. Grep the analyze log for `Confirmation:` and `baseline: trailing 7 point(s) [...]` first ([a green night is a threshold miss — check Confirmation:](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md)). A trailing-7 median only moves once 4 of the 7 nights are post-step, after which a real step does go quiet, so localize a suspected step early with per-timer geomean ratios against a fixed known-green night. `gh run download <id> -n perf-confirmation-<id>-1` gives `results.json` (per-workload `timers.<name>.median`); older nights live in shader-slang/slang-compile-perf `daily/<date>-<sha>/results.json` (`gh api … -H 'Accept: application/vnd.github.raw'`). A geomean over workloads with a ≥1 ms baseline reproduced the checker's numbers exactly. A real regression shifts one phase broadly (SemanticChecking up in 48/54 workloads, ~1.075×) while backend/IR timers stay ~1.00; runner noise moves every phase together and rotates nightly. The per-push store repo (slang-material-modules-benchmark) is DXIL-only, 7 metrics and bimodal across runners, so it cannot localize a front-end shift. For front-end moves after 2026-10-07, check #13445 (e2e217dd2) first: it turned `SemanticsVisitor::getTypeTags` from a cached `aggTypeDecl->typeTags` read into a per-call field/base walk with no `-Gec` gate (filed as #13565).
 
-**Source learnings (22):**
+**Size a front-end step with per-timer geomeans from the perf-confirmation artifacts.** The `analyze` table lists only counters over the ratio≥1.1 / abs≥2 ms gate against a trailing-7 median, and chronic noise makes lone flags unreliable. `gh run download <run-id> --repo shader-slang/slang -p 'perf-confirmation-*'`, read `results.json` (workloads with `timers.<name>.median` and `size`), keep workloads whose `size` matches between nights, and take the geomean ratio per timer against a fixed green night. A real front-end regression moves `SemanticChecking`/`frontEndExecute` broadly (39/54 workloads above the prior four nights' max) while `linkAndOptimizeIR` and `loadBuiltinModule` stay near 1.00; runner noise moves everything. The 10-16 nightly measured SemanticChecking 1.052 vs 10-12 (1.042 vs 10-15 alone), with only #13537/#13615/#13626 in the window. Artifacts expire after about a week (10-07/10-08 runs returned 404 on 10-16), so record the geomeans durably when sizing a step [MDL perf nightly per-timer geomeans](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md).
+
+**Source learnings (23):**
 
 - [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check the timeline actor before assuming we readied a PR; a force-push dismissal is expected; don't re-dispatch ci.yml on a ready PR.
 - [Heartbeat: verify the base, not just the deltas, on durations carried across many wakes](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive "since <anchor>, now ~Nh" from the anchor; a base error survives indefinitely under delta-only checks.
@@ -250,3 +253,4 @@ When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with m
 - [Nightly MDL Perf Test: detect real steps hidden by trailing-median baseline](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md) — per-timer geomean vs a fixed green night; one phase shifting broadly = real, all phases together = runner noise.
 - [Nightly compile-perf: a green night after a red one is a threshold miss, not baseline absorption](../learnings/1791622838976-nightly-compile-perf-a-green-night-after-a-red-one.md) — median unchanged, 1.08× < 1.10× ERROR; grep `Confirmation:`; #13445 getTypeTags walk suspect (#13565).
 - [Deterministic compile-perf A/B for a Slang pass: callgrind scoped to the phase](../learnings/1791325135172-deterministic-compile-perf-a-b-for-a-slang-pass-ca.md) — --toggle-collect on the phase gives run-identical Ir; build slang-glslang for SPIR-V workloads; report whole-process Ir, not phase-share x delta (PR #13236).
+- [MDL perf nightly: size a front-end step with per-timer geomeans from perf-confirmation artifacts](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md) — size-matched workloads vs a fixed green night; artifacts expire ~1 week

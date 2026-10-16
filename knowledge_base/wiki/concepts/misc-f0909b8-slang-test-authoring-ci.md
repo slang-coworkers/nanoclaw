@@ -3,7 +3,7 @@ title: "Slang test authoring, FileCheck traps, unit-test linkage, and CI-infra t
 type: concept
 group: misc
 tags: [slang-test, filecheck, dump-ir, lang-server, unit-test, slang-static-unit-test, slang-api, visibility, ci, test-falcor, regression-test, revert-drill]
-source_count: 13
+source_count: 15
 ---
 
 ## TL;DR
@@ -37,6 +37,7 @@ on reading CI signal correctly.
 - **`SLANG_CHECK(x)` self-terminates with `;`** — brace `if/else` bodies.
 - **`test-falcor` red on an otherwise-green PR is usually external-CI infra** (403 /
   rate-limit at submit), not your code; a 403 won't self-heal via re-run.
+- **`filecheck=A,B` is ONE prefix named `A,B`, not two**, and a leading `X-NOT:` above a line-1 match scans nothing. Use one prefix per lane and mutation-test each pin.
 
 ## Making the test actually discriminate
 
@@ -68,6 +69,8 @@ simultaneously — pull the pass/fail COUNT and compare to the prior baseline; t
 `-o /dev/null` guard mass-failure (973 tests) was hidden behind a single AVX-512
 SIGILL job that a prior triage blamed for the whole redness
 [nightly Slang Test red has two distinct causes](../learnings/1788077660856-nightly-slang-test-red-08-29-30-has-two-distinct-c.md).
+
+Two more ways a FileCheck lane checks less than it appears to. **`filecheck=A,B` is not multi-prefix.** `source/slang-llvm/slang-llvm-filecheck.cpp:92` sets `fcReq.CheckPrefixes = {fileCheckPrefix}` with the whole string as one prefix, so in `//TEST:SIMPLE(filecheck=SAMPLE,CUDA):` the `CUDA-SAME:` lines are never evaluated; on PR #13564 a mutation from `cuda` to `ptx` still passed, and six tests in `tests/` use the comma form. Use one distinct prefix per lane (`LOAD`, `LOAD_CPP`) and mutation-test each pin. (`-target ptx` reports the target as `cuda` in diagnostics, because PTX is generated from the CUDA source target.) [filecheck=A,B is not multi-prefix](../learnings/1792062570709-slang-test-filecheck-a-b-is-not-multi-prefix-the-s.md). **A leading `X-NOT:` before the first positive match scans nothing when that match is output line 1.** WGSL front matter starts with `enable f16;`, so a `-NOT` placed above `X: enable f16;` guards nothing; put the `-NOT` between positive matches, or use a separate NOT-only run (`tests/wgsl/comparison-in-argument-list.slang` `NOBARE`). Prove the guard by emitting the forbidden string in a different position and confirming the row fails (on #13650 both new rows still passed) [leading -NOT on line 1 is vacuous](../learnings/1792078768928-slang-ci-ignores-wgpu-render-feature-half-rows-fil.md).
 
 ## Emit-shape blast radius and downstream masking
 
@@ -120,7 +123,7 @@ admin-merge past a persistent Falcor 403, and backtick-wrapped `Fixes #N` does N
 auto-close
 [test-falcor red is usually external-CI infra, not your code](../learnings/1788257591834-test-falcor-red-on-an-otherwise-green-pr-is-usuall.md).
 
-**Source learnings (13):**
+**Source learnings (15):**
 
 - [Nightly Slang Test red has TWO distinct causes — don't conflate](../learnings/1788077660856-nightly-slang-test-red-08-29-30-has-two-distinct-c.md) — pull the pass/fail COUNT vs the prior baseline; an AVX-512 SIGILL leg hid a 973-test `-o /dev/null` guard mass-failure (#12832).
 - [`-o -` safely replaces `-o /dev/null` in -dump-ir tests](../learnings/1788160188725-slang-test-o-safely-replaces-o-dev-null-in-dump-ir.md) — -dump-ir→stderr, target→stdout in a non-interleaving trailing block; the propagated "streams mix" warning was false; verified by a three-way corpus comparison (PR #12846).
@@ -135,3 +138,5 @@ auto-close
 - [SLANG_CHECK macro carries a trailing semicolon — brace if/else bodies](../learnings/1788368280378-slang-check-macro-carries-a-trailing-semicolon-bra.md) — the macro's own `;` plus yours dangles the else; brace both branches; clang-format has no Insert/RemoveBraces so they survive.
 - [test-falcor red on an otherwise-green PR is usually external-CI infra, not your code](../learnings/1788257591834-test-falcor-red-on-an-otherwise-green-pr-is-usuall.md) — fails at submit (403/rate-limit); a 403 won't self-heal; maintainers admin-merge past it; backtick `Fixes #N` doesn't auto-close.
 - [Two-directional test with a false-live positive control is a merge-precondition](../learnings/1788301800371-approver-challenger-miss-validated-for-liveness-ma.md) — #12607; for liveness/mark-encoding changes, one assertion per direction; a "live value survives" check alone is half a control.
+- [slang-test filecheck=A,B is not multi-prefix — the second prefix is silently unchecked](../learnings/1792062570709-slang-test-filecheck-a-b-is-not-multi-prefix-the-s.md) — `slang-llvm-filecheck.cpp:92` one prefix; one prefix per lane + mutation test (#13564)
+- [slang CI ignores -wgpu -render-feature half rows; FileCheck leading -NOT on first line is vacuous](../learnings/1792078768928-slang-ci-ignores-wgpu-render-feature-half-rows-fil.md) — put `-NOT` between positive matches or in a NOT-only run (#13650)

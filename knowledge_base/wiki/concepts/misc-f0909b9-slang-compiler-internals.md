@@ -3,7 +3,7 @@ title: "Slang compiler internals: parser/checker, IR/serialization, emit, and di
 type: concept
 group: misc
 tags: [slang, parser, checker, ir, serialization, emit, diagnostics, lowering, bindless, core-module, version-bump]
-source_count: 16
+source_count: 17
 ---
 
 ## TL;DR
@@ -28,6 +28,8 @@ triage/review sessions on real issues:
   load since #12905 — a `k_max` bump makes older compilers reject the new modules).
   Inserting an AST node type is backward-incompatible (positional tags) and needs a
   `kSupportedSerializationVersion` bump.
+  Linked IR is serialized too (host-VM `emitHostVMCode`), so a decoration that "only
+  exists in linked IR" still needs the `k_max` bump.
 - **Emit / bindless.** `DescriptorHandle<T>` lowers to `uint2` (two independent
   heap indices, not a 64-bit split); `.Handle` is a member type alias. CUDA `inout`
   subobject passes a field pointer directly with no copy temp; a copy-out workaround
@@ -151,6 +153,21 @@ There are **two** version numbers, and they are easy to conflate:
    superseded; re-read `slang-ir.h` before arguing a bump is cosmetic
    ([CORRECTION: k_maxSupportedModuleVersion IS range-checked at load since #12905](../learnings/1791314340428-correction-slang-k-maxsupportedmoduleversion-is-ra.md)).
 
+   "This decoration only exists in linked IR, which is never serialized" is not a
+   reason to skip the bump. `emitHostVMCode` (slang-emit.cpp ~3801) calls
+   `newModule->setIRModule(linkedIR.module)` and then `newModule->serialize(...)`, so
+   linked IR reaches serialized bytecode on the host-VM (slang-vm) path. Precedent:
+   stable id 908 (#13116, c538debef) bumped the version 34→35. A related #13564 trap:
+   a `DIAGNOSTIC_TEST` lane with `-target ptx` that expects a backend diagnostic
+   (anything from `linkAndOptimizeIR`) silently needs NVRTC, because code-gen loads
+   the downstream compiler (slang-code-gen.cpp:405) before emitting source and
+   slang-test records no backend requirement for `DIAGNOSTIC_TEST`
+   (slang-test-main.cpp:6016), so it fails with E52002 on a runner without NVRTC. Use
+   an NVRTC-gated `//TEST:SIMPLE` filecheck lane for ptx instead. Ops note: the skills
+   dir is read-only, so set `REVIEW_RUN_DIR` / `CLARITY_RUN_DIR` to a path under
+   `/workspace/agent/runs` (which also survives restarts)
+   ([linked IR IS serialized (slang-vm), so new IR decorations still need a module-version bump](../learnings/1792068239009-slang-linked-ir-is-serialized-slang-vm-so-new-ir-d.md)).
+
 2. **`IRModuleInfo::kSupportedSerializationVersion`** (slang-serialize-ir.cpp) stamps
    the container and IS enforced with `!=` (rejects older AND newer). Inserting a new
    **AST node type** mid-hierarchy is backward-incompatible because AST nodes
@@ -239,7 +256,8 @@ deterministically since reading uninitialized memory is UB). Flag the mismatch a
 documentation nit
 ([value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md)).
 
-**Source learnings (16):**
+**Source learnings (17):**
+- [Slang linked IR IS serialized (slang-vm), so new IR decorations still need a module-version bump](../learnings/1792068239009-slang-linked-ir-is-serialized-slang-vm-so-new-ir-d.md) — `emitHostVMCode` serializes linked IR; ptx DIAGNOSTIC_TEST lanes silently need NVRTC
 
 - [Slang core-module stale-cache: delete embed headers, not just touch](../learnings/1788386919811-slang-core-module-stale-cache-delete-embed-headers.md) — a stale core-module cache reports "pass" while masking E30853; rm the embed headers + blob + slang-bootstrap before rebuilding.
 - [Slang static property feasibility — the work is 3 frontend edits, backend is free](../learnings/1788393506410-slang-static-property-feasibility-the-work-is-3-fr.md) — `isModifierAllowedOnDecl` + this-elision + requirement-matching are the only gaps; check the allow-list first for any modifier-on-decl feature.

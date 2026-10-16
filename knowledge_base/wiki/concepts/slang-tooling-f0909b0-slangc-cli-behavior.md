@@ -223,8 +223,11 @@ only RIFF header chunks and never imports dependencies, so E00104 can't occur th
 helper fixes both at root while keeping only the testable `dump-module` path as the
 regression); and propagating the whole option set re-materializes any `-r` ReferenceModule
 entries into the inspection linkage (benign duplicate construction). It also notes GPU is
-per-container — a `tests/neural (vk)` variant failing is not automatically "no GPU" when the
-box has an NVIDIA L40S; confirm a suspected-flaky test fails identically on master first.
+per-container — a `tests/neural (vk)` variant failing was not automatically "no GPU", because the
+box has an NVIDIA L40S (it was missing only during the 09-28→10-16 host passthrough outage, so
+measure with `nvidia-smi -L` each session —
+[no GPU since ~09-28 (historical: 09-28→10-16 outage)](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md));
+confirm a suspected-flaky test fails identically on master first.
 
 On option *semantics*: `-warnings-as-errors` **always takes an operand** (`all` or
 `<id>[,<id>...]`) — `slangc -warnings-as-errors foo.slang -o out` is invalid because it

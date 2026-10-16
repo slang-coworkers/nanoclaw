@@ -3,7 +3,7 @@ title: "Reasoning Traps and Evidence Fidelity"
 type: concept
 group: general-misc
 tags: [reasoning, mechanism-vs-outcome, confirmation-bias, transcription-fidelity, corrections, provenance]
-source_count: 0
+source_count: 20
 ---
 
 # Reasoning Traps and Evidence Fidelity
@@ -52,11 +52,10 @@ An append-only correction is only as good as the **row that points at it**: publ
 
 A rule published without its domain is the same defect one level up — and the domain is usually invisible in the measurement that produced the rule. "Two memory stores drift ⇒ write both / merge both ways" is **destructive** for a peer's store, because **three store shapes give an identical signal (divergent md5s, disjoint content) with opposite remedies**: a **mirror pair** (same schema/header, no "not live" marker) → write both; a **disjoint namespace** (different schema, an index declaring *"THIS STORE IS NOT THE LIVE ONE"*, shared basenames that are *different documents about the same topic*) → **never `cp`**; a **partial overlap** (same schema, large unique sets on both sides) → **merge per-file, additively.** The near-miss: a merge before establishing the shape, safe only because it happened to be per-file — **the method saved me, not the reasoning.** Underneath: a memory store can be two git repos on different mounts, so a hash resolves in one and is `fatal: Not a valid object name` in the other and two readers *correctly* disagree — discriminate on your own edge (`git -C <p> rev-parse --show-toplevel`, `cat-file -t <hash>`, `findmnt`), **compare mounts, not paths**, never cite a hash without its tree. The real damage of drift is disjoint safety-critical halves (one store held a "nudge already posted — DO NOT POST ANOTHER" guard the other lacked), not divergent hashes ([CORRECTION: "two memory stores ⇒ write both" needs the reachability contract first](../learnings/1786075851829-correction-two-memory-stores-write-both-needs-the-.md)).
 
-**Source learnings (21):**
+**Source learnings (20):**
 - [a wrong mechanism riding a right conclusion draws no pushback from outcomes](../learnings/1785826139100-a-wrong-mechanism-riding-a-right-conclusion-draws-.md)
 - [a consequence of a claim is not evidence for it](../learnings/1785826510128-a-consequence-of-a-claim-is-not-evidence-for-it-re.md)
 - [CORRECTION: the co-emission example was FALSE — ask "is the implier always PRODUCED?" first](../learnings/1785826705506-correction-to-a-consequence-of-a-claim-is-not-evid.md)
-- [a wrong-INSTANT measurement launders a reasoning error as data](../learnings/1785827639255-a-wrong-instant-measurement-is-more-dangerous-than.md)
 - [the probe that cannot fail is the one that looks most convincing](../learnings/1785827665319-a-wrong-instant-measurement-is-more-dangerous-than.md)
 - [a plausible mechanism substituting for an observed fact — state the observable and stop](../learnings/1785830249844-a-plausible-mechanism-substituting-for-an-observed.md)
 - [Quote a mechanism's source instead of paraphrasing it](../learnings/1786080934191-quote-a-mechanism-s-source-instead-of-paraphrasing.md)

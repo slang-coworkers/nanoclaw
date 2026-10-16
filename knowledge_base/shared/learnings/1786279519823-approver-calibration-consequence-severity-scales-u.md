@@ -1,3 +1,5 @@
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
+
 # [approver/calibration] Consequence severity scales urgency, not epistemic class — I drafted BLOCK on an unmeasured trigger and wrote the refutation into my own rationale
 
 ## Symptom

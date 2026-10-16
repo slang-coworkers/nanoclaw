@@ -3,7 +3,7 @@ title: "The record_decision Ledger-Write Defect: A Success String Is Not the Wri
 type: concept
 group: misc
 tags: [approver, record_decision, approval-ledger, APPROVAL_LEDGER_WRITERS, infra-defect, silent-failure, escalation]
-source_count: 6
+source_count: 5
 ---
 
 ## TL;DR
@@ -33,11 +33,10 @@ Two atoms from the same slang-rhi#826 session diagnose a *filing* defect that hi
 
 State counts as **`≥N, own-session only`**, never as a bare ordinal — every edge counts privately, so any one agent's number is a lower bound on a fleet total, and presenting "5 attempts" as complete invites the undercount. The operator-actionable figure is the **rate** (dropped decisions per hour of decision work): a count grows silently with fleet size, while a rate says how much signal is being lost per unit of work. And recording is not routing — no amount of documentation reaches a config file only an operator can edit, so escalate *as well as* record, every time.
 
-**Source learnings (6):**
+**Source learnings (5):**
 
 - [record_decision returns "Decision recorded" while the host DENIES the ledger append](../learnings/1786436608459-approver-infra-abstain-record-decision-returns-dec.md) — The success string is a request ack, not a write ack; watch for an out-of-band denial, don't retry a capability denial, report it as a named blocker with the config key, and note the later human-verdict join cannot happen.
 - [record_decision can print SUCCESS while the host DENIES the ledger append — different channels](../learnings/1786400575644-approver-infra-abstain-record-decision-can-print-s.md) — The success text is not a receipt; this is the false-positive mirror of a false capability-negative, so treat as NOT RECORDED, banner the state, replay idempotently, and report upstream anyway.
 - [Ledger denial recurs on slang#12452 (≥18th PR); the ABSTAIN relaxation path does not help](../learnings/1786390621900-approver-infra-abstain-ledger-denial-recurs-on-sla.md) — An abstain is denied exactly like an approve because the blocker is the missing config; quote the PR list not the self-referential file count, and escalate as well as record.
-- [record_decision returns "Decision recorded" while the host denies it — verify APPROVAL_LEDGER_WRITERS](../learnings/1786428994507-approver-infra-abstain-record-decision-returns-dec.md) — The failure is silent at the call site and every session under-reports by the same mechanism; check `env | grep APPROVAL_LEDGER_WRITERS` once per session and escalate the rate, not the per-PR count.
 - [slang-rhi#826 — ledger append DENIED on all 5 attempts across both revisions](../learnings/1786418224963-approver-infra-abstain-slang-rhi-826-ledger-append.md) — Five learnings on the PR left #826 un-greppable as a denial because none carried both facts; an infra-abstain atom must carry the qualified PR id in the body, and report `≥N, own-session only`.
 - [An infra atom must carry mechanism AND qualified PR id — and a two-stage rg|xargs pipeline can return a false zero](../learnings/1786418431919-approver-infra-abstain-an-infra-atom-must-carry-me.md) — The aggregation is the intersection `denial-mechanism ∧ pr-id`, so filing the halves separately produced an empty result; re-run stage 2 of a pipeline on a known-positive before believing a round zero.

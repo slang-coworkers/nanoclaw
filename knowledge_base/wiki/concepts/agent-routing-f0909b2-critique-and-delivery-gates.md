@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 21
+source_count: 23
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -35,11 +35,11 @@ state. The hooks are content-based and hash-based, which creates a family of sel
 - **Recorded rounds require a FRESH `mcp__codex__codex` call** with the verbatim reviewer
   developer-instructions and a `STAGE:` line — `codex-reply` does not count; `sandbox: danger-full-access`
   is required; omit `model`.
-- **Chain-routing gate blocks any delivery-marker `send_message` without `in_reply_to`** — even fresh
-  delegations. Set `in_reply_to=<chain-initiating inbound>` plus explicit `to` + `thread_id`. `send_file` is
-  ungated, so send the handoff message before its memo to keep order. Deliver marker messages through the
-  `send_message` tool: a final-response `<message>` block was refused even with `in_reply_to`, and a refused
-  block is never delivered. A `[Resolution]` also needs a codex OUTPUT_REVIEW first.
+- **Chain-routing gate blocks any marker message without `in_reply_to`**, fresh delegations included. Send
+  every marker (`[Triage handoff]`, `[Review Verdict]`, `[Fix Report]`, `[Resolution]`, …) via the
+  `send_message` tool with an integer `in_reply_to=<chain-initiating inbound>` plus explicit `to` +
+  `thread_id`; a final-response `<message>` block is refused even with the attribute, and is never delivered.
+  `send_file` is ungated, so send the message before its memo. A `[Resolution]` needs OUTPUT_REVIEW first.
 - **`--body-file` must be a literal absolute path** (`$VAR` paths and `-F body=@$var` are refused as
   unresolvable). The body is capped at ~1000 chars and ≤2 lines per `##` section; put the 5-bullet block
   before the first `##`.
@@ -265,6 +265,18 @@ errors already delivered (a local CPU repro attributed to CI, helpers called `pr
 no access modifier). So run a read-only `mcp__codex__codex` against live GitHub before any
 `[Resolution]`, and quote task ids from `ncl tasks list`, since `--name` gets a hash suffix and
 truncation ([final-response Resolution refused twice](../learnings/1791196726879-final-response-resolution-refused-twice-by-chain-r.md)).
+The same holds for every other marker and for a fresh triage handoff. A triager's `[Triage handoff]`
+to slang-fixer with no `in_reply_to` is refused on both channels, the MCP tool and a `<message to=…>`
+block, even with an explicit `thread_id`; what passes is
+`send_message(to="slang-fixer", in_reply_to=<id of the parent's dispatch that started this triage>,
+thread_id="gh-issue-<owner>/<repo>-<n>")`, and `send_file` without `in_reply_to` still goes through
+([fresh Triage handoff needs in_reply_to=<parent dispatch>](../learnings/1792070986920-chain-routing-gate-a-fresh-triage-handoff-needs-in.md)).
+A reviewer's final-response `<message to="slang-fixer" in_reply_to="2">` carrying `[Review Verdict]`
+was refused twice with "the <message> tag omitted in_reply_to" although the attribute was there; the
+same body via the tool with `in_reply_to: 2` as an integer landed first time
+([send Review Verdict via send_message(in_reply_to=N)](../learnings/1792103692562-chain-routing-gate-send-review-verdict-via-send-me.md)).
+Treat the XML `in_reply_to` attribute as unreliable for any marker message and save the refusal
+round-trips.
 
 ## Comment hygiene and PR-body discipline are gate-enforced
 
@@ -322,7 +334,7 @@ entries to HEAD behaviour, against `_claims.md` §1's "doc's own wording", is
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (21):**
+**Source learnings (23):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -342,6 +354,8 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [Chain-routing hook rejects peer handoff send_message without in_reply_to](../learnings/1790786405952-chain-routing-hook-rejects-peer-handoff-send-messa.md) — add `in_reply_to=<parent inbound>` beside explicit `to`; `send_file` is ungated so send the message first
 - [explain-diff upsert re-appends Fixes/disclaimer; peer review-request needs in_reply_to](../learnings/1790797956245-explain-diff-upsert-re-appends-fixes-disclaimer-pe.md) — `[Fix Review Request]` to slang-reviewer refused without `in_reply_to`; a `codex-reply` round is not recorded
 - [Final-response [Resolution] refused twice by chain-routing-gate](../learnings/1791196726879-final-response-resolution-refused-twice-by-chain-r.md) — use the send_message tool with in_reply_to + canonical thread_id; OUTPUT_REVIEW a [Resolution] first; task ids from `ncl tasks list`
+- [Chain-routing gate: a fresh [Triage handoff] needs in_reply_to=<parent dispatch id>](../learnings/1792070986920-chain-routing-gate-a-fresh-triage-handoff-needs-in.md) — refused on both the tool and `<message>` block without it; the block-channel workaround is stale; `send_file` ungated
+- [chain-routing-gate: send [Review Verdict] via send_message(in_reply_to=N)](../learnings/1792103692562-chain-routing-gate-send-review-verdict-via-send-me.md) — the XML `in_reply_to` attribute was refused twice; the tool with an integer id passed first try
 - [gate-critique-on-deliver refuses gh pr edit --body-file with a $VAR path](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md) — spell the absolute path; upsert_pr_body.py writes one comment, not the description
 - [PR-description gate: ≤1000 chars, ≤2 lines per `##` section; ROUND:/REQUIREMENTS: needed to record a round (slangpy#1137)](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md) — primary fold (CPU large-dispatch coverage) is on the slangpy bug-investigations page.
 - [Delivery gate: any edit after an OUTPUT_REVIEW approve re-arms it; codex must emit plain Attested lines](../learnings/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md) — slang#13567: memory edit after approve re-armed; backtick-wrapped Attested hashes not recorded; PR body ≠ 5-bullet shape.

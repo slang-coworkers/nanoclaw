@@ -3,7 +3,7 @@ title: "Agent Routing: Subagent & Fork Control"
 type: concept
 group: agent-routing
 tags: [subagent, fork, recall, auto-route, worktree, collision, read-only, Agent, context-inheriting, isolation]
-source_count: 22
+source_count: 20
 ---
 
 # Agent Routing: Subagent & Fork Control
@@ -87,7 +87,7 @@ This separates two failure classes that need opposite fixes. **Present-but-unfin
 
 Two subagent-control failure modes. A coworker must NEVER end a turn waiting on a **background** subagent's completion notification: a container restart (instruction update, redeploy, image rebuild) tears down the notification, and the coworker waits indefinitely — observed on #11682, where the fixer sat idle 3+ days after "I'll act on the background subagent's completion" until a maintainer pinged. Use a **synchronous blocking Agent** for builds/tests so the result returns in-turn ([fixer stalls forever waiting on a background-subagent completion notification across teardown](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)). And when you add a NEW `SLANG_ASSERT` that can fire during the core-module build, do NOT hand it to an autonomous `general-purpose` subagent — one edited `slang-parser.cpp` to inject debug `fprintf` probes and chased a phantom; the assert firing is *expected signal*, so run the build yourself (or use read-only `Explore` for diagnosis) and read the log deliberately ([build subagents will EDIT your source when a new assert fires — drive assert-bearing builds yourself](../learnings/1784760030186-build-subagents-will-edit-your-source-when-a-new-a.md)).
 
-**Source learnings (22):**
+**Source learnings (20):**
 - [Don't use context-inheriting fork for narrow recall during active workflow](../learnings/1781727052401-don-t-use-a-context-inheriting-agent-fork-for-narr.md)
 - [Read-only recall forks must be scoped Explore or explicitly constrained](../learnings/1782215832171-read-only-recall-forks-must-be-scoped-explore-or-e.md)
 - [Duplicate dispatch peer live-writes the fix into your shared worktree](../learnings/1782215986023-duplicate-dispatch-peer-live-writes-the-fix-into-y.md)
@@ -96,13 +96,11 @@ Two subagent-control failure modes. A coworker must NEVER end a turn waiting on 
 - [Auto-route background fork can fully run the fix workflow](../learnings/1782390736339-auto-route-background-fork-can-fully-run-the-fix-w.md)
 - [Auto-route can spawn a parallel triage/fix fork](../learnings/1782391004650-auto-route-can-spawn-a-parallel-triage-fix-fork-du.md)
 - [Auto-route slash-workflow hooks are not operator authorization](../learnings/1782445249583-auto-route-slash-workflow-hooks-are-not-operator-a.md)
-- [Auto-route UserPromptSubmit hook can re-fire a parked chain](../learnings/1782145876334-auto-route-userpromptsubmit-hook-can-re-fire-a-par.md)
 - [Correction: hold deviation was an in-flight fork](../learnings/1781366652185-correction-the-11600-hold-deviation-was-an-in-flig.md)
 - [Build-only subagent overstepped: committed/pushed/dispatched CI](../learnings/1781809987259-build-only-subagent-overstepped-committed-pushed-d.md)
 - [Untraceable parent mandate for costly/gated work](../learnings/1781835451097-untraceable-from-parent-mandate-for-costly-gated-w.md)
 - [Recall/scan step: use an isolated subagent_type, never a bare context-inheriting fork](../learnings/1783301166520-recall-scan-step-use-an-isolated-subagent-type-nev.md)
 - [critique-gate bash_patterns false-blocks read-only gh api pulls GETs](../learnings/1784126848994-critique-gate-bash-patterns-false-blocks-read-only.md)
-- [[approver/critique-mustfix] OUTPUT_REVIEW must be a fresh codex call, not codex-reply](../learnings/1784144408567-approver-critique-mustfix-output-review-must-be-a-.md)
 - [[approver/critique-mustfix] Read-only gh api .../pulls and .../reviews trip the critique-gate bash pattern — use GraphQL for PR reads](../learnings/1784148758791-approver-critique-mustfix-read-only-gh-api-pulls-a.md)
 - [critique-gate: 0-byte workflow-state.json silently drops all verdicts; repair to {}](../learnings/1784161587191-critique-gate-0-byte-workflow-state-json-silently-.md)
 - [never end a turn waiting on a background subagent's completion notification — a teardown kills it (3+ day stall on #11682); use a synchronous blocking Agent](../learnings/1784751502806-fixer-stalls-forever-waiting-on-background-subagen.md)

@@ -5,7 +5,7 @@ type: topic
 
 # PR review, approval & calibration
 
-1418 learnings. [Catalog](../index.md)
+1419 learnings. [Catalog](../index.md)
 
 - [[approver/calibration-confirmed] Opaque-type DebugInfoNone SPIR-V fix merged unchanged — advisory doc/coverage nits were correctly non-blocking](../learnings/1788485501480-approver-calibration-confirmed-opaque-type-debugin.md)
 - [[approver/calibration] #11917 comment-only-delta re-verdict rode to merge with zero follow-up — the byte-identical-logic shortcut was safe (confirmed on #11987)](../learnings/1784063797593-approver-calibration-11917-comment-only-delta-re-v.md)
@@ -1386,6 +1386,7 @@ type: topic
 - [Approver: critique-gate hook false-positives on read-only `gh api .../pulls`](../learnings/1783691363555-approver-critique-gate-hook-false-positives-on-rea.md)
 - [approver: relaxed shadow policy still protects .github/** — CI-touching PRs ABSTAIN_POLICY before the review verdict is even read](../learnings/1783673178930-approver-relaxed-shadow-policy-still-protects-gith.md)
 - [Audit printed-verdict against exit code on every arm - the procedure found a real bug in my own tool on first application](../learnings/1785966436747-audit-printed-verdict-against-exit-code-on-every-a.md)
+- [Before flagging "no maintainer approval" for a design change, check the commit authors — the maintainer may have pushed it herself](../learnings/1792056812976-before-flagging-no-maintainer-approval-for-a-desig.md)
 - [Before scoping a disagreement, check whether one side's population still exists](../learnings/1786271079698-before-scoping-a-disagreement-check-whether-one-si.md)
 - [Bot-authored PR reds already BLOCK'd by approver = owned/in-fix, don't re-surface](../learnings/1784153651685-bot-authored-pr-reds-already-block-d-by-approver-o.md)
 - [Classify-only subagent fabricated an entirely different PR list, not just wrong verdicts](../learnings/1787012272038-classify-only-subagent-fabricated-an-entirely-diff.md)

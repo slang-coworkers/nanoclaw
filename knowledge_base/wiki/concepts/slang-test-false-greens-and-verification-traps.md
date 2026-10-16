@@ -3,7 +3,7 @@ title: "slang-test False Greens and Verification Discipline"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, test-server, false-green, verification, positive-control, negative-control, stale-binary, unit-test, verbosity, replay-collision, CI]
-source_count: 27
+source_count: 29
 ---
 
 # slang-test False Greens and Verification Discipline
@@ -34,6 +34,7 @@ Running the slang-test harness is one thing; **trusting its result** is another.
 - **A fatal diagnostic suppresses codegen, so positive-compilation cases must live in a separate file.**
 - **`//CHECK:` in a DIAGNOSTIC_TEST is exactly 8 chars — carets start at column 9**; a leading space fails "Column position(s) don't match". Match by error CODE, and quote the `.mailmap`-mapped name when git-blame identity matters.
 - **Backend-codegen compile time IS separately measurable in-tree today** (`-report-perf-benchmark` + `tools/compile-perf`); scrutinize a subagent's *bottom line* more than its file:line findings. Suspect RPC timeout / workload sizing before escalating a flaky test to a concurrency-contract design.
+- **A SIMPLE lane never runs spirv-val, and a `//CHECK:` line followed by a separate `// ^^^` line is not parsed as a check.** Pin emitted ops instead of "no VUID", use the `/*CHECK: … */` block form for carets, and make every diagnostic test fail on master first.
 
 ## False Greens: Test-Server Crashes Reported as Pass
 
@@ -62,6 +63,15 @@ A small edit to a resolver that many paths share (on PR #13610, `getGlobalParamA
 ## DIAGNOSTIC_TEST Caret Alignment + git-blame .mailmap Identity
 
 Two authoring gotchas for the slang-test **DIAGNOSTIC_TEST** matcher (distinct from LLVM FileCheck — it parses machine-readable diag output and runs even when FileCheck isn't installed). A `//CHECK:` prefix is exactly 8 chars, so carets must start at the char immediately after it — `//CHECK:^^^ E41000` puts the first caret at column 9, while `//CHECK: ^^^` (leading space) shifts every caret and fails with "Column position(s) don't match"; slang-test prints a "Suggested annotations you can copy" block on mismatch, so use it as ground truth and match by error CODE (`E41000`), not free text. A parallel provenance trap when answering "who wrote this?": `git blame`/`%aN` render the CURRENT name via `.mailmap` (shader-slang maps historical `Tim Foley` → `Theresa Foley`), so quote the name blame ACTUALLY shows (`%aN`, mailmap-applied), not raw `%an`; find a comment's origin PR with `git log -1 <sha>` or the `git log -S '<text>' --reverse` pickaxe ([DIAGNOSTIC_TEST caret alignment + git-blame .mailmap identity (slang#12236/#12245)](../learnings/1785230187967-diagnostic-test-caret-alignment-git-blame-mailmap-.md)).
+
+**Two caret forms check nothing or cannot reach.** A `//CHECK:` on one line with `//   ^^^^ message` on the next is not parsed as a check at all: on PR #13659 a `DIAGNOSTIC_TEST(diag=CHECK,non-exhaustive)` written that way passed on master, where the diagnostic does not exist, and on a mutated head with the cause removed. The single-line `//CHECK: ^^^ msg` cannot point at columns below 10, because the prefix occupies them, and fails with "Column position(s) don't match". The block form works, with carets aligned to the source columns of the previous non-annotation line:
+```
+uint loadWithTargetOnly()
+/*CHECK:
+     ^^^^^^^^^^^^^^^^^^ 'loadWithTargetOnly' uses undeclared capability 'spirv_1_0'
+*/
+```
+Every new diagnostic test needs a revert or mutation drill: it must FAIL on master or with the cause removed ([separate //CHECK: + // ^^^ lines check nothing](../learnings/1792102157772-diagnostic-test-caret-annotations-a-separate-check.md)).
 
 ## `diag=CHECK` is not LLVM FileCheck: `CHECK-NOT`/`CHECK-DAG` are silently ignored, and it's exhaustive by default
 
@@ -93,7 +103,9 @@ Three compounding traps when verifying a SPIR-V emit fix on a local (often GPU-/
 
 ---
 
-**Source learnings (27):**
+**A SIMPLE lane does not run SPIR-V validation, so `X-NOT: VUID` proves nothing.** A control fragment shader calling `GroupMemoryBarrierWithGroupSync()` (invalid SPIR-V, VUID-04682 under `SLANG_RUN_SPIRV_VALIDATION=1` with slangc) PASSED a `//TEST:SIMPLE(filecheck=X): -target spirv -stage fragment` lane with `X-NOT: VUID`. `-target spirv` output reaches FileCheck as disassembly, with a "standard error = {" block that a naive `-NOT: error` also matches. Pin the construct itself with `-target spirv-asm` (`CHECK: OpEntryPoint Fragment`, `CHECK-NOT: OpControlBarrier`), run validation separately with slangc plus `SLANG_RUN_SPIRV_VALIDATION=1` for the PR evidence, and check any "no error" detector against a known-bad control first (slang#13631 / PR #13659) [SIMPLE lanes do not run SPIR-V validation](../learnings/1792090114561-slang-test-simple-lanes-do-not-run-spir-v-validati.md).
+
+**Source learnings (29):**
 - [SPIR-V compile-only tests are render-API tagged → `slang-test` reports IGNORED (0/0) with no Vulkan loader; verify via direct `slangc` + `SLANG_RUN_SPIRV_VALIDATION=1`; spirv-asm hides a constant's word count](../learnings/1790009629117-spir-v-compile-only-tests-are-render-api-tagged-ve.md)
 - [in-tree spirv-val is v2026.4.rc2 and DOES catch logical-pointer Function vars — check the version, never recall it](../learnings/1790785645539-slang-in-tree-spirv-val-v2026-4-rc2-does-catch-log.md)
 - [`slang-test` injects `-O0` (a `CHECK-NOT: OpCompositeConstruct` never runs spirv-opt → false green; pass `-O1`); (its spirv-val-version claim is corrected by 1790785645539); SLANG_RUN_SPIRV_VALIDATION checks the PRE-optimizer module](../learnings/1790037466327-slang-test-injects-o0-verifying-spir-v-logical-poi.md)
@@ -121,5 +133,7 @@ Three compounding traps when verifying a SPIR-V emit fix on a local (often GPU-/
 - [diag=CHECK DIAGNOSTIC_TEST is exhaustive and ignores CHECK-NOT](../learnings/1789718875570-slang-diag-check-diagnostic-test-is-exhaustive-and.md) — exhaustive-by-default gives the negative guarantees without CHECK-NOT; substring match; one diagnostic = primary + span rows, annotate both facets.
 - [late-lowered IR pass: test literal-length arrays above the unroll limit at module scope (release-assert trap)](../learnings/1790933910032-late-lowered-ir-pass-test-literal-length-arrays-un.md) — `lowerArrayBuiltinCasts` E99997 on `static const` [17] (#13378); GLSL `copyLogical` E99999 (#13379)
 - [review technique: byte-compare head vs master slangc over all SPIR-V tests to bound a reconciliation change](../learnings/1791924730900-review-technique-byte-compare-head-vs-master-slang.md) — normalize `-g2` worktree paths; `getenv`-gated disagreement logging found an undisclosed ParameterBlock E99997 fix (#13610).
+- [slang-test SIMPLE lanes do not run SPIR-V validation — check emitted ops, not 'no VUID'](../learnings/1792090114561-slang-test-simple-lanes-do-not-run-spir-v-validati.md) — known-bad control passed; pin `OpEntryPoint`/`OpControlBarrier` with spirv-asm (#13659)
+- [DIAGNOSTIC_TEST caret annotations: a separate //CHECK: line plus // ^^^ line checks nothing — mutation-test every diagnostic test](../learnings/1792102157772-diagnostic-test-caret-annotations-a-separate-check.md) — block form `/*CHECK: … */` for columns < 10 (#13659)
 
 _Catalog: [[wiki/index.md]]_

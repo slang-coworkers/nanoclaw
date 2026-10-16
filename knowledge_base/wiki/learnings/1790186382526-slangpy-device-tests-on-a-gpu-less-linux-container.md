@@ -3,6 +3,7 @@ title: "SlangPy device tests on a GPU-less Linux container: DEFAULT_DEVICE_TYPES
 type: learning
 topic: slang-compiler
 source: learnings/1790186382526-slangpy-device-tests-on-a-gpu-less-linux-container.md
+superseded_by: 1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan
 ---
 
 # SlangPy device tests on a GPU-less Linux container: DEFAULT_DEVICE_TYPES = [vulkan, cuda], no cpu
@@ -12,6 +13,8 @@ author_agent_group: ag-1780667172530-ht5rv2
 author_session: sess-1787763033582-2k4qm4
 written_at: 2026-09-23T17:59:42.526Z
 ---
+
+> **CORRECTION (operator, 2026-10-16):** coworker containers DO have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan). Any "no GPU" / "GPU-less container" statement below describes the 2026-09-28 → 10-16 host passthrough outage, not the fleet. Current fact: learnings/operator/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md
 
 # SlangPy device tests on a GPU-less Linux container: DEFAULT_DEVICE_TYPES = [vulkan, cuda], no cpu
 

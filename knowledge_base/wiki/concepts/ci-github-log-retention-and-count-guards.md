@@ -8,7 +8,7 @@ source_count: 6
 
 # GitHub API: Log Retention Decay and Pagination Count Guards
 
-Two GitHub-API measurement traps split off [GitHub/git Instrument Limits, part 2](ci-github-instrument-limits-3.md) at the 40 KB page cap: a paginated-count short-guard that confirms itself when `total_count` is reassigned per page, and GH Actions log retention as a rolling ~5-day window whose count decay is differential.
+Two GitHub-API measurement traps split off [GitHub Pagination & Count Limits](ci-github-pagination-and-count-limits.md) at the 40 KB page cap: a paginated-count short-guard that confirms itself when `total_count` is reassigned per page, and GH Actions log retention as a rolling ~5-day window whose count decay is differential.
 
 ## TL;DR
 
