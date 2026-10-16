@@ -137,6 +137,22 @@ describe('probeGpu', () => {
     expect(p.gpu).toBe(false);
     expect(p.reason).toBe('nvidia-smi exit 9');
   });
+
+  test('nvidia-smi fails but CUDA + Vulkan work → partial, not "no GPU"', async () => {
+    const p = await probeGpu(
+      deps({
+        smi: { ok: false, stdout: '', error: 'enoent' },
+        cuda: { ok: true, stdout: '0' },
+        vk: { ok: true, stdout: VK_SUMMARY },
+      }),
+    );
+    expect(p.gpu).toBe(true);
+    expect(p.nvml).toBe(false);
+    const line = renderGpuContextLine(p);
+    expect(line).toStartWith('Environment: GPU partially detected');
+    expect(line).toContain('CUDA driver init OK; Vulkan device NVIDIA L40S');
+    expect(line).not.toContain('cannot run');
+  });
 });
 
 describe('renderGpuContextLine', () => {
@@ -172,8 +188,33 @@ describe('renderGpuContextLine', () => {
       ),
     );
     expect(renderGpuContextLine(p)).toContain(
-      '2x NVIDIA L40S GPUs (driver 595.91.07; CUDA driver init OK; Vulkan via the NVIDIA ICD; vulkaninfo not installed)',
+      '2x NVIDIA L40S GPUs (driver 595.91.07; CUDA driver init OK; vulkaninfo not installed; NVIDIA Vulkan ICD present, Vulkan access unverified)',
     );
+  });
+
+  test('installed ICD does not mask a failed or CPU-only Vulkan probe', async () => {
+    const failed = await probeGpu(
+      deps(
+        {
+          smi: { ok: true, stdout: L40S_SMI },
+          cuda: { ok: true, stdout: '0' },
+          vk: { ok: false, stdout: 'ERROR: Found no drivers!', error: 'exit 1' },
+        },
+        [ICD],
+      ),
+    );
+    expect(renderGpuContextLine(failed)).toContain('Vulkan probe failed: exit 1');
+    const cpuOnly = await probeGpu(
+      deps(
+        {
+          smi: { ok: true, stdout: L40S_SMI },
+          cuda: { ok: true, stdout: '0' },
+          vk: { ok: true, stdout: 'GPU0:\n\tdeviceName = llvmpipe (LLVM 15.0.6, 256 bits)\n' },
+        },
+        [ICD],
+      ),
+    );
+    expect(renderGpuContextLine(cpuOnly)).toContain('Vulkan probe listed no hardware GPUs');
   });
 
   test('no-GPU line carries the reason and does not generalize', async () => {
@@ -186,7 +227,7 @@ describe('renderGpuContextLine', () => {
     );
     const line = renderGpuContextLine(p);
     expect(line).toStartWith(
-      'Environment: no NVIDIA GPU detected in this container (probe at container start: nvidia-smi not found)',
+      'Environment: no NVIDIA GPU detected in this container (probe at container start: nvidia-smi not found;',
     );
     expect(line).toContain('infra problem');
     expect(line).toContain('do not record it as an environment fact');

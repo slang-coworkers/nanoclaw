@@ -20,6 +20,8 @@ export const GPU_PROBE_STATE_KEY = 'gpu_probe';
 
 export interface StoredGpuProbe {
   gpu: boolean;
+  /** nvidia-smi listed a GPU. False with `gpu` true = partial (CUDA/Vulkan only). */
+  nvml?: boolean;
   probedAt: string;
   reason?: string;
   devNode?: boolean;
@@ -42,9 +44,13 @@ export function readGpuProbe(outDb: Database.Database): StoredGpuProbe | null {
   }
 }
 
-/** The pure decision: GPU args applied, probe present, probe says no GPU. */
+/**
+ * The pure decision: GPU args applied, probe present, and the probe found no
+ * GPU at all or only partial access (nvidia-smi failed while CUDA/Vulkan
+ * worked) — both are host/runtime problems an operator should see.
+ */
 export function isGpuProbeMismatch(gpuArgsApplied: boolean, probe: StoredGpuProbe | null): boolean {
-  return gpuArgsApplied && probe !== null && !probe.gpu;
+  return gpuArgsApplied && probe !== null && (!probe.gpu || probe.nvml === false);
 }
 
 /** sessionId → probedAt already warned about. */
@@ -65,13 +71,17 @@ export function checkGpuProbe(
   if (!probe || !isGpuProbeMismatch(gpuArgsApplied, probe)) return false;
   if (warned.get(sessionId) === probe.probedAt) return false;
   warned.set(sessionId, probe.probedAt);
-  warn('GPU passthrough applied but container probe found no GPU — GPU tests in this session cannot run', {
-    sessionId,
-    probedAt: probe.probedAt,
-    reason: probe.reason,
-    devNode: probe.devNode,
-    cuda: probe.cuda,
-  });
+  warn(
+    'GPU passthrough applied but container probe found no or partial GPU access — verify CUDA/Vulkan in this container',
+    {
+      sessionId,
+      probedAt: probe.probedAt,
+      gpu: probe.gpu,
+      reason: probe.reason,
+      devNode: probe.devNode,
+      cuda: probe.cuda,
+    },
+  );
   return true;
 }
 

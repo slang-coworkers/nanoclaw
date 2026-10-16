@@ -39,6 +39,9 @@ describe('gpu probe host check', () => {
     expect(isGpuProbeMismatch(true, JSON.parse(GPU))).toBe(false);
     expect(isGpuProbeMismatch(false, JSON.parse(NO_GPU))).toBe(false);
     expect(isGpuProbeMismatch(true, null)).toBe(false);
+    // Partial: nvidia-smi failed while CUDA/Vulkan worked.
+    expect(isGpuProbeMismatch(true, { gpu: true, nvml: false, probedAt: 'x' })).toBe(true);
+    expect(isGpuProbeMismatch(true, { gpu: true, nvml: true, probedAt: 'x' })).toBe(false);
   });
 
   it('warns once per container start (probedAt), again after a new probe', () => {

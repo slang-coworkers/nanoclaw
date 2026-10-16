@@ -44,11 +44,16 @@ export interface GpuDevice {
 }
 
 export interface GpuProbe {
-  /** True only when nvidia-smi listed at least one GPU. */
+  /**
+   * True when ANY execution signal is positive: nvidia-smi listed a GPU, CUDA
+   * initialized, or vulkaninfo enumerated a hardware device. `nvml` says
+   * whether nvidia-smi itself worked.
+   */
   gpu: boolean;
+  nvml: boolean;
   devices: GpuDevice[];
   driver?: string;
-  /** Why `gpu` is false (nvidia-smi missing / failed / timed out / no rows). */
+  /** Why nvidia-smi listed nothing (missing / failed / timed out / no rows). */
   reason?: string;
   devNode: boolean;
   /** CUDA driver init: 'ok', 'failed: <detail>', or 'unavailable: <detail>'. */
@@ -68,26 +73,55 @@ export interface CmdResult {
 
 export type RunCmd = (cmd: string, args: string[], timeoutMs: number) => Promise<CmdResult>;
 
+/**
+ * Run one bounded command. The deadline is enforced independently of the
+ * child: a probe stuck in an uninterruptible driver call can outlive SIGKILL,
+ * and waiting for its exit callback would block runner startup indefinitely.
+ * On the deadline the child is killed, its pipes destroyed and unref'd, and the
+ * promise resolves 'timeout' without waiting for it.
+ */
 export const runCmd: RunCmd = (cmd, args, timeoutMs) =>
   new Promise((resolve) => {
+    let settled = false;
+    let deadline: ReturnType<typeof setTimeout> | undefined;
+    const settle = (r: CmdResult): void => {
+      if (settled) return;
+      settled = true;
+      if (deadline) clearTimeout(deadline);
+      resolve(r);
+    };
     try {
-      execFile(
+      const child = execFile(
         cmd,
         args,
         { timeout: timeoutMs, killSignal: 'SIGKILL', encoding: 'utf8', maxBuffer: 1024 * 1024 },
         (err, stdout) => {
-          if (!err) return resolve({ ok: true, stdout: String(stdout) });
+          if (!err) return settle({ ok: true, stdout: String(stdout) });
           const e = err as NodeJS.ErrnoException & { killed?: boolean; code?: unknown; signal?: unknown };
           let error: string;
           if (e.code === 'ENOENT') error = 'enoent';
           else if (e.killed || e.signal === 'SIGKILL') error = 'timeout';
           else if (typeof e.code === 'number') error = `exit ${e.code}`;
           else error = e.message.split('\n')[0];
-          resolve({ ok: false, stdout: String(stdout ?? ''), error });
+          settle({ ok: false, stdout: String(stdout ?? ''), error });
         },
       );
+      // Grace past execFile's own timeout so the normal path reports first.
+      deadline = setTimeout(() => {
+        try {
+          child.kill('SIGKILL');
+          child.stdin?.destroy();
+          child.stdout?.destroy();
+          child.stderr?.destroy();
+          child.unref();
+        } catch {
+          /* best effort */
+        }
+        settle({ ok: false, stdout: '', error: 'timeout' });
+      }, timeoutMs + 500);
+      if (settled) clearTimeout(deadline);
     } catch (err) {
-      resolve({ ok: false, stdout: '', error: err instanceof Error ? err.message : String(err) });
+      settle({ ok: false, stdout: '', error: err instanceof Error ? err.message : String(err) });
     }
   });
 
@@ -167,13 +201,15 @@ export async function probeGpu(deps: ProbeDeps = defaultDeps): Promise<GpuProbe>
     ...(vkTool && !vk.ok ? { error: vk.error } : {}),
   };
 
+  const cudaResult = parseCuInit(cuda);
   return {
-    gpu: devices.length > 0,
+    gpu: devices.length > 0 || cudaResult === 'ok' || vulkan.devices.length > 0,
+    nvml: devices.length > 0,
     devices,
     ...(devices[0]?.driver ? { driver: devices[0].driver } : {}),
     ...(reason ? { reason } : {}),
     devNode: deps.exists('/dev/nvidia0'),
-    cuda: parseCuInit(cuda),
+    cuda: cudaResult,
     vulkan,
     probedAt: deps.now().toISOString(),
   };
@@ -194,25 +230,40 @@ export function renderGpuContextLine(probe: GpuProbe | null | undefined): string
   if (!probe) return '';
   if (!probe.gpu) {
     return (
-      `Environment: no NVIDIA GPU detected in this container (probe at container start: ${probe.reason ?? 'no GPU listed'}). ` +
+      `Environment: no NVIDIA GPU detected in this container (probe at container start: ${probe.reason ?? 'no GPU listed'}; CUDA ${probe.cuda}; ${vulkanFact(probe)}). ` +
       'GPU tests (slang-test -api vk/cuda, SlangPy GPU devices) cannot run here — say so explicitly instead of reporting them as passed, ' +
       'and report it to the operator as an infra problem; do not record it as an environment fact in learnings or memory.'
+    );
+  }
+  const cudaFact = probe.cuda === 'ok' ? 'CUDA driver init OK' : `CUDA ${probe.cuda}`;
+  if (!probe.nvml) {
+    return (
+      `Environment: GPU partially detected at container start (${probe.reason ?? 'nvidia-smi listed no GPUs'}; ${cudaFact}; ${vulkanFact(probe)}). ` +
+      'Run GPU tests on the backend that probed OK when the task needs real GPU execution, and verify any other backend before skipping its tests; ' +
+      'report the nvidia-smi failure to the operator as an infra problem.'
     );
   }
   const plural = probe.devices.length > 1 ? 'GPUs' : 'GPU';
   const facts: string[] = [];
   if (probe.driver) facts.push(`driver ${probe.driver}`);
-  if (probe.cuda === 'ok') facts.push('CUDA driver init OK');
-  else facts.push(`CUDA ${probe.cuda}`);
-  if (probe.vulkan.devices.length > 0) facts.push(`Vulkan device ${probe.vulkan.devices.join(', ')}`);
-  else if (probe.vulkan.nvidiaIcd)
-    facts.push(probe.vulkan.tool ? 'Vulkan via the NVIDIA ICD' : 'Vulkan via the NVIDIA ICD; vulkaninfo not installed');
-  else facts.push('no NVIDIA Vulkan ICD found');
+  facts.push(cudaFact, vulkanFact(probe));
   return (
     `Environment: this container has ${probe.devices.length > 1 ? '' : 'an '}${describeDevices(probe.devices)} ${plural} (${facts.join('; ')}), measured at container start. ` +
     'Run GPU tests (slang-test -api vk/cuda, SlangPy GPU devices) when the task needs real GPU execution; ' +
     'GPU-free compile checks are a complement, not a substitute.'
   );
+}
+
+/**
+ * What the Vulkan probe actually showed. An installed ICD manifest proves
+ * installation, not working access, so it is only reported as "unverified".
+ */
+function vulkanFact(probe: GpuProbe): string {
+  const vk = probe.vulkan;
+  if (vk.devices.length > 0) return `Vulkan device ${vk.devices.join(', ')}`;
+  if (vk.error) return `Vulkan probe failed: ${vk.error}`;
+  if (vk.tool) return 'Vulkan probe listed no hardware GPUs';
+  return `vulkaninfo not installed; NVIDIA Vulkan ICD ${vk.nvidiaIcd ? 'present' : 'absent'}, Vulkan access unverified`;
 }
 
 /** Validate a stored probe row (also used by tests). Null on garbage. */
