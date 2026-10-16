@@ -199,7 +199,13 @@ export class DockerSessionDriver implements SessionDriver {
       }
       created.push(name);
       this.#cli.run(
-        containerCreateArgs(spec, agent, name, privateNetwork ? ['--network', privateNetwork] : networkArgs),
+        containerCreateArgs(
+          spec,
+          agent,
+          name,
+          privateNetwork ? ['--network', privateNetwork] : networkArgs,
+          this.opts.hostDeviceArgs?.() ?? [],
+        ),
       );
     } catch (error) {
       for (const createdName of created.reverse()) {
@@ -783,6 +789,7 @@ function containerCreateArgs(
   container: ContainerSpec,
   name: string,
   networkArgs: readonly string[],
+  hostDeviceArgs: readonly string[] = [],
 ): string[] {
   const args = ['create', '--rm', '--name', name];
   args.push(...labelArgs(labelsForKey(spec.key, container.role, { ...spec.labels, ...(container.labels ?? {}) })));
@@ -790,6 +797,9 @@ function containerCreateArgs(
   args.push(...hardeningArgs(spec));
   if (container.role !== 'agent') args.push('--read-only');
   args.push(...userArgs(spec));
+  // GPU passthrough (agent only). Before the env lanes so a composed or
+  // contributed `-e NVIDIA_*` still wins under Docker's last-flag rule.
+  args.push(...hostDeviceArgs);
   args.push(...envArgs(container.env));
   args.push(...envArgs(container.contributedEnv ?? {}));
   args.push(...mountArgs(container.mounts));
