@@ -27,7 +27,12 @@ import {
   writeMessageOut,
   type MessageOutRow,
 } from './db/messages-out.js';
-import { clearStaleProcessingAcks, gcOutboundHistory } from './db/container-state.js';
+import {
+  clearStaleProcessingAcks,
+  gcOutboundHistory,
+  reclaimOutboundSpace,
+  resolveMailboxRetentionDays,
+} from './db/container-state.js';
 import { resolveDestinationThread } from './db/session-routing.js';
 import { touchHeartbeat } from './heartbeat.js';
 import { getAgentMailbox } from './mailbox/index.js';
@@ -3437,15 +3442,18 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
   clearCurrentReplyRoute();
 
   // Outbound history GC (the host prunes the inbound side): drop messages_out
-  // system rows the host has already delivered (never chat replies), and acks for inbound rows that no
-  // longer exist, older than the retention window. Prod 2026-09-27: one
-  // session had 193k delivered rows the host re-read every second.
-  // OFF unless an operator sets NANOCLAW_MAILBOX_RETENTION_DAYS (operator
-  // decision 2026-09-28: the mailbox is the persistence layer for every open
-  // issue/PR chain — nothing is pruned by age by default).
+  // system rows the host has already delivered (never chat replies, never the
+  // newest row), and acks for inbound rows that no longer exist, older than the
+  // retention window. Prod 2026-09-27: one session had 193k delivered rows the
+  // host re-read every second; 2026-10-16: 247k processing_ack rows in the
+  // Orchestrator's outbound.db.
+  // ON by default (30 d, same as the host — src/reconcile-session.ts
+  // resolveMailboxRetentionDays); NANOCLAW_MAILBOX_RETENTION_DAYS overrides,
+  // 0 = off (GC and reclaim). Then reclaim this runner's own outbound.db free
+  // pages — the runner is that file's only writer, so the host never does —
+  // here, at start, before the first turn and before readiness is published.
   try {
-    const retentionDays =
-      Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0 ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) : 0;
+    const retentionDays = resolveMailboxRetentionDays(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS);
     if (retentionDays > 0) {
       const gc = gcOutboundHistory(new Date(Date.now() - retentionDays * 86_400_000).toISOString());
       if (gc.messagesOut > 0 || gc.acks > 0) {
@@ -3453,9 +3461,18 @@ export async function runPollLoop(config: PollLoopConfig): Promise<void> {
           `Outbound history GC: removed ${gc.messagesOut} delivered system messages_out rows, ${gc.acks} orphan acks (>${retentionDays}d)`,
         );
       }
+      const r = reclaimOutboundSpace();
+      if (r && r.action !== 'none') {
+        log(
+          `Outbound reclaim: ${r.action}${r.reason ? ` (${r.reason})` : ''} — ` +
+            `${r.fileBytesBefore} → ${r.fileBytesAfter} bytes ` +
+            `(reclaimed ${r.fileBytesBefore - r.fileBytesAfter}, free before ${r.freeBytesBefore}, live ${r.liveBytes}) ` +
+            `in ${r.durationMs} ms`,
+        );
+      }
     }
   } catch (err) {
-    log(`Outbound history GC skipped: ${err instanceof Error ? err.message : String(err)}`);
+    log(`Outbound history GC/reclaim skipped: ${err instanceof Error ? err.message : String(err)}`);
   }
 
   // Runner-instance readiness handshake (NanoClaw #1, "set ceiling v2") —
@@ -4350,9 +4367,7 @@ export async function processQuery(
               bgTasks === 0 &&
               inputsOutstanding === 0 &&
               (inputsExact || (!answering && queuedTurns.length === 0));
-            if (
-              freshSessionArrivalAction(idleMs, settled, idleEndLimit(bgTasks), 0) === 'end'
-            ) {
+            if (freshSessionArrivalAction(idleMs, settled, idleEndLimit(bgTasks), 0) === 'end') {
               log(`${why} — ending the query; ${newMessages.length} follow-up message(s) stay pending for a fresh one`);
               idleEndedAt = Date.now();
               query.end();

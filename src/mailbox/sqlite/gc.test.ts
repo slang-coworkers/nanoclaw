@@ -79,4 +79,32 @@ describe('gcInboundHistory', () => {
     expect(fs.existsSync(path.join(dir, 'missing.db'))).toBe(false);
     db.close();
   });
+
+  it('never touches pending/processing/paused rows, task rows (incl. recurring), or the newest row', () => {
+    const db = openInboundDb(inboundPath);
+    db.exec('DELETE FROM messages_in');
+    const ins = db.prepare(
+      'INSERT INTO messages_in (id, seq, kind, timestamp, status, recurrence, content) VALUES (?, ?, ?, ?, ?, ?, ?)',
+    );
+    ins.run('sys-processing', 2, 'system', OLD, 'processing', null, '{}');
+    ins.run('sys-paused', 4, 'system', OLD, 'paused', null, '{}');
+    ins.run('task-recurring-done', 6, 'task', OLD, 'completed', '0 9 * * *', '{}');
+    ins.run('task-recurring-pending', 8, 'task', OLD, 'pending', '0 9 * * *', '{}');
+    ins.run('chat-failed', 10, 'chat', OLD, 'failed', null, '{}');
+    ins.run('sys-old-done', 12, 'system', OLD, 'completed', null, '{}'); // → gone
+    ins.run('sys-newest-old-done', 14, 'system', OLD, 'completed', null, '{}'); // MAX(seq) → kept
+    expect(gcInboundHistory(db, { cutoffIso: CUTOFF }).systemRows).toBe(1);
+    const left = (db.prepare('SELECT id FROM messages_in ORDER BY seq').all() as Array<{ id: string }>).map(
+      (r) => r.id,
+    );
+    expect(left).toEqual([
+      'sys-processing',
+      'sys-paused',
+      'task-recurring-done',
+      'task-recurring-pending',
+      'chat-failed',
+      'sys-newest-old-done',
+    ]);
+    db.close();
+  });
 });

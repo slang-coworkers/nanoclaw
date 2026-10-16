@@ -1,4 +1,5 @@
-import { getInboundDb, getOutboundDb, openInboundDb } from './connection.js';
+import { getInboundDb, getOutboundDb, openInboundDb, outboundDbPath } from './connection.js';
+import { mailboxReclaimOptions, reclaimFreePages, type ReclaimResult } from './reclaim.js';
 import type { MessageInRow } from '../../db/messages-in.js';
 import type { MessageOutRow } from '../../db/messages-out.js';
 import {
@@ -96,7 +97,11 @@ export function sqliteMarkScriptSkipped(skips: Array<{ id: string; reason: strin
   );
   db.transaction(() => {
     for (const skip of skips) {
-      statement.run(skip.id, skip.reason === 'error' ? 'script-skip:error' : 'script-skip:gated', new Date().toISOString());
+      statement.run(
+        skip.id,
+        skip.reason === 'error' ? 'script-skip:error' : 'script-skip:gated',
+        new Date().toISOString(),
+      );
     }
   })();
 }
@@ -477,7 +482,9 @@ export function sqliteGcOutboundHistory(cutoffIso: string): { messagesOut: numbe
     .prepare(`SELECT message_out_id FROM delivered WHERE ${norm('delivered_at')} < ?`)
     .all(cutoff) as Array<{ message_out_id: string }>;
   const deleteOut = outbound.prepare(
-    `DELETE FROM messages_out WHERE id = ? AND kind = 'system' AND ${norm('timestamp')} < ?`,
+    // Never the newest row: seq allocation reads MAX(seq) of this table.
+    `DELETE FROM messages_out WHERE id = ? AND kind = 'system' AND ${norm('timestamp')} < ?
+       AND seq < (SELECT MAX(seq) FROM messages_out)`,
   );
   let messagesOut = 0;
   outbound.transaction(() => {
@@ -497,4 +504,12 @@ export function sqliteGcOutboundHistory(cutoffIso: string): { messagesOut: numbe
   })();
 
   return { messagesOut, acks: ackRows };
+}
+
+/**
+ * Give outbound.db's free pages back to the filesystem. The runner is this
+ * file's only writer, so only the runner may vacuum it (see reclaim.ts).
+ */
+export function sqliteReclaimOutboundSpace(): ReclaimResult {
+  return reclaimFreePages(getOutboundDb(), outboundDbPath(), mailboxReclaimOptions());
 }

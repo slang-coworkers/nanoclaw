@@ -99,6 +99,16 @@ export interface MailboxTimelineMessage {
   content: string;
 }
 
+export interface MailboxReclaimResult {
+  action: 'none' | 'incremental' | 'vacuum' | 'skipped';
+  reason?: string;
+  fileBytesBefore: number;
+  fileBytesAfter: number;
+  freeBytesBefore: number;
+  liveBytes: number;
+  durationMs: number;
+}
+
 /** Host-visible inbound mailbox behavior. Storage layout and lifecycle are implementation-private. */
 export interface InboundMailbox {
   setRouting(routing: SessionRouting): void;
@@ -117,6 +127,13 @@ export interface InboundMailbox {
    * cutoff (host-owned history; see gcInboundHistory). Optional for fakes.
    */
   gcHistory?(cutoffIso: string): { systemRows: number; deliveredRows: number };
+  /**
+   * Give freed pages of the HOST-OWNED inbound file back to the filesystem
+   * (incremental_vacuum, or a bounded one-time VACUUM on legacy files). Only
+   * the file's single writer may call this, and only while the session's
+   * container is down. Optional for fakes; see mailbox/sqlite/reclaim.ts.
+   */
+  reclaimSpace?(): MailboxReclaimResult;
   /**
    * Mark pending `cli-resp-*` replies written before the cutoff `completed`
    * (their requester has given up; see expireOrphanedCliResponses). Returns

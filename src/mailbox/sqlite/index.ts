@@ -4,6 +4,7 @@ import type Database from 'better-sqlite3';
 import { log } from '../../log.js';
 import { failureClassOf, isFailedAck, isGatedAck } from '../model.js';
 import { sessionMailboxDir, sessionMailboxPath } from './paths.js';
+import { mailboxReclaimOptions, reclaimFreePages } from './reclaim.js';
 export { inboundDbPath, outboundDbPath, sessionMailboxDir, sessionMailboxPath } from './paths.js';
 import {
   countDueMessages,
@@ -196,6 +197,7 @@ export function wrapSqliteInbound(
 ): InboundMailbox {
   return {
     gcHistory: (cutoffIso) => gcInboundHistory(db, { cutoffIso, outboundPath: opts.outboundPath }),
+    reclaimSpace: () => reclaimFreePages(db, mailboxReclaimOptions()),
     expireOrphanedCliResponses: (cutoffIso) => expireOrphanedCliResponses(db, cutoffIso),
     setRouting: (routing) => {
       const record = parseSessionRoutingRecord(routing);

@@ -27,6 +27,11 @@ export type SessionDbHandle = Database.Database;
 /** Apply the inbound or outbound schema to a DB file. Idempotent. */
 export function ensureSchema(dbPath: string, schema: 'inbound' | 'outbound'): void {
   const db = new Database(dbPath);
+  // Fresh files only (a no-op once the file has tables): create session DBs in
+  // incremental auto-vacuum mode so history GC can hand freed pages back to the
+  // filesystem without a full VACUUM (see reclaim.ts). Must precede the first
+  // CREATE TABLE. journal_mode stays DELETE (cross-mount visibility).
+  db.pragma('auto_vacuum = INCREMENTAL');
   db.pragma('journal_mode = DELETE');
   db.exec(schema === 'inbound' ? INBOUND_SCHEMA : OUTBOUND_SCHEMA);
   db.close();
@@ -474,6 +479,9 @@ export interface GcInboundOptions {
  *     the only thing standing between that message and a redelivery, so the
  *     order of the two GCs is: runner drops delivered messages_out first
  *     (see agent-runner sqliteGcOutboundHistory), host drops the orphans after.
+ *   - the newest messages_in row (MAX(seq)) is never deleted: the host
+ *     allocates the next inbound seq from MAX(seq) of this table alone, so
+ *     dropping it would hand out a seq an agent may still reference.
  */
 export function gcInboundHistory(
   db: Database.Database,
@@ -484,7 +492,8 @@ export function gcInboundHistory(
   const systemRows = db
     .prepare(
       `DELETE FROM messages_in
-       WHERE kind = 'system' AND status IN ('completed', 'failed') AND ${norm('timestamp')} < ?`,
+       WHERE kind = 'system' AND status IN ('completed', 'failed') AND ${norm('timestamp')} < ?
+         AND seq < (SELECT MAX(seq) FROM messages_in)`,
     )
     .run(cutoff).changes;
   let deliveredRows = 0;

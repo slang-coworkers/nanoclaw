@@ -60,4 +60,24 @@ describe('sqliteGcOutboundHistory', () => {
     expect(ackIds).toEqual(['in-gone-new', 'in-live']);
     expect(sqliteGcOutboundHistory(CUTOFF)).toEqual({ messagesOut: 0, acks: 0 });
   });
+
+  it('never deletes the newest messages_out row (seq allocation reads MAX(seq))', () => {
+    const outbound = getOutboundDb();
+    outbound.exec("DELETE FROM messages_out WHERE id = 'out-new-delivered'");
+    outbound
+      .prepare(
+        "INSERT INTO messages_out (id, seq, kind, timestamp, content) VALUES ('sys-newest', 9, 'system', ?, '{}')",
+      )
+      .run(OLD);
+    getInboundDb()
+      .prepare(
+        "INSERT INTO delivered (message_out_id, platform_message_id, status, delivered_at) VALUES ('sys-newest', NULL, 'delivered', ?)",
+      )
+      .run(OLD);
+    expect(sqliteGcOutboundHistory(CUTOFF).messagesOut).toBe(1); // sys-old-delivered only
+    const outIds = (outbound.prepare('SELECT id FROM messages_out ORDER BY seq').all() as Array<{ id: string }>).map(
+      (r) => r.id,
+    );
+    expect(outIds).toEqual(['chat-old-delivered', 'out-old-undelivered', 'sys-newest']);
+  });
 });

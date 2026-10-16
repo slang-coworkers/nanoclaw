@@ -113,6 +113,20 @@ export interface MailboxOperations {
    * whose inbound message no longer exists, both older than the cutoff.
    */
   gcOutboundHistory(cutoffIso: string): { messagesOut: number; acks: number };
+  /**
+   * Reclaim outbound.db free pages (incremental_vacuum, or a bounded one-time
+   * VACUUM on a legacy file). Runner-owned file only. Optional: a mailbox
+   * without on-disk free pages has nothing to reclaim.
+   */
+  reclaimOutboundSpace?(): {
+    action: 'none' | 'incremental' | 'vacuum' | 'skipped';
+    reason?: string;
+    fileBytesBefore: number;
+    fileBytesAfter: number;
+    freeBytesBefore: number;
+    liveBytes: number;
+    durationMs: number;
+  };
 }
 
 export interface AgentMailbox {
