@@ -6,15 +6,41 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 708 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 289 |
-| `nv-slang` | slang project spine, skills, workflows | 196 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 114 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 90 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 722 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 290 |
+| `nv-slang` | slang project spine, skills, workflows | 197 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 115 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 91 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-16
+
+### nv-main (14 PRs)
+- **#2067** `feat(tasks): ncl tasks isolate moves legacy series into their own task lane`
+- **#2068** `compliance-check: read-only Contributor AI Standard scorecard for the fleet`
+- **#2069** `fix(ops): make the host-down and sweep-stalled alerts able to fire; quiet the crash-loop false alarm`
+- **#2070** `fix(host): bound graceful shutdown inside TimeoutStopSec; wait for Docker at startup`
+- **#2071** `fix(ops): sweep-stalled rule sums ticks over the 5 min window`
+- **#2072** `compliance-check: encode search operators and unwrap the Discord tool envelope`
+- **#2073** `fix(mailbox): retention on by default (30 d), bounded GC and single-writer reclaim`
+- **#2074** `Add the eval-sandbox overlay and the eval-runner skill`
+- **#2076** `tasks: honour --group for agent callers the scope guard already admits`
+_+5 more: #2066, #2065, #2064, #2063, #2055_
+
+### nv-dashboard (1 PRs)
+- **#2057** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#2058** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#2059** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2060** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-10-15
 
