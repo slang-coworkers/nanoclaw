@@ -973,3 +973,77 @@ describe('deep verb help (ncl tasks help create)', () => {
     expect(resp.ok).toBe(false);
   });
 });
+
+describe('tasks --group across groups (cli_scope)', () => {
+  // The eval driver and the Orchestrator schedule work for sibling groups from inside a
+  // container. The dispatcher's scope guard refuses a foreign --group under cli_scope=group;
+  // under cli_scope=global the named group must be honoured, never silently replaced by
+  // the caller's own, because a task created in the wrong group runs under the caller's
+  // identity without that group's overlays.
+  beforeEach(async () => {
+    if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
+    fs.mkdirSync(TEST_DIR, { recursive: true });
+    const db = await initTestDb();
+    await runMigrations(db);
+    await createGroup('ag-1');
+    await createGroup('ag-2');
+    await createChatSession('ag-1', 'chat-1');
+    await createChatSession('ag-2', 'chat-2');
+  });
+
+  afterEach(async () => {
+    await closeDb();
+    if (fs.existsSync(TEST_DIR)) fs.rmSync(TEST_DIR, { recursive: true });
+  });
+
+  async function setScope(group: string, scope: string): Promise<void> {
+    const { ensureContainerConfig, updateContainerConfigScalars } = await import('../../db/container-configs.js');
+    await ensureContainerConfig(group);
+    await updateContainerConfigScalars(group, { cli_scope: scope } as never);
+  }
+
+  it('a group-scoped agent naming another group is refused with a scope error', async () => {
+    const resp = await dispatch(
+      {
+        id: 'req-s1',
+        command: 'tasks-create',
+        args: { group: 'ag-2', prompt: 'do it', process_after: '2026-01-15T09:00:00Z' },
+      },
+      agentCtx(),
+    );
+    expect(resp.ok).toBe(false);
+    if (resp.ok) return;
+    expect(String((resp as { error?: { message?: string } }).error?.message ?? JSON.stringify(resp))).toMatch(
+      /scoped to this agent group/,
+    );
+  });
+
+  it('a group-scoped agent naming its own group is fine', async () => {
+    const resp = await dispatch(
+      {
+        id: 'req-s2',
+        command: 'tasks-create',
+        args: { group: 'ag-1', prompt: 'do it', process_after: '2026-01-15T09:00:00Z' },
+      },
+      agentCtx(),
+    );
+    expect(resp.ok).toBe(true);
+  });
+
+  it('a global-scoped agent creates the task in the named sibling group', async () => {
+    await setScope('ag-1', 'global');
+    const resp = await dispatch(
+      {
+        id: 'req-s3',
+        command: 'tasks-create',
+        args: { group: 'ag-2', prompt: 'do it', process_after: '2026-01-15T09:00:00Z' },
+      },
+      agentCtx(),
+    );
+    expect(resp.ok).toBe(true);
+    if (!resp.ok) return;
+    const created = resp.data as { session_id: string };
+    const owner = (await (await import('../../db/index.js')).getSession(created.session_id))?.agent_group_id;
+    expect(owner).toBe('ag-2');
+  });
+});

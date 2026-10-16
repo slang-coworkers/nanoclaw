@@ -35,6 +35,7 @@ import { getSessionClaim } from './db/coordination.js';
 import { getSession, isTaskThread, updateSession } from './db/sessions.js';
 import { getAgentGroup } from './db/agent-groups.js';
 import { getSourceFor } from './db/a2a-session-sources.js';
+import { ABSOLUTE_CEILING_MS_RAW, CLAIM_STUCK_MS_RAW } from './config.js';
 import { log } from './log.js';
 import {
   heartbeatPath,
@@ -51,9 +52,12 @@ import {
   killContainer,
   recomposeAndUpdateHash,
 } from './container-runner.js';
+import { hostGpuPassthroughApplied } from './drivers/index.js';
+import { checkGpuProbe } from './gpu-probe-check.js';
 import { requestWake } from './request-wake.js';
 import type { Session } from './types.js';
 import type { ContainerState, InboundMailbox, OutboundMailbox } from './mailbox/index.js';
+import type { MailboxReclaimResult } from './mailbox/types.js';
 // Raw SQLite handles for the one host path the mailbox surface does not cover:
 // the a2a bounce/redrive sweep reads and clears 'bounced-*' processing_ack rows,
 // a status the MailboxSession ProcessingStatus union cannot express.
@@ -68,14 +72,36 @@ import {
 import { inboundDbPath, outboundDbPath } from './mailbox/sqlite/paths.js';
 import { _resetSweepStatsForTesting, sweepStats } from './sweep-stats.js';
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+// One global env override per timer, read once at host start like every other
+// NANOCLAW_* setting. Anything that is not a whole number of ms inside
+// [min, 24 h] is refused with a warning and the built-in default is used.
+function envOverrideMs(name: string, raw: string, defaultMs: number, minMs: number): number {
+  if (raw === '') return defaultMs;
+  const parsed = /^\d+$/.test(raw) ? Number(raw) : NaN;
+  if (Number.isNaN(parsed) || parsed < minMs || parsed > DAY_MS) {
+    log.warn(`Ignoring ${name}=${raw}: expected an integer between ${minMs} and ${DAY_MS} ms; using ${defaultMs}`);
+    return defaultMs;
+  }
+  return parsed;
+}
+
 // Absolute idle ceiling for a running container. If the heartbeat file hasn't
 // been touched in this long, the container is either stuck or doing genuinely
-// nothing — kill and restart on the next inbound.
-// Respects CONTAINER_TIMEOUT from .env (default 30 min).
-export const ABSOLUTE_CEILING_MS = parseInt(process.env.CONTAINER_TIMEOUT || '1800000', 10);
+// nothing — kill and restart on the next inbound. Respects CONTAINER_TIMEOUT
+// from the process env (default 30 min); NANOCLAW_ABSOLUTE_CEILING_MS
+// (60 s .. 24 h) overrides it.
+export const ABSOLUTE_CEILING_MS = envOverrideMs(
+  'NANOCLAW_ABSOLUTE_CEILING_MS',
+  ABSOLUTE_CEILING_MS_RAW,
+  parseInt(process.env.CONTAINER_TIMEOUT || '1800000', 10),
+  60 * 1000,
+);
 // Stuck tolerance window applied per 'processing' claim — "did we see any
-// signs of life since this message was claimed?"
-export const CLAIM_STUCK_MS = 60 * 1000;
+// signs of life since this message was claimed?" Override with
+// NANOCLAW_CLAIM_STUCK_MS (10 s .. 24 h).
+export const CLAIM_STUCK_MS = envOverrideMs('NANOCLAW_CLAIM_STUCK_MS', CLAIM_STUCK_MS_RAW, 60 * 1000, 10 * 1000);
 const MAX_TRIES = 5;
 const BACKOFF_BASE_MS = 5000;
 
@@ -270,6 +296,10 @@ async function reconcileActiveSession(session: Session): Promise<void> {
     await checkRunawayForSession(session, agentGroup.id);
     // MODULE-HOOK:runaway-detect:end
 
+    // GPU probe vs applied passthrough: warn once per container start when the
+    // host passed the GPU through but the container measured none.
+    if (isContainerRunning(session.id)) checkGpuProbeForSession(session, agentGroup.id);
+
     // Critique-gate escalation: a session that hit the gate's denial cap
     // writes .claude/critique-escalation.json (host-visible — /workspace is
     // the session-dir mount); turn a fresh request into an admin approval
@@ -407,43 +437,226 @@ async function maintainSessionMailbox(
   }
   // MODULE-HOOK:cross-session-echo-prune:end
 
+  expireOrphanedCliResponses(mailbox, session);
+
   gcMailboxHistory(mailbox, session);
+
+  await reclaimMailboxSpace(mailbox, session);
+}
+
+// --- orphaned ncl replies ------------------------------------------------------
+// The in-container `ncl` polls its own inbound.db for `cli-resp-<requestId>` and
+// gives up after NCL_RESPONSE_TIMEOUT_MS (container/agent-runner/src/cli/
+// timeout.ts — no shared modules across the runtime split, so it is mirrored
+// here and pinned by reconcile-session.cli-orphans.test.ts). A reply written
+// after its requester gave up stays `pending` forever (prod 2026-10-16: 412
+// rows in the Orchestrator session). Past the poll window plus a margin no live
+// requester can read it, so the host — inbound.db's only writer — closes it.
+export const CONTAINER_NCL_RESPONSE_TIMEOUT_MS = 30_000;
+export const CLI_RESPONSE_ORPHAN_MARGIN_MS = 5 * 60_000;
+export const CLI_RESPONSE_ORPHAN_MS = CONTAINER_NCL_RESPONSE_TIMEOUT_MS + CLI_RESPONSE_ORPHAN_MARGIN_MS;
+
+export function expireOrphanedCliResponses(
+  mailbox: Pick<InboundMailbox, 'expireOrphanedCliResponses'>,
+  session: Pick<Session, 'id'>,
+  nowMs: number = Date.now(),
+): number {
+  if (!mailbox.expireOrphanedCliResponses) return 0;
+  try {
+    const closed = mailbox.expireOrphanedCliResponses(new Date(nowMs - CLI_RESPONSE_ORPHAN_MS).toISOString());
+    if (closed > 0) {
+      log.info('Closed orphaned ncl replies', { sessionId: session.id, closed, olderThanMs: CLI_RESPONSE_ORPHAN_MS });
+    }
+    return closed;
+  } catch (err) {
+    log.warn('Closing orphaned ncl replies failed — will retry next pass', { sessionId: session.id, err });
+    return 0;
+  }
 }
 
 // --- mailbox history GC --------------------------------------------------------
 // The host owns inbound.db, so the host prunes it: consumed system frames
 // (cli_response & co.) and orphan `delivered` rows older than the retention
-// window. Disabled unless an operator sets NANOCLAW_MAILBOX_RETENTION_DAYS;
-// conversation rows — chat/task/webhook — are never pruned even then. Once a day per session, on a full pass — cheap, and the write it
-// makes simply costs one extra full pass the next tick. The runner prunes its
-// own outbound.db on start (sqliteGcOutboundHistory). Together they cap what
-// used to grow without bound (2.6 GB of cli_response rows in one session on
-// prod, 2026-09-26).
-// OFF by default (operator decision 2026-09-28): session mailboxes are the
-// persistence layer for every open issue/PR chain, so nothing is pruned by
-// age unless NANOCLAW_MAILBOX_RETENTION_DAYS is set explicitly. 0 = never.
-export const MAILBOX_RETENTION_DAYS =
-  Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) > 0 ? Number(process.env.NANOCLAW_MAILBOX_RETENTION_DAYS) : 0;
+// window. Conversation rows — chat/task/webhook — are never pruned, nor is
+// anything pending/processing/paused, nor the newest row (seq allocation). Once
+// a day per session, on a full pass — cheap, and the write it makes simply
+// costs one extra full pass the next tick. The runner prunes its own
+// outbound.db on start (sqliteGcOutboundHistory). Together they cap what used
+// to grow without bound (2.6 GB of cli_response rows in one session on prod,
+// 2026-09-26; a 790 MB Orchestrator inbound.db on 2026-10-16).
+//
+// ON by default since 2026-10-16 (30 days — the same boundary the idle-session
+// sweep uses). The 2026-09-28 off-by-default decision protected open issue/PR
+// chains, which live in the conversation rows this GC never touches; only
+// consumed system frames age out. NANOCLAW_MAILBOX_RETENTION_DAYS overrides;
+// 0 turns GC (and the free-page reclaim below) off entirely. The runner reads
+// the same variable with the same default (agent-runner poll-loop.ts).
+export const DEFAULT_MAILBOX_RETENTION_DAYS = 30;
+
+export function resolveMailboxRetentionDays(
+  raw: string | undefined = process.env.NANOCLAW_MAILBOX_RETENTION_DAYS,
+): number {
+  if (raw === undefined || raw.trim() === '') return DEFAULT_MAILBOX_RETENTION_DAYS;
+  const n = Number(raw);
+  if (!Number.isFinite(n) || n < 0) return DEFAULT_MAILBOX_RETENTION_DAYS;
+  return n;
+}
+
+export const MAILBOX_RETENTION_DAYS = resolveMailboxRetentionDays();
 const MAILBOX_GC_INTERVAL_MS = 24 * 60 * 60_000;
 const lastMailboxGc = new Map<string, number>();
 
-export function _resetMailboxGcForTesting(): void {
-  lastMailboxGc.clear();
+// --- global maintenance budget ---------------------------------------------------
+// The per-session interval says how OFTEN one session is cleaned; this says how
+// MUCH synchronous cleanup the host does per sweep window across ALL sessions.
+// Without it a host restart (empty lastMailboxGc) would make every active
+// session due in the first tick and block the event loop — webhooks, delivery,
+// the sweep itself — for the sum of their DELETEs. Per window: at most
+// MAILBOX_MAINT_MAX_SESSIONS GC/reclaim calls and, once MAILBOX_MAINT_BUDGET_MS
+// of measured work is spent, none until the next window. Sessions not reached
+// stay due and are picked up on later ticks. Each call is itself bounded (GC:
+// chunked deletes; reclaim: 64 MB incremental, or one capped VACUUM).
+export const MAILBOX_MAINT_WINDOW_MS = 60_000;
+export const MAILBOX_MAINT_MAX_SESSIONS = 3;
+export const MAILBOX_MAINT_BUDGET_MS = 400;
+// A session seen for the first time (cold start) becomes due at a random point
+// in this spread instead of all at once.
+export const MAILBOX_GC_COLD_START_SPREAD_MS = 6 * 60 * 60_000;
+export const MAILBOX_RECLAIM_COLD_START_SPREAD_MS = 60 * 60_000;
+
+const maintBudget = { windowStart: -Infinity, calls: 0, spentMs: 0 };
+let jitter: () => number = Math.random;
+
+function budgetAvailable(now: number): boolean {
+  if (now - maintBudget.windowStart >= MAILBOX_MAINT_WINDOW_MS) {
+    maintBudget.windowStart = now;
+    maintBudget.calls = 0;
+    maintBudget.spentMs = 0;
+  }
+  return maintBudget.calls < MAILBOX_MAINT_MAX_SESSIONS && maintBudget.spentMs < MAILBOX_MAINT_BUDGET_MS;
 }
 
-function gcMailboxHistory(mailbox: InboundMailbox, session: Session): void {
-  if (!mailbox.gcHistory || MAILBOX_RETENTION_DAYS <= 0) return;
-  const now = Date.now();
-  if (now - (lastMailboxGc.get(session.id) ?? 0) < MAILBOX_GC_INTERVAL_MS) return;
+function chargeBudget(ms: number): void {
+  maintBudget.calls += 1;
+  maintBudget.spentMs += ms;
+}
+
+/** Remaining due time for a session; a first sighting is spread over `spreadMs`. */
+function dueAt(last: Map<string, number>, id: string, now: number, intervalMs: number, spreadMs: number): number {
+  let prev = last.get(id);
+  if (prev === undefined) {
+    prev = now - intervalMs + Math.floor(jitter() * spreadMs);
+    last.set(id, prev);
+  }
+  return prev + intervalMs;
+}
+
+export function _resetMailboxGcForTesting(opts: { jitter?: () => number } = {}): void {
+  lastMailboxGc.clear();
+  lastMailboxReclaim.clear();
+  maintBudget.windowStart = -Infinity;
+  maintBudget.calls = 0;
+  maintBudget.spentMs = 0;
+  jitter = opts.jitter ?? (() => 0);
+}
+
+export function gcMailboxHistory(
+  mailbox: Pick<InboundMailbox, 'gcHistory'>,
+  session: Pick<Session, 'id'>,
+  retentionDays: number = MAILBOX_RETENTION_DAYS,
+  now: number = Date.now(),
+): { systemRows: number; deliveredRows: number; more?: boolean } | null {
+  if (!mailbox.gcHistory || retentionDays <= 0) return null;
+  if (now < dueAt(lastMailboxGc, session.id, now, MAILBOX_GC_INTERVAL_MS, MAILBOX_GC_COLD_START_SPREAD_MS)) return null;
+  if (!budgetAvailable(now)) return null; // stays due; a later tick picks it up
   lastMailboxGc.set(session.id, now);
-  const cutoff = new Date(now - MAILBOX_RETENTION_DAYS * 86_400_000).toISOString();
+  const cutoff = new Date(now - retentionDays * 86_400_000).toISOString();
+  const started = Date.now();
   try {
     const result = mailbox.gcHistory(cutoff);
+    // Backlog left (chunk budget ran out): due again right away — the global
+    // budget, not the 24 h interval, paces the rest.
+    if (result.more) lastMailboxGc.set(session.id, now - MAILBOX_GC_INTERVAL_MS);
     if (result.systemRows > 0 || result.deliveredRows > 0) {
-      log.info('Mailbox history GC', { sessionId: session.id, ...result, retentionDays: MAILBOX_RETENTION_DAYS });
+      log.info('Mailbox history GC', {
+        sessionId: session.id,
+        ...result,
+        retentionDays,
+        durationMs: Date.now() - started,
+      });
     }
+    return result;
   } catch (err) {
     log.warn('Mailbox history GC failed — will retry tomorrow', { sessionId: session.id, err });
+    return null;
+  } finally {
+    chargeBudget(Date.now() - started);
+  }
+}
+
+// --- inbound.db free-page reclaim ----------------------------------------------
+// Deleted rows leave free pages; the file only shrinks when its single writer
+// (the host, for inbound.db) vacuums it. Never for outbound.db — that file's
+// writer is the container, which reclaims its own on start. Runs only when the
+// session is quiet: no container registered here, no durable session claim
+// (covers a spawn in flight and a container that survived a host restart but
+// is not yet adopted), and nothing due that would wake one. The work itself is
+// synchronous, so nothing in this process can spawn the container while it
+// runs. At most once per RECLAIM_INTERVAL_MS per session; thresholds and the
+// one-time full-VACUUM bound live in mailbox/sqlite/reclaim.ts.
+const MAILBOX_RECLAIM_INTERVAL_MS = 60 * 60_000;
+const lastMailboxReclaim = new Map<string, number>();
+
+export async function reclaimMailboxSpace(
+  mailbox: Pick<InboundMailbox, 'reclaimSpace' | 'countDueMessages'>,
+  session: Pick<Session, 'id'>,
+  deps: {
+    retentionDays?: number;
+    now?: number;
+    containerRunning?: (sessionId: string) => boolean;
+    sessionClaimed?: (sessionId: string) => Promise<boolean>;
+  } = {},
+): Promise<MailboxReclaimResult | null> {
+  const retentionDays = deps.retentionDays ?? MAILBOX_RETENTION_DAYS;
+  const now = deps.now ?? Date.now();
+  if (!mailbox.reclaimSpace || retentionDays <= 0) return null;
+  if (
+    now < dueAt(lastMailboxReclaim, session.id, now, MAILBOX_RECLAIM_INTERVAL_MS, MAILBOX_RECLAIM_COLD_START_SPREAD_MS)
+  ) {
+    return null;
+  }
+  // A reclaim may be the one-time full VACUUM (seconds, not ms), so it only
+  // starts in a window nothing else has used yet.
+  if (!budgetAvailable(now) || maintBudget.calls > 0) return null;
+  const running = deps.containerRunning ?? isContainerRunning;
+  const claimed = deps.sessionClaimed ?? (async (id: string) => Boolean((await getSessionClaim(id))?.claimed_by));
+  // Claim lookup is async; re-check the in-process state after it so the
+  // synchronous reclaim starts from a fresh "quiet" reading.
+  if (running(session.id) || (await claimed(session.id))) return null;
+  if (running(session.id) || mailbox.countDueMessages() > 0) return null;
+  if (!budgetAvailable(now) || maintBudget.calls > 0) return null; // spent while awaiting the claim
+  lastMailboxReclaim.set(session.id, now);
+  const started = Date.now();
+  try {
+    const result = mailbox.reclaimSpace();
+    if (result.action === 'incremental' || result.action === 'vacuum') {
+      log.info('Mailbox space reclaimed', {
+        sessionId: session.id,
+        file: 'inbound.db',
+        ...result,
+        bytesReclaimed: result.fileBytesBefore - result.fileBytesAfter,
+      });
+    } else if (result.action === 'skipped') {
+      // A size/disk skip will not change within the hour; check again tomorrow.
+      lastMailboxReclaim.set(session.id, now + 23 * 60 * 60_000);
+      log.warn('Mailbox space reclaim skipped', { sessionId: session.id, file: 'inbound.db', ...result });
+    }
+    return result;
+  } catch (err) {
+    log.warn('Mailbox space reclaim failed — will retry later', { sessionId: session.id, err });
+    return null;
+  } finally {
+    chargeBudget(Date.now() - started);
   }
 }
 
@@ -463,6 +676,20 @@ async function checkRunawayForSession(session: Session, agentGroupId: string): P
     await checkRunaway(session, outDb, runawayCardDeps);
   } catch (err) {
     log.debug('runaway detect skipped', { sessionId: session.id, err });
+  } finally {
+    outDb?.close();
+  }
+}
+
+/** Read-only GPU probe check; see src/gpu-probe-check.ts. Never throws. */
+function checkGpuProbeForSession(session: Session, agentGroupId: string): void {
+  let outDb: SessionDbHandle | null = null;
+  try {
+    if (!hostGpuPassthroughApplied()) return;
+    outDb = openOutboundDb(agentGroupId, session.id);
+    checkGpuProbe(session.id, outDb, true);
+  } catch (err) {
+    log.debug('gpu probe check skipped', { sessionId: session.id, err });
   } finally {
     outDb?.close();
   }
