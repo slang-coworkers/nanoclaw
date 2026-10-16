@@ -48,6 +48,12 @@ def unwrap(obj):
                 return obj[key]
         if "id" in obj and ("content" in obj or "text" in obj):
             return [obj]
+        # The slang-mcp tool wraps its result in a single envelope key, for example
+        # `{"filtered": {"channel_id": ..., "messages": [...]}}`; one level of such
+        # wrapping is descended before giving up.
+        envelopes = [v for v in obj.values() if isinstance(v, (dict, list))]
+        if len(envelopes) == 1:
+            return unwrap(envelopes[0])
     raise ValueError(f"no message array found (expected a list, or an object with one of {', '.join(ARRAY_KEYS)})")
 
 
@@ -98,7 +104,7 @@ def pick(d, *paths):
 def author_matches(msg, needle):
     author = msg.get("author")
     if needle == "bot":
-        return bool(isinstance(author, dict) and author.get("bot")) or bool(msg.get("bot"))
+        return bool(isinstance(author, dict) and author.get("bot")) or bool(msg.get("bot")) or bool(msg.get("is_bot"))
     if isinstance(author, dict):
         hay = " ".join(str(author.get(k, "")) for k in ("username", "name", "global_name", "id", "login"))
     else:

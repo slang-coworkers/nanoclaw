@@ -712,3 +712,29 @@ class MetricsTest(unittest.TestCase):
 
 if __name__ == "__main__":
     unittest.main()
+
+
+class FirstProdRunRegressionTest(unittest.TestCase):
+    """Defects the first production run exposed: GitHub refused searches whose
+    `created:>=DATE` qualifier carried a raw `>`, and the Discord converter did not
+    descend the tool's `{"filtered": {...}}` envelope."""
+
+    def test_search_qualifier_operators_are_percent_encoded(self):
+        cc = load_module("compliance_check_regression", os.path.join(HERE, "compliance_check.py"), {})
+        cmd = cc.gh_command("search/issues", {"q": "repo:shader-slang/slang is:pr created:>=2026-09-16", "per_page": 100})
+        full = cmd[-1]
+        self.assertNotIn(">", full)
+        self.assertIn("created:%3E%3D2026-09-16", full)
+        self.assertIn("repo:shader-slang/slang", full)
+
+    def test_converter_descends_single_envelope(self):
+        conv = load_module("discord_export_regression", os.path.join(HERE, "discord_export_from_json.py"), {})
+        payload = {"filtered": {"channel_id": "1", "messages": [
+            {"id": "11", "author": "nv-slang-bot", "author_id": "9", "is_bot": True, "content": "hello", "timestamp": "2026-10-14T18:11:46.170000+00:00", "attachments": [], "embeds_count": 0},
+            {"id": "12", "author": "someone", "author_id": "8", "is_bot": False, "content": "hi", "timestamp": "2026-10-14T18:12:00+00:00"},
+        ]}}
+        msgs = conv.unwrap(payload)
+        self.assertEqual([m["id"] for m in msgs], ["11", "12"])
+        self.assertTrue(conv.author_matches(msgs[0], "bot"))
+        self.assertFalse(conv.author_matches(msgs[1], "bot"))
+        self.assertTrue(conv.author_matches(msgs[0], "nv-slang-bot"))

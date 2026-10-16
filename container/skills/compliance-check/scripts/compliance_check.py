@@ -276,7 +276,10 @@ def gh_command(path, params=None):
     mutation through the GitHub CLI even by accident."""
     if path.startswith(("-", "graphql")) or " " in path:
         raise GitHubUnavailable(f"refusing non-REST or malformed path {path!r}")
-    query = urllib.parse.urlencode(params or {}, safe=":/+>=<")
+    # `:` `/` and `+` stay literal because GitHub's search grammar reads them
+    # (`repo:a/b`, `+` as the space); `>` `<` `=` must be percent-encoded or the
+    # search endpoint answers HTTP 400 for a qualifier such as `created:>=DATE`.
+    query = urllib.parse.urlencode(params or {}, safe=":/+")
     full = path + ("&" if "?" in path else "?") + query if query else path
     return ["gh", "api", "--method", "GET", "-H", "Accept: application/vnd.github+json", full]
 
