@@ -127,8 +127,12 @@ describe('composed-document byte parity', () => {
       // PRs can act on it, so the one `## Skills` line it added to every typed
       // document is gone from these goldens. Declared as the one removed line in
       // `section-reorder.test.ts`.
-      'base-common': 'b07950edefd94e65',
-      'base-common.persona': 'f04669e32f7932a8',
+      //
+      // Moved a tenth time when base-common gained the `invariants/gpu.md`
+      // fragment (the standing GPU fact; the live measurement arrives as the
+      // runner's `Environment:` system-prompt line).
+      'base-common': 'a9c836f504127c8b',
+      'base-common.persona': '1975f1d02192cecf',
       // `main`/`main.persona` are absent by design, not omission: their bytes depend
       // on sibling-branch skills under CI's composed-state merge (header). The
       // standalone values the content phase produced — a107cc5eae0f5a3b and
@@ -136,8 +140,8 @@ describe('composed-document byte parity', () => {
       // the emitted `Connecting external accounts` section — are
       // preserved as the goldens on disk and asserted by `anchor-retarget.test.ts`,
       // which compares golden to golden and so holds in both states.
-      default: 'c8cbac0602dc8494',
-      'default.persona': '252f553100b930b4',
+      default: 'bf4798723dad2070',
+      'default.persona': '10217dbb493d11bc',
     };
 
     const actual: Record<string, string> = {};
