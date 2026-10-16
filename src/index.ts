@@ -19,6 +19,7 @@ import {
   validateContainerTimeouts,
 } from './config.js';
 import { enforceStartupBackoff, resetCircuitBreaker } from './circuit-breaker.js';
+import { resolveShutdownDeadlineMs, runShutdownSteps, type ShutdownResult } from './shutdown-deadline.js';
 import {
   abortGatewaySessionObservers,
   adoptRunningSessions,
@@ -503,8 +504,18 @@ async function buildConversationConfigs(channelType: string): Promise<Conversati
   return configs;
 }
 
-/** Graceful shutdown. */
+/**
+ * Graceful shutdown, bounded by a hard deadline (see shutdown-deadline.ts).
+ * Running coworker containers are deliberately NOT stopped: the unit uses
+ * KillMode=process and the next start re-adopts them.
+ */
+let shuttingDown = false;
 async function shutdown(signal: string): Promise<void> {
+  if (shuttingDown) {
+    log.info('Shutdown already in progress', { signal });
+    return;
+  }
+  shuttingDown = true;
   log.info('Shutdown signal received', { signal });
   // Remove pidfile immediately before any async work that might hang
   try {
@@ -512,29 +523,41 @@ async function shutdown(signal: string): Promise<void> {
   } catch {
     /* ignore */
   }
-  hostAbortController.abort();
-  stopGatewayAvailabilityMonitor?.();
-  await stopGatewayApprovalCoordinator();
-  await abortGatewaySessionObservers();
-  await stopHostModules();
-  // Stamp the durable stop before the DB closes below.
-  await stopHostInstanceLease();
-  stopDeliveryPolls();
-  stopHostSweep();
-  stopWebhookInboxDrain();
-  mcpProxyHandle?.stop();
-  mcpStackHandle?.stop();
-  await dashboardIngressHandle?.stop();
-  await githubWebhookHandle?.stop();
-  await stopCliServer();
+  const deadlineMs = resolveShutdownDeadlineMs();
+  let result: ShutdownResult | undefined;
   try {
-    await teardownChannelAdapters();
+    result = await runShutdownSteps(
+      [
+        { name: 'abort-host-signal', run: () => hostAbortController.abort() },
+        { name: 'gateway-availability-monitor', run: () => stopGatewayAvailabilityMonitor?.() },
+        { name: 'gateway-approval-coordinator', run: () => stopGatewayApprovalCoordinator() },
+        { name: 'gateway-session-observers', run: () => abortGatewaySessionObservers() },
+        { name: 'host-modules', run: () => stopHostModules() },
+        // Stamp the durable stop before the DB closes below.
+        { name: 'host-instance-lease', run: () => stopHostInstanceLease() },
+        { name: 'delivery-polls', run: () => stopDeliveryPolls() },
+        { name: 'host-sweep', run: () => stopHostSweep() },
+        { name: 'webhook-inbox-drain', run: () => stopWebhookInboxDrain() },
+        { name: 'mcp-proxy', run: () => mcpProxyHandle?.stop() },
+        { name: 'mcp-stack', run: () => mcpStackHandle?.stop() },
+        { name: 'dashboard-ingress', run: () => dashboardIngressHandle?.stop() },
+        { name: 'github-webhook-server', run: () => githubWebhookHandle?.stop() },
+        { name: 'cli-server', run: () => stopCliServer() },
+        { name: 'channel-adapters', run: () => teardownChannelAdapters() },
+        { name: 'close-db', run: () => closeDb() },
+      ],
+      deadlineMs,
+    );
   } finally {
-    await closeDb();
-    // Always reset on graceful shutdown — even if teardown threw, we got here
-    // via SIGTERM/SIGINT, not a crash, so the next start shouldn't be counted
-    // as one.
+    // Always reset on graceful shutdown — even if teardown threw or overran the
+    // deadline, we got here via SIGTERM/SIGINT, not a crash, so the next start
+    // shouldn't be counted as one.
     resetCircuitBreaker();
+    log.info('Shutdown complete', {
+      completed: result?.completed ?? false,
+      elapsedMs: result?.elapsedMs,
+      pending: result?.pending,
+    });
     process.exit(0);
   }
 }
