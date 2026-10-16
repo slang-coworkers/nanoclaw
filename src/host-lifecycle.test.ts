@@ -157,17 +157,17 @@ describe('host lifecycle orchestration', () => {
 
   it('stops approval and session observation without revoking surviving resources', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf8');
-    const approvalsStop = source.indexOf('await stopGatewayApprovalCoordinator()');
+    const approvalsStop = source.indexOf('run: () => stopGatewayApprovalCoordinator()');
     const observationStop = source.indexOf('abortGatewaySessionObservers()');
     expect(approvalsStop).toBeGreaterThan(-1);
     expect(observationStop).toBeGreaterThan(approvalsStop);
-    expect(observationStop).toBeLessThan(source.indexOf('await stopHostModules()'));
+    expect(observationStop).toBeLessThan(source.indexOf('run: () => stopHostModules()'));
   });
 
   it('aborts modules and awaits their LIFO shutdown before host cleanup', () => {
     const source = fs.readFileSync(path.join(process.cwd(), 'src', 'index.ts'), 'utf8');
     const abort = source.indexOf('hostAbortController.abort()');
-    const modulesStop = source.indexOf('await stopHostModules()');
+    const modulesStop = source.indexOf('run: () => stopHostModules()');
     const pollsStop = source.indexOf('stopDeliveryPolls()');
 
     expect(abort).toBeGreaterThan(-1);

@@ -58,6 +58,7 @@ import { getProviderRuntimeContract, requireProviderName } from './providers/pro
 import { assignConfiguredServer, resolvePluginServer } from './plugin-mcp.js';
 import type { McpServerConfig } from './providers/types.js';
 import { runPollLoop } from './poll-loop.js';
+import { renderGpuContextLine, runGpuProbe } from './gpu-probe.js';
 
 function log(msg: string): void {
   console.error(`[agent-runner] ${msg}`);
@@ -97,7 +98,16 @@ async function main(): Promise<void> {
   // the provider. Per-group memory lives in CLAUDE.local.md (auto-loaded).
   const taskId = getTaskSeriesId();
   const sessionMode: SessionMode = taskId ? { kind: 'task', taskId } : { kind: 'chat' };
-  const buildInstructions = (): string => buildSystemPromptAddendum(config.assistantName || undefined, sessionMode);
+  // GPU probe: measured once per container start (bounded timeouts, never
+  // fails boot), persisted to outbound.db session_state `gpu_probe` for the
+  // host, and rendered as ONE Environment line in the addendum so the agent
+  // knows — rather than guesses — whether it can run GPU tests.
+  const gpuProbe = await runGpuProbe((key, value) => mailbox.operations.setState(key, value), log);
+  const gpuLine = renderGpuContextLine(gpuProbe);
+  const buildInstructions = (): string => {
+    const addendum = buildSystemPromptAddendum(config.assistantName || undefined, sessionMode);
+    return gpuLine ? `${addendum}\n\n${gpuLine}` : addendum;
+  };
 
   // Discover additional directories: /workspace/extra/* (host-mounted) and
   // /workspace/agent/* subdirs with their own .claude/ (cloned repos), skipping
