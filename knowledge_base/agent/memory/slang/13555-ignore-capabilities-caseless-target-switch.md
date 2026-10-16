@@ -46,3 +46,24 @@ Checked live: draft, `fix/issue-13555` → master, head `19b0b2e3ac`, 3 commits 
 **10-13 08:14Z hazard (reported by the triager on the #13544 chain).** The triager's `wt-13555` worktree is at `08d419cbf`, but its `build/` holds
 #13547 (`6c65eea6c4`) binaries. Before relaying any #13555/#13564 measurement the triager makes from that worktree, check that it was rebuilt at
 the SHA being cited.
+
+**10-15 fixer run failure (triager report 13:45Z, checked by me 13:5xZ).**
+- Fixer session `w74ros` timeline:
+  - seq 30: round-1 REQUEST_CHANGES at 10:42Z.
+  - seq 35: the fixer requested round 2, marked "(last)", at 11:10Z.
+  - seq 40: round-2 REQUEST_CHANGES @ `1a9f927e67` at 12:43Z (1 bug and 4 gaps from A, "three fixes are small").
+  - 13:02–13:12Z: the fixer pushed the round-2 fixes, ending at head `eac83d94ed`.
+  - seq 42: the container was restarted by an instructions update at 13:13Z.
+  - seq 43: "The agent run failed" at 13:43Z.
+  - So the failure came on the resume after the restart, after the push. No [Fix Report] was sent.
+- Cost is not the cause. The fixer is `ok` at $72.62 of a $150 cap. The reviewer `oe47tu` is escalated, but its decision was `continue` at 09:27Z, and its container is stopped because it is idle, not blocked. That makes the triager's "reviewer paused at its ceiling" stale.
+- PR checked live: still a draft, 0 GitHub reviews, CI not run.
+- Action: told the triager to re-dispatch the fixer on its own edge and ask for the [Fix Report] at `eac83d94ed`. If a second run also fails, it goes to the operator.
+
+**10-15 13:58Z [Triage Resolution]: held draft, parked.** The re-dispatch worked, and the fixer sent its [Fix Report] at 13:58Z. Checked live 14:00Z: draft, head `eac83d94ed`, MERGEABLE, `pr: non-breaking`, 15 files +517/−6, 0 human reviews. The issue's only comment is still 6091831285, which is accurate.
+- Round-2 items are mapped to commits. The fixer reports 48/48 new tests and a full suite of 8059/8060 (the failure is gfx-smoke, which needs a GPU), Debug rebuilt at `eac83d94ed`. Those are its receipts; I didn't re-run them. I accepted no round 3.
+- The 35→36 version bump is correct, and the 10-10 "no bump" call was wrong. I checked at the head that `emitHostVMCode` (slang-emit.cpp:3798-3800) serializes linked IR, and `slang-ir.h:2257` has max=36.
+- ⚠ **Merge collision, found by me:** draft #13425 (13423-metal-cb-scalar-layout, head c994d094e1) also claims stable opcode **909** (`Type.MetalConstantBufferLayout`), and its `slang-ir.h` comment says max=**36**. Whichever lands second must move to 910/37. It's a textual conflict, so git reports it rather than letting it pass silently. Eight other open PRs touch stable-names.lua; I haven't checked them.
+- Open: (Q1) breaking? (Q2) cpp `case cpp:`? (Q3) ready/merge (operator). There's also a duplicate E41037 per generic specialization. The follow-up specializeCallSite crash, which also happens on master, is unfiled.
+- Re-chase: one-shot `rechase-13564-maintainer-b2f8` on 2026-10-22 09:00Z.
+- 10-15 14:10Z: the triager found a second collision, non-draft **#13406** (jhelferty-nv, `pr: breaking change`, CHANGES_REQUESTED, head `671215f5de`), which sets min=max=36. I checked this live myself. It conflicts with #13564 in `slang-ir.h` only. The hazard bullet is in explanation cmt 6095450396 (verified: bot, mentions #13406 and #13425). Decision: post nothing on #13406 or #13425. The PR that merges second resolves the conflict, git flags it, and both of our PRs are held drafts. Both re-chase prompts (`-b2f8`, `rechase-13425-maintainer-9a08`) now carry the cross-reference.

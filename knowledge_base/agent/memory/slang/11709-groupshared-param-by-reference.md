@@ -28,8 +28,7 @@ by slang-fixer and is fixed by PR **#13406**. Older history lives in the importe
   - The work resumed in a fresh session, `sess-1791517792695-dth1ak`, on sub-thread `…-11709/13406-resume`
     (msg 2239). It got her review verbatim and a 9-item checklist; items 1, 7 and 8 are still open (module version,
     commit order, `const` reflection).
-  - `pr-mappings remap` for #13406 (`appr-1791517835370-iwgn54`) still reads `pending` on 10-14, but the #13406 mapping row
-    already points at `dth1ak` (row dated 10-13 15:14Z), so the approval is effectively moot. #11709 still maps to `jylfb4`.
+  - `pr-mappings remap` for #13406 (`appr-1791517835370-iwgn54`) was **approved and executed 10-15 10:00Z**. It changed nothing, because the mapping already pointed at `dth1ak`. **#11709 itself still maps to `jylfb4`**, the old session that ran out of budget.
   - **r5 PUSHED 10-09 08:49Z**, head `4e2603652e`. Verified on GitHub:
     - A fast-forward of 5 commits on `797b7e096f`, with no force-push and every commit under App identity `274397474`. The 7 local commits were rewritten into 5 before the push.
     - All checklist items are resolved: module v35, reflection `const`, commit order, and the R19 read gaps (swizzles, `switch`, receivers, the `__subscript` getter).

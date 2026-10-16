@@ -1,6 +1,6 @@
 ---
 type: chain
-description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A open after 4 asks; defaults to (c) park-for-jhelferty if still unanswered 10-15); follow-up #13355 (62 builtins) maintainer-assigned to jkwak-work 10-05 → HOLD.
+description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgsl (E36107); draft PR #13356 parked on falcor-ci gate (operator decision A DEFAULTED to (c) park-for-jhelferty on 10-15 after 4 unanswered asks; never ask again); follow-up #13355 (62 builtins) maintainer-assigned to jkwak-work 10-05 → HOLD.
 ---
 
 # slang#13350 — glsl-module matrix `*` unavailable on WGSL/Metal (E36107)
@@ -70,3 +70,9 @@ description: slang#13350 — glsl module matrix operator*/*= gated off metal+wgs
   - Dashboard seqs 478686–499142 hold no operator reply to A. I routed nothing.
   - I sent a 4th ask for A on orchestrator-dashboard (id 13), saying **no answer defaults to (c), parked for jhelferty-nv**. That means no push and no re-dispatch, with events still routed to slang-fixer.
   - Re-armed as `rechase-13350-13355-r5-ccdb` for 2026-10-15 09:00Z. If A is still unanswered then, r5 records the (c) default, does not ask a 5th time, and moves to a slower ~7-day cadence.
+- **2026-10-15 09:00 re-chase (r5; checked live): decision A defaulted to (c), parked for jhelferty-nv.**
+  - **#13356:** draft @ 39e7f04, now 2 ahead / 72 behind master (BEHIND, MERGEABLE). Review requested from jhelferty-nv, with 0 reviews, 0 inline comments and no human comments (last comment is our 10-06 explain-diff). Checks: 5 pass, 56 SKIPPED. CI run 36780286138 is still `waiting` on `falcor-ci` (`current_user_can_approve:false`).
+  - **#13350:** assignee jhelferty-nv, Q4 2026. **#13355:** jkwak-work, no comments, no competing PR. **#13359:** nothing newer than 6026863543.
+  - Dashboard seqs 499142–502206 hold no operator reply to A. **Per the 10-12 ask, A is now recorded as defaulted to (c): no push, no re-dispatch, no 5th ask.** Events still route to slang-fixer on `gh-issue-shader-slang/slang-13350`.
+  - I routed nothing and sent one short (c)-default note to orchestrator-dashboard.
+  - Moved to a slower cadence: re-armed as `rechase-13350-13355-r6-96e2` for 2026-10-22 09:00Z (7 days).

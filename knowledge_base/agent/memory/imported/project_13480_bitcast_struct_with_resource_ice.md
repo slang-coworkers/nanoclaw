@@ -80,6 +80,13 @@ possible.)" Label `Office-Tess` added. It's a maintainer-to-maintainer discussio
 [Resolution] with no dispatch and no GitHub post (interjecting would be noise; 6086485474 is still accurate). #13507 stays held. The operator-nudge
 ask was dropped because the maintainers are actively on it. Resume = their outcome comment.
 
+**10-15 13:23Z skiminki-nv (cmt 6193120460, no @bot):** cites the spec (`expressions-conversions.md#bit-cast-and-reinterpret-cast`):
+bit_cast = same-size bit-pattern reinterpretation; reinterpret = more general, uses interface-variant union emulation, can truncate.
+"Mostly agrees with Tess." SPIR-V OpBitcast allows only pointer or scalar/vector numeric types; C++20 std::bit_cast (any trivially
+copyable type) "might be overly broad for Slang". Fundamental types in "for sure", vectors "not so sure", "no immediate opinion" on the
+exact semantics. Two maintainers now lean narrow, which points away from A′ (struct-with-handle casts made legal), but nobody has picked
+(a)/(b)/(c) yet. Closed as [Resolution]: no dispatch, no post.
+
 **10-08 02:02Z jkwak-work asked @nv-slang-bot (cmt 6050655801):** what is the difference between bit_cast and reinterpret, and does
 reinterpret do more processing at runtime? Orchestrator routed it verbatim to slang-triager on the canonical thread with
 `<github-post-authorized />` so the triager can post the answer. **Answered 02:15Z, cmt 6050799354** (verified live: 3910 chars, @jkwak-work, disclaimer; Orchestrator spot-checked processReinterpret against source: max(from,to) size, AnyValue pack/unpack, no equality check). Gist: different lowering; reinterpret emits pack/unpack helpers on HLSL/CUDA, SPIR-V -O3 output nearly identical; on this shape reinterpret is not a working workaround either.

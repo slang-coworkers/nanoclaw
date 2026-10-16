@@ -1,34 +1,35 @@
 ---
 type: project
 title: slang-rhi#787 CUDA↔Vulkan shared-texture missing sync
-description: Real missing cross-API ownership bug (not tolerance). jhelferty-nv mandated their own explicit API (handOffShared/takeOverShared on ICommandEncoder), implemented in PR #881. jhelferty flipped it READY on 2026-09-28. Final head 775f522 is GPU-CI-green and per-test re-verified. NOT merge-ready — reviewer REQUEST_CHANGES on R4/R5 pending jhelferty's answer to 5907630393, plus skallweitNV's review; CONFLICTING with main since ~10-10 (fixer merging main 10-11). Review rounds and the ready/re-chase log are in [[rhi-787-review-history.md]].
+description: Real missing cross-API ownership bug (not tolerance). jhelferty-nv mandated their own explicit API (handOffShared/takeOverShared on ICommandEncoder), implemented in PR #881, READY since 2026-09-28. Head 00fb748 (main merged 10-11) is GPU-CI-green and per-test re-verified. NOT merge-ready — reviewer REQUEST_CHANGES on R4/R5 pending jhelferty's answer to 5907630393, plus skallweitNV's review. Review rounds and the ready/re-chase log are in [[rhi-787-review-history.md]].
 tags: [slang-rhi, synchronization, cuda, vulkan, interop, live-chain]
 resource: https://github.com/shader-slang/slang-rhi/issues/787
 ---
 
 # slang-rhi#787: CUDA↔Vulkan shared-texture missing synchronization
 
-**State (2026-10-11): LIVE, parked on human review, plus a merge conflict with main.** PR #881 is non-draft at head
-`775f522` (GPU-CI-green, per-test re-verified by me), but it is **not merge-ready**. It is parked on two inputs:
+**State (2026-10-15): LIVE, parked on human review.** PR #881 is non-draft at head `00fb748`, MERGEABLE (BEHIND
+main by 6), and **not merge-ready**.
+- **Main merge (10-11, verified 10-15):** `8b8b372` merges `775f522` with main `242091b`, resolving the one
+  `clearBuffer` conflict. `00fb748` stops retaining the peer device's queue, which became necessary after #884's
+  InternalRefPtr. No force-push.
+  - 26/26 checks passed. Per-test PASSED on self-hosted msvc Release `114444678277` + Windows clang Debug
+    `114444678190`. Linux clang Debug doesn't run the shared-cuda cases.
+  - slang-reviewer delta-confirmed: REQUEST_CHANGES on R4/R5 only.
+  - Main has since moved +6 (#901–#906). Trial merge has 0 conflicts and doesn't touch HandOff/TakeOver; no re-merge
+    until a human engages.
 - **(A)** jhelferty's answer to scope question [5907630393](https://github.com/shader-slang/slang-rhi/pull/881#issuecomment-5907630393)
-  (09-30 08:48Z; still silent and unreacted at 10-11, 11 days). Until then the reviewer verdict is REQUEST_CHANGES on R4/R5:
+  (09-30 08:48Z; silent and unreacted for 15 days as of 10-15). Until then the reviewer verdict is REQUEST_CHANGES on R4/R5:
   - **R4:** AS/micromap build-input buffers aren't validated as uses. Spec 5798248018 line 31 counts "AS/micromap
     ops on the buffer" as uses, but only scratch buffers are checked.
   - **R5:** the same-device operand precondition (spec line 11) isn't validated.
   - The PR body lists both as "Known partials".
-- **(B)** skallweitNV's review. jhelferty-nv assigned them on 10-06 21:21Z and removed dshreiner-nv. Between 10-01 and
-  10-10 they merged 7 slang-rhi PRs, but they haven't touched #881.
-- **10-11, CONFLICTING:** main moved 17 commits past merge-base `82c03494b` (#884–#900, #739, #891). A trial merge gives
-  **one** conflict: `DebugCommandEncoder::clearBuffer`, #900's D3D11 structured-clear block vs our `checkUse` line.
-  slang-fixer (session `sess-1783020456108-7pll4g`, msg 61) was sent to do the following, with no GitHub post and no
-  R4/R5 work:
-  - merge `origin/main` (merge commit, no force-push, so the inline anchors survive)
-  - audit #739/#900 for a Shared-binding path that bypasses `checkUse`
-  - push and re-verify per-test
-  - get the reviewer's delta-confirm
-- **Operator question (dashboard row 467072 on 10-07, re-asked 10-11 as msg 69):** 1 = slang-fixer posts one GitHub
-  reminder, 2 = operator pings out-of-band, 3 = wait. Still unanswered, and nothing has been posted. At the 3rd
-  unanswered ask, default to (3). Re-chase `rhi-881-review-rechase-cf3b` is at 10-15 09:00Z.
+- **(B)** skallweitNV's review: sole requested reviewer since 10-06. They keep merging slang-rhi PRs (#901, #903–#906
+  on 10-12..14) but haven't touched #881.
+- **Operator reminder question** (1 = slang-fixer posts one GitHub reminder, 2 = operator pings out-of-band,
+  3 = wait): asked 10-07 (row 467072), 10-11 and 10-15 (dashboard msg 13), never answered, so **default (3) is in
+  force**. Don't re-ask; honor a late reply of 1 or 2. Nothing posted on GitHub. Re-chase
+  `rhi-881-review-rechase-5a7c` at 10-19 09:00Z.
 
 Canonical thread `gh-issue-shader-slang/slang-rhi-787`; PR review thread `gh-pr-slang-rhi-881-review`. The chain
 re-opens on jhelferty's webhook. #812 (the register-all alternative) was CLOSED by jhelferty-nv on 2026-09-28, so it

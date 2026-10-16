@@ -9,6 +9,10 @@ metadata:
 
 # okf_synth.py classifier fix (2026-08-22)
 
+⚠️ **REGRESSED 2026-10-15:** this fix was never upstreamed. When the repo copy of the skill replaced the local one
+(#2039), the embedded tool lost all three changes and the tree read as 1,205 false offenders. Status and options:
+[[reference_okf_synthesis_provisioning]]. The last tool carrying the fix: `/workspace/agent/tools/okf_synth.py.before-2039`.
+
 The slang-fixer's daily okf-memory-synthesis task was printing a **false ESCALATE**: the scanner mis-classified its memory tree because ~263/501 files use the NanoClaw auto-memory nested `metadata.type` frontmatter, which the original `_has_type` (top-level `^type:` only) didn't recognize. Root cause was a **producer/scanner convention gap, not memory rot**.
 
 **Three changes (all in SKILL.md's embedded `okf_synth.py` block — the source of truth that overwrites the on-disk tool each run):**

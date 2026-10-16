@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13530_uniform_unsized_array_spirv_invalid
-description: "slang#13530 (JackOfBlades232, external, 10-08): a global/entry-point `uniform float4[]` compiles without any diagnostic into an invalid implicit uniform buffer (SPIR-V VUID-04680 whole-RTA OpLoad, both members at Offset 0; DXC/glslang reject the output). Triaged 20:20Z (cmt 6068316405, bug/medium/P2, front end). Orchestrator GO 10-08 for a draft PR on Approach A (extend E31215 to implicit GlobalParams/EntryPointParams). Sibling of #13529. Side finding filed as #13533 (CUDA reflection offsets). Draft PR #13538 opened 10-09 00:56Z (pr: breaking change provisional), held on two maintainer questions; re-chased 10-12 and 10-15 (no maintainer reply; reviewer cost-stopped; escalated to the dashboard 10-15); next re-chase 10-18."
+description: "slang#13530 (JackOfBlades232, external, 10-08): a global/entry-point `uniform float4[]` compiles without any diagnostic into an invalid implicit uniform buffer (SPIR-V VUID-04680 whole-RTA OpLoad, both members at Offset 0; DXC/glslang reject the output). Triaged 20:20Z (cmt 6068316405, bug/medium/P2, front end). Orchestrator GO 10-08 for a draft PR on Approach A (extend E31215 to implicit GlobalParams/EntryPointParams). Sibling of #13529. Side finding filed as #13533 (CUDA reflection offsets). Draft PR #13538 opened 10-09 00:56Z (pr: breaking change provisional), held on two maintainer questions; RESTING since the 10-15 10:55Z [Triage Resolution]: head 8f894f0501, internal review APPROVE_WITH_NITS (the reviewer was Continued), waiting on a maintainer (scope, label, CI approval). Re-chase r3 10-18."
 metadata:
   node_type: memory
   type: project
@@ -61,6 +61,15 @@ still a draft, and the label is unchanged. #13538, #13530 and #13533 have no non
 reply to nudge 37 was a [Triage Status] (10-12 01:07Z), and there is no [Triage Resolution]. As instructed, I escalated to orchestrator-dashboard
 (msg 23) instead of nudging again. That is the 4th time the cost stop has been raised. The message also asks whether to ping jkwak-work on GitHub.
 Next is a one-shot `rechase-13530-pr13538-r3` at 10-18T01:00Z. It must not nudge the triager, and it should act only on an explicit operator answer.
+
+**10-15 10:55Z [Triage Resolution] (verified live 10:58Z).** Head `8f894f0501`, still a draft. 14 nv-slang-bot commits, no Claude trailer,
+26 files +1492/−18, label `pr: breaking change`, MERGEABLE/BLOCKED (draft), 0 GitHub reviews, no human comments on #13538/#13530/#13533.
+The reviewer `ee79ml` was Continued: the escalation ledger shows `[continued]` and it is no longer in `cost-cap stopped`. Round 4 came back
+APPROVE_WITH_NITS with 0 bugs. Applying nit 1 exposed a real crash the PR had introduced, which round 5 (711a456d0e) fixed: the
+post-specialization check had no AST builder, so `compile` crashed on a worker thread (rc 139). A new unit test pins it. Nit 2
+(`if (!funcDeclRef) return;`) was declined as untested. Debug subset 5401/5401. CI dispatch 38721513672 at 8f894f0 is `waiting` at the
+approval gate. **Resting on the maintainer:** scope (all targets vs GPU-only), label, and CI approval. Re-chase task
+`rechase-13530-pr13538-r3-f51e` (10-18T01:00Z) was refreshed to this state and schedules one more 7-day one-shot if nothing changes.
 
 **Side findings.** (1) **FILED as [#13533](https://github.com/shader-slang/slang/issues/13533)** 10-08 ~20:4xZ
 (verified live: nv-slang-bot author, 4437 chars, labels cuda/reflection/reproduced, no @). It has two causes: the

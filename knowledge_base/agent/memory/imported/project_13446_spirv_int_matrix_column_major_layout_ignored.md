@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13446_spirv_int_matrix_column_major_layout_ignored
-description: "slang#13446 (bot-filed 10-05 ~20:10Z by slang-fixer on the #13378 chain): on SPIR-V, legalizeMatrixTypes lowers int/uint/bool matrices to row vectors regardless of layout while reflection honours column-major -> silent wrong value on Vulkan. The array form is the FOURTH #12992 regression. Maintainer A/B fix choice; owned by the #12992 chain; NO fixer dispatched; covered by rechase-13376-13375-05dc. 10-06 16:32Z jkwak-work asked @nv-slang-bot to triage; dispatched to slang-triager; triaged 18:06Z (cmt 6022423678, rec option 1 via pass order); waits on jkwak-work; 10-15 jkwak-work asked float-too? + SPIR-V-only?; answered 01:46Z cmt 6182493567 (float fine everywhere; int wrong on SPIR-V/GLSL/WGSL/Metal). Waits on jkwak-work option 1 vs 2."
+description: "slang#13446 (bot-filed 10-05 ~20:10Z by slang-fixer on the #13378 chain): on SPIR-V, legalizeMatrixTypes lowers int/uint/bool matrices to row vectors regardless of layout while reflection honours column-major -> silent wrong value on Vulkan. The array form is the FOURTH #12992 regression. Maintainer A/B fix choice; owned by the #12992 chain; NO fixer dispatched; covered by rechase-13376-13375-05dc. 10-06 16:32Z jkwak-work asked @nv-slang-bot to triage; dispatched to slang-triager; triaged 18:06Z (cmt 6022423678, rec option 1 via pass order); waits on jkwak-work; 10-15 jkwak-work asked float-too? + SPIR-V-only?; answered 01:46Z cmt 6182493567 (float fine everywhere; int wrong on SPIR-V/GLSL/WGSL/Metal). 10-15 19:48Z jkwak-work rejected option 2 -> option 1; triager releasing fixer q7uc6d for a draft PR; re-chase rechase-slang-13446-r1-6def."
 metadata:
   node_type: memory
   type: project
@@ -89,3 +89,23 @@ target, buffer kind and shape, checked at HEAD, with the evidence for each cell 
 
 I cancelled `rechase-13446-float-targ-4206` because the question was answered. Waits on jkwak-work choosing option 1 or
 2. No timer is armed: the maintainer's next comment arrives as a webhook, and the fixer stays on hold.
+
+**10-15 19:48Z: the maintainer rejected option 2.** jkwak-work wrote in comment 6200890390, with no bot mention: *"Option 2
+is not acceptable because we shouldn't ignore "column_major" keyword."* The triage offered only options 1 and 2, so option
+1 is chosen by elimination. They didn't comment on the pass-order approach or ask for a PR.
+
+I added 👀 and relayed the comment word for word to slang-triager, pinned to `1mhykc` with in_reply_to 88. My note, kept
+separate from the quote, told the triager to release held fixer session `q7uc6d` for a **draft** PR:
+- **Acceptance:** behaviour, not a particular implementation. int/bool buffer matrices must honour the layout on
+  SPIR-V/GLSL/WGSL/Metal, matching reflection in offsets and element order, for std430 and std140, single members,
+  arrays and square shapes.
+- **Open items from P2:** the Metal SIGSEGV, bool storage, GLSL text output.
+- **Test:** its own observed Vulkan value test.
+- **Approach:** stated as open to jkwak-work redirecting it on the draft.
+
+No `<github-post-authorized />`, because there was no mention. The draft PR is the artifact. **Timer:**
+`rechase-slang-13446-r1-6def` at 23:00Z 10-15 (task-hygiene r1 of 3).
+- **10-15 19:55Z: handed off.** The triager released fixer `q7uc6d` (its msg 21) with the memo and
+  `scratch-13446-shaders.tgz`. The brief keeps the lavapipe slang-rhi tweak local-only and adds a 1xN shape to the open
+  items. When the fixer reports the PR number, the triager posts a fresh 5-bullet on #13446 and reports to me.
+- **10-15 23:00Z: r1 re-chase.** No PR yet, and the fixer is working. At 22:55Z `q7uc6d` reported the fix works locally: 12/12 Vulkan probes match reflection and float output is unchanged. The triager answered at 22:55Z that the float `bit_cast` change needs its own commit with a failing-on-master test, a description line and a process-report entry. Both sessions are cost status=ok. No nudge was sent. `task-hygiene next` returned **r3** (count 2/cap 3), so I scheduled `rechase-slang-13446-r3-3cd8` for 03:00Z 10-16 as the **last** re-chase. On no-PR it parks the chain and tells the dashboard.

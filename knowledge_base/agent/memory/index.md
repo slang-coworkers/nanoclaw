@@ -12,6 +12,8 @@ okf_version: "0.1"
 - **[legoop-archive/](legoop-archive/index.md) and imported/ are disjoint stores** — never `cp` between them.
 - **Before forwarding ANY `pr_ready_for_review` webhook to a `*-pr-approver`, run `ncl groups list` and check `paused` — on the first event, not the repeat.** Both approvers are paused; detail in [pr-approvers-paused.md](pr-approvers-paused.md).
 - **`/supervise-issues` tick: read [orchestrator/supervise-tick-runbook.md](orchestrator/supervise-tick-runbook.md) BEFORE the first command.** Never launch the stock `pull-universe.sh` (≈2.4 h on per-session cost-cap calls); use the latest `tickNNN/pull.sh`. Ticks 272–274 each lost 4–35 min by starting from SKILL.md instead.
+- **okf-synthesis since 2026-10-15 (repo skill, #2039) misreads nested `metadata.type` frontmatter: its ~1,200 NO-FRONTMATTER/DOSSIER offenders are false — do NOT "fold" them.** Escalated to the owner; detail in [imported/reference_okf_synthesis_provisioning.md](imported/reference_okf_synthesis_provisioning.md).
+- **`ncl tasks get/list` from Main only sees MY group; `--agent-group-id` is inert.** "task not found" for a peer's task is not evidence it is missing. To audit one, run `ncl sessions get <its session_id>`, or `ncl sessions list --thread-id system:tasks:<series>`. A `[]` from the second does not prove absence: tasks on legacy shared sessions return `[]` too. On 2026-10-15 (#13637) I falsely told a peer and the dashboard that a re-check was missing. Detail in [imported/feedback_ncl_tasks_list_cannot_attribute_or_filter_by_group.md](imported/feedback_ncl_tasks_list_cannot_attribute_or_filter_by_group.md).
 - Full context, evidence and history for these: [system/hazards.md](system/hazards.md).
 
 ## Map

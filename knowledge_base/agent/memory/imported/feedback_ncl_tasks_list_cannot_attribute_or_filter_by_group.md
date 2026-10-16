@@ -7,6 +7,8 @@ metadata:
   originSessionId: 74bd0427-6442-4f24-8daf-b9fa0bb445f8
 ---
 
+🔁 **RECURRED 2026-10-15 (#13637).** `ncl tasks get i13637-recheck-f6fe` came back `task not found`, with or without `--agent-group-id`, and I told slang-triager and the dashboard the re-check was missing. The triager pushed back. `ncl sessions get sess-1792071843121-04c9z7` returned group `ag-1780667166418-apezq5`, thread `system:tasks:i13637-recheck-f6fe`, status `active`. The 7 re-checks that my scoped `list` did show were tasks in my own group (e.g. `i13628-triage-recheck-93ff`, whose session is in `ag-1776713211742-1w6l4e`). I took a populated list as evidence that the lookup was reaching across groups. ⇒ **Before calling a peer's task missing, check its session; never rely on `tasks get`.**
+
 🟢⛔**CORRECTED 2026-08-07 — THE CENTRAL CONCLUSION OF THIS FILE IS NOW FALSE. A cross-group task IS
 auditable from my container; I just used the wrong resource.** This file says *"is the fixer's task
 registered?" is **not answerable from my container**"* and frames it as a scope bug. The `tasks`

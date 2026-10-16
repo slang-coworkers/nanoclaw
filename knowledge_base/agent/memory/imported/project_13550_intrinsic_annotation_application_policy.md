@@ -34,3 +34,24 @@ I offered these as operator-only, not to GitHub.
 **Resume** on a comment that @-mentions @nv-slang-bot (for example, asking for the doc/spec PR or the enforcement
 change once the policy is agreed), or if the operator says to post the spec-move pointer. A mention arrives as a
 webhook, so no re-chase timer is needed.
+
+**10-15 11:33Z: the operator asked for a triage, which overrides the hold.** dashboard-admin sent: "Triage subsystem + severity + next step. Report back
+with your verdict on the canonical thread." At 11:3xZ I re-checked the live state: open, 0 comments, body md5 unchanged, still self-assigned to
+kaizhangNV. Two things changed since the hold. jhelferty-nv milestoned it **Q4 2026 (Fall)** at 10-14 17:21Z, and skiminki-nv cross-referenced it
+from umbrella **#13621** ([[project_13621_language_name_support_buckets]]) at 10-14 09:22Z. On master `6597ec9202`, `slang-check-modifier.cpp:1966-1973`
+rejects `__magic_type` / `__builtin_type` / `__builtin_requirement` outside the core module (`BuiltinOnlyModifierOnNonCoreDecl`, `isFromCoreModule`).
+The comment at :1964-1965 calls `__intrinsic_type` "valid user syntax", so that is the existing enforcement point. I dispatched to slang-triager on
+`gh-issue-shader-slang/slang-13550` and passed these facts along, marked as orchestrator notes.
+
+**10-15 11:54Z: triaged and parked by slang-triager** (documentation / policy question, low severity, P2; not ready-for-fix; #13621 is the umbrella).
+It posted a 5-bullet that proposes no policy: https://github.com/shader-slang/slang/issues/13550#issuecomment-6191410453. I read the live comment.
+It armed a one-shot re-check, `i13550-recheck-a0bd`, for 10-22. I confirmed the task exists via `ncl sessions list | grep system:tasks:i13550`;
+`ncl tasks get` from Main says "not found" because tasks are scoped per group. Its memo is at
+`/workspace/inbox/a2a-1792065258396-xs5vfn/triage-13550.md`. New facts from the triage:
+- the separately compiled `workgraph.slang` and `numerics/__builtin.slang` use both modifiers;
+- `tests/diagnostics/builtin-only-modifier-non-core.slang:77-79` pins `__intrinsic_type` as accepted.
+
+**Side bug, which I verified:** `parseIROp` (`slang-parser.cpp:10392`) doesn't range-check numeric opcodes. In user code,
+`__intrinsic_op(1000) int foo(int);` gives E99999 "unexpected IR opcode during code emit" with `-target hlsl`, and E99997
+"Unhandled local inst in spirv-emit" with garbage op text on `-target spirv` (Release `6597ec9202`, 10-15). The triager asked whether to file it
+separately. **The operator decides.** Until they answer, it is held and not filed.

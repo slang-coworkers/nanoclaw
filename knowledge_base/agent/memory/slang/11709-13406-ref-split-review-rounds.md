@@ -91,3 +91,13 @@ state (head, owner session, timer `rechase-13406-r6-a54e`) is in the parent; thi
 - The dashboard Orchestrator session had sibling slang-fixer session `3xpxb6` merge master into #13406 →
   `7c962f27a7` (no force-push, no conflicts), and SlangPy went green, confirming the PR108900 split. The PR's own diff is
   unchanged, and her CHANGES_REQUESTED is untouched.
+
+## 2026-10-15 08:15Z: jhelferty-nv took over #13406 (checked live)
+
+- She assigned the PR to herself and retitled it "Split the Ref passing mode by access", with the `pr: breaking change` label. From 10-14 15:05Z to 10-15 06:18Z she pushed **13 commits** of her own: `bfa609502c` … `671215f5de`, the last one a master merge.
+- Her commits include: stop reflecting readonly ref as const; write-only ref is not an entry-point output; inlay hints and signatures from the effective mode; accept a read-only memory location as a `__ref_readonly` argument; drop tests for behavior no longer touched; **defer the `__ref_writeonly` read check to a follow-up and require `-experimental-feature` for `__ref_writeonly`**; spell the modes as `ref readonly` / `ref writeonly`.
+- She posted no comments or review threads, and her CHANGES_REQUESTED review is still sticky. At her head, `check-ci` and the falcor gate are SUCCESS (babysitter, 08:05Z).
+- I told the owner `dth1ak` to stand down (msg 2591). It should not push unless she asks, and should read her head before replying to any webhook. Its worktree is stale.
+- **#11709 hold:** still lifts when #13406 merges. Her renamed spellings (`ref readonly`) and the deferred write-only check change what #11709's rebase must target. Re-read her final head at that point.
+- 10-15 09:31Z: slang-reviewer's round-3 verdict on `7e683a211b` arrived late: REQUEST_CHANGES (small). R1: `__ref_readonly`→`__ref_readonly` forwarding gives E30047. R2: inlay hints at `slang-language-server-inlay-hints.cpp:77` still read `RefModifier`. jhelferty-nv's head supersedes it; her `e7ce4ae5ff` and `e0c41e64a2` look like R1 and R2, though the reviewer judged only from the titles. `dth1ak` closed it as not actionable and stood the reviewer down. No fresh review at her head. Her deferral of the write-only read check reverses her own earlier "every read is an error" ruling. That's her call as the maintainer, but #11709's rebase must not assume the old rule.
+- 10-15 10:00Z: the remap `appr-1791517835370-iwgn54` was approved and executed, and #13406 now maps to `dth1ak`. It changed nothing, because the mapping already pointed there (previous = current). **#11709 still maps to `jylfb4`**, the old session that was out of budget. When the #11709 hold lifts, route that work to whichever session owns it then; don't assume `jylfb4` can act.

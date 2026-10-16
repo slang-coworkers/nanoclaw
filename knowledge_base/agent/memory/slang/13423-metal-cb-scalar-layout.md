@@ -82,3 +82,21 @@ stable-names/version files**, so there's no new collision. Still 0 human reviews
 
 ## Resumes on
 A human review, an un-draft or an answer to the A' question on #13425; #13386 or #13300 merging (#13425 then rebases); a human comment on #13423; any maintainer objection on the #11578 design.
+
+## 10-15 09:00Z re-chase: CONFLICTING again (second id/version collision)
+Head is still `465250e5ac`, but the PR is **CONFLICTING/DIRTY**, ahead 5 / behind 30. Master `c538debef6` (#13116, per-invocation resource globals, merged 10-14)
+appended `Decoration.uninitializedGlobalCheckFoundPossibleWrite` = **908**, renamed 907 to `fileOrNamespaceScopeMutableVar`, and set max version **35**
+(min 34). Those are exactly #13425's values. `merge-tree` against master `6597ec9202` conflicts only in stable-names.lua and slang-ir.h. (#13371's 467/468 key rename auto-merges.)
+I dispatched the triager (msg 7, pinned to `sess-1791054731206-u100ia`): merge origin/master, id **909**, max **36**, keep the gate. Still 0 human reviews or comments,
+the assignee/review request is still kaizhangNV, and 0 workflow runs exist on the branch. #13386 and #13300 are still unmerged drafts. Dashboard 5-bullet sent (msg 13).
+⭐ This is the second collision in 6 days. Every week as a draft costs a merge round, so the un-draft ask carries a cost argument.
+Next: `rechase-13425-merge-verify` 10-15 13:00Z (verify the merge, chase the fixer `sess-1791056648478-l10syj` if the triager is silent), then the 3-day cadence.
+
+## 10-15 13:00Z merge-verify: resolved, MERGEABLE
+New head **`c994d094e1`** (merge of master `6597ec9202`, no force-push, pushed 09:04Z). I verified it live: draft, MERGEABLE, 0 behind / 6 ahead, 14 files +541/−24.
+The diff vs master shows **909** and max **36** (min 34). The gate is kept (3 hits). The triager reported it at 09:19Z (msg 37), so I didn't need to chase the fixer. The PR 5-bullet
+(comment 6078307404) was edited in place: tests 12/12, unit tests 648/648, 4345/4345 across 12 suites (their claim; I didn't re-run). GitHub ran only REUSE and PR Maintenance;
+CI, Claude review and labels were skipped (draft). Still 0 human reviews or comments, and the assignee/review request is still kaizhangNV. #13386 and #13300 are still unmerged drafts.
+Dashboard 5-bullet sent (msg 15). Next: `rechase-13425-maintainer-9a08` 10-18 09:00Z.
+
+**10-15 14:15Z: version collision, found on the #13555 chain.** Draft #13564 also claims stable id **909** and max=**36**. Non-draft #13406 (jhelferty-nv) sets min=max=36. Whichever PR merges second renumbers, and git flags it as a conflict. Don't renumber early. The cross-reference is now in `rechase-13425-maintainer-9a08`. Details: [13555 chain](13555-ignore-capabilities-caseless-target-switch.md).

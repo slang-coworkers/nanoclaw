@@ -96,6 +96,11 @@ The same chain produced an error in each direction, and one question catches bot
 ⇒ Ask ***"does this bear on what I'm about to conclude?"*** of **disqualifying** evidence as rigorously as
 of supporting evidence.
 
+**A retraction must state the gate, or it re-teaches the error.** Correcting the circular argument as
+"`metal-device.cpp:611-618` adds it to the set" is true but omits the `if (m_hasResidencySet)` gate, so a
+reader mining the file for domain knowledge reconstructs unconditional registration *from the correction*.
+When retracting a mechanism claim, write the condition explicitly.
+
 **Why the second direction is harder to catch:** over-correcting *reads as intellectual honesty*, so
 nothing in your own voice flags it. Discarding a sound result is a **false negative you chose** — and in an
 append-only store it is near-invisible, because nothing later contradicts a number that no longer exists. A

@@ -3,7 +3,7 @@ type: runbook
 description: Fast path for a /supervise-issues tick — read FIRST, before SKILL.md. Use the cached tickNNN/pull.sh (never the stock pull-universe.sh), the helper pipeline, and the pull/cache pitfalls that keep the payload honest. Split 2026-10-13; false-positive and blind-spot catalogues live in sibling pages.
 ---
 
-# /supervise-issues tick runbook (learned ticks 255–283)
+# /supervise-issues tick runbook (learned ticks 255–284)
 
 **This runbook overrides SKILL.md's "use `scripts/pull-universe.sh` (preferred)".** Never launch the stock
 script: its step 1b calls `ncl cost-cap status` once per gh-issue session (~1.2–2 s × ~4,100 sessions ≈ 80 min–2.4 h),
@@ -21,7 +21,7 @@ Companion pages: [[orchestrator/supervise-tick-false-positives.md]] (rows scan f
 1. New `tickNNN/` dir. Fetch inputs once, **serially** (concurrent `ncl` → "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick283/`**) and `sed` every `tickNNN` path.
+2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick284/`**) and `sed` every `tickNNN` path.
    `board274.py` hardcodes `supervisor-state.pre-tickNNN.json`; repoint `titles.py` to payload5.json.
    Build `lo-cache.json` from the **previous `payload3.json`** (not payload1, so last tick's re-fetch fixes carry
    forward) and `prev-la.json` from the previous `sessions.json`. Run `pull.sh` with env
@@ -83,6 +83,15 @@ Companion pages: [[orchestrator/supervise-tick-false-positives.md]] (rows scan f
 - **A tracked CI run can 404** (GitHub purged runs created ~10-01T20:05Z→10-07T22:25Z; 30 open PR heads had 0 check
   suites as of 10-12). `ci.py` then falls back to an older cancelled run → `❌(recheck)`. Check the PR's
   `statusCheckRollup` is empty before treating it as a rebase-nudge case.
+- **`refetch_lo.py` / `refetch_none.py` need an output arg** (`refetch_lo.py payload1.json payload1b.json`, then
+  `refetch_none.py payload1b.json payload1c.json`); with one arg they crash at the final `json.dump` (tick 284).
+- **Merge state must be carried key-by-key:** scan's `state` drops closed chains, so after writing it back, re-add
+  every pre-tick key the scan omitted (tick 284: 9 closed keys would have been lost).
+- **`gh api rate_limit` → OneCLI `app_not_connected` is not an outage.** Probe with `gh api -i repos/shader-slang/slang`
+  (`X-Ratelimit-Limit: 6000`) + `gh api graphql -f query='{viewer{login}}'` before reporting auth trouble (tick 284).
+- **Merge-queue eviction is a blind spot (shape 8):** an approved bot PR the queue evicted (`removed_from_merge_queue` in
+  the issue timeline) sits `BLOCKED` with green PR CI and no auto-merge. The bot can't enqueue, so it goes on the board
+  as an operator call. Check the timeline of each approved bot PR that is still open (#13171, tick 284).
 - **Worktree GC:** build `wt-dirs.txt` with `find /workspace/extra/ephemeral/prod-groups -maxdepth 3 -mindepth 3 -name .git -type f` (worktrees sit at `prod-groups/<folder>/<wt>/.git`; `-maxdepth 2` finds 0 — tick 280). `worktree-gc.py` reads **stdin only** (`--in` is ignored; it hangs). Build the GC payload from
   `wt-resolved.json`'s `path` field, not `dir` (the basename — every size lookup missed). Filter `wt-dirs.txt` to drop
   submodule `.git` files (gitdir containing `/modules/`). Common REAP shape: merged-PR reviewer worktrees
