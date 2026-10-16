@@ -3324,6 +3324,11 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'PR_DESCRIPTION_GATE',
     'PR_DESCRIPTION_MAX_CHARS',
     'PR_DESCRIPTION_MAX_SECTION_LINES',
+    // Mailbox history GC + outbound.db free-page reclaim, run by the runner on
+    // its own file (defaults: 30 d, 256 MB live cap). Forwarded so one host
+    // setting governs both sides — e.g. `0` turns the runner side off too.
+    'NANOCLAW_MAILBOX_RETENTION_DAYS',
+    'NANOCLAW_MAILBOX_VACUUM_MAX_LIVE_MB',
   ]) {
     const value = process.env[key];
     if (value) env[key] = value;
