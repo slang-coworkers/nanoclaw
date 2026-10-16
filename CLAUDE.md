@@ -107,7 +107,7 @@ ncl help
 | members | list, add, remove | Unprivileged access gate for an agent group |
 | destinations | list, add, remove | Where an agent group can send messages |
 | sessions | list, get, messages | Active sessions (read-only). `messages` returns the merged inbound+outbound transcript for a session — global scope sees any session, group scope sees its own. |
-| tasks | list, get, create, update, cancel, pause, resume, delete, run, append-log | Scheduled tasks for an agent group |
+| tasks | list, get, create, update, cancel, pause, resume, delete, run, append-log, isolate | Scheduled tasks for an agent group (`isolate` moves a legacy series out of a shared session into its own `system:tasks:<series>` lane) |
 | user-dms | list | Cold-DM cache (read-only) |
 | dropped-messages | list | Messages from unregistered senders (read-only) |
 | approvals | list, get | Pending approval requests (read-only) |

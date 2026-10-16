@@ -103,6 +103,11 @@ export function getInboundDb(): Database {
   return _inbound;
 }
 
+/** Path of the live outbound.db (the file this runner owns). */
+export function outboundDbPath(): string {
+  return DEFAULT_OUTBOUND_PATH;
+}
+
 /** Outbound DB — container owns this file (sole writer). */
 export function getOutboundDb(): Database {
   if (!_outbound) {

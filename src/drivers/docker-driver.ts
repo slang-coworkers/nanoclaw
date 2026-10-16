@@ -107,7 +107,7 @@ export class DockerSessionDriver implements SessionDriver {
   }
 
   async ensureReady(): Promise<void> {
-    ensureDockerRunning(this.#cli);
+    await waitForDockerRunning(this.#cli);
   }
 
   async reconcileNetworkAccess(access: NetworkAccessIntent): Promise<void> {
@@ -199,7 +199,13 @@ export class DockerSessionDriver implements SessionDriver {
       }
       created.push(name);
       this.#cli.run(
-        containerCreateArgs(spec, agent, name, privateNetwork ? ['--network', privateNetwork] : networkArgs),
+        containerCreateArgs(
+          spec,
+          agent,
+          name,
+          privateNetwork ? ['--network', privateNetwork] : networkArgs,
+          this.opts.hostDeviceArgs?.() ?? [],
+        ),
       );
     } catch (error) {
       for (const createdName of created.reverse()) {
@@ -783,6 +789,7 @@ function containerCreateArgs(
   container: ContainerSpec,
   name: string,
   networkArgs: readonly string[],
+  hostDeviceArgs: readonly string[] = [],
 ): string[] {
   const args = ['create', '--rm', '--name', name];
   args.push(...labelArgs(labelsForKey(spec.key, container.role, { ...spec.labels, ...(container.labels ?? {}) })));
@@ -790,6 +797,9 @@ function containerCreateArgs(
   args.push(...hardeningArgs(spec));
   if (container.role !== 'agent') args.push('--read-only');
   args.push(...userArgs(spec));
+  // GPU passthrough (agent only). Before the env lanes so a composed or
+  // contributed `-e NVIDIA_*` still wins under Docker's last-flag rule.
+  args.push(...hostDeviceArgs);
   args.push(...envArgs(container.env));
   args.push(...envArgs(container.contributedEnv ?? {}));
   args.push(...mountArgs(container.mounts));
@@ -892,19 +902,79 @@ export function assertMountSourcesExist(mounts: readonly MountSpec[]): void {
 /** Ensure the container runtime is reachable. Fatal at startup — agents cannot run without it. */
 export function ensureDockerRunning(cli: Cli = realCli('docker')): void {
   try {
-    cli.run(['info'], { timeoutMs: 10_000 });
-    log.debug('Container runtime already running');
+    probeDocker(cli);
   } catch (err) {
-    log.error('Failed to reach container runtime', { err });
-    console.error('\n╔════════════════════════════════════════════════════════════════╗');
-    console.error('║  FATAL: Container runtime failed to start                      ║');
-    console.error('║                                                                ║');
-    console.error('║  Agents cannot run without a container runtime. To fix:        ║');
-    console.error('║  1. Ensure Docker is installed and running                     ║');
-    console.error('║  2. Run: docker info                                           ║');
-    console.error('║  3. Restart NanoClaw                                           ║');
-    console.error('╚════════════════════════════════════════════════════════════════╝\n');
-    throw new Error('Container runtime is required but failed to start', { cause: err });
+    failDockerUnreachable(err);
+  }
+}
+
+function probeDocker(cli: Cli, timeoutMs = 10_000): void {
+  cli.run(['info'], { timeoutMs });
+  log.debug('Container runtime already running');
+}
+
+function failDockerUnreachable(err: unknown): never {
+  log.error('Failed to reach container runtime', { err });
+  console.error('\n╔════════════════════════════════════════════════════════════════╗');
+  console.error('║  FATAL: Container runtime failed to start                      ║');
+  console.error('║                                                                ║');
+  console.error('║  Agents cannot run without a container runtime. To fix:        ║');
+  console.error('║  1. Ensure Docker is installed and running                     ║');
+  console.error('║  2. Run: docker info                                           ║');
+  console.error('║  3. Restart NanoClaw                                           ║');
+  console.error('╚════════════════════════════════════════════════════════════════╝\n');
+  throw new Error('Container runtime is required but failed to start', { cause: err });
+}
+
+/** How long startup waits for the daemon before giving up (boot-time restarts). */
+export const DOCKER_READY_TIMEOUT_MS = 120_000;
+const DOCKER_READY_INTERVAL_MS = 5_000;
+
+export interface WaitForDockerOptions {
+  timeoutMs?: number;
+  intervalMs?: number;
+  /** Injected for tests. */
+  sleep?: (ms: number) => Promise<void>;
+  now?: () => number;
+}
+
+/**
+ * Startup variant of {@link ensureDockerRunning}: tolerate a daemon that is
+ * briefly down. At boot, nvidia-cdi-refresh.service restarts Docker after the
+ * user unit may already be starting, so the first `docker info` can fail even
+ * though the runtime is seconds from ready. A user-level unit cannot order
+ * itself after system units (docker.service / nvidia-cdi-refresh.service), so
+ * instead of crashing into the circuit breaker we retry for a bounded window
+ * and only then fail fatally with the same error as before.
+ */
+export async function waitForDockerRunning(
+  cli: Cli = realCli('docker'),
+  opts: WaitForDockerOptions = {},
+): Promise<void> {
+  const timeoutMs = opts.timeoutMs ?? DOCKER_READY_TIMEOUT_MS;
+  const intervalMs = opts.intervalMs ?? DOCKER_READY_INTERVAL_MS;
+  const sleep = opts.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
+  const now = opts.now ?? Date.now;
+  const startedAt = now();
+  for (let attempt = 1; ; attempt++) {
+    try {
+      // Cap each probe by what is left of the window so a hung daemon can't
+      // stretch startup a full probe timeout past the bound.
+      const remainingMs = timeoutMs - (now() - startedAt);
+      probeDocker(cli, Math.min(10_000, Math.max(1_000, remainingMs)));
+      if (attempt > 1) log.info('Container runtime became reachable', { attempt, waitedMs: now() - startedAt });
+      return;
+    } catch (err) {
+      const waitedMs = now() - startedAt;
+      if (waitedMs + intervalMs > timeoutMs) failDockerUnreachable(err);
+      log.warn('Container runtime not reachable yet — retrying', {
+        attempt,
+        waitedMs,
+        timeoutMs,
+        err: err instanceof Error ? err.message : String(err),
+      });
+      await sleep(intervalMs);
+    }
   }
 }
 
