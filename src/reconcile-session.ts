@@ -51,6 +51,8 @@ import {
   killContainer,
   recomposeAndUpdateHash,
 } from './container-runner.js';
+import { hostGpuPassthroughApplied } from './drivers/index.js';
+import { checkGpuProbe } from './gpu-probe-check.js';
 import { requestWake } from './request-wake.js';
 import type { Session } from './types.js';
 import type { ContainerState, InboundMailbox, OutboundMailbox } from './mailbox/index.js';
@@ -270,6 +272,10 @@ async function reconcileActiveSession(session: Session): Promise<void> {
     await checkRunawayForSession(session, agentGroup.id);
     // MODULE-HOOK:runaway-detect:end
 
+    // GPU probe vs applied passthrough: warn once per container start when the
+    // host passed the GPU through but the container measured none.
+    if (isContainerRunning(session.id)) checkGpuProbeForSession(session, agentGroup.id);
+
     // Critique-gate escalation: a session that hit the gate's denial cap
     // writes .claude/critique-escalation.json (host-visible — /workspace is
     // the session-dir mount); turn a fresh request into an admin approval
@@ -463,6 +469,20 @@ async function checkRunawayForSession(session: Session, agentGroupId: string): P
     await checkRunaway(session, outDb, runawayCardDeps);
   } catch (err) {
     log.debug('runaway detect skipped', { sessionId: session.id, err });
+  } finally {
+    outDb?.close();
+  }
+}
+
+/** Read-only GPU probe check; see src/gpu-probe-check.ts. Never throws. */
+function checkGpuProbeForSession(session: Session, agentGroupId: string): void {
+  let outDb: SessionDbHandle | null = null;
+  try {
+    if (!hostGpuPassthroughApplied()) return;
+    outDb = openOutboundDb(agentGroupId, session.id);
+    checkGpuProbe(session.id, outDb, true);
+  } catch (err) {
+    log.debug('gpu probe check skipped', { sessionId: session.id, err });
   } finally {
     outDb?.close();
   }

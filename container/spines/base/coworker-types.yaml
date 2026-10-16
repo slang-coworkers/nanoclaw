@@ -21,6 +21,7 @@ base-common:
     - container/spines/base/invariants/scope.md
     - container/spines/base/invariants/formatting.md
     - container/spines/base/invariants/packages.md
+    - container/spines/base/invariants/gpu.md
     - container/spines/base/invariants/clock.md
   context:
     # Always-loaded body stays slim. Scheduling, self-mod, and core messaging
