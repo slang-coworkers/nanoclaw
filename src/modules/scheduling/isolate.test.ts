@@ -29,7 +29,7 @@ import { closeDb, createAgentGroup, initTestDb, runMigrations } from '../../db/i
 import { createSession, getSession, taskThreadId } from '../../db/sessions.js';
 import { inboundDbPath } from '../../mailbox/sqlite/paths.js';
 import { ensureSchema, openInboundDb } from '../../mailbox/sqlite/session-db.js';
-import { holdTaskSeries, insertTaskRow, releaseHeldTaskRows } from '../../mailbox/sqlite/tasks.js';
+import { copyHeldTaskRows, holdTaskSeries, insertTaskRow, releaseHeldTaskRows } from '../../mailbox/sqlite/tasks.js';
 import { wrapSqliteInbound } from '../../mailbox/sqlite/index.js';
 import { initSessionFolder, resolveTaskSession } from '../../session-manager.js';
 import type { Session } from '../../types.js';
@@ -297,5 +297,24 @@ describe('holdTaskSeries / releaseHeldTaskRows', () => {
 
     expect(releaseHeldTaskRows(db, ['s-1'])).toBe(1);
     expect(statuses().map((r) => r.status)).toEqual(['pending', 'paused']);
+  });
+
+  it('copyHeldTaskRows skips row ids already present and copies the rest (re-run converges)', () => {
+    const row = (id: string, recurrence: string | null) => ({
+      id,
+      seriesId: 's-2',
+      processAfter: FUTURE,
+      recurrence,
+      content: '{"prompt":"p"}',
+      status: 'pending' as const,
+    });
+    // A previous partial copy left only the on-demand row behind.
+    insertTaskRow(db, row('s-2-run', null));
+    expect(copyHeldTaskRows(db, [row('s-2-run', null), row('s-2', '0 0 * * *')])).toBe(1);
+    const ids = db.prepare("SELECT id, recurrence FROM messages_in WHERE series_id = 's-2' ORDER BY seq").all();
+    expect(ids).toEqual([
+      { id: 's-2-run', recurrence: null },
+      { id: 's-2', recurrence: '0 0 * * *' },
+    ]);
   });
 });

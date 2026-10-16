@@ -13,9 +13,9 @@
  * The move spans two mailboxes, so it is ordered to fail safe and to be re-runnable:
  *   1. hold   — pause the series' live rows in the source (one transaction; refused
  *               while an occurrence is running or awaiting re-arm, see holdTaskSeries).
- *   2. copy   — insert the rows, with their pre-hold status, into the target lane.
- *               Skipped when the target already holds the series (a re-run after a
- *               crash between steps 2 and 3).
+ *   2. copy   — insert the rows, with their pre-hold status, into the target lane in
+ *               one transaction; a row id already there (a re-run after a crash
+ *               between steps 2 and 3) is skipped.
  *   3. retire — cancel the held rows in the source (cancel clears recurrence, so the
  *               source can never re-arm the series again).
  * A crash after 1 leaves the series paused in the source (no double fire); re-running
@@ -69,20 +69,7 @@ export async function isolateTaskSeries(
   let moved = 0;
   try {
     ({ session: target } = await resolveTaskSession(agentGroupId, seriesId));
-    moved = await withMailboxSession(agentGroupId, target.id, async (db) => {
-      if (db.getTask(seriesId)) return 0;
-      for (const row of rows) {
-        await db.insertTask({
-          id: row.id,
-          seriesId: row.seriesId,
-          processAfter: row.processAfter,
-          recurrence: row.recurrence,
-          content: row.content,
-          status: row.status,
-        });
-      }
-      return rows.length;
-    });
+    moved = await withMailboxSession(agentGroupId, target.id, (db) => db.copyHeldTaskRows(rows));
   } catch (err) {
     const pendingIds = rows.filter((r) => r.status === 'pending').map((r) => r.id);
     await withExistingMailboxSession(agentGroupId, sourceSessionId, (db) => db.releaseHeldTaskRows(pendingIds));

@@ -157,6 +157,8 @@ export interface InboundMailbox {
   holdTaskSeries(seriesId: string): HeldTaskSeries;
   /** Return rows paused by `holdTaskSeries` to pending. */
   releaseHeldTaskRows(ids: readonly string[]): number;
+  /** Insert held rows in one transaction, skipping row ids already present; returns rows inserted. */
+  copyHeldTaskRows(rows: readonly HeldTaskRow[]): number;
   countLiveTasks(): number;
   prunePendingMessages(channelType: string, before: string, keep: number): number;
   getInboundHistory(limit: number): MailboxHistoryMessage[];

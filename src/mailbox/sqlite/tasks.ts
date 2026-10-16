@@ -16,7 +16,7 @@ import { nextEvenSeq } from './session-db.js';
 import { createTaskInboundRecord } from '../model.js';
 import type { TaskWrite } from '../model.js';
 import type { FailureClass } from '../model.js';
-import type { HeldTaskSeries } from '../types.js';
+import type { HeldTaskRow, HeldTaskSeries } from '../types.js';
 
 /**
  * Insert one pending task occurrence. `seriesId` is the series join key — equal
@@ -269,6 +269,28 @@ export function holdTaskSeries(db: Database.Database, seriesId: string): HeldTas
         content: r.content,
       })),
     };
+  })();
+}
+
+/**
+ * Copy held rows into this mailbox in one transaction, skipping any row id already
+ * present (a re-run after a crash). All-or-nothing, so a failed copy leaves no
+ * partial target state and releasing the source hold cannot double-fire a row.
+ */
+export function copyHeldTaskRows(
+  db: Database.Database,
+  rows: readonly HeldTaskRow[],
+  nextSequence: () => number = () => nextEvenSeq(db),
+): number {
+  const exists = db.prepare('SELECT 1 FROM messages_in WHERE id = ?');
+  return db.transaction(() => {
+    let copied = 0;
+    for (const row of rows) {
+      if (exists.get(row.id)) continue;
+      insertTaskRow(db, row, nextSequence());
+      copied++;
+    }
+    return copied;
   })();
 }
 
