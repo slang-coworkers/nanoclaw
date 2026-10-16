@@ -122,6 +122,17 @@ const TYPED_ORDER = [
 function digest(text: string): string {
   return crypto.createHash('sha256').update(text).digest('hex').slice(0, 16);
 }
+/**
+ * The base `invariants/gpu.md` fragment (the standing GPU fact), added to every
+ * typed coworker after the freeze. Digest-pinned like the fragments above.
+ */
+const GPU_FRAGMENT = path.join(process.cwd(), 'container', 'spines', 'base', 'invariants', 'gpu.md');
+const GPU_FRAGMENT_DIGEST = '9f82bc7f4cc1f602';
+function gpuFragment(): string {
+  const text = fs.readFileSync(GPU_FRAGMENT, 'utf-8');
+  expect(digest(text), 'gpu.md differs from the reviewed bytes').toBe(GPU_FRAGMENT_DIGEST);
+  return text;
+}
 function fragment(name: string): string {
   const text = fs.readFileSync(path.join(SPINE_DIR, name), 'utf-8');
   expect(digest(text), `${name} differs from the reviewed bytes`).toBe(FRAGMENT_DIGESTS[name]);
@@ -173,7 +184,13 @@ describe('composed-document section re-order is bounded to the declared set', ()
       // Typed composition re-levels each fragment so its top heading is `###`.
       const typedRewrites = REWRITTEN_AFTER_FREEZE.filter((e) => e.typed).map(rewritten);
       const added = lines(
-        ['## Rules', rules(), chainNew(), ...typedRewrites.map((r) => normalized(r.live))].join('\n'),
+        [
+          '## Rules',
+          rules(),
+          chainNew(),
+          normalized(gpuFragment()),
+          ...typedRewrites.map((r) => normalized(r.live)),
+        ].join('\n'),
       );
       const removed = lines(
         [
