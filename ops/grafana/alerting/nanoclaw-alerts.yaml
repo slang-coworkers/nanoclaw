@@ -78,12 +78,13 @@ groups:
             relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: PF3A0F3054C0DA367
             model: { refId: D, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_up_n") FROM "nanoclaw_host" WHERE $timeFilter' }
-          # host_uptime_s is written on every run (0 = no live pid): every input must have a value, since one
-          # absent input makes the whole math expression NoData.
+          # host_crash_loop_uptime_s, not host_uptime_s: it is written on every run (0 = no live pid; an
+          # unreadable age counts as old), and every input must have a value, since one absent input makes
+          # the whole math expression NoData.
           - refId: F
             relativeTimeRange: { from: 300, to: 0 }
             datasourceUid: PF3A0F3054C0DA367
-            model: { refId: F, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_uptime_s") FROM "nanoclaw_host" WHERE $timeFilter' }
+            model: { refId: F, rawQuery: true, resultFormat: time_series, query: 'SELECT last("host_crash_loop_uptime_s") FROM "nanoclaw_host" WHERE $timeFilter' }
           - refId: B
             datasourceUid: __expr__
             model: { refId: B, type: reduce, expression: A, reducer: last, settings: { mode: dropNN } }

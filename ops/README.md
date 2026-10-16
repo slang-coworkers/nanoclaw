@@ -108,7 +108,8 @@ Two honesty caveats, same spirit as the rest of this file:
 
 The collector now also emits **`nanoclaw_host`** (one point per run) and
 **`nanoclaw_host_mailbox`** (largest session DB, tagged by session). Fields:
-`host_up` (boolean), `host_up_n` (integer 1/0), `host_uptime_s` (0 when no live pid),
+`host_up` (boolean), `host_up_n` (integer 1/0), `host_uptime_s` (only when a live pid's age was read),
+`host_crash_loop_uptime_s` (crash-loop rule input, every run: 0 = no live pid, 1200 = live but age unreadable),
 `host_restart`, `host_restarts_total`, `breaker_attempt`,
 `sweep_tick_ms` / `sweep_tick_ms_max` / `sweep_full_passes` / `sweep_quiet_skips` / `sweep_ticks`,
 `spawns`, `wakes`, `wake_failed`, `quarantined`, `stale_restarts`, `fatal`, `heap_oom`,

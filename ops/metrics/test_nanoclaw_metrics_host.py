@@ -57,6 +57,7 @@ class HostUpN(unittest.TestCase):
         self.assertEqual(f["host_up"], "true")
         self.assertEqual(f["host_up_n"], "1i")  # trailing i = Influx integer, reducible by alert expressions
         self.assertTrue(f["host_uptime_s"].endswith("i"))
+        self.assertEqual(f["host_crash_loop_uptime_s"], f["host_uptime_s"])
         self.assertEqual(f["breaker_attempt"], "2i")
 
     def test_down(self):
@@ -64,8 +65,25 @@ class HostUpN(unittest.TestCase):
         f = _fields(_host_line(self.mod))
         self.assertEqual(f["host_up"], "false")
         self.assertEqual(f["host_up_n"], "0i")
-        self.assertEqual(f["host_uptime_s"], "0i")  # always present: the crash-loop math needs every input
+        self.assertNotIn("host_uptime_s", f)
+        # always present: one absent input makes the crash-loop rule's math NoData
+        self.assertEqual(f["host_crash_loop_uptime_s"], "0i")
         self.assertEqual(f["breaker_attempt"], "0i")
+
+    def test_unreadable_uptime_counts_as_old(self):
+        # an old healthy process with a sticky breaker_attempt must not look "young" just because /proc failed
+        with open(self.pidfile, "w") as fh:
+            fh.write(str(os.getpid()))
+
+        def boom(_pid):
+            raise OSError("no /proc")
+
+        self.mod._pid_uptime_s = boom
+        self.mod.collect_host({})
+        f = _fields(_host_line(self.mod))
+        self.assertEqual(f["host_up_n"], "1i")
+        self.assertNotIn("host_uptime_s", f)
+        self.assertEqual(f["host_crash_loop_uptime_s"], "1200i")
 
 
 if __name__ == "__main__":
