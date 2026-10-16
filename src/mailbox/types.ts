@@ -66,6 +66,12 @@ export interface TaskUpdate {
 
 export type TaskRecord = CanonicalTaskRecord;
 
+/** A live occurrence captured by `holdTaskSeries`, with the status it had before the hold. */
+export type HeldTaskRow = TaskWrite & { status: 'pending' | 'paused' };
+
+/** `inFlight`: the series' recurrence sits on a running or not-yet-re-armed row, so it cannot move now. */
+export type HeldTaskSeries = { inFlight: true } | { inFlight: false; rows: HeldTaskRow[] };
+
 export interface TaskStats {
   /** Completed occurrences, gated and woke alike. */
   runs: number;
@@ -93,6 +99,16 @@ export interface MailboxTimelineMessage {
   content: string;
 }
 
+export interface MailboxReclaimResult {
+  action: 'none' | 'incremental' | 'vacuum' | 'skipped';
+  reason?: string;
+  fileBytesBefore: number;
+  fileBytesAfter: number;
+  freeBytesBefore: number;
+  liveBytes: number;
+  durationMs: number;
+}
+
 /** Host-visible inbound mailbox behavior. Storage layout and lifecycle are implementation-private. */
 export interface InboundMailbox {
   setRouting(routing: SessionRouting): void;
@@ -110,7 +126,20 @@ export interface InboundMailbox {
    * Drop consumed system frames and orphan `delivered` rows older than the
    * cutoff (host-owned history; see gcInboundHistory). Optional for fakes.
    */
-  gcHistory?(cutoffIso: string): { systemRows: number; deliveredRows: number };
+  gcHistory?(cutoffIso: string): { systemRows: number; deliveredRows: number; more?: boolean };
+  /**
+   * Give freed pages of the HOST-OWNED inbound file back to the filesystem
+   * (incremental_vacuum, or a bounded one-time VACUUM on legacy files). Only
+   * the file's single writer may call this, and only while the session's
+   * container is down. Optional for fakes; see mailbox/sqlite/reclaim.ts.
+   */
+  reclaimSpace?(): MailboxReclaimResult;
+  /**
+   * Mark pending `cli-resp-*` replies written before the cutoff `completed`
+   * (their requester has given up; see expireOrphanedCliResponses). Returns
+   * the number of rows closed. Optional for fakes.
+   */
+  expireOrphanedCliResponses?(cutoffIso: string): number;
   markMessageFailed(messageId: string): void;
   retryWithBackoff(messageId: string, backoffSec: number): void;
   getMessageForRetry(messageId: string, status: 'pending' | 'processing'): MessageRetry | undefined;
@@ -147,6 +176,12 @@ export interface InboundMailbox {
    * resolves, like insertTask.
    */
   armNextTask(originalId: string, task: Task): Promise<void>;
+  /** Pause a series' live rows in one step, returning them with their prior status (see `ncl tasks isolate`). */
+  holdTaskSeries(seriesId: string): HeldTaskSeries;
+  /** Return rows paused by `holdTaskSeries` to pending. */
+  releaseHeldTaskRows(ids: readonly string[]): number;
+  /** Insert held rows in one transaction, skipping row ids already present; returns rows inserted. */
+  copyHeldTaskRows(rows: readonly HeldTaskRow[]): number;
   countLiveTasks(): number;
   prunePendingMessages(channelType: string, before: string, keep: number): number;
   getInboundHistory(limit: number): MailboxHistoryMessage[];

@@ -26,6 +26,8 @@ export type {
   ContainerState,
   Destination,
   DirectOutboundMessage,
+  HeldTaskRow,
+  HeldTaskSeries,
   InboundMessage,
   InboundMailbox,
   MailboxSessionKey,

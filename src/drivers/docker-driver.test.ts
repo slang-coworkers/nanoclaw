@@ -15,6 +15,7 @@ import {
   auxiliaryNetworkArgs,
   dockerEventToSessionEvent,
   ensureDockerRunning,
+  waitForDockerRunning,
 } from './docker-driver.js';
 import { FakeCli } from './fake-cli.js';
 import { withSessionEvents } from './session-events.js';
@@ -189,6 +190,24 @@ describe('spec realization', () => {
     const image = args.indexOf('nanoclaw-agent:spike-p0');
     expect(network).toBeGreaterThan(lastMount);
     expect(image).toBeGreaterThan(network);
+  });
+
+  it('passes the GPU lane to the agent container it actually creates, before the env lanes', async () => {
+    // Regression: the GPU flags were only added to an argv that was never sent,
+    // so every agent container came up without a GPU on a GPU host.
+    const d = new DockerSessionDriver({
+      ...FIXTURE_POLICY,
+      cli,
+      hostDeviceArgs: () => ['--runtime=nvidia', '-e', 'NVIDIA_VISIBLE_DEVICES=all'],
+    });
+    await d.prepare(fixtureSpec());
+    const args = createArgs();
+    const runtime = args.indexOf('--runtime=nvidia');
+    expect(runtime).toBeGreaterThan(-1);
+    expect(args).toContain('NVIDIA_VISIBLE_DEVICES=all');
+    const firstEnv = args.findIndex((a, i) => a === '-e' && args[i + 1] !== 'NVIDIA_VISIBLE_DEVICES=all');
+    expect(firstEnv === -1 || runtime < firstEnv).toBe(true);
+    expect(args.indexOf('nanoclaw-agent:spike-p0')).toBeGreaterThan(runtime);
   });
 
   it('emits contributed env after composed env, so the contributed value wins last-wins', async () => {
@@ -759,6 +778,47 @@ describe('ensureDockerRunning', () => {
     cli.responses = [{ match: /^info$/, throws: new Error('Cannot connect to the Docker daemon') }];
     expect(() => ensureDockerRunning(cli)).toThrow('Container runtime is required but failed to start');
     expect(log.error).toHaveBeenCalled();
+  });
+});
+
+describe('waitForDockerRunning (startup retry)', () => {
+  function clock() {
+    let t = 0;
+    return { now: () => t, sleep: vi.fn(async (ms: number) => void (t += ms)) };
+  }
+
+  it('succeeds on a later attempt while the daemon restarts at boot', async () => {
+    cli.responses = [{ match: /^info$/, throws: new Error('Cannot connect to the Docker daemon') }];
+    const c = clock();
+    let sleeps = 0;
+    const sleep = vi.fn(async (ms: number) => {
+      await c.sleep(ms);
+      if (++sleeps === 2) cli.responses = []; // daemon back after ~10 s
+    });
+    await expect(waitForDockerRunning(cli, { timeoutMs: 60_000, intervalMs: 5_000, now: c.now, sleep })).resolves.toBe(
+      undefined,
+    );
+    expect(cli.joined().filter((a) => a === 'info')).toHaveLength(3);
+    expect(sleep).toHaveBeenCalledTimes(2);
+    expect(log.warn).toHaveBeenCalledTimes(2);
+    expect(log.error).not.toHaveBeenCalled();
+  });
+
+  it('gives up with the fatal startup error once the bound is spent', async () => {
+    cli.responses = [{ match: /^info$/, throws: new Error('Cannot connect to the Docker daemon') }];
+    const c = clock();
+    await expect(waitForDockerRunning(cli, { timeoutMs: 20_000, intervalMs: 5_000, ...c })).rejects.toThrow(
+      'Container runtime is required but failed to start',
+    );
+    // Probes at t=0,5,10,15,20 s; the 5th fails and 20+5 > 20 → give up.
+    expect(cli.joined().filter((a) => a === 'info')).toHaveLength(5);
+    expect(c.now()).toBe(20_000);
+    expect(log.error).toHaveBeenCalledTimes(1);
+  });
+
+  it('is what the driver runs for ensureReady', async () => {
+    await expect(driver().ensureReady()).resolves.toBeUndefined();
+    expect(cli.joined()).toContain('info');
   });
 });
 

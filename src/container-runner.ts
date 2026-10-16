@@ -2170,6 +2170,39 @@ export function ensurePrDescriptionGate(settingsFile: string): void {
   }
 }
 
+export const EVAL_SANDBOX_GATE_CMD = 'bash /app/hooks/gate-eval-sandbox.sh';
+// The hook refuses the two MCP tools by name and classifies Bash commands; the
+// matcher lists exactly those so unrelated tool calls never spawn it.
+export const EVAL_SANDBOX_GATE_MATCHER =
+  'Bash|mcp__slang-mcp__discord_send_message|mcp__slang-mcp__github_create_or_update_file';
+
+/**
+ * Register gate-eval-sandbox.sh as a PreToolUse hook in a group's settings.json.
+ *
+ * The hook is self-scoped like gate-critique-on-deliver.sh: it exits 0 unless the
+ * composer materialized `.overlay-eval-sandbox` for the group (or the host passed
+ * EVAL_SANDBOX_ACTIVE=1), so wiring it for every Claude-surface group is safe and
+ * means an evaluation group is gated from its first spawn, with no per-group
+ * settings edit. Registered outside the dashboard hook block, next to the
+ * description gate, so DASHBOARD_PORT=0 cannot switch it off. Idempotent.
+ */
+export function ensureEvalSandboxGate(settingsFile: string): void {
+  if (!fs.existsSync(path.join(process.cwd(), 'container', 'hooks', 'gate-eval-sandbox.sh'))) return;
+  if (!fs.existsSync(settingsFile)) return;
+  const settings = JSON.parse(fs.readFileSync(settingsFile, 'utf-8'));
+  if (!settings.hooks) settings.hooks = {};
+  const before = JSON.stringify(settings.hooks.PreToolUse ?? []);
+  settings.hooks.PreToolUse = upsertGuardHook(
+    settings.hooks.PreToolUse ?? [],
+    EVAL_SANDBOX_GATE_MATCHER,
+    'gate-eval-sandbox.sh',
+    EVAL_SANDBOX_GATE_CMD,
+  );
+  if (JSON.stringify(settings.hooks.PreToolUse) !== before) {
+    fs.writeFileSync(settingsFile, JSON.stringify(settings, null, 2) + '\n');
+  }
+}
+
 export async function buildMounts(
   agentGroup: AgentGroup,
   session: Session,
@@ -2629,6 +2662,10 @@ export async function buildMounts(
   // (container/codex-hooks.toml) do not get it yet: their PreToolUse deny path
   // is not exercised anywhere in this repo.
   if (defaultSurfaces) ensurePrDescriptionGate(settingsFile);
+  // gate-eval-sandbox.sh: an evaluation copy of a coworker (overlay `eval-sandbox`)
+  // may write only to the evaluation fork. Self-scoped by the overlay marker, so
+  // every Claude-surface group carries the registration and only eval groups feel it.
+  if (defaultSurfaces) ensureEvalSandboxGate(settingsFile);
   // Claude state dir — only for providers using the default Claude surfaces.
   // Under `dataRoot/v2-sessions/<group>`, so 'group-state' is what the policy
   // requires here.
@@ -3260,6 +3297,15 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     // agent-writable — host-side receipts are the deeper fix, tracked
     // separately.) When disable_overlays=1, hasCritique is false and no env is
     // emitted, so the gate stays off.
+    // Same tamper resistance for the eval sandbox: the marker the composer wrote
+    // decides, and the hook treats the env as authoritative, so `rm
+    // .overlay-eval-sandbox` inside the container changes nothing. The allow-list
+    // is forwarded from the host's .env when set; the hook defaults it otherwise.
+    {
+      const evalGroupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
+      env.EVAL_SANDBOX_ACTIVE = fs.existsSync(path.join(evalGroupDir, '.overlay-eval-sandbox')) ? '1' : '0';
+      if (process.env.EVAL_ALLOWED_REPOS?.trim()) env.EVAL_ALLOWED_REPOS = process.env.EVAL_ALLOWED_REPOS.trim();
+    }
     if (hasCritique) {
       const gateGroupDir = path.resolve(GROUPS_DIR, agentGroup.folder);
       const active = fs.existsSync(path.join(gateGroupDir, '.overlay-critique-gate'));
@@ -3324,6 +3370,11 @@ async function forkContainerEnv(input: ComposeSessionSpecInput): Promise<Record<
     'PR_DESCRIPTION_GATE',
     'PR_DESCRIPTION_MAX_CHARS',
     'PR_DESCRIPTION_MAX_SECTION_LINES',
+    // Mailbox history GC + outbound.db free-page reclaim, run by the runner on
+    // its own file (defaults: 30 d, 256 MB live cap). Forwarded so one host
+    // setting governs both sides — e.g. `0` turns the runner side off too.
+    'NANOCLAW_MAILBOX_RETENTION_DAYS',
+    'NANOCLAW_MAILBOX_VACUUM_MAX_LIVE_MB',
   ]) {
     const value = process.env[key];
     if (value) env[key] = value;
