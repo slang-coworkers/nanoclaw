@@ -104,6 +104,9 @@ main:
     # directly. Without this, main has no rule against broadcasting
     # cross-chain status to peer chains' threads.
     - container/spines/base/context/chain-reporting.md
+    # The standing GPU fact. Typed coworkers get it from base-common's
+    # invariants; main is flat, so it references the file directly.
+    - container/spines/base/invariants/gpu.md
     # ncl-global.md replaces ncl-group.md for owner / global-scope agents.
     # Composer drops it when cli_scope != 'global'. Default for main is
     # global, set by init-first-agent at owner-group bootstrap.
