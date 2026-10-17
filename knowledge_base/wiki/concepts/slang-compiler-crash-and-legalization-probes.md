@@ -181,6 +181,8 @@ index (should `.setCount`), and the `backpermute` lambda takes its output param 
 `auto&`) — the matrix sibling only worked because its output is a raw C-array that decays to a
 pointer ([nested swizzle-of-swizzle vector lvalue miscompiles (backpermute by-value + add-count
 bug)](../learnings/1787736858261-slang-nested-swizzle-of-swizzle-vector-lvalue-misc.md)).
+It is a true old regression: the same source compiled correctly on v2024.1.34 and is broken on
+v2025.12.1 ([#12768 worked on v2024.1.34, broken on v2025.12.1](../learnings/1792154620818-12768-nested-swizzle-lvalue-did-work-on-v2024-1-34.md)).
 Swizzle stores into textures have their own shape gap. `assign()` in `slang-lower-to-ir.cpp`
 emits `swizzledStore` for every swizzle of more than one element, including full-coverage ones
 such as `t[i].xyzw = v` (or `.xy` on a `float2` texel), so `legalizeImageSubscript` lowers them as a

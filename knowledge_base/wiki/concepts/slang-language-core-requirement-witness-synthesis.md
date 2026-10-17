@@ -3,7 +3,7 @@ title: "Slang conformance checking: requirement enumeration and method-requireme
 type: concept
 group: slang-language-core
 tags: [slang, conformance, interface-requirement, witness-synthesis, OverloadedExpr, LookupResult, diagnostics, E38100, E38105, ResolveInvoke]
-source_count: 8
+source_count: 9
 ---
 
 # Slang conformance checking: requirement enumeration and method-requirement witness synthesis
@@ -25,7 +25,7 @@ When a type declares conformance to an interface, `checkInterfaceConformance` (s
 
 ## The requirement loop is a deny-list; the IR requirement predicate is an allow-list (#13337)
 
-The last loop of `checkInterfaceConformance` (slang-check-decl.cpp ~:11652) treats EVERY interface member as a requirement except associated types, generic constraints, `InheritanceDecl` and `InterfaceDefaultImplDecl`. IR lowering's `shouldDeclBeTreatedAsInterfaceRequirement` (slang-lower-to-ir.cpp ~:1683) is an allow-list instead. The two disagree on any member kind that the nesting table allows in an interface but that is not a requirement. Today that is only `EmptyDecl`, produced by a stray `;` such as `property T X { get; };`: the checker raises a spurious E38100 "does not provide required interface member ''" with the note "see declaration of 'empty'" (#13337). typedef/typealias/using/nested struct in an interface are already rejected earlier with E30102, so they never reach this loop. A one-line `if (as<EmptyDecl>) continue;` fixes it, verified 2615/2615 on tests/language-feature + tests/diagnostics [checker requirement loop is a deny-list, IR requirement predicate is an allow-list](../learnings/1790757907963-slang-interface-conformance-checker-requirement-lo.md).
+The last loop of `checkInterfaceConformance` (slang-check-decl.cpp ~:11652) treats EVERY interface member as a requirement except associated types, generic constraints, `InheritanceDecl` and `InterfaceDefaultImplDecl`. IR lowering's `shouldDeclBeTreatedAsInterfaceRequirement` (slang-lower-to-ir.cpp ~:1683) is an allow-list instead. The two disagree on any member kind that the nesting table allows in an interface but that is not a requirement. Today that is only `EmptyDecl`, produced by a stray `;` such as `property T X { get; };`: the checker raises a spurious E38100 "does not provide required interface member ''" with the note "see declaration of 'empty'" (#13337). typedef/typealias/using/nested struct in an interface are already rejected earlier with E30102, so they never reach this loop. A one-line `if (as<EmptyDecl>) continue;` fixes it, verified 2615/2615 on tests/language-feature + tests/diagnostics [checker requirement loop is a deny-list, IR requirement predicate is an allow-list](../learnings/1790757907963-slang-interface-conformance-checker-requirement-lo.md). The skip must look through a `GenericDecl` wrapper, because `__generic<U> ;` produces a `GenericDecl` whose inner decl is the `EmptyDecl`; a bare `as<EmptyDecl>` misses that shape ([interface EmptyDecl skip must unwrap GenericDecl](../learnings/1792178638025-interface-emptydecl-skip-must-unwrap-genericdecl-g.md)).
 
 ## Conformance synthesis builds single-item `OverloadedExpr`s on purpose
 
@@ -55,8 +55,9 @@ How to apply all three: if `const` has to affect matching, express it through th
 
 The front end lowers `kIROp_Synthesized{Forward,Backward}DerivativeWitnessTable` insts (slang-lower-to-ir.cpp ~11116) with type `WitnessTableType(<interface>)`, and their translators (`maybeTranslate*DerivativeWitness`, slang-ir-autodiff-fwd.cpp) rely on that with `cast<IRWitnessTableType>(inst->getDataType())`. One IR-side producer, the higher-order BACKWARD witness built inside `maybeTranslateForwardDerivativeWitness`, typed it as the bare `Specialize(IBackwardDifferentiable, …)`. Consider `bwd_diff(fwd_diff(g))` where `g`'s body calls `fwd_diff(f)`: the conformance of `fwd_diff(fwd_diff(f))` is then synthesized in IR rather than in the front end, the cast fails, and the compiler segfaults. The fix wraps the type in `builder.getWitnessTableType(...)`, exactly as the forward sibling two statements above already did (PR #13552, a2d9a76bdc). When a consumer's `cast<>` crashes on one producer path, diff that producer against the siblings that emit the same op; the asymmetry is usually the bug [synthesized-conformance inst must be typed WitnessTableType](../learnings/1791597155831-slang-ir-a-synthesized-conformance-inst-must-be-ty.md).
 
-**Source learnings (8):**
+**Source learnings (9):**
 - [checkInterfaceConformance requirement loop is a deny-list vs IR's allow-list; stray `;` EmptyDecl → spurious E38100 with empty member name (#13337)](../learnings/1790757907963-slang-interface-conformance-checker-requirement-lo.md)
+- [interface EmptyDecl skip must unwrap GenericDecl (`__generic<U> ;`)](../learnings/1792178638025-interface-emptydecl-skip-must-unwrap-genericdecl-g.md)
 - [single-item OverloadedExpr IS produced by conformance witness synthesis (deliberately); consumers must use LookupResult API and isOverloaded() (#13349)](../learnings/1790793365406-single-item-overloadedexpr-is-produced-by-conforma.md)
 - [#13349 single-candidate OverloadedExpr ICE: full trigger matrix, non-crashing E38105 shapes, PR #13353 fix and ambiguity control](../learnings/1790800014367-13349-single-candidate-overloadedexpr-ice-more-tri.md)
 - [Slang: const on a parameter is a binding modifier, __ref is a passing mode; no spot fixes (tangent-vector, #13339)](../learnings/1790789000537-slang-const-on-a-parameter-is-a-binding-modifier-r.md) — maintainer position; `const` is not a type/signature modifier; `Ref<T>` was a mistake; don't file symptom fixes here.

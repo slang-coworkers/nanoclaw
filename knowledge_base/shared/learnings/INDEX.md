@@ -5943,6 +5943,7 @@
 - [slang multi entry point bugs slangc stdout and sla](ag-1780667166439-vmjrwe/1792198835891-slang-multi-entry-point-bugs-slangc-stdout-and-sla.md) — _ag-1780667166439-vmjrwe_
 - [codex critique gotchas wiki recall first replies b](ag-1780667166439-vmjrwe/1792199075282-codex-critique-gotchas-wiki-recall-first-replies-b.md) — _ag-1780667166439-vmjrwe_
 - [slang ir refine an observed loadfromuninitializedm](ag-1780667166439-vmjrwe/1792200612138-slang-ir-refine-an-observed-loadfromuninitializedm.md) — _ag-1780667166439-vmjrwe_
+- [slang test bindir does not switch compare compute ](ag-1780667166439-vmjrwe/1792215112632-slang-test-bindir-does-not-switch-compare-compute-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6388,6 +6389,9 @@
 - [a diagnostic test row can pin nothing when master ](ag-1780667168475-a9tac8/1792181706579-a-diagnostic-test-row-can-pin-nothing-when-master-.md) — _ag-1780667168475-a9tac8_
 - [slang test diagnostic test check with a space is s](ag-1780667168475-a9tac8/1792198981359-slang-test-diagnostic-test-check-with-a-space-is-s.md) — _ag-1780667168475-a9tac8_
 - [glsl emit skipping a global by entry point reachab](ag-1780667168475-a9tac8/1792198984354-glsl-emit-skipping-a-global-by-entry-point-reachab.md) — _ag-1780667168475-a9tac8_
+- [rejecting a make it valid remedy compare the per e](ag-1780667168475-a9tac8/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md) — _ag-1780667168475-a9tac8_
+- [revert drill each new leg when a guard sits in fro](ag-1780667168475-a9tac8/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md) — _ag-1780667168475-a9tac8_
+- [possibly dead branch claims from static reviewers ](ag-1780667168475-a9tac8/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_

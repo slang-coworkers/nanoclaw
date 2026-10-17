@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7390 agent learnings**, synthesized into **470 concept pages**.
+Standalone wiki built from **7495 agent learnings**, synthesized into **475 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -32,6 +32,8 @@ Standalone wiki built from **7390 agent learnings**, synthesized into **470 conc
 
 ### Agent fixer / codex / skills
 - [Codex & Provider Parity](concepts/agent-fixer-codex-provider.md)
+- [Eval Runner: Fixer Trials on the slang-eval Fork](concepts/agent-eval-runner-fixer-fork-mechanics.md)
+- [Eval Runner: Trial Isolation, Answer Contract, and Answer-Key Leaks](concepts/agent-eval-runner-trial-isolation-and-answer-leaks.md)
 - [Fixer Dispatch & Coordination Failure Modes](concepts/agent-fixer-dispatch-coordination.md)
 - [Fixer engineering craft: toolchain, CI infra, NVRTC PCH, OKF synthesis, and codex judgment](concepts/agent-fixer-codex-skills-f0909b0-fixer-engineering-and-empirical-craft.md)
 - [Fixer PR Creation, Fork & CI Mechanics](concepts/agent-fixer-pr-and-ci-mechanics.md)
@@ -456,11 +458,13 @@ Standalone wiki built from **7390 agent learnings**, synthesized into **470 conc
 - [Slang descriptor-handle capability promotion and reflection-visible changes (bindlessSpaceIndex, CUDA binding categories)](concepts/slang-language-core-descriptor-handle-capabilities-and-reflection.md)
 - [Slang Entry-Point Varying Interface: Location Layout & the Store Anchor](concepts/slang-language-fold20260909-varying-interface-layout.md)
 - [Slang error handling: throws, try, catch — checking and lowering](concepts/slang-language-error-handling.md)
+- [Slang Front-End Design Review Principles (tangent-vector, #13406)](concepts/slang-compiler-frontend-design-review-principles.md)
 - [Slang Generics & Type System](concepts/slang-language-generics-and-type-system.md)
 - [Slang Intrinsics & Builtins](concepts/slang-language-intrinsics-and-builtins.md)
 - [Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup](concepts/slang-language-parser-generic-app-and-lookup.md)
 - [Slang preprocessor and lexer: #if integer evaluation, division traps, and unterminated token content](concepts/slang-language-preprocessor-and-lexer.md)
 - [Slang Reflection API](concepts/slang-language-reflection-api.md)
+- [Slang Scope Lookup, Function-Local Types, and Declaration Checking](concepts/slang-language-scope-lookup-and-declaration-checking.md)
 - [Slang struct-construction lowering: synthesized member-wise ctors and module-global constant legalization](concepts/slang-language-core-struct-construction-lowering.md)
 - [Slang switch: front-end validation, missing diagnostics & SPIR-V codegen](concepts/slang-language-switch-statement.md)
 - [Slang Visibility, Layout & Codegen Surfaces](concepts/slang-language-visibility-and-layout.md)
@@ -473,6 +477,7 @@ Standalone wiki built from **7390 agent learnings**, synthesized into **470 conc
 - [DXC Prebuilts, FetchDXC CMake & DXC Codegen Checks](concepts/slang-tooling-dxc-prebuilts-and-cmake.md)
 - [Formatting & Lint Tooling (clang-format, prettier, gersemi)](concepts/slang-tooling-formatting-lint.md)
 - [Linking and Symbol Visibility](concepts/slang-tooling-linking-symbol-visibility.md)
+- [Reproducing version-specific Slang bugs with release tarballs, and bisecting across releases](concepts/slang-tooling-release-tarball-repro-and-version-bisect.md)
 - [Serialized-Module & Obfuscation Verification (.slang-module chunks, -obfuscate, stripping claims)](concepts/slang-tooling-serialized-module-obfuscation.md)
 - [Slang build configuration: DXC-from-source on old glibc, slim configure flags, sanitizers, CMake flag scope, and measured build costs](concepts/slang-tooling-build-configure-dxc-sanitizers.md)
 - [Slang build in worktrees: submodule init, A/B baselines, stale binaries](concepts/slang-tooling-f0909b0-build-worktree-cmake.md)
@@ -526,10 +531,10 @@ Standalone wiki built from **7390 agent learnings**, synthesized into **470 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2199)
-- [NanoClaw / agent operations](topics/agent-ops.md) (863)
-- [CI, build & tooling](topics/ci-tooling.md) (550)
-- [Review & process](topics/review-process.md) (375)
+- [Slang compiler & language](topics/slang-compiler.md) (2254)
+- [NanoClaw / agent operations](topics/agent-ops.md) (883)
+- [CI, build & tooling](topics/ci-tooling.md) (554)
+- [Review & process](topics/review-process.md) (379)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
-- [Verification & evidence discipline](topics/verification.md) (562)
-- [Uncategorized](topics/misc.md) (1422)
+- [Verification & evidence discipline](topics/verification.md) (567)
+- [Uncategorized](topics/misc.md) (1439)

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-550 learnings. [Catalog](../index.md)
+554 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -43,6 +43,7 @@ type: topic
 - [A 3h runner-fleet outage stayed BELOW the queue-depth alarm — alarm on age and fleet size](../learnings/1786395185201-a-3h-runner-fleet-outage-stayed-below-the-queue-de.md)
 - [A `cancelled` CI job is three different things — only arithmetic tells them apart](../learnings/1786155858380-a-cancelled-ci-job-is-three-different-things-only-.md)
 - [A bare-token bucket regex inflated a flake ranking 8.5×; and check subset/superset before ranking buckets side by side](../learnings/1786206669441-a-bare-token-bucket-regex-inflated-a-flake-ranking.md)
+- [A bot workflow_dispatch CI run on a draft is docs-only-filtered by its LAST commit (HEAD^1), not the PR diff](../learnings/1792172198845-a-bot-workflow-dispatch-ci-run-on-a-draft-is-docs-.md)
 - [A build failure in a shared clone is not evidence about your patch — read the undefined symbol and ask which file generates it](../learnings/1786041592085-a-build-failure-in-a-shared-clone-is-not-evidence-.md)
 - [A build launched inside an Agent subagent dies with it — and ninja reports it as "interrupted by user"](../learnings/1786384310274-a-build-launched-inside-an-agent-subagent-dies-wit.md)
 - [A build-liveness check that greps argv measures a coincidental proxy — and my probe of it was vacuous before it was right](../learnings/1786224903694-a-build-liveness-check-that-greps-argv-measures-a-.md)
@@ -115,6 +116,7 @@ type: topic
 - [A reconciliation can inherit the same unit bug it resolves — check MB vs MiB on the agreement figure too](../learnings/1786042397017-a-reconciliation-can-inherit-the-same-unit-bug-it-.md)
 - [A reconciliation is a claim with arithmetic in it — range-check it](../learnings/1786411084640-a-reconciliation-is-a-claim-with-arithmetic-in-it-.md)
 - [A reconciliation that dissolves a discrepancy is itself a query shaped by expectation — agreement is the weakest evidence two parties measured the same thing](../learnings/1786027885737-a-reconciliation-that-dissolves-a-discrepancy-is-i.md)
+- [A red check-ci on a bot PR head can mean CI never ran (wait-for-human-priority yield)](../learnings/1792162621914-a-red-check-ci-on-a-bot-pr-head-can-mean-ci-never-.md)
 - [A red external-CI lane on a frozen PR head can be an expired-artifact infra flake — prove it with a master control before treating it as a blocker](../learnings/1787100709269-a-red-external-ci-lane-on-a-frozen-pr-head-can-be-.md)
 - [A required draft-PR ci.yml workflow_dispatch can itself priority-yield](../learnings/1782867699255-a-required-draft-pr-ci-yml-workflow-dispatch-can-i.md)
 - [A reset/checkout under a running build yields a bogus BUILD_EXIT with no diagnostics](../learnings/1785776881296-a-reset-checkout-under-a-running-build-yields-a-bo.md)
@@ -160,6 +162,7 @@ type: topic
 - [Blindness and success share an output channel — a control must return a specific value only a working probe could produce](../learnings/1786043347132-blindness-and-success-share-an-output-channel-a-co.md)
 - [Bot App token CANNOT push .github/workflows/* (missing 'workflows' permission) — deliver CI as a patch](../learnings/1785048496087-bot-app-token-cannot-push-github-workflows-missing.md)
 - [Bot auto-filing an adjacent P3 follow-up issue can read as noise to maintainers — prefer surfacing over filing unless the finding is standalone-actionable](../learnings/1788204809444-bot-auto-filing-an-adjacent-p3-follow-up-issue-can.md)
+- [Bot CI run 'failure' after exactly 30 days = expired falcor-ci environment approval, not code](../learnings/1792173072753-bot-ci-run-failure-after-exactly-30-days-expired-f.md)
 - [Bot commits must use the account-associated noreply email or CLA-assistant blocks merge](../learnings/1789476879264-bot-commits-must-use-the-account-associated-norepl.md)
 - [Bot follow-up issues can cite a prerequisite PR that isn't merged yet — verify the base exists in master](../learnings/1787077394524-bot-follow-up-issues-can-cite-a-prerequisite-pr-th.md)
 - [Bot-PR: lone red workflow_dispatch run with build/test skipped is a no-op, read the rollup](../learnings/1782548309438-bot-pr-lone-red-workflow-dispatch-run-with-build-t.md)
@@ -491,6 +494,7 @@ type: topic
 - [Slang LLVM prebuilt GCS key moves with ANY edit to external/build-llvm.sh, even a comment](../learnings/1791792494149-slang-llvm-prebuilt-gcs-key-moves-with-any-edit-to.md)
 - [Slang local checkout can be days-stale on actively-developed CMake files; verify against master + options-matrix CI gate](../learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md)
 - [slang repo gates ALL build/test CI behind non-draft (opposite of slang-rhi)](../learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md)
+- [Slang runner-migration 'Prepare for X runner' issues: check git log first, CI already moved](../learnings/1792157281260-slang-runner-migration-prepare-for-x-runner-issues.md)
 - [Slang tools PCH hides missing includes in new unit tests — CI builds without it](../learnings/1791403291004-slang-tools-pch-hides-missing-includes-in-new-unit.md)
 - [slang worktree build: SLANG_ENABLE_TESTS requires SLANG_ENABLE_SLANG_RHI (and CMake cache keeps -D OFF)](../learnings/1791499534921-slang-worktree-build-slang-enable-tests-requires-s.md)
 - [slang#11999 gpu-printing macOS flake — verify CI signature, don't trust bot conflation](../learnings/1783548983571-slang-11999-gpu-printing-macos-flake-verify-ci-sig.md)
