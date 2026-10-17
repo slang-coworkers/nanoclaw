@@ -130,3 +130,9 @@ Lessons this chain produced: [[slang-evidence-lessons-index]] (passing controls 
 instrument never the coverage; enumerate surfaces not just controls; a true conclusion launders its
 evidence *and* its mechanism — reproduce before writing it down; a relayer cannot feel which words
 were load-bearing, so correcting a distortion of your own position is the originator's job).
+
+## 2026-10-16: downstream SlangPy reproductions of the #12349 mechanism
+Two hits through SlangPy, both fixed by #810 per slangpy-triager's local test: (1) the ParameterBlock path of slangpy#1232 (module
+push constant); (2) slangpy-reviewer's probe3 on PR #1235 review: raw `Function.dispatch`, global `ParameterBlock` + EP uniform,
+no push constant → no write on Vulkan, CUDA correct. Both are routed as evidence for the operator's #810 promotion decision,
+not as new issues. Chain record: [slangpy#1232](../slang/slangpy-1232-vulkan-module-push-constant.md).

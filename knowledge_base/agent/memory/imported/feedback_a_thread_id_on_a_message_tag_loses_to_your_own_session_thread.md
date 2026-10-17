@@ -145,3 +145,11 @@ The resend reached the owner on the first try (`shayfi` row 22 `in`): `send_mess
   (row 12), which then existed on my thread. What landed it in `shayfi` (row 24) was `in_reply_to=<the owner's inbound id in MY
   session>` (92) **plus** the pin. ⇒ **For a peer session on another thread, always pass `in_reply_to` = that session's
   latest inbound to me, together with `target_session_id`, and read the recipient's rows every time.** A pin that worked once proves nothing about the next send.
+
+### 2026-10-16, slang#13713: replying on the thread a report *arrived* on minted a phantom fixer
+The owning slang-fixer session (`gl1h7u`) sits on `gh-issue-shader-slang/slang-13713`, but its progress rows reached me
+tagged with the dispatcher's thread `gh-issue-shader-slang/slangpy-1232/upstream-slang`. I replied with a `<message>` carrying that thread.
+That minted a second slang-fixer session (`nt0ivf`). It began on the same worktree, spotted the owner's live edits from file mtimes,
+and stood down with no changes. The one-owner router did not refuse it, because that thread name does not contain 13713. ⇒ **Reply to a
+coworker on the canonical thread of the issue it OWNS, with `target_session_id` set to its owner session**, not on whatever thread its last
+row came in on. Re-send via `send_message(target_session_id=…, thread_id=gh-issue-<repo>-<N>)`; check the `in` row lands in the owner.

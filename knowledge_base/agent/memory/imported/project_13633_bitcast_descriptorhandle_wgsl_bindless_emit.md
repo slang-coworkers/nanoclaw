@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13633_bitcast_descriptorhandle_wgsl_bindless_emit
-description: "[DRAFT PR #13679 open 10-15, no Fix Report yet] slang#13633 (albertrodriguezclo, external, 10-15 13:15Z): bit_cast<DescriptorHandle<T>>(uint2) ICEs E99997 on all 7 targets, and WGSL prints every DescriptorHandle<T> as T (isResourceTypeBindless hard-wired true). Triaged 13:46Z, handed to slang-fixer: Fix 1 (WGSL emitter uses the layout predicate) + Fix 2-B (a located diagnostic, no new legal cast). Sibling #13641 keeps the resource-table feature."
+description: "[FIX REPORTED 10-16 08:54Z; draft #13679 head e2c77882c4, CI waiting on human gate; awaits human review] slang#13633 (albertrodriguezclo, external, 10-15 13:15Z): bit_cast<DescriptorHandle<T>>(uint2) ICEs E99997 on all 7 targets, and WGSL prints every DescriptorHandle<T> as T (isResourceTypeBindless hard-wired true). Triaged 13:46Z, handed to slang-fixer: Fix 1 (WGSL emitter uses the layout predicate) + Fix 2-B (a located diagnostic, no new legal cast). Sibling #13641 keeps the resource-table feature."
 metadata:
   node_type: memory
   type: project
@@ -44,5 +44,20 @@ AnyValue unpack emits `(texture2d<..>)(ulong...)`, invalid MSL. Triager repro'd 
 any-value-marshalling.cpp:1245 → emit-metal.cpp:894. The triager replied (cmt 6200923646, 19:50Z) that it's out of scope for
 #13679 and asked the reporter to file it; the bot offered to file it otherwise. **Open loop:** if the reporter doesn't file it, the
 triager owns filing it.
+
+**10-16 07:37Z:** round-2 review at head `f51b857721` came back APPROVE_WITH_NITS (slang-reviewer `sess-1792093847598-1lwc74`), and the fixer is applying the nits. Still a draft; shepherd is jkwak-work (board-sync). All 5 PR tests are `SIMPLE` compile/filecheck tests, so the GPU-passthrough outage (09-28 to 10-16) didn't affect their verification. The operator notice of 10-16 was delivered directly to the fixer, reviewer and triager sessions.
+
+**10-16 08:50Z follow-up issue [#13695](https://github.com/shader-slang/slang/issues/13695)** (bot-filed by the fixer as the r2 nit "nested-handle limit plus a tracking issue"): aggregate-holding-handle `bit_cast` (GLSL drops the high word on the L40S, WGSL/HLSL/CUDA fail), WGSL/Metal byte-address handle loads, and Metal `as_type` handle casts. Owned: PR #13679 cross-referenced it at 08:52:06Z, so the webhook session dispatched nothing and sent no report. The #13633 Main receives it through the fixer's `[Fix Report]`.
+
+**10-16 08:54Z [Fix Report]** (fixer to triager; copy to Main, checked live): head `e2c77882c4`, `pr: non-breaking`, still a
+draft, review requested from jkwak-work (board-sync, not the fixer). CI run 38873310343 is `waiting` on the human gate. 6 tests / 40 lanes, including a
+Vulkan+CUDA runtime test on the L40S. Full GPU suite at 82be82e: 10215/10218, with 3 fp8-cuda failures that also fail on master. The clarity reviewer (C) never finished r2
+(it died in the restarts). Follow-up issue [#13695](https://github.com/shader-slang/slang/issues/13695), bot-filed and owned by this chain: GLSL
+bit_cast of an aggregate holding a handle drops the high word (wrong result confirmed on the L40S), and BAB handle loads → Tint-invalid WGSL;
+both also on master. The Metal-variant filing loop (cmt 6194533354) is still open with the triager.
+
+**10-16 08:55Z [Triage Resolution]:** RESTING. The PR is +573/−26 across 17 files and MERGEABLE (checked live). The triager edited cmt 6200923646 in place; it
+asks the reporter to file the interface/Metal variant again and offers to file it for them. **Re-check armed:** one-shot task `rechase-13633-draft-pr-dd7b`
+at 2026-10-20T13:00Z (no recurrence).
 
 **Next resume trigger:** the fixer's draft PR report, or a human comment on #13633.

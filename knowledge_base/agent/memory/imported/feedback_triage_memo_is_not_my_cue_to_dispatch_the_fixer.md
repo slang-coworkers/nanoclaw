@@ -35,3 +35,6 @@ phantom no-ops; flagged the triager in case a stray artifact appeared.
   on two different messaging groups. Stand down the one on MY edge.
 
 Related: [[feedback_a_pending_tell_does_not_catch_the_error_it_was_designed_for]] (ANCHOR E — attribution across N sessions behind one name is a key problem).
+
+### 2026-10-16, #13687: the rollup can say "handed to fixer" before the handoff happens
+The triager's 07:10Z `[Triage]` listed the labels, the issue post and "handed to slang-fixer" as done. At 07:15Z GitHub showed 0 comments, no labels, no Type, and the fixer group had no 13687 session. I sent the gap back to the triager on its own edge, without dispatching the fixer. All three then landed by 07:22Z, and the fixer session sat on the triager's edge (`epsn3s`). ⇒ **Treat "forwarded to fixer" as a claim. Check it with `ncl sessions list | grep <fixer-ag> | grep <issue>` and the issue's `comments`/`labels`, and route any gap back through the triager.** The triager can't run this check itself: its `ncl sessions list` is group-scoped, so it asks me to.

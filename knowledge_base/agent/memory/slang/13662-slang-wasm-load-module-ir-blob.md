@@ -52,3 +52,10 @@ all sit at fork-CI `action_required`.
 
 **17:20Z, triager ack (msg 24):** the draft is held until an explicit GO, and t-ea7eeb is unchanged. The held draft already
 links #8744 as a duplicate, so on an operator GO it posts as is. Waiting on the operator's GO-issue answer.
+
+**10-16 07:55Z, operator GPU notice (prod rebooted 00:16Z, GPU passthrough restored).** Nothing to re-run: no
+conclusion on this chain depended on there being no GPU. The triager confirms (msg 28): the only unverified piece is
+the wasm build, skipped because emsdk is absent, which is unrelated to the GPU.
+Live at 07:5xZ: the reporter pushed **470d245c** (10-15 21:16Z, "reject a non-Uint8Array in loadModuleFromIRBlob"),
+which addresses CodeRabbit's null-`bytes` nit. The PR is still OPEN with no maintainer review, no labels, and `CI`
+`action_required`. #13662 has 0 comments. The operator's GO-issue answer is still pending.

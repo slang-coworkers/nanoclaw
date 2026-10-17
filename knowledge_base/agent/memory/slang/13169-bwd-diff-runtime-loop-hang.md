@@ -12,7 +12,7 @@ description: "CLOSED 2026-10-09 by saipraveenb25: fixed on master by #13234 (dup
 - **Routed 10-09:** slang-triager, session `sess-1789716151214-yz6n7y`, posted the [Resolution] as comment 6089027709 (20:50Z). The triager chain is closed. slangpy-fixer,
   session `sess-1789719798342-ukgccz`, owns closing slangpy#1167. The CUDA `runtime` variant must print
   `bwds ok grad_sum=320` on a build that contains #13234, so the close needs a GPU.
-- **Re-chase:** `rechase-slangpy-1167-gpu` on 10-16 checks the GPU blocker; slangpy-fixer reported no GPU at 10-09 20:48Z.
+- **GPU check done 10-16 07:49Z:** the 10-09 "no GPU" was the host passthrough bug (fixed 10-16). slangpy-fixer re-ran the CUDA `runtime` variant on the L40S and it passed (slangpy#1167 cmt 6210717821). A maintainer closes #1167.
 - **Cancelled:** re-chase `rechase-slang-13169-1330-0772`, which bundled this close with #13301. #13301 is still
   saipraveenb25 answered on 10-09 at 21:10Z with a question instead of an (a)/(b) pick: does removing `[Differentiable]`
   from functions with a custom derivative work? He says that is the intended usage, and the double-conformance bug

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13634 — WGSL ByteAddressBuffer Load<half> fails with E56103
-description: "albertrodriguezclo, human-filed bug: WGSL plain BAB Load<half> (and structs with half fields) fails with E56103 '16-bit integers not supported in WGSL' with no source location; StructuredBuffer<half> works. Triaged 10-15 13:42Z (P2, cmt 6193510990). Reporter fixed it in own PR #13647; our fixer stood down. Gap 1 (PR review nit) + gaps 2/3 (separate issues) await operator call; re-check rechase-13634-pr13647-297e 10-16 18:00Z."
+description: "albertrodriguezclo, human-filed bug: WGSL plain BAB Load<half> (and structs with half fields) fails with E56103 '16-bit integers not supported in WGSL' with no source location; StructuredBuffer<half> works. Triaged 10-15 13:42Z (P2, cmt 6193510990). Reporter fixed it in own PR #13647; our fixer stood down. Gap 1 (defensive nit; GPU-run 10-16 shows no effect) + gaps 2/3 (separate issues): UNFILED, operator call (asked once 10-15, never re-ask). One-shot rechase-13634-pr13647-297e fired 10-16 18:00Z with no answer; not re-armed. Resumes on #13647/#13634 webhooks."
 ---
 
 # slang#13634
@@ -61,7 +61,30 @@ The fixer has stood down and never pushed; its archive is `patches/fix-13634.pat
 **Operator asked once (~17:55Z):** whether to post gap 1 on #13647 and whether to file gaps 2 and 3. The one-shot
 `rechase-13634-pr13647-297e` (10-16 18:00Z) holds the decision table.
 
+**10-16 07:55Z, GPU notice (dashboard msg 52):** containers had no GPU from ~09-28 until the 10-16 07:33Z upgrade. Gap 1's "spec grounds
+only, no GPU to observe it" therefore falls under rule 2. Main confirmed the L40S (`nvidia-smi -L`) and asked the triager
+(`sess-1792070303836-fneziu`, msg 61) to re-run gap 1 at runtime on the GPU, keeping the post/file hold. Live state at this point: #13647
+unchanged (head 4b50379bb1, no maintainer review), #13634 has only the one bot comment, and there is no operator answer in the dashboard
+session. The one-shot `rechase-13634-pr13647-297e` (10-16 18:00Z) is still pending. When the GPU result arrives, relay it to the dashboard,
+since it changes the gap-1 risk wording in the operator ask.
+
+**10-16 07:58Z (msg 64):** the triager was already running gap 1 on the GPU. Dawn-Vulkan reaches the L40S but does not offer `shader-f16` (the driver reports `storageInputOutput16=false`). The triager is trying a Dawn toggle, slang-test `-api wgpu`, or a Tint→SPIR-V→Vulkan proxy. No result yet.
+
+**10-16 08:05Z, [Report] (msg 66/68): gap 1 GPU re-run is NOT observed on the L40S.** slang-test `-api wgpu` is unavailable because local builds
+have `SLANG_RHI_ENABLE_WGPU=OFF`, so the triager used Dawn node `webgpu@0.6.2` with the Vulkan backend and toggle `vulkan_enable_f16_on_nvidia`.
+In all 336 cases the PR output == masked == expected (3 modes × 7 targets × 8 neighbours incl. ±Inf/qNaN/sNaN × lo/hi half). Main checked the
+artifacts in `prod-groups/slang-triager/repro-13634/`: the masked WGSL differs from the PR WGSL only by `& 0xFFFFu`, and the toggle is in `gap1-run.mjs`.
+It is one vendor/driver, so gap 1 is downgraded to a **defensive nit** (spec concern stands). Side result: this is the first runtime value check of
+#13647's loads, and it is correct. Relayed to the dashboard. The hold is unchanged and the operator questions are still open.
+
 **Resumes on:** operator answer, #13647 webhooks (review/merge), a human comment on #13634, or the 10-16 one-shot.
+
+**10-16 18:00Z, one-shot `rechase-13634-pr13647-297e`, branch (d): nothing changed.**
+- Dashboard `sess-1776713576150-9fon2n` (latest 400 rows, back to 10-15 06:31Z): the only rows naming 13634/13647 are Main's own reports. There is no operator answer to the 10-15 17:51Z ask.
+- #13647: OPEN, non-draft, head `4b50379bb1`, no labels, reviewDecision empty. Reviews and comments are still only coderabbit, the author (15:15Z), CLA and the shepherd notice; `updatedAt` 10-15 15:17Z. #13634: OPEN, labels `WebGPU`+`reproduced`, one bot comment (6193510990), `updatedAt` 10-15 17:32:59Z.
+- Follow-ups are **unfiled, operator call**: gap 1 (#13647 review nit) and gaps 2/3 (new issues). Do not re-ask and do not re-arm. No message was sent and nothing was posted on GitHub.
+
+**Resumes on:** an operator answer that arrives on its own, #13647 webhooks (review/merge/close), or a human comment on #13634. The triager `sess-1792070303836-fneziu` still owns the post-merge [Report] and the worktree cleanup.
 
 **2026-10-15 17:2xZ, scope overlap and a stall (found while routing #13661).**
 - The reporter's PR #13647 (`fix/wgsl-bab-load-half`, 14:03Z, `Fixes #13634`, non-draft, shepherd jkwak-work, reviewer dshreiner-nv) implements approach A for loads, covering both producers. Its description says stores are deliberately left out.

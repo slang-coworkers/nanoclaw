@@ -42,3 +42,10 @@ nv-slang-bot, includes a verified workaround), `reproduced` label, Type left bla
   default wait; (2) file the GLSL `sign` bug, default unfiled.
 
 **Resumes on:** a human comment on #13676, the operator's answer, or the 10-22 re-check.
+
+**10-16 08:04Z, triager GPU re-verification (msg 16), after the operator's GPU-restored notice.** The triager reports,
+on the L40S: on Vulkan, `float(sign(x))` and bare FSign agree for -0.0, ±0, ±1.5, NaN, ±Inf and denormals; this driver
+returns +0.0 for FSign(-0.0). On CUDA, NaN gives +1.0. The spec still allows FSign(-0.0) = -0.0, so approach A stands.
+The GLSL-mode `sign(x)/2` bug is confirmed on the GPU (x=-3 gives 0, not -0.5). Main-verified: comment 6201414239
+edited in place at 08:04:28Z, "no GPU needed" removed and GPU results added. Issue still open, 1 comment. The two
+operator decisions are unchanged.

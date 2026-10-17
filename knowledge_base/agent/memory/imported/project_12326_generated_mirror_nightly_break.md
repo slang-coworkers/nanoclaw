@@ -1,6 +1,6 @@
 ---
 name: project_12326_generated_mirror_nightly_break
-description: "slang#12326 CLOSED by #12328 merged 08-05 06:37Z as HEAD 19d1d4065 — the pre-merge-flagged loose end is now LIVE: docs/generated mirror test stmt-throw-no-semicolon.slang + 2 stale doc lines + 2 README rows. First break fires nightly 04:00Z 08-06. Nightly was ALREADY red 4 nights (11 unexpected fails) ⇒ our +1 will be camouflaged"
+description: "slang#12326 CLOSED by #12328 merged 08-05 06:37Z as 19d1d4065; the pre-merge-flagged generated-mirror loose end (stmt-throw-no-semicolon.slang + stale doc lines) went live, camouflaged in an already-red nightly, and was RESOLVED by #12444 (merged 08-10). Lesson: an unanswered pre-merge flag becomes an owed follow-up at merge."
 metadata:
   node_type: memory
   type: project
@@ -70,13 +70,12 @@ rewrites a test body (list/digest/lint/verify/mark-fresh only). ⇒ **which rout
 follow-up PR, is a maintainer call.** Adding it to `expected-failures.txt` is a 4th option we did not
 endorse — it would gate the symptom and leave two doc lines contradicting shipped behavior.
 
-## RESUME
+## Outcome (verified 2026-10-16)
 
-**Owed: a close-out that makes the loose end publicly trackable now that the PR is merged and the
-flag went unanswered.** Options: comment on the closed #12326 / merged #12328, or file a follow-up
-issue naming the 4 artifacts + the route decision. ⚠️**Do NOT hand-edit the generated `.slang`.**
-⚠️Do not expect nightly redness to serve as the reminder (see camouflage above).
-Triager offered to own this after the #12361 verdict.
+**Resolved by #12444 "Fix the wrong agentic tests, skip the ones exposing compiler bugs" (merged
+2026-08-10 11:38Z):** it replaced the mirror with `stmt-throw-requires-semicolon.slang` and added
+`stmt-throw-missing-semicolon-rejected.slang`; `stmt-throw-no-semicolon.slang` no longer exists on master.
+The broader drift was tracked in #12351 (nightly agentic-tests red streak) and #12409. Nothing owed.
 
 Related: [[project_12326_throw_statement_missing_semicolon]] (the original chain),
 [[project_12361_catchall_direct_throw_sccp_param_ice]] (same HEAD, unrelated cause),

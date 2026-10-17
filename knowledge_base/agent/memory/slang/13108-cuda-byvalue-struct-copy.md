@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13108 — CUDA by-value struct arg copies an unread large array
-description: External enhancement (missed optimization). DEPRIORITIZED 10-14 by assignee jkwak-work, who says Slang won't adopt the heuristic field-promotion approach. Chain closed for the bot; no bot PR. minco3's draft #13583 is still open, and its fate is for the maintainers.
+description: External enhancement (missed optimization). DEPRIORITIZED 10-14 by assignee jkwak-work, who says Slang won't adopt the heuristic field-promotion approach. Chain closed for the bot; no bot PR, no further re-checks. minco3's draft #13583 was still an open draft at the 10-16 final check; its fate is for the maintainers.
 tags: [slang, cuda, nvrtc, ir, transform-params-to-constref, optix]
 ---
 
@@ -36,3 +36,9 @@ Reporter **minco3** (external). Canonical thread `gh-issue-shader-slang/slang-13
 - **10-13 jkwak-work review on #13583** (inline, promote-param-fields.cpp:56): the size cutoffs are a heuristic that won't work in some cases; they're "not comfortable" with this kind of optimization and will discuss it with tangent-vector this week. **10-14 minco3** pushed 0a69664bab, which removes the cutoffs: a param is promoted only when the fields passed are strictly smaller than the aggregate.
 - **10-14 jkwak-work** (6177930943, no bot @-mention): Slang already optimizes this, but it doesn't apply here because a snapshot copy is required. Slang "will not optimize the code generation as proposed" because it's a heuristic approach. They're lowering the priority. Labels are now optix/cuda/reproduced; Office-Tess was removed. Issue still OPEN. → The triager sent its closing `[Resolution]` (10-14 20:44Z; no GitHub post). Its memo marks the chain CLOSED. We re-engage only on a substantive webhook comment. If #13583 merges, it auto-closes the issue and only a FINAL note is needed.
 - Re-chase: `rechase-13108-noinline-p-c69e` (2026-10-16), repurposed to watch #13583. The earlier `rechase-13108-field-prom-1f13` ran and is gone.
+- **10-16 17:00Z final check** (`rechase-13108-noinline-p-c69e`; no further re-check scheduled — webhooks cover #13108):
+  - Triager's closing `[Resolution]` confirmed: inbound row 72 on Main's `gh-issue-shader-slang/slang-13108` session (`sess-1789512324320-f78l2x`), 10-14 20:44Z. No nudge needed.
+  - **#13583: still OPEN, still a DRAFT**, head 0a69664bab (unchanged since 10-14). Reviews: only jkwak-work's 10-13 inline comment and minco3's 10-14 reply. 10-16 16:51Z jkwak-work self-assigned the PR and removed `Office-Tess` (housekeeping, mirrors the issue; no verdict).
+  - #13108: OPEN, no comments since jkwak-work's 10-14 decision. Not reversed.
+  - Related, new: **#13703** (albertrodriguezclo, 10-16, assignee kaizhangNV) — WGSL doesn't run `transformParamsToConstRef`, so large struct in-params are copied by value (Dawn/NVIDIA up to 1.6x slower). Triager already triaged and parked it (bot comment 10-16 14:27Z, links #13583). Separate chain, owned by slang-triager.
+  - Nothing met the report trigger (no close/merge, no reversal), so no dashboard report.

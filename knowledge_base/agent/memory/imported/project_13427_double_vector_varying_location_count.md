@@ -1,6 +1,6 @@
 ---
 name: project_13427_double_vector_varying_location_count
-description: "slang#13427 (georgeouzou, 10-04): double3/double4 (64-bit vector) entry-point varyings get ONE Location on SPIR-V/Vulkan; the next varying overlaps → spirv-val VUID-StandaloneSpirv-OpEntryPoint-08722. Reporter points at DefaultVaryingLayoutRulesImpl::GetVectorLayout (slang-type-layout.cpp, existing TODO) + hardcoded one-slot in createPatchConstantFuncResultTypeLayout (slang-ir-glsl-legalize.cpp). glslang/DXC put the next varying at Location 2. Routed to slang-triager."
+description: "slang#13427 (georgeouzou, 10-04; fixer HELD, operator decision pending 10-16, recheck rechase-13427-third-9d1e 10-19): double3/double4 (64-bit vector) entry-point varyings get ONE Location on SPIR-V/Vulkan; the next varying overlaps → spirv-val VUID-StandaloneSpirv-OpEntryPoint-08722. Reporter points at DefaultVaryingLayoutRulesImpl::GetVectorLayout (slang-type-layout.cpp, existing TODO) + hardcoded one-slot in createPatchConstantFuncResultTypeLayout (slang-ir-glsl-legalize.cpp). glslang/DXC put the next varying at Location 2. Routed to slang-triager."
 metadata:
   node_type: memory
   type: project
@@ -87,3 +87,18 @@ and tangent-vector is still the sole assignee. Nobody answered the PR-ownership 
 `ed12c49ccf` (10-07 21:40Z refactor, relative patch-constant offsets). It is still open, and the leaf is still
 `fromRaw(1)` (~:1273), so double3 stays unfixed there. The fixer stays held. Re-armed once as `rechase-13427-second`
 (2026-10-16T17:00Z). If that run is silent too, ask the operator (consistent with #13330's 10-13 ask, same contributor).
+
+**10-16 17:00Z — second re-chase, silent again.** #13427: no comments since 6045519879 (10-07), no
+cross-referenced PRs besides #13078's 10-04 link, and tangent-vector is still the sole assignee. #13078: jhelferty-nv
+APPROVED it 10-13 19:35Z and auto-merge is armed, but it is DIRTY (conflicts) at head `21d30ae0a8` (10-10). The
+leaf is still `fromRaw(1)` (:1299), so double3 is still unfixed. The new struct/array/matrix sizing does not touch
+64-bit scalars. The operator never answered the 10-13 #13330 ask (dashboard seq 500530), so I had no decision to
+copy. My `ask_user_question` (timeout 0) aborted at the 1800 s MCP idle limit again. I re-asked on
+`orchestrator-dashboard` (msg 45, thread `gh-issue-shader-slang/slang-13427`) with 1 = re-ping tangent-vector,
+2 = hold +14d, 3 = release fixer for a draft PR. The fixer stays HELD. One-shot `rechase-13427-third-9d1e` fires
+2026-10-19T17:00Z and acts on the answer.
+
+**Cross-link (10-16 21:10Z, from #13330 re-chase 3):** #13078 was force-pushed to `b7c4b3d9be` at 10-16 19:19Z, which dismissed
+jhelferty-nv's approval and turned off auto-merge. The #13330 operator ask is still unanswered. Its reminder (dashboard id 9, thread
+`gh-issue-shader-slang/slang-13330`) says one answer covers both chains. Before reading #13078's leaf for `double3`, re-check it at the
+new head.

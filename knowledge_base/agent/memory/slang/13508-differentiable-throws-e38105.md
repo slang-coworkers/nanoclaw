@@ -32,3 +32,7 @@ description: slang#13508 — `[Differentiable]` functions declared `throws` fail
   The suite hasn't been run on it. **Parked on Sai** for two scope questions: (1) free functions too? (2) exempt throwing primal + throwing
   custom derivative, which works on master? Plus a go-ahead for a bot draft PR. The triager's prototype diff is `scratch-13508/prototype-diag.diff`
   and its memo is `memory/issues/triage-13508.md` (both in the triager's workspace). A go-ahead goes to slang-fixer on this thread.
+- **10-16 16:00Z re-chase 1 (`rechase-13508-sai-fix-0eea`): Sai silent.** No comment, edit or timeline event after the 10-14 16:48:12Z
+  proposal, and no human PR references #13508. His only new open PR, #13677 (function-extension synthesis), doesn't reference it. Nothing
+  posted, nothing dispatched. Scheduled `rechase-13508-sai-2-8423` for 2026-10-21 16:00Z as re-chase 2 of 3. Re-chase 3 is the last one,
+  and then the operator gets told it is parked on Sai.

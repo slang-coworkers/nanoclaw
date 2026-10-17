@@ -71,6 +71,26 @@ Assignee and requested reviewer on #13115: **jkwak-work**.
   newly admitted struct values are limited to scalar-literal leaves, so everything else matches base,
   IR-only. Emitter brace-form support (i) is deferred to tangent-vector's R1/R2 proposal; a target split
   (iii) is ruled out. Disclose it on GitHub as found in the pushed head.
+- **Interrupted by the prod reboot (10-16 00:16Z).** The fixer received decision (ii) at 23:10Z but did
+  nothing after it. Resumed at 07:55Z (msg 127). The operator says containers had **no GPU from about
+  09-28 to 10-16**, which contradicts the fixer's 10-15 claims of CUDA/VK lanes "on the L40S" and a
+  `-cuda` float2 runtime failure. The fixer will re-run them on the GPU, check logs for skips, and correct
+  them if they were skips. NVRTC `-target ptx` results are compile-only and stand.
+- **CI run `35050384991` expired at 10-16T03:04:25Z** after 30 days pending on `falcor-ci` with no
+  approval (`falcor-build-approval-gate` → failure, which raised a `ci_failed` webhook at 06:57Z). #13115
+  now has no CI run; the next commit dispatches a new one. 99 runs repo-wide `waiting` (10-16).
+- **Decision (ii) implemented (fixer, 10-16T08:37Z):** local commit `a6d49136bf` on `04d59c59ed`, **not
+  pushed**. Allow-list = `makeStruct`/`makeArray` of scalar literals only; the fold rolls back when the table
+  is inlined anyway. Inventory: only intended changes. NVRTC base = new on all 16 leaf types. L40S re-run
+  today: the `float2` table fails cuda on `04d59c59ed` and passes on the new head; one VK fail on the new head
+  with SPIR-V byte-identical to base (repeat pending). The fixer's 10-15 logs show CUDA/VK lanes executing,
+  which contradicts the operator's no-GPU window; cite only the 10-16 run.
+  **Blocked on budget:** session `sess-1789513143281-yofko5` is escalated at $186.42 / $196.77 ceiling
+  (group p95 $140.86). Asked the operator to `set-ceiling … --ceiling 240`. Push, PR body and comment go out
+  together, after the PLAN_REVIEW approve.
+  **VK settled (10-16T08:49Z):** 2/2 isolated L40S repeats pass cpu/cuda/vk on `a6d49136bf`; the first
+  VK fail was concurrent-job noise. float2 table: base pass · `04d59c59ed` cuda FAIL · `a6d49136bf` pass.
+  The fixer's resume notes: its `memory/fix-13107.md`. Still waiting on the ceiling raise.
 
 ## Open decisions
 

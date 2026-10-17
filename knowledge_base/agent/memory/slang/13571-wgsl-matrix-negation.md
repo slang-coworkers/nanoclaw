@@ -57,3 +57,11 @@ and no human comments on #13571 or #13572. The only event is jkwak-work mileston
 is still `waiting`, and the pull_request CI jobs are SKIPPED because the PR is a draft. The status went to orchestrator-dashboard only. The 4 follow-ups
 were re-asked there (3rd ask, msg id 11); none is filed (search confirmed). Next one-shot is `rechase-13571-wgsl-matne-7189` at 10-16 16:00Z.
 If that ask is still unanswered then, park it and don't re-ask.
+
+**2026-10-16 16:00Z, re-chase (no change).** Verified live: draft #13572 is still at head `46ac7f64a7`, last updated 10-12 13:55Z.
+It has 0 reviews (jkwak-work is the requested reviewer and assignee) and no human comments or timeline events on #13571 or #13572
+since 10-13 16:00Z. CI run 38259151868 is still `waiting`. The fixer session `sess-1791749819525-d9mn82` is active but its container
+is stopped, last active 10-12. Nothing was routed. Status went to orchestrator-dashboard only.
+**The 4 follow-ups are PARKED-UNANSWERED.** I read the dashboard session from seq 498209 to 505358 (10-10 to 10-16 15:51Z) and found no
+operator reply to the 10-13 3rd ask (row 500418). Per the standing order I don't ask again. None is filed (GitHub search, created ≥10-11).
+Act on them only if the operator brings them up. Next one-shot: `rechase-13571-wgsl-matne-ef8e` at 10-20 16:00Z.

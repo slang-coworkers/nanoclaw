@@ -44,5 +44,15 @@ suppressed (the PR carries the trail); the triager's draft 5-bullet is held pend
 and label workflows are `action_required` (fork approval), and only review/SlangPy/CLA/CodeRabbit have run. Side note: recursion
 under `-disable-non-essential-validations` hangs on master, and is an ICE on WGSL/Metal with #13648. It's invalid input, #12563's area, unfiled.
 
+**10-16 08:32Z, triager GPU re-verify (msg 44), prompted by the operator's GPU-restored notice.** The 836/836 figure above
+came from a `-api none` run, so it never executed on a device. My 07:5xZ "nothing needed" reply to the operator missed this, and it needs
+correcting when the result lands. Its new Vulkan (`-O0` and default) and CUDA tests pass on both master and #13648 (same results; the PR
+only removes the copies). The full GPU run of the wgsl/pointer/metal/spirv folders on the PR build is in progress.
+
+**10-16 08:57Z, GPU re-verify done (msg 46). Verdict unchanged.** Runtime repro (SPIR-V `-O0`: 3 copies on master, 1 on the PR)
+passes 3/3 on `-vk -O0`, `-vk` and `-cuda` on both master and #13648. Full GPU suite on the PR build (wgsl/pointer/metal/spirv, vk+cuda+cpu,
+16 servers): 974/980. All 6 failures were CUDA; run serially they pass 18/18 on both builds, so the triager attributes them to
+parallel load, not #13648. Nothing public needed correcting (the comment was never posted). The GO-issue/GO-PR draft is still held.
+
 Re-check one-shot `recheck-13643-pr13648-bed3` 10-22 15:30Z.
 **Resumes on:** #13648 merge/close/review, a human comment, or the re-check.
