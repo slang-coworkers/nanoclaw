@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-562 learnings. [Catalog](../index.md)
+567 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -17,6 +17,7 @@ type: topic
 - ["Nothing owed" is when to run the last check — a peer's retracted discrepancy contained a REAL defect (superseded figures + a per-N unit error) in my public text](../learnings/1785839586778-nothing-owed-is-when-to-run-the-last-check-a-peer-.md)
 - ["Order-dependent" and "observed to vary" are different claims — prove the falsifiable one (input-order flip), not the dramatic one](../learnings/1786358124249-order-dependent-and-observed-to-vary-are-different.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
+- [#12640 interface-only default arg crash still reproduces on v2026.19 release (segfault, no diagnostic)](../learnings/1792153782868-12640-interface-only-default-arg-crash-still-repro.md)
 - [-O0 clean is not evidence the emitter is correct: it skips the checker](../learnings/1785964589980-o0-clean-is-not-evidence-the-emitter-is-correct-it.md)
 - [11917 in-pass-scan: #11987 template does NOT transfer to shared-legalizeTypes passes; verify driver hint vs pass's own trigger](../learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-transfe.md)
 - [[approver/challenger-miss] "compile-only test dir" is a checkable claim, not an assumption — verify the actual TEST directives](../learnings/1787050993868-approver-challenger-miss-compile-only-test-dir-is-.md)
@@ -223,6 +224,7 @@ type: topic
 - [Before treating our PR as superseded, verify the closing PR actually covers the reported scenario](../learnings/1789565107884-before-treating-our-pr-as-superseded-verify-the-cl.md)
 - [Before trusting a clean test result, verify you own the tree you measured](../learnings/1785842164075-before-trusting-a-clean-test-result-verify-you-own.md)
 - [Bind queue-health and "blocking" claims to two commands — the instrument, not recall (supersedes the recall framing)](../learnings/1786004756378-bind-queue-health-and-blocking-claims-to-two-comma.md)
+- [Bisect Slang C++ API regressions by linking a tiny repro against release tarballs](../learnings/1792154932443-bisect-slang-c-api-regressions-by-linking-a-tiny-r.md)
 - [Bot-filed migration issues go stale — re-verify every file:line against current main before triaging](../learnings/1783523441590-bot-filed-migration-issues-go-stale-re-verify-ever.md)
 - [Byte-address / HLSL-profile changes: verify at -profile cs_5_0, not just -target hlsl (fxc has no templated .Load<T>)](../learnings/1784438217128-byte-address-hlsl-profile-changes-verify-at-profil.md)
 - [Byte-verify a hand-apply patch by post-image blob hash](../learnings/1785261494633-byte-verify-a-hand-apply-patch-by-post-image-blob-.md)
@@ -389,6 +391,7 @@ type: topic
 - [Measuring a state correctly licenses nothing about the vehicle you prescribe to produce it — verify the join](../learnings/1786460387365-measuring-a-state-correctly-licenses-nothing-about.md)
 - [Merge-queue eviction: the sha in the gh-readonly-queue branch name is the BASE, not the merge commit — probe beforeCommit.oid](../learnings/1785904492605-merge-queue-eviction-the-sha-in-the-gh-readonly-qu.md)
 - [Monitor/grep false positives against dense stream-json JSONL](../learnings/1787576911893-monitor-grep-false-positives-against-dense-stream-.md)
+- [Moving a lowering pass later: probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md)
 - [Mutual empty-ack loop — verify both sides, the reporter isn't silent](../learnings/1782353219072-mutual-empty-ack-loop-verify-both-sides-the-report.md)
 - [My false claims were all about my own work, not the code — and a commit message is the one carrier you can't correct in place](../learnings/1786213617994-my-false-claims-were-all-about-my-own-work-not-the.md)
 - [Narrowing a claim is not testing its premise — and check your own store before re-deriving](../learnings/1785778559075-narrowing-a-claim-is-not-testing-its-premise-and-c.md)
@@ -475,6 +478,7 @@ type: topic
 - [Structural-RT Dev-Opened issues on PR #12691 are author self-fixes — verify-and-bounce, don't re-fix](../learnings/1787670623857-structural-rt-dev-opened-issues-on-pr-12691-are-au.md)
 - [Subagent "already fixed at HEAD" claims must be checked with git merge-base --is-ancestor](../learnings/1787071680203-subagent-already-fixed-at-head-claims-must-be-chec.md)
 - [Subagent-reported system-reminder injection was a false positive — it's the harness attribution reminder](../learnings/1790713169300-subagent-reported-system-reminder-injection-was-a-.md)
+- [Superseded bot PR leaves a stale issue comment — patch its Next-action](../learnings/1792165460290-superseded-bot-pr-leaves-a-stale-issue-comment-pat.md)
 - [SUPERSEDES prior #11918 correction: the getRelativePath cross-volume EMPTY-dep IS the root cause (save produces, load consumes)](../learnings/1783031868902-supersedes-prior-11918-correction-the-getrelativep.md)
 - [SUPERSEDES-NOTE: the correction-turn rule is a 4th re-derivation, not a finding — and my credit for it was false](../learnings/1786126035178-supersedes-note-the-correction-turn-rule-is-a-4th-.md)
 - [Surfacing verified counter-evidence to a maintainer can reverse a by-design ruling — don't silently accept OR unilaterally overturn](../learnings/1785278991541-surfacing-verified-counter-evidence-to-a-maintaine.md)
@@ -496,6 +500,7 @@ type: topic
 - [Typeflow re-wrap (#12935): what getLoweredType actually writes, and how to verify tests locally](../learnings/1790416309401-typeflow-re-wrap-12935-what-getloweredtype-actuall.md)
 - [Unchanged source lines are a proxy for unchanged behaviour, not a measurement — and a caveat is the least-audited kind of claim](../learnings/1785964080338-unchanged-source-lines-are-a-proxy-for-unchanged-b.md)
 - [Unfalsifiable claims outlive falsifiable ones — every code defect died in one round, the spliced number survived four](../learnings/1786222242448-unfalsifiable-claims-outlive-falsifiable-ones-ever.md)
+- [User guide's compute entry-point uniform push/pop claim is not implemented (#13203)](../learnings/1792158083909-user-guide-s-compute-entry-point-uniform-push-pop-.md)
 - [v3 correction — the gh --paginate error blob IS counted by every counter except wc -l, and jq ingests it as an object (my v2 retraction over-corrected)](../learnings/1785847621361-v3-correction-the-gh-paginate-error-blob-is-counte.md)
 - [Verification-signal false positives: derived-branch PR lookup, worktree size, and unstable CI check counts](../learnings/1786065512759-verification-signal-false-positives-derived-branch.md)
 - [VERIFIED (retracts prior correction): nv-slang-bot edits its OWN issue comments, repeatably 403s on a PEER coworker's — creator-bound, not transient, not a flat token limit](../learnings/1782331149084-verified-retracts-prior-correction-nv-slang-bot-ed.md)

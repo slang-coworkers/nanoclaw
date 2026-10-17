@@ -5,9 +5,10 @@ type: topic
 
 # Review & process
 
-375 learnings. [Catalog](../index.md)
+379 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
+- ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
 - ["Rebase clean" ≠ "reviewer saw this code": check which review covered which commits](../learnings/1791580984851-rebase-clean-reviewer-saw-this-code-check-which-re.md)
 - [[approver/challenger-miss] A corpus figure without its scope is uncheckable — and a number a reviewer hands you is still an unopened artifact](../learnings/1786410539141-approver-challenger-miss-a-corpus-figure-without-i.md)
 - [[approver/challenger-miss] A Devin exit-0 run can be CACHED-STALE — verify its cited symbols exist in the current diff; on a Devin-only tier a stale Devin is NO head-current review signal](../learnings/1786694505500-approver-challenger-miss-a-devin-exit-0-run-can-be.md)
@@ -70,6 +71,7 @@ type: topic
 - [A maintainer's literal review suggestion can be locally unsafe — verify all read sites of a reused predicate](../learnings/1781640634164-a-maintainer-s-literal-review-suggestion-can-be-lo.md)
 - [A near-miss in a file size is a UNIT mismatch before it is a divergence — len(str) counts characters, wc -c counts bytes, and emoji-dense markdown differs by 0.5-1%](../learnings/1785969955141-a-near-miss-in-a-file-size-is-a-unit-mismatch-befo.md)
 - [A page is not a set — an unpaginated list query returns a confident empty, and it fails on your most-reviewed rows](../learnings/1786115751318-a-page-is-not-a-set-an-unpaginated-list-query-retu.md)
+- [A pending GitHub review's inline comment can't be replied to on its thread](../learnings/1792188156159-a-pending-github-review-s-inline-comment-can-t-be-.md)
 - [A plausible causal story disarms the implausibility alarm — the most dangerous review contribution is an explanation](../learnings/1785891588556-a-plausible-causal-story-disarms-the-implausibilit.md)
 - [A removed-then-reviewed API gap is not a regression: check whether the removed thing ever SHIPPED](../learnings/1785901316583-a-removed-then-reviewed-api-gap-is-not-a-regressio.md)
 - [A reviewer wrapper can report success with a 96-byte error-string artifact](../learnings/1786388990762-a-reviewer-wrapper-can-report-success-with-a-96-by.md)
@@ -171,12 +173,14 @@ type: topic
 - [Internal pipeline approvals are not GitHub reviews — name the system a status belongs to before asserting it](../learnings/1786074647297-internal-pipeline-approvals-are-not-github-reviews.md)
 - [Isolate Reviewer C in a git worktree for parallel /slang-pr-review runs](../learnings/1782876940783-isolate-reviewer-c-in-a-git-worktree-for-parallel-.md)
 - [Isolated REPO_ROOT worktree prevents the PR-review shared-tmp race; also verify reviewed-commit vs current head](../learnings/1789479957663-isolated-repo-root-worktree-prevents-the-pr-review.md)
+- [Local shallow clone reports wrong last-commit dates; codex reviewers inherit it](../learnings/1792180139286-local-shallow-clone-reports-wrong-last-commit-date.md)
 - [Maintainer naming request overrides automated-reviewer semantic objection](../learnings/1787619515509-maintainer-naming-request-overrides-automated-revi.md)
 - [Maintainer who reviews AND self-fixes: don't race a batch of "@bot rewrite this" comments](../learnings/1790226898754-maintainer-who-reviews-and-self-fixes-don-t-race-a.md)
 - [Markdown emphasis inside a phrase breaks literal grep - the runnable fix, not just "a grep miss is not an absent claim"](../learnings/1786003526432-markdown-emphasis-inside-a-phrase-breaks-literal-g.md)
 - [Mid-iteration PR: combined-review diff_hash (Reviewer A's SHA) mismatches pinned HEAD → approver Step-2 flag](../learnings/1783631632879-mid-iteration-pr-combined-review-diff-hash-reviewe.md)
 - [Monitor for a claude-CLI reviewer run must not grep the stream for generic failure words](../learnings/1787869224351-monitor-for-a-claude-cli-reviewer-run-must-not-gre.md)
 - [Monitor grep for reviewer failure must not match streamed PR-body content](../learnings/1787605976090-monitor-grep-for-reviewer-failure-must-not-match-s.md)
+- [Moving a lowering pass later: probe every op x access-form x target against master BEFORE review](../learnings/1792162438787-moving-a-lowering-pass-later-probe-every-op-x-acce.md)
 - [Multi-round PR review converges; scope down to targeted verify when delta is comment-only](../learnings/1780769199724-multi-round-pr-review-converges-scope-down-to-targ.md)
 - [N independent reviewers agreeing measures shared priors, not currency — re-derive each claim against the tree as it is NOW](../learnings/1785999893139-n-independent-reviewers-agreeing-measures-shared-p.md)
 - [Never add a reviewer to a draft PR — it spams the human](../learnings/1780690000002-never-add-a-reviewer-to-a-draft-pr-it-spams-the-human.md)

@@ -2,13 +2,13 @@
 title: "Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup"
 type: concept
 group: slang-language-core
-tags: [parser, tryParseGenericApp, generic-app, CheckTerm, swizzle, DeclRefType, parser-lookup, CompleteDecl, AddMember, local-decl, enum, parseDeclBody, e39999, e30015, test-masking]
-source_count: 7
+tags: [parser, tryParseGenericApp, generic-app, CheckTerm, swizzle, DeclRefType, parser-lookup, CompleteDecl, AddMember, local-decl, enum, parseDeclBody, e39999, e30015, test-masking, namespace, parseNamespaceDecl, PushScope, ownedScope, pushLookupScope]
+source_count: 9
 ---
 
 # Slang Parser: tryParseGenericApp Classification and Parser-Time Lookup
 
-How the Slang parser decides whether `name <` opens a generic application or is a less-than comparison, and the parser-time scope lookup that decision depends on. The page collects the October 2026 cluster: #13426 (swizzle bases, PR #13429), #13428 (local declarator groups, PR #13432), and the #13434 review of suspending `parser->semanticsVisitor` in `parseDeclBody`. Related: the decl-vs-statement and language-server-suite rules on [[wiki/concepts/slang-compiler-frontend-and-checking.md]], and the #12892 `tryParseGenericApp` merge calibration on [[wiki/concepts/review-approver-merge-join-calibration.md]].
+How the Slang parser decides whether `name <` opens a generic application or is a less-than comparison, and the parser-time scope lookup that decision depends on. The page collects the October 2026 cluster: #13426 (swizzle bases, PR #13429), #13428 (local declarator groups, PR #13432), and the #13434 review of suspending `parser->semanticsVisitor` in `parseDeclBody`, plus the #13701 `namespace A::B` reopen fix (PR #13711), which settled how the parser pushes a scope for a namespace that already exists. Related: the decl-vs-statement and language-server-suite rules on [[wiki/concepts/slang-compiler-frontend-and-checking.md]], and the #12892 `tryParseGenericApp` merge calibration on [[wiki/concepts/review-approver-merge-join-calibration.md]], and checker-side lookup (`_lookUpInScopes`, function-local types, extension bodies) on [Slang Scope Lookup, Function-Local Types, and Declaration Checking](../concepts/slang-language-scope-lookup-and-declaration-checking.md).
 
 ## TL;DR
 
@@ -21,6 +21,9 @@ How the Slang parser decides whether `name <` opens a generic application or is 
 - The later `AddMember` skip must be keyed on the specific early-add path. Keying it on `checkState` adds the decl twice, creating a `_prevInContainerWithSameName` self-cycle and an infinite lookup. Keying it on `decl->parentDecl == containerDecl` drops every enum, because `ParseEnum` sets `parentDecl` before `AddMember`.
 - A slang-bootstrap InternalError in `getSpecializedBuiltinType` after a parser change looks like a stage-gating problem. It can be lost core-module `__magic_enum` types instead, so rebuild each variant separately to isolate the cause.
 - A local `enum` written directly in a function body never reaches `parseEnumDecl`; the parser takes `enum` as an identifier and rejects it (E30102 + E20001 + E30015). An enum nested in a local struct is parsed through that struct's `parseDeclBody`. Probe any source-only reviewer claim about a local-enum path before relaying it.
+- `Parser::PushScope(ContainerDecl*)` pushes a scope AND sets `containerDecl->ownedScope`. The checker wires imported same-name namespaces onto `ownedScope->nextSibling`, so an extra owning push on an existing namespace detaches imported names from that namespace's earlier bodies (E30015). When the parser only needs lookup into an existing container, use `Parser::pushLookupScope`, which does not assign `ownedScope`.
+- For `namespace A::B {}` with `A` and `B` already declared, the lookup-only push is the merged fix (#13711). An owning push breaks earlier `namespace A` bodies that use imported names. Parenting the body under `A->ownedScope` leaks an earlier body's `using namespace X`. Imported members of `A` stay invisible inside `A::B` (#13714, pre-existing).
+- The `A::B` fix makes `A`'s members hide a same-named global, so an existing program can silently get a different value. Check the label; on #13711 the maintainer accepted it as a non-breaking bug fix toward the nested spelling.
 - A regression row for a parser-lookup bug must use names that nothing else in the test file declares at global scope. A same-named global makes the lookup fall back to it, so the row compiles on master and no longer guards the bug. Verify each headline row with a master binary, both with and without the global.
 - Before attributing full-suite failures to a parser change, rerun exactly the failing set with the change reverted. A local run can carry about 30 pre-existing failures (a stale standard-module build, gfx-smoke without a GPU).
 - Label a parser or disambiguation change that alters which programs are accepted `pr: breaking change` by default (or say the label is a judgement call), even when no previously-valid program changes meaning. If a maintainer relabels it, accept and reply with a measured master-vs-branch exposure table.
@@ -74,13 +77,36 @@ When probing on current master, `slangc -target spirv -o /dev/null` gives E00004
 
 #13434 suspends `parser->semanticsVisitor` inside `parseDeclBody`. Reviewer A and Reviewer C both flagged, from source alone, that a local `enum` keeps the visitor because `parseEnumDecl` uses `pushScopeAndSetParent` instead of `parseDeclBody`. Running the case disproves it. An `enum E { ... }` written directly in a function body never reaches `parseEnumDecl`: the parser takes `enum` as an identifier and reports E30102 + E20001 + E30015 on both master and head. An enum nested inside a local struct is parsed through the struct's `parseDeclBody`, so it is covered (E30600 on master, compiles on head). When inner reviewers say a claim is "verified by code reading" because `slangc` was not approved, run the probe before passing the claim on. A runner note from the same review: Reviewer A run with `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS` unset produced a 189-byte stub `final-review.md` (REVIEW-GUARD FAIL); rerunning with `=0` under `setsid` produced the full review [local enum bypassing parseDeclBody is unreachable](../learnings/1791179306916-reviewers-source-only-local-enum-bypasses-parsedec.md).
 
+## Reopening `namespace A::B`: which scope the parser pushes (#13701, PR #13711)
+
+Consider this example. It is the test that tells the scope choices apart:
+
+```slang
+import lib;                                     // lib declares Outer::ImportedType
+namespace Outer { struct Local { ImportedType t; }; }
+namespace Outer { namespace Inner { } }
+namespace Outer::Inner { }                      // Outer and Inner both exist already
+```
+
+When `parseNamespaceDecl` (`slang-parser.cpp`) finds an existing `Inner`, it must push a scope for the enclosing `Outer` so the body can see `Outer`'s members. The obvious call, `Parser::PushScope(ContainerDecl*)`, does two things: it pushes a scope AND sets `containerDecl->ownedScope`. The checker's `SemanticsDeclScopeWiringVisitor::visitNamespaceDecl` wires imported namespaces of the same name onto `ownedScope->nextSibling`. An extra owning push on an existing namespace therefore moves `ownedScope`, and the earlier `namespace Outer` body loses the imported names: `ImportedType` gives E30015. The example compiles on master and fails with an owning push. PR #13711 added `Parser::pushLookupScope`, which pushes a scope without assigning `ownedScope`; the parser uses it whenever it only needs lookup into a container that already exists [PushScope overwrites ownedScope; use a lookup-only push](../learnings/1792165813229-slang-parser-pushscope-overwrites-ownedscope-use-a.md).
+
+The review of #13711 tested three choices with revert drills [three scope choices and the probe set that separates them](../learnings/1792168868666-slang-namespace-a-b-reopen-three-scope-choices-and.md):
+
+1. **Lookup-only fresh scope** (`pushLookupScope`, the merged choice). It fixes the repro. Imported members of `A` stay invisible inside `A::B`; that gap is pre-existing and is tracked as #13714.
+2. **Owning `PushScope(A)`.** It fixes the #13714 shape, but an earlier `namespace A { ImportedType f; }` body fails with E30015, because `ownedScope` moves and the import wiring follows it.
+3. **Parenting the body under `A->ownedScope` itself (borrow).** It fixes #13714 and keeps imports, but an earlier body's `using namespace X` leaks into `A::B`. The nested spelling `namespace A { namespace B { ... } }` rejects that use on master and on head.
+
+Four probes separate the choices: the repro; an import with `B` already declared; an import used in an earlier `A` body; and `using namespace X` in an earlier `A` body.
+
+The fix also changes behaviour. Inside `A::B`, `A`'s members now hide a same-named global, as they already do in the nested spelling, so a program that compiled before can silently get a different value (1000 → 30 in the review probe). That is a small source-breaking change, so check the label [same](../learnings/1792165813229-slang-parser-pushscope-overwrites-ownedscope-use-a.md). On #13711 the maintainer accepted it as a non-breaking bug fix toward the nested spelling [same](../learnings/1792168868666-slang-namespace-a-b-reopen-three-scope-choices-and.md). Compare #13429 above, which the shepherd relabelled `pr: breaking change`.
+
 ## Regression tests that really guard parser lookup
 
 A test row for a parser-lookup bug is masked when the same file also declares a global with the same name. For #13428, a headline row `int j = buf[0], k = j < 2;` next to `static int j = 5;` (added for another row) compiles on master: the lookup falls back to the global `j`, `<` is taken as a comparison, and the row no longer guards the regression. Use names in the headline row that nothing else in the file declares at global scope, and verify by compiling the row with the master binary both with and without the global. This was found on PR #13432 (Reviewer C, C009) and confirmed with the master `slangc` [a same-named global masks parser-lookup regressions in a test row](../learnings/1791175231268-slang-tests-a-global-with-the-same-name-masks-pars.md).
 
 Tooling notes from the same review: `slang-pr-review-runner/scripts/*.sh` and `run-clarity.sh` can lose the exec bit after a restart (exit 126), so invoke them with `bash <script>`. New worktrees need `git -c protocol.file.allow=always submodule update --init --recursive`, because file transport is blocked by default. When grepping clarity `tool-uses.jsonl` for `slang-review-post-github`, Reads of the skill's own files also match, so inspect the hits before calling it drift [same](../learnings/1791175231268-slang-tests-a-global-with-the-same-name-masks-pars.md).
 
-**Source learnings (7):**
+**Source learnings (9):**
 - [swizzle/matrix-swizzle bases stay Unknown in body-stage tryParseGenericApp and hit the FOLLOW heuristic (#13426, E39999); classify by the checked base's type](../learnings/1791128536486-slang-tryparsegenericapp-swizzle-bases-swizzleexpr.md)
 - [classify NonGeneric by as<DeclRefType>; reuse checkedBase only when kind != Unknown (visitMemberExpr in-place rewrite; LetExpr from h.o.get<3>())](../learnings/1791149609749-slang-tryparsegenericapp-classify-by-as-declreftyp.md)
 - [parser disambiguation changes get `pr: breaking change` even when they only accept previously-rejected code (PR #13429); label edits don't re-trigger ci.yml](../learnings/1791192194734-slang-maintainers-flag-parser-disambiguation-chang.md)
@@ -88,4 +114,6 @@ Tooling notes from the same review: `slang-pr-review-runner/scripts/*.sh` and `r
 - [ParseEnum sets parentDecl before AddMember, so a parentDecl-keyed skip drops every enum and breaks slang-bootstrap](../learnings/1791150138311-slang-parser-parentdecl-container-is-not-proof-of-.md)
 - [a local enum in a function body is rejected at parse, so the "bypasses parseDeclBody" review claim on #13434 is unreachable; probe source-only claims](../learnings/1791179306916-reviewers-source-only-local-enum-bypasses-parsedec.md)
 - [a same-named global masks a parser-lookup regression row (#13432); use unique names and verify with master](../learnings/1791175231268-slang-tests-a-global-with-the-same-name-masks-pars.md)
+- [`Parser::PushScope` sets `ownedScope`, so an owning push on an existing namespace detaches imported names (E30015); use `Parser::pushLookupScope` (#13701, PR #13711)](../learnings/1792165813229-slang-parser-pushscope-overwrites-ownedscope-use-a.md)
+- [three scope choices for reopening `namespace A::B` (lookup-only, owning, borrow), the four-probe set, #13714, and the accepted non-breaking behaviour change](../learnings/1792168868666-slang-namespace-a-b-reopen-three-scope-choices-and.md)
 _Catalog: [[wiki/index.md]]_
