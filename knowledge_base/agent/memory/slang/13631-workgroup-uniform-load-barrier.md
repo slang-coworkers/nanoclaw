@@ -82,5 +82,36 @@ reaches", bot, OPEN) is OWNED by this chain; its Main webhook session `e79y25` a
 in place at 22:09:13Z with c136bcb and is still the newest comment. CI run 38813244400 (workflow_dispatch @c136bcb) shows
 `waiting`, so it is draft/approval-gated, not green. Triager's chain is closed. Operator sent one consolidated update.
 
-**Resumes on:** kaizhangNV's answer on the semantics or a review on #13659, a reporter comment, or the PR's
-merge/close. Parked-chain timer: one-shot `rechase-13631-pr13659-se-8806` (10-20T15:00Z; `ncl tasks create` timed out at 30 s but the row exists, exactly one). #13675 resumes on `rechase-13675-slangvm-de-58e4` (10-17T19:00Z). #13675 resumes on `rechase-13675-slangvm-de-58e4` (10-17T19:00Z) or a maintainer-comment webhook.
+**10-16 07:54Z, operator GPU notice** (prod GPU passthrough was broken ~09-28 → 10-16; L40S confirmed by `nvidia-smi -L`).
+The fixer's R2 report (msg 28, 18:48Z) called the vk/cuda functional test `tests/hlsl-intrinsic/workgroup-uniform-load-functional.slang`
+"CI only; no GPU here", so it was **never run on device**. PR CI run 38813244400 is still approval-gated. The fixer's owner
+session `3e37xa` was stopped and did not get the notice (its last inbound was 22:09Z). Main woke it, pinned, to run the test on
+the GPU (cost $58.67 / cap $180). The triager and reviewer sessions did receive the notice.
+
+**08:23Z, triager GPU [Report] (msgs 70/72):** on the L40S with the master binary (e49310561), the race **reproduces at runtime**.
+The PR's functional test fails on master (vk + cuda): all 8 slots read 0 instead of 7. A hand-added barrier→load→barrier control
+passes 2/2. 1024-thread stress: vk 261888/262144 and cuda 32736/32768 stale reads; 0 with barriers. Main verified both bot comments
+were edited at 08:22:30–31Z: the delta cmt 6195528987 (still the newest) has a "GPU check (2026-10-16)" bullet, and the triage
+cmt 6193295113 has the struck "not run, needs a GPU" line with a correction note. The triager also asked the fixer (its msg 23)
+to run the head build on the GPU, which duplicates Main's pinned wake (msg 67). Both went to the same owner session.
+
+**08:29Z, fixer interim GPU result (msg 74), fixer's figures:** at head c136bcb on the L40S, `workgroup-uniform-load-functional.slang`
+passes on both -vk and -cuda. On master both fail with every sampled thread reading 0. A negative control (expected value set
+to 424242) makes the head fail, so the lanes really execute. SPIR-V for all the new tests validates. A 10× repeat is still running.
+Main has not told the operator yet: send ONE line when the final 10× numbers arrive. If they never come, send this interim instead.
+
+**08:53Z, reviewer GPU [Report] (msgs 76/78), independent of the fixer, reviewer's figures:** at c136bcb54 the functional test
+passes on vk and cuda, and master fails 3/3 on both. PR tests 20/20; a 30-file GPU barrier/groupshared/stage-switch subset 68/68.
+The R1/R2 "no GPU, emit-only" caveat is retired and the R2 findings are unchanged. Lesson: two concurrent full GPU suites cause
+CUDA launch failures, so run GPU comparisons one after another. Main verified that the PR body and explanation cmt 6195584471
+were both updated at 08:52:52Z and no longer contain any "no GPU" / "CI only" / "unexercised" text. **GPU re-verification
+is CLOSED; operator told once.** The fixer's 10× repeat only gets relayed if it disagrees.
+
+**08:54Z, fixer final GPU [Report] (msg 80):** agrees with the interim. Head c136bcb passed vk and cuda in 2 serial runs; master 6597ec9 failed both.
+The 10× loop was cut off because two parallel GPU slang-test jobs left processes in **D state**. Nothing pushed; the PR claims are unchanged.
+Explanation cmt 6195584471 now has the GPU result. Infra observation from Main at 08:5xZ: `nvidia-smi` showed 44218/46068 MiB used at 3% util
+with no compute apps visible from this container. Flagged once to the operator as a possible leak from stuck processes (not
+diagnosed). Both coworkers saved a "run GPU slang-test serially" learning.
+
+**Resumes on:** (GPU done) then kaizhangNV's answer on the semantics or a review on #13659, a reporter comment, or the PR's
+merge/close. Parked-chain timer: one-shot `rechase-13631-pr13659-se-8806` (10-20T15:00Z; `ncl tasks create` timed out at 30 s but the row exists, exactly one). #13675 resumes on `rechase-13675-slangvm-de-58e4` (10-17T19:00Z) or a maintainer-comment webhook.

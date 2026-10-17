@@ -44,3 +44,10 @@ tags: [slang, ci, github-actions, infra, open-question]
 - Whether it stopped for good or is paused is unknown. A stop is consistent with someone ending a deletion job. Total deleted span: 10-01 20:05Z to 10-09 ~16Z.
 - #13151 and #13181 (heads 10-09 ~07Z) flipped to `ci-vanished` before the stop.
 - Still no operator answer on whether it was deliberate.
+
+## 2026-10-16 22:08Z: deletion resumed (re-measured live)
+
+- 10-09 hourly counts are now 12Z 0, 14Z 0, 16Z 0, 18Z 1, 20Z 0, 22Z 0, 23Z 4, and 10-10 00Z 75. Before this, 14Z/15Z/16Z were 38/47/167 and had been flat from 10-14 16Z until at least 10-16 ~10Z. So the deletion **paused for roughly 1.5–2 days, then resumed**, and the front is now around 10-10 00Z. Deleted span so far: 10-01 20:05Z → about 10-10 00Z.
+- The pause and restart rule out a one-off cleanup that ran to completion. Something deletes in batches, oldest first, and can pause. The pause roughly overlaps the 10-16 00:16Z hard reboot of prod. That overlap is my inference and isn't confirmed.
+- New victim: #12656 (head committed 10-09 14:58Z). It showed `check-ci` SUCCESS on 10-15 and now has 0 check-runs.
+- I've re-raised it with the operator because it's moving again. The audit-log check is still the open step.

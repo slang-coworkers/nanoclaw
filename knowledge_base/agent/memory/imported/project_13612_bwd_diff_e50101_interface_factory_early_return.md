@@ -27,3 +27,9 @@ undef stores in cfg-norm phi elimination plus Poison for newly introduced undef)
 
 **Open operator decision:** whether to file a separate issue for the general path-insensitivity case. A user-written correlated flag
 gives a false E50101 with no autodiff, on every release since v2025.24.2. It is noted in the comment and not filed. Asked on `orchestrator-dashboard` 10-13.
+
+**10-16 21:30Z, one-shot re-check (`recheck-13612-flag-decis-3e1d`).** No operator answer on the dashboard after the
+10-13 21:25Z ask (row 500526), and on GitHub there is still only the bot triage comment: open, assignee saipraveenb25, no
+human reply. Sent one final reminder to `orchestrator-dashboard`. **Not re-armed.** The decision stays open until the
+operator replies "file" (then dispatch `slang-triager` on `gh-issue-shader-slang/slang-13612` to file it, linking #13612
+and #7968) or "no".

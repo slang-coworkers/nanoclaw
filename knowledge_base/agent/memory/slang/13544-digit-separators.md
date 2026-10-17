@@ -1,153 +1,34 @@
 ---
 type: chain
 title: "slang#13544: C++14 ' digit separators in numeric literals"
-description: "Feature request from an external reporter, unassigned. Triaged P3, frontend lexer + preprocessor. GO on (1) a separate #if literal-decoding bug (filed as #13545) and (2) finishing _ for floats, both as drafts: PRs #13546 / #13547, CI gated on a falcor-ci approval. ' (3) REFUSED by tangent-vector 10-12 18:33Z ('close this issue, since _ is already supported'); terminal. 10-13: skiminki-nv agreed, and suggested float _ (exactly #13547's scope); the triager is posting one pointer. #13547 is still blocked until skiminki-nv lifts it. 10-12 16:00Z re-chase found no change. 10-13 09:07Z: the REPORTER CLOSED #13544 (completed, agreeing with _ only); terminal. Still live: drafts #13547 (blocked by skiminki-nv) and #13546. FINAL re-chase rechase-13544-tv-6b49 on 2026-10-16T16:00Z covers only those; after it the chain parks on an inbound."
+description: "CLOSED 10-13 by the reporter (completed): maintainers refused ' because _ is already supported. Still live: draft #13547 (float _, Part of #13544) blocked by skiminki-nv, and draft #13546 (#if literal decoding + SIGFPE guard, Fixes #13545); CI on both waits on falcor-ci approval. Final re-chase 10-16 16:00Z found no change. PARKED on an inbound; no re-chase scheduled. History in [[slang/13544-history-triage-to-close.md]]."
 ---
 
 # slang#13544: `'` digit separators
 
-**Origin.** damster101 (NONE, external) filed this on 2026-10-09 at 15:26Z. Nobody is assigned. I routed it to
-slang-triager on `gh-issue-shader-slang/slang-13544` after a live read showed it open, with 0 comments and a body
-matching the payload.
+**Outcome.** damster101 (external) asked for C++14 `'` separators on 2026-10-09. tangent-vector refused on 10-12
+(6130273967: close it, "`_` as a digit separator is already supported"; "Slang is not C++"), skiminki-nv agreed, and the
+reporter closed it on 10-13 09:07Z (completed). The `'` request is **terminal**.
 
-**Triage (slang-triager, 16:06Z).** Comment
-[6084601764](https://github.com/shader-slang/slang/issues/13544#issuecomment-6084601764). Feature, P3, low, frontend.
-No labels were added, and no duplicate was found. Findings are from master ae6d69935:
-- The spec (lexical-structure.md:98) allows `_` in integer literals and says nothing about `'`. Its float section is
-  incomplete.
-- `_` works for integers. It is rejected in floats: `1_000.5f` gives E20001, and `1.000_5f` / `1e1_0` give E39999.
-- `'` always starts a char literal, so `1'000` gives 10005 / E20001.
-- **Pre-existing bug:** `#if` decodes integers with `stringToInt`/strtoll (`slang-preprocessor.cpp:3029`). I
-  reproduced this myself on the local Release build: `#if 1_000 == 1` is true, while `#if 0b101 == 5` and
-  `#if 0X10 == 16` are false. It is the same on 2025.23.2.
-- The reporter's clang-format reason did not reproduce with 17.0.6: `_` is fine, and `'` breaks only under
-  Standard ≤ c++11. The triager asked the reporter for their version and config.
+**What we measured (still true on master).** `_` is accepted in integers, including `123_`, `1__0`, `0x_FF`; there is no
+placement rule (`slang-lexer.cpp:703` TODO). Floats reject `_` (`1_000.5f` → E20001). `0b1_2` → 4 and `07_9` → 65
+silently. `#if` decodes literals with strtoll, so `#if 1_000 == 1` is true and `0b`/`0X` literals misdecode; `#if
+INT_MIN / -1` crashes slangc with SIGFPE. The spec's `_` text is non-normative.
 
-**Disposition (orchestrator, 2026-10-09 ~16:15Z).** This uses the standing proactive authority, drafts only.
-- (1) The `#if` bug gets its own issue, filed by the triager as "found while triaging #13544". The filing must not
-  claim a maintainer asked for it, since none did. The fix goes in a draft PR on that issue.
-- (2) Finishing `_` for float literals goes in a draft PR on #13544, marked "Part of", not "Fixes". Floats copy the
-  integer `_` rule, and any placement question goes in the PR body.
-- (3) `'` is HELD on a maintainer/spec decision. The decision is a grant or refusal plus a placement rule. Read the
-  polarity of the comment body before acting.
+**Still live.**
+- **#13547** draft `fix/issue-13544-float-sep` @ `6c65eea6c4`, `Part of #13544` (no closing keyword), `pr: breaking
+  change` (it turns `0b1_2`/`07_9` into E10003). skiminki-nv **blocked** it (6121612803) pending the separator decision,
+  then suggested exactly this float-`_` scope (6140951497) but has not lifted the block. Open questions in the body:
+  placement (`1._5`, `1e_5`, `1.5_`) and the E10003 break. Make no pushes or review asks.
+- **#13546** draft `fix/issue-13545` @ `911a570b41`, `Fixes #13545`, breaking, includes the SIGFPE guard; jkwak-work
+  assigned, 0 reviews. #13545 is open.
+- Both are owned by slang-fixer `sess-1791561994184-c25n6k`; triager on `gh-issue-shader-slang/slang-13544`.
+- **CI:** dispatch runs 38010557763 / 38014317927 `waiting` on the **falcor-ci** environment since 10-10 (needs a
+  ci-approver; current_user_can_approve=false). `pull_request` runs are skipped as drafts.
 
-**16:15Z, #13545 filed (I checked it live).** Bot author, Type=Bug, `reproduced`. The body opens "Found while triaging #13544"
-and claims no maintainer ask. The triager released slang-fixer (triager msg 13) for PR1 `fix/issue-13545` (`Fixes #13545`) and PR2
-`fix/issue-13544-float-sep` (`Part of #13544`), both drafts. The triager posts the 5-bullets once the PR numbers exist.
+**Parked (10-16 16:00Z).** The final re-chase `rechase-13544-tv-6b49` found nothing new. The operator never answered the
+10-12 CLOSE/KEEP/NARROW question for #13547; treated as KEEP and not re-asked. No further re-chase. Resumes only on an
+inbound: skiminki-nv on #13547, a review on #13546, or a falcor-ci approval.
 
-**16:15Z, #13545 `issue_opened` webhook (Main session sess-1791562535049-336qy7).** It's our own filing echoing back, so I
-dispatched nothing. The owner is the #13544 chain: the fixer acked the GO at 16:16:56Z and both builds had started by 16:18Z. I extended
-`rechase-13544-sep-271e` step 1 to also read non-bot comments on #13545.
-
-**17:15Z, two scope calls from the triager (I re-checked both on the ae6d69935 Release build).**
-- PR2 changes integer behavior. Today `0b1_2` gives 4 and `07_9` gives 65, both with rc 0, a silent miscompile; `0b12` gets E10003.
-  Accepting `_` in `_lexDigits` makes both an E10003 error. **Accepted:** the change is disclosed and comes with a DIAGNOSTIC_TEST and the
-  `pr: breaking change` label (precedent #13429, a merged `breaking change`). It is not silent, so the "don't silently change integers"
-  rule holds.
-- `#if (-2147483647 - 1) / -1` and `% -1` crash slangc on master (SIGFPE, rc 136). The fix goes in PR1 as a separate commit. **No new
-  issue:** the repro and the "also fixes" note go into PR1's body and into the #13545 5-bullet, so a crash on master stays on the record
-  even if the draft stalls.
-
-**18:53Z, both drafts open (I checked them live).**
-- **#13546** `fix/issue-13545` `b3abc96b59`, `Fixes #13545`, breaking. It includes the SIGFPE guard commit, and the body has the crash repro.
-- **#13547** `fix/issue-13544-float-sep` `1d2b298a91`, `Part of #13544`, breaking. Open question: tighter `_` placement.
-- Both are bot-authored drafts, mapped to slang-fixer `sess-1791561994184-c25n6k`.
-- The 5-bullets are posted: #13545 cmt 6087251913 (has the SIGFPE/136 repro) and #13544 cmt 6084601764 (edited).
-- CI runs 37975185721 / 37975188823 are `waiting` on the **falcor-ci** environment (reviewers `ci-approvers`, current_user_can_approve=false).
-  They are not queued: this is the same gate as #13436 and needs an operator/ci-approver approval. I told the operator.
-
-**10-10 01:58Z, [Triage Resolution] for PR2 #13547 (I checked it live at ~02:00Z).** It's still a draft. Head `6c65eea6c4`, 8 files, +212/−13,
-`Part of #13544` with no closing keyword. slang-reviewer R2 gave APPROVE_WITH_NITS (nits applied). Left in the PR body for the maintainer: tightening
-`_` placement (`1._5`, `1e_5`, `1.5_`) and the `0b1_2`/`07_9` → E10003 break.
-- github-actions **auto-assigned maintainers** at 18:54:45Z, a minute after the triager's 18:53 "no reviewers" note: #13547 → skiminki-nv
-  (assignee + review request), #13546 → jkwak-work. Neither has reviewed yet.
-- CI: the 18:5xZ runs 37975185721/37975188823 were **cancelled** (superseded). PR2's new run 38014317927 (01:44Z, at head) is `waiting` on
-  falcor-ci (can_approve=false). The triager called this the "draft gate"; it is the falcor-ci environment.
-- PR1 #13546 is at head `911a570b41`, reviewer round 3. Its resolution will follow on the thread.
-- There are no human comments on #13544 or #13545.
-- The "passing" pull_request_target runs on both heads are only **PR Maintenance** (38014947453 / 38014940407), not a code check. The
-  draft `pull_request` CI is `skipped`. **PR1 #13546 has no CI run at all at head 911a570b41:** its earlier dispatch was cancelled and
-  nothing was re-dispatched as of 02:0xZ. The fixer is expected to dispatch it after round 3. Dashboard msg 51 calls the PR Maintenance
-  runs "lighter checks"; next time, call them what they are.
-
-**10-12 09:34–09:39Z, skiminki-nv (MEMBER, assigned to #13544 and #13547) commented three times. I read each one live, unedited.**
-- [6121589625](https://github.com/shader-slang/slang/issues/13544#issuecomment-6121589625) says the spec `_` text is not normative
-  ("aspirational"). It lists the decisions still open: which character, whether separators may only sit between digits or may trail, and
-  which language versions get them. Their preference is the C++ rule (`'`, only between digits, all versions 2018-202c), and the decision
-  is **deferred to tangent-vector**. ⇒ **Classification: discussion/deferral, not a decision.** `'` stays HELD.
-- 6121612803 on **PR #13547**: "Marking this as blocked by …6121589625". ⇒ #13547 is a maintainer-blocked draft. Make no pushes or
-  review asks on it.
-- [6121664877](https://github.com/shader-slang/slang/issues/13544#issuecomment-6121664877) says `0b1_2`→4 and `07_9`→65 "looks like a
-  lexer bug, and neither literal should be accepted". ⇒ They agree on the E10003 change on its merits. It is still not a GO.
-- **Their premise 3a is wrong, as I measured on ae6d69935 Release.** `123_` compiles to 123 with rc 0, and `1_000_000`, `1__0`, `0x_FF` are
-  all accepted. `123'` gives 10005. The lexer has `// TODO: need to decide on digit separator characters` at `slang-lexer.cpp:703`. So a
-  between-digits-only or `'`-only rule *would* break code that compiles today. Our own triage line, "the spec already allows `_`",
-  overstated a non-normative page.
-- #13546/#13545 were not mentioned and are unaffected. CI on both PRs is still `waiting` on falcor-ci (#13546 run 38010557763, #13547 run
-  38014317927).
-- Dispatched slang-triager (msgs 61 + 63) with the comments verbatim. It may post **one** factual reply covering the measurements on master
-  and the latest release, the lexer TODO, a self-correction, and #13547 staying blocked. It may optionally *offer* to split out the
-  invalid-digit fix (default: no action). No @-mentions and no advocating for `_`.
-
-**10-12 09:53Z, the triager's single reply [6121884514](https://github.com/shader-slang/slang/issues/13544#issuecomment-6121884514) (I checked it live).**
-Bot author, 1294 chars, no @-mentions, disclaimer present, the only bot comment since the maintainer's. The triager re-measured on master
-f7e14a1a6 and v2026.19 and got the same results on both. The reply contains the 3a counter-measurements, the `:703` TODO, a correction of
-our "spec already allows `_`" line, the note that #13547 stays a blocked draft with no position taken, and the split-out offer as a
-question ("We'll take no action unless asked"). **The offer is still unanswered, so it is NOT a request.** The fixer is holding #13547 at
-`6c65eea6c4`. #13546 is unchanged.
-
-**10-12 16:00Z, re-chase `rechase-13544-sep-271e` (I checked everything live).** No human activity on #13544, #13545, #13546 or #13547
-since 09:40Z. The only new rows are our bot reply 6121884514 (single, no @-mentions, disclaimer present) and the fixer's hold ack
-[6121887855](https://github.com/shader-slang/slang/pull/13547#issuecomment-6121887855) on #13547. #13546 (`911a570b41`, jkwak-work) has no
-reviews. CI runs 38010557763 and 38014317927 are still `waiting` on falcor-ci. No GitHub post. Sent a 5-bullet to orchestrator-dashboard
-(thread `gh-issue-shader-slang/slang-13544`).
-
-**10-12 18:33Z, tangent-vector (MEMBER, the person skiminki-nv deferred to): [6130273967](https://github.com/shader-slang/slang/issues/13544#issuecomment-6130273967).**
-I read it live at 18:33:48Z. It is identical to the payload, unedited, and has no @-mentions. Key sentence: *"My strong preference would be to
-close this issue, since `_` as a digit separator is already supported."* The reasoning is that any separator meets the stated need and `_` is
-less of an eyesore. clang-format compatibility should be fixed in the tooling, not by making Slang more like C++. "Slang is not C++. Slang is
-not HLSL."
-- ⇒ **Classification: REFUSAL of `'`, so (3) is TERMINAL.** The issue is still open (assignee skiminki-nv, label Office-Tess), so the close
-  is theirs to do.
-- **No GitHub post.** There is no bot mention, so nothing authorizes a post. The facts are already on the record (including that floats
-  reject `_` today, in 6084601764 / 6121884514).
-- **#13547:** still held at `6c65eea6c4`. skiminki-nv's block stands. Nobody said anything about extending `_` to floats, placement, or the
-  base-digit miscompile, which skiminki-nv called "a lexer bug". **Whether to close, keep, or narrow it is the operator's call.** I asked
-  on the dashboard.
-- **#13546 / #13545** continue. They are unaffected and consistent with "`_` is supported".
-- Sent the comment verbatim to slang-triager (msg 77), as a refusal. Instructions: no post, no #13547 action, report a close or a new
-  maintainer comment.
-
-**10-13 07:51–07:53Z, skiminki-nv commented twice more. I read both live; neither has been edited.**
-- [6140927891](https://github.com/shader-slang/slang/issues/13544#issuecomment-6140927891), quoting tangent-vector: *"I agree. I thought digit
-  separators weren't supported at all. Sorry about that."* ⇒ This agrees with the refusal of `'`. Both maintainers now want #13544 closed. It is
-  still open, and the close is theirs to make. Triager msg 91: no post.
-- [6140951497](https://github.com/shader-slang/slang/issues/13544#issuecomment-6140951497): *"... although maybe we should still consider adding
-  the support for floating point literals."* It comes with a `1_23.3` → E20001 repro. ⇒ **This is discussion, not a GO, but it is exactly
-  #13547's scope.** The block on #13547 was over which separator to use, and that is now settled as `_`.
-- Triager msg 93: authorized to post ONE decision-supporting reply. It points to draft #13547, gives the measured result for their exact snippet
-  at `6c65eea6c4` alongside master's E20001, names the open questions (placement, and E10003 for `0b1_2`/`07_9`), and says it stays a blocked
-  draft. No @-mentions, no review ask. Unblocking or marking ready is skiminki-nv's decision.
-- My CLOSE/NARROW/KEEP ask to the operator (dashboard msg 83) is **superseded**. The maintainer is now steering toward KEEP. The operator has not
-  answered as of 07:52Z.
-
-**10-13 08:13Z, the triager posted the single authorized pointer [6141277564](https://github.com/shader-slang/slang/issues/13544#issuecomment-6141277564). I checked it live.**
-Bot author, 1079 chars, no @-mentions, disclaimer present; the issue now has 8 comments. It shows skiminki-nv's exact snippet measured on `6c65eea6c4`:
-rc 0, `int(123)` plus the E30081 float→int warning (a float buffer gives `123.30000305175781f`), versus master f7e14a1a6's E20001. It lists both open
-questions (placement: `1._5`/`1e_5`/`1.5_` accepted, `1e_+5`/`1.5f_` rejected; E10003 for `0b1_2`/`07_9`) and says the PR stays a blocked draft and
-that this is not a review request. #13547 is untouched (draft, `6c65eea6c4`). **Nothing more for us to do:** closing #13544 and unblocking or readying
-#13547 belong to skiminki-nv.
-- Side note: the triager's `wt-13555` worktree is back at `08d419cbf`, but its `build/` holds 6c65eea binaries. Any later #13555 measurement there
-  needs a rebuild first. (Round 1 of this chain was rejected for citing a binary from the wrong SHA.)
-
-**10-13 09:07Z, the reporter closed #13544 (I checked it live).** damster101 (NONE) commented
-[6142173332](https://github.com/shader-slang/slang/issues/13544#issuecomment-6142173332): *"I agree with the points raised. It is better to have only one
-way to separate digits."* They then closed the issue themselves (`closed_by` damster101, `state_reason: completed`). ⇒ **#13544 is TERMINAL.** The
-reporter accepted the maintainers' refusal of `'`. This was an acknowledgement, so no GitHub post (no bot mention, and nothing to add).
-- **Still live:** draft **#13547** (float `_`, `Part of #13544`, no closing keyword, so the close did not touch it) is held at `6c65eea6c4` and stays
-  blocked until skiminki-nv lifts it (their 6140951497 suggested this exact scope). Draft **#13546** (`Fixes #13545`, issue still open) is unchanged.
-  CI on both is still waiting on falcor-ci.
-
-**Resume.** `rechase-13544-tv-6b49` (2026-10-16T16:00Z) is the **FINAL** re-chase and repeats the polarity triage. If nothing has changed by
-then, it sends one dashboard 5-bullet and creates no further re-chase: the chain parks on an inbound (a tangent-vector decision or a
-falcor-ci approval).
+**History** — triage, the disposition and both drafts, every maintainer comment and our replies, the close, the final
+re-chase: [[slang/13544-history-triage-to-close.md]].

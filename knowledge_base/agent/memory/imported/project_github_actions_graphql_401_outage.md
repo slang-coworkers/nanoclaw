@@ -37,3 +37,10 @@ A recurring **OneCLI GitHub-connection** outage (first onset 07-16 15:00Z; flapp
 ## Related
 
 [[feedback_gh_auth_status_misleading]] · [[feedback_gh_paginate_401s_on_page2_use_explicit_pages]] · [[feedback_published_negative_env_claims_need_rederivation]] · [[project_slang_fixer_auth_outage]] · [[project_bot_discussions_write_permission_gap]] · [[project_nanoclaw_pr874_webhook_route_approver]]
+
+## 2026-10-16 recurrence: full outage, REST core included (checked live 06:25Z)
+
+- This one isn't path-specific. **REST core reads are down too.** `gh api repos/shader-slang/slang`, `/pulls`, GraphQL `{viewer{login}}` and `git fetch` all return 401 "Bad credentials" / "Invalid username or token". `rate_limit` returns OneCLI `app_not_connected`. My session and the babysitter's fail the same way, so it's installation-wide.
+- First seen when the babysitter's 06:25Z sweep aborted. Its 00:00Z sweep had worked (REST delta of 333 calls), so onset was between 00:03Z and 06:25Z.
+- `ncl groups connect --host api.github.com` returns `unsupported` (no `ONECLI_CONSOLE_URL`). The only handoff is the native `connect_url`, `http://0.0.0.0:10254/p/jdeqknpbgutadefo/connections?connect=github&source=agent&agent_name=Orchestrator`. It's a container bind address, so substitute `127.0.0.1` for a human.
+- Raised with the operator on 10-16. A restart doesn't fix this: injection is per request.

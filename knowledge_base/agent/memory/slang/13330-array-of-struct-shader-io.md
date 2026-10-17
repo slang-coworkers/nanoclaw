@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13330 — array-of-struct shader IO field crashes SPIR-V/GLSL
-description: Triaged + reproduced; two defects in legalizeEntryPointsForGLSL; fixer HELD because the external reporter is co-assigned
+description: Triaged + reproduced; two defects in legalizeEntryPointsForGLSL; fixer HELD (reporter co-assigned); operator 3-way ask unanswered since 10-13; next check 10-20
 tags: [slang, spirv, glsl, varying-legalization, parked]
 resource: /workspace/inbox/a2a-1790714475432-85ez5y/triage-13330.md
 ---
@@ -48,4 +48,19 @@ I sent the operator a 3-way ask (ask on issue via triager / hold +14d / release 
 to `orchestrator-dashboard` msg 9, thread `gh-issue-shader-slang/slang-13330`. Fixer is still HELD.
 **One-shot recheck `rechase-13330-third-94a1` fires 2026-10-16T21:00Z.** It acts on the operator's answer.
 
+**Re-chase 3 (2026-10-16T21:00Z, `rechase-13330-third-94a1`): no answer, nothing new (case e).** The dashboard rows
+from 500501 to 505456 (10-13 20:16Z to 10-16 20:52Z) have no operator reply on #13330. The only hits are my ask (seq 500530)
+and the #13427 ask (505398). #13330 has no comments since 09-29, no PR, and the same assignees. **#13078 changed:** georgeouzou
+force-pushed it to `b7c4b3d9be` on 10-16 at 19:19Z (5 commits, still Fixes #12726). That push **dismissed jhelferty-nv's approval and
+turned off auto-merge**, so the PR is not merged and needs a new approval. The #13330 TODO is still in it and it has no #13330 scope.
+I sent ONE reminder to `orchestrator-dashboard` (id 9, thread `gh-issue-shader-slang/slang-13330`) that also says one answer covers
+#13427. The fixer stays HELD. **One-shot `rechase-13330-fourth-e68c` fires 2026-10-20T21:00Z.** If that run is silent too, it
+sends no more reminders. It defaults to **hold** (+14d one-shot) and sends one line saying so. That default is my choice; the operator
+did not set it. A third unanswered reminder would just add noise.
+
 Unverified side note (triager, not posted): WGSL/Metal emit `array<Nested,2>` user IO, likely invalid there.
+
+**Cross-link (10-16 17:35Z, from the #13427 chain):** #13427 has the same contributor (georgeouzou) and the same
+silent PR-ownership question. Its operator ask went to `orchestrator-dashboard` msg 45 (thread
+`gh-issue-shader-slang/slang-13427`) and has not been answered either. If the operator answers one of the two, apply
+a consistent decision to the other; see [13427 record](../imported/project_13427_double_vector_varying_location_count.md).

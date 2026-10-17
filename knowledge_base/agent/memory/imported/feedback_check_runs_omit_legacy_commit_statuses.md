@@ -1,6 +1,6 @@
 ---
 name: feedback_check_runs_omit_legacy_commit_statuses
-description: "COUNTING / CLEARING CI CHECKS: `commits/<sha>/check-runs` is only one surface — legacy commit statuses (e.g. `license/cla`) live on `commits/<sha>/status` and never appear in check-runs at any per_page. Query both and sum; the PR web UI merges both, so its count won't match a check-runs-only count. Measured slang-rhi#809: 21 check-runs + 1 status = 22."
+description: "COUNTING / CLEARING CI CHECKS: `commits/<sha>/check-runs` and `commits/<sha>/status` are two independent surfaces and the rule is BIDIRECTIONAL — check-runs miss legacy/cross-repo statuses (`license/cla`, `SlangPy Tests`, which the merge queue gates on: slang#12328 evicted with 55/55 check-runs green), and `status: success` can be a lone `license/cla` with every Actions job still running (slangpy#1073). Query both and sum; name a pending check, never just count it. Measured slang-rhi#809: 21 check-runs + 1 status = 22."
 metadata:
   node_type: memory
   type: feedback
@@ -34,6 +34,26 @@ gh api "repos/{o}/{r}/commits/$SHA/status" --jq '{state, n: (.statuses|length), 
 ```
 `statusCheckRollup` (GraphQL / `gh pr view --json`) returns both kinds in one list and does not
 dedup repeated runs ([[feedback_gh_pr_checks_dedups_runs_rollup_does_not]]).
+
+## ⛔ The rule is bidirectional: the gating case, then the inverse
+
+**Gating (slang#12328, 2026-08-04).** All 55 check-runs were green, and the merge queue still evicted
+the PR (`failed_checks`). The evictor was a cross-repo `SlangPy Tests` **commit status** on the
+merge-group commit. The queue reads both surfaces, so a check-runs-only sweep confidently clears a PR
+that is about to be evicted. The recipe for the right commit is in
+[[technique_merge_queue_eviction_read_both_surfaces_on_the_group_commit]].
+
+**Inverse (slangpy#1073 head `09ac1d91`, 2026-08-05).** `commits/<sha>/status` returned
+`state: success` with `total_count: 1`, and that one status was `license/cla`. All 14 build/test jobs
+are check-runs, and one was still `in_progress`. So **"commit status green" says nothing about CI**. I
+had cited exactly that phrase to an operator as evidence a PR was green.
+
+⇒ Check-runs miss statuses, and statuses miss all of Actions. Never let either surface stand for "CI".
+
+**Name the pending check, don't count it.** The one unsettled job was
+`build (windows, x86_64, msvc, Debug, 3.10)`, the only platform where the bug under test reproduces.
+"1 of 14 pending" and "the only reproducing platform hasn't reported" are different facts, and the
+count hides the second.
 
 ## Why it was nearly missed: the fact was filed under the wrong key
 I already held it — [[feedback_two_nv_slang_bot_identities_cla_gate]] records `license/cla` as

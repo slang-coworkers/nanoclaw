@@ -12,13 +12,13 @@ shader/pipeline-creation error. Tint enforces it, Naga does not. A `@const` buil
 `bitcast` or `unpack2x16float` applied to a literal becomes a const-expression. Module-scope
 initializers can't call user functions, so a `_slang_getNan()` helper call doesn't work there either.
 
-| issue | filed by | fix | state (2026-10-15 22:50Z — all fixer chains closed, watch-only) |
+| issue | filed by | fix | state (2026-10-16 11:37Z — all fixer chains closed, watch-only) |
 |---|---|---|---|
 | #13635 `asfloat(<const NaN bits>)` | albertrodriguezclo 13:15Z | **reporter PR #13645** (14:02Z, emit-side `_slang_nonConstU32`) | bot stood down; triage cmt 6194445036 corrected 15:02Z |
 | #13657 `f16tof32(<const Inf>)` | bot (triager) 15:01Z | bot draft #13670 `410a1b3d1b` | R1+R2 REQUEST_CHANGES, all applied; resolved 22:48Z (cmt 6199231398). Held for operator un-draft + maintainer design call (per-intrinsic vs general `@const` rule) |
-| #13658 runtime-indexed static-const NaN table | bot 15:01Z | bot draft #13669 `5b4f26a5a2` | R1 APPROVE_WITH_NITS, nits applied 20:29Z; held for operator un-draft. Resolved 20:31Z (cmt 6199105712). Perf follow-up #13682 (loop rebuild) |
+| #13658 runtime-indexed static-const NaN table | bot 15:01Z | bot draft #13669 `f70ea437da` | RESOLVED 10-16 11:37Z: G3 driver crash fixed via bit-pattern helper bodies (GPU-verified L40S), delta R2 APPROVE_WITH_NITS, G4 anchors applied. cmt 6199105712 edited 11:36Z (⚠️ dropped). Held for operator un-draft. Perf follow-up #13682 |
 | #13671 spec-constant with NaN default | bot 18:17Z | none — maintainer picks (a) drop default / (b) diagnose | design Q cmt 6199222995; one-shot `rechase-13671-override-d-c939` 10-17 15:00Z |
-| #13672 `half` NaN/Inf as bare `infh` | bot 18:17Z | bot draft #13680 `48f0b26dcb` (needs #13669 for tables) | R1 APPROVE_WITH_NITS applied; resolved 21:36Z (cmt 6200880363). Held for operator un-draft |
+| #13672 `half` NaN/Inf as bare `infh` | bot 18:17Z | bot draft #13680 `c77365d9be` (needs #13669 for tables) | RESOLVED 10-16 11:37Z: f16+f32 bit-pattern helpers, delta R2 APPROVE_WITH_NITS, G1 per-helper prefixes applied; f16 Tint-only (no `shader-f16` on Dawn Vulkan). cmt 6200880363 edited 11:36Z. Held for operator un-draft; merge-conflict on shared helper comment → keep #13680 wording |
 
 Shepherd: jkwak-work. Un-drafting any of #13669/#13670/#13680 is operator-gated.
 
@@ -36,9 +36,17 @@ Shepherd: jkwak-work. Un-drafting any of #13669/#13670/#13680 is operator-gated.
   (19:48Z); no answer yet.
 - Open on the operator (another chain): #13636 has bot draft #13650 and reporter PR #13644 at once.
 
+## GPU re-verify 2026-10-16 (after GPU passthrough restored)
+
+Dawn `backend=null` = Tint front-end only — NOT a hardware check. Dawn `backend=vulkan` on the L40S: #13645 ✅ exact bits; #13670 ✅; #13669 ⚠️ driver crash on flat f32 tables (**settled 10-16 09:16Z on option 1**: fixer changes the WGSL prelude bodies `_slang_getNan()` → `let bits = 0x7fc00000u; return bitcast<f32>(bits);` and `_slang_getInfinity` → `select(0xff800000u, 0x7f800000u, p)` bitcast, so it touches EVERY WGSL shader, replacing #5489's `0/0` bodies; triager verified it on the L40S. #13680's f16 helpers use the same `0/0` shape, a consistency follow-up); #13680 f16 not runnable (Dawn exposes no `shader-f16` on Vulkan) — Tint-only.
+Triager memo `memory/issues/gpu-reverify-2026-10-16-wgsl-nonfinite.md`; fixer repro `/workspace/agent/tools/tint-13635/gpu/c6.wgsl`.
+
+**Reviewer G3 (09:33Z, `gpu-reverify-13669.md`):** reproduced the crash with Dawn 138, the CI pin (`slang-test -wgpu`, built `-DSLANG_EXCLUDE_DAWN=OFF`). Minimized trigger: an `array<f32,N>(…)` constructor taking a `_slang_getNan()`/`_slang_getInfinity()` call (vec4/scalar don't crash); master crashes the same way for ordinary local arrays. CI can't see it (wgpu rows only on the Windows T4, and the PR had no `-wgpu` runtime row). Reviewer offered (a) entry-point init or (b) document it. Fixer took (c), the helper-body bit patterns above. **10:19Z `[Fix Report]`: #13669 → `a5a20b80ca`, #13680 → `ed7512c640` (same f32 bodies + f16 bit patterns); `-wgpu`/`-vk` runtime rows added; CODE_REVIEW approved, slang-reviewer delta review pending.** Triager edits cmts 6199105712 / 6200880363 after the delta review passes. Verdict for Slang correctness stays APPROVE_WITH_NITS.
+
 ## Operator decisions outstanding (asked 2026-10-15, unanswered at 22:50Z)
 
-1. Un-draft #13669, #13670, #13680 (operator-gated `gh pr ready`).
+1. Un-draft #13670, #13669 (`f70ea437da`), #13680 (`c77365d9be`) — all review-complete as of 10-16 11:37Z (operator-gated `gh pr ready`).
+1b. File the NVIDIA/Dawn Vulkan pipeline crash upstream? (operator call)
 2. `perf` label on #13682.
 3. Fixer `instructions.prepend.md` rule: edit an existing bot status comment instead of posting a new one.
    (On #13657 R2 the fixer DID edit in place — the pattern may be self-correcting.)

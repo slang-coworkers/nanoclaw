@@ -50,8 +50,11 @@ also fixes a pre-existing master miscompile (`int y = j; int j = 1, k = 2;` read
   gated by `i13433-decision-gate-25d6`. See [[imported/project_13433_interface_static_const_witness_null_crash.md]].
 - **#13435**: a local struct `static const int N = x + 1;` with `x` a function local is a silent miscompile (the
   `x = buf[0]` init is lost). jhelferty-nv assigned it to jkwak-work, with milestone Q4 2026, on 10-05. 0 comments,
-  so the language decision is open. Gated by `i13435-maintainer-gate-c5d3`, which fires on a comment or close but not
-  on assignment.
+  On **10-16 13:08Z skiminki-nv decided: reject, no capture.** A local type can't access the enclosing function's
+  locals, params, or local types, and a method body `L::get()` is covered too. They asked `@nv-slang-bot` for a draft fix PR
+  with their snippet as a diagnostic test (E30015 is OK). They reassigned the issue to themselves (cmt 6216197368). I released it to
+  slang-triager on `gh-issue-shader-slang/slang-13435` (separate PR `fix/issue-13435`). The gate task is already
+  gone (per-issue recurrences are now forbidden, R10).
 
 ## Lessons
 

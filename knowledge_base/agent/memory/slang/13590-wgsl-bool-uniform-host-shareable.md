@@ -102,3 +102,14 @@ comment: at 10-14 17:26Z jhelferty-nv reassigned #13590 from kaizhangNV to **jkw
 The PR's assignee and review request are both still kaizhangNV. The operator hasn't answered the two follow-ups and must not be asked
 again. Status line sent to orchestrator-dashboard (msg 7). Next one-shot `rechase-13590-wgsl-bool-56bf` runs 10-16 16:00Z. If it is
 unchanged it is #3, so the chain moves to the parked-chain register instead of re-arming.
+
+**2026-10-16 16:00Z, re-chase `-56bf` (case d, unchanged #3 of 3) → PARKED.** Verified live: PR #13607 is still an OPEN draft at
+7851898586 (9 commits, 6 files, +424/−57, `pr: non-breaking`). Assignee and review request are kaizhangNV, there are 0 reviews, and the
+last update was 10-13 20:39Z. The only comments are the 10-13 bot/coderabbit/explain-diff ones. Issue #13590 is OPEN, assigned to
+jkwak-work, milestone Q4 2026 (Fall); its only comment is the bot's triage comment. Dispatch 38462553148 is still `waiting` (gate since
+10-13 20:24Z). The operator gave no answer on the two follow-ups in the dashboard rows since 10-15 02:33Z, so nothing was filed and the
+question is not asked again. **No re-chase re-armed.** The chain is entered in the parked-chain register
+(`/workspace/agent/.task-hygiene/state.json` `parked["shader-slang/slang#13590"]`, refs #13590 + #13607, count 3) and
+`reports/parked-chains.md` was regenerated. The hourly task-hygiene gate drops it when both targets close, and the weekly digest
+surfaces it. Held on kaizhangNV (PR) / jkwak-work (issue) review + the CI approval gate. Webhooks (review, ready, merge) wake the
+fixer session `sess-1791890267824-pmxbv5` through the pr-mapping. Resume: `task-hygiene.py unpark shader-slang/slang#13590`.

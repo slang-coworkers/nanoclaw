@@ -79,3 +79,11 @@ sub-issue per rule (R1–R10, review length, replay eval). Each is self-assigned
 that decides: a **maintainer-filed, self-assigned issue whose body is a plan with its own PR is a work item he owns, not a report**.
 ⇒ Dispatch nothing and post nothing. The batch's own R6 (#13596) asks the bot to stay off new human issues; triaging the batch
 that proposes that rule would be the noise the epic measures. Twelve webhooks mint twelve Main sessions, so one report covers it.
+
+### 2026-10-16, #13686: a maintainer's follow-up for his own unmerged fork branch
+kaizhangNV filed #13686, self-assigned, with a follow-up comment of his own 4 min later. It tracks a gap in the structural
+ray-tracing frontend of his fork PR kaizhangNV/slang#24, which was split from his draft shader-slang/slang#12691. The body
+says it was reproduced on that branch and "is not a claim about a released compiler". `import slang.raytracing` is not on
+master: `source/standard-modules/` has no raytracing module. Same rung-4 call as #13591: **a self-assigned design item for
+code that only exists on the author's branch is his work, not a report.** Nothing for a triager to reproduce or a fixer
+to patch. ⇒ Held: no dispatch, no bot post. Resume only on an @nv-slang-bot mention or an operator ask.

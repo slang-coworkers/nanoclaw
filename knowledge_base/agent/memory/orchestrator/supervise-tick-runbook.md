@@ -21,7 +21,7 @@ Companion pages: [[orchestrator/supervise-tick-false-positives.md]] (rows scan f
 1. New `tickNNN/` dir. Fetch inputs once, **serially** (concurrent `ncl` → "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick284/`**) and `sed` every `tickNNN` path.
+2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick288/`**) and `sed` every `tickNNN` path.
    `board274.py` hardcodes `supervisor-state.pre-tickNNN.json`; repoint `titles.py` to payload5.json.
    Build `lo-cache.json` from the **previous `payload3.json`** (not payload1, so last tick's re-fetch fixes carry
    forward) and `prev-la.json` from the previous `sessions.json`. Run `pull.sh` with env
@@ -97,4 +97,39 @@ Companion pages: [[orchestrator/supervise-tick-false-positives.md]] (rows scan f
   submodule `.git` files (gitdir containing `/modules/`). Common REAP shape: merged-PR reviewer worktrees
   (`wt-<pr>-verify/-revA/-base/-master`), owned by the reviewer session on the chain whose `pr.number` matches (or the
   `slang-ci-nightly-*` thread for nightly-PR chains).
+- **Verify `ci.done` + `ci.json` exist before rendering.** Tick 286's backgrounded `ci.py; titles.py` pair finished
+  titles but left an empty `ci.log` and no `ci.done`/`ci.json`; a standalone re-run took ~2 min.
+- **Auto-merge sweep / closed-since without GraphQL search:** the org-wide GraphQL `search` 502s intermittently; use
+  REST `repos/shader-slang/<r>/pulls?state=open&per_page=100&page=N` filtered on `.auto_merge!=null` (3 pages × 3 repos),
+  and `gh search issues --owner shader-slang --closed '>=<date>' --include-prs` (raw `gh api search/issues?q=…closed:>=`
+  returns empty JSON).
 - The board quotes `[Resolution]` from status text, which trips the codex-gate audit line; benign here.
+
+## Degraded tick: shader-slang credential 401 (tick 285, 2026-10-16)
+
+- **Probe before pulling:** `gh api -i repos/shader-slang/slang`. If you get a 401 "Bad credentials" while `repos/slang-coworkers/nanoclaw` returns 200, the shader-slang credential is dead and no GraphQL pull can run. Escalate to the dashboard (failing step + exact error) first.
+- **Degraded path:** derive the chain universe from `ncl sessions`, then find the moved threads by diffing per-session `last_active` against the previous tick's `sessions.json`. Read the newest rows of each moved chain with `ncl sessions messages`. For GitHub state, use **unauthenticated** public REST (`curl --noproxy '*'`, 60/h). That budget covers ~45 issues, ~11 PRs, a 5-page auto-merge sweep and one `search/issues?q=org:shader-slang is:closed closed:>=<prev tick>`. Label the CI column n/a and journal the new keys by hand. Set `_meta.degraded=true` so the next tick knows to run the full cached pull.
+- **Hold nudges during the outage.** A nudged coworker can't post either, so the nudge only produces a second stall.
+- A cron fire whose pull died mid-run (tick 285: 900/1965 after GraphQL TLS timeouts) leaves an empty `payload1.json`. The next batched turn has to finish that tick, not skip it.
+
+## Degraded tick: `ncl` congestion (tick 287, 2026-10-16)
+
+- **Symptom:** about half of all `ncl` calls hit the 30 s client timeout, so the cached pull crawls through its cache misses (each one a 30 s `ncl sessions messages`). Tick 287 lost 40 min: it reached 1560/1977, and the job was killed at the 40-min background cap. `payload1.json` is written only at the very end, so that work was gone.
+- **Probe first:** time one `ncl sessions get <sid>`. If it takes >10 s or times out, don't run the stock cached pull.
+- **Fix:** `tick287/pull-nocl.sh` with `NO_NCL=1`. A cache miss takes the previous lo-cache value and gets marked `lo_stale`. The GraphQL part then finishes in ~10 min. Next, verify each flagged row by hand: retry `ncl sessions messages`, since roughly 1 in 2 calls succeed. Use `.claude-trace/session-<sid>.jsonl` `request.timestamp` to see whether a session is live. Also use worktree mtimes.
+- **Don't `pkill -f <script>`** from a shell whose command line contains that name: it kills the relaunch too. Don't `sed 's/miss.json/miss2.json/'` either: the `.` matches, and the rewrite corrupts `json.load(open('miss.json'))`.
+- A fleet restart (127 sessions with `last_active` 11:31:14Z) moves `last_active` with no new rows. Those sessions are cache misses with nothing new in them, so `NO_NCL` loses little on them.
+
+## Tick 288 notes (2026-10-17, clean run ~30 min)
+
+- **New-chain diff must union `_archived`.** State has ~830 top-level keys plus ~1,260 in `_archived`; diffing threads
+  against top-level keys alone reports ~1,250 false "new" chains. Sub-thread sessions (`…-<n>/<suffix>`) need a
+  `subthread:` journal entry by hand — scan never creates one.
+- **Draft bot-PR CI is deadlocked, not slow.** `ci-retry-yielded-bot` (the real name; `retry-yielded-bot-ci.yml`
+  matches nothing) logged "CI is still active (91–107 runs)" on 98 of 100 fires since 10-15, because ~88 runs sit
+  `waiting` on `falcor-build-approval-gate`. A fixer holding its Fix Report "until the retry re-runs CI" waits forever,
+  and scan reads it as `awaiting_human` (#13716). Classify the helper's decision lines (`gh run view <id> --log`)
+  before trusting a ⏸️ yield to self-heal.
+- **`ncl sessions messages --reverse` orders by seq, so a fresh nudge can be invisible** (it took seq 10 below seq 17).
+  Confirm landing by `last_active` moving, or sort the rows by `timestamp`.
+- `gh` CLI `sleep N; cmd` chains are blocked by the harness; just run the check.

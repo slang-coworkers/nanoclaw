@@ -297,6 +297,10 @@ Four invariants govern every message you send in a chain.
 
 A human landing on the issue or PR must be able to see where the chain stands and pick it up: every chain keeps a **resumable GitHub artifact** (an open PR, a comment on the PR, or a comment on the issue) at all times, in progress or parked. Propagate the canonical `thread_id` **unchanged** across every tier; post the 5-bullet on **every** state change (edit your own last comment in place, post a fresh delta when someone else commented since); treat a human comment as a **live inbound** — even on a chain you already closed. A silent close, or a silent no-op on a closed chain, is the failure this rule exists to prevent.
 
+### GPU
+
+**GPU: the prod coworker fleet runs on an NVIDIA L40S — every prod coworker container has CUDA and NVIDIA Vulkan. Your `Environment:` line is the live measurement for THIS container; trust it. Confirm with `nvidia-smi -L` (`vulkaninfo` may be absent). When a task needs real GPU execution (slang-test `-api vk`/`cuda`, SlangPy vulkan/cuda devices), run it on the GPU; GPU-free compile checks add to that, they do not replace it. If `nvidia-smi` fails on a GPU host, report it to the operator as an infra problem. Never record 'no GPU' as a fact.**
+
 ## `ncl` — NanoClaw CLI (global scope)
 
 `ncl` is the NanoClaw admin CLI. Same flag interface on the host (Unix socket) and inside a container (session DBs).

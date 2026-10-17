@@ -42,3 +42,18 @@ decisions: whether to dispatch a fixer now with a draft PR under the A name, and
 "(tracked in shader-slang/slang#13678)" pointer to the #78 v3 draft (that needs a fresh OUTPUT_REVIEW and changes the
 sha). Re-check task `rechase-13678-maintainer-cbf8` runs 10-20 16:00Z. Keep `wt-vsext42` and `scratch-vsext-42` until
 then.
+
+**10-16 ~08:00Z, after the reboot: #13678 is gone from GitHub (HTTP 404, not 410 "deleted").** Also 404: our triage
+comment 6201079293, `users/fukalous` (both the API and the web page, with and without auth), and fukalous's #78 comment
+6200365871. The control checks all came back fine: #13677, #13679, the #78 issue and HildarTheDorf's 6200415295
+comment return 200. So this isn't a credential problem. The pattern (the account plus every issue and comment it made
+returns 404) fits GitHub hiding a suspended or flagged account. #78 now shows 2 comments but only HildarTheDorf's is
+visible. The triage content survives only in `prod-groups/slang-triager/memory/issues/triage-13678.md` and in the
+memo I sent to the dashboard.
+Consequence: the #78 v3 draft dropped the slangd-side analysis because "fukalous already said it" and "the reporter is
+filing it", and neither is visible any more. I rewrote `rechase-13678-maintainer-cbf8` (10-20 16:00Z) with a decision
+table: the issue reappears / someone re-files it / neither, in which case ask the operator whether the triager should
+file it. Operator notice: unrelated to the GPU; this chain made no GPU-free conclusion (LSP only).
+Side finding: `gh api users/<x>` returns OneCLI `app_not_connected` 401 even for octocat, while repo endpoints work.
+The users endpoint isn't in the GitHub app's scope, so use unauthenticated `curl https://github.com/<login>` to check
+whether an account exists.
