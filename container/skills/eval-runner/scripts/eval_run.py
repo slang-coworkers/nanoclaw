@@ -94,6 +94,7 @@ from typing import Callable
 
 SCHEMA = 2
 DEFAULT_FORK = "slang-coworkers/slang-eval"
+DEFAULT_CI_CHECK = "eval-ci"
 DEFAULT_REPORTS = "/workspace/agent/reports"
 DEFAULT_PROD_GROUPS = "/workspace/extra/ephemeral/prod-groups"
 DEFAULT_SKILLS_DIRS = ("/home/node/.claude/skills", "/app/skills")
@@ -102,8 +103,10 @@ DEFAULT_VERIFIER_TIMEOUT_SEC = 300
 # How long after the PR appears the runner waits for the fork's CI to report at least
 # one check run before calling the trial unknown.
 DEFAULT_CI_GRACE_SEC = 900
-FALLBACK_COST_USD = {"triage": 1.5, "fixer": 20.0}
-DEFAULT_REPEATS = {"triage": 3, "fixer": 2}
+FALLBACK_COST_USD = {"triage": 1.5, "fixer": 20.0, "reply": 1.5}
+DEFAULT_REPEATS = {"triage": 3, "fixer": 2, "reply": 3}
+# Kinds whose deliverable is an answer.json on the eval group mount, scored by the bank's verifier.
+FILE_KINDS = ("triage", "reply")
 MAX_ATTEMPTS = 2
 # Below this many paired tasks a comparison is a smoke signal, not a result.
 SMOKE_SIGNAL_TASKS = 30
@@ -207,14 +210,14 @@ def task_kind(toml: dict, path: str) -> str:
     meta = toml.get("metadata") or {}
     for key in ("kind", "category"):
         v = str(meta.get(key) or "").lower()
-        if v in ("triage", "fixer"):
+        if v in ("triage", "fixer", "reply"):
             return v
     tags = [str(t).lower() for t in (meta.get("tags") or [])]
-    for k in ("triage", "fixer"):
+    for k in ("triage", "fixer", "reply"):
         if k in tags:
             return k
     parts = [p.lower() for p in path.split(os.sep)]
-    for k in ("triage", "fixer"):
+    for k in ("triage", "fixer", "reply"):
         if k in parts:
             return k
     return "unknown"
@@ -288,7 +291,15 @@ def build_prompt(task: Task, repeat: int, fork: str) -> str:
     names its own answer directory and branch tag so attempts stay independent."""
     tid = trial_id(task.id, repeat)
     path = f"/workspace/agent/eval/{task.id}/r{repeat}/answer.json"
-    if task.kind == "triage":
+    if task.kind == "reply":
+        contract = (
+            f"Evaluation trial id: {tid}.\n"
+            f"You are an evaluation copy. Write your reply to {path} as one JSON object with exactly one key "
+            f"\"reply\" whose value is the Markdown text you would post. The file is the deliverable; do not "
+            f"comment on, label or edit any GitHub issue, and do not message anyone. If you cannot answer, "
+            f"write {{\"error\": \"<why>\"}} to the same path."
+        )
+    elif task.kind == "triage":
         contract = (
             f"Evaluation trial id: {tid}.\n"
             f"You are an evaluation copy. Write your triage answer to {path} as one JSON object with exactly the "
@@ -470,18 +481,31 @@ def freeze_skills(dirs: tuple[str, ...] = DEFAULT_SKILLS_DIRS) -> dict:
 # --------------------------------------------------------------------------- pollers
 
 
-def poll_triage(group_dir: str, task: Task, repeat: int) -> dict | None:
+def poll_triage(group_dir: str, task: Task, repeat: int, not_before: float = 0.0) -> dict | None:
     """The agent's answer.json for this repeat once it exists and parses; None while it
-    is absent. A file that is not JSON yet (being written) counts as absent."""
+    is absent. A file that is not JSON yet (being written) counts as absent, and so does
+    a file last written before `not_before` (the trial's dispatch time): the answer path
+    depends only on task and repeat, so a file from an earlier job on the same mount
+    would otherwise be scored as this trial's answer."""
     p = os.path.join(answer_dir(group_dir, task.id, repeat), "answer.json")
     if not os.path.isfile(p):
         return None
     try:
+        if os.path.getmtime(p) < not_before:
+            return None
         with open(p, encoding="utf-8") as fh:
             doc = json.load(fh)
     except (OSError, ValueError):
         return None
     return doc if isinstance(doc, dict) else {"error": "answer.json is not a JSON object"}
+
+
+def existing_answers(group_dir: str, plan: list[tuple[Task, int]]) -> list[str]:
+    """The planned answer paths that already hold a file. A job must start with none of
+    them present: the eval copy reads its own answer directory, so a leftover answer can
+    steer the new session as well as the scorer."""
+    paths = [os.path.join(answer_dir(group_dir, t.id, k), "answer.json") for t, k in plan]
+    return [p for p in paths if os.path.isfile(p)]
 
 
 def poll_fixer(gh: Callable[[str], object], fork: str, task: Task, repeat: int) -> dict | None:
@@ -548,11 +572,17 @@ GREEN = {"success", "neutral", "skipped"}
 RED = {"failure", "timed_out", "cancelled", "action_required", "startup_failure", "stale"}
 
 
-def ci_verdict(check_runs: list[dict], statuses: list[dict]) -> tuple[str, str]:
+def ci_verdict(check_runs: list[dict], statuses: list[dict], only: str | None = None) -> tuple[str, str]:
     """`green`, `red`, `pending` or `none` from the fork's check runs (and legacy commit
-    statuses). Any red run decides red; otherwise an unfinished run keeps it pending."""
+    statuses). Any red run decides red; otherwise an unfinished run keeps it pending.
+    With `only`, just the check runs of that name count and statuses are ignored: the
+    fork carries every upstream workflow file, and a check that skips drafts or wants
+    a label would otherwise decide the verdict."""
     seen = False
     pending = False
+    if only:
+        check_runs = [cr for cr in check_runs or [] if cr.get("name") == only]
+        statuses = []
     for cr in check_runs or []:
         seen = True
         if cr.get("status") != "completed":
@@ -568,19 +598,21 @@ def ci_verdict(check_runs: list[dict], statuses: list[dict]) -> tuple[str, str]:
         if state == "pending":
             pending = True
     if not seen:
+        if only:
+            return "none", f"the fork reported no \"{only}\" check run for the PR head"
         return "none", "the fork reported no check runs or statuses for the PR head"
     if pending:
         return "pending", "check runs still running"
     return "green", "every check run concluded success"
 
 
-def fork_ci(gh: Callable[[str], object], fork: str, sha: str) -> tuple[str, str]:
+def fork_ci(gh: Callable[[str], object], fork: str, sha: str, only: str | None = None) -> tuple[str, str]:
     try:
         runs = (gh(f"repos/{fork}/commits/{sha}/check-runs?per_page=100") or {}).get("check_runs") or []
-        combined = gh(f"repos/{fork}/commits/{sha}/status") or {}
+        combined = {} if only else (gh(f"repos/{fork}/commits/{sha}/status") or {})
     except RuntimeError as exc:
         return "none", f"could not read the fork's checks: {exc}"
-    return ci_verdict(runs, combined.get("statuses") or [])
+    return ci_verdict(runs, combined.get("statuses") or [], only)
 
 
 # --------------------------------------------------------------------------- budget
@@ -648,6 +680,7 @@ class Trial:
     base_commit: str | None = None
     _started: float = field(default=0.0, repr=False)
     _pr_seen_at: float = field(default=0.0, repr=False)
+    _answer_sig: str = field(default="", repr=False)
 
     @property
     def trial_id(self) -> str:
@@ -657,6 +690,7 @@ class Trial:
         d = asdict(self)
         d.pop("_started", None)
         d.pop("_pr_seen_at", None)
+        d.pop("_answer_sig", None)
         d["trial_id"] = self.trial_id
         return d
 
@@ -683,6 +717,7 @@ class JobConfig:
     reports_dir: str
     compare: str | None = None
     retry_from: str | None = None
+    ci_check: str | None = None
 
 
 class EvalJob:
@@ -793,11 +828,19 @@ class EvalJob:
         """True when the trial is finished (scored, unknown, timed out or errored)."""
         elapsed = self.clock() - trial._started
         verifier_dir = os.path.join(self.job_dir, "trials", trial.trial_name, "verifier")
-        if task.kind == "triage":
-            answer = poll_triage(self.cfg.group_dir, task, trial.repeat)
+        if task.kind in FILE_KINDS:
+            answer = poll_triage(self.cfg.group_dir, task, trial.repeat, not_before=trial._started)
+            if answer is not None:
+                # The agent may rewrite its answer moments after the first version
+                # appears, so a version is scored only once two consecutive polls
+                # read it unchanged.
+                sig = json.dumps(answer, sort_keys=True)
+                if sig != trial._answer_sig:
+                    trial._answer_sig = sig
+                    answer = None
             if answer is not None:
                 trial.answer = answer
-                if "error" in answer and not {"subsystem", "severity", "next_step", "labels"} & set(answer):
+                if "error" in answer and not {"subsystem", "severity", "next_step", "labels", "reply"} & set(answer):
                     self._finish(trial, ERROR, 0.0, f"agent reported: {str(answer.get('error'))[:200]}")
                     return True
                 answer_file = os.path.join(answer_dir(self.cfg.group_dir, task.id, trial.repeat), "answer.json")
@@ -816,12 +859,12 @@ class EvalJob:
                     trial._pr_seen_at = self.clock()
                     self.log(f"{trial.trial_id}: PR #{pr.get('number')} found ({pr.get('head_ref')})")
                 else:
-                    answer = poll_triage(self.cfg.group_dir, task, trial.repeat)
+                    answer = poll_triage(self.cfg.group_dir, task, trial.repeat, not_before=trial._started)
                     if answer is not None and "error" in answer:
                         self._finish(trial, ERROR, 0.0, f"agent reported: {str(answer.get('error'))[:200]}")
                         return True
             if trial.pr is not None:
-                verdict, why = fork_ci(self.gh, self.cfg.fork, trial.pr.get("head_sha") or "")
+                verdict, why = fork_ci(self.gh, self.cfg.fork, trial.pr.get("head_sha") or "", self.cfg.ci_check)
                 if verdict == "green":
                     self._write_reward(verifier_dir, 1.0)
                     self._finish(trial, SCORED, 1.0, why)
@@ -835,7 +878,7 @@ class EvalJob:
                     return True
         if elapsed >= task.agent_timeout_sec:
             self._finish(trial, TIMEOUT, 0.0 if trial.pr is None else None,
-                         f"no {'answer' if task.kind == 'triage' else 'CI verdict'} within {task.agent_timeout_sec}s")
+                         f"no {'answer' if task.kind in FILE_KINDS else 'CI verdict'} within {task.agent_timeout_sec}s")
             return True
         return False
 
@@ -1129,7 +1172,7 @@ def make_job_id(kind: str, variant: str, now: dt.datetime) -> str:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--bank", required=True, help="checkout of slang-eval-tasks (MANIFEST.json at its root)")
-    p.add_argument("--kind", required=True, choices=["triage", "fixer"])
+    p.add_argument("--kind", required=True, choices=["triage", "fixer", "reply"])
     p.add_argument("--group", required=True, help="agent group id of the eval coworker (ncl --group)")
     p.add_argument("--group-folder", help="the eval group's workspace folder (default: --group)")
     p.add_argument("--prod-groups-root", default=DEFAULT_PROD_GROUPS,
@@ -1145,6 +1188,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--concurrency", type=int, default=2)
     p.add_argument("--poll-interval", type=float, default=30.0)
     p.add_argument("--ci-grace-sec", type=int, default=DEFAULT_CI_GRACE_SEC)
+    p.add_argument("--ci-check", default=DEFAULT_CI_CHECK,
+                   help="name of the fork check run that scores a fixer PR (default eval-ci); '' means every check run")
     p.add_argument("--reports", default=DEFAULT_REPORTS)
     p.add_argument("--compare", help="baseline job id to compare against (paired, bootstrap CI)")
     p.add_argument("--retry-from", help="job id whose timed-out / errored trials to re-run (one retry only)")
@@ -1185,7 +1230,7 @@ def main(argv: list[str] | None = None) -> int:
     cfg = JobConfig(
         job_id=job_id, kind=args.kind, group=args.group, group_dir=group_dir, bank=os.path.abspath(args.bank),
         variant=args.variant, fork=args.fork, budget_usd=args.budget_usd, concurrency=max(1, args.concurrency),
-        limit=args.limit, repeats=repeats, poll_interval_sec=args.poll_interval, ci_grace_sec=args.ci_grace_sec,
+        limit=args.limit, repeats=repeats, poll_interval_sec=args.poll_interval, ci_grace_sec=args.ci_grace_sec, ci_check=args.ci_check or None,
         reports_dir=args.reports, compare=args.compare, retry_from=args.retry_from,
     )
     tasks = load_bank(cfg.bank, cfg.kind, log)
@@ -1201,10 +1246,18 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if not os.path.isdir(group_dir) and not args.dry_run:
         log(f"eval group directory {group_dir} is not mounted; triage answers cannot be read")
-        if cfg.kind == "triage":
+        if cfg.kind in FILE_KINDS:
             return 2
     dispatcher = NclDispatcher(cfg.group)
     plan = pairs if pairs is not None else [(t, k) for k in range(1, repeats + 1) for t in tasks]
+    if cfg.kind in FILE_KINDS and not args.dry_run:
+        stale = existing_answers(group_dir, plan)
+        if stale:
+            for p in stale[:10]:
+                log(f"answer already present before dispatch: {p}")
+            log(f"{len(stale)} planned answer path(s) already hold a file; move the previous job's "
+                f"{os.path.join(group_dir, 'eval')} aside on the host before starting this job")
+            return 2
     if args.dry_run:
         for t, k in plan:
             cmd = dispatcher.command(t, k, build_prompt(t, k, cfg.fork))
