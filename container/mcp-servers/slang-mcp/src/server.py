@@ -16,9 +16,11 @@ console = Console(stderr=True)
 
 from .config import close_http_clients, setup_environment  # noqa: E402
 from .discord import (  # noqa: E402
+    CreateThreadArgs,
     ReadMessagesArgs,
     SendMessageArgs,
     cleanup_discord_client,
+    create_thread,
     init_discord_client,
     read_messages,
     send_message,
@@ -284,6 +286,9 @@ def main(port: int, transport: str) -> int:
                 elif name == "discord_send_message":
                     args = SendMessageArgs(**arguments)
                     result = await send_message(args)
+                elif name == "discord_create_thread":
+                    args = CreateThreadArgs(**arguments)
+                    result = await create_thread(args)
 
                 # Slack Tools - only whitelisted ones
                 elif name == "slack_post_message":
@@ -970,6 +975,47 @@ def main(port: int, transport: str) -> int:
                                     },
                                 },
                                 "required": ["channel_id", "content"],
+                            },
+                            annotations=types.ToolAnnotations(openWorldHint=True),
+                        ),
+                        types.Tool(
+                            name="discord_create_thread",
+                            description=(
+                                "Create a public thread in a text or announcement channel. "
+                                "Pass message_id to attach the thread to an existing message "
+                                "(e.g. after discord_send_message). Omit message_id to create "
+                                "a standalone thread. Forums: use discord_send_message with "
+                                "thread_name instead. Restricted to DISCORD_ALLOWED_SEND_CHANNELS."
+                            ),
+                            inputSchema={
+                                "type": "object",
+                                "properties": {
+                                    "channel_id": {
+                                        "type": "string",
+                                        "description": "Parent text or announcement channel ID",
+                                    },
+                                    "name": {
+                                        "type": "string",
+                                        "description": "Thread title (1-100 characters)",
+                                    },
+                                    "message_id": {
+                                        "type": "string",
+                                        "description": (
+                                            "If set, start the thread from this message in "
+                                            "channel_id. If omitted, create a standalone thread."
+                                        ),
+                                    },
+                                    "auto_archive_duration": {
+                                        "type": "integer",
+                                        "description": (
+                                            "Minutes of inactivity before archive "
+                                            "(60, 1440, 4320, or 10080). Default 1440."
+                                        ),
+                                        "enum": [60, 1440, 4320, 10080],
+                                        "default": 1440,
+                                    },
+                                },
+                                "required": ["channel_id", "name"],
                             },
                             annotations=types.ToolAnnotations(openWorldHint=True),
                         ),

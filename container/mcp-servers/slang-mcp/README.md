@@ -26,6 +26,8 @@ A minimal MCP server for GitHub, GitLab, Discord, and Slack APIs.
 ### Discord API
 
 1. `discord_read_messages` - Read messages from a Discord channel
+2. `discord_send_message` - Send a message to a channel, thread, or forum (forum: pass `thread_name` to create a post)
+3. `discord_create_thread` - Create a public thread in a text/announcement channel. Pass `message_id` to attach it to an existing message; omit `message_id` for a standalone thread. Forums are not supported (use `discord_send_message` with `thread_name`).
 
 ### Slack API
 
