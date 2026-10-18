@@ -72,6 +72,10 @@ docs/drafts/
 forks.md
 .worktrees/
 
+# Library templates copied in by setup or create_agent are install state.
+/templates/*
+!/templates/README.md
+
 # Local knowledge/scratch corpora, archives, runtime pidfiles — never tracked.
 # slang_kb/ is a large raw-export corpus that must never be `git add`-ed.
 slang_kb/
