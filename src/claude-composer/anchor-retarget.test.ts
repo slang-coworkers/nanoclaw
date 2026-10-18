@@ -200,12 +200,13 @@ const REWRITTEN_DIGESTS: Record<string, string> = {
 
 /**
  * Fragments that moved on AFTER this transform set was frozen: chain-reporting (the
- * GitHub invariant gained its own heading) and scheduling (the per-issue-recurrence
- * rule and the standing-order prose from nv-main). Their reviewed post-trim bodies
+ * GitHub invariant gained its own heading), scheduling (the per-issue-recurrence
+ * rule and the standing-order prose from nv-main) and agents (the `Templates:`
+ * bullet carried from upstream #4112's `agents.instructions.md`). Their reviewed post-trim bodies
  * are the frozen `<name>.post-trim.md` copies, which is what the frozen goldens carry;
  * `section-reorder.test.ts` bounds each later change against the live goldens.
  */
-const FROZEN_POST_TRIM: ReadonlySet<string> = new Set(['chain-reporting', 'scheduling']);
+const FROZEN_POST_TRIM: ReadonlySet<string> = new Set(['chain-reporting', 'scheduling', 'agents']);
 
 /** The reviewed post-edit body of a fragment: the frozen copy where it moved on later, else the live file. */
 function postEditBody(name: string, file: string): string {
