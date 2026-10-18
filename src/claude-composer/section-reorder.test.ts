@@ -11,9 +11,10 @@
  *   and its body becomes the tail of `## Context` (flat `main` keeps its section);
  * - `chain-reporting.md` carries the GitHub invariant under its own
  *   `### GitHub as primary observability` heading (every document) — digest-pinned;
- * - four fragments rewritten on nv-main and merged in: the principles, scope and
+ * - fragments rewritten after the freeze and merged in: the principles, scope and
  *   workspace consolidation (one `Ambiguity` principle, one `Recall rule` block;
- *   typed documents) and the scheduler's standing-order prose (flat `main`). Each
+ *   typed documents), the scheduler's standing-order prose and the `create_agent`
+ *   `Templates:` bullet from upstream #4112 (both flat `main`). Each
  *   is declared as its frozen `*.post-trim.md` body versus its live, digest-pinned
  *   body (`REWRITTEN_AFTER_FREEZE`). (nv-main's later edit to the `explain-diff-html`
  *   description does not reach these goldens: Skills lines carry the first sentence
@@ -101,6 +102,13 @@ const REWRITTEN_AFTER_FREEZE: readonly {
     file: 'tool-instructions/scheduling.md',
     frozen: 'scheduling.post-trim.md',
     digest: 'c4424e984d9d1619',
+    typed: false,
+    flat: true,
+  },
+  {
+    file: 'tool-instructions/agents.md',
+    frozen: 'agents.post-trim.md',
+    digest: '64ebb9bf1641a750',
     typed: false,
     flat: true,
   },
@@ -222,7 +230,7 @@ describe('composed-document section re-order is bounded to the declared set', ()
   }
 
   for (const name of FLAT) {
-    it(`${name}: differs from before only by the chain-reporting and scheduling rewrites`, () => {
+    it(`${name}: differs from before only by the chain-reporting, scheduling and agents rewrites`, () => {
       const before = fs.readFileSync(path.join(PRE_DIR, `${name}.md`), 'utf-8');
       const shipped = fs.readFileSync(path.join(GOLDEN_DIR, `${name}.md`), 'utf-8');
       // Flat bodies render fragments verbatim, so the fragment's own heading levels apply.

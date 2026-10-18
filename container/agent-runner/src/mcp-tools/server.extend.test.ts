@@ -280,6 +280,7 @@ describe('extendTool — fixture extension of create_agent (end to end)', () => 
     // key and touches nothing else".
     const baseKeys = Object.keys(schemaProps(createAgent)).sort();
     expect(baseKeys).toContain('name');
+    expect(baseKeys).toContain('template');
     expect(baseKeys).not.toContain('purpose');
 
     extendTool('create_agent', {
