@@ -3,7 +3,7 @@ title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, 
 type: concept
 group: slang-backends
 tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register, groupshared, threadgroup, buffer-layout]
-source_count: 19
+source_count: 21
 ---
 
 # Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, buffer layout rules, and GPU-free repro
@@ -23,11 +23,15 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 - **`__intrinsic_asm` arms are pasted with no cast, so a Metal arm that hard-codes a narrower type (`as_type<half>` in `float f16tof32(uint)`, `as_type<ushort>` in `uint f32tof16`) silently changes the declared type.** It compiles cleanly and fails only where MSL won't convert implicitly (`min(half, float)`); grep for hard-coded `as_type<half`/`as_type<ushort` instead of `as_type<$TR>`.
 - **Metal/CPU `groupshared` becomes an entry-point-local var**, so `canInstHaveSideEffectAtAddress` lets barriers and callees forward/DSE across it; treat `AddressSpace::GroupShared` roots as globals, but keep param roots exempt. Threadgroup declarations take no initializer; cite SPIRV-Cross, not the MSL spec.
 - **On Metal the buffer layout rule NAME is a lowering selector** (packing, struct clone, matrix lowering, `_natural`/`_default` type-name suffix), and CB `ScalarDataLayout` is silently ignored in IR and reflection alike. A new rule changes MSL identifiers and needs a layout IR op; diff whole files.
+- **Metal `ParameterBlock` matrices ignore `column_major` (v2025.18.2+)**, so they are transposed against SPIR-V and the cbuffer path; a real Metal-only transpose cause. Workaround: `-matrix-layout-row-major`.
+- **A mesh-shader repro must assign whole output structs**; per-field stores fire E56104 first and hide the real bug.
 - **CI noise on Metal-only PRs**: a Falcor-Perf failure can NEVER be caused by a Metal-only diff (Falcor is D3D12/Vulkan, never compiles for Metal); priority-yield + "Artifact not found" is infra, not code.
 
 ## Metal is GPU-free reproducible
 
 Most Slang Metal-backend bugs are inspectable via `slangc … -target metal` source emission with NO GPU/macOS runtime — including crashes: a null-deref during Metal *source* emission (e.g. `[outputtopology("point")]` mesh passing a scalar `OutputIndices<uint,N>`) makes `slangc` SIGSEGV (exit 139) right there. Use `SLANG_ASSERT=release-assert-only` and a prebuilt Debug `slangc` to demo it in seconds. The fold/hoist trap when reproducing *wrong-emission* bugs: an emit bug that only bites for non-trivial operands is masked because a compile-time-constant index gets constant-folded and a multi-use sub-expression gets hoisted to a temp — to surface the raw inline emission you need a runtime, single-use operand (e.g. drive an index from `SV_GroupIndex`, used once). Cross-check target divergence by emitting the same shader to `-target spirv-asm` for the correct reference ([reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md)).
+
+A release slangc is enough (`-target metal -stage mesh -entry main`). A mesh-shader repro must assign whole output structs (`V v; v.pos = ...; verts[0] = v;`). A per-field store (`verts[0].pos = ...`) fires E56104 ("mesh output must be assigned as whole struct") first and hides the real bug; the `[outputtopology("point")]` segfault (exit 139) in #12883 appears only with whole-struct assignment. On #12883 (four Metal bugs from a reporter asking how to contribute), maintainers applied only `Metal`, `reproduced` and `Needs reporter feedback`, not `bug` or `mesh shader` ([Metal emit bugs reproduce on Linux; mesh repros need whole-struct output assignment](../learnings/1792155327352-metal-emit-bugs-reproduce-on-linux-mesh-repros-nee.md)).
 
 ## Texture-intrinsic emit bugs: run the contrast controls, fix in the core module
 
@@ -159,10 +163,12 @@ which pointer queries map to Natural, leaving the buffer with two contradicting 
 (`MetalParameterBlockLayout` is the precedent). `extras/check-ir-stable-names.lua update` re-sorts
 and drops unrelated entries, so add the stable-name line by hand and then run `check`
 [IR layout rule NAME is a lowering selector and leaks into MSL type names](../learnings/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md).
+**`ParameterBlock` matrices ignore the matrix layout on Metal (since v2025.18.2).** Consider `struct C { float4x4 m; }; ParameterBlock<C> c;` compiled with `slangc -target metal`. The matrix is emitted as a native `matrix<float,4,4>` inside an `S_default` struct, whatever the layout: the slangc default column-major and an explicit `column_major` qualifier are both ignored. The cbuffer, `ConstantBuffer` and `uniform` paths still emit `_MatrixStorage_..._ColMajor` plus an unpack, and SPIR-V marks the same member `RowMajor` (Slang column-major) at identical reflection offsets, so one host upload reads back transposed on Metal only. The cause is that `MetalParameterBlockElementTypeLoweringPolicy::shouldLowerMatrixType` returns false (slang-ir-lower-buffer-element-type.cpp ~3241). That early pass still stamps `[PhysicalType]`, and the later Metal pass skips `[PhysicalType]` types (~1825), so the matrix is never lowered. v2025.18.1 is correct and v2025.19 through v2026.19 are wrong (suspect PR #8591, 6a2cf239a8). It is a real Metal-only transpose cause beside the by-design `mul(M,v)`→`v*M` swap on [[wiki/concepts/slang-backends-metal.md]]. Check for a native matrix vs `_MatrixStorage` in the MSL; the workaround is `-matrix-layout-row-major` (#13141) ([Metal ParameterBlock matrices ignore column_major since v2025.18.2](../learnings/1792157770273-metal-parameterblock-matrices-ignore-column-major-.md)).
+
 The same function's exact-target checks are what break the WGSL-via-Tint path; see
 [GLSL/WGSL emit and buffer layout](../concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md).
 
-**Source learnings (19):**
+**Source learnings (21):**
 - [Metal binding tests: an unbound kernel arg takes the first available index, so a zero-based or attribute-presence check passes on a buggy emitter; pick an index past all earlier slots and avoid t/s overlap (E39001) (#12294)](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)
 - [Metal lowering uses a one-operand makeVector(float4, packed_float4) as a conversion — don't count non-IRVectorType operands as scalars](../learnings/1790765098240-metal-lowering-uses-a-one-operand-makevector-float.md) — master's `c[i][0]` already miscompiles
 - [Slang IR: a one-operand makeVector can be a Metal packed-vector conversion, not a lane list](../learnings/1790766506870-slang-ir-a-one-operand-makevector-can-be-a-metal-p.md) — match element types; test tests/metal/swizzle-of-packed-vector-load.slang
@@ -183,3 +189,5 @@ The same function's exact-target checks are what break the WGSL-via-Tint path; s
 - [Metal ConstantBuffer ignores the L data-layout parameter (ScalarDataLayout) in both IR and reflection](../learnings/1791056669263-metal-constantbuffer-ignores-the-l-data-layout-par.md) — dropped silently, IR and reflection agree; fix both in lock step; verify offsets with -reflection-json.
 - [Slang IR layout rule NAME is a lowering selector and leaks into MSL type names](../learnings/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md) — gates packing/struct clone/matrix lowering; `_natural`→`_default` identifiers; add a layout IR op; hand-edit stable names.
 - [Metal __intrinsic_asm can emit a narrower MSL type than the declared Slang return type (f16tof32/f32tof16)](../learnings/1792075407123-metal-intrinsic-asm-can-emit-a-narrower-msl-type-t.md) — no cast is inserted; grep hard-coded `as_type<half`/`as_type<ushort` (#13653)
+- [Metal emit bugs reproduce on Linux; mesh repros need whole-struct output assignment](../learnings/1792155327352-metal-emit-bugs-reproduce-on-linux-mesh-repros-nee.md) — per-field stores fire E56104 and hide the `[outputtopology("point")]` segfault (#12883); triage labels
+- [Metal ParameterBlock matrices ignore column_major since v2025.18.2 (transposed vs SPIR-V)](../learnings/1792157770273-metal-parameterblock-matrices-ignore-column-major-.md) — `MetalParameterBlockElementTypeLoweringPolicy::shouldLowerMatrixType` false + `[PhysicalType]` skip; WAR `-matrix-layout-row-major` (#13141)

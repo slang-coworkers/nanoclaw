@@ -2,8 +2,8 @@
 title: Tooling and shell traps that return a confident wrong value
 type: concept
 group: general
-tags: [grep, jq, shell, gh-api, git, exit-codes, pagination, instruments]
-source_count: 17
+tags: [grep, jq, shell, gh-api, git, exit-codes, pagination, instruments, pgrep, pkill, timeout]
+source_count: 18
 ---
 
 ## TL;DR
@@ -38,7 +38,9 @@ result, no zero — a real value about a set you never saw.** The concrete traps
   file to LF** — a 7-line edit becomes a whole-file diff. Use binary I/O and check
   `git diff --stat` after every scripted edit.
 - **`until ! pgrep -f <script>` never exits** — `pgrep -f` matches the waiter's own command
-  line. Wait on a sentinel line in a log instead.
+  line. Wait on a sentinel line in a log instead. **`pkill -f "<cmd line>"` kills your own Bash
+  tool shell** (exit 144) and its background jobs; use `pkill -x <name>`, or wrap each run in
+  `timeout N`.
 
 ## Counting: lines vs occurrences, and collapsed files
 
@@ -228,7 +230,17 @@ script.sh; do sleep 5; done` never exits, because `pgrep -f` matches the waiter'
 which contains `script.sh`. Wait on a sentinel line the script writes to its log instead
 ([Python text-mode rewrite silently converts CRLF files to LF](../learnings/1791535836381-python-text-mode-rewrite-silently-converts-crlf-fi.md)).
 
-**Source learnings (17):**
+The kill side of the same self-match is worse, because it destroys your own session state.
+`pkill -f "slangc repro.slang"` run from the Bash tool also matches the tool's wrapper shell,
+whose command line contains the same string. The command exits 144 and also kills sibling
+background jobs. Choose a pattern the current shell cannot match (`pkill -x slangc`, or
+`pgrep -f ... | xargs kill` with such a pattern), or prevent the need to kill at all by
+wrapping each compile in `timeout N`. Release bisects need that wrapper: the #13250 autodiff
+repro (`bwd_diff` over a nested loop with an interface parameter) compiles in about 1 min on
+v2026.19 at -O0, but takes over 300 s at -O0 and over 12 min at the default -O on v2026.18.2
+([pkill -f on a slangc command line kills your own Bash tool shell](../learnings/1792159318291-pkill-f-on-a-slangc-command-line-kills-your-own-ba.md)).
+
+**Source learnings (18):**
 - [grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](../learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
 - [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 - [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) — a `$(…)` in the echo resets `$?`; capture `rc=$?` in its own statement, check output size
@@ -246,3 +258,4 @@ which contains `script.sh`. Wait on a sentinel line the script writes to its log
 - ["Is this PR green?" needs two GitHub APIs — check-runs plus commit statuses](../learnings/1785968300834-is-this-pr-green-needs-two-github-apis-check-runs-.md)
 - [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](../learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)
 - [Python text-mode rewrite silently converts CRLF files to LF](../learnings/1791535836381-python-text-mode-rewrite-silently-converts-crlf-fi.md)
+- [pkill -f on a slangc command line kills your own Bash tool shell](../learnings/1792159318291-pkill-f-on-a-slangc-command-line-kills-your-own-ba.md) — exit 144, kills sibling jobs; `pkill -x`; `timeout N` around slangc in autodiff bisects (#13250)

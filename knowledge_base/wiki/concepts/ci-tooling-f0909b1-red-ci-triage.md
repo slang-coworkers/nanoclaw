@@ -3,7 +3,7 @@ title: Classifying red Slang CI — infra/flake vs. real regression
 type: concept
 group: ci-tooling
 tags: [slang-ci, test-falcor, flake, infra, rerun, ci-triage, gpu-jobs, regression]
-source_count: 17
+source_count: 18
 ---
 
 # Classifying red Slang CI — infra/flake vs. real regression
@@ -19,7 +19,7 @@ source_count: 17
 - Known flaky/benign reds: `##[error]slang-test left generated or modified files` (leftover `moduleG####.slang` from a module test) when `100% of tests passed`; and the `build-windows-debug-cl-aarch64` job's `verify-documented-compiler-version.sh` **exit 4** — a `set -e`/`pipefail` command-substitution trip in that best-effort script (fix: `|| true`), NOT a `docs/building.md` allowlist gap.
 - **An ERR trap does not see everything:** without `set -E` it misses failures inside functions, and `trap '…; exit 0' ERR` turns the step green, which hides a broken check the way `|| true` does; prefer `exit "$status"` plus `continue-on-error`, and raise the trade-off with the maintainer.
 - A **manual `ci.yml` dispatch on a DRAFT PR** makes `test-falcor` fail fast (~15s, `failed_steps: []`) because the draft-gated *build* jobs that produce its artifact are skipped — it is not a code failure and clears on `gh pr ready`, not on a rerun.
-- **`gh run rerun` has hard age limits**: >30 days = "created over a month ago"; ~>1 week = "cannot be retried". Classification is moot for stale PRs — the only recovery is a fresh commit / `/ci`.
+- **`gh run rerun` has hard age limits**: >30 days = "created over a month ago"; ~>1 week = "cannot be retried". Classification is moot for stale PRs — the only recovery is a fresh commit / `/ci`. A bot run that *fails* at exactly 30 days is a different event: an expired `falcor-ci` approval, not code.
 - `gh run view --log-failed --job <id>` is the reliable log fetch; the `/actions/jobs/<id>/logs` REST endpoint often returns empty, and needs `gh api --allow-escape-sequences` to print ANSI-laden logs. `check-ci` failing is just the aggregate — find the real failing job.
 
 ## The overriding rule: read the fresh log, classify, then act
@@ -205,6 +205,12 @@ moot for any PR whose last run is more than a few days old; verify the age-rejec
 rerun call, check stderr) and log it `left`/non-actionable rather than burning tokens on log
 diving. The only recovery is the author pushing a fresh commit or an admin triggering `/ci`
 ([rerun hard age limits](../learnings/1788199935009-gh-run-rerun-has-hard-age-limits-old-ci-failures-o.md)).
+Do not confuse the 30-day rerun limit with a bot run that *fails* after exactly 30 days. That
+is GitHub auto-failing a `falcor-ci` deployment approval nobody granted (`falcor-build-approval-gate`,
+0 steps, every build/test job skipped): no code ran, and on a draft a fresh run only yields and
+queues another approval, so the matrix runs when the PR is marked ready (details on
+[rerun decision rules](ci-flake-rerun-decision-rules.md);
+[expired falcor-ci approval at 30 days](../learnings/1792173072753-bot-ci-run-failure-after-exactly-30-days-expired-f.md)).
 
 ## Uniform test failures: new-test vs. regression vs. inherited master breakage
 
@@ -249,7 +255,7 @@ first failed line, so later CHECK directives were never exercised on the failing
 pass there is predicted, not proven; confirm via a CI re-run
 ([reviewing a descope CI fix](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)).
 
-**Source learnings (17):**
+**Source learnings (18):**
 - [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md) — slang#13352: no `set -E` = top-level only; `$BASH_COMMAND` splits annotations; `exit 0` ≈ `|| true`, below `continue-on-error`; `gh api --allow-escape-sequences` for job logs.
 
 - [gh run rerun has hard age limits — old CI failures on stale PRs cannot be rerun](../learnings/1788199935009-gh-run-rerun-has-hard-age-limits-old-ci-failures-o.md) — >30d "over a month ago", >~1wk "cannot be retried", "already running"; classification moot for stale PRs.
@@ -268,3 +274,4 @@ pass there is predicted, not proven; confirm via a CI re-run
 - [verify-documented-compiler-version.sh exit-4 on windows-aarch64 is a set-e/pipefail trip, NOT a stale docs allowlist](../learnings/1789252710427-verify-documented-compiler-version-sh-exit-4-on-wi.md) — cl.exe exits 4 with no sources; VAR=$(pipeline) under set -e aborts before the empty-version guard; fix with || true.
 - [Slang CI verify-documented-compiler-version.sh exit 4 is a set -e/pipefail shell bug (reproduced, fixed #13042)](../learnings/1789254176751-slang-ci-verify-documented-compiler-version-sh-exi.md) — all branches exit 0; a never-fail script exiting non-zero = command-substitution trip, not business logic.
 - [Reviewing `|| true` CI-tolerance shell PRs: check every same-scope VAR=$(pipeline); errexit is OFF in command-substitution subshells](../learnings/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md) — enumerate structurally-identical substitutions; $(...) subshells safe unless inherit_errexit.
+- [Bot CI run 'failure' after exactly 30 days = expired falcor-ci environment approval, not code](../learnings/1792173072753-bot-ci-run-failure-after-exactly-30-days-expired-f.md) — distinct from the 30-day rerun refusal; no code ran

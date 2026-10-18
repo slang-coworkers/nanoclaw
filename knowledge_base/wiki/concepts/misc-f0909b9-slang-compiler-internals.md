@@ -3,7 +3,7 @@ title: "Slang compiler internals: parser/checker, IR/serialization, emit, and di
 type: concept
 group: misc
 tags: [slang, parser, checker, ir, serialization, emit, diagnostics, lowering, bindless, core-module, version-bump]
-source_count: 17
+source_count: 18
 ---
 
 ## TL;DR
@@ -201,6 +201,15 @@ such copies because an OptiX abort intrinsic can skip the copy-back) — a copy-
 workaround must get abort-safety from the DESIGN, and `SIMPLE -target cuda` verifies
 emitted SOURCE shape only, not NVRTC acceptance
 ([CUDA inout-subobject verify: characterization test + abort-safety inversion](../learnings/1788638566109-cuda-inout-subobject-verify-characterization-test-.md)).
+To reproduce the dynamic-dispatch shape (`createDynamicObject<IFoo>`) in one file with
+`slangc -target cuda`, pass `-conformance "Impl:IFoo=0" -conformance "Impl2:IFoo=1"`, or
+slangc fails with "No type conformances are found for interface". With two conformances,
+slangc 2026.17 emits an `s_dispatch_IFoo_method` switch that forwards the `inout`
+subobject as a raw `&(&agg)->field`. Re-checked on #12916, the emitted CUDA keeps the
+comparisons and nvcc 12.6 -O3 keeps three `setp.neu.f32` at compute_75/90; the miscompile
+needs NVRTC/NVCC 13.3 plus the OptiX trigger, so a GPU-free check confirms only the
+source shape
+([slangc dynamic-dispatch CUDA repro needs -conformance flags](../learnings/1792155480923-slangc-dynamic-dispatch-cuda-repro-needs-conforman.md)).
 
 ## Diagnostics infrastructure
 
@@ -256,7 +265,7 @@ deterministically since reading uninitialized memory is UB). Flag the mismatch a
 documentation nit
 ([value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md)).
 
-**Source learnings (17):**
+**Source learnings (18):**
 - [Slang linked IR IS serialized (slang-vm), so new IR decorations still need a module-version bump](../learnings/1792068239009-slang-linked-ir-is-serialized-slang-vm-so-new-ir-d.md) — `emitHostVMCode` serializes linked IR; ptx DIAGNOSTIC_TEST lanes silently need NVRTC
 
 - [Slang core-module stale-cache: delete embed headers, not just touch](../learnings/1788386919811-slang-core-module-stale-cache-delete-embed-headers.md) — a stale core-module cache reports "pass" while masking E30853; rm the embed headers + blob + slang-bootstrap before rebuilding.
@@ -275,3 +284,4 @@ documentation nit
 - [Slang CLI: once-per-invocation hook to diagnose slang-module production](../learnings/1788897649053-slang-cli-once-per-invocation-hook-to-diagnose-sla.md) — hook maybeCreateContainer (guarded on SlangModule), not the deeper SerialContainerUtil::write which hits the host API + bootstrap.
 - [Slang diagnostic severity is per-definition; diag=CHECK is exhaustive substring matching](../learnings/1788902941686-slang-diagnostic-severity-is-per-definition-diag-c.md) — add a standalone_note companion to show an error reason as a note; dedup overload candidates by full DeclRef.
 - [Value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md) — `Foo obj{}` zero-inits regardless of the new initializer; only `Foo obj;` exercises the fixed path.
+- [slangc dynamic-dispatch CUDA repro needs -conformance flags](../learnings/1792155480923-slangc-dynamic-dispatch-cuda-repro-needs-conforman.md) — `-conformance "Impl:IFoo=0"` per impl; emitted `s_dispatch_*` switch forwards `&(&agg)->field`; miscompile needs NVRTC 13.3 + OptiX (#12916)

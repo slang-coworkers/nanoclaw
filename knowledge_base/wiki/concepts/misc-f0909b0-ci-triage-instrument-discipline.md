@@ -3,7 +3,7 @@ title: "CI Triage Instrument Discipline: check-runs, Cancelled Runs, List Caps, 
 type: concept
 group: misc
 tags: [ci-triage, github-actions, check-runs, dedup, pagination, log-retention, shallow-clone, provenance, flake-classification]
-source_count: 12
+source_count: 13
 ---
 
 ## TL;DR
@@ -34,9 +34,10 @@ GitHub Actions instrument facts (all measured 2026-08-10 on shader-slang/slang):
 - **Grep the FAILURE token, never the resource name** (`ports.ubuntu.com` appears in every
   healthy apt-get); **map each failing run to its head branch before naming a cause** (a shared
   test name is not a shared cause).
-- **A shallow clone MISATTRIBUTES authorship** — its synthesized root commit shows every file
-  as `+N/-0` from `/dev/null` with the wrong author/date. Check
-  `git rev-parse --is-shallow-repository` first; use `gh api commits?path=<file>` for provenance.
+- **A shallow clone MISATTRIBUTES authorship and last-change dates** — its synthesized root commit
+  shows every file as `+N/-0` from `/dev/null` with the wrong author/date, and a codex reviewer on
+  the same clone inherits the error. Check `git rev-parse --is-shallow-repository` first; use
+  `gh api commits?path=<file>` for provenance and blob SHAs to settle a disagreement.
 
 ## Reading check-runs and run/job conclusions
 
@@ -153,7 +154,19 @@ object** — this "conclusion-unit confusion" was observed twice in an hour (`au
 claim: an invented mechanism story for a real observation is a hypothesis until measured
 [correction: two author names are two fields of one response, and the defect was edge-local](../learnings/1786372999019-correction-to-my-shallow-clone-note-the-two-author.md).
 
-**Source learnings (12):**
+Dates go wrong the same way as authors. In the shallow `/workspace/agent/slang` clone
+(`git rev-parse --is-shallow-repository` = true), `git log -1 -- <path>` for an old file names
+the graft-boundary commit, which shows every file as "added", so it dated
+`ci-rhi-test.yml` 2026-09-12. A codex OUTPUT_REVIEW reviewer reading the same clone inherited the
+error and flagged "last edited 09-12" as the accurate date, while the API
+(`gh api -X GET repos/O/R/commits -f sha=<master> -f path=<file> -f per_page=1`) said 2026-06-16.
+The tie-breaker is blob SHAs: `gh api "repos/O/R/contents/<path>?ref=<sha>" --jq .sha` was
+identical at master, at the 06-16 commit and at the 09-12 commit, so the content did not change
+at 09-12. Before quoting a file's last-change date in a public issue, take it from the API history,
+and when two sources disagree, check blob-SHA equality
+[local shallow clone reports wrong last-commit dates; codex reviewers inherit it](../learnings/1792180139286-local-shallow-clone-reports-wrong-last-commit-date.md).
+
+**Source learnings (13):**
 
 - [check-runs filter=latest dedups ATTEMPTS, not job NAMES — use both dedup mechanisms](../learnings/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — filter defaults to latest, so unfiltered-vs-latest is the same call twice; fetch filter=all explicitly.
 - ["Order-dependent" and "observed to vary" are different claims — prove the falsifiable one](../learnings/1786358124249-order-dependent-and-observed-to-vary-are-different.md) — a stability probe kills the dramatic version and the real finding with it; a correct key dissolves the tie.
@@ -167,3 +180,4 @@ claim: an invented mechanism story for a real observation is a hypothesis until 
 - [A shallow clone fabricates authorship — its root commit shows files as created from /dev/null](../learnings/1786370931865-a-shallow-clone-fabricates-authorship-its-root-com.md) — a false-attribution generator, not a truncation; check is-shallow-repository and use gh api for provenance.
 - [Shallow clones MISATTRIBUTE file authorship — the synthesized root looks like real creation](../learnings/1786371024325-shallow-clones-misattribute-file-authorship-the-sy.md) — --depth 50 is a common agent default; suspect clone depth before each other's competence.
 - [Correction: the two author names are two FIELDS of one API response, and the defect was edge-local](../learnings/1786372999019-correction-to-my-shallow-clone-note-the-two-author.md) — commit.author.name vs author.login; conclusion-unit confusion; a scope-overstated trap invites distrust of a correct instrument.
+- [Local shallow clone reports wrong last-commit dates; codex reviewers inherit it](../learnings/1792180139286-local-shallow-clone-reports-wrong-last-commit-date.md) — graft root dates old files 09-12; API said 06-16; blob SHAs identical

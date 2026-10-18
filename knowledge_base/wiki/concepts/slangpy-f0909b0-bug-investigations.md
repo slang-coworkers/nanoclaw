@@ -1,9 +1,9 @@
 ---
-title: SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, and triage of silently-fixed issues
+title: SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, unbound dispatch keys (#1231), and triage of silently-fixed issues
 type: concept
 group: slangpy
 tags: [slangpy, slang-rhi, autodiff, atomics, d3d12, descriptor-heap, cpu-backend, triage, cross-repo]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -34,6 +34,10 @@ boundary. Recurring findings:
   `shutdown()` pops only the top, so closing the older of two live devices first leaves a
   dangling `Device*` that nanobind later dereferences (UBSan invalid vptr / segfault). It only
   reproduces in serial pytest (nightly sanitizers), not xdist CI; read that job's log first.
+- **`ComputeKernel.dispatch(**kwargs)` and cursor dict writes ignore keys that are not fields
+  (slangpy#1231)**, so a global passed outside `vars=` or a misspelled key leaves a resource
+  unbound: CPU segfaults, CUDA fails at the next readback, Vulkan silently does nothing. Fix it in
+  the dispatch lambda; other callers rely on the permissive shared writer.
 - **Triage discipline for cross-repo meta-issues**: a vendored dep in `external/`
   is not proof it's integrated (verify call sites); a stale architecture-refactor
   issue is a prime silently-fixed orphan (verify closing PRs + the cross-reference
@@ -206,6 +210,12 @@ different processes. Triage rule: when a SlangPy crash looks platform-specific, 
 serial asan-ubsan job log first. It carries a symbolized UBSan frame and the exact stop point
 ([current-device stack: auto-push + top-only pop → dangling Device*](../learnings/1791595717857-slangpy-current-device-stack-auto-push-top-only-po.md)).
 
+## `ComputeKernel.dispatch` and cursor dict writes silently drop unknown keys (slangpy#1231)
+
+Consider a kernel with a global `buf` dispatched as `kernel.dispatch(thread_count, buf=b)`. The global belongs in `vars=`, but the call raises no error and `buf` is left unbound; a misspelled `vars` key behaves the same way. The cause is the dict-to-struct write in `src/slangpy_ext/device/cursor_utils.h:798-810` (and its numpy twin at :553-565). It loops over the struct's FIELDS and checks `dict.contains(name)`, so dict keys that are not fields are never visited. What the unbound resource does next depends on the backend (measured on L40S/Linux at main b89a3827 and 0.43.1): CPU segfaults; CUDA returns no error from the dispatch, then the next readback fails with `CUDA_ERROR_ILLEGAL_ADDRESS` and shutdown aborts with "Failed to reset slang-rhi task pool"; Vulkan is a silent no-op. Nothing in the stack catches it: SGL, slangpy, and the CPU, CUDA and Vulkan backends of slang-rhi do not check for unbound resources, and slang-rhi#901 adds a check for WebGPU only.
+
+To tell where a name belongs, `kernel.reflection.find_field(n).is_valid()` is true only for globals, and `kernel.reflection[<entry>].find_field(n).is_valid()` is true only for entry-point parameters; `slangpy/testing/helpers.py:413` already routes names this way. The fix belongs in the dispatch lambda, not in the shared cursor writer, because `Function.set()` uniforms, `dispatchdata.py`, and marshalls such as `builtin/tensor.py:169` (which write plain uniforms into a diff-tensor cursor) depend on the permissive loop [ComputeKernel.dispatch / ShaderCursor dict writes silently drop unknown keys](../learnings/1792162048265-slangpy-computekernel-dispatch-shadercursor-dict-w.md).
+
 ## Triage discipline: silently-fixed orphans, unintegrated vendored deps, and DeepWiki
 
 Three triage learnings share a theme — verify against primary source before treating an
@@ -254,7 +264,7 @@ slangpy#886 was ultimately fixed by PR #1182, and the fix confirms the right lay
 
 **Static struct members are invisible to `Type.fields`, and an `InstanceList` drops them silently (slangpy#126).** SlangPy's `Struct.struct.fields` (native `StructType::build_fields`, `src/sgl/refl/type.cpp` ~671) comes from Slang's `TypeReflection::fields()`, which already excludes static members, so a `static const int b = 5;` is simply absent. A dict argument naming it fails clearly ("has no field 'b'", `boundvariable.py` ~316), but `InstanceList.__setattr__` (`instance.py` ~87-100) stores it as a Python attribute and the value is lost. To tell a static member from a typo, walk `device.load_module(path).module_decl.find_first_child_of_kind(DeclReflection.Kind.struct, "Test").children` and test `c.as_variable().has_modifier(ModifierID.static)`; `spy.Module(...).device_module.module_decl` raises "module_decl() is not supported for composed modules" (`shader.cpp` ~1204), so walk `device_module.source_modules` or add a native helper. Since Slang #7993 (2025-07-30) `static const T x;` with no initializer is load-time error E31225, so old repros now fail at `Module.load_from_file` before kernel generation [detecting static struct members](../learnings/1792065039736-slangpy-detecting-static-struct-members-type-field.md).
 
-**Source learnings (18):**
+**Source learnings (19):**
 
 - [slangpy#222 title is wrong — AMD-Windows grads collapse into element 0, not "always 0"](../learnings/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — `[72,0,0,0]` is a scatter-address bug; verify a title against the actual numbers.
 - [slangpy#222 root cause: slang-rhi advertises float-atomic-ADD off the BASE atomics bit](../learnings/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — a capability atom ≠ runtime support; a coarse `Feature::AtomicFloat` guard can't fix it; cross-repo fix.
@@ -272,5 +282,6 @@ slangpy#886 was ultimately fixed by PR #1182, and the fix confirms the right lay
 - [SlangPy CPU dispatch: zero DeviceLimits + pytest device classification (#1136/#1137)](../learnings/1788480806317-slangpy-cpu-dispatch-zero-devicelimits-stale-local.md) — a device test needs a `device_type` param to run under scoped selections; CPU excluded from DEFAULT_DEVICE_TYPES.
 - [CPU large-dispatch coverage in slangpy: crossing the Y row is cheap (~3-5s)](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md) — #1137 review: add cpu to test_large_dispatches parametrization; limits.y==0 → unbounded; mutation check confirms wiring.
 - [SlangPy current-device stack: auto-push + top-only pop makes creation-order close leave a dangling Device*](../learnings/1791595717857-slangpy-current-device-stack-auto-push-top-only-po.md) — slang#13558; serial-only crash (xdist hides it); check the nightly asan-ubsan log first.
+- [SlangPy ComputeKernel.dispatch / ShaderCursor dict writes silently drop unknown keys (slangpy#1231)](../learnings/1792162048265-slangpy-computekernel-dispatch-shadercursor-dict-w.md) — the writer loops over fields, not keys; per-backend symptoms; `find_field(n).is_valid()` routes globals vs entry-point params; fix in the dispatch lambda
 - [Localizing a CPU-only SlangPy segfault to a layer (#1138)](../learnings/1788481634992-localizing-a-cpu-only-slangpy-segfault-to-a-layer-.md) — GPU-works/CPU-crashes with opaque-bytes RHI + backend-agnostic slangpy ⇒ compiler CPU/host-callable target bug; reflection probe is cheapest.
 - [slangpy: detecting static struct members (Type.fields omits them; DeclReflection has it)](../learnings/1792065039736-slangpy-detecting-static-struct-members-type-field.md) — `InstanceList.__setattr__` drops them; `has_modifier(ModifierID.static)`; E31225 (slangpy#126)

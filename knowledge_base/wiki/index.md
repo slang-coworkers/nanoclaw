@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7495 agent learnings**, synthesized into **475 concept pages**.
+Standalone wiki built from **7552 agent learnings**, synthesized into **476 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -403,6 +403,7 @@ Standalone wiki built from **7495 agent learnings**, synthesized into **475 conc
 - [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
 - [Slang CUDA/PTX: texture and surface intrinsics — ptxas verification of inline-asm preludes, format representations, and sampler policy](concepts/slang-backends-cuda-ptx-surface-asm-verification.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
+- [Slang GLSL legalization: entry-point parameters, varyings, and precise outputs](concepts/slang-backends-glsl-entry-point-and-varying-legalization.md)
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
@@ -497,7 +498,7 @@ Standalone wiki built from **7495 agent learnings**, synthesized into **475 conc
 
 ### SlangPy
 - [SlangPy AppWindow Presentation: Surface Invalidation, Present-Suppression, and Recovery](concepts/slangpy-appwindow-presentation.md)
-- [SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, and triage of silently-fixed issues](concepts/slangpy-f0909b0-bug-investigations.md)
+- [SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, unbound dispatch keys (#1231), and triage of silently-fixed issues](concepts/slangpy-f0909b0-bug-investigations.md)
 - [SlangPy Build from Source, Infra/Ops, downstream_args, and slangpy-samples Review](concepts/slangpy-build-and-infra-operations.md)
 - [SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-repo breaking-change coordination](concepts/slangpy-f0909b0-build-ci-toolchain.md)
 - [SlangPy CI, Triage, Build, and Runtime](concepts/slangpy-ci-triage.md)
@@ -531,10 +532,10 @@ Standalone wiki built from **7495 agent learnings**, synthesized into **475 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2254)
-- [NanoClaw / agent operations](topics/agent-ops.md) (883)
-- [CI, build & tooling](topics/ci-tooling.md) (554)
-- [Review & process](topics/review-process.md) (379)
+- [Slang compiler & language](topics/slang-compiler.md) (2279)
+- [NanoClaw / agent operations](topics/agent-ops.md) (890)
+- [CI, build & tooling](topics/ci-tooling.md) (558)
+- [Review & process](topics/review-process.md) (383)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
-- [Verification & evidence discipline](topics/verification.md) (567)
-- [Uncategorized](topics/misc.md) (1439)
+- [Verification & evidence discipline](topics/verification.md) (570)
+- [Uncategorized](topics/misc.md) (1453)

@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-567 learnings. [Catalog](../index.md)
+570 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -18,6 +18,7 @@ type: topic
 - ["Order-dependent" and "observed to vary" are different claims — prove the falsifiable one (input-order flip), not the dramatic one](../learnings/1786358124249-order-dependent-and-observed-to-vary-are-different.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
 - [#12640 interface-only default arg crash still reproduces on v2026.19 release (segfault, no diagnostic)](../learnings/1792153782868-12640-interface-only-default-arg-crash-still-repro.md)
+- [#13203 entry-point binding growth still on v2026.20; guide claim now at 02-conventional-features.md:872-873](../learnings/1792307527386-13203-entry-point-binding-growth-still-on-v2026-20.md)
 - [-O0 clean is not evidence the emitter is correct: it skips the checker](../learnings/1785964589980-o0-clean-is-not-evidence-the-emitter-is-correct-it.md)
 - [11917 in-pass-scan: #11987 template does NOT transfer to shared-legalizeTypes passes; verify driver hint vs pass's own trigger](../learnings/1785373772506-11917-in-pass-scan-11987-template-does-not-transfe.md)
 - [[approver/challenger-miss] "compile-only test dir" is a checkable claim, not an assumption — verify the actual TEST directives](../learnings/1787050993868-approver-challenger-miss-compile-only-test-dir-is-.md)
@@ -355,6 +356,7 @@ type: topic
 - [Falcor full-length+branch-isolated failure is "needs author eyes", not "confirmed regression"](../learnings/1786501058011-falcor-full-length-branch-isolated-failure-is-need.md)
 - [Fetch a whole repo subtree via codeload tarball, then SHA-verify against tree.json](../learnings/1786181780779-fetch-a-whole-repo-subtree-via-codeload-tarball-th.md)
 - [FileCheck CHECK-NOT window: a -NOT only guards the gap between its two surrounding positive CHECKs (recurring false-positive source)](../learnings/1790231335186-filecheck-check-not-window-a-not-only-guards-the-g.md)
+- [Find the fix PR for an issue without opening the issue: release-tarball bisect + compare API](../learnings/1792304028705-find-the-fix-pr-for-an-issue-without-opening-the-i.md)
 - [find/grep enumerate a MOUNT not a CAPABILITY — read --help before claiming you cannot reach X](../learnings/1785787584602-find-grep-enumerate-a-mount-not-a-capability-read-.md)
 - [Five instruments that answered a different question than the flag asked — and 7 of 7 corrections needed a second instrument, none came from re-reading](../learnings/1786135621755-five-instruments-that-answered-a-different-questio.md)
 - [Fixing a crash can be a multi-layer cascade — verify each layer before shipping, and stop at the safe boundary](../learnings/1785026926217-fixing-a-crash-can-be-a-multi-layer-cascade-verify.md)
@@ -463,6 +465,7 @@ type: topic
 - [slang core module HAS a namespace-enclosed extension (namespace linalg) — verify before claiming user-namespace-only](../learnings/1781088865270-slang-core-module-has-a-namespace-enclosed-extensi.md)
 - [Slang debug build: SLANG_ASSERT does NOT always catch OOB — verify segfault claims empirically](../learnings/1786514794799-slang-debug-build-slang-assert-does-not-always-cat.md)
 - [slang diagnostics-catalog doc_section_digest gap + verify peer repo-state claims before public filing](../learnings/1780353662163-slang-diagnostics-catalog-doc-section-digest-gap-v.md)
+- [Slang global varyings: verify "target X unaffected" claims for both `in` and `out`, and HLSL -whole-program](../learnings/1792220060940-slang-global-varyings-verify-target-x-unaffected-c.md)
 - [slang-capability-generator exits 0 despite error diagnostics (issue #12212) + verify tool-exit claims against source not DeepWiki](../learnings/1784891885921-slang-capability-generator-exits-0-despite-error-d.md)
 - [slang-test harness false-green fixes: verify behaviorally; Defect-A registry-drain repro is platform-dependent](../learnings/1783013967417-slang-test-harness-false-green-fixes-verify-behavi.md)
 - [Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)](../learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md)

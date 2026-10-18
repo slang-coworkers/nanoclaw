@@ -2,8 +2,8 @@
 title: "Slang compiler & runtime internals: codegen, type-system, CUDA, arch bugs, and slang-rhi"
 type: concept
 group: misc
-tags: [slang, codegen, ir, type-system, buffer-load, cuda, nvrtc, andtype, uninitialized-memory, aarch64, slang-rhi, vulkan, root-cause]
-source_count: 9
+tags: [slang, render-test, ubuffer-stride, heap-corruption, codegen, ir, type-system, buffer-load, cuda, nvrtc, andtype, uninitialized-memory, aarch64, slang-rhi, vulkan, root-cause]
+source_count: 10
 ---
 
 ## TL;DR
@@ -33,6 +33,10 @@ representation fix* rather than a downstream band-aid. Recurring lessons:
   `SIMPLE_EXTENSION_FEATURE` blocks against the same Vulkan feature struct (cyclic
   pNext → driver hang). Static "this pool is leaked" analysis is not proof it is
   live on a given repro path — set a debugger breakpoint on the creation function.
+- **A render-test `ubuffer` with stride 1 or 2 is packed into uint32 words** (since
+  #10590), so its byte size can be much smaller than `count × 4`. A shader that writes
+  it as `float*` overruns it, and on lavapipe that corrupts the glibc heap at teardown
+  where ASan cannot see it — the likely cause of #12706.
 
 ## Type-system: conjunctions and unsupported-but-formable shapes
 
@@ -92,9 +96,9 @@ even though the wrong *answer* only reproduces on aarch64; the fix is `Type type
 Type::Unknown;`
 [aarch64-only wrong answers trace to uninitialized PathInfo::type](../learnings/1788357185401-aarch64-only-wrong-answers-in-slangi-hostvm-tests-.md).
 
-## slang-rhi: task-pool root-cause, style, and pNext hazard
+## slang-rhi: #12706 root cause, style, and pNext hazard
 
-Three slang-rhi atoms. The #12706 teardown heap-corruption was *wrongly* attributed
+The #12706 teardown heap-corruption was *wrongly* attributed
 to the leaked process-global task pool — the reporter set an LLDB breakpoint on
 `globalTaskPool()` and it was never hit (the pool is reached only for
 `entryPointCount > 1`/OptiX, and the repro has one compute entry point); the ~29
@@ -102,6 +106,7 @@ threads were lavapipe's own llvmpipe workers. Lesson: a thread count matching
 `hardware_concurrency()` does not identify which pool, and static "this pool is
 leaked" analysis is not proof it is live
 [slang-rhi global task pool not on the repro path](../learnings/1788199925073-slang-rhi-global-task-pool-is-not-on-single-entry-.md).
+The fix built on the pool theory (PR #12710) was closed without merging. A later static reading at master (2026-10-16, not yet confirmed by a run) points to a test-data overrun instead. `tests/neural/basic-inline-vector-test-bindless-storage.slang` declares `//TEST_INPUT: set parameters = ubuffer(data=[0 x10], stride=2)`. Since #10590 (2026-03), render-test packs stride-1 and stride-2 values into uint32 words (`tools/render-test/render-test-main.cpp:476-503`), and the buffer size is max(words×4, elementCount×stride) with `elementCount` defaulting to 1 (`shader-input-layout.h:74`). So the buffer is 20 bytes. The Vulkan variant (TEST_HALF=0, TEST_POINTER=1) binds it as `float*` through a buffer device address and writes `parameters[0..9]`, which is 40 bytes: an out-of-bounds GPU write. On lavapipe with older Mesa (≤24.1), device memory is an exact-size `posix_memalign` on the glibc heap, so the overrun smashes the next chunk header. That explains the varying glibc messages, why the failure shows only at teardown, and why ASan sees nothing, since the llvmpipe JIT code is not instrumented. The rule: when a test's `ubuffer` uses stride 1 or 2, check that the bytes the shader writes fit in the packed size, because stride now sets the per-value packing width and not only the element stride. The likely fix is `stride=4` (or an explicit count) for that buffer [#12706 heap corruption: likely an OOB write from a stride=2 ubuffer](../learnings/1792154361888-12706-heap-corruption-likely-an-oob-write-from-a-s.md).
 On style, slang-rhi rejects the C++17 `if (init; cond)` pattern that the slang
 *compiler* CLAUDE.md explicitly recommends — declare the variable on its own line;
 this convention divergence must not be carried across repos
@@ -113,7 +118,7 @@ keep one extension block chained once and add per-subfeature `push_back`s inside
 body, guarded on the already-filled sub-bits
 [slang-rhi pNext hazard: never chain the same struct twice](../learnings/1788373676487-slang-rhi-pnext-hazard-never-add-multiple-simple-e.md).
 
-**Source learnings (9):**
+**Source learnings (10):**
 
 - [CORRECTION: large-array struct buffer-load copy is a by-value use that blocks narrowing](../learnings/1788199334885-correction-large-array-struct-buffer-load-copy-is-.md) — #12786; retracts the method-specific/`[constref]` framing; trigger is a live whole-value use passed to a call; fix axis is buffer-load narrowing, not `this` passing-mode (57 regressions).
 - [CUDA fp-mode-fast gating: F16 tan/pow bypass + prelude #ifdef bodies untested](../learnings/1788291035439-cuda-fp-mode-fast-gating-f16-tan-pow-bypass-prelud.md) — #12872; grep F16_x/F64_x that call libm directly when gating F32_x; #ifdef prelude bodies need an offline-nvcc fixture, not just an emit filecheck.
@@ -122,5 +127,6 @@ body, guarded on the already-filled sub-bits
 - [aarch64-only wrong-answers in slangi/HostVM tests trace to uninitialized PathInfo::type](../learnings/1788357185401-aarch64-only-wrong-answers-in-slangi-hostvm-tests-.md) — #12879; uninit-memory UB shows as arch-specific wrong answers; Valgrind flags it on x86_64; file the tracking issue immediately when descoping.
 - [Surfacing NVRTC PCH create-status to a Slang unit test](../learnings/1788341328356-surfacing-nvrtc-pch-create-status-to-a-slang-unit-.md) — #12622; -pch never changes PTX so surface a Slang-owned token; gate on leading #include + version 12.8; load the status fn outside the X-macro; NO_PCH_CREATE_ATTEMPTED ≠ reuse.
 - [slang-rhi global task pool is NOT on the single-entry-point render-test repro path](../learnings/1788199925073-slang-rhi-global-task-pool-is-not-on-single-entry-.md) — #12706; breakpoint on the pool creation fn was never hit; ~29 threads were lavapipe's; thread count ≠ pool identity; glibc-2.35-gated.
+- [#12706 heap corruption: likely an OOB write from a stride=2 ubuffer, not (only) the slang-rhi task pool](../learnings/1792154361888-12706-heap-corruption-likely-an-oob-write-from-a-s.md) — render-test packs stride-1/2 values into uint32 words, so the buffer is 20 bytes while the Vulkan pointer variant writes 40; PR #12710 closed unmerged; static, not run-confirmed
 - [slang-rhi rejects C++17 if-init statements (diverges from slang compiler)](../learnings/1788361969335-slang-rhi-rejects-c-17-if-init-statements-diverges.md) — PR #845; declare the variable on its own line; the compiler-repo if-init recommendation must not carry into slang-rhi.
 - [slang-rhi pNext hazard: never add multiple SIMPLE_EXTENSION_FEATURE blocks for one struct](../learnings/1788373676487-slang-rhi-pnext-hazard-never-add-multiple-simple-e.md) — slang-rhi#850; addFeatureExtension self-links; a second call → cyclic pNext → driver hang; add guarded per-subfeature push_backs inside one chained block.

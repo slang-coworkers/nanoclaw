@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-379 learnings. [Catalog](../index.md)
+383 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -144,6 +144,7 @@ type: topic
 - [Dispatching background reviewers: nohup & inside run_in_background double-backgrounds (no completion signal)](../learnings/1788203787495-dispatching-background-reviewers-nohup-inside-run-.md)
 - [Don't add bare LICENSES/ SPDX texts in a REUSE repo — reuse lint fails on unused licenses (empirically verified)](../learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md)
 - [Don't assert an absence you didn't run the probe for — truncated grep preview and skipped nvidia-smi both produced false negatives in one PR](../learnings/1787049086568-don-t-assert-an-absence-you-didn-t-run-the-probe-f.md)
+- [Don't end a reviewer turn waiting on a background job; the session can be torn down and the verdict silently dropped](../learnings/1792239292199-don-t-end-a-reviewer-turn-waiting-on-a-background-.md)
 - [Don't force-push over a peer-reviewed commit — it strands the reviewed base and blocks a delta re-review](../learnings/1790042981885-don-t-force-push-over-a-peer-reviewed-commit-it-st.md)
 - [Don't instruct coworkers to mark PRs ready-for-review (drafts-only is admin-set)](../learnings/1780418605612-don-t-instruct-coworkers-to-mark-prs-ready-for-rev.md)
 - [Don't relay mid-flight review status upstream as settled — wait for it to stabilize](../learnings/1789445084069-don-t-relay-mid-flight-review-status-upstream-as-s.md)
@@ -219,6 +220,7 @@ type: topic
 - [Review deliverables need an ETA-relative staleness trigger, not the 48h dropped-deliverable window](../learnings/1784622307704-review-deliverables-need-an-eta-relative-staleness.md)
 - [Review lens: a threaded/recursive parameter can be "tested" only via its LOCAL checks — revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md)
 - [Review re-send after GC: check merge state + head-delta, reconstruct from stream logs](../learnings/1787558224979-review-re-send-after-gc-check-merge-state-head-del.md)
+- [Review round deltas: diff the PR's own net change across a merge, and watch for silently reverted nits](../learnings/1792264297828-review-round-deltas-diff-the-pr-s-own-net-change-a.md)
 - [Review severity: doc-vs-behavior conflict on a maintainer-owned design point is a QUESTION, not a BLOCK](../learnings/1785539785590-review-severity-doc-vs-behavior-conflict-on-a-main.md)
 - [Review-completion Monitor: anchor filters to exit markers, not streamed JSON](../learnings/1784380841597-review-completion-monitor-anchor-filters-to-exit-m.md)
 - [Review-resume sweep: check merge-state, token validity, artifact survival before re-running](../learnings/1784270233557-review-resume-sweep-check-merge-state-token-validi.md)
@@ -301,11 +303,13 @@ type: topic
 - [Reviewing a pass-gating PR: green tests plus byte-identical output cannot detect a dead flag](../learnings/1785827882400-reviewing-a-pass-gating-pr-green-tests-plus-byte-i.md)
 - [Reviewing a PR whose head keeps moving (synchronize/merge churn)](../learnings/1784006371550-reviewing-a-pr-whose-head-keeps-moving-synchronize.md)
 - [Reviewing a race fix: check whether the "existing regression guards" are actually enabled](../learnings/1785777415067-reviewing-a-race-fix-check-whether-the-existing-re.md)
+- [Reviewing a stale-CHECK refresh: run the CHECK block against output that has the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md)
 - [Reviewing lowerCopyLogical untyped-flavor fixes: single-element copy only tests the struct-field branch](../learnings/1789177486273-reviewing-lowercopylogical-untyped-flavor-fixes-si.md)
 - [Reviewing PreToolUse gh-command guards: two bypass classes (title-token spoof, glued short-flag fail-open)](../learnings/1783879965262-reviewing-pretooluse-gh-command-guards-two-bypass-.md)
 - [Round-2 PR re-review of a doc/test/refactor fix = targeted diff, not a full pipeline re-run](../learnings/1788381184331-round-2-pr-re-review-of-a-doc-test-refactor-fix-ta.md)
 - [Round-2 PR review: delta-verify instead of full pipeline re-run when fix logic is unchanged](../learnings/1789491455857-round-2-pr-review-delta-verify-instead-of-full-pip.md)
 - [Round-2 review of a "factored guard into shared helper" fix: check doc-overstatement + defensive guards](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md)
+- [Run a reviewer's shapes plus a NON-recursive control before calling a residual 'recursion-only'](../learnings/1792301451882-run-a-reviewer-s-shapes-plus-a-non-recursive-contr.md)
 - [Scope a bot follow-up-review verdict to the reviewed diff — never say "merge-ready" / "complete" from a scoped review, and attribute test-pass to whoever ran it](../learnings/1789173449943-scope-a-bot-follow-up-review-verdict-to-the-review.md)
 - [Scoped to verify the bug? Read the fix's open review threads — the fix may contain the same bug class](../learnings/1785985363443-scoped-to-verify-the-bug-read-the-fix-s-open-revie.md)
 - [Self-review catches errors only when it executes a check — re-reading your own claim catches nothing](../learnings/1785831745909-self-review-catches-errors-only-when-it-executes-a.md)

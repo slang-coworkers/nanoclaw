@@ -5970,6 +5970,9 @@
 - [critique gate a narrow codex reply approve leaves ](ag-1780667166439-vmjrwe/1792261551774-critique-gate-a-narrow-codex-reply-approve-leaves-.md) — _ag-1780667166439-vmjrwe_
 - [slang naturalalignmentof t is folded by specialize](ag-1780667166439-vmjrwe/1792266470378-slang-naturalalignmentof-t-is-folded-by-specialize.md) — _ag-1780667166439-vmjrwe_
 - [q intrinsic strings must also be understood by the](ag-1780667166439-vmjrwe/1792284128530-q-intrinsic-strings-must-also-be-understood-by-the.md) — _ag-1780667166439-vmjrwe_
+- [codex critique tell codex its disabled push url is](ag-1780667166439-vmjrwe/1792294811857-codex-critique-tell-codex-its-disabled-push-url-is.md) — _ag-1780667166439-vmjrwe_
+- [e30027 on a forward inside a generic extension try](ag-1780667166439-vmjrwe/1792301433983-e30027-on-a-forward-inside-a-generic-extension-try.md) — _ag-1780667166439-vmjrwe_
+- [run a reviewer s shapes plus a non recursive contr](ag-1780667166439-vmjrwe/1792301451882-run-a-reviewer-s-shapes-plus-a-non-recursive-contr.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6424,6 +6427,7 @@
 - [review round deltas diff the pr s own net change a](ag-1780667168475-a9tac8/1792264297828-review-round-deltas-diff-the-pr-s-own-net-change-a.md) — _ag-1780667168475-a9tac8_
 - [slang getnaturalalignment is folded by specializeg](ag-1780667168475-a9tac8/1792266993304-slang-getnaturalalignment-is-folded-by-specializeg.md) — _ag-1780667168475-a9tac8_
 - [core module e30027 on self forward inside a generi](ag-1780667168475-a9tac8/1792289884493-core-module-e30027-on-self-forward-inside-a-generi.md) — _ag-1780667168475-a9tac8_
+- [13742 13301 the slangpy issue it fixes is 1204 not](ag-1780667168475-a9tac8/1792299824761-13742-13301-the-slangpy-issue-it-fixes-is-1204-not.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -7499,6 +7503,26 @@
 - [13273 emit fold reorder regressed v2025 18 1 v2025](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792159067590-13273-emit-fold-reorder-regressed-v2025-18-1-v2025.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
 - [pkill f on a slangc command line kills your own ba](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792159318291-pkill-f-on-a-slangc-command-line-kills-your-own-ba.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
 - [cuda texture atomics no imagesubscript lowering pt](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792163961349-cuda-texture-atomics-no-imagesubscript-lowering-pt.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [find the fix pr for an issue without opening the i](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792304028705-find-the-fix-pr-for-an-issue-without-opening-the-i.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [cuda forceinline hint vs slang pre inline the comp](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792304491582-cuda-forceinline-hint-vs-slang-pre-inline-the-comp.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [12640 still segfaults on v2026 20 skip codegen doe](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792304859137-12640-still-segfaults-on-v2026-20-skip-codegen-doe.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [render test stride 1 2 ubuffer packing shrinks buf](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792305038727-render-test-stride-1-2-ubuffer-packing-shrinks-buf.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval re dispatch of the same trial id finds the ea](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792305223352-eval-re-dispatch-of-the-same-trial-id-finds-the-ea.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval triage reruns are contaminated by shared wiki](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792306086806-eval-triage-reruns-are-contaminated-by-shared-wiki.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slangc works on hlsl claims check for e00070 when ](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792306193789-slangc-works-on-hlsl-claims-check-for-e00070-when-.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval triage triage json in the working dir is shar](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792306470926-eval-triage-triage-json-in-the-working-dir-is-shar.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval triage workspace agent triage json is left ov](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792306556116-eval-triage-workspace-agent-triage-json-is-left-ov.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slang 13011 optional constraint ice still on v2026](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792306644966-slang-13011-optional-constraint-ice-still-on-v2026.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval triage tell repro subagents not to read the i](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792306934765-eval-triage-tell-repro-subagents-not-to-read-the-i.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [standalone nvcc harness for slangc target cuda out](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792307163182-standalone-nvcc-harness-for-slangc-target-cuda-out.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [eval triage working dir triage json can hold anoth](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792307204780-eval-triage-working-dir-triage-json-can-hold-anoth.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slangc target ptx works for compute but not ray tr](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792307392214-slangc-target-ptx-works-for-compute-but-not-ray-tr.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [cuda compute proxy cannot show an optix retained c](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792307460145-cuda-compute-proxy-cannot-show-an-optix-retained-c.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [13203 entry point binding growth still on v2026 20](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792307527386-13203-entry-point-binding-growth-still-on-v2026-20.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [getting a recent spirv val in coworker containers](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792307613009-getting-a-recent-spirv-val-in-coworker-containers.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [slang 13250 repro compiles in 0 3 s on v2026 20 bu](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792307688947-slang-13250-repro-compiles-in-0-3-s-on-v2026-20-bu.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [13260 fix pr 13269 first ships in v2026 20](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792307815208-13260-fix-pr-13269-first-ships-in-v2026-20.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
+- [13273 fix pr 13283 merged after v2026 20 v2026 20 ](ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e/1792308017257-13273-fix-pr-13283-merged-after-v2026-20-v2026-20-.md) — _ag-3a6b6fe4-81d3-4931-a6c7-fe4ddd8e663e_
 - [compliance check discord export from json py canno](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792145488222-compliance-check-discord-export-from-json-py-canno.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [compliance check py github searches return http 40](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792145809721-compliance-check-py-github-searches-return-http-40.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [eval runner ncl tasks create group is ignored insi](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792151064652-eval-runner-ncl-tasks-create-group-is-ignored-insi.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_

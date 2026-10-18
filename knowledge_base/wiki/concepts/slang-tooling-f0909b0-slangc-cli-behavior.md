@@ -2,8 +2,8 @@
 title: "slangc CLI behavior: exit codes, crash semantics, output streams, and option propagation"
 type: concept
 group: slang-tooling
-tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf, filestream, fifo, output-paths]
-source_count: 17
+tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf, filestream, fifo, output-paths, e00070, entry-point, container-output, slang-module]
+source_count: 19
 ---
 
 ## TL;DR
@@ -30,6 +30,8 @@ several inspection paths silently drop the CLI options you passed.
   FIFOs rather than returning a non-FILE type, and `/dev/null` is seekable so it never
   reproduces a seek bug.
 - **A master-vs-fix probe matrix with the wrong `-entry` fails E38000 on both sides** and reads as "no diff" — grep the matrix for E38000 before trusting it.
+- **`-target hlsl -o out.hlsl` without `-entry` stops at E00070 before semantic checking**, so a front-end error never shows and "HLSL works" is a false claim. Re-run every "only target X fails" report with `-entry <name>` on the other targets.
+- **Container outputs can fail with exit 0 and no file** (before the slang-13304 fix): a missing output directory, `-target spirv -o x.slang-module` without `-embed-downstream-ir`, and `-target host-callable -o x.zip`. Check that the file exists.
 - **`head -N` on a compiler log can hide the ICE** — Slang prints warnings first. Grep for
   outcome classes (`assert failure|E99997`), don't slice by position.
 - **`-dump-ir` writes to stderr, target text to stdout, non-interleaved.** slang-test composes
@@ -116,6 +118,16 @@ under `SLANG_RUN_SPIRV_VALIDATION=1`, `-o /dev/null` reports the E00004 "cannot 
 above, which is easy to misread as a spirv-val failure; write each cell to a real temp file
 [wrong entry name makes a probe matrix vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md).
 
+A missing `-entry` hides errors in the same way, but only on some targets. `slangc file.slang -target hlsl -o out.hlsl`
+with no `-entry` stops at E00070 ("output path not associated with any entry point"), and
+semantic checking errors are never printed, so a quick check reads as "HLSL is fine". WGSL and
+SPIR-V accept `-o` without `-entry` and do report the error. On shader-slang/slang#12917 the
+reporter said the `-zero-initialize` cross-module E30600 bug did not happen on HLSL; with
+`-entry main_kernel` added, HLSL fails the same way, so the bug is in the front end, not in a
+backend (verified with the v2026.19 release tarball). Before you accept that a bug is
+target-specific, re-run the other targets with `-entry <name>`
+[-target hlsl without -entry stops at E00070](../learnings/1792155590490-slangc-target-hlsl-without-entry-stops-at-e00070-h.md).
+
 There is, however, a *corrected* premise about output streams worth flagging as a
 supersession. `docs/generated/tests/_meta/prompts/_common.md` long claimed that a `-dump-ir` +
 `-target <text>` test MUST use `-o /dev/null` because `-o -` would mix target text with the IR
@@ -167,6 +179,23 @@ correctly gets E00004 (filed as a #13294 follow-up)
 [E52004 is path-less without a location](../learnings/1790622981578-locationless-e52004-prints-no-path-fifo-unit-test-.md),
 [diagnostic-output snapshot and getPathType on FIFOs](../learnings/1790646938428-relaxing-a-shared-filestream-gate-audit-every-writ.md),
 [RLIMIT_FSIZE full-disk simulation](../learnings/1790644539122-simulate-a-full-disk-for-slangc-output-tests-with-.md).
+
+Container outputs had a silent path of their own. Before the slang-13304 fix,
+`EndToEndCompileRequest::maybeWriteContainer` returned `filter`/`writeContainer` failures
+without a diagnostic, and the void `generateOutput()` dropped the result, so slangc exited 0
+and wrote no file. Three cases were silent at base 2b73d69dd: (1) any container
+(`.slang-module`, `.slang-lib`, `.zip`, `.dir`) under a missing directory; (2)
+`-target spirv -o x.slang-module` without `-embed-downstream-ir`, even in a writable
+directory, because the root is a Container-kind artifact (IR + SPIR-V) and the single-file
+branch of `writeContainer` cannot get a blob for it; (3) `-target host-callable -o x.zip` via
+slang-llvm, because the in-process library has no blob and `filter` fails (plain `-o x.so`
+reports E00098). Three testing notes come with it. `DIAGNOSTIC_TEST:SIMPLE(diag=…)` checks only
+stderr, so use `filecheck=` with `result code = -1` when the exit status matters. A
+host-callable diagnostic test needs `-emit-cpu-via-llvm` so that `runTest` gates it on
+slang-llvm; without slang-llvm the generic C++ path produces a blob-backed `.so` and the error
+never fires. And submodules in a fresh `git worktree` need
+`git -c protocol.file.allow=always submodule update --init --recursive`
+[container outputs: silent no-file cases](../learnings/1792174239466-slangc-container-outputs-silent-no-file-cases-and-.md).
 
 Relaxing `FileStream::_init` so that the write modes (`Create`/`Append`) accept existing FIFOs,
 ttys and devices, as PR #13295 does, is a change to a shared gate. Audit every write-mode
@@ -310,7 +339,7 @@ churn, whereas changing the default to emit column would touch hundreds of `test
 expected-output blocks
 [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md).
 
-**Source learnings (17):**
+**Source learnings (19):**
 - [Master-vs-fix probe matrix: wrong entry name makes it vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md) — both binaries fail E38000 → "no diff"; `-o /dev/null` + validation gives E00004, not a spirv-val failure
 - [slangc -lang applies only to inputs after it; slang-test SIMPLE puts the file path first](../learnings/1791406993515-slangc-lang-applies-only-to-inputs-after-it-slang-.md) — a `.slang` test with `-lang hlsl` is still parsed as Slang; use a `.hlsl` file (#10305, #13495)
 - [slangc -o /dev/null fails in-container; and head -N on a compiler log hides the ICE](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md) — E00004 exit 255 looks like an ICE; byte-count as a second signal; warnings print first so grep outcome classes; don't publish from an unread `rc255` catch-all bucket.
@@ -328,3 +357,5 @@ expected-output blocks
 - [`trap '' XFSZ; ulimit -f 0` inside bash -c, piped to cat; small outputs exit 0 with 0-byte file because flush/close errors are ignored.](../learnings/1790644539122-simulate-a-full-disk-for-slangc-output-tests-with-.md)
 - [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md) — verified on top-of-tree; rich via `shouldEmitRichDiagnostics` with no flag; the classic path emits column only under LanguageServer + a bare-integer id; an MSVC-parseable single line is a distinct opt-in third style.
 - [slangc -o /dev/null fails with E00004 in the fixer container (slang#11782)](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md) — workflow docs suggest it for validation checks; EXIT=255 there is not a compile failure
+- [slangc -target hlsl without -entry stops at E00070, hiding semantic errors](../learnings/1792155590490-slangc-target-hlsl-without-entry-stops-at-e00070-h.md) — false "HLSL works" claims; WGSL/SPIR-V accept `-o` without `-entry` (#12917)
+- [slangc container outputs: silent no-file cases and how to test exit codes](../learnings/1792174239466-slangc-container-outputs-silent-no-file-cases-and-.md) — `maybeWriteContainer` dropped failures; three exit-0 cases; `result code = -1`; `-emit-cpu-via-llvm` gate
