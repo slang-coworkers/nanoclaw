@@ -384,6 +384,13 @@ class ScorerTest(unittest.TestCase):
         self.assertEqual(er.ci_verdict([], [{"context": "ci/x", "state": "error"}])[0], "red")
         self.assertEqual(er.ci_verdict([], [{"context": "ci/x", "state": "success"}])[0], "green")
         self.assertEqual(er.ci_verdict([{"name": "a", "status": "queued"}, done("b", "timed_out")], [])[0], "red")
+        # With a check name only that run counts: a failing label check and a pending
+        # upstream job do not decide the verdict, and statuses are ignored.
+        runs = [done("Verify PR Labels", "failure"), {"name": "build-windows", "status": "queued"}, done("eval-ci", "success")]
+        self.assertEqual(er.ci_verdict(runs, [{"context": "ci/x", "state": "error"}], only="eval-ci")[0], "green")
+        self.assertEqual(er.ci_verdict(runs[:2], [], only="eval-ci"), ("none", 'the fork reported no "eval-ci" check run for the PR head'))
+        self.assertEqual(er.ci_verdict([done("eval-ci", "failure")], [], only="eval-ci")[0], "red")
+        self.assertEqual(er.ci_verdict([{"name": "eval-ci", "status": "in_progress"}], [], only="eval-ci")[0], "pending")
 
     def test_fixer_poll_matches_the_repeat_not_just_the_task(self):
         gh = FakeGh(pulls=[pr(7, "slang-1", 1, "aaa"), pr(8, "slang-1", 2, "bbb"),

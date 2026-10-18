@@ -94,6 +94,7 @@ from typing import Callable
 
 SCHEMA = 2
 DEFAULT_FORK = "slang-coworkers/slang-eval"
+DEFAULT_CI_CHECK = "eval-ci"
 DEFAULT_REPORTS = "/workspace/agent/reports"
 DEFAULT_PROD_GROUPS = "/workspace/extra/ephemeral/prod-groups"
 DEFAULT_SKILLS_DIRS = ("/home/node/.claude/skills", "/app/skills")
@@ -561,11 +562,17 @@ GREEN = {"success", "neutral", "skipped"}
 RED = {"failure", "timed_out", "cancelled", "action_required", "startup_failure", "stale"}
 
 
-def ci_verdict(check_runs: list[dict], statuses: list[dict]) -> tuple[str, str]:
+def ci_verdict(check_runs: list[dict], statuses: list[dict], only: str | None = None) -> tuple[str, str]:
     """`green`, `red`, `pending` or `none` from the fork's check runs (and legacy commit
-    statuses). Any red run decides red; otherwise an unfinished run keeps it pending."""
+    statuses). Any red run decides red; otherwise an unfinished run keeps it pending.
+    With `only`, just the check runs of that name count and statuses are ignored: the
+    fork carries every upstream workflow file, and a check that skips drafts or wants
+    a label would otherwise decide the verdict."""
     seen = False
     pending = False
+    if only:
+        check_runs = [cr for cr in check_runs or [] if cr.get("name") == only]
+        statuses = []
     for cr in check_runs or []:
         seen = True
         if cr.get("status") != "completed":
@@ -581,19 +588,21 @@ def ci_verdict(check_runs: list[dict], statuses: list[dict]) -> tuple[str, str]:
         if state == "pending":
             pending = True
     if not seen:
+        if only:
+            return "none", f"the fork reported no \"{only}\" check run for the PR head"
         return "none", "the fork reported no check runs or statuses for the PR head"
     if pending:
         return "pending", "check runs still running"
     return "green", "every check run concluded success"
 
 
-def fork_ci(gh: Callable[[str], object], fork: str, sha: str) -> tuple[str, str]:
+def fork_ci(gh: Callable[[str], object], fork: str, sha: str, only: str | None = None) -> tuple[str, str]:
     try:
         runs = (gh(f"repos/{fork}/commits/{sha}/check-runs?per_page=100") or {}).get("check_runs") or []
-        combined = gh(f"repos/{fork}/commits/{sha}/status") or {}
+        combined = {} if only else (gh(f"repos/{fork}/commits/{sha}/status") or {})
     except RuntimeError as exc:
         return "none", f"could not read the fork's checks: {exc}"
-    return ci_verdict(runs, combined.get("statuses") or [])
+    return ci_verdict(runs, combined.get("statuses") or [], only)
 
 
 # --------------------------------------------------------------------------- budget
@@ -698,6 +707,7 @@ class JobConfig:
     reports_dir: str
     compare: str | None = None
     retry_from: str | None = None
+    ci_check: str | None = None
 
 
 class EvalJob:
@@ -844,7 +854,7 @@ class EvalJob:
                         self._finish(trial, ERROR, 0.0, f"agent reported: {str(answer.get('error'))[:200]}")
                         return True
             if trial.pr is not None:
-                verdict, why = fork_ci(self.gh, self.cfg.fork, trial.pr.get("head_sha") or "")
+                verdict, why = fork_ci(self.gh, self.cfg.fork, trial.pr.get("head_sha") or "", self.cfg.ci_check)
                 if verdict == "green":
                     self._write_reward(verifier_dir, 1.0)
                     self._finish(trial, SCORED, 1.0, why)
@@ -1168,6 +1178,8 @@ def parse_args(argv: list[str]) -> argparse.Namespace:
     p.add_argument("--concurrency", type=int, default=2)
     p.add_argument("--poll-interval", type=float, default=30.0)
     p.add_argument("--ci-grace-sec", type=int, default=DEFAULT_CI_GRACE_SEC)
+    p.add_argument("--ci-check", default=DEFAULT_CI_CHECK,
+                   help="name of the fork check run that scores a fixer PR (default eval-ci); '' means every check run")
     p.add_argument("--reports", default=DEFAULT_REPORTS)
     p.add_argument("--compare", help="baseline job id to compare against (paired, bootstrap CI)")
     p.add_argument("--retry-from", help="job id whose timed-out / errored trials to re-run (one retry only)")
@@ -1208,7 +1220,7 @@ def main(argv: list[str] | None = None) -> int:
     cfg = JobConfig(
         job_id=job_id, kind=args.kind, group=args.group, group_dir=group_dir, bank=os.path.abspath(args.bank),
         variant=args.variant, fork=args.fork, budget_usd=args.budget_usd, concurrency=max(1, args.concurrency),
-        limit=args.limit, repeats=repeats, poll_interval_sec=args.poll_interval, ci_grace_sec=args.ci_grace_sec,
+        limit=args.limit, repeats=repeats, poll_interval_sec=args.poll_interval, ci_grace_sec=args.ci_grace_sec, ci_check=args.ci_check or None,
         reports_dir=args.reports, compare=args.compare, retry_from=args.retry_from,
     )
     tasks = load_bank(cfg.bank, cfg.kind, log)
