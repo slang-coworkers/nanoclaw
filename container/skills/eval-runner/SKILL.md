@@ -39,13 +39,15 @@ python3 /home/node/.claude/skills/eval-runner/scripts/eval_run.py \
     --variant baseline --limit 60 --budget-usd 300 --concurrency 2
 ```
 
-- `--kind triage` scores with the bank's `tests/test.sh` (`AGENT_OUTPUT`, `REWARD_DIR`).
+- `--kind triage` and `--kind reply` score with the bank's `tests/test.sh` (`AGENT_OUTPUT`,
+  `REWARD_DIR`); a reply task's verifier also needs the judge endpoint variables the
+  container already carries (`ANTHROPIC_BASE_URL` and its credential).
   `--kind fixer` scores each draft PR from one check run on the fork, the one named by
   `--ci-check` (default `eval-ci`, the fork's own Linux build-and-test workflow, which runs
   on drafts); the upstream workflows the fork also carries are ignored because they skip
   drafts, want labels, or need runners the fork does not have. The bank's fixer verifier
   needs a Slang Release build that this container does not have.
-- `--repeats` defaults to 3 for triage and 2 for fixer. Every repeat is an independent
+- `--repeats` defaults to 3 for triage and reply and 2 for fixer. Every repeat is an independent
   one-shot task with its own session and answer directory; never set it to 1 for a job
   whose numbers you intend to compare.
 - `--variant <label>` names what is under test (a prompt, a skill version). Use `baseline`
