@@ -3,7 +3,7 @@ title: CI Health, Monitoring, Staleness Signals, and Operational Hygiene
 type: concept
 group: misc
 tags: [ci-health, monitoring, stale-data, nightly, sanitizer, github-app-token, slang-pr-report, doc-comments, review-comments]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -26,9 +26,10 @@ distinguishing a stale/cached signal from a real one, and probing the right thin
 - **A GitHub App installation token 403 on `/user` (and 401 on `/rate_limit`) is NORMAL** — test the
   write path with the actual write, not a sibling probe; a blocker escalation is a claim, verify it
   with the operation itself.
-- **A slang-test teardown heap corruption after a passing Vulkan test = an unjoined slang-rhi global
-  worker pool (a teardown race), not an allocator mismatch** — clean under ASan + needs-many-threads
-  + varying glibc message = race.
+- **A slang-test teardown heap corruption after a passing Vulkan test is not proven to be a teardown
+  race.** For #12706 the unjoined-worker-pool theory was refuted (the pool is not on the repro path),
+  and the likely cause is an out-of-bounds GPU write into an undersized stride-2 `ubuffer`, which ASan
+  cannot see because llvmpipe JIT code is not instrumented.
 - **Select a skill script by CAPABILITY, not path/mtime** — two copies can exist at different
   versions; probe `--help` for the feature.
 - **Source doc comments are client-facing** — no off-GitHub refs, no change-narration.
@@ -83,15 +84,22 @@ sibling probe ([GitHub App token 403 on /user is normal — not a broken write
 path](../learnings/1787633494370-github-app-token-403-on-user-is-normal-not-a-broke.md)).
 
 A harder diagnostic: a `slang-test` heap corruption that aborts at teardown after a passing Vulkan
-test (varying glibc message each run, needs many threads, reproduces standalone but vanishes under gdb
-and ASan) is a teardown RACE, not an allocator mismatch — slang-rhi's process-lifetime global worker
-pool `s_globalTaskPool` is a leaked addRef'd pointer whose workers are joined only via
-`rhiDestroyInstance()`, which no tool calls, so the workers are alive during static-destruction of
-the render-test module. Two reusable discriminators: "ASan-tracked finding + clean ASan run ⇒ that
-finding is NOT your bug" (clean-under-ASan + many-threads + varying-glibc-message = race, ASan's blind
-spot), and mimalloc mixed-allocator is a Linux red herring (OFF by default, Windows-only)
+test (#12706: varying glibc message each run, reproduces standalone but vanishes under gdb and ASan).
+It was first read as a teardown race: slang-rhi's process-lifetime global worker pool
+`s_globalTaskPool` is a leaked addRef'd pointer whose workers are joined only via
+`rhiDestroyInstance()`, which no tool calls. Two side findings from that analysis still hold: "an
+ASan-tracked finding plus a clean ASan run means that finding is not your bug", and a mimalloc
+mixed-allocator theory is a Linux red herring (OFF by default, Windows-only)
 ([slang-test teardown heap corruption = unjoined slang-rhi global worker
-pool](../learnings/1787565663141-slang-test-teardown-heap-corruption-unjoined-slang.md)).
+pool](../learnings/1787565663141-slang-test-teardown-heap-corruption-unjoined-slang.md)). The race
+itself did not survive: the pool is never created on the single-entry-point repro path, the fix PR
+#12710 was closed unmerged, and the current best explanation is an out-of-bounds GPU write. A
+stride-2 render-test `ubuffer` is packed into 20 bytes while the Vulkan pointer variant of the test
+writes 40, and on lavapipe the overrun lands on the glibc heap, where ASan cannot see llvmpipe's JIT
+code. So "clean under ASan + varying glibc message" fits an uninstrumented OOB write as well as a
+race; check buffer sizes before blaming threads. The detail is on
+[[wiki/concepts/misc-f0909b8-slang-compiler-runtime-internals.md]]
+[#12706 heap corruption: likely an OOB write from a stride=2 ubuffer](../learnings/1792154361888-12706-heap-corruption-likely-an-oob-write-from-a-s.md).
 
 ## Tooling, comments, and non-duplicative review
 
@@ -118,13 +126,14 @@ prose, since a mention can be relayed onward into a prohibited GitHub ping ([ded
 endorse a bot-flagged finding, don't re-post
 it](../learnings/1787738047335-dedup-residual-comment-endorse-a-bot-flagged-findi.md)).
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [Slang sanitizer multi-server transport already runs under ASan on PR CI](../learnings/1787568663413-slang-sanitizer-multi-server-transport-already-run.md) — grep ALL callers of a reusable workflow and check each caller's input defaults before "fixing" a coverage gap.
 - [Monitor/grep false positives against dense stream-json JSONL](../learnings/1787576911893-monitor-grep-false-positives-against-dense-stream-.md) — read the artifact + last-line result event; a growing stream = alive = error match is false.
 - [A frozen-field heuristic must re-arm when the number changes](../learnings/1787606627212-a-frozen-field-heuristic-must-re-arm-when-the-numb.md) — the instant a believed-frozen numeric field moves, treat it as a fresh signal.
 - [Precheck workflow_failures feed can be stale even when ci_health frame is fresh](../learnings/1787643303858-precheck-workflow-failures-feed-can-be-stale-even-.md) — compare top-entry created_at against date -u; direct API query with cache-buster on staleness.
 - [Nightly red streak can be a stale-build artifact, not a persistent failure](../learnings/1787646011162-nightly-red-streak-can-be-a-stale-build-artifact-n.md) — pull head_sha per run; moving-SHA streak is real, shared-pre-fix-SHA streak is stale-build.
 - [slang-test teardown heap corruption = unjoined slang-rhi global worker pool](../learnings/1787565663141-slang-test-teardown-heap-corruption-unjoined-slang.md) — teardown race; clean-under-ASan + many-threads + varying glibc message; mimalloc is a Linux red herring.
+- [#12706 heap corruption: likely an OOB write from a stride=2 ubuffer, not (only) the slang-rhi task pool](../learnings/1792154361888-12706-heap-corruption-likely-an-oob-write-from-a-s.md) — corrects the pool theory above; check stride-1/2 `ubuffer` byte sizes against what the shader writes
 - [GitHub App token 403 on /user is normal — not a broken write path](../learnings/1787633494370-github-app-token-403-on-user-is-normal-not-a-broke.md) — test the write path with the actual write; a blocker escalation is a claim to verify.
 - [Source doc comments: client-facing, no off-github refs, no change-narration](../learnings/1787573555990-source-doc-comments-client-facing-no-off-github-re.md) — a decl comment is a doc comment even in .cpp; keep only the enduring non-obvious WHY.
 - [slang-pr-report: two on-disk copies at different versions; select by capability not path](../learnings/1787593536039-slang-pr-report-two-on-disk-copies-at-different-ve.md) — probe `--help` for the feature; robust to relocation and staleness.

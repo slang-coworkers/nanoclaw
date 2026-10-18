@@ -392,6 +392,7 @@ type: nav
 - [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
 - [Slang CUDA/PTX: texture and surface intrinsics — ptxas verification of inline-asm preludes, format representations, and sampler policy](concepts/slang-backends-cuda-ptx-surface-asm-verification.md)
 - [Slang GLSL Backend: Emission, Legalization, and glslang Integration](concepts/slang-backends-glsl.md)
+- [Slang GLSL legalization: entry-point parameters, varyings, and precise outputs](concepts/slang-backends-glsl-entry-point-and-varying-legalization.md)
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
@@ -486,7 +487,7 @@ type: nav
 
 **SlangPy**
 - [SlangPy AppWindow Presentation: Surface Invalidation, Present-Suppression, and Recovery](concepts/slangpy-appwindow-presentation.md)
-- [SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, and triage of silently-fixed issues](concepts/slangpy-f0909b0-bug-investigations.md)
+- [SlangPy bug investigations — autodiff atomics (#222), descriptor/pool exhaustion (#665), CPU-backend regressions, unbound dispatch keys (#1231), and triage of silently-fixed issues](concepts/slangpy-f0909b0-bug-investigations.md)
 - [SlangPy Build from Source, Infra/Ops, downstream_args, and slangpy-samples Review](concepts/slangpy-build-and-infra-operations.md)
 - [SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-repo breaking-change coordination](concepts/slangpy-f0909b0-build-ci-toolchain.md)
 - [SlangPy CI, Triage, Build, and Runtime](concepts/slangpy-ci-triage.md)

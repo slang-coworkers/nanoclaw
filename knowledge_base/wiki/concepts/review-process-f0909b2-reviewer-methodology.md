@@ -2,8 +2,8 @@
 title: Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline
 type: concept
 group: review-process
-tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile]
-source_count: 17
+tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile, probe-matrix, pass-reordering]
+source_count: 19
 ---
 
 # Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline
@@ -30,6 +30,10 @@ confirming or refuting? Compilation and clean exits prove far less than they app
   returns 0 on invalid SPIR-V); `-target ptx` (nvrtc) is a real CUDA compile check here.
   Compile any test snippet a reviewer proposes against head before forwarding it; if it crashes,
   give a compiling alternative that reaches the same branch.
+- **Before reviewing a PR that moves a lowering pass later, probe every op × access form × target
+  with master and head builds and diff the status.** Every pass between the old and new positions
+  sees the new IR shape for the first time. Run Tint on all WGSL output: WGSL FileCheck legs do not
+  validate, and `wgsl-spirv-asm` legs are skipped on Linux.
 - **A static IR gate is necessary but not sufficient.** `as<IRGlobalParam>` gating a
   reflection side-effect does not prove "non-manifesting" — you must craft the repro to
   exercise the SURVIVAL path, or say "unverified" rather than confirm.
@@ -89,6 +93,8 @@ APPROVE_WITH_NITS, not REQUEST_CHANGES; confirm Devin re-analyzed the new head (
 round-2 helper/test files) before trusting a "clean" result. Complementarity: this sibling-coverage
 class was caught ONLY by Reviewer A's correctness subagents — B/C rarely flag missing sibling coverage
 [round-2 review of a 'factored guard into shared helper' fix: doc-overstatement + defensive guards](../learnings/1789401172349-round-2-review-of-a-factored-guard-into-shared-hel.md).
+
+A fourth lens covers PRs that move a lowering pass later in the pipeline. On shader-slang/slang#13699 (issue #13446), `legalizeMatrixTypes`, which turns int/uint/bool matrices into arrays of row vectors, moved from before the main `lowerBufferElementTypeToStorageType` (slang-emit.cpp ~2118) to just after it (~2658); the background is on [[wiki/concepts/slang-compiler-ir-type-legalization.md]]. The PR's own tests passed, but two review rounds then found five regressions, each in a pass that now saw an int `IRMatrixType` for the first time. `legalizeBinaryOp` (called by `legalizeIRForWGSL` and `legalizeIRForMetal`) treated int matrices as float matrices, so `/` gave E56102 or `1.0h/s`, and a matrix-typed shift amount was not made unsigned. `lowerMatrixAddresses` had no `kIROp_SwizzledStore` case (`buf[0].m[1].xz = …` aborted with E99997), mishandled a padded std140 vec4 row read as vec3 (a new `emitCast` turned the truncation into an intCast, which is invalid WGSL), and mishandled the scalar row of a one-column matrix on both load and store. `findLeafValueAtOffset` picked the wrong row index, which also broke float `bit_cast`. What found them fast was a generated probe set, not the PR's tests: about 25 binary and unary ops × int/uint/bool, plus about 20 buffer access forms (swizzle store, `+=` through a swizzle, row store, element store, cbuffer row and whole-matrix reads, transpose, `mul`, casts, ByteAddressBuffer Load/Store, inout params, function params and returns, varyings, and CB/SB/PB/push-constant containers). Compile every probe for spirv/glsl/wgsl/metal/hlsl with a master build and a head build, diff the exit status, and then run Tint over all of the WGSL output (a dawn.node null-backend script such as `node /workspace/agent/tools/tint-13635/tint-validate.mjs *.wgsl`). FileCheck legs alone passed two invalid WGSL outputs, because a WGSL FileCheck leg never validates what it matches, and `wgsl-spirv-asm` test legs are skipped on Linux since slang-tint is fetched only on Windows x64. The probe matrix belongs before review, not after it: every pass between the old and the new position is a consumer of the new shape [moving a lowering pass later: probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md), [probe every op × access form × target against master before review](../learnings/1792162438787-moving-a-lowering-pass-later-probe-every-op-x-acce.md).
 
 A resource-lifetime lens transfers the same "exercise the failure path" discipline to slang-rhi
 backends: **pooled staging + RAII free-on-scope-exit + a queue-wait that can FAIL = in-flight page
@@ -218,7 +224,9 @@ A second blind spot of the same stack is **fidelity to a maintainer's written sp
 
 Two durable-text disciplines that cost avoidable review round-trips, both caught by codex OUTPUT_REVIEW: **(1) never cite `file.cpp:NNNN` in source comments, PR descriptions, or review replies** — a maintainer merging master into the branch shifts every line number, so refer to code by **stable symbol names** (`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`); line numbers are fine only in ephemeral scratch/logs. **(2) `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches message text as a plain substring** — `{{.*}}` FileCheck regex is NOT supported and silently fails (0/1) — and the CHECK must be specific enough to reject the buggy variant (`//CHECK: cyclic reference '$inheritance'` naming the symbol, not the loose `//CHECK: cyclic reference` which also matches a wrong `'E'` diagnostic and wouldn't catch a revert) ([never cite file.cpp:line in durable text — merges make it stale; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md)).
 
-**Source learnings (17):**
+**Source learnings (19):**
+- [Moving a lowering pass later: probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md) — #13699 `legalizeMatrixTypes` move: ~30 probe shaders × 5 targets, base vs head rc diff; Tint catches invalid WGSL that FileCheck passed
+- [Moving a lowering pass later: probe every op x access-form x target against master BEFORE review](../learnings/1792162438787-moving-a-lowering-pass-later-probe-every-op-x-acce.md) — five regressions in legalizeBinaryOp, lowerMatrixAddresses and findLeafValueAtOffset; `wgsl-spirv-asm` legs skipped on Linux
 - [run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md) — slang#11709 R2: the suggested `no_diff const groupshared` shape was the regression; SLANG_RUN_SPIRV_VALIDATION=1; -target ptx; test direct fwd/bwd_diff and a differentiated caller.
 - [Review: check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md) — #13468: the snippet hit E99997 (#13469); array-argument form keeps `T` an interface DeclRefType; per-leg revert disproved "is each half needed?".
 - [a spec requirement left unimplemented is a merge blocker until the maintainer defers it](../learnings/1790758323478-a-spec-requirement-left-unimplemented-is-a-merge-b.md) — grade spec items met/missed; "partial" is not a severity tier.

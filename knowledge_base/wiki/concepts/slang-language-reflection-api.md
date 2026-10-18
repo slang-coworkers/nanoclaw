@@ -3,7 +3,7 @@ title: "Slang Reflection API"
 type: concept
 group: slang-language-core
 tags: [reflection, reflection-json, type-layout, binding, program-layout, slang-deprecated-h]
-source_count: 22
+source_count: 23
 ---
 
 # Slang Reflection API
@@ -15,6 +15,7 @@ Slang exposes a C reflection API (`spReflection*`) and C++ wrappers (`TypeReflec
 - **`TypeReflection*` pointer identity is not safe across `ProgramLayout` vs module reflection** (different `ASTBuilder`s). Key on `getFullName()`.
 - **Reflection objects are live session pointers — not serializable.** Use `-reflection-json` → POD structs, or serialize the module and reflect at runtime.
 - **`import` (vs `#include`) loses reflection/bindings until `IComponentType::link()`** — imported globals are requirements folded in only by `link()`; `slangc` always links, so the CLI never reproduces it.
+- **A module's own layout lists only its own and `link=` modules' globals, not those of modules it merely `import`s;** the linked program's layout does list them. Run any "scan module globals" check (push constants, ParameterBlocks) on the linked program too.
 - **The CLI flag is `-reflection-json`** (not `-emit-reflection-json`). With `-target` it SIGSEGVs on EVERY failed compile (no compile-result gate since 2025-07; not a regression; P2). Dropping `-target` yields E52009.
 - **`//TEST:REFLECTION:` drives `slang-reflection-test`, not `slangc -reflection-json`, and runs `-no-codegen`.** Test a CLI bug with `SIMPLE`/`DIAGNOSTIC_TEST:SIMPLE`; test a layout change against emitted SPIR-V.
 - **`-reflection-json` drops the implicit `$Globals` CB binding** (flat `getParameterByIndex`, #12307). Output-shape changes are a maintainer design call → PARK.
@@ -38,7 +39,7 @@ Slang exposes a C reflection API (`spReflection*`) and C++ wrappers (`TypeReflec
 
 Reflection objects point into live session memory. The two supported persistence strategies: (1) `-reflection-json` (programmatic: `spReflection_ToJson(SlangReflection*, SlangCompileRequest*, ISlangBlob**)`) parsed into custom POD structs; (2) serialize the compiled module and reflect it at runtime in a live session ([Serializing Slang reflection: -reflection-json or a loaded module](../learnings/1782323528074-serializing-slang-reflection-use-reflection-json-o.md)).
 
-A global with `[[vk::binding(n,set)]]` reflects via `#include` but returns nothing via `import` when the host calls `getLayout()`/`getEntryPointCode()` on a composite without `IComponentType::link()`: imported module globals are *requirements*, and `fillRequirements` runs only from `ComponentType::link()` ([import-vs-include reflection/binding loss = missing link()](../learnings/1782215579233-import-vs-include-reflection-binding-loss-missing-.md)).
+A global with `[[vk::binding(n,set)]]` reflects via `#include` but returns nothing via `import` when the host calls `getLayout()`/`getEntryPointCode()` on a composite without `IComponentType::link()`: imported module globals are *requirements*, and `fillRequirements` runs only from `ComponentType::link()` ([import-vs-include reflection/binding loss = missing link()](../learnings/1782215579233-import-vs-include-reflection-binding-loss-missing-.md)). SlangPy hits the same split. `SlangModule.layout.parameters`, including slangpy's composed `Module.device_module`, lists only the globals of the module itself and of its `link=` modules, not the globals of modules the user only `import`s. The linked program (`session.link_program(...).layout.parameters`) does list them, even when the entry point never uses them. So a "scan the module globals" check, such as detecting a `[[vk::push_constant]]` block or a `ParameterBlock` (slangpy#1235), must also run on the linked program's layout, or `import pcmod;` slips past it. To reproduce, load a module `pcimp` that declares `[[vk::push_constant]] uniform PC push;` and `import pcimp;` from the main module: the composed globals are `[]`, while the linked program lists `['push']`. The same review needed Khronos validation on the coworker L40S, which has no layer package; Chromium's `/usr/lib/chromium/libVkLayer_khronos_validation.so` works once a manifest points at it (`VK_LAYER_PATH=/tmp/vklayer` plus `spy.Device(..., enable_debug_layers=True)`, VUIDs then appear as rhi `[ERROR]` lines; without the manifest `enable_debug_layers` silently does nothing). The manifest recipe is on [[wiki/concepts/slang-test-gpu-lanes-on-shared-l40s.md]] [module layout omits globals of import-only modules](../learnings/1792173909038-slang-module-layout-omits-globals-of-import-only-m.md).
 
 ## `-reflection-json`: crash, test directive, and output-shape gaps
 
@@ -92,7 +93,7 @@ A change made only in engine 1 moves reflection while the emitted SPIR-V is unch
 
 **Changing what an accessor returns (PR #13535).** `TypeReflection::getElementCount()` for an unsized `T[]` changed from 0 to `SLANG_UNBOUNDED_SIZE`, which is what `slang.h` always documented, so on paper it was a doc-conformance fix. Downstream consumers use 0 as a marker, though. slangpy's `is_generic(){ return num_elements()==0; }` (`src/sgl/refl/type.h:231`), `any_generic_dims` (`type.cpp:625`), `slangpy/builtin/array.py:85` and `tensorcommon.py:285` treat 0 as "generic/unsized dimension" and store `int(element_count())`, so a function parameter like `float[] a` now reads -1. slang-rhi Metal's `collectPointerFields` (`metal-shader-object-layout.cpp:22`) does `if(count==0) return; for(i<count)`, which becomes an effectively infinite loop. When a reflection value changes, grep slangpy and slang-rhi for the old value used as a sentinel (`== 0`, `> 0`, `narrow_cast`, uint32 casts), not only for the accessor, and label the PR `pr: breaking change`. `CI SlangPy Trigger Test` is SKIPPED on bot-authored PRs, so dispatch it manually (`workflow_dispatch pr_number=N`). The fastest way to show the value change is a small C++ probe linked against `build/Release/lib/libslang-compiler.so`, run on master and on the PR: `m->getLayout()->findFunctionByName(...)->getParameterByIndex(0)->getType()->getElementCount()` ([reflection return-value fixes matching slang.h can still be breaking](../learnings/1791504997222-reflection-return-value-fixes-that-match-slang-h-d.md)).
 
-**Source learnings (22):**
+**Source learnings (23):**
 - [Entry-point offsets scope-relative; multi-EP binding bloat is real](../learnings/1790016065362-correction-entry-point-uniform-binding-bloat-acros.md)
 - [Two layout engines (AST vs IR); a layout flag must touch both](../learnings/1789151128965-slang-layout-has-two-independent-engines-reflectio.md)
 - [New dependency in a cached lookup must extend the key (#13020)](../learnings/1789172524588-threading-a-new-dependency-into-a-cached-parse-loo.md)
@@ -104,6 +105,7 @@ A change made only in engine 1 moves reflection while the emitted SPIR-V is unch
 - [-reflection-json crash on failed compile; REFLECTION directive gotcha](../learnings/1782146682704-localizing-slangc-reflection-json-crash-on-failed-.md)
 - [#11683 crash is broad scope and NOT a regression (P2)](../learnings/1782203064448-slang-11683-reflection-json-crash-is-broad-scope-a.md)
 - [import-vs-include reflection loss = missing IComponentType::link()](../learnings/1782215579233-import-vs-include-reflection-binding-loss-missing-.md)
+- [Slang module layout omits globals of import-only modules; Vulkan validation layer via Chromium .so](../learnings/1792173909038-slang-module-layout-omits-globals-of-import-only-m.md) — `SlangModule.layout.parameters` misses `import`-only globals, `link_program(...).layout` has them (slangpy#1235); manifest for Chromium's validation layer
 - [Serialize reflection via -reflection-json or a loaded module](../learnings/1782323528074-serializing-slang-reflection-use-reflection-json-o.md)
 - [Measure emitted AND reflection layout separately; pin a worktree](../learnings/1782325331597-verifying-slang-per-target-buffer-layout-measure-e.md)
 - [findFieldIndexByName already supports qualified module.var lookup](../learnings/1782456046812-slang-reflection-findfieldindexbyname-already-supp.md)

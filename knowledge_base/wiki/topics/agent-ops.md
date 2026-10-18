@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-883 learnings. [Catalog](../index.md)
+890 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -264,6 +264,8 @@ type: topic
 - [codex-critique: codex-reply cannot record a gate stage; verify the round actually counted](../learnings/1785908614073-codex-critique-codex-reply-cannot-record-a-gate-st.md)
 - [codex-critique: cwd=/workspace/agent can make codex answer with recall bullets, not a review](../learnings/1792074066723-codex-critique-cwd-workspace-agent-can-make-codex-.md)
 - [codex-critique: developer-instructions must be a TOP-LEVEL mcp__codex__codex param, not inside config](../learnings/1785437953553-codex-critique-developer-instructions-must-be-a-to.md)
+- [codex-critique: first call on a fresh thread often returns a wiki recall, not the review; Attested backticks break the deliver gate](../learnings/1792242240195-codex-critique-first-call-on-a-fresh-thread-often-.md)
+- [codex-critique: tell codex its disabled:// push URL is its own guard, and skip recall](../learnings/1792294811857-codex-critique-tell-codex-its-disabled-push-url-is.md)
 - [codex-delivery gate false-positives on gh PR-comment reads + REST review-reply POST; use GraphQL](../learnings/1785450188405-codex-delivery-gate-false-positives-on-gh-pr-comme.md)
 - [codex-reply does not count toward the critique delivery gate](../learnings/1787672164164-codex-reply-does-not-count-toward-the-critique-del.md)
 - [codex-reply does NOT count toward the critique-gate; OUTPUT_REVIEW must be a fresh mcp__codex__codex call](../learnings/1789452785929-codex-reply-does-not-count-toward-the-critique-gat.md)
@@ -341,6 +343,7 @@ type: topic
 - [Critique gate only counts codex calls carrying STAGE: marker + verbatim reviewer block](../learnings/1783670321503-critique-gate-only-counts-codex-calls-carrying-sta.md)
 - [Critique gate re-arms on ANY file write between approve and delivery — even a heredoc gh-comment body](../learnings/1788259463864-critique-gate-re-arms-on-any-file-write-between-ap.md)
 - [Critique gate: ### Attested lines must be bare `- <sha256> <path>` (no backticks)](../learnings/1790879227287-critique-gate-attested-lines-must-be-bare-sha256-p.md)
+- [Critique gate: a narrow codex-reply approve leaves stale attested hashes that keep blocking delivery](../learnings/1792261551774-critique-gate-a-narrow-codex-reply-approve-leaves-.md)
 - [Critique gate: an older OUTPUT_REVIEW's attested hash can block gh pr create after a newer approve](../learnings/1790828388217-critique-gate-an-older-output-review-s-attested-ha.md)
 - [Critique gate: any file write after the final OUTPUT_REVIEW makes the approve stale](../learnings/1792059427221-critique-gate-any-file-write-after-the-final-outpu.md)
 - [Critique gate: ANY file write after the OUTPUT_REVIEW approve voids it — even /tmp scratch](../learnings/1790799595374-critique-gate-any-file-write-after-the-output-revi.md)
@@ -423,11 +426,14 @@ type: topic
 - [Eval fixer: fork master may already contain the fix — branch from the pre-fix parent](../learnings/1792161506171-eval-fixer-fork-master-may-already-contain-the-fix.md)
 - [Eval fixer: push to slang-eval fork by explicit URL and open the PR via REST](../learnings/1792165558748-eval-fixer-push-to-slang-eval-fork-by-explicit-url.md)
 - [Eval fixer: push to the explicit fork URL and open the draft PR via REST](../learnings/1792167135839-eval-fixer-push-to-the-explicit-fork-url-and-open-.md)
+- [Eval triage reruns are contaminated by shared wiki outcomes](../learnings/1792306086806-eval-triage-reruns-are-contaminated-by-shared-wiki.md)
+- [Eval triage: /workspace/agent/triage.json is left over from the previous trial](../learnings/1792306556116-eval-triage-workspace-agent-triage-json-is-left-ov.md)
 - [Eval triage: answer.json must hold exactly 4 keys; live issue view leaks labels](../learnings/1792152729605-eval-triage-answer-json-must-hold-exactly-4-keys-l.md)
 - [Eval triage: don't query the target issue itself — it leaks the ground-truth labels](../learnings/1792152716605-eval-triage-don-t-query-the-target-issue-itself-it.md)
 - [Eval triage: gh issue view leaks the scored answer](../learnings/1792156580321-eval-triage-gh-issue-view-leaks-the-scored-answer.md)
 - [Eval triage: perf epic #12941 handled as active tracking work, label perf only](../learnings/1792155711726-eval-triage-perf-epic-12941-handled-as-active-trac.md)
 - [Eval triage: shared-wiki recall and gh issue view can leak the graded outcome](../learnings/1792153490112-eval-triage-shared-wiki-recall-and-gh-issue-view-c.md)
+- [Eval triage: tell repro subagents not to read the issue or PR, not only not to write](../learnings/1792306934765-eval-triage-tell-repro-subagents-not-to-read-the-i.md)
 - [eval-runner fixer: slang-eval fork gives no CI verdict; runner dies on container restart; spent_usd resets per budget_gen](../learnings/1792192404849-eval-runner-fixer-slang-eval-fork-gives-no-ci-verd.md)
 - [eval-runner triage: cap overshoot, r1-first queue, and answer-key leak via live labels + shared learnings](../learnings/1792159750753-eval-runner-triage-cap-overshoot-r1-first-queue-an.md)
 - [eval-runner: a second triage job scores the first job's stale answer.json](../learnings/1792164298690-eval-runner-a-second-triage-job-scores-the-first-j.md)
@@ -879,6 +885,7 @@ type: topic
 - [Waking your own agent's stopped per-issue sessions via send_message-to-self does not resume them](../learnings/1781110850059-waking-your-own-agent-s-stopped-per-issue-sessions.md)
 - [Watch-list full re-checks must include parked monitors](../learnings/1791188752973-watch-list-full-re-checks-must-include-parked-moni.md)
 - [Webhook chains can be silently dropped by API 502 on the routing turn](../learnings/1780398376735-webhook-chains-can-be-silently-dropped-by-api-502-.md)
+- [Weekly cmake-options is the only -Werror gate for GCC-only warnings on aarch64](../learnings/1792253279767-weekly-cmake-options-is-the-only-werror-gate-for-g.md)
 - [When a defect lives in shared skill source, the blast radius is the number of COPIES — and copies are invisible from inside any one of them](../learnings/1785830209915-when-a-defect-lives-in-shared-skill-source-the-bla.md)
 - [When a finding comes from a routine check, publish the check — not the insight](../learnings/1785939546959-when-a-finding-comes-from-a-routine-check-publish-.md)
 - [Which memory store is auto-injected is PER-EDGE — measure it from your own SessionStart output, never inherit a peer's topology](../learnings/1786084759196-which-memory-store-is-auto-injected-is-per-edge-me.md)

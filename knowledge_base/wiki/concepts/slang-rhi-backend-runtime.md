@@ -2,8 +2,8 @@
 title: "slang-rhi backend runtime internals: Vulkan buffer/queue lifetime, CUDA pool, staging-heap pooling"
 type: concept
 group: slang-backends
-tags: [slang-rhi, vulkan, cuda, buffer, vkqueue, staging-heap, readback, lifetime, pooling, entry-point-rename, E40100, submodule, lavapipe, non_semantic_info, render-test, device-creation]
-source_count: 10
+tags: [slang-rhi, vulkan, cuda, buffer, vkqueue, staging-heap, readback, lifetime, pooling, entry-point-rename, E40100, submodule, lavapipe, non_semantic_info, render-test, device-creation, push-constant, slangpy]
+source_count: 11
 ---
 
 # slang-rhi backend runtime internals
@@ -21,6 +21,7 @@ source_count: 10
 - **Tie a pooled staging allocation's lifetime to GPU completion, not RAII scope-exit.** `commandList->retainResource(handle)` holds it in the command buffer's tracked set until *retirement* (`CommandBuffer::reset`), so a post-submit `waitOnHost` failure keeps a possibly-in-flight page owned instead of returning it to the pool. Use `RefPtr<StagingHeap::Handle>` (`allocHandle`), never bare alloc/free — that leaks on any post-alloc `SLANG_RETURN_ON_FAIL` and trips the `m_totalUsed==0` teardown assert.
 - **A CUDA `cuModuleGetFunction … NOT_FOUND` at pipeline creation: grep the log for E40100 first.** Slang renames an entry point named `main` to `main_0`, and the RHI appears to look up the original name. slang-rhi squash-merges, so re-pin a submodule that points at a PR head once the PR merges.
 - **Run `-vk` on the L40S first; lavapipe is only the fallback.** Coworker containers have an NVIDIA L40S with the NVIDIA Vulkan ICD ([containers have an NVIDIA L40S](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md)), so measure with `nvidia-smi -L` each session and report a failure as infra. Only when lavapipe (Mesa 22.3.6) is the sole ICD, as during the 2026-09-28→10-16 passthrough outage, does Vulkan device creation fail because slang-rhi pushes `VK_KHR_shader_non_semantic_info` unconditionally; a local-only guard on that push plus `VK_ICD_FILENAMES=…lvp_icd…` then gives real readbacks through `render-test` (revert it, never commit it).
+- **Slang puts every Vulkan push-constant block at Offset 0, but slang-rhi gives the ranges consecutive offsets,** so a global `[[vk::push_constant]]` plus entry-point uniforms reads the wrong bytes, and two blocks used by one entry point are invalid SPIR-V that slangc accepts with exit 0. Use a plain global `uniform` (UBO) instead, and check DeepWiki layout claims against slangc output.
 - **Overflow-safe range check:** never form `offset + size` (both are `size_t`, it wraps). Validate `offset > desc.size` first, then `size > desc.size - offset`.
 
 ## Vulkan buffer and queue lifetime
@@ -61,7 +62,13 @@ slang-test -bindir build/Release/bin render-test <file> -vk -compute -output-usi
 
 That produces real Vulkan readbacks, and also works with `-emit-spirv-via-glsl`. Revert the guard and rebuild afterwards, and never commit it. Two neighbouring traps from the same investigation (slang#13446): `slangc -target host-callable -o x` fails with E00098 "cannot access as a blob", so use `-reflection-json` without `-o`; and for LLVM, render-test uses `host-callable` (plus `emit-cpu-via-llvm`), whose reflection differs from `shader-sharedlib` [observed Vulkan runs on lavapipe need slang-rhi non_semantic_info made optional](../learnings/1792028852820-observed-vulkan-runs-on-lavapipe-in-agent-containe.md).
 
-**Source learnings (10):**
+## Vulkan push-constant ranges: slang-rhi's offsets disagree with Slang's layout (slangpy#1232)
+
+Consider a SlangPy kernel with a global `[[vk::push_constant]]` block and also an entry-point `uniform float k`, dispatched on Vulkan (verified on the L40S with Slang 2026.19 and slang-rhi e0eeb428). Slang lays out every push-constant block at SPIR-V Offset 0, the global block and the entry-point uniforms alike, and reports each with `pushConstantBuffer` index 0 in its own scope (the program-wide counter that numbers them 0 and 1 is described on [[wiki/concepts/slang-test-gpu-lanes-on-shared-l40s.md]]). slang-rhi's `addAllPushConstantRangesRec` (`vk-shader-object-layout.cpp:907-916`) instead gives the ranges consecutive offsets, so the entry-point uniform data is pushed after the global block while the shader reads it at 0. That happens even when the shader never reads the global block: in a raw kernel, `k` read back the bits written to `push`. If the entry point reads both blocks, Slang emits two PushConstant interfaces, which violates `VUID-StandaloneSpirv-OpEntryPoint-06674`, and slangc still exits 0 unless `SLANG_RUN_SPIRV_VALIDATION=1` is set. DeepWiki claimed that Slang merges the blocks; slangc output shows it does not, so check any DeepWiki layout claim against slangc output.
+
+`ParameterBlock<T>` plus a global push constant breaks in a second way: the set that holds only the push constant becomes an empty descriptor set at index 0 (slang#12349), which the open draft slang-rhi#810 fixes (verified). A plain global `uniform T x;`, which becomes a descriptor-bound UBO, works on both SlangPy paths and is the workaround. To read the real `maxPushConstantsSize` without `vulkaninfo`, call `vkGetPhysicalDeviceProperties` through ctypes: the limits struct starts at byte 296, and `maxPushConstantsSize` is at byte 328 (256 on the L40S) [global push_constant + entry-point uniforms: Slang and slang-rhi disagree on offsets](../learnings/1792164718700-vulkan-global-vk-push-constant-entry-point-uniform.md).
+
+**Source learnings (11):**
 - [CUDA entry point `main` is renamed `main_0` (E40100) and pipeline creation fails with `cuModuleGetFunction` NOT_FOUND (hypothesis: RHI looks up the original name); slang-rhi squash-merges, so re-pin submodules after merge](../learnings/1790685200036-cuda-entry-point-named-main-is-renamed-to-main-0-e.md)
 - [Guarding a public getter that RHI calls internally (getDeviceAddress, #787) breaks internal uses — split a public-guarded entry from an internal-unchecked accessor; preserve `base ? base+offset : 0`](../learnings/1790032907874-guarding-a-public-getter-that-rhi-calls-internally.md)
 - [Vulkan VUID in Slang examples: 'left to CI' is not a real gate — hasMonitor() skip + validation OFF (enableValidation=!isTestMode()); such fixes are verified by construction](../learnings/1789564810840-vulkan-vuid-in-slang-examples-left-to-ci-is-not-a-.md)
@@ -73,3 +80,4 @@ That produces real Vulkan readbacks, and also works with `-emit-spirv-via-glsl`.
 - [slang-rhi fix pattern: tie pooled-staging lifetime to GPU completion via retainResource](../learnings/1789448569968-slang-rhi-fix-pattern-tie-pooled-staging-lifetime-.md) — retainResource holds the handle to command retirement, so a failed waitOnHost keeps an in-flight page owned; use RefPtr allocHandle.
 - [Coworker containers have an NVIDIA L40S GPU (CUDA + NVIDIA Vulkan)](../learnings/1792133264162-coworker-containers-have-an-nvidia-l40s-gpu-cuda-vulkan.md) — current state; `-vk` runs on the L40S, measure with `nvidia-smi -L` each session.
 - [Correction: GPU passthrough restored 2026-10-16](../learnings/1792142517350-correction-gpu-passthrough-restored-2026-10-16-con.md) — the lavapipe-only window (09-28→10-16) was a host passthrough outage.
+- [Vulkan: global vk::push_constant + entry-point uniforms — Slang and slang-rhi disagree on offsets (slangpy#1232)](../learnings/1792164718700-vulkan-global-vk-push-constant-entry-point-uniform.md) — `addAllPushConstantRangesRec` offsets vs Slang's Offset 0; two PushConstant interfaces exit 0; #12349/#810; UBO workaround; DeepWiki wrong; `maxPushConstantsSize` via ctypes

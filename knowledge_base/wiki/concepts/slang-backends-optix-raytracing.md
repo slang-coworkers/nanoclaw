@@ -3,7 +3,7 @@ title: "Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics"
 type: concept
 group: slang-backends
 tags: [optix, cuda, ray-tracing, raypayload, paq, hlsl, dxc, payload-access-qualifiers, callshader, non-struct-payload]
-source_count: 14
+source_count: 15
 ---
 
 # Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics
@@ -18,6 +18,7 @@ Ray-tracing codegen in Slang spans the HLSL/DXC backend (payload access qualifie
 - On D3D, only `TraceRay`-style calls wrap a non-struct payload (via the `__forceVarIntoRayPayloadStructTemporarily` marker); `CallShader` and hit/miss/callable receivers are not wrapped (#13313), whatever the generated design doc and DeepWiki say. Verify RT-payload claims by compiling to DXIL.
 - By IR legalization, D3D hit attributes (like every varying `in` entry-point param) are `IRBorrowInParamType` pointers, not by-value params; find them by HitAttributes layout, not position.
 - `[raypayload]` text is printed only at SM >= 6.7, so FileCheck PAQ output at `lib_6_7`. IR function order is dependency order (callee first), and multi-`-entry` DXIL needs `-whole-program` to share types.
+- `-target ptx` for an OptiX stage needs `optix.h`, which coworker containers lack; inspect with `-target cuda`, or measure `__local_depot` on a compute-stage analog. Slang's inliner has no size heuristic, so large-aggregate call frames on CUDA are NVRTC's to remove.
 - Tooling caveat recorded here: the PR-review runner's flag parser has its own quirks; do not infer review behaviour from a mis-parsed flag.
 - An oversized OptiX hit-attribute struct (>8 32-bit attribute registers) is mis-diagnosed as internal `E99999` instead of a user `err`; the register count is per scalar leaf and width-unaware, so verify a reporter's minimal repro empirically before trusting its byte-size reasoning.
 
@@ -68,6 +69,10 @@ An OptiX hit-attribute struct exceeding the 8 32-bit attribute-register budget i
 
 **Triage lesson — verify a reporter's minimal repro empirically before trusting it.** The issue's stated repro `struct { double values[5]; }` does NOT reproduce at HEAD: the attribute register count is per scalar *leaf* and width-unaware (`emitOptiXAttributeFetch` adds +1 per `IRBasicType` leaf regardless of byte width — the sibling bug #13047), so 5 doubles = 5 registers ≤ 8 and compiles (each double truncated to 32 bits). The reporter's byte-size intuition (5×8 = 40 bytes > 32) does not match the compiler's leaf count. A struct with >8 scalar leaves — e.g. `float values[9]` — reproduces E99999 now and is the stable regression case; `double values[5]` only reaches the >8 path once #13047 makes counting width-aware (10 registers). This is a GPU-free compile-time diagnostic (`slangc -target cuda -stage closesthit`), so it is locally reproducible despite being an OptiX issue ([OptiX oversized hit-attribute E99999 is category-only, and its own repro may not fire](../learnings/1789370295979-optix-oversized-hit-attribute-e99999-is-a-category.md)).
 
+## OptiX-stage PTX without `optix.h`: measure the frame with a compute analog
+
+`slangc x.slang -target ptx -stage miss` (or any ray-tracing stage) fails in the triage and eval containers with "nvrtc 12.6: Failed to locate OptiX headers (optix.h)", because no OptiX SDK is installed under /usr/local/cuda-12.6/include. `-target cuda` still works, so the call boundary can be inspected in the CUDA source. To measure the `__local_depot` size, move the same helper into a `[shader("compute")]` entry with `RWStructuredBuffer` I/O, compile with `-target ptx`, and strip the trailing NUL before grepping (`tr -d '\000' < x.ptx | grep local_depot`). On NVRTC 12.6 (v2026.19), a large non-inlined helper taking `inout State { float4[128] }` and called twice kept `__local_depot0[2080]`. Slang does not remove such frames itself: the IR inliner (slang-ir-inline.cpp, master 2026-10-16) has no size or aggregate heuristic, and `performTypeInlining` has no CUDA case, so on CUDA, removing a large aggregate frame across a call boundary is left to NVRTC ([OptiX-stage PTX needs optix.h; measure the local frame with a compute analog](../learnings/1792157609906-optix-stage-ptx-needs-optix-h-this-coworker-contai.md)).
+
 ## Tooling Note: PR-Review Runner Flag Parser
 
 `devin-fetch.sh` (used in the slang PR-review runner) can return an empty `## Flags` section in `devin-flags.md` even when `devin-page.txt` clearly contains "N Flags" with per-flag titles + file:line locations. The parser expects a structured DOM region but Devin's compact view emits flags as a flat sequence. Always grep `devin-page.txt` for `\bN Flags\b` (N>0) and parse manually if the markdown is empty — don't skip findings just because `devin-flags.md` is empty ([slang-pr-review-runner devin-fetch.sh flag parser misses flags in devin-page.txt](../learnings/1779429498527-slang-pr-review-runner-devin-fetch-sh-flag-parser-.md)).
@@ -81,7 +86,7 @@ An OptiX hit-attribute struct exceeding the 8 32-bit attribute-register budget i
 
 A callable/RT-payload null-rules crash spanning CUDA and Metal (#12273): a `[shader("callable")]` entry point with an OUTPUT (`out`/`inout` param or non-void return) crashes `slangc -target cuda`/`-target metal` with an access violation and **no diagnostic**. Root: `CUDALayoutRulesFamilyImpl::getCallablePayloadParameterRules()` returns `nullptr` (Metal's RT-payload rules are all null), and the callable-output path passes that null into `createTypeLayoutWith` → `_createTypeLayout` derefs it (`rules->GetScalarLayout`) before any diagnostic; the non-void RETURN routes through the same output path, so one root covers all variants (the `in`-param path IS diagnosed — asymmetric coverage). Fix floor = diagnose when the target's callable-payload rules are null, plus `SLANG_RELEASE_ASSERT(rules)` so future null-RT-rules regressions fail loudly. Reusable technique: a Windows `EXCEPTION_ACCESS_VIOLATION` compile crash reproduces as SIGSEGV on Linux Debug slangc with a `for tgt in cuda spirv hlsl glsl metal wgsl` differential + `-dump-ir` to see the last pass ([CUDA/Metal callable-shader output crash = null RT payload layout rules](../learnings/1785369358728-cuda-metal-callable-shader-output-crash-null-rt-pa.md)).
 
-**Source learnings (14):**
+**Source learnings (15):**
 - [D3D `CallShader` and hit/miss/callable receivers with a non-struct payload are not wrapped (only `TraceRay` emits the marker); generated doc + DeepWiki are wrong (#13313)](../learnings/1790678832261-d3d-callshader-with-a-non-struct-payload-is-not-wr.md)
 - [Slang D3D hit-attribute params are borrow-in pointers by the time IR legalization runs](../learnings/1791357853437-slang-d3d-hit-attribute-params-are-borrow-in-point.md) — identify by HitAttributes layout, retype via getPtrTypeWithAddressSpace + FieldAddress; dump IR before designing; full-reset revert drill
 - [`[raypayload]` printed only at SM>=6.7; IR orders callee before caller; multi-`-entry` DXIL needs `-whole-program` (#13313/PR #13315)](../learnings/1790683345598-slang-hlsl-raypayload-only-printed-at-sm-6-7-ir-lo.md)
@@ -96,5 +101,6 @@ A callable/RT-payload null-rules crash spanning CUDA and Metal (#12273): a `[sha
 - [nested `[raypayload]` member PAQ inheritance spans frontend + IR-legalize + emit (not frontend-only)](../learnings/1789046095106-nested-raypayload-member-paq-inheritance-spans-fro.md)
 - [#12991 3-layer PAQ fix (build+critique-confirmed): emit needs NO change, diagnose the explicit-qualifier error case (E40022), report only that error; diagnostic-code and DIAGNOSTIC_TEST caret gotchas](../learnings/1789053013255-slang-nested-raypayload-member-paq-inheritance-3-l.md)
 - [OptiX oversized hit-attribute E99999 is a category-only bug (Diagnostics::Unexpected → should be a user err), and its own `double values[5]` repro may not fire — register count is per scalar leaf, width-unaware](../learnings/1789370295979-optix-oversized-hit-attribute-e99999-is-a-category.md)
+- [OptiX-stage PTX needs optix.h; this coworker container lacks it, so measure the local frame with a compute analog](../learnings/1792157609906-optix-stage-ptx-needs-optix-h-this-coworker-contai.md) — `__local_depot0[2080]` for a `float4[128]` inout helper; IR inliner has no size heuristic; NVRTC owns the frame
 
 _Catalog: [[wiki/index.md]]_

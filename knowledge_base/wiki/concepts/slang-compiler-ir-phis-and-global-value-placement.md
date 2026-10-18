@@ -2,7 +2,7 @@
 title: "Slang IR: phi block parameters and where inlined global values land"
 type: concept
 group: slang-grab-bag
-tags: [slang, ir, ssa, phi, IRParam, isFirstBlock, LoadFromUninitializedMemory, E56004, eliminatePhis, GlobalInstInlining, getOutsideASM, wgsl, static-const]
+tags: [slang, ir, ssa, phi, peephole, isPrelinking, IRParam, isFirstBlock, LoadFromUninitializedMemory, E56004, eliminatePhis, GlobalInstInlining, getOutsideASM, wgsl, static-const]
 ---
 
 # Slang IR: phi block parameters and where inlined global values land
@@ -16,6 +16,8 @@ This page covers two IR shapes that downstream code often gets wrong. The first 
 - **When reviewing a "newly rejected shape" list, check what master emits, not only its exit code.** A shape master silently miscompiles (for example Metal `{ return; }`) is a fix when rejected, not a break.
 - **No simplifier folds a phi whose incoming values are all undefined.** The peephole skips undefined args but needs one defined value, `tryRemoveTrivialPhi` has a TODO for the case, and `removeTrivialPhiParams` needs identical args. An opaque-typed phi of that shape survives to `eliminatePhis` and gives E56004 (E56019 on Metal).
 - **E56004 triage:** dump IR after the `simplifyIR` that follows `legalizeResourceTypes`. If every incoming value of the opaque phi is `LoadFromUninitializedMemory` or `Poison`, the bug is the missing all-undefined fold, not the real-resource-selection family (#10526/#13248).
+- **A peephole rule that changes undefined values has two more traps.** The per-function peephole that runs after early inlining also runs before the uninitialized-value check, so it needs the prelinking flag too. A loop-header phi with incoming values {undef, itself} must skip the self argument, or `simplifyIR` never terminates.
+- **In a slang-test `SIMPLE` filecheck, `CHECK-NOT: error` always matches the harness's own `standard error = {` header.** Match error codes instead.
 - **`LoadFromUninitializedMemory` behaves like freeze(undef).** A phi of two such values may be refined to a fresh one, but never to `Poison`.
 - **`GlobalInstInlining` inserts each clone at `getOutsideASM(user)`, and on WGSL that is the user itself.** A `static const` table used only inside a loop is rebuilt on every iteration at every -O level, and no later pass hoists it. Later uses in the same dominance region share the clone.
 - **Placing the clone in the function entry block is safe only for side-effect-free values**, because `isInlinableGlobalInst` also sinks `Load` and `Call`.
@@ -39,6 +41,10 @@ Consider a struct with a `Texture2D` field that is never written, where the stru
 
 For triage, when E56004 appears, look at the `-dump-ir` "AFTER simplifyIR" output right after `legalizeResourceTypes`. If every incoming value of the opaque parameter is `LoadFromUninitializedMemory` or `Poison`, this missing fold is the bug, not the real-resource selection case of #10526/#13248 [phi with all-undefined incoming args is never folded](../learnings/1792135170279-slang-ir-phi-with-all-undefined-incoming-args-is-n.md).
 
+PR #13700, which adds the fold to the peephole, hit two more traps that apply to any peephole rule that changes undefined values. First, `PeepholeContext::isPrelinking` was set only by the module-wide `peepholeOptimize(target, module, options)`. In `generateIRForTranslationUnit`, the per-function `peepholeOptimize(nullptr, func)` that runs after `performMandatoryEarlyInlining` (slang-lower-to-ir.cpp ~15691) also runs before `checkForUsingUninitializedValues`. So a `!isPrelinking` gate does not protect the front-end uninitialized-value warnings in any function that calls an early-inlined core function, such as `bool((E)e)`. The PR adds a per-function overload that takes options and passes `getPrelinking()` there. Test this with a function that makes an early-inlined call, and do a revert drill.
+
+Second, a loop-header parameter whose incoming values are {undefined, itself} made the existing single-defined-value rule in `case kIROp_Param` pick `argValue == inst`. Because `dominates(inst, inst)` is true, the rule replaced the parameter with itself, `changed` stayed true, and `simplifyIR` never terminated. Master already hangs this way on SPIR-V for `float4 t; for(..){ if(b){ float4 r; t = r; } } return t;`. The scan must skip `arg == inst`, as `tryRemoveTrivialPhi` does. The same PR found a detector trap: in a slang-test `SIMPLE` filecheck, `CHECK-NOT: error` always matches the harness's own `standard error = {` header, so a test must match error codes instead [peephole isPrelinking misses the per-function run after early inlining; loop-header {undef, self} params hang](../learnings/1792148210118-slang-peephole-isprelinking-misses-the-per-functio.md).
+
 ## Where `GlobalInstInlining` puts a sunk module-scope value
 
 When `GlobalInstInliningContextGeneric::inlineGlobalValuesAndRemoveIfUnused` sinks a module-scope aggregate that is illegal at module scope for the target, such as a `static const` table on WGSL, it inserts each clone at `getOutsideASM(user)`. WGSL returns the user itself. A table used only inside a loop is therefore materialized as `var t = array<...>(...)` inside the `loop {}` and rebuilt on every iteration, at -O0 through -O3. No later pass hoists it, since `hoistLoopInvariantInsts` is autodiff-only. Uses after the first one in the same dominance region share the clone, so the behaviour is not strictly one clone per use site. Master's struct-typed tables already behave this way.
@@ -47,7 +53,8 @@ Placing the clone at the first ordinary instruction of the function's entry bloc
 
 A reviewer on #13669 claimed that a struct table with a NaN field reached WGSL legalization as a module-scope `makeStruct`. It does not: struct tables arrive as `S_x24init` calls, so the `MakeStruct` arm of WGSL `isLegalGlobalInstForTarget` is unreachable from user source. Check `-dump-ir-before legalizeIRForWGSL` before trusting an "untested arm" finding [GlobalInstInlining clones land at the first use, which can be inside a loop body](../learnings/1792094646121-globalinstinlining-clones-land-at-the-first-use-wh.md).
 
-**Source learnings (3):**
+**Source learnings (4):**
 - [Phi block params are IRParams: filter with isFirstBlock when walking to "declarations"](../learnings/1792101219732-phi-block-params-are-irparams-filter-with-isfirstb.md) — extra report at `?:`; check what master emits before calling a rejection a break
 - [Slang IR: phi with all-undefined incoming args is never folded (E56004 on uninit texture fields)](../learnings/1792135170279-slang-ir-phi-with-all-undefined-incoming-args-is-n.md) — three simplifiers miss it; freeze semantics; E56004 triage shortcut
+- [Slang peephole: isPrelinking misses the per-function run after early inlining; loop-header {undef, self} params hang](../learnings/1792148210118-slang-peephole-isprelinking-misses-the-per-functio.md) — pass `getPrelinking()` to the post-early-inlining peephole; skip `arg == inst`; `CHECK-NOT: error` matches the harness header
 - [GlobalInstInlining clones land at the first use, which can be inside a loop body (WGSL getOutsideASM = user)](../learnings/1792094646121-globalinstinlining-clones-land-at-the-first-use-wh.md) — per-iteration rebuild; entry placement needs a side-effect gate; struct tables are `$init` calls

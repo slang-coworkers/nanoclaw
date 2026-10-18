@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-554 learnings. [Catalog](../index.md)
+558 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -243,6 +243,7 @@ type: topic
 - [CMake CACHE PATH absolutizes relative -D values against the cmake CWD — pass :STRING to keep them relative](../learnings/1781660657132-cmake-cache-path-absolutizes-relative-d-values-aga.md)
 - [CMake file(DOWNLOAD): EXPECTED_HASH is deferred-fatal in configure mode and defeats STATUS-based retry/fallback](../learnings/1785765561771-cmake-file-download-expected-hash-is-deferred-fata.md)
 - [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md)
+- [cmake-options.yml weekly cron is Saturday 08:00Z (not Friday); 10-03/10-10 runs missing](../learnings/1792253897751-cmake-options-yml-weekly-cron-is-saturday-08-00z-n.md)
 - [CMake: escaped list (\;) forwarded to a sub-configure is lost by a second unquoted expansion — verify with a cmake -P argv harness](../learnings/1790373222851-cmake-escaped-list-forwarded-to-a-sub-configure-is.md)
 - [CMake: every unquoted ${list} hop eats one level of \; escaping — list values get truncated before execute_process](../learnings/1790372578345-cmake-every-unquoted-list-hop-eats-one-level-of-es.md)
 - [CMake: seed CMAKE_<LANG>_FLAGS_<CONFIG>_INIT to make a default flag user-overridable (not target_compile_options + detection)](../learnings/1785767372104-cmake-seed-cmake-lang-flags-config-init-to-make-a-.md)
@@ -256,6 +257,7 @@ type: topic
 - [Correction: a PR whose check-ci disappears with no push is "ci-vanished", not a missed classification](../learnings/1791807339120-correction-a-pr-whose-check-ci-disappears-with-no-.md)
 - [CORRECTION: CMAKE_&lt;LANG&gt;_FLAGS_&lt;CONFIG&gt;_INIT seeding does NOT let env CXXFLAGS override an -O default](../learnings/1785768108214-correction-cmake-lt-lang-gt-flags-lt-config-gt-ini.md)
 - [Correction: gh CLI App-installation token is fine for actions/PR endpoints — don't over-generalize from auth-status/rate_limit failures](../learnings/1788205146208-correction-gh-cli-app-installation-token-is-fine-f.md)
+- [CORRECTION: missing cmake-options runs in `gh run list` may be deleted history, not skipped runs](../learnings/1792254028938-correction-missing-cmake-options-runs-in-gh-run-li.md)
 - [Correction: ps process COUNTS are unstable — cite the zero, not the number](../learnings/1785842778615-correction-ps-process-counts-are-unstable-cite-the.md)
 - [CORRECTION: pushing does NOT starve draft-PR CI — the blocker is `any_active_ci`, and `waiting` counts as active](../learnings/1786002067914-correction-pushing-does-not-starve-draft-pr-ci-the.md)
 - [Counting CI checks requires TWO GitHub API surfaces — check-runs alone undercounts](../learnings/1785968460789-counting-ci-checks-requires-two-github-api-surface.md)
@@ -341,6 +343,7 @@ type: topic
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md)
 - [Git worktrees SHARE .git/modules — sibling builds make 14 submodule pointers look like YOUR uncommitted change](../learnings/1786380275875-git-worktrees-share-git-modules-sibling-builds-mak.md)
 - [GitHub Actions outage signature: jobs cancelled after exactly 15 min with empty runner_name and zero steps](../learnings/1791238163488-github-actions-outage-signature-jobs-cancelled-aft.md)
+- [GitHub Actions runs older than 30 days cannot be rerun — push to get fresh CI](../learnings/1792224538847-github-actions-runs-older-than-30-days-cannot-be-r.md)
 - [GitHub CI check counting: total_count ≠ job count, and re-runs duplicate entries](../learnings/1786024895346-github-ci-check-counting-total-count-job-count-and.md)
 - [GitHub CI run with only 'filter' + failure = Actions outage, not code](../learnings/1791386926978-github-ci-run-with-only-filter-failure-actions-out.md)
 - [GitHub CI truth lives in two disjoint surfaces: check-runs AND commit status](../learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md)
@@ -493,6 +496,7 @@ type: topic
 - [Slang DISABLE CI jobs are build-only — no slang-test run step](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
 - [Slang LLVM prebuilt GCS key moves with ANY edit to external/build-llvm.sh, even a comment](../learnings/1791792494149-slang-llvm-prebuilt-gcs-key-moves-with-any-edit-to.md)
 - [Slang local checkout can be days-stale on actively-developed CMake files; verify against master + options-matrix CI gate](../learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md)
+- [Slang PR CI: x86/Windows green does not mean -Werror clean — aarch64 jobs build with warnings-as-errors](../learnings/1792247797393-slang-pr-ci-x86-windows-green-does-not-mean-werror.md)
 - [slang repo gates ALL build/test CI behind non-draft (opposite of slang-rhi)](../learnings/1781296244436-slang-repo-gates-all-build-test-ci-behind-non-draf.md)
 - [Slang runner-migration 'Prepare for X runner' issues: check git log first, CI already moved](../learnings/1792157281260-slang-runner-migration-prepare-for-x-runner-issues.md)
 - [Slang tools PCH hides missing includes in new unit tests — CI builds without it](../learnings/1791403291004-slang-tools-pch-hides-missing-includes-in-new-unit.md)
