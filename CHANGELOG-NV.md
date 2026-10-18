@@ -6,15 +6,35 @@ For architectural context — spines, workflows, overlays, traits, bindings (the
 
 | Branch | Scope | Total merged |
 |---|---|---:|
-| `nv-main` | Host process, composer, base spines/workflows, CI | 723 |
-| `nv-dashboard` | Pixel Office dashboard (standalone) | 291 |
-| `nv-slang` | slang project spine, skills, workflows | 198 |
-| `nv-slangpy` | slangpy project spine, skills, workflows | 116 |
-| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 92 |
+| `nv-main` | Host process, composer, base spines/workflows, CI | 727 |
+| `nv-dashboard` | Pixel Office dashboard (standalone) | 292 |
+| `nv-slang` | slang project spine, skills, workflows | 199 |
+| `nv-slangpy` | slangpy project spine, skills, workflows | 117 |
+| `nv-nanoclaw` | nanoclaw self-hosted project spine, skills, workflows | 93 |
 
 Cap: ≤10 bullets per branch per day; on busy days, related PRs are grouped or remaining ones are summarized as a tail line. Entry shape: `**#NNN** title`. Today's section uses richer bullets with one-line context per PR. Dates in Asia/Kolkata (IST), newest first.
 
 <!-- BEGIN AUTO -->
+
+## 📅 2026-10-18
+
+### nv-main (4 PRs)
+- **#2088** `Sync nv-main with upstream/main`
+- **#2096** `eval-runner: never score an answer written before the trial was dispatched`
+- **#2097** `eval-runner: score a fixer PR from the fork's own eval-ci check run`
+- **#2099** `eval-runner: add the reply task kind`
+
+### nv-dashboard (1 PRs)
+- **#2090** `Sync nv-dashboard with upstream/main`
+
+### nv-slang (1 PRs)
+- **#2091** `Sync nv-slang with upstream/main`
+
+### nv-slangpy (1 PRs)
+- **#2092** `Sync nv-slangpy with upstream/main`
+
+### nv-nanoclaw (1 PRs)
+- **#2093** `Sync nv-nanoclaw with upstream/main`
 
 ## 📅 2026-10-17
 
