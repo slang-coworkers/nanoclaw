@@ -1,4 +1,6 @@
-import { getInboundDb, getOutboundDb, openInboundDb, outboundDbPath } from './connection.js';
+import type { Database } from 'bun:sqlite';
+
+import { getOutboundDb, outboundDbPath, readInbound } from './connection.js';
 import { mailboxReclaimOptions, reclaimFreePages, type ReclaimResult } from './reclaim.js';
 import type { MessageInRow } from '../../db/messages-in.js';
 import type { MessageOutRow } from '../../db/messages-out.js';
@@ -20,7 +22,7 @@ export function sqliteTimestamp(value: string): string {
   return Number.isFinite(milliseconds) ? new Date(milliseconds).toISOString() : value;
 }
 
-function hasOnWakeColumn(db: ReturnType<typeof openInboundDb>): boolean {
+function hasOnWakeColumn(db: Database): boolean {
   if (hasOnWake !== null) return hasOnWake;
   const columns = db.prepare("PRAGMA table_info('messages_in')").all() as Array<{ name: string }>;
   hasOnWake = columns.some(({ name }) => name === 'on_wake');
@@ -28,11 +30,9 @@ function hasOnWakeColumn(db: ReturnType<typeof openInboundDb>): boolean {
 }
 
 export function sqliteGetPendingMessages(isFirstPoll: boolean, limit: number): MessageInRow[] {
-  const inbound = openInboundDb();
-  const outbound = getOutboundDb();
-  try {
+  const pending = readInbound((inbound) => {
     const onWakeFilter = hasOnWakeColumn(inbound) ? 'AND (on_wake = 0 OR ?1 = 1)' : '';
-    const pending = inbound
+    return inbound
       .prepare(
         `SELECT * FROM messages_in
          WHERE status = 'pending'
@@ -41,20 +41,18 @@ export function sqliteGetPendingMessages(isFirstPoll: boolean, limit: number): M
          ORDER BY seq ASC`,
       )
       .all(isFirstPoll ? 1 : 0) as MessageInRow[];
-    if (pending.length === 0) return [];
-    const acked = new Set(
-      (outbound.prepare('SELECT message_id FROM processing_ack').all() as Array<{ message_id: string }>).map(
-        ({ message_id }) => message_id,
-      ),
-    );
-    const unclaimed = pending.filter(({ id }) => !acked.has(id));
-    const wake = unclaimed.filter(({ trigger }) => trigger === 1).slice(0, limit);
-    const remaining = limit - wake.length;
-    const context = remaining > 0 ? unclaimed.filter(({ trigger }) => trigger === 0).slice(-remaining) : [];
-    return [...wake, ...context].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
-  } finally {
-    inbound.close();
-  }
+  });
+  if (pending.length === 0) return [];
+  const acked = new Set(
+    (getOutboundDb().prepare('SELECT message_id FROM processing_ack').all() as Array<{ message_id: string }>).map(
+      ({ message_id }) => message_id,
+    ),
+  );
+  const unclaimed = pending.filter(({ id }) => !acked.has(id));
+  const wake = unclaimed.filter(({ trigger }) => trigger === 1).slice(0, limit);
+  const remaining = limit - wake.length;
+  const context = remaining > 0 ? unclaimed.filter(({ trigger }) => trigger === 0).slice(-remaining) : [];
+  return [...wake, ...context].sort((a, b) => (a.seq ?? 0) - (b.seq ?? 0));
 }
 
 function mark(ids: string[], status: string): void {
@@ -107,12 +105,9 @@ export function sqliteMarkScriptSkipped(skips: Array<{ id: string; reason: strin
 }
 
 export function sqliteGetMessageIn(id: string): MessageInRow | undefined {
-  const inbound = openInboundDb();
-  try {
-    return inbound.prepare('SELECT * FROM messages_in WHERE id = ?').get(id) as MessageInRow | undefined;
-  } finally {
-    inbound.close();
-  }
+  return readInbound(
+    (inbound) => inbound.prepare('SELECT * FROM messages_in WHERE id = ?').get(id) as MessageInRow | undefined,
+  );
 }
 
 export function sqliteGetMessageInBySeq(sequence: number): MessageInRow | undefined {
@@ -120,27 +115,22 @@ export function sqliteGetMessageInBySeq(sequence: number): MessageInRow | undefi
   // `<message id="120">` integer echoed back through in_reply_to), so a
   // non-integer must never reach SQL.
   if (!Number.isInteger(sequence) || sequence <= 0) return undefined;
-  const inbound = openInboundDb();
-  try {
-    return inbound.prepare('SELECT * FROM messages_in WHERE seq = ?').get(sequence) as MessageInRow | undefined;
-  } finally {
-    inbound.close();
-  }
+  return readInbound(
+    (inbound) => inbound.prepare('SELECT * FROM messages_in WHERE seq = ?').get(sequence) as MessageInRow | undefined,
+  );
 }
 
 export function sqliteHasInboundFromThread(channelType: string, platformId: string, threadId: string): boolean {
-  const inbound = openInboundDb();
-  try {
-    const result = inbound
-      .prepare(
-        `SELECT COUNT(*) AS n FROM messages_in
-          WHERE channel_type = ? AND platform_id = ? AND thread_id = ?`,
-      )
-      .get(channelType, platformId, threadId) as { n: number } | undefined;
-    return (result?.n ?? 0) > 0;
-  } finally {
-    inbound.close();
-  }
+  const result = readInbound(
+    (inbound) =>
+      inbound
+        .prepare(
+          `SELECT COUNT(*) AS n FROM messages_in
+            WHERE channel_type = ? AND platform_id = ? AND thread_id = ?`,
+        )
+        .get(channelType, platformId, threadId) as { n: number } | undefined,
+  );
+  return (result?.n ?? 0) > 0;
 }
 
 export function sqliteGetUnrespondedInboundsFromThread(
@@ -153,21 +143,19 @@ export function sqliteGetUnrespondedInboundsFromThread(
   // separate DB files, and ATTACH does not work across the `:memory:`
   // connections the tests use — a cross-DB query would pass in production and
   // fail under test.
-  const inbound = openInboundDb();
-  try {
-    const rows = inbound
-      .prepare(
-        `SELECT * FROM messages_in
-          WHERE channel_type = ? AND platform_id = ? AND thread_id = ?
-          ORDER BY seq DESC`,
-      )
-      .all(channelType, platformId, threadId) as MessageInRow[];
-    if (rows.length === 0) return [];
-    const isResponded = getOutboundDb().prepare('SELECT 1 AS r FROM messages_out WHERE in_reply_to = ? LIMIT 1');
-    return rows.filter((row) => !isResponded.get(row.id));
-  } finally {
-    inbound.close();
-  }
+  const rows = readInbound(
+    (inbound) =>
+      inbound
+        .prepare(
+          `SELECT * FROM messages_in
+            WHERE channel_type = ? AND platform_id = ? AND thread_id = ?
+            ORDER BY seq DESC`,
+        )
+        .all(channelType, platformId, threadId) as MessageInRow[],
+  );
+  if (rows.length === 0) return [];
+  const isResponded = getOutboundDb().prepare('SELECT 1 AS r FROM messages_out WHERE in_reply_to = ? LIMIT 1');
+  return rows.filter((row) => !isResponded.get(row.id));
 }
 
 export function sqliteOutboundWatermark(): number {
@@ -217,7 +205,6 @@ export function sqliteCommitCostCeilingAdjustment(params: {
   costCapValue?: string;
 }): void {
   const outbound = getOutboundDb();
-  const inbound = getInboundDb();
   outbound.transaction(() => {
     if (params.costCapKey !== undefined && params.costCapValue !== undefined) {
       outbound
@@ -230,11 +217,10 @@ export function sqliteCommitCostCeilingAdjustment(params: {
         value: number;
       }
     ).value;
-    const maxIn = (
-      inbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_in').get() as {
-        value: number;
-      }
-    ).value;
+    const maxIn = readInbound(
+      (inbound) =>
+        (inbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_in').get() as { value: number }).value,
+    );
     const max = Math.max(maxOut, maxIn);
     const nextSeq = max % 2 === 0 ? max + 1 : max + 2;
 
@@ -259,33 +245,28 @@ export function sqliteCommitCostCeilingAdjustment(params: {
 }
 
 export function sqliteFindQuestionResponse(questionId: string): MessageInRow | undefined {
-  const inbound = openInboundDb();
-  try {
-    const response = inbound
-      .prepare("SELECT * FROM messages_in WHERE status = 'pending' AND content LIKE ?")
-      .get(`%"questionId":"${questionId}"%`) as MessageInRow | undefined;
-    if (!response) return undefined;
-    const acknowledged = getOutboundDb().prepare('SELECT 1 FROM processing_ack WHERE message_id = ?').get(response.id);
-    return acknowledged ? undefined : response;
-  } finally {
-    inbound.close();
-  }
+  const response = readInbound(
+    (inbound) =>
+      inbound
+        .prepare("SELECT * FROM messages_in WHERE status = 'pending' AND content LIKE ?")
+        .get(`%"questionId":"${questionId}"%`) as MessageInRow | undefined,
+  );
+  if (!response) return undefined;
+  const acknowledged = getOutboundDb().prepare('SELECT 1 FROM processing_ack WHERE message_id = ?').get(response.id);
+  return acknowledged ? undefined : response;
 }
 
 export function sqliteFindCliResponse(requestId: string): MessageInRow | undefined {
-  const inbound = openInboundDb();
-  try {
-    return inbound
-      .prepare("SELECT * FROM messages_in WHERE status = 'pending' AND content LIKE ?")
-      .get(`%"requestId":"${requestId}"%`) as MessageInRow | undefined;
-  } finally {
-    inbound.close();
-  }
+  return readInbound(
+    (inbound) =>
+      inbound
+        .prepare("SELECT * FROM messages_in WHERE status = 'pending' AND content LIKE ?")
+        .get(`%"requestId":"${requestId}"%`) as MessageInRow | undefined,
+  );
 }
 
 export function sqliteWriteMessageOut(message: OutboundWrite): number {
   const outbound = getOutboundDb();
-  const inbound = getInboundDb();
   outbound.exec('BEGIN IMMEDIATE');
   try {
     const maxOut = (
@@ -293,11 +274,10 @@ export function sqliteWriteMessageOut(message: OutboundWrite): number {
         value: number;
       }
     ).value;
-    const maxIn = (
-      inbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_in').get() as {
-        value: number;
-      }
-    ).value;
+    const maxIn = readInbound(
+      (inbound) =>
+        (inbound.prepare('SELECT COALESCE(MAX(seq), 0) AS value FROM messages_in').get() as { value: number }).value,
+    );
     const max = Math.max(maxOut, maxIn);
     const sequence = max % 2 === 0 ? max + 1 : max + 2;
     const record = createOutboundRecord(message, sequence, new Date().toISOString());
@@ -330,27 +310,33 @@ export function sqliteWriteMessageOut(message: OutboundWrite): number {
 }
 
 export function sqliteGetMessageIdBySeq(sequence: number): string | null {
-  const inbound = getInboundDb();
-  const inboundRow = inbound.prepare('SELECT id FROM messages_in WHERE seq = ?').get(sequence) as
-    | { id: string }
-    | undefined;
+  const inboundRow = readInbound(
+    (inbound) =>
+      inbound.prepare('SELECT id FROM messages_in WHERE seq = ?').get(sequence) as { id: string } | undefined,
+  );
   if (inboundRow) return inboundRow.id;
   const outboundRow = getOutboundDb().prepare('SELECT id FROM messages_out WHERE seq = ?').get(sequence) as
     | { id: string }
     | undefined;
   if (!outboundRow) return null;
-  const delivered = inbound
-    .prepare('SELECT platform_message_id FROM delivered WHERE message_out_id = ?')
-    .get(outboundRow.id) as { platform_message_id: string | null } | undefined;
+  const delivered = readInbound(
+    (inbound) =>
+      inbound.prepare('SELECT platform_message_id FROM delivered WHERE message_out_id = ?').get(outboundRow.id) as
+        | { platform_message_id: string | null }
+        | undefined,
+  );
   return delivered?.platform_message_id || outboundRow.id;
 }
 
 export function sqliteGetRoutingBySeq(
   sequence: number,
 ): { channel_type: string | null; platform_id: string | null; thread_id: string | null } | null {
-  const inbound = getInboundDb()
-    .prepare('SELECT channel_type, platform_id, thread_id FROM messages_in WHERE seq = ?')
-    .get(sequence) as { channel_type: string | null; platform_id: string | null; thread_id: string | null } | undefined;
+  const inbound = readInbound(
+    (db) =>
+      db.prepare('SELECT channel_type, platform_id, thread_id FROM messages_in WHERE seq = ?').get(sequence) as
+        | { channel_type: string | null; platform_id: string | null; thread_id: string | null }
+        | undefined,
+  );
   if (inbound) return inbound;
   return (
     (getOutboundDb()
@@ -372,12 +358,13 @@ export function sqliteGetUndeliveredMessages(): MessageOutRow[] {
 }
 
 export function sqliteGetSessionRouting(): SessionRouting {
-  const db = getInboundDb();
-  const exists = db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'session_routing'").get();
-  if (!exists) return { channelType: null, platformId: null, threadId: null };
-  const row = db.prepare('SELECT channel_type, platform_id, thread_id FROM session_routing WHERE id = 1').get() as
-    | { channel_type: string | null; platform_id: string | null; thread_id: string | null }
-    | undefined;
+  const row = readInbound((db) => {
+    const exists = db.prepare("SELECT 1 FROM sqlite_master WHERE name = 'session_routing'").get();
+    if (!exists) return undefined;
+    return db.prepare('SELECT channel_type, platform_id, thread_id FROM session_routing WHERE id = 1').get() as
+      | { channel_type: string | null; platform_id: string | null; thread_id: string | null }
+      | undefined;
+  });
   return parseSessionRoutingRecord({
     channelType: row?.channel_type ?? null,
     platformId: row?.platform_id ?? null,
@@ -425,28 +412,28 @@ function destination(row: DestinationRow): Destination {
 }
 
 export function sqliteGetAllDestinations(): Destination[] {
-  return (getInboundDb().prepare('SELECT * FROM destinations ORDER BY name').all() as DestinationRow[]).map(
+  return readInbound((db) => db.prepare('SELECT * FROM destinations ORDER BY name').all() as DestinationRow[]).map(
     destination,
   );
 }
 
 export function sqliteFindByName(name: string): Destination | undefined {
-  const row = getInboundDb().prepare('SELECT * FROM destinations WHERE name = ?').get(name) as
-    | DestinationRow
-    | undefined;
+  const row = readInbound(
+    (db) => db.prepare('SELECT * FROM destinations WHERE name = ?').get(name) as DestinationRow | undefined,
+  );
   return row && destination(row);
 }
 
 export function sqliteFindByRouting(channelType: string, platformId: string): Destination | undefined {
-  const db = getInboundDb();
-  const row =
+  const row = readInbound((db) =>
     channelType === 'agent'
       ? (db.prepare("SELECT * FROM destinations WHERE type = 'agent' AND agent_group_id = ?").get(platformId) as
           | DestinationRow
           | undefined)
       : (db
           .prepare("SELECT * FROM destinations WHERE type = 'channel' AND channel_type = ? AND platform_id = ?")
-          .get(channelType, platformId) as DestinationRow | undefined);
+          .get(channelType, platformId) as DestinationRow | undefined),
+  );
   return row && destination(row);
 }
 
@@ -491,7 +478,6 @@ export function _resetOutboundGcCursorForTesting(): void {
 }
 
 export function sqliteGcOutboundHistory(cutoffIso: string, maxRows = 5000): GcOutboundResult {
-  const inbound = getInboundDb();
   const outbound = getOutboundDb();
   const norm = (col: string) => `SUBSTR(REPLACE(REPLACE(${col}, 'T', ' '), 'Z', ''), 1, 19)`;
   const cutoff = cutoffIso.replace('T', ' ').replace('Z', '').slice(0, 19);
@@ -510,17 +496,19 @@ export function sqliteGcOutboundHistory(cutoffIso: string, maxRows = 5000): GcOu
       )
       .all(gcCursor.outSeq, cutoff, limit) as Array<{ id: string; seq: number }>;
     // Delivered per the host's ledger, and delivered before the cutoff too.
-    const delivered = inbound.prepare(
-      `SELECT 1 AS x FROM delivered WHERE message_out_id = ? AND ${norm('delivered_at')} < ?`,
-    );
+    // One inbound read for the whole page, not one connection per row.
+    const delivered = readInbound((inbound) => {
+      const isDelivered = inbound.prepare(
+        `SELECT 1 AS x FROM delivered WHERE message_out_id = ? AND ${norm('delivered_at')} < ?`,
+      );
+      return page.filter((row) => isDelivered.get(row.id, cutoff)).map((row) => row.id);
+    });
     // Never the newest row: seq allocation reads MAX(seq) of this table.
     const deleteOut = outbound.prepare(
       `DELETE FROM messages_out WHERE id = ? AND kind = 'system' AND seq < (SELECT MAX(seq) FROM messages_out)`,
     );
     outbound.transaction(() => {
-      for (const row of page) {
-        if (delivered.get(row.id, cutoff)) messagesOut += deleteOut.run(row.id).changes;
-      }
+      for (const id of delivered) messagesOut += deleteOut.run(id).changes;
     })();
     if (page.length > 0) gcCursor.outSeq = page[page.length - 1].seq;
     if (page.length < limit) gcCursor.outDone = true;
@@ -535,12 +523,13 @@ export function sqliteGcOutboundHistory(cutoffIso: string, maxRows = 5000): GcOu
           ORDER BY rowid LIMIT ?`,
       )
       .all(gcCursor.ackRowid, cutoff, limit) as Array<{ rid: number; message_id: string }>;
-    const stillExists = inbound.prepare('SELECT 1 AS x FROM messages_in WHERE id = ?');
+    const orphaned = readInbound((inbound) => {
+      const stillExists = inbound.prepare('SELECT 1 AS x FROM messages_in WHERE id = ?');
+      return page.filter((ack) => !stillExists.get(ack.message_id)).map((ack) => ack.message_id);
+    });
     const deleteAck = outbound.prepare('DELETE FROM processing_ack WHERE message_id = ?');
     outbound.transaction(() => {
-      for (const ack of page) {
-        if (!stillExists.get(ack.message_id)) ackRows += deleteAck.run(ack.message_id).changes;
-      }
+      for (const id of orphaned) ackRows += deleteAck.run(id).changes;
     })();
     if (page.length > 0) gcCursor.ackRowid = page[page.length - 1].rid;
     if (page.length < limit) gcCursor.ackDone = true;

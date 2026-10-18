@@ -17,3 +17,4 @@ import './sessions.js';
 import './tasks.js';
 import './pr-mappings.js';
 import './cost-cap.js';
+import './templates.js';

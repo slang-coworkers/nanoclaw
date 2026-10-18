@@ -126,6 +126,7 @@ The pin only narrows session selection within an already-authorized recipient �
 - **Always pass `coworkerType`** — sets skills, MCP allowlist, workflows (from `container/{spines,skills}/*/coworker-types.yaml`). Omitting falls back to `default` (base spine only); ask the user when not obvious.
 - `name` is a destination both ways: `send_message({ to: "<name>" })`; replies arrive `from="<name>"`.
 - `instructions` → `groups/<name>/instructions.prepend.md`, appended after the typed spine each wake. Cover role, who it takes tasks from (you, by name), how it reports back. Don't restate base/typed behavior.
+- **Templates:** if relevant, offer to build the agent from a predefined template. If the user is interested, list `ncl templates list` (this machine), then `ncl templates list --registry` (public library). Use one only once the user has picked it: pass the ref as `template: "sales/sdr"`. A template supplies the persona, so `instructions` passed alongside it are **ignored**.
 - **Fire-and-forget:** returns immediately; the message is delivered when the recipient's container next wakes. If a recipient turn errors on a transient auth/provider outage, the host redrives the handoff with bounded backoff and dead-letters it to escalation if it never succeeds — it neither vanishes nor self-heals. **A stalled handoff on a chain you own is yours to chase** (a nudge or re-send); "queued / will self-heal on recovery" is never a reason to stop driving it.
 
 ### Fan-out: N independent items → N messages, N fresh threads
