@@ -53,7 +53,7 @@ interface Shadow {
 const SHADOWS: Record<string, Shadow> = {
   'agents.instructions.md': {
     fragments: ['agents.md', 'wire-agents.md', '../context/chain-reporting.md'],
-    digest: '3d7287cdebb6ac18',
+    digest: '69b9d0d543f556b2',
     note:
       'Split three ways: wiring peers is a distinct decision from addressing them, and the ' +
       '`report_pr_created` rule lives with the chain contract it belongs to rather than with the ' +

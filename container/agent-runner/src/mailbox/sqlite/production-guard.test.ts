@@ -13,7 +13,7 @@
  */
 import { afterEach, describe, expect, test } from 'bun:test';
 
-import { closeSessionDb, getInboundDb, getOutboundDb, initTestSessionDb, openInboundDb } from './connection.js';
+import { closeSessionDb, getInboundDb, getOutboundDb, initTestSessionDb, readInbound } from './connection.js';
 
 afterEach(() => {
   closeSessionDb();
@@ -27,15 +27,15 @@ describe('session DBs refuse production under test', () => {
 
   test('the inbound paths refuse too — read-only is not a licence to touch production', () => {
     closeSessionDb();
-    expect(() => getInboundDb()).toThrow(/Refusing to open the live inbound\.db/);
-    expect(() => openInboundDb()).toThrow(/Refusing to open the live inbound\.db/);
+    expect(() => readInbound(() => 0)).toThrow(/Refusing to open the live inbound\.db/);
+    expect(() => getInboundDb()).toThrow(/test-only/);
   });
 
   test('initTestSessionDb lifts the guard, so real tests are unaffected', () => {
     initTestSessionDb();
     expect(() => getOutboundDb()).not.toThrow();
     expect(() => getInboundDb()).not.toThrow();
-    expect(() => openInboundDb()).not.toThrow();
+    expect(() => readInbound(() => 0)).not.toThrow();
   });
 
   test('a closeSessionDb teardown re-arms it — the exact hole that leaked', () => {
