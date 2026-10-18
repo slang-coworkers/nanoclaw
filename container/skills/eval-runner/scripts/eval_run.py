@@ -470,18 +470,31 @@ def freeze_skills(dirs: tuple[str, ...] = DEFAULT_SKILLS_DIRS) -> dict:
 # --------------------------------------------------------------------------- pollers
 
 
-def poll_triage(group_dir: str, task: Task, repeat: int) -> dict | None:
+def poll_triage(group_dir: str, task: Task, repeat: int, not_before: float = 0.0) -> dict | None:
     """The agent's answer.json for this repeat once it exists and parses; None while it
-    is absent. A file that is not JSON yet (being written) counts as absent."""
+    is absent. A file that is not JSON yet (being written) counts as absent, and so does
+    a file last written before `not_before` (the trial's dispatch time): the answer path
+    depends only on task and repeat, so a file from an earlier job on the same mount
+    would otherwise be scored as this trial's answer."""
     p = os.path.join(answer_dir(group_dir, task.id, repeat), "answer.json")
     if not os.path.isfile(p):
         return None
     try:
+        if os.path.getmtime(p) < not_before:
+            return None
         with open(p, encoding="utf-8") as fh:
             doc = json.load(fh)
     except (OSError, ValueError):
         return None
     return doc if isinstance(doc, dict) else {"error": "answer.json is not a JSON object"}
+
+
+def existing_answers(group_dir: str, plan: list[tuple[Task, int]]) -> list[str]:
+    """The planned answer paths that already hold a file. A job must start with none of
+    them present: the eval copy reads its own answer directory, so a leftover answer can
+    steer the new session as well as the scorer."""
+    paths = [os.path.join(answer_dir(group_dir, t.id, k), "answer.json") for t, k in plan]
+    return [p for p in paths if os.path.isfile(p)]
 
 
 def poll_fixer(gh: Callable[[str], object], fork: str, task: Task, repeat: int) -> dict | None:
@@ -648,6 +661,7 @@ class Trial:
     base_commit: str | None = None
     _started: float = field(default=0.0, repr=False)
     _pr_seen_at: float = field(default=0.0, repr=False)
+    _answer_sig: str = field(default="", repr=False)
 
     @property
     def trial_id(self) -> str:
@@ -657,6 +671,7 @@ class Trial:
         d = asdict(self)
         d.pop("_started", None)
         d.pop("_pr_seen_at", None)
+        d.pop("_answer_sig", None)
         d["trial_id"] = self.trial_id
         return d
 
@@ -794,7 +809,15 @@ class EvalJob:
         elapsed = self.clock() - trial._started
         verifier_dir = os.path.join(self.job_dir, "trials", trial.trial_name, "verifier")
         if task.kind == "triage":
-            answer = poll_triage(self.cfg.group_dir, task, trial.repeat)
+            answer = poll_triage(self.cfg.group_dir, task, trial.repeat, not_before=trial._started)
+            if answer is not None:
+                # The agent may rewrite its answer moments after the first version
+                # appears, so a version is scored only once two consecutive polls
+                # read it unchanged.
+                sig = json.dumps(answer, sort_keys=True)
+                if sig != trial._answer_sig:
+                    trial._answer_sig = sig
+                    answer = None
             if answer is not None:
                 trial.answer = answer
                 if "error" in answer and not {"subsystem", "severity", "next_step", "labels"} & set(answer):
@@ -816,7 +839,7 @@ class EvalJob:
                     trial._pr_seen_at = self.clock()
                     self.log(f"{trial.trial_id}: PR #{pr.get('number')} found ({pr.get('head_ref')})")
                 else:
-                    answer = poll_triage(self.cfg.group_dir, task, trial.repeat)
+                    answer = poll_triage(self.cfg.group_dir, task, trial.repeat, not_before=trial._started)
                     if answer is not None and "error" in answer:
                         self._finish(trial, ERROR, 0.0, f"agent reported: {str(answer.get('error'))[:200]}")
                         return True
@@ -1205,6 +1228,14 @@ def main(argv: list[str] | None = None) -> int:
             return 2
     dispatcher = NclDispatcher(cfg.group)
     plan = pairs if pairs is not None else [(t, k) for k in range(1, repeats + 1) for t in tasks]
+    if cfg.kind == "triage" and not args.dry_run:
+        stale = existing_answers(group_dir, plan)
+        if stale:
+            for p in stale[:10]:
+                log(f"answer already present before dispatch: {p}")
+            log(f"{len(stale)} planned answer path(s) already hold a file; move the previous job's "
+                f"{os.path.join(group_dir, 'eval')} aside on the host before starting this job")
+            return 2
     if args.dry_run:
         for t, k in plan:
             cmd = dispatcher.command(t, k, build_prompt(t, k, cfg.fork))
