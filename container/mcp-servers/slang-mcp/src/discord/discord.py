@@ -880,11 +880,17 @@ class FeedbackView(discord.ui.View):
 
 
 async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
-    """Send a message to a Discord channel or forum thread.
+    """Send a message to a Discord channel, thread or forum.
 
     Allowed targets:
-    - Channels listed in DISCORD_ALLOWED_SEND_CHANNELS (comma-separated IDs)
+    - Channels listed in DISCORD_ALLOWED_SEND_CHANNELS (comma-separated IDs),
+      and threads whose parent is one of those channels
     - Threads whose parent forum is listed in DISCORD_ALLOWED_SEND_FORUMS
+
+    A forum post always opens a thread. On a text channel, `thread_name` opens a
+    thread on the posted message and the result carries its `thread_id`, so a
+    long report is one anchor message plus follow-ups sent to that thread id,
+    never a run of numbered top-level parts.
 
     If neither env var is set, all sends are blocked.
 
@@ -928,7 +934,8 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
         # Enforce allowlist: direct channel match, thread in allowed forum, or forum itself
         is_allowed = args.channel_id in allowed_channels
         if not is_allowed and isinstance(channel, discord.Thread) and channel.parent:
-            is_allowed = str(channel.parent.id) in allowed_forums
+            parent_id = str(channel.parent.id)
+            is_allowed = parent_id in allowed_forums or parent_id in allowed_channels
         if not is_allowed and isinstance(channel, discord.ForumChannel):
             is_allowed = args.channel_id in allowed_forums
         if not is_allowed:
@@ -959,14 +966,21 @@ async def send_message(args: SendMessageArgs) -> Dict[str, Any]:
         # Send to text channel or thread
         message = await channel.send(args.content, view=view)
 
-        # Return message data
-        return {
+        result = {
             "message_id": str(message.id),
             "channel_id": str(message.channel.id),
             "content": message.content,
             "timestamp": message.created_at.isoformat(),
             "url": message.jump_url,
         }
+
+        # On a text channel, thread_name opens a thread on this message so the
+        # rest of a long post goes there instead of into numbered parts.
+        if args.thread_name and isinstance(channel, discord.TextChannel):
+            thread = await message.create_thread(name=args.thread_name[:100])
+            result["thread_id"] = str(thread.id)
+            result["thread_name"] = thread.name
+        return result
     except asyncio.CancelledError:
         logger.error("Discord operation was cancelled")
         return {"error": "Operation cancelled"}
