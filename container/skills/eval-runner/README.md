@@ -81,7 +81,8 @@ the job root describe the job the same way.
 ## Exit codes
 
 `0` every trial scored; `1` some trial timed out, errored or is unknown; `2` the job stopped
-for budget, or no task was selected, or the eval group's directory is not mounted.
+for budget, or no task was selected, or the eval group's directory is not mounted, or a
+planned triage answer path already held a file before dispatch (the job did not start).
 
 ## Tests
 

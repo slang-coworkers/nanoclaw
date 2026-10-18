@@ -22,7 +22,13 @@ are under `/workspace/agent/reports/evals/`. The eval copies do the work; the ru
 2. **Confirm the eval group is an eval copy.** `ncl groups config get --id <eval group> --json`
    must show the group you expect, and `/workspace/extra/ephemeral/prod-groups/<folder>/.overlay-eval-sandbox`
    must exist. Without that marker the group is not sandboxed: stop and report, do not dispatch.
-3. **Preview.** Run the command below with `--dry-run` and read the trial list and the
+3. **Confirm the answer directory is empty for the planned trials.** A triage answer path
+   depends only on task id and repeat, so `/workspace/extra/ephemeral/prod-groups/<folder>/eval/`
+   must hold no `answer.json` for any trial the job will dispatch. The runner refuses to
+   start (exit 2, naming the files) when one is present; the mount is read-only here, so ask
+   the operator to move the previous job's `eval/` aside on the host (for example to
+   `eval.<previous job id>/`), then start again.
+4. **Preview.** Run the command below with `--dry-run` and read the trial list and the
    `ncl tasks create` invocation it prints. The trial count is tasks × repeats.
 
 ## Start a job
