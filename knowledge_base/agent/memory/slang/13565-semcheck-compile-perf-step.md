@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13565 — SemanticChecking ~7% compile-time step since 2026-10-07 (not bisected)
-description: OPEN, assigned 10-12 to jvepsalainen-nv (by jkwak-work), silent. Step persists (10-15 abs geomean 1.066/54). Operator asked 10-16 about (a) bot comment / (b) bot bisect, unanswered. Re-chase rechase-13565-r4-f6d2 10-19 09:00Z
+description: OPEN, assigned 10-12 to jvepsalainen-nv (by jkwak-work), silent. Step persists (10-17 abs geomean 1.062/54). Operator asked 10-16 about (a) bot comment / (b) bot bisect, unanswered. Step-2 (10-16) resolved by the #13537 revert. Re-chase rechase-13565-r5-a966 10-19 09:00Z
 tags: [slang, perf, compile-time, regression, nightly-mdl-perf]
 ---
 
@@ -32,12 +32,15 @@ from absolute medians instead: `shader-slang/slang-compile-perf` `daily/<date>-<
 | 10-08 `d074e7779` | 1.078 | 49 | 1.035 | 1.006 |
 | 10-15 `f2b163c08` | 1.066 | 47 | 1.025 | 1.004 |
 | 10-16 `e49310561` | 1.111 ⚠️ step-2 | 52 | 1.041 | 1.009 |
+| 10-17 `d9ede2dd58` | 1.062 (step-2 gone) | — | — | — |
 
 The daily geomean from 10-08 to 10-15 stays in the 1.037–1.078 band, which is ±~2% day-to-day noise on top of the step.
 **10-16 is contaminated** by a second, separate step: #13537/#13626/#13615, with 10-15→10-16 SemanticChecking
 1.042 and IR passes ≈0.99. The nightly flagged it (run 38855038868 failed; worst is generic_builtin_operator 1.21×).
 It is tracked on dashboard thread `perf-semanticchecking-step2-1016` / one-shot `perf-semcheck-step2-conf-3085`.
 Measure #13565 at the 10-15 point and caveat later dailies.
+
+**Step-2 resolved 10-17:** #13712 (kaizhangNV) reverted #13537 in full, merged 10-16 21:01Z (`8c81b8bdaf`), and the 10-17 nightly head `d9ede2dd` contains it. 10-17 vs 10-16 SemanticChecking geomean is 0.956/54, and generic_builtin_operator (module) went 56.44 → 46.44 ms (10-06: 45.39). So the timing points at #13537 as the cause of the second step; no A/B was run. Nine commits separate the runs, including another sema change (#13711), so neither #13537 nor #13615 is isolated. From 10-17 the dailies need no step-2 caveat, unless #13537 is re-landed. Containment rule: in `compare/<base>...<head>`, `ahead`/`identical` means head contains base; `behind`/`diverged` means it does not.
 
 ## Bisect parameters (if the operator authorizes)
 
@@ -72,3 +75,4 @@ sema_generics 1.016, mdl_dxr 1.042, minimal 1.089.
 - 10-16 09:05Z: still silent and unbisected. Sent the [Update] to the dashboard (msg 9, thread `gh-issue-shader-slang/slang-13565`)
   asking about (a) a persistence comment and (b) a bot bisect. **This is the 1st ask**; the 10-13 run had skipped it because an owner existed.
   Next: `rechase-13565-r4-f6d2` 10-19 09:00Z re-asks once, then switches to a +7d cadence and parks after a 3rd unanswered ask.
+- 10-17 08:15Z: `rechase-13565-r4-f6d2` was found **missing** from `ncl tasks list` (its session is closed, never fired; cause unknown). Recreated it as `rechase-13565-r5-a966` (10-19 09:00Z) with the same decision table, plus the step-2 resolution and the 10-17 figure. Step-2 one-shot `perf-semcheck-step2-conf-3085` was cancelled: slang-release-regression-check answered it at 08:02Z.

@@ -1,0 +1,39 @@
+---
+type: chain
+title: slang#13732 — WGSL whole-uniform-struct copy for a member subscript call
+description: Human-filed (albertrodriguezclo) WGSL codegen perf issue; routed to slang-triager 2026-10-17
+---
+
+# slang#13732 — WGSL: member subscript on a uniform struct copies the whole struct
+
+- Filed 2026-10-17 14:54Z by albertrodriguezclo (same reporter as #13631–#13690). No labels or
+  assignee. On WGSL, `push.b[i]` (a `__subscript` getter on member `b` of `uniform Push push`)
+  emits `var _S3 : Push_std140_0 = globalParams_0.push_0;` then `&(_S3.b_0)`. The reporter expects a
+  member-only copy, which Slang already picks when `Push` also has a `float4 big[8]` member. The
+  ideal is no copy for a getter that does not mutate `this`. Related to #13703 (large `in` struct
+  params by value on WGSL; chain `awaiting_human`).
+- 2026-10-17 ~15:00Z: live read clean (open, 0 comments, updated_at == created_at, body 1799
+  chars). Dispatched to slang-triager on `gh-issue-shader-slang/slang-13732`. No fixer until the
+  triage memo comes back and a go-ahead exists.
+- 2026-10-17 15:34Z triager progress (their finding): reproduces on master 60a7c8c88; regression
+  since v2025.19, first bad e420f2f98 (#8668, "Defer `IRCastStorageToLogicalDeref` in
+  lowerBufferElementType pass", subject verified by me). The reporter opened **PR #13734** at 15:25Z
+  (verified: open, ready, branch `fix/wgsl-uniform-member-partial-load`, `Fixes #13732`). The triager
+  says it takes the producer-side approach they would recommend and is building it to verify. A
+  human PR owns the fix, so no fixer dispatch. Its review events route as a human PR (approvers paused).
+- 2026-10-17 15:52Z `[Triage]`: regression (codegen quality, no wrong results), P2, IR
+  buffer-element lowering → WGSL (also SPIR-V -O0). Bisect v2025.18.2 good → v2025.19 bad, first bad
+  e420f2f98 (#8668); parent 3cf1f5a61 good. Mechanism (triager's finding): the `deferBufferLoad` size
+  gate (>16 B and (>128 B or has array), `slang-ir-defer-buffer-load.cpp:59-92`) hides it for
+  `float4 big[8]`; otherwise the `kIROp_Load` case of `lowerBufferElementTypeToStorageType` copies
+  the whole value and passes `&tmp.b`. Options: A member-only loads (recommended, = PR #13734), B relax
+  the gate (all targets), C zero copy (design follow-up).
+  - Public comment [6236090926](https://github.com/shader-slang/slang/issues/13732#issuecomment-6236090926)
+    (verified: nv-slang-bot, only comment); labels `regression`+`reproduced`, Type=Bug (verified).
+  - Triager built #13734 @888205405a: fixes all variants, Dawn validates, memory-op order kept, new test
+    fails master / passes PR (+ Vulkan L40S), subset 1271/1271. **Problem:** member loads drop
+    `IRAlignedAttr`/`IRMemoryScopeAttr` (coherent load loses `MakePointerVisible|NonPrivatePointer`).
+    The ask to the reporter (keep the deferBufferLoad guard at :230-244 + a test) is in the issue comment's
+    Next-action. It is not on the PR thread itself (PR has only bot comments).
+  - Memo: `/workspace/inbox/a2a-1792252322688-2vpl00/triage-13732.md`. No fixer. The triager watches #13734.
+    My one-shot re-check `rechase-13732-pr13734-54b2` is set for 2026-10-20 15:00Z.

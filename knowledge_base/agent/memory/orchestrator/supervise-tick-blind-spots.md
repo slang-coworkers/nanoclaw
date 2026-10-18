@@ -60,4 +60,9 @@ pinned nudge acked in under a minute.
    `issues/<n>/timeline` for a trailing `removed_from_merge_queue` with no later `added_to_merge_queue`. This
    needs no nudge to a coworker; it goes on the board as an operator call (requeue, or ask the approver).
 
+Shape 4 recurred at tick 289 (#13700 R4): reviewer `atuavs` said at 06:24Z that its final verdict was waiting on A and C. A
+finished at 06:52Z, and C died at 07:57Z on `ECONNREFUSED`. The reviewer's last model request was at 07:53Z. The A/C run dirs are
+`prod-groups/slang-reviewer/runs/{A,C}-<pr>-r<N>-<ts>/` (`exit-status`, `final-review.md` / `clarity-review.md`). A pinned
+nudge got the verdict sent in 4 min.
+
 Typical outcome: every pinned nudge above acked within 1–3 min.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slangpy#1232 — Vulkan module-level [[vk::push_constant]] → silent wrong functional-API results
-description: Human-filed (albertrodriguezclo) 10-16 14:50Z. Triaged (cmt 6218899535). Upstream FILED 10-16 as slang#13713 + slang-rhi#915; slang-fixer has the #13713 diagnostic (thread gh-issue-shader-slang/slang-13713). The layout contract is parked for a Slang maintainer. slangpy-fixer has approach A. Operator decisions: slang-rhi#810 promotion, and whether to fix the rhi STAGE_ALL overlap now.
+description: Human-filed (albertrodriguezclo) 10-16. ALL coworker tiers closed 10-17. SlangPy part = draft PR slangpy#1235 (fail loudly, CI green). Upstream = slang#13713 → draft PR slang#13724 (E39033, breaking, error vs warning for kaizhangNV) + slang-rhi#915 (parked). Operator decisions open - #1235 ready, rhi#810 promotion, #915 STAGE_ALL fix now, file the export-fn GLSL follow-up.
 resource: https://github.com/shader-slang/slangpy/issues/1232
 ---
 
@@ -110,3 +110,13 @@ Memo: slangpy-triager FS `memory/triage/1232-vulkan-module-push-constant-silent-
   `-emit-spirv-via-glsl` stops before glslang; CHECK lines now assert E39033; wording and `#line` disclosure fixed. An attempt to fail emit on any error for every target broke
   `cooperativeVectorTypeMetadata`, so that check is GLSL-only. Full suite 10881/10884 (3 fp8-cuda failures that fail on master too). Known limit left out of scope: an uncalled `export`
   fn reading one push-constant block while the EP reads another still fails glslang, same as master (direct SPIR-V is fine); listed as a follow-up in the explanation, not filed.
+- 10-17 03:58Z #13724 R2 verdict: **APPROVE_WITH_NITS**, 0 bugs. All R1 fixes re-checked. The reviewer wrote the 2 missing load-bearing tests (GLSL unused-block
+  check, GLSL early fail exit); each passes on head and fails with the logic removed and on master. Minor nits: a comment, an assert that contradicts a null check, a test comment, user-guide GLSL and
+  `-preserve-params` text. The claimed EP `[vk::push_constant]` mislabel did not reproduce. The two-block GLSL case with an exported reader matches master (follow-up). Next: the fixer applies the nits with no further
+  round, then `[Fix Report]`. No maintainer has spoken on error vs warning (#13713/#13724/#13518/#13541).
+- **10-17 04:39Z [Fix Report] slang#13713 → PR #13724 FIXED (draft)**, verified on GitHub: head `f470d43`, 20 files +613/−5, `pr: breaking change`, kaizhangNV
+  assigned, CI 28 skipped + 2 success (normal for a draft), issue status cmt 6229595317. 8 new tests (24 runs); full suite 10884/10887 (same 3 fp8-cuda failures as master). R1
+  REQUEST_CHANGES → R2 APPROVE_WITH_NITS, nits applied, no R3. **All coworker tiers on the chain are now closed.** The PR is held for maintainer error vs warning.
+  Unfiled follow-up: an uncalled `export` fn reading a second block → GLSL still declares both (same as master); filing is the operator's call.
+  Remaining: human decisions only (see the 10-17 dashboard table). Re-check `rechase-1232-upstream-4666` 10-20 15:00Z.
+- 10-17 04:45Z slang-reviewer confirmed all R2 nits and both pinning tests at `f470d43` (each fails with its logic removed). Review chain COMPLETE. Left open, both minor: 2 optional tests (RT stage, single violating EP) and the `-obfuscate` note printing empty field names.

@@ -17,5 +17,7 @@ description: "CLOSED 2026-10-09 by saipraveenb25: fixed on master by #13234 (dup
   saipraveenb25 answered on 10-09 at 21:10Z with a question instead of an (a)/(b) pick: does removing `[Differentiable]`
   from functions with a custom derivative work? He says that is the intended usage, and the double-conformance bug
   should still be fixed. slang-fixer was dispatched to test it and draft a reply (pinned to `sess-1789716207340-dwbdoz`;
-  posting goes through slang-triager if fixer's gh is still `app_not_connected`). Re-chase: `rechase-slang-13301-huma-3af4` (10-11 09:00Z).
+  fixer's gh works again). Fixer replied on 10-09 at 21:56Z: the workaround works only partly, and it recommended the guard PR.
+  On 10-18 at 02:45Z saipraveenb25 said: "open a PR with the header fix". That closes #13301 and slangpy#1204; the conditional
+  `__func_extension` case is deferred. Dispatched to the same fixer session. Re-chase: `rechase-slang-13301-huma-91bf` (10-19 09:00Z).
 - **Spin-offs:** the #9808 autodiff cluster, recorded in [13332-second-order-nodiff-scope.md](13332-second-order-nodiff-scope.md).

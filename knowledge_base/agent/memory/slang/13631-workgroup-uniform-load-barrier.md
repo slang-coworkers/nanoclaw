@@ -115,3 +115,5 @@ diagnosed). Both coworkers saved a "run GPU slang-test serially" learning.
 
 **Resumes on:** (GPU done) then kaizhangNV's answer on the semantics or a review on #13659, a reporter comment, or the PR's
 merge/close. Parked-chain timer: one-shot `rechase-13631-pr13659-se-8806` (10-20T15:00Z; `ncl tasks create` timed out at 30 s but the row exists, exactly one). #13675 resumes on `rechase-13675-slangvm-de-58e4` (10-17T19:00Z) or a maintainer-comment webhook.
+
+**10-17 19:00Z, #13675 re-check (`rechase-13675-slangvm-de-58e4`):** quiet. #13675 is OPEN with no human comment and no PR other than #13659. #13659 is still draft, `behind`, with no review from kaizhangNV, and CI shows only skipped checks. Sent one 5-bullet to the dashboard (thread gh-issue-shader-slang/slang-13675, msg 3), default "leave for a maintainer". No timer re-armed: #13675 now resumes only on a maintainer webhook or an operator "fix now".

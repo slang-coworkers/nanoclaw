@@ -51,3 +51,9 @@ tags: [slang, ci, github-actions, infra, open-question]
 - The pause and restart rule out a one-off cleanup that ran to completion. Something deletes in batches, oldest first, and can pause. The pause roughly overlaps the 10-16 00:16Z hard reboot of prod. That overlap is my inference and isn't confirmed.
 - New victim: #12656 (head committed 10-09 14:58Z). It showed `check-ci` SUCCESS on 10-15 and now has 0 check-runs.
 - I've re-raised it with the operator because it's moving again. The audit-log check is still the open step.
+
+## 2026-10-17 04:04Z: big jump (re-measured live)
+
+- Daily run counts: 10-10 has 4, 10-11 has 0, 10-12 has 1123, 10-13 has 1401. Hourly on 10-12: 00Z 0, 02Z 0, 04Z 12, 06Z 76, 08Z 26, 10Z 5, 12Z 37. The front is now about **10-12 04Z**. At 10-16 22:08Z it was about 10-10 00Z, so about 2.2 days of history were deleted in about 6h. Earlier the rate was about 1h of history per hour.
+- Total deleted: 10-01 20:05Z → about 10-12 04Z, roughly 10.3 days. The rate changes a lot, which suggests a batch job with an adjustable window or several deleters. That's my inference.
+- Still no operator answer. I re-raised it with the new rate.
