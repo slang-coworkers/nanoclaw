@@ -384,6 +384,13 @@ class ScorerTest(unittest.TestCase):
         self.assertEqual(er.ci_verdict([], [{"context": "ci/x", "state": "error"}])[0], "red")
         self.assertEqual(er.ci_verdict([], [{"context": "ci/x", "state": "success"}])[0], "green")
         self.assertEqual(er.ci_verdict([{"name": "a", "status": "queued"}, done("b", "timed_out")], [])[0], "red")
+        # With a check name only that run counts: a failing label check and a pending
+        # upstream job do not decide the verdict, and statuses are ignored.
+        runs = [done("Verify PR Labels", "failure"), {"name": "build-windows", "status": "queued"}, done("eval-ci", "success")]
+        self.assertEqual(er.ci_verdict(runs, [{"context": "ci/x", "state": "error"}], only="eval-ci")[0], "green")
+        self.assertEqual(er.ci_verdict(runs[:2], [], only="eval-ci"), ("none", 'the fork reported no "eval-ci" check run for the PR head'))
+        self.assertEqual(er.ci_verdict([done("eval-ci", "failure")], [], only="eval-ci")[0], "red")
+        self.assertEqual(er.ci_verdict([{"name": "eval-ci", "status": "in_progress"}], [], only="eval-ci")[0], "pending")
 
     def test_fixer_poll_matches_the_repeat_not_just_the_task(self):
         gh = FakeGh(pulls=[pr(7, "slang-1", 1, "aaa"), pr(8, "slang-1", 2, "bbb"),
@@ -585,6 +592,61 @@ class JobTest(unittest.TestCase):
         self.assertIn("slang-2#r2", html_text)
         self.assertIn("claude-fable-5-1", html_text)
 
+    def test_an_answer_written_before_dispatch_is_not_this_trials_answer(self):
+        write_task(self.bank, "slang-1", "triage", timeout=50)
+        tasks = er.load_bank(self.bank, "triage")
+        # A previous job's answer sits at the planned path, older than this dispatch.
+        self.write_answer("slang-1", 1, {"subsystem": "parser", "severity": "high", "next_step": "fix", "labels": []})
+        stale = os.path.join(er.answer_dir(self.group_dir, "slang-1", 1), "answer.json")
+        os.utime(stale, (self.clock.t - 100, self.clock.t - 100))
+        self.assertEqual(er.existing_answers(self.group_dir, [(tasks[0], 1), (tasks[0], 2)]), [stale])
+        job = er.EvalJob(self.cfg(repeats=1), tasks, FakeDispatcher(), er.Budget(300.0, lambda s: None, 1.5),
+                         clock=self.clock, sleep=self.clock.sleep)
+        trial = job.run_all()[0]
+        self.assertEqual((trial.status, trial.reward), (er.TIMEOUT, 0.0))
+        self.assertIsNone(trial.answer)
+
+    def test_a_rewritten_answer_is_scored_once_it_stops_changing(self):
+        write_task(self.bank, "slang-1", "triage", timeout=200)
+        tasks = er.load_bank(self.bank, "triage")
+        polls = {"n": 0}
+        # The agent first writes a wrong draft, then rewrites it right after the
+        # runner has already seen the draft once.
+        dispatcher = FakeDispatcher(lambda task, repeat: self.write_answer(
+            task.id, repeat, {"subsystem": "emit", "severity": "low", "next_step": "fix", "labels": []}))
+        job = er.EvalJob(self.cfg(repeats=1), tasks, dispatcher, er.Budget(300.0, lambda s: 0.5, 1.5),
+                         clock=self.clock, sleep=self.clock.sleep)
+        orig_poll = job._poll
+
+        def poll(task, trial):
+            polls["n"] += 1
+            if polls["n"] == 2:
+                self.write_answer(task.id, trial.repeat,
+                                  {"subsystem": "parser", "severity": "high", "next_step": "fix", "labels": []})
+            return orig_poll(task, trial)
+        job._poll = poll
+        trial = job.run_all()[0]
+        self.assertEqual((trial.status, trial.reward), (er.SCORED, 1.0))
+        self.assertEqual(trial.answer["subsystem"], "parser")
+        # draft seen, rewrite seen, rewrite confirmed unchanged: three polls, not one.
+        self.assertEqual(polls["n"], 3)
+        self.assertNotIn("_answer_sig", trial.public())
+
+    def test_reply_tasks_poll_and_score_like_triage_with_their_own_contract(self):
+        write_task(self.bank, "slang-9", "reply", timeout=100)
+        tasks = er.load_bank(self.bank, "reply")
+        self.assertEqual([t.kind for t in tasks], ["reply"])
+        dispatcher = FakeDispatcher(lambda task, repeat: self.write_answer(
+            task.id, repeat, {"reply": "Thanks. The parser crashes on empty input; I will fix it.", "subsystem": "parser"}))
+        job = er.EvalJob(self.cfg(kind="reply", repeats=1), tasks, dispatcher, er.Budget(300.0, lambda s: 0.5, 1.5),
+                         clock=self.clock, sleep=self.clock.sleep)
+        trial = job.run_all()[0]
+        self.assertEqual((trial.status, trial.reward), (er.SCORED, 1.0))
+        prompt = dict(dispatcher.calls)["slang-9#r1"]
+        self.assertIn('exactly one key "reply"', prompt)
+        self.assertIn("/workspace/agent/eval/slang-9/r1/answer.json", prompt)
+        self.assertNotIn("triage answer", prompt)
+
     def test_timeout_and_dispatch_failure_are_trial_states_not_crashes(self):
         write_task(self.bank, "slang-1", "triage", timeout=50)
         write_task(self.bank, "slang-2", "triage", timeout=50)
@@ -748,6 +810,23 @@ class CliTest(unittest.TestCase):
                             "--group", "g", "--reports", self.root], capture_output=True, text=True, check=False)
         self.assertEqual(r.returncode, 2)
         self.assertIn("no triage tasks", r.stderr)
+
+    def test_main_refuses_a_triage_job_whose_answer_paths_already_exist(self):
+        os.makedirs(self.bank)
+        write_manifest(self.bank, [write_task(self.bank, "slang-1", "triage")])
+        group_dir = os.path.join(self.root, "eval-slang-triage")
+        d = er.answer_dir(group_dir, "slang-1", 2)
+        os.makedirs(d)
+        with open(os.path.join(d, "answer.json"), "w") as fh:
+            fh.write("{}")
+        argv = [sys.executable, os.path.join(HERE, "eval_run.py"), "--bank", self.bank, "--kind", "triage",
+                "--group", "g", "--group-dir", group_dir, "--reports", self.root]
+        r = subprocess.run(argv, capture_output=True, text=True, check=False)
+        self.assertEqual(r.returncode, 2, r.stderr)
+        self.assertIn("answer already present before dispatch", r.stderr)
+        self.assertIn(os.path.join("slang-1", "r2", "answer.json"), r.stderr)
+        r = subprocess.run(argv + ["--dry-run"], capture_output=True, text=True, check=False)
+        self.assertEqual(r.returncode, 0, r.stderr)
 
 
 class MetricsTest(unittest.TestCase):

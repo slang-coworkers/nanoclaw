@@ -79,6 +79,11 @@ export const createAgent: McpToolDefinition = {
           description:
             'Dashboard sidebar group for this coworker: "prod" for the shared group (default), or a user id (e.g. "dashboard:user1") to scope it under a specific user.',
         },
+        template: {
+          type: 'string',
+          description:
+            'Optional template ref the user chose (e.g. "sales/sdr"), from `ncl templates list`. The template supplies the persona; `instructions` is ignored.',
+        },
       },
       required: ['name'],
     },
@@ -102,6 +107,7 @@ export const createAgent: McpToolDefinition = {
         agentProvider: (args.agentProvider as string) || null,
         overlays: (args.overlays as string[]) || null,
         group: (args.group as string) || null,
+        ...(typeof args.template === 'string' && args.template ? { template: args.template } : {}),
       }),
     });
 
