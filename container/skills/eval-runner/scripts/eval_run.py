@@ -103,8 +103,10 @@ DEFAULT_VERIFIER_TIMEOUT_SEC = 300
 # How long after the PR appears the runner waits for the fork's CI to report at least
 # one check run before calling the trial unknown.
 DEFAULT_CI_GRACE_SEC = 900
-FALLBACK_COST_USD = {"triage": 1.5, "fixer": 20.0}
-DEFAULT_REPEATS = {"triage": 3, "fixer": 2}
+FALLBACK_COST_USD = {"triage": 1.5, "fixer": 20.0, "reply": 1.5}
+DEFAULT_REPEATS = {"triage": 3, "fixer": 2, "reply": 3}
+# Kinds whose deliverable is an answer.json on the eval group mount, scored by the bank's verifier.
+FILE_KINDS = ("triage", "reply")
 MAX_ATTEMPTS = 2
 # Below this many paired tasks a comparison is a smoke signal, not a result.
 SMOKE_SIGNAL_TASKS = 30
@@ -208,14 +210,14 @@ def task_kind(toml: dict, path: str) -> str:
     meta = toml.get("metadata") or {}
     for key in ("kind", "category"):
         v = str(meta.get(key) or "").lower()
-        if v in ("triage", "fixer"):
+        if v in ("triage", "fixer", "reply"):
             return v
     tags = [str(t).lower() for t in (meta.get("tags") or [])]
-    for k in ("triage", "fixer"):
+    for k in ("triage", "fixer", "reply"):
         if k in tags:
             return k
     parts = [p.lower() for p in path.split(os.sep)]
-    for k in ("triage", "fixer"):
+    for k in ("triage", "fixer", "reply"):
         if k in parts:
             return k
     return "unknown"
@@ -289,7 +291,15 @@ def build_prompt(task: Task, repeat: int, fork: str) -> str:
     names its own answer directory and branch tag so attempts stay independent."""
     tid = trial_id(task.id, repeat)
     path = f"/workspace/agent/eval/{task.id}/r{repeat}/answer.json"
-    if task.kind == "triage":
+    if task.kind == "reply":
+        contract = (
+            f"Evaluation trial id: {tid}.\n"
+            f"You are an evaluation copy. Write your reply to {path} as one JSON object with exactly one key "
+            f"\"reply\" whose value is the Markdown text you would post. The file is the deliverable; do not "
+            f"comment on, label or edit any GitHub issue, and do not message anyone. If you cannot answer, "
+            f"write {{\"error\": \"<why>\"}} to the same path."
+        )
+    elif task.kind == "triage":
         contract = (
             f"Evaluation trial id: {tid}.\n"
             f"You are an evaluation copy. Write your triage answer to {path} as one JSON object with exactly the "
@@ -818,7 +828,7 @@ class EvalJob:
         """True when the trial is finished (scored, unknown, timed out or errored)."""
         elapsed = self.clock() - trial._started
         verifier_dir = os.path.join(self.job_dir, "trials", trial.trial_name, "verifier")
-        if task.kind == "triage":
+        if task.kind in FILE_KINDS:
             answer = poll_triage(self.cfg.group_dir, task, trial.repeat, not_before=trial._started)
             if answer is not None:
                 # The agent may rewrite its answer moments after the first version
@@ -830,7 +840,7 @@ class EvalJob:
                     answer = None
             if answer is not None:
                 trial.answer = answer
-                if "error" in answer and not {"subsystem", "severity", "next_step", "labels"} & set(answer):
+                if "error" in answer and not {"subsystem", "severity", "next_step", "labels", "reply"} & set(answer):
                     self._finish(trial, ERROR, 0.0, f"agent reported: {str(answer.get('error'))[:200]}")
                     return True
                 answer_file = os.path.join(answer_dir(self.cfg.group_dir, task.id, trial.repeat), "answer.json")
@@ -868,7 +878,7 @@ class EvalJob:
                     return True
         if elapsed >= task.agent_timeout_sec:
             self._finish(trial, TIMEOUT, 0.0 if trial.pr is None else None,
-                         f"no {'answer' if task.kind == 'triage' else 'CI verdict'} within {task.agent_timeout_sec}s")
+                         f"no {'answer' if task.kind in FILE_KINDS else 'CI verdict'} within {task.agent_timeout_sec}s")
             return True
         return False
 
@@ -1162,7 +1172,7 @@ def make_job_id(kind: str, variant: str, now: dt.datetime) -> str:
 def parse_args(argv: list[str]) -> argparse.Namespace:
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--bank", required=True, help="checkout of slang-eval-tasks (MANIFEST.json at its root)")
-    p.add_argument("--kind", required=True, choices=["triage", "fixer"])
+    p.add_argument("--kind", required=True, choices=["triage", "fixer", "reply"])
     p.add_argument("--group", required=True, help="agent group id of the eval coworker (ncl --group)")
     p.add_argument("--group-folder", help="the eval group's workspace folder (default: --group)")
     p.add_argument("--prod-groups-root", default=DEFAULT_PROD_GROUPS,
@@ -1236,11 +1246,11 @@ def main(argv: list[str] | None = None) -> int:
         return 2
     if not os.path.isdir(group_dir) and not args.dry_run:
         log(f"eval group directory {group_dir} is not mounted; triage answers cannot be read")
-        if cfg.kind == "triage":
+        if cfg.kind in FILE_KINDS:
             return 2
     dispatcher = NclDispatcher(cfg.group)
     plan = pairs if pairs is not None else [(t, k) for k in range(1, repeats + 1) for t in tasks]
-    if cfg.kind == "triage" and not args.dry_run:
+    if cfg.kind in FILE_KINDS and not args.dry_run:
         stale = existing_answers(group_dir, plan)
         if stale:
             for p in stale[:10]:

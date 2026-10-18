@@ -632,6 +632,21 @@ class JobTest(unittest.TestCase):
         self.assertEqual(polls["n"], 3)
         self.assertNotIn("_answer_sig", trial.public())
 
+    def test_reply_tasks_poll_and_score_like_triage_with_their_own_contract(self):
+        write_task(self.bank, "slang-9", "reply", timeout=100)
+        tasks = er.load_bank(self.bank, "reply")
+        self.assertEqual([t.kind for t in tasks], ["reply"])
+        dispatcher = FakeDispatcher(lambda task, repeat: self.write_answer(
+            task.id, repeat, {"reply": "Thanks. The parser crashes on empty input; I will fix it.", "subsystem": "parser"}))
+        job = er.EvalJob(self.cfg(kind="reply", repeats=1), tasks, dispatcher, er.Budget(300.0, lambda s: 0.5, 1.5),
+                         clock=self.clock, sleep=self.clock.sleep)
+        trial = job.run_all()[0]
+        self.assertEqual((trial.status, trial.reward), (er.SCORED, 1.0))
+        prompt = dict(dispatcher.calls)["slang-9#r1"]
+        self.assertIn('exactly one key "reply"', prompt)
+        self.assertIn("/workspace/agent/eval/slang-9/r1/answer.json", prompt)
+        self.assertNotIn("triage answer", prompt)
+
     def test_timeout_and_dispatch_failure_are_trial_states_not_crashes(self):
         write_task(self.bank, "slang-1", "triage", timeout=50)
         write_task(self.bank, "slang-2", "triage", timeout=50)
