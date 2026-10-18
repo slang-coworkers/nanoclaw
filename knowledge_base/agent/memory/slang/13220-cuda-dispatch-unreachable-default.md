@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13220 — CUDA interface dispatch default arm, draft PR #13228
-description: Held draft. kaizhangNV accepts the s_dispatch_* fix; the open question is what force-unwrapping a `none` Optional<Interface> should do (undefined / must trap / must return a value)
+description: Held draft, operator a/b/c ask pending since 10-14. kaizhangNV accepts the s_dispatch_* fix; the open question is what force-unwrapping a `none` Optional<Interface> should do (undefined / must trap / must return a value)
 tags: [slang, cuda, perf, dynamic-dispatch, parked]
 ---
 
@@ -51,10 +51,16 @@ The fixer replied with three answers ([6002744164](https://github.com/shader-sla
   dashboard (msg 9, thread `gh-issue-shader-slang/slang-13220`) with three options: (a) keep
   waiting, (b) the fixer posts one polite follow-up @kaizhangNV, or (c) default to option 1
   (undefined) and mark ready. Did not ping the maintainer.
-- Next: `rechase-13228-kaizhang-4-4638`, 2026-10-17 21:00Z. It checks for a maintainer reply
-  and for the operator's a/b/c answer on the dashboard thread, then relays whichever arrived to
-  the fixer. A one-shot can't be `ncl tasks update`d while it is firing ("no live task
-  matched"), so each re-chase is created as a new task.
+- 2026-10-17 (`rechase-13228-kaizhang-4-4638`): no maintainer reply (12 days) and no operator
+  answer. All the GitHub surfaces were checked. The only new timeline event is a 10-16 bot
+  cross-reference from #13691 (`assume`/`expect` intrinsics feature request), which is not a reply.
+  On the dashboard I paged from seq 501650 (the 10-14 ask is row 501656) to 505704 and found no
+  a/b/c answer. Re-asked a/b/c on the dashboard (msg 45). Nothing sent to the fixer, no ping.
+- Next: `rechase-13228-kaizhang-5-aa9c`, 2026-10-20 21:00Z, with the same decision table.
+  It pages the dashboard with `--since-seq 505700`. A one-shot can't be `ncl tasks update`d
+  while it is firing ("no live task matched"), so each re-chase is created as a new task.
+- Dashboard paging: `--reverse --limit 400` only reaches back about 2 days on this busy session.
+  To cover the window since the ask, walk forward with `--since-seq <seq near the ask>`.
 
 ## Lessons
 

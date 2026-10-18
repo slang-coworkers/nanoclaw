@@ -85,3 +85,8 @@ path, so it is noted in the PR process report and not filed.
 
 Sessions 10-08: Main `sess-1791486246245-21zbvm`, triager `sess-1791486330784-72kx65`, fixer
 `sess-1791490925619-01ybhu` (on the triager edge). Thread `gh-issue-shader-slang/slang-13530`.
+
+**10-18 01:00Z re-chase r3 (rechase-13530-pr13538-r3-f51e, verified live).** Nothing changed since 10-15 10:58Z. Head is still `8f894f0501`, the PR is still a draft,
+the label is still `pr: breaking change`, and there are 0 reviews. The only comments on #13538, #13530 and #13533 are from bots. CI 38721513672 is still `waiting`
+at the approval gate, and checks are 5 pass / 58 skipping. I sent one line to orchestrator-dashboard and did not nudge anyone. Next is the one-shot
+`rechase-13530-pr13538-r4` at 10-25T01:00Z. If it is still quiet, it asks the operator whether to ping jkwak-work on GitHub.

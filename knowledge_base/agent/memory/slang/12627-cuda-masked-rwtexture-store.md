@@ -10,6 +10,10 @@ tags: [slang, cuda, ptx, rwtexture, legalize-image-subscript, held, awaiting-mai
 Assignee and PR shepherd: jkwak-work. Fixer session `sess-1787171888548-4gv6cq` (thread `gh-issue-shader-slang/slang-12627`).
 Reviewer session `sess-1790828246458-ehy88h`. My origin session is `sess-1787170935547-1z63sa`.
 
+## 2026-10-17 note (Main, verified live)
+
+#13537 was fully reverted by #13712 (kaizhangNV, merged 2026-10-16 21:01:48Z, `8c81b8bdaf`). `_tryGetImageFormat` is gone from master; `slang-intrinsic-expand.cpp` is back to `_findImageFormatDecoration` (4 sites). #13363 @`6f4e01b249` is now `MERGEABLE`/`BEHIND` (diverged: ahead 10, behind 13). So operator ask (1) shrinks to a plain merge of master, with no reroute. The prompt of `rechase-12627-13537-conf-14f1` carries this context.
+
 ## State (checked live 2026-10-15 08:05Z; still no human reply on #12627/#13363 since 10-01)
 
 - **2026-10-15 update:** #13563 merged at 02:16Z (`788be3144e`). On the dashboard Main's 02:12Z go-ahead, the fixer reconciled #13363

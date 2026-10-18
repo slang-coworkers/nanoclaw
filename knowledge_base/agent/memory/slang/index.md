@@ -12,8 +12,12 @@ decay and must be re-read, not remembered.
 
 ## Map
 
+- [slang#13126 — `ByteAddressBuffer.Load<S>()` passed to a call segfaults](13126-byteaddressbuffer-load-alignment-operand-drop.md) —
+  external (Rexagon) 09-16; regression (#8547/#11595). `specializeFuncsForBufferLoadArgs` dropped the alignment operand. DRAFT PR #13130 @a616bd3805, 0 behind master, all external-repro variants + >128 B no-array shape covered 10-17. peer review final APPROVE. CI 39063429240 auto-reruns (hourly yielded-bot retry, 12 h escalation); PARKED on `falcor-ci` gate approval (green CI needed before ready), then jhelferty-nv review; P2→P1 open. Re-check `rechase-13126-pr13130-acb0` 10-20.
 - [slangpy#1232 — Vulkan module `[[vk::push_constant]]` silent wrong results](slangpy-1232-vulkan-module-push-constant.md) —
-  human-filed (albertrodriguezclo) 10-16. Triaged (cmt 6218899535); SlangPy part FIXED → draft PR slangpy#1235 @52e815d6 (CI green, internal review APPROVE_WITH_NITS; waiting on jkwak-work). Upstream filed as slang#13713 → DRAFT PR slang#13724 (E39033, `pr: breaking change`, error-vs-warning open for kaizhangNV; layout parked) + slang-rhi#915. Waiting on the operator: rhi#810 promotion, and fixing the STAGE_ALL overlap now.
+  human-filed (albertrodriguezclo) 10-16. Triaged (cmt 6218899535); SlangPy part FIXED → draft PR slangpy#1235 @52e815d6 (CI green, internal review APPROVE_WITH_NITS; waiting on jkwak-work). Upstream filed as slang#13713 → DRAFT PR slang#13724 @f470d43 FIXED (E39033, `pr: breaking change`, R2 APPROVE_WITH_NITS; error vs warning open for kaizhangNV; layout parked) + slang-rhi#915. Waiting on the operator: rhi#810 promotion, and fixing the STAGE_ALL overlap now.
+- [slang#13733 — WGSL loop increment-in-body vs Tint robustness](13733-wgsl-loop-increment-tint-robustness.md) —
+  human-filed (albertrodriguezclo) 10-17, a follow-on to #13066/PR #13071. Triaged (cmt 6235943785), P2, `reproduced`, Type=Feature. Parked on a jkwak-work emission-shape pick (A: WGSL counted-`for`; Tint needs a `for` initializer, so `continuing` alone fails); `[unroll]` warn recommended. One-shot recheck 10-24 15:00Z. Side note (restructure `nextSimpleRegionForSameBlock` never stored) unfiled, operator call.
 - [slang#13518 — MemoryOrder validation](13518-memory-order-validation.md) —
   bot-triaged missing diagnostic. DRAFT PR #13541 @f961d32f0b; internal review done (R2 APPROVE_WITH_NITS). HELD on maintainer Q1 (error/warning, which decides the breaking label) and Q2 (CAS Release/Acquire); CI is waiting on falcor-ci approval. jkwak-work assigned. Coupled to #13519.
 - [slang#13591 R-series — contributor standards for AI assistants](13591-authorship-rules-r-series.md) —
@@ -33,6 +37,12 @@ decay and must be re-read, not remembered.
   human-filed (skiminki-nv) language-semantics question. Triaged 10-16 19:26Z (cmt 6223072037), P2, reproduced; lookup is lexical-only. PARKED on a maintainer pick of A/A′/B/C (B conflicts with #11577); no fixer. Re-check `t-5f0897` 10-23.
 - [slang#13688 — Metal inline RayQuery fixed tags (no curves / multi-level)](13688-metal-rayquery-curves-multilevel.md) —
   human-filed (albertrodriguezclo) Metal feature/design question (tags from type vs inferred; curve accessors). Triaged 10-16 08:03Z (cmt 6210949750) Feature/P3; #12691 doesn't cover inline queries. PARKED on kaizhangNV direction; re-check t-2c3ce2 10-23. Sibling #13690.
+- [slang#13737 — HLSL combined-sampler `Load`/`GetDimensions` extra sampler arg](13737-hlsl-combined-sampler-texture-only-ops.md) —
+  human-filed (Buriola) 10-17, same root cause as #10522. Triaged (cmt 6236169441), P2, `reproduced`. DRAFT PR #13741 @45d7d9f extends #11816's `$q` (fallback B; A hit E30027), closes #13737 + #10522. R1 REQUEST_CHANGES 10-18 (use a free-function `__extractImage` trampoline on HLSL/CPU; WGSL keeps `$q`), fixer iterating. 3 follow-ups unfiled, operator call (asked 10-18).
+- [slang#13739 — WGSL/Metal BAB Load<T> keeps dead word loads](13739-wgsl-metal-bab-struct-load-dead-word-loads.md) —
+  human-filed (albertrodriguezclo) codegen quality. Triaged 10-17 18:02Z P2 Bug (cmt 6238219006): `ByteAddressBufferLoad` missing from `mightHaveSideEffects` list, one-line fix A + 3 CHECK relaxes. Independent of #13732/#13734. No fixer; parked on who fixes it; re-check 10-20 18:00Z.
+- [slang#13732 — WGSL member subscript copies whole uniform struct](13732-wgsl-uniform-member-subscript-whole-struct-copy.md) —
+  human-filed (albertrodriguezclo) WGSL codegen perf; routed to slang-triager 10-17 ~15:00Z; regression since v2025.19 (#8668, triager); triaged 10-17 15:52Z P2 Bug (cmt 6236090926); reporter PR #13734 = option A, one ask open (keep Aligned/MemoryScope attrs + test); no fixer; re-check 10-20 15:00Z. Related #13703.
 - [slang#13690 — Metal RayQuery → `intersector<>` lowering?](13690-metal-rayquery-intersector.md) —
   human-filed (albertrodriguezclo) Metal design question (candidate-free RayQuery → `intersector<>`; reuse one `intersection_query`). Triaged 10-16 07:46Z (cmt 6210678998), Feature/P3. PARKED on kaizhangNV (#11296 scope; explicit API vs recognition pass; reuse pass vs doc). No fixer. Re-check `t-b12d01` 10-23. Sibling #13688.
 - [slang#13642 — slang-wasm `createSession` macros/search paths/options](13642-slang-wasm-createsession-options.md) —
@@ -54,7 +64,7 @@ decay and must be re-read, not remembered.
   `diagnostic(off, subgroup_uniformity)`. Triaged 10-15 (cmt 6193536016), P2, reproduced; recommends a compiler option (A).
   HANDED OFF 10-15: jkwak-work assigned, reporter opening an option-A PR; re-check `recheck-13640-diag-surfa-f817` 10-22.
 - [slang#13617 — WGSL fragment `SV_PrimitiveID`](13617-wgsl-fragment-primitive-id.md) —
-  human-filed (rhendry) feature request: WGSL marks PrimitiveID unsupported (`isUnsupported` in `LegalizeWGSLEntryPointContext`); wgpu has `primitive_index`. Triaged 10-14 (cmt 6161247791), P2; GO on Approach A → DRAFT PR #13619 @b5340af7ab, triage resolved 10-14 10:18Z (internal R2 APPROVE_WITH_NITS); CI at priority gate; parked on maintainer + operator ready; re-chased 10-15 (no human activity; jkwak-work milestoned #13617 Q4 2026; operator asks re-asked once), next re-chase 10-17 10:30Z; jkwak-work assigned. Side ICE (WGSL nested-struct `int` SV field, E99999) filed as #13620; global-`in` SV stage-check gap filed as #13622 (both bot, unrouted; their issue_opened webhooks are self-echoes). SV_WaveLaneIndex no-`enable subgroups` side note unfiled, operator call.
+  human-filed (rhendry) feature request: WGSL marks PrimitiveID unsupported (`isUnsupported` in `LegalizeWGSLEntryPointContext`); wgpu has `primitive_index`. Triaged 10-14 (cmt 6161247791), P2; GO on Approach A → DRAFT PR #13619 @b5340af7ab, triage resolved 10-14 10:18Z (internal R2 APPROVE_WITH_NITS); CI at priority gate; parked on maintainer + operator ready; re-chased 10-15 (no human activity; jkwak-work milestoned #13617 Q4 2026; operator asks re-asked once); re-chased 10-17 (unchanged; decisions listed pending, not re-asked), next re-chase 10-19 10:30Z; jkwak-work assigned. Side ICE (WGSL nested-struct `int` SV field, E99999) filed as #13620; global-`in` SV stage-check gap filed as #13622 (both bot, unrouted; their issue_opened webhooks are self-echoes). SV_WaveLaneIndex no-`enable subgroups` side note unfiled, operator call.
 - [slang#13590 — WGSL emits `bool` members in `var<uniform>` structs](13590-wgsl-bool-uniform-host-shareable.md) —
   human-filed (j8asic) WGSL bug: bool in host-shareable address spaces isn't lowered to int (SPIR-V-only `lowerLeafLogicalType` case). slangpy#787 (same author) works around it with `uniform uint`. Triaged 10-13 (cmt 6144341398), P2, 3 gaps; fixer released for draft PR. Triage resolved 10-13 20:49Z; HELD on kaizhangNV review + CI. 2 follow-ups unfiled (push-constant no-@binding; bool2 varyings), operator call. DRAFT PR #13607 @7851898586 (10-13, internal review R1 APPROVE_WITH_NITS applied), PR assignee kaizhangNV; issue reassigned to jkwak-work + milestone Q4 2026 (10-14). CI not run (draft). Unchanged re-chases: 10-14, 10-15, 10-16 → **PARKED** 10-16 in the task-hygiene parked-chain register (no re-chase armed); held on kaizhangNV/jkwak-work review + CI approval gate 38462553148.
 - [slang#13571 — WGSL matrix negation emitted as `matNxM<f32>(0) - m`](13571-wgsl-matrix-negation.md) —
@@ -74,7 +84,7 @@ decay and must be re-read, not remembered.
   external enhancement. **Closed for the bot 10-14**: assignee jkwak-work deprioritized it and rejected the heuristic field-promotion approach. minco3's draft #13583 is still open, and its fate is the maintainers' call. Final check `rechase-13108-noinline-p-c69e` done 10-16: #13583 still an open draft, decision not reversed; no further re-checks.
 
 - [slang#13169 — bwd_diff runtime-bound loop hang](13169-bwd-diff-runtime-loop-hang.md) —
-  **CLOSED 2026-10-09** by saipraveenb25 (fixed by #13234). slangpy#1167 still waits on the CUDA grad_sum=320 check (slangpy-fixer). #13301 waits on saipraveenb25's answer to our 10-09 guard-PR ask (silent as of 10-14); it is tracked by `rechase-slang-13301-huma-d01c` (10-17).
+  **CLOSED 2026-10-09** by saipraveenb25 (fixed by #13234). slangpy#1167 still waits on the CUDA grad_sum=320 check (slangpy-fixer). #13301: on 10-18 at 02:45Z saipraveenb25 said to open the header-guard PR, and said it closes #13301 and slangpy#1204; the conditional `__func_extension` case is deferred. slang-fixer `sess-1789716207340-dwbdoz` was dispatched to open it. Tracked by `rechase-slang-13301-huma-91bf` (10-19 09:00Z).
 
 - [slang#13555 — `-ignore-capabilities` + case-less `__target_switch` → silent UB](13555-ignore-capabilities-caseless-target-switch.md) —
   external bug P2, long-standing. Draft PR #13564 (head eac83d94ed, round-2 fixes pushed). Round-2 review done; [Triage Resolution] 10-15. PARKED on maintainers (breaking? cpp `Buffer<T>.Load` case) + operator (ready/merge). ⚠ Opcode 909 / module version 36 collide with draft #13425. Re-chase `rechase-13564-maintainer-b2f8` (10-22).
@@ -91,8 +101,9 @@ decay and must be re-read, not remembered.
 - [slang#13536 — add `RTexture*`, warn on `readonly`/`writeonly` on `RWTexture*`](13536-rtexture-deprecate-readonly-rwtexture.md) —
   maintainer-authored and self-assigned feature (step 1 of 2). Triaged and reproduced, P2. The fixer is HELD until the author makes the HLSL choice (reject vs lower with loss); re-chase `rechase-13536-hlsl-choic-afe9` (2026-10-11).
 
-- [nanoclaw PR: expired falcor gate → `gate_expired`](ci-babysitter-gate-expired-pr.md) — the babysitter's sweep-gate fix is ready on a local branch, not pushed, waiting on the operator's OK. The 10-16 prompt timed out.
+- [nanoclaw PR: expired falcor gate → `gate_expired`](ci-babysitter-gate-expired-pr.md) — the babysitter's sweep-gate fix is a durable patch, not pushed, waiting on the operator's OK (asked 10-16 and 10-17). The final re-check is 10-19 09:00Z; if there is still no answer then, the fix is parked.
 - [Yield-retry bot starved by `waiting` runs](ci-retry-yielded-bot-starved-by-waiting-runs.md) — `retry-yielded-bot-ci.py` counts approval-parked `waiting` runs as active (105 of them, oldest 09-15), so it never retries yielded bot CI. Maintainer decision, raised with the operator 10-12.
+- [Actions queue stall 10-17](actions-queue-stall-2026-10-17.md) — **resolved**: a 2h14m stall (07:56Z→~10:10Z) on shader-slang/slang only, which hit GitHub-hosted jobs too. It cleared before any action we know of, and the cause is unknown.
 - [Actions run history gap 10-01→10-07](actions-run-history-gap-2026-10-01-07.md) — oldest-first deletion of workflow runs and their check-runs, 10-01 20:05Z to 10-09 ~16Z. It moved about 1h of history per hour, paused from ~10-14 16Z for about 2 days, then **resumed by 10-16 22Z** (front about 10-10 00Z). Cause unknown; operator asked 10-12, 10-13 and 10-16. PRs with heads in the window look like `no-ci`.
 
 - [slang#13515 — LLVM prebuilt key change after #13139 (cold builds, 120-min cancels)](13515-windows-aarch64-llvm-prebuilt.md) —
@@ -104,7 +115,7 @@ decay and must be re-read, not remembered.
 
 - [slang#13220 — CUDA interface dispatch unreachable default, draft PR #13228](13220-cuda-dispatch-unreachable-default.md) —
   held draft `842ea5d5c1`. kaizhangNV accepts the `s_dispatch_*` fix; waiting on their 3-way answer for force-unwrap of `none` `Optional<Interface>`
-  (undefined / must trap / must return a value). Re-chase `rechase-13228-kaizhang-a0d7` (2026-10-08).
+  (undefined / must trap / must return a value). The operator's a/b/c ask has been pending since 10-14. Next re-chase is `rechase-13228-kaizhang-5-aa9c` (2026-10-20).
 
 - [slang#13259 + #12934 — typeflow refined-info re-wrap ICE, PR #12935](13259-typeflow-refined-info-rewrap.md) —
   **MERGED 2026-10-05** (`e6be8dcdd7`). The producer fix in `makeInfoForConcreteType` replaced a disproven consumer `none()` fix. Holds the overclaim timeline and lessons.
@@ -114,7 +125,7 @@ decay and must be re-read, not remembered.
 
 - [slang#12627 — CUDA masked RWTexture store, draft PR #13363](12627-cuda-masked-rwtexture-store.md) —
   held on jkwak-work's coherency answer (RMW+warning vs CUDA error; warning scope). Reconciled with #13563 on 10-15 (head `6f4e01b249`,
-  codes now E56020–E56022), then made `dirty` again by #13537. The fixer is holding, and the operator's merge-again/re-ask decision is open.
+  codes now E56020–E56022), then made `dirty` again by #13537. #13537 was reverted 10-16 (#13712); #13363 is now `BEHIND`, not dirty, so the `_tryGetImageFormat` reroute is moot. The fixer is holding, and the operator's merge-again/re-ask decision is open.
   Next re-chase `rechase-12627-13537-conf-14f1` (2026-10-18 08:00Z). Follow-ups #13361/#13362/#13364/#13365 not dispatched.
 
 - [slang#13554 — CUDA layered `_convert` surface write is an empty stub](13554-cuda-layered-convert-write-stub.md) —
@@ -230,4 +241,4 @@ decay and must be re-read, not remembered.
   (3) wait. Re-chase `rhi-881-review-rechase-5a7c` (10-19).
   - [PR #881 review-round history (condensed)](rhi-787-review-history.md) — design convergence (#812 forks, the rejected
     `IExternalMemoryQueue` sketch), the review rounds, and the 09-24 → 10-11 ready/re-chase log.
-- [slang#13565 — SemanticChecking compile-time step since 10-07](13565-semcheck-compile-perf-step.md) — OPEN, maintainer-owned (jvepsalainen-nv), silent; operator asked 10-16 re bot comment/bisect; green nightlies = baseline absorption, re-measure from absolute daily medians; 10-16 has a separate step-2
+- [slang#13565 — SemanticChecking compile-time step since 10-07](13565-semcheck-compile-perf-step.md) — OPEN, maintainer-owned (jvepsalainen-nv), silent; operator asked 10-16 re bot comment/bisect; green nightlies = baseline absorption, re-measure from absolute daily medians; 10-16 had a separate step-2, resolved 10-17 by the #13537 revert (#13712); re-chase `rechase-13565-r5-a966` 10-19 09:00Z

@@ -20,14 +20,12 @@ gap is closed, and a local edit to SKILL.md is **overwritten on re-provision** �
 10-15 run scanned 1,119 false NO-FRONTMATTER + 86 false DOSSIER (backlog 0 → 1,765,478) and printed a false
 ESCALATE. The pre-#2039 tool is kept at `/workspace/agent/tools/okf_synth.py.before-2039` (it reads the same tree as
 0 offenders). Owner decision pending: upstream the fix, or normalize every leaf to a top-level `type:` line.
-Escalated once (dashboard msg 239, 10-15 12:11Z). No reply as of 10-17 00:10Z.
+Escalated once (dashboard msg 239, 10-15 12:11Z). No reply as of 10-18 00:05Z (10-17 12:00Z → 10-18 00:00Z runs: 0 real offenders, nothing to fold).
 
 **Interim run policy (from 10-15 18:00Z):** never fold the 1,119 NO-FRONTMATTER or the nested-type DOSSIERs (all are
 dialect false positives). Fold only the **dialect-independent** DOSSIERs: a file that is ≥12 KB with ≥8 H2 sections,
 or has a dossier-shaped name, and is not `okf_synth: exempt`. The pre-#2039 tool listed these as informational REVIEW.
-There were 21 of them. 4 were folded on 10-15 18:00Z, 4 on 10-16 00:00Z, 4 on 10-16 06:00Z (slangpy#1001, #9636,
-#12325, the merge-queue-eviction technique), and 3 on 10-16 12:00Z (#12326, nanoclaw#1084, the 08-07 assertion family)
-alongside one real OVERSIZE split (`slang/13654-…`), 2 on 10-16 18:00Z (#9736, #12420) alongside two OVERSIZE splits (#13446, `slang/13544-…`), and the last 4 on 10-17 00:00Z (#13306 closed-chain record, #12463, #12433, and the instrument-blind-spot feedback split into 3 leaves). **0 real dialect-independent dossiers remain**; from now on only new real offenders (pre-#2039 REVIEW/OVERSIZE/INDEX-STALE) need folding. Write split leaves with a top-level `type:` line followed
+There were 21 of them, all folded over 10-15 18:00Z → 10-17 00:00Z (plus OVERSIZE splits of `slang/13654-…`, #13446, `slang/13544-…`). **0 real dialect-independent dossiers remain**; from now on only new real offenders (pre-#2039 REVIEW/OVERSIZE/INDEX-STALE) need folding. 10-17 06:00Z: the one such offender was `technique_find_the_owner_of_a_bot_filed_issue_before_dispatching` (16,043 B, regrown by per-case appends); split into the ladder (5.8 KB, lessons folded into rungs) and `technique_find_the_owner_of_a_bot_filed_issue_case_log` (4.8 KB). New cases go in the case log; if it nears 16 KB, prune old cases. Write split leaves with a top-level `type:` line followed
 by the usual `name`/`description`/`metadata` block, so both tools and `memcheck.py` read them as typed.
 **ESCALATE now fires every run** through the *unchanged-top-offender* trigger, starting 10-16 06:00Z. The top offender
 is the false-positive `MEMORY-full-archive-2026-08-05.md` DOSSIER, so the trigger fires even while the backlog shrinks.

@@ -21,7 +21,7 @@ Companion pages: [[orchestrator/supervise-tick-false-positives.md]] (rows scan f
 1. New `tickNNN/` dir. Fetch inputs once, **serially** (concurrent `ncl` → "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick288/`**) and `sed` every `tickNNN` path.
+2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick290/`**) and `sed` every `tickNNN` path.
    `board274.py` hardcodes `supervisor-state.pre-tickNNN.json`; repoint `titles.py` to payload5.json.
    Build `lo-cache.json` from the **previous `payload3.json`** (not payload1, so last tick's re-fetch fixes carry
    forward) and `prev-la.json` from the previous `sessions.json`. Run `pull.sh` with env
@@ -133,3 +133,24 @@ Companion pages: [[orchestrator/supervise-tick-false-positives.md]] (rows scan f
 - **`ncl sessions messages --reverse` orders by seq, so a fresh nudge can be invisible** (it took seq 10 below seq 17).
   Confirm landing by `last_active` moving, or sort the rows by `timestamp`.
 - `gh` CLI `sleep N; cmd` chains are blocked by the harness; just run the check.
+
+## Tick 289 notes (2026-10-17, clean run ~20 min)
+
+- **`gc_resolve.py` crashes if a worktree vanishes between `find` and resolve** (`slang-triager/wt-13603-bisect`
+  was reaped mid-tick). Filter `wt-dirs.txt` to paths whose `.git` file still exists, right before running it.
+- **blind.py's top hits are mostly "Learning saved" system acks** (5 of 6 at tick 289). Ignore those. The real
+  stall (shape 4, #13700) had an `out` as its newest row. It was found by reading the reviewer's last `out`
+  ("final verdict waiting on A and C"), then checking `runs/{A,C}-<pr>-r<N>-*/exit-status` under
+  `prod-groups/slang-reviewer/runs/` (C rc=1, `ECONNREFUSED`).
+
+## Tick 290 notes (2026-10-18, clean run ~20 min)
+
+- **`ci.py` reads `scan-out3.json`, so run scan before `runs.py → ci.py`.** Ordering step 5 before step 4's scan crashes ci.py.
+- **The GC payload since tick 280 omits `kind`/`idle_days`.** Without them, worktree-gc.py reaps only closed/merged trees
+  (12 at tick 290). With them (`kind` from the `wt-<repo>[-pr]-<n>` name, `idle_days` from dir/build mtimes) it also
+  reaps scratch trees idle > 2 d: 45. The board kept the compatible count. Decide once which input is right
+  before the next tick's numbers are compared.
+- **A ✅ CI cell can come from a filter-only dispatch** (#12749: 2 success + 48 skipped). Check the job breakdown
+  before reading ✅ as "built and tested".
+- **A Main/coworker claim that `ci-retry-yielded-bot` will re-run a `waiting` run is false while the gate deadlock
+  holds** (23:21Z fire: "CI is still active (83 run(s))"). Correct it on the board.

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang PR #11709 — groupshared parameters by reference (fix for #10641)
-description: HELD until #13406 (the #13339 ParameterPassingMode Ref split) lands — as of 10-14 #13406 is green and waits only on jhelferty-nv re-review; then one rebase-and-rework push carrying the unpushed P1 autodiff fix, then a delta review. Owned by slang-fixer; jhelferty-nv CHANGES_REQUESTED. The #13406 review rounds live in [[slang/11709-13406-ref-split-review-rounds.md]].
+description: HELD until #13406 (the #13339 ParameterPassingMode Ref split) lands — since 10-15 jhelferty-nv owns #13406 and told the bot to stand down there (10-16); no re-chase timer as of 10-17; when it merges, ask the operator whether the stand-down covers #11709, then one rebase-and-rework push carrying the unpushed P1 autodiff fix, then a delta review. Owned by slang-fixer; jhelferty-nv CHANGES_REQUESTED. The #13406 review rounds live in [[slang/11709-13406-ref-split-review-rounds.md]].
 tags: [slang, frontend, param-passing-mode, groupshared, parked]
 resource: /workspace/extra/ephemeral/prod-groups/slang-fixer/reports/comments/11709-vs-13339-plan-report.md
 ---
@@ -48,7 +48,8 @@ by slang-fixer and is fixed by PR **#13406**. Older history lives in the importe
   - 4 open threads (4168522180, 4168540023, 4198094764, 4198335992), all with our reply last. No maintainer review or comment since 10-11 00:26Z apart from one thread resolve on 10-13.
   - `dth1ak` is cost-escalated ($160.75 / cap 150 / ceiling 300). I told it (pinned, msg 59) the merge was done and to fast-forward its worktree without pushing.
   - ⇒ **#13406 now waits only on jhelferty-nv's re-review.**
-- **Timer.** `rechase-13406-r6-a54e` fired 10-14 09:00Z (case b, already done; worktree sync sent to `dth1ak`). The next one is **`rechase-13406-r7-c566` (10-17 09:00Z)**. If #13406 merged, it lifts the #11709 hold. If a maintainer replied, it relays the text verbatim to `dth1ak`. Otherwise it sends the operator one table.
+- **Since 10-15 jhelferty-nv owns #13406, and on 10-16 she told the bot to stand down there.** Detail is in the review-rounds file.
+- **Timer: none is scheduled.** `rechase-13406-r7-c566` fired 10-17 09:00Z. Live gh showed #13406 OPEN at head `c5511be7a1` (her commit 10-15 20:31Z, "Require -experimental-feature for __ref_readonly in user code"), DIRTY, still CHANGES_REQUESTED, and not merged. Under the stand-down that means no dispatch, no report and no reschedule. **No timer re-checks it now.** Its merge is noticed only through an event (the #13406 pr-mapping still points at `dth1ak`) or a supervisor tick. Before any bot action on #11709, ask the operator whether her stand-down covers #11709 too, then rebase onto her final spellings.
 
 ## What #11709 does when the hold lifts
 
