@@ -203,8 +203,7 @@ export async function dispatch(
     // over-long disclosure is refused rather than silently truncated into an
     // understatement of the reach.
     const detailBlock = detail && detail.length > 0 ? '\n```\n' + detail.join('\n') + '\n```' : '';
-    const question =
-      `Agent ${quoteForCard(agentName)} wants to run:\n` + '```\n' + commandLine + '\n```' + detailBlock;
+    const question = `Agent ${quoteForCard(agentName)} wants to run:\n` + '```\n' + commandLine + '\n```' + detailBlock;
     // The approver must see every argument; answer the agent now instead of
     // carding a command that can't be shown in full.
     const tooLong = cardQuestionTooLong(title, question);

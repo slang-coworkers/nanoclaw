@@ -326,7 +326,10 @@ export async function requestApproval(opts: RequestApprovalOptions): Promise<voi
       log.error('Failed to deliver approval card — row persisted for dashboard', { action, approvalId, err });
       // A card the channel refused as too long says why, so the agent can shorten it.
       const reason = err instanceof CardTooLongError ? ` (${err.message})` : '';
-      await notifyAgent(session, `${action} pending — DM delivery failed${reason}, awaiting admin review via dashboard.`);
+      await notifyAgent(
+        session,
+        `${action} pending — DM delivery failed${reason}, awaiting admin review via dashboard.`,
+      );
       return;
     }
   }
