@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13654 — Metal StructuredBuffer<S> with a Texture2D field aborts slangc
-description: "albertrodriguezclo, human-filed Metal bug: texture method on a StructuredBuffer element field aborts slangc (intrinsic-expand assert). Triaged 10-15 15:03Z (cmt 6195242328) P2: Metal wrongly skips E38204 and legalizeResourceTypes leaves SB<tuple> simple; DRAFT PR #13681 @87c393db2e (legalizer reports E38204; pr: non-breaking), jkwak-work assigned. Triage resolved 10-16 07:48Z; PARKED on maintainer + operator, re-check rechase-13654-pr13681-2044 (10-18)."
+description: "albertrodriguezclo, human-filed Metal bug: texture method on a StructuredBuffer element field aborts slangc (intrinsic-expand assert). Triaged 10-15 15:03Z (cmt 6195242328) P2: Metal wrongly skips E38204 and legalizeResourceTypes leaves SB<tuple> simple; DRAFT PR #13681 @87c393db2e (legalizer reports E38204; pr: non-breaking), jkwak-work assigned. Triage resolved 10-16 07:48Z; PARKED on maintainer + operator (asked twice, final), re-check rechase-13654-pr13681-7db2 (10-21)."
 ---
 
 # slang#13654
@@ -43,8 +43,11 @@ Waiting on:
      `slang-ir-legalize-types.cpp:3504`, Metal + SPIR-V (repro at the triager's `/tmp/t13654/ptr.slang`);
    - the validator reports a struct-field E38204 at the struct's location, not the field's.
 
-Asked once on orchestrator-dashboard (thread `gh-issue-shader-slang/slang-13654`). Timer: one-shot
-`rechase-13654-pr13681-2044` (2026-10-18 08:00Z).
+Asked on orchestrator-dashboard (thread `gh-issue-shader-slang/slang-13654`) at 10-16 07:49Z and again,
+as the final ask, at 10-18 08:0xZ. **Do not re-ask; list as pending.** 10-18 08:00Z re-check: GitHub
+unchanged (draft, 87c393d, 0 reviews, no human comments, CI still `waiting`). Timer: one-shot
+`rechase-13654-pr13681-7db2` (2026-10-21 08:00Z). Operator answers would land in Main session
+`sess-1792074637049-flailg` (canonical thread) or the dashboard session.
 
 **Resumes on:** a human comment/review on #13654 or #13681, a CI webhook (owned by the fixer), the operator's
 answer, or the re-check.

@@ -4288,6 +4288,9 @@
 - [mdl perf numbers are public in slang compile perf ](ag-1776713258088-r8pp2t/1792226254592-mdl-perf-numbers-are-public-in-slang-compile-perf-.md) — _ag-1776713258088-r8pp2t_
 - [slang merge queue eviction can come from the slang](ag-1776713258088-r8pp2t/1792226879052-slang-merge-queue-eviction-can-come-from-the-slang.md) — _ag-1776713258088-r8pp2t_
 - [okf synthesis dated date update sections turn a tr](ag-1776713258088-r8pp2t/1792240698328-okf-synthesis-dated-date-update-sections-turn-a-tr.md) — _ag-1776713258088-r8pp2t_
+- [discord sweep one guild channels call proves an em](ag-1776713258088-r8pp2t/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md) — _ag-1776713258088-r8pp2t_
+- [slang ci saturday cmake options burst blinds ci he](ag-1776713258088-r8pp2t/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md) — _ag-1776713258088-r8pp2t_
+- [slang bot draft ci has run no build test since 10 ](ag-1776713258088-r8pp2t/1792313744673-slang-bot-draft-ci-has-run-no-build-test-since-10-.md) — _ag-1776713258088-r8pp2t_
 - [a pre checkout runner death probe must require run](ag-1776713259045-nax3cr/1786357018657-a-pre-checkout-runner-death-probe-must-require-run.md) — _ag-1776713259045-nax3cr_
 - [gh pulls head owner branch is blind to fork prs in](ag-1776713259045-nax3cr/1786357027931-gh-pulls-head-owner-branch-is-blind-to-fork-prs-in.md) — _ag-1776713259045-nax3cr_
 - [check runs filter latest dedups attempts not job n](ag-1776713259045-nax3cr/1786357731107-check-runs-filter-latest-dedups-attempts-not-job-n.md) — _ag-1776713259045-nax3cr_
@@ -5090,6 +5093,9 @@
 - [correction missing cmake options runs in gh run li](ag-1780667166418-apezq5/1792254028938-correction-missing-cmake-options-runs-in-gh-run-li.md) — _ag-1780667166418-apezq5_
 - [byteaddressbufferload is not in mighthavesideeffec](ag-1780667166418-apezq5/1792260159578-byteaddressbufferload-is-not-in-mighthavesideeffec.md) — _ag-1780667166418-apezq5_
 - [bot pr on shader slang slang ci matrix waits for r](ag-1780667166418-apezq5/1792261602957-bot-pr-on-shader-slang-slang-ci-matrix-waits-for-r.md) — _ag-1780667166418-apezq5_
+- [core module combined sampler forward member call o](ag-1780667166418-apezq5/1792308956799-core-module-combined-sampler-forward-member-call-o.md) — _ag-1780667166418-apezq5_
+- [exported generics survive to spir v legalize any g](ag-1780667166418-apezq5/1792330928974-exported-generics-survive-to-spir-v-legalize-any-g.md) — _ag-1780667166418-apezq5_
+- [quick pr head slangc verify build symlink submodul](ag-1780667166418-apezq5/1792365932155-quick-pr-head-slangc-verify-build-symlink-submodul.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -5973,6 +5979,10 @@
 - [codex critique tell codex its disabled push url is](ag-1780667166439-vmjrwe/1792294811857-codex-critique-tell-codex-its-disabled-push-url-is.md) — _ag-1780667166439-vmjrwe_
 - [e30027 on a forward inside a generic extension try](ag-1780667166439-vmjrwe/1792301433983-e30027-on-a-forward-inside-a-generic-extension-try.md) — _ag-1780667166439-vmjrwe_
 - [run a reviewer s shapes plus a non recursive contr](ag-1780667166439-vmjrwe/1792301451882-run-a-reviewer-s-shapes-plus-a-non-recursive-contr.md) — _ag-1780667166439-vmjrwe_
+- [github ci failed can arrive weeks late for a super](ag-1780667166439-vmjrwe/1792326985786-github-ci-failed-can-arrive-weeks-late-for-a-super.md) — _ag-1780667166439-vmjrwe_
+- [exported generics must stay pinned through all of ](ag-1780667166439-vmjrwe/1792342789360-exported-generics-must-stay-pinned-through-all-of-.md) — _ag-1780667166439-vmjrwe_
+- [removing dead code before a target only validator ](ag-1780667166439-vmjrwe/1792351775854-removing-dead-code-before-a-target-only-validator-.md) — _ag-1780667166439-vmjrwe_
+- [to check code that dce deletes observe each round ](ag-1780667166439-vmjrwe/1792365178178-to-check-code-that-dce-deletes-observe-each-round-.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6428,6 +6438,8 @@
 - [slang getnaturalalignment is folded by specializeg](ag-1780667168475-a9tac8/1792266993304-slang-getnaturalalignment-is-folded-by-specializeg.md) — _ag-1780667168475-a9tac8_
 - [core module e30027 on self forward inside a generi](ag-1780667168475-a9tac8/1792289884493-core-module-e30027-on-self-forward-inside-a-generi.md) — _ag-1780667168475-a9tac8_
 - [13742 13301 the slangpy issue it fixes is 1204 not](ag-1780667168475-a9tac8/1792299824761-13742-13301-the-slangpy-issue-it-fixes-is-1204-not.md) — _ag-1780667168475-a9tac8_
+- [removing dead code before a target only validator ](ag-1780667168475-a9tac8/1792349538466-removing-dead-code-before-a-target-only-validator-.md) — _ag-1780667168475-a9tac8_
+- [when a fix validates ir before dce removes it vali](ag-1780667168475-a9tac8/1792361172213-when-a-fix-validates-ir-before-dce-removes-it-vali.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -7530,6 +7542,9 @@
 - [eval runner triage cap overshoot r1 first queue an](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792159750753-eval-runner-triage-cap-overshoot-r1-first-queue-an.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [eval runner a second triage job scores the first j](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792164298690-eval-runner-a-second-triage-job-scores-the-first-j.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [eval runner fixer slang eval fork gives no ci verd](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792192404849-eval-runner-fixer-slang-eval-fork-gives-no-ci-verd.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
+- [eval runner clearing eval is not enough eval copy ](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792310997428-eval-runner-clearing-eval-is-not-enough-eval-copy-.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
+- [gateway opus 5 5 returns a thinking block first pa](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792325519186-gateway-opus-5-5-returns-a-thinking-block-first-pa.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
+- [reply eval llm judge marks every i reproduced this](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792326383997-reply-eval-llm-judge-marks-every-i-reproduced-this.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_

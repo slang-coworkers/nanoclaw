@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#12609 — bulk-copy dynamic-interface packing, PR #12875
-description: PR #12875 head 2cfaf207bf is MERGEABLE but 54 behind master (10-15). CHANGES_REQUESTED (jvepsalainen-nv, 09-16) still stands, with no maintainer reply since 10-07. The green Windows run 37555145964 was deleted in the Actions purge, so the head has no CI. Operator asked (10-15) whether to rebase and/or re-ping.
+description: PR #12875 head 2cfaf207bf is MERGEABLE but 65 behind master (10-18). CHANGES_REQUESTED (jvepsalainen-nv, 09-16) still stands, with no maintainer reply since 10-07. The green Windows run 37555145964 was deleted in the Actions purge, so the head has no CI. The operator was asked on 10-12, 10-15 and 10-18 whether to rebase and/or re-ping, and has not answered.
 ---
 
 # slang#12609 / PR #12875
@@ -10,4 +10,5 @@ description: PR #12875 head 2cfaf207bf is MERGEABLE but 54 behind master (10-15)
 - **Asks to maintainer jvepsalainen-nv** (our comment 6029434953, 10-07 02:13Z): (1) a re-review, since the 09-16 CHANGES_REQUESTED stands; (2) whether the green Windows run can replace "inspect the full failing IR". No reply as of 10-09 or 10-12.
 - **2026-10-12:** run 37555145964 returns 404 on the API and the web. Head `2cfaf207bf` has 0 check suites and an empty `statusCheckRollup`, so the falcor gate is gone too. The cause is the repo-wide Actions purge, which now spans runs created about **2026-10-01T20:05Z → 2026-10-07T22:25Z**; 30 open PR heads have no CI. The Windows ARM64 7524/7524 result survives only as text in comment 6029434953. I offered the operator an optional rebase by slang-fixer: the PR is not a draft, so a push fires a non-throttled `pull_request` CI run. Waiting on their go (dashboard msg 17).
 - **2026-10-15 (3rd silent re-chase):** still no maintainer activity on #12875/#12609/#13474 since 10-07 02:13Z, though jvepsalainen-nv commented elsewhere on 10-13 (#13511, #12943, #13167). The operator never answered the 10-12 rebase offer. Head: 0 check suites, 0 Actions runs, 54 behind. I re-asked the operator on the dashboard (msg 15): reply `go 12875 rebase` (slang-fixer merges master and pushes, which fires fresh CI) and/or `go 12875 ping` (one follow-up comment noting the run is gone). The default is to hold.
-- **Re-chase:** `rechase-12875-maint-36b2`, 2026-10-18 12:00Z. Fixer thread: `gh-issue-shader-slang/slang-12609`.
+- **2026-10-18 (4th silent re-chase):** the dashboard (paged bounded, seq 498209→505824) has no `go 12875` reply. GitHub shows no activity since 10-07 02:13Z on #12875, #12609 or #13474: no comments, reviews or timeline events. #13474 is open, assigned to jvepsalainen-nv, with 0 comments. Head: 0 check suites, **65 behind**, MERGEABLE, still CHANGES_REQUESTED. I re-offered rebase/ping on the dashboard (msg 21); the default is to hold. Next run is the 5th re-chase. If it is also silent, ask the operator whether to stop re-chasing and park the chain in the supervise-issues register instead.
+- **Re-chase:** `rechase-12875-maint-372f`, 2026-10-21 12:00Z (one-shot). Fixer thread: `gh-issue-shader-slang/slang-12609`.

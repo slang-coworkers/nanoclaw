@@ -28,3 +28,9 @@ writes, never about relevance.* A stale index that passes every structural check
 present, links well-formed, confident phrasing — is the failure mode this banner exists
 to prevent. (2026-08-19: the archive, formerly a loose `MEMORY.md` + 52 root siblings,
 was folded into `legoop-archive/` with `type:` frontmatter on each file.)
+
+⚠️ **`ncl: command timed out after 30s` does not mean the write failed (2026-10-18).** Seen with
+`ncl tasks create`: the create went through, and my retry made a second copy of the one-shot
+(`rechase-13737-pr13741-f5e0` next to `-a71d`). `ncl tasks cancel` then timed out the same way. ⇒ **After a
+timeout on a mutating `ncl` verb, list first (`ncl tasks list --json`, filter by name) and retry only if
+the row is absent.** Read verbs (`list`) also time out sometimes; just retry those. Cheapest check for one task: `ncl tasks get <id>` and read `status` (2026-10-18: a timed-out `cancel` of `rechase-13271-followups-dada` had in fact landed, `status: cancelled`).

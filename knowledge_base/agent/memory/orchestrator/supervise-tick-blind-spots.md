@@ -11,7 +11,8 @@ tick after the scan. Procedure: [[orchestrator/supervise-tick-runbook.md]]. The 
 
 **General detector:** `tickNNN/blind.py` — sort rows by **timestamp** (`--reverse` order is by seq and unreliable), read
 20, flag sessions whose newest row is an unanswered `in` with the container not running. Always nudge with
-`target_session_id` pinned and confirm the `in` landed.
+`target_session_id` pinned and confirm the `in` landed. Its top hits are mostly "Learning saved" system acks (5 of 6 at
+tick 289) — skip those.
 
 1. **Round-2 review request stalls in the reviewer, not the fixer** (tick 264). A `[Fix Review Request]` lands in a
    slang-reviewer session whose container stops without processing it; scan flags `awaiting_us` against the *fixer*.
