@@ -90,6 +90,10 @@ describe('OpenCode setup installation and refresh', () => {
     expect(tree(directory)).toEqual(before);
     expect(fixture.commands).toHaveLength(1);
   });
+  it('accepts a later credential-connection seam, which only adds optional fields', async () => {
+    const result = await applyProviderSkill(skill, root(1, 2));
+    expect(result.blockers).toEqual([]);
+  });
   it('does not count its compatibility predicate as a payload change on an installed provider', async () => {
     const directory = root();
     await applyProviderSkill(skill, directory);
@@ -132,6 +136,8 @@ describe('OpenCode setup installation and refresh', () => {
     const result = await applyProviderSkill(codexSkill, directory);
     expect(result.blockers).toEqual([]);
     expect(result.changed).toBe(false);
+    // Fork: /add-codex carries no payload, so upstream's archive-cleanup `nc:run`
+    // (which follows its payload copy, #4104) has nothing to clean and is absent.
     expect(fixture.commands).toEqual([]);
     expect(tree(directory)).toEqual(before);
   });

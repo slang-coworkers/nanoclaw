@@ -16,7 +16,8 @@
  */
 import path from 'path';
 
-import { SECRET_ENV_KEY_RE, SECRET_VALUE_RE, escapeInvisibles, redactSecret } from '../modules/self-mod/request.js';
+import { escapeInvisibles } from '../card-text.js';
+import { SECRET_ENV_KEY_RE, SECRET_VALUE_RE, redactSecret } from '../modules/self-mod/request.js';
 import { resolveLocalTemplate } from './local-dir.js';
 import { parseTemplate } from './parse.js';
 

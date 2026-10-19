@@ -109,6 +109,7 @@ import {
   extractRouting,
   categorizeMessage,
   FAILURE_NOTICE_FIELD,
+  GENERIC_FAILURE_NOTICE,
   isClearCommand,
   isRunnerCommand,
   isSessionEcho,
@@ -4818,7 +4819,7 @@ export async function processQuery(
             // stays shut and the gated body is never pushed to the channel.
             // The fork previously had to drop this call entirely for want of
             // exactly this counter.
-            const notice = event.error ?? 'The agent run failed. Check the logs for details.';
+            const notice = event.error ?? GENERIC_FAILURE_NOTICE;
             if (sendsFailureNotice(routing)) await deliverErrorResult(routing, notice);
             // Keep the reason in the runner log, since the skipped notice may
             // be the only place it would have been recorded.
@@ -5115,7 +5116,7 @@ export async function processQuery(
           continue;
         noticed.push(target);
         try {
-          await deliverErrorResult(target, 'The agent run failed. Check the logs for details.');
+          await deliverErrorResult(target, GENERIC_FAILURE_NOTICE);
         } catch (noticeError) {
           log(
             `Failed to deliver query error notice: ${noticeError instanceof Error ? noticeError.message : String(noticeError)}`,

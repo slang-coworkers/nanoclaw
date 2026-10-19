@@ -15,6 +15,8 @@ container/hooks/**
 container/Dockerfile
 container/build.sh
 container/pull.sh
+# Upstream #4139 (hardened image per release): siblings of pull.sh / versions.json.
+container/release-image.sh
 container/Dockerfile.derived
 container/build-derived.sh
 container/build-prep.sh
@@ -228,6 +230,7 @@ container/claude-trace/**
 container/claude-trace.test.ts
 # Top-level version manifest.
 versions.json
+agent-images.json
 
 # Upstream sync (8be5be93): new upstream root files + learn skill absorbed onto nv-main.
 AGENTS.md
