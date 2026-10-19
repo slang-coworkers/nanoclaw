@@ -15,6 +15,7 @@ import {
   sqliteCommitCostCeilingAdjustment,
   sqliteFindQuestionResponse,
   sqliteGetAllDestinations,
+  sqliteGetDeliveryStatus,
   sqliteGetMessageIn,
   sqliteGetMessageIdBySeq,
   sqliteGetMessageInBySeq,
@@ -222,6 +223,10 @@ export class SqliteAgentMailbox implements AgentMailbox {
 
   commitCostCeilingAdjustment(params: Parameters<MailboxOperations['commitCostCeilingAdjustment']>[0]): void {
     sqliteCommitCostCeilingAdjustment(params);
+  }
+
+  getDeliveryStatus(messageOutId: string) {
+    return sqliteGetDeliveryStatus(messageOutId);
   }
 
   getState(key: string) {
