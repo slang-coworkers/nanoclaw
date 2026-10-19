@@ -59,7 +59,26 @@ import {
 } from './lib/custom-endpoint.js';
 import { runInheritScript } from './lib/inherit-script.js';
 import { offerPortalReminder, portalEnabled, runImagePortal } from './portal.js';
-import { logFirstChat, pingCliAgent, PING_AGENT_FOLDER, type PingResult } from './lib/agent-ping.js';
+import {
+  firstChatEventProps,
+  logFirstChat,
+  pingFailureCopy,
+  PING_AGENT_FOLDER,
+  startCliPing,
+  type FirstChatWait,
+  type PingOutcome,
+} from './lib/agent-ping.js';
+import { EXTRA_WAIT_MS, MAX_WAIT_MS, waitForFirstReply, type WaitChoice } from './lib/first-chat-wait.js';
+import {
+  createStageProbe,
+  fill,
+  FIRST_CHAT_COPY,
+  keepWaitingQuestion,
+  skippedWaitCopy,
+  StageDisplay,
+  type FirstChatStage,
+} from './lib/first-chat-progress.js';
+import { inspectAgentSession } from './central-db-inspection.js';
 import { getSetupProvider, listSetupProviders } from './providers/registry.js';
 import { applyProviderSkill, loadHostContractModules } from './providers/install.js';
 import {
@@ -100,20 +119,11 @@ import { claudeCliAvailable, resolveTimezoneViaClaude } from './lib/tz-from-clau
 import * as setupLog from './logs.js';
 import { ensureAnswer, fail, runQuietChild, runQuietStep, spawnQuiet } from './lib/runner.js';
 import { emit as phEmit } from './lib/diagnostics.js';
-import {
-  accentGreen,
-  brandBody,
-  brandBold,
-  brandChip,
-  dimWrap,
-  fitToWidth,
-  fmtDuration,
-  note,
-  wrapForGutter,
-} from './lib/theme.js';
+import { accentGreen, brandBody, brandBold, brandChip, dimWrap, note, wrapForGutter } from './lib/theme.js';
 import { isValidTimezone } from '../src/timezone.js';
 import { DEFAULT_AGENT_PROVIDER, TEMPLATES_DIR } from '../src/config.js';
 import { SocketTransport } from '../src/cli/socket-client.js';
+import { heartbeatPath } from '../src/session-manager.js';
 import {
   cloneRegistry,
   ensureTemplateLocal,
@@ -608,19 +618,14 @@ async function main(): Promise<void> {
       );
     }
     if (!skip.has('first-chat')) {
-      p.log.message(
-        brandBody(
-          dimWrap(
-            "Your assistant runs in an isolated sandbox. I'm going to send it a quick test message (ping) and wait for a reply (pong) to confirm it's responding. First startup typically takes 30–60 seconds while the sandbox warms up.",
-            4,
-          ),
-        ),
-      );
+      p.log.message(brandBody(dimWrap(FIRST_CHAT_COPY.intro, 4)));
       const pingStart = Date.now();
-      const ping = await confirmAssistantResponds();
-      logFirstChat(ping, Date.now() - pingStart);
+      const { outcome, wait } = await confirmAssistantResponds();
+      const waitedMs = Date.now() - pingStart;
+      logFirstChat(outcome, waitedMs, wait);
+      const ping = outcome.result;
       if (ping === 'ok') {
-        phEmit('first_chat_ready');
+        phEmit('first_chat_ready', firstChatEventProps(outcome, wait));
         const cleanupRawLog = setupLog.stepRawLog('cleanup-cli-agent');
         const cleanupStart = Date.now();
         const cleanup = await spawnQuiet(
@@ -684,20 +689,14 @@ async function main(): Promise<void> {
           }
           await runFirstChat();
         }
+      } else if (wait.skipped) {
+        phEmit('first_chat_failed', firstChatEventProps(outcome, wait));
+        note(skippedWaitCopy(wait.stage).note, FIRST_CHAT_COPY.skippedTitle);
       } else {
-        phEmit('first_chat_failed', { reason: ping });
-        renderPingFailureNote(ping);
-        await offerClaudeOnFailure({
-          stepName: 'cli-agent',
-          msg:
-            ping === 'socket_error'
-              ? "NanoClaw service isn't listening on its CLI socket."
-              : 'No reply from the assistant within 30 seconds.',
-          hint:
-            ping === 'socket_error'
-              ? 'Socket at data/cli.sock did not accept a connection.'
-              : 'Agent container may be failing to start or authenticate.',
-        });
+        phEmit('first_chat_failed', firstChatEventProps(outcome, wait));
+        const copy = pingFailureCopy(outcome, waitedMs);
+        note(copy.note, FIRST_CHAT_COPY.skippedTitle);
+        await offerClaudeOnFailure({ stepName: 'cli-agent', msg: copy.assistMsg, hint: copy.assistHint });
       }
     }
   }
@@ -912,52 +911,67 @@ async function main(): Promise<void> {
 
 /**
  * Round-trip ping against the CLI socket before we ask the user to chat.
- * Renders its own spinner with elapsed time because a cold-start container
- * boot can take 30–60s — the elapsed counter is the difference between
- * "patient" and "is this hung?". Returns the raw result so the caller can
- * branch between the chat loop (ok) and a diagnostic note (anything else).
+ * A first reply waits on the sandbox, the agent runtime and the model, which
+ * can take minutes with a local model, so each stage gets its own line and
+ * timer, and a long wait asks whether to keep going instead of failing.
+ * Returns the outcome so the caller can branch between the chat loop (ok)
+ * and a diagnostic note (anything else).
  */
-async function confirmAssistantResponds(): Promise<PingResult> {
-  const s = p.spinner();
+async function confirmAssistantResponds(): Promise<{ outcome: PingOutcome; wait: FirstChatWait }> {
   const start = Date.now();
-  const label = 'Waking your assistant…';
-  s.start(fitToWidth(label, ' (99m 59s)'));
-  const tick = setInterval(() => {
-    const suffix = ` (${fmtDuration(Date.now() - start)})`;
-    s.message(`${fitToWidth(label, suffix)}${k.dim(suffix)}`);
-  }, 1000);
+  const ping = startCliPing(MAX_WAIT_MS);
+  const probe = createStageProbe({
+    since: start,
+    readSession: () => inspectAgentSession(process.cwd(), PING_AGENT_FOLDER),
+    heartbeatFile: heartbeatPath,
+  });
+  const display = new StageDisplay(probe, {}, start);
+  display.start();
+  void display.tick();
+  const tick = setInterval(() => void display.tick(), 1000);
 
-  const result = await pingCliAgent();
+  const { outcome, keptWaiting, skipped } = await waitForFirstReply({
+    ping,
+    interactive: Boolean(process.stdin.isTTY && process.stdout.isTTY),
+    ask: async (waitedMs, signal) => {
+      display.pause();
+      const choice = await askKeepWaiting(display.seenStage, waitedMs, signal);
+      // Otherwise the wait is over; the closing lines print without a spinner.
+      if (choice === 'wait') display.resume();
+      return choice;
+    },
+  });
 
   clearInterval(tick);
-  const suffix = ` (${fmtDuration(Date.now() - start)})`;
-  if (result === 'ok') {
-    s.stop(`${k.bold(fitToWidth('Your assistant is ready.', suffix))}${k.dim(suffix)}`);
-  } else {
-    const msg =
-      result === 'socket_error' ? "Couldn't reach the NanoClaw service." : "Your assistant didn't reply in time.";
-    s.error(`${k.bold(fitToWidth(msg, suffix))}${k.dim(suffix)}`);
-  }
-  return result;
+  await display.idle();
+  if (outcome.result === 'ok') display.succeed(FIRST_CHAT_COPY.ready);
+  else display.fail(skipped ? skippedWaitCopy(display.seenStage).spinner : pingFailureCopy(outcome).spinner);
+  return { outcome, wait: { keptWaiting, skipped, stage: display.seenStage } };
 }
 
-function renderPingFailureNote(result: PingResult): void {
-  const body =
-    result === 'socket_error'
-      ? [
-          wrapForGutter(
-            "The NanoClaw service isn't listening on its local socket. Try restarting it, then chat with `pnpm run chat hi`. " +
-              SERVICE_NAME_CAVEAT,
-            6,
-          ),
-          '',
-          serviceRestartHint(),
-        ].join('\n')
-      : wrapForGutter(
-          'No reply from your assistant within 30 seconds. Check `logs/nanoclaw.log` for clues, then try `pnpm run chat hi`.',
-          6,
-        );
-  note(body, 'Skipping the first chat');
+async function askKeepWaiting(
+  stage: FirstChatStage | undefined,
+  waitedMs: number,
+  signal: AbortSignal,
+): Promise<WaitChoice | undefined> {
+  const answer = await brightSelect<WaitChoice>({
+    message: keepWaitingQuestion(stage, waitedMs),
+    options: [
+      {
+        value: 'wait',
+        label: FIRST_CHAT_COPY.keepWaiting,
+        hint: fill(FIRST_CHAT_COPY.keepWaitingHint, { minutes: EXTRA_WAIT_MS / 60_000 }),
+      },
+      { value: 'skip', label: FIRST_CHAT_COPY.skip, hint: FIRST_CHAT_COPY.skipHint },
+    ],
+    signal,
+    abortedLabel: (outcome) =>
+      (outcome as PingOutcome | undefined)?.result === 'ok' ? FIRST_CHAT_COPY.replied : FIRST_CHAT_COPY.waitEnded,
+  });
+  if (signal.aborted) return undefined;
+  const choice = ensureAnswer(answer) as WaitChoice;
+  setupLog.userInput('first_chat_wait', choice);
+  return choice;
 }
 
 /**
