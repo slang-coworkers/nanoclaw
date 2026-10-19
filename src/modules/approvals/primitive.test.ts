@@ -198,9 +198,10 @@ describe('requestApproval card length', () => {
       question: 'Approve the thing?',
     });
 
-    expect(await getPendingApprovalsByAction('test_action')).toHaveLength(0);
+    // Fork: the row stays for the dashboard fallback; the notice still says why.
+    expect(await getPendingApprovalsByAction('test_action')).toHaveLength(1);
     expect(lastNotifyText()).toBe(
-      'test_action failed: the request is too long to show in full on a card (1200 characters, limit 1000). Shorten the request and try again.',
+      'test_action pending — DM delivery failed (the request is too long to show in full on a card (1200 characters, limit 1000)), awaiting admin review via dashboard.',
     );
   });
 

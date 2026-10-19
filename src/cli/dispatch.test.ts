@@ -1262,7 +1262,9 @@ describe('approval card disclosure', () => {
 
     const q = question();
     expect(q).toContain('ncl detail-cmd');
-    expect(q).not.toContain('```');
+    // Only the command line's own fence (upstream #4136); no disclosure block.
+    expect(q.match(/^```$/gm)).toHaveLength(2);
+    expect(q).not.toContain('mcp "x"');
   });
 
   it('refuses rather than carding a request whose disclosure could not be rendered', async () => {
@@ -1371,14 +1373,16 @@ describe('approval card question', () => {
 
   it('still cards a long command that fits', async () => {
     mockGetContainerConfig.mockReturnValue({ cli_scope: 'group' });
+    // Fork: the rendered card is also capped at CLI_APPROVAL_CARD_MAX_BYTES (1500),
+    // so "long but fits" sits under that cap rather than upstream's 2000 characters.
     const resp = await dispatch(
-      { id: '1', command: 'wirings-update', args: { engage_pattern: 'x'.repeat(1500) } },
+      { id: '1', command: 'wirings-update', args: { engage_pattern: 'x'.repeat(1300) } },
       agentCtx(),
     );
 
     expect(resp.ok).toBe(false);
     if (!resp.ok) expect(resp.error.code).toBe('approval-pending');
     expect(approvalState.requestApproval).toHaveBeenCalledTimes(1);
-    expect(heldQuestionLines()[2]).toContain('x'.repeat(1500));
+    expect(heldQuestionLines()[2]).toContain('x'.repeat(1300));
   });
 });
