@@ -3,7 +3,7 @@ title: /slang-pr-review pipeline operations (dispatch, run-dir, budget, env, int
 type: concept
 group: review-process
 tags: [slang-pr-review, reviewer-a, reviewer-b, reviewer-c, background-dispatch, monitor, run-dir, integrity-fail, max-budget-usd, onecli, drift-check, slang-rhi]
-source_count: 13
+source_count: 15
 ---
 
 # /slang-pr-review pipeline operations (dispatch, run-dir, budget, env, integrity, drift)
@@ -28,6 +28,10 @@ of recurring operational traps:
   denied`). Launch every one as `bash <script> …`, and read each reviewer log for the real
   exit code: a "completed (exit 0)" seconds after dispatch means the script never ran;
   a live run logs `>>> repro.sh:` at its head.
+- **Never end the turn with only a background waiter armed** — a teardown drops the
+  notification and the verdict sits unsent for hours. Record run dirs + next step in memory,
+  then chain `bash wait-run.sh <dir> --timeout 540` or schedule an `ncl tasks` one-shot. After
+  two `ECONNREFUSED` deaths, record Reviewer C as inconclusive instead of re-running.
 - **Reviewer A `--max-budget-usd` must be ≥ 20.** The cap covers the whole run (orchestrator
   + ~5 subagents + synthesis); even a tiny PR costs ~$14, and a cap of 12 aborts AFTER the
   subagents finish but BEFORE `final-review.md` is written — a 0-byte review + misleading
@@ -64,6 +68,10 @@ patterns must live in a script file so the watcher's own argv doesn't self-match
 `pgrep -f`/`pkill -f` are guard-blocked
 [Dispatching /slang-pr-review reviewers in background: two gotchas](../learnings/1788446192623-dispatching-slang-pr-review-reviewers-in-backgroun.md).
 The exec-bit loss is not specific to Reviewer C, and it keeps recurring (2026-09-30, 10-07, 10-10). Every script under `~/.claude/skills/slang-pr-review-runner/scripts/` (`compose-and-run.sh`, `devin-fetch.sh`, …) and `slang-clarity-review-runner/scripts/run-clarity.sh` has been found at mode 0664, so calling one by path, as the workflow prose shows, fails at once with exit 126 "Permission denied". That looks like an instant completion, and a background wrapper (`echo "exit=$?"`) still reports exit 0. Always launch them as `bash <script> …`; their internal sub-calls already use `bash "$HERE/repro.sh"`. After a background dispatch, read the `.done` exit code and the head of the reviewer log before you wait on it: a "completed" notification seconds after dispatch means nothing ran, and a `>>> repro.sh:` line at the log head is the positive liveness check ([log done-markers are the authoritative completion signal](../learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md); [slang-pr-review-runner scripts lack exec bit — invoke via bash](../learnings/1791669928517-slang-pr-review-runner-scripts-lack-exec-bit-invok.md); [also seen 2026-10-10 alongside the concurrent-run clobber](../learnings/1791605773844-slang-pr-review-runner-concurrent-reviewer-a-runs-.md)). Every A launch also needs `CLAUDE_CODE_PRINT_BG_WAIT_CEILING_MS=0` and a private `REPO_ROOT` worktree; the full survival launch line is on [reviewer-runner infra](review-process-f0909b1-reviewer-runner-infra.md). The 10-10 note also records an unrelated docs-link fact: ReadTheDocs `docs.shader-slang.org/en/latest/external/stdlib-reference/` returns 404, while `external/core-module-reference/` is live and is what shader-slang.org/docs/ links, so docs PRs should use core-module-reference.
+
+The detached-run helpers added since then have the same exec-bit gap: on 2026-10-17 `wait-run.sh` (the blocking waiter for a `--detach` run dir, which exits 124 on its own `--timeout` and 125 when the wrapper pid is gone with no `exit-status`) failed with exit 126 "Permission denied", so call it as `bash …/wait-run.sh <run-dir> --timeout 540` ([reviewing a stale-CHECK refresh (side note: wait-run.sh exec bit)](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md)).
+
+**Never end a reviewer turn with only a background waiter armed.** On slang#13700 R4 the turn ended on a `run_in_background` until-loop waiting for Reviewers A and C; the session was torn down at about 07:53Z, A had finished at 06:52Z, and nobody was left to act on it, so the verdict sat unsent for about 5 hours until a supervisor nudge caught it (#13541 went 11 h late the same way). A background-wait notification is not guaranteed to reach you across a teardown. Before ending a turn with reviewers still running, record the run dirs and the next step in memory (that cut recovery to about 10 minutes), and either schedule a one-shot re-check through `ncl tasks create --process-after` or keep the turn open with chained `bash wait-run.sh <run-dir> --timeout 540` calls; the full turn-survival recipe is on [reviewer-run survival](review-pr-reviewer-run-survival.md). The same atom bounds retries of a dead Reviewer C: an inner-CLI API `ECONNREFUSED` killed C three times in one day on three different heads, so after two such failures record C as inconclusive (`reviewers_complete=false`) rather than spend another 90 minutes per re-run ([don't end a reviewer turn waiting on a background job](../learnings/1792239292199-don-t-end-a-reviewer-turn-waiting-on-a-background-.md)).
 
 ## Run-dir selection, integrity, budget, and drift
 
@@ -131,7 +139,7 @@ the pre-`final-review.md` abort on a larger diff. And on a fixer PEER-REVIEW han
 slang-rhi is also typically App-write-limited, so `post-back.sh` would 403→exit 3
 [running /slang-pr-review on a non-compiler repo (slang-rhi)](../learnings/1789377211919-running-slang-pr-review-on-a-non-compiler-repo-sla.md).
 
-**Source learnings (13):**
+**Source learnings (15):**
 - [Reviewer run-dir selection: never pick by mtime when reviews share transcripts](../learnings/1788160503888-reviewer-run-dir-selection-never-pick-by-mtime-whe.md) — pick by RUN_DIR from task .output or PR/head-SHA in dir name; INTEGRITY-FAIL.txt is a hard stop.
 - [Dispatching background reviewers: nohup & inside run_in_background double-backgrounds](../learnings/1788203787495-dispatching-background-reviewers-nohup-inside-run-.md) — run scripts directly or arm a Monitor kill-0 waiter; guard hook blocks pgrep -f.
 - [Devin Review is static-only; and don't double-background reviewer dispatch](../learnings/1788341384825-devin-review-is-static-only-and-don-t-double-backg.md) — Devin never builds/runs; CI is the only oracle for arch-dependent runtime bugs; PID-wait monitor.
@@ -145,3 +153,5 @@ slang-rhi is also typically App-write-limited, so `post-back.sh` would 403→exi
 - [slang-pr-review-runner scripts lack exec bit — invoke via bash](../learnings/1791669928517-slang-pr-review-runner-scripts-lack-exec-bit-invok.md) — every runner script has been found at 0664 (09-30, 10-07, 10-10); exit 126 reads as an instant completion; launch via `bash`, check `.done` and the log head
 - [Verifying detached background PR-reviewer completion (Monitor + pgrep gotchas)](../learnings/1782160447849-verifying-detached-background-pr-reviewer-completi.md)
 - [slang-pr-review-runner: concurrent Reviewer A runs clobber each other in the shared /workspace/agent/slang checkout](../learnings/1791605773844-slang-pr-review-runner-concurrent-reviewer-a-runs-.md)
+- [Don't end a reviewer turn waiting on a background job; the session can be torn down and the verdict silently dropped](../learnings/1792239292199-don-t-end-a-reviewer-turn-waiting-on-a-background-.md) — #13700 R4 (5 h) / #13541 (11 h) late verdicts; memory note + `ncl tasks` one-shot or chained `wait-run.sh --timeout 540`; C inconclusive after 2 ECONNREFUSED deaths.
+- [Reviewing a stale-CHECK refresh (side note: wait-run.sh lacks the exec bit)](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md) — `wait-run.sh` exits 126 Permission denied; call it as `bash …/wait-run.sh`.

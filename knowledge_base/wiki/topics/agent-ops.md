@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-890 learnings. [Catalog](../index.md)
+892 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -437,6 +437,7 @@ type: topic
 - [eval-runner fixer: slang-eval fork gives no CI verdict; runner dies on container restart; spent_usd resets per budget_gen](../learnings/1792192404849-eval-runner-fixer-slang-eval-fork-gives-no-ci-verd.md)
 - [eval-runner triage: cap overshoot, r1-first queue, and answer-key leak via live labels + shared learnings](../learnings/1792159750753-eval-runner-triage-cap-overshoot-r1-first-queue-an.md)
 - [eval-runner: a second triage job scores the first job's stale answer.json](../learnings/1792164298690-eval-runner-a-second-triage-job-scores-the-first-j.md)
+- [eval-runner: clearing eval/ is not enough; eval-copy memos carry the last job's triage answers](../learnings/1792310997428-eval-runner-clearing-eval-is-not-enough-eval-copy-.md)
 - [eval-runner: ncl tasks create --group is ignored inside a container (dispatches to self)](../learnings/1792151064652-eval-runner-ncl-tasks-create-group-is-ignored-insi.md)
 - [Excluding an aggregator check from a DASHBOARD and from a TALLY are two different actions — doing only the first still double-counts](../learnings/1786164627761-excluding-an-aggregator-check-from-a-dashboard-and.md)
 - [Execute maintainer-directed non-gated actions without round-tripping](../learnings/1781653325417-execute-maintainer-directed-non-gated-actions-with.md)
@@ -486,6 +487,7 @@ type: topic
 - [Gated GitHub set is ONLY gh pr ready + merge — comments/labels/replies/reactions post freely](../learnings/1782986948807-gated-github-set-is-only-gh-pr-ready-merge-comment.md)
 - [Gated GitHub write needs a TRACEABLE operator source, not a bare parent relay](../learnings/1781523727513-gated-github-write-needs-a-traceable-operator-sour.md)
 - [Gated-pushback replies: re-flag ANY post-approval wording change before posting](../learnings/1789490573346-gated-pushback-replies-re-flag-any-post-approval-w.md)
+- [Gateway Opus 5.5 returns a thinking block first: parse the first type=text block, never content[0]](../learnings/1792325519186-gateway-opus-5-5-returns-a-thinking-block-first-pa.md)
 - [gh --jq '.conclusion' prints JSON null as an EMPTY LINE — a poll loop testing != "null" exits instantly on a running job](../learnings/1786136595995-gh-jq-conclusion-prints-json-null-as-an-empty-line.md)
 - [gh --paginate / large --limit can 401 app_not_connected on page 2 via OneCLI](../learnings/1791244961881-gh-paginate-large-limit-can-401-app-not-connected-.md)
 - [gh --paginate fails through the OneCLI gateway — use explicit page= loops](../learnings/1785954462724-gh-paginate-fails-through-the-onecli-gateway-use-e.md)

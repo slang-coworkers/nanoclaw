@@ -3,7 +3,7 @@ title: "gh CLI Usage & PR/Issue Mechanics"
 type: concept
 group: ci-tooling
 tags: [gh-cli, github, pr, issues, workflow, bot-process, slang]
-source_count: 22
+source_count: 24
 ---
 
 # gh CLI Usage & PR/Issue Mechanics
@@ -20,6 +20,7 @@ Concrete pitfalls and correct patterns for using the `gh` CLI in the Slang proje
 - **`gh issue view --comments` can print nothing at exit 0** — a renderer quirk, not an auth failure. Read `gh api .../issues/<n>` and `.../issues/<n>/comments` instead.
 - **Never cite an env var, CLI flag, or command name you have not verified** via `--help`/`man`/repo grep. It is a high-frequency hallucination surface and a fabricated knob name is unrecoverable for the reader.
 - **Pushing commits to a `fix/issue-*` branch is not a user-facing write** and needs no per-push approval. The gated set is narrow: PR/issue comments, review replies, reactions, `gh pr ready`, merge.
+- **`compare/<a>...<b> --jq .status`: `ahead`/`identical` means `b` contains `a`; `behind`/`diverged` means it does not.** Feed it a merged SHA (`merged: true`), never an open PR's test-merge `merge_commit_sha`. When a cause PR was reverted, re-run the repro on the latest release tarball before dispatching a fixer.
 - **A draft-held fix PR does not discharge the issue comment.** `Fixes #N` in a draft body neither auto-closes nor surfaces; post the 5-bullet on the issue when you *decide* to hold.
 - **`gh api .../user.login` omits the `[bot]` suffix** — never compare it raw against a review author.
 - **An infra-unblock nudge is not a decision override**: being told "you're unblocked" restores capability, not authority to change a verdict.
@@ -101,6 +102,8 @@ git merge-base --is-ancestor <fixPR-merge-commit> <reporter-build-commit>
 
 If the exit code is non-zero, the fix was NOT in the reporter's build. The correct deliverable is regression-test coverage, not a new fix. Get the reporter's build from their `slangc -v` / `git describe`, and the fix-PR's merge commit via `gh pr view N --json mergeCommit` ([Verify the cited fix-PR is an ancestor of the reporter's build before accepting regression/incomplete-fix framing](../learnings/1780648573408-verify-the-cited-fix-pr-is-an-ancestor-of-the-repo.md)).
 
+When the commit is not in your clone, ask the server instead: `gh api repos/O/R/compare/<merged-sha>...<head> --jq .status`. Read the direction carefully. `ahead` or `identical` means head contains the commit; `behind` or `diverged` means it does NOT. A task brief once said "behind/identical = contained", which is reversed for `behind`. Confirm the SHA you feed it first: on an OPEN PR `merge_commit_sha` is only GitHub's test merge, so check `merged: true` and `merged_at` before using it. Example: #13712 (the revert of #13537) merged 10-16 21:01Z as `8c81b8bd`, and compare against nightly head `d9ede2dd` gave `ahead`, `ahead_by` 2, so the nightly carried the revert ([gh compare status direction: ahead/identical means head contains base](../learnings/1792224156968-gh-compare-status-direction-ahead-identical-means-.md)). The same revert shows the cheap disposition check for an owed fix. When a "fix owed" trigger fires on a regression whose cause PR has since been reverted (#13628, caused by #13537, reverted by #13712), first re-run the repro on the latest release tarball: `curl` the `slang-<ver>-linux-x86_64-glibc-2.28.tar.gz` asset and run its `bin/slangc`, about one minute. The owed deliverable may now be a verify-and-close, not a fixer dispatch ([Slang merge-queue eviction can come from the SlangPy Tests commit status (rider: owed fix on a reverted cause)](../learnings/1792226879052-slang-merge-queue-eviction-can-come-from-the-slang.md)).
+
 ## Detecting Transient Claude CLI Failures in PR Review Runners
 
 When running `/slang-pr-review` background reviewers (`compose-and-run.sh` for Reviewer A, `run-clarity.sh` for C), the background-task completion notification's exit code is the wrapper's `echo`, not the inner script — it shows 0 even when the review failed. Always grep for `REVIEWER_*_EXIT=` in the log.
@@ -131,10 +134,12 @@ For the `shader-slang/shader-slang.github.io` Sphinx site using the Furo theme, 
 
 Checking Slang nightly CI health via the **unauthenticated** GitHub Actions API, `GET /repos/shader-slang/slang/actions/runs?event=schedule&per_page=20` returned a **stale cached page** (newest run 08-30) even though nightly runs had executed that morning — it silently looked like nothing ran. It recurred on 2026-09-28: `?event=schedule&per_page=40` served June/July runs of unrelated scheduled workflows (CI Health, Populate sccache), a listing that reads like "latest schedule runs" and is not. The **reliable path is per workflow id**: list `actions/workflows?per_page=100`, keep names containing "nightly"/"cmake options", then read `actions/workflows/<id>/runs?per_page=4` for each. On slang "nightly green" means ALL of them — 8 scheduled nightlies (Slang Test, VKGLCTS, MDL Perf, Remix, Coverage, Sanitizer, Sascha, Falcor) plus the weekly CMake Options run — and in a `created=` filter the `>=` must be URL-encoded as `%3E%3D`, or the unauthenticated API returns non-JSON ([event=schedule run listing is stale — query nightlies per workflow id](../learnings/1790583283909-github-actions-event-schedule-run-listing-is-stale.md)). A cheaper approximation is `GET .../actions/runs?branch=master&per_page=100`, then client-side filter run names containing "Nightly" and take the newest per name (returns current conclusions — Nightly Slang Test / Sascha / Falcor / VKGLCTS / MDL Perf). Caveats: a burst of per-PR runs can consume the 100-run master window and push an infrequent nightly (e.g. `Nightly MDL Perf Test`) out of it — so "no runs found for workflow X in last 100" is NOT "X didn't run" (query that workflow-id's runs endpoint for its own history); and `?status=failure&per_page=N` reliably surfaces in-window failures and distinguishes schedule/master (nightly regressions) from pull_request/workflow_dispatch/merge_group events (per-PR churn, not master regressions) ([GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter for nightly conclusions](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md)).
 
-**Source learnings (22):**
+**Source learnings (24):**
 - [GitHub Actions API: event=schedule returns a stale page; use branch=master + name filter](../learnings/1789028374767-github-actions-api-event-schedule-returns-stale-pa.md) — unauth event=schedule can be a stale cache; filter master runs by name for nightly conclusions
 
 - [gh search prs misses recent open PRs](../learnings/1780327495315-gh-search-prs-misses-recent-open-prs-don-t-use-it-.md)
+- [gh compare status direction: ahead/identical means head contains base](../learnings/1792224156968-gh-compare-status-direction-ahead-identical-means-.md) — `behind`/`diverged` = not contained; open-PR `merge_commit_sha` is a test merge; #13712 in nightly `d9ede2dd`.
+- [Slang merge-queue eviction can come from the SlangPy Tests commit status, not a check-run](../learnings/1792226879052-slang-merge-queue-eviction-can-come-from-the-slang.md) — cited here for its rider: an owed fix on a since-reverted cause starts with a release-tarball repro (verify-and-close).
 - [wrong `--workflow` name serves a retired workflow's runs](../learnings/1786079545237-gh-run-list-workflow-wrong-filename-silently-retur.md)
 - [Check a PR's closing-issue link via gh closingIssuesReferences](../learnings/1780462327680-check-a-pr-s-closing-issue-link-via-gh-closingissu.md)
 - [gh issue view --comments can return empty](../learnings/1782389247211-gh-issue-view-comments-can-return-empty-use-json-o.md)

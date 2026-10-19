@@ -3,7 +3,7 @@ title: Re-review scope decisions, cross-round adjudication, and reviewer session
 type: concept
 group: review-process
 tags: [slang-pr-review, re-review, round-2, spot-check, diff-hash, cross-round, a2a-redrive, thread-id, synchronize, canonical-thread, overlap-analysis]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -17,7 +17,9 @@ handoff to the wrong session silently strands it. Two clusters:
   a force-push) — or a read-only source **spot-check** of only the safety-critical touch
   points the verdict rested on. Confirm no functional change leaked in beyond the intended
   fix (grep the non-test code delta for non-comment changed lines) and re-check the full
-  touched-file list.
+  touched-file list. Across a master merge, diff the PR's own net change (old base→old head
+  vs new master→new head, `index`/`@@` lines stripped), and check the delta did not silently
+  revert a nit applied in the previous round.
 - **The approver's `diff_hash` goes stale once the fixer pushes.** The machine-readable
   json result block in `combined-review.md` is the verdict against the head that WAS
   reviewed; after fixes the head moves and `commit_match` will mismatch — state a
@@ -72,6 +74,19 @@ run via `slang-test` from repo root, then restore master; (5) re-fetch Devin (ch
 each commit — though its `devin-commit-status` often returns "unknown" via anonymous scrape, a
 freshness caveat not a failure). Be transparent in the verdict that round-2 was a delta-verification,
 not a fresh full pipeline run, and offer the full run if the requester prefers ([round-2 delta-verify instead of a full pipeline re-run when the fix logic is unchanged](../learnings/1789491455857-round-2-pr-review-delta-verify-instead-of-full-pip.md)).
+When the fixer has **merged master into the PR** and calls the round "comment-and-test-only", the
+`<r1head>..<r2head>` recipe breaks: a raw `git diff old..new` across the merge pulls in hundreds of
+master files, and in a shallow clone `git merge-base` can come back empty. Compare the PR's own net
+change instead: `diff <(git diff <old-pr-base> <old-head> -- <files> | grep -vE '^(index |@@ )')
+<(git diff <new-master> <new-head> -- <files> | grep -vE '^(index |@@ )')`, where `<old-pr-base>` is
+the parent of the PR's first commit. Empty output means the code change is identical and Reviewer A
+needs no re-run. Read what the delta *removed*, too: on slang#13130 R3 this check caught a "trim
+comments" commit that deleted the sentence added the round before to resolve a clarity nit (the
+processStore asymmetry note), which reverts an applied nit without saying so; flag it as a nit. The
+same review split a multi-call-site regression test into single-site variants for a master-crash
+drill by deleting every call line except one per variant (a python split), which proves each site
+crashes on its own
+[review round deltas: diff the PR's own net change across a merge](../learnings/1792264297828-review-round-deltas-diff-the-pr-s-own-net-change-a.md).
 Distinct from a re-review entirely: a maintainer tagging the bot to "analyze overlap /
 redundancy between PR #A and #B" is a comparative *investigation* (fits `/slang-plan`
 research mode), NOT the three-reviewer code-review pipeline — answer with each PR's
@@ -139,7 +154,7 @@ and a red downstream check may be a cross-repo release-ordering gate, not a defe
 
 A routing collapse to watch when the reviewer is dispatched **directly by the fixer** (a fixer→reviewer peer-review handoff) rather than by the orchestrator: the `/slang-pr-review` Step-5 "Fix-chain / mention (live pr mode)" template says to *reply to parent AND forward to the fixer*, but that assumes parent ≠ fixer. When the tasking message came from `slang-fixer`, the fixer IS the parent edge (first inbound's `source_session_id`), so "reply to parent" and "forward to fixer" are the same destination — send the `combined-review.md` + `[Review Verdict]` **once** to `slang-fixer` via `in_reply_to=<request-id>`; sending to both `to="parent"` and `to="slang-fixer"` double-delivers to the same agent and reads as a duplicate. (Same run: Devin/Reviewer-B exit `3 = timeout` is a routine best-effort skip — merge proceeds with A + C, set `reviewers_complete=false` when any dispatched reviewer times out/errors/drifts; and the strongest signal in a combined report is **A↔C convergence** — surface an independently-flagged same line as the top consistency item) ([when the fixer is the requester, parent-edge and fixer-forward collapse to one send](../learnings/1789820780649-slang-pr-review-when-the-fixer-is-the-requester-pa.md)).
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [spot-check (not full re-run) for additive nit-fixes; diff_hash goes stale](../learnings/1788198210854-slang-pr-review-spot-check-not-full-re-run-for-add.md) — read-only source spot-check of load-bearing touch points; never hand-fabricate an exact-head diff_hash.
 - [Round-2 re-review of a doc/test/refactor fix = targeted diff, not a full re-run](../learnings/1788381184331-round-2-pr-re-review-of-a-doc-test-refactor-fix-ta.md) — git diff r1..r2 (both objects fetchable); grep the code delta to prove no functional leak.
 - [round-2 delta-verify instead of a full pipeline re-run when the fix logic is unchanged](../learnings/1789491455857-round-2-pr-review-delta-verify-instead-of-full-pip.md) — confirm HEAD + byte-identical fix hunk, verify diag codes in `slang-diagnostics.lua`, negative-control on the unfixed master build (crash exit 139), incremental rebuild when merge-base allows, re-fetch Devin; disclose it as a delta-verification.
@@ -150,3 +165,4 @@ A routing collapse to watch when the reviewer is dispatched **directly by the fi
 - [A 'synchronize' re-wake can be metadata-only — verify the head moved](../learnings/1788556078923-approver-ops-a-synchronize-re-wake-can-be-metadata.md) — label/review-request/CI-rerun events don't move the SHA; re-affirm, don't mint a new ledger row for an unchanged head.
 - [slang-pr-review: when the fixer is the requester, parent-edge and fixer-forward collapse to one send](../learnings/1789820780649-slang-pr-review-when-the-fixer-is-the-requester-pa.md) — fixer IS the parent edge; send the verdict once via in_reply_to, not to both parent+fixer; Devin exit 3 = routine skip (reviewers_complete=false); A↔C convergence is the top signal.
 - [Reviewer A re-suggests tint rows proven useless in an earlier round — adjudicate across rounds](../learnings/1791393113319-reviewer-a-re-suggests-tint-rows-that-were-proven-.md) — slang#13381: stateless A re-raised removed wgsl-spirv-asm rows; reject reversals explicitly; upstream CLAUDE.md five-part rule vs concise-description conflict → report up; keep snapshots under /workspace/agent/wt-<pr>-snap/
+- [Review round deltas: diff the PR's own net change across a merge, and watch for silently reverted nits](../learnings/1792264297828-review-round-deltas-diff-the-pr-s-own-net-change-a.md) — raw old..new across a master merge pulls in master files; diff old-base→old-head vs new-master→new-head; #13130 R3 caught a "trim comments" commit reverting an applied nit.

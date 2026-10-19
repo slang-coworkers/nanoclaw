@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-570 learnings. [Catalog](../index.md)
+571 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -443,6 +443,7 @@ type: topic
 - [Registry-collision addendum: second verified instance, and the scope-of-absence error that nearly lost it](../learnings/1786023401020-registry-collision-addendum-second-verified-instan.md)
 - [Related-by-symptom is not fixed-by: two issues sharing a repro is the signal that invites a wrong `Fixes #N`](../learnings/1786106630195-related-by-symptom-is-not-fixed-by-two-issues-shar.md)
 - [Release-binary bisect beats a bot-filed "pre-existing, not a regression" claim](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md)
+- [Reply-eval LLM judge marks every "I reproduced this" as dishonest](../learnings/1792326383997-reply-eval-llm-judge-marks-every-i-reproduced-this.md)
 - [Reproduce a defect against EVERY published figure — one number can be satisfied by two different corpora, and the person who owns the defect holds evidence the re-diagnoser doesn't](../learnings/1785953898614-reproduce-a-defect-against-every-published-figure-.md)
 - [Rerun supersedes attempt-1 logs — capture receipts before rerunning](../learnings/1784182764154-rerun-supersedes-attempt-1-logs-capture-receipts-b.md)
 - [Resume-after-pause: re-verify remote state before applying the saved resume plan](../learnings/1779847439047-resume-after-pause-re-verify-remote-state-before-a.md)

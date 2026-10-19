@@ -5,7 +5,7 @@ type: topic
 
 # Slang compiler & language
 
-2279 learnings. [Catalog](../index.md)
+2283 learnings. [Catalog](../index.md)
 
 - ["Did a human speak last?" — __typename alone is NOT enough: nv-slang-bot posts under TWO accounts, one of them type=User](../learnings/1786451840418-did-a-human-speak-last-typename-alone-is-not-enoug.md)
 - ["Emission succeeded" is not "valid": run spirv-val and DXC before claiming a typeflow fix is safe](../learnings/1790404907441-emission-succeeded-is-not-valid-run-spirv-val-and-.md)
@@ -454,6 +454,8 @@ type: topic
 - [Exit 255 is slangc's generic failure code — it cannot discriminate an ICE from a clean diagnostic](../learnings/1786200321229-exit-255-is-slangc-s-generic-failure-code-it-canno.md)
 - [expand/each unroll count uses unflattened operand count of nested makeValuePack (slang#12796)](../learnings/1787853893292-expand-each-unroll-count-uses-unflattened-operand-.md)
 - [ExperimentalFeature gates syntax too, not just [ExperimentalModule] imports — matters for slangd settings](../learnings/1792094430929-experimentalfeature-gates-syntax-too-not-just-expe.md)
+- [Exported generics must stay pinned through all of linkAndOptimizeIR; unpin only at target legalization](../learnings/1792342789360-exported-generics-must-stay-pinned-through-all-of-.md)
+- [Exported generics survive to SPIR-V legalize; any getDescriptorFromHandle override + spvDescriptorHeapEXT segfaults](../learnings/1792330928974-exported-generics-survive-to-spir-v-legalize-any-g.md)
 - [Exposing a source/slang internal for slang-static-unit-test: check for the anonymous namespace, not just `static`](../learnings/1789225246267-exposing-a-source-slang-internal-for-slang-static-.md)
 - [external/ deps at HEAD: lua IS consumed (slang-fiddle), mimalloc is now a real submodule](../learnings/1784655012400-external-deps-at-head-lua-is-consumed-slang-fiddle.md)
 - [external/dxc is 2 vendored compile-time DXC API headers, not a submodule](../learnings/1782491016302-external-dxc-is-2-vendored-compile-time-dxc-api-he.md)
@@ -786,6 +788,7 @@ type: topic
 - [Proven: slangpy hlsl_nvapi guard fixes slang#11225 E36121 (A/B result)](../learnings/1785750627140-proven-slangpy-hlsl-nvapi-guard-fixes-slang-11225-.md)
 - [PtrLit nullptr ICE on HLSL/WGSL: UserPointer gate missing](../learnings/1792135032187-ptrlit-nullptr-ice-on-hlsl-wgsl-userpointer-gate-m.md)
 - [Pushing to a draft slang PR starves its own CI — each dispatch disqualifies the previous yielded run from retry](../learnings/1786000764254-pushing-to-a-draft-slang-pr-starves-its-own-ci-eac.md)
+- [Quick PR-head slangc verify build: symlink submodules from the main checkout, and build slang-glslang too](../learnings/1792365932155-quick-pr-head-slangc-verify-build-symlink-submodul.md)
 - [Read the DIFF for intent claims — current-state-plus-title omits authorial intent, and slang-test -OX can't override a directive's own -O flag](../learnings/1785828146545-read-the-diff-for-intent-claims-current-state-plus.md)
 - [Read the full failing-leg set before classifying a test-slang red](../learnings/1786507887853-read-the-full-failing-leg-set-before-classifying-a.md)
 - [Read-only StructuredBuffer is NOT value-stable: dominance alone can't CSE loads/calls across writes (slang#12785)](../learnings/1787811803955-read-only-structuredbuffer-is-not-value-stable-dom.md)
@@ -2274,6 +2277,7 @@ type: topic
 - [WGSL: CSE can make a static-const-array FileCheck case unobservable; module-scope wrappers already fail for override defaults](../learnings/1792094872802-wgsl-cse-can-make-a-static-const-array-filecheck-c.md)
 - [WGSL: half via byte-address or bit_cast goes through uint16 → E56103 (two IR producers)](../learnings/1792071772924-wgsl-half-via-byte-address-or-bit-cast-goes-throug.md)
 - [WGSL: int64/uint64 matrices survive legalizeMatrixTypes and reach the emitter as IRMatrixType](../learnings/1791763584478-wgsl-int64-uint64-matrices-survive-legalizematrixt.md)
+- [When a fix validates IR before DCE removes it, validate the whole removed closure, not just the roots](../learnings/1792361172213-when-a-fix-validates-ir-before-dce-removes-it-vali.md)
 - [When planning a new SPIR-V opcode, check terminator-ness — not just value-producing-ness](../learnings/1781039584587-when-planning-a-new-spir-v-opcode-check-terminator.md)
 - [Why -capability silently raises SPIR-V version past explicit -profile (slang #12099)](../learnings/1784052596356-why-capability-silently-raises-spir-v-version-past.md)
 - [Widening a [require] target set is only half the fix — pair it with the __target_switch case (metal fwidth #12165)](../learnings/1785840965047-widening-a-require-target-set-is-only-half-the-fix.md)

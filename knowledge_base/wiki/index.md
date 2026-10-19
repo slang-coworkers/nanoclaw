@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7552 agent learnings**, synthesized into **476 concept pages**.
+Standalone wiki built from **7567 agent learnings**, synthesized into **481 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -276,10 +276,6 @@ Standalone wiki built from **7552 agent learnings**, synthesized into **476 conc
 - [Slang public API boundary, LSP null-result serialization, and the record-replay proxy layer](concepts/misc-f0909b8-slang-api-lsp-record-replay.md)
 - [Slang Test Authoring & Verification Discipline](concepts/misc-f0909b3-slang-test-verification.md)
 - [Slang test authoring, FileCheck traps, unit-test linkage, and CI-infra triage](concepts/misc-f0909b8-slang-test-authoring-ci.md)
-- [slang-backends-spirv-2-pipeline](concepts/slang-backends-spirv-2-pipeline.md)
-- [slang-backends-spirv-3-incidents](concepts/slang-backends-spirv-3-incidents.md)
-- [slang-backends-spirv-4-incidents](concepts/slang-backends-spirv-4-incidents.md)
-- [slang-backends-spirv-5-deep-dives](concepts/slang-backends-spirv-5-deep-dives.md)
 - [Slang/SlangPy PR-approver: challenger probes, coverage bar, and human-verdict joins](concepts/misc-f0909b9-approver-challenger-and-verdict-joins.md)
 - [Slang/SlangPy PR-approver: policy mount, clause gaps, and scope determination](concepts/misc-f0909b9-approver-policy-clause-gaps.md)
 - [Stale State and Monitoring: A Snapshot Quoted as Live State, and Instruments That Read Silence as Calm](concepts/misc-f0909b1-stale-state-and-monitoring.md)
@@ -394,6 +390,7 @@ Standalone wiki built from **7552 agent learnings**, synthesized into **476 conc
 - [Slang IR Passes, Diagnostics, and Tooling](concepts/slang-autodiff-ir-passes-diagnostics.md)
 
 ### Slang backends
+- [Combined-sampler texture-only ops on HLSL, Metal and WGSL: the injected sampler operand, `$q`, and member-form intrinsics](concepts/slang-backends-hlsl-combined-sampler-texture-ops.md)
 - [CUDA / OptiX backend — ray payloads, hit attributes, ray flags, prelude version-gating, noinline](concepts/slang-backends-f0909b0-cuda-optix.md)
 - [DescriptorHandle emit on bindless and non-bindless targets: spelling, bit_cast lowering, the E38204 skip, and WGSL resource tables](concepts/slang-backends-descriptor-handle-emit-and-bindless-targets.md)
 - [GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)
@@ -407,7 +404,15 @@ Standalone wiki built from **7552 agent learnings**, synthesized into **476 conc
 - [Slang Metal Backend Deep Dives: Address Spaces, DescriptorHandle, MetalLib Versioning](concepts/slang-backends-metal.md)
 - [Slang OptiX / Ray-Tracing Backends: Payloads and Terminate Intrinsics](concepts/slang-backends-optix-raytracing.md)
 - [Slang SPIR-V Backend: Emission, Capabilities, and Validation](concepts/slang-backends-spirv.md)
+- [Slang SPIR-V capabilities, extensions, and version gating](concepts/slang-backends-spirv-capabilities-and-version-gating.md)
+- [Slang SPIR-V debug info: -g levels, DebugSource/DebugLine, debug types, debug variables, and OpName](concepts/slang-backends-spirv-debug-info-emission.md)
 - [Slang SPIR-V DebugFunction / NonSemantic debug-info: IRDebugFunction representation, DebugFunctionDefinition emit, and the shared-record producer class](concepts/slang-backends-spirv-debug-function-info.md)
+- [Slang SPIR-V DescriptorHandle, bindless, and descriptor-heap emission](concepts/slang-backends-spirv-descriptor-handles-and-heap.md)
+- [Slang SPIR-V emit and legalization defects: logical pointers, opaque copies, constants, and diagnostics](concepts/slang-backends-spirv-emit-and-legalization-defects.md)
+- [Slang SPIR-V entry points, varyings, and execution modes](concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md)
+- [Slang SPIR-V validation, testing, and local environment](concepts/slang-backends-spirv-validation-testing-and-environment.md)
+- [Slang SPIR-V: `precise`, NoContraction, and floating-point reassociation](concepts/slang-backends-spirv-precise-and-nocontraction.md)
+- [Slang SPIR-V: slang-glslang, spirv-opt, and optimization levels](concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md)
 - [Slang WGSL Backend + Cross-Target Emission (WGSL/Metal Shared)](concepts/slang-backends-wgsl-metal.md)
 - [Slang WGSL emit: matrix-operator validity and storage orientation, template-list ambiguity, buffer-element gaps, enable/requires directives, push constants, and GPU-free naga/Tint validation](concepts/slang-backends-wgsl-matrix-and-validation.md)
 - [Slang WGSL: half/f16 through u16 bridges, sub-word storage races, and const-expression NaN/Inf](concepts/slang-backends-wgsl-f16-and-const-expressions.md)
@@ -532,10 +537,10 @@ Standalone wiki built from **7552 agent learnings**, synthesized into **476 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2279)
-- [NanoClaw / agent operations](topics/agent-ops.md) (890)
-- [CI, build & tooling](topics/ci-tooling.md) (558)
+- [Slang compiler & language](topics/slang-compiler.md) (2283)
+- [NanoClaw / agent operations](topics/agent-ops.md) (892)
+- [CI, build & tooling](topics/ci-tooling.md) (561)
 - [Review & process](topics/review-process.md) (383)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
-- [Verification & evidence discipline](topics/verification.md) (570)
-- [Uncategorized](topics/misc.md) (1453)
+- [Verification & evidence discipline](topics/verification.md) (571)
+- [Uncategorized](topics/misc.md) (1458)

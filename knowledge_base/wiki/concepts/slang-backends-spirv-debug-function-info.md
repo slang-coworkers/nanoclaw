@@ -8,7 +8,7 @@ source_count: 8
 
 # Slang SPIR-V DebugFunction / NonSemantic debug-info
 
-The NonSemantic.Shader.DebugInfo `DebugFunction`/`DebugFunctionDefinition` family (PR #13237 decoupling work, Sep 2026) has three separable layers: the IR representation (`IRDebugFunction` and its `DebugFuncDecoration`), the SPIR-V emit consumer (`emitDebugFunction` in `slang-emit-spirv.cpp`), and the IR passes that *clone* debug decorations onto new functions (autodiff `copyDebugInfo`, out-parameter lowering). Bugs recur here precisely because these layers are conflated. Companion pipeline/`-g2` detail lives in [[wiki/concepts/slang-backends-spirv-2-pipeline.md]] (the `#11982/#11983/#11984` producer cluster).
+The NonSemantic.Shader.DebugInfo `DebugFunction`/`DebugFunctionDefinition` family (PR #13237 decoupling work, Sep 2026) has three separable layers: the IR representation (`IRDebugFunction` and its `DebugFuncDecoration`), the SPIR-V emit consumer (`emitDebugFunction` in `slang-emit-spirv.cpp`), and the IR passes that *clone* debug decorations onto new functions (autodiff `copyDebugInfo`, out-parameter lowering). Bugs recur here precisely because these layers are conflated. Companion `-g` level, `DebugSource`/`DebugLine` and debug-type detail lives in [[wiki/concepts/slang-backends-spirv-debug-info-emission.md]] (including the `#11982/#11983/#11984` producer cluster); the emitter overview is [[wiki/concepts/slang-backends-spirv.md]].
 
 ## TL;DR
 

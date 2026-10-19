@@ -1,0 +1,91 @@
+---
+title: "Slang SPIR-V validation, testing, and local environment"
+type: concept
+group: slang-backends
+tags: [spirv, spirv-val, validation, testing, vulkan, slang-rhi, environment, gpu, ci, flakes, stale-binary]
+source_count: 22
+---
+
+# Slang SPIR-V validation, testing, and local environment
+
+How to prove a SPIR-V module is valid, how to write tests that actually validate, how to make sure you are testing the compiler you think you built, and which Vulkan CI signatures are not compiler regressions. Validation-gating and review methodology also appear on [[wiki/concepts/slang-backends-f0909b0-spirv-validation-and-review.md]].
+
+## TL;DR
+
+- A clean `slangc` exit proves nothing about validity. Validate with `SLANG_RUN_SPIRV_VALIDATION=1` (CI always sets it; `//TEST:SIMPLE` FileCheck never validates); never use the system `spirv-val`; use `-skip-spirv-validation` only to inspect output.
+- `SLANG_RUN_SPIRV_VALIDATION` checks Slang's SPIR-V BEFORE spirv-opt; the shipped `-O1+` binary is AFTER it and can hide invalidity. Name the artifact (`-O` level, pre/post spirv-opt) in any "valid on master" claim.
+- An emitter-invalidity check belongs after `legalizeIRForSPIRV`'s final DCE and should reuse `m_referencingEntryPoints`.
+- Validator silence proves nothing in either direction. Any "is this valid SPIR-V?" claim that gates a diagnostic or a test change must cite the Khronos spec text, not DeepWiki.
+- A VUID that fires only in a system Vulkan validation layer newer than the embedded spirv-tools is version skew, not a regression.
+- `-emit-spirv-via-glsl` is the A/B reference; the direct and GLSL paths diverge, so check both.
+- You are probably testing a stale compiler: put `build/Debug/lib` FIRST in `LD_LIBRARY_PATH`, check `slangc -v`'s sha against `git rev-parse HEAD`, and write binary SPIR-V to a real temp path (not `/dev/null`).
+- A runtime test for a new Vulkan extension needs a slang-rhi `SLANG_RHI_FEATURES` entry first: slang-rhi PR → pin bump → slang test PR.
+- Agent containers have an NVIDIA L40S with CUDA and NVIDIA Vulkan, so Vulkan execution can run locally; probe `nvidia-smi -L` each session (the 2026-09-28→10-16 no-GPU window was a host passthrough outage). RHI builds need `libx11-dev`.
+- wgpu-variant VUID errors come from Dawn's internal tint, not from Slang's emitter.
+- A red `test-slang-rhi` with green `test-slang`, the Windows Falcor LargeBuffer "Unknown VCS root" crash, and the SplitBuffer Vulkan hang are flakes: rerun, don't push code.
+
+## Proving validity
+
+**Validate explicitly:** `slangc` can exit cleanly on invalid SPIR-V ([require spirv-val](../learnings/dashboard_slang-triage-1776263007885.md)). CI sets `SLANG_RUN_SPIRV_VALIDATION=1`, so tests assuming validation is off fail there ([CI validation on](../learnings/1781825083619-ci-runs-slang-test-with-slang-run-spirv-validation.md)). `//TEST:SIMPLE` doesn't validate: making the `SPIRVLoadDescriptorFromHeap` heap operand (a pointer global at emit) a `uint` param passes FileCheck but yields an invalid access-chain base. Never parameterize it; pin the base in FileCheck ([heap operand is a pointer global](../learnings/1780769340224-spirvloaddescriptorfromheap-heap-operand-is-a-poin.md)). Binary `-o /dev/null` fails (E00004); use a real temp path.
+
+**Pre- vs post-spirv-opt validity.** `SLANG_RUN_SPIRV_VALIDATION=1` validates Slang's own SPIR-V *before* spirv-opt, while the shipped `-O1`/`-O2` binary is the output *after* spirv-opt, which can hide invalidity (for example by dropping a second PushConstant variable from `OpEntryPoint`, VUID-06674). So a claim that "master output is valid" for a new diagnostic must name which artifact it measured: measure both, plus `-O0` (which runs no spirv-opt passes), and label each `.spv` with its `-O` level. On slang#13713 / PR #13724 an unlabeled `.spv` from a reviewer turned out to be `-O2`, not `-O1`. A check for "does the emitter produce invalid output" belongs after `legalizeIRForSPIRV`'s final DCE and should reuse `m_referencingEntryPoints`, the graph that builds the `OpEntryPoint` interfaces; running it at the end of `linkAndOptimizeIR` misses legalize's OpKill/DCE and gives false positives ([SPIR-V 'valid on master' claims must name pre- vs post-spirv-opt](../learnings/1792193562955-spir-v-valid-on-master-claims-must-name-pre-vs-pos.md)).
+
+**Cite the spec:** `external/spirv-tools/source/val/` has no operand-type rule for `OpConvertUTo*NV`, so validator behavior is uninformative. Read `raw.githubusercontent.com/KhronosGroup/SPIRV-Registry/main/extensions/<VENDOR>/<EXT>.asciidoc`; a self-hedging DeepWiki answer is not a citation ([cite the SPEC](../learnings/1785776557998-cite-the-spec-not-a-summarizer-spv-nv-bindless-tex.md)).
+
+**Version skew.** The embedded spirv-tools is v2026.2 (HEAD ~2026-06). A VUID that fires only in a maintainer's Vulkan SDK 1.4.328+ layer is skew ([embedded vs system validator](../learnings/1782267495019-triage-discriminator-slang-embedded-spirv-tools-vs.md)).
+
+**wgpu VUID errors come from Dawn/tint, not Slang:** VUID errors during `wgpu` variant tests are emitted by Dawn's internal tint regenerating SPIR-V from WGSL, not from Slang's emitter. Fingerprint: tint uses `uint` array-length constants; Slang uses `int` ([slang-test wgpu COMPARE_COMPUTE VUID errors come from Dawn's internal tint, not Slang's SPIR-V emitter](../learnings/1782499611532-slang-test-wgpu-compare-compute-vuid-errors-come-f.md)).
+
+## Testing the compiler you built
+
+**Local verify:** `build/Debug/lib` first in `LD_LIBRARY_PATH`; the staging `build/slang-<ver>-linux-x86_64/lib/` has a stale `libslang-compiler.so`, and disassembly needs its slang-glslang ([LD_LIBRARY_PATH trap](../learnings/1782733787106-slang-local-spirv-asm-verify-put-build-debug-lib-f.md)).
+
+**Stale prebuilt slangc:** Check `slangc -v`'s `<sha>` against `git rev-parse HEAD` before trusting compiled output. Function-static SPIR-V storage bugs are masked by inlining and NOT reproducible via `slangc -target spirv-asm` at default opt ([Stale prebuilt slangc + inlining mask SPIR-V static-local bugs (verify-at-HEAD pitfalls)](../learnings/1781708255374-stale-prebuilt-slangc-inlining-mask-spir-v-static-.md)).
+
+## Runtime tests and the container environment
+
+**Runtime tests for a new Vulkan extension:** slang-rhi's `SLANG_RHI_FEATURES` X-macro (`include/slang-rhi.h`) must have the feature: it generates the `rhi::Feature` entry and makes `-render-feature <name>` valid (render-test skips with `SLANG_E_NOT_AVAILABLE` if absent). The feature must also fit dispatch→readback→compare; `abort` (#11790) causes device loss and can't ([X-macro bridge](../learnings/1780969782467-slang-rhi-feature-gate-disabled-vulkan-runtime-tes.md), [fp16-vector atomics gate + Vulkan-Headers v1.4.318 caveat](../learnings/1780970406624-slang-rhi-nv-extension-feature-gate-fp16-vector-at.md), [gated on slang-rhi harness](../learnings/1782515089370-runtime-slang-test-for-a-new-vulkan-extension-is-g.md)).
+
+**Containers.** Building RHI targets on Linux needs `libx11-dev`, even headless, because the fetched Vulkan-Headers include `X11/Xlib.h` ([libx11-dev](../learnings/1780330247261-CONSOLIDATED-slang-rhi-vulkan-build-needs-libx11-dev.md)). The containers now have the L40S with CUDA and the NVIDIA Vulkan ICD (every container runs with `--runtime=nvidia`); during the 2026-09-28→10-16 host passthrough outage the only Vulkan ICD was lavapipe (software, CPU) ([no GPU since ~09-28 (historical: 09-28→10-16 outage)](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md)). History: in June `nvidia-smi` showed a GPU, so "no GPU" was wrong then; the container was provisioned for compute only (`NVIDIA_VISIBLE_DEVICES=void`), and CUDA was still Not Supported in slang-test because nvrtc was missing ([GPU present, no Vulkan loader](../learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md)). Installing `libvulkan1` gives software llvmpipe only, and the NVIDIA ICD fails with `ERROR_INCOMPATIBLE_DRIVER`, so `vk` stays Not Supported. Real-GPU Vulkan needed host-side device injection, which `--runtime=nvidia` now provides ([libvulkan1 does NOT enable NVIDIA Vulkan](../learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md)).
+
+**Building and auditing slang-rhi.** slang-rhi builds with no system Vulkan SDK and no GPU: its `CMakeLists.txt` fetches Vulkan-Headers, the Slang release binary and OptiX headers through FetchContent at configure time, so don't request packages for Vulkan headers; for a Vulkan-only fix, turn off CUDA/WGPU/tests/examples to keep the build fast. A fresh slang-rhi clone has no git identity, unlike the slang core clones, so hand off a patch when commit/push is blocked ([slang-rhi builds headless via CMake FetchContent](../learnings/1780310225210-slang-rhi-builds-headless-no-vulkan-sdk-gpu-via-cm.md)). When auditing whether a Vulkan VUID bug propagates to another slang-rhi backend, follow the usage value to the actual `VkImageCreateInfo::usage`/`imageUsage` creation call instead of trusting advertised `supportedUsage`: the CUDA surface hardcodes its swapchain and shared-image usage, so the SRGB+STORAGE VUID (#765) cannot occur there ([auditing whether a Vulkan VUID bug propagates to the CUDA backend](../learnings/1780475494503-auditing-whether-a-vulkan-vuid-bug-propagates-to-t.md)).
+
+## Vulkan CI signatures
+
+**Vulkan CI signatures that are not compiler regressions.** A red `test-slang-rhi` job while every `test-slang` job is green (for example `texture-shared-cuda.vulkan` on the Windows GPU runner) cannot come from a compiler or `tests/`-only change: classify it flaky and rerun with `gh run rerun --failed` rather than pushing a change ([test-slang-rhi Windows-GPU failure is unrelated to compiler/test-only PRs](../learnings/1780663679121-slang-ci-a-test-slang-rhi-windows-gpu-failure-e-g-.md)). The Windows Falcor `LargeBufferReadStructuredSRV3 (Vulkan)` crash exits 1 with no gtest failure line, only `Error. Unknown VCS root`; that text is a trailing artifact of the test process dying, not a git problem. It recurs across unrelated PRs and often clears on rerun, so it is a flake; when the runner degrades it reproduces on every PR, and immediate reruns are then wasted ([LargeBuffer Vulkan crash is a flake](../learnings/1781114968928-slang-windows-vulkan-largebuffer-unit-test-crash-i.md), [Falcor "Unknown VCS root" exit 1 is a Vulkan GPU crash artifact](../learnings/1781129282277-slang-ci-windows-falcor-unknown-vcs-root-exit-1-is.md)). `SplitBuffer_ByteBuffer_Large96b (Vulkan)` failing its `memcmp` with a 25× duration blowup is a single-run Vulkan device hang; compare the same test on two or three other recent PRs before calling it a regression ([SplitBuffer ByteBuffer Vulkan GPU-hang flake](../learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md)).
+
+## See also
+
+- [[wiki/concepts/slang-backends-spirv.md]] — emitter overview: entry points, builtin variables, descriptor-heap specialization, VariablePointers, atomics
+- [[wiki/concepts/slang-backends-spirv-debug-function-info.md]] — DebugFunction / DebugFunctionDefinition records
+- [[wiki/concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md]] — slang-glslang loading, -O levels, spirv-opt aborts, folding/unroll/CSE limits
+- [[wiki/concepts/slang-backends-spirv-precise-and-nocontraction.md]] — `precise`, NoContraction, fp-mode, spirv-opt reassociation
+- [[wiki/concepts/slang-backends-spirv-debug-info-emission.md]] — -g levels, DebugSource/DebugLine, debug types and variables, OpName
+- [[wiki/concepts/slang-backends-spirv-capabilities-and-version-gating.md]] — capdef atoms, capability/extension emission, version header, `[require]` enforcement
+- [[wiki/concepts/slang-backends-spirv-descriptor-handles-and-heap.md]] — DescriptorHandle load coalescing, NonUniform, bindless width, descriptor-heap ABI
+- [[wiki/concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md]] — varying locations, shared Input vars, depth/topology modes, `spirv_asm` execution modes
+- [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
+
+**Source learnings (22):**
+- [SPIR-V issues require spirv-val, not just slangc exit code](../learnings/dashboard_slang-triage-1776263007885.md)
+- [CI runs slang-test with SLANG_RUN_SPIRV_VALIDATION enabled](../learnings/1781825083619-ci-runs-slang-test-with-slang-run-spirv-validation.md)
+- [SPIRVLoadDescriptorFromHeap heap operand is a pointer global at emit](../learnings/1780769340224-spirvloaddescriptorfromheap-heap-operand-is-a-poin.md)
+- [SPIR-V 'valid on master' claims must name pre- vs post-spirv-opt](../learnings/1792193562955-spir-v-valid-on-master-claims-must-name-pre-vs-pos.md)
+- [cite the SPEC not a summarizer: SPV_NV_bindless_texture accepts uint2 OR uint64 under addressing mode 64 (public retraction on #12186); spirv-val silence proves nothing either way; 4 consumer guards ⇒ the hole is the kind-ungated producer in hlsl.meta.slang](../learnings/1785776557998-cite-the-spec-not-a-summarizer-spv-nv-bindless-tex.md)
+- [Triage discriminator: Slang embedded spirv-tools vs system Vulkan validation layer](../learnings/1782267495019-triage-discriminator-slang-embedded-spirv-tools-vs.md)
+- [slang-test wgpu COMPARE_COMPUTE VUID errors come from Dawn's internal tint, not Slang's SPIR-V emitter](../learnings/1782499611532-slang-test-wgpu-compare-compute-vuid-errors-come-f.md)
+- [slang local spirv-asm verify: put build/Debug/lib FIRST in LD_LIBRARY_PATH](../learnings/1782733787106-slang-local-spirv-asm-verify-put-build-debug-lib-f.md)
+- [Stale prebuilt slangc + inlining mask SPIR-V static-local bugs (verify-at-HEAD pitfalls)](../learnings/1781708255374-stale-prebuilt-slangc-inlining-mask-spir-v-static-.md)
+- [Slang RHI feature gate + disabled Vulkan runtime test: the SLANG_RHI_FEATURES X-macro](../learnings/1780969782467-slang-rhi-feature-gate-disabled-vulkan-runtime-tes.md)
+- [slang-rhi NV-extension feature gate (fp16-vector atomics) + Vulkan-Headers v1.4.318 retires bump caveat](../learnings/1780970406624-slang-rhi-nv-extension-feature-gate-fp16-vector-at.md)
+- [Runtime slang-test for a new Vulkan extension is gated on slang-rhi harness support](../learnings/1782515089370-runtime-slang-test-for-a-new-vulkan-extension-is-g.md)
+- [CONSOLIDATED: slang-rhi Vulkan build needs libx11-dev](../learnings/1780330247261-CONSOLIDATED-slang-rhi-vulkan-build-needs-libx11-dev.md)
+- [Agent containers have NO GPU since ~2026-09-28 — host has an L40S but passthrough is off; 'containers HAVE an L40S' pages are stale](../learnings/1792089571497-agent-containers-have-no-gpu-since-2026-09-28-host.md)
+- [This environment HAS an NVIDIA GPU despite CLAUDE.md saying "no GPU" (June; current again after the 09-28→10-16 outage)](../learnings/1781698311286-this-environment-has-an-nvidia-gpu-nvidia-smi-work.md)
+- [Correction: installing libvulkan1 does NOT enable NVIDIA-GPU Vulkan in these containers — only software llvmpipe; NVIDIA Vulkan ICD fails (ERROR_INCOMPATIBLE_DRIVER, NVIDIA_VISIBLE_DEVICES=void)](../learnings/1781699613539-correction-installing-libvulkan1-does-not-enable-n.md)
+- [slang-rhi builds headless (no Vulkan SDK/GPU) via CMake FetchContent](../learnings/1780310225210-slang-rhi-builds-headless-no-vulkan-sdk-gpu-via-cm.md)
+- [Auditing whether a Vulkan VUID bug propagates to the CUDA backend](../learnings/1780475494503-auditing-whether-a-vulkan-vuid-bug-propagates-to-t.md)
+- [Slang CI: a test-slang-rhi Windows-GPU failure is unrelated to compiler/test-only PRs](../learnings/1780663679121-slang-ci-a-test-slang-rhi-windows-gpu-failure-e-g-.md)
+- [Slang windows-Vulkan LargeBuffer unit-test crash is a flake, not a regression](../learnings/1781114968928-slang-windows-vulkan-largebuffer-unit-test-crash-i.md)
+- [Slang CI: windows falcor "Unknown VCS root" exit 1 is a Vulkan GPU crash artifact](../learnings/1781129282277-slang-ci-windows-falcor-unknown-vcs-root-exit-1-is.md)
+- [SplitBuffer ByteBuffer Vulkan GPU-hang flake (Falcor)](../learnings/1781338076804-splitbuffer-bytebuffer-vulkan-gpu-hang-flake-falco.md)

@@ -3,7 +3,7 @@ title: "slang-test Runtime Shims, DX12 Lanes, Generated Bundles, and the slangi 
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, dx12, filecheck, docs-generated-tests, shared-library-loader, slangi, vm, bytecode]
-source_count: 16
+source_count: 17
 ---
 
 # slang-test Runtime Shims, DX12 Lanes, Generated Bundles, and the slangi VM
@@ -15,6 +15,7 @@ A small cluster of runtime-facing slang-test gotchas: reading a DX12 empty-outpu
 - **An empty-output FileCheck failure in a `-dx12` `COMPARE_COMPUTE` lane is usually an arg-parse failure (error 1004, unknown option), not a codegen/runtime bug** — render-test has `-use-dxbc` but no `-use-dxil` (DXIL is already the dx12 default). Linux/no-GPU runs skip the dx12 line, so it fails only on Windows CI; prove a suspect flag by moving it onto a `-cpu` line. Read the ACTUAL block first.
 - **Stale auto-generated test bundles in `docs/generated/tests/` are usually compiler-driven** (diagnostic-text drift, IR mangled-name drift), so `regenerate.py list-stale` won't detect them. No hand-editing — route to the regeneration workflow.
 - **PR CI never runs `docs/generated/tests`** (nightly + coverage only), and many of its tests match `-dump-ir` text — so a PR that changes lowering, IR naming, name hints, or decorations runs the suite on head and base and diffs FAILED sets (~25 fail on master already; only head-only failures count).
+- **Run the affected bundle before adding an `expected-failures.txt` entry.** A generated test whose claim a fix flips can still PASS (an unanchored `// CHECK: 0` matches a spare zero slot), and listing a passing test is wrong; record the stale doc row for regeneration in the PR explanation instead.
 - **A test shim for `ISlangSharedLibraryLoader` must match the bare logical name** (e.g. `"slang-llvm"`) — platform decoration happens inside `DefaultSharedLibraryLoader` after your shim sees the path, and the bare name is identical on all platforms.
 - **A VM opcode validator and its executor must agree on the operand-section size convention**, or validation passes and execution crashes (e.g. printf with `%s` and string literals).
 - **slangi `printf("%f", double)` prints `0.000000`.** Probe values through `float`, and run a known-good literal through the probe as a control.
@@ -31,6 +32,8 @@ An empty-output FileCheck failure in a dx12 `COMPARE_COMPUTE` lane is usually an
 Stale auto-generated test bundles in `docs/generated/tests/` are often caused by **compiler diagnostic/IR changes**, not doc changes, so `regenerate.py list-stale` won't detect them. Two failure-mode classes: diagnostic-text drift and IR mangled-name drift. No hand-editing is permitted; route to the bundle regeneration workflow ([Agentic-test bundle staleness is often compiler-driven and list-stale won't catch it](../learnings/1782217764152-agentic-test-bundle-staleness-is-often-compiler-dr.md)).
 
 The suite (~6366 generated FileCheck tests) is **not run by PR CI** — only by `nightly-slang-test.yml` and the coverage workflow (`slang-test -test-dir docs/generated/tests -expected-failure-list docs/generated/tests/_meta/expected-failures.txt`) — so a lowering change goes red only after merge. Consider PR #13471: adding `addNameHint` to the `IRSymbolAlias` of `export struct R : I = X;` changed no emitted code on any target, but `-dump-ir` now printed `%Foo` where it printed `%9`, breaking `docs/generated/tests/design/ir-reference/structure/symbol-alias-from-export-type-alias.slang` (which checks `%{{[0-9]+}}`) and staling `docs/generated/design/ir-reference/structure.md`. So any PR that touches lowering, IR naming, or decorations runs the suite itself after a **full** build (`slang-test -use-test-server -server-count 24 -test-dir docs/generated/tests`) on both head and base, and diffs the FAILED sets with paths normalized: roughly 25-27 tests already fail on master without being listed in `_meta/expected-failures.txt`, so only head-only failures count. A failing bundle is fixed through `docs/generated/tests/_meta/regenerate.py`, never by hand. On #13471 the cleaner fix avoided touching lowering at all — the diagnostic took its name from the contract's `extern` decl in the linker's `IRSpecSymbol` chain, which already carries the nameHint ([name-hint lowering changes break nightly-only docs/generated/tests](../learnings/1791355553166-lowering-changes-that-add-ir-name-hints-can-break-.md); [IR-shape/name-hint changes: also run the nightly-only suite](../learnings/1791357683498-slang-ir-shape-name-hint-changes-also-run-the-nigh.md)). The path-filter trap for this suite (`-test-dir … <path>` runs nothing) is on [slang-a-test-harness](slang-a-test-harness.md).
+
+**A behaviour-changing fix can leave a generated test green, so run the bundle before listing it as an expected failure.** Consider `docs/generated/tests/design/ir-reference/misc/is-vector-folds-false.slang`, which asserts that `__isVector` always folds to false with a single `// CHECK: 0`. After the slang-13354 fix the shader writes 2, but the buffer has three more zero slots, so FileCheck matches one of them and the test still PASSES. An `expected-failures.txt` entry would have been wrong, because the nightly reports list expected failures that pass. The generated file cannot be hand-edited, so the stale `purpose` and doc row go into the PR explanation for regeneration. The same unanchored-value trap in hand-written COMPARE_COMPUTE tests, and the `CHECK: type: int32_t` + `CHECK-NEXT` fix, are on [Slang test authoring](slang-tooling-f0909b0-test-authoring-filecheck.md). (The compiler side: `__isVector<T>()` (`kIROp_IsVector`) shared the scalar-kind predicate arm in `PeepholeContext::processInst`, which unwraps vector/matrix to the element type, so the fold answered for the element type. The fix gives `IsVector` its own case, like `IsCoopFloat`, so the concreteness gate and the predicate test the same operand type.) ([an unanchored `CHECK: 0` in a generated doc test passes after a behaviour-changing fix](../learnings/1792184217765-generated-doc-tests-with-an-unanchored-check-0-can.md))
 
 ## Shared Library Loader Test Shims
 
@@ -62,7 +65,7 @@ Second, even when a codegen diagnostic *is* emitted, slangi can still swallow it
 
 ---
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [slangi printf %s: 'works when stored in a String local' can be a constant-fold artifact, not inline-vs-local](../learnings/1789157865424-slangi-printf-s-a-works-when-stored-in-a-string-lo.md)
 - [DeepWiki conflates slangi HostVM with CPU-via-LLVM for String sizing — verify at the per-target switch](../learnings/1789158419753-deepwiki-conflates-slangi-hostvm-with-cpu-via-llvm.md)
 - [dx12 lane empty-output FileCheck fail is often a bad test flag, not codegen](../learnings/1782252899885-slang-test-dx12-lane-empty-output-filecheck-fail-i.md)
@@ -71,6 +74,7 @@ Second, even when a codegen diagnostic *is* emitted, slangi can still swallow it
 - [agentic test bundle staleness is often compiler-driven; list-stale won't catch it](../learnings/1782217764152-agentic-test-bundle-staleness-is-often-compiler-dr.md)
 - [Lowering changes that add IR name hints can break nightly-only docs/generated/tests (not run in PR CI)](../learnings/1791355553166-lowering-changes-that-add-ir-name-hints-can-break-.md) — #13471 `%9`→`%Foo`; A/B FAILED sets head vs master; fix via `regenerate.py`
 - [Slang IR-shape/name-hint changes: also run the nightly-only docs/generated/tests suite](../learnings/1791357683498-slang-ir-shape-name-hint-changes-also-run-the-nigh.md) — full build, `-server-count 32`; ~27 master failures not in expected-failures; take the name from the `extern` decl instead
+- [Generated doc tests with an unanchored `CHECK: 0` can pass after a behaviour-changing fix](../learnings/1792184217765-generated-doc-tests-with-an-unanchored-check-0-can.md) — `is-vector-folds-false.slang` still passes after slang-13354; run the bundle before an expected-failures entry; `IsVector` gets its own peephole case
 - [shared library loader test shims match the bare logical name cross-platform](../learnings/1780324906216-slang-loads-downstream-libs-by-logical-name-test-s.md)
 - [slangi VM validator and executor must agree on the operand-section size convention](../learnings/1780413778599-slangi-vm-validator-and-executor-must-agree-on-ope.md)
 - [HostVM/slangi target early-returns in linkAndOptimizeIR, skipping checkStaticAssert and later passes](../learnings/1790125505241-hostvm-slangi-target-early-returns-in-linkandoptim.md)

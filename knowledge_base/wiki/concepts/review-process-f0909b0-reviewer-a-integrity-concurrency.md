@@ -3,7 +3,7 @@ title: Reviewer-A wrapper integrity & concurrency — INTEGRITY-FAIL, shared tmp
 type: concept
 group: review-process
 tags: [reviewer-a, integrity-fail, shared-tmp, concurrent-review, stream-jsonl, wrapper-success, in-thread-reply, delivery, slang-pr-review]
-source_count: 25
+source_count: 26
 ---
 
 ## TL;DR
@@ -38,13 +38,14 @@ recurring integrity hazards, both driven by a **shared, non-namespaced checkout*
 
 Liveness: **stream-static is NOT death.** Reviewer A dispatches subagents that run
 silent for minutes; gate the terminal test on `final-review.md` (≥500 B) or the
-`{"type":"result"}` record, not on `stream.jsonl` growth. Prevention: give each run
-its own isolated staging (worktree / PR-scoped tmp), or clear the shared tmp before
-launch.
+`{"type":"result"}` record, not on `stream.jsonl` growth. Prevention: isolated staging
+(worktree / PR-scoped tmp), or clear the shared tmp before launch.
 
 Process discipline: **an `Edit` is not a delivered change until built + committed +
 pushed** (`git ls-remote` confirms the SHA), and **reply IN-THREAD** to PR review
-comments, not as a conversation-level comment.
+comments, not as a conversation-level comment — except while the maintainer's review
+is still pending (the comment 404s and has no thread yet): then reply on the PR
+conversation, and re-fetch before pushing in case the shepherd pushed the change.
 
 ## INTEGRITY-FAIL: the shared-tmp false positive and how to adjudicate
 
@@ -166,8 +167,19 @@ repos/<o>/<r>/pulls/<n>/comments/<review_comment_id>/replies`, not a top-level
 leaves review threads empty/unresolvable in the Files Changed view". Note the critique
 gate re-fires on ANY GitHub write once N edits have happened since the last OUTPUT_REVIEW
 — budget a fresh review round before the push+reply [a code Edit is not delivered until built+committed+pushed; and reply IN-THREAD on PR review comments](../learnings/1786616755173-a-code-edit-is-not-delivered-until-built-committed.md).
+The in-thread rule has one exception: a webhook can deliver a maintainer's inline comment while
+their review is still **pending** (unsubmitted). Until it is submitted, `GET
+/repos/{o}/{r}/pulls/comments/{id}` returns 404, GraphQL shows no `reviewThread` node for it, and the
+MCP PR-comments reader does not list it, so neither the `/replies` endpoint nor
+`addPullRequestReviewThreadReply` can target it. Reply on the PR conversation and say it answers their
+inline comment, or wait for the review to be submitted. Take the comment text from the webhook body
+and diff it against your edit to confirm the edit is verbatim. Re-fetch the branch before pushing,
+too: the slang shepherd sometimes pushes the requested change himself. On slang#13283 an identical
+commit was rejected as non-fast-forward; compare the trees (`git diff --quiet mine theirs`) and reset
+to theirs rather than pushing a duplicate
+[a pending review's inline comment can't be replied to on its thread](../learnings/1792188156159-a-pending-github-review-s-inline-comment-can-t-be-.md).
 
-**Source learnings (25):**
+**Source learnings (26):**
 
 - [a reviewer wrapper can report success with a 96-byte error-string artifact](../learnings/1786388990762-a-reviewer-wrapper-can-report-success-with-a-96-by.md) — gate at merge on size floor + content sniff; recover from `stream.jsonl` Write/Edit payloads (apply later Edits); report `reviewers_complete:false`; guard `isinstance(x, dict)`.
 - [Reviewer-A INTEGRITY-FAIL can be a false positive from a clobbered SHARED tmp/pr-files.txt](../learnings/1786557797524-reviewer-a-integrity-fail-can-be-a-false-positive-.md) — adjudicate by content (sha256 `pr-diff.reference` vs live diff, footer head, per-PR symbol hits), not the model's self-report or the guard headline.
@@ -194,3 +206,4 @@ gate re-fires on ANY GitHub write once N edits have happened since the last OUTP
 - [INTEGRITY-FAIL false alarm from a concurrent review overwriting slang/tmp/pr-diff.patch (#13538)](../learnings/1791530998165-reviewer-a-integrity-fail-can-be-a-false-alarm-fro.md) — tells: tool-uses.jsonl gh pr diff/view numbers, tmp/context.json PR, footer head SHA; runner should write diff+context to $RUN_DIR
 - [concurrent Reviewer A runs clobber the shared pr-diff.patch (#13378)](../learnings/1790904342903-concurrent-reviewer-a-runs-clobber-the-shared-slan.md) — some subagents read the wrong diff; check mtime vs run start; never run two A jobs on shared slang/
 - [#13431: shared tmp clobber made every subagent refuse; isolate with REPO_ROOT](../learnings/1791205564538-reviewer-a-shares-workspace-agent-slang-tmp-with-c.md) — R1 false INTEGRITY-FAIL, R2 no review; worktree + DISABLE_BACKGROUND_TASKS
+- [A pending GitHub review's inline comment can't be replied to on its thread](../learnings/1792188156159-a-pending-github-review-s-inline-comment-can-t-be-.md) — unsubmitted review comment 404s / has no reviewThread; reply on the PR conversation; diff webhook body vs edit; re-fetch before push (shepherd may have pushed it, #13283).

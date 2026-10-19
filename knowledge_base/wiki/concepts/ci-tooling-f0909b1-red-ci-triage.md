@@ -3,7 +3,7 @@ title: Classifying red Slang CI — infra/flake vs. real regression
 type: concept
 group: ci-tooling
 tags: [slang-ci, test-falcor, flake, infra, rerun, ci-triage, gpu-jobs, regression]
-source_count: 18
+source_count: 20
 ---
 
 # Classifying red Slang CI — infra/flake vs. real regression
@@ -19,7 +19,7 @@ source_count: 18
 - Known flaky/benign reds: `##[error]slang-test left generated or modified files` (leftover `moduleG####.slang` from a module test) when `100% of tests passed`; and the `build-windows-debug-cl-aarch64` job's `verify-documented-compiler-version.sh` **exit 4** — a `set -e`/`pipefail` command-substitution trip in that best-effort script (fix: `|| true`), NOT a `docs/building.md` allowlist gap.
 - **An ERR trap does not see everything:** without `set -E` it misses failures inside functions, and `trap '…; exit 0' ERR` turns the step green, which hides a broken check the way `|| true` does; prefer `exit "$status"` plus `continue-on-error`, and raise the trade-off with the maintainer.
 - A **manual `ci.yml` dispatch on a DRAFT PR** makes `test-falcor` fail fast (~15s, `failed_steps: []`) because the draft-gated *build* jobs that produce its artifact are skipped — it is not a code failure and clears on `gh pr ready`, not on a rerun.
-- **`gh run rerun` has hard age limits**: >30 days = "created over a month ago"; ~>1 week = "cannot be retried". Classification is moot for stale PRs — the only recovery is a fresh commit / `/ci`. A bot run that *fails* at exactly 30 days is a different event: an expired `falcor-ci` approval, not code.
+- **`gh run rerun` has hard age limits**: >30 days = "created over a month ago"; ~>1 week = "cannot be retried". Classification is moot for stale PRs — recover with a fresh `gh workflow run ci.yml --ref <branch>` dispatch (same SHA, no push) or a push (usually a master merge). A bot run that *fails* at exactly 30 days is a different event: an expired `falcor-ci` approval, not code.
 - `gh run view --log-failed --job <id>` is the reliable log fetch; the `/actions/jobs/<id>/logs` REST endpoint often returns empty, and needs `gh api --allow-escape-sequences` to print ANSI-laden logs. `check-ci` failing is just the aggregate — find the real failing job.
 
 ## The overriding rule: read the fresh log, classify, then act
@@ -203,8 +203,23 @@ for the same concurrency group is active. Individual `-j` reruns fail the same w
 is outside the window — no per-job exception. **Upshot for the babysitter:** classification is
 moot for any PR whose last run is more than a few days old; verify the age-rejection cheaply (one
 rerun call, check stderr) and log it `left`/non-actionable rather than burning tokens on log
-diving. The only recovery is the author pushing a fresh commit or an admin triggering `/ci`
+diving. Recovery needs a fresh run: the author pushing a fresh commit, an admin triggering `/ci`,
+or a new dispatch on the same head
 ([rerun hard age limits](../learnings/1788199935009-gh-run-rerun-has-hard-age-limits-old-ci-failures-o.md)).
+The 30-day refusal bites slow PRs in particular, because `falcor-build-approval-gate` waits up to
+720h (30 days) for a manual approval: when it times out and fires a `ci_failed` webhook, the run is
+already too old to rerun. A fresh run comes from one of two moves. (1) Dispatch on the same branch
+head, `gh workflow run ci.yml -R shader-slang/slang --ref <branch>`; no commit is needed, so the
+reviewer's target SHA does not change (on a bot draft that run yields again, see below). (2) Push,
+which on a long-idle branch usually means merging current master, since the branch is also BEHIND.
+Before pushing, check whether master touched your files (`git diff <merge-base> origin/master --
+<your files>`), rebuild, and re-run the affected suites; also check that the worktree still has a
+`build/` dir, because on slang#12443 it had been reaped and needed `cmake --preset default` again.
+One attribution trap rides along: `check-ci` is an aggregator whose `needs` list does NOT include
+`falcor-build-approval-gate`, so when both are red, compare the jobs' `completed_at` before saying
+"check-ci rolled up X"; a check-ci failure from weeks earlier belongs to whichever `needs` job
+failed then ([dispatch a fresh workflow_dispatch instead of rerunning a month-old run](../learnings/1792219533913-gh-run-rerun-fails-on-runs-older-than-one-month-di.md),
+[runs older than 30 days cannot be rerun; push to get fresh CI](../learnings/1792224538847-github-actions-runs-older-than-30-days-cannot-be-r.md)).
 Do not confuse the 30-day rerun limit with a bot run that *fails* after exactly 30 days. That
 is GitHub auto-failing a `falcor-ci` deployment approval nobody granted (`falcor-build-approval-gate`,
 0 steps, every build/test job skipped): no code ran, and on a draft a fresh run only yields and
@@ -255,7 +270,7 @@ first failed line, so later CHECK directives were never exercised on the failing
 pass there is predicted, not proven; confirm via a CI re-run
 ([reviewing a descope CI fix](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)).
 
-**Source learnings (18):**
+**Source learnings (20):**
 - [Bash ERR trap as a CI diagnostic: reach limits and the exit-0 vs visible-failure trade-off](../learnings/1790798241576-bash-err-trap-as-a-ci-diagnostic-reach-limits-and-.md) — slang#13352: no `set -E` = top-level only; `$BASH_COMMAND` splits annotations; `exit 0` ≈ `|| true`, below `continue-on-error`; `gh api --allow-escape-sequences` for job logs.
 
 - [gh run rerun has hard age limits — old CI failures on stale PRs cannot be rerun](../learnings/1788199935009-gh-run-rerun-has-hard-age-limits-old-ci-failures-o.md) — >30d "over a month ago", >~1wk "cannot be retried", "already running"; classification moot for stale PRs.
@@ -275,3 +290,5 @@ pass there is predicted, not proven; confirm via a CI re-run
 - [Slang CI verify-documented-compiler-version.sh exit 4 is a set -e/pipefail shell bug (reproduced, fixed #13042)](../learnings/1789254176751-slang-ci-verify-documented-compiler-version-sh-exi.md) — all branches exit 0; a never-fail script exiting non-zero = command-substitution trip, not business logic.
 - [Reviewing `|| true` CI-tolerance shell PRs: check every same-scope VAR=$(pipeline); errexit is OFF in command-substitution subshells](../learnings/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md) — enumerate structurally-identical substitutions; $(...) subshells safe unless inherit_errexit.
 - [Bot CI run 'failure' after exactly 30 days = expired falcor-ci environment approval, not code](../learnings/1792173072753-bot-ci-run-failure-after-exactly-30-days-expired-f.md) — distinct from the 30-day rerun refusal; no code ran
+- [gh run rerun fails on runs older than one month — dispatch a fresh workflow_dispatch instead](../learnings/1792219533913-gh-run-rerun-fails-on-runs-older-than-one-month-di.md) — 720h falcor gate timeout lands past the rerun window; `gh workflow run --ref` keeps the SHA; `check-ci` `needs` excludes the gate.
+- [GitHub Actions runs older than 30 days cannot be rerun — push to get fresh CI](../learnings/1792224538847-github-actions-runs-older-than-30-days-cannot-be-r.md) — merge master (branch is BEHIND), check master's diff to your files, rebuild; reaped `build/` on #12443.
