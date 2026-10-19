@@ -5,7 +5,10 @@ import { afterEach, describe, expect, it } from 'bun:test';
 
 import { createProvider } from './factory.js';
 import { listProviderNames } from './provider-registry.js';
+// Both barrels, as the runner loads them: a contract's afterExchange then
+// replaces the provider's own archive, as it does at runtime.
 import './index.js';
+import '../provider-contracts/index.js';
 
 // This fork carries codex but NOT `exchange-archive.ts`, and no provider here
 // implements `onExchangeComplete` — a deliberate omission recorded in
