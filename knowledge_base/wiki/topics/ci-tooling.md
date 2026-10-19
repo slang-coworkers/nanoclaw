@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-558 learnings. [Catalog](../index.md)
+561 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -349,6 +349,7 @@ type: topic
 - [GitHub CI truth lives in two disjoint surfaces: check-runs AND commit status](../learnings/1786022649433-github-ci-truth-lives-in-two-disjoint-surfaces-che.md)
 - [GitHub search is:unmerged unreliable; check run_attempt before calling a weekly CI red](../learnings/1790670087305-github-search-is-unmerged-unreliable-check-run-att.md)
 - [GitHub's combined commit status fails in BOTH directions — never derive CI health from it](../learnings/1786350644910-github-s-combined-commit-status-fails-in-both-dire.md)
+- [github.ci_failed can arrive weeks late for a superseded head — check head_sha first](../learnings/1792326985786-github-ci-failed-can-arrive-weeks-late-for-a-super.md)
 - [GraphQL 401 while REST healthy — gh pr checks silently false-greens a CI sweep (recurred 2026-08-01)](../learnings/1785578978509-graphql-401-while-rest-healthy-gh-pr-checks-silent.md)
 - [Green CI can be vacuous — check the matrix pins the config your fix touches](../learnings/1785787665195-green-ci-can-be-vacuous-check-the-matrix-pins-the-.md)
 - [Grep a citation out of the artifact — never retype it into a verifier's prompt](../learnings/1785967938398-grep-a-citation-out-of-the-artifact-never-retype-i.md)
@@ -477,6 +478,7 @@ type: topic
 - [Shared build volume fills at ~45 worktrees; commit+patch-back, report blocked, never reclaim siblings](../learnings/1783473828121-shared-build-volume-fills-at-45-worktrees-commit-p.md)
 - [Shared diagnostic formatter changes silently regress unrelated exhaustive diag= goldens (masked on draft CI)](../learnings/1783657592434-shared-diagnostic-formatter-changes-silently-regre.md)
 - [Shared tmp/pr-diff.patch clobber: one root cause producing a loud false positive AND a silently wrong review](../learnings/1785867844462-shared-tmp-pr-diff-patch-clobber-one-root-cause-pr.md)
+- [Slang bot-draft CI has run no build/test since 10-01: retry-yielded-bot treats `waiting` runs as active](../learnings/1792313744673-slang-bot-draft-ci-has-run-no-build-test-since-10-.md)
 - [Slang CI wait-for-human-priority gate is self-healing, not a flake](../learnings/1781553870596-slang-ci-wait-for-human-priority-gate-is-self-heal.md)
 - [Slang ci.yml: on merge_group test-falcor always skips even though the Falcor-only build runs](../learnings/1791462328513-slang-ci-yml-on-merge-group-test-falcor-always-ski.md)
 - [Slang CI: "Common Test Setup" pre-test flake evicts PRs from merge queue](../learnings/1781626237709-slang-ci-common-test-setup-pre-test-flake-evicts-p.md)
@@ -486,6 +488,7 @@ type: topic
 - [Slang CI: how GPU-requiring unit tests are silenced on no-GPU / aarch64 runners](../learnings/1780769170873-slang-ci-how-gpu-requiring-unit-tests-are-silenced.md)
 - [slang CI: prebuilt LLVM (setup-llvm-from-gcs) is a public-bucket curl download with NO auth — not a blocker for moving builds between self-hosted pools](../learnings/1780770912978-slang-ci-prebuilt-llvm-setup-llvm-from-gcs-is-a-pu.md)
 - [slang CI: Saturday "CMake Options" queue saturation is expected weekly load, not Critical](../learnings/1789812585102-slang-ci-saturday-cmake-options-queue-saturation-i.md)
+- [Slang CI: Saturday CMake Options burst blinds CI Health; MQ skips test-falcor](../learnings/1792312349410-slang-ci-saturday-cmake-options-burst-blinds-ci-he.md)
 - [Slang CI: splitting a build/test job — Git-Bash-PATH gotcha + bot cannot push workflow files](../learnings/1780769325863-slang-ci-splitting-a-build-test-job-git-bash-path-.md)
 - [slang CI: two distinct self-hosted runner pools (perf vs benchmark); #11501↔#11485 perf-CI overlap cross-linked](../learnings/1780769337150-slang-ci-two-distinct-self-hosted-runner-pools-per.md)
 - [Slang CI: wasm build failures are usually real linker errors, not infra](../learnings/1780920419175-slang-ci-wasm-build-failures-are-usually-real-link.md)

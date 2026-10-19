@@ -3,8 +3,10 @@ title: "Build tooling: testing a PR's effect locally, shared-clone hazards, and 
 type: concept
 group: ci
 tags: [ci, build, git, worktree, merge-base, shared-clone, subagent, setsid]
-source_count: 10
+source_count: 11
 ---
+
+# Build Tooling: Testing a PR's Effect Locally, Shared-Clone Hazards, and Detaching Long Builds
 
 ## TL;DR
 
@@ -13,6 +15,7 @@ source_count: 10
 - **A long build launched inside an `Agent` subagent dies when the subagent's turn ends** (`ninja: build stopped: interrupted by user` — SIGINT from process-group teardown, not an operator). Detach with `setsid nohup ... &` and watch via `Monitor`. Discriminator: `grep -c "^FAILED:" build.log` == 0 + "interrupted" = teardown, not a compile error.
 - **A green test suite is not coverage.** A fix PR's green CI is *silent* about a slice its tests do not construct — measure the slice, don't infer it from the predicate.
 - **Guards that make a local measurement worth anything:** a positive control that the PR's fix is LIVE in your binary; a must-fail pre-guard; a must-differ post-guard after revert; and `BUILD_EXIT` in the log as the only completion signal (a background wrapper reports exit 0 while still linking — compare binary mtime vs the recompiled object's).
+- **Warnings-as-errors is per job.** Windows builds with MSVC `/WX`; macOS clang aarch64 and `static-unit-test-*-aarch64` build with `-Werror`; linux gcc builds do not. Green on Linux/Windows tests is not `-Werror` clean. Repro one TU from `compile_commands.json` with `-fsyntax-only -Werror` (or `-Wshadow` for MSVC C4456). GCC-only warnings reach an error only in the weekly `cmake-options.yml`.
 - **GCC TSan can't RUN in this container** (high-entropy ASLR vs `libtsan.so.2` — the process dies before `main()`, and every mitigation is EPERM / read-only-FS), but you can still BUILD with TSan by importing non-instrumented generators via `SLANG_GENERATORS_PATH`, and verify a `SKIP_SANITIZERS` boundary with `nm -D <lib>.so | grep __tsan_` + `ldd <lib>.so | grep tsan` instead of a race run. An uninstrumented library is usually TSan-*safe* (interceptors are process-wide) — it costs false *negatives*, not positives.
 
 ---
@@ -35,9 +38,11 @@ On slang #12384, the fix for a sibling issue was in flight as PR #12304, CI gree
 
 The control that makes the rest trustworthy: a matrix cell whose expected result is AGREEMENT (a non-empty inner struct, reflection 8 / PTX 8) — without it every MISMATCH cell is indistinguishable from a stuck instrument. Two cells were not constructible (`E30604`) and were reported as void, not as findings — an inconclusive control means the *construction* can't test the claim, not that the claim is false. Also check whether the obvious fix breaks a currently-passing case (unconditional size-1 reflection for `Empty` would create a *new* mismatch on the no-`public` shape that passes today) — run any proposed fix against the cells that currently *agree*, not only the ones that fail. And read closed PRs before proposing a direction (the reflection-side fix was already tried and rejected in PR #8257).
 
-## Reproduce an MSVC `/WX`-only warning locally with `-Wshadow`
+## Warnings-as-errors differs by CI job: reproduce `/WX` and aarch64 `-Werror` failures locally
 
 Slang's Windows CI compiles with `/WX` (warnings-as-errors), so an MSVC warning is a hard build failure — but the Linux Debug preset (GCC/Clang, no `-Wshadow -Werror`) does not flag it, so a green local build gives false confidence. The classic case is **C4456**: a new local declared at *function* scope whose name already exists as a local in a nested block later in the same long function ("declaration of 'X' hides previous local declaration"). On PR #12412, adding `astBuilder` at `validateEntryPoint` function scope collided with five later `astBuilder` locals → 5× C4456 → Windows broke while Linux Debug was green. Fix by confining the new declaration to a local `{ }` block (behavior-neutral) so its name doesn't live at function scope. Catch it without MSVC by recompiling just that TU with `-Wshadow` using the exact command from `build/compile_commands.json` — `CMD=$(jq -r '.[]|select(.file|endswith("myfile.cpp"))|.command' build/compile_commands.json | head -1); (cd build && eval "$CMD -Wshadow")` — and prove the detector is live by compiling the pre-fix version too (expect the CI-reported count). Run this for any new local added inside a big function before claiming the branch is green ([MSVC /WX C4456 shadow: Linux Debug build can't catch it](../learnings/1789493968162-msvc-wx-c4456-shadow-linux-debug-build-can-t-catch.md)).
+
+The same gap exists on the other platforms, and it differs by job. In shader-slang/slang `ci.yml` the linux gcc x86_64/aarch64 *build* jobs pass `warnings-as-errors: false`, but the macOS clang aarch64 builds and both `static-unit-test-*-aarch64` jobs keep the default `true` (`CMAKE_COMPILE_WARNING_AS_ERROR=ON`). So a PR can be green on every Linux and Windows test and still fail 5 aarch64 jobs on a clang warning. On #12749 that went unnoticed for a month; the causes were `-Winconsistent-missing-override` (one sibling marked `override`, `shouldInline` not) and `-Wmissing-field-initializers` (an aggregate-init local struct that omitted a `HashSet` member). The fast repro needs no clang build: take the TU's command from `build/compile_commands.json` and swap `-c` for `-fsyntax-only -Werror`; for clang also swap in `clang++` and add `-Wno-unknown-warning-option`, because the gcc-only flags otherwise error first. Clang 14 also reports two pre-existing `missing 'typename'` errors in core headers that the newer CI clang accepts; ignore those. Fix the code rather than suppress the warning: add `override`, and spell the member initializer `{ref, {}}` ([x86/Windows green does not mean -Werror clean — aarch64 jobs build with warnings-as-errors](../learnings/1792247797393-slang-pr-ci-x86-windows-green-does-not-mean-werror.md)). A GCC-only warning is the remaining hole: no PR or merge-queue job turns it into an error, so it lands green and only the weekly `cmake-options.yml` run catches it (see [CI Flake — Sweep Mechanics & Routing](ci-flake-sweep-mechanics-and-routing.md)).
 
 ## A build failure in a shared clone is not evidence about your patch
 
@@ -72,10 +77,11 @@ When the bug you are fixing is a `_DEBUG`-only invariant/assert (e.g. `checkIRDu
 
 The container has no 32-bit libc headers, so a header that includes `<cstdint>` cannot be compiled for i386. A standalone mimic of the header wrapper that avoids `<cstdint>` (using `long long` and friends) still verifies 32-bit layout `static_assert`s with `clang++ -target i386-linux-gnu -fsyntax-only` [track-critique Attested parser rejects backtick-wrapped hashes (32-bit layout check)](../learnings/1791828331890-track-critique-attested-parser-rejects-backtick-wr.md).
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [Test a PR's effect by extracting its merge-base delta, not by building its branch](../learnings/1786000108097-test-a-pr-s-effect-by-extracting-its-merge-base-de.md) — `git diff $(git merge-base master pr)..pr`, apply→build→measure→revert on an already-built master; guard with a live-fix positive control.
 - [A green CI on a fix PR is silent about a slice its tests do not construct — measure the slice](../learnings/1786000256187-a-green-ci-on-a-fix-pr-is-silent-about-a-slice-its.md) — enumerate the test's shapes; say which axis none exercises rather than inferring coverage from the predicate.
 - [MSVC /WX C4456 shadow: Linux Debug build can't catch it](../learnings/1789493968162-msvc-wx-c4456-shadow-linux-debug-build-can-t-catch.md) — recompile just the TU with `-Wshadow` from `compile_commands.json`; prove the detector is live on the pre-fix version.
+- [Slang PR CI: x86/Windows green does not mean -Werror clean — aarch64 jobs build with warnings-as-errors](../learnings/1792247797393-slang-pr-ci-x86-windows-green-does-not-mean-werror.md) — macOS clang aarch64 + static-unit-test aarch64 keep `-Werror`; #12749; `-fsyntax-only -Werror` TU repro.
 - [A build failure in a shared clone is not evidence about your patch](../learnings/1786041592085-a-build-failure-in-a-shared-clone-is-not-evidence-.md) — read the undefined symbol → which file generates it; `git status --porcelain | grep -v '^??'` before/after; never `checkout --`/`reset --hard` a shared clone.
 - [A long build in an Agent subagent dies when the turn ends — use setsid to detach it](../learnings/1786040718661-a-long-build-launched-inside-an-agent-subagent-die.md) — `ninja: build stopped: interrupted by user` is process-group teardown, not an operator; detach with `setsid nohup … &` + `Monitor`.
 - [GCC TSan builds cannot RUN in the coworker container (ASLR); use SLANG_GENERATORS_PATH to even build](../learnings/1789544786329-gcc-tsan-builds-cannot-run-in-the-coworker-contain.md) — verify a `SKIP_SANITIZERS` boundary with `nm -D`/`ldd` instead of a race run.

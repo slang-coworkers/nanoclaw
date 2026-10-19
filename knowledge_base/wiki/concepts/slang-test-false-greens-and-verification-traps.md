@@ -3,7 +3,7 @@ title: "slang-test False Greens and Verification Discipline"
 type: concept
 group: slang-grab-bag
 tags: [slang-test, test-harness, test-server, false-green, verification, positive-control, negative-control, stale-binary, unit-test, verbosity, replay-collision, CI]
-source_count: 29
+source_count: 30
 ---
 
 # slang-test False Greens and Verification Discipline
@@ -35,6 +35,7 @@ Running the slang-test harness is one thing; **trusting its result** is another.
 - **`//CHECK:` in a DIAGNOSTIC_TEST is exactly 8 chars — carets start at column 9**; a leading space fails "Column position(s) don't match". Match by error CODE, and quote the `.mailmap`-mapped name when git-blame identity matters.
 - **Backend-codegen compile time IS separately measurable in-tree today** (`-report-perf-benchmark` + `tools/compile-perf`); scrutinize a subagent's *bottom line* more than its file:line findings. Suspect RPC timeout / workload sizing before escalating a flaky test to a concurrency-contract design.
 - **A SIMPLE lane never runs spirv-val, and a `//CHECK:` line followed by a separate `// ^^^` line is not parsed as a check.** Pin emitted ops instead of "no VUID", use the `/*CHECK: … */` block form for carets, and make every diagnostic test fail on master first.
+- **Run every ROW of a new diagnostic test on a master build.** A row that master already rejects with the same code at the same column pins nothing; give it a shape that only the fix changes. A revert drill that stays green means that leg of the fix has no test.
 
 ## False Greens: Test-Server Crashes Reported as Pass
 
@@ -73,6 +74,13 @@ uint loadWithTargetOnly()
 ```
 Every new diagnostic test needs a revert or mutation drill: it must FAIL on master or with the cause removed ([separate //CHECK: + // ^^^ lines check nothing](../learnings/1792102157772-diagnostic-test-caret-annotations-a-separate-check.md)).
 
+**The drill is per row, not per file, because a row can pass on master for a different reason.** On shader-slang/slang#13718 (local types cannot see enclosing locals), the row for a function-local `cbuffer` field passed on head:
+```
+cbuffer CB { int c; };
+struct L { int get() { return c; } };
+```
+but master gave the same `E30015 undefined identifier 'c'` at the same column, so the row guarded nothing, and the fix's breadcrumb leg (`_refersToFunctionCallValue`) had no test. A revert drill showed it: with that leg disabled, all 13 rows stayed green. Instrumenting both legs with `fprintf` and compiling all 5,329 files under `tests/` gave the leg 0 hits. It was reachable only through a lambda, `let f = () => { struct L { int get() { return c; } }; ... }`, where master emits a silent `return _S1;` and the SPIR-V emitter ICEs. So run every row of a new diagnostic test on a master build, and give a row that already errors on master a different shape. A revert drill that stays green means the leg has no test ([a diagnostic-test row can pin nothing when master already rejects it](../learnings/1792181706579-a-diagnostic-test-row-can-pin-nothing-when-master-.md)).
+
 ## `diag=CHECK` is not LLVM FileCheck: `CHECK-NOT`/`CHECK-DAG` are silently ignored, and it's exhaustive by default
 
 The `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK)` matcher (`checkAnnotations` in `tools/slang-test/diagnostic-annotation-util.cpp`, driven by `_diagnosticAnnotationTest` in `slang-test-main.cpp`) is a **custom annotation matcher over machine-readable diagnostics, not LLVM FileCheck**. slang-test adds `-enable-machine-readable-diagnostics`, so each diagnostic arrives as a tab-separated row (code, severity, location, message) with no source echo, and the parser recognizes only the exact prefix `//CHECK:`. `//CHECK-NOT:` and `//CHECK-DAG:` fail that prefix and are **silently dropped**; they work only under `filecheck=CHECK`. Combined with `non-exhaustive`, a test whose only annotations are `CHECK-DAG`/`CHECK-NOT` has zero recognized annotations and **passes vacuously**, so prove a diagnostic test is live by breaking one annotation and watching it FAIL. The negative guarantees come from **exhaustive matching, the default** (`exhaustive = !isNonExhaustiveDiagTest()`): every emitted row must be matched and vice-versa, so an unexpected `E99997` ICE or a duplicate diagnostic leaves an unmatched row and fails "Exhaustive check failed". To prove a case does not warn, leave it unannotated. Annotations match by **substring** against message, severity, error code or "severity code", each consuming one unmatched row. **One diagnostic is often two rows**: a primary row and a span row, deduplicated only when the span text equals the primary's. So `//CHECK: E29000` alone is insufficient; annotate both facets (`//CHECK: E29000` + `//CHECK: snippet`). No-location diagnostics (Line 0/Col 0) still work exhaustively if every error and span row is annotated by text in emission order. Add `non-exhaustive` only for a genuine secondary diagnostic you are deliberately not annotating; the harness rejects an unnecessary one ([diag=CHECK: CHECK-DAG is ignored and non-exhaustive can pass vacuously](../learnings/1789680163713-slang-test-diag-check-check-dag-is-ignored-and-non.md); [diag=CHECK is exhaustive and ignores CHECK-NOT](../learnings/1789718875570-slang-diag-check-diagnostic-test-is-exhaustive-and.md)). A design corollary from the first atom: when two passes independently diagnose the same IR shape, hand off at a single point (establish the winning diagnostic exactly where you suppress the other), because the passes can differ in reachability and "the second pass will re-derive it" can silently drop the diagnostic.
@@ -105,7 +113,7 @@ Three compounding traps when verifying a SPIR-V emit fix on a local (often GPU-/
 
 **A SIMPLE lane does not run SPIR-V validation, so `X-NOT: VUID` proves nothing.** A control fragment shader calling `GroupMemoryBarrierWithGroupSync()` (invalid SPIR-V, VUID-04682 under `SLANG_RUN_SPIRV_VALIDATION=1` with slangc) PASSED a `//TEST:SIMPLE(filecheck=X): -target spirv -stage fragment` lane with `X-NOT: VUID`. `-target spirv` output reaches FileCheck as disassembly, with a "standard error = {" block that a naive `-NOT: error` also matches. Pin the construct itself with `-target spirv-asm` (`CHECK: OpEntryPoint Fragment`, `CHECK-NOT: OpControlBarrier`), run validation separately with slangc plus `SLANG_RUN_SPIRV_VALIDATION=1` for the PR evidence, and check any "no error" detector against a known-bad control first (slang#13631 / PR #13659) [SIMPLE lanes do not run SPIR-V validation](../learnings/1792090114561-slang-test-simple-lanes-do-not-run-spir-v-validati.md).
 
-**Source learnings (29):**
+**Source learnings (30):**
 - [SPIR-V compile-only tests are render-API tagged → `slang-test` reports IGNORED (0/0) with no Vulkan loader; verify via direct `slangc` + `SLANG_RUN_SPIRV_VALIDATION=1`; spirv-asm hides a constant's word count](../learnings/1790009629117-spir-v-compile-only-tests-are-render-api-tagged-ve.md)
 - [in-tree spirv-val is v2026.4.rc2 and DOES catch logical-pointer Function vars — check the version, never recall it](../learnings/1790785645539-slang-in-tree-spirv-val-v2026-4-rc2-does-catch-log.md)
 - [`slang-test` injects `-O0` (a `CHECK-NOT: OpCompositeConstruct` never runs spirv-opt → false green; pass `-O1`); (its spirv-val-version claim is corrected by 1790785645539); SLANG_RUN_SPIRV_VALIDATION checks the PRE-optimizer module](../learnings/1790037466327-slang-test-injects-o0-verifying-spir-v-logical-poi.md)
@@ -135,5 +143,6 @@ Three compounding traps when verifying a SPIR-V emit fix on a local (often GPU-/
 - [review technique: byte-compare head vs master slangc over all SPIR-V tests to bound a reconciliation change](../learnings/1791924730900-review-technique-byte-compare-head-vs-master-slang.md) — normalize `-g2` worktree paths; `getenv`-gated disagreement logging found an undisclosed ParameterBlock E99997 fix (#13610).
 - [slang-test SIMPLE lanes do not run SPIR-V validation — check emitted ops, not 'no VUID'](../learnings/1792090114561-slang-test-simple-lanes-do-not-run-spir-v-validati.md) — known-bad control passed; pin `OpEntryPoint`/`OpControlBarrier` with spirv-asm (#13659)
 - [DIAGNOSTIC_TEST caret annotations: a separate //CHECK: line plus // ^^^ line checks nothing — mutation-test every diagnostic test](../learnings/1792102157772-diagnostic-test-caret-annotations-a-separate-check.md) — block form `/*CHECK: … */` for columns < 10 (#13659)
+- [A diagnostic-test row can pin nothing when master already rejects it for another reason](../learnings/1792181706579-a-diagnostic-test-row-can-pin-nothing-when-master-.md) — #13718: `cbuffer` row gave the same E30015 on master; leg reachable only via a lambda; run every row on master
 
 _Catalog: [[wiki/index.md]]_

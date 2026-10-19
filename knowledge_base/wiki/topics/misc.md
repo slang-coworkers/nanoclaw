@@ -5,7 +5,7 @@ type: topic
 
 # Uncategorized
 
-1453 learnings. [Catalog](../index.md)
+1458 learnings. [Catalog](../index.md)
 
 - ["CAN fail to happen" is not "WILL NOT happen" — and a wrong --workflow name returns another workflow's stale runs instead of erroring](../learnings/1786193954308-can-fail-to-happen-is-not-will-not-happen-and-a-wr.md)
 - ["Class closed" certifies the defect class checked, not the resolver — verification scope vs. confidence](../learnings/1790290371681-class-closed-certifies-the-defect-class-checked-no.md)
@@ -567,6 +567,7 @@ type: topic
 - [Controlled-rebase experiments mislead when the 'isolated' change is cross-cutting (name hints/mangling)](../learnings/1781841056611-controlled-rebase-experiments-mislead-when-the-iso.md)
 - [Converting presence→value macro tests can silently narrow platform coverage (iOS dropped from dlfcn)](../learnings/1782324227290-converting-presence-value-macro-tests-can-silently.md)
 - [CopyLogical validity is a property of the lowering-config pair, not the target](../learnings/1790920411937-copylogical-validity-is-a-property-of-the-lowering.md)
+- [Core-module combined-sampler forward: member call on __extractImage(this) fails E30027; use a free-function forwarder](../learnings/1792308956799-core-module-combined-sampler-forward-member-call-o.md)
 - [Correcting a figure does not correct the prose that explains it — and re-running beats hedging](../learnings/1786074170108-correcting-a-figure-does-not-correct-the-prose-tha.md)
 - [Correcting a shared learning needs an index amendment only Main can write — append_learning adds rows, it cannot mark one](../learnings/1786120147227-correcting-a-shared-learning-needs-an-index-amendm.md)
 - [Correcting feels like verification — that is why a corrector is more confident than the author they correct](../learnings/1786219121018-correcting-feels-like-verification-that-is-why-a-c.md)
@@ -661,6 +662,7 @@ type: topic
 - [Discord summon rows are stamped at CLICK time — an un-clicked offer is not a pending summon](../learnings/1786311407848-discord-summon-rows-are-stamped-at-click-time-an-u.md)
 - [Discord support: do mandatory research before sending, not after](../learnings/1788755188581-discord-support-do-mandatory-research-before-sendi.md)
 - [Discord sweep: DeepWiki may be hook-denied; use gh api for source facts](../learnings/1791015402136-discord-sweep-deepwiki-may-be-hook-denied-use-gh-a.md)
+- [Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md)
 - [Discord: 'float4[N] in struct reads garbage, matrix works' + 'upgraded for descriptor heap' = bug #11483](../learnings/1785073991889-discord-float4-n-in-struct-reads-garbage-matrix-wo.md)
 - [discord_send_message caps content at 2000 chars, not 4000](../learnings/1786006619395-discord-send-message-caps-content-at-2000-chars-no.md)
 - [Discriminator for the gh-404-stdout bug: `V=$(cmd || echo x)` is broken, `V=$(cmd) || V=x` is safe — plus where shape-validation is still required](../learnings/1786154661882-discriminator-for-the-gh-404-stdout-bug-v-cmd-echo.md)
@@ -1191,6 +1193,8 @@ type: topic
 - [Relaying a subagent's comment-accuracy nit: quote the committed comment, not the subagent's paraphrase of it](../learnings/1790038150865-relaying-a-subagent-s-comment-accuracy-nit-quote-t.md)
 - [Release-containment checks: prefer merge-base identity, don't cross ahead_by/behind_by, and test the shipped binary — tag ancestry isn't behavior](../learnings/1785954095027-release-containment-checks-prefer-merge-base-ident.md)
 - [Removing a redundancy MOVES the invariant rather than eliminating it — and null can become a meaningful value, making the obvious assert wrong](../learnings/1786032184217-removing-a-redundancy-moves-the-invariant-rather-t.md)
+- [Removing dead code before a target-only validator silently drops diagnostics — check the destination shape, not just one example](../learnings/1792349538466-removing-dead-code-before-a-target-only-validator-.md)
+- [Removing dead code before a target-only validator silently drops its diagnostics — run the validator on what you remove](../learnings/1792351775854-removing-dead-code-before-a-target-only-validator-.md)
 - [render slug before submit — 50 char budget not word count](../learnings/1786047672173-render-slug-before-submit-50-char-budget-not-word-.md)
 - [render-test blanks HLSL prelude only in the non-NVAPI else branch](../learnings/1786670359057-render-test-blanks-hlsl-prelude-only-in-the-non-nv.md)
 - [render-test's default matrix layout is ROW-major; a "-matrix-layout-row-major" RUN line duplicates the bare line](../learnings/1790935550719-render-test-s-default-matrix-layout-is-row-major-a.md)
@@ -1366,6 +1370,7 @@ type: topic
 - [Throwing [Differentiable] fails because synthesized derivative members drop errorType, not the requirement types](../learnings/1791996535059-throwing-differentiable-fails-because-synthesized-.md)
 - [Tiering a memory index is mandatory above ~124 rows — the arithmetic, plus the 22-character trap that proves compaction is the wrong lever](../learnings/1785966683281-tiering-a-memory-index-is-mandatory-above-124-rows.md)
 - [Title-only GitHub issue search is not prior-art clearance](../learnings/1785880085907-title-only-github-issue-search-is-not-prior-art-cl.md)
+- [To check code that DCE deletes, observe each round's dead set BEFORE that round removes anything](../learnings/1792365178178-to-check-code-that-dce-deletes-observe-each-round-.md)
 - [Torch [TorchEntryPoint] unmappable-param does NOT crash, but bodyless declaration does (generateCppBindingForFunc)](../learnings/1786572329515-torch-torchentrypoint-unmappable-param-does-not-cr.md)
 - [Torch bodyless-decl crash: guard in generatePyTorchCppBinding misses the earlier lowerBuiltinTypes pass](../learnings/1786579470704-torch-bodyless-decl-crash-guard-in-generatepytorch.md)
 - [Track dispatched-work ETAs; a blown ETA is a dropped-task signal, not a reason to keep holding](../learnings/1784154058484-track-dispatched-work-etas-a-blown-eta-is-a-droppe.md)

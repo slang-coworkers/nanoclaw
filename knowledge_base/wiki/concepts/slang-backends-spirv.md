@@ -117,6 +117,20 @@ The SPIR-V atomic emit has FOUR cross-layer gates keyed on address space. When a
 
 **Cross-target static-const comparisons must report SPIR-V per opt level.** For a module-scope `static const` array of structs (#13107), a pre-fix master build at `-O3` already emits a module-scope `OpConstantComposite`, because spirv-opt folds the inlined `Record.$init` calls, so master and the fix look nearly identical. The per-invocation reconstruction shows only at default opt (3× `OpCompositeConstruct` inside the entry point) and at `-O0` (`OpFunctionCall %Record__init` ×2), while HLSL/GLSL/Metal/WGSL/CUDA show the localization even at `-O3`. On both builds SPIR-V also copies even a scalar `OpConstantComposite` table into a `Function`-storage variable for dynamic indexing, so that copy is not evidence either way. A claim shown only at `-O3` invites a maintainer to reproduce it there, see no difference, and conclude it is wrong ([SPIR-V -O3 hides the static-const struct-table localization](../learnings/1790874683100-slang-spir-v-o3-hides-the-static-const-struct-tabl.md)).
 
+## See also
+
+The SPIR-V backend is split by subject across these sibling pages:
+
+- [[wiki/concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md]] — slang-glslang loading, `-O` levels, spirv-opt aborts, folding/unroll/CSE limits
+- [[wiki/concepts/slang-backends-spirv-precise-and-nocontraction.md]] — `precise`, NoContraction, fp-mode, spirv-opt reassociation
+- [[wiki/concepts/slang-backends-spirv-debug-info-emission.md]] — `-g` levels, DebugSource/DebugLine, debug types and variables, OpName
+- [[wiki/concepts/slang-backends-spirv-debug-function-info.md]] — DebugFunction / DebugFunctionDefinition records
+- [[wiki/concepts/slang-backends-spirv-capabilities-and-version-gating.md]] — capdef atoms, capability/extension emission, version header, `[require]` enforcement
+- [[wiki/concepts/slang-backends-spirv-descriptor-handles-and-heap.md]] — DescriptorHandle load coalescing, NonUniform, bindless width, descriptor-heap ABI
+- [[wiki/concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md]] — varying locations, shared Input vars, depth/topology modes, `spirv_asm` execution modes
+- [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
+- [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
+
 **Source learnings (32):**
 - [A SPVDB_DEBUGGER/debuginfo slang-test failure is a slangc -g2 SPIR-V opt bug (default opt is O1, not None), not a spvdb integration bug](../learnings/1789170739377-a-spvdb-debugger-debuginfo-slang-test-failure-is-a.md)
 - [spvdb unique_id_ assertion on macos-debug-aarch64 — real bug, flaky trigger, tracked #13024 (don't re-file)](../learnings/1789179963682-spvdb-unique-id-assertion-on-macos-debug-aarch64-r.md)

@@ -3,7 +3,7 @@ title: Critique-gate, delivery-gate & chain-routing hook mechanics
 type: concept
 group: agent-routing
 tags: [critique-gate, delivery-gate, chain-routing, codex, attestation, pr-workflow, comment-hygiene, hooks]
-source_count: 23
+source_count: 25
 ---
 
 # Critique-gate, delivery-gate & chain-routing hook mechanics
@@ -41,8 +41,9 @@ state. The hooks are content-based and hash-based, which creates a family of sel
   `thread_id`; a final-response `<message>` block is refused even with the attribute, and is never delivered.
   `send_file` is ungated, so send the message before its memo. A `[Resolution]` needs OUTPUT_REVIEW first.
 - **`--body-file` must be a literal absolute path** (`$VAR` paths and `-F body=@$var` are refused as
-  unresolvable). The body is capped at ~1000 chars and ≤2 lines per `##` section; put the 5-bullet block
-  before the first `##`.
+  unresolvable). The body is capped at 1000 characters (not bytes, and not counting the final `<sub>`
+  disclaimer or `Fixes #N` lines) and ≤2 lines per `##` section; put the 5-bullet block before the first
+  `##`, and pre-check with `upsert_pr_body.description_problems(...)`.
 - **Comment hygiene is strictly enforced**, even in test files: timeless invariants only, no change-history
   narration, no line-restating comments.
 
@@ -277,6 +278,10 @@ same body via the tool with `in_reply_to: 2` as an integer landed first time
 ([send Review Verdict via send_message(in_reply_to=N)](../learnings/1792103692562-chain-routing-gate-send-review-verdict-via-send-me.md)).
 Treat the XML `in_reply_to` attribute as unreliable for any marker message and save the refusal
 round-trips.
+A fixer's `[Fix Report]` takes `in_reply_to=<the triage handoff's seq>`. When the id is not in view,
+find the session in `ncl sessions list` by its `gh-issue-<owner>/<repo>-<n>` thread, then read the seq
+from `ncl sessions messages <session-id>`
+([Fix Report needs in_reply_to=<triage handoff seq>](../learnings/1792242240195-codex-critique-first-call-on-a-fresh-thread-often-.md)).
 
 ## Comment hygiene and PR-body discipline are gate-enforced
 
@@ -294,6 +299,11 @@ Two process gotchas from the `Namespace::operator+` parse-gap fix
   mandates Summary / Root cause / Tests / Risk, ≤2 lines per section and <1,000 chars
   excluding the `Fixes` and disclaimer lines. Cite that rule when declining
   ([PR-body shape](../learnings/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md)).
+  codex also tends to measure that limit in raw bytes over the whole body. The enforcer
+  (`counted_lines` in `/app/hooks/lib/pr_description.py`) drops the final `<sub>` disclaimer and
+  exact closing-keyword (`Fixes #N`) lines and counts Python characters, so answer a size must-fix
+  with the output of `upsert_pr_body.description_problems(open(F).read(), 1000, 2)` (`[]` = within limits)
+  ([byte vs char PR-body limit](../learnings/1792199075282-codex-critique-gotchas-wiki-recall-first-replies-b.md)).
 - **The explain-diff-html upsert does not write the description.** `upsert_pr_body.py`
   writes the explanation to ONE PR comment and strips the old explanation block from the
   description; write the concise description yourself afterwards with
@@ -334,7 +344,7 @@ entries to HEAD behaviour, against `_claims.md` §1's "doc's own wording", is
 precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 ([stale agentic-test retarget must also update the bundle _prompt.md](../learnings/1790593515973-stale-agentic-test-retarget-must-also-update-the-b.md)).
 
-**Source learnings (23):**
+**Source learnings (25):**
 
 - [Critique-gate attestation treadmill: batch all edits, run OUTPUT_REVIEW last](../learnings/1788298159048-critique-gate-attestation-treadmill-batch-all-edit.md) — Gate counts edit events not hash diffs; batch edits → format → commit → critique → send; disclaimer belongs on comments; push isn't gated.
 - [Delivery-critique gate keys on decision enum literals in ABSTAIN prose](../learnings/1788358262796-approver-infra-abstain-delivery-critique-gate-keys.md) — Content-based gate matched literal `WOULD_APPROVE` in an ABSTAIN report; paraphrase, keep `ABSTAIN_POLICY` token.
@@ -359,3 +369,5 @@ precedent-accepted (#13150 claim 131) when paired with a drift-from-source row
 - [gate-critique-on-deliver refuses gh pr edit --body-file with a $VAR path](../learnings/1791289646233-gate-critique-on-deliver-refuses-gh-pr-edit-body-f.md) — spell the absolute path; upsert_pr_body.py writes one comment, not the description
 - [PR-description gate: ≤1000 chars, ≤2 lines per `##` section; ROUND:/REQUIREMENTS: needed to record a round (slangpy#1137)](../learnings/1791353262348-cpu-large-dispatch-coverage-in-slangpy-crossing-th.md) — primary fold (CPU large-dispatch coverage) is on the slangpy bug-investigations page.
 - [Delivery gate: any edit after an OUTPUT_REVIEW approve re-arms it; codex must emit plain Attested lines](../learnings/1791671231742-delivery-gate-any-edit-after-an-output-review-appr.md) — slang#13567: memory edit after approve re-armed; backtick-wrapped Attested hashes not recorded; PR body ≠ 5-bullet shape.
+- [codex-critique gotchas: wiki-recall first replies, backticked Attested hashes, byte vs char PR-body limit](../learnings/1792199075282-codex-critique-gotchas-wiki-recall-first-replies-b.md) — the enforcer counts chars after dropping the disclaimer and `Fixes` lines; answer with `description_problems(...)`; recall/backtick parts on the gate-mechanics page
+- [codex-critique: first call on a fresh thread often returns a wiki recall, not the review](../learnings/1792242240195-codex-critique-first-call-on-a-fresh-thread-often-.md) — `[Fix Report]` needs `in_reply_to=<triage handoff seq>`, found via `ncl sessions messages`; recall/Verdict parts on the gate-mechanics page

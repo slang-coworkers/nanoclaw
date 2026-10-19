@@ -1,0 +1,119 @@
+---
+title: "Slang SPIR-V debug info: -g levels, DebugSource/DebugLine, debug types, debug variables, and OpName"
+type: concept
+group: slang-backends
+tags: [spirv, debug-info, nonsemantic, g0, g2, DebugSource, DebugLine, DebugTypeMatrix, DebugTypeComposite, DebugValue, OpName, spirv_asm, separate-debug-info]
+source_count: 24
+---
+
+# Slang SPIR-V debug info: -g levels, DebugSource/DebugLine, debug types, debug variables, and OpName
+
+Producer and consumer rules for SPIR-V debug information: what each `-g` level emits, where `DebugSource`/`DebugLine`/`DebugScope` come from, debug-type records, debug variables for opaque handles, and debug names. The `DebugFunction`/`DebugFunctionDefinition` layer has its own page, [[wiki/concepts/slang-backends-spirv-debug-function-info.md]].
+
+## TL;DR
+
+- SPIR-V debug-info defects are almost always producer-side (lowering, IR type gates). `slang-emit-spirv.cpp` is usually innocent, except for debug composites, which the emitter builds itself and therefore owns.
+- `-g0` emits exactly `OpSource`, `OpName` and `OpMemberName` by design (SPIR-V only; documented in help text). Check whether a "g0 still emits X" is a direct `emitInst` or a surviving decoration.
+- Source-text embedding is gated at two layers (IR-gen producer and emit consumer), and there are two `IRDebugSource` producers; update both. Gate SPIR-V-only flags on the target. A bare fileless `OpSource` next to file-carrying ones yields a spurious `unnamed-0` source.
+- `-g1 OpLine` / `-g2 DebugLine` come only from statement-level `IRDebugLine` markers, so a value-inst `sourceLoc` fix changes the SPIR-V by zero bytes and has no writable golden test.
+- `-g2` embeds the whole source, CHECK lines included, as an `OpString`: anchor patterns on `%id = OpString "name"` and on real instruction lines, or they self-match.
+- A hoistable IR inst dedups only if every producer builds byte-identical operands; path strings are the classic divergence (#11982).
+- `IRDebugScope` is variable-arity (1 or 2 operands); never build it with a null operand.
+- A matrix's debug type is layout-independent: `OpTypeMatrix` is the same for all layouts, and packing rides the member decoration plus `MatrixStride`.
+- Opaque-handle locals: the emitter already handles them (`OpDebugLocalVariable` + `OpDebugValue`, no backing `OpVariable`). Admit them at the leaf/creation type gates with a narrow texture/sampler predicate, never inside recursive `isDebuggableType`, and cover both `let` and `var`.
+- DebugVar type-eligibility and DebugValue value-representability are separate checks. DebugVar `ArgNumber` remapping across param-removing passes is cross-cutting: flag it to the maintainer.
+- Every named `%id` register in a `spirv_asm` block gets an `OpName`; stdlib registers are `__`-prefixed, renamed only inside brace-tracked `spirv_asm{}` ranges. Settle "debug name on the wrong inst" claims with a rename drill.
+- spirv-opt's strip-debug passes delete `DebugBuildIdentifier`, so `-separate-debug-info` needs a Slang shim that keeps it.
+- The `DebugEntryPoint` command-line string hardcodes `-g2` and silently drops un-cased options.
+- NonSemantic debug info is not validated by spirv-val; these defects ship at rc=0.
+
+## Debug levels and source embedding
+
+**`-g0` (DebugInfoLevel::None) emits exactly `OpSource`, `OpName`, and `OpMemberName`.** `OpSource` is unconditional; names come from `IRNameHintDecoration`, which `stripDebugInfo` (removes only `IRDebug*`) keeps. `OpLine` and the `DebugSource` `OpString` are g1+; `OpModuleProcessed` is never emitted. SPIR-V-specific (DXIL/HLSL/Metal `-g0` emits nothing). Help text documents this (#11682/#12201). For "g0 still emits X", check whether X is a direct `emitInst` or a surviving decoration ([-g0 doesn't zero debug info](../learnings/1782145409789-slang-g0-doesn-t-zero-spir-v-debug-info-opsource-o.md), [-g0 emits EXACTLY these three](../learnings/1784828289031-g0-debuginfolevel-none-emits-exactly-opsource-opna.md)).
+
+**Two layers (#12181).** In the producer (`slang-lower-to-ir.cpp:15425`), `-g0` creates no `IRDebugSource`, `-g1` creates one with empty content, and `-g2/-g3` embed the source; `DebugCompilationUnit` exists only at `>= Standard`. In the consumer (`slang-emit-spirv.cpp:2164`), `Minimal` emits the filename `OpString` and nothing more. A flag that embeds source at a lower `-g` level must therefore thread through both layers, and at `-g0` it also needs a minimal `DebugCompilationUnit` + `SPV_KHR_non_semantic_info`. Append the flag as `CompilerOptionName::DebugInfoIncludeSource` before `CountOf` ([source-text embedding gated at two layers](../learnings/1784666850986-slang-spir-v-source-text-embedding-is-gated-at-two.md)). PR #12202 exposed two more producer traps:
+- There are TWO `IRDebugSource` producers: the per-file loop (~15428) and `getOrEmitDebugSource` (~9717). Updating only one yields an `OpSource` with a File operand and an EMPTY Source.
+- The producer ternary is target-agnostic, so `-target llvm -g1 -debug-info-include-source` embeds source too. Gate it on SPIR-V or warn per target, as `-separate-debug-info` does.
+
+([two IRDebugSource producers; target-agnostic ternary](../learnings/1784822669473-slang-debug-info-include-source-12181-12202-second.md)). A bare fileless `OpSource` emitted alongside file-carrying `OpSource` records makes SPIRV-Tools' extractor create a spurious `unnamed-0.hlsl`. spirv-val passes, so this is invisible without a consumer-side check. Emit the bare record only in the no-embed branch ([bare fileless OpSource → spurious 'unnamed' source](../learnings/1784851566899-slang-spir-v-emitting-a-bare-fileless-opsource-alo.md)).
+
+**Line markers (#12192).** `-g2 DebugLine` and `-g1 OpLine` come only from `IRDebugLine` markers, which `lowerStmt`→`maybeEmitDebugLine` places at statement granularity. Value insts fall under the last marker. So propagating `sourceLoc` onto re-synthesized value insts (`IRBuilderSourceLocRAII`) gives byte-identical output at `-g1/-g2/-g3`. Only diagnostics that read `inst->sourceLoc`/`findFirstUseLoc` see those locations. If no diagnostic fires, the fix has no test: tell the maintainer, and confirm the edit is actually in `libslang-compiler.so` ([DebugLine is statement-marker driven](../learnings/1785275556385-slang-g2-debugline-is-statement-marker-driven-not-.md)).
+
+**`-g2` FileCheck self-match.** Because the embedded source contains the CHECK directives, a bare-word `CHECK-NOT` falsely fails. Anchor on `%id = OpString "name"` (closing quote right after the name), and bind `DebugValue`→`DebugLocalVariable` through a captured id ([embedded-source self-match trap](../learnings/1781176200581-slang-g2-spirv-asm-filecheck-tests-embedded-source.md)).
+
+## Producers of DebugSource, DebugFunction and DebugScope
+
+**Constructors.** Synthesized `$init` ctors (#11550) are lowered like user functions, so they get `DebugFunction`/`DebugScope`. Suppressing only the function scope leaves body `DebugLine`s behind and produces invalid NonSemantic SPIR-V, so gate on AST flavor (`SynthesizedDefault | SynthesizedMemberInit`) during lowering ([synthesized $init ctors](../learnings/1781168370965-slang-synthesized-init-ctors-get-full-source-level.md)). A user `__init`'s `this` (#11565) is a synthesized local, not an `IRParam`. After `thisVar` is emitted (`slang-lower-to-ir.cpp:13839`), add a "this" name hint and an `IRDebugLocationDecoration` ([__init lacks `this`](../learnings/1781206942083-slang-user-defined-init-lacks-this-in-spir-v-debug.md)).
+
+**Name hints.** `ExtensionDecl` is anonymous, so redirect `getNameForNameHint` through the extended type's decl. Name hints also feed C-like emitter identifiers (HLSL/CUDA) ([getNameForNameHint](../learnings/1781267563910-getnamefornamehint-feeds-c-like-emitter-identifier.md)).
+
+**`IRDebugScope` arity.** Use 1 operand when `inlinedAt` is absent, otherwise 2. A null operand crashes `buildEntryPointReferenceGraph` (`slang-ir-call-graph.cpp:~85`) ([DebugScope variable-arity](../learnings/1781568128097-spir-v-debugscope-must-be-variable-arity-null-ir-o.md)).
+
+**`-g2` + `import`/`#line` cluster (#11982/#11983/#11984, not dups).** All three are producer-side bugs in `slang-lower-to-ir.cpp`; the consumer (`slang-emit-spirv.cpp` ~:2136) is innocent. (1) DebugFunction scope is now carried in IR (`IRDebugFunction` `parentScope`, operand 5), so an imported function resolves to its own module's CU; see [[wiki/concepts/slang-backends-spirv-debug-function-info.md]]. (2) A duplicate `DebugSource` for one file comes from two producers spelling the path differently (`getMostUniqueIdentity()` relative vs `getName()` absolute), which defeats `hoistable=true` dedup ([#11982](../learnings/1783466061131-slang-11982-duplicate-spir-v-debugsource-from-dive.md)). (3) A BOM in `DebugSource` for a `#line` file appears because the fresh-read fallback `getOrEmitDebugSource` bypasses `SourceFile::setContents`'s BOM strip; decode in the fallback ([#11984](../learnings/1783468265984-slang-11984-g2-debugsource-for-line-files-bypasses.md)). `-dump-ir` is authoritative on whether dedup happens; DeepWiki got this one wrong.
+
+## Debug type records
+
+**`DebugTypeMatrix`, col-major constant-buffer member (#12757):** emits `(vec2, 3, false)` instead of `(vec3, 2, true)`. The emit site (`slang-emit-spirv.cpp:11108-11138`) keys off the source `getLayout()`, and `normalizeMatrixDebugType` (:10899) returns early for buffer types, so only these members are wrong. The fix is the layout-independent `(vec(getColumnCount()), getRowCount(), true)`; packing stays on the member decoration (:7054-7078, where Slang's naming is reversed relative to SPIR-V). Not a regression: PR #9708 (Fixes #9325, by the reporter) made it deliberate, so get sign-off. Update `tests/spirv/debug-matrix-layout.slang` (lines 54/63) and re-check `debug-matrix-layout-non-buffer.slang`. Reproduces with `-target spirv-asm -g2` ([DebugTypeMatrix keys off source layout](../learnings/1787695833712-spir-v-debugtypematrix-keys-off-source-matrix-layo.md)).
+
+**Opaque `DebugTypeComposite` (#12807):** the fallback (`:11241-11255`) emits `Size` as integer 0 (:11253); it should be `DebugInfoNone` (ext-inst op 0), using a cached `getDebugInfoNone()` that mirrors `getDwarfExpr()` (:10552-10563). It also reuses `name` as the LinkageName (:11252). The requested `"@Texture2D"` is a literal `"@"+Name`, not IR mangling (`getMangledTypeName` gives `_ST…`): check a helper's output against the reporter's expected text. The emitter builds composites itself, so it is the producer. The struct branch (:11069/:11075) has the same LinkageName defect; whether to fix it there is the maintainer's call ([`"@"+Name` is not IR mangling](../learnings/1787878146168-spir-v-debug-composite-issue-requested-name-linkag.md)).
+
+## Debug variables for opaque handles
+
+**Opaque resource/sampler locals get no debug info (#12918, PR #12919).** Two upstream type gates cause it: `isDebuggableType` (`slang-ir-insert-debug-value-store.cpp` ~L22-104; defaults true only for `IRBasicType`; the pass runs before `constructSSA`) and spirv-legalize's `isSimpleDataType` (`slang-ir-util.cpp:356`) strip. The emitter is already correct: `emitDebugVarDeclaration` (`slang-emit-spirv.cpp:4676`) emits `OpDebugLocalVariable`, skips `OpDebugDeclare` when there is no backing var, and binds through `OpDebugValue`. Fix rules:
+- Admit texture/sampler leaves with a narrow predicate, not broad `isResourceType` (which unwraps arrays and matches buffers). Do it at the leaf/creation sites, never inside recursive `isDebuggableType`: `isAllowedDebugVarType` accepts structs, so a struct holding a handle would become an illegal Function `OpVariable`.
+- `processDebugVar`'s strip is dead code here, because `emitDebugVar` (`slang-ir.cpp:3614/3619`) always builds a pointer-typed DebugVar. Relax `processDebugValue` instead.
+- `let x = t;` creates no `IRVar` (its debug info comes from the LetDecl case in `visitVarDecl`), so test both `let` and `var`.
+- Drop combined texture-sampler DebugValues (`isCombined()` → `OpTypeSampledImage`, not a legal operand). Keep arrays: `InputPatch`/`OutputPatch` are legal (`tests/spirv/tessellation`).
+- `cleanUpVoidType`'s `argIndexRemap` uses all-params positions, but earlier legalization strips empty params without remapping, so advancing the index for every param breaks `debug-var-void-argument.slang`. Flag this to the maintainer.
+
+Sources: [root cause = two type gates](../learnings/1788744414687-slang-spir-v-opaque-resource-sampler-function-loca.md), [leaf/creation gates, let-path, dead processDebugVar](../learnings/1788748635093-slang-spir-v-opaque-handle-local-debug-info-fix-at.md), [value-operand limits & ArgNumber remap](../learnings/1789468940215-slang-spir-v-debug-var-value-operand-limits-param-.md).
+
+## OpName and `spirv_asm` register names (#12002, #12108)
+
+**#12002 (PR #12053).** A "misattributed OpName" turned out to be a stdlib register name collision. The emitter emits an `OpName` for every named `%id` register in a `spirv_asm` block, not gated on the debug level (`idMap` loop in `slang-emit-spirv.cpp`), and the texture-sample intrinsics in `hlsl.meta.slang` named their raw-sample register `%sampled`, so every texture sample emitted `OpName ... "sampled"` whatever the caller's variable was called. A user call-result value produces no `OpName` at all, because it does not route through `maybeEmitName`; the defect is cosmetic, and `slangc -target spirv-asm | grep OpName` reproduces it without a GPU ([spirv_asm named registers leak into OpName; %sampled](../learnings/1783525064110-slang-12002-spirv-asm-named-registers-leak-into-op.md)). The fix renamed the internal register `%sampled`→`%__sampled` at 94 sites and added a `CHECK-NOT: "sampled"` test. Rename-drill decides such claims: rename the user's variable; if the OpName follows it propagates, if it stays it is intrinsic-baked. Lead a public verdict with the refutation, then give the real defect. Gating the auto-OpName loop is maintainer scope, because it is a documented, tested feature (`tests/language-feature/spirv-asm/opname.slang`) and plain user OpNames are ungated too ([#12002 refute-then-fix](../learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md)).
+
+**#12108 generalization.** Scope covers `hlsl.meta.slang` and also `glsl.meta.slang` (53 un-prefixed sites), plus a build assert. Re-pin stale line numbers; it is maintainer-driven, so stand down ([#12108 scope spans hlsl AND glsl](../learnings/1784248363961-slang-12108-triage-spirv-asm-prefix-cleanup-scope-.md)). A file-wide sed is unsafe because the same `%result`/`%6` tokens live in `__intrinsic_asm` LLVM/Metal strings. Rename only inside brace-tracked `spirv_asm{}` ranges, and skip `$name`, integer ids, and already-prefixed names. `slang-core-module-textures.cpp` (`writeGetDimensionFunctions`) is a second generator ([renaming spirv_asm registers: block-scoped only](../learnings/1784760040459-renaming-spirv-asm-registers-in-meta-slang-block-s.md)).
+
+## Stripping and the DebugEntryPoint string
+
+**`spirv-opt --strip-debug` deletes `DebugBuildIdentifier` (#8681):** you cannot just replace the hand-rolled `stripDbgSpirvFromArtifact` with spirv-opt's strip passes — that function is the `-separate-debug-info` splitter and hand-rolls the strip precisely to keep the DBI ext-inst (the hash linking the stripped main module to its `.dbg.spv`). Both `CreateStripDebugInfoPass` and `CreateStripNonSemanticInfoPass` unconditionally kill the DBI; the correct shape is a hybrid where spirv-opt owns the bulk strip but a thin Slang shim exempts/re-injects the DBI + its OpString + the NonSemantic import — the DBI exemption is irreducible ([spirv-opt strip-debug deletes DebugBuildIdentifier — separate-debug-info needs a DBI shim](../learnings/1783556986544-slang-8681-spirv-opt-strip-debug-deletes-debugbuil.md)).
+
+**`DebugEntryPoint` command-line string (#12220).** The SPIR-V `DebugEntryPoint` command-line-string (`#12220`) has two independent accuracy bugs: `getDebugInfoCommandLineArgumentForEntryPoint` ends with a *literal* `sb << " -g2"` that never reads the requested level (so `-g3` still emits `-g2` despite an unused `getDebugInfoLevel()` accessor), and `writeCommandLineArgs` is a `switch(option.key)` with **no `default` case** that silently drops any un-cased option (`-lang`/`-profile`/`-gdwarf`/`-line-directive-mode` vanish while `-O0`/`-matrix-layout` survive). The command-line string is stored verbatim in the binary — grep it via `strings x.spv | grep -- '-target spirv'` without a disassembler; note `writeCommandLineArgs` also feeds the CPU/LLVM emit path but NOT the module-cache `buildHash`, so serializer edits don't change cache digests ([SPIR-V DebugEntryPoint command-line string: two roots (hardcoded -g2 + no-default serializer switch)](../learnings/1784915879616-spir-v-debugentrypoint-command-line-string-two-roo.md)).
+
+## See also
+
+- [[wiki/concepts/slang-backends-spirv.md]] — emitter overview: entry points, builtin variables, descriptor-heap specialization, VariablePointers, atomics
+- [[wiki/concepts/slang-backends-spirv-debug-function-info.md]] — DebugFunction / DebugFunctionDefinition records
+- [[wiki/concepts/slang-backends-spirv-spirv-opt-and-optimization-levels.md]] — slang-glslang loading, -O levels, spirv-opt aborts, folding/unroll/CSE limits
+- [[wiki/concepts/slang-backends-spirv-precise-and-nocontraction.md]] — `precise`, NoContraction, fp-mode, spirv-opt reassociation
+- [[wiki/concepts/slang-backends-spirv-capabilities-and-version-gating.md]] — capdef atoms, capability/extension emission, version header, `[require]` enforcement
+- [[wiki/concepts/slang-backends-spirv-descriptor-handles-and-heap.md]] — DescriptorHandle load coalescing, NonUniform, bindless width, descriptor-heap ABI
+- [[wiki/concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md]] — varying locations, shared Input vars, depth/topology modes, `spirv_asm` execution modes
+- [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
+- [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
+
+**Source learnings (24):**
+- [slang -g0 doesn't zero SPIR-V debug info: OpSource/OpName bypass the IRDebug gating path](../learnings/1782145409789-slang-g0-doesn-t-zero-spir-v-debug-info-opsource-o.md)
+- [-g0/DebugInfoLevel::None emits EXACTLY OpSource/OpName/OpMemberName in SPIR-V (not OpLine/OpString/OpModuleProcessed)](../learnings/1784828289031-g0-debuginfolevel-none-emits-exactly-opsource-opna.md)
+- [source-text embedding gated at producer + consumer (#12181)](../learnings/1784666850986-slang-spir-v-source-text-embedding-is-gated-at-two.md)
+- [two IRDebugSource producers; target-agnostic ternary (#12202)](../learnings/1784822669473-slang-debug-info-include-source-12181-12202-second.md)
+- [bare fileless OpSource + file OpSource → spurious 'unnamed' source](../learnings/1784851566899-slang-spir-v-emitting-a-bare-fileless-opsource-alo.md)
+- [DebugLine only from statement markers; sourceLoc fix untestable](../learnings/1785275556385-slang-g2-debugline-is-statement-marker-driven-not-.md)
+- [slang -g2 spirv-asm FileCheck tests: embedded-source self-match trap](../learnings/1781176200581-slang-g2-spirv-asm-filecheck-tests-embedded-source.md)
+- [Slang: synthesized $init ctors get full source-level SPIR-V debug info](../learnings/1781168370965-slang-synthesized-init-ctors-get-full-source-level.md)
+- [Slang: user-defined __init lacks `this` in SPIR-V debug info](../learnings/1781206942083-slang-user-defined-init-lacks-this-in-spir-v-debug.md)
+- [getNameForNameHint feeds C-like emitter identifiers; ExtensionDecl is anonymous](../learnings/1781267563910-getnamefornamehint-feeds-c-like-emitter-identifier.md)
+- [SPIR-V DebugScope must be variable-arity (null IR operand crashes buildEntryPointReferenceGraph)](../learnings/1781568128097-spir-v-debugscope-must-be-variable-arity-null-ir-o.md)
+- [slang#11982: duplicate SPIR-V DebugSource from divergent path spelling defeating hoistable-dedup](../learnings/1783466061131-slang-11982-duplicate-spir-v-debugsource-from-dive.md)
+- [slang #11984: -g2 DebugSource for #line files bypasses canonical BOM strip (fresh-read fallback)](../learnings/1783468265984-slang-11984-g2-debugsource-for-line-files-bypasses.md)
+- [SPIR-V `DebugTypeMatrix` for a col-major CB member emits `(vec2,3,columnMajor=false)` vs the correct `(vec3,2,true)` — it keys off the SOURCE matrix-layout modifier, and only col-major buffer members are wrong; a matrix's debug type is layout-independent (packing rides the member decoration + `MatrixStride`); #12757 reverses PR #9708, test `debug-matrix-layout.slang` locks in the bug.](../learnings/1787695833712-spir-v-debugtypematrix-keys-off-source-matrix-layo.md)
+- [SPIR-V opaque-resource `DebugTypeComposite` emits `Size`=integer-0 (should be `DebugInfoNone`, ext-inst op 0) and reuses the plain name as LinkageName; the requested `"@Name"` linkage is a LITERAL `"@"+Name` prefix, NOT IR name mangling (`getMangledTypeName` gives `_ST…`); debug composites are emitter-built so the emitter IS the producer; #12807.](../learnings/1787878146168-spir-v-debug-composite-issue-requested-name-linkag.md)
+- [SPIR-V opaque resource/sampler function-locals get no debug info; root = two upstream TYPE gates (`isDebuggableType` default only `IRBasicType`; spirv-legalize `isSimpleDataType`); the emit path already emits `OpDebugLocalVariable` + `OpDebugValue` with no backing `OpVariable`; #12918.](../learnings/1788744414687-slang-spir-v-opaque-resource-sampler-function-loca.md)
+- [fix #12918 at the leaf/creation gates via `isResourceType` (NOT recursive `isDebuggableType`, or struct-of-handle becomes debuggable → illegal OpVariable); `processDebugVar`'s `isSimpleDataType` strip is dead (DebugVar is always a Ptr); `let` takes a different lowering path than `var` — test both; PR #12919.](../learnings/1788748635093-slang-spir-v-opaque-handle-local-debug-info-fix-at.md)
+- [SPIR-V debug-var: value-operand limits & param arg-index remap timing (#12918/#12919)](../learnings/1789468940215-slang-spir-v-debug-var-value-operand-limits-param-.md) — type-eligibility vs value-representability are separate; drop combined-sampler DebugValue but not legal arrays; ArgNumber remap is cross-cutting.
+- [slang#12002: spirv_asm named registers leak into OpName; texture-sample intrinsic uses %sampled](../learnings/1783525064110-slang-12002-spirv-asm-named-registers-leak-into-op.md)
+- [#12002 refute-then-fix: OpName was a stdlib register collision](../learnings/1783746988745-slang-12002-shipped-refute-then-fix-triage-of-a-mi.md)
+- [#12108 spirv_asm __-prefix scope spans hlsl AND glsl meta.slang](../learnings/1784248363961-slang-12108-triage-spirv-asm-prefix-cleanup-scope-.md)
+- [spirv_asm register rename: block-scoped; textures.cpp generator](../learnings/1784760040459-renaming-spirv-asm-registers-in-meta-slang-block-s.md)
+- [slang#8681 spirv-opt strip-debug deletes DebugBuildIdentifier — separate-debug-info needs a DBI shim](../learnings/1783556986544-slang-8681-spirv-opt-strip-debug-deletes-debugbuil.md)
+- [DebugEntryPoint command-line string two roots: hardcoded -g2 + no-default writeCommandLineArgs switch (#12220)](../learnings/1784915879616-spir-v-debugentrypoint-command-line-string-two-roo.md)

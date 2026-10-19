@@ -3,7 +3,7 @@ title: Correctness-review methodology — coverage lenses, codegen reproduction,
 type: concept
 group: review-process
 tags: [reviewer, review-lens, revert-drill, positive-control, codegen-reproduction, use-dependent, exit-0, self-raised-finding, file-list, silent-miscompile, probe-matrix, pass-reordering]
-source_count: 19
+source_count: 22
 ---
 
 # Correctness-review methodology — coverage lenses, codegen reproduction, and self-finding discipline
@@ -14,10 +14,13 @@ Correctness review of Slang compiler PRs turns on one recurring question: does t
 actually EXERCISE the changed path, and did the reviewer REPRODUCE the exact scenario before
 confirming or refuting? Compilation and clean exits prove far less than they appear.
 
-- **Revert-drill every newly-threaded/recursive parameter or new guard.** Mentally delete
-  it and ask "does any existing test now fail?" If all tests still pass without it, its real
-  (nested/deeper) path is untested — the distinctive job of a threaded parameter is the case
-  ONE LEVEL DEEPER, and the failure mode there is often a SILENT miscompile, not a loud abort.
+- **Revert-drill every newly-threaded/recursive parameter or new guard.** Delete it and ask
+  "does any existing test now fail?" If not, its real (nested/deeper) path is untested, and the
+  failure mode there is often a SILENT miscompile. Drill each conjunct of a new guard with a test
+  that satisfies every other conjunct, and run a refreshed CHECK block against a contrast target
+  whose output has the forbidden shape: a passing test proves its spelling, not its catch.
+- **Valid is not correct.** A remedy that shares one Input across entry points can pass spirv-val
+  and still mislink; compare each EP's `Location` with that EP compiled alone.
 - **A structural CHECK/CHECK-NOT is not numeric coverage.** When a fix targets a specific
   conformer/branch, confirm a runtime `-cpu COMPARE_COMPUTE` actually ROUTES through that
   branch and pins its result — a test that dispatches the wrong variant verifies the path
@@ -67,6 +70,29 @@ had zero coverage, and the failure mode was a silent miscompile. For any newly-t
 or new guard, delete it and ask whether any existing test fails; if not, demand a test that
 exercises the deeper case in both member orders plus a numeric readback
 [Review lens: a threaded/recursive parameter can be 'tested' only via its LOCAL checks — revert-drill it](../learnings/1788427795887-review-lens-a-threaded-recursive-parameter-can-be-.md).
+
+The revert-drill has two traps where a passing test proves only its own spelling, not that it
+catches anything. First, **a guard in front of the new leg hides it.** On slang#13724 R2 the GLSL
+skip became `m_hasMultiplePushConstantBlocks && isPushConstantBlockByLayout(v) && !v->hasUses()`,
+but the new test used a single-block module, so the multi-block conjunct short-circuited and
+swapping `!hasUses()` back to the buggy reachability test still passed 21/21. Only a module with two
+blocks, one read by an `export` function and one unused, tells them apart. When a fix adds a
+conjunction, drill each conjunct alone and make sure the pinning test satisfies every *other*
+conjunct. The same PR showed that an emit-time `return SLANG_FAIL` is invisible to slangc-based
+tests, because slangc already suppresses output on error and DIAGNOSTIC_TEST does not parse
+glslang's text: pin it with an `-emit-spirv-via-glsl` run plus `CHECK-NOT: glslang`, never
+`CHECK-NOT: error`, which matches slang-test's own "standard error =" header
+[revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md).
+Second, **"head passes, base fails" on a stale-CHECK refresh** (a PR that only re-spells one
+FileCheck line, such as a docs/generated/tests nightly refresh after an intentional emitter change)
+shows only that the new spelling matches. Copy the CHECK block into a temp test and run it against a
+target whose output *does* have the shape the test forbids; for slang#13731 that was HLSL, which
+keeps the trailing `break;` that WGSL drops. If the block still passes, the claim was never checked:
+there the `X-NOT: break;` sat after `default :`, so case 0 was never covered. Tighten the block, then
+confirm it passes on the real target and fails on the contrast target, and keep anchors off
+incidental tokens such as paren counts (`if({{\(*}}…`), since re-pinning those is what made the test
+stale in the first place
+[reviewing a stale-CHECK refresh: run the CHECK block against output that has the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md).
 
 A third coverage lens governs "reject unrepresentable input" / "add a guard" fixes, traced across two
 rounds of slang#13063 (slangi/HostVM `printf("%s", <runtime String>)` SIGSEGV). Round-1: when a crash
@@ -192,6 +218,20 @@ worktree (`git show <base>:path > path` is quick; only touched objects rebuild) 
 tests — on #13468 either single revert failed all 3 tests, disproving the question's premise
 [check a reviewer's suggested test snippet compiles before forwarding it](../learnings/1791335711944-review-check-a-reviewer-s-suggested-test-snippet-c.md).
 
+A clean validator is not a correct program, and that matters most when judging a remedy, including
+your own (the remedy-vs-finding rule is on [Slang code-review lenses](review-pr-slang-review-lenses.md)).
+On slang#13726 (global varyings shared by several entry points) a first remedy for an interpolant
+regression, keeping the global→Input shadowing for address-passed globals, passed every PR test and
+turned spirv-val green on four probes. A fifth probe, where the second EP has an extra varying so the
+global's location differs per EP, still produced *valid* SPIR-V, but fsA read the input at Location 1
+while fsA compiled alone (`-entry fsA`) uses Location 0: a silent mislink spirv-val cannot see. When a
+remedy shares one module-scope Input variable between entry points, compare each EP's `OpDecorate …
+Location` against the same EP compiled alone; the safe remedy there was a diagnostic. A GPU-validation
+trap from the same review: WGSL on the L40S through dawn.node works, but subgroup builtins need
+`requestDevice({requiredFeatures:['subgroups']})`. Without it Tint rejects `enable subgroups;` and every
+output reads 0 on base and head alike, which looks like a pass/fail signal and is not one
+[rejecting a 'make it valid' remedy: compare the per-EP location to the single-EP compile](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md).
+
 ## Self-raised findings, EXIT=0, and the full file list
 
 As the reviewer, do not close a finding YOU raised on the author's self-reported result you
@@ -224,7 +264,10 @@ A second blind spot of the same stack is **fidelity to a maintainer's written sp
 
 Two durable-text disciplines that cost avoidable review round-trips, both caught by codex OUTPUT_REVIEW: **(1) never cite `file.cpp:NNNN` in source comments, PR descriptions, or review replies** — a maintainer merging master into the branch shifts every line number, so refer to code by **stable symbol names** (`SemanticsDeclBasesVisitor::visitEnumDecl`, `_calcInheritanceInfo`); line numbers are fine only in ephemeral scratch/logs. **(2) `//DIAGNOSTIC_TEST:SIMPLE(diag=CHECK):` matches message text as a plain substring** — `{{.*}}` FileCheck regex is NOT supported and silently fails (0/1) — and the CHECK must be specific enough to reject the buggy variant (`//CHECK: cyclic reference '$inheritance'` naming the symbol, not the loose `//CHECK: cyclic reference` which also matches a wrong `'E'` diagnostic and wouldn't catch a revert) ([never cite file.cpp:line in durable text — merges make it stale; use stable symbol names; DIAGNOSTIC_TEST is substring-only](../learnings/1789489933746-never-cite-file-cpp-line-in-source-comments-or-pr-.md)).
 
-**Source learnings (19):**
+**Source learnings (22):**
+- [Revert-drill each new leg when a guard sits in front of it](../learnings/1792209485239-revert-drill-each-new-leg-when-a-guard-sits-in-fro.md) — #13724 R2: a single-block test short-circuits the multi-block conjunct, so the buggy `hasUses` swap still passed 21/21; pin an emit-time `SLANG_FAIL` with `-emit-spirv-via-glsl` + `CHECK-NOT: glslang`, not `CHECK-NOT: error`.
+- [Reviewing a stale-CHECK refresh: run the CHECK block against output that has the forbidden shape](../learnings/1792230096725-reviewing-a-stale-check-refresh-run-the-check-bloc.md) — #13731: HLSL keeps the `break;` WGSL drops; the `X-NOT` after `default :` never covered case 0; don't anchor paren counts.
+- [Rejecting a 'make it valid' remedy: compare the per-EP location to the single-EP compile](../learnings/1792206380082-rejecting-a-make-it-valid-remedy-compare-the-per-e.md) — #13726: shared module-scope Input passed spirv-val but fsA read Location 1 vs 0 alone (silent mislink); dawn.node subgroups need `requiredFeatures:['subgroups']`.
 - [Moving a lowering pass later: probe every pass in between with the new IR shape](../learnings/1792149352759-moving-a-lowering-pass-later-probe-every-pass-in-b.md) — #13699 `legalizeMatrixTypes` move: ~30 probe shaders × 5 targets, base vs head rc diff; Tint catches invalid WGSL that FileCheck passed
 - [Moving a lowering pass later: probe every op x access-form x target against master BEFORE review](../learnings/1792162438787-moving-a-lowering-pass-later-probe-every-op-x-acce.md) — five regressions in legalizeBinaryOp, lowerMatrixAddresses and findLeafValueAtOffset; `wgsl-spirv-asm` legs skipped on Linux
 - [run a reviewer's *suggested* repro, not just its example, and validate SPIR-V](../learnings/1790795939082-slang-review-run-a-reviewer-s-suggested-repro-not-.md) — slang#11709 R2: the suggested `no_diff const groupshared` shape was the regression; SLANG_RUN_SPIRV_VALIDATION=1; -target ptx; test direct fwd/bwd_diff and a differentiated caller.

@@ -3,7 +3,7 @@ title: "Slang Intrinsics & Builtins"
 type: concept
 group: slang-language-core
 tags: [intrinsics, builtins, spirv, groupshared, texture, gather, variable-pointers, flag-enum, coopvec, vector, capability-atoms, texture-shadow, prefix-expander, min-max]
-source_count: 30
+source_count: 31
 ---
 
 # Slang Intrinsics & Builtins
@@ -15,6 +15,7 @@ Slang exposes GPU intrinsics and builtin types as core-module declarations (`cor
 - **`$TR` in an `__intrinsic_asm` string emits the call's RETURN type; `$T<n>` emits operand n's type and unwraps a texture operand to its element type.** Use `$TR` whenever the result type must be spelled.
 - **`__intrinsic_type` and `__intrinsic_op` are legal in user code** (only `__magic_type`, `__builtin_type` and `__builtin_requirement` get E31229), and standard modules use them without `FromCoreModuleModifier`. DeepWiki's "core-only" answer is wrong. A bogus numeric `__intrinsic_op(1000)` is not range-checked and ICEs.
 - **An emitter rule keyed on `intrinsicDefinition.startsWith(...)` also matches user `__intrinsic_asm` text**, so arity and operand type are preconditions to filter on (`return nullptr`), never asserts. "Fail loudly" applies only to shapes the compiler itself produces.
+- **A marker that remaps `$N` to another operand (`$q` skips a combined sampler's split-out sampler) must also be applied in `shouldFoldInstIntoUseSites`**, which counts `$N` uses by raw operand index. Otherwise a multiply-used argument is folded into every use and chained calls grow exponentially.
 - **`float(sign(x))` on SPIR-V is an unfolded `FSign; OpConvertFToS; OpConvertSToF` chain.** Folding it to bare `FSign` changes the sign of zero; the exact rewrite is `FSign(x) + 0.0`, and an IR peephole can only see the casts if they sit outside the `spirv_asm`.
 - **Dot-form `__intrinsic_asm ".Method"` on a `void` method discards a value-returning target op.** `[mutating]` only makes `this` inout; capture the value explicitly (`this = __hlslSplat(t);`, precedent `__hlslLoadBAB`).
 - **The `$P` prefix expander switches on `argType->getOp()` and has no vector case**, so a generic `min`/`max` specialized on a vector (or matrix) hits `default: SLANG_UNEXPECTED` (E99997); concrete overloads work via `VECTOR_MAP_BINARY`.
@@ -50,6 +51,8 @@ In `hlsl.meta.slang`, a dot-prefix `__intrinsic_asm ".Method"` on a `[mutating] 
 User code may use both `__intrinsic_type` and `__intrinsic_op`. The E31229 check in `slang-check-modifier.cpp:1966-1973` (added by #12538) rejects only `__magic_type`, `__builtin_type` and `__builtin_requirement` outside the core module; its comment calls `__intrinsic_type` "valid user syntax", and `tests/diagnostics/builtin-only-modifier-non-core.slang:77-79` requires that it be accepted. Standard modules use both too (`standard-modules/experimental/workgraph.slang`, `numerics/__builtin.slang:20,27`), and they do not get `FromCoreModuleModifier`, which only `Session::addBuiltinSource` sets for core/hlsl/autodiff and glsl, so a gate on `isFromCoreModule` alone would break them. DeepWiki says both are core-only; the source says otherwise. `parseIROp` (`slang-parser.cpp:10392`) does not range-check numeric opcodes, so a user `__intrinsic_op(1000) int f(int)` gives E99997 from the `!"Invalid op"` assert in Debug (`slang-ir-insts-info.cpp:47`) and "Unhandled local inst in spirv-emit" in Release. The spec sentence that these are "never used by an application" now lives in shader-slang/spec (`introduction-language-evolution.md:83-84`, moved by #13439), so changing it needs a spec-repo PR [__intrinsic_type/__intrinsic_op are accepted in user code](../learnings/1792065241922-intrinsic-type-intrinsic-op-are-accepted-in-user-c.md).
 
 Because user modules can write any `__intrinsic_asm` text, an emitter hook such as `emitIntrinsicCallExprImpl(inst, intrinsicDefinition, ...)` receives user text as well as core-module text, and a rule keyed on `intrinsicDefinition.startsWith("<builtin>")` matches both. On #13670 a clarity reviewer applied "fail loudly on out-of-contract input" and turned the filter `&& inst->getArgCount() == 1` into `SLANG_RELEASE_ASSERT(inst->getArgCount() == 1)`. A valid user shader with `__intrinsic_asm "unpack2x16float(($0) | (($1) << 16u))"` and two arguments then hit E99997, where master compiled it, and a one-argument `int` user intrinsic was wrapped in a `u32`-only WGSL helper that Tint rejects. Treat arity and operand type as preconditions: `if (argCount != 1) return nullptr;`, plus a check such as `literal->getDataType()->getOp() == kIROp_UIntType`. Exact-string matching on the core-module spelling narrows the trigger but still needs the filter. Pin both with a revert-drilled test row of user intrinsics that share the prefix with other arities and types. Before recommending an assert, ask who produces the input: user-writable text is never out of contract [emitter rules keyed on an intrinsic-string prefix must filter](../learnings/1792104381131-emitter-rules-keyed-on-an-intrinsic-string-prefix-.md).
+
+The expander is not the only reader of intrinsic text. `CLikeSourceEmitter::shouldFoldInstIntoUseSites` (slang-emit-c-like.cpp ~1729-1807) counts the `$N` uses in the string by raw operand index to decide whether an argument may be inlined at its use. A marker that remaps `$N` to a different call operand, such as `$q`, which skips the split-out sampler at operand 1 of a combined texture-sampler, must be applied there too. If it is not, an argument used several times in the string looks unused, gets folded into every use, and chained calls blow up exponentially: 5 chained combined-sampler `Load`s on Metal/WGSL produced 121 texture reads. shader-slang/slang#13741 fixes it with one shared `getIntrinsicArgOperandIndex()` in slang-intrinsic-expand.cpp that both readers call [$q intrinsic strings must also be understood by the emitter's fold heuristic](../learnings/1792284128530-q-intrinsic-strings-must-also-be-understood-by-the.md).
 
 ## `sign()` round-trip on SPIR-V (#13676)
 
@@ -121,7 +124,7 @@ Facts that shape any capability RFC triage (#9210, verified @33f9ed0ce): stateme
 
 Falsified earlier claims: vectors take the abstract-type ctor path (#11730); a negated constant gather offset stays a runtime `OpSNegate` (#9382); extending `specializeAddressSpace` to DXIL fixes groupshared params (#10641).
 
-**Source learnings (30):**
+**Source learnings (31):**
 - [__intrinsic_type/__intrinsic_op are accepted in user code; DeepWiki wrongly says core-only; bogus numeric opcode → E99997](../learnings/1792065241922-intrinsic-type-intrinsic-op-are-accepted-in-user-c.md) — E31229 covers only three modifiers; standard modules use them; spec sentence lives in the spec repo
 - [Emitter rules keyed on an intrinsic-string prefix must FILTER arity/type, not assert](../learnings/1792104381131-emitter-rules-keyed-on-an-intrinsic-string-prefix-.md) — also filter operand type (`u32`-only helper vs `int` user intrinsic); revert-drilled test row
 - [float(int(FSign(x))) == FSign(x)+0.0 exactly; spirv-opt folds the +0.0 (sign() round-trip, #13676)](../learnings/1792095513009-float-int-fsign-x-fsign-x-0-0-exactly-spirv-opt-fo.md) — signed-zero hazard of the naive fold; per-target NaN semantics; peephole needs the cast outside the asm
@@ -152,5 +155,6 @@ Falsified earlier claims: vectors take the abstract-type ctor path (#11730); a n
 - [$TR marker emits the call return type](../learnings/1785372605179-intrinsic-asm-tr-marker-emits-the-call-return-type.md) — fixes `tex2Dgather<$T0>`; full marker list (#12276)
 - [broad generic scalar-decomposition overload loses native aggregate ops for generic callers; use a shared target-aware worker (#13139)](../learnings/1790642295187-slang-core-module-a-broad-generic-overload-that-de.md)
 - [texture access kinds: adding one needs every emitter; image2D == RWTexture2D; readonly RWTexture unenforced (#13536)](../learnings/1791500273983-slang-texture-access-kinds-adding-one-needs-every-.md)
+- [$q intrinsic strings must also be understood by the emitter's fold heuristic](../learnings/1792284128530-q-intrinsic-strings-must-also-be-understood-by-the.md) — `shouldFoldInstIntoUseSites` counts raw `$N`; 121 texture reads; shared `getIntrinsicArgOperandIndex()` (#13741); `TryUnifyTypes` part on the generics page
 
 _Catalog: [[wiki/index.md]]_
