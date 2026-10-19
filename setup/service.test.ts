@@ -85,7 +85,8 @@ describe('systemd unit generation', () => {
   it('contains restart policy', () => {
     const unit = renderSystemdUnit('/home/user/nanoclaw', '/usr/bin/node', '/home/user', false);
     expect(unit).toContain('Restart=always');
-    expect(unit).toContain('RestartSec=5');
+    // Fork divergence: the fork's unit backs off 10 s between restarts.
+    expect(unit).toContain('RestartSec=10');
   });
 
   it('uses KillMode=process to preserve detached children', () => {

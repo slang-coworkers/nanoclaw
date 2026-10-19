@@ -188,6 +188,11 @@ export async function dispatch(
       .join(' ');
     const commandLine = escapeInvisibles(`ncl ${req.command}${argSummary ? ' ' + argSummary : ''}`);
     const title = `CLI: ${req.command}`;
+    const commandQuestion = `Agent ${quoteForCard(agentName)} wants to run:\n` + '```\n' + commandLine + '\n```';
+    // The approver must see every argument; answer the agent now instead of
+    // carding a command that can't be shown in full.
+    const tooLong = cardQuestionTooLong(title, commandQuestion);
+    if (tooLong) return err(req.id, 'invalid-args', `${tooLong}. Shorten the arguments and try again.`);
 
     // Disclosure the command line cannot carry. A throw here refuses instead of
     // carding: approving a request whose reach we could not render is worse than
@@ -203,11 +208,7 @@ export async function dispatch(
     // over-long disclosure is refused rather than silently truncated into an
     // understatement of the reach.
     const detailBlock = detail && detail.length > 0 ? '\n```\n' + detail.join('\n') + '\n```' : '';
-    const question = `Agent ${quoteForCard(agentName)} wants to run:\n` + '```\n' + commandLine + '\n```' + detailBlock;
-    // The approver must see every argument; answer the agent now instead of
-    // carding a command that can't be shown in full.
-    const tooLong = cardQuestionTooLong(title, question);
-    if (tooLong) return err(req.id, 'invalid-args', `${tooLong}. Shorten the arguments and try again.`);
+    const question = commandQuestion + detailBlock;
     if (Buffer.byteLength(question, 'utf8') > CLI_APPROVAL_CARD_MAX_BYTES) {
       return err(
         req.id,
