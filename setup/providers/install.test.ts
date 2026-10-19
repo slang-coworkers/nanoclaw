@@ -136,6 +136,8 @@ describe('OpenCode setup installation and refresh', () => {
     const result = await applyProviderSkill(codexSkill, directory);
     expect(result.blockers).toEqual([]);
     expect(result.changed).toBe(false);
+    // Fork: /add-codex carries no payload, so upstream's archive-cleanup `nc:run`
+    // (which follows its payload copy, #4104) has nothing to clean and is absent.
     expect(fixture.commands).toEqual([]);
     expect(tree(directory)).toEqual(before);
   });
