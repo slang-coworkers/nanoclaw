@@ -27,6 +27,7 @@ import fs from 'fs';
 import path from 'path';
 
 import { readCoworkerTypes, readSkillCatalog } from '../../claude-composer.js';
+import { quoteForCard } from '../../card-text.js';
 import { GROUPS_DIR } from '../../config.js';
 import { createAgentGroup, getAgentGroup, getAgentGroupByFolder } from '../../db/agent-groups.js';
 import {
@@ -140,8 +141,8 @@ export async function requestCreateAgentHold(content: Record<string, unknown>, s
     agentName: sourceGroup.name,
     action: 'create_agent',
     payload: { ...content, ...createAgentHoldPayload(content) },
-    title: `Create agent: ${name}`,
-    question: `Agent "${sourceGroup.name}" wants to create a new sub-agent "${name}" (a new agent group with its own workspace and container).${templateApprovalNote(content)} Approve?`,
+    title: `Create agent: ${quoteForCard(name)}`,
+    question: `Agent ${quoteForCard(sourceGroup.name)} wants to create a new sub-agent ${quoteForCard(name)} (a new agent group with its own workspace and container).${templateApprovalNote(content)} Approve?`,
   });
 }
 

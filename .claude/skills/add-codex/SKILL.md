@@ -106,6 +106,8 @@ Two things to know before bumping it:
 - **The pin is the whole supply-chain control.** Codex briefly escaped the manifest into a hand-written `pnpm install -g` layer duplicated across both Dockerfiles, and `0.146.1` reached the image roughly 14.6 hours after it was published. Keep it here.
 - **The release-age quarantine is ENFORCED on this install path**, not merely documented. `container/install-cli-tools.sh` writes `minimum-release-age=4320` into `/root/.npmrc` — the config a global install actually reads — and proves at build time that pnpm is honouring it. A pin younger than three days fails the image build with `ERR_PNPM_NO_MATURE_MATCHING_VERSION`. So check the publish time before bumping (`pnpm view @openai/codex@<version> time`) and choose a version that has already matured rather than the newest tag — `0.160.0` was 154 hours old when it was adopted here. Do **not** reach for `minimumReleaseAgeExclude` — it needs explicit human sign-off, and every entry is a permanent hole unless someone prunes it.
 
+Codex 0.156.0 and later look up the login's workspace id before any model request, so a ChatGPT login needs the credential gateway skill from the same NanoClaw release, which puts that id in the agent's stand-in login. `/update-nanoclaw` refreshes both together; do not refresh this skill alone on an older gateway.
+
 ### 4. Build
 
 ```nc:run effect:build

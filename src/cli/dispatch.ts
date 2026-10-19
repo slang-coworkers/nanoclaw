@@ -12,6 +12,8 @@
  * the structural checks live, and the `approved: true` boolean no longer
  * exists.
  */
+import { escapeInvisibles, quoteForCard } from '../card-text.js';
+import { cardQuestionTooLong } from '../channels/ask-question.js';
 import { getContainerConfig } from '../db/container-configs.js';
 import { getAgentGroup } from '../db/agent-groups.js';
 import { getMessagingGroupAgentByPair } from '../db/messaging-groups.js';
@@ -178,9 +180,19 @@ export async function dispatch(
     const agentGroup = await getAgentGroup(ctx.agentGroupId);
     const agentName = agentGroup?.name ?? ctx.agentGroupId;
 
+    // Arguments are agent-controlled: JSON-encode each flag and value inside a
+    // code fence so no value can add lines, pass as another flag, or close the
+    // fence and reach the card's markup.
     const argSummary = Object.entries(req.args)
-      .map(([k, v]) => `--${k} ${v}`)
+      .map(([k, v]) => `--${/^[\w-]+$/.test(k) ? k : JSON.stringify(k)} ${JSON.stringify(v)}`)
       .join(' ');
+    const commandLine = escapeInvisibles(`ncl ${req.command}${argSummary ? ' ' + argSummary : ''}`);
+    const title = `CLI: ${req.command}`;
+    const commandQuestion = `Agent ${quoteForCard(agentName)} wants to run:\n` + '```\n' + commandLine + '\n```';
+    // The approver must see every argument; answer the agent now instead of
+    // carding a command that can't be shown in full.
+    const tooLong = cardQuestionTooLong(title, commandQuestion);
+    if (tooLong) return err(req.id, 'invalid-args', `${tooLong}. Shorten the arguments and try again.`);
 
     // Disclosure the command line cannot carry. A throw here refuses instead of
     // carding: approving a request whose reach we could not render is worse than
@@ -196,8 +208,7 @@ export async function dispatch(
     // over-long disclosure is refused rather than silently truncated into an
     // understatement of the reach.
     const detailBlock = detail && detail.length > 0 ? '\n```\n' + detail.join('\n') + '\n```' : '';
-    const question =
-      `Agent "${agentName}" wants to run:\n\`ncl ${req.command}${argSummary ? ' ' + argSummary : ''}\`` + detailBlock;
+    const question = commandQuestion + detailBlock;
     if (Buffer.byteLength(question, 'utf8') > CLI_APPROVAL_CARD_MAX_BYTES) {
       return err(
         req.id,
@@ -211,7 +222,7 @@ export async function dispatch(
       agentName,
       action: 'cli_command',
       payload: { frame: { id: req.id, command: req.command, args: req.args }, callerContext: ctx },
-      title: `CLI: ${req.command}`,
+      title,
       question,
     });
 
