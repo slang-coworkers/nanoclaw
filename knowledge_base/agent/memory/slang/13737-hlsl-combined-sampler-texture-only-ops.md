@@ -33,6 +33,33 @@ description: Human-filed (Buriola) emit bug, same root cause as #10522; draft PR
   WGSL keeps `$q`, because the forward ICEs (E99997) on bindless `.Handle`. Gaps: `GetSamplePosition`
   (pre-existing; follow-up 1) and untested Metal/WGSL 1D/3D/cube strings. Clarity: two copies of the
   `$q` mapping, CPU scope wording, PR body not in the five-part format. The fixer is iterating; I dispatched nothing.
+- 10-18 ~05:25Z **R2 pushed** @68f06ed8d (draft, 11 commits; new tests `gh-13737-bindless`, `gh-13737-cpu`).
+  The fixer reports, through the triager (I checked the head, draft state, file list and issue comment
+  6243760176 updated 05:25Z): HLSL and CPU forward `Load`, the subscript and `GetDimensions` to
+  `__extractImage(this)` through free-function trampolines (no type-checker change). Metal and WGSL keep
+  one `$q` rule. Full suite 10938/10941 (the 3 fp8 CUDA failures also fail on master). The CPU combined
+  `Load` fix is included. R2 review request sent; this is the last round (cap).
+- 10-18 06:59Z **slang-reviewer R2 = APPROVE_WITH_NITS** @68f06ed8d (0 bugs, 11 gaps, 3 questions; diff_hash
+  ab3058f1…). Reviewer's own runs: R1 (aidanfnv) and R3 (jhelferty-nv) both met. No `$q` is left on any HLSL
+  path. Suite 10923/10941, the same 18 failures as master in its container, 0 regressions. 528x7 corpus:
+  only fixes. DXC 0 errors on all probe sets; NonUniform preserved; L40S Dawn and vk/cuda runtime pass;
+  the mutation drill catches a missing `$q`. Devin's CPU flag is fixed (the Devin page is stale). Nits: dead
+  bindless `-NOT` check, vacuous HLSL fold row, non-2D `GetDimensions` forwarders not pinned by a test,
+  a misplaced `$q` is now an ICE (N1), CPU `Load(loc, offset)` is pre-existing (N2). The reviewer
+  suggests a tracking issue for E30027 (= follow-up 3).
+- CI: `workflow_dispatch` run 39099986886 @68f06ed is `waiting` on the **`falcor-ci`** environment gate
+  (`can_approve=false` for the bot). Only the small checks have run (REUSE, CLA, board-sync pass). A human
+  must approve it.
+- 10-18 07:23Z **nits pushed** @ce23b34d9 (draft, +552/−76, 12 files). 3 commits after R2. I checked the delta:
+  comments and docs, tighter tests, a rename of `m_skipsSplitSamplerArg`, and the `$p` assert now checks
+  `startsWith("$q")`. No logic change. 07:35Z **[Triage Resolution] = Fixed** (msg 48; msg 50 is a duplicate).
+  Fixer's numbers: PR tests 23/23, full suite 10941/10944 on the L40S (run before two comment-only edits),
+  DXC 10/10 probes. Issue artifact: fixer comment 6243760176 (current).
+- CI @ce23b34: `workflow_dispatch` 39107456646 is `waiting` on **`falcor-ci`** (`can_approve=false`).
+  39099986886 @68f06ed was cancelled when the new head was pushed.
+- Follow-ups grew to **5** (msg 48): adds (4) bindless DXIL `nonUniformIndex=false` (pre-existing; plain
+  `Texture2D.Handle` too) and (5) CPU prelude float-array `GetDimensions` (pre-existing; plain textures too).
+  Dedup 10-18 07:4xZ: no existing issues for 4 and 5.
 - **Unfiled follow-ups, operator call (asked 10-18 ~00:55Z):** (1) `Sampler2DMS.GetSamplePosition`,
   (2) plain `Texture2DMS[uint2]`, (3) the generic-inference E30027 bug. Dedup search on 10-18 found no
   existing issues. Triager is holding all three.
@@ -40,5 +67,6 @@ description: Human-filed (Buriola) emit bug, same root cause as #10522; draft PR
   guardrail).
 - Follow-up 3 may be weaker after R1: the trampoline compiles, so E30027 may only be a limit of member-call
   inference inside a generic extension, not a general bug. I told the operator on 10-18 02:2xZ.
-- **Resumes on:** the fixer's R2 push, then re-review, [Fix Report] and [Triage Resolution]; #13741 webhooks;
-  the operator's answer on follow-ups.
+- **Parked on humans:** falcor-ci approval, the ready flip (operator), filing the 5 follow-ups (operator), and
+  maintainer review. One-shot re-check `rechase-13737-pr13741-a71d` on 10-21 08:00Z (duplicate `-f5e0` cancelled).
+- **Resumes on:** #13741 webhooks (CI, review, merge), the operator's answers, or the one-shot.

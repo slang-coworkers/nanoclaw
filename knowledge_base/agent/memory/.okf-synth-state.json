@@ -2,50 +2,6 @@
  "version": 1,
  "history": [
   {
-   "at": "2026-10-01T04:09:20Z",
-   "backlog": 59831,
-   "defects": 0,
-   "offenders": 43,
-   "top": {
-    "path": "imported/project_slangpy_222_amd_atomic_grad_scatter.md",
-    "class": "OVERSIZE",
-    "size": 19012
-   }
-  },
-  {
-   "at": "2026-10-01T06:13:32Z",
-   "backlog": 48177,
-   "defects": 0,
-   "offenders": 39,
-   "top": {
-    "path": "imported/feedback_gh_paginate_401s_on_page2_use_explicit_pages.md",
-    "class": "OVERSIZE",
-    "size": 18582
-   }
-  },
-  {
-   "at": "2026-10-01T12:07:06Z",
-   "backlog": 38566,
-   "defects": 0,
-   "offenders": 35,
-   "top": {
-    "path": "imported/project_11985_macos_metal_capability_regression.md",
-    "class": "OVERSIZE",
-    "size": 18283
-   }
-  },
-  {
-   "at": "2026-10-01T18:04:55Z",
-   "backlog": 30017,
-   "defects": 0,
-   "offenders": 31,
-   "top": {
-    "path": "imported/feedback_reversing_a_correct_position_under_a_defective_input.md",
-    "class": "OVERSIZE",
-    "size": 17910
-   }
-  },
-  {
    "at": "2026-10-02T00:13:03Z",
    "backlog": 22776,
    "defects": 0,
@@ -302,6 +258,50 @@
   },
   {
    "at": "2026-10-18T00:00:46Z",
+   "backlog": 1473931,
+   "defects": 1119,
+   "offenders": 1184,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-18T06:02:38Z",
+   "backlog": 1473931,
+   "defects": 1119,
+   "offenders": 1184,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-18T12:01:28Z",
+   "backlog": 1473931,
+   "defects": 1119,
+   "offenders": 1184,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-18T18:01:02Z",
+   "backlog": 1473931,
+   "defects": 1119,
+   "offenders": 1184,
+   "top": {
+    "path": "imported/MEMORY-full-archive-2026-08-05.md",
+    "class": "DOSSIER",
+    "size": 215463
+   }
+  },
+  {
+   "at": "2026-10-19T00:01:57Z",
    "backlog": 1473931,
    "defects": 1119,
    "offenders": 1184,

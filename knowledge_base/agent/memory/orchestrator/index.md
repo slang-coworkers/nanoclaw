@@ -20,9 +20,11 @@ the one mount detail the spine omits.
 - [Interactive prompts: ask_user_question vs send_card](interactive-prompts.md) —
   which tool blocks, which returns immediately, and the card-routing caveat.
 - [/supervise-issues tick runbook](supervise-tick-runbook.md) — **read first every tick**:
-  cached `tickNNN/pull.sh` fast path, helper pipeline, delivery/turn discipline, pull/cache pitfalls.
+  cached `tickNNN/pull.sh` fast path, helper pipeline, delivery/turn discipline.
   - [False-positive shapes](supervise-tick-false-positives.md) — rows scan flags that aren't real, with disposition tokens.
   - [Scan blind spots](supervise-tick-blind-spots.md) — real stalls scan misreads, with detectors.
+  - [Pipeline pitfalls](supervise-tick-pull-pitfalls.md) — pull/cache, state, CI-cell, GitHub-API and worktree-GC traps.
+  - [Degraded ticks](supervise-tick-degraded.md) — probe first; credential-401 and `ncl`-congestion procedures.
   - [Scheduler: gated-series stall (closed tick 282)](scheduler-gated-series-stall.md) — false-gate stall cleared after the 10-14 06:06Z restart; the 11 per-issue i1xxxx gates were deleted (R10 cleanup, nanoclaw PR #1948) — never re-create them.
 - [Self-modification: packages & MCP servers](self-modification.md) —
   install_packages vs workspace pnpm install; add_mcp_server + the vault

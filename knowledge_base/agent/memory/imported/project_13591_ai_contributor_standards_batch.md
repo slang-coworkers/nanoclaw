@@ -40,6 +40,19 @@ defer on human-filed issues; skip `GoodFirstBug`/`HelpWanted`/`no-bot`; pass `bo
 a nanoclaw builder, or does szihs build it? Until then routing is unchanged; the 4-day defer is not applied by hand
 because #13591 says every check starts in warn mode. Re-check task armed for 10-18 12:00Z.
 
+**10-18 12:00Z re-chase (task `rechase-13596-r6-gate-f5e7`): the pending decision is moot, szihs builds the gate.**
+slang-coworkers/nanoclaw **#1993** "feat: the bot leaves room for people on new issues (R6)" (szihs, **draft**,
+`authorship/r6-issue-bot-gate`, created 10-13 11:42Z, last updated 10-14 09:35Z, 0 reviews/comments). It touches
+`src/config.ts`, `src/github-webhook-server.ts` and `src/webhook-github{,.test}.ts`. `deliverGitHubIssueOpened` never
+delivers issues labelled `GoodFirstBug`/`HelpWanted`/`no-bot`. It parks a fresh human-filed issue behind a one-shot
+re-check after `ISSUE_BOT_WAIT_DAYS` days, and delivers at once for `bot-ok` (`issues.labeled` is now accepted), a
+bot filer, or a crash/regression with a fenced reproducer. **Prod needs `ISSUE_BOT_WAIT_DAYS=4` in `.env`**: the
+default `0` keeps today's behavior, so merging alone changes nothing. Correction: the 10-13 line "no open
+nanoclaw PR builds the gate" was written before or without noticing #1993, which opened 35 min after the issue.
+Live state at 10-18: #13596 is OPEN with 0 comments and 0 labels. The labels `no-bot`/`bot-ok` still 404 on
+shader-slang/slang. No message sent. **Next:** nothing is due from Main. When #1993 merges, the `.env` flag and
+creating the two labels are operator/szihs steps. Resume only on a webhook or an operator ask.
+
 ## R10 (#13600) prod audit, 2026-10-13 (read-only, #13600 session sess-1791889641831-376bet)
 
 Two scheduled tasks post to #slang-committers (`1352357976878481468`). Both belong to **Slang Maintainer
@@ -57,6 +70,15 @@ Two scheduled tasks post to #slang-committers (`1352357976878481468`). Both belo
   (jhelferty-nv). That PR has been a draft since 09-21.
 
 The audit went to the operator only. Nothing was posted to GitHub and nothing was dispatched, per the batch hold above.
+
+**10-18 12:03Z re-chase (rechase-13600-r10-pr-rep-9fef): both decisions still open, reminder sent** (orchestrator-dashboard
+msg 37, thread `gh-issue-shader-slang/slang-13600`). Live STEP 3 still says "(part k/N)". #13600 has 0 comments. szihs
+now owns the fix in drafts: nanoclaw **#1996** (threads on text channels via `thread_name`, returns `thread_id`) and
+**#1997** (gate refuses "(part k/N)", and carries the proposed STEP 3 text in `docs/scheduled-tasks.slang-coworkers-prod.md`),
+plus slang-skills#64. All three are drafts, last updated 10-14. #1672 is still a draft. **The proposed STEP 3 depends on #1996
+being deployed**, so applying it before then creates no thread. Options sent to the operator: (a) leave it, (b) interim edit
+that drops the prefix, (c) pause one fire. No further timer. To edit the task, run `ncl tasks update slang-pr-report-committe-83e0
+--group ag-1776713258088-r8pp2t`; without `--group` it returns "task not found".
 
 
 ### 10-15 15:37Z: jkwak-work review comment on #13593 (cmt 6195975283), held

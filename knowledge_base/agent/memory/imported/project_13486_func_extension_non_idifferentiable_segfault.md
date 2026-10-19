@@ -28,3 +28,9 @@ slang-triager on `gh-issue-shader-slang/slang-13486` with `<github-post-authoriz
 answered as nv-slang-bot at 16:42Z (6173405645). Its finding: no user-guide page exists, and SP #039 is stale. That leaves 2 comments,
 no linked PR, and no fix request. The fix belongs to the assignee. A maintainer docs request or fix go-ahead routes to slang-triager
 on `gh-issue-shader-slang/slang-13486`.
+
+**Status as of 10-18 09:00Z: fix PR in review, held.** saipraveenb25 opened [#13677](https://github.com/shader-slang/slang/pull/13677)
+on 10-15 19:20Z ("Stop function-extension synthesis after target resolution fails", branch `codex/fix-func-extension-error-recovery`,
+closes #13486). It adds an `IsErrorExpr` check in `visitFuncExtensionDecl` (`slang-check-decl.cpp`) and 5 tests. CI: 60 pass / 1 skip.
+Review requested from dshreiner-nv; only coderabbit has reviewed. The PR belongs to the assignee, and the bot neither reviews nor routes it.
+#13486 counts as resolved when #13677 merges. Next one-shot: `rechase-12249-13411-c334` (10-21 09:00Z).

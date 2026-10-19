@@ -100,3 +100,8 @@ CI, Claude review and labels were skipped (draft). Still 0 human reviews or comm
 Dashboard 5-bullet sent (msg 15). Next: `rechase-13425-maintainer-9a08` 10-18 09:00Z.
 
 **10-15 14:15Z: version collision, found on the #13555 chain.** Draft #13564 also claims stable id **909** and max=**36**. Non-draft #13406 (jhelferty-nv) sets min=max=36. Whichever PR merges second renumbers, and git flags it as a conflict. Don't renumber early. The cross-reference is now in `rechase-13425-maintainer-9a08`. Details: [13555 chain](13555-ignore-capabilities-caseless-target-switch.md).
+
+## 10-18 09:00Z re-chase: no change
+Head is still `c994d094e1`, a draft, MERGEABLE, BEHIND master `60a7c8c88c` by 11 commits. `merge-tree` is clean. None of the 11 commits touch the PR's 14 files, and master's stable ids still max out at 908 with version 34/35, so there's no new collision.
+Still 0 human reviews or comments on #13425/#13423, and the assignee/review request is still kaizhangNV. No new workflow runs. #13386 and #13300 are still unmerged drafts, so the gate stays. On the collision watch, #13564 is still a draft and MERGEABLE, and #13406 is open but CONFLICTING with CHANGES_REQUESTED.
+Dashboard 5-bullet sent (msg 3). Next: `rechase-13425-maintainer-d9e9` 10-21 09:00Z.
