@@ -529,6 +529,25 @@ export async function routeAgentMessage(
     throw new Error(`agent-to-agent message ${msg.id} is missing a target agent group id`);
   }
 
+  // A chat delete can remove the target session while the write is landing, which
+  // leaves the message in an inbox nothing reads; route it once more if so. The
+  // retry re-resolves AND re-consults the guard: the landing spot can change (a
+  // deleted pin or explicit target falls through to a fresh session), and the
+  // one-owner check is keyed on that.
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    if (await routeAgentMessageOnce(msg, session, targetAgentGroupId, opts)) return;
+  }
+  // Throwing leaves the source message undelivered, so delivery retries it.
+  throw new Error(`agent-to-agent message ${msg.id}: target session deleted on every routing attempt`);
+}
+
+/** One resolve → guard → deliver pass; false only when the target session vanished under the write. */
+async function routeAgentMessageOnce(
+  msg: RoutableAgentMessage,
+  session: Session,
+  targetAgentGroupId: string,
+  opts: { grant?: PendingApproval },
+): Promise<boolean> {
   // Resolve the landing spot first (read-only): the guard needs to know whether
   // this delivery would mint a fresh session, and on which thread.
   const resolution = await resolveAgentRoute(msg, session, targetAgentGroupId);
@@ -557,7 +576,7 @@ export async function routeAgentMessage(
       // only re-run it MAX_DELIVERY_ATTEMPTS times and fail silently. Tell the
       // sender exactly once why, and who to send to instead.
       await refuseSecondItemSession(msg, session, targetAgentGroupId, routeThread);
-      return;
+      return true;
     }
     throw new GuardDenyError(decision.reason);
   }
@@ -588,10 +607,10 @@ export async function routeAgentMessage(
       to: targetAgentGroupId,
       msgId: msg.id,
     });
-    return;
+    return true;
   }
 
-  await performAgentRoute(msg, session, targetAgentGroupId, false, resolution);
+  return performAgentRoute(msg, session, targetAgentGroupId, false, resolution);
 }
 
 /**
@@ -685,6 +704,8 @@ export function buildGateQuestion(sourceName: string, targetName: string, conten
  * auth + the optional per-edge message gate, forward files, write to the target
  * inbox, and wake it. The gate approve-handler re-enters here with
  * `enforceGate=false` so an approved message is delivered rather than re-held.
+ * Resolves false only when the target session was deleted under the write, so
+ * the caller routes the message again.
  */
 export async function performAgentRoute(
   msg: RoutableAgentMessage,
@@ -692,7 +713,7 @@ export async function performAgentRoute(
   targetAgentGroupId: string,
   enforceGate = false,
   resolved?: AgentRouteResolution,
-): Promise<void> {
+): Promise<boolean> {
   // routeAgentMessage resolves the route before consulting the guard and hands
   // it down; a direct caller (tests) gets the same layered resolution here.
   const resolution = resolved ?? (await resolveAgentRoute(msg, session, targetAgentGroupId));
@@ -765,7 +786,7 @@ export async function performAgentRoute(
   // if it's a different session, the pin is what the sender meant.
   if (resolution.kind === 'ancestor') {
     await deliverAncestorReply(msg, session, resolution.route);
-    return;
+    return true;
   }
 
   // Authorization + the per-edge message gate are enforced by the guard seam
@@ -835,7 +856,7 @@ export async function performAgentRoute(
         targetAgentGroupId,
         threadId,
       });
-      return;
+      return true;
     }
 
     // Stamp the route-back hint so the recipient's reply can find its way
@@ -916,11 +937,23 @@ export async function performAgentRoute(
       messaging_group_id: null,
       agent_group_id: targetAgentGroupId,
     });
-    return;
+    return true;
   }
 
   const fresh = await getSession(targetSession.id);
-  if (fresh) await requestWake(fresh, 'inbound-message');
+  if (fresh) {
+    await requestWake(fresh, 'inbound-message');
+    return true;
+  }
+  log.warn('Agent message target session was deleted while routing', {
+    to: targetAgentGroupId,
+    targetSession: targetSession.id,
+    a2aMsgId,
+  });
+  // Its container may still poll that inbox until the sweep stops it; fail the copy so
+  // only the re-routed one runs.
+  await withExistingMailboxSession(targetAgentGroupId, targetSession.id, (m) => m.markMessageFailed(a2aMsgId));
+  return false;
 }
 
 /**

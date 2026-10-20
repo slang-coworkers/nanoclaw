@@ -243,6 +243,10 @@ export function wrapSqliteInbound(
     getInboundSourceSessionId: (messageId) => getInboundSourceSessionId(db, messageId),
     getMostRecentPeerSourceSessionId: (peerAgentGroupId, threadId) =>
       getMostRecentPeerSourceSessionId(db, peerAgentGroupId, threadId),
+    hasMessagesFromOtherAgents: (selfAgentGroupId) =>
+      db
+        .prepare("SELECT 1 FROM messages_in WHERE channel_type = 'agent' AND platform_id != ? LIMIT 1")
+        .get(selfAgentGroupId) !== undefined,
     insertTask: async (task) => insertTaskRow(db, task, nextSequence()),
     armNextTask: async (originalId, task) => {
       const sequence = nextSequence();
@@ -467,6 +471,10 @@ export function wrapSqliteOutbound(
           )
           .all(limit) as MailboxTimelineMessage[]
       ).map((row) => ({ ...row, timestamp: sqliteTimestamp(row.timestamp) })),
+    hasMessagesToOtherAgents: (selfAgentGroupId) =>
+      readable()
+        .prepare("SELECT 1 FROM messages_out WHERE channel_type = 'agent' AND platform_id != ? LIMIT 1")
+        .get(selfAgentGroupId) !== undefined,
   };
 }
 
