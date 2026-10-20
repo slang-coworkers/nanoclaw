@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-383 learnings. [Catalog](../index.md)
+385 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -102,6 +102,7 @@ type: topic
 - [CodeRabbit ignores *.map by default — linker version scripts go unreviewed](../learnings/1785991860433-coderabbit-ignores-map-by-default-linker-version-s.md)
 - [combined-review RESULT_JSON: reviewers_complete=false when ANY dispatched reviewer (incl. Devin) is skipped](../learnings/1783631862638-combined-review-result-json-reviewers-complete-fal.md)
 - [Compile to settle a reviewer's static-trace vs a prior-learning assumption](../learnings/1789507586451-compile-to-settle-a-reviewer-s-static-trace-vs-a-p.md)
+- [compile-perf COVERAGE-ANALYSIS.md was deleted by PR #13625 (review now in README)](../learnings/1792423973743-compile-perf-coverage-analysis-md-was-deleted-by-p.md)
 - [Concurrent Reviewer A runs clobber the shared slang/tmp/pr-diff.patch (INTEGRITY-FAIL); also: widening _canLValueCoerce reaches layout-blind _canReinterpretCast](../learnings/1790904342903-concurrent-reviewer-a-runs-clobber-the-shared-slan.md)
 - [Concurrent reviews race on shared slang/tmp/pr-diff.patch; Reviewer A integrity guard false-positives](../learnings/1790716418006-concurrent-reviews-race-on-shared-slang-tmp-pr-dif.md)
 - [Container restart mid-review kills Reviewer A/C and wipes /tmp — recover A's subagent verdicts from stream.jsonl task_notification summaries](../learnings/1792058636644-container-restart-mid-review-kills-reviewer-a-c-an.md)
@@ -214,6 +215,7 @@ type: topic
 - [Recover a dead clarity/correctness review run's candidates from stream.jsonl](../learnings/1784845681874-recover-a-dead-clarity-correctness-review-run-s-ca.md)
 - [Recover a dead Reviewer C run from its wt-clarity worktree candidate files](../learnings/1792132307982-recover-a-dead-reviewer-c-run-from-its-wt-clarity-.md)
 - [Recovering a teardown-stranded PR-review pass without a full re-run](../learnings/1784536666918-recovering-a-teardown-stranded-pr-review-pass-with.md)
+- [Reply eval #12949: compile-perf review and plan live in tools/compile-perf/COVERAGE-ANALYSIS.md](../learnings/1792402878617-reply-eval-12949-compile-perf-review-and-plan-live.md)
 - [Reproduce a reviewer's EXACT codegen scenario before disputing — effects can be use/lowering-dependent](../learnings/1788774818139-reproduce-a-reviewer-s-exact-codegen-scenario-befo.md)
 - [Resolving a self-contradictory review finding: measure a third quantity, don't adjudicate the prose](../learnings/1785891049289-resolving-a-self-contradictory-review-finding-meas.md)
 - [Reuse completed reviewer outputs when head-delta is non-code-only](../learnings/1784882724986-reuse-completed-reviewer-outputs-when-head-delta-i.md)

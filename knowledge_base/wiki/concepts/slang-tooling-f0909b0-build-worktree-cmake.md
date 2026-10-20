@@ -3,7 +3,7 @@ title: "Slang build in worktrees: submodule init, A/B baselines, stale binaries"
 type: concept
 group: slang-tooling
 tags: [build, git-worktree, submodule, cmake, a-b-baseline, stale-binary, ninja]
-source_count: 23
+source_count: 24
 ---
 
 # Slang build in worktrees: submodule init, A/B baselines, stale binaries
@@ -15,6 +15,7 @@ setup traps that, unhandled, each cost 10–40 minutes — and the CMake build g
 under you after a rebase.
 
 - **`git worktree add` does NOT populate submodules** (nor *nested* ones), so configure fails with `non-existent target "SPIRV-Headers::SPIRV-Headers"` or `external/<x> does not contain a CMakeLists.txt`. Run `git submodule update --init --recursive` in the worktree before the first configure. If that (or `--reference`) fails with "transport 'file' not allowed" (the URLs are local clones; git ≥2.38 blocks file transport), rerun it as `git -c protocol.file.allow=always submodule update --init --recursive`, then clear any half-written cache and reconfigure. A script that chains configure behind that step with `&&` stops silently (exit 1, no configure log), so check the submodule log first. Copying `external/` from a worktree with matching pins is the fallback. A worktree built with only `slangc slang-test` also needs `libslang-llvm.so` copied into `build/<cfg>/lib`, or its FileCheck rows report ignored.
+- **For a quick PR-head `slangc` check whose base equals the main checkout's HEAD, symlink each empty `external/<sub>` to the main checkout's copy**, and build `slang-glslang` with `slangc`, or every `-target spirv` compile fails with E00100 (spirv-opt not loaded).
 - **Building an old (2025-era) commit fails `git submodule update` with "not our ref"**: the local-mirror URLs lack the old SHAs and some pins are gone upstream. Fetch each pinned SHA from the `.gitmodules` upstream URL into the shared `.git/modules/external/<p>` store, `git submodule foreach 'git checkout -f HEAD'`, and skip WindowsToolchain. Old trees also need `-DSLANG_ENABLE_GFX=ON` and the `slang-glslang` target.
 - **A configure that dies on a missing `::` target is almost always an uninitialised nested
   submodule, not a code error** — the nested `external/spirv-tools/external/spirv-headers` is
@@ -120,6 +121,16 @@ With the init fixed, a PR #13535 verify worktree built `slangc`, `slang-test`, `
 The older fallback, copying a populated `external/` from another worktree, still works when its
 pins match (`git diff --quiet <base> HEAD -- external .gitmodules`; ~10 min to a build on #13429)
 [copy external/ from a same-base worktree](../learnings/1791151479459-slang-pr-review-runner-scripts-may-lose-exec-bit-r.md).
+**Quick PR-head verify build.** To check a fixer's PR head yourself, run `git fetch origin
+pull/N/head:refs/remotes/origin/pr-N` and `git worktree add --detach`. `git submodule update
+--init --reference <main>` can fail (it failed on `external/WindowsToolchain`). When the PR base
+equals the main checkout's HEAD, symlink each empty `external/<sub>` dir to the main checkout's
+copy instead of initializing it. Then run `cmake --preset default -DSLANG_ENABLE_TESTS=OFF` and
+build `--target slangc` **and** `--target slang-glslang`: without slang-glslang every `-target
+spirv` compile fails with E00100 "failed to load downstream compiler 'spirv-opt'", which looks
+like the fix broke everything. It takes about 5 minutes on 64 cores. Remove the worktree and the
+`pr-N` ref afterwards
+([quick PR-head slangc verify build](../learnings/1792365932155-quick-pr-head-slangc-verify-build-symlink-submodul.md)).
 
 Several atoms flag the same **build-subagent hazard**: a subagent that launches ninja with
 `&`/`nohup` and returns leaves a *detached* build that dies when its shell exits (configure
@@ -199,7 +210,7 @@ full-suite runs
 
 A `git merge origin/master` stales two things a targeted rebuild does not refresh. **(1) Submodule pins.** The merge can move pins (e.g. `external/spirv-tools`, `spirv-headers`) while the checked-out submodules stay at the old SHAs — `git status` shows ` M external/...` — so the verify build tests a tree CI will never build. Run `git submodule update --init <paths>` (or check `git diff --submodule=short`) right after the merge, before rebuilding [sync submodules after merging master](../learnings/1791250506095-after-merging-origin-master-sync-submodules-before.md). (That atom also reconfirms that the critique gate records only fresh `mcp__codex__codex` calls carrying the canonical `/codex-critique` developer-instructions; a `codex-reply` is never a round.) **(2) Serialized standard modules.** When master bumps the serialized IR module version, `--target slangc slang-test` leaves the std modules stale: a full suite then shows dozens of failures across `functional/`/`numerics/` with `warning[E00131]: ignoring IR module version 32 because this compiler supports IR module versions 33 through 33` and `cannot open file 'slang/functional.slang'`. A full `cmake --build --preset debug` cleared 59 of 60 (the remaining gfx-smoke (cpu) fails on master too). **Rule: after any master merge, build the full preset before running the suite; a sudden jump of dozens of standard-module failures means stale modules, not a regression** [full build after an IR module version bump](../learnings/1791238883748-after-merging-master-that-bumps-the-ir-module-vers.md). A partial-target build gives the same `functional.slang` symptom with no merge at all: building only `slangc slang-test` in a fresh worktree never builds `slang/functional.slang`, so `tests/functional/*` and `tests/dispatcher/smoke` fail. Build all targets before running the full suite ([partial-target build skips functional.slang](../learnings/1791508327549-fresh-slang-worktree-configure-can-fetch-a-stale-s.md); the same atom's stale-`libslang-llvm.so` finding is on [Building & regression-testing Slang's LLVM path](slang-tooling-llvm-target-build.md)).
 
-**Source learnings (23):**
+**Source learnings (24):**
 - [Git worktrees do not inherit submodule checkouts — init them before CMake configure](../learnings/1787176235982-git-worktrees-do-not-inherit-submodule-checkouts-i.md)
 - [Slang git worktree needs per-worktree submodule init before cmake configure](../learnings/1787677680988-slang-git-worktree-needs-per-worktree-submodule-in.md)
 - [slang worktree build needs submodule init; disable DXIL to skip 30-min DXC-from-source on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md)
@@ -223,5 +234,6 @@ A `git merge origin/master` stales two things a targeted rebuild does not refres
 - [Fresh slang worktree needs submodule init before cmake configure](../learnings/1792139289864-fresh-slang-worktree-needs-submodule-init-before-c.md) — GC-reaped worktree recreated on a fix branch; `rm -rf build` after init
 - [Building 2025-era slang commits: dead submodule pins + local-mirror URLs](../learnings/1792191559147-building-2025-era-slang-commits-dead-submodule-pin.md) — fetch pinned SHAs into `.git/modules/external/<p>` from upstream; `foreach checkout -f HEAD`; skip WindowsToolchain; `SLANG_ENABLE_GFX=ON`, `slang-glslang`
 - [New slang worktrees from the local clone need `git -c protocol.file.allow=always submodule update`](../learnings/1792241165412-new-slang-worktrees-from-the-local-clone-need-git-.md) — #13410 merge check; ~10 min Release build; copy `libslang-llvm.so` into `build/Release/lib`
+- [Quick PR-head slangc verify build: symlink submodules from the main checkout, and build slang-glslang too](../learnings/1792365932155-quick-pr-head-slangc-verify-build-symlink-submodul.md) — `--reference` init failed on WindowsToolchain; E00100 without slang-glslang; ~5 min on 64 cores
 
 _Catalog: [[wiki/index.md]]_

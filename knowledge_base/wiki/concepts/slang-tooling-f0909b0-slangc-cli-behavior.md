@@ -3,7 +3,7 @@ title: "slangc CLI behavior: exit codes, crash semantics, output streams, and op
 type: concept
 group: slang-tooling
 tags: [slangc, exit-codes, slang-assert, dump-ir, dump-module, warnings-as-errors, semantics, perf, filestream, fifo, output-paths, e00070, entry-point, container-output, slang-module]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -123,10 +123,13 @@ with no `-entry` stops at E00070 ("output path not associated with any entry poi
 semantic checking errors are never printed, so a quick check reads as "HLSL is fine". WGSL and
 SPIR-V accept `-o` without `-entry` and do report the error. On shader-slang/slang#12917 the
 reporter said the `-zero-initialize` cross-module E30600 bug did not happen on HLSL; with
-`-entry main_kernel` added, HLSL fails the same way, so the bug is in the front end, not in a
-backend (verified with the v2026.19 release tarball). Before you accept that a bug is
-target-specific, re-run the other targets with `-entry <name>`
-[-target hlsl without -entry stops at E00070](../learnings/1792155590490-slangc-target-hlsl-without-entry-stops-at-e00070-h.md).
+`-entry main_kernel` added, HLSL hits the same E30600, so the bug is in the front end, not in a
+backend (verified with the v2026.8.1, v2026.19 and v2026.20 releases). The E00070 usage error
+masks the front-end bug, so when a reporter says "fails on spirv/wgsl but works on HLSL", re-run
+the HLSL case (and every other target) with `-entry <name> -stage <stage>` before you accept that
+the bug is target-specific
+[-target hlsl without -entry stops at E00070](../learnings/1792155590490-slangc-target-hlsl-without-entry-stops-at-e00070-h.md),
+['works on HLSL' claims: check for E00070 when -o has no -entry](../learnings/1792306193789-slangc-works-on-hlsl-claims-check-for-e00070-when-.md).
 
 There is, however, a *corrected* premise about output streams worth flagging as a
 supersession. `docs/generated/tests/_meta/prompts/_common.md` long claimed that a `-dump-ir` +
@@ -339,7 +342,7 @@ churn, whereas changing the default to emit column would touch hundreds of `test
 expected-output blocks
 [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md).
 
-**Source learnings (19):**
+**Source learnings (20):**
 - [Master-vs-fix probe matrix: wrong entry name makes it vacuous](../learnings/1791434055039-master-vs-fix-probe-matrix-wrong-entry-name-makes-.md) — both binaries fail E38000 → "no diff"; `-o /dev/null` + validation gives E00004, not a spirv-val failure
 - [slangc -lang applies only to inputs after it; slang-test SIMPLE puts the file path first](../learnings/1791406993515-slangc-lang-applies-only-to-inputs-after-it-slang-.md) — a `.slang` test with `-lang hlsl` is still parsed as Slang; use a `.hlsl` file (#10305, #13495)
 - [slangc -o /dev/null fails in-container; and head -N on a compiler log hides the ICE](../learnings/1786454371761-slangc-o-dev-null-fails-in-container-and-head-n-on.md) — E00004 exit 255 looks like an ICE; byte-count as a second signal; warnings print first so grep outcome classes; don't publish from an unread `rc255` catch-all bucket.
@@ -358,4 +361,5 @@ expected-output blocks
 - [slangc default diagnostic output is now the rich Rust-style block, not the classic MSVC line](../learnings/1789662675615-slangc-default-diagnostic-output-is-now-the-rich-r.md) — verified on top-of-tree; rich via `shouldEmitRichDiagnostics` with no flag; the classic path emits column only under LanguageServer + a bare-integer id; an MSVC-parseable single line is a distinct opt-in third style.
 - [slangc -o /dev/null fails with E00004 in the fixer container (slang#11782)](../learnings/1790802490676-slangc-o-dev-null-fails-with-e00004-in-the-fixer-c.md) — workflow docs suggest it for validation checks; EXIT=255 there is not a compile failure
 - [slangc -target hlsl without -entry stops at E00070, hiding semantic errors](../learnings/1792155590490-slangc-target-hlsl-without-entry-stops-at-e00070-h.md) — false "HLSL works" claims; WGSL/SPIR-V accept `-o` without `-entry` (#12917)
+- [slangc 'works on HLSL' claims: check for E00070 when -o has no -entry](../learnings/1792306193789-slangc-works-on-hlsl-claims-check-for-e00070-when-.md) — re-run HLSL with `-entry -stage`; #12917 hits the same E30600 on v2026.8.1 and v2026.20
 - [slangc container outputs: silent no-file cases and how to test exit codes](../learnings/1792174239466-slangc-container-outputs-silent-no-file-cases-and-.md) — `maybeWriteContainer` dropped failures; three exit-0 cases; `result code = -1`; `-emit-cpu-via-llvm` gate

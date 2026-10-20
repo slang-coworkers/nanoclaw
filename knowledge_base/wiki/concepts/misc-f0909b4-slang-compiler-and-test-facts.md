@@ -36,7 +36,10 @@ issues. Grouped by subsystem:
   unwired).
 - **CUDA/NVRTC**: masked texture stores aren't legalized for CUDA; NVRTC's PCH heap
   is process-global (no program-reuse refactor needed); `[ForceInline]` isn't
-  target-gated for CUDA emit.
+  target-gated for CUDA emit. Deferring it to NVCC as `__forceinline__` (#12623)
+  saves compile time only where NVCC would inline anyway (small helpers); on large
+  callees the hint costs as much as Slang's pre-inline, so benchmark both sizes.
+  Re-grep `performForceInlining` call sites before citing their line numbers.
 - **Test harness**: diagnostic tests dedup identical error+span rows and match by
   exact column (exhaustive); `-vk` without `-output-using-type` prints hex;
   `CHECK-NOT: error` false-matches the harness wrapper; slangc integer options are
@@ -193,6 +196,25 @@ unless `command-line-slangc-reference.md` is regenerated. [ForceInline CUDA emit
 no target gate; the CUDA emitter emits zero `__forceinline__`; and this reporter's
 `[issue 09](<NN>-topic.md)` links are internal doc filenames that map to *sibling
 same-day GitHub issues*, not real links — search by topic + same author.
+The line numbers in #12623 and in earlier notes (`slang-emit.cpp:1706`/`:2524`) are
+stale: on master e26354b (2026-10-19) `performForceInlining` is called at
+`slang-emit.cpp:1828`, `:1863` (the main `[ForceInline]` consumer in
+`linkAndOptimizeIR`), `:2691` and `:2845` (pack/unpack helper materialization);
+`ForceInliningPass::shouldInline` is at `slang-ir-inline.cpp:1157`, and the only CUDA
+inline hint emitted is still `__noinline__` (`slang-emit-cuda.cpp:515`). Re-grep before
+citing or gating them ([performForceInlining call sites moved](../learnings/1792399843258-slang-12623-performforceinlining-call-sites-moved-.md)).
+**The #12623 premise "NVCC inlines it regardless" holds only for small callees.**
+Measured on v2026.20 with NVCC 12.6 `-ptx -arch=sm_89` (L40S): with 12-line float4
+helpers (no transcendentals, H=40, C=20) the plain build took 10.8 s, Slang
+`[ForceInline]` 16.3 s (114,646 vs 5,093 `.cu` lines), and plain plus a hand-added
+`__forceinline__` 11.0 s, all with the same 49,719-line PTX — NVCC already inlined the
+helpers, so the hint was free (another H=20/C=10 repro: plain 0.71 s, forced 2.1 s,
+hint 0.71 s, plain and hint PTX byte-identical). With large helpers (sin/cos/exp,
+H=20, C=10) the plain build keeps 20 `.func` and 144 calls (93 K PTX lines, 5.7 s),
+`[ForceInline]` gives 233 K lines in 26.8 s, and the hint 235 K lines in 28.9 s: the
+deferral saves nothing there and is not output-neutral against the plain build. So
+benchmark a `[ForceInline]` deferral on large callees too before accepting the
+compile-time win ([CUDA __forceinline__ hint vs Slang pre-inline](../learnings/1792304491582-cuda-forceinline-hint-vs-slang-pre-inline-the-comp.md)).
 
 ## Test-harness and CLI mechanics
 
@@ -237,6 +259,8 @@ positive-control CHECK that the output actually changed.
 - [A "replace" refactor's edit-set = filtered readers/copiers only; blanket clones carry it free](../learnings/1787161017583-a-replace-refactor-s-edit-set-filtered-readers-cop.md) — three classes (filtered readers, filtered copiers, blanket copiers); negative controls: wrapper helpers + strip passes; producer-decouple pays off only under REPLACE.
 - [CUDA masked texture store (gTex[i].w=x) not legalized — emits raw subscript](../learnings/1787171238862-cuda-masked-texture-store-gtex-i-w-x-not-legalized.md) — `legalizeImageSubscript` is gated Metal/GLSL/SPIRV only; add CUDA (and CPP) to the switch so masked stores become read-modify-write imageStore.
 - [Reporter doc-filename links (NN-topic.md) map to sibling GitHub issues; ForceInline CUDA facts](../learnings/1787145904301-reporter-doc-filename-links-nn-topic-md-map-to-sib.md) — `NN-topic.md` links are internal, resolve to same-author same-day sibling issues; `[ForceInline]` inlined unconditionally, CUDA emits no `__forceinline__`.
+- [CUDA __forceinline__ hint vs Slang pre-inline: the compile-time win holds only when NVCC would inline anyway (#12623)](../learnings/1792304491582-cuda-forceinline-hint-vs-slang-pre-inline-the-comp.md) — small float4 helpers: hint free; large sin/cos/exp helpers: hint ≈ pre-inline cost
+- [slang#12623: performForceInlining call sites moved in slang-emit.cpp (master e26354b)](../learnings/1792399843258-slang-12623-performforceinlining-call-sites-moved-.md) — now :1828/:1863/:2691/:2845; shouldInline at slang-ir-inline.cpp:1157; re-grep before citing
 - [NVRTC PCH heap is process-global — no nvrtcProgram-reuse refactor needed for -pch](../learnings/1787145997814-nvrtc-pch-heap-is-process-global-no-nvrtcprogram-r.md) — `nvrtcSetPCHHeapSize` persists process-wide; load PCH symbols null-tolerant + version-gated; verify external-toolkit semantics against vendor docs.
 - [CUDA noinline policy (#12620) stacks on the emit mechanism PR #12419](../learnings/1787146536461-cuda-noinline-policy-12620-stacks-on-the-emit-mech.md) — emit spelling lives in #12419; policy work is a CLI flag + CUDA-gated IR pass; a new `-fxxx` breaks `check-cmdline-ref` without regenerating the docs.
 - [Slang DIAGNOSTIC_TEST dedups identical error+span rows to one annotation](../learnings/1786984951149-slang-diagnostic-test-dedups-identical-error-span-.md) — the span row drops when its location+message equal the primary; write one annotation for those; verify empirically with `-enable-machine-readable-diagnostics`.

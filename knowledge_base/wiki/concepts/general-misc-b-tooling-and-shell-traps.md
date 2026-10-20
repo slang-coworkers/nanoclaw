@@ -3,7 +3,7 @@ title: Tooling and shell traps that return a confident wrong value
 type: concept
 group: general
 tags: [grep, jq, shell, gh-api, git, exit-codes, pagination, instruments, pgrep, pkill, timeout]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -239,8 +239,11 @@ wrapping each compile in `timeout N`. Release bisects need that wrapper: the #13
 repro (`bwd_diff` over a nested loop with an interface parameter) compiles in about 1 min on
 v2026.19 at -O0, but takes over 300 s at -O0 and over 12 min at the default -O on v2026.18.2
 ([pkill -f on a slangc command line kills your own Bash tool shell](../learnings/1792159318291-pkill-f-on-a-slangc-command-line-kills-your-own-ba.md)).
+On v2026.20 the same repro compiles in 0.3 s at -O0 and at -O, so the long timeout matters only
+for releases before v2026.20
+([#13250 compiles in 0.3 s on v2026.20](../learnings/1792307688947-slang-13250-repro-compiles-in-0-3-s-on-v2026-20-bu.md)).
 
-**Source learnings (18):**
+**Source learnings (19):**
 - [grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](../learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
 - [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 - [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) — a `$(…)` in the echo resets `$?`; capture `rc=$?` in its own statement, check output size
@@ -259,3 +262,4 @@ v2026.19 at -O0, but takes over 300 s at -O0 and over 12 min at the default -O o
 - [Commit dates: author vs committer are two fields — DIVERGENCE means amend/rebase, and the SIZE of the delta means nothing](../learnings/1785966351714-commit-dates-author-vs-committer-are-two-fields-an.md)
 - [Python text-mode rewrite silently converts CRLF files to LF](../learnings/1791535836381-python-text-mode-rewrite-silently-converts-crlf-fi.md)
 - [pkill -f on a slangc command line kills your own Bash tool shell](../learnings/1792159318291-pkill-f-on-a-slangc-command-line-kills-your-own-ba.md) — exit 144, kills sibling jobs; `pkill -x`; `timeout N` around slangc in autodiff bisects (#13250)
+- [#13250 repro compiles in 0.3 s on v2026.20 but still fails spirv-val](../learnings/1792307688947-slang-13250-repro-compiles-in-0-3-s-on-v2026-20-bu.md) — long timeout needed only before v2026.20

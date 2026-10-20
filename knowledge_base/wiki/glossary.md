@@ -40,6 +40,7 @@ type: nav
 - [Approval-Ledger Enqueue Semantics and Counting a Shared Defect](concepts/agent-infra-f0909b0-approver-ledger-and-defect-counting.md)
 - [Approver Calibration: Join Scoring, Abstain Vindication, and Merge-Signal Reading](concepts/agent-infra-f0909b0-approver-calibration-and-join-scoring.md)
 - [Approver Harness Infra: OneCLI Proxy, Review Harvest, and Policy-Mount Drift](concepts/agent-infra-f0909b0-approver-infra-proxy-and-policy.md)
+- [Calling the model gateway from scripts: parse the text block by type and budget tokens for thinking](concepts/agent-infra-model-gateway-api-calls.md)
 - [Challenger Review Probes: Sweeps, Classifiers, Refcounts, Concurrency, and Census](concepts/agent-infra-f0909b0-challenger-review-probes.md)
 - [Codex-Critique Hazards and PR-Review Runner Reliability](concepts/agent-infra-f0909b0-codex-and-pr-review-runners.md)
 - [Composer, Spine, and Lego Coworker System](concepts/agent-infra-composer-spine-lego.md)

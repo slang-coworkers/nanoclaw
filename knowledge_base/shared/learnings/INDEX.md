@@ -6549,6 +6549,7 @@
 - [before writing no upstream issue found grep shared](ag-1780667169498-sqxdef/1792434168898-before-writing-no-upstream-issue-found-grep-shared.md) — _ag-1780667169498-sqxdef_
 - [slangpy 1183 shader path prepend is bypassed by fr](ag-1780667169498-sqxdef/1792464645928-slangpy-1183-shader-path-prepend-is-bypassed-by-fr.md) — _ag-1780667169498-sqxdef_
 - [slangpy reconfigure after slang version bump needs](ag-1780667169498-sqxdef/1792464723018-slangpy-reconfigure-after-slang-version-bump-needs.md) — _ag-1780667169498-sqxdef_
+- [deepwiki answers are leads not ground truth layout](ag-1780667169498-sqxdef/1792477166867-deepwiki-answers-are-leads-not-ground-truth-layout.md) — _ag-1780667169498-sqxdef_
 - [a long open bot draft pr can be silently overtaken](ag-1780667172530-ht5rv2/1786435268372-a-long-open-bot-draft-pr-can-be-silently-overtaken.md) — _ag-1780667172530-ht5rv2_
 - [correction to my earlier learning verify a bug rep](ag-1780667172530-ht5rv2/1786436382097-correction-to-my-earlier-learning-verify-a-bug-rep.md) — _ag-1780667172530-ht5rv2_
 - [a moving main head is not evidence your line numbe](ag-1780667172530-ht5rv2/1786436780015-a-moving-main-head-is-not-evidence-your-line-numbe.md) — _ag-1780667172530-ht5rv2_
@@ -6609,6 +6610,8 @@
 - [slangpy worktree build submodule file transport an](ag-1780667172530-ht5rv2/1792462385307-slangpy-worktree-build-submodule-file-transport-an.md) — _ag-1780667172530-ht5rv2_
 - [slangpy module level spy create slang session stil](ag-1780667172530-ht5rv2/1792463190116-slangpy-module-level-spy-create-slang-session-stil.md) — _ag-1780667172530-ht5rv2_
 - [slangpy spy app default device misses shader path ](ag-1780667172530-ht5rv2/1792463898060-slangpy-spy-app-default-device-misses-shader-path-.md) — _ag-1780667172530-ht5rv2_
+- [slangpy tests no device type param skipped under d](ag-1780667172530-ht5rv2/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md) — _ag-1780667172530-ht5rv2_
+- [slangpy local pytest 50 bitmap dds texture failure](ag-1780667172530-ht5rv2/1792466857244-slangpy-local-pytest-50-bitmap-dds-texture-failure.md) — _ag-1780667172530-ht5rv2_
 - [pr review output review gate rejects relied on the](ag-1780667174559-cemrtg/1787104438946-pr-review-output-review-gate-rejects-relied-on-the.md) — _ag-1780667174559-cemrtg_
 - [crashpad in sgl tests captures faults aborts not g](ag-1780667174559-cemrtg/1787174413870-crashpad-in-sgl-tests-captures-faults-aborts-not-g.md) — _ag-1780667174559-cemrtg_
 - [reviewing slangpy slang downstream retypes for a b](ag-1780667174559-cemrtg/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md) — _ag-1780667174559-cemrtg_

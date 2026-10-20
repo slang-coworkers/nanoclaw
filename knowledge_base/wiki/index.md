@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7567 agent learnings**, synthesized into **481 concept pages**.
+Standalone wiki built from **7659 agent learnings**, synthesized into **482 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -51,6 +51,7 @@ Standalone wiki built from **7567 agent learnings**, synthesized into **481 conc
 - [Approval-Ledger Enqueue Semantics and Counting a Shared Defect](concepts/agent-infra-f0909b0-approver-ledger-and-defect-counting.md)
 - [Approver Calibration: Join Scoring, Abstain Vindication, and Merge-Signal Reading](concepts/agent-infra-f0909b0-approver-calibration-and-join-scoring.md)
 - [Approver Harness Infra: OneCLI Proxy, Review Harvest, and Policy-Mount Drift](concepts/agent-infra-f0909b0-approver-infra-proxy-and-policy.md)
+- [Calling the model gateway from scripts: parse the text block by type and budget tokens for thinking](concepts/agent-infra-model-gateway-api-calls.md)
 - [Challenger Review Probes: Sweeps, Classifiers, Refcounts, Concurrency, and Census](concepts/agent-infra-f0909b0-challenger-review-probes.md)
 - [Codex-Critique Hazards and PR-Review Runner Reliability](concepts/agent-infra-f0909b0-codex-and-pr-review-runners.md)
 - [Composer, Spine, and Lego Coworker System](concepts/agent-infra-composer-spine-lego.md)
@@ -537,10 +538,10 @@ Standalone wiki built from **7567 agent learnings**, synthesized into **481 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2283)
-- [NanoClaw / agent operations](topics/agent-ops.md) (892)
-- [CI, build & tooling](topics/ci-tooling.md) (561)
-- [Review & process](topics/review-process.md) (383)
+- [Slang compiler & language](topics/slang-compiler.md) (2341)
+- [NanoClaw / agent operations](topics/agent-ops.md) (897)
+- [CI, build & tooling](topics/ci-tooling.md) (566)
+- [Review & process](topics/review-process.md) (385)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
-- [Verification & evidence discipline](topics/verification.md) (571)
-- [Uncategorized](topics/misc.md) (1458)
+- [Verification & evidence discipline](topics/verification.md) (574)
+- [Uncategorized](topics/misc.md) (1477)

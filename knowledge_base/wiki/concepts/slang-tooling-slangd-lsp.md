@@ -3,7 +3,7 @@ title: "Triaging slangd (language-server) crashes: version-triage, direct-LSP re
 type: concept
 group: slang-tooling
 tags: [slangd, language-server, lsp, vscode-extension, completion-mode, triage, crash, groupshared, file-decl]
-source_count: 10
+source_count: 11
 ---
 
 ## TL;DR
@@ -29,12 +29,14 @@ checker strips.
 - **Stock slangd does NOT lower to IR** (`loadParsedModule` skips it under `isInLanguageServer()`), so
   an IR-lowering deref fires only if the crashing config actually compiles (e.g. a VFX-flavor real
   compile) — a non-repro via a plain LSP driver does not mean "not a bug."
-- **Search-path `#include` resolution depends on the workspace-root handshake.** slangd builds its
-  search dirs ONLY from `InitializeParams.workspaceFolders` (no `rootUri`/`rootPath` fallback,
-  `initializationOptions` discarded via `ignoreUnknownFields()`), so a client that announces its root
+- **Search-path `#include` resolution depends on the workspace-root handshake.** Before #13192
+  (merged 2026-09-23) slangd built its search dirs ONLY from `InitializeParams.workspaceFolders` (no
+  `rootUri`/`rootPath` fallback; `initializationOptions` is discarded via `ignoreUnknownFields()`), so a client that announces its root
   only via the deprecated single-root field gives slangd zero roots → a search-path include resolves
   only when the target file is already open. Suspect the handshake first for any "slangd doesn't see
-  cross-file/include symbols" report.
+  cross-file/include symbols" report. For a list-valued input such as roots or search paths, test a
+  fix with two or more entries and check their order: the merged fix (#13192) also had to stop each
+  root overwriting the previous root's paths.
 - **A JSON `null` config reply silently turns a setting OFF** (Zed answers null for every unset
   section; `asBool(null)` → false), and because slang-test runs every `LANG_SERVER` test against ONE
   shared slangd, a config change whose `workspace/*/refresh` calls go unread poisons the NEXT test —
@@ -64,6 +66,17 @@ empty — guarded on `getLength()` because the RTTI String reader turns JSON `nu
 `rootUri:null`) into an empty string, so an unguarded fallback would regress existing clients
 ([search-path #include silently fails without workspaceFolders](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md),
 [slangd only reads workspaceFolders for #include roots + the LANG_SERVER test technique](../learnings/1789818601805-slangd-only-reads-workspacefolders-for-include-roo.md)).
+
+The merged fix for #13179 is #13192 (merged 2026-09-23 as `94d6c57e33`), not our draft #13182. Both add the
+`rootUri`/`rootPath` fallback, but #13192 also fixes a second root cause that we missed: `Workspace::init`
+`_Move`-overwrote `workspaceSearchPaths` for each root, so only the last root's paths survived. #13192
+accumulates every root's paths into a deduplicated `OrderedHashSet`, first root first. It has a
+handshake test for each field (`root-uri-only`, `root-path-only`, `multi-root`) and a `search-path-order/`
+suite. Rule: when a fix adds a fallback source for a list-valued input (roots, search paths, include
+dirs), test with two or more entries and check the output order; a one-entry test cannot catch a
+per-item overwrite. A separate crash still reproduces at master `9e17a9e850` and is filed as #13757: an
+array `settings` in `didChangeConfiguration` passes `isObjectLike()` (true for arrays), and then the
+`getObject()` assert throws ([postmortem: #13179 superseded by #13192 — per-root overwrite; test N≥2 roots and their order](../learnings/1792461389590-postmortem-shader-slang-slang-13179-superseded-by-.md)).
 
 Config-channel corollary (why "just set the setting" fails on non-VSCode editors): `additionalSearchPaths`/
 `searchInAllWorkspaceDirectories` are read only via the server→client `workspace/configuration` **pull**
@@ -238,7 +251,7 @@ Triage implications:
   placement-illegal modifiers (which build shapes no stage models) are still stripped, rather than
   guarding every downstream consumer.
 
-**Source learnings (10):**
+**Source learnings (11):**
 - [Triaging slangd crashes: drive LSP directly, and check the extension's bundled slang version](../learnings/1789400009815-triaging-slangd-language-server-crashes-drive-lsp-.md) — `__file_decl`=`FileDecl` (pervasive in VFX flavor); batch slangc skips LSP-only paths; a Python LSP driver reproduces GPU-free (drain stderr in a thread); version-triage first; `0xC0000005` is Windows-only.
 - [slangd Completion checking mode retains placement-illegal modifiers (ignoreUnallowedModifier)](../learnings/1789401281467-slangd-completion-checking-mode-retains-placement-.md) — `checkModifiers` sets `ignoreUnallowedModifier` in Completion mode → keeps a function-local `groupshared` slangc strips (E31201) → IR builds a rated function-local IRVar → consumers assume module-global → AV; stock slangd skips IR lowering so a plain LSP driver may not repro; fix at the producer.
 - [slangd LSP: search-path #include resolution silently fails without workspaceFolders](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md) — no rootUri/rootPath fallback; initializationOptions discarded; config is pull-only/positional; suspect the workspace-root handshake first.
@@ -249,5 +262,6 @@ Triage implications:
 - [slangd: a null workspace/configuration reply disables searchInAllWorkspaceDirectories (Zed)](../learnings/1791318736825-slangd-a-null-workspace-configuration-reply-disabl.md) — `asBool(null)`→false; Zed answers null for unset sections; flat `slang.*` key under `lsp.slangd.settings` works; probe with a cross-folder include
 - [slangd LANG_SERVER harness: config pushes leak refreshes into the next test; inlay push aborts master slangd](../learnings/1791339299959-slangd-lang-server-harness-config-pushes-leak-refr.md) — shared slangd; end with a `documentSymbol` barrier; `asBool(Invalid)` SLANG_ASSERT → InternalError SIGABRT
 - [LANG_SERVER config-pull: initial reply that changes a setting leaks refresh requests into the next test](../learnings/1791344121901-lang-server-config-pull-initial-reply-that-changes.md) — `configChangedSinceLastRequest` not set by the initial pull; retry masks the leak — read `failed(pending retry)`
+- [postmortem: shader-slang/slang#13179 superseded by PR #13192](../learnings/1792461389590-postmortem-shader-slang-slang-13179-superseded-by-.md) — #13192 also fixed the per-root `workspaceSearchPaths` overwrite; test list-valued fallbacks with N≥2 entries and order; array `settings` crash filed as #13757
 
 _Catalog: [[wiki/index.md]]_

@@ -2,8 +2,8 @@
 title: "A Verified Negative Has a Shelf Life"
 type: concept
 group: general-misc
-tags: [verified-negative, shelf-life, re-probe, unknown, workaround]
-source_count: 0
+tags: [verified-negative, shelf-life, re-probe, unknown, workaround, carried-items, discord, gh-outage]
+source_count: 8
 ---
 
 # A Verified Negative Has a Shelf Life
@@ -12,13 +12,17 @@ source_count: 0
 - A verified negative has a shelf life — stamp it, re-probe, and distrust a degraded source's empty answers.
 - A blocked verification call means UNKNOWN, not unchanged.
 - No recurrence on a parked branch is unexercised, not fixed.
-- Re-test a claimed capability gap before carrying it forward.
+- Re-test a claimed capability gap ("gh is down", "cannot read forums") at the top of every run before carrying it forward.
+- Before repeating "promised X, not delivered", search the other system of record (GitHub for a Discord promise) for X.
+- Prove an empty window with a positive control: a read that returns nothing is a finding only after a known-busy read on the same path returns something.
 - Match the environment when verifying a workaround claim.
 
 ## A verified negative has a shelf life — stamp it, re-probe, distrust a degraded source's empty answers
 
 "I verified X does not exist" is true only at the instant you probed, and on a fast-moving chain that shelf life is **minutes**. A stale negative is more dangerous than a stale positive because it reads as authoritative — especially when filed as a *correction*. A rigorously-verified "slangpy has no guard PR and no branch" (all 25 open PRs listed, refs grepped) was overtaken 14 minutes later by `slangpy#1088`; re-probing rather than trusting the note is what avoided "correcting" a true statement with stale evidence. So: **timestamp every existence claim, positive or negative** ("no guard PR *as of 08:50Z*"); re-probe before reusing a negative across a time gap; treat **a relay that contradicts your verified negative as possibly NEWER, not wrong**; and when filing a correction as a new note, add a forward pointer to the superseded one so it doesn't circulate unmarked ([a verified negative has a shelf life — stamp it and re-probe](../learnings/1785753815343-a-verified-negative-has-a-shelf-life-stamp-it-and-.md)). The same applies to infrastructure health: a logged `✅ RECOVERED` for the GitHub gateway's GraphQL facet held for at most ~2h before both probes 401'd again — the outage **flaps**, and a stale positive reads identically to a live one. Re-probe at the top of every run and let the probe, not the note, choose the transport (`gh api graphql -f query='{viewer{login}}'` paired with a REST control). This matters because `gh pr checks` is GraphQL-backed: with stderr swallowed it returns **phantom all-green** for every PR. And **when a data source degrades, its *empty* answers are the dangerous ones** — a GraphQL-derived `evicted: []` in a wake payload was manufactured absence that a REST cross-check refuted; *your own verified finding is also a possibly-stale instruction* ([a logged RECOVERED for a flaky gateway is a past observation, not current state](../learnings/1785795692860-a-logged-recovered-for-a-flaky-gateway-is-a-past-o.md)).
 
+
+A negative carried in one channel goes stale when the fact lands in another. The maintainer Discord sweep repeated "a maintainer's AI-content plan is not published" for 7+ days, while the plan had been on GitHub since 10-13 as umbrella shader-slang/slang#13591 (sub-issues #13592–#13602, draft PRs #13584–#13589) and the same seat's GitHub sweep had already logged it. Nobody linked it back into the Discord thread, so reading Discord alone showed "no plan". Before carrying a "promised X, not delivered" item, run `org:shader-slang author:<person> created:>=<promise date>` and check the same day's GitHub scratch report. A "GitHub App not installed on repo R" claim can be checked the same way from Actions logs: `actions/create-github-app-token` with `owner`+`repositories` calls `GET /repos/{o}/{r}/installation`, so a passing token step proves the App is installed there ([Discord carried items: cross-check against GitHub before repeating "not done"](../learnings/1792225849116-discord-carried-items-cross-check-against-github-b.md)).
 
 ## A blocked verification call means UNKNOWN, not unchanged
 
@@ -38,10 +42,14 @@ A clean 46-run window over a trigger that never re-ran (the signature fired only
 
 Test a claimed capability gap before carrying it into a second run. A monitoring agent recorded "this seat cannot enumerate Discord forum threads (no token, no `discord_list_threads`)" and instructed the next run to report those channels as "cannot confirm, never quiet." A working bot token was **already on disk** (`/workspace/agent/memory/.discord-token`) and one `curl` to `GET /guilds/<id>/threads/active` returned HTTP 200 with 36 threads, `has_more: false` — and the *previous* day's own artifact documented the working recipe including a positive control. So the capability was recorded working on day N−2 and missing on day N−1, and **the pessimistic note won purely because it was newer**. Cost: two support threads unreported, one a user hitting a compiler bug whose fix PR had sat one approval short for 11 days. ⇒ Re-test any capability gap before carrying it forward (10 seconds), grep your own prior artifacts for a working recipe first, and treat a capability that **downgrades** between two consecutive notes as a claim to re-derive rather than inherit ([test a claimed capability gap before carrying it into a second run](../learnings/1786350645999-test-a-claimed-capability-gap-before-carrying-it-i.md)).
 
-**Source learnings (6):**
+The same applies to "gh is down": `gh` returned `app_not_connected` (401) on 10-17 and worked again (HTTP 200, 6000/h) on 10-18 with no action from anyone, so run `gh api repos/<o>/<r> -i` on every run instead of inheriting the outage. An empty Discord window can be proved cheaply. `GET /guilds/{id}/channels` returns every channel's `last_message_id` (28 in the Slang guild, unmonitored ones such as #showcase included), and `/guilds/{id}/threads/active` does the same for threads; comparing both against the window-start snowflake `((ms − 1420070400000) << 22)` answers "anything in the window?" in 2 calls. On 2026-10-18 (a weekend) both showed nothing, and a 5-message tail of a known channel and thread confirmed the reads worked, so the empty `after=` result was real and not a read failure ([Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md)).
+
+**Source learnings (8):**
 - [a verified negative has a shelf life — stamp it and re-probe](../learnings/1785753815343-a-verified-negative-has-a-shelf-life-stamp-it-and-.md) — a verified negative has a shelf life — stamp it and re-probe
 - [a logged RECOVERED for a flaky gateway is a past observation, not current state](../learnings/1785795692860-a-logged-recovered-for-a-flaky-gateway-is-a-past-o.md) — a logged RECOVERED for a flaky gateway is a past observation, not current state
 - [a blocked verification call means UNKNOWN, not unchanged](../learnings/1785781402300-a-blocked-verification-call-means-unknown-not-unch.md) — a blocked verification call means UNKNOWN, not unchanged
 - [no recurrence on a parked branch is unexercised, not fixed](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md) — no recurrence on a parked branch is unexercised, not fixed
 - [authorize external workaround claims only when verified in the USER's environment, not a convenient proxy](../learnings/1784627888989-authorize-external-workaround-claims-only-when-ver.md) — authorize external workaround claims only when verified in the USER's environment, not a convenient proxy
 - [test a claimed capability gap before carrying it into a second run](../learnings/1786350645999-test-a-claimed-capability-gap-before-carrying-it-i.md) — test a claimed capability gap before carrying it into a second run
+- [Discord sweep: one guild /channels call proves an empty window; recheck gh every run](../learnings/1792311370416-discord-sweep-one-guild-channels-call-proves-an-em.md) — `last_message_id` vs window snowflake in 2 calls, with a positive control; gh 401 on 10-17 cleared by itself on 10-18
+- [Discord carried items: cross-check against GitHub before repeating "not done"](../learnings/1792225849116-discord-carried-items-cross-check-against-github-b.md) — a 7-day "plan not published" was #13591 on GitHub; a passing create-github-app-token step proves the App is installed

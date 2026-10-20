@@ -5,7 +5,7 @@ type: topic
 
 # NanoClaw / agent operations
 
-892 learnings. [Catalog](../index.md)
+897 learnings. [Catalog](../index.md)
 
 - ["The MCP tool is missing" ≠ "the capability is missing" — check `ncl <resource> help` before declaring a gap](../learnings/1785779165007-the-mcp-tool-is-missing-the-capability-is-missing-.md)
 - [#11545 ByteAddressBuffer-alignment cluster — ownership FLIPPED (jkwak delegated to bot; fork #250 closed)](../learnings/1781315736697-11545-byteaddressbuffer-alignment-cluster-ownershi.md)
@@ -189,6 +189,7 @@ type: topic
 - [Back-audit the WHOLE tracker after tightening a verdict gate; a "resolved" row can cite a check that no longer exists](../learnings/1791807134236-back-audit-the-whole-tracker-after-tightening-a-ve.md)
 - [Background builds die on container teardown — foreground chunking is the workaround (looks like a 16h hang)](../learnings/1787337179999-background-builds-die-on-container-teardown-foregr.md)
 - [Bare send_message is refused on a long-lived cron session (677 unresponded inbounds)](../learnings/1786296125151-bare-send-message-is-refused-on-a-long-lived-cron-.md)
+- [Before a scheduled fixer handoff on a reporter-patch issue, verify the reporter's PR on GPU and redirect the ask to maintainers](../learnings/1792422129310-before-a-scheduled-fixer-handoff-on-a-reporter-pat.md)
 - [Before citing an instrument, ask whether its domain includes the thing you are claiming — five instances in one chain, every one a well-formed reading of the wrong question](../learnings/1785866171715-before-citing-an-instrument-ask-whether-its-domain.md)
 - [Before claiming "no upstream fix exists", search upstream PRs by function/file and the reporter's fork — not just the issue's linked PRs](../learnings/1790642860153-before-claiming-no-upstream-fix-exists-search-upst.md)
 - [Before reporting a "bot flipped PR ready" gate violation, verify the ready_for_review actor](../learnings/1782244055186-before-reporting-a-bot-flipped-pr-ready-gate-viola.md)
@@ -227,6 +228,7 @@ type: topic
 - [Classifier .mjs edits silently drift from the live deployed scheduled task — check ncl tasks get after every fix](../learnings/1789777475607-classifier-mjs-edits-silently-drift-from-the-live-.md)
 - [claude-vs-codex-provider-parity](../learnings/1778085879531-claude-vs-codex-provider-parity.md)
 - [Clone the actual repro repo before modeling it from a triage paraphrase](../learnings/1787799707169-clone-the-actual-repro-repo-before-modeling-it-fro.md)
+- [Closing our own superseded draft PR is not operator-gated](../learnings/1792461290103-closing-our-own-superseded-draft-pr-is-not-operato.md)
 - [CMake: per-target compile flags don't propagate to linked OBJECT libraries](../learnings/1789384635713-cmake-per-target-compile-flags-don-t-propagate-to-.md)
 - [Codex critique attestation cascade — batch source edits before the final round](../learnings/1789563826008-codex-critique-attestation-cascade-batch-source-ed.md)
 - [Codex critique gate is human-reserved — agents (even Main) cannot self-waive it](../learnings/1789598780832-codex-critique-gate-is-human-reserved-agents-even-.md)
@@ -251,6 +253,7 @@ type: topic
 - [codex-critique developer-instructions must be a TOP-LEVEL param, not inside config](../learnings/1785246644952-codex-critique-developer-instructions-must-be-a-to.md)
 - [codex-critique gate records stage verdicts only from a fresh staged codex call, not from codex-reply](../learnings/1781775272408-codex-critique-gate-records-stage-verdicts-only-fr.md)
 - [codex-critique gate requires PLAN_REVIEW too, not just CODE+OUTPUT](../learnings/1783655475326-codex-critique-gate-requires-plan-review-too-not-j.md)
+- [codex-critique gate: fresh mcp__codex__codex may return recall bullets; continue via codex-reply without STAGE](../learnings/1792462132240-codex-critique-gate-fresh-mcp-codex-codex-may-retu.md)
 - [codex-critique gate: open the PR before claiming it in OUTPUT_REVIEW deliverable](../learnings/1780325263478-codex-critique-gate-open-the-pr-before-claiming-it.md)
 - [codex-critique gate: start a fresh codex session per deliverable, don't codex-reply past a must-fix](../learnings/1781386154716-codex-critique-gate-start-a-fresh-codex-session-pe.md)
 - [codex-critique gateway outage: gpt-5.6-sol rejects client_metadata (400), overrides 403](../learnings/1789519260446-codex-critique-gateway-outage-gpt-5-6-sol-rejects-.md)
@@ -261,6 +264,7 @@ type: topic
 - [codex-critique rounds need sandbox=danger-full-access, or nothing records](../learnings/1786055180841-codex-critique-rounds-need-sandbox-danger-full-acc.md)
 - [codex-critique rounds only count with ROUND + REQUIREMENTS lines on a fresh codex call](../learnings/1790868961396-codex-critique-rounds-only-count-with-round-requir.md)
 - [codex-critique sandbox cannot read /tmp — put review artifacts under /workspace/agent](../learnings/1789374218965-codex-critique-sandbox-cannot-read-tmp-put-review-.md)
+- [codex-critique with cwd=/workspace/agent returns a recall summary instead of a review — reply on the same thread](../learnings/1792429620370-codex-critique-with-cwd-workspace-agent-returns-a-.md)
 - [codex-critique: codex-reply cannot record a gate stage; verify the round actually counted](../learnings/1785908614073-codex-critique-codex-reply-cannot-record-a-gate-st.md)
 - [codex-critique: cwd=/workspace/agent can make codex answer with recall bullets, not a review](../learnings/1792074066723-codex-critique-cwd-workspace-agent-can-make-codex-.md)
 - [codex-critique: developer-instructions must be a TOP-LEVEL mcp__codex__codex param, not inside config](../learnings/1785437953553-codex-critique-developer-instructions-must-be-a-to.md)
@@ -629,6 +633,7 @@ type: topic
 - [One PR can be the fix vehicle for multiple triaged issues → multiple fixer chains touch one branch](../learnings/1787779963798-one-pr-can-be-the-fix-vehicle-for-multiple-triaged.md)
 - [OneCLI gateway injection is PATH-SCOPED — cross-org GitHub reads 401, and curl -sf hides it as empty output](../learnings/1785992213588-onecli-gateway-injection-is-path-scoped-cross-org-.md)
 - [OneCLI gateway: api.github.com /repos/* 401 while /rate_limit stays 200](../learnings/1788180429300-onecli-gateway-api-github-com-repos-401-while-rate.md)
+- [OneCLI GitHub grant: /rate_limit returns 401 app_not_connected while repo endpoints work](../learnings/1792398714877-onecli-github-grant-rate-limit-returns-401-app-not.md)
 - [OneCLI GitHub: gh CLI 401s while raw REST/GraphQL works (2026-10-16)](../learnings/1792139649364-onecli-github-gh-cli-401s-while-raw-rest-graphql-w.md)
 - [OneCLI proxy 403s on GitHub /repositories/<id>/ pagination links](../learnings/1791449130477-onecli-proxy-403s-on-github-repositories-id-pagina.md)
 - [Operator-gated vs mention-authorized GitHub replies: re-show codex-corrected text before posting](../learnings/1789631981572-operator-gated-vs-mention-authorized-github-replie.md)

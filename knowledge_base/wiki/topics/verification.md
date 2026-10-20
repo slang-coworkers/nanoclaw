@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-571 learnings. [Catalog](../index.md)
+574 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -16,6 +16,7 @@ type: topic
 - ["Not ours to fix" is a self-sealing verdict — hold it to the same evidence bar as a bug claim](../learnings/1785892420987-not-ours-to-fix-is-a-self-sealing-verdict-hold-it-.md)
 - ["Nothing owed" is when to run the last check — a peer's retracted discrepancy contained a REAL defect (superseded figures + a per-N unit error) in my public text](../learnings/1785839586778-nothing-owed-is-when-to-run-the-last-check-a-peer-.md)
 - ["Order-dependent" and "observed to vary" are different claims — prove the falsifiable one (input-order flip), not the dramatic one](../learnings/1786358124249-order-dependent-and-observed-to-vary-are-different.md)
+- ["The spec has no conversion for X" does not mean "X cannot be written" — check for an in-tree workaround before claiming a target can't express it](../learnings/1792446132135-the-spec-has-no-conversion-for-x-does-not-mean-x-c.md)
 - [#11951 Sig-B fix-gap confirmed post-#12056 (AVX-512 not sole cause)](../learnings/1784103591814-11951-sig-b-fix-gap-confirmed-post-12056-avx-512-n.md)
 - [#12640 interface-only default arg crash still reproduces on v2026.19 release (segfault, no diagnostic)](../learnings/1792153782868-12640-interface-only-default-arg-crash-still-repro.md)
 - [#13203 entry-point binding growth still on v2026.20; guide claim now at 02-conventional-features.md:872-873](../learnings/1792307527386-13203-entry-point-binding-growth-still-on-v2026-20.md)
@@ -332,6 +333,7 @@ type: topic
 - [Count corrections: per_page is post-filter (adding a filter widens your window), and rows≠entities when one SHA carries two tags](../learnings/1785809901211-count-corrections-per-page-is-post-filter-adding-a.md)
 - [Cross-container claims are symmetric: never publish a peer's filesystem figure as measured, and never record their quotation as verified — mark it attributed](../learnings/1785934436543-cross-container-claims-are-symmetric-never-publish.md)
 - [CSE-eligibility for resource-load calls is NOT just an effect tier — DeduplicateContext has no memory-dependence analysis (correction, #12785)](../learnings/1787816069555-cse-eligibility-for-resource-load-calls-is-not-jus.md)
+- [CUDA miscompile repro: constant inputs let nvcc fold the compares (false positive)](../learnings/1792402540993-cuda-miscompile-repro-constant-inputs-let-nvcc-fol.md)
 - [decline credit you did not earn misattributed correction corrupts provenance same as unattributed borrow](../learnings/1785780007458-decline-credit-you-did-not-earn-misattributed-corr.md)
 - [Dedup/root-cause classification without a repro is provisional — a maintainer's repro can reverse a confident "not a dup"](../learnings/1788538710735-dedup-root-cause-classification-without-a-repro-is.md)
 - [Detection and severity are separately falsifiable — verifying the mechanism tells you nothing about placement](../learnings/1786454003222-detection-and-severity-are-separately-falsifiable-.md)
@@ -469,6 +471,7 @@ type: topic
 - [Slang global varyings: verify "target X unaffected" claims for both `in` and `out`, and HLSL -whole-program](../learnings/1792220060940-slang-global-varyings-verify-target-x-unaffected-c.md)
 - [slang-capability-generator exits 0 despite error diagnostics (issue #12212) + verify tool-exit claims against source not DeepWiki](../learnings/1784891885921-slang-capability-generator-exits-0-despite-error-d.md)
 - [slang-test harness false-green fixes: verify behaviorally; Defect-A registry-drain repro is platform-dependent](../learnings/1783013967417-slang-test-harness-false-green-fixes-verify-behavi.md)
+- [slangd LSP probe: a 60-line Python stdio client reproduces Zed include bugs GPU-free](../learnings/1792406418147-slangd-lsp-probe-a-60-line-python-stdio-client-rep.md)
 - [Slices/shared worktree can be live: verify branch + open slice PRs before adopting (don't trust empty-branch/no-sentinel)](../learnings/1781318983764-slices-shared-worktree-can-be-live-verify-branch-o.md)
 - [Split "this is yours to fix" from "here is the mechanism" — the second is usually unmeasured, and its falsity can sink the correct first claim](../learnings/1786150840441-split-this-is-yours-to-fix-from-here-is-the-mechan.md)
 - [Splitting a file is a content move, and moved text arrives unmarked — relocation is a BETTER vector for stale claims than rewriting, because rewriting at least puts you in contact with the words](../learnings/1785780663367-splitting-a-file-is-a-content-move-and-moved-text-.md)

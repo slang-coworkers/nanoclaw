@@ -3,7 +3,7 @@ title: "Combined-sampler texture-only ops on HLSL, Metal and WGSL: the injected 
 type: concept
 group: slang-backends
 tags: [hlsl, metal, wgsl, combined-sampler, Sampler2D, lowerCombinedTextureSamplers, GetDimensions, Load, subscript, intrinsic-asm, __getTexture, dxc, slang]
-source_count: 2
+source_count: 6
 ---
 
 # Combined-sampler texture-only ops on HLSL, Metal and WGSL: the injected sampler operand, `$q`, and member-form intrinsics
@@ -20,6 +20,7 @@ A combined texture-sampler (`Sampler2D<T>` and its family) is native on SPIR-V (
 - **`Sample` works because the meta code forwards it through `__getTexture()`.** The user workaround, and the endorsed fix direction, is the same rewrite: `s.__getTexture().Load(...)`, `s.__getTexture().GetDimensions(...)`.
 - **When auditing a combined-sampler bug, check every texture-only op** (all `Load` overloads, multisample `Load`, the subscript, both `GetDimensions` overloads) on every target in the lowering set, not just the reported one.
 - **`tests/metal/texture-sampler-less.slang` runs `-target hlsl` but only checks `void computeMain(`**, so it passes while every one of these HLSL failures is present.
+- **Inside the core-module `_Texture` extension, forward through a free generic function** (`__loadTexture(__extractImage(this), loc)`), not a member call on `__extractImage(this)`, which fails with E30027. Keep `$q` on WGSL, where the bindless forward ICEs, and make any `$N`-shifting marker visible to the emitter's fold check.
 
 ## The injected sampler operand and the `$q` marker (#11669, PR #11816)
 
@@ -33,10 +34,24 @@ PR #11816 (commit 0b78add933) fixed it differently, for Metal and WGSL only. It 
 
 Two audit lessons come from this. First, a combined-sampler bug report names one op, but the fault is in the lowering contract, so check every texture-only op (each `Load` overload, multisample `Load`, the subscript, both `GetDimensions` overloads) on every target in the lowering set. Second, an existing test can hide the bug: `tests/metal/texture-sampler-less.slang` has a `-target hlsl` directive, but its only HLSL check is `void computeMain(`, which matches broken output ([Combined-sampler texture-only ops on HLSL: Load/subscript/GetDimensions all leak the sampler (#13737)](../learnings/1792252557823-combined-sampler-texture-only-ops-on-hlsl-load-sub.md)).
 
-Status on 2026-10-19: a maintainer closed #13737 on 2026-10-18 with no linked merged commit. Draft PR #13741, "Skip the combined sampler in texture-only HLSL/Metal/WGSL texture ops (#13737, #10522)", was still open and unmerged, so master at 60a7c8c88 still has the member-form HLSL intrinsics described above. Re-check at HEAD before relying on either the bug or the fix.
+## Forwarding a texture-only op from inside the combined extension (PR #13741)
 
-**Source learnings (2):**
+The `__getTexture()` direction runs into a type-checker trap when written inside the core module. In `extension _Texture<T,Shape,…,isCombined,format>`, the obvious forward `if (isCombined != 0) return __extractImage(this).Load(location);` fails the core-module build with E30027 "'Load' is not a member of '_Texture<…,0,…>'", because generic inference drops `T = T` when the extension's own parameters unify with themselves (the inference mechanism, and why patching it gives E55201, is on [[wiki/concepts/slang-language-core-f0909b0-generics-overload-inference.md]]). Routing through a free generic function that takes the plain texture, `return __loadTexture(__extractImage(this), location);`, compiles with no type-checker change. On PR #13741's review this gave clean HLSL, Metal and CPU output, kept NonUniform (DXIL `nonUniformIndex=true`), and had 0 full-suite regressions [core-module E30027 on a self-forward: use a free-function trampoline](../learnings/1792289884493-core-module-e30027-on-self-forward-inside-a-generi.md). Three limits come with it:
+
+- **WGSL keeps the positional `$q` strings.** Bindless `Sampler2D.Handle` plus `__extractImage` ICEs with E99997 "non-simple operand(s)" on WGSL; the same crash already exists for `Sample` and `__getTexture()`, so it is pre-existing, not caused by the forward [same](../learnings/1792289884493-core-module-e30027-on-self-forward-inside-a-generi.md) [combined-sampler forward: use a free-function forwarder](../learnings/1792308956799-core-module-combined-sampler-forward-member-call-o.md).
+- **Any intrinsic-string marker that shifts `$N` must also be honored by the emitter's single-use fold check** (`shouldFoldInstIntoUseSites`, slang-emit-c-like.cpp). Otherwise a coordinate used several times looks unused, is inlined into every use, and chained loads grow exponentially (5 reads became 121). The full mechanism is on [[wiki/concepts/slang-language-intrinsics-and-builtins.md]] [same](../learnings/1792308956799-core-module-combined-sampler-forward-member-call-o.md).
+- **Pin each FileCheck capture to its definition line.** A capture like `[[C:_S[0-9]+]]` silently matched the buggy output, where `sampler _S1 = …` was used as the coordinate. Write `int3 [[C:_S[0-9]+]] = int3(...)` and confirm that every run fails on master [E30027 on a forward inside a generic extension: try a free function](../learnings/1792301433983-e30027-on-a-forward-inside-a-generic-extension-try.md).
+
+## Status
+
+Status on 2026-10-19: the external reporter closed #13737 as `COMPLETED` on 2026-10-18, with no comment and no linked merged commit. Draft PR #13741, "Skip the combined sampler in texture-only HLSL/Metal/WGSL texture ops (#13737, #10522)", was still open and unmerged with 0 reviews, so master at 60a7c8c88 still has the member-form HLSL intrinsics described above, and the defect stays tracked under #10522 ([a reporter-closed issue with an unmerged fix PR is still a live defect](../learnings/1792399830239-slang-a-reporter-closed-issue-with-an-unmerged-fix.md)). Re-check at HEAD before relying on either the bug or the fix.
+
+**Source learnings (6):**
 - [Combined-sampler GetDimensions off-by-one (WGSL/Metal/CUDA) — shared root with HLSL #10522](../learnings/1781992589265-combined-sampler-getdimensions-off-by-one-wgsl-met.md) — positional `$N` strings vs the injected sampler; endorsed `__getTexture()` rewrite (later fixed for Metal/WGSL by `$q`, PR #11816)
 - [Combined-sampler texture-only ops on HLSL: Load/subscript/GetDimensions all leak the sampler (#13737)](../learnings/1792252557823-combined-sampler-texture-only-ops-on-hlsl-load-sub.md) — HLSL member-form intrinsics have no `isCombined` branch and `$q` cannot reach them; Metal/WGSL `Load`/subscript leak too; `texture-sampler-less.slang` masks it
+- [Slang: a reporter-closed issue with an unmerged fix PR is still a live defect (#13737 → #13741, #10522)](../learnings/1792399830239-slang-a-reporter-closed-issue-with-an-unmerged-fix.md)
+- [Core-module E30027 on self-forward inside a generic _Texture extension: use a free-function trampoline](../learnings/1792289884493-core-module-e30027-on-self-forward-inside-a-generi.md) — `__loadTexture` forward gives clean HLSL/Metal/CPU, NonUniform kept, 0 regressions; WGSL bindless ICE E99997 so keep `$q` there
+- [E30027 on a forward inside a generic extension: try a free function before giving up](../learnings/1792301433983-e30027-on-a-forward-inside-a-generic-extension-try.md) — FileCheck captures must be pinned to their definition line
+- [Core-module combined-sampler forward: member call on __extractImage(this) fails E30027; use a free-function forwarder](../learnings/1792308956799-core-module-combined-sampler-forward-member-call-o.md) — WGSL bindless crash; `$N`-shifting markers must reach the emitter's fold check (5 reads became 121)
 
 _Catalog: [[wiki/index.md]]_
