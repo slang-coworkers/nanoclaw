@@ -155,6 +155,8 @@ export interface InboundMailbox {
    * implementation's header for the multi-thread rationale.
    */
   getMostRecentPeerSourceSessionId(peerAgentGroupId: string, threadId?: string | null): string | null;
+  /** True once another agent has messaged this session, answered or not. */
+  hasMessagesFromOtherAgents(selfAgentGroupId: string): boolean;
   insertTask(task: Task): Promise<void>;
   cancelTask(taskId?: string): number;
   pauseTask(taskId: string): number;
@@ -199,6 +201,8 @@ export interface OutboundMailbox {
   writeDirect(message: DirectOutboundMessage): Promise<void>;
   getOutboundHistory(limit: number): MailboxHistoryMessage[];
   getTopLevelOutbound(limit: number): MailboxTimelineMessage[];
+  /** True once this session has messaged another agent, which routes its replies back here. */
+  hasMessagesToOtherAgents(selfAgentGroupId: string): boolean;
 }
 
 export interface MailboxSession extends InboundMailbox, OutboundMailbox {}
