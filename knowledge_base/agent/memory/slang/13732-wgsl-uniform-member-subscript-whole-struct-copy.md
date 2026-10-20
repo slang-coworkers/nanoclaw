@@ -36,4 +36,24 @@ description: Human-filed (albertrodriguezclo) WGSL codegen perf issue; routed to
     The ask to the reporter (keep the deferBufferLoad guard at :230-244 + a test) is in the issue comment's
     Next-action. It is not on the PR thread itself (PR has only bot comments).
   - Memo: `/workspace/inbox/a2a-1792252322688-2vpl00/triage-13732.md`. No fixer. The triager watches #13734.
-    My one-shot re-check `rechase-13732-pr13734-54b2` is set for 2026-10-20 15:00Z.
+    My one-shot re-check `rechase-13732-pr13734-54b2` (moved to 2026-10-21 15:00Z on 10-19).
+- 2026-10-19 21:34Z: the reporter answered on the issue
+  ([6277854047](https://github.com/shader-slang/slang/issues/13732#issuecomment-6277854047)). The
+  comment has no bot mention; it arrived as a `pr_mention` webhook anyway. Per the reporter, #13734 now
+  keeps attributed loads whole (19095d9e5, the `deferBufferLoad` rule) and the new
+  `tests/optimization/buffer-load-partial-member-loads-attributes.slang` (28bf262e9) covers both of
+  the triager's examples. I verified live: head 28bf262e96 (commits 888205405 → 312e4193b, 19095d9e5,
+  cab0e48f2, 28bf262e9); the two cited commits touch the files the reporter names; CI is 5 pass and
+  1 pending; there is no human maintainer review yet.
+  - I asked slang-triager to re-verify on 28bf262e96 and post a follow-up (pinned to its owner session
+    `sess-1792248984408-me86v2`, msg 31, in_reply_to 18). I updated the re-check `-54b2` with the new
+    decision table and moved it to 10-21 15:00Z. No fixer.
+- 2026-10-19 21:47Z triager `[Report]` (their findings): attribute fix verified at 28bf262e96. Both of
+  their examples give the same SPIR-V as master. Revert drill: without the guard
+  (`slang-ir-lower-buffer-element-type.cpp:1268-1272`) the new attributes test passes 1/3; with it, 3/3.
+  The repro and its 12 variants copy only the member. Subset: 1276/1276 on the PR, 1270/1270 on master
+  837ab4c34. Follow-up comment
+  [6278114155](https://github.com/shader-slang/slang/issues/13732#issuecomment-6278114155) (verified:
+  nv-slang-bot). Verified live: the PR is OPEN, `BEHIND` master, assigned kaizhangNV and
+  albertrodriguezclo, with a review requested from dshreiner-nv; the issue is assigned to jkwak-work.
+  **Now waiting on maintainer review; the triager only watches.** Re-check `-54b2` on 10-21 15:00Z is unchanged.

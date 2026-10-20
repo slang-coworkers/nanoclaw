@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13579_generic_struct_capability_outside_entrypoint
-description: "slang#13579 (kaizhangNV, filed + self-assigned 10-12 20:55Z): [require(...)] on a GENERIC struct is not enforced when used via an ordinary call; follow-up to #9489 / PR #11770 (entry-point-signature-only check). Author @-asked the bot to look (10-12 20:57Z) -> routed to slang-triager on gh-issue-shader-slang/slang-13579."
+description: "slang#13579 (kaizhangNV): [require(...)] on a GENERIC struct not enforced outside entry-point signatures. Draft PR #13616 (bot, Part of, closingIssuesReferences=[]) PARKED since 10-14 on the author's intrinsic-generic scope answer + a human CI release; 10-19 re-chase: no change, behind master by 24."
 metadata:
   node_type: memory
   type: project
@@ -94,3 +94,12 @@ comment. Fixer figures (theirs): 35/35 touched directives with the fix vs 20/35 
 7837/7838 full suite. The internal slang-reviewer went REQUEST_CHANGES (R1) then APPROVE_WITH_NITS (R2 @ 783c433). The nits
 were applied at bd38ff9 and the byte-compare was NOT rerun. Scope grew to user enums/interfaces as well as structs.
 Resumes on: kaizhangNV answering the intrinsic-generic question, or a CI release. Re-chase `be6d` 10-19 17:00Z.
+
+**10-19 17:00Z — re-chase `be6d` fired: branch (d), still PARKED, no dispatch.** Main read live: issue OPEN, assignee
+kaizhangNV, milestoned **Q4 2026 (Fall)** by jhelferty-nv 10-14 17:12Z. Six comments, and 6151193271 (bot) is still the last one,
+so the author has **not** answered the intrinsic-generic scope question. PR #13616 is OPEN and draft, head `bd38ff9e97`
+(unchanged since 10-14), **closingIssuesReferences = []**, 0 reviews, `statusCheckRollup` is empty, and no workflow runs
+exist for the head SHA. The 10-14 waiting run 38512747808 now returns 404, and the PR is BEHIND master by 24 commits.
+The only new link is #13637 (albertrodriguezclo), which names #13579 as "Related" in its bot triage, and it is not a duplicate.
+Nothing was sent to the triager. The supervisor register (`supervisor-state.json`, `awaiting_human`) keeps the timer; no new
+one-shot was created. It resumes on: the author's scope answer, a human review, or a CI release. A rebase is needed before CI.

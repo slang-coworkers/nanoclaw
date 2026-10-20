@@ -64,3 +64,7 @@ Unverified side note (triager, not posted): WGSL/Metal emit `array<Nested,2>` us
 silent PR-ownership question. Its operator ask went to `orchestrator-dashboard` msg 45 (thread
 `gh-issue-shader-slang/slang-13427`) and has not been answered either. If the operator answers one of the two, apply
 a consistent decision to the other; see [13427 record](../imported/project_13427_double_vector_varying_location_count.md).
+
+**Cross-link (10-19 17:05Z, from #13427 re-chase 3):** jhelferty-nv re-approved #13078 at `b7c4b3d9be` on 10-19 at 16:18Z and re-armed auto-merge.
+It is MERGEABLE/BEHIND, and it still has no #13330 scope. The #13427 operator ask is still unanswered. Its reminder went to `orchestrator-dashboard`
+(id 9, thread `gh-issue-shader-slang/slang-13427`). Its `rechase-13427-fourth-3f9b` (10-22) defaults to hold, the same as this chain.

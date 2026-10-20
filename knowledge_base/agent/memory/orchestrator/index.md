@@ -29,5 +29,7 @@ the one mount detail the spine omits.
 - [Self-modification: packages & MCP servers](self-modification.md) —
   install_packages vs workspace pnpm install; add_mcp_server + the vault
   credential-placeholder flow.
+- [task-hygiene CLOSED rule drops post-merge checks](task-hygiene-closed-rule-post-merge.md) — a
+  re-check whose PR merged is cancelled within the hour, even if its job is post-merge.
 - [Placeholder one-shot tasks fire immediately](task-one-shot-placeholder.md) — create
   with the real prompt + future time in one call; read it back before quoting the id.

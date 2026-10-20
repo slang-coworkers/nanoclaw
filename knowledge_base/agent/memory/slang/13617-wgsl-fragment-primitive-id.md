@@ -84,3 +84,8 @@ Re-armed one-shot `rechase-13617-primitive-3ec6` (2026-10-17T10:30Z). No GitHub 
 comments or timeline events on #13617 or #13619 since 10-14 17:08Z (the milestone). CI dispatch 38546790314 is still `waiting`. Neither operator
 decision has an answer (dashboard read with the bounded --reverse/--since-seq calls; the Main canonical session was last active 10-14 10:26Z).
 I listed both as pending and **didn't re-ask** (dashboard msg 21, canonical thread). Re-armed one-shot `rechase-13617-primitive-316c` (2026-10-19T10:30Z). No GitHub posts.
+**2026-10-19 10:3xZ, re-chase (case d).** Checked live: #13619 is still an open draft at b5340af7ab with 0 reviews, and there are no human
+comments, reviews or timeline events on #13617 or #13619 since 10-14 17:08Z. **CI dispatch 38546790314 now returns 404** and `fix/issue-13617-ci`
+has no runs (other repo runs list normally), so it probably expired at the priority gate. That's harmless; the full matrix runs at ready. Neither operator
+decision has an answer (bounded dashboard read; no operator row mentions 13617/13619 after msg 505608). I listed both as pending and didn't re-ask
+(dashboard msg 7, canonical thread). Re-armed one-shot `rechase-13617-primitive-320f` (2026-10-21T10:30Z). No GitHub posts.

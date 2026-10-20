@@ -120,3 +120,19 @@ Memo: slangpy-triager FS `memory/triage/1232-vulkan-module-push-constant-silent-
   Unfiled follow-up: an uncalled `export` fn reading a second block → GLSL still declares both (same as master); filing is the operator's call.
   Remaining: human decisions only (see the 10-17 dashboard table). Re-check `rechase-1232-upstream-4666` 10-20 15:00Z.
 - 10-17 04:45Z slang-reviewer confirmed all R2 nits and both pinning tests at `f470d43` (each fails with its logic removed). Review chain COMPLETE. Left open, both minor: 2 optional tests (RT stage, single violating EP) and the `-obfuscate` note printing empty field names.
+- **10-19 15:28Z slangpy#1235 APPROVED** by ccummingsNV (MEMBER), body "LGTM", verified on GitHub. Still a DRAFT at `52e815d6`, `mergeable_state=behind` (2 commits: #1236
+  texture revert, #1237 Slang 2026.20 + rhi bump; per the fixer the rhi bump does not touch push-constant layout and #810 is still open). Whether updating the branch would dismiss the approval
+  is unknown: branch-protection reads return 403 to us. The only thing blocking merge now is a human marking it ready. #13724, #810, #915 unchanged since 10-17.
+- 10-19 17:25Z **jkwak-work marked #1235 ready for review** (timeline), so operator decision (1) was settled by the maintainer. Not merged yet; still `behind` main.
+- 10-20 01:07Z jkwak-work (MEMBER, assignee) commented on #1232 (cmt 6280922361): "It seems like the following issue is related to this: slang#13713". It @-mentions no one and asks
+  no question. Gap: no #1232 comment links **slang#13724** (the triage cmt links #13713, #915, #12349, #1235). Routed to slangpy-triager (owner session `j19ne3`): a human has commented since our last comment, so post a short fresh reply confirming #13713 was filed from this issue,
+  linking fix PR #13724 and its open error-vs-warning question (jkwak-work also owns #13541, which has the same open question as #13518 Q1).
+- 10-20 01:16Z slangpy-triager replied to jkwak-work with a fresh cmt **6281022553** (verified; it links #13724 and the error-vs-warning hold, and notes #1235 is ready). Triager tier closed again. Open human items: merge #1235; kaizhangNV on #13724; operator on #810, the #915 STAGE_ALL fix, and the GLSL export follow-up.
+- 10-20 01:46Z reporter albertrodriguezclo (cmt 6281392904, verified live) agrees: #13713 is the compiler side, #1235 the SlangPy side, close #1232 once #1235 lands. The #1235 body has `Fixes shader-slang/slangpy#1232`, so the merge auto-closes it. No question was asked, so no GitHub reply (a third bot comment would be churn). Nothing to do until the merge.
+- **10-20 01:41–01:49Z jkwak-work (MEMBER) reviewed #13724** with 3 inline requests (remove a comment; drop the GLSL-only fail condition; inline the helper), then **marked it ready
+  for review** at 01:49:28Z (timeline). 02:36Z the fixer applied all 3 → head `ee9df25`, 2 commits, no force-push, replied on each thread and left them unresolved. R2 widened
+  `emitEntryPointsSourceFromIR` to fail on any emitter error on every target, so `cooperativeVectorTypeMetadata` dropped `cuda_optix` (it had passed only because E55204 errors were ignored);
+  this is disclosed in the PR body and on the thread. Full suite 10884/10887 (fp8-cuda baseline failures).
+  - CI on ee9df25: the workflow_dispatch run 39359074408 **yielded** ("Stop yielded bot CI", wait-for-human-priority; by design, not a code failure). The pull_request CI run
+    39359079741 is waiting on `falcor-build-approval-gate` (maintainer approval).
+  - ⚠️ The fixer's report said "PR stays draft". That is wrong, but it appears only in the report, not on GitHub (no bot comment or body says draft). I corrected the fixer. Error vs warning is still unanswered (jkwak-work's review body was empty).

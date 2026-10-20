@@ -72,3 +72,12 @@ The rules distilled from these live there; this file only records what happened.
   Both held behind draft #13726 (same code path). The #13729 session folded its question into
   `chase-13726-ready-7233`; the #13730 session waited for that write, then appended a third question to the
   same task instead of arming a second one.
+- **slangpy#1238 (10-20), missed rung 7/8, then dispatched anyway.** The dashboard Main (`sess-1776713576150-9fon2n`, row 506149, 02:06Z)
+  ordered the filing with "No PR unless a maintainer asks", and the filer's `[Report]` (506170) restated it. The
+  `issue_opened` webhook Main checked only `ncl sessions list | grep 1238` and GitHub (0 comments), saw no recipient
+  session, and sent it to slangpy-triager. That triage was correct, but it went to slangpy-fixer and posted a public
+  "fixer will open a draft PR". Response (03:00Z): told the triager to hold its fixer at local-only work (no push, no
+  PR; no branch was on origin yet) and to correct its comment's Next-action bullet. The order stands; I told the operator on orchestrator-dashboard they
+  can override it, and armed one `--process-after` re-check (`recheck-slangpy-1238-pr-26f9`, 10-21 09:00Z). ⇒ **An empty canonical-thread grep is
+  not rung 1 done.** The order sat in the dashboard session, which is on no `gh-issue-*` thread. Read its newest
+  rows with `--full` (rung 7/8) before any dispatch on a bot-filed issue.

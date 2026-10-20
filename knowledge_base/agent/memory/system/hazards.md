@@ -34,3 +34,5 @@ was folded into `legoop-archive/` with `type:` frontmatter on each file.)
 (`rechase-13737-pr13741-f5e0` next to `-a71d`). `ncl tasks cancel` then timed out the same way. ⇒ **After a
 timeout on a mutating `ncl` verb, list first (`ncl tasks list --json`, filter by name) and retry only if
 the row is absent.** Read verbs (`list`) also time out sometimes; just retry those. Cheapest check for one task: `ncl tasks get <id>` and read `status` (2026-10-18: a timed-out `cancel` of `rechase-13271-followups-dada` had in fact landed, `status: cancelled`).
+
+⚠️ **`send_message` returning `database is locked` does not tell you whether the row landed (2026-10-19, slangpy#1226).** Two sends to `slangpy-triager` errored this way and neither landed; the third send landed. Before you retry, read the recipient session's newest rows with `ncl sessions messages <sid> --reverse --json --limit 3`; rows carry `text`, not `content`. If the row is there, a retry sends a duplicate. Run `ncl` reads serially, because concurrent `ncl` calls cause the same lock. A send on a peer thread with unanswered inbound rows also needs `in_reply_to=<seq>`; without it the router refuses the send.

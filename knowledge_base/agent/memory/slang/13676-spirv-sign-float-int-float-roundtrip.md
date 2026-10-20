@@ -49,3 +49,10 @@ returns +0.0 for FSign(-0.0). On CUDA, NaN gives +1.0. The spec still allows FSi
 The GLSL-mode `sign(x)/2` bug is confirmed on the GPU (x=-3 gives 0, not -0.5). Main-verified: comment 6201414239
 edited in place at 08:04:28Z, "no GPU needed" removed and GPU results added. Issue still open, 1 comment. The two
 operator decisions are unchanged.
+
+**10-19 16:36Z, `pr_mention` webhook: jkwak-work comment 6272158465.** Live body matches the payload, not edited:
+*"Note: I thought the issue was about a trigonometric function sin, cos or tan. But `sign` returns the sign-ness of
+the input value such as `+` or `-`."* It @-mentions nobody, the bot included, and asks nothing; it is a reading note.
+Earlier the same day (16:08Z) jkwak-work set Type = Performance and assigned, then unassigned, within 4 s. Still no
+assignee and no milestone. **Held: no dispatch, no bot post.** The comment gives no direction on approach A, so the two
+operator decisions and the triager's 10-22 re-check `t-5cb2f6` are unchanged.

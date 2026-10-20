@@ -72,3 +72,6 @@ path ([[feedback_a_gate_on_someone_elses_reply_needs_its_own_resume_path]]).
   (`GATE_SINCE=2026-10-01` on #13433 → `true`); using the gate's own SINCE correctly reads quiet and
   looks like a broken gate. A CLOSED control (#12457) must read `true`, and bot-only-comment issues `false`, so our own bot cannot
   self-trigger it.
+
+### 2026-10-19, #13753: two Mains each waited, then each dispatched, 26 s apart
+The reporter filed #13753 at our request on #13633. Its webhook created Main `w5ihka`; the #13633 comment created traffic on my #13633 Main. At 20:16Z `w5ihka` posted "the sibling #13633 Main has not acted yet". I read that as "it is waiting on me" and dispatched at 20:18:30Z. It had already sent its own triage request at 20:18:04Z. The triager merged the two (its msgs 2+4) and its parent edge is `w5ihka`, so there was no harm this time. ⇒ **A sibling saying it is waiting is not a hand-off.** Before dispatching from the second Main, re-list `--thread-id gh-issue-<repo>-<N>` for a *recipient* session **immediately** before the send, not 2 min earlier. Better: let the issue's own webhook Main own the new issue, and have the other Main only relay its own thread's comment.

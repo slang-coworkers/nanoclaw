@@ -1,6 +1,6 @@
 ---
 name: project_13441_remove_issue_add_labels_workflow
-description: "slang#13441 (jkwak-work, 10-05): delete .github/workflows/issue-add-labels.yml (adds 'Dev Opened' to dev-team issues). Maintainer self-filed + assigned, CI-workflow-only scope → triage verdict only, NO fixer dispatch (no-autofixer-jkwak-self-filed; bot can't push .github/workflows)."
+description: "slang#13441 (jkwak-work, 10-05): delete .github/workflows/issue-add-labels.yml. TERMINAL 2026-10-19 — jkwak's own PR #13500 merged 10-08 (311a3d631), file + Dev Opened/Dev Reviewed labels gone; issue left open (not auto-linked). Bot did triage only, never a fixer."
 metadata:
   node_type: memory
   type: project
@@ -21,7 +21,7 @@ standing no-autofixer-jkwak-self-filed policy (no leaf for it in this store; pre
 the bot can push ([project_11806](project_11806_cmake_options_maintainer_selffix.md)). Label/secret deletion is
 repo-admin work — never the bot's.
 
-RESUME on a substantive human comment (e.g. jkwak asks for a PR) or when jkwak's own PR lands.
+~~RESUME on a substantive human comment or when jkwak's own PR lands.~~ Superseded by the terminal entry below.
 
 **10-05 17:06Z — triaged, PARKED.** Verdict comment
 [5999261613](https://github.com/shader-slang/slang/issues/13441#issuecomment-5999261613) (nv-slang-bot, verified
@@ -36,3 +36,12 @@ live). Task / CI / low / P3, checked at master e6be8dcdd. Memo: `/workspace/inbo
   is jkwak's call. The bot can't see secret scope (repo vs org): the secrets API returns 403.
 
 Re-chase task `rechase-13441-maintainer-*` fires 2026-10-19T17:00Z (dashboard-only report, no GitHub post).
+
+**2026-10-19 17:00Z re-chase — TERMINAL.** Live read: jkwak-work's own PR
+[#13500](https://github.com/shader-slang/slang/pull/13500) "Remove unused dev issue labeling workflow" was MERGED
+2026-10-08T00:22Z (merge `311a3d631`). It deletes `.github/workflows/issue-add-labels.yml` (−61) and its
+`README.md` line (−1), which is Approach A from the triage. Contents API 404s on the file at HEAD. The `Dev Opened` and `Dev Reviewed`
+labels both 404 now. They were deleted, and the `unlabeled` event on #13441 at 10-08T01:17Z is attributed to jkwak-work. The PR body does not
+reference #13441 (`closingIssuesReferences` is empty), so the issue is still **OPEN** with only the bot's triage
+comment. Closing it is jkwak's call. Per the task: no GitHub post and no fixer dispatch. Chain closed. Reopen it
+only if a human comments on #13441.

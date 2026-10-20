@@ -31,3 +31,15 @@ Unfiled: the operator decides.
 
 **Parked on:** maintainer pick (A/B/C, D/E) by @jkwak-work, or a reporter PR. **Timer:** one-shot `recheck-13733-15e7`
 (triager group) 10-24 15:00Z. **Resumes on:** a human comment on #13733, a reporter PR, or the recheck firing.
+
+**2026-10-19 20:07Z, the reporter followed up** ([cmt 6276225025](https://github.com/shader-slang/slang/issues/13733#issuecomment-6276225025),
+no @nv-slang-bot mention): their PR **#13740** (`fix/wgsl-counted-loop-for`, opened 10-17 18:24Z, not a draft,
+5 files / +867, refs #13733 with no closing keyword) implements option A. Checked live 20:1xZ: CI 7/7 SUCCESS, review requested from
+dshreiner-nv, no labels, prod bot + coderabbit have commented. No pr-mapping, so #13740 webhooks reach Main. Ask 2 (`[unroll]`/D):
+the reporter is not doing it, and `[ForceUnroll]` covers their case. The issue is still assigned to jkwak-work. Relayed to the
+triager owner session `sess-1792249248034-ytplg9` on the canonical thread. **Now parked on:** maintainer review of #13740; Ask 2 has no owner.
+
+**20:11Z, triager [Report]:** `recheck-13733-15e7` was retargeted to watch #13740's review/merge state and Ask 2. The triager posted a delta
+([cmt 6276292805](https://github.com/shader-slang/slang/issues/13733#issuecomment-6276292805)) asking @jkwak-work to decide Ask 2:
+D (warn), E (unroll), or close the issue when #13740 merges. #13740 has no closing keyword, so the issue stays open after the merge. If jkwak-work
+picks D and nobody claims it, the recheck sends an Ask-2-only handoff to slang-fixer.

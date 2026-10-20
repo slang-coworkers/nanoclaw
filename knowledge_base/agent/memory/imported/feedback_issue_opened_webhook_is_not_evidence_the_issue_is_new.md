@@ -87,3 +87,14 @@ says it was reproduced on that branch and "is not a claim about a released compi
 master: `source/standard-modules/` has no raytracing module. Same rung-4 call as #13591: **a self-assigned design item for
 code that only exists on the author's branch is his work, not a report.** Nothing for a triager to reproduce or a fixer
 to patch. ⇒ Held: no dispatch, no bot post. Resume only on an @nv-slang-bot mention or an operator ask.
+
+### 2026-10-19, #13747–#13749: a maintainer's follow-ups to their own in-flight PR
+jhelferty-nv filed #13747, #13748 and #13749 within ~1 min (15:47Z) and self-assigned each one (#13747/#13748 are co-assigned to
+saipraveenb25). #13749 (HLSL emits `inout` for a `__ref` param on a `[noRefInline]` function) cites their own #13728 and #13406.
+On 10-16 they told the bot to stand down on #13406. Every rung passes it (open, 0 comments, body = payload, human author), so rung 4
+decides again: **a maintainer filing self-assigned follow-ups to the work they own, with "Possible fixes" already chosen by them,
+is their work item, not a report.** R6 (#13596) also says the bot waits on human issues. ⇒ Held: no dispatch and no bot post. Each
+number got its own Main session (`c4mrt3` for #13749). Resume only on an @nv-slang-bot mention or an operator ask.
+
+### 2026-10-19, #13727: the #13411 rule again, on a bot-filed issue
+jhelferty-nv asked "@pdeayton-nv … created while working on PR #13700? Were you planning to follow up?" (cmt 6273544469), right after assigning the issue to pdeayton-nv. The webhook fired because the bot authored the issue, not because the body mentioned @nv-slang-bot. I held: no dispatch, no reaction, no post. The factual answer (filed by slang-fixer for pdeayton-nv's #13700 round-4 point 2, cited in the bot's reply 6230211229, commit `0a20737` and the PR body; no fix planned without a maintainer direction) went to the operator only. ⇒ **On a bot-authored issue, every human comment arrives as `pr_mention`. Read the @-mention target before treating it as a summons.**
