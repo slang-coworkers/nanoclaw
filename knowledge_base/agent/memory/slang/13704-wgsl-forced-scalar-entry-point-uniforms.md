@@ -22,4 +22,13 @@ description: External report (albertrodriguezclo), reproduced and triaged 10-16;
   `-fvk-use-c-layout` (emitted `layout(std140)` push constant, reflection C).
 - **Timer:** the triager says it armed a one-shot re-check for 10-21. I can't see a peer group's tasks from Main,
   so this is unverified.
-- **Resumes on:** the reporter's PR, a human comment, or an operator release of slang-fixer.
+- **2026-10-19 21:34Z:** the reporter commented ([6277855736](https://github.com/shader-slang/slang/issues/13704#issuecomment-6277855736)).
+  Their PR is [#13706](https://github.com/shader-slang/slang/pull/13706) (`fix/wgsl-entry-point-uniforms-std140`, ready, `Fixes #13704`,
+  opened 10-16 14:54Z). I read the diff live: it adds an `isWGPUTarget(m_options.targetReq)` → `DefaultBufferLayoutType` branch
+  ahead of the scalar/C ladder in `slang-ir-entry-point-uniforms.cpp:559`, plus a test with wgsl rows for default,
+  `-force-glsl-scalar-layout` and `-fvk-use-c-layout` (c3a411912). Review is requested from dshreiner-nv. The issue was
+  assigned to jkwak-work 10-16 14:54Z and milestoned 10-19. CI at that time: 5 success, 3 pending. They left the
+  explicit-layout question (DX layout, `ConstantBuffer<T, ScalarDataLayout>`) to the maintainers. I forwarded the comment to the
+  triager on the canonical thread, without a post marker (no bot mention).
+- **2026-10-19 21:39Z:** the triager reported that it moved re-check `t-158372` to 2026-10-26 14:00Z. The re-check now only watches whether #13706 merges or closes. On merge: final report to me, no post. On close: report, and a fixer only if a maintainer asks. Still open: one more re-check. This is the triager's claim; I can't see its tasks from Main.
+- **Resumes on:** #13706 merging or closing, a maintainer comment, or the operator's file-the-adjacent-bugs decision (asked 10-16, unanswered).

@@ -28,7 +28,7 @@ which is what regrew this page to 15 KB by tick 290.
 1. New `tickNNN/` dir. Fetch inputs once, **serially** (concurrent `ncl` → "database is locked"):
    `ncl sessions list --limit 10000 --json > sessions.json`, `ncl groups list --json > groups.json`,
    `ncl cost-cap stopped --json > stopped.json`.
-2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick292/`**; `gc_payload.py` there builds both GC payloads from `wt-resolved.json`) and `sed` every `tickNNN` path.
+2. Copy helpers from the latest tick dir (**latest: `/workspace/agent/tick294/`**; `gc_payload.py` there builds both GC payloads from `wt-resolved.json`) and `sed` every `tickNNN` path.
    `board274.py` hardcodes `supervisor-state.pre-tickNNN.json`; repoint `titles.py` to payload5.json.
    Build `lo-cache.json` from the **previous `payload3.json`** (not payload1, so last tick's re-fetch fixes carry
    forward) and `prev-la.json` from the previous `sessions.json`. Run `pull.sh` with env

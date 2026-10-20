@@ -148,3 +148,5 @@ Folded in from the parent by okf-synthesis 2026-10-09.
   pre-fix run's own log; a "warnings gone" summary must be checked with `grep -c` on the Debug job (Release
   is Debug-layer-silent and always looks clean).
 - **10-11** (`…-755a`): operator still hadn't answered 1/2/3, nothing was posted, and jhelferty and skallweitNV were still silent. The PR became CONFLICTING after #900. I dispatched the fixer to merge main (msg 61), re-asked the operator (dashboard msg 69), and re-armed `…-cf3b` for 10-15.
+- **10-15** (`…-cf3b`): I verified the fixer's 10-11 main merge (`8b8b372` + `00fb748`, 26/26 green, per-test PASSED). Both humans were still silent and the reminder question had gone 3 asks without an answer, so default (3) took effect. Re-armed `…-5a7c` for 10-19.
+- **10-19** (`…-5a7c`): no change. Head is still `00fb748`, 28/28 green, MERGEABLE/BEHIND +14. My local trial merge with main `d825f48` had 0 conflicts even though main touches 7 PR files. There was no operator reply through dashboard seq 505920. I sent a status table (dashboard msg 11) with no question, and re-armed `…-7e72` for 10-23.

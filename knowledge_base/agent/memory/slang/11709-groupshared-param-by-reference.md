@@ -49,6 +49,7 @@ by slang-fixer and is fixed by PR **#13406**. Older history lives in the importe
   - `dth1ak` is cost-escalated ($160.75 / cap 150 / ceiling 300). I told it (pinned, msg 59) the merge was done and to fast-forward its worktree without pushing.
   - ⇒ **#13406 now waits only on jhelferty-nv's re-review.**
 - **Since 10-15 jhelferty-nv owns #13406, and on 10-16 she told the bot to stand down there.** Detail is in the review-rounds file.
+- **10-19: jhelferty-nv filed follow-ups #13747–#13749** (self-assigned; #13749 is the HLSL `inout` emit for a `[noRefInline]` `__ref` param, citing #13406/#13728). The bot holds: no dispatch, no post.
 - **Timer: none is scheduled.** `rechase-13406-r7-c566` fired 10-17 09:00Z. Live gh showed #13406 OPEN at head `c5511be7a1` (her commit 10-15 20:31Z, "Require -experimental-feature for __ref_readonly in user code"), DIRTY, still CHANGES_REQUESTED, and not merged. Under the stand-down that means no dispatch, no report and no reschedule. **No timer re-checks it now.** Its merge is noticed only through an event (the #13406 pr-mapping still points at `dth1ak`) or a supervisor tick. Before any bot action on #11709, ask the operator whether her stand-down covers #11709 too, then rebase onto her final spellings.
 
 ## What #11709 does when the hold lifts

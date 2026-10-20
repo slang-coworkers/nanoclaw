@@ -1,6 +1,6 @@
 ---
 name: project_13427_double_vector_varying_location_count
-description: "slang#13427 (georgeouzou, 10-04; fixer HELD, operator decision pending 10-16, recheck rechase-13427-third-9d1e 10-19): double3/double4 (64-bit vector) entry-point varyings get ONE Location on SPIR-V/Vulkan; the next varying overlaps → spirv-val VUID-StandaloneSpirv-OpEntryPoint-08722. Reporter points at DefaultVaryingLayoutRulesImpl::GetVectorLayout (slang-type-layout.cpp, existing TODO) + hardcoded one-slot in createPatchConstantFuncResultTypeLayout (slang-ir-glsl-legalize.cpp). glslang/DXC put the next varying at Location 2. Routed to slang-triager."
+description: "slang#13427 (georgeouzou, 10-04; fixer HELD, operator decision pending since 10-16 (reminded 10-19), recheck rechase-13427-fourth-3f9b 10-22 defaults to hold): double3/double4 (64-bit vector) entry-point varyings get ONE Location on SPIR-V/Vulkan; the next varying overlaps → spirv-val VUID-StandaloneSpirv-OpEntryPoint-08722. Reporter points at DefaultVaryingLayoutRulesImpl::GetVectorLayout (slang-type-layout.cpp, existing TODO) + hardcoded one-slot in createPatchConstantFuncResultTypeLayout (slang-ir-glsl-legalize.cpp). glslang/DXC put the next varying at Location 2. Routed to slang-triager."
 metadata:
   node_type: memory
   type: project
@@ -102,3 +102,14 @@ copy. My `ask_user_question` (timeout 0) aborted at the 1800 s MCP idle limit ag
 jhelferty-nv's approval and turned off auto-merge. The #13330 operator ask is still unanswered. Its reminder (dashboard id 9, thread
 `gh-issue-shader-slang/slang-13330`) says one answer covers both chains. Before reading #13078's leaf for `double3`, re-check it at the
 new head.
+
+**10-19 17:00Z — third re-chase, silent; operator reminded.** The operator still has not answered. The dashboard rows from seq 505392
+to 506008 contain only my 10-16 ask (505398) and the #13330 reminder (505464); nobody chose 1, 2 or 3. #13427: no comments since
+6045519879, no new cross-referenced PRs, and tangent-vector is still the sole assignee. Rules A–C did not apply. **#13078:** georgeouzou
+commented on 10-19 at 16:12Z ("pushed again, because the pr had merge issues"). jhelferty-nv **re-approved it at `b7c4b3d9be` at 16:18Z
+and re-armed auto-merge at 16:20Z**. It is MERGEABLE/BEHIND, so it will probably merge soon. Its leaf is still `fromRaw(1)` at :1299, and its
+diff has no 64-bit/`GetVectorLayout` change, so this is not rule B. I sent ONE reminder to `orchestrator-dashboard` (id 9, thread
+`gh-issue-shader-slang/slang-13427`). It notes that once #13078 merges, a bot PR would no longer overlap with georgeouzou's open PR. The fixer stays
+HELD. **One-shot `rechase-13427-fourth-3f9b` fires 2026-10-22T17:00Z.** If that run is silent too, it sends no more reminders. It defaults
+to **hold** (+14d one-shot) and sends one line saying so, which matches #13330's `rechase-13330-fourth-e68c`. That default is my choice; the
+operator did not set it.

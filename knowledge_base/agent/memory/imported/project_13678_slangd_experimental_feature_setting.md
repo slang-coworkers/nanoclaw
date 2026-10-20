@@ -57,3 +57,21 @@ file it. Operator notice: unrelated to the GPU; this chain made no GPU-free conc
 Side finding: `gh api users/<x>` returns OneCLI `app_not_connected` 401 even for octocat, while repo endpoints work.
 The users endpoint isn't in the GitHub app's scope, so use unauthenticated `curl https://github.com/<login>` to check
 whether an account exists.
+
+**10-19 16:45Z: the design moved to Discord, and the reporter will implement it themselves.** Maintainer jkwak-work
+(MEMBER) commented on #78 (cmt 6272327623) linking Discord msg 1560389108772241494 (#general, 10-15 20:29Z). In it,
+HildarTheDorf offers to add slangd compile-options support and asks generic-vs-single-flag. In the message's Discord
+thread (10-16), tessfactor prefers a generic config file that slangd finds relative to the sources, possibly the
+package-manager JSON (sirspate's prototype uses JSON); HildarTheDorf compared it to clangd's `compile_commands.json` /
+`compile_flags.txt`. No decision yet. Consequences: the bot files no slangd issue and dispatches no fixer (that would
+collide with a contributor's own work on an open design). The triager's option A (`slang.enableExperimentalFeatures`
+setting) is one candidate, not the direction. v4's "expose the new option as a `slang.*` setting" bullet presumes a
+design, so the triager is reassessing v4. `rechase-13678-maintainer-cbf8` (10-20 16:00Z) was rewritten to match.
+
+**10-19 17:06Z: v4 retired, v5 drafted; waiting on the operator.** The triager's v5
+(`prod-groups/slang-triager/.gh-comments/draft-vscode-ext-78-reply.md`, sha256 `87afd90f…9abdc9ac`, 2019 chars, codex
+round-2 APPROVE) takes no side on the slangd design. It reports only the extension's packaging gap:
+`build-package.sh:48-53` never copies `slang-standard-module-<ver>/`, and v2.0.10 bundles v2026.8, while numerics
+first shipped in v2026.17.1. I checked these claims myself. The E00001→E00104 repro is the triager's and I didn't
+re-run it. I sent the post-or-hold decision to the dashboard (msg 13, thread `gh-issue-…-vscode-extension-78`).
+The default is hold. `rechase-13678-maintainer-cbf8` (10-20 16:00Z) checks for the operator's answer.

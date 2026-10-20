@@ -61,3 +61,9 @@ this and don't act. #10877/#12131 unchanged; #8957: jkwak-work removed the `Dev 
 The operator never answered the E38100 filing question; Main keeps its default (don't file). Next re-chase 10-19.
 ⭐ Lesson: "CI green" has to be checked against the **current head SHA** (`commits(last:1).statusCheckRollup`), not the
 PR-level rollup from an earlier read, because a push can land and trigger no CI at all.
+
+**10-19 re-chase — no change, still HANDED OFF.** #13370 OPEN, non-draft, head `3c85a6cfa7` (unchanged since 10-02),
+`updatedAt` 10-05 15:50, no human review, reviewers dshreiner-nv + saipraveenb25 still pending, now **80 behind** master
+(was 44), and still **0 CI runs / null rollup on head**. No human comments or timeline events since 10-12 on
+#13276 / #10877 (draft) / #12131 / #8957. Nothing routed to the triager. Next re-chase is set for 10-26. If the PR is
+still idle then (3+ weeks with no review or CI), flag it to the operator as a stale human PR.

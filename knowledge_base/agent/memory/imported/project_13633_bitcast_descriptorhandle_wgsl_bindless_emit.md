@@ -60,4 +60,16 @@ both also on master. The Metal-variant filing loop (cmt 6194533354) is still ope
 asks the reporter to file the interface/Metal variant again and offers to file it for them. **Re-check armed:** one-shot task `rechase-13633-draft-pr-dd7b`
 at 2026-10-20T13:00Z (no recurrence).
 
+**10-19 20:10Z:** the reporter filed the Metal variant as [#13753](project_13753_metal_anyvalue_texture_handle_cast.md) (cmt 6276275674). It was dispatched to slang-triager on its own thread, so the Metal-filing open loop is closed. At 21:31Z the reporter opened their own fix PR #13755 and our fixer stood down (terminal-for-now; see that record). Rechase `-dd7b` branches (2)/(3) are marked DONE. The same comment flags that #13707 drops the same `isResourceTypeBindless` hunk as #13679, so whichever lands second drops that hunk.
+
+**10-19 20:10Z reporter cmt 6276275674:** filed the Metal variant as [#13753](https://github.com/shader-slang/slang/issues/13753) (still on
+2026.20). It also says their own non-draft PR #13707 (#13641 resource-table lowering, `feature/wgsl-resource-table`) contains the same
+`isResourceTypeBindless` removal as #13679, so whichever merges second drops that hunk. Routing: I took it, because the sibling Main for #13753
+(`sess-1792440638292-w5ihka`) was waiting on me. #13753 went to a fresh triage (slang-triager `sess-1792441084341-wve4gx`, thread `-13753`, given the
+earlier Metal findings + #13695 overlap question). The comment went verbatim to the #13633 triager (`d21hbq` seq 30). The metal-filing loop is closed.
+Re-check task `rechase-13633-draft-pr-dd7b` was updated with these facts.
+
+**10-19 20:20Z:** the triager replied on the issue (cmt 6276457769). The #13707 overlap is harmless: both PRs produce the identical
+`slang-emit-wgsl.h` blob `abd726c0113` (I verified this), and it's the only shared file, so whichever lands second rebases cleanly. No note on #13679, no fixer ping.
+
 **Next resume trigger:** the fixer's draft PR report, or a human comment on #13633.

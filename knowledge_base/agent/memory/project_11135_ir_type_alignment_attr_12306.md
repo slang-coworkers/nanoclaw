@@ -78,7 +78,7 @@ rounds. Worktree + sentinel cleaned. PR-A chain TERMINAL.
 `gh search` throwing **401s** — now PERSISTENT (~40min) + wider surface, NOT a transient blip. REST
 (`/issues/comments`, `/pulls`, `/labels`, `search/issues` via `gh api`) works — fixer routing via REST, work
 NOT blocked. Surfaced to operator: recommend GitHub PAT/OneCLI re-login when convenient (401 = re-login, NOT
-restart — see [[project_github_actions_graphql_401_outage]]). Watch board-sync #12062, slang-pr-report,
+restart — see [[imported/project_github_actions_graphql_401_outage.md]]). Watch board-sync #12062, slang-pr-report,
 supervisor cron (GraphQL-dependent).
 
 **Issue #12307** (JSON reflection global-scope, triager) open, design-iterating with tangent-vector.

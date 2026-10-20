@@ -20,6 +20,8 @@ Verify every `action=nudge`/`escalate` row before acting; for each shape below, 
 | `github-actions[bot]` read as a human (scan's `is_bot` misses it) | last comment is a PR-board-sync notice (#13544) | not owed; treat as bot |
 | A triage that posted between pull and scan reads as `silent` | issue's last comment is newer than the pull | none — re-check, don't nudge |
 | Newest row is an `in` but the session was correctly silent | `.claude-trace` final response is an `<internal>` "no reply owed" turn (#13544 triager) | none |
+| Human-last, but the reply went into an **in-place edit** of our earlier comment (scan reads only comment `created_at`) | our comment's `updated_at` is after the human comment; the triager's `[Report]` says "edited in place" (#13632, #13653, tick 294) | `external-pr` when a reporter PR owns the fix, else `advisory:…` |
+| Burst of reporter replies all answered within minutes (one contributor, many chains) | Main's newest `out` on each chain is after the comment; check per chain, not as a batch (albertrodriguezclo, 13 chains, tick 294) | `external-pr` / `advisory:maintainer-decision` |
 | `needs_cost_notice` re-armed by a PR merge or a moved activity stamp | `ncl cost-cap escalations --group <folder>` shows the **same** `pending` `cst-…` row and state has a live `costNoticeUrl` (#13555 twice) | don't re-post |
 
 **Cost-notice target** is the PR the stopped reviewer was reviewing, which can differ from the chain's own PR (the
