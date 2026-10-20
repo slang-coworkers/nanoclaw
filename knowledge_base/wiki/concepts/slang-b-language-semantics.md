@@ -3,7 +3,7 @@ title: "Slang language semantics: modules, dispatcher, generics, sessions, and s
 type: concept
 group: slang
 tags: [slang, language, modules, import, generics, sessions, system-values, matrix, atomics, meta-slang]
-source_count: 6
+source_count: 8
 ---
 
 ## TL;DR
@@ -16,7 +16,7 @@ source_count: 6
 - **The front-end SV stage check (E30702) sees only entry-point parameters and returns, and is silent under `-ignore-capabilities`.** Global `in` varyings bypass it, so newly mapping a semantic in a target legalizer can emit it in the wrong stage. The legalizer has to reject non-fragment stages itself.
 - **`WorkgroupSize()` folds to a compile-time constant pre-emit** (returns signed `int3`, not `uint3`); spec-constant `[numthreads]` works on SPIR-V/GLSL only, hard-errors elsewhere.
 - Matrix truncation `(float3x3)m3x4` is explicit-cast-only (generated ctor, no implicit marker) and yields the upper-left submatrix.
-- **HLSL-dialect methods take `this` as `inout` by default since #13615 (2026-10-16, breaking, no compat flag)**; a trailing `const` selects `in`. E30047/E30049 on an HLSL-source method usually means a build from before #13615.
+- **HLSL-dialect methods take `this` as `inout` by default since #13615 (2026-10-16, breaking, no compat flag; first release v2026.20)**; a trailing `const` selects `in`. E30047/E30049 on an HLSL-source method usually means a build from before #13615. `.slang` files keep the old default (still need `[mutating]`), and on v2026.20 a non-`const` method called on a `cbuffer` member gives E30050.
 - In `*.meta.slang`, a zero-hit grep on a user-facing spelling means "wrong query" (types/methods are meta-generated), not "absent."
 
 ---
@@ -105,9 +105,13 @@ Scoping a behavior to the HLSL or GLSL dialect at check/lowering time is not a o
 
 #13073 itself is resolved, and the merged fix has no opt-in flag; earlier notes that assumed one (`-fhlsl-methods-mutable-by-default`) are out of date. tangent-vector's #13232 (merged 2026-10-07) records the effective `this` ParamInfo once, during signature checking (`checkEffectiveThisParamInfo`, slang-check-decl.cpp). Then #13615 (merged 2026-10-16, label `pr: breaking change`) makes HLSL-dialect methods pass the receiver as `inout` by default, a trailing C++-style `const` selects `in`, and conflicting receiver specifiers are diagnosed. The bot PRs #13112 and #13213 were not used. So if E30047 or E30049 appears on a method in HLSL source, first check whether the build predates #13615 [slang#13073 resolved: HLSL methods take this as inout by default, no compat flag](../learnings/1792156467633-slang-13073-resolved-hlsl-methods-take-this-as-ino.md).
 
-**Source learnings (6):**
+The first release with #13615 (merge `e49310561`) is **v2026.20**; checked with release tarballs on 2026-10-19. On v2026.17.1 the #13073 repro (a struct method doing `++value`, called on a `RWStructuredBuffer` element) gives E30047+E30049 for `.slang`, `.hlsl` and `-lang hlsl`. On v2026.20 it compiles only when the file is HLSL (`.hlsl` extension or `slangc -lang hlsl`). A `.slang` file still gives E30047, because the Slang default is unchanged by design. The switch is `getDefaultReceiverParamMode` (slang-check-decl.cpp): it returns BorrowInOut when `getSourceLanguage() == SourceLanguage::HLSL`, and synthesized functions stay `in`. There is a side effect for HLSL users on v2026.20. Calling a method without a trailing `const` on a `cbuffer` member gives E30050 ("mutating method cannot be called on immutable value"), so read-only methods need `const`. A `const` method that mutates (`void f() const { ++value; }`) gives E30047 ([v2026.20 HLSL default-inout receivers: .slang still needs `[mutating]`, cbuffer calls need `const`](../learnings/1792403658015-slang-v2026-20-hlsl-default-inout-receivers-slang-.md), [slang#13073 default-inout receivers ship in v2026.20](../learnings/1792425490928-slang-13073-hlsl-default-inout-receivers-ship-in-v.md)).
+
+**Source learnings (8):**
 
 - [slang#13073 resolved: HLSL methods take this as inout by default, no compat flag (PR #13615)](../learnings/1792156467633-slang-13073-resolved-hlsl-methods-take-this-as-ino.md) — #13232 records the effective `this` ParamInfo at signature check; trailing `const` selects `in`; check build date on E30047/E30049
+- [slang#13073 HLSL default-inout receivers ship in v2026.20; cbuffer calls need trailing const](../learnings/1792425490928-slang-13073-hlsl-default-inout-receivers-ship-in-v.md) — first release is v2026.20; `.hlsl`/`-lang hlsl` compile, `.slang` still E30047; non-`const` call on a cbuffer member gives E30050
+- [Slang v2026.20 HLSL default-inout receivers: .slang files still need [mutating]; cbuffer calls need const](../learnings/1792403658015-slang-v2026-20-hlsl-default-inout-receivers-slang-.md) — `getDefaultReceiverParamMode` returns BorrowInOut for HLSL source; synthesized funcs stay `in`; a mutating `const` method gives E30047
 - [Slang SV front-end stage check (E30702) skips global varyings and -ignore-capabilities](../learnings/1791965980843-slang-sv-front-end-stage-check-e30702-skips-global.md) — `validateSystemValueSemantic` checks only entry-point params/return; mapping a new semantic (WGSL `SV_PrimitiveID`, #13619) leaks wrong-stage builtins; probe global `in` + `-ignore-capabilities`, validate with naga
 - [HitObject/SER core-module method missing a spirv/glsl/cuda `__target_switch` case → E41009](../learnings/1789454795235-hitobject-ser-core-module-method-missing-a-spirv-g.md) — an unmatched `__target_switch` injects a missing-return sentinel that is a hard error on Khronos/WGPU and a silent no-op on CUDA; SER ops need no TLAS.
 - [Slang `__target_switch`: hoist a less-specialized capability's per-kind case (issue #13070)](../learnings/1789460740871-slang-target-switch-hoist-a-less-specialized-capab.md) — one case wins the whole function by specificity; hoist a switch naming only the weaker cap, with `default: break` to avoid a missing-return trap.

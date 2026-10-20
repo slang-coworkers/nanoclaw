@@ -5,11 +5,12 @@ type: topic
 
 # CI, build & tooling
 
-561 learnings. [Catalog](../index.md)
+566 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
 - ["You conceded X" is a quotation claim — grep the peer's artifact, especially when you already skimmed it](../learnings/1785887619654-you-conceded-x-is-a-quotation-claim-grep-the-peer-.md)
+- [#13273 master build confirms fix: emits int _S1 = s.top before the store](../learnings/1792426436559-13273-master-build-confirms-fix-emits-int-s1-s-top.md)
 - [--limit truncates from the FRONT: a head window makes a tail-absence claim structurally impossible while returning a specific, plausible "last row"](../learnings/1785964426159-limit-truncates-from-the-front-a-head-window-makes.md)
 - [[approver/calibration] build-flag PR: clear a "-Werror CI break" gap by checking the affected config is actually green](../learnings/1784270606102-approver-calibration-build-flag-pr-clear-a-werror-.md)
 - [[approver/calibration] CI workflow that merges+builds an untrusted PR: CWE-522 persist-credentials is blocking only under specific factors](../learnings/1788905666798-approver-calibration-ci-workflow-that-merges-build.md)
@@ -421,6 +422,7 @@ type: topic
 - [Prebuilt release binaries are a free runtime bisect — falsify a regression before reworking a perf commit](../learnings/1787635116151-prebuilt-release-binaries-are-a-free-runtime-bisec.md)
 - [Precheck workflow_failures feed can be stale even when ci_health frame is fresh](../learnings/1787643303858-precheck-workflow-failures-feed-can-be-stale-even-.md)
 - [precise local qualifier leaks to 4 C-like targets, not just CUDA/C++ (#12279)](../learnings/1785373326278-precise-local-qualifier-leaks-to-4-c-like-targets-.md)
+- [precise/NoContraction on v2026.20: remaining gaps after #12208/#13290 (#13324)](../learnings/1792405639060-precise-nocontraction-on-v2026-20-remaining-gaps-a.md)
 - [Probing a rare race: inject a delay at the suspect window instead of brute-forcing iterations](../learnings/1785893649340-probing-a-rare-race-inject-a-delay-at-the-suspect-.md)
 - [Prove a runner name denotes a machine before doing per-host CI analysis](../learnings/1786070084049-prove-a-runner-name-denotes-a-machine-before-doing.md)
 - [Public Falcor has FALCOR_LOCAL_SLANG CMake hook for a custom Slang build](../learnings/1781366574564-public-falcor-has-falcor-local-slang-cmake-hook-fo.md)
@@ -429,6 +431,7 @@ type: topic
 - [Python 3.15 pyconfig.h breaks -Werror builds of nanobind<2.12 extensions on Linux (_POSIX_C_SOURCE/_XOPEN_SOURCE redefined)](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)
 - [Query PR CI/CLA status on the live head SHA, never a remembered one](../learnings/1790704110591-query-pr-ci-cla-status-on-the-live-head-sha-never-.md)
 - [Rank a flake's LIVE cost from an independent live cross-section, not your own rerun ledger](../learnings/1786162703275-rank-a-flake-s-live-cost-from-an-independent-live-.md)
+- [Re-check a linked tracker issue is still visible before citing it in a report](../learnings/1792425860002-re-check-a-linked-tracker-issue-is-still-visible-b.md)
 - [Re-check isDraft at the moment of CI dispatch — a human ready-flip between pushes turns the drafts-only manual dispatch into a cosmetic-red false alarm](../learnings/1786606902247-re-check-isdraft-at-the-moment-of-ci-dispatch-a-hu.md)
 - [Re-check the full file list of post-review fix commits — accidental PR-body/scratch commits slip in](../learnings/1788799970382-re-check-the-full-file-list-of-post-review-fix-com.md)
 - [Re-measure before acting on a correction — reproducing the numbers does not validate the reading](../learnings/1785857164735-re-measure-before-acting-on-a-correction-reproduci.md)
@@ -459,6 +462,7 @@ type: topic
 - [Revert drills must run in the SAME build tree, not a base-clone binary](../learnings/1790688100687-revert-drills-must-run-in-the-same-build-tree-not-.md)
 - [Review lens: AnyValue bulk-copy / empty-struct legalize fixes — check the target branch is numerically exercised, not just compiled](../learnings/1788301928667-review-lens-anyvalue-bulk-copy-empty-struct-legali.md)
 - [Review-runner scripts may lack +x; invoke via bash](../learnings/1791344124893-review-runner-scripts-may-lack-x-invoke-via-bash.md)
+- [reviewDecision tells you whether a repo requires PR approvals (when /protection returns 403)](../learnings/1792399425363-reviewdecision-tells-you-whether-a-repo-requires-p.md)
 - [Reviewing `|| true` CI-tolerance shell PRs: check every same-scope VAR=$(pipeline), and know errexit is OFF in command-substitution subshells](../learnings/1789255179378-reviewing-true-ci-tolerance-shell-prs-check-every-.md)
 - [Reviewing a "descope the failing test case" CI fix: byte-identical check + arch-wrong-primal signal](../learnings/1788286964829-reviewing-a-descope-the-failing-test-case-ci-fix-b.md)
 - [Reviewing a new interface requirement with no default: build-green answers "any conformer missed?"](../learnings/1789560871840-reviewing-a-new-interface-requirement-with-no-defa.md)
@@ -497,6 +501,7 @@ type: topic
 - [Slang CI: windows-11-vs2026-arm64 runner image not yet in docs/building.md compiler-version allowlist](../learnings/1788242807926-slang-ci-windows-11-vs2026-arm64-runner-image-not-.md)
 - [Slang CMake: SLANG_BUILD_MIMALLOC is unreachable at top-level scope (PARENT_SCOPE trap)](../learnings/1789247912043-slang-cmake-slang-build-mimalloc-is-unreachable-at.md)
 - [Slang DISABLE CI jobs are build-only — no slang-test run step](../learnings/1780326708945-slang-disable-ci-jobs-are-build-only-no-slang-test.md)
+- [Slang GCP scaler: which code paths can delete a busy CI runner VM](../learnings/1792405771092-slang-gcp-scaler-which-code-paths-can-delete-a-bus.md)
 - [Slang LLVM prebuilt GCS key moves with ANY edit to external/build-llvm.sh, even a comment](../learnings/1791792494149-slang-llvm-prebuilt-gcs-key-moves-with-any-edit-to.md)
 - [Slang local checkout can be days-stale on actively-developed CMake files; verify against master + options-matrix CI gate](../learnings/1780472551679-slang-local-checkout-can-be-days-stale-on-actively.md)
 - [Slang PR CI: x86/Windows green does not mean -Werror clean — aarch64 jobs build with warnings-as-errors](../learnings/1792247797393-slang-pr-ci-x86-windows-green-does-not-mean-werror.md)
