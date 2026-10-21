@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13611_fwd_diff_interface_size_mismatch_tangent_padding
-description: "slang#13611 (saipraveenb25, assigned to self via jhelferty-nv, 10-13 19:31Z): fwd_diff through an IDifferentiable interface value holding two differently sized structs reads the smaller struct's tangent from AnyValue padding (A: expected (3,1), got (3,0)). Reporter's hypothesis: typeflow MakeDifferentialPair decomposes to tuple-of-unions, dispatch param keeps union-of-pairs; upcastSet packs tuple wholesale, maybeUnpackArg unpacks as concrete pair. Sibling #13612 independent. TRIAGED 10-13 (cmt 6154195515): P1 regression from #9808, hypothesis confirmed; saipraveenb25 PR #12466 head fixes repro. Parked on assignee; re-chase rechase-13611-fwd-pair-p-b4cd 10-20."
+description: "slang#13611 (saipraveenb25, assigned to self via jhelferty-nv, 10-13 19:31Z): fwd_diff through an IDifferentiable interface value holding two differently sized structs reads the smaller struct's tangent from AnyValue padding (A: expected (3,1), got (3,0)). Reporter's hypothesis: typeflow MakeDifferentialPair decomposes to tuple-of-unions, dispatch param keeps union-of-pairs; upcastSet packs tuple wholesale, maybeUnpackArg unpacks as concrete pair. Sibling #13612 independent. TRIAGED 10-13 (cmt 6154195515): P1 regression from #9808, hypothesis confirmed; saipraveenb25 PR #12466 head fixes repro. Parked on assignee; 10-20 re-chase: no movement; next re-chase rechase-13611-fwd-pair-p-3ac4 10-27."
 ---
 
 # slang#13611: fwd_diff tangent read from padding for differently sized interface values
@@ -55,3 +55,13 @@ Labels `reproduced`/`Autodiff`/`regression`, Type=Bug. Rated bug / high (silent 
 **Parked on the assignee:** fold the fix into #12466 or fix it separately. No fixer, no bot PR. Re-chase
 `rechase-13611-fwd-pair-p-b4cd` is a one-shot at 10-20 18:00Z. Resume earlier on a bot-addressed comment (it arrives
 as a webhook).
+
+**10-20 18:00Z, re-chase (`rechase-13611-fwd-pair-p-b4cd`): no movement.** #13611 is open, assigned to saipraveenb25,
+with the same labels. The only comment is still the triage comment 6154195515, and no comment mentions the bot. #12466 is
+open and non-draft, still CONFLICTING, head `06f7cd79e` unchanged, last updated 08-22, and its body does not reference
+#13611. A search found no PR that references #13611. saipraveenb25's newer #13677 (function-extension synthesis) and the
+bot's #13742 (fix/issue-13301) are unrelated. I sent one line to orchestrator-dashboard on the canonical thread.
+`ncl tasks update --process-after` on the firing one-shot failed with `no live task matched`. This is known behavior; see
+[feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun.md](feedback_a_spent_one_shot_stays_pending_and_invites_a_rerun.md).
+I re-armed it as a fresh one-shot, **`rechase-13611-fwd-pair-p-3ac4` at 10-27 18:00Z**. Its prompt now says to re-arm with
+`create`, not `update`.

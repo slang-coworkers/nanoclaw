@@ -18,3 +18,5 @@ Distilled from the May-2026 provider R&D notes at the memory root.
   public answers), buddy catches laziness/wrong-paths in real-time (best on
   open-ended triage), workflow enforces delivery, instructions-only is strong for
   senior tasks. Distilled 2026-08-21 from the May-2026 A/B/C/D root files.
+- [DeepWiki `ask_wiki_question` hook-denied](deepwiki-ask-wiki-question-denied.md) - the tool was
+  renamed and skill allow-lists still name the old one. Unfixed since 2026-09-22; the fix belongs to the operator.

@@ -14,13 +14,17 @@ initializers can't call user functions, so a `_slang_getNan()` helper call doesn
 
 | issue | filed by | fix | state (2026-10-16 11:37Z — all fixer chains closed, watch-only) |
 |---|---|---|---|
-| #13635 `asfloat(<const NaN bits>)` | albertrodriguezclo 13:15Z | **reporter PR #13645** (14:02Z, emit-side `_slang_nonConstU32`) | bot stood down; triage cmt 6194445036 corrected 15:02Z |
+| #13635 `asfloat(<const NaN bits>)` | albertrodriguezclo 13:15Z | ~~reporter PR #13645~~ **closed unmerged 10-21 00:12Z by jkwak-work** ("complete hack", inline on the `intrinsicDefinition == toSlice("bitcast<$TR>($0)")` match) | **REOPENED 10-21 00:13Z: jkwak-work asked the bot "Please make a PR for this issue"** (cmt 6304728461) → triager → fixer. Bot cmt 6194445036 now stale |
 | #13657 `f16tof32(<const Inf>)` | bot (triager) 15:01Z | bot draft #13670 `410a1b3d1b` | R1+R2 REQUEST_CHANGES, all applied; resolved 22:48Z (cmt 6199231398). Held for operator un-draft + maintainer design call (per-intrinsic vs general `@const` rule) |
 | #13658 runtime-indexed static-const NaN table | bot 15:01Z | bot draft #13669 `f70ea437da` | RESOLVED 10-16 11:37Z: G3 driver crash fixed via bit-pattern helper bodies (GPU-verified L40S), delta R2 APPROVE_WITH_NITS, G4 anchors applied. cmt 6199105712 edited 11:36Z (⚠️ dropped). Held for operator un-draft. Perf follow-up #13682 |
 | #13671 spec-constant with NaN default | bot 18:17Z | none — maintainer picks (a) drop default / (b) diagnose | design Q cmt 6199222995; one-shot `rechase-13671-override-d-c939` 10-17 15:00Z |
 | #13672 `half` NaN/Inf as bare `infh` | bot 18:17Z | bot draft #13680 `c77365d9be` (needs #13669 for tables) | RESOLVED 10-16 11:37Z: f16+f32 bit-pattern helpers, delta R2 APPROVE_WITH_NITS, G1 per-helper prefixes applied; f16 Tint-only (no `shader-f16` on Dawn Vulkan). cmt 6200880363 edited 11:36Z. Held for operator un-draft; merge-conflict on shared helper comment → keep #13680 wording |
 
 Shepherd: jkwak-work. Un-drafting any of #13669/#13670/#13680 is operator-gated.
+
+## 2026-10-21 maintainer reversal
+
+jkwak-work closed #13645 and asked the bot for a proper PR. The objection was aimed at matching on the intrinsic **string** in the emitter. **Bot draft #13670 uses the same pattern** (`intrinsicDefinition.startsWith("unpack2x16float")`), so it is probably exposed to the same objection. I flagged that to the triager as my inference, not as the maintainer's words. #13669 and #13680 change helper bodies and legalization instead, which is a different layer.
 
 ## Lessons from this chain
 

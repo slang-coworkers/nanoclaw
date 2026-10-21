@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13330 — array-of-struct shader IO field crashes SPIR-V/GLSL
-description: Triaged + reproduced; two defects in legalizeEntryPointsForGLSL; fixer HELD (reporter co-assigned); operator 3-way ask unanswered since 10-13; next check 10-20
+description: Triaged + reproduced; two defects in legalizeEntryPointsForGLSL; fixer HELD (reporter co-assigned); operator 3-way ask unanswered since 10-13; default hold applied 10-20; next check 11-03
 tags: [slang, spirv, glsl, varying-legalization, parked]
 resource: /workspace/inbox/a2a-1790714475432-85ez5y/triage-13330.md
 ---
@@ -68,3 +68,11 @@ a consistent decision to the other; see [13427 record](../imported/project_13427
 **Cross-link (10-19 17:05Z, from #13427 re-chase 3):** jhelferty-nv re-approved #13078 at `b7c4b3d9be` on 10-19 at 16:18Z and re-armed auto-merge.
 It is MERGEABLE/BEHIND, and it still has no #13330 scope. The #13427 operator ask is still unanswered. Its reminder went to `orchestrator-dashboard`
 (id 9, thread `gh-issue-shader-slang/slang-13427`). Its `rechase-13427-fourth-3f9b` (10-22) defaults to hold, the same as this chain.
+
+**Re-chase 4 (2026-10-20T21:00Z, `rechase-13330-fourth-e68c`): third unanswered round (case e), so I applied the default hold.** The dashboard
+rows from 505458 to 506432 (10-16 21:01Z to 10-20 20:52Z) have no operator reply on #13330 or #13427. The only hits are my 10-16 reminder
+(505464) and the #13427 reminder (506014). #13330 has no comments since 09-29, no new timeline events, and the same assignees (georgeouzou,
+jhelferty-nv). **#13078 MERGED at 10-19 23:47Z** (`b7c4b3d9be`, Fixes #12726). It still only has the #13330 TODO and no #13330 scope.
+georgeouzou now has no open PRs, so a bot PR would not overlap any of their work. I sent no reminder. I sent ONE line to
+`orchestrator-dashboard` (id 15, thread `gh-issue-shader-slang/slang-13330`). The fixer stays HELD. **One-shot `rechase-13330-fifth-e954`
+fires 2026-11-03T21:00Z.** Its case (e) parks the chain indefinitely, with no more re-checks. Webhooks deliver any new comment.

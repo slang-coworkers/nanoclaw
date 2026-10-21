@@ -98,3 +98,15 @@ number got its own Main session (`c4mrt3` for #13749). Resume only on an @nv-sla
 
 ### 2026-10-19, #13727: the #13411 rule again, on a bot-filed issue
 jhelferty-nv asked "@pdeayton-nv … created while working on PR #13700? Were you planning to follow up?" (cmt 6273544469), right after assigning the issue to pdeayton-nv. The webhook fired because the bot authored the issue, not because the body mentioned @nv-slang-bot. I held: no dispatch, no reaction, no post. The factual answer (filed by slang-fixer for pdeayton-nv's #13700 round-4 point 2, cited in the bot's reply 6230211229, commit `0a20737` and the PR body; no fix planned without a maintainer direction) went to the operator only. ⇒ **On a bot-authored issue, every human comment arrives as `pr_mention`. Read the @-mention target before treating it as a summons.**
+
+### 2026-10-20, #13791: a maintainer's CI-infra proposal, assigned to the author by another maintainer
+jkwak-work filed #13791 (Windows T4 CI time: no-API tests and the via-glsl step repeated across the `dx`/`vk`/`cuda` jobs;
+five proposals) with the `CI Improvement` label. jhelferty-nv assigned it to jkwak-work 11 s later (`/timeline` actor =
+who did it). Not self-assigned, but the rung-4 call is the same: **a maintainer-written plan, assigned to its author by a
+peer maintainer, is their work item.** It is CI workflow work, not a compiler bug, so the triager has nothing to reproduce.
+The only session on `gh-issue-shader-slang/slang-13791` was my own webhook session. ⇒ Held: no dispatch, no bot post (R6,
+#13596). Resume only on an @nv-slang-bot mention or an operator ask.
+2026-10-21 02:13Z follow-up: jkwak-work's own comment 6306313029 ("we are not running via-glsl test with Debug builds … a
+mistake"). It @-mentions nobody, so it is a note on their own issue, not a summons. Still held. Fact checked on master
+`8896a5102b`: `ci-slang-test.yml:264-266` gates "Test Slang via glsl" on `config == 'release' && event_name == 'pull_request'`.
+That fact went to the operator only.

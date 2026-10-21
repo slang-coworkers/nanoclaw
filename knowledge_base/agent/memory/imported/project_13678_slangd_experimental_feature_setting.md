@@ -75,3 +75,14 @@ round-2 APPROVE) takes no side on the slangd design. It reports only the extensi
 first shipped in v2026.17.1. I checked these claims myself. The E00001→E00104 repro is the triager's and I didn't
 re-run it. I sent the post-or-hold decision to the dashboard (msg 13, thread `gh-issue-…-vscode-extension-78`).
 The default is hold. `rechase-13678-maintainer-cbf8` (10-20 16:00Z) checks for the operator's answer.
+
+**10-20 16:00Z re-check (`rechase-13678-maintainer-cbf8`): no change, outcome (c).** No slangd experimental-feature or
+compile-options issue or PR exists. The only new slangd issue is the bot's #13757 (array `settings` crash), which is
+unrelated. HildarTheDorf has opened nothing. #13678 is still 404. Discord thread: still 8 messages, last 10-16 18:38Z
+(tessfactor: could the package JSON double as the compile-options config?), no decision. On #78, **jhelferty-nv
+self-assigned at 10-19 17:36Z** (jkwak-work set milestone Q4 2026 and Type=Feature), and no new comments. The operator
+hasn't answered the v5 post-or-hold question, so the default is still hold; v5 sha is unchanged. **`wt-vsext42` is
+gone**: it's not on disk and not in the triager's `slang` worktree list, and I couldn't tell when it went. The
+prototype slangd survives in `scratch-vsext-42/proto/bin`, which I kept. I reported to the dashboard (msg 19, thread
+`gh-issue-…-vscode-extension-78`) and armed the final one-shot `rechase-78-post-decision-62d1` for 10-27 16:00Z. If
+nothing has changed then, it parks #78 in supervisor-state and re-arms nothing.

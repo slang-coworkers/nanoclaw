@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13688 — Metal inline RayQuery fixed to triangle_data/instancing (no curves, no multi-level)
-description: "Human-filed (albertrodriguezclo) Metal feature/design question. Triaged 10-16 08:03Z (cmt 6210949750) Feature/P3; #12691 does NOT cover inline queries. PARKED on kaizhangNV direction (tag source A/B/C, accessors i/ii); re-check t-2c3ce2 10-23 08:30Z. Sibling of #13690."
+description: "Human-filed (albertrodriguezclo) Metal feature/design question. Triaged 10-16 08:03Z (cmt 6210949750) Feature/P3; #12691 does NOT cover inline queries. PARKED on kaizhangNV direction (tag source A/B/C, accessors i/ii); kaizhangNV assigned + Q4 2026 milestone 10-19. Reporter addendum 10-20 (cmt 6291687104, per-primitive data + intersector curve workaround) held, no bot post. Re-check t-2c3ce2 10-23 08:30Z. Sibling of #13690."
 ---
 
 # slang#13688 — Metal: inline RayQuery can't traverse curves or multi-level instances
@@ -40,5 +40,27 @@ capabilities / P3. Reproduced at e49310561. Not a duplicate; the closest is stal
 - **PARKED** on kaizhangNV's direction. No fixer. Triager one-shot re-check **t-2c3ce2 at 2026-10-23T08:30Z**.
 - Unfiled side note (operator call): `docs/user-guide/a2-02-metal-target-specific.md:117` still lists the
   acceleration structure as "(Not supported)".
+
+**2026-10-19, maintainer activity.** kaizhangNV self-assigned at 16:09Z. jkwak-work added the `raytracing` label and
+the Q4 2026 (Fall) milestone at 16:47Z. Neither left a comment.
+
+**2026-10-20 13:13Z, reporter addendum (cmt 6291687104), arriving as a `pr_mention` webhook.** It has no @nv-slang-bot
+mention and asks the bot nothing. Live body = payload (updated_at == created_at). The reporter adds two asks for "the
+redesign":
+(1) Per-primitive data: `get_{candidate,committed}_primitive_data()`, proposed as Metal-only
+`{Committed,Candidate}PrimitiveDataAddressMetal()` returning a `uint64_t` device address. The reporter uses it today
+through `__intrinsic_asm` on the query pointer.
+(2) A curve workaround via the one-shot `intersector<curve_data, instancing>` in a `__requirePrelude`. The reporter
+asks whether `acceleration_structure<instancing>` is accepted by that intersector; they can't compile it (no Mac).
+(2) overlaps sibling #13690 (`intersector<>`).
+Routing: forwarded to the triager owner session (`sess-1792136259662-c18z7r`) to record and HOLD: no bot post,
+because the assigned maintainer owns the design. Asked the triager to fold the addendum and the assignment into
+re-check t-2c3ce2 and to stay silent while kaizhangNV works on it.
+
+**13:19Z, triager confirmed the hold (msg 36).** Nothing posted. Its spec reading of the AS-tag question (unverified,
+no MSL compile here): `intersector<curve_data, instancing>` accepts `acceleration_structure<instancing>`, because the AS
+need only match the instancing/motion tags (§6.19.2, §2.17.7, §2.17.1). The per-primitive-data accessors need Metal 3
+and no extra tag. Both probes compile on 7251cc6. The memo is the triager's `memory/issues/triage-13688.md` › "Addendum
+2026-10-20". Re-check t-2c3ce2 drafts any reply first and needs an Orchestrator go before posting.
 
 **Resumes on:** a maintainer comment on #13688, or re-check t-2c3ce2.

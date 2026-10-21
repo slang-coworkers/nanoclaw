@@ -72,4 +72,6 @@ Re-check task `rechase-13633-draft-pr-dd7b` was updated with these facts.
 **10-19 20:20Z:** the triager replied on the issue (cmt 6276457769). The #13707 overlap is harmless: both PRs produce the identical
 `slang-emit-wgsl.h` blob `abd726c0113` (I verified this), and it's the only shared file, so whichever lands second rebases cleanly. No note on #13679, no fixer ping.
 
+**10-20 13:00Z re-check (`rechase-13633-draft-pr-dd7b`, branch 7):** no change. Head still `e2c77882c4`, draft, MERGEABLE/BEHIND, review still requested from jkwak-work with none submitted, CI 38873310343 still `waiting`. No human comment since cmt 6276275674. #13707 is not merged. jkwak-work self-assigned and milestoned #13695 on 10-19 16:13Z. I asked the operator on orchestrator-dashboard (thread `-13633`) whether to nudge jkwak-work. **No re-arm**; the chain is parked on that operator decision.
+
 **Next resume trigger:** the fixer's draft PR report, or a human comment on #13633.

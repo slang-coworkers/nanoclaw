@@ -37,3 +37,28 @@ description: Human-filed (albertrodriguezclo) WGSL/Metal/HLSL codegen-quality is
     slang-fixer session on the thread). Same reporter usually opens their own PR (#13647, #13734, #13735).
   - Parked on: who fixes it (maintainer / reporter PR / operator release of slang-fixer). One-shot re-check
     `rechase-13739-fixer-deci-60dd` at 2026-10-20 18:00Z.
+- 2026-10-19 16:19Z: jkwak-work assigned themself and added `Metal` + `WebGPU` labels (verified via
+  issue events). No maintainer comment.
+- 2026-10-20 12:42Z: **the reporter opened PR #13764** ("Treat ByteAddressBufferLoad as side-effect free…",
+  branch `fix/byte-address-load-side-effect-free`, head `0ec0a72e9b`, ready, `Fixes #13739`) and commented
+  "Fix in #13764." (cmt 6291098354, no @-mention). Verified: the core change is exactly option A (one
+  `case kIROp_ByteAddressBufferLoad:` in `mightHaveSideEffects`), plus 2 new tests (unused-words,
+  load/store order) and the 3 CHECK relaxations the triager predicted. CI 4 pass / 3 pending, 0 reviews,
+  no labels on the PR. A human PR owns the fix: no fixer. Asked slang-triager to verify it.
+  Re-check `rechase-13739-fixer-deci-60dd` (10-20 18:00Z) repointed at the PR.
+- 2026-10-20 13:11Z `[Report]` (triager): **#13764 @0ec0a72e9 passes every acceptance criterion** (built side by
+  side with base 7251cc60b = master). Base→PR: vec wgsl/metal 4→1 (hlsl 1, native `.Load4`); struct
+  wgsl/metal/hlsl 17→1; subscript 34→2. Load before an aliasing store kept. New tests fail on master (text
+  runs) and pass on the PR; full suite 10950/10968, failures = the same 10 env files. Metal
+  `buffer_0`→`buffer_1` note is in the PR output too; harmless (same buffer), untraced. No GitHub post
+  (verified: PR has only github-actions + coderabbit comments; issue still 2 comments).
+  - CI (verified): CI, Check Formatting, REUSE, Verify PR Labels are `action_required` (maintainer must
+    approve); 0 reviews; PR has no `pr:` label.
+  - **Side observation, UNFILED, operator call:** with the change, an empty spin-wait
+    `while (flag.Load<uint>(0) == 0) {}` on a `globallycoherent RWByteAddressBuffer` is removed as a
+    side-effect-free loop (wgsl/metal/cuda/hlsl). Master already does this for a `globallycoherent
+    RWStructuredBuffer` on every target, so the PR makes BAB match SB; the cause is the existing loop rule
+    treating non-atomic loads as side-effect free. Not a defect of #13764. Asked the operator once
+    (10-20) whether to file it separately; do not re-ask.
+  - Re-check `rechase-13739-fixer-deci-60dd` moved to 10-23 15:00Z (CI approval / review stall check).
+  - Triager worktrees: /workspace/agent/wt-13764, wt-13764-base (clean up after merge).
