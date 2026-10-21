@@ -3,7 +3,7 @@ title: "Slang Codebase and CI Specifics: Test Isolation, Diagnostics, Perf, and 
 type: concept
 group: agent-infra
 tags: [slang, render-test, filecheck, vcpkg, merge-queue, record-replay, compile-perf, diagnostics]
-source_count: 7
+source_count: 8
 ---
 
 ## TL;DR
@@ -31,7 +31,8 @@ truth, not appearance or docs.
   COM object is a deterministic, sanitizer-independent leak assert. record-replay `createSession`
   leaked a ref on the registered-FS-reuse arm.
 - **"benchview" ≠ the existing compile-perf gh-pages dashboard** — the gh-pages dashboard is live;
-  benchview is a separate, not-yet-wired backend (design-only as of 2026-09-08).
+  benchview is a separate backend. It was design-only on 2026-09-08; since PR #13625 (2026-10-19)
+  compile-time results are exported to it from the repo, runtime results still are not.
 - **Module-write diagnostics: all FOUR extensions** (`.slang-module`, `.slang-lib`, `.zip`,
   `.dir`) map to `ContainerFormat::SlangModule`; gate CLI-only diagnostics on
   `m_isCommandLineCompile` INSIDE the hook; codes render zero-padded (`88 → E00088`).
@@ -111,8 +112,12 @@ implemented today is the `tools/compile-perf/` microbenchmark suite → nightly 
 DB/backend the initiative is standing up, appearing in the repo only as design-analogy comments as
 of 2026-09-08 ([slang perf: "benchview" != the existing compile-perf gh-pages dashboard](../learnings/1788881905309-slang-perf-benchview-the-existing-compile-perf-gh-.md)).
 When triaging perf-initiative issues (epic #12941 + children), split "verify data publishing" by
-which dashboard is meant — the existing gh-pages (publishing now) vs benchview (gated on the
-implementing twin landing the publish path).
+which dashboard is meant — the existing gh-pages (publishing now) vs benchview. The compile-time
+publish path to BenchView has since landed: PR #13625 (master 68438b5e1, 2026-10-19) added
+`tools/compile-perf/benchview.py` and an "Export nightly results for BenchView" step in
+`nightly-mdl-perf-test.yml`, while runtime GPU and MaterialX perf still have nothing in tree
+([BenchView export now in tree (PR #13625)](../learnings/1792423759686-slang-benchview-export-now-in-tree-tools-compile-p.md)).
+The full perf-infra picture is on [[wiki/concepts/misc-f0909b9-slang-ci-perf-and-infra-ops.md]].
 
 Second, adding a diagnostic to the CLI module-write path has several non-obvious gotchas
 ([slang module-container diagnostics: hook scope, extensions, warning-disable id vs name](../learnings/1788903544418-slang-module-container-diagnostics-hook-scope-all-.md)).
@@ -128,11 +133,12 @@ render zero-padded to 5 digits (`88 → warning[E00088]`), so FileCheck the brac
 bare `CHECK: warning 88`; and `-no-codegen` is a debug path that swallows escalated errors (returns
 `SLANG_OK` without the sink-error check).
 
-**Source learnings (7):**
+**Source learnings (8):**
 - [render-test HLSL-prelude leak is CPU-reproducible via shared test-server session](../learnings/1787030106338-render-test-hlsl-prelude-leak-is-cpu-reproducible-.md) — one shared GlobalSession lets a `-cpu` test poison a later `-target hlsl` test; single-file two-directive repro; flag is `-nvapi-slot`.
 - [A code-reading subagent can read a stale local main — cut the worktree from origin first](../learnings/1787227434639-a-code-reading-subagent-can-read-a-stale-local-mai.md) — stale-tree facts are internally consistent; `git rev-list --count main..origin/main`; smaller line numbers ⇒ older tree; positive-control DeepWiki.
 - [Static REF+patch diff can settle a vcpkg overlay-removability question without a build](../learnings/1787228997352-static-ref-patch-diff-can-settle-a-vcpkg-overlay-r.md) — matching REFs + extra patches ⇒ not redundant at that pin; corroborate with README omission and the bump PR not deleting the overlay.
 - [Merge-queue failure:1 can be a same-run GPU-flake auto-retry, not a stall](../learnings/1787581056199-merge-queue-failure-1-can-be-a-same-run-gpu-flake-.md) — check for a `retry-on-gpu-failure` job with `conclusion:success` then re-check `commits/{sha}/status`; investigate before alarm.
 - [Record-replay createSession leaked a ref on registered-FS reuse; live-count stub catches it](../learnings/1788252612832-record-replay-createsession-leaked-a-ref-on-regist.md) — `s_liveCount` COM stub is a sanitizer-independent leak assert; call createSession twice with the same FS to hit the registered arm; a coverage task can be a bug hunt.
 - [Slang perf: "benchview" != the existing compile-perf gh-pages dashboard](../learnings/1788881905309-slang-perf-benchview-the-existing-compile-perf-gh-.md) — gh-pages dashboard is live; benchview is a separate, design-only backend; split "verify publishing" by which is meant.
+- [Slang BenchView export now in tree (PR #13625)](../learnings/1792423759686-slang-benchview-export-now-in-tree-tools-compile-p.md) — compile-time results now exported to BenchView from the repo; runtime still absent.
 - [Slang module-container diagnostics: hook scope, all 4 extensions, warning-disable id vs name](../learnings/1788903544418-slang-module-container-diagnostics-hook-scope-all-.md) — 4 extensions map to SlangModule; gate CLI diagnostics on `m_isCommandLineCompile` inside the hook; codes render zero-padded (E00088).

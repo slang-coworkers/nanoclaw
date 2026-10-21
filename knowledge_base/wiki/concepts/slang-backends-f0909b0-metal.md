@@ -1,12 +1,12 @@
 ---
-title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, buffer layout rules, and GPU-free repro
+title: Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, read_write texture fences, and GPU-free repro
 type: concept
 group: slang-backends
-tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register, groupshared, threadgroup, buffer-layout]
-source_count: 21
+tags: [metal, msl, emit, intrinsic-asm, texture, multisample, argument-buffer, precedence, dispatchmesh, repro, binding, register, groupshared, threadgroup, buffer-layout, texture-fence, read-write-texture, image-subscript]
+source_count: 22
 ---
 
-# Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, buffer layout rules, and GPU-free repro
+# Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, read_write texture fences, and GPU-free repro
 
 ## TL;DR
 
@@ -18,13 +18,14 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 - **Metal argument-buffer tier is a RUNTIME device capability, not a compile-time choice** — a portable argument-buffer struct compiles once and runs on both tiers; don't bake a tier into the program.
 - **DispatchMesh/amplification legalization is Metal-only via VIRTUAL DISPATCH** (a per-target subclass override), not a call-site `if` — a "generic"-named legalization fn can be effectively single-target. Intrinsic-asm threads values only via `$`-operands; bare identifiers emit verbatim and need the name in lexical scope.
 - **A Metal binding test must use an index the fallback cannot hit.** An unbound MSL kernel argument takes the first available index, so check an explicit `register(tN)` past every earlier slot, with distinct t/s numbers to avoid E39001.
-- **A one-operand `makeVector(float4, packed_float4)` is Metal's packed→logical conversion, not a lane list.** `IRMetalPackedVectorType` is not an `IRVectorType`, so a peephole that treats a non-vector operand as one scalar lane stores a whole `packed_float4` into a float. Count a lane only for an `IRBasicType` operand matching the result's element type — compared via `unwrapAttributedType`, since `unorm`/`snorm`/`no_diff` operands are `IRAttributedType` and raw pointer equality silently loses folds.
 - **Metal ray query (flag mapping, `intersection_params` getters, curves, CI lanes) lives on [Metal ray query](slang-backends-metal-ray-query.md).** Only a `-target metallib` lane gives CI signal for it.
 - **`__intrinsic_asm` arms are pasted with no cast, so a Metal arm that hard-codes a narrower type (`as_type<half>` in `float f16tof32(uint)`, `as_type<ushort>` in `uint f32tof16`) silently changes the declared type.** It compiles cleanly and fails only where MSL won't convert implicitly (`min(half, float)`); grep for hard-coded `as_type<half`/`as_type<ushort` instead of `as_type<$TR>`.
 - **Metal/CPU `groupshared` becomes an entry-point-local var**, so `canInstHaveSideEffectAtAddress` lets barriers and callees forward/DSE across it; treat `AddressSpace::GroupShared` roots as globals, but keep param roots exempt. Threadgroup declarations take no initializer; cite SPIRV-Cross, not the MSL spec.
-- **On Metal the buffer layout rule NAME is a lowering selector** (packing, struct clone, matrix lowering, `_natural`/`_default` type-name suffix), and CB `ScalarDataLayout` is silently ignored in IR and reflection alike. A new rule changes MSL identifiers and needs a layout IR op; diff whole files.
-- **Metal `ParameterBlock` matrices ignore `column_major` (v2025.18.2+)**, so they are transposed against SPIR-V and the cbuffer path; a real Metal-only transpose cause. Workaround: `-matrix-layout-row-major`.
-- **A mesh-shader repro must assign whole output structs**; per-field stores fire E56104 first and hide the real bug.
+- **Buffer element lowering (packed-vector `makeVector`, layout-rule names, ignored CB scalar layout, `ParameterBlock` matrices that ignore `column_major` from v2025.18.2) lives on [Metal buffer element lowering](slang-backends-metal-buffer-lowering-and-layout-rules.md).** Workaround for the matrix transpose: `ConstantBuffer<S>` or `-matrix-layout-row-major`.
+- **A mesh-shader repro must assign whole output structs**; per-field stores fire E56104 first and hide the real bug. #12883's four bugs landed as four PRs: #12884, #12885, #12886, #12887.
+- **Metal `access::read_write` textures need `fence()` before AND after every write** (Tint's design). The after-fence is the MSL §6.13.17 read-after-write rule; the before-fence fixes Dawn crbug 417296309, which is write-after-read, not read-after-write. Read the fixing commit before citing a bug for one hazard direction.
+- **The fence pass must run after `legalizeImageSubscript`**, which turns partial texel stores into write→read→write. `fence()` is non-const, so wrap it by value for `ParameterBlock` textures. Put a texture atomic's leading fence before `getRootAddr` of its `ImageSubscript` address, never between address and atomic.
+- **A new IR op on a texture-array element can force a whole-array copy in emit**, via `canInstHaveSideEffectAtAddress`'s conservative default. A/B the callee form, not only the entry point.
 - **CI noise on Metal-only PRs**: a Falcor-Perf failure can NEVER be caused by a Metal-only diff (Falcor is D3D12/Vulkan, never compiles for Metal); priority-yield + "Artifact not found" is infra, not code.
 
 ## Metal is GPU-free reproducible
@@ -32,6 +33,8 @@ Metal backend bugs and the discipline for reproducing them without a Mac/GPU:
 Most Slang Metal-backend bugs are inspectable via `slangc … -target metal` source emission with NO GPU/macOS runtime — including crashes: a null-deref during Metal *source* emission (e.g. `[outputtopology("point")]` mesh passing a scalar `OutputIndices<uint,N>`) makes `slangc` SIGSEGV (exit 139) right there. Use `SLANG_ASSERT=release-assert-only` and a prebuilt Debug `slangc` to demo it in seconds. The fold/hoist trap when reproducing *wrong-emission* bugs: an emit bug that only bites for non-trivial operands is masked because a compile-time-constant index gets constant-folded and a multi-use sub-expression gets hoisted to a temp — to surface the raw inline emission you need a runtime, single-use operand (e.g. drive an index from `SV_GroupIndex`, used once). Cross-check target divergence by emitting the same shader to `-target spirv-asm` for the correct reference ([reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md)).
 
 A release slangc is enough (`-target metal -stage mesh -entry main`). A mesh-shader repro must assign whole output structs (`V v; v.pos = ...; verts[0] = v;`). A per-field store (`verts[0].pos = ...`) fires E56104 ("mesh output must be assigned as whole struct") first and hides the real bug; the `[outputtopology("point")]` segfault (exit 139) in #12883 appears only with whole-struct assignment. On #12883 (four Metal bugs from a reporter asking how to contribute), maintainers applied only `Metal`, `reproduced` and `Needs reporter feedback`, not `bug` or `mesh shader` ([Metal emit bugs reproduce on Linux; mesh repros need whole-struct output assignment](../learnings/1792155327352-metal-emit-bugs-reproduce-on-linux-mesh-repros-nee.md)).
+
+The four #12883 bugs landed as four PRs, each marked "Contributes to #12883". Earlier notes listed only three. The four are #12886 (b92d8bcf3: mesh index precedence plus the point-topology null deref, in slang-emit-metal.cpp), #12885 (mesh user semantics, `fixFieldSemanticsOfFlatStruct` in slang-ir-legalize-varying-params.cpp), #12884 (`SV_InstanceID` = `instance_id - base_instance`) and #12887 (DispatchMesh-in-helper inlining; see the DispatchMesh section below). A quick Linux repro of the last one: put `DispatchMesh(1,1,1,p)` in a helper called from an `[shader("amplification")]` entry point and compile with `slangc -target metal -stage amplification`. On v2026.16.1 the helper body references `_slang_mesh_payload`, but only the entry point declares it ([#12883 Metal mesh index fix was PR #12886](../learnings/1792402411704-12883-metal-mesh-index-fix-was-pr-12886-not-only-1.md)).
 
 ## Texture-intrinsic emit bugs: run the contrast controls, fix in the core module
 
@@ -58,40 +61,6 @@ DispatchMesh (amplification) legalization is Metal-only via VIRTUAL DISPATCH: `l
 ## Binding tests: Metal's first-available-index fallback hides a dropped attribute (#12294)
 
 MSL 4.1 §5.2.1 gives a kernel argument without an explicit `[[buffer(N)]]`/`[[texture(N)]]`/`[[sampler(N)]]` "the first available location index". So a FileCheck that requires only *some* binding attribute, or one at index 0, can pass even when the emitter drops the attribute, because Metal's fallback lands in the same slot the layout chose. To prove a binding fix is needed, give the resource an explicit `register(tN)`/`register(sN)` whose index is past everything declared before it, and check the red-before-fix run. On slang#12294 the first choice, `t8`, still coincided: two unbound 4-element texture arrays declared earlier already filled slots 0-7. Also, `register(t8)` together with `register(s8)` on arrays raises E39001 (overlap in the Vulkan binding space) even when targeting Metal, so use distinct numbers (`t16`/`s12` worked). Codex OUTPUT_REVIEW caught both ([Metal binding tests: zero-based indices can pass on a buggy emitter](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)). The same PR's `-target metallib` smoke line has its own false-green: see [slang-test-output-assertions-and-truncated-runs](slang-test-output-assertions-and-truncated-runs.md).
-
-## Packed buffer vectors: a one-operand `makeVector` is a conversion, not a lane list
-
-Metal buffer lowering converts between `vector<T,N>` and `IRMetalPackedVectorType` with a
-one-operand `makeVector`. `__unpackVector` in `slang-ir-lower-buffer-element-type.cpp` (~:3041,
-plus :2312 and :3069) emits `makeVector(float4, packed_float4Load)` and
-`makeVector(packed_float4, v)`, and `slang-emit-metal.cpp:764` prints the first as `float4(p)`.
-`IRMetalPackedVectorType` is a sibling of `IRVectorType`, not a subtype, so `as<IRVectorType>`
-returns null for it. Any peephole that maps `makeVector` lanes to operands and assumes "not a
-vector ⇒ one scalar lane" therefore mis-folds this shape: `swizzle`/`GetElement` lane 0 becomes
-the whole `packed_float4`, and `StructuredBuffer<float4> c; out[i] = c[i].x;` on `-target metal`
-emits `*(out+i) = *(c+i)`, storing a packed vector into a float. Master (checked 2026-09-30 at
-16c3d3f686) already miscompiles `c[i][0]` this way through its `GetElement(makeVector)` fold, and
-the swizzle fold on branch fix/issue-13263 extended the bug to `.x` and `.xx`. The fix counts an
-operand as one lane only if it is an `IRBasicType` whose type equals the result's element type,
-reads that element type from either `IRVectorType` or `IRMetalPackedVectorType` instead of
-assuming the result is an `IRVectorType`, and otherwise gives up
-[one-operand makeVector(float4, packed_float4) is a conversion](../learnings/1790765098240-metal-lowering-uses-a-one-operand-makevector-float.md),
-[one-operand makeVector can be a Metal packed-vector conversion](../learnings/1790766506870-slang-ir-a-one-operand-makevector-can-be-a-metal-p.md).
-That element-type equality must compare `unwrapAttributedType(...)` (`slang-ir-util.h:364`) on both
-sides, not raw type pointers: `IRInst::getDataType()` strips only `IRRateQualifiedType`
-(`slang-ir.cpp:8975`), so a `unorm float` operand is `IRAttributedType(float, UNorm)` and never
-pointer-equals `float`. The front end lets such modifiers drop during coercion, so these values do
-reach `makeVector` operands (`float2(RWTexture2D<unorm float>[id], 0.0)`). On fix/issue-13263 R2
-(8a76ecc5f1) the raw check in `findMakeVectorLane` silently lost master's fold of
-`float2(tex[id], 0.0).y` → `0.0f` — output stayed correct, so only a differential compile caught it:
-build a base-reverted and a head binary, compile the ~1331-test corpus × spirv/hlsl/metal with
-`xargs -P 48` and diff the stripped outputs (about 3 minutes). `__vectorReshape<1>(uint3(...))` is
-callable from user code and is a handy trigger for `vector<T,1>`-typed swizzles in tests
-[IR type-pointer equality misses IRAttributedType](../learnings/1790769162592-ir-type-pointer-equality-misses-irattributedtype-u.md).
-The full slang-test suite did not catch it, because `tests/metal` is text-only FileCheck with no
-case for this shape; a peer reviewer found it by probing `-target metal`. The regression test is
-`tests/metal/swizzle-of-packed-vector-load.slang`, which checks that the output still goes
-through `float4(`.
 
 ## `groupshared` on Metal: a function-local var, and threadgroup declarations take no initializer (#13409)
 
@@ -129,50 +98,26 @@ initialize threadgroup variables. Need fixup hooks.", which emits the initialize
 assignment. Without a Metal toolchain, a `-target metallib` test on macOS CI is the only real proof
 [MSL spec doesn't state the no-initializer-on-threadgroup rule](../learnings/1790984185438-the-msl-spec-doesn-t-state-the-no-initializer-on-t.md).
 
-## Buffer layout rules on Metal: CB data-layout parameter ignored, and the rule NAME is a lowering selector (#13423)
+## `read_write` texture fences: before and after every write (#13771, PR #13792)
 
-On Metal (master 6ba151dcf), `ConstantBuffer<T, ScalarDataLayout>` and `-fvk-use-scalar-layout` are
-silently ignored for constant buffers. The CB keeps native MSL `float3` (16 bytes), while
-`StructuredBuffer<T>` is packed (`packed_float3`, 12 bytes, since #11578, between v2026.2 and
-v2026.12). `getTypeLayoutRuleNameForBuffer` (slang-ir-lower-buffer-element-type.cpp:2416-2417)
-returns Natural for every non-Khronos, non-LLVM target before it reads the buffer's explicit data
-layout. `MetalBufferElementTypeLoweringPolicy::usesPackedVectorStorage` (:2991-3003) packs only the
-StorageBuffer/UserPointer address spaces, and CBs are Uniform. Reflection's
-`MetalLayoutRulesFamilyImpl::getConstantBufferRules` (slang-type-layout.cpp:2799) ignores both the
-options and the container type. Emitted MSL and reflection agree (B@16), so nothing miscompiles;
-the request is dropped with no diagnostic. Across targets, SPIR-V honors CB ScalarDataLayout,
-HLSL/WGSL ignore it, CUDA/CPP are natural anyway, and `Std140DataLayout`/`Std430DataLayout` on Metal
-give E36107. A fix must change IR and reflection in lock step, including the Tier-2 family at
-type-layout.cpp:2869. Avoiding `float3` alone does not make native and scalar layouts coincide
-(`float x; float4 y;` puts y at 16 native vs 4 scalar), so verify offsets per target with
-`-reflection-json`
-[Metal ConstantBuffer ignores the L data-layout parameter](../learnings/1791056669263-metal-constantbuffer-ignores-the-l-data-layout-par.md).
+Consider a compute shader that writes an `RWTexture2D` texel and later reads the same texel in the same thread. MSL 4.1 §6.13.17 (p.288) says `fence()` makes a thread's writes to an `access::read_write` texture visible to that thread's later reads, and master (7251cc60b) emits no fence on Metal (#13771). The prior art places fences differently: Tint fences before and after every store to a read_write texture (`builtin_polyfill.cc`), and SPIRV-Cross fences before every read (`readwrite_texture_fences`, default true) [Metal read_write textures: same-thread write→read needs tex.fence()](../learnings/1792504235695-metal-read-write-textures-same-thread-write-read-n.md). That atom's claim that Dawn's crbug 417296309 is a read-after-write failure is wrong; the next paragraph has the corrected reading.
 
-The `IRTypeLayoutRuleName` does more than pick layout numbers on Metal. The emitter never prints
-strides or offsets (`array<T,N>` uses only operands 0 and 1, emit-metal.cpp:1472), but three
-lowering gates read the rule name: `usesPackedVectorStorage` packs only for Natural, the struct
-`isTrivial` check clones a struct when the rule is not Natural, and `shouldLowerMatrixType` leaves a
-default-major matrix alone only for Natural. The name also becomes the `_natural`/`_default` suffix
-of lowered type names through `getLayoutName`. Adding a rule name to a buffer class therefore changes
-emitted MSL identifiers (`Args_natural_0` becomes `Args_default_0`) even when the layout is
-unchanged. A "byte-identical" prototype claim on #13423 (a ~25-line change honoring only explicit
-annotations) was false for exactly this reason, so diff whole files, identifiers included. A new rule
-also needs a layout IR op: `fixBufferAccessPointerTypes` stamps `getOpFromTypeLayoutRuleName(rule)`
-on derived pointers, and with no case for the new rule it falls back to `DefaultBufferLayoutType`,
-which pointer queries map to Natural, leaving the buffer with two contradicting layouts
-(`MetalParameterBlockLayout` is the precedent). `extras/check-ir-stable-names.lua update` re-sorts
-and drops unrelated entries, so add the stable-name line by hand and then run `check`
-[IR layout rule NAME is a lowering selector and leaks into MSL type names](../learnings/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md).
-**`ParameterBlock` matrices ignore the matrix layout on Metal (since v2025.18.2).** Consider `struct C { float4x4 m; }; ParameterBlock<C> c;` compiled with `slangc -target metal`. The matrix is emitted as a native `matrix<float,4,4>` inside an `S_default` struct, whatever the layout: the slangc default column-major and an explicit `column_major` qualifier are both ignored. The cbuffer, `ConstantBuffer` and `uniform` paths still emit `_MatrixStorage_..._ColMajor` plus an unpack, and SPIR-V marks the same member `RowMajor` (Slang column-major) at identical reflection offsets, so one host upload reads back transposed on Metal only. The cause is that `MetalParameterBlockElementTypeLoweringPolicy::shouldLowerMatrixType` returns false (slang-ir-lower-buffer-element-type.cpp ~3241). That early pass still stamps `[PhysicalType]`, and the later Metal pass skips `[PhysicalType]` types (~1825), so the matrix is never lowered. v2025.18.1 is correct and v2025.19 through v2026.19 are wrong (suspect PR #8591, 6a2cf239a8). It is a real Metal-only transpose cause beside the by-design `mul(M,v)`→`v*M` swap on [[wiki/concepts/slang-backends-metal.md]]. Check for a native matrix vs `_MatrixStorage` in the MSL; the workaround is `-matrix-layout-row-major` (#13141) ([Metal ParameterBlock matrices ignore column_major since v2025.18.2](../learnings/1792157770273-metal-parameterblock-matrices-ignore-column-major-.md)).
+The hardware evidence is write-after-read. Dawn crbug.com/417296309 was fixed by commit 974d12830e9c, "[msl] Insert a fence BEFORE writes to read-write storage textures", at a time when Tint already fenced after every write. In Dawn's StorageTextureTests.cpp, `ReadWriteStorageTexture_WriteAfterReadHazard` is the "Test for" that crbug and `..._ReadAfterWriteHazard` is only "related to" it. The commit says both tests reliably fail with no fences on Apple M1, so both hazards are real, but a trailing fence alone does not fix the filed bug. PR #13792 first cited the crbug as evidence for the trailing fence, a reviewer caught it, and the design became a fence before and after every write to an `access::read_write` texture, as Tint does. That costs about two fences per write; dropping redundant fences is a follow-up. Before citing a bug as evidence for one hazard direction, read the commit that fixed it, because "test for X" and "related to X" are different claims [CORRECTION: Dawn crbug 417296309 is write-after-read](../learnings/1792540687406-correction-dawn-crbug-417296309-is-the-write-after.md), [Metal texture fences need a leading fence too](../learnings/1792548264444-metal-texture-fences-need-a-leading-fence-too-dawn.md), [Inserting an IR inst before a texture atomic](../learnings/1792539684337-inserting-an-ir-inst-before-a-texture-atomic-go-be.md).
 
-The same function's exact-target checks are what break the WGSL-via-Tint path; see
-[GLSL/WGSL emit and buffer layout](../concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md).
+Three Slang-specific facts shape the pass:
 
-**Source learnings (21):**
+- **Pass order.** `legalizeImageSubscript` (slang-emit.cpp:2474) runs after `legalizeIRForMetal` (:2413) and turns a partial texel store (`t[p].x = a; t[p].y = b;`) into write→read→write, so Slang creates the hazard even when user code never reads. PR #13792's fence pass runs right after `legalizeImageSubscript` and covers every `ImageStore` and every non-load texture atomic; a pass inside `legalizeIRForMetal` would miss those writes. `RWBuffer`'s Metal write is a separate string intrinsic (hlsl.meta.slang:20672), not `ImageStore` [Metal read_write textures need tex.fence()](../learnings/1792504235695-metal-read-write-textures-same-thread-write-read-n.md), [Metal texture fence(): non-const member](../learnings/1792529444711-metal-texture-fence-non-const-member-wrap-it-by-va.md).
+- **`fence()` is a non-const member** (§6.13.17, checked against the Apple PDF text). A texture in a `ParameterBlock` is emitted through a `constant` pointer (`pb_1->t_0`), so a direct `.fence()` there is a non-const call on a const object. Tint emits `const_cast<T thread&>(tex).fence()` (crbug 365570202); SPIRV-Cross emits a by-value `template<typename ImageT> void spvImageFence(ImageT img) { img.fence(); }`. PR #13792 uses the by-value form as a `_slang_textureFence` prelude helper (`ensurePrelude`) [Metal texture fence(): non-const member](../learnings/1792529444711-metal-texture-fence-non-const-member-wrap-it-by-va.md).
+- **A leading fence for a texture atomic goes before the address chain.** The atomic's pointer operand is an `ImageSubscript` (plus a GEP chain) that sits between the texture value and the atomic, and the Metal emitter prints the atomic and its address together. `builder.setInsertBefore(atomicInst)` therefore breaks dominance, and Metal emit fails with an internal error (E99999 near the `InterlockedAdd`). Insert before `getRootAddr(atomic->getOperand(0))` instead; `ImageStore` takes the texture directly, so `setInsertBefore(store)` is fine [Inserting an IR inst before a texture atomic](../learnings/1792539684337-inserting-an-ir-inst-before-a-texture-atomic-go-be.md), [Metal texture fences need a leading fence too](../learnings/1792548264444-metal-texture-fences-need-a-leading-fence-too-dawn.md).
+
+**A new op on a texture-array element can force a whole-array copy.** A fence on `arr[i]` gives `getElement(load(kc.arr), i)` a second use. `simplifyForEmit`'s `processLoadUse` copies a load to each use site only when `canInstHaveSideEffectAtAddress` says nothing in between can touch the load's address, and `ImageStore` and texture atomics fell through to `default: mightHaveSideEffects()`, which returns true. The emitter then materialized `texture2d<...> _S1[] = kc->arr_0;`, a copy of the whole handle array, which is invalid MSL for an unsized array (master already makes this copy whenever an element has two uses). The fix (2604cf7) returns false when the instruction writes only texel memory (an `ImageStore`, a texel atomic whose root address is an `ImageSubscript`, or the fence) and the queried address has an `isResourceType` type, because a texel can never hold a resource handle. Other addresses keep the conservative answer, and the SPIR-V/GLSL/HLSL output for those shapes was byte-identical to master. Any new IR instruction that takes a resource value as an operand right after its producer's user can change fold and copy decisions in emit, so A/B the callee form as well as the entry-point form: entry points read globals directly and hide the problem [A new IR op on a texture-array element can force a whole-array copy](../learnings/1792534127005-a-new-ir-op-that-takes-a-texture-array-element-as-.md), [Metal texture fence(): non-const member](../learnings/1792529444711-metal-texture-fence-non-const-member-wrap-it-by-va.md).
+
+## Buffer element lowering moved
+
+Packed-vector `makeVector` conversions, the layout-rule NAME as a lowering selector, the ignored CB data-layout parameter (#13423) and the `ParameterBlock` matrix-layout bug (#13141) are on [Metal buffer element lowering](slang-backends-metal-buffer-lowering-and-layout-rules.md).
+
+**Source learnings (22):**
 - [Metal binding tests: an unbound kernel arg takes the first available index, so a zero-based or attribute-presence check passes on a buggy emitter; pick an index past all earlier slots and avoid t/s overlap (E39001) (#12294)](../learnings/1790695616872-metal-binding-tests-zero-based-indices-can-pass-on.md)
-- [Metal lowering uses a one-operand makeVector(float4, packed_float4) as a conversion — don't count non-IRVectorType operands as scalars](../learnings/1790765098240-metal-lowering-uses-a-one-operand-makevector-float.md) — master's `c[i][0]` already miscompiles
-- [Slang IR: a one-operand makeVector can be a Metal packed-vector conversion, not a lane list](../learnings/1790766506870-slang-ir-a-one-operand-makevector-can-be-a-metal-p.md) — match element types; test tests/metal/swizzle-of-packed-vector-load.slang
-- [IR type-pointer equality misses IRAttributedType (unorm/snorm/no_diff); use unwrapAttributedType in peephole type checks](../learnings/1790769162592-ir-type-pointer-equality-misses-irattributedtype-u.md) — `getDataType()` strips only rate qualifiers; differential corpus compile caught a lost fold; `__vectorReshape<1>` trigger.
 
 - [reproducing Metal-backend bugs locally without a GPU + the fold/hoist trap](../learnings/1788374380808-reproducing-metal-backend-bugs-locally-without-a-g.md) — Metal source emission (incl. SIGSEGV crashes) is GPU-free; use a runtime single-use operand to defeat constant-fold/hoist masking; cross-check `-target spirv-asm`.
 - [Metal MS-texture emit: int2 read coord + get_width(lod) are multisample-general, not depth-specific](../learnings/1786993599232-metal-ms-texture-emit-int2-read-coord-get-width-lo.md) — color controls proved 2 of 3 "depth" bugs are MS-general; texture emit lives in the core-module intrinsic layer; run contrast controls before accepting a shared-locus framing.
@@ -186,8 +131,12 @@ The same function's exact-target checks are what break the WGSL-via-Tint path; s
 - [Metal DispatchMesh legalization: intrinsic-asm operand-vs-name threading, virtual-dispatch target gating](../learnings/1788394097476-metal-dispatchmesh-legalization-intrinsic-asm-oper.md) — amplification legalization is Metal-only via a virtual override; `$`-operands vs verbatim bare identifiers (needing in-scope `IRParam`s); inline-to-bring-into-scope is the standard pattern.
 - [Metal/CPU groupshared is a function-local var after introduceExplicitGlobalContext (#13409)](../learnings/1790967869022-metal-cpu-groupshared-is-a-function-local-var-afte.md) — `canInstHaveSideEffectAtAddress` treats barriers/callees as not touching it; GroupShared-address-space fix; param roots need an exemption.
 - [The MSL spec doesn't state the 'no initializer on threadgroup vars' rule; cite SPIRV-Cross instead](../learnings/1790984185438-the-msl-spec-doesn-t-state-the-no-initializer-on-t.md) — spirv_msl.cpp:3868; the fold repro needs a later read (atomic); `-g` hides it.
-- [Metal ConstantBuffer ignores the L data-layout parameter (ScalarDataLayout) in both IR and reflection](../learnings/1791056669263-metal-constantbuffer-ignores-the-l-data-layout-par.md) — dropped silently, IR and reflection agree; fix both in lock step; verify offsets with -reflection-json.
-- [Slang IR layout rule NAME is a lowering selector and leaks into MSL type names](../learnings/1791092001213-slang-ir-layout-rule-name-is-a-lowering-selector-a.md) — gates packing/struct clone/matrix lowering; `_natural`→`_default` identifiers; add a layout IR op; hand-edit stable names.
 - [Metal __intrinsic_asm can emit a narrower MSL type than the declared Slang return type (f16tof32/f32tof16)](../learnings/1792075407123-metal-intrinsic-asm-can-emit-a-narrower-msl-type-t.md) — no cast is inserted; grep hard-coded `as_type<half`/`as_type<ushort` (#13653)
 - [Metal emit bugs reproduce on Linux; mesh repros need whole-struct output assignment](../learnings/1792155327352-metal-emit-bugs-reproduce-on-linux-mesh-repros-nee.md) — per-field stores fire E56104 and hide the `[outputtopology("point")]` segfault (#12883); triage labels
-- [Metal ParameterBlock matrices ignore column_major since v2025.18.2 (transposed vs SPIR-V)](../learnings/1792157770273-metal-parameterblock-matrices-ignore-column-major-.md) — `MetalParameterBlockElementTypeLoweringPolicy::shouldLowerMatrixType` false + `[PhysicalType]` skip; WAR `-matrix-layout-row-major` (#13141)
+- [#12883 Metal mesh index fix was PR #12886, not only #12884/#12885/#12887](../learnings/1792402411704-12883-metal-mesh-index-fix-was-pr-12886-not-only-1.md) — four "Contributes to" PRs; DispatchMesh-in-helper Linux repro (`_slang_mesh_payload` out of scope)
+- [Metal read_write textures: same-thread write→read needs tex.fence() (MSL 6.13.17); Tint/SPIRV-Cross prior art](../learnings/1792504235695-metal-read-write-textures-same-thread-write-read-n.md) — no fence on master; `legalizeImageSubscript` runs after `legalizeIRForMetal`; its crbug direction is corrected by 1792540687406
+- [Metal texture fence(): non-const member; wrap it by value for ParameterBlock textures](../learnings/1792529444711-metal-texture-fence-non-const-member-wrap-it-by-va.md) — `_slang_textureFence` prelude helper; pass after `legalizeImageSubscript` (PR #13792)
+- [A new IR op that takes a texture-array element as an operand can force a whole-array copy in Metal/C-like emit](../learnings/1792534127005-a-new-ir-op-that-takes-a-texture-array-element-as-.md) — `processLoadUse` + `canInstHaveSideEffectAtAddress` default; texel-only-write fix 2604cf7
+- [CORRECTION: Dawn crbug 417296309 is the write-after-read Metal texture hazard, not read-after-write](../learnings/1792540687406-correction-dawn-crbug-417296309-is-the-write-after.md) — fixing commit 974d12830e9c adds the fence BEFORE writes; fence before and after
+- [Metal texture fences need a leading fence too: Dawn's crbug 417296309 was write-after-read](../learnings/1792548264444-metal-texture-fences-need-a-leading-fence-too-dawn.md) — reviewer-caught miscitation; atomic leading fence before its `ImageSubscript`
+- [Inserting an IR inst before a texture atomic: go before the ImageSubscript chain](../learnings/1792539684337-inserting-an-ir-inst-before-a-texture-atomic-go-be.md) — `setInsertBefore(getRootAddr(...))`, else E99999

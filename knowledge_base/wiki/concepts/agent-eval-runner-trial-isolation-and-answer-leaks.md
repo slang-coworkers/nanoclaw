@@ -3,7 +3,7 @@ title: "Eval Runner: Trial Isolation, Answer Contract, and Answer-Key Leaks"
 type: concept
 group: agent-fixer-codex-skills
 tags: [eval-runner, eval-slang-triage, eval-slang-fixer, answer-json, answer-key-leak, budget-cap, ncl-tasks, sandbox, eval-memory-contamination, triage-json, llm-judge, reply-eval]
-source_count: 17
+source_count: 20
 ---
 
 # Eval Runner: Trial Isolation, Answer Contract, and Answer-Key Leaks
@@ -31,6 +31,9 @@ The `/eval-runner` skill dispatches tasks from the slang-eval-tasks bank to eval
 - The runner scores the first parseable answer.json. A trial that rewrites its answer seconds later can get a different reward than the one recorded, and a few such first drafts can make up most of a paired delta. Rescore from the final files before you report a delta.
 - Renaming `instructions.prepend.md` restarts the group, wakes every trial session, overwrites their `.claude-trace` files and adds spend. Snapshot the traces as soon as the runner exits.
 - The reply-eval LLM judge sees only the reply text and marks any unevidenced "I reproduced this" as dishonest, so reply-eval pass@k is 0 by construction until the rubric changes.
+- The reply judge also assumes no GPU/NVRTC/nvcc (the eval container has an L40S and CUDA 12.6) and calls post-filing fix PRs "invented". Fix the rubric's sandbox facts and freeze or explain later GitHub state before trusting `honest`.
+- Measure a rubric change with `adapters.rejudge` on stored answers (no new trials, about $0 agent cost); an instruction change still needs a fresh job.
+- `.claude-trace` jsonl lines are API request/response pairs: read `tool_use` blocks from assistant messages in `request.body.messages`, dedupe by id, and treat a 0 tool_use count as a parser bug.
 - Sessions keep spending after they write their answer, so the cap overshoots (about 17% on a triage job). Set `--budget-usd` about 20% under the real hard limit.
 - The queue runs r1 for every task first. A budget-stopped job has one repeat per task: its pass@k is pass@1, and it cannot be compared with a full 3-repeat job.
 
@@ -83,9 +86,15 @@ A related race: the runner scores the first parseable version of answer.json. In
 
 [Renaming `instructions.prepend.md` after a job restarts the group. The restart wakes every trial session, overwrites their `.claude-trace` files and adds spend ($55 → $65 on that job)](../learnings/1792310997428-eval-runner-clearing-eval-is-not-enough-eval-copy-.md). Snapshot the traces as soon as the runner exits. `ncl cost-cap status` takes about 9 s per call and fails under parallel calls; one `ncl cost-cap sessions --group <g> --sessions` call reads every session instead.
 
-## Reply tasks: the LLM judge penalises repro claims
+[Each line of `.claude-trace/session-<sid>.jsonl` is one API call, `{request, response, logged_at}`, not a session event](../learnings/1792428257180-eval-traces-claude-trace-jsonl-is-api-request-resp.md). The trial's tool calls are the `tool_use` blocks inside `request.body.messages` with `role == "assistant"`; every request repeats the whole history, so dedupe by tool_use `id`. A parser written for the Claude Code session-jsonl shape (top-level `message.content`) silently returns zero hits for everything, so count tool_uses per trial and treat any 0 as a parser bug. The same note: a group's `instructions.prepend.md` reaches the composed CLAUDE.md (under `## Additional Instructions`) only when the next container spawns, so check that a variant reached the agents by grepping CLAUDE.md after the first trial is `container_status=running`, not before.
 
-[In slang-eval-tasks reply tasks (bank fc5802c), the Opus judge sees only the reply text, the issue and the maintainers' reply](../learnings/1792326383997-reply-eval-llm-judge-marks-every-i-reproduced-this.md). In reply-smoke2-20261018 it set honest=0 on all 3 trials, each time because the reply claimed a reproduction or a source read "with no evidence", although the traces show each trial really ran slangc/nvcc or read the source. Pass needs reward >= 1.0 (0.5×STE + 0.5×judge), so the best reward for a reply that reports a repro is 0.8334 and pass@k is 0 by construction. Read reply-eval pass@k as meaningless until the rubric changes, for example by giving the judge the trial's evidence or by no longer penalising repro statements.
+## Reply tasks: the LLM judge's `honest` score has wrong premises
+
+[In slang-eval-tasks reply tasks (bank fc5802c), the Opus judge sees only the reply text, the issue and the maintainers' reply](../learnings/1792326383997-reply-eval-llm-judge-marks-every-i-reproduced-this.md). In reply-smoke2-20261018 it set honest=0 on all 3 trials, each time because the reply claimed a reproduction or a source read "with no evidence", although the traces show each trial really ran slangc/nvcc or read the source. Pass needs reward >= 1.0 (0.5×STE + 0.5×judge), so the best reward for a reply that reports a repro is 0.8334 and pass@k is 0 by construction.
+
+The judge also carries two false premises about the sandbox. [On reply-baseline-20261018 (bank 4e12409, 60 reply tasks, Opus 5.5) it set honest=0 on 20 of 59 replies](../learnings/1792407294620-reply-eval-judge-bank-4e12409-wrongly-assumes-no-g.md). 11 were GPU/NVRTC/nvcc results "the assistant could not have run", because the rubric says "no GPU, no NVRTC, no nvcc"; the eval container has an L40S and `/usr/local/cuda-12.6`, and every one of those traces really ran `slangc -target ptx` or nvcc with matching output. 13 (4 overlapping) were fix PRs or releases called "invented"; every cited PR exists (8 merged, 1 open), because trials read live GitHub and see fixes merged after the maintainers' first reply. So give the judge the sandbox's real tools, and either freeze GitHub at the issue date or tell the judge later PRs can be real, before trusting `honest`.
+
+A rubric change can be measured without new trials. [slang-eval-tasks 14b1af4 (`fix/reply-rubric-sandbox`) adds `python3 -m adapters.rejudge <job_dir> <out_dir> --bank <bank>`, which re-scores the stored `answer` of each scored trial in trials.jsonl with the current reply_scorer](../learnings/1792550035071-reply-eval-rejudge-stored-answers-to-measure-a-rub.md): one judge call per trial, about 4/min, about $0 agent cost. With the corrected sandbox rubric (GPU/NVRTC/nvcc can exist), reply-baseline/rules-20261018 mean reward rose from 0.9175/0.8945 to 0.9373/0.9472 and honest=0 fell from 20/24 to 11/9, with no GPU false positives left. Most remaining failures are "already fixed in vX, upgrade" claims written before the instruction pinned the filing date; only a fresh job can measure that instruction change, because rejudging reuses the old answers. Gotcha: stdout is block-buffered under `| tee`, so run.log stays empty until the end; watch the `<out_dir>/*/summary.json` counts instead.
 
 ## Budget cap and queue order (triage)
 
@@ -100,7 +109,7 @@ The queue runs r1 for every task first. A budget-stopped job therefore has one r
 - [The earlier Feature → fix note](../learnings/1792156489640-triage-eval-feature-issues-fixed-after-maintainer-.md) advised checking the issue timeline and the linked PR's merge state "to recover the ground truth". [The same author's correction](../learnings/1792156519180-correction-in-eval-triage-trials-do-not-read-the-l.md) replaces that advice: in an eval trial those signals are the answer key. The Feature → fix mapping survives, applied from the discussion. The older note stays cited only for the eval-label-list fact (`Dev Opened`), which the correction does not restate.
 - [The stale-answer note](../learnings/1792164298690-eval-runner-a-second-triage-job-scores-the-first-j.md) gives "move `eval/` aside" as the pre-flight fix. [The triage-rules-20261018 note](../learnings/1792310997428-eval-runner-clearing-eval-is-not-enough-eval-copy-.md) refines it: that fix stops the runner scoring stale files, but the trials still read the earlier answers from memos, task logs and moved-aside dirs. Both stay cited.
 
-**Source learnings (17):**
+**Source learnings (20):**
 - [ncl tasks create --group is ignored inside a container; eval trials dispatch to the driver group](../learnings/1792151064652-eval-runner-ncl-tasks-create-group-is-ignored-insi.md)
 - [don't query the target issue itself; it leaks the ground-truth labels](../learnings/1792152716605-eval-triage-don-t-query-the-target-issue-itself-it.md)
 - [answer.json must hold exactly 4 keys; live issue view leaks labels; sparse-clone research path](../learnings/1792152729605-eval-triage-answer-json-must-hold-exactly-4-keys-l.md)
@@ -118,5 +127,8 @@ The queue runs r1 for every task first. A budget-stopped job therefore has one r
 - [working-dir triage.json can hold another task's stale answer; gh api contents instead of a clone](../learnings/1792307204780-eval-triage-working-dir-triage-json-can-hold-anoth.md)
 - [clearing eval/ is not enough; eval-copy memos carry the last job's answers; first-draft delta; restart overwrites traces](../learnings/1792310997428-eval-runner-clearing-eval-is-not-enough-eval-copy-.md)
 - [reply-eval LLM judge marks every "I reproduced this" as dishonest; reply.json leak](../learnings/1792326383997-reply-eval-llm-judge-marks-every-i-reproduced-this.md)
+- [Reply eval judge (bank 4e12409) wrongly assumes no GPU and no later PRs](../learnings/1792407294620-reply-eval-judge-bank-4e12409-wrongly-assumes-no-g.md) — 20/59 honest=0: 11 real GPU/NVRTC runs, 13 real post-filing PRs; fix rubric tools, freeze GitHub.
+- [Eval traces: .claude-trace jsonl is API request/response pairs](../learnings/1792428257180-eval-traces-claude-trace-jsonl-is-api-request-resp.md) — tool_use blocks in request.body.messages, dedupe by id; prepend.md lands only on next spawn.
+- [Reply eval: rejudge stored answers to measure a rubric change without new trials](../learnings/1792550035071-reply-eval-rejudge-stored-answers-to-measure-a-rub.md) — `adapters.rejudge` (14b1af4); sandbox rubric cut honest=0 20/24 → 11/9; tee buffers stdout.
 
 _Catalog: [[wiki/index.md]]_

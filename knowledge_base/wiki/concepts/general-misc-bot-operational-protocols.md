@@ -3,7 +3,7 @@ title: "Bot Operational Protocols and Maintainer Interactions"
 type: concept
 group: general-misc
 tags: [operational, maintainer, triage, pr-watcher, scheduling, design-discussion, latent-defect, tracking-issues]
-source_count: 31
+source_count: 32
 ---
 
 # Bot Operational Protocols and Maintainer Interactions
@@ -24,7 +24,7 @@ source_count: 31
 - If you spot an adjacent defect by reading code while an unmerged PR covers the issue, mention it in the resolution comment. Don't file it.
 - Verified comments, labels, Type, review replies and reactions post freely. Only `gh pr ready`, `gh pr merge` and closing are operator-gated.
 - The API returns the bot login as bare `nv-slang-bot`, so match it loosely. Other coworkers post under the same identity.
-- Write parent-agreed timing gates and ownership claims to the tracker, because a respawn sees only disk. If you were the last commenter, edit your comment in place.
+- Write parent-agreed timing gates and ownership claims to the tracker, because a respawn sees only disk. If you were the last commenter, edit your comment in place, except for an escalation @-mention, which must be a fresh POST because edits never notify.
 - A correction is done only when every surface holding the old claim is fixed. Grep the OLD wording (it must be gone) and the NEW wording (it must be present). Narrowing a claim is not testing its premise. Your own guard drops while you correct someone else.
 - `append_learning`: never start `content` with a heading. INDEX titles are lowercased, stripped of punctuation and cut to ~50 chars, so search on fragments and put word stems early.
 - A standing gap note's severity depends on which targets it breaks, not on the syntax it names. Recompute its counts before quoting them.
@@ -83,7 +83,7 @@ While a PR is under review, add changes as new commits and bring the branch curr
 
 The fleet's GitHub identity is `nv-slang-bot[bot]`. Older text naming `slang-coworker-nanoclaw[bot]` is stale ([identity is nv-slang-bot[bot]](../learnings/1780690000003-github-bot-identity-is-nv-slang-bot-not-slang-coworker.md)). However, `gh api .../issues/<n>/comments` returns `.user.login` as bare `nv-slang-bot` with `.user.type == User`. An edit-if-last-poster-is-self check that compares against `"nv-slang-bot[bot]"` never matches, so it quietly posts duplicates. Match both forms (`case "$LOGIN" in nv-slang-bot|nv-slang-bot\[bot\])`). If you already double-posted, PATCH the stale comment into a "Superseded, see <link>" pointer ([login is bare nv-slang-bot: fix the matcher](../learnings/1782409348167-nv-slang-bot-github-login-is-nv-slang-bot-user-no-.md)). Several coworkers share this identity, so a bot comment on your PR may come from another agent. Re-read the newest comment before posting ([bot comments on your PR may be another agent](../learnings/1781152276450-comments-under-nv-slang-bot-bot-on-a-pr-you-own-ma.md)).
 
-A parent-agreed timing gate ("hold the #12052 nudge until ~17:30Z") is binding. Hold until then unless you first report what changed. Write it to the tracker immediately, because a respawned session sees only disk. A respawned session once fired from the old plan in `rerun-tracker.json`. A later agreement overrides an earlier tracker plan for the same PR ([persist parent-agreed timing gates](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)). Ownership works the same way: when the parent says "I've got this", record `owner:"PARENT"` and `do_not_re_escalate:true`, or two escalators ping the operator. If your bot was the last commenter on an item, edit that comment (`gh api -X PATCH .../issues/comments/<id>`). Post a fresh one only when someone else commented in between ([edit in place; persist ownership claims](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)).
+A parent-agreed timing gate ("hold the #12052 nudge until ~17:30Z") is binding. Hold until then unless you first report what changed. Write it to the tracker immediately, because a respawned session sees only disk. A respawned session once fired from the old plan in `rerun-tracker.json`. A later agreement overrides an earlier tracker plan for the same PR ([persist parent-agreed timing gates](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)). Ownership works the same way: when the parent says "I've got this", record `owner:"PARENT"` and `do_not_re_escalate:true`, or two escalators ping the operator. If your bot was the last commenter on an item, edit that comment (`gh api -X PATCH .../issues/comments/<id>`). Post a fresh one only when someone else commented in between ([edit in place; persist ownership claims](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)). One exception: an edit sends no notification, so when the delta exists to wake a named human (a 72h-cap escalation @-mention), POST a fresh short comment even if the bot was last ([escalation @mentions must be a fresh POST](../learnings/1792550010100-escalation-mentions-must-be-a-fresh-post-even-when.md)).
 
 ## Correction Hygiene
 
@@ -111,7 +111,7 @@ Standing down from off-lane drift on a handled thread (say, a trusted maintainer
 
 A correct bug diagnosis still fails if the user can't tell it is a bug. In the 2026-10-08 sweep a #slang-support user with a `bit_cast`→`PrimalTensor` ICE (later slang#13480, reproduced on 7 targets) said the bot "could not resolve it well, but I wasn't sure if it was a bug/issue or a coding error from my side". The bot's "worth filing" sat in a sub-bullet below the workarounds, and the user filed only after a maintainer nudged them 3 days later; the user in a `[Differentiable]` no-op thread still hadn't filed after 16 days. So when the diagnosis is a compiler bug (any E99997 or ICE), make line 1 "This is a Slang compiler bug, not your code. Please file it at github.com/shader-slang/slang/issues", follow with a ready-to-paste minimal repro, and give the workarounds after that ([Discord bug answers: lead with "this is a compiler bug, please file"](../learnings/1791448038149-discord-bug-answers-lead-with-this-is-a-compiler-b.md)).
 
-**Source learnings (31):**
+**Source learnings (32):**
 - [Obsidian-link gap is nav-only; triage by target, recompute counts](../learnings/1785824164229-learnings-wiki-obsidian-link-gap-is-nav-only-not-b.md)
 - [A correction isn't applied until every surface is fixed; grep old+new](../learnings/1785774600509-a-correction-is-not-applied-until-you-ask-where-el.md)
 - [append_learning injects title as H1; never start content with one](../learnings/1785774989369-append-learning-injects-the-title-as-h1-never-star.md)
@@ -137,6 +137,7 @@ A correct bug diagnosis still fails if the user can't tell it is a bug. In the 2
 - [Coverage examples: dispatch reusable, manifest/LCOV tail is not](../learnings/1783455979540-slang-coverage-examples-dispatch-is-reusable-but-m.md)
 - [Persist parent-agreed timing gates; flag before acting early](../learnings/1783779488465-persist-parent-agreed-timing-gates-flag-before-act.md)
 - [Edit in place when last commenter; persist parent ownership claims](../learnings/1783807636828-edit-in-place-when-you-were-last-commenter-persist.md)
+- [Escalation @mentions must be a fresh POST, even when the bot was the last commenter](../learnings/1792550010100-escalation-mentions-must-be-a-fresh-post-even-when.md) — exception to edit-in-place: edits never notify
 - [Off-lane summon thread: still answer a fresh in-lane question](../learnings/1783991597352-summon-thread-drifted-off-lane-still-answer-a-fres.md)
 - [Discord bug answers: lead with "this is a compiler bug, please file"](../learnings/1791448038149-discord-bug-answers-lead-with-this-is-a-compiler-b.md) — #13480 user filed only after a maintainer nudge; repro first, workarounds after
 - [Check a chat-reported bug against GitHub before calling it new](../learnings/1785831640500-resolve-a-chat-reported-bug-against-github-before-.md)

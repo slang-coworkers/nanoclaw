@@ -4224,6 +4224,7 @@
 - [the spec has no conversion for x does not mean x c](ag-1776713211742-1w6l4e/1792446132135-the-spec-has-no-conversion-for-x-does-not-mean-x-c.md) — _ag-1776713211742-1w6l4e_
 - [postmortem shader slang slang 13179 superseded by ](ag-1776713211742-1w6l4e/1792461389590-postmortem-shader-slang-slang-13179-superseded-by-.md) — _ag-1776713211742-1w6l4e_
 - [postmortem shader slang slang 12822 superseded by ](ag-1776713211742-1w6l4e/1792461690850-postmortem-shader-slang-slang-12822-superseded-by-.md) — _ag-1776713211742-1w6l4e_
+- [check the issue timeline for a reporter or assigne](ag-1776713211742-1w6l4e/1792555081581-check-the-issue-timeline-for-a-reporter-or-assigne.md) — _ag-1776713211742-1w6l4e_
 - [an idle metric is not a fault until a weekday cont](ag-1776713258088-r8pp2t/1786437042173-an-idle-metric-is-not-a-fault-until-a-weekday-cont.md) — _ag-1776713258088-r8pp2t_
 - [gh token 403 blocks only authenticated gh endpoint](ag-1776713258088-r8pp2t/1786868224532-gh-token-403-blocks-only-authenticated-gh-endpoint.md) — _ag-1776713258088-r8pp2t_
 - [use singular they for human github discord users i](ag-1776713258088-r8pp2t/1787041557418-use-singular-they-for-human-github-discord-users-i.md) — _ag-1776713258088-r8pp2t_
@@ -4543,6 +4544,7 @@
 - [okf synthesis embedded tool lacks exempt flag verb](ag-1777389337838-f54d9l/1792067719087-okf-synthesis-embedded-tool-lacks-exempt-flag-verb.md) — _ag-1777389337838-f54d9l_
 - [hlsl appendstructuredbuffer matrix wrapper mismatc](ag-1777389337838-f54d9l/1792433454462-hlsl-appendstructuredbuffer-matrix-wrapper-mismatc.md) — _ag-1777389337838-f54d9l_
 - [spvdescriptorheapext does not remove set binding f](ag-1777389337838-f54d9l/1792525428195-spvdescriptorheapext-does-not-remove-set-binding-f.md) — _ag-1777389337838-f54d9l_
+- [dynamic uniform is rejected on local variables des](ag-1777389337838-f54d9l/1792563496714-dynamic-uniform-is-rejected-on-local-variables-des.md) — _ag-1777389337838-f54d9l_
 - [a base64 decode failure makes every grep count 0 i](ag-1780667166418-apezq5/1786363611912-a-base64-decode-failure-makes-every-grep-count-0-i.md) — _ag-1780667166418-apezq5_
 - [correction maintainer authored tracking issue stil](ag-1780667166418-apezq5/1786366151304-correction-maintainer-authored-tracking-issue-stil.md) — _ag-1780667166418-apezq5_
 - [a placement vs materialization mixup how to tell t](ag-1780667166418-apezq5/1786381744509-a-placement-vs-materialization-mixup-how-to-tell-t.md) — _ag-1780667166418-apezq5_
@@ -5142,6 +5144,9 @@
 - [slang capability inference typealias members and s](ag-1780667166418-apezq5/1792534898622-slang-capability-inference-typealias-members-and-s.md) — _ag-1780667166418-apezq5_
 - [trace slang glslang calls without a debugger loggi](ag-1780667166418-apezq5/1792539973371-trace-slang-glslang-calls-without-a-debugger-loggi.md) — _ag-1780667166418-apezq5_
 - [correction dawn crbug 417296309 is the write after](ag-1780667166418-apezq5/1792540687406-correction-dawn-crbug-417296309-is-the-write-after.md) — _ag-1780667166418-apezq5_
+- [triage re check the issue timeline for a reporter ](ag-1780667166418-apezq5/1792555065568-triage-re-check-the-issue-timeline-for-a-reporter-.md) — _ag-1780667166418-apezq5_
+- [slang c api namespaces slang is public slang is in](ag-1780667166418-apezq5/1792559661330-slang-c-api-namespaces-slang-is-public-slang-is-in.md) — _ag-1780667166418-apezq5_
+- [spirv asm operand e29103 is only a note segfault q](ag-1780667166418-apezq5/1792566757199-spirv-asm-operand-e29103-is-only-a-note-segfault-q.md) — _ag-1780667166418-apezq5_
 - [before reaping a worktree ask the remote if the co](ag-1780667166439-vmjrwe/1786365891643-before-reaping-a-worktree-ask-the-remote-if-the-co.md) — _ag-1780667166439-vmjrwe_
 - [a park whose exit condition is a third party s act](ag-1780667166439-vmjrwe/1786366210994-a-park-whose-exit-condition-is-a-third-party-s-act.md) — _ag-1780667166439-vmjrwe_
 - [correction slang 12245 does not fix 9999 a zero ca](ag-1780667166439-vmjrwe/1786366702245-correction-slang-12245-does-not-fix-9999-a-zero-ca.md) — _ag-1780667166439-vmjrwe_
@@ -6050,6 +6055,9 @@
 - [stale cmake cache slang version numeric 0 0 0 sile](ag-1780667166439-vmjrwe/1792546176188-stale-cmake-cache-slang-version-numeric-0-0-0-sile.md) — _ag-1780667166439-vmjrwe_
 - [metal texture fences need a leading fence too dawn](ag-1780667166439-vmjrwe/1792548264444-metal-texture-fences-need-a-leading-fence-too-dawn.md) — _ag-1780667166439-vmjrwe_
 - [slang test false failures from a partial build mis](ag-1780667166439-vmjrwe/1792550944973-slang-test-false-failures-from-a-partial-build-mis.md) — _ag-1780667166439-vmjrwe_
+- [slang capability inference folding member typealia](ag-1780667166439-vmjrwe/1792554070597-slang-capability-inference-folding-member-typealia.md) — _ag-1780667166439-vmjrwe_
+- [slang spir v separate debug info split is independ](ag-1780667166439-vmjrwe/1792555787908-slang-spir-v-separate-debug-info-split-is-independ.md) — _ag-1780667166439-vmjrwe_
+- [revert drills a command line simple no crash check](ag-1780667166439-vmjrwe/1792565708194-revert-drills-a-command-line-simple-no-crash-check.md) — _ag-1780667166439-vmjrwe_
 - [a control that agrees with the claim can still be ](ag-1780667168475-a9tac8/1786381946368-a-control-that-agrees-with-the-claim-can-still-be-.md) — _ag-1780667168475-a9tac8_
 - [devin can echo the pr body as its ai analysis that](ag-1780667168475-a9tac8/1786381953297-devin-can-echo-the-pr-body-as-its-ai-analysis-that.md) — _ag-1780667168475-a9tac8_
 - [a warns in both cases premise can be false even wh](ag-1780667168475-a9tac8/1786388561579-a-warns-in-both-cases-premise-can-be-false-even-wh.md) — _ag-1780667168475-a9tac8_
@@ -6514,6 +6522,8 @@
 - [slang capability checker drops require only for ge](ag-1780667168475-a9tac8/1792523053545-slang-capability-checker-drops-require-only-for-ge.md) — _ag-1780667168475-a9tac8_
 - [inserting an ir inst before a texture atomic go be](ag-1780667168475-a9tac8/1792539684337-inserting-an-ir-inst-before-a-texture-atomic-go-be.md) — _ag-1780667168475-a9tac8_
 - [differential compile sweeps never rebuild a compar](ag-1780667168475-a9tac8/1792547346513-differential-compile-sweeps-never-rebuild-a-compar.md) — _ag-1780667168475-a9tac8_
+- [byte compare spir v separate debug info across bui](ag-1780667168475-a9tac8/1792564291274-byte-compare-spir-v-separate-debug-info-across-bui.md) — _ag-1780667168475-a9tac8_
+- [pre existing precompiled spir v link g2 separate d](ag-1780667168475-a9tac8/1792564295285-pre-existing-precompiled-spir-v-link-g2-separate-d.md) — _ag-1780667168475-a9tac8_
 - [slangpy 222 title is wrong amd windows grads colla](ag-1780667169498-sqxdef/1786461616442-slangpy-222-title-is-wrong-amd-windows-grads-colla.md) — _ag-1780667169498-sqxdef_
 - [slang spir v float atomic add hard requires the ca](ag-1780667169498-sqxdef/1786470707558-slang-spir-v-float-atomic-add-hard-requires-the-ca.md) — _ag-1780667169498-sqxdef_
 - [slangpy 222 root cause slang rhi advertises float ](ag-1780667169498-sqxdef/1786485429694-slangpy-222-root-cause-slang-rhi-advertises-float-.md) — _ag-1780667169498-sqxdef_
@@ -7692,6 +7702,7 @@
 - [reply eval judge bank 4e12409 wrongly assumes no g](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792407294620-reply-eval-judge-bank-4e12409-wrongly-assumes-no-g.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [eval traces claude trace jsonl is api request resp](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792428257180-eval-traces-claude-trace-jsonl-is-api-request-resp.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [reply eval rejudge stored answers to measure a rub](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792550035071-reply-eval-rejudge-stored-answers-to-measure-a-rub.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
+- [grep c gates miss phrases that markdown line wrapp](ag-bd998a1a-0107-4b51-8cfd-5beca81f6770/1792554544505-grep-c-gates-miss-phrases-that-markdown-line-wrapp.md) — _ag-bd998a1a-0107-4b51-8cfd-5beca81f6770_
 - [dashboard_slang triage 1776263007885](dashboard_slang-triage-1776263007885.md) — _unattributed_
 - [devin reviewer scrape reliability](devin-reviewer-scrape-reliability.md) — _unattributed_
 - [legoop feedback_ab_evaluation_criteria](legoop-feedback_ab_evaluation_criteria.md) — _unattributed_

@@ -3,7 +3,7 @@ title: "Agent Routing: GitHub Bot & Webhooks"
 type: concept
 group: agent-routing
 tags: [github, webhook, nv-slang-bot, posting-policy, comments, labels, GraphQL, identity, CI, draft-pr]
-source_count: 31
+source_count: 32
 ---
 
 # Agent Routing: GitHub Bot & Webhooks
@@ -17,7 +17,7 @@ The `nv-slang-bot` GitHub identity, webhook verification, posting policy, commen
 - **`pr_closed` / `pr_synchronize` / `pr_ready_for_review` webhooks are claims.** Reconcile against live `gh pr view` before propagating merged/new-head/closed or writing it to memory or a ledger.
 - **Posting is the default.** The closest-to-the-state tier posts a verified 5-bullet on every triaged issue, un-mentioned and maintainer-authored ones included. The one pre-post guard is "verified at HEAD".
 - **Only `gh pr ready` and `gh pr merge` are gated.** Comments, labels, replies, reactions post on the bot's authority. `<github-post-authorized />` gates only the reviewer's `/slang-pr-review` posting. A factual reply to a maintainer's @-mention request is pre-authorized; relay for sign-off only pushback, contested design, correcting a published claim, or a proactive comment.
-- **A comment PATCH notifies no one.** When a human must see or answer the reply, POST a fresh @-mention comment instead of editing the "on it".
+- **A comment PATCH notifies no one.** When a human must see or answer the reply, POST a fresh @-mention comment instead of editing the "on it". An escalation ping is always a fresh POST, even when the bot was the last commenter. A silent milestone/label change is interest, not a design decision.
 - **Auth probes lie.** `gh auth status` / `gh api user` report an invalid token while writes succeed. Attempt the write; the real degradation signal is a GraphQL mutation returning an error payload.
 - **REST 403 "Must have admin rights" ⇒ try GraphQL:** labels → `addLabelsToLabelable`; close-as-duplicate → `closeIssue`; comment edit → `updateIssueComment`. PR self-merge has the reverse polarity.
 - **`CREATE` is the only universally reliable comment operation.** PATCH/DELETE rights are per-token; no one can edit a peer's comment, and a duplicate may be unremovable by anyone in the fleet.
@@ -66,7 +66,7 @@ The gated set is exactly `gh pr ready` and `gh pr merge` (re-confirmed on #11898
 
 **Tier ownership.** The triager posts the triage 5-bullet. The fixer posts the PR (`Closes #N`) and verified thread replies, and the PR stays draft until the operator authorizes ready. The reviewer posts only when a human tagged the bot, and otherwise hands off via `send_file`. The orchestrator never posts on others' behalf. An explicit `@nv-slang-bot review` overrides the read-only `/slang-pr-review` default: route `final-review.md` to a coworker holding `pull_requests: write` ([post review when explicitly requested](../learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md)).
 
-**Edits don't notify.** A comment PATCH pings no one, neither the @-mentioned user nor subscribers, while a fresh POST's @-mention (or a review-thread reply) does. If you POST "on it" and then PATCH in the real answer and a question, the human was pinged only for the "on it". The thread then reads as unanswered to them and to a "human spoke last" supervisor (#12919). PATCH in place only for a live TODO the human needn't act on. When the reply must be seen or asks something, POST a fresh self-contained comment ([comment edits don't notify](../learnings/1789477835098-github-comment-edits-don-t-notify-human-questions-.md)).
+**Edits don't notify.** A comment PATCH pings no one, neither the @-mentioned user nor subscribers, while a fresh POST's @-mention (or a review-thread reply) does. If you POST "on it" and then PATCH in the real answer and a question, the human was pinged only for the "on it". The thread then reads as unanswered to them and to a "human spoke last" supervisor (#12919). PATCH in place only for a live TODO the human needn't act on. When the reply must be seen or asks something, POST a fresh self-contained comment ([comment edits don't notify](../learnings/1789477835098-github-comment-edits-don-t-notify-human-questions-.md)). This overrides the triage rule "edit in place if nv-slang-bot was the last commenter" whenever the delta exists to wake a named human: a 72h-cap escalation @-mention goes out as a fresh, short POST even when the bot posted last (slangpy#163, 2026-10-18 and 2026-10-21). The reverse signal is also weak. A maintainer adding a milestone or label with no comment (#163 put on "Q4 2026 (Fall)") shows interest, not a decision on an open design question, so it is not direction to start a fix. When `updated_at` moves with no new comment, read `/issues/N/timeline` to see what changed ([escalation @mentions must be a fresh POST](../learnings/1792550010100-escalation-mentions-must-be-a-fresh-post-even-when.md)).
 
 **Mermaid diagrams in comments.** No `mmdc` or mermaid-cli exists in-container, so run a structural lint before review: bracket balance, even quote count, every `style`/edge id declared, and `&lt;`/`&gt;` in labels. Avoid `-.-x` crossed-arrow edges, the construct most likely to fail rendering. Keep drafts in the base clone, because a `wt-slang-<n>/` worktree can be reaped between sessions ([mermaid lint + render gotchas](../learnings/1784186351938-mermaid-flowcharts-for-github-diagnosis-comments-l.md)).
 
@@ -124,7 +124,7 @@ The App push for any `.github/workflows/*.yml` change is rejected server-side ("
 
 Decide "ours" (route to a fixer) versus author-owned (re-confirm silently) by the PR's `author`. An `nv-slang-bot[bot]` author, usually on a `fix/issue-*` branch, means ours. A human author means theirs, even with a `[codex]` title or `codex/*` branch, which only means the human used the tool. PR #11850 (`[codex] Add hash-set pool hysteresis`, a red `check-formatting`) was authored and assigned to a maintainer. The right handling was author-owned, with no route and no "nudge the driver" line ([attribute PR ownership by author](../learnings/1782921955519-attribute-pr-ownership-by-author-field-not-title-b.md)).
 
-**Source learnings (31):**
+**Source learnings (32):**
 
 - [Verifying GitHub webhook payloads before acting](../learnings/1778861861601-verifying-github-webhook-payloads-before-acting.md)
 - [Always post the PR review when explicitly requested via webhook](../learnings/1779963510190-always-post-the-pr-review-when-explicitly-requeste.md)
@@ -157,3 +157,4 @@ Decide "ours" (route to a fixer) versus author-owned (re-confirm silently) by th
 - [Mermaid flowcharts in GitHub comments: lint + render gotchas](../learnings/1784186351938-mermaid-flowcharts-for-github-diagnosis-comments-l.md)
 - [Comment edits don't notify: POST fresh when reply must be seen](../learnings/1789477835098-github-comment-edits-don-t-notify-human-questions-.md)
 - [Reply auth: mention-response pre-authorized vs gated class](../learnings/1789490708871-github-reply-auth-pre-authorized-mention-response-.md)
+- [Escalation @mentions must be a fresh POST, even when the bot was the last commenter](../learnings/1792550010100-escalation-mentions-must-be-a-fresh-post-even-when.md) — PATCH-added mentions never notify (slangpy#163); a silent milestone/label add is interest, not direction; read `/timeline` when `updated_at` moves.

@@ -5,7 +5,7 @@ type: topic
 
 # CI, build & tooling
 
-566 learnings. [Catalog](../index.md)
+569 learnings. [Catalog](../index.md)
 
 - ["Blocked by CI" needs mergeable_state + reviewDecision checked too, not just checks](../learnings/1787012466970-blocked-by-ci-needs-mergeable-state-reviewdecision.md)
 - ["No recurrence" on a parked branch is unexercised, not fixed — and check a closing rationale against the timeline](../learnings/1785800154328-no-recurrence-on-a-parked-branch-is-unexercised-no.md)
@@ -221,6 +221,7 @@ type: topic
 - [CI health_snapshots.jsonl tail is unreadable via WebFetch — returns stale top-of-file lines](../learnings/1788596175218-ci-health-snapshots-jsonl-tail-is-unreadable-via-w.md)
 - [CI logs echo GPU-flake strings as script text — grep alone misclassifies](../learnings/1785780840892-ci-logs-echo-gpu-flake-strings-as-script-text-grep.md)
 - [CI suite currency: four timestamp fields invert, only created_at is safe](../learnings/1785824275373-ci-suite-currency-four-timestamp-fields-invert-onl.md)
+- [CI sweep: snapshot misses jobs in waiting runs; only bot drafts are throttled](../learnings/1792486355939-ci-sweep-snapshot-misses-jobs-in-waiting-runs-only.md)
 - [CI sweeps: a stale workflow_dispatch run makes a GREEN PR look red (verify run event before rerunning)](../learnings/1785816873789-ci-sweeps-a-stale-workflow-dispatch-run-makes-a-gr.md)
 - [CI terminal is not chain terminal — a maintainer approved 6 minutes before two agents declared the chain closed](../learnings/1785970543490-ci-terminal-is-not-chain-terminal-a-maintainer-app.md)
 - [ci-babysitter action_required fix (2026-09-22, #12544) is dead code — wrong data source](../learnings/1790079172299-ci-babysitter-action-required-fix-2026-09-22-12544.md)
@@ -281,6 +282,7 @@ type: topic
 - [Diagnosing DescriptorHandle&lt;RaytracingAccelerationStructure&gt; + spvDescriptorHeapEXT crashes](../learnings/1785051051163-diagnosing-descriptorhandle-lt-raytracingaccelerat.md)
 - [Diagnostic/enum codes picked against a stale base collide on master-merge and break ALL platform builds](../learnings/1782741439587-diagnostic-enum-codes-picked-against-a-stale-base-.md)
 - [DIAGNOSTIC_TEST with -target ptx still runs on runners without NVRTC](../learnings/1791410667785-diagnostic-test-with-target-ptx-still-runs-on-runn.md)
+- [Differential compile sweeps: never rebuild a compared binary mid-sweep, and normalize #line](../learnings/1792547346513-differential-compile-sweeps-never-rebuild-a-compar.md)
 - [Discord forum parent channel reads return 0 messages — check the specific thread ID for follow-up activity](../learnings/1788404541359-discord-forum-parent-channel-reads-return-0-messag.md)
 - [Discriminate a per-job timeout-minutes cancel: PR-specific cost regression vs systemic capacity ceiling](../learnings/1786198665211-discriminate-a-per-job-timeout-minutes-cancel-pr-s.md)
 - [Disk-blocker false alarm: df the real build path, /workspace/agent is a separate roomy volume](../learnings/1780381873486-disk-blocker-false-alarm-df-the-real-build-path-wo.md)
@@ -442,6 +444,7 @@ type: topic
 - [Reading GitHub check-runs: three independent ways to get a confidently wrong CI verdict](../learnings/1785867215545-reading-github-check-runs-three-independent-ways-t.md)
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md)
 - [Rebuild after a git-checkout revert-drill before quoting test counts](../learnings/1789266604298-rebuild-after-a-git-checkout-revert-drill-before-q.md)
+- [Recheck for a reporter's own PR right after the build starts, not only before push](../learnings/1792503223381-recheck-for-a-reporter-s-own-pr-right-after-the-bu.md)
 - [Reconcile the UNIT of a confound before banking its mechanism — a right verdict can carry a wrong multiplier](../learnings/1786242578317-reconcile-the-unit-of-a-confound-before-banking-it.md)
 - [Reconcile two instruments by diffing the SETS, never by comparing their COUNTS](../learnings/1785903713807-reconcile-two-instruments-by-diffing-the-sets-neve.md)
 - [Reconciling a diverged PR branch without force-push (remote had a Merge-master commit)](../learnings/1789505131994-reconciling-a-diverged-pr-branch-without-force-pus.md)

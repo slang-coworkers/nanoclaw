@@ -3,7 +3,7 @@ title: "Slang SPIR-V Backend: Emission, Capabilities, and Validation"
 type: concept
 group: slang-backends
 tags: [spirv, vulkan, codegen, capabilities, descriptor-heap, debug-info, atomics, spirv-opt, spirv-tools, optimization-level]
-source_count: 32
+source_count: 33
 ---
 
 # Slang SPIR-V Backend: Emission, Capabilities, and Validation
@@ -93,8 +93,9 @@ may not allocate a pointer type"*, so a report quoting that text came from a val
 predates the per-storage-class check. The storage class depends on the profile: Slang lowers
 SSBOs/`RWStructuredBuffer` to `Uniform`+`BufferBlock` before SPIR-V 1.4 and to `StorageBuffer`+`Block`
 from 1.4 on (`getStorageBufferAddressSpace()` in `slang-ir-spirv-legalize.cpp`). On ≥1.4,
-`requireVariableBufferCapabilityIfNeeded` already declares VPSB and the module validates (per
-slang-fixer on #13250, not independently re-verified); on `-profile spirv_1_3` a Function slot
+`requireVariableBufferCapabilityIfNeeded` already declares VPSB and the module validates (on
+#13250 with v2026.20, no `-profile` emits `Version: 1.5` and passes validation, so the report needs
+an explicit pre-1.4 profile [default 1.5 validates](../learnings/1792404676930-slang-13250-default-spir-v-profile-1-5-validates-o.md)); on `-profile spirv_1_3` a Function slot
 holding the resource pointer (`%_ptr_Function__ptr_Uniform_RWStructuredBuffer`) cannot be fixed by
 any capability. On #13250 the triage memo had rejected "rely on VariablePointers" citing only
 Slang's own legalizer (`spirv-legalize.cpp:1031-1037`), while the maintainer named the missing
@@ -131,7 +132,7 @@ The SPIR-V backend is split by subject across these sibling pages:
 - [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
 
-**Source learnings (32):**
+**Source learnings (33):**
 - [A SPVDB_DEBUGGER/debuginfo slang-test failure is a slangc -g2 SPIR-V opt bug (default opt is O1, not None), not a spvdb integration bug](../learnings/1789170739377-a-spvdb-debugger-debuginfo-slang-test-failure-is-a.md)
 - [spvdb unique_id_ assertion on macos-debug-aarch64 — real bug, flaky trigger, tracked #13024 (don't re-file)](../learnings/1789179963682-spvdb-unique-id-assertion-on-macos-debug-aarch64-r.md)
 - [adding a nullary entry-point attribute + SPIR-V execution mode (`[postdepthcoverage]`): mirror `[earlydepthstencil]` across 9 sites; `ASTNodeType` is FIDDLE-regenerated (not append-only); a new IR op bumps `k_maxSupportedModuleVersion`; `requireSPIRVCapability`/`requireSPIRVExecutionMode` are pure emission funnels (no capdef atoms needed)](../learnings/1789107867239-adding-a-nullary-entry-point-attribute-spir-v-exec.md)
@@ -162,5 +163,6 @@ The SPIR-V backend is split by subject across these sibling pages:
 - [Descriptor-heap ConstantBuffer<T> SPIR-V crash cluster — 3 fixes landed, verify at ToT](../learnings/1783459628122-descriptor-heap-constantbuffer-t-spir-v-crash-clus.md)
 - [SPIR-V Function var holding a logical pointer: VPSB/VP lift the rule only for StorageBuffer/Workgroup pointees (#13250)](../learnings/1790784612373-spir-v-function-var-holding-a-logical-pointer-vpsb.md) — verify rejected-approach claims against validator source
 - [SPIR-V variable pointers cover only StorageBuffer/Workgroup pointees; pre-1.4 Slang SSBOs are Uniform](../learnings/1790785526520-spir-v-variable-pointers-cover-only-storagebuffer-.md) — `-profile spirv_1_3` unfixable by capability
+- [slang#13250: default SPIR-V profile (1.5) validates; only pre-1.4 profiles fail](../learnings/1792404676930-slang-13250-default-spir-v-profile-1-5-validates-o.md) — `-profile spirv_1_4` is a user workaround
 - [SPIR-V -O3 hides the static-const struct-table localization that text targets show (#13107)](../learnings/1790874683100-slang-spir-v-o3-hides-the-static-const-struct-tabl.md) — at `-O3` spirv-opt folds `$init` into a module-scope OpConstantComposite; compare at default opt and `-O0`; the Function-var copy for dynamic indexing happens on both builds.
 - [Atomic MemoryOrder: no per-op validation; non-constant order ICEs on SPIR-V/Metal; only VUID-10866 is Vulkan-gated (#13518/#13519)](../learnings/1791462408563-slang-atomic-memoryorder-no-per-op-validation-non-.md)

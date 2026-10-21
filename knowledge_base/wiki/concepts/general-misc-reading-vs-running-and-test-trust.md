@@ -3,7 +3,7 @@ title: "Reading vs Running, and Trusting the Test"
 type: concept
 group: general-misc
 tags: [reading-vs-running, test-trust, inert-claim, falsifier, deepwiki]
-source_count: 12
+source_count: 13
 ---
 
 # Reading vs Running, and Trusting the Test
@@ -14,11 +14,13 @@ source_count: 12
 - Green is weak for "my fix works", strong for "I changed nothing".
 - Name the field that would falsify you, in advance.
 - A widely-repeated behavioral claim can be inert — probe it several ways.
-- DeepWiki can confidently contradict Slang source — verify against the local checkout on layout/ABI questions.
+- DeepWiki answers are leads, not ground truth: it confidently contradicts Slang/SlangPy source on layout, codegen and recent changes. Confirm against source at HEAD, slangc output or a GPU run before a memo, handoff or comment, and record the refutation.
 
 ## DeepWiki Can Confidently Contradict Slang Source — Verify Against the Local Checkout on Layout/ABI
 
 DeepWiki is a good PRIMARY for architecture/flow/phase-ordering ("where does X run relative to Y") — on #12092 its first answer (default 16+16=32, computed in `_createTypeLayout` before `inferAnyValueSizeWhereNecessary`) was correct and useful. But on a fine-grained "does A feed back into B" question it CONFABULATED: asked whether the inferred `anyValueSize` is propagated back into the reflection TypeLayout, it answered — in detail, with plausible file/function names — that it IS. That is FALSE: the reproduced bug (reflection=32 vs emitted ArrayStride=80) and the actual source (`slang-type-layout.cpp:5982-5987` reads only the AST `AnyValueSizeAttribute`, never the IR `IRAnyValueSizeDecoration`) both refute it. When DeepWiki's claim directly contradicts a reproduced observation, TRUST THE SOURCE + THE REPRO — and say so explicitly in the memo so the fixer doesn't chase the phantom path. Always cross-check DeepWiki layout/ABI claims against the local checkout before citing them in a verdict ([DeepWiki can confidently contradict Slang source — verify against local checkout on layout/ABI questions](../learnings/1784022527095-deepwiki-can-confidently-contradict-slang-source-v.md)).
+
+The same holds outside layout. In SlangPy triage DeepWiki gave confident wrong answers three times, each on the question that decided the fix: the Metal ScalarDataLayout stride (slangpy#1014, refuted by slangc), "Slang merges a global `[[vk::push_constant]]` with entry-point uniforms" (slangpy#1232, where the SPIR-V had two PushConstant interfaces), and "create_device prepends SHADER_PATH" (slangpy#1238, stale after #1183). So the general rule is: a DeepWiki answer is a hypothesis, on layout, codegen and recent changes alike. Confirm it against source at HEAD, slangc output (`-target spirv-asm`, reflection JSON) or a GPU run before it goes into a memo, a handoff or a GitHub comment, and write the refutation into the memo ([DeepWiki answers are leads, not ground truth](../learnings/1792477166867-deepwiki-answers-are-leads-not-ground-truth-layout.md)).
 
 
 ## Reading is not running — a two-minute experiment beats a plausible control-flow argument
@@ -47,9 +49,10 @@ Generalized re-checking never converges on the deciding input: name the field wh
 
 **When adjudicating a PR review, if a reviewer's static code-trace contradicts a prior learning or your own recall-based assumption and a built `slangc` is available, COMPILE the repro — it settles the dispute in one command; don't relay either side's prose as the verdict.** On PR #12723 R3 (folding #12731) prior learning claimed an empty-payload `CallShader` crashes *only* on SPIR-V (GLSL routing through a location integer). Reviewer A disputed it, tracing that GLSL's erased `p` still feeds `__callablePayloadLocation(p)` → `kIROp_GetVulkanRayTracingPayloadLocation` (no `legalizeInst` case) → the same `non-simple operand(s)!` abort. Compiling `struct EmptyData{}; [shader("raygeneration")] void rgen(){ EmptyData d; CallShader(0,d); }` settled it: `-target glsl` → exit 255 non-simple-operand (Reviewer A right, prior learning WRONG); `-target cuda` → a distinct fixed-arity `optixDirectCall` assert; `-target spirv` → the #12731 repro; `-target hlsl` → exit 0 (the bug shows only at `-target dxil`). Empty-`CallShader`-payload is a cross-target issue, not SPIR-V-only. ([Compile to settle a reviewer's static-trace vs a prior-learning assumption](../learnings/1789507586451-compile-to-settle-a-reviewer-s-static-trace-vs-a-p.md))
 
-**Source learnings (12):**
+**Source learnings (13):**
 - [Compile the repro to settle a reviewer's static-trace vs a prior-learning assumption — don't relay prose as the verdict (empty CallShader payload is cross-target, not SPIR-V-only)](../learnings/1789507586451-compile-to-settle-a-reviewer-s-static-trace-vs-a-p.md)
 - [DeepWiki can confidently contradict Slang source — verify against local checkout on layout/ABI questions](../learnings/1784022527095-deepwiki-can-confidently-contradict-slang-source-v.md) — DeepWiki can confidently contradict Slang source — verify against local checkout on layout/ABI questions
+- [DeepWiki answers are leads, not ground truth (layout/codegen/recent changes)](../learnings/1792477166867-deepwiki-answers-are-leads-not-ground-truth-layout.md) — three confident wrong answers in SlangPy triage (#1014, #1232, #1238); confirm at HEAD / slangc / GPU and record the refutation.
 - [code shape is the wrong test for failure identity](../learnings/1785804467761-n-crash-signatures-is-a-hypothesis-about-count-not.md) — code shape is the wrong test for failure identity
 - [DXC prebuilt-fetch HTTP 500 signature](../learnings/1785759110494-dxc-prebuilt-fetch-http-500-fails-the-build-despit.md) — DXC prebuilt-fetch HTTP 500 signature
 - [EXPECTED_HASH is deferred-fatal, the fallback does run](../learnings/1785759571154-correction-file-download-expected-hash-is-deferred.md) — EXPECTED_HASH is deferred-fatal, the fallback does run

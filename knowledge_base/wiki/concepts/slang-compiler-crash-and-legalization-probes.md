@@ -3,7 +3,7 @@ title: Slang Compiler Crash & Legalization Probes — Front-End Fall-Throughs, T
 type: concept
 group: slang-grab-bag
 tags: [slang, ir-lowering, codegen, legalization, glsl-legalize, cuda, spirv, byte-address-buffer, producer-fix]
-source_count: 18
+source_count: 19
 ---
 
 # Slang Compiler Crash & Legalization Probes
@@ -44,7 +44,9 @@ mishandles an input shape, and the crash surfaces far downstream in codegen or t
 - **Inherited-field access through a BoundMember/BoundStorage base (#13348) needs `InheritanceDecl`
   at all three `BoundMemberInfo` consumers** — fixing `materialize` alone is insufficient.
 - **An entry point with a `uniform` param, called by another compiled entry point, segfaults on
-  every target** (open on master; `-entry <caller>` alone works).
+  every target** (open on master; `-entry <caller>` alone works). Of the passes that rewrite an
+  entry point's signature before `fixEntryPointCallsites`, only the borrow pass updates callers;
+  the uniform-param hoist and `translateGlobalVaryingVar` change arity silently.
 - **`CoerceToProperTypeImpl` has THREE failure representations, not two** — normalize at the wrapper.
 - **"guard A subsumes guard B" is a claim about the FULL consumer set of each** — a `static_assert`
   reachability walk and `isFromCoreModule` cover disjoint consumers; keep both.
@@ -116,16 +118,29 @@ module from an older compiler bakes the decoration into serialized IR). Bonus: `
 if(!x) return false;` is DEAD in Release because `SLANG_ASSERT`→`__builtin_assume` licenses deleting
 the null-check ([entry-point decoration relocation: two seductive-but-wrong companion
 fixes](../learnings/1787615422745-slang-entry-point-decoration-relocation-two-seduct.md)).
-A second entry-point-callsite crash is open and unfiled as of 2026-09-30: compiling an entry point
-that has an entry-point `uniform` parameter together with another entry point that *calls* it
-segfaults (rc 139) on SPIR-V, CUDA and Metal alike —
+A second entry-point-callsite crash: compiling an entry point that has an entry-point `uniform`
+parameter together with another entry point that *calls* it segfaults (rc 139) on SPIR-V, CUDA and
+Metal alike —
 `[shader("compute")][numthreads(1,1,1)] void inner(int id : SV_DispatchThreadID, uniform int k)`
 called as `inner(id, 3)` from a second `[shader("compute")] outer`, then `slangc x.slang -target
 spirv-asm`. Compiling only the caller (`-entry outer`) works, and the crash is already on master
-(8d763dd39). The unverified hypothesis is that `moveEntryPointUniformParamsToGlobalScope` strips the
-uniform param from the callee's signature while the caller still passes the argument, and the
-arity mismatch crashes a later pass
-[uniform-param entry point called by another entry point segfaults](../learnings/1790767202448-slang-compiling-a-uniform-param-entry-point-togeth.md).
+(8d763dd39) [uniform-param entry point called by another entry point segfaults](../learnings/1790767202448-slang-compiling-a-uniform-param-entry-point-togeth.md).
+
+**Why: in `linkAndOptimizeIR`, only the borrow pass updates an entry point's callers.** Several
+passes change an entry point's signature in place before `fixEntryPointCallsites` (slang-emit.cpp
+:2079 at 837ab4c34) clones it into an ordinary function.
+`translateEntryPointInParamToBorrow` (:1100) fixes its call sites (`updateCallSites`,
+transform-params-to-constref.cpp:213). Two others do not:
+`collectEntryPointUniformParams`/`moveEntryPointUniformParamsToGlobalScope` (:1406/:1415) remove
+params, which is the crash above (Debug asserts `index < getParamCount()` at slang-ir.cpp:3168),
+and `translateGlobalVaryingVar` (:2073) adds a `BorrowInParam` for a global `in` (#13730 asserts at
+specialize-function-call.cpp:246, or segfaults in Release). The arg fix-up in
+fix-entrypoint-callsite.cpp:96-97 returns silently on a count mismatch, so the bad call reaches
+later passes. When a maintainer blames "in→constref in place", check which pass actually changed the
+arity with `-dump-ir-after fixEntryPointCallsites`. The clone/trampoline design history is #8739
+(the "Preferred Solution" trampoline; closed by #9869, which never built it) and #12392's comments
+(clone or forwarding wrapper at one split point after linking); there is no tracking issue as of
+2026-10-19 [only the borrow pass updates callers](../learnings/1792432625744-slang-entry-point-called-as-a-function-only-the-bo.md).
 
 ## Subsumption, wrappers, and value-shape completeness
 
@@ -213,7 +228,7 @@ other erroring. Before claiming a pass "rejects store X", run master slangc with
 `imageSubscript` insts, and compare `t[i] = v` with `t[i].x = v`
 [plain `tex[i] = v` lowers via the setter, not kIROp_ImageSubscript](../learnings/1792030315427-slang-plain-tex-i-v-lowers-via-the-setter-not-kiro.md).
 
-**Source learnings (18):**
+**Source learnings (19):**
 - [ParseModifiers on a decl whose name can be a bareword keyword breaks previously-valid code](../learnings/1787558855449-parsemodifiers-on-a-decl-whose-name-can-be-a-barew.md) — use bracket-only ParseSquareBracketAttributes; test with a case/field named `point`/`linear`.
 - [ByteAddressBuffer.Load of struct with empty/zero-size field emits Load<void>](../learnings/1787580105549-byteaddressbuffer-load-of-struct-with-empty-zero-s.md) — add a natural-size-0 skip in emitLegalLoad/Store field loops.
 - [getDefaultVal on AssocTypeDecl built an empty IRMakeStruct](../learnings/1787585281811-slang-getdefaultval-on-assoctypedecl-built-an-empt.md) — producer-side emitDefaultConstruct; assert consumer with EXACT ==, not min-bound.
@@ -228,6 +243,7 @@ other erroring. Before claiming a pass "rejects store X", run master slangc with
 - [Partial-init struct return: undef varying store is fieldExtract(load(unpromoted var)), not IRUndefined](../learnings/1787708099936-partial-init-struct-return-undef-varying-store-is-.md) — an as<IRUndefined> guard is incomplete; fix in glsl-legalize assign, handle both shapes.
 - [Slang nested swizzle-of-swizzle vector lvalue miscompiles](../learnings/1787736858261-slang-nested-swizzle-of-swizzle-vector-lvalue-misc.md) — .add(count) should be .setCount; backpermute output param must be auto&.
 - [Uniform-param entry point compiled with an entry point that calls it segfaults (all targets)](../learnings/1790767202448-slang-compiling-a-uniform-param-entry-point-togeth.md) — rc 139 on spirv/cuda/metal; `-entry outer` alone works; hypothesis: `moveEntryPointUniformParamsToGlobalScope` arity mismatch.
+- [Slang entry point called as a function: only the borrow pass updates callers](../learnings/1792432625744-slang-entry-point-called-as-a-function-only-the-bo.md) — confirms the uniform-param arity mismatch; `translateGlobalVaryingVar` (#13730) also skips callers; fix-up returns silently on count mismatch; #8739/#12392 trampoline history
 - [Inherited-field access through BoundStorage/BoundMember ICEs at three VarDecl-only consumers (#13348)](../learnings/1790788517757-inherited-field-access-through-boundstorage-boundm.md) — materialize/tryGetAddress/assign all need `InheritanceDecl` (struct bases only); `buf[0].baseField` fails too; `ref` accessors confounded by #9636.
 - [Full-coverage swizzle on RWTexture goes through the RMW path (false E56006 / E55204 on CUDA)](../learnings/1790832459014-full-coverage-swizzle-on-rwtexture-goes-through-th.md) — fix in `legalizeStore`: a component permutation becomes a plain imageStore.
 - [skip the texel read only when the swizzle covers the image op's texel (4-vector on Metal/GLSL/SPIR-V, element type on CUDA); test a non-self-inverse swizzle; don't rebuild during an A/B run (exit 127)](../learnings/1791084184485-image-subscript-rmw-shortcut-compare-a-swizzle-aga.md)

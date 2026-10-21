@@ -3,7 +3,7 @@ title: "Slang public API boundary, LSP null-result serialization, and the record
 type: concept
 group: misc
 tags: [slang, public-api, slang-h, lsp, language-server, json-rpc, nullresponse, record-replay, wrapObject, refcount, singleton, com]
-source_count: 8
+source_count: 10
 ---
 
 ## TL;DR
@@ -17,6 +17,13 @@ Eight atoms on three adjacent Slang subsystems where the *contract* and the
   compiler. And the *nominal* doc contract can be contradicted by the
   implementation: `loadModuleFromSource` supports a null source blob (loads from
   path), despite slang.h/DeepWiki claiming "source cannot be null" — read the code.
+  The #12852 regression of that path is fixed from v2026.17; on v2026.16.x use
+  `loadModuleFromSourceString` with text you read yourself.
+- **`slang::` (lowercase) is the public API; `Slang::` (capital) is the internal
+  implementation namespace.** Only `Slang::ComPtr`, `Slang::Result` and
+  `Slang::Guid` leak into public headers. Adding a `slang::ComPtr` alias is not a
+  free fix: it makes `ComPtr` ambiguous for users who combine `using namespace
+  slang;` with their own ComPtr.
 - **A `SLANG_RELEASE_ASSERT` on a value derived from a public-API argument is a
   latent user-facing crash** that ships in the Vulkan SDK. Validate + diagnose API
   inputs; assert only genuinely-internal invariants.
@@ -54,6 +61,31 @@ the path-fallback. The principled fix derives the digest from the *materialized*
 source; the general lesson is that a release-assert on a public-API-derived value is
 a shipping crash — validate and diagnose instead
 [loadModuleFromSource supports null source; #10996 regressed it](../learnings/1788198536182-loadmodulefromsource-supports-null-source-path-loa.md).
+The fix (PR #12853, merge e81aa6be) first ships in v2026.17. Current master reads the
+file when `source` is null and reports E00001 "cannot open file" for an unreadable
+path instead of asserting. On v2026.16.x the workaround is to read the file yourself
+and call `ISession::loadModuleFromSourceString(name, path, text, &diag)`: it wraps
+`text` in a `StringBlob` before calling `loadModuleFromSource`, so the blob is never
+null and the `slang-session.cpp:56` assert does not fire
+[#12852 workaround on v2026.16.1](../learnings/1792401919012-12852-workaround-on-v2026-16-1-loadmodulefromsourc.md).
+
+The two namespaces mark the same boundary. `slang::` (lowercase) is the whole public
+COM-lite API in `include/slang.h`: `IGlobalSession`, `ISession`, `IModule`,
+`IComponentType`, `IBlob`, the descs, reflection and `createGlobalSession`. `Slang::`
+(capital) is the compiler's implementation namespace, used by every file in
+`source/core` and `source/slang`. Only three of its names are public:
+`Slang::ComPtr` (`include/slang-com-ptr.h:8`) and `Slang::Result`/`Slang::Guid`
+(`include/slang-com-helper.h:94/96`). ComPtr began as an internal `source/core` helper
+(#450, 2018) and was made public (#604) without being renamed. The C-API names
+(`SlangResult`, `SlangUUID`, `ISlangUnknown`) are global. No doc explains the split
+(`docs/design/coding-conventions.md:148` covers internal code only); the idiom in
+`examples/` is `using Slang::ComPtr;` then `ComPtr<slang::ISession>`. The question
+recurs (#13802, a duplicate of Backlog #5957, which bmillsNV called "technical debt").
+A "purely additive" `namespace slang { using Slang::ComPtr; }` compiles on its own, but
+g++ and clang++ both report `ComPtr` as ambiguous for user code that has `using
+namespace slang;` plus a using-directive for its own ComPtr (for example WRL's), so it
+is a source-compat risk
+[slang:: is public, Slang:: is internal; a slang::ComPtr alias risks ambiguity](../learnings/1792559661330-slang-c-api-namespaces-slang-is-public-slang-is-in.md).
 
 ## LSP null-result serialization and its test traps
 
@@ -104,10 +136,12 @@ for those *extended* guids is correct for a plain FS, and clarity findings that 
 on "X is never called" must be grounded by tracing call sites, not inferred
 [MutableFileSystemProxy ctor calls castAs during wrapping](../learnings/1788255005317-record-replay-mutablefilesystemproxy-ctor-calls-ca.md).
 
-**Source learnings (8):**
+**Source learnings (10):**
 
 - [getModuleDependencies/enumerateModules are internal-only, not in public slang.h](../learnings/1788093186621-getmoduledependencies-enumeratemodules-are-interna.md) — DeepWiki described internal symbols as public; grep include/slang.h before advising a user; closest public workarounds are session-scoped, not program-scoped.
 - [loadModuleFromSource supports null source + path; #10996 regressed it with an unconditional digest assert](../learnings/1788198536182-loadmodulefromsource-supports-null-source-path-loa.md) — #12852; the nominal "source cannot be null" doc is contradicted by loadSourceModuleImpl; a SLANG_RELEASE_ASSERT on a public-API-derived value is a shipping crash.
+- [#12852 workaround on v2026.16.1: loadModuleFromSourceString avoids the null-blob assert](../learnings/1792401919012-12852-workaround-on-v2026-16-1-loadmodulefromsourc.md) — StringBlob is never null; fix e81aa6be first ships in v2026.17; master gives E00001 for an unreadable path
+- [Slang C++ API namespaces: slang:: is public, Slang:: is internal (only ComPtr/Result/Guid leak); a slang::ComPtr alias risks ambiguity](../learnings/1792559661330-slang-c-api-namespaces-slang-is-public-slang-is-in.md) — #13802 (dup of #5957); ComPtr made public in #604 unrenamed; g++/clang++-verified ambiguity with `using namespace slang;` + WRL ComPtr
 - [Record-replay: MutableFileSystemProxy ctor calls castAs during wrapping](../learnings/1788255005317-record-replay-mutablefilesystemproxy-ctor-calls-ca.md) — #12863 FG001; a custom FS's castAs IS reached with extended guids; null for those is correct; ground "X is never called" clarity flags in traced call sites.
 - [Singleton-designed class with no-op refcount LEAKS if heap-allocated (NULLFileSystem)](../learnings/1788257348928-singleton-designed-class-with-no-op-refcount-leaks.md) — #12865; give it a real singleton accessor + private ctor (mirror OSFileSystem); static ⇒ no alloc ⇒ leak gone by construction; LSan-only observable, dead on master.
 - [Record-replay stand-in objects must be per-call, not singletons (wrapObject dedups by identity)](../learnings/1788260579889-record-replay-stand-in-objects-must-be-per-call-no.md) — #12863; playback must reproduce the exact registration sequence; a per-call heap stand-in must be genuinely ref-counted (ReplayNullFileSystem overriding addRef/release); don't pre-addRef.

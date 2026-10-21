@@ -3,7 +3,7 @@ title: "Triaging slangd (language-server) crashes: version-triage, direct-LSP re
 type: concept
 group: slang-tooling
 tags: [slangd, language-server, lsp, vscode-extension, completion-mode, triage, crash, groupshared, file-decl]
-source_count: 11
+source_count: 13
 ---
 
 ## TL;DR
@@ -18,11 +18,9 @@ checker strips.
   to top-of-tree. The cheapest correct first action is asking the reporter to update / override
   `slang.slangdLocation`, before any null-deref hunt. `0xC0000005` is Windows-only (access violation)
   — a Linux Debug build may not surface it.
-- **Reproduce GPU-free by driving `slangd` directly** with a tiny Python LSP client (`Content-Length`
-  framing → `initialize`/`initialized`/`didOpen` → `semanticTokens/full`, `documentSymbol`,
-  `completion`, `hover`; simulate typing with `didOpen`(stub)→`didChange`(full text)). Detect a crash
-  via `proc.poll()` returning a negative signal / non-None exit. Never `proc.stderr.read()` at the end
-  — it blocks until EOF; drain stderr in a thread or use `stderr=DEVNULL`.
+- **Reproduce GPU-free by driving `slangd` directly** (a release tarball + `LD_LIBRARY_PATH` is
+  enough) with a tiny Python LSP client: `initialize`/`initialized`/`didOpen`, then the requests
+  under test. Detect a crash via `proc.poll()`; drain stderr in a thread, never `stderr.read()` at the end.
 - **Batch `slangc` may not crash where slangd does**, and a crash that vanishes when one modifier is
   removed is the tell: Completion checking mode retains placement-illegal modifiers the general
   checker would strip.
@@ -33,10 +31,10 @@ checker strips.
   (merged 2026-09-23) slangd built its search dirs ONLY from `InitializeParams.workspaceFolders` (no
   `rootUri`/`rootPath` fallback; `initializationOptions` is discarded via `ignoreUnknownFields()`), so a client that announces its root
   only via the deprecated single-root field gives slangd zero roots → a search-path include resolves
-  only when the target file is already open. Suspect the handshake first for any "slangd doesn't see
-  cross-file/include symbols" report. For a list-valued input such as roots or search paths, test a
-  fix with two or more entries and check their order: the merged fix (#13192) also had to stop each
-  root overwriting the previous root's paths.
+  only when the target file is already open. Suspect the handshake first; test a list-valued fix with
+  two or more entries (#13192 also had to stop each root overwriting the previous root's paths).
+- **For an include/config probe, the pass signal is `textDocument/definition`, not diagnostics.** A
+  resolved include may send no `publishDiagnostics` in the window; definition is `null` on failure.
 - **A JSON `null` config reply silently turns a setting OFF** (Zed answers null for every unset
   section; `asBool(null)` → false), and because slang-test runs every `LANG_SERVER` test against ONE
   shared slangd, a config change whose `workspace/*/refresh` calls go unread poisons the NEXT test —
@@ -126,7 +124,21 @@ never does because the extension's `package.json` declares defaults. The result 
 from #13179's missing rootUri fallback. Probe it over stdio (`initialize`, `initialized`, a scripted
 config reply, `didOpen`, then `textDocument/definition` on the include line) with the include target in a
 *different* folder, since a same-folder include resolves relative to the includer and hides the bug
-([a null workspace/configuration reply disables searchInAllWorkspaceDirectories](../learnings/1791318736825-slangd-a-null-workspace-configuration-reply-disabl.md)). A sibling crash
+([a null workspace/configuration reply disables searchInAllWorkspaceDirectories](../learnings/1791318736825-slangd-a-null-workspace-configuration-reply-disabl.md)).
+The probe needs no Zed and no build: `gh release download vX -p 'slang-<n>-linux-x86_64.tar.gz'`, set
+`LD_LIBRARY_PATH=<x>/lib`, and drive `bin/slangd` over stdio with a 60-line Python client that sends
+`initialize` with rootUri/rootPath/workspaceFolders, then `initialized` and `didOpen`, and answers each
+`workspace/configuration` item with `null` (Zed-like) or `true` for
+`slang.searchInAllWorkspaceDirectories` (VS Code-like). v2026.19 with null replies gives "failed to find
+include file"; v2026.20 resolves (fix PR #13475)
+([a 60-line Python stdio client reproduces Zed include bugs GPU-free](../learnings/1792406418147-slangd-lsp-probe-a-60-line-python-stdio-client-rep.md)).
+Don't make `publishDiagnostics` the pass signal: a file whose include resolves may get no diagnostics
+message inside the probe's window, so a probe that stops at the first one prints nothing on a pass and
+looks like a hang. Wait about 1.5 s after `didOpen`, then send `textDocument/definition` on a symbol the
+include defines; the reply is `null` when the include fails and a `lib/helper.slang` location when it
+resolves (verified 2026-10-19 on v2026.19 vs v2026.20). The script is kept at
+`/workspace/agent/eval/slang-13463/r1/probe.py` in the eval-slang-triage group
+([check textDocument/definition, because a clean file may send no diagnostics](../learnings/1792427403200-slangd-lsp-probe-check-textdocument-definition-bec.md)). A sibling crash
 on master before #13475: pushing `slang.inlayHints.deducedTypes` (or `parameterNames`) alone made
 `updateInlayHintOptions` call `asBool` on the invalid `JSONValue()` placeholder for the missing sibling,
 which hits SLANG_ASSERT "Not bool convertable" in Debug and throws `InternalError` out of
@@ -251,7 +263,7 @@ Triage implications:
   placement-illegal modifiers (which build shapes no stage models) are still stripped, rather than
   guarding every downstream consumer.
 
-**Source learnings (11):**
+**Source learnings (13):**
 - [Triaging slangd crashes: drive LSP directly, and check the extension's bundled slang version](../learnings/1789400009815-triaging-slangd-language-server-crashes-drive-lsp-.md) — `__file_decl`=`FileDecl` (pervasive in VFX flavor); batch slangc skips LSP-only paths; a Python LSP driver reproduces GPU-free (drain stderr in a thread); version-triage first; `0xC0000005` is Windows-only.
 - [slangd Completion checking mode retains placement-illegal modifiers (ignoreUnallowedModifier)](../learnings/1789401281467-slangd-completion-checking-mode-retains-placement-.md) — `checkModifiers` sets `ignoreUnallowedModifier` in Completion mode → keeps a function-local `groupshared` slangc strips (E31201) → IR builds a rated function-local IRVar → consumers assume module-global → AV; stock slangd skips IR lowering so a plain LSP driver may not repro; fix at the producer.
 - [slangd LSP: search-path #include resolution silently fails without workspaceFolders](../learnings/1789814011877-slangd-lsp-search-path-include-resolution-silently.md) — no rootUri/rootPath fallback; initializationOptions discarded; config is pull-only/positional; suspect the workspace-root handshake first.
@@ -262,6 +274,8 @@ Triage implications:
 - [slangd: a null workspace/configuration reply disables searchInAllWorkspaceDirectories (Zed)](../learnings/1791318736825-slangd-a-null-workspace-configuration-reply-disabl.md) — `asBool(null)`→false; Zed answers null for unset sections; flat `slang.*` key under `lsp.slangd.settings` works; probe with a cross-folder include
 - [slangd LANG_SERVER harness: config pushes leak refreshes into the next test; inlay push aborts master slangd](../learnings/1791339299959-slangd-lang-server-harness-config-pushes-leak-refr.md) — shared slangd; end with a `documentSymbol` barrier; `asBool(Invalid)` SLANG_ASSERT → InternalError SIGABRT
 - [LANG_SERVER config-pull: initial reply that changes a setting leaks refresh requests into the next test](../learnings/1791344121901-lang-server-config-pull-initial-reply-that-changes.md) — `configChangedSinceLastRequest` not set by the initial pull; retry masks the leak — read `failed(pending retry)`
+- [slangd LSP probe: a 60-line Python stdio client reproduces Zed include bugs GPU-free](../learnings/1792406418147-slangd-lsp-probe-a-60-line-python-stdio-client-rep.md) — release tarball + LD_LIBRARY_PATH; null vs true config replies; v2026.19 fails, v2026.20 resolves (#13475)
+- [slangd LSP probe: check textDocument/definition, because a clean file may send no diagnostics](../learnings/1792427403200-slangd-lsp-probe-check-textdocument-definition-bec.md) — wait ~1.5 s after didOpen; definition is null on failure, a location on success
 - [postmortem: shader-slang/slang#13179 superseded by PR #13192](../learnings/1792461389590-postmortem-shader-slang-slang-13179-superseded-by-.md) — #13192 also fixed the per-root `workspaceSearchPaths` overwrite; test list-valued fallbacks with N≥2 entries and order; array `settings` crash filed as #13757
 
 _Catalog: [[wiki/index.md]]_

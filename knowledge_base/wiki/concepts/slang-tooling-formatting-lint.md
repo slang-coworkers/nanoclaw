@@ -3,7 +3,7 @@ title: "Formatting & Lint Tooling (clang-format, prettier, gersemi)"
 type: concept
 group: slang-tooling
 tags: [clang-format, prettier, gersemi, formatting, lint, ci, draft-pr, check-formatting]
-source_count: 21
+source_count: 22
 ---
 
 # Formatting & Lint Tooling (clang-format, prettier, gersemi)
@@ -139,7 +139,7 @@ Local C++-only format check for drafts (independent of gersemi/shfmt absence):
 clang-format --dry-run --Werror <changed_file.cpp>   # empty output + rc 0 = clean
 ```
 
-Do not trust the script's overall exit code when gersemi/shfmt are absent — isolate with the per-file dry-run. ([Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT — verify format locally with clang-format 17](../learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md), [Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)](../learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md))
+Do not trust the script's overall exit code when gersemi/shfmt are absent — isolate with the per-file dry-run. The `/format` PR comment (the Regenerate Format workflow) is not a fallback you can count on either: it pushes through the `slangbot` account, and on 2026-10-19 it failed with `remote: You must verify your email address` / 403 on `github.com/slangbot/slang` because that account's e-mail verification had lapsed ([CI sweep notes: `/format` 403 from the lapsed slangbot e-mail](../learnings/1792486355939-ci-sweep-snapshot-misses-jobs-in-waiting-runs-only.md)). ([Draft PRs: ci.yml IS workflow_dispatch-able, but check-formatting.yml is NOT — verify format locally with clang-format 17](../learnings/1782440063963-draft-prs-ci-yml-is-workflow-dispatch-able-but-che.md), [Draft PR CI on shader-slang/slang: workflow_dispatch bypasses the draft filter (but check-formatting can't)](../learnings/1782440084006-draft-pr-ci-on-shader-slang-slang-workflow-dispatc.md))
 
 ## prettier: never --write docs/design/*.md or any repo markdown
 
@@ -182,7 +182,7 @@ The exact pin is **`v20.1.7`** (`.pre-commit-config.yaml`, `mirrors-clang-format
 **Never run prettier (formatting.sh --md) on the generated capability-atoms doc** — **Context:** slang#12097 — editing a capdef `///` doc comment regenerates `docs/user-guide/a4-02-reference-capability-atoms.md` via `slang-capability-generator`. [Never run prettier (formatting.sh --md) on the generated capability-atoms doc](../learnings/1784101129985-never-run-prettier-formatting-sh-md-on-the-generat.md)
 
 ---
-**Source learnings (21):**
+**Source learnings (22):**
 - [Slang formatting.sh requires clang-format 17.x exactly](../learnings/1778742529214-slang-formatting-sh-requires-clang-format-17-x-exa.md)
 - [Editing a docs .md whose baseline already fails local prettier: verify format-neutrality, don't run --write](../learnings/1780345737111-editing-a-docs-md-whose-baseline-already-fails-loc.md)
 - [Slang CI pins clang-format 17; never prettier-write docs/design/*.md](../learnings/1780938587077-slang-ci-pins-clang-format-17-never-prettier-write.md)
@@ -204,4 +204,5 @@ The exact pin is **`v20.1.7`** (`.pre-commit-config.yaml`, `mirrors-clang-format
 - [#12302 BSD-notice fix: bare LICENSES/BSD-*.txt breaks reuse lint (unused-license); ship the dep's own COPYING via install metadata](../learnings/1785460805646-slang-12302-bsd-notice-fix-bare-licenses-bsd-txt-b.md)
 - [don't add bare LICENSES/ SPDX texts in a REUSE repo — reuse lint fails on unused licenses (empirically verified)](../learnings/1785461480820-don-t-add-bare-licenses-spdx-texts-in-a-reuse-repo.md)
 - [CORRECTION: formatting.sh needs clang-format 17.x — 18.x is REJECTED as too new](../learnings/1785992812883-correction-slang-formatting-sh-needs-clang-format-.md) — `require_bin "clang-format" "17" "18"` is `[17, 18)` exclusive; verify a tool version against the script that gates it, not the tool's `--version` or a README range. Carries the corrected wheel-extraction recipe, superseding the 18.1.8 pin in [the original wheel note](../learnings/1785989277743-clang-format-for-slang-formatting-sh-extract-the-p.md).
+- [CI sweep: snapshot misses jobs in waiting runs; only bot drafts are throttled](../learnings/1792486355939-ci-sweep-snapshot-misses-jobs-in-waiting-runs-only.md) — rider: the `/format` Regenerate Format workflow 403s on `slangbot/slang` (lapsed e-mail verification, 2026-10-19)
 _Catalog: [[wiki/index.md]]_

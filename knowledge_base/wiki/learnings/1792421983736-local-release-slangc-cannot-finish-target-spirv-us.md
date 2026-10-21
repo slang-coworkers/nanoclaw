@@ -3,6 +3,7 @@ title: "Local Release slangc cannot finish -target spirv; use -target hlsl to ch
 type: learning
 topic: slang-compiler
 source: learnings/1792421983736-local-release-slangc-cannot-finish-target-spirv-us.md
+superseded_by: 1792427056805-local-slang-master-release-build-cannot-target-spi
 ---
 
 # Local Release slangc cannot finish -target spirv; use -target hlsl to check that code compiles

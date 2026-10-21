@@ -3,7 +3,7 @@ title: "Slang build configuration: DXC-from-source on old glibc, slim configure 
 type: concept
 group: slang-tooling
 tags: [build, cmake, configure, dxc, glibc, slangc-only, asan, tsan, valgrind, object-library, compile-flags, xcode, build-time, bisect, embed-core-module-source, fetchcontent]
-source_count: 16
+source_count: 17
 ---
 
 # Slang build configuration: DXC-from-source on old glibc, slim configure flags, sanitizers, CMake flag scope, and measured build costs
@@ -80,6 +80,7 @@ if it predates, rebuild before any A/B static-emit comparison. (A stale-but-pare
 still a free known-good baseline for a bisected regression)
 [prebuilt slangc can be stale](../learnings/1787850489737-prebuilt-slangc-in-the-mounted-checkout-can-be-sta.md).
 Reconfirmed 2026-09-10 at a 264-commit gap (binary `2026.13.1-61-ga916653b70` vs checkout `928f4010f6`): attribute an observation to the `slangc -v` revision, and keep source inspection distinct from a runtime repro. The same codex OUTPUT_REVIEW also caught an issue-body repro drifting from the standalone repro file (fix both copies) and a verified emitted-MSL mismatch conflated with an unrun on-device Metal failure [prebuilt slangc can lag the source checkout — check `slangc -v` before attributing behavior to a commit](../learnings/1789072949461-prebuilt-slangc-binary-can-lag-the-source-checkout.md).
+It recurred on slang#13771 (2026-10-20): `/workspace/agent/slang/build/Release/bin/slangc` still printed `2026.13.1-61-ga916653b70` (an August build) while the clone sat at master `7251cc60b`, and its different Metal output (e.g. `(*t_0).atomic_fetch_add` for inout textures) made several "pre-existing on master" claims wrong until a rebuild. So treat that binary as a stale baseline: before calling a behaviour pre-existing, check that the baseline's `slangc -version` matches `git log -1` of the commit you name. A cheap true baseline is a fresh worktree: `git worktree add --detach <dir> origin/master`, `git submodule update --init --recursive --depth 1 -j 8`, then `cmake --preset default && cmake --build --preset debug --target slangc`, about 10 minutes on 64 cores (`--reference /workspace/agent/slang` fails because that clone is shallow) ([the /workspace/agent/slang Release build is a stale baseline](../learnings/1792529440707-the-workspace-agent-slang-release-build-is-a-stale.md)).
 
 The version string has its own staleness, in the opposite direction. `slangc -version` prints
 the git-describe baked in when the version header was last *generated*, and an incremental
@@ -185,7 +186,7 @@ break is the *only* remaining one
 
 **Non-embedded core-module source reproduces natively in about 5 min, no emsdk.** `cmake --preset default -B /tmp/b -DSLANG_EMBED_CORE_MODULE_SOURCE=OFF -DSLANG_ENABLE_DXIL=OFF -DSLANG_ENABLE_TESTS=OFF -DSLANG_ENABLE_GFX=OFF -DSLANG_ENABLE_SLANG_RHI=OFF -DFETCHCONTENT_BASE_DIR=<main>/build/_deps -DFETCHCONTENT_FULLY_DISCONNECTED=ON`, then build `slangd slangc slang-glsl-module`; `slangd --print-builtin-module core` goes through the same `Slang::getBuiltinModuleSource` as slang-wasm (slang#13664). Leaving out `-DSLANG_ENABLE_DXIL=OFF` makes every scratch tree that shares `FETCHCONTENT_BASE_DIR` rebuild DXC from source into the shared `_deps/dxc_source-build`, and two such builds collide (llvm-tblgen / `Intrinsics.gen` FAILED). That slangc lacks slang-glslang, so sanity-compile with `-target hlsl`. Deleting `lib/libslang-glsl-module-*.so` forces the `slang-api.cpp:244` compile-from-source fallback, which writes `lib/slang-glsl-module.bin` [SLANG_EMBED_CORE_MODULE_SOURCE=OFF repro](../learnings/1792085283366-repro-slang-embed-core-module-source-off-natively-.md).
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [Rebasing a long-lived worktree can stale the CMake build graph — reconfigure before rebuilding](../learnings/1787562764446-rebasing-a-long-lived-worktree-can-stale-the-cmake.md)
 - [CMake grep-invariant guards must use git grep, not rg/grep -r (submodule descent)](../learnings/1787818174243-cmake-grep-invariant-guards-must-use-git-grep-not-.md)
 - [slang worktree build needs submodule init; disable DXIL to skip 30-min DXC-from-source on old glibc](../learnings/1787824391934-slang-worktree-build-needs-submodule-init-disable-.md)
@@ -196,6 +197,7 @@ break is the *only* remaining one
 - [SGL crashpad guard is SGL_HAS_CRASHPAD, not the SGL_ENABLE_CRASHPAD cmake option](../learnings/1787002587931-sgl-crashpad-guard-is-sgl-has-crashpad-not-the-sgl.md)
 - [CMake per-target PRIVATE flags don't reach linked OBJECT libraries; `cmake --build -k 0` no-ops (put `-k 0` after `--`)](../learnings/1789384635713-cmake-per-target-compile-flags-don-t-propagate-to-.md) — #12782/#12779: `-fno-exceptions` on `slang-common-objects` missed its generated OBJECT libs; apply the helper per OBJECT target, verify in `compile_commands.json`.
 - [Xcode CMake generator rejects any `$<CONFIG>` genex in per-source COMPILE_OPTIONS — presence, not value](../learnings/1790177389937-xcode-cmake-generator-rejects-any-lt-config-gt-gen.md) — Ninja MC tolerates it so CI (no `-GXcode` job) misses it (slang#13240/#13241); branch on `CMAKE_CXX_COMPILER_ID` (not `if(MSVC)` — matches clang-cl); prove flag equivalence with a 2-target throwaway, not `file(GENERATE)`.
+- [The /workspace/agent/slang Release build is a stale baseline; build a fresh master worktree for A/B claims](../learnings/1792529440707-the-workspace-agent-slang-release-build-is-a-stale.md) — still `a916653b70` on 2026-10-20 (#13771); match `-version` to `git log -1`; ~10 min fresh-worktree baseline
 - [slangc -version in a reused worktree reports configure-time HEAD, not the built source](../learnings/1790693044766-slangc-version-in-a-reused-worktree-reports-config.md) — take repro SHA from `git log -1` + `git status`; no gdb in-container, A/B stack limits via Python setrlimit.
 - [reused worktree's slangc can be a revert drill's build; rebuild after restore; slangc-only configure ~5 min](../learnings/1791180810533-check-a-reused-worktree-s-slangc-provenance-before.md)
 - [slang worktree build: SLANG_ENABLE_TESTS requires SLANG_ENABLE_SLANG_RHI (and CMake cache keeps -D OFF)](../learnings/1791499534921-slang-worktree-build-slang-enable-tests-requires-s.md) — fails at CMakeLists.txt:618; pass `=ON` explicitly on re-configure; ~10 min Release build of five targets on 60 cores (PR #13535)

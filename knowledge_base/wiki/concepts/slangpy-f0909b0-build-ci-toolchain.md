@@ -3,7 +3,7 @@ title: SlangPy build, CI structure, sanitizers, toolchain gotchas, and cross-rep
 type: concept
 group: slangpy
 tags: [slangpy, build, ci, sanitizers, asan, lsan, toolchain, slang-version, cross-repo, breaking-change]
-source_count: 21
+source_count: 25
 ---
 
 ## TL;DR
@@ -11,305 +11,282 @@ source_count: 21
 Operational knowledge for building slangpy from source, reasoning about its CI, and
 coordinating breaking changes with slang. Recurring facts:
 
-- **Building headless on rootless Linux is possible in userspace**: `uv python install`
-  for `Python.h`; `dpkg-deb -x` the X11 `-dev` debs (GLFW forces X11 even headless);
-  build the `slangpy_ext` target directly (the `examples/tinybc` `-Werror=restrict`
-  under gcc12 aborts the full build).
-- **Forcing TinyEXR needs BOTH `-DCMAKE_DISABLE_FIND_PACKAGE_OpenEXR=ON` and
-  `-DOpenEXR_FOUND=OFF`** (the first alone breaks the `ternary` macro at configure); an empty
-  `RuntimeError()` from nanobind hints at invalid-UTF-8 / garbage `what()` bytes.
-- **A stale worktree goes stale in TWO ways**: rebuild `slangpy_ext` AND the
-  `slangpy_torch` bridge (a version-hash check), or the native torch path silently
-  degrades to a green fallback run.
-- **slangpy's compiler pin is `SGL_SLANG_VERSION` (external/CMakeLists.txt), NOT
-  slang-rhi's `SLANG_RHI_FETCH_SLANG_VERSION`** — they can disagree; verify the shipped
-  version from the build artifact (`slangc -v`, the tarball name), not a grepped
-  CMakeLists.
-- **Re-run any "separate finding" on the SAME toolchain as the PR head before reporting
-  it live** — a crash on a stale checkout's older slang is a toolchain artifact.
-- **After a rebase/pin bump, a bare `cmake --build` reuses the OLD cached slang** —
-  `SGL_SLANG_VERSION` is frozen into `build/<preset>/CMakeCache.txt` at *configure* time and
-  the download is cached under `build/<preset>/_deps/slang*`, so an incremental rebuild never
-  re-fetches. Reconfigure `cmake --preset <p> --fresh` (or delete `build/**/_deps/slang*`)
-  first, then confirm the EFFECTIVE version from `CMakeCache.txt`'s `SGL_SLANG_VERSION:STRING`
-  (not a source grep, not slang-rhi's var). A green CI + a red local `undefined identifier`
-  for a symbol that exists in the pinned release (e.g. `MatrixLayoutMode`, added slang#12986,
-  first in v2026.17.1) is the stale-cache signature — not a defect.
-- **The CI `unit-test-python` lane is UNSCOPED** — device-parametrized tests (incl.
-  `[cpu]`) run there, they are not skipped. Skip logic only fires when
-  `SELECTED_DEVICE_TYPES` is a non-empty set excluding the test's type.
-- **`sanitizers.yml` (LSan) has never been green on slangpy `main`** since PR #1107 —
-  a deterministic `sgl::ref` ownership-cycle leak in `NativeBoundCallRuntime`/reflection
-  caches (#1130), distinct from slang's clean sanitizer gate. It has no suppression path;
-  the cycle is in the Python cache layer.
-- **GPU device tests abort under ASan via NVIDIA `RTLD_DEEPBIND`** — a "0 project roots"
-  pass there is VACUOUS; use the CPU backend.
-- **The `check-ascii-source` pre-commit hook fails on any non-ASCII char** — run full pre-commit.
-- **Breaking slang changes need a companion slangpy PR with a documented pin-bump-last
-  merge order** — there is a genuine circular cross-repo CI dependency.
-- **CPython 3.15 breaks `-Werror` slangpy_ext on Linux** (macro redefined): put `Python.h`
-  first via nanobind#1289 or an `nb_python.h` pre-include, AND `"nanobind.h"` first per TU.
+- **Headless builds on rootless Linux work in userspace**: `uv python install` for `Python.h`;
+  `dpkg-deb -x` the X11 `-dev` debs (GLFW forces X11 even headless); build `--target slangpy_ext`
+  (the `examples/tinybc` gcc12 `-Werror=restrict` aborts the full build).
+- **Forcing TinyEXR needs BOTH `-DCMAKE_DISABLE_FIND_PACKAGE_OpenEXR=ON` and `-DOpenEXR_FOUND=OFF`**;
+  an empty nanobind `RuntimeError()` hints at garbage `what()` bytes.
+- **A worktree needs `git -c protocol.file.allow=always submodule update`** and
+  `PYTHONPATH=<worktree>` for repro scripts outside it (sys.path[0] is the script dir).
+- **A stale worktree goes stale TWO ways**: rebuild `slangpy_ext` AND the `slangpy_torch` bridge
+  (version-hash check), or the native torch path silently degrades to a green fallback run.
+- **The compiler pin is `SGL_SLANG_VERSION` (external/CMakeLists.txt), NOT slang-rhi's
+  `SLANG_RHI_FETCH_SLANG_VERSION`**; verify from the build artifact, and re-run any "separate
+  finding" on the PR-head toolchain first.
+- **After a rebase/pin bump, neither `cmake --build` nor a plain `cmake --preset` picks up the new
+  slang** (a CACHE STRING frozen in `CMakeCache.txt`). Reconfigure `--fresh` with
+  `-DPython_EXECUTABLE=<uv venv python>`. Green CI + red local `undefined identifier` for a
+  released symbol is the stale-cache signature.
+- **The CI `unit-test-python` lane is UNSCOPED** (device-parametrized tests, incl. `[cpu]`, run).
+  Locally, `--device-types <x>` SKIPS every test without a `device_type` parameter.
+- **`sanitizers.yml` (LSan) has never been green on slangpy `main`** since PR #1107: a
+  deterministic `sgl::ref` cycle leak in `NativeBoundCallRuntime`/reflection caches (#1130), with no
+  suppression path; slang's own sanitizer gate is clean.
+- **GPU device tests abort under ASan via NVIDIA `RTLD_DEEPBIND`**; a "0 project roots" pass there
+  is VACUOUS. Use the CPU backend.
+- **The `check-ascii-source` pre-commit hook fails on any non-ASCII char**; run full pre-commit.
+- **Breaking slang changes need a companion slangpy PR with pin-bump-last merge order** (a circular
+  cross-repo CI dependency; production uses `SLANGPY_CHERRY_PICK_PR`).
+- **CPython 3.15 breaks `-Werror` slangpy_ext on Linux** (macro redefined): put `Python.h` first via
+  nanobind#1289 or an `nb_python.h` pre-include, AND `"nanobind.h"` first per TU.
 
-## Building slangpy from source: headless, stale worktrees, and version pins
+## Building slangpy from source: headless, worktrees, stale artifacts
 
-Building at HEAD on a rootless Linux container (no sudo/apt) for a headless GPU repro
-(#827) hits several blockers, all solvable in userspace. System `python3.11` has no
-`Python.h`, so cmake's `find_package(Python ... Development.Module)` fails — fix with
-`uv python install 3.11` (python-build-standalone ships the headers) and a `uv venv`
-(note: uv venvs have no `pip` module, so `python -m pip` fails; use `uv pip install
-./src/slangpy_torch --no-build-isolation`). GLFW forces X11 on Linux (no Null platform),
-and `sgl`→`slangpy_ext` links it unconditionally, so even a headless build needs X11
-*dev* headers — `curl` the bookworm `-dev` debs, `dpkg-deb -x` into a prefix, repoint the
-extracted `libX*.so` symlinks, and point cmake at the prefix. `examples/tinybc` fails to
-compile under gcc12 with a spurious `-Werror=restrict`, aborting the full build — build
-the target directly (`cmake --build ... --target slangpy_ext`). The extension emits into
-the source `slangpy/` dir (import via `PYTHONPATH`), and the repro must use
-`spy.create_device(...)` not raw `spy.Device(...)` (only `create_device` injects the
-`slangpy/slang` include path)
+A headless GPU repro (#827) in a rootless Linux container (no sudo/apt) builds in userspace. System `python3.11` has no `Python.h`, so `find_package(Python ... Development.Module)`
+fails: use `uv python install 3.11` and a `uv venv` (no `pip` module inside; use
+`uv pip install ./src/slangpy_torch --no-build-isolation`). GLFW forces X11 on Linux (no Null
+platform) and `sgl`→`slangpy_ext` links it unconditionally, so `curl` the bookworm X11 `-dev` debs,
+`dpkg-deb -x` them into a prefix, repoint the extracted `libX*.so` symlinks, and point cmake there.
+`examples/tinybc` hits a spurious gcc12 `-Werror=restrict` that aborts the full build, so build
+`--target slangpy_ext`. The extension lands in the source `slangpy/` dir (import via `PYTHONPATH`);
+a repro must call `spy.create_device(...)`, not raw `spy.Device(...)`, since only `create_device`
+injects the `slangpy/slang` include path
 [building slangpy headless on rootless Linux](../learnings/1787079385346-building-slangpy-headless-on-a-rootless-linux-box-.md).
 
-Other userspace-only build levers, verified on a Debian 12 container
-[force TinyEXR + build without system Python headers](../learnings/1790786152988-slangpy-force-tinyexr-build-build-without-system-p.md):
-an alternative to `uv` for `Python.h` is to `curl` the bookworm `libpython3.11-dev` /
-`python3.11-dev` / `libpython3.11` debs from `deb.debian.org/debian/pool/main/p/python3.11/`,
-`dpkg -x` them into a prefix `R`, pass `-DPython_INCLUDE_DIR=$R/usr/include/python3.11
--DPython_LIBRARY=$R/usr/lib/x86_64-linux-gnu/libpython3.11.so`, and `export
-CPATH=$R/usr/include` (`pyconfig.h` includes the multiarch `<x86_64-linux-gnu/python3.11/pyconfig.h>`).
-To force the bundled TinyEXR, `-DCMAKE_DISABLE_FIND_PACKAGE_OpenEXR=ON` alone FAILS configure
-(`ternary(SGL_HAS_OPENEXR ${OpenEXR_FOUND} ON OFF)` at CMakeLists.txt:373 gets an empty arg);
-add `-DOpenEXR_FOUND=OFF` and confirm `#define SGL_HAS_OPENEXR 0` in `config.h`. A new
-worktree's submodules populate offline via `git -c protocol.file.allow=always -c
-submodule.external/X.url=<main>/.git/modules/external/X submodule update external/X` (nested
-nanobind `ext/robin_map` and nanothread `ext/cmake-defaults` need `--init` inside them; the
-`data` submodule is required because cmrc embeds its fonts), and vcpkg is reusable with
+More levers, verified on Debian 12
+[force TinyEXR + build without system Python headers](../learnings/1790786152988-slangpy-force-tinyexr-build-build-without-system-p.md).
+Instead of uv, `dpkg -x` the bookworm `libpython3.11-dev` / `python3.11-dev` / `libpython3.11` debs
+(`deb.debian.org/debian/pool/main/p/python3.11/`) into prefix `R`, pass
+`-DPython_INCLUDE_DIR=$R/usr/include/python3.11 -DPython_LIBRARY=$R/usr/lib/x86_64-linux-gnu/libpython3.11.so`,
+and `export CPATH=$R/usr/include` (for the multiarch `pyconfig.h`). To force bundled TinyEXR,
+`-DCMAKE_DISABLE_FIND_PACKAGE_OpenEXR=ON` alone fails configure (`ternary(SGL_HAS_OPENEXR
+${OpenEXR_FOUND} ON OFF)` at CMakeLists.txt:373 gets an empty arg); add `-DOpenEXR_FOUND=OFF` and
+confirm `#define SGL_HAS_OPENEXR 0` in `config.h`. vcpkg is reusable via
 `-DVCPKG_INSTALLED_DIR=<other build>/vcpkg_installed -DVCPKG_MANIFEST_INSTALL=OFF` when
-vcpkg.json/triplets/overlays/commit match (slangpy_ext Release then builds in ~40 s at -j60).
-Debugging hint: under Python 3.11, `PyErr_SetString` with invalid UTF-8 yields a bare
-`RuntimeError()` with no args, so an empty RuntimeError from a nanobind call suggests the C++
-`what()` held garbage bytes (e.g. a use-after-free of the error string).
+vcpkg.json/triplets/overlays/commit match (slangpy_ext Release then builds in ~40 s at -j60). Under
+Python 3.11, `PyErr_SetString` with invalid UTF-8 yields a bare `RuntimeError()`, so an empty
+RuntimeError from nanobind suggests the C++ `what()` held garbage (e.g. a use-after-free).
 
-Resuming an old worktree and moving the branch forward stales the prebuilt native
-artifacts in TWO independent ways — fix both or the torch path silently degrades. (1)
-`slangpy_ext.*.so` stale → `import slangpy` fails (e.g. `cannot import name
-'PipelineCompilationMode'`); fix with `cmake --preset linux-gcc` (incremental) then build
-the `slangpy_ext` target directly (the default all-target hits the tinybc abort). (2) the
-`slangpy_torch` bridge stale → import succeeds but
-`get_torch_bridge_fallback_reason()` returns `"incompatible"` (a version-hash check
-between the bridge and the rebuilt ext, not a code bug); fix with `python tools/ci.py
-install-slangpy-torch`. If you only rebuild the ext and skip the bridge you get a green
-fallback run and a false sense the native path works — the `torch_bridge_mode` fixture
-exposes it as native-mode failures
+**Worktrees.** In a `git worktree` of `/workspace/agent/slangpy`, even `git submodule update --init
+--recursive` fails with `fatal: transport 'file' not allowed` (the shared `.git/config` points
+submodule URLs at local paths); pass `git -c protocol.file.allow=always`. To populate offline add
+`-c submodule.external/X.url=<main>/.git/modules/external/X submodule update external/X` (nested
+nanobind `ext/robin_map` and nanothread `ext/cmake-defaults` need `--init` inside them; `data` is
+required because cmrc embeds its fonts). A repro script outside the worktree gets
+`ModuleNotFoundError: No module named 'slangpy'` because `sys.path[0]` is the script's dir, not the
+cwd; set `PYTHONPATH=<worktree>`. The full build's stubgen imports numpy and `libcst`, which the
+venvs lack: set `PYTHONPATH=<worktree>/.venv/lib/python3.11/site-packages` on the first
+`cmake --build`, or build only `--target slangpy_ext` (rebuilds `libsgl.so` + `slangpy_ext*.so`,
+skips stubgen, ~10 s per one-file change). Test with the venv python in `CMakeCache.txt`'s
+`Python_EXECUTABLE`
+[worktree submodule file-transport and /tmp repro sys.path](../learnings/1792462385307-slangpy-worktree-build-submodule-file-transport-an.md),
+[incremental build without libcst: build only slangpy_ext](../learnings/1792421818732-slangpy-incremental-build-without-libcst-build-onl.md).
+
+**A resumed worktree goes stale in TWO independent ways.** (1) Stale `slangpy_ext.*.so`:
+import fails (e.g. `cannot import name 'PipelineCompilationMode'`); rerun
+`cmake --preset linux-gcc` and build `slangpy_ext`. (2) Stale `slangpy_torch` bridge: import works
+but `get_torch_bridge_fallback_reason()` returns `"incompatible"` (a bridge/ext version-hash check);
+run `python tools/ci.py install-slangpy-torch`. Fixing only (1) yields a green fallback run that
+hides a broken native path; the `torch_bridge_mode` fixture exposes it as native-mode failures
 [resuming a stale worktree: rebuild ext AND the torch bridge](../learnings/1787101717889-resuming-a-stale-slangpy-worktree-rebuild-slangpy-.md).
 
-slangpy pins its Slang compiler via `external/CMakeLists.txt` `SGL_SLANG_VERSION` (drives
-the prebuilt download URL), NOT via slang-rhi's `SLANG_RHI_FETCH_SLANG_VERSION` — and the
-two can DISAGREE (at one HEAD `SGL_SLANG_VERSION="2026.12"` but the submodule's
-`SLANG_RHI_FETCH_SLANG_VERSION="2026.12.2"`). Verify which version actually shipped from
-the build artifact (the downloaded tarball name, `slangc -v`, the stdlib dir,
-`CMakeCache.txt`), not the CMakeLists you happened to grep. The failure this caused: a
-digest reported "2026.12.2" from slang-rhi's CMakeLists, published on #827 without
-re-deriving, and invented a "stock Slang changed 2026.12→2026.12.2" mechanism to explain
-a no-crash — the pin never moved (both runs at 2026.12) and agreement (the fixer echoed
-2026.12.2 too) is not corroboration
+## The Slang version pin and stale-toolchain ghosts
+
+slangpy pins its compiler via `external/CMakeLists.txt` `SGL_SLANG_VERSION` (the prebuilt download
+URL). SGL feeds that slang to slang-rhi (`SLANG_RHI_FETCH_SLANG OFF` +
+`SLANG_RHI_SLANG_BINARY_DIR=${SLANG_DIR}`), so slang-rhi's `SLANG_RHI_FETCH_SLANG_VERSION` is not
+what builds and can disagree (`2026.12` vs `2026.12.2` at one HEAD); `SGL_LOCAL_SLANG=ON` overrides
+again with a local build's header version. Verify the shipped version from the artifact (tarball
+name, `slangc -v`, stdlib dir, `CMakeCache.txt`). Grepping the wrong var once put an invented
+"2026.12→2026.12.2" mechanism into a published #827 digest; a peer echoing a number is not corroboration
 [compiler pin is SGL_SLANG_VERSION, not slang-rhi's fetch var](../learnings/1787102175005-slangpy-s-compiler-pin-is-sgl-slang-version-not-sl.md).
 
-That version-pin subtlety is exactly why a "separate finding" must be re-run on the SAME
-toolchain as the PR head before being reported live. Validating slangpy PR #1137, a
-coworker hit a SIGSEGV in a full pytest run and filed it as a distinct CPU-marshalling
-defect (#1138) recommending escalation to slang — but a faithful rebuild at the PR head
-could NOT reproduce it. The crash was on a **stale checkout** (68 commits behind: slang
-2026.4.1) and was already fixed by the 2026.4.1 → 2026.12.2 bump. Rules: re-run on the
-PR-head toolchain (especially slang version) before reporting live; a crash SITE is not a
-crash CAUSE (a full-suite-only crash implicates test-state/teardown, not the isolated
-path — always ask isolated-vs-suite, deterministic-vs-flaky, which toolchain); and
-confirm before cross-repo escalation
+So re-run any "separate finding" on the PR-head toolchain before reporting it. Validating
+slangpy#1137, a full-suite SIGSEGV filed as a distinct CPU-marshalling defect (#1138, with a
+recommended slang escalation) did not reproduce at the PR head: the checkout was 68 commits behind
+(slang 2026.4.1) and the bump to 2026.12.2 had fixed it. A crash SITE is not a CAUSE: ask
+isolated-vs-suite (suite-only implicates test state/teardown), deterministic-vs-flaky, and which
+toolchain, and confirm before cross-repo escalation
 [verify a separate finding on the PR-head toolchain (stale-slang ghost)](../learnings/1788483820552-verify-a-separate-finding-on-the-pr-head-toolchain.md).
 
-A close follow-on to that stale-toolchain trap, and the more mechanical reason it keeps
-recurring: **the build tree caches the slang version and `cmake --build` does NOT re-fetch
-it.** `cmake --preset <p>` freezes `SGL_SLANG_VERSION` into `build/<preset>/CMakeCache.txt` at
-*configure* time and FetchContent caches the downloaded slang under `build/<preset>/_deps/slang*`;
-a subsequent `cmake --build` never re-runs configure, so after a `git rebase`/`git pull` that
-moves the pin an incremental rebuild silently keeps downloading/linking the **old** cached
-slang. This bit the same reused build tree twice (slangpy#1136/#1137 and the #1138/#1137 "CPU
-regression") — each time a CPU (or any) module compile failed with `error[E30015]: undefined
-identifier 'MatrixLayoutMode'` for a symbol that provably exists in the *pinned* slang (the enum
-was added in slang#12986, first released in v2026.17.1), which read as a fresh regression or a
-CPU-target compiler gap and nearly got routed upstream — but was purely a stale cache: CI, which
-builds fresh at the pin, was green, and a `--fresh` reconfigure made the E30015 and the failing
-test disappear. Rules: (1) after any pin bump or rebase, reconfigure with `cmake --preset <p>
---fresh` (or delete the cached slang under `build/**/_deps/`), never a bare incremental `cmake
---build`; (2) confirm the EFFECTIVE version from `CMakeCache.txt`'s `SGL_SLANG_VERSION:STRING=...`
-after a fresh configure — not a source grep, and NOT slang-rhi's `SLANG_RHI_FETCH_SLANG_VERSION`
-(slangpy overrides slang-rhi's fetch with `SLANG_RHI_FETCH_SLANG OFF` +
-`SLANG_RHI_SLANG_BINARY_DIR=${SLANG_DIR}`; `SGL_LOCAL_SLANG=ON` overrides again with a local
-build's header version); (3) an `undefined identifier` for a symbol that exists in the pinned
-release ⇒ your build is on stale slang, not a defect — a green CI + a red local build is the
-stale-cache signature, and the crash SITE (`staticarray.slang`, `core.meta.slang`, the CPU
-target) is not the CAUSE. To confirm a release actually contains a change, verify the symbol at
-the release tag (`enum X` in `source/slang/core.meta.slang?ref=v<version>`) and/or that the PR's
-merge commit is contained in the tag (`compare/v<version>...<merge_sha>` behind/identical ⇒
-contained)
-[reused build tree keeps a STALE slang across a rebase — reconfigure `--fresh`, read the right version var](../learnings/1789220844035-slangpy-reused-build-tree-keeps-a-stale-slang-sgl-.md),
-[stale CMakeCache `SGL_SLANG_VERSION` → two false regressions on the same reused build tree](../learnings/1789220982301-stale-cmakecache-sgl-slang-version-incremental-sla.md).
+Why it recurs: `cmake --preset <p>` freezes `SGL_SLANG_VERSION` into `build/<preset>/CMakeCache.txt`
+and FetchContent caches slang under `build/<preset>/_deps/slang*`. `cmake --build` never
+reconfigures, and re-running `cmake --preset linux-gcc` doesn't help because the CACHE STRING's old
+value (e.g. 2026.19) wins. One reused tree produced two false regressions (slangpy#1136/#1137,
+#1138/#1137): `error[E30015]: undefined identifier 'MatrixLayoutMode'` in `staticarray.slang` for a
+symbol in the pinned slang (slang#12986, first in v2026.17.1) while the tree still linked cached
+2026.5.2; CI was green; `--fresh` cleared it. Rules: after any pin bump or rebase, reconfigure
+`cmake --preset <p> --fresh` (or delete `build/**/_deps/` slang); confirm with
+`grep SGL_SLANG_VERSION build/<preset>/CMakeCache.txt`; treat an `undefined identifier` for a
+released symbol, or a post-rebase crash in slang stdlib (`staticarray.slang`, `core.meta.slang`) or
+the CPU target, as stale cache until proven otherwise. `--fresh` drops the cached Python hints and
+`/usr/bin/python3` lacks dev headers (`Could NOT find Python (missing: Python_INCLUDE_DIRS
+Development.Module)`), so pass `-DPython_EXECUTABLE=<uv venv>/bin/python` (uv CPython under
+`/workspace/agent/uv-pythons` ships headers; the cpython-311 `.so` still imports from a
+`/usr/bin/python3.11` venv). To confirm a release contains a change, check the symbol at the tag
+(`enum X` in `source/slang/core.meta.slang?ref=v<version>`) and/or that
+`compare/v<version>...<merge_sha>` is behind/identical
+[reused build tree keeps a STALE slang across a rebase](../learnings/1789220844035-slangpy-reused-build-tree-keeps-a-stale-slang-sgl-.md),
+[stale CMakeCache `SGL_SLANG_VERSION` → two false regressions](../learnings/1789220982301-stale-cmakecache-sgl-slang-version-incremental-sla.md),
+[reconfigure after a Slang version bump needs `--fresh` + a Python hint](../learnings/1792464723018-slangpy-reconfigure-after-slang-version-bump-needs.md).
 
 ## Python 3.15: the pyconfig.h macro clash and cp315 wheels
 
-Consider building slangpy_ext against CPython 3.15 on Linux with gcc 12 and slangpy's default `-Werror`. Every TU fails with `pyconfig.h:2067: "_POSIX_C_SOURCE" redefined` and `pyconfig.h:2124: "_XOPEN_SOURCE" redefined`. CPython's configure now defines `_POSIX_C_SOURCE 202405L` and `_XOPEN_SOURCE 800`. In 3.14 these were `200809L` and `700`, the same values glibc's `features.h` already sets under g++ (which defines `_GNU_SOURCE`), and an identical redefinition is silent. So any TU that includes a C++ std header before `Python.h` now warns. Darwin and Windows pyconfig don't define these macros, so the break is Linux-only. Turning off `-Werror` only hides it, because users who build from source will still fail. The same symptom shows up elsewhere (open-atmos/PyPartMC#555) ([3.15 pyconfig.h breaks -Werror nanobind<2.12 builds](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)).
+Against CPython 3.15 on Linux (gcc 12, default `-Werror`) every slangpy_ext TU fails with
+`pyconfig.h:2067: "_POSIX_C_SOURCE" redefined` / `pyconfig.h:2124: "_XOPEN_SOURCE" redefined`. 3.15
+defines `202405L` / `800`; 3.14 used `200809L` / `700`, matching glibc's `features.h` under g++
+(`_GNU_SOURCE`), so the redefinition was silent. Any TU including a std header before `Python.h` now
+warns. It is Linux-only (Darwin/Windows pyconfig lack these); disabling `-Werror` only hides it. Also seen in open-atmos/PyPartMC#555
+([3.15 pyconfig.h breaks -Werror nanobind<2.12 builds](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)).
 
-The fix is to make `Python.h` the first include, and it takes two changes together. nanobind before 2.12, including slangpy's pinned fork at `0b719c12` (v2.10.2), includes `<cstddef>` and other std headers before `nb_python.h` inside `nanobind.h` itself. Upstream wjakob/nanobind#1289 (`890745357b56`, in >= 2.12.0) moves `nb_python.h` first and cherry-picks cleanly onto the fork. That alone is not enough, because some project TUs include `<algorithm>`, `<optional>` or `<initializer_list>` before `"nanobind.h"`. Moving the project's own include first does nothing without the nanobind change either: an A/B run showed 57/57 failing TUs either way and 0 with both changes ([3.15 -Werror break: both halves are needed](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)). In another configuration, the cherry-pick alone cut 32 failing TUs to 3, and reordering those three made the build clean ([same](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)). You can also avoid the fork bump. Add `#include <nanobind/nb_python.h>` before `#include <nanobind/nanobind.h>` in `src/slangpy_ext/nanobind.h`, and move `"nanobind.h"` first in the TUs that include std headers before it (slangpy#1217). That gave 0/57 failing TUs against both 3.15rc2 and 3.14.7 headers. Processing `nb_python.h` twice is harmless: it has no include guard, but `Python.h` is guarded and its `#undef`s are idempotent ([pre-include nb_python.h instead of bumping nanobind](../learnings/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md)). CMake's generated `cmake_pch.hxx` carries `#pragma GCC system_header`, which silences these warnings when `SGL_ENABLE_PCH=ON`. A hand-written PCH header that begins with std headers has no such pragma and would re-trigger them.
+The fix puts `Python.h` first and needs both halves. nanobind < 2.12 (incl. slangpy's fork at
+`0b719c12`, v2.10.2) includes `<cstddef>` etc. before `nb_python.h` in `nanobind.h`; upstream
+wjakob/nanobind#1289 (`890745357b56`, >= 2.12.0) fixes that and cherry-picks cleanly. Some project
+TUs also include `<algorithm>`, `<optional>` or `<initializer_list>` before `"nanobind.h"`. A/B:
+57/57 TUs fail with either change alone, 0 with both
+([3.15 -Werror break: both halves are needed](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md));
+elsewhere the cherry-pick alone cut 32 failures to 3 and reordering those cleared it
+([same](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)).
+Without a fork bump (slangpy#1217): add `#include <nanobind/nb_python.h>` before
+`#include <nanobind/nanobind.h>` in `src/slangpy_ext/nanobind.h` and move `"nanobind.h"` first in
+the offending TUs, giving 0/57 against 3.15rc2 and 3.14.7 headers. Double-processing `nb_python.h`
+is harmless (`Python.h` is guarded, its `#undef`s idempotent). CMake's `cmake_pch.hxx` carries
+`#pragma GCC system_header`, silencing this under `SGL_ENABLE_PCH=ON`; a hand-written PCH starting
+with std headers would re-trigger it. Fast check (~1 min): point the Python `-I` in
+`build/linux-gcc/compile_commands.json` at `uv python install 3.15` headers and run all TUs
+`-fsyntax-only` in parallel
+([pre-include nb_python.h instead of bumping nanobind](../learnings/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md)).
 
-A fast check needs no full rebuild. Rewrite the `-I` Python include path in `build/linux-gcc/compile_commands.json` to point at uv-installed CPython headers (`uv python install 3.15`), add `-fsyntax-only`, and run all slangpy_ext TUs in parallel. That takes about a minute ([same](../learnings/1791587573830-python-h-before-std-headers-fix-without-bumping-na.md)).
+Shipping 3.15 wheels:
+- cibuildwheel builds cp315 by default only from 4.2.0 (2026-08); 3.x has no cp315 identifiers. `CIBW_BUILD=cp315-*` does not match `cp315t`; `cibuildwheel --platform <p> --archs <a> --print-build-identifiers` works offline on any host.
+- cibuildwheel 4.0 made delvewheel the Windows repair-wheel-command; `CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: ""` restores 3.x behaviour (not read with `ignore_empty`), though delvewheel is still pip-installed. abi3audit runs only on abi3 wheels.
+- nanobind 3.x has native 3.15 support but drops Python 3.9.
+- PyTorch has no cp315 wheels on PyPI or cu128; cu126/cu130/cu132 have them for torch >= 2.13.
 
-Shipping 3.15 wheels has its own constraints:
-- cibuildwheel builds cp315 by default only from 4.2.0 (2026-08); the 3.x line has no cp315 identifiers. `CIBW_BUILD=cp315-*` does not match `cp315t`. `cibuildwheel --platform <p> --archs <a> --print-build-identifiers` works offline on any host and shows what a selector matches.
-- cibuildwheel 4.0 changed defaults. On Windows the repair-wheel-command is now delvewheel; `CIBW_REPAIR_WHEEL_COMMAND_WINDOWS: ""` restores 3.x behaviour, because that option is not read with `ignore_empty` (upstream tests this), though delvewheel is still pip-installed into the build env. abi3audit runs only on abi3 wheels.
-- nanobind 3.x is the line with native 3.15 support, but it drops Python 3.9.
-- PyTorch has no cp315 wheels on PyPI or the cu128 index; the cu126, cu130 and cu132 indexes have them for torch >= 2.13.
-
-Two fork facts surfaced while shipping the fix. A cross-fork PR opened through REST (`gh api -X POST repos/<up>/pulls -f head=slang-coworkers:<br>`) fails with 422 `fork_collab Fork collab can't be granted by someone without permission` until you add `-F maintainer_can_modify=false` (verified on slangpy#1218). And slang-coworkers/slangpy has no registered Actions workflows, so `workflows/<f>/dispatches` and `/enable` return 404 and a workflow change can't be validated on the fork; ask a maintainer to dispatch it on upstream ([cibuildwheel 4.x and cross-fork REST PR facts](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)). The source was the slangpy#1216 triage.
+Fork facts (slangpy#1216 triage): a cross-fork PR via REST (`gh api -X POST repos/<up>/pulls -f
+head=slang-coworkers:<br>`) fails 422 `fork_collab Fork collab can't be granted by someone without
+permission` until you add `-F maintainer_can_modify=false` (slangpy#1218). slang-coworkers/slangpy
+has no registered Actions workflows (`dispatches`/`enable` 404), so workflow changes can't be
+validated on the fork; ask a maintainer to dispatch upstream
+([cibuildwheel 4.x and cross-fork REST PR facts](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)).
 
 ## CI structure: what actually runs, retries, crash capture, and the ASCII hook
 
-Do not assume `tools/ci.py` scopes the unit-test lane by device type — it does not.
-`unit_test_python` runs `pytest_command("slangpy/tests", "-vra")` with NO `--device-types`
-flag; the per-platform `device_types = [...]` block belongs to `benchmark_python`, easy to
-conflate (and conflating it flags a bogus "no CI coverage" gap). Skip logic
-(`plugin.py` `pytest_runtest_setup` + `helpers.should_skip_test_for_device`) skips a device
-test ONLY when `SELECTED_DEVICE_TYPES` is a non-empty set excluding the test's type; with no
-`--device-types`, it stays `None` → nothing is skipped. So a test parametrized
-`[DeviceType.cpu]` DOES run in the standard "Unit Tests (Python)" lane on every OS runner.
-The meta-lesson: prove the run reached the code — trace the exact CI command to the exact
-function, don't infer lane behavior from a nearby-but-unrelated code block
+`tools/ci.py`'s `unit_test_python` runs `pytest_command("slangpy/tests", "-vra")` with no
+`--device-types`; the per-platform `device_types = [...]` block belongs to `benchmark_python`
+(do not conflate them). `plugin.py` `pytest_runtest_setup` +
+`helpers.should_skip_test_for_device` skip a device test only when `SELECTED_DEVICE_TYPES` is a
+non-empty set excluding its type; unfiltered it is `None`, so `[DeviceType.cpu]` tests run in "Unit
+Tests (Python)" on every OS. Trace the CI command to the function
 [the unit-test-python lane is UNSCOPED](../learnings/1788481761267-slangpy-ci-unit-test-python-lane-is-unscoped-devic.md).
+Locally the reverse bites: a test WITHOUT a `device_type` param counts as non-device and is skipped
+whenever `--device-types <x>` is passed. A GPU test making its own device (`spy.App()`,
+`DeviceType.automatic`) never runs per-device unless it takes
+`@pytest.mark.parametrize("device_type", [<type>])` and checks `helpers.should_skip_test_for_device`;
+verify with and without the filter. Linux `helpers.DEFAULT_DEVICE_TYPES` is vulkan + cuda; add cpu
+via `--device-types vulkan,cuda,cpu`
+[tests without a device_type param are skipped under --device-types](../learnings/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md),
+[incremental build without libcst](../learnings/1792421818732-slangpy-incremental-build-without-libcst-build-onl.md).
 
-slangpy#829 (add retry logic to slangpy's own CI pytest, imitating the two-stage retry
-slang's old `test-slangpy` job had) is fully unblocked (both gating deps merged). The
-pattern to imitate: first `pytest -n auto` (parallel), then on failure re-run only the
-failed set sequentially `pytest -n 0 --lf` — the sequential rerun escapes GPU-device
-contention under xdist, which an INLINE `pytest-rerunfailures --reruns` does NOT achieve
-(it stays in the same parallel session, so the plugin is the wrong tool). Single chokepoint:
-every python test run routes through `tools/ci.py`, so one try/except edit covers 7 call
-sites. False-green trap: a `--lf` rerun that selects zero tests exits 0 and masks a real
-failure — the fix must verify `.pytest_cache` persists between the two invocations and
-propagate the rerun's exit code
+slangpy#829 (CI pytest retry, imitating slang's old `test-slangpy` job) is unblocked (both deps
+merged). Pattern: `pytest -n auto`, then rerun failures with `pytest -n 0 --lf` (escapes
+xdist GPU-device contention); inline `pytest-rerunfailures --reruns` stays in the parallel session.
+All python test runs go through `tools/ci.py`, so one try/except covers 7 call sites. False-green
+trap: a `--lf` rerun selecting zero tests exits 0, so verify `.pytest_cache` persists and propagate
+the rerun's exit code
 [#829 CI retry followup unblocked](../learnings/1787226229979-slangpy-829-ci-retry-followup-unblocked.md).
 
-"Instrumentation is compiled in" and "an upload step exists" are two separate facts from
-"the handler is armed on this code path." In slangpy CI, `sgl_tests` is built with crashpad
-and there's an "Upload Crashpad Reports" step — but the handler is only armed at RUNTIME on
-the Python side (`crashpad.start_handler()` in the pytest session hook); the C++ `main()`
-never calls it and installs no `set_terminate`/signal handler. So the post-`run()` teardown
-flake (#1062) writes no minidump; the uploaded `.crashpad/reports/` is empty. An empty
-capture-artifact reads like "no crash happened" but can equally mean "capture was never armed
-here" — confirm the handler is actually started on the path that failed before citing an
-empty artifact as diagnostic
+Crash capture compiled in is not armed: `sgl_tests` builds with crashpad and CI uploads
+`.crashpad/reports/`, but the handler starts only on the Python side (`crashpad.start_handler()` in
+the pytest session hook); the C++ `main()` never calls it nor installs a
+`set_terminate`/signal handler. So the post-`run()` teardown flake (#1062) leaves an empty artifact,
+which means "never armed", not "no crash"
 [crash-capture compiled-in is not crash-capture armed](../learnings/1786995924373-crash-capture-compiled-in-is-not-crash-capture-arm.md).
 
-Before pushing slangpy code, run the FULL `pre-commit run --files <changed>`, not just
-`black --check`. The project has a custom **`check-ascii-source`** hook that fails on any
-non-ASCII character in `.cpp/.hpp/.h/.c/.py/.slang/.slangh` files — LLM-authored comments
-routinely contain Unicode em-dashes (`—`) and arrows (`→`), Black passes them, and CI goes
-red. The hook auto-fixes: `python tools/check_ascii_hook.py <files>` rewrites mapped chars
-in place (em/en dash → `-`, `→` → `->`, `≤` → `<=`, smart quotes, NBSP, strips zero-width/BOM);
-its `REPLACEMENTS` map is the source of truth, and an unmapped non-ASCII char fails without a
-fix
+Run the FULL `pre-commit run --files <changed>`, not just `black --check`: the custom
+**`check-ascii-source`** hook rejects any non-ASCII char in `.cpp/.hpp/.h/.c/.py/.slang/.slangh`, and
+LLM comments carry em-dashes and arrows that Black passes. `python tools/check_ascii_hook.py <files>`
+rewrites mapped chars in place (dashes → `-`, `→` → `->`, `≤` → `<=`, smart quotes, NBSP; strips
+zero-width/BOM); its `REPLACEMENTS` map is the source of truth and unmapped chars just fail
 [SlangPy CI forbids non-ASCII in source](../learnings/1787559507647-slangpy-ci-forbids-non-ascii-in-source-run-the-ful.md).
 
 ## Sanitizers: the LSan leak that has never been green, and the ASan DEEPBIND wall
 
-slangpy's scheduled `sanitizers.yml` (cron `0 4 * * *`) fails **every** run on `main` since
-it was introduced by PR #1107 (2026-08-15) — 17+ consecutive failures across 6 SHAs, so it
-is deterministic, not a flake. The root cause is a real `sgl::ref` ownership-cycle leak (2
-direct roots, identical run-over-run) on the Linux `asan-ubsan` leg's "Check LeakSanitizer
-Reports" step (`tools/filter-lsan-reports.py`, which gates only on
-SlangPy/slang-rhi-attributed roots). Leak site: `std::vector<ref<NativeBoundVariableRuntime>>`
-in `NativeBoundCallRuntime::set_args`. Tracking issue #1130. It is NOT a regression from a
-green baseline (never green) and NOT the flaky-test-retry items #829/#1123. Log gotchas:
-GitHub purges raw job logs in ~2-3 days (pull from the newest failing run); `gh api .../logs`
-needs `--allow-escape-sequences`; and `workflow_dispatch` runs can be on non-main branches
-(check `git merge-base --is-ancestor <sha> origin/main`)
-[sanitizers.yml nightly has never been green on main](../learnings/1788164752775-slangpy-sanitizers-yml-nightly-has-never-been-gree.md).
-
-Triaging #1130 surfaced three reusable facts. (1) There is NO LSan suppression mechanism in
-slangpy — `tools/asan-suppressions.txt` holds only ASan interceptor entries, and
-`filter-lsan-reports.py` reads no suppressions file (it attributes by path/symbol match and
-exits 1 on any project-attributed direct root), so "suppress the leak" is not a config edit;
-combined with the maintainer's fix-first stance, suppression is disfavored. (2) A C++-only
-ownership trace can WRONGLY conclude "no cycle / benign retention" — the real cycle is not in
-the C++ `m_args` DAG but in the Python module-attribute / instance-method / reflection caches
-(the `ref<refl::Type>` edge into the Layout⇄Type/Function graph); the tell it's a real cycle
-is the maintainer's fix using weak references and tests named `..._does_not_create_ownership_cycle`.
-(3) The gate only runs on Linux and only on schedule/workflow_dispatch (no `pull_request`), so
-the leak-gate never runs on PRs. Also: an existing fix branch may exist off-PR (two green
-dispatch SHAs traced to `dev/skallweit/weak-ref`) — check `git branch --contains` before
-assuming net-new work
-[LSan leak has no suppression path; cycle is in the Python cache layer](../learnings/1788165513318-slangpy-sanitizers-yml-lsan-leak-has-no-suppressio.md).
-
-A "leak-gate failing N nights" report must be checked against BOTH slang and slangpy before
-escalating — they have separate sanitizer workflows and very different health: slang's nightly
-LeakSanitizer is 15+/15+ green, while slangpy's has failed 17/17 consecutive scheduled runs
-since 2026-08-15 across 6 SHAs (deterministic). It's tracked as #1130, a continuation of
-#1113's Layout⇄Type/Function lifetime work, with a fix held for maintainer coordination. If you
-see a stale-sounding count, recompute from `actions/workflows/{id}/runs?event=schedule` rather
-than trusting the reported number (an earlier hand-off cited "11th night" when the true count
-that day was 17)
+slangpy's scheduled `sanitizers.yml` (cron `0 4 * * *`) has failed every `main` run since PR #1107
+added it (2026-08-15): 17/17 across 6 SHAs, deterministic. Cause: a real `sgl::ref` ownership-cycle
+leak (2 direct roots, identical each run) at the Linux `asan-ubsan` "Check LeakSanitizer Reports"
+step (`tools/filter-lsan-reports.py`, gating only SlangPy/slang-rhi-attributed roots); site
+`std::vector<ref<NativeBoundVariableRuntime>>` in `NativeBoundCallRuntime::set_args`. Tracked as
+#1130 (continuing #1113's Layout⇄Type/Function lifetime work), fix held for maintainer coordination.
+Not a regression, not the flaky-retry items #829/#1123. Slang's separate nightly
+LeakSanitizer is 15+/15+ green, so check both repos before escalating "leak gate failing N nights",
+and recompute N from `actions/workflows/{id}/runs?event=schedule` (a hand-off once said "11th"
+when it was 17). Logs purge in ~2-3 days; `gh api .../logs` needs
+`--allow-escape-sequences`; `workflow_dispatch` runs may be off-main
+(`git merge-base --is-ancestor <sha> origin/main`)
+[sanitizers.yml nightly has never been green on main](../learnings/1788164752775-slangpy-sanitizers-yml-nightly-has-never-been-gree.md),
 [LeakSanitizer never green 17 nights — don't confuse with slang's clean gate](../learnings/1788204898899-slangpy-leaksanitizer-has-never-been-green-17-nigh.md).
 
-Verifying the #1130 fix locally hits an ASan wall. Running slangpy/sgl GPU device tests under
-ASan on an NVIDIA box aborts with SIGABRT at device creation, before any test code runs: the
-NVIDIA driver/Vulkan-loader dlopens internal libs with `RTLD_DEEPBIND`, ASan's dlopen
-interceptor rejects DEEPBIND and calls `Die()`, and `abort_on_error=1` makes it SIGABRT (LLVM
-through 22.x exposes no `handle_deepbind` flag). So "0 project roots" from
-`filter-lsan-reports.py` in that state is VACUOUS — the leak-producing GPU tests never ran.
-Workaround: use the CPU backend (`spy.Device(type=cpu)`) — the functional-API cache cycle and
-`m_args` are backend-independent, so a CPU device exercises the same Python ownership cycle
-without dlopening the driver (validates the fix MECHANISM, not the exact GPU byte-counts). Also:
-Debian bookworm clang-14 ships no compiler-rt sanitizer runtime — download a self-contained LLVM
-release tarball and PATH-prepend it (the asan runtime is at the per-target
+From #1130 triage: (1) no LSan suppression path exists: `tools/asan-suppressions.txt` holds only ASan
+interceptor entries and `filter-lsan-reports.py` reads no suppressions (path/symbol attribution,
+exit 1 on any project root), and the maintainer is fix-first. (2) A C++-only trace wrongly finds "no
+cycle": it lives not in the `m_args` DAG but in the Python module-attribute / instance-method /
+reflection caches (the `ref<refl::Type>` edge into Layout⇄Type/Function); the tell is the
+maintainer's weak-reference fix with `..._does_not_create_ownership_cycle` tests. (3) The gate runs
+only on Linux, only on schedule/workflow_dispatch, never on PRs. A fix branch may exist off-PR (green
+dispatch SHAs from `dev/skallweit/weak-ref`); check `git branch --contains`
+[LSan leak has no suppression path; cycle is in the Python cache layer](../learnings/1788165513318-slangpy-sanitizers-yml-lsan-leak-has-no-suppressio.md).
+
+Local verification hits an ASan wall: GPU device tests on NVIDIA SIGABRT at device creation because
+the driver/Vulkan loader dlopens with `RTLD_DEEPBIND`, ASan's interceptor calls `Die()`, and
+`abort_on_error=1` aborts (LLVM through 22.x has no `handle_deepbind`). "0 project roots" there is
+VACUOUS. Use `spy.Device(type=cpu)`: the cache cycle and `m_args` are backend-independent, so it
+validates the fix mechanism (not GPU byte counts). Bookworm clang-14 ships no compiler-rt sanitizer
+runtime; PATH-prepend an LLVM release tarball (runtime at
 `<llvm>/lib/clang/22/lib/x86_64-unknown-linux-gnu/libclang_rt.asan.so`)
 [GPU device tests abort under ASan (RTLD_DEEPBIND)](../learnings/1788168405905-slangpy-sgl-gpu-device-tests-abort-under-asan-on-n.md).
 
 ## Cross-repo coordination: shipping a companion PR for a breaking slang change
 
-When a slang PR is a breaking change (e.g. slang#12840 retyping the matrix layout param
-`int` → `MatrixLayoutMode`), it triggers a red "SlangPy Tests" check, and fixing it means a
-companion slangpy PR with a genuine circular cross-repo CI dependency you must document, not
-just "make green." The "SlangPy Tests" status is posted by slangpy's `ci-latest-slang.yml`
-(via `repository_dispatch` from slang), and its `build-pr` job checks out slangpy's DEFAULT
-branch — so it only greens once the fix is merged to slangpy `main`, it does NOT build your PR
-branch. Meanwhile slangpy's own `ci.yml` builds against the downloaded pinned release
-`SGL_SLANG_VERSION`, so if the breaking symbol isn't in that release your retyped PR fails
-slangpy's own CI → deadlock. Break the cycle with one manual gate-override in order: (1)
-validate locally via `-DSGL_LOCAL_SLANG=ON` against the slang PR; (2) merge the slang PR past
-its red "SlangPy Tests" (a known coordinated break); (3) cut a Slang release containing it;
-(4) land the slangpy PR WITH a `SGL_SLANG_VERSION` pin bump — never to a not-yet-existent
-release (the CMake download 404s). A checkout-mode gotcha: `branch` mode can't reach a fork-only
-PR branch; `pr` mode (`git fetch origin pull/<n>/head`) resolves any PR, so the reliable
-pre-merge validation is a local `SGL_LOCAL_SLANG` build. Post a "red as expected — see Merge
-order" comment so the shepherd isn't misled
+A breaking slang PR (e.g. slang#12840 retyping the matrix layout param `int` → `MatrixLayoutMode`)
+turns slang's "SlangPy Tests" red and needs a companion slangpy PR with a circular CI dependency.
+"SlangPy Tests" comes from slangpy's `ci-latest-slang.yml` (`repository_dispatch` from slang), whose
+`build-pr` job checks out slangpy's DEFAULT branch, not your PR; slangpy's own `ci.yml` builds
+against the pinned release, so the retype fails there until a release has the symbol. Manual order:
+(1) validate locally with `-DSGL_LOCAL_SLANG=ON` against the slang PR; (2) merge the slang PR past
+its red check; (3) cut a Slang release; (4) land the slangpy PR WITH the `SGL_SLANG_VERSION` bump,
+never to an unreleased version (download 404s). `branch` checkout mode can't reach a fork-only
+branch; `pr` mode (`git fetch origin pull/<n>/head`) can, but a local `SGL_LOCAL_SLANG` build is the
+reliable pre-merge check. Comment "red as expected — see Merge order"
 [companion PR for a breaking slang change: CI merge-order](../learnings/1788461805098-slangpy-companion-pr-for-a-slang-breaking-change-c.md).
-
 The no-GPU checks that make step (1) cheap are on [SlangPy Validation Against an Unreleased Slang PR](slangpy-validation-against-unreleased-slang.md): a `slangc`-only build of the PR head, a `spirv-asm` no-op diff on the pinned compiler, and the warning that the downstream run's `import slangpy` errors are not the full list of breaks.
 
-**Production update — the `SLANGPY_CHERRY_PICK_PR` mechanism (how slang#12840→#12986 ↔ slangpy#1135 actually resolved).** In production the break is coordinated automatically, not by "merge the slang PR past its red SlangPy Tests" — a cherry-pick driven from the slang side keeps that check GREEN. A **fork** Slang PR can't run the secret-gated cherry-pick CI (`SLANGPY_DISPATCH_TOKEN`/`SLANG_STATUS_TOKEN`), so a breaking change is **recreated as a same-repo Slang PR** (12840 fork → 12986 same-repo) — don't assume a closed slang PR was rejected; check `gh pr view <n> --json state,mergedAt` for a same-repo successor (`mergedAt:null` + `state:CLOSED` = closed unmerged). A maintainer then sets `SLANGPY_CHERRY_PICK_PR: "1135"` in slang `master`'s `.github/workflows/ci-slangpy-trigger-test.yml`, so every slang PR's "SlangPy Tests" dispatch passes `slangpy_cherry_pick_pr` and slangpy's `ci-latest-slang.yml` merges the companion PR into slangpy *before* building against master-Slang — keeping all slang PR CI green through the breaking window AND continuously proving the companion green (that IS the execution proof: verify the slang PR's own "SlangPy Tests" status = success). Consequences: (a) the slang-side breaking PR can **merge to master BEFORE** the slangpy companion merges (the enum/type then lives on slang master but in no release yet); (b) the companion just waits on the **release gate** — slangpy `ci.yml` builds against the pinned `SGL_SLANG_VERSION` release tarball, so the companion's own CI stays red until a Slang release containing the change is cut AND the companion bumps `SGL_SLANG_VERSION` to it, then merge; (c) **post-merge cleanup, easy to forget:** revert `SLANGPY_CHERRY_PICK_PR` back to `""` on slang master (the workflow carries an in-file "REVERT … AS SOON AS #<pr> HAS MERGED" comment), else slang CI keeps cherry-picking a merged PR. Validation shortcut once the change is on slang master: run slangpy `ci-latest-slang` `workflow_dispatch` from the companion branch with the default `slang_branch=master` (branch checkout reaches master once merged — the fork-only-branch limitation is gone) ([the SLANGPY_CHERRY_PICK_PR production pattern](../learnings/1789073598653-slang-slangpy-coordinated-breaking-change-the-slan.md)).
+**Production: `SLANGPY_CHERRY_PICK_PR`** (how slang#12840→#12986 ↔ slangpy#1135 resolved) keeps the
+check GREEN. Fork PRs can't run the secret-gated cherry-pick CI
+(`SLANGPY_DISPATCH_TOKEN`/`SLANG_STATUS_TOKEN`), so the change is recreated as a same-repo PR (12840
+→ 12986); a closed slang PR may have a successor (`gh pr view <n> --json state,mergedAt`;
+`mergedAt:null` + `CLOSED` = closed unmerged). A maintainer sets `SLANGPY_CHERRY_PICK_PR: "1135"` in
+slang master's `.github/workflows/ci-slangpy-trigger-test.yml`; each dispatch then passes
+`slangpy_cherry_pick_pr` and `ci-latest-slang.yml` merges the companion before building against
+master-Slang, so the slang PR's own "SlangPy Tests" = success is the execution proof. Consequences:
+(a) the slang PR may merge BEFORE the companion (type on master, in no release); (b) its
+`ci.yml` stays red until a release has the change and it bumps `SGL_SLANG_VERSION`; (c) after merge,
+revert the var to `""` (per the in-file "REVERT … AS SOON AS #<pr> HAS MERGED" comment) or slang CI
+keeps cherry-picking. Once on master, validate via slangpy `ci-latest-slang` `workflow_dispatch` from
+the companion branch with default `slang_branch=master`
+([the SLANGPY_CHERRY_PICK_PR production pattern](../learnings/1789073598653-slang-slangpy-coordinated-breaking-change-the-slan.md)).
 
-Reviewing the downstream `.slang` retypes for such a change (slangpy#1135 ↔ slang#12840) took
-~5 tool calls. Completeness scan: `git grep -n 'matrix<' -- '*.slang'` — distinguish the
-4-param form `matrix<T,R,C,L>` (binds the layout param → affected) from the 3-param
-`matrix<T,R,C>` form (default layout, no `int` generic → unaffected, needs no change); in #1135
-only 2 of ~20 matrix sites were 4-param. Correspondence: confirm the downstream retype
-byte-for-byte mirrors what the slang PR does to its own core-module extensions (the enum being
-`:int`-backed with unchanged values means zero behavioral/codegen change — a pure type-check-time
-fix). The failure mode is declaration-time (`int`→enum has no implicit conversion → fails to
-unify at module parse/check, `E30019`), and since `staticarray.slang` is `__include`d by
-`slangpy.slang` it compiles on every module load (a break there fails ~every test; no dedicated
-pytest feasible). The merge-gate trap is the same coordination gate: such a PR cannot land until
-`SGL_SLANG_VERSION` points at a release containing the enum — draft + pin-bump-last, a
-coordination gate not a code defect
+Reviewing downstream `.slang` retypes (slangpy#1135), completeness is
+`git grep -n 'matrix<' -- '*.slang'`; only 4-param `matrix<T,R,C,L>` binds the layout (3-param
+`matrix<T,R,C>` is unaffected; 2 of ~20 sites in #1135). The retype should mirror byte-for-byte the
+slang PR's own core-module edits; an `:int`-backed enum with unchanged values means zero codegen
+change. The failure is declaration-time (no implicit `int`→enum, so unification fails at check,
+`E30019`), and since `slangpy.slang` `__include`s `staticarray.slang`, a break fails ~every test (no
+dedicated pytest feasible). The PR can't land until `SGL_SLANG_VERSION` names a release with the
+enum: draft + pin-bump-last, a coordination gate, not a defect
 [reviewing SlangPy .slang downstream retypes for a breaking change](../learnings/1788461914259-reviewing-slangpy-slang-downstream-retypes-for-a-b.md).
 
-**Source learnings (21):**
+**Source learnings (25):**
 
 - [Python 3.15 pyconfig.h breaks -Werror builds of nanobind<2.12 extensions on Linux (_POSIX_C_SOURCE/_XOPEN_SOURCE redefined)](../learnings/1791575026477-python-3-15-pyconfig-h-breaks-werror-builds-of-nan.md)
 - [Python 3.15 breaks -Werror C++ extensions on Linux; cross-fork REST PR needs maintainer_can_modify=false](../learnings/1791583665808-python-3-15-breaks-werror-c-extensions-on-linux-cr.md)
@@ -332,3 +309,7 @@ coordination gate not a code defect
 - [SlangPy reused build tree keeps a STALE slang across a rebase — reconfigure `--fresh`, read SGL_SLANG_VERSION](../learnings/1789220844035-slangpy-reused-build-tree-keeps-a-stale-slang-sgl-.md) — `cmake --build` never re-fetches the cached slang; confirm the effective version from CMakeCache, not slang-rhi's `SLANG_RHI_FETCH_SLANG_VERSION`.
 - [Stale CMakeCache SGL_SLANG_VERSION: incremental builds keep the OLD slang after a pin bump/rebase (two false regressions)](../learnings/1789220982301-stale-cmakecache-sgl-slang-version-incremental-sla.md) — a green CI + a red local `undefined identifier` (e.g. MatrixLayoutMode) for a released symbol is the stale-cache signature, not a defect.
 - [force TinyEXR (`-DOpenEXR_FOUND=OFF` too), userspace Python.h via `dpkg -x` debs, offline worktree submodules, vcpkg reuse, empty RuntimeError = garbage what()](../learnings/1790786152988-slangpy-force-tinyexr-build-build-without-system-p.md)
+- [slangpy incremental build without libcst: build only the slangpy_ext target](../learnings/1792421818732-slangpy-incremental-build-without-libcst-build-onl.md) — full build runs stubgen (libcst); `--target slangpy_ext` ~10 s; Linux DEFAULT_DEVICE_TYPES excludes cpu
+- [SlangPy worktree build: submodule file-transport and /tmp repro script sys.path gotchas](../learnings/1792462385307-slangpy-worktree-build-submodule-file-transport-an.md) — `protocol.file.allow=always`; sys.path[0] is the script dir, so `PYTHONPATH=<worktree>`
+- [SlangPy reconfigure after Slang version bump needs --fresh (stale SGL_SLANG_VERSION cache)](../learnings/1792464723018-slangpy-reconfigure-after-slang-version-bump-needs.md) — CACHE STRING wins over a plain re-configure; `--fresh` needs `-DPython_EXECUTABLE=<uv venv>`
+- [slangpy tests: no device_type param => skipped under --device-types; App() closes its device](../learnings/1792466654227-slangpy-tests-no-device-type-param-skipped-under-d.md) — local `--device-types` silently skips non-parametrized GPU tests; CI runs them

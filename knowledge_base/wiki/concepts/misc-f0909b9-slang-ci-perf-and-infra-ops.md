@@ -3,7 +3,7 @@ title: "Slang CI health, heartbeat monitoring, and perf/benchview infrastructure
 type: concept
 group: misc
 tags: [ci-health, heartbeat, test-falcor, flake-vs-real, causation, benchview, compile-perf, perf-alerting, master-branch, nightly]
-source_count: 24
+source_count: 25
 ---
 
 ## TL;DR
@@ -30,9 +30,11 @@ Operational facts for the Slang CI-health / maintainer / heartbeat roles:
   a carried "since <anchor>, now ~Nh" duration from the anchor, not last-figure +
   delta.
 - **Perf/benchview:** compile-perf is the mature fork template; runtime perf is
-  greenfield; benchview is a downstream-consumer-by-URL (bench.py comments only), and
-  MDL benchmark results push to a PRIVATE repo. Source-verify inherited perf
-  "facts" — several circulated mislabeled.
+  greenfield. Since PR #13625 (2026-10-19) `tools/compile-perf/benchview.py` and a
+  nightly export step send compile-time results to BenchView; runtime GPU and
+  MaterialX perf still have nothing in tree. MDL benchmark results push to a PRIVATE
+  repo. Source-verify inherited perf "facts" (`ls tools/compile-perf`) — several
+  circulated mislabeled or went stale.
 - **Per-pass compile-time A/B:** use phase-scoped callgrind instruction counts
   (deterministic) plus an ABBA wall-clock run, not wall-clock medians on a shared box.
 - **Nightly MDL perf: a green night after a red one is usually a sub-threshold
@@ -179,15 +181,27 @@ inherited perf claims before repeating them:
   A prior learning mislabeled this workflow "runtime benchmark pipeline"; it is
   compile-time MDL, not runtime
   ([perf-alerting facts corrected: perf-push-benchmark-results.yml is COMPILE-TIME MDL](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md)).
-- **"benchview" is a downstream-consumer-by-URL, not in-tree infra.** It appears only
-  in `tools/compile-perf/bench.py` COMMENTS (raw samples retained so a downstream
-  BenchView format can recompute summaries); there is no ingestion code, endpoint, or
-  creds. "benchview appears nowhere in the repo" is FALSE, but so is "benchview
-  integration exists" — the accurate claim is "no public-repo Falcor
-  runtime→BenchView publishing integration exists." Verify an audit target branch
-  actually exists before auditing (`dev/ccummings/benchview` does not)
-  ([benchview is a downstream-consumer-by-URL, not in-tree infra](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md),
+- **Compile-time results now reach BenchView from the repo; runtime results do not.**
+  Until 2026-10-19, "benchview" appeared only in `tools/compile-perf/bench.py`
+  COMMENTS (raw samples retained so a downstream BenchView format can recompute
+  summaries), with no ingestion code, endpoint or creds; "benchview appears nowhere in
+  the repo" was false then too
+  ([benchview is a downstream-consumer-by-URL](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md),
   [perf-alerting facts corrected: benchview IS in-repo (bench.py comments only)](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md)).
+  PR #13625 (master 68438b5e1, 2026-10-19) added `tools/compile-perf/benchview.py`, a
+  stdlib-only exporter, and `nightly-mdl-perf-test.yml` gained an "Export nightly
+  results for BenchView" step plus an artifact archive of the payloads. Still absent
+  from the tree: runtime GPU benchmarks and MaterialX perf tests
+  (`ci-materialx-regression-test.yml` compiles shaders but records no timings), and
+  `ci-falcor2-perf-bridge-smoke.yml` is manual-dispatch only and just calls
+  `/opt/slang-ci/run-external-ci` on a self-hosted runner. Run `ls tools/compile-perf`
+  before repeating any benchview claim
+  ([BenchView export now in tree (PR #13625)](../learnings/1792423759686-slang-benchview-export-now-in-tree-tools-compile-p.md)).
+  The same PR deleted `tools/compile-perf/COVERAGE-ANALYSIS.md` and moved the suite
+  review into the dir's README (see the triage-routing page linked below). Verify an
+  audit target branch actually exists before auditing (`dev/ccummings/benchview` does
+  not; check with four probes, since one 404 is not conclusive)
+  ([benchview is a downstream-consumer-by-URL](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md)).
 - **compile-perf emit workloads all share one shader by design.** Every codegen
   workload uses `gen=workloads.gen_codegen`, differing only in `-target`, to isolate
   the emit path per target. So the suite lacks backend-DISTINCTIVE *source shapes*,
@@ -204,7 +218,9 @@ inherited perf claims before repeating them:
 
 Routing note across these facts: perf-epic sub-tasks are maintainer-curated,
 sprint-planned, no-repro, ops/infra-not-compiler — don't auto-dispatch a fixer;
-triage + 5-bullet + report up.
+triage + 5-bullet + report up. How each sub-task closed, and what a reply to it
+should say, is on
+[[wiki/concepts/agent-fixer-codex-skills-f0909b0-triage-routing-and-classification.md]].
 
 **Answering "does this pass change regress compile time?" deterministically.** Wall
 clock on a shared 64-core box is too noisy (load swinging 5→119 moved medians ±10%).
@@ -230,7 +246,7 @@ When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with m
 
 **Size a front-end step with per-timer geomeans from the perf-confirmation artifacts.** The `analyze` table lists only counters over the ratio≥1.1 / abs≥2 ms gate against a trailing-7 median, and chronic noise makes lone flags unreliable. `gh run download <run-id> --repo shader-slang/slang -p 'perf-confirmation-*'`, read `results.json` (workloads with `timers.<name>.median` and `size`), keep workloads whose `size` matches between nights, and take the geomean ratio per timer against a fixed green night. A real front-end regression moves `SemanticChecking`/`frontEndExecute` broadly (39/54 workloads above the prior four nights' max) while `linkAndOptimizeIR` and `loadBuiltinModule` stay near 1.00; runner noise moves everything. The 10-16 nightly measured SemanticChecking 1.052 vs 10-12 (1.042 vs 10-15 alone), with only #13537/#13615/#13626 in the window. Artifacts expire after about a week (10-07/10-08 runs returned 404 on 10-16), so record the geomeans durably when sizing a step [MDL perf nightly per-timer geomeans](../learnings/1792138989940-mdl-perf-nightly-size-a-front-end-step-with-per-ti.md).
 
-**Source learnings (24):**
+**Source learnings (25):**
 
 - [Maintainer readying a bot draft PR + force-push dismisses the approval](../learnings/1788380981281-maintainer-readying-a-bot-draft-pr-force-push-dism.md) — check the timeline actor before assuming we readied a PR; a force-push dismissal is expected; don't re-dispatch ci.yml on a ready PR.
 - [Heartbeat: verify the base, not just the deltas, on durations carried across many wakes](../learnings/1788393885068-heartbeat-verify-the-base-not-just-the-deltas-on-d.md) — re-derive "since <anchor>, now ~Nh" from the anchor; a base error survives indefinitely under delta-only checks.
@@ -250,6 +266,7 @@ When `trend.py`'s compile-perf gate flags a nightly MDL Perf Test failure with m
 - [compile-perf emit_* workloads all share one shader (gen_codegen) by design](../learnings/1788881942527-compile-perf-emit-workloads-all-share-one-shader-g.md) — the suite lacks backend-distinctive source shapes, not coverage; check-python-core.yml hard-codes the module list.
 - [Slang "benchview" is a downstream-consumer-by-URL, not in-tree infra; verify audit branches exist](../learnings/1788882146534-slang-benchview-is-a-downstream-consumer-by-url-no.md) — benchview lives only in bench.py comments; confirm a named audit branch exists (four checks) before auditing.
 - [Slang perf-alerting facts corrected: perf-push-benchmark-results.yml is COMPILE-TIME MDL; benchview IS in-repo (comments only)](../learnings/1788884756637-slang-perf-alerting-facts-corrected-perf-push-benc.md) — source-verify inherited learnings; a forked Slack template lacks magnitude/PR links and adaptive median misses gradual drift.
+- [Slang BenchView export now in tree (tools/compile-perf/benchview.py, PR #13625)](../learnings/1792423759686-slang-benchview-export-now-in-tree-tools-compile-p.md) — corrects "comments only": exporter + nightly export step; runtime GPU/MaterialX perf still absent; Falcor2 perf workflow manual-only.
 - [separating disclosed benchmark-resize noise from genuine compiler perf regressions (Nightly MDL Perf Test)](../learnings/1789805493629-separating-disclosed-benchmark-resize-noise-from-g.md) — check manifest.py default_size/sweep_sizes edits (PR body predicts the ratio); the real signal is a sub-pass timer moving while compileInner stays clean; narrow to core/hlsl.meta.slang prelude PRs; cross-ref self-merge.
 - [Grepping job logs for "LLVM prebuilt not found in GCS" matches the script echo, not the output](../learnings/1791620024633-grepping-job-logs-for-llvm-prebuilt-not-found-in-g.md) — `##[group]Run` prints the step source; drop `echo ` lines, look for "Building LLVM from source".
 - [Nightly MDL Perf Test: detect real steps hidden by trailing-median baseline](../learnings/1791619655084-nightly-mdl-perf-test-detect-real-steps-hidden-by-.md) — per-timer geomean vs a fixed green night; one phase shifting broadly = real, all phases together = runner noise.

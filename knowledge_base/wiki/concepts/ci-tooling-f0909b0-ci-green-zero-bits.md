@@ -3,7 +3,7 @@ title: Green CI carries zero bits — positive controls, check-runs vs status, c
 type: concept
 group: ci-tooling
 tags: [approver, ci-green, positive-control, check-runs, ci_green_on_sha, coverage, could-it-come-out-otherwise]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -50,7 +50,10 @@ common case: the same file yields real coverage on device-having runners and a s
 elsewhere, all `success`. The fix: find the job that runs the step and grep its log for the
 test's own name (`[gw0] PASSED ...test_parallel...[DeviceType.vulkan]`) — that upgrades green
 from zero bits to a positive control, and read the trailing `N passed, M skipped` to confirm
-the new test isn't among the skips. This is the "dead-flag" failure mode transposed: a dead
+the new test isn't among the skips. When counting outcomes from such a log, grep only the
+worker-tagged lines (`\[gw[0-9]+\].* XFAIL`): the `-rxX` short summary repeats every
+XFAIL/XPASS, so a plain grep counts each one twice (24 reported where there were 12)
+([count pytest outcomes from the `[gwN]` lines](../learnings/1792483997051-ci-green-webhook-doesn-t-always-arrive-when-a-step.md)). This is the "dead-flag" failure mode transposed: a dead
 flag has no setter, a dead test has no execution, and neither is visible from the conclusion.
 
 The same shape recurs where a PR's whole purpose rides on an unexercised path.
@@ -150,7 +153,7 @@ names both over- and under-abstain: for a behavioral dep bump, line up what the 
 the consumer usually does NOT build the dependency's own regression test, so the trigger-present
 control for the changed behavior can be absent even when basic integration is green.
 
-**Source learnings (19):**
+**Source learnings (20):**
 
 - [Gate 0j: zero failing in rollup is not positive evidence — require check-ci present and SUCCESS](../learnings/1791734913868-gate-0j-zero-failing-in-rollup-is-not-positive-evi.md) — #13453 logged resolved 15 times with 3 contexts and no check-ci; a rollup under ~10 contexts on a code PR is a flag.
 - [Sweep gate: resolved needs positive check-ci SUCCESS, enforced in code](../learnings/1791736119391-sweep-gate-resolved-needs-positive-check-ci-succes.md) — enforce in the tracker writer; `no-ci` verdict; prefer the pull_request suite's check-ci, highest id.
@@ -171,3 +174,4 @@ control for the changed behavior can be absent even when basic integration is gr
 - [ci_green_on_sha reads the Status API, blind to in-progress check-runs](../learnings/1788764743013-approver-clause-gap-ci-green-on-sha-reads-the-stat.md) — passed while every build check-run was failing or still in_progress; APPROVER_CI_GATE normally covers it; treat non-completed check-runs as pending.
 - [CI rollup: check-runs != commit statuses — read BOTH before any green-CI claim](../learnings/1787875959183-approver-clause-gap-ci-rollup-check-runs-commit-st.md) — a cross-repo SlangPy Tests status was red and invisible to check-runs; over-trusting /status and never reading it are opposite errors; report the union.
 - [CI grep-guard PRs need a positive control run against a violating tree](../learnings/1787912033500-approver-challenger-calibration-ci-grep-guard-prs-.md) — green on a clean tree proves nothing; run the guard against a violating checkout; a shell guard's dead-vs-live is observable, so a missing self-test is a NIT not OPEN_GAP.
+- [CI-green webhook doesn't always arrive: when a step waits on CI, schedule a one-shot re-check instead of relying on the webhook](../learnings/1792483997051-ci-green-webhook-doesn-t-always-arrive-when-a-step.md) — rider: count pytest XFAIL/XPASS from `[gwN]` lines; the `-rxX` summary doubles a plain grep

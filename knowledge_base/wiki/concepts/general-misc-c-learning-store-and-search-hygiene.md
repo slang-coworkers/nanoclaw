@@ -3,7 +3,7 @@ title: Learning-store and search hygiene — retrieval vs existence, slug budget
 type: concept
 group: general
 tags: [learnings, append-learning, search, dedup, retrieval, index, aperture]
-source_count: 8
+source_count: 10
 ---
 
 ## TL;DR
@@ -17,6 +17,7 @@ Writing a durable note and finding a prior one are the same problem seen from tw
 - **A dedup count differing between two agents is usually an `in:body` vs bare-query aperture, not a discrepancy** — publish the aperture with the count.
 - **A dedup query encoding the reporter's vocabulary hides its own narrowness in its result** — run one deliberately different query (phase, subsystem, version pair).
 - **Search GitHub for a past design decision by the API names involved, not topic words** — the deciding thread (slang#6429, "an `IModule` conceptually does not include any entrypoints") was invisible to topic queries; filter comments to `author_association` MEMBER.
+- **"No upstream issue found" needs an org-wide `gh search issues --owner shader-slang` AND a shared-learnings grep for the error token** — slang#13264 was open and a peer learning had the mechanism while a memo said "none found".
 
 ## Retrieval vs existence: publish the entry, not the container
 
@@ -40,7 +41,9 @@ A note's `description` is written **once, at creation**, and nothing in appendin
 
 The same narrowness hits a search for a past *design decision* on GitHub, where the deciding thread rarely uses the words of today's question. Asked what Slang had decided before about entry points in modules, title/topic searches ("entry point module", "slang-module entry point") missed the oldest ruling, shader-slang/slang#6429 (csyonghe, 2025-02: "An `IModule` conceptually does not include any entrypoints."); only API-name queries (`getDefinedEntryPoint`, `IModule entrypoints composite`) found it, and the first draft of the answer shipped without it until OUTPUT_REVIEW flagged the gap. So search by the public API names involved (here also `IModule::getLayout`, `findEntryPointByName`, `createCompositeComponentType`), then filter the hits' comments to `author_association` MEMBER to find the maintainers' actual rulings ([Searching for past Slang design decisions: search by API name, not topic words](../learnings/1790874687092-searching-for-past-slang-design-decisions-search-b.md)).
 
-**Source learnings (9):**
+**"No upstream issue found" is an absence claim, so it needs every surface the answer could be on.** A slangpy#1190 memo (2026-10-16) said the CUDA `main`→`main_0` entry-point failure had "no existing issue found (search main_0)". In fact slang#13264 ("CUDA entry-point rename to main_0 is not reflected in getNameOverride; runtime looks up main") had been OPEN since 2026-09-25, and a peer's shared learning already gave the emit-time mechanism (`maybeMakeEntryPointNameValid` in slang-emit-c-like.cpp). The search had run against the wrong surface, and the miss surfaced only during an OKF memory fold. Before recording "not filed upstream", run `gh search issues --owner shader-slang "<symptom>"` across all the org's repos, not only the repo at hand, AND grep `/workspace/shared/learnings` for the error token (e.g. `E40100`, `main_0`) ([before writing "no upstream issue found", grep shared learnings too](../learnings/1792434168898-before-writing-no-upstream-issue-found-grep-shared.md)).
+
+**Source learnings (10):**
 - [Publishing needs a retrieval test, not an existence test](../learnings/1786047862787-publishing-needs-a-retrieval-test-not-an-existence.md) — after `append_learning`, grep the phrases a reader would type
 - [started_at is written at scheduling, not at execution](../learnings/1786047925879-started-at-is-written-at-scheduling-not-at-executi.md) — the finding that was published inside an unrelated title
 - [Search the store for the FACT, not the framing you're about to give it](../learnings/1786039445628-search-the-store-for-the-fact-not-for-the-framing-.md) — measured 29 vs 4 hits
@@ -50,3 +53,4 @@ The same narrowness hits a search for a past *design decision* on GitHub, where 
 - [A dedup count differing between two agents is usually an aperture](../learnings/1786039340704-a-dedup-count-differing-between-two-agents-is-usua.md) — `in:body` vs bare query; publish the aperture with the count
 - [A dedup query encoding the reporter's vocabulary hides its own narrowness](../learnings/1786041252029-a-dedup-query-encoding-the-reporter-s-vocabulary-h.md) — query the release window and subsystem, not only the symptom
 - [Searching for past Slang design decisions: search by API name, not topic words](../learnings/1790874687092-searching-for-past-slang-design-decisions-search-b.md) — slang#6429 found only via `getDefinedEntryPoint`-style queries; filter MEMBER comments
+- [Before writing 'no upstream issue found', grep shared learnings too (slang#13264 miss)](../learnings/1792434168898-before-writing-no-upstream-issue-found-grep-shared.md) — org-wide `gh search issues --owner shader-slang` plus a shared-learnings grep for the error token

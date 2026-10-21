@@ -3,7 +3,7 @@ title: "Slang diagnostics: the warning mechanism, lossy int→float warnings, an
 type: concept
 group: misc
 tags: [slang, warnings, warning-level, pedantic, diagnostic-test, filecheck, int-to-float, getMaximumTypeBitSize, slang-test, unit-test, lang-server]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -14,7 +14,9 @@ opt-in / default-off warning ladder: `WarningLevel{Default, All, Extra, Pedantic
 force-enables per-warning, `-Wno-<id>` disables, `-Wall`/`-Wextra`/`-Wpedantic` are
 group toggles. For a genuinely opt-in (off-by-default) warning use the `pedantic`
 tag (precedent: `vertex-shader-missing-sv-position`). Diagnostics are Lua-driven
-(`slang-diagnostics.lua`); pick a FREE code.
+(`slang-diagnostics.lua`); pick a FREE code. Any warning that fires inside the core
+module aborts `slang-bootstrap` (`addBuiltinSource` treats any sink output as fatal), so
+prototype a new or widened warning against the core module first.
 
 **Lossy int→float warning family (#12929–#12933).** Width/value checks on integer
 literals have several traps: `IntegerLiteralExpr` folds unary `-`/`+`/`~`
@@ -62,6 +64,18 @@ independent `if` (int→float cost is 400 < 500, never reaches the
 `cost >= kConversionCost_Default` band); do NOT raise the conversion cost, which
 perturbs overload resolution language-wide
 ([lossy int→float warning: annotation mechanics + unsigned-literal & warning-group pitfalls](../learnings/1788797863864-slang-lossy-int-float-warning-diagnostic-test-anno.md)).
+
+**A new or widened warning that fires inside the core module breaks the build.**
+`Session::addBuiltinSource` (`slang-global-session.cpp:~1248`) calls
+`SLANG_UNEXPECTED("Compiling the core module should not yield any warnings")` when the sink
+has any output, so `slang-bootstrap` aborts with an InternalError on the first hit in
+`core.meta`/`hlsl.meta`/`diff.meta`. Prototype a widened diagnostic against the core module
+before anything else. To count every hit in one bootstrap run (measurement only), comment out
+that `SLANG_UNEXPECTED` in a throwaway worktree. Example: making E30515
+(generic-param-shadows-outer) also cover value params (`isGenericParam`) hits exactly one
+core-module site, `core.meta.slang:2242`, where `__generic<$(ptrTypeParameterList)>`
+redeclares `Access access` inside `extension<Access access> Ptr<void, access>`
+([core-module bootstrap aborts on any warning](../learnings/1792436239104-core-module-bootstrap-aborts-on-any-warning-worktr.md)).
 
 ## The lossy int→float literal-checking traps
 
@@ -248,7 +262,7 @@ convenient local checkout at a different commit. Any claim about what's *present
 target, file, helper) must be checked at the exact reviewed ref
 ([verify recommended test-infra exists on the PR branch, not just master/your local checkout](../learnings/1788679995187-verify-recommended-test-infra-exists-on-the-pr-bra.md)).
 
-**Source learnings (19):**
+**Source learnings (20):**
 
 - [Slang HAS opt-in default-off warnings (WarningLevel + -W<name>) — wiki "disable-only" is stale](../learnings/1788789285754-slang-has-opt-in-default-off-warnings-warninglevel.md) — full opt-in ladder; use `pedantic` for off-by-default; a sign-change warning needs its own `_coerce` branch.
 - [Slang lossy int→float warning: diagnostic-test annotation mechanics + unsigned-literal & warning-group pitfalls](../learnings/1788797863864-slang-lossy-int-float-warning-diagnostic-test-anno.md) — -Wextra ON / -Wall+-Wpedantic OFF; lossy int→float is an independent `if` in _coerce (cost 400); don't raise conversion cost.
@@ -269,3 +283,4 @@ target, file, helper) must be checked at the exact reviewed ref
 - [Slang exhaustive DIAGNOSTIC_TEST: annotate code AND message per diagnostic](../learnings/1791550646372-slang-exhaustive-diagnostic-test-annotate-code-and.md) — rich diagnostics need a code line plus a message line at one caret; dedupe CAS two-operand duplicates.
 - [Slang legacy lexer diagnostics: one annotation per diag; pin code as `^ error E10003`](../learnings/1791572293591-slang-legacy-lexer-diagnostics-one-annotation-per-.md) — no span row, a second annotation fails "(already matched)"; `E` prefix matches output `10003`.
 - [Search for a community PR before opening a bot fix PR; FileCheck `-NOT` covers only its gap](../learnings/1792079739619-search-for-a-community-pr-on-the-issue-before-open.md) — interleave a `-NOT` between every positive line, add a whole-output `-NOT`-only row, drill each gap
+- [Core-module bootstrap aborts on any warning; worktree submodule init needs protocol.file.allow](../learnings/1792436239104-core-module-bootstrap-aborts-on-any-warning-worktr.md) — `addBuiltinSource` SLANG_UNEXPECTED on any sink output; prototype widened warnings against the core module; E30515 value-param hit at core.meta.slang:2242
