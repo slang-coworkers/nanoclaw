@@ -29,7 +29,7 @@ import path from 'path';
 import { readCoworkerTypes, readSkillCatalog } from '../../claude-composer.js';
 import { quoteForCard } from '../../card-text.js';
 import { GROUPS_DIR } from '../../config.js';
-import { createAgentGroup, getAgentGroup, getAgentGroupByFolder } from '../../db/agent-groups.js';
+import { createAgentGroup, getAgentGroup } from '../../db/agent-groups.js';
 import {
   createMessagingGroup,
   getMessagingGroup,
@@ -40,13 +40,13 @@ import {
 import { getContainerConfig } from '../../db/container-configs.js';
 import { getSession } from '../../db/sessions.js';
 import { requestWake } from '../../request-wake.js';
-import { groupFolderExistsOnDisk } from '../../group-folder.js';
+import { assertValidGroupFolder, newGroupFolder } from '../../group-folder.js';
 import { initGroupFilesystem } from '../../group-init.js';
 import { PERSONA_PREPEND_FILE } from '../../group-persona.js';
 import { isValidGroupFolder } from '../../group-folder.js';
 import { log } from '../../log.js';
 import { writeSessionMessage } from '../../session-manager.js';
-import { createAgentFromTemplate } from '../../templates/create-agent.js';
+import { createAgentFromTemplate, templateFolder } from '../../templates/create-agent.js';
 import { isValidTemplateRef } from '../../templates/local-dir.js';
 import { ensureTemplateLocal, hasLocalTemplate } from '../../templates/library.js';
 import type { AgentGroup, Session } from '../../types.js';
@@ -102,7 +102,45 @@ export async function validateCreateAgent(content: Record<string, unknown>, sess
     log.warn('create_agent failed: missing source group', { sessionAgentGroup: session.agent_group_id, name });
     return false;
   }
-  return true;
+  const base = normalizeName(name);
+  // A name the requester already has makes no folder: createAgent answers it as a collision, or a
+  // wrapper resumes that agent (slack-agent-flow's parked app), so only a new name's folder is checked.
+  if (await getDestinationByName(session.agent_group_id, base)) return true;
+  // Only what the name alone decides, so no admin is carded for it. Whether another group holds the
+  // folder is not a confined agent's to learn before approval; the create refuses a taken one.
+  const notify = (text: string): Promise<void> => notifyAgent(session, text);
+  return (
+    (await folderFor(name, notify, () => {
+      assertValidGroupFolder(unreservedFolder(base));
+      return base;
+    })) !== null
+  );
+}
+
+/**
+ * Fork (nv-main): a name that normalizes to a reserved folder ("Main" → main)
+ * becomes `coworker-<name>` instead of being refused. Only reservation is
+ * rescued: a too-long name stays as-is so the refusal names its real length.
+ */
+function unreservedFolder(base: string): string {
+  const prefixed = `coworker-${base}`;
+  return !isValidGroupFolder(base) && isValidGroupFolder(prefixed) ? prefixed : base;
+}
+
+/** The folder `pick` returns, or null once the requester is told why `name` can't have one. */
+async function folderFor(
+  name: string,
+  notify: (text: string) => Promise<void>,
+  pick: () => string | Promise<string>,
+): Promise<string | null> {
+  try {
+    return await pick();
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    await notify(`Cannot create agent "${name}": ${msg}. Nothing was created.`);
+    log.warn('create_agent refused: invalid folder', { name, err: msg });
+    return null;
+  }
 }
 
 /**
@@ -149,7 +187,7 @@ export async function requestCreateAgentHold(content: Record<string, unknown>, s
 export interface CreateAgentOptions {
   /**
    * Suppress the terminal `Agent "<name>" created…` success notify. Error
-   * notifies (collision, invalid path) still fire. For wrappers whose own
+   * notifies (collision, invalid folder) still fire. For wrappers whose own
    * completion text is the requester's only "done" signal — e.g.
    * slack-agent-flow, where Slack provisioning runs AFTER this returns and
    * relaying the upstream text would report "done" ~a minute early.
@@ -206,9 +244,9 @@ export async function createAgent(
 }
 
 /**
- * Template branch: fetch, then stamp. The fetch comes before any DB write, so
- * a failed download leaves nothing behind. Same authorization caveat as
- * performCreateAgent.
+ * Template branch: check the folder, fetch, then stamp. The fetch comes before
+ * any DB write, so a failed download leaves nothing behind. Same authorization
+ * caveat as performCreateAgent.
  */
 async function createFromTemplate(
   template: string,
@@ -220,6 +258,9 @@ async function createFromTemplate(
   notify: (text: string) => Promise<void>,
   options?: CreateAgentOptions,
 ): Promise<void> {
+  // Occupancy is checked here, after authorization, and before the fetch; the stamp checks again.
+  if (!(await folderFor(name, notify, () => templateFolder(name)))) return;
+
   let fetched: boolean;
   let commit: string | undefined;
   try {
@@ -280,43 +321,10 @@ async function performCreateAgent(
   notify: (text: string) => Promise<void>,
   options?: CreateAgentOptions,
 ): Promise<void> {
-  // Derive a safe folder name, deduplicated globally across
-  // agent_groups.folder AND the on-disk groups/ dir: a folder present on disk
-  // with no claiming DB row is deleted-group residue, and adopting it would
-  // silently re-scope the old group's data under the new agent's identity —
-  // skip to the next suffix instead (templates/create-agent.ts precedent).
-  // Routed through isValidGroupFolder so reserved names (main/global/shared/
-  // templates) and pattern violations are rejected at the single source of truth.
-  let folder = localName;
-  if (!isValidGroupFolder(folder)) {
-    // normalizeName can produce reserved names (e.g. name: "Main" → "main").
-    // Prefix with `coworker-` to push them out of the reserved set; the
-    // collision loop below dedupes from there.
-    folder = `coworker-${folder}`;
-    if (!isValidGroupFolder(folder)) {
-      await notifyAgent(session, `Cannot create agent "${name}": derived folder "${folder}" is invalid.`);
-      log.error('create_agent: invalid derived folder', { name, localName, folder });
-      return;
-    }
-  }
-  // baseFolder, not localName: `folder` may already have been rewritten to
-  // `coworker-<localName>` above, and suffixing localName would reintroduce the
-  // reserved name isValidGroupFolder just rejected.
-  const baseFolder = folder;
-  let suffix = 2;
-  while ((await getAgentGroupByFolder(folder)) || groupFolderExistsOnDisk(folder)) {
-    folder = `${baseFolder}-${suffix}`;
-    suffix++;
-  }
-
+  // Occupancy is checked here, after authorization: the precheck only judged the name.
+  const folder = await folderFor(name, notify, () => newGroupFolder(unreservedFolder(localName)));
+  if (!folder) return;
   const groupPath = path.join(GROUPS_DIR, folder);
-  const resolvedPath = path.resolve(groupPath);
-  const resolvedGroupsDir = path.resolve(GROUPS_DIR);
-  if (!resolvedPath.startsWith(resolvedGroupsDir + path.sep)) {
-    await notify(`Cannot create agent "${name}": invalid folder path.`);
-    log.error('create_agent path traversal attempt', { folder, resolvedPath });
-    return;
-  }
 
   const agentGroupId = `ag-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
   const now = new Date().toISOString();
