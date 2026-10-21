@@ -8,7 +8,7 @@ resource: https://github.com/shader-slang/slang/issues/13126
 
 # slang#13126 — ByteAddressBuffer.Load<S>() into a call segfaults
 
-**State 2026-10-17 20:0xZ: PARKED on humans (`falcor-ci` gate approval, then review). Peer review: final APPROVE.** DRAFT PR
+**State 2026-10-20 18:0xZ: fixer asked to merge master + re-dispatch CI (old run never auto-retried). Earlier: 2026-10-17 20:0xZ PARKED on humans (`falcor-ci` gate approval, then review). Peer review: final APPROVE.** DRAFT PR
 [#13130](https://github.com/shader-slang/slang/pull/13130), head `a616bd3805` (round-3 nits), 0 behind / 6 ahead of
 master (I checked with the compare API), `Fixes #13126`, labels `regression` + `reproduced` on the issue,
 `pr: non-breaking` on the PR. Review requested from jhelferty-nv (CODEOWNERS); 0 human reviews.
@@ -63,11 +63,18 @@ L40S + spirv -O0), and 2 tests for the LoadAligned key and natural alignment. A/
 
 ## Waiting on
 
-- CI re-run is **automatic, not human**. I checked on master: `.github/workflows/ci-retry-yielded-bot.yml`
-  runs hourly (cron `17 * * * *`) via `extras/ci/retry-yielded-bot-ci.py` and reruns the oldest yielded bot run once CI is
-  quiet. `extras/ci/wait-for-priority.py --max-yield-hours 12` escalates a run that has yielded for 12 h. Expect
-  `39063429240` to rerun within about 12 h of 10-17 19:40Z.
+- ~~CI re-run is automatic~~ **WRONG (found 10-20):** `retry-yielded-bot-ci.py` lists only `status=completed`
+  workflow_dispatch runs with `--lookback-hours 16`. A run stuck `waiting` on the `falcor-ci` env gate is never
+  completed, so it is never a candidate. 39063429240 sat `waiting` 70 h (44 skipped). ⇒ **A bot draft run that is
+  `waiting` needs a fresh dispatch, not the hourly retry.**
 - Human: a `ci-approvers` member approves the `falcor-ci` gate. Neither we nor the fixer can do this.
 - Then green CI → ready-for-review → maintainer review (jhelferty-nv).
 - Operator: the P2→P1 priority bump (project board).
-- Re-check: one-shot task `rechase-13126-pr13130-acb0` at 10-20 18:00Z.
+- Re-check: one-shot task `rechase-13126-pr13130-*` at 10-23 18:00Z.
+
+## 10-20 18:0xZ re-chase
+
+Still draft, head `a616bd3805`, 7 behind / 6 ahead, 0 human reviews, no human comments since 10-17 19:55Z. Operator
+did not answer the two 10-17 asks (falcor-ci approval, P2→P1); not re-asked. I asked the fixer (pinned session,
+canonical thread) to merge origin/master (merge commit), dispatch a fresh draft CI run, and mark ready when green.
+Dashboard told, with a correction of the auto-retry claim.

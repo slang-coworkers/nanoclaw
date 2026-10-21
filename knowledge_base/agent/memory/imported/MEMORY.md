@@ -105,17 +105,18 @@ before trusting. [[feedback_a_clean_orphan_count_does_not_validate_range_labels]
 | [[index-project-2]] | `11858_utf8_eof_ceded` … `12029_lifted_diff_constraint_arithmetic` |
 | [[index-project-3]] | `12031_autodiff_ref_accessor_silent_wrong_grad` … `12132_analyzemakestruct_positional_oob` |
 | [[index-project-4]] | `12134_base_interface_assoc_type_followup` … `12260_enum_bool_switch_e39999` |
-| [[index-project-5]] | `12261_statement_labels_non_breakable` … `12356_default_value_blob_c_abi_gap` |
-| [[index-project-6]] | `12360_assoc_type_dyndispatch_specialize_av` … `12430_existential_static_requirement_ice` |
-| [[index-project-7]] | `12430_pr12555_existentialtype_saga` … `13498_breaking_change_label_policy` |
-| [[index-project-8]] | `13499_decl_nesting_validation_to_semantic_check` … `8785_amplification_shader_payload_docs_wrong` |
-| [[index-project-9]] | `9062_diffptr_array_spirv_validation_parked` … `discord_gateway_401_outage` |
-| [[index-project-10]] | `discord_support_heartbeat_dead` … `nanoclaw_1096_funnel_review_cycles` |
-| [[index-project-11]] | `nanoclaw_1097_codex_one_copy` … `nanoclaw_1154_ownership_one_matcher` |
-| [[index-project-12]] | `nanoclaw_1157_mcp_allowlist_failopen` … `nanoclaw_pr875_approver_mounted_policy` |
-| [[index-project-13]] | `nanoclaw_pr876_slangpy_approver_mounted_policy` … `slang_triager_auth_outage` |
-| [[index-project-14]] | `slangpy_1001_build_time_kernel_compilation_scrub` … `track_critique_verdict_field_untrustworthy` |
-| [[index-project-15]] | `triager_clone_nine_concurrent_writers` … `workspace_deletion_incident` (tail shard — repacking mints new shards; after every leaf `ls index-project-*.md \| wc -l` vs this table.) |
+| [[index-project-5]] | `12261_statement_labels_non_breakable` … `12351_agentic_tests_streak_bounded_regression` |
+| [[index-project-6]] | `12356_default_value_blob_c_abi_gap` … `12428_bare_func_ref_silent_dropped_codegen` |
+| [[index-project-7]] | `12430_existential_static_requirement_ice` … `13492_throws_on_accessors_ctors_lambdas` |
+| [[index-project-8]] | `13496_unify_struct_class_parsing` … `13678_slangd_experimental_feature_setting` |
+| [[index-project-9]] | `13701_reopened_nested_namespace_scope` … `8785_amplification_shader_payload_docs_wrong` |
+| [[index-project-10]] | `9062_diffptr_array_spirv_validation_parked` … `discord_gateway_401_outage` |
+| [[index-project-11]] | `discord_support_heartbeat_dead` … `nanoclaw_1096_funnel_review_cycles` |
+| [[index-project-12]] | `nanoclaw_1097_codex_one_copy` … `nanoclaw_1154_ownership_one_matcher` |
+| [[index-project-13]] | `nanoclaw_1157_mcp_allowlist_failopen` … `nanoclaw_pr875_approver_mounted_policy` |
+| [[index-project-14]] | `nanoclaw_pr876_slangpy_approver_mounted_policy` … `slang_triager_auth_outage` |
+| [[index-project-15]] | `slangpy_1001_build_time_kernel_compilation_scrub` … `track_critique_verdict_field_untrustworthy` |
+| [[index-project-16]] | `triager_clone_nine_concurrent_writers` … `workspace_deletion_incident` (tail shard — repacking mints new shards; after every leaf `ls index-project-*.md \| wc -l` vs this table.) |
 | [[index-technique]] | Reusable measurement/tooling procedures. |
 | [[index-reference]] | Pointers to external resources. |
 | [[index-command]] | Exact command invocations with their traps. |

@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13631 — workgroupUniformLoad synchronizes only on WGSL
-description: "albertrodriguezclo, human-filed bug: workgroupUniformLoad is barrier+load on WGSL but a plain load on SPIR-V/HLSL/GLSL/Metal/CUDA, so portable code races. Triaged 10-15 (P2); draft PR #13659 shipped @c136bcb after 2 REQUEST_CHANGES rounds; gaps filed #13675/#13683. PARKED on maintainer (kaizhangNV) acceptance of the semantics."
+description: "albertrodriguezclo, human-filed bug: workgroupUniformLoad is barrier+load on WGSL but a plain load on SPIR-V/HLSL/GLSL/Metal/CUDA, so portable code races. Triaged 10-15 (P2); draft PR #13659 shipped @c136bcb after 2 REQUEST_CHANGES rounds; gaps filed #13675/#13683. PARKED on maintainer acceptance of the semantics (issue reassigned to jkwak-work 10-19; PR reviewer still kaizhangNV). No timer after the 10-20 re-check."
 ---
 
 # slang#13631
@@ -117,3 +117,5 @@ diagnosed). Both coworkers saved a "run GPU slang-test serially" learning.
 merge/close. Parked-chain timer: one-shot `rechase-13631-pr13659-se-8806` (10-20T15:00Z; `ncl tasks create` timed out at 30 s but the row exists, exactly one). #13675 resumes on `rechase-13675-slangvm-de-58e4` (10-17T19:00Z) or a maintainer-comment webhook.
 
 **10-17 19:00Z, #13675 re-check (`rechase-13675-slangvm-de-58e4`):** quiet. #13675 is OPEN with no human comment and no PR other than #13659. #13659 is still draft, `behind`, with no review from kaizhangNV, and CI shows only skipped checks. Sent one 5-bullet to the dashboard (thread gh-issue-shader-slang/slang-13675, msg 3), default "leave for a maintainer". No timer re-armed: #13675 now resumes only on a maintainer webhook or an operator "fix now".
+
+**10-20 15:00Z, re-check (`rechase-13631-pr13659-se-8806`): quiet, but the owner changed.** On 10-19 at 15:58Z jkwak-work unassigned kaizhangNV from **issue** #13631, assigned themselves, and milestoned it "Q4 2026 (Fall)". They left no comment. PR #13659 is unchanged: draft, head c136bcb, 0 reviews, assignee and review-request still kaizhangNV, 18 commits behind master, CI run 38813244400 still `waiting` (approval gate). The issue has had no new comments since 10-15. Sent one 5-bullet to the dashboard (thread gh-issue-shader-slang/slang-13631, msg 3). Options given: ping jkwak-work and/or kaizhangNV, or leave it (default: leave, because the milestone means a maintainer triaged it). **No timer re-armed.** The chain resumes only on a webhook (maintainer review/comment, reporter comment, merge/close) or an operator call. Shepherd for the semantics decision is now **jkwak-work (issue) / kaizhangNV (PR)**.

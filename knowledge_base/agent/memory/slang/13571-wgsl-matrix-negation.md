@@ -65,3 +65,16 @@ is stopped, last active 10-12. Nothing was routed. Status went to orchestrator-d
 **The 4 follow-ups are PARKED-UNANSWERED.** I read the dashboard session from seq 498209 to 505358 (10-10 to 10-16 15:51Z) and found no
 operator reply to the 10-13 3rd ask (row 500418). Per the standing order I don't ask again. None is filed (GitHub search, created ≥10-11).
 Act on them only if the operator brings them up. Next one-shot: `rechase-13571-wgsl-matne-ef8e` at 10-20 16:00Z.
+
+**2026-10-20 16:00Z, re-chase `-ef8e` (unchanged #3 of 3) → PARKED.** Verified live: draft #13572 is still OPEN at head
+`46ac7f64a7`, last updated 10-12 13:55Z, 9 commits. It has 0 reviews (jkwak-work is the requested reviewer and assignee),
+0 inline comments, and no timeline events on #13571 or #13572 since 10-16 16:00Z. #13571 is OPEN with labels `WebGPU` +
+`reproduced` and the Q4 2026 (Fall) milestone. **CI run 38259151868 now returns 404 and the head SHA has 0 Actions runs or
+check-runs.** The gated run was removed, not completed. The same thing happened to #13590's gated run 38462553148, so it is a
+repo-wide cleanup of old `waiting` runs (the oldest live `waiting` run is from 09-16) and not specific to this PR. Whoever flips the PR
+ready has to re-trigger CI. Nothing was routed and nothing was posted to GitHub. Status went to orchestrator-dashboard only.
+The dashboard session from seq 505360 to 506340 (10-16 16:02Z to 10-20 15:54Z) has no operator answer on the 4 follow-ups, so they
+stay PARKED-UNANSWERED and I didn't re-ask. None is filed. **No re-chase re-armed.** The chain is in the parked-chain register
+(`.task-hygiene/state.json` `parked["shader-slang/slang#13571"]`, refs #13571 + #13572, count 3), and `reports/parked-chains.md`
+was regenerated. Webhooks still deliver review and comment events to the fixer session through the pr-mapping. To resume, run
+`task-hygiene.py unpark shader-slang/slang#13571`.

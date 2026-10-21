@@ -1,7 +1,7 @@
 ---
 type: project
 name: project_13603_spirv_glsl_bab_float3_stride_index
-description: "slang#13603 (bot-filed 10-13 15:18Z by slang-fixer while applying #11803 R2 nits): on SPIR-V/GLSL, plain ByteAddressBuffer Load<float3>/Store<float3> at a non-zero multiple of 12 index the stride-16 v3float alias by offset/12 -> wrong bytes, silent. Pre-existing on master, separate from #11803, sibling of closed #9931. Owned by the #11545 chain; NO fixer dispatched. 10-15: operator asked for triage; Main found the struct-member/immediate-offset case is a REGRESSION since v2026.11 (#11430 by code trace), slang-triager posted it 11:51Z (issuecomment-6191375234, labels regression+reproduced, Type Bug, #11430 confirmed by build bisect); re-chase rechase-slang-13603-r1-2eab (10-20 15:00Z). The 10-13 recurring gate is gone (R10)."
+description: "slang#13603 (bot-filed 10-13 15:18Z by slang-fixer while applying #11803 R2 nits): on SPIR-V/GLSL, plain ByteAddressBuffer Load<float3>/Store<float3> at a non-zero multiple of 12 index the stride-16 v3float alias by offset/12 -> wrong bytes, silent. Pre-existing on master, separate from #11803, sibling of closed #9931. Owned by the #11545 chain; NO fixer dispatched. 10-15: operator asked for triage; Main found the struct-member/immediate-offset case is a REGRESSION since v2026.11 (#11430 by code trace), slang-triager posted it 11:51Z (issuecomment-6191375234, labels regression+reproduced, Type Bug, #11430 confirmed by build bisect); r1 (10-20) found it still quiet and asked the operator dispatch/wait/ping; r2 rechase-slang-13603-r2-c9ac 10-27 15:00Z. The 10-13 recurring gate is gone (R10)."
 metadata:
   node_type: memory
   type: project
@@ -43,3 +43,11 @@ the old `isAligned(emitOffsetAddIfNeeded(base, imm), …)` saw a non-literal add
 Not bisected by build. The timestamped `gate` controls above refer to the deleted recurring task.
 
 **10-15 11:51Z:** slang-triager confirmed every claim, including a build bisect of `85c65f862c^` vs `85c65f862c` (the struct case flips). Posted https://github.com/shader-slang/slang/issues/13603#issuecomment-6191375234, labels `regression`+`reproduced`, Type Bug. It also noted that `Load<V>(24).p` (a literal combined offset) was already broken on v2026.10, which is why only `base 0 + imm` cases regressed. Triager state: its `memory/issues/13603.md`; bisect worktree `wt-13603-bisect` is kept until close.
+
+## 10-20 re-chase r1
+
+Still quiet: open, only our 10-15 triage comment, no linked PR, no legalizer commits since 10-13, #11803 still open at
+`97310dc612`. No mention of #13603 on the dashboard after the 10-15 11:52Z report (rows 503192/503198). Main sent
+orchestrator-dashboard a 5-bullet asking the operator to choose: (a) dispatch slang-fixer for a separate PR (not inside
+#11803), (b) wait for jkwak-work, (c) ping jkwak-work on the issue first. No coworker was dispatched. One-shot
+`rechase-slang-13603-r2-c9ac` is set for 10-27 15:00Z (R11 slot 2/3).

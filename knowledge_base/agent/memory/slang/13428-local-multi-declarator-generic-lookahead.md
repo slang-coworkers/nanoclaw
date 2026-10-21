@@ -1,7 +1,7 @@
 ---
 type: chain
 title: slang#13428 — local multi-declarator `int j = …, k = j < 2;` → E30015 (+ sibling #13430 / PR #13434)
-description: "#13428 TERMINAL (PR #13432 merged 10-07, eaf758404f). Still live: sibling #13430's draft PR #13434 (457ae39a0e), waiting on the operator un-draft decision at a 72h cadence (7th ask 10-17). Side findings #13433/#13435 are owned by their own gates. Decision trail in [[slang/13428-13430-decision-trail.md]]."
+description: "#13428 TERMINAL (PR #13432 merged 10-07, eaf758404f). Still live: sibling #13430's draft PR #13434 (457ae39a0e), waiting on the operator un-draft decision at a 72h cadence (8th ask 10-20). Side findings #13433/#13435 are owned by their own gates. Decision trail in [[slang/13428-13430-decision-trail.md]]."
 tags: [slang, parser, regression, local-struct, live-chain]
 ---
 
@@ -31,19 +31,19 @@ also fixes a pre-existing master miscompile (`int y = j; int j = 1, k = 2;` read
   sentence and a local-struct `f<2>()` member-init row.
 - **PR #13434** (branch `fix/issue-13430`): draft at `457ae39a0e`, 4 files +198/−2, closes [13430] only, 0 GitHub
   reviews, bot-only comments. slang-reviewer: APPROVE_WITH_NITS with 0 bugs. skiminki-nv is assigned and
-  review-requested. 67 behind master as of 10-17 (mergeable, state `behind`).
+  review-requested. 73 behind master as of 10-20 (mergeable, state `behind`).
 - **CI has never run:** the draft skips PR-event CI. The old dispatch 37270839605 (which was waiting on the
   human-priority/falcor gate) was **deleted** (404 as of 10-11). The PR Maintenance (board-sync) run seen on 10-11 is gone
-  too: 0 runs, 0 check suites and 0 statuses as of 10-17. Don't re-dispatch around the hold.
+  too: 0 runs, 0 check suites and 0 statuses as of 10-20. Don't re-dispatch around the hold.
 - **Routing:** the pr-mapping is on fixer session `sess-1791148592366-vqg8p2`, thread `gh-issue-shader-slang/slang-13428`
   (no fixer session exists on the 13430 thread). The triager for 13430 is `sess-1791173244200-mu85w4`; the canonical
   thread is `gh-issue-shader-slang/slang-13430`.
-- **Waiting on:** the operator un-draft decision. 7 asks so far (10-05, 10-06, 10-07, 10-08, 10-11, 10-14, 10-17 seq 505532), on a 72h cadence.
-  Nothing changed on GitHub between 10-08 and 10-17 except a 10-16 cross-reference from draft PR #13718 (the #13435 fix), whose body
+- **Waiting on:** the operator un-draft decision. 8 asks so far (10-05, 10-06, 10-07, 10-08, 10-11, 10-14, 10-17 seq 505532, 10-20 seq 506182), on a 72h cadence.
+  Nothing changed on GitHub between 10-08 and 10-20 except a 10-16 cross-reference from draft PR #13718 (the #13435 fix), whose body
   says #13434's tests pass on a master+#13434+#13718 build and that the two PRs are independent. The next re-chase is the
-  `rechase-13434-undraft-3fd0` task at 2026-10-20 03:00Z. The fixer flips only on an explicit operator yes, and rebases only on maintainer request.
+  `rechase-13434-undraft-21be` task at 2026-10-23 03:00Z. The fixer flips only on an explicit operator yes, and rebases only on maintainer request.
   To read the dashboard, `--reverse --limit 300` reaches back only ~6h on a busy day. Use `--since-seq <last ask seq> --limit 400`
-  instead, paging forward (the 10-17 ask is seq 505532).
+  instead, paging forward (the 10-20 ask is seq 506182; 10-17→10-20 was one 334-row page).
 
 ## Side findings (own chains, skip here)
 

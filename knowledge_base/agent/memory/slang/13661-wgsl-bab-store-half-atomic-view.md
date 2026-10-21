@@ -40,3 +40,10 @@ it through its session `sess-1792084552959-6927pu` on `system:tasks:i13661-reche
 
 **Resumes on:** a maintainer comment choosing a direction (arrives by webhook), the 10-22 re-check, or the
 operator's call on the Metal finding.
+
+**2026-10-19 16:05Z, maintainer pickup (no comment).** jkwak-work labelled the issue `WebGPU`, assigned it to himself and set the milestone to Q4 2026 (Fall). He has not chosen a direction.
+
+**2026-10-20 12:49Z, reporter comment** ([6291217101](https://github.com/shader-slang/slang/issues/13661#issuecomment-6291217101), read live, unedited). albertrodriguezclo proposes option **(d)**: WGSL's draft `buffer_view` feature (`var<storage> b : buffer` + `*bufferView<f16>(&b, off)`), so a real 16-bit store needs no RMW or atomics. His caveats: the offset must match the view type's alignment (Tint masks a misaligned one), views can't hold atomics, it isn't in Firefox/Safari (naga 25), and so it would be opt-in like #13641. He also suggests the (c) diagnostic could mention it. The claim that "Tint accepts it / Dawn c943ea32" is his and we haven't verified it.
+- Arrived as `github.pr_mention`, but the body has no @nv-slang-bot. Its only `@`s are WGSL attributes. It is a human comment on a bot-touched thread, delivered as a live inbound, like the #13631 reporter comment on 10-15. It is addressed to maintainers and asks the bot nothing. **I held: no dispatch and no bot post** (rule in [feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new](../imported/feedback_issue_opened_webhook_is_not_evidence_the_issue_is_new.md) §#13411). The triager's one-shot `i13661-recheck-6b22` (10-22 17:00Z, session 6927pu) reads live state, so it will see both events.
+
+**Resumes on:** jkwak-work choosing (a)/(b)/(c)/(d), or the 10-22 re-check.

@@ -113,3 +113,7 @@ diff has no 64-bit/`GetVectorLayout` change, so this is not rule B. I sent ONE r
 HELD. **One-shot `rechase-13427-fourth-3f9b` fires 2026-10-22T17:00Z.** If that run is silent too, it sends no more reminders. It defaults
 to **hold** (+14d one-shot) and sends one line saying so, which matches #13330's `rechase-13330-fourth-e68c`. That default is my choice; the
 operator did not set it.
+
+**Cross-link (10-20 21:05Z, from #13330 re-chase 4):** no operator answer for either chain in dashboard rows up to 506432 (10-20 20:52Z).
+**#13078 MERGED 10-19 23:47Z** at `b7c4b3d9be`. Re-check its merged leaf for `double3` before acting, because the PR-overlap argument for holding is gone.
+#13330 took the default hold (one line on `orchestrator-dashboard` id 15). Its next check is `rechase-13330-fifth-e954` (11-03).
