@@ -3,7 +3,7 @@ title: Devin scrape and extraction defects — dropped flags, echoed evidence, w
 type: concept
 group: review-process
 tags: [approver, devin, devin-fetch, devin-flags, devin-page, scrape, subagent, false-clean, raw-capture]
-source_count: 7
+source_count: 8
 ---
 
 ## TL;DR
@@ -29,6 +29,9 @@ The failure modes, all caught by the codex critique gate (DECISION_REVIEW / OUTP
   includes the author's Process Report. A perf/size number in Devin's output is author-reported
   unless there is an actual execution log — do not launder PR-body claims through Devin's echo as
   "independent validation."
+- **A count can arrive without its body.** The header says "1 Bug" while `## Bugs` is empty,
+  because the row is a collapsed button. Expand it with agent-browser and read the text before
+  calling the channel clean; never click "Post to GitHub".
 - **The subagent's files land AFTER an early `ls`.** `devin-fetch.sh` writes its output files as
   its LAST step; an empty-dir read at time T is about the directory at time T only, not proof
   Devin produced nothing. Re-read the files immediately before synthesizing.
@@ -68,6 +71,17 @@ The extraction is lossy in several distinct ways, all producing a false "0 flags
   tab (3 resolved informational nits) and never opened the "1 Bug"/"1 Flag" tabs, so it defaulted
   their counts to none — a "0 bugs/0 flags" that means "did not look," not "looked and found none"
   ([devin-fetch.sh drops Bug/Flag tabs](../learnings/1787576274189-approver-challenger-miss-devin-fetch-sh-drops-bug-.md)).
+- **Count captured, body not.** On slang#13778 (2026-10-20, also #13680 R2) the page header said
+  "1 Bug" but `devin-flags.md` had an empty `## Bugs` section: the bug row is a collapsed button
+  inside the "1 Bug" region and the scrape never expanded it. The count alone cannot be
+  dispositioned, so recover the text before reporting Reviewer B as "no findings":
+  `agent-browser open https://app.devin.ai/review/<owner>/<repo>/pull/<n>` and wait about 25 s;
+  `agent-browser snapshot -i | grep -i bug` to find the `button "1 Bug"` ref and click it; take a
+  full snapshot, where the row shows as `button "<title> Bug <file>:<line>"`, and click that ref;
+  snapshot again and read the description from the `paragraph` StaticText nodes under the title.
+  Never click the sibling "Post to GitHub" button. Trigger: `devin-page.txt` shows "N Bug" with
+  N>0 and `devin-flags.md` has no rows
+  ([devin-fetch can capture the Bug count without the bug text](../learnings/1792515009132-devin-fetch-can-capture-the-bug-count-without-the-.md)).
 
 **Every non-Informational Flag is a 🟡 gap that requires a disposition**, carried into the Step-3
 challenger and graded on the conservative-lean bar — even when Devin's headline is "0 Bugs." The
@@ -120,7 +134,7 @@ line, re-`ls` the dir immediately before synthesizing rather than assuming skip.
 produced nothing / X was skipped" in an audit artifact is a trigger to re-open X right before you
 write the claim.
 
-**Source learnings (7):**
+**Source learnings (8):**
 
 - [Devin flag count must come from raw devin-page.txt, not the subagent summary](../learnings/1786715708424-approver-critique-mustfix-devin-flag-count-must-co.md) — slang#12517; synthesis said "0 flags" while the page showed 2; the scrape is a lossy secondary, the raw page is the source of truth.
 - [Devin subagent extraction can silently drop the Flags section — cross-check the raw page count](../learnings/1786815449727-approver-challenger-miss-devin-subagent-extraction.md) — slang#12509; `devin-flags.md` said "0 flags" while the raw panel showed 1 Flag with an Investigate marker; a Flag is not a Bug.
@@ -129,3 +143,4 @@ write the claim.
 - [devin-fetch.sh drops Bug/Flag tabs — "0 bugs/0 flags" can mean "unparsed", not "clean"](../learnings/1787576274189-approver-challenger-miss-devin-fetch-sh-drops-bug-.md) — slang#12548 R2; script scraped only the expanded Info tab; reconcile devin-flags.md against the devin-page.txt tab-bar count.
 - [Devin's page dump echoes the PR body — its "evidence" is author-reported unless there's an execution log](../learnings/1787347913771-approver-challenger-miss-devin-s-page-dump-echoes-.md) — slang#12677 R2; Devin restated the PR's perf figures verbatim; PR-body content is untrusted and echoing it through Devin does not make it trusted.
 - [Devin subagent files land AFTER an early ls — never assert 'Devin skipped' from a stale directory read](../learnings/1787665248583-approver-infra-abstain-devin-subagent-files-land-a.md) — slang#12733; a write-race left an empty dir at check time; require a clean DEVIN_SKIPPED line or re-`ls` at synthesis time.
+- [devin-fetch can capture the Bug count without the bug text — recover it via agent-browser](../learnings/1792515009132-devin-fetch-can-capture-the-bug-count-without-the-.md) — slang#13778 / #13680 R2; empty `## Bugs` under a "1 Bug" header; expand the collapsed row with agent-browser snapshots; never click "Post to GitHub".

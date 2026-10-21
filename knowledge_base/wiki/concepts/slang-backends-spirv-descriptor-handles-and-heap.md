@@ -3,7 +3,7 @@ title: "Slang SPIR-V DescriptorHandle, bindless, and descriptor-heap emission"
 type: concept
 group: slang-backends
 tags: [spirv, descriptor-handle, bindless, spvBindlessTextureNV, spvDescriptorHeapEXT, descriptor-heap, nonuniform, constantbuffer, std140, acceleration-structure]
-source_count: 31
+source_count: 32
 ---
 
 # Slang SPIR-V DescriptorHandle, bindless, and descriptor-heap emission
@@ -24,7 +24,8 @@ How `DescriptorHandle<T>` lowers on SPIR-V under the default heap path, `spvBind
 - A module-scope `static const` repro must observably consume the constant, or DCE hides the bug. Test explicit `sizeof`/`alignof(T, LayoutRule)` queries directly; struct offsets can coincide.
 - `DescriptorHandle<RaytracingAccelerationStructure>` + `spvDescriptorHeapEXT` is supported from v2026.11. The EXT heap is driver-managed: write the descriptor, don't memcpy the address. Slot 0 works, slot ≥1 crashes ⇒ AS stride mismatch.
 - In std140 `float4[2]` is byte-identical to a row-major `float2x4`, and matrix-layout mode never touches arrays; with a descriptor heap, suspect #11483 (fixed by #11647).
-- The heap `ConstantBuffer` StorageBuffer flip (#11647) is deliberate: the descriptor KIND (Uniform vs Storage) and the buffer-pointer addressing class are separate, and per spec the `OpTypeBufferEXT` and `OpBufferPointerEXT` storage classes are independent.
+- The heap `ConstantBuffer` StorageBuffer flip (#11647) was deliberate: the descriptor KIND (Uniform vs Storage) and the buffer-pointer addressing class are separate, and per spec the `OpTypeBufferEXT` and `OpBufferPointerEXT` storage classes are independent. PR #12256 (#12226) keeps a Uniform descriptor and uses an untyped Uniform data pointer.
+- `-capability spvDescriptorHeapEXT` changes only `DescriptorHandle<T>` lowering: a plain `ParameterBlock<T>` param keeps set/binding. Use `ConstantBuffer<T>.Handle` (needs `UntypedPointersKHR`), a `T*` BDA param, or `[vk::push_constant] ConstantBuffer<T>`.
 - A static emit-crash hypothesis needs a debug-build confirmation; an orphan inst reaching emit points at a clone/specialize pass.
 
 ## Descriptor-load coalescing (#12051, PR #12111)
@@ -74,7 +75,9 @@ A distinct descriptor-heap ABI bug (`#12226`): a struct-typed `ConstantBuffer<T>
 - Slang already emits valid typed Uniform access for scalar/vector/matrix CB elements, so the problem is specific to array elements.
 - `processConstantBufferDescriptorHeapLoad` flips EVERY struct to StorageBuffer, which is broader than needed.
 
-The untyped path would need ~5-8 new untyped-aware consumers, i.e. an emitter-architecture extension. `-spirv-unified-descriptor-heap-stride` fixes the stride, not the descriptor kind ([heap CB typed-vs-untyped OpBufferPointerEXT](../learnings/1785256702253-slang-descriptor-heap-constantbuffer-typed-vs-unty.md)).
+The untyped path was estimated at ~5-8 new untyped-aware consumers, i.e. an emitter-architecture extension. `-spirv-unified-descriptor-heap-stride` fixes the stride, not the descriptor kind ([heap CB typed-vs-untyped OpBufferPointerEXT](../learnings/1785256702253-slang-descriptor-heap-constantbuffer-typed-vs-unty.md)). PR #12256 (merged 2026-07-29, closes #12226) took that path: the descriptor stays `OpTypeBufferEXT Uniform`, and the data pointer is a new `SPIRVUntypedPtrType` IR flavor emitted as `OpTypeUntypedPointerKHR Uniform` and reached with `OpUntypedAccessChainKHR`. The heap ConstantBuffer is a uniform-buffer descriptor on v2026.20.
+
+**`-capability spvDescriptorHeapEXT` changes only `DescriptorHandle<T>` lowering.** Verified with release slangc v2026.20: a plain `uniform ParameterBlock<T>` entry-point param still gets `DescriptorSet 0`/`Binding 0` and no DescriptorHeapEXT capability, so Vulkan validation asks for `VkShaderDescriptorSetAndBindingMappingInfoEXT`. The native heap route is `uniform ConstantBuffer<T>.Handle h` (dereferenced as `*h`): a `uint2` handle in a PushConstant block, `OpTypeBufferEXT Uniform`, `OpBufferPointerEXT`, `OpUntypedAccessChainKHR`, and no set/binding. `ParameterBlock<T>.Handle` is rejected (E30027 member not found). That route needs `OpCapability UntypedPointersKHR` (SPV_KHR_untyped_pointers), so tell users so. Two routes without untyped pointers also compile on v2026.20: a `T*` buffer-device-address param needs only `PhysicalStorageBufferAddresses`, and `[vk::push_constant] ConstantBuffer<T>` needs only `OpCapability Shader`. The VK_EXT_descriptor_heap proposal lists VK_KHR_shader_untyped_pointers as a dependency (proposal only; the final spec was not checked). Spec access from the container: docs.vulkan.org and registry.khronos.org return 403 to WebFetch, while `raw.githubusercontent.com/KhronosGroup/Vulkan-Docs/main/proposals/VK_EXT_descriptor_heap.adoc` works ([spvDescriptorHeapEXT does not remove set/binding from ParameterBlock/ConstantBuffer params](../learnings/1792525428195-spvdescriptorheapext-does-not-remove-set-binding-f.md)).
 
 ## Emit crashes on the heap path
 
@@ -92,7 +95,7 @@ The untyped path would need ~5-8 new untyped-aware consumers, i.e. an emitter-ar
 - [[wiki/concepts/slang-backends-spirv-emit-and-legalization-defects.md]] — logical pointers in composites, opaque copies, constant/scalar emit gaps, legalize diagnostics
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
 
-**Source learnings (31):**
+**Source learnings (32):**
 - [#12051 reload is emit artifact (OpCopyObject pin); glslang lib tip](../learnings/1783759451138-slang-12051-spir-v-descriptor-reload-is-an-emit-ti.md)
 - [CORRECTION #12051: OpLoad-per-use is emit-time, not dup helper](../learnings/1784075115135-correction-slang-12051-spir-v-descriptor-reload-is.md)
 - [#12111 pass order; isMovableInst rejects descriptor-heap loads](../learnings/1784269362740-slang-12111-spir-v-legalize-pass-ordering-removere.md)
@@ -123,4 +126,5 @@ The untyped path would need ~5-8 new untyped-aware consumers, i.e. an emitter-ar
 - [#12226 heap ConstantBuffer→StorageBuffer flip (#11647) is deliberate; descriptor KIND vs pointer addressing class conflated](../learnings/1784939222858-descriptor-heap-constantbuffer-storagebuffer-flip-.md)
 - [SPV_EXT_descriptor_heap: OpTypeBufferEXT and OpBufferPointerEXT storage classes are INDEPENDENT (no matching VUID); DeepWiki wrong](../learnings/1784939925118-spv-ext-descriptor-heap-optypebufferext-and-opbuff.md)
 - [heap CB: typed OpAccessChain vs glslang untyped-Uniform (#12226)](../learnings/1785256702253-slang-descriptor-heap-constantbuffer-typed-vs-unty.md)
+- [spvDescriptorHeapEXT does not remove set/binding from ParameterBlock/ConstantBuffer params; use ConstantBuffer<T>.Handle](../learnings/1792525428195-spvdescriptorheapext-does-not-remove-set-binding-f.md) — the capability affects only DescriptorHandle lowering; `.Handle` needs UntypedPointersKHR; BDA `T*` and `[vk::push_constant]` alternatives; #12226 fixed in v2026.20
 - [Slang #11496 SPIR-V SIGSEGV — static getFormatInst() triage hypothesis was wrong](../learnings/1780768927407-slang-11496-spir-v-sigsegv-static-getformatinst-tr.md)

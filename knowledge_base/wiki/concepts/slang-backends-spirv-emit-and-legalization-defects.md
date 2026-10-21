@@ -3,7 +3,7 @@ title: "Slang SPIR-V emit and legalization defects: logical pointers, opaque cop
 type: concept
 group: slang-backends
 tags: [spirv, emit, legalization, logical-pointer, OpCompositeConstruct, opaque-types, RayQuery, NRVO, UIntPtr, constants, diagnostics, OpKill, abort]
-source_count: 16
+source_count: 17
 ---
 
 # Slang SPIR-V emit and legalization defects: logical pointers, opaque copies, constants, and diagnostics
@@ -21,6 +21,8 @@ Recurring defect classes in SPIR-V legalization and emit, each with the layer th
 - The `IArray`/`IRWArray` subscript requirement takes `int`, so a `uint64_t` index truncates there while a direct buffer subscript keeps 64 bits.
 - `legalizeSPIRV` worklist diagnostics fire before OpKill DCE, so they also fire on code after `discard`. A diagnostic that renders a resource type name must run before `lowerBufferElementTypeToStorageType`: capture the name early and defer the emit. Judge "peer" diagnostics by pass placement, not subject.
 - When relaxing a rejection predicate, enumerate the discriminator's full range.
+- `spirv_asm` `&x` on a non-addressable operand reports E29103, which is only a note, so lowering continues with a null operand and SPIR-V emit segfaults. Put a lowering-time diagnostic test in an emitted entry point.
+- The direct SPIR-V backend cannot decorate a global resource `OpVariable` (`$tex` names the inserted `OpLoad`; `[[vk::ext_decorate]]` is unknown). Before claiming "no workaround", try a GLSL intrinsic with `-emit-spirv-via-glsl` (QCOM image processing works that way).
 - Prove a guard's else-branch reachability from its callers' asserts.
 - A new SPIR-V opcode may be a block terminator (`OpAbortKHR`): model it as one, stop block emission, and remove the unreachable code.
 
@@ -52,6 +54,8 @@ A struct whose field is a `Ptr<T, Access, GroupShared/Function/Private>` emits a
 
 **Relaxing a rejection predicate.** PR #12195 (`-fvk-use-direct-resource-params`) gated on "any texture NOT rejected by GLSL" instead of "read-only texture". That silently admitted FEEDBACK/UNKNOWN access and, through `unwrapArray`, texture arrays. Enumerate the discriminator's full range ([direct-resource-param gate leaks feedback/unknown/array](../learnings/1784772370437-spir-v-direct-resource-param-gate-relaxing-isilleg.md)).
 
+**A lowering-time "diagnostic" that is only a note lets compilation continue into a crash (`spirv_asm` `&` operand, #13804, TOT 62fb75f99).** In `spirv_asm`, `&x` on an operand with no address, such as a global resource `RWStructuredBuffer buf`, reports E29103 "unable to take the address of this address-of asm operand". E29103 is declared as a `standalone_note` (`slang-diagnostics.lua:1222`), so it adds no error. Lowering returns a null operand (`slang-lower-to-ir.cpp:5668-5670`) and compilation goes on: `-target spirv` segfaults and hlsl gives E99999. `tests/language-feature/spirv-asm/bad-addr.slang` does not catch this, because its asm block sits in a non-entry function that is never emitted. A diagnostic test for a lowering-time diagnostic must put the code in an emitted entry point. The same triage hit an emit gap: the direct SPIR-V backend cannot `OpDecorate` a global resource `OpVariable`. `$tex` in `spirv_asm` names the `OpLoad` result, because legalize inserts a load before the asm block (`slang-ir-spirv-legalize.cpp:386-405`), and `[[vk::ext_decorate]]` is unknown (E31000, no effect). For SPV_QCOM_image_processing a validated workaround goes through glslang, which adds the `WeightTextureQCOM`/`BlockMatchTextureQCOM` decorations itself: `__glsl_extension(GL_QCOM_image_processing) __target_intrinsic(glsl, "textureWeightedQCOM") float4 f(Sampler2D<float4>, float2, Sampler2DArray<float4>);` compiled with `-target spirv -emit-spirv-via-glsl -capability glsl_spirv_1_6` (`-profile spirv_1_6` alone yields SPIR-V 1.0 on the via-GLSL path). The first triage draft said "no workaround exists"; a codex review found both this workaround and the crash. Before claiming "no workaround" for a missing SPIR-V feature, try `-emit-spirv-via-glsl` with a GLSL intrinsic ([spirv_asm & operand E29103 is only a note → segfault; QCOM via GLSL](../learnings/1792566757199-spirv-asm-operand-e29103-is-only-a-note-segfault-q.md)).
+
 **Builtin-var Flat gate (#12064).** Prove else-branch reachability from the callers' asserts. `getBuiltinGlobalVar` asserts a pointer type, so the non-pointer branch is reachable only for `SPIRVAsmOperandBuiltinVar` (always BuiltinInput). An `IRGlobalParam` CAN be non-pointer; only `IRGlobalVar` is always a pointer ([Flat gate reachability](../learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate-p.md)).
 
 ## Planning a new SPIR-V opcode
@@ -70,7 +74,7 @@ A struct whose field is a `Ptr<T, Access, GroupShared/Function/Private>` emits a
 - [[wiki/concepts/slang-backends-spirv-entry-points-varyings-and-execution-modes.md]] — varying locations, shared Input vars, depth/topology modes, `spirv_asm` execution modes
 - [[wiki/concepts/slang-backends-spirv-validation-testing-and-environment.md]] — spirv-val, pre/post-spirv-opt validity, stale binaries, runtime tests, Vulkan CI flakes
 
-**Source learnings (16):**
+**Source learnings (17):**
 - [spirv-val v2026.4 (Vulkan SDK 1.4.363.0) flags logical-pointer composites (#13206)](../learnings/1792158143962-get-a-spirv-val-new-enough-to-flag-logical-pointer.md) — in-tree spirv-val misses it; repro needs a struct copied or captured via `this`; fix direction type legalization (#13305)
 - [logical Ptr struct field → invalid OpCompositeConstruct (#13206)](../learnings/1790017243652-logical-address-space-ptr-as-a-struct-field-invali.md)
 - [slang#9062 SPIR-V OpCompositeConstruct of logical-pointer array escapes resource legalization (struct-field blindness)](../learnings/1783524098198-slang-9062-spir-v-opcompositeconstruct-of-logical-.md)
@@ -84,6 +88,7 @@ A struct whose field is a `Ptr<T, Access, GroupShared/Function/Private>` emits a
 - [diagnostic placement: render type name before buffer lowering](../learnings/1784747930488-diagnostic-pass-placement-tradeoff-type-name-rende.md)
 - [`legalizeSPIRV` worklist diagnostics (E55210) fire before OpKill DCE; judge "peers" by pass placement; #12191's E55215 never landed (#12186 merged option a)](../learnings/1790670161351-spir-v-legalize-worklist-diagnostics-fire-before-o.md)
 - [relaxed direct-resource-param gate leaks feedback/array textures](../learnings/1784772370437-spir-v-direct-resource-param-gate-relaxing-isilleg.md)
+- [spirv_asm &-operand E29103 is only a note → segfault; QCOM image-processing works via the GLSL path](../learnings/1792566757199-spirv-asm-operand-e29103-is-only-a-note-segfault-q.md) — `standalone_note` + null operand (#13804); bad-addr.slang never emitted; no global-OpVariable decorate; `__target_intrinsic(glsl, ...)` + `-emit-spirv-via-glsl -capability glsl_spirv_1_6`
 - [builtin-var Flat gate: prove reachability via caller asserts](../learnings/1783767618309-approver-challenger-spir-v-builtin-var-flat-gate-p.md)
 - [When planning a new SPIR-V opcode, check terminator-ness](../learnings/1781039584587-when-planning-a-new-spir-v-opcode-check-terminator.md)
 - [CORRECTION: abort message is a runtime composite (runtime args), not OpConstantDataKHR](../learnings/1782251874470-correction-abort-message-is-a-runtime-composite-ru.md)

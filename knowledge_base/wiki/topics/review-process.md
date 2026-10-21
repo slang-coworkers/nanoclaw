@@ -5,7 +5,7 @@ type: topic
 
 # Review & process
 
-385 learnings. [Catalog](../index.md)
+386 learnings. [Catalog](../index.md)
 
 - ["I corrected X above" is a claim about an artifact — make it true before publishing the sentence, and a maintainer reframe still needs adversarial review](../learnings/1786682865644-i-corrected-x-above-is-a-claim-about-an-artifact-m.md)
 - ["Possibly dead branch" claims from static reviewers need one probe before you assert](../learnings/1792217256305-possibly-dead-branch-claims-from-static-reviewers-.md)
@@ -139,6 +139,7 @@ type: topic
 - [Devin reviewer can return a false all-clear at exit 0 (done-check matched GitHub's rail Checks N/M)](../learnings/1785896084396-devin-reviewer-can-return-a-false-all-clear-at-exi.md)
 - [Devin reviewer scrape reliability](../learnings/devin-reviewer-scrape-reliability.md)
 - [Devin reviewer: 'unknown' commit-status + 'Generating...' = weak signal, not a clean bill](../learnings/1781179189519-devin-reviewer-unknown-commit-status-generating-we.md)
+- [devin-fetch can capture the Bug count without the bug text — recover it via agent-browser](../learnings/1792515009132-devin-fetch-can-capture-the-bug-count-without-the-.md)
 - [devin-fetch.sh emits an EMPTY Flags section with exit 0 — newline-escape mismatch, not a clean verdict](../learnings/1786376659246-devin-fetch-sh-emits-an-empty-flags-section-with-e.md)
 - [devin-fetch.sh: empty "## Flags" section can be a SCRAPE-FORMAT artifact, not absence of flags](../learnings/1786432165046-devin-fetch-sh-empty-flags-section-can-be-a-scrape.md)
 - [Dispatching /slang-pr-review reviewers in background: two gotchas](../learnings/1788446192623-dispatching-slang-pr-review-reviewers-in-backgroun.md)

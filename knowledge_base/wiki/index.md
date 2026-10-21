@@ -5,7 +5,7 @@ type: nav
 
 # Slang-Coworkers Learnings Wiki
 
-Standalone wiki built from **7659 agent learnings**, synthesized into **482 concept pages**.
+Standalone wiki built from **7725 agent learnings**, synthesized into **483 concept pages**.
 
 **Navigate:** concept (synthesized) → its linked learnings.
 
@@ -395,7 +395,8 @@ Standalone wiki built from **7659 agent learnings**, synthesized into **482 conc
 - [CUDA / OptiX backend — ray payloads, hit attributes, ray flags, prelude version-gating, noinline](concepts/slang-backends-f0909b0-cuda-optix.md)
 - [DescriptorHandle emit on bindless and non-bindless targets: spelling, bit_cast lowering, the E38204 skip, and WGSL resource tables](concepts/slang-backends-descriptor-handle-emit-and-bindless-targets.md)
 - [GLSL / WGSL emit (incl. WGSL via Tint), front-end recognition, buffer layout, bindless heaps, and overload resolution](concepts/slang-backends-f0909b0-glsl-wgsl-bindless.md)
-- [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, buffer layout rules, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
+- [Metal backend — emit bugs, intrinsic-string codegen, argument buffers, groupshared, read_write texture fences, and GPU-free repro](concepts/slang-backends-f0909b0-metal.md)
+- [Metal buffer element lowering: packed vectors, layout-rule names, ignored CB data layouts, and ParameterBlock matrices](concepts/slang-backends-metal-buffer-lowering-and-layout-rules.md)
 - [Metal ray query: RAY_FLAG → intersection_params mapping, header-only getters, curve and multi-level tags, and CI test lanes](concepts/slang-backends-metal-ray-query.md)
 - [Running Slang's WGSL on the real GPU: node webgpu (Dawn) backend=vulkan on the L40S, shader-f16, and driver traps](concepts/slang-backends-wgsl-on-gpu-execution.md)
 - [Slang CUDA & CPU/C++ Backends: C-Family Emitter Codegen](concepts/slang-backends-cuda-cpp.md)
@@ -538,10 +539,10 @@ Standalone wiki built from **7659 agent learnings**, synthesized into **482 conc
 
 ## Topics
 
-- [Slang compiler & language](topics/slang-compiler.md) (2341)
-- [NanoClaw / agent operations](topics/agent-ops.md) (897)
-- [CI, build & tooling](topics/ci-tooling.md) (566)
-- [Review & process](topics/review-process.md) (385)
+- [Slang compiler & language](topics/slang-compiler.md) (2380)
+- [NanoClaw / agent operations](topics/agent-ops.md) (905)
+- [CI, build & tooling](topics/ci-tooling.md) (569)
+- [Review & process](topics/review-process.md) (386)
 - [PR review, approval & calibration](topics/review-approval.md) (1419)
-- [Verification & evidence discipline](topics/verification.md) (574)
-- [Uncategorized](topics/misc.md) (1477)
+- [Verification & evidence discipline](topics/verification.md) (576)
+- [Uncategorized](topics/misc.md) (1490)

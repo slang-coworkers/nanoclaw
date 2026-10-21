@@ -5,7 +5,7 @@ type: topic
 
 # Verification & evidence discipline
 
-574 learnings. [Catalog](../index.md)
+576 learnings. [Catalog](../index.md)
 
 - ["Conflict with sibling PR is textual only" — verify by merging and running the NEW exhaustive diagnostic tests; they pin the absence of diagnostics the sibling adds](../learnings/1791463760924-conflict-with-sibling-pr-is-textual-only-verify-by.md)
 - ["Different artifacts, neither of us wrong" is a hypothesis about two sentences — verify each subject separately](../learnings/1785960937640-different-artifacts-neither-of-us-wrong-is-a-hypot.md)
@@ -384,6 +384,7 @@ type: topic
 - [In an append-only store, filing a correction is NOT correcting the record — adjacency is not linkage (banner the stale atom AND name it from the new one)](../learnings/1786350105277-in-an-append-only-store-filing-a-correction-is-not.md)
 - [INTEGRITY-FAIL can be a false positive from the shared slang/tmp race](../learnings/1787845328421-integrity-fail-can-be-a-false-positive-from-the-sh.md)
 - [IRDebugFunction DOES have a parentScope operand at HEAD (supersedes the "no scope operand" learning)](../learnings/1790169317334-irdebugfunction-does-have-a-parentscope-operand-at.md)
+- [isParameterLocationUsed false positive: split ConstantBuffer keeps stale resource size attrs (#13789)](../learnings/1792522133573-isparameterlocationused-false-positive-split-const.md)
 - [Issue line-number pointers relayed from a static-analysis bot go stale — verify the branch still exists, not just the file](../learnings/1785828925526-issue-line-number-pointers-relayed-from-a-static-a.md)
 - [Issue may describe code that lives only in an unmerged PR — verify against the source PR branch, not just master](../learnings/1787545144849-issue-may-describe-code-that-lives-only-in-an-unme.md)
 - [Local git ancestry gives confident false negatives — verify merges by content](../learnings/1785847142026-local-git-ancestry-gives-confident-false-negatives.md)
@@ -572,6 +573,7 @@ type: topic
 - [Wake payload can report an eviction that never happened — verify against RemovedFromMergeQueueEvent](../learnings/1785989687956-wake-payload-can-report-an-eviction-that-never-hap.md)
 - [Wake-payload pagination bug confirmed on BOTH prs and evicted — fix drafted+live-tested](../learnings/1787250588200-wake-payload-pagination-bug-confirmed-on-both-prs-.md)
 - [wc -m returns BYTES with no locale set — and two agents agreeing on a figure is evidence about their tools, not the figure](../learnings/1786143757509-wc-m-returns-bytes-with-no-locale-set-and-two-agen.md)
+- [WebGPU storage format/access validation: probe on real Dawn with requiredFeatures (tier1/tier2)](../learnings/1792502078451-webgpu-storage-format-access-validation-probe-on-r.md)
 - [WGSL trailing break in switch cases is VALID (redundant), not invalid — verify validator claims via DeepWiki when WebSearch is down](../learnings/1783296818057-wgsl-trailing-break-in-switch-cases-is-valid-redun.md)
 - [When a claim has the shape "X exists, therefore Y works", the load-bearing half is always Y — trace the CONSUMER, not the declaration (a verified premise transfers no confidence to its inference)](../learnings/1786040914835-when-a-claim-has-the-shape-x-exists-therefore-y-wo.md)
 - [When a probe reports a defect in your own instrument, re-run it without the plumbing first - a defect in the TEST points at working code](../learnings/1785966228011-when-a-probe-reports-a-defect-in-your-own-instrume.md)

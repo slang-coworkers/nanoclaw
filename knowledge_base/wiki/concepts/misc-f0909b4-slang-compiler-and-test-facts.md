@@ -31,6 +31,8 @@ issues. Grouped by subsystem:
 - **Storage-type lowering**: `lowerBufferElementTypeToStorageType` can emit `CopyLogical` on every
   target though only SPIR-V lowers it (fix the producer), and `&local` is a UserPointer on CPU/CUDA,
   so a global UserPointer pointee rewrite splits it from the parameter type — test with `&local`.
+  On HLSL, `wrapStructuredBuffersOfMatrices` skips Append/Consume users, so a matrix
+  `AppendStructuredBuffer` fails DXC (#13388); wrap the matrix in a user struct instead.
 - **Language semantics**: `if(let)` desugars entirely in the parser; `BottomType`/
   `Never` is only the throws-error type, not a noreturn marker (its intent is
   unwired).
@@ -148,6 +150,22 @@ memory". Since #8526 the pass rewrites UserPointer pointee types globally on CPU
 splits an `&local` argument's type from the parameter type (#13405). Test any pointer-pointee
 lowering with an `&local` argument, not only a buffer pointer ([Slang release tags live on release
 branches; `&local` is UserPointer on CPU/CUDA](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md)).
+
+HLSL has its own matrix-element wrapping pass, and it misses Append/Consume (#13388, open,
+reproduced on release v2026.20). HLSL skips `lowerAppendConsumeStructuredBuffers`, so
+`StructuredBuffer<float4x4>` + `AppendStructuredBuffer<float4x4>` reach
+`wrapStructuredBuffersOfMatrices` (`slang-ir-wrap-structured-buffers.cpp:169-176`). That pass fixes
+up only Load/LoadStatus/Store/RWLoadStatus/GetElementPtr users, never
+`StructuredBufferAppend`/`Consume`, and it makes one wrapper struct per buffer type instead of per
+matrix type (its own TODO in `getWrapperStruct`). The emitted HLSL has two wrappers (`_S1`, `_S3`)
+and `Append(x._S2)`, which DXC rejects with X3017. Any bare-matrix element hits it (`float3x3`
+too); RW load/store alone is fine. `AppendStructuredBuffer<row_major float4x4>` segfaults slangc
+(exit 139), and the struct-with-matrix Append segfault is #13385 / draft PR #13386. User workaround,
+checked on the emitted HLSL: declare `struct Mat { float4x4 m; }` and use `StructuredBuffer<Mat>` /
+`AppendStructuredBuffer<Mat>`; Slang then does not wrap and both buffers share `Mat_0`. A plain
+`curl` of the linux release tarball and `slangc -target hlsl` are enough to reproduce it, with no
+build ([AppendStructuredBuffer<matrix> wrapper mismatch (#13388) and the user-struct
+workaround](../learnings/1792433454462-hlsl-appendstructuredbuffer-matrix-wrapper-mismatc.md)).
 
 ## Language semantics (slang#12612)
 
@@ -271,3 +289,4 @@ positive-control CHECK that the output actually changed.
 - [Slang CLI integer options are space-separated, not =value](../learnings/1787168871585-slang-cli-integer-options-are-space-separated-not-.md) — `-flag N` not `-flag=N` (only `-D` splits on `=`); a `-flag=N` FileCheck test silently exercises nothing — add a positive-control CHECK.
 - [Release-binary bisect beats a bot-filed 'pre-existing' claim; CopyLogical is emitted on all targets but lowered only for SPIR-V](../learnings/1790901539903-release-binary-bisect-beats-a-bot-filed-pre-existi.md) — #13379; fix the producer, not by running lowerCopyLogical everywhere
 - [Slang release tags live on release branches; `&local` is UserPointer on CPU/CUDA](../learnings/1790978233378-slang-release-tags-live-on-release-branches-bisect.md) — #13405/#8526: a global UserPointer pointee rewrite splits `&local` from the param type
+- [HLSL: AppendStructuredBuffer<matrix> wrapper mismatch (#13388) and the user-struct workaround](../learnings/1792433454462-hlsl-appendstructuredbuffer-matrix-wrapper-mismatc.md) — `wrapStructuredBuffersOfMatrices` skips Append/Consume and wraps per buffer type → DXC X3017; use `struct Mat { float4x4 m; }`

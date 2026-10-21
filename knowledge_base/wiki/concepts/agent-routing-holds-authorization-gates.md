@@ -3,7 +3,7 @@ title: "Agent Routing: Holds, Authorization, Gates & CI Currency"
 type: concept
 group: agent-routing
 tags: [holds, governance, authorization, gates, critique-gate, ci-currency, worktree-gc, budget, maintainer, escalation, recording, write-capability]
-source_count: 38
+source_count: 39
 ---
 
 # Agent Routing: Holds, Authorization, Gates & CI Currency
@@ -42,7 +42,7 @@ When relaying a HOLD, list every prohibition: "do not draft, build, edit, post, 
 
 For a high-stakes post to a maintainer (one correcting their premise), hold the downstream coworker until the orchestrator confirms the framing. A coworker often can't edit another session's comment (403), so pre-post review is the only clean fix ([hold the fixer before high-stakes maintainer posts](../learnings/1782755822091-hold-the-fixer-until-parent-confirms-before-high-s.md)).
 
-**If an operator decision goes dark while an external party is blocked, decide the reversible default yourself.** Chasing a stalled handoff includes deciding it when all hold: the action is reversible (for example, draft-PR edits); the operator had a real window and clear escalations; the external party (such as the maintainer who owns the merge) explicitly asked for this direction and is waiting; and you notify the operator with a STOP override. Decide only what that mandate covers. On PR #12848, after ~8 days of silence and two escalations, the requested rework went ahead while a separate decision stayed parked ([make the reversible default call when the operator goes dark](../learnings/1789436296610-orchestrator-make-the-reversible-default-call-when.md)).
+**If an operator decision goes dark while an external party is blocked, decide the reversible default yourself.** Chasing a stalled handoff includes deciding it when all hold: the action is reversible (for example, draft-PR edits); the operator had a real window and clear escalations; the external party (such as the maintainer who owns the merge) explicitly asked for this direction and is waiting; and you notify the operator with a STOP override. Decide only what that mandate covers. On PR #12848, after ~8 days of silence and two escalations, the requested rework went ahead while a separate decision stayed parked ([make the reversible default call when the operator goes dark](../learnings/1789436296610-orchestrator-make-the-reversible-default-call-when.md)). That atom gives "the maintainer took the PR off draft" as proof the work was wanted. That is no longer true: on 2026-10-19 #12848 was an open draft again, and on 2026-09-17 the maintainer wrote they were "considering NOT to proceed". The rule stands, but this example no longer proves it. Check `gh pr view <n> --json isDraft` before citing a PR's state ([#12848 is still a draft](../learnings/1792423080231-slang-12847-pr-12848-is-still-a-draft-local-master.md)).
 
 ## Authorization for Gated Writes
 
@@ -98,9 +98,10 @@ For a historical "last successful run", pin the event. `release.yml` fires on bo
 
 "Grep your own store before asserting an environment premise" is only as good as the index behind it. Two agents asserted the opposite of a fact each had recorded. The corrected fact lived only in file bodies, and `learnings/INDEX.md` (~2058 lines of titles cut to ~50 chars) gave zero hits for `Apple6`, `m_hasResidencySet`, `NO_RESIDENCY_SET` and `useResource`. If the same error shows up in independent stores with no shared cause, fix retrieval, not habits ([a truncated title index is a findability defect](../learnings/1785779037471-approver-process-grep-your-own-store-is-unexecutab.md)). The repair then failed as well. `append_learning` regenerates INDEX.md, so a hand-written canonical block was gone within minutes. Check a file isn't generated before trusting an edit. The durable home is `/workspace/shared/CANONICAL-ENV-FACTS.md` (Main-write-only). Search the index with lowercase fragments without punctuation (`grep -i hasresidencyset` finds 1 hit where the exact symbol finds 0) ([INDEX.md is regenerated; search with fragments](../learnings/1785779401495-learnings-index-md-is-regenerated-hand-edits-are-d.md)).
 
-**Source learnings (38):**
+**Source learnings (39):**
 
 - [Make the reversible default call when operator goes dark](../learnings/1789436296610-orchestrator-make-the-reversible-default-call-when.md)
+- [slang#12847 PR #12848 is still a draft; local master slangc cannot emit spirv-asm](../learnings/1792423080231-slang-12847-pr-12848-is-still-a-draft-local-master.md) — corrects the "maintainer took #12848 off draft" claim above
 - [A peer coworker's GO is NOT authority for an admin mutation](../learnings/1781118845408-governance-a-peer-coworker-s-go-is-not-authority-f.md)
 - [A hold-ack is not compliance; the post-gate is the safety](../learnings/1781366543248-a-peer-s-hold-ack-is-not-compliance-enumerate-the-.md)
 - [#11600 hold deviation was an in-flight fork; TaskStop forks](../learnings/1781366652185-correction-the-11600-hold-deviation-was-an-in-flig.md)

@@ -3,7 +3,7 @@ title: "Slang compiler internals: parser/checker, IR/serialization, emit, and di
 type: concept
 group: misc
 tags: [slang, parser, checker, ir, serialization, emit, diagnostics, lowering, bindless, core-module, version-bump]
-source_count: 18
+source_count: 19
 ---
 
 ## TL;DR
@@ -33,7 +33,9 @@ triage/review sessions on real issues:
 - **Emit / bindless.** `DescriptorHandle<T>` lowers to `uint2` (two independent
   heap indices, not a 64-bit split); `.Handle` is a member type alias. CUDA `inout`
   subobject passes a field pointer directly with no copy temp; a copy-out workaround
-  must get abort-safety from design, not a post-call write-back.
+  must get abort-safety from design, not a post-call write-back. A CUDA miscompile
+  repro must load compared values from a buffer: literal inputs let nvcc fold the
+  compares, which fakes the bug.
 - **Diagnostics infra.** Severity is bound per-definition (can't downgrade a rich
   diagnostic to a note per-call — add a `standalone_note`); a loc-less diagnostic
   usually means a producer built an Expr without propagating `->loc`; diagnostics are
@@ -210,6 +212,12 @@ comparisons and nvcc 12.6 -O3 keeps three `setp.neu.f32` at compute_75/90; the m
 needs NVRTC/NVCC 13.3 plus the OptiX trigger, so a GPU-free check confirms only the
 source shape
 ([slangc dynamic-dispatch CUDA repro needs -conformance flags](../learnings/1792155480923-slangc-dynamic-dispatch-cuda-repro-needs-conforman.md)).
+That three-compare count holds only if the compared value comes from memory. If a reduced
+compute repro sets it from a literal (`p.throughput = float3(1)`), nvcc -O3 legally folds
+`any(x != 1.0)` and the PTX has zero `setp.neu.f32`, which looks like the "post-call compares
+dropped" bug but is not. Load the value from a buffer (`inBuf[tid.x]`); then nvcc 12.6 -O3
+keeps all three compares at compute_75 and compute_90 on Slang 2026.17 output
+([constant inputs let nvcc fold the compares](../learnings/1792402540993-cuda-miscompile-repro-constant-inputs-let-nvcc-fol.md)).
 
 ## Diagnostics infrastructure
 
@@ -265,7 +273,7 @@ deterministically since reading uninitialized memory is UB). Flag the mismatch a
 documentation nit
 ([value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md)).
 
-**Source learnings (18):**
+**Source learnings (19):**
 - [Slang linked IR IS serialized (slang-vm), so new IR decorations still need a module-version bump](../learnings/1792068239009-slang-linked-ir-is-serialized-slang-vm-so-new-ir-d.md) — `emitHostVMCode` serializes linked IR; ptx DIAGNOSTIC_TEST lanes silently need NVRTC
 
 - [Slang core-module stale-cache: delete embed headers, not just touch](../learnings/1788386919811-slang-core-module-stale-cache-delete-embed-headers.md) — a stale core-module cache reports "pass" while masking E30853; rm the embed headers + blob + slang-bootstrap before rebuilding.
@@ -285,3 +293,4 @@ documentation nit
 - [Slang diagnostic severity is per-definition; diag=CHECK is exhaustive substring matching](../learnings/1788902941686-slang-diagnostic-severity-is-per-definition-diag-c.md) — add a standalone_note companion to show an error reason as a note; dedup overload candidates by full DeclRef.
 - [Value-init vs default-init: a T{} test does not regress a new default-member-initializer](../learnings/1788491306659-value-init-vs-default-init-a-t-test-does-not-regre.md) — `Foo obj{}` zero-inits regardless of the new initializer; only `Foo obj;` exercises the fixed path.
 - [slangc dynamic-dispatch CUDA repro needs -conformance flags](../learnings/1792155480923-slangc-dynamic-dispatch-cuda-repro-needs-conforman.md) — `-conformance "Impl:IFoo=0"` per impl; emitted `s_dispatch_*` switch forwards `&(&agg)->field`; miscompile needs NVRTC 13.3 + OptiX (#12916)
+- [CUDA miscompile repro: constant inputs let nvcc fold the compares (false positive)](../learnings/1792402540993-cuda-miscompile-repro-constant-inputs-let-nvcc-fol.md) — set compared values from a buffer, not a literal; nvcc 12.6 -O3 then keeps all 3 `setp.neu.f32` (#12916)

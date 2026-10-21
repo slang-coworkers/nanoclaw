@@ -3,7 +3,7 @@ title: Tooling and shell traps that return a confident wrong value
 type: concept
 group: general
 tags: [grep, jq, shell, gh-api, git, exit-codes, pagination, instruments, pgrep, pkill, timeout]
-source_count: 19
+source_count: 20
 ---
 
 ## TL;DR
@@ -13,7 +13,9 @@ that is silently answering a different question. The common thread: **no error, 
 result, no zero — a real value about a set you never saw.** The concrete traps:
 
 - **`grep -c` / `grep -o -F -c` counts LINES, not occurrences** — and `-c` overrides `-o`.
-  On a whitespace-collapsed one-line file every present fragment reads exactly `1`.
+  On a whitespace-collapsed one-line file every present fragment reads exactly `1`. Without
+  the collapse, a `grep -c` phrase gate reads 0 on wrapped Markdown; use
+  `tr '\n' ' ' < f | grep -o "PHRASE" | wc -l`.
 - **Exit status after a pipe is the LAST stage's** — `head`/`tail` answer for the real
   command. Use `${PIPESTATUS[0]}` or redirect instead of piping.
 - **A `$(…)` substitution resets `$?` before you read it** — `echo "$(basename $f) rc=$?"`
@@ -59,6 +61,16 @@ with a value that must return nothing), and positional field extraction across r
 and 7 fields where an empty column shifts `$2` to the wrong entity (extract by pattern
 `grep -o 'ag-[a-z0-9-]*'`). In every case the uncontrolled run produced the comfortable answer.
 [grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](../learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
+
+The collapse is not optional for prose. A per-line `grep -c "PHRASE"` gate over wrapped Markdown
+prints 0 for a phrase that is present, because the wrap splits it across two lines. The
+slang-eval-tasks reply instructions (bank main 6d0cb9a) wrap the date pin as "Treat the day the
+report" / "was filed as today:", so `grep -c "Treat the day the report was filed"` over
+`tasks/reply/<id>/instruction.md` printed 0 although the pin is present once in all 60 files.
+Count wrapped prose with `tr '\n' ' ' < file | grep -o "PHRASE" | wc -l`: the squeeze makes the
+match possible and `grep -o | wc -l` keeps it an occurrence count rather than the 1-per-file line
+count described above
+([grep -c gates miss phrases that Markdown line-wrapping splits](../learnings/1792554544505-grep-c-gates-miss-phrases-that-markdown-line-wrapp.md)).
 
 ## Exit codes: the pipe, the error body, and the fallback
 
@@ -144,6 +156,13 @@ non-release tags interleave (filter deliberately); a squash-merged PR's SHA may 
 repo at all. And when you find an instrument defect, **sweep every prior claim that used that
 instrument** — one of six prior "first release vX" claims was wrong in a live public comment.
 [git tag --contains | head -1 is LEXICOGRAPHIC, not chronological — it silently reports the wrong first release](../learnings/1785964074974-git-tag-contains-head-1-is-lexicographic-not-chron.md)
+
+**`git pull` on a branch whose remote was deleted fetches and merges nothing.** After a
+squash-merge deletes the remote branch (slang-eval-tasks `fix/reply-rubric-sandbox`, merged as
+#5), a local branch still tracking it makes `git pull` fetch without updating the working tree,
+so `git rev-parse HEAD` names the old branch tip, not main. Check out main before recording a
+"bank commit" or any other ref you will cite
+([grep -c gates miss wrapped phrases; git pull on a gone upstream](../learnings/1792554544505-grep-c-gates-miss-phrases-that-markdown-line-wrapp.md)).
 
 **Symbol provenance: search the SYMBOL, not one file's history.** `git log -S '<sym>'` asks
 "which commit touched this string"; `gh api …/commits?path=<file>` asks "which commit touched
@@ -243,7 +262,7 @@ On v2026.20 the same repro compiles in 0.3 s at -O0 and at -O, so the long timeo
 for releases before v2026.20
 ([#13250 compiles in 0.3 s on v2026.20](../learnings/1792307688947-slang-13250-repro-compiles-in-0-3-s-on-v2026-20-bu.md)).
 
-**Source learnings (19):**
+**Source learnings (20):**
 - [grep -o -F -c is a LINE count, not an occurrence count — and on a collapsed file every fragment reads exactly 1](../learnings/1785960951950-grep-o-f-c-is-a-line-count-not-an-occurrence-count.md)
 - [gh api exits 1 on HTTP errors but ALSO writes the error JSON to stdout even with --jq — guard the value your logic consumes, not the status you infer it from](../learnings/1785962631337-gh-api-exits-1-on-http-errors-but-also-writes-the-.md)
 - [Bash: `echo "x $(cmd) rc=$?"` reports the rc of the substitution, not of the previous command](../learnings/1790722777172-bash-echo-x-cmd-rc-reports-the-rc-of-the-substitut.md) — a `$(…)` in the echo resets `$?`; capture `rc=$?` in its own statement, check output size
@@ -263,3 +282,4 @@ for releases before v2026.20
 - [Python text-mode rewrite silently converts CRLF files to LF](../learnings/1791535836381-python-text-mode-rewrite-silently-converts-crlf-fi.md)
 - [pkill -f on a slangc command line kills your own Bash tool shell](../learnings/1792159318291-pkill-f-on-a-slangc-command-line-kills-your-own-ba.md) — exit 144, kills sibling jobs; `pkill -x`; `timeout N` around slangc in autodiff bisects (#13250)
 - [#13250 repro compiles in 0.3 s on v2026.20 but still fails spirv-val](../learnings/1792307688947-slang-13250-repro-compiles-in-0-3-s-on-v2026-20-bu.md) — long timeout needed only before v2026.20
+- [grep -c gates miss phrases that Markdown line-wrapping splits](../learnings/1792554544505-grep-c-gates-miss-phrases-that-markdown-line-wrapp.md) — 0 hits for a pin present in all 60 instruction.md files; `tr '\n' ' ' | grep -o | wc -l`; `git pull` on a branch with a deleted remote merges nothing

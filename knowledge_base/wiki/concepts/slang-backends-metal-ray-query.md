@@ -2,13 +2,11 @@
 title: "Metal ray query: RAY_FLAG → intersection_params mapping, header-only getters, curve and multi-level tags, and CI test lanes"
 type: concept
 group: slang-backends
-tags: [metal, msl, ray-query, rayquery, intersection-params, intersection-query, intersector, curves, curve-data, assume-geometry-type, acceleration-structure, lss, metallib, macos-ci, slang]
-source_count: 6
+tags: [metal, msl, ray-query, rayquery, intersection-params, intersection-query, intersector, curves, curve-data, primitive-data, assume-geometry-type, acceleration-structure, lss, metallib, macos-ci, slang]
+source_count: 7
 ---
 
 # Metal ray query: RAY_FLAG → intersection_params mapping, header-only getters, curve and multi-level tags, and CI test lanes
-
-Slang lowers inline `RayQuery` on Metal to `metal::raytracing::intersection_query`. The flag translation lives in core-module helper strings rather than in the emitter, the spec documents less of the Metal API than Apple's header ships, and CI gives no runtime signal for Metal ray queries. This page was split out of [Metal backend](slang-backends-f0909b0-metal.md); OptiX and the structural ray-tracing pipeline are on [OptiX ray tracing](slang-backends-optix-raytracing.md).
 
 ## TL;DR
 
@@ -18,8 +16,11 @@ Slang lowers inline `RayQuery` on Metal to `metal::raytracing::intersection_quer
 - **Metal runtime ray-query lanes are `ignored` on macOS CI.** Only a `-target metallib` SIMPLE lane proves the MSL compiles with Apple's compiler.
 - **Inline `RayQuery` on Metal is always `intersection_query<triangle_data, instancing>`.** Draft #12691 adds `intersector<>` only for the structural trace; its flag-setter sequence and `_emitMetalRayTracingTagList` are reusable later.
 - **Curves need more than the `curve_data` tag:** the query must call `assume_geometry_type(... | geometry_type::curve)`, and candidates commit with `commit_curve_intersection()`.
-- **`acceleration_structure` carries only `instancing`/`primitive_motion`/`instance_motion`.** Curve or multi-level queries leave its parameter type unchanged; only motion changes it.
+- **`acceleration_structure` carries only `instancing`/`primitive_motion`/`instance_motion`.** Curve or multi-level queries, and `intersector<curve_data, instancing>`, leave its parameter type as `acceleration_structure<instancing>`; only motion changes it. Tags need only match between related uses, in no canonical order.
+- **`get_*_primitive_data()` needs no intersection tag** (Metal 3; triangle, bounding-box and curve hits); `curve_parameter` is gated on `curve_data`.
 - **Metal has no LSS control-point or radius fetch**, so NV `*LssObjectPositionsAndRadiiNV` accessors cannot map to it.
+
+Slang lowers inline `RayQuery` on Metal to `metal::raytracing::intersection_query`. The flag translation lives in core-module helper strings rather than in the emitter, the spec documents less of the Metal API than Apple's header ships, and CI gives no runtime signal for Metal ray queries. This page was split out of [Metal backend](slang-backends-f0909b0-metal.md); OptiX and the structural ray-tracing pipeline are on [OptiX ray tracing](slang-backends-optix-raytracing.md).
 
 ## RayQuery ray flags → `raytracing::intersection_params` (#13408)
 
@@ -86,12 +87,22 @@ Consider a user who adds curve geometry to an inline ray query. Adding the `curv
 
 The tags do not travel to the acceleration structure. `acceleration_structure` takes only `instancing`, `primitive_motion` and `instance_motion` (§2.17.7); `max_levels`, `triangle_data` and `curve_data` cannot appear on it (Table 2.9), and it only has to match the instancing/motion tag order of the other types (§2.17.1). A curve or multi-level query therefore leaves the `acceleration_structure<instancing>` parameter type unchanged; only motion would change it. `intersection_query` exposes only `get_*_curve_parameter()`, with no control-point or radius fetch, so NV LSS accessors such as `*LssObjectPositionsAndRadiiNV` have no Metal mapping. Draft #12691's `_emitMetalRayTracingTagList` covers intersectors, intersection function tables and acceleration structures only; its PROPOSAL.md:767 excludes ray queries. When pdftotext is missing, `pip install --target <tmp> pypdf` extracts the spec, and its printed page numbers match the PDF page index ([Metal intersection_query curves need assume_geometry_type](../learnings/1792138014602-metal-intersection-query-curves-need-assume-geomet.md)).
 
-**Source learnings (6):**
+The same rule holds for the structural `intersector`. A later spec reading for a #13688 addendum (MSL 4.1, not compiled, no Mac) found:
+
+- `intersector<curve_data, instancing>::intersect(ray, as, mask)` takes `instance_acceleration_structure`, which is an alias of `acceleration_structure<instancing>` (§6.19.2 p.322, "available only if intersection_tags has instancing"; §2.17.7 p.71). Under §2.17.1 p.62 an acceleration structure only has to match the instancing/motion tag order, and `curve_data`, `triangle_data` and `max_levels` are never acceleration-structure tags. Table 6.29 p.321 loosely writes `acceleration_structure<intersection_tags...>`, but §2.17.1 governs. Tags have no canonical order; they only have to match between related uses (intersector, `intersection_result`, function table and query).
+- `get_candidate_primitive_data()` / `get_committed_primitive_data()` return `const device void*`, require Metal 3, work for triangle, bounding-box and curve hits (Tables 6.33/6.34), and need no intersection tag. The spec does not say the pointer is null when the geometry has no primitive data.
+- `intersection_result::curve_parameter` is gated on `curve_data`; `distance` is not. The spec never maps curve control-point counts to bases ("2, 3, or 4, depending on the curve basis").
+- In Slang, an `extension RayQuery` method with `__intrinsic_asm "...($0)->get_committed_primitive_data()"` works on Metal. It relies on `$0` being emitted as the query's address (`&q_0` for a local, `thread*` for a parameter), which is an emit detail, not a contract.
+
+([Metal intersector<curve_data, instancing> accepts acceleration_structure<instancing>; primitive_data needs no tag](../learnings/1792502356233-metal-intersector-curve-data-instancing-accepts-ac.md)).
+
+**Source learnings (7):**
 - [Metal RayQuery ray flags are mapped by inline __requirePrelude helpers in hlsl.meta.slang (no 0x04 before #13408)](../learnings/1790964538262-metal-rayquery-ray-flags-are-mapped-by-inline-requ.md) — helper lives in `RayQuery::__reset`; 0x04 → `accept_any_intersection(true)`; SPIRV-Cross is prior art.
 - [MSL spec 4.1: accept_any_intersection halts on first COMMITTED hit; getters are header-only](../learnings/1790978570656-msl-spec-4-1-accept-any-intersection-halts-on-firs.md) — matches DXR/Vulkan terminate-on-first-hit; no OMM (0x400); how to grep the >10 MB PDF.
 - [Metal intersection_params getters exist only in Apple's header; bool getters are named should_*](../learnings/1790969961307-metal-intersection-params-getters-exist-only-in-ap.md) — read the header via dortania raw URLs; add metallib + runtime lanes.
 - [Metal runtime ray-query test lanes are ignored on macOS CI](../learnings/1790972350334-metal-runtime-ray-query-test-lanes-are-ignored-on-.md) — only `-target metallib` SIMPLE lanes give Apple-compiler signal.
 - [#12691 adds Metal intersector<> only for the structural pipeline trace; inline RayQuery stays intersection_query](../learnings/1792136833198-12691-adds-metal-intersector-only-for-the-structur.md) — reusable flag setters; one RayQuery with multiple `reset()`s
 - [Metal intersection_query curves need assume_geometry_type; acceleration_structure tags don't carry curve_data/max_levels](../learnings/1792138014602-metal-intersection-query-curves-need-assume-geomet.md) — MSL 4.1 §6.19.3/§2.17; no LSS fetch; #12691 excludes ray queries (#13688)
+- [Metal intersector<curve_data, instancing> accepts acceleration_structure<instancing>; primitive_data needs no tag](../learnings/1792502356233-metal-intersector-curve-data-instancing-accepts-ac.md) — MSL 4.1 §6.19.2/§2.17.1 (Table 6.29 is loose); `get_*_primitive_data` Metal 3; `$0` is the query address in `__intrinsic_asm` (#13688)
 
 _Catalog: [[wiki/index.md]]_

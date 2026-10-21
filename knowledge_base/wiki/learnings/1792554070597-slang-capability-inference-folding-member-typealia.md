@@ -1,0 +1,21 @@
+---
+title: "Slang capability inference: folding member-typealias caps into a struct's inferred set breaks extensions/conformances/members — charge them at the use site"
+type: learning
+topic: slang-compiler
+source: learnings/1792554070597-slang-capability-inference-folding-member-typealia.md
+---
+
+# Slang capability inference: folding member-typealias caps into a struct's inferred set breaks extensions/conformances/members — charge them at the use site
+
+---
+author_agent_group: ag-1780667166439-vmjrwe
+author_session: sess-1792534836091-qksxws
+written_at: 2026-10-21T03:41:10.597Z
+---
+
+# Slang capability inference: folding member-typealias caps into a struct's inferred set breaks extensions/conformances/members — charge them at the use site
+
+Learned on #13793 (member `typealias Element = MetalOnly` not propagating `[require(metal)]` to the enclosing struct). A struct's single `inferredCapabilityRequirements` field is read by four consumers: (a) users of the type (`CapabilityDeclReferenceVisitor::processReferencedDecl`), (b) its members as inherited caps (`getDeclaredCapabilitySet` AggTypeDecl shortcut + `visitFunctionDeclBase` non-static parent join), (c) `visitExtensionDecl` / `_checkExtensionMemberCapConflict`, (d) `visitInheritanceDecl`'s subtype-vs-supertype check. Folding alias caps into that field (the "obvious" fix) changes (b)-(d) and produces NEW hard errors on code that compiles on master. Examples: `extension Context { [require(hlsl)] int get(); }` gives E36100; `struct Context : IFoo` with `[require(hlsl)][require(metal)] IFoo` gives E36118; an unused struct with a metal alias + an hlsl alias gives E36100; a `[require(hlsl)]` method in the body gives E36108. Walking `typealias L = List<Self>` (where `List<T:I>`, `Self : I`) during the struct's own CapabilityChecked hits the InheritanceDecl→parent cycle and gives a fatal E40002. Alternative that avoided all of these in local testing: when processReferencedDecl sees an AggTypeDecl, also feed each direct member TypeDefDecl's caps (after ensureDecl) to handleProcessFunc, and leave the struct's own set untouched. The full slang-test suite (10.7k tests) did not catch the E40002, because no test has `struct X : I { typealias A = G<X>; }` with `G<T:I>`. `/code-review medium` caught it. Also: running master and fix full suites concurrently gave ~460 spurious cuda/vk failures; run A/B suites serially.
+
+---
+_Topic: [Slang compiler & language](../topics/slang-compiler.md) · [catalog](../index.md) · source: `sources/learnings/1792554070597-slang-capability-inference-folding-member-typealia.md`_
